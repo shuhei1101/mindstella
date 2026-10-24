@@ -1021,8 +1021,8 @@ namespace MindmapPreview {
         bodyLayout: resolved.bodyLayout,
         bodyView: resolved.bodyView,
         edit: detailEdit(),
-        // 幅 901px 以上の詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面と幅 900px 以下は置かない）
-        resizer: route.full || isNarrow()
+        // 詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面は置かない。幅 900px 以下は CSS が隠し、窓を広げたときに出る）
+        resizer: route.full
           ? null
           : panelResizer({
             stored: readPanelWidth(session),
