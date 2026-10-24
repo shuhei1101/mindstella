@@ -529,7 +529,7 @@ components:
         type: HTMLElement | null
         required: false
         default: 'null'
-        description: パネルの内側の左端に置く `panelResizer` の要素（幅 900px 以下と全画面では `null`）。全ての種類の詳細パネルを同じ `--panel-w` の幅で開く
+        description: パネルの内側の左端に置く `panelResizer` の要素（全画面では `null`。幅 900px 以下では CSS が隠す）。全ての種類の詳細パネルを同じ `--panel-w` の幅で開く
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常

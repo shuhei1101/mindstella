@@ -702,7 +702,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 変えた幅を `session` の `PANEL_WIDTH_KEY` に書く（書けなければ何もしない）。`start` は幅 901px 以上で詳細パネルを開くたびに、`readPanelWidth` の値を `stored` にした `panelResizer` を `detailPanel` の `resizer` に渡し、`onChange` でこれを呼ぶ
+    summary: 変えた幅を `session` の `PANEL_WIDTH_KEY` に書く（書けなければ何もしない）。`start` は全画面以外で詳細パネルを開くたびに（表示の幅によらない。幅 900px 以下で開いてから窓を広げても、区切りの窓の幅の受け取りが残した幅を当て直す）、`readPanelWidth` の値を `stored` にした `panelResizer` を `detailPanel` の `resizer` に渡し、`onChange` でこれを呼ぶ
     side_effects: '`session` の `PANEL_WIDTH_KEY` を書く'
     args:
       - name: session
