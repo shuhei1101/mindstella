@@ -1,0 +1,56 @@
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: 帯の上に置き、背景の色で実画面と見分ける */
+.mockbar { flex: none; display: flex; align-items: center; gap: 4px 14px; height: var(--mock-h); padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+/* 操作列の高さ */
+body:has(> .mockbar) { --mock-h: 32px; }
+/* 帯の下から重ねる面: 操作列の分だけ下げる（実画面では操作列が無い） */
+body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer) { top: calc(var(--mock-h) + var(--topbar-h) + var(--tab-h) + 1px); }
+/* 狭い幅の重ねる面: 操作列の分だけ下げる */
+@media (max-width: 900px) {
+  body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawer.narrow) { top: calc(var(--mock-h) + var(--topbar-h)); }
+}
+/* 撮影のときだけの全画面（クエリに shot=1）: モーダルと同じ位置に重ね、周りを薄い幕の色で覆う */
+dialog.full[open]:not(:modal) { position: fixed; inset: 0; z-index: 40; margin: auto; box-shadow: var(--shadow-pop), 0 0 0 100vmax var(--scrim-soft); }
+/* 撮影用の赤枠（クエリの mark で付ける） */
+.mock-mark { outline: 2px solid #e5484d; outline-offset: 2px; }
+
+/* ===== 選んだ箇所のコメントの入口（#332） ===== */
+
+/* 入口の大きさを測る枠: 幅は位置を決めるスクリプトが入れる。ツールチップの基準 */
+.selection-comment { padding: 0 8px; gap: 4px; }
+/* 文字の案 A 印だけ: 32px の丸。名前は読み上げとツールチップで伝える */
+.selection-comment[data-label="icon"] { padding: 0; border-radius: 50%; }
+/* 文字の案 B 印と小さい「コメント」: 今のピルより小さい文字 */
+.selection-comment[data-label="text"] { font-size: var(--fs-xs); }
+/* 面の案 B 半透明: 下の文字が透ける（影も弱める） */
+.selection-comment[data-bg="clear"] { background: color-mix(in oklab, var(--surface) 55%, transparent); box-shadow: none; }
+/* 半透明のホバー: 面を塗り直す */
+.selection-comment[data-bg="clear"]:hover { background: color-mix(in oklab, var(--hover) 75%, transparent); }
+
+/* 印だけの案の名前のツールチップ: 乗せたときとフォーカスしたときだけ、選んだ範囲と反対の側に出す。横は入口の左端に揃えて右へ伸ばす */
+.selection-comment .sc-tip { position: absolute; left: 0; display: none; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; }
+/* 画面の右半分に出した入口: ツールチップは入口の右端に揃えて左へ伸ばす（画面の外へはみ出さない） */
+.selection-comment[data-tip="end"] .sc-tip { left: auto; right: 0; }
+/* 選んだ範囲の上に出した入口・右の余白に出した入口: ツールチップは入口の上 */
+.selection-comment:is([data-side="above"], [data-side="right"]) .sc-tip { bottom: calc(100% + 6px); }
+/* 選んだ範囲の下に出した入口: ツールチップは入口の下 */
+.selection-comment[data-side="below"] .sc-tip { top: calc(100% + 6px); }
+/* 入口とツールチップの間の 6px をつなぐ透明な領域: ツールチップへポインターを動かしても入口の :hover を保つ */
+.selection-comment .sc-tip::before { content: ""; position: absolute; left: 0; right: 0; height: 6px; }
+/* 入口の上に出したツールチップ: 透明な領域はツールチップの下 */
+.selection-comment:is([data-side="above"], [data-side="right"]) .sc-tip::before { top: 100%; }
+/* 入口の下に出したツールチップ: 透明な領域はツールチップの上 */
+.selection-comment[data-side="below"] .sc-tip::before { bottom: 100%; }
+/* 乗せた・キーボードでフォーカスした: ツールチップを出す */
+.selection-comment:is(:hover, :focus-visible) .sc-tip { display: block; }

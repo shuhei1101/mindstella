@@ -78,8 +78,12 @@ from preview_comment_helpers import (
     DRAFT_WAIT_MS,
     PANEL_REVIEW,
     PILL,
+    PILL_GAP_PX,
+    PILL_OFFSET_JS,
+    PILL_SIZE_PX,
     ROW_CORNER_GAPS_JS,
     ROW_CORNER_TOLERANCE_PX,
+    SCROLL_TEXT_TO_TOP_JS,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     fulfill_problem,
@@ -3697,6 +3701,47 @@ def test_html_code_block(
     # 前後の Markdown は今までどおり描く
     assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
     assert page.locator("aside.panel .md p").count() == 2
+
+
+def test_selection_entry_position_when_fits_above(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文の文を選ぶと、入口を選んだ範囲の始まりの上に、左端を揃えた 32px の丸で出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["above_gap"] == PILL_GAP_PX
+    assert offset["first_left_offset"] == 0
+    assert offset["width"] == PILL_SIZE_PX
+    assert offset["height"] == PILL_SIZE_PX
+    assert page.locator(PILL).get_attribute("data-side") == "above"
+
+
+def test_selection_entry_position_when_near_scroller_top(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """選んだ範囲の始まりが本文のスクロール領域の上端の近くにあると、入口を選んだ範囲の終わりの下に、終わりの行の左端を揃えて出す（正常系）。"""
+    # 準備（60 番目の段落を、本文のスクロール領域の上端に合わせる）
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    page.evaluate(SCROLL_TEXT_TO_TOP_JS, [PANEL_BODY, "60 番目の段落"])
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "60 番目の段落")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["below_gap"] == PILL_GAP_PX
+    assert offset["last_left_offset"] == 0
+    assert offset["width"] == PILL_SIZE_PX
+    assert offset["height"] == PILL_SIZE_PX
+    assert page.locator(PILL).get_attribute("data-side") == "below"
 
 
 def test_selection_entry_when_html_body(

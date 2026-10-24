@@ -950,14 +950,10 @@ def test_normal_when_html_body_commented(
     rect = text_rect_in_page(page, BODY_FRAME, "言い換えたい文")
     pill_box = page.locator(PILL).bounding_box()
     page.get_by_role("button", name="選んだ箇所にコメント").click()
-    # 検証（入口の位置: 選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    # 検証（入口の位置: 入口の下端が選んだ文の上端より上にあり、その差が選んだ行の高さ以内）
     assert pill_box is not None
-    gap = max(
-        rect["top"] - (pill_box["y"] + pill_box["height"]),
-        pill_box["y"] - (rect["top"] + rect["height"]),
-        0,
-    )
-    assert gap <= rect["height"]
+    gap = rect["top"] - (pill_box["y"] + pill_box["height"])
+    assert 0 < gap <= rect["height"]
     assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"
     assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
     # 実行（溜める）

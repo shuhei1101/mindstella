@@ -33,8 +33,12 @@ from preview_body_scroll_helpers import (
 from preview_body_link_helpers import build_body_link_workspace
 from preview_comment_helpers import (
     PILL,
+    PILL_GAP_PX,
+    PILL_OFFSET_JS,
+    PILL_SIZE_PX,
     ROW_CORNER_GAPS_JS,
     ROW_CORNER_TOLERANCE_PX,
+    SCROLL_TEXT_TO_TOP_JS,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     read_workspace_yaml,
@@ -435,6 +439,45 @@ def test_selection_entry(
     assert page.locator(f"dialog.full {PILL}").count() == 1
     page.click(PILL)
     assert page.inner_text("dialog.full .send-loc-name") == "本文 2 行目"
+
+
+def test_selection_entry_position_when_fits_above(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、入口を選んだ範囲の始まりの上に、左端を揃えた 32px の丸で出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open] .md")
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "言い換えたい文")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["above_gap"] == PILL_GAP_PX
+    assert offset["first_left_offset"] == 0
+    assert offset["width"] == PILL_SIZE_PX
+    assert offset["height"] == PILL_SIZE_PX
+    assert page.locator(PILL).get_attribute("data-side") == "above"
+
+
+def test_selection_entry_position_when_near_scroller_top(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """選んだ範囲の始まりが本文のスクロール領域の上端の近くにあると、入口を選んだ範囲の終わりの下に、終わりの行の左端を揃えて出す（正常系）。"""
+    # 準備（60 番目の段落を、本文のスクロール領域の上端に合わせる）
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open] .md")
+    page.evaluate(SCROLL_TEXT_TO_TOP_JS, [FULL_BODY, "60 番目の段落"])
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "60 番目の段落")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["below_gap"] == PILL_GAP_PX
+    assert offset["last_left_offset"] == 0
+    assert page.locator(PILL).get_attribute("data-side") == "below"
 
 
 def test_selection_entry_when_switched_from_panel(
@@ -885,15 +928,11 @@ def test_html_body_entry_position_when_mouse(
     page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
     rect = text_rect_in_page(page, FULL_BODY_FRAME, "言い換えたい文")
     pill_box = page.locator(PILL).bounding_box()
-    # 検証（入口と選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    # 検証（入口の下端が選んだ文の上端より上にあり、その差が選んだ行の高さ以内）
     assert page.locator(f"dialog.full {PILL}").count() == 1
     assert pill_box is not None
-    gap = max(
-        rect["top"] - (pill_box["y"] + pill_box["height"]),
-        pill_box["y"] - (rect["top"] + rect["height"]),
-        0,
-    )
-    assert gap <= rect["height"]
+    gap = rect["top"] - (pill_box["y"] + pill_box["height"])
+    assert 0 < gap <= rect["height"]
 
 
 def test_html_body_entry_when_switched_from_panel(

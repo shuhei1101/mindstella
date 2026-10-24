@@ -1,0 +1,8 @@
+$ ruff check plugins tests; npm run typecheck
+All checks passed!
+ruff exit: 0
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+typecheck exit: 0

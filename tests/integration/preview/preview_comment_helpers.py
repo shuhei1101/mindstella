@@ -25,10 +25,14 @@ __all__ = [
     "FREE_TEXTAREA",
     "PANEL_REVIEW",
     "PILL",
+    "PILL_GAP_PX",
+    "PILL_OFFSET_JS",
+    "PILL_SIZE_PX",
     "REVIEW_ENTRY",
     "REVIEW_HEAD",
     "ROW_CORNER_GAPS_JS",
     "ROW_CORNER_TOLERANCE_PX",
+    "SCROLL_TEXT_TO_TOP_JS",
     "THREAD_ROWS",
     "THREE_LINE_BODY",
     "UPDATE_TIMEOUT_MS",
@@ -76,6 +80,33 @@ PANEL_REVIEW = "aside.panel .d-review"
 
 # 選んだ箇所のコメントの入口
 PILL = "button.selection-comment"
+
+# 入口と選んだ範囲との間の空きと、入口の幅と高さ（px）
+PILL_GAP_PX = 6
+PILL_SIZE_PX = 32
+
+# 今の選択の始まりの行・終わりの行の矩形と入口の枠の位置関係を返す（above_gap は始まりの上端と入口の下端の差、below_gap は入口の上端と終わりの下端の差）
+PILL_OFFSET_JS = """() => {
+    const rects = getSelection().getRangeAt(0).getClientRects();
+    const first = rects[0];
+    const last = rects[rects.length - 1];
+    const pill = document.querySelector('button.selection-comment').getBoundingClientRect();
+    return {
+        above_gap: first.top - pill.bottom,
+        below_gap: pill.top - last.bottom,
+        first_left_offset: pill.left - first.left,
+        last_left_offset: pill.left - last.left,
+        width: pill.width,
+        height: pill.height,
+    };
+}"""
+
+# 本文のスクロール領域を、文を含む段落の上端がスクロール領域の上端に来るまでスクロールする
+SCROLL_TEXT_TO_TOP_JS = """([scroller, text]) => {
+    const body = document.querySelector(scroller);
+    const target = [...body.querySelectorAll('p')].find(p => p.textContent.includes(text));
+    body.scrollTop += target.getBoundingClientRect().top - body.getBoundingClientRect().top;
+}"""
 
 # コメントの一覧の見出しの帯の「レビュー中」の入口と、レビュー中の書き込みの画面の見出し
 REVIEW_ENTRY = f"{COMMENTS_PANEL} .comments-head button.review-entry"

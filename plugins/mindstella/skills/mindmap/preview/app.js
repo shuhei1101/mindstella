@@ -1797,9 +1797,11 @@ var MindmapPreview;
             if (route.id === null)
                 return;
             const id = route.id;
+            // 上に収まるかを決めるため、本文のスクロール領域の矩形を渡す
+            const scroller = host.querySelector(".panel-body") ?? host;
             pill = MindmapPreview.selectionComment({
                 anchor,
-                viewport: { width: innerWidth, height: innerHeight },
+                area: { viewport: { width: innerWidth, height: innerHeight }, scroller: scroller.getBoundingClientRect() },
                 on: {
                     press: () => {
                         closePill();
