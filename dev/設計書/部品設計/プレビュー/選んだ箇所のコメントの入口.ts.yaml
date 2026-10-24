@@ -2,33 +2,35 @@ title: "選んだ箇所のコメントの入口"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts#MindmapPreview.selectionComment"
 story: "Preview/SelectionComment"
 states:
-  - name: Below
-    description: 選んだ範囲の終わりの下に出す。角を丸め切った横長の形（ピル）に、印と「コメント」
+  - name: Above
+    description: 選んだ範囲の始まりの上に出す。幅と高さ 32px の丸に印だけ。左端を選んだ範囲の始まりの左端に揃える。面は不透明
   - name: Hover
-    description: ホバー。面の色だけを変える
+    description: ホバー。面の色を変え、名前「選んだ箇所にコメント」のツールチップを選んだ範囲と反対の側（入口の上）に出す。入口とツールチップの間を透明な領域でつなぎ、ツールチップへポインターを動かしても消さない
     notes:
       見せ方: Storybook のホバーの疑似クラスで見せる
   - name: Focus
-    description: キーボードのフォーカス。印の色の輪で、ホバーと見分ける
+    description: キーボードのフォーカス。印の色の輪で、ホバーと見分ける。ホバーと同じ名前のツールチップを出す
     notes:
       見せ方: ストーリーの play で入口へ Tab で届かせる
-  - name: Above
-    description: 下に収まらない。選んだ範囲の始まりの上に出す
-  - name: Narrow
-    description: 幅 390px で選んだ範囲が画面の端に寄る。入口を画面の端から 8px の内側に収める
+  - name: Below
+    description: 上に収まらない（選んだ範囲の始まりが画面か本文のスクロール領域の上端の近く）。選んだ範囲の終わりの下に出し、終わりの行の左端に揃える。ツールチップは入口の下に出す
     notes:
-      見せ方: Storybook の画面幅を 390px にし、選んだ範囲を右端に置いて見せる
-lead: 詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出すピルの形の入口。押すと使う側が下端のコメントの入力に箇所を添える。
+      見せ方: 選んだ範囲をスクロール領域の上端の行に置き、ホバーの疑似クラスでツールチップも見せる
+  - name: Narrow
+    description: 幅 390px で選んだ範囲が画面の端に寄る。入口を画面の端から 8px の内側に収める。画面の右半分に出した入口は、ツールチップを入口の右端に揃えて画面の外へはみ出さない
+    notes:
+      見せ方: Storybook の画面幅を 390px にし、選んだ範囲を右端に置いて、ホバーの疑似クラスで見せる
+lead: 詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の始まりの上に出す、印だけの丸い入口。押すと使う側が下端のコメントの入力に箇所を添える。
 status: implemented
 args:
   - name: anchor
     type: オブジェクト
     required: true
     description: 選んだ範囲の端の画面上の位置（`Range.getClientRects()` の最後と最初の矩形）。入口をこの近くに出す
-  - name: viewport
+  - name: area
     type: オブジェクト
     required: true
-    description: 画面の大きさ（`{width, height}`）。選んだ範囲の終わりの下に出し、下に収まらなければ始まりの上に出す。左右は画面の端から 8px の内側に収める
+    description: '画面の大きさ（`viewport: {width, height}`）と、本文のスクロール領域の矩形（`scroller`）。選んだ範囲の始まりの上に出し、画面の端から 8px とスクロール領域の上端の内側に収まらなければ終わりの下に出す。左右は画面の端から 8px の内側に収める'
 events:
   - name: 押す
     when: 入口を押したときと、フォーカスして Enter・Space を押したとき
@@ -37,8 +39,9 @@ events:
     when: Esc を押したとき
     description: 使う側が入口を閉じ、選択を残したままフォーカスを本文へ戻す。選択を外したとき・内容を送ったときも使う側が閉じる
 accessibility:
-  - 入口はボタンにし、読み上げの名前を「選んだ箇所にコメント」にする（見せる文字は「コメント」）
+  - 入口はボタンにし、読み上げの名前を「選んだ箇所にコメント」にする（見せるのは印だけ。名前のツールチップは読み上げから外し、名前が二度読まれないようにする）
   - Tab で、開いている詳細の本文の次に届く。Esc で閉じる
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
   - 押せる的は高さ 32px 以上にする
+  - 名前のツールチップは、乗せている間とフォーカスしている間は出し続け、ツールチップの上へポインターを動かしても消さない（WCAG 1.4.13）
 test_file: tests/integration/storybook/test_selection_comment_stories.py
