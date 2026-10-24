@@ -59,6 +59,8 @@ SELECTION_CASES = [
     ("引用", "引用の 1", "引用の 2", 25, 26),
     ("番号付きリストの項目", "番号 2", "番号 2", 38, 38),
     ("インラインのコードを含む段落", "用語", "code", 40, 40),
+    ("字下げのコード", "indent_a", "indent_b", 44, 45),
+    ("チルダのフェンスのコード", "tilde_a", "tilde_b", 48, 49),
 ]
 
 # 検証ページの HTML（スクリプトは add_script_tag で足す）
@@ -91,10 +93,13 @@ window.poc = {
     return MindmapPreview.selectionLocation(range);
   },
   // mdmark の data-source-line（0 始まり・ブロックの開始行）を、今の data-line-start（1 始まり・フェンスは中身の行）に読み替える
-  adaptLines(root) {
+  adaptLines(root, source, fenceOnly) {
+    const lines = source.split("\\n");
     for (const el of root.querySelectorAll("[data-source-line]")) {
-      const fence = el.tagName === "PRE" ? 1 : 0;
-      el.setAttribute(MindmapPreview.LINE_ATTR, String(Number(el.getAttribute("data-source-line")) + 1 + fence));
+      const start = Number(el.getAttribute("data-source-line"));
+      const isFence = /^ {0,3}(```|~~~)/.test(lines[start] ?? "");
+      const fence = el.tagName === "PRE" && (isFence || !fenceOnly) ? 1 : 0;
+      el.setAttribute(MindmapPreview.LINE_ATTR, String(start + 1 + fence));
     }
   },
   // 要素の中の mdmark- で始まる class の一覧
@@ -215,16 +220,20 @@ def check_render(page: Page, sample: str) -> dict[str, Any]:
           };
 
           // 行のマーカー: 今の描画と、読み替えた mdmark の描画で同じ範囲を選ぶ
-          poc.adaptLines(off);
-          const lines = cases.map(([name, from, to, start, end]) => {
+          poc.adaptLines(off, sample, false);
+          const oldRule = cases.map(([, from, to]) => poc.locate(off, from, to));
+          poc.adaptLines(off, sample, true);
+          const lines = cases.map(([name, from, to, start, end], index) => {
             const current = poc.locate(cur, from, to);
             const viaMdmark = poc.locate(off, from, to);
+            const old = oldRule[index];
             const pick = (loc) => (loc ? [loc.start, loc.end] : null);
             return {
               name,
               expected: [start, end],
               current: pick(current),
               mdmark: pick(viaMdmark),
+              mdmark_pre_rule: pick(old),
               match: JSON.stringify(pick(viaMdmark)) === JSON.stringify([start, end]),
             };
           });
@@ -274,7 +283,11 @@ def _descendants(pid: int) -> list[int]:
     for entry in Path("/proc").iterdir():
         if not entry.name.isdigit():
             continue
-        stat = (entry / "stat").read_text(encoding="utf-8", errors="replace")
+        # 一覧の後に終わったプロセスは飛ばす
+        try:
+            stat = (entry / "stat").read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            continue
         # comm は括弧で囲まれ空白を含みうるので、最後の ) の後ろから読む
         fields = stat[stat.rindex(")") + 2 :].split()
         parents[int(entry.name)] = int(fields[1])

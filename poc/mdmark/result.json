@@ -5,11 +5,11 @@
       "blocks": {
         "h1": 1,
         "h2": 1,
-        "p": 3,
+        "p": 4,
         "ul": 1,
         "ol": 1,
         "table": 1,
-        "pre": 3,
+        "pre": 5,
         "blockquote": 1
       }
     },
@@ -77,6 +77,10 @@
           1,
           1
         ],
+        "mdmark_pre_rule": [
+          1,
+          1
+        ],
         "match": true
       },
       {
@@ -90,6 +94,10 @@
           5
         ],
         "mdmark": [
+          4,
+          5
+        ],
+        "mdmark_pre_rule": [
           4,
           5
         ],
@@ -109,6 +117,10 @@
           3,
           7
         ],
+        "mdmark_pre_rule": [
+          3,
+          7
+        ],
         "match": true
       },
       {
@@ -122,6 +134,10 @@
           9
         ],
         "mdmark": [
+          8,
+          9
+        ],
+        "mdmark_pre_rule": [
           8,
           9
         ],
@@ -141,6 +157,10 @@
           15,
           15
         ],
+        "mdmark_pre_rule": [
+          15,
+          15
+        ],
         "match": true
       },
       {
@@ -154,6 +174,10 @@
           15
         ],
         "mdmark": [
+          14,
+          15
+        ],
+        "mdmark_pre_rule": [
           14,
           15
         ],
@@ -173,6 +197,10 @@
           19,
           20
         ],
+        "mdmark_pre_rule": [
+          19,
+          20
+        ],
         "match": true
       },
       {
@@ -186,6 +214,10 @@
           23
         ],
         "mdmark": [
+          23,
+          23
+        ],
+        "mdmark_pre_rule": [
           23,
           23
         ],
@@ -205,6 +237,10 @@
           25,
           26
         ],
+        "mdmark_pre_rule": [
+          25,
+          26
+        ],
         "match": true
       },
       {
@@ -218,6 +254,10 @@
           38
         ],
         "mdmark": [
+          38,
+          38
+        ],
+        "mdmark_pre_rule": [
           38,
           38
         ],
@@ -237,16 +277,60 @@
           40,
           40
         ],
+        "mdmark_pre_rule": [
+          40,
+          40
+        ],
+        "match": true
+      },
+      {
+        "name": "字下げのコード",
+        "expected": [
+          44,
+          45
+        ],
+        "current": [
+          44,
+          45
+        ],
+        "mdmark": [
+          44,
+          45
+        ],
+        "mdmark_pre_rule": [
+          45,
+          46
+        ],
+        "match": true
+      },
+      {
+        "name": "チルダのフェンスのコード",
+        "expected": [
+          48,
+          49
+        ],
+        "current": [
+          48,
+          49
+        ],
+        "mdmark": [
+          48,
+          49
+        ],
+        "mdmark_pre_rule": [
+          48,
+          49
+        ],
         "match": true
       }
     ],
     "console_errors": []
   },
   "time": {
-    "lines": 328,
-    "current_ms": 3.9000000953674316,
-    "mdmark_ms": 3,
-    "ratio": 0.7692307504206254,
+    "lines": 306,
+    "current_ms": 2.9000000953674316,
+    "mdmark_ms": 2.1000001430511475,
+    "ratio": 0.7241379565489553,
     "pass": true
   },
   "export": {
@@ -258,16 +342,16 @@
     "external_requests": [],
     "css_non_data_urls": [],
     "css_has_import_or_font_face": false,
-    "file_bytes": 460844
+    "file_bytes": 460942
   },
   "memory": {
     "marked": {
-      "js_heap_increase_kb": 1876,
-      "browser_pss_increase_kb": 30650
+      "js_heap_increase_kb": 1873,
+      "browser_pss_increase_kb": 30817
     },
     "mdmark": {
       "js_heap_increase_kb": 2072,
-      "browser_pss_increase_kb": 44519
+      "browser_pss_increase_kb": 44147
     }
   }
 }

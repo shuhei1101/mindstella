@@ -38,3 +38,13 @@ flowchart LR
 2. 番号 2
 
 用語 [リンク](#x) と `code` を含む段落
+
+字下げのコードの前の段落
+
+    indent_a = 1
+    indent_b = 2
+
+~~~
+tilde_a
+tilde_b
+~~~
