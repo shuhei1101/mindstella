@@ -525,6 +525,11 @@ components:
         required: false
         default: BODY_VIEW_DEFAULT
         description: 表示の設定の本文の表とセクションの見せ方（`resolveDisplay` の `bodyView`）。`decorateMarkdown` の `display` に渡す
+      - name: resizer
+        type: HTMLElement | null
+        required: false
+        default: 'null'
+        description: パネルの内側の左端に置く `panelResizer` の要素（幅 900px 以下と全画面では `null`）。全ての種類の詳細パネルを同じ `--panel-w` の幅で開く
     unit_tests:
       - name: test_detail_panel_when_diff_highlight
         case: 正常
@@ -2205,6 +2210,44 @@ components:
         condition: '改行で 8 行の本文を `open: true` で描く'
         mock: なし
         expected: 本文が `folded` を持たず 8 行が見え、ボタンが「折りたたむ」で `aria-expanded="true"`
+  - name: panelResizer
+    title: 幅の区切り
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    summary: 画面設計『詳細パネル』の要素「幅の区切り」を描き（`role="separator"`・`aria-orientation="vertical"`・`aria-label="詳細パネルの幅"`・`tabindex="0"`）、`panelWidthMax`・`clampPanelWidth` で収めた幅を `document.documentElement` の `--panel-w` と `aria-valuemin` / `aria-valuemax` / `aria-valuenow` に当てる。ポインターを押すとフォーカスを移して `setPointerCapture` し、動かすたびに押した位置からの差で幅を変える（左へ動かすと広げる）。←・→ は `PANEL_WIDTH.step` ずつ、Home は下限、End は上限にする。変えるたびに `onChange` を呼ぶ。描いたときと窓の幅が変わるたびに、最後に変えた幅（変えていなければ `stored`、それも無ければ `PANEL_WIDTH.default`）を今の上限に収めて当て直す（収めても `onChange` は呼ばない）。窓の幅の受け取りは、区切りが文書から外れたら外す。下限・上限で止まっている間は、その向きだけのカーソル（`w-resize` / `e-resize`）にする
+    props:
+      - name: stored
+        type: number | null
+        required: true
+        description: そのタブで変えた幅（入口の `readPanelWidth`）
+      - name: mapView
+        type: () => boolean
+        required: true
+        description: 今、検討事項のマップを出しているか
+      - name: onChange
+        type: '(width: number) => void'
+        required: true
+        description: ドラッグかキーで変えた幅を知らせる（入口が `writePanelWidth` で残す）
+    unit_tests:
+      - name: test_panel_resizer
+        case: 正常
+        summary: 残した幅を上限に収めて当て、ドラッグで幅を変えて知らせる
+        condition: '表示の幅 1280、マップ以外。`parametrize`: `stored` が `null` / 768 / 1000'
+        mock: '`onChange`（受けた幅を並べる関数）'
+        expected: '`--panel-w` と `aria-valuenow` が 640 / 768 / 880、`aria-valuemin` が 480、`aria-valuemax` が 880 で、どれも `onChange` を呼ばない。続けて 100px 左へドラッグすると幅が 740 / 868 / 880（上限で止まる）になり、`onChange` が最後にその幅で呼ばれる'
+      - name: test_panel_resizer_keys
+        case: 正常
+        summary: 矢印キーで刻み、Home・End で下限・上限にする
+        condition: 表示の幅 1280、`stored` 640。区切りにフォーカスして ← / → / Home / End を順に押す
+        mock: '`onChange`'
+        expected: 幅が 656 / 640 / 480 / 880 になり、`onChange` がその順で 4 回呼ばれる
+      - name: test_panel_resizer_when_window_resized
+        case: 正常
+        summary: 窓の幅が変わると残した幅を収め直し、広げ直すと残した幅に戻す
+        condition: 表示の幅 1280、`stored` 880 で描き、1000 に狭めてから 1280 に戻す
+        mock: '`onChange`'
+        expected: 狭めた後は幅と `aria-valuemax`・`aria-valuenow` が 840、戻した後は幅が 880。`onChange` は呼ばれない
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -3547,6 +3590,62 @@ functions:
         condition: '高さ 300px の領域に、20 行の表を前後の段落と一緒に置く。`parametrize`: 表の上端まで送らない / 表の中ほどまで送る / 表を過ぎるまで送る / 表が `md-head-stick` を持たない'
         mock: なし（ブラウザで配置を測る）
         expected: '`--head-offset` が 0 / 見出しの行の上端が領域の上端と等しく `md-head-stuck` を持つ / 見出しの行が表の下端より下に出ない / `--head-offset` を持たない。返した関数を呼ぶと送っても変わらない'
+  - name: panelWidthMax
+    title: 詳細パネルの幅の上限
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 表示の幅と、本文を寄せるかから、詳細パネルの幅の上限を返す。本文を寄せる幅（`PANEL_WIDTH.sideFrom` 以上、マップは `PANEL_WIDTH.resizableFrom` 以上）では表示の幅 − `keepBody`、それ以外は表示の幅 − `keepLeft`
+    args:
+      - name: viewport
+        type: number
+        required: true
+        passing: keyword
+        description: 表示の幅（px）
+      - name: mapView
+        type: boolean
+        required: true
+        passing: keyword
+        description: 検討事項のマップを出しているか
+    returns:
+      type: number
+      description: 上限（px）
+    unit_tests:
+      - name: test_panel_width_max
+        case: 正常
+        summary: 本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅で上限を決める
+        condition: '`parametrize`: 1280・マップ以外 / 1100・マップ以外 / 1099・マップ以外 / 1000・マップ以外 / 1000・マップ / 901・マップ'
+        mock: なし
+        expected: 880 / 700 / 939 / 840 / 600 / 501
+  - name: clampPanelWidth
+    title: 詳細パネルの幅を収める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 幅を `PANEL_WIDTH.min` 以上・`max` 以下に収め、整数に丸めて返す
+    args:
+      - name: width
+        type: number
+        required: true
+        passing: keyword
+        description: 収める前の幅（px）
+      - name: max
+        type: number
+        required: true
+        passing: keyword
+        description: '`panelWidthMax` の上限（px）'
+    returns:
+      type: number
+      description: 収めた幅（px）
+    unit_tests:
+      - name: test_clamp_panel_width
+        case: 正常
+        summary: 下限と上限の間に収める
+        condition: '`max` 880。`parametrize`: `width` 640 / 300 / 1000 / 700.6'
+        mock: なし
+        expected: 640 / 480 / 880 / 701
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
@@ -3679,3 +3778,9 @@ constants:
     usecase: コメントを選んで送る
     summary: 畳んだときに出す、折り返した後の見た目の行の数
     value: '5'
+  - name: PANEL_WIDTH
+    title: 詳細パネルの幅の決まり
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    summary: 詳細パネルの既定の幅・ドラッグで変えられる下限・上限を決める残す幅・矢印キー 1 回の刻み（px）と、幅を変えられる表示の幅の下限・本文を寄せる表示の幅の下限（px。`style.css` の境目と同じ値）
+    value: '{default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100}'
