@@ -1,0 +1,96 @@
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+....................................................F................... [ 57%]
+........................................................................ [ 62%]
+........................................................................ [ 68%]
+........................................................................ [ 73%]
+........................................................................ [ 78%]
+........................................................................ [ 83%]
+........................................................................ [ 88%]
+........................................................................ [ 94%]
+........................................................................ [ 99%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+_________________________ test_move_tag_drop[chromium] _________________________
+
+write_edit_preview = <function write_edit_preview.<locals>._write at 0x74ca684785e0>
+make_item = <function make_item.<locals>._make at 0x74ca6847b100>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'playbooks': ['システム開発'], 'target_label': 'システム', 'phases': ['目的', '要件', '構成'], ...}
+open_preview = <function open_preview.<locals>._open at 0x74ca6816f6a0>
+
+    def test_move_tag_drop(
+        write_edit_preview: WriteReviewPreview,
+        make_item: MakeItem,
+        valid_settings: dict[str, Any],
+        open_preview: OpenPreview,
+    ) -> None:
+        """使っているタグを外したときだけ、付け替え先に「タグから外す」も選べる。選ぶと対応の値は null になる。使われていないタグは聞かない（正常系）。"""
+        # 準備
+        page, root = _open_workspace(write_edit_preview, make_item, valid_settings, open_preview)
+        # 実行（使われていないタグ）
+        page.get_by_role("button", name="記録の形 を外す").click()
+        _wait_edits(page, 1)
+        # 検証（使われていないタグ）
+        assert page.locator(f"{FIELD}[data-key='tags'] .pe-move").count() == 0
+        assert _edit_of(root, "tags")["value"] == [{"name": "画面"}]
+        # 実行（使っているタグ）
+        page.get_by_role("button", name="画面 を外す").click()
+        page.wait_for_selector(f"{FIELD}[data-key='tags'] .pe-move")
+        move = page.locator(f"{FIELD}[data-key='tags'] .pe-move")
+        # 検証（使っているタグ）
+>       assert move.locator("label").inner_text() == "画面 を使っている 1 件の付け替え先"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/preview/test_workspace_settings_screen.py:374: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:19446: in inner_text
+    self._sync(self._impl_obj.inner_text(timeout=to_milliseconds(timeout)))
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_locator.py:498: in inner_text
+    return await self._frame.inner_text(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:743: in inner_text
+    return await self._channel.send(
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x74ca67fa4560>
+cb = <function Channel.send.<locals>.<lambda> at 0x74ca6816f560>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.inner_text: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator(".pe-ws .pe-field[data-key='tags'] .pe-move").locator("label")
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_workspace_settings_screen.py::test_move_tag_drop[chromium]
+1 failed, 1375 passed in 3662.71s (1:01:02)
+
+
+===== 再実行 =====
+負荷の高い環境で test_move_tag_drop が不安定に落ちる（develop 204bd76d でも 4 回中 2 回 fail を再現）。
+tests/integration/preview/test_workspace_settings_screen.py の再実行: 11 passed
