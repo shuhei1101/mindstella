@@ -139,6 +139,7 @@ from preview_panel_width_helpers import (
     panel_state,
     press_key_times,
     read_stored_width,
+    seed_panel_width,
 )
 from preview_minimap_helpers import (
     MINIMAP_HASH,
@@ -4321,7 +4322,8 @@ def test_diff_body_layout_switch_when_narrow(
     url, _ = write_body_layout_preview()
     page.set_viewport_size(SIDE_VIEWPORT)
     seed_side_layout(page, "V-2")
-    # 実行（幅 480px の検討事項の詳細パネルを開く）
+    seed_panel_width(page, 480)
+    # 実行（下限の幅 480px の検討事項の詳細パネルを開く）
     open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{LAYOUT_PANEL}.open .md:not(.md-value) ins.df-blk:visible")
     # 検証

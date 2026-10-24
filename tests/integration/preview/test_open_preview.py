@@ -1883,6 +1883,9 @@ def test_normal_when_body_diff_side_by_side(
     page.click('[data-id="D-1"]')
     page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent.includes('いつ決めるか')")
     page.wait_for_selector(f"{PANEL} .md:not(.md-value) ins.df-blk:visible")
+    # 実行（幅の区切りで詳細パネルを下限の幅 480px にする）
+    press_key_times(page, "Home", 1)
+    page.wait_for_selector(f"{PANEL} {LAYOUT_SWITCH}", state="hidden")
     # 検証（D-1 の詳細パネルは幅 480px で、切り替えが無く、書き換えた段落をインラインの消した行と足した行で出す）
     assert page.locator(f"{PANEL} {LAYOUT_SWITCH}").is_visible() is False
     assert page.locator(f"{PANEL} .sbs").is_visible() is False

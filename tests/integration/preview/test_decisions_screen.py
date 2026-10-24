@@ -61,6 +61,7 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_panel_width_helpers import seed_panel_width
 from preview_removed_helpers import (
     BAND,
     REMOVED_IN_V2_BY_TAB,
@@ -836,12 +837,13 @@ def test_map_lock_stays_when_detail_closed_and_tab_moved(
 
 
 def test_map_lock_when_quick_double_press(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
 ) -> None:
     """何も選んでいないとき、同じ節を素早く 2 回押すと、1 回目で詳細が開いて枠がずれても、その節への 2 回押しとしてロックする（正常系）。"""
-    # 準備
+    # 準備（詳細パネルを下限の幅にして、D-3 の位置がパネルの下に隠れないようにする）
     url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
+    seed_panel_width(page, 480)
+    open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     point = _node_point(page, "D-3")
     # 実行
