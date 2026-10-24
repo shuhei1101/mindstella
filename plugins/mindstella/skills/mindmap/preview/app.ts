@@ -19,6 +19,9 @@ namespace MindmapPreview {
   /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
   export const SINCE_KEY = "mindmap-since";
 
+  /** そのタブで変えた詳細パネルの幅（px の整数の文字列）を残す sessionStorage のキー。種類で分けない。配る書き出しでも同じ */
+  export const PANEL_WIDTH_KEY = "mindmap-panel-width";
+
   /** 入力欄 1 つ（向けた先ごと）の書きかけと溜める状態（開いている間だけ持つ。書きかけの本文はサーバーにも残す） */
   export type FormState = {
     target: string | null;
@@ -394,6 +397,26 @@ namespace MindmapPreview {
     }
   }
 
+  /** そのタブで変えた詳細パネルの幅を読む。正の整数でなければ、残っていないものとして扱う（既定の幅で開く） */
+  export function readPanelWidth(session: Storage): number | null {
+    let saved: string | null;
+    try {
+      saved = session.getItem(PANEL_WIDTH_KEY);
+    } catch {
+      return null;
+    }
+    return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : null;
+  }
+
+  /** 変えた詳細パネルの幅をそのタブに残す。書けない保存領域では何もしない（開き直すと既定の幅で開く） */
+  export function writePanelWidth({ session, width }: { session: Storage; width: number }): void {
+    try {
+      session.setItem(PANEL_WIDTH_KEY, String(width));
+    } catch {
+      return;
+    }
+  }
+
   /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した始まりをそのまま使う */
   export async function resolveSince({
     serverMode,
@@ -546,6 +569,7 @@ namespace MindmapPreview {
     /** サーバーの配信か（配る書き出しは記録を埋め込みから読み、送信も書き換えの知らせも持たない） */
     const serverMode = embedded === null;
     const storage = openStorage("localStorage");
+    const session = openStorage("sessionStorage");
     const prefs = loadPrefs(storage);
     const persist = (): boolean => savePrefs({ storage, prefs });
     restoreTablePrefs(prefs.columns, (kind, tablePrefs) => {
@@ -997,6 +1021,14 @@ namespace MindmapPreview {
         bodyLayout: resolved.bodyLayout,
         bodyView: resolved.bodyView,
         edit: detailEdit(),
+        // 幅 901px 以上の詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面と幅 900px 以下は置かない）
+        resizer: route.full || isNarrow()
+          ? null
+          : panelResizer({
+            stored: readPanelWidth(session),
+            mapView: () => route.tab === "decisions" && route.view === "map",
+            onChange: (width) => writePanelWidth({ session, width }),
+          }),
         on: {
           open: (id) => openItem(id, true),
           layout: changeBodyLayout,

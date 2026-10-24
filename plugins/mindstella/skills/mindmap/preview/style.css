@@ -603,9 +603,40 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .map-frame { position: relative; }
 .map-frame .zoom { position: absolute; left: auto; right: 14px; bottom: 14px; }
 
-/* 資料の詳細パネルは本文を読むため広くする */
-.panel.wide { width: min(760px, 100%); }
-@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .content { max-width: none; margin-right: min(760px, 100%); padding-inline: var(--page-pad); } }
+/* ===== 詳細パネルの幅を変える区切り ===== */
+
+/* 区切り: 詳細パネルの内側の左端に重ねる 24px の縦の帯。本文のスクロールバーに重ならない。ポインターの動きを画面のスクロールに取られない */
+.panel-resizer { position: absolute; z-index: 2; top: 0; bottom: 0; left: 0; width: 24px; cursor: col-resize; touch-action: none; }
+/* 区切りの線: 詳細パネルの左端の境目に描き、ふだんは境目の線に重なって見えない */
+.panel-resizer::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: transparent; transition: background-color .15s ease; }
+/* つまみ: 境目の縦の中央に置く小さな縦長の丸。ふだんから薄く出し、ここをつかめると分かるようにする */
+.panel-resizer::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 32px; margin-top: -16px; border-radius: 2px; background: var(--border); transition: background-color .15s ease; }
+/* 乗せた: 線とつまみを濃くする */
+.panel-resizer:hover::before { background: var(--border); }
+.panel-resizer:hover::after { background: var(--text-3); }
+/* キーボードでフォーカスした: 線とつまみをアクセントの色にし、つまみの周りだけを枠で囲む（帯の全体を囲むと本文の左端の文字にかかる） */
+.panel-resizer:focus-visible { outline: none; }
+.panel-resizer:focus-visible::before, .panel-resizer:focus-visible::after { background: var(--accent); }
+.panel-resizer:focus-visible::after { box-shadow: 0 0 0 2px var(--accent); }
+/* ドラッグ中: 線とつまみをアクセントの色にする */
+body.is-panel-resizing .panel-resizer::before, body.is-panel-resizing .panel-resizer::after { background: var(--accent); }
+/* 下限で止まっている: 広げる向き（左）だけのカーソル */
+.panel-resizer[data-edge="min"] { cursor: w-resize; }
+/* 上限で止まっている: 狭める向き（右）だけのカーソル */
+.panel-resizer[data-edge="max"] { cursor: e-resize; }
+/* ドラッグ中の画面全体: カーソルを保ち、本文の文字を選ばない */
+body.is-panel-resizing { cursor: col-resize; user-select: none; }
+/* ドラッグ中の下限・上限: 画面全体のカーソルも片方の向きにする */
+body.is-panel-resizing:has(.panel-resizer[data-edge="min"]) { cursor: w-resize; }
+body.is-panel-resizing:has(.panel-resizer[data-edge="max"]) { cursor: e-resize; }
+/* 動きを減らす設定: 線とつまみの色を切り替えるだけにする */
+@media (prefers-reduced-motion: reduce) {
+  .panel-resizer::before, .panel-resizer::after { transition: none; }
+}
+/* 狭い幅: 詳細パネルは画面の幅いっぱいなので区切りを出さない */
+@media (max-width: 900px) {
+  .panel-resizer { display: none; }
+}
 .mermaid { margin: 8px 0; text-align: center; }
 
 /* ===== 資料のカード ===== */
@@ -747,7 +778,6 @@ dialog.full .panel-head { flex: none; }
 /* 詳細パネルを並べるときは、パンくずも本文と同じだけ寄せる */
 @media (min-width: 1100px) { body.panel-open .crumbs-bar { max-width: none; margin-right: var(--panel-w); } }
 @media (min-width: 901px) { body.panel-open:has(.content.map-view) .crumbs-bar { max-width: none; margin-right: var(--panel-w); } }
-@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .crumbs-bar { margin-right: min(760px, 100%); } }
 
 /* ===== カテゴリー別の進捗のセル: ホバー・フォーカスで面を変える（濃さはトークンの --hover） ===== */
 .cat-table a.cell, .cat-table a.cat-link { display: inline-flex; padding: 4px 6px; margin: -4px -6px; border-radius: var(--radius); color: inherit; text-decoration: none; }
