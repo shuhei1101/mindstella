@@ -28,4 +28,4 @@ tests/unit/scripts/test_versions.py .................                    [ 99%]
 tests/unit/scripts/test_vocabulary.py ........                           [ 99%]
 tests/unit/test_isolated_environment.py ...                              [100%]
 
-================= 1737 passed, 1 skipped in 1968.98s (0:32:48) =================
+================= 1737 passed, 1 skipped in 1150.41s (0:19:10) =================
