@@ -1637,10 +1637,93 @@ var MindmapPreview;
         if (target !== undefined)
             requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
     }
+    /** 詳細パネルの幅の決まり（px）。既定の幅・ドラッグで変えられる下限・上限を決める残す幅（本文を寄せる幅は本文に、重ねる幅は左に）・矢印キー 1 回の刻み・幅を変えられる表示の幅の下限・本文を寄せる表示の幅の下限（`style.css` の境目と同じ値） */
+    MindmapPreview.PANEL_WIDTH = { default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100 };
+    /** 表示の幅と、本文を寄せるかから、詳細パネルの幅の上限を返す */
+    function panelWidthMax({ viewport, mapView }) {
+        // 本文を寄せる幅（マップは幅を変えられる幅ならいつも寄せる）は本文に残す幅、重ねる幅は左に残す幅を、表示の幅から引く
+        const aligned = viewport >= MindmapPreview.PANEL_WIDTH.sideFrom || (mapView && viewport >= MindmapPreview.PANEL_WIDTH.resizableFrom);
+        return viewport - (aligned ? MindmapPreview.PANEL_WIDTH.keepBody : MindmapPreview.PANEL_WIDTH.keepLeft);
+    }
+    MindmapPreview.panelWidthMax = panelWidthMax;
+    /** 詳細パネルの幅を下限以上・上限以下に収め、整数に丸めて返す */
+    function clampPanelWidth({ width, max }) {
+        return Math.round(Math.max(MindmapPreview.PANEL_WIDTH.min, Math.min(width, max)));
+    }
+    MindmapPreview.clampPanelWidth = clampPanelWidth;
+    /** 詳細パネルの左端に置く幅の区切り。ドラッグと矢印キーで幅を変え、変えるたびに `onChange` で知らせる */
+    function panelResizer({ stored, mapView, onChange }) {
+        const separator = MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "panel-resizer", role: "separator", tabindex: "0", "aria-orientation": "vertical", "aria-label": "詳細パネルの幅", "aria-valuemin": MindmapPreview.PANEL_WIDTH.min },
+        });
+        // 持っている幅。上限を超える残した幅は、窓を広げ直したときに戻せるよう収めずに持つ（幅を変えたら、収めた幅にそろえる）
+        let wanted = stored ?? MindmapPreview.PANEL_WIDTH.default;
+        // 画面へ当てている幅
+        let shown = wanted;
+        const maxWidth = () => panelWidthMax({ viewport: innerWidth, mapView: mapView() });
+        /** 持っている幅を今の上限に収めて画面へ当てる（詳細パネルの幅と本文の寄せは `--panel-w` を読む）。当てた幅を返す */
+        const apply = () => {
+            const max = maxWidth();
+            shown = clampPanelWidth({ width: wanted, max });
+            document.documentElement.style.setProperty("--panel-w", `${shown}px`);
+            separator.setAttribute("aria-valuemax", String(max));
+            separator.setAttribute("aria-valuenow", String(shown));
+            // 下限・上限で止まっている間は、広げる・狭める片方だけのカーソルにする
+            separator.dataset.edge = shown <= MindmapPreview.PANEL_WIDTH.min ? "min" : shown >= max ? "max" : "";
+            return shown;
+        };
+        /** 幅を変えて画面へ当て、当てた幅を知らせる */
+        const change = (width) => {
+            wanted = width;
+            wanted = apply();
+            onChange(wanted);
+        };
+        apply();
+        // 窓の幅が変わったら、持っている幅を新しい上限で当て直す。文書から外れた区切りの分は受け取らない
+        const onResize = () => {
+            if (!separator.isConnected) {
+                removeEventListener("resize", onResize);
+                return;
+            }
+            apply();
+        };
+        addEventListener("resize", onResize);
+        separator.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0)
+                return;
+            // 本文の文字を選ばず、区切りの外へポインターが出ても動きを受け取り続ける
+            event.preventDefault();
+            separator.focus({ preventScroll: true });
+            separator.setPointerCapture(event.pointerId);
+            const startX = event.clientX;
+            const startWidth = apply();
+            document.body.classList.add("is-panel-resizing");
+            // 左端をつかんでいるので、左へ動かすほど広がる
+            const move = (moved) => change(startWidth + startX - moved.clientX);
+            // 離した・中断した・区切りが外れたときは、ポインターの捕捉が外れる
+            const end = () => {
+                separator.removeEventListener("pointermove", move);
+                separator.removeEventListener("lostpointercapture", end);
+                document.body.classList.remove("is-panel-resizing");
+            };
+            separator.addEventListener("pointermove", move);
+            separator.addEventListener("lostpointercapture", end);
+        });
+        separator.addEventListener("keydown", (event) => {
+            // ←: 広げる / →: 狭める / Home: 下限 / End: 上限
+            const targets = { ArrowLeft: shown + MindmapPreview.PANEL_WIDTH.step, ArrowRight: shown - MindmapPreview.PANEL_WIDTH.step, Home: MindmapPreview.PANEL_WIDTH.min, End: maxWidth() };
+            if (!Object.hasOwn(targets, event.key))
+                return;
+            event.preventDefault();
+            change(targets[event.key] ?? shown);
+        });
+        return separator;
+    }
+    MindmapPreview.panelResizer = panelResizer;
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
-        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", bodyView = MindmapPreview.BODY_VIEW_DEFAULT, edit = null } = props;
-        const kind = index.byId.get(id)?.kind;
+        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", bodyView = MindmapPreview.BODY_VIEW_DEFAULT, edit = null, resizer = null } = props;
         const editing = edit?.editing === true;
         // 編集の表示の間は、読む表示の代わりに編集の入力を並べる
         const content = editing && edit !== null ? MindmapPreview.detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout, bodyView });
@@ -1663,8 +1746,8 @@ var MindmapPreview;
         if (!full) {
             root = MindmapPreview.h({
                 tag: "aside",
-                attrs: { class: `panel${kind === "docs" ? " wide" : ""}${editing ? " pe-editing" : ""}`, "aria-label": "詳細" },
-                children: [head, scroller, footer],
+                attrs: { class: `panel${editing ? " pe-editing" : ""}`, "aria-label": "詳細" },
+                children: [resizer, head, scroller, footer],
             });
         }
         else {

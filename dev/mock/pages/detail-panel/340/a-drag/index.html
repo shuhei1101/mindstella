@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>詳細パネル（幅を変える） | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足す詳細パネルの幅を変える区切りと、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/340/assets/style.css">
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+
+<!-- data-initial: ハッシュが無いときに開く状態（資料 A-14 の詳細パネル） -->
+<body data-initial="tab=docs&amp;id=A-14">
+  <!-- モック専用の操作列: 開く項目・残した幅の見本・区切りの状態の見本・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <span class="label">開く項目:</span>
+    <a href="#tab=docs&amp;id=A-14" data-hash="tab=docs&amp;id=A-14">資料 A-14</a>
+    <a href="#tab=decisions&amp;view=table&amp;id=D-1" data-hash="tab=decisions&amp;view=table&amp;id=D-1">検討事項 D-1（表）</a>
+    <a href="#tab=decisions&amp;view=map&amp;id=D-1" data-hash="tab=decisions&amp;view=map&amp;id=D-1">検討事項 D-1（マップ）</a>
+    <span class="label">残した幅:</span>
+    <a href="#" data-set="w=reset">消す（既定の幅）</a>
+    <a href="#" data-set="w=480">下限</a>
+    <a href="#" data-set="w=9999">上限</a>
+    <span class="label">区切り:</span>
+    <a href="#" data-set="state=">ふだん</a>
+    <a href="#" data-set="state=hover">乗せた</a>
+    <a href="#" data-set="state=focus">フォーカス</a>
+    <a href="#" data-set="state=drag">ドラッグ中</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">detail-panel</a> / <a href="../index.md">340</a> / a-drag</nav>
+  </div>
+
+  <!-- 起動の前に開く見本・残した幅を整える → 見本の記録を埋め込み先へ入れる → サーバーの代わり（記録とコメント） → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/340/assets/mock.js"></script>
+  <script src="../../../../refs/237/assets/data.js"></script>
+  <script src="../../../../refs/214/assets/mock-server.js"></script>
+  <script src="../../../../refs/340/assets/app.js"></script>
+</body>
+</html>

@@ -905,3 +905,67 @@ def test_resolve_since_when_exported(
         "persisted": 1,
         "calls": 0,
     }
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        pytest.param("768", 768, id="integer"),
+        pytest.param(None, None, id="missing"),
+        pytest.param("abc", None, id="not_number"),
+        pytest.param("-5", None, id="negative"),
+        pytest.param("700.5", None, id="not_integer"),
+    ],
+)
+def test_read_panel_width(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str | None,
+    expected: int | None,
+) -> None:
+    """正の整数だけを読み、それ以外は残っていないものとして扱う（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    width = preview_page.evaluate(
+        """(stored) => {
+            const session = {getItem: (key) => (key === "mindmap-panel-width" ? stored : null)};
+            return MindmapPreview.readPanelWidth(session);
+        }""",
+        stored,
+    )
+    # 検証
+    assert width == expected
+
+
+@pytest.mark.parametrize(
+    ("throws", "expected"),
+    [
+        pytest.param(False, 768, id="empty_session"),
+        pytest.param(True, None, id="set_item_throws"),
+    ],
+)
+def test_write_panel_width(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    throws: bool,
+    expected: int | None,
+) -> None:
+    """書いた幅を読み直せ、書けない保存領域では例外を出さない（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行（書けない保存領域で例外が出れば、evaluate が失敗する）
+    width = preview_page.evaluate(
+        STORAGE_AND_POST_SCRIPT
+        + """({throws}) => {
+            const session = makeSession({});
+            if (throws) {
+                session.setItem = () => { throw new Error("保存領域に書けません"); };
+            }
+            MindmapPreview.writePanelWidth({session, width: 768});
+            return MindmapPreview.readPanelWidth(session);
+        }""",
+        {"throws": throws},
+    )
+    # 検証
+    assert width == expected
