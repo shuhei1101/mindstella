@@ -10354,6 +10354,7 @@ var MindmapPreview;
                 return;
             // 本文の文字を選ばず、区切りの外へポインターが出ても動きを受け取り続ける
             event.preventDefault();
+            separator.focus({ preventScroll: true });
             separator.setPointerCapture(event.pointerId);
             const startX = event.clientX;
             const startWidth = applyPanelWidth(storedPanelWidth());
