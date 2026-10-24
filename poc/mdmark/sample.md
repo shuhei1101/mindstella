@@ -48,3 +48,16 @@ flowchart LR
 tilde_a
 tilde_b
 ~~~
+
+> ```py
+> quote_a = 1
+> quote_b = 2
+> ```
+
+- a
+  - b
+
+    ```py
+    nest_a = 1
+    nest_b = 2
+    ```

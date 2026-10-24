@@ -61,6 +61,8 @@ SELECTION_CASES = [
     ("インラインのコードを含む段落", "用語", "code", 40, 40),
     ("字下げのコード", "indent_a", "indent_b", 44, 45),
     ("チルダのフェンスのコード", "tilde_a", "tilde_b", 48, 49),
+    ("引用の中のフェンスのコード", "quote_a", "quote_b", 53, 54),
+    ("入れ子のリストの中のフェンスのコード", "nest_a", "nest_b", 61, 62),
 ]
 
 # 検証ページの HTML（スクリプトは add_script_tag で足す）
@@ -97,7 +99,7 @@ window.poc = {
     const lines = source.split("\\n");
     for (const el of root.querySelectorAll("[data-source-line]")) {
       const start = Number(el.getAttribute("data-source-line"));
-      const isFence = /^ {0,3}(```|~~~)/.test(lines[start] ?? "");
+      const isFence = /^(?:[ \\t]*(?:>|[-*+]|\\d+[.)])[ \\t]?)*[ \\t]*(```|~~~)/.test(lines[start] ?? "");
       const fence = el.tagName === "PRE" && (isFence || !fenceOnly) ? 1 : 0;
       el.setAttribute(MindmapPreview.LINE_ATTR, String(start + 1 + fence));
     }

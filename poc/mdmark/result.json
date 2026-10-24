@@ -5,12 +5,12 @@
       "blocks": {
         "h1": 1,
         "h2": 1,
-        "p": 4,
-        "ul": 1,
+        "p": 5,
+        "ul": 3,
         "ol": 1,
         "table": 1,
-        "pre": 5,
-        "blockquote": 1
+        "pre": 7,
+        "blockquote": 2
       }
     },
     "overlap": {
@@ -322,15 +322,55 @@
           49
         ],
         "match": true
+      },
+      {
+        "name": "引用の中のフェンスのコード",
+        "expected": [
+          53,
+          54
+        ],
+        "current": [
+          53,
+          54
+        ],
+        "mdmark": [
+          53,
+          54
+        ],
+        "mdmark_pre_rule": [
+          53,
+          54
+        ],
+        "match": true
+      },
+      {
+        "name": "入れ子のリストの中のフェンスのコード",
+        "expected": [
+          61,
+          62
+        ],
+        "current": [
+          61,
+          62
+        ],
+        "mdmark": [
+          61,
+          62
+        ],
+        "mdmark_pre_rule": [
+          61,
+          62
+        ],
+        "match": true
       }
     ],
     "console_errors": []
   },
   "time": {
-    "lines": 306,
-    "current_ms": 2.9000000953674316,
-    "mdmark_ms": 2.1000001430511475,
-    "ratio": 0.7241379565489553,
+    "lines": 320,
+    "current_ms": 3.299999952316284,
+    "mdmark_ms": 3,
+    "ratio": 0.9090909222269191,
     "pass": true
   },
   "export": {
@@ -342,16 +382,16 @@
     "external_requests": [],
     "css_non_data_urls": [],
     "css_has_import_or_font_face": false,
-    "file_bytes": 460942
+    "file_bytes": 461045
   },
   "memory": {
     "marked": {
-      "js_heap_increase_kb": 1873,
-      "browser_pss_increase_kb": 30817
+      "js_heap_increase_kb": 2053,
+      "browser_pss_increase_kb": 29824
     },
     "mdmark": {
-      "js_heap_increase_kb": 2072,
-      "browser_pss_increase_kb": 44147
+      "js_heap_increase_kb": 2054,
+      "browser_pss_increase_kb": 45232
     }
   }
 }
