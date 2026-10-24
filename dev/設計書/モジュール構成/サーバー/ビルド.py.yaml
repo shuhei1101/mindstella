@@ -59,7 +59,7 @@ constants:
     title: 取るときの待ちの上限
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: jsDelivr への 1 回の要求で、接続と 1 回の読み取りをそれぞれ待つ秒数（`urllib.request.urlopen` の `timeout`）。実測は 1 件あたり最大 0.65 秒（2026-10-03）。読み取りごとに効くので遅い回線でも途切れなければ止めない
+    summary: jsDelivr への 1 回の要求で、接続と 1 回の読み取りをそれぞれ待つ秒数（`urllib.request.urlopen` の `timeout`）。実測は 1 件あたり最大 0.65 秒（2026-10-03。mdmark の配布物とライセンスの本文は 2026-10-25 に最大 0.05 秒）。読み取りごとに効くので遅い回線でも途切れなければ止めない
     value: '30'
   - name: CDN_PACKAGE_URL
     title: パッケージのファイルの URL
