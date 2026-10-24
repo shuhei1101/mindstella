@@ -1,0 +1,273 @@
+{
+  "render": {
+    "load": {
+      "version": "v0.7.0",
+      "blocks": {
+        "h1": 1,
+        "h2": 1,
+        "p": 3,
+        "ul": 1,
+        "ol": 1,
+        "table": 1,
+        "pre": 3,
+        "blockquote": 1
+      }
+    },
+    "overlap": {
+      "off": {
+        "heading_links": 0,
+        "anchors": 0,
+        "sections": 0,
+        "table_parents": [
+          "DIV.md mdmark"
+        ],
+        "classes": []
+      },
+      "default": {
+        "heading_links": 2,
+        "anchors": 2,
+        "sections": 0,
+        "table_parents": [
+          "DIV.mdmark-table"
+        ],
+        "classes": [
+          "mdmark-anchor",
+          "mdmark-heading",
+          "mdmark-pin",
+          "mdmark-section-body",
+          "mdmark-section-toggle",
+          "mdmark-table",
+          "mdmark-th",
+          "mdmark-th-label",
+          "mdmark-th-tools"
+        ]
+      },
+      "hash_start": "#id=D-3",
+      "hash_after_default_anchor_click": "#%E8%A6%8B%E5%87%BA%E3%81%97-1",
+      "hash_after_off_heading_click": "#id=D-3",
+      "print_changes_dom": {
+        "off": false,
+        "def": false
+      }
+    },
+    "blocks": {
+      "mermaid": {
+        "in_pre": true,
+        "text": "flowchart LR\n  A --> B\n"
+      },
+      "html": {
+        "in_pre": true,
+        "text": "<p>html のブロック</p>\n"
+      },
+      "python_pre": "<pre tabindex=\"0\" aria-label=\"コード: python\" data-source-line=\"16\"><code class=\"language-python\">def f():\n    return 1\nprint(f())\n</code></pre>",
+      "code_line_spans": 0
+    },
+    "lines": [
+      {
+        "name": "見出し",
+        "expected": [
+          1,
+          1
+        ],
+        "current": [
+          1,
+          1
+        ],
+        "mdmark": [
+          1,
+          1
+        ],
+        "match": true
+      },
+      {
+        "name": "複数行の段落",
+        "expected": [
+          4,
+          5
+        ],
+        "current": [
+          4,
+          5
+        ],
+        "mdmark": [
+          4,
+          5
+        ],
+        "match": true
+      },
+      {
+        "name": "段落からリストへまたぐ",
+        "expected": [
+          3,
+          7
+        ],
+        "current": [
+          3,
+          7
+        ],
+        "mdmark": [
+          3,
+          7
+        ],
+        "match": true
+      },
+      {
+        "name": "リストの項目の続きの行",
+        "expected": [
+          8,
+          9
+        ],
+        "current": [
+          8,
+          9
+        ],
+        "mdmark": [
+          8,
+          9
+        ],
+        "match": true
+      },
+      {
+        "name": "表の行",
+        "expected": [
+          15,
+          15
+        ],
+        "current": [
+          15,
+          15
+        ],
+        "mdmark": [
+          15,
+          15
+        ],
+        "match": true
+      },
+      {
+        "name": "表の行をまたぐ",
+        "expected": [
+          14,
+          15
+        ],
+        "current": [
+          14,
+          15
+        ],
+        "mdmark": [
+          14,
+          15
+        ],
+        "match": true
+      },
+      {
+        "name": "フェンスのコード",
+        "expected": [
+          19,
+          20
+        ],
+        "current": [
+          19,
+          20
+        ],
+        "mdmark": [
+          19,
+          20
+        ],
+        "match": true
+      },
+      {
+        "name": "見出し 2",
+        "expected": [
+          23,
+          23
+        ],
+        "current": [
+          23,
+          23
+        ],
+        "mdmark": [
+          23,
+          23
+        ],
+        "match": true
+      },
+      {
+        "name": "引用",
+        "expected": [
+          25,
+          26
+        ],
+        "current": [
+          25,
+          26
+        ],
+        "mdmark": [
+          25,
+          26
+        ],
+        "match": true
+      },
+      {
+        "name": "番号付きリストの項目",
+        "expected": [
+          38,
+          38
+        ],
+        "current": [
+          38,
+          38
+        ],
+        "mdmark": [
+          38,
+          38
+        ],
+        "match": true
+      },
+      {
+        "name": "インラインのコードを含む段落",
+        "expected": [
+          40,
+          40
+        ],
+        "current": [
+          40,
+          40
+        ],
+        "mdmark": [
+          40,
+          40
+        ],
+        "match": true
+      }
+    ],
+    "console_errors": []
+  },
+  "time": {
+    "lines": 328,
+    "current_ms": 3.9000000953674316,
+    "mdmark_ms": 3,
+    "ratio": 0.7692307504206254,
+    "pass": true
+  },
+  "export": {
+    "done": "ok",
+    "headings": 2,
+    "tables": 1,
+    "css_rules": 2,
+    "mdmark_root_class": true,
+    "external_requests": [],
+    "css_non_data_urls": [],
+    "css_has_import_or_font_face": false,
+    "file_bytes": 460844
+  },
+  "memory": {
+    "marked": {
+      "js_heap_increase_kb": 1876,
+      "browser_pss_increase_kb": 30650
+    },
+    "mdmark": {
+      "js_heap_increase_kb": 2072,
+      "browser_pss_increase_kb": 44519
+    }
+  }
+}
