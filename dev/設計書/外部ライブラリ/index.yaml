@@ -32,3 +32,5 @@ items:
     summary: プレビューのテストでアクセシビリティの規則（WCAG）を画面に当てる（開発用）
   - page: ruff.yaml
     summary: Python のソースを ruff.toml の規則で検査する（開発用）
+  - page: mdmark.yaml
+    summary: プレビューで本文とスレッドの書き込みの Markdown を共通のスタイルで HTML に描き、無害化する
