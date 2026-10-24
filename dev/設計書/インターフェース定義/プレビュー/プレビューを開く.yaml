@@ -1120,6 +1120,34 @@ flows:
       - D-3 の詳細パネルの幅が 840px で、表は寄せない
       - '`sessionStorage` に残した幅が 1000px のまま'
     test: test_normal_when_stored_panel_width_over_max
+  - name: 正常系（開いたまま窓の幅を変える）
+    summary: 詳細パネルを開いたまま窓を狭めると上限に収め直し、広げ直すと残した幅に戻す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL を実際のブラウザで開き、描画のライブラリは配信元から読む）
+      - name: make_workspace
+        description: 検討事項 D-3 があるワークスペース
+      - name: 端末の保存領域
+        description: そのタブの `sessionStorage` に詳細パネルの幅 880px が残っている
+        notes: 表示の幅 1280px で `tab=decisions&view=table&id=D-3` を開いてから、窓を 1000px に狭め、1280px に戻す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as プレビューの画面
+
+        ユーザー->>IF: #tab=decisions&view=table&id=D-3 を 1280px で開く
+        IF-->>ユーザー: 880px の D-3 の詳細パネル
+        ユーザー->>IF: 窓を 1000px に狭める
+        IF-->>ユーザー: 上限の 840px に収めた詳細パネル
+        ユーザー->>IF: 窓を 1280px に戻す
+        IF-->>ユーザー: 880px に戻った詳細パネル
+      ```
+    expected:
+      - 1000px に狭めた後、詳細パネルの幅が 840px で、区切りの `aria-valuemax` と `aria-valuenow` が 840
+      - 1280px に戻した後、詳細パネルの幅と表の寄せが 880px で、`aria-valuenow` が 880
+      - '`sessionStorage` に残した幅が 880px のまま'
+    test: test_normal_when_window_resized_with_panel_open
 lead: 利用者がサーバーの配信の URL をブラウザで開くと、記録をサーバーから読み、URL のハッシュが指す画面・表示形式・項目を開く。書き換えの知らせを受けると描き直し、詳細パネルから項目ごとに回答・意見を送る。
 idempotent: false
 side_effects: コメント・返信を溜める・直す・消す・書きかけを書くと、サーバーがワークスペースの `comments.yaml`・`drafts.yaml` を書き換える。まとめて送ると `threads.yaml` にスレッドと返信を足し（『コメントをまとめて送る』）、クローズ・オープンへの戻しで `threads.yaml` の状態を書き換える（『画面からのスレッドの状態の書き換え』）。利用者の未読の書き込みを持つスレッドを開くと、`threads.yaml` のその書き込みを利用者の既読にする（『画面からのスレッドの既読』）。タブを開くと、サーバーが `.mindstella-opened` を書き換える（『前回開いた日時』）。ほかの記録は書き換えない。端末の保存領域（`localStorage`）に個人の上書き（見た目・表示する種類・ライト / ダーク・表の表示する列・ピン留め）と変更履歴で選んだ時点を書き、サーバーの配信では画面ごとの絞り込みの条件も書く。表示の設定で「ワークスペースの既定にする」を保存すると、サーバーが `config.yaml` の `display` を書き換える（『設定の既定の書き換え』）
