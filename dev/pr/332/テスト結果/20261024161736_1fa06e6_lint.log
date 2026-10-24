@@ -1,3 +1,4 @@
+$ ruff check plugins tests; npm run typecheck
 All checks passed!
 > typecheck
 > tsc -p . --noEmit && tsc -p .storybook
