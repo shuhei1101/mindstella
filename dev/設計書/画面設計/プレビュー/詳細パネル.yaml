@@ -555,8 +555,27 @@ elements:
     status: planned
     introduced:
       pr: 325
+  - name: 幅の区切り
+    id: panel-resizer
+    kind: separator
+    position: パネルの内側の左端
+    description: ドラッグかキーで詳細パネルの幅を変える縦の帯（`role="separator"`・`aria-orientation="vertical"`・`aria-valuemin` / `aria-valuemax` / `aria-valuenow` に下限・上限・今の幅）。読み上げの名前は「詳細パネルの幅」。帯の幅は 24px で、本文のスクロールバーに重ねない。帯の縦の中央につまみをふだんから薄く出し、乗せると線とつまみを濃く、ドラッグ中とキーボードのフォーカスではアクセントの色にする（フォーカスはつまみの周りだけを枠で囲み、見出しと本文の文字に重ねない）。押すとフォーカスを移す。下限・上限で止まっている間は、その向きだけのカーソルにする
+    io: 入出力
+    type: 数値（px）
+    visible_when: 表示の幅が 901px 以上
+    range:
+      min: '480'
+      max: 本文を寄せる幅（1100px 以上、マップは 901px 以上）では表示の幅 − 400、本文に重ねる幅（901〜1099px のマップ以外）では表示の幅 − 160
+      step: 矢印キー 1 回で 16
+    initial_value: そのタブの `sessionStorage` に残した幅。無ければ既定の 640。上限を超えるときは上限に収めて出し、残した値は書き換えない。開いたまま窓の幅が変わったときも、残した幅を今の上限に収め直し（`aria-valuemax` / `aria-valuenow` も合わせる）、窓を広げ直すと残した幅に戻す
+    source: プレビューを開く.詳細パネル
+    action: 左へドラッグで広げ、右へドラッグで狭める。フォーカス中は ← で広げ、→ で狭め、Home で下限、End で上限にする。変えるたびに詳細パネルの幅と、本文を寄せる幅では本文・マップ・パンくずの帯の右の寄せを合わせ、変えた幅をそのタブの `sessionStorage` に残す。種類で分けず、別の項目・読み込み直しでもその幅で開く。ダブルクリックで既定に戻す操作は持たない
+    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[端末の保存領域]
+    status: planned
+    introduced:
+      pr: 340
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
-mock: dev/mock/pages/detail-panel/327/a-fold-icon/index.html
+mock: dev/mock/pages/detail-panel/340/a-drag/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`

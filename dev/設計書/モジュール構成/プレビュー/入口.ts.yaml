@@ -232,6 +232,12 @@ constants:
     usecase: ワークスペースの既定を変える
     summary: 画面の下に「ワークスペースの既定が変わりました。」を出すミリ秒（画面設計『表示の設定』と確認ログの決定）
     value: '6000'
+  - name: PANEL_WIDTH_KEY
+    title: 詳細パネルの幅のキー
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目の詳細を読む
+    summary: そのタブで変えた詳細パネルの幅（px の整数の文字列）を残す sessionStorage のキー。種類で分けない。配る書き出しでも同じ
+    value: '"mindmap-panel-width"'
 functions:
   - name: readEmbeddedData
     title: 埋め込みのデータを読む
@@ -667,6 +673,58 @@ functions:
         condition: '`serverMode` 偽、`headSeq` 2。`parametrize`: `prefs.opened` が `{at: A, seq: 1}` / 日時の文字列 / 無い'
         mock: '`persist`・`now`（引数で渡す）'
         expected: '`{at: A, seq: 1}` / `{at: now, seq: 2}` / `{at: now, seq: 2}`。どれも `prefs.opened` が `{at: now, seq: 2}` になり `persist` を 1 回呼ぶ'
+  - name: readPanelWidth
+    title: 詳細パネルの幅を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: '`session` の `PANEL_WIDTH_KEY` を読み、正の整数ならそれを返す。無い・読めない・正の整数でないときは `null`（既定の幅で開く）'
+    args:
+      - name: session
+        type: Storage
+        required: true
+        passing: injected
+        description: そのタブの保存領域（`sessionStorage`。使えないときは `openStorage` の代わり）
+    returns:
+      type: number | null
+      description: そのタブで変えた幅（px）
+    unit_tests:
+      - name: test_read_panel_width
+        case: 正常
+        summary: 正の整数だけを読み、それ以外は残っていないものとして扱う
+        condition: '`parametrize`: `PANEL_WIDTH_KEY` が `"768"` / 無い / `"abc"` / `"-5"` / `"700.5"`'
+        mock: なし
+        expected: 768 / null / null / null / null
+  - name: writePanelWidth
+    title: 詳細パネルの幅を残す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 変えた幅を `session` の `PANEL_WIDTH_KEY` に書く（書けなければ何もしない）。`start` は全画面以外で詳細パネルを開くたびに（表示の幅によらない。幅 900px 以下で開いてから窓を広げても、区切りの窓の幅の受け取りが残した幅を当て直す）、`readPanelWidth` の値を `stored` にした `panelResizer` を `detailPanel` の `resizer` に渡し、`onChange` でこれを呼ぶ
+    side_effects: '`session` の `PANEL_WIDTH_KEY` を書く'
+    args:
+      - name: session
+        type: Storage
+        required: true
+        passing: injected
+        description: そのタブの保存領域
+      - name: width
+        type: number
+        required: true
+        passing: keyword
+        description: 変えた幅（px の整数）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_write_panel_width
+        case: 正常
+        summary: 書いた幅を読み直せ、書けない保存領域では例外を出さない
+        condition: '`parametrize`: 空の `session` に 768 を書く / `setItem` が例外を投げる `session` に 768 を書く'
+        mock: 例外を投げる `session`（`Storage` の代わりのオブジェクト）
+        expected: '`readPanelWidth` が 768 を返す / 例外が出ない'
 test_files:
   - tests/unit/preview/test_app.py
 notes:

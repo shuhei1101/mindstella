@@ -14,6 +14,8 @@ var MindmapPreview;
     MindmapPreview.SAVED_NOTICE_MS = 5000;
     /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
     MindmapPreview.SINCE_KEY = "mindmap-since";
+    /** そのタブで変えた詳細パネルの幅（px の整数の文字列）を残す sessionStorage のキー。種類で分けない。配る書き出しでも同じ */
+    MindmapPreview.PANEL_WIDTH_KEY = "mindmap-panel-width";
     /** 入力欄のキー。向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする */
     function formKey(target, loc, thread = null) {
         return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null, thread]);
@@ -227,6 +229,28 @@ var MindmapPreview;
             };
         }
     }
+    /** そのタブで変えた詳細パネルの幅を読む。正の整数でなければ、残っていないものとして扱う（既定の幅で開く） */
+    function readPanelWidth(session) {
+        let saved;
+        try {
+            saved = session.getItem(MindmapPreview.PANEL_WIDTH_KEY);
+        }
+        catch {
+            return null;
+        }
+        return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : null;
+    }
+    MindmapPreview.readPanelWidth = readPanelWidth;
+    /** 変えた詳細パネルの幅をそのタブに残す。書けない保存領域では何もしない（開き直すと既定の幅で開く） */
+    function writePanelWidth({ session, width }) {
+        try {
+            session.setItem(MindmapPreview.PANEL_WIDTH_KEY, String(width));
+        }
+        catch {
+            return;
+        }
+    }
+    MindmapPreview.writePanelWidth = writePanelWidth;
     /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した始まりをそのまま使う */
     async function resolveSince({ serverMode, prefs, persist, headSeq, session = openStorage("sessionStorage"), post = MindmapPreview.postOpened, now = () => new Date().toISOString(), }) {
         // 同じタブに残した始まりがあれば使う（読めない・前の版の日時の文字列は残っていないものとして続ける）
@@ -361,6 +385,7 @@ var MindmapPreview;
         /** サーバーの配信か（配る書き出しは記録を埋め込みから読み、送信も書き換えの知らせも持たない） */
         const serverMode = embedded === null;
         const storage = openStorage("localStorage");
+        const session = openStorage("sessionStorage");
         const prefs = loadPrefs(storage);
         const persist = () => savePrefs({ storage, prefs });
         MindmapPreview.restoreTablePrefs(prefs.columns, (kind, tablePrefs) => {
@@ -795,6 +820,14 @@ var MindmapPreview;
                 bodyLayout: resolved.bodyLayout,
                 bodyView: resolved.bodyView,
                 edit: detailEdit(),
+                // 詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面は置かない。幅 900px 以下は CSS が隠し、窓を広げたときに出る）
+                resizer: route.full
+                    ? null
+                    : MindmapPreview.panelResizer({
+                        stored: readPanelWidth(session),
+                        mapView: () => route.tab === "decisions" && route.view === "map",
+                        onChange: (width) => writePanelWidth({ session, width }),
+                    }),
                 on: {
                     open: (id) => openItem(id, true),
                     layout: changeBodyLayout,

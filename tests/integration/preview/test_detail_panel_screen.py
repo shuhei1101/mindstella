@@ -129,6 +129,18 @@ from preview_head_title_helpers import (
     SCROLL_BODY_TO_TOP_JS,
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS, marks_of
+from preview_panel_width_helpers import (
+    PANEL as WIDTH_PANEL,
+    PANEL_WIDTH_KEY,
+    RESIZER,
+    PANEL_VIEWPORT,
+    drag_resizer,
+    open_panel,
+    panel_state,
+    press_key_times,
+    read_stored_width,
+    seed_panel_width,
+)
 from preview_minimap_helpers import (
     MINIMAP_HASH,
     MINIMAP_VIEWPORT,
@@ -4310,7 +4322,8 @@ def test_diff_body_layout_switch_when_narrow(
     url, _ = write_body_layout_preview()
     page.set_viewport_size(SIDE_VIEWPORT)
     seed_side_layout(page, "V-2")
-    # 実行（幅 480px の検討事項の詳細パネルを開く）
+    seed_panel_width(page, 480)
+    # 実行（下限の幅 480px の検討事項の詳細パネルを開く）
     open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{LAYOUT_PANEL}.open .md:not(.md-value) ins.df-blk:visible")
     # 検証
@@ -5071,3 +5084,202 @@ def test_diff_body_view_when_side_by_side(
     assert page.locator(f"{column} button.md-pin").count() == BODY_PIN_COUNT
     assert page.locator(f"{column} table.md-stripes").count() == 1
     assert page.locator(f"{column} button.md-fold").count() == 0
+
+
+# 幅の区切りを確かめるときに開く検討事項の表の D-3
+RESIZER_HASH = "#tab=decisions&view=table&id=D-3"
+
+
+def test_panel_resizer_default(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """保存領域に幅が無いと、幅の区切りは既定の 640px を示し、パネルの左端に幅 24px で置かれ、本文の寄せも 640px になる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    state = panel_state(page)
+    # 検証
+    separator = state["separator"]
+    assert page.get_by_role("separator", name="詳細パネルの幅").count() == 1
+    assert separator["role"] == "separator"
+    assert separator["orientation"] == "vertical"
+    assert separator["tabindex"] == "0"
+    assert (separator["min"], separator["max"], separator["now"]) == ("480", "880", "640")
+    assert separator["width"] == 24
+    assert separator["leftInPanel"] == 0
+    assert separator["cursor"] == "col-resize"
+    assert state["panelWidth"] == 640
+    assert state["contentMargin"] == 640
+    assert read_stored_width(page) is None
+
+
+@pytest.mark.parametrize(
+    "hash_text",
+    [
+        pytest.param("#tab=docs&view=table&id=A-1", id="docs"),
+        pytest.param("#tab=tasks&view=table&id=T-1", id="tasks"),
+        pytest.param("#tab=research&id=R-1", id="research"),
+        pytest.param("#tab=decisions&view=map&id=D-2", id="map"),
+    ],
+)
+def test_panel_resizer_default_for_every_kind(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    page: Page,
+    hash_text: str,
+) -> None:
+    """どの種類の項目の詳細パネルも、同じ既定の 640px で開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    open_panel(page, open_preview, url, hash_text, PANEL_VIEWPORT)
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 640
+    assert state["separator"]["now"] == "640"
+
+
+def test_panel_resizer_keyboard(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """幅の区切りにフォーカスして ← で 16px ずつ広げ、→ で狭め、Home で下限の 480px、End で上限の 880px にする。変えるたびにパネルの幅と本文の寄せが合い、保存領域に残る。下限・上限で止まる間は向きが片方のカーソルになる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    # 実行（← で広げる）
+    press_key_times(page, "ArrowLeft", 1)
+    widened = panel_state(page)
+    # 実行（→ で狭める）
+    press_key_times(page, "ArrowRight", 2)
+    narrowed = panel_state(page)
+    # 実行（Home で下限）
+    press_key_times(page, "Home", 1)
+    at_min = panel_state(page)
+    # 実行（End で上限）
+    press_key_times(page, "End", 1)
+    at_max = panel_state(page)
+    # 検証
+    assert (widened["panelWidth"], widened["contentMargin"], widened["separator"]["now"]) == (656, 656, "656")
+    assert (narrowed["panelWidth"], narrowed["contentMargin"], narrowed["separator"]["now"]) == (624, 624, "624")
+    assert (at_min["panelWidth"], at_min["contentMargin"], at_min["separator"]["now"]) == (480, 480, "480")
+    assert (at_min["separator"]["edge"], at_min["separator"]["cursor"]) == ("min", "w-resize")
+    assert (at_max["panelWidth"], at_max["contentMargin"], at_max["separator"]["now"]) == (880, 880, "880")
+    assert (at_max["separator"]["edge"], at_max["separator"]["cursor"]) == ("max", "e-resize")
+    assert read_stored_width(page) == "880"
+
+
+def test_panel_resizer_drag(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """幅の区切りを左へドラッグすると広がり、右へドラッグすると狭まる。押すとフォーカスが区切りに移る。下限・上限を越えてドラッグしても収まり、変えた幅は保存領域に残る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    # 実行（左へ 100px ドラッグする）
+    drag_resizer(page, -100)
+    widened = panel_state(page)
+    # 実行（右へ 200px ドラッグする）
+    drag_resizer(page, 200)
+    narrowed = panel_state(page)
+    # 実行（下限を越えて右へドラッグする）
+    drag_resizer(page, 600)
+    at_min = panel_state(page)
+    # 実行（上限を越えて左へドラッグする）
+    drag_resizer(page, -1000)
+    at_max = panel_state(page)
+    # 検証
+    assert (widened["panelWidth"], widened["contentMargin"], widened["separator"]["now"]) == (740, 740, "740")
+    assert widened["separator"]["focused"] is True
+    assert (narrowed["panelWidth"], narrowed["contentMargin"], narrowed["separator"]["now"]) == (540, 540, "540")
+    assert (at_min["panelWidth"], at_min["separator"]["now"], at_min["separator"]["edge"]) == (480, "480", "min")
+    assert (at_max["panelWidth"], at_max["separator"]["now"], at_max["separator"]["edge"]) == (880, "880", "max")
+    assert read_stored_width(page) == "880"
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "width", "expected_max"),
+    [
+        pytest.param("#tab=decisions&view=table&id=D-3", 1280, 880, id="table_side_by_side"),
+        pytest.param("#tab=decisions&view=table&id=D-3", 1000, 840, id="table_overlay"),
+        pytest.param("#tab=decisions&view=map&id=D-3", 1000, 600, id="map_side_by_side"),
+    ],
+)
+def test_panel_resizer_max(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    page: Page,
+    hash_text: str,
+    width: int,
+    expected_max: int,
+) -> None:
+    """上限は、本文を寄せる幅では本文に 400px、重ねる幅では左に 160px を残す幅になり、End で上限まで広げると本文のマップも寄せる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, hash_text, {"width": width, "height": 800})
+    # 実行
+    press_key_times(page, "End", 1)
+    state = panel_state(page)
+    # 検証
+    assert state["separator"]["max"] == str(expected_max)
+    assert state["panelWidth"] == expected_max
+    assert state["separator"]["now"] == str(expected_max)
+
+
+@pytest.mark.parametrize(
+    ("width", "display"),
+    [
+        pytest.param(900, "none", id="900"),
+        pytest.param(901, "block", id="901"),
+    ],
+)
+def test_panel_resizer_visible_from_901(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    page: Page,
+    width: int,
+    display: str,
+) -> None:
+    """表示の幅が 901px 以上のときだけ幅の区切りが見え、900px 以下では画面の幅いっぱいのパネルで区切りを隠す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    open_panel(page, open_preview, url, RESIZER_HASH, {"width": width, "height": 800})
+    state = panel_state(page)
+    # 検証
+    assert state["separator"]["display"] == display
+
+
+def test_panel_resizer_not_in_full_screen(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """詳細の全画面には幅の区切りを置かない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page.set_viewport_size(PANEL_VIEWPORT)
+    # 実行
+    open_preview(url, f"{RESIZER_HASH}&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    # 検証
+    assert page.locator(RESIZER).count() == 0
+    assert page.locator("dialog.full .panel-resizer").count() == 0
+
+
+def test_panel_resizer_kept_in_tab(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """変えた幅は、パネルを閉じて別の項目を開いても同じタブでは変わらず、保存領域のキーに整数の文字列で残る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    press_key_times(page, "ArrowLeft", 5)
+    # 実行（パネルを閉じて、別の項目 D-2 の行を開く）
+    page.click(f"{WIDTH_PANEL} button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.click('table.grid button.row-open[data-id="D-2"]')
+    page.wait_for_selector(f"{WIDTH_PANEL}.open")
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 720
+    assert state["separator"]["now"] == "720"
+    assert page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}')") == "720"
