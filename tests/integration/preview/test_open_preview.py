@@ -114,6 +114,17 @@ from preview_minimap_helpers import (
     scroll_top,
 )
 from preview_network_helpers import ball_at, canvas_center
+from preview_panel_width_helpers import (
+    PANEL as WIDTH_PANEL,
+    RESIZER,
+    PANEL_VIEWPORT,
+    open_panel,
+    panel_state,
+    press_key_times,
+    read_stored_width,
+    seed_panel_width,
+    wait_for_value_now,
+)
 from preview_saved_filter_helpers import (
     read_saved_filters,
     reload_preview,
@@ -2076,3 +2087,94 @@ def test_normal_when_body_view_overridden(
     assert prefs is not None
     assert (prefs["tableStripes"], prefs["sectionFold"]) == (None, None)
     assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+
+
+def test_normal_when_stored_panel_width(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """同じタブで A-1 の詳細パネルの幅を 768px に変えて読み込み直すと、種類の違う D-3 の詳細パネルも 768px で開き、表の寄せも 768px になる（正常系）。"""
+    # 準備（A-1 の詳細パネルで、幅の区切りを矢印キーで 8 回広げて 768px にする）
+    url = write_preview(make_item("A-1"), make_item("D-3"), bodies={"A-1.md": "資料の本文です。"})
+    open_panel(page, open_preview, url, "#tab=docs&id=A-1", PANEL_VIEWPORT)
+    press_key_times(page, "ArrowLeft", 8)
+    # 実行（同じタブで D-3 を指すハッシュを読み込み直す）
+    page.goto(f"{url}#tab=decisions&view=table&id=D-3")
+    page.reload()
+    page.wait_for_selector(f"{WIDTH_PANEL}.open")
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 768
+    assert state["contentMargin"] == 768
+    assert state["separator"]["now"] == "768"
+
+
+def test_normal_when_stored_panel_width_over_max(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """窓が狭く残した幅 1000px が上限を超えるときは、上限の 840px に収めて開き、保存領域の値は書き換えない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-3"))
+    seed_panel_width(page, 1000)
+    # 実行（本文に重ねる幅 1000px で開く。上限は 1000 − 160 = 840px）
+    open_panel(page, open_preview, url, "#tab=decisions&view=table&id=D-3", {"width": 1000, "height": 800})
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 840
+    assert state["contentMargin"] == 0
+    assert state["separator"]["max"] == "840"
+    assert state["separator"]["now"] == "840"
+    assert read_stored_width(page) == "1000"
+
+
+def test_normal_when_window_resized_with_panel_open(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """詳細パネルを開いたまま窓を 1000px に狭めると上限の 840px に収め直し、1280px に戻すと残した 880px に戻る。保存領域の値は 880px のまま（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-3"))
+    seed_panel_width(page, 880)
+    open_panel(page, open_preview, url, "#tab=decisions&view=table&id=D-3", PANEL_VIEWPORT)
+    opened = panel_state(page)
+    # 実行（窓を 1000px に狭める）
+    page.set_viewport_size({"width": 1000, "height": 800})
+    wait_for_value_now(page, 840)
+    narrowed = panel_state(page)
+    # 実行（窓を 1280px に戻す）
+    page.set_viewport_size(PANEL_VIEWPORT)
+    wait_for_value_now(page, 880)
+    widened = panel_state(page)
+    # 検証
+    assert opened["panelWidth"] == 880
+    assert narrowed["panelWidth"] == 840
+    assert narrowed["separator"]["max"] == "840"
+    assert narrowed["separator"]["now"] == "840"
+    assert widened["panelWidth"] == 880
+    assert widened["contentMargin"] == 880
+    assert widened["separator"]["now"] == "880"
+    assert read_stored_width(page) == "880"
+
+
+def test_normal_when_window_widened_from_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """幅 800px で詳細パネルを開いてから窓を 1280px に広げると、区切りが出て、残した 768px の幅に表の寄せも合わせて開き直す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-3"))
+    seed_panel_width(page, 768)
+    # 実行（幅 800px で開く）
+    open_panel(page, open_preview, url, "#tab=decisions&view=table&id=D-3", {"width": 800, "height": 800})
+    narrow = panel_state(page)
+    # 実行（窓を 1280px に広げる）
+    page.set_viewport_size(PANEL_VIEWPORT)
+    wait_for_value_now(page, 768)
+    widened = panel_state(page)
+    # 検証
+    assert narrow["separator"]["display"] == "none"
+    assert narrow["panelWidth"] == 800
+    assert widened["separator"]["display"] != "none"
+    assert page.locator(RESIZER).is_visible() is True
+    assert widened["panelWidth"] == 768
+    assert widened["contentMargin"] == 768
+    assert widened["separator"]["max"] == "880"
+    assert widened["separator"]["now"] == "768"
+    assert read_stored_width(page) == "768"
