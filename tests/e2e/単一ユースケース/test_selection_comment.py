@@ -231,12 +231,8 @@ def test_normal_when_html_body_text(
     comments = _read_comments(root)
     assert [(item["target"], item["body"]) for item in comments] == [("A-1", "ここは言い換える")]
     assert comments[0]["loc"] == {"kind": "body", "start": 6, "end": 6, "text": SENTENCE}
-    # コメントの入口が、選んだ文の近く（縦の差が選んだ行の高さ以内）に出る
+    # コメントの入口が、選んだ文の上に出る（入口の下端が選んだ文の上端より上で、その差が選んだ行の高さ以内）
     assert pill_box is not None
-    gap = max(
-        rect["top"] - (pill_box["y"] + pill_box["height"]),
-        pill_box["y"] - (rect["top"] + rect["height"]),
-        0,
-    )
-    assert gap <= rect["height"]
+    gap = rect["top"] - (pill_box["y"] + pill_box["height"])
+    assert 0 < gap <= rect["height"]
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "1"
