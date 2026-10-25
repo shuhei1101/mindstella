@@ -266,6 +266,29 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .rec-badge { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px; border: 1px solid var(--accent-line); border-radius: var(--radius); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
 .rec-badge svg.icon { width: 12px; height: 12px; }
 .md { font-size: var(--fs-small); line-height: 1.8; }
+/* mdmark の共通のスタイルの色・書体・寸法を、プレビューのトークンで描く（ライト / ダークはトークンに従い、mdmark の既定の色は使わない） */
+.mdmark {
+  --mdmark-color-bg: transparent;
+  --mdmark-color-text: var(--text);
+  --mdmark-color-heading: var(--text);
+  --mdmark-color-muted: var(--text-2);
+  --mdmark-color-link: var(--accent);
+  --mdmark-color-border: var(--border);
+  --mdmark-color-surface: var(--surface-2);
+  --mdmark-color-table-head: var(--thead-bg);
+  --mdmark-color-callout-note: var(--st-open);
+  --mdmark-color-callout-tip: var(--st-done);
+  --mdmark-color-callout-important: var(--st-loose);
+  --mdmark-color-callout-warning: var(--st-hold);
+  --mdmark-color-callout-caution: var(--st-review);
+  --mdmark-font-body: var(--font-sans);
+  --mdmark-font-mono: var(--font-mono);
+  --mdmark-font-size: var(--fs-small);
+  --mdmark-line-height: 1.8;
+  --mdmark-content-width: none;
+  --mdmark-padding: 0;
+  --mdmark-radius: var(--radius);
+}
 /* Markdown で描く値の入れ物: 先頭と末尾の段落の余白を詰め、周りの行の高さに揃える */
 .md-value { font-size: inherit; line-height: 1.7; }
 .md-value > :first-child { margin-top: 0; }
@@ -302,7 +325,6 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md th { background: var(--surface-2); }
 .md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-mono); font-size: .92em; }
-.md blockquote { margin: 8px 0; padding: 2px 12px; border-left: 2px solid var(--border); color: var(--text-2); }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
 
 /* ===== 本文の表 ===== */
@@ -377,24 +399,10 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 
 /* ===== Alert の囲み ===== */
 
-/* 囲み: 種類の色の薄い面と細い枠で囲む（種類は見出しの文言でも示す） */
-.md .md-callout { --c: var(--st-open); margin: 10px 0; padding: 8px 12px; border: 1px solid color-mix(in oklab, var(--c) 40%, var(--surface)); border-radius: var(--radius); background: color-mix(in oklab, var(--c) 7%, var(--surface)); color: var(--text); }
-/* ヒント */
-.md .md-callout-tip { --c: var(--st-done); }
-/* 重要 */
-.md .md-callout-important { --c: var(--st-loose); }
-/* 警告 */
-.md .md-callout-warning { --c: var(--st-hold); }
-/* 注意 */
-.md .md-callout-caution { --c: var(--st-review); }
-/* 囲みの見出し: 種類のアイコンと文言 */
-.md .md-callout-title { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-weight: 600; color: var(--c); }
+/* 囲み: 見た目は mdmark の囲み（種類の色の薄い面と細い枠）に任せる。見出しのアイコンは decorateMarkdown が足すので、mdmark の見出しの飾りは出さない */
+.md .markdown-alert-title::before { display: none; }
 /* 囲みの見出しのアイコン */
-.md .md-callout-title .icon { width: 14px; height: 14px; }
-/* 囲みの中の段落 */
-.md .md-callout > p { margin: 4px 0; }
-/* 囲みの最後の要素: 下の余白を枠の内側の余白に任せる */
-.md .md-callout > :last-child { margin-bottom: 0; }
+.md .markdown-alert-title .icon { width: 14px; height: 14px; }
 
 /* ===== セクションの折りたたみ ===== */
 
@@ -961,7 +969,9 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* レビュー中のコメントの箇所: 名前と選んだ文を縦に積む */
 .review-loc { display: grid; gap: 4px; padding: 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
 /* レビュー中のコメントの本文: 改行を保ち、長い URL も折り返す */
-.review-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.review-body { margin: 0; overflow-wrap: anywhere; line-height: 1.6; }
+/* mdmark が読めないときの文字のままの本文: 改行を保つ */
+p.review-body { white-space: pre-wrap; }
 /* 一覧から開いたとき示す箇所: 検索で当たった語と同じ地で囲む */
 .loc-hit { background: var(--hit); border-radius: 2px; box-shadow: 0 0 0 2px var(--hit); }
 
@@ -1989,7 +1999,9 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 /* 書き手の名前 */
 .post-author { color: var(--text); font-weight: 600; }
 /* 書き込みの本文: 改行を残し、長い語も折り返す */
-.post-body { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-body { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+/* mdmark が読めないときの文字のままの本文: 改行を保つ */
+p.post-body { white-space: pre-wrap; }
 /* 本文の中の項目の ID: 行の中に収める */
 .post-body .idlink { margin: 0 2px; }
 /* 本文の中のまとまりのリンク: 詳細の本文のリンクと同じ、色の付いた文字と下線 */
@@ -2059,8 +2071,8 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .review-more-row { display: flex; margin-left: -12px; font-size: var(--fs-small); }
 /* 返信の行で、ボタンを出さないとき: 行ごと出さない */
 .review-more-row:has(> .review-more[hidden]) { display: none; }
-/* 畳んだ本文: 折り返した後の見た目の行で --fold-lines 行までを出し、末尾を「…」で省く（畳んだ部分も読み上げは飛ばさない） */
-.review-body.folded { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--fold-lines); line-clamp: var(--fold-lines); overflow: hidden; }
+/* 畳んだ本文: 折り返した後の見た目の行で --fold-lines 行分の高さまでを出し、はみ出しを隠す（本文は Markdown のブロックを持つ。畳んだ部分も読み上げは飛ばさない） */
+.review-body.folded { max-height: calc(var(--fold-lines) * 1lh); overflow: hidden; }
 /* 「続きを読む」「折りたたむ」: 測るまで・畳む行の数を超えないときは出さない（.btn の inline-flex より優先する） */
 .review-more[hidden] { display: none; }
 /* 開閉の矢印: 畳んでいるときは下向き */
