@@ -1210,6 +1210,7 @@ def test_render_value_when_library_missing(
             id="fence_in_quote_and_list",
         ),
         pytest.param("p\n\n    a\n    b\n\nq", "p\n\n    a\n    b\n\nq", id="indented_code"),
+        pytest.param("> [!NOTE]\n> a\n> b", "> [!NOTE]\n> a  \n> b", id="alert_marker"),
     ],
 )
 def test_with_hard_breaks(

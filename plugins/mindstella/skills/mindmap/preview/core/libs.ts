@@ -139,8 +139,8 @@ namespace MindmapPreview {
     trimBreakNewlines(root);
   }
 
-  /** 引用の中の Alert の種類を指す行（`> [!NOTE]`）。mdmark はこの行の後ろが強制改行だと Alert にしない */
-  const ALERT_MARKER_LINE = /^[ \t]*>.*\[![A-Za-z]+\]-?[ \t]*$/;
+  /** 引用の `>` を除いた先が `[!{英字}]` だけの Alert の種類の行（後ろに `-` を許す）。mdmark はこの行の後ろが強制改行だと Alert にしない */
+  const ALERT_MARKER_LINE = /^[ \t]*(?:>[ \t]*)+\[![A-Za-z]+\]-?[ \t]*$/;
 
   /** `br` の直後の改行の文字を取り除く（mdmark は強制改行を `<br>` と改行の文字で描くので、改行の数え方が `br` の分と二重になる） */
   function trimBreakNewlines(root: HTMLElement): void {

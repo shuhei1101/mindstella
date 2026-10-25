@@ -28,6 +28,7 @@ from export_helpers import (
     external_template,
     make_fetch,
     make_responses,
+    module_url,
     write_preview_dir,
 )
 from fixture_types import (
@@ -1384,9 +1385,16 @@ def _patch_export_offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     # 差し替える前の本物を控える
     real_export = builder.export_preview
     scripts = [("marked", b"/* marked */")]
+    mdmark_package = "shuhei1101/mdmark"
+    module = (mdmark_package, b"/* mdmark */", b".mdmark{}")
     preview_dir = tmp_path / "preview"
-    write_preview_dir(preview_dir, external_template(scripts))
-    fetch, _calls = make_fetch(make_responses(scripts))
+    write_preview_dir(preview_dir, external_template(scripts, module))
+    # mdmark のライセンスは雛形のフォルダのファイルから読み、束ねた依存のライセンスは取る
+    (preview_dir / "licenses").mkdir()
+    (preview_dir / "licenses" / "mdmark-LICENSE.txt").write_text("MIT の本文", encoding="utf-8")
+    responses = make_responses(scripts, module=module)
+    responses[module_url(mdmark_package, "dist/THIRD_PARTY_LICENSES.txt")] = "束ねた本文".encode()
+    fetch, _calls = make_fetch(responses)
 
     def _export_offline(workspace: Any, **kwargs: Any) -> Path:
         """雛形のフォルダと取る関数だけを差し替えて、本物の書き出しを呼ぶ。"""
