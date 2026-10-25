@@ -1203,7 +1203,7 @@ def test_render_value_when_library_missing(
     ("source", "expected"),
     [
         pytest.param("1 行目\n2 行目\n\n3 行目", "1 行目  \n2 行目\n\n3 行目", id="paragraph"),
-        pytest.param("```\na\nb\n```\nc", "```\na\nb\n```  \nc", id="fence"),
+        pytest.param("```\na\nb\n```\nc", "```\na\nb\n```\nc", id="fence"),
         pytest.param(
             "> ```js\n> a\n> ```\n- ```js\n  b\n  ```",
             "> ```js\n> a\n> ```\n- ```js\n  b\n  ```",
