@@ -364,7 +364,7 @@ def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: Ope
     # 実行
     page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"dialog.full li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        "document.querySelector(\"dialog.full li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
     )
     # 検証

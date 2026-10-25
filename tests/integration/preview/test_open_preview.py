@@ -80,6 +80,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
 )
 from preview_history_helpers import preselect_diff
+from preview_markdown_post_helpers import MARKDOWN_POST_HASH
 from preview_post_link_helpers import POST_LINK_HASH
 from preview_html_body_helpers import (
     BODY_FRAME,
@@ -222,6 +223,7 @@ def test_normal(
     assert page.get_attribute('.segment button[data-view="table"]', "aria-pressed") == "true"
     assert _row_ids(page) == ["D-1", "D-3"]
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert page.locator("aside.panel .md:not(.md-value).mdmark").count() == 1
     assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     # 同じ URL を開き直すと同じ画面と項目が開く
@@ -446,8 +448,10 @@ def test_error_when_library_unavailable(
     assert "通信を確認して、ページを再読み込みしてください。" in map_notice
     body_notice = page.inner_text("aside.panel .md:not(.md-value) .lib-error[role=alert]")
     assert "読み込めなかったライブラリ" in body_notice
-    for name in ("marked", "DOMPurify", "mermaid"):
+    for name in ("mdmark", "mermaid"):
         assert name in body_notice
+    assert "marked" not in body_notice
+    assert "DOMPurify" not in body_notice
     assert "本文の段落" in page.inner_text("aside.panel .md-raw")
     # 配置できない案内は、表への切り替えを促す
     assert "表示形式を「表」に切り替えると、検討事項を表示できます。" in page.inner_text("main")
@@ -1540,7 +1544,7 @@ def test_normal_when_body_link_to_change_set(
 def test_normal_when_post_link_to_change_set(
     write_post_link_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """スレッドの書き込みとレビュー中を確かめる画面の行の #diff= のリンクを押すと、画面を開いたままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さないものは書いた文字のまま出す（正常系）。"""
+    """スレッドの書き込みとレビュー中を確かめる画面の行の #diff= のリンクを押すと、画面を開いたままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さないものはリンクの文字だけを出す（正常系）。"""
     # 準備
     url, _ = write_post_link_preview()
     open_preview(url, POST_LINK_HASH)
@@ -1557,9 +1561,12 @@ def test_normal_when_post_link_to_change_set(
     text = page.inner_text(post)
     assert "](#diff=V-1)" not in text
     assert "](#tab=tasks&id=D-2&diff=V-2)" not in text
-    # 検証（まとまりを指さないものは書いた文字のまま）
-    for literal in ("[無いまとまり](#diff=V-99)", "[前回から](#diff=since)", "[決め方へ](#決め方)"):
-        assert literal in text
+    # 検証（まとまりを指さないものはリンクにならず、リンクの文字だけが出る）
+    assert page.locator(f"{post} a").count() == 2
+    for word in ("無いまとまり", "前回から", "決め方へ"):
+        assert word in text
+    for marker in ("[", "](#diff=V-99)", "](#diff=since)", "](#決め方)"):
+        assert marker not in text
     # 実行（「D-1 を直した」を押す）
     page.locator(links, has_text="D-1 を直した").click()
     page.wait_for_function(
@@ -1615,6 +1622,43 @@ def test_normal_when_post_link_to_change_set(
     assert _hash_params(page)["tab"] == ["decisions"]
     assert _hash_params(page)["diff"] == ["V-2"]
     assert page.evaluate("history.length") == history_before
+
+
+def test_normal_when_markdown_post(
+    write_markdown_post_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """スレッドの書き込みとレビュー中の返信を、詳細の本文と同じく mdmark で Markdown として描き、生の HTML のスクリプトを動かさない（正常系）。"""
+    # 準備・実行
+    url, _ = write_markdown_post_preview()
+    open_preview(url, MARKDOWN_POST_HASH)
+    open_thread(page, "TH-1")
+    post = f"{COMMENTS_PANEL} ol.posts > li:nth-child(1) .post-body"
+    page.wait_for_selector(f"{post} figure.diagram svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（見出し・表・コード・図が描かれ、記法の文字が出ない）
+    assert page.inner_text(f"{post} h2") == "比べた結果"
+    assert page.locator(f"{post} table").count() == 1
+    assert page.locator(f"{post} pre > code").count() == 1
+    assert page.locator(f"{post} figure.diagram svg").count() >= 1
+    text = page.inner_text(post)
+    for notation in ("##", "| --- |", "```"):
+        assert notation not in text
+    # 検証（段落の中の D-1 は項目を開くボタンで、書き込みの要素は詳細の本文と同じ class）
+    assert page.locator(f"{post} > p button.idlink").all_inner_texts() == ["D-1"]
+    assert page.locator(f"{post}.mdmark").count() == 1
+    # 検証（生の HTML のスクリプトは動かない）
+    assert page.evaluate("window.injected !== true")
+    assert page.locator(f"{post} [onerror]").count() == 0
+    # 検証（スレッドの末尾のレビュー中の返信は、太字で出て `**` が出ない）
+    reply = f"{COMMENTS_PANEL} ol.posts > li.pending .post-body"
+    assert page.inner_text(f"{reply} strong") == "起票してよい"
+    assert "**" not in page.inner_text(reply)
+    # 実行（レビュー中を確かめる画面を開く）
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    row = review_row(COMMENTS_PANEL, "C-1")
+    # 検証（行の返信も太字で出て、`**` が出ない）
+    assert page.inner_text(f"{row} .review-body strong") == "起票してよい"
+    assert "**" not in page.inner_text(f"{row} .review-body")
 
 
 # 帯の印の無い、上端に近い位置（帯の上端からの距離。先頭の印の下）

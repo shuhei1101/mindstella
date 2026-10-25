@@ -32,7 +32,7 @@ def test_user_post(open_story: OpenStory) -> None:
 
 
 def test_ai_post(open_story: OpenStory) -> None:
-    """AI の書き込み。左に寄せ、頭に「AI」と日時を出し、記録にある項目の ID はその項目を開くボタン、改行は保つ（正常系）。"""
+    """AI の書き込み。左に寄せ、頭に「AI」と日時を出し、記録にある項目の ID はその項目を開くボタン、段落の中の改行は改行（`br`）として出す（正常系）。"""
     # 準備・実行
     page = open_story("preview-threadpost--ai-post")
     # 検証
@@ -41,10 +41,49 @@ def test_ai_post(open_story: OpenStory) -> None:
     assert page.eval_on_selector_all(
         f"{POST} button.idlink", "buttons => buttons.map(b => b.textContent)"
     ) == ["D-12", "T-14"]
-    assert page.eval_on_selector(f"{POST} .post-body", "e => getComputedStyle(e).whiteSpace") in {
-        "pre-wrap",
-        "pre-line",
-    }
+    assert page.locator(f"{POST} .post-body > p").count() == 1
+    assert page.locator(f"{POST} .post-body > p > br").count() == 1
+    assert page.inner_text(f"{POST} .post-body") == (
+        "D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。"
+    )
+
+
+def test_markdown_post(open_story: OpenStory) -> None:
+    """AI の書き込みの Markdown。見出しは `h2`、表は `table`、`python` のコードは言語の札とコピーのボタンを持つ `pre`、`mermaid` は図、`> [!NOTE]` は「補足」の囲みで描かれ、記法の文字は出ない。段落の中の D-1 は項目を開くボタン。生の HTML の `onerror` は取り除かれて動かない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadpost--markdown-post")
+    page.wait_for_selector(f"{POST} .post-body figure.diagram svg")
+    body = f"{POST} .post-body"
+    # 検証（見出し・表・コードブロック・図・囲み）
+    assert page.inner_text(f"{body} h2") == "比べた結果"
+    assert page.locator(f"{body} table").count() == 1
+    assert page.locator(f"{body} .md-code .code-lang").all_inner_texts() == ["python"]
+    assert page.locator(f"{body} .md-code button.code-copy").count() == 1
+    assert page.locator(f"{body} .md-code pre").count() == 1
+    assert page.locator(f"{body} figure.diagram .mermaid svg").count() == 1
+    assert page.inner_text(f"{body} .markdown-alert .markdown-alert-title") == "補足"
+    # 検証（記法の文字は出ない）
+    text = page.inner_text(body)
+    assert "##" not in text
+    assert "| --- |" not in text
+    assert "```" not in text
+    assert "[!NOTE]" not in text
+    # 検証（段落の中の D-1 は項目を開くボタン）
+    assert page.get_attribute(f"{body} > p button.idlink", "title") == "描画のライブラリ"
+    # 検証（生の HTML の `onerror` は取り除かれて動かない）
+    assert page.locator(f"{body} [onerror]").count() == 0
+    assert page.evaluate("window.injected !== true")
+
+
+def test_pending_markdown(open_story: OpenStory) -> None:
+    """レビュー中の返信の Markdown。破線の枠の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadpost--pending-markdown")
+    # 検証
+    assert page.get_attribute(POST, "data-comment") == "C-45"
+    assert page.eval_on_selector(POST, "e => getComputedStyle(e).borderTopStyle") == "dashed"
+    assert page.inner_text(f"{POST} .post-body strong") == "起票してよい"
+    assert "**" not in page.inner_text(f"{POST} .post-body")
 
 
 def test_unknown_id(open_story: OpenStory) -> None:
@@ -195,11 +234,13 @@ def test_change_set_link(open_story: OpenStory) -> None:
     assert page.get_by_role("link", name="A-14 の手引きの書き直し").count() == 1
     assert page.locator(f"{SET_LINK} button").count() == 0
     _assert_link_looks_like_body_link(page, SET_LINK)
-    # 検証（外の A-14・D-12 は項目を開くボタンで、まとまりを指さない書き方は書いた文字のまま）
+    # 検証（外の A-14・D-12 は項目を開くボタンで、記録に無いまとまりを指す書き方はリンクにせず文言だけを出す）
     assert page.eval_on_selector_all(
         f"{POST} button.idlink", "buttons => buttons.map(b => b.textContent)"
     ) == ["A-14", "D-12"]
-    assert "[古い手引き](#diff=V-99)" in page.inner_text(f"{POST} .post-body")
+    assert page.locator(f"{POST} .post-body a").count() == 1
+    assert "前に相談した版は 古い手引き にありました" in page.inner_text(f"{POST} .post-body")
+    assert "[古い手引き]" not in page.inner_text(f"{POST} .post-body")
     # 実行（Tab で本文の順に止まる）
     page.keyboard.press("Tab")
     assert page.evaluate(ACTIVE_TEXT_JS) == "A-14"
@@ -216,7 +257,7 @@ def test_change_set_link(open_story: OpenStory) -> None:
 
 
 def test_change_set_link_not_linked(open_story: OpenStory) -> None:
-    """まとまりのリンクにしない書き方（`since`・`diff` の無いハッシュ）は書いた文字のまま出し、他の引数つきは `diff` だけを読んでリンクにする（正常系）。"""
+    """まとまりのリンクにしない書き方（`since`・`diff` の無いハッシュ）はリンクにせず文言だけを出し、他の引数つきは `diff` だけを読んでリンクにする（正常系）。"""
     # 準備・実行
     page = open_story("preview-threadpost--change-set-link-not-linked")
     # 検証
@@ -224,8 +265,9 @@ def test_change_set_link_not_linked(open_story: OpenStory) -> None:
     assert page.get_attribute(SET_LINK, "href") == "#diff=V-5"
     assert page.get_attribute(SET_LINK, "title") == "A-11 の段落を直す"
     text = page.inner_text(f"{POST} .post-body")
-    assert "[since から](#diff=since)" in text
-    assert "[ハッシュの例](#tab=docs)" in text
+    assert page.locator(f"{POST} .post-body a").count() == 1
+    assert text.startswith("since から と ハッシュの例 は押せなくてよい。")
+    assert "](#" not in text
 
 
 def test_pending_change_set_link(open_story: OpenStory) -> None:
