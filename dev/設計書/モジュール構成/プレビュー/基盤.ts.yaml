@@ -520,7 +520,7 @@ functions:
     process: |-
       1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、知らせと原文を返す（本文に mermaid のコードブロックがあり mermaid も読めていなければ名前に足す）
-      2. `div` を作り、`mdmark.mount` に本文と `config.features` の `MDMARK_FEATURES` を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）
+      2. `div` を作り、`mdmark.mount` に本文と `config.features` の `MDMARK_FEATURES` を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）。描いた後、`br` の直後の改行の文字を外す（mdmark は強制改行を `br` と改行の文字で描き、`selectionLocation` は改行の文字と `br` の両方を行として数えるため）
       3. mdmark が付けた `data-source-line`（0 始まりのブロックの開始行）を、元の行の印 `data-line-start`（1 始まり）に読み替える（PoC #80 の対応づけ。読み替えは PR #342 の PoC 結果）
          - 見出し・段落・リストの項目・表の行・`pre` は、値に 1 を足した `data-line-start` を付ける。フェンスのコードの `pre` は 2 を足す（中身の最初の行）。フェンスかは、原文のその行から行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まるかで判定する（`/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/`。PR #342 の PoC 結果）
          - 段落を持つリストの項目は中の段落に任せ、項目には付けない。リスト・表・引用・区切り線にも付けない
@@ -1595,7 +1595,7 @@ functions:
     process: |-
       1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、渡した文字列を文字として持つ `span.md-value-raw` を返す（知らせは出さない。本文の `renderMarkdown` が出す）
-      2. 段落の中の改行を強制改行にした Markdown（`withHardBreaks`）を、`mdmark.mount` に `config.features` の `MDMARK_FEATURES` を渡して描き、`data-source-line` を外す（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
+      2. 段落の中の改行を強制改行にした Markdown（`withHardBreaks`）を、`mdmark.mount` に `config.features` の `MDMARK_FEATURES` を渡して描き、`br` の直後の改行の文字（`renderMarkdown` の処理 2 と同じ理由）と `data-source-line` を外す（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
     unit_tests:
       - name: test_render_value
         case: 正常
