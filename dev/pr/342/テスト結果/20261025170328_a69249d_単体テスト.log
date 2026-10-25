@@ -1,6 +1,6 @@
 # 実行日時: 2026-10-25T16:44:22+09:00（JST）
 # コミット: a69249dc（テストコード）。実装は未着手
-# 結果: 変更しなかった既存の単体テスト 1622 件が全て pass。作成・改修したテストの 157 件は Red（理由は全て実装が無いこと）
+# 結果: 1622 件が pass（変更しなかった既存の単体テストは全て pass）。157 件が Red（作成・改修したテストで、理由は全て実装が無いこと）
 #   - 125 件: MindmapPreview.loadMdmark が無い（mdmark を読む前提のテスト）
 #   - 14 件: builder.VendorLibrary が license_file を受け取らない
 #   - 10 件: builder.read_external_module が無い
