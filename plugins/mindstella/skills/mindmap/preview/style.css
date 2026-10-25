@@ -401,6 +401,8 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 
 /* 囲み: 見た目は mdmark の囲み（種類の色の薄い面と細い枠）に任せる。見出しのアイコンは decorateMarkdown が足すので、mdmark の見出しの飾りは出さない */
 .md .markdown-alert-title::before { display: none; }
+/* 囲みの見出しの文字: 種類の色に本文の文字色を混ぜ、薄い面に対して WCAG AA の 4.5:1 を保つ */
+.md .markdown-alert .markdown-alert-title { color: color-mix(in oklab, var(--mdmark-callout-color) 70%, var(--text)); }
 /* 囲みの見出しのアイコン */
 .md .markdown-alert-title .icon { width: 14px; height: 14px; }
 
