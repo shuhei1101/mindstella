@@ -7,9 +7,7 @@ items:
   - page: jsonschema.yaml
     summary: ワークスペースの YAML を JSON Schema で検証する
   - page: marked.yaml
-    summary: プレビューで本文の Markdown を HTML に描く
-  - page: DOMPurify.yaml
-    summary: プレビューで描いた本文の HTML を無害化する
+    summary: プレビューで本文の差分の塊を Markdown の token ごとに分ける
   - page: elkjs.yaml
     summary: プレビューの検討事項のマップの配置を計算する
   - page: mermaid.yaml
