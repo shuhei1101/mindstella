@@ -1,0 +1,913 @@
+# 実行日時: 2026-10-25T16:44:22+09:00（JST）
+# コミット: a69249dc（テストコード）。実装は未着手
+# 結果: 変更しなかった既存の単体テスト 1622 件が全て pass。作成・改修したテストの 157 件は Red（理由は全て実装が無いこと）
+#   - 125 件: MindmapPreview.loadMdmark が無い（mdmark を読む前提のテスト）
+#   - 14 件: builder.VendorLibrary が license_file を受け取らない
+#   - 10 件: builder.read_external_module が無い
+#   - 4 件: MindmapPreview.withHardBreaks が無い
+#   - 4 件: 描画・装飾・知らせの期待値が未実装（renderMarkdown 系の知らせ・postBody の読めないときの文字のまま・decorateMarkdown の Alert のアイコンと tables 偽）
+$ pytest tests/unit -p no:cacheprovider --tb=line -rf -q
+...............................................F........F..............F [  4%]
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF................................... [  8%]
+..............................FF.FF.....FF..FFFFFFFFFFFF................ [ 12%]
+....FF.......................................FFFF.................FF..FF [ 16%]
+FF.............................................................FFFFFFFFF [ 20%]
+FFFF............................FFF.FFF................................. [ 24%]
+...........F..........F..FF......................................FFFFFFF [ 28%]
+FFFF...............F.F.................................................. [ 32%]
+.......................FFFFFF............F.F............................ [ 36%]
+........FF.......F............................F..........F......F......F [ 40%]
+...F..F..F.F.F.F.F.FFFFF...........................................FFFFF [ 44%]
+FFFFF....FFFFFFFFFFFFFF................................................. [ 48%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 60%]
+........................................................................ [ 64%]
+........................................................................ [ 68%]
+........................................................................ [ 72%]
+........................................................................ [ 76%]
+......s................................................................. [ 80%]
+........................................................................ [ 84%]
+........................................................................ [ 88%]
+........................................................................ [ 93%]
+........................................................................ [ 97%]
+....................................................                     [100%]
+=================================== FAILURES ===================================
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:2:34)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:2:34)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   AssertionError: assert 'mdmark' in '本文を表示できません。読み込めなかったライブラリ: marked・DOMPurify・mermaid通信を確認して、ページを再読み込みしてください。'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/preview/test_libs.py:190: AssertionError: assert 'mdmark' in '本文を表示できません。読み込めなかったライブラリ: marked・DOMPurify・mermaid通信を確認して、ページを再読み込みしてください。'
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:2:34)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:28)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   AssertionError: assert {'icons': 0, ...'title': '警告'} == {'icons': 1, ...'title': '警告'}
+      
+      Omitting 1 identical items, use -vv to show
+      Differing items:
+      {'icons': 0} != {'icons': 1}
+      {'iconFirst': False} != {'iconFirst': True}
+      Use -v to get more diff
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/preview/test_markdown_body.py:617: AssertionError: assert {'icons': 0, ...'title': '警告'} == {'icons': 1, ...'title': '警告'}
+E   AssertionError: assert {'colSizes': ...tick': 1, ...} == {'colSizes': ...tick': 0, ...}
+      
+      Omitting 2 identical items, use -vv to show
+      Differing items:
+      {'headStick': 1} != {'headStick': 0}
+      {'frames': 1} != {'frames': 0}
+      {'noteIcon': False} != {'noteIcon': True}
+      {'colSizes': ['short', 'short', 'medium', 'short', 'short', 'medium']} != {'colSizes': [None, None, None, None, None, None]}
+      {'pins': 2} != {'pins': 0}
+      Use -v to get more diff
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/preview/test_markdown_body.py:672: AssertionError: assert {'colSizes': ...tick': 1, ...} == {'colSizes': ...tick': 0, ...}
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   assert (0, 1, 0) == (0, 0, 0)
+      
+      At index 1 diff: 1 != 0
+      Use -v to get more diff
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/preview/test_thread_post.py:391: assert (0, 1, 0) == (0, 0, 0)
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:2:34)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:2:34)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:28)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:28)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:28)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.withHardBreaks is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+        at eval (eval at evaluate (:311:30), <anonymous>:1:22)
+        at UtilityScript.evaluate (<anonymous>:318:18)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+/mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.loadMdmark is not a function
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:763: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:802: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   AttributeError: module 'builder' has no attribute 'read_external_module'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/test_builder.py:849: AttributeError: module 'builder' has no attribute 'read_external_module'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+E   TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-preview-mdmark-rendering/tests/unit/scripts/export_helpers.py:136: TypeError: VendorLibrary.__init__() got an unexpected keyword argument 'license_file'
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_comments_panel.py::test_thread_view_when_change_set_link[chromium]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_view_when_change_set_link[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_highlight[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_old_set_after_body_edit[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_editor_only[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_reuses_current_diagram[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_renders_before_sequence[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_heading[chromium-heading_in_body]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_decision_order[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_recommended[chromium-undecided_with_recommended]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_markdown_values[chromium-decision]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_option_list_values[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_review_rows[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_review_escape_in_full[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_review_editing_in_list[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_withdrawn[chromium-withdrawn_without_diff]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_inline_words[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_lines_unpaired[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_inline_words_keep_links[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_inline_words_in_table_row[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_removed_before_table[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_raw_inline_words[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_words[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_words_skipped[chromium-added]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_words_body_too_large[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_description_aliases[chromium-docs]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_alias_tip[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_alias_tip_escape_in_full[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_term_aliases_tip[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_head_title_on_scroll[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_head_title_rerender[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_head_title_full[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_change_set_link[chromium-without_diff]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_minimap[chromium-diff_and_minimap]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_heading_levels[chromium-top_is_h2]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_side_by_side[chromium-inline_wide]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_layout_changed[chromium]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_value_heading_levels[chromium-lead_after_title]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_newlines[chromium-word_after_newline]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-default]
+FAILED tests/unit/preview/test_libs.py::test_load_mdmark[chromium-import_map]
+FAILED tests/unit/preview/test_libs.py::test_load_mdmark_when_unavailable[chromium-not_found]
+FAILED tests/unit/preview/test_libs.py::test_render_markdown[chromium] - play...
+FAILED tests/unit/preview/test_libs.py::test_render_markdown_when_library_missing[chromium]
+FAILED tests/unit/preview/test_libs.py::test_render_markdown_when_line_marks[chromium]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-heading]
+FAILED tests/unit/preview/test_libs.py::test_link_headings[chromium] - playwr...
+FAILED tests/unit/preview/test_libs.py::test_link_headings_when_change_set_link[chromium]
+FAILED tests/unit/preview/test_libs.py::test_link_body[chromium] - playwright...
+FAILED tests/unit/preview/test_libs.py::test_link_body_when_self[chromium] - ...
+FAILED tests/unit/preview/test_libs.py::test_link_body_when_aliases[chromium-other_item_open]
+FAILED tests/unit/preview/test_libs.py::test_link_body_when_term_aliases[chromium-other_item_open]
+FAILED tests/unit/preview/test_libs.py::test_render_value[chromium] - playwri...
+FAILED tests/unit/preview/test_libs.py::test_render_value_when_line_break_in_paragraph[chromium]
+FAILED tests/unit/preview/test_libs.py::test_render_value_when_library_missing[chromium]
+FAILED tests/unit/preview/test_libs.py::test_with_hard_breaks[chromium-paragraph]
+FAILED tests/unit/preview/test_libs.py::test_render_markdown_when_html_code_block[chromium]
+FAILED tests/unit/preview/test_libs.py::test_render_markdown_when_table[chromium]
+FAILED tests/unit/preview/test_markdown_body.py::test_decorate_markdown_when_code_and_callout[chromium]
+FAILED tests/unit/preview/test_markdown_body.py::test_decorate_markdown_when_tables_off[chromium]
+FAILED tests/unit/preview/test_side_by_side_body_diff.py::test_side_by_side_body_diff[chromium-lined]
+FAILED tests/unit/preview/test_side_by_side_body_diff.py::test_side_by_side_body_diff_when_aligned[chromium]
+FAILED tests/unit/preview/test_side_by_side_body_diff.py::test_side_by_side_body_diff_when_timeout[chromium]
+FAILED tests/unit/preview/test_side_by_side_body_diff.py::test_side_by_side_body_diff_when_headings[chromium]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post[chromium-user]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post_when_known_and_unknown_id[chromium]
+FAILED tests/unit/preview/test_thread_post.py::test_post_body[chromium-with_titles]
+FAILED tests/unit/preview/test_thread_post.py::test_post_body_when_markdown[chromium]
+FAILED tests/unit/preview/test_thread_post.py::test_post_body_when_library_missing[chromium]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post_when_change_set_link[chromium-post]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_heading[chromium-heading_not_in_body]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_recommended[chromium-decided_hides_recommended]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_markdown_values[chromium-task]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_withdrawn[chromium-withdrawn_in_range]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_words_skipped[chromium-unrelated]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_description_aliases[chromium-research]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_change_set_link[chromium-with_diff]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_minimap[chromium-diff_and_minimap_off]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_heading_levels[chromium-top_is_h1]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_side_by_side[chromium-side_wide]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_value_heading_levels[chromium-option_content_in_section]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_newlines[chromium-word_across_newline]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-stripes]
+FAILED tests/unit/preview/test_libs.py::test_load_mdmark[chromium-embedded]
+FAILED tests/unit/preview/test_libs.py::test_load_mdmark_when_unavailable[chromium-integrity_mismatch]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-paragraph]
+FAILED tests/unit/preview/test_libs.py::test_link_body_when_aliases[chromium-self_in_aliases]
+FAILED tests/unit/preview/test_libs.py::test_link_body_when_term_aliases[chromium-self_in_aliases]
+FAILED tests/unit/preview/test_libs.py::test_with_hard_breaks[chromium-fence]
+FAILED tests/unit/preview/test_side_by_side_body_diff.py::test_side_by_side_body_diff[chromium-not_lined]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post[chromium-ai]
+FAILED tests/unit/preview/test_thread_post.py::test_post_body[chromium-without_titles]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post_when_change_set_link[chromium-pending]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_heading[chromium-heading_in_inline_body_when_side_narrow]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_recommended[chromium-undecided_without_recommended]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_markdown_values[chromium-research]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_withdrawn[chromium-not_withdrawn]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_words_skipped[chromium-list_and_date]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_description_aliases[chromium-neither]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_minimap[chromium-no_diff]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_heading_levels[chromium-beyond_h6]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_side_by_side[chromium-side_narrow]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_value_heading_levels[chromium-task_reason_after_title]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-body_diff_has_no_fold]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-loose_item]
+FAILED tests/unit/preview/test_libs.py::test_with_hard_breaks[chromium-fence_in_quote_and_list]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_markdown_values[chromium-term]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_diff_key_words_skipped[chromium-jsdiff_missing]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_heading_levels[chromium-diff_removed_part_is_higher]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_side_by_side[chromium-side_body_unchanged]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_value_heading_levels[chromium-no_headings]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_view[chromium-reveal_heading_after_fold]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-ordered]
+FAILED tests/unit/preview/test_libs.py::test_with_hard_breaks[chromium-indented_code]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_markdown_values[chromium-note]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_body_heading_levels[chromium-diff_added_block_margin]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-nested]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-quote]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-table_cell]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-table_header]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-code]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-item_code]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-bold]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-link_code_escape]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-soft_break]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-hard_space]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-hard_slash]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-duplicate_first]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-duplicate_second]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-paragraph_to_list]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-across_diagram]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-value]
+FAILED tests/unit/preview/test_libs.py::test_selection_location[chromium-after_removed]
+FAILED tests/unit/scripts/test_builder.py::test_template_matches_vendor_libraries
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module - Attrib...
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[import_map_none]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[link_none]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[link_two]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[integrity_keys_two]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[import_map_not_json]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[js_url_npm]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[css_tag_differs]
+FAILED tests/unit/scripts/test_builder.py::test_read_external_module_when_invalid[end_first]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_integrity_mismatch[module_js]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_integrity_mismatch[module_css]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_integrity_mismatch[dist]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[dist_closing]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[dist_opening]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[module_js]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[module_css]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[license]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[license_file]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_tag_inside[bundled]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_library_unknown[script_without_library]
+FAILED tests/unit/scripts/test_builder.py::test_assemble_standalone_template_when_library_unknown[module_without_library]
+FAILED tests/unit/scripts/test_builder.py::test_format_licenses - TypeError: ...
+157 failed, 1622 passed, 1 skipped in 1222.63s (0:20:22)
