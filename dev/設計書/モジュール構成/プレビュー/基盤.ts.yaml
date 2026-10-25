@@ -522,7 +522,7 @@ functions:
          - 読めていない場合、知らせと原文を返す（本文に mermaid のコードブロックがあり mermaid も読めていなければ名前に足す）
       2. `div` を作り、`mdmark.mount` に本文と `config.features` の `MDMARK_FEATURES` を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）
       3. mdmark が付けた `data-source-line`（0 始まりのブロックの開始行）を、元の行の印 `data-line-start`（1 始まり）に読み替える（PoC #80 の対応づけ。読み替えは PR #342 の PoC 結果）
-         - 見出し・段落・リストの項目・表の行・`pre` は、値に 1 を足した `data-line-start` を付ける。フェンスのコードの `pre`（原文のその行が ```` ``` ```` か `~~~` で始まる）は 2 を足す（中身の最初の行）
+         - 見出し・段落・リストの項目・表の行・`pre` は、値に 1 を足した `data-line-start` を付ける。フェンスのコードの `pre` は 2 を足す（中身の最初の行）。フェンスかは、原文のその行から行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まるかで判定する（`/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/`。PR #342 の PoC 結果）
          - 段落を持つリストの項目は中の段落に任せ、項目には付けない。リスト・表・引用・区切り線にも付けない
          - 読み替えた後、全ての `data-source-line` を外す
       4. `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
@@ -544,7 +544,7 @@ functions:
       - name: test_render_markdown_when_line_marks
         case: 正常
         summary: ブロックに元の行の印を付ける
-        condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・段落を持つリストの項目・表・フェンスのコード・字下げのコード・mermaid のコードブロックを持つ本文
+        condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・段落を持つリストの項目・表・フェンスのコード（行頭から・2 個の空白で字下げ・引用の中の `> ```js`・リストの中の `- ```js` と `1. ```js`・入れ子のリストの中）・字下げのコード・mermaid のコードブロックを持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`h1` の `data-line-start` が 1、段落が 3、リストの項目・表の各行・フェンスのコード（中身の最初の行）・字下げのコード（最初の行）が PoC #80 の対応づけどおり。段落を持つリストの項目は中の段落だけが持ち、`ul`・`table`・図の入れ物は持たない。`data-source-line` を持つ要素が無い'
       - name: test_render_markdown_when_html_code_block
@@ -1954,7 +1954,7 @@ functions:
     title: 段落の中の改行を強制改行にする
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 共通
-    summary: フェンスのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にするのに使う）
+    summary: フェンスと字下げのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にするのに使う）
     kind: 関数
     scope: public
     args:
@@ -1967,15 +1967,16 @@ functions:
       type: string
       description: 行の数を変えない Markdown
     process: |-
-      1. 行を頭から見て、フェンス（```` ``` ```` か `~~~` で始まる行。同じ記号が同じ数以上並ぶ行で閉じる）の行とその中の行はそのまま残す
-      2. それ以外の行は、次の行があり、次の行が空白だけの行でなければ、末尾に空白 2 つを足す
+      1. 行を頭から見て、フェンスの行とその中の行をそのまま残す。フェンスの開始は `renderMarkdown` と同じく、行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まる行で、同じく除いた先に同じ記号が同じ数以上並ぶ行で閉じる
+      2. 字下げのコードの行（直前が空行か字下げのコードの行で、4 つ以上の空白かタブで始まる行）もそのまま残す（リストの項目の中の字下げした段落も区別せずに残す）
+      3. それ以外の行は、次の行があり、次の行が空白だけの行でなければ、末尾に空白 2 つを足す
     unit_tests:
       - name: test_with_hard_breaks
         case: 正常
         summary: 段落の中の行だけに空白を足し、フェンスの中は変えない
-        condition: '`parametrize`: `1 行目\n2 行目\n\n3 行目` / ```` ```\na\nb\n```\nc ````'
+        condition: '`parametrize`: `1 行目\n2 行目\n\n3 行目` / ```` ```\na\nb\n```\nc ```` / ```` > ```js\n> a\n> ```\n- ```js\n  b\n  ``` ```` / `p\n\n    a\n    b\n\nq`'
         mock: なし
-        expected: '`1 行目  \n2 行目\n\n3 行目` / ```` ```\na\nb\n```  \nc ````'
+        expected: '`1 行目  \n2 行目\n\n3 行目` / ```` ```\na\nb\n```  \nc ```` / 入力のまま（引用・リストの中のフェンスの行と中身に空白を足さない。最後の閉じる行は次の行が無い） / 入力のまま（字下げのコードの行に空白を足さない）'
     status: planned
 test_files:
   - tests/unit/preview/test_records.py
