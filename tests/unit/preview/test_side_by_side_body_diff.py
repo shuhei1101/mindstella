@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, LoadPreviewStyles
+from .fixture_types import LoadLibrary, LoadMdmark, LoadPreviewScripts, LoadPreviewStyles
 
 # 語の差分を打ち切るまでの余裕（ミリ秒）。テストの本文では打ち切りに届かない
 DEADLINE_MARGIN_MS = 5000
@@ -98,6 +98,7 @@ def test_side_by_side_body_diff(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     lined: bool,
     expected_right_lined: bool,
 ) -> None:
@@ -106,7 +107,7 @@ def test_side_by_side_body_diff(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -125,13 +126,14 @@ def test_side_by_side_body_diff_when_aligned(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
 ) -> None:
     """変えていない塊は左右で上端の高さが揃う（正常系）。"""
     # 準備
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     tops = preview_page.evaluate(
@@ -143,13 +145,13 @@ def test_side_by_side_body_diff_when_aligned(
 
 
 def test_side_by_side_body_diff_when_timeout(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary, load_mdmark: LoadMdmark
 ) -> None:
     """行の差分を打ち切ったら描かない（正常系）。"""
     # 準備
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     before = "\n".join(f"前 {index}" for index in range(LARGE_LINE_COUNT)) + "\n"
     after = "\n".join(f"後 {index}" for index in range(LARGE_LINE_COUNT)) + "\n"
@@ -166,13 +168,14 @@ def test_side_by_side_body_diff_when_headings(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
 ) -> None:
     """見出しの段は前後を合わせた最も上の段から 1 つの差で下げ、左右で揃う（正常系）。"""
     # 準備
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     expected: list[dict[str, Any]] = [
         {"text": "決め方", "tag": "h4"},

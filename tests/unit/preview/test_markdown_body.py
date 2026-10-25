@@ -540,15 +540,16 @@ def test_decorate_markdown_when_fold(
     assert result == expected
 
 
-# 言語 bash のコードブロック・言語の無いコードブロック・Alert の引用・印の無い引用を持つ本文
+# 言語 bash のコードブロック・言語の無いコードブロック・mdmark が描いた Alert の囲み・印の無い引用を持つ本文
 CODE_AND_CALLOUT_HTML = (
     '<pre><code class="language-bash">echo hello\nls</code></pre>'
     "<pre><code>plain text</code></pre>"
-    '<blockquote data-line-start="9"><p>[!WARNING]\n守らないと壊れます。</p></blockquote>'
+    '<div class="markdown-alert markdown-alert-warning" data-line-start="9">'
+    '<p class="markdown-alert-title">警告</p><p>守らないと壊れます。</p></div>'
     '<blockquote data-line-start="12"><p>ただの引用です。</p></blockquote>'
 )
 
-# クリップボードへの書き込みを控え、コードブロックの札・ボタンと、引用の囲みを調べる JavaScript
+# クリップボードへの書き込みを控え、同じ本文に 2 回当てて、コードブロックの札・ボタンと、Alert の囲みの見出しを調べる JavaScript
 DECORATE_CODE_AND_CALLOUT_SCRIPT = (
     MOUNT_FUNCTIONS
     + """
@@ -559,8 +560,9 @@ async (html) => {
         value: {writeText: async (text) => { writes.push(text); }},
     });
     const root = mount(html);
-    const plainQuote = root.querySelectorAll("blockquote")[1];
+    const plainQuote = root.querySelector("blockquote");
     const plainQuoteBefore = plainQuote.outerHTML;
+    MindmapPreview.decorateMarkdown({root});
     MindmapPreview.decorateMarkdown({root});
     const blocks = [...root.querySelectorAll("div.md-code")].map((wrap) => {
         const pre = wrap.querySelector(":scope > pre");
@@ -571,7 +573,7 @@ async (html) => {
             .filter((text) => text !== "");
         return {
             hasPre: pre !== null,
-            labels: [...new Set(labels)],
+            labels,
             buttonNames: buttons.map((button) => button.getAttribute("aria-label")),
             code: pre.querySelector("code").textContent,
             press: () => buttons[0].click(),
@@ -579,19 +581,19 @@ async (html) => {
     });
     blocks[0].press();
     await frames();
-    const [callout, plain] = root.querySelectorAll("blockquote");
+    const title = root.querySelector("div.markdown-alert > p.markdown-alert-title");
     return {
         blocks: blocks.map(({hasPre, labels, buttonNames}) => ({hasPre, labels, buttonNames})),
+        nestedWraps: root.querySelectorAll("div.md-code div.md-code").length,
         writes,
         firstCode: blocks[0].code,
         callout: {
-            isCallout: callout.classList.contains("md-callout"),
-            hasTitle: (callout.textContent ?? "").includes("警告"),
-            hasMarker: (callout.textContent ?? "").includes("[!WARNING]"),
-            line: callout.getAttribute("data-line-start"),
+            icons: title.querySelectorAll("svg").length,
+            iconFirst: title.firstElementChild?.outerHTML === MindmapPreview.icon("alert").outerHTML
+                && title.firstChild === title.firstElementChild,
+            title: (title.textContent ?? "").trim(),
         },
-        plainQuoteChanged: plain.outerHTML !== plainQuoteBefore,
-        plainQuoteIsCallout: plain.classList.contains("md-callout"),
+        plainQuoteChanged: plainQuote.outerHTML !== plainQuoteBefore,
     };
 }"""
 )
@@ -600,7 +602,7 @@ async (html) => {
 def test_decorate_markdown_when_code_and_callout(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts
 ) -> None:
-    """コードブロックに札とコピーを、Alert の引用に囲みを付ける（正常系）。"""
+    """コードブロックに札とコピーを、Alert の囲みの見出しにアイコンを付ける（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行
@@ -610,12 +612,69 @@ def test_decorate_markdown_when_code_and_callout(
         {"hasPre": True, "labels": ["bash"], "buttonNames": ["コードをコピー"]},
         {"hasPre": True, "labels": [], "buttonNames": ["コードをコピー"]},
     ]
+    assert result["nestedWraps"] == 0
     assert result["writes"] == [result["firstCode"]]
-    assert result["callout"] == {
-        "isCallout": True,
-        "hasTitle": True,
-        "hasMarker": False,
-        "line": "9",
-    }
+    assert result["callout"] == {"icons": 1, "iconFirst": True, "title": "警告"}
     assert result["plainQuoteChanged"] is False
-    assert result["plainQuoteIsCallout"] is False
+
+
+# 3 列の表・言語 bash のコードブロック・mdmark が描いた補足の囲みを持つ本文
+TABLES_OFF_HTML = (
+    '<div class="md-table-wrap"><table>'
+    "<thead><tr><th>ID</th><th>名前</th><th>説明</th></tr></thead>"
+    "<tbody><tr><td>D-1</td><td>要件を決める</td><td>要件を決めるための長い説明の文章です</td></tr></tbody>"
+    "</table></div>"
+    '<pre><code class="language-bash">echo hello</code></pre>'
+    '<div class="markdown-alert markdown-alert-note">'
+    '<p class="markdown-alert-title">補足</p><p>知っておくと早い。</p></div>'
+)
+
+# 表の見せ方を当てない（`tables` を偽）本文に当て、表・コードブロック・Alert の囲みの見出しの状態を返す JavaScript
+DECORATE_TABLES_OFF_SCRIPT = (
+    MOUNT_FUNCTIONS
+    + """
+(html) => {
+    const root = mount(html);
+    MindmapPreview.decorateMarkdown({
+        root,
+        display: {pin: true, head: true, stripes: false, fold: true},
+        fold: false,
+        tables: false,
+    });
+    const wrap = root.querySelector("div.md-code");
+    const pre = wrap.querySelector(":scope > pre");
+    const title = root.querySelector("div.markdown-alert > p.markdown-alert-title");
+    return {
+        colSizes: [...root.querySelectorAll("th, td")].map((cell) => cell.getAttribute("data-col-size")),
+        frames: root.querySelectorAll("div.md-table-frame").length,
+        pins: root.querySelectorAll("button.md-pin").length,
+        headStick: root.querySelectorAll("table.md-head-stick").length,
+        codeButtons: [...wrap.querySelectorAll("button")].filter((button) => !pre.contains(button)).length,
+        codeLabels: [...wrap.querySelectorAll("*")]
+            .filter((element) => !pre.contains(element) && !element.closest("button"))
+            .map((element) => (element.textContent ?? "").trim())
+            .filter((text) => text !== ""),
+        noteIcon: title.firstElementChild?.outerHTML === MindmapPreview.icon("note").outerHTML,
+    };
+}"""
+)
+
+
+def test_decorate_markdown_when_tables_off(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """`tables` が偽なら表の見せ方を当てず、コードと Alert は当てる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(DECORATE_TABLES_OFF_SCRIPT, TABLES_OFF_HTML)
+    # 検証
+    assert result == {
+        "colSizes": [None, None, None, None, None, None],
+        "frames": 0,
+        "pins": 0,
+        "headStick": 0,
+        "codeButtons": 1,
+        "codeLabels": ["bash"],
+        "noteIcon": True,
+    }
