@@ -136,9 +136,23 @@ namespace MindmapPreview {
   /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
   function mountMarkdown({ root, markdown }: { root: HTMLElement; markdown: string }): void {
     mdmark.mount(root, { markdown, config: { features: MDMARK_FEATURES } });
+    trimBreakNewlines(root);
   }
 
-  /** フェンスと字下げのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にする）。行の数は変えない */
+  /** 引用の中の Alert の種類を指す行（`> [!NOTE]`）。mdmark はこの行の後ろが強制改行だと Alert にしない */
+  const ALERT_MARKER_LINE = /^[ \t]*>.*\[![A-Za-z]+\]-?[ \t]*$/;
+
+  /** `br` の直後の改行の文字を取り除く（mdmark は強制改行を `<br>` と改行の文字で描くので、改行の数え方が `br` の分と二重になる） */
+  function trimBreakNewlines(root: HTMLElement): void {
+    for (const br of root.querySelectorAll("br")) {
+      const next = br.nextSibling;
+      if (next?.nodeType !== Node.TEXT_NODE || !(next.textContent ?? "").startsWith("\n")) continue;
+      next.textContent = (next.textContent ?? "").slice(1);
+      if (next.textContent === "") next.remove();
+    }
+  }
+
+  /** フェンスと字下げのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にする。Alert の種類の行は足さない）。行の数は変えない */
   export function withHardBreaks(source: string): string {
     const lines = source.split("\n");
     // 開いているフェンスの記号と、閉じるのに要る数
@@ -162,6 +176,8 @@ namespace MindmapPreview {
         const indented = codeMayStart && /^( {4}|\t)/.test(line);
         codeMayStart = line.trim() === "" || indented;
         if (indented || line.trim() === "") return line;
+        // Alert の種類の行はそのまま残す
+        if (ALERT_MARKER_LINE.test(line)) return line;
         // 次の行があり、空白だけの行でなければ強制改行にする
         const next = lines[index + 1];
         return next !== undefined && next.trim() !== "" ? `${line}  ` : line;
