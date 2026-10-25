@@ -10,7 +10,7 @@ states:
       - name: titles
         value: '{"D-12":"移し替えが途中で失敗したときの扱い"}'
   - name: AiPost
-    description: AI の書き込み。左に寄せて面の色を変え、頭に「AI」と日時。本文の中の記録にある項目の ID（D-12・T-14）はその項目を開くリンク、1 つの改行は詳細の本文と同じく段落の中で続ける
+    description: AI の書き込み。左に寄せて面の色を変え、頭に「AI」と日時。本文の中の記録にある項目の ID（D-12・T-14）はその項目を開くリンク、改行は保つ
     args:
       - name: post
         value: '{"id":"TH-1-2","author":"ai","body":"D-12 を案 B（写しから戻す）で決定にしました。\n戻す手順を書くタスクを T-14 に足しています。","created":"2026-10-12T01:24:00+00:00"}'
@@ -125,7 +125,7 @@ args:
   - name: post
     type: オブジェクト
     default: なし（`event` か `pending` を渡す）
-    description: 書き込み（『スレッドの読み取り』の `threads[].posts[]` の 1 件）。`post`・`event`・`pending` のどれか 1 つを渡す。利用者は右に寄せ、AI は左に寄せて面の色を変える。頭に書き手（「あなた」「AI」）と日時（JST）を出す。本文は詳細の本文と同じく mdmark で Markdown として描き、『Markdownの本文』を `tables`・`fold` を false にして当てる。表は書き込みの幅を超えると書き込みの中だけで横に送れる
+    description: 書き込み（『スレッドの読み取り』の `threads[].posts[]` の 1 件）。`post`・`event`・`pending` のどれか 1 つを渡す。利用者は右に寄せ、AI は左に寄せて面の色を変える。頭に書き手（「あなた」「AI」）と日時（JST）を出す。本文は詳細の文字列の値と同じく、段落の中の 1 つの改行も改行として mdmark で Markdown として描き、『Markdownの本文』を `tables`・`fold` を false にして当てる。表は書き込みの幅を超えると書き込みの中だけで横に送れる
     status: implemented
   - name: event
     type: オブジェクト
