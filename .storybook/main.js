@@ -12,10 +12,11 @@ const PREVIEW_URL = "/preview";
 // 起動する app.js（読むと画面を描き始めるので、ストーリーの画面には読まない）
 const APP_SCRIPT = "app.js";
 
-// 雛形の文字の link 要素と描画のライブラリの script 要素（版と integrity を雛形の 1 か所に保つため、雛形から取り出す）
-const TEMPLATE_TAGS = /<link rel="stylesheet" href="https:\/\/fonts[^>]*>|<script src="https:\/\/cdn[^>]*><\/script>/g;
+// 雛形の文字と mdmark の CSS の link 要素、mdmark の import map、描画のライブラリの script 要素（版と integrity を雛形の 1 か所に保つため、雛形から取り出す）
+const TEMPLATE_TAGS =
+  /<link rel="stylesheet" href="https:\/\/(?:fonts|cdn)[^>]*>|<script type="importmap">[^<]*<\/script>|<script src="https:\/\/cdn[^>]*><\/script>/g;
 
-/** 雛形から、文字と描画のライブラリを読むタグを取り出す */
+/** 雛形から、文字・mdmark の CSS と import map・描画のライブラリを読むタグを取り出す */
 function templateTags() {
   const template = readFileSync(`${PREVIEW_DIR}/template.html`, "utf8");
   return (template.match(TEMPLATE_TAGS) ?? []).join("\n");

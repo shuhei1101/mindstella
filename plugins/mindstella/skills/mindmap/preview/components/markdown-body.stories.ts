@@ -8,6 +8,8 @@ type Args = {
   source: string;
   display: MindmapPreview.BodyView;
   fold: boolean;
+  /** 表の見せ方を当てるか（省くと当てる） */
+  tables?: boolean;
   /** 本文のスクロール領域の高さ（px）。省くと領域を作らない */
   height?: number;
 };
@@ -87,11 +89,11 @@ const CALLOUT_SOURCE = [
 const { h } = MindmapPreview;
 
 /** 表と見出しを持つ本文に、ストーリーの引数で見せ方を当てる。高さを渡したときは、本文のスクロール領域に入れて表の見出しの固定を受け付ける */
-function build({ source, display, fold, height }: Args): HTMLElement {
+function build({ source, display, fold, tables, height }: Args): HTMLElement {
   const root = MindmapPreview.renderMarkdown(source);
   // 見出しの名前（`data-heading`）は、詳細の本文と同じく先に付ける
   MindmapPreview.linkHeadings({ root, onHeading: () => undefined, onChangeSet: () => undefined });
-  MindmapPreview.decorateMarkdown({ root, display, fold });
+  MindmapPreview.decorateMarkdown({ root, display, fold, tables });
   const stage = h({ tag: "div", attrs: { class: "story-stage" }, children: [root] });
   if (height === undefined) return stage;
   const scroller = h({ tag: "div", attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "詳細の本文" }, children: [root] });
@@ -208,6 +210,11 @@ export const CodeCopied: Story = {
 
 /** `> [!NOTE]`・`[!TIP]`・`[!IMPORTANT]`・`[!WARNING]`・`[!CAUTION]` の引用を、種類の色の薄い面と細い枠で囲み、見出しにアイコンと「補足」「ヒント」「重要」「警告」「注意」を出す。印の無い引用は今の見た目のまま */
 export const Callouts: Story = { args: { source: CALLOUT_SOURCE } };
+
+/** スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表の列の幅・フェード・固定・見出しの固定とセクションの開閉は当てない */
+export const InThreadPost: Story = {
+  args: { source: [CODE_SOURCE, CALLOUT_SOURCE, tableSource(3)].join("\n"), fold: false, tables: false },
+};
 
 /** 画面の幅 390px。列の固定と固定のボタンを出さず、見出しの固定は残す。表は表の中だけで横に送れる */
 export const Narrow: Story = {
