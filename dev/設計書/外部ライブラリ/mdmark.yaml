@@ -53,7 +53,7 @@ verification:
   state: 済
   date: '2026-10-25'
   detail: 'PR #342 の PoC（PoC PR #343）で、jsDelivr の `dist/index.js` を名前空間のスクリプトから `import()` で読み、Chromium 151 で `mount` が見出し・段落・リスト・表・コード・引用を描くこと、`config.features` で重なる機能を止められることを確かめた。import map の `integrity` に下の値を書くと読め、違う値では読めないことも確かめた'
-license: MIT（v0.7.0 のリポジトリには LICENSE と `package.json` の `license` が無く、[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140) で追加する）。同梱する依存（markdown-it・sanitize-html ほか）のライセンスは `dist/THIRD_PARTY_LICENSES.txt` に並ぶ。配る書き出しに入れるときは、名前・版・著作権の表示・ライセンスの本文と、`THIRD_PARTY_LICENSES.txt` の本文を残す
+license: MIT（v0.7.0 のリポジトリには LICENSE と `package.json` の `license` が無く、[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140) で追加する。v0.7.0 を使う間は、MIT の本文を `plugins/mindstella/skills/mindmap/preview/licenses/mdmark-LICENSE.txt` に置き、バージョンを上げたら見直す）。同梱する依存（markdown-it・sanitize-html ほか）のライセンスは `dist/THIRD_PARTY_LICENSES.txt` に並ぶ。配る書き出しに入れるときは、名前・版・著作権の表示・ライセンスの本文と、`THIRD_PARTY_LICENSES.txt` の本文を残す
 official_url: https://github.com/shuhei1101/mdmark
 selection:
   decision: 'Issue #339 で、プレビューの描画を mdmark に置き換えると決まっている。重なる機能（用語のツールチップ・コメント・差分・印刷ほか）は設定で止める（PR #342 の要件の案 A）'
