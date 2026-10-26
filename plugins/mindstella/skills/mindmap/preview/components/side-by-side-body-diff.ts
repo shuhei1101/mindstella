@@ -124,8 +124,14 @@ namespace MindmapPreview {
       };
       const entry: PendingRow = { leftCell: cell(row.left), rightCell: cell(row.right), changed, left: row.left, right: row.right };
       pending.push(entry);
-      // 前に空行を積んで、描いた要素の行の印を本文の中の行に揃える
-      const render = (block: SideBlock): HTMLElement => renderMarkdown(`${"\n".repeat(block.start - 1)}${block.raw}`);
+      // 描いた要素の行の印は塊の先頭を 1 行目として数えるので、塊の開始行から 1 を引いた数を足して本文の行に揃える
+      const render = (block: SideBlock): HTMLElement => {
+        const rendered = renderMarkdown(block.raw);
+        for (const element of rendered.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)) {
+          element.setAttribute(LINE_ATTR, String(Number(element.getAttribute(LINE_ATTR)) + block.start - 1));
+        }
+        return rendered;
+      };
       for (const block of row.left) pieces.push({ cell: entry.leftCell, block, lines: beforeLines, op: "del", rendered: render(block) });
       for (const block of row.right) pieces.push({ cell: entry.rightCell, block, lines: afterLines, op: "add", rendered: render(block) });
     }

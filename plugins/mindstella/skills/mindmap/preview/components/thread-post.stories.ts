@@ -59,6 +59,47 @@ export const AiPost: Story = {
   },
 };
 
+/** AI の書き込みの Markdown を、記法の文字を出さずに描く。見出しは `h2`、表は `table`、`python` のコードは言語の札とコピーのボタンを持つ `pre`、`mermaid` は図、`> [!NOTE]` は「補足」の囲み。段落の中の D-1 は項目を開くボタン。生の HTML の `onerror` は取り除かれて動かない */
+export const MarkdownPost: Story = {
+  args: {
+    post: {
+      id: "TH-1-1",
+      author: "ai",
+      body: [
+        "## 比べた結果",
+        "",
+        "D-1 は案 A が合う。",
+        "",
+        "| 案 | 結果 |",
+        "| --- | --- |",
+        "| A | 成立 |",
+        "",
+        "```python",
+        'print("ok")',
+        "```",
+        "",
+        "```mermaid",
+        "flowchart LR",
+        "  A --> B",
+        "```",
+        "",
+        "> [!NOTE]",
+        "> 案 B は試していない。",
+        "",
+        '<img src="x" onerror="window.injected = true">',
+      ].join("\n"),
+      created: "2026-10-12T01:24:00+00:00",
+      seen: true,
+    },
+    titles: (id) => (id === "D-1" ? "描画のライブラリ" : null),
+  },
+};
+
+/** レビュー中の返信の Markdown。破線の枠の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない */
+export const PendingMarkdown: Story = {
+  args: { pending: { ...PENDING, id: "C-45", body: "**起票してよい**", created: "2026-10-12T05:30:00+00:00" } },
+};
+
 /** 本文の中の記録に無い ID（D-99）は文字のまま出す */
 export const UnknownId: Story = {
   args: {

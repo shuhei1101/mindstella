@@ -1,17 +1,73 @@
 "use strict";
-// 描画のライブラリ（marked・DOMPurify・elkjs・mermaid）と差分のライブラリ（jsdiff）の有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
+// 描画のライブラリ（mdmark・marked・elkjs・mermaid）と差分のライブラリ（jsdiff）の読み込み・有無と呼び出し、選んだ範囲から箇所を求める処理。読めなかったときは名前を出し、代わりの読み込みはしない。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 描画のライブラリの名前 → 読めたときに置かれるグローバルの名前 */
     MindmapPreview.LIBRARIES = {
+        mdmark: "mdmark",
         marked: "marked",
-        DOMPurify: "DOMPurify",
         elkjs: "ELK",
         mermaid: "mermaid",
         jsdiff: "Diff",
     };
     /** 図の入れ物が原文を持つ属性の名前 */
     MindmapPreview.DIAGRAM_SOURCE_ATTR = "data-source";
+    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能のオフ（`code` は既定のまま） */
+    MindmapPreview.MDMARK_FEATURES = {
+        glossary: false,
+        backlinks: false,
+        comments: false,
+        print: false,
+        anchors: false,
+        sections: false,
+        table: false,
+        toc: false,
+        views: false,
+    };
+    /** 配る書き出しが mdmark の JavaScript を中身に持つ要素の id */
+    const MDMARK_EMBEDDED_ID = "mindmap-mdmark";
+    /** 雛形の import map（`script[type="importmap"]`）の `integrity` のただ 1 つのキー（mdmark の JavaScript の URL）を返す。import map が無いか読めないか、キーが 1 つでないときは null */
+    function mdmarkUrlFromImportMap() {
+        const script = document.querySelector('script[type="importmap"]');
+        if (script === null)
+            return null;
+        try {
+            const keys = Object.keys(JSON.parse(script.textContent ?? "").integrity ?? {});
+            return keys.length === 1 ? (keys[0] ?? null) : null;
+        }
+        catch {
+            // JSON として読めない import map は、読めなかったものとして扱う
+            return null;
+        }
+    }
+    /** mdmark の JavaScript を読み、読めたらグローバルの `mdmark` に置く。配る書き出しは中身を持つ要素（`#mindmap-mdmark`）を Blob の URL にして読み、サーバーの配信は import map の URL をブラウザが `integrity` で確かめて読む。読めなくても拒否せず解決する（読めなかったことは `missingLibraries` が伝える） */
+    async function loadMdmark() {
+        const embedded = document.getElementById(MDMARK_EMBEDDED_ID);
+        try {
+            let loaded;
+            if (embedded !== null) {
+                const url = URL.createObjectURL(new Blob([embedded.textContent ?? ""], { type: "text/javascript" }));
+                try {
+                    loaded = (await import(url));
+                }
+                finally {
+                    URL.revokeObjectURL(url);
+                }
+            }
+            else {
+                const url = mdmarkUrlFromImportMap();
+                // import map が無いか読めない
+                if (url === null)
+                    return;
+                loaded = (await import(url));
+            }
+            Reflect.set(window, MindmapPreview.LIBRARIES.mdmark, loaded);
+        }
+        catch {
+            // `import()` の拒否（取れない・`integrity` が合わない）は、グローバルを置かずに解決する
+        }
+    }
+    MindmapPreview.loadMdmark = loadMdmark;
     /** 渡したライブラリのうち、グローバルが無いものの名前を返す（渡した順） */
     function missingLibraries(names) {
         return names.filter((name) => Reflect.get(window, MindmapPreview.LIBRARIES[name]) === undefined);
@@ -42,75 +98,84 @@ var MindmapPreview;
     const LEADING_NEWLINE_TAGS = ["PRE", "TEXTAREA", "LISTING"];
     /** 項目の値を描いた要素が持つ、項目のキーのパスの属性 */
     MindmapPreview.VALUE_KEY_ATTR = "data-key";
+    /** mdmark が描いたブロックが持つ、元の Markdown のブロックの開始の行（0 始まり）の属性 */
+    const SOURCE_LINE_ATTR = "data-source-line";
+    /** 元の行の印（`data-line-start`）を付けるブロックの要素 */
+    const LINE_MARK_TAGS = new Set(["H1", "H2", "H3", "H4", "H5", "H6", "P", "LI", "TR", "PRE"]);
+    /** 開始の行の行頭の空白・引用の `>`・リストのマーカーを除いた先が、フェンス（```` ``` ```` か `~~~`）で始まる行 */
+    const FENCE_LINE = /^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/;
     /** 改行の数を返す */
     function countNewlines(text) {
         return text.split("\n").length - 1;
     }
-    /** token の並びに、先頭の行から raw の改行を足し進めた行を持たせる（リストの項目・引用の中も同じ） */
-    function assignLines({ tokens, start }) {
-        let line = start;
-        for (const token of tokens) {
-            token.line = line;
-            if (token.type === "list" && token.items) {
-                assignLines({ tokens: token.items, start: line });
-            }
-            else if ((token.type === "list_item" || token.type === "blockquote") && token.tokens) {
-                // 項目の中の token は字下げを外した raw を持つが、改行の数は元と同じ
-                assignLines({ tokens: token.tokens, start: line });
-            }
-            line += countNewlines(token.raw);
+    /** mdmark が付けた `data-source-line`（0 始まり）を元の行の印 `data-line-start`（1 始まり。フェンスのコードは中身の最初の行）に読み替え、全ての `data-source-line` を外す。段落を持つリストの項目は中の段落が印を持つので付けない */
+    function convertSourceLines({ root, source }) {
+        const lines = source.split("\n");
+        for (const element of root.querySelectorAll(`[${SOURCE_LINE_ATTR}]`)) {
+            const start = Number(element.getAttribute(SOURCE_LINE_ATTR));
+            element.removeAttribute(SOURCE_LINE_ATTR);
+            if (!LINE_MARK_TAGS.has(element.tagName))
+                continue;
+            if (element.tagName === "LI" && element.querySelector(":scope > p") !== null)
+                continue;
+            const fence = element.tagName === "PRE" && FENCE_LINE.test(lines[start] ?? "") ? 1 : 0;
+            element.setAttribute(MindmapPreview.LINE_ATTR, String(start + 1 + fence));
         }
     }
-    /** token が持つ行を返す */
-    function lineOf(token) {
-        return token.line;
+    /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
+    function mountMarkdown({ root, markdown }) {
+        mdmark.mount(root, { markdown, config: { features: MindmapPreview.MDMARK_FEATURES } });
+        trimBreakNewlines(root);
     }
-    /** 描いた HTML の最初の開きタグに、行の印を足す */
-    function withLine(html, line) {
-        if (line === undefined)
-            return html;
-        return html.replace(/^<(\w+)/, `<$1 ${MindmapPreview.LINE_ATTR}="${line + 1}"`);
+    /** 引用の `>` を除いた先が `[!{英字}]` だけの Alert の種類の行（後ろに `-` を許す）。mdmark はこの行の後ろが強制改行だと Alert にしない */
+    const ALERT_MARKER_LINE = /^[ \t]*(?:>[ \t]*)+\[![A-Za-z]+\]-?[ \t]*$/;
+    /** `br` の直後の改行の文字を取り除く（mdmark は強制改行を `<br>` と改行の文字で描くので、改行の数え方が `br` の分と二重になる） */
+    function trimBreakNewlines(root) {
+        for (const br of root.querySelectorAll("br")) {
+            const next = br.nextSibling;
+            if (next?.nodeType !== Node.TEXT_NODE || !(next.textContent ?? "").startsWith("\n"))
+                continue;
+            next.textContent = (next.textContent ?? "").slice(1);
+            if (next.textContent === "")
+                next.remove();
+        }
     }
-    /** 本文の Markdown を、空行を持たないブロックごとに行の印を付けて HTML に描く */
-    function renderWithLines(source) {
-        const tokens = marked.lexer(source);
-        assignLines({ tokens: tokens, start: 0 });
-        const renderer = new marked.Renderer();
-        const base = {
-            heading: renderer.heading.bind(renderer),
-            paragraph: renderer.paragraph.bind(renderer),
-            code: renderer.code.bind(renderer),
-            listitem: renderer.listitem.bind(renderer),
-            table: renderer.table.bind(renderer),
-        };
-        renderer.heading = (token) => withLine(base.heading(token), lineOf(token));
-        renderer.paragraph = (token) => withLine(base.paragraph(token), lineOf(token));
-        // mermaid の図は印を付けない（図の中の選択を本文の外として扱う）
-        // フェンスで囲んだコードは、中身がフェンスの次の行から始まる
-        renderer.code = (token) => {
-            if (token.lang === "mermaid")
-                return base.code(token);
-            const line = lineOf(token);
-            const fence = token.codeBlockStyle === "indented" ? 0 : 1;
-            return withLine(base.code(token), line === undefined ? undefined : line + fence);
-        };
-        // 段落を持つ項目は中の段落が印を持つので、段落を持たない項目だけ li に付ける
-        renderer.listitem = (item) => (item.loose ? base.listitem(item) : withLine(base.listitem(item), lineOf(item)));
-        // 表は行ごとに 1 行。見出しの行の次に区切りの行がある
-        renderer.table = (token) => {
-            const start = lineOf(token);
-            if (start === undefined)
-                return base.table(token);
-            let row = 0;
-            return base.table(token).replace(/<tr>/g, () => {
-                const line = row === 0 ? start : start + 1 + row;
-                row += 1;
-                return `<tr ${MindmapPreview.LINE_ATTR}="${line + 1}">`;
-            });
-        };
-        return marked.parser(tokens, { renderer });
+    /** フェンスと字下げのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にする。Alert の種類の行は足さない）。行の数は変えない */
+    function withHardBreaks(source) {
+        const lines = source.split("\n");
+        // 開いているフェンスの記号と、閉じるのに要る数
+        let fence = null;
+        // 直前の行が空行か字下げのコードの行（字下げのコードを始められる）
+        let codeMayStart = true;
+        return lines
+            .map((line, index) => {
+            const stripped = line.replace(/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*/, "");
+            // フェンスの中と、フェンスの行（開く行・閉じる行）はそのまま残す
+            if (fence !== null) {
+                if (new RegExp(`^${fence.symbol}{${fence.count},}[ \\t]*$`).test(stripped))
+                    fence = null;
+                return line;
+            }
+            const opened = /^(`{3,}|~{3,})/.exec(stripped);
+            if (opened !== null) {
+                fence = { symbol: opened[1][0], count: opened[1].length };
+                return line;
+            }
+            // 字下げのコードの行はそのまま残す
+            const indented = codeMayStart && /^( {4}|\t)/.test(line);
+            codeMayStart = line.trim() === "" || indented;
+            if (indented || line.trim() === "")
+                return line;
+            // Alert の種類の行はそのまま残す
+            if (ALERT_MARKER_LINE.test(line))
+                return line;
+            // 次の行があり、空白だけの行でなければ強制改行にする
+            const next = lines[index + 1];
+            return next !== undefined && next.trim() !== "" ? `${line}  ` : line;
+        })
+            .join("\n");
     }
-    MindmapPreview.renderWithLines = renderWithLines;
+    MindmapPreview.withHardBreaks = withHardBreaks;
     /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */
     function linesBefore({ block, node, offset }) {
         // 表の行は 1 行で、セルの間の空白の改行は数えない
@@ -247,23 +312,25 @@ var MindmapPreview;
         const element = node instanceof Element ? node : node.parentElement;
         return element?.closest(`[${MindmapPreview.VALUE_KEY_ATTR}]`) ?? null;
     }
-    /** 項目の文字列の値の Markdown を、段落の中の改行も改行にして無害化した要素にする。marked か DOMPurify が読めないときは、改行を残した文字のままの要素にする（知らせは本文の描画が出す） */
+    /** 項目の文字列の値の Markdown を、段落の中の改行も改行にして mdmark で描いた要素にする。mdmark が読めないときは、改行を残した文字のままの要素にする（知らせは本文の描画が出す） */
     function renderValue(source) {
-        if (missingLibraries(["marked", "DOMPurify"]).length > 0) {
+        if (missingLibraries(["mdmark"]).length > 0) {
             return MindmapPreview.h({ tag: "span", attrs: { class: "md-value-raw" }, children: [source] });
         }
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "md md-value" } });
-        // 描いた HTML は無害化してから差し込む（記録は利用者のもの）。行の印は付けず、mermaid のコードブロックも図にしない
-        root.innerHTML = DOMPurify.sanitize(marked.parse(source, { async: false, breaks: true }));
+        // mdmark は描くときに無害化する（記録は利用者のもの）。行の印は付けず、mermaid のコードブロックも図にしない
+        mountMarkdown({ root, markdown: withHardBreaks(source) });
+        for (const element of root.querySelectorAll(`[${SOURCE_LINE_ATTR}]`))
+            element.removeAttribute(SOURCE_LINE_ATTR);
         return root;
     }
     MindmapPreview.renderValue = renderValue;
-    /** 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に置き換える */
+    /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む */
     function renderMarkdown(source) {
         const root = MindmapPreview.h({ tag: "div", attrs: { class: "md" } });
-        const missing = missingLibraries(["marked", "DOMPurify"]);
+        const missing = missingLibraries(["mdmark"]);
         const hasDiagram = source.includes("```mermaid");
-        // marked か DOMPurify が読めていない: 知らせと原文を出す
+        // mdmark が読めていない: 知らせと原文を出す
         if (missing.length > 0) {
             const names = [...missing];
             if (hasDiagram && missingLibraries(["mermaid"]).length > 0)
@@ -271,8 +338,9 @@ var MindmapPreview;
             root.append(libraryNotice({ names, what: "本文" }), MindmapPreview.h({ tag: "pre", attrs: { class: "md-raw" }, children: [source] }));
             return root;
         }
-        // 描いた HTML は無害化してから差し込む（記録は利用者のもの）
-        root.innerHTML = DOMPurify.sanitize(renderWithLines(source));
+        // mdmark は描くときに無害化する（記録は利用者のもの）
+        mountMarkdown({ root, markdown: source });
+        convertSourceLines({ root, source });
         // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える
         for (const code of root.querySelectorAll("code.language-mermaid")) {
             const original = code.textContent ?? "";

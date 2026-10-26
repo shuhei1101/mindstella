@@ -32,57 +32,85 @@ namespace MindmapPreview {
     };
   };
 
-  /** 本文の切り分けの 1 部分（文字か、記録にある項目の ID か、記録にあるまとまりを指すリンク） */
-  export type PostBodyPart = { text: string } | { id: string; title: string } | { set: string; label: string; summary: string };
-
   /** 本文の中の項目の ID（例 D-1・T-12・A-3） */
   const ITEM_ID_PATTERN = /\b[A-Z]{1,2}-\d+\b/g;
 
-  /** 本文の中の `[文言](#...)` のリンク（文言は 1 行、`#` の後ろは空白と `)` を含まない） */
-  const HASH_LINK_PATTERN = /\[([^\]\n]+)\]\(#([^)\s]*)\)/g;
+  /** 項目の ID をボタンにしない文字の置き場所（コード・リンク・ボタン・図・HTML の本文の枠の中） */
+  const ITEM_ID_SKIPPED = `pre, code, a, button, figure.diagram, .${HTML_BLOCK_CLASS}`;
 
-  /** 文字の中の項目の ID のうち、記録にあるものだけを切り出す（残りは文字のまま、前後の文字が無ければ部分を作らない） */
-  function splitItemIds(text: string, titles: (id: string) => string | null): PostBodyPart[] {
-    const parts: PostBodyPart[] = [];
-    let last = 0;
-    for (const match of text.matchAll(ITEM_ID_PATTERN)) {
-      const title = titles(match[0]);
-      // 記録に無い ID（スレッドの ID を含む）は文字のまま残す
-      if (title === null) continue;
-      const before = text.slice(last, match.index);
-      if (before !== "") parts.push({ text: before });
-      parts.push({ id: match[0], title });
-      last = match.index + match[0].length;
-    }
-    const rest = text.slice(last);
-    if (rest !== "") parts.push({ text: rest });
-    return parts;
-  }
-
-  /** 書き込みの本文を、文字の部分・記録にある項目の ID の部分・記録にあるまとまりを指すリンクの部分に切り分ける（リンクの部分を `[文言](#...)` に戻してつなぐと元の本文になる） */
-  export function splitPostBody(
-    body: string,
-    titles: (id: string) => string | null,
-    changeSets: (id: string) => string | null = () => null,
-  ): PostBodyPart[] {
-    const parts: PostBodyPart[] = [];
-    let last = 0;
-    for (const match of body.matchAll(HASH_LINK_PATTERN)) {
-      // `diff` だけを読む（他の引数は無視する）。記録にあるまとまりを指さないリンクは文字のまま残す
-      const set = new URLSearchParams(match[2]).get("diff");
+  /** 描いた本文の中の `#` で始まるリンクのうち、記録にあるまとまりを指すもの（`diff` の値を `changeSets` で引けたもの）をまとまりのリンクにし、それ以外は中の文字に置き換える。押したときは既定の動作を止め、まとまりの ID を `onChangeSet` に知らせる。`#` で始まらないリンクは触らない */
+  function linkChangeSets({
+    root,
+    changeSets,
+    onChangeSet,
+  }: {
+    root: HTMLElement;
+    changeSets: (id: string) => string | null;
+    onChangeSet: (id: string) => void;
+  }): void {
+    for (const link of root.querySelectorAll<HTMLAnchorElement>("a")) {
+      const href = link.getAttribute("href") ?? "";
+      if (!href.startsWith("#")) continue;
+      // `diff` だけを読む（他の引数は無視する）
+      const set = new URLSearchParams(href.slice(1)).get("diff");
       const summary = set === null ? null : changeSets(set);
-      if (set === null || summary === null) continue;
-      parts.push(...splitItemIds(body.slice(last, match.index), titles));
-      parts.push({ set, label: match[1], summary });
-      last = match.index + match[0].length;
+      // 記録にあるまとまりを指さないリンクは、リンクにせず文言だけを出す
+      if (set === null || summary === null) {
+        link.replaceWith(...link.childNodes);
+        continue;
+      }
+      link.className = "setlink";
+      link.setAttribute("href", `#${new URLSearchParams({ diff: set }).toString()}`);
+      link.title = summary;
+      link.setAttribute("data-focus", `post-set:${set}`);
+      link.addEventListener("click", (event) => {
+        // ハッシュの書き換えは使う側に任せる
+        event.preventDefault();
+        onChangeSet(set);
+      });
     }
-    parts.push(...splitItemIds(body.slice(last), titles));
-    // 部分が 1 つも無い（空の本文）
-    if (parts.length === 0) parts.push({ text: "" });
-    return parts;
   }
 
-  /** 本文（改行を保った文字。項目の ID はその項目を開くボタン、記録にあるまとまりを指すリンクはまとまりのリンク） */
+  /** 描いた本文の文字のうち、記録にある項目の ID を、その項目を開くボタンにする（コード・リンク・ボタン・図・HTML の本文の枠の中は飛ばす。記録に無い ID とスレッドの ID は文字のまま） */
+  function buttonizeItemIds({
+    root,
+    titles,
+    onOpen,
+  }: {
+    root: HTMLElement;
+    titles: (id: string) => string | null;
+    onOpen: (id: string) => void;
+  }): void {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => (node.parentElement?.closest(ITEM_ID_SKIPPED) !== null ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    const nodes: Text[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+    for (const node of nodes) {
+      const text = node.textContent ?? "";
+      const parts: (Node | string)[] = [];
+      let last = 0;
+      for (const match of text.matchAll(ITEM_ID_PATTERN)) {
+        const title = titles(match[0]);
+        // 記録に無い ID（スレッドの ID を含む）は文字のまま残す
+        if (title === null) continue;
+        parts.push(
+          text.slice(last, match.index),
+          h({
+            tag: "button",
+            attrs: { class: "idlink", type: "button", title, "data-focus": `post-id:${match[0]}`, onclick: () => onOpen(match[0]) },
+            children: [match[0]],
+          }),
+        );
+        last = match.index + match[0].length;
+      }
+      if (parts.length === 0) continue;
+      parts.push(text.slice(last));
+      node.replaceWith(...parts.filter((part) => part !== ""));
+    }
+  }
+
+  /** 本文を、段落の中の改行を強制改行にして Markdown として描いた要素（項目の ID はその項目を開くボタン、記録にあるまとまりを指すリンクはまとまりのリンク）。mdmark が読めないときは、本文を文字のまま改行を保って持つ要素 */
   export function postBody({
     body,
     titles,
@@ -96,37 +124,21 @@ namespace MindmapPreview {
     className: "post-body" | "review-body";
     on: { openId: (id: string) => void; changeSet: (id: string) => void };
   }): HTMLElement {
-    return h({
-      tag: "p",
-      attrs: { class: className },
-      children: splitPostBody(body, titles, changeSets).map((part) => {
-        if ("id" in part) {
-          return h({
-            tag: "button",
-            attrs: { class: "idlink", type: "button", title: part.title, "data-focus": `post-id:${part.id}`, onclick: () => on.openId(part.id) },
-            children: [part.id],
-          });
-        }
-        if ("set" in part) {
-          return h({
-            tag: "a",
-            attrs: {
-              class: "setlink",
-              href: `#${new URLSearchParams({ diff: part.set }).toString()}`,
-              title: part.summary,
-              "data-focus": `post-set:${part.set}`,
-              onclick: (event: Event) => {
-                // ハッシュの書き換えは使う側に任せる
-                event.preventDefault();
-                on.changeSet(part.set);
-              },
-            },
-            children: [part.label],
-          });
-        }
-        return part.text;
-      }),
-    });
+    // 読めない: 知らせは出さず、項目の ID とまとまりのリンクも作らない
+    if (missingLibraries(["mdmark"]).length > 0) return h({ tag: "p", attrs: { class: className }, children: [body] });
+    const root = withoutLineMarks(renderMarkdown(withHardBreaks(body)));
+    root.classList.add(className);
+    // 図は描き終えるのを待たずに返す
+    void renderDiagrams(root);
+    for (const block of root.querySelectorAll<HTMLElement>(`.${HTML_BLOCK_CLASS}`)) {
+      const frame = htmlBodyFrame({ source: block.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "", selectable: false, label: "html のコードブロック" });
+      frame.classList.add(HTML_BLOCK_CLASS);
+      block.replaceWith(frame);
+    }
+    decorateMarkdown({ root, fold: false, tables: false });
+    linkChangeSets({ root, changeSets, onChangeSet: on.changeSet });
+    buttonizeItemIds({ root, titles, onOpen: on.openId });
+    return root;
   }
 
   /** 状態の記録（枠の無い 1 行に、書き手・したこと・日時と、あれば理由） */

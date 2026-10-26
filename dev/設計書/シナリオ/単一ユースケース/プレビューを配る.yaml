@@ -44,12 +44,13 @@ scenarios:
       - 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
       - どの画面にも、読めなかったライブラリの知らせが出ない
       - 検討事項のマップに D-1 と D-2 が描かれる
-      - A-1 の詳細パネルの本文に、表が `table` 要素で、mermaid の図が SVG で描かれる
+      - A-1 の詳細パネルの本文が mdmark で描かれ（本文の要素が class `mdmark` を持つ）、表が `table` 要素で、mermaid の図が SVG で描かれる
       - ネットワークに玉が描かれる
       - トップバーに用語集のタブが無く、ネットワークに渡る見た目が `starlight` である
       - トップバーの表示の設定でパネルが開き、「ワークスペースの既定にする」が無い
       - 画面に、項目の追加・編集・削除、回答・コメントの送信、設定の保存のボタンが無い
-      - 書き出した HTML の中に、marked・DOMPurify・elkjs・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前がある
+      - 書き出した HTML の中に、mdmark・marked・elkjs・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前がある
+      - 書き出した HTML の中に、mdmark が同梱するライブラリのライセンスの本文（mdmark の `dist/THIRD_PARTY_LICENSES.txt`）がある
       - 書き出した HTML の中に、elkjs のソースコードの入手先（リポジトリと版のタグの URL）がある
     test: test_normal
   - name: 異常シナリオ（YAML がスキーマに合わない）

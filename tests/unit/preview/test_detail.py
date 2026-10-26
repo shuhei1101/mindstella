@@ -9,6 +9,7 @@ from playwright.sync_api import Page, expect
 
 from .fixture_types import (
     LoadLibrary,
+    LoadMdmark,
     LoadPreviewScripts,
     LoadPreviewStyles,
     MakeData,
@@ -69,6 +70,7 @@ def test_detail_panel_when_diff_highlight(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -87,7 +89,7 @@ def test_detail_panel_when_diff_highlight(
     highlight = {"kind": "body", "start": 3, "end": 3, "text": "今の 3 行目の段落"}
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -163,6 +165,7 @@ def test_detail_panel_when_old_set_after_body_edit(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -175,7 +178,7 @@ def test_detail_panel_when_old_set_after_body_edit(
     highlight = {"kind": "body", "start": 5, "end": 5, "text": "V-1 の 3 行目の段落"}
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -223,6 +226,7 @@ def test_detail_panel_when_diff_editor_only(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -241,7 +245,7 @@ def test_detail_panel_when_diff_editor_only(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -299,6 +303,7 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -310,7 +315,7 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
@@ -351,6 +356,7 @@ def test_detail_panel_when_diff_renders_before_sequence(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -362,7 +368,7 @@ def test_detail_panel_when_diff_renders_before_sequence(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
@@ -484,6 +490,7 @@ def test_detail_panel_when_heading(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     heading: str,
@@ -500,7 +507,7 @@ def test_detail_panel_when_heading(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -574,7 +581,7 @@ async ({data}) => {
 def test_detail_panel_when_decision_order(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -595,8 +602,7 @@ def test_detail_panel_when_decision_order(
     )
     data = make_data(decisions=[decision], bodies={"D-1.md": "本文の段落\n"})
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(DECISION_ORDER_SCRIPT, {"data": data})
     # 検証
@@ -681,7 +687,7 @@ async ({data, id}) => {
 def test_detail_panel_when_recommended(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -693,8 +699,7 @@ def test_detail_panel_when_recommended(
     # 準備
     data = make_data(decisions=[make_item(item_id, status=status, options=options)])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(RECOMMENDED_SCRIPT, {"data": data, "id": item_id})
     # 検証
@@ -790,7 +795,7 @@ async ({data, id, keys}) => {
 def test_detail_panel_when_markdown_values(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -809,8 +814,7 @@ def test_detail_panel_when_markdown_values(
         }
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         MARKDOWN_VALUES_SCRIPT, {"data": data, "id": item_id, "keys": keys}
@@ -841,7 +845,7 @@ async ({data, id}) => {
 def test_detail_panel_when_option_list_values(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -864,8 +868,7 @@ def test_detail_panel_when_option_list_values(
         ]
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"}
@@ -956,7 +959,7 @@ async ({data, reviews, removed, editing, editingIn}) => {
 def test_detail_panel_when_review_rows(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -964,8 +967,7 @@ def test_detail_panel_when_review_rows(
     # 準備
     data = make_data(decisions=[make_item("D-1", status="未決定")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         REVIEW_ROWS_SCRIPT,
@@ -1034,7 +1036,7 @@ READ_FULL_EDIT_SCRIPT = """() => ({
 def test_detail_panel_when_review_escape_in_full(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1042,8 +1044,7 @@ def test_detail_panel_when_review_escape_in_full(
     # 準備
     data = make_data(decisions=[make_item("D-1", status="未決定")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     has_field = preview_page.evaluate(
         OPEN_FULL_EDIT_SCRIPT,
         {"data": data, "reviews": [_review_item("C-1", "案 A にする")]},
@@ -1061,7 +1062,7 @@ def test_detail_panel_when_review_escape_in_full(
 def test_detail_panel_when_review_editing_in_list(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1069,8 +1070,7 @@ def test_detail_panel_when_review_editing_in_list(
     # 準備
     data = make_data(decisions=[make_item("D-1", status="未決定")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         REVIEW_ROWS_SCRIPT,
@@ -1178,6 +1178,7 @@ def test_detail_panel_when_withdrawn(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -1200,7 +1201,7 @@ def test_detail_panel_when_withdrawn(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -1285,6 +1286,7 @@ def test_detail_panel_when_diff_inline_words(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1296,7 +1298,7 @@ def test_detail_panel_when_diff_inline_words(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1334,6 +1336,7 @@ def test_detail_panel_when_diff_lines_unpaired(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1345,7 +1348,7 @@ def test_detail_panel_when_diff_lines_unpaired(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1371,6 +1374,7 @@ def test_detail_panel_when_diff_inline_words_keep_links(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1386,7 +1390,7 @@ def test_detail_panel_when_diff_inline_words_keep_links(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1413,6 +1417,7 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1424,7 +1429,7 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1479,6 +1484,7 @@ def test_detail_panel_when_diff_removed_before_table(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1490,7 +1496,7 @@ def test_detail_panel_when_diff_removed_before_table(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1523,6 +1529,7 @@ def test_detail_panel_when_diff_raw_inline_words(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1534,7 +1541,7 @@ def test_detail_panel_when_diff_raw_inline_words(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
     # 実行
@@ -1620,6 +1627,7 @@ def test_detail_panel_when_diff_key_words(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1640,7 +1648,7 @@ def test_detail_panel_when_diff_key_words(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -1669,10 +1677,13 @@ def test_detail_panel_when_diff_key_words(
     assert result["allWords"] == 6
 
 
-def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
-    """渡した名前の描画のライブラリを、ページに読む。"""
+def _load_libraries(load_library: LoadLibrary, load_mdmark: LoadMdmark, names: list[str]) -> None:
+    """渡した名前の描画のライブラリを、ページに読む（mdmark は `loadMdmark` で読む）。"""
     for name in names:
-        load_library(name)
+        if name == "mdmark":
+            load_mdmark()
+        else:
+            load_library(name)
 
 
 @pytest.mark.parametrize(
@@ -1683,7 +1694,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
             {"lead": None},
             "[data-key=\"lead\"]",
             [{"was": "前の値: （なし）", "now": "今の値: 要件は来週までに決める。"}],
-            ["marked", "DOMPurify", "jsdiff"],
+            ["marked", "mdmark", "jsdiff"],
             id="added",
         ),
         pytest.param(
@@ -1691,7 +1702,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
             {"lead": "要件は来週までに決める。"},
             "[data-key=\"lead\"]",
             [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 予算を承認する"}],
-            ["marked", "DOMPurify", "jsdiff"],
+            ["marked", "mdmark", "jsdiff"],
             id="unrelated",
         ),
         pytest.param(
@@ -1702,7 +1713,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
                 {"was": "前の値: 2026-10-01", "now": "今の値: 2026-10-08"},
                 {"was": "前の値: 要件、会議", "now": "今の値: 要件、運用"},
             ],
-            ["marked", "DOMPurify", "jsdiff"],
+            ["marked", "mdmark", "jsdiff"],
             id="list_and_date",
         ),
         pytest.param(
@@ -1710,7 +1721,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
             {"lead": "要件は来週までに決める。"},
             "[data-key=\"lead\"]",
             [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}],
-            ["marked", "DOMPurify"],
+            ["marked", "mdmark"],
             id="jsdiff_missing",
         ),
     ],
@@ -1719,6 +1730,7 @@ def test_detail_panel_when_diff_key_words_skipped(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     overrides: dict[str, Any],
@@ -1733,7 +1745,7 @@ def test_detail_panel_when_diff_key_words_skipped(
     data = make_data(decisions=[make_item("D-1", history=history, seq=1, **overrides)])
     load_preview_scripts()
     # jsdiff を読めないケースは、jsdiff を差し込まない
-    _load_libraries(load_library, libraries)
+    _load_libraries(load_library, load_mdmark, libraries)
     # 実行
     result = preview_page.evaluate(
         OPEN_KEY_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "selectors": [selector]}
@@ -1778,6 +1790,7 @@ def test_detail_panel_when_diff_key_words_body_too_large(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1797,7 +1810,7 @@ def test_detail_panel_when_diff_key_words_body_too_large(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     preview_page.evaluate(INSTALL_LINE_DIFF_TIMEOUT_SCRIPT, LINE_DIFF_TIMEOUT_MS)
     # 実行
@@ -1872,7 +1885,7 @@ async ({data, id, markers}) => {
 def test_detail_panel_when_description_aliases(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -1900,8 +1913,7 @@ def test_detail_panel_when_description_aliases(
         bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         DESCRIPTION_ALIASES_SCRIPT, {"data": data, "id": item_id, "markers": markers}
@@ -1965,7 +1977,7 @@ def test_detail_panel_when_alias_tip(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1974,8 +1986,7 @@ def test_detail_panel_when_alias_tip(
     data = _alias_tip_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(
         OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False}
     )
@@ -2024,7 +2035,7 @@ def test_detail_panel_when_alias_tip_escape_in_full(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2033,8 +2044,7 @@ def test_detail_panel_when_alias_tip_escape_in_full(
     data = _alias_tip_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(
         OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": True}
     )
@@ -2070,7 +2080,7 @@ def test_detail_panel_when_term_aliases_tip(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2086,8 +2096,7 @@ def test_detail_panel_when_term_aliases_tip(
     )
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
     links = preview_page.locator("a.tt-link")
     mark = preview_page.locator("a.term", has_text="移し替え")
@@ -2224,7 +2233,7 @@ def test_detail_panel_when_head_title_on_scroll(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2233,8 +2242,7 @@ def test_detail_panel_when_head_title_on_scroll(
     data = _head_title_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(HEAD_TITLE_ON_SCROLL_SCRIPT, {"data": data, "id": "A-1"})
     # 検証
@@ -2283,7 +2291,7 @@ def test_detail_panel_when_head_title_rerender(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2292,8 +2300,7 @@ def test_detail_panel_when_head_title_rerender(
     data = _head_title_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(HEAD_TITLE_RERENDER_SCRIPT, {"data": data})
     # 検証
@@ -2327,7 +2334,7 @@ def test_detail_panel_when_head_title_full(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2336,8 +2343,7 @@ def test_detail_panel_when_head_title_full(
     data = _head_title_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(HEAD_TITLE_FULL_SCRIPT, {"data": data})
     # 検証
@@ -2412,6 +2418,7 @@ def test_detail_panel_when_change_set_link(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     point: dict[str, object] | None,
@@ -2424,7 +2431,7 @@ def test_detail_panel_when_change_set_link(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(CHANGE_SET_LINK_SCRIPT, {"data": data, "point": point})
@@ -2500,6 +2507,7 @@ def test_detail_panel_when_diff_minimap(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     with_diff: bool,
@@ -2515,7 +2523,7 @@ def test_detail_panel_when_diff_minimap(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -2645,6 +2653,7 @@ def test_detail_panel_when_body_heading_levels(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     body: str,
@@ -2662,7 +2671,7 @@ def test_detail_panel_when_body_heading_levels(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_HEADING_LEVELS_PANEL_SCRIPT, {"data": data, "point": point})
@@ -2778,6 +2787,7 @@ def test_detail_panel_when_body_side_by_side(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     entries: list[dict[str, Any]],
@@ -2794,7 +2804,7 @@ def test_detail_panel_when_body_side_by_side(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -2837,6 +2847,7 @@ def test_detail_panel_when_body_layout_changed(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2849,7 +2860,7 @@ def test_detail_panel_when_body_layout_changed(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -2940,7 +2951,7 @@ async ({data, id, key}) => {
 def test_detail_panel_when_value_heading_levels(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -2960,8 +2971,7 @@ def test_detail_panel_when_value_heading_levels(
         }
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         VALUE_HEADING_LEVELS_SCRIPT, {"data": data, "id": item_id, "key": key}
@@ -3035,6 +3045,7 @@ def test_detail_panel_when_diff_key_newlines(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     before_lead: str,
@@ -3049,7 +3060,7 @@ def test_detail_panel_when_diff_key_newlines(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -3178,6 +3189,7 @@ def test_detail_panel_when_body_view(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     body_view: dict[str, bool],
@@ -3195,7 +3207,7 @@ def test_detail_panel_when_body_view(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(

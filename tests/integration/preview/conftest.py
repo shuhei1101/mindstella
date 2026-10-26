@@ -20,6 +20,7 @@ from preview_body_layout_helpers import (
 from preview_body_view_helpers import build_body_view_workspace
 from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
+from preview_markdown_post_helpers import MARKDOWN_POST_BODY, MARKDOWN_REPLY_BODY
 from preview_minimap_helpers import build_minimap_workspace
 from preview_post_link_helpers import REPLY_BODY, THREAD_POST_BODY, build_post_link_workspace
 from preview_fixture_types import (
@@ -264,6 +265,39 @@ def write_post_link_preview(
             ),
         )
         write_comments(root, free_comment(make_comment("C-1", body=REPLY_BODY, thread="TH-1")))
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_markdown_post_preview(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    make_comment: MakeComment,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+) -> WriteReviewPreview:
+    """検討事項 D-1 と、Markdown を書いた AI の書き込みのオープンのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """ワークスペースにスレッドと返信を足して配信を立てる。"""
+        root = make_workspace(make_item("D-1", title="描画のライブラリ"))
+        write_threads(
+            root,
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body=MARKDOWN_POST_BODY, created="2026-10-12T01:00:00+00:00"),
+                summary="Markdown の書き込み",
+            ),
+        )
+        write_comments(root, free_comment(make_comment("C-1", body=MARKDOWN_REPLY_BODY, thread="TH-1")))
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

@@ -1465,7 +1465,7 @@ def test_review_row_edit(
     # 実行
     page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
     )
     # 検証
@@ -1736,7 +1736,7 @@ def test_review_row_keyboard(
     page.keyboard.press("Tab")
     page.keyboard.press("Enter")
     page.wait_for_function(
-        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
     )
     wait_until_focused(page, f"{row} button[title='修正']")

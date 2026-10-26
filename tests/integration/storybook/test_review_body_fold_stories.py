@@ -11,19 +11,25 @@ NARROW_SIZE = {"width": 390, "height": 844}
 # 畳んだときに出す、折り返した後の見た目の行の数
 FOLD_LINES = 5
 
-BODY = "p.review-body"
+BODY = ".review-body"
 MORE = "button.review-more"
 
 # 本文の見た目の行の数（高さ ÷ 行の高さ）を返す
 BODY_LINES_SCRIPT = """() => {
-    const body = document.querySelector('p.review-body');
+    const body = document.querySelector('.review-body');
     return Math.round(body.getBoundingClientRect().height / parseFloat(getComputedStyle(body).lineHeight));
 }"""
 
-# 本文に畳みの切り取りがかかっているか（-webkit-line-clamp の行の数と、はみ出しを隠すか）
+# 本文に畳みの切り取りがかかっているか（はみ出しを隠すか、行の数で切る -webkit-line-clamp を使っていないか）
 CLAMP_SCRIPT = """() => {
-    const style = getComputedStyle(document.querySelector('p.review-body'));
+    const style = getComputedStyle(document.querySelector('.review-body'));
     return { clamp: style.webkitLineClamp, overflow: style.overflowY };
+}"""
+
+# 本文が全文を出しているか（はみ出して隠れた部分が無いか）
+SHOWS_ALL_SCRIPT = """() => {
+    const body = document.querySelector('.review-body');
+    return body.scrollHeight <= body.clientHeight + 1;
 }"""
 
 # 開閉の矢印の向き（畳んでいる間は下向き、開いている間は上向きに回す角度）
@@ -59,21 +65,22 @@ def test_short(open_story: OpenStory) -> None:
 
 
 def test_folded_lines(open_story: OpenStory) -> None:
-    """改行で 8 行の本文。見た目の 5 行目までを出して末尾を省き、下向きの印と「続きを読む」を出す（正常系）。"""
+    """改行で 8 行の本文。行の高さの 5 行分までを出してはみ出しを隠し、下向きの印と「続きを読む」を出す（正常系）。"""
     # 準備・実行
     page = open_story("preview-reviewbodyfold--folded-lines")
     _wait_measured(page, hidden=False)
     # 検証
     assert _lines(page) == FOLD_LINES
     assert page.eval_on_selector(BODY, "e => e.classList.contains('folded')") is True
-    assert page.evaluate(CLAMP_SCRIPT) == {"clamp": str(FOLD_LINES), "overflow": "hidden"}
+    assert page.evaluate(CLAMP_SCRIPT) == {"clamp": "none", "overflow": "hidden"}
+    assert page.evaluate(SHOWS_ALL_SCRIPT) is False
     assert page.inner_text(MORE) == "続きを読む"
     assert page.get_attribute(MORE, "aria-expanded") == "false"
     assert page.get_attribute(MORE, "aria-controls") == "review-body-C-51"
     assert page.get_attribute(MORE, "aria-label") == "項目を指さないコメントの続きを読む"
     assert page.evaluate(ARROW_ANGLE_SCRIPT) == 90
     # 畳んだ部分も DOM に残る（読み上げは飛ばさない）
-    assert "7. 変更履歴の時点の並びが分かりにくい" in page.eval_on_selector(BODY, "e => e.textContent")
+    assert "変更履歴の時点の並びが分かりにくい" in page.eval_on_selector(BODY, "e => e.textContent")
 
 
 def test_folded_wrap(open_story: OpenStory) -> None:
@@ -94,7 +101,8 @@ def test_opened(open_story: OpenStory) -> None:
     page = open_story("preview-reviewbodyfold--opened")
     _wait_measured(page, hidden=False)
     # 検証
-    assert _lines(page) == 8
+    assert _lines(page) > FOLD_LINES
+    assert page.evaluate(SHOWS_ALL_SCRIPT) is True
     assert page.eval_on_selector(BODY, "e => e.classList.contains('folded')") is False
     assert page.inner_text(MORE) == "折りたたむ"
     assert page.get_attribute(MORE, "aria-expanded") == "true"
@@ -130,4 +138,5 @@ def test_folded_lines_when_keyboard(open_story: OpenStory) -> None:
     page.keyboard.press("Enter")
     # 検証
     assert page.inner_text(MORE) == "折りたたむ"
-    assert _lines(page) == 8
+    assert _lines(page) > FOLD_LINES
+    assert page.evaluate(SHOWS_ALL_SCRIPT) is True

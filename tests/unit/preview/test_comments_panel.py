@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadPreviewScripts, LoadPreviewStyles
+from .fixture_types import LoadMdmark, LoadPreviewScripts, LoadPreviewStyles
 from .thread_data import make_post, make_review_item, make_thread
 
 # レビュー中の書き込み（項目あり・消えた項目で箇所が合わない・項目を指さない）
@@ -155,7 +155,9 @@ RUN_SCRIPT = """async (args) => {
         })),
         alerts: [...host.querySelectorAll('[role="alert"]')].map((a) => norm(a.textContent)),
         setLinks: [...host.querySelectorAll("a.setlink")].map((a) => ({
-            text: norm(a.textContent), bodyClass: a.parentElement.className,
+            text: norm(a.textContent),
+            bodyClass: a.closest(".post-body, .review-body").classList.contains("post-body")
+                ? "post-body" : "review-body",
         })),
         statuses: [...host.querySelectorAll('[role="status"]')].map((s) => norm(s.textContent)),
         items: [...host.querySelectorAll("li")].map((li) => ({
@@ -503,17 +505,18 @@ def test_thread_view_when_closed_or_pending(
 
 
 def test_thread_view_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """書き込みのまとまりのリンクを使う側へ知らせる（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     thread = make_thread(
         "TH-1",
         posts=[make_post("ai", "[D-1 を直した](#diff=V-1)", "2026-10-12T01:00:00+00:00")],
     )
     props = {"threads": [thread], "opened": {"id": "TH-1", "pending": False}}
-    actions = [{"click": {"selector": "p.post-body a.setlink"}}]
+    actions = [{"click": {"selector": ".post-body a.setlink"}}]
     # 実行
     observed = _run(preview_page, "threadView", props, actions=actions)
     # 検証
@@ -816,11 +819,12 @@ def test_review_view_when_sent(
 
 
 def test_review_view_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """行の本文のまとまりのリンクと、文字のままの項目の ID（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     reply = make_review_item(
         "C-6",
         target=None,
@@ -829,7 +833,7 @@ def test_review_view_when_change_set_link(
         body="[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる",
     )
     props = {"items": [reply], "threads": [THREAD_1]}
-    actions = [{"click": {"selector": 'li[data-comment="C-6"] p.review-body a.setlink'}}]
+    actions = [{"click": {"selector": 'li[data-comment="C-6"] .review-body a.setlink'}}]
     # 実行
     observed = _run(preview_page, "reviewView", props, actions=actions)
     # 検証

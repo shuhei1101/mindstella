@@ -25,16 +25,14 @@ var MindmapPreview;
     const FOLD_LEVELS = 2;
     /** コードブロックのコピーのボタンを押した後、チェックのマーカーを出しておくミリ秒（図のコピーと同じ） */
     const CODE_COPIED_MS = 1400;
-    /** GitHub の Alert の印 → 囲みの種類・見出しの文言・アイコン */
+    /** mdmark が描いた Alert の囲みの種類（クラス `markdown-alert-{種類}`）→ 見出しの頭に置くアイコン */
     const CALLOUT_KINDS = {
-        NOTE: { kind: "note", label: "補足", icon: "note" },
-        TIP: { kind: "tip", label: "ヒント", icon: "star" },
-        IMPORTANT: { kind: "important", label: "重要", icon: "flag" },
-        WARNING: { kind: "warning", label: "警告", icon: "alert" },
-        CAUTION: { kind: "caution", label: "注意", icon: "alert" },
+        note: "note",
+        tip: "star",
+        important: "flag",
+        warning: "alert",
+        caution: "alert",
     };
-    /** Alert の印（`[!NOTE]` 等）と、続く空白・改行 */
-    const CALLOUT_MARK = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/;
     /** 半角として数える文字の符号位置の上限 */
     const HALF_WIDTH_MAX = 0xff;
     /** 表を送らない枠の class（右端のフェードの基準） */
@@ -274,32 +272,20 @@ var MindmapPreview;
             box.append(...(lang === null ? [] : [MindmapPreview.h({ tag: "span", attrs: { class: "code-lang" }, children: [lang] })]), pre, copy, status);
         }
     }
-    /** 先頭に `[!NOTE]` 等を書いた引用を、種類の見出しを持つ囲みにする（行の印は引き継ぐ） */
+    /** mdmark が描いた Alert の囲み（`div.markdown-alert`）の見出し（`p.markdown-alert-title`）の頭に、種類のアイコンを置く（置いてあれば重ねない） */
     function decorateCallouts(root) {
-        for (const quote of root.querySelectorAll("blockquote")) {
-            const first = quote.firstElementChild;
-            const text = first?.firstChild;
-            if (first?.tagName !== "P" || !(text instanceof Text))
+        for (const callout of root.querySelectorAll("div.markdown-alert")) {
+            const title = callout.querySelector(":scope > p.markdown-alert-title");
+            const kind = [...callout.classList].find((name) => name.startsWith("markdown-alert-") && name !== "markdown-alert-title")?.slice("markdown-alert-".length);
+            const name = kind === undefined ? undefined : CALLOUT_KINDS[kind];
+            if (title === null || name === undefined || title.firstElementChild?.matches("svg.icon") === true)
                 continue;
-            const matched = CALLOUT_MARK.exec(text.data);
-            if (matched === null)
-                continue;
-            const callout = CALLOUT_KINDS[matched[1] ?? ""];
-            if (callout === undefined)
-                continue;
-            text.data = text.data.slice(matched[0].length);
-            // 印の後ろに改行の要素が続くときは外す
-            if (text.data === "" && text.nextSibling instanceof HTMLBRElement)
-                text.nextSibling.remove();
-            if (first.textContent?.trim() === "" && first.children.length === 0)
-                first.remove();
-            quote.classList.add("md-callout", `md-callout-${callout.kind}`);
-            quote.prepend(MindmapPreview.h({ tag: "p", attrs: { class: "md-callout-title" }, children: [MindmapPreview.icon(callout.icon), callout.label] }));
+            title.prepend(MindmapPreview.icon(name));
         }
     }
-    /** 描いた本文に見せ方を当てる。`display` は表示の設定の値、`fold` は開閉を置ける本文か（本文の差分では偽にする） */
-    function decorateMarkdown({ root, display = MindmapPreview.BODY_VIEW_DEFAULT, fold = true, }) {
-        for (const table of root.querySelectorAll("table")) {
+    /** 描いた本文に見せ方を当てる。`display` は表示の設定の値、`fold` は開閉を置ける本文か（本文の差分では偽にする）、`tables` は表の見せ方を当てるか（スレッドの書き込みでは偽にし、表は mdmark の共通のスタイルのまま描く） */
+    function decorateMarkdown({ root, display = MindmapPreview.BODY_VIEW_DEFAULT, fold = true, tables = true, }) {
+        for (const table of tables ? root.querySelectorAll("table") : []) {
             sizeColumns(table);
             const wrap = table.closest(`.${MindmapPreview.TABLE_WRAP_CLASS}`);
             if (wrap !== null)

@@ -511,8 +511,9 @@ namespace MindmapPreview {
     return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
   }
 
-  /** 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
-  export function start(): void {
+  /** mdmark を読み終えるのを待ち（読めなくても続ける）、記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
+  export async function start(): Promise<void> {
+    await loadMdmark();
     let embedded: MindmapData | null;
     try {
       embedded = readEmbeddedData(document);
@@ -3197,7 +3198,7 @@ namespace MindmapPreview {
 
   // 文書が読み込まれたら起動する（記録の要素が無い文書では、読んだだけでは何もしない）
   if (document.getElementById(DATA_ELEMENT_ID) !== null) {
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-    else start();
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => void start());
+    else void start();
   }
 }

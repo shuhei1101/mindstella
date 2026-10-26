@@ -10,29 +10,23 @@ catalogs:
   - name: API
     version: 18.0.14
     entries:
-      - name: marked.parse
+      - name: marked.lexer
         kind: 関数
-        purpose: 本文の Markdown を HTML の文字列にする（結果は DOMPurify で無害化してから差し込む）
+        purpose: 本文の Markdown を最上位の token の並びにする（本文の差分の塊を分ける。描画は mdmark が担う）
         params:
           - name: src
             type: string
             required: true
-            description: 描く Markdown
-          - name: options.async
-            type: boolean
-            required: false
-            default: 'false'
-            description: '`false` で結果を文字列で返す。プレビューは常に `false` を渡す'
+            description: 分ける Markdown
           - name: options.gfm
             type: boolean
             required: false
             default: 'true'
-            description: '`true` で GitHub Flavored Markdown（表など）として描く。プレビューは渡さず既定のまま'
-          - name: options.breaks
-            type: boolean
-            required: false
-            default: 'false'
-            description: '`true` で段落の中の 1 つの改行を `br` にする。`gfm` が `true` のときだけ効く。詳細の文字列の値の描画（`renderValue`）だけが `true` を渡し、本文（`renderMarkdown`）は渡さない'
+            description: '`true` で GitHub Flavored Markdown（表など）として分ける。プレビューは渡さず既定のまま'
+        returns:
+          - name: '-'
+            type: Token[]
+            description: 最上位の token。各 token の `raw` が元の文字列で、`type` が `space` のものは空行
 lead: Markdown を HTML に描く JavaScript のライブラリ。
 purl: pkg:npm/marked
 dependency_scope: 必須
@@ -57,5 +51,5 @@ install: |-
 
   プレビューの雛形が読む。グローバルの `marked` に入る
 limitations:
-  - item: 無害化
-    content: '`marked.parse` は本文中の HTML をそのまま通すため、描いた結果を DOMPurify に通さずに差し込まない'
+  - item: 用途
+    content: 本文の差分の塊を分ける `marked.lexer` だけに使い、HTML には描かない（`marked.parse` は本文中の HTML をそのまま通すため、使うときは無害化が要る）

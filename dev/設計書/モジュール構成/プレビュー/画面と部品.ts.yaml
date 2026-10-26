@@ -1659,7 +1659,7 @@ components:
         summary: 書き込みとレビュー中の書き込みのまとまりのリンク
         condition: '`changeSets` は V-6 だけ。`parametrize`: 本文に `[A-14 の書き直し](#diff=V-6)` を持つ AI の `post` / 同じ本文の `pending`'
         mock: '`on.changeSet`'
-        expected: どちらも `p.post-body` の中に `a.setlink` が 1 つで、押すと `on.changeSet` が `V-6` で 1 回
+        expected: どちらも `.post-body` の中に `a.setlink` が 1 つで、押すと `on.changeSet` が `V-6` で 1 回
   - name: threadListView
     title: スレッドの一覧
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
@@ -1831,7 +1831,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 書き込みの本文を `splitPostBody` で切り分け、改行を保った文字の `p` を返す（Markdown としては描かない）。項目の ID はボタン（`button.idlink`。`title` にタイトル、`data-focus` は `post-id:{ID}`）、まとまりのリンクは `a`（クラス `setlink`。`href` は `#diff={まとまりの ID}`、`title` にまとまりの説明、`data-focus` は `post-set:{ID}`）にする。まとまりのリンクを押すと既定の動作を止めて `on.changeSet` にまとまりの ID を渡す。リンクの見た目は詳細の本文のまとまりのリンクと同じにする（`style.css`）
+    summary: 書き込みの本文を、段落の中の改行を強制改行にして（`withHardBreaks`）`renderMarkdown` で描き、クラス `className` を付けた要素を返す。図は `renderDiagrams` で（描き終えるのを待たずに返す）、`html` のコードブロックの入れ物は部品『HTMLの本文の枠』（`htmlBodyFrame`、`selectable` は偽）で描き、`decorateMarkdown`（`tables`・`fold` は偽）を当てる。続けて本文の中の `a` のうち `href` が `#` で始まるものは、`#` の後ろを `URLSearchParams` で読んだ `diff` の値を `changeSets` で引き（`diff` 以外の引数は見ない）、`null` でなければまとまりのリンク（クラス `setlink`。`href` は `#diff={まとまりの ID}`、`title` にまとまりの説明、`data-focus` は `post-set:{ID}`）にし、`null` なら `a` を中の文字に置き換える。`#` で始まらないリンクは mdmark が描いたまま残す。まとまりのリンクを押すと既定の動作を止めて `on.changeSet` にまとまりの ID を渡す。その後、`pre`・`code`・`a`・図の入れ物・HTML の本文の枠の外の文字のうち `\b[A-Z]{1,2}-\d+\b` に合い `titles` が `null` でないものを、項目の ID のボタン（`button.idlink`。`title` にタイトル、`data-focus` は `post-id:{ID}`）にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）。リンクの見た目は詳細の本文のまとまりのリンクと同じにする（`style.css`）。mdmark が読めないときは、本文を文字のまま改行を保って持つ要素を返す（知らせは出さず、項目の ID とまとまりのリンクも作らない）
     props:
       - name: body
         type: string
@@ -1848,7 +1848,7 @@ components:
       - name: className
         type: "'post-body' | 'review-body'"
         required: true
-        description: '`p` のクラス'
+        description: '本文の要素のクラス'
       - name: on
         type: '{openId, changeSet}'
         required: true
@@ -1857,9 +1857,21 @@ components:
       - name: test_post_body
         case: 正常
         summary: 項目の ID のボタンとまとまりのリンクを描き分ける
-        condition: '本文 `[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)`。`titles` は A-14・D-12、`changeSets` は V-6 だけ。`parametrize`: `titles` をそのまま / `() => null`'
+        condition: '本文 `[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)。[外](https://example.com)`。`titles` は A-14・D-12、`changeSets` は V-6 だけ。`parametrize`: `titles` をそのまま / `() => null`'
         mock: '`on.openId`・`on.changeSet`'
-        expected: '`a.setlink` が 1 つで、文字が「A-14 の書き直し」、`href` が `#diff=V-6`、`title` が V-6 の説明で、中に `button` が無い。`[古い](#diff=V-99)` は文字のまま。`titles` をそのまま渡したときは D-12 が `button.idlink`、`() => null` のときは D-12 も文字。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openId` は呼ばれず、`location.hash` は変わらない'
+        expected: '`a.setlink` が 1 つで、文字が「A-14 の書き直し」、`href` が `#diff=V-6`、`title` が V-6 の説明で、中に `button` が無い。`[古い](#diff=V-99)` は `a` を持たず「古い」だけが出る。`[外](https://example.com)` は `href` がその URL の `a` のまま。`titles` をそのまま渡したときは D-12 が `button.idlink`、`() => null` のときは D-12 も文字。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openId` は呼ばれず、`location.hash` は変わらない'
+      - name: test_post_body_when_markdown
+        case: 正常
+        summary: 本文を Markdown として描き、段落の中の改行を保ち、コードの中の ID はボタンにしない
+        condition: 見出し `## 結果`、改行 1 つで 2 行にした段落「D-1 は A。」「2 行目」、セルに D-1 を持つ 1 列の表、インラインコードの D-1 だけの段落、`> [!NOTE]` の引用を持つ本文。`titles` は D-1 だけ。mdmark は `page.route` で返し `loadMdmark` で読む
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.post-body` が class `mdmark` を持ち、`h2`・`br` を持つ `p`・`.md-table-wrap` の中の `table`・補足のアイコンを持つ `div.markdown-alert` がある。段落と表のセルの D-1 は `button.idlink`、インラインコードの D-1 は文字のまま。表のセルは `data-col-size` を持たない'
+      - name: test_post_body_when_library_missing
+        case: 正常
+        summary: mdmark が読めなければ文字のまま改行を保つ
+        condition: mdmark を読まない。本文 `**D-1**\n2 行目`、`titles` は D-1 だけ
+        mock: なし
+        expected: '`.post-body` の文字が `**D-1**\n2 行目` で改行が保たれ、`role="alert"`・`button`・`strong` を持たない'
   - name: bodyDiffLayoutSwitch
     title: 本文の差分の並べ方の切り替え
     container: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
@@ -1886,7 +1898,7 @@ components:
     title: 左右に並べた本文の差分
     container: plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts
     usecase: 前回からの差分を見る
-    summary: 部品設計『左右に並べた本文の差分』。`sideBySideRows` の行ごとに、左右の列（`section.sbs-col`、読み上げの名前「選んだ時点の本文」「今の本文」）へ `div.sbs-row` を 1 つずつ置き、塊を本文の中の行の位置のまま `renderMarkdown` で描く（前に空行を積んで `data-line-start` を本文の行に揃える）。見出しの段は、左右の全ての塊を描いた後、それらを合わせた最も上の段から `detailPanel` と同じ差を 1 つ求め（`headingShift`）、左右の全ての塊に当てる（`lowerHeadings`。h6 を超える段は `aria-level` で伝える。どちらも `screens/detail.ts` の関数を `MindmapPreview` に出して使う）。`changed` の行を持つ要素に、左は消した印、右は足した印を付ける（段落・見出し・コードは `del.df-blk` / `ins.df-blk` で囲み、表の行は `tr.df-row.df-del` / `df-add`、箇条書きの項目は `li.df-li-del` / `df-li-add`）。片側が空の行は `sbs-gap`（`aria-hidden`）にする。左の列と、`lined` が偽のときの右の列は `data-line-start` を外す。左の変えた図には `sbs-was` だけを付ける。行ごとに左右の高い方に `min-height` を揃え、中の要素の高さが変わったら（`ResizeObserver`）次のコマで 1 回だけ揃え直す
+    summary: 部品設計『左右に並べた本文の差分』。`sideBySideRows` の行ごとに、左右の列（`section.sbs-col`、読み上げの名前「選んだ時点の本文」「今の本文」）へ `div.sbs-row` を 1 つずつ置き、塊を `renderMarkdown` で描き、描いた `data-line-start` に塊の開始行から 1 を引いた数を足して本文の行に揃える。見出しの段は、左右の全ての塊を描いた後、それらを合わせた最も上の段から `detailPanel` と同じ差を 1 つ求め（`headingShift`）、左右の全ての塊に当てる（`lowerHeadings`。h6 を超える段は `aria-level` で伝える。どちらも `screens/detail.ts` の関数を `MindmapPreview` に出して使う）。`changed` の行を持つ要素に、左は消した印、右は足した印を付ける（段落・見出し・コードは `del.df-blk` / `ins.df-blk` で囲み、表の行は `tr.df-row.df-del` / `df-add`、箇条書きの項目は `li.df-li-del` / `df-li-add`）。片側が空の行は `sbs-gap`（`aria-hidden`）にする。左の列と、`lined` が偽のときの右の列は `data-line-start` を外す。左の変えた図には `sbs-was` だけを付ける。行ごとに左右の高い方に `min-height` を揃え、中の要素の高さが変わったら（`ResizeObserver`）次のコマで 1 回だけ揃え直す
     description: 返すのは `{root, columns, markWords, decorate}`（並べた本文、左右の列、向かい合う変えた行で消した塊と足した塊の数が同じものを対にして語の面を付ける関数、右の変えた図に図の差分を付ける関数）。`sideBySideRows` が `null` のときは `null` を返し、`detailPanel` が本文の差分を計算しきれない旨を出す
     kind: コンポーネント
     props:
@@ -2106,12 +2118,12 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
     usecase: 項目の詳細を読む
-    summary: '部品設計『Markdownの本文』。`renderMarkdown` で描いた本文の要素に、次の順で見せ方を当てる（戻り値は無く、`root` の中を書き換える）。(1) 表ごとに、列の見出しと本体のセルの `textWidth` の最大を `columnSize` にかけ、列のセルに `data-col-size`（`short`・`medium`・`long`）と中くらいの列の `--md-col-min`（em）を付ける。`div.md-table-wrap` を送らない枠 `div.md-table-frame` で包み、右へまだ送れる間だけ枠に `data-fade` を付ける（入れ物の `scroll` と `ResizeObserver` で見直す）。(2) `display.pin` が真なら、最後の列を除く見出しのセルに固定のボタン（`button.md-pin`、`aria-pressed`、読み上げの名前「{列名}まで固定」）を置き、押した列までのセルに `position: sticky` の左の位置と、固定した列の右端の影を付ける（もう一度押すと外す。画面の幅 720px 以下は `style.css` でボタンを隠し固定を外す）。(3) `display.head` が真なら表に `md-head-stick` を付ける（ずらしは `bindTableHeads` が入れる）。(4) `display.stripes` が真なら表に `md-stripes` を付ける（差分の印の行は差分の面のまま）。(5) `fold` と `display.fold` がどちらも真なら、本文で使っている見出しの階層のうち上から `FOLD_LEVELS` の階層の見出しごとに、次の同じか上の階層の見出しまでを `div.md-section-body` で包み（中身の無い見出しは包まず開閉も置かない）、見出しの頭に開閉の矢印（`button.md-fold`、24px、`aria-expanded`・`aria-controls`、読み上げの名前「{見出し}を開閉」）を置く。開いた状態で描き、畳むと入れ物を `hidden="until-found"` にする（`beforematch` で開く）。見出しの文言はボタンに入れず、選んだ箇所の対応づけに使う `data-line-start` を変えない。(6) コードブロック（図と `html` のコードブロックを除く）を `div.md-code` で包み、`pre` の外に言語を書いたものだけ言語の札と、コピーのボタン（読み上げの名前「コードをコピー」）を置く。押すと `code` の文字だけをクリップボードに入れ、`CODE_COPIED_MS` の間チェックの印に変えて `role="status"` で伝える。(7) 先頭の段落が `[!NOTE]` 等（`CALLOUT_KINDS`）で始まる引用を、印を消して `blockquote.md-callout` にし、種類のアイコンと見出しの文言を先頭に置く（行の印は引き継ぐ）。同じ `root` に 2 回当てても包み・ボタンを重ねない'
+    summary: '部品設計『Markdownの本文』。`renderMarkdown` で描いた本文の要素に、次の順で見せ方を当てる（戻り値は無く、`root` の中を書き換える。(1)〜(4) は `tables` が真のときだけ当てる）。(1) 表ごとに、列の見出しと本体のセルの `textWidth` の最大を `columnSize` にかけ、列のセルに `data-col-size`（`short`・`medium`・`long`）と中くらいの列の `--md-col-min`（em）を付ける。`div.md-table-wrap` を送らない枠 `div.md-table-frame` で包み、右へまだ送れる間だけ枠に `data-fade` を付ける（入れ物の `scroll` と `ResizeObserver` で見直す）。(2) `display.pin` が真なら、最後の列を除く見出しのセルに固定のボタン（`button.md-pin`、`aria-pressed`、読み上げの名前「{列名}まで固定」）を置き、押した列までのセルに `position: sticky` の左の位置と、固定した列の右端の影を付ける（もう一度押すと外す。画面の幅 720px 以下は `style.css` でボタンを隠し固定を外す）。(3) `display.head` が真なら表に `md-head-stick` を付ける（ずらしは `bindTableHeads` が入れる）。(4) `display.stripes` が真なら表に `md-stripes` を付ける（差分の印の行は差分の面のまま）。(5) `fold` と `display.fold` がどちらも真なら、本文で使っている見出しの階層のうち上から `FOLD_LEVELS` の階層の見出しごとに、次の同じか上の階層の見出しまでを `div.md-section-body` で包み（中身の無い見出しは包まず開閉も置かない）、見出しの頭に開閉の矢印（`button.md-fold`、24px、`aria-expanded`・`aria-controls`、読み上げの名前「{見出し}を開閉」）を置く。開いた状態で描き、畳むと入れ物を `hidden="until-found"` にする（`beforematch` で開く）。見出しの文言はボタンに入れず、選んだ箇所の対応づけに使う `data-line-start` を変えない。(6) コードブロック（図と `html` のコードブロックを除く）を `div.md-code` で包み、`pre` の外に言語を書いたものだけ言語の札と、コピーのボタン（読み上げの名前「コードをコピー」）を置く。押すと `code` の文字だけをクリップボードに入れ、`CODE_COPIED_MS` の間チェックの印に変えて `role="status"` で伝える。(7) mdmark が描いた Alert の囲み（`div.markdown-alert`）ごとに、見出し（`p.markdown-alert-title`）の頭に、囲みのクラス `markdown-alert-{種類}` の種類のアイコン（`CALLOUT_KINDS`）を置く。同じ `root` に 2 回当てても包み・ボタンを重ねない'
     props:
       - name: root
         type: HTMLElement
         required: true
-        description: '`renderMarkdown` で描いた本文の要素'
+        description: '`renderMarkdown` で描いた本文の要素（class `mdmark`）'
       - name: display
         type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
         required: false
@@ -2122,6 +2134,11 @@ components:
         required: false
         default: 'true'
         description: 開閉を置ける本文か（本文の差分では偽）
+      - name: tables
+        type: boolean
+        required: false
+        default: 'true'
+        description: 表の見せ方（(1)〜(4)）を当てるか（スレッドの書き込みでは偽）
     unit_tests:
       - name: test_decorate_markdown_when_table
         case: 正常
@@ -2149,16 +2166,22 @@ components:
         expected: 矢印は「候補」「料金」「まとめ」の 3 つで「内訳」「付録」には無い。押すと「料金」の矢印が `aria-expanded="false"` で「内訳」を含む入れ物が `hidden="until-found"`、「まとめ」は見えている / 矢印が無い / 矢印が無い
       - name: test_decorate_markdown_when_code_and_callout
         case: 正常
-        summary: コードブロックに札とコピーを、Alert の引用に囲みを付ける
-        condition: 言語 `bash` のコードブロック・言語の無いコードブロック・`> [!WARNING]` の引用・印の無い引用を持つ本文。`bash` のコピーを押す
+        summary: コードブロックに札とコピーを、Alert の囲みの見出しにアイコンを付ける
+        condition: 言語 `bash` のコードブロック・言語の無いコードブロック・mdmark が描いた `[!WARNING]` の囲み（`div.markdown-alert.markdown-alert-warning` と見出し「警告」）・印の無い引用を持つ本文。`bash` のコピーを押し、同じ本文に 2 回当てる
         mock: '`navigator.clipboard.writeText`'
-        expected: '`bash` だけ言語の札「bash」を持ち、どちらもコピーのボタンを `pre` の外に持つ。クリップボードにはコードの文字だけが入る。`[!WARNING]` の引用が `md-callout` で見出し「警告」を持ち `[!WARNING]` の文字が消える。印の無い引用は変わらない'
+        expected: '`bash` だけ言語の札「bash」を持ち、どちらもコピーのボタンを `pre` の外に持つ。クリップボードにはコードの文字だけが入る。`[!WARNING]` の囲みの見出しの頭に警告のアイコンが 1 つだけあり、札とコピーのボタンも 1 つずつ。印の無い引用は変わらない'
+      - name: test_decorate_markdown_when_tables_off
+        case: 正常
+        summary: '`tables` が偽なら表の見せ方を当てず、コードと Alert は当てる'
+        condition: 3 列の表・言語 `bash` のコードブロック・`[!NOTE]` の囲みを持つ本文に、`tables`・`fold` を偽、`display` を `BODY_VIEW_DEFAULT` にして当てる
+        mock: なし（DOM を作って見る）
+        expected: 表のセルが `data-col-size` を持たず、`div.md-table-frame`・`button.md-pin`・`md-head-stick` が無い。コードブロックは言語の札とコピーのボタンを持ち、囲みの見出しは補足のアイコンを持つ
   - name: reviewBodyFold
     title: 本文の折りたたみ
     container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
     usecase: コメントを選んで送る
     kind: コンポーネント
-    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles` は `() => null`）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で `-webkit-line-clamp` を当てる。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
+    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles` は `() => null`）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で高さを行の高さ × `lines` に限り、はみ出しを隠す（本文は Markdown のブロックを持つ）。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
     props:
       - name: id
         type: string
@@ -3055,49 +3078,6 @@ functions:
         condition: '`parametrize`: 要約あり / `summary: null` で最初の書き込みが 2 行'
         mock: なし
         expected: 要約 / 1 行目だけ
-  - name: splitPostBody
-    title: 本文の切り分け
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
-    usecase: スレッドで話す
-    scope: public
-    summary: 書き込みの本文を、文字の部分・記録にある項目の ID の部分・記録にあるまとまりを指すまとまりのリンクの部分に切り分ける
-    args:
-      - name: body
-        type: string
-        required: true
-        passing: positional
-        description: 本文
-      - name: titles
-        type: '(id: string) => string | null'
-        required: true
-        passing: positional
-        description: 項目のタイトル（記録に無ければ `null`）
-      - name: changeSets
-        type: '(id: string) => string | null'
-        required: false
-        default: () => null
-        passing: positional
-        description: まとまりの説明（記録に無いまとまりの ID と `since`・`pending`・空の値は `null`）
-    returns:
-      type: '({text: string} | {id: string, title: string} | {set: string, label: string, summary: string})[]'
-      description: 本文の順の部分。`set` はまとまりの ID、`label` は `[文言](#...)` の文言。まとまりのリンクの部分を `[{label}](#...)` に戻してつなぐと元の本文になる
-    process: |-
-      1. `\[([^\]\n]+)\]\(#([^)\s]*)\)` に合う文字列を順に見る。`#` の後ろを `URLSearchParams` で読んだ `diff` の値を `changeSets` で引き、`null` でなければ `{set: 値, label: 文言, summary}` にする（文言の中の項目の ID は切り出さない。`diff` 以外の引数は見ない）
-      2. まとまりのリンクにしなかった文字（まとまりのリンクにならない `[文言](...)` を含む）は、`\b[A-Z]{1,2}-\d+\b` に合う文字列のうち `titles` が `null` でないものだけを `{id, title}` にし、その前後の文字を `{text}` にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）
-    unit_tests:
-      - name: test_split_post_body
-        case: 正常
-        summary: 記録にある ID だけを切り出す
-        condition: '`parametrize`: `D-12 を案 B に。T-14 も` / `D-99 は無い` / `TH-1 と AD-12 と D-12x` / 空文字。`titles` は D-12・T-14 だけ'
-        mock: なし
-        expected: "`[{id: D-12}, {text}, {id: T-14}, {text}]` / `[{text}]` / `[{text}]` / `[{text: ''}]`。どれもつなぐと元の本文"
-      - name: test_split_post_body_when_change_set_link
-        case: 正常
-        summary: 記録にあるまとまりを指すリンクだけを切り出し、文言の中の ID は切り出さない
-        condition: 本文 `[D-1 を直した](#diff=V-1)。[無い](#diff=V-99)・[前回](#diff=since)・[未](#diff=pending)・[空](#diff=)・[見出し](#決め方)・[外](https://example.com)・[他](#tab=tasks&id=D-2&diff=V-2)・D-2`。`titles` は D-1・D-2、`changeSets` は V-1・V-2 だけ
-        mock: なし
-        expected: "順に `{set: 'V-1', label: 'D-1 を直した'}`・`{text: '。[無い](#diff=V-99)・[前回](#diff=since)・[未](#diff=pending)・[空](#diff=)・[見出し](#決め方)・[外](https://example.com)・'}`・`{set: 'V-2', label: '他'}`・`{text: '・'}`・`{id: 'D-2'}`。まとまりのリンクの部分の `summary` は `changeSets` の説明"
   - name: visibleThreads
     title: 一覧に出すスレッド
     kind: 関数
@@ -3770,8 +3750,8 @@ constants:
     title: Alert の種類
     container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
     usecase: 項目の詳細を読む
-    summary: GitHub の Alert の印 → 囲みの種類・見出しの文言・アイコン
-    value: '{NOTE: {kind: "note", label: "補足", icon: "note"}, TIP: {kind: "tip", label: "ヒント", icon: "star"}, IMPORTANT: {kind: "important", label: "重要", icon: "flag"}, WARNING: {kind: "warning", label: "警告", icon: "alert"}, CAUTION: {kind: "caution", label: "注意", icon: "alert"}}'
+    summary: mdmark が描いた Alert の囲みの種類（クラス `markdown-alert-{種類}`）→ 見出しの頭に置くアイコン
+    value: '{note: "note", tip: "star", important: "flag", warning: "alert", caution: "alert"}'
   - name: REVIEW_FOLD_LINES
     title: 本文を畳む行の数
     container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts

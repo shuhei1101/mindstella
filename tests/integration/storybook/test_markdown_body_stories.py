@@ -22,15 +22,15 @@ STORY_TIMEOUT_MS = 15_000
 # 見せ方を当て終わり、操作の後の描き直しが済むまで待つミリ秒
 SETTLE_MS = 500
 
-# 表の見出しのセルごとに、名前・列の種類・折り返さないか・幅（px）を返す
-_COLUMNS_JS = """() => [...document.querySelectorAll('.md thead th')].map((cell) => ({
+# 表の見出しのセルごとに、名前・列の種類・本体の最初の行のセルが折り返さないか・幅（px）を返す
+_COLUMNS_JS = """() => [...document.querySelectorAll('.md thead th')].map((cell, index) => ({
     name: cell.firstChild.textContent.trim(),
     size: cell.dataset.colSize,
-    nowrap: getComputedStyle(cell).whiteSpace === 'nowrap',
+    nowrap: getComputedStyle(document.querySelectorAll('.md tbody tr:first-child td')[index]).whiteSpace === 'nowrap',
     width: cell.getBoundingClientRect().width,
 }))"""
 
-# 表の入れ物・枠・本文の横の送りの状態を返す
+# 表の入れ物・枠・本文の横の送りの状態と、表の中身（本体）の幅を返す
 _SCROLL_JS = """() => {
     const wrap = document.querySelector('.md .md-table-wrap');
     const frame = wrap.parentElement;
@@ -40,7 +40,7 @@ _SCROLL_JS = """() => {
         mdScrolls: md.scrollWidth > md.clientWidth,
         fade: frame.hasAttribute('data-fade'),
         fadeShown: getComputedStyle(frame, '::after').content !== 'none',
-        tableWidth: wrap.querySelector('table').getBoundingClientRect().width,
+        tableWidth: wrap.querySelector('tbody').getBoundingClientRect().width,
         mdWidth: md.getBoundingClientRect().width,
     };
 }"""
@@ -293,21 +293,26 @@ def test_code_copied(open_story: OpenStory) -> None:
 
 
 def test_callouts(open_story: OpenStory) -> None:
-    """Alert の 5 種類の引用を、種類の色の薄い面と細い枠で囲み、見出しにアイコンと文言を出す。印の無い引用は今の見た目のまま（正常系）。"""
+    """Alert の 5 種類の引用は、mdmark が種類の色の薄い面と細い枠の囲みと見出しで描き、見出しの頭に種類のアイコンを足す。マーカーの無い引用は囲みにならない（正常系）。"""
     # 準備・実行
     page = _open(open_story, "callouts")
-    titles = page.evaluate("() => [...document.querySelectorAll('.md .md-callout .md-callout-title')].map((e) => e.textContent.trim())")
-    borders = page.evaluate("() => [...document.querySelectorAll('.md .md-callout')].map((e) => getComputedStyle(e).borderTopColor)")
-    plain = page.locator(".md blockquote:not(.md-callout)")
-    # 検証（種類ごとの見出しとアイコン。印の文字は残らない）
+    titles = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert .markdown-alert-title')].map((e) => e.textContent.trim())")
+    kinds = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => e.className)")
+    borders = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => getComputedStyle(e).borderTopColor)")
+    fills = page.evaluate("() => [...document.querySelectorAll('.md .markdown-alert')].map((e) => getComputedStyle(e).backgroundColor)")
+    plain = page.locator(".md blockquote")
+    # 検証（種類ごとの見出しとアイコン。マーカーの文字は残らない）
     assert titles == ["補足", "ヒント", "重要", "警告", "注意"]
-    assert page.locator(".md .md-callout .md-callout-title svg.icon").count() == 5
+    assert kinds == [f"markdown-alert markdown-alert-{kind}" for kind in ("note", "tip", "important", "warning", "caution")]
+    assert page.locator(".md .markdown-alert .markdown-alert-title svg.icon").count() == 5
     assert "[!" not in page.inner_text(".md")
-    # 検証（種類ごとに枠の色が違う）
+    # 検証（種類ごとに枠と面の色が違い、枠は細い）
     assert len(set(borders)) == 5
-    # 検証（印の無い引用は囲みにならない）
+    assert len(set(fills)) == 5
+    assert page.eval_on_selector(".md .markdown-alert", "e => getComputedStyle(e).borderTopWidth") == "1px"
+    # 検証（マーカーの無い引用は囲みにならず、引用のまま残る）
     assert plain.count() == 1
-    assert plain.evaluate("e => getComputedStyle(e).borderLeftWidth") == "2px"
+    assert plain.evaluate("e => e.closest('.markdown-alert') === null")
 
 
 def test_narrow(open_story: OpenStory) -> None:
@@ -324,3 +329,22 @@ def test_narrow(open_story: OpenStory) -> None:
     assert scroll["wrapScrolls"] is True
     assert scroll["mdScrolls"] is False
     assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
+
+
+def test_in_thread_post(open_story: OpenStory) -> None:
+    """スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表の列の幅・フェード・固定・見出しの固定とセクションの開閉は当てない（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "in-thread-post")
+    # 検証（コードブロックの言語の札とコピーのボタンは当てる）
+    assert page.locator(".md .md-code .code-lang").count() == 1
+    assert page.locator(".md .md-code button.code-copy").count() == 2
+    # 検証（Alert の見出しのアイコンは当てる）
+    assert page.locator(".md .markdown-alert .markdown-alert-title svg.icon").count() == 5
+    # 検証（表は mdmark のスタイルのまま。列の種類・固定・見出しの固定・フェードを当てない）
+    assert page.locator(".md [data-col-size]").count() == 0
+    assert page.locator(".md button.md-pin").count() == 0
+    assert page.locator(".md table.md-head-stick").count() == 0
+    assert page.locator(".md .md-table-frame[data-fade]").count() == 0
+    # 検証（セクションの開閉は置かない）
+    assert page.locator(".md button.md-fold").count() == 0
+    assert page.locator(".md .md-section-body").count() == 0
