@@ -1,0 +1,132 @@
+title: "資料を書き出す"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1 と、用語 G-1（エイリアス「応答時間」）
+        notes: A-1 の本文は、「応答時間」を含む段落と、`<!-- html -->` の範囲（`<mdmark-chart>` のチャート・`<mdmark-param>` のスライダーと今の値をコピーするボタン）を持つ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant F as 書き出した HTML（通信を止めたブラウザ）
+
+        U->>P: 資料のタブで A-1 を押す
+        P-->>U: 見出しに書き出しの入口を持つ詳細パネル
+        U->>P: 書き出しの入口を押す
+        P-->>U: 形式を選ぶメニュー
+        U->>P: 「HTML で書き出す」を押す
+        P-->>U: 1 枚の HTML のダウンロードと、メニューを閉じた詳細パネル
+        U->>F: ダウンロードした HTML を開く
+        F-->>U: A-1 の本文・チャート・スライダー
+        U->>F: 「応答時間」に乗せ、スライダーを動かして今の値をコピーする
+        F-->>U: G-1 のツールチップと、クリップボードに今の値の JSON
+      ```
+    expected:
+      - ダウンロードされるのは拡張子 `.html` の 1 つのファイルで、画面は移らず、メニューを閉じた後は書き出しの入口にフォーカスが戻る
+      - 書き出した HTML を通信を止めて `file://` で開いても、A-1 の本文が共通のスタイルで描かれ、外への要求が 0 件
+      - 書き出した HTML で、「応答時間」に用語のマーカーが付き、乗せると G-1 の意味のツールチップが出る
+      - 書き出した HTML で、チャートが描かれ、スライダーを動かすとグラフが描き直され、コピーのボタンで今の値の JSON が入る
+      - ワークスペースの YAML と本文の中身が、書き出す前と同じ
+    test: test_normal
+  - name: 正常シナリオ（Markdown で書き出す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持ち、段落と `<!-- html -->` の範囲を持つ資料 A-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: A-1 の詳細パネルを全画面表示にし、書き出しの入口を押す
+        P-->>U: 形式を選ぶメニュー
+        U->>P: 「Markdown で書き出す」を押す
+        P-->>U: 埋め込んだ HTML が消えることと共通のスタイルが外れることの警告
+        U->>P: 警告の「書き出す」を押す
+        P-->>U: Markdown のダウンロードと、メニューを閉じた詳細の全画面
+      ```
+    expected:
+      - 「Markdown で書き出す」を押した時点ではダウンロードされず、埋め込んだ HTML が消えることと共通のスタイルが外れることの警告が出る
+      - 警告の「書き出す」で、拡張子 `.md` の 1 つのファイルがダウンロードされ、中身は範囲の外の段落を持ち、範囲の HTML を持たない
+      - 書き出した後も詳細の全画面が開いたままで、書き出しの入口にフォーカスが戻る
+      - ワークスペースの YAML と本文の中身が、書き出す前と同じ
+    test: test_normal_when_markdown
+  - name: 正常シナリオ（警告から戻る）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持ち、`<!-- html -->` の範囲を持つ資料 A-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: A-1 の詳細パネルで書き出しの入口を押す
+        P-->>U: 形式を選ぶメニュー
+        U->>P: 「Markdown で書き出す」を押す
+        P-->>U: 警告
+        U->>P: 警告の「戻る」を押す
+        P-->>U: 形式を選ぶメニュー
+        U->>P: Esc を押す
+        P-->>U: メニューを閉じた詳細パネル
+      ```
+    expected:
+      - 「戻る」で形式を選ぶメニューに戻り、ファイルはダウンロードされない
+      - Esc でメニューが閉じ、書き出しの入口にフォーカスが戻る
+      - メニューの開閉と警告への切り替えでブラウザの履歴の数が増えない
+      - ワークスペースの YAML と本文の中身が、開く前と同じ
+    test: test_normal_when_back_from_warning
+  - name: 正常シナリオ（本文が HTML の資料）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を HTML で持つ資料 A-1
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料のタブで A-1 を押す
+        P-->>U: A-1 の詳細パネル
+        U->>P: 全画面表示にする
+        P-->>U: A-1 の詳細の全画面
+      ```
+    expected:
+      - 詳細パネルにも詳細の全画面にも、書き出しの入口が出ない
+    test: test_normal_when_html_body
+lead: 利用者が、プレビューで開いた資料 1 件を、Markdown か、mindstella が無くても開ける 1 枚の HTML で書き出す単一ユースケース。
+issue: 212
+primary_actor: 利用者
+trigger: 利用者が資料の詳細パネルか詳細の全画面で書き出しの入口を押す
+preconditions:
+  - ワークスペースに本文を Markdown で持つ資料があり、サーバーがプレビューを配っている
+success_guarantee: |-
+  選んだ形式のファイルが 1 つダウンロードされる。
+  1 枚の HTML は共通のスタイルと用語のツールチップを中に持ち、ネットにつながらない端末でも本文・チャート・操作できる部品が動く。
+minimal_guarantee: 書き出しても、書き出さずに戻っても、ワークスペースの記録は書き換わらず、開いていた詳細に戻る。
