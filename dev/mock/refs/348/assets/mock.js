@@ -42,12 +42,17 @@
     }, 50);
   };
 
+  // HTML のエクスポートの見本（busy: 組み立てている間 / error: 組み立てられなかった）。app.js の組み立てがこの値を見る
+  const exportState = params.get("export");
+  window.MindmapPreview = { mockExport: exportState };
+
   // エクスポートのメニューの見本（open: 形式を選ぶ / warn: Markdown の警告 / closed: 閉じている）。クエリが無いときは body の data-menu
   const menu = params.get("menu") ?? body.dataset.menu ?? "closed";
-  if (menu !== "closed") {
+  if (menu !== "closed" || exportState !== null) {
     waitFor(".panel-export", (button) => {
       button.click();
       if (menu === "warn") waitFor('.doc-export [data-format="md"]', (item) => item.click());
+      if (exportState !== null) waitFor('.doc-export [data-format="html"]', (item) => item.click());
     });
   }
 

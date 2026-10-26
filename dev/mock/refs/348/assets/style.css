@@ -41,14 +41,24 @@ body:has(> .mockbar) :is(.panel, .comments-panel, .settings-drawer, dialog.drawe
 .dx-text { display: grid; gap: 2px; }
 .dx-name { font-size: var(--fs-small); font-weight: 600; }
 .dx-sub { color: var(--text-2); font-size: var(--fs-xs); }
-/* 警告: 印と文言を、要見直しの色の枠で囲む */
-.dx-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 4px; padding: 10px 12px; border: 1px solid var(--st-review); border-radius: var(--radius); font-size: var(--fs-small); }
+/* 警告: 枠で囲まず、アイコンの色と余白でまとまりを示す */
+.dx-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 8px; font-size: var(--fs-small); }
 .dx-warn p { margin: 0; }
 /* 警告の印 */
 .dx-warn svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--st-review); }
-/* 警告の戻る・エクスポート: 右に寄せる */
+/* 処理中の行と、処理中に押せない行 */
+.dx-item[aria-disabled="true"] { cursor: default; }
+.dx-item[aria-disabled="true"]:not(.dx-busy) { opacity: .5; }
+.dx-item[aria-disabled="true"]:hover { background: none; }
+.dx-busy { cursor: progress !important; }
+/* 処理中の行のアイコン: 回る輪に替える */
+.dx-busy svg.icon { visibility: hidden; position: relative; }
+.dx-busy::before { content: ""; flex: none; width: 14px; height: 14px; margin: 3px -24px 0 1px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: dx-spin .8s linear infinite; }
+@keyframes dx-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .dx-busy::before { animation: none; } }
+/* 警告・エラーの戻る・エクスポート・再試行: 右に寄せる */
 .pop .dx-foot { justify-content: flex-end; }
-/* 確認のモーダル（案 B）: 警告の囲みはモーダルの余白に合わせる */
+/* 確認のモーダル（案 B）: 警告はモーダルの余白に合わせる */
 dialog.dx-confirm .dx-warn { margin: 0 0 16px; }
 
 /* ===== 埋め込んだ HTML の範囲の差分（#348） ===== */
@@ -59,3 +69,6 @@ dialog.dx-confirm .dx-warn { margin: 0 0 16px; }
 .range-diff-head { color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
 /* 変更後の描いた結果で変わった要素 */
 .range-diff .rg-chg { background: var(--df-chg-bg); outline: 2px dashed var(--df-chg); outline-offset: 2px; }
+/* 見せ方のボタン: 名前の長さに合わせた幅にし、幅が足りないときは名前を折り返して全て見せる */
+.range-diff .segment { max-width: 100%; }
+.range-diff .segment button { width: auto; min-width: 0; height: auto; min-height: calc(var(--control-h) - 2px); padding: 4px 12px; }

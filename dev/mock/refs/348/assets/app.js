@@ -5456,7 +5456,8 @@ var MindmapPreview;
         });
     }
     /** HTML の本文の差分。差分を計算しきれなかったときは null */
-    function htmlBodyDiff({ before, after, marked, beforeFormat = "html", layout = "inline", layoutSwitch = null }) {
+    // 348: 既定の見せ方（initial）・変更前の描いた結果（beforeView）・印を付けた変更後の描いた結果（afterView）・切り替えの頭の名前（heading）を引数に加えた。どれも省くと今の振る舞いのまま
+    function htmlBodyDiff({ before, after, marked, beforeFormat = "html", layout = "inline", layoutSwitch = null, initial = "rendered", beforeView = null, afterView = null, heading = null }) {
         const parts = MindmapPreview.diffLineParts(before, after);
         if (parts === null)
             return null;
@@ -5477,9 +5478,10 @@ var MindmapPreview;
         const rendered = MindmapPreview.h({
             tag: "div",
             attrs: { class: "html-marked" },
-            children: [MindmapPreview.htmlBodyFrame({ source: marked, selectable: false, ...(marks === undefined ? {} : { marks }) })],
+            children: [afterView ?? MindmapPreview.htmlBodyFrame({ source: marked, selectable: false, ...(marks === undefined ? {} : { marks }) })],
         });
-        raw.hidden = true;
+        // 348: 変更前の描いた結果
+        const beforeRendered = beforeView === null ? null : MindmapPreview.h({ tag: "div", attrs: { class: "html-marked" }, children: [beforeView] });
         // 左右に並べるときは、並べた描いた結果と原文の差分を持ち、本文の幅が足りないときはインラインの方を出す
         let rawSide = null;
         if (side) {
@@ -5494,26 +5496,39 @@ var MindmapPreview;
             rawSide.hidden = true;
         }
         const legendElement = legend({ removedOnly: changed.removedOnly });
-        /** 描いた結果と原文の差分を切り替えるボタン */
-        const toggle = (label, showRaw) => MindmapPreview.h({
+        // 348: 見せ方ごとの中身。変更前の描いた結果を渡したときは、描いた結果を変更前・変更後に分ける
+        const views = [
+            ...(beforeRendered === null ? [] : [{ key: "before", label: "描いた結果（変更前）", element: beforeRendered }]),
+            { key: "after", label: beforeRendered === null ? "描いた結果" : "描いた結果（変更後）", element: rendered },
+            { key: "raw", label: "原文の差分", element: raw },
+        ];
+        const current = initial === "raw" ? "raw" : "after";
+        /** 見せ方の中身と凡例を出し分ける */
+        const show = (key) => {
+            for (const view of views)
+                view.element.hidden = view.key !== key;
+            legendElement.hidden = key !== "after";
+            // 左右に並べた原文の差分も、原文の差分と一緒に出し分ける
+            if (rawSide !== null)
+                rawSide.hidden = key !== "raw";
+        };
+        /** 見せ方を切り替えるボタン */
+        const toggle = ({ key, label }) => MindmapPreview.h({
             tag: "button",
             attrs: {
                 type: "button",
-                "aria-pressed": String(!showRaw),
+                "data-view": key,
+                "aria-pressed": String(key === current),
                 onclick: (event) => {
                     const pressed = event.currentTarget;
                     for (const button of pressed.parentElement?.children ?? [])
                         button.setAttribute("aria-pressed", String(button === pressed));
-                    raw.hidden = !showRaw;
-                    rendered.hidden = showRaw;
-                    legendElement.hidden = showRaw;
-                    // 左右に並べた原文の差分も、原文の差分と一緒に出し分ける
-                    if (rawSide !== null)
-                        rawSide.hidden = !showRaw;
+                    show(key);
                 },
             },
             children: [label],
         });
+        show(current);
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "html-diff-c" },
@@ -5522,16 +5537,18 @@ var MindmapPreview;
                     tag: "div",
                     attrs: { class: "html-diff-bar" },
                     children: [
+                        heading === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "range-diff-head" }, children: [heading] }),
                         // 並べ方の切り替えを、描いた結果と原文の差分の切り替えの前に別の組で置く
                         layoutSwitch,
                         MindmapPreview.h({
                             tag: "div",
-                            attrs: { class: "segment", role: "group", "aria-label": "本文の差分の見せ方" },
-                            children: [toggle("描いた結果", false), toggle("原文の差分", true)],
+                            attrs: { class: "segment", role: "group", "aria-label": heading === null ? "本文の差分の見せ方" : `${heading}の差分の見せ方` },
+                            children: views.map(toggle),
                         }),
                         legendElement,
                     ],
                 }),
+                beforeRendered,
                 rendered,
                 rawSide,
                 raw,
@@ -14207,6 +14224,11 @@ var MindmapPreview;
     const WARNING_TEXT = "埋め込んだ HTML・チャート・操作できる部品は含まれず、共通のスタイルも外れます。";
     /** 348: 警告の題 */
     const WARNING_TITLE = "Markdown でエクスポートしますか?";
+    /** 348: HTML を組み立てている間に、押した行の説明に出す文 */
+    const BUSY_TEXT = "エクスポートしています…";
+    /** 348: HTML を組み立てられなかったときのタイトルと文 */
+    const ERROR_TITLE = "エクスポートできませんでした";
+    const ERROR_TEXT = "mdmark のスタイルとスクリプトを読み込めませんでした。ネットワークにつながっているか確かめて、再試行してください。";
     /** 348: 警告の置き方（モックの body の `data-warn`。a: メニューの中身を替える / b: 確認のモーダル） */
     function warnPlacement() {
         return document.body.dataset.warn === "b" ? "b" : "a";
@@ -14247,8 +14269,19 @@ var MindmapPreview;
         const map = JSON.parse(document.querySelector('script[type="importmap"]').textContent);
         const [jsUrl, jsIntegrity] = Object.entries(map.integrity)[0];
         // 雛形と同じ integrity で中身を確かめて取る
-        const css = await (await fetch(link.href, { integrity: link.integrity })).text();
-        const js = await (await fetch(jsUrl, { integrity: jsIntegrity })).text();
+        // モックの見本: 処理中（busy）は終わらせず、エラー（error）は読み込めなかった扱いにする
+        if (MindmapPreview.mockExport === "busy")
+            await new Promise(() => { });
+        if (MindmapPreview.mockExport === "error")
+            throw new Error("mock");
+        const fetched = async (url, integrity) => {
+            const response = await fetch(url, { integrity });
+            if (!response.ok)
+                throw new Error(`${response.status} ${url}`);
+            return response.text();
+        };
+        const css = await fetched(link.href, link.integrity);
+        const js = await fetched(jsUrl, jsIntegrity);
         // 本文と索引は JSON で持たせ、`<` を逃がして要素を閉じられないようにする
         const payload = JSON.stringify({ markdown: data.bodies[item.body], docId: item.id, index: mdmarkIndex({ data, selfId: item.id }), features: EXPORT_FEATURES }).replaceAll("<", "\\u003c");
         const title = item.title.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
@@ -14282,7 +14315,16 @@ mdmark.mount(document.getElementById("doc"), { markdown, index, docId, config: {
     function formatItem({ format, label, sub, glyph, onclick }) {
         return h({
             tag: "button",
-            attrs: { class: "dx-item", type: "button", "data-format": format, onclick },
+            attrs: {
+                class: "dx-item",
+                type: "button",
+                "data-format": format,
+                // 処理中は押しても何もしない（フォーカスは残すため disabled にしない）
+                onclick: (event) => {
+                    if (event.currentTarget.getAttribute("aria-disabled") !== "true")
+                        onclick();
+                },
+            },
             children: [
                 MindmapPreview.icon(glyph),
                 h({
@@ -14324,6 +14366,58 @@ mdmark.mount(document.getElementById("doc"), { markdown, index, docId, config: {
     function exportAndClose({ id, format }) {
         void runExport({ id, format });
         closeMenu();
+    }
+    /** 348: メニューを開いたまま HTML を組み立てる。押した行を処理中にして押せなくし、組み立てたら閉じ、組み立てられなかったらメニューの中にエラーを出す */
+    async function exportHtmlInMenu({ pop, id, anchor }) {
+        const row = pop.querySelector('[data-format="html"]');
+        for (const item of pop.querySelectorAll(".dx-item"))
+            item.setAttribute("aria-disabled", "true");
+        row?.classList.add("dx-busy");
+        const sub = row?.querySelector(".dx-sub");
+        if (sub) {
+            sub.textContent = BUSY_TEXT;
+            sub.setAttribute("role", "status");
+        }
+        pop.setAttribute("aria-busy", "true");
+        try {
+            await runExport({ id, format: "html" });
+        }
+        catch {
+            if (current?.pop === pop)
+                showError({ pop, id, anchor });
+            return;
+        }
+        closeMenu();
+    }
+    /** 348: メニューの中身を、組み立てられなかったことと「戻る」「再試行」にする */
+    function showError({ pop, id, anchor }) {
+        pop.removeAttribute("aria-busy");
+        pop.replaceChildren(
+            h({ tag: "p", attrs: { class: "pop-title", id: MENU_TITLE_ID }, children: [ERROR_TITLE] }),
+            h({ tag: "div", attrs: { class: "dx-warn dx-error", role: "alert" }, children: [MindmapPreview.icon("alert"), h({ tag: "p", children: [ERROR_TEXT] })] }),
+            h({
+                tag: "div",
+                attrs: { class: "pop-foot dx-foot" },
+                children: [
+                    h({ tag: "button", attrs: { class: "btn", type: "button", "data-act": "export-back", onclick: () => showChoices({ pop, id, anchor, focus: "html" }) }, children: ["戻る"] }),
+                    h({
+                        tag: "button",
+                        attrs: {
+                            class: "btn primary",
+                            type: "button",
+                            "data-act": "export-retry",
+                            onclick: () => {
+                                showChoices({ pop, id, anchor, focus: "html" });
+                                void exportHtmlInMenu({ pop, id, anchor });
+                            },
+                        },
+                        children: ["再試行"],
+                    }),
+                ],
+            }),
+        );
+        MindmapPreview.positionPopover(pop, anchor);
+        pop.querySelector('[data-act="export-retry"]')?.focus();
     }
     /** 348: 確認のモーダルで警告を出す（案 B）。閉じたら入口のボタンへフォーカスを戻す */
     function confirmModal({ id, anchor }) {
@@ -14372,7 +14466,7 @@ mdmark.mount(document.getElementById("doc"), { markdown, index, docId, config: {
                 tag: "div",
                 attrs: { class: "dx-list", role: "group", "aria-labelledby": MENU_TITLE_ID },
                 children: [
-                    formatItem({ format: "html", label: "HTML でエクスポート", sub: "スタイルと用語のツールチップを含む 1 つのファイル", glyph: "code", onclick: () => exportAndClose({ id, format: "html" }) }),
+                    formatItem({ format: "html", label: "HTML でエクスポート", sub: "スタイルと用語のツールチップを含む 1 つのファイル", glyph: "code", onclick: () => void exportHtmlInMenu({ pop, id, anchor }) }),
                     formatItem({
                         format: "md",
                         label: "Markdown でエクスポート",
@@ -14470,68 +14564,14 @@ mdmark.mount(document.getElementById("doc"), { markdown, index, docId, config: {
                 element.classList.add("rg-chg");
         }
     }
-    /** 348: 埋め込んだ HTML の範囲 1 つの差分。既定は原文の差分で、変更前・変更後の描いた結果に切り替える */
+    /** 348: 埋め込んだ HTML の範囲 1 つの差分。部品『HTMLの本文の差分』で、既定を原文の差分にし、描いた結果を変更前・変更後に分ける */
     function rangeDiff({ before, after }) {
-        const parts = MindmapPreview.diffLineParts(before, after);
-        if (parts === null)
-            return null;
-        const deadline = performance.now() + MindmapPreview.LINE_DIFF_TIMEOUT_MS;
-        const raw = h({
-            tag: "div",
-            attrs: { class: "html-diff" },
-            children: [h({ tag: "pre", attrs: { class: "dg-raw df-raw", tabindex: "0", "aria-label": "原文の差分" }, children: MindmapPreview.rawDiffLines({ parts, deadline }) })],
-        });
         const beforeView = renderRange(before);
         const afterView = renderRange(after);
         markChanged({ before: beforeView, after: afterView });
-        beforeView.hidden = true;
-        afterView.hidden = true;
-        const legend = h({
-            tag: "div",
-            attrs: { class: "df-legend", hidden: true },
-            children: [h({ tag: "span", attrs: { class: "df-lg df-lg-chg" }, children: [h({ tag: "i", attrs: { "aria-hidden": "true" } }), "変わった"] })],
-        });
-        const views = { raw, before: beforeView, after: afterView };
-        /** 見せ方を切り替えるボタン */
-        const toggle = (label, key) => h({
-            tag: "button",
-            attrs: {
-                type: "button",
-                "data-view": key,
-                "aria-pressed": String(key === "raw"),
-                onclick: (event) => {
-                    const pressed = event.currentTarget;
-                    for (const button of pressed.parentElement?.children ?? [])
-                        button.setAttribute("aria-pressed", String(button === pressed));
-                    for (const [name, view] of Object.entries(views))
-                        view.hidden = name !== key;
-                    legend.hidden = key !== "after";
-                },
-            },
-            children: [label],
-        });
-        return h({
-            tag: "div",
-            attrs: { class: "html-diff-c range-diff" },
-            children: [
-                h({
-                    tag: "div",
-                    attrs: { class: "html-diff-bar" },
-                    children: [
-                        h({ tag: "span", attrs: { class: "range-diff-head" }, children: ["埋め込んだ HTML"] }),
-                        h({
-                            tag: "div",
-                            attrs: { class: "segment", role: "group", "aria-label": "埋め込んだ HTML の差分の見せ方" },
-                            children: [toggle("原文の差分", "raw"), toggle("変更前", "before"), toggle("変更後", "after")],
-                        }),
-                        legend,
-                    ],
-                }),
-                raw,
-                beforeView,
-                afterView,
-            ],
-        });
+        const diff = MindmapPreview.htmlBodyDiff({ before, after, marked: after, initial: "raw", beforeView, afterView, heading: "埋め込んだ HTML" });
+        diff?.classList.add("range-diff");
+        return diff;
     }
     /** 348: 差分の表示の本文で、変わった埋め込んだ HTML の範囲を範囲ごとの差分に置き換える */
     function replaceRangeDiffs({ root, before, after }) {
