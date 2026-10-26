@@ -1,0 +1,205 @@
+{
+  "memory": {
+    "privateBeforeKb": 215100,
+    "privateAfterKb": 309612,
+    "jsHeapBytes": 8749284
+  },
+  "body": {
+    "mdmarkVersion": "v0.8.0",
+    "embedded": {
+      "divs": 24,
+      "hint": true,
+      "chart": true,
+      "param": false,
+      "scripts": 0
+    },
+    "lineMarks": [
+      [
+        "H4",
+        1
+      ],
+      [
+        "P",
+        3
+      ],
+      [
+        "P",
+        41
+      ],
+      [
+        "IFRAME",
+        44
+      ]
+    ],
+    "outsideHtmlBlocks": 1,
+    "outsideHtmlFrames": 0,
+    "marks": [
+      {
+        "text": "応答時間",
+        "id": "G-1",
+        "ids": "G-1 R-1",
+        "inEmbedded": false,
+        "describedby": null,
+        "details": "term-tip"
+      },
+      {
+        "text": "応答時間",
+        "id": "G-1",
+        "ids": "G-1 R-1",
+        "inEmbedded": false,
+        "describedby": null,
+        "details": "term-tip"
+      },
+      {
+        "text": "応答時間",
+        "id": "G-1",
+        "ids": "G-1 R-1",
+        "inEmbedded": true,
+        "describedby": null,
+        "details": "term-tip"
+      },
+      {
+        "text": "ＲＥＳＰＯＮＳＥ",
+        "id": "G-1",
+        "ids": "G-1 G-2 G-3",
+        "inEmbedded": false,
+        "describedby": null,
+        "details": "term-tip"
+      },
+      {
+        "text": "応答時間",
+        "id": "G-1",
+        "ids": "G-1 R-1",
+        "inEmbedded": false,
+        "describedby": null,
+        "details": "term-tip"
+      },
+      {
+        "text": "LATENCY",
+        "id": "A-2",
+        "ids": "A-2",
+        "inEmbedded": false,
+        "describedby": null,
+        "details": "term-tip"
+      }
+    ],
+    "idrefs": [
+      {
+        "text": "A-2",
+        "id": "A-2",
+        "inEmbedded": true
+      },
+      {
+        "text": "A-2",
+        "id": "A-2",
+        "inEmbedded": false
+      }
+    ],
+    "mdmarkTerms": 0
+  },
+  "collision": [],
+  "tip": {
+    "応答時間": {
+      "found": true,
+      "open": true,
+      "groups": [
+        {
+          "kind": "用語 1",
+          "n": "1",
+          "ids": [
+            "G-1"
+          ]
+        },
+        {
+          "kind": "調査 1",
+          "n": "1",
+          "ids": [
+            "R-1"
+          ]
+        }
+      ],
+      "links": [
+        "G-1",
+        "R-1"
+      ],
+      "hashAfterClick": "#tab=docs&view=table&id=G-1"
+    },
+    "ＲＥＳＰＯＮＳＥ": {
+      "found": true,
+      "open": true,
+      "groups": [
+        {
+          "kind": "用語 3",
+          "n": "3",
+          "ids": [
+            "G-1",
+            "G-2",
+            "G-3"
+          ]
+        }
+      ],
+      "links": [
+        "G-1",
+        "G-2",
+        "G-3"
+      ],
+      "hashAfterClick": "#tab=docs&view=table&id=G-1"
+    }
+  },
+  "idrefHashAfterClick": "#tab=docs&view=table&id=A-2",
+  "chart": {
+    "found": true,
+    "zoom": [
+      "92%",
+      "115%",
+      "144%"
+    ],
+    "scrollBeforeDrag": [
+      166,
+      83
+    ],
+    "scrollAfterDrag": [
+      286,
+      163
+    ]
+  },
+  "param": {
+    "found": true,
+    "slider": "INPUT ",
+    "value": [
+      "1",
+      "2"
+    ],
+    "seriesChanged": true,
+    "copyButton": "今の値を写す",
+    "clipboard": "{\n  \"strength\": {\n    \"name\": \"反応の強さ\",\n    \"value\": 2\n  }\n}"
+  },
+  "export": {
+    "bytes": 477542,
+    "outsideRequests": [],
+    "errors": [],
+    "body": {
+      "embedded": true,
+      "chart": true,
+      "terms": [
+        "応答時間",
+        "応答時間"
+      ]
+    },
+    "tip": {
+      "visible": true,
+      "text": "用語受け取りから返信までの時間"
+    },
+    "param": {
+      "found": true,
+      "slider": "INPUT ",
+      "value": [
+        "1",
+        "2"
+      ],
+      "seriesChanged": true,
+      "copyButton": "今の値を写す",
+      "clipboard": "{\n  \"strength\": {\n    \"name\": \"反応の強さ\",\n    \"value\": 2\n  }\n}"
+    }
+  }
+}

@@ -472,7 +472,7 @@ var MindmapPreview;
     /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
     MindmapPreview.MARK_KINDS = ["terms", "docs", "research"];
     /** 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
-    function linkBody({ root, index, selfId, onOpen, }) {
+    function linkBody({ root, index, selfId, onOpen, source, }) {
         // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
         const byWord = new Map();
         for (const kind of MindmapPreview.MARK_KINDS) {
@@ -486,8 +486,11 @@ var MindmapPreview;
                 }
             }
         }
+        // PoC: 元の Markdown があるときは語の印を mdmark の一致で付け、下の正規表現は項目の ID だけに当てる
+        if (source !== undefined)
+            markWordsWithMdmark({ root, index, onOpen, source, byWord });
         // 長い語から順に当てる
-        const words = [...byWord.keys()].sort((a, b) => b.length - a.length);
+        const words = source !== undefined ? [] : [...byWord.keys()].sort((a, b) => b.length - a.length);
         const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const termPattern = (title) => ASCII_TERM.test(title) ? `(?<![A-Za-z0-9_.-])${escape(title)}(?![A-Za-z0-9_-])` : escape(title);
         // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い語の順
@@ -542,6 +545,120 @@ var MindmapPreview;
         }
     }
     MindmapPreview.linkBody = linkBody;
+    /** PoC: 語の印の要素。用語 1 件だけに一致した印は押すとその項目を `onOpen` に知らせ、2 件以上か資料・調査にも一致した印はツールチップに任せる */
+    function wordMark({ word, ids, index, onOpen }) {
+        const target = ids[0];
+        const multi = ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms");
+        return MindmapPreview.h({
+            tag: "a",
+            attrs: {
+                class: "term",
+                href: hashWith({ id: target, heading: null }),
+                "data-id": target,
+                "data-ids": ids.join(" "),
+                "aria-describedby": multi ? null : MindmapPreview.TERM_TIP_ID,
+                "aria-details": multi ? MindmapPreview.TERM_TIP_ID : null,
+                onclick: (event) => {
+                    event.preventDefault();
+                    if (!multi)
+                        onOpen(target);
+                },
+            },
+            children: [word],
+        });
+    }
+    /** PoC: 語の一致を mdmark の `collectMatches` で求め、一致の行と文字の位置から描いた本文の文字へ印を付ける。インラインコードは mdmark が照合しないので、中身がちょうど語のときだけ付ける */
+    function markWordsWithMdmark({ root, index, onOpen, source, byWord, }) {
+        // 語ごとに 1 つの用語として渡す（mdmark は意味を持たない用語を当てない）。語そのものも 1 件の文書として渡し、正規化の後に同じになる語がまとまる先を知る
+        const words = [...byWord.keys()];
+        const terms = words.map((word, n) => ({ id: `W-${n}`, term: word, meaning: word }));
+        const docs = [{ id: "SELF", path: "self.md", title: "self" }, ...words.map((_, n) => ({ id: `S-${n}`, path: `w${n}.md`, title: `w${n}` }))];
+        const documents = { "self.md": source };
+        for (const [n, word] of words.entries())
+            documents[`w${n}.md`] = word;
+        const result = mdmark.collectMatches({ index: { docs, terms }, documents });
+        // まとまった先の用語 → 一致した項目の ID（用語 → 資料 → 調査の順）
+        const rank = (id) => MindmapPreview.MARK_KINDS.indexOf(index.byId.get(id)?.kind);
+        const merged = new Map();
+        for (const [n, word] of words.entries()) {
+            const whole = (result.byDocument[`S-${n}`] ?? []).find((match) => match.line === 1 && match.start === 0 && match.end === word.length);
+            const key = whole?.id ?? `W-${n}`;
+            merged.set(key, [...new Set([...(merged.get(key) ?? []), ...byWord.get(word)])].sort((a, b) => rank(a) - rank(b)));
+        }
+        const lines = source.split("\n");
+        const matches = (result.byDocument["SELF"] ?? []).map((match) => ({
+            line: match.line,
+            word: (lines[match.line - 1] ?? "").slice(match.start, match.end),
+            ids: merged.get(match.id) ?? [],
+        }));
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => node.parentElement?.closest("pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6") !== null
+                ? NodeFilter.FILTER_REJECT
+                : NodeFilter.FILTER_ACCEPT,
+        });
+        const nodes = [];
+        for (let node = walker.nextNode(); node !== null; node = walker.nextNode())
+            nodes.push(node);
+        // 行の印を持つブロック（文書の順）で本文を区切る。一致は、その行を含む区切りの文字の中だけで、前の一致の後ろから探す
+        const marked = [...root.querySelectorAll(`[${MindmapPreview.LINE_ATTR}]`)];
+        const segmentOfNode = (node) => {
+            let found = -1;
+            for (const [i, element] of marked.entries()) {
+                if (!element.contains(node) && (element.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) === 0)
+                    break;
+                found = i;
+            }
+            return found;
+        };
+        const segmentOfLine = (line) => {
+            let found = -1;
+            for (const [i, element] of marked.entries())
+                if (Number(element.getAttribute(MindmapPreview.LINE_ATTR)) <= line)
+                    found = i;
+            return found;
+        };
+        const segments = nodes.map(segmentOfNode);
+        const cuts = new Map();
+        const cursor = new Map();
+        for (const match of matches) {
+            if (match.ids.length === 0 || match.word === "")
+                continue;
+            const segment = segmentOfLine(match.line);
+            const at = cursor.get(segment) ?? { node: segments.indexOf(segment), offset: 0 };
+            // 区切りの中の文字のノードを順に見て、最初に出てくる位置を一致の位置にする
+            for (let n = at.node; n >= 0 && n < nodes.length && segments[n] === segment; n++) {
+                const node = nodes[n];
+                if (node.parentElement?.closest("code") !== null)
+                    continue;
+                const start = (node.textContent ?? "").indexOf(match.word, n === at.node ? at.offset : 0);
+                if (start < 0)
+                    continue;
+                cuts.set(node, [...(cuts.get(node) ?? []), { start, end: start + match.word.length, word: match.word, ids: match.ids }]);
+                cursor.set(segment, { node: n, offset: start + match.word.length });
+                break;
+            }
+        }
+        // インラインコードは、中身がちょうど語のときだけ（パスや識別子の一部には付けない）
+        for (const node of nodes) {
+            const text = (node.textContent ?? "").trim();
+            const ids = byWord.get(text);
+            if (node.parentElement?.closest("code") === null || ids === undefined)
+                continue;
+            const start = (node.textContent ?? "").indexOf(text);
+            cuts.set(node, [{ start, end: start + text.length, word: text, ids }]);
+        }
+        for (const [node, list] of cuts) {
+            const text = node.textContent ?? "";
+            const parts = [];
+            let last = 0;
+            for (const cut of list) {
+                parts.push(text.slice(last, cut.start), wordMark({ word: cut.word, ids: cut.ids, index, onOpen }));
+                last = cut.end;
+            }
+            parts.push(text.slice(last));
+            node.replaceWith(...parts.filter((part) => part !== ""));
+        }
+    }
     /** 用語のツールチップの要素の id（用語の印の `aria-describedby` が指す） */
     MindmapPreview.TERM_TIP_ID = "term-tip";
     /** mermaid を初期化したときの、地の色（変わったら初期化し直す） */

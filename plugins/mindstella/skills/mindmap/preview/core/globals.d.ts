@@ -9,6 +9,11 @@ declare const mdmark: {
   ) => { update: (markdown: string) => void; destroy: () => void };
   /** 読み込んだ mdmark のバージョン */
   version: () => string;
+  /** PoC: 索引の用語・文書のエイリアスが文書のどの行・文字に一致するかを返す（行は 1 始まり、文字は行の中の位置） */
+  collectMatches: (opts: {
+    index: { docs: { id: string; path: string; title: string }[]; terms: { id: string; term: string; meaning: string }[] };
+    documents: Record<string, string>;
+  }) => { byDocument: Record<string, { kind: string; id: string; line: number; start: number; end: number }[]> };
 };
 
 /** Markdown を HTML に描く marked（本文の差分の塊を分ける `marked.lexer` だけに使う） */

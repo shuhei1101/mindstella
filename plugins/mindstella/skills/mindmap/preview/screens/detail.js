@@ -1016,7 +1016,7 @@ var MindmapPreview;
                 },
                 onChangeSet: on.changeSet,
             });
-            MindmapPreview.linkBody({ root, index, selfId: id, onOpen: on.open });
+            MindmapPreview.linkBody({ root, index, selfId: id, onOpen: on.open, source: rendered === null ? source : undefined });
             drawHtmlBlocks(root);
             // 表の列の固定・見出しの固定・しま模様と、見出しの開閉を当てる（本文の差分には開閉を置かない）
             MindmapPreview.decorateMarkdown({ root, display: bodyView, fold: rendered === null });
