@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗 -->
+  <meta name="color-scheme" content="light dark">
+  <title>資料のエクスポートのメニュー | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと今のプレビューのスタイルに、この PR のエクスポートの入口とメニューを重ねる -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/348/assets/style.css">
+  <style>
+    /* カタログのページ: 画面の土台ではなく、ページ全体を縦に送る */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文 */
+    .content { display: block; max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; overflow: visible; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    .stage + .stage { margin-top: 8px; }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; max-width: 100%; }
+    /* モーダルの見本: 台の中央に置く */
+    .stage.center { justify-items: center; padding: 24px 12px; }
+    /* 詳細パネルの頭の見本: パネルの面の上に置く */
+    .stage .panel-head { position: static; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); }
+    /* 本文の形式のバッジの見本 */
+    .badge-fmt { padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); }
+    /* 台の中のメニューとモーダル: 開いた位置ではなく流れに置く */
+    .stage .pop { position: static; }
+    .stage dialog { position: static; box-sizing: border-box; width: 100%; max-width: 420px; margin: 0; }
+    /* 入口の下に右端を揃えて開く位置の見本 */
+    .anchor-r { display: flex; justify-content: flex-end; }
+    /* 状態を見せるための見本のクラス */
+    .is-hover { background: var(--hover) !important; }
+    .is-focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / doc-export-menu</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">資料のエクスポートのメニュー</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">詳細パネルと詳細の全画面の見出しに置くエクスポートの入口と、形式を選ぶメニュー、Markdown を選んだときの警告。警告の置き方は案 A（メニューの中）と案 B（確認のモーダル）を並べる。</p>
+    <section class="cat-sec">
+      <h2>入口（本文が Markdown の資料）</h2>
+      <p>見出しの「編集する」と ← の間に置く、枠の無いアイコンボタン。読み上げは「エクスポート、ボタン、折りたたみ」。</p>
+      <div class="stage"><div class="panel-head"><span class="panel-kind">資料 <span class="mono">A-20</span></span><span class="badge-fmt mono">MD</span><span class="spacer"></span><button class="btn" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>編集する</button><button class="icon-btn panel-export" type="button" aria-label="エクスポート" title="エクスポート" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" type="button" aria-label="前の項目へ戻る" title="前の項目へ戻る"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icon-btn" type="button" aria-label="次の項目へ進む" title="次の項目へ進む" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="icon-btn" type="button" aria-label="全画面表示" title="全画面表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button class="icon-btn" type="button" aria-label="詳細を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>入口を置かない（本文が HTML の資料）</h2>
+      <p>本文が HTML の資料と、資料以外の種類には入口を置かない。</p>
+      <div class="stage"><div class="panel-head"><span class="panel-kind">資料 <span class="mono">A-20</span></span><span class="badge-fmt mono">HTML</span><span class="spacer"></span><button class="btn" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>編集する</button><button class="icon-btn" type="button" aria-label="前の項目へ戻る" title="前の項目へ戻る"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icon-btn" type="button" aria-label="次の項目へ進む" title="次の項目へ進む" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="icon-btn" type="button" aria-label="全画面表示" title="全画面表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button class="icon-btn" type="button" aria-label="詳細を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>入口のホバー・フォーカス</h2>
+      <p>ホバーは面の色だけを変え、フォーカスは印の色の輪を付ける。</p>
+      <div class="stage"><div class="panel-head"><span class="panel-kind">資料 <span class="mono">A-20</span></span><span class="badge-fmt mono">MD</span><span class="spacer"></span><button class="btn" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>編集する</button><button class="icon-btn panel-export is-hover" type="button" aria-label="エクスポート" title="エクスポート" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" type="button" aria-label="前の項目へ戻る" title="前の項目へ戻る"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icon-btn" type="button" aria-label="次の項目へ進む" title="次の項目へ進む" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="icon-btn" type="button" aria-label="全画面表示" title="全画面表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button class="icon-btn" type="button" aria-label="詳細を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="stage"><div class="panel-head"><span class="panel-kind">資料 <span class="mono">A-20</span></span><span class="badge-fmt mono">MD</span><span class="spacer"></span><button class="btn" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>編集する</button><button class="icon-btn panel-export is-focus" type="button" aria-label="エクスポート" title="エクスポート" aria-expanded="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" type="button" aria-label="前の項目へ戻る" title="前の項目へ戻る"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icon-btn" type="button" aria-label="次の項目へ進む" title="次の項目へ進む" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="icon-btn" type="button" aria-label="全画面表示" title="全画面表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button class="icon-btn" type="button" aria-label="詳細を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>形式を選ぶ（メニューを開いている）</h2>
+      <p>入口を押した面にし、入口の下に右端を揃えて開く。行の全体が押せ、名前と説明を 2 行で出す。Esc と外を押すと閉じ、入口へフォーカスを戻す。</p>
+      <div class="stage"><div class="panel-head"><span class="panel-kind">資料 <span class="mono">A-20</span></span><span class="badge-fmt mono">MD</span><span class="spacer"></span><button class="btn" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>編集する</button><button class="icon-btn panel-export" type="button" aria-label="エクスポート" title="エクスポート" aria-expanded="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" type="button" aria-label="前の項目へ戻る" title="前の項目へ戻る"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icon-btn" type="button" aria-label="次の項目へ進む" title="次の項目へ進む" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="icon-btn" type="button" aria-label="全画面表示" title="全画面表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button class="icon-btn" type="button" aria-label="詳細を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div class="anchor-r"><div class="pop doc-export" role="dialog" aria-labelledby="t1"><p class="pop-title" id="t1">エクスポート</p><div class="dx-list" role="group" aria-labelledby="t1"><button class="dx-item" type="button" data-format="html"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg><span class="dx-text"><span class="dx-name">HTML でエクスポート</span><span class="dx-sub">スタイルと用語のツールチップを含む 1 つのファイル</span></span></button><button class="dx-item" type="button" data-format="md"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg><span class="dx-text"><span class="dx-name">Markdown でエクスポート</span><span class="dx-sub">本文の Markdown だけ</span></span></button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>形式の行のホバー・フォーカス</h2>
+      <p>ホバーは行の面の色、フォーカスは印の色の輪を内側に付ける。</p>
+      <div class="stage"><div class="pop doc-export" role="dialog" aria-labelledby="t2"><p class="pop-title" id="t2">エクスポート</p><div class="dx-list" role="group" aria-labelledby="t2"><button class="dx-item is-hover" type="button" data-format="html"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg><span class="dx-text"><span class="dx-name">HTML でエクスポート</span><span class="dx-sub">スタイルと用語のツールチップを含む 1 つのファイル</span></span></button><button class="dx-item is-focus" type="button" data-format="md"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg><span class="dx-text"><span class="dx-name">Markdown でエクスポート</span><span class="dx-sub">本文の Markdown だけ</span></span></button></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 A: メニューの中で警告</h2>
+      <p>「Markdown でエクスポート」を押すと、メニューの中身を警告と「戻る」「エクスポート」に替える。開いた時点のフォーカスは「エクスポート」。「戻る」で形式を選ぶ中身に戻し、「Markdown でエクスポート」にフォーカスを戻す。</p>
+      <div class="stage"><div class="anchor-r"><div class="pop doc-export" role="dialog" aria-labelledby="ta1"><p class="pop-title" id="ta1">Markdown でエクスポートしますか?</p><div class="dx-warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><p id="w1">埋め込んだ HTML・チャート・操作できる部品は含まれず、共通のスタイルも外れます。</p></div><div class="pop-foot dx-foot"><button class="btn" type="button">戻る</button><button class="btn primary is-focus" type="button">エクスポート</button></div></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>案 B: 確認のモーダル</h2>
+      <p>「Markdown でエクスポート」を押すとメニューを閉じ、画面の中央に確認のモーダルを開く。開いた時点のフォーカスは「キャンセル」。閉じると入口へフォーカスを戻す。詳細の全画面から開くと、モーダルの上にモーダルを重ねる。</p>
+      <div class="stage center"><dialog open class="confirm dx-confirm" aria-labelledby="tb2" aria-describedby="w2"><h2 id="tb2">Markdown でエクスポートしますか?</h2><div class="dx-warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><p id="w2">埋め込んだ HTML・チャート・操作できる部品は含まれず、共通のスタイルも外れます。</p></div><div class="cf-row"><button class="btn is-focus" type="button">キャンセル</button><button class="btn primary" type="button">エクスポート</button></div></dialog></div>
+    </section>
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>「編集する」はアイコンだけになる。メニューは画面の幅から左右 8px を引いた幅を超えない。</p>
+      <div class="stage narrow"><div class="panel-head"><span class="panel-kind">資料 <span class="mono">A-20</span></span><span class="badge-fmt mono">MD</span><span class="spacer"></span><button class="icon-btn" type="button" aria-label="編集する" title="編集する"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg></button><button class="icon-btn panel-export" type="button" aria-label="エクスポート" title="エクスポート" aria-expanded="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" type="button" aria-label="前の項目へ戻る" title="前の項目へ戻る"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button><button class="icon-btn" type="button" aria-label="次の項目へ進む" title="次の項目へ進む" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="icon-btn" type="button" aria-label="全画面表示" title="全画面表示"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button><button class="icon-btn" type="button" aria-label="詳細を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div class="anchor-r"><div class="pop doc-export" role="dialog" aria-labelledby="t3"><p class="pop-title" id="t3">エクスポート</p><div class="dx-list" role="group" aria-labelledby="t3"><button class="dx-item" type="button" data-format="html"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg><span class="dx-text"><span class="dx-name">HTML でエクスポート</span><span class="dx-sub">スタイルと用語のツールチップを含む 1 つのファイル</span></span></button><button class="dx-item" type="button" data-format="md"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4"/></svg><span class="dx-text"><span class="dx-name">Markdown でエクスポート</span><span class="dx-sub">本文の Markdown だけ</span></span></button></div></div></div></div><div class="stage narrow"><div class="anchor-r"><div class="pop doc-export" role="dialog" aria-labelledby="ta3"><p class="pop-title" id="ta3">Markdown でエクスポートしますか?</p><div class="dx-warn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><p id="w3">埋め込んだ HTML・チャート・操作できる部品は含まれず、共通のスタイルも外れます。</p></div><div class="pop-foot dx-foot"><button class="btn" type="button">戻る</button><button class="btn primary is-focus" type="button">エクスポート</button></div></div></div></div>
+    </section>
+  </main>
+</body>
+</html>
