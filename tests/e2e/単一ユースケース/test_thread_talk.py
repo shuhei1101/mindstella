@@ -819,9 +819,11 @@ def test_normal_when_post_link_to_change_set(
     text = page.inner_text(post)
     assert "[D-1 を直した" not in text
     assert "](#diff=V-1)" not in text
-    # 検証（まとまりを指さないものは書いた文字のまま）
-    for literal in ("[無いまとまり](#diff=V-99)", "[前回から](#diff=since)", "[決め方へ](#決め方)"):
-        assert literal in text
+    # 検証（まとまりを指さないものはリンクにならず、リンクの文字だけが出る）
+    for label in ("無いまとまり", "前回から", "決め方へ"):
+        assert label in text
+    for notation in ("[", "](#diff=V-99)", "](#diff=since)", "](#決め方)"):
+        assert notation not in text
     # 実行（「D-1 を直した」を押す）
     page.locator(f"{post} a.setlink", has_text="D-1 を直した").click()
     page.wait_for_selector(".df-chip", timeout=CHIP_TIMEOUT_MS)
@@ -837,3 +839,91 @@ def test_normal_when_post_link_to_change_set(
     assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
     assert page.locator(THREAD_HEADING).count() == 1
     assert page.inner_text(post) == text
+
+
+# 描画のライブラリを読んだ後の図（SVG）が出るまで待つ上限ミリ秒
+DIAGRAM_TIMEOUT_MS = 20_000
+
+# AI の Markdown の書き込み（見出し・項目の ID を含む段落・表・`python` のコード・`mermaid` の図・生の HTML）
+MARKDOWN_POST_BODY = "\n".join(
+    [
+        "## 比べた結果",
+        "",
+        "D-1 は案 A が合う。",
+        "",
+        "| 案 | 結果 |",
+        "| --- | --- |",
+        "| A | 成立 |",
+        "",
+        "```python",
+        'print("ok")',
+        "```",
+        "",
+        "```mermaid",
+        "flowchart LR",
+        "  A --> B",
+        "```",
+        "",
+        '<img src="x" onerror="window.injected = true">',
+    ]
+)
+
+# 利用者がレビューに追加する返信の本文（太字の Markdown）
+MARKDOWN_REPLY_BODY = "**起票してよい**"
+
+
+def test_normal_when_markdown_post(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """AI の Markdown の書き込みを見出し・表・コード・図で読み、書いた返信が太字で末尾に出る（正常系）。"""
+    # 準備
+    url, _ = _serve(
+        make_workspace,
+        call_tool,
+        write_threads,
+        write_comments,
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body=MARKDOWN_POST_BODY, created=T_0100),
+                summary="Markdown の書き込み",
+            ),
+        ),
+    )
+    open_preview(url)
+    # 実行（コメントのボタンを押し、スレッドの行を押す）
+    open_thread(page, "TH-1")
+    post = f"{THREAD_POSTS}:nth-child(1) .post-body"
+    page.wait_for_selector(f"{post} figure.diagram svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（見出し・表・コード・図が描かれ、記法の文字が出ない）
+    assert page.inner_text(f"{post} h2") == "比べた結果"
+    assert page.locator(f"{post} table").count() == 1
+    assert page.locator(f"{post} pre > code").count() == 1
+    assert page.locator(f"{post} figure.diagram svg").count() >= 1
+    text = page.inner_text(post)
+    for notation in ("##", "| --- |", "```"):
+        assert notation not in text
+    # 検証（段落の中の D-1 は項目を開くボタンで、書き込みの要素は本文と同じ class を持つ）
+    assert page.locator(f"{post} > p button.idlink").all_inner_texts() == ["D-1"]
+    assert page.locator(f"{post}.mdmark").count() == 1
+    # 検証（生の HTML のスクリプトは動かない）
+    assert page.evaluate("window.injected !== true")
+    assert page.locator(f"{post} [onerror]").count() == 0
+    # 実行（返信を書いてレビューに追加する）
+    page.fill(REPLY_TEXTAREA, MARKDOWN_REPLY_BODY)
+    page.click(REPLY_SEND)
+    page.wait_for_selector(f"{THREAD_POSTS}[data-comment]", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（レビュー中の返信は、印つきで太字として出て、`**` が出ない）
+    reply = f"{THREAD_POSTS}[data-comment] .post-body"
+    assert page.locator(f"{THREAD_POSTS}[data-comment] .th-pending").count() == 1
+    assert page.inner_text(f"{reply} strong") == "起票してよい"
+    assert "**" not in page.inner_text(reply)
