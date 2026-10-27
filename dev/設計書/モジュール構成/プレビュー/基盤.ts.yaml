@@ -1496,7 +1496,7 @@ functions:
       1. 印に当てる語 → 一致した項目の ID の対応を作る。用語はタイトルと `aliases` の各語、資料・調査は `aliases` の各語を、前後の空白を落として用語 → 資料 → 調査の順に積む（`selfId` の項目、`withdrawn` が真の資料・調査、空の語は積まない。取り下げた用語はタイトルも別名も積む）。同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
       2. 語ごとに `{id: W-{n}, term: 語, meaning: 語}` の用語を作り（`collectMatches` は `meaning` が空の用語を照合しない）、`source` を `self.md`、語そのものを `w{n}.md` の文書にして `mdmark.collectMatches` に渡す（PR #348 の PoC 結果の最小再現コード）
       3. 語そのものの文書の一致（1 行目の 0 文字目から語の長さまで）から、正規化の後に同じになる語がまとまる先の用語を引き、まとまる先ごとに 1 の項目の ID を寄せて用語 → 資料 → 調査の順に並べる
-      4. `self.md` の一致ごとに、行と文字の位置から元の語を取り、その行を持つブロック（行を含む `data-line-start` の要素。行が埋め込んだ HTML の範囲の中なら、`data-html-open` から `data-html-close` の間にその行を持つ `.mdmark-html`）の文字の中で、同じブロックの前の一致の後ろから元の語を探す。`pre`・図の入れ物・`a`・h1〜h6 の中の文字は包まない。英数字だけの語は、前後が英数字のときと、後ろが `-` と数字のとき（`API-2` の `API`）は包まない
+      4. `self.md` の一致ごとに、行と文字の位置から元の語を取り、その行を持つブロック（行を含む `data-line-start` の要素。行が埋め込んだ HTML の範囲の中なら、`data-html-open` から `data-html-close` の間にその行を持つ `.mdmark-html`）の文字の中で、同じブロックの前の一致の後ろから元の語を探す。`pre`・図の入れ物・`a`・`code`・h1〜h6 の中の文字は包まない（インラインコードは 5 で当てる）。英数字だけの語は、前後が英数字のときと、後ろが `-` と数字のとき（`API-2` の `API`）は包まない
       5. インラインコード（`pre` の外の `code`）は `collectMatches` が照合しないため、中身を 1 と同じく前後の空白を落として、ちょうど語か記録にある ID のときだけ `code` ごと当てる
       6. 探し当てた箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id` に先頭の項目・`data-ids` に一致した全ての項目を空白区切りで）で包む。用語 1 件だけに一致した印は `aria-describedby`、用語 2 件以上か、資料・調査にも一致した印は `aria-details` でツールチップを指す
       7. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものと `selfId` は当てない。埋め込んだ HTML の範囲の中にも当てる
@@ -1538,6 +1538,12 @@ functions:
         condition: 用語 G-1「応答時間」と資料 A-2 の索引。本文に「応答時間」を持つ段落を 2 つと、「ﾋﾟｰｸ時の応答時間 」と `A-2` を含む段落を持つ `<!-- html -->` の範囲。`selfId` は A-1
         mock: 描画のライブラリの配信元（`page.route`）
         expected: G-1 の印が 3 つ（範囲の外の 2 つと範囲の中の 1 つ）。範囲の中の `A-2` が ID のリンクで、押すと `onOpen` に A-2
+      - name: test_link_body_when_inline_code
+        case: 正常
+        summary: インラインコードの中の文字には一致を当てず、中身がちょうど語のときだけ `code` ごと印にする
+        condition: '用語 G-1「保存先」の索引。`parametrize`: 本文の段落「`保存先` と保存先」 / 本文の段落「`docs/保存先.md` と保存先」。`selfId` は A-1'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: G-1 の印が 2 つで、1 つは `code` ごと、もう 1 つは後ろの「保存先」 / G-1 の印が後ろの「保存先」の 1 つだけで、`code` の中に `a` が無い
   - name: lockTap
     title: ロックの押下の判定
     container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
@@ -2165,7 +2171,7 @@ functions:
       type: string
       description: 1 枚の HTML
     process: |-
-      1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・本文）を入れる。`related` は入れない（mdmark が本文の末尾に被参照の一覧を置かない）
+      1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・説明（`description`））を入れる。`related` は入れない（mdmark が本文の末尾に被参照の一覧を置かない）
       2. 本文・索引・タイトルを 1 つの JSON にし、`<` を `\u003c` に置き換えて `<script type="application/json">` に入れる
       3. `assets.js` を `<script type="text/plain" id="doc-mdmark">` に入れ（`</script` を含むときは組み立てずに投げる）、`assets.css` を `<style>` に入れる
       4. タイトルは `&`・`<`・`>`・`"` を文字参照にして `<title>` と見出しに入れる
