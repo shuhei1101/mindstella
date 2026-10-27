@@ -784,7 +784,7 @@ def test_remap_tags_when_unmapped(make_workspace: MakeWorkspace, make_item: Make
     assert raised.value.unmapped == [("D-2", "通知")]
 
 
-def test_remap_tags_when_nothing_to_remap(
+def test_remap_tags_when_tags_not_given(
     make_workspace: MakeWorkspace, make_item: MakeItem, make_thread: MakeThread
 ) -> None:
     """語彙を置き換えず対応も無ければ何も変えない（正常系）。"""
