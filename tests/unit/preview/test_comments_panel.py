@@ -1331,6 +1331,101 @@ def test_review_edit_form_when_blank_or_error(
     assert observed["invalid"] == expected_invalid
 
 
+# 行の本文の書き換えを描き、入力欄に中身を入れて Enter を押して、呼ばれた引数と押したキーの結果と理由を集める
+EDIT_FORM_KEYS_SCRIPT = (
+    MOUNT_FUNCTION
+    + """
+({item, typed, ctrl, meta, composing}) => {
+    const saved = [];
+    const host = mount(MindmapPreview.reviewEditForm({
+        item,
+        body: null,
+        error: null,
+        focus: "",
+        on: {
+            saveEdit: (id, text) => saved.push([id, text]),
+            cancelEdit: () => {},
+        },
+    }));
+    const field = host.querySelector("textarea");
+    const submit = [...host.querySelectorAll("button")].find(
+        (button) => button.textContent.trim() === "修正"
+    );
+    field.value = typed;
+    const event = new KeyboardEvent("keydown", {
+        key: "Enter", ctrlKey: ctrl, metaKey: meta, isComposing: composing,
+        bubbles: true, cancelable: true,
+    });
+    field.dispatchEvent(event);
+    return {
+        saved,
+        keyshortcuts: field.getAttribute("aria-keyshortcuts"),
+        submitTitle: submit.getAttribute("title"),
+        defaultPrevented: event.defaultPrevented,
+        alerts: [...host.querySelectorAll('[role="alert"]')].map((alert) => alert.textContent),
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("typed", "ctrl", "meta", "composing", "expected", "expected_reason"),
+    [
+        pytest.param(
+            "案 A に決める",
+            True,
+            False,
+            False,
+            {"saved": [["C-1", "案 A に決める"]], "defaultPrevented": True},
+            "",
+            id="ctrl_enter",
+        ),
+        pytest.param(
+            "案 A に決める",
+            False,
+            True,
+            False,
+            {"saved": [["C-1", "案 A に決める"]], "defaultPrevented": True},
+            "",
+            id="cmd_enter",
+        ),
+        pytest.param(
+            "   ",
+            True,
+            False,
+            False,
+            {"saved": []},
+            "コメントを入れてから直してください。",
+            id="blank_only",
+        ),
+        pytest.param("案 A に決める", True, False, True, {"saved": []}, "", id="composing"),
+    ],
+)
+def test_review_edit_form_ctrl_enter(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    typed: str,
+    ctrl: bool,
+    meta: bool,
+    composing: bool,
+    expected: dict[str, Any],
+    expected_reason: str,
+) -> None:
+    """Ctrl+Enter で「修正」と同じ処理を通し、変換中は通さない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(
+        EDIT_FORM_KEYS_SCRIPT,
+        {"item": ITEM_1, "typed": typed, "ctrl": ctrl, "meta": meta, "composing": composing},
+    )
+    # 検証
+    assert observed["keyshortcuts"] == "Control+Enter"
+    assert observed["submitTitle"] == "修正（Ctrl+Enter）"
+    assert expected.items() <= observed.items()
+    assert expected_reason in "".join(observed["alerts"])
+
+
 # 消した行を描き、「元に戻す」を押して、見た目と呼ばれた ID を集める
 REMOVED_ROW_SCRIPT = (
     MOUNT_FUNCTION
