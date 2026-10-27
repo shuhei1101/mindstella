@@ -1,12 +1,9 @@
-"""vocabulary.py（タグの語彙の読み取り・語彙にあるかの確かめ・近いタグの候補）の単体テスト。"""
+"""vocabulary.py（タグの語彙の読み取り・未登録の候補の洗い出し・近いタグの候補）の単体テスト。"""
 
 from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-import errors
 import vocabulary
 
 # 近いタグの候補の上限（インターフェース定義『項目の検索』の制約「近いタグの候補」）
@@ -14,15 +11,20 @@ CANDIDATE_LIMIT = 5
 
 
 def test_tag_entries() -> None:
-    """語彙を名前の順に並べ、説明が無ければ None にする（正常系）。"""
+    """語彙を名前の順に並べ、持たないキーは None か空の配列にする（正常系）。"""
     # 準備
-    settings = {"tags": [{"name": "画面", "summary": "s"}, {"name": "データ"}]}
+    settings = {
+        "tags": [
+            {"name": "画面", "summary": "s", "include": "i", "exclude": "e", "examples": ["x"]},
+            {"name": "データ"},
+        ]
+    }
     # 実行
     entries = vocabulary.tag_entries(settings)
     # 検証
     assert entries == [
-        {"name": "データ", "summary": None},
-        {"name": "画面", "summary": "s"},
+        {"name": "データ", "summary": None, "include": None, "exclude": None, "examples": []},
+        {"name": "画面", "summary": "s", "include": "i", "exclude": "e", "examples": ["x"]},
     ]
 
 
@@ -67,34 +69,31 @@ def test_similar_tags_limit() -> None:
     assert len(candidates) == CANDIDATE_LIMIT
 
 
-def test_require_known_tags() -> None:
-    """全て語彙にあれば何も送らない（正常系）。"""
+def test_list_candidate_tags() -> None:
+    """候補をタグごとにまとめ、付けた ID を重ならないように並べる（正常系）。"""
     # 準備
-    settings = {"tags": [{"name": "データ"}, {"name": "画面"}]}
-    tags_by_argument = [("tags", ["データ"]), ("any_tags", ["画面"])]
+    settings = {"tags": [{"name": "通知"}, {"name": "データ"}]}
+    owned_tags = [
+        ("D-2", ["通知機能", "データ"]),
+        ("T-1", ["通知機能"]),
+        ("T-1", ["通知機能"]),
+        ("D-3", ["保存処理"]),
+    ]
     # 実行
-    result = vocabulary.require_known_tags(tags_by_argument, settings)
+    candidates = vocabulary.list_candidate_tags(owned_tags, settings)
     # 検証
-    assert result is None
+    assert candidates == [
+        {"tag": "保存処理", "ids": ["D-3"], "similar": []},
+        {"tag": "通知機能", "ids": ["D-2", "T-1"], "similar": ["通知"]},
+    ]
 
 
-def test_require_known_tags_when_unknown() -> None:
-    """無いタグを引数ごとに候補つきで返す（異常系）。"""
+def test_list_candidate_tags_when_none() -> None:
+    """全て語彙にあれば空（正常系）。"""
     # 準備
     settings = {"tags": [{"name": "データ"}]}
-    tags_by_argument = [("tags", ["データー"]), ("any_tags", ["データ"])]
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError) as raised:
-        vocabulary.require_known_tags(tags_by_argument, settings)
-    assert raised.value.unknown == [("tags", "データー", ["データ"])]
-    assert raised.value.lines == ["tags: データー（候補: データ）"]
-
-
-def test_require_known_tags_when_empty_vocabulary() -> None:
-    """語彙が空なら候補なしで返す（異常系）。"""
-    # 準備
-    settings: dict[str, Any] = {"summary": "題"}
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError) as raised:
-        vocabulary.require_known_tags([("tags", ["通知"])], settings)
-    assert raised.value.lines == ["tags: 通知（候補なし）"]
+    owned_tags = [("D-1", ["データ"]), ("D-2", None)]
+    # 実行
+    candidates = vocabulary.list_candidate_tags(owned_tags, settings)
+    # 検証
+    assert candidates == []

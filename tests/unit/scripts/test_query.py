@@ -326,11 +326,15 @@ def test_list_attrs_when_none(make_workspace: MakeWorkspace, make_item: MakeItem
 def test_list_tags(
     make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
 ) -> None:
-    """語彙のタグごとに種類をまたいで数え、持つ項目が無いタグも返す（正常系）。"""
+    """語彙のタグごとに説明を返し、種類をまたいで数え、持つ項目が無いタグも返す（正常系）。"""
     # 準備
     settings = {
         **valid_settings,
-        "tags": [{"name": "データ", "summary": "s"}, {"name": "画面"}, {"name": "保留"}],
+        "tags": [
+            {"name": "データ", "summary": "s", "include": "i", "exclude": "e", "examples": ["x"]},
+            {"name": "画面"},
+            {"name": "保留"},
+        ],
     }
     root = make_workspace(
         make_item("D-1", tags=["データ"]),
@@ -343,10 +347,19 @@ def test_list_tags(
     # 実行
     tags = query.list_tags(workspace)
     # 検証
+    no_description = {"summary": None, "include": None, "exclude": None, "examples": []}
     assert tags == [
-        {"name": "データ", "summary": "s", "count": 2, "kinds": ["decision", "task"]},
-        {"name": "保留", "summary": None, "count": 0, "kinds": []},
-        {"name": "画面", "summary": None, "count": 1, "kinds": ["decision"]},
+        {
+            "name": "データ",
+            "summary": "s",
+            "include": "i",
+            "exclude": "e",
+            "examples": ["x"],
+            "count": 2,
+            "kinds": ["decision", "task"],
+        },
+        {"name": "保留", **no_description, "count": 0, "kinds": []},
+        {"name": "画面", **no_description, "count": 1, "kinds": ["decision"]},
     ]
 
 
@@ -363,7 +376,17 @@ def test_list_tags_when_duplicated(
     # 実行
     tags = query.list_tags(workspace)
     # 検証
-    assert tags == [{"name": "データ", "summary": None, "count": 1, "kinds": ["decision"]}]
+    assert tags == [
+        {
+            "name": "データ",
+            "summary": None,
+            "include": None,
+            "exclude": None,
+            "examples": [],
+            "count": 1,
+            "kinds": ["decision"],
+        }
+    ]
 
 
 def test_list_tags_when_none(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -475,6 +498,20 @@ def test_build_hint_when_empty() -> None:
     assert "tags" in hint
 
 
+def test_build_hint_when_stray_tag() -> None:
+    """0 件で語彙にもどの項目にも無いタグは、近いタグを案内する（正常系）。"""
+    # 準備
+    search_filter = query.SearchFilter(tags=("データー",))
+    # 実行
+    hint = query.build_hint(
+        0, 0, search_filter, has_next=False, stray_tags=[("データー", ["データ"])]
+    )
+    # 検証
+    assert hint is not None
+    assert "tags" in hint
+    assert "データー は語彙にもどの項目にも無いタグです（近いタグ: データ）" in hint
+
+
 @pytest.mark.parametrize(
     ("total", "returned", "search_filter"),
     [
@@ -488,3 +525,20 @@ def test_build_hint_when_none(total: int, returned: int, search_filter: query.Se
     hint = query.build_hint(total, returned, search_filter, has_next=False)
     # 検証
     assert hint is None
+
+
+def test_list_stray_tags(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """項目が使う未登録の候補と語彙のタグは除き、どこにも無いタグだけを返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["通知"]),
+        settings={**valid_settings, "tags": [{"name": "データ"}]},
+    )
+    workspace = store.load_workspace(root)
+    search_filter = query.SearchFilter(tags=("通知", "データー"), any_tags=("データ", "データー"))
+    # 実行
+    stray_tags = query.list_stray_tags(workspace, search_filter)
+    # 検証
+    assert stray_tags == [("データー", ["データ"])]

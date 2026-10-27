@@ -9,7 +9,6 @@ from typing import Any
 import pytest
 import yaml
 
-import errors
 import store
 import threads
 from errors import (
@@ -26,7 +25,6 @@ from fixture_types import (
     MakePost,
     MakeThread,
     MakeWorkspace,
-    SnapshotTree,
     WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR
@@ -704,20 +702,20 @@ def test_create_thread_when_rejected(
     assert not (root / RECORD_DIR / "threads.yaml").exists()
 
 
-def test_create_thread_when_unknown_tag(
+def test_create_thread_when_candidate_tag(
     make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
 ) -> None:
-    """語彙に無いタグでは立てない（異常系）。"""
+    """語彙に無いタグもそのまま付けて立てる（正常系）。"""
     # 準備
     root = make_workspace(settings=_with_vocabulary(valid_settings, "起票"))
     workspace = store.load_workspace(root)
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError) as raised:
-        threads.create_thread(
-            workspace, body="本文", summary="要約", tags=["起票の確認"], now=_fixed_now
-        )
-    assert raised.value.unknown == [("tags", "起票の確認", ["起票"])]
-    assert not (root / RECORD_DIR / "threads.yaml").exists()
+    # 実行
+    result = threads.create_thread(
+        workspace, body="本文", summary="要約", tags=["起票の確認"], now=_fixed_now
+    )
+    # 検証
+    assert result[0] == "TH-1"
+    assert _find(_read_threads(root), "TH-1")["tags"] == ["起票の確認"]
 
 
 def test_create_thread_when_boundary(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -983,22 +981,21 @@ def test_update_thread_when_tags(
     assert (raw["tags"], raw["summary"]) == (tags, "前の要約")
 
 
-def test_update_thread_when_unknown_tag(
+def test_update_thread_when_candidate_tag(
     make_workspace: MakeWorkspace,
     make_thread: MakeThread,
     write_threads: WriteThreads,
-    snapshot_tree: SnapshotTree,
     valid_settings: dict[str, Any],
 ) -> None:
-    """語彙に無いタグには置き換えない（異常系）。"""
+    """語彙に無いタグにも置き換える（正常系）。"""
     # 準備
     root = make_workspace(settings=_with_vocabulary(valid_settings, "起票"))
     write_threads(root, make_thread("TH-1", tags=["起票"]))
-    before = snapshot_tree(root)
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError):
-        threads.update_thread(root, "TH-1", tags=["起票の確認"], now=_fixed_now)
-    assert snapshot_tree(root) == before
+    # 実行
+    taken = threads.update_thread(root, "TH-1", tags=["起票の確認"], now=_fixed_now)
+    # 検証
+    assert taken == []
+    assert _find(_read_threads(root), "TH-1")["tags"] == ["起票の確認"]
 
 
 @pytest.mark.parametrize(

@@ -413,9 +413,9 @@ def test_save_edits(
     write_edits: WriteEdits,
     valid_settings: dict[str, Any],
 ) -> None:
-    """キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする（正常系）。"""
+    """キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする（語彙に無いタグも書く）（正常系）。"""
     # 準備
-    settings = {**valid_settings, "tags": [{"name": "画面"}, {"name": "記録の形"}]}
+    settings = {**valid_settings, "tags": [{"name": "画面"}]}
     root = make_workspace(
         make_item(
             "D-1",
@@ -582,9 +582,9 @@ def test_save_edits_drops_edits_of_removed(
                 ("E-1", {"key": "tags", "value": ["保存"]}),
                 ("E-2", {"key": "depends_on", "value": ["D-99"]}),
             ],
-            [("E-1", "invalid", []), ("E-2", "invalid", [])],
-            "保存",
-            id="invalid_tag_and_reference",
+            [("E-2", "invalid", [])],
+            "D-99",
+            id="invalid_reference_without_candidate_tag",
         ),
         pytest.param(
             _no_rewrite,
