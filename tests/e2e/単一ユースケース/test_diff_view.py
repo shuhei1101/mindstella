@@ -1479,3 +1479,95 @@ def test_normal_when_side_by_side_in_panel(
     assert "今週に決めます" in page.inner_text(f"{FULL_SCOPE} {SIDE_AFTER} ins.df-blk")
     # ワークスペースの YAML と本文の中身が、開く前と同じ
     assert snapshot_records(snapshot_tree(root)) == before
+
+
+# 段落 1 つと、段落 3 つを 1 行ずつ持つ埋め込んだ HTML の範囲 1 つを持つ本文（書き換える前と後）
+RANGE_BODY_BEFORE = (
+    "範囲の外の段落\n\n"
+    "<!-- html -->\n```html\n"
+    "<p>1 つ目の段落</p>\n<p>2 つ目の段落</p>\n<p>3 つ目の段落</p>\n"
+    "```\n<!-- /html -->\n"
+)
+RANGE_BODY_AFTER = RANGE_BODY_BEFORE.replace("<p>2 つ目の段落</p>", "<p>書き直した 2 つ目の段落</p>")
+
+# 詳細パネルの本文の、範囲の差分の見せ方の組と、描いた結果の範囲
+RANGE_VIEW_GROUP = "埋め込んだ HTMLの差分の見せ方"
+RANGE_RENDERED = "aside.panel .html-marked:visible .mdmark-html p"
+
+
+def test_normal_when_embedded_html_changed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    replay: Replay,
+    open_preview: OpenPreview,
+    snapshot_tree: SnapshotTree,
+    page: Page,
+) -> None:
+    """埋め込んだ HTML の範囲の中の 2 つ目の段落を書き換えると、範囲を原文の差分で出し、変更前・変更後の描いた結果に切り替える（正常系）。"""
+    # 準備（範囲を持つ Markdown の本文の資料 A-1 の、範囲の中の 2 つ目の段落を書き換えて 1 つのまとまりにする）
+    root = make_workspace(make_item("A-1"), bodies={"A-1.md": RANGE_BODY_BEFORE})
+    ws = str(root)
+    url = _serve(call_tool, root)
+    visit_and_close(page, url)
+    replay("update", workspace=ws, id="A-1", item={"body_markdown": RANGE_BODY_AFTER})
+    replay("commit", workspace=ws, summary="段落を書き直す")
+    before = snapshot_records(snapshot_tree(root))
+    # 実行（変更履歴から書き換えのまとまりを選ぶ）
+    open_preview(url, "#tab=overview")
+    pick_history_point(page, "前回開いてから")
+    # 検証（資料のタブに印が付き、A-1 に変更の印が付く）
+    assert _marked_tabs(page) == ["docs"]
+    page.click('nav.tabbar a[data-tab="docs"]')
+    page.wait_for_selector(".doc-card")
+    assert page.locator('.doc-card[data-id="A-1"] .df-mark.df-chg').count() == 1
+    # 実行（資料のタブで A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel .df-raw", timeout=DIAGRAM_TIMEOUT_MS)
+    hash_text = page.evaluate("location.hash")
+    history_length = page.evaluate("history.length")
+    # 検証（範囲が原文の差分で出て、2 つ目の段落の原文の行が削除した行と追加した行で、変えた文字が色分けされる）
+    removed = page.locator("aside.panel .df-raw .df-line.df-del")
+    added = page.locator("aside.panel .df-raw .df-line.df-add")
+    assert "<p>2 つ目の段落</p>" in removed.inner_text()
+    assert "<p>書き直した 2 つ目の段落</p>" in added.inner_text()
+    assert "".join(added.locator(".df-word.df-add").all_inner_texts()).strip() == "書き直した"
+    # 検証（範囲の外の段落には変更のマーカーが無い）
+    assert page.locator("aside.panel .md > p").inner_text() == "範囲の外の段落"
+    assert page.locator("aside.panel .md > p[data-df], aside.panel .md > ins, aside.panel .md > del").count() == 0
+    # 実行（変更前の描いた結果に切り替える）
+    group = page.get_by_role("group", name=RANGE_VIEW_GROUP)
+    group.get_by_role("button", name="描いた結果（変更前）").click()
+    # 検証（範囲の 2 つ目の段落が、書き換える前の文で描かれる）
+    assert page.locator(RANGE_RENDERED).all_inner_texts() == [
+        "1 つ目の段落",
+        "2 つ目の段落",
+        "3 つ目の段落",
+    ]
+    # 実行（変更後の描いた結果に切り替える）
+    group.get_by_role("button", name="描いた結果（変更後）").click()
+    # 検証（書き直した 2 つ目の段落だけに変更のマーカーが付く）
+    marked = page.locator(RANGE_RENDERED).evaluate_all(
+        "ps => ps.map(p => [p.textContent, p.dataset.df ?? null])"
+    )
+    assert marked == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 検証（見せ方の切り替えで、ハッシュと履歴の数が変わらない）
+    assert page.evaluate("location.hash") == hash_text
+    assert page.evaluate("history.length") == history_length
+    # 実行（差分の表示から抜ける）
+    page.get_by_role("button", name="差分の表示をやめる").click()
+    page.wait_for_selector("aside.panel .mdmark-html", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（A-1 の本文は、今の本文を描いた結果だけになる）
+    assert page.locator("aside.panel .html-diff-c").count() == 0
+    assert page.locator("aside.panel .mdmark-html p").all_inner_texts() == [
+        "1 つ目の段落",
+        "書き直した 2 つ目の段落",
+        "3 つ目の段落",
+    ]
+    assert page.locator("aside.panel .mdmark-html [data-df]").count() == 0
+    # ワークスペースの YAML と本文の中身が、開く前と同じ
+    assert snapshot_records(snapshot_tree(root)) == before
