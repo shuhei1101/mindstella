@@ -1642,6 +1642,12 @@ TABLE_WRAP_SOURCE = (
     "| 列 C | 列 D |\n| --- | --- |\n| 3 | 4 |\n"
 )
 
+# 範囲の外の表（1〜3 行目）の後に、`<!-- html -->` の範囲（5〜9 行目）の中の表を持つ本文
+TABLE_IN_RANGE_SOURCE = (
+    "| 列 A | 列 B |\n| --- | --- |\n| 1 | 2 |\n\n"
+    "<!-- html -->\n```html\n<table><tr><th>範囲の列</th><td>範囲の値</td></tr></table>\n```\n<!-- /html -->\n"
+)
+
 # 表を包む入れ物の期待する属性（役割・読み上げの名前・キーボードで届く・行の印は持たない）
 TABLE_WRAP_ATTRIBUTES = {
     "tabindex": "0",
@@ -1651,10 +1657,45 @@ TABLE_WRAP_ATTRIBUTES = {
 }
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        pytest.param(
+            TABLE_WRAP_SOURCE,
+            {
+                "tableCount": 2,
+                "wrapClasses": ["md-table-wrap", "md-table-wrap"],
+                "wrapAttributes": [TABLE_WRAP_ATTRIBUTES, TABLE_WRAP_ATTRIBUTES],
+                "wrapChildren": [["TABLE"], ["TABLE"]],
+                "rows": [["3", "5"], ["7", "9"]],
+                "paragraphParentIsRoot": True,
+                "wrappedInRange": [],
+            },
+            id="two_tables",
+        ),
+        pytest.param(
+            TABLE_IN_RANGE_SOURCE,
+            {
+                "tableCount": 2,
+                "wrapClasses": ["md-table-wrap"],
+                "wrapAttributes": [TABLE_WRAP_ATTRIBUTES],
+                "wrapChildren": [["TABLE"]],
+                "rows": [["1", "3"], []],
+                "paragraphParentIsRoot": None,
+                "wrappedInRange": [False],
+            },
+            id="table_in_range",
+        ),
+    ],
+)
 def test_render_markdown_when_table(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    source: str,
+    expected: dict[str, Any],
 ) -> None:
-    """表を横に送れる入れ物で包み、行の印を変えない（正常系）。"""
+    """表を横に送れる入れ物で包み、行の印を変えない。範囲の中の表は包まない（正常系）。"""
     # 準備
     load_preview_scripts()
     load_mdmark()
@@ -1663,7 +1704,9 @@ def test_render_markdown_when_table(
         """(source) => {
             const root = MindmapPreview.renderMarkdown(source);
             const tables = [...root.querySelectorAll("table")];
-            const wraps = tables.map((table) => table.parentElement);
+            // 入れ物が直上にある表だけを数える（範囲の中の表は入れ物の外）
+            const wraps = tables.map((table) => table.parentElement).filter((parent) => parent.classList.contains("md-table-wrap"));
+            const paragraph = root.querySelector("p");
             return {
                 tableCount: tables.length,
                 wrapClasses: wraps.map((wrap) => wrap.className),
@@ -1675,20 +1718,19 @@ def test_render_markdown_when_table(
                 })),
                 wrapChildren: wraps.map((wrap) => [...wrap.children].map((child) => child.tagName)),
                 rows: tables.map((table) =>
-                    [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start"))
+                    [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start")).filter((line) => line !== null)
                 ),
-                paragraphParentIsRoot: root.querySelector("p").parentElement === root,
+                paragraphParentIsRoot: paragraph === null ? null : paragraph.parentElement === root,
+                // 範囲の中の表が、入れ物の中にあるか
+                wrappedInRange: tables
+                    .filter((table) => table.closest(".mdmark-html") !== null)
+                    .map((table) => table.closest(".md-table-wrap") !== null),
             };
         }""",
-        TABLE_WRAP_SOURCE,
+        source,
     )
     # 検証
-    assert result["tableCount"] == 2
-    assert result["wrapClasses"] == ["md-table-wrap", "md-table-wrap"]
-    assert result["wrapAttributes"] == [TABLE_WRAP_ATTRIBUTES, TABLE_WRAP_ATTRIBUTES]
-    assert result["wrapChildren"] == [["TABLE"], ["TABLE"]]
-    assert result["rows"] == [["3", "5"], ["7", "9"]]
-    assert result["paragraphParentIsRoot"] is True
+    assert result == expected
 
 
 # 選んだ箇所を求める HTML の本文の原文（左の数字は行。サーバーの行の印を足す前）
