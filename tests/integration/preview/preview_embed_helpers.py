@@ -13,11 +13,14 @@ __all__ = [
     "CHART",
     "CLIPBOARD_PERMISSIONS",
     "EMBEDDED_BODY",
+    "EMBED_TIMEOUT_MS",
     "EXPORT_BODY",
     "EXPORT_ENTRY_NAME",
     "EXPORT_MENU",
     "MARKDOWN_EXPORT_BODY",
     "MDMARK_URL_PATTERN",
+    "OUTSIDE_ONLY_AFTER",
+    "OUTSIDE_ONLY_BEFORE",
     "RANGE",
     "ZOOM_FIT",
     "ZOOM_IN",
@@ -26,6 +29,9 @@ __all__ = [
     "save_download",
     "viewport_scroll",
 ]
+
+# チャートを描き終わるまで待つ上限ミリ秒
+EMBED_TIMEOUT_MS = 20_000
 
 # 詳細パネルの本文の中の、埋め込んだ HTML の範囲と、その中のチャート・倍率の操作
 RANGE = "aside.panel .md .mdmark-html"
@@ -103,16 +109,26 @@ DIFF_BODY_BEFORE = (
 )
 DIFF_BODY_AFTER = DIFF_BODY_BEFORE.replace("<p>2 つ目の段落</p>", "<p>書き直した 2 つ目の段落</p>")
 
+# 範囲の外の段落だけを書き換える本文（範囲の中身は同じ）
+OUTSIDE_ONLY_BEFORE = DIFF_BODY_BEFORE
+OUTSIDE_ONLY_AFTER = DIFF_BODY_BEFORE.replace("範囲の外の段落", "書き直した範囲の外の段落")
 
-def build_embedded_diff_workspace(make_workspace: MakeWorkspace, call_tool: CallTool) -> Path:
-    """範囲を持つ Markdown の本文の資料 A-1 を足して `commit`（V-1）し、範囲の中の 2 つ目の段落を書き換えて `commit`（V-2、説明「直す」）したワークスペースを作る。"""
+
+def build_embedded_diff_workspace(
+    make_workspace: MakeWorkspace,
+    call_tool: CallTool,
+    *,
+    before: str = DIFF_BODY_BEFORE,
+    after: str = DIFF_BODY_AFTER,
+) -> Path:
+    """範囲を持つ Markdown の本文の資料 A-1 を `before` で足して `commit`（V-1）し、`after` へ書き換えて `commit`（V-2、説明「直す」）したワークスペースを作る。"""
     root = make_workspace()
     workspace = str(root)
     doc = {"title": "範囲を持つ資料", "kind": "図", "deliverable": False, "status": "下書き"}
     steps = (
-        ("add", {"kind": "doc", "item": {**doc, "body_markdown": DIFF_BODY_BEFORE}}),
+        ("add", {"kind": "doc", "item": {**doc, "body_markdown": before}}),
         ("commit", {"summary": "足す"}),
-        ("update", {"id": "A-1", "item": {"body_markdown": DIFF_BODY_AFTER}}),
+        ("update", {"id": "A-1", "item": {"body_markdown": after}}),
         ("commit", {"summary": "直す"}),
     )
     for name, arguments in steps:
