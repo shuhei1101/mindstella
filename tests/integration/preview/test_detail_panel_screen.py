@@ -1492,6 +1492,73 @@ def test_review_row_edit(
     wait_until_focused(page, f"{row} button[title='修正']")
 
 
+@pytest.mark.parametrize("shortcut", ["Control+Enter", "Meta+Enter"], ids=["ctrl_enter", "cmd_enter"])
+def test_review_row_edit_when_shortcut(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, shortcut: str
+) -> None:
+    """入力欄の Ctrl+Enter（macOS は Cmd+Enter）で「修正」と同じく `body` だけを送り、本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    sent: list[Any] = []
+    page.on(
+        "request",
+        lambda request: sent.append(request.post_data_json) if request.method == "PATCH" else None,
+    )
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "案 B にする")
+    # 実行
+    page.press(field, shortcut)
+    page.wait_for_function(
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert sent == [{"body": "案 B にする"}]
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 B にする"
+    wait_until_focused(page, f"{row} button[title='修正']")
+
+
+def test_review_row_edit_when_shortcut_and_body_empty(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """空白だけの本文は Ctrl+Enter でも送らず、入力欄を要見直しにして「コメントを入れてから直してください。」を出す（異常系）。"""
+    # 準備
+    url, root = served_review_rows
+    patches: list[str] = []
+    page.on(
+        "request",
+        lambda request: patches.append(request.url) if request.method == "PATCH" else None,
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "   ")
+    # 実行
+    page.press(field, "Control+Enter")
+    # 検証
+    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.get_attribute(f"{row} form.row-edit .send-msg", "role") == "alert"
+    assert page.get_attribute(field, "aria-invalid") == "true"
+    assert patches == []
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_review_row_edit_shortcut_hint(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """入力欄は `aria-keyshortcuts` に Ctrl+Enter を持ち、「修正」の `title` は「修正（Ctrl+Enter）」（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    # 実行
+    field = _start_edit(page, "C-1", "案 B にする")
+    # 検証
+    assert page.get_attribute(field, "aria-keyshortcuts") == "Control+Enter"
+    assert page.get_attribute(f"{row} form.row-edit button[type='submit']", "title") == "修正（Ctrl+Enter）"
+
+
 def test_review_row_edit_when_body_empty(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:

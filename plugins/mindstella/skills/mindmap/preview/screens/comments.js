@@ -135,9 +135,16 @@ var MindmapPreview;
                 rows: 2,
                 maxlength: MindmapPreview.COMMENT_BODY_MAX_LENGTH,
                 "aria-label": `${item.id} へのコメントの本文`,
+                "aria-keyshortcuts": "Control+Enter",
                 "data-focus": `${focus}edit:${item.id}`,
                 onkeydown: (event) => {
-                    if (event.key === "Escape") {
+                    const key = event;
+                    // 変換の確定の Enter では確定しない
+                    if (key.key === "Enter" && (key.ctrlKey || key.metaKey) && !key.isComposing) {
+                        key.preventDefault();
+                        form.requestSubmit();
+                    }
+                    if (key.key === "Escape") {
                         // 詳細の全画面の `dialog` の `cancel` を起こさない
                         event.preventDefault();
                         event.stopPropagation();
@@ -149,7 +156,7 @@ var MindmapPreview;
         });
         // 理由があるときだけ `role="alert"` を持たせる（空のまま警告として読み上げさせない）
         const message = MindmapPreview.h({ tag: "p", attrs: { class: "send-msg failed", role: error ? "alert" : null }, children: error ? [MindmapPreview.icon("alert"), error] : [] });
-        return MindmapPreview.h({
+        const form = MindmapPreview.h({
             tag: "form",
             attrs: {
                 class: "row-edit",
@@ -175,11 +182,12 @@ var MindmapPreview;
                     attrs: { class: "row-edit-actions" },
                     children: [
                         MindmapPreview.h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
-                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["修正"] }),
+                        MindmapPreview.h({ tag: "button", attrs: { class: "btn primary", type: "submit", title: "修正（Ctrl+Enter）" }, children: ["修正"] }),
                     ],
                 }),
             ],
         });
+        return form;
     }
     MindmapPreview.reviewEditForm = reviewEditForm;
     /** 行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」（コメントの一覧と詳細パネルが使う） */

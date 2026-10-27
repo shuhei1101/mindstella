@@ -1,0 +1,67 @@
+$ pytest tests/integration/preview/test_workspace_settings_screen.py -v
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0 -- /home/shuhei2441/.cache/mindstella/venv/bin/python
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-comment-edit-ctrl-enter
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collecting ... collected 11 items
+
+tests/integration/preview/test_workspace_settings_screen.py::test_open_and_close[chromium] PASSED [  9%]
+tests/integration/preview/test_workspace_settings_screen.py::test_groups[chromium] PASSED [ 18%]
+tests/integration/preview/test_workspace_settings_screen.py::test_text_inputs[chromium] PASSED [ 27%]
+tests/integration/preview/test_workspace_settings_screen.py::test_description[chromium] PASSED [ 36%]
+tests/integration/preview/test_workspace_settings_screen.py::test_history_limit[chromium] PASSED [ 45%]
+tests/integration/preview/test_workspace_settings_screen.py::test_chips[chromium] PASSED [ 54%]
+tests/integration/preview/test_workspace_settings_screen.py::test_goal[chromium] PASSED [ 63%]
+tests/integration/preview/test_workspace_settings_screen.py::test_tables[chromium] FAILED [ 72%]
+tests/integration/preview/test_workspace_settings_screen.py::test_rename_target[chromium] PASSED [ 81%]
+tests/integration/preview/test_workspace_settings_screen.py::test_move_target_phase[chromium] PASSED [ 90%]
+tests/integration/preview/test_workspace_settings_screen.py::test_move_tag_drop[chromium] PASSED [100%]
+
+=================================== FAILURES ===================================
+____________________________ test_tables[chromium] _____________________________
+
+write_edit_preview = <function write_edit_preview.<locals>._write at 0x7e39f8c68e00>
+make_item = <function make_item.<locals>._make at 0x7e39f8c6a480>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'playbooks': ['システム開発'], 'target_label': 'システム', 'phases': ['目的', '要件', '構成'], ...}
+open_preview = <function open_preview.<locals>._open at 0x7e39f8ca6de0>
+
+    def test_tables(
+        write_edit_preview: WriteReviewPreview,
+        make_item: MakeItem,
+        valid_settings: dict[str, Any],
+        open_preview: OpenPreview,
+    ) -> None:
+        """対象・カテゴリー・関連する場所は 1 行ずつの表で、行の削除と、表の下の「{呼び名}を追加」を持つ（正常系）。"""
+        # 準備
+        page, root = _open_workspace(write_edit_preview, make_item, valid_settings, open_preview)
+        targets = page.locator(f"{FIELD}[data-key='targets'] table")
+        assert targets.locator("th[scope='col']").all_inner_texts() == ["名前", "説明"]
+        categories = page.locator(f"{FIELD}[data-key='categories'] table")
+        assert categories.locator("th[scope='col']").all_inner_texts() == ["名前", "対象", "説明"]
+        assert page.locator(f"{FIELD}[data-key='links'] table").count() == 1
+        # 実行（関連する場所を足す）
+        page.get_by_role("button", name="関連する場所を追加").click()
+        _wait_edits(page, 1)
+        # 検証（関連する場所を足す）
+        assert _edit_of(root, "links")["value"] == [{"title": "", "url": ""}]
+        _commit(page, "1 行目の表示名", "仕様")
+        page.wait_for_function(SAVED_LINK_JS, arg={"field": "title", "value": "仕様"})
+        _commit(page, "1 行目のURL", "https://example.test/spec")
+        page.wait_for_function(SAVED_LINK_JS, arg={"field": "url", "value": "https://example.test/spec"})
+>       expect(page.get_by_label("1 行目の表示名")).to_have_value("仕様")
+E       AssertionError: Locator expected to have Value '仕様'
+E       Actual value:  
+E       Call log:
+E         - Expect "to_have_value" get_by_label("1 行目の表示名") with timeout 5000ms
+E         - waiting for get_by_label("1 行目の表示名")
+E           14 × locator resolved to <input value="" type="text" class="input" aria-label="1 行目の表示名" id="pe-ws-links-0-title"/>
+E              - unexpected value ""
+E       
+E       Aria snapshot:
+E       - textbox "1 行目の表示名"
+
+tests/integration/preview/test_workspace_settings_screen.py:295: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_workspace_settings_screen.py::test_tables[chromium]
+======================== 1 failed, 10 passed in 26.74s =========================

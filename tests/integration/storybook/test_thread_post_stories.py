@@ -161,6 +161,9 @@ def test_pending_editing(open_story: OpenStory) -> None:
     assert page.input_value(f"{POST} form.row-edit textarea") == "了解。T-14 は今週中に書いてほしい"
     assert page.get_by_role("button", name="キャンセル").count() == 1
     assert page.locator(f"{POST} form.row-edit button[type='submit']").inner_text() == "修正"
+    # Ctrl+Enter で確定できることを、入力欄と「修正」が読み上げ・ヒントに出す
+    assert page.get_attribute(f"{POST} form.row-edit textarea", "aria-keyshortcuts") == "Control+Enter"
+    assert page.get_attribute(f"{POST} form.row-edit button[type='submit']", "title") == "修正（Ctrl+Enter）"
     assert page.get_by_role("button", name="TH-1 への返信を修正").count() == 0
     assert page.get_by_role("button", name="TH-1 への返信を削除").count() == 0
 

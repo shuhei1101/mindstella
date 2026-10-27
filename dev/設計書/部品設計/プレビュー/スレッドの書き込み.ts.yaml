@@ -177,7 +177,7 @@ events:
     value: '`pending.id`'
     description: 使う側が `editing` を true にし、入力欄へフォーカスを移す
   - name: 修正する
-    when: 書き換えの「修正」を押したとき
+    when: 書き換えの「修正」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき（変換の確定の Enter を除く）
     value: '`pending.id`・入力欄の中身'
     description: 使う側が空白だけなら「コメントを入れてから直してください。」を `edit_error` に渡し、そうでなければ `PATCH /api/comments/{id}` へ送る
   - name: 修正をやめる
@@ -197,6 +197,7 @@ accessibility:
   - 日時は `time` 要素で `datetime` に元の日時を持つ
   - 本文の中の項目の ID のリンクはボタンにし、読み上げの名前を ID、`title` をその項目のタイトルにする
   - 「修正」「削除」は読み上げの名前を「{スレッドの ID} への返信を修正」「{スレッドの ID} への返信を削除」にする。新しいスレッドの最初の書き込みは「{向けた項目の ID} へのコメントを修正」「{向けた項目の ID} へのコメントを削除」（項目を指さないものは「項目を指さないコメントを修正」「項目を指さないコメントを削除」）。`title` は「修正」「削除」
+  - 書き換えの入力欄は `aria-keyshortcuts` に Ctrl+Enter を持つ。書き換えの「修正」の `title` は「修正（Ctrl+Enter）」
   - 書き換えを保てなかった理由は `role="alert"` で読み上げ、入力欄の `aria-describedby` から指す
   - 本文の中のまとまりのリンクは `href` を `#diff={まとまりの ID}` にした `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
 test_file: tests/integration/storybook/test_thread_post_stories.py
