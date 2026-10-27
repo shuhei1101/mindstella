@@ -137,9 +137,10 @@ def test_normal_when_markdown(
     page.on("download", lambda download: downloads.append(download))
     entry = page.locator("dialog.full").get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
     entry.click()
-    menu = page.locator(EXPORT_MENU)
+    # 全画面表示では詳細パネルと詳細の全画面の両方がメニューを持つため、全画面の中のメニューに絞る
+    menu = page.locator("dialog.full").locator(EXPORT_MENU)
     # 実行（「Markdown でエクスポート」を押す）
-    page.get_by_role("button", name="Markdown でエクスポート").click()
+    menu.get_by_role("button", name="Markdown でエクスポート").click()
     # 検証（ダウンロードされず、埋め込んだ HTML が消えることと共通のスタイルが外れることの警告が出る）
     assert downloads == []
     expect(menu).to_contain_text("埋め込んだ HTML")
