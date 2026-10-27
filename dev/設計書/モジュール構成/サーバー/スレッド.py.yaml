@@ -497,7 +497,6 @@ functions:
       description: 立てたスレッドの ID・最初の書き込みの ID・書いた日時
     process: |-
       1. `body`・`summary`・`tags` を確かめる（`_check_text`、`_check_tags`）
-         - `tags` が語彙にあるかを確かめる（`require_known_tags`。引数の名前は `tags`、設定は `workspace.settings`）
       2. `target` があれば項目を引く（`find_item`）
       3. スレッドを読み、`TH-{連番の最大 + 1}`・`status: open`・`tags`・`summary`・`target`・`events: []` と、`{ID}-1`・`author: ai`・`read: True`・`seen: False` の書き込み 1 件を末尾に足して書く（`_write_threads`）
          - `[INFO]` スレッドを立てた（スレッドの ID・向けた項目）
@@ -512,8 +511,6 @@ functions:
         condition: '`load_threads` が送るもの'
       - name: WriteFailedError
         condition: '`threads.yaml` を書けない'
-      - name: UnknownTagError
-        condition: '`tags` に語彙に無いタグがある'
     unit_tests:
       - name: test_create_thread
         case: 正常
@@ -540,12 +537,12 @@ functions:
         condition: 10000 文字の `body` と 400 文字の `summary`
         mock: '`now`'
         expected: 立てたスレッドの本文が 10000 文字、要約が 400 文字
-      - name: test_create_thread_when_unknown_tag
-        case: 異常
-        summary: 語彙に無いタグでは立てない
+      - name: test_create_thread_when_candidate_tag
+        case: 正常
+        summary: 語彙に無いタグもそのまま付けて立てる
         condition: 語彙 `起票` のワークスペース、`tags=[起票の確認]`
         mock: '`now`'
-        expected: '`UnknownTagError`（候補に `起票`）。`threads.yaml` が作られていない'
+        expected: '`TH-1` を立て、タグが `[起票の確認]`'
   - name: reply_thread
     title: スレッドへ返信する
     kind: 関数
@@ -764,7 +761,6 @@ functions:
       description: 取り込み済みにした書き込みの ID（無ければ空）
     process: |-
       1. `summary`・`tags` が `None` で `take` が偽なら `ArgumentError`（`argument` は `summary`、理由は `summary・tags・take のどれかを渡してください`）。渡した `summary`・`tags` を確かめる（`_check_text`、`_check_tags`）
-         - `tags` を渡した場合、語彙にあるかを確かめる（`require_known_tags`。引数の名前は `tags`、設定は `load_workspace(root).settings`）
       2. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
       3. 渡した `summary`・`tags` を置き換え、`take` が真なら取り込み済みにして（`_take_read`）書く（`_write_threads`）
     exceptions:
@@ -777,8 +773,6 @@ functions:
         condition: '`load_threads` が送るもの'
       - name: WriteFailedError
         condition: '`threads.yaml` を書けない'
-      - name: UnknownTagError
-        condition: '`tags` に語彙に無いタグがある'
     unit_tests:
       - name: test_update_thread
         case: 正常
@@ -799,12 +793,12 @@ functions:
         mock: なし
         expected: '`ArgumentError`（`argument` が `summary`）/ `ArgumentError`（`summary`）/ `ArgumentError`（`tags`）/ `ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
         exception: 変えるものが無い・形の誤り・無い ID
-      - name: test_update_thread_when_unknown_tag
-        case: 異常
-        summary: 語彙に無いタグには置き換えない
+      - name: test_update_thread_when_candidate_tag
+        case: 正常
+        summary: 語彙に無いタグにも置き換える
         condition: 語彙 `起票`、タグ `起票` の TH-1。`tags=[起票の確認]`
         mock: '`now`'
-        expected: '`UnknownTagError`。`threads.yaml` の中身が呼ぶ前と同じ'
+        expected: TH-1 のタグが `[起票の確認]`。返した取り込み済みが空
   - name: append_user_posts
     title: 利用者の書き込みのまとめた追加
     kind: 関数

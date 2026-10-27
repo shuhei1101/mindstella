@@ -1,9 +1,9 @@
 title: "サーバー / 点検"
-lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
+lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを問題として、語彙に無い未登録の候補のタグを警告として洗い出す。読み書きと検証・タグの語彙だけに依存し、ファイルを書かない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ
+    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・未登録の候補のタグの警告
   ```
 constants:
   - name: REF_RULES
@@ -26,6 +26,12 @@ constants:
         value: 全ての種類
       - key: (設定, goal.deliverables[].doc)
         value: doc
+  - name: CANDIDATE_HINT
+    title: 未登録の候補の案内
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    summary: 未登録の候補の警告があるときに `check` の `hint` に書く、採否の手段の案内（インターフェース定義『ワークスペースの点検』の `hint`）
+    value: 未登録の候補のタグがあります。update_settings の settings.tags で語彙へ登録するか、tag_map で既存のタグへ付け替えてください
 functions:
   - name: check_workspace
     title: ワークスペースの点検
@@ -51,10 +57,11 @@ functions:
       5. スレッドのスキーマ違反と参照切れを拾う（`_check_threads`）
       6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
       7. 設定に無いフェーズを拾う（`_check_phases`）
-      8. 語彙に無いタグを拾う（`_check_tags`）
-      9. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
-      10. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
-      11. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜9. の関数は記録のフォルダからの相対パスで拾う）
+      8. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
+      9. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      10. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜8. の関数は記録のフォルダからの相対パスで拾う）
+
+      語彙に無いタグは問題にしない（警告は `list_tag_warnings`）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -74,6 +81,12 @@ functions:
         condition: 案を持たない未決定の D-1 と、案を持たない未整理の D-2 を持つワークスペース
         mock: なし
         expected: '`kind: decision_state` の問題が D-1 の 1 件だけで、`file` が `.mindstella/decisions.yaml`'
+      - name: test_check_workspace_when_candidate_tag
+        case: 正常
+        summary: 未登録の候補のタグは問題にしない
+        condition: '語彙 `保存`、それ以外は整った D-1: `[通知]`'
+        mock: なし
+        expected: 空の並び
   - name: _check_duplicate_ids
     title: ID の重複の点検
     kind: 関数
@@ -388,13 +401,13 @@ functions:
     process: |-
       1. 並びの 1 件ごとに、向けた項目が無ければ `broken_ref`（`file` は `threads.yaml`、`id` はスレッドの ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
          - 取り込み待ちでなく、向けた項目が消した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない
-  - name: _check_tags
-    title: タグの点検
+  - name: list_tag_warnings
+    title: タグの警告
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/checker.py
     usecase: ワークスペースの点検
-    scope: internal
-    summary: 項目とスレッドの `tags` のうち、設定の語彙に無いタグを `unknown_tag` にする
+    scope: public
+    summary: 項目とスレッドの `tags` のうち、設定の語彙に無いタグを未登録の候補の警告にする
     args:
       - name: workspace
         type: Workspace
@@ -402,25 +415,52 @@ functions:
         passing: positional
         description: ワークスペース
     returns:
-      type: list[Problem]
-      description: 問題の並び（無いタグ 1 つ = 1 件。`detail` にそのタグ）
+      type: list[TagWarning]
+      description: 警告の並び（無いタグ 1 つ = 1 件。無ければ空）
     process: |-
       1. 語彙の名前を集める（`tag_names`）
-      2. 種類の順（`KINDS`）に項目を見て、`tags` の文字列のうち語彙に無いものを `unknown_tag`（その種類の YAML・項目の ID・`key: items[n].tags`）にする
-      3. `threads.yaml` を読めれば、スレッドの並びの順に同じく `unknown_tag`（`file: threads.yaml`・スレッドの ID・`key: items[n].tags`）にする（無い・読めないときは見ない。形の誤りは `_check_threads` が返す）
+      2. 種類の順（`KINDS`）に項目を見て、`tags` の文字列のうち語彙に無いものを `candidate_tag`（`{RECORD_DIR}/{その種類の YAML}`・項目の ID・`key: items[n].tags`・`similar` は `similar_tags`）にする
+      3. `threads.yaml` を読めれば、スレッドの並びの順に同じく `candidate_tag`（`file: {RECORD_DIR}/threads.yaml`・スレッドの ID）にする（無い・読めないときは見ない。形の誤りは `_check_threads` が返す）
          - `tags` が配列でない項目・スレッドと、文字列でない要素は飛ばす（スキーマ違反として拾う）
     unit_tests:
-      - name: test_check_tags
+      - name: test_list_tag_warnings
         case: 正常
-        summary: 語彙に無い項目とスレッドのタグを拾う
-        condition: '語彙 `保存`。D-1: `[保存, 通知]`／T-1: タグ無し／TH-1: `[起票]`'
+        summary: 語彙に無い項目とスレッドのタグを警告にする
+        condition: '語彙 `保存`。D-1: `[保存, 通知]`／T-1: タグ無し／TH-1: `[保存の確認]`'
         mock: なし
-        expected: '`unknown_tag`（`decisions.yaml`・D-1・`items[0].tags`・`detail` が `通知`）と `unknown_tag`（`threads.yaml`・TH-1・`items[0].tags`・`detail` が `起票`）の 2 件'
-      - name: test_check_tags_when_no_threads
+        expected: '`candidate_tag`（`.mindstella/decisions.yaml`・D-1・`items[0].tags`・`detail` が `通知`・`similar` が空）と `candidate_tag`（`.mindstella/threads.yaml`・TH-1・`items[0].tags`・`detail` が `保存の確認`・`similar` が `[保存]`）の 2 件をこの順に'
+      - name: test_list_tag_warnings_when_no_threads
         case: 正常
-        summary: スレッドが無く、タグが全て語彙にあれば問題は無い
+        summary: スレッドが無く、タグが全て語彙にあれば警告は無い
         condition: '語彙 `保存`、D-1: `[保存]`、`threads.yaml` が無い'
         mock: なし
         expected: 空の並び
 test_files:
   - tests/unit/scripts/test_checker.py
+data_models:
+  - name: TagWarning
+    title: タグの警告
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    role: DTO
+    summary: 語彙に無い未登録の候補のタグ 1 つの警告
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。点検の出力の `warnings[]` と同じキーを持ち、`dataclasses.asdict` で JSON にする。'
+    properties:
+      - name: kind
+        type: Literal["candidate_tag"]
+        description: 警告の種類
+      - name: file
+        type: str
+        description: 候補を持つファイルのワークスペースからの相対パス（`.mindstella/decisions.yaml` の形）
+      - name: id
+        type: str | None
+        description: 候補を持つ項目かスレッドの ID
+      - name: key
+        type: str
+        description: キーのパス（`items[{番号}].tags`）
+      - name: detail
+        type: str
+        description: 未登録の候補のタグ
+      - name: similar
+        type: list[str]
+        description: 候補と字面の近い語彙のタグ（`similar_tags`）
