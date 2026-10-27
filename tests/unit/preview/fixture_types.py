@@ -18,6 +18,7 @@ __all__ = [
     "MakeItem",
     "MdmarkDist",
     "PutEmbeddedMdmark",
+    "PutMdmarkCss",
     "PutMdmarkImportMap",
     "ServeMdmark",
 ]
@@ -42,4 +43,5 @@ type LoadMdmark = Callable[[], None]
 type ServeMdmark = Callable[..., None]
 type PutMdmarkImportMap = Callable[..., None]
 type PutEmbeddedMdmark = Callable[[], None]
+type PutMdmarkCss = Callable[..., None]
 type MakeData = Callable[..., dict[str, Any]]

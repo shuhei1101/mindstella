@@ -894,7 +894,7 @@ def test_assemble_standalone_template(tmp_path: Path) -> None:
     assert builder.EXTERNAL_START not in html
     assert builder.EXTERNAL_END not in html
     assert "importmap" not in html
-    assert "<style>.m{}</style>" in html
+    assert '<style id="mindmap-mdmark-css">.m{}</style>' in html
     assert html.split(builder.MDMARK_OPEN, 1)[1].split("</script>", 1)[0] == "/* m */"
     _assert_in_order(html, ["/* m */", "/* a */", "/* b */", '<script id="mindmap-app">'])
     licenses = html.split(builder.LICENSES_OPEN, 1)[1].split("</script>", 1)[0]
