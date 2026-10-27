@@ -84,4 +84,4 @@ introduced:
 notes:
   モック: '`dev/mock/components/doc-export-menu/`（採用した案 A: メニューの中で警告）'
   開き方: 入口のボタンと同じ詳細パネル・詳細の全画面のモーダルの中に、`popover="auto"` で置く。開閉は履歴に積まない。開いているときに入口のボタンをもう一度押すと閉じる
-  対応テストファイル: 結合テスト作成で `tests/integration/storybook/test_doc_export_menu_stories.py` を作り、`test_file` に書く
+test_file: tests/integration/storybook/test_doc_export_menu_stories.py

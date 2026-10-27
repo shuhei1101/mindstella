@@ -348,3 +348,32 @@ def test_in_thread_post(open_story: OpenStory) -> None:
     # 検証（セクションの開閉は置かない）
     assert page.locator(".md button.md-fold").count() == 0
     assert page.locator(".md .md-section-body").count() == 0
+
+
+# 範囲の外と中で、見せ方を当てた要素の数を返す（列の幅の印・フェード・固定のボタン・見出しの固定・しま模様・開閉の矢印。外は表の入れ物と開閉の矢印の数）
+_DECORATED_JS = """() => {
+    const decorated = [...document.querySelectorAll('.md th[data-col-size], .md [data-fade], .md button.md-pin, .md table.md-head-stick, .md table.md-stripes, .md button.md-fold')];
+    const inside = (element) => element.closest('.mdmark-html') !== null;
+    return {
+        inside: decorated.filter(inside).length,
+        outsideWraps: [...document.querySelectorAll('.md .md-table-wrap')].filter((e) => !inside(e)).length,
+        outsideFolds: decorated.filter((e) => !inside(e) && e.matches('button.md-fold')).length,
+    };
+}"""
+
+
+def test_embedded_html(open_story: OpenStory) -> None:
+    """本文の `<!-- html -->` の範囲の中の表・見出しには、列の幅・フェード・固定・見出しの固定・しま模様・開閉を当てず、書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の表と見出しには今までどおり当てる（正常系）。"""
+    # 準備・実行
+    page = _open(open_story, "embedded-html")
+    page.wait_for_selector(".md .mdmark-html figure", timeout=STORY_TIMEOUT_MS)
+    decorated = page.evaluate(_DECORATED_JS)
+    # 検証（範囲の中には、表・見出し・チャート・スライダーがあり、見せ方は当たっていない）
+    assert page.locator(".md .mdmark-html table").count() >= 1
+    assert page.locator(".md .mdmark-html :is(h1, h2, h3, h4)").count() >= 1
+    assert page.locator(".md .mdmark-html figure.mdmark-diagram").count() >= 1
+    assert page.locator(".md .mdmark-html input[type=range]").count() == 1
+    assert decorated["inside"] == 0
+    # 検証（範囲の前後の表と見出しには当たっている）
+    assert decorated["outsideWraps"] >= 1
+    assert decorated["outsideFolds"] >= 1
