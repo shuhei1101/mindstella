@@ -2166,7 +2166,7 @@ functions:
       description: 1 枚の HTML
     process: |-
       1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・本文）を入れる
-      2. 本文・索引・タイトルを 1 つの JSON にし、`<` を `<` に置き換えて `<script type="application/json">` に入れる
+      2. 本文・索引・タイトルを 1 つの JSON にし、`<` を `\u003c` に置き換えて `<script type="application/json">` に入れる
       3. `assets.js` を `<script type="text/plain" id="doc-mdmark">` に入れ（`</script` を含むときは組み立てずに投げる）、`assets.css` を `<style>` に入れる
       4. タイトルは `&`・`<`・`>`・`"` を文字参照にして `<title>` と見出しに入れる
       5. 起動のスクリプトは `#doc-mdmark` の文字を Blob の URL にして `import()` し、`mount` を `MDMARK_EXPORT_FEATURES` と索引で呼び、`relabelParamCopy` と同じ置き換えを当てる
