@@ -1385,7 +1385,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 行の本文をその場で書き換える入力欄（`maxlength` 10000）と「キャンセル」「修正」の `form` を返す。「修正」で中身が空白だけなら送らず「コメントを入れてから直してください。」を出して入力欄を `aria-invalid="true"` にし、それ以外は `on.saveEdit` を呼ぶ。理由は `role="alert"` と印のアイコンで出す。入力欄の Esc は `preventDefault` と `stopPropagation` をしてから `on.cancelEdit` を呼ぶ（詳細の全画面の `dialog` の `cancel` を起こさない）。入力欄の `data-focus` は `{focus}edit:{ID}`。描いた後に入力欄へフォーカスを移すのは使う側。コメントの一覧と詳細パネルが使う
+    summary: 行の本文をその場で書き換える入力欄（`maxlength` 10000）と「キャンセル」「修正」の `form` を返す。「修正」で中身が空白だけなら送らず「コメントを入れてから直してください。」を出して入力欄を `aria-invalid="true"` にし、それ以外は `on.saveEdit` を呼ぶ。理由は `role="alert"` と印のアイコンで出す。入力欄の Ctrl+Enter（macOS は Cmd+Enter。`isComposing` の間は除く）は `preventDefault` して `form.requestSubmit()` を呼び、「修正」と同じ処理を通す。入力欄は `aria-keyshortcuts="Control+Enter"`、「修正」は `title`「修正（Ctrl+Enter）」を持つ。入力欄の Esc は `preventDefault` と `stopPropagation` をしてから `on.cancelEdit` を呼ぶ（詳細の全画面の `dialog` の `cancel` を起こさない）。入力欄の `data-focus` は `{focus}edit:{ID}`。描いた後に入力欄へフォーカスを移すのは使う側。コメントの一覧と詳細パネルが使う
     props:
       - name: item
         type: ReviewItem
@@ -1420,6 +1420,12 @@ components:
         condition: '`parametrize`: 中身を空白だけにして「修正」を押す / `body: "案 A に決める"`・`error: "サーバーが止まっています。立ち上げ直してから直してください。"` で描く'
         mock: '`on.saveEdit`'
         expected: '`on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出て入力欄が `aria-invalid="true"` / 入力欄の中身が「案 A に決める」で、理由が `role="alert"` の要素に出る'
+      - name: test_review_edit_form_ctrl_enter
+        case: 正常
+        summary: Ctrl+Enter で「修正」と同じ処理を通し、変換中は通さない
+        condition: '`parametrize`: 中身を「案 A に決める」にして Ctrl+Enter / Cmd+Enter（`metaKey`）/ 空白だけで Ctrl+Enter / `isComposing` の Ctrl+Enter'
+        mock: '`on.saveEdit`'
+        expected: 入力欄が `aria-keyshortcuts="Control+Enter"`、「修正」の `title` が「修正（Ctrl+Enter）」。`on.saveEdit` が C-1 と「案 A に決める」で 1 回で `keydown` の `defaultPrevented` が真 / 同じ / `on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出る / `on.saveEdit` が呼ばれない
   - name: removedReviewRow
     title: 消した行
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
