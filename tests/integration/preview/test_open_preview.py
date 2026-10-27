@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 import yaml
 from integration.browser_tab_helpers import (
@@ -14,7 +15,7 @@ from integration.browser_tab_helpers import (
     opened_tabs,
     recorded_window_opens,
 )
-from playwright.sync_api import Page, Route
+from playwright.sync_api import Download, Page, Route, expect
 from preview_body_layout_helpers import (
     INLINE_NAME,
     LAYOUT_GROUP_NAME,
@@ -64,6 +65,23 @@ from preview_drawer_helpers import (
     checked_values,
     click_value,
     open_drawer,
+)
+from preview_embed_helpers import (
+    CHART,
+    CLIPBOARD_PERMISSIONS,
+    EMBEDDED_BODY,
+    EXPORT_BODY,
+    EXPORT_ENTRY_NAME,
+    EXPORT_MENU,
+    MARKDOWN_EXPORT_BODY,
+    MDMARK_URL_PATTERN,
+    RANGE,
+    ZOOM_FIT,
+    ZOOM_IN,
+    build_embedded_diff_workspace,
+    drag_in_viewport,
+    save_download,
+    viewport_scroll,
 )
 from preview_edit_helpers import (
     DETAIL_PANEL as EDIT_PANEL,
@@ -145,6 +163,7 @@ from workspace_fixtures import (
     MakePost,
     MakeThread,
     MakeWorkspace,
+    SnapshotTree,
     StartServer,
     WriteComments,
 )
@@ -947,6 +966,11 @@ def test_normal_when_html_body(
     fit = frame_fit(page, BODY_FRAME)
     assert fit["bottom"] <= fit["height"]
     assert fit["later_height"] == fit["height"]
+    # 詳細パネルにも詳細の全画面にも、「エクスポート」の入口が無い
+    assert page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).count() == 0
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open]")
+    assert page.locator("dialog.full").get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).count() == 0
 
 
 def test_normal_when_html_body_commented(
@@ -2225,3 +2249,263 @@ def test_normal_when_window_widened_from_narrow(
     assert widened["separator"]["max"] == "880"
     assert widened["separator"]["now"] == "768"
     assert read_stored_width(page) == "768"
+
+
+def test_normal_when_embedded_html(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """Markdown の本文に埋め込んだ HTML を本文の中に描き、チャートを動かし、部品の今の値を JSON でコピーする（正常系）。"""
+    # 準備
+    page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+    url = write_preview(
+        make_item("A-1", title="埋め込む資料"),
+        make_item("A-2"),
+        make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+        bodies={"A-1.md": EMBEDDED_BODY},
+    )
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+    chart = page.locator(CHART).first
+    # 実行（範囲のボタンを押す）
+    page.get_by_role("button", name="実行", exact=True).click()
+    # 検証（範囲は枠に入れず本文の要素として描かれ、スクリプトとイベントの属性は動かない）
+    assert page.locator("aside.panel .md > .mdmark-html").count() == 1
+    assert page.locator("aside.panel iframe").count() == 0
+    assert page.locator(f"{RANGE} script, {RANGE} [onclick]").count() == 0
+    assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+    # 実行（拡大して、ドラッグする）
+    fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    chart.locator(ZOOM_IN).click()
+    chart.locator(ZOOM_IN).click()
+    fit_after = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    scroll_before = viewport_scroll(chart)
+    drag_in_viewport(page, chart, dx=-80, dy=-50)
+    scroll_after = viewport_scroll(chart)
+    # 検証（倍率が上がり、ドラッグで表示の位置が変わる。図の拡大の画面は開かず、拡大・縮小のボタンはチャートだけにある）
+    assert fit_after > fit_before
+    assert scroll_after["left"] > scroll_before["left"]
+    assert scroll_after["top"] > scroll_before["top"]
+    assert page.locator("dialog.viewer[open]").count() == 0
+    assert page.locator(f"{RANGE} {ZOOM_IN}").count() == page.locator(CHART).count()
+    assert page.locator(f"{RANGE} p button, {RANGE} .mdmark-param-knob button").count() == 0
+    assert page.locator(f"{RANGE} [data-act='diagram-zoom']").count() == 0
+    # 実行（スライダーを矢印キーで動かし、今の値をコピーする）
+    page.focus(f"{RANGE} input[type=range]")
+    page.keyboard.press("ArrowRight")
+    page.get_by_role("button", name="今の値をコピー").click()
+    # 検証（値とグラフが描き直され、クリップボードに今の値の JSON が入る）
+    assert page.inner_text(f"{RANGE} .mdmark-param output") == "6"
+    assert "今の値（6）" in page.inner_text(f"{RANGE} .mdmark-param .mdmark-diagram-legend")
+    expect(page.locator(f"{RANGE} .mdmark-param-status")).not_to_be_empty()
+    assert json.loads(page.evaluate("navigator.clipboard.readText()")) == {
+        "rps": {"name": "リクエスト数", "value": 6}
+    }
+    # 検証（「ﾋﾟｰｸ時の応答時間 」の「応答時間」に用語のマーカーが付き、乗せると G-1 のツールチップが出る）
+    page.hover(f"{RANGE} a.term")
+    expect(page.locator("#term-tip")).to_be_visible()
+    expect(page.locator("#term-tip")).to_contain_text("返すまでの時間")
+    # 実行（範囲の中の A-2 のリンクを押す）
+    history_length = page.evaluate("history.length")
+    page.click(f"{RANGE} a.idref")
+    # 検証
+    expect(page.locator("aside.panel .d-title")).to_have_text("A-2の題")
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-2"
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_normal_when_exported_as_html(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+    open_preview: OpenPreview,
+    page: Page,
+    tmp_path: Path,
+) -> None:
+    """資料 1 件を、通信せずに描く 1 枚の HTML としてダウンロードさせる（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", title="書き出す資料"),
+        make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+        bodies={"A-1.md": EXPORT_BODY},
+    )
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+    before = snapshot_tree(root)
+    history_length = page.evaluate("history.length")
+    requests: list[str] = []
+    page.on("request", lambda request: requests.append(request.url))
+    entry = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    entry.click()
+    # 実行
+    with page.expect_download() as download_info:
+        page.get_by_role("button", name="HTML でエクスポート").click()
+    exported = save_download(download_info.value, tmp_path)
+    # 検証（ダウンロードは A-1.html の 1 つで、画面は移らず、メニューを閉じた後は入口にフォーカスがある）
+    assert exported.name == "A-1.html"
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+    assert page.evaluate("history.length") == history_length
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(entry).to_have_attribute("aria-expanded", "false")
+    expect(entry).to_be_focused()
+    # 検証（エクスポートの間にサーバーの配信への要求が無い）
+    parts = urlsplit(url)
+    server_origin = f"{parts.scheme}://{parts.netloc}"
+    assert [request for request in requests if request.startswith(server_origin)] == []
+    # 実行（通信を止めて file:// で開く）
+    blocked: list[str] = []
+
+    def _route(route: Route) -> None:
+        """`file:` 以外への要求を数えて失敗させる。"""
+        blocked.append(route.request.url)
+        route.abort()
+
+    opened = page.context.new_page()
+    opened.route(_is_not_file_url, _route)
+    opened.goto(exported.as_uri())
+    opened.wait_for_selector(".mdmark figure", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（外への要求が 0 件で、本文とチャートが描かれる）
+    assert blocked == []
+    assert opened.locator(".mdmark").count() == 1
+    assert "応答時間の段落" in opened.inner_text(".mdmark")
+    assert opened.locator(".mdmark figure").count() == 2
+    # 実行（「応答時間」に乗せ、スライダーを動かす）
+    opened.hover(".mdmark-term")
+    # 検証（G-1 の意味のツールチップが出て、グラフが描き直される）
+    expect(opened.locator(".mdmark-term-tip")).to_be_visible()
+    expect(opened.locator(".mdmark-term-tip")).to_contain_text("返すまでの時間")
+    opened.focus("input[type=range]")
+    opened.keyboard.press("ArrowRight")
+    assert "今の値（6）" in opened.inner_text(".mdmark-param .mdmark-diagram-legend")
+    opened.close()
+    # ワークスペースは書き換えない
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_exported_as_markdown(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+) -> None:
+    """警告を挟んでから、埋め込んだ HTML を除いた Markdown をダウンロードさせる（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    history_length = page.evaluate("history.length")
+    downloads: list[Download] = []
+    page.on("download", lambda download: downloads.append(download))
+    menu = page.locator(EXPORT_MENU)
+    entry = page.locator("dialog.full").get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    entry.click()
+    # 実行（Markdown でエクスポートを押す）
+    page.get_by_role("button", name="Markdown でエクスポート").click()
+    # 検証（ダウンロードされず、警告がモーダルを重ねずに同じメニューの中に出る）
+    assert downloads == []
+    expect(menu).to_contain_text("埋め込んだ HTML")
+    assert page.locator("dialog[open]").count() == 1
+    # 実行（戻る）
+    menu.get_by_role("button", name="戻る", exact=True).click()
+    # 検証（形式を選ぶメニューに戻り、フォーカスは「Markdown でエクスポート」にある）
+    assert downloads == []
+    expect(page.get_by_role("button", name="Markdown でエクスポート")).to_be_focused()
+    # 実行（もう一度選び、警告の「エクスポート」を押す）
+    page.get_by_role("button", name="Markdown でエクスポート").click()
+    with page.expect_download() as download_info:
+        menu.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).click()
+    download = download_info.value
+    exported = Path(download.path()).read_text(encoding="utf-8")
+    # 検証（A-1.md の 1 つで、範囲の外の文だけがある）
+    assert download.suggested_filename == "A-1.md"
+    assert "範囲の外の文" in exported
+    assert "範囲の中の文" not in exported
+    assert "<!-- html -->" not in exported
+    # 検証（全画面が開いたまま入口にフォーカスがあり、ハッシュと履歴の数は開く前と同じ）
+    expect(menu).to_be_hidden()
+    expect(page.locator("dialog.full[open]")).to_have_count(1)
+    expect(entry).to_be_focused()
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1&full=1"
+    assert page.evaluate("history.length") == history_length
+
+
+def test_error_when_export_library_unavailable(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+) -> None:
+    """HTML でエクスポートするときに mdmark を読めず、ダウンロードせずに理由を出し、再試行でエクスポートする（異常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": "本文の段落\n"})
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value).mdmark")
+    downloads: list[Download] = []
+    page.on("download", lambda download: downloads.append(download))
+    # 画面を開いた後に、mdmark の CSS と JavaScript の配信元を切断する
+    page.route(MDMARK_URL_PATTERN, lambda route: route.abort())
+    # 実行
+    page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).click()
+    page.get_by_role("button", name="HTML でエクスポート").click()
+    # 検証（ダウンロードされず、メニューの中に理由と「戻る」「再試行」が出る。本文は描かれたまま）
+    menu = page.locator(EXPORT_MENU)
+    alert = menu.get_by_role("alert")
+    expect(alert).to_be_visible()
+    expect(alert).to_contain_text("mdmark")
+    expect(menu.get_by_role("button", name="戻る", exact=True)).to_be_visible()
+    expect(menu.get_by_role("button", name="再試行")).to_be_visible()
+    assert downloads == []
+    assert "本文の段落" in page.inner_text("aside.panel .md:not(.md-value)")
+    assert page.locator("aside.panel .lib-error").count() == 0
+    # 実行（切断を外して再試行する）
+    page.unroute(MDMARK_URL_PATTERN)
+    with page.expect_download() as download_info:
+        menu.get_by_role("button", name="再試行").click()
+    # 検証
+    assert download_info.value.suggested_filename == "A-1.html"
+    expect(menu).to_be_hidden()
+
+
+def test_normal_when_embedded_html_diff(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """時点を選ぶと、埋め込んだ HTML の範囲を原文の差分で出し、変更前・変更後の描いた結果に切り替える（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .df-raw", timeout=DIAGRAM_TIMEOUT_MS)
+    history_length = page.evaluate("history.length")
+    hash_text = page.evaluate("location.hash")
+    removed = page.locator("aside.panel .df-raw .df-line.df-del")
+    added = page.locator("aside.panel .df-raw .df-line.df-add")
+    # 検証（開いた直後: 原文の行が消した行と足した行で出て、変えた文字が色分けされ、範囲の外の段落には印が無い）
+    expect(removed).to_have_count(1)
+    expect(added).to_have_count(1)
+    assert "<p>2 つ目の段落</p>" in removed.inner_text()
+    assert "<p>書き直した 2 つ目の段落</p>" in added.inner_text()
+    assert removed.locator(".df-word.df-del").count() >= 1
+    assert added.locator(".df-word.df-add").count() >= 1
+    outside = page.locator("aside.panel .md > p[data-line-start]")
+    assert outside.inner_text() == "範囲の外の段落"
+    assert outside.evaluate("p => p.className + p.querySelectorAll('[class*=df-]').length") == "0"
+    assert outside.get_attribute("data-df") is None
+    # 実行（変更前）
+    page.get_by_role("button", name="描いた結果（変更前）").click()
+    # 検証（選んだ時点の範囲が、書き換える前の文で描かれる）
+    before_view = page.locator("aside.panel .html-marked:visible .mdmark-html p")
+    assert before_view.all_inner_texts() == ["1 つ目の段落", "2 つ目の段落", "3 つ目の段落"]
+    # 実行（変更後）
+    page.get_by_role("button", name="描いた結果（変更後）").click()
+    # 検証（2 つ目の段落だけに「変わった」の印が付き、1・3 つ目の段落には印が無い）
+    after_view = page.locator("aside.panel .html-marked:visible .mdmark-html p")
+    assert after_view.evaluate_all("ps => ps.map(p => [p.textContent, p.dataset.df ?? null])") == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 検証（見せ方を切り替えても、ハッシュと履歴の数が変わらない）
+    assert page.evaluate("location.hash") == hash_text
+    assert page.evaluate("history.length") == history_length
