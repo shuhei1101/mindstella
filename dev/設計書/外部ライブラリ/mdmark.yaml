@@ -25,7 +25,7 @@ catalogs:
           - name: opts.config.features
             type: Record<string, boolean>
             required: false
-            description: 機能ごとのオン・オフ。プレビューは `glossary`・`backlinks`・`comments`・`print`・`anchors`・`sections`・`table`・`toc`・`views`・`syntax` を `false` にし、`code`・`html` は既定（オン）のまま。資料の 1 枚の HTML は `backlinks`・`comments`・`print`・`views`・`syntax` を `false` にして用語のツールチップを mdmark で描く
+            description: 機能ごとのオン・オフ。プレビューは `glossary`・`backlinks`・`comments`・`print`・`anchors`・`sections`・`table`・`toc`・`views`・`syntax` を `false` にし、`code`・`html` は既定（オン）のまま。資料の 1 枚の HTML は `comments`・`print`・`views`・`syntax` を `false` にして用語のツールチップを mdmark で描く（文書の別名は `backlinks` がオンのときだけ照合する）
           - name: opts.index
             type: '{docs: Array<{id, path, title, aliases?, body?}>, terms: Array<{id, term, meaning, aliases?}>}'
             required: false

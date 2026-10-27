@@ -368,8 +368,8 @@ constants:
     title: エクスポートした HTML の mdmark で止める機能
     container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
     usecase: 項目の詳細を読む
-    summary: エクスポートした 1 枚の HTML の `mdmark.mount` に渡す機能のオフ。用語のツールチップ（`glossary`）は mdmark が描き、通信するコードの色付けと、ファイルの外を指す機能を止める
-    value: '{backlinks: false, comments: false, print: false, views: false, syntax: false}'
+    summary: エクスポートした 1 枚の HTML の `mdmark.mount` に渡す機能のオフ。用語と資料・調査のエイリアスのツールチップ（`glossary`・`backlinks`。mdmark は `backlinks` がオンのときだけ文書の別名を照合する）は mdmark が描き、通信するコードの色付けと、ファイルの外を指す機能を止める
+    value: '{comments: false, print: false, views: false, syntax: false}'
     status: planned
     introduced:
       pr: 348
@@ -2165,7 +2165,7 @@ functions:
       type: string
       description: 1 枚の HTML
     process: |-
-      1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・本文）を入れる
+      1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・本文）を入れる。`related` は入れない（mdmark が本文の末尾に被参照の一覧を置かない）
       2. 本文・索引・タイトルを 1 つの JSON にし、`<` を `\u003c` に置き換えて `<script type="application/json">` に入れる
       3. `assets.js` を `<script type="text/plain" id="doc-mdmark">` に入れ（`</script` を含むときは組み立てずに投げる）、`assets.css` を `<style>` に入れる
       4. タイトルは `&`・`<`・`>`・`"` を文字参照にして `<title>` と見出しに入れる
@@ -2263,3 +2263,4 @@ test_files:
   - tests/unit/preview/test_api.py
   - tests/unit/preview/test_lock.py
   - tests/unit/preview/test_edits.py
+  - tests/unit/preview/test_doc_export.py
