@@ -583,3 +583,5 @@ functions:
     exceptions:
       - name: WriteFailedError
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルは消す）
+test_files:
+  - tests/unit/scripts/test_edits.py
