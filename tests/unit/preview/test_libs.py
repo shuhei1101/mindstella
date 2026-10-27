@@ -1358,6 +1358,56 @@ def test_link_body_when_normalized(
     ]
 
 
+# 段落の印を、印の文字と、印が `code` の中にあるかの組で調べる
+LINK_BODY_INLINE_CODE_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, source, onOpen: () => {}});
+    return [...root.querySelectorAll("p a.term")].map(
+        (element) => [element.textContent, element.getAttribute("data-id"), element.closest("code") !== null],
+    );
+}"""
+
+
+@pytest.mark.parametrize(
+    ("source", "expected_marks"),
+    [
+        pytest.param(
+            "`保存先` と保存先\n",
+            [["保存先", "G-1", True], ["保存先", "G-1", False]],
+            id="code_is_word",
+        ),
+        pytest.param(
+            "`docs/保存先.md` と保存先\n",
+            [["保存先", "G-1", False]],
+            id="code_has_word_inside",
+        ),
+    ],
+)
+def test_link_body_when_inline_code(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    source: str,
+    expected_marks: list[list[Any]],
+) -> None:
+    """インラインコードの中の文字には一致を当てず、中身がちょうど語のときだけ `code` ごと印にする（正常系）。"""
+    # 準備
+    data = make_data(docs=[make_item("A-1")], terms=[make_item("G-1", title="保存先")])
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    marks = preview_page.evaluate(
+        LINK_BODY_INLINE_CODE_SCRIPT, {"data": data, "source": source, "selfId": "A-1"}
+    )
+    # 検証
+    assert marks == expected_marks
+
+
 # 埋め込んだ HTML の範囲の中の文にも印と ID のリンクを付け、範囲の中の ID のリンクを押して、印と知らせた項目を調べる
 LINK_BODY_EMBEDDED_SCRIPT = """({data, source, selfId}) => {
     const index = MindmapPreview.buildIndex(data);
