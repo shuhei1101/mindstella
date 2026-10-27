@@ -13,7 +13,7 @@ from typing import Any
 from errors import ArgumentError
 from kinds import KINDS, Kind, id_number
 from store import Workspace, as_ids, body_format, find_item, read_body
-from vocabulary import tag_entries
+from vocabulary import similar_tags, tag_entries, tag_names
 
 # 参照元として拾うキーとその並び
 REFERENCE_KEYS = ("depends_on", "parent", "for", "related", "sources")
@@ -145,7 +145,7 @@ def list_attrs(workspace: Workspace) -> list[dict[str, Any]]:
 
 
 def list_tags(workspace: Workspace) -> list[dict[str, Any]]:
-    """タグの語彙のタグごとに、説明と、持つ項目の数と種類を数える（語彙に無いタグは返さない）。"""
+    """タグの語彙のタグごとに、説明（`summary`・含める・含めない・例）と、持つ項目の数と種類を数える（語彙に無いタグは返さない）。"""
     counts: dict[str, int] = {}
     kinds_by_name: dict[str, set[Kind]] = {}
     for kind, item in _iter_sorted_items(workspace):
@@ -160,6 +160,9 @@ def list_tags(workspace: Workspace) -> list[dict[str, Any]]:
         {
             "name": entry["name"],
             "summary": entry["summary"],
+            "include": entry["include"],
+            "exclude": entry["exclude"],
+            "examples": entry["examples"],
             "count": counts.get(str(entry["name"]), 0),
             # 種類の並びは KINDS の順（持つ項目が無いタグは空）
             "kinds": [kind for kind in KINDS if kind in kinds_by_name.get(str(entry["name"]), ())],
@@ -174,6 +177,7 @@ def page_results(
     *,
     limit: int,
     cursor: str | None,
+    stray_tags: list[tuple[str, list[str]]] | None = None,
 ) -> dict[str, Any]:
     """検索結果を続きの値の位置から件数だけ切り出し、全体の件数・次の続きの値・絞り込みの案内を添える。"""
     # 続きの値があれば読んだ位置を取り出す（無ければ最初のページ）
@@ -185,18 +189,34 @@ def page_results(
         "items": items,
         "total": len(results),
         "next_cursor": _encode_cursor(offset + limit, search_filter) if has_next else None,
-        "hint": build_hint(len(results), len(items), search_filter, has_next=has_next),
+        "hint": build_hint(
+            len(results),
+            len(items),
+            search_filter,
+            has_next=has_next,
+            stray_tags=[] if stray_tags is None else stray_tags,
+        ),
     }
 
 
 def build_hint(
-    total: int, returned: int, search_filter: SearchFilter, *, has_next: bool
+    total: int,
+    returned: int,
+    search_filter: SearchFilter,
+    *,
+    has_next: bool,
+    stray_tags: list[tuple[str, list[str]]] | None = None,
 ) -> str | None:
     """切り詰めたときは絞り込める引数、0 件のときは外せる条件を案内する文を組み立てる。"""
     given = _given_arguments(search_filter)
     # 条件を渡したのに 0 件: 渡した条件の引数を並べて外すよう案内する
     if total == 0 and given:
-        return f"合う項目がありません。{'・'.join(given)} のどれかを外して探してください"
+        hint = f"合う項目がありません。{'・'.join(given)} のどれかを外して探してください"
+        # 語彙にもどの項目にも無いタグがあれば、近い語彙のタグも案内する
+        for tag, similar in [] if stray_tags is None else stray_tags:
+            near = f"近いタグ: {'・'.join(similar)}" if similar else "近いタグなし"
+            hint += f" {tag} は語彙にもどの項目にも無いタグです（{near}）"
+        return hint
     # 続きがある: まだ渡していない絞り込みの引数と続きの読み方を案内する
     if has_next:
         remaining = [name for name in NARROWING_ARGUMENTS if name not in given]
@@ -207,6 +227,25 @@ def build_hint(
             f"{'・'.join(remaining)} で絞るか、next_cursor で続きを読んでください"
         )
     return None
+
+
+def list_stray_tags(
+    workspace: Workspace, search_filter: SearchFilter
+) -> list[tuple[str, list[str]]]:
+    """条件の `tags`・`any_tags` のうち、語彙にもどの項目にも無いタグを、近い語彙のタグを添えて返す。"""
+    names = tag_names(workspace.settings)
+    used = {
+        tag
+        for _, item in _iter_sorted_items(workspace)
+        for tag in (item.get("tags") if isinstance(item.get("tags"), list) else [])
+        if isinstance(tag, str)
+    }
+    strays: list[tuple[str, list[str]]] = []
+    # 渡した順に、どちらにも無いタグを重ならないように拾う
+    for tag in (*search_filter.tags, *search_filter.any_tags):
+        if tag not in names and tag not in used and all(tag != found for found, _ in strays):
+            strays.append((tag, similar_tags(tag, names)))
+    return strays
 
 
 def _given_arguments(search_filter: SearchFilter) -> list[str]:

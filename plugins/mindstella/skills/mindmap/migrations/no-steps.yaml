@@ -5,8 +5,14 @@
   sha256: 79d024fce33502b531732c607bf28709f9cb48bf665dc677f352048d2dba78fb
   reason: body の pattern を `.md` だけから `.md` と `.html` に広げた。Markdown の資料はそのまま読める
 - schema: common.schema.json
-  sha256: 46d2db520b36886f083463b487aab251984fe1e7e6de163710999b8e08f463e7
-  reason: history[].before の説明に、本文の形式を替えた回だけ body を入れることを足した。形は変わらない
+  sha256: 76bad69222ead78bea8af7037249d295cb0c0d68761c942f4958c6c1630f575a
+  reason: history[].before の説明に、本文の形式を替えた回だけ body を入れることを足し、tags の説明を、語彙に無いタグも未登録の候補として持てると直した。形は変わらない
 - schema: terms.schema.json
   sha256: b1206e20345aeca378168819a32aa050d6267e25b8dd8029da929585816c504b
   reason: aliases の説明に、プレビューは本文の語がこれに一致するとタイトルと同じ印とツールチップを出すことを足した。形は変わらない
+- schema: settings.schema.json
+  sha256: 722f9e383e0d30c52746820feab9eacf1da35afec242ec2564966f3d79c449b1
+  reason: tags の 1 件に、任意のキー include・exclude・examples を足した。足す前の語彙はそのまま読める
+- schema: threads.schema.json
+  sha256: 24e0efb1187497e616fba0ab3b2c0b3886221cdfa03c0ef5212a9dcc65a121f0
+  reason: tags の説明を、語彙に無いタグも未登録の候補として持てると直した。形は変わらない

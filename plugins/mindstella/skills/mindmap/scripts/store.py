@@ -98,7 +98,6 @@ class Problem:
         "missing_body",
         "orphan_body",
         "unknown_phase",
-        "unknown_tag",
         "stale_history",
         "decision_state",
     ]

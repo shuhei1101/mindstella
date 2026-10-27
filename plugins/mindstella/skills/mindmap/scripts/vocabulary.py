@@ -1,4 +1,4 @@
-"""設定の `tags` のタグの語彙の読み取り・語彙にあるかの確かめ・近いタグの候補。"""
+"""設定の `tags` のタグの語彙の読み取り・未登録の候補の洗い出し・近いタグの候補。"""
 
 from __future__ import annotations
 
@@ -6,19 +6,17 @@ from collections.abc import Iterable
 from difflib import SequenceMatcher
 from typing import Any
 
-from errors import UnknownTagError
-
-# 語彙に無いタグ 1 つに添える近いタグの数の上限
+# 未登録の候補のタグ 1 つに添える近いタグの数の上限
 CANDIDATE_LIMIT = 5
 
 
-def tag_entries(settings: dict[str, Any]) -> list[dict[str, str | None]]:
-    """設定の `tags` を `{name, summary}` の並びにして、名前の順に返す（説明が無ければ summary は None）。"""
+def tag_entries(settings: dict[str, Any]) -> list[dict[str, Any]]:
+    """設定の `tags` を `{name, summary, include, exclude, examples}` の並びにして、名前の順に返す。"""
     tags = settings.get("tags")
     # 配列でなければ語彙は空
     if not isinstance(tags, list):
         return []
-    entries: list[dict[str, str | None]] = []
+    entries: list[dict[str, Any]] = []
     for tag in tags:
         # 形が合わない要素は飛ばす（スキーマの誤りは点検が返す）
         if not isinstance(tag, dict):
@@ -26,9 +24,27 @@ def tag_entries(settings: dict[str, Any]) -> list[dict[str, str | None]]:
         name = tag.get("name")
         if not isinstance(name, str) or not name:
             continue
-        summary = tag.get("summary")
-        entries.append({"name": name, "summary": summary if isinstance(summary, str) else None})
+        examples = tag.get("examples")
+        entries.append(
+            {
+                "name": name,
+                "summary": _text_or_none(tag.get("summary")),
+                "include": _text_or_none(tag.get("include")),
+                "exclude": _text_or_none(tag.get("exclude")),
+                # 文字列の配列でなければ空。文字列でない要素は飛ばす
+                "examples": (
+                    [example for example in examples if isinstance(example, str)]
+                    if isinstance(examples, list)
+                    else []
+                ),
+            }
+        )
     return sorted(entries, key=lambda entry: str(entry["name"]))
+
+
+def _text_or_none(value: Any) -> str | None:
+    """文字列ならそのまま、そうでなければ None を返す。"""
+    return value if isinstance(value, str) else None
 
 
 def tag_names(settings: dict[str, Any]) -> frozenset[str]:
@@ -50,20 +66,23 @@ def similar_tags(tag: str, names: Iterable[str]) -> list[str]:
     return [name for _, name in scored[:CANDIDATE_LIMIT]]
 
 
-def require_known_tags(
-    tags_by_argument: list[tuple[str, Any]], settings: dict[str, Any]
-) -> None:
-    """渡したタグが全て語彙にあるかを確かめ、無いタグがあれば候補を添えて `UnknownTagError` を送る。"""
+def list_candidate_tags(
+    owned_tags: list[tuple[str, Any]], settings: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """渡したタグのうち語彙に無い未登録の候補を、付けた ID と近い語彙のタグを添えて、タグごとに並べる。"""
     names = tag_names(settings)
-    unknown: list[tuple[str, str, list[str]]] = []
-    for argument, tags in tags_by_argument:
+    owners: dict[str, list[str]] = {}
+    for owner, tags in owned_tags:
         # 並びでない値は、スキーマと引数の確かめに任せて飛ばす
         if not isinstance(tags, list | tuple):
             continue
         for tag in tags:
-            # 文字列で語彙に無いタグを、渡した順に拾う
+            # 文字列で語彙に無いタグの ID を、重ならないように控える
             if isinstance(tag, str) and tag not in names:
-                unknown.append((argument, tag, similar_tags(tag, names)))
-    # 語彙に無いタグがある: 候補を添えて止める
-    if unknown:
-        raise UnknownTagError(unknown)
+                ids = owners.setdefault(tag, [])
+                if owner not in ids:
+                    ids.append(owner)
+    return [
+        {"tag": tag, "ids": owners[tag], "similar": similar_tags(tag, names)}
+        for tag in sorted(owners)
+    ]

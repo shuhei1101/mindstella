@@ -91,7 +91,7 @@
     },
     "tags": {
       "type": "array",
-      "description": "タグの語彙。項目とスレッドの `tags` に使えるタグの一覧。名前の重なりは `update_settings` が弾く",
+      "description": "タグの語彙。項目とスレッドの `tags` に使えるタグの一覧（語彙に無いタグは未登録の候補として持てる）。名前の重なりは `update_settings` が弾く",
       "items": {
         "type": "object",
         "required": [
@@ -107,6 +107,21 @@
           "summary": {
             "type": "string",
             "description": "タグの説明"
+          },
+          "include": {
+            "type": "string",
+            "description": "そのタグに含めるもの"
+          },
+          "exclude": {
+            "type": "string",
+            "description": "そのタグに含めないもの"
+          },
+          "examples": {
+            "type": "array",
+            "description": "そのタグを付ける例",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

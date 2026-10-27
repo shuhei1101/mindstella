@@ -27,7 +27,6 @@ from errors import (
     EditsBlockedError,
     ItemNotFoundError,
     MindmapError,
-    UnknownTagError,
 )
 from history import (
     RemovedItem,
@@ -759,10 +758,6 @@ def _apply_item_edits(
         changes[HTML_BODY_INPUT_KEY if html else BODY_INPUT_KEY] = body
     try:
         staged, _ = stage_update(staged, target, changes, now, editor=USER_EDITOR)
-    except UnknownTagError as error:
-        # 語彙に無いタグを入れた編集だけを挙げる
-        culprits = [edit for edit in applied if edit.key == "tags"] or applied
-        failed.extend(_invalid(edit, error) for edit in culprits)
     except MindmapError as error:
         failed.extend(_invalid(edit, error) for edit in applied)
     return staged, failed
