@@ -1,0 +1,87 @@
+title: "資料のエクスポートのメニュー"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/doc-export-menu.ts#MindmapPreview.docExportMenu"
+story: "Preview/DocExportMenu"
+states:
+  - name: Choose
+    description: 形式を選ぶ。「HTML でエクスポート」（説明「スタイルと用語のツールチップを含む 1 つのファイル」）と「Markdown でエクスポート」（説明「本文の Markdown だけ」）の行を並べ、行の全体が押せる。フォーカスは「HTML でエクスポート」
+  - name: Warn
+    description: Markdown の警告。警告のアイコンと「埋め込んだ HTML・チャート・操作できる部品は含まれず、共通のスタイルも外れます。」の下に「戻る」「エクスポート」。フォーカスは「エクスポート」
+    args:
+      - name: view
+        value: warn
+  - name: Busy
+    description: HTML を組み立てている間。「HTML でエクスポート」の行のアイコンが回る輪になり、説明が「エクスポートしています…」。両方の行は押しても何もせず、「Markdown でエクスポート」の行は薄い
+    args:
+      - name: view
+        value: busy
+  - name: Error
+    description: HTML を組み立てられなかった。「mdmark のスタイルとスクリプトを読み込めませんでした。ネットワークにつながっているか確かめて、再試行してください。」の下に「戻る」「再試行」。フォーカスは「再試行」
+    args:
+      - name: view
+        value: error
+  - name: BackFromWarn
+    description: 警告から「戻る」で戻した。形式を選ぶ並びで、フォーカスは「Markdown でエクスポート」
+    args:
+      - name: focus
+        value: md
+  - name: Narrow
+    description: 画面の幅 390px。メニューは画面の幅から左右 8px を引いた幅を超えず、行の説明を折り返す
+  - name: WarnNarrow
+    description: 画面の幅 390px の警告。警告の文を折り返し、「戻る」「エクスポート」を右端に揃える
+    args:
+      - name: view
+        value: warn
+lead: 詳細パネル・詳細の全画面の見出しの「エクスポート」で開く、入口の下に右端を揃えて出すメニュー。形式を選ぶ並び・Markdown の警告・HTML を組み立てている間・組み立てられなかったときを、同じメニューの中身を替えて出す。
+args:
+  - name: view
+    type: 列挙
+    required: false
+    default: choose
+    choices: choose・warn・busy・error
+    description: メニューの中身。`choose` は見出し「エクスポート」の下に「HTML でエクスポート」「Markdown でエクスポート」の 2 行を名前と説明の 2 行で並べる。`warn` は見出し「Markdown でエクスポートしますか?」・警告の文・「戻る」「エクスポート」。`busy` は `choose` の並びで「HTML でエクスポート」の行のアイコンを回る輪に、説明を「エクスポートしています…」に替え、両方の行を押せなくし、押した行以外を薄くする。`error` は見出し「エクスポートできませんでした」・何が起きたかの文・「戻る」「再試行」
+    status: planned
+  - name: focus
+    type: 列挙
+    required: false
+    default: html
+    choices: html・md
+    enabled_when: '`view` が `choose` のとき'
+    description: 中身を出した時点でフォーカスを置く行。警告から「戻る」で戻したときは `md`、エラーから戻したときは `html`。`warn` は「エクスポート」、`error` は「再試行」に置く
+    status: planned
+events:
+  - name: HTML でエクスポート
+    when: '`view` が `choose` で「HTML でエクスポート」の行を押したとき'
+    value: format（`data-format="html"`）
+    description: 使う側が `view` を `busy` にして 1 枚の HTML を組み立てる。組み立てたらダウンロードさせてメニューを閉じ、組み立てられなければ `error` にする
+  - name: Markdown でエクスポート
+    when: '`view` が `choose` で「Markdown でエクスポート」の行を押したとき'
+    value: format（`data-format="md"`）
+    description: 使う側が `view` を `warn` にする。何もダウンロードさせない
+  - name: エクスポート
+    when: '`view` が `warn` で「エクスポート」を押したとき'
+    description: 使う側が埋め込んだ HTML の範囲を除いた Markdown をダウンロードさせ、メニューを閉じる
+  - name: 戻る
+    when: '`view` が `warn` か `error` で「戻る」を押したとき'
+    description: 使う側が `view` を `choose` にし、`warn` からは `focus` を `md`、`error` からは `html` にする
+  - name: 再試行
+    when: '`view` が `error` で「再試行」を押したとき'
+    description: 使う側が `view` を `busy` にして組み立てをやり直す
+  - name: 閉じる
+    when: Esc かメニューの外を押したとき
+    description: 使う側がメニューを閉じ、入口の「エクスポート」の `aria-expanded` を `false` に戻してフォーカスを戻す。組み立てている間に閉じたときは、組み立て終えたファイルをダウンロードさせない
+accessibility:
+  - メニューは `role="dialog"` で、見出しの文言を読み上げの名前（`aria-labelledby`）にする
+  - 形式の 2 行はボタンの組（`role="group"`、読み上げの名前はメニューの見出し）で、行の名前と説明をボタンの読み上げに含める
+  - 組み立てている間はメニューに `aria-busy="true"` を付け、説明の「エクスポートしています…」を `role="status"` で伝える。行は `disabled` にせず `aria-disabled="true"` にし、フォーカスを残す
+  - 組み立てられなかった文は `role="alert"` で伝える
+  - 警告とエラーは色だけでなくアイコンと文で示す
+refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - dev/設計書/シナリオ/単一ユースケース/資料を書き出す#
+status: planned
+introduced:
+  pr: 348
+notes:
+  モック: '`dev/mock/components/doc-export-menu/`（採用した案 A: メニューの中で警告）'
+  開き方: 入口のボタンと同じ詳細パネル・詳細の全画面のモーダルの中に、`popover="auto"` で置く。開閉は履歴に積まない。開いているときに入口のボタンをもう一度押すと閉じる
+  対応テストファイル: 結合テスト作成で `tests/integration/storybook/test_doc_export_menu_stories.py` を作り、`test_file` に書く
