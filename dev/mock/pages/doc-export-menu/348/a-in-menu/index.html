@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- color-scheme: 既定は端末の明暗。切り替えは app.js が data-theme に持つ -->
+  <meta name="color-scheme" content="light dark">
+  <title>エクスポートのメニュー（案 A（メニューの中で警告）） | mindstella プレビューのモック</title>
+  <!-- 文字: 英数字は Inter、日本語は Noto Sans JP、ID は JetBrains Mono を読む（デザイン方針） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン: 採用したデザインスタイル（dev-swiss-cards）の値 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <!-- 今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足すエクスポートの入口とメニュー・範囲の差分と、モック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../refs/348/assets/style.css">
+  <!-- mdmark: HTML の埋め込みと部品を持つ v0.8.0 のリリースの候補（PoC で測った commit a8c3d80）。integrity でファイルの中身を確かめる -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@a8c3d80/dist/index.css" integrity="sha384-3lS+93C5w5loNr+EKJlqTfbAHmBGx+GCkqJiqOGUFFaA56e87waceMQ1TMY94wcV" crossorigin="anonymous">
+  <script type="importmap">{"integrity": {"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@a8c3d80/dist/index.js": "sha384-TM6o/p3o+qWHh5HK5iGMRN6krIdz4rxapjSgvX1yJhY9z7eHJl2WGBaiJAiZIAoq"}}</script>
+  <!-- 描画のライブラリ: 雛形と同じ版を固定して読み、integrity でファイルの中身を確かめる -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@18.0.14/lib/marked.umd.js" integrity="sha384-2vpGtuKqJvFlwJqYnf/wUMuzUfhUnYBt9oay0e2yaFcq0Dh6/aEbQ8YAOeKGzlYo" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.12.0/lib/elk.bundled.js" integrity="sha384-ww57TDqx4cGknIavPm0QKO+aygLUR1BLSn2Vhbnt1XdYKWcwLyWTFKX7aZMaKIi2" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.min.js" integrity="sha384-EbBpjO7rlR6eqZEcG7GaPpyk9H9WrMyPWX4d3KvPYltgt8Z8l0z6R56B1qP40pR4" crossorigin="anonymous" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js" integrity="sha384-TvJwlBkfFFd9hmaVfyJyF6lIPjAUL6x01MvObCeUao5yP6QZ6owU6fqw+JQoyRD1" crossorigin="anonymous" defer></script>
+</head>
+
+<!-- data-initial: ハッシュが無いときに開く状態（資料 A-20 の詳細パネル）。data-menu: 開いた時点のメニュー。data-warn: Markdown の警告の置き方 -->
+<body data-initial="tab=docs&amp;id=A-20" data-menu="open" data-warn="a">
+  <!-- モック専用の操作列: 案のタブ・メニューの見本・パンくず。app.js が画面の土台を先頭に入れた後も、mock.js が一番上へ戻す -->
+  <div class="mockbar" role="group" aria-label="モックの操作">
+    <a href="../a-in-menu/index.html" aria-current="page">案 A（メニューの中で警告）</a>
+    <a href="../b-confirm-modal/index.html">案 B（確認のモーダル）</a>
+    <span class="label">見本:</span>
+    <a href="#tab=docs&amp;id=A-20" data-hash="tab=docs&amp;id=A-20?menu=open">形式を選ぶ</a>
+    <a href="#tab=docs&amp;id=A-20" data-hash="tab=docs&amp;id=A-20?menu=warn">Markdown の警告</a>
+    <a href="#tab=docs&amp;id=A-20" data-hash="tab=docs&amp;id=A-20?export=busy">HTML の処理中</a>
+    <a href="#tab=docs&amp;id=A-20" data-hash="tab=docs&amp;id=A-20?export=error">HTML のエラー</a>
+    <a href="#tab=docs&amp;id=A-20&amp;full=1" data-hash="tab=docs&amp;id=A-20&amp;full=1?menu=warn">詳細の全画面から警告</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">doc-export-menu</a> / <a href="../index.md">348</a> / a-in-menu</nav>
+  </div>
+
+  <!-- 起動の前に開く見本を整える → 見本の記録を埋め込み先へ入れ、A-20 を足す → サーバーの代わり（記録とコメント） → 今のプレビューのスクリプトにこの PR の変更を当てたもの -->
+  <script src="../../../../refs/348/assets/mock.js"></script>
+  <script src="../../../../refs/237/assets/data.js"></script>
+  <script src="../../../../refs/348/assets/data.js"></script>
+  <script src="../../../../refs/214/assets/mock-server.js"></script>
+  <script src="../../../../refs/348/assets/app.js"></script>
+</body>
+</html>

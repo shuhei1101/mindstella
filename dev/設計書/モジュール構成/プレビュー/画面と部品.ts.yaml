@@ -30,6 +30,7 @@ directory: |
       settings-confirm.ts   既定の保存の確かめ（部品設計『既定の保存の確かめ』）
       pending-mark.ts       保存待ちの印（部品設計『保存待ちの印』）
       review-body-fold.ts   レビュー中の書き込みの本文の折りたたみ（部品設計『本文の折りたたみ』）
+      doc-export-menu.ts    資料のエクスポートのメニュー（部品設計『資料のエクスポートのメニュー』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（ボード・マップ・表）
@@ -469,7 +470,8 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）'
+    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）。`linkBody` には描いた本文の原文を `source` で渡す。本文が Markdown（`bodyFormatOf` が `md`）の資料は、編集の表示の間を除き（配る書き出しでも）、見出しの全画面表示のボタンの左に「エクスポート」（`aria-haspopup="dialog"`・`aria-expanded`）を置き、押すと `docExportMenu` を入口の下に開く（開いているときにもう一度押すと閉じる）。「HTML でエクスポート」では `view` を `busy` にして `mdmarkAssets` を待ち、取れたら `buildDocHtml` で組み立てて `downloadText` で `{ID}.html` を保存させ、メニューを閉じる（取れなければ `error` にし、「再試行」でやり直す。組み立てている間に閉じたら保存させない）。「Markdown でエクスポート」では `view` を `warn` にし、「エクスポート」で `stripEmbeddedHtml` した本文を `{ID}.md`
+      で保存させて閉じる。閉じたら入口の `aria-expanded` を `false` に戻してフォーカスを入口へ戻す。差分の表示の間、Markdown の本文は `pairEmbeddedHtml` で変わった埋め込んだ HTML の範囲の対を取り、対ごとに今の本文の `order` 番目の `.mdmark-html` を `htmlBodyDiff`（`before`・`after` は範囲の原文、`initial` は `raw`、`heading` は「埋め込んだ HTML」）に置き換える。`beforeView` は前の範囲を `renderMarkdown` で描いたもの、`afterView` は今の `.mdmark-html` で、前後の `.mdmark-html` の直下の子の `outerHTML` を `childMarks` に渡し、`''added''` の子に足したマーカー、`''changed''` の子に変わったマーカーを付ける（`null` ならマーカーを付けない）。範囲の中には本文の行の差分のマーカーを付けない'
     props:
       - name: id
         type: string
@@ -759,6 +761,36 @@ components:
         condition: 'h2「比較」の下に表を持つ資料。`parametrize`: `bodyView` が `BODY_VIEW_DEFAULT` / `bodyView` の `stripes` が真 / 本文を変えた時点の `diff` / 「比較」を畳んだ後に `heading` を「比較」の下の h3 にして描き直す'
         mock: なし（DOM を作って見る）
         expected: 「比較」に開閉の矢印があり、表が `md-table-frame` に入り `md-head-stick` を持つ / 表が `md-stripes` を持つ / 開閉の矢印が無く、表は `md-table-frame` に入る / h3 を包む入れ物が開き、h3 が本文のスクロール領域の中で画面に入る
+      - name: test_detail_panel_when_export_entry
+        case: 正常
+        summary: 本文が Markdown の資料にだけエクスポートの入口を置く
+        condition: '`parametrize`: 本文が Markdown の資料 A-1 / 本文が HTML の資料 A-2 / 検討事項 D-1 / A-1 を編集の表示で開く / A-1 を配る書き出し（`comment` と `edit` が `null`）で開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「エクスポート」が全画面表示のボタンの左にある / 無い / 無い / 無い / ある
+      - name: test_detail_panel_when_export_html
+        case: 正常
+        summary: HTML でエクスポートすると 1 枚の HTML を保存させ、メニューを閉じて入口へフォーカスを戻す
+        condition: A-1 を開き、「エクスポート」→「HTML でエクスポート」を押す
+        mock: 描画のライブラリの配信元（`page.route`）・`page.expect_download`
+        expected: '`A-1.html` が保存され、中に `#doc-mdmark` と A-1 のタイトルを持つ。メニューが閉じ、入口の `aria-expanded` が `false` でフォーカスが入口にある'
+      - name: test_detail_panel_when_export_markdown
+        case: 正常
+        summary: Markdown でエクスポートすると警告を挙げ、埋め込んだ HTML を除いた本文を保存させる
+        condition: '`<!-- html -->` の範囲を持つ A-1 を開き、「エクスポート」→「Markdown でエクスポート」を押し、警告で「戻る」、もう一度「Markdown でエクスポート」→「エクスポート」を押す'
+        mock: 描画のライブラリの配信元（`page.route`）・`page.expect_download`
+        expected: 1 回目の押下では何も保存されず警告が出て、「戻る」でフォーカスが「Markdown でエクスポート」にある。「エクスポート」で `A-1.md` が保存され、中身が `stripEmbeddedHtml` の結果と同じ
+      - name: test_detail_panel_when_export_retry
+        case: 異常
+        summary: mdmark の中身を取れないときはエラーを出し、再試行でやり直す
+        condition: 最初の mdmark の CSS の要求だけを失敗させて A-1 の「HTML でエクスポート」を押し、「再試行」を押す
+        mock: 描画のライブラリの配信元（`page.route`。1 回目だけ 404）・`page.expect_download`
+        expected: メニューがエラーの文を `role="alert"` で出し、保存されない。「再試行」で `A-1.html` が保存されメニューが閉じる
+      - name: test_detail_panel_when_embedded_html_diff
+        case: 正常
+        summary: 変わった埋め込んだ HTML の範囲だけを HTML の本文の差分に置き換える
+        condition: 範囲 2 つを持ち、2 つ目の範囲の 1 つ目の段落を書き換えて末尾に段落を足した A-1 を `diff` つきで開き、「描いた結果（変更後）」を押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 1 つ目の範囲はそのまま描かれ、2 つ目の範囲の場所に「埋め込んだ HTML」の差分が「原文の差分」を選んだ状態で出る。変更後では書き換えた段落に変わったマーカー、足した段落に足したマーカーが付き、範囲の中に本文の行の差分のマーカー（`ins.df-blk`）が無い
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -2118,7 +2150,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
     usecase: 項目の詳細を読む
-    summary: '部品設計『Markdownの本文』。`renderMarkdown` で描いた本文の要素に、次の順で見せ方を当てる（戻り値は無く、`root` の中を書き換える。(1)〜(4) は `tables` が真のときだけ当てる）。(1) 表ごとに、列の見出しと本体のセルの `textWidth` の最大を `columnSize` にかけ、列のセルに `data-col-size`（`short`・`medium`・`long`）と中くらいの列の `--md-col-min`（em）を付ける。`div.md-table-wrap` を送らない枠 `div.md-table-frame` で包み、右へまだ送れる間だけ枠に `data-fade` を付ける（入れ物の `scroll` と `ResizeObserver` で見直す）。(2) `display.pin` が真なら、最後の列を除く見出しのセルに固定のボタン（`button.md-pin`、`aria-pressed`、読み上げの名前「{列名}まで固定」）を置き、押した列までのセルに `position: sticky` の左の位置と、固定した列の右端の影を付ける（もう一度押すと外す。画面の幅 720px 以下は `style.css` でボタンを隠し固定を外す）。(3) `display.head` が真なら表に `md-head-stick` を付ける（ずらしは `bindTableHeads` が入れる）。(4) `display.stripes` が真なら表に `md-stripes` を付ける（差分の印の行は差分の面のまま）。(5) `fold` と `display.fold` がどちらも真なら、本文で使っている見出しの階層のうち上から `FOLD_LEVELS` の階層の見出しごとに、次の同じか上の階層の見出しまでを `div.md-section-body` で包み（中身の無い見出しは包まず開閉も置かない）、見出しの頭に開閉の矢印（`button.md-fold`、24px、`aria-expanded`・`aria-controls`、読み上げの名前「{見出し}を開閉」）を置く。開いた状態で描き、畳むと入れ物を `hidden="until-found"` にする（`beforematch` で開く）。見出しの文言はボタンに入れず、選んだ箇所の対応づけに使う `data-line-start` を変えない。(6) コードブロック（図と `html` のコードブロックを除く）を `div.md-code` で包み、`pre` の外に言語を書いたものだけ言語の札と、コピーのボタン（読み上げの名前「コードをコピー」）を置く。押すと `code` の文字だけをクリップボードに入れ、`CODE_COPIED_MS` の間チェックの印に変えて `role="status"` で伝える。(7) mdmark が描いた Alert の囲み（`div.markdown-alert`）ごとに、見出し（`p.markdown-alert-title`）の頭に、囲みのクラス `markdown-alert-{種類}` の種類のアイコン（`CALLOUT_KINDS`）を置く。同じ `root` に 2 回当てても包み・ボタンを重ねない'
+    summary: '部品設計『Markdownの本文』。`renderMarkdown` で描いた本文の要素に、次の順で見せ方を当てる（戻り値は無く、`root` の中を書き換える。(1)〜(4) は `tables` が真のときだけ当てる）。(1) 表ごとに、列の見出しと本体のセルの `textWidth` の最大を `columnSize` にかけ、列のセルに `data-col-size`（`short`・`medium`・`long`）と中くらいの列の `--md-col-min`（em）を付ける。`div.md-table-wrap` を送らない枠 `div.md-table-frame` で包み、右へまだ送れる間だけ枠に `data-fade` を付ける（入れ物の `scroll` と `ResizeObserver` で見直す）。(2) `display.pin` が真なら、最後の列を除く見出しのセルに固定のボタン（`button.md-pin`、`aria-pressed`、読み上げの名前「{列名}まで固定」）を置き、押した列までのセルに `position: sticky` の左の位置と、固定した列の右端の影を付ける（もう一度押すと外す。画面の幅 720px 以下は `style.css` でボタンを隠し固定を外す）。(3) `display.head` が真なら表に `md-head-stick` を付ける（ずらしは `bindTableHeads` が入れる）。(4) `display.stripes` が真なら表に `md-stripes` を付ける（差分の印の行は差分の面のまま）。(5) `fold` と `display.fold` がどちらも真なら、本文で使っている見出しの階層のうち上から `FOLD_LEVELS` の階層の見出しごとに、次の同じか上の階層の見出しまでを `div.md-section-body` で包み（中身の無い見出しは包まず開閉も置かない）、見出しの頭に開閉の矢印（`button.md-fold`、24px、`aria-expanded`・`aria-controls`、読み上げの名前「{見出し}を開閉」）を置く。開いた状態で描き、畳むと入れ物を `hidden="until-found"` にする（`beforematch` で開く）。見出しの文言はボタンに入れず、選んだ箇所の対応づけに使う `data-line-start` を変えない。(6) コードブロック（図と `html` のコードブロックを除く）を `div.md-code` で包み、`pre` の外に言語を書いたものだけ言語の札と、コピーのボタン（読み上げの名前「コードをコピー」）を置く。押すと `code` の文字だけをクリップボードに入れ、`CODE_COPIED_MS` の間チェックの印に変えて `role="status"` で伝える。(7) mdmark が描いた Alert の囲み（`div.markdown-alert`）ごとに、見出し（`p.markdown-alert-title`）の頭に、囲みのクラス `markdown-alert-{種類}` の種類のアイコン（`CALLOUT_KINDS`）を置く。(1)〜(7) は、埋め込んだ HTML の範囲（`.mdmark-html`）の中の要素には当てない。同じ `root` に 2 回当てても包み・ボタンを重ねない'
     props:
       - name: root
         type: HTMLElement
@@ -2271,6 +2303,30 @@ components:
         condition: 表示の幅 1280、`stored` 880 で描き、1000 に狭めてから 1280 に戻す
         mock: '`onChange`'
         expected: 狭めた後は幅と `aria-valuemax`・`aria-valuenow` が 840、戻した後は幅が 880。`onChange` は呼ばれない
+  - name: docExportMenu
+    title: 資料のエクスポートのメニュー
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/doc-export-menu.ts
+    usecase: 資料のエクスポート
+    summary: 部品設計『資料のエクスポートのメニュー』の引数を受け、`popover="auto"` のメニューの中身を返す。開閉とエクスポートの処理は `detailPanel` が持つ
+    props:
+      - name: view
+        type: "'choose' | 'warn' | 'busy' | 'error'"
+        required: false
+        default: "'choose'"
+        description: メニューの中身
+      - name: focus
+        type: "'html' | 'md'"
+        required: false
+        default: "'html'"
+        description: '`choose` でフォーカスを置く行'
+      - name: on
+        type: '{format, confirm, back, retry, close}'
+        required: true
+        description: 形式を選んだ（`'html' | 'md'`）・警告でエクスポートした・戻る・再試行・閉じる
+    status: planned
+    introduced:
+      pr: 348
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -3237,9 +3293,9 @@ functions:
         passing: positional
         description: 本文のスクロール領域
     process: |-
-      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw の行や、本文の幅が足りなくて隠した左右の本文など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
-      2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
-      3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす。それ以外は新しい印にする
+      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）・埋め込んだ HTML の範囲の差分（`.html-diff-range`）を文書の順に拾う。範囲の差分の中の Raw の行は拾わない。矩形を持たない要素（畳んだ Raw の行や、本文の幅が足りなくて隠した左右の本文など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
+      2. 種類を決める。図の枠と範囲の差分は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
+      3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす（範囲の差分は伸ばさない）。それ以外は新しい印にする
       4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）。矩形を持たない枠（左右に並べるときに持つインラインの枠や並べた枠のうち隠した方、「原文の差分」に切り替えて隠した描いた結果の枠）は飛ばす
       5. 左右に並べた本文（`.sbs`）が見えているときは、印を本文の中の高さの順に並べ直し、同じ `div.sbs-row` の対（左右の同じ行）にある `del` と `add` を `chg` 1 つにまとめる
     returns:
@@ -3249,8 +3305,8 @@ functions:
       - name: test_minimap_targets
         summary: 続く同じ種類をまとめ、消した塊の直後の足した塊を変わったにする
         case: 正常
-        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"` / HTML の本文の枠が 2 つあり、どちらの中にも `data-df="add"` と `data-df="chg"` を持ち、片方は `display: none`'
-        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠） / `add` と `chg` の 2 つだけ（`frame` が見えている方の枠）'
+        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"` / HTML の本文の枠が 2 つあり、どちらの中にも `data-df="add"` と `data-df="chg"` を持ち、片方は `display: none` / 範囲の差分（`.html-diff-range`）が 2 つ続き、どちらの中にも `.df-raw` の足した行と消した行'
+        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠） / `add` と `chg` の 2 つだけ（`frame` が見えている方の枠） / `chg` 2 つ（`first` がそれぞれの範囲の差分。中の Raw の行は並べない）'
         mock: なし（DOM を作って見る）
       - name: test_minimap_targets_when_side_by_side
         case: 正常

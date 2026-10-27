@@ -679,12 +679,83 @@ var MindmapPreview;
         wrapWords({ nodes: addedNodes, parts: inline.after, mark: "add" });
     }
     MindmapPreview.markWords = markWords;
+    /** 埋め込んだ HTML の範囲の中の行の差分を、本文の行の差分から外す（範囲の差分は範囲ごとの部品が出す）。前の版の範囲の中の消した行は落とし、今の範囲の中の足した行は変えていない行にして、今の本文の行の数は変えない */
+    function withoutEmbeddedHtmlEdits({ parts, before, after }) {
+        /** 範囲の印の行を含む、範囲の中の行（1 始まり） */
+        const linesInRanges = (source) => {
+            const lines = new Set();
+            for (const { open, close } of MindmapPreview.embeddedHtmlRanges(source))
+                for (let line = open; line <= close; line += 1)
+                    lines.add(line);
+            return lines;
+        };
+        const inBefore = linesInRanges(before);
+        const inAfter = linesInRanges(after);
+        const result = [];
+        /** 同じ種類が続くときは 1 つの並びにまとめて足す */
+        const push = (kind, line) => {
+            const last = result[result.length - 1];
+            if (last?.kind === kind)
+                last.lines.push(line);
+            else
+                result.push({ kind, lines: [line] });
+        };
+        let beforeLine = 1;
+        let afterLine = 1;
+        for (const part of parts) {
+            for (const line of part.lines) {
+                if (part.kind === "removed") {
+                    if (!inBefore.has(beforeLine))
+                        push("removed", line);
+                    beforeLine += 1;
+                }
+                else if (part.kind === "added") {
+                    push(inAfter.has(afterLine) ? "same" : "added", line);
+                    afterLine += 1;
+                }
+                else {
+                    push("same", line);
+                    beforeLine += 1;
+                    afterLine += 1;
+                }
+            }
+        }
+        return result;
+    }
+    /** 範囲の直下の要素を並びで比べるための文字列にする（描くたびに変わる部品の連番は揃える） */
+    function childSignature(element) {
+        return element.outerHTML.replace(/mdmark-(diagram|param)-\d+-\d+/g, "mdmark-$1");
+    }
+    /** 差分の表示の間、変わった埋め込んだ HTML の範囲を、範囲の差分（変更前・変更後の描いた結果と原文の差分）に置き換える。範囲の直下の要素のうち、足した要素と変えた要素にマーカーを付けた今の範囲を、変更後の描いた結果にする */
+    function replaceChangedRanges({ root, before, after }) {
+        const ranges = [...root.querySelectorAll(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`)];
+        for (const pair of MindmapPreview.pairEmbeddedHtml({ before, after })) {
+            const element = ranges[pair.order];
+            if (element === undefined)
+                continue;
+            // 選んだ時点の範囲を、範囲の印で包んで描く
+            const beforeView = MindmapPreview.renderMarkdown(`<!-- html -->\n${pair.before}\n<!-- /html -->\n`);
+            const beforeRange = beforeView.querySelector(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`);
+            if (beforeRange === null)
+                continue;
+            const marks = MindmapPreview.childMarks({ before: [...beforeRange.children].map(childSignature), after: [...element.children].map(childSignature) });
+            marks?.forEach((mark, position) => {
+                if (mark !== null)
+                    element.children[position]?.setAttribute("data-df", mark === "added" ? "add" : "chg");
+            });
+            // 今の範囲を差分の部品へ移す間、置き場所を残す。差分を計算しきれなかったら今の範囲のまま戻す
+            const placeholder = document.createComment("");
+            element.replaceWith(placeholder);
+            const diff = MindmapPreview.htmlBodyDiff({ before: pair.before, after: pair.after, marked: "", initial: "raw", heading: "埋め込んだ HTML", beforeView, afterView: element });
+            placeholder.replaceWith(diff ?? element);
+        }
+    }
     /** 前後の本文を行ごとに比べ、今の本文を描いて足した部分と消した部分に印を付ける。差分を計算しきれなかったら null */
     function renderBodyDiff({ before, after, deadline }) {
         const compared = MindmapPreview.diffLineParts(before, after);
         if (compared === null)
             return null;
-        const parts = withoutDiagramEdits({ parts: compared, before });
+        const parts = withoutDiagramEdits({ parts: withoutEmbeddedHtmlEdits({ parts: compared, before, after }), before });
         const rendered = MindmapPreview.renderMarkdown(after);
         const removed = MindmapPreview.placeRemovedBlocks(parts).map((block) => ({ block, rendered: renderRemoved(block) }));
         // 今の本文と消した部分の見出しを合わせた最も上の段から、段の差を 1 つ求める
@@ -1004,6 +1075,9 @@ var MindmapPreview;
             const root = rendered ?? MindmapPreview.renderMarkdown(source);
             if (rendered === null)
                 lowerHeadings({ root, shift: headingShift({ roots: [root] }) });
+            // 本文の差分（インライン）の間は、変わった埋め込んだ HTML の範囲を範囲の差分に置き換える
+            if (rendered !== null && diagramBefore !== null)
+                replaceChangedRanges({ root, before: diagramBefore, after: source });
             // 古いまとまりを選び、その後に本文を直した: 描いた本文は今の本文の行と合わないので、行の印を外す（選んだ箇所のコメントも示す箇所も今の行に向けない）
             if (source !== index.data.bodies[item.body ?? ""])
                 withoutLineMarks(root);
@@ -1016,12 +1090,12 @@ var MindmapPreview;
                 },
                 onChangeSet: on.changeSet,
             });
-            MindmapPreview.linkBody({ root, index, selfId: id, onOpen: on.open });
+            MindmapPreview.linkBody({ root, index, selfId: id, onOpen: on.open, source });
             drawHtmlBlocks(root);
             // 表の列の固定・見出しの固定・しま模様と、見出しの開閉を当てる（本文の差分には開閉を置かない）
             MindmapPreview.decorateMarkdown({ root, display: bodyView, fold: rendered === null });
             // 左右に並べた本文にも、見出しのリンクと本文の印を付ける（右の列だけが今の本文の行を持つ）
-            for (const column of side?.columns ?? []) {
+            for (const [position, column] of (side?.columns ?? []).entries()) {
                 MindmapPreview.linkHeadings({
                     root: column,
                     onHeading: (slug) => {
@@ -1030,7 +1104,8 @@ var MindmapPreview;
                     },
                     onChangeSet: on.changeSet,
                 });
-                MindmapPreview.linkBody({ root: column, index, selfId: id, onOpen: on.open });
+                // 左の列は選んだ時点の本文、右の列は今の本文を描いたもの
+                MindmapPreview.linkBody({ root: column, index, selfId: id, onOpen: on.open, source: position === 0 ? (diagramBefore ?? source) : source });
                 drawHtmlBlocks(column);
                 MindmapPreview.decorateMarkdown({ root: column, display: bodyView, fold: false });
             }
@@ -1313,6 +1388,8 @@ var MindmapPreview;
         const trail = history.state;
         const position = trail?.position ?? 0;
         const length = trail?.items.length ?? 1;
+        // 本文が Markdown の資料は、編集の表示の間を除いて、エクスポートの入口を置く
+        const exportSource = entry?.kind === "docs" && MindmapPreview.bodyFormatOf(entry.item.body) === "md" && edit?.editing !== true ? index.data.bodies[entry.item.body ?? ""] : undefined;
         const arrow = (label, glyph, disabled, handler) => MindmapPreview.h({
             tag: "button",
             attrs: {
@@ -1372,6 +1449,7 @@ var MindmapPreview;
                         },
                         children: [MindmapPreview.icon("edit"), MindmapPreview.h({ tag: "span", attrs: { class: "lbl" }, children: [edit.editing ? "編集を終える" : "編集する"] })],
                     }),
+                exportSource === undefined || entry === undefined ? null : docExportControl({ item: entry.item, source: exportSource, index }),
                 arrow("前の項目へ戻る", "←", position <= 0, on.back),
                 arrow("次の項目へ進む", "→", position >= length - 1, on.forward),
                 MindmapPreview.h({
@@ -1402,6 +1480,105 @@ var MindmapPreview;
                     }),
             ],
         });
+    }
+    /** エクスポートのメニューと画面の左右の端との間に空ける余白（px） */
+    const EXPORT_MENU_MARGIN_PX = 8;
+    /** 資料のエクスポートの入口と、形式を選ぶメニュー。入口を押すとメニューを入口の下に右端を揃えて開き、「HTML でエクスポート」は mdmark を取って 1 枚の HTML を組み立てて保存させ、「Markdown でエクスポート」は警告の後に埋め込んだ HTML を除いた本文を保存させる。閉じたら入口へフォーカスを戻す */
+    function docExportControl({ item, source, index }) {
+        // 組み立てている間にメニューを閉じたとき、組み立て終えたファイルを保存させないための世代
+        let generation = 0;
+        let view = "choose";
+        const entry = MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: "icon-btn panel-export",
+                type: "button",
+                "data-act": "export",
+                "aria-label": "エクスポート",
+                title: "エクスポート",
+                "aria-haspopup": "dialog",
+                "aria-expanded": "false",
+            },
+            children: [MindmapPreview.icon("download")],
+        });
+        /** メニューの中身を替える（開いたまま、中身とフォーカスだけを替える） */
+        const setView = ({ next, focus }) => {
+            view = next;
+            const fresh = MindmapPreview.docExportMenu({ view: next, ...(focus === undefined ? {} : { focus }), on });
+            menu.replaceChildren(...fresh.childNodes);
+            menu.setAttribute("aria-labelledby", fresh.getAttribute("aria-labelledby") ?? "");
+            if (next === "busy")
+                menu.setAttribute("aria-busy", "true");
+            else
+                menu.removeAttribute("aria-busy");
+            menu.querySelector(`[${MindmapPreview.DOC_EXPORT_FOCUS_ATTR}]`)?.focus();
+        };
+        /** HTML のエクスポート。mdmark を取って組み立て、保存させて閉じる。取れないか組み立てられなければエラーの中身にする */
+        const exportHtml = async () => {
+            setView({ next: "busy" });
+            generation += 1;
+            const mine = generation;
+            const assets = await MindmapPreview.mdmarkAssets();
+            // 組み立てている間に閉じた
+            if (mine !== generation)
+                return;
+            if (!assets.ok) {
+                setView({ next: "error" });
+                return;
+            }
+            let html;
+            try {
+                html = MindmapPreview.buildDocHtml({ item, source, index, assets });
+            }
+            catch {
+                // 1 枚に入れられない中身（script 要素を閉じるタグを含む JavaScript など）
+                setView({ next: "error" });
+                return;
+            }
+            MindmapPreview.downloadText({ name: `${item.id}.html`, text: html, type: "text/html" });
+            menu.hidePopover();
+        };
+        const on = {
+            format: (format) => {
+                if (format === "html")
+                    void exportHtml();
+                else
+                    setView({ next: "warn" });
+            },
+            confirm: () => {
+                MindmapPreview.downloadText({ name: `${item.id}.md`, text: MindmapPreview.stripEmbeddedHtml(source), type: "text/markdown" });
+                menu.hidePopover();
+            },
+            back: () => setView({ next: "choose", focus: view === "warn" ? "md" : "html" }),
+            retry: () => void exportHtml(),
+            close: () => {
+                generation += 1;
+                entry.setAttribute("aria-expanded", "false");
+                entry.focus();
+            },
+        };
+        const menu = MindmapPreview.docExportMenu({ on });
+        // 入口の押下が開閉を決める。開くたびに形式を選ぶ中身へ戻し、入口の下に右端を揃えて置く
+        entry.popoverTargetElement = menu;
+        entry.popoverTargetAction = "toggle";
+        menu.addEventListener("beforetoggle", (event) => {
+            if (event.newState !== "open")
+                return;
+            setView({ next: "choose" });
+            entry.setAttribute("aria-expanded", "true");
+            // 入口の右端にメニューの右端を揃え、左端が画面の左右の余白より外に出るときは余白まで寄せる
+            const rect = entry.getBoundingClientRect();
+            const width = Math.min(parseFloat(getComputedStyle(menu).width), window.innerWidth - EXPORT_MENU_MARGIN_PX * 2);
+            menu.style.top = `${rect.bottom + 4}px`;
+            menu.style.left = `${Math.min(Math.max(rect.right - width, EXPORT_MENU_MARGIN_PX), window.innerWidth - EXPORT_MENU_MARGIN_PX - width)}px`;
+            menu.style.right = "auto";
+        });
+        // 開いたら、最初の行にフォーカスを置く
+        menu.addEventListener("toggle", (event) => {
+            if (event.newState === "open")
+                menu.querySelector(`[${MindmapPreview.DOC_EXPORT_FOCUS_ATTR}]`)?.focus();
+        });
+        return MindmapPreview.h({ tag: "span", attrs: { class: "panel-export-host" }, children: [entry, menu] });
     }
     /** 本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルに `is-shown` を付ける */
     function bindHeadTitle({ head, body }) {

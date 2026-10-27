@@ -36,6 +36,7 @@ TEMPLATE_PATH = (
 DATA_ELEMENT_OPEN = '<script type="application/json" id="mindmap-data">'
 LICENSES_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 MDMARK_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-mdmark">'
+MDMARK_CSS_ELEMENT_OPEN = '<style id="mindmap-mdmark-css">'
 
 # 資料の本文（要素を閉じる文字列を含む）
 BODY_WITH_SCRIPT_TAG = "本文に </script> を含む\n"
@@ -114,6 +115,14 @@ def _template_mdmark() -> tuple[str, str]:
     return re.search(r"/mdmark@([^/]+)/", url).group(1), integrity  # type: ignore[union-attr]
 
 
+def _template_mdmark_css_integrity() -> str:
+    """雛形の mdmark の CSS の `<link>` から、CSS の `integrity` を読む。"""
+    template = TEMPLATE_PATH.read_text(encoding="utf-8")
+    link = re.search(r'<link rel="stylesheet" href="[^"]*/mdmark@[^"]*/index\.css" integrity="([^"]+)"', template)
+    assert link is not None
+    return link.group(1)
+
+
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -166,6 +175,10 @@ def test_normal(
     mdmark_version, mdmark_integrity = _template_mdmark()
     digest = base64.b64encode(hashlib.sha384(_read_element(html, MDMARK_ELEMENT_OPEN).encode("utf-8")).digest()).decode("ascii")
     assert f"sha384-{digest}" == mdmark_integrity
+    # mdmark の CSS が id を持つ `<style>` の中身になり、sha384 が雛形の `<link>` の `integrity` と一致する
+    css = html.split(MDMARK_CSS_ELEMENT_OPEN, 1)[1].split("</style>", 1)[0]
+    css_digest = base64.b64encode(hashlib.sha384(css.encode("utf-8")).digest()).decode("ascii")
+    assert f"sha384-{css_digest}" == _template_mdmark_css_integrity()
     # ライセンスの表示に、ライブラリごとの名前・版・著作権の表示・ライセンスの名前がある
     licenses = _read_element(html, LICENSES_ELEMENT_OPEN)
     versions = _template_versions()

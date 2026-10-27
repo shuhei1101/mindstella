@@ -1,0 +1,16 @@
+python: /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/fcb7d24c-366c-4f34-92b4-f76318206d07/scratchpad/venv-mindstella/bin/python (Python 3.12.3)
+mcp: 2.3.0
+$ /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/fcb7d24c-366c-4f34-92b4-f76318206d07/scratchpad/venv-mindstella/bin/python -m pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked tests/integration/preview/test_workspace_settings_screen.py::test_tables tests/integration/preview/test_workspace_settings_screen.py::test_move_tag_drop tests/integration/preview/test_open_preview.py::test_normal_when_exported_with_saved_filter
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-mdmark-html-embed-and-export
+configfile: pytest.ini
+plugins: anyio-4.15.1, xdist-3.8.0, base-url-2.1.0, playwright-0.9.0
+collected 4 items
+
+tests/integration/preview/test_detail_panel_screen.py .                  [ 25%]
+tests/integration/preview/test_workspace_settings_screen.py ..           [ 75%]
+tests/integration/preview/test_open_preview.py .                         [100%]
+
+============================== 4 passed in 9.82s ===============================
+exit: 0

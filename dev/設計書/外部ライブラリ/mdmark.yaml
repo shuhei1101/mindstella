@@ -1,14 +1,14 @@
 title: "mdmark"
 kind: "CDN の JS"
 version:
-  current: v0.7.0
-  latest: v0.7.0
-  checked_on: '2026-10-25'
-  source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.7.0/dist/index.js
-  pinning: タグを固定した jsDelivr の GitHub の URL で読む。JavaScript は import map の `integrity`（`sha384-hGpQCoFYeH6+OZdqcXaFGd2AN9Cm2lz/HNPk46zy+wbpefPdaQQU9O8jiQuUAUaC`）、CSS（`dist/index.css`）は link 要素の `integrity`（`sha384-w4Z3LlHaRGk5IdPVeF3+qR7wzUMpBj5NFTJTokLU3KhOpkneZK4rcb0nsnijHj0J`）と `crossorigin="anonymous"` で中身を確かめる。上げるときは両方の integrity も書き換える
+  current: v0.8.0
+  latest: v0.8.0
+  checked_on: '2026-10-27'
+  source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.8.0/dist/index.js
+  pinning: タグを固定した jsDelivr の GitHub の URL で読む。JavaScript は import map の `integrity`（`sha384-TM6o/p3o+qWHh5HK5iGMRN6krIdz4rxapjSgvX1yJhY9z7eHJl2WGBaiJAiZIAoq`）、CSS（`dist/index.css`）は link 要素の `integrity`（`sha384-3lS+93C5w5loNr+EKJlqTfbAHmBGx+GCkqJiqOGUFFaA56e87waceMQ1TMY94wcV`）と `crossorigin="anonymous"` で中身を確かめる。上げるときは両方の integrity も書き換える
 catalogs:
   - name: API
-    version: v0.7.0
+    version: v0.8.0
     entries:
       - name: mount
         kind: 関数
@@ -25,7 +25,15 @@ catalogs:
           - name: opts.config.features
             type: Record<string, boolean>
             required: false
-            description: 機能ごとのオン・オフ。プレビューは `glossary`・`backlinks`・`comments`・`print`・`anchors`・`sections`・`table`・`toc`・`views` を `false` にし、`code` は既定（オン）のまま
+            description: 機能ごとのオン・オフ。プレビューは `glossary`・`backlinks`・`comments`・`print`・`anchors`・`sections`・`table`・`toc`・`views`・`syntax` を `false` にし、`code`・`html` は既定（オン）のまま。資料の 1 枚の HTML は `comments`・`print`・`views`・`syntax` を `false` にして用語のツールチップを mdmark で描く（文書の別名は `backlinks` がオンのときだけ照合する）
+          - name: opts.index
+            type: '{docs: Array<{id, path, title, aliases?, description?}>, terms: Array<{id, term, meaning, aliases?}>}'
+            required: false
+            description: 用語のツールチップと資料の参照に使う索引。資料の 1 枚の HTML だけが渡す
+          - name: opts.docId
+            type: string
+            required: false
+            description: 描く文書の `opts.index.docs` の ID（自分自身への参照を除く）
         returns:
           - name: update
             type: '(markdown: string) => void'
@@ -33,16 +41,37 @@ catalogs:
           - name: destroy
             type: () => void
             description: 描いた中身と受け手を片付ける
-        description: 描いたブロックは `data-source-line`（0 始まりのブロックの開始行）を持つ。フェンスのコード・字下げのコードは `pre` に、図（`mermaid`）と `html` のコードブロックは描かずに `pre` の中の `code.language-{言語}` に原文のまま残す。生の HTML の `onerror` の属性・`script` 要素・`javascript:` のリンクを取り除いて描く。GitHub の Alert は `markdown-alert` の囲みに「補足」「ヒント」「重要」「警告」「注意」の見出しで描く
+        description: 描いたブロックは `data-source-line`（0 始まりのブロックの開始行）を持つ。フェンスのコード・字下げのコードは `pre` に、図（`mermaid`）と `html` のコードブロックは描かずに `pre` の中の `code.language-{言語}` に原文のまま残す。行全体の `<!-- html -->` 〜 `<!-- /html -->` の範囲は、中の HTML を要素のまま `div.mdmark-html` に描き（`data-source-line` を持たない）、範囲の中の図・チャート・`<mdmark-param>` の部品を動かせる。生の HTML の `onerror` の属性・`script` 要素・`javascript:` のリンクを取り除いて描く。GitHub の Alert は `markdown-alert` の囲みに「補足」「ヒント」「重要」「警告」「注意」の見出しで描く
       - name: version
         kind: 関数
         purpose: 読み込んだ mdmark の版を返す
         returns:
           - name: '-'
             type: string
-            description: 版（`v0.7.0`）
+            description: 版（`v0.8.0`）
+      - name: collectMatches
+        kind: 関数
+        purpose: 文書ごとに、用語に一致した位置を返す
+        description: 一致の前に NFKC・英字の大文字小文字・前後の空白を正規化する。`meaning` が空の用語とインラインコードは照合しない。英字の語の直後が `-` でも一致し、正規化の後に同じになる別の語は先の用語だけを返す
+        params:
+          - name: index
+            type: '{docs: Array<{id, path, title}>, terms: Array<{id, term, meaning}>}'
+            required: true
+            description: 照合する文書と用語
+          - name: documents
+            type: Record<string, string>
+            required: true
+            description: 文書の `path` → Markdown
+        params_example: |-
+          ```ts
+          const result = mdmark.collectMatches({ index: { docs, terms }, documents });
+          ```
+        returns:
+          - name: byDocument
+            type: 'Record<string, Array<{id: string, line: number, start: number, end: number}>>'
+            description: 文書の ID → 一致した用語の ID と位置（`line` は 1 始まり、`start`・`end` は行の中の文字の位置）
 lead: Markdown を共通のスタイルで HTML に描き、描いた HTML を無害化する JavaScript のライブラリ（ES モジュール）と CSS。
-purl: pkg:github/shuhei1101/mdmark@v0.7.0
+purl: pkg:github/shuhei1101/mdmark@v0.8.0
 dependency_scope: 必須
 adoption: 採用
 used_in:
@@ -51,21 +80,27 @@ used_in:
 upstream: shuhei1101/mdmark
 verification:
   state: 済
-  date: '2026-10-25'
-  detail: 'PR #342 の PoC（PoC PR #343）で、jsDelivr の `dist/index.js` を名前空間のスクリプトから `import()` で読み、Chromium 151 で `mount` が見出し・段落・リスト・表・コード・引用を描くこと、`config.features` で重なる機能を止められることを確かめた。import map の `integrity` に下の値を書くと読め、違う値では読めないことも確かめた'
-license: MIT（v0.7.0 のリポジトリには LICENSE と `package.json` の `license` が無く、[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140) で追加する。v0.7.0 を使う間は、MIT の本文を `plugins/mindstella/skills/mindmap/preview/licenses/mdmark-LICENSE.txt` に置き、バージョンを上げたら見直す）。同梱する依存（markdown-it・sanitize-html ほか）のライセンスは `dist/THIRD_PARTY_LICENSES.txt` に並ぶ。配る書き出しに入れるときは、名前・版・著作権の表示・ライセンスの本文と、`THIRD_PARTY_LICENSES.txt` の本文を残す
+  date: '2026-10-27'
+  detail: 'PR #348 の PoC（PoC PR #349）で、v0.8.0 のタグの commit `580fae8a` と `src` が同じ `a8c3d80` を読み、Chromium で埋め込んだ HTML の範囲・チャートの拡大と移動・操作できる部品と今の値のコピー・`collectMatches` の一致と正規化・`mount` の `index` の用語のツールチップを確かめた。JavaScript を `text/plain` で持たせ Blob の URL から `import()` した 1 枚の HTML が、通信を止めた `file://` で動くこと（`syntax` を止めたとき）も確かめた'
+license: MIT（v0.8.0 のリポジトリにも LICENSE と `package.json` の `license` が無く、[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140) で追加する。追加されるまでは、MIT の本文を `plugins/mindstella/skills/mindmap/preview/licenses/mdmark-LICENSE.txt` に置き、バージョンを上げたら見直す）。同梱する依存（markdown-it・sanitize-html ほか）のライセンスは `dist/THIRD_PARTY_LICENSES.txt` に並ぶ。配る書き出しに入れるときは、名前・版・著作権の表示・ライセンスの本文と、`THIRD_PARTY_LICENSES.txt` の本文を残す
 official_url: https://github.com/shuhei1101/mdmark
 selection:
   decision: 'Issue #339 で、プレビューの描画を mdmark に置き換えると決まっている。重なる機能（用語のツールチップ・コメント・差分・印刷ほか）は設定で止める（PR #342 の要件の案 A）'
 install: |-
   ```html
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.7.0/dist/index.css" integrity="sha384-w4Z3LlHaRGk5IdPVeF3+qR7wzUMpBj5NFTJTokLU3KhOpkneZK4rcb0nsnijHj0J" crossorigin="anonymous">
-  <script type="importmap">{"integrity": {"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.7.0/dist/index.js": "sha384-hGpQCoFYeH6+OZdqcXaFGd2AN9Cm2lz/HNPk46zy+wbpefPdaQQU9O8jiQuUAUaC"}}</script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.8.0/dist/index.css" integrity="sha384-3lS+93C5w5loNr+EKJlqTfbAHmBGx+GCkqJiqOGUFFaA56e87waceMQ1TMY94wcV" crossorigin="anonymous">
+  <script type="importmap">{"integrity": {"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.8.0/dist/index.js": "sha384-TM6o/p3o+qWHh5HK5iGMRN6krIdz4rxapjSgvX1yJhY9z7eHJl2WGBaiJAiZIAoq"}}</script>
   ```
 
   プレビューの画面が `import()` で `dist/index.js` を読む。グローバルには入らない
 limitations:
   - item: 図
-    content: v0.7.0 は mermaid の図を描かないため、図は mermaid で描く
+    content: 埋め込んだ HTML の範囲の外の mermaid のコードブロックは描かないため、mermaid で描く
   - item: 行の範囲
     content: '`data-source-line` はブロックの開始行だけを持ち、0 始まり。フェンスのコードは開始行がフェンスの行になる'
+  - item: 埋め込んだ HTML の行
+    content: '`div.mdmark-html` とその中の要素は `data-source-line` を持たない。mindstella は範囲の印の行を `embeddedHtmlRanges` で求めて付ける'
+  - item: 今の値のコピーの文言
+    content: '部品のボタン（`button.mdmark-param-copy`）の文言は「今の値を写す」に固定で、替える設定が無い。mindstella は描いた後に `relabelParamCopy` で「今の値をコピー」に替える。設定は shuhei1101/mdmark#155 で追加し、付け替えは #351'
+  - item: コードの色付け
+    content: '`syntax` はコードブロックを描くときに highlight.js を jsDelivr から integrity なしで読む。mindstella はどの描画でも `syntax` を止める'

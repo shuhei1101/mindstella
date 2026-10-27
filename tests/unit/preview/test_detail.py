@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -14,6 +15,7 @@ from .fixture_types import (
     LoadPreviewStyles,
     MakeData,
     MakeItem,
+    PutMdmarkCss,
 )
 
 # 変更履歴の 1 回分の日時
@@ -2207,11 +2209,11 @@ HEAD_TITLE_LONG_TITLE = (
 # 見出しのボタン（`.panel-head .icon-btn`）の幅（`--control-h`）。長いタイトルでも縮まない
 HEAD_BUTTON_WIDTH = 32
 
-# 横のパネルの見出しの表示されているボタンの数（戻る・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
-HEAD_BUTTON_COUNT_PANEL = 4
+# 横のパネルの見出しの表示されているボタンの数（戻る・エクスポート・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
+HEAD_BUTTON_COUNT_PANEL = 5
 
-# 全画面の見出しのボタンの数（戻る・進む・元の大きさに戻す）
-HEAD_BUTTON_COUNT_FULL = 3
+# 全画面の見出しのボタンの数（戻る・エクスポート・進む・元の大きさに戻す）
+HEAD_BUTTON_COUNT_FULL = 4
 
 # 本文の高さを、本文のスクロール領域の高さの 3 倍以上にする段落の数
 HEAD_TITLE_LONG_BODY_PARAGRAPHS = 200
@@ -3396,3 +3398,301 @@ def test_panel_resizer_when_window_resized(
     assert (narrowed["width"], narrowed["max"], narrowed["now"]) == (840, 840, 840)
     assert widened["width"] == 880
     assert (narrowed["calls"], widened["calls"]) == ([], [])
+
+
+# 埋め込んだ HTML の範囲を持つ資料 A-1 の本文（段落・範囲 1 つ・範囲の外の段落）
+EXPORT_BODY = (
+    "範囲の外の文\n\n"
+    "<!-- html -->\n```html\n<p>範囲の中の文</p>\n```\n<!-- /html -->\n\n"
+    "後ろの文\n"
+)
+
+# 資料 A-1 の詳細パネルを開き、エクスポートの入口が読む表示に出るかを調べる。
+# shared は配る書き出し（comment と edit が null）、editing は編集の表示
+OPEN_EXPORT_PANEL_SCRIPT = """async ({data, id, full, shared, editing}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const item = index.byId.get(id).item;
+    const comment = shared ? null : {
+        form: {
+            target: id,
+            on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
+        },
+        reviews: [],
+        edit: {
+            removed: [], editing: null, editingIn: "detail", editError: null, editBody: null,
+            on: {edit: noop, saveEdit: noop, cancelEdit: noop, remove: noop, restore: noop},
+        },
+    };
+    const edit = shared ? null : {
+        editing,
+        marks: {},
+        form: {
+            kind: "docs", item, settings: data.settings, marks: {}, removing: false,
+            removedOptions: [], blocked: {}, referrers: [], errors: {},
+            on: {change: noop, remove: noop, cancelRemove: noop},
+        },
+        onToggle: noop,
+    };
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop},
+        comment,
+        highlight: null,
+        diff: null,
+        edit,
+    });
+    document.body.append(panel);
+    if (full) panel.showModal(); else panel.classList.add("open");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+}"""
+
+
+def _export_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
+    """本文が Markdown の資料 A-1・本文が HTML の資料 A-2・検討事項 D-1 を持つ埋め込みのデータを返す。"""
+    return make_data(
+        decisions=[make_item("D-1")],
+        docs=[make_item("A-1", title="エクスポートする資料"), make_item("A-2", body="A-2.html")],
+        bodies={"A-1.md": EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
+    )
+
+
+@pytest.mark.parametrize(
+    ("item_id", "shared", "editing", "expected"),
+    [
+        pytest.param("A-1", False, False, 1, id="markdown_doc"),
+        pytest.param("A-2", False, False, 0, id="html_doc"),
+        pytest.param("D-1", False, False, 0, id="decision"),
+        pytest.param("A-1", False, True, 0, id="editing"),
+        pytest.param("A-1", True, False, 1, id="shared_export"),
+    ],
+)
+def test_detail_panel_when_export_entry(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    shared: bool,
+    editing: bool,
+    expected: int,
+) -> None:
+    """本文が Markdown の資料にだけエクスポートの入口を置く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    data = _export_data(make_data, make_item)
+    # 実行
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": item_id, "full": False, "shared": shared, "editing": editing},
+    )
+    entries = preview_page.get_by_role("button", name="エクスポート", exact=True)
+    # 検証
+    expect(entries).to_have_count(expected)
+    if expected == 1:
+        # 全画面表示のボタンより前（左）に置く
+        assert preview_page.evaluate(
+            """() => {
+                const entry = [...document.querySelectorAll("button")].find(
+                    (button) => button.getAttribute("aria-label") === "エクスポート",
+                );
+                const full = document.querySelector('button[aria-label="全画面表示"]');
+                return Boolean(entry.compareDocumentPosition(full) & Node.DOCUMENT_POSITION_FOLLOWING);
+            }"""
+        )
+
+
+def test_detail_panel_when_export_html(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    put_mdmark_css: PutMdmarkCss,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """HTML でエクスポートすると 1 枚の HTML を保存させ、メニューを閉じて入口へフォーカスを戻す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    put_mdmark_css()
+    data = _export_data(make_data, make_item)
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+    )
+    entry = preview_page.get_by_role("button", name="エクスポート", exact=True)
+    entry.click()
+    # 実行
+    with preview_page.expect_download() as download_info:
+        preview_page.get_by_role("button", name="HTML でエクスポート").click()
+    download = download_info.value
+    exported = Path(download.path()).read_text(encoding="utf-8")
+    # 検証
+    assert download.suggested_filename == "A-1.html"
+    assert 'id="doc-mdmark"' in exported
+    assert "エクスポートする資料" in exported
+    expect(preview_page.get_by_role("dialog", name="エクスポート")).to_be_hidden()
+    expect(entry).to_have_attribute("aria-expanded", "false")
+    expect(entry).to_be_focused()
+
+
+def test_detail_panel_when_export_markdown(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """Markdown でエクスポートすると警告を挙げ、埋め込んだ HTML を除いた本文を保存させる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    data = _export_data(make_data, make_item)
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+    )
+    downloads: list[Any] = []
+    preview_page.on("download", lambda download: downloads.append(download))
+    preview_page.get_by_role("button", name="エクスポート", exact=True).click()
+    # 実行
+    preview_page.get_by_role("button", name="Markdown でエクスポート").click()
+    warned = preview_page.get_by_role("button", name="エクスポート", exact=True).count()
+    downloads_after_warning = len(downloads)
+    preview_page.get_by_role("button", name="戻る", exact=True).click()
+    focused_after_back = preview_page.evaluate("() => document.activeElement?.textContent ?? ''")
+    preview_page.get_by_role("button", name="Markdown でエクスポート").click()
+    with preview_page.expect_download() as download_info:
+        preview_page.get_by_role("dialog").get_by_role("button", name="エクスポート", exact=True).click()
+    download = download_info.value
+    exported = Path(download.path()).read_text(encoding="utf-8")
+    # 検証
+    # 警告の間は保存されず、警告の「エクスポート」が押せる
+    assert downloads_after_warning == 0
+    assert warned >= 1
+    # 「戻る」でフォーカスが「Markdown でエクスポート」へ戻る
+    assert "Markdown でエクスポート" in focused_after_back
+    assert download.suggested_filename == "A-1.md"
+    assert "範囲の外の文" in exported
+    assert "範囲の中の文" not in exported
+    assert "<!-- html -->" not in exported
+
+
+def test_detail_panel_when_export_retry(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    put_mdmark_css: PutMdmarkCss,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """mdmark の中身を取れないときはエラーを出し、再試行でやり直す（異常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    # 最初の CSS の要求だけを失敗させ、2 回目からは配布物の中身を返す
+    put_mdmark_css(status=404)
+    data = _export_data(make_data, make_item)
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+    )
+    preview_page.get_by_role("button", name="エクスポート", exact=True).click()
+    preview_page.get_by_role("button", name="HTML でエクスポート").click()
+    alert = preview_page.get_by_role("alert")
+    expect(alert).to_be_visible()
+    # 実行
+    # 後に足した経路が先に当たるので、CSS の経路を足し直せば 2 回目から読める
+    put_mdmark_css()
+    with preview_page.expect_download() as download_info:
+        preview_page.get_by_role("button", name="再試行").click()
+    # 検証
+    assert download_info.value.suggested_filename == "A-1.html"
+    expect(preview_page.get_by_role("dialog", name="エクスポート")).to_be_hidden()
+
+
+# 範囲 2 つを持つ今の本文（2 つ目の範囲の 1 つ目の段落を書き換え、末尾に段落を足した後）
+EMBEDDED_DIFF_NOW = (
+    "範囲の外の文\n\n"
+    "<!-- html -->\n```html\n<p>一つ目の範囲の段落</p>\n```\n<!-- /html -->\n\n"
+    "<!-- html -->\n```html\n<p>書き換え後</p>\n<p>二つ目の範囲の段落</p>\n<p>足した段落</p>\n```\n<!-- /html -->\n"
+)
+
+# 2 つ目の範囲（11 行目から）の書き換え前と、足す前の段落の並び
+EMBEDDED_DIFF_ENTRY = _body_entry(
+    line=11,
+    now=["<p>書き換え後</p>", "<p>二つ目の範囲の段落</p>", "<p>足した段落</p>"],
+    before=["<p>書き換え前</p>", "<p>二つ目の範囲の段落</p>"],
+)
+
+# 差分つきで資料 A-1 の詳細パネルを開く
+OPEN_EMBEDDED_DIFF_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["A-1"])},
+    });
+    document.body.append(panel);
+    panel.classList.add("open");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+}"""
+
+
+def test_detail_panel_when_embedded_html_diff(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """変わった埋め込んだ HTML の範囲だけを HTML の本文の差分に置き換える（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[make_item("A-1", body="A-1.md", history=[EMBEDDED_DIFF_ENTRY])],
+        bodies={"A-1.md": EMBEDDED_DIFF_NOW},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_mdmark()
+    load_library("jsdiff")
+    preview_page.evaluate(OPEN_EMBEDDED_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    panel = preview_page.locator("aside.panel")
+    # 実行
+    raw_pressed = panel.get_by_role("button", name="原文の差分").get_attribute("aria-pressed")
+    unchanged_range_count = panel.locator(".md > .mdmark-html:visible").count()
+    panel.get_by_role("button", name="描いた結果（変更後）").click()
+    after = panel.evaluate(
+        """(panel) => ({
+            changed: [...panel.querySelectorAll('[data-df="chg"]')].map((element) => element.textContent.trim()),
+            added: [...panel.querySelectorAll('[data-df="add"]')].map((element) => element.textContent.trim()),
+            lineMarksInRanges: panel.querySelectorAll(".mdmark-html ins.df-blk, .mdmark-html del.df-blk").length,
+        })"""
+    )
+    # 検証
+    # 1 つ目の範囲はそのまま描かれ、2 つ目は差分に置き換わって「原文の差分」を選んだ状態で開く
+    assert unchanged_range_count == 1
+    assert raw_pressed == "true"
+    expect(panel.get_by_text("埋め込んだ HTML")).to_be_visible()
+    # 変更後は、書き換えた段落に変わったマーカー、足した段落に足したマーカーが付く
+    assert after == {"changed": ["書き換え後"], "added": ["足した段落"], "lineMarksInRanges": 0}

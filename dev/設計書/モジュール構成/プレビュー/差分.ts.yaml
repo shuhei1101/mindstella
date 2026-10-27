@@ -162,6 +162,24 @@ data_models:
       - name: right
         type: SideBlock[]
         description: 右の列（今）の塊
+  - name: EmbeddedHtmlPair
+    title: 埋め込んだ HTML の範囲の対
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 本文の中の並びの順で対にした、選んだ時点と今の埋め込んだ HTML の範囲の中身
+    properties:
+      - name: order
+        type: number
+        description: 今の本文の中で何番目の範囲か（0 始まり。描いた本文の n 番目の `.mdmark-html` に当たる）
+      - name: before
+        type: string
+        description: 選んだ時点の範囲の中身（`<!-- html -->` と `<!-- /html -->` の行を除いた行）
+      - name: after
+        type: string
+        description: 今の範囲の中身（同上）
+    status: planned
+    introduced:
+      pr: 348
 constants:
   - name: LINE_DIFF_TIMEOUT_MS
     title: 行の差分の打ち切り
@@ -693,5 +711,81 @@ functions:
         condition: 全ての行が違う 5000 行の前後
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`null`'
+  - name: pairEmbeddedHtml
+    title: 埋め込んだ HTML の範囲の対
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 前後の Markdown の本文の埋め込んだ HTML の範囲を並びの順で対にし、中身が違う対だけを返す（画面設計『詳細パネル』の要素「埋め込んだ HTML の差分」）
+    kind: 関数
+    scope: public
+    args:
+      - name: before
+        type: string
+        required: true
+        passing: keyword
+        description: 選んだ時点の本文の Markdown
+      - name: after
+        type: string
+        required: true
+        passing: keyword
+        description: 今の本文の Markdown
+    returns:
+      type: EmbeddedHtmlPair[]
+      description: 中身が違う対。中身が同じ範囲と、選んだ時点に対になる範囲が無い今の範囲は入れない
+    process: |-
+      1. 前後それぞれの範囲の行を求める（`embeddedHtmlRanges`）
+      2. 今の n 番目の範囲を、選んだ時点の n 番目の範囲と対にする（選んだ時点の範囲が n 個以下なら、n 番目より後ろの今の範囲は対にしない）
+      3. 対ごとに、`<!-- html -->` の次の行から `<!-- /html -->` の前の行までを中身にし、前後の中身が違う対だけを `{order, before, after}` で返す
+    unit_tests:
+      - name: test_pair_embedded_html
+        case: 正常
+        summary: 並びの順で対にし、中身が違う対だけを返す
+        condition: '範囲を 2 つ持つ本文。`parametrize`: 2 つ目の範囲の段落を書き換える / 範囲の外の段落だけを書き換える / 末尾に 3 つ目の範囲を足す / 閉じていない `<!-- html -->` を末尾に足す'
+        mock: なし
+        expected: '`order: 1` の対 1 つで、`before`・`after` に範囲の印の行を含まない / 空 / 空（対になる範囲が無い） / 空'
+    status: planned
+    introduced:
+      pr: 348
+  - name: childMarks
+    title: 範囲の直下の要素のマーカー
+    container: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    usecase: 前回からの差分を見る
+    summary: 描いた前後の範囲の直下の要素を並びで比べ、今の要素ごとに足した・変わったのマーカーを返す（部品『HTMLの本文の差分』の `afterView` に付けるマーカー）
+    kind: 関数
+    scope: public
+    args:
+      - name: before
+        type: string[]
+        required: true
+        passing: keyword
+        description: 選んだ時点の範囲を描いた要素の直下の要素の `outerHTML`（並びの順）
+      - name: after
+        type: string[]
+        required: true
+        passing: keyword
+        description: 今の範囲を描いた要素の直下の要素の `outerHTML`（並びの順）
+    returns:
+      type: Array<'added' | 'changed' | null> | null
+      description: '`after` と同じ長さで、足した要素は `added`、変えた要素は `changed`、変えていない要素は `null`。比べるのを打ち切ったら `null`'
+    process: |-
+      1. `Diff.diffArrays` で前後の並びを比べる（`timeout` は `ARRAY_DIFF_TIMEOUT_MS`。`undefined` が返ったら `null` を返す）
+      2. 並びを順にたどり、消した並びに続く足した並びは、前から 1 つずつ消した要素と対にして `changed`、対にならない残りと、消した並びに続かない足した要素を `added` にする（本文の差分の変えた行の対と同じ対の作り方）
+      3. 変えていない要素は `null` にする。消しただけの要素は今の並びに無いのでマーカーを付けない（「描いた結果（変更前）」と「原文の差分」が示す）
+    unit_tests:
+      - name: test_child_marks
+        case: 正常
+        summary: 足した要素と変えた要素を分ける
+        condition: '段落 2 つとスライダーの部品を持つ範囲。`parametrize`: 末尾に段落を足す / 2 つ目の段落を書き換える / 2 つ目の段落を 2 つの段落に書き換える / 1 つ目の段落を消す'
+        mock: jsdiff はリポジトリの外部ライブラリの設計書の版を読む
+        expected: "`[null, null, null, 'added']` / `[null, 'changed', null]` / `[null, 'changed', 'added', null]` / `[null, null]`"
+      - name: test_child_marks_when_timeout
+        case: 正常
+        summary: 比べるのを打ち切ったら null
+        condition: '`Diff.diffArrays` が `undefined` を返す'
+        mock: '`Diff.diffArrays` を差し替える'
+        expected: '`null`'
+    status: planned
+    introduced:
+      pr: 348
 test_files:
   - tests/unit/preview/test_diff.py

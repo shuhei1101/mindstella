@@ -1855,9 +1855,13 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 /* ===== HTML の本文の差分 ===== */
 
 /* 見せ方の切り替えと凡例の行を持つ、描いた結果と原文の差分の入れ物 */
-.html-diff-c { display: grid; gap: 8px; }
+.html-diff-c { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 /* 切り替えの行: 切り替えの右に凡例を置き、狭い幅では折り返す */
 .html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* 切り替えの行の切り替え: 狭い幅では切り替えの中で横にスクロールする */
+.html-diff-bar .segment { max-width: 100%; overflow-x: auto; }
+/* 切り替えのボタン: 幅を文言に合わせ、文言を折り返さない */
+.html-diff-bar .segment button { width: auto; white-space: nowrap; }
 /* 凡例の行の余白を切り替えの行に揃える */
 .html-diff-bar .df-legend { margin: 0; }
 /* 切り替えで隠した側（描いた結果・原文の差分・凡例）は、display を持つ部品でも出さない */
@@ -2488,3 +2492,55 @@ body:has(.pe-ws) #main { display: none; }
 .pe-mini .input { min-width: 8em; }
 /* 数の入力欄 */
 .pe-num { max-width: 8em; }
+
+/* ===== 資料のエクスポートの入口とメニュー ===== */
+
+/* 入口とメニューを見出しの 1 つの子として並べる包み: レイアウトには加わらず、入口を見出しの並びに置く */
+.panel-export-host { display: contents; }
+/* 入口のボタン: メニューを開いている間は押した面にする */
+.panel-export[aria-expanded="true"] { background: var(--hover); }
+/* メニュー: 形式の説明と警告の文が 2 行に収まる幅 */
+.pop.doc-export { width: 300px; max-width: calc(100vw - 16px); }
+/* 形式の並び */
+.dx-list { display: grid; gap: 2px; }
+/* 形式の 1 行: アイコン・名前・説明。行の全体を押せる */
+.dx-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--target-min); padding: 8px; border: 0; border-radius: 3px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.dx-item:hover { background: var(--hover); }
+.dx-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 形式のアイコン: 名前の 1 行目に揃える */
+.dx-item svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--text-2); }
+/* 形式の名前と説明を縦に並べる枠 */
+.dx-text { display: grid; gap: 2px; }
+/* 形式の名前 */
+.dx-name { font-size: var(--fs-small); font-weight: 600; }
+/* 形式の説明 */
+.dx-sub { color: var(--text-2); font-size: var(--fs-xs); }
+/* 警告: 枠で囲まず、アイコンの色と余白でまとまりを示す */
+.dx-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 8px; font-size: var(--fs-small); }
+.dx-warn p { margin: 0; }
+/* 警告の印 */
+.dx-warn svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--st-review); }
+/* 処理中の行と、処理中に押せない行 */
+.dx-item[aria-disabled="true"] { cursor: default; }
+.dx-item[aria-disabled="true"]:not(.dx-busy) { opacity: .5; }
+.dx-item[aria-disabled="true"]:hover { background: none; }
+/* 処理中の行 */
+.dx-busy { cursor: progress !important; }
+/* 処理中の行のアイコン: 回る輪に替える */
+.dx-busy svg.icon { visibility: hidden; position: relative; }
+.dx-busy::before { content: ""; flex: none; width: 14px; height: 14px; margin: 3px -24px 0 1px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: dx-spin .8s linear infinite; }
+/* 輪が回る動き */
+@keyframes dx-spin { to { transform: rotate(360deg); } }
+/* 動きを減らす設定では輪を回さない */
+@media (prefers-reduced-motion: reduce) { .dx-busy::before { animation: none; } }
+/* 警告・エラーの戻る・エクスポート・再試行: 右に寄せる */
+.pop .dx-foot { justify-content: flex-end; }
+
+/* ===== 埋め込んだ HTML の範囲の差分 ===== */
+
+/* 変更後の描いた結果で足した要素 */
+.html-marked [data-df="add"] { outline: 2px solid var(--df-add); outline-offset: 2px; background-color: var(--df-add-bg); }
+/* 変更後の描いた結果で変わった要素 */
+.html-marked [data-df="chg"] { outline: 2px dashed var(--df-chg); outline-offset: 2px; background-color: var(--df-chg-bg); }
+/* 範囲の差分の名前 */
+.html-diff-heading { color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }

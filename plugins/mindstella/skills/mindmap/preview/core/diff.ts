@@ -839,4 +839,63 @@ namespace MindmapPreview {
     }
     return compareDiagrams({ flavor: "flowchart", previous, current: { nodes, edges } });
   }
+
+  /** 本文の中の並びの順で対にした、選んだ時点と今の埋め込んだ HTML の範囲の中身 */
+  export type EmbeddedHtmlPair = {
+    /** 今の本文の中で何番目の範囲か（0 始まり。描いた本文の n 番目の `.mdmark-html` に当たる） */
+    order: number;
+    /** 選んだ時点の範囲の中身（`<!-- html -->` と `<!-- /html -->` の行を除いた行） */
+    before: string;
+    /** 今の範囲の中身（同上） */
+    after: string;
+  };
+
+  /** 範囲の印の行（1 始まり）の間にある行を、改行でつないだ文字列にする */
+  function embeddedHtmlContent({ lines, open, close }: { lines: string[]; open: number; close: number }): string {
+    return lines.slice(open, close - 1).join("\n");
+  }
+
+  /** 前後の Markdown の本文の埋め込んだ HTML の範囲を並びの順で対にし、中身が違う対だけを返す。選んだ時点に対になる範囲が無い今の範囲は入れない */
+  export function pairEmbeddedHtml({ before, after }: { before: string; after: string }): EmbeddedHtmlPair[] {
+    const beforeLines = before.split("\n");
+    const afterLines = after.split("\n");
+    const beforeRanges = embeddedHtmlRanges(before);
+    const pairs: EmbeddedHtmlPair[] = [];
+    embeddedHtmlRanges(after).forEach((range, order) => {
+      const previous = beforeRanges[order];
+      if (previous === undefined) return;
+      const pair = {
+        order,
+        before: embeddedHtmlContent({ lines: beforeLines, ...previous }),
+        after: embeddedHtmlContent({ lines: afterLines, ...range }),
+      };
+      if (pair.before !== pair.after) pairs.push(pair);
+    });
+    return pairs;
+  }
+
+  /** 描いた前後の範囲の直下の要素（`outerHTML`）を並びで比べ、今の要素ごとに足した・変わったのマーカーを返す。変えていない要素は null。比べるのを打ち切ったら null */
+  export function childMarks({ before, after }: { before: string[]; after: string[] }): ("added" | "changed" | null)[] | null {
+    const parts = Diff.diffArrays(before, after, { timeout: ARRAY_DIFF_TIMEOUT_MS });
+    // 打ち切り
+    if (parts === undefined) return null;
+    const marks: ("added" | "changed" | null)[] = [];
+    // 直前の消した並びのうち、足した要素と対にできる残りの数
+    let removedLeft = 0;
+    for (const part of parts) {
+      if (part.removed) {
+        removedLeft = part.count ?? part.value.length;
+      } else if (part.added) {
+        // 消した並びに続く足した並びは、前から 1 つずつ消した要素と対にして変わった、対にならない残りを足したにする
+        for (let position = 0; position < (part.count ?? part.value.length); position += 1) {
+          marks.push(removedLeft > 0 ? "changed" : "added");
+          removedLeft = Math.max(0, removedLeft - 1);
+        }
+      } else {
+        removedLeft = 0;
+        for (let position = 0; position < (part.count ?? part.value.length); position += 1) marks.push(null);
+      }
+    }
+    return marks;
+  }
 }

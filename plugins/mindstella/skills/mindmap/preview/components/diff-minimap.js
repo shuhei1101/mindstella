@@ -18,7 +18,7 @@ var MindmapPreview;
         del: "消した箇所",
         chg: "変わった箇所",
     };
-    /** 印にする要素（キーの差分の行・本文の足した / 消した塊・箇条書きの足した項目・表の行・図の差分の枠・Raw の行） */
+    /** 印にする要素（キーの差分の行・本文の足した / 消した塊・箇条書きの足した項目・表の行・図の差分の枠・Raw の行・埋め込んだ HTML の範囲の差分） */
     const MINIMAP_TARGET_SELECTOR = [
         ".df-kv",
         ".md ins.df-blk",
@@ -30,6 +30,7 @@ var MindmapPreview;
         ".diagram.df-frame",
         ".df-raw .df-line.df-add",
         ".df-raw .df-line.df-del",
+        ".html-diff-range",
     ].join(", ");
     /** 要素が見えているか（畳んだ Raw などは矩形を持たない） */
     function isRendered(element) {
@@ -51,7 +52,7 @@ var MindmapPreview;
     }
     /** 印にする要素の種類 */
     function minimapKindOf(element) {
-        if (element.matches(".diagram"))
+        if (element.matches(".diagram, .html-diff-range"))
             return "chg";
         if (element.matches(".df-kv"))
             return isNewKey(element) ? "add" : "chg";
@@ -66,6 +67,9 @@ var MindmapPreview;
                 continue;
             if (element.matches(".diagram") && [...element.querySelectorAll(".df-raw")].some(isRendered))
                 continue;
+            // 埋め込んだ HTML の範囲の差分は、中の Raw の行を拾わず、範囲の差分の高さに印を 1 つ置く
+            if (element.matches(".df-line") && element.closest(".html-diff-range") !== null)
+                continue;
             const kind = minimapKindOf(element);
             const previous = found.at(-1);
             const follows = previous !== undefined && previous.frame === null && previous.last.nextElementSibling === element;
@@ -74,7 +78,7 @@ var MindmapPreview;
                 previous.kind = "chg";
                 previous.last = element;
             }
-            else if (previous !== undefined && follows && previous.kind === kind) {
+            else if (previous !== undefined && follows && previous.kind === kind && !element.matches(".html-diff-range")) {
                 // 続く同じ種類の塊・行
                 previous.last = element;
             }

@@ -276,11 +276,16 @@ namespace MindmapPreview {
     }
   }
 
+  /** 要素が、埋め込んだ HTML の範囲（`.mdmark-html`）の中にあるか（範囲の中の要素には、表・コードブロック・Alert の見せ方を当てない） */
+  function inEmbeddedHtml(element: Element): boolean {
+    return element.closest(`.${EMBEDDED_HTML_CLASS}`) !== null;
+  }
+
   /** コードブロックを入れ物で包み、右上にコピーのボタン、言語を書いたものは左上に言語の札を置く（札とボタンはコードの文字に入れない） */
   function decorateCodeBlocks(root: HTMLElement): void {
     for (const code of root.querySelectorAll<HTMLElement>("pre > code")) {
       const pre = code.parentElement as HTMLElement;
-      if (pre.parentElement?.classList.contains("md-code") === true) continue;
+      if (pre.parentElement?.classList.contains("md-code") === true || inEmbeddedHtml(code)) continue;
       const lang = [...code.classList].find((name) => name.startsWith("language-"))?.slice("language-".length) ?? null;
       const status = h({ tag: "span", attrs: { class: "sr-only", role: "status" } });
       const copy = h({
@@ -307,6 +312,7 @@ namespace MindmapPreview {
   /** mdmark が描いた Alert の囲み（`div.markdown-alert`）の見出し（`p.markdown-alert-title`）の頭に、種類のアイコンを置く（置いてあれば重ねない） */
   function decorateCallouts(root: HTMLElement): void {
     for (const callout of root.querySelectorAll<HTMLElement>("div.markdown-alert")) {
+      if (inEmbeddedHtml(callout)) continue;
       const title = callout.querySelector<HTMLElement>(":scope > p.markdown-alert-title");
       const kind = [...callout.classList].find((name) => name.startsWith("markdown-alert-") && name !== "markdown-alert-title")?.slice("markdown-alert-".length);
       const name = kind === undefined ? undefined : CALLOUT_KINDS[kind];
@@ -328,6 +334,8 @@ namespace MindmapPreview {
     tables?: boolean;
   }): void {
     for (const table of tables ? root.querySelectorAll("table") : []) {
+      // 埋め込んだ HTML の範囲の中の表には当てない
+      if (inEmbeddedHtml(table)) continue;
       sizeColumns(table);
       const wrap = table.closest<HTMLElement>(`.${TABLE_WRAP_CLASS}`);
       if (wrap !== null) frameTable(wrap);

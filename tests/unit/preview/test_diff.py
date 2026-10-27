@@ -1443,3 +1443,134 @@ def test_diff_inline_without_segmenter(
     )
     # 検証
     assert inline == {"removed": "来", "added": "今"}
+
+
+# 埋め込んだ HTML の範囲を 2 つ持つ本文（2 つ目の範囲の中に段落が 2 つ）
+EMBEDDED_BEFORE = (
+    "前の段落\n\n"
+    "<!-- html -->\n```html\n<p>一つ目の範囲の段落</p>\n```\n<!-- /html -->\n\n"
+    "間の段落\n\n"
+    "<!-- html -->\n```html\n<p>二つ目の範囲の書き換え前</p>\n<p>二つ目の範囲の段落</p>\n```\n<!-- /html -->\n"
+)
+
+# 2 つ目の範囲の中の 1 つ目の段落だけを書き換えた本文
+EMBEDDED_RANGE_CHANGED = EMBEDDED_BEFORE.replace("書き換え前", "書き換え後")
+
+# 範囲の外の段落だけを書き換えた本文
+EMBEDDED_OUTSIDE_CHANGED = EMBEDDED_BEFORE.replace("前の段落", "前の段落を書き換えた")
+
+# 末尾に 3 つ目の範囲を足した本文と、閉じていない印を足した本文
+EMBEDDED_RANGE_APPENDED = (
+    EMBEDDED_BEFORE + "\n<!-- html -->\n```html\n<p>三つ目の範囲</p>\n```\n<!-- /html -->\n"
+)
+EMBEDDED_UNCLOSED_APPENDED = EMBEDDED_BEFORE + "\n<!-- html -->\n```html\n<p>閉じていない</p>\n"
+
+
+@pytest.mark.parametrize(
+    ("after", "expected"),
+    [
+        pytest.param(
+            EMBEDDED_RANGE_CHANGED,
+            [
+                {
+                    "order": 1,
+                    "before": "```html\n<p>二つ目の範囲の書き換え前</p>\n<p>二つ目の範囲の段落</p>\n```",
+                    "after": "```html\n<p>二つ目の範囲の書き換え後</p>\n<p>二つ目の範囲の段落</p>\n```",
+                }
+            ],
+            id="second_range_changed",
+        ),
+        pytest.param(EMBEDDED_OUTSIDE_CHANGED, [], id="outside_changed"),
+        pytest.param(EMBEDDED_RANGE_APPENDED, [], id="range_appended"),
+        pytest.param(EMBEDDED_UNCLOSED_APPENDED, [], id="unclosed_appended"),
+    ],
+)
+def test_pair_embedded_html(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    after: str,
+    expected: list[dict[str, Any]],
+) -> None:
+    """並びの順で対にし、中身が違う対だけを返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    pairs = preview_page.evaluate(
+        """([before, after]) => MindmapPreview.pairEmbeddedHtml({before, after}).map((pair) => ({
+            order: pair.order,
+            before: pair.before.trim(),
+            after: pair.after.trim(),
+        }))""",
+        [EMBEDDED_BEFORE, after],
+    )
+    # 検証
+    assert pairs == expected
+
+
+# 範囲の直下の要素（段落 2 つとスライダーの部品）の outerHTML
+CHILD_FIRST = "<p>一つ目の段落</p>"
+CHILD_SECOND = "<p>二つ目の段落</p>"
+CHILD_SECOND_CHANGED = "<p>二つ目の段落を書き換えた</p>"
+CHILD_SECOND_SPLIT = "<p>二つ目の段落の前半</p>"
+CHILD_SLIDER = '<div class="mdmark-param">スライダー</div>'
+CHILD_APPENDED = "<p>足した段落</p>"
+
+
+@pytest.mark.parametrize(
+    ("after", "expected"),
+    [
+        pytest.param(
+            [CHILD_FIRST, CHILD_SECOND, CHILD_SLIDER, CHILD_APPENDED],
+            [None, None, None, "added"],
+            id="appended",
+        ),
+        pytest.param(
+            [CHILD_FIRST, CHILD_SECOND_CHANGED, CHILD_SLIDER],
+            [None, "changed", None],
+            id="rewritten",
+        ),
+        pytest.param(
+            [CHILD_FIRST, CHILD_SECOND_CHANGED, CHILD_SECOND_SPLIT, CHILD_SLIDER],
+            [None, "changed", "added", None],
+            id="rewritten_into_two",
+        ),
+        pytest.param([CHILD_SECOND, CHILD_SLIDER], [None, None], id="first_removed"),
+    ],
+)
+def test_child_marks(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_library: LoadLibrary,
+    after: list[str],
+    expected: list[str | None],
+) -> None:
+    """足した要素と変えた要素を分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    marks = preview_page.evaluate(
+        "([before, after]) => MindmapPreview.childMarks({before, after})",
+        [[CHILD_FIRST, CHILD_SECOND, CHILD_SLIDER], after],
+    )
+    # 検証
+    assert marks == expected
+
+
+def test_child_marks_when_timeout(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+) -> None:
+    """比べるのを打ち切ったら null（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_library("jsdiff")
+    # 実行
+    marks = preview_page.evaluate(
+        """([before, after]) => {
+            Diff.diffArrays = () => undefined;
+            return MindmapPreview.childMarks({before, after});
+        }""",
+        [[CHILD_FIRST, CHILD_SECOND], [CHILD_FIRST, CHILD_SECOND_CHANGED]],
+    )
+    # 検証
+    assert marks is None

@@ -244,11 +244,15 @@ var MindmapPreview;
         }
     }
     MindmapPreview.revealHeading = revealHeading;
+    /** 要素が、埋め込んだ HTML の範囲（`.mdmark-html`）の中にあるか（範囲の中の要素には、表・コードブロック・Alert の見せ方を当てない） */
+    function inEmbeddedHtml(element) {
+        return element.closest(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`) !== null;
+    }
     /** コードブロックを入れ物で包み、右上にコピーのボタン、言語を書いたものは左上に言語の札を置く（札とボタンはコードの文字に入れない） */
     function decorateCodeBlocks(root) {
         for (const code of root.querySelectorAll("pre > code")) {
             const pre = code.parentElement;
-            if (pre.parentElement?.classList.contains("md-code") === true)
+            if (pre.parentElement?.classList.contains("md-code") === true || inEmbeddedHtml(code))
                 continue;
             const lang = [...code.classList].find((name) => name.startsWith("language-"))?.slice("language-".length) ?? null;
             const status = MindmapPreview.h({ tag: "span", attrs: { class: "sr-only", role: "status" } });
@@ -275,6 +279,8 @@ var MindmapPreview;
     /** mdmark が描いた Alert の囲み（`div.markdown-alert`）の見出し（`p.markdown-alert-title`）の頭に、種類のアイコンを置く（置いてあれば重ねない） */
     function decorateCallouts(root) {
         for (const callout of root.querySelectorAll("div.markdown-alert")) {
+            if (inEmbeddedHtml(callout))
+                continue;
             const title = callout.querySelector(":scope > p.markdown-alert-title");
             const kind = [...callout.classList].find((name) => name.startsWith("markdown-alert-") && name !== "markdown-alert-title")?.slice("markdown-alert-".length);
             const name = kind === undefined ? undefined : CALLOUT_KINDS[kind];
@@ -286,6 +292,9 @@ var MindmapPreview;
     /** 描いた本文に見せ方を当てる。`display` は表示の設定の値、`fold` は開閉を置ける本文か（本文の差分では偽にする）、`tables` は表の見せ方を当てるか（スレッドの書き込みでは偽にし、表は mdmark の共通のスタイルのまま描く） */
     function decorateMarkdown({ root, display = MindmapPreview.BODY_VIEW_DEFAULT, fold = true, tables = true, }) {
         for (const table of tables ? root.querySelectorAll("table") : []) {
+            // 埋め込んだ HTML の範囲の中の表には当てない
+            if (inEmbeddedHtml(table))
+                continue;
             sizeColumns(table);
             const wrap = table.closest(`.${MindmapPreview.TABLE_WRAP_CLASS}`);
             if (wrap !== null)

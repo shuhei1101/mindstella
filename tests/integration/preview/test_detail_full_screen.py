@@ -7,6 +7,18 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page, expect
 from preview_edit_helpers import PENDING_BUTTON as FULL_PENDING_BUTTON, read_edits_file
+from preview_embed_helpers import (
+    CHART,
+    EMBED_TIMEOUT_MS,
+    EMBEDDED_BODY,
+    EXPORT_ENTRY_NAME,
+    EXPORT_MENU,
+    MARKDOWN_EXPORT_BODY,
+    RANGE,
+    ZOOM_FIT,
+    ZOOM_IN,
+    build_embedded_diff_workspace,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
@@ -1274,3 +1286,106 @@ def test_edit_full_comment_input_hidden(
     page.click(FULL_EDIT_TOGGLE)
     expect(page.locator(FULL_EDIT_FORM)).to_have_count(0)
     assert page.locator(form).first.is_visible()
+
+
+def test_export_in_full(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面の見出しにも「エクスポート」の入口を置き、メニューをモーダルの中に出す。Esc はメニューだけを閉じ、全画面は閉じない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    entry = page.locator("dialog.full button.panel-export")
+    # 検証
+    assert entry.get_attribute("aria-label") == EXPORT_ENTRY_NAME
+    assert entry.get_attribute("aria-expanded") == "false"
+    # 実行
+    entry.click()
+    # 検証（メニューは全画面のモーダルの中にある）
+    expect(page.locator(f"dialog.full {EXPORT_MENU}")).to_be_visible()
+    expect(entry).to_have_attribute("aria-expanded", "true")
+    # 実行（Esc）
+    page.keyboard.press("Escape")
+    # 検証
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("dialog.full[open]")).to_have_count(1)
+    expect(entry).to_be_focused()
+    assert "full=1" in page.evaluate("location.hash")
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [
+        pytest.param({"width": 1280, "height": 800}, id="wide"),
+        pytest.param({"width": 390, "height": 844}, id="narrow"),
+    ],
+)
+def test_export_menu_position_in_full(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+    viewport: dict[str, int],
+) -> None:
+    """全画面でも、メニューは入口の下に置き、画面の幅から左右 8px を引いた幅に収める（正常系）。"""
+    # 準備
+    page.set_viewport_size(viewport)
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    entry = page.locator("dialog.full button.panel-export")
+    # 実行
+    entry.click()
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    entry_box = entry.bounding_box()
+    menu_box = page.locator(EXPORT_MENU).bounding_box()
+    # 検証
+    assert entry_box is not None
+    assert menu_box is not None
+    assert menu_box["y"] >= entry_box["y"] + entry_box["height"]
+    assert menu_box["width"] <= viewport["width"] - 16
+    assert menu_box["x"] >= 8, (menu_box, entry_box)
+    assert menu_box["x"] + menu_box["width"] <= viewport["width"] - 8, (menu_box, entry_box)
+
+
+def test_embedded_html_in_full(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """全画面でも埋め込んだ HTML を本文の要素として描き、本文の幅いっぱいに広げ、チャートの倍率を変えられる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.md": EMBEDDED_BODY}
+    )
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+    panel_width = page.locator(RANGE).bounding_box()["width"]  # type: ignore[index]
+    # 実行
+    _open_full(page)
+    full_chart = "dialog.full .md .mdmark-html figure.mdmark-diagram"
+    page.wait_for_selector(full_chart, timeout=EMBED_TIMEOUT_MS)
+    range_box = page.locator("dialog.full .md > .mdmark-html").bounding_box()
+    chart = page.locator(full_chart).first
+    fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    chart.locator(ZOOM_IN).click()
+    fit_after = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    # 検証
+    assert page.locator("dialog.full iframe").count() == 0
+    assert range_box is not None
+    assert range_box["width"] > panel_width
+    assert fit_after > fit_before
+
+
+def test_embedded_html_diff_minimap_in_full(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面でも、差分のミニマップには範囲の差分の高さに「変わった」の印を 1 つ置く（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_minimap(page, open_preview, url, "#tab=docs&id=A-1&full=1")
+    shapes = mark_shapes(page, FULL_SCOPE)
+    # 検証
+    assert [shape["kind"] for shape in shapes] == ["df-chg"]

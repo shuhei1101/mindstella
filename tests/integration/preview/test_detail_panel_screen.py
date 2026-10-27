@@ -10,6 +10,23 @@ from typing import Any
 import pytest
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
 from playwright.sync_api import APIResponse, Locator, Page, Route, expect
+from preview_embed_helpers import (
+    CHART,
+    CLIPBOARD_PERMISSIONS,
+    EMBED_TIMEOUT_MS,
+    EMBEDDED_BODY,
+    EXPORT_ENTRY_NAME,
+    EXPORT_MENU,
+    MARKDOWN_EXPORT_BODY,
+    OUTSIDE_ONLY_AFTER,
+    OUTSIDE_ONLY_BEFORE,
+    RANGE,
+    ZOOM_FIT,
+    ZOOM_IN,
+    build_embedded_diff_workspace,
+    drag_in_viewport,
+    viewport_scroll,
+)
 from preview_edit_helpers import (
     DETAIL_PANEL as EDIT_PANEL,
     PENDING_BUTTON as EDIT_PENDING_BUTTON,
@@ -5283,3 +5300,449 @@ def test_panel_resizer_kept_in_tab(
     assert state["panelWidth"] == 720
     assert state["separator"]["now"] == "720"
     assert page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}')") == "720"
+
+
+# 「エクスポート」の入口が、見出しの中で編集するの右・全画面表示の左にあるかを DOM の順で調べる
+EXPORT_ENTRY_ORDER_JS = """() => {
+    const head = document.querySelector('aside.panel .panel-head');
+    const edit = head.querySelector('button.pe-edit-toggle');
+    const entry = head.querySelector('button.panel-export');
+    const full = head.querySelector('button[data-act="full"]');
+    const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return {afterEdit: follows(edit, entry), beforeFull: follows(entry, full)};
+}"""
+
+# 埋め込んだ HTML の範囲の前後の段落と、範囲の中の用語のマーカー・項目の ID のリンクの数を読む
+EMBEDDED_RANGE_JS = """() => {
+    const range = document.querySelector('aside.panel .md > .mdmark-html');
+    return {
+        previous: range.previousElementSibling?.textContent ?? null,
+        next: range.nextElementSibling?.textContent ?? null,
+        terms: range.querySelectorAll('a.term').length,
+        references: range.querySelectorAll('a.idref').length,
+        scripts: range.querySelectorAll('script').length,
+        handlers: [...range.querySelectorAll('*')].filter(e => [...e.attributes].some(a => a.name.startsWith('on'))).length,
+    };
+}"""
+
+
+def _open_embedded(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """埋め込んだ HTML・チャート・操作できる部品を持つ資料 A-1 の詳細パネルを開き、チャートを描き終わるまで待つ。"""
+    url = write_preview(
+        make_item("A-1", title="埋め込む資料"),
+        make_item("A-2"),
+        make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+        bodies={"A-1.md": EMBEDDED_BODY},
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+    return page
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "expected"),
+    [
+        pytest.param("#tab=docs&id=A-1", 1, id="markdown_doc"),
+        pytest.param("#tab=docs&id=A-2", 0, id="html_doc"),
+        pytest.param("#tab=decisions&id=D-1", 0, id="decision"),
+    ],
+)
+def test_export_entry(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    hash_text: str,
+    expected: int,
+) -> None:
+    """「エクスポート」を、本文が Markdown の資料の見出しにだけ、編集するの右・全画面表示の左に置く（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="Markdown の資料"),
+        make_item("A-2", body="A-2.html"),
+        make_item("D-1"),
+        bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
+    )
+    # 実行
+    page = open_preview(url, hash_text)
+    page.wait_for_selector("aside.panel.open .d-title")
+    entries = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    # 検証
+    expect(entries).to_have_count(expected)
+    if expected == 1:
+        entry = page.locator("aside.panel button.panel-export")
+        assert entry.get_attribute("title") == EXPORT_ENTRY_NAME
+        assert entry.get_attribute("aria-haspopup") == "dialog"
+        assert entry.get_attribute("aria-expanded") == "false"
+        assert entry.inner_text().strip() == ""
+        assert page.evaluate(EXPORT_ENTRY_ORDER_JS) == {"afterEdit": True, "beforeFull": True}
+
+
+def test_export_entry_when_editing(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """編集の表示の間は、「エクスポート」の入口を置かない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    entries = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    expect(entries).to_have_count(1)
+    # 実行
+    page.click("aside.panel button.pe-edit-toggle")
+    # 検証
+    expect(entries).to_have_count(0)
+    # 実行（編集を終える）
+    page.click("aside.panel button.pe-edit-toggle")
+    # 検証
+    expect(entries).to_have_count(1)
+
+
+def test_export_menu_toggle(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """入口を押すとメニューを開き、開いているときに押すと閉じる。開閉は `aria-expanded` で示す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    history_length = page.evaluate("history.length")
+    entry = page.locator("aside.panel button.panel-export")
+    menu = page.locator(EXPORT_MENU)
+    # 実行（開く）
+    entry.click()
+    # 検証
+    expect(menu).to_be_visible()
+    expect(entry).to_have_attribute("aria-expanded", "true")
+    assert menu.get_attribute("role") == "dialog"
+    expect(menu.get_by_role("button", name="HTML でエクスポート")).to_be_focused()
+    expect(menu.get_by_role("button", name="Markdown でエクスポート")).to_be_visible()
+    # 実行（閉じる）
+    entry.click()
+    # 検証
+    expect(menu).to_be_hidden()
+    expect(entry).to_have_attribute("aria-expanded", "false")
+    assert page.evaluate("history.length") == history_length
+
+
+def test_export_menu_close_by_escape(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """Esc はメニューだけを閉じ、詳細パネルは閉じずに入口へフォーカスを戻す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    entry = page.locator("aside.panel button.panel-export")
+    entry.click()
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("aside.panel.open")).to_have_count(1)
+    expect(entry).to_be_focused()
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+
+
+def test_export_menu_close_by_outside_press(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """メニューの外を押すとメニューだけを閉じ、詳細パネルは閉じない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.click("aside.panel button.panel-export")
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    # 実行（メニューに隠れない、本文の下のセクションの見出しを押す）
+    page.click("aside.panel .d-review h3")
+    # 検証
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("aside.panel.open")).to_have_count(1)
+
+
+def test_export_menu_close_when_item_moved(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """メニューを開いたまま別の項目へ移ると、メニューも閉じる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1"),
+        make_item("A-2", title="移った先"),
+        bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.md": MARKDOWN_EXPORT_BODY},
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.click("aside.panel button.panel-export")
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    # 実行
+    page.evaluate("location.hash = '#tab=docs&id=A-2'")
+    # 検証
+    expect(page.locator("aside.panel .d-title")).to_have_text("移った先")
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("aside.panel button.panel-export")).to_have_attribute("aria-expanded", "false")
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [
+        pytest.param({"width": 1280, "height": 800}, id="wide"),
+        pytest.param({"width": 390, "height": 844}, id="narrow"),
+    ],
+)
+def test_export_menu_position(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+    viewport: dict[str, int],
+) -> None:
+    """メニューは入口の下に右端を揃えて置き、画面の幅から左右 8px を引いた幅を超えない（正常系）。"""
+    # 準備
+    page.set_viewport_size(viewport)
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    entry = page.locator("aside.panel button.panel-export")
+    # 実行
+    entry.click()
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    entry_box = entry.bounding_box()
+    menu_box = page.locator(EXPORT_MENU).bounding_box()
+    # 検証
+    assert entry_box is not None
+    assert menu_box is not None
+    assert menu_box["y"] >= entry_box["y"] + entry_box["height"]
+    assert menu_box["width"] <= viewport["width"] - 16
+    assert menu_box["x"] >= 8, (menu_box, entry_box)
+    assert menu_box["x"] + menu_box["width"] <= viewport["width"] - 8
+    # 幅に余裕があるときは、入口と右端を揃える
+    if viewport["width"] >= 1000:
+        assert abs((menu_box["x"] + menu_box["width"]) - (entry_box["x"] + entry_box["width"])) <= 2
+
+
+def test_embedded_html(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """範囲を枠に入れず本文の要素として元の位置に描き、スクリプトとイベントの属性は動かさず、範囲の中の文にも用語のマーカーと ID のリンクを付ける（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    # 実行
+    state = page.evaluate(EMBEDDED_RANGE_JS)
+    page.get_by_role("button", name="実行", exact=True).click()
+    # 検証
+    assert state == {
+        "previous": "範囲の外の文",
+        "next": "後ろの文",
+        "terms": 1,
+        "references": 1,
+        "scripts": 0,
+        "handlers": 0,
+    }
+    assert page.locator("aside.panel iframe").count() == 0
+    assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+
+
+def test_embedded_chart(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """チャートは拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで位置を変える。図の拡大の画面は開かず、履歴に積まない（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    chart = page.locator(CHART).first
+    history_length = page.evaluate("history.length")
+
+    def _fit() -> int:
+        """チャートの倍率（%）を返す。"""
+        return int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+
+    initial = _fit()
+    # 検証（全体が収まる倍率では、縮小は押せず、動かすボタンは隠れている）
+    expect(chart.locator('button[data-tool="out"]')).to_be_disabled()
+    expect(chart.locator('[data-group="pan"]')).to_be_hidden()
+    # 実行（ボタンで拡大する）
+    chart.locator(ZOOM_IN).click()
+    # 検証
+    assert _fit() > initial
+    expect(chart.locator('button[data-tool="out"]')).to_be_enabled()
+    expect(chart.locator('[data-group="pan"]')).to_be_visible()
+    # 実行（キーで縮小し、0 で全体が収まる倍率に戻す）
+    chart.locator(".mdmark-diagram-viewport").focus()
+    page.keyboard.press("+")
+    zoomed = _fit()
+    page.keyboard.press("-")
+    # 検証
+    assert zoomed > _fit()
+    page.keyboard.press("0")
+    assert _fit() == initial
+    # 実行（拡大してドラッグする）
+    chart.locator(ZOOM_IN).click()
+    chart.locator(ZOOM_IN).click()
+    before = viewport_scroll(chart)
+    drag_in_viewport(page, chart, dx=-60, dy=-40)
+    after = viewport_scroll(chart)
+    # 検証
+    assert after["left"] > before["left"]
+    assert after["top"] > before["top"]
+    assert page.locator("dialog.viewer[open]").count() == 0
+    assert page.evaluate("history.length") == history_length
+    assert page.locator(f"{RANGE} p [data-tool], {RANGE} .mdmark-param-knob [data-tool]").count() == 0
+
+
+def test_embedded_param(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """操作できる部品を動かすと値とグラフを描き直す。動かした値は記録に書かず、描き直すと資料に書いた初めの値に戻り、履歴に積まない（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    slider = page.locator(f"{RANGE} input[type=range]")
+    output = page.locator(f"{RANGE} .mdmark-param output")
+    legend = page.locator(f"{RANGE} .mdmark-param .mdmark-diagram-legend")
+    assert output.inner_text() == "5"
+    # 実行
+    slider.focus()
+    page.keyboard.press("ArrowRight")
+    page.keyboard.press("ArrowRight")
+    # 検証
+    assert output.inner_text() == "7"
+    assert "今の値（7）" in legend.inner_text()
+    assert "既定の値（5）" in legend.inner_text()
+    assert page.evaluate("history.length") == history_length
+    # 実行（別の項目へ移って戻る）
+    page.evaluate("location.hash = '#tab=docs&id=A-2'")
+    expect(page.locator("aside.panel .d-title")).to_have_text("A-2の題")
+    page.evaluate("location.hash = '#tab=docs&id=A-1'")
+    page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+    # 検証（資料に書いた初めの値に戻る）
+    assert page.locator(f"{RANGE} .mdmark-param output").inner_text() == "5"
+
+
+def test_embedded_param_copy(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """「今の値をコピー」は、操作できる部品の今の値を `{キー: {name, value}}` の JSON にしてクリップボードへ書き込む（正常系）。"""
+    # 準備
+    page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+    _open_embedded(write_preview, open_preview, make_item)
+    copy_button = page.get_by_role("button", name="今の値をコピー")
+    # 検証
+    assert copy_button.inner_text().strip() == "今の値をコピー"
+    # 実行（初めの値のままコピーする）
+    copy_button.click()
+    # 検証
+    expect(page.locator(f"{RANGE} .mdmark-param-status")).not_to_be_empty()
+    assert json.loads(page.evaluate("navigator.clipboard.readText()")) == {
+        "rps": {"name": "リクエスト数", "value": 5}
+    }
+    # 実行（動かした値をコピーする）
+    page.focus(f"{RANGE} input[type=range]")
+    page.keyboard.press("Home")
+    copy_button.click()
+    # 検証
+    assert json.loads(page.evaluate("navigator.clipboard.readText()")) == {
+        "rps": {"name": "リクエスト数", "value": 0}
+    }
+
+
+def test_embedded_html_selection(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """範囲の中の文を選ぶと、箇所を範囲の `<!-- html -->` から `<!-- /html -->` の行に読み替えて添える。範囲の外から中へまたぐ選択も、端を範囲の行に読み替える（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    # 実行（範囲の中の文を選ぶ）
+    select_text_for_pill(page, f"{RANGE} p", "ﾋﾟｰｸ時の")
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 3〜9 行目"
+    assert page.inner_text("aside.panel .send-quote") == "ﾋﾟｰｸ時の"
+    # 実行（範囲の外の段落から範囲の中の段落までを選ぶ）
+    page.evaluate(
+        """() => {
+            const start = document.querySelector('aside.panel .md > p[data-line-start="1"]').firstChild;
+            const end = document.querySelector('aside.panel .mdmark-html p').firstChild;
+            const range = document.createRange();
+            range.setStart(start, 1);
+            range.setEnd(end, 2);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            document.dispatchEvent(new Event('selectionchange'));
+        }"""
+    )
+    page.wait_for_selector(PILL)
+    page.click(PILL)
+    # 検証
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 1〜9 行目"
+
+
+def test_embedded_html_diff(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """範囲の差分は「原文の差分」で開き、見せ方を押した状態（`aria-pressed`）で示す。凡例は「描いた結果（変更後）」でだけ出す（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .df-raw", timeout=EMBED_TIMEOUT_MS)
+    group = page.get_by_role("group", name="埋め込んだ HTMLの差分の見せ方")
+    names = ["描いた結果（変更前）", "描いた結果（変更後）", "原文の差分"]
+    legend = page.locator("aside.panel .html-diff-bar .df-legend")
+
+    def _pressed() -> list[str | None]:
+        """3 つの見せ方のボタンの `aria-pressed` を並びのまま返す。"""
+        return [group.get_by_role("button", name=name).get_attribute("aria-pressed") for name in names]
+
+    # 検証（開いた直後は「原文の差分」）
+    assert page.inner_text("aside.panel .html-diff-heading") == "埋め込んだ HTML"
+    assert _pressed() == ["false", "false", "true"]
+    expect(legend).to_be_hidden()
+    # 実行・検証（変更前）
+    group.get_by_role("button", name=names[0]).click()
+    assert _pressed() == ["true", "false", "false"]
+    expect(legend).to_be_hidden()
+    # 実行・検証（変更後: 「足した」「変わった」の凡例が出る）
+    group.get_by_role("button", name=names[1]).click()
+    assert _pressed() == ["false", "true", "false"]
+    expect(legend).to_be_visible()
+    assert legend.inner_text().split() == ["足した", "変わった"]
+
+
+def test_embedded_html_diff_when_range_unchanged(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """中身が同じ範囲は範囲の差分に置き替えず、範囲の外の Markdown の差分だけを出す（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(
+        make_workspace, call_tool, before=OUTSIDE_ONLY_BEFORE, after=OUTSIDE_ONLY_AFTER
+    )
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md .df-blk", timeout=EMBED_TIMEOUT_MS)
+    # 検証
+    assert page.locator("aside.panel .html-diff-c").count() == 0
+    assert page.locator("aside.panel .df-raw").count() == 0
+    assert page.locator("aside.panel .md ins.df-blk").count() >= 1
+    assert page.locator("aside.panel .md .mdmark-html").count() == 1
+
+
+def test_embedded_html_diff_minimap(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分のミニマップには、範囲の差分の高さに「変わった」の印を 1 つ置く（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_minimap(page, open_preview, url, "#tab=docs&id=A-1")
+    shapes = mark_shapes(page, PANEL_SCOPE)
+    # 検証
+    assert [shape["kind"] for shape in shapes] == ["df-chg"]
