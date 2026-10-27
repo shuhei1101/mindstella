@@ -2209,11 +2209,11 @@ HEAD_TITLE_LONG_TITLE = (
 # 見出しのボタン（`.panel-head .icon-btn`）の幅（`--control-h`）。長いタイトルでも縮まない
 HEAD_BUTTON_WIDTH = 32
 
-# 横のパネルの見出しの表示されているボタンの数（戻る・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
-HEAD_BUTTON_COUNT_PANEL = 4
+# 横のパネルの見出しの表示されているボタンの数（戻る・エクスポート・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
+HEAD_BUTTON_COUNT_PANEL = 5
 
-# 全画面の見出しのボタンの数（戻る・進む・元の大きさに戻す）
-HEAD_BUTTON_COUNT_FULL = 3
+# 全画面の見出しのボタンの数（戻る・エクスポート・進む・元の大きさに戻す）
+HEAD_BUTTON_COUNT_FULL = 4
 
 # 本文の高さを、本文のスクロール領域の高さの 3 倍以上にする段落の数
 HEAD_TITLE_LONG_BODY_PARAGRAPHS = 200
@@ -3445,7 +3445,7 @@ OPEN_EXPORT_PANEL_SCRIPT = """async ({data, id, full, shared, editing}) => {
         edit,
     });
     document.body.append(panel);
-    if (full) panel.showModal();
+    if (full) panel.showModal(); else panel.classList.add("open");
     await new Promise((resolve) => requestAnimationFrame(resolve));
 }"""
 
@@ -3569,7 +3569,7 @@ def test_detail_panel_when_export_markdown(
     preview_page.get_by_role("button", name="Markdown でエクスポート").click()
     warned = preview_page.get_by_role("button", name="エクスポート", exact=True).count()
     downloads_after_warning = len(downloads)
-    preview_page.get_by_role("button", name="戻る").click()
+    preview_page.get_by_role("button", name="戻る", exact=True).click()
     focused_after_back = preview_page.evaluate("() => document.activeElement?.textContent ?? ''")
     preview_page.get_by_role("button", name="Markdown でエクスポート").click()
     with preview_page.expect_download() as download_info:
@@ -3651,6 +3651,7 @@ OPEN_EMBEDDED_DIFF_PANEL_SCRIPT = """async ({data, point}) => {
         diff: {...point, added: new Set(), changed: new Set(["A-1"])},
     });
     document.body.append(panel);
+    panel.classList.add("open");
     await new Promise((resolve) => requestAnimationFrame(resolve));
 }"""
 
@@ -3679,7 +3680,7 @@ def test_detail_panel_when_embedded_html_diff(
     panel = preview_page.locator("aside.panel")
     # 実行
     raw_pressed = panel.get_by_role("button", name="原文の差分").get_attribute("aria-pressed")
-    unchanged_range_count = panel.locator(".md > .mdmark-html").count()
+    unchanged_range_count = panel.locator(".md > .mdmark-html:visible").count()
     panel.get_by_role("button", name="描いた結果（変更後）").click()
     after = panel.evaluate(
         """(panel) => ({
