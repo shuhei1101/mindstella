@@ -648,7 +648,7 @@ elements:
       - name: beforeView
         value: before を範囲として mdmark で描いたもの
       - name: afterView
-        value: after を範囲として mdmark で描き、HTML の本文の差分と同じく、足した行だけでできた範囲の直下の要素に足したマーカー、変えた行を含む要素に変わったマーカーを付けたもの
+        value: after を範囲として mdmark で描き、before を描いた範囲と直下の要素ごとに比べ、足した要素に足したマーカー、変えた要素に変わったマーカーを付けたもの
       - name: heading
         value: 埋め込んだ HTML
     position: 本文の差分 > 変わった範囲の場所

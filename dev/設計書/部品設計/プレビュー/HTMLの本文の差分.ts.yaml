@@ -120,7 +120,7 @@ args:
     required: false
     default: なし（`marked` を HTML の本文の枠で描く）
     component: dev/設計書/部品設計/プレビュー/Markdownの本文.ts#
-    description: 今の本文を描いた結果で、`marked` と同じく、足した行だけでできた要素に足したマーカー、変えた行を含む要素に変わったマーカーを付けたもの。渡したときは、「描いた結果（変更後）」で `marked` の代わりにこれを出す
+    description: 今の本文を描いた結果で、前の本文と直下の要素ごとに比べ、足した要素に足したマーカー、変えた要素に変わったマーカーを付けたもの。渡したときは、「描いた結果（変更後）」で `marked` の代わりにこれを出す
     status: planned
   - name: heading
     type: 文字列

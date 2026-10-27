@@ -100,6 +100,15 @@ constants:
     summary: 配る書き出しに置く、mdmark の JavaScript を中身に持つ要素の開きタグ（閉じタグは `</script>`）。画面の JavaScript が中身から Blob の URL を作って `import()` する（モジュール構成『プレビュー / 基盤』の `loadMdmark`）
     value: "'<script type=\"text/plain\" id=\"mindmap-mdmark\">'"
     status: planned
+  - name: MDMARK_CSS_OPEN
+    title: mdmark の CSS の要素の開きタグ
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 配る書き出し
+    summary: 配る書き出しに置く、mdmark の CSS を中身に持つ `<style>` の開きタグ（閉じタグは `</style>`）。画面の JavaScript が資料の HTML のエクスポートでこの中身を使う
+    value: "'<style id=\"mindmap-mdmark-css\">'"
+    status: planned
+    introduced:
+      pr: 348
 functions:
   - name: collect_preview_data
     title: プレビューのデータの収集
@@ -595,7 +604,7 @@ functions:
       4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（外の ES モジュールは `CDN_REPO_URL`、外の読み込みは `CDN_PACKAGE_URL`。`version` はそれぞれの版）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り、`bundled_license_file` があれば雛形のフォルダから読む
       5. 取った・読んだ中身を UTF-8 で読み、JavaScript・配布ファイル・ライセンスの本文・束ねた依存のライセンスが `</script` と `<script` を、CSS が `</style` を含まないことを確かめる（大文字・小文字を区別しない。`<!--` の後の `<script` は script 要素を閉じさせなくする）
          - 含む場合、`ValueError` を送る（取った中身の誤り）
-      6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。import map・`<link>` も消える）を、`<style>{CSS}</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（外の ES モジュール、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
+      6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。import map・`<link>` も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（外の ES モジュール、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
     exceptions:
       - name: ValueError
         condition: 外の ES モジュールか外の読み込みに `VendorLibrary` が無いか、取った・読んだ中身が `</script`・`<script`（CSS は `</style`）を含む
@@ -609,7 +618,7 @@ functions:
         summary: 外の読み込みを取った CSS・JavaScript・配布ファイルとライセンスの表示に置き換える
         condition: '`tmp_path` に、外の読み込みの印の間にパッケージ `o/m` の import map と `<link rel="stylesheet" integrity>`、2 つの `<script src integrity>`（パッケージ `a`・`b`）を持つ `template.html` と、中身 `本文 m` の `licenses/m.txt`。`o/m`（`license_file` が `licenses/m.txt`、`bundled_license_path` が `dist/T.txt`）・`a`・`b` の `VendorLibrary`（入手先の `repository` は `https://` を持たない値）'
         mock: '`fetch`（JavaScript は `/* m */`、CSS は `.m{}`、配布ファイルは `/* a */`・`/* b */` で、`integrity` はそれぞれの sha384。`dist/T.txt` の URL には `束ねた本文 m`、ライセンスの URL には `本文 a`・`本文 b`）'
-        expected: '`https://`・外の読み込みの印・`importmap` が無い。`<style>.m{}</style>` があり、`mindmap-mdmark` の要素の中身が `/* m */`。`/* m */`・`/* a */`・`/* b */` がこの順で、どれも `<script id="mindmap-app">` より前にある。`mindmap-licenses` の要素の中に `本文 m`・`束ねた本文 m`・`本文 a`・`本文 b` がこの順にある。`fetch` に渡った URL が JavaScript・CSS・配布ファイル 2 つ・`dist/T.txt`・ライセンスの本文 2 つで、`o/m` のライセンスの本文の URL を含まない'
+        expected: '`https://`・外の読み込みの印・`importmap` が無い。`<style id="mindmap-mdmark-css">.m{}</style>` があり、`mindmap-mdmark` の要素の中身が `/* m */`。`/* m */`・`/* a */`・`/* b */` がこの順で、どれも `<script id="mindmap-app">` より前にある。`mindmap-licenses` の要素の中に `本文 m`・`束ねた本文 m`・`本文 a`・`本文 b` がこの順にある。`fetch` に渡った URL が JavaScript・CSS・配布ファイル 2 つ・`dist/T.txt`・ライセンスの本文 2 つで、`o/m` のライセンスの本文の URL を含まない'
         exception: '-'
       - name: test_assemble_standalone_template_when_integrity_mismatch
         case: 異常
