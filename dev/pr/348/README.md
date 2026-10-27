@@ -39,5 +39,5 @@
 - [x] ドキュメント修正（使い方/プレビューを見る.md・リファレンス/コマンド.md・リファレンス/動作環境.md・preview/licenses/README.md・skills/session/steps/取り込み.md・skills/mindmap/references/HTMLの書き方.md）
 - [x] 単体テスト作成
 - [x] 実装
-- [ ] 結合テスト作成
+- [x] 結合テスト作成
 - [ ] E2E テスト作成
