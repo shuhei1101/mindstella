@@ -556,7 +556,7 @@ functions:
          - 埋め込んだ HTML の範囲（`.mdmark-html`）は `data-source-line` を持たないため、本文の中で n 番目の範囲に、`embeddedHtmlRanges` の n 番目の `open` を `data-html-open`、`close` を `data-html-close` で持たせる（範囲の中の要素には `data-line-start` を付けない）
       4. `.mdmark-html` の外の `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
       5. `.mdmark-html` の外の `language-html` のコードブロックを、原文を `data-source` に持ち `pre` の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に `pre` ごと置き換える（描くのは使う側が部品『HTMLの本文の枠』で、`selectable` は偽）
-      6. 表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文とスレッドの書き込みも同じ）
+      6. `.mdmark-html` の外の表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む（範囲の中の表は書いた HTML のまま包まない）。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文とスレッドの書き込みも同じ）
     unit_tests:
       - name: test_render_markdown
         case: 正常
@@ -585,9 +585,9 @@ functions:
       - name: test_render_markdown_when_table
         case: 正常
         summary: 表を横に送れる入れ物で包み、行の印を変えない
-        condition: 段落の後に表を 2 つ持つ本文
+        condition: '`parametrize`: 段落の後に表を 2 つ持つ本文 / 範囲の外の表と、`<!-- html -->` の範囲の中の表を持つ本文'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`table` が 2 つとも `.md-table-wrap` の直下にあり、入れ物は `tabindex="0"`・`role="group"`・`aria-label="本文の表"` を持ち `data-line-start` を持たない。表の各行の `data-line-start` は包まないときと同じ。段落は包まない'
+        expected: '`table` が 2 つとも `.md-table-wrap` の直下にあり、入れ物は `tabindex="0"`・`role="group"`・`aria-label="本文の表"` を持ち `data-line-start` を持たない。表の各行の `data-line-start` は包まないときと同じ。段落は包まない / 範囲の外の表だけが `.md-table-wrap` の直下にあり、範囲の中の表は `.md-table-wrap` の中に無い'
       - name: test_render_markdown_when_embedded_html
         case: 正常
         summary: 埋め込んだ HTML を本文の中に描き、範囲に元の行を持たせる

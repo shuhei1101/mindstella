@@ -3293,9 +3293,9 @@ functions:
         passing: positional
         description: 本文のスクロール領域
     process: |-
-      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）を文書の順に拾う。矩形を持たない要素（畳んだ Raw の行や、本文の幅が足りなくて隠した左右の本文など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
-      2. 種類を決める。図の枠は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
-      3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす。それ以外は新しい印にする
+      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）・埋め込んだ HTML の範囲の差分（`.html-diff-range`）を文書の順に拾う。範囲の差分の中の Raw の行は拾わない。矩形を持たない要素（畳んだ Raw の行や、本文の幅が足りなくて隠した左右の本文など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
+      2. 種類を決める。図の枠と範囲の差分は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
+      3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす（範囲の差分は伸ばさない）。それ以外は新しい印にする
       4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）。矩形を持たない枠（左右に並べるときに持つインラインの枠や並べた枠のうち隠した方、「原文の差分」に切り替えて隠した描いた結果の枠）は飛ばす
       5. 左右に並べた本文（`.sbs`）が見えているときは、印を本文の中の高さの順に並べ直し、同じ `div.sbs-row` の対（左右の同じ行）にある `del` と `add` を `chg` 1 つにまとめる
     returns:
@@ -3305,8 +3305,8 @@ functions:
       - name: test_minimap_targets
         summary: 続く同じ種類をまとめ、消した塊の直後の足した塊を変わったにする
         case: 正常
-        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"` / HTML の本文の枠が 2 つあり、どちらの中にも `data-df="add"` と `data-df="chg"` を持ち、片方は `display: none`'
-        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠） / `add` と `chg` の 2 つだけ（`frame` が見えている方の枠）'
+        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"` / HTML の本文の枠が 2 つあり、どちらの中にも `data-df="add"` と `data-df="chg"` を持ち、片方は `display: none` / 範囲の差分（`.html-diff-range`）が 2 つ続き、どちらの中にも `.df-raw` の足した行と消した行'
+        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠） / `add` と `chg` の 2 つだけ（`frame` が見えている方の枠） / `chg` 2 つ（`first` がそれぞれの範囲の差分。中の Raw の行は並べない）'
         mock: なし（DOM を作って見る）
       - name: test_minimap_targets_when_side_by_side
         case: 正常
