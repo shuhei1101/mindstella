@@ -8,7 +8,7 @@
 | 描くもの | 書き方 | 読む使い方集（`read_guide` の `names`） |
 | --- | --- | --- |
 | 文章・表・手順・リスト | Markdown | - |
-| フロー図・シーケンス図・グラフ・操作できる部品 | `<!-- html -->` の範囲の中の `<mdmark-flow>`・`<mdmark-sequence>`・`<mdmark-chart>`・`<mdmark-param>` に、部品の定義（JSON）を書く | `diagrams`・`interactive-parts`・`html-blocks` |
+| フロー図・シーケンス図・グラフ・操作できる部品 | `<!-- html -->` の範囲の `html` のコードブロックの中に `<mdmark-flow>`・`<mdmark-sequence>`・`<mdmark-chart>`・`<mdmark-param>` を置き、部品の定義（JSON）を書く | `diagrams`・`interactive-parts`・`html-blocks` |
 | 部品で描けない、見た目のあるもの | `<!-- html -->` の範囲に `html` のコードブロックを置く | `html-blocks`・`html-rules` |
 | 本文の全体がモックや図 | `body_html` | - |
 
