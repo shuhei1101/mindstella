@@ -570,8 +570,8 @@ var MindmapPreview;
     const ALPHANUMERIC_WORD = /^[A-Za-z0-9]+$/;
     /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
     MindmapPreview.MARK_KINDS = ["terms", "docs", "research"];
-    /** 印を当てない祖先（`pre`・図・リンク・ボタン・見出しの中） */
-    const UNMARKED_ANCESTORS = "pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6";
+    /** 印を当てない祖先（`pre`・インラインコード・図・リンク・ボタン・見出しの中。インラインコードは中身がちょうど語のときだけ `code` ごと当てる） */
+    const UNMARKED_ANCESTORS = "pre, code, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6";
     /** 項目の ID（英大文字 - 数字。前後が英数字のものは当てない） */
     const ITEM_ID_PATTERN = /(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])/g;
     /** 本文の中の、用語の印に当てられる文字のノード（祖先が `UNMARKED_ANCESTORS` でなく、本文のブロック `block` 自身の行を持つもの）を文書の順に返す */
