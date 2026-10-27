@@ -97,12 +97,17 @@ scenarios:
       - 続きを取る値で探した結果が残りの 5 件で、続きを取る値が無い
       - 2 つのページを合わせると、全ての検討事項が 1 回ずつ出る
     test: test_normal_when_paged
-  - name: 異常シナリオ（語彙に無いタグで探す）
+  - name: 正常シナリオ（語彙に無いタグで探す）
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 作成を済ませ、タグの語彙に `データ` を登録し、タグ `データ` を持つ検討事項を 1 件足したワークスペース
+        description: 作成を済ませ、タグの語彙に `データ` を登録したワークスペース
+      - name: 検討事項 D-1
+        description: タグ `データ` を持つ検討事項
+      - name: 検討事項 D-2
+        description: 語彙に無い未登録の候補のタグを持つ検討事項
+        notes: タグ `通知`
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -110,15 +115,18 @@ scenarios:
         participant SV as サーバー
         participant WS as ワークスペース
 
+        CC->>SV: タグ「通知」を持つ項目を探す
+        SV->>WS: タグの語彙と項目を読む
+        SV-->>CC: D-2 を持つページ
         CC->>SV: タグ「データー」を持つ項目を探す
-        SV->>WS: タグの語彙を読む
-        SV->>SV: 語彙に無いタグ
-        SV-->>CC: 語彙に無いタグのエラーと、近いタグの候補
+        SV->>WS: タグの語彙と項目を読む
+        SV-->>CC: 空のページと、近い語彙のタグの案内
       ```
     expected:
-      - ツールがエラーを返す
-      - エラーの本文に、渡したタグ `データー` と、候補の `データ` がある
-    test: test_error_when_unknown_tag
+      - タグ「通知」で探した結果がエラーにならず、D-2 だけである
+      - タグ「データー」で探した結果がエラーにならず、空の一覧・全体の件数 0 である
+      - タグ「データー」で探した結果の案内の文に、渡したタグ `データー` と、近い語彙のタグ `データ` がある
+    test: test_normal_when_unknown_tag
 lead: スキルが、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っている属性名とタグの語彙を読む単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
