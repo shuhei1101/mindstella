@@ -297,9 +297,16 @@ namespace MindmapPreview {
         rows: 2,
         maxlength: COMMENT_BODY_MAX_LENGTH,
         "aria-label": `${item.id} へのコメントの本文`,
+        "aria-keyshortcuts": "Control+Enter",
         "data-focus": `${focus}edit:${item.id}`,
         onkeydown: (event) => {
-          if ((event as KeyboardEvent).key === "Escape") {
+          const key = event as KeyboardEvent;
+          // 変換の確定の Enter では確定しない
+          if (key.key === "Enter" && (key.ctrlKey || key.metaKey) && !key.isComposing) {
+            key.preventDefault();
+            form.requestSubmit();
+          }
+          if (key.key === "Escape") {
             // 詳細の全画面の `dialog` の `cancel` を起こさない
             event.preventDefault();
             event.stopPropagation();
@@ -311,7 +318,7 @@ namespace MindmapPreview {
     });
     // 理由があるときだけ `role="alert"` を持たせる（空のまま警告として読み上げさせない）
     const message = h({ tag: "p", attrs: { class: "send-msg failed", role: error ? "alert" : null }, children: error ? [icon("alert"), error] : [] });
-    return h({
+    const form = h({
       tag: "form",
       attrs: {
         class: "row-edit",
@@ -337,11 +344,12 @@ namespace MindmapPreview {
           attrs: { class: "row-edit-actions" },
           children: [
             h({ tag: "button", attrs: { class: "btn ghost", type: "button", onclick: on.cancelEdit }, children: ["キャンセル"] }),
-            h({ tag: "button", attrs: { class: "btn primary", type: "submit" }, children: ["修正"] }),
+            h({ tag: "button", attrs: { class: "btn primary", type: "submit", title: "修正（Ctrl+Enter）" }, children: ["修正"] }),
           ],
         }),
       ],
     });
+    return form;
   }
 
   /** 行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」（コメントの一覧と詳細パネルが使う） */
