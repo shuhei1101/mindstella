@@ -2486,8 +2486,9 @@ def test_normal_when_embedded_html_diff(
     expect(added).to_have_count(1)
     assert "<p>2 つ目の段落</p>" in removed.inner_text()
     assert "<p>書き直した 2 つ目の段落</p>" in added.inner_text()
-    assert removed.locator(".df-word.df-del").count() >= 1
-    assert added.locator(".df-word.df-add").count() >= 1
+    # 変えた文字は、足した行の「書き直した」だけに濃い面が付く（消した行には消えた文字が無い）
+    assert "".join(added.locator(".df-word.df-add").all_inner_texts()).strip() == "書き直した"
+    assert removed.locator(".df-word").count() == 0
     outside = page.locator("aside.panel .md > p[data-line-start]")
     assert outside.inner_text() == "範囲の外の段落"
     assert outside.evaluate("p => p.className + p.querySelectorAll('[class*=df-]').length") == "0"

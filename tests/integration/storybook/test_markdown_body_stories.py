@@ -374,6 +374,8 @@ def test_embedded_html(open_story: OpenStory) -> None:
     assert page.locator(".md .mdmark-html figure.mdmark-diagram").count() >= 1
     assert page.locator(".md .mdmark-html input[type=range]").count() == 1
     assert decorated["inside"] == 0
+    # 検証（範囲の中の表は、横に送る入れ物にも包まない）
+    assert page.locator(".md .mdmark-html table").evaluate_all("tables => tables.map(t => t.closest('.md-table-wrap') === null)") == [True]
     # 検証（範囲の前後の表と見出しには当たっている）
     assert decorated["outsideWraps"] >= 1
     assert decorated["outsideFolds"] >= 1
