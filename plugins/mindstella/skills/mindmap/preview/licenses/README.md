@@ -64,7 +64,7 @@ console.log(`${blocks.length} packages`);
 
 `mdmark-LICENSE.txt` は、mdmark の MIT の本文。
 著作権の行は `Copyright (c) 2026 shuhei1101`。
-mdmark v0.7.0 のリポジトリに LICENSE が無く、jsDelivr から本文を取れないため、ここに置いて `export` がライセンスの表示に入れる（`VENDOR_LIBRARIES` の mdmark の行は `license_path=None`・`license_file="licenses/mdmark-LICENSE.txt"`）。
+mdmark v0.8.0 のリポジトリにも LICENSE が無く、jsDelivr から本文を取れないため、ここに置いて `export` がライセンスの表示に入れる（`VENDOR_LIBRARIES` の mdmark の行は `license_path=None`・`license_file="licenses/mdmark-LICENSE.txt"`）。
 配布物が中に束ねた依存のライセンスの本文（`dist/THIRD_PARTY_LICENSES.txt`）はここに置かず、`export` が jsDelivr から取る。
 
 mdmark のバージョンを上げるときは、上げ先のリポジトリに LICENSE があるかを確かめる（[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140)）。
