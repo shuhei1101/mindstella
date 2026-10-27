@@ -558,6 +558,68 @@ def test_edit(served_review: tuple[str, Path], open_preview: OpenPreview) -> Non
     assert saved[0]["body"] == "案 B にする"
 
 
+@pytest.mark.parametrize("shortcut", ["Control+Enter", "Meta+Enter"], ids=["ctrl_enter", "cmd_enter"])
+def test_edit_when_shortcut(
+    served_review: tuple[str, Path], open_preview: OpenPreview, shortcut: str
+) -> None:
+    """入力欄の Ctrl+Enter（macOS は Cmd+Enter）で「修正」と同じく送り、本文に戻す（正常系）。"""
+    # 準備
+    url, root = served_review
+    page = open_preview(url)
+    open_review(page)
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    field = f"{_row('C-1')} form.row-edit textarea"
+    page.fill(field, "案 B にする")
+    # 実行
+    page.press(field, shortcut)
+    page.wait_for_function(
+        "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
+    saved = read_workspace_yaml(root, "comments.yaml")["items"]
+    assert saved[0]["body"] == "案 B にする"
+
+
+def test_edit_when_shortcut_and_body_empty(
+    served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """空白だけの本文は Ctrl+Enter でも送らず、コメントを入れてから直すよう出す（異常系）。"""
+    # 準備
+    url, root = served_review
+    patches: list[str] = []
+    page.on(
+        "request",
+        lambda request: patches.append(request.url) if request.method == "PATCH" else None,
+    )
+    open_preview(url)
+    open_review(page)
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    field = f"{_row('C-1')} form.row-edit textarea"
+    page.fill(field, "   ")
+    # 実行
+    page.press(field, "Control+Enter")
+    # 検証
+    assert page.inner_text(f"{_row('C-1')} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert patches == []
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_edit_shortcut_hint(served_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """入力欄は `aria-keyshortcuts` に Ctrl+Enter を持ち、「修正」の `title` は「修正（Ctrl+Enter）」（正常系）。"""
+    # 準備
+    url, _ = served_review
+    page = open_preview(url)
+    open_review(page)
+    # 実行
+    page.locator(_row("C-1")).get_by_role("button", name="D-1 へのコメントを修正").click()
+    # 検証
+    form = f"{_row('C-1')} form.row-edit"
+    assert page.get_attribute(f"{form} textarea", "aria-keyshortcuts") == "Control+Enter"
+    assert page.get_attribute(f"{form} button[type='submit']", "title") == "修正（Ctrl+Enter）"
+
+
 def test_edit_when_body_empty(
     served_review: tuple[str, Path], open_preview: OpenPreview, page: Page
 ) -> None:
