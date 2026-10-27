@@ -152,14 +152,14 @@ flows:
       - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_schema_mismatch
-  - name: 異常系（語彙に無いタグ・UnknownTagError）
-    summary: 語彙に無いタグを持つスレッドは書かず、近いタグの候補を添えたエラーで終わる
+  - name: 正常系（語彙に無いタグを候補として書く）
+    summary: 語彙に無いタグへ置き換えてもそのまま書き、未登録の候補と近いタグを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: タグの語彙 `起票` と、タグ `起票` を持つスレッド TH-1 を持つワークスペース
-        notes: '`tags` を `[起票の確認]` に置き換える'
+        notes: '`tags` を `[起票, 起票の確認]` に置き換える'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -167,16 +167,17 @@ flows:
         participant IF as update_thread（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: update_thread workspace id TH-1 tags [起票の確認]
+        クライアント->>IF: update_thread workspace id TH-1 tags [起票, 起票の確認]
         IF-->>WS: タグの語彙を読む
-        IF->>IF: 語彙に無いタグ
-        IF-->>クライアント: ツールのエラー
+        IF->>IF: 語彙に無い 起票の確認 を候補にする
+        IF->>WS: threads.yaml を書く
+        IF-->>クライアント: JSON（id・taken・candidate_tags）
       ```
     expected:
-      - ツールのエラーになる
-      - エラーの本文に `起票の確認` と候補の `起票` がある
-      - '`threads.yaml` の中身が呼ぶ前と同じ'
-    test: test_error_when_unknown_tag
+      - ツールのエラーにならない
+      - '`candidate_tags` が `{tag: 起票の確認, ids: [TH-1], similar: [起票]}` の 1 件だけ'
+      - TH-1 のタグが `起票`・`起票の確認` で、`config.yaml` の中身が呼ぶ前と同じ
+    test: test_normal_when_unknown_tag
 lead: スレッドの要約とタグを書き換え、AI が読んだ利用者の書き込みを取り込み済みにする。返信せずに取り込むとき（クローズにしたとき・クローズのまま取り込むとき）に使う。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `summary`・`tags` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える'
@@ -222,6 +223,9 @@ response:
   - name: taken
     type: list[str]
     description: 取り込み済みにした利用者の書き込みの ID。無ければ空
+  - name: candidate_tags
+    type: list[{tag, ids, similar}]
+    description: 渡した `tags` のうち、語彙に無い未登録の候補。`ids` はそのスレッドの ID。形は『項目の追加』の `candidate_tags` と同じ。`tags` を渡さないときと候補が無いときは空の配列
 exceptions:
   - name: なし（正常終了）
     condition: 書き換えた
@@ -241,9 +245,6 @@ exceptions:
   - name: ArgumentError
     condition: '`summary`・`tags`・`take` のどれも渡さない（`take` が偽）、`summary` が空か上限を超える、`tags` に重なりか空の文字列がある'
     notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
-  - name: UnknownTagError
-    condition: '`tags` に語彙に無いタグがある'
-    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形
@@ -257,6 +258,8 @@ constraints:
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
+  - item: 未登録の候補
+    constraint: 『スレッドを立てる』と同じ
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
   - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#

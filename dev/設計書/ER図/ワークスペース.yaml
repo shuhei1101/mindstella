@@ -161,7 +161,7 @@ tables:
       - name: tags
         title: タグの語彙
         type: array
-        description: 任意。項目とスレッドの `tags` に使えるタグ。要素は `name`（空でない文字列。語彙の中で一意）・`summary`（任意。タグの説明）。無ければ語彙は空で、タグを付けられない。書き換えは `update_settings`
+        description: 任意。項目とスレッドの `tags` に使えるタグ。要素は `name`（空でない文字列。語彙の中で一意）・`summary`（任意。タグの説明）・`include`（任意。そのタグに含めるもの）・`exclude`（任意。含めないもの）・`examples`（任意。付ける例の文字列の配列）。無ければ語彙は空で、付けたタグは全て未登録の候補になる。書き換えは `update_settings`
         example: '[{name: 保存, summary: 記録の保存先と形}, {name: 脱線}]'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
@@ -197,7 +197,7 @@ tables:
       - name: tags
         title: タグ
         type: array
-        description: 設定の `tags` の語彙にあるタグ。語彙に無いタグは書き込みのツールが弾き、手で書いたものは点検が `unknown_tag` で返す
+        description: 話題のタグ。設定の `tags` の語彙に無いタグも未登録の候補として持て、点検が `candidate_tag` の警告で返す
       - name: attrs
         title: 属性
         type: object
@@ -789,7 +789,7 @@ tables:
         type: array
         not_null: true
         default: '[]'
-        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく、設定の `tags` の語彙にあるタグだけ
+        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく、語彙に無いタグは未登録の候補
         example: '[起票]'
       - name: summary
         title: 要約

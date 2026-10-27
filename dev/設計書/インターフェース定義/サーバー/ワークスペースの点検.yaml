@@ -200,14 +200,14 @@ flows:
       - ツールのエラーにならない
       - '`problems` が `missing_body`（A-1）と `orphan_body`（`.mindstella/docs/A-9.html`）の 2 件だけで、A-2 の問題が無い'
     test: test_normal_when_html_body_problems_found
-  - name: 正常系（語彙に無いタグがある）
-    summary: 項目とスレッドの tags がタグの語彙に無ければ unknown_tag を返す
+  - name: 正常系（未登録の候補のタグがある）
+    summary: 項目とスレッドの tags のうち語彙に無いタグを警告で返し、採否の手段を案内する
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: タグの語彙が `保存` だけで、検討事項 D-1 の `tags` が `[保存, 通知]`、スレッド TH-1 の `tags` が `[起票]` のワークスペース
-        notes: YAML を直接書いて作る
+        description: タグの語彙が `保存` だけで、検討事項 D-1 の `tags` が `[保存, 通知]`、スレッド TH-1 の `tags` が `[保存の確認]` のワークスペース
+        notes: ほかに問題を持たない
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -216,15 +216,16 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: check workspace
-        IF-->>WS: config.yaml と全ての YAML・threads.yaml を読む
-        IF-->>クライアント: JSON（ok: false・problems）
+        IF-->>WS: config.yaml と全ての YAML・スレッドを読む
+        IF-->>クライアント: JSON（ok: true・warnings・hint）
       ```
     expected:
-      - ツールのエラーにならず、`ok` が偽
-      - '`problems` に `kind: unknown_tag`・`file: .mindstella/decisions.yaml`・`id: D-1`・`key: items[0].tags`・`detail` に `通知` がある'
-      - '`problems` に `kind: unknown_tag`・`file: .mindstella/threads.yaml`・`id: TH-1`・`key: items[0].tags`・`detail` に `起票` がある'
-      - D-1 の `保存` は問題にしない
-      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じ
+      - ツールのエラーにならない
+      - '`ok` が真で `problems` が空'
+      - '`warnings` に `kind: candidate_tag`・`file: .mindstella/decisions.yaml`・`id: D-1`・`key: items[0].tags`・`detail: 通知` がある'
+      - '`warnings` に `kind: candidate_tag`・`file: .mindstella/threads.yaml`・`id: TH-1`・`key: items[0].tags`・`detail: 保存の確認`・`similar: [保存]` がある'
+      - '`hint` が `update_settings`・`settings.tags`・`tag_map` を含む'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_unknown_tag
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
@@ -239,10 +240,10 @@ request:
 response:
   - name: ok
     type: bool
-    description: 問題が 1 つも無いか
+    description: 問題が 1 つも無いか（警告は数えない）
   - name: problems[].kind
-    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "unknown_phase" | "unknown_tag" | "stale_history" | "decision_state"'
-    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・設定の `phases` に無いフェーズ・タグの語彙に無いタグ・変更履歴から前の本文を組み立てられない・検討事項の案と状態が合わない）
+    type: '"schema" | "duplicate_id" | "broken_ref" | "missing_body" | "orphan_body" | "unknown_phase" | "stale_history" | "decision_state"'
+    description: 問題の種類（スキーマに合わない・ID の重複・参照切れ・指す本文が無い・どの項目からも指されない本文・設定の `phases` に無いフェーズ・変更履歴から前の本文を組み立てられない・検討事項の案と状態が合わない）
   - name: problems[].file
     type: str
     description: 問題のあるファイル（ワークスペースからの相対パス。例 `.mindstella/decisions.yaml`）
@@ -255,6 +256,28 @@ response:
   - name: problems[].detail
     type: str
     description: 中身（参照先の ID・スキーマの理由など）。前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`）で合わない `schema` と `decision_state` は、理由に続けて `/mindstella:upgrade` で今の形式に移せることを書く
+  - name: warnings[].kind
+    type: '"candidate_tag"'
+    description: 警告の種類（タグの語彙に無い未登録の候補）。警告が無ければ `warnings` は空の配列
+  - name: warnings[].file
+    type: str
+    description: 候補を持つファイル（ワークスペースからの相対パス。例 `.mindstella/threads.yaml`）
+  - name: warnings[].id
+    type: str
+    description: 候補を持つ項目かスレッドの ID
+  - name: warnings[].key
+    type: str
+    description: 候補を持つキーのパス（`items[{番号}].tags`）
+  - name: warnings[].detail
+    type: str
+    description: 未登録の候補のタグ
+  - name: warnings[].similar
+    type: list[str]
+    description: 候補と字面の近い語彙のタグ（近い順に最大 5 件。無ければ空の配列）
+  - name: hint
+    type: str | None
+    description: 未登録の候補があるときの採否の手段の案内。候補が無ければ `null`
+    example: 未登録の候補のタグがあります。update_settings の settings.tags で語彙へ登録するか、tag_map で既存のタグへ付け替えてください
 response_notes: |-
   > [!NOTE]
   > 問題があるときも点検そのものは正常に終えているので、ツールのエラーにせず、同じ形の結果（`ok: false`）を返す。
@@ -286,7 +309,7 @@ constraints:
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
   - item: タグを確かめるキー
-    constraint: 種類ごとの YAML の項目と `threads.yaml` のスレッドの `tags` のうち、設定の `tags` の語彙に無いタグを `unknown_tag` にする。無いタグ 1 つ = 1 件で、`key` は `items[{番号}].tags`、`detail` にそのタグ
+    constraint: 種類ごとの YAML の項目と `threads.yaml` のスレッドの `tags` のうち、設定の `tags` の語彙に無いタグを `candidate_tag` の警告にする（問題にしないので `ok` に影響しない）。無いタグ 1 つ = 1 件で、並びは問題と同じ。警告が 1 件以上あるとき、`hint` に『設定の更新』の `settings.tags` で語彙へ登録する手段と、`tag_map` で既存のタグへ付け替える手段を書く
 refs:
   - dev/設計書/ER図/ワークスペース#
 test_file: tests/integration/server/test_check.py

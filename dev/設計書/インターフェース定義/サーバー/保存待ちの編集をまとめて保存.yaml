@@ -157,7 +157,7 @@ flows:
       - D-1・D-2 が保存する前のままで、`edits.yaml` に E-1・E-2 が残る
     test: test_error_when_item_referenced
   - name: 異常系（合わない値・409）
-    summary: 当てた後の項目がタグの語彙や参照の指す先に合わなければ、どの編集も当てない
+    summary: 当てた後の項目が参照の指す先に合わなければ、どの編集も当てない。語彙に無いタグは書き込めない理由にしない
     setup:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
@@ -170,9 +170,9 @@ flows:
 
         クライアント->>IF: POST
         IF->>IF: メモリの上で当てて確かめる
-        IF-->>クライアント: 409、blocked は E-1・E-2（invalid）
+        IF-->>クライアント: 409、blocked は E-2（invalid）
     expected:
-      - ステータスが 409 で、`blocked` が E-1（`detail` に `保存` が語彙に無いこと）・E-2（`detail` に `D-99` が無いこと）の 2 件で、どちらも `reason` が `invalid`
+      - ステータスが 409 で、`blocked` が E-2（`reason` が `invalid`、`detail` に `D-99` が無いこと）の 1 件だけで、語彙に無いタグ `保存` を入れた E-1 を含まない
       - D-1 が保存する前のままで、`edits.yaml` に E-1・E-2 が残る
     test: test_error_when_invalid_value
   - name: 異常系（書き込めない・500）
@@ -261,7 +261,7 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。409 だけ `blocked` を足す
 constraints:
   - item: 書き込めない編集
-    constraint: '当てる前に全ての編集を確かめ、当たったものを全て `blocked` に載せる。`reason` は次のどれか。`changed`: 項目の今の `updated` が編集の `base` と違う（溜めた後に AI がその項目を書き換えた）か、設定の今の値が `before` と違う。`missing`: 編集する項目が無くなった。`referenced`: 消す項目をほかの項目が指している（同じ保存で指す側も消すか、参照を外すときは当たらない。`refs` に指している項目の ID。MCP の `remove` と同じ確かめ）。`invalid`: 当てた後の項目・設定がスキーマ・検討事項の案と状態の決まり・タグの語彙・参照の指す先に合わない（`detail` に合わないキーと理由。合わない箇所を引き起こした編集の ID に紐づける）'
+    constraint: '当てる前に全ての編集を確かめ、当たったものを全て `blocked` に載せる。`reason` は次のどれか。`changed`: 項目の今の `updated` が編集の `base` と違う（溜めた後に AI がその項目を書き換えた）か、設定の今の値が `before` と違う。`missing`: 編集する項目が無くなった。`referenced`: 消す項目をほかの項目が指している（同じ保存で指す側も消すか、参照を外すときは当たらない。`refs` に指している項目の ID。MCP の `remove` と同じ確かめ）。`invalid`: 当てた後の項目・設定がスキーマ・検討事項の案と状態の決まり・参照の指す先に合わない（語彙に無いタグは『項目の追加』と同じく未登録の候補として書き、`invalid` にしない）（`detail` に合わないキーと理由。合わない箇所を引き起こした編集の ID に紐づける）'
   - item: 当てる順
     constraint: 設定（`setting`）→ 項目の追加（`item-add`、仮の ID の連番の順）→ キー・案・採用（`set`・`option-*`・`adopt`、溜めた順）→ 項目の削除（`item-remove`）の順に、削除を溜めた項目へのほかの編集は当てずに捨てて（書き込めない編集の確かめもしない）、メモリの上のワークスペースへ当ててから、全ての YAML を 1 回だけ確かめて書く。設定の編集は、`map` を『設定の更新』の `phase_map`・`target_map`・`category_map`・`tag_map` として渡し、その付け替え（フェーズ・対象・カテゴリー・タグの対応）もそのまま当てる。対応が足りず付け替えられない値が残るときは、その `setting` を `invalid` にする。ID・日時・通し番号・変更履歴の付け方は『項目の追加』『項目の更新』『採用する案の切り替え』『案の書き換え』『項目の削除』と同じで、項目ごとに 1 回分の変更履歴にまとめる
   - item: 参照の置き換え

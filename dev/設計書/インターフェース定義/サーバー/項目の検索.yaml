@@ -169,13 +169,13 @@ flows:
       - 'D-1 が `target`・`category`・`phase`・`attrs`（`担当: 自分`）・`updated` を持つ'
       - D-1 が `options` と本文を持たない
     test: test_normal_when_detailed
-  - name: 異常系（語彙に無いタグ・UnknownTagError）
-    summary: 語彙に無いタグで探すと、近いタグの候補を添えたエラーで終わる
+  - name: 正常系（語彙に無いタグで探す）
+    summary: 項目が使う未登録の候補のタグで絞れ、どこにも無いタグは 0 件と近いタグの案内を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: タグの語彙 `データ`・`画面` を持つワークスペース
+        description: タグの語彙 `データ` を持ち、タグ `データ` の検討事項 D-1 と、語彙に無いタグ `通知` の検討事項 D-2 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -183,14 +183,20 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
+        クライアント->>IF: find workspace tags [通知]
+        IF-->>WS: タグの語彙と全ての YAML を読む
+        IF-->>クライアント: JSON（items は D-2）
         クライアント->>IF: find workspace tags [データー]
-        IF-->>WS: 語彙を読む
-        IF-->>クライアント: ツールのエラー
+        IF-->>WS: タグの語彙と全ての YAML を読む
+        IF->>IF: 語彙にも項目にも無いタグ
+        IF-->>クライアント: JSON（空の items・hint）
       ```
     expected:
-      - ツールのエラーになる
-      - エラーの本文に `データー` と、候補の `データ` がある
-    test: test_error_when_unknown_tag
+      - どちらもツールのエラーにならない
+      - '`通知` で探した `items` が D-2 の 1 件だけ'
+      - '`データー` で探した `items` が空で、`total` が 0'
+      - '`データー` で探した `hint` が、`データー` と近い語彙のタグ `データ` を含む'
+    test: test_normal_when_unknown_tag
   - name: 異常系（条件の違う続きの値・ArgumentError）
     summary: 続きの値を作った条件と違う条件で渡すとエラーで終わる
     setup:
@@ -213,7 +219,7 @@ flows:
       - 2 回目の呼び出しがツールのエラーになる
       - エラーの本文に引数の名前 `cursor` がある
     test: test_error_when_cursor_mismatched
-lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは語彙のタグだけを受け付ける。
+lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは語彙に無い未登録の候補でも絞れる。
 idempotent: true
 side_effects: なし（読むだけ）
 request:
@@ -273,7 +279,7 @@ request:
     default: なし（タグで絞らない）
     location: argument
     description: 全てを持つ項目に絞るタグ（AND）
-    constraints: 語彙のタグだけ。空の配列は渡さないのと同じ
+    constraints: 語彙に無いタグも渡せる。空の配列は渡さないのと同じ
     example: '["データ", "画面"]'
   - name: any_tags
     type: list[str]
@@ -281,7 +287,7 @@ request:
     default: なし（タグで絞らない）
     location: argument
     description: いずれかを持つ項目に絞るタグ（OR）
-    constraints: 語彙のタグだけ。空の配列は渡さないのと同じ
+    constraints: 語彙に無いタグも渡せる。空の配列は渡さないのと同じ
     notes: '`tags` と一緒に渡したときは、両方の条件に合う項目'
   - name: limit
     type: int
@@ -345,7 +351,7 @@ response:
     description: 次のページを取るときに `cursor` へ渡す値。最後のページでは `null`
   - name: hint
     type: str | None
-    description: 絞り込みの案内。全体の件数がページより多いときは絞り込める引数（`tags`・`kind`・`status` など）を、0 件のときは外せる条件（渡した条件の引数の名前）を案内する。どちらでもないときは `null`
+    description: 絞り込みの案内。全体の件数がページより多いときは絞り込める引数（`tags`・`kind`・`status` など）を、0 件のときは外せる条件（渡した条件の引数の名前）を案内する。語彙にもどの項目にも無いタグを渡して 0 件のときは、そのタグと字面の近い語彙のタグも案内する。どちらでもないときは `null`
     example: 全 45 件のうち 20 件を返しました。tags・kind・status で絞るか、next_cursor で続きを読んでください
 exceptions:
   - name: なし（正常終了）
@@ -354,9 +360,6 @@ exceptions:
   - name: WorkspaceNotFoundError
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
-  - name: UnknownTagError
-    condition: '`tags` か `any_tags` に語彙に無いタグがある'
-    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す
   - name: ArgumentError
     condition: '`limit` が 1〜80 の外、`cursor` が読めない、または `cursor` を作った条件と今の条件が違う'
     notes: ツールのエラー。本文に引数の名前と理由を出す
@@ -376,7 +379,7 @@ constraints:
   - item: 続きの値
     constraint: 読んだ位置と条件を表す。ページの間に項目が増減したときは、読んだ位置からの続きを返す（重なり・抜けは保証しない）
   - item: 近いタグの候補
-    constraint: 語彙のタグのうち、渡したタグと字面が近い順に最大 5 件
+    constraint: 語彙にもどの項目にも無いタグを渡して 0 件のとき、`hint` にそのタグと、語彙のタグのうち字面が近い順に最大 5 件を書く。項目が使っている未登録の候補のタグは、語彙のタグと同じく絞り込みに使う
     notes: 近さの測り方はモジュール構成で決める
   - item: ツールの説明
     constraint: MCP のツールの説明に、使える絞り込み（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）と、ページを `next_cursor` でたどること、タグで絞る前に `tags` を呼ぶことを書く

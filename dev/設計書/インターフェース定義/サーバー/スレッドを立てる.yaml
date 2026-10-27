@@ -136,8 +136,8 @@ flows:
       - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_schema_mismatch
-  - name: 異常系（語彙に無いタグ・UnknownTagError）
-    summary: 語彙に無いタグを持つスレッドは書かず、近いタグの候補を添えたエラーで終わる
+  - name: 正常系（語彙に無いタグを候補として書く）
+    summary: 語彙に無いタグでもスレッドを立て、未登録の候補と近いタグを返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -153,14 +153,15 @@ flows:
 
         クライアント->>IF: new_thread workspace body 確認 summary 確認 tags [起票の確認]
         IF-->>WS: タグの語彙を読む
-        IF->>IF: 語彙に無いタグ
-        IF-->>クライアント: ツールのエラー
+        IF->>IF: 語彙に無い 起票の確認 を候補にする
+        IF->>WS: threads.yaml を書く
+        IF-->>クライアント: JSON（id・post・created・candidate_tags）
       ```
     expected:
-      - ツールのエラーになる
-      - エラーの本文に `起票の確認` と候補の `起票` がある
-      - '`threads.yaml` が作られていない'
-    test: test_error_when_unknown_tag
+      - ツールのエラーにならない
+      - '`candidate_tags` が `{tag: 起票の確認, ids: [TH-1], similar: [起票]}` の 1 件だけ'
+      - '`threads.yaml` の TH-1 の `tags` が `[起票の確認]` で、`config.yaml` の中身が呼ぶ前と同じ'
+    test: test_normal_when_unknown_tag
 lead: AI から利用者へ返事を求めるスレッドを立てる。最初の書き込みは AI の本文で、要約とタグを一緒に書く。
 idempotent: false
 side_effects: '`threads.yaml` にオープンのスレッドを 1 件足す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -211,6 +212,9 @@ response:
   - name: created
     type: str
     description: 書いた日時（UTC のタイムゾーン付き ISO 8601）
+  - name: candidate_tags
+    type: list[{tag, ids, similar}]
+    description: 渡した `tags` のうち、語彙に無い未登録の候補。`ids` は立てたスレッドの ID。形は『項目の追加』の `candidate_tags` と同じ。候補が無ければ空の配列
 exceptions:
   - name: なし（正常終了）
     condition: 立てた
@@ -230,9 +234,6 @@ exceptions:
   - name: SchemaMismatchError
     condition: '`threads.yaml` がスキーマに合わないか、YAML として読めない'
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
-  - name: UnknownTagError
-    condition: '`tags` に語彙に無いタグがある'
-    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形
@@ -249,6 +250,8 @@ constraints:
     constraint: AI の書き込みだけのスレッドは取り込み待ちにならない（単一ユースケース『AIがスレッドを立てる』）
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送ると重なっても ID が重ならない
+  - item: 未登録の候補
+    constraint: 『項目の追加』と同じ（語彙に無いタグもそのまま書き、`candidate_tags` に返す）。重なりと空の文字列は今までどおり ArgumentError
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
   - dev/設計書/シナリオ/単一ユースケース/AIがスレッドを立てる#

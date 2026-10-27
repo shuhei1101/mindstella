@@ -363,7 +363,7 @@ flows:
       - '`changes.yaml` の `pending` の `added`・`changed` が空で、`last_seq` が呼ぶ前と同じ'
     test: test_normal_when_tags_remapped
   - name: 異常系（対応の無いタグが残る・UnmappedTagError）
-    summary: 新しい語彙に無いタグを持つ項目が残ると、何も書かずに終わる
+    summary: 古い語彙から外したタグを持つ項目が残ると、何も書かずに終わる
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
@@ -380,7 +380,7 @@ flows:
 
         クライアント->>IF: update_settings workspace（tags）
         IF-->>WS: 全ての YAML とスレッドを読む
-        IF->>IF: 新しい語彙に無いタグを持つ D-2 が残る
+        IF->>IF: 古い語彙から外したタグを持つ D-2 が残る
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -388,7 +388,67 @@ flows:
       - 'エラーの本文に `D-2: tags: 通知` の行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_unmapped_tag
-lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリー・タグの語彙を変えるときは、`phase_map`・`target_map`・`category_map`・`tag_map` の対応で項目の `phase`・`target`・`category`・`tags` と `goal.phase`・カテゴリーの `target`・スレッドの `tags` も同じ書き込みで付け替える。'
+  - name: 正常系（未登録の候補をタグの語彙へ登録する）
+    summary: 候補を説明の 3 点つきで語彙へ足し、登録しない候補は対応なしで残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `保存` で作り、検討事項 D-1（`保存`・`通知`）・D-2（`検索`）を足したワークスペース
+        notes: '`通知`・`検索` は未登録の候補'
+      - name: settings
+        description: '`tags` を `保存` と、`summary`・`include`・`exclude`・`examples` を持つ `通知` にし、`tag_map` を渡さない'
+        notes: '`{"name": "通知", "summary": "利用者への知らせ", "include": "メール・プッシュでの知らせ", "exclude": "画面の中の表示", "examples": ["期限の前日に知らせる"]}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（settings.tags）
+        IF-->>WS: 全ての YAML とスレッドを読む
+        IF->>IF: 古い語彙から外したタグが無いので付け替えず、スキーマと突き合わせる
+        IF->>WS: config.yaml を書く
+        IF-->>クライアント: JSON（changed・remapped・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`changed` が `tags`、`remapped` が空、`files` が `.mindstella/config.yaml` だけ'
+      - '`config.yaml` の `tags` の `通知` が渡した `summary`・`include`・`exclude`・`examples` を持つ'
+      - D-1 の `tags` が `[保存, 通知]`、D-2 の `tags` が `[検索]` のまま
+    test: test_normal_when_candidate_tag_registered
+  - name: 正常系（未登録の候補を既存のタグへ付け替える）
+    summary: settings を渡さず tag_map だけで、語彙を変えずに候補を付け替える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグの語彙 `保存` で作り、検討事項 D-1（`保存処理`）とスレッド TH-1（`保存処理`）を足したワークスペース
+      - name: tag_map
+        description: '`settings` を渡さず、`tag_map` だけを渡す'
+        notes: '`tag_map: {"保存処理": "保存"}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace（tag_map だけ）
+        IF-->>WS: 全ての YAML とスレッドを読む
+        IF->>IF: 語彙は変えず、項目とスレッドの tags を対応で付け替え、スキーマと突き合わせる
+        IF->>WS: decisions.yaml・threads.yaml を書く
+        IF-->>クライアント: JSON（changed・remapped・files）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`changed` が空'
+      - '`remapped` が `{D-1, tags, 保存処理, 保存}`・`{TH-1, tags, 保存処理, 保存}` の 2 件'
+      - D-1 と TH-1 の `tags` が `[保存]` で、`config.yaml` の中身が呼ぶ前と同じ
+      - 点検の `warnings` が空
+    test: test_normal_when_candidate_tag_mapped
+lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリー・タグの語彙を変えるときは、`phase_map`・`target_map`・`category_map`・`tag_map` の対応で項目の `phase`・`target`・`category`・`tags` と `goal.phase`・カテゴリーの `target`・スレッドの `tags` も同じ書き込みで付け替える。`settings` を渡さず `tag_map` だけを渡すと、語彙を変えずに未登録の候補を語彙のタグへ付け替える。'
 idempotent: false
 side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリー・タグを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `updated` と `updated_by`（`ai`）を書く。タグを付け替えたスレッドがあれば `threads.yaml` も書き換える。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
@@ -401,10 +461,11 @@ request:
     constraints: '`.mindstella/config.yaml` があるフォルダ'
   - name: settings
     type: dict
-    required: true
+    required: false
+    default: なし（設定を変えない）
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`tags`・`links`・`history_limit`・`display` だけ。`null` で消せるのは任意の `description`・`goal`・`tags`・`links`・`history_limit`・`display` だけ。1 つ以上のキーを持つ
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`tags`・`links`・`history_limit`・`display` だけ。`null` で消せるのは任意の `description`・`goal`・`tags`・`links`・`history_limit`・`display` だけ。渡すときは 1 つ以上のキーを持つ。渡さないときは `tag_map` を渡す。`tags` の 1 件は ER 図『ワークスペース』の設定の `tags` の形（`name`・`summary`・`include`・`exclude`・`examples`）
     example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
   - name: phase_map
     type: dict[str, str]
@@ -435,8 +496,8 @@ request:
     required: false
     default: なし（対応を渡さない）
     location: argument
-    description: 古いタグ → 新しいタグ。`settings.tags` を渡したとき、新しい語彙に無いタグを持つ項目とスレッドの `tags` をこの対応で付け替える。値が `null` のタグは `tags` から外す。新しい語彙に同じ名前があるタグは、対応を渡さなくてもそのまま残る
-    constraints: キーは今の語彙にあり、新しい語彙に無いタグだけ。値は新しい語彙のどれかか `null`。`settings.tags` を渡さないときは渡さない（どれも合わなければ引数の誤り）
+    description: 古いタグ → 新しいタグ。`settings.tags` を渡したとき、古い語彙から外したタグと未登録の候補を持つ項目とスレッドの `tags` をこの対応で付け替える。`settings.tags` を渡さないときは、語彙を変えずに未登録の候補だけを付け替える。値が `null` のタグは `tags` から外す。新しい語彙に同じ名前があるタグは、対応を渡さなくてもそのまま残る
+    constraints: キーは、今の語彙にあり新しい語彙に無いタグ（`settings.tags` を渡したときだけ）か、今の語彙に無く項目かスレッドが持つ未登録の候補。値は新しい語彙（`settings.tags` を渡さないときは今の語彙）のどれかか `null`。どれも合わなければ引数の誤り
     notes: 付け替えた先のタグを既に持つ項目は、同じタグを 2 つ持たず 1 つにまとめる
     example: '{"通知": "お知らせ", "下書き": null}'
 request_example: |-
@@ -485,13 +546,13 @@ exceptions:
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えたファイルは前の中身に戻し、どのファイルも書き換えない
   - name: 引数の誤り
-    condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した。`target_map`・`category_map`・`tag_map` も同じ（`settings.targets`・`settings.categories`・`settings.tags` を渡さずに渡した、キーが今の設定に無いか新しい設定にもある）'
+    condition: '`settings.phases` を渡さずに `phase_map` を渡した、または `phase_map` のキーに今の `phases` に無いフェーズか、新しい `phases` にもあるフェーズを渡した。`target_map`・`category_map` も同じ（`settings.targets`・`settings.categories` を渡さずに渡した、キーが今の設定に無いか新しい設定にもある）。`tag_map` のキーが、外したタグでも未登録の候補でもない。`settings` も `tag_map` も渡さない'
     notes: ツールのエラー。エラーの本文に合わない対応の引数の名前（`phase_map`・`target_map`・`category_map`・`tag_map`）とキー。何も書き込まない
   - name: UnmappedTargetError
     condition: 書き換えた後に、新しい `targets` に無い対象を持つ項目かカテゴリー、新しい `categories` に無いカテゴリーを持つ項目が残る。`target_map`・`category_map` の値が新しい設定に無いときも含む
     notes: ツールのエラー。エラーの本文に残る項目とキーと名前。何も書き込まない
   - name: UnmappedTagError
-    condition: 書き換えた後に、新しい語彙に無いタグを持つ項目かスレッドが残る。`tag_map` の値が新しい語彙に無いときも含む
+    condition: 書き換えた後に、古い語彙から外したタグを持つ項目かスレッドが残る。`tag_map` の値が新しい語彙に無いときも含む。古い語彙にも無かった未登録の候補は、対応が無くても残してよい
     notes: ツールのエラー。エラーの本文に残る項目・スレッドとタグ。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。対応の無いフェーズが残るときは、残るものごとに `{ID か goal}: {フェーズ}` の行を続ける。対応の無い対象・カテゴリーが残るときは、残るものごとに `{ID か categories[{名前}]}: {target か category}: {名前}` の行を続ける。対応の無いタグが残るときは、残るものごとに `{項目かスレッドの ID}: tags: {タグ}` の行を続ける。'
 constraints:

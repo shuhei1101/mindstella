@@ -70,7 +70,7 @@ flows:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
     test: test_error_when_workspace_not_found
-lead: ワークスペースのタグの語彙を、タグごとの説明と、付いている項目の数・種類を添えて返す。取り込みで話題に合うタグを選ぶためと、`find` のタグの条件を決めるために先に引く。
+lead: ワークスペースのタグの語彙を、タグごとの説明（含める / 含めない / 例を含む）と、付いている項目の数・種類を添えて返す。取り込みで話題に合うタグを選ぶためと、`find` のタグの条件を決めるために先に引く。
 idempotent: true
 side_effects: なし（読むだけ）
 request:
@@ -93,6 +93,15 @@ response:
   - name: tags[].kinds
     type: list[str]
     description: そのタグを持つ項目の種類（`decision` など。種類の定義の順で重なりなし。持つ項目が無いタグは空の配列）
+  - name: tags[].include
+    type: str | None
+    description: そのタグに含めるもの（語彙に無ければ `null`）
+  - name: tags[].exclude
+    type: str | None
+    description: そのタグに含めないもの（語彙に無ければ `null`）
+  - name: tags[].examples
+    type: list[str]
+    description: そのタグを付ける例（語彙に無ければ空の配列）
 exceptions:
   - name: なし（正常終了）
     condition: 一覧を作れた（語彙が空のときも含む）
@@ -107,7 +116,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 返す範囲
-    constraint: 語彙のタグだけを返す。語彙に無いタグを持つ項目は点検が洗い出し、ここでは数えない
+    constraint: 語彙のタグだけを返す。語彙に無い未登録の候補は点検が警告で洗い出し、ここでは数えない
   - item: 数える範囲
     constraint: 全ての種類の項目の `tags` を数える。1 つの項目が同じタグを 2 回持っても 1 件と数える
   - item: ツールの説明
