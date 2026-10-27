@@ -486,8 +486,10 @@ var MindmapPreview;
                 block.setAttribute(MindmapPreview.LINE_ATTR, line);
             pre.replaceWith(block);
         }
-        // 表を、表の中だけで横に送れる入れ物で包む（行の印は表の行に残し、入れ物には付けない）
+        // 表を、表の中だけで横に送れる入れ物で包む（行の印は表の行に残し、入れ物には付けない）。埋め込んだ HTML の範囲の中の表は、書いた HTML のまま包まない
         for (const table of root.querySelectorAll("table")) {
+            if (table.closest(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`) !== null)
+                continue;
             const wrap = MindmapPreview.h({
                 tag: "div",
                 attrs: { class: MindmapPreview.TABLE_WRAP_CLASS, tabindex: "0", role: "group", "aria-label": "本文の表" },

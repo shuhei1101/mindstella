@@ -86,6 +86,43 @@ const CALLOUT_SOURCE = [
   "",
 ].join("\n");
 
+/** 埋め込んだ HTML の範囲に置くチャート（JSON の定義） */
+const EMBEDDED_CHART = JSON.stringify({
+  type: "bar",
+  title: "件数",
+  scope: "10 月",
+  updated: "2026-10-27",
+  x: { label: "窓口", ticks: ["メール", "電話"] },
+  y: { label: "件" },
+  series: [{ name: "自動返信", points: [10, 20] }],
+});
+
+/** 埋め込んだ HTML の範囲に置く、キー rps のスライダーを持つ操作できる部品（JSON の定義） */
+const EMBEDDED_PARAM = JSON.stringify({
+  title: "リクエスト数の見積もり",
+  knob: { key: "rps", label: "リクエスト数", min: 0, max: 10, step: 1, value: 5 },
+  chart: { title: "応答時間", scope: "ピーク時", updated: "2026-10-27", x: { label: "経過", ticks: ["0", "1"] }, y: { label: "ミリ秒", min: 0, max: 100, step: 50 } },
+  table: Object.fromEntries(Array.from({ length: 11 }, (_, value) => [String(value), [value * 10, value * 10 + 5]])),
+});
+
+/** 範囲の前に見出しと表、範囲の中に見出し・表・チャート・スライダー、範囲の後に見出しを持つ本文 */
+const EMBEDDED_SOURCE = [
+  "## 前の見出し",
+  "",
+  SMALL_TABLE_SOURCE,
+  "<!-- html -->",
+  "```html",
+  "<h3>範囲の見出し</h3>",
+  "<table><tr><th>項目</th><td>値</td></tr></table>",
+  `<mdmark-chart>${EMBEDDED_CHART}</mdmark-chart>`,
+  `<mdmark-param>${EMBEDDED_PARAM}</mdmark-param>`,
+  "```",
+  "<!-- /html -->",
+  "",
+  "### 後ろの見出し",
+  "",
+].join("\n");
+
 const { h } = MindmapPreview;
 
 /** 表と見出しを持つ本文に、ストーリーの引数で見せ方を当てる。高さを渡したときは、本文のスクロール領域に入れて表の見出しの固定を受け付ける */
@@ -226,3 +263,6 @@ export const Narrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 本文に `<!-- html -->` の範囲があり、中に表・見出し・チャート・スライダーを持つ。範囲の中の表・見出しには列の幅・フェード・固定・見出しの固定・しま模様・開閉を当てず、書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の表と見出しには今までどおり当てる */
+export const EmbeddedHtml: Story = { args: { source: EMBEDDED_SOURCE } };

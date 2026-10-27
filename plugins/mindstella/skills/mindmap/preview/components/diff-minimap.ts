@@ -49,7 +49,7 @@ namespace MindmapPreview {
     chg: "変わった箇所",
   };
 
-  /** 印にする要素（キーの差分の行・本文の足した / 消した塊・箇条書きの足した項目・表の行・図の差分の枠・Raw の行） */
+  /** 印にする要素（キーの差分の行・本文の足した / 消した塊・箇条書きの足した項目・表の行・図の差分の枠・Raw の行・埋め込んだ HTML の範囲の差分） */
   const MINIMAP_TARGET_SELECTOR = [
     ".df-kv",
     ".md ins.df-blk",
@@ -61,6 +61,7 @@ namespace MindmapPreview {
     ".diagram.df-frame",
     ".df-raw .df-line.df-add",
     ".df-raw .df-line.df-del",
+    ".html-diff-range",
   ].join(", ");
 
   /** 要素が見えているか（畳んだ Raw などは矩形を持たない） */
@@ -83,7 +84,7 @@ namespace MindmapPreview {
 
   /** 印にする要素の種類 */
   function minimapKindOf(element: Element): MinimapKind {
-    if (element.matches(".diagram")) return "chg";
+    if (element.matches(".diagram, .html-diff-range")) return "chg";
     if (element.matches(".df-kv")) return isNewKey(element) ? "add" : "chg";
     return element.matches("del, .df-del") ? "del" : "add";
   }
@@ -95,6 +96,8 @@ namespace MindmapPreview {
       // 見えていない印と、Raw を出している図の枠（Raw の行を並べる）は飛ばす。Raw を畳んだ図は枠を印にする
       if (!isRendered(element)) continue;
       if (element.matches(".diagram") && [...element.querySelectorAll(".df-raw")].some(isRendered)) continue;
+      // 埋め込んだ HTML の範囲の差分は、中の Raw の行を拾わず、範囲の差分の高さに印を 1 つ置く
+      if (element.matches(".df-line") && element.closest(".html-diff-range") !== null) continue;
       const kind = minimapKindOf(element);
       const previous = found.at(-1);
       const follows = previous !== undefined && previous.frame === null && previous.last.nextElementSibling === element;
@@ -102,7 +105,7 @@ namespace MindmapPreview {
         // 消した塊のすぐ後ろの足した塊: 書き換えた箇所
         previous.kind = "chg";
         previous.last = element;
-      } else if (previous !== undefined && follows && previous.kind === kind) {
+      } else if (previous !== undefined && follows && previous.kind === kind && !element.matches(".html-diff-range")) {
         // 続く同じ種類の塊・行
         previous.last = element;
       } else {

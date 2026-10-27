@@ -1481,6 +1481,8 @@ var MindmapPreview;
             ],
         });
     }
+    /** エクスポートのメニューと画面の左右の端との間に空ける余白（px） */
+    const EXPORT_MENU_MARGIN_PX = 8;
     /** 資料のエクスポートの入口と、形式を選ぶメニュー。入口を押すとメニューを入口の下に右端を揃えて開き、「HTML でエクスポート」は mdmark を取って 1 枚の HTML を組み立てて保存させ、「Markdown でエクスポート」は警告の後に埋め込んだ HTML を除いた本文を保存させる。閉じたら入口へフォーカスを戻す */
     function docExportControl({ item, source, index }) {
         // 組み立てている間にメニューを閉じたとき、組み立て終えたファイルを保存させないための世代
@@ -1564,10 +1566,12 @@ var MindmapPreview;
                 return;
             setView({ next: "choose" });
             entry.setAttribute("aria-expanded", "true");
+            // 入口の右端にメニューの右端を揃え、左端が画面の左右の余白より外に出るときは余白まで寄せる
             const rect = entry.getBoundingClientRect();
+            const width = Math.min(parseFloat(getComputedStyle(menu).width), window.innerWidth - EXPORT_MENU_MARGIN_PX * 2);
             menu.style.top = `${rect.bottom + 4}px`;
-            menu.style.right = `${window.innerWidth - rect.right}px`;
-            menu.style.left = "auto";
+            menu.style.left = `${Math.min(Math.max(rect.right - width, EXPORT_MENU_MARGIN_PX), window.innerWidth - EXPORT_MENU_MARGIN_PX - width)}px`;
+            menu.style.right = "auto";
         });
         // 開いたら、最初の行にフォーカスを置く
         menu.addEventListener("toggle", (event) => {

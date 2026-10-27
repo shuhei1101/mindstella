@@ -31,9 +31,15 @@ namespace MindmapPreview {
   /** 原文の行の差分。足した行・消した行に印を付け、変わっていない長い並びは前後 3 行を残して件数の行にする */
   function rawDiff({ parts }: { parts: LinePart[] }): HTMLElement {
     const lines: HTMLElement[] = [];
-    // 1 つの並びずつ渡すため、消した行と足した行は対にならず、語の面は付かない
     const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
     parts.forEach((part, position) => {
+      // 消した並びのすぐ後の足した並びは、消した並びと対にして渡し、変わった語に面を付ける
+      if (part.kind === "added" && parts[position - 1]?.kind === "removed") return;
+      const next = parts[position + 1];
+      if (part.kind === "removed" && next?.kind === "added") {
+        lines.push(...rawDiffLines({ parts: [part, next], deadline }));
+        return;
+      }
       if (part.kind !== "same" || part.lines.length <= RAW_DIFF_CONTEXT * 2) {
         lines.push(...rawDiffLines({ parts: [part], deadline }));
         return;
@@ -307,7 +313,7 @@ namespace MindmapPreview {
     show(first);
     return h({
       tag: "div",
-      attrs: { class: "html-diff-c" },
+      attrs: { class: "html-diff-c html-diff-range" },
       children: [
         h({
           tag: "div",
