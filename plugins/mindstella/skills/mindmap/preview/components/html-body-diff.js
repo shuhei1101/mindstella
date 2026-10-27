@@ -128,11 +128,14 @@ var MindmapPreview;
         });
     }
     /** HTML の本文の差分。差分を計算しきれなかったときは null */
-    function htmlBodyDiff({ before, after, marked, beforeFormat = "html", layout = "inline", layoutSwitch = null }) {
+    function htmlBodyDiff({ before, after, marked, beforeFormat = "html", layout = "inline", layoutSwitch = null, initial = "rendered", beforeView = null, afterView = null, heading = null, }) {
         const parts = MindmapPreview.diffLineParts(before, after);
         if (parts === null)
             return null;
         const raw = rawDiff({ parts });
+        // 埋め込んだ HTML の範囲の差分: 変更前・変更後の描いた結果と原文の差分の 3 つを切り替える
+        if (beforeView !== null)
+            return rangeDiff({ raw, beforeView, afterView, marked, initial, heading });
         const side = layout === "side";
         // 選んだ時点の本文が Markdown で、インライン: 描いた結果の印と切り替えを出さず、原文の差分だけを出す
         if (beforeFormat === "md" && !side) {
@@ -186,7 +189,7 @@ var MindmapPreview;
             },
             children: [label],
         });
-        return MindmapPreview.h({
+        const container = MindmapPreview.h({
             tag: "div",
             attrs: { class: "html-diff-c" },
             children: [
@@ -196,9 +199,10 @@ var MindmapPreview;
                     children: [
                         // 並べ方の切り替えを、描いた結果と原文の差分の切り替えの前に別の組で置く
                         layoutSwitch,
+                        headingLabel({ heading }),
                         MindmapPreview.h({
                             tag: "div",
-                            attrs: { class: "segment", role: "group", "aria-label": "本文の差分の見せ方" },
+                            attrs: { class: "segment", role: "group", "aria-label": viewGroupName({ heading }) },
                             children: [toggle("描いた結果", false), toggle("原文の差分", true)],
                         }),
                         legendElement,
@@ -209,6 +213,77 @@ var MindmapPreview;
                 raw,
             ],
         });
+        // 「原文の差分」を選んだ状態で開く
+        if (initial === "raw")
+            container.querySelector(".segment button:last-child")?.click();
+        return container;
     }
     MindmapPreview.htmlBodyDiff = htmlBodyDiff;
+    /** 見せ方の切り替えの組の読み上げの名前 */
+    function viewGroupName({ heading }) {
+        return heading === null ? "本文の差分の見せ方" : `${heading}の差分の見せ方`;
+    }
+    /** 切り替えの組の前に出す名前（無ければ null） */
+    function headingLabel({ heading }) {
+        return heading === null ? null : MindmapPreview.h({ tag: "span", attrs: { class: "html-diff-heading" }, children: [heading] });
+    }
+    /** 埋め込んだ HTML の範囲の差分。「描いた結果（変更前）」「描いた結果（変更後）」「原文の差分」を切り替える。凡例は「描いた結果（変更後）」でだけ出す */
+    function rangeDiff({ raw, beforeView, afterView, marked, initial, heading, }) {
+        const views = [
+            { label: "描いた結果（変更前）", element: MindmapPreview.h({ tag: "div", attrs: { class: "html-marked" }, children: [beforeView] }), legended: false },
+            {
+                label: "描いた結果（変更後）",
+                element: MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "html-marked" },
+                    children: [afterView ?? MindmapPreview.htmlBodyFrame({ source: marked, selectable: false })],
+                }),
+                legended: true,
+            },
+            { label: "原文の差分", element: raw, legended: false },
+        ];
+        const legendElement = legend({ removedOnly: false });
+        // 開いた時点の見せ方（`raw` は原文の差分、`rendered` は変更後の描いた結果）
+        const first = initial === "raw" ? 2 : 1;
+        const show = (position) => {
+            views.forEach((view, at) => {
+                view.element.hidden = at !== position;
+            });
+            legendElement.hidden = !views[position].legended;
+        };
+        show(first);
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "html-diff-c" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "html-diff-bar" },
+                    children: [
+                        headingLabel({ heading }),
+                        MindmapPreview.h({
+                            tag: "div",
+                            attrs: { class: "segment", role: "group", "aria-label": viewGroupName({ heading }) },
+                            children: views.map((view, position) => MindmapPreview.h({
+                                tag: "button",
+                                attrs: {
+                                    type: "button",
+                                    "aria-pressed": String(position === first),
+                                    onclick: (event) => {
+                                        const pressed = event.currentTarget;
+                                        for (const button of pressed.parentElement?.children ?? [])
+                                            button.setAttribute("aria-pressed", String(button === pressed));
+                                        show(position);
+                                    },
+                                },
+                                children: [view.label],
+                            })),
+                        }),
+                        legendElement,
+                    ],
+                }),
+                ...views.map((view) => view.element),
+            ],
+        });
+    }
 })(MindmapPreview || (MindmapPreview = {}));

@@ -15,6 +15,14 @@ namespace MindmapPreview {
     layout?: BodyLayout;
     /** 並べ方の切り替え。「描いた結果」「原文の差分」の組の前に別の組として置く。無ければ置かない */
     layoutSwitch?: HTMLElement | null;
+    /** 開いた時点の見せ方。`raw` は「原文の差分」を選んだ状態で開く（埋め込んだ HTML の範囲の差分は `raw`） */
+    initial?: "rendered" | "raw";
+    /** 選んだ時点の本文を描いた結果。渡したときは見せ方を「描いた結果（変更前）」「描いた結果（変更後）」「原文の差分」の 3 つにし、凡例は「描いた結果（変更後）」でだけ出す */
+    beforeView?: HTMLElement | null;
+    /** 今の本文を描いた結果で、足した要素・変えた要素にマーカーを付けたもの。渡したときは「描いた結果（変更後）」で `marked` の代わりにこれを出す */
+    afterView?: HTMLElement | null;
+    /** 切り替えの組の前に出す名前（埋め込んだ HTML の範囲の差分は「埋め込んだ HTML」）。無ければ名前を出さない */
+    heading?: string | null;
   };
 
   /** 原文の差分で、同じ行がこの数を超えて続くときは前後だけを残して畳む（前後に残す行数） */
@@ -149,10 +157,23 @@ namespace MindmapPreview {
   }
 
   /** HTML の本文の差分。差分を計算しきれなかったときは null */
-  export function htmlBodyDiff({ before, after, marked, beforeFormat = "html", layout = "inline", layoutSwitch = null }: HtmlBodyDiffProps): HTMLElement | null {
+  export function htmlBodyDiff({
+    before,
+    after,
+    marked,
+    beforeFormat = "html",
+    layout = "inline",
+    layoutSwitch = null,
+    initial = "rendered",
+    beforeView = null,
+    afterView = null,
+    heading = null,
+  }: HtmlBodyDiffProps): HTMLElement | null {
     const parts = diffLineParts(before, after);
     if (parts === null) return null;
     const raw = rawDiff({ parts });
+    // 埋め込んだ HTML の範囲の差分: 変更前・変更後の描いた結果と原文の差分の 3 つを切り替える
+    if (beforeView !== null) return rangeDiff({ raw, beforeView, afterView, marked, initial, heading });
     const side = layout === "side";
     // 選んだ時点の本文が Markdown で、インライン: 描いた結果の印と切り替えを出さず、原文の差分だけを出す
     if (beforeFormat === "md" && !side) {
@@ -206,7 +227,7 @@ namespace MindmapPreview {
         },
         children: [label],
       });
-    return h({
+    const container = h({
       tag: "div",
       attrs: { class: "html-diff-c" },
       children: [
@@ -216,9 +237,10 @@ namespace MindmapPreview {
           children: [
             // 並べ方の切り替えを、描いた結果と原文の差分の切り替えの前に別の組で置く
             layoutSwitch,
+            headingLabel({ heading }),
             h({
               tag: "div",
-              attrs: { class: "segment", role: "group", "aria-label": "本文の差分の見せ方" },
+              attrs: { class: "segment", role: "group", "aria-label": viewGroupName({ heading }) },
               children: [toggle("描いた結果", false), toggle("原文の差分", true)],
             }),
             legendElement,
@@ -227,6 +249,94 @@ namespace MindmapPreview {
         rendered,
         rawSide,
         raw,
+      ],
+    });
+    // 「原文の差分」を選んだ状態で開く
+    if (initial === "raw") container.querySelector<HTMLElement>(".segment button:last-child")?.click();
+    return container;
+  }
+
+  /** 見せ方の切り替えの組の読み上げの名前 */
+  function viewGroupName({ heading }: { heading: string | null }): string {
+    return heading === null ? "本文の差分の見せ方" : `${heading}の差分の見せ方`;
+  }
+
+  /** 切り替えの組の前に出す名前（無ければ null） */
+  function headingLabel({ heading }: { heading: string | null }): HTMLElement | null {
+    return heading === null ? null : h({ tag: "span", attrs: { class: "html-diff-heading" }, children: [heading] });
+  }
+
+  /** 埋め込んだ HTML の範囲の差分。「描いた結果（変更前）」「描いた結果（変更後）」「原文の差分」を切り替える。凡例は「描いた結果（変更後）」でだけ出す */
+  function rangeDiff({
+    raw,
+    beforeView,
+    afterView,
+    marked,
+    initial,
+    heading,
+  }: {
+    raw: HTMLElement;
+    beforeView: HTMLElement;
+    afterView: HTMLElement | null;
+    marked: string;
+    initial: "rendered" | "raw";
+    heading: string | null;
+  }): HTMLElement {
+    const views = [
+      { label: "描いた結果（変更前）", element: h({ tag: "div", attrs: { class: "html-marked" }, children: [beforeView] }), legended: false },
+      {
+        label: "描いた結果（変更後）",
+        element: h({
+          tag: "div",
+          attrs: { class: "html-marked" },
+          children: [afterView ?? htmlBodyFrame({ source: marked, selectable: false })],
+        }),
+        legended: true,
+      },
+      { label: "原文の差分", element: raw, legended: false },
+    ];
+    const legendElement = legend({ removedOnly: false });
+    // 開いた時点の見せ方（`raw` は原文の差分、`rendered` は変更後の描いた結果）
+    const first = initial === "raw" ? 2 : 1;
+    const show = (position: number): void => {
+      views.forEach((view, at) => {
+        view.element.hidden = at !== position;
+      });
+      legendElement.hidden = !views[position]!.legended;
+    };
+    show(first);
+    return h({
+      tag: "div",
+      attrs: { class: "html-diff-c" },
+      children: [
+        h({
+          tag: "div",
+          attrs: { class: "html-diff-bar" },
+          children: [
+            headingLabel({ heading }),
+            h({
+              tag: "div",
+              attrs: { class: "segment", role: "group", "aria-label": viewGroupName({ heading }) },
+              children: views.map((view, position) =>
+                h({
+                  tag: "button",
+                  attrs: {
+                    type: "button",
+                    "aria-pressed": String(position === first),
+                    onclick: (event) => {
+                      const pressed = event.currentTarget as HTMLElement;
+                      for (const button of pressed.parentElement?.children ?? []) button.setAttribute("aria-pressed", String(button === pressed));
+                      show(position);
+                    },
+                  },
+                  children: [view.label],
+                }),
+              ),
+            }),
+            legendElement,
+          ],
+        }),
+        ...views.map((view) => view.element),
       ],
     });
   }

@@ -16,7 +16,7 @@ namespace MindmapPreview {
   /** 図の入れ物が原文を持つ属性の名前 */
   export const DIAGRAM_SOURCE_ATTR = "data-source";
 
-  /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能のオフ（`code` は既定のまま） */
+  /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ（`code`・`html`・`diagrams` は既定のまま） */
   export const MDMARK_FEATURES: Record<string, boolean> = {
     glossary: false,
     backlinks: false,
@@ -27,18 +27,23 @@ namespace MindmapPreview {
     table: false,
     toc: false,
     views: false,
+    syntax: false,
   };
 
-  /** 配る書き出しが mdmark の JavaScript を中身に持つ要素の id */
-  const MDMARK_EMBEDDED_ID = "mindmap-mdmark";
+  /** mdmark の操作できる部品の今の値をコピーするボタン（`.mdmark-param-copy`）に出す文言 */
+  export const MDMARK_PARAM_COPY_LABEL = "今の値をコピー";
 
-  /** 雛形の import map（`script[type="importmap"]`）の `integrity` のただ 1 つのキー（mdmark の JavaScript の URL）を返す。import map が無いか読めないか、キーが 1 つでないときは null */
-  function mdmarkUrlFromImportMap(): string | null {
+  /** 配る書き出しが mdmark の JavaScript を中身に持つ要素の id */
+  export const MDMARK_EMBEDDED_ID = "mindmap-mdmark";
+
+  /** 雛形の import map（`script[type="importmap"]`）の `integrity` のただ 1 つのキー（mdmark の JavaScript の URL）と、その `integrity` を返す。import map が無いか読めないか、キーが 1 つでないときは null */
+  export function mdmarkImportMapEntry(): { url: string; integrity: string } | null {
     const script = document.querySelector<HTMLScriptElement>('script[type="importmap"]');
     if (script === null) return null;
     try {
-      const keys = Object.keys((JSON.parse(script.textContent ?? "") as { integrity?: Record<string, string> }).integrity ?? {});
-      return keys.length === 1 ? (keys[0] ?? null) : null;
+      const entries = Object.entries((JSON.parse(script.textContent ?? "") as { integrity?: Record<string, string> }).integrity ?? {});
+      const [only] = entries;
+      return entries.length === 1 && only !== undefined ? { url: only[0], integrity: only[1] } : null;
     } catch {
       // JSON として読めない import map は、読めなかったものとして扱う
       return null;
@@ -58,10 +63,10 @@ namespace MindmapPreview {
           URL.revokeObjectURL(url);
         }
       } else {
-        const url = mdmarkUrlFromImportMap();
+        const entry = mdmarkImportMapEntry();
         // import map が無いか読めない
-        if (url === null) return;
-        loaded = (await import(url)) as typeof mdmark;
+        if (entry === null) return;
+        loaded = (await import(entry.url)) as typeof mdmark;
       }
       Reflect.set(window, LIBRARIES.mdmark, loaded);
     } catch {
@@ -109,6 +114,21 @@ namespace MindmapPreview {
   /** mdmark が描いたブロックが持つ、元の Markdown のブロックの開始の行（0 始まり）の属性 */
   const SOURCE_LINE_ATTR = "data-source-line";
 
+  /** mdmark が描いた、埋め込んだ HTML の範囲の要素の class */
+  export const EMBEDDED_HTML_CLASS = "mdmark-html";
+
+  /** 埋め込んだ HTML の範囲の要素が持つ、範囲の始まりの印 `<!-- html -->` の行（1 始まり）の属性 */
+  export const HTML_OPEN_ATTR = "data-html-open";
+
+  /** 埋め込んだ HTML の範囲の要素が持つ、範囲の終わりの印 `<!-- /html -->` の行（1 始まり）の属性 */
+  export const HTML_CLOSE_ATTR = "data-html-close";
+
+  /** 行全体が `<!-- html -->` の範囲の始まりの印（間の空白を許す） */
+  const EMBEDDED_HTML_OPEN_LINE = /^\s*<!--\s*html\s*-->\s*$/;
+
+  /** 行全体が `<!-- /html -->` の範囲の終わりの印（間の空白を許す） */
+  const EMBEDDED_HTML_CLOSE_LINE = /^\s*<!--\s*\/html\s*-->\s*$/;
+
   /** 元の行の印（`data-line-start`）を付けるブロックの要素 */
   const LINE_MARK_TAGS: ReadonlySet<string> = new Set(["H1", "H2", "H3", "H4", "H5", "H6", "P", "LI", "TR", "PRE"]);
 
@@ -137,6 +157,7 @@ namespace MindmapPreview {
   function mountMarkdown({ root, markdown }: { root: HTMLElement; markdown: string }): void {
     mdmark.mount(root, { markdown, config: { features: MDMARK_FEATURES } });
     trimBreakNewlines(root);
+    relabelParamCopy(root);
   }
 
   /** 引用の `>` を除いた先が `[!{英字}]` だけの Alert の種類の行（後ろに `-` を許す）。mdmark はこの行の後ろが強制改行だと Alert にしない */
@@ -185,6 +206,61 @@ namespace MindmapPreview {
       .join("\n");
   }
 
+  /** Markdown の本文の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲を、本文の中の並びの順に印の行（1 始まり）で返す。フェンスの中の印は範囲にせず、閉じていない始まりは範囲にしない */
+  export function embeddedHtmlRanges(source: string): { open: number; close: number }[] {
+    const ranges: { open: number; close: number }[] = [];
+    // 開いているフェンスの記号と、閉じるのに要る数
+    let fence: { symbol: string; count: number } | null = null;
+    // 開いている範囲の始まりの行
+    let open: number | null = null;
+    source.split("\n").forEach((line, index) => {
+      const stripped = line.replace(/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*/, "");
+      // フェンスの中は印を探さない。閉じる行でフェンスを終える
+      if (fence !== null) {
+        if (new RegExp(`^${fence.symbol}{${fence.count},}[ \\t]*$`).test(stripped)) fence = null;
+        return;
+      }
+      const opened = /^(`{3,}|~{3,})/.exec(stripped);
+      if (opened !== null) {
+        fence = { symbol: opened[1]![0]!, count: opened[1]!.length };
+        return;
+      }
+      if (open === null && EMBEDDED_HTML_OPEN_LINE.test(line)) open = index + 1;
+      else if (open !== null && EMBEDDED_HTML_CLOSE_LINE.test(line)) {
+        ranges.push({ open, close: index + 1 });
+        open = null;
+      }
+    });
+    return ranges;
+  }
+
+  /** 見張りを付け済みの本文（同じ本文に 2 回当てても見張りを重ねない） */
+  const relabeledRoots = new WeakSet<HTMLElement>();
+
+  /** 今の値をコピーするボタンの文言を `MDMARK_PARAM_COPY_LABEL` に替える。アイコンの要素は残し、文字のノードだけを置き換える（文言が同じボタンは触らない） */
+  function relabelButton(button: Element): void {
+    const texts = [...button.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
+    if (texts.length === 1 && texts[0]!.textContent === MDMARK_PARAM_COPY_LABEL) return;
+    for (const text of texts) text.remove();
+    button.append(document.createTextNode(MDMARK_PARAM_COPY_LABEL));
+  }
+
+  /** mdmark が描いた部品の今の値をコピーするボタンの文言を替える。部品が描き直したボタンにも当てるため、本文の子孫の追加を見張る */
+  export function relabelParamCopy(root: HTMLElement): void {
+    for (const button of root.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
+    if (relabeledRoots.has(root)) return;
+    relabeledRoots.add(root);
+    new MutationObserver((records) => {
+      for (const record of records) {
+        for (const added of record.addedNodes) {
+          if (!(added instanceof Element)) continue;
+          if (added.matches(".mdmark-param-copy")) relabelButton(added);
+          for (const button of added.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
+        }
+      }
+    }).observe(root, { childList: true, subtree: true });
+  }
+
   /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */
   function linesBefore({ block, node, offset }: { block: Element; node: Node; offset: number }): number {
     // 表の行は 1 行で、セルの間の空白の改行は数えない
@@ -203,6 +279,13 @@ namespace MindmapPreview {
     return block?.closest(".md") ? block : null;
   }
 
+  /** 選択の端から、本文の中で行の印（`data-html-open`）を持つ埋め込んだ HTML の範囲の要素を返す（範囲の中でなければ null） */
+  function embeddedHtmlElement(node: Node): Element | null {
+    const element = node instanceof Element ? node : node.parentElement;
+    const range = element?.closest(`.${EMBEDDED_HTML_CLASS}[${HTML_OPEN_ATTR}]`) ?? null;
+    return range?.closest(".md") ? range : null;
+  }
+
   /** 選んだ範囲を、本文なら元の Markdown の行の範囲、値ならキーのパスの箇所にする。本文と値の外・空の選択は null */
   export function selectionLocation(range: Range): Location | null {
     if (range.collapsed) return null;
@@ -214,18 +297,22 @@ namespace MindmapPreview {
     if (startKey !== null && startKey === keyElement(range.endContainer)) {
       return { kind: "value", key: startKey.getAttribute(VALUE_KEY_ATTR) ?? "", text };
     }
-    const startBlock = lineBlock(range.startContainer);
-    const endBlock = lineBlock(range.endContainer);
-    // 本文の外
-    if (!startBlock || !endBlock) return null;
-    const first = Number(startBlock.getAttribute(LINE_ATTR));
-    const last = Number(endBlock.getAttribute(LINE_ATTR));
-    return {
-      kind: "body",
-      start: first + linesBefore({ block: startBlock, node: range.startContainer, offset: range.startOffset }),
-      end: last + linesBefore({ block: endBlock, node: range.endContainer, offset: range.endOffset }),
-      text,
-    };
+    const startRange = embeddedHtmlElement(range.startContainer);
+    const endRange = embeddedHtmlElement(range.endContainer);
+    const startBlock = startRange === null ? lineBlock(range.startContainer) : null;
+    const endBlock = endRange === null ? lineBlock(range.endContainer) : null;
+    // 本文の外（端が埋め込んだ HTML の範囲の中なら、範囲の印の行がある）
+    if ((startRange === null && !startBlock) || (endRange === null && !endBlock)) return null;
+    // 範囲の中の始点は範囲の始まりの印の行、終点は終わりの印の行にする。それ以外は、印を持つブロックの行に端までの改行の数を足す
+    const start =
+      startRange !== null
+        ? Number(startRange.getAttribute(HTML_OPEN_ATTR))
+        : Number(startBlock!.getAttribute(LINE_ATTR)) + linesBefore({ block: startBlock!, node: range.startContainer, offset: range.startOffset });
+    const end =
+      endRange !== null
+        ? Number(endRange.getAttribute(HTML_CLOSE_ATTR))
+        : Number(endBlock!.getAttribute(LINE_ATTR)) + linesBefore({ block: endBlock!, node: range.endContainer, offset: range.endOffset });
+    return { kind: "body", start, end, text };
   }
 
   /** 文書の順で端より前にある、行の印（`data-line`）を持つ要素のうち最も後のものを返す（無ければ null） */
@@ -349,8 +436,17 @@ namespace MindmapPreview {
     // mdmark は描くときに無害化する（記録は利用者のもの）
     mountMarkdown({ root, markdown: source });
     convertSourceLines({ root, source });
-    // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える
+    // 埋め込んだ HTML の範囲は `data-source-line` を持たないので、本文の中の n 番目の範囲に、n 番目の範囲の印の行を持たせる（範囲の中の要素には行の印を付けない）
+    const ranges = embeddedHtmlRanges(source);
+    root.querySelectorAll(`.${EMBEDDED_HTML_CLASS}`).forEach((element, order) => {
+      const range = ranges[order];
+      if (range === undefined) return;
+      element.setAttribute(HTML_OPEN_ATTR, String(range.open));
+      element.setAttribute(HTML_CLOSE_ATTR, String(range.close));
+    });
+    // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える（埋め込んだ HTML の範囲の外だけ）
     for (const code of root.querySelectorAll("code.language-mermaid")) {
+      if (code.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
       const original = code.textContent ?? "";
       const figure = h({
         tag: "figure",
@@ -383,8 +479,9 @@ namespace MindmapPreview {
       });
       (code.closest("pre") ?? code).replaceWith(figure);
     }
-    // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面）
+    // html のコードブロックを、原文と元の行の印を持つ HTML の本文の枠の入れ物に置き換える（枠を描くのは詳細の画面。埋め込んだ HTML の範囲の外だけ）
     for (const code of root.querySelectorAll("code.language-html")) {
+      if (code.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
       const pre = code.closest("pre") ?? code;
       const block = h({
         tag: "div",
@@ -478,23 +575,48 @@ namespace MindmapPreview {
     }
   }
 
-  /** 英数字と記号だけの用語か（ファイル名・識別子の一部に当てないよう、語の切れ目でだけ当てる） */
-  const ASCII_TERM = /^[!-~ ]+$/;
+  /** 英数字だけの語か（前後が英数字のときと、後ろが `-` と数字のとき（`API-2` の `API`）は印にしない） */
+  const ALPHANUMERIC_WORD = /^[A-Za-z0-9]+$/;
 
   /** 本文の印に当てる項目の種類（一致した項目とツールチップの並びもこの順） */
   export const MARK_KINDS = ["terms", "docs", "research"] as const;
 
-  /** 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
+  /** 印を当てない祖先（`pre`・図・リンク・ボタン・見出しの中） */
+  const UNMARKED_ANCESTORS = "pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6";
+
+  /** 項目の ID（英大文字 - 数字。前後が英数字のものは当てない） */
+  const ITEM_ID_PATTERN = /(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])/g;
+
+  /** 本文の中の、用語の印に当てられる文字のノード（祖先が `UNMARKED_ANCESTORS` でなく、本文のブロック `block` 自身の行を持つもの）を文書の順に返す */
+  function markableTextNodes(block: Element): Text[] {
+    const own = block.classList.contains(EMBEDDED_HTML_CLASS);
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        if (parent === null || parent.closest(UNMARKED_ANCESTORS) !== null) return NodeFilter.FILTER_REJECT;
+        // 入れ子のブロック（リストの項目の中のリストの項目など）の文字は、そのブロックの行に任せる
+        if (!own && parent.closest(`[${LINE_ATTR}]`) !== block) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const nodes: Text[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
+    return nodes;
+  }
+
+  /** 描いた本文の文中（埋め込んだ HTML の範囲の中を含む）の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。語の一致と一致の前の正規化は mdmark の `collectMatches` に任せる。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
   export function linkBody({
     root,
     index,
     selfId,
     onOpen,
+    source,
   }: {
     root: HTMLElement;
     index: RecordIndex;
     selfId: string;
     onOpen: (id: string) => void;
+    source: string;
   }): void {
     // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
     const byWord = new Map<string, string[]>();
@@ -508,13 +630,138 @@ namespace MindmapPreview {
         }
       }
     }
-    // 長い語から順に当てる
-    const words = [...byWord.keys()].sort((a, b) => b.length - a.length);
-    const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const termPattern = (title: string): string =>
-      ASCII_TERM.test(title) ? `(?<![A-Za-z0-9_.-])${escape(title)}(?![A-Za-z0-9_-])` : escape(title);
-    // 項目の ID（英大文字 - 数字。前後が英数字のものは当てない）と、長い語の順
-    const pattern = new RegExp(["(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])", ...words.map((word) => termPattern(word))].join("|"), "g");
+    // 項目の印と、押したときの動き。用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
+    const termMark = ({ text, ids }: { text: string; ids: string[] }): HTMLElement => {
+      const multi = ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms");
+      return h({
+        tag: "a",
+        attrs: {
+          class: "term",
+          href: hashWith({ id: ids[0]!, heading: null }),
+          "data-id": ids[0]!,
+          "data-ids": ids.join(" "),
+          "aria-describedby": multi ? null : TERM_TIP_ID,
+          "aria-details": multi ? TERM_TIP_ID : null,
+          onclick: (event: Event) => {
+            event.preventDefault();
+            if (!multi) onOpen(ids[0]!);
+          },
+        },
+        children: [text],
+      });
+    };
+    const idMark = (id: string): HTMLElement =>
+      h({
+        tag: "a",
+        attrs: {
+          class: "idref",
+          href: hashWith({ id, heading: null }),
+          "data-id": id,
+          onclick: (event: Event) => {
+            event.preventDefault();
+            onOpen(id);
+          },
+        },
+        children: [id],
+      });
+    // 文字のノードの中の [開始, 終了) を、印に置き換える
+    const replaceRanges = ({ node, ranges }: { node: Text; ranges: { start: number; end: number; mark: HTMLElement }[] }): void => {
+      const text = node.data;
+      const parts: (Node | string)[] = [];
+      let last = 0;
+      for (const range of ranges) {
+        parts.push(text.slice(last, range.start), range.mark);
+        last = range.end;
+      }
+      parts.push(text.slice(last));
+      node.replaceWith(...parts.filter((part) => part !== ""));
+    };
+
+    // 本文の語の位置を mdmark に求める。語ごとの用語（`meaning` が空だと照合しない）と、本文と語そのものの文書を渡す
+    const words = [...byWord.keys()];
+    if (words.length > 0) {
+      const documents: Record<string, string> = { "self.md": source };
+      const docs = [{ id: "self", path: "self.md", title: "self" }];
+      words.forEach((word, order) => {
+        documents[`w${order}.md`] = word;
+        docs.push({ id: `w${order}`, path: `w${order}.md`, title: `w${order}` });
+      });
+      const terms = words.map((word, order) => ({ id: `W-${order}`, term: word, meaning: word }));
+      const { byDocument } = mdmark.collectMatches({ index: { docs, terms }, documents });
+      // 正規化の後に同じになる語は、まとまる先の用語に項目の ID を寄せる（用語 → 資料 → 調査の順）
+      const merged = new Map<string, string[]>();
+      words.forEach((word, order) => {
+        const hit = byDocument[`w${order}`]?.find((match) => match.line === 1 && match.start === 0 && match.end === word.length);
+        if (hit === undefined) return;
+        merged.set(hit.id, [...(merged.get(hit.id) ?? []), ...(byWord.get(word) ?? [])]);
+      });
+      for (const [id, ids] of merged) {
+        const unique = [...new Set(ids)];
+        const rank = (itemId: string): number => MARK_KINDS.indexOf((index.byId.get(itemId)?.kind ?? "terms") as (typeof MARK_KINDS)[number]);
+        merged.set(id, unique.sort((a, b) => rank(a) - rank(b)));
+      }
+      // 一致が属するブロック（埋め込んだ HTML の範囲の中の行は範囲、それ以外は行を含む最も後の `data-line-start` の要素）
+      const lines = source.split("\n");
+      const lineBlocks = [...root.querySelectorAll(`[${LINE_ATTR}]`)];
+      const rangeBlocks = [...root.querySelectorAll(`.${EMBEDDED_HTML_CLASS}[${HTML_OPEN_ATTR}]`)];
+      const blockOfLine = (line: number): Element | null => {
+        const range = rangeBlocks.find((element) => Number(element.getAttribute(HTML_OPEN_ATTR)) <= line && line <= Number(element.getAttribute(HTML_CLOSE_ATTR)));
+        if (range !== undefined) return range;
+        let found: Element | null = null;
+        let foundLine = 0;
+        for (const element of lineBlocks) {
+          const start = Number(element.getAttribute(LINE_ATTR));
+          if (start <= line && start >= foundLine) {
+            found = element;
+            foundLine = start;
+          }
+        }
+        return found;
+      };
+      // ブロックごとの、印に当てられる文字のノードと、前の一致の後ろの位置
+      const cursors = new Map<Element, { nodes: Text[]; at: number; offset: number }>();
+      const planned = new Map<Text, { start: number; end: number; mark: HTMLElement }[]>();
+      const matches = [...(byDocument["self"] ?? [])].sort((a, b) => a.line - b.line || a.start - b.start);
+      for (const match of matches) {
+        const ids = merged.get(match.id);
+        const block = blockOfLine(match.line);
+        if (ids === undefined || block === null) continue;
+        const original = (lines[match.line - 1] ?? "").slice(match.start, match.end);
+        let cursor = cursors.get(block);
+        if (cursor === undefined) {
+          cursor = { nodes: markableTextNodes(block), at: 0, offset: 0 };
+          cursors.set(block, cursor);
+        }
+        // 前の一致の後ろから、元の語を探す。英数字だけの語は、前後が英数字のときと、後ろが `-` と数字のときは印にせず、次の出現を探す
+        const alphanumeric = ALPHANUMERIC_WORD.test(original);
+        search: for (let at = cursor.at; at < cursor.nodes.length; at += 1) {
+          const node = cursor.nodes[at]!;
+          for (let found = node.data.indexOf(original, at === cursor.at ? cursor.offset : 0); found !== -1; found = node.data.indexOf(original, found + 1)) {
+            const before = node.data[found - 1] ?? "";
+            const after = node.data.slice(found + original.length, found + original.length + 2);
+            if (alphanumeric && (/[A-Za-z0-9]/.test(before) || /^[A-Za-z0-9]/.test(after) || /^-[0-9]/.test(after))) continue;
+            cursor.at = at;
+            cursor.offset = found + original.length;
+            const ranges = planned.get(node) ?? [];
+            ranges.push({ start: found, end: found + original.length, mark: termMark({ text: original, ids }) });
+            planned.set(node, ranges);
+            break search;
+          }
+        }
+      }
+      for (const [node, ranges] of planned) replaceRanges({ node, ranges });
+    }
+
+    // インラインコードは、中身が前後の空白を除いてちょうど語のときだけ当てる（パスや識別子の一部には付けない）
+    for (const code of root.querySelectorAll("code")) {
+      if (code.closest("pre, figure, a, button, h1, h2, h3, h4, h5, h6") !== null) continue;
+      const only = code.childNodes.length === 1 && code.firstChild?.nodeType === Node.TEXT_NODE ? (code.firstChild as Text) : null;
+      const ids = only === null ? undefined : byWord.get(only.data.trim());
+      if (only === null || ids === undefined) continue;
+      only.replaceWith(termMark({ text: only.data.trim(), ids }));
+    }
+
+    // 項目の ID は、記録にあるものだけをリンクにする（コードの中は、中身がちょうど ID のときだけ）
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) =>
         node.parentElement?.closest("pre, figure, a, button, svg, .mermaid, h1, h2, h3, h4, h5, h6") !== null
@@ -524,44 +771,16 @@ namespace MindmapPreview {
     const nodes: Text[] = [];
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
     for (const node of nodes) {
-      const text = node.textContent ?? "";
-      // インラインコードは、中身がちょうど語か ID のときだけ（パスや識別子の一部には付けない）
+      const text = node.data;
       const inCode = node.parentElement?.closest("code") !== null;
-      const parts: (Node | string)[] = [];
-      let last = 0;
-      for (const match of text.matchAll(pattern)) {
-        const word = match[0];
-        const ids = byWord.get(word);
-        const isId = ids === undefined;
+      const ranges: { start: number; end: number; mark: HTMLElement }[] = [];
+      for (const match of text.matchAll(ITEM_ID_PATTERN)) {
+        const id = match[0];
         // 記録に無い ID・項目自身の ID・コードの一部は、そのままにする
-        if ((isId && (!index.byId.has(word) || word === selfId)) || (inCode && text.trim() !== word)) continue;
-        const target = isId ? word : ids[0]!;
-        // 用語 2 件以上か、資料・調査にも一致した印は、ツールチップの中のリンクで移る先を選ぶ
-        const multi = !isId && (ids.length > 1 || ids.some((id) => index.byId.get(id)?.kind !== "terms"));
-        parts.push(
-          text.slice(last, match.index),
-          h({
-            tag: "a",
-            attrs: {
-              class: isId ? "idref" : "term",
-              href: hashWith({ id: target, heading: null }),
-              "data-id": target,
-              "data-ids": isId ? null : ids.join(" "),
-              "aria-describedby": isId || multi ? null : TERM_TIP_ID,
-              "aria-details": multi ? TERM_TIP_ID : null,
-              onclick: (event: Event) => {
-                event.preventDefault();
-                if (isId || !multi) onOpen(target);
-              },
-            },
-            children: [word],
-          }),
-        );
-        last = (match.index ?? 0) + word.length;
+        if (!index.byId.has(id) || id === selfId || (inCode && text.trim() !== id)) continue;
+        ranges.push({ start: match.index ?? 0, end: (match.index ?? 0) + id.length, mark: idMark(id) });
       }
-      if (parts.length === 0) continue;
-      parts.push(text.slice(last));
-      node.replaceWith(...parts.filter((part) => part !== ""));
+      if (ranges.length > 0) replaceRanges({ node, ranges });
     }
   }
 

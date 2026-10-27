@@ -41,6 +41,7 @@ SCRIPT_FILES = (
     "core/dom.js",
     "core/records.js",
     "core/libs.js",
+    "core/doc-export.js",
     "core/diff.js",
     "core/router.js",
     "core/api.js",
@@ -68,6 +69,7 @@ SCRIPT_FILES = (
     "components/html-body-frame.js",
     "components/html-body-diff.js",
     "components/markdown-body.js",
+    "components/doc-export-menu.js",
     "components/body-diff-layout-switch.js",
     "components/side-by-side-body-diff.js",
     "components/diff-minimap.js",
@@ -118,6 +120,9 @@ LICENSES_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 
 # 配る書き出しに置く、mdmark の JavaScript を中身に持つ要素の開きタグ（閉じタグは `</script>`）。画面の JavaScript が中身から Blob の URL を作って `import()` する
 MDMARK_OPEN = '<script type="text/plain" id="mindmap-mdmark">'
+
+# 配る書き出しに置く、mdmark の CSS を中身に持つ要素の開きタグ（閉じタグは `</style>`）。画面の JavaScript が資料の HTML のエクスポートでこの中身を使う
+MDMARK_CSS_OPEN = '<style id="mindmap-mdmark-css">'
 
 # 雛形の外の読み込みの `src`（jsDelivr の版を固定した URL）を、パッケージ名・版・ファイルに分ける
 _EXTERNAL_SRC = re.compile(
@@ -686,7 +691,7 @@ def assemble_standalone_template(
     licenses = f"{LICENSES_OPEN}{format_licenses(blocks)}{CLOSE_TAG}"
     return (
         template[:start]
-        + f"<style>{module_css}{STYLE_CLOSE_TAG}"
+        + f"{MDMARK_CSS_OPEN}{module_css}{STYLE_CLOSE_TAG}"
         + mdmark_element
         + "".join(script_elements)
         + licenses
