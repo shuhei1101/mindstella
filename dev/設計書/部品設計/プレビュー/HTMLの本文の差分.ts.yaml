@@ -40,7 +40,7 @@ states:
       - name: beforeView
         value: 変える前の範囲（段落 1 つとスライダー）を Markdown の本文で描いたもの
       - name: afterView
-        value: 段落を 1 つ追加した範囲を Markdown の本文で描き、追加した段落に変わったマーカーを付けたもの
+        value: 段落を 1 つ追加した範囲を Markdown の本文で描き、追加した段落に足したマーカーを付けたもの
       - name: heading
         value: 埋め込んだ HTML
   - name: RangeBefore
@@ -51,20 +51,20 @@ states:
       - name: beforeView
         value: 変える前の範囲（段落 1 つとスライダー）を Markdown の本文で描いたもの
       - name: afterView
-        value: 段落を 1 つ追加した範囲を Markdown の本文で描き、追加した段落に変わったマーカーを付けたもの
+        value: 段落を 1 つ追加した範囲を Markdown の本文で描き、追加した段落に足したマーカーを付けたもの
       - name: heading
         value: 埋め込んだ HTML
     notes:
       見せ方: ストーリーは RangeRaw と同じ引数で開き、「描いた結果（変更前）」を押した状態にする
   - name: RangeAfter
-    description: 範囲の差分で「描いた結果（変更後）」に切り替えた。今の範囲を描いた結果で、追加した段落に「変わった」のマーカーと、「足した」「変わった」の凡例
+    description: 範囲の差分で「描いた結果（変更後）」に切り替えた。今の範囲を描いた結果で、追加した段落に「足した」のマーカーと、「足した」「変わった」の凡例
     args:
       - name: initial
         value: raw
       - name: beforeView
         value: 変える前の範囲（段落 1 つとスライダー）を Markdown の本文で描いたもの
       - name: afterView
-        value: 段落を 1 つ追加した範囲を Markdown の本文で描き、追加した段落に変わったマーカーを付けたもの
+        value: 段落を 1 つ追加した範囲を Markdown の本文で描き、追加した段落に足したマーカーを付けたもの
       - name: heading
         value: 埋め込んだ HTML
     notes:
@@ -120,7 +120,7 @@ args:
     required: false
     default: なし（`marked` を HTML の本文の枠で描く）
     component: dev/設計書/部品設計/プレビュー/Markdownの本文.ts#
-    description: 今の本文を描いた結果で、選んだ時点に無かった要素に変わったマーカーを付けたもの。渡したときは、「描いた結果（変更後）」で `marked` の代わりにこれを出す
+    description: 今の本文を描いた結果で、`marked` と同じく、足した行だけでできた要素に足したマーカー、変えた行を含む要素に変わったマーカーを付けたもの。渡したときは、「描いた結果（変更後）」で `marked` の代わりにこれを出す
     status: planned
   - name: heading
     type: 文字列

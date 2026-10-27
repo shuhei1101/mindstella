@@ -577,7 +577,7 @@ elements:
   - name: エクスポート
     kind: button
     position: 見出し > 編集するの右・前後の移動の左
-    description: 下向きの矢印と線のアイコンだけの枚の無いボタン。押すと要素「エクスポートのメニュー」を開き、開いているときに押すと閉じる。開閉を `aria-expanded` で示し、開いている間は押した面にする。読み上げの名前と `title` は「エクスポート」。履歴に積まない
+    description: 下向きの矢印と線のアイコンだけの枠の無いボタン。押すと要素「エクスポートのメニュー」を開き、開いているときに押すと閉じる。開閉を `aria-expanded` で示し、開いている間は押した面にする。読み上げの名前と `title` は「エクスポート」。履歴に積まない
     label: エクスポート
     visible_when: 資料で、本文が Markdown（`body` が `.md` で終わる）のとき。本文が HTML の資料と資料以外の種類、編集の表示の間は置かない
     status: planned
@@ -602,7 +602,7 @@ elements:
   - name: 埋め込んだ HTML
     kind: section
     position: 本文 > `<!-- html -->` の範囲の場所
-    description: Markdown の本文の `<!-- html -->` 〜 `<!-- /html -->` の範囲を、枚に入れず mdmark の HTML の埋め込みの機能で本文の要素として描く（`.mdmark-html`）。範囲に書いたスクリプトとイベントの属性は動かさない。範囲の中の文にも本文の印とそのツールチップ、項目の ID のリンクを付ける。範囲は行の印を持たないため、選んだ箇所の対応づけでは、本文の中で n 番目の範囲の中にある選択の端を、元の Markdown の n 番目の範囲の `<!-- html -->` の行（始まりの端）か `<!-- /html -->` の行（終わりの端）に読み替える。範囲の外の端は今までどおり求める
+    description: Markdown の本文の `<!-- html -->` 〜 `<!-- /html -->` の範囲を、枠に入れず mdmark の HTML の埋め込みの機能で本文の要素として描く（`.mdmark-html`）。範囲に書いたスクリプトとイベントの属性は動かさない。範囲の中の文にも本文の印とそのツールチップ、項目の ID のリンクを付ける。範囲は行の印を持たないため、選んだ箇所の対応づけでは、本文の中で n 番目の範囲の中にある選択の端を、元の Markdown の n 番目の範囲の `<!-- html -->` の行（始まりの端）か `<!-- /html -->` の行（終わりの端）に読み替える。範囲の外の端は今までどおり求める
     io: 表示
     source: 記録の取得.bodies[{項目の body}]
     status: planned
@@ -648,7 +648,7 @@ elements:
       - name: beforeView
         value: before を範囲として mdmark で描いたもの
       - name: afterView
-        value: after を範囲として mdmark で描き、before に無かった範囲の直下の要素に変わったマーカーを付けたもの
+        value: after を範囲として mdmark で描き、HTML の本文の差分と同じく、足した行だけでできた範囲の直下の要素に足したマーカー、変えた行を含む要素に変わったマーカーを付けたもの
       - name: heading
         value: 埋め込んだ HTML
     position: 本文の差分 > 変わった範囲の場所
