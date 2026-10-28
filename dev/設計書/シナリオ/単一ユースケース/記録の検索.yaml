@@ -117,6 +117,7 @@ scenarios:
         description: 同じタグを全角の小文字で持つ検討事項
         notes: タグ `ａｐｉ`
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
@@ -130,9 +131,10 @@ scenarios:
         SV-->>CC: 使われているタグと件数
         CC->>SV: タグ「データー」を持つ項目を探す
         SV-->>CC: 空のページと、近い使われているタグの案内
+      ```
     expected:
       - タグ「Api」で探した結果がエラーにならず、D-2・D-3 である
-      - タグの一覧が、`API` と `ａｐｉ` を 1 つのタグ（2 件）にまとめて返し、`データ`（1 件）を返す
+      - タグの一覧が、`API` と `ａｐｉ` を正規化した表記 `api` の 1 つのタグ（2 件）にまとめて返し、`データ`（1 件）を返す
       - タグ「データー」で探した結果がエラーにならず、空の一覧・全体の件数 0 で、案内の文に近い使われているタグ `データ` がある
       - D-2・D-3 のタグが、書いたときの表記（`API`・`ａｐｉ`）のままである
     test: test_normal_when_tag_normalized

@@ -460,6 +460,7 @@ scenarios:
         description: 既に使われているタグと、まだどの項目も持たないタグを持つ検討事項
         notes: タグ `通知`・`通知機能`
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
@@ -468,6 +469,7 @@ scenarios:
         CC->>SV: まだどの項目も持たないタグを持つ検討事項を足す
         SV->>WS: タグをそのまま検討事項に書く
         SV-->>CC: 足した検討事項の ID
+      ```
     expected:
       - 追加のツールがエラーにせず、足した検討事項の ID を返す
       - '`.mindstella/decisions.yaml` の足した検討事項が、タグ `通知`・`通知機能` を持つ'

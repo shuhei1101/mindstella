@@ -320,6 +320,7 @@ scenarios:
         description: 版のファイルが v0.10.0 で、`config.yaml` がタグの語彙（`保存`・`通知`・`起票`。`保存` は説明を持つ）を持ち、検討事項 D-1（タグ `保存`・`通知`）と、タグ `起票` を持つスレッド TH-1 を持つワークスペース
         notes: YAML を直接書いて作る
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（upgrade）
@@ -335,6 +336,7 @@ scenarios:
         SV-->>CC: 問題が無い
         CC->>SV: 版を書き換える
         SV->>WS: .mindstella/mindstella-version.ini を書く
+      ```
     expected:
       - '`config.yaml` がタグのキー（`tags`）を持たず、ほかのキーは移し替える前と同じである'
       - D-1・TH-1 のタグが、移し替える前と同じである
