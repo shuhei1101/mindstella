@@ -30,7 +30,7 @@ def test_normal_when_clean(
     result = call_tool("check", workspace=str(root))
     # 検証
     assert result.is_error is False
-    assert result.data == {"ok": True, "problems": []}
+    assert result.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_problems_found(
@@ -171,7 +171,7 @@ def test_normal_when_removed_item_in_change_set(
     # 検証
     # 点検のツールが成功を返し、問題が無い旨がある
     assert result.is_error is False
-    assert result.data == {"ok": True, "problems": []}
+    assert result.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_html_body_problems_found(
@@ -278,29 +278,33 @@ def test_normal_when_unknown_tag(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """項目とスレッドのタグが語彙に無ければ、ツールのエラーにせず、無いタグを返す（正常系）。"""
+    """項目とスレッドのタグが語彙に無ければ、問題にせず、未登録の候補の警告と採否の手段の案内を返す（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", tags=["通知"]),
         settings={**valid_settings, "tags": [{"name": "保存"}]},
     )
-    write_threads(root, make_thread("TH-1", tags=["起票"]))
+    write_threads(root, make_thread("TH-1", tags=["保存の確認"]))
     before = snapshot_tree(root)
     # 実行
     result = call_tool("check", workspace=str(root))
     # 検証
-    # 点検のツールがツールのエラーにせず、ok が偽の結果を返す
+    # 点検のツールがツールのエラーにせず、問題が無いので ok が真の結果を返す
     assert result.is_error is False
-    assert result.data["ok"] is False
-    # D-1 のタグ 通知、TH-1 のタグ 起票 が語彙に無い旨がある
-    unknown = {
-        (row["file"], row["id"], row["detail"])
-        for row in result.data["problems"]
-        if row["kind"] == "unknown_tag"
+    assert result.data["ok"] is True
+    assert result.data["problems"] == []
+    # D-1 のタグ 通知、TH-1 のタグ 保存の確認 と近い語彙のタグ 保存 が、未登録の候補の警告としてある
+    warnings = {
+        (row["file"], row["id"], row["detail"], tuple(row["similar"]))
+        for row in result.data["warnings"]
+        if row["kind"] == "candidate_tag"
     }
-    assert unknown == {
-        (f"{RECORD_DIR}/decisions.yaml", "D-1", "通知"),
-        (f"{RECORD_DIR}/threads.yaml", "TH-1", "起票"),
+    assert warnings == {
+        (f"{RECORD_DIR}/decisions.yaml", "D-1", "通知", ()),
+        (f"{RECORD_DIR}/threads.yaml", "TH-1", "保存の確認", ("保存",)),
     }
+    # 案内が、語彙へ登録する手段と、既存のタグへ付け替える手段を示す
+    assert "settings.tags" in result.data["hint"]
+    assert "tag_map" in result.data["hint"]
     # ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     assert snapshot_tree(root) == before

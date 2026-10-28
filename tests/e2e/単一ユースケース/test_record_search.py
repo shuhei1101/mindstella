@@ -12,9 +12,15 @@ from workspace_fixtures import CallTool, MakeItem, MakeWorkspace, SnapshotTree
 # 検索結果の 1 ページの既定の件数（インターフェース定義『項目の検索』の制約「件数」）
 DEFAULT_LIMIT = 20
 
-# タグの語彙に登録するタグ（説明つき。`保留` はどの項目も持たない）
+# タグの語彙に登録するタグ（説明つき。`データ` は含める条件・含めない条件・例も持つ。`保留` はどの項目も持たない）
 TAG_VOCABULARY = [
-    {"name": "データ", "summary": "記録の形"},
+    {
+        "name": "データ",
+        "summary": "記録の形",
+        "include": "記録のキーと保存の形",
+        "exclude": "画面の見た目",
+        "examples": ["ワークスペースの YAML"],
+    },
     {"name": "画面", "summary": "利用者が見る画面"},
     {"name": "保留", "summary": "決めるのを待つもの"},
 ]
@@ -69,12 +75,36 @@ def test_normal(search_workspace: Path, call_tool: CallTool, snapshot_tree: Snap
     assert attrs.is_error is False
     counts = {row["name"]: row["count"] for row in attrs.data["attrs"]}
     assert counts == {"担当": 2, "期限": 1}
-    # タグの語彙が名前の順で、説明つきの 3 件を持つ
+    # タグの語彙が名前の順で、説明つきの 3 件を持ち、含める条件・含めない条件・例は持つタグだけが値を返す
     assert tags.is_error is False
     assert tags.data["tags"] == [
-        {"name": "データ", "summary": "記録の形", "count": 2, "kinds": ["decision", "task"]},
-        {"name": "保留", "summary": "決めるのを待つもの", "count": 0, "kinds": []},
-        {"name": "画面", "summary": "利用者が見る画面", "count": 2, "kinds": ["decision", "task"]},
+        {
+            "name": "データ",
+            "summary": "記録の形",
+            "include": "記録のキーと保存の形",
+            "exclude": "画面の見た目",
+            "examples": ["ワークスペースの YAML"],
+            "count": 2,
+            "kinds": ["decision", "task"],
+        },
+        {
+            "name": "保留",
+            "summary": "決めるのを待つもの",
+            "include": None,
+            "exclude": None,
+            "examples": [],
+            "count": 0,
+            "kinds": [],
+        },
+        {
+            "name": "画面",
+            "summary": "利用者が見る画面",
+            "include": None,
+            "exclude": None,
+            "examples": [],
+            "count": 2,
+            "kinds": ["decision", "task"],
+        },
     ]
     # 両方のタグを持つ項目は T-1 だけ、どちらかを持つ項目は D-1・D-2・T-1
     assert found_all.is_error is False
@@ -129,20 +159,30 @@ def test_normal_when_paged(
     assert pages == expected_ids
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     call_tool: CallTool,
 ) -> None:
-    """語彙に無いタグで探すと、近いタグの候補を添えたエラーになる（異常系）。"""
+    """語彙に無いタグでも探せ、どの項目にも無いタグには近いタグを案内する（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", tags=["データ"]),
+        make_item("D-2", tags=["通知"]),
         settings={**valid_settings, "tags": [{"name": "データ"}]},
     )
     # 実行
-    result = call_tool("find", workspace=str(root), tags=["データー"])
+    candidate = call_tool("find", workspace=str(root), tags=["通知"])
+    stray = call_tool("find", workspace=str(root), tags=["データー"])
     # 検証
-    assert result.is_error is True
-    assert "tags: データー（候補: データ）" in result.text
+    # 未登録の候補のタグで探した結果がエラーにならず、D-2 だけである
+    assert candidate.is_error is False
+    assert [row["id"] for row in candidate.data["items"]] == ["D-2"]
+    # どの項目にも語彙にも無いタグで探した結果がエラーにならず、空の一覧・全体の件数 0 である
+    assert stray.is_error is False
+    assert stray.data["items"] == []
+    assert stray.data["total"] == 0
+    # 案内の文に、渡したタグと近い語彙のタグがある
+    assert "データー" in stray.data["hint"]
+    assert "近いタグ: データ" in stray.data["hint"]

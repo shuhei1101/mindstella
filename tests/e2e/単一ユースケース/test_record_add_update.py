@@ -381,7 +381,7 @@ def test_normal_when_body_for_every_kind(make_workspace: MakeWorkspace, call_too
     ]
     # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_unsorted_without_options(
@@ -408,7 +408,7 @@ def test_normal_when_unsorted_without_options(
     assert "options" not in after_update
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_error_when_options_missing(
@@ -583,7 +583,7 @@ def test_normal_when_doc_body_html(
     assert shown_markdown.data["body_format"] == "markdown"
     # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_error_when_html_body_for_non_doc(
@@ -614,26 +614,33 @@ def test_error_when_html_body_for_non_doc(
     assert snapshot_tree(root) == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace,
     valid_settings: dict[str, Any],
     call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
 ) -> None:
-    """語彙に無いタグを持つ検討事項は書かず、近いタグの候補を添えたエラーになる（異常系）。"""
+    """語彙に無いタグを持つ検討事項も書き、未登録の候補と近いタグを返す（正常系）。"""
     # 準備
     root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    before = snapshot_tree(root)
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
     # 実行
     result = call_tool(
         "add",
         workspace=str(root),
         kind="decision",
-        item={**NEW_DECISION, "tags": ["通知機能"]},
+        item={**NEW_DECISION, "tags": ["通知", "通知機能"]},
     )
     # 検証
-    # 追加のツールがエラーを返し、本文に渡したタグと候補がある
-    assert result.is_error is True
-    assert "tags: 通知機能（候補: 通知）" in result.text
-    # ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
-    assert snapshot_tree(root) == before
+    # 追加のツールがエラーにせず、足した検討事項の ID を返す
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["id"] == "D-1"
+    # 結果の未登録の候補に、通知機能・付けた検討事項の ID・近い語彙のタグだけがある
+    assert result.data["candidate_tags"] == [
+        {"tag": "通知機能", "ids": ["D-1"], "similar": ["通知"]}
+    ]
+    # 検討事項が、語彙に無いタグのまま書かれている
+    assert _read_decisions(root)[0]["tags"] == ["通知", "通知機能"]
+    # 設定のタグの語彙が、追加を呼ぶ前と同じである
+    assert config_path.read_text(encoding="utf-8") == config_before

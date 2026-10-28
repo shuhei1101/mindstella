@@ -122,24 +122,31 @@ def test_error_when_body_empty(
     assert snapshot_tree(root) == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace,
     valid_settings: dict[str, Any],
     call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
+    read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """語彙に無いタグでスレッドを立てようとすると、近いタグの候補を添えたエラーになり、スレッドは 0 件のままである（異常系）。"""
+    """語彙に無いタグでもスレッドを立て、未登録の候補と近いタグを返す（正常系）。"""
     # 準備
     root = make_workspace(settings={**valid_settings, "tags": TAG_VOCABULARY})
-    before = snapshot_tree(root)
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
     # 実行
     result = call_tool(
         "new_thread", workspace=str(root), body=QUESTION, tags=["起票の確認"], summary=SUMMARY
     )
     # 検証
-    # スレッドを立てるツールがエラーを返し、本文に渡したタグと候補がある
-    assert result.is_error is True
-    assert "tags: 起票の確認（候補: 起票）" in result.text
-    # スレッドが 0 件のままである
-    assert not (root / RECORD_DIR / "threads.yaml").exists()
-    assert snapshot_tree(root) == before
+    # スレッドを立てるツールがエラーにせず、立てたスレッドの ID を返す
+    assert result.is_error is False
+    assert result.data["id"] == "TH-1"
+    # 結果の未登録の候補に、起票の確認・立てたスレッドの ID・近い語彙のタグがある
+    assert result.data["candidate_tags"] == [
+        {"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}
+    ]
+    # スレッドが 1 件でき、語彙に無いタグのまま持つ
+    threads = read_yaml(root, "threads.yaml")["items"]
+    assert [thread["tags"] for thread in threads] == [["起票の確認"]]
+    # 設定のタグの語彙が、スレッドを立てる前と同じである
+    assert config_path.read_text(encoding="utf-8") == config_before

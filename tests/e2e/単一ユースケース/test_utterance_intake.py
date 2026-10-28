@@ -22,6 +22,9 @@ PLACE = {"target": "mindmap", "category": "データ構造", "phase": "要件"}
 TOPIC_TAG = "保存"
 NEW_TOPIC_TAG = "通知"
 NEW_TOPIC_SUMMARY = "通知の送り方と文面の話題"
+NEW_TOPIC_INCLUDE = "メール・プッシュでの知らせ"
+NEW_TOPIC_EXCLUDE = "画面の中の表示"
+NEW_TOPIC_EXAMPLES = ["期限の前日に知らせる"]
 
 # 会話の日付
 TODAY = "2026-10-02"
@@ -50,7 +53,7 @@ def test_normal(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """話題のタグを語彙から選び、新しい話題は語彙へ登録してから、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを、1 回のまとめての書き込みで積む（正常系）。"""
+    """話題のタグを語彙から選び、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを 1 回のまとめての書き込みで積み、結果に返った新しい話題の候補を 3 点の説明つきで語彙へ登録する（正常系）。"""
     # 準備（取り込みの前から、タグの語彙 `保存` と、タグ `保存` を持つメモ N-1 がある）
     root = make_workspace(
         make_item("N-1", tags=[TOPIC_TAG]),
@@ -60,19 +63,8 @@ def test_normal(
     # 実行
     # 取り込みの最初に、タグの語彙を引く
     tags_before = replay("tags", **ws)
-    # 合うタグが無い新しい話題のタグを、説明つきで語彙へ登録する
-    replay(
-        "update_settings",
-        **ws,
-        settings={
-            "tags": [
-                {"name": TOPIC_TAG},
-                {"name": NEW_TOPIC_TAG, "summary": NEW_TOPIC_SUMMARY},
-            ]
-        },
-    )
-    # 1 つの発言から出た記録を、1 回のまとめての書き込みで渡す（D-2 の parent と T-1 の for は、先に足す項目を指す）
-    replay(
+    # 1 つの発言から出た記録を、1 回のまとめての書き込みで渡す（D-2 の parent と T-1 の for は、先に足す項目を指す。新しい話題のタグは語彙に無いまま付ける）
+    written = replay(
         "batch",
         **ws,
         operations=[
@@ -132,9 +124,27 @@ def test_normal(
             },
         ],
     )
+    # 結果に返った候補を、含める・含めない・例の 3 点の説明つきで語彙へ登録する
+    replay(
+        "update_settings",
+        **ws,
+        settings={
+            "tags": [
+                {"name": TOPIC_TAG},
+                {
+                    "name": NEW_TOPIC_TAG,
+                    "summary": NEW_TOPIC_SUMMARY,
+                    "include": NEW_TOPIC_INCLUDE,
+                    "exclude": NEW_TOPIC_EXCLUDE,
+                    "examples": NEW_TOPIC_EXAMPLES,
+                },
+            ]
+        },
+    )
     replay("commit", **ws, summary=INTAKE_SUMMARY)
     pending = replay("pending", **ws)
     tags_after = replay("tags", **ws)
+    checked = replay("check", **ws)
     # 検証
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = read_yaml(root, "tasks.yaml")["items"]
@@ -173,21 +183,41 @@ def test_normal(
         "データ構造",
         "要件",
     ]
-    # 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と、説明を持つ `通知`（1 件）を返す
+    # まとめての書き込みの結果が、未登録の候補に `通知` と D-3 を持つ
+    assert [(row["tag"], row["ids"]) for row in written["candidate_tags"]] == [
+        (NEW_TOPIC_TAG, ["D-3"])
+    ]
+    # 取り込みの前のタグの一覧が `保存`（1 件）を返し、取り込んだ後のタグの一覧が `保存`（5 件）と、含める・含めない・例を持つ `通知`（1 件）を返す
     assert tags_before == {
-        "tags": [{"name": TOPIC_TAG, "summary": None, "count": 1, "kinds": ["note"]}]
+        "tags": [
+            {
+                "name": TOPIC_TAG,
+                "summary": None,
+                "include": None,
+                "exclude": None,
+                "examples": [],
+                "count": 1,
+                "kinds": ["note"],
+            }
+        ]
     }
     assert tags_after == {
         "tags": [
             {
                 "name": TOPIC_TAG,
                 "summary": None,
+                "include": None,
+                "exclude": None,
+                "examples": [],
                 "count": 5,
                 "kinds": ["decision", "task", "note"],
             },
             {
                 "name": NEW_TOPIC_TAG,
                 "summary": NEW_TOPIC_SUMMARY,
+                "include": NEW_TOPIC_INCLUDE,
+                "exclude": NEW_TOPIC_EXCLUDE,
+                "examples": NEW_TOPIC_EXAMPLES,
                 "count": 1,
                 "kinds": ["decision"],
             },
@@ -199,6 +229,9 @@ def test_normal(
     assert changes["sets"][0]["summary"] == INTAKE_SUMMARY
     assert changes["sets"][0]["added"] == ["D-1", "D-2", "D-3", "T-1", "L-1"]
     assert pending == {"added": [], "changed": [], "removed": []}
+    # 点検が問題と未登録の候補の警告を 0 件で返す
+    assert checked["problems"] == []
+    assert checked["warnings"] == []
 
 
 def test_normal_when_diagram_kept_as_doc(
@@ -368,7 +401,7 @@ def test_normal_when_deliverable_doc_created(
     body = (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
     assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
     # check が問題を 0 件で返す
-    assert checked == {"ok": True, "problems": []}
+    assert checked == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_task_output_kept_as_doc(
@@ -436,7 +469,7 @@ def test_normal_when_task_output_kept_as_doc(
     # goal.deliverables が呼ぶ前と同じである
     assert read_yaml(root, "config.yaml")["goal"]["deliverables"] == goal_before["deliverables"]
     # check が問題を 0 件で返す
-    assert checked == {"ok": True, "problems": []}
+    assert checked == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_mistaken_item_removed(
@@ -479,7 +512,7 @@ def test_normal_when_mistaken_item_removed(
     assert change_set["changed"] == ["T-1"]
     assert [entry["id"] for entry in change_set["removed"]] == ["D-2"]
     # check が問題を 0 件で返す
-    assert replay("check", **ws) == {"ok": True, "problems": []}
+    assert replay("check", **ws) == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_note_withdrawn(
@@ -563,3 +596,55 @@ def test_normal_when_visual_doc_kept_as_html(
     # check が YAML と本文のずれを 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
+
+
+def test_normal_when_candidate_tag_mapped(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """結果に返った候補が既存のタグの表記ゆれなら、語彙を変えずに既存のタグへ付け替える（正常系）。"""
+    # 準備（取り込みの前から、タグの語彙 `保存` がある）
+    root = make_workspace(settings={**valid_settings, "tags": [{"name": TOPIC_TAG}]})
+    ws = {"workspace": str(root)}
+    # 実行
+    # 語彙に無いタグ `保存処理` を持つ検討事項と会話ログを、1 回のまとめての書き込みで渡す
+    written = replay(
+        "batch",
+        **ws,
+        operations=[
+            {
+                "op": "add",
+                "kind": "decision",
+                "item": {
+                    "title": "保存先",
+                    "status": "未決定",
+                    "options": [{**OPTIONS[0], "recommended": True}, OPTIONS[1]],
+                    "tags": ["保存処理"],
+                    **PLACE,
+                },
+            },
+            {
+                "op": "add",
+                "kind": "log",
+                "item": {"title": "発言", "date": TODAY, "related": ["$1"], **PLACE},
+            },
+        ],
+    )
+    # 候補が既存のタグの表記ゆれなので、語彙は変えず、対応だけを渡して付け替える
+    replay("update_settings", **ws, tag_map={"保存処理": TOPIC_TAG})
+    replay("commit", **ws, summary=INTAKE_SUMMARY)
+    checked = replay("check", **ws)
+    # 検証
+    # まとめての書き込みの結果が、未登録の候補 `保存処理` と近い語彙のタグ `保存` を持つ
+    assert [(row["tag"], row["similar"]) for row in written["candidate_tags"]] == [
+        ("保存処理", [TOPIC_TAG])
+    ]
+    # D-1 のタグが `保存` だけである
+    assert read_yaml(root, "decisions.yaml")["items"][0]["tags"] == [TOPIC_TAG]
+    # タグの語彙が `保存` だけのままである
+    assert read_yaml(root, "config.yaml")["tags"] == [{"name": TOPIC_TAG}]
+    # 点検が問題と未登録の候補の警告を 0 件で返す
+    assert checked["problems"] == []
+    assert checked["warnings"] == []

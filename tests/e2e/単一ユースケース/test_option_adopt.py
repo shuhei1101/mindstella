@@ -124,4 +124,4 @@ def test_normal_when_undecided_adopted(
     assert [option.get("adopted") for option in second_item["options"]] == [True, False]
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}

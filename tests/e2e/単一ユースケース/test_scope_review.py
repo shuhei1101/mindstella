@@ -154,4 +154,4 @@ def test_normal(
     # 会話ログが 1 件足されている
     assert [item["id"] for item in read_yaml(root, "logs.yaml")["items"]] == ["L-1"]
     # check が問題を 0 件で返す
-    assert checked == {"ok": True, "problems": []}
+    assert checked == {"ok": True, "problems": [], "warnings": [], "hint": None}

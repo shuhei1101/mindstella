@@ -166,7 +166,7 @@ def test_normal(make_legacy_workspace: MakeLegacyWorkspace, call_tool: CallTool)
     assert settings["target_label"] == "システム"
     # check が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_same_version(
@@ -323,7 +323,7 @@ def test_normal_when_version_recorded_at_top(
     # 直下に mindmap.yaml・config.yaml が残っていない
     assert [path.name for path in root.iterdir()] == [RECORD_DIR]
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def _without_options(item: dict[str, Any]) -> dict[str, Any]:
@@ -413,7 +413,7 @@ def test_normal_when_options_filled(
     assert first_line == plugin_version()
     # 最後の check が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 # 送信を持つ前の版（送信の記録をスレッドへ移す手順の 1 つ前の版）
@@ -492,7 +492,7 @@ def test_normal_when_submissions_to_threads(
     assert first_line == plugin_version()
     # 最後の check が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_tags_registered(
@@ -546,5 +546,5 @@ def test_normal_when_tags_registered(
     assert first_line == plugin_version()
     # 最後の check が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": []}
+    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 

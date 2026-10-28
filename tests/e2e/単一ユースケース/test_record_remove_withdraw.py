@@ -77,7 +77,7 @@ def test_normal(
     # 消した後に足したメモの ID が N-3 である
     assert added["id"] == "N-3"
     # check が問題を 0 件で返す
-    assert checked == {"ok": True, "problems": []}
+    assert checked == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_withdrawn(
@@ -108,7 +108,7 @@ def test_normal_when_withdrawn(
     # pending が、変えた項目として R-1 を返す
     assert [entry["id"] for entry in pending["changed"]] == ["R-1"]
     # check が問題を 0 件で返す
-    assert checked == {"ok": True, "problems": []}
+    assert checked == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_error_when_referenced(
@@ -233,4 +233,4 @@ def test_normal_when_taken_thread_refers(
         ("TH-2", "N-2"),
     ]
     # check が問題を 0 件で返す
-    assert checked == {"ok": True, "problems": []}
+    assert checked == {"ok": True, "problems": [], "warnings": [], "hint": None}
