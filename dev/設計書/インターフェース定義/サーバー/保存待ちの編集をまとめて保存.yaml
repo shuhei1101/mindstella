@@ -172,7 +172,7 @@ flows:
         IF->>IF: メモリの上で当てて確かめる
         IF-->>クライアント: 409、blocked は E-2（invalid）
     expected:
-      - ステータスが 409 で、`blocked` が E-2（`reason` が `invalid`、`detail` に `D-99` が無いこと）の 1 件だけで、語彙に無いタグ `保存` を入れた E-1 を含まない
+      - ステータスが 409 で、`blocked` が E-2（`reason` が `invalid`、`detail` が指す先の無い `D-99` を含む）の 1 件だけで、語彙に無いタグ `保存` を入れた E-1 を含まない
       - D-1 が保存する前のままで、`edits.yaml` に E-1・E-2 が残る
     test: test_error_when_invalid_value
   - name: 異常系（書き込めない・500）
