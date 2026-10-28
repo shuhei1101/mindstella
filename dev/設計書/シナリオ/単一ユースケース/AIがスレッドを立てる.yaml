@@ -4,10 +4,12 @@ scenarios:
     setup:
       - name: Mock
         description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるスレッドを立てるツールの呼び出しを、決めた引数で再生する
+        notes: '-'
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+        notes: '-'
       - name: 作成済みのワークスペース
-        description: 未決定の検討事項 D-1 と、タグの語彙 `起票` を持ち、スレッドを持たない
+        description: 未決定の検討事項 D-1 を持ち、スレッドを持たない
         notes: 立てるスレッドの本文は `D-1 の比べた結果を Issue に起票してよいですか`、タグは `起票`、要約は `D-1 の比べた結果を Issue に起票してよいかの確認。返事待ち`
     flow: |-
       ```mermaid
@@ -75,31 +77,6 @@ scenarios:
       - ツールがエラーを返し、理由に本文が空であることがある
       - スレッドが 0 件のままである
     test: test_error_when_body_empty
-  - name: 正常シナリオ（語彙に無いタグ）
-    setup:
-      - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、スレッドを立てるツールを決めた引数で呼ぶ
-      - name: 作成済みのワークスペース
-        description: タグの語彙 `起票` を持ち、スレッドを持たない
-        notes: 立てるスレッドのタグは `起票の確認`
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as Claude Code（session）
-        participant SV as サーバー
-        participant WS as ワークスペース
-
-        CC->>SV: 語彙に無いタグでスレッドを立てる
-        SV->>WS: タグの語彙を読む
-        SV->>WS: 語彙に無いタグのままスレッドを書く
-        SV-->>CC: 立てたスレッドの ID と、未登録の候補のタグと近い語彙のタグ
-      ```
-    expected:
-      - スレッドを立てるツールがエラーにせず、立てたスレッドの ID を返す
-      - 結果の未登録の候補に、タグ `起票の確認` と、近い語彙のタグ `起票` がある
-      - スレッドが 1 件でき、タグ `起票の確認` を持つ
-      - 設定のタグの語彙が、スレッドを立てる前と同じである
-    test: test_normal_when_unknown_tag
 lead: '`session` が、ワークスペースの外へ書き込む前の確認（Issue に起票してよいか など）と、話の流れと関係の無い知らせを、スレッドを立てて利用者に返事を求める単一ユースケース。今の話の流れの中で答えが要る問いは、ターミナルで聞く。'
 issue: 208
 primary_actor: スキルの手順を実行する Claude Code

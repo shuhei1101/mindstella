@@ -448,34 +448,32 @@ scenarios:
       - A-1 が変更履歴を 1 回分持ち、直す前のエイリアス（`特殊効果` だけ）が入っている
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     test: test_normal_when_aliases_and_description
-  - name: 正常シナリオ（語彙に無いタグを候補として付ける）
+  - name: 正常シナリオ（新しいタグを付ける）
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
       - name: make_workspace
-        description: 作成を済ませ、タグの語彙に `通知` を登録したワークスペース
+        description: 作成を済ませ、タグ `通知` を持つ検討事項 D-1 を足したワークスペース
+        notes: '-'
       - name: 検討事項の中身
-        description: 語彙のタグと、語彙に無いタグを持つ検討事項
+        description: 既に使われているタグと、まだどの項目も持たないタグを持つ検討事項
         notes: タグ `通知`・`通知機能`
     flow: |-
-      ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
         participant SV as サーバー
         participant WS as ワークスペース
 
-        CC->>SV: 語彙に無いタグを持つ検討事項を足す
-        SV->>WS: タグの語彙を読む
-        SV->>WS: 語彙に無いタグのまま検討事項を書く
-        SV-->>CC: 足した検討事項の ID と、未登録の候補のタグと近い語彙のタグ
-      ```
+        CC->>SV: まだどの項目も持たないタグを持つ検討事項を足す
+        SV->>WS: タグをそのまま検討事項に書く
+        SV-->>CC: 足した検討事項の ID
     expected:
       - 追加のツールがエラーにせず、足した検討事項の ID を返す
-      - 結果の未登録の候補に、タグ `通知機能` と、それを付けた検討事項の ID と、近い語彙のタグ `通知` がある
-      - 結果の未登録の候補に、語彙にあるタグ `通知` は無い
-      - '`.mindstella/decisions.yaml` の検討事項が、タグ `通知`・`通知機能` を持つ'
-      - 設定のタグの語彙が、追加を呼ぶ前と同じである
-    test: test_normal_when_unknown_tag
+      - '`.mindstella/decisions.yaml` の足した検討事項が、タグ `通知`・`通知機能` を持つ'
+      - '`config.yaml` がタグのキー（`tags`）を持たない'
+      - タグの一覧が `通知`（2 件）と `通知機能`（1 件）を返す
+    test: test_normal_when_new_tag
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
