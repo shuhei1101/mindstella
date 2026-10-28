@@ -946,7 +946,7 @@ tables:
       - name: map
         title: 付け替えの対応
         type: object
-        description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map`・`tag_map` と同じ（`tags` だけ値を `null` にしてタグから外せる）。対応の要らない編集は持たない'
+        description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map` と同じ。対応の要らない編集は持たない'
         example: '{"問い": "目的"}'
     refs:
       - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
