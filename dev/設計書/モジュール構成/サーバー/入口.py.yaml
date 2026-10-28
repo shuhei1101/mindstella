@@ -358,7 +358,7 @@ functions:
         summary: キーを置き換えて更新日時と編集した人を変える
         condition: 'D-1（`created`・`updated` が `2026-10-01T00:00:00+00:00`）に `{"answer": "a", "weight": null}`。`now` は `2026-10-02T08:00:00+00:00`'
         mock: '`now`'
-        expected: '`changed` が `[answer, weight]`、`file` が `.mindstella/decisions.yaml`、D-1 の `updated` が `now` の値で `updated_by` が `ai`、`created` はそのまま'
+        expected: '`changed` が `[answer, weight]`、`file` が `.mindstella/decisions.yaml`、`candidate_tags` が `[]`、D-1 の `updated` が `now` の値で `updated_by` が `ai`、`created` はそのまま'
       - name: test_run_update_stacks_history
         case: 正常
         summary: 変わったキーを変更履歴に積み、まだまとめていない変更に足す
