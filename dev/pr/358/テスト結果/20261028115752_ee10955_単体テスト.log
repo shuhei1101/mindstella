@@ -1,6 +1,7 @@
 $ pytest tests/unit -v
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0 -- /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/f00f2fae-0ceb-4eef-8413-5c265a84a94a/scratchpad/venv/bin/python
+cachedir: .pytest_cache
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-session-tag-candidates-and-conditions
 configfile: pytest.ini
 plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
@@ -1851,4 +1852,8 @@ tests/unit/test_isolated_environment.py::test_isolated_environment_when_set_in_s
 tests/unit/test_isolated_environment.py::test_isolated_environment_when_set_in_shell[MINDSTELLA_PREVIEW_STOP_HOOK] PASSED [ 99%]
 tests/unit/test_isolated_environment.py::test_isolated_environment_when_set_in_shell[MINDSTELLA_ALLOWED_HOSTS] PASSED [100%]
 
-================= 1843 passed, 1 skipped in 688.66s (0:11:28) ==================
+================= 1843 passed, 1 skipped in 754.97s (0:12:34) ==================
+
+real	11m46.099s
+user	1m57.353s
+sys	1m38.113s
