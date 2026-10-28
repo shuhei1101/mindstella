@@ -377,22 +377,26 @@ def test_error_when_html_body_for_non_doc(
     assert snapshot_tree(root) == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
 ) -> None:
-    """語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """語彙に無いタグへ置き換えてもそのまま書き、未登録の候補と近いタグを返す（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1"), settings={**valid_settings, "tags": [{"name": "通知"}]}
     )
-    before = snapshot_tree(root)
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
     # 実行
     result = call_tool("update", workspace=str(root), id="D-1", item={"tags": ["通知機能"]})
     # 検証
-    assert result.is_error is True
-    assert "tags: 通知機能（候補: 通知）" in result.text
-    assert snapshot_tree(root) == before
+    assert result.is_error is False
+    assert result.data["changed"] == ["tags"]
+    assert result.data["candidate_tags"] == [
+        {"tag": "通知機能", "ids": ["D-1"], "similar": ["通知"]}
+    ]
+    assert _read_decisions(root)[0]["tags"] == ["通知機能"]
+    assert config_path.read_text(encoding="utf-8") == config_before

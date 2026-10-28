@@ -53,7 +53,7 @@ def test_normal(
     )
     # 検証
     assert result.is_error is False
-    assert result.data == {"id": "TH-1", "taken": ["TH-1-1"]}
+    assert result.data == {"id": "TH-1", "taken": ["TH-1-1"], "candidate_tags": []}
     thread = find_thread(root, "TH-1")
     assert thread["summary"] == "D-6 の確認を出す操作の質問。了解を受けた"
     assert thread["posts"][0]["taken"] is not None
@@ -186,21 +186,28 @@ def test_error_when_schema_mismatch(
     assert threads_path(root).read_bytes() == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace,
     make_thread: MakeThread,
     write_threads: WriteThreads,
     valid_settings: dict[str, Any],
     call_tool: CallTool,
 ) -> None:
-    """語彙に無いタグには置き換えず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """語彙に無いタグを加えた一覧でも置き換え、未登録の候補と近いタグを返す（正常系）。"""
     # 準備
     root = make_workspace(settings={**valid_settings, "tags": [{"name": "起票"}]})
     write_threads(root, make_thread("TH-1", tags=["起票"]))
-    before = threads_path(root).read_bytes()
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
     # 実行
-    result = call_tool("update_thread", workspace=str(root), id="TH-1", tags=["起票の確認"])
+    result = call_tool(
+        "update_thread", workspace=str(root), id="TH-1", tags=["起票", "起票の確認"]
+    )
     # 検証
-    assert result.is_error is True
-    assert "tags: 起票の確認（候補: 起票）" in result.text
-    assert threads_path(root).read_bytes() == before
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["candidate_tags"] == [
+        {"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}
+    ]
+    assert find_thread(root, "TH-1")["tags"] == ["起票", "起票の確認"]
+    assert config_path.read_text(encoding="utf-8") == config_before

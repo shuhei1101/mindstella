@@ -14,7 +14,7 @@ def test_normal(
     valid_settings: dict[str, Any],
     call_tool: CallTool,
 ) -> None:
-    """語彙のタグごとに、説明と種類をまたいで数えた件数を返す。持つ項目が無いタグも返す（正常系）。"""
+    """語彙のタグごとに、説明・含める条件・含めない条件・例と種類をまたいで数えた件数を返す。持つ項目が無いタグも返す（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", tags=["データ"]),
@@ -24,7 +24,13 @@ def test_normal(
         settings={
             **valid_settings,
             "tags": [
-                {"name": "データ", "summary": "記録の形"},
+                {
+                    "name": "データ",
+                    "summary": "記録の形",
+                    "include": "記録のキーと保存の形",
+                    "exclude": "画面の見た目",
+                    "examples": ["ワークスペースの YAML"],
+                },
                 {"name": "画面", "summary": "利用者が見る画面"},
                 {"name": "保留"},
             ],
@@ -36,9 +42,33 @@ def test_normal(
     assert result.is_error is False
     assert result.data == {
         "tags": [
-            {"name": "データ", "summary": "記録の形", "count": 2, "kinds": ["decision", "task"]},
-            {"name": "保留", "summary": None, "count": 0, "kinds": []},
-            {"name": "画面", "summary": "利用者が見る画面", "count": 1, "kinds": ["decision"]},
+            {
+                "name": "データ",
+                "summary": "記録の形",
+                "include": "記録のキーと保存の形",
+                "exclude": "画面の見た目",
+                "examples": ["ワークスペースの YAML"],
+                "count": 2,
+                "kinds": ["decision", "task"],
+            },
+            {
+                "name": "保留",
+                "summary": None,
+                "include": None,
+                "exclude": None,
+                "examples": [],
+                "count": 0,
+                "kinds": [],
+            },
+            {
+                "name": "画面",
+                "summary": "利用者が見る画面",
+                "include": None,
+                "exclude": None,
+                "examples": [],
+                "count": 1,
+                "kinds": ["decision"],
+            },
         ]
     }
 

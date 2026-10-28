@@ -37,6 +37,7 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
         "id": "D-2",
         "file": ".mindstella/decisions.yaml",
         "body": ".mindstella/docs/D-2.md",
+        "candidate_tags": [],
     }
     added = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
         "items"
@@ -304,20 +305,24 @@ def test_error_when_both_bodies(
     assert snapshot_tree(root) == before
 
 
-def test_error_when_unknown_tag(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
+def test_normal_when_unknown_tag(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
 ) -> None:
-    """語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """語彙に無いタグを持つ項目もそのまま書き、未登録の候補と近いタグを返す（正常系）。"""
     # 準備
     root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    before = snapshot_tree(root)
-    item = {**NEW_DECISION, "tags": ["通知機能"]}
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
+    item = {**NEW_DECISION, "depends_on": [], "tags": ["通知", "通知機能"]}
     # 実行
     result = call_tool("add", workspace=str(root), kind="decision", item=item)
     # 検証
-    assert result.is_error is True
-    assert "tags: 通知機能（候補: 通知）" in result.text
-    assert snapshot_tree(root) == before
+    assert result.is_error is False
+    assert result.data["candidate_tags"] == [
+        {"tag": "通知機能", "ids": ["D-1"], "similar": ["通知"]}
+    ]
+    added = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
+    assert added["tags"] == ["通知", "通知機能"]
+    assert config_path.read_text(encoding="utf-8") == config_before

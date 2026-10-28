@@ -169,17 +169,31 @@ def test_normal_when_detailed(
     assert "body" not in decision
 
 
-def test_error_when_unknown_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
+def test_normal_when_unknown_tag(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
 ) -> None:
-    """語彙に無いタグで探すと、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """語彙に無いタグでも探せ、どの項目にも無いタグには近いタグの案内を添える（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "データ"}, {"name": "画面"}]})
+    root = make_workspace(
+        make_item("D-1", tags=["データ"]),
+        make_item("D-2", tags=["通知"]),
+        settings={**valid_settings, "tags": [{"name": "データ"}]},
+    )
     # 実行
-    result = call_tool("find", workspace=str(root), tags=["データー"])
+    candidate = call_tool("find", workspace=str(root), tags=["通知"])
+    stray = call_tool("find", workspace=str(root), tags=["データー"])
     # 検証
-    assert result.is_error is True
-    assert "tags: データー（候補: データ）" in result.text
+    assert candidate.is_error is False
+    assert candidate.data is not None
+    assert [item["id"] for item in candidate.data["items"]] == ["D-2"]
+    assert stray.is_error is False
+    assert stray.data is not None
+    assert (stray.data["items"], stray.data["total"]) == ([], 0)
+    assert "データー は語彙にもどの項目にも無いタグです（近いタグ: データ）" in stray.data["hint"]
+
 
 
 def test_error_when_cursor_mismatched(

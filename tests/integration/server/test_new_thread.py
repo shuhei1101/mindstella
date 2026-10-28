@@ -143,17 +143,23 @@ def test_error_when_schema_mismatch(
     assert threads_path(root).read_bytes() == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
 ) -> None:
-    """語彙に無いタグを持つスレッドは立てず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """語彙に無いタグでもスレッドを立て、未登録の候補と近いタグを返す（正常系）。"""
     # 準備
     root = make_workspace(settings={**valid_settings, "tags": [{"name": "起票"}]})
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
     # 実行
     result = call_tool(
         "new_thread", workspace=str(root), body="確認", summary="確認", tags=["起票の確認"]
     )
     # 検証
-    assert result.is_error is True
-    assert "tags: 起票の確認（候補: 起票）" in result.text
-    assert not threads_path(root).exists()
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["candidate_tags"] == [
+        {"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}
+    ]
+    assert find_thread(root, "TH-1")["tags"] == ["起票の確認"]
+    assert config_path.read_text(encoding="utf-8") == config_before

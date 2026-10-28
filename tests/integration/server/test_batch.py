@@ -181,22 +181,42 @@ def test_error_when_argument_invalid(
     assert snapshot_tree(root) == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_unknown_tag(
     make_workspace: MakeWorkspace,
+    make_item: MakeItem,
     valid_settings: dict[str, Any],
     call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
 ) -> None:
-    """語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """複数の操作が付けた同じ候補を、付けた項目をまとめて 1 件で返す（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    before = snapshot_tree(root)
-    first = {**NORMAL_OPERATIONS[0], "item": {**NORMAL_OPERATIONS[0]["item"], "tags": ["通知"]}}
-    second = {**NORMAL_OPERATIONS[0], "item": {**NORMAL_OPERATIONS[0]["item"], "tags": ["通知機能"]}}
+    root = make_workspace(
+        make_item("D-1"), settings={**valid_settings, "tags": [{"name": "通知"}]}
+    )
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
+    decision = NORMAL_OPERATIONS[0]["item"]
+    operations = [
+        {"op": "add", "kind": "decision", "item": {**decision, "tags": ["通知"]}},
+        {"op": "add", "kind": "decision", "item": {**decision, "tags": ["通知機能"]}},
+        {
+            "op": "add",
+            "kind": "task",
+            "item": {"title": "調べる", "kind": "調査", "status": "未着手", "tags": ["通知機能"]},
+        },
+    ]
     # 実行
-    result = call_tool("batch", workspace=str(root), operations=[first, second])
+    result = call_tool("batch", workspace=str(root), operations=operations)
     # 検証
-    assert result.is_error is True
-    assert result.text.startswith("エラー: 2 番目の操作（add）:")
-    assert "tags: 通知機能（候補: 通知）" in result.text
-    assert snapshot_tree(root) == before
+    assert result.is_error is False
+    assert result.data["candidate_tags"] == [
+        {"tag": "通知機能", "ids": ["D-3", "T-1"], "similar": ["通知"]}
+    ]
+    results = result.data["results"]
+    assert results[0]["result"]["candidate_tags"] == []
+    assert results[1]["result"]["candidate_tags"] == [
+        {"tag": "通知機能", "ids": ["D-3"], "similar": ["通知"]}
+    ]
+    assert results[2]["result"]["candidate_tags"] == [
+        {"tag": "通知機能", "ids": ["T-1"], "similar": ["通知"]}
+    ]
+    assert config_path.read_text(encoding="utf-8") == config_before

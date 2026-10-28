@@ -529,6 +529,75 @@ def test_error_when_unmapped_tag(
     assert snapshot_tree(root) == before
 
 
+def test_normal_when_candidate_tag_registered(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+) -> None:
+    """未登録の候補を説明の 3 点つきで語彙へ追加し、登録しない候補は対応なしで残す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["保存", "通知"]),
+        make_item("D-2", tags=["検索"]),
+        settings={**valid_settings, "tags": [{"name": "保存"}]},
+    )
+    registered = {
+        "name": "通知",
+        "summary": "利用者への知らせ",
+        "include": "メール・プッシュでの知らせ",
+        "exclude": "画面の中の表示",
+        "examples": ["期限の前日に知らせる"],
+    }
+    # 実行
+    result = call_tool(
+        "update_settings", workspace=str(root), settings={"tags": [{"name": "保存"}, registered]}
+    )
+    # 検証
+    assert result.is_error is False
+    assert result.data == {"changed": ["tags"], "remapped": [], "files": [".mindstella/config.yaml"]}
+    tags = {tag["name"]: tag for tag in _read_yaml(root, "config.yaml")["tags"]}
+    assert tags["通知"] == registered
+    decisions = {item["id"]: item for item in _read_yaml(root, "decisions.yaml")["items"]}
+    assert decisions["D-1"]["tags"] == ["保存", "通知"]
+    assert decisions["D-2"]["tags"] == ["検索"]
+
+
+def test_normal_when_candidate_tag_mapped(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+) -> None:
+    """settings を渡さず tag_map だけで、語彙を変えずに未登録の候補を既存のタグへ付け替える（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["保存処理"]),
+        settings={**valid_settings, "tags": [{"name": "保存"}]},
+    )
+    write_threads(root, make_thread("TH-1", tags=["保存処理"]))
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), tag_map={"保存処理": "保存"})
+    checked = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == []
+    assert result.data["remapped"] == [
+        {"id": "D-1", "key": "tags", "from": "保存処理", "to": "保存"},
+        {"id": "TH-1", "key": "tags", "from": "保存処理", "to": "保存"},
+    ]
+    assert _read_yaml(root, "decisions.yaml")["items"][0]["tags"] == ["保存"]
+    assert _read_yaml(root, "threads.yaml")["items"][0]["tags"] == ["保存"]
+    assert config_path.read_text(encoding="utf-8") == config_before
+    assert checked.data is not None
+    assert checked.data["warnings"] == []
+
+
 def test_normal_when_display(
     make_workspace: MakeWorkspace, call_tool: CallTool, valid_settings: dict[str, Any]
 ) -> None:

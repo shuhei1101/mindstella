@@ -286,7 +286,7 @@ def test_error_when_invalid_value(
     serve_preview: Callable[[Path], str],
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """当てた後の項目がタグの語彙や参照の指す先に合わなければ、どの編集も当てない（異常系）。"""
+    """当てた後の項目が参照の指す先に合わなければ、どの編集も当てない。語彙に無いタグは止めない（異常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1"), settings={**valid_settings, "tags": [{"name": "画面"}]}
@@ -303,9 +303,8 @@ def test_error_when_invalid_value(
     # 検証
     assert result.status == 409
     blocked = {entry["id"]: entry for entry in result.json()["blocked"]}
-    assert set(blocked) == {"E-1", "E-2"}
-    assert all(entry["reason"] == "invalid" for entry in blocked.values())
-    assert "保存" in blocked["E-1"]["detail"]
+    assert set(blocked) == {"E-2"}
+    assert blocked["E-2"]["reason"] == "invalid"
     assert "D-99" in blocked["E-2"]["detail"]
     assert snapshot_tree(root) == before
 

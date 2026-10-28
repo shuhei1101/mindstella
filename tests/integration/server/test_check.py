@@ -37,7 +37,7 @@ def test_normal_when_clean(
     result = call_tool("check", workspace=str(root))
     # 検証
     assert result.is_error is False
-    assert result.data == {"ok": True, "problems": []}
+    assert result.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_problems_found(
@@ -157,29 +157,42 @@ def test_normal_when_unknown_tag(
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """項目とスレッドの tags がタグの語彙に無ければ unknown_tag を返す（正常系）。"""
+    """項目とスレッドの tags が語彙に無ければ問題にせず、warnings の candidate_tag と hint を返す（正常系）。"""
     # 準備
     root = make_workspace(
         make_item("D-1", tags=["保存", "通知"]),
         settings={**valid_settings, "tags": [{"name": "保存"}]},
     )
-    write_threads(root, make_thread("TH-1", tags=["起票"]))
+    write_threads(root, make_thread("TH-1", tags=["保存の確認"]))
     before = snapshot_tree(root)
     # 実行
     result = call_tool("check", workspace=str(root))
     # 検証
     assert result.is_error is False
     assert result.data is not None
-    assert result.data["ok"] is False
-    unknown = {
-        (row["file"], row["id"], row["key"], row["detail"])
-        for row in result.data["problems"]
-        if row["kind"] == "unknown_tag"
-    }
-    assert unknown == {
-        (".mindstella/decisions.yaml", "D-1", "items[0].tags", "通知"),
-        (".mindstella/threads.yaml", "TH-1", "items[0].tags", "起票"),
-    }
+    assert result.data["ok"] is True
+    assert result.data["problems"] == []
+    assert result.data["warnings"] == [
+        {
+            "kind": "candidate_tag",
+            "file": ".mindstella/decisions.yaml",
+            "id": "D-1",
+            "key": "items[0].tags",
+            "detail": "通知",
+            "similar": [],
+        },
+        {
+            "kind": "candidate_tag",
+            "file": ".mindstella/threads.yaml",
+            "id": "TH-1",
+            "key": "items[0].tags",
+            "detail": "保存の確認",
+            "similar": ["保存"],
+        },
+    ]
+    assert all(
+        word in result.data["hint"] for word in ("update_settings", "settings.tags", "tag_map")
+    )
     assert snapshot_tree(root) == before
 
 
@@ -250,7 +263,7 @@ def test_normal_when_removed_item_in_change_set(
     result = call_tool("check", workspace=str(root))
     # 検証
     assert result.is_error is False
-    assert result.data == {"ok": True, "problems": []}
+    assert result.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
 
 
 def test_normal_when_html_body_problems_found(

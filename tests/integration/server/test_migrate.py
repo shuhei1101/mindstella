@@ -469,7 +469,12 @@ def test_normal_when_submissions_to_threads(
     # 利用者が送ったものは利用者の既読
     assert [thread["posts"][0]["seen"] for thread in threads] == [True, True]
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
-    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    assert call_tool("check", workspace=str(root)).data == {
+        "ok": True,
+        "problems": [],
+        "warnings": [],
+        "hint": None,
+    }
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-2"]
@@ -524,7 +529,12 @@ def test_normal_when_tags_to_vocabulary(
     assert again.is_error is False
     settings_again = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert len(settings_again["tags"]) == 4
-    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+    assert call_tool("check", workspace=str(root)).data == {
+        "ok": True,
+        "problems": [],
+        "warnings": [],
+        "hint": None,
+    }
 
 
 def test_error_when_newer(
