@@ -386,8 +386,8 @@ tests/integration/server/test_update_thread.py::test_error_when_write_fails PASS
 tests/integration/server/test_update_thread.py::test_error_when_schema_mismatch PASSED [ 99%]
 tests/integration/server/test_update_thread.py::test_normal_when_unknown_tag PASSED [100%]
 
-================== 376 passed, 2 skipped in 128.40s (0:02:08) ==================
+================== 376 passed, 2 skipped in 120.22s (0:02:00) ==================
 
-real	2m1.047s
-user	0m22.949s
-sys	0m7.824s
+real	1m53.059s
+user	0m22.186s
+sys	0m6.633s

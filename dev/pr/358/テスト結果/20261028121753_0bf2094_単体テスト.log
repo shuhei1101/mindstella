@@ -1852,8 +1852,8 @@ tests/unit/test_isolated_environment.py::test_isolated_environment_when_set_in_s
 tests/unit/test_isolated_environment.py::test_isolated_environment_when_set_in_shell[MINDSTELLA_PREVIEW_STOP_HOOK] PASSED [ 99%]
 tests/unit/test_isolated_environment.py::test_isolated_environment_when_set_in_shell[MINDSTELLA_ALLOWED_HOSTS] PASSED [100%]
 
-================= 1843 passed, 1 skipped in 754.97s (0:12:34) ==================
+================= 1843 passed, 1 skipped in 695.87s (0:11:35) ==================
 
-real	11m46.099s
-user	1m57.353s
-sys	1m38.113s
+real	10m51.451s
+user	1m57.013s
+sys	1m37.097s
