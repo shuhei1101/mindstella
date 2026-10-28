@@ -608,6 +608,6 @@ functions:
         summary: 項目が使うタグは表記が違っても除き、どの項目も使っていないタグだけを返す
         condition: 'D-1: `[データ, API]`。条件 `tags=(ａｐｉ, データー)`・`any_tags=(データ, データー)`'
         mock: なし
-        expected: '`[(データー, [データ, ...])]`（先頭が `データ`）'
+        expected: '`[(データー, [データ])]`'
 test_files:
   - tests/unit/scripts/test_query.py

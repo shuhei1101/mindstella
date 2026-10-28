@@ -81,3 +81,5 @@ functions:
         condition: '`parametrize`: `ＡＰＩ` / `Api` / `データ`'
         mock: なし
         expected: '`api` / `api` / `データ`'
+notes:
+  単体テストのファイル: '`tests/unit/scripts/test_tag_text.py` に置く（`test_vocabulary.py` を置き換える）。ファイルを作ったら `test_files` に載せる'

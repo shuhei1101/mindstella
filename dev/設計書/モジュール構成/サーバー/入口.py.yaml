@@ -626,7 +626,7 @@ functions:
         summary: どの項目も使っていないタグは 0 件と近いタグの案内を返す
         condition: D-1（`[データ]`）。`tags=(データー,)`
         mock: なし
-        expected: '`items` が空、`total` が 0、`hint` に `データー は どの項目も使っていないタグです（近いタグ: データ）`'
+        expected: '`items` が空、`total` が 0、`hint` に `データー はどの項目も使っていないタグです（近いタグ: データ）`'
     exceptions:
       - name: ArgumentError
         condition: '`limit` が範囲の外（引数 `limit`）。`cursor` の誤りは `page_results` から伝わる'
