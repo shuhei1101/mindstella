@@ -318,12 +318,12 @@ request:
     constraints: その種類のスキーマのそのキーの型に合う。`title` は前後の空白を除いて 1 文字以上。`item-add` は `title` を持つ
     example: ゴールはフェーズごとに 1 つ持つ
   - name: map
-    type: dict[str, str | None]
+    type: dict[str, str]
     required: false
     default: なし（対応を持たない）
     location: body
     description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map` と同じ'
-    constraints: '`op` が `setting` で `key` が `phases`・`targets`・`categories`・`tags` のときだけ渡せる。値が `null` にできるのは `tags` だけ'
+    constraints: '`op` が `setting` で `key` が `phases`・`targets`・`categories` のときだけ渡せる'
     example: '{"問い": "目的"}'
     status: planned
 request_example: |-
