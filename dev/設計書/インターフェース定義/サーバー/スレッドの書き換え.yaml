@@ -152,32 +152,6 @@ flows:
       - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_schema_mismatch
-  - name: 正常系（語彙に無いタグを候補として書く）
-    summary: 語彙に無いタグへ置き換えてもそのまま書き、未登録の候補と近いタグを返す
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: タグの語彙 `起票` と、タグ `起票` を持つスレッド TH-1 を持つワークスペース
-        notes: '`tags` を `[起票, 起票の確認]` に置き換える'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as update_thread（MCP のツール）
-        participant WS as ワークスペース
-
-        クライアント->>IF: update_thread workspace id TH-1 tags [起票, 起票の確認]
-        IF-->>WS: タグの語彙を読む
-        IF->>IF: 語彙に無い 起票の確認 を候補にする
-        IF->>WS: threads.yaml を書く
-        IF-->>クライアント: JSON（id・taken・candidate_tags）
-      ```
-    expected:
-      - ツールのエラーにならない
-      - '`candidate_tags` が `{tag: 起票の確認, ids: [TH-1], similar: [起票]}` の 1 件だけ'
-      - TH-1 のタグが `起票`・`起票の確認` で、`config.yaml` の中身が呼ぶ前と同じ
-    test: test_normal_when_unknown_tag
 lead: スレッドの要約とタグを書き換え、AI が読んだ利用者の書き込みを取り込み済みにする。返信せずに取り込むとき（クローズにしたとき・クローズのまま取り込むとき）に使う。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `summary`・`tags` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える'
@@ -223,9 +197,6 @@ response:
   - name: taken
     type: list[str]
     description: 取り込み済みにした利用者の書き込みの ID。無ければ空
-  - name: candidate_tags
-    type: list[{tag, ids, similar}]
-    description: 渡した `tags` のうち、語彙に無い未登録の候補。`ids` はそのスレッドの ID。形は『項目の追加』の `candidate_tags` と同じ。`tags` を渡さないときと候補が無いときは空の配列
 exceptions:
   - name: なし（正常終了）
     condition: 書き換えた
@@ -258,7 +229,7 @@ constraints:
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
-  - item: 未登録の候補
+  - item: タグ
     constraint: 『スレッドを立てる』と同じ
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]

@@ -159,33 +159,6 @@ flows:
       - 'エラーの本文が `エラー: 1 番目の操作（add）:` で始まり、`$2` を含む'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_argument_invalid
-  - name: 正常系（語彙に無いタグを候補として書く）
-    summary: 複数の操作が付けた同じ候補を、付けた項目をまとめて 1 件で返す
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: タグの語彙 `通知` を持つワークスペース
-        notes: 1 番目の操作はタグ `通知` の検討事項、2 番目と 3 番目の操作はタグ `通知機能` の検討事項とタスクを足す
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as batch（MCP のツール）
-        participant WS as ワークスペース
-
-        クライアント->>IF: batch workspace（1 番目はタグ 通知、2・3 番目はタグ 通知機能 の add）
-        IF-->>WS: タグの語彙と全ての YAML を読む
-        IF->>IF: 語彙に無い 通知機能 を候補にしてまとめる
-        IF->>WS: decisions.yaml と tasks.yaml を書く
-        IF-->>クライアント: JSON（results・candidate_tags）
-      ```
-    expected:
-      - ツールのエラーにならない
-      - '最上位の `candidate_tags` が `{tag: 通知機能, ids: [D-2, T-1], similar: [通知]}` の 1 件だけ'
-      - 1 番目の `results[0].result.candidate_tags` が空で、2 番目は D-2、3 番目は T-1 を持つ `通知機能` の 1 件
-      - D-2・T-1 がタグ `通知機能` を持ち、`config.yaml` の中身が呼ぶ前と同じ
-    test: test_normal_when_unknown_tag
 lead: 項目の追加・更新・取得の操作を並べて受け、並べた順に 1 回の呼び出しで当てる。全てを当ててから 1 回だけ検証して書き、1 つでも失敗したらどのファイルも書き換えない。
 idempotent: false
 side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身（`updated_by` は `ai`）で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。取得だけの呼び出しは何も書かない
@@ -252,9 +225,6 @@ response:
   - name: results[].result
     type: dict
     description: '`add` は『項目の追加』、`update` は『項目の更新』、`show` は『項目の表示』の結果と同じ形。`show` は、それより前の操作を当てた後の中身を返す'
-  - name: candidate_tags
-    type: list[{tag, ids, similar}]
-    description: 全ての `add`・`update` の操作で渡した `tags` のうち、語彙に無い未登録の候補をタグごとにまとめたもの。`ids` はその候補を付けた全ての項目の ID（操作の順で重なりなし）。形は『項目の追加』の `candidate_tags` と同じ。操作ごとの候補は `results[].result.candidate_tags` にも入る
 exceptions:
   - name: なし（正常終了）
     condition: 全ての操作を当てられた
@@ -288,6 +258,6 @@ constraints:
     constraint: 制限なし
   - item: 部分成功
     constraint: 起こさない。どれかの操作が失敗するか、置き換えに失敗したら、置き換えたものを前の中身に戻して（前に本文が無ければ消して）からツールのエラーで終わる
-  - item: 未登録の候補
-    constraint: 『項目の追加』と同じ（語彙に無いタグもそのまま書き、`candidate_tags` に返す）。並べた操作の途中で語彙は変えない
+  - item: タグ
+    constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）
 test_file: tests/integration/server/test_batch.py
