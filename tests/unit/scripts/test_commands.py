@@ -450,7 +450,6 @@ def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
         "id": "D-1",
         "file": ".mindstella/decisions.yaml",
         "changed": ["answer", "weight"],
-        "candidate_tags": [],
     }
     updated = _read_items(root, "decisions.yaml")[0]
     assert updated["answer"] == "a"
