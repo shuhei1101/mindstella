@@ -314,13 +314,14 @@ functions:
         description: 一緒に書く `threads.yaml` の `items`（`None` なら書かない）
     returns:
       type: list[str]
-      description: 書き換えた YAML（ワークスペースからの相対パスで `.mindstella/` から始まる。`config.yaml` が先、続けて `changes` の並び、最後に `threads.yaml`）
+      description: 書き換えた YAML（ワークスペースからの相対パスで `.mindstella/` から始まる。`config.yaml` が先（設定が `workspace.settings` と同じなら書かず、戻り値にも入れない）、続けて `changes` の並び、最後に `threads.yaml`）
     process: |-
       1. `changes` の種類のファイルが、書き戻しても中身を失わない形かを確かめる（読み書きと検証の `save_change` の 1. と同じ）
       2. `raw` の設定と `changes` の種類のファイルを差し替えたワークスペースを作り、検証する（`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（何も書かない）
       3. 書く全てのファイル（`threads` があれば `threads.yaml` も）の一時ファイルを書き（`dump_yaml`、`write_temp`）、置き換える前の中身を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
+         - `settings` が `workspace.settings` と同じ場合、`config.yaml` は書く対象に入れない
       4. `changes` の種類 → `threads.yaml` → `config.yaml` の順に `os.replace` で置き換える
          - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
@@ -355,6 +356,12 @@ functions:
         condition: 設定の `tags` を変え、TH-1 の `tags` を付け替えた `threads` を渡す
         mock: なし
         expected: 戻り値の最後が `.mindstella/threads.yaml` で、ファイルの TH-1 の `tags` が付け替えた値
+      - name: test_save_settings_when_settings_unchanged
+        case: 正常
+        summary: 設定が変わらないときは `config.yaml` を書かない
+        condition: '`workspace.settings` と同じ設定と、D-1 の `phase` を変えた検討事項の変更'
+        mock: なし
+        expected: 戻り値が `[.mindstella/decisions.yaml]`。`config.yaml` が呼ぶ前と同じ
   - name: update_settings
     title: 設定の更新
     kind: 関数
