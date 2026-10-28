@@ -537,12 +537,6 @@ functions:
         condition: 10000 文字の `body` と 400 文字の `summary`
         mock: '`now`'
         expected: 立てたスレッドの本文が 10000 文字、要約が 400 文字
-      - name: test_create_thread_when_candidate_tag
-        case: 正常
-        summary: 語彙に無いタグもそのまま付けて立てる
-        condition: 語彙 `起票` のワークスペース、`tags=[起票の確認]`
-        mock: '`now`'
-        expected: '`TH-1` を立て、タグが `[起票の確認]`'
   - name: reply_thread
     title: スレッドへ返信する
     kind: 関数
@@ -793,12 +787,6 @@ functions:
         mock: なし
         expected: '`ArgumentError`（`argument` が `summary`）/ `ArgumentError`（`summary`）/ `ArgumentError`（`tags`）/ `ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
         exception: 変えるものが無い・形の誤り・無い ID
-      - name: test_update_thread_when_candidate_tag
-        case: 正常
-        summary: 語彙に無いタグにも置き換える
-        condition: 語彙 `起票`、タグ `起票` の TH-1。`tags=[起票の確認]`
-        mock: '`now`'
-        expected: TH-1 のタグが `[起票の確認]`。返した取り込み済みが空
   - name: append_user_posts
     title: 利用者の書き込みのまとめた追加
     kind: 関数

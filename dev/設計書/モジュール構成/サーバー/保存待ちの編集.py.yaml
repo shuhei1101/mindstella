@@ -62,7 +62,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/edits.py
     usecase: 画面で項目を編集して保存する
     summary: '`map` を渡せる `setting` の `key` と、保存で渡す『設定の更新』の対応の引数'
-    value: '{"phases": "phase_map", "targets": "target_map", "categories": "category_map", "tags": "tag_map"}'
+    value: '{"phases": "phase_map", "targets": "target_map", "categories": "category_map"}'
   - name: UNEDITABLE_KEYS
     title: 編集できないキー
     container: plugins/mindstella/skills/mindmap/scripts/edits.py
@@ -120,7 +120,7 @@ data_models:
         type: str
         description: 最初に溜めた日時
       - name: map
-        type: dict[str, str | None] | None
+        type: dict[str, str] | None
         default: None
         description: '`setting` の付け替えの対応（キーを書かないときは `None`）'
   - name: EditFile
@@ -422,10 +422,10 @@ functions:
          - 項目の追加（`item-add`）を仮の ID の連番の順に `stage_add`（`editor` は `USER_EDITOR`）で当て、仮の ID → 振った ID を控える。参照のキー（`REF_KEYS`）の値の仮の ID は振った ID に置き換える
          - キー・案・採用（`set`・`option-*`・`adopt`）を溜めた順に項目ごとにまとめ、`apply_option_edit`・`switch_adopted` で案を組み、`stage_update`（`editor` は `USER_EDITOR`）で 1 項目 1 回で当てる
          - 項目の削除（`item-remove`）を当て、`note_removed` で記録する
-         - 当てる途中の `SchemaMismatchError`・`UnmappedPhaseError`・`UnmappedTargetError`・`UnmappedTagError` は、引き起こした編集の ID に紐づけて `invalid` にする
+         - 当てる途中の `SchemaMismatchError`・`UnmappedPhaseError`・`UnmappedTargetError` は、引き起こした編集の ID に紐づけて `invalid` にする
       4. 2. か 3. で書き込めない編集が 1 件以上あれば、溜めた順に並べて `EditsBlockedError` を送る（何も書かない）
       5. 利用者の変更を `commit_pending` で `USER_EDIT_SUMMARY` のまとまりにする
-      6. 項目・本文・設定・スレッド・`changes.yaml`・空にした `edits.yaml`（`seq`・`new_seq` はそのまま）を `save_batch` で 1 回で書く
+      6. 項目・本文・設定・`changes.yaml`・空にした `edits.yaml`（`seq`・`new_seq` はそのまま）を `save_batch` で 1 回で書く
       7. まとまりの ID・日時・足した項目・書き換えた項目・消した項目・書き換えた設定のキーを返す
     exceptions:
       - name: EditInvalidError
@@ -440,7 +440,7 @@ functions:
       - name: test_save_edits
         case: 正常
         summary: キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする
-        condition: 未決定の D-1（案 A・B、タグ 画面）と、E-1（`answer`）・E-2（`tags` を語彙に無いタグを含む `[画面, 記録の形]`）・E-3（案 C の追加）・E-4（採用する案を C）
+        condition: 未決定の D-1（案 A・B、タグ 画面）と、E-1（`answer`）・E-2（`tags` をまだ使われていないタグを含む `[画面, 記録の形]`）・E-3（案 C の追加）・E-4（採用する案を C）
         mock: '`now`'
         expected: '`set` が V-1、`changed` が `[D-1]`。D-1 の採用する案が C で `updated_by` が `user`、変更履歴が 1 回分だけ増えて `by` が `user`。まとまりの説明が「画面からの編集」で、`edits.yaml` が 0 件'
       - name: test_save_edits_when_add_remove_settings
@@ -489,11 +489,11 @@ functions:
         passing: positional
         description: 要求の本文
     returns:
-      type: tuple[str, str | None, str | None, Any, dict[str, str | None] | None]
+      type: tuple[str, str | None, str | None, Any, dict[str, str] | None]
       description: '`(op, target, key, value, map)`'
     exceptions:
       - name: EditInvalidError
-        condition: '`op` が合わない、要るキーが無い、`map` を渡せない `op`・`key` に渡した（値が `null` にできるのは `tags` だけ）'
+        condition: '`op` が合わない、要るキーが無い、`map` を渡せない `op`・`key` に渡した、`map` の値が文字列でない'
   - name: _current_value
     title: 今の値
     kind: 関数

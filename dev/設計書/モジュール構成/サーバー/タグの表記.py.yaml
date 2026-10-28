@@ -1,0 +1,83 @@
+title: "サーバー / タグの表記"
+lead: タグを NFKC と小文字にそろえた表記にし、使われているタグのうち字面の近いものを並べる。検索から使う。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    tag_text.py   タグの表記の正規化・近いタグの候補
+  ```
+constants:
+  - name: SIMILAR_LIMIT
+    title: 近いタグの上限
+    container: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    usecase: 記録の検索
+    summary: どの項目も使っていないタグ 1 つに添える近いタグの数の上限（インターフェース定義『項目の検索』の制約「近いタグの候補」）
+    value: '5'
+functions:
+  - name: similar_tags
+    title: 近いタグの候補
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    usecase: 記録の検索
+    scope: public
+    summary: 使われているタグを、渡したタグと字面が近い順に最大 `SIMILAR_LIMIT` 件返す
+    args:
+      - name: tag
+        type: str
+        required: true
+        passing: positional
+        description: どの項目も使っていないタグ
+      - name: names
+        type: Iterable[str]
+        required: true
+        passing: positional
+        description: 使われているタグの正規化した表記
+    returns:
+      type: list[str]
+      description: 近い順の候補（使われているタグが無ければ空）
+    process: |-
+      1. 使われているタグごとに、渡したタグを正規化した表記（`normalize_tag`）との近さを `difflib.SequenceMatcher(None, tag, name).ratio()` で測る
+      2. 近さが 0 より大きいものを、近さの大きい順・同じ近さは名前の順に並べ、先頭の `SIMILAR_LIMIT` 件を返す
+    reason: 標準ライブラリで済み、日本語の文字列も文字の並びで比べられるため。字面の揺れ（`データ`・`データー`、`通知`・`通知機能`）を拾えればよく、意味の近さはスキルが判断する
+    unit_tests:
+      - name: test_similar_tags
+        case: 正常
+        summary: 字面の近い順に並べ、近さが 0 のタグは入れない
+        condition: '`tag=通知機能`、使われているタグ `通知`・`保存`・`通信`'
+        mock: なし
+        expected: 先頭が `通知`、`保存` を含まない
+      - name: test_similar_tags_when_width_differs
+        case: 正常
+        summary: 渡したタグを正規化してから比べる
+        condition: '`tag=ＡＰＩｓ`、使われているタグ `api`'
+        mock: なし
+        expected: 先頭が `api`
+      - name: test_similar_tags_limit
+        case: 正常
+        summary: 候補は上限まで
+        condition: '`tag=a`、使われているタグ `a1`〜`a7`'
+        mock: なし
+        expected: 5 件
+  - name: normalize_tag
+    title: タグの正規化
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    usecase: 記録の検索
+    scope: public
+    summary: タグを NFKC と小文字にそろえた表記にする
+    args:
+      - name: tag
+        type: str
+        required: true
+        passing: positional
+        description: 書いたときの表記のタグ
+    returns:
+      type: str
+      description: 正規化した表記（インターフェース定義『タグの一覧』の `tags[].name`）
+    process: 1. `unicodedata.normalize("NFKC", tag)` を小文字（`str.lower`）にして返す
+    unit_tests:
+      - name: test_normalize_tag
+        case: 正常
+        summary: 全角と大文字の違いをそろえる
+        condition: '`parametrize`: `ＡＰＩ` / `Api` / `データ`'
+        mock: なし
+        expected: '`api` / `api` / `データ`'

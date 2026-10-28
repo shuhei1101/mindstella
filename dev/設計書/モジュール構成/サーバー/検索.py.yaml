@@ -1,5 +1,5 @@
 title: "サーバー / 検索"
-lead: 条件で項目を探してページに分け、1 件の中身と参照元、使っている属性名とタグの語彙を出す。読み書きと検証・タグの語彙だけに依存し、ファイルを書かない。
+lead: 条件で項目を探してページに分け、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証・タグの表記だけに依存し、ファイルを書かない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
@@ -111,7 +111,7 @@ functions:
       description: '`{id, kind, title, status, tags}` の並び（`status` を持たない種類は `None`、タグを持たない項目の `tags` は空の並び）。`detailed` なら `DETAILED_KEYS` の順に `target`・`category`・`phase`（無ければ `None`）・`attrs`（無ければ空の辞書）・`updated` を足す'
     process: |-
       1. `KINDS` の順に、`kind` の条件に合う種類の項目を見る
-      2. `status`・`target`・`category`・`phase` は一致、`tags` は全てを `tags` に含む、`any_tags` はどれかを `tags` に含む、`attrs` は全ての名前と値（値は文字列にして）が一致、で絞る
+      2. `status`・`target`・`category`・`phase` は一致、`tags` は全てを `tags` に含む、`any_tags` はどれかを `tags` に含む（タグは渡した側も項目の側も `normalize_tag` でそろえて比べる）、`attrs` は全ての名前と値（値は文字列にして）が一致、で絞る
       3. `text` は項目の全ての文字列の値のどれかに、英字の大小を区別せず含まれるかで絞る（`_contains_text`）
       4. 各種類の中は連番の小さい順に並べる
       5. 合った項目を `{id, kind, title, status, tags}` にし、`detailed` なら `DETAILED_KEYS` を足す（本文・案は入れない）
@@ -152,6 +152,12 @@ functions:
         condition: '対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B を持つ D-1 と、どれも持たない N-1。`detailed=True`'
         mock: なし
         expected: D-1 が `target`・`category`・`phase`・`attrs`・`updated` を持ち `options` を持たない。N-1 は `target` が `None`、`attrs` が `{}`、`tags` が `[]`
+      - name: test_search_items_when_tag_normalized
+        case: 正常
+        summary: 全角・大文字の違うタグでも当たる
+        condition: 'D-1: `[API]`／D-2: `[ａｐｉ]`／D-3: `[データ]`。`tags=(api,)`'
+        mock: なし
+        expected: D-1・D-2（`tags` は書いたときの表記のまま）
   - name: _contains_text
     title: 文字の包含
     kind: 関数
@@ -324,37 +330,41 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/query.py
     usecase: 記録の検索
     scope: public
-    summary: タグの語彙のタグごとに、説明（`summary`・含める・含めない・例）と、持つ項目の数と種類を数える
+    summary: 項目とスレッドが使っているタグを、正規化した表記ごとに持つ数と種類を数える
     args:
       - name: workspace
         type: Workspace
         required: true
         passing: positional
         description: ワークスペース
+      - name: thread_tags
+        type: list[list[str]]
+        required: true
+        passing: positional
+        description: スレッドごとの `tags`（呼ぶ側が `load_threads` で読んで渡す）
     returns:
       type: list[dict[str, Any]]
-      description: '`{name, summary, include, exclude, examples, count, kinds}` の並び（語彙のタグだけを名前の順。説明は `tag_entries` のまま。`kinds` は `KINDS` の順で重なりなし。持つ項目が無いタグは `count: 0`・`kinds: []`）'
+      description: '`{name, count, kinds}` の並び（件数の多い順、同じ件数は名前の順。`kinds` は `KINDS` の順で、スレッドは最後の `thread`。重なりなし。タグが無ければ空）。インターフェース定義『タグの一覧』の `tags`'
     process: |-
-      1. 設定から語彙を読む（`tag_entries`）
-      2. 全ての項目の `tags` を、項目ごとに重なりを除いてからタグごとに件数と種類を数える
-      3. 語彙のタグごとに、説明（`summary`・`include`・`exclude`・`examples`）・数えた件数と種類（無ければ 0 と空）を並べる。語彙に無いタグは返さない
+      1. 全ての項目の `tags` と `thread_tags` の文字列を `normalize_tag` でそろえ、項目かスレッドごとに重なりを除いてから、そろえた表記ごとに件数と種類（スレッドは `thread`）を数える（文字列でない要素は飛ばす）
+      2. 件数の多い順、同じ件数は名前の順に `{name, count, kinds}` を並べる
     unit_tests:
       - name: test_list_tags
         case: 正常
-        summary: 語彙のタグごとに説明を返し、種類をまたいで数え、持つ項目が無いタグも返す
-        condition: '語彙 `データ`（説明 `s`・含める `i`・含めない `e`・例 `[x]`）・`画面`・`保留`。D-1: タグ `データ`／D-2: タグ `画面`／T-1: タグ `データ`／N-1: タグ無し'
+        summary: 表記の違いをまとめ、種類とスレッドをまたいで件数の多い順に並べる
+        condition: 'D-1: `[API]`／D-2: `[画面]`／T-1: `[ａｐｉ]`／N-1: タグ無し。`thread_tags=[[api, 画面]]`'
         mock: なし
-        expected: '`データ`（`s`・`i`・`e`・`[x]`・2・`[decision, task]`）・`保留`（`None`・`None`・`None`・`[]`・0・`[]`）・`画面`（`None`・`None`・`None`・`[]`・1・`[decision]`）の順'
+        expected: '`api`（3・`[decision, task, thread]`）・`画面`（2・`[decision, thread]`）の順'
       - name: test_list_tags_when_duplicated
         case: 正常
-        summary: 1 つの項目が同じタグを 2 回持っても 1 件と数える
-        condition: '語彙 `データ`。D-1: タグ `[データ, データ]`'
+        summary: 1 つの項目が同じタグを表記を変えて 2 回持っても 1 件と数える
+        condition: 'D-1: `[データ, ﾃﾞｰﾀ]`。`thread_tags=[]`'
         mock: なし
-        expected: '`データ`（1・`[decision]`）'
+        expected: '`データ`（1・`[decision]`）だけ'
       - name: test_list_tags_when_none
         case: 正常
-        summary: 語彙が無ければ空
-        condition: 語彙を持たず、タグ `データ` の D-1 だけ
+        summary: タグが無ければ空
+        condition: タグを持たない D-1 だけ。`thread_tags=[[]]`
         mock: なし
         expected: 空の並び
   - name: page_results
@@ -390,7 +400,7 @@ functions:
         required: false
         default: '[]'
         passing: keyword
-        description: 語彙にもどの項目にも無い渡したタグと近い語彙のタグ（`list_stray_tags`。案内に使う）
+        description: どの項目も使っていない渡したタグと近い使われているタグ（`list_stray_tags`。案内に使う）
     returns:
       type: dict[str, Any]
       description: '`{items, total, next_cursor, hint}`'
@@ -534,13 +544,13 @@ functions:
         required: false
         default: '[]'
         passing: keyword
-        description: 語彙にもどの項目にも無い渡したタグと近い語彙のタグ
+        description: どの項目も使っていない渡したタグと近い使われているタグ
     returns:
       type: str | None
       description: 案内の文。どちらにも当たらないときは `None`
     process: |-
       1. `total` が 0 で条件を 1 つ以上渡していれば、渡した条件の引数の名前を並べ、`合う項目がありません。{引数を・でつないだもの} のどれかを外して探してください` を返す（`attrs` は引数名 `attr` で並べる）
-         - `stray_tags` があれば、タグごとに ` {タグ} は語彙にもどの項目にも無いタグです（近いタグ: {近いタグを・でつないだもの}）` を続ける（近いタグが無ければ `（近いタグなし）`）
+         - `stray_tags` があれば、タグごとに ` {タグ} はどの項目も使っていないタグです（近いタグ: {近いタグを・でつないだもの}）` を続ける（近いタグが無ければ `（近いタグなし）`）
       2. `has_next` が真なら、`NARROWING_ARGUMENTS` のうちまだ渡していない引数を並べ、`全 {total} 件のうち {returned} 件を返しました。{引数を・でつないだもの} で絞るか、next_cursor で続きを読んでください` を返す（渡していない引数が無ければ `next_cursor で続きを読んでください` だけ）
       3. どちらでもなければ `None`
     unit_tests:
@@ -564,17 +574,17 @@ functions:
         expected: '`None` / `None`'
       - name: test_build_hint_when_stray_tag
         case: 正常
-        summary: 0 件で語彙にもどの項目にも無いタグは、近いタグを案内する
+        summary: 0 件でどの項目も使っていないタグは、近いタグを案内する
         condition: '`total=0`・`returned=0`・`has_next=False`、条件 `tags=(データー,)`、`stray_tags=[(データー, [データ])]`'
         mock: なし
-        expected: '`tags` と `データー は語彙にもどの項目にも無いタグです（近いタグ: データ）` を含む'
+        expected: '`tags` と `データー はどの項目も使っていないタグです（近いタグ: データ）` を含む'
   - name: list_stray_tags
     title: どこにも無いタグ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/query.py
     usecase: 記録の検索
     scope: public
-    summary: 条件の `tags`・`any_tags` のうち、語彙にもどの項目にも無いタグを、近い語彙のタグを添えて返す
+    summary: 条件の `tags`・`any_tags` のうち、どの項目も使っていないタグを、近い使われているタグを添えて返す
     args:
       - name: workspace
         type: Workspace
@@ -588,16 +598,16 @@ functions:
         description: 条件
     returns:
       type: list[tuple[str, list[str]]]
-      description: （タグ, 近い語彙のタグ）の並び（`tags` → `any_tags` の渡した順で重なりなし。無ければ空）
+      description: （タグ, 近い使われているタグ）の並び（タグは渡した表記、近いタグは正規化した表記。`tags` → `any_tags` の渡した順で、正規化して重なりなし。無ければ空）
     process: |-
-      1. 語彙の名前（`tag_names`）と、全ての項目の `tags` の文字列を集める
-      2. `tags`・`any_tags` を渡した順に見て、どちらにも無いタグを重ならないように拾い、それぞれに近い語彙のタグ（`similar_tags`）を添える
+      1. 全ての項目の `tags` の文字列を `normalize_tag` でそろえて集める
+      2. `tags`・`any_tags` を渡した順に見て、そろえた表記が 1 で集めたタグに無いタグを重ならないように拾い、それぞれに近い使われているタグ（`similar_tags`）を添える
     unit_tests:
       - name: test_list_stray_tags
         case: 正常
-        summary: 項目が使う未登録の候補と語彙のタグは除き、どこにも無いタグだけを返す
-        condition: '語彙 `データ`。D-1: タグ `[通知]`。条件 `tags=(通知, データー)`・`any_tags=(データ, データー)`'
+        summary: 項目が使うタグは表記が違っても除き、どの項目も使っていないタグだけを返す
+        condition: 'D-1: `[データ, API]`。条件 `tags=(ａｐｉ, データー)`・`any_tags=(データ, データー)`'
         mock: なし
-        expected: '`[(データー, [データ])]`'
+        expected: '`[(データー, [データ, ...])]`（先頭が `データ`）'
 test_files:
   - tests/unit/scripts/test_query.py

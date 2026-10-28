@@ -1289,7 +1289,7 @@ components:
         type: (() => void) | null
         required: false
         default: 'null'
-        description: パネルの下端に見出し「ワークスペースの設定」と「題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙」、「設定を編集する」を置き、押すと呼ぶ。`null`（配る書き出し・差分の表示中）なら置かない
+        description: パネルの下端に見出し「ワークスペースの設定」と「題名・フェーズ・ゴール・対象・カテゴリー」、「設定を編集する」を置き、押すと呼ぶ。`null`（配る書き出し・差分の表示中）なら置かない
     unit_tests:
       - name: test_settings_drawer
         case: 正常
@@ -2078,7 +2078,7 @@ components:
         summary: まとまりごとに並べ、離れたときにキーを溜める
         condition: 題名 話し合い。題名を「画面の編集」にして入力欄を離れる。保持する回数を 3 にして離れる
         mock: '`on.change`'
-        expected: '`fieldset` の見出しが「話し合い」「進め方」「タグと関連」「変更履歴」の順。`on.change` が `{key: summary, value: 画面の編集}`・`{key: history_limit, value: 3}` で 1 回ずつ'
+        expected: '`fieldset` の見出しが「話し合い」「進め方」「関連」「変更履歴」の順。`on.change` が `{key: summary, value: 画面の編集}`・`{key: history_limit, value: 3}` で 1 回ずつ'
       - name: test_workspace_settings_when_used_value_removed
         case: 正常
         summary: 使われている値を外すと付け替え先を選ぶまで溜めない
@@ -2103,7 +2103,7 @@ components:
       - name: settings
         type: object
         required: true
-        description: 編集を当てた設定（フェーズ・対象・カテゴリー・タグの選択肢）
+        description: 編集を当てた設定（フェーズ・対象・カテゴリーの選択肢）
       - name: marks
         type: Record<string, 'pending' | 'remove' | 'blocked'>
         required: true
@@ -2132,6 +2132,10 @@ components:
         type: '{change, remove, cancelRemove}'
         required: true
         description: キー・案を溜める（`{op, key, value}`）・削除を溜める・削除を取り消す
+      - name: usedTags
+        type: string[]
+        required: true
+        description: 記録で使われているタグ（`usedTags`）。タグのチップの候補に出し、候補に無いタグも入れられる
     unit_tests:
       - name: test_detail_edit_form
         case: 正常
@@ -3489,23 +3493,23 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
     usecase: 画面で項目を編集して保存する
     scope: public
-    summary: フェーズ・対象・カテゴリー・タグの 1 つの値を持つ項目（タグはスレッドも）の件数を返す
+    summary: フェーズ・対象・カテゴリーの 1 つの値を持つ項目の件数を返す
     args:
       - name: args
-        type: "{index: RecordIndex, threads: Thread[], key: 'phases' | 'targets' | 'categories' | 'tags', value: string}"
+        type: "{index: RecordIndex, key: 'phases' | 'targets' | 'categories', value: string}"
         required: true
         passing: positional
-        description: 記録の索引・スレッド・設定のキー・値
+        description: 記録の索引・設定のキー・値
     returns:
       type: number
-      description: 件数（`phases` は `phase`、`targets` は項目とカテゴリーの `target`、`categories` は `category`、`tags` は項目とスレッドの `tags` を数える）
+      description: 件数（`phases` は `phase`、`targets` は項目とカテゴリーの `target`、`categories` は `category` を数える）
     unit_tests:
       - name: test_usage_count
         case: 正常
         summary: キーごとに使っている件数を数える
-        condition: 'D-1（フェーズ 問い、タグ 画面）・T-1（タグ 画面）・TH-1（タグ 画面）。`parametrize`: `phases` の 問い / `tags` の 画面 / `tags` の 保存'
+        condition: 'D-1・D-2（フェーズ 問い）・T-1（カテゴリー 画面）。`parametrize`: `phases` の 問い / `categories` の 画面 / `phases` の 発散'
         mock: なし
-        expected: 1 / 3 / 0
+        expected: 2 / 1 / 0
   - name: editableKeys
     title: 編集できるキーの並び
     kind: 関数
@@ -3688,6 +3692,29 @@ functions:
         condition: '`max` 880。`parametrize`: `width` 640 / 300 / 1000 / 700.6'
         mock: なし
         expected: 640 / 480 / 880 / 701
+  - name: usedTags
+    title: 記録で使われているタグ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 項目とスレッドが使っているタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる
+    args:
+      - name: args
+        type: '{index: RecordIndex, threads: Thread[]}'
+        required: true
+        passing: positional
+        description: 編集を当てた記録の索引とスレッド
+    returns:
+      type: string[]
+      description: そろえた表記のタグ
+    unit_tests:
+      - name: test_used_tags
+        case: 正常
+        summary: 表記をそろえて重なりを除き、件数の多い順に並べる
+        condition: 'D-1: `[API]`・T-1: `[ａｐｉ, 画面]`・N-1: `[保存]`・TH-1: `[画面]`'
+        mock: なし
+        expected: '`[api, 画面, 保存]`'
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
