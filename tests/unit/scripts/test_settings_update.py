@@ -429,6 +429,25 @@ def test_save_settings(
     assert list(root.rglob("*.tmp")) == []
 
 
+def test_save_settings_when_settings_unchanged(
+    make_workspace: MakeWorkspace, make_item: MakeItem, make_settings: MakeSettings
+) -> None:
+    """設定が変わらないときは `config.yaml` を書かない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", phase="問い"), settings=make_settings(["問い", "発散"])
+    )
+    workspace = store.load_workspace(root)
+    config_path = root / RECORD_DIR / "config.yaml"
+    config_before = config_path.read_text(encoding="utf-8")
+    change = store.Change(kind="decision", items=[make_item("D-1", phase="発散")])
+    # 実行
+    files = settings_update.save_settings(workspace, workspace.settings, [change])
+    # 検証
+    assert files == [".mindstella/decisions.yaml"]
+    assert config_path.read_text(encoding="utf-8") == config_before
+
+
 def test_save_settings_with_threads(
     make_workspace: MakeWorkspace,
     make_thread: MakeThread,
