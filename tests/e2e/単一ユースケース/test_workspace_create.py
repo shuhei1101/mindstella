@@ -88,7 +88,7 @@ def test_normal(tmp_path: Path, call_tool: CallTool) -> None:
     assert_readme_commands(root, (root / "README.md").read_text(encoding="utf-8"))
     # 全ての YAML がスキーマに合う（点検がスキーマ違反を出さない）
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
+    assert checked.data == {"ok": True, "problems": []}
 
 
 def test_error_when_workspace_exists(
@@ -137,7 +137,7 @@ def test_normal_when_without_goal(tmp_path: Path, call_tool: CallTool) -> None:
     assert created_settings["playbooks"] == ["壁打ち", "調査"]
     # 全ての YAML がスキーマに合う（点検がスキーマ違反を出さない）
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
+    assert checked.data == {"ok": True, "problems": []}
 
 
 def test_error_when_unmigrated_workspace_exists(

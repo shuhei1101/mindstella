@@ -30,7 +30,6 @@ from workspace_fixtures import (
 # 立てるスレッドの本文・タグ・要約
 QUESTION = "D-1 の比べた結果を Issue に起票してよいですか"
 TAGS = ["起票"]
-TAG_VOCABULARY = [{"name": "起票"}]
 SUMMARY = "D-1 の比べた結果を Issue に起票してよいかの確認。返事待ち"
 
 # 空のオープン一覧の文言
@@ -40,13 +39,12 @@ EMPTY = f"{COMMENTS_PANEL} .comments-empty"
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """確認の問いを本文・タグ・要約つきのオープンのスレッドとして立て、取り込み待ちには出ない（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": TAG_VOCABULARY})
+    root = make_workspace(make_item("D-1"))
     ws = {"workspace": str(root)}
     # 実行
     created = replay("new_thread", **ws, body=QUESTION, tags=TAGS, summary=SUMMARY)
@@ -70,14 +68,13 @@ def test_normal(
 def test_normal_when_shown_on_open_screen(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
     call_tool: CallTool,
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
     """プレビューでスレッドの一覧を開いたまま AI がスレッドを立てると、画面を開き直さずに行が足される（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": TAG_VOCABULARY})
+    root = make_workspace(make_item("D-1"))
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     open_preview(str(served.data["url"]))
@@ -120,33 +117,3 @@ def test_error_when_body_empty(
     assert "body" in result.text
     assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert snapshot_tree(root) == before
-
-
-def test_normal_when_unknown_tag(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-    read_yaml: Callable[[Path, str], Any],
-) -> None:
-    """語彙に無いタグでもスレッドを立て、未登録の候補と近いタグを返す（正常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": TAG_VOCABULARY})
-    config_path = root / RECORD_DIR / "config.yaml"
-    config_before = config_path.read_text(encoding="utf-8")
-    # 実行
-    result = call_tool(
-        "new_thread", workspace=str(root), body=QUESTION, tags=["起票の確認"], summary=SUMMARY
-    )
-    # 検証
-    # スレッドを立てるツールがエラーにせず、立てたスレッドの ID を返す
-    assert result.is_error is False
-    assert result.data["id"] == "TH-1"
-    # 結果の未登録の候補に、起票の確認・立てたスレッドの ID・近い語彙のタグがある
-    assert result.data["candidate_tags"] == [
-        {"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}
-    ]
-    # スレッドが 1 件でき、語彙に無いタグのまま持つ
-    threads = read_yaml(root, "threads.yaml")["items"]
-    assert [thread["tags"] for thread in threads] == [["起票の確認"]]
-    # 設定のタグの語彙が、スレッドを立てる前と同じである
-    assert config_path.read_text(encoding="utf-8") == config_before

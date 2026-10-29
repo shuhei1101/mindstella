@@ -381,7 +381,7 @@ def test_normal_when_body_for_every_kind(make_workspace: MakeWorkspace, call_too
     ]
     # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
+    assert checked.data == {"ok": True, "problems": []}
 
 
 def test_normal_when_unsorted_without_options(
@@ -408,7 +408,7 @@ def test_normal_when_unsorted_without_options(
     assert "options" not in after_update
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
+    assert checked.data == {"ok": True, "problems": []}
 
 
 def test_error_when_options_missing(
@@ -583,7 +583,7 @@ def test_normal_when_doc_body_html(
     assert shown_markdown.data["body_format"] == "markdown"
     # ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     assert checked.is_error is False
-    assert checked.data == {"ok": True, "problems": [], "warnings": [], "hint": None}
+    assert checked.data == {"ok": True, "problems": []}
 
 
 def test_error_when_html_body_for_non_doc(
@@ -614,16 +614,14 @@ def test_error_when_html_body_for_non_doc(
     assert snapshot_tree(root) == before
 
 
-def test_normal_when_unknown_tag(
+def test_normal_when_new_tag(
     make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
+    make_item: MakeItem,
     call_tool: CallTool,
 ) -> None:
-    """語彙に無いタグを持つ検討事項も書き、未登録の候補と近いタグを返す（正常系）。"""
+    """まだどの項目も持たないタグを持つ検討事項も、そのまま書く（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    config_path = root / RECORD_DIR / "config.yaml"
-    config_before = config_path.read_text(encoding="utf-8")
+    root = make_workspace(make_item("D-1", tags=["通知"]))
     # 実行
     result = call_tool(
         "add",
@@ -631,16 +629,17 @@ def test_normal_when_unknown_tag(
         kind="decision",
         item={**NEW_DECISION, "tags": ["通知", "通知機能"]},
     )
+    tags = call_tool("tags", workspace=str(root))
     # 検証
     # 追加のツールがエラーにせず、足した検討事項の ID を返す
     assert result.is_error is False
     assert result.data is not None
-    assert result.data["id"] == "D-1"
-    # 結果の未登録の候補に、通知機能・付けた検討事項の ID・近い語彙のタグだけがある
-    assert result.data["candidate_tags"] == [
-        {"tag": "通知機能", "ids": ["D-1"], "similar": ["通知"]}
-    ]
-    # 検討事項が、語彙に無いタグのまま書かれている
-    assert _read_decisions(root)[0]["tags"] == ["通知", "通知機能"]
-    # 設定のタグの語彙が、追加を呼ぶ前と同じである
-    assert config_path.read_text(encoding="utf-8") == config_before
+    assert result.data["id"] == "D-2"
+    # 足した検討事項が、タグ 通知・通知機能 を持つ
+    assert _read_decisions(root)[1]["tags"] == ["通知", "通知機能"]
+    # config.yaml がタグのキーを持たない
+    config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    assert "tags" not in config
+    # タグの一覧が 通知（2 件）と 通知機能（1 件）を返す
+    assert tags.data is not None
+    assert {row["name"]: row["count"] for row in tags.data["tags"]} == {"通知": 2, "通知機能": 1}

@@ -25,9 +25,6 @@ from playwright.sync_api import Page, expect
 from preview_helpers import OpenPreview, ServeWorkspace, pick_history_point
 from workspace_fixtures import RECORD_DIR, CallTool, MakeEdit, MakeItem, MakeWorkspace, StartServer, WriteEdits
 
-# タグの語彙を持つ設定に足す項目
-TAGS = [{"name": "画面"}, {"name": "記録の形"}]
-
 # 溜めた編集の取り消しに使う、項目を指す見出しの文字
 UNDO_TASK_STATUS = "T-1 の状態の編集を取り消す"
 
@@ -81,8 +78,8 @@ def test_normal(
     options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
     url, root = serve_workspace(
         make_item("D-1", tags=["画面"], options=options),
-        make_item("T-1"),
-        settings={**valid_settings, "tags": TAGS},
+        make_item("T-1", tags=["記録の形"]),
+        settings=valid_settings,
     )
     page = open_preview(url, "#tab=decisions&view=board&id=D-1")
     page.wait_for_selector(f"{DETAIL_PANEL}.open")
@@ -158,26 +155,22 @@ def test_normal_when_settings(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """設定の画面で題名とタグの語彙を書き換えて溜め、まとめて保存すると、画面を開き直さずにトップバーの題名が変わる（正常系）。"""
+    """設定の画面で題名を書き換えて溜め、まとめて保存すると、画面を開き直さずにトップバーの題名が変わる。設定の画面にタグの語彙の入力は無い（正常系）。"""
     # 準備
-    url, root = serve_workspace(
-        make_item("D-1"), settings={**valid_settings, "summary": "話し合い", "tags": TAGS}
-    )
+    url, root = serve_workspace(make_item("D-1"), settings={**valid_settings, "summary": "話し合い"})
     page = open_preview(url, "#tab=decisions&view=board")
     # 実行
     _open_settings_screen(page)
     _commit_text(page, "題名", "画面の編集")
     wait_pending_count(page, 1)
-    vocabulary = page.get_by_label("タグの語彙を追加")
-    vocabulary.fill("保存")
-    vocabulary.press("Enter")
-    wait_pending_count(page, 2)
+    # 検証（設定の画面にタグの語彙の入力が無い）
+    assert page.get_by_label("タグの語彙を追加").count() == 0
     open_pending(page)
     save_pending(page)
     # 検証
     config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert config["summary"] == "画面の編集"
-    assert [tag["name"] for tag in config["tags"]] == ["画面", "記録の形", "保存"]
+    assert "tags" not in config
     assert read_edits(root) == []
     expect(page.locator(TOPBAR_TITLE)).to_have_text("画面の編集", timeout=SETTLE_MS)
 
