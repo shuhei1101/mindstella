@@ -751,6 +751,12 @@ functions:
         mock: なし
         expected: '`ArgumentError`（メッセージに `plan` / `to_version` / `to_version` / `values`）。ワークスペースを書き換えていない'
         exception: 引数の誤り
+      - name: test_run_migrate_when_call_destructive
+        case: 正常
+        summary: '`call` の手順の `destructive: true` を `steps[].destructive` に反映する'
+        condition: '`v0.3.0` の手順に `{op: call, script: ..., destructive: true}` を持つバージョンの手順のフォルダ、`plan=True`'
+        mock: '`read_plugin_version`（`v0.3.0`）'
+        expected: '`steps` の該当する手順が `{op: call, destructive: true, ...}`'
     exceptions:
       - name: ArgumentError
         condition: 一緒に使わない引数を渡した・版の形が違う・`to_version` が `from_version` より前・`values` の形が違う
