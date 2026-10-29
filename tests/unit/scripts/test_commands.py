@@ -13,7 +13,6 @@ import pytest
 import yaml
 
 import builder
-import checker
 import commands
 import errors
 import history
@@ -341,7 +340,6 @@ def test_run_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
         "id": "D-2",
         "file": ".mindstella/decisions.yaml",
         "body": ".mindstella/docs/D-2.md",
-        "candidate_tags": [],
     }
     added = _read_items(root, "decisions.yaml")[1]
     assert added["created"] == FIXED_NOW
@@ -360,12 +358,7 @@ def test_run_add_when_no_body(make_workspace: MakeWorkspace) -> None:
     # 実行
     payload = commands.run_add(root, "task", item, now=_fixed_now)
     # 検証
-    assert payload == {
-        "id": "T-1",
-        "file": ".mindstella/tasks.yaml",
-        "body": None,
-        "candidate_tags": [],
-    }
+    assert payload == {"id": "T-1", "file": ".mindstella/tasks.yaml", "body": None}
     assert "body" not in _read_items(root, "tasks.yaml")[0]
 
 
@@ -450,7 +443,6 @@ def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
         "id": "D-1",
         "file": ".mindstella/decisions.yaml",
         "changed": ["answer", "weight"],
-        "candidate_tags": [],
     }
     updated = _read_items(root, "decisions.yaml")[0]
     assert updated["answer"] == "a"
@@ -538,35 +530,6 @@ def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: Ma
     assert result["id"] == "N-3"
 
 
-def test_stage_add_when_candidate_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグも書き、未登録の候補として返す（正常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    staged = _make_staged(root, 0)
-    item = {"title": "問い", "status": "未整理", "tags": ["通知機能", "通知"]}
-    # 実行
-    new_staged, result = commands.stage_add(staged, "decision", item, now=_fixed_now)
-    # 検証
-    assert new_staged.items["decision"][0]["tags"] == ["通知機能", "通知"]
-    assert result["candidate_tags"] == [{"tag": "通知機能", "ids": ["D-1"], "similar": ["通知"]}]
-
-
-def test_stage_add_when_no_tags(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """tags を渡さなければ候補は空（正常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    staged = _make_staged(root, 0)
-    item = {"title": "画面を作る", "status": "未着手"}
-    # 実行
-    _, result = commands.stage_add(staged, "task", item, now=_fixed_now)
-    # 検証
-    assert result["candidate_tags"] == []
-
-
 def test_stage_add_when_user_editor(make_workspace: MakeWorkspace) -> None:
     """編集した人を渡すと、足した項目の updated_by にその人を書く（正常系）。"""
     # 準備
@@ -638,22 +601,6 @@ def test_stage_update_when_nothing_changed(
     assert result["changed"] == []
     assert new_staged.changes["last_seq"] == 3
     assert new_staged.items["decision"][0]["seq"] == 2
-
-
-def test_stage_update_when_candidate_tag(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグにも置き換え、未登録の候補として返す（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": [{"name": "通知"}]})
-    staged = _make_staged(root, 0)
-    # 実行
-    new_staged, result = commands.stage_update(
-        staged, "D-1", {"tags": ["通知機能"]}, now=_fixed_now
-    )
-    # 検証
-    assert new_staged.items["decision"][0]["tags"] == ["通知機能"]
-    assert result["candidate_tags"] == [{"tag": "通知機能", "ids": ["D-1"], "similar": ["通知"]}]
 
 
 def test_stage_update_when_body_format_changed(
@@ -933,42 +880,6 @@ def test_run_batch_when_operation_fails(
     assert snapshot_tree(root) == before
 
 
-def test_run_batch_when_candidate_tags(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """操作ごとの候補と、まとめた候補を返す（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1"), settings={**valid_settings, "tags": [{"name": "保存"}]}
-    )
-    operations = [
-        {
-            "op": "add",
-            "kind": "decision",
-            "item": {
-                "title": "問い",
-                "status": "未決定",
-                "options": [{"key": "A", "content": "案 A"}],
-                "tags": ["保存処理"],
-            },
-        },
-        {"op": "update", "id": "D-1", "item": {"tags": ["保存処理", "保存"]}},
-    ]
-    # 実行
-    payload = commands.run_batch(root, operations, now=_fixed_now)
-    # 検証
-    results = payload["results"]
-    assert results[0]["result"]["candidate_tags"] == [
-        {"tag": "保存処理", "ids": ["D-2"], "similar": ["保存"]}
-    ]
-    assert results[1]["result"]["candidate_tags"] == [
-        {"tag": "保存処理", "ids": ["D-1"], "similar": ["保存"]}
-    ]
-    assert payload["candidate_tags"] == [
-        {"tag": "保存処理", "ids": ["D-2", "D-1"], "similar": ["保存"]}
-    ]
-
-
 def test_run_changes_since_read(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """変更を返して読んだ時点を進める（正常系）。"""
     # 準備
@@ -1128,7 +1039,7 @@ def test_run_check(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 実行
     payload = commands.run_check(root)
     # 検証
-    assert payload == {"ok": True, "problems": [], "warnings": [], "hint": None}
+    assert payload == {"ok": True, "problems": []}
 
 
 def test_run_check_when_problems(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1169,32 +1080,6 @@ def test_run_check_when_decision_state(make_workspace: MakeWorkspace, make_item:
     assert problem["file"] == ".mindstella/decisions.yaml"
     assert problem["key"] == "items[0].options"
     assert "/mindstella:upgrade" in problem["detail"]
-
-
-def test_run_check_when_candidate_tag(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """未登録の候補を警告にし、ok を真のまま採否の手段を案内する（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存処理"]),
-        settings={**valid_settings, "tags": [{"name": "保存"}]},
-    )
-    # 実行
-    payload = commands.run_check(root)
-    # 検証
-    assert payload["ok"] is True
-    assert payload["problems"] == []
-    assert len(payload["warnings"]) == 1
-    warning = payload["warnings"][0]
-    assert (warning["kind"], warning["file"], warning["id"], warning["key"]) == (
-        "candidate_tag",
-        ".mindstella/decisions.yaml",
-        "D-1",
-        "items[0].tags",
-    )
-    assert "保存処理" in warning["detail"]
-    assert payload["hint"] == checker.CANDIDATE_HINT
 
 
 def test_run_impact(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1294,41 +1179,18 @@ def test_run_find_when_limit_out_of_range(
     assert raised.value.argument == "limit"
 
 
-@pytest.mark.parametrize(
-    ("tag", "expected_ids", "expected_hint"),
-    [
-        pytest.param("保存処理", ["D-1"], None, id="used_by_item"),
-        pytest.param(
-            "データー",
-            [],
-            "合う項目がありません。tags のどれかを外して探してください"
-            " データー は語彙にもどの項目にも無いタグです（近いタグ: データ）",
-            id="nowhere",
-        ),
-    ],
-)
-def test_run_find_when_candidate_tag(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    tag: str,
-    expected_ids: list[str],
-    expected_hint: str | None,
-) -> None:
-    """項目が使う未登録の候補で絞り込め、どこにも無いタグは 0 件と近いタグの案内を返す（正常系）。"""
+def test_run_find_when_stray_tag(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """どの項目も使っていないタグは 0 件と近いタグの案内を返す（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存処理"]),
-        settings={**valid_settings, "tags": [{"name": "データ"}]},
-    )
+    root = make_workspace(make_item("D-1", tags=["データ"]))
     # 実行
     payload = commands.run_find(
-        root, SearchFilter(tags=(tag,)), limit=20, cursor=None, response_format="concise"
+        root, SearchFilter(tags=("データー",)), limit=20, cursor=None, response_format="concise"
     )
     # 検証
-    assert [row["id"] for row in payload["items"]] == expected_ids
-    assert payload["total"] == len(expected_ids)
-    assert payload["hint"] == expected_hint
+    assert payload["items"] == []
+    assert payload["total"] == 0
+    assert "データー はどの項目も使っていないタグです（近いタグ: データ）" in payload["hint"]
 
 
 def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1359,80 +1221,19 @@ def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
 
 
 def test_run_tags(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
 ) -> None:
-    """語彙のタグを出力の形にする（正常系）。"""
+    """項目とスレッドのタグを出力の形にする（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["データ"]),
-        settings={**valid_settings, "tags": [{"name": "データ"}]},
-    )
+    root = make_workspace(make_item("D-1", tags=["データ"]))
+    write_threads(root, make_thread("TH-1", tags=["データ"]))
     # 実行
     payload = commands.run_tags(root)
     # 検証
-    assert payload == {
-        "tags": [
-            {
-                "name": "データ",
-                "summary": None,
-                "include": None,
-                "exclude": None,
-                "examples": [],
-                "count": 1,
-                "kinds": ["decision"],
-            }
-        ]
-    }
-
-
-def test_run_new_thread_when_candidate_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグをスレッドの ID で候補として返す（正常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "起票"}]})
-    # 実行
-    payload = commands.run_new_thread(
-        root, "本文", "要約", ["起票の確認"], None, now=_thread_now
-    )
-    # 検証
-    assert payload["id"] == "TH-1"
-    assert payload["candidate_tags"] == [
-        {"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}
-    ]
-
-
-@pytest.mark.parametrize(
-    ("tags", "summary", "expected"),
-    [
-        pytest.param(
-            ["起票の確認"],
-            None,
-            [{"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}],
-            id="candidate",
-        ),
-        pytest.param(None, "要約", [], id="tags_not_given"),
-    ],
-)
-def test_run_update_thread_when_candidate_tag(
-    make_workspace: MakeWorkspace,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
-    tags: list[str] | None,
-    summary: str | None,
-    expected: list[dict[str, Any]],
-) -> None:
-    """置き換えたタグのうち語彙に無いものを候補として返し、tags を渡さなければ空にする（正常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "起票"}]})
-    write_threads(root, make_thread("TH-1", tags=["起票"]))
-    # 実行
-    payload = commands.run_update_thread(
-        root, "TH-1", summary, tags, False, now=_thread_now
-    )
-    # 検証
-    assert payload["candidate_tags"] == expected
+    assert payload == {"tags": [{"name": "データ", "count": 2, "kinds": ["decision", "thread"]}]}
 
 
 def test_run_goal(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

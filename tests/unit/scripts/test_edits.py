@@ -259,6 +259,16 @@ def test_add_edit_when_setting_with_map(
             {"op": "set", "target": "D-1", "key": "answer", "value": "a", "map": {"a": "b"}},
             id="map_not_allowed",
         ),
+        pytest.param(
+            {
+                "op": "setting",
+                "target": "settings",
+                "key": "phases",
+                "value": ["目的", "発散"],
+                "map": {"問い": None},
+            },
+            id="map_value_not_string",
+        ),
     ],
 )
 def test_add_edit_when_invalid(
@@ -413,9 +423,8 @@ def test_save_edits(
     write_edits: WriteEdits,
     valid_settings: dict[str, Any],
 ) -> None:
-    """キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする（語彙に無いタグも書く）（正常系）。"""
+    """キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする（まだ使われていないタグも書く）（正常系）。"""
     # 準備
-    settings = {**valid_settings, "tags": [{"name": "画面"}]}
     root = make_workspace(
         make_item(
             "D-1",
@@ -423,7 +432,7 @@ def test_save_edits(
             tags=["画面"],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
-        settings=settings,
+        settings=valid_settings,
     )
     write_edits(
         root,
@@ -577,14 +586,11 @@ def test_save_edits_drops_edits_of_removed(
         pytest.param(
             _no_rewrite,
             [("D-1", {})],
-            {"tags": [{"name": "画面"}]},
-            [
-                ("E-1", {"key": "tags", "value": ["保存"]}),
-                ("E-2", {"key": "depends_on", "value": ["D-99"]}),
-            ],
-            [("E-2", "invalid", [])],
+            {},
+            [("E-1", {"key": "depends_on", "value": ["D-99"]})],
+            [("E-1", "invalid", [])],
             "D-99",
-            id="invalid_reference_without_candidate_tag",
+            id="invalid_reference",
         ),
         pytest.param(
             _no_rewrite,

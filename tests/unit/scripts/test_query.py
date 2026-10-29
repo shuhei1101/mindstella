@@ -156,6 +156,24 @@ def test_search_items_when_tags_and_any_tags(
     assert _ids(result) == expected_ids
 
 
+def test_search_items_when_tag_normalized(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """全角・大文字の違うタグでも当たる（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["API"]),
+        make_item("D-2", tags=["ａｐｉ"]),
+        make_item("D-3", tags=["データ"]),
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    result = query.search_items(workspace, query.SearchFilter(tags=("api",)))
+    # 検証
+    assert _ids(result) == ["D-1", "D-2"]
+    assert [row["tags"] for row in result] == [["API"], ["ａｐｉ"]]
+
+
 def test_search_items_when_detailed(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """detailed は対象・カテゴリー・フェーズ・属性・更新日時を足し、案は入れない（正常系）。"""
     # 準備
@@ -323,78 +341,41 @@ def test_list_attrs_when_none(make_workspace: MakeWorkspace, make_item: MakeItem
     assert attrs == []
 
 
-def test_list_tags(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """語彙のタグごとに説明を返し、種類をまたいで数え、持つ項目が無いタグも返す（正常系）。"""
+def test_list_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """表記の違いをまとめ、種類とスレッドをまたいで件数の多い順に並べる（正常系）。"""
     # 準備
-    settings = {
-        **valid_settings,
-        "tags": [
-            {"name": "データ", "summary": "s", "include": "i", "exclude": "e", "examples": ["x"]},
-            {"name": "画面"},
-            {"name": "保留"},
-        ],
-    }
     root = make_workspace(
-        make_item("D-1", tags=["データ"]),
+        make_item("D-1", tags=["API"]),
         make_item("D-2", tags=["画面"]),
-        make_item("T-1", tags=["データ"]),
+        make_item("T-1", tags=["ａｐｉ"]),
         make_item("N-1"),
-        settings=settings,
     )
     workspace = store.load_workspace(root)
     # 実行
-    tags = query.list_tags(workspace)
+    tags = query.list_tags(workspace, [["api", "画面"]])
     # 検証
-    no_description = {"summary": None, "include": None, "exclude": None, "examples": []}
     assert tags == [
-        {
-            "name": "データ",
-            "summary": "s",
-            "include": "i",
-            "exclude": "e",
-            "examples": ["x"],
-            "count": 2,
-            "kinds": ["decision", "task"],
-        },
-        {"name": "保留", **no_description, "count": 0, "kinds": []},
-        {"name": "画面", **no_description, "count": 1, "kinds": ["decision"]},
+        {"name": "api", "count": 3, "kinds": ["decision", "task", "thread"]},
+        {"name": "画面", "count": 2, "kinds": ["decision", "thread"]},
     ]
 
 
-def test_list_tags_when_duplicated(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """1 つの項目が同じタグを 2 回持っても 1 件と数える（正常系）。"""
+def test_list_tags_when_duplicated(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """1 つの項目が同じタグを表記を変えて 2 回持っても 1 件と数える（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["データ", "データ"]),
-        settings={**valid_settings, "tags": [{"name": "データ"}]},
-    )
-    workspace = store.load_workspace(root)
+    workspace = store.load_workspace(make_workspace(make_item("D-1", tags=["データ", "ﾃﾞｰﾀ"])))
     # 実行
-    tags = query.list_tags(workspace)
+    tags = query.list_tags(workspace, [])
     # 検証
-    assert tags == [
-        {
-            "name": "データ",
-            "summary": None,
-            "include": None,
-            "exclude": None,
-            "examples": [],
-            "count": 1,
-            "kinds": ["decision"],
-        }
-    ]
+    assert tags == [{"name": "データ", "count": 1, "kinds": ["decision"]}]
 
 
 def test_list_tags_when_none(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """語彙が無ければ空の並びを返す（正常系）。"""
+    """タグが無ければ空の並びを返す（正常系）。"""
     # 準備
-    workspace = store.load_workspace(make_workspace(make_item("D-1", tags=["データ"])))
+    workspace = store.load_workspace(make_workspace(make_item("D-1")))
     # 実行
-    tags = query.list_tags(workspace)
+    tags = query.list_tags(workspace, [[]])
     # 検証
     assert tags == []
 
@@ -499,7 +480,7 @@ def test_build_hint_when_empty() -> None:
 
 
 def test_build_hint_when_stray_tag() -> None:
-    """0 件で語彙にもどの項目にも無いタグは、近いタグを案内する（正常系）。"""
+    """0 件でどの項目も使っていないタグは、近いタグを案内する（正常系）。"""
     # 準備
     search_filter = query.SearchFilter(tags=("データー",))
     # 実行
@@ -509,7 +490,7 @@ def test_build_hint_when_stray_tag() -> None:
     # 検証
     assert hint is not None
     assert "tags" in hint
-    assert "データー は語彙にもどの項目にも無いタグです（近いタグ: データ）" in hint
+    assert "データー はどの項目も使っていないタグです（近いタグ: データ）" in hint
 
 
 @pytest.mark.parametrize(
@@ -527,17 +508,12 @@ def test_build_hint_when_none(total: int, returned: int, search_filter: query.Se
     assert hint is None
 
 
-def test_list_stray_tags(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """項目が使う未登録の候補と語彙のタグは除き、どこにも無いタグだけを返す（正常系）。"""
+def test_list_stray_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """項目が使うタグは表記が違っても除き、どの項目も使っていないタグだけを返す（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["通知"]),
-        settings={**valid_settings, "tags": [{"name": "データ"}]},
-    )
+    root = make_workspace(make_item("D-1", tags=["データ", "API"]))
     workspace = store.load_workspace(root)
-    search_filter = query.SearchFilter(tags=("通知", "データー"), any_tags=("データ", "データー"))
+    search_filter = query.SearchFilter(tags=("ａｐｉ", "データー"), any_tags=("データ", "データー"))
     # 実行
     stray_tags = query.list_stray_tags(workspace, search_filter)
     # 検証

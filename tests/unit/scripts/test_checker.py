@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Any
 
 import pytest
@@ -61,22 +60,6 @@ def test_check_workspace_when_decision_state(
     assert _keys(problems) == {
         ("decision_state", ".mindstella/decisions.yaml", "D-1", "items[0].options")
     }
-
-
-def test_check_workspace_when_candidate_tag(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """未登録の候補のタグは問題にしない（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["通知"]),
-        settings={**valid_settings, "tags": [{"name": "保存"}]},
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker.check_workspace(workspace)
-    # 検証
-    assert problems == []
 
 
 def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -198,61 +181,6 @@ def test_check_phases_when_no_goal(
     problems = checker._check_phases(workspace)
     # 検証
     assert problems == []
-
-
-def test_list_tag_warnings(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
-) -> None:
-    """語彙に無い項目とスレッドのタグを警告にする（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存", "通知"]),
-        make_item("T-1"),
-        settings={**valid_settings, "tags": [{"name": "保存"}]},
-    )
-    write_threads(root, make_thread("TH-1", tags=["保存の確認"]))
-    workspace = store.load_workspace(root)
-    # 実行
-    warnings = checker.list_tag_warnings(workspace)
-    # 検証
-    assert [asdict(warning) for warning in warnings] == [
-        {
-            "kind": "candidate_tag",
-            "file": f"{RECORD_DIR}/decisions.yaml",
-            "id": "D-1",
-            "key": "items[0].tags",
-            "detail": "通知",
-            "similar": [],
-        },
-        {
-            "kind": "candidate_tag",
-            "file": f"{RECORD_DIR}/threads.yaml",
-            "id": "TH-1",
-            "key": "items[0].tags",
-            "detail": "保存の確認",
-            "similar": ["保存"],
-        },
-    ]
-
-
-def test_list_tag_warnings_when_no_threads(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """スレッドが無く、タグが全て語彙にあれば警告は無い（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存"]),
-        settings={**valid_settings, "tags": [{"name": "保存"}]},
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    warnings = checker.list_tag_warnings(workspace)
-    # 検証
-    assert warnings == []
 
 
 def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

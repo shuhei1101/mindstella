@@ -1,4 +1,4 @@
-"""screens/detail-edit.ts（詳細パネルの編集の表示・編集できるキーの並び）の単体テスト。"""
+"""screens/detail-edit.ts（詳細パネルの編集の表示・編集できるキーの並び・記録で使われているタグ）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -7,10 +7,11 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadPreviewScripts, MakeItem
+from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
+from .thread_data import make_thread
 
 # 編集の表示を作って文書に置く JavaScript。呼ばれた操作は window.calls に溜める
-MOUNT_SCRIPT = """({kind, item, settings, removing, referrers}) => {
+MOUNT_SCRIPT = """({kind, item, settings, removing, referrers, usedTags}) => {
     window.calls = [];
     const form = MindmapPreview.detailEditForm({
         kind,
@@ -22,6 +23,7 @@ MOUNT_SCRIPT = """({kind, item, settings, removing, referrers}) => {
         blocked: {},
         referrers,
         errors: {},
+        usedTags,
         on: {
             change: (input) => window.calls.push(["change", input]),
             remove: () => window.calls.push(["remove"]),
@@ -48,6 +50,7 @@ def _mount(
         "settings": valid_settings,
         "removing": False,
         "referrers": [],
+        "usedTags": [],
     }
     args.update(overrides)
     preview_page.evaluate(MOUNT_SCRIPT, args)
@@ -166,3 +169,29 @@ def test_editable_keys(
     # 検証
     assert set(expected_keys) <= set(keys)
     assert not set(absent_keys) & set(keys)
+
+
+def test_used_tags(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """表記をそろえて重なりを除き、件数の多い順に並べる（正常系）。"""
+    # 準備
+    data = make_data(
+        decisions=[make_item("D-1", tags=["API"])],
+        tasks=[make_item("T-1", tags=["ａｐｉ", "画面"])],
+        notes=[make_item("N-1", tags=["保存"])],
+    )
+    threads = [make_thread("TH-1", tags=["画面"])]
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """([data, threads]) => MindmapPreview.usedTags({
+            index: MindmapPreview.buildIndex(data), threads,
+        })""",
+        [data, threads],
+    )
+    # 検証
+    assert result == ["api", "画面", "保存"]
