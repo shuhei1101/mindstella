@@ -194,5 +194,5 @@ tests/integration/skill/test_upgrade.py .                                [ 95%]
 tests/integration/storybook/test_topbar_stories.py ..................... [ 97%]
 .....................................................                    [100%]
 
-================= 1825 passed, 2 skipped in 2542.04s (0:42:22) =================
+================= 1825 passed, 2 skipped in 2188.06s (0:36:28) =================
 exit: 0
