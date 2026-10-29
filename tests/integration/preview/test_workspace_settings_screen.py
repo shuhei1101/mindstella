@@ -289,9 +289,14 @@ def test_tables(
     assert _edit_of(root, "links")["value"] == [{"title": "", "url": ""}]
     _commit(page, "1 行目の表示名", "仕様")
     page.wait_for_function(SAVED_LINK_JS, arg={"field": "title", "value": "仕様"})
+    # 溜めた編集で描き直した画面に表示名が入ってから、次の入力へ進む
+    expect(page.get_by_label("1 行目の表示名")).to_have_value("仕様", timeout=EDIT_TIMEOUT_MS)
     _commit(page, "1 行目のURL", "https://example.test/spec")
     page.wait_for_function(SAVED_LINK_JS, arg={"field": "url", "value": "https://example.test/spec"})
-    expect(page.get_by_label("1 行目の表示名")).to_have_value("仕様")
+    expect(page.get_by_label("1 行目の表示名")).to_have_value("仕様", timeout=EDIT_TIMEOUT_MS)
+    expect(page.get_by_label("1 行目のURL")).to_have_value(
+        "https://example.test/spec", timeout=EDIT_TIMEOUT_MS
+    )
     assert _edit_of(root, "links")["value"] == [{"title": "仕様", "url": "https://example.test/spec"}]
     # 実行（行を削除する。使われていない行は付け替えを聞かない）
     page.get_by_role("button", name="1 行目を削除").last.click()
