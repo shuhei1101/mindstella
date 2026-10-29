@@ -3429,7 +3429,7 @@ OPEN_EXPORT_PANEL_SCRIPT = """async ({data, id, full, shared, editing}) => {
         marks: {},
         form: {
             kind: "docs", item, settings: data.settings, marks: {}, removing: false,
-            removedOptions: [], blocked: {}, referrers: [], errors: {},
+            removedOptions: [], blocked: {}, referrers: [], errors: {}, usedTags: [],
             on: {change: noop, remove: noop, cancelRemove: noop},
         },
         onToggle: noop,
