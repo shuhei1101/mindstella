@@ -1,2 +1,0 @@
-$ ruff check plugins tests
-All checks passed!

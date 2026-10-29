@@ -4,3 +4,4 @@ All checks passed!
 > typecheck
 > tsc -p . --noEmit && tsc -p .storybook
 
+exit: 0
