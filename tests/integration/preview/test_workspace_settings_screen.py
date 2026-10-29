@@ -255,6 +255,12 @@ def test_goal(
     page.wait_for_function(
         "() => document.querySelector('.pe-ws [data-key=goal] textarea').value.includes('2 行目')"
     )
+    # 溜めた編集にゴールの中身が入るのを待つ
+    page.wait_for_function(
+        "async () => (await (await fetch('/api/edits')).json()).items"
+        ".some(e => e.key === 'goal' && e.value.summary.includes('2 行目'))",
+        timeout=EDIT_TIMEOUT_MS,
+    )
     # 検証
     value = _edit_of(root, "goal")["value"]
     assert value["phase"] == "要件"
