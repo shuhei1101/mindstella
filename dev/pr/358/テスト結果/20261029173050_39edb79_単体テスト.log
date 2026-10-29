@@ -1,10 +1,9 @@
-$ pytest tests/unit
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-session-tag-candidates-and-conditions
 configfile: pytest.ini
 plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
-collected 1820 items
+collected 1821 items
 
 tests/unit/preview/test_api.py ..............                            [  0%]
 tests/unit/preview/test_app.py ......................                    [  1%]
@@ -65,7 +64,7 @@ tests/unit/preview/test_looks.py ...                                     [ 24%]
 tests/unit/preview/test_markdown_body.py .......                         [ 24%]
 tests/unit/preview/test_overview.py .                                    [ 24%]
 tests/unit/preview/test_pending_edits.py ..                              [ 24%]
-tests/unit/preview/test_pending_mark.py .                                [ 25%]
+tests/unit/preview/test_pending_mark.py .                                [ 24%]
 tests/unit/preview/test_records.py .....                                 [ 25%]
 tests/unit/preview/test_reply_form.py ..                                 [ 25%]
 tests/unit/preview/test_review_body_fold.py .                            [ 25%]
@@ -111,7 +110,7 @@ tests/unit/preview/test_table.py ......                                  [ 33%]
 tests/unit/preview/test_term_tip.py ..                                   [ 33%]
 tests/unit/preview/test_thread_post.py ..                                [ 33%]
 tests/unit/preview/test_thread_row.py ....                               [ 33%]
-tests/unit/preview/test_workspace_settings.py .                          [ 34%]
+tests/unit/preview/test_workspace_settings.py .                          [ 33%]
 tests/unit/preview/test_api.py .....                                     [ 34%]
 tests/unit/preview/test_app.py ........                                  [ 34%]
 tests/unit/preview/test_comment_mark.py .                                [ 34%]
@@ -149,7 +148,7 @@ tests/unit/preview/test_lock.py ..                                       [ 39%]
 tests/unit/preview/test_looks.py ..                                      [ 39%]
 tests/unit/preview/test_markdown_body.py ...                             [ 39%]
 tests/unit/preview/test_pending_edits.py .                               [ 39%]
-tests/unit/preview/test_reply_form.py ..                                 [ 40%]
+tests/unit/preview/test_reply_form.py ..                                 [ 39%]
 tests/unit/preview/test_router.py .                                      [ 40%]
 tests/unit/preview/test_send_form.py .                                   [ 40%]
 tests/unit/preview/test_table.py .                                       [ 40%]
@@ -191,7 +190,7 @@ tests/unit/scripts/test_checker.py ...........................           [ 50%]
 tests/unit/scripts/test_claude_input.py ................................ [ 52%]
 ..                                                                       [ 52%]
 tests/unit/scripts/test_commands.py .................................... [ 54%]
-......................................................................   [ 57%]
+.......................................................................  [ 57%]
 tests/unit/scripts/test_comments.py .................................... [ 59%]
 .....................                                                    [ 61%]
 tests/unit/scripts/test_edits.py ................................        [ 62%]
@@ -230,5 +229,4 @@ tests/unit/scripts/test_threads.py ..................................... [ 97%]
 tests/unit/scripts/test_versions.py .................                    [ 99%]
 tests/unit/test_isolated_environment.py ...                              [100%]
 
-================= 1819 passed, 1 skipped in 725.19s (0:12:05) ==================
-exit: 0
+================= 1820 passed, 1 skipped in 788.88s (0:13:08) ==================
