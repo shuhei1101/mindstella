@@ -512,19 +512,20 @@ def build_mismatch_error(
 def is_legacy_problem(
     problem: Problem, workspace: Workspace, *, written_ids: frozenset[str] = frozenset()
 ) -> bool:
-    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す。"""
+    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す。"""
     # 案と状態の合わない検討事項は、書き込む項目のものでなければ前の版の形式から来ている
     if problem.kind == "decision_state":
         return problem.id not in written_ids
     # スキーマ違反以外（参照切れなど）は前の版の形式のせいではない
     if problem.kind != "schema":
         return False
-    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たない
+    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たないか、タグの語彙（tags）を持つ
     if problem.file == SETTINGS_FILE:
         raw_settings = workspace.raw.get(SETTINGS_FILE)
         return isinstance(raw_settings, dict) and (
             "summary" not in raw_settings
             or ("field" in raw_settings and "playbooks" not in raw_settings)
+            or "tags" in raw_settings
         )
     # 資料: done を持ち、status を持たない
     if problem.file == KINDS["doc"].file and problem.id is not None:

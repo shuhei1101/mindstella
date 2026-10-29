@@ -145,10 +145,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         # まだ無いフォルダへ書く `init` だけが、フォルダを作る鍵を取る
         return write(workspace, lambda root: commands.run_init(root, settings), create=True)
 
-    @server.tool(
-        name="add",
-        description="項目を 1 つ足す（ID・日時・本文を付ける）。語彙に無いタグは未登録の候補として書き、結果の candidate_tags に返す",
-    )
+    @server.tool(name="add", description="項目を 1 つ足す（ID・日時・本文を付ける）")
     def add(
         workspace: WorkspaceArg,
         kind: Annotated[Kind, Field(description="足す項目の種類")],
@@ -161,10 +158,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     ) -> CallToolResult:
         return write(workspace, lambda root: commands.run_add(root, kind, item))
 
-    @server.tool(
-        name="update",
-        description="項目 1 つのキーを置き換える。語彙に無いタグは未登録の候補として書き、結果の candidate_tags に返す",
-    )
+    @server.tool(name="update", description="項目 1 つのキーを置き換える")
     def update(
         workspace: WorkspaceArg,
         id: ItemIdArg,
@@ -184,16 +178,16 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="update_settings",
-        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・タグの語彙・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリー・タグの語彙を変えるときは項目とスレッドの付け替えもする",
+        description="設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数）を書き換える。フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする",
     )
     def update_settings(
         workspace: WorkspaceArg,
         settings: Annotated[
-            dict[str, Any] | None,
+            dict[str, Any],
             Field(
-                description="置き換える設定のキーと値。description・goal・tags・links・history_limit は null で消す。tags は name と任意の summary・include（含める）・exclude（含めない）・examples（付ける例）を持つタグの配列で、語彙を丸ごと置き換える。tag_map だけで未登録の候補を付け替えるときは渡さない"
+                description="置き換える設定のキーと値。description・goal・links・history_limit は null で消す"
             ),
-        ] = None,
+        ],
         phase_map: Annotated[
             dict[str, str] | None,
             Field(description="古いフェーズ → 新しいフェーズの対応。phases を変えるときだけ渡す"),
@@ -208,17 +202,11 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
                 description="古いカテゴリー → 新しいカテゴリーの対応。categories を変えるときだけ渡す"
             ),
         ] = None,
-        tag_map: Annotated[
-            dict[str, str | None] | None,
-            Field(
-                description="古いタグか未登録の候補 → 新しいタグの対応（null で外す）。tags を変えるとき、または未登録の候補を既存のタグへ付け替えるときだけ渡す"
-            ),
-        ] = None,
     ) -> CallToolResult:
         return write(
             workspace,
             lambda root: commands.run_update_settings(
-                root, settings, phase_map, target_map, category_map, tag_map
+                root, settings, phase_map, target_map, category_map
             ),
         )
 
@@ -257,7 +245,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="batch",
-        description="項目の追加・更新・取得の操作を並べた順に 1 回で当てる。全てを当ててから 1 回だけ書き、1 つでも失敗したら何も書かない。先に足した項目は $番号（add の番号、1 始まり）で指せる。語彙に無いタグは未登録の候補として書き、結果の candidate_tags にタグごとにまとめて返す",
+        description="項目の追加・更新・取得の操作を並べた順に 1 回で当てる。全てを当ててから 1 回だけ書き、1 つでも失敗したら何も書かない。先に足した項目は $番号（add の番号、1 始まり）で指せる",
     )
     def batch(
         workspace: WorkspaceArg,
@@ -312,7 +300,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="find",
-        description="文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは語彙に無い未登録の候補でも、項目が使っていれば絞り込める。使える絞り込みは text・kind・status・tags・any_tags・target・category・phase・attr。タグで絞る前に tags で語彙を引く。全体の件数が 1 ページより多いときは next_cursor を同じ条件で cursor に渡して続きを読む",
+        description="文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは NFKC と小文字にそろえて比べる。使える絞り込みは text・kind・status・tags・any_tags・target・category・phase・attr。タグで絞る前に tags で使われているタグを引く。全体の件数が 1 ページより多いときは next_cursor を同じ条件で cursor に渡して続きを読む",
     )
     def find(
         workspace: WorkspaceArg,
@@ -320,10 +308,10 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         kind: Kind | None = None,
         status: str | None = None,
         tags: Annotated[
-            list[str] | None, Field(description="全てを持つ項目に絞るタグ（AND）。語彙に無いタグも渡せる")
+            list[str] | None, Field(description="全てを持つ項目に絞るタグ（AND）")
         ] = None,
         any_tags: Annotated[
-            list[str] | None, Field(description="いずれかを持つ項目に絞るタグ（OR）。語彙に無いタグも渡せる")
+            list[str] | None, Field(description="いずれかを持つ項目に絞るタグ（OR）")
         ] = None,
         target: str | None = None,
         category: str | None = None,
@@ -377,15 +365,12 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="tags",
-        description="ワークスペースのタグの語彙を、タグごとの説明（含める・含めない・例を含む）と、付いている項目の数・種類を添えて返す。取り込みで話題に合うタグを選ぶためと、find のタグの条件を決めるために、find でタグを渡す前やタグを付ける前に引く",
+        description="項目とスレッドに付いているタグを、正規化した表記ごとに件数と種類を添えて返す。タグを付ける前や find でタグを渡す前に呼び、同じ意味のタグがあれば使い回す",
     )
     def tags(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_tags)
 
-    @server.tool(
-        name="check",
-        description="スキーマ違反・参照切れ・本文のずれを洗い出し、語彙に無い未登録の候補のタグを警告で返す",
-    )
+    @server.tool(name="check", description="スキーマ違反・参照切れ・本文のずれを洗い出す")
     def check(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_check)
 
@@ -499,10 +484,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         workspace: WorkspaceArg,
         body: Annotated[str, Field(description="最初の書き込みの本文（1〜10000 文字）")],
         summary: Annotated[str, Field(description="スレッドの要約（1〜400 文字）")],
-        tags: Annotated[
-            list[str] | None,
-            Field(description="付けるタグ。語彙に無いタグは未登録の候補として付き、結果の candidate_tags に返す"),
-        ] = None,
+        tags: Annotated[list[str] | None, Field(description="付けるタグ")] = None,
         target: Annotated[str | None, Field(description="向ける項目の ID")] = None,
     ) -> CallToolResult:
         return write(
@@ -547,10 +529,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
         id: Annotated[str, Field(description="スレッドの ID")],
         summary: Annotated[str | None, Field(description="書き直した要約（1〜400 文字）")] = None,
         tags: Annotated[
-            list[str] | None,
-            Field(
-                description="置き換えるタグ。空の一覧でタグを外す。語彙に無いタグは未登録の候補として付き、結果の candidate_tags に返す"
-            ),
+            list[str] | None, Field(description="置き換えるタグ。空の一覧でタグを外す")
         ] = None,
         take: Annotated[
             bool, Field(description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする")

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "設定",
-  "description": "`config.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・タグの語彙・ゴール・関連する場所・変更履歴を保持する回数・表示の既定を持つ。",
+  "description": "`config.yaml` の形。題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定を持つ。",
   "type": "object",
   "required": [
     "playbooks",
@@ -85,43 +85,6 @@
           "summary": {
             "type": "string",
             "description": "カテゴリーの概要"
-          }
-        }
-      }
-    },
-    "tags": {
-      "type": "array",
-      "description": "タグの語彙。項目とスレッドの `tags` に使えるタグの一覧（語彙に無いタグは未登録の候補として持てる）。名前の重なりは `update_settings` が弾く",
-      "items": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "タグの名前",
-            "minLength": 1
-          },
-          "summary": {
-            "type": "string",
-            "description": "タグの説明"
-          },
-          "include": {
-            "type": "string",
-            "description": "そのタグに含めるもの"
-          },
-          "exclude": {
-            "type": "string",
-            "description": "そのタグに含めないもの"
-          },
-          "examples": {
-            "type": "array",
-            "description": "そのタグを付ける例",
-            "items": {
-              "type": "string"
-            }
           }
         }
       }

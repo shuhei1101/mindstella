@@ -2485,7 +2485,7 @@ namespace MindmapPreview {
       error,
       after,
     }: {
-      payload: { target?: string; op: PendingEdit["op"]; key?: string; value?: unknown; map?: Record<string, string | null> };
+      payload: { target?: string; op: PendingEdit["op"]; key?: string; value?: unknown; map?: Record<string, string> };
       /** 理由を出すキー */
       error: { target: string; key: string };
       /** 溜められた後、描き直す前にすること */
@@ -2545,6 +2545,7 @@ namespace MindmapPreview {
         blocked: blockedByKey(id),
         referrers: serverIndex.referencedBy.get(id) ?? [],
         errors: formErrors(id),
+        usedTags: usedTags({ index, threads: comment.threads }),
         body: index.data.bodies[item.body ?? ""] ?? "",
         on: {
           change: (input) =>
@@ -2691,6 +2692,7 @@ namespace MindmapPreview {
         blocked: entry === undefined ? {} : blockedByKey(item.id),
         referrers: [],
         errors: formErrors(entry === undefined ? NEW_ID_PREFIX : item.id),
+        usedTags: usedTags({ index, threads: comment.threads }),
         body: typeof record["body"] === "string" ? record["body"] : "",
         on: { change: (input) => void submitAddField({ kind, input }), remove: () => undefined, cancelRemove: () => undefined },
       });
@@ -2913,7 +2915,6 @@ namespace MindmapPreview {
         index,
         marks,
         errors: formErrors(SETTINGS_TARGET),
-        threads: comment.threads,
         on: {
           change: (input) =>
             void submitEdit({

@@ -2,7 +2,7 @@
 
 namespace MindmapPreview {
   /** 使っている件数を数える設定のキー */
-  export type UsedSettingKey = "phases" | "targets" | "categories" | "tags";
+  export type UsedSettingKey = "phases" | "targets" | "categories";
 
   /** 設定の画面の引数 */
   export type WorkspaceSettingsProps = {
@@ -14,11 +14,9 @@ namespace MindmapPreview {
     marks: Record<string, PendingMarkKind>;
     /** 設定のキー → 溜められなかった理由 */
     errors: Record<string, string>;
-    /** タグの件数に数えるスレッド（無ければ項目だけ） */
-    threads?: Thread[];
     on: {
       /** 設定のキーを溜める */
-      change: (input: { key: string; value: unknown; map?: Record<string, string | null> }) => void;
+      change: (input: { key: string; value: unknown; map?: Record<string, string> }) => void;
       close: () => void;
     };
   };
@@ -56,7 +54,7 @@ namespace MindmapPreview {
   const GROUPS: { title: string; keys: string[] }[] = [
     { title: "話し合い", keys: ["summary", "description", "playbooks", "goal"] },
     { title: "進め方", keys: ["phases", "target_label", "targets", "categories"] },
-    { title: "タグと関連", keys: ["tags", "links"] },
+    { title: "関連", keys: ["links"] },
     { title: "変更履歴", keys: ["history_limit"] },
   ];
 
@@ -70,23 +68,17 @@ namespace MindmapPreview {
     target_label: "最上位の軸の呼び名",
     targets: "対象",
     categories: "カテゴリー",
-    tags: "タグの語彙",
     links: "関連する場所",
     history_limit: "保持する回数",
   };
 
-  /** タグを外す付け替え先の選択肢 */
-  const DROP_TAG = "タグから外す";
-
-  /** フェーズ・対象・カテゴリー・タグの 1 つの値を持つ項目（タグはスレッドも）の件数 */
+  /** フェーズ・対象・カテゴリーの 1 つの値を持つ項目の件数 */
   export function usageCount({
     index,
-    threads,
     key,
     value,
   }: {
     index: RecordIndex;
-    threads: readonly Thread[];
     key: UsedSettingKey;
     value: string;
   }): number {
@@ -95,10 +87,8 @@ namespace MindmapPreview {
       if (key === "phases" && item.phase === value) count += 1;
       if (key === "targets" && item.target === value) count += 1;
       if (key === "categories" && item.category === value) count += 1;
-      if (key === "tags" && (item.tags ?? []).includes(value)) count += 1;
     }
     if (key === "targets") count += index.data.settings.categories.filter((category) => category.target === value).length;
-    if (key === "tags") count += threads.filter((thread) => thread.tags.includes(value)).length;
     return count;
   }
 
@@ -163,7 +153,7 @@ namespace MindmapPreview {
         tag: "div",
         attrs: { class: "pe-label-row" },
         children: [
-          key === "goal" || key in TABLES || key === "playbooks" || key === "phases" || key === "tags"
+          key === "goal" || key in TABLES || key === "playbooks" || key === "phases"
             ? h({ tag: "span", attrs: { class: "pe-label", id: `${controlId}-label` }, children: [name] })
             : h({ tag: "label", attrs: { for: controlId, id: `${controlId}-label` }, children: [name] }),
           mark === undefined ? null : pendingEditMark({ kind: mark, compact: true }),
@@ -171,7 +161,7 @@ namespace MindmapPreview {
       }),
     );
     /** 設定のキーを溜める */
-    const commit = (next: unknown, map?: Record<string, string | null>): void =>
+    const commit = (next: unknown, map?: Record<string, string>): void =>
       on.change(map === undefined ? { key, value: next } : { key, value: next, map });
 
     if (key === "summary" || key === "target_label") {
@@ -206,9 +196,8 @@ namespace MindmapPreview {
         commit(next);
       });
       wrap.append(input, h({ tag: "p", attrs: { class: "pe-hint" }, children: ["変更履歴に残す書き換えのまとまりの数"] }));
-    } else if (key === "playbooks" || key === "phases" || key === "tags") {
-      // タグの語彙は名前と説明のオブジェクトの並びなので、チップには名前を出す
-      const names = key === "tags" ? (settings.tags ?? []).map((tag) => tag.name) : Array.isArray(value) ? (value as string[]) : [];
+    } else if (key === "playbooks" || key === "phases") {
+      const names = Array.isArray(value) ? (value as string[]) : [];
       wrap.append(chipsSetting({ props, key, wrap, controlId, name, values: names, commit }));
     } else if (key === "goal") {
       wrap.append(...goalInputs({ props, controlId, commit }));
@@ -236,7 +225,7 @@ namespace MindmapPreview {
     count: number;
     /** 外した後に残る値の並び */
     next: unknown;
-    done: (target: string | null) => void;
+    done: (target: string) => void;
   }): HTMLElement {
     const remaining = (Array.isArray(next) ? next : []).map((entry) =>
       typeof entry === "string" ? entry : String((entry as { name: string }).name),
@@ -248,12 +237,11 @@ namespace MindmapPreview {
       children: [
         h({ tag: "option", attrs: { value: "", selected: true }, children: ["選んでください"] }),
         ...remaining.map((entry) => h({ tag: "option", attrs: { value: entry }, children: [entry] })),
-        key === "tags" ? h({ tag: "option", attrs: { value: DROP_TAG }, children: [DROP_TAG] }) : null,
       ],
     });
     select.addEventListener("change", () => {
       if (select.value === "") return;
-      done(select.value === DROP_TAG ? null : select.value);
+      done(select.value);
     });
     return h({
       tag: "div",
@@ -266,7 +254,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** プレイブック・フェーズ・タグの語彙（チップ）。使われているフェーズ・タグを外したときは付け替え先を選ばせる */
+  /** プレイブック・フェーズ（チップ）。使われているフェーズを外したときは付け替え先を選ばせる */
   function chipsSetting({
     props,
     key,
@@ -277,12 +265,12 @@ namespace MindmapPreview {
     commit,
   }: {
     props: WorkspaceSettingsProps;
-    key: "playbooks" | "phases" | "tags";
+    key: "playbooks" | "phases";
     wrap: HTMLElement;
     controlId: string;
     name: string;
     values: string[];
-    commit: (next: unknown, map?: Record<string, string | null>) => void;
+    commit: (next: unknown, map?: Record<string, string>) => void;
   }): HTMLElement {
     const box = h({ tag: "div", attrs: { class: "pe-chips-set" } });
     box.append(
@@ -291,18 +279,16 @@ namespace MindmapPreview {
         name,
         hint: `${name}を入れる`,
         values,
-        vocabulary: null,
+        suggestions: null,
         monospace: false,
         disabled: false,
         onChange: (names, removed) => {
-          // タグの語彙は、残るタグの説明を保ったまま名前のオブジェクトの並びに戻す
-          const next = key === "tags" ? names.map((tag) => props.settings.tags?.find((entry) => entry.name === tag) ?? { name: tag }) : names;
           const used =
             removed !== null && key !== "playbooks"
-              ? usageCount({ index: props.index, threads: props.threads ?? [], key, value: removed })
+              ? usageCount({ index: props.index, key, value: removed })
               : 0;
           if (removed === null || used === 0) {
-            commit(next);
+            commit(names);
             return;
           }
           // 使われている値を外した: 付け替え先を選んだときに、対応つきで溜める
@@ -312,8 +298,8 @@ namespace MindmapPreview {
               key: key as UsedSettingKey,
               removed,
               count: used,
-              next,
-              done: (target) => commit(next, { [removed]: target }),
+              next: names,
+              done: (target) => commit(names, { [removed]: target }),
             }),
           );
         },
@@ -387,7 +373,7 @@ namespace MindmapPreview {
     props: WorkspaceSettingsProps;
     key: keyof typeof TABLES;
     controlId: string;
-    commit: (next: unknown, map?: Record<string, string | null>) => void;
+    commit: (next: unknown, map?: Record<string, string>) => void;
   }): HTMLElement[] {
     const { label, columns } = TABLES[key];
     const rows = ((props.settings as unknown as Record<string, unknown>)[key] ?? []) as Record<string, string>[];
@@ -425,7 +411,7 @@ namespace MindmapPreview {
             const used =
               key === "links"
                 ? 0
-                : usageCount({ index: props.index, threads: props.threads ?? [], key, value: row["name"] ?? "" });
+                : usageCount({ index: props.index, key, value: row["name"] ?? "" });
             if (used === 0) {
               commit(next);
               return;

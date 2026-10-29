@@ -55,18 +55,6 @@ class UnmappedTargetError(MindmapError):
         super().__init__("新しい設定に対応の無い対象・カテゴリーが残ります", lines)
 
 
-class UnmappedTagError(MindmapError):
-    """新しい `tags` の語彙に対応の無いタグを持つ項目かスレッドが残る。`lines` に残るものごとの `{項目かスレッドの ID}: tags: {タグ}` を持つ。"""
-
-    def __init__(self, unmapped: list[tuple[str, str]]) -> None:
-        """残るもの（項目かスレッドの ID、タグ）を持ち、その並びを `lines` の行にする。"""
-        super().__init__(
-            "新しい語彙に対応の無いタグが残ります",
-            [f"{owner}: tags: {tag}" for owner, tag in unmapped],
-        )
-        self.unmapped = unmapped
-
-
 class ItemNotFoundError(MindmapError):
     """渡した ID の項目が無い。"""
 

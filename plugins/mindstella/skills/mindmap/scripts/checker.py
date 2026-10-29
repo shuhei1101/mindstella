@@ -1,10 +1,10 @@
-"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・変更履歴のずれの問題と、語彙に無い未登録の候補のタグの警告の点検（読むだけで、ファイルを書かない）。"""
+"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
@@ -12,13 +12,6 @@ from history import CHANGES_FILE, Changes, apply_body_diff, load_changes, remove
 from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
 from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targets
-from vocabulary import similar_tags, tag_names
-
-# 未登録の候補の警告があるときに `check` の `hint` に書く、採否の手段の案内
-CANDIDATE_HINT = (
-    "未登録の候補のタグがあります。update_settings の settings.tags で語彙へ登録するか、"
-    "tag_map で既存のタグへ付け替えてください"
-)
 
 # 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
 SETTINGS_KIND = "settings"
@@ -263,66 +256,6 @@ def _check_phases(workspace: Workspace) -> list[Problem]:
                     )
                 )
     return problems
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class TagWarning:
-    """語彙に無い未登録の候補のタグ 1 つの警告。"""
-
-    kind: Literal["candidate_tag"]
-    # 候補を持つファイルのワークスペースからの相対パス
-    file: str
-    # 候補を持つ項目かスレッドの ID
-    id: str | None
-    # `items[0].tags` の形のキーのパス
-    key: str
-    # 未登録の候補のタグ
-    detail: str
-    # 候補と字面の近い語彙のタグ
-    similar: list[str]
-
-
-def list_tag_warnings(workspace: Workspace) -> list[TagWarning]:
-    """項目とスレッドの `tags` のうち、設定の語彙に無いタグを未登録の候補の警告にする（無いタグ 1 つ = 1 件）。"""
-    names = tag_names(workspace.settings)
-    warnings: list[TagWarning] = []
-    for kind, spec in KINDS.items():
-        for index, item in enumerate(workspace.items[kind]):
-            tags = item.get("tags")
-            # 配列でない `tags` と文字列でない要素は、スキーマ違反として拾うので飛ばす
-            if not isinstance(tags, list):
-                continue
-            warnings.extend(
-                TagWarning(
-                    kind="candidate_tag",
-                    file=f"{RECORD_DIR}/{spec.file}",
-                    id=item.get("id") if isinstance(item.get("id"), str) else None,
-                    key=f"items[{index}].tags",
-                    detail=tag,
-                    similar=similar_tags(tag, names),
-                )
-                for tag in tags
-                if isinstance(tag, str) and tag not in names
-            )
-    try:
-        threads = load_threads(workspace.root)
-    except SchemaMismatchError:
-        # 読めないスレッドは見ない（形の誤りは `_check_threads` が返す）
-        return warnings
-    warnings.extend(
-        TagWarning(
-            kind="candidate_tag",
-            file=f"{RECORD_DIR}/{THREADS_FILE}",
-            id=thread.id,
-            key=f"items[{index}].tags",
-            detail=tag,
-            similar=similar_tags(tag, names),
-        )
-        for index, thread in enumerate(threads)
-        for tag in thread.tags
-        if tag not in names
-    )
-    return warnings
 
 
 def _deliverables(settings: dict[str, Any]) -> list[dict[str, Any]]:

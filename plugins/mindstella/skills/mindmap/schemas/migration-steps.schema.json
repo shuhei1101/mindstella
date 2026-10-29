@@ -244,6 +244,10 @@
           "type": "string",
           "description": "`scripts/` の下のファイル名（拡張子なし）",
           "pattern": "^[A-Za-z0-9_]+$"
+        },
+        "destructive": {
+          "type": "boolean",
+          "description": "真なら破壊的な手順として、当てる前に利用者へ確かめる。省くと偽"
         }
       }
     }

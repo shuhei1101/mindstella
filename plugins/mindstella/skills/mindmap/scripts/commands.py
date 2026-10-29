@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from builder import export_preview, validate_export_out
-from checker import CANDIDATE_HINT, check_workspace, find_referrers, list_tag_warnings
+from checker import check_workspace, find_referrers
 from errors import (
     AdoptedOptionError,
     ArgumentError,
@@ -85,6 +85,7 @@ from store import (
 from threads import (
     create_thread,
     list_threads,
+    load_threads,
     mark_read as mark_thread_read,
     reply_thread,
     set_thread_status,
@@ -92,7 +93,6 @@ from threads import (
     view_thread,
 )
 from versions import Version, parse_release_version, read_plugin_version
-from vocabulary import list_candidate_tags
 
 if TYPE_CHECKING:
     # serve が編集の保存で commands を読むため、循環を避けて型の注釈にだけ使う
@@ -368,12 +368,6 @@ def stage_add(
         "id": item_id,
         "file": f"{RECORD_DIR}/{KINDS[kind].file}",
         "body": f"{RECORD_DIR}/docs/{body.name}" if body is not None else None,
-        # タグを渡したときは、語彙に無いタグを未登録の候補として返す
-        "candidate_tags": (
-            list_candidate_tags([(item_id, item["tags"])], staged.workspace.settings)
-            if "tags" in item
-            else []
-        ),
     }
     return new_staged, result
 
@@ -441,12 +435,6 @@ def stage_update(
         "id": item_id,
         "file": f"{RECORD_DIR}/{KINDS[ref.kind].file}",
         "changed": changed,
-        # タグを渡したときは、語彙に無いタグを未登録の候補として返す（項目がもともと持つ候補は点検が返す）
-        "candidate_tags": (
-            list_candidate_tags([(item_id, item["tags"])], staged.workspace.settings)
-            if "tags" in item
-            else []
-        ),
     }
 
 
@@ -508,20 +496,18 @@ def run_remove(root: Path, item_id: str) -> dict[str, Any]:
 
 def run_update_settings(
     root: Path,
-    settings: dict[str, Any] | None,
+    settings: dict[str, Any],
     phase_map: dict[str, str] | None,
     target_map: dict[str, str] | None,
     category_map: dict[str, str] | None,
-    tag_map: dict[str, str | None] | None,
 ) -> dict[str, Any]:
-    """設定のキーを置き換え、フェーズ・対象・カテゴリー・タグを変えるときは項目の付け替えもする。"""
+    """設定のキーを置き換え、フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする。"""
     return update_settings(
         root,
         settings,
         phase_map,
         target_map=target_map,
         category_map=category_map,
-        tag_map=tag_map,
     )
 
 
@@ -600,27 +586,23 @@ def run_batch(
     added: dict[int, str] = {}
     writers: dict[str, tuple[int, str]] = {}
     results: list[dict[str, Any]] = []
-    # タグを渡した操作の（項目の ID, tags）を並べた順に控える
-    owned_tags: list[tuple[str, Any]] = []
     add_count = 0
     for number, operation in enumerate(operations, start=1):
         op = str(operation.get("op"))
         try:
             _validate_operation(operation)
             if op == "add":
-                resolved = resolve_refs(operation["item"], added)
-                staged, result = stage_add(staged, operation["kind"], resolved, now)
-                if "tags" in resolved:
-                    owned_tags.append((result["id"], resolved["tags"]))
+                staged, result = stage_add(
+                    staged, operation["kind"], resolve_refs(operation["item"], added), now
+                )
                 add_count += 1
                 added[add_count] = result["id"]
                 writers[result["id"]] = (number, op)
             elif op == "update":
                 item_id = _resolve_ref("id", operation["id"], added)
-                resolved = resolve_refs(operation["item"], added)
-                staged, result = stage_update(staged, item_id, resolved, now)
-                if "tags" in resolved:
-                    owned_tags.append((item_id, resolved["tags"]))
+                staged, result = stage_update(
+                    staged, item_id, resolve_refs(operation["item"], added), now
+                )
                 writers[item_id] = (number, op)
             else:
                 result = _show_staged(staged, _resolve_ref("id", operation["id"], added))
@@ -639,10 +621,7 @@ def run_batch(
             if writer is not None:
                 _prefix_error(error, *writer)
             raise
-    return {
-        "results": results,
-        "candidate_tags": list_candidate_tags(owned_tags, staged.workspace.settings),
-    }
+    return {"results": results}
 
 
 def run_changes_since_read(root: Path) -> dict[str, Any]:
@@ -696,7 +675,7 @@ def run_pending(root: Path) -> dict[str, Any]:
 
 
 def run_check(root: Path) -> dict[str, Any]:
-    """点検して、問題の有無・問題の並び・未登録の候補の警告を返す。前の版の形式の問題には /mindstella:upgrade を案内する。"""
+    """点検して、問題の有無と問題の並びを返す。前の版の形式の問題には /mindstella:upgrade を案内する。"""
     workspace = load_workspace(root)
     problems = check_workspace(workspace)
     rows = []
@@ -708,14 +687,7 @@ def run_check(root: Path) -> dict[str, Any]:
         if is_legacy_problem(relative, workspace):
             row["detail"] += MIGRATE_HINT
         rows.append(row)
-    # 語彙に無い未登録の候補は問題にせず警告にして、採否の手段を案内する
-    warnings = list_tag_warnings(workspace)
-    return {
-        "ok": not problems,
-        "problems": rows,
-        "warnings": [asdict(warning) for warning in warnings],
-        "hint": CANDIDATE_HINT if warnings else None,
-    }
+    return {"ok": not problems, "problems": rows}
 
 
 def run_impact(root: Path, item_id: str) -> dict[str, Any]:
@@ -777,8 +749,9 @@ def run_attrs(root: Path) -> dict[str, Any]:
 
 
 def run_tags(root: Path) -> dict[str, Any]:
-    """タグの語彙と件数を出力の形にする。"""
-    return {"tags": list_tags(load_workspace(root))}
+    """項目とスレッドが使っているタグと件数を出力の形にする。"""
+    workspace = load_workspace(root)
+    return {"tags": list_tags(workspace, [thread.tags for thread in load_threads(root)])}
 
 
 def run_migrate(
@@ -903,16 +876,10 @@ def run_new_thread(
     now: NowFn = now_utc,
 ) -> dict[str, Any]:
     """AI の書き込みを最初の 1 件にしたスレッドを立て、出力の形にする。"""
-    workspace = load_workspace(root)
     thread_id, post_id, created = create_thread(
-        workspace, body=body, summary=summary, tags=tags, target=target, now=now
+        load_workspace(root), body=body, summary=summary, tags=tags, target=target, now=now
     )
-    return {
-        "id": thread_id,
-        "post": post_id,
-        "created": created,
-        "candidate_tags": list_candidate_tags([(thread_id, tags)], workspace.settings),
-    }
+    return {"id": thread_id, "post": post_id, "created": created}
 
 
 def run_reply(
@@ -951,13 +918,7 @@ def run_update_thread(
     """スレッドの要約とタグを書き換え、出力の形にする。"""
     require_workspace(root)
     taken = update_thread(root, thread_id, summary=summary, tags=tags, take=take, now=now)
-    # tags を渡したときだけ、語彙に無いタグを未登録の候補として返す
-    candidate_tags = (
-        []
-        if tags is None
-        else list_candidate_tags([(thread_id, tags)], load_workspace(root).settings)
-    )
-    return {"id": thread_id, "taken": taken, "candidate_tags": candidate_tags}
+    return {"id": thread_id, "taken": taken}
 
 
 def _read_item_body(workspace: Workspace, item: dict[str, Any]) -> str | None:
@@ -1143,7 +1104,7 @@ def _migration_payload(report: MigrationReport) -> dict[str, Any]:
                 "version": str(step.version),
                 "index": step.index,
                 "op": step.op,
-                "destructive": step.op in DESTRUCTIVE_OPS,
+                "destructive": step.op in DESTRUCTIVE_OPS or bool(step.args.get("destructive")),
                 "summary": describe_step(step),
             }
             for step in report.steps

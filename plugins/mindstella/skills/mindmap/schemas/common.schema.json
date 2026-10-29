@@ -56,7 +56,7 @@
         },
         "tags": {
           "type": "array",
-          "description": "話題のタグ。設定の `tags` の語彙に無いタグも未登録の候補として持て、点検が警告で返す",
+          "description": "話題のタグ。どの文字列でも持て、`tags` のツールが NFKC と小文字にそろえた表記で数える",
           "items": {
             "type": "string"
           }

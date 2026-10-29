@@ -41,7 +41,6 @@ from settings_update import (
     EDITABLE_KEYS,
     REMOVABLE_KEYS,
     SettingsStage,
-    read_thread_items,
     stage_settings,
 )
 from store import (
@@ -94,7 +93,6 @@ MAPPABLE_SETTING_KEYS = {
     "phases": "phase_map",
     "targets": "target_map",
     "categories": "category_map",
-    "tags": "tag_map",
 }
 
 # `set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する）
@@ -376,7 +374,6 @@ def save_edits(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
             changes=dict(record),
             removed_bodies=list(staged.removed_bodies),
             settings=settings_stage.settings if settings_written and settings_stage else None,
-            threads=settings_stage.threads if settings_stage is not None else None,
             edits=_edit_dict(EditFile(seq=edit_file.seq, new_seq=edit_file.new_seq, items=[])),
         ),
     )
@@ -430,15 +427,12 @@ def _parse_edit_input(
 def _check_map(op: str, key: str | None, mapping: Any) -> None:
     """`map` が、渡せる `op`・`key` で、値の型が合うかを確かめる。"""
     if op != "setting" or key not in MAPPABLE_SETTING_KEYS:
-        raise EditInvalidError("map: phases・targets・categories・tags の設定の編集だけが渡せます")
+        raise EditInvalidError("map: phases・targets・categories の設定の編集だけが渡せます")
     if not isinstance(mapping, dict) or not all(isinstance(name, str) for name in mapping):
         raise EditInvalidError("map: 古い値 → 新しい値のオブジェクトを渡してください")
     for new in mapping.values():
-        # 値が null にできるのはタグだけ（外す対応）
-        if new is None and key == "tags":
-            continue
         if not isinstance(new, str):
-            raise EditInvalidError("map: 値は文字列にしてください（null にできるのは tags だけ）")
+            raise EditInvalidError("map: 値は文字列にしてください")
 
 
 def _check_target(
@@ -677,8 +671,6 @@ def _stage_settings_guarded(
     workspace: Workspace, edits: list[PendingEdit], now: NowFn
 ) -> tuple[SettingsStage | None, list[BlockedEdit]]:
     """設定の編集を 1 回で当てる。当てられなければ 1 件ずつ試して、当てられない編集を挙げる。"""
-    threads = read_thread_items(workspace.root)
-
     def attempt(group: list[PendingEdit]) -> SettingsStage:
         """渡した設定の編集をまとめて当てる。"""
         maps: dict[str, dict[str, Any]] = {}
@@ -688,7 +680,6 @@ def _stage_settings_guarded(
         return stage_settings(
             workspace,
             {str(edit.key): edit.value for edit in group},
-            threads=threads,
             editor=USER_EDITOR,
             now=now,
             **maps,

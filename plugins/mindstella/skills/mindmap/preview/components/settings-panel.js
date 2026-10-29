@@ -252,7 +252,7 @@ var MindmapPreview;
             attrs: { class: "pe-ws-entry" },
             children: [
                 MindmapPreview.h({ tag: "h3", children: ["ワークスペースの設定"] }),
-                MindmapPreview.h({ tag: "p", attrs: { class: "pe-ws-sum" }, children: ["題名・フェーズ・ゴール・対象・カテゴリー・タグの語彙"] }),
+                MindmapPreview.h({ tag: "p", attrs: { class: "pe-ws-sum" }, children: ["題名・フェーズ・ゴール・対象・カテゴリー"] }),
                 MindmapPreview.h({
                     tag: "button",
                     attrs: { class: "btn", type: "button", onclick: () => onWorkspace() },

@@ -34,7 +34,7 @@
           },
           "tags": {
             "type": "array",
-            "description": "タグ。記録の話題のタグと同じく、語彙に無いタグは未登録の候補",
+            "description": "タグ。記録の話題のタグと同じく、どの文字列でも持てる",
             "items": {
               "type": "string",
               "minLength": 1
