@@ -1352,3 +1352,4 @@ test_files:
   - tests/unit/scripts/test_answer_to_adopted_option.py
   - tests/unit/scripts/test_submissions_to_threads.py
   - tests/unit/scripts/test_tags_to_vocabulary.py
+  - tests/unit/scripts/test_remove_tag_vocabulary.py
