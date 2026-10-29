@@ -32,13 +32,8 @@ SAVED_LINK_JS = """async ({field, value}) => {
 
 
 def _settings(valid_settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
-    """フェーズ 3 つ・タグ 2 つ・説明つきの設定を返す。"""
-    return {
-        **valid_settings,
-        "description": "元の説明",
-        "tags": [{"name": "画面"}, {"name": "記録の形"}],
-        **overrides,
-    }
+    """フェーズ 3 つ・説明つきの設定を返す。"""
+    return {**valid_settings, "description": "元の説明", **overrides}
 
 
 def _open_workspace(
@@ -48,11 +43,9 @@ def _open_workspace(
     open_preview: OpenPreview,
     **overrides: Any,
 ) -> tuple[Page, Path]:
-    """フェーズ「目的」・対象「mindmap」・タグ「画面」を使う検討事項 D-1 を持つワークスペースで、設定の画面を開いたページとフォルダを返す。"""
+    """フェーズ「目的」・対象「mindmap」を使う検討事項 D-1 を持つワークスペースで、設定の画面を開いたページとフォルダを返す。"""
     url, root = write_edit_preview(
-        make_item(
-            "D-1", phase="目的", target="mindmap", category="データ構造", tags=["画面"]
-        ),
+        make_item("D-1", phase="目的", target="mindmap", category="データ構造"),
         settings=_settings(valid_settings, **overrides),
     )
     page = open_preview(url, DECISIONS_HASH)
@@ -112,7 +105,7 @@ def test_groups(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """設定のキーを「話し合い」「進め方」「タグと関連」「変更履歴」の fieldset に分けて並べる（正常系）。"""
+    """設定のキーを「話し合い」「進め方」「関連」「変更履歴」の fieldset に分けて並べる（正常系）。"""
     # 準備・実行
     page, _ = _open_workspace(write_edit_preview, make_item, valid_settings, open_preview)
     # 検証
@@ -120,7 +113,7 @@ def test_groups(
     assert page.locator(f"{WS} fieldset legend").all_inner_texts() == [
         "話し合い",
         "進め方",
-        "タグと関連",
+        "関連",
         "変更履歴",
     ]
     keys = page.locator(f"{WS} fieldset").evaluate_all(
@@ -129,7 +122,7 @@ def test_groups(
     assert keys == [
         ["summary", "description", "playbooks", "goal"],
         ["phases", "target_label", "targets", "categories"],
-        ["tags", "links"],
+        ["links"],
         ["history_limit"],
     ]
 
@@ -349,34 +342,3 @@ def test_move_target_phase(
     edit = _edit_of(root, "phases")
     assert edit["value"] == ["要件", "構成"]
     assert edit["map"] == {"目的": "要件"}
-
-
-def test_move_tag_drop(
-    write_edit_preview: WriteReviewPreview,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    open_preview: OpenPreview,
-) -> None:
-    """使っているタグを外したときだけ、付け替え先に「タグから外す」も選べる。選ぶと対応の値は null になる。使われていないタグは聞かない（正常系）。"""
-    # 準備
-    page, root = _open_workspace(write_edit_preview, make_item, valid_settings, open_preview)
-    # 実行（使われていないタグ）
-    page.get_by_role("button", name="記録の形 を外す").click()
-    _wait_edits(page, 1)
-    # 検証（使われていないタグ）
-    assert page.locator(f"{FIELD}[data-key='tags'] .pe-move").count() == 0
-    assert _edit_of(root, "tags")["value"] == [{"name": "画面"}]
-    # 実行（使っているタグ）
-    page.get_by_role("button", name="画面 を外す").click()
-    page.wait_for_selector(f"{FIELD}[data-key='tags'] .pe-move")
-    move = page.locator(f"{FIELD}[data-key='tags'] .pe-move")
-    # 検証（使っているタグ）
-    assert move.locator("label").inner_text() == "画面 を使っている 1 件の付け替え先"
-    assert move.locator("select option").all_inner_texts()[-1] == "タグから外す"
-    # 実行（タグから外す）
-    move.locator("select").select_option("タグから外す")
-    page.wait_for_function(
-        "async () => (await (await fetch('/api/edits')).json()).items.some(e => e.key === 'tags' && e.map)"
-    )
-    # 検証（タグから外す）
-    assert _edit_of(root, "tags")["map"] == {"画面": None}

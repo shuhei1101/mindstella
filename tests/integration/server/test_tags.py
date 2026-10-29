@@ -3,80 +3,53 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from .fixture_types import CallTool, MakeItem, MakeWorkspace
+from .fixture_types import (
+    CallTool,
+    MakeItem,
+    MakeThread,
+    MakeWorkspace,
+    SnapshotTree,
+    WriteThreads,
+)
 
 
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
     call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
 ) -> None:
-    """語彙のタグごとに、説明・含める条件・含めない条件・例と種類をまたいで数えた件数を返す。持つ項目が無いタグも返す（正常系）。"""
+    """項目とスレッドが使うタグを、表記の違いをまとめて件数の多い順に返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", tags=["データ"]),
+        make_item("D-1", tags=["API"]),
         make_item("D-2", tags=["画面"]),
-        make_item("T-1", tags=["データ"]),
+        make_item("T-1", tags=["ａｐｉ"]),
         make_item("N-1"),
-        settings={
-            **valid_settings,
-            "tags": [
-                {
-                    "name": "データ",
-                    "summary": "記録の形",
-                    "include": "記録のキーと保存の形",
-                    "exclude": "画面の見た目",
-                    "examples": ["ワークスペースの YAML"],
-                },
-                {"name": "画面", "summary": "利用者が見る画面"},
-                {"name": "保留"},
-            ],
-        },
     )
+    write_threads(root, make_thread("TH-1", tags=["api", "画面"]))
+    before = snapshot_tree(root)
     # 実行
     result = call_tool("tags", workspace=str(root))
     # 検証
     assert result.is_error is False
     assert result.data == {
         "tags": [
-            {
-                "name": "データ",
-                "summary": "記録の形",
-                "include": "記録のキーと保存の形",
-                "exclude": "画面の見た目",
-                "examples": ["ワークスペースの YAML"],
-                "count": 2,
-                "kinds": ["decision", "task"],
-            },
-            {
-                "name": "保留",
-                "summary": None,
-                "include": None,
-                "exclude": None,
-                "examples": [],
-                "count": 0,
-                "kinds": [],
-            },
-            {
-                "name": "画面",
-                "summary": "利用者が見る画面",
-                "include": None,
-                "exclude": None,
-                "examples": [],
-                "count": 1,
-                "kinds": ["decision"],
-            },
+            {"name": "api", "count": 3, "kinds": ["decision", "task", "thread"]},
+            {"name": "画面", "count": 2, "kinds": ["decision", "thread"]},
         ]
     }
+    # 項目とスレッドのタグは書いたときの表記のまま（ファイルが呼ぶ前と同じ）
+    assert snapshot_tree(root) == before
 
 
 def test_normal_when_no_tags(
     make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
-    """語彙が空なら空の一覧を返す（正常系）。"""
+    """どの項目もスレッドもタグを持たなければ空の一覧を返す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
     # 実行
@@ -87,7 +60,7 @@ def test_normal_when_no_tags(
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:
-    """config.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
+    """.mindstella/config.yaml が無いフォルダを指すとエラーで終わる（異常系）。"""
     # 準備
     root = tmp_path / "empty"
     root.mkdir()

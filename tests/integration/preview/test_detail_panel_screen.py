@@ -4699,11 +4699,6 @@ AI_UPDATED = "2026-10-05T01:00:00+00:00"
 STALE_BASE = "2026-09-01T00:00:00+00:00"
 
 
-def _edit_settings(valid_settings: dict[str, Any]) -> dict[str, Any]:
-    """タグの語彙を持つ設定を返す。"""
-    return {**valid_settings, "tags": [{"name": "画面"}, {"name": "記録の形"}]}
-
-
 def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
     """案 A・B と答えを持つ検討事項 D-1 と、D-1 を指す D-2 を返す。"""
     return (
@@ -4732,7 +4727,7 @@ def _open_edit_view(
     url, root = write_edit_preview(
         *(_edit_items(make_item) if items is None else items),
         edits=edits,
-        settings=_edit_settings(valid_settings),
+        settings=valid_settings,
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{EDIT_PANEL}.open")
@@ -4757,7 +4752,7 @@ def test_edit_toggle(
 ) -> None:
     """「編集する」で読む表示と編集の表示を切り替える。編集の表示の間は「編集を終える」にし、別の項目を開くと読む表示に戻る。溜めた編集は残る（正常系）。"""
     # 準備
-    url, root = write_edit_preview(*_edit_items(make_item), settings=_edit_settings(valid_settings))
+    url, root = write_edit_preview(*_edit_items(make_item), settings=valid_settings)
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{EDIT_PANEL}.open")
     toggle = page.locator(EDIT_TOGGLE)
@@ -4793,7 +4788,7 @@ def test_edit_toggle_narrow(
 ) -> None:
     """幅 480px 以下は鉛筆の印だけにし、文字を読み上げと title に残す（正常系）。"""
     # 準備
-    url, _ = write_edit_preview(*_edit_items(make_item), settings=_edit_settings(valid_settings))
+    url, _ = write_edit_preview(*_edit_items(make_item), settings=valid_settings)
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.set_viewport_size({"width": 480, "height": 800})
     page.wait_for_selector(f"{EDIT_PANEL}.open")
@@ -4840,7 +4835,7 @@ def test_head_and_key_marks(
             make_edit("E-1", value="編集後の答え", before="元の答え"),
             make_edit("E-2", op="option-edit", key="A", value={"content": "編集後の案 A"}, before={"content": "案 A"}),
         ),
-        settings=_edit_settings(valid_settings),
+        settings=valid_settings,
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{EDIT_PANEL}.open")
@@ -4880,7 +4875,7 @@ def test_head_mark_remove(
     url, _ = write_edit_preview(
         *_edit_items(make_item),
         edits=(make_edit("E-1", op="item-remove", key=None, value=None, before=None),),
-        settings=_edit_settings(valid_settings),
+        settings=valid_settings,
     )
     # 実行
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
@@ -4925,6 +4920,44 @@ def test_edit_view_fields(
     # 編集の表示の間は、下端のコメントの入力を隠す
     comment_form = page.locator(f"{EDIT_PANEL} form.send")
     assert comment_form.count() == 0 or comment_form.first.is_hidden()
+
+
+def test_edit_tags_suggestions(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """タグの入力は記録で使われているタグを候補に出し、候補に無いタグも入れられて、入れたときに溜める（正常系）。"""
+    # 準備
+    items = (
+        make_item("D-1", title="最初の問い", tags=["画面"]),
+        make_item("D-2", title="後続の問い", tags=["画面", "ＡＰＩ"]),
+    )
+    page, root = _open_edit_view(
+        write_edit_preview, make_item, valid_settings, open_preview, items=items
+    )
+    group = page.get_by_role("group", name="タグ")
+    # 検証（候補）
+    assert group.locator("datalist option").evaluate_all("nodes => nodes.map(n => n.value)") == [
+        "画面",
+        "api",
+    ]
+    # 実行（候補に無いタグを入れる）
+    page.get_by_label("タグを追加").fill("新しいタグ")
+    page.get_by_label("タグを追加").press("Enter")
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS
+    )
+    # 検証（候補に無いタグを入れる）
+    assert group.locator(".pe-chip").all_inner_texts() == ["画面", "新しいタグ"]
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"], edit["before"]) == (
+        "tags",
+        ["画面", "新しいタグ"],
+        ["画面"],
+    )
+    assert read_items_file(root, "decisions.yaml")[0]["tags"] == ["画面"]
 
 
 def test_edit_commit_and_revert(
@@ -5072,7 +5105,7 @@ def test_blocked_reason(
     url, _ = write_edit_preview(
         make_item("D-1", title="最初の問い", answer="元の答え", updated=AI_UPDATED),
         edits=(make_edit("E-1", value="編集後の答え", before="元の答え", base=STALE_BASE),),
-        settings=_edit_settings(valid_settings),
+        settings=valid_settings,
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{EDIT_PANEL}.open")

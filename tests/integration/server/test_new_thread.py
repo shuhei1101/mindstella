@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from .fixture_types import (
     CallTool,
@@ -22,12 +21,11 @@ def test_normal(
     make_item: MakeItem,
     make_thread: MakeThread,
     write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
     call_tool: CallTool,
 ) -> None:
     """AI の問いを最初の書き込みにしてオープンのスレッドを立てる（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": [{"name": "起票"}]})
+    root = make_workspace(make_item("D-1"))
     existing = make_thread("TH-1")
     write_threads(root, existing)
     # 実行
@@ -141,25 +139,3 @@ def test_error_when_schema_mismatch(
     assert result.is_error is True
     assert any(line.startswith("threads.yaml: items[0]") for line in result.text.splitlines())
     assert threads_path(root).read_bytes() == before
-
-
-def test_normal_when_unknown_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
-) -> None:
-    """語彙に無いタグでもスレッドを立て、未登録の候補と近いタグを返す（正常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "起票"}]})
-    config_path = root / RECORD_DIR / "config.yaml"
-    config_before = config_path.read_text(encoding="utf-8")
-    # 実行
-    result = call_tool(
-        "new_thread", workspace=str(root), body="確認", summary="確認", tags=["起票の確認"]
-    )
-    # 検証
-    assert result.is_error is False
-    assert result.data is not None
-    assert result.data["candidate_tags"] == [
-        {"tag": "起票の確認", "ids": ["TH-1"], "similar": ["起票"]}
-    ]
-    assert find_thread(root, "TH-1")["tags"] == ["起票の確認"]
-    assert config_path.read_text(encoding="utf-8") == config_before

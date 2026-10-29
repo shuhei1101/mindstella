@@ -114,10 +114,11 @@ def test_normal_when_plan(
     assert payload["relation"] == "older"
     assert payload["steps"] != []
     assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
-    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）と v0.8.0 の手順（送信のファイルの削除）だけ
+    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）だけ
     assert {step["version"] for step in payload["steps"] if step["destructive"]} == {
         "v0.6.0",
         "v0.8.0",
+        "v0.11.0",
     }
     # 値が要るキーは、全ての手順を当てた後の名前（.mindstella/config.yaml）で返す
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
@@ -469,12 +470,7 @@ def test_normal_when_submissions_to_threads(
     # 利用者が送ったものは利用者の既読
     assert [thread["posts"][0]["seen"] for thread in threads] == [True, True]
     assert not (root / RECORD_DIR / "submissions.yaml").exists()
-    assert call_tool("check", workspace=str(root)).data == {
-        "ok": True,
-        "problems": [],
-        "warnings": [],
-        "hint": None,
-    }
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
     awaiting = call_tool("threads", workspace=str(root), awaiting=True)
     assert awaiting.data is not None
     assert [item["id"] for item in awaiting.data["items"]] == ["TH-2"]
@@ -501,8 +497,8 @@ def test_normal_when_tags_to_vocabulary(
         for name, data in snapshot_tree(root).items()
         if name != f"{RECORD_DIR}/config.yaml"
     }
-    # 実行
-    result = call_tool("migrate", workspace=str(root))
+    # 実行（この手順の次の版が語彙を外すので、v0.10.0 までを当てる）
+    result = call_tool("migrate", workspace=str(root), to_version="v0.10.0")
     # 検証
     assert result.is_error is False
     assert result.data is not None
@@ -525,16 +521,59 @@ def test_normal_when_tags_to_vocabulary(
     }
     assert records_after == records_before
     # もう一度当てても、タグは 4 件のまま
-    again = call_tool("migrate", workspace=str(root))
+    again = call_tool("migrate", workspace=str(root), to_version="v0.10.0")
     assert again.is_error is False
     settings_again = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert len(settings_again["tags"]) == 4
-    assert call_tool("check", workspace=str(root)).data == {
-        "ok": True,
-        "problems": [],
-        "warnings": [],
-        "hint": None,
+
+
+def test_normal_when_tag_vocabulary_removed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
+    snapshot_tree: SnapshotTree,
+    call_tool: CallTool,
+) -> None:
+    """v0.10.0 のワークスペースの config.yaml からタグの語彙を削除し、項目とスレッドのタグは残す（正常系）。"""
+    # 準備
+    vocabulary = [{"name": "保存", "summary": "保存の話"}, {"name": "通知"}]
+    root = make_workspace(
+        make_item("D-1", tags=["保存", "通知"]), settings={**valid_settings, "tags": vocabulary}
+    )
+    write_threads(root, make_thread("TH-1", tags=["起票"]))
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.10.0\n", encoding="utf-8")
+    config_path = root / RECORD_DIR / "config.yaml"
+    settings_before = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    records_before = {
+        name: data
+        for name, data in snapshot_tree(root).items()
+        if name != f"{RECORD_DIR}/config.yaml"
     }
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    steps = result.data["steps"]
+    assert [(step["version"], step["op"], step["destructive"]) for step in steps] == [
+        ("v0.11.0", "call", True)
+    ]
+    settings = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert settings == {key: value for key, value in settings_before.items() if key != "tags"}
+    records_after = {
+        name: data
+        for name, data in snapshot_tree(root).items()
+        if name != f"{RECORD_DIR}/config.yaml"
+    }
+    assert records_after == records_before
+    # もう一度当てても、config.yaml は変わらない
+    config_after = config_path.read_text(encoding="utf-8")
+    again = call_tool("migrate", workspace=str(root))
+    assert again.is_error is False
+    assert config_path.read_text(encoding="utf-8") == config_after
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
 
 
 def test_error_when_newer(
