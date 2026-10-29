@@ -6,6 +6,7 @@ import logging
 import os
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ from fixture_types import (
     SnapshotTree,
     WriteThreads,
 )
+from migrator import plan_migration
 from query import SearchFilter
 from workspace_fixtures import RECORD_DIR
 
@@ -1299,6 +1301,38 @@ def test_run_migrate_when_values(
     assert payload["needs_values"] == []
     settings = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert settings["summary"] == "題名"
+
+
+def test_run_migrate_when_call_destructive(
+    make_legacy_workspace: MakeLegacyWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """`call` の手順の destructive: true を steps の destructive に反映する（正常系）。"""
+    # 準備
+    root = make_legacy_workspace()
+    patch_plugin_version("v0.3.0")
+    migrations_dir = tmp_path / "migrations"
+    (migrations_dir / "v0.3.0").mkdir(parents=True)
+    (migrations_dir / "v0.3.0" / "steps.yaml").write_text(
+        "steps:\n"
+        "  - op: call\n    script: convert\n    destructive: true\n"
+        "  - op: call\n    script: keep\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        commands, "plan_migration", partial(plan_migration, migrations_dir=migrations_dir)
+    )
+    # 実行
+    payload = commands.run_migrate(
+        root, plan=True, record=False, values=None, from_version=None, to_version=None
+    )
+    # 検証
+    assert [(step["op"], step["destructive"]) for step in payload["steps"]] == [
+        ("call", True),
+        ("call", False),
+    ]
 
 
 @pytest.mark.parametrize(
