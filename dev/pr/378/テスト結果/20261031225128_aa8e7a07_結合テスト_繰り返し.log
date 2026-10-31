@@ -1,0 +1,60 @@
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 1 回目
+.                                                                        [100%]
+1 passed in 5.93s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 2 回目
+.                                                                        [100%]
+1 passed in 5.83s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 3 回目
+.                                                                        [100%]
+1 passed in 5.30s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 4 回目
+.                                                                        [100%]
+1 passed in 5.71s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 5 回目
+.                                                                        [100%]
+1 passed in 5.68s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 6 回目
+.                                                                        [100%]
+1 passed in 5.83s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 7 回目
+.                                                                        [100%]
+1 passed in 5.45s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 8 回目
+.                                                                        [100%]
+1 passed in 5.44s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 9 回目
+.                                                                        [100%]
+1 passed in 8.25s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn  # 10 回目
+.                                                                        [100%]
+1 passed in 7.20s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 1 回目
+.                                                                        [100%]
+1 passed in 6.01s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 2 回目
+.                                                                        [100%]
+1 passed in 5.94s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 3 回目
+.                                                                        [100%]
+1 passed in 6.75s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 4 回目
+.                                                                        [100%]
+1 passed in 7.06s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 5 回目
+.                                                                        [100%]
+1 passed in 6.48s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 6 回目
+.                                                                        [100%]
+1 passed in 5.58s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 7 回目
+.                                                                        [100%]
+1 passed in 7.60s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 8 回目
+.                                                                        [100%]
+1 passed in 8.22s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 9 回目
+.                                                                        [100%]
+1 passed in 6.02s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_sent_value_when_redrawn  # 10 回目
+.                                                                        [100%]
+1 passed in 5.63s
