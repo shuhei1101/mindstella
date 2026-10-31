@@ -1,3 +1,105 @@
+$ npx storybook build -o storybook-static
+
+┌  Building storybook v10.6.1
+│
+◇  Cleaning outputDir: storybook-static
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+●  Building open services..
+│
+●  Building preview..
+│  Vite vite v8.3.2 building client environment for production...
+transforming...
+│
+●  Copying static files: plugins/mindstella/skills/mindmap/preview at
+│  storybook-static/preview
+✓ 52 modules transformed.
+rendering chunks...
+computing gzip size...
+│  Vite storybook-static/iframe.html
+│  22.91 kB │ gzip:   6.34 kB
+│  storybook-static/assets/comment-mark.stories-txXeduhI.js
+│  0.42 kB │ gzip:   0.29 kB
+│  storybook-static/assets/diff-mark.stories-CGNeHJgG.js
+│  0.49 kB │ gzip:   0.31 kB
+│  storybook-static/assets/body-diff-layout-switch.stories-VbmrczYz.js
+│  0.55 kB │ gzip:   0.38 kB
+│  storybook-static/assets/rolldown-runtime-Dh6celcD.js
+│  0.62 kB │ gzip:   0.41 kB
+│  storybook-static/assets/withdrawn-badge.stories-B6ZH_LRP.js
+│  0.67 kB │ gzip:   0.43 kB
+│  storybook-static/assets/view-switch.stories-eoqvYlBg.js
+│  0.68 kB │ gzip:   0.39 kB
+│  storybook-static/assets/body-format-badge.stories-Bn6kOyb2.js
+│  0.74 kB │ gzip:   0.40 kB
+│  storybook-static/assets/pending-mark.stories-BxO3LIBb.js
+│  0.96 kB │ gzip:   0.47 kB
+│  storybook-static/assets/removed-band.stories-BQAYCTDt.js
+│  1.08 kB │ gzip:   0.72 kB
+│  storybook-static/assets/doc-export-menu.stories-BqPhYvDB.js
+│  1.11 kB │ gzip:   0.61 kB
+│  storybook-static/assets/selection-comment.stories-B9co-RiB.js
+│  1.12 kB │ gzip:   0.62 kB
+│  storybook-static/assets/reply-form.stories-BYb7HfHg.js
+│  1.24 kB │ gzip:   0.81 kB
+│  storybook-static/assets/preload-helper-DX4WCqxR.js
+│  1.50 kB │ gzip:   0.82 kB
+│  storybook-static/assets/settings-confirm.stories-B6dvlqZP.js
+│  1.52 kB │ gzip:   0.93 kB
+│  storybook-static/assets/history-dialog.stories-D3dIXtni.js
+│  1.63 kB │ gzip:   1.04 kB
+│  storybook-static/assets/side-by-side-body-diff.stories-ccEMHesq.js
+│  1.99 kB │ gzip:   0.94 kB
+│  storybook-static/assets/settings-panel.stories-C_sxJka6.js
+│  2.36 kB │ gzip:   1.14 kB
+│  storybook-static/assets/review-body-fold.stories-B2fG7rrD.js
+│  2.63 kB │ gzip:   1.39 kB
+│  storybook-static/assets/filter-drawer.stories-C2YsVUHv.js
+│  2.65 kB │ gzip:   1.18 kB
+│  storybook-static/assets/send-form.stories-GheY-kAi.js
+│  2.79 kB │ gzip:   1.43 kB
+│  storybook-static/assets/html-body-diff.stories-BBGXFOkN.js
+│  3.14 kB │ gzip:   1.16 kB
+│  storybook-static/assets/table.stories-pya-akPu.js
+│  3.38 kB │ gzip:   1.63 kB
+│  storybook-static/assets/term-tip.stories-BW7fpf9v.js
+│  3.45 kB │ gzip:   1.76 kB
+│  storybook-static/assets/diff-minimap.stories-tzboi2LO.js
+│  4.08 kB │ gzip:   1.69 kB
+│  storybook-static/assets/thread-row.stories-cFzblUJ-.js
+│  4.57 kB │ gzip:   1.79 kB
+│  storybook-static/assets/html-body-frame.stories-D5oaonza.js
+│  4.89 kB │ gzip:   2.00 kB
+│  storybook-static/assets/thread-post.stories-CvCB70MU.js
+│  5.32 kB │ gzip:   2.34 kB
+│  storybook-static/assets/markdown-body.stories-BMksQvi8.js
+│  5.48 kB │ gzip:   2.71 kB
+│  storybook-static/assets/topbar.stories-ixHssIcK.js
+│  10.17 kB │ gzip:   2.07 kB
+│  storybook-static/vite-inject-mocker-entry.js
+│  27.84 kB │ gzip:   9.66 kB
+│  storybook-static/assets/iframe-C1oN-I2c.js
+│  863.48 kB │ gzip: 240.89 kB
+
+│  Vite ✓ built in 2.28s
+│
+▲  Vite [plugin builtin:vite-reporter]
+│  (!) Some chunks are larger than 500 kB after minification. Consider:
+│  - Using dynamic import() to code-split the application
+│  - Use build.rolldownOptions.output.codeSplitting to improve chunking:
+│  ]8;;https://rolldown.rs/reference/OutputOptions.codeSplittinghttps://rolldown.rs/reference/OutputOptions.codeSplitting]8;;
+│  - Adjust chunk size limit for this warning via
+│  build.chunkSizeWarningLimit.
+│
+◇  Output directory:
+│  /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-add-panel-options/storybook-static
+│
+└  Storybook build completed successfully
+
+$ pytest tests/integration
 ============================= test session starts ==============================
 platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
 rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-add-panel-options
@@ -193,4 +295,4 @@ tests/integration/skill/test_upgrade.py .                                [ 95%]
 tests/integration/storybook/test_topbar_stories.py ..................... [ 97%]
 .....................................................                    [100%]
 
-================= 1831 passed, 2 skipped in 3452.45s (0:57:32) =================
+================= 1831 passed, 2 skipped in 3748.33s (1:02:28) =================
