@@ -5069,6 +5069,91 @@ def test_options_edit(
     expect(removed.get_by_role("button", name="案 B を削除")).to_have_count(0, timeout=EDIT_SETTLE_MS)
 
 
+# 止めたレスポンスがルートの処理に渡るのを確かめる間隔ミリ秒と回数
+HOLD_POLL_MS = 50
+HOLD_POLL_LIMIT = 100
+
+
+def _redraw_by_add(page: Page, root: Path, call_tool: CallTool) -> None:
+    """項目を足して書き換えの通知を起こし、編集の表示のフォームが描き直されるのを待つ。"""
+    page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    assert added.is_error is False, added.text
+    page.wait_for_function(
+        f"document.querySelector('{EDIT_FORM}')?.dataset.drawn !== 'before'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+
+
+def test_option_draft_when_redrawn(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+) -> None:
+    """「案を追加」で置いた書きかけの案は、入力の途中で書き換えの通知により描き直しても打った中身ごと残り、離れたときに溜める（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 C の中身").fill("書きかけの案 C")
+    # 実行（離れずに描き直させる）
+    _redraw_by_add(page, root, call_tool)
+    # 検証（描き直し）
+    draft = page.get_by_label("案 C の中身")
+    expect(draft).to_have_value("書きかけの案 C")
+    # 実行（離れる）
+    _blur_and_wait(page, draft, 1)
+    # 検証（離れる）
+    wait_saved_edit(page, "C", {"content": "書きかけの案 C"}, op="option-add")
+    expect(page.get_by_label("案 C の中身")).to_have_value("書きかけの案 C")
+
+
+def test_sent_value_when_redrawn(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+) -> None:
+    """入力欄を離れて送信した値は、溜まる前に描き直しても、古い保存待ちの編集で元の値に戻らない（正常系）。"""
+    # 準備（入力欄 A の編集を溜める）
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
+    # 入力欄 B の溜める要求のレスポンスを止める
+    held: list[Route] = []
+    page.route(
+        "**/api/edits",
+        lambda route: held.append(route) if route.request.method == "POST" else route.continue_(),
+    )
+    # 実行（入力欄 B を離れて送信し、溜まる前に描き直させる）
+    option = page.get_by_label("案 A の中身")
+    option.fill("書き換えた案 A")
+    with page.expect_request(lambda request: request.url.endswith("/api/edits") and request.method == "POST"):
+        option.blur()
+    # 止めたレスポンスがルートの処理に渡るまで、ページのイベントを回す
+    for _ in range(HOLD_POLL_LIMIT):
+        if held:
+            break
+        page.wait_for_timeout(HOLD_POLL_MS)
+    assert len(held) == 1
+    _redraw_by_add(page, root, call_tool)
+    # 検証（描き直し）
+    expect(page.get_by_label("案 A の中身")).to_have_value("書き換えた案 A")
+    expect(page.get_by_label("決定内容", exact=True)).to_have_value("新しい答え")
+    # 実行（止めたレスポンスを流す）
+    held[0].continue_()
+    page.unroute("**/api/edits")
+    wait_saved_edit(page, "A", {"content": "書き換えた案 A"}, op="option-edit")
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    # 検証（溜めた後）
+    expect(page.get_by_label("案 A の中身")).to_have_value("書き換えた案 A")
+    expect(page.get_by_label("決定内容", exact=True)).to_have_value("新しい答え")
+
+
 def test_remove_item(
     write_edit_preview: WriteReviewPreview,
     make_item: MakeItem,
