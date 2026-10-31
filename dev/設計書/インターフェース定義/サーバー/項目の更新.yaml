@@ -396,31 +396,6 @@ flows:
       - 'エラーの本文に `tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる` の行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、`docs/` にファイルが増えていない
     test: test_error_when_html_body_for_non_doc
-  - name: 異常系（語彙に無いタグ・UnknownTagError）
-    summary: 語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: タグの語彙 `通知` と、タグを持たない検討事項 D-1 を持つワークスペース
-        notes: D-1 の `tags` を `[通知機能]` に置き換える
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as update（MCP のツール）
-        participant WS as ワークスペース
-
-        クライアント->>IF: update workspace id D-1（tags [通知機能]）
-        IF-->>WS: タグの語彙を読む
-        IF->>IF: 語彙に無いタグ
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - ツールのエラーになる
-      - エラーの本文に `通知機能` と候補の `通知` がある
-      - '`decisions.yaml` の中身が呼ぶ前と同じ'
-    test: test_error_when_unknown_tag
 lead: ID で指した 1 項目のキーを、`item` で渡した値に置き換えて更新日時を変える。値が変わったときは、書き換える前の値をその項目の変更履歴に 1 回分積む。
 idempotent: false
 side_effects: その項目の種類の YAML を書き換え、項目の `updated` と `updated_by`（`ai`）を書く。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を、`body_html` を渡したときは `.mindstella/docs/{ID}.html` を書き換え、`body` をそのファイル名にする。本文の形式が変わったときは、前の形式の本文のファイルを消す。値が変わったときは、項目の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換え、最後に前の形式の本文を消す
@@ -483,10 +458,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。本文は前の中身に戻し、どのファイルも書き換えない
-  - name: UnknownTagError
-    condition: '`tags` に語彙に無いタグがある'
-    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す。何も書き込まない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・直す項目以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・直す項目以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -512,5 +484,7 @@ constraints:
     constraint: 値が変わったとき、項目の `seq` をその書き換えで振った番号にする（変更履歴を積むときはその回の `seq`。保持する回数が 0 で積まないときも `changes.yaml` の `last_seq` を 1 進めてその番号を入れる）。変わったものが無ければ進めない
   - item: 本文の形式
     constraint: 形式の表し方と、資料以外に `body_html` を渡した・両方を渡したときのエラーの行は『項目の追加』と同じ。形式を替えた書き換えは、変更履歴の `before` に前の `body`（例 `A-1.md`）を入れ、`body_diff` を新しい形式の本文の行を前の形式の本文の行へ戻す差分にする。前の形式の本文のファイルは、YAML と `changes.yaml` を置き換えた後に消す。消せなかったときは WriteFailedError にし、置き換えたものを控えに戻す（新しい形式の本文は消す）
+  - item: タグ
+    constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_update.py

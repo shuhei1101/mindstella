@@ -9,7 +9,6 @@ from typing import Any
 import pytest
 import yaml
 
-import errors
 import store
 import threads
 from errors import (
@@ -26,7 +25,6 @@ from fixture_types import (
     MakePost,
     MakeThread,
     MakeWorkspace,
-    SnapshotTree,
     WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR
@@ -70,11 +68,6 @@ def _read_threads(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの threads.yaml を読んで、スレッドの並びを返す。"""
     data = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
     return data["items"]
-
-
-def _with_vocabulary(settings: dict[str, Any], *names: str) -> dict[str, Any]:
-    """設定に、渡した名前のタグの語彙（説明なし）を足した設定を返す。"""
-    return {**settings, "tags": [{"name": name} for name in names]}
 
 
 def _find(raw: list[dict[str, Any]], thread_id: str) -> dict[str, Any]:
@@ -626,13 +619,10 @@ def test_create_thread(
     make_item: MakeItem,
     make_thread: MakeThread,
     write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
 ) -> None:
     """連番を振って AI の既読の書き込みで立てる（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1"), settings=_with_vocabulary(valid_settings, "起票")
-    )
+    root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1"), make_thread("TH-3"))
     workspace = store.load_workspace(root)
     # 実行
@@ -701,22 +691,6 @@ def test_create_thread_when_rejected(
     with pytest.raises(exception) as exc_info:
         threads.create_thread(workspace, now=_fixed_now, **kwargs)
     assert getattr(exc_info.value, "argument", None) == argument
-    assert not (root / RECORD_DIR / "threads.yaml").exists()
-
-
-def test_create_thread_when_unknown_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグでは立てない（異常系）。"""
-    # 準備
-    root = make_workspace(settings=_with_vocabulary(valid_settings, "起票"))
-    workspace = store.load_workspace(root)
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError) as raised:
-        threads.create_thread(
-            workspace, body="本文", summary="要約", tags=["起票の確認"], now=_fixed_now
-        )
-    assert raised.value.unknown == [("tags", "起票の確認", ["起票"])]
     assert not (root / RECORD_DIR / "threads.yaml").exists()
 
 
@@ -966,14 +940,11 @@ def test_update_thread_when_tags(
     make_item: MakeItem,
     make_thread: MakeThread,
     write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
     tags: list[str],
 ) -> None:
     """タグを置き換える・外す（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1"), settings=_with_vocabulary(valid_settings, "画面", "起票", "資料")
-    )
+    root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1", tags=["画面"], summary="前の要約"))
     # 実行
     taken = threads.update_thread(root, "TH-1", tags=tags, now=_fixed_now)
@@ -981,24 +952,6 @@ def test_update_thread_when_tags(
     assert taken == []
     raw = _find(_read_threads(root), "TH-1")
     assert (raw["tags"], raw["summary"]) == (tags, "前の要約")
-
-
-def test_update_thread_when_unknown_tag(
-    make_workspace: MakeWorkspace,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-    snapshot_tree: SnapshotTree,
-    valid_settings: dict[str, Any],
-) -> None:
-    """語彙に無いタグには置き換えない（異常系）。"""
-    # 準備
-    root = make_workspace(settings=_with_vocabulary(valid_settings, "起票"))
-    write_threads(root, make_thread("TH-1", tags=["起票"]))
-    before = snapshot_tree(root)
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError):
-        threads.update_thread(root, "TH-1", tags=["起票の確認"], now=_fixed_now)
-    assert snapshot_tree(root) == before
 
 
 @pytest.mark.parametrize(

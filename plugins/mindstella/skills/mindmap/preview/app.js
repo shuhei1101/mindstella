@@ -2300,6 +2300,7 @@ var MindmapPreview;
                 blocked: blockedByKey(id),
                 referrers: serverIndex.referencedBy.get(id) ?? [],
                 errors: formErrors(id),
+                usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
                 body: index.data.bodies[item.body ?? ""] ?? "",
                 on: {
                     change: (input) => void submitEdit({ payload: { target: id, ...input }, error: { target: id, key: errorKeyOf(input) } }),
@@ -2440,6 +2441,7 @@ var MindmapPreview;
                 blocked: entry === undefined ? {} : blockedByKey(item.id),
                 referrers: [],
                 errors: formErrors(entry === undefined ? MindmapPreview.NEW_ID_PREFIX : item.id),
+                usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
                 body: typeof record["body"] === "string" ? record["body"] : "",
                 on: { change: (input) => void submitAddField({ kind, input }), remove: () => undefined, cancelRemove: () => undefined },
             });
@@ -2665,7 +2667,6 @@ var MindmapPreview;
                 index,
                 marks,
                 errors: formErrors(MindmapPreview.SETTINGS_TARGET),
-                threads: comment.threads,
                 on: {
                     change: (input) => void submitEdit({
                         payload: { op: "setting", ...input },

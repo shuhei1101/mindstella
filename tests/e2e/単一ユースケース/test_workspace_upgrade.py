@@ -495,56 +495,60 @@ def test_normal_when_submissions_to_threads(
     assert checked.data == {"ok": True, "problems": []}
 
 
-def test_normal_when_tags_registered(
+def test_normal_when_tag_vocabulary_removed(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
     make_thread: MakeThread,
     write_threads: WriteThreads,
+    valid_settings: dict[str, Any],
     call_tool: CallTool,
 ) -> None:
-    """タグの語彙を持つ前の版のワークスペースを、使っているタグを語彙へ登録して今の版へ移し替える（正常系）。"""
-    # 準備（D-1・N-1・TH-1 が語彙の無い v0.9.0 の形でタグを使っている）
+    """タグの語彙を持つワークスペースを、語彙を削除して今のバージョンへ移し替える。項目とスレッドのタグは残す（正常系）。"""
+    # 準備（config.yaml がタグの語彙を持つ v0.10.0 のワークスペース）
+    vocabulary = [{"name": "保存", "summary": "保存の話"}, {"name": "通知"}, {"name": "起票"}]
     root = make_workspace(
-        make_item("D-1", tags=["保存", "通知"]), make_item("N-1", tags=["脱線"])
+        make_item("D-1", tags=["保存", "通知"]), settings={**valid_settings, "tags": vocabulary}
     )
     write_threads(root, make_thread("TH-1", tags=["起票"]))
-    (root / RECORD_DIR / VERSION_FILE).write_text("v0.9.0\n", encoding="utf-8")
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.10.0\n", encoding="utf-8")
+    config_path = root / RECORD_DIR / SETTINGS
+    settings_before = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     ws = {"workspace": str(root)}
     # 実行
-    # 版を比べ、当てる手順を並べる
+    # バージョンを比べ、当てる手順を並べる
     plan = call_tool("migrate", **ws, plan=True)
-    # 写しを取って手順を当てる
+    # コピーを取って手順を当てる
     applied = call_tool("migrate", **ws)
     checked = call_tool("check", **ws)
-    # 版を書き換える
+    tags = call_tool("tags", **ws)
+    # バージョンを書き換える
     recorded = call_tool("migrate", **ws, record=True)
     # 検証
     assert plan.is_error is False
     assert plan.data is not None
-    # 並べた手順に、使っているタグを語彙へ登録する v0.10.0 の手順がある
+    # 並べた手順に、タグの語彙を削除する v0.11.0 の手順があり、破壊的な操作として示される
     steps = [(step["version"], step["op"], step["destructive"]) for step in plan.data["steps"]]
-    assert ("v0.10.0", "call", False) in steps
+    assert steps == [("v0.11.0", "call", True)]
     assert applied.is_error is False, applied.text
-    settings = yaml.safe_load((root / RECORD_DIR / SETTINGS).read_text(encoding="utf-8"))
-    # タグの語彙が 保存・脱線・起票・通知 の 4 件をこの順で持ち、どれも説明を持たない
-    assert settings["tags"] == [
-        {"name": "保存"},
-        {"name": "脱線"},
-        {"name": "起票"},
-        {"name": "通知"},
-    ]
-    # D-1・N-1・TH-1 のタグが、移し替える前と同じである
+    # config.yaml がタグのキーを持たず、ほかのキーは移し替える前と同じである
+    settings = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert settings == {key: value for key, value in settings_before.items() if key != "tags"}
+    # D-1・TH-1 のタグが、移し替える前と同じである
     decisions = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
-    notes = yaml.safe_load((root / RECORD_DIR / "notes.yaml").read_text(encoding="utf-8"))
     threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
     assert decisions["items"][0]["tags"] == ["保存", "通知"]
-    assert notes["items"][0]["tags"] == ["脱線"]
     assert threads["items"][0]["tags"] == ["起票"]
-    # 移し替えの後、.mindstella/mindstella-version.ini の 1 行目がプラグインの版である
+    # タグの一覧が 保存・通知・起票 を 1 件ずつ返す
+    assert tags.data is not None
+    assert sorted((row["name"], row["count"]) for row in tags.data["tags"]) == [
+        ("保存", 1),
+        ("起票", 1),
+        ("通知", 1),
+    ]
+    # 移し替えの後、.mindstella/mindstella-version.ini の 1 行目がプラグインのバージョンである
     assert recorded.is_error is False
     first_line = (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8").splitlines()[0]
     assert first_line == plugin_version()
     # 最後の check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data == {"ok": True, "problems": []}
-

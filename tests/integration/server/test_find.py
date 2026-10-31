@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -69,10 +68,7 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
 
 
 def test_normal_when_tags_and_any_tags(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
     """tags は全てを持つ項目、any_tags はいずれかを持つ項目を返す（正常系）。"""
     # 準備
@@ -81,7 +77,6 @@ def test_normal_when_tags_and_any_tags(
         make_item("D-2", tags=["画面"]),
         make_item("T-1", tags=["データ", "画面"]),
         make_item("N-1"),
-        settings={**valid_settings, "tags": [{"name": "データ"}, {"name": "画面"}]},
     )
     # 実行
     all_of = call_tool("find", workspace=str(root), tags=["データ", "画面"])
@@ -118,19 +113,13 @@ def test_normal_when_paged(
 
 
 def test_normal_when_empty(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
-    """語彙にあるタグで 0 件になると、空の結果に外せる条件の案内を添える（正常系）。"""
+    """使われているタグで 0 件になると、空の結果に外せる条件の案内を添える（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["データ"]),
-        settings={**valid_settings, "tags": [{"name": "データ"}, {"name": "保留"}]},
-    )
+    root = make_workspace(make_item("D-1", tags=["データ"]))
     # 実行
-    result = call_tool("find", workspace=str(root), kind="decision", tags=["保留"])
+    result = call_tool("find", workspace=str(root), kind="task", tags=["データ"])
     # 検証
     assert result.is_error is False
     assert result.data["items"] == []
@@ -169,17 +158,30 @@ def test_normal_when_detailed(
     assert "body" not in decision
 
 
-def test_error_when_unknown_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
+def test_normal_when_tag_normalized(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
-    """語彙に無いタグで探すと、近いタグの候補を添えたエラーで終わる（異常系）。"""
+    """全角・大文字の違うタグでも絞れ、どの項目も使っていないタグは 0 件と近い使われているタグの案内を返す（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "データ"}, {"name": "画面"}]})
+    root = make_workspace(
+        make_item("D-1", tags=["データ"]),
+        make_item("D-2", tags=["API"]),
+        make_item("D-3", tags=["ａｐｉ"]),
+    )
     # 実行
-    result = call_tool("find", workspace=str(root), tags=["データー"])
+    normalized = call_tool("find", workspace=str(root), tags=["Api"])
+    stray = call_tool("find", workspace=str(root), tags=["データー"])
     # 検証
-    assert result.is_error is True
-    assert "tags: データー（候補: データ）" in result.text
+    assert normalized.is_error is False
+    assert normalized.data is not None
+    assert [(item["id"], item["tags"]) for item in normalized.data["items"]] == [
+        ("D-2", ["API"]),
+        ("D-3", ["ａｐｉ"]),
+    ]
+    assert stray.is_error is False
+    assert stray.data is not None
+    assert (stray.data["items"], stray.data["total"]) == ([], 0)
+    assert "データー はどの項目も使っていないタグです（近いタグ: データ）" in stray.data["hint"]
 
 
 def test_error_when_cursor_mismatched(

@@ -59,14 +59,12 @@ def test_normal(
     make_item: MakeItem,
     make_edit: MakeEdit,
     write_edits: WriteEdits,
-    valid_settings: dict[str, Any],
     serve_preview: Callable[[Path], str],
 ) -> None:
     """検討事項のキー・案・採用の編集を当て、編集した人を利用者にして 1 つのまとまりにする（正常系）。"""
     # 準備
-    settings = {**valid_settings, "tags": [{"name": "画面"}, {"name": "記録の形"}]}
     options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
-    root = make_workspace(make_item("D-1", tags=["画面"], options=options), settings=settings)
+    root = make_workspace(make_item("D-1", tags=["画面"], options=options))
     write_edits(
         root,
         make_edit("E-1", value="案 C にする"),
@@ -282,15 +280,12 @@ def test_error_when_invalid_value(
     make_item: MakeItem,
     make_edit: MakeEdit,
     write_edits: WriteEdits,
-    valid_settings: dict[str, Any],
     serve_preview: Callable[[Path], str],
     snapshot_tree: SnapshotTree,
 ) -> None:
-    """当てた後の項目がタグの語彙や参照の指す先に合わなければ、どの編集も当てない（異常系）。"""
+    """当てた後の項目が参照の指す先に合わなければ、どの編集も当てない。まだ使われていないタグは止めない（異常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1"), settings={**valid_settings, "tags": [{"name": "画面"}]}
-    )
+    root = make_workspace(make_item("D-1", tags=["画面"]))
     write_edits(
         root,
         make_edit("E-1", key="tags", value=["保存"], before=[]),
@@ -303,9 +298,8 @@ def test_error_when_invalid_value(
     # 検証
     assert result.status == 409
     blocked = {entry["id"]: entry for entry in result.json()["blocked"]}
-    assert set(blocked) == {"E-1", "E-2"}
-    assert all(entry["reason"] == "invalid" for entry in blocked.values())
-    assert "保存" in blocked["E-1"]["detail"]
+    assert set(blocked) == {"E-2"}
+    assert blocked["E-2"]["reason"] == "invalid"
     assert "D-99" in blocked["E-2"]["detail"]
     assert snapshot_tree(root) == before
 

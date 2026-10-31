@@ -55,35 +55,6 @@ class UnmappedTargetError(MindmapError):
         super().__init__("新しい設定に対応の無い対象・カテゴリーが残ります", lines)
 
 
-class UnmappedTagError(MindmapError):
-    """新しい `tags` の語彙に対応の無いタグを持つ項目かスレッドが残る。`lines` に残るものごとの `{項目かスレッドの ID}: tags: {タグ}` を持つ。"""
-
-    def __init__(self, unmapped: list[tuple[str, str]]) -> None:
-        """残るもの（項目かスレッドの ID、タグ）を持ち、その並びを `lines` の行にする。"""
-        super().__init__(
-            "新しい語彙に対応の無いタグが残ります",
-            [f"{owner}: tags: {tag}" for owner, tag in unmapped],
-        )
-        self.unmapped = unmapped
-
-
-class UnknownTagError(MindmapError):
-    """設定の `tags` の語彙に無いタグを渡した。`lines` に無いタグごとの `{引数の名前}: {タグ}（候補: {候補を・でつないだもの}）` を持つ。"""
-
-    def __init__(self, unknown: list[tuple[str, str, list[str]]]) -> None:
-        """語彙に無いタグ（引数の名前・タグ・字面の近い語彙のタグ）を持ち、その並びを `lines` の行にする。"""
-        super().__init__(
-            "語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）",
-            [
-                f"{argument}: {tag}（候補: {'・'.join(candidates)}）"
-                if candidates
-                else f"{argument}: {tag}（候補なし）"
-                for argument, tag, candidates in unknown
-            ],
-        )
-        self.unknown = unknown
-
-
 class ItemNotFoundError(MindmapError):
     """渡した ID の項目が無い。"""
 

@@ -158,11 +158,6 @@ tables:
         type: object
         description: 任意。`port`（配信が `127.0.0.1` で待ち受けるポート。1〜65535 の整数。無ければ OS が選んだ空きポート）を持つ。外の入口（トンネル・リバースプロキシ）にポートを 1 回だけ登録するときに書く。配信を立てるときだけ読み、『設定の再読み込み』では待ち受けを変えない（Claude Code を開き直して立て直すと効く）
         example: '{port: 47800}'
-      - name: tags
-        title: タグの語彙
-        type: array
-        description: 任意。項目とスレッドの `tags` に使えるタグ。要素は `name`（空でない文字列。語彙の中で一意）・`summary`（任意。タグの説明）。無ければ語彙は空で、タグを付けられない。書き換えは `update_settings`
-        example: '[{name: 保存, summary: 記録の保存先と形}, {name: 脱線}]'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
     datastore: JSON
@@ -197,7 +192,7 @@ tables:
       - name: tags
         title: タグ
         type: array
-        description: 設定の `tags` の語彙にあるタグ。語彙に無いタグは書き込みのツールが弾き、手で書いたものは点検が `unknown_tag` で返す
+        description: 話題のタグ。どの文字列でも持てる（タグの語彙は持たない）。比べるときは NFKC と小文字でそろえる
       - name: attrs
         title: 属性
         type: object
@@ -789,7 +784,7 @@ tables:
         type: array
         not_null: true
         default: '[]'
-        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく、設定の `tags` の語彙にあるタグだけ
+        description: AI が付けるタグ（文字列）。記録の話題のタグと同じく、どの文字列でも持てる
         example: '[起票]'
       - name: summary
         title: 要約
@@ -951,7 +946,7 @@ tables:
       - name: map
         title: 付け替えの対応
         type: object
-        description: '`setting` で `key` が `phases`・`targets`・`categories`・`tags` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map`・`tag_map` と同じ（`tags` だけ値を `null` にしてタグから外せる）。対応の要らない編集は持たない'
+        description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map` と同じ。対応の要らない編集は持たない'
         example: '{"問い": "目的"}'
     refs:
       - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#

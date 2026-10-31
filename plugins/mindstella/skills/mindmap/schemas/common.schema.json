@@ -56,7 +56,7 @@
         },
         "tags": {
           "type": "array",
-          "description": "タグ。設定の `tags` の語彙にあるタグだけ",
+          "description": "話題のタグ。どの文字列でも持て、`tags` のツールが NFKC と小文字にそろえた表記で数える",
           "items": {
             "type": "string"
           }

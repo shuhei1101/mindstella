@@ -9,8 +9,8 @@ namespace MindmapPreview {
     op: PendingEdit["op"];
     key: string;
     value: unknown;
-    /** 設定のフェーズ・対象・カテゴリー・タグの付け替え（古い値 → 新しい値。タグだけ null で外す） */
-    map?: Record<string, string | null>;
+    /** 設定のフェーズ・対象・カテゴリーの付け替え（古い値 → 新しい値） */
+    map?: Record<string, string>;
   };
 
   /** 編集の表示の引数 */
@@ -18,7 +18,7 @@ namespace MindmapPreview {
     kind: Kind;
     /** 保存待ちの編集を当てた項目 */
     item: Item;
-    /** 編集を当てた設定（フェーズ・対象・カテゴリー・タグの選択肢） */
+    /** 編集を当てた設定（フェーズ・対象・カテゴリーの選択肢） */
     settings: Settings;
     /** キーか案の記号 → 印の種類 */
     marks: Record<string, PendingMarkKind>;
@@ -32,6 +32,8 @@ namespace MindmapPreview {
     referrers: string[];
     /** キー → 溜められなかった理由 */
     errors: Record<string, string>;
+    /** 記録で使われているタグ（`usedTags`）。タグのチップの候補に出し、候補に無いタグも入れられる */
+    usedTags: string[];
     /** 本文の今の値（保存待ちの編集を当てたもの。本文を持たない項目は渡さない） */
     body?: string;
     on: {
@@ -157,7 +159,7 @@ namespace MindmapPreview {
 
   /** 値を並べるキーの入力欄に出す案内 */
   const CHIP_HINTS: Record<string, string> = {
-    tags: "語彙から選ぶ",
+    tags: "タグを入れる",
     depends_on: "ID を入れる",
     related: "ID を入れる",
     aliases: "別名を入れる",
@@ -214,6 +216,20 @@ namespace MindmapPreview {
       });
     }
     return h({ tag: "p", attrs: { class: "pe-blocked-note" }, children: [icon("alert"), blocked.detail] });
+  }
+
+  /** 項目とスレッドが使っているタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる */
+  export function usedTags({ index, threads }: { index: RecordIndex; threads: readonly Thread[] }): string[] {
+    const counts = new Map<string, number>();
+    /** 1 つの項目かスレッドの `tags` を数える（同じタグを表記を変えて 2 回持っても 1 件） */
+    const count = (tags: readonly string[]): void => {
+      for (const name of new Set(tags.map((tag) => tag.normalize("NFKC").toLowerCase()))) {
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    };
+    for (const { item } of index.byId.values()) count(item.tags ?? []);
+    for (const thread of threads) count(thread.tags);
+    return [...counts.keys()].sort((left, right) => (counts.get(right) ?? 0) - (counts.get(left) ?? 0) || (left < right ? -1 : left > right ? 1 : 0));
   }
 
   /** 編集の表示（`form`）を返す。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` で溜める編集を知らせる */
@@ -367,7 +383,7 @@ namespace MindmapPreview {
         name,
         hint: CHIP_HINTS[key] ?? `${name}を入れる`,
         values: Array.isArray(value) ? (value as string[]) : [],
-        vocabulary: key === "tags" ? (settings.tags ?? []).map((tag) => tag.name) : null,
+        suggestions: key === "tags" ? props.usedTags : null,
         monospace: key !== "tags",
         disabled: removing,
         onChange: (next) => commit(next),
@@ -460,7 +476,7 @@ namespace MindmapPreview {
     name,
     hint,
     values,
-    vocabulary,
+    suggestions,
     monospace,
     disabled,
     onChange,
@@ -469,8 +485,8 @@ namespace MindmapPreview {
     name: string;
     hint: string;
     values: string[];
-    /** タグの語彙（渡したときは入力欄に候補を出す） */
-    vocabulary: readonly string[] | null;
+    /** 入力欄に出す候補（記録で使われているタグ。候補に無い値も入れられる） */
+    suggestions: readonly string[] | null;
     monospace: boolean;
     disabled: boolean;
     onChange: (values: string[], removed: string | null) => void;
@@ -484,7 +500,7 @@ namespace MindmapPreview {
         id: controlId,
         class: "input pe-chip-input",
         type: "text",
-        list: vocabulary === null ? null : listId,
+        list: suggestions === null ? null : listId,
         placeholder: hint,
         "aria-label": `${name}を追加`,
         autocomplete: "off",
@@ -535,13 +551,13 @@ namespace MindmapPreview {
           }),
         ),
         field,
-        ...(vocabulary === null
+        ...(suggestions === null
           ? []
           : [
               h({
                 tag: "datalist",
                 attrs: { id: listId },
-                children: vocabulary.map((tag) => h({ tag: "option", attrs: { value: tag } })),
+                children: suggestions.map((tag) => h({ tag: "option", attrs: { value: tag } })),
               }),
             ]),
       );

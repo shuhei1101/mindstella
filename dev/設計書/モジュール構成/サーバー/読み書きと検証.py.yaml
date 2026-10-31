@@ -416,28 +416,6 @@ classes:
     summary: クローズのスレッドへ AI が返信しようとした。メッセージは `スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください`（画面からのクローズのスレッドへの返信は `CommentConflictError`）
     kind: クラス
     inherits: MindmapError
-  - name: UnknownTagError
-    title: 語彙に無いタグ
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 記録の検索
-    summary: '設定の `tags` の語彙に無いタグを渡した。メッセージは `語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）`、`lines` に無いタグごとの `{引数の名前}: {タグ}（候補: {候補を・でつないだもの}）`（候補が無ければ `（候補なし）`）'
-    kind: クラス
-    inherits: MindmapError
-    properties:
-      - name: unknown
-        type: list[tuple[str, str, list[str]]]
-        description: 語彙に無いタグ（引数の名前・タグ・字面の近い語彙のタグ）
-  - name: UnmappedTagError
-    title: 対応の無いタグ
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 設定の更新
-    summary: '新しい `tags` の語彙に対応の無いタグを持つ項目かスレッドが残る。メッセージは `新しい語彙に対応の無いタグが残ります`、`lines` に残るものごとの `{項目かスレッドの ID}: tags: {タグ}`'
-    kind: クラス
-    inherits: MindmapError
-    properties:
-      - name: unmapped
-        type: list[tuple[str, str]]
-        description: 残るもの（項目かスレッドの ID、タグ）
   - name: EditInvalidError
     title: 編集の形が合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -1224,7 +1202,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1248,16 +1226,16 @@ functions:
     process: |-
       1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
       2. `kind` が `schema` でない場合、偽を返す
-      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
+      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たないか、`tags` を持てば真
       4. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
       5. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
         summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題'
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
         mock: なし
-        expected: 真 / 真 / 偽 / 偽 / 真
+        expected: 真 / 真 / 偽 / 偽 / 真 / 真
       - name: test_is_legacy_problem_when_decision_state
         case: 正常
         summary: 書き込む項目以外の案と状態の合わない検討事項だけを前の版の形式とする
@@ -1760,4 +1738,4 @@ test_files:
   - tests/unit/scripts/test_store.py
 notes:
   HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'
-  タグの語彙のスキーマ: '`settings.schema.json` に任意の `tags`（配列。要素は `name`（必須・`minLength: 1`）と `summary`（任意の文字列）だけを持ち `additionalProperties: false`）を足す。名前の重なりは JSON Schema では見られないので、`update_settings` の引数の確かめ（モジュール構成『設定の更新』）が弾く。`common.schema.json` と `threads.schema.json` の `tags` の説明は、設定の語彙のタグだけと直す（ER 図『ワークスペース』）'
+  タグのスキーマ: '`settings.schema.json` から `tags` を外す（`tags` を持つ `config.yaml` はスキーマに合わなくなり、`is_legacy_problem` が前の版の形式として扱う）。`common.schema.json` と `threads.schema.json` の `tags` の説明は、自由な文字列で、`tags` のツールが正規化した表記で数えると直す（ER 図『ワークスペース』）'

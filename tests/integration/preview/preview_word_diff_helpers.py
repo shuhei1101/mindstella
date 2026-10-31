@@ -24,9 +24,6 @@ __all__ = [
 # 文字と置く面の対比の下限（WCAG の通常の文字）
 MIN_TEXT_CONTRAST = 4.5
 
-# キーの語の差分のワークスペースの検討事項が持つタグ（書き換える前の 2 つと、書き換えた後に足す 1 つ）。設定の語彙に登録する
-KEY_WORD_DIFF_TAGS = ("要件", "会議", "運用")
-
 # 検討事項 D-1 の書き換える前の本文: 書き換える段落（1 つ目）・変えない段落（2 つ目）・消す段落（3 つ目）・表の行・図のノードのラベル
 BEFORE_PARAGRAPHS = """# 概要
 
@@ -200,10 +197,8 @@ def build_word_diff_workspace(make_workspace: Any, call_tool: Any) -> Path:
 def build_key_word_diff_workspace(
     make_workspace: Any, call_tool: Any, valid_settings: dict[str, Any]
 ) -> Path:
-    """実際のツールで、背景・案 A の内容の語と、状態・影響度・タグを書き換えたまとまり V-2 を持つ検討事項 D-1（本文は持たない）のワークスペースを作る。タグは設定の語彙に登録しておく。"""
-    root: Path = make_workspace(
-        settings={**valid_settings, "tags": [{"name": name} for name in KEY_WORD_DIFF_TAGS]}
-    )
+    """実際のツールで、背景・案 A の内容の語と、状態・影響度・タグを書き換えたまとまり V-2 を持つ検討事項 D-1（本文は持たない）のワークスペースを作る。"""
+    root: Path = make_workspace(settings=valid_settings)
     workspace = str(root)
     decision = {
         "title": "会議の進め方を決める問い",

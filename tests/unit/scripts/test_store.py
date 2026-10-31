@@ -227,6 +227,14 @@ LEGACY_SETTINGS: dict[str, Any] = {
     "goal": {"phase": "構成", "summary": "作り始められる", "deliverables": []},
 }
 
+# 前の版の形式の設定（タグの語彙 `tags` を持つ。ほかは今の形式）
+TAGS_SETTINGS: dict[str, Any] = {
+    **{key: value for key, value in LEGACY_SETTINGS.items() if key != "field"},
+    "summary": "要件出しのスキルを設計する",
+    "playbooks": ["システム開発"],
+    "tags": [{"name": "保存"}],
+}
+
 
 @pytest.mark.parametrize(
     ("file_name", "item_id", "kind", "settings", "expected"),
@@ -243,6 +251,7 @@ LEGACY_SETTINGS: dict[str, Any] = {
             True,
             id="settings_with_field",
         ),
+        pytest.param("config.yaml", None, "schema", TAGS_SETTINGS, True, id="settings_with_tags"),
     ],
 )
 def test_is_legacy_problem(
@@ -672,12 +681,12 @@ def test_save_batch_with_settings_and_edits(
 ) -> None:
     """設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
+    root = make_workspace(settings=valid_settings)
     write_threads(root, make_thread("TH-1", tags=["通知"]))
     write_edits(root, make_edit("E-1"))
     workspace = store.load_workspace(root)
     before = snapshot_tree(root)
-    new_settings = {**valid_settings, "summary": "画面の編集", "tags": [{"name": "お知らせ"}]}
+    new_settings = {**valid_settings, "summary": "画面の編集"}
     new_threads = [make_thread("TH-1", tags=["お知らせ"])]
     new_edits = {"seq": 1, "new_seq": 0, "items": []}
     task = make_item("T-1")

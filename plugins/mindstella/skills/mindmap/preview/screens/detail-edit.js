@@ -113,7 +113,7 @@ var MindmapPreview;
     const REQUIRED_TEXT_KEYS = new Set(["title"]);
     /** 値を並べるキーの入力欄に出す案内 */
     const CHIP_HINTS = {
-        tags: "語彙から選ぶ",
+        tags: "タグを入れる",
         depends_on: "ID を入れる",
         related: "ID を入れる",
         aliases: "別名を入れる",
@@ -162,6 +162,22 @@ var MindmapPreview;
         return MindmapPreview.h({ tag: "p", attrs: { class: "pe-blocked-note" }, children: [MindmapPreview.icon("alert"), blocked.detail] });
     }
     MindmapPreview.blockedNote = blockedNote;
+    /** 項目とスレッドが使っているタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる */
+    function usedTags({ index, threads }) {
+        const counts = new Map();
+        /** 1 つの項目かスレッドの `tags` を数える（同じタグを表記を変えて 2 回持っても 1 件） */
+        const count = (tags) => {
+            for (const name of new Set(tags.map((tag) => tag.normalize("NFKC").toLowerCase()))) {
+                counts.set(name, (counts.get(name) ?? 0) + 1);
+            }
+        };
+        for (const { item } of index.byId.values())
+            count(item.tags ?? []);
+        for (const thread of threads)
+            count(thread.tags);
+        return [...counts.keys()].sort((left, right) => (counts.get(right) ?? 0) - (counts.get(left) ?? 0) || (left < right ? -1 : left > right ? 1 : 0));
+    }
+    MindmapPreview.usedTags = usedTags;
     /** 編集の表示（`form`）を返す。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` で溜める編集を知らせる */
     function detailEditForm(props) {
         const { kind, item, removing, on } = props;
@@ -291,7 +307,7 @@ var MindmapPreview;
                 name,
                 hint: CHIP_HINTS[key] ?? `${name}を入れる`,
                 values: Array.isArray(value) ? value : [],
-                vocabulary: key === "tags" ? (settings.tags ?? []).map((tag) => tag.name) : null,
+                suggestions: key === "tags" ? props.usedTags : null,
                 monospace: key !== "tags",
                 disabled: removing,
                 onChange: (next) => commit(next),
@@ -376,7 +392,7 @@ var MindmapPreview;
         }
     }
     /** 値を並べるキーの入力（チップと、足す入力欄）。値の並びを変えるたびに `onChange` で新しい並びを知らせる（チップを外したときは外した値も） */
-    function chipsInput({ controlId, name, hint, values, vocabulary, monospace, disabled, onChange, }) {
+    function chipsInput({ controlId, name, hint, values, suggestions, monospace, disabled, onChange, }) {
         let current = [...values];
         const box = MindmapPreview.h({ tag: "div", attrs: { class: "pe-chips", role: "group", "aria-label": name } });
         const listId = `${controlId}-list`;
@@ -386,7 +402,7 @@ var MindmapPreview;
                 id: controlId,
                 class: "input pe-chip-input",
                 type: "text",
-                list: vocabulary === null ? null : listId,
+                list: suggestions === null ? null : listId,
                 placeholder: hint,
                 "aria-label": `${name}を追加`,
                 autocomplete: "off",
@@ -434,13 +450,13 @@ var MindmapPreview;
                         children: [MindmapPreview.icon("x")],
                     }),
                 ],
-            })), field, ...(vocabulary === null
+            })), field, ...(suggestions === null
                 ? []
                 : [
                     MindmapPreview.h({
                         tag: "datalist",
                         attrs: { id: listId },
-                        children: vocabulary.map((tag) => MindmapPreview.h({ tag: "option", attrs: { value: tag } })),
+                        children: suggestions.map((tag) => MindmapPreview.h({ tag: "option", attrs: { value: tag } })),
                     }),
                 ]));
         };

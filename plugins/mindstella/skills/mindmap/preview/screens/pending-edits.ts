@@ -38,7 +38,6 @@ namespace MindmapPreview {
     goal: "ゴール",
     targets: "対象",
     categories: "カテゴリー",
-    tags: "タグの語彙",
     links: "関連する場所",
     history_limit: "保持する回数",
   };

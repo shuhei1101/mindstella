@@ -8,10 +8,8 @@ from typing import TYPE_CHECKING, Any
 from workspace_fixtures import (
     CallTool,
     MakeItem,
-    MakeThread,
     MakeWorkspace,
     SnapshotTree,
-    WriteThreads,
 )
 
 if TYPE_CHECKING:
@@ -400,104 +398,3 @@ def test_error_when_unmapped_category(
     assert "D-2: category: 設定" in result.text.splitlines()
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
-
-
-def test_normal_when_tags_remapped(
-    make_workspace: MakeWorkspace,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
-    replay: Replay,
-    call_tool: CallTool,
-    read_yaml: Callable[[Path, str], Any],
-) -> None:
-    """タグの語彙を置き換え、対応で項目とスレッドの tags を付け替える。null の対応は外す（正常系）。"""
-    # 準備
-    root = make_workspace(
-        settings={
-            **valid_settings,
-            "tags": [{"name": "保存"}, {"name": "通知"}, {"name": "下書き"}],
-        }
-    )
-    ws = {"workspace": str(root)}
-    replay(
-        "add",
-        **ws,
-        kind="decision",
-        item={
-            "title": "保存の問い",
-            "status": "未決定",
-            "options": [{"key": "A", "content": "案 A"}],
-            "tags": ["保存", "下書き"],
-        },
-    )
-    replay(
-        "add",
-        **ws,
-        kind="decision",
-        item={
-            "title": "通知の問い",
-            "status": "未決定",
-            "options": [{"key": "A", "content": "案 A"}],
-            "tags": ["通知"],
-        },
-    )
-    write_threads(root, make_thread("TH-1", tags=["通知"]))
-    replay("commit", **ws, summary="足す")
-    new_tags = [{"name": "保存"}, {"name": "お知らせ"}, {"name": "検索"}]
-    # 実行
-    replay(
-        "update_settings",
-        **ws,
-        settings={"tags": new_tags},
-        tag_map={"通知": "お知らせ", "下書き": None},
-    )
-    pending = replay("pending", **ws)
-    tags = call_tool("tags", **ws)
-    checked = call_tool("check", **ws)
-    # 検証
-    # タグの語彙が 保存・お知らせ・検索 である
-    assert read_yaml(root, "config.yaml")["tags"] == new_tags
-    decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
-    # D-1 のタグが 保存 だけ、D-2 のタグが お知らせ である
-    assert decisions["D-1"]["tags"] == ["保存"]
-    assert decisions["D-2"]["tags"] == ["お知らせ"]
-    # TH-1 のタグが お知らせ である
-    assert read_yaml(root, "threads.yaml")["items"][0]["tags"] == ["お知らせ"]
-    # D-1・D-2 が変更履歴を持たず、pending が空を返す
-    assert "history" not in decisions["D-1"]
-    assert "history" not in decisions["D-2"]
-    assert pending == {"added": [], "changed": [], "removed": []}
-    # タグの一覧が 検索 を 0 件で返す
-    assert {row["name"]: row["count"] for row in tags.data["tags"]}["検索"] == 0
-    # 点検が問題を 0 件で返す
-    assert checked.data["problems"] == []
-
-
-def test_error_when_unmapped_tag(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
-) -> None:
-    """新しい語彙に無いタグを持つ項目が残る書き換えは、何も書かずにエラーになる（異常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存"]),
-        make_item("D-2", tags=["通知"]),
-        settings={**valid_settings, "tags": [{"name": "保存"}, {"name": "通知"}]},
-    )
-    before = snapshot_tree(root)
-    # 実行
-    # タグの対応を渡さない
-    result = call_tool(
-        "update_settings", workspace=str(root), settings={"tags": [{"name": "保存"}]}
-    )
-    # 検証
-    # 設定を書き換えるツールがエラーを返し、本文に D-2 とタグ 通知 がある
-    assert result.is_error is True
-    assert "D-2: tags: 通知" in result.text.splitlines()
-    # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
-    assert snapshot_tree(root) == before
-

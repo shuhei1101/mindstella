@@ -9,7 +9,6 @@ import pytest
 from playwright.sync_api import Page
 
 from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
-from .thread_data import make_thread
 
 # 設定の画面を作って文書に置く JavaScript。呼ばれた操作は window.calls に溜める
 MOUNT_SCRIPT = """({data}) => {
@@ -51,7 +50,7 @@ def test_workspace_settings(
         "() => window.calls.map(([name, input]) => [name, input.key, input.value])"
     )
     # 検証
-    assert legends == ["話し合い", "進め方", "タグと関連", "変更履歴"]
+    assert legends == ["話し合い", "進め方", "関連", "変更履歴"]
     assert calls == [["change", "summary", "画面の編集"], ["change", "history_limit", 3]]
 
 
@@ -94,9 +93,9 @@ def test_workspace_settings_when_used_value_removed(
 @pytest.mark.parametrize(
     ("key", "value", "expected"),
     [
-        pytest.param("phases", "問い", 1, id="phase"),
-        pytest.param("tags", "画面", 3, id="tag"),
-        pytest.param("tags", "保存", 0, id="unused_tag"),
+        pytest.param("phases", "問い", 2, id="phase"),
+        pytest.param("categories", "画面", 1, id="category"),
+        pytest.param("phases", "発散", 0, id="unused_phase"),
     ],
 )
 def test_usage_count(
@@ -111,17 +110,16 @@ def test_usage_count(
     """キーごとに使っている件数を数える（正常系）。"""
     # 準備
     data: dict[str, Any] = make_data(
-        decisions=[make_item("D-1", phase="問い", tags=["画面"])],
-        tasks=[make_item("T-1", tags=["画面"])],
+        decisions=[make_item("D-1", phase="問い"), make_item("D-2", phase="問い")],
+        tasks=[make_item("T-1", category="画面")],
     )
-    threads = [make_thread("TH-1", tags=["画面"])]
     load_preview_scripts()
     # 実行
     result = preview_page.evaluate(
-        """([data, threads, key, value]) => MindmapPreview.usageCount({
-            index: MindmapPreview.buildIndex(data), threads, key, value,
+        """([data, key, value]) => MindmapPreview.usageCount({
+            index: MindmapPreview.buildIndex(data), key, value,
         })""",
-        [data, threads, key, value],
+        [data, key, value],
     )
     # 検証
     assert result == expected

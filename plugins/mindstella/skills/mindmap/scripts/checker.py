@@ -1,4 +1,4 @@
-"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・語彙に無いタグ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。"""
+"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from history import CHANGES_FILE, Changes, apply_body_diff, load_changes, remove
 from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
 from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
 from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targets
-from vocabulary import tag_names
 
 # 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
 SETTINGS_KIND = "settings"
@@ -40,7 +39,6 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_threads(workspace),
         *_check_comments(workspace),
         *_check_phases(workspace),
-        *_check_tags(workspace),
         *_check_history(workspace),
     ]
     # ファイル名の順に並べ（sorted は安定なので、同じファイルの中は拾った順を保つ）、ワークスペースからの相対パスにする
@@ -257,47 +255,6 @@ def _check_phases(workspace: Workspace) -> list[Problem]:
                         detail=str(phase),
                     )
                 )
-    return problems
-
-
-def _check_tags(workspace: Workspace) -> list[Problem]:
-    """項目とスレッドの `tags` のうち、設定の語彙に無いタグを `unknown_tag` にする（無いタグ 1 つ = 1 件）。"""
-    known = tag_names(workspace.settings)
-    problems: list[Problem] = []
-    for kind, spec in KINDS.items():
-        for index, item in enumerate(workspace.items[kind]):
-            tags = item.get("tags")
-            # 配列でない `tags` と文字列でない要素は、スキーマ違反として拾うので飛ばす
-            if not isinstance(tags, list):
-                continue
-            problems.extend(
-                Problem(
-                    kind="unknown_tag",
-                    file=spec.file,
-                    id=item.get("id") if isinstance(item.get("id"), str) else None,
-                    key=f"items[{index}].tags",
-                    detail=tag,
-                )
-                for tag in tags
-                if isinstance(tag, str) and tag not in known
-            )
-    try:
-        threads = load_threads(workspace.root)
-    except SchemaMismatchError:
-        # 読めないスレッドは見ない（形の誤りは `_check_threads` が返す）
-        return problems
-    problems.extend(
-        Problem(
-            kind="unknown_tag",
-            file=THREADS_FILE,
-            id=thread.id,
-            key=f"items[{index}].tags",
-            detail=tag,
-        )
-        for index, thread in enumerate(threads)
-        for tag in thread.tags
-        if tag not in known
-    )
     return problems
 
 
