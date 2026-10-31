@@ -84,7 +84,7 @@ computing gzip size...
 │  storybook-static/assets/iframe-C1oN-I2c.js
 │  863.48 kB │ gzip: 240.89 kB
 
-│  Vite ✓ built in 2.28s
+│  Vite ✓ built in 1.93s
 │
 ▲  Vite [plugin builtin:vite-reporter]
 │  (!) Some chunks are larger than 500 kB after minification. Consider:
@@ -295,4 +295,4 @@ tests/integration/skill/test_upgrade.py .                                [ 95%]
 tests/integration/storybook/test_topbar_stories.py ..................... [ 97%]
 .....................................................                    [100%]
 
-================= 1831 passed, 2 skipped in 3748.33s (1:02:28) =================
+================= 1831 passed, 2 skipped in 3276.93s (0:54:36) =================
