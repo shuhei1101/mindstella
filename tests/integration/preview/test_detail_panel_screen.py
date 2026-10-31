@@ -160,6 +160,7 @@ from preview_panel_width_helpers import (
     press_key_times,
     read_stored_width,
     seed_panel_width,
+    wait_for_value_now,
 )
 from preview_minimap_helpers import (
     MINIMAP_HASH,
@@ -5408,6 +5409,36 @@ def test_panel_resizer_drag(
     assert (at_min["panelWidth"], at_min["separator"]["now"], at_min["separator"]["edge"]) == (480, "480", "min")
     assert (at_max["panelWidth"], at_max["separator"]["now"], at_max["separator"]["edge"]) == (880, "880", "max")
     assert read_stored_width(page) == "880"
+
+
+def test_panel_resizer_stored_on_release(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """ドラッグ中はパネルの幅と本文の寄せが動かした位置の幅になるが、保存領域の幅は押す前のまま変わらず、離すと最後の位置の幅が残る（正常系）。"""
+    # 準備
+    seed_panel_width(page, 700)
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    panel_state(page)
+    box = page.locator(RESIZER).bounding_box()
+    assert box is not None
+    start_x = box["x"] + box["width"] / 2
+    start_y = box["y"] + box["height"] / 2
+    # 実行（押して左へ 100px 動かし、まだ離さない）
+    page.mouse.move(start_x, start_y)
+    page.mouse.down()
+    page.mouse.move(start_x - 100, start_y, steps=5)
+    wait_for_value_now(page, 800)
+    dragging = panel_state(page)
+    stored_while_dragging = read_stored_width(page)
+    # 実行（離す）
+    page.mouse.up()
+    released = panel_state(page)
+    # 検証
+    assert (dragging["panelWidth"], dragging["contentMargin"], dragging["separator"]["now"]) == (800, 800, "800")
+    assert stored_while_dragging == "700"
+    assert (released["panelWidth"], released["separator"]["now"]) == (800, "800")
+    assert read_stored_width(page) == "800"
 
 
 @pytest.mark.parametrize(
