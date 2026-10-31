@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -5061,10 +5062,11 @@ def test_options_edit(
     assert saved[("adopt", "B")]["value"] == "B"
     assert saved[("option-add", "C")]["value"] == {"content": "足した案 C"}
     assert ("option-remove", "B") in saved
+    # 書き換えの通知による描き直しで要素が入れ替わっても、描き終えた画面で確かめる
     removed = page.locator(f"{EDIT_FORM} .pe-opt[data-key='B']")
-    assert "is-removed" in removed.get_attribute("class")
-    assert removed.locator("textarea").evaluate("e => getComputedStyle(e).textDecorationLine") == "line-through"
-    assert removed.get_by_role("button", name="案 B を削除").count() == 0
+    expect(removed).to_have_class(re.compile(r"\bis-removed\b"), timeout=EDIT_SETTLE_MS)
+    expect(removed.locator("textarea")).to_have_css("text-decoration-line", "line-through", timeout=EDIT_SETTLE_MS)
+    expect(removed.get_by_role("button", name="案 B を削除")).to_have_count(0, timeout=EDIT_SETTLE_MS)
 
 
 def test_remove_item(
