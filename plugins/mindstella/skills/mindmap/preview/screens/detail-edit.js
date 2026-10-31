@@ -545,40 +545,50 @@ var MindmapPreview;
                 ],
             }));
         }
+        // 書きかけの案（項目の案に同じ記号が載ったものは描かない）
+        const drafts = props.optionDrafts.filter((draft) => !options.some((option) => option.key === draft.key));
+        for (const draft of drafts) {
+            const area = MindmapPreview.h({
+                tag: "textarea",
+                attrs: {
+                    id: `pe-${idPart}-opt-${draft.key}`,
+                    class: "input pe-text",
+                    rows: 2,
+                    "aria-label": `案 ${draft.key} の中身`,
+                    disabled: removing,
+                },
+            });
+            area.value = draft.content;
+            // 打つたびに書きかけを知らせ、空でない中身で離れたら溜める
+            area.addEventListener("input", () => on.draft({ key: draft.key, content: area.value }));
+            area.addEventListener("change", () => {
+                if (area.value.trim() === "")
+                    return;
+                on.change({ op: "option-add", key: draft.key, value: { content: area.value } });
+            });
+            section.append(MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "pe-opt", "data-key": draft.key, "data-draft": "" },
+                children: [
+                    MindmapPreview.h({
+                        tag: "div",
+                        attrs: { class: "pe-opt-head" },
+                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "key", "aria-hidden": "true" }, children: [draft.key] })],
+                    }),
+                    area,
+                ],
+            }));
+        }
         const add = MindmapPreview.h({
             tag: "button",
             attrs: { class: "btn pe-opt-add", type: "button", disabled: removing },
             children: [MindmapPreview.icon("plus"), "案を追加"],
         });
         add.addEventListener("click", () => {
-            // 次の記号（今ある案と、書きかけの案の記号の次）の空の案を足し、中身を書いて離れたときに溜める
-            const symbols = [
-                ...options.map((option) => option.key),
-                ...Array.from(section.querySelectorAll(".pe-opt[data-draft]"), (node) => node.dataset["key"] ?? ""),
-            ];
+            // 次の記号（今ある案と、書きかけの案の記号の次）の空の書きかけを置く。描くのは使う側が状態から描き直したとき
+            const symbols = [...options.map((option) => option.key), ...drafts.map((draft) => draft.key)];
             const next = String.fromCharCode(Math.max(64, ...symbols.map((symbol) => symbol.charCodeAt(0))) + 1);
-            const draft = MindmapPreview.h({
-                tag: "textarea",
-                attrs: { id: `pe-${idPart}-opt-${next}`, class: "input pe-text", rows: 2, "aria-label": `案 ${next} の中身` },
-            });
-            draft.addEventListener("change", () => {
-                if (draft.value.trim() === "")
-                    return;
-                on.change({ op: "option-add", key: next, value: { content: draft.value } });
-            });
-            add.before(MindmapPreview.h({
-                tag: "div",
-                attrs: { class: "pe-opt", "data-key": next, "data-draft": "" },
-                children: [
-                    MindmapPreview.h({
-                        tag: "div",
-                        attrs: { class: "pe-opt-head" },
-                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "key", "aria-hidden": "true" }, children: [next] })],
-                    }),
-                    draft,
-                ],
-            }));
-            draft.focus();
+            on.draft({ key: next, content: "" });
         });
         section.append(add);
         // 案の編集を溜められなかった理由は、案の入力の下にまとめて出す
