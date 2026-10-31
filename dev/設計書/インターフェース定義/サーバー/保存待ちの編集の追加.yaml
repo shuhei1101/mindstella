@@ -405,7 +405,7 @@ status_codes:
   - code: '200'
     condition: 同じ項目の同じキー・案への編集を書き換えた、または元の値に戻したため外した
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・`item-add` の `options` の形が合わない（記号か中身が無い・渡せないキー・記号の重なり）・`map` を渡せない `op`・`key` に渡したか値の型が合わない・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・`item-add` の `options` の記号が重なる・`map` を渡せない `op`・`key` に渡したか値の型が合わない・リクエストの本文が 128KiB を超える
     notes: 何も書かない。`detail` に合わないキーと理由
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
@@ -438,7 +438,7 @@ constraints:
   - item: 編集できるキー
     constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` は `set` と同じキーに加え、検討事項（`key` が `decisions`）のときだけ `options`（案の並び）を持てる（足す項目の案は `option-*`・`adopt` ではなく `value` の `options` で溜める）'
   - item: 値の確かめ
-    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`item-add` の `options` は、各案が記号（`key`）と中身（`content`）を持ち、ほかには採用（`adopted`）だけを持つかと、記号が重ならないかを確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
+    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`item-add` の `options` は、スキーマの型に加えて、記号が重ならないかを確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
