@@ -281,6 +281,7 @@ scenarios:
         description: サーバーの置き場所を主題にした検討事項 D-1 と会話ログを、1 回のまとめての書き込みで渡してから `commit` する
         notes: 発言では「サーバー」と呼んでいるが、使われているタグ `topic:サーバ` と同じ概念の言い方の違いなので、D-1 には `topic:サーバー` を作らず `topic:サーバ` を付ける
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
@@ -294,6 +295,7 @@ scenarios:
         CC->>SV: まとめての書き込み（D-1 はタグ `topic:サーバ` を持つ・会話ログ）
         SV->>WS: 書く
         CC->>SV: commit
+      ```
     expected:
       - D-1 のタグが `topic:サーバ` だけである
       - タグの一覧が `topic:サーバ`（2 件）だけを返し、`topic:サーバー` が無い
