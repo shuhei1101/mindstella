@@ -2290,7 +2290,7 @@ components:
     kind: コンポーネント
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
-    summary: 画面設計『詳細パネル』の要素「幅の区切り」を描き（`role="separator"`・`aria-orientation="vertical"`・`aria-label="詳細パネルの幅"`・`tabindex="0"`）、`panelWidthMax`・`clampPanelWidth` で収めた幅を `document.documentElement` の `--panel-w` と `aria-valuemin` / `aria-valuemax` / `aria-valuenow` に当てる。ポインターを押すとフォーカスを移して `setPointerCapture` し、動かすたびに押した位置からの差で幅を変える（左へ動かすと広げる）。←・→ は `PANEL_WIDTH.step` ずつ、Home は下限、End は上限にする。変えるたびに `onChange` を呼ぶ。描いたときと窓の幅が変わるたびに、最後に変えた幅（変えていなければ `stored`、それも無ければ `PANEL_WIDTH.default`）を今の上限に収めて当て直す（収めても `onChange` は呼ばない）。窓の幅の受け取りは、区切りが文書から外れたら外す。下限・上限で止まっている間は、その向きだけのカーソル（`w-resize` / `e-resize`）にする
+    summary: 画面設計『詳細パネル』の要素「幅の区切り」を描き（`role="separator"`・`aria-orientation="vertical"`・`aria-label="詳細パネルの幅"`・`tabindex="0"`）、`panelWidthMax`・`clampPanelWidth` で収めた幅を `document.documentElement` の `--panel-w` と `aria-valuemin` / `aria-valuemax` / `aria-valuenow` に当てる。ポインターを押すとフォーカスを移して `setPointerCapture` し、動かすたびに押した位置からの差で持っている幅を変え（左へ動かすと広げる）、`requestAnimationFrame` で予約した 1 回で当てる（予約済みなら予約し直さない）。終わりは、押したときに `document` へ付けた `lostpointercapture` のリスナーで、押したときの `pointerId` に絞って受ける（離した・中断したときは区切りから泡立って届き、区切りが文書から外れたときは `document` に直接届く）。終わりではリスナーを外し、予約を取り消して、区切りが文書に残っていれば最後の幅を当て、押したときから幅が変わっていれば `onChange` を 1 回呼ぶ。ドラッグ中の幅はモジュールの変数に持ち、ドラッグ中に作られた区切り（記録の書き換えで詳細パネルを描き直したとき）は、`stored` の代わりにその幅から始める。←・→ は `PANEL_WIDTH.step` ずつ、Home は下限、End は上限にし、押すたびに当てて `onChange` を呼ぶ。描いたときと窓の幅が変わるたびに、最後に変えた幅（変えていなければ `stored`、それも無ければ `PANEL_WIDTH.default`）を今の上限に収めて当て直す（収めても `onChange` は呼ばない）。窓の幅の受け取りは、区切りが文書から外れたら外す。下限・上限で止まっている間は、その向きだけのカーソル（`w-resize` / `e-resize`）にする
     props:
       - name: stored
         type: number | null
@@ -2303,14 +2303,14 @@ components:
       - name: onChange
         type: '(width: number) => void'
         required: true
-        description: ドラッグかキーで変えた幅を知らせる（入口が `writePanelWidth` で残す）
+        description: ドラッグを終えたときとキーで変えたときに、変えた幅を知らせる（入口が `writePanelWidth` で残す）
     unit_tests:
       - name: test_panel_resizer
         case: 正常
         summary: 残した幅を上限に収めて当て、ドラッグで幅を変えて知らせる
         condition: '表示の幅 1280、マップ以外。`parametrize`: `stored` が `null` / 768 / 1000'
         mock: '`onChange`（受けた幅を並べる関数）'
-        expected: '`--panel-w` と `aria-valuenow` が 640 / 768 / 880、`aria-valuemin` が 480、`aria-valuemax` が 880 で、どれも `onChange` を呼ばない。続けて 100px 左へドラッグすると幅が 740 / 868 / 880（上限で止まる）になり、`onChange` が最後にその幅で呼ばれる'
+        expected: '`--panel-w` と `aria-valuenow` が 640 / 768 / 880、`aria-valuemin` が 480、`aria-valuemax` が 880 で、どれも `onChange` を呼ばない。続けて 100px 左へ動かすと、次のフレームで幅が 740 / 868 / 880（上限で止まる）になり、離すまで `onChange` を呼ばない。離すと `onChange` がその幅で 1 回だけ呼ばれる'
       - name: test_panel_resizer_keys
         case: 正常
         summary: 矢印キーで刻み、Home・End で下限・上限にする
@@ -2323,6 +2323,24 @@ components:
         condition: 表示の幅 1280、`stored` 880 で描き、1000 に狭めてから 1280 に戻す
         mock: '`onChange`'
         expected: 狭めた後は幅と `aria-valuemax`・`aria-valuenow` が 840、戻した後は幅が 880。`onChange` は呼ばれない
+      - name: test_panel_resizer_when_moved_within_frame
+        case: 正常
+        summary: 1 フレームの間の動きをまとめて 1 回当て、離すと最後の位置の幅を当てる
+        condition: 表示の幅 1280、`stored` 640。押してから、次のフレームまでに押した位置から 20px・40px・60px 左の位置へ順に動かし、次のフレームを待ってから、80px 左の位置へ動かしてすぐに離す
+        mock: '`onChange`'
+        expected: 次のフレームまでは `--panel-w` が 640 のまま。次のフレームで 700 になる。離すとフレームを待たずに 720 になり、`onChange` が 720 で 1 回だけ呼ばれる
+      - name: test_panel_resizer_when_released_without_moving
+        case: 正常
+        summary: 幅を変えずに離すと知らせない
+        condition: 表示の幅 1280、`stored` 640。押して動かさずに離す
+        mock: '`onChange`'
+        expected: 幅が 640 のままで、`onChange` を呼ばない
+      - name: test_panel_resizer_when_removed_while_dragging
+        case: 正常
+        summary: ドラッグ中に区切りが文書から外れると、最後の幅を知らせ、作り直した区切りはその幅から始める
+        condition: 表示の幅 1280、`stored` 640。押して 100px 左の位置へ動かし、次のフレームの前に区切りを文書から外して、`stored` 640 の区切りを新しく描く。続けてフレームを進める
+        mock: '`onChange`'
+        expected: '`onChange` が 740 で 1 回だけ呼ばれる。新しい区切りの `aria-valuenow` と `--panel-w` が 740 で、フレームを進めても外した区切りが `--panel-w` を書き換えない'
   - name: docExportMenu
     title: 資料のエクスポートのメニュー
     kind: コンポーネント
