@@ -34,6 +34,8 @@ __all__ = [
     "read_edits_file",
     "read_items_file",
     "start_add",
+    "wait_no_saved_edits",
+    "wait_saved_edit",
 ]
 
 # トップバーの保存待ちのボタン
@@ -65,6 +67,29 @@ def open_pending(page: Page) -> None:
     """トップバーの保存待ちのボタンを押して、パネルが開くのを待つ。"""
     page.click(PENDING_BUTTON)
     page.wait_for_selector(PENDING_PANEL)
+
+
+# 保存待ちの編集（/api/edits）に、指したキーの編集が値つきで溜まったかを読む。値はキーの並びによらず比べる
+SAVED_EDIT_JS = """async ({op, key, value}) => {
+  const canon = (v) => JSON.stringify(v, (_, x) =>
+    x && typeof x === 'object' && !Array.isArray(x)
+      ? Object.fromEntries(Object.keys(x).sort().map(k => [k, x[k]])) : x);
+  const items = (await (await fetch('/api/edits')).json()).items;
+  return items.some(e => e.key === key && (op === null || e.op === op) && canon(e.value) === canon(value));
+}"""
+
+# 保存待ちの編集（/api/edits）が空になったかを読む
+NO_SAVED_EDITS_JS = "async () => (await (await fetch('/api/edits')).json()).items.length === 0"
+
+
+def wait_saved_edit(page: Page, key: str, value: Any, op: str | None = None) -> None:
+    """保存待ちの編集（/api/edits）に、キーの編集が値つきで溜まるのを待つ。"""
+    page.wait_for_function(SAVED_EDIT_JS, arg={"op": op, "key": key, "value": value}, timeout=SETTLE_MS)
+
+
+def wait_no_saved_edits(page: Page) -> None:
+    """保存待ちの編集（/api/edits）が空になるのを待つ。"""
+    page.wait_for_function(NO_SAVED_EDITS_JS, timeout=SETTLE_MS)
 
 
 def read_edits_file(root: Path) -> dict[str, Any]:

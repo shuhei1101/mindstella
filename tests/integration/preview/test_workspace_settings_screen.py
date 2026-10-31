@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page, expect
-from preview_edit_helpers import PENDING_BUTTON, read_edits_file
+from preview_edit_helpers import PENDING_BUTTON, read_edits_file, wait_saved_edit
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_settings_helpers import SETTINGS_PANEL_OPEN, open_settings
 from workspace_fixtures import RECORD_DIR, MakeItem
@@ -22,14 +22,6 @@ DECISIONS_HASH = "#tab=decisions&view=board"
 
 # 溜めた編集を待つ上限ミリ秒
 EDIT_TIMEOUT_MS = 10_000
-
-# 関連する場所の 1 行目の項目が、保存待ちに溜まったかを読む
-SAVED_LINK_JS = """async ({field, value}) => {
-  const edits = (await (await fetch('/api/edits')).json()).items;
-  const links = edits.find(e => e.key === 'links');
-  return links !== undefined && links.value[0][field] === value;
-}"""
-
 
 def _settings(valid_settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
     """フェーズ 3 つ・説明つきの設定を返す。"""
@@ -140,8 +132,10 @@ def test_text_inputs(
     # 実行（題名を直す）
     _commit(page, "題名", "画面の編集")
     _wait_edits(page, 1)
+    wait_saved_edit(page, "summary", "画面の編集")
     _commit(page, "最上位の軸の呼び名", "機能")
     _wait_edits(page, 2)
+    wait_saved_edit(page, "target_label", "機能")
     # 検証
     assert _edit_of(root, "summary")["value"] == "画面の編集"
     assert _edit_of(root, "summary")["before"] == original
@@ -174,6 +168,7 @@ def test_description(
     # 実行
     _commit(page, "説明", "")
     _wait_edits(page, 1)
+    wait_saved_edit(page, "description", None)
     # 検証
     edit = _edit_of(root, "description")
     assert edit["value"] is None
@@ -204,6 +199,7 @@ def test_history_limit(
     # 実行
     _commit(page, "保持する回数", "50")
     _wait_edits(page, 1)
+    wait_saved_edit(page, "history_limit", 50)
     # 検証
     assert _edit_of(root, "history_limit")["value"] == 50
 
@@ -223,6 +219,7 @@ def test_chips(
     page.get_by_label("プレイブックを追加").fill("調査")
     page.get_by_label("プレイブックを追加").press("Enter")
     _wait_edits(page, 1)
+    wait_saved_edit(page, "playbooks", ["システム開発", "調査"])
     # 検証（足す）
     assert _edit_of(root, "playbooks")["value"] == ["システム開発", "調査"]
     # 実行（外す）
@@ -231,6 +228,7 @@ def test_chips(
     page.wait_for_function(
         "() => document.querySelectorAll('.pe-ws [data-key=playbooks] .pe-chip').length === 1"
     )
+    wait_saved_edit(page, "playbooks", ["調査"])
     # 検証（外す）
     assert _edit_of(root, "playbooks")["value"] == ["調査"]
 
@@ -285,14 +283,15 @@ def test_tables(
     # 実行（関連する場所を足す）
     page.get_by_role("button", name="関連する場所を追加").click()
     _wait_edits(page, 1)
+    wait_saved_edit(page, "links", [{"title": "", "url": ""}])
     # 検証（関連する場所を足す）
     assert _edit_of(root, "links")["value"] == [{"title": "", "url": ""}]
     _commit(page, "1 行目の表示名", "仕様")
-    page.wait_for_function(SAVED_LINK_JS, arg={"field": "title", "value": "仕様"})
+    wait_saved_edit(page, "links", [{"title": "仕様", "url": ""}])
     # 溜めた編集で描き直した画面に表示名が入ってから、次の入力へ進む
     expect(page.get_by_label("1 行目の表示名")).to_have_value("仕様", timeout=EDIT_TIMEOUT_MS)
     _commit(page, "1 行目のURL", "https://example.test/spec")
-    page.wait_for_function(SAVED_LINK_JS, arg={"field": "url", "value": "https://example.test/spec"})
+    wait_saved_edit(page, "links", [{"title": "仕様", "url": "https://example.test/spec"}])
     expect(page.get_by_label("1 行目の表示名")).to_have_value("仕様", timeout=EDIT_TIMEOUT_MS)
     expect(page.get_by_label("1 行目のURL")).to_have_value(
         "https://example.test/spec", timeout=EDIT_TIMEOUT_MS
@@ -320,6 +319,7 @@ def test_rename_target(
     page.get_by_label("1 行目の名前").first.fill("mm")
     page.get_by_label("1 行目の名前").first.blur()
     _wait_edits(page, 1)
+    wait_saved_edit(page, "targets", [{**valid_settings["targets"][0], "name": "mm"}])
     # 検証
     edit = _edit_of(root, "targets")
     assert edit["map"] == {"mindmap": "mm"}
@@ -349,6 +349,7 @@ def test_move_target_phase(
     # 実行（選ぶ）
     move.locator("select").select_option("要件")
     _wait_edits(page, 1)
+    wait_saved_edit(page, "phases", ["要件", "構成"])
     # 検証（選ぶ）
     edit = _edit_of(root, "phases")
     assert edit["value"] == ["要件", "構成"]

@@ -35,6 +35,8 @@ from preview_edit_helpers import (
     open_pending as open_edit_pending,
     read_edits_file,
     read_items_file,
+    wait_no_saved_edits,
+    wait_saved_edit,
 )
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
@@ -4770,6 +4772,7 @@ def test_edit_toggle(
     answer = page.get_by_label("決定内容", exact=True)
     answer.fill("新しい答え")
     _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
     # 実行・検証（別の項目を開く）
     page.evaluate("location.hash = '#tab=decisions&view=table&id=D-2'")
     page.wait_for_function(
@@ -4949,6 +4952,7 @@ def test_edit_tags_suggestions(
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
         "aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS
     )
+    wait_saved_edit(page, "tags", ["画面", "新しいタグ"])
     # 検証（候補に無いタグを入れる）
     assert group.locator(".pe-chip").all_inner_texts() == ["画面", "新しいタグ"]
     edit = read_edits_file(root)["items"][0]
@@ -4973,6 +4977,7 @@ def test_edit_commit_and_revert(
     # 実行
     answer.fill("新しい答え")
     _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
     # 検証
     field = page.locator(f"{EDIT_FORM} .pe-field[data-key='answer']")
     assert "is-pending" in field.get_attribute("class")
@@ -4986,6 +4991,7 @@ def test_edit_commit_and_revert(
     answer.fill("元の答え")
     answer.blur()
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_count(0, timeout=EDIT_SETTLE_MS)
+    wait_no_saved_edits(page)
     # 検証（元の値に戻す）
     assert read_edits_file(root)["items"] == []
     assert page.locator(f"{EDIT_FORM} .pe-field[data-key='answer'] .pm").count() == 0
@@ -5035,14 +5041,17 @@ def test_options_edit(
     area = page.get_by_label("案 A の中身")
     area.fill("書き換えた案 A")
     _blur_and_wait(page, area, 1)
+    wait_saved_edit(page, "A", {"content": "書き換えた案 A"}, op="option-edit")
     # 実行（採用する）
     page.get_by_role("radio", name="採用").nth(1).check()
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    wait_saved_edit(page, "B", "B", op="adopt")
     # 実行（案を足す）
     page.get_by_role("button", name="案を追加").click()
     draft = page.get_by_label("案 C の中身")
     draft.fill("足した案 C")
     _blur_and_wait(page, draft, 3)
+    wait_saved_edit(page, "C", {"content": "足した案 C"}, op="option-add")
     # 実行（案 B を削除する）
     page.get_by_role("button", name="案 B を削除").click()
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（4 件）", timeout=EDIT_SETTLE_MS)
