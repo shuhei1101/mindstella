@@ -16,6 +16,9 @@ namespace MindmapPreview {
   /** 画面の下に「{n} 件を保存しました。」を出しておくミリ秒 */
   export const SAVED_NOTICE_MS = 5000;
 
+  /** 追加の入力で案を採用したときの、足す検討事項の状態 */
+  const ADOPTED_DECISION_STATUS = "決定済み";
+
   /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
   export const SINCE_KEY = "mindmap-since";
 
@@ -2757,14 +2760,45 @@ namespace MindmapPreview {
       reopenPendingPanel();
     };
 
-    /** 追加の入力でキーを書いたとき。タイトルを書くまでは溜めず、書いたら `item-add` を溜め（返った仮の ID を `editing` に入れる）、続くキーは同じ `item-add` の `value` を送り直す */
+    /** 足す項目の案の操作を、`value` の `options` に当てる（`adopt` では選んだ案だけを採用にし、状態を決定済みにする） */
+    const applyAddOption = ({ value, input }: { value: Record<string, unknown>; input: EditInput }): void => {
+      let options = ((value["options"] as Option[] | undefined) ?? []).map((option) => ({ ...option }));
+      const content = (input.value as { content?: string } | null)?.content ?? "";
+      switch (input.op) {
+        case "option-add":
+          options.push({ key: input.key, content });
+          break;
+        case "option-edit":
+          for (const option of options) if (option.key === input.key) option.content = content;
+          break;
+        case "option-remove":
+          options = options.filter((option) => option.key !== input.key);
+          break;
+        case "adopt":
+          // 選んだ案だけを採用にする（採用を外すときは全て外す）
+          for (const option of options) {
+            if (option.key === input.value) option.adopted = true;
+            else delete option.adopted;
+          }
+          if (input.value !== null) value["status"] = ADOPTED_DECISION_STATUS;
+          break;
+        default:
+          return;
+      }
+      if (options.length === 0) delete value["options"];
+      else value["options"] = options;
+    };
+
+    /** 追加の入力でキーを書いたとき。タイトルを書くまでは溜めず、書いたら `item-add` を溜め（返った仮の ID を `editing` に入れる）、続くキーは同じ `item-add` の `value` を送り直す。案の操作は `value` の `options` を書き換えて送り直す */
     const submitAddField = async ({ kind, input }: { kind: Kind; input: EditInput }): Promise<void> => {
       const entry = editState.edits.find((other) => other.op === "item-add" && other.target === editState.editing);
       const next: Record<string, unknown> =
         entry === undefined
           ? { ...addDefaults({ kind, today: todayJst() }), ...addDraft }
           : { ...(entry.value as Record<string, unknown>) };
-      if (input.value === null) delete next[input.key];
+      // 案の操作は案の並びに当て、それ以外はキーの値を書き換える
+      if (input.op !== "set") applyAddOption({ value: next, input });
+      else if (input.value === null) delete next[input.key];
       else next[input.key] = input.value;
       if (entry === undefined) {
         addDraft = next;
@@ -2774,9 +2808,12 @@ namespace MindmapPreview {
       }
       await submitEdit({
         payload: { ...(entry === undefined ? {} : { target: entry.target }), op: "item-add", key: kind, value: next },
-        error: { target: entry?.target ?? NEW_ID_PREFIX, key: input.key },
+        error: { target: entry?.target ?? NEW_ID_PREFIX, key: errorKeyOf(input) },
         after: (result) => {
-          if (entry !== undefined) return;
+          if (entry !== undefined) {
+            if (input.op === "option-add") dropDraft(entry.target, input.key);
+            return;
+          }
           editState.editing = result.target;
           editState.adding = null;
           addDraft = {};
@@ -2785,6 +2822,8 @@ namespace MindmapPreview {
           editState.optionDrafts.delete(NEW_ID_PREFIX);
           if (drafts !== undefined) editState.optionDrafts.set(result.target, drafts);
           draftsShownFor = result.target;
+          // 溜めた案と同じ記号の書きかけは外す
+          for (const option of (next["options"] as Option[] | undefined) ?? []) dropDraft(result.target, option.key);
         },
       });
     };
