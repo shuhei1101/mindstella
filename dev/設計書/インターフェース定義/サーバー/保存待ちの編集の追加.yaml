@@ -262,6 +262,57 @@ flows:
       - '`edits.yaml` に案 C の追加（E-1）と、採用する案を C にする切り替え（E-2）がある'
       - '`decisions.yaml` の D-1 が案 A・B だけを持ち、採用していないまま'
     test: test_normal_when_adopt_added_option
+  - name: 正常系（案を持つ項目を足す）
+    summary: 足す検討事項の案を、同じ `item-add` の `value` の `options` で溜める
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '1 回目は `{op: item-add, key: decisions, value: {title: 保存の単位, status: 未決定}}`、2 回目は返った `target` で `{op: item-add, target: new-1, key: decisions, value: {title: 保存の単位, status: 決定済み, options: [{key: A, content: 項目ごと}, {key: B, content: まとめて, adopted: true}]}}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: item-add, key: decisions, value}
+        IF->>WS: new-1 を振って edits.yaml に足す
+        IF-->>クライアント: 201、target は new-1
+        クライアント->>IF: POST {op: item-add, target: new-1, value に options}
+        IF->>IF: 案の記号と中身があり、記号が重ならない
+        IF->>WS: new-1 の value を書き換える
+        IF-->>クライアント: 200
+      ```
+    expected:
+      - 1 回目が 201 で `target` が `new-1`、2 回目が 200 で `count` が 1 のまま
+      - '`edits.yaml` の編集が `new-1` の `item-add` の 1 件だけで、`value` の `options` が案 A・B（B だけが採用）で、`value` が案の記号（`A`・`B`）をキーに持たない'
+      - '`decisions.yaml` に D-1 だけがある'
+    test: test_normal_when_item_add_with_options
+  - name: 異常系（足す項目の案の記号が重なる・400）
+    summary: 足す検討事項の `options` に同じ記号の案が 2 つあると、何も溜めずに 400 を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '`{op: item-add, key: decisions, value: {title: 保存の単位, options: [{key: A, content: 項目ごと}, {key: A, content: まとめて}]}}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as POST /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: POST {op: item-add, key: decisions, value に記号 A が 2 つの options}
+        IF->>IF: 案の記号 A が重なる
+        IF-->>クライアント: 400、detail に options と重なる記号
+      ```
+    expected:
+      - ステータスが 400 で、`detail` が `options` と重なる記号 `A` を含む
+      - '`edits.yaml` が無いまま'
+    test: test_error_when_item_add_options_duplicated
 lead: 詳細パネル・詳細の全画面・設定の画面・種類ごとの画面の追加の入力から、項目と設定の編集 1 件を受け、確定せずに保存待ちとして `edits.yaml` に溜める。同じ項目の同じキー・案への編集は、新しい値で書き換える。
 idempotent: false
 side_effects: '`edits.yaml` に編集を 1 件足すか書き換えるか外し（無ければ作る）、一時ファイルから `os.replace` で置き換える。項目の YAML・本文・`config.yaml`・`changes.yaml` は書き換えない'
@@ -314,7 +365,7 @@ request:
     required: false
     default: なし（`option-remove`・`item-remove`）
     location: body
-    description: 編集した後の値。`option-add`・`option-edit` は案の中身、`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト
+    description: 編集した後の値。`option-add`・`option-edit` は案の中身、`adopt` は採用する案の記号（採用を外すときは `null`）、`item-add` は足す項目のキーと値のオブジェクト（検討事項は案の並び `options` を含められる）
     constraints: その種類のスキーマのそのキーの型に合う。`title` は前後の空白を除いて 1 文字以上。`item-add` は `title` を持つ
     example: ゴールはフェーズごとに 1 つ持つ
   - name: map
@@ -354,7 +405,7 @@ status_codes:
   - code: '200'
     condition: 同じ項目の同じキー・案への編集を書き換えた、または元の値に戻したため外した
   - code: '400'
-    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・`map` を渡せない `op`・`key` に渡したか値の型が合わない・リクエストの本文が 128KiB を超える
+    condition: 本文が JSON のオブジェクトでない・`op` が無いか合わない・`op` に要る `target`・`key`・`value` が無い・編集できないキー・値がキーの型に合わない・`title` が空・`item-add` の `options` の形が合わない（記号か中身が無い・渡せないキー・記号の重なり）・`map` を渡せない `op`・`key` に渡したか値の型が合わない・リクエストの本文が 128KiB を超える
     notes: 何も書かない。`detail` に合わないキーと理由
   - code: '403'
     condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
@@ -385,9 +436,9 @@ constraints:
   - item: 削除とほかの編集
     constraint: '`item-remove` を溜めても、同じ項目へのほかの編集は残す（保存のときは削除だけを当て、ほかの編集は捨てる。『保存待ちの編集をまとめて保存』の制約「当てる順」）。削除を取り消すと、残した編集はそのまま保存待ちに戻る'
   - item: 編集できるキー
-    constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` も `set` と同じキーだけを持つ'
+    constraint: '`set` はその種類のスキーマのキーと `body` のうち、`id`・`created`・`updated`・`updated_by`・`history`・`added_seq`・`options`・`body` のファイル名のキーを除くもの（案は `option-*`・`adopt` で編集する）。`setting` は『設定の更新』の引数が受けるキー。`item-add` の `value` は `set` と同じキーに加え、検討事項（`key` が `decisions`）のときだけ `options`（案の並び）を持てる（足す項目の案は `option-*`・`adopt` ではなく `value` の `options` で溜める）'
   - item: 値の確かめ
-    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
+    constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`item-add` の `options` は、各案が記号（`key`）と中身（`content`）を持ち、ほかには採用（`adopted`）だけを持つかと、記号が重ならないかを確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
     decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
