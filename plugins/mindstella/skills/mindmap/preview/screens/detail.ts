@@ -1973,14 +1973,17 @@ namespace MindmapPreview {
     return Math.round(Math.max(PANEL_WIDTH.min, Math.min(width, max)));
   }
 
-  /** 詳細パネルの左端に置く幅の区切り。ドラッグと矢印キーで幅を変え、変えるたびに `onChange` で知らせる */
+  /** ドラッグ中の幅。ドラッグしていない間は `null`。ドラッグ中に描き直した区切りは、残した幅の代わりにこの幅から始める */
+  let draggingPanelWidth: number | null = null;
+
+  /** 詳細パネルの左端に置く幅の区切り。ドラッグと矢印キーで幅を変え、ドラッグを終えたときとキーで変えたときに `onChange` で知らせる */
   export function panelResizer({ stored, mapView, onChange }: { stored: number | null; mapView: () => boolean; onChange: (width: number) => void }): HTMLElement {
     const separator = h({
       tag: "div",
       attrs: { class: "panel-resizer", role: "separator", tabindex: "0", "aria-orientation": "vertical", "aria-label": "詳細パネルの幅", "aria-valuemin": PANEL_WIDTH.min },
     });
     // 持っている幅。上限を超える残した幅は、窓を広げ直したときに戻せるよう収めずに持つ（幅を変えたら、収めた幅にそろえる）
-    let wanted = stored ?? PANEL_WIDTH.default;
+    let wanted = draggingPanelWidth ?? stored ?? PANEL_WIDTH.default;
     // 画面へ当てている幅
     let shown = wanted;
     const maxWidth = (): number => panelWidthMax({ viewport: innerWidth, mapView: mapView() });
@@ -2017,19 +2020,39 @@ namespace MindmapPreview {
       event.preventDefault();
       separator.focus({ preventScroll: true });
       separator.setPointerCapture(event.pointerId);
+      const { pointerId } = event;
       const startX = event.clientX;
+      // 知らせるかは押したときに持っていた幅と比べ、動かす量は押したときに当てていた幅から測る
+      const startWanted = wanted;
       const startWidth = apply();
+      // 予約した当て直しのフレーム。予約していない間は `null`
+      let frame: number | null = null;
+      draggingPanelWidth = startWidth;
       document.body.classList.add("is-panel-resizing");
-      // 左端をつかんでいるので、左へ動かすほど広がる
-      const move = (moved: PointerEvent): void => change(startWidth + startX - moved.clientX);
-      // 離した・中断した・区切りが外れたときは、ポインターの捕捉が外れる
-      const end = (): void => {
+      // 左端をつかんでいるので、左へ動かすほど広がる。持っている幅だけを変え、当て直しは次のフレームに 1 回だけ予約する
+      const move = (moved: PointerEvent): void => {
+        wanted = clampPanelWidth({ width: startWidth + startX - moved.clientX, max: maxWidth() });
+        draggingPanelWidth = wanted;
+        if (frame !== null) return;
+        frame = requestAnimationFrame(() => {
+          frame = null;
+          apply();
+        });
+      };
+      // 離した・中断したときは区切りから泡立って、区切りが文書から外れたときは document に直接、捕捉が外れたことが届く
+      const end = (lost: PointerEvent): void => {
+        if (lost.pointerId !== pointerId) return;
         separator.removeEventListener("pointermove", move);
-        separator.removeEventListener("lostpointercapture", end);
+        document.removeEventListener("lostpointercapture", end);
+        if (frame !== null) cancelAnimationFrame(frame);
+        draggingPanelWidth = null;
         document.body.classList.remove("is-panel-resizing");
+        // 外れた区切りは、描き直した区切りが当てた幅を書き換えない
+        if (separator.isConnected) apply();
+        if (wanted !== startWanted) onChange(wanted);
       };
       separator.addEventListener("pointermove", move);
-      separator.addEventListener("lostpointercapture", end);
+      document.addEventListener("lostpointercapture", end);
     });
     separator.addEventListener("keydown", (event) => {
       // ←: 広げる / →: 狭める / Home: 下限 / End: 上限

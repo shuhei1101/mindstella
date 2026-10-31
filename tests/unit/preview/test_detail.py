@@ -3332,6 +3332,45 @@ PRESS_KEYS_SCRIPT = """() => {
     return {widths, calls: window.resizerCalls};
 }"""
 
+# requestAnimationFrame を、予約を並べるだけの関数に差し替える（次のフレームはテストが進める）
+HOLD_FRAMES_SCRIPT = """() => {
+    window.realRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    window.heldFrames = new Map();
+    let nextId = 1;
+    window.requestAnimationFrame = (callback) => {
+        const id = nextId++;
+        window.heldFrames.set(id, callback);
+        return id;
+    };
+    window.cancelAnimationFrame = (id) => window.heldFrames.delete(id);
+}"""
+
+# 並べた予約を全て呼び、次のフレームを進める
+RUN_FRAME_SCRIPT = """() => {
+    const callbacks = [...window.heldFrames.values()];
+    window.heldFrames.clear();
+    for (const callback of callbacks) callback(performance.now());
+}"""
+
+# ドラッグ中の区切りを文書から外し、stored 640 の区切りを同じ位置に新しく描く（記録の書き換えでの描き直し）。
+# 外した区切りは window に残す
+REMOUNT_RESIZER_SCRIPT = """() => {
+    window.removedResizer = document.querySelector('[role="separator"]');
+    window.removedResizer.remove();
+    const resizer = MindmapPreview.panelResizer({
+        stored: 640,
+        mapView: () => false,
+        onChange: (width) => window.resizerCalls.push(width),
+    });
+    Object.assign(resizer.style, {
+        position: "fixed", top: "100px", left: "1000px", width: "24px", height: "300px",
+    });
+    document.body.append(resizer);
+}"""
+
+# 本物のフレームを 1 つ待つ（区切りを外した後の lostpointercapture は、その前に届く）
+WAIT_REAL_FRAME_SCRIPT = "() => new Promise((resolve) => window.realRequestAnimationFrame(resolve))"
+
 
 @pytest.mark.parametrize(
     ("stored", "opened", "dragged"),
@@ -3352,18 +3391,21 @@ def test_panel_resizer(
     # 準備
     preview_page.set_viewport_size(RESIZER_VIEWPORT)
     load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
     preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": stored})
     # 実行
     before = preview_page.evaluate(READ_RESIZER_SCRIPT)
     preview_page.mouse.move(DRAG_FROM_X, DRAG_Y)
     preview_page.mouse.down()
     preview_page.mouse.move(DRAG_TO_X, DRAG_Y)
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    dragging = preview_page.evaluate(READ_RESIZER_SCRIPT)
     preview_page.mouse.up()
     after = preview_page.evaluate(READ_RESIZER_SCRIPT)
     # 検証
     assert before == {"width": opened, "min": 480, "max": 880, "now": opened, "calls": []}
-    assert (after["width"], after["now"]) == (dragged, dragged)
-    assert after["calls"][-1] == dragged
+    assert (dragging["width"], dragging["now"], dragging["calls"]) == (dragged, dragged, [])
+    assert (after["width"], after["now"], after["calls"]) == (dragged, dragged, [dragged])
 
 
 def test_panel_resizer_keys(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
@@ -3398,6 +3440,77 @@ def test_panel_resizer_when_window_resized(
     assert (narrowed["width"], narrowed["max"], narrowed["now"]) == (840, 840, 840)
     assert widened["width"] == 880
     assert (narrowed["calls"], widened["calls"]) == ([], [])
+
+
+def test_panel_resizer_when_moved_within_frame(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """1 フレームの間の動きをまとめて 1 回当て、離すと最後の位置の幅を当てる（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    preview_page.mouse.move(1010, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(990, DRAG_Y)
+    preview_page.mouse.move(970, DRAG_Y)
+    preview_page.mouse.move(950, DRAG_Y)
+    within_frame = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    next_frame = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.mouse.move(930, DRAG_Y)
+    preview_page.mouse.up()
+    released = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert (within_frame["width"], within_frame["calls"]) == (640, [])
+    assert (next_frame["width"], next_frame["now"], next_frame["calls"]) == (700, 700, [])
+    assert (released["width"], released["now"], released["calls"]) == (720, 720, [720])
+
+
+def test_panel_resizer_when_released_without_moving(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """幅を変えずに離すと知らせない（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    preview_page.mouse.move(1010, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.up()
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    result = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert (result["width"], result["now"], result["calls"]) == (640, 640, [])
+
+
+def test_panel_resizer_when_removed_while_dragging(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """ドラッグ中に区切りが文書から外れると、最後の幅を知らせ、作り直した区切りはその幅から始める（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    preview_page.mouse.move(1010, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(910, DRAG_Y)
+    preview_page.evaluate(REMOUNT_RESIZER_SCRIPT)
+    remounted = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.evaluate(WAIT_REAL_FRAME_SCRIPT)
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    result = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    removed_now = preview_page.evaluate("() => window.removedResizer.getAttribute('aria-valuenow')")
+    # 検証
+    assert (remounted["width"], remounted["now"]) == (740, 740)
+    assert (result["width"], result["now"], result["calls"]) == (740, 740, [740])
+    assert removed_now == "640"
 
 
 # 埋め込んだ HTML の範囲を持つ資料 A-1 の本文（段落・範囲 1 つ・範囲の外の段落）
