@@ -1,0 +1,4 @@
+$ pytest tests/integration/skill/test_session.py tests/integration/server/test_tags.py
+....                                                                     [100%]
+4 passed in 5.33s
+exit: 0
