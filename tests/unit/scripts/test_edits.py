@@ -354,6 +354,101 @@ def test_add_edit_when_conflict(
     assert snapshot_tree(root) == before
 
 
+def test_add_edit_when_item_add_with_options(make_workspace: MakeWorkspace) -> None:
+    """足す検討事項の案を `value` の `options` で溜める（正常系）。"""
+    # 準備
+    root = make_workspace()
+    data = {
+        "op": "item-add",
+        "key": "decisions",
+        "value": {
+            "title": "保存の単位",
+            "status": "決定済み",
+            "options": [
+                {"key": "A", "content": "項目ごと"},
+                {"key": "B", "content": "まとめて", "adopted": True},
+            ],
+        },
+    }
+    # 実行
+    body, created = edits.add_edit(root, data, now=_fixed_now)
+    # 検証
+    assert (body, created) == ({"id": "E-1", "target": "new-1", "count": 1}, True)
+    saved = _read_edits(root)["items"][0]
+    assert saved["id"] == "E-1"
+    assert saved["value"]["options"] == [
+        {"key": "A", "content": "項目ごと"},
+        {"key": "B", "content": "まとめて", "adopted": True},
+    ]
+    assert "A" not in saved["value"]
+    assert "B" not in saved["value"]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(
+            {
+                "op": "item-add",
+                "key": "decisions",
+                "value": {
+                    "title": "保存の単位",
+                    "status": "未決定",
+                    "options": [
+                        {"key": "A", "content": "項目ごと"},
+                        {"key": "A", "content": "まとめて"},
+                    ],
+                },
+            },
+            id="duplicate_symbol",
+        ),
+        pytest.param(
+            {
+                "op": "item-add",
+                "key": "decisions",
+                "value": {"title": "保存の単位", "status": "未決定", "options": [{"key": "A"}]},
+            },
+            id="content_missing",
+        ),
+        pytest.param(
+            {
+                "op": "item-add",
+                "key": "tasks",
+                "value": {
+                    "title": "画面を作る",
+                    "status": "未着手",
+                    "options": [{"key": "A", "content": "項目ごと"}],
+                },
+            },
+            id="kind_without_options",
+        ),
+        pytest.param(
+            {
+                "op": "set",
+                "target": "D-1",
+                "key": "options",
+                "value": [{"key": "A", "content": "項目ごと"}],
+            },
+            id="set_options",
+        ),
+    ],
+)
+def test_add_edit_when_item_add_options_invalid(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    snapshot_tree: SnapshotTree,
+    data: dict[str, Any],
+) -> None:
+    """足す項目の案が合わないときは溜めない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(EditInvalidError, match="options"):
+        edits.add_edit(root, data, now=_fixed_now)
+    assert snapshot_tree(root) == before
+
+
 def test_delete_edit(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -514,6 +609,45 @@ def test_save_edits_when_add_remove_settings(
     added = _find(_read_items(root, "tasks.yaml"), "T-2")
     assert added["depends_on"] == ["T-3"]
     assert added["updated_by"] == "user"
+
+
+def test_save_edits_when_item_add_with_options(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    write_edits: WriteEdits,
+) -> None:
+    """案を持つ足す検討事項を、案ごと書き込む（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_edits(
+        root,
+        make_edit(
+            "E-1",
+            target="new-1",
+            op="item-add",
+            key="decisions",
+            value={
+                "title": "保存の単位",
+                "status": "決定済み",
+                "options": [
+                    {"key": "A", "content": "項目ごと"},
+                    {"key": "B", "content": "まとめて", "adopted": True},
+                ],
+            },
+            base=None,
+        ),
+    )
+    # 実行
+    result = edits.save_edits(root, now=_fixed_now)
+    # 検証
+    assert result["added"] == [{"temp": "new-1", "id": "D-2"}]
+    added = _find(_read_items(root, "decisions.yaml"), "D-2")
+    assert [option["key"] for option in added["options"]] == ["A", "B"]
+    assert [option["key"] for option in added["options"] if option.get("adopted")] == ["B"]
+    assert added["status"] == "決定済み"
+    assert added["updated_by"] == "user"
+    assert _read_edits(root)["items"] == []
 
 
 def test_save_edits_when_ai_pending(
