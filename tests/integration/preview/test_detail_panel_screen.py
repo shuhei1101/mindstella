@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,8 @@ from preview_edit_helpers import (
     open_pending as open_edit_pending,
     read_edits_file,
     read_items_file,
+    wait_no_saved_edits,
+    wait_saved_edit,
 )
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
@@ -4770,6 +4773,7 @@ def test_edit_toggle(
     answer = page.get_by_label("決定内容", exact=True)
     answer.fill("新しい答え")
     _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
     # 実行・検証（別の項目を開く）
     page.evaluate("location.hash = '#tab=decisions&view=table&id=D-2'")
     page.wait_for_function(
@@ -4949,6 +4953,7 @@ def test_edit_tags_suggestions(
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
         "aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS
     )
+    wait_saved_edit(page, "tags", ["画面", "新しいタグ"])
     # 検証（候補に無いタグを入れる）
     assert group.locator(".pe-chip").all_inner_texts() == ["画面", "新しいタグ"]
     edit = read_edits_file(root)["items"][0]
@@ -4973,6 +4978,7 @@ def test_edit_commit_and_revert(
     # 実行
     answer.fill("新しい答え")
     _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
     # 検証
     field = page.locator(f"{EDIT_FORM} .pe-field[data-key='answer']")
     assert "is-pending" in field.get_attribute("class")
@@ -4986,6 +4992,7 @@ def test_edit_commit_and_revert(
     answer.fill("元の答え")
     answer.blur()
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_count(0, timeout=EDIT_SETTLE_MS)
+    wait_no_saved_edits(page)
     # 検証（元の値に戻す）
     assert read_edits_file(root)["items"] == []
     assert page.locator(f"{EDIT_FORM} .pe-field[data-key='answer'] .pm").count() == 0
@@ -5035,14 +5042,17 @@ def test_options_edit(
     area = page.get_by_label("案 A の中身")
     area.fill("書き換えた案 A")
     _blur_and_wait(page, area, 1)
+    wait_saved_edit(page, "A", {"content": "書き換えた案 A"}, op="option-edit")
     # 実行（採用する）
     page.get_by_role("radio", name="採用").nth(1).check()
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    wait_saved_edit(page, "B", "B", op="adopt")
     # 実行（案を足す）
     page.get_by_role("button", name="案を追加").click()
     draft = page.get_by_label("案 C の中身")
     draft.fill("足した案 C")
     _blur_and_wait(page, draft, 3)
+    wait_saved_edit(page, "C", {"content": "足した案 C"}, op="option-add")
     # 実行（案 B を削除する）
     page.get_by_role("button", name="案 B を削除").click()
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（4 件）", timeout=EDIT_SETTLE_MS)
@@ -5052,10 +5062,96 @@ def test_options_edit(
     assert saved[("adopt", "B")]["value"] == "B"
     assert saved[("option-add", "C")]["value"] == {"content": "足した案 C"}
     assert ("option-remove", "B") in saved
+    # 書き換えの通知による描き直しで要素が入れ替わっても、描き終えた画面で確かめる
     removed = page.locator(f"{EDIT_FORM} .pe-opt[data-key='B']")
-    assert "is-removed" in removed.get_attribute("class")
-    assert removed.locator("textarea").evaluate("e => getComputedStyle(e).textDecorationLine") == "line-through"
-    assert removed.get_by_role("button", name="案 B を削除").count() == 0
+    expect(removed).to_have_class(re.compile(r"\bis-removed\b"), timeout=EDIT_SETTLE_MS)
+    expect(removed.locator("textarea")).to_have_css("text-decoration-line", "line-through", timeout=EDIT_SETTLE_MS)
+    expect(removed.get_by_role("button", name="案 B を削除")).to_have_count(0, timeout=EDIT_SETTLE_MS)
+
+
+# 止めたレスポンスがルートの処理に渡るのを確かめる間隔ミリ秒と回数
+HOLD_POLL_MS = 50
+HOLD_POLL_LIMIT = 100
+
+
+def _redraw_by_add(page: Page, root: Path, call_tool: CallTool) -> None:
+    """項目を足して書き換えの通知を起こし、編集の表示のフォームが描き直されるのを待つ。"""
+    page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    assert added.is_error is False, added.text
+    page.wait_for_function(
+        f"document.querySelector('{EDIT_FORM}')?.dataset.drawn !== 'before'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+
+
+def test_option_draft_when_redrawn(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+) -> None:
+    """「案を追加」で置いた書きかけの案は、入力の途中で書き換えの通知により描き直しても打った中身ごと残り、離れたときに溜める（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 C の中身").fill("書きかけの案 C")
+    # 実行（離れずに描き直させる）
+    _redraw_by_add(page, root, call_tool)
+    # 検証（描き直し）
+    draft = page.get_by_label("案 C の中身")
+    expect(draft).to_have_value("書きかけの案 C")
+    # 実行（離れる）
+    _blur_and_wait(page, draft, 1)
+    # 検証（離れる）
+    wait_saved_edit(page, "C", {"content": "書きかけの案 C"}, op="option-add")
+    expect(page.get_by_label("案 C の中身")).to_have_value("書きかけの案 C")
+
+
+def test_sent_value_when_redrawn(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+) -> None:
+    """入力欄を離れて送信した値は、溜まる前に描き直しても、古い保存待ちの編集で元の値に戻らない（正常系）。"""
+    # 準備（入力欄 A の編集を溜める）
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
+    # 入力欄 B の溜める要求のレスポンスを止める
+    held: list[Route] = []
+    page.route(
+        "**/api/edits",
+        lambda route: held.append(route) if route.request.method == "POST" else route.continue_(),
+    )
+    # 実行（入力欄 B を離れて送信し、溜まる前に描き直させる）
+    option = page.get_by_label("案 A の中身")
+    option.fill("書き換えた案 A")
+    with page.expect_request(lambda request: request.url.endswith("/api/edits") and request.method == "POST"):
+        option.blur()
+    # 止めたレスポンスがルートの処理に渡るまで、ページのイベントを回す
+    for _ in range(HOLD_POLL_LIMIT):
+        if held:
+            break
+        page.wait_for_timeout(HOLD_POLL_MS)
+    assert len(held) == 1
+    _redraw_by_add(page, root, call_tool)
+    # 検証（描き直し）
+    expect(page.get_by_label("案 A の中身")).to_have_value("書き換えた案 A")
+    expect(page.get_by_label("決定内容", exact=True)).to_have_value("新しい答え")
+    # 実行（止めたレスポンスを流す）
+    held[0].continue_()
+    page.unroute("**/api/edits")
+    wait_saved_edit(page, "A", {"content": "書き換えた案 A"}, op="option-edit")
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    # 検証（溜めた後）
+    expect(page.get_by_label("案 A の中身")).to_have_value("書き換えた案 A")
+    expect(page.get_by_label("決定内容", exact=True)).to_have_value("新しい答え")
 
 
 def test_remove_item(

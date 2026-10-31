@@ -456,12 +456,35 @@ var MindmapPreview;
             errors: new Map(),
             toast: null,
             workspaceOpen: false,
+            optionDrafts: new Map(),
+            sentEdits: new Map(),
+            editsReadSeq: 0,
+            editsAppliedSeq: 0,
         };
+        /** 送信中の編集の値のキー（`adopt` は案の記号を持たず、項目ごとに 1 つ） */
+        const sentKeyOf = ({ target, op, key }) => op === "adopt" ? `${target}:adopt` : `${target}:${op}:${key}`;
+        /** 送信中の編集の値を、保存待ちの編集と同じ形に並べる（記録に当てるためだけの写し） */
+        const sentAsEdits = () => [...editState.sentEdits].map(([sentKey, { value }]) => {
+            const [target = "", op = "set", ...rest] = sentKey.split(":");
+            return {
+                id: "",
+                target,
+                op: op,
+                key: op === "adopt" ? String(value) : rest.join(":"),
+                value,
+                before: null,
+                created: "",
+            };
+        });
         /** 差分の表示中でなければ、保存待ちの編集（項目の追加を除く）を当てた記録と索引を作り直す。追加する項目は索引に入れず、一覧の画面の `adds` として別に渡す */
         const rebuildIndex = () => {
             data =
                 point === null
-                    ? MindmapPreview.applyEdits(serverData, editState.edits.filter((entry) => entry.op !== "item-add"))
+                    ? MindmapPreview.applyEdits(serverData, [
+                        ...editState.edits.filter((entry) => entry.op !== "item-add"),
+                        // 送信したがまだ読み取りに載っていない値を上に重ね、描き直しで入力欄を古い値に戻さない
+                        ...sentAsEdits(),
+                    ])
                     : serverData;
             index = MindmapPreview.buildIndex(data);
             serverIndex = MindmapPreview.buildIndex(serverData);
@@ -2164,14 +2187,34 @@ var MindmapPreview;
         let rejected = null;
         /** 幅 900px 以下で保存待ちのパネルから項目を開いたとき、詳細パネルを閉じたらパネルを開き直すか */
         let reopenPending = false;
-        /** 保存待ちの編集を読み直す。読めたときだけ置き換え、書き込めなかった編集の控えは今の編集に残る分だけにする */
+        /** 保存待ちの編集を読み直す。読み取りには送った順に番号を振り、後から送った読み取りを当てた後に届いた古い結果は当てずに捨てる。読めたときだけ置き換え、書き込めなかった編集の控えは今の編集に残る分だけにする。`edits` がこの読み取り以降の状態になったか（当てた・より新しい結果を当て済み）を返す */
         const loadEdits = async () => {
+            editState.editsReadSeq += 1;
+            const seq = editState.editsReadSeq;
             const result = await editsApi.read();
             if (!result.ok || result.data === null)
-                return;
+                return false;
+            // 後から送った読み取りをもう当てている: この結果は古いので捨てる
+            if (seq < editState.editsAppliedSeq)
+                return true;
+            editState.editsAppliedSeq = seq;
             editState.edits = result.data.items;
             const ids = new Set(editState.edits.map((entry) => entry.id));
             editState.blocked = editState.blocked.filter((entry) => ids.has(entry.id));
+            settleSentEdits(seq);
+            return true;
+        };
+        /** 保存待ちの編集が指すキー（送信中の編集の値のキーと同じ形） */
+        const sentKeyOfEdit = (entry) => sentKeyOf({ target: entry.target, op: entry.op, key: entry.key ?? "" });
+        /** 読み取りを `edits` に当てた後、送信中の値を外す。同じキーで同じ値の編集が載ったキーと、溜められた後に送った読み取り（番号が `settledSeq` 以上）を当てたキーは、値によらず外す（その読み取りがサーバーの今の保存待ちを表す） */
+        const settleSentEdits = (seq) => {
+            const applied = new Map(editState.edits.map((entry) => [sentKeyOfEdit(entry), JSON.stringify(entry.value)]));
+            for (const [sentKey, sent] of [...editState.sentEdits]) {
+                const sameValue = applied.get(sentKey) === JSON.stringify(sent.value);
+                const settled = sent.settledSeq !== null && seq >= sent.settledSeq;
+                if (sameValue || settled)
+                    editState.sentEdits.delete(sentKey);
+            }
         };
         /** 書き込めなかった編集の ID */
         const blockedIds = () => new Set(editState.blocked.map((entry) => entry.id));
@@ -2249,13 +2292,25 @@ var MindmapPreview;
         /** 編集 1 件を溜める。溜められたら保存待ちの編集を読み直して描き直し、断られた・届かないときは入力を残して理由を持つ。溜められたときは返った結果を返す */
         const submitEdit = async ({ payload, error, after, }) => {
             const errorKey = `${error.target}:${error.key}`;
+            // 送る値を送信中として持つ（項目の追加・削除と案の追加は除く）。読み取りに載るまで、描き直しで入力欄に重ねる
+            const sentKey = payload.op === "item-add" || payload.op === "option-add" || payload.op === "item-remove"
+                ? null
+                : sentKeyOf({ target: payload.target ?? MindmapPreview.SETTINGS_TARGET, op: payload.op, key: payload.key ?? "" });
+            const sentValue = payload.value;
+            if (sentKey !== null)
+                editState.sentEdits.set(sentKey, { value: sentValue, settledSeq: null });
             const result = await editsApi.add(payload);
             if (!result.ok || result.data === null) {
+                // 断られた・届かない: 送信中の値は外さず、理由と一緒に入力欄に残す
                 editState.errors.set(errorKey, result.ok ? "溜められませんでした。" : failureText(result));
                 redrawEdit();
                 return null;
             }
             editState.errors.delete(errorKey);
+            // 溜められた: 値が入れたままなら、この後に送る読み取りを当てたときに外す（その間に入れ直した値は、その値の結果を待つ）
+            const sent = sentKey === null ? undefined : editState.sentEdits.get(sentKey);
+            if (sent !== undefined && sent.value === sentValue)
+                sent.settledSeq = editState.editsReadSeq + 1;
             await loadEdits();
             after?.(result.data);
             rebuildIndex();
@@ -2281,11 +2336,47 @@ var MindmapPreview;
             }
             const gone = new Set(result.data?.removed ?? [id]);
             editState.blocked = editState.blocked.filter((entry) => !gone.has(entry.id));
+            // 外した編集と同じキーの送信中の値も外す
+            for (const entry of editState.edits.filter((other) => gone.has(other.id)))
+                editState.sentEdits.delete(sentKeyOfEdit(entry));
             if (editState.blocked.length === 0 && editState.status === "idle")
                 rejected = null;
             await loadEdits();
             rebuildIndex();
             redrawEdit();
+        };
+        /** 書きかけの案を持つ編集の表示（`editing`。仮の ID が振られる前の追加の入力は `NEW_ID_PREFIX`） */
+        const draftView = () => editState.editing ?? (editState.adding !== null ? MindmapPreview.NEW_ID_PREFIX : null);
+        /** 書きかけの案を最後に描いた編集の表示。変わっていたら書きかけを空にする */
+        let draftsShownFor = null;
+        /** 向け先の書きかけの案。`editing` が変わった（差分の表示に移った・保存できたときを含む）ら、先に書きかけを空にする */
+        const draftsOf = (target) => {
+            const view = draftView();
+            if (view !== draftsShownFor) {
+                editState.optionDrafts.clear();
+                draftsShownFor = view;
+            }
+            return editState.optionDrafts.get(target) ?? [];
+        };
+        /** 書きかけの案を置く・書き換える。置いたときだけ描き直し、その案の中身の入力欄へフォーカスを移す（打つたびには描き直さない） */
+        const putDraft = (target, draft) => {
+            const drafts = editState.optionDrafts.get(target) ?? [];
+            const found = drafts.find((other) => other.key === draft.key);
+            if (found !== undefined) {
+                found.content = draft.content;
+                return;
+            }
+            editState.optionDrafts.set(target, [...drafts, { ...draft }]);
+            redrawEdit();
+            document.getElementById(`pe-${MindmapPreview.safeId(target)}-opt-${draft.key}`)?.focus();
+        };
+        /** その記号の案を溜められた: 書きかけから外す */
+        const dropDraft = (target, key) => {
+            const rest = (editState.optionDrafts.get(target) ?? []).filter((draft) => draft.key !== key);
+            if (rest.length === 0)
+                editState.optionDrafts.delete(target);
+            else
+                editState.optionDrafts.set(target, rest);
         };
         /** 詳細パネルの編集の表示の引数 */
         const editFormProps = ({ id, kind, item }) => {
@@ -2302,10 +2393,19 @@ var MindmapPreview;
                 errors: formErrors(id),
                 usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
                 body: index.data.bodies[item.body ?? ""] ?? "",
+                optionDrafts: draftsOf(id),
                 on: {
-                    change: (input) => void submitEdit({ payload: { target: id, ...input }, error: { target: id, key: errorKeyOf(input) } }),
+                    change: (input) => void submitEdit({
+                        payload: { target: id, ...input },
+                        error: { target: id, key: errorKeyOf(input) },
+                        after: () => {
+                            if (input.op === "option-add")
+                                dropDraft(id, input.key);
+                        },
+                    }),
                     remove: () => void submitEdit({ payload: { target: id, op: "item-remove" }, error: { target: id, key: "" } }),
                     cancelRemove: () => void cancelRemoval(id),
+                    draft: (draft) => putDraft(id, draft),
                 },
             };
         };
@@ -2364,6 +2464,7 @@ var MindmapPreview;
             editState.adding = kind;
             editState.editing = null;
             addDraft = {};
+            editState.optionDrafts.clear();
             if (route.id !== null) {
                 route = { ...route, id: null, full: false, filters: {}, heading: null };
                 MindmapPreview.navigate({ route, push: false });
@@ -2418,6 +2519,12 @@ var MindmapPreview;
                     editState.editing = result.target;
                     editState.adding = null;
                     addDraft = {};
+                    // 仮の ID が振られた: 振られる前の書きかけの案を仮の ID へ移す（書きかけは空にしない）
+                    const drafts = editState.optionDrafts.get(MindmapPreview.NEW_ID_PREFIX);
+                    editState.optionDrafts.delete(MindmapPreview.NEW_ID_PREFIX);
+                    if (drafts !== undefined)
+                        editState.optionDrafts.set(result.target, drafts);
+                    draftsShownFor = result.target;
                 },
             });
         };
@@ -2443,7 +2550,13 @@ var MindmapPreview;
                 errors: formErrors(entry === undefined ? MindmapPreview.NEW_ID_PREFIX : item.id),
                 usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
                 body: typeof record["body"] === "string" ? record["body"] : "",
-                on: { change: (input) => void submitAddField({ kind, input }), remove: () => undefined, cancelRemove: () => undefined },
+                optionDrafts: draftsOf(item.id),
+                on: {
+                    change: (input) => void submitAddField({ kind, input }),
+                    remove: () => undefined,
+                    cancelRemove: () => undefined,
+                    draft: (draft) => putDraft(item.id, draft),
+                },
             });
             const body = MindmapPreview.h({
                 tag: "div",
@@ -2614,6 +2727,7 @@ var MindmapPreview;
             const result = await editsApi.save();
             if (result.ok) {
                 editState.blocked = [];
+                editState.sentEdits.clear();
                 editState.open = false;
                 editState.editing = null;
                 editState.adding = null;
@@ -2739,8 +2853,31 @@ var MindmapPreview;
             document.body.append(dialog);
             dialog.showModal();
         };
-        /** 記録を読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
-        const reload = async () => {
+        /** 流している読み直し（終わるまで、続けて頼まれた読み直しを 1 回にまとめて待たせる） */
+        let reloading = null;
+        /** 流している間に読み直しを頼まれたか */
+        let reloadQueued = false;
+        /** 記録を読み直して描き直す。読み直しは 1 回ずつ順に流し、流している間に頼まれたら、終わった後にもう 1 回だけ読み直す（その間に続けて頼まれた分は 1 回にまとめる）。返す Promise は頼んだ分の読み直しが終わると解決する */
+        const reload = () => {
+            if (reloading !== null) {
+                reloadQueued = true;
+                return reloading;
+            }
+            reloading = (async () => {
+                try {
+                    do {
+                        reloadQueued = false;
+                        await reloadOnce();
+                    } while (reloadQueued);
+                }
+                finally {
+                    reloading = null;
+                }
+            })();
+            return reloading;
+        };
+        /** 記録を 1 回読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
+        const reloadOnce = async () => {
             const result = await MindmapPreview.fetchRecords();
             if (!result.ok)
                 return;
