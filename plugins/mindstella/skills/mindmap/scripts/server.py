@@ -365,7 +365,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="tags",
-        description="項目とスレッドに付いているタグを、正規化した表記ごとに件数と種類を添えて返す。タグを付ける前や find でタグを渡す前に呼び、同じ意味のタグがあれば使い回す",
+        description="項目とスレッドに付いているタグを、正規化した表記ごとに件数と種類を添えて返す。タグを付ける前や find でタグを渡す前に呼び、同じ概念の言い方・活用の違いのタグがあれば使い回す",
     )
     def tags(workspace: WorkspaceArg) -> CallToolResult:
         return read(workspace, commands.run_tags)
