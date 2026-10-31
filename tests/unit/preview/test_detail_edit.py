@@ -11,7 +11,7 @@ from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
 from .thread_data import make_thread
 
 # 編集の表示を作って文書に置く JavaScript。呼ばれた操作は window.calls に溜める
-MOUNT_SCRIPT = """({kind, item, settings, removing, referrers, usedTags}) => {
+MOUNT_SCRIPT = """({kind, item, settings, removing, referrers, usedTags, optionDrafts}) => {
     window.calls = [];
     const form = MindmapPreview.detailEditForm({
         kind,
@@ -24,10 +24,12 @@ MOUNT_SCRIPT = """({kind, item, settings, removing, referrers, usedTags}) => {
         referrers,
         errors: {},
         usedTags,
+        optionDrafts,
         on: {
             change: (input) => window.calls.push(["change", input]),
             remove: () => window.calls.push(["remove"]),
             cancelRemove: () => window.calls.push(["cancelRemove"]),
+            draft: (input) => window.calls.push(["draft", input]),
         },
     });
     document.body.append(form);
@@ -51,6 +53,7 @@ def _mount(
         "removing": False,
         "referrers": [],
         "usedTags": [],
+        "optionDrafts": [],
     }
     args.update(overrides)
     preview_page.evaluate(MOUNT_SCRIPT, args)
@@ -63,23 +66,59 @@ def test_detail_edit_form(
     valid_settings: dict[str, Any],
 ) -> None:
     """離れたときにキー・案を溜める（正常系）。"""
-    # 準備
+    # 準備: 「案を追加」で置いた中身の空な書きかけの案 C を状態から渡す
     load_preview_scripts()
-    _mount(preview_page, make_item("D-1", options=DECISION_OPTIONS), valid_settings)
+    _mount(
+        preview_page,
+        make_item("D-1", options=DECISION_OPTIONS),
+        valid_settings,
+        optionDrafts=[{"key": "C", "content": ""}],
+    )
     # 実行
     answer = preview_page.get_by_label("決定内容", exact=True)
     answer.fill("案 B にする")
     answer.blur()
     preview_page.get_by_role("radio", name="採用").nth(1).check()
-    preview_page.get_by_role("button", name="案を追加").click()
     added = preview_page.get_by_label("案 C の中身")
     added.fill("案 C の中身")
     added.blur()
+    # 書きかけの案に打ったときの on.draft は除き、溜めた on.change だけを並べる
     calls = preview_page.evaluate(
-        "() => window.calls.map(([name, input]) => [input.op, input.key])"
+        """() => window.calls
+            .filter(([name]) => name === "change")
+            .map(([name, input]) => [input.op, input.key])"""
     )
     # 検証
     assert calls == [["set", "answer"], ["adopt", "B"], ["option-add", "C"]]
+
+
+def test_detail_edit_form_when_option_drafts(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """書きかけの案を状態から描き、置く・打つたびに知らせる（正常系）。"""
+    # 準備: 案 A・B を持つ検討事項に、中身「下書き」の書きかけの案 C を渡す
+    load_preview_scripts()
+    _mount(
+        preview_page,
+        make_item("D-1", options=DECISION_OPTIONS),
+        valid_settings,
+        optionDrafts=[{"key": "C", "content": "下書き"}],
+    )
+    draft = preview_page.get_by_label("案 C の中身")
+    shown = draft.input_value()
+    # 実行: 「案を追加」で次の記号 D を置き、案 C に打つ（離れない）
+    preview_page.get_by_role("button", name="案を追加").click()
+    draft.fill("下書き 2")
+    calls = preview_page.evaluate("() => window.calls")
+    # 検証
+    assert shown == "下書き"
+    assert calls == [
+        ["draft", {"key": "D", "content": ""}],
+        ["draft", {"key": "C", "content": "下書き 2"}],
+    ]
 
 
 @pytest.mark.parametrize(
