@@ -464,7 +464,7 @@ var MindmapPreview;
         /** 送信中の編集の値のキー（`adopt` は案の記号を持たず、項目ごとに 1 つ） */
         const sentKeyOf = ({ target, op, key }) => op === "adopt" ? `${target}:adopt` : `${target}:${op}:${key}`;
         /** 送信中の編集の値を、保存待ちの編集と同じ形に並べる（記録に当てるためだけの写し） */
-        const sentAsEdits = () => [...editState.sentEdits].map(([sentKey, value]) => {
+        const sentAsEdits = () => [...editState.sentEdits].map(([sentKey, { value }]) => {
             const [target = "", op = "set", ...rest] = sentKey.split(":");
             return {
                 id: "",
@@ -2201,7 +2201,20 @@ var MindmapPreview;
             editState.edits = result.data.items;
             const ids = new Set(editState.edits.map((entry) => entry.id));
             editState.blocked = editState.blocked.filter((entry) => ids.has(entry.id));
+            settleSentEdits(seq);
             return true;
+        };
+        /** 保存待ちの編集が指すキー（送信中の編集の値のキーと同じ形） */
+        const sentKeyOfEdit = (entry) => sentKeyOf({ target: entry.target, op: entry.op, key: entry.key ?? "" });
+        /** 読み取りを `edits` に当てた後、送信中の値を外す。同じキーで同じ値の編集が載ったキーと、溜められた後に送った読み取り（番号が `settledSeq` 以上）を当てたキーは、値によらず外す（その読み取りがサーバーの今の保存待ちを表す） */
+        const settleSentEdits = (seq) => {
+            const applied = new Map(editState.edits.map((entry) => [sentKeyOfEdit(entry), JSON.stringify(entry.value)]));
+            for (const [sentKey, sent] of [...editState.sentEdits]) {
+                const sameValue = applied.get(sentKey) === JSON.stringify(sent.value);
+                const settled = sent.settledSeq !== null && seq >= sent.settledSeq;
+                if (sameValue || settled)
+                    editState.sentEdits.delete(sentKey);
+            }
         };
         /** 書き込めなかった編集の ID */
         const blockedIds = () => new Set(editState.blocked.map((entry) => entry.id));
@@ -2285,7 +2298,7 @@ var MindmapPreview;
                 : sentKeyOf({ target: payload.target ?? MindmapPreview.SETTINGS_TARGET, op: payload.op, key: payload.key ?? "" });
             const sentValue = payload.value;
             if (sentKey !== null)
-                editState.sentEdits.set(sentKey, sentValue);
+                editState.sentEdits.set(sentKey, { value: sentValue, settledSeq: null });
             const result = await editsApi.add(payload);
             if (!result.ok || result.data === null) {
                 // 断られた・届かない: 送信中の値は外さず、理由と一緒に入力欄に残す
@@ -2294,10 +2307,11 @@ var MindmapPreview;
                 return null;
             }
             editState.errors.delete(errorKey);
-            const caughtUp = await loadEdits();
-            // 溜めた後に送った読み取りを当てた: そのキーの値が入れた値のままのときだけ外す（その間に入れ直した値は残す）
-            if (caughtUp && sentKey !== null && editState.sentEdits.get(sentKey) === sentValue)
-                editState.sentEdits.delete(sentKey);
+            // 溜められた: 値が入れたままなら、この後に送る読み取りを当てたときに外す（その間に入れ直した値は、その値の結果を待つ）
+            const sent = sentKey === null ? undefined : editState.sentEdits.get(sentKey);
+            if (sent !== undefined && sent.value === sentValue)
+                sent.settledSeq = editState.editsReadSeq + 1;
+            await loadEdits();
             after?.(result.data);
             rebuildIndex();
             redrawEdit();
@@ -2322,6 +2336,9 @@ var MindmapPreview;
             }
             const gone = new Set(result.data?.removed ?? [id]);
             editState.blocked = editState.blocked.filter((entry) => !gone.has(entry.id));
+            // 外した編集と同じキーの送信中の値も外す
+            for (const entry of editState.edits.filter((other) => gone.has(other.id)))
+                editState.sentEdits.delete(sentKeyOfEdit(entry));
             if (editState.blocked.length === 0 && editState.status === "idle")
                 rejected = null;
             await loadEdits();
@@ -2710,6 +2727,7 @@ var MindmapPreview;
             const result = await editsApi.save();
             if (result.ok) {
                 editState.blocked = [];
+                editState.sentEdits.clear();
                 editState.open = false;
                 editState.editing = null;
                 editState.adding = null;
