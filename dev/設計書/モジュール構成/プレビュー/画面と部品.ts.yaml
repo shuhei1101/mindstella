@@ -2162,7 +2162,7 @@ components:
       - name: test_detail_edit_form_when_option_drafts
         case: 正常
         summary: 書きかけの案を状態から描き、置く・打つたびに知らせる
-        condition: '案 A・B・C の検討事項 D-1、`optionDrafts: [{key: C, content: 下書き}]`。案 C の入力に「下書き」が出ているか見る。「案を追加」を押す。案 C に「下書き 2」と打つ'
+        condition: '案 A・B の検討事項 D-1、`optionDrafts: [{key: C, content: 下書き}]`。案 C の入力に「下書き」が出ているか見る。「案を追加」を押す。案 C に「下書き 2」と打つ'
         mock: '`on.draft`・`on.change`'
         expected: '案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない'
   - name: decorateMarkdown
