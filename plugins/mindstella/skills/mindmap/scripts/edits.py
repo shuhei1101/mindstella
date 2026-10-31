@@ -95,7 +95,7 @@ MAPPABLE_SETTING_KEYS = {
     "categories": "category_map",
 }
 
-# `set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する）
+# `set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する。`item-add` の `options` だけは除く）
 UNEDITABLE_KEYS = frozenset(
     {
         "id",
@@ -121,6 +121,9 @@ USER_EDIT_SUMMARY = "画面からの編集"
 
 # 項目の本文を編集するキー
 BODY_KEY = "body"
+
+# 案の並びのキー（`item-add` の `value` だけが持てる）
+OPTIONS_KEY = "options"
 
 # 検討事項の種類
 DECISION_KIND: Kind = "decision"
@@ -502,7 +505,8 @@ def _check_values(kind: Kind | None, op: EditOp, key: str | None, value: Any) ->
         if not isinstance(title, str) or not title.strip():
             raise EditInvalidError("title: タイトルを書いてください")
     for name, entry in values.items():
-        if name in UNEDITABLE_KEYS:
+        # 足す項目の案の並びだけは、スキーマの型で確かめる（案の無い種類は「この種類にないキー」）
+        if name in UNEDITABLE_KEYS and not (op == "item-add" and name == OPTIONS_KEY):
             raise EditInvalidError(f"{name}: 編集できないキーです")
         # 本文は文字列で渡す（ファイル名は保存のときに決まる）
         if name == BODY_KEY:
@@ -522,6 +526,19 @@ def _check_values(kind: Kind | None, op: EditOp, key: str | None, value: Any) ->
             raise EditInvalidError(f"{name}: {found[0].message}")
         if name == "title" and not entry.strip():
             raise EditInvalidError("title: タイトルを書いてください")
+        if name == OPTIONS_KEY:
+            _check_option_symbols(entry)
+
+
+def _check_option_symbols(options: list[dict[str, Any]]) -> None:
+    """足す項目の案の記号が重ならないかを確かめる。"""
+    seen: set[str] = set()
+    for option in options:
+        symbol = str(option.get("key"))
+        # 前の案と同じ記号なら、保存で案が区別できないため断る
+        if symbol in seen:
+            raise EditInvalidError(f"options: 案の記号 {symbol} が重なっています")
+        seen.add(symbol)
 
 
 def _check_setting(key: str | None, value: Any) -> None:
