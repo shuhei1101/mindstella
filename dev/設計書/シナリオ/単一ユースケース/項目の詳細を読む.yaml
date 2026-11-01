@@ -492,6 +492,37 @@ scenarios:
       - 閉じて A-1 を開き直したとき、種類が違っても広げた幅で開く
       - 同じタブで読み込み直した後も、広げた幅で開く
     test: test_normal_when_resize_panel
+  - name: 正常シナリオ（主題のタグを見分ける）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 記録
+        description: 検討事項 D-1（タグ `データ` を主題として、`画面` を主題でなく持つ）
+        notes: '-'
+      - name: 配信
+        description: 記録を配っているサーバー
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 検討事項の表で D-1 を押す
+        P-->>U: D-1 の詳細パネル（タグに主題のマーカー）
+        U->>P: 「全画面表示」を押す
+        P-->>U: 同じタグを出すモーダル
+      ```
+    expected:
+      - 詳細パネルの D-1 のタグに `データ`・`画面` が並び、`データ` だけが主題のマーカーを持つ
+      - 主題のマーカーが色だけに頼らず、読み上げ名で主題と分かる
+      - 全画面表示のモーダルでも、`データ` だけが主題のマーカーを持つ
+      - 検討事項の表のタグの列が、D-1 のタグを名前 `データ`・`画面` で出す
+    test: test_normal_when_main_tag_marked
 lead: 利用者が、詳細パネルで 1 件の項目の案・関係・本文を読み、関係する項目や本文の見出し・用語・項目の ID のリンクへ移り、全画面と図の拡大で読む単一ユースケース。
 issue: 5
 primary_actor: 利用者

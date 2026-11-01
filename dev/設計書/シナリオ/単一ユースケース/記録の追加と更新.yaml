@@ -476,6 +476,66 @@ scenarios:
       - '`config.yaml` がタグのキー（`tags`）を持たない'
       - タグの一覧が `通知`（2 件）と `通知機能`（1 件）を返す
     test: test_normal_when_new_tag
+  - name: 正常シナリオ（主題のタグを付け外しする）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませた、項目を持たないワークスペース
+        notes: '-'
+      - name: 検討事項の中身
+        description: 主題のタグと、主題でないタグを持つ検討事項
+        notes: タグ `データ`（主題）・`画面`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 主題のタグを持つ検討事項を追加する
+        SV->>WS: decisions.yaml に書く
+        SV-->>CC: 振った ID
+        CC->>SV: その ID の中身を出す
+        SV-->>CC: タグごとの名前と主題か
+        CC->>SV: `画面` を主題にし、`データ` の主題を外す
+        SV->>WS: decisions.yaml に書く
+        SV-->>CC: 修正した ID
+      ```
+    expected:
+      - 追加の後、`.mindstella/decisions.yaml` の検討事項のタグが、`データ`（主題）・`画面`（主題でない）である
+      - 中身を出した結果のタグが、名前と主題かを持つ
+      - 修正の後、検討事項のタグが `データ`（主題でない）・`画面`（主題）で、タグの並びが変わっていない
+      - 主題でないタグが、主題かのキーを持たない
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_main_tag_toggled
+  - name: 異常シナリオ（タグを名前だけの文字列で渡す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませ、検討事項を 1 件追加したワークスペース
+        notes: '-'
+      - name: 検討事項の中身
+        description: タグを、名前と主題かの組でなく文字列で持つ検討事項
+        notes: タグ `データ`（文字列）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+
+        CC->>SV: タグを文字列で渡して検討事項を追加する
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>CC: タグの渡し方を示すエラー
+      ```
+    expected:
+      - 追加のツールがエラーを返す
+      - エラーの本文に、合わないキー `tags` と、名前と主題かの組で渡す書き方がある
+      - ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
+    test: test_error_when_tag_is_string
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

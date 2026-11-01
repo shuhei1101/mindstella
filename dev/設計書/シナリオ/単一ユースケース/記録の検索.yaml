@@ -42,7 +42,7 @@ scenarios:
       ```
     expected:
       - 探した結果に D-1 があり、D-2・T-1 が無く、全体の件数が 1 で、続きを取る値が無い
-      - 探した結果の各項目が、ID・種類・タイトル・状態・タグを持つ
+      - 探した結果の各項目が、ID・種類・タイトル・状態・タグ・文字数を持ち、結果の先頭に全体の件数と、当たった全件の合計文字数がある
       - D-1 の中身に、タイトル・状態・タグ・属性がある
       - D-1 を参照している項目に D-2 と T-1 がある
       - 属性名の一覧に `担当`（2 件）と `期限`（1 件）がある
@@ -138,6 +138,104 @@ scenarios:
       - タグ「データー」で探した結果がエラーにならず、空の一覧・全体の件数 0 で、案内の文に近い使われているタグ `データ` がある
       - D-2・D-3 のタグが、書いたときの表記（`API`・`ａｐｉ`）のままである
     test: test_normal_when_tag_normalized
+  - name: 正常シナリオ（返す量を選ぶ）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 検討事項 D-1
+        description: 対象・カテゴリー・フェーズ・属性と、Markdown の本文を持つ検討事項
+        notes: タグ `データ`・`画面`
+      - name: 検討事項 D-2
+        description: 本文を持たない検討事項
+        notes: タグ `データ`
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 返す量を渡さずに検討事項を探す
+        SV->>WS: 全ての YAML と本文を読む
+        SV-->>CC: 全体の件数・合計文字数と、既定の量の項目の表
+        CC->>SV: 返す量を広げ、属性を加えて探す
+        SV-->>CC: 広げた量に属性を加えた項目の表
+        CC->>SV: 件数だけを出す
+        SV-->>CC: 全体の件数・合計文字数・タグごとの件数（一覧なし）
+        CC->>SV: JSON で返すよう渡して探す
+        SV-->>CC: 同じ中身を JSON の構造化した結果と本文の両方で
+      ```
+    expected:
+      - 返す量を渡さないときの結果が Markdown の表で、各行が ID・種類・タイトル・状態・タグ・文字数を持ち、対象・カテゴリー・フェーズ・属性・本文を持たない
+      - 返す量を渡さないときの結果が、省いた項目の名前と取り方を持ち、構造化した結果を持たない
+      - D-1 の文字数が D-2 の文字数より大きく、合計文字数が D-1 と D-2 の文字数の和である
+      - 返す量を広げて属性を加えた結果の D-1 の行が、対象・カテゴリー・フェーズ・属性を持つ
+      - 件数だけを出した結果が、全体の件数 2・合計文字数・タグごとの件数（`データ` 2 件・`画面` 1 件）を持ち、項目の一覧を持たない
+      - JSON で返した結果の構造化した結果と本文が同じ JSON で、全体の件数・合計文字数・項目の一覧を持つ
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_normal_when_view_selected
+  - name: 正常シナリオ（主題のタグを上に並べる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 検討事項 D-1
+        description: タグ `データ` を主題でなく持つ検討事項
+        notes: '-'
+      - name: 検討事項 D-2
+        description: タグ `データ` を主題として持つ検討事項
+        notes: '-'
+      - name: タスク T-1
+        description: タグ `データ` を主題として、`画面` を主題でなく持つタスク
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: タグ「データ」を持つ項目を探す
+        SV->>WS: 項目を読む
+        SV->>SV: 渡したタグを主題として持つ項目を上に並べる
+        SV-->>CC: 合う項目の一覧
+        CC->>SV: タグ「画面」を持つ項目を探す
+        SV-->>CC: 合う項目の一覧
+      ```
+    expected:
+      - タグ「データ」で探した結果が D-2・T-1・D-1 の順である
+      - 結果の行のタグで、D-2・T-1 の `データ` が主題と分かり、D-1 の `データ` と T-1 の `画面` が主題と分からない
+      - タグ「画面」で探した結果が T-1 だけである
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_normal_when_main_tag_first
+  - name: 異常シナリオ（返す項目に無い名前を渡す）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませ、検討事項を 1 件追加したワークスペース
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+
+        CC->>SV: 加える項目に、返す項目に無い名前を渡して探す
+        SV-->>CC: 渡せる名前を示すエラー
+      ```
+    expected:
+      - ツールがエラーを返す
+      - エラーの本文に、渡した名前と、加える項目に渡せる名前がある
+    test: test_error_when_unknown_include
 lead: スキルが、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っている属性名とタグを読む単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -147,5 +245,5 @@ stakeholders:
 trigger: 会話で前の記録に触れる、または属性を付ける前に使っている名前を確かめる
 preconditions:
   - ワークスペースが作成済みである
-success_guarantee: 条件に合う項目のページと全体の件数・1 件の中身と参照元・属性名の一覧・使われているタグの一覧が出る。どのファイルも書き換えない。
+success_guarantee: 条件に合う項目のページと全体の件数・各項目の文字数と合計文字数・1 件の中身と参照元・属性名の一覧・使われているタグの一覧が出る。どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_record_search.py
