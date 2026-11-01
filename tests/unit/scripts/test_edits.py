@@ -589,7 +589,7 @@ def test_save_edits(
         make_item(
             "D-1",
             status="未決定",
-            tags=["画面"],
+            tags=[{"name": "画面"}],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
         settings=valid_settings,
@@ -597,7 +597,12 @@ def test_save_edits(
     write_edits(
         root,
         make_edit("E-1", value="案 C にする"),
-        make_edit("E-2", key="tags", value=["画面", "記録の形"], before=["画面"]),
+        make_edit(
+            "E-2",
+            key="tags",
+            value=[{"name": "画面"}, {"name": "記録の形"}],
+            before=[{"name": "画面"}],
+        ),
         make_edit("E-3", op="option-add", key="C", value={"content": "案 C"}, before=None),
         make_edit("E-4", op="adopt", key="C", value="C"),
     )
@@ -608,7 +613,7 @@ def test_save_edits(
     assert result["changed"] == ["D-1"]
     decision = _find(_read_items(root, "decisions.yaml"), "D-1")
     assert decision["answer"] == "案 C にする"
-    assert decision["tags"] == ["画面", "記録の形"]
+    assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形"}]
     assert [option["key"] for option in decision["options"]] == ["A", "B", "C"]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["C"]
     assert decision["updated_by"] == "user"
