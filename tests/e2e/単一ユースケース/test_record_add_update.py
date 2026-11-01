@@ -678,6 +678,7 @@ def test_normal_when_main_tag_toggled(make_workspace: MakeWorkspace, call_tool: 
     assert _read_decisions(root)[0]["tags"] == [{"name": "データ"}, {"name": "画面", "main": True}]
     # ワークスペースの全ての YAML がスキーマに合う
     assert checked.is_error is False
+    assert checked.data == {"ok": True, "problems": []}
 
 
 def test_error_when_tag_is_string(
