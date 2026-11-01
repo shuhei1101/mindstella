@@ -168,7 +168,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`。タグの列は値を `tagNames` の名前にし（絞り込み・並べ替えは名前で、主題かどうかによらない）、セルは項目の `tags` をそのまま `tagList` に渡す
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`。タグの列は値を `tagNames` の名前にし（絞り込み・並べ替えは名前で、主題かどうかによらない）、セルは `tagNames` の名前を `tagList` に渡す（主題のマーカーを出さない）
     description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
@@ -223,6 +223,12 @@ components:
         condition: '`withdrawn: true` の R-1 と、`withdrawn` を持たない R-2 の行。`marks` が `{"R-1": "changed"}`'
         mock: なし（DOM を作って見る）
         expected: R-1 の行のタイトルの右に取り下げの札、その後ろに変更の印が並び、行が薄い文字の class を持つ。R-2 の行は札も薄い文字の class も持たない
+      - name: test_table_when_main_tag
+        case: 正常
+        summary: タグの列は主題の有無によらず名前で出す
+        condition: '`tags` が `[{name: 画面}, {name: データ, main: true}]` の A-1 の行を、タグの列を持つ表で描く'
+        mock: なし（DOM を作って見る）
+        expected: タグの列のセルの `span.tag` が `画面`・`データ` で、どれも二重丸のマーカーと読み上げの「主題」を持たない
   - name: filterChips
     title: 条件のチップの行
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -798,7 +804,7 @@ components:
         summary: タグの行は主題のマーカーを付けて描き、差分の表示でも前後をタグの並びで描く
         condition: '`parametrize`: `tags` が `[{name: 画面}, {name: データ, main: true}]` の D-1 を開く / 選んだ時点で `tags` を `[{name: データ}]` → `[{name: データ, main: true}]` にした D-1 を `diff` つきで開く'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: タグの行の `span.tag` が `データ`・`画面` の順で `データ` だけが主題のマーカーを持ち、画面に「主題」の文字が出ない / `del.df-was` の `span.tag` `データ` がマーカーを持たず、`ins.df-now` の `span.tag` `データ` がマーカーを持つ
+        expected: タグの行の `span.tag` が `画面`・`データ` の順（記録の順）で `データ` だけが主題のマーカーを持ち、画面に「主題」の文字が出ない / `del.df-was` の `span.tag` `データ` がマーカーを持たず、`ins.df-now` の `span.tag` `データ` がマーカーを持つ
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -2390,7 +2396,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
     usecase: 共通
     kind: コンポーネント
-    summary: '部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、読み上げに「主題: 」を、`title` に「主題のタグ」を持たせ、主題のタグを並びの先頭に置く（主題どうし・主題でないタグどうしは元の順）。文字列の要素は主題でないタグとして出す。表の行・資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う'
+    summary: '部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、名前の前に読み上げだけの「主題」の文字（読み上げは「主題 画面」）を、`title` に「主題」を持たせる。並びは記録の順のまま（主題を先頭へ寄せない）。文字列の要素は主題でないタグとして出す。資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う（表のタグの列は `tagNames` の名前を渡すため、マーカーを持たない）'
     props:
       - name: values
         type: readonly (Tag | string)[] | undefined
@@ -2400,16 +2406,16 @@ components:
     unit_tests:
       - name: test_tag_list
         case: 正常
-        summary: 主題のタグにマーカーを付けて先頭に並べる
+        summary: 主題のタグにマーカーを付け、記録の順のまま並べる
         condition: '`parametrize`: `[{name: 画面}, {name: データ, main: true}]` / `[UI, 性能]` / `undefined`'
         mock: なし（DOM を作って見る）
-        expected: '`span.tag` が `データ`・`画面` の順で、`データ` だけが二重丸のマーカーと読み上げの「主題: 」と `title`「主題のタグ」を持つ / `span.tag` が `UI`・`性能` でどれもマーカーを持たない / 子の無い断片'
+        expected: '`span.tag` が `画面`・`データ` の順で、`データ` だけが二重丸のマーカーと読み上げだけの「主題」の文字と `title`「主題」を持つ / `span.tag` が `UI`・`性能` でどれもマーカーを持たない / 子の無い断片'
   - name: chipsInput
     title: チップの入力
     container: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
     usecase: 画面で項目を編集して保存する
     kind: コンポーネント
-    summary: 部品設計『チップの入力』の引数を受け、値のチップの並びと、候補（`datalist`）つきの入力欄を返す。Enter か入力欄を離れたときに、空白でなく並びに無い値をチップにして追加し、チップの × で外し、`onChange` を呼ぶ。`mainToggle` が真のときは値を `{name, main?}` で持ち、チップの名前の前に主題のトグル（`button`・`aria-pressed`・読み上げ名「{名前}を主題にする」）を置き、押すたびにそのタグの `main` を付け外しして `onChange` を呼ぶ（主題でないタグは `main` を持たない並びを渡す）。入力欄から追加したタグは主題でないまま並べる。`disabled` の間は入力欄・× ・トグルを押せなくする。編集の表示（項目のタグ・参照）と設定の画面が使う
+    summary: 部品設計『チップの入力』の引数を受け、値のチップの並びと、候補（`datalist`）つきの入力欄を返す。Enter か入力欄を離れたときに、空白でなく並びに無い値をチップにして追加し、チップの × で外し、`onChange` を呼ぶ。`mainToggle` が真のときは値を `{name, main?}` で持ち、チップの名前の前に主題のトグル（`button`・`aria-pressed`・読み上げ名「{タグ} を主題」・`title` は主題のとき「主題を外す」、それ以外は「主題にする」・押せる範囲は縦横 24px）を置き、押すたびにそのタグの `main` を付け外しして `onChange` を呼ぶ（主題でないタグは `main` を持たない並びを渡す）。押した後も同じタグのトグルにフォーカスを残す。入力欄から追加したタグは主題でないまま並べる。`disabled` の間は入力欄・× ・トグルを押せなくする。編集の表示（項目のタグ・参照）と設定の画面が使う
     props:
       - name: controlId
         type: string
@@ -2460,7 +2466,7 @@ components:
         summary: 主題のトグルで main を付け外しし、追加したタグは主題でない
         condition: '`values: [{name: 画面}, {name: データ, main: true}]`・`mainToggle: true`。`画面` のトグルを押す、`データ` のトグルを押す、入力欄に `保存` を入れて Enter'
         mock: '`onChange`'
-        expected: '`データ` のトグルが `aria-pressed="true"`。`onChange` が `([{name: 画面, main: true}, {name: データ, main: true}], null)`・`([{name: 画面, main: true}, {name: データ}], null)`・`([{name: 画面, main: true}, {name: データ}, {name: 保存}], null)` の順で 3 回'
+        expected: '`データ` のトグルが `aria-pressed="true"`・読み上げ名「データ を主題」・`title`「主題を外す」で、`画面` のトグルが `aria-pressed="false"`・`title`「主題にする」。押した後のフォーカスが押したタグのトグルにある。`onChange` が `([{name: 画面, main: true}, {name: データ, main: true}], null)`・`([{name: 画面, main: true}, {name: データ}], null)`・`([{name: 画面, main: true}, {name: データ}, {name: 保存}], null)` の順で 3 回'
       - name: test_chips_input_when_disabled
         case: 異常
         summary: disabled の間は操作できない
