@@ -321,7 +321,8 @@ flows:
       - name: make_workspace
         description: 'タグ `{name: データ, main: true}`・`{name: 画面}` を持つ検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース'
         notes: '1 回目は `{op: set, target: D-1, key: tags, value: [{name: データ}, {name: 画面, main: true}]}`、2 回目は `{op: set, target: D-1, key: tags, value: [{name: 画面}, {name: 画面, main: true}]}`'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -333,6 +334,7 @@ flows:
         クライアント->>IF: POST {op: set, target: D-1, key: tags, value は 画面 が 2 件の並び}
         IF->>IF: 同じ名前のタグが重なる
         IF-->>クライアント: 400
+      ```
     expected:
       - '1 回目のステータスが 201 で、`edits.yaml` の E-1 の `value` が `[{name: データ}, {name: 画面, main: true}]`、`before` が `[{name: データ, main: true}, {name: 画面}]`'
       - 2 回目のステータスが 400 で、`detail` が `tags` と重なる名前 `画面` を含み、E-1 が書き換わらない

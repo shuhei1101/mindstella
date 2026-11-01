@@ -208,7 +208,8 @@ flows:
       - name: make_workspace
         description: 次の項目を持つワークスペース
         notes: 'D-1: 対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B・本文 `docs/D-1.md`／D-2: 本文を持たない'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as find（MCP のツール）
@@ -221,6 +222,7 @@ flows:
         IF-->>クライアント: JSON（items・omitted）
         クライアント->>IF: find workspace view full format json
         IF-->>クライアント: JSON（items・omitted）
+      ```
     expected:
       - どの呼び出しもツールのエラーにならない
       - 1 回目の D-1 が `id`・`kind`・`title`・`status`・`tags`・`chars` だけを持ち、`omitted` が `target`・`category`・`phase`・`attrs`・`updated`・`extra`・`body`
@@ -237,7 +239,8 @@ flows:
       - name: make_workspace
         description: 次の項目を持つワークスペース
         notes: 'D-1: タグ `データ`・`画面`／D-2: タグ `データ`'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as find（MCP のツール）
@@ -246,6 +249,7 @@ flows:
         クライアント->>IF: find workspace count_only true format json
         IF-->>WS: 全ての YAML と本文を読む
         IF-->>クライアント: JSON（total・total_chars・tag_counts）
+      ```
     expected:
       - ツールのエラーにならない
       - '`total` が 2 で、`total_chars` が `find workspace format json` の `total_chars` と同じ'
@@ -260,7 +264,8 @@ flows:
       - name: make_workspace
         description: 次の項目を持つワークスペース
         notes: 'D-1: タグ `データ`（主題）・`画面`／D-2: タグ `データ`'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as find（MCP のツール）
@@ -271,6 +276,7 @@ flows:
         IF-->>クライアント: Markdown の本文
         クライアント->>IF: find workspace count_only true
         IF-->>クライアント: Markdown の本文
+      ```
     expected:
       - どちらもツールのエラーにならず、構造化の結果を持たない
       - 1 回目の本文の先頭の行が `全 2 件・合計 {total_chars} 文字`
@@ -286,7 +292,8 @@ flows:
       - name: make_workspace
         description: 次の項目を持つワークスペース
         notes: 'D-1: タグ `データ`／D-2: タグ `データ`（主題）／T-1: タグ `データ`（主題）・`画面`'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as find（MCP のツール）
@@ -300,6 +307,7 @@ flows:
         IF-->>クライアント: JSON（items・next_cursor）
         クライアント->>IF: find workspace tags [データ] limit 2 cursor {next_cursor} format json
         IF-->>クライアント: JSON（items）
+      ```
     expected:
       - どの呼び出しもツールのエラーにならない
       - 1 回目の `items` が D-2・T-1・D-1 の順
@@ -313,13 +321,15 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 検討事項 D-1 を持つワークスペース
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as find（MCP のツール）
 
         クライアント->>IF: find workspace include [attrs] exclude [attrs]
         IF-->>クライアント: ツールのエラー
+      ```
     expected:
       - ツールのエラーになる
       - エラーの本文に引数の名前 `include`・`exclude` と、重なった名前 `attrs` がある

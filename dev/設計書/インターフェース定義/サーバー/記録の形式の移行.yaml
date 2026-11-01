@@ -533,7 +533,8 @@ flows:
       - name: make_workspace
         description: '版 v0.11.0 で、検討事項 D-1（`tags: [保存, 通知, ＡＰＩ, api]`）・メモ N-1（`tags: []`）と、スレッド TH-1（`tags: [起票]`）を持つワークスペース'
         notes: '`migrate` を `apply` で呼ぶ'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as migrate（MCP のツール）
@@ -542,6 +543,7 @@ flows:
         クライアント->>IF: migrate workspace apply
         IF->>WS: tags_to_objects を当てる
         IF-->>クライアント: JSON
+      ```
     expected:
       - ツールのエラーにならない
       - '`steps` が `version: v0.12.0`・`op: call`・`destructive: true` の 1 件'

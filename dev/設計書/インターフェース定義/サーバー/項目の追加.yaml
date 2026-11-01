@@ -320,7 +320,8 @@ flows:
       - name: make_workspace
         description: タグ `通知` を持つ検討事項 D-1 を持つワークスペース
         notes: '足す検討事項はタグ `{name: 通知, main: true}`・`{name: 通知機能, main: false}`・`{name: 画面}` を持つ'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as add（MCP のツール）
@@ -330,6 +331,7 @@ flows:
         IF-->>WS: 全ての YAML を読む
         IF->>WS: decisions.yaml を書く
         IF-->>クライアント: JSON（id・file・body）
+      ```
     expected:
       - ツールのエラーにならない
       - 結果が `id`・`file`・`body` だけを持つ
@@ -344,7 +346,8 @@ flows:
       - name: make_workspace
         description: 作成を済ませたワークスペース
         notes: '足す検討事項はタグ `{name: API}`・`{name: ａｐｉ, main: true}` を持つ'
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as add（MCP のツール）
@@ -354,6 +357,7 @@ flows:
         IF-->>WS: 全ての YAML を読む
         IF->>IF: 同じ名前のタグが 2 件ある
         IF-->>クライアント: ツールのエラー
+      ```
     expected:
       - ツールのエラーになる
       - 'エラーの本文に `decisions.yaml: items[0].tags[1]: 同じタグが既にある` の行がある'
@@ -367,7 +371,8 @@ flows:
       - name: make_workspace
         description: '`tags: [通知]`（文字列のタグ）の検討事項 D-1 を持つワークスペース'
         notes: 足すメモはタグを持たない
-    flow: |
+    flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as add（MCP のツール）
@@ -377,6 +382,7 @@ flows:
         IF-->>WS: 全ての YAML を読む
         IF->>IF: decisions.yaml の D-1 のタグがスキーマに合わない
         IF-->>クライアント: ツールのエラー
+      ```
     expected:
       - ツールのエラーになる
       - 'エラーの本文に `decisions.yaml: items[0].tags[0]` で始まる行と、最後に `/mindstella:upgrade` を案内するヒントの行がある'
