@@ -466,7 +466,7 @@ functions:
       - name: test_save_edits
         case: 正常
         summary: キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする
-        condition: 未決定の D-1（案 A・B、タグ 画面）と、E-1（`answer`）・E-2（`tags` をまだ使われていないタグを含む `[画面, 記録の形]`）・E-3（案 C の追加）・E-4（採用する案を C）
+        condition: '未決定の D-1（案 A・B、タグ `[{name: 画面}]`）と、E-1（`answer`）・E-2（`tags` をまだ使われていないタグを含む `[{name: 画面}, {name: 記録の形}]`）・E-3（案 C の追加）・E-4（採用する案を C）'
         mock: '`now`'
         expected: '`set` が V-1、`changed` が `[D-1]`。D-1 の採用する案が C で `updated_by` が `user`、変更履歴が 1 回分だけ増えて `by` が `user`。まとまりの説明が「画面からの編集」で、`edits.yaml` が 0 件'
       - name: test_save_edits_when_add_remove_settings
