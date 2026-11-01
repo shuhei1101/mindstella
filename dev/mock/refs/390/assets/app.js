@@ -9810,7 +9810,7 @@ var MindmapPreview;
     function relationList(index, entries, open, incoming) {
         return MindmapPreview.h({
             tag: "ul",
-            attrs: { class: "d-list rel-list" },
+            attrs: { class: incoming ? "d-list rel-list is-incoming" : "d-list rel-list is-outgoing" },
             children: entries.map((entry) => MindmapPreview.h({
                 tag: "li",
                 children: [
