@@ -1,0 +1,32 @@
+$ pytest tests/integration/preview/test_decisions_screen.py tests/integration/preview/test_tasks_screen.py tests/integration/preview/test_docs_screen.py tests/integration/preview/test_records_screen.py tests/integration/preview/test_pending_panel_screen.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-serialize-add-field-submits
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 293 items
+
+tests/integration/preview/test_decisions_screen.py ..................... [  7%]
+......................................................................   [ 31%]
+tests/integration/preview/test_tasks_screen.py ......................... [ 39%]
+...............                                                          [ 44%]
+tests/integration/preview/test_docs_screen.py .......................... [ 53%]
+.......................                                                  [ 61%]
+tests/integration/preview/test_records_screen.py ....................... [ 69%]
+......                                                                   [ 71%]
+tests/integration/preview/test_pending_panel_screen.py ..............    [ 76%]
+tests/integration/preview/test_decisions_screen.py ..........            [ 79%]
+tests/integration/preview/test_tasks_screen.py ........                  [ 82%]
+tests/integration/preview/test_docs_screen.py ...........                [ 86%]
+tests/integration/preview/test_records_screen.py .......                 [ 88%]
+tests/integration/preview/test_decisions_screen.py ........              [ 91%]
+tests/integration/preview/test_tasks_screen.py ..                        [ 91%]
+tests/integration/preview/test_docs_screen.py ......                     [ 93%]
+tests/integration/preview/test_records_screen.py ......                  [ 95%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 96%]
+tests/integration/preview/test_tasks_screen.py .                         [ 96%]
+tests/integration/preview/test_docs_screen.py .                          [ 97%]
+tests/integration/preview/test_records_screen.py .....                   [ 98%]
+tests/integration/preview/test_decisions_screen.py ...                   [100%]
+
+======================= 293 passed in 443.64s (0:07:23) ========================

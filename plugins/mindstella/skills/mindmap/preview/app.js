@@ -462,6 +462,7 @@ var MindmapPreview;
             sentEdits: new Map(),
             editsReadSeq: 0,
             editsAppliedSeq: 0,
+            addSend: null,
         };
         /** 送信中の編集の値のキー（`adopt` は案の記号を持たず、項目ごとに 1 つ） */
         const sentKeyOf = ({ target, op, key }) => op === "adopt" ? `${target}:adopt` : `${target}:${op}:${key}`;
@@ -2183,8 +2184,6 @@ var MindmapPreview;
         };
         // ===== 編集と保存待ち（サーバーの配信だけ） =====
         const editsApi = MindmapPreview.editApi();
-        /** 追加する項目の入力（仮の ID を振られるまで、タイトルを書く前の入力を持つ） */
-        let addDraft = {};
         /** 直前の保存をサーバーが断った理由（保存待ちのパネルに出す）。次に保存するか、編集を取り消すまで残す */
         let rejected = null;
         /** 幅 900px 以下で保存待ちのパネルから項目を開いたとき、詳細パネルを閉じたらパネルを開き直すか */
@@ -2454,7 +2453,7 @@ var MindmapPreview;
             if (editState.adding !== null || editState.editing?.startsWith(MindmapPreview.NEW_ID_PREFIX) === true) {
                 editState.adding = null;
                 editState.editing = null;
-                addDraft = {};
+                editState.addSend = null;
             }
         };
         /** 追加の入力の最初の入力欄（タイトル）へフォーカスを移す */
@@ -2465,7 +2464,7 @@ var MindmapPreview;
             editState.workspaceOpen = false;
             editState.adding = kind;
             editState.editing = null;
-            addDraft = {};
+            editState.addSend = newAddSend({ kind, target: null, value: null });
             editState.optionDrafts.clear();
             if (route.id !== null) {
                 route = { ...route, id: null, full: false, filters: {}, heading: null };
@@ -2480,6 +2479,12 @@ var MindmapPreview;
             editState.workspaceOpen = false;
             editState.adding = null;
             editState.editing = target;
+            // 保存待ちのその `item-add` の値から送信の並びを作る
+            const entry = editState.edits.find((other) => other.op === "item-add" && other.target === target);
+            editState.addSend =
+                entry === undefined
+                    ? null
+                    : newAddSend({ kind: (entry.key ?? ""), target, value: { ...entry.value } });
             if (route.id !== null) {
                 route = { ...route, id: null, full: false, filters: {}, heading: null };
                 MindmapPreview.navigate({ route, push: false });
@@ -2491,7 +2496,7 @@ var MindmapPreview;
         const closeAdd = () => {
             editState.adding = null;
             editState.editing = null;
-            addDraft = {};
+            editState.addSend = null;
             redrawEdit();
             reopenPendingPanel();
         };
@@ -2530,12 +2535,29 @@ var MindmapPreview;
             else
                 value["options"] = options;
         };
-        /** 追加の入力でキーを書いたとき。タイトルを書くまでは溜めず、書いたら `item-add` を溜め（返った仮の ID を `editing` に入れる）、続くキーは同じ `item-add` の `value` を送り直す。案の操作は `value` の `options` を書き換えて送り直す */
-        const submitAddField = async ({ kind, input }) => {
-            const entry = editState.edits.find((other) => other.op === "item-add" && other.target === editState.editing);
-            const next = entry === undefined
-                ? { ...MindmapPreview.addDefaults({ kind, today: todayJst() }), ...addDraft }
-                : { ...entry.value };
+        /** 送信の並びの、最初の `item-add` が断られた・届かなかった回数（その前に積んだ入力は送らずに書く前の入力に残す） */
+        const firstAddFailures = new WeakMap();
+        /** 追加の入力を開いたときの送信の並び */
+        const newAddSend = ({ kind, target, value }) => ({
+            kind,
+            target,
+            value,
+            draft: {},
+            tail: Promise.resolve(),
+        });
+        /** 追加の入力でキーを書いたとき。送信の並びに積み、前の送信が終わってから順に送る */
+        const submitAddField = async ({ input }) => {
+            const send = editState.addSend;
+            if (send === null)
+                return;
+            const failuresAtQueue = firstAddFailures.get(send) ?? 0;
+            send.tail = send.tail.then(() => sendAddField({ send, input, failuresAtQueue }));
+            await send.tail;
+        };
+        /** 並びの 1 件を送る。タイトルを書くまでは溜めず、書いたら `item-add` を溜め（返った仮の ID を並びに持つ）、続くキーと案の操作は並びの最後に溜められた `value` に当てて同じ `item-add` を送り直す */
+        const sendAddField = async ({ send, input, failuresAtQueue, }) => {
+            const target = send.target;
+            const next = { ...(send.value ?? { ...MindmapPreview.addDefaults({ kind: send.kind, today: todayJst() }), ...send.draft }) };
             // 案の操作は案の並びに当て、それ以外はキーの値を書き換える
             if (input.op !== "set")
                 applyAddOption({ value: next, input });
@@ -2543,36 +2565,45 @@ var MindmapPreview;
                 delete next[input.key];
             else
                 next[input.key] = input.value;
-            if (entry === undefined) {
-                addDraft = next;
+            if (target === null) {
+                send.draft = next;
                 const title = next["title"];
-                // タイトルを書くまでは溜めない
+                // タイトルを書くまでは溜めない。待っていた最初の `item-add` が断られた・届かなかったときも送らずに残す
                 if (typeof title !== "string" || title.trim() === "")
                     return;
+                if ((firstAddFailures.get(send) ?? 0) > failuresAtQueue)
+                    return;
             }
-            await submitEdit({
-                payload: { ...(entry === undefined ? {} : { target: entry.target }), op: "item-add", key: kind, value: next },
-                error: { target: entry?.target ?? MindmapPreview.NEW_ID_PREFIX, key: errorKeyOf(input) },
-                after: (result) => {
-                    if (entry !== undefined) {
+            const result = await submitEdit({
+                payload: { ...(target === null ? {} : { target }), op: "item-add", key: send.kind, value: next },
+                error: { target: target ?? MindmapPreview.NEW_ID_PREFIX, key: errorKeyOf(input) },
+                after: (added) => {
+                    send.value = next;
+                    if (target !== null) {
                         if (input.op === "option-add")
-                            dropDraft(entry.target, input.key);
+                            dropDraft(target, input.key);
                         return;
                     }
-                    editState.editing = result.target;
+                    send.target = added.target;
+                    send.draft = {};
+                    // 並びの追加の入力を閉じた・別の追加を始めた後は、開いている入力を書き換えない
+                    if (editState.addSend !== send)
+                        return;
+                    editState.editing = added.target;
                     editState.adding = null;
-                    addDraft = {};
                     // 仮の ID が振られた: 振られる前の書きかけの案を仮の ID へ移す（書きかけは空にしない）
                     const drafts = editState.optionDrafts.get(MindmapPreview.NEW_ID_PREFIX);
                     editState.optionDrafts.delete(MindmapPreview.NEW_ID_PREFIX);
                     if (drafts !== undefined)
-                        editState.optionDrafts.set(result.target, drafts);
-                    draftsShownFor = result.target;
+                        editState.optionDrafts.set(added.target, drafts);
+                    draftsShownFor = added.target;
                     // 溜めた案と同じ記号の書きかけは外す
                     for (const option of next["options"] ?? [])
-                        dropDraft(result.target, option.key);
+                        dropDraft(added.target, option.key);
                 },
             });
+            if (result === null && target === null)
+                firstAddFailures.set(send, (firstAddFailures.get(send) ?? 0) + 1);
         };
         /** 追加の入力のパネルを描く（詳細パネルと同じ形と置き場所） */
         const renderAddPanel = () => {
@@ -2581,7 +2612,7 @@ var MindmapPreview;
                 return;
             const entry = editState.edits.find((other) => other.op === "item-add" && other.target === editState.editing);
             const item = entry === undefined
-                ? { id: MindmapPreview.NEW_ID_PREFIX, title: "", created: "", updated: "", ...MindmapPreview.addDefaults({ kind, today: todayJst() }), ...addDraft }
+                ? { id: MindmapPreview.NEW_ID_PREFIX, title: "", created: "", updated: "", ...MindmapPreview.addDefaults({ kind, today: todayJst() }), ...(editState.addSend?.draft ?? {}) }
                 : addedItem(entry);
             const record = item;
             const form = MindmapPreview.detailEditForm({
@@ -2598,7 +2629,7 @@ var MindmapPreview;
                 body: typeof record["body"] === "string" ? record["body"] : "",
                 optionDrafts: draftsOf(item.id),
                 on: {
-                    change: (input) => void submitAddField({ kind, input }),
+                    change: (input) => void submitAddField({ input }),
                     remove: () => undefined,
                     cancelRemove: () => undefined,
                     draft: (draft) => putDraft(item.id, draft),
