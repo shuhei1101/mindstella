@@ -253,37 +253,6 @@ def test_impact_badge(
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    ("values", "expected"),
-    [
-        pytest.param(["UI", "性能"], {"tags": 2}, id="two_tags"),
-        pytest.param(None, EMPTY_FRAGMENT, id="undefined"),
-    ],
-)
-def test_tag_list(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    values: list[str] | None,
-    expected: dict[str, Any],
-) -> None:
-    """タグを span.tag で並べる。未指定は空の断片（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    result = preview_page.evaluate(
-        """(values) => {
-            const node = MindmapPreview.tagList(values ?? undefined);
-            if (node.childNodes.length === 0) {
-                return {nodeType: node.nodeType, childCount: 0};
-            }
-            return {tags: node.querySelectorAll("span.tag").length};
-        }""",
-        values,
-    )
-    # 検証
-    assert result == expected
-
-
 def test_deliverable_badge(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """箱のアイコンと「納品物」を持つ印を返す（正常系）。"""
     # 準備

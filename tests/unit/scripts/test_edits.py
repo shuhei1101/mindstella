@@ -449,6 +449,71 @@ def test_add_edit_when_item_add_options_invalid(
     assert snapshot_tree(root) == before
 
 
+def test_add_edit_when_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """主題を持つタグの並びを溜める（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=[{"name": "画面"}]))
+    value = [{"name": "画面", "main": True}, {"name": "データ"}]
+    data = {"op": "set", "target": "D-1", "key": "tags", "value": value}
+    # 実行
+    body, created = edits.add_edit(root, data, now=_fixed_now)
+    # 検証
+    assert (body, created) == ({"id": "E-1", "target": "D-1", "count": 1}, True)
+    saved = _read_edits(root)
+    assert saved["items"][0]["before"] == [{"name": "画面"}]
+    assert saved["items"][0]["value"] == value
+
+
+@pytest.mark.parametrize(
+    ("data", "pattern"),
+    [
+        pytest.param(
+            {
+                "op": "set",
+                "target": "D-1",
+                "key": "tags",
+                "value": [{"name": "API"}, {"name": "ａｐｉ"}],
+            },
+            r"tags.*ａｐｉ",
+            id="duplicated",
+        ),
+        pytest.param(
+            {"op": "set", "target": "D-1", "key": "tags", "value": ["画面"]},
+            "tags",
+            id="string_tag",
+        ),
+        pytest.param(
+            {
+                "op": "item-add",
+                "key": "tasks",
+                "value": {
+                    "title": "t",
+                    "status": "未着手",
+                    "tags": [{"name": "画面"}, {"name": "画面"}],
+                },
+            },
+            r"tags.*画面",
+            id="item_add_duplicated",
+        ),
+    ],
+)
+def test_add_edit_when_tags_invalid(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    snapshot_tree: SnapshotTree,
+    data: dict[str, Any],
+    pattern: str,
+) -> None:
+    """重なるタグ・文字列のタグは溜めない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(EditInvalidError, match=pattern):
+        edits.add_edit(root, data, now=_fixed_now)
+    assert snapshot_tree(root) == before
+
+
 def test_delete_edit(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,

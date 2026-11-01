@@ -242,6 +242,28 @@ def test_edit_row_text_when_setting(
     assert "保存" in result["after"]
 
 
+def test_edit_row_text_when_tags(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, make_edit: MakeEdit
+) -> None:
+    """タグの編集は前後をタグの並びのまま返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    edit = make_edit(
+        "E-1",
+        key="tags",
+        value=[{"name": "画面", "main": True}, {"name": "データ"}],
+        before=[{"name": "画面"}],
+    )
+    # 実行
+    result = preview_page.evaluate("(edit) => MindmapPreview.editRowText(edit)", edit)
+    # 検証
+    assert result == {
+        "what": "タグ",
+        "before": [{"name": "画面"}],
+        "after": [{"name": "画面", "main": True}, {"name": "データ"}],
+    }
+
+
 def test_group_edits(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts, make_edit: MakeEdit
 ) -> None:
