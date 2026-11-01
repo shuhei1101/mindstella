@@ -3,7 +3,7 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに常駐の MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く（描画のライブラリは CDN から読む）
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く（描画のライブラリは CDN から読む）
       - name: make_workspace
         description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
