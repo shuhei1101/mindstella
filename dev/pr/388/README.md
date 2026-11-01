@@ -37,6 +37,6 @@ release PR [#384](https://github.com/shuhei1101/mindstella/pull/384) の E2E で
 - [x] モジュール構成設計
 - [x] ~~ドキュメント修正~~（対象なし: 更新ドキュメントが無い）
 - [x] ~~単体テスト作成~~（対象なし: 修正する `submitAddField` は `start` の中の処理で、結合テストで押さえる）
-- [ ] 実装
+- [x] 実装
 - [ ] 結合テスト作成
 - [x] ~~E2E テスト作成~~（対象なし: fail した `test_normal_when_options_written` がこの事象を押さえている）
