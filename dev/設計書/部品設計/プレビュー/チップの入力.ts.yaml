@@ -89,3 +89,4 @@ introduced:
   pr: 385
 notes:
   モック: '`dev/mock/components/main-tag/index.html` の「編集のタグの入力」「トグルのホバー・キーボードのフォーカス」「長いタグ・狭い幅」（採用は案 A: 二重丸）'
+test_file: tests/integration/storybook/test_chips_input_stories.py

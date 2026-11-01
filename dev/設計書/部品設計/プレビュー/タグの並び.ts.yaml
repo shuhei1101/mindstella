@@ -44,3 +44,4 @@ introduced:
   pr: 385
 notes:
   モック: '`dev/mock/components/main-tag/index.html`（採用は案 A: 二重丸）'
+test_file: tests/integration/storybook/test_tag_list_stories.py
