@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from .fixture_types import (
     LoadLibrary,
+    LoadMdmark,
     LoadPreviewScripts,
     LoadPreviewStyles,
     MakeData,
     MakeItem,
+    PutMdmarkCss,
 )
 
 # 変更履歴の 1 回分の日時
@@ -69,6 +72,7 @@ def test_detail_panel_when_diff_highlight(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -87,7 +91,7 @@ def test_detail_panel_when_diff_highlight(
     highlight = {"kind": "body", "start": 3, "end": 3, "text": "今の 3 行目の段落"}
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -163,6 +167,7 @@ def test_detail_panel_when_old_set_after_body_edit(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -175,7 +180,7 @@ def test_detail_panel_when_old_set_after_body_edit(
     highlight = {"kind": "body", "start": 5, "end": 5, "text": "V-1 の 3 行目の段落"}
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -223,6 +228,7 @@ def test_detail_panel_when_diff_editor_only(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -241,7 +247,7 @@ def test_detail_panel_when_diff_editor_only(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -299,6 +305,7 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -310,7 +317,7 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
@@ -351,6 +358,7 @@ def test_detail_panel_when_diff_renders_before_sequence(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -362,7 +370,7 @@ def test_detail_panel_when_diff_renders_before_sequence(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
     preview_page.evaluate(INSTALL_RENDER_COUNTER_SCRIPT)
@@ -484,6 +492,7 @@ def test_detail_panel_when_heading(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     heading: str,
@@ -500,7 +509,7 @@ def test_detail_panel_when_heading(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -574,7 +583,7 @@ async ({data}) => {
 def test_detail_panel_when_decision_order(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -595,8 +604,7 @@ def test_detail_panel_when_decision_order(
     )
     data = make_data(decisions=[decision], bodies={"D-1.md": "本文の段落\n"})
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(DECISION_ORDER_SCRIPT, {"data": data})
     # 検証
@@ -681,7 +689,7 @@ async ({data, id}) => {
 def test_detail_panel_when_recommended(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -693,8 +701,7 @@ def test_detail_panel_when_recommended(
     # 準備
     data = make_data(decisions=[make_item(item_id, status=status, options=options)])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(RECOMMENDED_SCRIPT, {"data": data, "id": item_id})
     # 検証
@@ -790,7 +797,7 @@ async ({data, id, keys}) => {
 def test_detail_panel_when_markdown_values(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -809,8 +816,7 @@ def test_detail_panel_when_markdown_values(
         }
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         MARKDOWN_VALUES_SCRIPT, {"data": data, "id": item_id, "keys": keys}
@@ -841,7 +847,7 @@ async ({data, id}) => {
 def test_detail_panel_when_option_list_values(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -864,8 +870,7 @@ def test_detail_panel_when_option_list_values(
         ]
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         OPTION_LIST_VALUES_SCRIPT, {"data": data, "id": "D-1"}
@@ -956,7 +961,7 @@ async ({data, reviews, removed, editing, editingIn}) => {
 def test_detail_panel_when_review_rows(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -964,8 +969,7 @@ def test_detail_panel_when_review_rows(
     # 準備
     data = make_data(decisions=[make_item("D-1", status="未決定")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         REVIEW_ROWS_SCRIPT,
@@ -1034,7 +1038,7 @@ READ_FULL_EDIT_SCRIPT = """() => ({
 def test_detail_panel_when_review_escape_in_full(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1042,8 +1046,7 @@ def test_detail_panel_when_review_escape_in_full(
     # 準備
     data = make_data(decisions=[make_item("D-1", status="未決定")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     has_field = preview_page.evaluate(
         OPEN_FULL_EDIT_SCRIPT,
         {"data": data, "reviews": [_review_item("C-1", "案 A にする")]},
@@ -1061,7 +1064,7 @@ def test_detail_panel_when_review_escape_in_full(
 def test_detail_panel_when_review_editing_in_list(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1069,8 +1072,7 @@ def test_detail_panel_when_review_editing_in_list(
     # 準備
     data = make_data(decisions=[make_item("D-1", status="未決定")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         REVIEW_ROWS_SCRIPT,
@@ -1178,6 +1180,7 @@ def test_detail_panel_when_withdrawn(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -1200,7 +1203,7 @@ def test_detail_panel_when_withdrawn(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -1285,6 +1288,7 @@ def test_detail_panel_when_diff_inline_words(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1296,7 +1300,7 @@ def test_detail_panel_when_diff_inline_words(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1334,6 +1338,7 @@ def test_detail_panel_when_diff_lines_unpaired(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1345,7 +1350,7 @@ def test_detail_panel_when_diff_lines_unpaired(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1371,6 +1376,7 @@ def test_detail_panel_when_diff_inline_words_keep_links(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1386,7 +1392,7 @@ def test_detail_panel_when_diff_inline_words_keep_links(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1413,6 +1419,7 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1424,7 +1431,7 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
@@ -1449,7 +1456,7 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
 REMOVED_BEFORE_TABLE_NOW = "| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n"
 REMOVED_BEFORE_TABLE_ENTRY = _body_entry(line=1, now=[], before=["消した段落", ""])
 
-# 消した塊の親と直後の兄弟、表を包む入れ物の子を調べる
+# 消した塊の親と直後の兄弟、表の枠の子、表を包む入れ物の子を調べる
 REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
     const index = MindmapPreview.buildIndex(data);
     const noop = () => {};
@@ -1468,8 +1475,9 @@ REMOVED_BEFORE_TABLE_SCRIPT = """async ({data, point}) => {
     const next = removed.nextElementSibling;
     return {
         parentIsWrap: removed.parentElement.classList.contains("md-table-wrap"),
-        nextIsWrap: next !== null && next.classList.contains("md-table-wrap"),
-        wrapChildren: next === null ? null : [...next.children].map((child) => child.tagName),
+        nextIsFrame: next !== null && next.classList.contains("md-table-frame"),
+        frameChildren: next === null ? null : [...next.children].map((child) => child.className),
+        wrapChildren: next?.firstElementChild == null ? null : [...next.firstElementChild.children].map((child) => child.tagName),
     };
 }"""
 
@@ -1478,10 +1486,11 @@ def test_detail_panel_when_diff_removed_before_table(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
-    """表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む（正常系）。"""
+    """表の直前で消した塊を、表を包む入れ物と枠の外（表の前）へ差し込む（正常系）。"""
     # 準備
     data = make_data(
         decisions=[make_item("D-1", body="D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
@@ -1489,12 +1498,17 @@ def test_detail_panel_when_diff_removed_before_table(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(REMOVED_BEFORE_TABLE_SCRIPT, {"data": data, "point": DIFF_POINT})
     # 検証
-    assert result == {"parentIsWrap": False, "nextIsWrap": True, "wrapChildren": ["TABLE"]}
+    assert result == {
+        "parentIsWrap": False,
+        "nextIsFrame": True,
+        "frameChildren": ["md-table-wrap"],
+        "wrapChildren": ["TABLE"],
+    }
 
 
 # 図のノードのラベルを変えた本文（5 行目にフローチャートのノードを持つ）の今と、変えた回
@@ -1517,6 +1531,7 @@ def test_detail_panel_when_diff_raw_inline_words(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1528,7 +1543,7 @@ def test_detail_panel_when_diff_raw_inline_words(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
     # 実行
@@ -1614,6 +1629,7 @@ def test_detail_panel_when_diff_key_words(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1634,7 +1650,7 @@ def test_detail_panel_when_diff_key_words(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -1663,10 +1679,13 @@ def test_detail_panel_when_diff_key_words(
     assert result["allWords"] == 6
 
 
-def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
-    """渡した名前の描画のライブラリを、ページに読む。"""
+def _load_libraries(load_library: LoadLibrary, load_mdmark: LoadMdmark, names: list[str]) -> None:
+    """渡した名前の描画のライブラリを、ページに読む（mdmark は `loadMdmark` で読む）。"""
     for name in names:
-        load_library(name)
+        if name == "mdmark":
+            load_mdmark()
+        else:
+            load_library(name)
 
 
 @pytest.mark.parametrize(
@@ -1677,7 +1696,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
             {"lead": None},
             "[data-key=\"lead\"]",
             [{"was": "前の値: （なし）", "now": "今の値: 要件は来週までに決める。"}],
-            ["marked", "DOMPurify", "jsdiff"],
+            ["marked", "mdmark", "jsdiff"],
             id="added",
         ),
         pytest.param(
@@ -1685,7 +1704,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
             {"lead": "要件は来週までに決める。"},
             "[data-key=\"lead\"]",
             [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 予算を承認する"}],
-            ["marked", "DOMPurify", "jsdiff"],
+            ["marked", "mdmark", "jsdiff"],
             id="unrelated",
         ),
         pytest.param(
@@ -1696,7 +1715,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
                 {"was": "前の値: 2026-10-01", "now": "今の値: 2026-10-08"},
                 {"was": "前の値: 要件、会議", "now": "今の値: 要件、運用"},
             ],
-            ["marked", "DOMPurify", "jsdiff"],
+            ["marked", "mdmark", "jsdiff"],
             id="list_and_date",
         ),
         pytest.param(
@@ -1704,7 +1723,7 @@ def _load_libraries(load_library: LoadLibrary, names: list[str]) -> None:
             {"lead": "要件は来週までに決める。"},
             "[data-key=\"lead\"]",
             [{"was": "前の値: 要件は来週までに決める。", "now": "今の値: 要件は今週までに決める。"}],
-            ["marked", "DOMPurify"],
+            ["marked", "mdmark"],
             id="jsdiff_missing",
         ),
     ],
@@ -1713,6 +1732,7 @@ def test_detail_panel_when_diff_key_words_skipped(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     overrides: dict[str, Any],
@@ -1727,7 +1747,7 @@ def test_detail_panel_when_diff_key_words_skipped(
     data = make_data(decisions=[make_item("D-1", history=history, seq=1, **overrides)])
     load_preview_scripts()
     # jsdiff を読めないケースは、jsdiff を差し込まない
-    _load_libraries(load_library, libraries)
+    _load_libraries(load_library, load_mdmark, libraries)
     # 実行
     result = preview_page.evaluate(
         OPEN_KEY_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "selectors": [selector]}
@@ -1772,6 +1792,7 @@ def test_detail_panel_when_diff_key_words_body_too_large(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1791,7 +1812,7 @@ def test_detail_panel_when_diff_key_words_body_too_large(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     preview_page.evaluate(INSTALL_LINE_DIFF_TIMEOUT_SCRIPT, LINE_DIFF_TIMEOUT_MS)
     # 実行
@@ -1866,7 +1887,7 @@ async ({data, id, markers}) => {
 def test_detail_panel_when_description_aliases(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -1894,8 +1915,7 @@ def test_detail_panel_when_description_aliases(
         bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         DESCRIPTION_ALIASES_SCRIPT, {"data": data, "id": item_id, "markers": markers}
@@ -1959,7 +1979,7 @@ def test_detail_panel_when_alias_tip(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -1968,8 +1988,7 @@ def test_detail_panel_when_alias_tip(
     data = _alias_tip_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(
         OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False}
     )
@@ -2018,7 +2037,7 @@ def test_detail_panel_when_alias_tip_escape_in_full(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2027,8 +2046,7 @@ def test_detail_panel_when_alias_tip_escape_in_full(
     data = _alias_tip_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(
         OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": True}
     )
@@ -2064,7 +2082,7 @@ def test_detail_panel_when_term_aliases_tip(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2080,8 +2098,7 @@ def test_detail_panel_when_term_aliases_tip(
     )
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(OPEN_ALIAS_TIP_SCRIPT, {"data": data, "full": False})
     links = preview_page.locator("a.tt-link")
     mark = preview_page.locator("a.term", has_text="移し替え")
@@ -2192,11 +2209,11 @@ HEAD_TITLE_LONG_TITLE = (
 # 見出しのボタン（`.panel-head .icon-btn`）の幅（`--control-h`）。長いタイトルでも縮まない
 HEAD_BUTTON_WIDTH = 32
 
-# 横のパネルの見出しの表示されているボタンの数（戻る・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
-HEAD_BUTTON_COUNT_PANEL = 4
+# 横のパネルの見出しの表示されているボタンの数（戻る・エクスポート・進む・全画面表示・閉じる。「一覧へ戻る」は幅の広い画面で隠れる）
+HEAD_BUTTON_COUNT_PANEL = 5
 
-# 全画面の見出しのボタンの数（戻る・進む・元の大きさに戻す）
-HEAD_BUTTON_COUNT_FULL = 3
+# 全画面の見出しのボタンの数（戻る・エクスポート・進む・元の大きさに戻す）
+HEAD_BUTTON_COUNT_FULL = 4
 
 # 本文の高さを、本文のスクロール領域の高さの 3 倍以上にする段落の数
 HEAD_TITLE_LONG_BODY_PARAGRAPHS = 200
@@ -2218,7 +2235,7 @@ def test_detail_panel_when_head_title_on_scroll(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2227,8 +2244,7 @@ def test_detail_panel_when_head_title_on_scroll(
     data = _head_title_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(HEAD_TITLE_ON_SCROLL_SCRIPT, {"data": data, "id": "A-1"})
     # 検証
@@ -2277,7 +2293,7 @@ def test_detail_panel_when_head_title_rerender(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2286,8 +2302,7 @@ def test_detail_panel_when_head_title_rerender(
     data = _head_title_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(HEAD_TITLE_RERENDER_SCRIPT, {"data": data})
     # 検証
@@ -2321,7 +2336,7 @@ def test_detail_panel_when_head_title_full(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2330,8 +2345,7 @@ def test_detail_panel_when_head_title_full(
     data = _head_title_data(make_data, make_item)
     load_preview_scripts()
     load_preview_styles()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(HEAD_TITLE_FULL_SCRIPT, {"data": data})
     # 検証
@@ -2406,6 +2420,7 @@ def test_detail_panel_when_change_set_link(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     point: dict[str, object] | None,
@@ -2418,7 +2433,7 @@ def test_detail_panel_when_change_set_link(
     )
     load_preview_scripts()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(CHANGE_SET_LINK_SCRIPT, {"data": data, "point": point})
@@ -2494,6 +2509,7 @@ def test_detail_panel_when_diff_minimap(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     with_diff: bool,
@@ -2509,7 +2525,7 @@ def test_detail_panel_when_diff_minimap(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -2639,6 +2655,7 @@ def test_detail_panel_when_body_heading_levels(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     body: str,
@@ -2656,7 +2673,7 @@ def test_detail_panel_when_body_heading_levels(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(OPEN_HEADING_LEVELS_PANEL_SCRIPT, {"data": data, "point": point})
@@ -2772,6 +2789,7 @@ def test_detail_panel_when_body_side_by_side(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     entries: list[dict[str, Any]],
@@ -2788,7 +2806,7 @@ def test_detail_panel_when_body_side_by_side(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -2831,6 +2849,7 @@ def test_detail_panel_when_body_layout_changed(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -2843,7 +2862,7 @@ def test_detail_panel_when_body_layout_changed(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -2934,7 +2953,7 @@ async ({data, id, key}) => {
 def test_detail_panel_when_value_heading_levels(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     item_id: str,
@@ -2954,8 +2973,7 @@ def test_detail_panel_when_value_heading_levels(
         }
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         VALUE_HEADING_LEVELS_SCRIPT, {"data": data, "id": item_id, "key": key}
@@ -3029,6 +3047,7 @@ def test_detail_panel_when_diff_key_newlines(
     load_preview_scripts: LoadPreviewScripts,
     load_preview_styles: LoadPreviewStyles,
     load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     before_lead: str,
@@ -3043,7 +3062,7 @@ def test_detail_panel_when_diff_key_newlines(
     load_preview_scripts()
     load_preview_styles()
     load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     load_library("jsdiff")
     # 実行
     result = preview_page.evaluate(
@@ -3059,3 +3078,734 @@ def test_detail_panel_when_diff_key_newlines(
     assert "".join(result["words"]["now"]) == words_text["now"]
     # 読み上げの文字は、語の面の外にある
     assert result["reading"] == READING_OUTSIDE_WORDS
+
+
+# 本文の見せ方の既定（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
+BODY_VIEW_DEFAULT = {"pin": True, "head": True, "stripes": False, "fold": True}
+
+# 見出し「比較」の下に表と段落 12 個を持ち、その後ろに見出し「料金」を持つ本文
+BODY_VIEW_BODY = (
+    "## 比較\n\n| 列 A | 列 B |\n| --- | --- |\n| D-1 | 今週 |\n\n"
+    + "\n\n".join(f"比較の段落 {number}" for number in range(1, 13))
+    + "\n\n### 料金\n\n料金の段落\n"
+)
+
+# 表の本体の行（5 行目）を書き換えた変えた回
+BODY_VIEW_ENTRY = _body_entry(line=5, now=["| D-1 | 今週 |"], before=["| D-1 | 来週 |"])
+
+# 本文のスクロール領域を 200px に抑えて詳細パネルを開き（畳んでから描き直す指定のときは、「比較」を畳んだパネルを外して開き直し）、
+# 本文の見せ方と、見出し「料金」の置かれ方を調べる
+OPEN_BODY_VIEW_PANEL_SCRIPT = """async ({data, bodyView, point, heading, foldFirst}) => {
+    // 単体テストでは雛形の CSS を読まないので、本文のスクロール領域だけ作る
+    const style = document.createElement("style");
+    style.textContent = ".panel-body { height: 200px; overflow: auto; }";
+    document.head.append(style);
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const open = async (slug) => {
+        const panel = MindmapPreview.detailPanel({
+            id: "A-1",
+            index,
+            full: false,
+            on: {
+                open: noop,
+                close: noop,
+                full: noop,
+                back: noop,
+                forward: noop,
+                diagram: noop,
+                heading: noop,
+                layout: noop,
+            },
+            comment: null,
+            heading: slug,
+            diff: point === null ? null : {...point, added: new Set(), changed: new Set(["A-1"])},
+            bodyLayout: "inline",
+            bodyView,
+        });
+        document.body.append(panel);
+        // 描き直しと見出しへのスクロールは、文書に入った後に置かれる
+        for (let frame = 0; frame < 3; frame += 1) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return panel;
+    };
+    let panel = await open(null);
+    if (foldFirst) {
+        panel.querySelector('[data-heading="比較"] button.md-fold').click();
+        panel.remove();
+        panel = await open(heading);
+    }
+    const table = panel.querySelector("table");
+    const target = panel.querySelector('[data-heading="料金"]');
+    const area = panel.querySelector(".panel-body").getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    return {
+        arrows: [...panel.querySelectorAll("button.md-fold")].map(
+            (button) => button.closest("[data-heading]")?.getAttribute("data-heading") ?? null,
+        ),
+        framed: table.closest(".md-table-frame") !== null,
+        headStick: table.classList.contains("md-head-stick"),
+        stripes: table.classList.contains("md-stripes"),
+        sectionOpen: target.closest(".md-section-body[hidden]") === null,
+        inView: rect.top >= area.top - 1 && rect.bottom <= area.bottom + 1,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("body_view", "with_diff", "fold_first", "expected"),
+    [
+        pytest.param(
+            BODY_VIEW_DEFAULT,
+            False,
+            False,
+            {"arrows": ["比較", "料金"], "framed": True, "headStick": True, "stripes": False},
+            id="default",
+        ),
+        pytest.param(
+            {**BODY_VIEW_DEFAULT, "stripes": True},
+            False,
+            False,
+            {"framed": True, "stripes": True},
+            id="stripes",
+        ),
+        pytest.param(
+            BODY_VIEW_DEFAULT,
+            True,
+            False,
+            {"arrows": [], "framed": True},
+            id="body_diff_has_no_fold",
+        ),
+        pytest.param(
+            BODY_VIEW_DEFAULT,
+            False,
+            True,
+            {"sectionOpen": True, "inView": True},
+            id="reveal_heading_after_fold",
+        ),
+    ],
+)
+def test_detail_panel_when_body_view(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    body_view: dict[str, bool],
+    with_diff: bool,
+    fold_first: bool,
+    expected: dict[str, Any],
+) -> None:
+    """本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く（正常系）。"""
+    # 準備
+    entries = [BODY_VIEW_ENTRY] if with_diff else []
+    data = make_data(
+        docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
+        bodies={"A-1.md": BODY_VIEW_BODY},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_mdmark()
+    load_library("jsdiff")
+    # 実行
+    result = preview_page.evaluate(
+        OPEN_BODY_VIEW_PANEL_SCRIPT,
+        {
+            "data": data,
+            "bodyView": body_view,
+            "point": DIFF_POINT if with_diff else None,
+            "heading": "料金",
+            "foldFirst": fold_first,
+        },
+    )
+    # 検証
+    assert {key: result[key] for key in expected} == expected
+
+
+@pytest.mark.parametrize(
+    ("viewport", "map_view", "expected"),
+    [
+        pytest.param(1280, False, 880, id="side_1280"),
+        pytest.param(1100, False, 700, id="side_1100"),
+        pytest.param(1099, False, 939, id="overlap_1099"),
+        pytest.param(1000, False, 840, id="overlap_1000"),
+        pytest.param(1000, True, 600, id="map_1000"),
+        pytest.param(901, True, 501, id="map_901"),
+    ],
+)
+def test_panel_width_max(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    viewport: int,
+    map_view: bool,
+    expected: int,
+) -> None:
+    """本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅で上限を決める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        "({viewport, mapView}) => MindmapPreview.panelWidthMax({viewport, mapView})",
+        {"viewport": viewport, "mapView": map_view},
+    )
+    # 検証
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("width", "expected"),
+    [
+        pytest.param(640, 640, id="inside"),
+        pytest.param(300, 480, id="below_min"),
+        pytest.param(1000, 880, id="above_max"),
+        pytest.param(700.6, 701, id="rounded"),
+    ],
+)
+def test_clamp_panel_width(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    width: float,
+    expected: int,
+) -> None:
+    """下限と上限の間に収める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        "({width, max}) => MindmapPreview.clampPanelWidth({width, max})",
+        {"width": width, "max": 880},
+    )
+    # 検証
+    assert result == expected
+
+
+# 幅の区切りを調べるときの表示の幅・高さと、狭めた表示の幅
+RESIZER_VIEWPORT = {"width": 1280, "height": 720}
+NARROW_VIEWPORT = {"width": 1000, "height": 720}
+
+# 区切りを押して左へ 100px 動かす位置（区切りは画面の右寄りに固定して置く）
+DRAG_Y = 200
+DRAG_FROM_X = 1010
+DRAG_TO_X = 910
+
+# 区切りを描いて文書に置き、変えた幅を知らせる値を window に並べる
+MOUNT_RESIZER_SCRIPT = """({stored}) => {
+    window.resizerCalls = [];
+    const resizer = MindmapPreview.panelResizer({
+        stored,
+        mapView: () => false,
+        onChange: (width) => window.resizerCalls.push(width),
+    });
+    // ドラッグで押せるように、画面の右寄りに大きさを持たせて置く
+    Object.assign(resizer.style, {
+        position: "fixed", top: "100px", left: "1000px", width: "24px", height: "300px",
+    });
+    document.body.append(resizer);
+}"""
+
+# 区切りの今の幅と、変えた幅を知らせた値を調べる
+READ_RESIZER_SCRIPT = """() => {
+    const resizer = document.querySelector('[role="separator"]');
+    const root = getComputedStyle(document.documentElement);
+    return {
+        width: parseFloat(root.getPropertyValue("--panel-w")),
+        min: Number(resizer.getAttribute("aria-valuemin")),
+        max: Number(resizer.getAttribute("aria-valuemax")),
+        now: Number(resizer.getAttribute("aria-valuenow")),
+        calls: window.resizerCalls,
+    };
+}"""
+
+# 区切りにフォーカスして、← → Home End を順に押した後の幅を調べる
+PRESS_KEYS_SCRIPT = """() => {
+    const resizer = document.querySelector('[role="separator"]');
+    resizer.focus();
+    const widths = [];
+    for (const key of ["ArrowLeft", "ArrowRight", "Home", "End"]) {
+        resizer.dispatchEvent(new KeyboardEvent("keydown", {key, bubbles: true}));
+        widths.push(Number(resizer.getAttribute("aria-valuenow")));
+    }
+    return {widths, calls: window.resizerCalls};
+}"""
+
+# requestAnimationFrame を、予約を並べるだけの関数に差し替える（次のフレームはテストが進める）
+HOLD_FRAMES_SCRIPT = """() => {
+    window.realRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    window.heldFrames = new Map();
+    let nextId = 1;
+    window.requestAnimationFrame = (callback) => {
+        const id = nextId++;
+        window.heldFrames.set(id, callback);
+        return id;
+    };
+    window.cancelAnimationFrame = (id) => window.heldFrames.delete(id);
+}"""
+
+# 並べた予約を全て呼び、次のフレームを進める
+RUN_FRAME_SCRIPT = """() => {
+    const callbacks = [...window.heldFrames.values()];
+    window.heldFrames.clear();
+    for (const callback of callbacks) callback(performance.now());
+}"""
+
+# ドラッグ中の区切りを文書から外し、stored 640 の区切りを同じ位置に新しく描く（記録の書き換えでの描き直し）。
+# 外した区切りは window に残す
+REMOUNT_RESIZER_SCRIPT = """() => {
+    window.removedResizer = document.querySelector('[role="separator"]');
+    window.removedResizer.remove();
+    const resizer = MindmapPreview.panelResizer({
+        stored: 640,
+        mapView: () => false,
+        onChange: (width) => window.resizerCalls.push(width),
+    });
+    Object.assign(resizer.style, {
+        position: "fixed", top: "100px", left: "1000px", width: "24px", height: "300px",
+    });
+    document.body.append(resizer);
+}"""
+
+# 本物のフレームを 1 つ待つ（区切りを外した後の lostpointercapture は、その前に届く）
+WAIT_REAL_FRAME_SCRIPT = "() => new Promise((resolve) => window.realRequestAnimationFrame(resolve))"
+
+
+@pytest.mark.parametrize(
+    ("stored", "opened", "dragged"),
+    [
+        pytest.param(None, 640, 740, id="default"),
+        pytest.param(768, 768, 868, id="stored"),
+        pytest.param(1000, 880, 880, id="stored_above_max"),
+    ],
+)
+def test_panel_resizer(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: int | None,
+    opened: int,
+    dragged: int,
+) -> None:
+    """残した幅を上限に収めて当て、ドラッグで幅を変えて知らせる（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": stored})
+    # 実行
+    before = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.mouse.move(DRAG_FROM_X, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(DRAG_TO_X, DRAG_Y)
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    dragging = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.mouse.up()
+    after = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert before == {"width": opened, "min": 480, "max": 880, "now": opened, "calls": []}
+    assert (dragging["width"], dragging["now"], dragging["calls"]) == (dragged, dragged, [])
+    assert (after["width"], after["now"], after["calls"]) == (dragged, dragged, [dragged])
+
+
+def test_panel_resizer_keys(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """矢印キーで刻み、Home・End で下限・上限にする（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    result = preview_page.evaluate(PRESS_KEYS_SCRIPT)
+    # 検証
+    assert result == {"widths": [656, 640, 480, 880], "calls": [656, 640, 480, 880]}
+
+
+def test_panel_resizer_when_window_resized(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """窓の幅が変わると残した幅を収め直し、広げ直すと残した幅に戻す（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 880})
+    resizer = preview_page.locator('[role="separator"]')
+    # 実行
+    preview_page.set_viewport_size(NARROW_VIEWPORT)
+    expect(resizer).to_have_attribute("aria-valuenow", "840")
+    narrowed = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    expect(resizer).to_have_attribute("aria-valuenow", "880")
+    widened = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert (narrowed["width"], narrowed["max"], narrowed["now"]) == (840, 840, 840)
+    assert widened["width"] == 880
+    assert (narrowed["calls"], widened["calls"]) == ([], [])
+
+
+def test_panel_resizer_when_moved_within_frame(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """1 フレームの間の動きをまとめて 1 回当て、離すと最後の位置の幅を当てる（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    preview_page.mouse.move(1010, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(990, DRAG_Y)
+    preview_page.mouse.move(970, DRAG_Y)
+    preview_page.mouse.move(950, DRAG_Y)
+    within_frame = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    next_frame = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.mouse.move(930, DRAG_Y)
+    preview_page.mouse.up()
+    released = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert (within_frame["width"], within_frame["calls"]) == (640, [])
+    assert (next_frame["width"], next_frame["now"], next_frame["calls"]) == (700, 700, [])
+    assert (released["width"], released["now"], released["calls"]) == (720, 720, [720])
+
+
+def test_panel_resizer_when_released_without_moving(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """幅を変えずに離すと知らせない（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    preview_page.mouse.move(1010, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.up()
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    result = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    # 検証
+    assert (result["width"], result["now"], result["calls"]) == (640, 640, [])
+
+
+def test_panel_resizer_when_removed_while_dragging(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """ドラッグ中に区切りが文書から外れると、最後の幅を知らせ、作り直した区切りはその幅から始める（正常系）。"""
+    # 準備
+    preview_page.set_viewport_size(RESIZER_VIEWPORT)
+    load_preview_scripts()
+    preview_page.evaluate(HOLD_FRAMES_SCRIPT)
+    preview_page.evaluate(MOUNT_RESIZER_SCRIPT, {"stored": 640})
+    # 実行
+    preview_page.mouse.move(1010, DRAG_Y)
+    preview_page.mouse.down()
+    preview_page.mouse.move(910, DRAG_Y)
+    preview_page.evaluate(REMOUNT_RESIZER_SCRIPT)
+    remounted = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    preview_page.evaluate(WAIT_REAL_FRAME_SCRIPT)
+    preview_page.evaluate(RUN_FRAME_SCRIPT)
+    result = preview_page.evaluate(READ_RESIZER_SCRIPT)
+    removed_now = preview_page.evaluate("() => window.removedResizer.getAttribute('aria-valuenow')")
+    # 検証
+    assert (remounted["width"], remounted["now"]) == (740, 740)
+    assert (result["width"], result["now"], result["calls"]) == (740, 740, [740])
+    assert removed_now == "640"
+
+
+# 埋め込んだ HTML の範囲を持つ資料 A-1 の本文（段落・範囲 1 つ・範囲の外の段落）
+EXPORT_BODY = (
+    "範囲の外の文\n\n"
+    "<!-- html -->\n```html\n<p>範囲の中の文</p>\n```\n<!-- /html -->\n\n"
+    "後ろの文\n"
+)
+
+# 資料 A-1 の詳細パネルを開き、エクスポートの入口が読む表示に出るかを調べる。
+# shared は配る書き出し（comment と edit が null）、editing は編集の表示
+OPEN_EXPORT_PANEL_SCRIPT = """async ({data, id, full, shared, editing}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const item = index.byId.get(id).item;
+    const comment = shared ? null : {
+        form: {
+            target: id,
+            on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
+        },
+        reviews: [],
+        edit: {
+            removed: [], editing: null, editingIn: "detail", editError: null, editBody: null,
+            on: {edit: noop, saveEdit: noop, cancelEdit: noop, remove: noop, restore: noop},
+        },
+    };
+    const edit = shared ? null : {
+        editing,
+        marks: {},
+        form: {
+            kind: "docs", item, settings: data.settings, marks: {}, removing: false,
+            removedOptions: [], blocked: {}, referrers: [], errors: {}, usedTags: [],
+            on: {change: noop, remove: noop, cancelRemove: noop},
+        },
+        onToggle: noop,
+    };
+    const panel = MindmapPreview.detailPanel({
+        id,
+        index,
+        full,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop},
+        comment,
+        highlight: null,
+        diff: null,
+        edit,
+    });
+    document.body.append(panel);
+    if (full) panel.showModal(); else panel.classList.add("open");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+}"""
+
+
+def _export_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
+    """本文が Markdown の資料 A-1・本文が HTML の資料 A-2・検討事項 D-1 を持つ埋め込みのデータを返す。"""
+    return make_data(
+        decisions=[make_item("D-1")],
+        docs=[make_item("A-1", title="エクスポートする資料"), make_item("A-2", body="A-2.html")],
+        bodies={"A-1.md": EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
+    )
+
+
+@pytest.mark.parametrize(
+    ("item_id", "shared", "editing", "expected"),
+    [
+        pytest.param("A-1", False, False, 1, id="markdown_doc"),
+        pytest.param("A-2", False, False, 0, id="html_doc"),
+        pytest.param("D-1", False, False, 0, id="decision"),
+        pytest.param("A-1", False, True, 0, id="editing"),
+        pytest.param("A-1", True, False, 1, id="shared_export"),
+    ],
+)
+def test_detail_panel_when_export_entry(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    item_id: str,
+    shared: bool,
+    editing: bool,
+    expected: int,
+) -> None:
+    """本文が Markdown の資料にだけエクスポートの入口を置く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    data = _export_data(make_data, make_item)
+    # 実行
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": item_id, "full": False, "shared": shared, "editing": editing},
+    )
+    entries = preview_page.get_by_role("button", name="エクスポート", exact=True)
+    # 検証
+    expect(entries).to_have_count(expected)
+    if expected == 1:
+        # 全画面表示のボタンより前（左）に置く
+        assert preview_page.evaluate(
+            """() => {
+                const entry = [...document.querySelectorAll("button")].find(
+                    (button) => button.getAttribute("aria-label") === "エクスポート",
+                );
+                const full = document.querySelector('button[aria-label="全画面表示"]');
+                return Boolean(entry.compareDocumentPosition(full) & Node.DOCUMENT_POSITION_FOLLOWING);
+            }"""
+        )
+
+
+def test_detail_panel_when_export_html(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    put_mdmark_css: PutMdmarkCss,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """HTML でエクスポートすると 1 枚の HTML を保存させ、メニューを閉じて入口へフォーカスを戻す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    put_mdmark_css()
+    data = _export_data(make_data, make_item)
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+    )
+    entry = preview_page.get_by_role("button", name="エクスポート", exact=True)
+    entry.click()
+    # 実行
+    with preview_page.expect_download() as download_info:
+        preview_page.get_by_role("button", name="HTML でエクスポート").click()
+    download = download_info.value
+    exported = Path(download.path()).read_text(encoding="utf-8")
+    # 検証
+    assert download.suggested_filename == "A-1.html"
+    assert 'id="doc-mdmark"' in exported
+    assert "エクスポートする資料" in exported
+    expect(preview_page.get_by_role("dialog", name="エクスポート")).to_be_hidden()
+    expect(entry).to_have_attribute("aria-expanded", "false")
+    expect(entry).to_be_focused()
+
+
+def test_detail_panel_when_export_markdown(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """Markdown でエクスポートすると警告を挙げ、埋め込んだ HTML を除いた本文を保存させる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    data = _export_data(make_data, make_item)
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+    )
+    downloads: list[Any] = []
+    preview_page.on("download", lambda download: downloads.append(download))
+    preview_page.get_by_role("button", name="エクスポート", exact=True).click()
+    # 実行
+    preview_page.get_by_role("button", name="Markdown でエクスポート").click()
+    warned = preview_page.get_by_role("button", name="エクスポート", exact=True).count()
+    downloads_after_warning = len(downloads)
+    preview_page.get_by_role("button", name="戻る", exact=True).click()
+    focused_after_back = preview_page.evaluate("() => document.activeElement?.textContent ?? ''")
+    preview_page.get_by_role("button", name="Markdown でエクスポート").click()
+    with preview_page.expect_download() as download_info:
+        preview_page.get_by_role("dialog").get_by_role("button", name="エクスポート", exact=True).click()
+    download = download_info.value
+    exported = Path(download.path()).read_text(encoding="utf-8")
+    # 検証
+    # 警告の間は保存されず、警告の「エクスポート」が押せる
+    assert downloads_after_warning == 0
+    assert warned >= 1
+    # 「戻る」でフォーカスが「Markdown でエクスポート」へ戻る
+    assert "Markdown でエクスポート" in focused_after_back
+    assert download.suggested_filename == "A-1.md"
+    assert "範囲の外の文" in exported
+    assert "範囲の中の文" not in exported
+    assert "<!-- html -->" not in exported
+
+
+def test_detail_panel_when_export_retry(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    put_mdmark_css: PutMdmarkCss,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """mdmark の中身を取れないときはエラーを出し、再試行でやり直す（異常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    # 最初の CSS の要求だけを失敗させ、2 回目からは配布物の中身を返す
+    put_mdmark_css(status=404)
+    data = _export_data(make_data, make_item)
+    preview_page.evaluate(
+        OPEN_EXPORT_PANEL_SCRIPT,
+        {"data": data, "id": "A-1", "full": False, "shared": False, "editing": False},
+    )
+    preview_page.get_by_role("button", name="エクスポート", exact=True).click()
+    preview_page.get_by_role("button", name="HTML でエクスポート").click()
+    alert = preview_page.get_by_role("alert")
+    expect(alert).to_be_visible()
+    # 実行
+    # 後に足した経路が先に当たるので、CSS の経路を足し直せば 2 回目から読める
+    put_mdmark_css()
+    with preview_page.expect_download() as download_info:
+        preview_page.get_by_role("button", name="再試行").click()
+    # 検証
+    assert download_info.value.suggested_filename == "A-1.html"
+    expect(preview_page.get_by_role("dialog", name="エクスポート")).to_be_hidden()
+
+
+# 範囲 2 つを持つ今の本文（2 つ目の範囲の 1 つ目の段落を書き換え、末尾に段落を足した後）
+EMBEDDED_DIFF_NOW = (
+    "範囲の外の文\n\n"
+    "<!-- html -->\n```html\n<p>一つ目の範囲の段落</p>\n```\n<!-- /html -->\n\n"
+    "<!-- html -->\n```html\n<p>書き換え後</p>\n<p>二つ目の範囲の段落</p>\n<p>足した段落</p>\n```\n<!-- /html -->\n"
+)
+
+# 2 つ目の範囲（11 行目から）の書き換え前と、足す前の段落の並び
+EMBEDDED_DIFF_ENTRY = _body_entry(
+    line=11,
+    now=["<p>書き換え後</p>", "<p>二つ目の範囲の段落</p>", "<p>足した段落</p>"],
+    before=["<p>書き換え前</p>", "<p>二つ目の範囲の段落</p>"],
+)
+
+# 差分つきで資料 A-1 の詳細パネルを開く
+OPEN_EMBEDDED_DIFF_PANEL_SCRIPT = """async ({data, point}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "A-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop, heading: noop},
+        comment: null,
+        highlight: null,
+        diff: {...point, added: new Set(), changed: new Set(["A-1"])},
+    });
+    document.body.append(panel);
+    panel.classList.add("open");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+}"""
+
+
+def test_detail_panel_when_embedded_html_diff(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """変わった埋め込んだ HTML の範囲だけを HTML の本文の差分に置き換える（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[make_item("A-1", body="A-1.md", history=[EMBEDDED_DIFF_ENTRY])],
+        bodies={"A-1.md": EMBEDDED_DIFF_NOW},
+    )
+    load_preview_scripts()
+    load_preview_styles()
+    load_library("marked")
+    load_mdmark()
+    load_library("jsdiff")
+    preview_page.evaluate(OPEN_EMBEDDED_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
+    panel = preview_page.locator("aside.panel")
+    # 実行
+    raw_pressed = panel.get_by_role("button", name="原文の差分").get_attribute("aria-pressed")
+    unchanged_range_count = panel.locator(".md > .mdmark-html:visible").count()
+    panel.get_by_role("button", name="描いた結果（変更後）").click()
+    after = panel.evaluate(
+        """(panel) => ({
+            changed: [...panel.querySelectorAll('[data-df="chg"]')].map((element) => element.textContent.trim()),
+            added: [...panel.querySelectorAll('[data-df="add"]')].map((element) => element.textContent.trim()),
+            lineMarksInRanges: panel.querySelectorAll(".mdmark-html ins.df-blk, .mdmark-html del.df-blk").length,
+        })"""
+    )
+    # 検証
+    # 1 つ目の範囲はそのまま描かれ、2 つ目は差分に置き換わって「原文の差分」を選んだ状態で開く
+    assert unchanged_range_count == 1
+    assert raw_pressed == "true"
+    expect(panel.get_by_text("埋め込んだ HTML")).to_be_visible()
+    # 変更後は、書き換えた段落に変わったマーカー、足した段落に足したマーカーが付く
+    assert after == {"changed": ["書き換え後"], "added": ["足した段落"], "lineMarksInRanges": 0}

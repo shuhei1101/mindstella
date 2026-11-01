@@ -74,7 +74,7 @@ states:
       - name: titles
         value: '{"T-6":"移し替えの手順の YAML を点検する","A-9":"#50 スキルの手順を直す","D-15":"手順の YAML で使える操作の種類"}'
   - name: ChangeSetLink
-    description: AI の書き込みの中のまとまりのリンク。「A-14 の手引きの書き直し」だけが色の付いた文字と下線のリンクで、中の A-14 はボタンにしない。外の A-14・D-12 は項目を開くボタン。`[古い手引き](#diff=V-99)` は書いた文字のまま
+    description: AI の書き込みの中のまとまりのリンク。「A-14 の手引きの書き直し」だけが色の付いた文字と下線のリンクで、中の A-14 はボタンにしない。外の A-14・D-12 は項目を開くボタン。`[古い手引き](#diff=V-99)` はリンクにせず「古い手引き」だけを出す
     args:
       - name: post
         value: '{"id":"TH-1-2","author":"ai","body":"A-14 の手引きを書き直しました。直したところは [A-14 の手引きの書き直し](#diff=V-6) で見られます。\n表の行の消し方は D-12 で決めたとおりにしています。\n前に相談した版は [古い手引き](#diff=V-99) にありましたが、保持する回数を超えて消えています。","created":"2026-10-12T01:24:00+00:00"}'
@@ -83,7 +83,7 @@ states:
       - name: change_sets
         value: '{"V-6":"A-14 の手引きを書き直す"}'
   - name: ChangeSetLinkNotLinked
-    description: 利用者の書き込みの中の、まとまりのリンクにしない書き方。`[since から](#diff=since)`・`[ハッシュの例](#tab=docs)` は書いた文字のままで、`[その他](#tab=docs&id=A-11&diff=V-5)` は `diff` だけを読んでリンクにする
+    description: 利用者の書き込みの中の、まとまりのリンクにしない書き方。`[since から](#diff=since)`・`[ハッシュの例](#tab=docs)` はリンクにせず文言だけを出し、`[その他](#tab=docs&id=A-11&diff=V-5)` は `diff` だけを読んでリンクにする
     args:
       - name: post
         value: '{"id":"TH-1-3","author":"user","body":"[since から](#diff=since) と [ハッシュの例](#tab=docs) は押せなくてよい。[その他](#tab=docs&id=A-11&diff=V-5) は押せる","created":"2026-10-12T01:31:00+00:00"}'
@@ -107,13 +107,25 @@ states:
         value: '{"A-11":"設定のパネルの画面の流れ（モック）"}'
       - name: change_sets
         value: '{"V-5":"A-11 の段落を直す"}'
+  - name: MarkdownPost
+    description: AI の書き込みの Markdown。見出しは `h2`、表は `table`、`python` のコードは言語の札とコピーのボタンを持つ `pre`、`mermaid` は図、`> [!NOTE]` は「補足」の囲みで描かれ、記法の文字は出ない。段落の中の D-1 は項目を開くボタン。生の HTML の `onerror` は取り除かれて動かない
+    args:
+      - name: post
+        value: '{"id":"TH-1-1","author":"ai","body":"## 比べた結果\n\nD-1 は案 A が合う。\n\n| 案 | 結果 |\n| --- | --- |\n| A | 成立 |\n\n```python\nprint(\"ok\")\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n> [!NOTE]\n> 案 B は試していない。\n\n<img src=\"x\" onerror=\"window.injected = true\">","created":"2026-10-12T01:24:00+00:00"}'
+      - name: titles
+        value: '{"D-1":"描画のライブラリ"}'
+  - name: PendingMarkdown
+    description: レビュー中の返信の Markdown。破線の枠の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない
+    args:
+      - name: pending
+        value: '{"id":"C-45","thread":"TH-1","target":null,"body":"**起票してよい**","created":"2026-10-12T05:30:00+00:00"}'
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形で出す。
 status: implemented
 args:
   - name: post
     type: オブジェクト
     default: なし（`event` か `pending` を渡す）
-    description: 書き込み（『スレッドの読み取り』の `threads[].posts[]` の 1 件）。`post`・`event`・`pending` のどれか 1 つを渡す。利用者は右に寄せ、AI は左に寄せて面の色を変える。頭に書き手（「あなた」「AI」）と日時（JST）を出す
+    description: 書き込み（『スレッドの読み取り』の `threads[].posts[]` の 1 件）。`post`・`event`・`pending` のどれか 1 つを渡す。利用者は右に寄せ、AI は左に寄せて面の色を変える。頭に書き手（「あなた」「AI」）と日時（JST）を出す。本文は詳細の文字列の値と同じく、段落の中の 1 つの改行も改行として mdmark で Markdown として描き、『Markdownの本文』を `tables`・`fold` を false にして当てる。表は書き込みの幅を超えると書き込みの中だけで横に送れる
     status: implemented
   - name: event
     type: オブジェクト
@@ -123,7 +135,7 @@ args:
   - name: pending
     type: オブジェクト
     default: なし（`post` か `event` を渡す）
-    description: レビュー中の書き込み（『レビュー中のコメントの読み取り』の `items[]` の 1 件。スレッドへの返信か、まだ送っていない新しいスレッドの最初の書き込み）。利用者の書き込みの形に破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く
+    description: レビュー中の書き込み（『レビュー中のコメントの読み取り』の `items[]` の 1 件。スレッドへの返信か、まだ送っていない新しいスレッドの最初の書き込み）。本文を `post` と同じく Markdown として描き、利用者の書き込みの形に破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く
     status: implemented
   - name: titles
     type: オブジェクト
@@ -153,7 +165,7 @@ args:
     type: オブジェクト
     default: '{}'
     enabled_when: '`post` か `pending` を渡したとき'
-    description: 記録にある書き換えのまとまりの ID からその説明への対応。本文の中の `[文言](#...)` のうち、`#` の後ろを `URLSearchParams` で読んだ `diff` の値が対応にあるものを、`文言` だけを出すまとまりのリンクにする（詳細の本文のまとまりのリンクと同じく、色の付いた文字と下線）。`文言` の中の項目の ID はボタンにしない。対応に無い値・`since`・`pending`・空の値、`diff` を持たないもの、`#` で始まらないものは書いた文字のまま出す
+    description: 記録にある書き換えのまとまりの ID からその説明への対応。本文の中の `[文言](#...)` のうち、`#` の後ろを `URLSearchParams` で読んだ `diff` の値が対応にあるものを、`文言` だけを出すまとまりのリンクにする（詳細の本文のまとまりのリンクと同じく、色の付いた文字と下線）。`文言` の中の項目の ID はボタンにしない。対応に無い値・`since`・`pending`・空の値を指すものと `diff` を持たないものは、リンクにせず `文言` だけを出す。`#` で始まらないリンクは詳細の本文と同じく描く
     status: implemented
 events:
   - name: 項目を開く
@@ -165,7 +177,7 @@ events:
     value: '`pending.id`'
     description: 使う側が `editing` を true にし、入力欄へフォーカスを移す
   - name: 修正する
-    when: 書き換えの「修正」を押したとき
+    when: 書き換えの「修正」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき（変換の確定の Enter を除く）
     value: '`pending.id`・入力欄の中身'
     description: 使う側が空白だけなら「コメントを入れてから直してください。」を `edit_error` に渡し、そうでなければ `PATCH /api/comments/{id}` へ送る
   - name: 修正をやめる
@@ -185,6 +197,10 @@ accessibility:
   - 日時は `time` 要素で `datetime` に元の日時を持つ
   - 本文の中の項目の ID のリンクはボタンにし、読み上げの名前を ID、`title` をその項目のタイトルにする
   - 「修正」「削除」は読み上げの名前を「{スレッドの ID} への返信を修正」「{スレッドの ID} への返信を削除」にする。新しいスレッドの最初の書き込みは「{向けた項目の ID} へのコメントを修正」「{向けた項目の ID} へのコメントを削除」（項目を指さないものは「項目を指さないコメントを修正」「項目を指さないコメントを削除」）。`title` は「修正」「削除」
+  - 書き換えの入力欄は `aria-keyshortcuts` に Ctrl+Enter を持つ。書き換えの「修正」の `title` は「修正（Ctrl+Enter）」
   - 書き換えを保てなかった理由は `role="alert"` で読み上げ、入力欄の `aria-describedby` から指す
   - 本文の中のまとまりのリンクは `href` を `#diff={まとまりの ID}` にした `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
 test_file: tests/integration/storybook/test_thread_post_stories.py
+uses:
+  - component: dev/設計書/部品設計/プレビュー/Markdownの本文.ts#
+    how: mdmark で描いた書き込みの本文に `tables`・`fold` を false にして当てる

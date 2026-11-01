@@ -159,31 +159,6 @@ flows:
       - 'エラーの本文が `エラー: 1 番目の操作（add）:` で始まり、`$2` を含む'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_argument_invalid
-  - name: 異常系（語彙に無いタグ・UnknownTagError）
-    summary: 語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: タグの語彙 `通知` を持つワークスペース
-        notes: 1 番目の操作はタグ `通知` の検討事項を足し、2 番目の操作はタグ `通知機能` の検討事項を足す
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as batch（MCP のツール）
-        participant WS as ワークスペース
-
-        クライアント->>IF: batch workspace（1 番目は add・2 番目はタグ 通知機能 の add）
-        IF-->>WS: タグの語彙を読む
-        IF->>IF: 語彙に無いタグ
-        IF-->>クライアント: ツールのエラー
-      ```
-    expected:
-      - ツールのエラーになる
-      - エラーの本文に 2 番目の操作であることと、`通知機能` と候補の `通知` がある
-      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ（1 番目の操作も当てない）
-    test: test_error_when_unknown_tag
 lead: 項目の追加・更新・取得の操作を並べて受け、並べた順に 1 回の呼び出しで当てる。全てを当ててから 1 回だけ検証して書き、1 つでも失敗したらどのファイルも書き換えない。
 idempotent: false
 side_effects: 追加・更新の操作が触る種類の YAML・`docs/` の本文・`changes.yaml` を、『項目の追加』『項目の更新』と同じ中身（`updated_by` は `ai`）で書き換える。全ての一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える。取得だけの呼び出しは何も書かない
@@ -269,9 +244,6 @@ exceptions:
   - name: 引数の誤り
     condition: '`operations` が空、操作に要るキーが無いか要らないキーがある、または `$番号` がその操作より前の `add` を指していない'
     notes: ツールのエラー。エラーの本文に何番目の操作か。何も書き込まない
-  - name: UnknownTagError
-    condition: いずれかの操作の `tags` に語彙に無いタグがある
-    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {番号} 番目の操作（{op}）: {内容}` の行を出す（ワークスペースが無い・書き込めないときは番号を付けず `エラー: {内容}`）。番号は 1 始まり。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
   - item: 結果の形
@@ -286,4 +258,6 @@ constraints:
     constraint: 制限なし
   - item: 部分成功
     constraint: 起こさない。どれかの操作が失敗するか、置き換えに失敗したら、置き換えたものを前の中身に戻して（前に本文が無ければ消して）からツールのエラーで終わる
+  - item: タグ
+    constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）
 test_file: tests/integration/server/test_batch.py

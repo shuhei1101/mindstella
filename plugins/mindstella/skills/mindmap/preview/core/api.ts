@@ -11,6 +11,8 @@ namespace MindmapPreview {
     opened: "api/opened",
     configDisplay: "api/config/display",
     threads: "api/threads",
+    edits: "api/edits",
+    editsSave: "api/edits/save",
   } as const;
 
   /** 記録の取得の結果。読めなかったときは、届かなかったか、サーバーが 422 を返したかを分ける */
@@ -21,7 +23,41 @@ namespace MindmapPreview {
   /** コメント・書きかけの API を呼んだ結果。届かなかったとき `status`・`detail` は null */
   export type ApiResult<T> =
     | { ok: true; data: T | null }
-    | { ok: false; status: number | null; detail: string | null; stale: { id: string; reason: string }[] };
+    | {
+        ok: false;
+        status: number | null;
+        detail: string | null;
+        stale: { id: string; reason: string }[];
+        /** 409 のときの書き込めない編集（まとめて保存だけが持つ。それ以外はキーを持たない） */
+        blocked?: BlockedEdit[];
+      };
+
+  /** 『保存待ちの編集の読み取り』の `items[]` の 1 件 */
+  export type PendingEdit = {
+    /** `E-{連番}` */
+    id: string;
+    /** 項目の ID・追加する項目の仮の ID（`new-{連番}`）・`settings` */
+    target: string;
+    op: "set" | "option-add" | "option-edit" | "option-remove" | "adopt" | "item-add" | "item-remove" | "setting";
+    /** 項目のキー・案の記号・種類・設定のキー */
+    key: string | null;
+    /** 編集した後の値 */
+    value: unknown;
+    /** 溜めたときの元の値 */
+    before: unknown;
+    /** 最初に溜めた日時 */
+    created: string;
+  };
+
+  /** まとめて保存の 409 の `blocked[]` の 1 件 */
+  export type BlockedEdit = {
+    id: string;
+    reason: "changed" | "missing" | "referenced" | "invalid";
+    /** 日本語の理由 */
+    detail: string;
+    /** `referenced` のとき、消す項目を指している項目の ID */
+    refs: string[];
+  };
 
   /** コメント・書きかけが持つ箇所（本文の行の範囲か、項目の値のキーと、選んだ文） */
   export type Location = {
@@ -171,11 +207,17 @@ namespace MindmapPreview {
     }
     // 断られた: 理由が読めなければ、ステータスの文言を使う
     let stale: { id: string; reason: string }[] = [];
+    let blocked: BlockedEdit[] = [];
     let detail: string | null = null;
     try {
-      const problem = (await response.json()) as { detail?: unknown; stale?: { id: string; reason: string }[] };
+      const problem = (await response.json()) as {
+        detail?: unknown;
+        stale?: { id: string; reason: string }[];
+        blocked?: BlockedEdit[];
+      };
       detail = typeof problem.detail === "string" ? problem.detail : null;
       stale = Array.isArray(problem.stale) ? problem.stale : [];
+      blocked = Array.isArray(problem.blocked) ? problem.blocked : [];
     } catch {
       // 本文が JSON でない
     }
@@ -184,6 +226,7 @@ namespace MindmapPreview {
       status: response.status,
       detail: detail ?? (response.statusText || String(response.status)),
       stale,
+      ...(blocked.length > 0 ? { blocked } : {}),
     };
   }
 
@@ -214,6 +257,30 @@ namespace MindmapPreview {
           { ids },
           fetchFn,
         ),
+    };
+  }
+
+  /** 保存待ちの編集の読み取り・追加・取り消し・まとめて保存を束ねて返す */
+  export function editApi(fetchFn: FetchFn = window.fetch.bind(window)) {
+    return {
+      read: () => callApi<{ items: PendingEdit[]; count: number }>("GET", API_PATHS.edits, null, fetchFn),
+      add: (input: object) => callApi<{ id: string | null; target: string; count: number }>("POST", API_PATHS.edits, input, fetchFn),
+      remove: (id: string) =>
+        callApi<{ removed: string[]; count: number }>(
+          "DELETE",
+          `${API_PATHS.edits}/${encodeURIComponent(id)}`,
+          null,
+          fetchFn,
+        ),
+      save: () =>
+        callApi<{
+          set: string | null;
+          at: string;
+          added: { temp: string; id: string }[];
+          changed: string[];
+          removed: string[];
+          settings: string[];
+        }>("POST", API_PATHS.editsSave, null, fetchFn),
     };
   }
 

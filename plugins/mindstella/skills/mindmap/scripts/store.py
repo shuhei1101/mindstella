@@ -74,6 +74,12 @@ LOCK_FILE = ".mindstella.lock"
 # 書き換えのまとまりを持つファイルの名前（`records_root` の下）
 CHANGES_FILE = "changes.yaml"
 
+# スレッドを持つファイルの名前（`records_root` の下。無ければスレッド 0 件）
+THREADS_FILE = "threads.yaml"
+
+# 保存待ちの編集を持つファイルの名前（`records_root` の下。無ければ 0 件）
+EDITS_FILE = "edits.yaml"
+
 # 案（`options`）を持たなくてよい検討事項の状態
 OPTIONS_OPTIONAL_STATUSES = frozenset({"未整理", "対象外", "取り下げ"})
 
@@ -92,7 +98,6 @@ class Problem:
         "missing_body",
         "orphan_body",
         "unknown_phase",
-        "unknown_tag",
         "stale_history",
         "decision_state",
     ]
@@ -166,6 +171,12 @@ class BatchChange:
     changes: dict[str, Any] | None = None
     # 書き換えた後に消す `docs/` の本文のファイル名
     removed_bodies: list[str] = field(default_factory=list)
+    # 一緒に書く `config.yaml` の新しい中身。変えないときは None（まとめて保存が使う）
+    settings: dict[str, Any] | None = None
+    # 一緒に書く `threads.yaml` の `items`。変えないときは None（タグを付け替えたとき）
+    threads: list[dict[str, Any]] | None = None
+    # 最後に書く `edits.yaml` の新しい中身。変えないときは None（まとめて保存が編集を空にする）
+    edits: dict[str, Any] | None = None
 
 
 def load_workspace(root: Path) -> Workspace:
@@ -427,6 +438,22 @@ def load_display_validator() -> Draft202012Validator:
     return Draft202012Validator(schema["properties"]["display"], registry=_load_registry())
 
 
+def load_key_validator(kind: Kind, key: str) -> Draft202012Validator | None:
+    """その種類の項目のキー 1 つの値を検証する検証器を作る（そのキーを持たない種類なら None）。"""
+    schema = json.loads((SCHEMA_DIR / KINDS[kind].schema).read_text(encoding="utf-8"))
+    item_schema = schema["$defs"]["item"]
+    key_schema = item_schema["properties"].get(key)
+    if key_schema is None:
+        return None
+    return Draft202012Validator(key_schema, registry=_load_registry())
+
+
+def kind_required_keys(kind: Kind) -> frozenset[str]:
+    """その種類の項目が必ず持つキー（消せないキー）を返す。"""
+    schema = json.loads((SCHEMA_DIR / KINDS[kind].schema).read_text(encoding="utf-8"))
+    return frozenset(schema["$defs"]["item"]["required"])
+
+
 def load_validators() -> dict[str, Draft202012Validator]:
     """共通のスキーマを Registry に登録し、設定と 7 種類の検証器を作る。"""
     registry = _load_registry()
@@ -485,19 +512,20 @@ def build_mismatch_error(
 def is_legacy_problem(
     problem: Problem, workspace: Workspace, *, written_ids: frozenset[str] = frozenset()
 ) -> bool:
-    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す。"""
+    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す。"""
     # 案と状態の合わない検討事項は、書き込む項目のものでなければ前の版の形式から来ている
     if problem.kind == "decision_state":
         return problem.id not in written_ids
     # スキーマ違反以外（参照切れなど）は前の版の形式のせいではない
     if problem.kind != "schema":
         return False
-    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たない
+    # 設定: 題名（summary）が無いか、field を持ち playbooks を持たないか、タグの語彙（tags）を持つ
     if problem.file == SETTINGS_FILE:
         raw_settings = workspace.raw.get(SETTINGS_FILE)
         return isinstance(raw_settings, dict) and (
             "summary" not in raw_settings
             or ("field" in raw_settings and "playbooks" not in raw_settings)
+            or "tags" in raw_settings
         )
     # 資料: done を持ち、status を持たない
     if problem.file == KINDS["doc"].file and problem.id is not None:
@@ -591,6 +619,9 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
         **workspace.raw,
         **{KINDS[kind].file: {"items": change.items[kind]} for kind in kinds},
     }
+    # 設定も一緒に書くときは、新しい設定で検証する
+    if change.settings is not None:
+        changed_raw[SETTINGS_FILE] = change.settings
     changed = replace(workspace, raw=changed_raw)
     problems = validate_workspace(changed)
     if problems:
@@ -608,8 +639,15 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
     targets.extend(
         (records / KINDS[kind].file, dump_yaml({"items": change.items[kind]})) for kind in kinds
     )
+    # 設定 → スレッド → まとまり → 保存待ちの編集の順に、渡したものだけを置き換える
+    if change.settings is not None:
+        targets.append((records / SETTINGS_FILE, dump_yaml(change.settings)))
+    if change.threads is not None:
+        targets.append((records / THREADS_FILE, dump_yaml({"items": change.threads})))
     if change.changes is not None:
         targets.append((records / CHANGES_FILE, dump_yaml(change.changes)))
+    if change.edits is not None:
+        targets.append((records / EDITS_FILE, dump_yaml(change.edits)))
     # 置き換える前の中身を控える（無ければ None）
     previous = {path: path.read_bytes() if path.is_file() else None for path, _ in targets}
     # 消す本文の中身も控える（無ければ消さずに飛ばす）

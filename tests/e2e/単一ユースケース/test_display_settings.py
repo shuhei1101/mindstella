@@ -9,6 +9,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from body_view_helpers import (
+    BODY_HASH,
+    SMALL_TABLE_BODY,
+    TABLE_WRAP,
+    fold_button,
+    row_colors,
+    wait_table_rendered,
+)
 from display_settings_helpers import (
     DEFAULT_KINDS,
     KINDS_WITHOUT_TERMS,
@@ -413,5 +421,90 @@ def test_normal_when_diff_minimap_hidden(
     assert page.locator(MINIMAP_MARKS).count() > 0
     assert prefs_reset is not None
     assert prefs_reset["minimap"] is None
+    # config.yaml の中身が、開く前と同じである
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+
+
+# 表示の設定の、詳細に表示するものの名前
+PIN_COLUMNS_LABEL = "表の列の固定"
+PIN_HEAD_LABEL = "表の見出しの固定"
+STRIPES_LABEL = "表のしま模様"
+FOLD_LABEL = "セクションの折りたたみ"
+
+# 上書きが無いときに、変えている項目の場所に出る文
+NO_OVERRIDES_TEXT = "ワークスペースの既定のまま表示しています。"
+
+
+def _body_view_checkbox(page: Page, label: str) -> Locator:
+    """表示の設定のパネルの区画「詳細に表示するもの」にある、本文の見せ方のチェックボックスを返す。"""
+    return page.locator(f"{SETTINGS_PANEL} fieldset", has_text=DETAIL_SECTION).get_by_role(
+        "checkbox", name=label
+    )
+
+
+def test_normal_when_body_view_changed(
+    serve_workspace: ServeWorkspace,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """表示の設定で表のしま模様をオン・セクションの折りたたみをオフにすると詳細パネルの本文に効いて読み込み直しても保たれ、既定に戻すと元の見せ方に戻る。`config.yaml` は変わらない（正常系）。"""
+    # 準備（4 列・6 行の表を持つ資料 A-4 の詳細パネルを開く）
+    url, root = serve_workspace(make_item("A-4"), bodies={"A-4.md": SMALL_TABLE_BODY})
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    open_preview(url, BODY_HASH)
+    wait_table_rendered(page)
+    # 実行（トップバーの表示の設定を押す）
+    open_settings(page)
+    # 検証（列の固定・見出しの固定・セクションの折りたたみがオン、しま模様がオフで、この端末で変えている項目が空）
+    assert _body_view_checkbox(page, PIN_COLUMNS_LABEL).is_checked() is True
+    assert _body_view_checkbox(page, PIN_HEAD_LABEL).is_checked() is True
+    assert _body_view_checkbox(page, FOLD_LABEL).is_checked() is True
+    assert _body_view_checkbox(page, STRIPES_LABEL).is_checked() is False
+    assert NO_OVERRIDES_TEXT in overrides_text(page)
+    # 実行（しま模様をオンにし、セクションの折りたたみをオフにする）
+    _body_view_checkbox(page, STRIPES_LABEL).check()
+    _body_view_checkbox(page, FOLD_LABEL).uncheck()
+    fold_button(page, "比較").wait_for(state="detached", timeout=RENDER_TIMEOUT_MS)
+    colors_changed = row_colors(page)
+    overrides_changed = overrides_text(page)
+    prefs_changed = read_prefs(page)
+    # 検証（行が 1 行おきに塗り分けられ、見出し「比較」に畳むボタンが無く、表が見えている。上書きが端末の保存領域に残る）
+    assert colors_changed[0] == colors_changed[2] == colors_changed[4]
+    assert colors_changed[1] == colors_changed[3] == colors_changed[5]
+    assert colors_changed[0] != colors_changed[1]
+    assert fold_button(page, "比較").count() == 0
+    assert page.locator(TABLE_WRAP).is_visible() is True
+    assert STRIPES_LABEL in overrides_changed
+    assert FOLD_LABEL in overrides_changed
+    assert prefs_changed is not None
+    assert prefs_changed["tableStripes"] is True
+    assert prefs_changed["sectionFold"] is False
+    # 実行（画面を読み込み直す）
+    page.reload()
+    wait_table_rendered(page)
+    colors_reloaded = row_colors(page)
+    prefs_reloaded = read_prefs(page)
+    # 検証（読み込み直した後も、行を塗り分け、畳むボタンが無く、表が見えている）
+    assert colors_reloaded[0] == colors_reloaded[2] == colors_reloaded[4]
+    assert colors_reloaded[1] == colors_reloaded[3] == colors_reloaded[5]
+    assert colors_reloaded[0] != colors_reloaded[1]
+    assert fold_button(page, "比較").count() == 0
+    assert page.locator(TABLE_WRAP).is_visible() is True
+    assert prefs_reloaded is not None
+    assert prefs_reloaded["tableStripes"] is True
+    assert prefs_reloaded["sectionFold"] is False
+    # 実行（表示の設定で既定に戻す）
+    open_settings(page)
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    fold_button(page, "比較").wait_for(state="attached", timeout=RENDER_TIMEOUT_MS)
+    colors_reset = row_colors(page)
+    prefs_reset = read_prefs(page)
+    # 検証（行を塗り分けず、見出し「比較」が畳むボタンになり、本文の見せ方の上書きが端末の保存領域に無い）
+    assert len(set(colors_reset)) == 1
+    assert fold_button(page, "比較").count() == 1
+    assert prefs_reset is not None
+    assert prefs_reset["tableStripes"] is None
+    assert prefs_reset["sectionFold"] is None
     # config.yaml の中身が、開く前と同じである
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before

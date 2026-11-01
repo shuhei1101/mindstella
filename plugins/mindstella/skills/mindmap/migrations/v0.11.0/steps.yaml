@@ -1,0 +1,4 @@
+steps:
+  - op: call
+    script: remove_tag_vocabulary
+    destructive: true

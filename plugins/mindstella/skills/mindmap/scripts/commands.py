@@ -9,7 +9,7 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from builder import export_preview, validate_export_out
 from checker import check_workspace, find_referrers
@@ -50,13 +50,13 @@ from query import (
     MAX_LIMIT,
     SearchFilter,
     list_attrs,
+    list_stray_tags,
     list_tags,
     page_results,
     search_items,
     show_item,
 )
 from readme import README_FILE, write_readme
-from serve import PreviewRegistry
 from settings_update import update_settings
 from store import (
     CHANGES_FILE,
@@ -85,6 +85,7 @@ from store import (
 from threads import (
     create_thread,
     list_threads,
+    load_threads,
     mark_read as mark_thread_read,
     reply_thread,
     set_thread_status,
@@ -92,7 +93,10 @@ from threads import (
     view_thread,
 )
 from versions import Version, parse_release_version, read_plugin_version
-from vocabulary import require_known_tags
+
+if TYPE_CHECKING:
+    # serve が編集の保存で commands を読むため、循環を避けて型の注釈にだけ使う
+    from serve import PreviewRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -316,13 +320,15 @@ def resolve_refs(item: dict[str, Any], added: dict[int, str]) -> dict[str, Any]:
 
 
 def stage_add(
-    staged: Staged, kind: Kind, item: dict[str, Any], now: NowFn = now_utc
+    staged: Staged,
+    kind: Kind,
+    item: dict[str, Any],
+    now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[Staged, dict[str, Any]]:
-    """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。"""
+    """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。editor は足した項目の編集した人。"""
     validate_input_keys(kind, item, index=len(staged.items[kind]))
-    # タグを渡したときは語彙にあるものだけ
-    if "tags" in item:
-        require_known_tags([("tags", item["tags"])], staged.workspace.settings)
     # 消した項目の ID は振り直さない
     item_id = next_id(
         replace(staged.workspace, items=staged.items),
@@ -344,7 +350,7 @@ def stage_add(
         {
             "created": timestamp,
             "updated": timestamp,
-            "updated_by": EDITOR,
+            "updated_by": editor,
             "seq": seq,
             "added_seq": seq,
         }
@@ -367,19 +373,21 @@ def stage_add(
 
 
 def stage_update(
-    staged: Staged, item_id: str, item: dict[str, Any], now: NowFn = now_utc
+    staged: Staged,
+    item_id: str,
+    item: dict[str, Any],
+    now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[Staged, dict[str, Any]]:
-    """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。"""
+    """1 項目のキーを置き換え、変更履歴と通し番号を付けて、メモリの上の並びを差し替える。editor は項目と変更履歴の回の編集した人。"""
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
     validate_input_keys(ref.kind, item, index=ref.index)
-    # タグを渡したときは語彙にあるものだけ（項目がもともと持つ語彙に無いタグは点検が返す）
-    if "tags" in item:
-        require_known_tags([("tags", item["tags"])], staged.workspace.settings)
     changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
-    merged["updated_by"] = EDITOR
+    merged["updated_by"] = editor
     body = _body_write(item_id, item)
     previous_name = ref.item.get("body")
     bodies = dict(staged.bodies)
@@ -411,6 +419,7 @@ def stage_update(
         after_item=merged,
         before_body=previous_body,
         after_body=body.text if body is not None else previous_body,
+        editor=editor,
     )
     rows = list(staged.items[ref.kind])
     rows[ref.index] = merged
@@ -491,16 +500,14 @@ def run_update_settings(
     phase_map: dict[str, str] | None,
     target_map: dict[str, str] | None,
     category_map: dict[str, str] | None,
-    tag_map: dict[str, str | None] | None,
 ) -> dict[str, Any]:
-    """設定のキーを置き換え、フェーズ・対象・カテゴリー・タグを変えるときは項目の付け替えもする。"""
+    """設定のキーを置き換え、フェーズ・対象・カテゴリーを変えるときは項目の付け替えもする。"""
     return update_settings(
         root,
         settings,
         phase_map,
         target_map=target_map,
         category_map=category_map,
-        tag_map=tag_map,
     )
 
 
@@ -721,12 +728,14 @@ def run_find(
     if not 1 <= limit <= MAX_LIMIT:
         raise ArgumentError("limit", f"1〜{MAX_LIMIT} の整数で渡してください")
     workspace = load_workspace(root)
-    # タグは語彙にあるものだけ
-    require_known_tags(
-        [("tags", search_filter.tags), ("any_tags", search_filter.any_tags)], workspace.settings
-    )
     results = search_items(workspace, search_filter, detailed=response_format == "detailed")
-    return page_results(results, search_filter, limit=limit, cursor=cursor)
+    return page_results(
+        results,
+        search_filter,
+        limit=limit,
+        cursor=cursor,
+        stray_tags=list_stray_tags(workspace, search_filter),
+    )
 
 
 def run_show(root: Path, item_id: str) -> dict[str, Any]:
@@ -740,8 +749,9 @@ def run_attrs(root: Path) -> dict[str, Any]:
 
 
 def run_tags(root: Path) -> dict[str, Any]:
-    """タグの語彙と件数を出力の形にする。"""
-    return {"tags": list_tags(load_workspace(root))}
+    """項目とスレッドが使っているタグと件数を出力の形にする。"""
+    workspace = load_workspace(root)
+    return {"tags": list_tags(workspace, [thread.tags for thread in load_threads(root)])}
 
 
 def run_migrate(
@@ -925,6 +935,7 @@ def _stack_changes(
     after_item: dict[str, Any],
     before_body: str | None,
     after_body: str | None,
+    editor: str = EDITOR,
 ) -> tuple[dict[str, Any], Changes]:
     """変更履歴の 1 回分を作って積み、通し番号を振った項目と、新しい記録を返す。"""
     limit = history_limit(workspace.settings)
@@ -935,7 +946,7 @@ def _stack_changes(
         after_body=after_body,
         seq=record["last_seq"] + 1,
         at=after_item["updated"],
-        by=EDITOR,
+        by=editor,
     )
     read_seq = record.get("read_seq")
     # 変わったものが無い: 通し番号は進めない
@@ -1093,7 +1104,7 @@ def _migration_payload(report: MigrationReport) -> dict[str, Any]:
                 "version": str(step.version),
                 "index": step.index,
                 "op": step.op,
-                "destructive": step.op in DESTRUCTIVE_OPS,
+                "destructive": step.op in DESTRUCTIVE_OPS or bool(step.args.get("destructive")),
                 "summary": describe_step(step),
             }
             for step in report.steps

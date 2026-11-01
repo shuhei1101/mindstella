@@ -1,0 +1,102 @@
+title: "Markdownの本文"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts#MindmapPreview.decorateMarkdown"
+story: "Preview/MarkdownBody"
+states:
+  - name: ColumnWidths
+    description: 8 列の表。ID のように 8 文字以下の列は折り返さず、25 文字以上の列は 24em で折り返し、その間の列は文字数の半分 + 2em を最小の幅に文節の区切りでだけ折り返す。表は本文より広く、表の中だけで横に送れ、右端がフェードする
+  - name: SmallTable
+    description: 2 列の表。本文の幅いっぱいに広げず、中身の幅で描き、フェードを出さない
+  - name: PinHover
+    description: 列の見出しにポインターを載せた。最後の列を除く見出しに固定のボタンが出る
+  - name: Pinned
+    description: 「名前」の固定のボタンを押して右へ送った。「名前」より左の列が左端に残り、固定した列の右端に影が付き、ボタンは `aria-pressed="true"`
+  - name: PinOff
+    description: 表示の設定で列の固定をオフにした。見出しに固定のボタンを置かない
+    args:
+      - name: display
+        value: '{"pin": false, "head": true, "stripes": false, "fold": true}'
+  - name: HeadStuck
+    description: 縦に高さを限った本文の区画の中で、長い表の途中まで送った。見出しの行が区画の上端に残り、下の境に影が付く。表の下端を越えては残らない
+  - name: HeadOff
+    description: 表示の設定で見出しの固定をオフにした。見出しの行も本文と一緒に送られる
+    args:
+      - name: display
+        value: '{"pin": true, "head": false, "stripes": false, "fold": true}'
+  - name: Stripes
+    description: 表示の設定でしま模様をオンにした。本体の行を 1 行おきに塗り分ける
+    args:
+      - name: display
+        value: '{"pin": true, "head": true, "stripes": true, "fold": true}'
+  - name: StripesInDiff
+    description: 本文の差分でしま模様をオンにした。足した行と消した行は差分の面のままで、開閉を置かない
+    args:
+      - name: display
+        value: '{"pin": true, "head": true, "stripes": true, "fold": true}'
+      - name: fold
+        value: 'false'
+  - name: Sections
+    description: 本文で使っている上位 2 つの階層の見出しの頭に開閉の矢印を置き、開いた状態で描く。中身の無い見出しには置かない。見出しの文言は選べる
+  - name: Folded
+    description: 「料金」の矢印を押して畳んだ。次の同じか上の階層の見出しまでを隠し、下の階層の見出しも一緒に隠す。矢印は `aria-expanded="false"`
+  - name: FoldOff
+    description: 表示の設定でセクションの折りたたみをオフにした。見出しに開閉を置かない
+    args:
+      - name: display
+        value: '{"pin": true, "head": true, "stripes": false, "fold": false}'
+  - name: CodeBlock
+    description: 言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返す
+  - name: CodeCopied
+    description: コピーのボタンを押した直後。ボタンがチェックの印に変わり、クリップボードには札とボタンを含まないコードだけが入る
+  - name: Callouts
+    description: '`> [!NOTE]`・`[!TIP]`・`[!IMPORTANT]`・`[!WARNING]`・`[!CAUTION]` の引用は、mdmark が種類の色の薄い面と細い枠の囲み（`markdown-alert`）と見出し「補足」「ヒント」「重要」「警告」「注意」で描き、見出しの頭に種類のアイコンを足す。印の無い引用は mdmark の引用の見た目のまま'
+  - name: Narrow
+    description: 画面の幅 390px。列の固定と固定のボタンを出さず、見出しの固定は残す。表は表の中だけで横に送れる
+  - name: InThreadPost
+    description: スレッドの書き込みの本文。コードブロックの言語の札とコピーのボタン、Alert の見出しのアイコンを当て、表の列の幅・フェード・固定・見出しの固定とセクションの開閉は当てない
+    args:
+      - name: tables
+        value: 'false'
+      - name: fold
+        value: 'false'
+  - name: EmbeddedHtml
+    description: 本文に `<!-- html -->` の範囲（`.mdmark-html`）があり、中に表・見出し・チャート・スライダーを持つ。範囲の中の表・見出しには表の列の幅・フェード・固定・見出しの固定・しま模様・開閉を当てず、書いた HTML と mdmark の部品の見た目のまま描く。範囲の前後の表と見出しには今までどおり当てる
+    notes:
+      理由: 範囲の HTML は書き手が見た目を決めており、見出しに開閉を置くと範囲の中のつながりを切るため
+lead: mdmark で描いた Markdown の本文に、mdmark の共通のスタイルに重ねるスタイルを当てる。表の列の幅と折り返し・右端のフェード・コードブロックの言語の札とコピー・GitHub の Alert の見出しのアイコンを常に当て、表の列の固定・表の見出しの固定・表のしま模様・セクションの折りたたみを表示の設定の値で当てる。詳細パネル・詳細の全画面・本文の差分（インライン・左右に並べる）の本文と、スレッドの書き込みで使う。
+status: planned
+introduced:
+  pr: 327
+args:
+  - name: root
+    type: オブジェクト
+    required: true
+    description: 'mdmark の `mount` で描いた本文の要素（class `mdmark`）。中の表・見出し・コードブロック・引用に見せ方を当てる'
+  - name: display
+    type: オブジェクト
+    required: false
+    default: '{"pin": true, "head": true, "stripes": false, "fold": true}'
+    description: 表示の設定の本文の見せ方（`pin` 表の列の固定・`head` 表の見出しの固定・`stripes` 表のしま模様・`fold` セクションの折りたたみの真偽値）
+  - name: fold
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: セクションの開閉を置ける本文か。本文の差分（インライン・左右に並べる）では false にし、`display.fold` が true でも開閉を置かない
+  - name: tables
+    type: 真偽値
+    required: false
+    default: 'true'
+    description: 表の列の幅と折り返し・右端のフェード・`display` の表の列の固定・表の見出しの固定・表のしま模様を当てるか。スレッドの書き込みでは false にし、表は mdmark の共通のスタイルのまま描く
+accessibility:
+  - 表の入れ物は `tabindex="0"`・`role="group"`・読み上げの名前「本文の表」を持ち、キーボードで横に送れる
+  - 固定のボタンは `aria-pressed` で固定中かを示し、読み上げの名前は「{列名}まで固定」。キーボードのフォーカスでも出し、ホバーの無い端末では常に出す
+  - 開閉の矢印は `button` で `aria-expanded` と `aria-controls` を持ち、読み上げの名前は「{見出し}を開閉」
+  - コピーのボタンは読み上げの名前「コードをコピー」を持ち、コピーしたことを `role="status"` で伝える
+  - Alert の種類は色だけでなく見出しの文言でも示す
+refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - dev/設計書/部品設計/プレビュー/表示の設定.ts#
+  - dev/設計書/外部ライブラリ/mdmark#
+notes:
+  モック: '`dev/mock/components/markdown-body/`'
+  当て方: 列の幅・固定・見出しの固定・開閉の境目の値と振る舞いは、インターフェース定義『プレビューを開く』の制約「本文の表とセクションの見せ方」のとおりにする。列を固定した状態と畳んだ状態は残さず、描き直すと初めの状態に戻る
+test_file: tests/integration/storybook/test_markdown_body_stories.py

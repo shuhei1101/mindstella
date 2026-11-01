@@ -10,7 +10,7 @@ items:
   - page: 依存と影響.py.yaml
     summary: 影響・後続の件数・次の候補・再開時の状況
   - page: 点検.py.yaml
-    summary: スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・語彙に無いタグ
+    summary: スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ
   - page: ビルド.py.yaml
     summary: プレビューの記録の収集・雛形の組み立て・配る書き出し
   - page: ゴール判定.py.yaml
@@ -41,5 +41,7 @@ items:
     summary: スレッドの読み書き・一覧と既読・返信・状態と要約の書き換え・取り込み済み・まとめて送った書き込みの追加
   - page: 未読へ戻す.py.yaml
     summary: SessionStart のフックが呼ぶ、ワークスペースを探してスレッドの書き込みを未読に戻すスクリプト
-  - page: タグの語彙.py.yaml
-    summary: タグの語彙の読み取り・語彙にあるかの確かめ・近いタグの候補
+  - page: タグの表記.py.yaml
+    summary: タグの表記の正規化・近いタグの候補
+  - page: 保存待ちの編集.py.yaml
+    summary: 保存待ちの編集の読み書き・取り消し・まとめて保存

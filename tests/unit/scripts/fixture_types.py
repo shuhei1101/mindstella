@@ -8,6 +8,7 @@ from typing import Any
 from workspace_fixtures import (
     MakeComment,
     MakeDraft,
+    MakeEdit,
     MakeItem,
     MakeLegacyItem,
     MakeLegacyWorkspace,
@@ -18,6 +19,7 @@ from workspace_fixtures import (
     SnapshotTree,
     WriteComments,
     WriteDrafts,
+    WriteEdits,
     WriteSubmissions,
     WriteThreads,
 )
@@ -28,6 +30,7 @@ __all__ = [
     "FailingWriteText",
     "MakeComment",
     "MakeDraft",
+    "MakeEdit",
     "MakeItem",
     "MakeLegacyItem",
     "MakeLegacyWorkspace",
@@ -39,6 +42,7 @@ __all__ = [
     "SnapshotTree",
     "WriteComments",
     "WriteDrafts",
+    "WriteEdits",
     "WriteSubmissions",
     "WriteThreads",
 ]

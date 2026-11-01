@@ -2,8 +2,24 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from playwright.sync_api import Page
+from preview_edit_helpers import (
+    ADD_BUTTON,
+    ADD_PANEL,
+    ADD_TITLE_INPUT,
+    ADDED_ITEM,
+    PENDING_BUTTON,
+    assert_topbar_pending,
+    block_by_saving,
+    edit_edits,
+    edit_items,
+    item_marks,
+    read_edits_file,
+    start_add,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_drawer_helpers import (
     DRAWER,
@@ -50,7 +66,7 @@ from preview_saved_filter_helpers import (
     reopen_preview,
     seed_saved_filters,
 )
-from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeEdit, MakeItem, MakeWorkspace, WriteEdits
 
 
 @pytest.mark.parametrize(
@@ -527,3 +543,210 @@ def test_fit_smallest(
     set_smallest(page)
     # 検証
     assert_fits_smallest(page, ("[data-act='filter']",))
+
+
+# ===== 編集（項目を追加・一覧の保存待ちの印・追加する項目） =====
+
+# 幅 480px（「項目を追加」を印だけにする幅の境）
+ADD_NARROW_VIEWPORT = {"width": 480, "height": 800}
+
+
+
+def test_add_button(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """サーバーの配信では、表の上の帯の、列の表示の左に「項目を追加」を出す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("N-1"))
+    # 実行
+    page = open_preview(url, "#tab=notes")
+    page.wait_for_selector(ADD_BUTTON)
+    # 検証
+    button = page.locator(ADD_BUTTON)
+    assert button.count() == 1
+    assert button.inner_text().strip() == "項目を追加"
+    assert button.get_attribute("aria-label") == "メモの項目を追加"
+    box = button.bounding_box()
+    columns = page.locator(".table-toolbar .cols-btn-table").bounding_box()
+    assert box is not None
+    assert columns is not None
+    assert box["x"] + box["width"] <= columns["x"]
+
+
+def test_add_button_narrow(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """幅 480px 以下は「＋」の印だけにし、文字を読み上げに残す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("N-1"))
+    page = open_preview(url, "#tab=notes")
+    # 実行
+    page.set_viewport_size(ADD_NARROW_VIEWPORT)
+    # 検証
+    button = page.locator(ADD_BUTTON)
+    label = button.locator(".lbl").bounding_box()
+    assert label is None or label["width"] <= 1
+    assert button.locator("svg.icon").is_visible()
+    assert button.get_attribute("title") == "項目を追加"
+    assert page.get_by_role("button", name="メモの項目を追加").count() == 1
+
+
+def test_add_button_hidden_when_diff(
+    write_history_preview: WriteReviewPreview,
+    write_edits: WriteEdits,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示をしている間は、「項目を追加」・保存待ちの印・追加する項目を出さない（正常系）。"""
+    # 準備
+    url, root = write_history_preview()
+    write_edits(
+        root,
+        make_edit("E-1", target="N-1", key="title", value="書き換えた題", before="N-1の題"),
+        make_edit("E-2", target="new-1", op="item-add", key="notes", value={"title": "足す項目", "content": ""}, before=None, base=None),
+    )
+    preselect_diff(page, "V-1")
+    # 実行
+    diff = open_preview(url, "#tab=notes")
+    diff.wait_for_selector(".df-chip")
+    # 検証
+    assert diff.locator(ADD_BUTTON).count() == 0
+    assert diff.locator(".pm").count() == 0
+    assert diff.locator(ADDED_ITEM).count() == 0
+    assert diff.locator(PENDING_BUTTON).count() == 0
+
+
+def test_add_button_hidden_when_exported(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しでは「項目を追加」を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("N-1"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行
+    page = open_preview(out.as_uri(), "#tab=notes")
+    page.wait_for_selector("main h1")
+    page.wait_for_selector("table tr[data-id]")
+    # 検証
+    assert page.locator(ADD_BUTTON).count() == 0
+    assert page.locator(PENDING_BUTTON).count() == 0
+
+
+def test_add_item(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """「項目を追加」で開いていた詳細パネルを閉じて追加の入力を開き、タイトルを書いて入力欄を離れると `item-add` を 1 件溜める（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("N-1", title="最初の項目"))
+    page = open_preview(url, "#tab=notes&id=N-1")
+    page.wait_for_selector("aside.panel.open")
+    # 実行
+    page.click(ADD_BUTTON)
+    page.wait_for_selector(ADD_PANEL)
+    # 検証（開いた直後）
+    assert page.locator("aside.panel:not(.pe-add-panel)").count() == 0
+    assert page.get_attribute(ADD_PANEL, "aria-label") == "メモを追加"
+    assert page.locator(ADD_TITLE_INPUT).evaluate("e => e === document.activeElement")
+    # 実行（タイトルを書いて離れる）
+    page.locator(ADD_TITLE_INPUT).fill("足す項目")
+    page.locator(ADD_TITLE_INPUT).blur()
+    page.wait_for_selector(f"{PENDING_BUTTON} .count")
+    # 検証（溜めた後）
+    edits = read_edits_file(root)["items"]
+    assert [(edit["op"], edit["key"], edit["value"]["title"]) for edit in edits] == [("item-add", "notes", "足す項目")]
+    assert page.locator(f"tr{ADDED_ITEM}").count() == 1
+
+
+def test_list_marks(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """保存待ちの編集がある項目に、書き換えは保存待ち・削除は保存で削除・直前の保存で書き込めなかった編集は書き込めないの印を付ける（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*edit_items(make_item, "N"), edits=edit_edits(make_edit, "N"))
+    page = open_preview(url, "#tab=notes")
+    page.wait_for_selector(PENDING_BUTTON)
+    # 実行（直前の保存で N-3 だけ書き込めなくする）
+    block_by_saving(page)
+    # 検証
+    scope = "table tr[data-id]"
+    marks = item_marks(page, scope)
+    assert {id_: (mark["kind"], mark["compact"]) for id_, mark in marks.items()} == {
+        "N-1": ("pending", False),
+        "N-2": ("remove", False),
+        "N-3": ("blocked", False),
+    }
+    labels = {"pending": "保存待ち", "remove": "保存で削除", "blocked": "書き込めない"}
+    for mark in marks.values():
+        assert mark["text"] == labels[mark["kind"]]
+    assert page.locator(f"{scope}.pe-removing").count() == 1
+
+
+def test_added_items_table(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """表は先頭の行に出す。ID の列に「—」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("N-1", title="今ある項目"),
+        edits=(
+            make_edit("E-1", target="new-1", op="item-add", key="notes", value={"title": "足す項目", "content": ""}, before=None, base=None),
+            make_edit("E-2", target="new-2", op="item-add", key="notes", value={"title": "", "content": ""}, before=None, base=None),
+        ),
+    )
+    # 実行
+    page = open_preview(url, "#tab=notes")
+    page.wait_for_selector(ADDED_ITEM)
+    # 検証
+    rows = page.eval_on_selector_all("table tbody tr", "rows => rows.map(r => r.dataset.newId ?? r.dataset.id)")
+    assert rows == ["new-1", "new-2", "N-1"]
+    row = page.locator("tr[data-new-id='new-1']")
+    assert row.locator(".pe-noid").inner_text() == "—"
+    assert row.locator(".row-open").inner_text() == "足す項目"
+    assert row.locator(".pm.pm-pending").count() == 1
+    assert page.locator("tr[data-new-id='new-2'] .row-open").inner_text() == "（タイトル未入力）"
+
+
+def test_added_item_reopens_input(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加する項目を押すと、追加する入力を開き直す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("N-1"))
+    page = open_preview(url, "#tab=notes")
+    start_add(page, "足す項目")
+    page.get_by_role("button", name="追加の入力を閉じる").click()
+    page.wait_for_selector(ADD_PANEL, state="detached")
+    # 実行
+    page.click("tr[data-new-id] .row-open")
+    # 検証
+    page.wait_for_selector(ADD_PANEL)
+    assert page.locator(ADD_TITLE_INPUT).input_value() == "足す項目"
+
+
+def test_topbar_pending(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """トップバーに保存待ちのボタンを出し、溜めた件数・開いているか・書き込めない編集の有無を見せる（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*edit_items(make_item, "N"), edits=edit_edits(make_edit, "N"))
+    # 実行
+    page = open_preview(url, "#tab=notes")
+    page.wait_for_selector(PENDING_BUTTON)
+    # 検証
+    assert_topbar_pending(page)

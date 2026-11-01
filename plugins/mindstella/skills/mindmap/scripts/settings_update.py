@@ -1,4 +1,4 @@
-"""設定の更新（`update_settings`）の引数の確かめ・設定の置き換え・フェーズ・対象・カテゴリー・タグの付け替え・まとめた書き込み。"""
+"""設定の更新（`update_settings`）の引数の確かめ・設定の置き換え・フェーズ・対象・カテゴリーの付け替え・まとめた書き込み。"""
 
 from __future__ import annotations
 
@@ -7,14 +7,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml
 
 from errors import (
     ArgumentError,
     SchemaMismatchError,
     SettingsInvalidError,
     UnmappedPhaseError,
-    UnmappedTagError,
     UnmappedTargetError,
 )
 from kinds import EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root
@@ -36,10 +34,6 @@ from store import (
     write_failed,
     write_temp,
 )
-from vocabulary import tag_names
-
-# スレッドのファイル名（無ければスレッド 0 件）
-THREADS_FILE = "threads.yaml"
 
 # `update_settings` の `settings` に渡せるキー
 EDITABLE_KEYS = (
@@ -51,14 +45,13 @@ EDITABLE_KEYS = (
     "goal",
     "targets",
     "categories",
-    "tags",
     "links",
     "history_limit",
     "display",
 )
 
 # 値が `null` のときに消してよい任意のキー
-REMOVABLE_KEYS = ("description", "goal", "tags", "links", "history_limit", "display")
+REMOVABLE_KEYS = ("description", "goal", "links", "history_limit", "display")
 
 # 表示の既定の書き換えの本文に必須のキー
 DISPLAY_KEYS = ("network_look", "visible_kinds")
@@ -67,28 +60,39 @@ DISPLAY_KEYS = ("network_look", "visible_kinds")
 PHASE_MAP_ARGUMENT = "phase_map"
 
 # 付け替えたキーを `remapped` に並べる順
-REMAP_KEY_ORDER = ("phase", "target", "category", "tags")
+REMAP_KEY_ORDER = ("phase", "target", "category")
 
 # `target_map`・`category_map` の引数の名前（引数の誤りに添える）
 TARGET_MAP_ARGUMENT = "target_map"
 CATEGORY_MAP_ARGUMENT = "category_map"
 
-# `tag_map` の引数の名前（引数の誤りに添える）
-TAG_MAP_ARGUMENT = "tag_map"
-
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PhaseRemap:
-    """フェーズ・対象・カテゴリー・タグのどれかを付け替えた 1 項目（タグはスレッドも）の 1 キー。"""
+    """フェーズ・対象・カテゴリーのどれかを付け替えた 1 項目の 1 キー。"""
 
-    # 項目かスレッドの ID
+    # 項目の ID
     id: str
     # 付け替えたキー
-    key: Literal["phase", "target", "category", "tags"]
+    key: Literal["phase", "target", "category"]
     # 前の名前
     from_value: str
-    # 後の名前（タグを外したときは None）
-    to_value: str | None
+    # 後の名前
+    to_value: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SettingsStage:
+    """書き込む前にメモリの上で当てた設定と付け替え。"""
+
+    # 当てた後の設定（付け替えた `goal.phase`・カテゴリーの `target` を含む）
+    settings: dict[str, Any]
+    # 付け替えた後の種類ごとの項目の並び（全ての種類）
+    items: dict[Kind, list[dict[str, Any]]]
+    # 変わった設定のキー
+    changed: list[str]
+    # 付け替えた項目（`update_settings` の `remapped` の並びの順）
+    remapped: list[PhaseRemap]
 
 
 def validate_settings_input(
@@ -98,10 +102,9 @@ def validate_settings_input(
     *,
     target_map: dict[str, str] | None,
     category_map: dict[str, str] | None,
-    tag_map: dict[str, str | None] | None = None,
     current: dict[str, Any],
 ) -> None:
-    """`settings` のキーと `phase_map`・`target_map`・`category_map`・`tag_map` の渡し方を、書き換える前に確かめる。"""
+    """`settings` のキーと `phase_map`・`target_map`・`category_map` の渡し方を、書き換える前に確かめる。"""
     lines = _settings_key_lines(settings)
     # 書き換えられないキー・消せないキーの null・空の settings
     if lines:
@@ -149,35 +152,6 @@ def validate_settings_input(
         ]
         if unmapped_names:
             raise UnmappedTargetError(unmapped_names)
-    # タグの対応: 対象・カテゴリーと同じく確かめ、値が None の対応は外す対応として通す
-    if tag_map is not None:
-        _validate_tag_map(tag_map, settings, current)
-
-
-def _validate_tag_map(
-    tag_map: dict[str, str | None], settings: dict[str, Any], current: dict[str, Any]
-) -> None:
-    """`tag_map` が、語彙を置き換えるときの、今の語彙にあって新しい語彙に無いタグから新しい語彙のタグ（か外す）への対応かを確かめる。"""
-    # タグの語彙を渡さずに対応だけを渡した
-    if "tags" not in settings:
-        raise ArgumentError(TAG_MAP_ARGUMENT, "`settings` に `tags` を渡していません")
-    new_names = _names(settings["tags"])
-    current_names = _names(current.get("tags"))
-    for old_name in tag_map:
-        # 古いタグでないか、新しい語彙にも残るタグ: 対応を渡せない
-        if old_name not in current_names or old_name in new_names:
-            raise ArgumentError(
-                TAG_MAP_ARGUMENT,
-                f"{old_name} は、今の `tags` にあって新しい `tags` に無いタグではありません",
-            )
-    # 対応の値（外す対応の None を除く）が新しい語彙に無い
-    unmapped = [
-        (f"{TAG_MAP_ARGUMENT}[{old}]", new)
-        for old, new in tag_map.items()
-        if new is not None and new not in new_names
-    ]
-    if unmapped:
-        raise UnmappedTagError(unmapped)
 
 
 def merge_settings(
@@ -206,6 +180,8 @@ def remap_phases(
     settings: dict[str, Any],
     phase_map: dict[str, str],
     now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[list[Change], list[PhaseRemap], dict[str, Any]]:
     """新しい phases に無いフェーズを持つ項目と goal.phase を、対応で付け替える。"""
     phases = settings.get("phases", [])
@@ -227,7 +203,7 @@ def remap_phases(
             # 対応がある: フェーズと更新日時を置き換える
             item["phase"] = phase_map[phase]
             item["updated"] = now()
-            item["updated_by"] = EDITOR
+            item["updated_by"] = editor
             remapped.append(
                 PhaseRemap(
                     id=item["id"], key="phase", from_value=phase, to_value=phase_map[phase]
@@ -258,6 +234,8 @@ def remap_names(
     target_map: dict[str, str],
     category_map: dict[str, str],
     now: NowFn = now_utc,
+    *,
+    editor: str = EDITOR,
 ) -> tuple[dict[Kind, list[dict[str, Any]]], list[PhaseRemap], dict[str, Any]]:
     """新しい targets・categories に無い名前を持つ項目とカテゴリーの target を、対応で付け替える。"""
     targets = _names(settings.get("targets"))
@@ -307,7 +285,7 @@ def remap_names(
             # 付け替えた項目だけ更新日時を変える
             if renamed:
                 item["updated"] = now()
-                item["updated_by"] = EDITOR
+                item["updated_by"] = editor
             rows.append(item)
         new_items[kind] = rows
     if unmapped:
@@ -315,89 +293,12 @@ def remap_names(
     return new_items, remapped, new_settings
 
 
-def remap_tags(
-    items: dict[Kind, list[dict[str, Any]]],
-    threads: list[dict[str, Any]],
-    settings: dict[str, Any],
-    tag_map: dict[str, str | None],
-    now: NowFn = now_utc,
-    *,
-    replaced: bool,
-) -> tuple[dict[Kind, list[dict[str, Any]]], list[dict[str, Any]], list[PhaseRemap]]:
-    """新しい語彙に無いタグを、対応で項目とスレッドの `tags` から付け替えるか外す。"""
-    # 語彙を置き換えないときはタグを確かめない
-    if not replaced:
-        return items, threads, []
-    names = tag_names(settings)
-    remapped: list[PhaseRemap] = []
-    unmapped: list[tuple[str, str]] = []
-    new_items: dict[Kind, list[dict[str, Any]]] = {}
-    for kind in KINDS:
-        rows: list[dict[str, Any]] = []
-        for original in items[kind]:
-            item = dict(original)
-            owner = str(item.get("id"))
-            before = len(remapped)
-            if isinstance(item.get("tags"), list):
-                item["tags"] = _remap_tag_list(
-                    item["tags"], names, tag_map, owner, remapped, unmapped
-                )
-            # タグを付け替えた項目だけ更新日時と編集した人を書く
-            if len(remapped) > before:
-                item["updated"] = now()
-                item["updated_by"] = EDITOR
-            rows.append(item)
-        new_items[kind] = rows
-    new_threads: list[dict[str, Any]] = []
-    for original in threads:
-        thread = dict(original)
-        if isinstance(thread.get("tags"), list):
-            thread["tags"] = _remap_tag_list(
-                thread["tags"], names, tag_map, str(thread.get("id")), remapped, unmapped
-            )
-        new_threads.append(thread)
-    # 対応の無いタグが残る
-    if unmapped:
-        raise UnmappedTagError(unmapped)
-    return new_items, new_threads, remapped
-
-
-def _remap_tag_list(
-    tags: list[Any],
-    names: frozenset[str],
-    tag_map: dict[str, str | None],
-    owner: str,
-    remapped: list[PhaseRemap],
-    unmapped: list[tuple[str, str]],
-) -> list[Any]:
-    """1 つの `tags` を前から見て、語彙にあるタグは残し、無いタグは対応で付け替えるか外す。"""
-    result: list[Any] = []
-    for tag in tags:
-        # 文字列でない要素と、語彙にあるタグはそのまま残す
-        if not isinstance(tag, str) or tag in names:
-            result.append(tag)
-            continue
-        # 語彙に無く対応も無い: 残るものとして控える（タグは残す）
-        if tag not in tag_map:
-            unmapped.append((owner, tag))
-            result.append(tag)
-            continue
-        new_tag = tag_map[tag]
-        remapped.append(PhaseRemap(id=owner, key="tags", from_value=tag, to_value=new_tag))
-        # 外す対応ではなく、置き換えた先がまだ無いときだけ足す
-        if new_tag is not None and new_tag not in tags and new_tag not in result:
-            result.append(new_tag)
-    return result
-
-
 def save_settings(
     workspace: Workspace,
     settings: dict[str, Any],
     changes: list[Change],
-    *,
-    threads: list[dict[str, Any]] | None = None,
 ) -> list[str]:
-    """設定と、付け替えた種類の項目の並び（とスレッド）を、検証してから全て書き換えるか、どれも書き換えない。"""
+    """設定（変わるときだけ）と、付け替えた種類の項目の並びを、検証してから全て書き換えるか、どれも書き換えない。"""
     # 書き戻すと中身を失う形のファイルには書かない
     for change in changes:
         if loses_content_on_rewrite(workspace, change.kind):
@@ -415,11 +316,12 @@ def save_settings(
     if problems:
         raise build_mismatch_error(problems, changed)
 
-    # 置き換える順（種類のファイル → スレッド → 設定）に、書く先と中身を並べる
+    # 置き換える順（種類のファイル → 設定）に、書く先と中身を並べる
     targets = [(KINDS[change.kind].file, {"items": change.items}) for change in changes]
-    if threads is not None:
-        targets.append((THREADS_FILE, {"items": threads}))
-    targets.append((SETTINGS_FILE, settings))
+    # 設定が変わらないときは、`config.yaml` を書かない
+    settings_written = settings != workspace.settings
+    if settings_written:
+        targets.append((SETTINGS_FILE, settings))
     # 一時ファイルを先に全て書き、置き換える前の中身を控える
     temps: list[tuple[Path, Path]] = []
     previous: dict[Path, bytes] = {}
@@ -442,15 +344,70 @@ def save_settings(
             remove_files([leftover for leftover, _ in temps])
             raise write_failed(path, error) from error
         replaced.append(path)
-    # config.yaml を先頭に、種類のファイル、最後にスレッドの順で返す
+    # config.yaml（書いたとき）を先頭に、種類のファイルの順で返す
     return [
         f"{RECORD_DIR}/{name}"
         for name in (
-            SETTINGS_FILE,
+            *([SETTINGS_FILE] if settings_written else []),
             *(KINDS[change.kind].file for change in changes),
-            *([THREADS_FILE] if threads is not None else []),
         )
     ]
+
+
+def stage_settings(
+    workspace: Workspace,
+    settings: dict[str, Any],
+    *,
+    phase_map: dict[str, str] | None = None,
+    target_map: dict[str, str] | None = None,
+    category_map: dict[str, str] | None = None,
+    editor: str = EDITOR,
+    now: NowFn = now_utc,
+) -> SettingsStage:
+    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリーを付け替え、書かずに結果を返す。"""
+    validate_settings_input(
+        settings,
+        phase_map,
+        workspace.settings.get("phases", []),
+        target_map=target_map,
+        category_map=category_map,
+        current=workspace.settings,
+    )
+    merged, changed = merge_settings(workspace.settings, settings)
+    # 書き換えのたびに確かめるので、phases に無いフェーズが残れば止まる
+    phase_changes, phase_remapped, phased_settings = remap_phases(
+        workspace, merged, phase_map or {}, now, editor=editor
+    )
+    items = {**workspace.items, **{change.kind: change.items for change in phase_changes}}
+    # 書き換えのたびに確かめるので、新しい設定に無い対象・カテゴリーが残れば止まる
+    items, name_remapped, remapped_settings = remap_names(
+        items, phased_settings, target_map or {}, category_map or {}, now, editor=editor
+    )
+    # 対応で goal.phase だけが変わったときも goal を変わったキーに入れる
+    if phased_settings.get("goal") != merged.get("goal") and "goal" not in changed:
+        changed.append("goal")
+    # 対応でカテゴリーの target だけが変わったときも categories を変わったキーに入れる
+    if (
+        remapped_settings.get("categories") != merged.get("categories")
+        and "categories" not in changed
+    ):
+        changed.append("categories")
+    # 種類の順・並びの順・同じ項目の中は phase・target・category の順に並べる
+    positions = {
+        item["id"]: (kind_order, index)
+        for kind_order, kind in enumerate(KINDS)
+        for index, item in enumerate(items[kind])
+    }
+    ordered = sorted(
+        [*phase_remapped, *name_remapped],
+        key=lambda remap: (*positions[remap.id], REMAP_KEY_ORDER.index(remap.key)),
+    )
+    return SettingsStage(
+        settings=remapped_settings,
+        items=items,
+        changed=changed,
+        remapped=ordered,
+    )
 
 
 def update_settings(
@@ -461,73 +418,29 @@ def update_settings(
     *,
     target_map: dict[str, str] | None = None,
     category_map: dict[str, str] | None = None,
-    tag_map: dict[str, str | None] | None = None,
 ) -> dict[str, Any]:
-    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリー・タグを付け替え、まとめて書く。"""
+    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリーを付け替え、まとめて書く。"""
     workspace = load_workspace(root)
-    current_phases = workspace.settings.get("phases", [])
-    validate_settings_input(
+    staged = stage_settings(
+        workspace,
         settings,
-        phase_map,
-        current_phases,
+        phase_map=phase_map,
         target_map=target_map,
         category_map=category_map,
-        tag_map=tag_map,
-        current=workspace.settings,
+        now=now,
     )
-    merged, changed = merge_settings(workspace.settings, settings)
-    # 書き換えのたびに確かめるので、phases に無いフェーズが残れば止まる
-    phase_changes, phase_remapped, phased_settings = remap_phases(
-        workspace, merged, phase_map or {}, now
-    )
-    items = {**workspace.items, **{change.kind: change.items for change in phase_changes}}
-    # 書き換えのたびに確かめるので、新しい設定に無い対象・カテゴリーが残れば止まる
-    items, name_remapped, remapped_settings = remap_names(
-        items, phased_settings, target_map or {}, category_map or {}, now
-    )
-    # 語彙を置き換える・消すときは、新しい語彙に無いタグが残れば止まる
-    thread_items = _read_thread_items(root)
-    items, new_threads, tag_remapped = remap_tags(
-        items,
-        thread_items,
-        remapped_settings,
-        tag_map or {},
-        now,
-        replaced="tags" in settings,
-    )
-    # 対応で goal.phase だけが変わったときも goal を変わったキーに入れる
-    if phased_settings.get("goal") != merged.get("goal") and "goal" not in changed:
-        changed.append("goal")
-    # 対応でカテゴリーの target だけが変わったときも categories を変わったキーに入れる
-    if remapped_settings.get("categories") != merged.get("categories") and "categories" not in changed:
-        changed.append("categories")
     # 付け替えた項目がある種類だけを、種類の順に変更にする
     changes = [
-        Change(kind=kind, items=items[kind])
+        Change(kind=kind, items=staged.items[kind])
         for kind in KINDS
-        if items[kind] != workspace.items[kind]
+        if staged.items[kind] != workspace.items[kind]
     ]
-    # タグを付け替えたスレッドがあるときだけ、スレッドも一緒に書く
-    threads = new_threads if new_threads != thread_items else None
-    files = save_settings(workspace, remapped_settings, changes, threads=threads)
-    # 種類の順（スレッドは最後）・並びの順・同じ項目の中は phase・target・category・tags の順に並べる
-    positions = {
-        item["id"]: (kind_order, index)
-        for kind_order, kind in enumerate(KINDS)
-        for index, item in enumerate(items[kind])
-    }
-    positions.update(
-        {thread["id"]: (len(KINDS), index) for index, thread in enumerate(new_threads)}
-    )
-    ordered = sorted(
-        [*phase_remapped, *name_remapped, *tag_remapped],
-        key=lambda remap: (*positions[remap.id], REMAP_KEY_ORDER.index(remap.key)),
-    )
+    files = save_settings(workspace, staged.settings, changes)
     return {
-        "changed": changed,
+        "changed": staged.changed,
         "remapped": [
             {"id": remap.id, "key": remap.key, "from": remap.from_value, "to": remap.to_value}
-            for remap in ordered
+            for remap in staged.remapped
         ],
         "files": files,
     }
@@ -560,20 +473,8 @@ def update_display(root: Path, body: dict[str, Any]) -> dict[str, Any]:
     return {"display": display}
 
 
-def _read_thread_items(root: Path) -> list[dict[str, Any]]:
-    """`threads.yaml` の `items` を読む（無いか、読めないか、スレッドの並びでなければ空）。"""
-    path = records_root(root) / THREADS_FILE
-    try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
-        return []
-    items = value.get("items") if isinstance(value, dict) else None
-    # スレッドの並びの辞書だけを返す
-    return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
-
-
 def _settings_key_lines(settings: dict[str, Any]) -> list[str]:
-    """`settings` が空か、書き換えられないキー・消せないキーの null・名前の重なったタグの語彙を持つときの、問題ごとの行を返す。"""
+    """`settings` が空か、書き換えられないキー・消せないキーの null を持つときの、問題ごとの行を返す。"""
     # 何も渡していない
     if not settings:
         return [f"{SETTINGS_FILE}: {WHOLE_PATH}: 1 つ以上のキーを渡してください"]
@@ -585,26 +486,7 @@ def _settings_key_lines(settings: dict[str, Any]) -> list[str]:
         # 必須のキーを null で消そうとした
         elif value is None and key not in REMOVABLE_KEYS:
             lines.append(f"{SETTINGS_FILE}: {key}: null で消せません")
-    lines.extend(_duplicated_tag_lines(settings.get("tags")))
     return lines
-
-
-def _duplicated_tag_lines(tags: Any) -> list[str]:
-    """タグの語彙の名前の重なりごとの行を返す（同じ名前は 1 行）。"""
-    if not isinstance(tags, list):
-        return []
-    seen: set[str] = set()
-    duplicated: list[str] = []
-    for entry in tags:
-        name = entry.get("name") if isinstance(entry, dict) else None
-        # 名前が 2 回目以降に出たとき、まだ挙げていなければ重なりにする
-        if isinstance(name, str) and name in seen and name not in duplicated:
-            duplicated.append(name)
-        if isinstance(name, str):
-            seen.add(name)
-    return [
-        f"{SETTINGS_FILE}: tags: 同じ名前のタグが重なっています: {name}" for name in duplicated
-    ]
 
 
 def _names(entries: Any) -> set[str]:

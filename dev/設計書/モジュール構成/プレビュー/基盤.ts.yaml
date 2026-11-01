@@ -5,12 +5,14 @@ directory: |-
   tsconfig.json      tsc の設定（リポジトリの直下。外部ライブラリ『typescript』）
   plugins/mindstella/skills/mindmap/preview/
     core/
-      globals.d.ts   描画のライブラリ（marked・DOMPurify・ELK・mermaid）のグローバルに npm の型を割り当てる（出力しない）
+      globals.d.ts   描画のライブラリ（marked・ELK・mermaid）のグローバルに npm の型を、mdmark のグローバルに `mount`・`version`・`collectMatches` の型を割り当てる（出力しない）
       dom.ts         要素の組み立て（`h`）・アイコン・状態の印など、画面が共通で使う DOM の部品
       records.ts     記録の索引・関係する項目・検索・箇所の名前（次の候補・ゴールまでの進捗・カテゴリー別の進捗はサーバーが計算した `derived` を使う）
-      libs.ts        描画のライブラリの有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
+      libs.ts        描画のライブラリの読み込み（mdmark）・有無と呼び出し（Markdown・図・配置）と、選んだ範囲から箇所を求める処理
+      doc-export.ts  資料のエクスポート（1 枚の HTML と、埋め込んだ HTML を除いた Markdown）の組み立てとダウンロード
       router.ts      URL のハッシュの読み書きと履歴
-      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る）
+      api.ts         サーバーの配信とのやり取り（記録の取得・書き換えの知らせ・レビュー中のコメント・書きかけ・まとめて送る・保存待ちの編集）
+      edits.ts       保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類
       lock.ts        ロック（注目の起点を 1 つの項目に留める）の押下の判定・2 回押しの読み替えと、鍵の震えの量・要素の鍵の震え（ネットワークと検討事項のマップで共通）
   ```
 
@@ -101,6 +103,9 @@ data_models:
       - name: stale
         type: '{id, reason}[]'
         description: 409 のときの送れない書き込み（箇所が合わない・向けた項目が消えた・返信先がクローズか無い。それ以外は空）
+      - name: blocked
+        type: BlockedEdit[]
+        description: 409 のときの書き込めない編集（まとめて保存だけ。それ以外は空）
   - name: Location
     title: 箇所
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
@@ -191,6 +196,51 @@ data_models:
       - name: opened
         type: OpenedPoint
         description: サーバーが書き込んだ今の時点
+  - name: PendingEdit
+    title: 保存待ちの編集
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    summary: 『保存待ちの編集の読み取り』の `items[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: '`E-{連番}`'
+      - name: target
+        type: string
+        description: 項目の ID・足す項目の仮の ID（`new-{連番}`）・`settings`
+      - name: op
+        type: "'set' | 'option-add' | 'option-edit' | 'option-remove' | 'adopt' | 'item-add' | 'item-remove' | 'setting'"
+        description: 編集の種類
+      - name: key
+        type: string | null
+        description: 項目のキー・案の記号・種類・設定のキー
+      - name: value
+        type: unknown
+        description: 編集した後の値
+      - name: before
+        type: unknown
+        description: 溜めたときの元の値
+      - name: created
+        type: string
+        description: 最初に溜めた日時
+  - name: BlockedEdit
+    title: 書き込めない編集
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    summary: まとめて保存の 409 の `blocked[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: 編集の ID
+      - name: reason
+        type: "'changed' | 'missing' | 'referenced' | 'invalid'"
+        description: 書き込めない理由
+      - name: detail
+        type: string
+        description: 日本語の理由
+      - name: refs
+        type: string[]
+        description: '`referenced` のとき、消す項目を指している項目の ID'
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -226,10 +276,10 @@ constants:
     usecase: 共通
     summary: ライブラリの名前 → 読めたときに置かれるグローバル
     entries:
+      - key: mdmark
+        value: mdmark
       - key: marked
         value: marked
-      - key: DOMPurify
-        value: DOMPurify
       - key: elkjs
         value: ELK
       - key: mermaid
@@ -258,6 +308,10 @@ constants:
         value: '"api/config/display"'
       - key: threads
         value: '"api/threads"'
+      - key: edits
+        value: '"api/edits"'
+      - key: editsSave
+        value: '"api/edits/save"'
   - name: PRESS_SLOP_PX
     title: 押したとみなす移動の上限
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
@@ -294,6 +348,40 @@ constants:
     usecase: 項目の詳細を読む
     summary: HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形）
     value: '["http:", "https:", "mailto:"]'
+  - name: MDMARK_FEATURES
+    title: mdmark で止める機能
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 共通
+    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ（`code`・`html`・`diagrams` は既定のまま）'
+    value: '{glossary: false, backlinks: false, comments: false, print: false, anchors: false, sections: false, table: false, toc: false, views: false, syntax: false}'
+    status: planned
+  - name: MDMARK_PARAM_COPY_LABEL
+    title: 今の値をコピーするボタンの文言
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    summary: mdmark の操作できる部品の今の値をコピーするボタン（`.mdmark-param-copy`）に出す文言（インターフェース定義『プレビューを開く』の制約「埋め込んだ HTML と部品」）
+    value: "'今の値をコピー'"
+    status: planned
+    introduced:
+      pr: 348
+  - name: MDMARK_EXPORT_FEATURES
+    title: エクスポートした HTML の mdmark で止める機能
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 項目の詳細を読む
+    summary: エクスポートした 1 枚の HTML の `mdmark.mount` に渡す機能のオフ。用語と資料・調査のエイリアスのツールチップ（`glossary`・`backlinks`。mdmark は `backlinks` がオンのときだけ文書の別名を照合する）は mdmark が描き、通信するコードの色付けと、ファイルの外を指す機能を止める
+    value: '{comments: false, print: false, views: false, syntax: false}'
+    status: planned
+    introduced:
+      pr: 348
+  - name: MDMARK_CSS_EMBEDDED_ID
+    title: 配る書き出しの mdmark の CSS の要素の id
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 項目の詳細を読む
+    summary: 配る書き出しが mdmark の CSS を中身に持つ `<style>` の id（モジュール構成『ビルド』の `MDMARK_CSS_OPEN`）
+    value: "'mindmap-mdmark-css'"
+    status: planned
+    introduced:
+      pr: 348
 functions:
   - name: buildIndex
     title: 記録の索引を作る
@@ -410,9 +498,9 @@ functions:
       - name: test_missing_libraries
         case: 正常
         summary: グローバルが無いものだけ返す
-        condition: '`window.marked` だけを置いて `["marked", "DOMPurify"]`'
+        condition: '`window.marked` だけを置いて `["mdmark", "marked"]`'
         mock: なし
-        expected: '`["DOMPurify"]`'
+        expected: '`["mdmark"]`'
   - name: libraryNotice
     title: 読めなかったライブラリの知らせ
     kind: 関数
@@ -438,16 +526,16 @@ functions:
       - name: test_library_notice
         case: 正常
         summary: 名前を並べた知らせを返す
-        condition: '`{names: ["marked", "DOMPurify"], what: "本文"}`'
+        condition: '`{names: ["mdmark", "mermaid"], what: "本文"}`'
         mock: なし
-        expected: '`role` が `alert` で、文字に `読み込めなかったライブラリ: marked・DOMPurify` と `通信を確認して、ページを再読み込みしてください。`'
+        expected: '`role` が `alert` で、文字に `読み込めなかったライブラリ: mdmark・mermaid` と `通信を確認して、ページを再読み込みしてください。`'
   - name: renderMarkdown
     title: 本文を描く
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 本文の Markdown を無害化した要素にする。mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む
+    summary: 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む
     args:
       - name: source
         type: string
@@ -456,46 +544,56 @@ functions:
         description: 本文の Markdown
     returns:
       type: HTMLElement
-      description: 描いた本文。marked か DOMPurify が読めないときは、`libraryNotice` と原文の `pre` を持つ要素
+      description: 描いた本文（class `mdmark`）。mdmark が読めないときは、`libraryNotice` と原文の `pre` を持つ要素
     process: |-
-      1. marked・DOMPurify が読めたか確かめる（`missingLibraries`）
+      1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、知らせと原文を返す（本文に mermaid のコードブロックがあり mermaid も読めていなければ名前に足す）
-      2. `marked.lexer` の token に先頭の行から `raw` の改行を足し進めた行を持たせ（リストの項目と引用は中の token にも）、見出し・段落・コード・リストの項目・表の行の最初の開きタグに `data-line-start` を付けて HTML にする（`marked.Renderer` を包む。段落を持つ項目は中の段落に任せ、mermaid のコードには付けない。フェンスのコードは次の行、表は見出しの行と区切りの行の次から 1 行ずつ。PoC #80 の方式）
-      3. `DOMPurify.sanitize`（`data-line-start` を残す）して要素に入れる
-      4. `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に置き換える（描くのは `renderDiagrams`）
-      5. `language-html` のコードブロックを、原文を `data-source` に持ち元の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に置き換える（描くのは詳細の画面が部品『HTMLの本文の枠』で、`selectable` は偽）
-      6. 表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文も同じ）
+      2. `div` を作り、`mdmark.mount` に本文と `config.features` の `MDMARK_FEATURES` を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）。描いた後、`br` の直後の改行の文字を外す（mdmark は強制改行を `br` と改行の文字で描き、`selectionLocation` は改行の文字と `br` の両方を行として数えるため）。続けて `relabelParamCopy` を当てる
+      3. mdmark が付けた `data-source-line`（0 始まりのブロックの開始行）を、元の行の印 `data-line-start`（1 始まり）に読み替える（PoC #80 の対応づけ。読み替えは PR #342 の PoC 結果）
+         - 見出し・段落・リストの項目・表の行・`pre` は、値に 1 を足した `data-line-start` を付ける。フェンスのコードの `pre` は 2 を足す（中身の最初の行）。フェンスかは、原文のその行から行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まるかで判定する（`/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/`。PR #342 の PoC 結果）
+         - 段落を持つリストの項目は中の段落に任せ、項目には付けない。リスト・表・引用・区切り線にも付けない
+         - 読み替えた後、全ての `data-source-line` を外す
+         - 埋め込んだ HTML の範囲（`.mdmark-html`）は `data-source-line` を持たないため、本文の中で n 番目の範囲に、`embeddedHtmlRanges` の n 番目の `open` を `data-html-open`、`close` を `data-html-close` で持たせる（範囲の中の要素には `data-line-start` を付けない）
+      4. `.mdmark-html` の外の `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
+      5. `.mdmark-html` の外の `language-html` のコードブロックを、原文を `data-source` に持ち `pre` の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に `pre` ごと置き換える（描くのは使う側が部品『HTMLの本文の枠』で、`selectable` は偽）
+      6. `.mdmark-html` の外の表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む（範囲の中の表は書いた HTML のまま包まない）。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文とスレッドの書き込みも同じ）
     unit_tests:
       - name: test_render_markdown
         case: 正常
-        summary: 無害化して描き、図の入れ物を作る
-        condition: 見出し・表・`<img src=x onerror=alert(1)>`・mermaid のコードブロックを持つ本文。marked・DOMPurify はリポジトリの外部ライブラリの設計書の版を `page.route` で返す
+        summary: mdmark で無害化して描き、図の入れ物を作る
+        condition: 見出し・表・`<img src=x onerror=alert(1)>`・`<script>window.__x=1</script>`・mermaid のコードブロックを持つ本文。mdmark はリポジトリの外部ライブラリの設計書の版を `page.route` で返し、`loadMdmark` で読む
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`h1`・`table` があり、`onerror` が無く、図の入れ物が 1 つで `data-source` に原文'
+        expected: 要素が class `mdmark` を持ち、`h1`・`table` があり、`onerror` と `script` が無く `window.__x` が未定義。図の入れ物が 1 つで `data-source` に原文。`data-source-line` を持つ要素が無い
       - name: test_render_markdown_when_library_missing
         case: 正常
         summary: ライブラリが無ければ知らせと原文
-        condition: marked を読まない。本文に mermaid のコードブロック
+        condition: mdmark・mermaid を読まない。本文に mermaid のコードブロック
         mock: なし
-        expected: '`role="alert"` に `marked`・`DOMPurify`・`mermaid`、`pre` に原文'
+        expected: '`role="alert"` に `mdmark`・`mermaid`、`pre` に原文'
       - name: test_render_markdown_when_line_marks
         case: 正常
-        summary: ブロックに元の行の印を付け、見た目を変えない
-        condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・表・フェンスのコード・mermaid のコードブロックを持つ本文
+        summary: ブロックに元の行の印を付ける
+        condition: 見出し（1 行目）・段落（3 行目）・入れ子のリスト・段落を持つリストの項目・表・フェンスのコード（行頭から・2 個の空白で字下げ・引用の中の `> ```js`・リストの中の `- ```js` と `1. ```js`・入れ子のリストの中）・字下げのコード・mermaid のコードブロックを持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`h1` の `data-line-start` が 1、段落が 3、表の各行とコードが PoC #80 の対応づけどおり。図の入れ物には付かない。`data-line-start` と表を包む入れ物（`.md-table-wrap`。中の表は残す）を除いた HTML が印を付けないときと同じ'
+        expected: '`h1` の `data-line-start` が 1、段落が 3、リストの項目・表の各行・フェンスのコード（中身の最初の行）・字下げのコード（最初の行）が PoC #80 の対応づけどおり。段落を持つリストの項目は中の段落だけが持ち、`ul`・`table`・図の入れ物は持たない。`data-source-line` を持つ要素が無い'
       - name: test_render_markdown_when_html_code_block
         case: 正常
         summary: html のコードブロックを枠の入れ物にし、前後は今までどおり描く
         condition: 見出し・段落の間に、`<p>a</p><script>x()</script>` を持つ言語指定 `html` のコードブロックを 1 つ持つ本文
-        expected: '`.html-block` が 1 つで `data-source` に原文、`pre` にコードとしては出ない。見出し・段落の `data-line-start` はコードブロックが無いときと同じ数え方'
         mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.html-block` が 1 つで `data-source` に原文、`pre` にコードとしては出ない。見出し・段落の `data-line-start` はコードブロックが無いときと同じ数え方'
       - name: test_render_markdown_when_table
         case: 正常
         summary: 表を横に送れる入れ物で包み、行の印を変えない
-        condition: 段落の後に表を 2 つ持つ本文
+        condition: '`parametrize`: 段落の後に表を 2 つ持つ本文 / 範囲の外の表と、`<!-- html -->` の範囲の中の表を持つ本文'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`table` が 2 つとも `.md-table-wrap` の直下にあり、入れ物は `tabindex="0"`・`role="group"`・`aria-label="本文の表"` を持ち `data-line-start` を持たない。表の各行の `data-line-start` は包まないときと同じ。段落は包まない'
+        expected: '`table` が 2 つとも `.md-table-wrap` の直下にあり、入れ物は `tabindex="0"`・`role="group"`・`aria-label="本文の表"` を持ち `data-line-start` を持たない。表の各行の `data-line-start` は包まないときと同じ。段落は包まない / 範囲の外の表だけが `.md-table-wrap` の直下にあり、範囲の中の表は `.md-table-wrap` の中に無い'
+      - name: test_render_markdown_when_embedded_html
+        case: 正常
+        summary: 埋め込んだ HTML を本文の中に描き、範囲に元の行を持たせる
+        condition: 段落（1 行目）・`<!-- html -->` の範囲（3〜9 行目。段落・`<mdmark-chart>`・`<mdmark-param>`・`<script>window.__x=1</script>`・`onclick` を持つボタン）・段落（11 行目）・言語指定 `html` のコードブロックを持つ本文
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.mdmark-html` が 1 つで `data-html-open` が 3、`data-html-close` が 9。範囲の中に `data-line-start` を持つ要素が無く、`script` と `onclick` が無く `window.__x` が未定義。前後の段落の `data-line-start` が 1 と 11。範囲の外の `html` のコードブロックだけが `.html-block` になる。今の値をコピーするボタンの文字が `MDMARK_PARAM_COPY_LABEL`'
   - name: renderDiagrams
     title: 図を描く
     kind: 関数
@@ -1082,7 +1180,7 @@ functions:
     process: |-
       1. `body` があれば `Content-Type: application/json` で JSON にして送る
          - 例外を送った場合（届かない）、`{ok: false, status: null, detail: null, stale: []}` を返す
-      2. 2xx なら本文の JSON（204 は `null`）を `data` に、それ以外は本文の `detail`（読めなければステータスの文言）と `stale`（無ければ空）を返す
+      2. 2xx なら本文の JSON（204 は `null`）を `data` に、それ以外は本文の `detail`（読めなければステータスの文言）と `stale`・`blocked`（無ければ空）を返す
     unit_tests:
       - name: test_call_api
         case: 正常
@@ -1146,8 +1244,9 @@ functions:
     process: |-
       1. 空の選択か、文が空白だけなら `null`
       2. 始点と終点から `[data-key]` を持つ最も近い祖先を引き、どちらも同じ要素なら `{kind: value, key}` を返す
-      3. 始点と終点から `.md` の中で `data-line-start` を持つ最も近い祖先を引き（無ければ `null`）、祖先の先頭から端までを `cloneContents` した中の `\n` の数と `br` の数を印の行に足す（表の行は数えない。PoC #80 の `selectionLines`）
-      4. `{kind: body, start, end, text}` を返す
+      3. 端が埋め込んだ HTML の範囲（`.mdmark-html`）の中にあるときは、始点は範囲の `data-html-open`、終点は範囲の `data-html-close` の行にする
+      4. それ以外の端は、始点と終点から `.md` の中で `data-line-start` を持つ最も近い祖先を引き（無ければ `null`）、祖先の先頭から端までを `cloneContents` した中の `\n` の数と `br` の数を印の行に足す（表の行は数えない。PoC #80 の `selectionLines`）
+      5. `{kind: body, start, end, text}` を返す
     unit_tests:
       - name: test_selection_location
         case: 正常
@@ -1161,6 +1260,12 @@ functions:
         condition: '`parametrize`: 空の選択 / 見出しの帯 / 関係する項目 / 図の SVG / 図の Raw の原文 / 本文から値へまたぐ選択 / 差分の表示の間の消した部分 / 消した部分と今の部分をまたぐ選択'
         mock: なし
         expected: どれも `null`
+      - name: test_selection_location_when_embedded_html
+        case: 正常
+        summary: 埋め込んだ HTML の範囲の中の端を、範囲の印の行に読み替える
+        condition: '段落（1 行目）・範囲 2 つ（3〜6 行目・8〜11 行目）・段落（13 行目）を持つ本文。`parametrize`: 2 つ目の範囲の中の段落の文だけ / 1 行目の段落から 1 つ目の範囲の中まで / 2 つ目の範囲の中から 13 行目の段落まで'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`start: 8, end: 11` / `start: 1, end: 6` / `start: 8, end: 13`'
   - name: locationLabel
     title: 箇所の名前
     kind: 関数
@@ -1337,12 +1442,12 @@ functions:
       2. 見出しの右に、読み上げの名前「見出し「{見出し}」へのリンク」の # の `a` を置き、押したら既定の動作を止めて `onHeading` を呼ぶ
       3. 本文の中の `href` が `#` で始まるリンクは、押したら既定の動作を止める（URL のハッシュを `#{文字}` に替えさせない）。`#` の後ろを `URLSearchParams` で読み、`diff` の引数を持つかで分ける
          - `diff` を持つ場合、まとまりのリンクとして扱う。値が空・`since`・`pending` でなければ `onChangeSet` をその値で呼ぶ。他の引数は読まず、見出しのリンクとしても扱わない
-         - `diff` を持たない場合、`#` の後ろを `decodeURIComponent` で戻し（marked は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。同じ名前の見出しがあれば `onHeading` を呼び、無ければ何もしない
+         - `diff` を持たない場合、`#` の後ろを `decodeURIComponent` で戻し（mdmark は日本語の `href` をパーセントエンコードして描く。戻せない文字列はそのまま）、`headingSlug` と同じ形にする。同じ名前の見出しがあれば `onHeading` を呼び、無ければ何もしない
     unit_tests:
       - name: test_link_headings
         case: 正常
         summary: '見出しに名前と # を付け、`#見出し` で知らせる'
-        condition: 見出し「保存先」「決め方」「決め方」と段落の `[決め方](#決め方)`・`[無い](#無い)` を描いた本文（marked が描いた `href` はパーセントエンコードされた日本語）。#・段落の 2 つのリンクを押す
+        condition: 見出し「保存先」「決め方」「決め方」と段落の `[決め方](#決め方)`・`[無い](#無い)` を描いた本文（mdmark が描いた `href` はパーセントエンコードされた日本語）。#・段落の 2 つのリンクを押す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`data-heading` が `保存先`・`決め方`・`決め方-1`。見出しごとに # が 1 つ。押すと `onHeading` にその名前が渡り、`[決め方]`（`href` はエンコードされた `#決め方`）は `決め方`、`[無い]` は呼ばず、URL のハッシュも変わらない'
       - name: test_link_headings_when_change_set_link
@@ -1357,7 +1462,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 描いた本文の文中の、用語集の用語のタイトルと別名、資料・調査のエイリアスを本文の印に、記録にある項目の ID をリンクにする
+    summary: 描いた本文の文中（埋め込んだ HTML の範囲の中を含む）の、用語集の用語のタイトルと別名、資料・調査のエイリアスを本文の印に、記録にある項目の ID をリンクにする。語の一致と一致の前の正規化は mdmark の `collectMatches` に任せる
     args:
       - name: root
         type: HTMLElement
@@ -1379,15 +1484,23 @@ functions:
         required: true
         passing: keyword
         description: ID のリンクと、用語 1 件だけに一致した印を押したときにその項目の ID を知らせる（使う側が詳細へ移り、履歴に積む）。用語 2 件以上か、資料・調査にも一致した印では呼ばない
+      - name: source
+        type: string
+        required: true
+        passing: keyword
+        description: '`root` を描いた本文の Markdown（`collectMatches` に渡す）'
     returns:
       type: void
       description: '-'
     process: |-
-      1. 印に当てる語 → 一致した項目の ID の対応を作る。用語はタイトルと `aliases` の各語、資料・調査は `aliases` の各語を、前後の空白を落として用語 → 資料 → 調査の順に積む。`selfId` の項目、`withdrawn` が真の資料・調査、空の語は積まない（取り下げた用語はタイトルも別名も積む）。同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
-      2. 本文の文字のノードをたどる。`pre`・図の入れ物・`a`・h1〜h6 の中は飛ばす。インラインコード（`pre` の外の `code`）は、中身がちょうど語か記録にある ID のときだけ `code` ごと当てる
-      3. 語は長いものから順に当て、英数字だけの語は前後が英数字でないときだけ当てる。出てくる全ての箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id` に先頭の項目・`data-ids` に一致した全ての項目を空白区切りで）で包む。用語 1 件だけに一致した印は `aria-describedby`、用語 2 件以上か、資料・調査にも一致した印は `aria-details` でツールチップを指す
-      4. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものと `selfId` は当てない
-      5. 包んだ要素を押したら既定の動作を止める。ID のリンクと用語 1 件だけに一致した印は `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
+      1. 印に当てる語 → 一致した項目の ID の対応を作る。用語はタイトルと `aliases` の各語、資料・調査は `aliases` の各語を、前後の空白を落として用語 → 資料 → 調査の順に積む（`selfId` の項目、`withdrawn` が真の資料・調査、空の語は積まない。取り下げた用語はタイトルも別名も積む）。同じ項目の同じ語（用語のタイトルと同じ別名を含む）は 1 つにまとめる
+      2. 語ごとに `{id: W-{n}, term: 語, meaning: 語}` の用語を作り（`collectMatches` は `meaning` が空の用語を照合しない）、`source` を `self.md`、語そのものを `w{n}.md` の文書にして `mdmark.collectMatches` に渡す（PR #348 の PoC 結果の最小再現コード）
+      3. 語そのものの文書の一致（1 行目の 0 文字目から語の長さまで）から、正規化の後に同じになる語がまとまる先の用語を引き、まとまる先ごとに 1 の項目の ID を寄せて用語 → 資料 → 調査の順に並べる
+      4. `self.md` の一致ごとに、行と文字の位置から元の語を取り、その行を持つブロック（行を含む `data-line-start` の要素。行が埋め込んだ HTML の範囲の中なら、`data-html-open` から `data-html-close` の間にその行を持つ `.mdmark-html`）の文字の中で、同じブロックの前の一致の後ろから元の語を探す。`pre`・図の入れ物・`a`・`code`・h1〜h6 の中の文字は包まない（インラインコードは 5 で当てる）。英数字だけの語は、前後が英数字のときと、後ろが `-` と数字のとき（`API-2` の `API`）は包まない
+      5. インラインコード（`pre` の外の `code`）は `collectMatches` が照合しないため、中身を 1 と同じく前後の空白を落として、ちょうど語か記録にある ID のときだけ `code` ごと当てる
+      6. 探し当てた箇所を、文字の色を変えない点線の下線の `a`（`class="term"`・`data-id` に先頭の項目・`data-ids` に一致した全ての項目を空白区切りで）で包む。用語 1 件だけに一致した印は `aria-describedby`、用語 2 件以上か、資料・調査にも一致した印は `aria-details` でツールチップを指す
+      7. 項目の ID（`{頭文字}-{数}`）は、記録にあるものだけを等幅の印の色と下線の `a`（`class="idref"`・`data-id`、折り返さない）で包む。前後が英数字のものと `selfId` は当てない。埋め込んだ HTML の範囲の中にも当てる
+      8. 包んだ要素を押したら既定の動作を止める。ID のリンクと用語 1 件だけに一致した印は `onOpen` を呼ぶ。元の行の印（`data-line-start`）と差分の印は包む前の要素に残す
     unit_tests:
       - name: test_link_body
         case: 正常
@@ -1413,6 +1526,24 @@ functions:
         condition: '用語 G-1「移し替え」（別名「マイグレーション」「移し替え」「 」）・G-2「版の更新」（別名「移し替え」）、取り下げた用語 G-3「旧名」（別名「古い呼び方」）の索引。本文の段落「マイグレーションと移し替えと古い呼び方」。`parametrize`: `selfId` が A-1 / G-1'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 「マイグレーション」の印の `data-ids` が `G-1` で `aria-describedby` を持ち、押すと `onOpen` に G-1。「移し替え」が `G-1 G-2` で `aria-details` を持ち、押しても `onOpen` が呼ばれない。「古い呼び方」が `G-3`。空白だけの別名には印が無い / 「マイグレーション」には印が無く、「移し替え」が `G-2` で `aria-describedby` を持つ
+      - name: test_link_body_when_normalized
+        case: 正常
+        summary: 全角半角・英字の大文字小文字・空白の違いでも一致させ、まとまる語の項目を 1 つの印に寄せる
+        condition: 用語 G-1「response」・G-2「Response」・G-3「応答 時間」・G-4「API」の索引。本文の段落「ＲＥＳＰＯＮＳＥ と 応答　時間 と API-2 と API」
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「ＲＥＳＰＯＮＳＥ」の印の `data-ids` が `G-1 G-2`、「応答　時間」が `G-3`。`API-2` の `API` には印が無く、末尾の「API」が `G-4`
+      - name: test_link_body_when_embedded_html
+        case: 正常
+        summary: 埋め込んだ HTML の範囲の中の文にも、全ての出現に印と ID のリンクを付ける
+        condition: 用語 G-1「応答時間」と資料 A-2 の索引。本文に「応答時間」を持つ段落を 2 つと、「ﾋﾟｰｸ時の応答時間 」と `A-2` を含む段落を持つ `<!-- html -->` の範囲。`selfId` は A-1
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: G-1 の印が 3 つ（範囲の外の 2 つと範囲の中の 1 つ）。範囲の中の `A-2` が ID のリンクで、押すと `onOpen` に A-2
+      - name: test_link_body_when_inline_code
+        case: 正常
+        summary: インラインコードの中の文字には一致を当てず、中身がちょうど語のときだけ `code` ごと印にする
+        condition: '用語 G-1「保存先」の索引。`parametrize`: 本文の段落「`保存先` と保存先」 / 本文の段落「`docs/保存先.md` と保存先」。`selfId` は A-1'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: G-1 の印が 2 つで、1 つは `code` ごと、もう 1 つは後ろの「保存先」 / G-1 の印が後ろの「保存先」の 1 つだけで、`code` の中に `a` が無い
   - name: lockTap
     title: ロックの押下の判定
     container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
@@ -1519,7 +1650,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 項目の文字列の値の Markdown を、段落の中の改行も改行にして無害化した要素にする。marked か DOMPurify が読めないときは、改行を残した文字のままの要素にする
+    summary: 項目の文字列の値の Markdown を、段落の中の改行も改行にして mdmark で描いた要素にする。mdmark が読めないときは、改行を残した文字のままの要素にする
     args:
       - name: source
         type: string
@@ -1528,18 +1659,18 @@ functions:
         description: 値の文字列
     returns:
       type: HTMLElement
-      description: '`class="md md-value"` の要素。読めないときは渡した文字列を文字として持つ `class="md-value-raw"` の `span`（`white-space: pre-wrap` で改行を改行として出す）'
+      description: '`class="md md-value mdmark"` の要素。読めないときは渡した文字列を文字として持つ `class="md-value-raw"` の `span`（`white-space: pre-wrap` で改行を改行として出す）'
     process: |-
-      1. marked・DOMPurify が読めたか確かめる（`missingLibraries`）
+      1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、渡した文字列を文字として持つ `span.md-value-raw` を返す（知らせは出さない。本文の `renderMarkdown` が出す）
-      2. `marked.parse` に `breaks: true` を渡して描いた HTML を `DOMPurify.sanitize` して要素に入れる（`data-line-start` は付けず、mermaid のコードブロックも図にしない。本文の `renderMarkdown` には `breaks` を渡さない）
+      2. 段落の中の改行を強制改行にした Markdown（`withHardBreaks`）を、`mdmark.mount` に `config.features` の `MDMARK_FEATURES` を渡して描き、`br` の直後の改行の文字（`renderMarkdown` の処理 2 と同じ理由）と `data-source-line` を外す（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
     unit_tests:
       - name: test_render_value
         case: 正常
         summary: 値の Markdown を描き、スクリプトを動かさない
         condition: '`**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>` と箇条書き 2 行を渡す'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: '`strong` と `li` 2 つを持つ `.md-value` の要素。`onerror` と `script` が無く、`window.__x` が未定義。どの要素も `data-line-start` を持たない'
+        expected: '`strong` と `li` 2 つを持つ `.md-value` の要素。`onerror` と `script` が無く、`window.__x` が未定義。どの要素も `data-line-start`・`data-source-line` を持たない'
       - name: test_render_value_when_line_break_in_paragraph
         case: 正常
         summary: 段落の中の 1 つの改行を改行にし、空行の段落は分けたままにする
@@ -1549,7 +1680,7 @@ functions:
       - name: test_render_value_when_library_missing
         case: 正常
         summary: ライブラリが読めなければ、改行を残した文字のままの要素を返す
-        condition: '`parametrize`: marked の配信元を止める / DOMPurify の配信元を止める。`**強調**\n2 行目` を渡す'
+        condition: mdmark の配信元を止める。`**強調**\n2 行目` を渡す
         mock: 描画のライブラリの配信元（`page.route` で 404）
         expected: 戻り値が `span.md-value-raw` で、文字が `**強調**\n2 行目`、子の要素を持たない
   - name: isTyping
@@ -1765,6 +1896,371 @@ functions:
         condition: '`parametrize`: `{at: "2026-10-04T13:05:00+00:00", seq: 3}` / `{at: "...", seq: 0}` / 日時の文字列 / `{at: "..."}` / `{at: "...", seq: -1}` / `{at: "...", seq: 1.5}` / `null`'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 偽 / 偽 / 偽
+  - name: editApi
+    title: 保存待ちの編集の API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちの編集の読み取り・追加・取り消し・まとめて保存を `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, add, remove, save}'
+      description: '`read()` は `GET api/edits`（成功の本文は `{items: PendingEdit[], count}`）、`add(input)` は `POST api/edits`（`input` は `{op, target?, key?, value?, map?}`。成功の本文は `{id, target, count}`）、`remove(id)` は `DELETE api/edits/{id}`（成功の本文は `{removed, count}`）、`save()` は `POST api/edits/save`（本文を送らない。成功の本文は `{set, at, added, changed, removed, settings}`）を呼ぶ。どれも `ApiResult` を返す'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
+    unit_tests:
+      - name: test_edit_api
+        case: 正常
+        summary: 各呼び出しのメソッド・パス・本文
+        condition: "`parametrize`: `read()` / `add({op: 'set', target: 'D-1', key: 'answer', value: 'a'})` / `remove('E-1')` / `save()`"
+        mock: '`fetchFn`'
+        expected: '`GET api/edits` / `POST api/edits`（本文 `{"op":"set","target":"D-1","key":"answer","value":"a"}`）/ `DELETE api/edits/E-1` / `POST api/edits/save`（本文なし）'
+      - name: test_edit_api_when_blocked
+        case: 異常
+        summary: 書き込めない編集を結果に持つ
+        condition: '`save()` に 409・`{"detail": "…", "blocked": [{"id": "E-1", "reason": "changed", "detail": "…", "refs": []}]}` を返す'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 409, blocked: [E-1]}`'
+  - name: applyEdits
+    title: 保存待ちの編集を当てた記録
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 記録の写しに保存待ちの編集を溜めた順に当て、画面に出す値を返す（元の記録は変えない）。一覧・詳細・設定の画面はこの値で描く
+    args:
+      - name: data
+        type: object
+        required: true
+        passing: positional
+        description: 記録（`RecordIndex.data`）
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+    returns:
+      type: object
+      description: 当てた後の記録の写し
+    process: |-
+      1. `set` はその項目の `key` を `value` にする（`body` は `bodies` のその項目の本文を置き換える）
+      2. `option-add` は案を末尾に足し、`option-edit` はその案の中身を置き換える。`option-remove` は案を残したまま（画面が取り消し線で示す）
+      3. `adopt` は `value` の案の `adopted` を真、ほかを偽にする（`null` なら全て偽）
+      4. `item-add` はその種類の並びの末尾に、`id` を仮の ID にした項目を足す。`item-remove` は項目を残したまま（画面が印で示す）
+      5. `setting` は `settings` の `key` を `value` にする（付け替えの対応は保存まで当てない）
+    unit_tests:
+      - name: test_apply_edits
+        case: 正常
+        summary: 編集の種類ごとに当て、元の記録を変えない
+        condition: D-1（案 A・B、A を採用）・T-1・題名 話し合い。編集は D-1 の `answer`・案 C の追加・採用を C・T-1 の削除・タスクの追加 `new-1`・題名を「画面の編集」
+        mock: なし
+        expected: D-1 の `answer` が編集の値で案が A・B・C、C だけが `adopted`。T-1 が残り、`new-1` のタスクが末尾にある。題名が「画面の編集」。渡した `data` は呼ぶ前と同じ
+  - name: pendingMarkOf
+    title: 保存待ちの印の種類
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 項目（`key` を渡せばそのキーか案）に付ける『保存待ちの印』の `kind` を返す
+    args:
+      - name: args
+        type: '{edits: PendingEdit[], blocked: Set<string>, target: string, key?: string}'
+        required: true
+        passing: positional
+        description: 保存待ちの編集、直前の保存で書き込めなかった編集の ID、項目の ID（仮の ID）、キーか案の記号
+    returns:
+      type: "'pending' | 'remove' | 'blocked' | null"
+      description: 印の種類。当たる編集が無ければ `null`
+    process: |-
+      1. `target`（と `key`）に当たる編集を集める（案は `option-*`・`adopt` の `key`・`value`、キーは `set` の `key`。`key` が無ければその項目への編集全て）
+         - 無い場合、`null` を返す
+      2. どれかが `blocked` にあれば `blocked`、`key` を渡さずその項目の `item-remove` があれば `remove`、それ以外は `pending` を返す
+    unit_tests:
+      - name: test_pending_mark_of
+        case: 正常
+        summary: 書き込めない・削除・保存待ちの順に決める
+        condition: 'E-1（D-1 の `answer`）・E-2（N-1 の削除）・E-3（D-1 の案 C の追加）。`parametrize`: D-1 / D-1 の `answer` / D-1 の C / N-1 / T-1 / `blocked` に E-1 を入れて D-1'
+        mock: なし
+        expected: '`pending` / `pending` / `pending` / `remove` / `null` / `blocked`'
+  - name: loadMdmark
+    title: mdmark の読み込み
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 共通
+    summary: mdmark の JavaScript を読み、読めたらグローバルの `mdmark` に置く
+    kind: 関数
+    scope: public
+    is_async: true
+    side_effects: グローバルの `mdmark` を置く
+    returns:
+      type: Promise<void>
+      description: 読み終えたか、読めないと分かったら解決する（読めなくても拒否しない）
+    process: |-
+      1. 雛形に `#mindmap-mdmark`（配る書き出しが中身を入れた要素）がある場合、その中身を `type: "text/javascript"` の Blob にした URL を `import()` で読み、読み終えたら URL を `URL.revokeObjectURL` で捨てる
+      2. 無い場合（サーバーの配信）、雛形の import map（`script[type="importmap"]`）の `integrity` のただ 1 つのキーの URL を `import()` で読む（ブラウザが import map の `integrity` で中身を確かめる）
+         - import map が無いか読めない、または `import()` が拒否された場合、グローバルの `mdmark` を置かずに解決する（読めなかったことは `missingLibraries` が伝える）
+      3. 読んだモジュールをグローバルの `mdmark` に置く
+    unit_tests:
+      - name: test_load_mdmark
+        case: 正常
+        summary: サーバーの配信と配る書き出しのどちらでも読み、グローバルに置く
+        condition: '`parametrize`: import map に外部ライブラリの設計書の mdmark の URL と `integrity` を持つページ / `#mindmap-mdmark` に配布物の中身を持ち import map を持たないページ'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 解決した後、`window.mdmark.version()` が `v0.8.0` で、`missingLibraries(["mdmark"])` が空
+      - name: test_load_mdmark_when_unavailable
+        case: 正常
+        summary: 読めなければ拒否せず、グローバルを置かない
+        condition: '`parametrize`: 配信元が 404 を返す / import map の `integrity` が配布物と違う値'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 拒否せずに解決し、`window.mdmark` が無く、`missingLibraries(["mdmark"])` が `["mdmark"]`
+    status: planned
+  - name: withHardBreaks
+    title: 段落の中の改行を強制改行にする
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 共通
+    summary: フェンスと字下げのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にするのに使う）
+    kind: 関数
+    scope: public
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: Markdown
+    returns:
+      type: string
+      description: 行の数を変えない Markdown
+    process: |-
+      1. 行を頭から見て、フェンスの行とその中の行をそのまま残す。フェンスの開始は `renderMarkdown` と同じく、行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まる行で、同じく除いた先に同じ記号が同じ数以上並ぶ行で閉じる
+      2. 字下げのコードの行（直前が空行か字下げのコードの行で、4 つ以上の空白かタブで始まる行）もそのまま残す（リストの項目の中の字下げした段落も区別せずに残す）
+      3. Alert の種類の行（引用の `>` を除いた先が `[!{英字}]` だけで、後ろに `-` を許す行）もそのまま残す（mdmark は種類の行の後ろが `softbreak` でないと囲みにしない）
+      4. それ以外の行は、次の行があり、次の行が空白だけの行でなければ、末尾に空白 2 つを足す
+    unit_tests:
+      - name: test_with_hard_breaks
+        case: 正常
+        summary: 段落の中の行だけに空白を足し、フェンスの中は変えない
+        condition: '`parametrize`: `1 行目\n2 行目\n\n3 行目` / ```` ```\na\nb\n```\nc ```` / ```` > ```js\n> a\n> ```\n- ```js\n  b\n  ``` ```` / `p\n\n    a\n    b\n\nq` / `> [!NOTE]\n> a\n> b`'
+        mock: なし
+        expected: '`1 行目  \n2 行目\n\n3 行目` / 入力のまま（閉じる行もフェンスの行として空白を足さない） / 入力のまま（引用・リストの中のフェンスの行と中身に空白を足さない。最後の閉じる行は次の行が無い） / 入力のまま（字下げのコードの行に空白を足さない） / `> [!NOTE]\n> a  \n> b`（Alert の種類の行には空白を足さない）'
+    status: planned
+  - name: embeddedHtmlRanges
+    title: 埋め込んだ HTML の範囲の行
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 共通
+    summary: Markdown の本文の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲を、本文の中の並びの順に印の行で返す（範囲の行の持たせ方・範囲の差分の対・Markdown のエクスポートが使う）
+    kind: 関数
+    scope: public
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 本文の Markdown
+    returns:
+      type: 'Array<{open: number, close: number}>'
+      description: 範囲ごとの `<!-- html -->` の行（`open`）と `<!-- /html -->` の行（`close`）。どちらも 1 始まり
+    process: |-
+      1. 行を頭から見て、フェンスの行とその中の行は飛ばす（フェンスの開始と閉じは `withHardBreaks` と同じ判定）
+      2. 前後の空白を除いた行が `<!--`・`html`・`-->` だけでできた行（間の空白は許す）を範囲の始まり、その後で最初の同じく `<!--`・`/html`・`-->` だけでできた行を終わりにする
+      3. 終わりの行が無い始まりは範囲にしない（mdmark も範囲として描かない）
+    unit_tests:
+      - name: test_embedded_html_ranges
+        case: 正常
+        summary: 範囲の印の行を並びの順に返す
+        condition: '`parametrize`: `a\n<!-- html -->\n<p>x</p>\n<!-- /html -->` / 範囲 2 つと、その間のフェンスの中の `<!-- html -->` / `<!--html-->` と `  <!--  /html  -->` / 閉じていない `<!-- html -->`'
+        mock: なし
+        expected: '`[{open: 2, close: 4}]` / 範囲 2 つだけ（フェンスの中は範囲にしない） / 範囲 1 つ / `[]`'
+    status: planned
+    introduced:
+      pr: 348
+  - name: relabelParamCopy
+    title: 今の値をコピーするボタンの文言の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    usecase: 項目の詳細を読む
+    summary: mdmark が描いた部品の今の値をコピーするボタンの文言を `MDMARK_PARAM_COPY_LABEL` に替える（mdmark v0.8.0 は文言を「今の値を写す」に固定しているための付け替え口。mdmark が文言の設定を持ったら、その設定で渡す形に替える）
+    kind: 関数
+    scope: public
+    side_effects: '`root` の中のボタンの文字を書き換え、`root` に `MutationObserver` を付ける'
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: mdmark が描いた本文
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. `root` の中の `button.mdmark-param-copy` ごとに、アイコンの要素を残して文字のノードだけを `MDMARK_PARAM_COPY_LABEL` に置き換える（文言が同じボタンは触らない）
+      2. 部品が描き直したボタンにも当てるため、`root` の子孫の追加を `MutationObserver` で見張り、足されたボタンに 1 を当てる（同じ `root` に 2 回当てても見張りを重ねない）
+    unit_tests:
+      - name: test_relabel_param_copy
+        case: 正常
+        summary: ボタンの文言を替え、描き直したボタンにも当てる
+        condition: キー `rps` の `<mdmark-param>` を持つ範囲を `renderMarkdown` で描き、スライダーを矢印キーで動かしてからボタンを押す
+        mock: 描画のライブラリの配信元（`page.route`）・`navigator.clipboard.writeText`
+        expected: '動かす前と後のどちらも、ボタンの文字が「今の値をコピー」でアイコンの `svg` を 1 つ持つ。クリップボードに `{"rps": {"name": ..., "value": ...}}` の JSON が入る'
+    status: planned
+    introduced:
+      pr: 348
+  - name: mdmarkAssets
+    title: mdmark の中身の取得
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 1 枚の HTML に入れる mdmark の CSS と JavaScript の中身を取る
+    kind: 関数
+    scope: public
+    is_async: true
+    args: []
+    returns:
+      type: 'Promise<{ok: true, css: string, js: string} | {ok: false, reason: string}>'
+      description: 取れたら CSS と JavaScript の中身、取れなければ理由
+    process: |-
+      1. 配る書き出しは、`#mindmap-mdmark`（`MDMARK_EMBEDDED_ID`）の文字と `#mindmap-mdmark-css`（`MDMARK_CSS_EMBEDDED_ID`）の文字を返す
+      2. サーバーの配信は、mdmark の CSS の `link` の `href` と import map の JavaScript の URL を、それぞれの `integrity` を付けた `fetch` で取る
+      3. 要素が無い・取れない・`integrity` が合わないときは `{ok: false, reason}` を返す（拒否しない）
+    unit_tests:
+      - name: test_mdmark_assets
+        case: 正常
+        summary: 配る書き出しとサーバーの配信のどちらでも中身を返す
+        condition: '`parametrize`: `#mindmap-mdmark` と `#mindmap-mdmark-css` を持つ画面 / `link` と import map を持つ画面'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: どちらも `ok` が真で、`css` と `js` が配った中身と同じ
+      - name: test_mdmark_assets_when_unavailable
+        case: 異常
+        summary: 取れないときは理由を返す
+        condition: '`parametrize`: 配信元が 404 / 配信元の中身を書き換えて `integrity` を合わなくする'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`ok` が偽で `reason` が空でない'
+    status: planned
+    introduced:
+      pr: 348
+  - name: buildDocHtml
+    title: 資料の 1 枚の HTML の組み立て
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 資料 1 件の本文を、mdmark の CSS と JavaScript を中に持ち、ネットにつながらなくても開ける 1 枚の HTML にする
+    kind: 関数
+    scope: public
+    args:
+      - name: item
+        type: Item
+        required: true
+        passing: keyword
+        description: エクスポートする資料
+      - name: source
+        type: string
+        required: true
+        passing: keyword
+        description: 資料の本文の Markdown
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 記録の索引（ツールチップの用語・資料・調査を引く）
+      - name: assets
+        type: '{css: string, js: string}'
+        required: true
+        passing: keyword
+        description: '`mdmarkAssets` が返した中身'
+    returns:
+      type: string
+      description: 1 枚の HTML
+    process: |-
+      1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・説明（`description`））を入れる。`related` は入れない（mdmark が本文の末尾に被参照の一覧を置かない）
+      2. 本文・索引・タイトルを 1 つの JSON にし、`<` を `\u003c` に置き換えて `<script type="application/json">` に入れる
+      3. `assets.js` を `<script type="text/plain" id="doc-mdmark">` に入れ（`</script` を含むときは組み立てずに投げる）、`assets.css` を `<style>` に入れる
+      4. タイトルは `&`・`<`・`>`・`"` を文字参照にして `<title>` と見出しに入れる
+      5. 起動のスクリプトは `#doc-mdmark` の文字を Blob の URL にして `import()` し、`mount` を `MDMARK_EXPORT_FEATURES` と索引で呼び、`relabelParamCopy` と同じ置き換えを当てる
+    unit_tests:
+      - name: test_build_doc_html
+        case: 正常
+        summary: ネットにつながらない画面で本文と部品とツールチップが動く
+        condition: 用語 G-1・資料 A-2・取り下げた資料 A-3 と、`<!-- html -->` の範囲に `<mdmark-param>` を持つ資料 A-1 を組み立て、外への通信を全て止めた画面で開く
+        mock: '`page.route` で全ての外への通信を落とす'
+        expected: 本文が描け、部品の値を動かせ、G-1 と A-2 にはツールチップが出て、A-1 自身と A-3 には出ない。コピーのボタンの文字が「今の値をコピー」
+      - name: test_build_doc_html_when_title_has_markup
+        case: 正常
+        summary: タイトルと本文の `<` で HTML が崩れない
+        condition: タイトル `<b>&"x"</b>`、本文に `</script>` を含む資料
+        mock: なし
+        expected: '`<title>` の文字が元のタイトルと同じで、本文に `</script>` が文字として出る'
+    status: planned
+    introduced:
+      pr: 348
+  - name: stripEmbeddedHtml
+    title: 埋め込んだ HTML を除いた Markdown
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 本文から `<!-- html -->` 〜 `<!-- /html -->` の範囲を印の行ごと除く
+    kind: 関数
+    scope: public
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 本文の Markdown
+    returns:
+      type: string
+      description: 範囲を除いた Markdown
+    process: |-
+      1. `embeddedHtmlRanges` の範囲ごとに `open` の行から `close` の行までを除く
+      2. 除いた後に空行が 3 つ以上続くところは 2 つにまとめる
+    unit_tests:
+      - name: test_strip_embedded_html
+        case: 正常
+        summary: 範囲だけを除き、フェンスの中と閉じていない印は残す
+        condition: '`parametrize`: 範囲 2 つを持つ本文 / フェンスの中に `<!-- html -->` を持つ本文 / 閉じていない `<!-- html -->` を持つ本文'
+        mock: なし
+        expected: 範囲の行が無くなる / 本文のまま / 本文のまま
+    status: planned
+    introduced:
+      pr: 348
+  - name: downloadText
+    title: 文字のダウンロード
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 文字をファイルとして端末に保存させる
+    kind: 関数
+    scope: public
+    side_effects: ブラウザのダウンロードを始める
+    args:
+      - name: name
+        type: string
+        required: true
+        passing: keyword
+        description: ファイル名
+      - name: text
+        type: string
+        required: true
+        passing: keyword
+        description: 中身
+      - name: type
+        type: "'text/html' | 'text/markdown'"
+        required: true
+        passing: keyword
+        description: MIME タイプ（`;charset=utf-8` を付けて Blob に渡す）
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. `text` を Blob にして URL を作る
+      2. `download` に `name` を持つ `a` を作って押し、URL を解放する
+    unit_tests:
+      - name: test_download_text
+        case: 正常
+        summary: 名前と中身のとおりに保存される
+        condition: "`{name: 'A-1.md', text: '# 見出し', type: 'text/markdown'}`"
+        mock: なし（`page.expect_download`）
+        expected: 保存されたファイルの名前が `A-1.md` で、中身が UTF-8 の `# 見出し`
+    status: planned
+    introduced:
+      pr: 348
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py
@@ -1772,3 +2268,5 @@ test_files:
   - tests/unit/preview/test_dom.py
   - tests/unit/preview/test_api.py
   - tests/unit/preview/test_lock.py
+  - tests/unit/preview/test_edits.py
+  - tests/unit/preview/test_doc_export.py

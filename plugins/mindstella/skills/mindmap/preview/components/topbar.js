@@ -136,6 +136,31 @@ var MindmapPreview;
             ],
         });
     }
+    /** 保存待ちのボタン（印と「保存待ち」と件数）。押すと保存待ちのパネルを開く・閉じる */
+    function pendingButton({ count, open, blocked, onClick, }) {
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: `pending-btn${open ? " open" : ""}${blocked ? " blocked" : ""}`,
+                type: "button",
+                "data-act": "pending",
+                "aria-label": `保存待ち（${count} 件${blocked ? "・書き込めない編集あり" : ""}）`,
+                "aria-expanded": String(open),
+                "aria-controls": open && document.getElementById("pending-panel") !== null ? "pending-panel" : null,
+                onclick: () => onClick?.(),
+            },
+            children: [
+                MindmapPreview.h({ tag: "span", attrs: { class: "pb-icon" }, children: [MindmapPreview.icon(blocked ? "alert" : "layers")] }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["保存待ち"] }),
+                MindmapPreview.h({
+                    tag: "span",
+                    // 件数が `99+` に広がったときは、幅の広い中身の印を付ける（style.css が詰め方を切り替える）
+                    attrs: { class: "count", "data-wide": count > COMMENT_COUNT_CAP },
+                    children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
+                }),
+            ],
+        });
+    }
     /** 表示の設定のボタン（印と「表示の設定」）。押すと表示の設定のパネルを開く・閉じる */
     function settingsButton({ open, onToggle }) {
         return MindmapPreview.h({
@@ -180,7 +205,7 @@ var MindmapPreview;
         });
     }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -220,6 +245,9 @@ var MindmapPreview;
                 comments ? MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }) : null,
                 onSettings === undefined ? null : settingsButton({ open: settingsOpen, onToggle: onSettings }),
                 filter ? filterButton({ count: filterCount, open: filterOpen, onClick: onFilter }) : null,
+                pending && pendingCount > 0
+                    ? pendingButton({ count: pendingCount, open: pendingOpen, blocked: pendingBlocked, onClick: onPending })
+                    : null,
                 comments ? commentsButton({ count: commentCount, open: commentsOpen, unread: commentsUnread, onClick: onComments }) : null,
                 MindmapPreview.h({
                     tag: "button",

@@ -7,9 +7,7 @@ items:
   - page: jsonschema.yaml
     summary: ワークスペースの YAML を JSON Schema で検証する
   - page: marked.yaml
-    summary: プレビューで本文の Markdown を HTML に描く
-  - page: DOMPurify.yaml
-    summary: プレビューで描いた本文の HTML を無害化する
+    summary: プレビューで本文の差分の塊を Markdown の token ごとに分ける
   - page: elkjs.yaml
     summary: プレビューの検討事項のマップの配置を計算する
   - page: mermaid.yaml
@@ -32,3 +30,5 @@ items:
     summary: プレビューのテストでアクセシビリティの規則（WCAG）を画面に当てる（開発用）
   - page: ruff.yaml
     summary: Python のソースを ruff.toml の規則で検査する（開発用）
+  - page: mdmark.yaml
+    summary: プレビューで本文とスレッドの書き込みの Markdown を共通のスタイルで HTML に描き、無害化する

@@ -3,13 +3,42 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
-from playwright.sync_api import APIResponse, Locator, Page, Route
+from playwright.sync_api import APIResponse, Locator, Page, Route, expect
+from preview_embed_helpers import (
+    CHART,
+    CLIPBOARD_PERMISSIONS,
+    EMBED_TIMEOUT_MS,
+    EMBEDDED_BODY,
+    EXPORT_ENTRY_NAME,
+    EXPORT_MENU,
+    MARKDOWN_EXPORT_BODY,
+    OUTSIDE_ONLY_AFTER,
+    OUTSIDE_ONLY_BEFORE,
+    RANGE,
+    ZOOM_FIT,
+    ZOOM_IN,
+    build_embedded_diff_workspace,
+    drag_in_viewport,
+    viewport_scroll,
+)
+from preview_edit_helpers import (
+    DETAIL_PANEL as EDIT_PANEL,
+    PENDING_BUTTON as EDIT_PENDING_BUTTON,
+    PENDING_PANEL as EDIT_PENDING_PANEL,
+    SAVE_BUTTON as EDIT_SAVE_BUTTON,
+    open_pending as open_edit_pending,
+    read_edits_file,
+    read_items_file,
+    wait_no_saved_edits,
+    wait_saved_edit,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_added_mark_helpers import (
@@ -41,6 +70,15 @@ from preview_body_layout_helpers import (
     rows_of_columns,
     seed_side_layout,
 )
+from preview_body_view_helpers import (
+    BODY_VIEW_DIFF_HASH,
+    BODY_VIEW_HASH,
+    BODY_VIEW_SCOPE,
+    BODY_VIEW_VIEWPORT,
+    open_body_view,
+    seed_body_view,
+    table_state,
+)
 from preview_body_wrap_helpers import BODY_WIDTHS, WRAP_BODY, WRAP_ITEM_ID, WRAP_METRICS_JS
 from preview_body_scroll_helpers import (
     HANGING_LINES_JS,
@@ -60,8 +98,12 @@ from preview_comment_helpers import (
     DRAFT_WAIT_MS,
     PANEL_REVIEW,
     PILL,
+    PILL_GAP_PX,
+    PILL_OFFSET_JS,
+    PILL_SIZE_PX,
     ROW_CORNER_GAPS_JS,
     ROW_CORNER_TOLERANCE_PX,
+    SCROLL_TEXT_TO_TOP_JS,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     fulfill_problem,
@@ -107,6 +149,19 @@ from preview_head_title_helpers import (
     SCROLL_BODY_TO_TOP_JS,
 )
 from preview_mark_helpers import MARK_TIMEOUT_MS, marks_of
+from preview_panel_width_helpers import (
+    PANEL as WIDTH_PANEL,
+    PANEL_WIDTH_KEY,
+    RESIZER,
+    PANEL_VIEWPORT,
+    drag_resizer,
+    open_panel,
+    panel_state,
+    press_key_times,
+    read_stored_width,
+    seed_panel_width,
+    wait_for_value_now,
+)
 from preview_minimap_helpers import (
     MINIMAP_HASH,
     MINIMAP_VIEWPORT,
@@ -141,7 +196,7 @@ from preview_stack_helpers import (
     open_narrow,
     wait_front,
 )
-from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeDraft, MakeEdit, MakeItem, MakeWorkspace
 
 # 入力が止まるのを待たずに保つ書きかけが、ファイルに届くまで待つミリ秒
 DRAFT_FLUSH_WAIT_MS = 400
@@ -1431,7 +1486,7 @@ def test_review_row_edit(
     # 実行
     page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
     )
     # 検証
@@ -1439,6 +1494,73 @@ def test_review_row_edit(
     assert sent == [{"body": "案 B にする"}]
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 B にする"
     wait_until_focused(page, f"{row} button[title='修正']")
+
+
+@pytest.mark.parametrize("shortcut", ["Control+Enter", "Meta+Enter"], ids=["ctrl_enter", "cmd_enter"])
+def test_review_row_edit_when_shortcut(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, shortcut: str
+) -> None:
+    """入力欄の Ctrl+Enter（macOS は Cmd+Enter）で「修正」と同じく `body` だけを送り、本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, root = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    sent: list[Any] = []
+    page.on(
+        "request",
+        lambda request: sent.append(request.post_data_json) if request.method == "PATCH" else None,
+    )
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "案 B にする")
+    # 実行
+    page.press(field, shortcut)
+    page.wait_for_function(
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert page.locator(f"{row} form.row-edit").count() == 0
+    assert sent == [{"body": "案 B にする"}]
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 B にする"
+    wait_until_focused(page, f"{row} button[title='修正']")
+
+
+def test_review_row_edit_when_shortcut_and_body_empty(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview, page: Page
+) -> None:
+    """空白だけの本文は Ctrl+Enter でも送らず、入力欄を要見直しにして「コメントを入れてから直してください。」を出す（異常系）。"""
+    # 準備
+    url, root = served_review_rows
+    patches: list[str] = []
+    page.on(
+        "request",
+        lambda request: patches.append(request.url) if request.method == "PATCH" else None,
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    field = _start_edit(page, "C-1", "   ")
+    # 実行
+    page.press(field, "Control+Enter")
+    # 検証
+    assert page.inner_text(f"{row} form.row-edit .send-msg") == "コメントを入れてから直してください。"
+    assert page.get_attribute(f"{row} form.row-edit .send-msg", "role") == "alert"
+    assert page.get_attribute(field, "aria-invalid") == "true"
+    assert patches == []
+    assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
+
+
+def test_review_row_edit_shortcut_hint(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """入力欄は `aria-keyshortcuts` に Ctrl+Enter を持ち、「修正」の `title` は「修正（Ctrl+Enter）」（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    row = review_row("aside.panel", "C-1")
+    # 実行
+    field = _start_edit(page, "C-1", "案 B にする")
+    # 検証
+    assert page.get_attribute(field, "aria-keyshortcuts") == "Control+Enter"
+    assert page.get_attribute(f"{row} form.row-edit button[type='submit']", "title") == "修正（Ctrl+Enter）"
 
 
 def test_review_row_edit_when_body_empty(
@@ -1702,7 +1824,7 @@ def test_review_row_keyboard(
     page.keyboard.press("Tab")
     page.keyboard.press("Enter")
     page.wait_for_function(
-        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
     )
     wait_until_focused(page, f"{row} button[title='修正']")
@@ -3678,7 +3800,48 @@ def test_html_code_block(
     assert frame_of(page, HTML_CODE_FRAME).locator("p").inner_text() == "枠の中の段落"
     # 前後の Markdown は今までどおり描く
     assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
-    assert page.locator("aside.panel .md > p").count() == 2
+    assert page.locator("aside.panel .md p").count() == 2
+
+
+def test_selection_entry_position_when_fits_above(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文の文を選ぶと、入口を選んだ範囲の始まりの上に、左端を揃えた 32px の丸で出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["above_gap"] == PILL_GAP_PX
+    assert offset["first_left_offset"] == 0
+    assert offset["width"] == PILL_SIZE_PX
+    assert offset["height"] == PILL_SIZE_PX
+    assert page.locator(PILL).get_attribute("data-side") == "above"
+
+
+def test_selection_entry_position_when_near_scroller_top(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """選んだ範囲の始まりが本文のスクロール領域の上端の近くにあると、入口を選んだ範囲の終わりの下に、終わりの行の左端を揃えて出す（正常系）。"""
+    # 準備（60 番目の段落を、本文のスクロール領域の上端に合わせる）
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    page.evaluate(SCROLL_TEXT_TO_TOP_JS, [PANEL_BODY, "60 番目の段落"])
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "60 番目の段落")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["below_gap"] == PILL_GAP_PX
+    assert offset["last_left_offset"] == 0
+    assert offset["width"] == PILL_SIZE_PX
+    assert offset["height"] == PILL_SIZE_PX
+    assert page.locator(PILL).get_attribute("data-side") == "below"
 
 
 def test_selection_entry_when_html_body(
@@ -4247,7 +4410,8 @@ def test_diff_body_layout_switch_when_narrow(
     url, _ = write_body_layout_preview()
     page.set_viewport_size(SIDE_VIEWPORT)
     seed_side_layout(page, "V-2")
-    # 実行（幅 480px の検討事項の詳細パネルを開く）
+    seed_panel_width(page, 480)
+    # 実行（下限の幅 480px の検討事項の詳細パネルを開く）
     open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector(f"{LAYOUT_PANEL}.open .md:not(.md-value) ins.df-blk:visible")
     # 検証
@@ -4483,7 +4647,7 @@ def test_body_wrap_when_long_words_and_tables(
     assert wide["scrolls"] is True
     assert wide["overflowX"] in ("auto", "scroll")
     assert narrow["scrolls"] is False
-    assert narrow["tableFillsWrap"] is True
+    assert narrow["tableNarrowerThanWrap"] is True
 
 
 @pytest.mark.parametrize("width", [320, 1280])
@@ -4516,3 +4680,1296 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     set_smallest(page)
     # 検証
     assert_fits_smallest(page, ("aside.panel", 'aside.panel button[data-act="close"]', 'aside.panel button[data-act="full"]'), scope="aside.panel")
+
+
+# ===== 編集の表示（保存待ちの編集） =====
+
+# 編集の表示の入力欄を離れた後、編集が溜まるのを待つ上限ミリ秒
+EDIT_SETTLE_MS = 10_000
+
+# 編集の表示のフォーム
+EDIT_FORM = f"{EDIT_PANEL} form.pe-form"
+
+# 編集のトグル
+EDIT_TOGGLE = f"{EDIT_PANEL} button.pe-edit-toggle"
+
+# 見出しの保存待ちの印
+HEAD_MARK = f"{EDIT_PANEL} .panel-head .pm"
+
+# 溜める前の保存待ちの編集（D-1 の決定内容）の更新日時より新しい、AI が書き換えた日時
+AI_UPDATED = "2026-10-05T01:00:00+00:00"
+
+# 溜めたときの更新日時（AI が書き換える前）
+STALE_BASE = "2026-09-01T00:00:00+00:00"
+
+
+def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
+    """案 A・B と答えを持つ検討事項 D-1 と、D-1 を指す D-2 を返す。"""
+    return (
+        make_item(
+            "D-1",
+            title="最初の問い",
+            answer="元の答え",
+            phase="目的",
+            tags=["画面"],
+            options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
+        ),
+        make_item("D-2", title="後続の問い", depends_on=["D-1"]),
+    )
+
+
+def _open_edit_view(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    *,
+    edits: tuple[dict[str, Any], ...] = (),
+    items: tuple[dict[str, Any], ...] | None = None,
+) -> tuple[Page, Path]:
+    """D-1 の詳細パネルを開き、「編集する」を押して編集の表示にしたページと、ワークスペースのフォルダを返す。"""
+    url, root = write_edit_preview(
+        *(_edit_items(make_item) if items is None else items),
+        edits=edits,
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    page.click(EDIT_TOGGLE)
+    page.wait_for_selector(EDIT_FORM)
+    return page, root
+
+
+def _blur_and_wait(page: Page, locator: Locator, count: int) -> None:
+    """入力欄を離れ、トップバーの保存待ちの件数が揃うのを待つ。"""
+    locator.blur()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", f"保存待ち（{count} 件）", timeout=EDIT_SETTLE_MS
+    )
+
+
+def test_edit_toggle(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """「編集する」で読む表示と編集の表示を切り替える。編集の表示の間は「編集を終える」にし、別の項目を開くと読む表示に戻る。溜めた編集は残る（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(*_edit_items(make_item), settings=valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    toggle = page.locator(EDIT_TOGGLE)
+    # 検証（読む表示）
+    assert toggle.get_attribute("aria-pressed") == "false"
+    assert toggle.inner_text().strip() == "編集する"
+    assert page.locator(EDIT_FORM).count() == 0
+    assert page.locator(f"{EDIT_PANEL} form.send").first.is_visible()
+    # 実行・検証（編集の表示）
+    toggle.click()
+    page.wait_for_selector(EDIT_FORM)
+    assert toggle.get_attribute("aria-pressed") == "true"
+    assert toggle.inner_text().strip() == "編集を終える"
+    # 溜める
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
+    # 実行・検証（別の項目を開く）
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-2'")
+    page.wait_for_function(
+        "() => document.querySelector('aside.panel .panel-kind')?.textContent?.includes('D-2')"
+    )
+    assert page.locator(EDIT_FORM).count() == 0
+    assert page.locator(EDIT_TOGGLE).get_attribute("aria-pressed") == "false"
+    assert len(read_edits_file(root)["items"]) == 1
+
+
+def test_edit_toggle_narrow(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """幅 480px 以下は鉛筆の印だけにし、文字を読み上げと title に残す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*_edit_items(make_item), settings=valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.set_viewport_size({"width": 480, "height": 800})
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    toggle = page.locator(EDIT_TOGGLE)
+    # 文字は見た目から外し（1px 四方に切る）、読み上げには残す
+    label = toggle.locator(".lbl").bounding_box()
+    assert label is not None
+    assert label["width"] <= 1
+    assert toggle.locator("svg.icon").is_visible()
+    assert toggle.get_attribute("title") == "編集する"
+    assert page.get_by_role("button", name="編集する").count() == 1
+
+
+def test_edit_hidden_when_diff(
+    write_history_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示をしている間は「編集する」を出さない（正常系）。"""
+    # 準備
+    url, _ = write_history_preview()
+    preselect_diff(page, "V-1")
+    # 実行
+    diff = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    diff.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    assert diff.locator(".df-chip").count() == 1
+    assert diff.locator(EDIT_TOGGLE).count() == 0
+
+
+def test_head_and_key_marks(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """保存待ちの編集がある項目は、見出しの種類と ID の右と、キー・案の名前の後ろに印だけを置く。読む表示は編集を当てた値で描く。幅 480px 以下は見出しの印を出さない（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        *_edit_items(make_item),
+        edits=(
+            make_edit("E-1", value="編集後の答え", before="元の答え"),
+            make_edit("E-2", op="option-edit", key="A", value={"content": "編集後の案 A"}, before={"content": "案 A"}),
+        ),
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    head = page.locator(HEAD_MARK)
+    assert head.count() == 1
+    assert "pm-compact" in head.get_attribute("class")
+    assert "pm-pending" in head.get_attribute("class")
+    assert head.locator(".sr-only").inner_text() == "保存待ち"
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    kind_box = page.locator(f"{EDIT_PANEL} .panel-kind").bounding_box()
+    mark_box = head.bounding_box()
+    assert kind_box is not None
+    assert mark_box is not None
+    assert mark_box["x"] >= kind_box["x"] + kind_box["width"] - 1
+    # キーの印と、編集を当てた値
+    body_text = page.inner_text(f"{EDIT_PANEL} .panel-body")
+    assert "編集後の答え" in body_text
+    assert "編集後の案 A" in body_text
+    assert "元の答え" not in body_text
+    assert page.locator(f"{EDIT_PANEL} .panel-body .pm.pm-compact").count() == 2
+    # 幅 480px 以下は見出しの印を出さない
+    page.set_viewport_size({"width": 480, "height": 800})
+    assert page.locator(HEAD_MARK).is_hidden()
+    assert page.locator(f"{EDIT_PANEL} .panel-body .pm.pm-compact").count() == 2
+
+
+def test_head_mark_remove(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """削除を溜めた項目の見出しの印は「保存で削除」にする（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        *_edit_items(make_item),
+        edits=(make_edit("E-1", op="item-remove", key=None, value=None, before=None),),
+        settings=valid_settings,
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    # 検証
+    mark = page.locator(HEAD_MARK)
+    assert "pm-remove" in mark.get_attribute("class")
+    assert mark.locator(".sr-only").inner_text() == "保存で削除"
+
+
+def test_edit_view_fields(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """編集の表示は、編集できないキー（ID・作成・更新）を頭に並べ、検討事項のキーをキーごとの入力にする。下端のコメントの入力は隠す（正常系）。"""
+    # 準備・実行
+    page, _ = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    # 検証
+    fixed = page.locator(f"{EDIT_FORM} dl.pe-fixed")
+    assert fixed.locator("dt").all_inner_texts() == ["ID", "作成", "更新"]
+    assert fixed.locator("dd").first.inner_text() == "D-1"
+    keys = page.locator(f"{EDIT_FORM} > .pe-field").evaluate_all("nodes => nodes.map(n => n.dataset.key)")
+    assert keys == [
+        "status",
+        "title",
+        "target",
+        "category",
+        "phase",
+        "tags",
+        "depends_on",
+        "options",
+        "answer",
+        "reason",
+        "body",
+    ]
+    assert page.get_by_label("状態", exact=True).evaluate("e => e.tagName") == "SELECT"
+    assert page.get_by_label("決定内容", exact=True).evaluate("e => e.tagName") == "TEXTAREA"
+    assert page.locator(f"{EDIT_PANEL} textarea.pe-body").count() == 1
+    assert page.get_by_role("group", name="タグ").locator(".pe-chip").all_inner_texts() == ["画面"]
+    # 編集の表示の間は、下端のコメントの入力を隠す
+    comment_form = page.locator(f"{EDIT_PANEL} form.send")
+    assert comment_form.count() == 0 or comment_form.first.is_hidden()
+
+
+def test_edit_tags_suggestions(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """タグの入力は記録で使われているタグを候補に出し、候補に無いタグも入れられて、入れたときに溜める（正常系）。"""
+    # 準備
+    items = (
+        make_item("D-1", title="最初の問い", tags=["画面"]),
+        make_item("D-2", title="後続の問い", tags=["画面", "ＡＰＩ"]),
+    )
+    page, root = _open_edit_view(
+        write_edit_preview, make_item, valid_settings, open_preview, items=items
+    )
+    group = page.get_by_role("group", name="タグ")
+    # 検証（候補）
+    assert group.locator("datalist option").evaluate_all("nodes => nodes.map(n => n.value)") == [
+        "画面",
+        "api",
+    ]
+    # 実行（候補に無いタグを入れる）
+    page.get_by_label("タグを追加").fill("新しいタグ")
+    page.get_by_label("タグを追加").press("Enter")
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS
+    )
+    wait_saved_edit(page, "tags", ["画面", "新しいタグ"])
+    # 検証（候補に無いタグを入れる）
+    assert group.locator(".pe-chip").all_inner_texts() == ["画面", "新しいタグ"]
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"], edit["before"]) == (
+        "tags",
+        ["画面", "新しいタグ"],
+        ["画面"],
+    )
+    assert read_items_file(root, "decisions.yaml")[0]["tags"] == ["画面"]
+
+
+def test_edit_commit_and_revert(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """入力欄を離れたときにそのキーの編集を溜め、溜めたキーの枠を印の色の破線にして印を付ける。元の値に戻すと保存待ちから外れる（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    answer = page.get_by_label("決定内容", exact=True)
+    # 実行
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
+    # 検証
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key='answer']")
+    assert "is-pending" in field.get_attribute("class")
+    assert field.locator(".pm.pm-compact").count() == 1
+    assert field.locator("textarea").evaluate("e => getComputedStyle(e).borderTopStyle") == "dashed"
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"], edit["before"]) == ("answer", "新しい答え", "元の答え")
+    assert read_items_file(root, "decisions.yaml")[0]["answer"] == "元の答え"
+    # 実行（元の値に戻す）
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("元の答え")
+    answer.blur()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_count(0, timeout=EDIT_SETTLE_MS)
+    wait_no_saved_edits(page)
+    # 検証（元の値に戻す）
+    assert read_edits_file(root)["items"] == []
+    assert page.locator(f"{EDIT_FORM} .pe-field[data-key='answer'] .pm").count() == 0
+
+
+def test_title_required(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """タイトルが空（空白だけ）のときは溜めず、離れたときに失敗の赤の枠と誤りを出す。「必須」をキーの名前の右に出す（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    title = page.locator(f"{EDIT_FORM} #pe-D1-title")
+    assert page.locator(f"{EDIT_FORM} .pe-field[data-key='title'] .pe-req").inner_text() == "必須"
+    # 実行
+    title.fill("   ")
+    title.blur()
+    # 検証
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key='title']")
+    expect(field.locator(".pe-error")).to_be_visible()
+    assert field.locator(".pe-error").inner_text().strip() == "タイトルを書いてください。"
+    assert title.get_attribute("aria-invalid") == "true"
+    assert "is-invalid" in field.get_attribute("class")
+    page.wait_for_timeout(500)
+    assert not (root / RECORD_DIR / "edits.yaml").exists()
+    # 直すと誤りが消えて溜まる
+    title.fill("新しい題")
+    _blur_and_wait(page, title, 1)
+    assert title.get_attribute("aria-invalid") is None
+
+
+def test_options_edit(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """案は 1 案 1 枚で、中身の書き換え・採用・削除・案の追加を溜める。削除を溜めた案は中身に取り消し線を引く（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    options = page.locator(f"{EDIT_FORM} .pe-opt")
+    assert options.count() == 2
+    assert options.nth(0).get_by_role("radio", name="採用").count() == 1
+    # 実行（中身を書き換える）
+    area = page.get_by_label("案 A の中身")
+    area.fill("書き換えた案 A")
+    _blur_and_wait(page, area, 1)
+    wait_saved_edit(page, "A", {"content": "書き換えた案 A"}, op="option-edit")
+    # 実行（採用する）
+    page.get_by_role("radio", name="採用").nth(1).check()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    wait_saved_edit(page, "B", "B", op="adopt")
+    # 実行（案を足す）
+    page.get_by_role("button", name="案を追加").click()
+    draft = page.get_by_label("案 C の中身")
+    draft.fill("足した案 C")
+    _blur_and_wait(page, draft, 3)
+    wait_saved_edit(page, "C", {"content": "足した案 C"}, op="option-add")
+    # 実行（案 B を削除する）
+    page.get_by_role("button", name="案 B を削除").click()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（4 件）", timeout=EDIT_SETTLE_MS)
+    # 検証
+    saved = {(edit["op"], edit["key"]): edit for edit in read_edits_file(root)["items"]}
+    assert saved[("option-edit", "A")]["value"] == {"content": "書き換えた案 A"}
+    assert saved[("adopt", "B")]["value"] == "B"
+    assert saved[("option-add", "C")]["value"] == {"content": "足した案 C"}
+    assert ("option-remove", "B") in saved
+    # 書き換えの通知による描き直しで要素が入れ替わっても、描き終えた画面で確かめる
+    removed = page.locator(f"{EDIT_FORM} .pe-opt[data-key='B']")
+    expect(removed).to_have_class(re.compile(r"\bis-removed\b"), timeout=EDIT_SETTLE_MS)
+    expect(removed.locator("textarea")).to_have_css("text-decoration-line", "line-through", timeout=EDIT_SETTLE_MS)
+    expect(removed.get_by_role("button", name="案 B を削除")).to_have_count(0, timeout=EDIT_SETTLE_MS)
+
+
+# 止めたレスポンスがルートの処理に渡るのを確かめる間隔ミリ秒と回数
+HOLD_POLL_MS = 50
+HOLD_POLL_LIMIT = 100
+
+
+def _redraw_by_add(page: Page, root: Path, call_tool: CallTool) -> None:
+    """項目を足して書き換えの通知を起こし、編集の表示のフォームが描き直されるのを待つ。"""
+    page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
+    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    assert added.is_error is False, added.text
+    page.wait_for_function(
+        f"document.querySelector('{EDIT_FORM}')?.dataset.drawn !== 'before'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+
+
+def test_option_draft_when_redrawn(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+) -> None:
+    """「案を追加」で置いた書きかけの案は、入力の途中で書き換えの通知により描き直しても打った中身ごと残り、離れたときに溜める（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 C の中身").fill("書きかけの案 C")
+    # 実行（離れずに描き直させる）
+    _redraw_by_add(page, root, call_tool)
+    # 検証（描き直し）
+    draft = page.get_by_label("案 C の中身")
+    expect(draft).to_have_value("書きかけの案 C")
+    # 実行（離れる）
+    _blur_and_wait(page, draft, 1)
+    # 検証（離れる）
+    wait_saved_edit(page, "C", {"content": "書きかけの案 C"}, op="option-add")
+    expect(page.get_by_label("案 C の中身")).to_have_value("書きかけの案 C")
+
+
+def test_sent_value_when_redrawn(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    call_tool: CallTool,
+) -> None:
+    """入力欄を離れて送信した値は、溜まる前に描き直しても、古い保存待ちの編集で元の値に戻らない（正常系）。"""
+    # 準備（入力欄 A の編集を溜める）
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    answer = page.get_by_label("決定内容", exact=True)
+    answer.fill("新しい答え")
+    _blur_and_wait(page, answer, 1)
+    wait_saved_edit(page, "answer", "新しい答え")
+    # 入力欄 B の溜める要求のレスポンスを止める
+    held: list[Route] = []
+    page.route(
+        "**/api/edits",
+        lambda route: held.append(route) if route.request.method == "POST" else route.continue_(),
+    )
+    # 実行（入力欄 B を離れて送信し、溜まる前に描き直させる）
+    option = page.get_by_label("案 A の中身")
+    option.fill("書き換えた案 A")
+    with page.expect_request(lambda request: request.url.endswith("/api/edits") and request.method == "POST"):
+        option.blur()
+    # 止めたレスポンスがルートの処理に渡るまで、ページのイベントを回す
+    for _ in range(HOLD_POLL_LIMIT):
+        if held:
+            break
+        page.wait_for_timeout(HOLD_POLL_MS)
+    assert len(held) == 1
+    _redraw_by_add(page, root, call_tool)
+    # 検証（描き直し）
+    expect(page.get_by_label("案 A の中身")).to_have_value("書き換えた案 A")
+    expect(page.get_by_label("決定内容", exact=True)).to_have_value("新しい答え")
+    # 実行（止めたレスポンスを流す）
+    held[0].continue_()
+    page.unroute("**/api/edits")
+    wait_saved_edit(page, "A", {"content": "書き換えた案 A"}, op="option-edit")
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（2 件）", timeout=EDIT_SETTLE_MS)
+    # 検証（溜めた後）
+    expect(page.get_by_label("案 A の中身")).to_have_value("書き換えた案 A")
+    expect(page.get_by_label("決定内容", exact=True)).to_have_value("新しい答え")
+
+
+def test_remove_item(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """「項目を削除」で削除を溜め（確認のモーダルは挟まない）、同じ場所を「削除を取り消す」に替える。溜めた間は入力を読むだけにし、ほかの項目が指していれば警告を出す（正常系）。"""
+    # 準備
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
+    section = page.locator(f"{EDIT_FORM} .pe-remove-sec")
+    assert section.locator("h2").inner_text() == "項目を削除"
+    assert section.locator("p.pe-hint").inner_text().strip() == (
+        "D-2 が指しているため、保存のときに削除できません。指している項目から外すと削除できます。"
+    )
+    assert page.locator("dialog[open]").count() == 0
+    # 実行
+    section.get_by_role("button", name="項目を削除").click()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS)
+    # 検証
+    assert page.locator("dialog[open]").count() == 0
+    assert [edit["op"] for edit in read_edits_file(root)["items"]] == ["item-remove"]
+    assert page.locator(f"{EDIT_FORM} .pe-remove-sec").get_by_role("button", name="削除を取り消す").count() == 1
+    assert page.locator(f"{EDIT_FORM} > p.pe-hint[role='status']").inner_text().strip() == (
+        "削除を溜めています。削除を取り消すと編集できます。"
+    )
+    assert page.get_by_label("決定内容", exact=True).is_disabled()
+    assert read_items_file(root, "decisions.yaml")[0]["id"] == "D-1"
+    # 実行（取り消す）
+    page.get_by_role("button", name="削除を取り消す").click()
+    expect(page.locator(EDIT_PENDING_BUTTON)).to_have_count(0, timeout=EDIT_SETTLE_MS)
+    # 検証（取り消す）
+    assert read_edits_file(root)["items"] == []
+    assert page.get_by_label("決定内容", exact=True).is_enabled()
+
+
+def test_blocked_reason(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """直前の保存で書き込めなかった編集の理由を、そのキーの下に警告の印と共に出し、入力欄の枠を失敗の赤の実線にする。`changed` は AI が書き換えた日時を添える（異常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("D-1", title="最初の問い", answer="元の答え", updated=AI_UPDATED),
+        edits=(make_edit("E-1", value="編集後の答え", before="元の答え", base=STALE_BASE),),
+        settings=valid_settings,
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    open_edit_pending(page)
+    # 実行
+    page.click(EDIT_SAVE_BUTTON)
+    page.wait_for_selector(f"{EDIT_PENDING_PANEL} .pe-alert", timeout=EDIT_SETTLE_MS)
+    page.click(EDIT_TOGGLE)
+    page.wait_for_selector(EDIT_FORM)
+    # 検証
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key='answer']")
+    note = field.locator(".pe-blocked-note")
+    assert note.count() == 1
+    text = note.inner_text()
+    assert text.startswith("溜めた後の ")
+    assert "に AI がこの項目を書き換えたため、書き込めません。取り消してから入れ直してください。" in text
+    assert "10/05" in text
+    assert "is-blocked" in field.get_attribute("class")
+    assert field.locator("textarea").evaluate("e => getComputedStyle(e).borderTopStyle") == "solid"
+    assert field.locator(".pm.pm-blocked").count() == 1
+
+
+# 本文の表の見せ方を確かめる、本文のスクロール領域の中の表と、列の固定のボタン・開閉の矢印・しま模様の表
+BODY_TABLE_FRAME = f"{BODY_VIEW_SCOPE} .panel-body .md-table-frame"
+BODY_PIN_BUTTON = f"{BODY_VIEW_SCOPE} .panel-body button.md-pin"
+BODY_FOLD_BUTTON = f"{BODY_VIEW_SCOPE} .panel-body button.md-fold"
+BODY_STRIPES_TABLE = f"{BODY_VIEW_SCOPE} .panel-body table.md-stripes"
+
+# 8 列の表の、最後の列を除く列の数（固定のボタンの数）
+BODY_PIN_COUNT = 7
+
+
+def test_body_view(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """資料の本文に、表の入れ物の枠・列の固定のボタン・見出しの固定・見出しの開閉の矢印を当てる。しま模様は既定ではオフ（正常系）。"""
+    # 準備・実行
+    url, _ = write_body_view_preview()
+    open_body_view(page, open_preview, url, BODY_VIEW_HASH)
+    # 検証（表は枠で包み、固定のボタンは最後の列を除く 7 つ、見出しの矢印は 2 つ）
+    assert page.locator(BODY_TABLE_FRAME).count() == 1
+    assert page.locator(f"{BODY_TABLE_FRAME} > .md-table-wrap > table").count() == 1
+    assert page.locator(BODY_PIN_BUTTON).count() == BODY_PIN_COUNT
+    assert page.locator(BODY_FOLD_BUTTON).count() == 2
+    assert page.locator(f"{BODY_VIEW_SCOPE} .panel-body table.md-head-stick").count() == 1
+    assert page.locator(BODY_STRIPES_TABLE).count() == 0
+    colors = table_state(page)["rowColors"]
+    assert colors[0] == colors[1]
+
+
+def test_diff_body_view(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """本文の差分にも、表の枠・列の固定のボタン・しま模様を当てる。見出しの開閉の矢印は置かず、足した行は差分の面のまま残す（正常系）。"""
+    # 準備
+    url, _ = write_body_view_preview()
+    seed_body_view(page, {"tableStripes": True})
+    # 実行
+    open_body_view(page, open_preview, url, BODY_VIEW_DIFF_HASH)
+    page.wait_for_selector(f"{BODY_VIEW_SCOPE} .md tr.df-row")
+    # 検証（枠・固定のボタン・しま模様はあり、矢印は無い）
+    assert page.locator(BODY_TABLE_FRAME).count() == 1
+    assert page.locator(BODY_PIN_BUTTON).count() == BODY_PIN_COUNT
+    assert page.locator(BODY_STRIPES_TABLE).count() == 1
+    assert page.locator(BODY_FOLD_BUTTON).count() == 0
+    # 検証（書き換えた行と足した行は、しま模様の色にならず差分の面のまま）
+    assert page.locator(f"{BODY_VIEW_SCOPE} .md tr.df-row").count() >= 2
+    changed = page.eval_on_selector_all(
+        f"{BODY_VIEW_SCOPE} .md tbody tr.df-row",
+        "rows => rows.map((row) => getComputedStyle(row.firstElementChild).backgroundColor)",
+    )
+    plain = page.eval_on_selector(
+        f"{BODY_VIEW_SCOPE} .md tbody tr:not(.df-row)",
+        "row => getComputedStyle(row.firstElementChild).backgroundColor",
+    )
+    assert plain not in changed
+
+
+@pytest.mark.parametrize("column", [SIDE_BEFORE, SIDE_AFTER], ids=["before", "after"])
+def test_diff_body_view_when_side_by_side(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page, column: str
+) -> None:
+    """左右に並べた本文の左右の列にも、表の枠・列の固定のボタン・しま模様を当てる。見出しの開閉の矢印は置かない（正常系）。"""
+    # 準備
+    url, _ = write_body_view_preview()
+    seed_body_view(page, {"bodyLayout": "side", "diffSel": "V-1", "tableStripes": True})
+    page.set_viewport_size(BODY_VIEW_VIEWPORT)
+    # 実行
+    open_preview(url, BODY_VIEW_DIFF_HASH)
+    open_side_by_side(page, LAYOUT_PANEL)
+    # 検証
+    assert page.locator(f"{column} .md-table-frame").count() == 1
+    assert page.locator(f"{column} button.md-pin").count() == BODY_PIN_COUNT
+    assert page.locator(f"{column} table.md-stripes").count() == 1
+    assert page.locator(f"{column} button.md-fold").count() == 0
+
+
+# 幅の区切りを確かめるときに開く検討事項の表の D-3
+RESIZER_HASH = "#tab=decisions&view=table&id=D-3"
+
+
+def test_panel_resizer_default(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """保存領域に幅が無いと、幅の区切りは既定の 640px を示し、パネルの左端に幅 24px で置かれ、本文の寄せも 640px になる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    state = panel_state(page)
+    # 検証
+    separator = state["separator"]
+    assert page.get_by_role("separator", name="詳細パネルの幅").count() == 1
+    assert separator["role"] == "separator"
+    assert separator["orientation"] == "vertical"
+    assert separator["tabindex"] == "0"
+    assert (separator["min"], separator["max"], separator["now"]) == ("480", "880", "640")
+    assert separator["width"] == 24
+    assert separator["leftInPanel"] == 0
+    assert separator["cursor"] == "col-resize"
+    assert state["panelWidth"] == 640
+    assert state["contentMargin"] == 640
+    assert read_stored_width(page) is None
+
+
+@pytest.mark.parametrize(
+    "hash_text",
+    [
+        pytest.param("#tab=docs&view=table&id=A-1", id="docs"),
+        pytest.param("#tab=tasks&view=table&id=T-1", id="tasks"),
+        pytest.param("#tab=research&id=R-1", id="research"),
+        pytest.param("#tab=decisions&view=map&id=D-2", id="map"),
+    ],
+)
+def test_panel_resizer_default_for_every_kind(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    page: Page,
+    hash_text: str,
+) -> None:
+    """どの種類の項目の詳細パネルも、同じ既定の 640px で開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    open_panel(page, open_preview, url, hash_text, PANEL_VIEWPORT)
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 640
+    assert state["separator"]["now"] == "640"
+
+
+def test_panel_resizer_keyboard(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """幅の区切りにフォーカスして ← で 16px ずつ広げ、→ で狭め、Home で下限の 480px、End で上限の 880px にする。変えるたびにパネルの幅と本文の寄せが合い、保存領域に残る。下限・上限で止まる間は向きが片方のカーソルになる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    # 実行（← で広げる）
+    press_key_times(page, "ArrowLeft", 1)
+    widened = panel_state(page)
+    # 実行（→ で狭める）
+    press_key_times(page, "ArrowRight", 2)
+    narrowed = panel_state(page)
+    # 実行（Home で下限）
+    press_key_times(page, "Home", 1)
+    at_min = panel_state(page)
+    # 実行（End で上限）
+    press_key_times(page, "End", 1)
+    at_max = panel_state(page)
+    # 検証
+    assert (widened["panelWidth"], widened["contentMargin"], widened["separator"]["now"]) == (656, 656, "656")
+    assert (narrowed["panelWidth"], narrowed["contentMargin"], narrowed["separator"]["now"]) == (624, 624, "624")
+    assert (at_min["panelWidth"], at_min["contentMargin"], at_min["separator"]["now"]) == (480, 480, "480")
+    assert (at_min["separator"]["edge"], at_min["separator"]["cursor"]) == ("min", "w-resize")
+    assert (at_max["panelWidth"], at_max["contentMargin"], at_max["separator"]["now"]) == (880, 880, "880")
+    assert (at_max["separator"]["edge"], at_max["separator"]["cursor"]) == ("max", "e-resize")
+    assert read_stored_width(page) == "880"
+
+
+def test_panel_resizer_drag(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """幅の区切りを左へドラッグすると広がり、右へドラッグすると狭まる。押すとフォーカスが区切りに移る。下限・上限を越えてドラッグしても収まり、変えた幅は保存領域に残る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    # 実行（左へ 100px ドラッグする）
+    drag_resizer(page, -100)
+    widened = panel_state(page)
+    # 実行（右へ 200px ドラッグする）
+    drag_resizer(page, 200)
+    narrowed = panel_state(page)
+    # 実行（下限を越えて右へドラッグする）
+    drag_resizer(page, 600)
+    at_min = panel_state(page)
+    # 実行（上限を越えて左へドラッグする）
+    drag_resizer(page, -1000)
+    at_max = panel_state(page)
+    # 検証
+    assert (widened["panelWidth"], widened["contentMargin"], widened["separator"]["now"]) == (740, 740, "740")
+    assert widened["separator"]["focused"] is True
+    assert (narrowed["panelWidth"], narrowed["contentMargin"], narrowed["separator"]["now"]) == (540, 540, "540")
+    assert (at_min["panelWidth"], at_min["separator"]["now"], at_min["separator"]["edge"]) == (480, "480", "min")
+    assert (at_max["panelWidth"], at_max["separator"]["now"], at_max["separator"]["edge"]) == (880, "880", "max")
+    assert read_stored_width(page) == "880"
+
+
+def test_panel_resizer_stored_on_release(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """ドラッグ中はパネルの幅と本文の寄せが動かした位置の幅になるが、保存領域の幅は押す前のまま変わらず、離すと最後の位置の幅が残る（正常系）。"""
+    # 準備
+    seed_panel_width(page, 700)
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    panel_state(page)
+    box = page.locator(RESIZER).bounding_box()
+    assert box is not None
+    start_x = box["x"] + box["width"] / 2
+    start_y = box["y"] + box["height"] / 2
+    # 実行（押して左へ 100px 動かし、まだ離さない）
+    page.mouse.move(start_x, start_y)
+    page.mouse.down()
+    page.mouse.move(start_x - 100, start_y, steps=5)
+    wait_for_value_now(page, 800)
+    dragging = panel_state(page)
+    stored_while_dragging = read_stored_width(page)
+    # 実行（離す）
+    page.mouse.up()
+    released = panel_state(page)
+    # 検証
+    assert (dragging["panelWidth"], dragging["contentMargin"], dragging["separator"]["now"]) == (800, 800, "800")
+    assert stored_while_dragging == "700"
+    assert (released["panelWidth"], released["separator"]["now"]) == (800, "800")
+    assert read_stored_width(page) == "800"
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "width", "expected_max"),
+    [
+        pytest.param("#tab=decisions&view=table&id=D-3", 1280, 880, id="table_side_by_side"),
+        pytest.param("#tab=decisions&view=table&id=D-3", 1000, 840, id="table_overlay"),
+        pytest.param("#tab=decisions&view=map&id=D-3", 1000, 600, id="map_side_by_side"),
+    ],
+)
+def test_panel_resizer_max(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    page: Page,
+    hash_text: str,
+    width: int,
+    expected_max: int,
+) -> None:
+    """上限は、本文を寄せる幅では本文に 400px、重ねる幅では左に 160px を残す幅になり、End で上限まで広げると本文のマップも寄せる（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, hash_text, {"width": width, "height": 800})
+    # 実行
+    press_key_times(page, "End", 1)
+    state = panel_state(page)
+    # 検証
+    assert state["separator"]["max"] == str(expected_max)
+    assert state["panelWidth"] == expected_max
+    assert state["separator"]["now"] == str(expected_max)
+
+
+@pytest.mark.parametrize(
+    ("width", "display"),
+    [
+        pytest.param(900, "none", id="900"),
+        pytest.param(901, "block", id="901"),
+    ],
+)
+def test_panel_resizer_visible_from_901(
+    write_sample_preview: WriteSamplePreview,
+    open_preview: OpenPreview,
+    page: Page,
+    width: int,
+    display: str,
+) -> None:
+    """表示の幅が 901px 以上のときだけ幅の区切りが見え、900px 以下では画面の幅いっぱいのパネルで区切りを隠す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    # 実行
+    open_panel(page, open_preview, url, RESIZER_HASH, {"width": width, "height": 800})
+    state = panel_state(page)
+    # 検証
+    assert state["separator"]["display"] == display
+
+
+def test_panel_resizer_not_in_full_screen(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """詳細の全画面には幅の区切りを置かない（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page.set_viewport_size(PANEL_VIEWPORT)
+    # 実行
+    open_preview(url, f"{RESIZER_HASH}&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    # 検証
+    assert page.locator(RESIZER).count() == 0
+    assert page.locator("dialog.full .panel-resizer").count() == 0
+
+
+def test_panel_resizer_kept_in_tab(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """変えた幅は、パネルを閉じて別の項目を開いても同じタブでは変わらず、保存領域のキーに整数の文字列で残る（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_panel(page, open_preview, url, RESIZER_HASH, PANEL_VIEWPORT)
+    press_key_times(page, "ArrowLeft", 5)
+    # 実行（パネルを閉じて、別の項目 D-2 の行を開く）
+    page.click(f"{WIDTH_PANEL} button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.click('table.grid button.row-open[data-id="D-2"]')
+    page.wait_for_selector(f"{WIDTH_PANEL}.open")
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 720
+    assert state["separator"]["now"] == "720"
+    assert page.evaluate(f"sessionStorage.getItem('{PANEL_WIDTH_KEY}')") == "720"
+
+
+# 「エクスポート」の入口が、見出しの中で編集するの右・全画面表示の左にあるかを DOM の順で調べる
+EXPORT_ENTRY_ORDER_JS = """() => {
+    const head = document.querySelector('aside.panel .panel-head');
+    const edit = head.querySelector('button.pe-edit-toggle');
+    const entry = head.querySelector('button.panel-export');
+    const full = head.querySelector('button[data-act="full"]');
+    const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return {afterEdit: follows(edit, entry), beforeFull: follows(entry, full)};
+}"""
+
+# 埋め込んだ HTML の範囲の前後の段落と、範囲の中の用語のマーカー・項目の ID のリンクの数を読む
+EMBEDDED_RANGE_JS = """() => {
+    const range = document.querySelector('aside.panel .md > .mdmark-html');
+    return {
+        previous: range.previousElementSibling?.textContent ?? null,
+        next: range.nextElementSibling?.textContent ?? null,
+        terms: range.querySelectorAll('a.term').length,
+        references: range.querySelectorAll('a.idref').length,
+        scripts: range.querySelectorAll('script').length,
+        handlers: [...range.querySelectorAll('*')].filter(e => [...e.attributes].some(a => a.name.startsWith('on'))).length,
+    };
+}"""
+
+
+def _open_embedded(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> Page:
+    """埋め込んだ HTML・チャート・操作できる部品を持つ資料 A-1 の詳細パネルを開き、チャートを描き終わるまで待つ。"""
+    url = write_preview(
+        make_item("A-1", title="埋め込む資料"),
+        make_item("A-2"),
+        make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+        bodies={"A-1.md": EMBEDDED_BODY},
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+    return page
+
+
+@pytest.mark.parametrize(
+    ("hash_text", "expected"),
+    [
+        pytest.param("#tab=docs&id=A-1", 1, id="markdown_doc"),
+        pytest.param("#tab=docs&id=A-2", 0, id="html_doc"),
+        pytest.param("#tab=decisions&id=D-1", 0, id="decision"),
+    ],
+)
+def test_export_entry(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    hash_text: str,
+    expected: int,
+) -> None:
+    """「エクスポート」を、本文が Markdown の資料の見出しにだけ、編集するの右・全画面表示の左に置く（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="Markdown の資料"),
+        make_item("A-2", body="A-2.html"),
+        make_item("D-1"),
+        bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
+    )
+    # 実行
+    page = open_preview(url, hash_text)
+    page.wait_for_selector("aside.panel.open .d-title")
+    entries = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    # 検証
+    expect(entries).to_have_count(expected)
+    if expected == 1:
+        entry = page.locator("aside.panel button.panel-export")
+        assert entry.get_attribute("title") == EXPORT_ENTRY_NAME
+        assert entry.get_attribute("aria-haspopup") == "dialog"
+        assert entry.get_attribute("aria-expanded") == "false"
+        assert entry.inner_text().strip() == ""
+        assert page.evaluate(EXPORT_ENTRY_ORDER_JS) == {"afterEdit": True, "beforeFull": True}
+
+
+def test_export_entry_when_editing(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """編集の表示の間は、「エクスポート」の入口を置かない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    entries = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    expect(entries).to_have_count(1)
+    # 実行
+    page.click("aside.panel button.pe-edit-toggle")
+    # 検証
+    expect(entries).to_have_count(0)
+    # 実行（編集を終える）
+    page.click("aside.panel button.pe-edit-toggle")
+    # 検証
+    expect(entries).to_have_count(1)
+
+
+def test_export_menu_toggle(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """入口を押すとメニューを開き、開いているときに押すと閉じる。開閉は `aria-expanded` で示す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    history_length = page.evaluate("history.length")
+    entry = page.locator("aside.panel button.panel-export")
+    menu = page.locator(EXPORT_MENU)
+    # 実行（開く）
+    entry.click()
+    # 検証
+    expect(menu).to_be_visible()
+    expect(entry).to_have_attribute("aria-expanded", "true")
+    assert menu.get_attribute("role") == "dialog"
+    expect(menu.get_by_role("button", name="HTML でエクスポート")).to_be_focused()
+    expect(menu.get_by_role("button", name="Markdown でエクスポート")).to_be_visible()
+    # 実行（閉じる）
+    entry.click()
+    # 検証
+    expect(menu).to_be_hidden()
+    expect(entry).to_have_attribute("aria-expanded", "false")
+    assert page.evaluate("history.length") == history_length
+
+
+def test_export_menu_close_by_escape(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """Esc はメニューだけを閉じ、詳細パネルは閉じずに入口へフォーカスを戻す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    entry = page.locator("aside.panel button.panel-export")
+    entry.click()
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    # 実行
+    page.keyboard.press("Escape")
+    # 検証
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("aside.panel.open")).to_have_count(1)
+    expect(entry).to_be_focused()
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+
+
+def test_export_menu_close_by_outside_press(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """メニューの外を押すとメニューだけを閉じ、詳細パネルは閉じない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.click("aside.panel button.panel-export")
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    # 実行（メニューに隠れない、本文の下のセクションの見出しを押す）
+    page.click("aside.panel .d-review h3")
+    # 検証
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("aside.panel.open")).to_have_count(1)
+
+
+def test_export_menu_close_when_item_moved(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """メニューを開いたまま別の項目へ移ると、メニューも閉じる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1"),
+        make_item("A-2", title="移った先"),
+        bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.md": MARKDOWN_EXPORT_BODY},
+    )
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.click("aside.panel button.panel-export")
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    # 実行
+    page.evaluate("location.hash = '#tab=docs&id=A-2'")
+    # 検証
+    expect(page.locator("aside.panel .d-title")).to_have_text("移った先")
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("aside.panel button.panel-export")).to_have_attribute("aria-expanded", "false")
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [
+        pytest.param({"width": 1280, "height": 800}, id="wide"),
+        pytest.param({"width": 390, "height": 844}, id="narrow"),
+    ],
+)
+def test_export_menu_position(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+    viewport: dict[str, int],
+) -> None:
+    """メニューは入口の下に右端を揃えて置き、画面の幅から左右 8px を引いた幅を超えない（正常系）。"""
+    # 準備
+    page.set_viewport_size(viewport)
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    entry = page.locator("aside.panel button.panel-export")
+    # 実行
+    entry.click()
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    entry_box = entry.bounding_box()
+    menu_box = page.locator(EXPORT_MENU).bounding_box()
+    # 検証
+    assert entry_box is not None
+    assert menu_box is not None
+    assert menu_box["y"] >= entry_box["y"] + entry_box["height"]
+    assert menu_box["width"] <= viewport["width"] - 16
+    assert menu_box["x"] >= 8, (menu_box, entry_box)
+    assert menu_box["x"] + menu_box["width"] <= viewport["width"] - 8
+    # 幅に余裕があるときは、入口と右端を揃える
+    if viewport["width"] >= 1000:
+        assert abs((menu_box["x"] + menu_box["width"]) - (entry_box["x"] + entry_box["width"])) <= 2
+
+
+def test_embedded_html(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """範囲を枠に入れず本文の要素として元の位置に描き、スクリプトとイベントの属性は動かさず、範囲の中の文にも用語のマーカーと ID のリンクを付ける（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    # 実行
+    state = page.evaluate(EMBEDDED_RANGE_JS)
+    page.get_by_role("button", name="実行", exact=True).click()
+    # 検証
+    assert state == {
+        "previous": "範囲の外の文",
+        "next": "後ろの文",
+        "terms": 1,
+        "references": 1,
+        "scripts": 0,
+        "handlers": 0,
+    }
+    assert page.locator("aside.panel iframe").count() == 0
+    assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+
+
+def test_embedded_chart(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """チャートは拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで位置を変える。図の拡大の画面は開かず、履歴に積まない（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    chart = page.locator(CHART).first
+    history_length = page.evaluate("history.length")
+
+    def _fit() -> int:
+        """チャートの倍率（%）を返す。"""
+        return int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+
+    initial = _fit()
+    # 検証（全体が収まる倍率では、縮小は押せず、動かすボタンは隠れている）
+    expect(chart.locator('button[data-tool="out"]')).to_be_disabled()
+    expect(chart.locator('[data-group="pan"]')).to_be_hidden()
+    # 実行（ボタンで拡大する）
+    chart.locator(ZOOM_IN).click()
+    # 検証
+    assert _fit() > initial
+    expect(chart.locator('button[data-tool="out"]')).to_be_enabled()
+    expect(chart.locator('[data-group="pan"]')).to_be_visible()
+    # 実行（キーで縮小し、0 で全体が収まる倍率に戻す）
+    chart.locator(".mdmark-diagram-viewport").focus()
+    page.keyboard.press("+")
+    zoomed = _fit()
+    page.keyboard.press("-")
+    # 検証
+    assert zoomed > _fit()
+    page.keyboard.press("0")
+    assert _fit() == initial
+    # 実行（拡大してドラッグする）
+    chart.locator(ZOOM_IN).click()
+    chart.locator(ZOOM_IN).click()
+    before = viewport_scroll(chart)
+    drag_in_viewport(page, chart, dx=-60, dy=-40)
+    after = viewport_scroll(chart)
+    # 検証
+    assert after["left"] > before["left"]
+    assert after["top"] > before["top"]
+    assert page.locator("dialog.viewer[open]").count() == 0
+    assert page.evaluate("history.length") == history_length
+    assert page.locator(f"{RANGE} p [data-tool], {RANGE} .mdmark-param-knob [data-tool]").count() == 0
+
+
+def test_embedded_param(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """操作できる部品を動かすと値とグラフを描き直す。動かした値は記録に書かず、描き直すと資料に書いた初めの値に戻り、履歴に積まない（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    history_length = page.evaluate("history.length")
+    slider = page.locator(f"{RANGE} input[type=range]")
+    output = page.locator(f"{RANGE} .mdmark-param output")
+    legend = page.locator(f"{RANGE} .mdmark-param .mdmark-diagram-legend")
+    assert output.inner_text() == "5"
+    # 実行
+    slider.focus()
+    page.keyboard.press("ArrowRight")
+    page.keyboard.press("ArrowRight")
+    # 検証
+    assert output.inner_text() == "7"
+    assert "今の値（7）" in legend.inner_text()
+    assert "既定の値（5）" in legend.inner_text()
+    assert page.evaluate("history.length") == history_length
+    # 実行（別の項目へ移って戻る）
+    page.evaluate("location.hash = '#tab=docs&id=A-2'")
+    expect(page.locator("aside.panel .d-title")).to_have_text("A-2の題")
+    page.evaluate("location.hash = '#tab=docs&id=A-1'")
+    page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+    # 検証（資料に書いた初めの値に戻る）
+    assert page.locator(f"{RANGE} .mdmark-param output").inner_text() == "5"
+
+
+def test_embedded_param_copy(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """「今の値をコピー」は、操作できる部品の今の値を `{キー: {name, value}}` の JSON にしてクリップボードへ書き込む（正常系）。"""
+    # 準備
+    page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+    _open_embedded(write_preview, open_preview, make_item)
+    copy_button = page.get_by_role("button", name="今の値をコピー")
+    # 検証
+    assert copy_button.inner_text().strip() == "今の値をコピー"
+    # 実行（初めの値のままコピーする）
+    copy_button.click()
+    # 検証
+    expect(page.locator(f"{RANGE} .mdmark-param-status")).not_to_be_empty()
+    assert json.loads(page.evaluate("navigator.clipboard.readText()")) == {
+        "rps": {"name": "リクエスト数", "value": 5}
+    }
+    # 実行（動かした値をコピーする）
+    page.focus(f"{RANGE} input[type=range]")
+    page.keyboard.press("Home")
+    copy_button.click()
+    # 検証
+    assert json.loads(page.evaluate("navigator.clipboard.readText()")) == {
+        "rps": {"name": "リクエスト数", "value": 0}
+    }
+
+
+def test_embedded_html_selection(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """範囲の中の文を選ぶと、箇所を範囲の `<!-- html -->` から `<!-- /html -->` の行に読み替えて添える。範囲の外から中へまたぐ選択も、端を範囲の行に読み替える（正常系）。"""
+    # 準備
+    page = _open_embedded(write_preview, open_preview, make_item)
+    # 実行（範囲の中の文を選ぶ）
+    select_text_for_pill(page, f"{RANGE} p", "ﾋﾟｰｸ時の")
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 3〜9 行目"
+    assert page.inner_text("aside.panel .send-quote") == "ﾋﾟｰｸ時の"
+    # 実行（範囲の外の段落から範囲の中の段落までを選ぶ）
+    page.evaluate(
+        """() => {
+            const start = document.querySelector('aside.panel .md > p[data-line-start="1"]').firstChild;
+            const end = document.querySelector('aside.panel .mdmark-html p').firstChild;
+            const range = document.createRange();
+            range.setStart(start, 1);
+            range.setEnd(end, 2);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            document.dispatchEvent(new Event('selectionchange'));
+        }"""
+    )
+    page.wait_for_selector(PILL)
+    page.click(PILL)
+    # 検証
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 1〜9 行目"
+
+
+def test_embedded_html_diff(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """範囲の差分は「原文の差分」で開き、見せ方を押した状態（`aria-pressed`）で示す。凡例は「描いた結果（変更後）」でだけ出す（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .df-raw", timeout=EMBED_TIMEOUT_MS)
+    group = page.get_by_role("group", name="埋め込んだ HTMLの差分の見せ方")
+    names = ["描いた結果（変更前）", "描いた結果（変更後）", "原文の差分"]
+    legend = page.locator("aside.panel .html-diff-bar .df-legend")
+
+    def _pressed() -> list[str | None]:
+        """3 つの見せ方のボタンの `aria-pressed` を並びのまま返す。"""
+        return [group.get_by_role("button", name=name).get_attribute("aria-pressed") for name in names]
+
+    # 検証（開いた直後は「原文の差分」）
+    assert page.inner_text("aside.panel .html-diff-heading") == "埋め込んだ HTML"
+    assert _pressed() == ["false", "false", "true"]
+    expect(legend).to_be_hidden()
+    # 実行・検証（変更前）
+    group.get_by_role("button", name=names[0]).click()
+    assert _pressed() == ["true", "false", "false"]
+    expect(legend).to_be_hidden()
+    # 実行・検証（変更後: 「足した」「変わった」の凡例が出る）
+    group.get_by_role("button", name=names[1]).click()
+    assert _pressed() == ["false", "true", "false"]
+    expect(legend).to_be_visible()
+    assert legend.inner_text().split() == ["足した", "変わった"]
+
+
+def test_embedded_html_diff_when_range_unchanged(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """中身が同じ範囲は範囲の差分に置き替えず、範囲の外の Markdown の差分だけを出す（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(
+        make_workspace, call_tool, before=OUTSIDE_ONLY_BEFORE, after=OUTSIDE_ONLY_AFTER
+    )
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md .df-blk", timeout=EMBED_TIMEOUT_MS)
+    # 検証
+    assert page.locator("aside.panel .html-diff-c").count() == 0
+    assert page.locator("aside.panel .df-raw").count() == 0
+    assert page.locator("aside.panel .md ins.df-blk").count() >= 1
+    assert page.locator("aside.panel .md .mdmark-html").count() == 1
+
+
+def test_embedded_html_diff_minimap(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """差分のミニマップには、範囲の差分の高さに「変わった」の印を 1 つ置く（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_minimap(page, open_preview, url, "#tab=docs&id=A-1")
+    shapes = mark_shapes(page, PANEL_SCOPE)
+    # 検証
+    assert [shape["kind"] for shape in shapes] == ["df-chg"]

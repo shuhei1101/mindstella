@@ -11,8 +11,7 @@
 | [claude-code](./claude-code.yaml) | プラグインを読み込み、スキルを動かす CLI |
 | [PyYAML](./PyYAML.yaml) | ワークスペースの YAML を読み書きする |
 | [jsonschema](./jsonschema.yaml) | ワークスペースの YAML を JSON Schema で検証する |
-| [marked](./marked.yaml) | プレビューで本文の Markdown を HTML に描く |
-| [DOMPurify](./DOMPurify.yaml) | プレビューで描いた本文の HTML を無害化する |
+| [marked](./marked.yaml) | プレビューで本文の差分の塊を Markdown の token ごとに分ける |
 | [elkjs](./elkjs.yaml) | プレビューの検討事項のマップの配置を計算する |
 | [mermaid](./mermaid.yaml) | プレビューで本文の図を SVG に描く |
 | [storybook](./storybook.yaml) | プレビューの部品を状態ごとのストーリーで見る（開発用） |
@@ -24,5 +23,6 @@
 | [jsdiff](./jsdiff.yaml) | プレビューで本文と図の記法の前後を行ごとに比べる |
 | [axe-core](./axe-core.yaml) | プレビューのテストでアクセシビリティの規則（WCAG）を画面に当てる（開発用） |
 | [ruff](./ruff.yaml) | Python のソースを ruff.toml の規則で検査する（開発用） |
+| [mdmark](./mdmark.yaml) | プレビューで本文とスレッドの書き込みの Markdown を共通のスタイルで HTML に描き、無害化する |
 
 <!-- /table -->

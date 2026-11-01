@@ -17,8 +17,10 @@ from preview_body_layout_helpers import (
     build_html_body_layout_workspace,
     build_linked_body_layout_workspace,
 )
+from preview_body_view_helpers import build_body_view_workspace
 from preview_comment_helpers import free_comment
 from preview_history_helpers import build_history_workspace
+from preview_markdown_post_helpers import MARKDOWN_POST_BODY, MARKDOWN_REPLY_BODY
 from preview_minimap_helpers import build_minimap_workspace
 from preview_post_link_helpers import REPLY_BODY, THREAD_POST_BODY, build_post_link_workspace
 from preview_fixture_types import (
@@ -39,6 +41,7 @@ from workspace_fixtures import (
     MakeWorkspace,
     WriteComments,
     WriteDrafts,
+    WriteEdits,
     WriteThreads,
 )
 
@@ -61,6 +64,30 @@ def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePr
         assert result.is_error is False, result.text
         assert result.data is not None
         return str(result.data["url"])
+
+    return _write
+
+
+@pytest.fixture
+def write_edit_preview(
+    make_workspace: MakeWorkspace, write_edits: WriteEdits, call_tool: CallTool
+) -> WriteReviewPreview:
+    """項目と保存待ちの編集を持つワークスペースを作り、配信の URL とワークスペースのフォルダを返す関数を返す。"""
+
+    def _write(
+        *items: dict[str, Any],
+        edits: tuple[dict[str, Any], ...] = (),
+        settings: dict[str, Any] | None = None,
+        bodies: dict[str, str] | None = None,
+    ) -> tuple[str, Path]:
+        """ワークスペースを作って配信を立てる。`preview_url` が失敗したらテストを止める。"""
+        root = make_workspace(*items, settings=settings, bodies=bodies)
+        if edits:
+            write_edits(root, *edits)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
 
     return _write
 
@@ -150,6 +177,23 @@ def write_minimap_preview(
 
 
 @pytest.fixture
+def write_body_view_preview(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> WriteReviewPreview:
+    """8 列の表と見出し「比較」「まとめ」を持つ資料 A-4 を書き換えて `commit`（V-1）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """実際のツールで履歴を積んだワークスペースを作って配信を立てる。"""
+        root = build_body_view_workspace(make_workspace, make_item, call_tool)
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
 def write_body_layout_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WriteReviewPreview:
     """段落 3 つの Markdown の本文を持つ資料 A-1 と検討事項 D-1 を書き換えて `commit`（V-2）したワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
 
@@ -221,6 +265,39 @@ def write_post_link_preview(
             ),
         )
         write_comments(root, free_comment(make_comment("C-1", body=REPLY_BODY, thread="TH-1")))
+        result = call_tool("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _write
+
+
+@pytest.fixture
+def write_markdown_post_preview(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    make_comment: MakeComment,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+) -> WriteReviewPreview:
+    """検討事項 D-1 と、Markdown を書いた AI の書き込みのオープンのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペースを作り、配信の URL とフォルダを返す関数を返す。"""
+
+    def _write() -> tuple[str, Path]:
+        """ワークスペースにスレッドと返信を足して配信を立てる。"""
+        root = make_workspace(make_item("D-1", title="描画のライブラリ"))
+        write_threads(
+            root,
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body=MARKDOWN_POST_BODY, created="2026-10-12T01:00:00+00:00"),
+                summary="Markdown の書き込み",
+            ),
+        )
+        write_comments(root, free_comment(make_comment("C-1", body=MARKDOWN_REPLY_BODY, thread="TH-1")))
         result = call_tool("preview_url", workspace=str(root))
         assert result.is_error is False, result.text
         assert result.data is not None

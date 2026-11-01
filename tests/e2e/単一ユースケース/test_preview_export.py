@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -58,11 +59,19 @@ WRITE_ACTION_PATTERN = re.compile("追加|編集|削除|送信|保存")
 # 中に持つライブラリごとの、表示に出る名前・ライセンスの名前・著作権の表示（雛形の URL のパッケージ名 → 表示）
 EXPECTED_LICENSES = {
     "marked": ("marked", "MIT", "Copyright (c) 2018+, MarkedJS"),
-    "dompurify": ("DOMPurify", "Apache-2.0", "(c) Cure53 and other contributors"),
     "elkjs": ("elkjs", "EPL-2.0", "(c) Kiel University and others"),
     "mermaid": ("mermaid", "MIT", "Copyright (c) 2014 - 2022 Knut Sveidqvist"),
     "diff": ("jsdiff", "BSD-3-Clause", "Copyright (c) 2009-2015, Kevin Decker"),
 }
+
+# mdmark の表示に出る名前・ライセンスの名前・著作権の表示（mdmark は ES モジュールで、雛形の import map の URL から版を読む）
+EXPECTED_MDMARK_LICENSE = ("mdmark", "MIT", "Copyright (c) 2026 shuhei1101")
+
+# mdmark の配布物が中に束ねた依存のライセンスの本文の先頭の行（`THIRD_PARTY_LICENSES.txt` の最初の依存）
+MDMARK_BUNDLED_LICENSES_HEAD = "dayjs 1.11.23 (MIT)"
+
+# 詳細パネルの Markdown の本文（mdmark が描いた本文の要素）
+MDMARK_BODY = "aside.panel .md:not(.md-value).mdmark"
 
 # elkjs のソースコードの入手先（リポジトリ）
 ELKJS_REPOSITORY = "https://github.com/kieler/elkjs"
@@ -111,6 +120,14 @@ def _template_versions() -> dict[str, str]:
     """雛形の描画のライブラリの `<script src>` から、パッケージ名 → 版を読む。"""
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     return dict(re.findall(r'src="https://cdn\.jsdelivr\.net/npm/([^@"]+)@([^/"]+)/', template))
+
+
+def _template_mdmark_version() -> str:
+    """雛形の import map の mdmark の URL から、版のタグを読む。"""
+    template = TEMPLATE_PATH.read_text(encoding="utf-8")
+    import_map = json.loads(re.search(r'<script type="importmap">(.*?)</script>', template, re.DOTALL).group(1))  # type: ignore[union-attr]
+    (url,) = import_map["integrity"]
+    return re.search(r"/mdmark@([^/]+)/", url).group(1)  # type: ignore[union-attr]
 
 
 def _records(make_item: MakeItem, valid_settings: dict[str, Any]) -> list[dict[str, Any]]:
@@ -164,6 +181,13 @@ def test_normal(
         assert f"{name} {versions[package]}" in licenses
         assert notice in licenses
         assert f"License: {license_name}" in licenses
+    # mdmark は、名前・版・著作権の表示・ライセンスの名前と、配布物が中に束ねた依存のライセンスの本文を持つ
+    mdmark_name, mdmark_license, mdmark_notice = EXPECTED_MDMARK_LICENSE
+    assert f"{mdmark_name} {_template_mdmark_version()}" in licenses
+    assert mdmark_notice in licenses
+    assert f"License: {mdmark_license}" in licenses
+    assert MDMARK_BUNDLED_LICENSES_HEAD in licenses
+    assert "DOMPurify" not in licenses
     assert f"{ELKJS_REPOSITORY}/tree/{versions['elkjs']}" in licenses
     assert snapshot_tree(root) == before
     # 実行（外への通信を全て止めたブラウザで開く）
@@ -193,6 +217,7 @@ def test_normal(
     page.click('nav.tabbar a[data-tab="docs"]')
     page.click('.doc-card[data-id="A-1"]')
     page.wait_for_selector("aside.panel.open .mermaid svg", timeout=DIAGRAM_TIMEOUT_MS)
+    assert page.locator(MDMARK_BODY).count() == 1
     assert page.locator("aside.panel .md table").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     button_labels += page.evaluate(BUTTON_LABELS_SCRIPT)

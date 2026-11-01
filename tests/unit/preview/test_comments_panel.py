@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadPreviewScripts
+from .fixture_types import LoadMdmark, LoadPreviewScripts, LoadPreviewStyles
 from .thread_data import make_post, make_review_item, make_thread
 
 # レビュー中の書き込み（項目あり・消えた項目で箇所が合わない・項目を指さない）
@@ -67,13 +67,13 @@ THREAD_5 = make_thread(
 STALE_REASON = "選んだ文が D-9 の本文の 5〜5 行目にありません"
 
 # 画面を作って文書に置き、操作して、見た目と呼ばれた操作を集めて返す JavaScript
-RUN_SCRIPT = """(args) => {
+RUN_SCRIPT = """async (args) => {
     const noop = () => {};
     const calls = [];
     const names = [
         "close", "review", "back", "filter", "tag", "clearTag", "compose", "openThread", "openId",
         "reply", "replyInput", "reasonOpen", "reasonInput", "setStatus", "check", "checkAll",
-        "send", "open", "edit", "saveEdit", "cancelEdit", "remove", "restore", "unloc", "changeSet",
+        "send", "open", "edit", "saveEdit", "cancelEdit", "remove", "restore", "unloc", "changeSet", "fold",
     ];
     const on = Object.fromEntries(names.map((name) => [name, (...a) => calls.push([name, ...a])]));
     const props = {
@@ -94,9 +94,14 @@ RUN_SCRIPT = """(args) => {
     };
     props.checked = new Set(args.props.checked ?? []);
     props.stale = new Map(args.props.stale ?? []);
+    props.expanded = new Set(args.props.expanded ?? []);
     const host = document.createElement("div");
     host.append(...[MindmapPreview[args.screen](props)].flat());
     document.body.append(host);
+    // 本文を畳むかの測りは、描いた後の ResizeObserver の通知で決まる
+    if (args.settle) {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
     const norm = (text) => text.replace(/\\s+/g, " ").trim();
     const buttons = () => [...host.querySelectorAll("button")];
     const find = (target) => {
@@ -150,7 +155,9 @@ RUN_SCRIPT = """(args) => {
         })),
         alerts: [...host.querySelectorAll('[role="alert"]')].map((a) => norm(a.textContent)),
         setLinks: [...host.querySelectorAll("a.setlink")].map((a) => ({
-            text: norm(a.textContent), bodyClass: a.parentElement.className,
+            text: norm(a.textContent),
+            bodyClass: a.closest(".post-body, .review-body").classList.contains("post-body")
+                ? "post-body" : "review-body",
         })),
         statuses: [...host.querySelectorAll('[role="status"]')].map((s) => norm(s.textContent)),
         items: [...host.querySelectorAll("li")].map((li) => ({
@@ -158,6 +165,8 @@ RUN_SCRIPT = """(args) => {
             comment: li.getAttribute("data-comment"),
             thread: (li.querySelector('[data-focus^="thread:"]') ?? li).getAttribute("data-focus"),
             buttons: [...li.querySelectorAll("button")].map(describeButton),
+            kinds: [...li.querySelectorAll(".row-kind")].map((k) => norm(k.textContent)),
+            targets: li.querySelectorAll(".row-target").length,
             checkbox: (() => {
                 const box = li.querySelector('input[type="checkbox"]');
                 return box === null ? null : {checked: box.checked, disabled: box.disabled};
@@ -177,11 +186,18 @@ def _run(
     *,
     actions: list[dict[str, Any]] | None = None,
     probes: list[str] | None = None,
+    settle: bool = False,
 ) -> dict[str, Any]:
-    """画面を作って操作し、見た目と呼ばれた操作を返す。"""
+    """画面を作って操作し、見た目と呼ばれた操作を返す。settle なら描いた後に本文を畳むかの測りを待つ。"""
     return preview_page.evaluate(
         RUN_SCRIPT,
-        {"screen": screen, "props": props, "actions": actions or [], "probes": probes or []},
+        {
+            "screen": screen,
+            "props": props,
+            "actions": actions or [],
+            "probes": probes or [],
+            "settle": settle,
+        },
     )
 
 
@@ -489,17 +505,18 @@ def test_thread_view_when_closed_or_pending(
 
 
 def test_thread_view_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """書き込みのまとまりのリンクを使う側へ知らせる（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     thread = make_thread(
         "TH-1",
         posts=[make_post("ai", "[D-1 を直した](#diff=V-1)", "2026-10-12T01:00:00+00:00")],
     )
     props = {"threads": [thread], "opened": {"id": "TH-1", "pending": False}}
-    actions = [{"click": {"selector": "p.post-body a.setlink"}}]
+    actions = [{"click": {"selector": ".post-body a.setlink"}}]
     # 実行
     observed = _run(preview_page, "threadView", props, actions=actions)
     # 検証
@@ -661,9 +678,7 @@ def test_review_view(preview_page: Page, load_preview_scripts: LoadPreviewScript
     }
     actions = [{"click": {"row": "C-5", "includes": "返信先の要約"}}]
     # 実行
-    observed = _run(
-        preview_page, "reviewView", props, actions=actions, probes=["項目を指さない"]
-    )
+    observed = _run(preview_page, "reviewView", props, actions=actions)
     # 検証
     assert "レビュー中の書き込み" in observed["text"]
     assert "2 / 4 件" in observed["text"]
@@ -675,7 +690,10 @@ def test_review_view(preview_page: Page, load_preview_scripts: LoadPreviewScript
     assert select_all["indeterminate"] is True
     assert [STALE_REASON in alert for alert in _row(observed, "C-2")["alerts"]] == [True]
     assert "箇所を外す" not in [button["text"] for button in _row(observed, "C-2")["buttons"]]
-    assert observed["probes"]["項目を指さない"] == {"present": True, "inButton": False}
+    # 項目を指さない新しいスレッドの行の頭は、「新しいスレッド」の札だけ
+    assert _row(observed, "C-3")["kinds"] == ["新しいスレッド"]
+    assert _row(observed, "C-3")["targets"] == 0
+    assert "項目を指さない" not in _row(observed, "C-3")["text"]
     assert "スレッドを開く" in [button["text"] for button in _row(observed, "C-3")["buttons"]]
     reply_row = _row(observed, "C-5")
     assert "返信" in reply_row["text"]
@@ -801,11 +819,12 @@ def test_review_view_when_sent(
 
 
 def test_review_view_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """行の本文のまとまりのリンクと、文字のままの項目の ID（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     reply = make_review_item(
         "C-6",
         target=None,
@@ -814,7 +833,7 @@ def test_review_view_when_change_set_link(
         body="[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる",
     )
     props = {"items": [reply], "threads": [THREAD_1]}
-    actions = [{"click": {"selector": 'li[data-comment="C-6"] p.review-body a.setlink'}}]
+    actions = [{"click": {"selector": 'li[data-comment="C-6"] .review-body a.setlink'}}]
     # 実行
     observed = _run(preview_page, "reviewView", props, actions=actions)
     # 検証
@@ -823,6 +842,100 @@ def test_review_view_when_change_set_link(
     assert "T-14" in row["text"]
     assert "T-14" not in [button["text"] for button in row["buttons"]]
     assert observed["calls"] == [["changeSet", "V-6"]]
+
+
+# 改行で 8 行の本文
+EIGHT_LINES = "\n".join(f"{number} 行目の気づき" for number in range(1, 9))
+
+# 項目を指さない新しいスレッド・TH-1 への 8 行の返信・TH-1 への 2 行の返信
+FOLD_C51 = make_review_item("C-51", target=None, target_title=None, body=EIGHT_LINES)
+FOLD_C52 = make_review_item("C-52", target=None, target_title=None, thread="TH-1", body=EIGHT_LINES)
+FOLD_C53 = make_review_item("C-53", target=None, target_title=None, thread="TH-1", body="2 行の\n返信")
+
+# 開閉のボタンの置き場所を行ごとに調べる JavaScript（ボタンが無い・見えない行は全て偽・空）
+READ_MORE_SCRIPT = """() => Object.fromEntries(["C-51", "C-52", "C-53"].map((id) => {
+    const row = document.querySelector(`li[data-comment="${id}"]`);
+    const more = row.querySelector(`[data-focus="more:${id}"]`);
+    const open = row.querySelector(`[data-focus="thread-open:${id}"]`);
+    const rendered = (el) => el !== null && el.getClientRects().length > 0;
+    const wrapper = more === null ? null : more.parentElement;
+    return [id, {
+        visible: rendered(more),
+        wrapperVisible: rendered(wrapper),
+        wrapperText: rendered(wrapper) ? wrapper.innerText.replace(/\\s+/g, " ").trim() : "",
+        inThreadOpen: wrapper !== null && wrapper.classList.contains("row-thread-open"),
+        beforeOpen: more !== null && open !== null && Boolean(more.compareDocumentPosition(open) & Node.DOCUMENT_POSITION_FOLLOWING),
+        hasEditField: row.querySelector("textarea") !== null,
+        hasBody: row.querySelector(".review-body") !== null,
+    }];
+}))"""
+
+# ボタンも、ボタンを置く行も見えない行（本文は描かれている）
+NO_MORE = {
+    "visible": False,
+    "wrapperVisible": False,
+    "wrapperText": "",
+    "inThreadOpen": False,
+    "beforeOpen": False,
+    "hasEditField": False,
+    "hasBody": True,
+}
+
+
+@pytest.mark.parametrize(
+    ("props_extra", "actions", "expected", "expected_calls"),
+    [
+        pytest.param(
+            {},
+            [{"click": {"focus": "more:C-51"}}],
+            {
+                "C-51": {
+                    **NO_MORE,
+                    "visible": True,
+                    "wrapperVisible": True,
+                    "wrapperText": "折りたたむ スレッドを開く",
+                    "inThreadOpen": True,
+                    "beforeOpen": True,
+                },
+                "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを読む"},
+                "C-53": NO_MORE,
+            },
+            [["fold", "C-51", True]],
+            id="folded",
+        ),
+        pytest.param(
+            {"expanded": ["C-51"], "editing": "C-51"},
+            [],
+            {
+                "C-51": {**NO_MORE, "hasEditField": True, "hasBody": False},
+                "C-52": {**NO_MORE, "visible": True, "wrapperVisible": True, "wrapperText": "続きを読む"},
+                "C-53": NO_MORE,
+            },
+            [],
+            id="editing",
+        ),
+    ],
+)
+def test_review_view_when_folded(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    props_extra: dict[str, Any],
+    actions: list[dict[str, Any]],
+    expected: dict[str, Any],
+    expected_calls: list[list[Any]],
+) -> None:
+    """長い本文を畳み、開閉のボタンを行の種類ごとの場所に置く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    props = {"items": [FOLD_C51, FOLD_C52, FOLD_C53], "threads": [THREAD_1], **props_extra}
+    # 実行
+    observed = _run(preview_page, "reviewView", props, actions=actions, settle=True)
+    placed = preview_page.evaluate(READ_MORE_SCRIPT)
+    # 検証
+    assert placed == expected
+    assert observed["calls"] == expected_calls
 
 
 # --- 補助の関数 -------------------------------------------------------------
@@ -1216,6 +1329,101 @@ def test_review_edit_form_when_blank_or_error(
     assert observed["value"] == expected_value
     assert expected_reason in "".join(observed["alerts"])
     assert observed["invalid"] == expected_invalid
+
+
+# 行の本文の書き換えを描き、入力欄に中身を入れて Enter を押して、呼ばれた引数と押したキーの結果と理由を集める
+EDIT_FORM_KEYS_SCRIPT = (
+    MOUNT_FUNCTION
+    + """
+({item, typed, ctrl, meta, composing}) => {
+    const saved = [];
+    const host = mount(MindmapPreview.reviewEditForm({
+        item,
+        body: null,
+        error: null,
+        focus: "",
+        on: {
+            saveEdit: (id, text) => saved.push([id, text]),
+            cancelEdit: () => {},
+        },
+    }));
+    const field = host.querySelector("textarea");
+    const submit = [...host.querySelectorAll("button")].find(
+        (button) => button.textContent.trim() === "修正"
+    );
+    field.value = typed;
+    const event = new KeyboardEvent("keydown", {
+        key: "Enter", ctrlKey: ctrl, metaKey: meta, isComposing: composing,
+        bubbles: true, cancelable: true,
+    });
+    field.dispatchEvent(event);
+    return {
+        saved,
+        keyshortcuts: field.getAttribute("aria-keyshortcuts"),
+        submitTitle: submit.getAttribute("title"),
+        defaultPrevented: event.defaultPrevented,
+        alerts: [...host.querySelectorAll('[role="alert"]')].map((alert) => alert.textContent),
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("typed", "ctrl", "meta", "composing", "expected", "expected_reason"),
+    [
+        pytest.param(
+            "案 A に決める",
+            True,
+            False,
+            False,
+            {"saved": [["C-1", "案 A に決める"]], "defaultPrevented": True},
+            "",
+            id="ctrl_enter",
+        ),
+        pytest.param(
+            "案 A に決める",
+            False,
+            True,
+            False,
+            {"saved": [["C-1", "案 A に決める"]], "defaultPrevented": True},
+            "",
+            id="cmd_enter",
+        ),
+        pytest.param(
+            "   ",
+            True,
+            False,
+            False,
+            {"saved": []},
+            "コメントを入れてから直してください。",
+            id="blank_only",
+        ),
+        pytest.param("案 A に決める", True, False, True, {"saved": []}, "", id="composing"),
+    ],
+)
+def test_review_edit_form_ctrl_enter(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    typed: str,
+    ctrl: bool,
+    meta: bool,
+    composing: bool,
+    expected: dict[str, Any],
+    expected_reason: str,
+) -> None:
+    """Ctrl+Enter で「修正」と同じ処理を通し、変換中は通さない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(
+        EDIT_FORM_KEYS_SCRIPT,
+        {"item": ITEM_1, "typed": typed, "ctrl": ctrl, "meta": meta, "composing": composing},
+    )
+    # 検証
+    assert observed["keyshortcuts"] == "Control+Enter"
+    assert observed["submitTitle"] == "修正（Ctrl+Enter）"
+    assert expected.items() <= observed.items()
+    assert expected_reason in "".join(observed["alerts"])
 
 
 # 消した行を描き、「元に戻す」を押して、見た目と呼ばれた ID を集める

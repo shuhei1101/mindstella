@@ -1,0 +1,606 @@
+title: "サーバー / 保存待ちの編集"
+lead: プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。読み書きと検証・入口（項目の追加と更新）・設定の更新・変更履歴に依存し、鍵は呼ぶ側（配信）が取る。例外はモジュール構成『読み書きと検証』の `EditInvalidError`・`EditNotFoundError`・`EditConflictError`・`EditsBlockedError`。単体テストは `tests/unit/scripts/test_edits.py` に置く。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    schemas/edits.schema.json  edits.yaml の形（ER 図『ワークスペース』の保存待ちの編集）
+    scripts/edits.py           保存待ちの編集の読み書き・取り消し・まとめて保存
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      classDiagram
+        direction LR
+        class 保存待ちの編集
+        class 読み書きと検証
+        class 入口
+        class 設定の更新
+        class 変更履歴
+        保存待ちの編集 --> 読み書きと検証 : 読む・まとめて書く
+        保存待ちの編集 --> 入口 : 追加・更新・案をメモリの上で当てる
+        保存待ちの編集 --> 設定の更新 : 設定を置き換えて付け替える
+        保存待ちの編集 --> 変更履歴 : 削除の記録・まとまりにする
+constants:
+  - name: EDITS_FILE
+    title: 保存待ちの編集のファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    summary: '`records_root(root)` の下。無ければ 0 件'
+    value: '"edits.yaml"'
+  - name: EDITS_SCHEMA
+    title: 保存待ちの編集のスキーマ
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    summary: '`SCHEMA_DIR` の下のファイル名'
+    value: '"edits.schema.json"'
+  - name: EDIT_ID_PREFIX
+    title: 編集の ID の頭
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: '`E-{連番}` の頭'
+    value: '"E"'
+  - name: NEW_ID_PREFIX
+    title: 足す項目の仮の ID の頭
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: '`new-{連番}` の頭'
+    value: '"new"'
+  - name: SETTINGS_TARGET
+    title: 設定の編集の向け先
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: '`op` が `setting` の編集の `target`'
+    value: '"settings"'
+  - name: EDIT_OPS
+    title: 編集の種類
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    summary: '`op` に渡せる値。ER 図『ワークスペース』の `edits.yaml` の `op`'
+    value: ("set", "option-add", "option-edit", "option-remove", "adopt", "item-add", "item-remove", "setting")
+  - name: MAPPABLE_SETTING_KEYS
+    title: 対応を持てる設定のキー
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: '`map` を渡せる `setting` の `key` と、保存で渡す『設定の更新』の対応の引数'
+    value: '{"phases": "phase_map", "targets": "target_map", "categories": "category_map"}'
+  - name: UNEDITABLE_KEYS
+    title: 編集できないキー
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: '`set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する。`item-add` の `options` だけは除く）'
+    value: frozenset({"id", "created", "updated", "updated_by", "history", "history_dropped_seq", "seq", "added_seq", "options"})
+  - name: USER_EDITOR
+    title: 利用者の編集した人
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: 保存で書いた項目の `updated_by` と変更履歴の `by`
+    value: '"user"'
+  - name: AI_PENDING_SUMMARY
+    title: まとめる前の AI の書き換えの説明
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: 保存の前にまだまとめていない変更があるとき、先に作るまとまりの説明（確認ログで合意した文言）
+    value: '"まとめる前の AI の書き換え"'
+  - name: USER_EDIT_SUMMARY
+    title: 画面からの編集の説明
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    summary: 利用者の編集をまとめたまとまりの説明（確認ログで合意した文言）
+    value: '"画面からの編集"'
+data_models:
+  - name: PendingEdit
+    title: 保存待ちの編集
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    role: DTO
+    summary: '`edits.yaml` の 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: id
+        type: str
+        description: '`E-{連番}`'
+      - name: target
+        type: str
+        description: 項目の ID・足す項目の仮の ID（`new-{連番}`）・`settings`
+      - name: op
+        type: Literal['set', 'option-add', 'option-edit', 'option-remove', 'adopt', 'item-add', 'item-remove', 'setting']
+        description: 編集の種類
+      - name: key
+        type: str | None
+        description: 項目のキー・案の記号・種類・設定のキー。`item-remove` は `None`
+      - name: value
+        type: Any
+        description: 編集した後の値
+      - name: before
+        type: Any
+        description: 最初に溜めたときの元の値。`option-add`・`item-add` は `None`
+      - name: base
+        type: str | None
+        description: 項目への編集で、最初に溜めた時点のその項目の `updated`。`item-add`・`setting` は `None`
+      - name: created
+        type: str
+        description: 最初に溜めた日時
+      - name: map
+        type: dict[str, str] | None
+        default: None
+        description: '`setting` の付け替えの対応（キーを書かないときは `None`）'
+  - name: EditFile
+    title: 保存待ちの編集のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    role: DTO
+    summary: '`edits.yaml` の中身。`@dataclass(frozen=True, slots=True, kw_only=True)`'
+    properties:
+      - name: seq
+        type: int
+        description: 最後に振った編集の連番（無ければ 0）
+      - name: new_seq
+        type: int
+        description: 最後に振った仮の ID の連番（無ければ 0）
+      - name: items
+        type: list[PendingEdit]
+        description: 連番の小さい順の編集
+  - name: BlockedEdit
+    title: 書き込めない編集
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    role: DTO
+    summary: 保存の 409 の `blocked[]` の 1 件。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: id
+        type: str
+        description: 編集の ID
+      - name: reason
+        type: Literal['changed', 'missing', 'referenced', 'invalid']
+        description: 書き込めない理由
+      - name: detail
+        type: str
+        description: 利用者に出す日本語の理由
+      - name: refs
+        type: list[str]
+        default: '[]'
+        description: '`referenced` のとき、消す項目を指している項目の ID'
+functions:
+  - name: load_edits
+    title: 保存待ちの編集の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    scope: public
+    summary: '`edits.yaml` を読み、スキーマと突き合わせて `EditFile` にする'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: EditFile
+      description: 'ファイルが無ければ `seq: 0`・`new_seq: 0`・空の `items`'
+    process: |-
+      1. ファイルが無ければ空を返す
+      2. `yaml.safe_load` で読み、`EDITS_SCHEMA` と突き合わせる
+         - 読めないか合わない場合、`edits.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
+      3. `items` を連番の小さい順の `PendingEdit` にして返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`edits.yaml` が YAML として読めないか、スキーマに合わない'
+    unit_tests:
+      - name: test_load_edits
+        case: 正常
+        summary: 連番の順に読む
+        condition: '`seq: 3`・`new_seq: 1` と E-3・E-1 をこの順に持つ `edits.yaml`'
+        mock: なし
+        expected: '`seq` が 3、`new_seq` が 1、`items` が E-1・E-3 の順'
+      - name: test_load_edits_when_missing
+        case: 正常
+        summary: ファイルが無ければ空
+        condition: '`edits.yaml` が無いワークスペース'
+        mock: なし
+        expected: '`EditFile(seq=0, new_seq=0, items=[])`'
+      - name: test_load_edits_when_invalid
+        case: 異常
+        summary: 読めない・合わないファイルは読まない
+        condition: '`parametrize`: `items: [` / E-1 の `op` を `rename` にしたもの'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` が `edits.yaml: ` で始まる）'
+        exception: 読めないかスキーマに合わない
+  - name: list_edits
+    title: 保存待ちの編集の一覧
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 『保存待ちの編集の読み取り』の応答の本文を作る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: dict[str, Any]
+      description: '`{items: [{id, target, op, key, value, before, created}], count}`'
+    process: |-
+      1. ワークスペースがあるかを確かめる（`require_workspace`）
+      2. `load_edits` で読み、各編集から `base`・`map` を除いた辞書を溜めた順に並べ、件数を添えて返す
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`config.yaml` が無い'
+      - name: SchemaMismatchError
+        condition: '`load_edits` から伝わる'
+    unit_tests:
+      - name: test_list_edits
+        case: 正常
+        summary: 控えのキーを除いて溜めた順に返す
+        condition: E-1（`set`、`base` あり）・E-2（`setting`、`map` あり）を持つ `edits.yaml`
+        mock: なし
+        expected: '`items` が E-1・E-2 の順で、どちらも `base`・`map` を持たない。`count` が 2'
+  - name: add_edit
+    title: 保存待ちの編集の追加
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 1 件の編集を確かめ、新しく溜めるか同じ編集を書き換えるか外して、`edits.yaml` を書く
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文（`op`・`target`・`key`・`value`・`map`）
+      - name: now
+        type: Callable[[], str]
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[dict[str, Any], bool]
+      description: 応答の本文 `{id, target, count}` と、新しく溜めたか（真なら配信は 201、偽なら 200）
+    process: |-
+      1. ワークスペースと `load_edits` を読む
+      2. 形を確かめる（`_parse_edit_input`）
+         - `op` が `EDIT_OPS` に無い、`op` に要る `target`・`key`・`value` が無い、`map` を渡せない `op`・`key` に渡した、値が型に合わない場合、`EditInvalidError` を送る
+      3. 向け先を確かめる
+         - `item-add` 以外で項目か仮の ID が無い場合、`option-edit`・`option-remove`・`adopt` の案がその項目の案にも溜めた `option-add` にも無い場合、`EditNotFoundError` を送る
+         - `option-add` の記号が既にある場合、削除を溜めた項目へ `item-remove` 以外を溜める場合、`EditConflictError` を送る
+      4. `set`・`item-add` の `value` のキーを確かめる（`UNEDITABLE_KEYS` を持たず（`item-add` の `options` は除く。その種類のスキーマに `options` が無ければ「この種類にないキー」。スキーマの型に加えて案の記号が重ならないかも確かめる）、その種類のスキーマのそのキーの型に合い、`title` は前後の空白を除いて 1 文字以上）。`setting` の `key` は『設定の更新』の `EDITABLE_KEYS` にあるか
+         - 合わない場合、`EditInvalidError` を送る
+      5. 同じ編集を探す（`item-add` は `target`、それ以外は `target`・`op`・`key` が同じもの）
+         - ある場合、`value`（`setting` は `map` も）だけを書き換える
+         - 無い場合、`E-{seq + 1}` を振り、元の値（`_current_value`）・`base`（項目への編集はその項目の `updated`）・`created` を付けて足す。`item-add` で `target` を省いたときは `new-{new_seq + 1}` を振る
+      6. `set`・`option-edit`・`adopt`・`setting` で、`value` が今のワークスペースの値（`_current_value`）と同じなら、その編集を外し `id` を `None` にする
+      7. `edits.yaml` を書き（`_write_edits`）、本文と新しく溜めたかを返す
+    exceptions:
+      - name: EditInvalidError
+        condition: 形・キー・値の型が合わない
+      - name: EditNotFoundError
+        condition: 項目・仮の ID・案が無い
+      - name: EditConflictError
+        condition: 足す案の記号が既にある、または削除を溜めた項目へ削除以外を溜める
+      - name: SchemaMismatchError
+        condition: ワークスペースか `edits.yaml` が読めない
+      - name: WriteFailedError
+        condition: '`edits.yaml` を書けない'
+    unit_tests:
+      - name: test_add_edit
+        case: 正常
+        summary: 新しく溜め、元の値と更新日時を控える
+        condition: '`answer` が空で `updated` が `T0` の D-1。`{op: set, target: D-1, key: answer, value: 案 A}`'
+        mock: '`now`'
+        expected: '`({id: E-1, target: D-1, count: 1}, True)`。`edits.yaml` の E-1 の `before` が空・`base` が `T0`・`created` が `now` の値で、`seq` が 1'
+      - name: test_add_edit_when_same_key
+        case: 正常
+        summary: 同じ項目の同じキーは書き換え、ID と控えを変えない
+        condition: 'E-1（D-1 の `answer` を 案 A）を持つ。`{op: set, target: D-1, key: answer, value: 案 B}`'
+        mock: '`now`'
+        expected: '`({id: E-1, ...}, False)`。E-1 の `value` が 案 B で、`before`・`base`・`created` が前のまま。`seq` が 1 のまま'
+      - name: test_add_edit_when_reverted
+        case: 正常
+        summary: 元の値に戻すと外す
+        condition: '`status: 未着手` の T-1 と E-1（T-1 の `status` を 中止）。`{op: set, target: T-1, key: status, value: 未着手}`'
+        mock: '`now`'
+        expected: '`({id: None, target: T-1, count: 0}, False)`。`edits.yaml` の `items` が空で `seq` が 1 のまま'
+      - name: test_add_edit_when_item_add
+        case: 正常
+        summary: 足す項目に仮の ID を振り、続くキーは同じ編集の値を書き換える
+        condition: '`{op: item-add, key: tasks, value: {title: 画面を作る, status: 未着手}}` の後に、返った `target` で `{op: item-add, target: new-1, key: tasks, value: {title: 画面を作る, status: 進行中}}`'
+        mock: '`now`'
+        expected: '1 回目が `({id: E-1, target: new-1, count: 1}, True)`、2 回目が `({id: E-1, target: new-1, count: 1}, False)`。`new_seq` が 1 で、E-1 の `value.status` が 進行中'
+      - name: test_add_edit_when_setting_with_map
+        case: 正常
+        summary: 設定の編集は付け替えの対応を一緒に持つ
+        condition: 'フェーズ 問い・発散。`{op: setting, target: settings, key: phases, value: [目的, 発散], map: {問い: 目的}}`'
+        mock: '`now`'
+        expected: 'E-1 の `map` が `{問い: 目的}`、`before` が `[問い, 発散]`、`base` が `None`'
+      - name: test_add_edit_when_invalid
+        case: 異常
+        summary: 形の合わない編集は何も書かない
+        condition: '`parametrize`: `op: rename` / `{op: set, target: D-1, key: updated_by, value: user}` / `{op: set, target: D-1, key: title, value: "  "}` / `{op: set, target: D-1, key: answer, value: a, map: {a: b}}`'
+        mock: なし
+        expected: どれも `EditInvalidError` で、`edits.yaml` が呼ぶ前と同じ
+        exception: 形が合わない
+      - name: test_add_edit_when_not_found
+        case: 異常
+        summary: 無い項目・案には溜めない
+        condition: '`parametrize`: `target: D-99` / D-1 に無い案 Z の `option-edit` / 溜めていない `new-5` への `item-add`'
+        mock: なし
+        expected: '`EditNotFoundError`（メッセージに D-99 / Z / new-5）'
+        exception: 向け先が無い
+      - name: test_add_edit_when_conflict
+        case: 異常
+        summary: 既にある案の記号・削除を溜めた項目への編集は溜めない
+        condition: '`parametrize`: 案 A を持つ D-1 へ `option-add` の A / E-1（N-1 の削除）を持ち N-1 の `title` を溜める'
+        mock: なし
+        expected: '`EditConflictError`'
+        exception: 溜めた編集と合わない
+      - name: test_add_edit_when_item_add_with_options
+        case: 正常
+        summary: 足す検討事項の案を `value` の `options` で溜める
+        condition: '`{op: item-add, key: decisions, value: {title: 保存の単位, status: 決定済み, options: [{key: A, content: 項目ごと}, {key: B, content: まとめて, adopted: true}]}}`'
+        mock: '`now`'
+        expected: '`({id: E-1, target: new-1, count: 1}, True)`。E-1 の `value.options` が案 A・B（B だけが採用）で、`value` が `A`・`B` をキーに持たない'
+      - name: test_add_edit_when_item_add_options_invalid
+        case: 異常
+        summary: 足す項目の案が合わないときは溜めない
+        condition: '`parametrize`: 検討事項の `options` に記号 A が 2 つ / 検討事項の `options` の案に `content` が無い / タスク（`key: tasks`）の `value` に `options` / `set` で D-1 の `options`'
+        mock: なし
+        expected: どれも `EditInvalidError`（メッセージに `options`）で、`edits.yaml` が呼ぶ前と同じ
+        exception: 形が合わない
+  - name: delete_edit
+    title: 保存待ちの編集の取り消し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 1 件の編集を外し、足した案を外すときはその案の採用の編集も一緒に外す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: edit_id
+        type: str
+        required: true
+        passing: positional
+        description: 取り消す編集の ID
+    returns:
+      type: dict[str, Any]
+      description: '`{removed: [ID], count}`'
+    process: |-
+      1. `load_edits` で読み、`edit_id` の編集を探す
+         - 無い場合、`EditNotFoundError` を送る
+      2. 外す編集を決める。`option-add` なら、同じ `target` で `op` が `adopt`・`value` がその記号の編集も外す
+      3. 残りを `edits.yaml` に書き（`seq`・`new_seq` はそのまま）、外した ID と残りの件数を返す
+    exceptions:
+      - name: EditNotFoundError
+        condition: '`edit_id` の編集が無い'
+      - name: SchemaMismatchError
+        condition: '`load_edits` から伝わる'
+      - name: WriteFailedError
+        condition: '`edits.yaml` を書けない'
+    unit_tests:
+      - name: test_delete_edit
+        case: 正常
+        summary: 1 件を外す
+        condition: E-1（D-1 の `answer`）・E-2（T-1 の `status`）。`E-2` を取り消す
+        mock: なし
+        expected: '`{removed: [E-2], count: 1}`。`edits.yaml` が E-1 だけで `seq` が前のまま'
+      - name: test_delete_edit_when_option_add
+        case: 正常
+        summary: 足した案の取り消しはその採用も外す
+        condition: E-1（D-1 の案 C の追加）・E-2（D-1 の採用する案を C）。`E-1` を取り消す
+        mock: なし
+        expected: '`{removed: [E-1, E-2], count: 0}`'
+      - name: test_delete_edit_when_missing
+        case: 異常
+        summary: 無い ID は何も書かない
+        condition: E-1 だけを持ち、`E-9` を取り消す
+        mock: なし
+        expected: '`EditNotFoundError`（メッセージに E-9）。`edits.yaml` が呼ぶ前と同じ'
+        exception: 編集が無い
+  - name: save_edits
+    title: 保存待ちの編集をまとめて保存
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちの編集を全て確かめてメモリの上で当て、まとまりにして 1 回で書く。1 件でも書き込めなければ何も書かない
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: now
+        type: Callable[[], str]
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: dict[str, Any]
+      description: '`{set, at, added: [{temp, id}], changed, removed, settings}`'
+    process: |-
+      1. ワークスペース・`changes.yaml`・`load_edits` を読む
+         - 編集が 0 件の場合、`EditInvalidError` を送る
+      2. 書き込めない編集を集める（`_find_blocked`）。`changed`（`base` が項目の今の `updated` と違う、`setting` は `before` が今の設定の値と違う）・`missing`（項目が無い）・`referenced`（消す項目を、同じ保存で消さない項目が指している。`find_referrers`）
+      3. 当てる（`_apply_edits`）。削除を溜めた項目へのほかの編集は捨てる
+         - まだまとめていない変更があれば、先に `commit_pending` で `AI_PENDING_SUMMARY` のまとまりにする
+         - 設定（`setting`）を `stage_settings` で当てる（`map` を `MAPPABLE_SETTING_KEYS` の引数に渡し、`editor` は `USER_EDITOR`）
+         - 項目の追加（`item-add`）を仮の ID の連番の順に `stage_add`（`editor` は `USER_EDITOR`）で当て、仮の ID → 振った ID を控える。参照のキー（`REF_KEYS`）の値の仮の ID は振った ID に置き換える
+         - キー・案・採用（`set`・`option-*`・`adopt`）を溜めた順に項目ごとにまとめ、`apply_option_edit`・`switch_adopted` で案を組み、`stage_update`（`editor` は `USER_EDITOR`）で 1 項目 1 回で当てる
+         - 項目の削除（`item-remove`）を当て、`note_removed` で記録する
+         - 当てる途中の `SchemaMismatchError`・`UnmappedPhaseError`・`UnmappedTargetError` は、引き起こした編集の ID に紐づけて `invalid` にする
+      4. 2. か 3. で書き込めない編集が 1 件以上あれば、溜めた順に並べて `EditsBlockedError` を送る（何も書かない）
+      5. 利用者の変更を `commit_pending` で `USER_EDIT_SUMMARY` のまとまりにする
+      6. 項目・本文・設定・`changes.yaml`・空にした `edits.yaml`（`seq`・`new_seq` はそのまま）を `save_batch` で 1 回で書く
+      7. まとまりの ID・日時・足した項目・書き換えた項目・消した項目・書き換えた設定のキーを返す
+    exceptions:
+      - name: EditInvalidError
+        condition: 保存待ちの編集が 0 件
+      - name: EditsBlockedError
+        condition: 書き込めない編集が 1 件以上ある
+      - name: SchemaMismatchError
+        condition: ワークスペース・`changes.yaml`・`edits.yaml` が読めない
+      - name: WriteFailedError
+        condition: '`save_batch` から伝わる（書いたファイルは戻した後）'
+    unit_tests:
+      - name: test_save_edits
+        case: 正常
+        summary: キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする
+        condition: 未決定の D-1（案 A・B、タグ 画面）と、E-1（`answer`）・E-2（`tags` をまだ使われていないタグを含む `[画面, 記録の形]`）・E-3（案 C の追加）・E-4（採用する案を C）
+        mock: '`now`'
+        expected: '`set` が V-1、`changed` が `[D-1]`。D-1 の採用する案が C で `updated_by` が `user`、変更履歴が 1 回分だけ増えて `by` が `user`。まとまりの説明が「画面からの編集」で、`edits.yaml` が 0 件'
+      - name: test_save_edits_when_add_remove_settings
+        case: 正常
+        summary: 設定 → 追加 → 削除の順に当て、仮の ID を振った ID に置き換える
+        condition: 'T-1・N-1 と、E-1（タスクの追加 `new-1`、`depends_on: [new-2]`）・E-2（タスクの追加 `new-2`）・E-3（N-1 の削除）・E-4（題名を「画面の編集」）'
+        mock: '`now`'
+        expected: '`added` が `[{temp: new-1, id: T-2}, {temp: new-2, id: T-3}]`、T-2 の `depends_on` が `[T-3]`、`removed` が `[N-1]`、`settings` が `[summary]`'
+      - name: test_save_edits_when_ai_pending
+        case: 正常
+        summary: まだまとめていない AI の書き換えを先に別のまとまりにする
+        condition: MCP の `update` で T-1 を書き換えて `commit` していないワークスペースと、E-1（D-1 の `answer`）
+        mock: '`now`'
+        expected: 'まとまりが新しい順に V-2（「画面からの編集」・`changed: [D-1]`）・V-1（「まとめる前の AI の書き換え」・`changed: [T-1]`）'
+      - name: test_save_edits_drops_edits_of_removed
+        case: 正常
+        summary: 削除する項目へのほかの編集は捨てる
+        condition: N-1 と、E-1（N-1 の `title`）・E-2（N-1 の削除）
+        mock: '`now`'
+        expected: '`removed` が `[N-1]`、`changed` が空で、E-1 は書き込めない編集にならない'
+      - name: test_save_edits_when_blocked
+        case: 異常
+        summary: 書き込めない編集を全て集め、何も書かない
+        condition: '`parametrize`: E-1 を溜めた後に MCP で D-1 の `title` を書き換えた / D-2 が指す D-1 の削除 / 無い `D-99` への `depends_on` / 使われているフェーズ 問い を外して `map` を持たない `setting`'
+        mock: '`now`'
+        expected: '`EditsBlockedError` の `blocked` が `changed` / `referenced`（`refs: [D-2]`）/ `invalid` 1 件 / `invalid` 1 件。ワークスペースと `edits.yaml` が呼ぶ前と同じ'
+        exception: 書き込めない編集がある
+      - name: test_save_edits_when_empty
+        case: 異常
+        summary: 保存待ちが空なら何もしない
+        condition: '`edits.yaml` を持たず、まだまとめていない変更を持つワークスペース'
+        mock: なし
+        expected: '`EditInvalidError`。`changes.yaml` が呼ぶ前と同じ'
+        exception: 保存待ちが空
+      - name: test_save_edits_when_item_add_with_options
+        case: 正常
+        summary: 案を持つ足す検討事項を、案ごと書き込む
+        condition: 'D-1 と、E-1（検討事項の追加 `new-1`、`status: 決定済み`、`options` が案 A・B で B が採用）'
+        mock: '`now`'
+        expected: '`added` が `[{temp: new-1, id: D-2}]`。D-2 が案 A・B を持ち B だけが採用、状態が決定済み、`updated_by` が `user` で、`edits.yaml` が 0 件'
+  - name: _parse_edit_input
+    title: 追加の本文の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: internal
+    summary: 本文から `op`・`target`・`key`・`value`・`map` を取り出し、`op` ごとに要るキーと `map` の渡し方を確かめる
+    args:
+      - name: data
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 要求の本文
+    returns:
+      type: tuple[str, str | None, str | None, Any, dict[str, str] | None]
+      description: '`(op, target, key, value, map)`'
+    exceptions:
+      - name: EditInvalidError
+        condition: '`op` が合わない、要るキーが無い、`map` を渡せない `op`・`key` に渡した、`map` の値が文字列でない'
+  - name: _current_value
+    title: 今の値
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: internal
+    summary: 編集の向け先の今のワークスペースの値（`set` は項目のキー、`option-edit` は案の中身、`adopt` は採用している案の記号、`setting` は設定のキー）を返す。元の値の控えと、元に戻したかの判定に使う
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 今のワークスペース
+      - name: edit
+        type: PendingEdit
+        required: true
+        passing: positional
+        description: 向け先を持つ編集
+    returns:
+      type: Any
+      description: 今の値（`option-add`・`item-add`・`item-remove`・`option-remove` は `None`）
+  - name: _find_blocked
+    title: 書き込めない編集の洗い出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: internal
+    summary: 当てる前に分かる `changed`・`missing`・`referenced` の編集を溜めた順に返す（削除を溜めた項目へのほかの編集は見ない）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: 今のワークスペース
+      - name: edits
+        type: list[PendingEdit]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+    returns:
+      type: list[BlockedEdit]
+      description: 書き込めない編集（無ければ空）
+  - name: _apply_edits
+    title: 編集をメモリの上で当てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 画面で項目を編集して保存する
+    scope: internal
+    summary: '`save_edits` の 3. の順に当て、当てた `Staged` と設定・仮の ID の対応・当てられなかった編集を返す'
+    args:
+      - name: staged
+        type: Staged
+        required: true
+        passing: positional
+        description: まだ何も当てていない書き換え（まとまりは AI の分をまとめた後）
+      - name: edits
+        type: list[PendingEdit]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+      - name: now
+        type: Callable[[], str]
+        required: true
+        passing: keyword
+        description: 今の日時を返す関数
+    returns:
+      type: tuple[Staged, SettingsStage | None, dict[str, str], list[BlockedEdit]]
+      description: 当てた書き換え・当てた設定（設定の編集が無ければ `None`。モジュール構成『設定の更新』）・仮の ID → 振った ID・`invalid` の編集
+  - name: _write_edits
+    title: 保存待ちの編集の書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/edits.py
+    usecase: 共通
+    scope: internal
+    summary: '`edits.yaml` を一時ファイルに書いてから置き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: edit_file
+        type: EditFile
+        required: true
+        passing: positional
+        description: 書く中身
+    exceptions:
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（一時ファイルは消す）
+test_files:
+  - tests/unit/scripts/test_edits.py

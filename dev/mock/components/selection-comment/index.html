@@ -11,12 +11,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークンと、画面のモックと同じスタイル -->
+  <!-- トークンと、今のプレビューのスタイルと、#332 で変える入口のスタイル -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
-  <link rel="stylesheet" href="../../refs/65/assets/style.css">
-  <link rel="stylesheet" href="../../refs/71/assets/style.css">
-  <link rel="stylesheet" href="../../refs/78/assets/style.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/332/assets/style.css">
   <style>
+    /* カタログのページ: プレビューの 1 画面の固定（高さ 100dvh・送らない）を外して縦に送る */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文の列 */
+    .catalog { max-width: 720px; padding: 24px 16px 48px; margin: 0 auto; }
+    /* カタログの見出し */
+    .catalog > h1 { margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em; }
+    /* カタログの説明 */
+    .catalog > .lead { margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small); }
     /* カタログの節: 状態ごとの案を縦に並べる */
     .cat-sec { margin-top: 32px; }
     /* カタログの節の見出し */
@@ -24,107 +31,123 @@
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
     /* 部品を置く台 */
-    .stage { width: 640px; max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); overflow: hidden; }
+    .stage { width: 640px; max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); }
     /* 狭い幅の見本 */
     .stage.narrow { width: 390px; }
-    /* 入口の見本の台: 入口の影を切らない */
-    .stage { overflow: visible; }
-    /* 台の中の入口: 位置をスクリプトで決めず、見本の場所に置く */
-    .selpop.static { position: static; display: inline-block; }
+    /* 横に並べる台 */
+    .stage.row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+    /* 横に並べた見本の 1 つ */
+    .stage.row > .half { flex: 1 1 260px; min-width: 0; }
+    /* 見本の本文: 入口を本文の上の決まった場所に置く */
+    .sel-demo { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    /* 見本の段落 */
+    .sel-demo p { margin: 0; }
     /* 選んだ範囲の見本: ブラウザの選択の色 */
     .sel-mock { background: Highlight; color: HighlightText; }
-    /* 見本の入口の置き場所: 選んだ範囲の終わりの下・始まりの上 */
-    .sel-demo { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 16px; }
-    .sel-at { position: absolute; left: clamp(8px, 30%, 200px); }
-    .sel-at.below { top: 40px; }
-    .sel-at.above { top: 8px; }
-    /* その場の入力の見本: 入口を広げた箱 */
-    .selpop.static[data-mode="form"] { display: block; max-width: 100%; }
+    /* 今の入口の見本: 角を丸め切ったピル */
+    .selection-comment.legacy { padding: 0 12px; gap: 6px; font-size: var(--fs-small); }
     /* ホバーの見本 */
     .is-hover { background: var(--hover) !important; }
     /* キーボードのフォーカスの見本 */
     .is-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+    /* ツールチップを出した見本 */
+    .show-tip .sc-tip { display: block; }
   </style>
 </head>
 <body>
-  <main class="content">
+  <main class="catalog">
     <!-- パンくず -->
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / selection-comment</nav>
-    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">選んだ箇所のコメントの入口</h1>
-    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出す角の丸い入口。本文と値の外を選んだとき（見出しの帯・関係する項目・図）と、配る書き出しでは出さない。</p>
+    <h1>選んだ箇所のコメントの入口</h1>
+    <p class="lead">詳細パネルと詳細の全画面で、本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出す入口。本文と値の外を選んだとき（見出しの帯・関係する項目・図）と、配る書き出しでは出さない。#332 で、位置（始まりの上・終わりの下・右の余白）・文字（印だけ・印と「コメント」）・面（不透明・半透明）の案を並べる。</p>
     <section class="cat-sec">
-      <h2>案 A ピル（通常）</h2>
-      <p>角を丸め切った横長の形に、印と「コメント」。読み上げの名前は「選んだ箇所にコメント」。選んだ範囲の終わりの下に出す。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+      <h2>文字の案 A 印だけの丸・位置の案 A 始まりの上（推奨・通常）</h2>
+      <p>幅と高さ 32px の丸に印だけ。選んだ範囲の始まりの上 6px に出し、始まりの左端に揃える。読み上げの名前は「選んだ箇所にコメント」。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="above" style="padding:24px 16px 24px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="above" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 A ピル（ホバー）</h2>
-      <p>面の色だけを変える。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn is-hover" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+      <h2>文字の案 A（ホバー）</h2>
+      <p>面の色を変え、名前のツールチップを入口の上（選んだ範囲と反対の側）に出す。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="above" style="padding:24px 16px 24px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment is-hover show-tip" type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="above" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 A ピル（キーボードのフォーカス）</h2>
-      <p>印の色の輪。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn is-focus" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+      <h2>文字の案 A（キーボードのフォーカス）</h2>
+      <p>印の色の輪と、ホバーと同じ名前のツールチップ。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="above" style="padding:24px 16px 24px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment is-focus show-tip" type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="above" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 A ピル（下に収まらない）</h2>
-      <p>選んだ範囲の始まりの上に出す。</p>
-      <div class="stage"><div class="sel-demo above-demo"><div class="sel-at above"><div class="selpop static" data-shape="pill" data-side="above" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div><div class="md" style="padding: 56px 4px 8px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div></div></div>
+      <h2>文字の案 A（上に収まらない: 終わりの下に逃がす・ホバー）</h2>
+      <p>選んだ範囲の始まりが本文の区画の上端にあり、上に出すと区画の外へはみ出すときは、終わりの下に出す。ツールチップは入口の下。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="below" style="padding:4px 16px 24px"><p><mark class="sel-mock">本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。</mark>本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment is-hover show-tip" type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="below" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 B 丸（通常）</h2>
-      <p>印だけの円（押せる的は 32px）。本文を隠す面が最も小さい。名前は title と読み上げにだけ持つ。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="round" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div></div></div>
+      <h2>文字の案 B 印と小さい「コメント」（通常・ホバー・フォーカス）</h2>
+      <p>幅 88px・高さ 32px のピルに、印と 12px の「コメント」。今のピル（幅 104px・13px の文字）より小さい。ツールチップは出さない。</p>
+      <div class="stage row"><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="text" data-bg="solid" data-side="above" style="position:static;width:88px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span>コメント</span></button><button class="selection-comment is-hover" type="button" aria-label="選んだ箇所にコメント" data-label="text" data-bg="solid" data-side="above" style="position:static;width:88px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span>コメント</span></button><button class="selection-comment is-focus" type="button" aria-label="選んだ箇所にコメント" data-label="text" data-bg="solid" data-side="above" style="position:static;width:88px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span>コメント</span></button></div>
     </section>
     <section class="cat-sec">
-      <h2>案 B 丸（ホバー）</h2>
-      <p>面の色だけを変える。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="round" data-side="below" style="--tail-x:52px"><button class="sp-btn is-hover" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div></div></div>
+      <h2>面の案 B 半透明（本文の文字の上に重なったとき）</h2>
+      <p>面を半透明にし、影を外す。下の文字が透けるが、印と文字が重なって読みにくい。案 A（不透明）は下の文字を隠すが印は読める。</p>
+      <div class="stage row"><div class="half"><div class="sel-demo md" data-pos="above" data-overlap="1" style="padding:16px 16px 16px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="clear" data-side="above" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div><div class="half"><div class="sel-demo md" data-pos="above" data-overlap="1" style="padding:16px 16px 16px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="above" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 B 丸（キーボードのフォーカス）</h2>
-      <p>印の色の輪。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="round" data-side="below" style="--tail-x:52px"><button class="sp-btn is-focus" type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div></div></div>
+      <h2>位置の案 B 終わりの下</h2>
+      <p>選んだ範囲の終わりの下 6px に出し、終わりの行の左端に揃える（今の位置）。選んだ後に読む下の行を隠す。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="below" style="padding:12px 16px 24px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="below" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 B 丸（下に収まらない）</h2>
-      <p>選んだ範囲の始まりの上に出す。</p>
-      <div class="stage"><div class="sel-demo above-demo"><div class="sel-at above"><div class="selpop static" data-shape="round" data-side="above" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg></button></div></div><div class="md" style="padding: 56px 4px 8px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div></div></div>
+      <h2>位置の案 C 終わりの行の右の余白</h2>
+      <p>終わりの行の縦の中ほどに揃え、本文の列の右の余白へ出す。余白が入口の幅に足りないときは、本文の列の右端に寄せる（文字に重なる）。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="right" style="padding:12px 48px 12px 16px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="right" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 C 吹き出し（通常）</h2>
-      <p>角の丸い箱から、選んだ範囲の端へ尾を伸ばす。何をするかを文字で出す。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="bubble" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div></div></div>
+      <h2>今の入口（比べる元）</h2>
+      <p>幅 104px・高さ 32px のピルに、印と 13px の「コメント」。選んだ範囲の終わりの下に出す。</p>
+      <div class="stage"><div class="sel-demo md" data-pos="below" style="padding:12px 16px 24px"><p>本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。<mark class="sel-mock">送る前に、本文の頭の説明を読んで何が変わったかの見当を付けると、探す範囲を絞れる。</mark>AI がまとまりに付けた説明は、変えた理由を 1 行で書いている。見出しのリンクを押すと、その見出しを指す URL に変わる。</p><button class="selection-comment legacy " type="button" aria-label="選んだ箇所にコメント" style="position:absolute;width:104px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span>コメント</span></button></div></div>
     </section>
     <section class="cat-sec">
-      <h2>案 C 吹き出し（ホバー）</h2>
-      <p>面の色だけを変える。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="bubble" data-side="below" style="--tail-x:52px"><button class="sp-btn is-hover" type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div></div></div>
-    </section>
-    <section class="cat-sec">
-      <h2>案 C 吹き出し（キーボードのフォーカス）</h2>
-      <p>印の色の輪。Tab で、開いている詳細の本文の次に届く。Esc で閉じる。</p>
-      <div class="stage"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div><div class="sel-at below"><div class="selpop static" data-shape="bubble" data-side="below" style="--tail-x:52px"><button class="sp-btn is-focus" type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div></div></div>
-    </section>
-    <section class="cat-sec">
-      <h2>案 C 吹き出し（下に収まらない）</h2>
-      <p>選んだ範囲の始まりの上に出す。尾は下へ向ける。</p>
-      <div class="stage"><div class="sel-demo above-demo"><div class="sel-at above"><div class="selpop static" data-shape="bubble" data-side="above" style="--tail-x:52px"><button class="sp-btn " type="button" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>選んだ箇所にコメント</span></button></div></div><div class="md" style="padding: 56px 4px 8px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形</mark>にまとめる。</p></div></div></div>
-    </section>
-    <section class="cat-sec">
-      <h2>入口を押した後（入力の置き場所の案 B: 入口の中で書く）</h2>
-      <p>入口を広げ、選んだ範囲のすぐ近くに入力を出す。外側を押すか Esc で閉じ、書きかけは残す。案 A（推奨）は入口を閉じ、詳細の下端の入力に箇所を添える（send-form の「箇所を添えた」）。</p>
-      <div class="stage"><div class="selpop static" data-mode="form"><form class="send send-pop" novalidate onsubmit="return false">
-      <label class="send-label" for="sp-1"><span class="mono">A-005</span> へのコメント</label><div class="send-quote"><span class="sq-loc">本文 3 行目</span><q>受け取る人へ渡す形</q></div>
-      <textarea id="sp-1" rows="2" class="is-focus"></textarea>
-      <div class="send-row"><p class="send-msg" role="status"></p><button class="btn ghost" type="button">やめる</button><button class="btn primary" type="submit"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>レビューに追加</button></div></form></div></div>
-    </section>
-    <section class="cat-sec">
-      <h2>狭い幅（390px）・案 A</h2>
-      <p>画面の端に寄るときは、端から 8px の内側に収める。</p>
-      <div class="stage narrow"><div class="sel-demo"><div class="md" style="padding: 8px 4px 56px;"><p style="margin:0">検討事項から決まったことを、<mark class="sel-mock">受け取る人へ渡す形にまとめる</mark>にまとめる。</p></div><div class="sel-at below" style="left:auto; right:8px"><div class="selpop static" data-shape="pill" data-side="below" style="--tail-x:52px"><button class="sp-btn " type="button" aria-label="選んだ箇所にコメント" title="選んだ箇所にコメント"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M12 7.5v5M9.5 10h5"/></svg><span>コメント</span></button></div></div></div></div>
+      <h2>狭い幅（390px）・文字の案 A・位置の案 A</h2>
+      <p>行の頭から選び、選んだ範囲の始まりが画面の左端に寄るときは、入口を画面の端から 8px の内側に収める。</p>
+      <div class="stage narrow"><div class="sel-demo md" data-pos="above" style="padding:44px 0 16px"><p><mark class="sel-mock">本文が長い資料は、変わった箇所が見える範囲の外にあることが多い。</mark>本文を上から送っていくと、変わっていない段落を読み飛ばすことになる。</p><button class="selection-comment " type="button" aria-label="選んだ箇所にコメント" data-label="icon" data-bg="solid" data-side="above" style="position:absolute;width:32px;height:32px"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg><span class="sc-tip" aria-hidden="true">選んだ箇所にコメント</span></button></div></div>
     </section>
   </main>
+  <script>
+    // 見本の台ごとに、選んだ範囲の矩形から入口の位置を決める（位置の案は台の data-pos。プレビューの入口と同じ決め方）
+    const GAP = 6;
+    const EDGE = 8;
+    const HEIGHT = 32;
+    const place = () => {
+      for (const demo of document.querySelectorAll(".sel-demo[data-pos]")) {
+        const base = demo.getBoundingClientRect();
+        const rects = demo.querySelector(".sel-mock").getClientRects();
+        const first = rects[0];
+        const last = rects[rects.length - 1];
+        const button = demo.querySelector(".selection-comment");
+        const width = button.offsetWidth;
+        let top;
+        let left;
+        if (demo.dataset.pos === "right") {
+          // 終わりの行の縦の中ほどに揃え、本文の列の右の余白へ。余白が足りなければ台の右端に寄せる
+          const columnRight = demo.querySelector("p").getBoundingClientRect().right - base.left;
+          top = last.top - base.top + (last.height - HEIGHT) / 2;
+          left = Math.min(columnRight + GAP, base.width - EDGE - width);
+        } else if (demo.dataset.pos === "above") {
+          // 始まりの上。data-overlap の見本は、上の行の文字に重ねる
+          top = first.top - base.top - GAP - HEIGHT + (demo.dataset.overlap ? HEIGHT / 2 : 0);
+          left = first.left - base.left;
+        } else {
+          top = last.bottom - base.top + GAP;
+          left = last.left - base.left;
+        }
+        button.style.top = `${top}px`;
+        const clamped = Math.max(EDGE, Math.min(left, base.width - EDGE - width));
+        button.style.left = `${clamped}px`;
+        // 台の右半分に出した入口は、ツールチップを入口の右端に揃える
+        button.dataset.tip = clamped + width / 2 > base.width / 2 ? "end" : "start";
+      }
+    };
+    document.fonts.ready.then(place);
+    addEventListener("resize", place);
+  </script>
 </body>
 </html>

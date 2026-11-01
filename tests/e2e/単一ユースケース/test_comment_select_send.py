@@ -59,6 +59,12 @@ NARROW_WIDTH = 800
 # 結果が画面に出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
 
+# 畳んだときに見える本文の行の数
+FOLD_LINES = 5
+
+# 1 行ずつ改行した 8 行の本文（各行は画面の幅で折り返さない短さ）
+EIGHT_LINES = [f"{number} 行目の気づき" for number in range(1, 9)]
+
 
 def _serve(
     make_workspace: MakeWorkspace,
@@ -268,7 +274,7 @@ def test_normal_when_edit_remove_restore(
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 A に決める")
     page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent === '案 A に決める'",
+        "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 A に決める'",
         timeout=RESULT_TIMEOUT_MS,
     )
     # 実行（消す）
@@ -290,7 +296,7 @@ def test_normal_when_edit_remove_restore(
     page.wait_for_selector("main#main > *", state="attached")
     open_review(page)
     assert page.eval_on_selector_all(
-        f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent)"
+        f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent.trim())"
     ) == ["案 A に決める", "案 B も見たい"]
 
 
@@ -622,3 +628,60 @@ def test_error_when_thread_closed(
     # 検証
     assert page.inner_text(THREAD_HEADING) == "クローズ\nD-1 の進め方の連絡"
     assert page.get_by_role("button", name="オープンに戻す").count() == 1
+
+
+# 本文の各行が、本文の枠の中に見えているかを行の順に返す（畳んだ行は枠の下に外れる）
+# 枠は畳む `.review-body`、行は描いた段落の中で強制改行に分かれた文字
+VISIBLE_LINES_SCRIPT = """(lines) => {
+    const body = document.querySelector('.review-body');
+    const frame = body.getBoundingClientRect();
+    const walker = document.createTreeWalker(body.querySelector('p'), NodeFilter.SHOW_TEXT);
+    const texts = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node);
+    return lines.map((line) => {
+        const text = texts.find((node) => node.textContent.includes(line));
+        const at = text.textContent.indexOf(line);
+        const range = document.createRange();
+        range.setStart(text, at);
+        range.setEnd(text, at + line.length);
+        return range.getBoundingClientRect().bottom <= frame.bottom + 1;
+    });
+}"""
+
+
+def test_normal_when_read_long_post(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """項目を指さない 8 行の新しいスレッドは、行の頭が「新しいスレッド」の札だけで、本文が 5 行までに畳まれ、「続きを読む」を押すと 8 行が全て見える（正常系）。"""
+    # 準備
+    url, _ = _serve(
+        make_workspace,
+        call_tool,
+        write_comments,
+        make_item("D-1"),
+        comments=(_without_target(make_comment("C-1", body="\n".join(EIGHT_LINES))),),
+    )
+    open_preview(url)
+    # 実行（コメントのボタンを押し、レビュー中を確かめる入口を押す）
+    open_review(page)
+    more = f"{_row('C-1')} button.review-more"
+    page.wait_for_selector(more, state="visible", timeout=RESULT_TIMEOUT_MS)
+    # 検証（行の頭は札だけで、「項目を指さない」の文字が無い）
+    assert page.inner_text(f"{_row('C-1')} .row-head") == "新しいスレッド"
+    assert "項目を指さない" not in page.inner_text(_row("C-1"))
+    # 検証（5 行目までが見え、6 行目以降は見えず、「続きを読む」がある）
+    assert page.evaluate(VISIBLE_LINES_SCRIPT, EIGHT_LINES) == [True] * FOLD_LINES + [False] * (
+        len(EIGHT_LINES) - FOLD_LINES
+    )
+    assert page.inner_text(more) == "続きを読む"
+    # 実行
+    page.click(more)
+    # 検証（8 行が全て見える）
+    assert page.evaluate(VISIBLE_LINES_SCRIPT, EIGHT_LINES) == [True] * len(EIGHT_LINES)
+    assert page.inner_text(more) == "折りたたむ"

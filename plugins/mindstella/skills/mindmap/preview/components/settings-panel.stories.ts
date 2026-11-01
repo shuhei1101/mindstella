@@ -28,7 +28,7 @@ const meta = {
     counts: COUNTS,
     overrides: [],
     canSave: true,
-    on: { kinds: fn(), minimap: fn(), reset: fn(), save: fn(), close: fn() },
+    on: { kinds: fn(), minimap: fn(), bodyView: fn(), reset: fn(), save: fn(), close: fn() },
   },
 } satisfies Meta<MindmapPreview.SettingsPanelProps>;
 
@@ -105,4 +105,12 @@ export const MinimapHidden: Story = {
 /** 詳細で本文の差分を左右に並べるを選んだ。変えている項目に「本文の差分の並べ方」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
 export const BodyDiffLayoutOverridden: Story = {
   args: { overrides: ["本文の差分の並べ方"] },
+};
+
+/** 表のしま模様をオンにし、セクションの折りたたみをオフにした。「詳細に表示するもの」の 2 つのチェックを切り替え、変えている項目に「表のしま模様」「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
+export const BodyViewOverridden: Story = {
+  args: {
+    bodyView: { pin: true, head: true, stripes: true, fold: false },
+    overrides: ["表のしま模様", "セクションの折りたたみ"],
+  },
 };

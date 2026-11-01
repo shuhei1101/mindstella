@@ -2,8 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
+
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, Route, expect
+from preview_edit_helpers import (
+    ADD_BUTTON,
+    ADD_PANEL,
+    ADD_TITLE_INPUT,
+    ADDED_ITEM,
+    PENDING_BUTTON,
+    SETTLE_MS,
+    assert_topbar_pending,
+    block_by_saving,
+    edit_edits,
+    edit_items,
+    item_marks,
+    read_edits_file,
+    start_add,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
@@ -45,6 +63,7 @@ from preview_layout_helpers import (
     region_metrics,
 )
 from preview_mark_helpers import SCREEN_MARKS, marks_of
+from preview_panel_width_helpers import seed_panel_width
 from preview_removed_helpers import (
     BAND,
     REMOVED_IN_V2_BY_TAB,
@@ -71,7 +90,7 @@ from preview_style_checks import (
     table_cell_backgrounds,
 )
 from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
-from workspace_fixtures import MakeItem
+from workspace_fixtures import CallTool, MakeEdit, MakeItem, MakeWorkspace, WriteEdits
 
 # マップを字下げの一覧に切り替える幅の境（これ以下）
 NARROW_WIDTH = 800
@@ -820,12 +839,13 @@ def test_map_lock_stays_when_detail_closed_and_tab_moved(
 
 
 def test_map_lock_when_quick_double_press(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview, page: Page
 ) -> None:
     """何も選んでいないとき、同じ節を素早く 2 回押すと、1 回目で詳細が開いて枠がずれても、その節への 2 回押しとしてロックする（正常系）。"""
-    # 準備
+    # 準備（詳細パネルを下限の幅にして、D-3 の位置がパネルの下に隠れないようにする）
     url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
+    seed_panel_width(page, 480)
+    open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
     point = _node_point(page, "D-3")
     # 実行
@@ -2112,3 +2132,427 @@ def test_drawer_fit_smallest(
         page, (DRAWER, f"{DRAWER} button:has-text('件を表示')"), scope=DRAWER
     )
     close_drawer(page)
+
+
+# ===== 編集（項目を追加・一覧の保存待ちの印・追加する項目） =====
+
+# 幅 480px（「項目を追加」を印だけにする幅の境）
+ADD_NARROW_VIEWPORT = {"width": 480, "height": 800}
+
+
+@pytest.mark.parametrize("view", ["board", "map", "table"])
+def test_add_button(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview, view: str
+) -> None:
+    """サーバーの配信では、表示形式の切り替えの帯の右端に「項目を追加」を出す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1"))
+    # 実行
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.wait_for_selector(ADD_BUTTON)
+    # 検証
+    button = page.locator(ADD_BUTTON)
+    assert button.count() == 1
+    assert button.inner_text().strip() == "項目を追加"
+    assert button.get_attribute("aria-label") == "検討事項の項目を追加"
+    bar = page.locator(".toolbar").bounding_box()
+    box = button.bounding_box()
+    switch = page.locator(".toolbar .segment").first.bounding_box()
+    assert bar is not None
+    assert box is not None
+    assert switch is not None
+    assert box["x"] >= switch["x"] + switch["width"]
+    assert bar["x"] + bar["width"] - (box["x"] + box["width"]) <= 24
+
+
+def test_add_button_narrow(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """幅 480px 以下は「＋」の印だけにし、文字を読み上げに残す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=board")
+    # 実行
+    page.set_viewport_size(ADD_NARROW_VIEWPORT)
+    # 検証
+    button = page.locator(ADD_BUTTON)
+    label = button.locator(".lbl").bounding_box()
+    assert label is None or label["width"] <= 1
+    assert button.locator("svg.icon").is_visible()
+    assert button.get_attribute("title") == "項目を追加"
+    assert page.get_by_role("button", name="検討事項の項目を追加").count() == 1
+
+
+def test_topbar_pending(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """トップバーに保存待ちのボタンを出し、溜めた件数・開いているか・書き込めない編集の有無を見せる（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*edit_items(make_item, "D"), edits=edit_edits(make_edit, "D"))
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(PENDING_BUTTON)
+    # 検証
+    assert_topbar_pending(page)
+
+
+def test_add_button_hidden_when_diff(
+    write_history_preview: WriteReviewPreview,
+    write_edits: WriteEdits,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """差分の表示をしている間は、「項目を追加」・保存待ちの印・追加する項目を出さない（正常系）。"""
+    # 準備
+    url, root = write_history_preview()
+    write_edits(
+        root,
+        make_edit("E-1"),
+        make_edit("E-2", target="new-1", op="item-add", key="decisions", value={"title": "足す問い", "status": "未整理"}, before=None, base=None),
+    )
+    preselect_diff(page, "V-1")
+    # 実行
+    diff = open_preview(url, "#tab=decisions&view=board")
+    diff.wait_for_selector(".df-chip")
+    # 検証
+    assert diff.locator(ADD_BUTTON).count() == 0
+    assert diff.locator(".board .pm").count() == 0
+    assert diff.locator(f".board {ADDED_ITEM}").count() == 0
+    assert diff.locator(PENDING_BUTTON).count() == 0
+
+
+def test_add_button_hidden_when_exported(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    tmp_path: Path,
+) -> None:
+    """配る書き出しでは「項目を追加」を出さない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    out = tmp_path / "配る.html"
+    result = call_tool("export", workspace=str(root), out=str(out))
+    assert result.is_error is False, result.text
+    # 実行
+    page = open_preview(out.as_uri(), "#tab=decisions&view=board")
+    page.wait_for_selector(".board .card")
+    # 検証
+    assert page.locator(ADD_BUTTON).count() == 0
+    assert page.locator(PENDING_BUTTON).count() == 0
+
+
+def test_add_item(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """「項目を追加」で開いていた詳細パネルを閉じて追加の入力を開き、タイトルを書いて入力欄を離れると `item-add` を 1 件溜める（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1", title="最初の問い"))
+    page = open_preview(url, "#tab=decisions&view=board&id=D-1")
+    page.wait_for_selector("aside.panel.open")
+    # 実行
+    page.click(ADD_BUTTON)
+    page.wait_for_selector(ADD_PANEL)
+    # 検証（開いた直後）
+    assert page.locator("aside.panel:not(.pe-add-panel)").count() == 0
+    assert page.get_attribute(ADD_PANEL, "aria-label") == "検討事項を追加"
+    assert page.locator(ADD_TITLE_INPUT).evaluate("e => e === document.activeElement")
+    # 実行（タイトルを書いて離れる）
+    page.locator(ADD_TITLE_INPUT).fill("足す問い")
+    page.locator(ADD_TITLE_INPUT).blur()
+    page.wait_for_selector(f"{PENDING_BUTTON} .count")
+    # 検証（溜めた後）
+    edits = read_edits_file(root)["items"]
+    assert [(edit["op"], edit["key"], edit["value"]["title"]) for edit in edits] == [("item-add", "decisions", "足す問い")]
+    assert page.locator(f".board-col[aria-label='未整理'] {ADDED_ITEM}").count() == 1
+
+
+@pytest.mark.parametrize("view", ["board", "map", "table"])
+def test_list_marks(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+    view: str,
+) -> None:
+    """保存待ちの編集がある項目に、書き換えは保存待ち・削除は保存で削除・直前の保存で書き込めなかった編集は書き込めないの印を付ける。マップの節は印だけにする（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*edit_items(make_item, "D"), edits=edit_edits(make_edit, "D"))
+    page = open_preview(url, f"#tab=decisions&view={view}")
+    page.wait_for_selector(PENDING_BUTTON)
+    # 実行（直前の保存で D-3 だけ書き込めなくする）
+    block_by_saving(page)
+    # 検証
+    scope = {
+        "board": ".board button.card[data-id]",
+        "table": "table tr[data-id]",
+        "map": "#decision-map button.n-item[data-node]",
+    }[view]
+    marks = item_marks(page, scope)
+    compact = view == "map"
+    assert {id_: (mark["kind"], mark["compact"]) for id_, mark in marks.items()} == {
+        "D-1": ("pending", compact),
+        "D-2": ("remove", compact),
+        "D-3": ("blocked", compact),
+    }
+    # 文字は、カードと表の行では印に出し、マップの節では印だけにして title に残す
+    labels = {"pending": "保存待ち", "remove": "保存で削除", "blocked": "書き込めない"}
+    for mark in marks.values():
+        assert (mark["title"] if compact else mark["text"]) == labels[mark["kind"]]
+    assert page.locator(f"{scope}.pe-removing").count() == 1
+
+
+def test_added_items_board(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """ボードは、溜めた状態の列（無ければ「未整理」）の先頭に破線の枠で出す。ID の場所に「ID は保存で決まる」を置き、タイトルが空なら「（タイトル未入力）」と出す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("D-1", title="今ある問い", status="未決定"),
+        make_item("D-2", title="未整理の問い", status="未整理"),
+        edits=(
+            make_edit("E-1", target="new-1", op="item-add", key="decisions", value={"title": "足す問い", "status": "未決定"}, before=None, base=None),
+            make_edit("E-2", target="new-2", op="item-add", key="decisions", value={"title": "", "status": "未整理"}, before=None, base=None),
+        ),
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=board")
+    page.wait_for_selector(ADDED_ITEM)
+    # 検証
+    assert page.eval_on_selector_all(
+        ".board section.board-col",
+        "cols => cols.filter(c => c.querySelector('.card')).map(c => [c.getAttribute('aria-label'), [...c.querySelectorAll('.card')].map(k => k.dataset.newId ?? k.dataset.id)])",
+    ) == [["未決定", ["new-1", "D-1"]], ["未整理", ["new-2", "D-2"]]]
+    first = page.locator(".card[data-new-id='new-1']")
+    assert first.evaluate("e => getComputedStyle(e).borderTopStyle") == "dashed"
+    assert first.locator(".pe-noid").inner_text() == "ID は保存で決まる"
+    assert first.locator(".c-ttl").inner_text() == "足す問い"
+    assert first.locator(".pm.pm-pending").count() == 1
+    assert page.locator(".card[data-new-id='new-2'] .c-ttl").inner_text() == "（タイトル未入力）"
+    assert page.locator(".card[data-new-id='new-1'] .mono").count() == 0
+
+
+def test_added_items_table(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """表は先頭の行に破線の枠で出す。ID の列に「—」を置く（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("D-1", title="今ある問い"),
+        edits=(make_edit("E-1", target="new-1", op="item-add", key="decisions", value={"title": "足す問い", "status": "未整理"}, before=None, base=None),),
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(ADDED_ITEM)
+    # 検証
+    rows = page.eval_on_selector_all("table tbody tr", "rows => rows.map(r => r.dataset.newId ?? r.dataset.id)")
+    assert rows == ["new-1", "D-1"]
+    row = page.locator("tr[data-new-id='new-1']")
+    assert row.locator(".pe-noid").inner_text() == "—"
+    assert row.locator(".row-open").inner_text() == "足す問い"
+    assert row.locator(".pm.pm-pending").count() == 1
+
+
+def test_added_items_not_in_map(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """マップには追加する項目を出さない（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(
+        make_item("D-1", title="今ある問い"),
+        edits=(make_edit("E-1", target="new-1", op="item-add", key="decisions", value={"title": "足す問い", "status": "未整理"}, before=None, base=None),),
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=map")
+    page.wait_for_selector("#decision-map button.n-item")
+    # 検証
+    assert page.locator(ADDED_ITEM).count() == 0
+    assert page.locator("#decision-map button.n-item").count() == 1
+
+
+def test_added_item_reopens_input(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加する項目を押すと、追加する入力を開き直す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=board")
+    start_add(page, "足す問い")
+    page.get_by_role("button", name="追加の入力を閉じる").click()
+    page.wait_for_selector(ADD_PANEL, state="detached")
+    # 実行
+    page.click(f".card{ADDED_ITEM}")
+    # 検証
+    page.wait_for_selector(ADD_PANEL)
+    assert page.locator(ADD_TITLE_INPUT).input_value() == "足す問い"
+
+
+# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったかを読む。
+# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
+ADDED_OPTIONS_JS = """(expected) => {
+  fetch('/api/edits').then(r => r.json()).then(d => {
+    window.addedOptionsSaved = d.items.some(e => e.op === 'item-add' && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected));
+  });
+  return window.addedOptionsSaved === true;
+}"""
+
+
+def _wait_added_options(page: Page, expected: list[dict[str, object]]) -> None:
+    """保存待ちの item-add の value.options が expected になるのを待つ。"""
+    page.evaluate("() => { window.addedOptionsSaved = false; }")
+    page.wait_for_function(ADDED_OPTIONS_JS, arg=expected, timeout=SETTLE_MS)
+
+
+def test_add_item_with_options(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加の入力で書いた案は `item-add` の value.options に溜め、採用を選ぶと決定済みにする。案を削除しても同じ記号の書きかけを残さず、開き直すと案をそのまま出す（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1"))
+    # ボードは既定で決定済みの列を外すため、表で開く
+    page = open_preview(url, "#tab=decisions&view=table")
+    start_add(page, "足す問い")
+    # 実行（案 A・B を書いて離れる）
+    for key, content in (("A", "項目ごと"), ("B", "まとめて")):
+        page.get_by_role("button", name="案を追加").click()
+        area = page.get_by_label(f"案 {key} の中身")
+        area.fill(content)
+        area.blur()
+    _wait_added_options(page, [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて"}])
+    # 実行（案 B を採用する）
+    page.get_by_role("radio", name="採用").nth(1).check()
+    _wait_added_options(
+        page, [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて", "adopted": True}]
+    )
+    # 検証（溜めた後）
+    edits = read_edits_file(root)["items"]
+    assert [edit["op"] for edit in edits] == ["item-add"]
+    value = edits[0]["value"]
+    assert value["status"] == "決定済み"
+    assert "A" not in value
+    assert "B" not in value
+    expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)
+    expect(page.get_by_role("button", name="案 B を削除")).to_have_count(0, timeout=SETTLE_MS)
+    # 実行（採用していない案 A を削除する）
+    page.get_by_role("button", name="案 A を削除").click()
+    _wait_added_options(page, [{"key": "B", "content": "まとめて", "adopted": True}])
+    # 検証（削除した後）
+    expect(page.get_by_label("案 A の中身")).to_have_count(0, timeout=SETTLE_MS)
+    # 実行（閉じて開き直す）
+    page.get_by_role("button", name="追加の入力を閉じる").click()
+    page.wait_for_selector(ADD_PANEL, state="detached")
+    page.click(f"tr{ADDED_ITEM} .row-open")
+    page.wait_for_selector(ADD_PANEL)
+    # 検証（開き直した後）
+    expect(page.get_by_label("案 B の中身")).to_have_value("まとめて")
+    expect(page.get_by_role("radio", name="採用")).to_be_checked()
+    expect(page.get_by_label("案 A の中身")).to_have_count(0)
+
+
+# 保存待ちの item-add の件数と、その value が渡したキーと値を全て持つかを読む。
+# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
+ADDED_VALUE_JS = """(expected) => {
+  fetch('/api/edits').then(r => r.json()).then(d => {
+    const adds = d.items.filter(e => e.op === 'item-add');
+    window.addedValueSaved = adds.length === 1
+      && Object.entries(expected).every(([k, v]) => JSON.stringify(adds[0].value[k]) === JSON.stringify(v));
+  });
+  return window.addedValueSaved === true;
+}"""
+
+
+def _wait_added_value(page: Page, expected: dict[str, object]) -> None:
+    """保存待ちの item-add が 1 件で、その value が expected のキーと値を全て持つのを待つ。"""
+    page.evaluate("() => { window.addedValueSaved = false; }")
+    page.wait_for_function(ADDED_VALUE_JS, arg=expected, timeout=SETTLE_MS)
+
+
+def _hold_edit_posts(page: Page) -> Callable[[], None]:
+    """編集を溜める送信（POST /api/edits）の応答を止め、止めた送信を順に通して以降は止めない関数を返す。"""
+    held: list[Route] = []
+    holding = [True]
+
+    def handle(route: Route) -> None:
+        # 止めている間の溜める送信だけを止め、読み取り（GET）と止めた後の送信は通す
+        if holding[0] and route.request.method == "POST":
+            held.append(route)
+            return
+        route.continue_()
+
+    def release() -> None:
+        holding[0] = False
+        for route in held:
+            route.continue_()
+        held.clear()
+
+    page.route("**/api/edits", handle)
+    return release
+
+
+def test_add_item_with_options_when_sent_before_response(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加の入力で案 A を書いた送信の応答より前に案 B を書いても、`item-add` 1 件の value.options に A・B が溜まり、追加の入力に案 A・B が出る（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    start_add(page, "足す問い")
+    release = _hold_edit_posts(page)
+    # 実行（案 A を書いて離れ、その送信の応答より前に案 B を書いて離れる）
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 A の中身").fill("項目ごと")
+    page.get_by_label("案 A の中身").blur()
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 B の中身").fill("まとめて")
+    page.get_by_label("案 B の中身").blur()
+    release()
+    _wait_added_value(page, {"options": [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて"}]})
+    # 検証
+    edits = read_edits_file(root)["items"]
+    assert [edit["op"] for edit in edits] == ["item-add"]
+    assert edits[0]["value"]["options"] == [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて"}]
+    expect(page.get_by_label("案 A の中身")).to_have_value("項目ごと", timeout=SETTLE_MS)
+    expect(page.get_by_label("案 B の中身")).to_have_value("まとめて", timeout=SETTLE_MS)
+    expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)
+
+
+def test_add_item_with_keys_when_sent_before_response(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加の入力でタイトル・タグ・状態を、どれも前の送信の応答より前に続けて書いても、`target` の無い `item-add` を重ねず、1 件の value に全ての値が溜まる（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    release = _hold_edit_posts(page)
+    page.click(ADD_BUTTON)
+    page.wait_for_selector(ADD_PANEL)
+    # 実行（タイトルを書いて離れ、その送信の応答より前にタグを入れ、状態を変える）
+    page.locator(ADD_TITLE_INPUT).fill("足す問い")
+    page.locator(ADD_TITLE_INPUT).blur()
+    page.get_by_label("タグを追加").fill("画面")
+    page.get_by_label("タグを追加").press("Enter")
+    page.get_by_label("状態", exact=True).select_option("保留")
+    release()
+    _wait_added_value(page, {"title": "足す問い", "tags": ["画面"], "status": "保留"})
+    # 検証
+    edits = read_edits_file(root)["items"]
+    assert [edit["op"] for edit in edits] == ["item-add"]
+    assert (edits[0]["value"]["title"], edits[0]["value"]["tags"], edits[0]["value"]["status"]) == (
+        "足す問い",
+        ["画面"],
+        "保留",
+    )
+    expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)

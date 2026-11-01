@@ -28,7 +28,17 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
-from fixture_types import FailingUnlink, MakeItem, MakeWorkspace, SnapshotTree
+from fixture_types import (
+    FailingReplace,
+    FailingUnlink,
+    MakeEdit,
+    MakeItem,
+    MakeThread,
+    MakeWorkspace,
+    SnapshotTree,
+    WriteEdits,
+    WriteThreads,
+)
 from workspace_fixtures import RECORD_DIR, write_yaml
 
 # 壊れた YAML（閉じていないフローの配列）
@@ -217,6 +227,14 @@ LEGACY_SETTINGS: dict[str, Any] = {
     "goal": {"phase": "構成", "summary": "作り始められる", "deliverables": []},
 }
 
+# 前の版の形式の設定（タグの語彙 `tags` を持つ。ほかは今の形式）
+TAGS_SETTINGS: dict[str, Any] = {
+    **{key: value for key, value in LEGACY_SETTINGS.items() if key != "field"},
+    "summary": "要件出しのスキルを設計する",
+    "playbooks": ["システム開発"],
+    "tags": [{"name": "保存"}],
+}
+
 
 @pytest.mark.parametrize(
     ("file_name", "item_id", "kind", "settings", "expected"),
@@ -233,6 +251,7 @@ LEGACY_SETTINGS: dict[str, Any] = {
             True,
             id="settings_with_field",
         ),
+        pytest.param("config.yaml", None, "schema", TAGS_SETTINGS, True, id="settings_with_tags"),
     ],
 )
 def test_is_legacy_problem(
@@ -625,6 +644,67 @@ def test_save_batch_when_body_removal_fails(
     with pytest.raises(WriteFailedError, match=r"N-2\.md"):
         store.save_batch(workspace, change)
     assert snapshot_tree(root) == before
+    assert list(root.rglob("*.tmp")) == []
+
+
+def _read_or_none(path: Path) -> Any:
+    """YAML を読んで返す。ファイルが無ければ None。"""
+    return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+@pytest.mark.parametrize(
+    ("replace_target", "expectation", "fails"),
+    [
+        pytest.param("", nullcontext(), False, id="written"),
+        pytest.param(
+            "edits.yaml",
+            pytest.raises(WriteFailedError, match=r"edits\.yaml"),
+            True,
+            id="edits_replace_fails",
+        ),
+    ],
+)
+def test_save_batch_with_settings_and_edits(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    write_edits: WriteEdits,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    snapshot_tree: SnapshotTree,
+    failing_replace: FailingReplace,
+    monkeypatch: pytest.MonkeyPatch,
+    valid_settings: dict[str, Any],
+    replace_target: str,
+    expectation: AbstractContextManager[Any],
+    fails: bool,
+) -> None:
+    """設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す（正常系）。"""
+    # 準備
+    root = make_workspace(settings=valid_settings)
+    write_threads(root, make_thread("TH-1", tags=["通知"]))
+    write_edits(root, make_edit("E-1"))
+    workspace = store.load_workspace(root)
+    before = snapshot_tree(root)
+    new_settings = {**valid_settings, "summary": "画面の編集"}
+    new_threads = [make_thread("TH-1", tags=["お知らせ"])]
+    new_edits = {"seq": 1, "new_seq": 0, "items": []}
+    task = make_item("T-1")
+    change = store.BatchChange(
+        items={"task": [task]}, settings=new_settings, threads=new_threads, edits=new_edits
+    )
+    # store モジュールの参照を、置き換え先が replace_target のときだけ失敗するものに差し替える
+    monkeypatch.setattr(store.os, "replace", failing_replace(replace_target))
+    # 実行
+    with expectation:
+        store.save_batch(workspace, change)
+    # 検証
+    records = root / RECORD_DIR
+    assert (snapshot_tree(root) == before) is fails
+    assert (_read_or_none(records / "tasks.yaml") == {"items": [task]}) is not fails
+    assert (_read_or_none(records / "config.yaml") == new_settings) is not fails
+    assert (_read_or_none(records / "threads.yaml") == {"items": new_threads}) is not fails
+    assert (_read_or_none(records / "edits.yaml") == new_edits) is not fails
     assert list(root.rglob("*.tmp")) == []
 
 

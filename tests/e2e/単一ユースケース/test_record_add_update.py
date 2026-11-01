@@ -614,26 +614,32 @@ def test_error_when_html_body_for_non_doc(
     assert snapshot_tree(root) == before
 
 
-def test_error_when_unknown_tag(
+def test_normal_when_new_tag(
     make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
+    make_item: MakeItem,
     call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
 ) -> None:
-    """語彙に無いタグを持つ検討事項は書かず、近いタグの候補を添えたエラーになる（異常系）。"""
+    """まだどの項目も持たないタグを持つ検討事項も、そのまま書く（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    before = snapshot_tree(root)
+    root = make_workspace(make_item("D-1", tags=["通知"]))
     # 実行
     result = call_tool(
         "add",
         workspace=str(root),
         kind="decision",
-        item={**NEW_DECISION, "tags": ["通知機能"]},
+        item={**NEW_DECISION, "tags": ["通知", "通知機能"]},
     )
+    tags = call_tool("tags", workspace=str(root))
     # 検証
-    # 追加のツールがエラーを返し、本文に渡したタグと候補がある
-    assert result.is_error is True
-    assert "tags: 通知機能（候補: 通知）" in result.text
-    # ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
-    assert snapshot_tree(root) == before
+    # 追加のツールがエラーにせず、足した検討事項の ID を返す
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["id"] == "D-2"
+    # 足した検討事項が、タグ 通知・通知機能 を持つ
+    assert _read_decisions(root)[1]["tags"] == ["通知", "通知機能"]
+    # config.yaml がタグのキーを持たない
+    config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    assert "tags" not in config
+    # タグの一覧が 通知（2 件）と 通知機能（1 件）を返す
+    assert tags.data is not None
+    assert {row["name"]: row["count"] for row in tags.data["tags"]} == {"通知": 2, "通知機能": 1}

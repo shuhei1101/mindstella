@@ -1,4 +1,4 @@
-"""components/thread-post.ts（スレッドの書き込み・状態の記録・レビュー中の返信と、本文の中の項目の ID の切り出し）の単体テスト。"""
+"""components/thread-post.ts（スレッドの書き込み・状態の記録・レビュー中の返信と、Markdown の本文の中の項目の ID・まとまりのリンク）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadPreviewScripts
+from .fixture_types import LoadMdmark, LoadPreviewScripts
 
 # 利用者の書き込み
 USER_POST = {
@@ -91,6 +91,7 @@ def _observe(preview_page: Page, props: dict[str, Any]) -> dict[str, Any]:
 def test_thread_post(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
     post: dict[str, Any],
     expected_classes: set[str],
     expected_head: str,
@@ -99,6 +100,7 @@ def test_thread_post(
     """書き手ごとの書き込みと、記録にある ID のリンク（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     # 実行
     observed = _observe(preview_page, {"post": post})
     # 検証
@@ -109,11 +111,12 @@ def test_thread_post(
 
 
 def test_thread_post_when_known_and_unknown_id(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """記録にある ID はタイトルつきのボタン、記録に無い ID は文字のまま。改行を保つ（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     # 実行
     observed = _observe(preview_page, {"post": AI_POST})
     # 検証
@@ -221,89 +224,13 @@ def test_thread_post_when_pending(
     assert observed["calls"] == expected_calls
 
 
-@pytest.mark.parametrize(
-    ("body", "expected"),
-    [
-        pytest.param(
-            "D-12 を案 B に。T-14 も",
-            [["id", "D-12"], ["text", " を案 B に。"], ["id", "T-14"], ["text", " も"]],
-            id="known_ids",
-        ),
-        pytest.param("D-99 は無い", [["text", "D-99 は無い"]], id="unknown_id"),
-        pytest.param(
-            "TH-1 と AD-12 と D-12x", [["text", "TH-1 と AD-12 と D-12x"]], id="not_item_ids"
-        ),
-        pytest.param("", [["text", ""]], id="empty"),
-    ],
-)
-def test_split_post_body(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    body: str,
-    expected: list[list[str]],
-) -> None:
-    """記録にある ID だけを切り出す（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    parts = preview_page.evaluate(
-        """(body) => {
-            const titles = (id) => (id === "D-12" || id === "T-14" ? id + "の題" : null);
-            return MindmapPreview.splitPostBody(body, titles).map(
-                (part) => ("id" in part ? ["id", part.id] : ["text", part.text])
-            );
-        }""",
-        body,
-    )
-    # 検証
-    assert parts == expected
-    assert "".join(value for _kind, value in parts) == body
-
-
-# まとまりのリンクの試験に使う本文。記録にある・記録に無い・`since`・`pending`・空・見出し・外部・他の引数つきのリンクと、文字のままの ID を含む
-CHANGE_SET_LINK_BODY = (
-    "[D-1 を直した](#diff=V-1)。[無い](#diff=V-99)・[前回](#diff=since)・[未](#diff=pending)"
-    "・[空](#diff=)・[見出し](#決め方)・[外](https://example.com)・[他](#tab=tasks&id=D-2&diff=V-2)・D-2"
-)
-
-
-def test_split_post_body_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts
-) -> None:
-    """記録にあるまとまりを指すリンクだけを切り出し、文言の中の ID は切り出さない（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    parts = preview_page.evaluate(
-        """(body) => {
-            const titles = (id) => (id === "D-1" || id === "D-2" ? id + "の題" : null);
-            const changeSets = (id) => ({"V-1": "1 回目の説明", "V-2": "2 回目の説明"})[id] ?? null;
-            return MindmapPreview.splitPostBody(body, titles, changeSets);
-        }""",
-        CHANGE_SET_LINK_BODY,
-    )
-    # 検証
-    assert parts == [
-        {"set": "V-1", "label": "D-1 を直した", "summary": "1 回目の説明"},
-        {
-            "text": (
-                "。[無い](#diff=V-99)・[前回](#diff=since)・[未](#diff=pending)・[空](#diff=)"
-                "・[見出し](#決め方)・[外](https://example.com)・"
-            )
-        },
-        {"set": "V-2", "label": "他", "summary": "2 回目の説明"},
-        {"text": "・"},
-        {"id": "D-2", "title": "D-2の題"},
-    ]
-
-
-# まとまりのリンクを含む本文を `postBody` で描き、リンクを押したときの結果を集める JavaScript
+# まとまりのリンク・外のリンクを含む本文を `postBody` で描き、リンクを押したときの結果を集める JavaScript
 POST_BODY_SCRIPT = """(useTitles) => {
     const calls = [];
     const titles = (id) => (useTitles && (id === "A-14" || id === "D-12") ? id + "の題" : null);
     const changeSets = (id) => (id === "V-6" ? "V-6 の説明" : null);
     const body = MindmapPreview.postBody({
-        body: "[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)",
+        body: "[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)。[外](https://example.com)",
         titles,
         changeSets,
         className: "post-body",
@@ -318,8 +245,7 @@ POST_BODY_SCRIPT = """(useTitles) => {
     const click = new MouseEvent("click", {bubbles: true, cancelable: true});
     if (links.length > 0) links[0].dispatchEvent(click);
     return {
-        tag: body.tagName,
-        className: body.className,
+        classes: [...body.classList],
         text: body.textContent,
         links: links.map((link) => ({
             text: link.textContent,
@@ -328,6 +254,7 @@ POST_BODY_SCRIPT = """(useTitles) => {
             focus: link.getAttribute("data-focus"),
             hasButton: link.querySelector("button") !== null,
         })),
+        otherLinks: [...body.querySelectorAll("a:not(.setlink)")].map((link) => link.getAttribute("href")),
         idButtons: [...body.querySelectorAll("button.idlink")].map((button) => button.textContent),
         defaultPrevented: click.defaultPrevented,
         hashChanged: location.hash !== hashBefore,
@@ -346,17 +273,18 @@ POST_BODY_SCRIPT = """(useTitles) => {
 def test_post_body(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
     use_titles: bool,
     expected_id_buttons: list[str],
 ) -> None:
     """項目の ID のボタンとまとまりのリンクを描き分ける（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     # 実行
     observed = preview_page.evaluate(POST_BODY_SCRIPT, use_titles)
     # 検証
-    assert observed["tag"] == "P"
-    assert observed["className"] == "post-body"
+    assert "post-body" in observed["classes"]
     assert observed["links"] == [
         {
             "text": "A-14 の書き直し",
@@ -366,11 +294,101 @@ def test_post_body(
             "hasButton": False,
         }
     ]
-    assert "[古い](#diff=V-99)" in observed["text"]
+    # 記録に無いまとまりのリンクは `a` を持たず、文言だけが出る
+    assert "古い" in observed["text"]
+    assert "#diff=V-99" not in observed["text"]
+    assert observed["otherLinks"] == ["https://example.com"]
     assert observed["idButtons"] == expected_id_buttons
     assert observed["defaultPrevented"] is True
     assert observed["hashChanged"] is False
     assert observed["calls"] == [["changeSet", "V-6"]]
+
+
+# 見出し・改行 1 つの段落・セルに ID を持つ表・インラインコードの ID・補足の囲みを持つ本文
+MARKDOWN_POST_BODY = (
+    "## 結果\n\nD-1 は A。\n2 行目\n\n| 列 |\n| --- |\n| D-1 |\n\n`D-1`\n\n> [!NOTE]\n> 補足の文\n"
+)
+
+# Markdown の本文を `postBody` で描き、ブロックと項目の ID のボタンの状態を集める JavaScript
+MARKDOWN_POST_BODY_SCRIPT = """(source) => {
+    const body = MindmapPreview.postBody({
+        body: source,
+        titles: (id) => (id === "D-1" ? id + "の題" : null),
+        changeSets: () => null,
+        className: "post-body",
+        on: {openId: () => {}, changeSet: () => {}},
+    });
+    document.body.append(body);
+    const title = body.querySelector("div.markdown-alert > p.markdown-alert-title");
+    return {
+        classes: [...body.classList],
+        heading: body.querySelector("h2")?.textContent ?? null,
+        hardBreak: body.querySelector("p br") !== null,
+        tableInWrap: body.querySelector(".md-table-wrap > table") !== null,
+        noteIcon: title?.firstElementChild?.outerHTML === MindmapPreview.icon("note").outerHTML,
+        paragraphButtons: [...body.querySelectorAll("p > button.idlink")].map((b) => b.textContent),
+        cellButtons: [...body.querySelectorAll("td button.idlink")].map((b) => b.textContent),
+        codeText: body.querySelector("code")?.textContent ?? null,
+        codeButtons: body.querySelectorAll("code button").length,
+        colSizes: [...body.querySelectorAll("th, td")].map((cell) => cell.getAttribute("data-col-size")),
+    };
+}"""
+
+
+def test_post_body_when_markdown(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """本文を Markdown として描き、段落の中の改行を保ち、コードの中の ID はボタンにしない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    observed = preview_page.evaluate(MARKDOWN_POST_BODY_SCRIPT, MARKDOWN_POST_BODY)
+    # 検証
+    assert {"post-body", "mdmark"} <= set(observed["classes"])
+    assert observed["heading"] == "結果"
+    assert observed["hardBreak"] is True
+    assert observed["tableInWrap"] is True
+    assert observed["noteIcon"] is True
+    assert observed["paragraphButtons"] == ["D-1"]
+    assert observed["cellButtons"] == ["D-1"]
+    assert observed["codeText"] == "D-1"
+    assert observed["codeButtons"] == 0
+    # 表の列の幅の見せ方は書き込みには当てない
+    assert observed["colSizes"] == [None, None]
+
+
+def test_post_body_when_library_missing(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """mdmark が読めなければ文字のまま改行を保つ（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(
+        """(source) => {
+            const body = MindmapPreview.postBody({
+                body: source,
+                titles: (id) => (id === "D-1" ? id + "の題" : null),
+                changeSets: () => null,
+                className: "post-body",
+                on: {openId: () => {}, changeSet: () => {}},
+            });
+            document.body.append(body);
+            return {
+                classes: [...body.classList],
+                text: body.textContent,
+                alerts: body.querySelectorAll('[role="alert"]').length,
+                buttons: body.querySelectorAll("button").length,
+                strongs: body.querySelectorAll("strong").length,
+            };
+        }""",
+        "**D-1**\n2 行目",
+    )
+    # 検証
+    assert "post-body" in observed["classes"]
+    assert observed["text"] == "**D-1**\n2 行目"
+    assert (observed["alerts"], observed["buttons"], observed["strongs"]) == (0, 0, 0)
 
 
 # まとまりのリンクを含む書き込みを作り、リンクを押したときの結果を集める JavaScript
@@ -390,7 +408,7 @@ CHANGE_SET_POST_SCRIPT = """(props) => {
         },
     });
     document.body.append(item);
-    const links = [...item.querySelectorAll("p.post-body a.setlink")];
+    const links = [...item.querySelectorAll(".post-body a.setlink")];
     if (links.length > 0) links[0].click();
     return {linkCount: links.length, calls};
 }"""
@@ -414,11 +432,15 @@ CHANGE_SET_POST_SCRIPT = """(props) => {
     ],
 )
 def test_thread_post_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, props: dict[str, Any]
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    props: dict[str, Any],
 ) -> None:
     """書き込みとレビュー中の書き込みのまとまりのリンク（正常系）。"""
     # 準備
     load_preview_scripts()
+    load_mdmark()
     # 実行
     observed = preview_page.evaluate(CHANGE_SET_POST_SCRIPT, props)
     # 検証

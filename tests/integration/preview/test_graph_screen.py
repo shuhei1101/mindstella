@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from playwright.sync_api import Page
+from preview_edit_helpers import PENDING_BUTTON, assert_topbar_pending, edit_edits, edit_items
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_drawer_helpers import (
     DRAWER,
@@ -55,6 +56,7 @@ from preview_saved_filter_helpers import (
     seed_saved_filters,
 )
 from preview_settings_helpers import LOOK_SELECT, pick_look, read_prefs
+from workspace_fixtures import MakeEdit, MakeItem
 
 # 狭い幅の画面の大きさ（空の旨の文はどの幅でも出す）
 NARROW_WIDTH = 800
@@ -1213,3 +1215,22 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     set_smallest(page)
     # 検証
     assert_fits_smallest(page)
+
+
+# ===== 編集（トップバーの保存待ち） =====
+
+
+def test_topbar_pending(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """トップバーに保存待ちのボタンを出し、溜めた件数・開いているか・書き込めない編集の有無を見せる（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(*edit_items(make_item, "D"), edits=edit_edits(make_edit, "D"))
+    # 実行
+    page = open_preview(url, "#tab=graph")
+    page.wait_for_selector(PENDING_BUTTON)
+    # 検証
+    assert_topbar_pending(page)

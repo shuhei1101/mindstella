@@ -10,8 +10,14 @@ var MindmapPreview;
     MindmapPreview.DRAFT_SAVE_DELAY_MS = 500;
     /** 画面の下に「ワークスペースの既定が変わりました。」を出しておくミリ秒 */
     MindmapPreview.NOTICE_MS = 6000;
+    /** 画面の下に「{n} 件を保存しました。」を出しておくミリ秒 */
+    MindmapPreview.SAVED_NOTICE_MS = 5000;
+    /** 追加の入力で案を採用したときの、足す検討事項の状態 */
+    const ADOPTED_DECISION_STATUS = "決定済み";
     /** そのタブの「前回開いてから」の始まり（`OpenedPoint` の JSON）を残す sessionStorage のキー。あれば `POST /api/opened` を呼ばない（同じタブで読み込み直しても範囲を変えない） */
     MindmapPreview.SINCE_KEY = "mindmap-since";
+    /** そのタブで変えた詳細パネルの幅（px の整数の文字列）を残す sessionStorage のキー。種類で分けない。配る書き出しでも同じ */
+    MindmapPreview.PANEL_WIDTH_KEY = "mindmap-panel-width";
     /** 入力欄のキー。向けた先（`target` と `loc` の組か、`thread`）を 1 つの文字列にする */
     function formKey(target, loc, thread = null) {
         return JSON.stringify([target, loc?.kind ?? null, loc?.start ?? null, loc?.end ?? null, loc?.key ?? null, loc?.text ?? null, thread]);
@@ -57,7 +63,20 @@ var MindmapPreview;
     MindmapPreview.readEmbeddedData = readEmbeddedData;
     /** 既定の設定 */
     function defaultPrefs() {
-        return { theme: null, columns: {}, look: null, kinds: null, diffSel: null, filters: {}, minimap: null, bodyLayout: null };
+        return {
+            theme: null,
+            columns: {},
+            look: null,
+            kinds: null,
+            diffSel: null,
+            filters: {},
+            minimap: null,
+            bodyLayout: null,
+            tablePin: null,
+            tableHead: null,
+            tableStripes: null,
+            sectionFold: null,
+        };
     }
     /** 端末の保存領域から設定を読む。読めないときは既定を返す */
     function loadPrefs(storage) {
@@ -82,6 +101,15 @@ var MindmapPreview;
             // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
             if (parsed.bodyLayout !== "side")
                 parsed.bodyLayout = null;
+            // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
+            if (parsed.tablePin !== false)
+                parsed.tablePin = null;
+            if (parsed.tableHead !== false)
+                parsed.tableHead = null;
+            if (parsed.tableStripes !== true)
+                parsed.tableStripes = null;
+            if (parsed.sectionFold !== false)
+                parsed.sectionFold = null;
             return parsed;
         }
         catch {
@@ -125,7 +153,7 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -133,6 +161,10 @@ var MindmapPreview;
             ...MindmapPreview.KIND_KEYS.filter((kind) => prefs.columns[kind] !== undefined).map((kind) => `表の列（${MindmapPreview.KIND_LABEL[kind]}）`),
             ...filterTabs().filter((tab) => prefs.filters[tab] !== undefined && !sameFilters(prefs.filters[tab], MindmapPreview.initialFilters(tab, {}, null))).map((tab) => `絞り込み（${screenName(tab)}）`),
             ...(prefs.minimap === false ? [MindmapPreview.MINIMAP_LABEL] : []),
+            ...(prefs.tablePin === false ? [MindmapPreview.BODY_VIEW_LABELS.pin] : []),
+            ...(prefs.tableHead === false ? [MindmapPreview.BODY_VIEW_LABELS.head] : []),
+            ...(prefs.tableStripes === true ? [MindmapPreview.BODY_VIEW_LABELS.stripes] : []),
+            ...(prefs.sectionFold === false ? [MindmapPreview.BODY_VIEW_LABELS.fold] : []),
             ...(prefs.bodyLayout === "side" ? [MindmapPreview.BODY_LAYOUT_LABEL] : []),
         ];
         return {
@@ -145,14 +177,36 @@ var MindmapPreview;
             minimap: prefs.minimap !== false,
             // 上書きが side のときだけ左右に並べる
             bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
+            // 上書きのある項目だけ既定と逆にする
+            bodyView: {
+                pin: prefs.tablePin !== false,
+                head: prefs.tableHead !== false,
+                stripes: prefs.tableStripes === true,
+                fold: prefs.sectionFold !== false,
+            },
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
-        return { ...prefs, theme: null, look: null, kinds: null, columns: {}, filters: {}, minimap: null, bodyLayout: null };
+        return {
+            ...prefs,
+            theme: null,
+            look: null,
+            kinds: null,
+            columns: {},
+            filters: {},
+            minimap: null,
+            bodyLayout: null,
+            tablePin: null,
+            tableHead: null,
+            tableStripes: null,
+            sectionFold: null,
+        };
     }
     MindmapPreview.clearOverrides = clearOverrides;
+    /** 本文の見せ方の項目 → 個人の上書きの項目 */
+    const BODY_VIEW_PREF = { pin: "tablePin", head: "tableHead", stripes: "tableStripes", fold: "sectionFold" };
     /** 表示の既定が同じか（無いキーは同じ無しとして比べる） */
     function sameDisplay(a, b) {
         const key = (display) => JSON.stringify([display?.network_look ?? null, display?.visible_kinds ?? null]);
@@ -177,6 +231,28 @@ var MindmapPreview;
             };
         }
     }
+    /** そのタブで変えた詳細パネルの幅を読む。正の整数でなければ、残っていないものとして扱う（既定の幅で開く） */
+    function readPanelWidth(session) {
+        let saved;
+        try {
+            saved = session.getItem(MindmapPreview.PANEL_WIDTH_KEY);
+        }
+        catch {
+            return null;
+        }
+        return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : null;
+    }
+    MindmapPreview.readPanelWidth = readPanelWidth;
+    /** 変えた詳細パネルの幅をそのタブに残す。書けない保存領域では何もしない（開き直すと既定の幅で開く） */
+    function writePanelWidth({ session, width }) {
+        try {
+            session.setItem(MindmapPreview.PANEL_WIDTH_KEY, String(width));
+        }
+        catch {
+            return;
+        }
+    }
+    MindmapPreview.writePanelWidth = writePanelWidth;
     /** そのタブの「前回開いてから」の始まりを決める。同じタブで読み込み直したときは、残した始まりをそのまま使う */
     async function resolveSince({ serverMode, prefs, persist, headSeq, session = openStorage("sessionStorage"), post = MindmapPreview.postOpened, now = () => new Date().toISOString(), }) {
         // 同じタブに残した始まりがあれば使う（読めない・前の版の日時の文字列は残っていないものとして続ける）
@@ -256,8 +332,9 @@ var MindmapPreview;
         const keys = Object.keys(a);
         return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
     }
-    /** 記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
-    function start() {
+    /** mdmark を読み終えるのを待ち（読めなくても続ける）、記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
+    async function start() {
+        await MindmapPreview.loadMdmark();
         let embedded;
         try {
             embedded = readEmbeddedData(document);
@@ -311,6 +388,7 @@ var MindmapPreview;
         /** サーバーの配信か（配る書き出しは記録を埋め込みから読み、送信も書き換えの知らせも持たない） */
         const serverMode = embedded === null;
         const storage = openStorage("localStorage");
+        const session = openStorage("sessionStorage");
         const prefs = loadPrefs(storage);
         const persist = () => savePrefs({ storage, prefs });
         MindmapPreview.restoreTablePrefs(prefs.columns, (kind, tablePrefs) => {
@@ -332,6 +410,10 @@ var MindmapPreview;
         // ===== 記録 =====
         let data = embedded ?? (await waitForRecords(theme));
         let index = MindmapPreview.buildIndex(data);
+        /** サーバーが返した記録そのもの（保存待ちの編集を当てる前）。`data` は保存待ちの編集を当てた、画面に出す値 */
+        let serverData = data;
+        /** 保存待ちの編集を当てる前の索引（保存待ちのパネルが項目の種類とタイトルを引く） */
+        let serverIndex = index;
         document.title = `${data.settings.summary} | mindstella`;
         let connection = "online";
         // 表示の設定: 項目ごとに、個人の上書き → ワークスペースの既定 → 組み込みの既定の順で読み分けた値
@@ -366,11 +448,66 @@ var MindmapPreview;
         const filterState = { byTab: {}, drawerOpen: false };
         const lockState = { graph: null, map: null };
         const stack = { front: "detail" };
+        const editState = {
+            edits: [],
+            blocked: [],
+            open: false,
+            editing: null,
+            adding: null,
+            status: "idle",
+            errors: new Map(),
+            toast: null,
+            workspaceOpen: false,
+            optionDrafts: new Map(),
+            sentEdits: new Map(),
+            editsReadSeq: 0,
+            editsAppliedSeq: 0,
+            addSend: null,
+        };
+        /** 送信中の編集の値のキー（`adopt` は案の記号を持たず、項目ごとに 1 つ） */
+        const sentKeyOf = ({ target, op, key }) => op === "adopt" ? `${target}:adopt` : `${target}:${op}:${key}`;
+        /** 送信中の編集の値を、保存待ちの編集と同じ形に並べる（記録に当てるためだけの写し） */
+        const sentAsEdits = () => [...editState.sentEdits].map(([sentKey, { value }]) => {
+            const [target = "", op = "set", ...rest] = sentKey.split(":");
+            return {
+                id: "",
+                target,
+                op: op,
+                key: op === "adopt" ? String(value) : rest.join(":"),
+                value,
+                before: null,
+                created: "",
+            };
+        });
+        /** 差分の表示中でなければ、保存待ちの編集（項目の追加を除く）を当てた記録と索引を作り直す。追加する項目は索引に入れず、一覧の画面の `adds` として別に渡す */
+        const rebuildIndex = () => {
+            data =
+                point === null
+                    ? MindmapPreview.applyEdits(serverData, [
+                        ...editState.edits.filter((entry) => entry.op !== "item-add"),
+                        // 送信したがまだ読み取りに載っていない値を上に重ね、描き直しで入力欄を古い値に戻さない
+                        ...sentAsEdits(),
+                    ])
+                    : serverData;
+            index = MindmapPreview.buildIndex(data);
+            serverIndex = MindmapPreview.buildIndex(serverData);
+        };
+        /** 差分の表示に移ったら、保存待ちのパネル・設定の画面・編集の表示を閉じる。そのうえで索引を作り直す */
+        const syncEditView = () => {
+            if (point !== null) {
+                editState.open = false;
+                editState.workspaceOpen = false;
+                editState.editing = null;
+                editState.adding = null;
+            }
+            rebuildIndex();
+        };
         // ===== 移動 =====
         /** 詳細パネルを別画面として積む幅か */
         const isNarrow = () => matchMedia(NARROW_QUERY).matches;
         /** 画面の既定の URL（絞り込みは書かない）に route を書き、画面を描く */
         const go = (next, push) => {
+            leaveEditViews();
             const screenChanged = next.tab !== route.tab || next.view !== route.view || Object.keys(next.filters).length > 0;
             const idChanged = next.id !== route.id;
             // 差分の時点は、画面・項目を移っても引き継ぐ
@@ -380,7 +517,13 @@ var MindmapPreview;
         };
         /** 項目を開く。パネル・全画面の中の移動は履歴に積み、見てきた項目を行き来できるようにする */
         const openItem = (id, inPanel) => {
+            // 追加する項目は、追加の入力で開く
+            if (id.startsWith(MindmapPreview.NEW_ID_PREFIX)) {
+                openAdded(id);
+                return;
+            }
             flushDrafts();
+            leaveEditViews();
             const next = { ...route, id, filters: {}, heading: null };
             const trail = history.state;
             if (inPanel && route.id !== null) {
@@ -407,6 +550,7 @@ var MindmapPreview;
             route = { ...route, id: null, full: false, filters: {}, heading: null };
             MindmapPreview.navigate({ route, push: false });
             render({ screen: route.tab === "decisions" && route.view === "map" });
+            reopenPendingPanel();
         };
         /** 項目を、その種類の画面で開く（画面を移るので履歴に積む） */
         const openFromSearch = (id) => {
@@ -485,6 +629,11 @@ var MindmapPreview;
                 filterCount: MindmapPreview.activeConditionCount(filterState.byTab[route.tab] ?? {}),
                 filterOpen: filterState.drawerOpen,
                 onFilter: toggleDrawer,
+                pending: serverMode && point === null && editState.edits.length > 0,
+                pendingCount: editState.edits.length,
+                pendingOpen: editState.open,
+                pendingBlocked: editState.blocked.length > 0,
+                onPending: togglePending,
                 diffPoint: point === null ? null : { name: point.name, sub: point.sub },
                 onHistory: openHistory,
                 onDiffOff: () => selectPoint(null),
@@ -532,11 +681,12 @@ var MindmapPreview;
                         marks,
                         comments,
                         removed,
+                        edit: screenEdit("decisions"),
                     });
                 case "tasks":
-                    return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks, comments, removed });
+                    return MindmapPreview.tasksScreen({ index, route, on, filters, drawerOpen, marks, comments, removed, edit: screenEdit("tasks") });
                 case "docs":
-                    return MindmapPreview.docsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed });
+                    return MindmapPreview.docsScreen({ index, route, on, filters, drawerOpen, marks, comments, removed, edit: screenEdit("docs") });
                 case "graph":
                     return MindmapPreview.graphScreen({
                         index,
@@ -565,6 +715,7 @@ var MindmapPreview;
                         marks,
                         comments,
                         removed,
+                        edit: screenEdit(route.tab),
                     });
             }
         };
@@ -633,6 +784,20 @@ var MindmapPreview;
         };
         /** 詳細パネルと全画面 */
         const renderDetail = () => {
+            // 項目を追加する入力: 詳細パネルと同じ置き方で、追加の入力を開く
+            if (isAdding()) {
+                document.querySelector("aside.panel:not(.pe-add-panel)")?.remove();
+                const full = document.querySelector("dialog.full");
+                full?.close();
+                full?.remove();
+                fullViewer = null;
+                closePill();
+                document.body.classList.add("panel-open");
+                MindmapPreview.markSelected(null);
+                renderAddPanel();
+                return;
+            }
+            document.querySelector("aside.pe-add-panel")?.remove();
             const existing = document.querySelector("aside.panel");
             const fullDialog = document.querySelector("dialog.full");
             fullViewer = null;
@@ -661,6 +826,10 @@ var MindmapPreview;
                         renderComments();
                 }
             }
+            // 別の項目へ移った・パネルを閉じた: 編集の表示は読む表示に戻す（溜めた編集は保存待ちに残る）。追加する項目の入力は別に持つ
+            if (editState.editing !== null && !editState.editing.startsWith(MindmapPreview.NEW_ID_PREFIX) && editState.editing !== route.id) {
+                editState.editing = null;
+            }
             // 開いている項目が無い: パネルも全画面も閉じる
             if (route.id === null) {
                 flushDrafts();
@@ -676,6 +845,16 @@ var MindmapPreview;
                 full: route.full,
                 minimap: resolved.minimap,
                 bodyLayout: resolved.bodyLayout,
+                bodyView: resolved.bodyView,
+                edit: detailEdit(),
+                // 詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面は置かない。幅 900px 以下は CSS が隠し、窓を広げたときに出る）
+                resizer: route.full
+                    ? null
+                    : MindmapPreview.panelResizer({
+                        stored: readPanelWidth(session),
+                        mapView: () => route.tab === "decisions" && route.view === "map",
+                        onChange: (width) => writePanelWidth({ session, width }),
+                    }),
                 on: {
                     open: (id) => openItem(id, true),
                     layout: changeBodyLayout,
@@ -765,6 +944,8 @@ var MindmapPreview;
                 void keep;
             }
             renderDetail();
+            renderPending();
+            renderWorkspace();
             if (route.tab === "graph")
                 MindmapPreview.selectGraphItem(route.id);
             // 作り直した本文にも、開いているパネルの下の部品を止める
@@ -778,15 +959,17 @@ var MindmapPreview;
             ? document.querySelector("dialog.drawer")
             : comment.listOpen
                 ? document.querySelector(".comments-panel")
-                : display.open
-                    ? document.querySelector(".settings-drawer")
-                    : null;
+                : editState.open
+                    ? document.querySelector(".pending-panel")
+                    : display.open
+                        ? document.querySelector(".settings-drawer")
+                        : null;
         /** 幅 900px 以下で詳細パネルと左のパネルを両方開いていて、左のパネルを前に出しているか */
         const isLeftFront = () => isNarrow() &&
             route.id !== null &&
             !route.full &&
             stack.front === "left" &&
-            (filterState.drawerOpen || comment.listOpen || display.open);
+            (filterState.drawerOpen || comment.listOpen || display.open || editState.open);
         /** 幅 900px 以下で両方を開いているとき、前に出す側を `left-front` で決め、後ろになった側の部品に `inert` を付ける。それ以外は付けた分を外す */
         const applyStack = () => {
             const detail = document.querySelector("aside.panel");
@@ -843,6 +1026,8 @@ var MindmapPreview;
                 display.open = false;
                 renderSettings();
             }
+            editState.open = false;
+            renderPending();
             filterState.drawerOpen = true;
             stack.front = "left";
             redrawKeepingState();
@@ -919,6 +1104,7 @@ var MindmapPreview;
             composing: false,
             reason: { open: false, body: "", status: "idle", detail: null },
             reviewFocus: null,
+            expanded: new Set(),
         };
         const threadsApi = MindmapPreview.threadApi();
         /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
@@ -1265,6 +1451,8 @@ var MindmapPreview;
             }
             display.open = false;
             renderSettings();
+            editState.open = false;
+            renderPending();
             comment.listOpen = true;
             stack.front = "left";
             resetPanelView();
@@ -1289,6 +1477,7 @@ var MindmapPreview;
             comment.opened = null;
             comment.highlight = null;
             comment.removed = [];
+            comment.expanded.clear();
             discardListEdit();
             renderTop();
             renderComments();
@@ -1470,6 +1659,7 @@ var MindmapPreview;
             reviewFocus: comment.reviewFocus,
             titleOf: (id) => index.byId.get(id)?.item.title ?? null,
             changeSetOf: (id) => data.changes.sets.find((set) => set.id === id)?.summary ?? null,
+            expanded: comment.expanded,
             on: {
                 close: closeList,
                 review: openReview,
@@ -1525,6 +1715,13 @@ var MindmapPreview;
                 open: openRow,
                 ...reviewRowHandlers(""),
                 unloc: (id) => void detachLocation(id),
+                fold: (id, open) => {
+                    // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
+                    if (open)
+                        comment.expanded.add(id);
+                    else
+                        comment.expanded.delete(id);
+                },
             },
         });
         /** 読み直して一覧まで描き直す */
@@ -1660,9 +1857,11 @@ var MindmapPreview;
             if (route.id === null)
                 return;
             const id = route.id;
+            // 上に収まるかを決めるため、本文のスクロール領域の矩形を渡す
+            const scroller = host.querySelector(".panel-body") ?? host;
             pill = MindmapPreview.selectionComment({
                 anchor,
-                viewport: { width: innerWidth, height: innerHeight },
+                area: { viewport: { width: innerWidth, height: innerHeight }, scroller: scroller.getBoundingClientRect() },
                 on: {
                     press: () => {
                         closePill();
@@ -1747,6 +1946,20 @@ var MindmapPreview;
             const inList = form !== null && form.closest(".comments-panel") !== null;
             const selection = field instanceof HTMLTextAreaElement && form !== null ? { start: field.selectionStart, end: field.selectionEnd } : null;
             const bodyFocused = field instanceof HTMLElement && field.matches(".panel-body");
+            // 編集の表示・設定の画面の入力欄: 溜める前に打った値と選択を、描き直した後の同じ入力欄に戻す
+            const typed = (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) &&
+                field.id !== "" &&
+                field.closest(".pe-form") !== null
+                ? field
+                : null;
+            const typedState = typed === null
+                ? null
+                : {
+                    id: typed.id,
+                    value: typed.value,
+                    start: typed instanceof HTMLSelectElement ? null : typed.selectionStart,
+                    end: typed instanceof HTMLSelectElement ? null : typed.selectionEnd,
+                };
             // 全画面のときは詳細パネルも文書に残るので、今の画面の本文を引く
             const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
             const panelScroll = document.querySelector(bodySelector)?.scrollTop ?? 0;
@@ -1758,6 +1971,24 @@ var MindmapPreview;
             if (bodyFocused)
                 panelBody?.focus({ preventScroll: true });
             window.scrollTo(0, pageScroll);
+            if (typedState !== null) {
+                const restored = document.getElementById(typedState.id);
+                if (restored instanceof HTMLInputElement || restored instanceof HTMLTextAreaElement || restored instanceof HTMLSelectElement) {
+                    const text = !(restored instanceof HTMLInputElement) || !["checkbox", "radio"].includes(restored.type);
+                    if (text && restored.value !== typedState.value)
+                        restored.value = typedState.value;
+                    restored.focus({ preventScroll: true });
+                    // 選択を持てない型の入力欄（数・日付など）は、フォーカスだけを戻す
+                    try {
+                        if (!(restored instanceof HTMLSelectElement) && typedState.start !== null && typedState.end !== null) {
+                            restored.setSelectionRange(typedState.start, typedState.end);
+                        }
+                    }
+                    catch {
+                        // 選択を持てない型
+                    }
+                }
+            }
             if (selection !== null) {
                 const restored = document.querySelector(inList ? ".comments-panel form.send textarea" : route.full ? "dialog.full form.send textarea" : "aside.panel form.send textarea");
                 restored?.focus();
@@ -1793,8 +2024,10 @@ var MindmapPreview;
             overrides: resolved.overrides,
             canSave: serverMode,
             minimap: resolved.minimap,
+            bodyView: resolved.bodyView,
             message: display.message,
             storageOk: display.storageOk,
+            onWorkspace: serverMode && point === null ? openWorkspace : null,
             on: {
                 kinds: (kinds) => {
                     prefs.kinds = kinds;
@@ -1805,8 +2038,13 @@ var MindmapPreview;
                     prefs.minimap = shown ? null : false;
                     changePrefs({ redrawMain: true });
                 },
+                // 既定と違う値だけを上書きとして残し、開いている詳細をその場で描き直す
+                bodyView: ({ key, value }) => {
+                    prefs[BODY_VIEW_PREF[key]] = (value === MindmapPreview.BODY_VIEW_DEFAULT[key] ? null : value);
+                    changePrefs({ redrawMain: true });
+                },
                 reset: () => {
-                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
+                    // 見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を全て外し、ワークスペースの既定の表示に戻す
                     Object.assign(prefs, clearOverrides(prefs));
                     MindmapPreview.clearTablePrefs();
                     // 開いている画面は、画面の既定の条件で開き直す
@@ -1854,10 +2092,13 @@ var MindmapPreview;
                 comment.opened = null;
                 comment.highlight = null;
                 comment.removed = [];
+                comment.expanded.clear();
                 renderComments();
                 if (discardListEdit())
                     renderDetail();
             }
+            editState.open = false;
+            renderPending();
             display.open = true;
             stack.front = "left";
             if (filterState.drawerOpen) {
@@ -1930,8 +2171,8 @@ var MindmapPreview;
             }
             // 書けた: 返った既定を記録に入れ、個人の上書きはそのまま残す
             const saved = result.data?.display ?? { network_look: resolved.look, visible_kinds: MindmapPreview.KIND_KEYS.filter((kind) => resolved.kinds.has(kind)) };
-            data = { ...data, settings: { ...data.settings, display: saved } };
-            index = MindmapPreview.buildIndex(data);
+            serverData = { ...serverData, settings: { ...serverData.settings, display: saved } };
+            rebuildIndex();
             display.savedDisplay = saved;
             display.message = { kind: "ok", text: `ワークスペースの既定にしました（${MindmapPreview.formatJst(new Date().toISOString())}）。` };
             display.confirm = null;
@@ -1941,12 +2182,730 @@ var MindmapPreview;
             renderSettings();
             document.querySelector('.settings-drawer [data-focus="same"]')?.focus();
         };
+        // ===== 編集と保存待ち（サーバーの配信だけ） =====
+        const editsApi = MindmapPreview.editApi();
+        /** 直前の保存をサーバーが断った理由（保存待ちのパネルに出す）。次に保存するか、編集を取り消すまで残す */
+        let rejected = null;
+        /** 幅 900px 以下で保存待ちのパネルから項目を開いたとき、詳細パネルを閉じたらパネルを開き直すか */
+        let reopenPending = false;
+        /** 保存待ちの編集を読み直す。読み取りには送った順に番号を振り、後から送った読み取りを当てた後に届いた古い結果は当てずに捨てる。読めたときだけ置き換え、書き込めなかった編集の控えは今の編集に残る分だけにする。`edits` がこの読み取り以降の状態になったか（当てた・より新しい結果を当て済み）を返す */
+        const loadEdits = async () => {
+            editState.editsReadSeq += 1;
+            const seq = editState.editsReadSeq;
+            const result = await editsApi.read();
+            if (!result.ok || result.data === null)
+                return false;
+            // 後から送った読み取りをもう当てている: この結果は古いので捨てる
+            if (seq < editState.editsAppliedSeq)
+                return true;
+            editState.editsAppliedSeq = seq;
+            editState.edits = result.data.items;
+            const ids = new Set(editState.edits.map((entry) => entry.id));
+            editState.blocked = editState.blocked.filter((entry) => ids.has(entry.id));
+            settleSentEdits(seq);
+            return true;
+        };
+        /** 保存待ちの編集が指すキー（送信中の編集の値のキーと同じ形） */
+        const sentKeyOfEdit = (entry) => sentKeyOf({ target: entry.target, op: entry.op, key: entry.key ?? "" });
+        /** 読み取りを `edits` に当てた後、送信中の値を外す。同じキーで同じ値の編集が載ったキーと、溜められた後に送った読み取り（番号が `settledSeq` 以上）を当てたキーは、値によらず外す（その読み取りがサーバーの今の保存待ちを表す） */
+        const settleSentEdits = (seq) => {
+            const applied = new Map(editState.edits.map((entry) => [sentKeyOfEdit(entry), JSON.stringify(entry.value)]));
+            for (const [sentKey, sent] of [...editState.sentEdits]) {
+                const sameValue = applied.get(sentKey) === JSON.stringify(sent.value);
+                const settled = sent.settledSeq !== null && seq >= sent.settledSeq;
+                if (sameValue || settled)
+                    editState.sentEdits.delete(sentKey);
+            }
+        };
+        /** 書き込めなかった編集の ID */
+        const blockedIds = () => new Set(editState.blocked.map((entry) => entry.id));
+        /** 保存待ちの編集がある項目の印（項目の ID・仮の ID → 印の種類） */
+        const editMarks = () => {
+            const blocked = blockedIds();
+            const marks = {};
+            for (const target of new Set(editState.edits.map((entry) => entry.target))) {
+                const mark = MindmapPreview.pendingMarkOf({ edits: editState.edits, blocked, target });
+                if (mark !== null)
+                    marks[target] = mark;
+            }
+            return marks;
+        };
+        /** 追加する項目の編集を、一覧の画面に渡す項目にする（`id` は仮の ID） */
+        const addedItem = (entry) => ({ id: entry.target, title: "", created: entry.created, updated: entry.created, ...entry.value });
+        /** 一覧の画面に渡す編集の入口。配る書き出しと差分の表示中は null */
+        const screenEdit = (kind) => {
+            if (!serverMode || point !== null)
+                return null;
+            return {
+                marks: editMarks(),
+                adds: editState.edits.filter((entry) => entry.op === "item-add" && entry.key === kind).map(addedItem),
+                onAdd: () => startAdd(kind),
+            };
+        };
+        /** 編集が指す、項目のキーか案の記号（項目の追加・削除と設定は持たない） */
+        const keyOf = (entry) => {
+            if (entry.op === "adopt")
+                return typeof entry.value === "string" ? entry.value : entry.key;
+            if (entry.op === "item-add" || entry.op === "item-remove" || entry.op === "setting")
+                return null;
+            return entry.key;
+        };
+        /** 項目のキー・案の記号 → 印の種類。項目の ID には項目の印 */
+        const keyMarks = (id) => {
+            const blocked = blockedIds();
+            const marks = {};
+            const own = MindmapPreview.pendingMarkOf({ edits: editState.edits, blocked, target: id });
+            if (own !== null)
+                marks[id] = own;
+            for (const entry of editState.edits.filter((other) => other.target === id)) {
+                const key = keyOf(entry);
+                if (key === null)
+                    continue;
+                const mark = MindmapPreview.pendingMarkOf({ edits: editState.edits, blocked, target: id, key });
+                if (mark !== null)
+                    marks[key] = mark;
+            }
+            return marks;
+        };
+        /** 項目のキー・案の記号 → 直前の保存で書き込めなかった編集 */
+        const blockedByKey = (id) => {
+            const byId = new Map(editState.blocked.map((entry) => [entry.id, entry]));
+            const result = {};
+            for (const entry of editState.edits) {
+                const blocked = byId.get(entry.id);
+                const key = keyOf(entry);
+                if (entry.target === id && blocked !== undefined && key !== null)
+                    result[key] = blocked;
+            }
+            return result;
+        };
+        /** 向け先の、キー → 溜められなかった理由 */
+        const formErrors = (target) => {
+            const prefix = `${target}:`;
+            return Object.fromEntries([...editState.errors].filter(([key]) => key.startsWith(prefix)).map(([key, text]) => [key.slice(prefix.length), text]));
+        };
+        /** 溜められなかった理由の文（届かないとき・断られたとき） */
+        const failureText = (result) => result.status === null
+            ? "サーバーにつながらないため、溜められませんでした。"
+            : `溜められませんでした。${result.detail ?? ""}`;
+        /** 編集を溜めた後の描き直し（入力中の欄・スクロールの位置を保つ。ネットワークは作り直さない） */
+        const redrawEdit = () => preserving(() => render({ screen: route.tab !== "graph" }));
+        /** 編集 1 件を溜める。溜められたら保存待ちの編集を読み直して描き直し、断られた・届かないときは入力を残して理由を持つ。溜められたときは返った結果を返す */
+        const submitEdit = async ({ payload, error, after, }) => {
+            const errorKey = `${error.target}:${error.key}`;
+            // 送る値を送信中として持つ（項目の追加・削除と案の追加は除く）。読み取りに載るまで、描き直しで入力欄に重ねる
+            const sentKey = payload.op === "item-add" || payload.op === "option-add" || payload.op === "item-remove"
+                ? null
+                : sentKeyOf({ target: payload.target ?? MindmapPreview.SETTINGS_TARGET, op: payload.op, key: payload.key ?? "" });
+            const sentValue = payload.value;
+            if (sentKey !== null)
+                editState.sentEdits.set(sentKey, { value: sentValue, settledSeq: null });
+            const result = await editsApi.add(payload);
+            if (!result.ok || result.data === null) {
+                // 断られた・届かない: 送信中の値は外さず、理由と一緒に入力欄に残す
+                editState.errors.set(errorKey, result.ok ? "溜められませんでした。" : failureText(result));
+                redrawEdit();
+                return null;
+            }
+            editState.errors.delete(errorKey);
+            // 溜められた: 値が入れたままなら、この後に送る読み取りを当てたときに外す（その間に入れ直した値は、その値の結果を待つ）
+            const sent = sentKey === null ? undefined : editState.sentEdits.get(sentKey);
+            if (sent !== undefined && sent.value === sentValue)
+                sent.settledSeq = editState.editsReadSeq + 1;
+            await loadEdits();
+            after?.(result.data);
+            rebuildIndex();
+            redrawEdit();
+            return result.data;
+        };
+        /** 案の編集の理由は、案の入力の下にまとめて出す */
+        const errorKeyOf = (input) => ["option-add", "option-edit", "option-remove", "adopt"].includes(input.op) ? "options" : (input.key ?? "");
+        /** 項目の削除の編集を外す */
+        const cancelRemoval = async (id) => {
+            const found = editState.edits.find((entry) => entry.target === id && entry.op === "item-remove");
+            if (found !== undefined)
+                await undoEdit(found.id);
+        };
+        /** 編集 1 件を保存待ちから外す。外したら、書き込めなかった編集の控えからも外す */
+        const undoEdit = async (id) => {
+            const result = await editsApi.remove(id);
+            if (!result.ok) {
+                if (result.status === null)
+                    editState.status = "offline";
+                renderPending();
+                return;
+            }
+            const gone = new Set(result.data?.removed ?? [id]);
+            editState.blocked = editState.blocked.filter((entry) => !gone.has(entry.id));
+            // 外した編集と同じキーの送信中の値も外す
+            for (const entry of editState.edits.filter((other) => gone.has(other.id)))
+                editState.sentEdits.delete(sentKeyOfEdit(entry));
+            if (editState.blocked.length === 0 && editState.status === "idle")
+                rejected = null;
+            await loadEdits();
+            rebuildIndex();
+            redrawEdit();
+        };
+        /** 書きかけの案を持つ編集の表示（`editing`。仮の ID が振られる前の追加の入力は `NEW_ID_PREFIX`） */
+        const draftView = () => editState.editing ?? (editState.adding !== null ? MindmapPreview.NEW_ID_PREFIX : null);
+        /** 書きかけの案を最後に描いた編集の表示。変わっていたら書きかけを空にする */
+        let draftsShownFor = null;
+        /** 向け先の書きかけの案。`editing` が変わった（差分の表示に移った・保存できたときを含む）ら、先に書きかけを空にする */
+        const draftsOf = (target) => {
+            const view = draftView();
+            if (view !== draftsShownFor) {
+                editState.optionDrafts.clear();
+                draftsShownFor = view;
+            }
+            return editState.optionDrafts.get(target) ?? [];
+        };
+        /** 書きかけの案を置く・書き換える。置いたときだけ描き直し、その案の中身の入力欄へフォーカスを移す（打つたびには描き直さない） */
+        const putDraft = (target, draft) => {
+            const drafts = editState.optionDrafts.get(target) ?? [];
+            const found = drafts.find((other) => other.key === draft.key);
+            if (found !== undefined) {
+                found.content = draft.content;
+                return;
+            }
+            editState.optionDrafts.set(target, [...drafts, { ...draft }]);
+            redrawEdit();
+            document.getElementById(`pe-${MindmapPreview.safeId(target)}-opt-${draft.key}`)?.focus();
+        };
+        /** その記号の案を溜められた: 書きかけから外す */
+        const dropDraft = (target, key) => {
+            const rest = (editState.optionDrafts.get(target) ?? []).filter((draft) => draft.key !== key);
+            if (rest.length === 0)
+                editState.optionDrafts.delete(target);
+            else
+                editState.optionDrafts.set(target, rest);
+        };
+        /** 詳細パネルの編集の表示の引数 */
+        const editFormProps = ({ id, kind, item }) => {
+            const own = editState.edits.filter((entry) => entry.target === id);
+            return {
+                kind,
+                item,
+                settings: index.data.settings,
+                marks: keyMarks(id),
+                removing: own.some((entry) => entry.op === "item-remove"),
+                removedOptions: own.filter((entry) => entry.op === "option-remove").map((entry) => entry.key ?? ""),
+                blocked: blockedByKey(id),
+                referrers: serverIndex.referencedBy.get(id) ?? [],
+                errors: formErrors(id),
+                usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
+                body: index.data.bodies[item.body ?? ""] ?? "",
+                optionDrafts: draftsOf(id),
+                on: {
+                    change: (input) => void submitEdit({
+                        payload: { target: id, ...input },
+                        error: { target: id, key: errorKeyOf(input) },
+                        after: () => {
+                            if (input.op === "option-add")
+                                dropDraft(id, input.key);
+                        },
+                    }),
+                    remove: () => void submitEdit({ payload: { target: id, op: "item-remove" }, error: { target: id, key: "" } }),
+                    cancelRemove: () => void cancelRemoval(id),
+                    draft: (draft) => putDraft(id, draft),
+                },
+            };
+        };
+        /** 詳細パネルの編集の入口。配る書き出し・差分の表示中は null */
+        const detailEdit = () => {
+            if (!serverMode || point !== null || route.id === null)
+                return null;
+            const id = route.id;
+            const entry = index.byId.get(id);
+            if (entry === undefined)
+                return null;
+            return {
+                editing: editState.editing === id,
+                marks: keyMarks(id),
+                form: editFormProps({ id, kind: entry.kind, item: entry.item }),
+                onToggle: () => toggleEdit(id),
+            };
+        };
+        /** 「編集する」「編集を終える」。編集の表示にしたときは最初の入力欄へ、読む表示に戻したときは「編集する」へフォーカスを移す */
+        const toggleEdit = (id) => {
+            editState.editing = editState.editing === id ? null : id;
+            redrawEdit();
+            const host = route.full ? "dialog.full" : "aside.panel";
+            if (editState.editing === id)
+                document.querySelector(`${host} [data-first]`)?.focus();
+            else
+                document.querySelector(`${host} [data-act="edit"]`)?.focus();
+        };
+        // ----- 項目を追加する入力 -----
+        /** 項目を追加する入力を開いているか（タイトルを書く前の入力と、仮の ID を振られた項目の入力） */
+        const isAdding = () => serverMode && point === null && (editState.adding !== null || (editState.editing?.startsWith(MindmapPreview.NEW_ID_PREFIX) ?? false));
+        /** 追加する入力の項目の種類 */
+        const addingKind = () => {
+            if (editState.adding !== null)
+                return editState.adding;
+            const entry = editState.edits.find((other) => other.op === "item-add" && other.target === editState.editing);
+            return entry === undefined ? null : (entry.key ?? "");
+        };
+        /** 今日の日付（JST の `YYYY-MM-DD`。会話ログの日付の初期値） */
+        const todayJst = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+        /** 設定の画面と追加の入力を閉じる（画面・項目を移るとき） */
+        const leaveEditViews = () => {
+            editState.workspaceOpen = false;
+            if (editState.adding !== null || editState.editing?.startsWith(MindmapPreview.NEW_ID_PREFIX) === true) {
+                editState.adding = null;
+                editState.editing = null;
+                editState.addSend = null;
+            }
+        };
+        /** 追加の入力の最初の入力欄（タイトル）へフォーカスを移す */
+        const focusAddInput = () => document.querySelector("aside.pe-add-panel [data-first]")?.focus();
+        /** 「項目を追加」。開いていた詳細パネルを閉じ、空の項目の入力を詳細パネルと同じ置き方で開く */
+        const startAdd = (kind) => {
+            flushDrafts();
+            editState.workspaceOpen = false;
+            editState.adding = kind;
+            editState.editing = null;
+            editState.addSend = newAddSend({ kind, target: null, value: null });
+            editState.optionDrafts.clear();
+            if (route.id !== null) {
+                route = { ...route, id: null, full: false, filters: {}, heading: null };
+                MindmapPreview.navigate({ route, push: false });
+            }
+            redrawEdit();
+            focusAddInput();
+        };
+        /** 追加する項目（仮の ID）を、追加の入力で開く */
+        const openAdded = (target) => {
+            flushDrafts();
+            editState.workspaceOpen = false;
+            editState.adding = null;
+            editState.editing = target;
+            // 保存待ちのその `item-add` の値から送信の並びを作る
+            const entry = editState.edits.find((other) => other.op === "item-add" && other.target === target);
+            editState.addSend =
+                entry === undefined
+                    ? null
+                    : newAddSend({ kind: (entry.key ?? ""), target, value: { ...entry.value } });
+            if (route.id !== null) {
+                route = { ...route, id: null, full: false, filters: {}, heading: null };
+                MindmapPreview.navigate({ route, push: false });
+            }
+            redrawEdit();
+            focusAddInput();
+        };
+        /** 追加の入力を閉じる。タイトルを書いていなければ何も溜めていない */
+        const closeAdd = () => {
+            editState.adding = null;
+            editState.editing = null;
+            editState.addSend = null;
+            redrawEdit();
+            reopenPendingPanel();
+        };
+        /** 足す項目の案の操作を、`value` の `options` に当てる（`adopt` では選んだ案だけを採用にし、状態を決定済みにする） */
+        const applyAddOption = ({ value, input }) => {
+            let options = (value["options"] ?? []).map((option) => ({ ...option }));
+            const content = input.value?.content ?? "";
+            switch (input.op) {
+                case "option-add":
+                    options.push({ key: input.key, content });
+                    break;
+                case "option-edit":
+                    for (const option of options)
+                        if (option.key === input.key)
+                            option.content = content;
+                    break;
+                case "option-remove":
+                    options = options.filter((option) => option.key !== input.key);
+                    break;
+                case "adopt":
+                    // 選んだ案だけを採用にする（採用を外すときは全て外す）
+                    for (const option of options) {
+                        if (option.key === input.value)
+                            option.adopted = true;
+                        else
+                            delete option.adopted;
+                    }
+                    if (input.value !== null)
+                        value["status"] = ADOPTED_DECISION_STATUS;
+                    break;
+                default:
+                    return;
+            }
+            if (options.length === 0)
+                delete value["options"];
+            else
+                value["options"] = options;
+        };
+        /** 送信の並びの、最初の `item-add` が断られた・届かなかった回数（その前に積んだ入力は送らずに書く前の入力に残す） */
+        const firstAddFailures = new WeakMap();
+        /** 追加の入力を開いたときの送信の並び */
+        const newAddSend = ({ kind, target, value }) => ({
+            kind,
+            target,
+            value,
+            draft: {},
+            tail: Promise.resolve(),
+        });
+        /** 追加の入力でキーを書いたとき。送信の並びに積み、前の送信が終わってから順に送る */
+        const submitAddField = async ({ input }) => {
+            const send = editState.addSend;
+            if (send === null)
+                return;
+            const failuresAtQueue = firstAddFailures.get(send) ?? 0;
+            send.tail = send.tail.then(() => sendAddField({ send, input, failuresAtQueue }));
+            await send.tail;
+        };
+        /** 並びの 1 件を送る。タイトルを書くまでは溜めず、書いたら `item-add` を溜め（返った仮の ID を並びに持つ）、続くキーと案の操作は並びの最後に溜められた `value` に当てて同じ `item-add` を送り直す */
+        const sendAddField = async ({ send, input, failuresAtQueue, }) => {
+            const target = send.target;
+            const next = { ...(send.value ?? { ...MindmapPreview.addDefaults({ kind: send.kind, today: todayJst() }), ...send.draft }) };
+            // 案の操作は案の並びに当て、それ以外はキーの値を書き換える
+            if (input.op !== "set")
+                applyAddOption({ value: next, input });
+            else if (input.value === null)
+                delete next[input.key];
+            else
+                next[input.key] = input.value;
+            if (target === null) {
+                send.draft = next;
+                const title = next["title"];
+                // タイトルを書くまでは溜めない。待っていた最初の `item-add` が断られた・届かなかったときも送らずに残す
+                if (typeof title !== "string" || title.trim() === "")
+                    return;
+                if ((firstAddFailures.get(send) ?? 0) > failuresAtQueue)
+                    return;
+            }
+            const result = await submitEdit({
+                payload: { ...(target === null ? {} : { target }), op: "item-add", key: send.kind, value: next },
+                error: { target: target ?? MindmapPreview.NEW_ID_PREFIX, key: errorKeyOf(input) },
+                after: (added) => {
+                    send.value = next;
+                    if (target !== null) {
+                        if (input.op === "option-add")
+                            dropDraft(target, input.key);
+                        return;
+                    }
+                    send.target = added.target;
+                    send.draft = {};
+                    // 並びの追加の入力を閉じた・別の追加を始めた後は、開いている入力を書き換えない
+                    if (editState.addSend !== send)
+                        return;
+                    editState.editing = added.target;
+                    editState.adding = null;
+                    // 仮の ID が振られた: 振られる前の書きかけの案を仮の ID へ移す（書きかけは空にしない）
+                    const drafts = editState.optionDrafts.get(MindmapPreview.NEW_ID_PREFIX);
+                    editState.optionDrafts.delete(MindmapPreview.NEW_ID_PREFIX);
+                    if (drafts !== undefined)
+                        editState.optionDrafts.set(added.target, drafts);
+                    draftsShownFor = added.target;
+                    // 溜めた案と同じ記号の書きかけは外す
+                    for (const option of next["options"] ?? [])
+                        dropDraft(added.target, option.key);
+                },
+            });
+            if (result === null && target === null)
+                firstAddFailures.set(send, (firstAddFailures.get(send) ?? 0) + 1);
+        };
+        /** 追加の入力のパネルを描く（詳細パネルと同じ形と置き場所） */
+        const renderAddPanel = () => {
+            const kind = addingKind();
+            if (kind === null)
+                return;
+            const entry = editState.edits.find((other) => other.op === "item-add" && other.target === editState.editing);
+            const item = entry === undefined
+                ? { id: MindmapPreview.NEW_ID_PREFIX, title: "", created: "", updated: "", ...MindmapPreview.addDefaults({ kind, today: todayJst() }), ...(editState.addSend?.draft ?? {}) }
+                : addedItem(entry);
+            const record = item;
+            const form = MindmapPreview.detailEditForm({
+                kind,
+                item,
+                settings: index.data.settings,
+                marks: entry === undefined ? {} : keyMarks(item.id),
+                removing: false,
+                removedOptions: [],
+                blocked: entry === undefined ? {} : blockedByKey(item.id),
+                referrers: [],
+                errors: formErrors(entry === undefined ? MindmapPreview.NEW_ID_PREFIX : item.id),
+                usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
+                body: typeof record["body"] === "string" ? record["body"] : "",
+                optionDrafts: draftsOf(item.id),
+                on: {
+                    change: (input) => void submitAddField({ input }),
+                    remove: () => undefined,
+                    cancelRemove: () => undefined,
+                    draft: (draft) => putDraft(item.id, draft),
+                },
+            });
+            const body = MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "panel-body", tabindex: "0", role: "region", "aria-label": "追加する項目の入力" },
+                children: [form],
+            });
+            const panel = MindmapPreview.h({
+                tag: "aside",
+                attrs: { class: "panel open pe-add-panel pe-editing", "aria-label": `${MindmapPreview.KIND_LABEL[kind]}を追加` },
+                children: [
+                    MindmapPreview.h({
+                        tag: "div",
+                        attrs: { class: "panel-head" },
+                        children: [
+                            MindmapPreview.h({
+                                tag: "button",
+                                attrs: { class: "icon-btn panel-back", type: "button", "aria-label": "一覧へ戻る", onclick: closeAdd },
+                                children: [MindmapPreview.icon("back")],
+                            }),
+                            MindmapPreview.h({
+                                tag: "span",
+                                attrs: { class: "panel-kind" },
+                                children: [MindmapPreview.h({ tag: "span", attrs: { class: "panel-kind-label" }, children: [`${MindmapPreview.KIND_LABEL[kind]}を追加`] })],
+                            }),
+                            MindmapPreview.h({ tag: "span", attrs: { class: "spacer" } }),
+                            MindmapPreview.h({
+                                tag: "button",
+                                attrs: { class: "icon-btn panel-close-x", type: "button", "aria-label": "追加の入力を閉じる", onclick: closeAdd },
+                                children: [MindmapPreview.icon("x")],
+                            }),
+                        ],
+                    }),
+                    MindmapPreview.diffMinimapFrame({ body, shown: false }),
+                ],
+            });
+            const current = document.querySelector("aside.pe-add-panel");
+            if (current === null) {
+                document.body.append(panel);
+            }
+            else {
+                current.className = panel.className;
+                current.setAttribute("aria-label", panel.getAttribute("aria-label") ?? "");
+                current.replaceChildren(...panel.children);
+            }
+        };
+        // ----- 保存待ちのパネル -----
+        /** 保存待ちのパネルの引数 */
+        const pendingProps = () => ({
+            edits: editState.edits,
+            blocked: editState.blocked,
+            index: serverIndex,
+            status: editState.status,
+            rejected,
+            on: {
+                close: closePending,
+                open: openPendingTarget,
+                undo: (id) => void undoFromPanel(id),
+                save: () => void saveEdits(),
+            },
+        });
+        /** 保存待ちのパネルを作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
+        const renderPending = () => {
+            const current = document.querySelector(".pending-panel");
+            if (!editState.open || point !== null || !serverMode) {
+                current?.remove();
+                return;
+            }
+            const active = document.activeElement;
+            const focusKey = active instanceof HTMLElement && current?.contains(active) === true ? (active.dataset["focus"] ?? null) : null;
+            const scroll = current?.querySelector(".comments-body")?.scrollTop ?? 0;
+            const next = MindmapPreview.pendingEditsPanel(pendingProps());
+            if (current === null) {
+                document.body.append(next);
+                // 開いた状態にしてから見出しへフォーカスを移す（閉じている間は隠れていて、フォーカスを受けない）
+                requestAnimationFrame(() => {
+                    next.classList.add("open");
+                    next.querySelector("h2")?.focus();
+                });
+            }
+            else {
+                current.className = `${next.className} open`;
+                current.replaceChildren(...next.children);
+            }
+            const panel = document.querySelector(".pending-panel");
+            const body = panel?.querySelector(".comments-body");
+            if (body !== null && body !== undefined)
+                body.scrollTop = scroll;
+            if (focusKey !== null)
+                panel?.querySelector(`[data-focus="${focusKey}"]`)?.focus();
+        };
+        /** 保存待ちのパネルを開く・閉じる。開くときはコメントの一覧・表示の設定・絞り込みのドロワーを閉じる */
+        const togglePending = () => {
+            if (editState.open) {
+                closePending();
+                return;
+            }
+            if (comment.listOpen)
+                closeList();
+            if (display.open) {
+                display.open = false;
+                renderSettings();
+            }
+            if (filterState.drawerOpen)
+                filterState.drawerOpen = false;
+            editState.open = true;
+            stack.front = "left";
+            reopenPending = false;
+            redrawKeepingState();
+        };
+        /** 保存待ちのパネルを閉じ、トップバーの保存待ちのボタンへフォーカスを戻す（保存待ちの編集は残る） */
+        const closePending = () => {
+            editState.open = false;
+            reopenPending = false;
+            renderTop();
+            renderPending();
+            scheduleInert();
+            document.querySelector("[data-act='pending']")?.focus();
+        };
+        /** 幅 900px 以下で保存待ちのパネルから開いた項目の詳細パネルを閉じたら、保存待ちのパネルを開き直す */
+        const reopenPendingPanel = () => {
+            if (!reopenPending || route.id !== null || isAdding())
+                return;
+            reopenPending = false;
+            editState.open = true;
+            stack.front = "left";
+            renderTop();
+            renderPending();
+            scheduleInert();
+        };
+        /** 保存待ちのパネルのまとまりの項目を開く。項目は詳細パネルを編集の表示で、追加する項目は追加の入力で、設定は設定の画面で開く（幅 900px 以下ではパネルを閉じ、詳細パネルを閉じたら開き直す） */
+        const openPendingTarget = (target) => {
+            if (isNarrow()) {
+                editState.open = false;
+                reopenPending = true;
+            }
+            if (target === MindmapPreview.SETTINGS_TARGET) {
+                openWorkspace();
+                return;
+            }
+            if (target.startsWith(MindmapPreview.NEW_ID_PREFIX)) {
+                openAdded(target);
+                return;
+            }
+            editState.editing = target;
+            stack.front = "detail";
+            if (route.id === target)
+                redrawEdit();
+            else
+                openItem(target, false);
+            document.querySelector(`${route.full ? "dialog.full" : "aside.panel"} [data-first]`)?.focus();
+        };
+        /** パネルの「取り消す」。外した後は次の行の取り消すボタン（無ければ見出し）へフォーカスを移す */
+        const undoFromPanel = async (id) => {
+            const before = [...document.querySelectorAll(".pending-panel .pe-undo")];
+            const at = before.findIndex((button) => button.dataset["focus"] === `undo:${id}`);
+            await undoEdit(id);
+            const after = [...document.querySelectorAll(".pending-panel .pe-undo")];
+            (after[at] ?? after[at - 1] ?? document.querySelector(".pending-panel h2"))?.focus();
+        };
+        /** 保存待ちの編集をまとめて保存する。全て書けたらパネルを閉じて知らせを出し、書き込めない編集があれば何も保存せずにその旨を出し、届かなければ `offline` にする */
+        const saveEdits = async () => {
+            if (editState.edits.length === 0 || editState.status === "saving")
+                return;
+            const count = editState.edits.length;
+            editState.status = "saving";
+            rejected = null;
+            renderPending();
+            const result = await editsApi.save();
+            if (result.ok) {
+                editState.blocked = [];
+                editState.sentEdits.clear();
+                editState.open = false;
+                editState.editing = null;
+                editState.adding = null;
+                editState.errors.clear();
+                editState.status = "idle";
+                editState.toast = `${count} 件を保存しました。`;
+                await reload();
+                showSavedNotice(count);
+                return;
+            }
+            if (result.status === 409 && result.blocked !== undefined) {
+                editState.blocked = result.blocked;
+                editState.status = "idle";
+                editState.open = true;
+                redrawEdit();
+                document.querySelector('.pending-panel [data-focus="alert"]')?.focus();
+                return;
+            }
+            // 届かない: 保存待ちの編集は残し、次に保存するまで `offline` のままにする。断られた: その理由を出す
+            editState.status = result.status === null ? "offline" : "idle";
+            if (result.status !== null)
+                rejected = result.detail ?? "";
+            editState.open = true;
+            redrawEdit();
+            document.querySelector('.pending-panel [data-focus="alert"]')?.focus();
+        };
+        /** 保存した知らせを画面の下に出し、`SAVED_NOTICE_MS` 経ったら消す */
+        const showSavedNotice = (count) => {
+            document.querySelector(".pe-toast")?.remove();
+            const notice = MindmapPreview.savedNotice({ count });
+            document.body.append(notice);
+            window.setTimeout(() => {
+                notice.remove();
+                editState.toast = null;
+            }, MindmapPreview.SAVED_NOTICE_MS);
+        };
+        // ----- 設定の画面 -----
+        /** 設定の画面の引数 */
+        const workspaceProps = () => {
+            const blocked = blockedIds();
+            const marks = {};
+            for (const entry of editState.edits) {
+                if (entry.target !== MindmapPreview.SETTINGS_TARGET || entry.key === null)
+                    continue;
+                const mark = MindmapPreview.pendingMarkOf({ edits: editState.edits, blocked, target: MindmapPreview.SETTINGS_TARGET, key: entry.key });
+                if (mark !== null)
+                    marks[entry.key] = mark;
+            }
+            return {
+                settings: index.data.settings,
+                index,
+                marks,
+                errors: formErrors(MindmapPreview.SETTINGS_TARGET),
+                on: {
+                    change: (input) => void submitEdit({
+                        payload: { op: "setting", ...input },
+                        error: { target: MindmapPreview.SETTINGS_TARGET, key: input.key },
+                    }),
+                    close: closeWorkspace,
+                },
+            };
+        };
+        /** 設定の画面を描く（開いている間は本文の区画を置き換える）。閉じている間は作らない */
+        const renderWorkspace = () => {
+            const current = document.querySelector(".pe-ws");
+            const show = serverMode && point === null && editState.workspaceOpen;
+            main.hidden = show;
+            if (!show) {
+                current?.remove();
+                return;
+            }
+            const next = MindmapPreview.workspaceSettings(workspaceProps());
+            if (current === null)
+                main.after(next);
+            else
+                current.replaceWith(next);
+        };
+        /** 表示の設定のパネルの「設定を編集する」。表示の設定は閉じ、設定の画面を開く（幅 900px 以下では保存待ちのパネルも閉じる） */
+        const openWorkspace = () => {
+            display.open = false;
+            renderSettings();
+            if (isNarrow())
+                editState.open = false;
+            editState.workspaceOpen = true;
+            editState.editing = null;
+            redrawKeepingState();
+            document.querySelector(".pe-ws h1")?.focus();
+        };
+        /** 設定の画面を閉じ、開く前の画面へ戻る（溜めた編集は保存待ちに残る） */
+        const closeWorkspace = () => {
+            editState.workspaceOpen = false;
+            redrawKeepingState();
+            document.querySelector("[data-act='settings']")?.focus();
+        };
         // ===== 変更履歴と差分の表示 =====
         /** 選んだ時点を変えて残し、どの画面もその時点の差分の表示で描き直す（記録は読み直さず、履歴に積まない）。null は差分の表示をやめる */
         const selectPoint = (sel) => {
             prefs.diffSel = sel;
             persist();
             point = MindmapPreview.resolveDiffPoint(data.changes, sel, since);
+            syncEditView();
             // 選んだ時点を共有できるよう、履歴に積まずにハッシュへ書く
             route = { ...route, diff: sel };
             MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
@@ -1971,16 +2930,40 @@ var MindmapPreview;
             document.body.append(dialog);
             dialog.showModal();
         };
-        /** 記録を読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
-        const reload = async () => {
+        /** 流している読み直し（終わるまで、続けて頼まれた読み直しを 1 回にまとめて待たせる） */
+        let reloading = null;
+        /** 流している間に読み直しを頼まれたか */
+        let reloadQueued = false;
+        /** 記録を読み直して描き直す。読み直しは 1 回ずつ順に流し、流している間に頼まれたら、終わった後にもう 1 回だけ読み直す（その間に続けて頼まれた分は 1 回にまとめる）。返す Promise は頼んだ分の読み直しが終わると解決する */
+        const reload = () => {
+            if (reloading !== null) {
+                reloadQueued = true;
+                return reloading;
+            }
+            reloading = (async () => {
+                try {
+                    do {
+                        reloadQueued = false;
+                        await reloadOnce();
+                    } while (reloadQueued);
+                }
+                finally {
+                    reloading = null;
+                }
+            })();
+            return reloading;
+        };
+        /** 記録を 1 回読み直して描き直す。読み直しが読めないとき（422 など）は描き直さない */
+        const reloadOnce = async () => {
             const result = await MindmapPreview.fetchRecords();
             if (!result.ok)
                 return;
             await loadReview();
             await loadThreads();
-            const previousDisplay = data.settings.display;
-            data = result.data;
-            index = MindmapPreview.buildIndex(data);
+            await loadEdits();
+            const previousDisplay = serverData.settings.display;
+            serverData = result.data;
+            rebuildIndex();
             // ロックした項目が無くなっていれば、ロックを外す
             if (lockState.graph !== null && !index.byId.has(lockState.graph))
                 lockState.graph = null;
@@ -2011,6 +2994,8 @@ var MindmapPreview;
                 route = { ...route, diff: null };
                 MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
             }
+            // 差分の表示に移っていれば保存待ちの編集は当てず、そうでなければ当て直す
+            syncEditView();
             document.title = `${data.settings.summary} | mindstella`;
             // 開いていた項目が消えた: 詳細パネルを閉じる
             if (route.id !== null && !index.byId.has(route.id)) {
@@ -2070,6 +3055,8 @@ var MindmapPreview;
                     closeDrawer();
                 else if (comment.listOpen)
                     closeListByEscape();
+                else if (editState.open)
+                    closePending();
                 else
                     closeSettings();
             }
@@ -2089,6 +3076,23 @@ var MindmapPreview;
             }
             else if (event.key === "Escape" &&
                 route.id === null &&
+                editState.open &&
+                document.querySelector("dialog[open]:not(.drawer)") === null &&
+                document.querySelector(":popover-open") === null) {
+                closePending();
+            }
+            else if (event.key === "Escape" &&
+                isAdding() &&
+                document.querySelector("dialog[open]:not(.drawer)") === null &&
+                document.querySelector(":popover-open") === null) {
+                // 入力欄に打っている間は入力欄から外れるだけにし、追加の入力は閉じない
+                if (MindmapPreview.isTyping(document.activeElement))
+                    document.activeElement.blur();
+                else
+                    closeAdd();
+            }
+            else if (event.key === "Escape" &&
+                route.id === null &&
                 display.open &&
                 document.querySelector("dialog[open]") === null &&
                 document.querySelector(":popover-open") === null) {
@@ -2103,12 +3107,14 @@ var MindmapPreview;
             const settled = settleDiffPoint(visible);
             const next = settled.route;
             point = settled.point;
+            syncEditView();
             // 表示しない種類のタブを指していた・時点が引けなかった: ハッシュを置き換える
             if (visible !== parsed || next.diff !== parsed.diff)
                 MindmapPreview.navigate({ route: { ...next, filters: {} }, push: false });
             // 画面・表示形式・項目・差分の時点が同じで絞り込み（`f.{列}`）も無いときは、描き直さない。絞り込みだけを足したハッシュは、開き直しとして使う
             if (MindmapPreview.toHash(next) === MindmapPreview.toHash(route) && Object.keys(next.filters).length === 0)
                 return;
+            leaveEditViews();
             const screen = next.tab !== route.tab ||
                 next.view !== route.view ||
                 next.diff !== route.diff ||
@@ -2116,6 +3122,7 @@ var MindmapPreview;
                 (next.tab === "decisions" && next.view === "map" && next.id !== route.id);
             route = next;
             render({ screen });
+            reopenPendingPanel();
             // 絞り込みは画面に渡した後、ハッシュから消す（残すと、次のハッシュの変化で使い回される）
             if (Object.keys(next.filters).length > 0)
                 MindmapPreview.navigate({ route: { ...route, filters: {} }, push: false });
@@ -2127,6 +3134,8 @@ var MindmapPreview;
         if (serverMode) {
             await loadReview(true);
             await loadThreads();
+            await loadEdits();
+            syncEditView();
         }
         // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える
         const requested = new URLSearchParams(location.hash.replace(/^#/, "")).get("id");
@@ -2159,8 +3168,8 @@ var MindmapPreview;
     // 文書が読み込まれたら起動する（記録の要素が無い文書では、読んだだけでは何もしない）
     if (document.getElementById(DATA_ELEMENT_ID) !== null) {
         if (document.readyState === "loading")
-            document.addEventListener("DOMContentLoaded", start);
+            document.addEventListener("DOMContentLoaded", () => void start());
         else
-            start();
+            void start();
     }
 })(MindmapPreview || (MindmapPreview = {}));

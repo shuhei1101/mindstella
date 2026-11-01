@@ -28,6 +28,14 @@ elements:
         value: 表示の設定のパネルを開いているか
       - name: comments_unread
         value: スレッドの読み取り.threads のうち `status` が `open` で `posts[].seen` が `false` の書き込みを持つものが 1 件以上あるとき true（コメントの一覧を閉じていても、画面を開いたときと書き換えの知らせで読み直す）
+      - name: pending
+        value: サーバーの配信では true、配る書き出しでは false
+      - name: pending_count
+        value: 保存待ちの編集の読み取り.items の件数（溜める・取り消す・まとめて保存するの後に描き直す）
+      - name: pending_open
+        value: 保存待ちのパネルを開いているか
+      - name: pending_blocked
+        value: 直前の保存が 409 で、保存待ちの編集の読み取り.items に `blocked` に挙がった編集が残っているとき true
     description: 全ての画面で共通の帯
     visible_when: 常時
   - name: 次に検討する項目

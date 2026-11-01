@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: 枠の幅をそのまま画面幅にする -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>トップバーの保存待ちの件数（枠） | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと今のプレビューのスタイルに、PR #325 の保存待ちの件数を重ねる -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/325/assets/style.css">
+  <style>
+    /* 枠の中: トップバーとタブの帯だけを流れに置く */
+    body { display: block; height: auto; overflow: hidden; }
+    /* 状態を見せるための見本のクラス */
+    .is-hover { background: var(--topbar-hover) !important; }
+    .is-focus { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <!-- トップバーとタブの帯: 検討事項の画面で保存待ちが 5 件のときのプレビューから書き出したもの。下のスクリプトがクエリで状態を変える -->
+  <div class="top"><header class="topbar has-comments"><span class="brand"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="16" r="4"></circle><path d="M12 16h5M17 16V7h5M17 16v9h5"></path><circle cx="25" cy="7" r="2.6"></circle><circle cx="25" cy="25" r="2.6"></circle></svg><span class="brand-name">mindstella</span></span><span class="brand-sub" title="mindstella（mindmap）の改善を話し合い、Issue に起票できる形にまとめる">mindstella（mindmap）の改善を話し合い、Issue に起票できる形にまとめる</span><span class="spacer"></span><button class="search-trigger" type="button" data-act="search" aria-label="すべての項目を検索" aria-keyshortcuts="Control+K Meta+K"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><span class="label">すべての項目を検索</span><kbd>Ctrl+K</kbd></button><button class="hist-btn" type="button" data-act="hist" aria-haspopup="dialog" aria-label="変更履歴"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l3 2"></path></svg><span class="label">変更履歴</span></button><span class="spacer"></span><button class="settings-btn" type="button" data-act="settings" aria-label="表示の設定" aria-expanded="false"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg><span class="label">表示の設定</span></button><button class="filter-btn" type="button" data-act="filter" aria-label="絞り込み" aria-expanded="false"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5Z"></path></svg><span class="label">絞り込み</span></button><button class="pending-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="保存待ち（5 件）"><span class="pb-icon" data-icon="pending"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"></path><path d="m3 13 9 5 9-5"></path></svg></span><span class="label">保存待ち</span><span class="count">5</span></button><button class="pending-save-btn" type="button" aria-label="保存待ちの 5 件を保存する"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5Z"></path><path d="M8 4v5h7V4M8 20v-6h8v6"></path></svg><span class="label">保存する</span></button><button class="comments-btn" type="button" data-act="comments" aria-label="コメント（レビュー中 0 件）" aria-expanded="false"><span class="cb-icon"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"></path><path d="M8 9h8M8 12.5h5"></path></svg></span><span class="label">コメント</span><span class="count zero">0</span></button><button class="top-btn" type="button" data-theme="dark" aria-label="ダークに切り替え"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"></path></svg></button></header><nav class="tabbar" aria-label="項目の種類"><a class="tab" href="#" data-tab="overview"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7"></path><path d="M5 10v10h14V10"></path></svg>概要</a><a class="tab" href="#tab=decisions" data-tab="decisions"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="m9 12 2 2 4-4"></path></svg>検討事項<span class="count">52</span></a><a class="tab" href="#tab=tasks" data-tab="tasks" aria-current="page"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 9h8M8 13h8M8 17h5"></path></svg>タスク<span class="count">18</span></a><a class="tab" href="#tab=research" data-tab="research"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"></circle><path d="m15 15 5 5"></path><path d="M8 10.5h5"></path></svg>調査<span class="count">2</span></a><a class="tab" href="#tab=docs" data-tab="docs"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"></path><path d="M14 3v4h4"></path></svg>資料<span class="count">16</span></a><a class="tab" href="#tab=terms" data-tab="terms"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h11a3 3 0 0 1 3 3v12H7a3 3 0 0 1-3-3Z"></path><path d="M4 17a3 3 0 0 1 3-3h11"></path></svg>用語集<span class="count">6</span></a><a class="tab" href="#tab=notes" data-tab="notes"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v12l-4 4H5Z"></path><path d="M15 20v-4h4"></path></svg>メモ<span class="count">5</span></a><a class="tab" href="#tab=logs" data-tab="logs"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v10H9l-5 4Z"></path></svg>会話ログ<span class="count">12</span></a><span class="tab-gap"></span><a class="tab tab-special" href="#tab=graph" data-tab="graph"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18.5 10 13.5l5 3M10 13.5 7.5 6.5M15 16.5l3.2-6.6" stroke-width="1.15"></path><circle cx="4" cy="18.5" r="2" fill="currentColor" stroke="none"></circle><circle cx="10" cy="13.5" r="2.2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="16.5" r="1.8" fill="currentColor" stroke="none"></circle><circle cx="7.5" cy="6.5" r="1.8" fill="currentColor" stroke="none"></circle><path d="m19 1.8 1.05 3.15L23.2 6l-3.15 1.05L19 10.2l-1.05-3.15L14.8 6l3.15-1.05Z" fill="currentColor" stroke="none"></path></svg>ネットワーク</a></nav></div>
+  <!-- 見本の状態: count 件数 / blocked=1 書き込めない編集あり / open=1 保存待ちのパネルを開いている / save=b 保存のボタンを並べる案 / hover・focus / theme=dark -->
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search);
+      if (params.get("theme") === "dark") document.documentElement.dataset.theme = "dark";
+      const button = document.querySelector(".pending-btn");
+      const count = params.get("count") ?? "5";
+      button.querySelector(".count").textContent = count;
+      button.setAttribute("aria-label", `保存待ち（${count} 件）`);
+      if (params.get("blocked") === "1") {
+        button.classList.add("blocked");
+        button.querySelector(".pb-icon").innerHTML = '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg>';
+      }
+      if (params.get("open") === "1") button.classList.add("open");
+      if (params.get("save") !== "b") document.querySelector(".pending-save-btn")?.remove();
+      if (params.get("hover") === "1") button.classList.add("is-hover");
+      if (params.get("focus") === "1") button.classList.add("is-focus");
+    })();
+  </script>
+</body>
+</html>

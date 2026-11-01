@@ -41,9 +41,11 @@ SCRIPT_FILES = (
     "core/dom.js",
     "core/records.js",
     "core/libs.js",
+    "core/doc-export.js",
     "core/diff.js",
     "core/router.js",
     "core/api.js",
+    "core/edits.js",
     "core/lock.js",
     "components/view-switch.js",
     "components/topbar.js",
@@ -58,6 +60,7 @@ SCRIPT_FILES = (
     "components/reply-form.js",
     "components/thread-row.js",
     "components/thread-post.js",
+    "components/review-body-fold.js",
     "components/selection-comment.js",
     "components/term-tip.js",
     "components/settings-panel.js",
@@ -65,16 +68,22 @@ SCRIPT_FILES = (
     "components/body-format-badge.js",
     "components/html-body-frame.js",
     "components/html-body-diff.js",
+    "components/markdown-body.js",
+    "components/doc-export-menu.js",
     "components/body-diff-layout-switch.js",
     "components/side-by-side-body-diff.js",
     "components/diff-minimap.js",
+    "components/pending-mark.js",
     "screens/overview.js",
     "screens/decisions.js",
     "screens/tasks.js",
     "screens/docs.js",
     "screens/records.js",
+    "screens/detail-edit.js",
     "screens/detail.js",
     "screens/comments.js",
+    "screens/pending-edits.js",
+    "screens/workspace-settings.js",
     "screens/settings.js",
     "screens/search.js",
     "screens/diagram-viewer.js",
@@ -99,27 +108,44 @@ FETCH_TIMEOUT_SEC = 30
 # jsDelivr の、版を固定したパッケージの中のファイルの URL の形（ライセンスの本文を取るのに使う）
 CDN_PACKAGE_URL = "https://cdn.jsdelivr.net/npm/{package}@{version}/{path}"
 
-# `template.html` がちょうど 1 つ持つ、外の読み込み（描画のライブラリ・文字）の前後に置くコメント
+# jsDelivr の、タグを固定した GitHub のリポジトリの中のファイルの URL の形（mdmark の配布物と同梱物のライセンスを取るのに使う）
+CDN_REPO_URL = "https://cdn.jsdelivr.net/gh/{package}@{version}/{path}"
+
+# `template.html` がちょうど 1 つ持つ、外の読み込み（描画のライブラリの import map・`<link>`・`<script src>` と文字の `<link>`）の前後に置くコメント
 EXTERNAL_START = "<!-- mindmap-external:start -->"
 EXTERNAL_END = "<!-- mindmap-external:end -->"
 
 # 配る書き出しに置く、ライセンスの表示を中身に持つ要素の開きタグ（画面には出ない）
 LICENSES_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 
+# 配る書き出しに置く、mdmark の JavaScript を中身に持つ要素の開きタグ（閉じタグは `</script>`）。画面の JavaScript が中身から Blob の URL を作って `import()` する
+MDMARK_OPEN = '<script type="text/plain" id="mindmap-mdmark">'
+
+# 配る書き出しに置く、mdmark の CSS を中身に持つ要素の開きタグ（閉じタグは `</style>`）。画面の JavaScript が資料の HTML のエクスポートでこの中身を使う
+MDMARK_CSS_OPEN = '<style id="mindmap-mdmark-css">'
+
 # 雛形の外の読み込みの `src`（jsDelivr の版を固定した URL）を、パッケージ名・版・ファイルに分ける
 _EXTERNAL_SRC = re.compile(
     r"^https://cdn\.jsdelivr\.net/npm/(?P<package>(?:@[^/@]+/)?[^/@]+)@(?P<version>[^/]+)/.+$"
 )
 
+# 雛形の外の ES モジュールの URL（jsDelivr のタグを固定した GitHub の URL）を、`{owner}/{repo}`・タグ・ファイルに分ける
+_MODULE_SRC = re.compile(
+    r"^https://cdn\.jsdelivr\.net/gh/(?P<package>[^/@]+/[^/@]+)@(?P<version>[^/]+)/.+$"
+)
+
 # 差し込む中身が、script 要素を閉じる・開くタグを含むかを見る文字列（小文字で比べる）
 _SCRIPT_TAGS = ("</script", "<script")
+
+# 差し込む CSS が、style 要素を閉じるタグを含むかを見る文字列（小文字で比べる）
+_STYLE_TAGS = ("</style",)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class VendorLibrary:
     """雛形の描画のライブラリ 1 つの、ライセンスの表示に使う値。"""
 
-    # npm のパッケージ名（雛形の `<script src>` の URL のパッケージ名と結ぶ）
+    # 雛形の外の読み込みの URL のパッケージ名と結ぶ（npm はパッケージ名、GitHub は `{owner}/{repo}`）
     package: str
     # 表示する名前
     name: str
@@ -127,8 +153,12 @@ class VendorLibrary:
     notice: str
     # 配るときのライセンスの名前（選べるライセンスを持つときは選んだもの）
     license: str
-    # パッケージの中のライセンスの本文のファイル
-    license_path: str
+    # パッケージの中のライセンスの本文のファイル。取らずに `license_file` から読むライブラリは None
+    license_path: str | None
+    # ライセンスの本文を取らずに読む、雛形のフォルダからの相対パス。`license_path` が None のライブラリだけが持つ
+    license_file: str | None
+    # 配布物が中に束ねた依存のライセンスを並べた、パッケージの中のファイル（取る）。`bundled_license_file` と両方は持たない。無ければ None
+    bundled_license_path: str | None
     # 配布ファイルが中に束ねた依存のライセンスを並べたファイル（雛形のフォルダからの相対パス）。無ければ None
     bundled_license_file: str | None
     # ソースコードのリポジトリの URL
@@ -149,39 +179,61 @@ class ExternalScript:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalModule:
+    """雛形の外の読み込みの、import map で `integrity` を書いた ES モジュールの JavaScript と、その CSS の `<link>` の組。"""
+
+    # import map の `integrity` のキー
+    js_url: str
+    # import map の `integrity` の値（`sha384-{Base64}`）
+    js_integrity: str
+    # `<link rel="stylesheet">` の `href`
+    css_url: str
+    # `<link>` の `integrity`（`sha384-{Base64}`）
+    css_integrity: str
+    # URL の `{owner}/{repo}`
+    package: str
+    # URL のタグ
+    version: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class LicenseBlock:
     """ライブラリ 1 つのライセンスの表示を組み立てる材料。"""
 
     library: VendorLibrary
     # 外の読み込みの版
     version: str
-    # 取ったライセンスの本文
+    # 取ったか `license_file` から読んだライセンスの本文
     license_text: str
-    # 束ねた依存のライセンス。無ければ None
+    # 束ねた依存のライセンス（`bundled_license_file` の中身か、`bundled_license_path` から取った本文）。無ければ None
     bundled_text: str | None
 
 
 # 配る書き出しに入れるライブラリ（`package` で雛形の外の読み込みと結ぶ。版・URL・integrity は雛形が持つ）
 VENDOR_LIBRARIES = (
     VendorLibrary(
+        package="shuhei1101/mdmark",
+        name="mdmark",
+        notice="Copyright (c) 2026 shuhei1101",
+        license="MIT",
+        license_path=None,
+        license_file="licenses/mdmark-LICENSE.txt",
+        bundled_license_path="dist/THIRD_PARTY_LICENSES.txt",
+        bundled_license_file=None,
+        repository="https://github.com/shuhei1101/mdmark",
+        tag="{version}",
+    ),
+    VendorLibrary(
         package="marked",
         name="marked",
         notice="Copyright (c) 2018+, MarkedJS / Copyright (c) 2011-2018, Christopher Jeffrey",
         license="MIT",
         license_path="LICENSE",
+        license_file=None,
+        bundled_license_path=None,
         bundled_license_file=None,
         repository="https://github.com/markedjs/marked",
         tag="v{version}",
-    ),
-    VendorLibrary(
-        package="dompurify",
-        name="DOMPurify",
-        notice="(c) Cure53 and other contributors",
-        license="Apache-2.0",
-        license_path="LICENSE",
-        bundled_license_file=None,
-        repository="https://github.com/cure53/DOMPurify",
-        tag="{version}",
     ),
     VendorLibrary(
         package="elkjs",
@@ -189,6 +241,8 @@ VENDOR_LIBRARIES = (
         notice="(c) Kiel University and others",
         license="EPL-2.0",
         license_path="LICENSE.md",
+        license_file=None,
+        bundled_license_path=None,
         bundled_license_file=None,
         repository="https://github.com/kieler/elkjs",
         tag="{version}",
@@ -199,6 +253,8 @@ VENDOR_LIBRARIES = (
         notice="Copyright (c) 2014 - 2022 Knut Sveidqvist",
         license="MIT",
         license_path="LICENSE",
+        license_file=None,
+        bundled_license_path=None,
         bundled_license_file="licenses/mermaid-bundled.txt",
         repository="https://github.com/mermaid-js/mermaid",
         tag="mermaid@{version}",
@@ -209,6 +265,8 @@ VENDOR_LIBRARIES = (
         notice="Copyright (c) 2009-2015, Kevin Decker",
         license="BSD-3-Clause",
         license_path="LICENSE",
+        license_file=None,
+        bundled_license_path=None,
         bundled_license_file=None,
         repository="https://github.com/kpdecker/jsdiff",
         tag="v{version}",
@@ -410,20 +468,59 @@ class _ExternalScriptParser(HTMLParser):
         if tag != "script":
             return
         values = dict(attrs)
-        # src を持たない script（中身を持つもの）は外の読み込みではない
+        # src を持たない script（import map など中身を持つもの）は外の読み込みの script ではない
         if values.get("src") is not None:
             self.found.append((values["src"] or "", values.get("integrity")))
 
 
-def list_external_scripts(template: str) -> list[ExternalScript]:
-    """雛形の外の読み込みの印の間の `<script src integrity>` を、並びの順に返す。"""
+class _ExternalModuleParser(HTMLParser):
+    """外の読み込みの範囲の import map の中身と、`integrity` を持つ `<link rel="stylesheet">` を集める。"""
+
+    def __init__(self) -> None:
+        """集めた import map の中身と link の並びを空で持つ。"""
+        super().__init__()
+        # import map の中身の並び
+        self.import_maps: list[str] = []
+        # (href, integrity) の並び
+        self.links: list[tuple[str, str]] = []
+        # import map の script の中にいる間の文字
+        self._buffer: list[str] | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """import map の script の始まりと、integrity を持つ stylesheet の link を控える。"""
+        values = dict(attrs)
+        if tag == "script" and values.get("type") == "importmap":
+            self._buffer = []
+        elif tag == "link" and values.get("rel") == "stylesheet" and values.get("integrity"):
+            # integrity を持たない文字の link は外の ES モジュールの CSS ではない
+            self.links.append((values.get("href") or "", values["integrity"] or ""))
+
+    def handle_data(self, data: str) -> None:
+        """import map の script の中の文字を控える。"""
+        if self._buffer is not None:
+            self._buffer.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        """import map の script の終わりで、集めた中身を渡す。"""
+        if tag == "script" and self._buffer is not None:
+            self.import_maps.append("".join(self._buffer))
+            self._buffer = None
+
+
+def _external_range(template: str) -> str:
+    """雛形の外の読み込みの印の間（印を含む）を返す。印が 1 つずつでないか順が逆なら ValueError にする。"""
     start = template.find(EXTERNAL_START)
     end = template.find(EXTERNAL_END)
     # 同梱の雛形の誤り: 印が 1 つずつでないか、順が逆
     if template.count(EXTERNAL_START) != 1 or template.count(EXTERNAL_END) != 1 or start > end:
         raise ValueError("雛形に外の読み込みの印が 1 つずつありません")
+    return template[start:end]
+
+
+def list_external_scripts(template: str) -> list[ExternalScript]:
+    """雛形の外の読み込みの印の間の `<script src integrity>` を、並びの順に返す（import map の `<script>` と `<link>` は読まない）。"""
     parser = _ExternalScriptParser()
-    parser.feed(template[start:end])
+    parser.feed(_external_range(template))
     parser.close()
     scripts: list[ExternalScript] = []
     for src, integrity in parser.found:
@@ -444,47 +541,139 @@ def list_external_scripts(template: str) -> list[ExternalScript]:
     return scripts
 
 
+def read_external_module(template: str) -> ExternalModule:
+    """雛形の外の読み込みの印の間の import map と、`integrity` を持つ `<link rel="stylesheet">` を `ExternalModule` にして返す。"""
+    parser = _ExternalModuleParser()
+    parser.feed(_external_range(template))
+    parser.close()
+    # 同梱の雛形の誤り: import map と integrity を持つ link がそれぞれちょうど 1 つでない
+    if len(parser.import_maps) != 1 or len(parser.links) != 1:
+        raise ValueError("雛形に import map と integrity を持つ link が 1 つずつありません")
+    try:
+        parsed = json.loads(parser.import_maps[0])
+    except json.JSONDecodeError as error:
+        raise ValueError("雛形の import map が integrity を 1 つだけ持ちません") from error
+    integrity_map = parsed.get("integrity") if isinstance(parsed, dict) else None
+    # 同梱の雛形の誤り: integrity のキーが 1 つでない
+    if not isinstance(integrity_map, dict) or len(integrity_map) != 1:
+        raise ValueError("雛形の import map が integrity を 1 つだけ持ちません")
+    ((js_url, js_integrity),) = integrity_map.items()
+    css_url, css_integrity = parser.links[0]
+    js_matched = _MODULE_SRC.match(js_url)
+    css_matched = _MODULE_SRC.match(css_url)
+    # 同梱の雛形の誤り: タグを固定した jsDelivr の GitHub の URL でないか、2 つで違う
+    if (
+        js_matched is None
+        or css_matched is None
+        or js_matched["package"] != css_matched["package"]
+        or js_matched["version"] != css_matched["version"]
+    ):
+        raise ValueError(f"雛形の ES モジュールがタグを固定した同じ jsDelivr の URL を持ちません: {js_url}")
+    return ExternalModule(
+        js_url=js_url,
+        js_integrity=str(js_integrity),
+        css_url=css_url,
+        css_integrity=css_integrity,
+        package=js_matched["package"],
+        version=js_matched["version"],
+    )
+
+
+def _fetch_checked(*, fetch: FetchFn, url: str, integrity: str) -> bytes:
+    """URL の中身を取り、sha384 を Base64 にした `sha384-{値}` が integrity と同じことを確かめて返す。違えば DownloadFailedError にする。"""
+    content = fetch(url)
+    digest = base64.b64encode(hashlib.sha384(content).digest()).decode("ascii")
+    if f"sha384-{digest}" != integrity:
+        raise DownloadFailedError(f"integrity が合いません: {url}")
+    return content
+
+
+def _license_texts(
+    *, library: VendorLibrary, base_url: str, version: str, preview_dir: Path, fetch: FetchFn
+) -> tuple[str, str, str | None, str | None]:
+    """ライブラリのライセンスの本文と束ねた依存のライセンスを、取るか雛形のフォルダから読んで返す（本文・本文の出どころ・束ねた依存・その出どころ）。
+
+    出どころは、取ったなら URL、読んだなら雛形のフォルダからの相対パス（無害化の確かめのメッセージに使う）。
+    """
+    # ライセンスの本文: 取る（license_path）か、雛形のフォルダから読む（license_file）か
+    if library.license_path is not None:
+        license_source = base_url.format(package=library.package, version=version, path=library.license_path)
+        license_text = fetch(license_source).decode("utf-8")
+    else:
+        license_source = library.license_file or ""
+        license_text = (preview_dir / license_source).read_text(encoding="utf-8")
+    # 束ねた依存のライセンス: 取る（bundled_license_path）か、雛形のフォルダから読む（bundled_license_file）か
+    bundled_source: str | None
+    if library.bundled_license_path is not None:
+        bundled_source = base_url.format(package=library.package, version=version, path=library.bundled_license_path)
+        bundled_text: str | None = fetch(bundled_source).decode("utf-8")
+    elif library.bundled_license_file is not None:
+        bundled_source = library.bundled_license_file
+        bundled_text = (preview_dir / bundled_source).read_text(encoding="utf-8")
+    else:
+        bundled_source = None
+        bundled_text = None
+    return license_text, license_source, bundled_text, bundled_source
+
+
 def assemble_standalone_template(
     *,
     preview_dir: Path = PREVIEW_DIR,
     libraries: tuple[VendorLibrary, ...] = VENDOR_LIBRARIES,
     fetch: FetchFn = fetch_url,
 ) -> str:
-    """`assemble_template` の外の読み込みを、取った描画のライブラリの `<script>` とライセンスの表示に置き換える。"""
+    """`assemble_template` の外の読み込みを、取った mdmark の CSS の `<style>` と JavaScript の要素、描画のライブラリの `<script>` とライセンスの表示の要素に置き換える。"""
     template = assemble_template(preview_dir=preview_dir)
+    module = read_external_module(template)
     scripts = list_external_scripts(template)
     # 取る前に、外の読み込みごとのライセンスの表示の材料（VendorLibrary）を引く
     by_package = {library.package: library for library in libraries}
-    for script in scripts:
-        if script.package not in by_package:
-            raise ValueError(f"ライセンスの表示が無い外の読み込み: {script.package}")
+    for package in (module.package, *(script.package for script in scripts)):
+        if package not in by_package:
+            raise ValueError(f"ライセンスの表示が無い外の読み込み: {package}")
+
+    # 外の ES モジュールの JavaScript と CSS は、雛形の integrity と同じ中身であること
+    module_js = _fetch_checked(fetch=fetch, url=module.js_url, integrity=module.js_integrity).decode("utf-8")
+    module_css = _fetch_checked(fetch=fetch, url=module.css_url, integrity=module.css_integrity).decode("utf-8")
+    # 取った中身が script 要素を閉じる・開くタグ（CSS は style 要素を閉じるタグ）を含むと、埋め込んだ要素が壊れる
+    _reject_tags(source=module.js_url, text=module_js, tags=_SCRIPT_TAGS)
+    _reject_tags(source=module.css_url, text=module_css, tags=_STYLE_TAGS)
+    blocks: list[LicenseBlock] = []
+    license_text, license_source, bundled_text, bundled_source = _license_texts(
+        library=by_package[module.package],
+        base_url=CDN_REPO_URL,
+        version=module.version,
+        preview_dir=preview_dir,
+        fetch=fetch,
+    )
+    for source, text in ((license_source, license_text), (bundled_source, bundled_text)):
+        _reject_tags(source=source, text=text, tags=_SCRIPT_TAGS)
+    blocks.append(
+        LicenseBlock(
+            library=by_package[module.package],
+            version=module.version,
+            license_text=license_text,
+            bundled_text=bundled_text,
+        )
+    )
 
     script_elements: list[str] = []
-    blocks: list[LicenseBlock] = []
     for script in scripts:
         library = by_package[script.package]
-        dist = fetch(script.url)
-        # 配布ファイルは雛形の integrity（sha384）と同じ中身であること
-        digest = base64.b64encode(hashlib.sha384(dist).digest()).decode("ascii")
-        if f"sha384-{digest}" != script.integrity:
-            raise DownloadFailedError(f"integrity が合いません: {script.url}")
-        license_url = CDN_PACKAGE_URL.format(
-            package=script.package, version=script.version, path=library.license_path
+        dist_text = _fetch_checked(fetch=fetch, url=script.url, integrity=script.integrity).decode("utf-8")
+        license_text, license_source, bundled_text, bundled_source = _license_texts(
+            library=library,
+            base_url=CDN_PACKAGE_URL,
+            version=script.version,
+            preview_dir=preview_dir,
+            fetch=fetch,
         )
-        license_text = fetch(license_url).decode("utf-8")
-        bundled_text = (
-            (preview_dir / library.bundled_license_file).read_text(encoding="utf-8")
-            if library.bundled_license_file is not None
-            else None
-        )
-        dist_text = dist.decode("utf-8")
-        # 取った中身が script 要素を閉じる・開くタグを含むと、埋め込んだ要素が壊れる
         for source, text in (
             (script.url, dist_text),
-            (license_url, license_text),
-            (library.bundled_license_file, bundled_text),
+            (license_source, license_text),
+            (bundled_source, bundled_text),
         ):
-            _reject_script_tags(source, text)
+            _reject_tags(source=source, text=text, tags=_SCRIPT_TAGS)
         script_elements.append(f"<script>{dist_text}{CLOSE_TAG}")
         blocks.append(
             LicenseBlock(
@@ -495,19 +684,27 @@ def assemble_standalone_template(
             )
         )
 
-    # 印から印まで（両方を含む）を、取った配布ファイルとライセンスの表示に置き換える
+    # 印から印まで（両方を含む。import map・`<link>` も消える）を、取った CSS・mdmark の JavaScript・配布ファイル・ライセンスの表示に置き換える
     start = template.index(EXTERNAL_START)
     end = template.index(EXTERNAL_END) + len(EXTERNAL_END)
+    mdmark_element = f"{MDMARK_OPEN}{module_js}{CLOSE_TAG}"
     licenses = f"{LICENSES_OPEN}{format_licenses(blocks)}{CLOSE_TAG}"
-    return template[:start] + "".join(script_elements) + licenses + template[end:]
+    return (
+        template[:start]
+        + f"{MDMARK_CSS_OPEN}{module_css}{STYLE_CLOSE_TAG}"
+        + mdmark_element
+        + "".join(script_elements)
+        + licenses
+        + template[end:]
+    )
 
 
-def _reject_script_tags(source: str | None, text: str | None) -> None:
-    """text が `</script`・`<script` を含むときは ValueError にする（大文字・小文字を区別しない）。"""
+def _reject_tags(*, source: str | None, text: str | None, tags: tuple[str, ...]) -> None:
+    """text が tags のどれかを含むときは ValueError にする（大文字・小文字を区別しない）。"""
     if text is None:
         return
     lowered = text.lower()
-    for tag in _SCRIPT_TAGS:
+    for tag in tags:
         if tag in lowered:
             raise ValueError(f"取った {source} が {tag} を含みます")
 

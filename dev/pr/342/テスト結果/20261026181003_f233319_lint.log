@@ -1,0 +1,9 @@
+# 実行日時: 2026-10-26T18:10:03+09:00（JST）
+# コミット: f233319
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+exit 0

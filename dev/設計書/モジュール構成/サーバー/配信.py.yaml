@@ -84,6 +84,18 @@ constants:
     usecase: プレビューを外から見る
     summary: '`Origin` で許可するホスト名を受けるスキーム（`check_origin`）'
     value: ("https", "http")
+  - name: EDITS_PATH
+    title: 保存待ちの編集のパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 画面で項目を編集して保存する
+    summary: GET（読み取り）・POST（追加）と、DELETE `/api/edits/{id}`（取り消し）の頭
+    value: '"/api/edits"'
+  - name: EDITS_SAVE_PATH
+    title: まとめて保存のパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 画面で項目を編集して保存する
+    summary: POST で保存待ちの編集をまとめて保存する
+    value: '"/api/edits/save"'
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
@@ -281,6 +293,7 @@ classes:
              - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えの印は `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
              - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
              - `/api/threads` の場合、スレッドを返す（`threads_response`）
+             - `/api/edits` の場合、保存待ちの編集を返す（`edits_response`）
              - それ以外は 404 を返す
       - name: do_POST
         title: POST の振り分け
@@ -294,6 +307,8 @@ classes:
           2. パスで分ける
              - `/api/opened` の場合、本文を読まずに前回開いた日時を返す（`opened_response`）
              - `/api/config/reload` の場合、本文を読まずに設定を読み直す（`reload_response`）
+             - `/api/edits/save` の場合、本文を読まずに保存待ちの編集をまとめて保存する（`edits_save_response`）
+             - `/api/edits` の場合、`add_edit` を受け付けの処理にする（`handle` は `add_edit` の本文と、新しく溜めたら 201・書き換えたか外したら 200 を組にして返す）
              - `/api/threads/{id}/seen`（`id` は `/` を含まない）の場合、本文を読まずにそのスレッドを利用者の既読にする（`seen_response`）
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
              - `/api/comments/send` は、`context.input_target` があれば `enter_to_claude(context.input_target, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered}`
@@ -344,8 +359,10 @@ classes:
           description: '-'
         process: |-
           1. `Host` が合わなければ 403 を返す
-          2. パスが `/api/comments/{id}` でなければ 404 を返す
-          3. 本文を読まずに受け付ける（`delete_response`）
+          2. パスで分ける
+             - `/api/comments/{id}` の場合、本文を読まずに受け付ける（`delete_response`）
+             - `/api/edits/{id}`（`id` は `/` を含まない）の場合、本文を読まずに受け付ける（`edit_delete_response`）
+             - それ以外は 404 を返す
   - name: SettingsHolder
     title: 最後に検査に通った設定
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -773,7 +790,7 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`docs/` の直下の `*.md`・`*.html` を名前の順に並べる（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
+      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`edits.yaml`・`docs/` の直下の `*.md`・`*.html` を名前の順に並べる（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
@@ -794,6 +811,12 @@ functions:
         condition: '`docs/A-1.html` を持つワークスペース。`parametrize`: `docs/A-1.html` を書き換える / `docs/A-2.html` を足す'
         expected: どちらも書き換えの前と後で印が違う
         mock: なし
+      - name: test_workspace_signature_with_edits
+        case: 正常
+        summary: 保存待ちの編集の書き換えでも印が変わる
+        condition: '`.mindstella/edits.yaml` を足す'
+        mock: なし
+        expected: 足す前と後で印が違う
   - name: stream_events
     title: 書き換えの知らせ
     kind: 関数
@@ -916,10 +939,10 @@ functions:
         passing: keyword
         description: 要求の本文（`MAX_REQUEST_BYTES` 以下）
       - name: handle
-        type: Callable[[Path, dict[str, Any]], dict[str, Any] | None]
+        type: Callable[[Path, dict[str, Any]], dict[str, Any] | tuple[dict[str, Any], int] | None]
         required: true
         passing: keyword
-        description: 鍵を取った中で呼ぶ処理。応答の本文（無ければ `None`）を返す
+        description: 鍵を取った中で呼ぶ処理。応答の本文（無ければ `None`）を返す。結果で成功のステータスコードが変わる処理（保存待ちの編集の追加）は `(本文, ステータスコード)` を返す
       - name: status
         type: int
         required: true
@@ -942,7 +965,7 @@ functions:
       4. 書き換えの鍵を取って（`workspace_lock`）`handle` を呼ぶ
          - `MindmapError` の場合、`error_response` の応答を返す
       5. `after` があれば、鍵を外した後に `handle` の結果を渡して呼び、返った値を応答の本文にする
-      6. `status` で返す（204 は本文を持たない。それ以外は `ensure_ascii=False` の JSON）
+      6. `status`（`handle` が `(本文, ステータスコード)` を返したときはそのステータスコード）で返す（204 は本文を持たない。それ以外は `ensure_ascii=False` の JSON）
     unit_tests:
       - name: test_write_response
         case: 正常
@@ -962,6 +985,12 @@ functions:
         condition: '`handle` は `{"ok": true}` を返す。`after` は呼ばれたときに書き換えの鍵が取れるか（`write_lock.acquire(blocking=False)`）を控え、`{**body, "entered": true}` を返す。`parametrize`: `handle` が成功 / `handle` が `CommentConflictError` を送る'
         mock: '`handle`・`after`'
         expected: '前者は 201 で本文 `{"ok": true, "entered": true}`、`after` の中で鍵が取れた。後者は 409 で `after` が呼ばれない'
+      - name: test_write_response_when_status_returned
+        case: 正常
+        summary: 処理が返したステータスコードで返す
+        condition: '`status=201`。`handle` は `({"id": "E-1"}, 200)` を返す'
+        mock: '`handle`'
+        expected: '200 で本文 `{"id": "E-1"}`'
   - name: delete_response
     title: コメントを消す受け付け
     kind: 関数
@@ -1018,9 +1047,10 @@ functions:
       description: 問題の応答
     process: |-
       1. 種類で分ける
-         - `CommentInvalidError`・`SettingsInvalidError`・`ArgumentError` は 400
-         - `ItemNotFoundError`・`CommentNotFoundError`・`ThreadNotFoundError` は 404
+         - `CommentInvalidError`・`SettingsInvalidError`・`ArgumentError`・`EditInvalidError` は 400
+         - `ItemNotFoundError`・`CommentNotFoundError`・`ThreadNotFoundError`・`EditNotFoundError` は 404
          - `CommentConflictError` は 409（`stale` があれば本文に `stale: [{id, reason}]` を足す）
+         - `EditConflictError` は 409、`EditsBlockedError` は 409（本文に `blocked: [{id, reason, detail, refs}]` を足す）
          - `WorkspaceNotFoundError`・`SchemaMismatchError` は 422（`detail` はメッセージに `lines` を改行でつないだもの）
          - `WriteFailedError` は 500
          - それ以外は 500
@@ -1033,6 +1063,12 @@ functions:
         condition: '`parametrize`: `CommentInvalidError` / `SettingsInvalidError` / `ArgumentError` / `ItemNotFoundError` / `CommentNotFoundError` / `ThreadNotFoundError` / `CommentConflictError(stale=[(C-2, 理由)])` / `SchemaMismatchError(lines=[行])` / `WriteFailedError`'
         mock: なし
         expected: '400 / 400 / 400 / 404 / 404 / 404 / 409（本文の `stale` が `[{id: C-2, reason: 理由}]`）/ 422（`detail` にその行）/ 500'
+      - name: test_error_response_when_edits
+        case: 正常
+        summary: 保存待ちの編集のエラーのステータスコード
+        condition: '`parametrize`: `EditInvalidError` / `EditNotFoundError` / `EditConflictError` / `EditsBlockedError(blocked=[BlockedEdit(id=E-1, reason=referenced, detail=理由, refs=[D-2])])`'
+        mock: なし
+        expected: '400 / 404 / 409 / 409（本文の `blocked` が `[{id: E-1, reason: referenced, detail: 理由, refs: [D-2]}]`）'
   - name: opened_response
     title: 前回開いた日時の応答
     kind: 関数
@@ -1374,5 +1410,103 @@ functions:
         mock: なし
         expected: 403 / 404（`detail` に `TH-9`）/ 422。どれも `threads.yaml` が呼ぶ前と同じ
         exception: 送り元の違い・無い ID・スキーマに合わない
+  - name: edits_response
+    title: 保存待ちの編集の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちの編集をその場で読んで返す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: Response
+      description: 200 で `list_edits` の本文か、問題の応答
+    process: |-
+      1. `list_edits` を呼ぶ
+         - `MindmapError` の場合、`error_response` の応答を返す
+      2. `Cache-Control: no-store` を付け、`ensure_ascii=False` の JSON で 200 を返す
+    unit_tests:
+      - name: test_edits_response
+        case: 正常
+        summary: 保存待ちの編集を返し、壊れたファイルは 422
+        condition: '`parametrize`: E-1 を持つ `edits.yaml` / `items: [` の `edits.yaml`'
+        mock: なし
+        expected: 200 で `count` が 1 / 422
+  - name: edit_delete_response
+    title: 保存待ちの編集の取り消しの受け付け
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 送り元を確かめ、書き換えの鍵を取って 1 件の編集を取り消す
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+      - name: edit_id
+        type: str
+        required: true
+        passing: keyword
+        description: パスの `{id}`
+    returns:
+      type: Response
+      description: 200 で `{removed, count}` か、問題の応答
+    process: |-
+      1. `Origin` が合わなければ 403 を返す（`check_origin`）
+      2. 書き換えの鍵を取って（`workspace_lock`）`delete_edit` を呼ぶ
+         - `MindmapError` の場合、`error_response` の応答を返す
+      3. 200 で本文を返す
+    unit_tests:
+      - name: test_edit_delete_response
+        case: 正常
+        summary: 取り消し、送り元の誤り・無い ID は問題の応答
+        condition: 'E-1 を持つ。`parametrize`: `E-1` / `Origin: https://attacker.example` で `E-1` / `E-9`'
+        mock: なし
+        expected: 200 で `removed` が `[E-1]` / 403 で `edits.yaml` が前のまま / 404
+  - name: edits_save_response
+    title: まとめて保存の受け付け
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 送り元を確かめ、本文を読まずに書き換えの鍵を取って保存待ちの編集をまとめて保存する
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+    returns:
+      type: Response
+      description: 200 で `save_edits` の本文か、問題の応答（409 は `blocked` を持つ）
+    process: |-
+      1. `Origin` が合わなければ 403 を返す（`check_origin`）
+      2. 書き換えの鍵を取って（`workspace_lock`）`save_edits` を呼ぶ
+         - `MindmapError` の場合、`error_response` の応答を返す
+      3. 200 で本文を返す（書き換えの知らせは `stream_events` が書き換えの印の変化で送る）
+    unit_tests:
+      - name: test_edits_save_response
+        case: 正常
+        summary: 保存し、送り元の誤り・書き込めない編集は問題の応答
+        condition: 'D-1 と E-1（D-1 の `answer`）。`parametrize`: そのまま / `Origin: https://attacker.example` / E-1 を溜めた後に MCP で D-1 を書き換える'
+        mock: なし
+        expected: 200 で `changed` が `[D-1]` / 403 / 409 で本文の `blocked` が E-1（`changed`）
 test_files:
   - tests/unit/scripts/test_serve.py

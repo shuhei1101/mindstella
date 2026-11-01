@@ -5,7 +5,32 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from body_view_helpers import (
+    BODY_HASH,
+    BODY_VIEWPORT_WIDTH,
+    DOCS_HASH,
+    POSITION_TOLERANCE_PX,
+    TABLE_WRAP,
+    WIDE_TABLE_BODY,
+    fold_button,
+    head_offset_from_top,
+    heading_link_href,
+    open_a4_from_cards,
+    pinned_layout,
+    scroll_body_down,
+    scroll_body_to_top,
+    scroll_table_to_end,
+    table_layout,
+    table_scrolled_past_top,
+    wait_head_at_top,
+)
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
+from integration.preview.preview_panel_width_helpers import (
+    DEFAULT_WIDTH_PX,
+    drag_resizer,
+    panel_state,
+    read_stored_width,
+)
 from playwright.sync_api import Page
 from preview_helpers import OpenPreview, ServePreview
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
@@ -23,6 +48,10 @@ flowchart LR
 
 # 広い幅の画面（詳細パネルが本文を寄せる幅）
 WIDE_SIZE = (1920, 1080)
+
+# 詳細パネルの左端の区切りを左へドラッグする量（px）と、広げた後の詳細パネルの幅（既定の 640px + 100px）
+PANEL_DRAG_LEFT_PX = -100
+WIDENED_PANEL_WIDTH_PX = 740
 
 # 全画面で本文を送れる長さにするために足す段落の数
 FILLER_PARAGRAPHS = 60
@@ -297,20 +326,21 @@ def test_error_when_render_library_unavailable(
     valid_settings: dict[str, Any],
     page: Page,
 ) -> None:
-    """本文の描画のライブラリ（marked・mermaid）が読めないと、名前を出し、本文を文字のまま読める（異常系）。"""
+    """本文の描画のライブラリ（mdmark・mermaid）が読めないと、名前を出し、本文を文字のまま読める（異常系）。"""
     # 準備
     url = serve_preview(
         make_item("A-1", description=DESCRIPTION_WITH_LINE_BREAK),
         settings=valid_settings,
         bodies={"A-1.md": BODY_WITH_DIAGRAM},
     )
-    page.route(re.compile(r"/npm/(marked|mermaid)@"), lambda route: route.abort())
+    # mdmark は import map の `/gh/shuhei1101/mdmark@{バージョン}/`、mermaid は `/npm/mermaid@{バージョン}/` から読む
+    page.route(re.compile(r"/(gh/shuhei1101/mdmark|npm/mermaid)@"), lambda route: route.abort())
     # 実行
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .md .lib-error[role=alert]")
     # 検証
     notice = page.inner_text("aside.panel .md .lib-error[role=alert]")
-    assert "marked" in notice
+    assert "mdmark" in notice
     assert "mermaid" in notice
     raw = page.inner_text("aside.panel .md .md-raw")
     assert "# 要件" in raw
@@ -995,6 +1025,10 @@ def test_error_when_html_body_has_script(
     assert frame.locator("p").inner_text() == "一覧の画面"
 
 
+# 詳細パネルの本文の Markdown の段落（見出しの後ろの段落は、見出しの節の入れ物 `.md-section-body` に包まれる）
+PANEL_MD_PARAGRAPH = "aside.panel :is(.md, .md-section-body) > p"
+
+
 def test_normal_when_html_code_block(
     serve_preview: ServePreview,
     open_preview: OpenPreview,
@@ -1010,7 +1044,7 @@ def test_normal_when_html_code_block(
         settings=valid_settings,
         bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK, "A-2.md": BODY_WITHOUT_HTML_CODE_BLOCK},
     )
-    outside = ["header.topbar", "aside.panel .d-title", "aside.panel .md > p"]
+    outside = ["header.topbar", "aside.panel .d-title", PANEL_MD_PARAGRAPH]
     open_preview(url, "#tab=docs", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
     page.click('.doc-card[data-id="A-2"]')
     page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
@@ -1026,7 +1060,7 @@ def test_normal_when_html_code_block(
     assert frame.locator("p").inner_text() == "枠の中の段落"
     assert frame.locator("svg").count() == 1
     # コードブロックの前後の Markdown の見出し・段落は、今までどおり描かれる
-    assert page.locator("aside.panel .md > p").count() == 2
+    assert page.locator(PANEL_MD_PARAGRAPH).count() == 2
     assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
     # コードブロックの `<style>` が、前後の Markdown の段落・詳細パネル・トップバーの色を変えない
     assert page.evaluate(STYLE_SCRIPT, outside) == before
@@ -1198,3 +1232,135 @@ def test_normal_when_html_body_links(
     assert opened_tabs(page) == tabs + 2
     assert page.evaluate("document.scrollingElement.scrollTop") == 0
     assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+
+
+def test_normal_when_table_and_sections(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """列の多い表を持つ資料の詳細パネルで、表を列の文字数で折り返して表の中だけで横に送り、左の列と見出しの行を固定し、見出しの矢印で節を畳める（正常系）。"""
+    # 準備
+    url = serve_preview(
+        make_item("A-4"), settings=valid_settings, bodies={"A-4.md": WIDE_TABLE_BODY}
+    )
+    open_preview(url, DOCS_HASH, width=BODY_VIEWPORT_WIDTH)
+    # 実行（資料の画面で A-4 を押す）
+    open_a4_from_cards(page)
+    layout = table_layout(page)
+    # 検証（短い列は折り返さず、説明の列は一定の幅で折り返す。表の入れ物だけが横に送れて、しま模様は既定でオフ）
+    assert layout["maxLines"]["ID"] == 1
+    assert layout["maxLines"]["状態"] == 1
+    assert layout["maxLines"]["優先度"] == 1
+    assert layout["minLines"]["説明"] > 1
+    assert layout["descriptionWidthCount"] == 1
+    assert layout["wrapScrolls"] is True
+    assert layout["areaScrolls"] is False
+    assert layout["stripeColorCount"] == 1
+    # 実行（名前の列の見出しの固定のボタンを押し、表を右端まで横に送る）
+    page.get_by_role("button", name="名前まで固定").click()
+    scroll_table_to_end(page)
+    pinned = pinned_layout(page)
+    # 検証（押した状態になり、ID・状態・名前の 3 列が表の左端に見えたまま、右端の説明の列が見える）
+    assert page.get_by_role("button", name="名前まで固定").get_attribute("aria-pressed") == "true"
+    assert pinned["scrollLeft"] > 0
+    assert -POSITION_TOLERANCE_PX <= pinned["firstLeft"] <= POSITION_TOLERANCE_PX
+    assert pinned["visible"]["ID"] is True
+    assert pinned["visible"]["状態"] is True
+    assert pinned["visible"]["名前"] is True
+    assert pinned["visible"]["説明"] is True
+    # 実行（本文のスクロール領域を表の途中まで下へ送る）
+    scroll_body_down(page)
+    wait_head_at_top(page)
+    # 検証（表が上へ送られていて、見出しの行が本文のスクロール領域の上端に見えている）
+    assert table_scrolled_past_top(page) is True
+    assert head_offset_from_top(page) <= POSITION_TOLERANCE_PX
+    # 実行（先頭へ戻し、見出し「比較」の矢印を押す）
+    link_before = heading_link_href(page, "比較")
+    scroll_body_to_top(page)
+    fold_button(page, "比較").click()
+    # 検証（「比較」の下を畳んで表が見えなくなり、「補足」の見出しと段落は見えたまま。URL のハッシュと見出しのリンクは変わらない）
+    assert fold_button(page, "比較").get_attribute("aria-expanded") == "false"
+    assert page.locator(TABLE_WRAP).is_visible() is False
+    assert fold_button(page, "補足").get_attribute("aria-expanded") == "true"
+    assert page.get_by_text("補足の段落です。").is_visible() is True
+    assert page.evaluate("location.hash") == BODY_HASH
+    assert heading_link_href(page, "比較") == link_before
+    # 実行（見出し「比較」の矢印をもう一度押す）
+    fold_button(page, "比較").click()
+    # 検証（表が見える）
+    assert fold_button(page, "比較").get_attribute("aria-expanded") == "true"
+    assert page.locator(TABLE_WRAP).is_visible() is True
+
+
+def test_normal_when_resize_panel(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """資料と検討事項の詳細パネルを同じ既定の幅で開き、左端の区切りを左へドラッグして広げると、本文の寄せも合わせて広がり、閉じて開き直しても読み込み直しても、種類によらず広げた幅で開く（正常系）。"""
+    # 準備（空の保存領域で、資料 A-1 と検討事項 D-1 を配る）
+    url = serve_preview(
+        make_item("A-1"),
+        make_item("D-1", body="D-1.md"),
+        settings=valid_settings,
+        bodies={"A-1.md": "資料の本文です。", "D-1.md": "検討事項の本文です。"},
+    )
+    open_preview(url, DOCS_HASH, width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    # 実行（資料の画面で A-1 を押す）
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open")
+    doc_default = panel_state(page)
+    # 実行（詳細パネルを閉じ、検討事項の表で D-1 を押す）
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.click('nav.tabbar a[data-tab="decisions"]')
+    page.click('.segment button[data-view="table"]')
+    page.click('table.grid button.row-open[data-id="D-1"]')
+    page.wait_for_selector("aside.panel.open")
+    decision_default = panel_state(page)
+    # 実行（詳細パネルの左端を左へドラッグする）
+    drag_resizer(page, PANEL_DRAG_LEFT_PX)
+    widened = panel_state(page)
+    # 実行（詳細パネルを閉じ、資料の画面で A-1 を押す）
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.click('nav.tabbar a[data-tab="docs"]')
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open")
+    doc_reopened = panel_state(page)
+    # 実行（詳細パネルを閉じ、同じタブでページを読み込み直して A-1 を開く）
+    page.click("aside.panel button[data-act='close']")
+    page.wait_for_function("!document.querySelector('aside.panel.open')")
+    page.reload()
+    page.wait_for_selector('.doc-card[data-id="A-1"]')
+    page.click('.doc-card[data-id="A-1"]')
+    page.wait_for_selector("aside.panel.open")
+    doc_reloaded = panel_state(page)
+    # 検証（資料も検討事項も同じ既定の幅で開き、本文の寄せも合っている）
+    assert (doc_default["panelWidth"], doc_default["contentMargin"]) == (
+        DEFAULT_WIDTH_PX,
+        DEFAULT_WIDTH_PX,
+    )
+    assert (decision_default["panelWidth"], decision_default["contentMargin"]) == (
+        DEFAULT_WIDTH_PX,
+        DEFAULT_WIDTH_PX,
+    )
+    # 検証（ドラッグした分だけ広がり、本文の寄せと区切りの今の幅が詳細パネルの幅に合う）
+    assert widened["panelWidth"] == WIDENED_PANEL_WIDTH_PX
+    assert widened["contentMargin"] == WIDENED_PANEL_WIDTH_PX
+    assert widened["separator"]["now"] == str(WIDENED_PANEL_WIDTH_PX)
+    # 検証（閉じて A-1 を開き直しても、読み込み直した後でも、広げた幅で開く）
+    assert (doc_reopened["panelWidth"], doc_reopened["separator"]["now"]) == (
+        WIDENED_PANEL_WIDTH_PX,
+        str(WIDENED_PANEL_WIDTH_PX),
+    )
+    assert (doc_reloaded["panelWidth"], doc_reloaded["separator"]["now"]) == (
+        WIDENED_PANEL_WIDTH_PX,
+        str(WIDENED_PANEL_WIDTH_PX),
+    )
+    assert read_stored_width(page) == str(WIDENED_PANEL_WIDTH_PX)

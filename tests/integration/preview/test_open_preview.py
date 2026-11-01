@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 import yaml
 from integration.browser_tab_helpers import (
@@ -14,7 +15,7 @@ from integration.browser_tab_helpers import (
     opened_tabs,
     recorded_window_opens,
 )
-from playwright.sync_api import Page, Route
+from playwright.sync_api import Download, Page, Route, expect
 from preview_body_layout_helpers import (
     INLINE_NAME,
     LAYOUT_GROUP_NAME,
@@ -35,6 +36,12 @@ from preview_body_link_helpers import (
 )
 from preview_body_link_helpers import (
     HEADING_IN_VIEW_JS as BODY_LINK_HEADING_IN_VIEW_JS,
+)
+from preview_body_view_helpers import (
+    BODY_VIEW_SCOPE,
+    open_body_view,
+    seed_body_view,
+    table_state,
 )
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
@@ -59,6 +66,31 @@ from preview_drawer_helpers import (
     click_value,
     open_drawer,
 )
+from preview_embed_helpers import (
+    CHART,
+    CLIPBOARD_PERMISSIONS,
+    EMBEDDED_BODY,
+    EXPORT_BODY,
+    EXPORT_ENTRY_NAME,
+    EXPORT_MENU,
+    MARKDOWN_EXPORT_BODY,
+    MDMARK_URL_PATTERN,
+    RANGE,
+    ZOOM_FIT,
+    ZOOM_IN,
+    build_embedded_diff_workspace,
+    drag_in_viewport,
+    save_download,
+    viewport_scroll,
+)
+from preview_edit_helpers import (
+    DETAIL_PANEL as EDIT_PANEL,
+    PENDING_BUTTON as EDIT_PENDING_BUTTON,
+    SAVE_BUTTON as EDIT_SAVE_BUTTON,
+    open_pending as open_edit_pending,
+    read_items_file,
+    reached_by_tab,
+)
 from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     OpenPreview,
@@ -66,6 +98,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
 )
 from preview_history_helpers import preselect_diff
+from preview_markdown_post_helpers import MARKDOWN_POST_HASH
 from preview_post_link_helpers import POST_LINK_HASH
 from preview_html_body_helpers import (
     BODY_FRAME,
@@ -100,6 +133,17 @@ from preview_minimap_helpers import (
     scroll_top,
 )
 from preview_network_helpers import ball_at, canvas_center
+from preview_panel_width_helpers import (
+    PANEL as WIDTH_PANEL,
+    RESIZER,
+    PANEL_VIEWPORT,
+    open_panel,
+    panel_state,
+    press_key_times,
+    read_stored_width,
+    seed_panel_width,
+    wait_for_value_now,
+)
 from preview_saved_filter_helpers import (
     read_saved_filters,
     reload_preview,
@@ -119,6 +163,7 @@ from workspace_fixtures import (
     MakePost,
     MakeThread,
     MakeWorkspace,
+    SnapshotTree,
     StartServer,
     WriteComments,
 )
@@ -197,6 +242,7 @@ def test_normal(
     assert page.get_attribute('.segment button[data-view="table"]', "aria-pressed") == "true"
     assert _row_ids(page) == ["D-1", "D-3"]
     assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert page.locator("aside.panel .md:not(.md-value).mdmark").count() == 1
     assert page.locator("aside.panel .md:not(.md-value) h4").count() == 1
     assert page.locator("aside.panel .mermaid svg").count() == 1
     # 同じ URL を開き直すと同じ画面と項目が開く
@@ -421,8 +467,10 @@ def test_error_when_library_unavailable(
     assert "通信を確認して、ページを再読み込みしてください。" in map_notice
     body_notice = page.inner_text("aside.panel .md:not(.md-value) .lib-error[role=alert]")
     assert "読み込めなかったライブラリ" in body_notice
-    for name in ("marked", "DOMPurify", "mermaid"):
+    for name in ("mdmark", "mermaid"):
         assert name in body_notice
+    assert "marked" not in body_notice
+    assert "DOMPurify" not in body_notice
     assert "本文の段落" in page.inner_text("aside.panel .md-raw")
     # 配置できない案内は、表への切り替えを促す
     assert "表示形式を「表」に切り替えると、検討事項を表示できます。" in page.inner_text("main")
@@ -830,7 +878,7 @@ PANEL_TITLE = "aside.panel .d-title"
 TOPBAR = "header.topbar"
 
 # 詳細パネルの本文の前後の段落（Markdown）
-MARKDOWN_PARAGRAPHS = "aside.panel .md:not(.md-value) > p"
+MARKDOWN_PARAGRAPHS = "aside.panel .md:not(.md-value) p"
 
 # 段落より前にコメントと `<style>` を置き、5〜6 行目に 2 行にまたがる段落を持つ HTML の本文
 COMMENT_HTML_BODY = (
@@ -918,6 +966,11 @@ def test_normal_when_html_body(
     fit = frame_fit(page, BODY_FRAME)
     assert fit["bottom"] <= fit["height"]
     assert fit["later_height"] == fit["height"]
+    # 詳細パネルにも詳細の全画面にも、「エクスポート」の入口が無い
+    assert page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).count() == 0
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open]")
+    assert page.locator("dialog.full").get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).count() == 0
 
 
 def test_normal_when_html_body_commented(
@@ -936,14 +989,10 @@ def test_normal_when_html_body_commented(
     rect = text_rect_in_page(page, BODY_FRAME, "言い換えたい文")
     pill_box = page.locator(PILL).bounding_box()
     page.get_by_role("button", name="選んだ箇所にコメント").click()
-    # 検証（入口の位置: 選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    # 検証（入口の位置: 入口の下端が選んだ文の上端より上にあり、その差が選んだ行の高さ以内）
     assert pill_box is not None
-    gap = max(
-        rect["top"] - (pill_box["y"] + pill_box["height"]),
-        pill_box["y"] - (rect["top"] + rect["height"]),
-        0,
-    )
-    assert gap <= rect["height"]
+    gap = rect["top"] - (pill_box["y"] + pill_box["height"])
+    assert 0 < gap <= rect["height"]
     assert page.inner_text("aside.panel .send-loc-name") == "本文 6 行目"
     assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
     # 実行（溜める）
@@ -1519,7 +1568,7 @@ def test_normal_when_body_link_to_change_set(
 def test_normal_when_post_link_to_change_set(
     write_post_link_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
 ) -> None:
-    """スレッドの書き込みとレビュー中を確かめる画面の行の #diff= のリンクを押すと、画面を開いたままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さないものは書いた文字のまま出す（正常系）。"""
+    """スレッドの書き込みとレビュー中を確かめる画面の行の #diff= のリンクを押すと、画面を開いたままそのまとまりの差分の表示に切り替え、履歴に積まずに diff を置き換える。まとまりを指さないものはリンクの文字だけを出す（正常系）。"""
     # 準備
     url, _ = write_post_link_preview()
     open_preview(url, POST_LINK_HASH)
@@ -1536,9 +1585,12 @@ def test_normal_when_post_link_to_change_set(
     text = page.inner_text(post)
     assert "](#diff=V-1)" not in text
     assert "](#tab=tasks&id=D-2&diff=V-2)" not in text
-    # 検証（まとまりを指さないものは書いた文字のまま）
-    for literal in ("[無いまとまり](#diff=V-99)", "[前回から](#diff=since)", "[決め方へ](#決め方)"):
-        assert literal in text
+    # 検証（まとまりを指さないものはリンクにならず、リンクの文字だけが出る）
+    assert page.locator(f"{post} a").count() == 2
+    for word in ("無いまとまり", "前回から", "決め方へ"):
+        assert word in text
+    for marker in ("[", "](#diff=V-99)", "](#diff=since)", "](#決め方)"):
+        assert marker not in text
     # 実行（「D-1 を直した」を押す）
     page.locator(links, has_text="D-1 を直した").click()
     page.wait_for_function(
@@ -1594,6 +1646,43 @@ def test_normal_when_post_link_to_change_set(
     assert _hash_params(page)["tab"] == ["decisions"]
     assert _hash_params(page)["diff"] == ["V-2"]
     assert page.evaluate("history.length") == history_before
+
+
+def test_normal_when_markdown_post(
+    write_markdown_post_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """スレッドの書き込みとレビュー中の返信を、詳細の本文と同じく mdmark で Markdown として描き、生の HTML のスクリプトを動かさない（正常系）。"""
+    # 準備・実行
+    url, _ = write_markdown_post_preview()
+    open_preview(url, MARKDOWN_POST_HASH)
+    open_thread(page, "TH-1")
+    post = f"{COMMENTS_PANEL} ol.posts > li:nth-child(1) .post-body"
+    page.wait_for_selector(f"{post} figure.diagram svg", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（見出し・表・コード・図が描かれ、記法の文字が出ない）
+    assert page.inner_text(f"{post} h2") == "比べた結果"
+    assert page.locator(f"{post} table").count() == 1
+    assert page.locator(f"{post} pre > code").count() == 1
+    assert page.locator(f"{post} figure.diagram svg").count() >= 1
+    text = page.inner_text(post)
+    for notation in ("##", "| --- |", "```"):
+        assert notation not in text
+    # 検証（段落の中の D-1 は項目を開くボタンで、書き込みの要素は詳細の本文と同じ class）
+    assert page.locator(f"{post} > p button.idlink").all_inner_texts() == ["D-1"]
+    assert page.locator(f"{post}.mdmark").count() == 1
+    # 検証（生の HTML のスクリプトは動かない）
+    assert page.evaluate("window.injected !== true")
+    assert page.locator(f"{post} [onerror]").count() == 0
+    # 検証（スレッドの末尾のレビュー中の返信は、太字で出て `**` が出ない）
+    reply = f"{COMMENTS_PANEL} ol.posts > li.pending .post-body"
+    assert page.inner_text(f"{reply} strong") == "起票してよい"
+    assert "**" not in page.inner_text(reply)
+    # 実行（レビュー中を確かめる画面を開く）
+    page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+    row = review_row(COMMENTS_PANEL, "C-1")
+    # 検証（行の返信も太字で出て、`**` が出ない）
+    assert page.inner_text(f"{row} .review-body strong") == "起票してよい"
+    assert "**" not in page.inner_text(f"{row} .review-body")
 
 
 # 帯の印の無い、上端に近い位置（帯の上端からの距離。先頭の印の下）
@@ -1862,6 +1951,9 @@ def test_normal_when_body_diff_side_by_side(
     page.click('[data-id="D-1"]')
     page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent.includes('いつ決めるか')")
     page.wait_for_selector(f"{PANEL} .md:not(.md-value) ins.df-blk:visible")
+    # 実行（幅の区切りで詳細パネルを下限の幅 480px にする）
+    press_key_times(page, "Home", 1)
+    page.wait_for_selector(f"{PANEL} {LAYOUT_SWITCH}", state="hidden")
     # 検証（D-1 の詳細パネルは幅 480px で、切り替えが無く、書き換えた段落をインラインの消した行と足した行で出す）
     assert page.locator(f"{PANEL} {LAYOUT_SWITCH}").is_visible() is False
     assert page.locator(f"{PANEL} .sbs").is_visible() is False
@@ -1918,3 +2010,503 @@ def test_normal_when_html_body_diff_side_by_side(
     assert removed_box["y"] == added_box["y"]
     assert removed_box["x"] < added_box["x"]
     assert "data-line" not in page.inner_text(f"{full_scope} .df-raw.df-split")
+
+
+def test_normal_when_edits_saved(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1", title="最初の問い"))
+    page = open_preview(url, "#tab=decisions&view=board&id=D-1")
+    page.wait_for_selector(f"{EDIT_PANEL}.open")
+    page.get_by_role("button", name="編集する").click()
+    answer = page.get_by_label("決定内容", exact=True)
+    # 実行（溜める）
+    answer.fill("新しい答え")
+    answer.blur()
+    page.wait_for_selector(f"{EDIT_PENDING_BUTTON} .count")
+    # 検証（溜めた後）
+    assert page.inner_text(f"{EDIT_PENDING_BUTTON} .count") == "1"
+    assert page.locator(".pe-field[data-key='answer'] .pm.pm-pending").count() == 1
+    assert page.locator(".card[data-id='D-1'] .pm.pm-pending").count() == 1
+    assert read_items_file(root, "decisions.yaml")[0].get("answer") is None
+    assert reached_by_tab(
+        page,
+        f"{EDIT_PANEL} button.pe-edit-toggle",
+        ".pe-field[data-key='answer'] textarea",
+        EDIT_PENDING_BUTTON,
+    ) == [
+        f"{EDIT_PANEL} button.pe-edit-toggle",
+        ".pe-field[data-key='answer'] textarea",
+        EDIT_PENDING_BUTTON,
+    ]
+    # 実行（保存する）
+    open_edit_pending(page)
+    assert reached_by_tab(page, "button.pe-undo", EDIT_SAVE_BUTTON) == ["button.pe-undo", EDIT_SAVE_BUTTON]
+    page.click(EDIT_SAVE_BUTTON)
+    page.wait_for_selector(".pe-toast")
+    # 検証（保存した後）
+    decision = read_items_file(root, "decisions.yaml")[0]
+    assert (decision["answer"], decision["updated_by"]) == ("新しい答え", "user")
+    assert page.inner_text(".pe-toast").strip() == "1 件を保存しました。"
+    assert page.locator(EDIT_PENDING_BUTTON).count() == 0
+    assert page.locator(".pm").count() == 0
+    assert "新しい答え" in page.inner_text(f"{EDIT_PANEL} .panel-body")
+
+
+# 表を送る・畳むなどの描き直しが済むまで待つミリ秒
+BODY_VIEW_SETTLE_MS = 500
+
+# 長文の列の幅（em）。セルの余白の分だけ広い
+LONG_COLUMN_EM = 24
+CELL_PADDING_EM = 3
+
+# 見出しの行が領域の上端に残る位置の差（px）
+STUCK_TOLERANCE_PX = 2
+
+
+def _body_view_checkbox(page: Page, label: str) -> Any:
+    """表示の設定の、区画「詳細に表示するもの」の中の、名前のチェックボックスを返す。"""
+    return page.locator(f"{SETTINGS_PANEL} fieldset", has_text="詳細に表示するもの").get_by_role(
+        "checkbox", name=label
+    )
+
+
+def test_normal_when_body_table_and_sections(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """列の多い表を持つ資料を開くと、説明の列は 24em で折り返し、ID は折り返さず、表は表の中だけで横に送れる。列の固定のボタンで左の列を残し、縦に送ると見出しの行が領域の上端に残り、見出しの矢印で節を畳める（正常系）。"""
+    # 準備・実行
+    url, _ = write_body_view_preview()
+    open_body_view(page, open_preview, url)
+    state = table_state(page)
+    # 検証（列の種類と折り返し。表は本文の幅に収まらず、表の中だけで送れる）
+    assert state["sizes"][0] == "short"
+    assert state["nowraps"]["ID"] is True
+    assert state["sizes"][-1] == "long"
+    assert state["nowraps"]["説明"] is False
+    assert LONG_COLUMN_EM <= state["widths"]["説明"] <= LONG_COLUMN_EM + CELL_PADDING_EM
+    assert state["fill"] is False
+    assert state["wrapScrolls"] is True
+    assert state["fade"] is True
+    assert state["pinned"] == []
+    # 検証（しま模様は既定でオフで、行を塗り分けない）
+    assert len(set(state["rowColors"])) == 1
+    # 実行（「名前まで固定」を押して、表を右端まで送る）
+    page.get_by_role("button", name="名前まで固定").click()
+    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .md-table-wrap", "e => { e.scrollLeft = e.scrollWidth; }")
+    page.wait_for_timeout(BODY_VIEW_SETTLE_MS)
+    pinned = table_state(page)
+    # 検証（押したボタンは押した状態で、左の 3 列は左端に残り、右端の説明の列が見える）
+    assert page.get_by_role("button", name="名前まで固定").get_attribute("aria-pressed") == "true"
+    assert pinned["pinned"] == ["ID", "状態", "名前"]
+    assert pinned["scrollLeft"] > 0
+    assert abs(pinned["pinnedLefts"][0]) <= STUCK_TOLERANCE_PX
+    assert pinned["pinnedLefts"] == sorted(pinned["pinnedLefts"])
+    assert pinned["pinnedRights"][-1] <= pinned["wrapWidth"] + STUCK_TOLERANCE_PX
+    assert 0 <= pinned["lastLeft"] < pinned["wrapWidth"]
+    assert pinned["fade"] is False
+    # 実行（本文を縦に送って、表の途中まで進める）
+    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .panel-body", "e => { e.scrollTop = 300; }")
+    page.wait_for_selector(f"{BODY_VIEW_SCOPE} table.md-head-stuck")
+    stuck = table_state(page)
+    # 検証（見出しの行が領域の上端に残る）
+    assert abs(stuck["headTop"] - stuck["areaTop"]) <= STUCK_TOLERANCE_PX
+    # 実行（先頭へ戻して、見出し「比較」の矢印を押す）
+    page.eval_on_selector(f"{BODY_VIEW_SCOPE} .panel-body", "e => { e.scrollTop = 0; }")
+    page.get_by_role("button", name="比較を開閉").click()
+    # 検証（比較の節は畳まれて表が隠れ、まとめの節は見えたまま）
+    assert page.get_by_role("button", name="比較を開閉").get_attribute("aria-expanded") == "false"
+    assert page.locator(f"{BODY_VIEW_SCOPE} .md-table-wrap").is_visible() is False
+    assert page.get_by_text("表の見せ方をまとめた段落です。").is_visible() is True
+    assert page.get_by_role("button", name="まとめを開閉").get_attribute("aria-expanded") == "true"
+
+
+def test_normal_when_body_view_overridden(
+    write_body_view_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+) -> None:
+    """端末の保存領域に「しま模様をオン・セクションの折りたたみをオフ」の上書きがあると、行を塗り分け、見出しに矢印を置かない。表示の設定の変えている項目に並び、「既定に戻す」で矢印が戻り、しま模様が消える（正常系）。"""
+    # 準備
+    url, _ = write_body_view_preview()
+    seed_body_view(page, {"tableStripes": True, "sectionFold": False})
+    open_body_view(page, open_preview, url)
+    colors = table_state(page)["rowColors"]
+    # 検証（上書きどおりに描く）
+    assert colors[0] == colors[2] == colors[4]
+    assert colors[0] != colors[1]
+    assert page.locator(f"{BODY_VIEW_SCOPE} button.md-fold").count() == 0
+    # 実行（表示の設定を開く）
+    open_settings(page)
+    # 検証（上書きしたチェックだけが既定と違い、ワークスペースの既定に保存する対象には並ばない）
+    assert _body_view_checkbox(page, "表のしま模様").is_checked() is True
+    assert _body_view_checkbox(page, "セクションの折りたたみ").is_checked() is False
+    assert _body_view_checkbox(page, "表の列の固定").is_checked() is True
+    assert _body_view_checkbox(page, "表の見出しの固定").is_checked() is True
+    assert page.inner_text(f"{SETTINGS_PANEL} .st-over").endswith("表のしま模様・セクションの折りたたみ")
+    assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
+    # 実行（既定に戻す）
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_selector(f"{BODY_VIEW_SCOPE} button.md-fold")
+    # 検証（しま模様は消え、矢印が戻り、上書きは外れる）
+    reset = table_state(page)["rowColors"]
+    assert reset[0] == reset[1]
+    assert page.locator(f"{BODY_VIEW_SCOPE} button.md-fold").count() == 2
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert (prefs["tableStripes"], prefs["sectionFold"]) == (None, None)
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+
+
+def test_normal_when_stored_panel_width(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """同じタブで A-1 の詳細パネルの幅を 768px に変えて読み込み直すと、種類の違う D-3 の詳細パネルも 768px で開き、表の寄せも 768px になる（正常系）。"""
+    # 準備（A-1 の詳細パネルで、幅の区切りを矢印キーで 8 回広げて 768px にする）
+    url = write_preview(make_item("A-1"), make_item("D-3"), bodies={"A-1.md": "資料の本文です。"})
+    open_panel(page, open_preview, url, "#tab=docs&id=A-1", PANEL_VIEWPORT)
+    press_key_times(page, "ArrowLeft", 8)
+    # 実行（同じタブで D-3 を指すハッシュを読み込み直す）
+    page.goto(f"{url}#tab=decisions&view=table&id=D-3")
+    page.reload()
+    page.wait_for_selector(f"{WIDTH_PANEL}.open")
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 768
+    assert state["contentMargin"] == 768
+    assert state["separator"]["now"] == "768"
+
+
+def test_normal_when_stored_panel_width_over_max(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """窓が狭く残した幅 1000px が上限を超えるときは、上限の 840px に収めて開き、保存領域の値は書き換えない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-3"))
+    seed_panel_width(page, 1000)
+    # 実行（本文に重ねる幅 1000px で開く。上限は 1000 − 160 = 840px）
+    open_panel(page, open_preview, url, "#tab=decisions&view=table&id=D-3", {"width": 1000, "height": 800})
+    state = panel_state(page)
+    # 検証
+    assert state["panelWidth"] == 840
+    assert state["contentMargin"] == 0
+    assert state["separator"]["max"] == "840"
+    assert state["separator"]["now"] == "840"
+    assert read_stored_width(page) == "1000"
+
+
+def test_normal_when_window_resized_with_panel_open(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """詳細パネルを開いたまま窓を 1000px に狭めると上限の 840px に収め直し、1280px に戻すと残した 880px に戻る。保存領域の値は 880px のまま（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-3"))
+    seed_panel_width(page, 880)
+    open_panel(page, open_preview, url, "#tab=decisions&view=table&id=D-3", PANEL_VIEWPORT)
+    opened = panel_state(page)
+    # 実行（窓を 1000px に狭める）
+    page.set_viewport_size({"width": 1000, "height": 800})
+    wait_for_value_now(page, 840)
+    narrowed = panel_state(page)
+    # 実行（窓を 1280px に戻す）
+    page.set_viewport_size(PANEL_VIEWPORT)
+    wait_for_value_now(page, 880)
+    widened = panel_state(page)
+    # 検証
+    assert opened["panelWidth"] == 880
+    assert narrowed["panelWidth"] == 840
+    assert narrowed["separator"]["max"] == "840"
+    assert narrowed["separator"]["now"] == "840"
+    assert widened["panelWidth"] == 880
+    assert widened["contentMargin"] == 880
+    assert widened["separator"]["now"] == "880"
+    assert read_stored_width(page) == "880"
+
+
+def test_normal_when_window_widened_from_narrow(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """幅 800px で詳細パネルを開いてから窓を 1280px に広げると、区切りが出て、残した 768px の幅に表の寄せも合わせて開き直す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-3"))
+    seed_panel_width(page, 768)
+    # 実行（幅 800px で開く）
+    open_panel(page, open_preview, url, "#tab=decisions&view=table&id=D-3", {"width": 800, "height": 800})
+    narrow = panel_state(page)
+    # 実行（窓を 1280px に広げる）
+    page.set_viewport_size(PANEL_VIEWPORT)
+    wait_for_value_now(page, 768)
+    widened = panel_state(page)
+    # 検証
+    assert narrow["separator"]["display"] == "none"
+    assert narrow["panelWidth"] == 800
+    assert widened["separator"]["display"] != "none"
+    assert page.locator(RESIZER).is_visible() is True
+    assert widened["panelWidth"] == 768
+    assert widened["contentMargin"] == 768
+    assert widened["separator"]["max"] == "880"
+    assert widened["separator"]["now"] == "768"
+    assert read_stored_width(page) == "768"
+
+
+def test_normal_when_embedded_html(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """Markdown の本文に埋め込んだ HTML を本文の中に描き、チャートを動かし、部品の今の値を JSON でコピーする（正常系）。"""
+    # 準備
+    page.context.grant_permissions(CLIPBOARD_PERMISSIONS)
+    url = write_preview(
+        make_item("A-1", title="埋め込む資料"),
+        make_item("A-2"),
+        make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+        bodies={"A-1.md": EMBEDDED_BODY},
+    )
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+    chart = page.locator(CHART).first
+    # 実行（範囲のボタンを押す）
+    page.get_by_role("button", name="実行", exact=True).click()
+    # 検証（範囲は枠に入れず本文の要素として描かれ、スクリプトとイベントの属性は動かない）
+    assert page.locator("aside.panel .md > .mdmark-html").count() == 1
+    assert page.locator("aside.panel iframe").count() == 0
+    assert page.locator(f"{RANGE} script, {RANGE} [onclick]").count() == 0
+    assert page.evaluate("[window.__script, window.__onclick]") == [None, None]
+    # 実行（拡大して、ドラッグする）
+    fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    chart.locator(ZOOM_IN).click()
+    chart.locator(ZOOM_IN).click()
+    fit_after = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    scroll_before = viewport_scroll(chart)
+    drag_in_viewport(page, chart, dx=-80, dy=-50)
+    scroll_after = viewport_scroll(chart)
+    # 検証（倍率が上がり、ドラッグで表示の位置が変わる。図の拡大の画面は開かず、拡大・縮小のボタンはチャートだけにある）
+    assert fit_after > fit_before
+    assert scroll_after["left"] > scroll_before["left"]
+    assert scroll_after["top"] > scroll_before["top"]
+    assert page.locator("dialog.viewer[open]").count() == 0
+    assert page.locator(f"{RANGE} {ZOOM_IN}").count() == page.locator(CHART).count()
+    assert page.locator(f"{RANGE} p button, {RANGE} .mdmark-param-knob button").count() == 0
+    assert page.locator(f"{RANGE} [data-act='diagram-zoom']").count() == 0
+    # 実行（スライダーを矢印キーで動かし、今の値をコピーする）
+    page.focus(f"{RANGE} input[type=range]")
+    page.keyboard.press("ArrowRight")
+    page.get_by_role("button", name="今の値をコピー").click()
+    # 検証（値とグラフが描き直され、クリップボードに今の値の JSON が入る）
+    assert page.inner_text(f"{RANGE} .mdmark-param output") == "6"
+    assert "今の値（6）" in page.inner_text(f"{RANGE} .mdmark-param .mdmark-diagram-legend")
+    expect(page.locator(f"{RANGE} .mdmark-param-status")).not_to_be_empty()
+    assert json.loads(page.evaluate("navigator.clipboard.readText()")) == {
+        "rps": {"name": "リクエスト数", "value": 6}
+    }
+    # 検証（「ﾋﾟｰｸ時の応答時間 」の「応答時間」に用語のマーカーが付き、乗せると G-1 のツールチップが出る）
+    page.hover(f"{RANGE} a.term")
+    expect(page.locator("#term-tip")).to_be_visible()
+    expect(page.locator("#term-tip")).to_contain_text("返すまでの時間")
+    # 実行（範囲の中の A-2 のリンクを押す）
+    history_length = page.evaluate("history.length")
+    page.click(f"{RANGE} a.idref")
+    # 検証
+    expect(page.locator("aside.panel .d-title")).to_have_text("A-2の題")
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-2"
+    assert page.evaluate("history.length") == history_length + 1
+
+
+def test_normal_when_exported_as_html(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+    open_preview: OpenPreview,
+    page: Page,
+    tmp_path: Path,
+) -> None:
+    """資料 1 件を、通信せずに描く 1 枚の HTML としてダウンロードさせる（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-1", title="書き出す資料"),
+        make_item("G-1", title="用語", aliases=["応答時間"], meaning="返すまでの時間"),
+        bodies={"A-1.md": EXPORT_BODY},
+    )
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=DIAGRAM_TIMEOUT_MS)
+    before = snapshot_tree(root)
+    history_length = page.evaluate("history.length")
+    requests: list[str] = []
+    page.on("request", lambda request: requests.append(request.url))
+    entry = page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    entry.click()
+    # 実行
+    with page.expect_download() as download_info:
+        page.get_by_role("button", name="HTML でエクスポート").click()
+    exported = save_download(download_info.value, tmp_path)
+    # 検証（ダウンロードは A-1.html の 1 つで、画面は移らず、メニューを閉じた後は入口にフォーカスがある）
+    assert exported.name == "A-1.html"
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1"
+    assert page.evaluate("history.length") == history_length
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(entry).to_have_attribute("aria-expanded", "false")
+    expect(entry).to_be_focused()
+    # 検証（エクスポートの間にサーバーの配信への要求が無い）
+    parts = urlsplit(url)
+    server_origin = f"{parts.scheme}://{parts.netloc}"
+    assert [request for request in requests if request.startswith(server_origin)] == []
+    # 実行（通信を止めて file:// で開く）
+    blocked: list[str] = []
+
+    def _route(route: Route) -> None:
+        """`file:` 以外への要求を数えて失敗させる。"""
+        blocked.append(route.request.url)
+        route.abort()
+
+    opened = page.context.new_page()
+    opened.route(_is_not_file_url, _route)
+    opened.goto(exported.as_uri())
+    opened.wait_for_selector(".mdmark figure", timeout=DIAGRAM_TIMEOUT_MS)
+    # 検証（外への要求が 0 件で、本文とチャートが描かれる）
+    assert blocked == []
+    assert opened.locator(".mdmark").count() == 1
+    assert "応答時間の段落" in opened.inner_text(".mdmark")
+    assert opened.locator(".mdmark figure").count() == 2
+    # 実行（「応答時間」に乗せ、スライダーを動かす）
+    opened.hover(".mdmark-term")
+    # 検証（G-1 の意味のツールチップが出て、グラフが描き直される）
+    expect(opened.locator(".mdmark-term-tip")).to_be_visible()
+    expect(opened.locator(".mdmark-term-tip")).to_contain_text("返すまでの時間")
+    opened.focus("input[type=range]")
+    opened.keyboard.press("ArrowRight")
+    assert "今の値（6）" in opened.inner_text(".mdmark-param .mdmark-diagram-legend")
+    opened.close()
+    # ワークスペースは書き換えない
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_exported_as_markdown(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+) -> None:
+    """警告を挟んでから、埋め込んだ HTML を除いた Markdown をダウンロードさせる（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    history_length = page.evaluate("history.length")
+    downloads: list[Download] = []
+    page.on("download", lambda download: downloads.append(download))
+    menu = page.locator(EXPORT_MENU)
+    entry = page.locator("dialog.full").get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True)
+    entry.click()
+    # 実行（Markdown でエクスポートを押す）
+    page.get_by_role("button", name="Markdown でエクスポート").click()
+    # 検証（ダウンロードされず、警告がモーダルを重ねずに同じメニューの中に出る）
+    assert downloads == []
+    expect(menu).to_contain_text("埋め込んだ HTML")
+    assert page.locator("dialog[open]").count() == 1
+    # 実行（戻る）
+    menu.get_by_role("button", name="戻る", exact=True).click()
+    # 検証（形式を選ぶメニューに戻り、フォーカスは「Markdown でエクスポート」にある）
+    assert downloads == []
+    expect(page.get_by_role("button", name="Markdown でエクスポート")).to_be_focused()
+    # 実行（もう一度選び、警告の「エクスポート」を押す）
+    page.get_by_role("button", name="Markdown でエクスポート").click()
+    with page.expect_download() as download_info:
+        menu.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).click()
+    download = download_info.value
+    exported = Path(download.path()).read_text(encoding="utf-8")
+    # 検証（A-1.md の 1 つで、範囲の外の文だけがある）
+    assert download.suggested_filename == "A-1.md"
+    assert "範囲の外の文" in exported
+    assert "範囲の中の文" not in exported
+    assert "<!-- html -->" not in exported
+    # 検証（全画面が開いたまま入口にフォーカスがあり、ハッシュと履歴の数は開く前と同じ）
+    expect(menu).to_be_hidden()
+    expect(page.locator("dialog.full[open]")).to_have_count(1)
+    expect(entry).to_be_focused()
+    assert page.evaluate("location.hash") == "#tab=docs&id=A-1&full=1"
+    assert page.evaluate("history.length") == history_length
+
+
+def test_error_when_export_library_unavailable(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+) -> None:
+    """HTML でエクスポートするときに mdmark を読めず、ダウンロードせずに理由を出し、再試行でエクスポートする（異常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": "本文の段落\n"})
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value).mdmark")
+    downloads: list[Download] = []
+    page.on("download", lambda download: downloads.append(download))
+    # 画面を開いた後に、mdmark の CSS と JavaScript の配信元を切断する
+    page.route(MDMARK_URL_PATTERN, lambda route: route.abort())
+    # 実行
+    page.get_by_role("button", name=EXPORT_ENTRY_NAME, exact=True).click()
+    page.get_by_role("button", name="HTML でエクスポート").click()
+    # 検証（ダウンロードされず、メニューの中に理由と「戻る」「再試行」が出る。本文は描かれたまま）
+    menu = page.locator(EXPORT_MENU)
+    alert = menu.get_by_role("alert")
+    expect(alert).to_be_visible()
+    expect(alert).to_contain_text("mdmark")
+    expect(menu.get_by_role("button", name="戻る", exact=True)).to_be_visible()
+    expect(menu.get_by_role("button", name="再試行")).to_be_visible()
+    assert downloads == []
+    assert "本文の段落" in page.inner_text("aside.panel .md:not(.md-value)")
+    assert page.locator("aside.panel .lib-error").count() == 0
+    # 実行（切断を外して再試行する）
+    page.unroute(MDMARK_URL_PATTERN)
+    with page.expect_download() as download_info:
+        menu.get_by_role("button", name="再試行").click()
+    # 検証
+    assert download_info.value.suggested_filename == "A-1.html"
+    expect(menu).to_be_hidden()
+
+
+def test_normal_when_embedded_html_diff(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """時点を選ぶと、埋め込んだ HTML の範囲を原文の差分で出し、変更前・変更後の描いた結果に切り替える（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .df-raw", timeout=DIAGRAM_TIMEOUT_MS)
+    history_length = page.evaluate("history.length")
+    hash_text = page.evaluate("location.hash")
+    removed = page.locator("aside.panel .df-raw .df-line.df-del")
+    added = page.locator("aside.panel .df-raw .df-line.df-add")
+    # 検証（開いた直後: 原文の行が消した行と足した行で出て、変えた文字が色分けされ、範囲の外の段落には印が無い）
+    expect(removed).to_have_count(1)
+    expect(added).to_have_count(1)
+    assert "<p>2 つ目の段落</p>" in removed.inner_text()
+    assert "<p>書き直した 2 つ目の段落</p>" in added.inner_text()
+    # 変えた文字は、足した行の「書き直した」だけに濃い面が付く（消した行には消えた文字が無い）
+    assert "".join(added.locator(".df-word.df-add").all_inner_texts()).strip() == "書き直した"
+    assert removed.locator(".df-word").count() == 0
+    outside = page.locator("aside.panel .md > p[data-line-start]")
+    assert outside.inner_text() == "範囲の外の段落"
+    assert outside.evaluate("p => p.className + p.querySelectorAll('[class*=df-]').length") == "0"
+    assert outside.get_attribute("data-df") is None
+    # 実行（変更前）
+    page.get_by_role("button", name="描いた結果（変更前）").click()
+    # 検証（選んだ時点の範囲が、書き換える前の文で描かれる）
+    before_view = page.locator("aside.panel .html-marked:visible .mdmark-html p")
+    assert before_view.all_inner_texts() == ["1 つ目の段落", "2 つ目の段落", "3 つ目の段落"]
+    # 実行（変更後）
+    page.get_by_role("button", name="描いた結果（変更後）").click()
+    # 検証（2 つ目の段落だけに「変わった」の印が付き、1・3 つ目の段落には印が無い）
+    after_view = page.locator("aside.panel .html-marked:visible .mdmark-html p")
+    assert after_view.evaluate_all("ps => ps.map(p => [p.textContent, p.dataset.df ?? null])") == [
+        ["1 つ目の段落", None],
+        ["書き直した 2 つ目の段落", "chg"],
+        ["3 つ目の段落", None],
+    ]
+    # 検証（見せ方を切り替えても、ハッシュと履歴の数が変わらない）
+    assert page.evaluate("location.hash") == hash_text
+    assert page.evaluate("history.length") == history_length

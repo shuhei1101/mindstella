@@ -13,7 +13,7 @@ from typing import Any
 from errors import ArgumentError
 from kinds import KINDS, Kind, id_number
 from store import Workspace, as_ids, body_format, find_item, read_body
-from vocabulary import tag_entries
+from tag_text import normalize_tag, similar_tags
 
 # 参照元として拾うキーとその並び
 REFERENCE_KEYS = ("depends_on", "parent", "for", "related", "sources")
@@ -26,6 +26,9 @@ MAX_LIMIT = 80
 
 # `response_format` が `detailed` のとき、項目ごとに足すキーとその並び
 DETAILED_KEYS = ("target", "category", "phase", "attrs", "updated")
+
+# スレッドをタグの一覧の種類に並べるときの名前
+THREAD_KIND = "thread"
 
 # 切り詰めたときの案内に並べる引数の名前とその並び
 NARROWING_ARGUMENTS = ("tags", "kind", "status", "phase", "category", "text")
@@ -144,28 +147,57 @@ def list_attrs(workspace: Workspace) -> list[dict[str, Any]]:
     ]
 
 
-def list_tags(workspace: Workspace) -> list[dict[str, Any]]:
-    """タグの語彙のタグごとに、説明と、持つ項目の数と種類を数える（語彙に無いタグは返さない）。"""
+def list_tags(workspace: Workspace, thread_tags: list[list[str]]) -> list[dict[str, Any]]:
+    """項目とスレッドが使っているタグを、正規化した表記ごとに持つ数と種類を数える（件数の多い順）。"""
     counts: dict[str, int] = {}
-    kinds_by_name: dict[str, set[Kind]] = {}
+    kinds_by_name: dict[str, set[str]] = {}
     for kind, item in _iter_sorted_items(workspace):
         tags = item.get("tags")
         if not isinstance(tags, list):
             continue
-        # 1 つの項目が同じタグを 2 回持っても 1 件と数える
-        for name in {tag for tag in tags if isinstance(tag, str)}:
+        # 1 つの項目が同じタグを表記を変えて 2 回持っても 1 件と数える
+        for name in _normalized_tags(tags):
             counts[name] = counts.get(name, 0) + 1
             kinds_by_name.setdefault(name, set()).add(kind)
+    for tags in thread_tags:
+        for name in _normalized_tags(tags):
+            counts[name] = counts.get(name, 0) + 1
+            kinds_by_name.setdefault(name, set()).add(THREAD_KIND)
     return [
         {
-            "name": entry["name"],
-            "summary": entry["summary"],
-            "count": counts.get(str(entry["name"]), 0),
-            # 種類の並びは KINDS の順（持つ項目が無いタグは空）
-            "kinds": [kind for kind in KINDS if kind in kinds_by_name.get(str(entry["name"]), ())],
+            "name": name,
+            "count": counts[name],
+            # 種類の並びは KINDS の順で、スレッドは最後
+            "kinds": [kind for kind in (*KINDS, THREAD_KIND) if kind in kinds_by_name[name]],
         }
-        for entry in tag_entries(workspace.settings)
+        for name in sorted(counts, key=lambda name: (-counts[name], name))
     ]
+
+
+def list_stray_tags(
+    workspace: Workspace, search_filter: SearchFilter
+) -> list[tuple[str, list[str]]]:
+    """条件の `tags`・`any_tags` のうち、どの項目も使っていないタグを、近い使われているタグを添えて返す。"""
+    used: set[str] = set()
+    for _, item in _iter_sorted_items(workspace):
+        tags = item.get("tags")
+        if isinstance(tags, list):
+            used.update(_normalized_tags(tags))
+    stray: list[tuple[str, list[str]]] = []
+    seen: set[str] = set()
+    for tag in (*search_filter.tags, *search_filter.any_tags):
+        name = normalize_tag(tag)
+        # 使われているタグと、既に拾ったタグは除く
+        if name in used or name in seen:
+            continue
+        seen.add(name)
+        stray.append((tag, similar_tags(tag, used)))
+    return stray
+
+
+def _normalized_tags(tags: list[Any]) -> set[str]:
+    """`tags` の文字列を正規化し、重なりを除く。"""
+    return {normalize_tag(tag) for tag in tags if isinstance(tag, str)}
 
 
 def page_results(
@@ -174,6 +206,7 @@ def page_results(
     *,
     limit: int,
     cursor: str | None,
+    stray_tags: list[tuple[str, list[str]]] | None = None,
 ) -> dict[str, Any]:
     """検索結果を続きの値の位置から件数だけ切り出し、全体の件数・次の続きの値・絞り込みの案内を添える。"""
     # 続きの値があれば読んだ位置を取り出す（無ければ最初のページ）
@@ -185,18 +218,30 @@ def page_results(
         "items": items,
         "total": len(results),
         "next_cursor": _encode_cursor(offset + limit, search_filter) if has_next else None,
-        "hint": build_hint(len(results), len(items), search_filter, has_next=has_next),
+        "hint": build_hint(
+            len(results), len(items), search_filter, has_next=has_next, stray_tags=stray_tags
+        ),
     }
 
 
 def build_hint(
-    total: int, returned: int, search_filter: SearchFilter, *, has_next: bool
+    total: int,
+    returned: int,
+    search_filter: SearchFilter,
+    *,
+    has_next: bool,
+    stray_tags: list[tuple[str, list[str]]] | None = None,
 ) -> str | None:
     """切り詰めたときは絞り込める引数、0 件のときは外せる条件を案内する文を組み立てる。"""
     given = _given_arguments(search_filter)
     # 条件を渡したのに 0 件: 渡した条件の引数を並べて外すよう案内する
     if total == 0 and given:
-        return f"合う項目がありません。{'・'.join(given)} のどれかを外して探してください"
+        hint = f"合う項目がありません。{'・'.join(given)} のどれかを外して探してください"
+        # どの項目も使っていないタグは、近い使われているタグを案内する
+        for tag, similar in stray_tags or []:
+            nearest = "・".join(similar) if similar else "近いタグなし"
+            hint += f" {tag} はどの項目も使っていないタグです（近いタグ: {nearest}）"
+        return hint
     # 続きがある: まだ渡していない絞り込みの引数と続きの読み方を案内する
     if has_next:
         remaining = [name for name in NARROWING_ARGUMENTS if name not in given]
@@ -271,12 +316,15 @@ def _matches_fields(item: dict[str, Any], search_filter: SearchFilter) -> bool:
         if wanted is not None and item.get(name) != wanted:
             return False
     item_tags = item.get("tags")
-    tags = item_tags if isinstance(item_tags, list) else []
+    # タグは渡した側も項目の側も正規化して比べる
+    tags = _normalized_tags(item_tags) if isinstance(item_tags, list) else set()
     # tags: 渡したタグを全て持つか
-    if not all(tag in tags for tag in search_filter.tags):
+    if not all(normalize_tag(tag) in tags for tag in search_filter.tags):
         return False
     # any_tags: 渡したタグのどれかを持つか（渡していなければ絞らない）
-    if search_filter.any_tags and not any(tag in tags for tag in search_filter.any_tags):
+    if search_filter.any_tags and not any(
+        normalize_tag(tag) in tags for tag in search_filter.any_tags
+    ):
         return False
     attrs = item.get("attrs")
     item_attrs = attrs if isinstance(attrs, dict) else {}

@@ -1,0 +1,60 @@
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 1 回目
+..........                                                               [100%]
+10 passed in 43.04s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 2 回目
+..........                                                               [100%]
+10 passed in 35.89s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 3 回目
+..........                                                               [100%]
+10 passed in 34.26s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 4 回目
+..........                                                               [100%]
+10 passed in 27.39s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 5 回目
+..........                                                               [100%]
+10 passed in 30.53s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 6 回目
+..........                                                               [100%]
+10 passed in 28.49s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 7 回目
+..........                                                               [100%]
+10 passed in 23.67s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 8 回目
+..........                                                               [100%]
+10 passed in 25.89s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 9 回目
+..........                                                               [100%]
+10 passed in 28.26s
+$ pytest tests/integration/preview/test_workspace_settings_screen.py  # 10 回目
+..........                                                               [100%]
+10 passed in 24.11s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 1 回目
+.                                                                        [100%]
+1 passed in 6.89s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 2 回目
+.                                                                        [100%]
+1 passed in 6.52s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 3 回目
+.                                                                        [100%]
+1 passed in 7.11s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 4 回目
+.                                                                        [100%]
+1 passed in 6.64s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 5 回目
+.                                                                        [100%]
+1 passed in 6.92s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 6 回目
+.                                                                        [100%]
+1 passed in 7.49s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 7 回目
+.                                                                        [100%]
+1 passed in 7.74s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 8 回目
+.                                                                        [100%]
+1 passed in 6.63s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 9 回目
+.                                                                        [100%]
+1 passed in 7.04s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_options_edit  # 10 回目
+.                                                                        [100%]
+1 passed in 6.06s

@@ -1,0 +1,73 @@
+title: "保存待ちの印"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts#MindmapPreview.pendingEditMark"
+story: "Preview/PendingMark"
+states:
+  - name: Pending
+    description: 書き換え・追加の編集。印の色の破線の枠、重ねた紙の印と「保存待ち」
+    args:
+      - name: kind
+        value: pending
+  - name: Remove
+    description: 削除の編集。文字色の破線の枠、ゴミ箱の印と「保存で削除」
+    args:
+      - name: kind
+        value: remove
+  - name: Blocked
+    description: 保存で書き込めなかった編集。失敗の赤の実線の枠、警告の印と「書き込めない」
+    args:
+      - name: kind
+        value: blocked
+  - name: PendingCompact
+    description: 印だけの書き換え・追加。幅 20px・高さ 18px の破線の枠に重ねた紙の印だけ
+    args:
+      - name: kind
+        value: pending
+      - name: compact
+        value: 'true'
+  - name: RemoveCompact
+    description: 印だけの削除
+    args:
+      - name: kind
+        value: remove
+      - name: compact
+        value: 'true'
+  - name: BlockedCompact
+    description: 印だけの書き込めない編集
+    args:
+      - name: kind
+        value: blocked
+      - name: compact
+        value: 'true'
+  - name: Dark
+    description: ダークで 3 種類を並べる。印の色・文字色・失敗の赤はダークのトークンで読める濃さにする
+    args:
+      - name: kind
+        value: pending
+lead: 保存待ちの編集がある項目・キー・案に、破線の枠に重ねた紙の印と文字の札を出す。ボード・カード・表・マップの節・詳細パネルのキーと案の見出しが同じ形を使う。差分の印（記号の塗り）・コメントの印（吹き出しのピル）とは形で見分ける。
+args:
+  - name: kind
+    type: 列挙
+    required: true
+    choices: pending・remove・blocked
+    description: '`pending` は書き換え・追加の編集（印の色の破線と「保存待ち」）、`remove` は削除の編集（文字色の破線とゴミ箱の印と「保存で削除」）、`blocked` は保存で書き込めなかった編集（失敗の赤の実線と警告の印と「書き込めない」）'
+    status: planned
+  - name: compact
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 印だけにするか。キー・案の見出し・マップの節・詳細パネルの見出しのように場所が狭いところで使う。真のときも文字は読み上げと `title` に残す
+    status: planned
+accessibility:
+  - 印は `aria-hidden` にし、「保存待ち」「保存で削除」「書き込めない」を文字（`compact` のときは読み上げにだけ残す文字と `title`）で持つ
+  - 押す操作を持たず、フォーカスも受けない。置いたカード・行・節を押すと詳細パネルが開く
+  - 色だけに頼らず、枠の線の種類（破線・実線）と印の形（重ねた紙・ゴミ箱・警告）で 3 種類を見分ける
+  - 置いたカード・行・節がホバー・フォーカス・選んでいる状態になっても、印の色は変えない
+refs:
+  - dev/設計書/部品設計/プレビュー/差分の印.ts#
+  - dev/設計書/部品設計/プレビュー/コメントの印.ts#
+status: planned
+introduced:
+  pr: 325
+notes:
+  モック: '`dev/mock/components/pending-mark/index.html`（モック作成で合意。確認ログの「モックへの合意」）'
+test_file: tests/integration/storybook/test_pending_mark_stories.py

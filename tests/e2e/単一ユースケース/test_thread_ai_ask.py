@@ -30,7 +30,6 @@ from workspace_fixtures import (
 # 立てるスレッドの本文・タグ・要約
 QUESTION = "D-1 の比べた結果を Issue に起票してよいですか"
 TAGS = ["起票"]
-TAG_VOCABULARY = [{"name": "起票"}]
 SUMMARY = "D-1 の比べた結果を Issue に起票してよいかの確認。返事待ち"
 
 # 空のオープン一覧の文言
@@ -40,13 +39,12 @@ EMPTY = f"{COMMENTS_PANEL} .comments-empty"
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """確認の問いを本文・タグ・要約つきのオープンのスレッドとして立て、取り込み待ちには出ない（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": TAG_VOCABULARY})
+    root = make_workspace(make_item("D-1"))
     ws = {"workspace": str(root)}
     # 実行
     created = replay("new_thread", **ws, body=QUESTION, tags=TAGS, summary=SUMMARY)
@@ -70,14 +68,13 @@ def test_normal(
 def test_normal_when_shown_on_open_screen(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
-    valid_settings: dict[str, Any],
     call_tool: CallTool,
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
     """プレビューでスレッドの一覧を開いたまま AI がスレッドを立てると、画面を開き直さずに行が足される（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": TAG_VOCABULARY})
+    root = make_workspace(make_item("D-1"))
     served = call_tool("preview_url", workspace=str(root))
     assert served.data is not None
     open_preview(str(served.data["url"]))
@@ -118,28 +115,5 @@ def test_error_when_body_empty(
     # 検証
     assert result.is_error is True
     assert "body" in result.text
-    assert not (root / RECORD_DIR / "threads.yaml").exists()
-    assert snapshot_tree(root) == before
-
-
-def test_error_when_unknown_tag(
-    make_workspace: MakeWorkspace,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
-) -> None:
-    """語彙に無いタグでスレッドを立てようとすると、近いタグの候補を添えたエラーになり、スレッドは 0 件のままである（異常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": TAG_VOCABULARY})
-    before = snapshot_tree(root)
-    # 実行
-    result = call_tool(
-        "new_thread", workspace=str(root), body=QUESTION, tags=["起票の確認"], summary=SUMMARY
-    )
-    # 検証
-    # スレッドを立てるツールがエラーを返し、本文に渡したタグと候補がある
-    assert result.is_error is True
-    assert "tags: 起票の確認（候補: 起票）" in result.text
-    # スレッドが 0 件のままである
     assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert snapshot_tree(root) == before

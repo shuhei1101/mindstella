@@ -375,24 +375,3 @@ def test_error_when_html_body_for_non_doc(
     assert result.is_error is True
     assert "tasks.yaml: items[0].body_html: 資料だけが HTML の本文を持てる" in result.text
     assert snapshot_tree(root) == before
-
-
-def test_error_when_unknown_tag(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
-) -> None:
-    """語彙に無いタグを持つ項目は書かず、近いタグの候補を添えたエラーで終わる（異常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1"), settings={**valid_settings, "tags": [{"name": "通知"}]}
-    )
-    before = snapshot_tree(root)
-    # 実行
-    result = call_tool("update", workspace=str(root), id="D-1", item={"tags": ["通知機能"]})
-    # 検証
-    assert result.is_error is True
-    assert "tags: 通知機能（候補: 通知）" in result.text
-    assert snapshot_tree(root) == before

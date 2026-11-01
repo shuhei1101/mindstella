@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import re
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,18 @@ import pytest
 import yaml
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, LoadPreviewStyles, MakeData
+from .fixture_types import (
+    LoadLibrary,
+    LoadMdmark,
+    LoadPreviewScripts,
+    LoadPreviewStyles,
+    MakeData,
+    MdmarkDist,
+    PutEmbeddedMdmark,
+    PutMdmarkCss,
+    PutMdmarkImportMap,
+    ServeMdmark,
+)
 
 # このファイルから見たリポジトリの直下（tests/unit/preview の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -45,6 +57,84 @@ LIBRARY_URL_PATTERN = re.compile(r"/npm/(?P<package>[^@/]+)@[^/]+/(?P<path>.+)$"
 # 描画のライブラリの読み込み結果（URL と本文）。テストをまたいで 1 回だけ読む
 type LoadedLibrary = tuple[str, str]
 _loaded_libraries: dict[str, LoadedLibrary] = {}
+
+# mdmark の外部ライブラリの設計書の名前
+MDMARK_DESIGN = "mdmark"
+
+# mdmark の配布物を jsDelivr から取るとき、接続と 1 回の読み取りをそれぞれ待つ秒数
+MDMARK_FETCH_TIMEOUT_SEC = 30
+
+# 取った mdmark の配布物を置くフォルダ（node_modules の中。git の管理外。1 回取れば次からは取らない）
+MDMARK_CACHE_DIR = NODE_MODULES_DIR / ".cache" / "mindstella-tests"
+
+
+# mdmark の配布物の読み込み結果。テストをまたいで 1 回だけ読む
+_mdmark_dists: list[MdmarkDist] = []
+_mdmark_css_dists: list[MdmarkDist] = []
+
+# mdmark の JavaScript の URL から CSS の URL を作る置き換え
+MDMARK_JS_FILE = "index.js"
+MDMARK_CSS_FILE = "index.css"
+
+
+def _sha384_of(body: bytes) -> str:
+    """中身の sha384 を `sha384-{Base64}` の形にして返す。"""
+    return "sha384-" + base64.b64encode(hashlib.sha384(body).digest()).decode("ascii")
+
+
+def _read_mdmark_dist() -> MdmarkDist:
+    """外部ライブラリの設計書の mdmark の JavaScript を、integrity と突き合わせて返す。無ければ jsDelivr から取って置く。"""
+    # 読み込み済みならそのまま返す
+    if _mdmark_dists:
+        return _mdmark_dists[0]
+    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{MDMARK_DESIGN}.yaml").read_text(encoding="utf-8"))
+    url = design["version"]["source"]
+    # 版の固定の仕方に書いてある最初の integrity が JavaScript の値（CSS の値はその後ろ）
+    expected = re.search(r"sha384-[A-Za-z0-9+/=]+", design["version"]["pinning"])
+    assert expected is not None, f"{MDMARK_DESIGN} の設計書に integrity がありません"
+    cache_path = MDMARK_CACHE_DIR / f"{hashlib.sha256(expected.group(0).encode()).hexdigest()}.js"
+    if cache_path.is_file():
+        body = cache_path.read_bytes()
+    else:
+        # 設計書が固定した URL（jsDelivr の GitHub のタグ）から取る
+        with urllib.request.urlopen(url, timeout=MDMARK_FETCH_TIMEOUT_SEC) as response:
+            body = response.read()
+    # 設計書が固定した中身と同じバイトか
+    assert _sha384_of(body) == expected.group(0), f"{url} の中身が設計書の integrity と違います"
+    if not cache_path.is_file():
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_bytes(body)
+    _mdmark_dists.append(
+        MdmarkDist(url=url, integrity=expected.group(0), body=body.decode("utf-8"))
+    )
+    return _mdmark_dists[0]
+
+
+def _read_mdmark_css_dist() -> MdmarkDist:
+    """外部ライブラリの設計書の mdmark の CSS を、integrity と突き合わせて返す。無ければ jsDelivr から取って置く。"""
+    # 読み込み済みならそのまま返す
+    if _mdmark_css_dists:
+        return _mdmark_css_dists[0]
+    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{MDMARK_DESIGN}.yaml").read_text(encoding="utf-8"))
+    url = design["version"]["source"].replace(MDMARK_JS_FILE, MDMARK_CSS_FILE)
+    # 版の固定の仕方に書いてある 2 つ目の integrity が CSS の値（最初は JavaScript の値）
+    integrities = re.findall(r"sha384-[A-Za-z0-9+/=]+", design["version"]["pinning"])
+    assert len(integrities) >= 2, f"{MDMARK_DESIGN} の設計書に CSS の integrity がありません"
+    expected = integrities[1]
+    cache_path = MDMARK_CACHE_DIR / f"{hashlib.sha256(expected.encode()).hexdigest()}.css"
+    if cache_path.is_file():
+        body = cache_path.read_bytes()
+    else:
+        # 設計書が固定した URL（jsDelivr の GitHub のタグ）から取る
+        with urllib.request.urlopen(url, timeout=MDMARK_FETCH_TIMEOUT_SEC) as response:
+            body = response.read()
+    # 設計書が固定した中身と同じバイトか
+    assert _sha384_of(body) == expected, f"{url} の中身が設計書の integrity と違います"
+    if not cache_path.is_file():
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_bytes(body)
+    _mdmark_css_dists.append(MdmarkDist(url=url, integrity=expected, body=body.decode("utf-8")))
+    return _mdmark_css_dists[0]
 
 
 def _read_library(name: str) -> LoadedLibrary:
@@ -112,6 +202,127 @@ def load_library(preview_page: Page) -> LoadLibrary:
             url, lambda route: route.fulfill(body=body, content_type="application/javascript")
         )
         preview_page.add_script_tag(url=url)
+
+    return _load
+
+
+@pytest.fixture
+def mdmark_dist() -> MdmarkDist:
+    """設計書が固定した mdmark の JavaScript の URL・integrity・中身を返す。"""
+    return _read_mdmark_dist()
+
+
+@pytest.fixture
+def mdmark_css_dist() -> MdmarkDist:
+    """設計書が固定した mdmark の CSS の URL・integrity・中身を返す。"""
+    return _read_mdmark_css_dist()
+
+
+@pytest.fixture
+def serve_mdmark(preview_page: Page, mdmark_dist: MdmarkDist) -> ServeMdmark:
+    """mdmark の JavaScript の URL への要求に答える関数を返す。"""
+
+    def _serve(*, status: int = 200) -> None:
+        """200 なら配布物の中身を、それ以外なら本文なしの応答を `page.route` で返す。"""
+        if status == 200:
+            preview_page.route(
+                mdmark_dist.url,
+                lambda route: route.fulfill(
+                    body=mdmark_dist.body, content_type="text/javascript"
+                ),
+            )
+        else:
+            preview_page.route(
+                mdmark_dist.url, lambda route: route.fulfill(status=status, body="")
+            )
+
+    return _serve
+
+
+@pytest.fixture
+def put_mdmark_import_map(preview_page: Page, mdmark_dist: MdmarkDist) -> PutMdmarkImportMap:
+    """import map の `integrity` に mdmark の URL を書いた script をページに足す関数を返す。"""
+
+    def _put(*, integrity: str | None = None) -> None:
+        """設計書の値（`integrity` を渡せばその値）を、mdmark の URL の `integrity` にして足す。"""
+        preview_page.evaluate(
+            """({url, integrity}) => {
+                const script = document.createElement("script");
+                script.type = "importmap";
+                script.textContent = JSON.stringify({integrity: {[url]: integrity}});
+                document.head.append(script);
+            }""",
+            {
+                "url": mdmark_dist.url,
+                "integrity": mdmark_dist.integrity if integrity is None else integrity,
+            },
+        )
+
+    return _put
+
+
+@pytest.fixture
+def put_embedded_mdmark(preview_page: Page, mdmark_dist: MdmarkDist) -> PutEmbeddedMdmark:
+    """配る書き出しが mdmark の JavaScript を中身に持つ要素（`#mindmap-mdmark`）をページに足す関数を返す。"""
+
+    def _put() -> None:
+        """配布物の中身を持つ `script[type=text/plain]` を足す（import map は足さない）。"""
+        preview_page.evaluate(
+            """(body) => {
+                const script = document.createElement("script");
+                script.type = "text/plain";
+                script.id = "mindmap-mdmark";
+                script.textContent = body;
+                document.body.append(script);
+            }""",
+            mdmark_dist.body,
+        )
+
+    return _put
+
+
+@pytest.fixture
+def put_mdmark_css(preview_page: Page, mdmark_css_dist: MdmarkDist) -> PutMdmarkCss:
+    """mdmark の CSS の URL への要求に答え、その `link` をページに足す関数を返す。"""
+
+    def _put(*, status: int = 200, tamper: bool = False) -> None:
+        """200 なら配布物の中身（`tamper` なら `integrity` が合わなくなる中身）を、それ以外なら本文なしの応答を返し、設計書の `integrity` を持つ `link` を足す。"""
+        if status == 200:
+            body = mdmark_css_dist.body + "\n/* tampered */" if tamper else mdmark_css_dist.body
+            preview_page.route(
+                mdmark_css_dist.url,
+                lambda route: route.fulfill(body=body, content_type="text/css"),
+            )
+        else:
+            preview_page.route(
+                mdmark_css_dist.url, lambda route: route.fulfill(status=status, body="")
+            )
+        preview_page.evaluate(
+            """({url, integrity}) => {
+                const link = document.createElement("link");
+                link.rel = "stylesheet";
+                link.href = url;
+                link.integrity = integrity;
+                link.crossOrigin = "anonymous";
+                document.head.append(link);
+            }""",
+            {"url": mdmark_css_dist.url, "integrity": mdmark_css_dist.integrity},
+        )
+
+    return _put
+
+
+@pytest.fixture
+def load_mdmark(
+    preview_page: Page, serve_mdmark: ServeMdmark, put_mdmark_import_map: PutMdmarkImportMap
+) -> LoadMdmark:
+    """mdmark をページに読んでグローバルに置く関数を返す（`load_preview_scripts` の後に呼ぶ）。"""
+
+    def _load() -> None:
+        """配信元と import map を用意して、`loadMdmark` で読む。"""
+        serve_mdmark()
+        put_mdmark_import_map()
+        preview_page.evaluate("() => MindmapPreview.loadMdmark()")
 
     return _load
 

@@ -20,6 +20,7 @@ from workspace_fixtures import (  # noqa: F401
     call_tool,
     make_comment,
     make_draft,
+    make_edit,
     make_item,
     make_legacy_item,
     make_legacy_workspace,
@@ -34,6 +35,7 @@ from workspace_fixtures import (  # noqa: F401
     valid_settings,
     write_comments,
     write_drafts,
+    write_edits,
     write_submissions,
     write_threads,
 )

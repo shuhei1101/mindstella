@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from playwright.sync_api import Page
 from storybook_fixture_types import OpenStory
 from storybook_frame_helpers import frame_of, wait_frame_rendered
 
@@ -155,3 +156,84 @@ def test_side_from_markdown(open_story: OpenStory) -> None:
     assert heading.count() == 1
     assert heading.get_attribute("data-md-level") == "1"
     assert frame_of(page, f"{SIDE_AFTER} iframe").locator("[data-df]").count() == 0
+
+
+# 範囲の差分の見せ方の組（読み上げの名前）と、その 3 つの見せ方
+RANGE_GROUP = ".html-diff-bar .segment"
+RANGE_NAMES = ["描いた結果（変更前）", "描いた結果（変更後）", "原文の差分"]
+
+# 見せ方のボタンが 1 行で収まるかを、ボタンごとに返す（高さが上下の余白を除いた文字の高さに収まる）
+_BUTTON_FIT_JS = """() => [...document.querySelectorAll('.html-diff-bar .segment button')].map((button) => ({
+    text: button.textContent.trim(),
+    clipped: button.scrollHeight > button.clientHeight || button.scrollWidth > button.clientWidth,
+    lines: Math.round(button.getBoundingClientRect().height / parseFloat(getComputedStyle(button).lineHeight || '16')),
+}))"""
+
+
+def _range_pressed(page: Page) -> list[str | None]:
+    """範囲の差分の 3 つの見せ方のボタンの `aria-pressed` を、並びのまま返す。"""
+    group = page.locator(RANGE_GROUP)
+    return [group.get_by_role("button", name=name).get_attribute("aria-pressed") for name in RANGE_NAMES]
+
+
+def _assert_range_buttons_on_one_line(page: Page) -> None:
+    """見せ方の 3 つのボタンが、文言を切らず 1 行で読める。"""
+    fit = page.evaluate(_BUTTON_FIT_JS)
+    assert [button["text"] for button in fit] == RANGE_NAMES
+    assert [button["clipped"] for button in fit] == [False, False, False]
+    assert [button["lines"] for button in fit] == [1, 1, 1]
+
+
+def test_range_raw(open_story: OpenStory) -> None:
+    """埋め込んだ HTML の範囲の差分。「埋め込んだ HTML」の名前の後に 3 つの見せ方を並べ、「原文の差分」を選んだ状態で開き、凡例は出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-htmlbodydiff--range-raw")
+    page.wait_for_selector(f"{RAW}:not([hidden])", timeout=SWITCH_TIMEOUT_MS)
+    # 検証（名前の後に 3 つの見せ方があり、「原文の差分」が押された状態）
+    assert page.inner_text(".html-diff-heading") == "埋め込んだ HTML"
+    assert page.get_by_role("group", name="埋め込んだ HTMLの差分の見せ方").count() == 1
+    assert _range_pressed(page) == ["false", "false", "true"]
+    _assert_range_buttons_on_one_line(page)
+    # 検証（消した行 1 つと足した行 2 つを出し、描いた結果と凡例は隠す）
+    removed = page.locator(f"{RAW} .df-line.df-del").all_inner_texts()
+    added = page.locator(f"{RAW} .df-line.df-add").all_inner_texts()
+    assert len(removed) == 1
+    assert "<p>二つ目の段落</p>" in removed[0]
+    assert len(added) == 2
+    assert "<p>書き換えた二つ目の段落</p>" in added[0]
+    assert "<p>足した段落</p>" in added[1]
+    assert page.locator(MARKED).first.is_hidden()
+    assert page.locator(LEGEND).is_hidden()
+
+
+def test_range_before(open_story: OpenStory) -> None:
+    """範囲の差分で「描いた結果（変更前）」に切り替えた。選んだ時点の範囲を描いた結果をマーカー無しで出し、凡例は出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-htmlbodydiff--range-before")
+    page.wait_for_selector(f"{MARKED}:not([hidden]) .mdmark-html", timeout=SWITCH_TIMEOUT_MS)
+    # 検証
+    assert _range_pressed(page) == ["true", "false", "false"]
+    _assert_range_buttons_on_one_line(page)
+    visible = page.locator(f"{MARKED}:not([hidden]) .mdmark-html p")
+    assert visible.all_inner_texts() == ["一つ目の段落", "二つ目の段落"]
+    assert page.locator(f"{MARKED}:not([hidden]) [data-df]").count() == 0
+    assert page.locator(LEGEND).is_hidden()
+    assert page.locator(RAW).is_hidden()
+
+
+def test_range_after(open_story: OpenStory) -> None:
+    """範囲の差分で「描いた結果（変更後）」に切り替えた。今の範囲を描いた結果で、書き換えた段落に「変わった」、足した段落に「足した」のマーカーを付け、凡例を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-htmlbodydiff--range-after")
+    page.wait_for_selector(f"{MARKED}:not([hidden]) .mdmark-html", timeout=SWITCH_TIMEOUT_MS)
+    # 検証
+    assert _range_pressed(page) == ["false", "true", "false"]
+    _assert_range_buttons_on_one_line(page)
+    marked = page.locator(f"{MARKED}:not([hidden]) .mdmark-html p").evaluate_all(
+        "ps => ps.map(p => [p.textContent, p.dataset.df ?? null])"
+    )
+    assert marked == [["一つ目の段落", None], ["書き換えた二つ目の段落", "chg"], ["足した段落", "add"]]
+    legend = page.inner_text(LEGEND)
+    assert "足した" in legend
+    assert "変わった" in legend
+    assert page.locator(RAW).is_hidden()

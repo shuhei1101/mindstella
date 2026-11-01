@@ -76,8 +76,9 @@ flows:
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
       - name: make_workspace
-        description: タグの語彙 `データ`・`画面` を持ち、次の項目を持つワークスペース
+        description: 次の項目を持つワークスペース
         notes: 'D-1: タグ `データ`／D-2: タグ `画面`／T-1: タグ `データ`・`画面`／N-1: タグ無し'
     flow: |-
       ```mermaid
@@ -87,7 +88,7 @@ flows:
         participant WS as ワークスペース
 
         クライアント->>IF: find workspace tags [データ, 画面]
-        IF-->>WS: 語彙と全ての YAML を読む
+        IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items）
         クライアント->>IF: find workspace any_tags [データ, 画面]
         IF-->>クライアント: JSON（items）
@@ -124,12 +125,12 @@ flows:
       - 続きのページの `items` が D-4・D-5、`total` が 5、`next_cursor` が `null`
     test: test_normal_when_paged
   - name: 正常系（0 件に外せる条件を案内する）
-    summary: 語彙にあるタグで 0 件になると、空の結果に外せる条件の案内を添える
+    summary: 使われているタグで 0 件になると、空の結果に外せる条件の案内を添える
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: タグの語彙 `データ`・`保留` を持ち、タグ `データ` の検討事項 D-1 を持つワークスペース
+        description: タグ `データ` の検討事項 D-1 だけを持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -137,8 +138,8 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace kind decision tags [保留]
-        IF-->>WS: 語彙と全ての YAML を読む
+        クライアント->>IF: find workspace kind task tags [データ]
+        IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items: []・total: 0・hint）
       ```
     expected:
@@ -169,13 +170,15 @@ flows:
       - 'D-1 が `target`・`category`・`phase`・`attrs`（`担当: 自分`）・`updated` を持つ'
       - D-1 が `options` と本文を持たない
     test: test_normal_when_detailed
-  - name: 異常系（語彙に無いタグ・UnknownTagError）
-    summary: 語彙に無いタグで探すと、近いタグの候補を添えたエラーで終わる
+  - name: 正常系（表記の違うタグで探す）
+    summary: 全角・大文字の違うタグでも絞れ、どの項目も使っていないタグは 0 件と近い使われているタグの案内を返す
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
       - name: make_workspace
-        description: タグの語彙 `データ`・`画面` を持つワークスペース
+        description: 次の項目を持つワークスペース
+        notes: 'D-1: タグ `データ`／D-2: タグ `API`／D-3: タグ `ａｐｉ`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -183,14 +186,21 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
+        クライアント->>IF: find workspace tags [Api]
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 渡したタグと項目のタグを NFKC と小文字にそろえて比べる
+        IF-->>クライアント: JSON（items は D-2・D-3）
         クライアント->>IF: find workspace tags [データー]
-        IF-->>WS: 語彙を読む
-        IF-->>クライアント: ツールのエラー
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: どの項目も使っていないタグ
+        IF-->>クライアント: JSON（空の items・hint）
       ```
     expected:
-      - ツールのエラーになる
-      - エラーの本文に `データー` と、候補の `データ` がある
-    test: test_error_when_unknown_tag
+      - どちらもツールのエラーにならない
+      - '`Api` で探した `items` が D-2・D-3 の 2 件で、それぞれの `tags` が書いたときの表記（`API`・`ａｐｉ`）'
+      - '`データー` で探した `items` が空で、`total` が 0'
+      - '`データー` で探した `hint` が、`データー` と近い使われているタグ `データ` を含む'
+    test: test_normal_when_tag_normalized
   - name: 異常系（条件の違う続きの値・ArgumentError）
     summary: 続きの値を作った条件と違う条件で渡すとエラーで終わる
     setup:
@@ -213,7 +223,7 @@ flows:
       - 2 回目の呼び出しがツールのエラーになる
       - エラーの本文に引数の名前 `cursor` がある
     test: test_error_when_cursor_mismatched
-lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは語彙のタグだけを受け付ける。
+lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは NFKC と小文字にそろえて比べる。
 idempotent: true
 side_effects: なし（読むだけ）
 request:
@@ -273,7 +283,7 @@ request:
     default: なし（タグで絞らない）
     location: argument
     description: 全てを持つ項目に絞るタグ（AND）
-    constraints: 語彙のタグだけ。空の配列は渡さないのと同じ
+    constraints: どの文字列も渡せ、項目のタグと NFKC と小文字にそろえて比べる。空の配列は渡さないのと同じ
     example: '["データ", "画面"]'
   - name: any_tags
     type: list[str]
@@ -281,7 +291,7 @@ request:
     default: なし（タグで絞らない）
     location: argument
     description: いずれかを持つ項目に絞るタグ（OR）
-    constraints: 語彙のタグだけ。空の配列は渡さないのと同じ
+    constraints: '`tags` と同じ。空の配列は渡さないのと同じ'
     notes: '`tags` と一緒に渡したときは、両方の条件に合う項目'
   - name: limit
     type: int
@@ -345,7 +355,7 @@ response:
     description: 次のページを取るときに `cursor` へ渡す値。最後のページでは `null`
   - name: hint
     type: str | None
-    description: 絞り込みの案内。全体の件数がページより多いときは絞り込める引数（`tags`・`kind`・`status` など）を、0 件のときは外せる条件（渡した条件の引数の名前）を案内する。どちらでもないときは `null`
+    description: 絞り込みの案内。全体の件数がページより多いときは絞り込める引数（`tags`・`kind`・`status` など）を、0 件のときは外せる条件（渡した条件の引数の名前）を案内する。どの項目も使っていないタグを渡して 0 件のときは、そのタグと字面の近い使われているタグも案内する。どちらでもないときは `null`
     example: 全 45 件のうち 20 件を返しました。tags・kind・status で絞るか、next_cursor で続きを読んでください
 exceptions:
   - name: なし（正常終了）
@@ -354,9 +364,6 @@ exceptions:
   - name: WorkspaceNotFoundError
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
-  - name: UnknownTagError
-    condition: '`tags` か `any_tags` に語彙に無いタグがある'
-    notes: ツールのエラー。本文に語彙に無いタグと、字面の近い語彙のタグ（候補）を出す
   - name: ArgumentError
     condition: '`limit` が 1〜80 の外、`cursor` が読めない、または `cursor` を作った条件と今の条件が違う'
     notes: ツールのエラー。本文に引数の名前と理由を出す
@@ -376,7 +383,7 @@ constraints:
   - item: 続きの値
     constraint: 読んだ位置と条件を表す。ページの間に項目が増減したときは、読んだ位置からの続きを返す（重なり・抜けは保証しない）
   - item: 近いタグの候補
-    constraint: 語彙のタグのうち、渡したタグと字面が近い順に最大 5 件
+    constraint: どの項目も使っていないタグを渡して 0 件のとき、`hint` にそのタグと、項目が使っているタグ（`tags` が返す正規化した表記）のうち字面が近い順に最大 5 件を書く
     notes: 近さの測り方はモジュール構成で決める
   - item: ツールの説明
     constraint: MCP のツールの説明に、使える絞り込み（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）と、ページを `next_cursor` でたどること、タグで絞る前に `tags` を呼ぶことを書く

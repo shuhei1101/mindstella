@@ -123,6 +123,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 準備が changes_since_read を threads より前に呼ぶ
     assert "`changes_since_read`" in preparation
     assert preparation.index("`changes_since_read`") < preparation.index("`threads`")
+    # 準備が、利用者が画面で足した項目（updated_by が user）と変えた項目（by に user）を AI の変更と分けて示す
+    assert "`updated_by` が `user`" in preparation
+    assert "`by` に `user` を含む" in preparation
     # 準備が readme を changes_since_read より前に呼び、readme がエラーを返しても準備を続ける
     assert "`readme`" in preparation
     assert preparation.index("`readme`") < preparation.index("`changes_since_read`")

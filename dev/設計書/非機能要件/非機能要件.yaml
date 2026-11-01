@@ -33,7 +33,7 @@ requirements:
     external_constraint: 制限なし
     source_kind: 制限なし
     value: Chrome と Edge の最新版（PC）。スマートフォンは閲覧できれば足りる
-    rationale: コーディング規約『対応ブラウザ』の既定（PC は Chrome と Edge、スマートフォンは閲覧できれば足りる）に従う。使う描画のライブラリ（marked・DOMPurify・elkjs・mermaid）は jsDelivr の配布物を file:// で開いた Chromium で動かして確かめ、性能は Chrome 154 で測った。Edge・Firefox・Safari の実機では確かめていない
+    rationale: 'コーディング規約『対応ブラウザ』の既定（PC は Chrome と Edge、スマートフォンは閲覧できれば足りる）に従う。使う描画のライブラリ（marked・elkjs・mermaid）は jsDelivr の配布物を file:// で開いた Chromium で動かして確かめ、mdmark は import map の `integrity` を含めて Chromium 151 で確かめた（PR #342 の PoC）。性能は Chrome 154 で測った。Edge・Firefox・Safari の実機では確かめていない'
     measurement: '実機での確認: Chrome と Edge で `preview.html` を file:// で開き、概要から詳細パネルとネットワークまでの操作を最後まで済ませる'
   - name: 画面サイズ
     english_name: screen_size

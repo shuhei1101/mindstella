@@ -1,10 +1,14 @@
-# mermaid-bundled.txt の集め直し
+# 配る書き出しのライセンスのファイル
+
+ライブラリのライセンスの本文のうち、リポジトリに置くものを入れるフォルダ。
+
+## mermaid-bundled.txt の集め直し
 
 `mermaid-bundled.txt` は、`mermaid.min.js` が中に束ねた依存の、名前・版・ライセンスの名前と LICENSE・NOTICE の写し。
 配る書き出し（`export`）がライセンスの表示に入れる。
 mermaid の版（`package.json` と `template.html` の `<script src>`）を上げたら、次の手順で集め直す。
 
-## 手順
+### 手順
 
 リポジトリの直下で `npm ci` を済ませ、次のスクリプトを `collect.mjs` として置いて `node collect.mjs` を流す（流した後は `collect.mjs` を消す）。
 
@@ -55,3 +59,13 @@ console.log(`${blocks.length} packages`);
 ```
 
 集め直した後は、`mermaid-bundled.txt` が `</script`・`<script` を含まないことを確かめる（含むと `export` が書き出さない）。
+
+## mdmark-LICENSE.txt の見直し
+
+`mdmark-LICENSE.txt` は、mdmark の MIT の本文。
+著作権の行は `Copyright (c) 2026 shuhei1101`。
+mdmark v0.8.0 のリポジトリにも LICENSE が無く、jsDelivr から本文を取れないため、ここに置いて `export` がライセンスの表示に入れる（`VENDOR_LIBRARIES` の mdmark の行は `license_path=None`・`license_file="licenses/mdmark-LICENSE.txt"`）。
+配布物が中に束ねた依存のライセンスの本文（`dist/THIRD_PARTY_LICENSES.txt`）はここに置かず、`export` が jsDelivr から取る。
+
+mdmark のバージョンを上げるときは、上げ先のリポジトリに LICENSE があるかを確かめる（[shuhei1101/mdmark#140](https://github.com/shuhei1101/mdmark/issues/140)）。
+LICENSE が入ったバージョンへ上げたら、`VENDOR_LIBRARIES` の mdmark の行を `license_path="LICENSE"`・`license_file=None` に戻し、`mdmark-LICENSE.txt` を削除する。

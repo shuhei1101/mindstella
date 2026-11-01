@@ -180,6 +180,18 @@ data_models:
         type: list[str]
         default: '[]'
         description: 書き換えた後に消す `docs/` の本文のファイル名（`remove` が使う）
+      - name: settings
+        type: dict[str, Any] | None
+        default: None
+        description: 一緒に書く `config.yaml` の新しい中身。変えないときは `None`（まとめて保存が使う）
+      - name: threads
+        type: list[dict[str, Any]] | None
+        default: None
+        description: 一緒に書く `threads.yaml` の `items`。変えないときは `None`（タグを付け替えたとき）
+      - name: edits
+        type: dict[str, Any] | None
+        default: None
+        description: 最後に書く `edits.yaml` の新しい中身。変えないときは `None`（まとめて保存が編集を空にする）
 enums:
   - name: Kind
     title: 種類
@@ -404,28 +416,38 @@ classes:
     summary: クローズのスレッドへ AI が返信しようとした。メッセージは `スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください`（画面からのクローズのスレッドへの返信は `CommentConflictError`）
     kind: クラス
     inherits: MindmapError
-  - name: UnknownTagError
-    title: 語彙に無いタグ
+  - name: EditInvalidError
+    title: 編集の形が合わない
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 記録の検索
-    summary: '設定の `tags` の語彙に無いタグを渡した。メッセージは `語彙に無いタグです（先に tags で語彙を確かめ、無ければ update_settings で登録してください）`、`lines` に無いタグごとの `{引数の名前}: {タグ}（候補: {候補を・でつないだもの}）`（候補が無ければ `（候補なし）`）'
+    usecase: 画面で項目を編集して保存する
+    summary: 保存待ちの編集の追加の本文の形・キー・値の型が合わない、または保存待ちが空で保存した。配信は 400 にする。メッセージは合わないキーと理由
+    kind: クラス
+    inherits: MindmapError
+  - name: EditNotFoundError
+    title: 編集・向け先が無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 取り消す編集、または編集する項目・仮の ID・案が無い。配信は 404 にする。メッセージは無い ID か記号
+    kind: クラス
+    inherits: MindmapError
+  - name: EditConflictError
+    title: 編集が溜めた編集と合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 足す案の記号が既にある、または削除を溜めた項目へ削除以外の編集を溜めようとした。配信は 409 にする。メッセージは理由
+    kind: クラス
+    inherits: MindmapError
+  - name: EditsBlockedError
+    title: 書き込めない編集がある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 'まとめて保存で、書き込めない編集が 1 件以上ある。配信は 409 にし、本文に `blocked: [{id, reason, detail, refs}]` を足す。メッセージは「{n} 件の編集を書き込めないため、何も保存していません。」'
     kind: クラス
     inherits: MindmapError
     properties:
-      - name: unknown
-        type: list[tuple[str, str, list[str]]]
-        description: 語彙に無いタグ（引数の名前・タグ・字面の近い語彙のタグ）
-  - name: UnmappedTagError
-    title: 対応の無いタグ
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 設定の更新
-    summary: '新しい `tags` の語彙に対応の無いタグを持つ項目かスレッドが残る。メッセージは `新しい語彙に対応の無いタグが残ります`、`lines` に残るものごとの `{項目かスレッドの ID}: tags: {タグ}`'
-    kind: クラス
-    inherits: MindmapError
-    properties:
-      - name: unmapped
-        type: list[tuple[str, str]]
-        description: 残るもの（項目かスレッドの ID、タグ）
+      - name: blocked
+        type: list[BlockedEdit]
+        description: 書き込めない編集（モジュール構成『保存待ちの編集』）。溜めた順
 constants:
   - name: KINDS
     title: 種類の一覧
@@ -1180,7 +1202,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1204,16 +1226,16 @@ functions:
     process: |-
       1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
       2. `kind` が `schema` でない場合、偽を返す
-      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たなければ真
+      3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たないか、`tags` を持てば真
       4. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
       5. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
         summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題'
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `field` を持ち `playbooks` を持たない設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
         mock: なし
-        expected: 真 / 真 / 偽 / 偽 / 真
+        expected: 真 / 真 / 偽 / 偽 / 真 / 真
       - name: test_is_legacy_problem_when_decision_state
         case: 正常
         summary: 書き込む項目以外の案と状態の合わない検討事項だけを前の版の形式とする
@@ -1376,11 +1398,11 @@ functions:
         description: 書き込む変更
     process: |-
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
-      2. `raw` の `items` の種類のファイルを全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
+      2. `raw` の `items` の種類のファイル（`settings` があれば `config.yaml` も）を全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
          - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
-      3. 書く全てのファイル（本文・種類の YAML・`changes.yaml`）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
+      3. 書く全てのファイル（本文・種類の YAML・`config.yaml`・`threads.yaml`・`changes.yaml`・`edits.yaml`。`None` のものは書かない）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → 種類の YAML（`KINDS` の順）→ `changes.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
+      4. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
          - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
@@ -1426,6 +1448,12 @@ functions:
         condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.md`。本文を消す関数を `OSError` を送る関数に差し替える
         mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
         expected: '`WriteFailedError`（メッセージに `N-2.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.md` が呼ぶ前と同じ'
+      - name: test_save_batch_with_settings_and_edits
+        case: 正常
+        summary: 設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す
+        condition: '題名を変えた `settings`、タグを付け替えた `threads`、空の `edits`、T-1 を足したタスクの並び。`parametrize`: そのまま / `os.replace` を置き換え先が `edits.yaml` のときだけ `OSError` を送る関数に差し替える'
+        mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
+        expected: '`tasks.yaml`・`config.yaml`・`threads.yaml`・`edits.yaml` が渡した中身 / `WriteFailedError`（メッセージに `edits.yaml`）で、全てのファイルが呼ぶ前と同じ'
   - name: require_workspace
     title: ワークスペースの確かめ
     kind: 関数
@@ -1710,4 +1738,4 @@ test_files:
   - tests/unit/scripts/test_store.py
 notes:
   HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'
-  タグの語彙のスキーマ: '`settings.schema.json` に任意の `tags`（配列。要素は `name`（必須・`minLength: 1`）と `summary`（任意の文字列）だけを持ち `additionalProperties: false`）を足す。名前の重なりは JSON Schema では見られないので、`update_settings` の引数の確かめ（モジュール構成『設定の更新』）が弾く。`common.schema.json` と `threads.schema.json` の `tags` の説明は、設定の語彙のタグだけと直す（ER 図『ワークスペース』）'
+  タグのスキーマ: '`settings.schema.json` から `tags` を外す（`tags` を持つ `config.yaml` はスキーマに合わなくなり、`is_legacy_problem` が前の版の形式として扱う）。`common.schema.json` と `threads.schema.json` の `tags` の説明は、自由な文字列で、`tags` のツールが正規化した表記で数えると直す（ER 図『ワークスペース』）'

@@ -126,7 +126,7 @@ class ReviewCommentView:
 
 def load_comments(root: Path) -> CommentFile:
     """`comments.yaml` を読み、スキーマと突き合わせて `CommentFile` にする。"""
-    value = _read_validated(records_root(root) / COMMENTS_FILE, COMMENTS_SCHEMA)
+    value = read_validated(records_root(root) / COMMENTS_FILE, COMMENTS_SCHEMA)
     # ファイルが無い
     if value is None:
         return CommentFile(seq=0, items=[])
@@ -146,7 +146,7 @@ def load_comments(root: Path) -> CommentFile:
 
 def load_drafts(root: Path) -> list[Draft]:
     """`drafts.yaml` を読み、スキーマと突き合わせて書きかけの並びにする。"""
-    value = _read_validated(records_root(root) / DRAFTS_FILE, DRAFTS_SCHEMA)
+    value = read_validated(records_root(root) / DRAFTS_FILE, DRAFTS_SCHEMA)
     # ファイルが無い
     if value is None:
         return []
@@ -486,7 +486,7 @@ def _number_of_id(comment_id: str) -> int:
     return int(comment_id.removeprefix(f"{COMMENT_ID_PREFIX}-"))
 
 
-def _read_validated(path: Path, schema_name: str) -> Any | None:
+def read_validated(path: Path, schema_name: str) -> Any | None:
     """YAML を読んでスキーマと突き合わせる（ファイルが無ければ None）。"""
     # ファイルが無い: 0 件として扱う
     if not path.is_file():

@@ -183,48 +183,6 @@ def test_check_phases_when_no_goal(
     assert problems == []
 
 
-def test_check_tags(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
-) -> None:
-    """語彙に無い項目とスレッドのタグを拾う（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存", "通知"]),
-        make_item("T-1"),
-        settings={**valid_settings, "tags": [{"name": "保存"}]},
-    )
-    write_threads(root, make_thread("TH-1", tags=["起票"]))
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_tags(workspace)
-    # 検証
-    assert _keys(problems) == {
-        ("unknown_tag", "decisions.yaml", "D-1", "items[0].tags"),
-        ("unknown_tag", "threads.yaml", "TH-1", "items[0].tags"),
-    }
-    assert {problem.detail for problem in problems} == {"通知", "起票"}
-
-
-def test_check_tags_when_no_threads(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """スレッドが無く、タグが全て語彙にあれば問題は無い（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["保存"]),
-        settings={**valid_settings, "tags": [{"name": "保存"}]},
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    problems = checker._check_tags(workspace)
-    # 検証
-    assert problems == []
-
-
 def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """決めた種類でない ID を指す参照を拾う（正常系）。"""
     # 準備

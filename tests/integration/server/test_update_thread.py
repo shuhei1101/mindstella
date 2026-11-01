@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from .fixture_types import (
     CallTool,
@@ -71,14 +70,11 @@ def test_normal_when_tags(
     make_item: MakeItem,
     make_thread: MakeThread,
     write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
     call_tool: CallTool,
 ) -> None:
     """タグだけを渡した一覧で置き換える（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1"), settings={**valid_settings, "tags": [{"name": "画面"}, {"name": "調査"}]}
-    )
+    root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1", tags=["画面"], summary="相談"))
     # 実行
     result = call_tool(
@@ -183,24 +179,4 @@ def test_error_when_schema_mismatch(
     # 検証
     assert result.is_error is True
     assert any(line.startswith("threads.yaml: items[0]") for line in result.text.splitlines())
-    assert threads_path(root).read_bytes() == before
-
-
-def test_error_when_unknown_tag(
-    make_workspace: MakeWorkspace,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-) -> None:
-    """語彙に無いタグには置き換えず、近いタグの候補を添えたエラーで終わる（異常系）。"""
-    # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "起票"}]})
-    write_threads(root, make_thread("TH-1", tags=["起票"]))
-    before = threads_path(root).read_bytes()
-    # 実行
-    result = call_tool("update_thread", workspace=str(root), id="TH-1", tags=["起票の確認"])
-    # 検証
-    assert result.is_error is True
-    assert "tags: 起票の確認（候補: 起票）" in result.text
     assert threads_path(root).read_bytes() == before

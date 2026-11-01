@@ -6,6 +6,7 @@ import logging
 import os
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ from export_helpers import (
     external_template,
     make_fetch,
     make_responses,
+    module_url,
     write_preview_dir,
 )
 from fixture_types import (
@@ -40,6 +42,7 @@ from fixture_types import (
     SnapshotTree,
     WriteThreads,
 )
+from migrator import plan_migration
 from query import SearchFilter
 from workspace_fixtures import RECORD_DIR
 
@@ -529,18 +532,16 @@ def test_stage_add_skips_removed_id(make_workspace: MakeWorkspace, make_item: Ma
     assert result["id"] == "N-3"
 
 
-def test_stage_add_when_unknown_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグを渡すと当てない（異常系）。"""
+def test_stage_add_when_user_editor(make_workspace: MakeWorkspace) -> None:
+    """編集した人を渡すと、足した項目の updated_by にその人を書く（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "通知"}]})
-    staged = _make_staged(root, 0)
-    item = {"title": "問い", "status": "未整理", "tags": ["通知機能"]}
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError) as raised:
-        commands.stage_add(staged, "decision", item, now=_fixed_now)
-    assert raised.value.unknown == [("tags", "通知機能", ["通知"])]
+    staged = _make_staged(make_workspace(), 0)
+    item = {"title": "画面を作る", "status": "未着手"}
+    # 実行
+    new_staged, _ = commands.stage_add(staged, "task", item, now=_fixed_now, editor="user")
+    # 検証
+    assert new_staged.items["task"][0]["id"] == "T-1"
+    assert new_staged.items["task"][0]["updated_by"] == "user"
 
 
 def test_stage_update_when_limit_zero(
@@ -574,6 +575,21 @@ def test_stage_update_sets_editor(make_workspace: MakeWorkspace, make_item: Make
     assert "updated_by" not in updated["history"][0]["before"]
 
 
+def test_stage_update_when_user_editor(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """編集した人を渡すと、項目と変更履歴の回にその人を書く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", updated_by="ai"))
+    staged = _make_staged(root, 3)
+    # 実行
+    new_staged, _ = commands.stage_update(
+        staged, "D-1", {"answer": "a"}, now=_fixed_now, editor="user"
+    )
+    # 検証
+    updated = new_staged.items["decision"][0]
+    assert updated["updated_by"] == "user"
+    assert updated["history"][0]["by"] == "user"
+
+
 def test_stage_update_when_nothing_changed(
     make_workspace: MakeWorkspace, make_item: MakeItem
 ) -> None:
@@ -587,19 +603,6 @@ def test_stage_update_when_nothing_changed(
     assert result["changed"] == []
     assert new_staged.changes["last_seq"] == 3
     assert new_staged.items["decision"][0]["seq"] == 2
-
-
-def test_stage_update_when_unknown_tag(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグを渡すと当てない（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "tags": [{"name": "通知"}]})
-    staged = _make_staged(root, 0)
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError) as raised:
-        commands.stage_update(staged, "D-1", {"tags": ["通知機能"]}, now=_fixed_now)
-    assert raised.value.unknown == [("tags", "通知機能", ["通知"])]
 
 
 def test_stage_update_when_body_format_changed(
@@ -1178,21 +1181,18 @@ def test_run_find_when_limit_out_of_range(
     assert raised.value.argument == "limit"
 
 
-def test_run_find_when_unknown_tag(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """語彙に無いタグで探すとエラーにする（異常系）。"""
+def test_run_find_when_stray_tag(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """どの項目も使っていないタグは 0 件と近いタグの案内を返す（正常系）。"""
     # 準備
-    root = make_workspace(settings={**valid_settings, "tags": [{"name": "データ"}]})
-    # 実行・検証
-    with pytest.raises(errors.UnknownTagError):
-        commands.run_find(
-            root,
-            SearchFilter(tags=("データー",)),
-            limit=20,
-            cursor=None,
-            response_format="concise",
-        )
+    root = make_workspace(make_item("D-1", tags=["データ"]))
+    # 実行
+    payload = commands.run_find(
+        root, SearchFilter(tags=("データー",)), limit=20, cursor=None, response_format="concise"
+    )
+    # 検証
+    assert payload["items"] == []
+    assert payload["total"] == 0
+    assert "データー はどの項目も使っていないタグです（近いタグ: データ）" in payload["hint"]
 
 
 def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1223,20 +1223,19 @@ def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
 
 
 def test_run_tags(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
 ) -> None:
-    """語彙のタグを出力の形にする（正常系）。"""
+    """項目とスレッドのタグを出力の形にする（正常系）。"""
     # 準備
-    root = make_workspace(
-        make_item("D-1", tags=["データ"]),
-        settings={**valid_settings, "tags": [{"name": "データ"}]},
-    )
+    root = make_workspace(make_item("D-1", tags=["データ"]))
+    write_threads(root, make_thread("TH-1", tags=["データ"]))
     # 実行
     payload = commands.run_tags(root)
     # 検証
-    assert payload == {
-        "tags": [{"name": "データ", "summary": None, "count": 1, "kinds": ["decision"]}]
-    }
+    assert payload == {"tags": [{"name": "データ", "count": 2, "kinds": ["decision", "thread"]}]}
 
 
 def test_run_goal(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1304,6 +1303,38 @@ def test_run_migrate_when_values(
     assert settings["summary"] == "題名"
 
 
+def test_run_migrate_when_call_destructive(
+    make_legacy_workspace: MakeLegacyWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """`call` の手順の destructive: true を steps の destructive に反映する（正常系）。"""
+    # 準備
+    root = make_legacy_workspace()
+    patch_plugin_version("v0.3.0")
+    migrations_dir = tmp_path / "migrations"
+    (migrations_dir / "v0.3.0").mkdir(parents=True)
+    (migrations_dir / "v0.3.0" / "steps.yaml").write_text(
+        "steps:\n"
+        "  - op: call\n    script: convert\n    destructive: true\n"
+        "  - op: call\n    script: keep\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        commands, "plan_migration", partial(plan_migration, migrations_dir=migrations_dir)
+    )
+    # 実行
+    payload = commands.run_migrate(
+        root, plan=True, record=False, values=None, from_version=None, to_version=None
+    )
+    # 検証
+    assert [(step["op"], step["destructive"]) for step in payload["steps"]] == [
+        ("call", True),
+        ("call", False),
+    ]
+
+
 @pytest.mark.parametrize(
     ("kwargs", "expected_argument"),
     [
@@ -1357,9 +1388,16 @@ def _patch_export_offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     # 差し替える前の本物を控える
     real_export = builder.export_preview
     scripts = [("marked", b"/* marked */")]
+    mdmark_package = "shuhei1101/mdmark"
+    module = (mdmark_package, b"/* mdmark */", b".mdmark{}")
     preview_dir = tmp_path / "preview"
-    write_preview_dir(preview_dir, external_template(scripts))
-    fetch, _calls = make_fetch(make_responses(scripts))
+    write_preview_dir(preview_dir, external_template(scripts, module))
+    # mdmark のライセンスは雛形のフォルダのファイルから読み、束ねた依存のライセンスは取る
+    (preview_dir / "licenses").mkdir()
+    (preview_dir / "licenses" / "mdmark-LICENSE.txt").write_text("MIT の本文", encoding="utf-8")
+    responses = make_responses(scripts, module=module)
+    responses[module_url(mdmark_package, "dist/THIRD_PARTY_LICENSES.txt")] = "束ねた本文".encode()
+    fetch, _calls = make_fetch(responses)
 
     def _export_offline(workspace: Any, **kwargs: Any) -> Path:
         """雛形のフォルダと取る関数だけを差し替えて、本物の書き出しを呼ぶ。"""

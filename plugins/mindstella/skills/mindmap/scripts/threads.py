@@ -23,24 +23,20 @@ from errors import (
 from kinds import records_root
 from store import (
     SCHEMA_DIR,
+    THREADS_FILE,
     WHOLE_PATH,
     NowFn,
     Workspace,
     dump_yaml,
     find_item,
     format_path,
-    load_workspace,
     now_utc,
     remove_files,
     write_failed,
     write_temp,
 )
-from vocabulary import require_known_tags
 
 logger = logging.getLogger(__name__)
-
-# ワークスペースのスレッドのファイル名（無ければスレッド 0 件）
-THREADS_FILE = "threads.yaml"
 
 # `SCHEMA_DIR` の下のスレッドのスキーマのファイル名
 THREADS_SCHEMA = "threads.schema.json"
@@ -315,8 +311,6 @@ def create_thread(
     text = _check_text("body", body, MAX_BODY_CHARS)
     summary_text = _check_text("summary", summary, MAX_SUMMARY_CHARS)
     checked_tags = _check_tags([] if tags is None else tags)
-    # タグは語彙にあるものだけ
-    require_known_tags([("tags", checked_tags)], workspace.settings)
     # 向ける項目がある: 無ければ ItemNotFoundError にする
     if target is not None:
         find_item(workspace, target)
@@ -419,9 +413,6 @@ def update_thread(
         raise ArgumentError("summary", "summary・tags・take のどれかを渡してください")
     summary_text = None if summary is None else _check_text("summary", summary, MAX_SUMMARY_CHARS)
     checked_tags = None if tags is None else _check_tags(tags)
-    # タグを渡したときは語彙にあるものだけ
-    if checked_tags is not None:
-        require_known_tags([("tags", checked_tags)], load_workspace(root).settings)
     current = load_threads(root)
     thread = _find_thread(current, thread_id)
 

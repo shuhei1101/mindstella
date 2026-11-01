@@ -1,10 +1,33 @@
 // 描画のライブラリ（雛形が CDN から読むグローバル）の型。npm の同じ版の型を割り当てる。出力しない。
 
-/** Markdown を HTML に描く marked */
-declare const marked: typeof import("marked").marked;
+/** Markdown を共通のスタイルで HTML に描き、無害化する mdmark（`loadMdmark` が ES モジュールを読んでグローバルに置く） */
+declare const mdmark: {
+  /** 要素の中に Markdown を描き、描き直しと片付けの関数を返す。描いたブロックは `data-source-line`（0 始まりのブロックの開始行）を持つ */
+  mount: (
+    el: HTMLElement,
+    opts: {
+      markdown: string;
+      config?: { features?: Record<string, boolean> };
+      /** 用語と資料のツールチップに使う索引。資料の 1 枚の HTML だけが渡す */
+      index?: {
+        docs: { id: string; path: string; title: string; aliases?: string[]; body?: string }[];
+        terms: { id: string; term: string; meaning: string; aliases?: string[] }[];
+      };
+      /** 描く文書の `index.docs` の ID（自分自身への参照を除く） */
+      docId?: string;
+    },
+  ) => { update: (markdown: string) => void; destroy: () => void };
+  /** 読み込んだ mdmark のバージョン */
+  version: () => string;
+  /** 文書ごとに、用語に一致した位置を返す。一致の前に全角半角・英字の大文字小文字・前後の空白を正規化する（`line` は 1 始まり、`start`・`end` は行の中の文字の位置） */
+  collectMatches: (args: {
+    index: { docs: { id: string; path: string; title: string }[]; terms: { id: string; term: string; meaning: string }[] };
+    documents: Record<string, string>;
+  }) => { byDocument: Record<string, { id: string; line: number; start: number; end: number }[]> };
+};
 
-/** HTML を無害化する DOMPurify */
-declare const DOMPurify: typeof import("dompurify").default;
+/** Markdown を HTML に描く marked（本文の差分の塊を分ける `marked.lexer` だけに使う） */
+declare const marked: typeof import("marked").marked;
 
 /** マップの配置を計算する ELK（`new ELK().layout(...)` で使う） */
 declare const ELK: typeof import("elkjs").default;

@@ -122,6 +122,16 @@ HIDDEN_AND_SHOWN_HTML_FRAME_HTML = (
     f'srcdoc="{escape(FRAME_DOCUMENT)}"></iframe>'
 )
 
+# 埋め込んだ HTML の範囲の差分が 2 つ続く本文（どちらの中にも、原文の差分の足した行と消した行）
+RANGE_DIFFS_HTML = "".join(
+    f'<div class="html-diff-c html-diff-range" data-id="range-{number}">'
+    '<div class="html-diff"><pre class="df-raw">'
+    f'<span class="df-line df-add" data-id="range-{number}-added">足した行</span>'
+    f'<span class="df-line df-del" data-id="range-{number}-deleted">消した行</span>'
+    "</pre></div></div>"
+    for number in (1, 2)
+)
+
 # 本文を包んだ枠を作って文書に置き、次のコマの後の枠の中身を調べて返す JavaScript
 BUILD_FRAME_SCRIPT = """async ({html, shown}) => {
     const body = document.createElement("div");
@@ -330,6 +340,14 @@ def test_diff_minimap_frame_when_keys(
                 {"kind": "chg", "first": "in-changed", "last": "in-changed", "frame": "frame"},
             ],
             id="html_frame_hidden_skipped",
+        ),
+        pytest.param(
+            RANGE_DIFFS_HTML,
+            [
+                {"kind": "chg", "first": "range-1", "last": "range-1", "frame": None},
+                {"kind": "chg", "first": "range-2", "last": "range-2", "frame": None},
+            ],
+            id="range_diffs",
         ),
     ],
 )

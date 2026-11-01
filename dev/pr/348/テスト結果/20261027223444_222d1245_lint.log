@@ -1,0 +1,9 @@
+python: /tmp/claude-1000/-mnt-c-Users-shuhe-repo-mindmap/fcb7d24c-366c-4f34-92b4-f76318206d07/scratchpad/venv-mindstella/bin/python
+ruff: ruff 0.17.1
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+exit: 0

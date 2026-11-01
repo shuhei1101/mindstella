@@ -25,6 +25,7 @@ layers:
       - '`python -m playwright install --only-shell chromium` でブラウザを入れてある（CI は `--with-deps` を付ける）'
       - Node 20.19 以上で `npm ci` を済ませ、`npx tsc -p .` で `.ts` から `.js` を生成してある（テストは生成した `.js` を読む）
       - 実行はリポジトリの直下で行う
+      - mdmark の配布物は、外部ライブラリの設計書が固定した jsDelivr の URL から初回だけ取り、設計書の integrity と突き合わせて `node_modules/.cache/mindstella-tests/` に置く（次からは取らない。初回は jsDelivr へ HTTPS で届くこと）
     run_all: |-
       ```bash
       pytest tests/unit/preview

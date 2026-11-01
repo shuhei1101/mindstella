@@ -1,0 +1,125 @@
+title: "保存待ちの編集の読み取り"
+entry:
+  kind: endpoint
+  value: GET /api/edits
+flows:
+  - name: 正常系
+    summary: 溜めた順に保存待ちの編集を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer`）・E-2（タスクの追加 `new-1`）を持つワークスペース
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET
+        IF-->>WS: edits.yaml を読む
+        IF-->>クライアント: 200、JSON（items・count）
+    expected:
+      - ステータスが 200 で、`count` が 2
+      - '`items` が E-1（`target: D-1`・`op: set`・`key: answer`）→ E-2（`target: new-1`・`op: item-add`・`key: tasks`）の順'
+      - どの要素も `base` を持たない
+    test: test_normal
+  - name: 正常系（保存待ちが無い）
+    summary: '`edits.yaml` が無ければ 0 件を返す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`edits.yaml` を持たないワークスペース'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/edits
+
+        クライアント->>IF: GET
+        IF-->>クライアント: 200、JSON（items: []・count: 0）
+    expected:
+      - ステータスが 200 で、`items` が空、`count` が 0
+      - '`edits.yaml` が作られていない'
+    test: test_normal_when_empty
+  - name: 異常系（YAML が読めない・422）
+    summary: 崩れた `edits.yaml` は読まず、合わない箇所を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: '`op` が `rename` の編集を持つ `edits.yaml` を置いたワークスペース'
+    flow: |-
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/edits
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET
+        IF-->>WS: edits.yaml を読む
+        IF-->>クライアント: 422
+    expected:
+      - ステータスが 422 で、`detail` に `edits.yaml` と `op` がある
+    test: test_error_when_schema_mismatch
+lead: プレビューが開いたときと書き換えの知らせを受けたときに、保存待ちの編集（`edits.yaml`）をその場で読んで返す。画面はこれでバッジ・トップバーの件数・保存待ちのパネルを描く。
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+request:
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの
+response:
+  - name: items[].id
+    type: str
+    description: 編集の ID（`E-{連番}`）。並びは連番の小さい順（溜めた順）
+    example: E-1
+  - name: items[].target
+    type: str
+    description: 編集する項目の ID、足す項目の仮の ID（`new-{連番}`）、または設定（`settings`）
+    example: D-1
+  - name: items[].op
+    type: Literal['set', 'option-add', 'option-edit', 'option-remove', 'adopt', 'item-add', 'item-remove', 'setting']
+    description: 編集の種類。意味は ER 図『ワークスペース』の `edits.yaml` の `op`
+    example: set
+  - name: items[].key
+    type: str | None
+    description: 編集するキー（`set` は項目のキー、`option-*`・`adopt` は案の記号、`item-add` は種類、`setting` は設定のキー、`item-remove` は `null`）
+    example: answer
+  - name: items[].value
+    type: Any
+    description: 編集した後の値。`item-add` は足す項目のキーと値のオブジェクト、`option-remove`・`item-remove` は `null`
+    example: ゴールはフェーズごとに 1 つ持つ
+  - name: items[].before
+    type: Any
+    description: 溜めたときの元の値（保存待ちのパネルの「前 → 後」に使う）。`option-add`・`item-add` は `null`
+  - name: items[].created
+    type: str
+    description: 最初に溜めた日時（UTC のタイムゾーン付き ISO 8601）
+  - name: count
+    type: int
+    description: 保存待ちの編集の件数（`items` の長さ）
+    example: '2'
+status_codes:
+  - code: '200'
+    condition: 読んだ（`edits.yaml` が無ければ 0 件）
+  - code: '422'
+    condition: '`edits.yaml` がスキーマに合わないか YAML として読めない、または `config.yaml` が無くなった'
+    notes: '`detail` は『記録の取得』の 422 と同じ形'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+  - item: 返す中身
+    constraint: '`edits.yaml` の各編集の `id`・`target`・`op`・`key`・`value`・`before`・`created` を返す。保存で書き込めるかの確かめに使う控え（`base`）は返さない'
+  - item: 配る書き出し
+    constraint: 配る書き出しの 1 枚の HTML は呼ばない（保存待ちの編集を出さない）
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+  - dev/設計書/ER図/ワークスペース#
+  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
+test_file: tests/integration/server/test_edits_read.py

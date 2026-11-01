@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
+from preview_helpers import http_call
 from workspace_fixtures import RECORD_DIR, MakeWorkspace, SnapshotTree
 
 if TYPE_CHECKING:
@@ -169,6 +170,49 @@ def test_normal_when_item_removed(
     # 足した項目・変えた項目が 0 件である
     assert result["added"] == []
     assert result["changed"] == []
+    # 読んだ後、AI が最後に読んだ時点が changes.yaml の last_seq と同じである
+    changes = read_yaml(root, "changes.yaml")
+    assert changes["read_seq"] == changes["last_seq"]
+
+
+def test_normal_when_saved_from_preview(
+    make_workspace: MakeWorkspace,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """利用者が画面で保存した答えの直し・足したタスク・消したメモを、書き換えた人が利用者の変更として読む（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    replay("add", **ws, kind="decision", item=DECISION)
+    replay("add", **ws, kind="note", item={"title": "消すメモ", "content": "中身"})
+    # 前回読んだ時点を記録する
+    replay("changes_since_read", **ws)
+    # 画面の保存: 保存待ちの編集の入口と保存の入口へ HTTP で送る
+    url = str(replay("preview_url", **ws)["url"])
+    edits = (
+        {"op": "set", "target": "D-1", "key": "answer", "value": "画面で直した答え"},
+        {"op": "item-add", "key": "tasks", "value": {"title": "画面で足すタスク", "kind": "作業", "status": "未着手"}},
+        {"op": "item-remove", "target": "N-1"},
+    )
+    for edit in edits:
+        staged = http_call(url, "/api/edits", method="POST", payload=edit)
+        assert staged.status in (200, 201), staged.text
+    saved = http_call(url, "/api/edits/save", method="POST", payload={})
+    assert saved.status == 200, saved.text
+    # 実行
+    result = replay("changes_since_read", **ws)
+    # 検証
+    # 足した項目が T-1 の 1 件で、最後に編集した人が user である
+    assert [(entry["id"], entry["updated_by"]) for entry in result["added"]] == [("T-1", "user")]
+    # 変えた項目が D-1 の 1 件で、変わったキーが答え、書き換えた人が user だけ、最後に編集した人が user である
+    assert [entry["id"] for entry in result["changed"]] == ["D-1"]
+    changed = result["changed"][0]
+    assert list(changed["before"]) == ["answer"]
+    assert changed["by"] == ["user"]
+    assert changed["updated_by"] == "user"
+    # 消した項目が N-1 の 1 件である
+    assert [entry["id"] for entry in result["removed"]] == ["N-1"]
     # 読んだ後、AI が最後に読んだ時点が changes.yaml の last_seq と同じである
     changes = read_yaml(root, "changes.yaml")
     assert changes["read_seq"] == changes["last_seq"]

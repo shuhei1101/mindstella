@@ -26,6 +26,8 @@ namespace MindmapPreview {
     comments?: Record<string, number>;
     /** 選んだ時点で消したこの種類の項目（入口が `removedOf` で引く）。空でなければ一覧の上に帯を置く。`filters` で絞らない */
     removed?: RemovedItem[];
+    /** 編集の入口。配る書き出し・差分の表示中は渡さない（`null` と同じ） */
+    edit?: ScreenEdit | null;
   };
 
   /** 状態の並びの順に、状態ごとの項目を返す（項目が 0 件の列も返す。列の中は連番の順）。`excluded` は状態の条件で外した列 */
@@ -57,6 +59,7 @@ namespace MindmapPreview {
     open,
     mark,
     comments,
+    edit,
   }: {
     index: RecordIndex;
     item: Item;
@@ -67,11 +70,13 @@ namespace MindmapPreview {
     mark?: DiffKind | undefined;
     /** 項目の ID → レビュー中のコメントの件数。渡したとき、メタ情報の並びの右端に印を置く場所を置く */
     comments?: Record<string, number> | undefined;
+    /** 編集の入口。保存待ちの編集がある項目に、メタ情報の並びの右端（コメントの印の前）に保存待ちの印を置く */
+    edit?: ScreenEdit | null | undefined;
   }): HTMLElement {
     return h({
       tag: "button",
       attrs: {
-        class: item.id === currentSelection() ? "card selected" : "card",
+        class: `${item.id === currentSelection() ? "card selected" : "card"}${edit?.marks[item.id] === "remove" ? " pe-removing" : ""}`,
         type: "button",
         "data-id": item.id,
         onclick: () => open(item.id),
@@ -85,6 +90,7 @@ namespace MindmapPreview {
             mark === undefined ? null : diffMark({ kind: mark }),
             h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
             ...meta.filter(Boolean).map((value) => h({ tag: "span", children: [value] })),
+            editMarkOf({ edit, id: item.id }),
             comments === undefined ? null : commentPlace({ id: item.id, count: comments[item.id] }),
           ],
         }),
@@ -114,11 +120,14 @@ namespace MindmapPreview {
     columns,
     card,
     emptyText,
+    added,
   }: {
     columns: { status: string; items: Item[]; excluded?: boolean }[];
     card: (item: Item) => HTMLElement;
     /** 0 件の列に出す文 */
     emptyText: string;
+    /** 追加する項目のカード（状態の列の先頭に置く。追加だけの列は 0 件の文を出さない） */
+    added?: (status: string) => HTMLElement[];
   }): HTMLElement {
     const element = h({
       tag: "div",
@@ -140,9 +149,10 @@ namespace MindmapPreview {
               // 状態の条件で外した列は、列を残して外した旨を出す
               ...(excluded
                 ? [emptyNote("状態の条件で外しています。")]
-                : items.length > 0
-                  ? items.map(card)
-                  : [emptyNote(emptyText)]),
+                : [
+                    ...(added?.(status) ?? []),
+                    ...(items.length > 0 ? items.map(card) : (added?.(status) ?? []).length > 0 ? [] : [emptyNote(emptyText)]),
+                  ]),
             ],
           }),
         ),
@@ -153,12 +163,37 @@ namespace MindmapPreview {
   }
 
   /** 表示形式の切り替えを置いた道具の行 */
-  export function toolbar(views: { key: View; label: string }[], route: Route, onView: (view: View) => void): HTMLElement {
+  export function toolbar(
+    views: { key: View; label: string }[],
+    route: Route,
+    onView: (view: View) => void,
+    /** 右端に置く「項目を追加」（編集の入口があるとき） */
+    addButton: HTMLElement | null = null,
+  ): HTMLElement {
     return h({
       tag: "div",
       attrs: { class: "toolbar" },
-      children: [viewSwitch({ views, current: route.view, onChange: onView })],
+      children: [viewSwitch({ views, current: route.view, onChange: onView }), addButton],
     });
+  }
+
+  /** 追加する項目が属する状態の列（状態を持たない・並びに無い状態は最初の列）に置く、追加する項目のカード */
+  export function addedCards({
+    edit,
+    statuses,
+    open,
+    doc = false,
+  }: {
+    edit: ScreenEdit | null | undefined;
+    statuses: readonly string[];
+    open: (id: string) => void;
+    doc?: boolean;
+  }): ((status: string) => HTMLElement[]) | undefined {
+    if (edit === null || edit === undefined || edit.adds.length === 0) return undefined;
+    return (status) =>
+      edit.adds
+        .filter((item) => (statuses.includes(item.status ?? "") ? item.status : statuses[0]) === status)
+        .map((item) => addedCard({ item, mark: edit.marks[item.id] ?? "pending", open, doc }));
   }
 
   /** タスクの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
@@ -184,7 +219,7 @@ namespace MindmapPreview {
   }
 
   /** タスクの画面を返す */
-  export function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [] }: ScreenProps): HTMLElement {
+  export function tasksScreen({ index, route, on, marks, comments, filters, drawerOpen, removed = [], edit = null }: ScreenProps): HTMLElement {
     const columns = taskColumns({ index, open: on.open });
     // 絞り込みの条件に合うタスクを、ボードと表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.tasks, columns, filters }) as Item[];
@@ -214,8 +249,10 @@ namespace MindmapPreview {
                 open: on.open,
                 mark: marks?.[item.id],
                 comments,
+                edit,
               }),
             emptyText: "タスクはありません。",
+            added: addedCards({ edit, statuses: TASK_STATUSES, open: on.open }),
           })
         : managedTable({
             kind: "tasks",
@@ -226,6 +263,7 @@ namespace MindmapPreview {
             open: on.open,
             marks,
             ...(comments === undefined ? {} : { comments }),
+            ...(edit === null ? {} : { edit }),
           });
     return h({
       tag: "div",
@@ -238,6 +276,7 @@ namespace MindmapPreview {
           ],
           route,
           on.view,
+          edit === null ? null : addItemButton({ kind: "tasks", onAdd: edit.onAdd }),
         ),
         chips,
         removedBand({ items: removed }),

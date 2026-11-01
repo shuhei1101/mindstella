@@ -266,6 +266,29 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .rec-badge { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 7px; border: 1px solid var(--accent-line); border-radius: var(--radius); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
 .rec-badge svg.icon { width: 12px; height: 12px; }
 .md { font-size: var(--fs-small); line-height: 1.8; }
+/* mdmark の共通のスタイルの色・書体・寸法を、プレビューのトークンで描く（ライト / ダークはトークンに従い、mdmark の既定の色は使わない） */
+.mdmark {
+  --mdmark-color-bg: transparent;
+  --mdmark-color-text: var(--text);
+  --mdmark-color-heading: var(--text);
+  --mdmark-color-muted: var(--text-2);
+  --mdmark-color-link: var(--accent);
+  --mdmark-color-border: var(--border);
+  --mdmark-color-surface: var(--surface-2);
+  --mdmark-color-table-head: var(--thead-bg);
+  --mdmark-color-callout-note: var(--st-open);
+  --mdmark-color-callout-tip: var(--st-done);
+  --mdmark-color-callout-important: var(--st-loose);
+  --mdmark-color-callout-warning: var(--st-hold);
+  --mdmark-color-callout-caution: var(--st-review);
+  --mdmark-font-body: var(--font-sans);
+  --mdmark-font-mono: var(--font-mono);
+  --mdmark-font-size: var(--fs-small);
+  --mdmark-line-height: 1.8;
+  --mdmark-content-width: none;
+  --mdmark-padding: 0;
+  --mdmark-radius: var(--radius);
+}
 /* Markdown で描く値の入れ物: 先頭と末尾の段落の余白を詰め、周りの行の高さに揃える */
 .md-value { font-size: inherit; line-height: 1.7; }
 .md-value > :first-child { margin-top: 0; }
@@ -283,21 +306,120 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md [data-md-level="4"] { font-size: 1em; margin: 1.33em 0; }
 .md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
 .md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
-.md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+/* 本文の表: 幅は中身に合わせ、本文より広いときは入れ物の中で横に送る。固定した列の罫が送られても残るよう、罫は表ではなくセルごとに引く */
+.md table { border-collapse: separate; border-spacing: 0; margin: 8px 0; width: auto; }
 /* 本文の表を包む要素: 表の中だけで横に送り、本文の区画ごと横に送らせない */
 .md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
-/* 包まれた表: 幅に収まる表は本文の幅いっぱいに広げ、余白は包む要素が持つ */
-.md .md-table-wrap > table { margin: 0; }
+/* 包まれた表: 余白は包む要素が持つ。mdmark の表の横送り（display: block・overflow-x: auto）を打ち消し、送るのは包む要素だけにする */
+.md .md-table-wrap > table { margin: 0; display: table; overflow: visible; max-width: none; }
 /* 包む要素のフォーカスの枠: 送る区画の内側に描く */
 .md .md-table-wrap:focus-visible { outline-offset: -2px; }
-/* 本文の長い URL とインラインコード: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
-.md a:not(.idref), .md :not(pre) > code { overflow-wrap: anywhere; }
-.md th, .md td { border: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
+/* 本文の長い URL とコード（コードブロックの中を含む）: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
+.md a:not(.idref), .md code { overflow-wrap: anywhere; }
+/* 本文の表のセル: 右と下の罫 */
+.md th, .md td { border: 0; border-right: 1px solid var(--border-soft); border-bottom: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
+/* 本文の表の左端の列: 左の罫 */
+.md :is(th, td):first-child { border-left: 1px solid var(--border-soft); }
+/* 本文の表の見出しの行: 上の罫 */
+.md thead th { border-top: 1px solid var(--border-soft); }
 .md th { background: var(--surface-2); }
 .md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-mono); font-size: .92em; }
-.md blockquote { margin: 8px 0; padding: 2px 12px; border-left: 2px solid var(--border); color: var(--text-2); }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
+
+/* ===== 本文の表 ===== */
+
+/* 本文の表の枠: 右端のフェードの基準。枠は送らないので、フェードの位置が動かない */
+.md .md-table-frame { position: relative; margin: 8px 0; }
+/* 枠の中の入れ物: 余白は枠が持つ */
+.md .md-table-frame > .md-table-wrap { margin: 0; }
+/* 短い列: 折り返さない */
+.md [data-col-size="short"] { white-space: nowrap; }
+/* 中くらいの列: 最小の幅を持ち、日本語は文節の区切りでだけ折り返す */
+.md [data-col-size="medium"] { min-width: var(--md-col-min); word-break: auto-phrase; }
+/* 長文の列: 一定の幅で折り返す（区切りの無い長い URL も幅の中で折り返す） */
+.md [data-col-size="long"] { width: var(--md-col-long); min-width: var(--md-col-long); overflow-wrap: anywhere; }
+/* 右へまだ送れる表: 右端を本文の地の色へ薄れさせ、続きがあることを示す */
+.md .md-table-frame[data-fade]::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 32px; z-index: 5; pointer-events: none; background: linear-gradient(to right, transparent, var(--surface)); }
+/* しま模様: 本体の行を 1 行おきに塗る（差分のマーカーの行は差分の面のまま）。本文の文字の色を地に薄く混ぜ、明暗どちらでも差分の面・選んだ行の面と見分ける */
+.md table.md-stripes tbody tr:nth-child(even):not(.df-row) > td { background-color: color-mix(in oklab, var(--text) 5%, var(--surface)); }
+/* 見出しを固定した表の見出しの行: スクリプトが入れた送り量だけ縦へずらし、本文の領域の上端に残す */
+.md table.md-head-stick thead th { z-index: 2; transform: translateY(var(--head-offset, 0px)); }
+/* 見出しの行が領域の上端に残っている間: 下の境に影を付け、流れる行の上に浮いていることを示す */
+.md table.md-head-stuck thead th { box-shadow: 0 6px 8px -6px var(--shadow-color); }
+/* 見出しのセル（固定していない列）: 重なりの順と固定のボタンの基準 */
+.md table:is(.md-head-stick, .md-has-pin) thead th:not(.md-pinned) { position: relative; }
+/* 固定のボタンを置く見出しのセル: ボタンの分を右に空ける */
+.md table.md-has-pin thead th { padding-right: 30px; }
+/* 固定のボタン: 見出しのセルの右端に置き、ホバー・フォーカスと固定中だけ出す（一覧の表と同じ） */
+.md .md-pin { position: absolute; top: 50%; right: 4px; width: 24px; height: 24px; transform: translateY(-50%); opacity: 0; }
+/* 固定のボタンを出す場面 */
+.md th:hover .md-pin, .md th:focus-within .md-pin, .md .md-pin[aria-pressed="true"] { opacity: 1; }
+/* 固定した列: 横に送っても左に残る */
+.md .md-pinned { position: sticky; z-index: 1; }
+/* 固定した列の本体のセル: 後ろのセルが透けないよう地の色を持つ */
+.md td.md-pinned { background-color: var(--surface); }
+/* 固定した列の見出しのセル: 流れる見出しのセルより上に重ねる */
+.md table thead th.md-pinned { z-index: 3; }
+/* 固定した列の右端: 影で、送る列の上に浮いていることを示す（一覧の表と同じ） */
+.md .md-pin-edge { box-shadow: 6px 0 8px -6px var(--shadow-color); }
+/* 見出しの行が残っている間の固定した列の右端の見出しのセル: 右と下の両方に影 */
+.md table.md-head-stuck thead th.md-pin-edge { box-shadow: 6px 0 8px -6px var(--shadow-color), 0 6px 8px -6px var(--shadow-color); }
+/* 本文の操作ボタンのフォーカスの枠 */
+.md :is(.md-pin, .md-fold, .code-copy):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* ホバーの無い端末: 固定のボタンを常に出す */
+@media (hover: none) {
+  .md .md-pin { opacity: 1; }
+}
+/* 幅 720px 以下: 列の固定と固定のボタンを外す（一覧の表と同じ。見出しの固定は残す） */
+@media (max-width: 720px) {
+  .md .md-pin { display: none; }
+  .md .md-pinned { position: static; box-shadow: none; }
+  .md table.md-has-pin thead th { padding-right: 8px; }
+}
+
+/* ===== コードブロック ===== */
+
+/* コードブロックの入れ物: 札とボタンの基準 */
+.md .md-code { position: relative; margin: 8px 0; }
+/* 入れ物の中のコードブロック: 余白は入れ物が持ち、ボタンの分だけ右を空ける */
+.md .md-code > pre { margin: 0; padding-right: 40px; }
+/* 言語の札を持つコードブロック: 札の分だけ上を空ける */
+.md .md-code.has-lang > pre { padding-top: 30px; }
+/* 言語の札: 左上に小さく出す */
+.md .code-lang { position: absolute; top: 6px; left: 12px; font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1.5; color: var(--text-3); }
+/* コピーのボタン: 右上に置き、ホバー・フォーカスで出す */
+.md .code-copy { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; opacity: 0; }
+/* コピーのボタンを出す場面 */
+.md .md-code:hover > .code-copy, .md .code-copy:focus-visible { opacity: 1; }
+/* ホバーの無い端末: コピーのボタンを常に出す */
+@media (hover: none) {
+  .md .code-copy { opacity: 1; }
+}
+
+/* ===== Alert の囲み ===== */
+
+/* 囲み: 見た目は mdmark の囲み（種類の色の薄い面と細い枠）に任せる。見出しのアイコンは decorateMarkdown が足すので、mdmark の見出しの飾りは出さない */
+.md .markdown-alert-title::before { display: none; }
+/* 囲みの見出しの文字: 種類の色に本文の文字色を混ぜ、薄い面に対して WCAG AA の 4.5:1 を保つ */
+.md .markdown-alert .markdown-alert-title { color: color-mix(in oklab, var(--mdmark-callout-color) 70%, var(--text)); }
+/* 囲みの見出しのアイコン */
+.md .markdown-alert-title .icon { width: 14px; height: 14px; }
+
+/* ===== セクションの折りたたみ ===== */
+
+/* 開閉のボタン: 見出しの頭の矢印だけを押せる。見出しの文言は選べるまま */
+.md .md-fold { display: inline-grid; place-items: center; width: 24px; height: 24px; margin: 0 4px 0 -4px; padding: 0; vertical-align: middle; border: 1px solid transparent; border-radius: 3px; background: none; color: var(--text-3); }
+/* 開閉のボタンのホバー */
+.md .md-fold:hover { color: var(--text); background: var(--hover); }
+/* 開閉の矢印: 開いているときは下、畳むと右を向く */
+.md .md-fold .icon { width: 14px; height: 14px; transform: rotate(90deg); transition: transform .15s ease; }
+/* 畳んだ見出しの矢印 */
+.md .md-fold[aria-expanded="false"] .icon { transform: none; }
+/* 動きを減らす設定: 矢印の向きを動かさずに替える */
+@media (prefers-reduced-motion: reduce) {
+  .md .md-fold .icon { transition: none; }
+}
 
 /* ===== ポップオーバーと検索 ===== */
 .pop { margin: 0; inset: auto; position: fixed; min-width: 220px; max-width: 320px; max-height: min(560px, calc(100dvh - 16px)); overflow: auto; padding: 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); }
@@ -325,7 +447,7 @@ dialog.search::backdrop { background: var(--scrim); }
 @media (max-width: 900px) {
   .panel { top: var(--topbar-h); width: 100%; z-index: 35; border-left: 0; }
   /* 詳細パネルを開いたまま左のパネル（コメントの一覧・表示の設定・絞り込みのドロワー）を開いたとき: 後から開いた左のパネルを詳細パネル（35）の前に出す */
-  body.left-front .comments-panel, body.left-front .settings-drawer, body.left-front dialog.drawer.narrow { z-index: 36; }
+  body.left-front .comments-panel, body.left-front .pending-panel, body.left-front .settings-drawer, body.left-front dialog.drawer.narrow { z-index: 36; }
   .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; }
   .search-trigger .label, .search-trigger kbd, .brand-sub { display: none; }
   .table-wrap [data-pri="4"], .table-wrap [data-pri="5"] { display: none; }
@@ -491,9 +613,40 @@ table.grid tbody tr.selected td { box-shadow: inset 0 1px 0 var(--accent-line), 
 .map-frame { position: relative; }
 .map-frame .zoom { position: absolute; left: auto; right: 14px; bottom: 14px; }
 
-/* 資料の詳細パネルは本文を読むため広くする */
-.panel.wide { width: min(760px, 100%); }
-@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .content { max-width: none; margin-right: min(760px, 100%); padding-inline: var(--page-pad); } }
+/* ===== 詳細パネルの幅を変える区切り ===== */
+
+/* 区切り: 詳細パネルの内側の左端に重ねる 24px の縦の帯。本文のスクロールバーに重ならない。ポインターの動きを画面のスクロールに取られない */
+.panel-resizer { position: absolute; z-index: 2; top: 0; bottom: 0; left: 0; width: 24px; cursor: col-resize; touch-action: none; }
+/* 区切りの線: 詳細パネルの左端の境目に描き、ふだんは境目の線に重なって見えない */
+.panel-resizer::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: transparent; transition: background-color .15s ease; }
+/* つまみ: 境目の縦の中央に置く小さな縦長の丸。ふだんから薄く出し、ここをつかめると分かるようにする */
+.panel-resizer::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 32px; margin-top: -16px; border-radius: 2px; background: var(--border); transition: background-color .15s ease; }
+/* 乗せた: 線とつまみを濃くする */
+.panel-resizer:hover::before { background: var(--border); }
+.panel-resizer:hover::after { background: var(--text-3); }
+/* キーボードでフォーカスした: 線とつまみをアクセントの色にし、つまみの周りだけを枠で囲む（帯の全体を囲むと本文の左端の文字にかかる） */
+.panel-resizer:focus-visible { outline: none; }
+.panel-resizer:focus-visible::before, .panel-resizer:focus-visible::after { background: var(--accent); }
+.panel-resizer:focus-visible::after { box-shadow: 0 0 0 2px var(--accent); }
+/* ドラッグ中: 線とつまみをアクセントの色にする */
+body.is-panel-resizing .panel-resizer::before, body.is-panel-resizing .panel-resizer::after { background: var(--accent); }
+/* 下限で止まっている: 広げる向き（左）だけのカーソル */
+.panel-resizer[data-edge="min"] { cursor: w-resize; }
+/* 上限で止まっている: 狭める向き（右）だけのカーソル */
+.panel-resizer[data-edge="max"] { cursor: e-resize; }
+/* ドラッグ中の画面全体: カーソルを保ち、本文の文字を選ばない */
+body.is-panel-resizing { cursor: col-resize; user-select: none; }
+/* ドラッグ中の下限・上限: 画面全体のカーソルも片方の向きにする */
+body.is-panel-resizing:has(.panel-resizer[data-edge="min"]) { cursor: w-resize; }
+body.is-panel-resizing:has(.panel-resizer[data-edge="max"]) { cursor: e-resize; }
+/* 動きを減らす設定: 線とつまみの色を切り替えるだけにする */
+@media (prefers-reduced-motion: reduce) {
+  .panel-resizer::before, .panel-resizer::after { transition: none; }
+}
+/* 狭い幅: 詳細パネルは画面の幅いっぱいなので区切りを出さない */
+@media (max-width: 900px) {
+  .panel-resizer { display: none; }
+}
 .mermaid { margin: 8px 0; text-align: center; }
 
 /* ===== 資料のカード ===== */
@@ -635,7 +788,6 @@ dialog.full .panel-head { flex: none; }
 /* 詳細パネルを並べるときは、パンくずも本文と同じだけ寄せる */
 @media (min-width: 1100px) { body.panel-open .crumbs-bar { max-width: none; margin-right: var(--panel-w); } }
 @media (min-width: 901px) { body.panel-open:has(.content.map-view) .crumbs-bar { max-width: none; margin-right: var(--panel-w); } }
-@media (min-width: 1100px) { body.panel-open:has(.panel.wide) .crumbs-bar { margin-right: min(760px, 100%); } }
 
 /* ===== カテゴリー別の進捗のセル: ホバー・フォーカスで面を変える（濃さはトークンの --hover） ===== */
 .cat-table a.cell, .cat-table a.cat-link { display: inline-flex; padding: 4px 6px; margin: -4px -6px; border-radius: var(--radius); color: inherit; text-decoration: none; }
@@ -732,11 +884,11 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* トップバーの検索の入口の両側の空き: 同じ伸び方にして、コメントのボタンを右端に置いたとき検索の入口を中央へ寄せる */
 .topbar.has-comments .spacer { flex: 1 1 0; }
 /* コメント・絞り込み・表示の設定のボタン（トップバー）: 検索の入口と同じ高さと枠 */
-.comments-btn, .filter-btn, .settings-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
-.comments-btn:hover, .filter-btn:hover, .settings-btn:hover { background: var(--topbar-hover); }
-.comments-btn:focus-visible, .filter-btn:focus-visible, .settings-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+.comments-btn, .filter-btn, .settings-btn, .pending-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.comments-btn:hover, .filter-btn:hover, .settings-btn:hover, .pending-btn:hover { background: var(--topbar-hover); }
+.comments-btn:focus-visible, .filter-btn:focus-visible, .settings-btn:focus-visible, .pending-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
 /* パネルを開いているときのボタン: 枠と面で選んだ見た目にする */
-.comments-btn.open, .filter-btn.open, .settings-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
+.comments-btn.open, .filter-btn.open, .settings-btn.open, .pending-btn.open { border-color: var(--topbar-fg-2); background: var(--topbar-hover); }
 /* コメントのボタンの件数: 0 件でも出し、数字は等幅で幅を揺らさない */
 .comments-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--topbar-fg); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 /* 件数が 0 のとき: 塗りを外して目立たせない */
@@ -750,9 +902,9 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* 未読の点（ボタンのホバー・開いているとき）: 縁を地の色に合わせる */
 .comments-btn:is(:hover, .open) .unread-dot { box-shadow: 0 0 0 2px var(--topbar-hover); }
 /* 狭い幅（1100px 以下）: 文字を隠し、印と件数だけにする */
-@media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn { padding: 0 8px; } }
+@media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label, .pending-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn, .pending-btn { padding: 0 8px; } }
 /* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、同じく文字を隠す。詳細度を足さず、480px 以下の余白の指定が効くようにする */
-@media (max-width: 1440px) { :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) .label { display: none; } :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { padding: 0 8px; } }
+@media (max-width: 1440px) { :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) .label { display: none; } :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { padding: 0 8px; } }
 
 /* コメントの入力: 添えた箇所（名前・外す ×・選んだ文）の箱 */
 .send-loc { display: grid; gap: 4px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
@@ -773,14 +925,30 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* 畳んだ入力欄: 1 行の高さにし、伸ばさない */
 .send.collapsed textarea { min-block-size: 0; block-size: var(--control-h); field-sizing: fixed; resize: none; overflow: hidden; padding-block: 5px; }
 
-/* 選んだ箇所の入口: 角を丸め切った横長のピルに、印と「コメント」 */
-.selection-comment { z-index: 60; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); font-weight: 600; white-space: nowrap; box-shadow: var(--shadow-pop); cursor: pointer; }
+/* 選んだ箇所の入口: 幅と高さ 32px の丸に印だけ（名前はツールチップと読み上げで伝える）。面は不透明 */
+.selection-comment { z-index: 60; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); font: inherit; box-shadow: var(--shadow-pop); cursor: pointer; }
 /* 入口のホバー: 面の色だけを変える */
 .selection-comment:hover { background: var(--hover); }
 /* 入口のキーボードのフォーカス: 印の色の輪 */
 .selection-comment:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* 入口の印: 印の色 */
 .selection-comment svg.icon { width: 16px; height: 16px; color: var(--accent); }
+/* 入口の名前のツールチップ: 乗せた・フォーカスしたときだけ出す */
+.selection-comment .sc-tip { position: absolute; left: 0; display: none; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; }
+/* 画面の右半分に出した入口: ツールチップは入口の右端に揃えて左へ伸ばす（画面の外へはみ出さない） */
+.selection-comment[data-tip="end"] .sc-tip { left: auto; right: 0; }
+/* 選んだ範囲の上に出した入口: ツールチップは入口の上 */
+.selection-comment[data-side="above"] .sc-tip { bottom: calc(100% + 6px); }
+/* 選んだ範囲の下に出した入口: ツールチップは入口の下 */
+.selection-comment[data-side="below"] .sc-tip { top: calc(100% + 6px); }
+/* 入口とツールチップの間の 6px をつなぐ透明な領域: ツールチップへポインターを動かしても入口の :hover を保つ */
+.selection-comment .sc-tip::before { content: ""; position: absolute; left: 0; right: 0; height: 6px; }
+/* 入口の上に出したツールチップ: 透明な領域はツールチップの下 */
+.selection-comment[data-side="above"] .sc-tip::before { top: 100%; }
+/* 入口の下に出したツールチップ: 透明な領域はツールチップの上 */
+.selection-comment[data-side="below"] .sc-tip::before { bottom: 100%; }
+/* 乗せた・キーボードでフォーカスした: ツールチップを出す */
+.selection-comment:is(:hover, :focus-visible) .sc-tip { display: block; }
 
 /* 詳細パネルの一番下の、その項目へのレビュー中のコメント: 見出しの件数 */
 .d-review h3 .count { margin-left: 8px; font-family: var(--font-mono); font-weight: 400; color: var(--text-3); }
@@ -803,14 +971,16 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* レビュー中のコメントの箇所: 名前と選んだ文を縦に積む */
 .review-loc { display: grid; gap: 4px; padding: 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
 /* レビュー中のコメントの本文: 改行を保ち、長い URL も折り返す */
-.review-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.review-body { margin: 0; overflow-wrap: anywhere; line-height: 1.6; }
+/* mdmark が読めないときの文字のままの本文: 改行を保つ */
+p.review-body { white-space: pre-wrap; }
 /* 一覧から開いたとき示す箇所: 検索で当たった語と同じ地で囲む */
 .loc-hit { background: var(--hit); border-radius: 2px; box-shadow: 0 0 0 2px var(--hit); }
 
 /* コメントの一覧: タブの帯の下から、本文に重ねて左から出すパネル */
-.comments-panel { position: fixed; z-index: 22; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); visibility: hidden; transition: transform .35s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .35s; }
+.comments-panel, .pending-panel { position: fixed; z-index: 22; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; bottom: 0; width: var(--drawer-w); max-width: 100%; display: flex; flex-direction: column; background: var(--bg); border-right: 1px solid var(--border); box-shadow: 14px 0 32px var(--shadow-color); transform: translateX(-102%); visibility: hidden; transition: transform .35s cubic-bezier(.22, .8, .24, 1), visibility 0s linear .35s; }
 /* 開いたコメントの一覧 */
-.comments-panel.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.22, .8, .24, 1); }
+.comments-panel.open, .pending-panel.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.22, .8, .24, 1); }
 /* 一覧の見出し: 詳細パネルの見出しと同じ帯 */
 .comments-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 48px; padding: 0 10px 0 16px; background: var(--surface); border-bottom: 1px solid var(--border-soft); }
 /* 一覧の見出しの文字と件数 */
@@ -855,7 +1025,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 向けた項目のタイトル: 1 行で末尾を省く */
 .row-target .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 項目を指さないコメント・消えた項目: 押せない見出しにする */
-.row-target.none, .row-target.gone { color: var(--text-2); cursor: default; }
+.row-target.gone { color: var(--text-2); cursor: default; }
 /* 箇所が合わない理由と、箇所を外すボタン */
 .row-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-small); }
 /* 箇所が合わない印 */
@@ -889,7 +1059,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* 下端の入力の余白: 一覧の幅に合わせる */
 .comments-free .send.send-footer { padding: 12px 16px 14px; border-top: 0; }
 /* 狭い幅（900px 以下）: 詳細パネルと同じく画面の幅いっぱいにする */
-@media (max-width: 900px) { .comments-panel { width: 100%; top: var(--topbar-h); z-index: 34; } }
+@media (max-width: 900px) { .comments-panel, .pending-panel { width: 100%; top: var(--topbar-h); z-index: 34; } }
 /* 狭い幅（720px 以下）: 行の余白を詰め、直す・削除を右上に重ねる */
 @media (max-width: 720px) {
   .comments-list .row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
@@ -1143,7 +1313,7 @@ table.grid tr.is-withdrawn td, table.grid tr.is-withdrawn .row-open { color: var
 /* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
 .md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
 /* 塊の中の段落・見出し（元の段が # のもの）・箇条書き: 塊の余白に寄せる */
-.md .df-blk > :is(p, ul, ol, .md-table-wrap, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
+.md .df-blk > :is(p, ul, ol, .md-table-frame, .md-code, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
 /* 足した塊 */
 .md ins.df-blk { background: var(--df-add-bg); }
 /* 消した塊: 取り消し線を引き、文字を控えめにする */
@@ -1419,14 +1589,14 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
 @media (prefers-reduced-motion: reduce) { .stoast, .stoast.show { transition: none; } }
 
 /* 表示の設定・絞り込み・コメントのボタン: どの幅でも、件数の札を持たない間も幅を --target-min 以上にし、印を中央に置く（狭い幅の詰め方を足しても 24px を割らない） */
-.topbar :is(.comments-btn, .filter-btn, .settings-btn) { min-width: var(--target-min); justify-content: center; }
+.topbar :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { min-width: var(--target-min); justify-content: center; }
 
 /* 狭い幅（480px 以下）: 表示の設定・絞り込み・コメントの 3 つのボタン（絞り込みとコメントは件数の札つき）が並んでも横に溢れないよう、トップバーの間隔と余白、ボタンの余白と印・件数の間隔を詰める */
 @media (max-width: 480px) {
   /* トップバー: 要素の間隔と左右の余白を詰める */
   .topbar { gap: 3px; padding: 0 10px; }
   /* 表示の設定・絞り込み・コメントのボタン: 印と件数の間隔と左右の余白を詰める */
-  .comments-btn, .filter-btn, .settings-btn { gap: 4px; padding: 0 6px; }
+  .comments-btn, .filter-btn, .settings-btn, .pending-btn { gap: 4px; padding: 0 6px; }
   /* つながらない間に差分を出すと札の幅が足りなくなるため、押せない飾りのツール名の印を隠す */
   .topbar:has(.conn):has(.df-chip) .brand { display: none; }
   /* 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・コメントの `99+`）で、差分の札か接続の状態を出している間: 幅 389px 以下と同じ詰め方を、幅 390px 以上のこの範囲でも効かせる。ツール名の文字は隠し、差分の札を出している間は印も隠す */
@@ -1436,7 +1606,7 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   /* 同じ条件の印だけのボタン（検索・ライト / ダーク・変更履歴）: 幅を 28px に揃えて縮ませない */
   .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
   /* 同じ条件の表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える */
-  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn) { gap: 2px; padding: 0 2px; }
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { gap: 2px; padding: 0 2px; }
 }
 
 /* 最も狭い幅（389px 以下）: 接続の状態と差分の札がどう重なっても、ボタンを 1 つも隠さず幅 320px までトップバーを収める */
@@ -1448,7 +1618,7 @@ dialog.sconfirm { width: min(460px, calc(100vw - 32px)); }
   /* 印だけのボタン（検索・変更履歴・ライト / ダーク）: 高さは保ち、幅を 28px に揃えて縮ませない */
   .topbar :is(.search-trigger, .top-btn), .topbar:is(*, :has(.conn)) .hist-btn { flex: none; width: 28px; }
   /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
-  .topbar :is(.comments-btn, .filter-btn, .settings-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+  .topbar :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
   /* つながらない・差分ありの間: 印だけのボタンを幅 26px にし、下限で広がった分を右の余白から取らない（既存の 28px の規則に勝つようセレクタを重ねる） */
   .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
 }
@@ -1587,7 +1757,7 @@ dialog.drawer.narrow { top: var(--topbar-h); width: 100%; z-index: 34; border-ri
 /* 用語の印に乗せた・フォーカスした */
 .md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--accent); background: var(--accent-weak); border-radius: 2px; }
 /* 項目の ID のリンク: 等幅の印の色の文字と下線 */
-.md a.idref { white-space: nowrap; font-family: var(--font-mono); font-size: .92em; color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+.md a.idref { white-space: nowrap; overflow-wrap: normal; font-family: var(--font-mono); font-size: .92em; color: var(--accent); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
 /* 項目の ID のリンクに乗せた */
 .md a.idref:hover { text-decoration-color: var(--accent); }
 /* インラインコードの中の ID のリンク: コードの字の大きさのまま */
@@ -1685,9 +1855,13 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 /* ===== HTML の本文の差分 ===== */
 
 /* 見せ方の切り替えと凡例の行を持つ、描いた結果と原文の差分の入れ物 */
-.html-diff-c { display: grid; gap: 8px; }
+.html-diff-c { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 /* 切り替えの行: 切り替えの右に凡例を置き、狭い幅では折り返す */
 .html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* 切り替えの行の切り替え: 狭い幅では切り替えの中で横にスクロールする */
+.html-diff-bar .segment { max-width: 100%; overflow-x: auto; }
+/* 切り替えのボタン: 幅を文言に合わせ、文言を折り返さない */
+.html-diff-bar .segment button { width: auto; white-space: nowrap; }
 /* 凡例の行の余白を切り替えの行に揃える */
 .html-diff-bar .df-legend { margin: 0; }
 /* 切り替えで隠した側（描いた結果・原文の差分・凡例）は、display を持つ部品でも出さない */
@@ -1831,7 +2005,9 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 /* 書き手の名前 */
 .post-author { color: var(--text); font-weight: 600; }
 /* 書き込みの本文: 改行を残し、長い語も折り返す */
-.post-body { margin: 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-body { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+/* mdmark が読めないときの文字のままの本文: 改行を保つ */
+p.post-body { white-space: pre-wrap; }
 /* 本文の中の項目の ID: 行の中に収める */
 .post-body .idlink { margin: 0 2px; }
 /* 本文の中のまとまりのリンク: 詳細の本文のリンクと同じ、色の付いた文字と下線 */
@@ -1893,6 +2069,24 @@ iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px soli
 .row-kind { flex: none; display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 6px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); }
 /* 新しいスレッドの行の、スレッドを開く入口: 本文の下の左に置き、クローズのスレッドへの返信の行の入口と同じ文字の大きさにする */
 .row-thread-open { display: flex; margin-left: -12px; font-size: var(--fs-small); }
+/* 「続きを読む」と「スレッドを開く」を並べた行: 収まらないときはボタンごと折り返す */
+.row-thread-open { flex-wrap: wrap; }
+/* 開閉のボタンと「スレッドを開く」: ボタンの中では文字を折り返さない */
+.row-thread-open > .btn { flex: none; white-space: nowrap; }
+/* 返信の行の、開閉のボタンだけの行: ボタンの文字の頭を本文の頭に揃える */
+.review-more-row { display: flex; margin-left: -12px; font-size: var(--fs-small); }
+/* 返信の行で、ボタンを出さないとき: 行ごと出さない */
+.review-more-row:has(> .review-more[hidden]) { display: none; }
+/* 畳んだ本文: 折り返した後の見た目の行で --fold-lines 行分の高さまでを出し、はみ出しを隠す（本文は Markdown のブロックを持つ。畳んだ部分も読み上げは飛ばさない） */
+.review-body.folded { max-height: calc(var(--fold-lines) * 1lh); overflow: hidden; }
+/* 「続きを読む」「折りたたむ」: 測るまで・畳む行の数を超えないときは出さない（.btn の inline-flex より優先する） */
+.review-more[hidden] { display: none; }
+/* 開閉の矢印: 畳んでいるときは下向き */
+.review-more .icon { width: 14px; height: 14px; transform: rotate(90deg); }
+/* 開閉の矢印: 開いているときは上向き */
+.review-more[aria-expanded="true"] .icon { transform: rotate(-90deg); }
+/* 「続きを読む」「折りたたむ」のフォーカス */
+.review-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 行の頭の向けた先: 残りの幅で省く */
 .row-head .row-target { flex: 0 1 auto; margin-left: 0; min-width: 0; font-weight: 500; }
 /* クローズのスレッドへの返信の行: チェックできないことを面の色でも示す */
@@ -2001,3 +2195,352 @@ body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map
   /* 概要のタイルの見出しと「すべて表示」: それぞれ 1 行に保つ */
   .t-head h2, .t-head .t-link { white-space: nowrap; }
 }
+
+/* ===== 画面からの編集: 保存待ちの印・トップバーの件数・一覧の項目を追加・詳細パネルの編集・保存待ちのパネル・設定の画面 ===== */
+
+/* 保存待ちの印: 破線の枠の札に重ねた紙の印と「保存待ち」を出す（差分の印は記号の塗り、コメントの印は吹き出しの塗りのピルで、形が違う） */
+.pm { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 6px 0 4px; border: 1px dashed var(--accent); border-radius: 3px; background: var(--surface); color: var(--accent); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: middle; }
+/* 保存待ちの印の印 */
+.pm svg.icon { width: 12px; height: 12px; flex: none; }
+/* 削除の編集の印: 文字色の破線にし、項目のタイトルに取り消し線を引く */
+.pm.pm-remove { border-color: var(--text-2); color: var(--text-2); }
+/* 書き込めなかった編集の印: 失敗の赤の実線の枠と警告の印 */
+.pm.pm-blocked { border-style: solid; border-color: var(--st-review); color: var(--st-review); }
+/* 印だけの保存待ちの印（キー・案の見出し・マップの節・詳細パネルの見出し） */
+.pm.pm-compact { width: 20px; height: 18px; padding: 0; justify-content: center; }
+/* 詳細の見出し・項目名の後ろに置く印の間隔 */
+:is(dt, h3, b, .o-head, .pe-label-row, .panel-head) > .pm { margin-left: 6px; }
+/* カードの補足の行の印: 行の高さに合わせる */
+.c-meta > .pm { align-self: center; }
+/* 表のタイトルの後ろの印 */
+.row-open + .pm, td > .pm { margin-left: 8px; }
+/* マップの節の印: 2 行目の高さに収める */
+button.n-item .r2 > .pm { height: 14px; width: 16px; }
+/* 削除の編集のある項目: タイトルに取り消し線を引き、文字を控えめにする */
+:is(.card, tr, button.n-item).pe-removing :is(.c-ttl, .row-open, .lbl) { text-decoration: line-through; color: var(--text-3); }
+/* 追加する項目の ID の代わり */
+.pe-noid { color: var(--text-3); font-size: var(--fs-xs); }
+/* 追加する項目のカード: 破線の枠で、まだ無い項目だと示す */
+.card.pe-new { border-style: dashed; }
+
+/* ===== トップバーの保存待ちのボタン ===== */
+
+/* 保存待ちのボタンの印 */
+.pending-btn .pb-icon { display: inline-grid; place-items: center; }
+/* 保存待ちの件数: 印の色の塗り（コメントの件数は白の塗り） */
+.pending-btn .count { display: inline-grid; place-items: center; min-width: var(--count-h); height: var(--count-h); padding: 0 5px; border-radius: var(--radius-pill); background: var(--teal-400); color: var(--topbar-bg); font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+/* 書き込めない編集があるとき: 件数をトップバーの上の失敗の赤にし、印を警告にする */
+.pending-btn.blocked .count { background: var(--red-300); }
+/* 書き込めない編集があるときの印 */
+.pending-btn.blocked .pb-icon { color: var(--red-300); }
+/* 幅 480px 以下: 保存待ちのボタンを出している間は、押せない飾りのツール名の文字を隠して幅を回す */
+@media (max-width: 480px) { .topbar:has(.pending-btn) .brand-name { display: none; } }
+
+/* ===== 一覧の「項目を追加」 ===== */
+
+/* 項目を追加するボタン: 表示形式の切り替えと同じ帯の右端に置く */
+.toolbar .pe-add { margin-left: auto; }
+/* 表の上の帯では列の表示のボタンの左に置く */
+.table-toolbar .pe-add { margin-left: auto; }
+/* 表の上の帯の列の表示のボタン: 項目を追加するボタンの隣に寄せる */
+.table-toolbar .pe-add + .cols-btn-table { margin-left: 8px; }
+/* 狭い幅: 文字を読み上げにだけ残して印だけにする */
+@media (max-width: 480px) {
+  /* 項目を追加するボタンの文字 */
+  .pe-add .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 項目を追加するボタン */
+  .pe-add { padding: 0 9px; }
+}
+
+/* ===== 詳細パネルの編集の表示 ===== */
+
+/* 編集するボタン: 見出しの帯で前後の移動の左に置く */
+.panel-head .pe-edit-toggle { flex: none; height: 30px; padding: 0 10px; font-size: var(--fs-small); white-space: nowrap; }
+/* 編集の表示の間の編集するボタン（編集を終える） */
+.panel-head .pe-edit-toggle[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+/* 狭い幅: 編集するボタンを印だけにし、見出しの帯の閉じるボタンまでを 1 行に収める */
+@media (max-width: 480px) {
+  /* 編集するボタンの文字 */
+  .panel-head .pe-edit-toggle .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* 編集するボタン */
+  .panel-head .pe-edit-toggle { width: 30px; padding: 0; justify-content: center; }
+  /* 見出しの帯の項目の印: 狭い幅では出さず、キー・案の印に任せる */
+  .panel-head > .pm { display: none; }
+}
+/* 編集の表示の間は、詳細パネル・詳細の全画面の下端のコメントの入力を隠す */
+.pe-editing .send-footer { display: none; }
+/* 編集の表示 */
+.pe-form { display: flex; flex-direction: column; gap: 18px; padding: 4px 0 24px; }
+/* 編集できないキー（ID・作成・更新） */
+.pe-fixed { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); color: var(--text-2); }
+/* 編集できないキーの名前 */
+.pe-fixed dt { color: var(--text-3); }
+/* 編集できないキーの値 */
+.pe-fixed dd { margin: 0; }
+/* キー 1 つの入力 */
+.pe-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
+/* キーの名前の行（名前・必須・印） */
+.pe-label-row { display: flex; align-items: center; gap: 6px; min-height: 20px; }
+/* キーの名前 */
+.pe-label-row label, .pe-label-row .pe-label, .pe-field > legend { font-size: var(--fs-small); font-weight: 600; color: var(--text); padding: 0; }
+/* 必須の印 */
+.pe-req { margin-left: 6px; font-size: var(--fs-xs); font-weight: 400; color: var(--text-3); }
+/* 入力欄: 幅いっぱい */
+.pe-field :is(.input, select, textarea) { width: 100%; min-width: 0; font: inherit; }
+/* 何行も書く入力欄: 書いた分だけ伸ばし、上限で送る */
+.pe-field textarea.input { height: auto; padding: 8px 10px; line-height: 1.6; resize: vertical; field-sizing: content; min-block-size: 3lh; max-block-size: 16lh; }
+/* 本文の入力欄: 長く書く前提で高くする */
+.pe-field textarea.pe-body { min-block-size: 8lh; max-block-size: 28lh; font-family: var(--font-mono); font-size: var(--fs-small); }
+/* 選ぶ入力欄 */
+.pe-field select.input { padding-right: 28px; }
+/* 保存待ちに溜めたキー: 入力欄の枠を印の色の破線にする */
+.pe-field.is-pending :is(.input, .pe-chips) { border-style: dashed; border-color: var(--accent); }
+/* 書き込めなかった編集のキー: 失敗の赤の枠 */
+.pe-field.is-blocked :is(.input, .pe-chips) { border-style: solid; border-color: var(--st-review); }
+/* タイトルが空のとき: 失敗の赤の枠 */
+.pe-field.is-invalid .input { border-color: var(--st-review); }
+/* 入力の誤り（入力を終えるまで出さない） */
+.pe-error { display: none; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-small); color: var(--text); }
+/* 入力の誤り・補足・書き込めない理由の印 */
+.pe-error svg.icon, .pe-blocked-note svg.icon, .pe-hint svg.icon { width: 14px; height: 14px; flex: none; color: var(--st-review); }
+/* タイトルが空のときの入力の誤り */
+.pe-field.is-invalid .pe-error { display: flex; }
+/* 入力の補足 */
+.pe-hint { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: var(--fs-xs); color: var(--text-2); }
+/* 入力の補足の印: 文字の 1 行目に揃える */
+.pe-hint svg.icon { margin-top: 2px; }
+/* チェックボックスのキー（取り下げ・納品物）: 名前と箱を横に並べる */
+.pe-field.pe-check { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 8px; }
+/* チェックボックス */
+.pe-field.pe-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+/* 値を並べるキー（タグ・依存先・関連・別名）: チップと足す入力欄を 1 つの枠に並べる */
+.pe-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: var(--control-h); padding: 3px 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 値を並べるキー（フォーカス中） */
+.pe-chips:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+/* チップ: 外すボタンを中に持つ */
+.pe-chip { display: inline-flex; align-items: center; gap: 2px; margin: 0; padding: 0 0 0 6px; height: 24px; font-size: var(--fs-small); }
+/* チップを外すボタン: 押せる的を 24px にする */
+.pe-chip-x { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; color: var(--text-2); border-radius: 3px; cursor: pointer; }
+.pe-chip-x:hover { background: var(--hover); color: var(--text); }
+.pe-chip-x:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* チップを外すボタンの印 */
+.pe-chip-x svg.icon { width: 12px; height: 12px; }
+/* 値を足す入力欄: 枠を持たず、残りの幅を使う */
+.pe-chips .pe-chip-input { flex: 1 1 8em; width: auto; min-width: 6em; height: 26px; border: 0; padding: 0 4px; background: none; box-shadow: none; }
+/* 値を足す入力欄（フォーカス中）: 枠は外側に出す */
+.pe-chips .pe-chip-input:focus { outline: none; box-shadow: none; }
+/* 案の入力の並び */
+.pe-options { gap: 10px; }
+/* 案 1 つ */
+.pe-opt { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 保存待ちに溜めた案: 印の色の破線の枠 */
+.pe-opt.is-pending { border-style: dashed; border-color: var(--accent); }
+/* 書き込めなかった編集の案: 失敗の赤の実線の枠 */
+.pe-opt.is-blocked { border-style: solid; border-color: var(--st-review); }
+/* 削除の編集を溜めた案: 文字に取り消し線を引く */
+.pe-opt.is-removed textarea { text-decoration: line-through; color: var(--text-3); }
+/* 案の見出しの行（記号・採用・印・削除） */
+.pe-opt-head { display: flex; align-items: center; gap: 10px; }
+/* 案の記号 */
+.pe-opt-head .key { font-family: var(--font-mono); font-weight: 600; }
+/* 採用のラジオ */
+.pe-adopt { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--text-2); }
+/* 採用のラジオの箱 */
+.pe-adopt input { width: 16px; height: 16px; accent-color: var(--accent); }
+/* 案の見出しの右寄せの隙間 */
+.pe-opt-head .spacer { flex: 1; }
+/* 案を追加するボタン・行を追加するボタン: 左に寄せる */
+.pe-opt-add, .pe-row-add { align-self: flex-start; }
+/* 項目を削除する区画: 上の区切り線で入力と分ける */
+.pe-remove-sec { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+/* 項目を削除する区画の見出し */
+.pe-remove-sec h2 { margin: 0; font-size: var(--fs-small); }
+/* 項目を削除するボタン: 失敗の赤の文字と枠で、取り返しのつかない操作と示す */
+.btn.pe-danger { color: var(--st-review); border-color: var(--st-review); }
+.btn.pe-danger:hover { background: var(--hover); }
+/* 溜めた知らせ */
+.pe-form-msg { margin: 0; min-height: 1.4em; font-size: var(--fs-xs); color: var(--text-2); }
+/* 書き込めない理由 */
+.pe-blocked-note { margin: 4px 0 0; font-size: var(--fs-small); line-height: 1.6; color: var(--text); }
+/* 書き込めない理由の印: 文字の行に並べる */
+.pe-blocked-note svg.icon { vertical-align: -2px; margin-right: 4px; }
+/* 書き込めない理由の中の項目の ID */
+.pe-blocked-note .idlink { margin: 0 2px; }
+/* 詳細の全画面の編集の表示: 読みやすい幅に収める */
+dialog.full .pe-form { width: 100%; max-width: 860px; margin-inline: auto; }
+
+/* ===== 保存待ちのパネル: コメントの一覧と同じ、左から出すパネル ===== */
+
+/* 保存待ちのパネルの見出し: フォーカスを移しても輪を出さない */
+.pending-panel .comments-head h2:focus { outline: none; }
+/* 保存待ちの一覧 */
+.pe-list { display: flex; flex-direction: column; gap: 10px; }
+/* 項目ごとのまとまり */
+.pe-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+/* 書き込めない編集を持つまとまり: 失敗の赤の枠 */
+.pe-group.is-blocked { border-color: var(--st-review); }
+/* まとまりの見出し（項目を開くボタン） */
+.pe-group-head { margin: 0; border-bottom: 1px solid var(--border-soft); font-size: var(--fs-small); }
+/* 項目を開くボタン: 見出しの幅いっぱい */
+.pe-open { display: flex; align-items: baseline; gap: 8px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.pe-open:hover { background: var(--hover); }
+.pe-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 項目の種類 */
+.pe-open .pe-kind { flex: none; font-weight: 400; color: var(--text-2); }
+/* 項目の ID */
+.pe-open .mono { flex: none; font-weight: 400; color: var(--text-2); }
+/* 項目のタイトル: 長いときは 1 行で省く */
+.pe-open .pe-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 編集の行の並び */
+.pe-rows { margin: 0; padding: 0; list-style: none; }
+/* 編集の行: 中身と取り消すボタン */
+.pe-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 8px 8px 12px; }
+/* 2 行目からの区切り線 */
+.pe-row + .pe-row { border-top: 1px solid var(--border-soft); }
+/* 書き込めなかった編集の行: 地を薄く変える */
+.pe-row.is-blocked { background: var(--surface-2); }
+/* 編集の行の中身 */
+.pe-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+/* 何を変えるか */
+.pe-what { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-small); font-weight: 600; }
+/* 削除の編集の何を変えるか: 失敗の赤の文字 */
+.pe-row.is-remove .pe-what { color: var(--st-review); }
+/* 何を変えるかの印 */
+.pe-what svg.icon { width: 14px; height: 14px; }
+/* 前と後の値: 1 行に収め、収まらない分は省く */
+.pe-change { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: var(--fs-small); color: var(--text-2); }
+/* 前と後の値の文字 */
+.pe-change :is(del, ins) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; }
+/* 前の値: 控えめにする */
+.pe-change del { color: var(--text-3); flex: none; max-width: 40%; text-decoration: line-through; }
+/* 後の値 */
+.pe-change ins { color: var(--text); flex: 1 1 auto; text-decoration: underline; }
+/* 前と後の間の矢印 */
+.pe-arrow { flex: none; color: var(--text-3); }
+/* 取り消すボタン */
+.pe-undo { flex: none; height: 30px; padding: 0 8px; font-size: var(--fs-small); }
+/* 保存の結果の知らせ（書き込めない・つながらない・断られた） */
+.pe-alert { padding: 12px; background: var(--surface); border: 1px solid var(--st-review); border-radius: var(--radius); font-size: var(--fs-small); }
+.pe-alert:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 知らせの見出し */
+.pe-alert-title { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-weight: 600; }
+/* 知らせの見出しの印 */
+.pe-alert-title svg.icon { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--st-review); }
+/* 書き込めない編集へのリンクの並び */
+.pe-alert ul { margin: 6px 0 0; padding-left: 26px; }
+/* 書き込めない編集へのリンク: 押せる的を縦 24px 以上にする */
+.pe-alert li a { display: inline-block; padding: 3px 0; }
+/* 次にすること */
+.pe-alert-next { margin: 6px 0 0 22px; color: var(--text-2); }
+/* パネルの下端（保存の合計とまとめて保存する） */
+.pe-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px; }
+/* 保存の合計 */
+.pe-foot-sum { margin: 0; font-size: var(--fs-small); color: var(--text-2); }
+/* まとめて保存するボタン: 幅いっぱい */
+.pe-save { justify-content: center; width: 100%; }
+/* 保存待ちが 0 件・保存しているとき: 押せない見た目にする */
+.pe-save:disabled { opacity: .45; cursor: default; }
+/* 保存しているときの回る印 */
+.pe-spin { display: inline-grid; place-items: center; animation: pe-spin 1s linear infinite; }
+/* 回る印の動き */
+@keyframes pe-spin { to { transform: rotate(360deg); } }
+/* 動きを減らす設定: 回る印を止める */
+@media (prefers-reduced-motion: reduce) { .pe-spin { animation: none; } }
+/* 保存した知らせ: 画面の下の中央に出す */
+.pe-toast { position: fixed; z-index: 70; left: 50%; bottom: 24px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: var(--radius); background: var(--text); color: var(--bg); box-shadow: var(--shadow-pop); font-size: var(--fs-small); white-space: nowrap; }
+
+/* ===== 表示の設定のパネルの入口と、設定の画面 ===== */
+
+/* 設定の画面の入口（表示の設定のパネルの下端） */
+.pe-ws-entry { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+/* 入口の見出し */
+.pe-ws-entry h3 { margin: 0; font-size: var(--fs-small); }
+/* 入口の中身の要約 */
+.pe-ws-sum { margin: 0 0 4px; font-size: var(--fs-xs); color: var(--text-2); }
+/* 設定の画面を開いている間: 元の本文の区画を隠す */
+body:has(.pe-ws) #main { display: none; }
+/* 設定の画面: 本文の区画と同じ送り方で、中身は読みやすい幅に収める */
+.pe-screen > * { width: 100%; max-width: 820px; margin-inline: auto; }
+/* 設定の画面の見出しの帯 */
+.pe-screen-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+/* 設定の画面の見出し */
+.pe-screen-head h1 { margin: 0; min-width: 0; font-size: calc(var(--fs-h2) * 1.4); overflow-wrap: anywhere; }
+.pe-screen-head h1:focus { outline: none; }
+/* 見出しの帯の右寄せの隙間 */
+.pe-screen-head .spacer { flex: 1; }
+/* 見出しの帯のボタン: 文言を折り返さない */
+.pe-screen-head .btn { flex: none; white-space: nowrap; }
+/* 設定のまとまり: 面の色のタイル */
+.pe-ws-group { display: flex; flex-direction: column; gap: 18px; min-width: 0; margin: 0; padding: 16px; background: var(--surface); border: 0; border-radius: var(--radius); }
+/* 設定のまとまりの見出し */
+.pe-ws-group > legend { float: left; width: 100%; margin-bottom: 2px; padding: 0; font-size: var(--fs-body); font-weight: 700; }
+/* 設定のまとまりの中の小見出し */
+.pe-sub { display: flex; flex-direction: column; gap: 4px; }
+/* 小見出しの名前 */
+.pe-sub-label { font-size: var(--fs-xs); color: var(--text-2); }
+/* 納品物の並び */
+.pe-rowsx { margin: 0; padding-left: 18px; font-size: var(--fs-small); }
+/* 1 行ずつの表の入れ物: 狭い幅では表の中で横に送る */
+.pe-mini-wrap { position: relative; overflow-x: auto; }
+/* 1 行ずつの表 */
+.pe-mini { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+/* 1 行ずつの表の見出し */
+.pe-mini th { padding: 4px 6px; text-align: left; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+/* 1 行ずつの表のセル */
+.pe-mini td { padding: 3px 4px; vertical-align: middle; }
+/* 1 行ずつの表の入力欄 */
+.pe-mini .input { min-width: 8em; }
+/* 数の入力欄 */
+.pe-num { max-width: 8em; }
+
+/* ===== 資料のエクスポートの入口とメニュー ===== */
+
+/* 入口とメニューを見出しの 1 つの子として並べる包み: レイアウトには加わらず、入口を見出しの並びに置く */
+.panel-export-host { display: contents; }
+/* 入口のボタン: メニューを開いている間は押した面にする */
+.panel-export[aria-expanded="true"] { background: var(--hover); }
+/* メニュー: 形式の説明と警告の文が 2 行に収まる幅 */
+.pop.doc-export { width: 300px; max-width: calc(100vw - 16px); }
+/* 形式の並び */
+.dx-list { display: grid; gap: 2px; }
+/* 形式の 1 行: アイコン・名前・説明。行の全体を押せる */
+.dx-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--target-min); padding: 8px; border: 0; border-radius: 3px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.dx-item:hover { background: var(--hover); }
+.dx-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 形式のアイコン: 名前の 1 行目に揃える */
+.dx-item svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--text-2); }
+/* 形式の名前と説明を縦に並べる枠 */
+.dx-text { display: grid; gap: 2px; }
+/* 形式の名前 */
+.dx-name { font-size: var(--fs-small); font-weight: 600; }
+/* 形式の説明 */
+.dx-sub { color: var(--text-2); font-size: var(--fs-xs); }
+/* 警告: 枠で囲まず、アイコンの色と余白でまとまりを示す */
+.dx-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0 6px 8px; font-size: var(--fs-small); }
+.dx-warn p { margin: 0; }
+/* 警告の印 */
+.dx-warn svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--st-review); }
+/* 処理中の行と、処理中に押せない行 */
+.dx-item[aria-disabled="true"] { cursor: default; }
+.dx-item[aria-disabled="true"]:not(.dx-busy) { opacity: .5; }
+.dx-item[aria-disabled="true"]:hover { background: none; }
+/* 処理中の行 */
+.dx-busy { cursor: progress !important; }
+/* 処理中の行のアイコン: 回る輪に替える */
+.dx-busy svg.icon { visibility: hidden; position: relative; }
+.dx-busy::before { content: ""; flex: none; width: 14px; height: 14px; margin: 3px -24px 0 1px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: dx-spin .8s linear infinite; }
+/* 輪が回る動き */
+@keyframes dx-spin { to { transform: rotate(360deg); } }
+/* 動きを減らす設定では輪を回さない */
+@media (prefers-reduced-motion: reduce) { .dx-busy::before { animation: none; } }
+/* 警告・エラーの戻る・エクスポート・再試行: 右に寄せる */
+.pop .dx-foot { justify-content: flex-end; }
+
+/* ===== 埋め込んだ HTML の範囲の差分 ===== */
+
+/* 変更後の描いた結果で足した要素 */
+.html-marked [data-df="add"] { outline: 2px solid var(--df-add); outline-offset: 2px; background-color: var(--df-add-bg); }
+/* 変更後の描いた結果で変わった要素 */
+.html-marked [data-df="chg"] { outline: 2px dashed var(--df-chg); outline-offset: 2px; background-color: var(--df-chg-bg); }
+/* 範囲の差分の名前 */
+.html-diff-heading { color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }

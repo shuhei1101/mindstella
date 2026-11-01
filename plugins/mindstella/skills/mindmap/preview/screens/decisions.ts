@@ -217,6 +217,7 @@ namespace MindmapPreview {
     press,
     marks,
     comments,
+    edit,
   }: {
     laid: MapGraph;
     canvas: HTMLElement;
@@ -230,6 +231,8 @@ namespace MindmapPreview {
     marks?: DiffMarks | undefined;
     /** 項目の ID → レビュー中のコメントの件数。渡したとき、節点の 2 行目の右端に印を置く場所を置く */
     comments?: Record<string, number> | undefined;
+    /** 編集の入口。保存待ちの編集がある節の 2 行目に、印だけの保存待ちの印を置く */
+    edit?: ScreenEdit | null | undefined;
   }): void {
     const positions = new Map(laid.children.map((node) => [node.id, node]));
     const parentOf = new Map(laid.edges.map((edge) => [edge.targets[0], edge.sources[0]]));
@@ -308,7 +311,7 @@ namespace MindmapPreview {
       return h({
         tag: "button",
         attrs: {
-          class: `map-node n-item${opened === item.id ? " sel" : ""}${lockedHere && lockedId === item.id ? " locked" : ""}${hit ? " hit" : ""}${rel}`,
+          class: `map-node n-item${opened === item.id ? " sel" : ""}${lockedHere && lockedId === item.id ? " locked" : ""}${hit ? " hit" : ""}${rel}${edit?.marks[item.id] === "remove" ? " pe-removing" : ""}`,
           type: "button",
           "data-node": item.id,
           style,
@@ -338,6 +341,7 @@ namespace MindmapPreview {
               h({ tag: "span", attrs: { class: "mono" }, children: [item.id] }),
               h({ tag: "span", children: [item.status ?? ""] }),
               item.weight === undefined ? null : h({ tag: "span", children: [`影響度 ${item.weight}`] }),
+              editMarkOf({ edit, id: item.id, compact: true }),
               comments === undefined ? null : commentPlace({ id: item.id, count: comments[item.id] }),
             ],
           }),
@@ -359,6 +363,7 @@ namespace MindmapPreview {
     open,
     marks,
     comments,
+    edit,
   }: {
     index: RecordIndex;
     /** 絞り込みの条件に合う検討事項 */
@@ -368,6 +373,8 @@ namespace MindmapPreview {
     marks?: DiffMarks | undefined;
     /** 項目の ID → レビュー中のコメントの件数。渡したとき、タイトルと差分の印の右に印を置く場所を置く */
     comments?: Record<string, number> | undefined;
+    /** 編集の入口。保存待ちの編集がある節に、タイトルの右に印だけの保存待ちの印を置く */
+    edit?: ScreenEdit | null | undefined;
   }): HTMLElement {
     const tree = buildDecisionTree({ index, decisions });
     const nodeOf = new Map(tree.children.map((node) => [node.id, node]));
@@ -389,6 +396,7 @@ namespace MindmapPreview {
               statusMark(node.item.status),
               h({ tag: "span", children: [node.label] }),
               markFor({ marks, id: node.id }),
+              editMarkOf({ edit, id: node.id, compact: true }),
               comments === undefined ? null : commentPlace({ id: node.id, count: comments[node.id] }),
             ],
           })
@@ -455,7 +463,7 @@ namespace MindmapPreview {
 
   /** マップの道具の行（表示形式・キーワード）と、マップの枠・拡大の道具・絞り込みのドロワーを作る */
   function mapView(
-    { index, route, on, marks, comments, lockedId, removed = [] }: DecisionsScreenProps,
+    { index, route, on, marks, comments, lockedId, removed = [], edit = null }: DecisionsScreenProps,
     {
       shown,
       chips,
@@ -490,7 +498,7 @@ namespace MindmapPreview {
       },
       children: ["全体を表示"],
     });
-    let outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments });
+    let outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments, edit });
     let current: MapGraph | null = null;
     /** キーワードに当たった検討事項か */
     const isHit = (item: Item): boolean =>
@@ -550,13 +558,13 @@ namespace MindmapPreview {
 
     /** 配置を求めて、マップを描く。注目の起点（ロックした節、ロックしていなければ詳細を開いている節）が変わってその節があるときは、その節が中央に来るようにマップを送り、それ以外は描き直す前のスクロールの位置へ戻す */
     const draw = async (): Promise<void> => {
-      outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments })));
+      outlineElement.replaceWith((outlineElement = outline({ index, decisions: shown, open: on.open, marks, comments, edit })));
       if (missingLibraries(["elkjs"]).length > 0) return;
       const key = shown.map((item) => item.id).join(",");
       const graph = buildDecisionTree({ index, decisions: shown });
       emptyNotice.hidden = graph.children.length > 0;
       current = await layoutOf(graph, key);
-      drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments });
+      drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments, edit });
       applyZoom();
       // 中央へ送る節は、ロックした節。ロックしていなければ詳細を開いている節（ロック中にほかの節を開いても送り直さない）
       const locked = lockedNow();
@@ -606,8 +614,9 @@ namespace MindmapPreview {
       ],
       route,
       on.view,
+      edit === null ? null : addItemButton({ kind: "decisions", onAdd: edit.onAdd }),
     );
-    toolbarElement.append(keyword);
+    toolbarElement.insertBefore(keyword, toolbarElement.querySelector(".pe-add"));
 
     /** 拡大・縮小・全体を表示のボタン（マップの枠の外に置く） */
     const zoomBar = h({
@@ -758,7 +767,7 @@ namespace MindmapPreview {
 
   /** 検討事項の画面を返す */
   export function decisionsScreen(props: DecisionsScreenProps): HTMLElement {
-    const { index, route, on, marks, comments, filters, drawerOpen, removed = [] } = props;
+    const { index, route, on, marks, comments, filters, drawerOpen, removed = [], edit = null } = props;
     const columns = decisionColumns({ index, open: on.open });
     // 絞り込みの条件に合う検討事項を、マップ・ボード・表に同じ結果で渡す
     const shown = filterRows({ rows: index.data.decisions, columns, filters }) as Item[];
@@ -798,6 +807,7 @@ namespace MindmapPreview {
       ],
       route,
       on.view,
+      edit === null ? null : addItemButton({ kind: "decisions", onAdd: edit.onAdd }),
     );
     if (route.view === "board") {
       return h({
@@ -822,8 +832,10 @@ namespace MindmapPreview {
                 open: on.open,
                 mark: marks?.[item.id],
                 comments,
+                edit,
               }),
             emptyText: "検討事項はありません。",
+            added: addedCards({ edit, statuses: DECISION_STATUSES, open: on.open }),
           }),
           makeDrawer(),
         ],
@@ -844,6 +856,7 @@ namespace MindmapPreview {
           open: on.open,
           marks,
           ...(comments === undefined ? {} : { comments }),
+          ...(edit === null ? {} : { edit }),
         }),
         makeDrawer(),
       ],

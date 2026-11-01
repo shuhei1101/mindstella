@@ -2,19 +2,70 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadLibrary, LoadPreviewScripts, MakeData, MakeItem
+from .fixture_types import (
+    LoadLibrary,
+    LoadMdmark,
+    LoadPreviewScripts,
+    MakeData,
+    MakeItem,
+    PutMdmarkImportMap,
+    ServeMdmark,
+)
 
-# 本文の Markdown（見出し・表・実行される属性を持つ画像・mermaid のコードブロック）
+# 埋め込んだ HTML の範囲に置くチャートと、キー rps のスライダーを持つ操作できる部品の定義（JSON）
+EMBEDDED_CHART_DEFINITION = {
+    "type": "bar",
+    "title": "件数",
+    "scope": "10 月",
+    "updated": "2026-10-27",
+    "x": {"label": "窓口", "ticks": ["メール", "電話"]},
+    "y": {"label": "件"},
+    "series": [{"name": "自動返信", "points": [10, 20]}],
+}
+EMBEDDED_PARAM_DEFINITION = {
+    "title": "リクエスト数の見積もり",
+    "knob": {"key": "rps", "label": "リクエスト数", "min": 0, "max": 10, "step": 1, "value": 5},
+    "chart": {
+        "title": "応答時間",
+        "scope": "ピーク時",
+        "updated": "2026-10-27",
+        "x": {"label": "経過", "ticks": ["0", "1"]},
+        "y": {"label": "ミリ秒", "min": 0, "max": 100, "step": 50},
+    },
+    "table": {str(value): [value * 10, value * 10 + 5] for value in range(11)},
+}
+EMBEDDED_CHART = f"<mdmark-chart>{json.dumps(EMBEDDED_CHART_DEFINITION, ensure_ascii=False)}</mdmark-chart>"
+EMBEDDED_PARAM = f"<mdmark-param>{json.dumps(EMBEDDED_PARAM_DEFINITION, ensure_ascii=False)}</mdmark-param>"
+
+# 段落（1 行目）・埋め込んだ HTML の範囲（3〜9 行目。段落・チャート・操作できる部品・スクリプト・onclick を持つボタン）・
+# 段落（11 行目）・範囲の外の言語指定 html のコードブロック（13〜15 行目）を持つ本文
+EMBEDDED_SOURCE = (
+    "前の段落\n\n"
+    "<!-- html -->\n"
+    "```html\n"
+    "<p>範囲の段落</p>\n"
+    f"{EMBEDDED_CHART}{EMBEDDED_PARAM}\n"
+    '<script>window.__x=1</script><button onclick="window.__y=1">実行</button>\n'
+    "```\n"
+    "<!-- /html -->\n\n"
+    "後ろの段落\n\n"
+    "```html\n<p>範囲の外のコード</p>\n```\n"
+)
+
+# 本文の Markdown（見出し・表・実行される属性を持つ画像・実行されるスクリプト・mermaid と python のコードブロック）
 MARKDOWN_SOURCE = (
     "# 見出し\n\n"
     "| 列 A | 列 B |\n| --- | --- |\n| 1 | 2 |\n\n"
     "<img src=x onerror=alert(1)>\n\n"
-    "```mermaid\nflowchart TD\n  A --> B\n```\n"
+    "<script>window.__x=1</script>\n\n"
+    "```mermaid\nflowchart TD\n  A --> B\n```\n\n"
+    "```python\nprint(1)\n```\n"
 )
 
 
@@ -26,11 +77,79 @@ def test_missing_libraries(preview_page: Page, load_preview_scripts: LoadPreview
     missing = preview_page.evaluate(
         """() => {
             window.marked = {};
-            return MindmapPreview.missingLibraries(["marked", "DOMPurify"]);
+            return MindmapPreview.missingLibraries(["mdmark", "marked"]);
         }"""
     )
     # 検証
-    assert missing == ["DOMPurify"]
+    assert missing == ["mdmark"]
+
+
+@pytest.mark.parametrize(
+    "put_name",
+    [
+        pytest.param("put_mdmark_import_map", id="import_map"),
+        pytest.param("put_embedded_mdmark", id="embedded"),
+    ],
+)
+def test_load_mdmark(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    serve_mdmark: ServeMdmark,
+    request: pytest.FixtureRequest,
+    put_name: str,
+) -> None:
+    """サーバーの配信と配る書き出しのどちらでも読み、グローバルに置く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    serve_mdmark()
+    # import map に URL と integrity を持つページか、中身を要素に持つページ
+    request.getfixturevalue(put_name)()
+    # 実行
+    result = preview_page.evaluate(
+        """async () => {
+            await MindmapPreview.loadMdmark();
+            return {
+                version: window.mdmark.version(),
+                missing: MindmapPreview.missingLibraries(["mdmark"]),
+            };
+        }"""
+    )
+    # 検証
+    assert result == {"version": "v0.8.0", "missing": []}
+
+
+@pytest.mark.parametrize(
+    ("status", "integrity"),
+    [
+        pytest.param(404, None, id="not_found"),
+        pytest.param(200, "sha384-" + "A" * 64, id="integrity_mismatch"),
+    ],
+)
+def test_load_mdmark_when_unavailable(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    serve_mdmark: ServeMdmark,
+    put_mdmark_import_map: PutMdmarkImportMap,
+    status: int,
+    integrity: str | None,
+) -> None:
+    """読めなければ拒否せず、グローバルを置かない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    serve_mdmark(status=status)
+    put_mdmark_import_map(integrity=integrity)
+    # 実行
+    result = preview_page.evaluate(
+        """async () => {
+            await MindmapPreview.loadMdmark();
+            return {
+                hasGlobal: "mdmark" in window,
+                missing: MindmapPreview.missingLibraries(["mdmark"]),
+            };
+        }"""
+    )
+    # 検証
+    assert result == {"hasGlobal": False, "missing": ["mdmark"]}
 
 
 def test_library_notice(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
@@ -40,45 +159,182 @@ def test_library_notice(preview_page: Page, load_preview_scripts: LoadPreviewScr
     # 実行
     notice = preview_page.evaluate(
         """() => {
-            const element = MindmapPreview.libraryNotice({names: ["marked", "DOMPurify"], what: "本文"});
+            const element = MindmapPreview.libraryNotice({names: ["mdmark", "mermaid"], what: "本文"});
             return {role: element.getAttribute("role"), text: element.textContent};
         }"""
     )
     # 検証
     assert notice["role"] == "alert"
-    assert "読み込めなかったライブラリ: marked・DOMPurify" in notice["text"]
+    assert "読み込めなかったライブラリ: mdmark・mermaid" in notice["text"]
     assert "通信を確認して、ページを再読み込みしてください。" in notice["text"]
 
 
 def test_render_markdown(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
-    """無害化して描き、図の入れ物を作る（正常系）。"""
+    """mdmark で無害化して描き、図の入れ物を作る。コードの色付けのライブラリは読まない（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
+    requested_urls: list[str] = []
+    preview_page.on("request", lambda request: requested_urls.append(request.url))
     # 実行
     result = preview_page.evaluate(
-        """(source) => {
+        """async (source) => {
             const root = MindmapPreview.renderMarkdown(source);
+            document.body.append(root);
+            // 差し込んだ後に走る属性・スクリプトがあれば、ここで動く
+            await new Promise((resolve) => requestAnimationFrame(resolve));
             const containers = root.querySelectorAll("[data-source]");
             return {
+                className: root.className,
                 hasHeading: root.querySelector("h1") !== null,
                 hasTable: root.querySelector("table") !== null,
                 html: root.innerHTML,
+                scripts: root.querySelectorAll("script").length,
+                dirty: window.__x,
                 containerCount: containers.length,
                 source: containers.length > 0 ? containers[0].getAttribute("data-source") : null,
+                sourceLines: root.querySelectorAll("[data-source-line]").length,
+                pythonCode: root.querySelector("pre code.language-python")?.textContent ?? null,
             };
         }""",
         MARKDOWN_SOURCE,
     )
     # 検証
+    assert result["pythonCode"] == "print(1)\n"
+    assert [url for url in requested_urls if "highlight" in url] == []
+    assert "mdmark" in result["className"].split()
     assert result["hasHeading"] is True
     assert result["hasTable"] is True
     assert "onerror" not in result["html"]
+    assert result["scripts"] == 0
+    assert result["dirty"] is None
     assert result["containerCount"] == 1
     assert "flowchart TD" in result["source"]
+    assert result["sourceLines"] == 0
+
+
+def test_render_markdown_when_embedded_html(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """埋め込んだ HTML を本文の中に描き、範囲に元の行を持たせる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        """async (source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            document.body.append(root);
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            const range = root.querySelector(".mdmark-html");
+            // 範囲の中の onclick は落ちているので、押しても変数に印が残らない
+            [...range.querySelectorAll("button")]
+                .find((button) => button.textContent.trim() === "実行")
+                ?.click();
+            return {
+                rangeCount: root.querySelectorAll(".mdmark-html").length,
+                open: range.getAttribute("data-html-open"),
+                close: range.getAttribute("data-html-close"),
+                lineMarksInRange: range.querySelectorAll("[data-line-start]").length,
+                scripts: range.querySelectorAll("script").length,
+                onclicks: range.querySelectorAll("[onclick]").length,
+                marks: [window.__x ?? null, window.__y ?? null],
+                paragraphLines: [...root.querySelectorAll(":scope > p")].map(
+                    (paragraph) => paragraph.getAttribute("data-line-start"),
+                ),
+                htmlBlockSources: [...root.querySelectorAll(".html-block")].map(
+                    (block) => block.getAttribute("data-source"),
+                ),
+                copyLabel: range.querySelector("button.mdmark-param-copy")?.textContent.trim() ?? null,
+            };
+        }""",
+        EMBEDDED_SOURCE,
+    )
+    # 検証
+    assert result["rangeCount"] == 1
+    assert (result["open"], result["close"]) == ("3", "9")
+    assert result["lineMarksInRange"] == 0
+    assert (result["scripts"], result["onclicks"]) == (0, 0)
+    assert result["marks"] == [None, None]
+    assert result["paragraphLines"] == ["1", "11"]
+    assert len(result["htmlBlockSources"]) == 1
+    assert "範囲の外のコード" in result["htmlBlockSources"][0]
+    assert result["copyLabel"] == "今の値をコピー"
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        pytest.param(
+            "a\n<!-- html -->\n<p>x</p>\n<!-- /html -->",
+            [{"open": 2, "close": 4}],
+            id="one_range",
+        ),
+        pytest.param(
+            "<!-- html -->\n<p>a</p>\n<!-- /html -->\n```text\n<!-- html -->\n```\n"
+            "<!-- html -->\n<p>b</p>\n<!-- /html -->\n",
+            [{"open": 1, "close": 3}, {"open": 7, "close": 9}],
+            id="marker_inside_fence_skipped",
+        ),
+        pytest.param(
+            "<!--html-->\n<p>x</p>\n  <!--  /html  -->\n",
+            [{"open": 1, "close": 3}],
+            id="spaces_around_words",
+        ),
+        pytest.param("<!-- html -->\n<p>x</p>\n", [], id="unclosed"),
+    ],
+)
+def test_embedded_html_ranges(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    source: str,
+    expected: list[dict[str, int]],
+) -> None:
+    """範囲の印の行を並びの順に返す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    ranges = preview_page.evaluate("(source) => MindmapPreview.embeddedHtmlRanges(source)", source)
+    # 検証
+    assert ranges == expected
+
+
+def test_relabel_param_copy(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """ボタンの文言を替え、描き直したボタンにも当てる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    preview_page.evaluate(
+        """(source) => {
+            window.__clips = [];
+            Object.defineProperty(navigator, "clipboard", {
+                value: {writeText: async (text) => { window.__clips.push(text); }},
+                configurable: true,
+            });
+            document.body.append(MindmapPreview.renderMarkdown(source));
+        }""",
+        EMBEDDED_SOURCE,
+    )
+    read_button = """() => {
+        const button = document.querySelector("button.mdmark-param-copy");
+        return {text: button.textContent.trim(), icons: button.querySelectorAll("svg").length};
+    }"""
+    # 実行
+    before = preview_page.evaluate(read_button)
+    preview_page.locator(".mdmark-param input[type=range]").focus()
+    preview_page.keyboard.press("ArrowRight")
+    after = preview_page.evaluate(read_button)
+    preview_page.locator("button.mdmark-param-copy").click()
+    clips = preview_page.evaluate("() => window.__clips")
+    # 検証
+    assert before == {"text": "今の値をコピー", "icons": 1}
+    assert after == before
+    assert len(clips) == 1
+    assert json.loads(clips[0]) == {"rps": {"name": "リクエスト数", "value": 6}}
 
 
 def test_render_markdown_when_library_missing(
@@ -99,7 +355,7 @@ def test_render_markdown_when_library_missing(
         MARKDOWN_SOURCE,
     )
     # 検証
-    for name in ("marked", "DOMPurify", "mermaid"):
+    for name in ("mdmark", "mermaid"):
         assert name in result["alert"]
     assert result["pre"] == MARKDOWN_SOURCE
 
@@ -275,70 +531,99 @@ LINE_MARK_SOURCE = "\n".join(
         "- 項目一",  # 6
         "  - 入れ子",  # 7
         "",  # 8
-        "| 列 A | 列 B |",  # 9
-        "| --- | --- |",  # 10
-        "| 1 | 2 |",  # 11
-        "| 3 | 4 |",  # 12
-        "",  # 13
-        "```text",  # 14
-        "コード一",  # 15
-        "コード二",  # 16
-        "```",  # 17
-        "",  # 18
-        "```mermaid",  # 19
-        "flowchart TD",  # 20
-        "  A --> B",  # 21
-        "```",  # 22
+        "* 段落を持つ項目",  # 9
+        "",  # 10
+        "  項目の二つ目の段落",  # 11
+        "",  # 12
+        "| 列 A | 列 B |",  # 13
+        "| --- | --- |",  # 14
+        "| 1 | 2 |",  # 15
+        "| 3 | 4 |",  # 16
+        "",  # 17
+        "```text",  # 18
+        "コード一",  # 19
+        "コード二",  # 20
+        "```",  # 21
+        "",  # 22
+        "  ```js",  # 23
+        "  字下げのフェンス",  # 24
+        "  ```",  # 25
+        "",  # 26
+        "> ```js",  # 27
+        "> 引用のコード",  # 28
+        "> ```",  # 29
+        "",  # 30
+        "1. ```js",  # 31
+        "   番号のコード",  # 32
+        "   ```",  # 33
+        "",  # 34
+        "区切りの段落",  # 35
+        "",  # 36
+        "- ```js",  # 37
+        "  リストのコード",  # 38
+        "  ```",  # 39
+        "",  # 40
+        "区切りの段落",  # 41
+        "",  # 42
+        "- 入れ子の親",  # 43
+        "  - ```js",  # 44
+        "    入れ子のコード",  # 45
+        "    ```",  # 46
+        "",  # 47
+        "区切りの段落",  # 48
+        "",  # 49
+        "    字下げのコード一",  # 50
+        "    字下げのコード二",  # 51
+        "",  # 52
+        "```mermaid",  # 53
+        "flowchart TD",  # 54
+        "  A --> B",  # 55
+        "```",  # 56
         "",
     ]
 )
 
-# 行の印を付けても見た目が変わらないことを比べる本文（図を含まない）
-LOOK_SOURCE = "\n".join(LINE_MARK_SOURCE.split("\n")[:17]) + "\n"
-
 
 def test_render_markdown_when_line_marks(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
-    """ブロックに元の行の印を付け、見た目を変えない（正常系）。"""
+    """ブロックに元の行の印を付ける（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
-        """([source, lookSource]) => {
+        """(source) => {
             const root = MindmapPreview.renderMarkdown(source);
             const marks = (selector) =>
                 [...root.querySelectorAll(selector)].map((e) => e.getAttribute("data-line-start"));
-            const plain = DOMPurify.sanitize(marked.parse(lookSource, {async: false}));
-            // 表を包む入れ物を外し、中の表をその位置へ戻してから比べる
-            const markedRoot = MindmapPreview.renderMarkdown(lookSource);
-            for (const wrap of markedRoot.querySelectorAll(".md-table-wrap")) wrap.replaceWith(...wrap.childNodes);
-            const marked_ = markedRoot.innerHTML;
             return {
                 heading: marks("h1"),
                 paragraph: marks("p"),
                 items: marks("li"),
                 rows: marks("tr"),
                 code: marks("pre:not(.dg-raw)"),
+                containers: root.querySelectorAll(
+                    "ul[data-line-start], ol[data-line-start], table[data-line-start], blockquote[data-line-start]"
+                ).length,
                 diagramMarks: root.querySelectorAll(".diagram [data-line-start]").length,
                 containerMark: root.querySelector(".diagram").getAttribute("data-line-start"),
-                sameLook: marked_.replace(/ data-line-start="\\d+"/g, "") === plain,
+                sourceLines: root.querySelectorAll("[data-source-line]").length,
             };
         }""",
-        [LINE_MARK_SOURCE, LOOK_SOURCE],
+        LINE_MARK_SOURCE,
     )
     # 検証
     assert result == {
         "heading": ["1"],
-        "paragraph": ["3"],
-        "items": ["6", "7"],
-        "rows": ["9", "11", "12"],
-        "code": ["15"],
+        "paragraph": ["3", "9", "11", "35", "41", "48"],
+        "items": ["6", "7", None, "31", "37", "43", "44"],
+        "rows": ["13", "15", "16"],
+        "code": ["19", "24", "28", "32", "38", "45", "50"],
+        "containers": 0,
         "diagramMarks": 0,
         "containerMark": None,
-        "sameLook": True,
+        "sourceLines": 0,
     }
 
 
@@ -558,7 +843,7 @@ SELECTION_CASES = [
 def test_selection_location(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     start: str,
     start_nth: int,
     end: str,
@@ -569,11 +854,75 @@ def test_selection_location(
     """本文の行の範囲と値のキーを求める（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     preview_page.evaluate(SELECTION_DOCUMENT_SCRIPT, [SELECTION_BODY, removed_before])
     # 実行
     result = preview_page.evaluate(SELECT_TEXT_SCRIPT, [start, start_nth, end, end_nth])
+    # 検証
+    assert expected.items() <= result.items()
+
+
+# 段落（1 行目）・埋め込んだ HTML の範囲 2 つ（3〜7 行目・9〜13 行目）・段落（15 行目）を持つ本文
+EMBEDDED_SELECTION_BODY = "\n".join(
+    [
+        "段落の一",  # 1
+        "",  # 2
+        "<!-- html -->",  # 3
+        "```html",  # 4
+        "<p>一つ目の範囲の文</p>",  # 5
+        "```",  # 6
+        "<!-- /html -->",  # 7
+        "",  # 8
+        "<!-- html -->",  # 9
+        "```html",  # 10
+        "<p>二つ目の範囲の文</p>",  # 11
+        "```",  # 12
+        "<!-- /html -->",  # 13
+        "",  # 14
+        "段落の二",  # 15
+        "",
+    ]
+)
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "expected"),
+    [
+        pytest.param(
+            "二つ目の範囲の文",
+            "二つ目の範囲の文",
+            {"kind": "body", "start": 9, "end": 13},
+            id="inside_second_range",
+        ),
+        pytest.param(
+            "段落の一",
+            "一つ目の範囲の文",
+            {"kind": "body", "start": 1, "end": 7},
+            id="paragraph_to_first_range",
+        ),
+        pytest.param(
+            "二つ目の範囲の文",
+            "段落の二",
+            {"kind": "body", "start": 9, "end": 15},
+            id="second_range_to_paragraph",
+        ),
+    ],
+)
+def test_selection_location_when_embedded_html(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    start: str,
+    end: str,
+    expected: dict[str, Any],
+) -> None:
+    """埋め込んだ HTML の範囲の中の端を、範囲の印の行に読み替える（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    preview_page.evaluate(SELECTION_DOCUMENT_SCRIPT, [EMBEDDED_SELECTION_BODY, None])
+    # 実行
+    result = preview_page.evaluate(SELECT_TEXT_SCRIPT, [start, 0, end, 0])
     # 検証
     assert expected.items() <= result.items()
 
@@ -684,19 +1033,18 @@ LINK_HEADINGS_SCRIPT = """(source) => {
 
 
 def test_link_headings(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """見出しに名前と # を付け、`#見出し` で知らせる（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(LINK_HEADINGS_SCRIPT, LINK_HEADINGS_SOURCE)
     # 検証
     assert result["slugs"] == ["保存先", "決め方", "決め方-1"]
     assert result["hashLinkCounts"] == [1, 1, 1]
-    # marked は日本語の href をパーセントエンコードして描く
+    # mdmark は日本語の href をパーセントエンコードして描く
     assert result["paragraphHrefs"] == ["#%E6%B1%BA%E3%82%81%E6%96%B9", "#%E7%84%A1%E3%81%84"]
     assert result["calls"] == ["決め方-1", "決め方"]
     assert result["hash"] == ""
@@ -725,13 +1073,12 @@ LINK_HEADINGS_CHANGE_SET_SCRIPT = """(source) => {
 
 
 def test_link_headings_when_change_set_link(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """`#diff=` のリンクでまとまりを知らせ、見出しとしては扱わない（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(LINK_HEADINGS_CHANGE_SET_SCRIPT, CHANGE_SET_LINKS_SOURCE)
     # 検証
@@ -753,7 +1100,7 @@ LINK_BODY_SCRIPT = """({data, source, selfId}) => {
     document.body.append(root);
     const calls = [];
     MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
-    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    MindmapPreview.linkBody({root, index, selfId, source, onOpen: (id) => calls.push(id)});
     const pairs = (selector) => [...root.querySelectorAll(selector)].map(
         (element) => [element.textContent, element.getAttribute("data-id")],
     );
@@ -777,7 +1124,7 @@ LINK_BODY_SCRIPT = """({data, source, selfId}) => {
 def test_link_body(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -793,8 +1140,7 @@ def test_link_body(
         ],
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         LINK_BODY_SCRIPT, {"data": data, "source": LINK_BODY_SOURCE, "selfId": "A-1"}
@@ -811,7 +1157,7 @@ def test_link_body(
 def test_link_body_when_self(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
 ) -> None:
@@ -819,8 +1165,7 @@ def test_link_body_when_self(
     # 準備
     data = make_data(terms=[make_item("G-1", title="保存先")])
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         LINK_BODY_SCRIPT, {"data": data, "source": "保存先と G-1\n", "selfId": "G-1"}
@@ -836,7 +1181,7 @@ LINK_BODY_ALIASES_SCRIPT = """({data, source, selfId}) => {
     document.body.append(root);
     const calls = [];
     MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
-    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    MindmapPreview.linkBody({root, index, selfId, source, onOpen: (id) => calls.push(id)});
     const marks = [...root.querySelectorAll("p a.term")].map((element) => ({
         text: element.textContent,
         ids: element.getAttribute("data-ids"),
@@ -871,7 +1216,7 @@ LINK_BODY_ALIASES_SCRIPT = """({data, source, selfId}) => {
 def test_link_body_when_aliases(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     self_id: str,
@@ -889,8 +1234,7 @@ def test_link_body_when_aliases(
         research=[make_item("R-1", aliases=["特殊効果"])],
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         LINK_BODY_ALIASES_SCRIPT,
@@ -908,7 +1252,7 @@ LINK_BODY_TERM_ALIASES_SCRIPT = """({data, source, selfId}) => {
     document.body.append(root);
     const calls = [];
     MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
-    MindmapPreview.linkBody({root, index, selfId, onOpen: (id) => calls.push(id)});
+    MindmapPreview.linkBody({root, index, selfId, source, onOpen: (id) => calls.push(id)});
     const marks = [];
     const opened = {};
     // 印を 1 つずつ調べてから押し、押して知らせた項目を印の語ごとに残す
@@ -954,7 +1298,7 @@ LINK_BODY_TERM_ALIASES_SCRIPT = """({data, source, selfId}) => {
 def test_link_body_when_term_aliases(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
     make_data: MakeData,
     make_item: MakeItem,
     self_id: str,
@@ -971,8 +1315,7 @@ def test_link_body_when_term_aliases(
         ],
     )
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         LINK_BODY_TERM_ALIASES_SCRIPT,
@@ -983,18 +1326,153 @@ def test_link_body_when_term_aliases(
     assert result["opened"] == expected_opened
 
 
+def test_link_body_when_normalized(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """全角半角・英字の大文字小文字・空白の違いでも一致させ、まとまる語の項目を 1 つの印に寄せる（正常系）。"""
+    # 準備
+    data = make_data(
+        terms=[
+            make_item("G-1", title="response"),
+            make_item("G-2", title="Response"),
+            make_item("G-3", title="応答 時間"),
+            make_item("G-4", title="API"),
+        ],
+    )
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_ALIASES_SCRIPT,
+        {"data": data, "source": "ＲＥＳＰＯＮＳＥ と 応答　時間 と API-2 と API\n", "selfId": "A-1"},
+    )
+    # 検証
+    assert result["marks"] == [
+        {"text": "ＲＥＳＰＯＮＳＥ", "ids": "G-1 G-2", "hasDetails": True},
+        {"text": "応答　時間", "ids": "G-3", "hasDetails": False},
+        {"text": "API", "ids": "G-4", "hasDetails": False},
+    ]
+
+
+# 段落の印を、印の文字と、印が `code` の中にあるかの組で調べる
+LINK_BODY_INLINE_CODE_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, source, onOpen: () => {}});
+    return [...root.querySelectorAll("p a.term")].map(
+        (element) => [element.textContent, element.getAttribute("data-id"), element.closest("code") !== null],
+    );
+}"""
+
+
+@pytest.mark.parametrize(
+    ("source", "expected_marks"),
+    [
+        pytest.param(
+            "`保存先` と保存先\n",
+            [["保存先", "G-1", True], ["保存先", "G-1", False]],
+            id="code_is_word",
+        ),
+        pytest.param(
+            "`docs/保存先.md` と保存先\n",
+            [["保存先", "G-1", False]],
+            id="code_has_word_inside",
+        ),
+    ],
+)
+def test_link_body_when_inline_code(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    source: str,
+    expected_marks: list[list[Any]],
+) -> None:
+    """インラインコードの中の文字には一致を当てず、中身がちょうど語のときだけ `code` ごと印にする（正常系）。"""
+    # 準備
+    data = make_data(docs=[make_item("A-1")], terms=[make_item("G-1", title="保存先")])
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    marks = preview_page.evaluate(
+        LINK_BODY_INLINE_CODE_SCRIPT, {"data": data, "source": source, "selfId": "A-1"}
+    )
+    # 検証
+    assert marks == expected_marks
+
+
+# 埋め込んだ HTML の範囲の中の文にも印と ID のリンクを付け、範囲の中の ID のリンクを押して、印と知らせた項目を調べる
+LINK_BODY_EMBEDDED_SCRIPT = """({data, source, selfId}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const root = MindmapPreview.renderMarkdown(source);
+    document.body.append(root);
+    const calls = [];
+    MindmapPreview.linkHeadings({root, onHeading: () => {}, onChangeSet: () => {}});
+    MindmapPreview.linkBody({root, index, selfId, source, onOpen: (id) => calls.push(id)});
+    const pairs = (parent) => [...parent.querySelectorAll("a.term")].map(
+        (element) => [element.textContent, element.getAttribute("data-id")],
+    );
+    const range = root.querySelector(".mdmark-html");
+    const reference = range.querySelector("a.idref");
+    reference?.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+    return {
+        allTerms: pairs(root),
+        rangeTerms: pairs(range),
+        referenceText: reference?.textContent ?? null,
+        calls,
+    };
+}"""
+
+
+def test_link_body_when_embedded_html(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """埋め込んだ HTML の範囲の中の文にも、全ての出現に印と ID のリンクを付ける（正常系）。"""
+    # 準備
+    data = make_data(
+        docs=[make_item("A-1"), make_item("A-2")],
+        terms=[make_item("G-1", title="応答時間")],
+    )
+    source = (
+        "応答時間の段落\n\n"
+        "<!-- html -->\n```html\n<p>ﾋﾟｰｸ時の応答時間 と A-2</p>\n```\n<!-- /html -->\n\n"
+        "応答時間の別の段落\n"
+    )
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        LINK_BODY_EMBEDDED_SCRIPT, {"data": data, "source": source, "selfId": "A-1"}
+    )
+    # 検証
+    assert result["allTerms"] == [["応答時間", "G-1"]] * 3
+    assert result["rangeTerms"] == [["応答時間", "G-1"]]
+    assert result["referenceText"] == "A-2"
+    assert result["calls"] == ["A-2"]
+
+
 # 値の Markdown（強調・実行される属性を持つ画像・スクリプト・箇条書き 2 行）
 VALUE_MARKDOWN = '**強調** <img src=x onerror="window.__x=1"> <script>window.__x=2</script>\n\n- 項目 1\n- 項目 2\n'
 
 
 def test_render_value(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """値の Markdown を描き、スクリプトを動かさない（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         """async (source) => {
@@ -1009,6 +1487,7 @@ def test_render_value(
                 items: element.querySelectorAll("li").length,
                 html: element.innerHTML,
                 marked: element.querySelectorAll("[data-line-start]").length,
+                sourceLines: element.querySelectorAll("[data-source-line]").length,
                 dirty: window.__x,
             };
         }""",
@@ -1022,17 +1501,17 @@ def test_render_value(
     assert "onerror" not in result["html"]
     assert "<script" not in result["html"]
     assert result["marked"] == 0
+    assert result["sourceLines"] == 0
     assert result["dirty"] is None
 
 
 def test_render_value_when_line_break_in_paragraph(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """段落の中の 1 つの改行を改行にし、空行の段落は分けたままにする（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         """(source) => {
@@ -1056,26 +1535,21 @@ def test_render_value_when_line_break_in_paragraph(
     assert result["secondText"] == "3 行目"
 
 
-@pytest.mark.parametrize(
-    "present_library",
-    [
-        pytest.param("DOMPurify", id="marked_missing"),
-        pytest.param("marked", id="dompurify_missing"),
-    ],
-)
 def test_render_value_when_library_missing(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
-    load_library: LoadLibrary,
-    present_library: str,
+    serve_mdmark: ServeMdmark,
+    put_mdmark_import_map: PutMdmarkImportMap,
 ) -> None:
     """ライブラリが読めなければ、改行を残した文字のままの要素を返す（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library(present_library)
+    serve_mdmark(status=404)
+    put_mdmark_import_map()
     # 実行
     result = preview_page.evaluate(
-        """(source) => {
+        """async (source) => {
+            await MindmapPreview.loadMdmark();
             const element = MindmapPreview.renderValue(source);
             return {
                 isElement: typeof element !== "string",
@@ -1095,6 +1569,32 @@ def test_render_value_when_library_missing(
     assert result["children"] == 0
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        pytest.param("1 行目\n2 行目\n\n3 行目", "1 行目  \n2 行目\n\n3 行目", id="paragraph"),
+        pytest.param("```\na\nb\n```\nc", "```\na\nb\n```\nc", id="fence"),
+        pytest.param(
+            "> ```js\n> a\n> ```\n- ```js\n  b\n  ```",
+            "> ```js\n> a\n> ```\n- ```js\n  b\n  ```",
+            id="fence_in_quote_and_list",
+        ),
+        pytest.param("p\n\n    a\n    b\n\nq", "p\n\n    a\n    b\n\nq", id="indented_code"),
+        pytest.param("> [!NOTE]\n> a\n> b", "> [!NOTE]\n> a  \n> b", id="alert_marker"),
+    ],
+)
+def test_with_hard_breaks(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, source: str, expected: str
+) -> None:
+    """段落の中の行だけに空白を足し、フェンスの中は変えない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(source) => MindmapPreview.withHardBreaks(source)", source)
+    # 検証
+    assert result == expected
+
+
 # html のコードブロックを 1 つ持つ本文（見出しは 1 行目、前の段落は 3 行目、コードブロックは 5〜7 行目でその印は中身の先頭の 6、後の段落は 9 行目）
 HTML_CODE_BLOCK_SOURCE = (
     "# 見出し\n\n前の段落\n\n```html\n<p>a</p><script>x()</script>\n```\n\n後の段落\n"
@@ -1102,13 +1602,12 @@ HTML_CODE_BLOCK_SOURCE = (
 
 
 def test_render_markdown_when_html_code_block(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
     """html のコードブロックを枠の入れ物にし、前後は今までどおり描く（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         """(source) => {
@@ -1143,6 +1642,12 @@ TABLE_WRAP_SOURCE = (
     "| 列 C | 列 D |\n| --- | --- |\n| 3 | 4 |\n"
 )
 
+# 範囲の外の表（1〜3 行目）の後に、`<!-- html -->` の範囲（5〜9 行目）の中の表を持つ本文
+TABLE_IN_RANGE_SOURCE = (
+    "| 列 A | 列 B |\n| --- | --- |\n| 1 | 2 |\n\n"
+    "<!-- html -->\n```html\n<table><tr><th>範囲の列</th><td>範囲の値</td></tr></table>\n```\n<!-- /html -->\n"
+)
+
 # 表を包む入れ物の期待する属性（役割・読み上げの名前・キーボードで届く・行の印は持たない）
 TABLE_WRAP_ATTRIBUTES = {
     "tabindex": "0",
@@ -1152,20 +1657,56 @@ TABLE_WRAP_ATTRIBUTES = {
 }
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        pytest.param(
+            TABLE_WRAP_SOURCE,
+            {
+                "tableCount": 2,
+                "wrapClasses": ["md-table-wrap", "md-table-wrap"],
+                "wrapAttributes": [TABLE_WRAP_ATTRIBUTES, TABLE_WRAP_ATTRIBUTES],
+                "wrapChildren": [["TABLE"], ["TABLE"]],
+                "rows": [["3", "5"], ["7", "9"]],
+                "paragraphParentIsRoot": True,
+                "wrappedInRange": [],
+            },
+            id="two_tables",
+        ),
+        pytest.param(
+            TABLE_IN_RANGE_SOURCE,
+            {
+                "tableCount": 2,
+                "wrapClasses": ["md-table-wrap"],
+                "wrapAttributes": [TABLE_WRAP_ATTRIBUTES],
+                "wrapChildren": [["TABLE"]],
+                "rows": [["1", "3"], []],
+                "paragraphParentIsRoot": None,
+                "wrappedInRange": [False],
+            },
+            id="table_in_range",
+        ),
+    ],
+)
 def test_render_markdown_when_table(
-    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_library: LoadLibrary
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    source: str,
+    expected: dict[str, Any],
 ) -> None:
-    """表を横に送れる入れ物で包み、行の印を変えない（正常系）。"""
+    """表を横に送れる入れ物で包み、行の印を変えない。範囲の中の表は包まない（正常系）。"""
     # 準備
     load_preview_scripts()
-    load_library("marked")
-    load_library("DOMPurify")
+    load_mdmark()
     # 実行
     result = preview_page.evaluate(
         """(source) => {
             const root = MindmapPreview.renderMarkdown(source);
             const tables = [...root.querySelectorAll("table")];
-            const wraps = tables.map((table) => table.parentElement);
+            // 入れ物が直上にある表だけを数える（範囲の中の表は入れ物の外）
+            const wraps = tables.map((table) => table.parentElement).filter((parent) => parent.classList.contains("md-table-wrap"));
+            const paragraph = root.querySelector("p");
             return {
                 tableCount: tables.length,
                 wrapClasses: wraps.map((wrap) => wrap.className),
@@ -1177,20 +1718,19 @@ def test_render_markdown_when_table(
                 })),
                 wrapChildren: wraps.map((wrap) => [...wrap.children].map((child) => child.tagName)),
                 rows: tables.map((table) =>
-                    [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start"))
+                    [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start")).filter((line) => line !== null)
                 ),
-                paragraphParentIsRoot: root.querySelector("p").parentElement === root,
+                paragraphParentIsRoot: paragraph === null ? null : paragraph.parentElement === root,
+                // 範囲の中の表が、入れ物の中にあるか
+                wrappedInRange: tables
+                    .filter((table) => table.closest(".mdmark-html") !== null)
+                    .map((table) => table.closest(".md-table-wrap") !== null),
             };
         }""",
-        TABLE_WRAP_SOURCE,
+        source,
     )
     # 検証
-    assert result["tableCount"] == 2
-    assert result["wrapClasses"] == ["md-table-wrap", "md-table-wrap"]
-    assert result["wrapAttributes"] == [TABLE_WRAP_ATTRIBUTES, TABLE_WRAP_ATTRIBUTES]
-    assert result["wrapChildren"] == [["TABLE"], ["TABLE"]]
-    assert result["rows"] == [["3", "5"], ["7", "9"]]
-    assert result["paragraphParentIsRoot"] is True
+    assert result == expected
 
 
 # 選んだ箇所を求める HTML の本文の原文（左の数字は行。サーバーの行の印を足す前）

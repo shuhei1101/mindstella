@@ -5,7 +5,20 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
+from preview_edit_helpers import PENDING_BUTTON as FULL_PENDING_BUTTON, read_edits_file
+from preview_embed_helpers import (
+    CHART,
+    EMBED_TIMEOUT_MS,
+    EMBEDDED_BODY,
+    EXPORT_ENTRY_NAME,
+    EXPORT_MENU,
+    MARKDOWN_EXPORT_BODY,
+    RANGE,
+    ZOOM_FIT,
+    ZOOM_IN,
+    build_embedded_diff_workspace,
+)
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_a11y_checks import axe_rule_results
 from preview_alias_helpers import FULL_MARKS, TIP, TIP_OPEN, write_alias_preview
@@ -32,8 +45,12 @@ from preview_body_scroll_helpers import (
 from preview_body_link_helpers import build_body_link_workspace
 from preview_comment_helpers import (
     PILL,
+    PILL_GAP_PX,
+    PILL_OFFSET_JS,
+    PILL_SIZE_PX,
     ROW_CORNER_GAPS_JS,
     ROW_CORNER_TOLERANCE_PX,
+    SCROLL_TEXT_TO_TOP_JS,
     THREE_LINE_BODY,
     UPDATE_TIMEOUT_MS,
     read_workspace_yaml,
@@ -79,7 +96,7 @@ from preview_minimap_helpers import (
     scroll_top,
 )
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
-from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
 
 # 選んだ範囲が入口を出す判定を終えるまで待つミリ秒
 SELECTION_SETTLE_MS = 400
@@ -359,7 +376,7 @@ def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: Ope
     # 実行
     page.locator(f"{row} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"dialog.full li[data-comment='C-1'] .review-body\")?.textContent === '案 B にする'",
+        "document.querySelector(\"dialog.full li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 B にする'",
         timeout=UPDATE_TIMEOUT_MS,
     )
     # 検証
@@ -434,6 +451,45 @@ def test_selection_entry(
     assert page.locator(f"dialog.full {PILL}").count() == 1
     page.click(PILL)
     assert page.inner_text("dialog.full .send-loc-name") == "本文 2 行目"
+
+
+def test_selection_entry_position_when_fits_above(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面でも、入口を選んだ範囲の始まりの上に、左端を揃えた 32px の丸で出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open] .md")
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "言い換えたい文")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["above_gap"] == PILL_GAP_PX
+    assert offset["first_left_offset"] == 0
+    assert offset["width"] == PILL_SIZE_PX
+    assert offset["height"] == PILL_SIZE_PX
+    assert page.locator(PILL).get_attribute("data-side") == "above"
+
+
+def test_selection_entry_position_when_near_scroller_top(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """選んだ範囲の始まりが本文のスクロール領域の上端の近くにあると、入口を選んだ範囲の終わりの下に、終わりの行の左端を揃えて出す（正常系）。"""
+    # 準備（60 番目の段落を、本文のスクロール領域の上端に合わせる）
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": LONG_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open] .md")
+    page.evaluate(SCROLL_TEXT_TO_TOP_JS, [FULL_BODY, "60 番目の段落"])
+    page.evaluate(ANIMATIONS_FINISHED_JS)
+    # 実行
+    select_text_for_pill(page, "dialog.full .md:not(.md-value)", "60 番目の段落")
+    # 検証
+    offset = page.evaluate(PILL_OFFSET_JS)
+    assert offset["below_gap"] == PILL_GAP_PX
+    assert offset["last_left_offset"] == 0
+    assert page.locator(PILL).get_attribute("data-side") == "below"
 
 
 def test_selection_entry_when_switched_from_panel(
@@ -884,15 +940,11 @@ def test_html_body_entry_position_when_mouse(
     page.wait_for_selector(f"dialog.full {PILL}", timeout=UPDATE_TIMEOUT_MS)
     rect = text_rect_in_page(page, FULL_BODY_FRAME, "言い換えたい文")
     pill_box = page.locator(PILL).bounding_box()
-    # 検証（入口と選んだ文の矩形との縦の差が、選んだ行の高さ以内）
+    # 検証（入口の下端が選んだ文の上端より上にあり、その差が選んだ行の高さ以内）
     assert page.locator(f"dialog.full {PILL}").count() == 1
     assert pill_box is not None
-    gap = max(
-        rect["top"] - (pill_box["y"] + pill_box["height"]),
-        pill_box["y"] - (rect["top"] + rect["height"]),
-        0,
-    )
-    assert gap <= rect["height"]
+    gap = rect["top"] - (pill_box["y"] + pill_box["height"])
+    assert 0 < gap <= rect["height"]
 
 
 def test_html_body_entry_when_switched_from_panel(
@@ -1127,7 +1179,7 @@ def test_body_wrap_when_long_words_and_tables(
     assert wide["scrolls"] is True
     assert wide["overflowX"] in ("auto", "scroll")
     assert narrow["scrolls"] is False
-    assert narrow["tableFillsWrap"] is True
+    assert narrow["tableNarrowerThanWrap"] is True
 
 
 @pytest.mark.parametrize("width", [320, 1280])
@@ -1160,3 +1212,180 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: Op
     set_smallest(page)
     # 検証
     assert_fits_smallest(page, ("dialog.full", 'dialog.full button[data-act="full"]'), scope="dialog.full")
+
+
+# ===== 編集の表示（保存待ちの編集） =====
+
+# 全画面の編集のトグルと編集の表示
+FULL_EDIT_TOGGLE = "dialog.full button.pe-edit-toggle"
+FULL_EDIT_FORM = "dialog.full form.pe-form"
+
+# 編集の表示の入力欄を離れた後、編集が溜まるのを待つ上限ミリ秒
+FULL_EDIT_SETTLE_MS = 10_000
+
+
+def test_edit_in_full(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """全画面の中でも詳細パネルと同じ編集の表示で編集でき、見出しとキーに保存待ちの印を置く。全画面を戻しても溜めた編集は残る（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(
+        make_item("D-1", title="最初の問い", answer="元の答え"),
+        edits=(make_edit("E-1", value="編集後の答え", before="元の答え"),),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    # 検証（読む表示）
+    assert page.locator("dialog.full .panel-head .pm.pm-compact").count() == 1
+    assert "編集後の答え" in page.inner_text("dialog.full .panel-body")
+    assert page.locator(FULL_EDIT_TOGGLE).get_attribute("aria-pressed") == "false"
+    # 実行（編集の表示にして、別のキーを書き換える）
+    page.click(FULL_EDIT_TOGGLE)
+    page.wait_for_selector(FULL_EDIT_FORM)
+    reason = page.locator(f"{FULL_EDIT_FORM} #pe-D1-reason")
+    reason.fill("理由の文")
+    reason.blur()
+    expect(page.locator(FULL_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", "保存待ち（2 件）", timeout=FULL_EDIT_SETTLE_MS
+    )
+    # 検証（編集の表示）
+    assert page.locator(FULL_EDIT_TOGGLE).inner_text().strip() == "編集を終える"
+    assert page.locator(f"{FULL_EDIT_FORM} .pe-field[data-key='reason'] .pm").count() == 1
+    assert page.locator(f"{FULL_EDIT_FORM} .pe-field[data-key='answer'] .pm").count() == 1
+    assert [edit["key"] for edit in read_edits_file(root)["items"]] == ["answer", "reason"]
+    # 実行（元の大きさに戻す）
+    page.click('dialog.full button[data-act="full"]')
+    page.wait_for_selector("aside.panel.open")
+    # 検証（元の大きさに戻す）
+    assert page.locator("dialog.full").count() == 0
+    assert page.get_by_role("button", name="保存待ち（2 件）").count() == 1
+
+
+def test_edit_full_comment_input_hidden(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """編集の表示の間は、全画面の下端のコメントの入力を隠し、読む表示に戻すと出す（正常系）。"""
+    # 準備
+    url, _ = write_edit_preview(make_item("D-1", title="最初の問い"))
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    form = "dialog.full form.send"
+    assert page.locator(form).count() >= 1
+    assert page.locator(form).first.is_visible()
+    # 実行
+    page.click(FULL_EDIT_TOGGLE)
+    page.wait_for_selector(FULL_EDIT_FORM)
+    # 検証
+    assert page.locator(form).count() == 0 or page.locator(form).first.is_hidden()
+    # 戻す
+    page.click(FULL_EDIT_TOGGLE)
+    expect(page.locator(FULL_EDIT_FORM)).to_have_count(0)
+    assert page.locator(form).first.is_visible()
+
+
+def test_export_in_full(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """全画面の見出しにも「エクスポート」の入口を置き、メニューをモーダルの中に出す。Esc はメニューだけを閉じ、全画面は閉じない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    entry = page.locator("dialog.full button.panel-export")
+    # 検証
+    assert entry.get_attribute("aria-label") == EXPORT_ENTRY_NAME
+    assert entry.get_attribute("aria-expanded") == "false"
+    # 実行
+    entry.click()
+    # 検証（メニューは全画面のモーダルの中にある）
+    expect(page.locator(f"dialog.full {EXPORT_MENU}")).to_be_visible()
+    expect(entry).to_have_attribute("aria-expanded", "true")
+    # 実行（Esc）
+    page.keyboard.press("Escape")
+    # 検証
+    expect(page.locator(EXPORT_MENU)).to_be_hidden()
+    expect(page.locator("dialog.full[open]")).to_have_count(1)
+    expect(entry).to_be_focused()
+    assert "full=1" in page.evaluate("location.hash")
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [
+        pytest.param({"width": 1280, "height": 800}, id="wide"),
+        pytest.param({"width": 390, "height": 844}, id="narrow"),
+    ],
+)
+def test_export_menu_position_in_full(
+    write_preview: WritePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    page: Page,
+    viewport: dict[str, int],
+) -> None:
+    """全画面でも、メニューは入口の下に置き、画面の幅から左右 8px を引いた幅に収める（正常系）。"""
+    # 準備
+    page.set_viewport_size(viewport)
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": MARKDOWN_EXPORT_BODY})
+    open_preview(url, "#tab=docs&id=A-1&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    entry = page.locator("dialog.full button.panel-export")
+    # 実行
+    entry.click()
+    expect(page.locator(EXPORT_MENU)).to_be_visible()
+    entry_box = entry.bounding_box()
+    menu_box = page.locator(EXPORT_MENU).bounding_box()
+    # 検証
+    assert entry_box is not None
+    assert menu_box is not None
+    assert menu_box["y"] >= entry_box["y"] + entry_box["height"]
+    assert menu_box["width"] <= viewport["width"] - 16
+    assert menu_box["x"] >= 8, (menu_box, entry_box)
+    assert menu_box["x"] + menu_box["width"] <= viewport["width"] - 8, (menu_box, entry_box)
+
+
+def test_embedded_html_in_full(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, page: Page
+) -> None:
+    """全画面でも埋め込んだ HTML を本文の要素として描き、本文の幅いっぱいに広げ、チャートの倍率を変えられる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", title="埋め込む資料"), make_item("A-2"), bodies={"A-1.md": EMBEDDED_BODY}
+    )
+    open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector(CHART, timeout=EMBED_TIMEOUT_MS)
+    panel_width = page.locator(RANGE).bounding_box()["width"]  # type: ignore[index]
+    # 実行
+    _open_full(page)
+    full_chart = "dialog.full .md .mdmark-html figure.mdmark-diagram"
+    page.wait_for_selector(full_chart, timeout=EMBED_TIMEOUT_MS)
+    range_box = page.locator("dialog.full .md > .mdmark-html").bounding_box()
+    chart = page.locator(full_chart).first
+    fit_before = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    chart.locator(ZOOM_IN).click()
+    fit_after = int(chart.locator(ZOOM_FIT).inner_text().rstrip("%"))
+    # 検証
+    assert page.locator("dialog.full iframe").count() == 0
+    assert range_box is not None
+    assert range_box["width"] > panel_width
+    assert fit_after > fit_before
+
+
+def test_embedded_html_diff_minimap_in_full(
+    make_workspace: MakeWorkspace, call_tool: CallTool, open_preview: OpenPreview, page: Page
+) -> None:
+    """全画面でも、差分のミニマップには範囲の差分の高さに「変わった」の印を 1 つ置く（正常系）。"""
+    # 準備
+    root = build_embedded_diff_workspace(make_workspace, call_tool)
+    url = str(call_tool("preview_url", workspace=str(root)).data["url"])
+    preselect_diff(page, "V-2")
+    # 実行
+    open_minimap(page, open_preview, url, "#tab=docs&id=A-1&full=1")
+    shapes = mark_shapes(page, FULL_SCOPE)
+    # 検証
+    assert [shape["kind"] for shape in shapes] == ["df-chg"]
