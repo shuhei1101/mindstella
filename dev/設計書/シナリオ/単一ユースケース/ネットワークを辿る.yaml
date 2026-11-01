@@ -68,7 +68,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: '決定済みの検討事項 D-1（タグ: 保存）、D-1 を前提に持つ要見直しの D-3（タグ: 保存）、D-3 を進める進行中のタスク T-2（タグ: 通知）、D-3 に関連する調査 R-1（タグ無し）'
-        notes: 'D-3 は `depends_on: [D-1]`、T-2 は `for: [D-3]`、R-1 は `related: [D-3]`'
+        notes: 'D-3 は `depends_on: [D-1]`、T-2 は `for: [D-3]`、R-1 は `related: [{to: D-3, type: references, when: 見直す観点を確かめるとき}]`'
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-

@@ -533,7 +533,7 @@ scenarios:
         notes: '-'
       - name: 記録
         description: 検討事項 D-1（調査 R-2 への関連を持つ）と、D-1 への関連を持つメモ N-1 と、D-1 を更新した会話ログ L-1
-        notes: 'D-1 `related: [{to: R-2, type: requires, when: 候補の条件を決める前}]`。N-1 `related: [{to: D-1, type: references, when: 決めた理由を確かめるとき}]`。L-1 は D-1 を関連で指す'
+        notes: 'D-1 `related: [{to: R-2, type: requires, when: 候補の条件を決める前}]`。N-1 `related: [{to: D-1, type: references, when: 決めた理由を確かめるとき}]`。L-1 `related: [{to: D-1, type: references, when: D-1 の回答を決めた経緯を確かめるとき}]`'
       - name: 配信
         description: 記録を配っているサーバー
         notes: '-'
