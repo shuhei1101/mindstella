@@ -84,6 +84,10 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .check { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: var(--fs-small); user-select: none; }
 .check input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
 .tag { display: inline-block; padding: 0 6px; margin: 1px 4px 1px 0; border: 1px solid var(--border-soft); border-radius: 3px; font-size: var(--fs-xs); color: var(--text-2); white-space: nowrap; }
+/* 主題のタグ: 枠と文字を 1 段濃くし、名前の前に二重丸のマーカーを置く（色に加えてマーカーで見分ける） */
+.tag.is-main { display: inline-flex; align-items: center; gap: 4px; border-color: var(--text-2); color: var(--text); }
+/* 主題のマーカー（二重丸） */
+.tag.is-main > svg.icon { flex: none; width: 10px; height: 10px; }
 .impact { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--text-2); white-space: nowrap; }
 .impact i { display: inline-block; width: 4px; height: 10px; background: var(--border); border-radius: 1px; }
 .impact i.on { background: var(--text-2); }
@@ -2325,6 +2329,19 @@ button.n-item .r2 > .pm { height: 14px; width: 16px; }
 .pe-chip-x:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* チップを外すボタンの印 */
 .pe-chip-x svg.icon { width: 12px; height: 12px; }
+/* 主題のトグルを持つチップ: 左の余白をトグルに任せる */
+.pe-chip.has-main { padding-left: 0; gap: 0; }
+/* 主題のトグル: 押せる範囲を縦横 24px にする */
+.pe-chip-main { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0; border: 0; background: none; color: var(--text-2); border-radius: 3px; font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.pe-chip-main:hover { background: var(--hover); color: var(--text); }
+.pe-chip-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pe-chip-main:disabled { cursor: default; opacity: .5; }
+.pe-chip-main:disabled:hover { background: none; }
+.pe-chip-main svg.icon { width: 12px; height: 12px; }
+/* 主題のトグル（主題）: 二重丸を文字の色にする */
+.pe-chip-main[aria-pressed="true"] { color: var(--text); }
+/* トグルの「主題」の文字は出さない（名前は aria-label が持つ） */
+.pe-chip-main .tag-main-text { display: none; }
 /* 値を足す入力欄: 枠を持たず、残りの幅を使う */
 .pe-chips .pe-chip-input { flex: 1 1 8em; width: auto; min-width: 6em; height: 26px; border: 0; padding: 0 4px; background: none; box-shadow: none; }
 /* 値を足す入力欄（フォーカス中）: 枠は外側に出す */

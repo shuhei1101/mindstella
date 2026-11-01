@@ -253,6 +253,11 @@ namespace MindmapPreview {
     };
   }
 
+  /** タグの値（`{name, main?}` の並び）を、主題のマーカーを付けたタグの並びにする。空なら null */
+  function tagsOf(value: unknown): Child {
+    return Array.isArray(value) && value.length > 0 ? tagList(value as (Tag | string)[]) : null;
+  }
+
   /** 状態の値（文字）を、印と名前の表示にする。状態を持たなければ null */
   function statusOf(value: unknown): Child {
     return typeof value === "string" ? statusBadge(value) : null;
@@ -439,7 +444,7 @@ namespace MindmapPreview {
     if ((item.tags ?? []).length > 0 || tagsChanged) {
       rows.push(
         h({ tag: "dt", attrs: { class: tagsChanged ? "df-key" : null }, children: ["タグ"] }),
-        h({ tag: "dd", attrs: { class: tagsChanged ? "df-key" : null }, children: [tagsChanged ? diff?.show("tags") : tagList(item.tags)] }),
+        h({ tag: "dd", attrs: { class: tagsChanged ? "df-key" : null }, children: [tagsChanged ? diff?.show("tags", tagsOf) : tagList(item.tags)] }),
       );
     }
     return h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });

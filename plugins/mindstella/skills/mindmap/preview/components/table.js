@@ -561,6 +561,11 @@ var MindmapPreview;
         const value = row[key];
         return Array.isArray(value) ? value.map(String) : [];
     }
+    /** 行の `tags` の名前（主題かどうかによらない） */
+    function rowTagNames(row) {
+        const value = row.tags;
+        return Array.isArray(value) ? MindmapPreview.tagNames(value) : [];
+    }
     /** 項目の ID を並べたセル（押すと詳細を開く）。無ければ「—」 */
     function idLinksCell(ids, open) {
         if (ids.length === 0)
@@ -632,8 +637,8 @@ var MindmapPreview;
                 label: "タグ",
                 filterable: true,
                 priority: 4,
-                get: (row) => texts(row, "tags"),
-                cell: (row) => MindmapPreview.tagList(texts(row, "tags")),
+                get: (row) => rowTagNames(row),
+                cell: (row) => MindmapPreview.tagList(rowTagNames(row)),
             },
             text: (key, label, options = {}) => ({
                 key,

@@ -1,0 +1,4 @@
+steps:
+  - op: call
+    script: tags_to_objects
+    destructive: true

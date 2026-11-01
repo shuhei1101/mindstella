@@ -142,6 +142,10 @@ var MindmapPreview;
             before,
         };
     }
+    /** タグの値（`{name, main?}` の並び）を、主題のマーカーを付けたタグの並びにする。空なら null */
+    function tagsOf(value) {
+        return Array.isArray(value) && value.length > 0 ? MindmapPreview.tagList(value) : null;
+    }
     /** 状態の値（文字）を、印と名前の表示にする。状態を持たなければ null */
     function statusOf(value) {
         return typeof value === "string" ? MindmapPreview.statusBadge(value) : null;
@@ -305,7 +309,7 @@ var MindmapPreview;
         });
         const tagsChanged = diff?.has("tags") === true;
         if ((item.tags ?? []).length > 0 || tagsChanged) {
-            rows.push(MindmapPreview.h({ tag: "dt", attrs: { class: tagsChanged ? "df-key" : null }, children: ["タグ"] }), MindmapPreview.h({ tag: "dd", attrs: { class: tagsChanged ? "df-key" : null }, children: [tagsChanged ? diff?.show("tags") : MindmapPreview.tagList(item.tags)] }));
+            rows.push(MindmapPreview.h({ tag: "dt", attrs: { class: tagsChanged ? "df-key" : null }, children: ["タグ"] }), MindmapPreview.h({ tag: "dd", attrs: { class: tagsChanged ? "df-key" : null }, children: [tagsChanged ? diff?.show("tags", tagsOf) : MindmapPreview.tagList(item.tags)] }));
         }
         return MindmapPreview.h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
     }
