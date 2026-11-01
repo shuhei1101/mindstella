@@ -353,3 +353,86 @@ def test_normal_when_adopt_added_option(
     decision = decisions["items"][0]
     assert [option["key"] for option in decision["options"]] == ["A", "B"]
     assert not any(option.get("adopted") for option in decision["options"])
+
+
+def test_normal_when_item_add_with_options(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """足す検討事項の案を、同じ `item-add` の `value` の `options` で溜める（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url = serve_preview(root)
+    # 実行
+    first = post_json(
+        url,
+        EDITS_PATH,
+        {"op": "item-add", "key": "decisions", "value": {"title": "保存の単位", "status": "未決定"}},
+    )
+    second = post_json(
+        url,
+        EDITS_PATH,
+        {
+            "op": "item-add",
+            "target": "new-1",
+            "key": "decisions",
+            "value": {
+                "title": "保存の単位",
+                "status": "決定済み",
+                "options": [
+                    {"key": "A", "content": "項目ごと"},
+                    {"key": "B", "content": "まとめて", "adopted": True},
+                ],
+            },
+        },
+    )
+    # 検証
+    assert first.status == 201
+    assert first.json()["target"] == "new-1"
+    assert second.status == 200
+    assert second.json()["count"] == 1
+    saved = _read_edits(root)
+    assert [(e["target"], e["op"]) for e in saved["items"]] == [("new-1", "item-add")]
+    value = saved["items"][0]["value"]
+    assert value["options"] == [
+        {"key": "A", "content": "項目ごと"},
+        {"key": "B", "content": "まとめて", "adopted": True},
+    ]
+    assert "A" not in value
+    assert "B" not in value
+    decisions = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
+    assert [item["id"] for item in decisions["items"]] == ["D-1"]
+
+
+def test_error_when_item_add_options_duplicated(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """足す検討事項の `options` に同じ記号の案が 2 つあると、何も溜めずに 400 を返す（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    url = serve_preview(root)
+    # 実行
+    response = post_json(
+        url,
+        EDITS_PATH,
+        {
+            "op": "item-add",
+            "key": "decisions",
+            "value": {
+                "title": "保存の単位",
+                "options": [
+                    {"key": "A", "content": "項目ごと"},
+                    {"key": "A", "content": "まとめて"},
+                ],
+            },
+        },
+    )
+    # 検証
+    assert response.status == 400
+    detail = response.json()["detail"]
+    assert "options" in detail
+    assert "A" in detail
+    assert not _edits_path(root).exists()

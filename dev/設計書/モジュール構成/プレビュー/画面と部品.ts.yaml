@@ -2090,7 +2090,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     usecase: 画面で項目を編集して保存する
     kind: 画面
-    summary: 画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ
+    summary: 画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ
     props:
       - name: kind
         type: Kind
@@ -2165,6 +2165,12 @@ components:
         condition: '案 A・B の検討事項 D-1、`optionDrafts: [{key: C, content: 下書き}]`。案 C の入力に「下書き」が出ているか見る。「案を追加」を押す。案 C に「下書き 2」と打つ'
         mock: '`on.draft`・`on.change`'
         expected: '案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない'
+      - name: test_detail_edit_form_when_adding_adopted_option
+        case: 正常
+        summary: 追加の入力では、採用している案の削除ボタンを出さない
+        condition: '`item` が仮の ID `new-1` で案 A・B（B が採用）の検討事項'
+        mock: '`on.change`'
+        expected: 「案 A を削除」はあり、「案 B を削除」と「項目を削除」が無い
   - name: decorateMarkdown
     title: Markdownの本文
     kind: コンポーネント

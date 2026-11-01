@@ -526,10 +526,10 @@ elements:
   - name: 案の入力
     kind: list
     position: 編集の表示 > 依存先の下
-    description: 検討事項の案を 1 案 1 枚で並べる。各案に記号・「採用」のラジオ・中身の入力欄・「案 {記号} を削除」を置き、末尾に「案を追加」を置く。中身を離れたときに `option-edit`（足した案は `option-add`）、採用を選んだときに `adopt`、削除で `option-remove` を溜める。削除を溜めた案は中身に取り消し線を引く。「案を追加」は次の記号の空の案を足し、中身を書いて離れたときに溜める
+    description: 検討事項の案を 1 案 1 枚で並べる。各案に記号・「採用」のラジオ・中身の入力欄・「案 {記号} を削除」を置き、末尾に「案を追加」を置く。中身を離れたときに `option-edit`（足した案は `option-add`）、採用を選んだときに `adopt`、削除で `option-remove` を溜める。削除を溜めた案は中身に取り消し線を引く。「案を追加」は次の記号の空の案を足し、中身を書いて離れたときに溜める。追加の入力では、案の操作ごとに同じ `item-add` の `value` の `options` を書き換え（採用を選んだときは `status` も決定済みにする）、採用している案には「案 {記号} を削除」を出さない
     io: 入力
     visible_when: 検討事項の編集の表示
-    target: 保存待ちの編集の追加（op が option-add・option-edit・option-remove・adopt）
+    target: 保存待ちの編集の追加（op が option-add・option-edit・option-remove・adopt。追加の入力では op が item-add の value.options）
     action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
     status: planned
     introduced:

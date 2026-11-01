@@ -67,7 +67,7 @@ constants:
     title: 編集できないキー
     container: plugins/mindstella/skills/mindmap/scripts/edits.py
     usecase: 画面で項目を編集して保存する
-    summary: '`set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する）'
+    summary: '`set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する。`item-add` の `options` だけは除く）'
     value: frozenset({"id", "created", "updated", "updated_by", "history", "history_dropped_seq", "seq", "added_seq", "options"})
   - name: USER_EDITOR
     title: 利用者の編集した人
@@ -268,7 +268,7 @@ functions:
       3. 向け先を確かめる
          - `item-add` 以外で項目か仮の ID が無い場合、`option-edit`・`option-remove`・`adopt` の案がその項目の案にも溜めた `option-add` にも無い場合、`EditNotFoundError` を送る
          - `option-add` の記号が既にある場合、削除を溜めた項目へ `item-remove` 以外を溜める場合、`EditConflictError` を送る
-      4. `set`・`item-add` の `value` のキーを確かめる（`UNEDITABLE_KEYS` を持たず、その種類のスキーマのそのキーの型に合い、`title` は前後の空白を除いて 1 文字以上）。`setting` の `key` は『設定の更新』の `EDITABLE_KEYS` にあるか
+      4. `set`・`item-add` の `value` のキーを確かめる（`UNEDITABLE_KEYS` を持たず（`item-add` の `options` は除く。その種類のスキーマに `options` が無ければ「この種類にないキー」。スキーマの型に加えて案の記号が重ならないかも確かめる）、その種類のスキーマのそのキーの型に合い、`title` は前後の空白を除いて 1 文字以上）。`setting` の `key` は『設定の更新』の `EDITABLE_KEYS` にあるか
          - 合わない場合、`EditInvalidError` を送る
       5. 同じ編集を探す（`item-add` は `target`、それ以外は `target`・`op`・`key` が同じもの）
          - ある場合、`value`（`setting` は `map` も）だけを書き換える
@@ -338,6 +338,19 @@ functions:
         mock: なし
         expected: '`EditConflictError`'
         exception: 溜めた編集と合わない
+      - name: test_add_edit_when_item_add_with_options
+        case: 正常
+        summary: 足す検討事項の案を `value` の `options` で溜める
+        condition: '`{op: item-add, key: decisions, value: {title: 保存の単位, status: 決定済み, options: [{key: A, content: 項目ごと}, {key: B, content: まとめて, adopted: true}]}}`'
+        mock: '`now`'
+        expected: '`({id: E-1, target: new-1, count: 1}, True)`。E-1 の `value.options` が案 A・B（B だけが採用）で、`value` が `A`・`B` をキーに持たない'
+      - name: test_add_edit_when_item_add_options_invalid
+        case: 異常
+        summary: 足す項目の案が合わないときは溜めない
+        condition: '`parametrize`: 検討事項の `options` に記号 A が 2 つ / 検討事項の `options` の案に `content` が無い / タスク（`key: tasks`）の `value` に `options` / `set` で D-1 の `options`'
+        mock: なし
+        expected: どれも `EditInvalidError`（メッセージに `options`）で、`edits.yaml` が呼ぶ前と同じ
+        exception: 形が合わない
   - name: delete_edit
     title: 保存待ちの編集の取り消し
     kind: 関数
@@ -475,6 +488,12 @@ functions:
         mock: なし
         expected: '`EditInvalidError`。`changes.yaml` が呼ぶ前と同じ'
         exception: 保存待ちが空
+      - name: test_save_edits_when_item_add_with_options
+        case: 正常
+        summary: 案を持つ足す検討事項を、案ごと書き込む
+        condition: 'D-1 と、E-1（検討事項の追加 `new-1`、`status: 決定済み`、`options` が案 A・B で B が採用）'
+        mock: '`now`'
+        expected: '`added` が `[{temp: new-1, id: D-2}]`。D-2 が案 A・B を持ち B だけが採用、状態が決定済み、`updated_by` が `user` で、`edits.yaml` が 0 件'
   - name: _parse_edit_input
     title: 追加の本文の確かめ
     kind: 関数

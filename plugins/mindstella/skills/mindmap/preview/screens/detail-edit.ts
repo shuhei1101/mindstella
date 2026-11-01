@@ -124,9 +124,9 @@ namespace MindmapPreview {
     ],
   };
 
-  /** 項目を追加する入力に並べるキー（スキーマで必須のキーと、状態・タグ・本文） */
+  /** 項目を追加する入力に並べるキー（スキーマで必須のキーと、状態・タグ・本文。検討事項は案も） */
   const ADD_KEYS: Record<Kind, string[]> = {
-    decisions: ["status", "title", "tags", "body"],
+    decisions: ["status", "title", "options", "tags", "body"],
     tasks: ["status", "title", "kind", "tags", "body"],
     research: ["title", "question", "tags", "body"],
     docs: ["status", "title", "kind", "deliverable", "tags", "body"],
@@ -583,6 +583,8 @@ namespace MindmapPreview {
     });
     const idPart = safeId(item.id);
     const options = item.options ?? [];
+    // 追加の入力では、採用している案は削除できない（採用をほかの案へ移すと削除できる）
+    const adding = item.id.startsWith(NEW_ID_PREFIX);
     for (const option of options) {
       const removed = removedOptions.includes(option.key);
       const mark = props.marks[option.key];
@@ -636,7 +638,7 @@ namespace MindmapPreview {
                 }),
                 mark === undefined ? null : pendingEditMark({ kind: mark, compact: true }),
                 h({ tag: "span", attrs: { class: "spacer" } }),
-                removed
+                removed || (adding && option.adopted === true)
                   ? null
                   : h({
                       tag: "button",

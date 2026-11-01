@@ -121,6 +121,34 @@ def test_detail_edit_form_when_option_drafts(
     ]
 
 
+def test_detail_edit_form_when_adding_adopted_option(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    valid_settings: dict[str, Any],
+) -> None:
+    """追加の入力では、採用している案の削除ボタンを出さない（正常系）。"""
+    # 準備: 仮の ID new-1 で、案 A・B（B が採用）を持つ足す検討事項
+    load_preview_scripts()
+    item = {
+        "id": "new-1",
+        "title": "保存の単位",
+        "status": "決定済み",
+        "options": [
+            {"key": "A", "content": "項目ごと"},
+            {"key": "B", "content": "まとめて", "adopted": True},
+        ],
+    }
+    _mount(preview_page, item, valid_settings)
+    # 実行
+    remove_a = preview_page.get_by_role("button", name="案 A を削除").count()
+    remove_b = preview_page.get_by_role("button", name="案 B を削除").count()
+    remove_item = preview_page.get_by_role("button", name="項目を削除").count()
+    # 検証
+    assert remove_a == 1
+    assert remove_b == 0
+    assert remove_item == 0
+
+
 @pytest.mark.parametrize(
     ("overrides", "expected_texts"),
     [

@@ -5,13 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from preview_edit_helpers import (
     ADD_BUTTON,
     ADD_PANEL,
     ADD_TITLE_INPUT,
     ADDED_ITEM,
     PENDING_BUTTON,
+    SETTLE_MS,
     assert_topbar_pending,
     block_by_saving,
     edit_edits,
@@ -2396,3 +2397,65 @@ def test_added_item_reopens_input(
     # 検証
     page.wait_for_selector(ADD_PANEL)
     assert page.locator(ADD_TITLE_INPUT).input_value() == "足す問い"
+
+
+# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったかを読む。
+# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
+ADDED_OPTIONS_JS = """(expected) => {
+  fetch('/api/edits').then(r => r.json()).then(d => {
+    window.addedOptionsSaved = d.items.some(e => e.op === 'item-add' && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected));
+  });
+  return window.addedOptionsSaved === true;
+}"""
+
+
+def _wait_added_options(page: Page, expected: list[dict[str, object]]) -> None:
+    """保存待ちの item-add の value.options が expected になるのを待つ。"""
+    page.evaluate("() => { window.addedOptionsSaved = false; }")
+    page.wait_for_function(ADDED_OPTIONS_JS, arg=expected, timeout=SETTLE_MS)
+
+
+def test_add_item_with_options(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加の入力で書いた案は `item-add` の value.options に溜め、採用を選ぶと決定済みにする。案を削除しても同じ記号の書きかけを残さず、開き直すと案をそのまま出す（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1"))
+    # ボードは既定で決定済みの列を外すため、表で開く
+    page = open_preview(url, "#tab=decisions&view=table")
+    start_add(page, "足す問い")
+    # 実行（案 A・B を書いて離れる）
+    for key, content in (("A", "項目ごと"), ("B", "まとめて")):
+        page.get_by_role("button", name="案を追加").click()
+        area = page.get_by_label(f"案 {key} の中身")
+        area.fill(content)
+        area.blur()
+    _wait_added_options(page, [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて"}])
+    # 実行（案 B を採用する）
+    page.get_by_role("radio", name="採用").nth(1).check()
+    _wait_added_options(
+        page, [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて", "adopted": True}]
+    )
+    # 検証（溜めた後）
+    edits = read_edits_file(root)["items"]
+    assert [edit["op"] for edit in edits] == ["item-add"]
+    value = edits[0]["value"]
+    assert value["status"] == "決定済み"
+    assert "A" not in value
+    assert "B" not in value
+    expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)
+    expect(page.get_by_role("button", name="案 B を削除")).to_have_count(0, timeout=SETTLE_MS)
+    # 実行（採用していない案 A を削除する）
+    page.get_by_role("button", name="案 A を削除").click()
+    _wait_added_options(page, [{"key": "B", "content": "まとめて", "adopted": True}])
+    # 検証（削除した後）
+    expect(page.get_by_label("案 A の中身")).to_have_count(0, timeout=SETTLE_MS)
+    # 実行（閉じて開き直す）
+    page.get_by_role("button", name="追加の入力を閉じる").click()
+    page.wait_for_selector(ADD_PANEL, state="detached")
+    page.click(f"tr{ADDED_ITEM} .row-open")
+    page.wait_for_selector(ADD_PANEL)
+    # 検証（開き直した後）
+    expect(page.get_by_label("案 B の中身")).to_have_value("まとめて")
+    expect(page.get_by_role("radio", name="採用")).to_be_checked()
+    expect(page.get_by_label("案 A の中身")).to_have_count(0)
