@@ -114,11 +114,12 @@ def test_normal_when_plan(
     assert payload["relation"] == "older"
     assert payload["steps"] != []
     assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
-    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）だけ
+    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）、v0.12.0 の手順（項目のタグの置き換え）だけ
     assert {step["version"] for step in payload["steps"] if step["destructive"]} == {
         "v0.6.0",
         "v0.8.0",
         "v0.11.0",
+        "v0.12.0",
     }
     # 値が要るキーは、全ての手順を当てた後の名前（.mindstella/config.yaml）で返す
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
@@ -552,7 +553,7 @@ def test_normal_when_tag_vocabulary_removed(
         if name != f"{RECORD_DIR}/config.yaml"
     }
     # 実行
-    result = call_tool("migrate", workspace=str(root))
+    result = call_tool("migrate", workspace=str(root), to_version="v0.11.0")
     # 検証
     assert result.is_error is False
     assert result.data is not None
@@ -570,9 +571,54 @@ def test_normal_when_tag_vocabulary_removed(
     assert records_after == records_before
     # もう一度当てても、config.yaml は変わらない
     config_after = config_path.read_text(encoding="utf-8")
-    again = call_tool("migrate", workspace=str(root))
+    again = call_tool("migrate", workspace=str(root), to_version="v0.11.0")
     assert again.is_error is False
     assert config_path.read_text(encoding="utf-8") == config_after
+
+
+def test_normal_when_tags_to_objects(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+) -> None:
+    """v0.11.0 のワークスペースの項目の文字列のタグを {name} に置き換え、スレッドのタグは残す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["保存", "通知", "ＡＰＩ", "api"]), make_item("N-1", tags=[])
+    )
+    write_threads(root, make_thread("TH-1", tags=["起票"]))
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.11.0\n", encoding="utf-8")
+    decisions_path = root / RECORD_DIR / "decisions.yaml"
+    updated_before = yaml.safe_load(decisions_path.read_text(encoding="utf-8"))["items"][0][
+        "updated"
+    ]
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    steps = result.data["steps"]
+    assert [(step["version"], step["op"], step["destructive"]) for step in steps] == [
+        ("v0.12.0", "call", True)
+    ]
+    decision = yaml.safe_load(decisions_path.read_text(encoding="utf-8"))["items"][0]
+    assert decision["tags"] == [{"name": "保存"}, {"name": "通知"}, {"name": "ＡＰＩ"}]
+    assert decision["updated"] == updated_before
+    note = yaml.safe_load((root / RECORD_DIR / "notes.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
+    assert note["tags"] == []
+    thread = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ][0]
+    assert thread["tags"] == ["起票"]
+    # もう一度当てても、D-1 は変わらない
+    decisions_after = decisions_path.read_text(encoding="utf-8")
+    again = call_tool("migrate", workspace=str(root))
+    assert again.is_error is False
+    assert decisions_path.read_text(encoding="utf-8") == decisions_after
     assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
 
 

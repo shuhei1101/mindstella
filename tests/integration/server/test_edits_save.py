@@ -64,11 +64,16 @@ def test_normal(
     """検討事項のキー・案・採用の編集を当て、編集した人を利用者にして 1 つのまとまりにする（正常系）。"""
     # 準備
     options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
-    root = make_workspace(make_item("D-1", tags=["画面"], options=options))
+    root = make_workspace(make_item("D-1", tags=[{"name": "画面"}], options=options))
     write_edits(
         root,
         make_edit("E-1", value="案 C にする"),
-        make_edit("E-2", key="tags", value=["画面", "記録の形"], before=["画面"]),
+        make_edit(
+            "E-2",
+            key="tags",
+            value=[{"name": "画面"}, {"name": "記録の形", "main": True}],
+            before=[{"name": "画面"}],
+        ),
         make_edit("E-3", op="option-add", key="C", value={"content": "案 C"}, before=None),
         make_edit("E-4", op="adopt", key="C", value="C"),
     )
@@ -81,7 +86,7 @@ def test_normal(
     assert (payload["set"], payload["changed"]) == ("V-1", ["D-1"])
     decision = _find(read_items(root, "decisions.yaml"), "D-1")
     assert decision["answer"] == "案 C にする"
-    assert decision["tags"] == ["画面", "記録の形"]
+    assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形", "main": True}]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["C"]
     assert decision["updated_by"] == "user"
     assert [entry["by"] for entry in decision["history"]] == ["user"]
@@ -285,10 +290,10 @@ def test_error_when_invalid_value(
 ) -> None:
     """当てた後の項目が参照の指す先に合わなければ、どの編集も当てない。まだ使われていないタグは止めない（異常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", tags=["画面"]))
+    root = make_workspace(make_item("D-1", tags=[{"name": "画面"}]))
     write_edits(
         root,
-        make_edit("E-1", key="tags", value=["保存"], before=[]),
+        make_edit("E-1", key="tags", value=[{"name": "保存"}], before=[]),
         make_edit("E-2", key="depends_on", value=["D-99"], before=[]),
     )
     url = serve_preview(root)

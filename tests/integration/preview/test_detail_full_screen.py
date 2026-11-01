@@ -1389,3 +1389,43 @@ def test_embedded_html_diff_minimap_in_full(
     shapes = mark_shapes(page, FULL_SCOPE)
     # 検証
     assert [shape["kind"] for shape in shapes] == ["df-chg"]
+
+
+# タグごとに、名前・主題か・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+FULL_TAG_VALUES_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+
+def test_tags_and_tag_input_in_full(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """全画面にも詳細パネルと同じタグの行とタグの入力を出し、主題のトグルで付け外しした並びを溜める（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(
+        make_item("D-1", title="最初の問い", tags=[{"name": "データ"}, {"name": "画面", "main": True}]),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full[open] .d-meta span.tag")
+    # 検証（タグの行）
+    assert page.inner_text("dialog.full .d-meta dt:last-of-type") == "タグ"
+    assert page.evaluate(FULL_TAG_VALUES_JS, "dialog.full .d-meta dd:last-of-type") == [
+        {"name": "データ", "main": False, "marker": None},
+        {"name": "画面", "main": True, "marker": "true"},
+    ]
+    # 実行（タグの入力で主題を付け替える）
+    page.click(FULL_EDIT_TOGGLE)
+    page.wait_for_selector(FULL_EDIT_FORM)
+    group = page.locator("dialog.full").get_by_role("group", name="タグ")
+    group.get_by_role("button", name="データ を主題").click()
+    expect(page.locator(FULL_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", "保存待ち（1 件）", timeout=FULL_EDIT_SETTLE_MS
+    )
+    # 検証（タグの入力）
+    assert group.get_by_role("button", name="データ を主題").get_attribute("aria-pressed") == "true"
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"]) == ("tags", [{"name": "データ", "main": True}, {"name": "画面", "main": True}])

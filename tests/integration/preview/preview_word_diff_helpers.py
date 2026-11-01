@@ -206,7 +206,7 @@ def build_key_word_diff_workspace(
         "lead": "要件は来週までに決める。",
         "options": [{"key": "A", "content": "毎週の会議で決める"}],
         "weight": "大",
-        "tags": ["要件", "会議"],
+        "tags": [{"name": "要件"}, {"name": "会議"}],
         "category": "データ構造",
         "phase": "要件",
         "target": "mindmap",
@@ -223,7 +223,7 @@ def build_key_word_diff_workspace(
             "lead": "要件は今週までに決める。",
             "options": [{"key": "A", "content": "毎月の会議で決める"}],
             "weight": "中",
-            "tags": ["要件", "運用"],
+            "tags": [{"name": "要件"}, {"name": "運用"}],
         },
     )
     _call(call_tool, "commit", workspace=workspace, summary="語を書き換える")

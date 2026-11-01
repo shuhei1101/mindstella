@@ -307,12 +307,19 @@ def test_error_when_both_bodies(
 def test_normal_when_new_tag(
     make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
 ) -> None:
-    """どの項目もまだ持たないタグを持つ項目も、そのまま書く（正常系）。"""
+    """どの項目もまだ持たないタグを持つ項目も、主題とあわせてそのまま書く（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", tags=["通知"]))
+    root = make_workspace(make_item("D-1", tags=[{"name": "通知"}]))
     config_path = root / RECORD_DIR / "config.yaml"
     config_before = config_path.read_text(encoding="utf-8")
-    item = {**NEW_DECISION, "tags": ["通知", "通知機能"]}
+    item = {
+        **NEW_DECISION,
+        "tags": [
+            {"name": "通知", "main": True},
+            {"name": "通知機能", "main": False},
+            {"name": "画面"},
+        ],
+    }
     # 実行
     result = call_tool("add", workspace=str(root), kind="decision", item=item)
     # 検証
@@ -325,5 +332,45 @@ def test_normal_when_new_tag(
     added = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
         "items"
     ][1]
-    assert added["tags"] == ["通知", "通知機能"]
+    assert added["tags"] == [{"name": "通知", "main": True}, {"name": "通知機能"}, {"name": "画面"}]
     assert config_path.read_text(encoding="utf-8") == config_before
+
+
+def test_error_when_duplicate_tag(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """表記をそろえると同じ名前になるタグを 2 件渡すと、何も書かずにエラーで終わる（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    item = {
+        **NEW_DECISION,
+        "depends_on": [],
+        "tags": [{"name": "API"}, {"name": "ａｐｉ", "main": True}],
+    }
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="decision", item=item)
+    # 検証
+    assert result.is_error is True
+    assert "decisions.yaml: items[0].tags[1]: 同じタグが既にある" in result.text.splitlines()
+    assert snapshot_tree(root) == before
+
+
+def test_error_when_string_tags(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """前の版の形式の文字列のタグを持つ項目があるワークスペースでは、何も書かずに移し替えを案内する（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=["通知"]))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("add", workspace=str(root), kind="note", item={"content": "メモの中身"})
+    # 検証
+    assert result.is_error is True
+    lines = result.text.splitlines()
+    assert any(line.startswith("decisions.yaml: items[0].tags[0]") for line in lines)
+    assert lines[-1] == "ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます"
+    assert snapshot_tree(root) == before

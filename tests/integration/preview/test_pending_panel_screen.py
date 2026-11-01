@@ -399,3 +399,45 @@ def test_offline(
     page.click(SAVE_BUTTON)
     page.wait_for_selector(".pe-toast", timeout=SAVE_TIMEOUT_MS)
     assert read_edits_file(root)["items"] == []
+
+
+# タグごとに、名前・主題か・title・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+ROW_TAGS_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    title: tag.getAttribute("title"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+
+def test_rows_when_tags(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """タグの編集の行は、前の値と後の値のそれぞれをタグの並びで描き、主題のタグを二重丸のマーカーで見分ける（「主題」は読み上げと title だけ）（正常系）。"""
+    # 準備
+    before = [{"name": "データ", "main": True}, {"name": "画面"}]
+    after = [{"name": "データ"}, {"name": "画面", "main": True}]
+    url, _ = write_edit_preview(
+        make_item("D-1", title="最初の問い", tags=before),
+        edits=(make_edit("E-1", key="tags", value=after, before=before),),
+    )
+    page = open_preview(url, DECISIONS_HASH)
+    page.wait_for_selector(PENDING_BUTTON)
+    # 実行
+    open_pending(page)
+    # 検証
+    row = page.locator("#pe-row-E-1")
+    assert row.locator(".pe-what").inner_text() == "タグ"
+    assert page.evaluate(ROW_TAGS_JS, "#pe-row-E-1 del") == [
+        {"name": "データ", "main": True, "title": "主題", "marker": "true"},
+        {"name": "画面", "main": False, "title": None, "marker": None},
+    ]
+    assert page.evaluate(ROW_TAGS_JS, "#pe-row-E-1 ins") == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+    assert row.locator("del > .sr-only").inner_text().strip() == "前:"
+    assert row.locator("ins > .sr-only").inner_text().strip() == "後:"
