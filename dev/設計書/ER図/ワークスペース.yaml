@@ -192,7 +192,8 @@ tables:
       - name: tags
         title: タグ
         type: array
-        description: 話題のタグ。どの文字列でも持てる（タグの語彙は持たない）。比べるときは NFKC と小文字でそろえる
+        description: '話題のタグ。要素は `{name, main?}`（`name` はどの文字列でも持てる。タグの語彙は持たない）。その項目の主題のタグだけが `main: true` を持ち、主題でないタグは `main` を持たない。比べるときは `name` を NFKC と小文字でそろえ、そろえて同じ名前のタグを 2 件持たない。文字列の要素は v0.12.0 より前の形式（『記録の形式の移行』が移し替える）'
+        example: '[{name: topic:タグ, main: true}, {name: topic:検索}]'
       - name: attrs
         title: 属性
         type: object

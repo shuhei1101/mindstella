@@ -107,7 +107,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 数える範囲
-    constraint: 全ての種類の項目と `threads.yaml` のスレッドの `tags` を、NFKC と小文字にそろえた表記でまとめて数える。1 つの項目かスレッドが同じタグを 2 回持っても 1 件と数える
+    constraint: 全ての種類の項目の `tags[].name`（主題かどうかによらない）と `threads.yaml` のスレッドの `tags` を、NFKC と小文字にそろえた表記でまとめて数える。1 つの項目かスレッドが同じタグを 2 回持っても 1 件と数える
   - item: ツールの説明
     constraint: MCP のツールの説明に、使われているタグと件数を返すことと、タグを付ける前や `find` でタグを渡す前に呼び、同じ概念の言い方・活用の違いのタグがあれば使い回すことを書く
 test_file: tests/integration/server/test_tags.py

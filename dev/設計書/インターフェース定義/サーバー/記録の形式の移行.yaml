@@ -525,6 +525,31 @@ flows:
       - 同じ呼び出しをもう一度当てても、`config.yaml` が変わらない
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_tag_vocabulary_removed
+  - name: 正常系（項目のタグを主題を持てる形にする）
+    summary: v0.11.0 のワークスペースの項目の文字列のタグを `{name}` に置き換え、スレッドのタグは残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '版 v0.11.0 で、検討事項 D-1（`tags: [保存, 通知, ＡＰＩ, api]`）・メモ N-1（`tags: []`）と、スレッド TH-1（`tags: [起票]`）を持つワークスペース'
+        notes: '`migrate` を `apply` で呼ぶ'
+    flow: |
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace apply
+        IF->>WS: tags_to_objects を当てる
+        IF-->>クライアント: JSON
+    expected:
+      - ツールのエラーにならない
+      - '`steps` が `version: v0.12.0`・`op: call`・`destructive: true` の 1 件'
+      - 'D-1 の `tags` が `[{name: 保存}, {name: 通知}, {name: ＡＰＩ}]` で、`updated` が呼ぶ前と同じ'
+      - N-1 の `tags` が空の配列、TH-1 の `tags` が `[起票]` のまま
+      - 同じ呼び出しをもう一度当てても、D-1 が変わらない
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_tags_to_objects
 lead: ワークスペースの版とプラグインの版を比べ、間の版の移し替えの手順（`migrations/{版}/steps.yaml`）を版の順に並べる・当てる。値が要るキーを入れ、点検に合えば版のファイルを書き換える。
 idempotent: false
 side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
@@ -687,6 +712,9 @@ constraints:
   - item: v0.11.0 の手順
     constraint: '`call`（`remove_tag_vocabulary`）の 1 手順。`.mindstella/config.yaml` から `tags` を削除する（タグの説明も消える）。`config.yaml` か `tags` が無ければ飛ばす。項目とスレッドの `tags` は変えない。破壊的な操作'
     notes: '#333 の方針の変更（D-169）'
+  - item: v0.12.0 の手順
+    constraint: '`call`（`tags_to_objects`）の 1 手順。`.mindstella/` の種類ごとの YAML の項目が持つ `tags` の文字列の要素を `{name: {文字列}}` に置き換える（並びと表記は変えず、どのタグも `main` を持たない）。NFKC と小文字にそろえて同じ名前のタグは、最初の 1 件だけを残す。既にオブジェクトの要素と `threads.yaml` のスレッドの `tags` は変えない。書き換えた項目の `updated`・`history` は変えない。破壊的な操作'
+    notes: 版の番号は計画の次の Sprint の版。Sprint の版が変わったら合わせる
 refs:
   - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
   - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]

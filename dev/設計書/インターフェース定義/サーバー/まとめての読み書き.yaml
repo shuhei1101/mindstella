@@ -259,5 +259,5 @@ constraints:
   - item: 部分成功
     constraint: 起こさない。どれかの操作が失敗するか、置き換えに失敗したら、置き換えたものを前の中身に戻して（前に本文が無ければ消して）からツールのエラーで終わる
   - item: タグ
-    constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）
+    constraint: 『項目の追加』と同じ（`{name, main?}` で、`name` は渡した表記のまま書き、同じ名前のタグを 2 件持てない）。取得は主題ごと返す
 test_file: tests/integration/server/test_batch.py
