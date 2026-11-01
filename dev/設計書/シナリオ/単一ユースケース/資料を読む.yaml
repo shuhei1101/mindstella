@@ -108,6 +108,36 @@ scenarios:
       - 埋め込んだ HTML の中の `A-2` がリンクになり、押すと A-2 の詳細パネルへ移って履歴に積まれる
       - ワークスペースの YAML と本文の中身が、開く前と同じ
     test: test_normal_when_embedded_html_and_parts
+  - name: 正常シナリオ（主題のタグを見分ける）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 記録
+        description: 資料 A-1（タグ `保存` を主題として、`画面` を主題でなく持つ）
+        notes: '-'
+      - name: 配信
+        description: 記録を配っているサーバー
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant P as プレビュー（ブラウザ）
+
+        U->>P: 資料のタブを開く
+        P-->>U: A-1 のカード（タグに主題のマーカー）
+        U->>P: 絞り込みのボタンを押し、ドロワーでタグ = 画面を選ぶ
+        P-->>U: 絞り込んだカード
+      ```
+    expected:
+      - A-1 のカードのタグに `保存`・`画面` が並び、`保存` だけが主題のマーカーを持つ
+      - 主題のマーカーが色だけに頼らず、読み上げ名で主題と分かる
+      - ドロワーのタグの値が名前 `保存`・`画面` で並び、タグ = 画面で絞り込んだカードが A-1 である
+    test: test_normal_when_main_tag_marked
 lead: 利用者が、資料を納品物を先頭にしたカードで見て、状態の列のボードに切り替え、絞り込み、カードから本文を開く単一ユースケース。
 issue: 5
 primary_actor: 利用者

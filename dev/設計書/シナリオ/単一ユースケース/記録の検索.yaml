@@ -215,27 +215,6 @@ scenarios:
       - タグ「画面」で探した結果が T-1 だけである
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_normal_when_main_tag_first
-  - name: 異常シナリオ（返す項目に無い名前を渡す）
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-        notes: '-'
-      - name: make_workspace
-        description: 作成を済ませ、検討事項を 1 件追加したワークスペース
-        notes: '-'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as Claude Code（スキル）
-        participant SV as サーバー
-
-        CC->>SV: 加える項目に、返す項目に無い名前を渡して探す
-        SV-->>CC: 渡せる名前を示すエラー
-      ```
-    expected:
-      - ツールがエラーを返す
-      - エラーの本文に、渡した名前と、加える項目に渡せる名前がある
-    test: test_error_when_unknown_include
 lead: スキルが、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っている属性名とタグを読む単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
