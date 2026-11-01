@@ -241,6 +241,18 @@ data_models:
       - name: refs
         type: string[]
         description: '`referenced` のとき、消す項目を指している項目の ID'
+  - name: Tag
+    title: タグ
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    summary: 項目の `tags` の 1 件（ER 図『ワークスペース』の `tags`）。項目の型（`Item`）の `tags` は `Tag[]`
+    properties:
+      - name: name
+        type: string
+        description: タグの名前（書いた表記のまま）
+      - name: main
+        type: true | undefined
+        description: その項目の主題のタグだけが `true` を持つ
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -907,29 +919,6 @@ functions:
         condition: '`parametrize`: `大` / `中` / `小` / `知らない` / `undefined`（いずれも `labeled` なし）と、`大` で `labeled = true`'
         mock: なし
         expected: '`on` の目盛りが 3 / 2 / 1 本（文字は `大` / `中` / `小`）/ 空の断片 / 空の断片。`labeled = true` は目盛り 3 本で文字が `影響度 大`'
-  - name: tagList
-    title: タグの並び
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
-    usecase: 共通
-    scope: public
-    summary: タグを `span.tag` で並べる
-    args:
-      - name: values
-        type: readonly string[] | undefined
-        required: true
-        passing: positional
-        description: タグ
-    returns:
-      type: Node
-      description: タグごとの `span.tag` を持つ断片
-    unit_tests:
-      - name: test_tag_list
-        case: 正常
-        summary: タグの数だけ並べる
-        condition: '`parametrize`: `["UI", "性能"]` / `undefined`'
-        mock: なし
-        expected: '`span.tag` が 2 つで文字が `UI`・`性能` / 子の無い断片'
   - name: deliverableBadge
     title: 納品物の印
     kind: 関数
@@ -2261,6 +2250,29 @@ functions:
     status: planned
     introduced:
       pr: 348
+  - name: tagNames
+    title: タグの名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    scope: public
+    summary: 項目の `tags` から名前だけを並びの順に取り出す（表の列・絞り込み・ネットワークの条件・使われているタグが使う）
+    args:
+      - name: tags
+        type: readonly (Tag | string)[] | undefined
+        required: true
+        passing: positional
+        description: 項目の `tags`（スレッドのタグのような文字列の並びも受ける）
+    returns:
+      type: string[]
+      description: 名前の並び。文字列はそのまま、`{name}` は `name`。`undefined` は空
+    unit_tests:
+      - name: test_tag_names
+        case: 正常
+        summary: オブジェクトと文字列のタグから名前を取る
+        condition: '`parametrize`: `[{name: データ, main: true}, {name: 画面}]` / `[起票]` / `undefined`'
+        mock: なし
+        expected: '`[データ, 画面]` / `[起票]` / `[]`'
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

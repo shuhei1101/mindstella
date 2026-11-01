@@ -268,7 +268,7 @@ functions:
       3. 向け先を確かめる
          - `item-add` 以外で項目か仮の ID が無い場合、`option-edit`・`option-remove`・`adopt` の案がその項目の案にも溜めた `option-add` にも無い場合、`EditNotFoundError` を送る
          - `option-add` の記号が既にある場合、削除を溜めた項目へ `item-remove` 以外を溜める場合、`EditConflictError` を送る
-      4. `set`・`item-add` の `value` のキーを確かめる（`UNEDITABLE_KEYS` を持たず（`item-add` の `options` は除く。その種類のスキーマに `options` が無ければ「この種類にないキー」。スキーマの型に加えて案の記号が重ならないかも確かめる）、その種類のスキーマのそのキーの型に合い、`title` は前後の空白を除いて 1 文字以上）。`setting` の `key` は『設定の更新』の `EDITABLE_KEYS` にあるか
+      4. `set`・`item-add` の `value` のキーを確かめる（`UNEDITABLE_KEYS` を持たず（`item-add` の `options` は除く。その種類のスキーマに `options` が無ければ「この種類にないキー」。スキーマの型に加えて案の記号が重ならないかも確かめる。`tags` はスキーマの型に加えて、`duplicate_tag_indexes` で同じ名前のタグが無いかも確かめ、あれば `tags: 同じタグが既にあります（{名前}）`）、その種類のスキーマのそのキーの型に合い、`title` は前後の空白を除いて 1 文字以上）。`setting` の `key` は『設定の更新』の `EDITABLE_KEYS` にあるか
          - 合わない場合、`EditInvalidError` を送る
       5. 同じ編集を探す（`item-add` は `target`、それ以外は `target`・`op`・`key` が同じもの）
          - ある場合、`value`（`setting` は `map` も）だけを書き換える
@@ -350,6 +350,19 @@ functions:
         condition: '`parametrize`: 検討事項の `options` に記号 A が 2 つ / 検討事項の `options` の案に `content` が無い / タスク（`key: tasks`）の `value` に `options` / `set` で D-1 の `options`'
         mock: なし
         expected: どれも `EditInvalidError`（メッセージに `options`）で、`edits.yaml` が呼ぶ前と同じ
+        exception: 形が合わない
+      - name: test_add_edit_when_tags
+        case: 正常
+        summary: 主題を持つタグの並びを溜める
+        condition: '`tags: [{name: 画面}]` の D-1。`{op: set, target: D-1, key: tags, value: [{name: 画面, main: true}, {name: データ}]}`'
+        mock: '`now`'
+        expected: '`({id: E-1, target: D-1, count: 1}, True)`。E-1 の `before` が `[{name: 画面}]`、`value` が渡した並び'
+      - name: test_add_edit_when_tags_invalid
+        case: 異常
+        summary: 重なるタグ・文字列のタグは溜めない
+        condition: '`parametrize`: D-1 に `{op: set, key: tags, value: [{name: API}, {name: ａｐｉ}]}` / D-1 に `{op: set, key: tags, value: [画面]}` / `{op: item-add, key: tasks, value: {title: t, status: 未着手, tags: [{name: 画面}, {name: 画面}]}}`'
+        mock: なし
+        expected: どれも `EditInvalidError`（メッセージに `tags`。1 つめ・3 つめは重なった名前）で、`edits.yaml` が呼ぶ前と同じ
         exception: 形が合わない
   - name: delete_edit
     title: 保存待ちの編集の取り消し

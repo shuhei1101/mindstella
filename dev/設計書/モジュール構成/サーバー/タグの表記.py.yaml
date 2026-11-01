@@ -81,6 +81,75 @@ functions:
         condition: '`parametrize`: `ＡＰＩ` / `Api` / `データ`'
         mock: なし
         expected: '`api` / `api` / `データ`'
+  - name: tag_name
+    title: タグの名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    usecase: 共通
+    scope: public
+    summary: 項目のタグ（`{name, main?}`）かスレッドのタグ（文字列）から名前を取る
+    args:
+      - name: entry
+        type: Any
+        required: true
+        passing: positional
+        description: '`tags` の 1 件'
+    returns:
+      type: str | None
+      description: 名前（書いた表記のまま）。文字列はそのまま、辞書は `name` が文字列ならその値、それ以外は `None`
+    unit_tests:
+      - name: test_tag_name
+        case: 正常
+        summary: 辞書と文字列から名前を取り、取れない要素は None
+        condition: '`parametrize`: `{name: API, main: true}` / `画面` / `{main: true}` / `3`'
+        mock: なし
+        expected: '`API` / `画面` / `None` / `None`'
+  - name: compact_tags
+    title: タグの主題の書き方の統一
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 項目の `tags` のうち、`main` が `true` でない辞書から `main` を除いた新しい並びを返す
+    args:
+      - name: tags
+        type: Any
+        required: true
+        passing: positional
+        description: 書き込む項目の `tags`
+    returns:
+      type: Any
+      description: 並びなら、`main` が `true` でない辞書から `main` を除いた新しい並び（並び・名前・ほかのキーは変えない）。並びでない値と、辞書でない要素はそのまま（形の誤りはスキーマの検証が拾う）
+    unit_tests:
+      - name: test_compact_tags
+        case: 正常
+        summary: 主題でないタグの main を除き、ほかは変えない
+        condition: '`parametrize`: `[{name: 通知, main: true}, {name: 通知機能, main: false}, {name: 画面}]` / `[通知]` / `None`'
+        mock: なし
+        expected: '`[{name: 通知, main: true}, {name: 通知機能}, {name: 画面}]`（渡した並びは書き換わらない） / `[通知]` / `None`'
+  - name: duplicate_tag_indexes
+    title: 重なったタグの位置
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: '`tags` のうち、前の要素と `normalize_tag` でそろえた名前が同じ要素の位置を返す'
+    args:
+      - name: tags
+        type: Sequence[Any]
+        required: true
+        passing: positional
+        description: 項目の `tags`
+    returns:
+      type: list[int]
+      description: 2 件目以降の重なった要素の位置（小さい順。名前を取れない要素は見ない。無ければ空）
+    unit_tests:
+      - name: test_duplicate_tag_indexes
+        case: 正常
+        summary: 表記をそろえて同じ名前の 2 件目以降を拾う
+        condition: '`parametrize`: `[{name: API}, {name: ａｐｉ, main: true}, {name: 画面}, {name: Api}]` / `[{name: API}, {name: 画面}]`'
+        mock: なし
+        expected: '`[1, 3]` / `[]`'
 notes: {}
 test_files:
   - tests/unit/scripts/test_tag_text.py

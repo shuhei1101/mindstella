@@ -31,6 +31,8 @@ directory: |
       pending-mark.ts       保存待ちの印（部品設計『保存待ちの印』）
       review-body-fold.ts   レビュー中の書き込みの本文の折りたたみ（部品設計『本文の折りたたみ』）
       doc-export-menu.ts    資料のエクスポートのメニュー（部品設計『資料のエクスポートのメニュー』）
+      tag-list.ts           タグの並び（部品設計『タグの並び』）
+      chips-input.ts        チップの入力（部品設計『チップの入力』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（ボード・マップ・表）
@@ -50,7 +52,7 @@ directory: |
       graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
-  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py`・`test_review_body_fold.py` に置く。
+  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py`・`test_review_body_fold.py`・`test_tag_list.py`・`test_chips_input.py` に置く。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え
@@ -166,7 +168,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`。タグの列は値を `tagNames` の名前にし（絞り込み・並べ替えは名前で、主題かどうかによらない）、セルは項目の `tags` をそのまま `tagList` に渡す
     description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
@@ -698,7 +700,7 @@ components:
       - name: test_detail_panel_when_diff_key_words_skipped
         case: 正常
         summary: 語の面の対でないキーと、比べられない値には語の面を付けない
-        condition: '`parametrize`: 選んだ時点で `lead` を足した D-1 / `lead` を同じ語を持たない文に書き換えた D-1 / `tags` を `["要件", "会議"]` → `["要件", "運用"]`、`date` を `2026-10-01` → `2026-10-08` にした D-1 / `lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、jsdiff を読めない D-1 を、いずれも `diff` つきで開く'
+        condition: '`parametrize`: 選んだ時点で `lead` を足した D-1 / `lead` を同じ語を持たない文に書き換えた D-1 / `tags` を `[{name: 要件}, {name: 会議}]` → `[{name: 要件}, {name: 運用}]`、`date` を `2026-10-01` → `2026-10-08` にした D-1 / `lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、jsdiff を読めない D-1 を、いずれも `diff` つきで開く'
         mock: 描画のライブラリの配信元（`page.route`。jsdiff を読めないケースは jsdiff の要求を失敗させる）
         expected: どのケースも `span.df-kv` の中に `span.df-word` が無く、前の値・今の値（前に無かったキーは今の値だけ）は今までどおり `del.df-was`・`ins.df-now` で並ぶ
       - name: test_detail_panel_when_diff_key_words_body_too_large
@@ -791,6 +793,12 @@ components:
         condition: 範囲 2 つを持ち、2 つ目の範囲の 1 つ目の段落を書き換えて末尾に段落を足した A-1 を `diff` つきで開き、「描いた結果（変更後）」を押す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 1 つ目の範囲はそのまま描かれ、2 つ目の範囲の場所に「埋め込んだ HTML」の差分が「原文の差分」を選んだ状態で出る。変更後では書き換えた段落に変わったマーカー、足した段落に足したマーカーが付き、範囲の中に本文の行の差分のマーカー（`ins.df-blk`）が無い
+      - name: test_detail_panel_when_main_tag
+        case: 正常
+        summary: タグの行は主題のマーカーを付けて描き、差分の表示でも前後をタグの並びで描く
+        condition: '`parametrize`: `tags` が `[{name: 画面}, {name: データ, main: true}]` の D-1 を開く / 選んだ時点で `tags` を `[{name: データ}]` → `[{name: データ, main: true}]` にした D-1 を `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: タグの行の `span.tag` が `データ`・`画面` の順で `データ` だけが主題のマーカーを持ち、画面に「主題」の文字が出ない / `del.df-was` の `span.tag` `データ` がマーカーを持たず、`ins.df-now` の `span.tag` `データ` がマーカーを持つ
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -2090,7 +2098,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     usecase: 画面で項目を編集して保存する
     kind: 画面
-    summary: 画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ
+    summary: '画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。タグは `chipsInput`（`mainToggle: true`、`suggestions` は `usedTags`）で描き、`onChange` の並びを `{op: set, key: tags, value}` で溜める。参照は `chipsInput`（`mainToggle: false`）で描く。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ'
     props:
       - name: kind
         type: Kind
@@ -2171,6 +2179,12 @@ components:
         condition: '`item` が仮の ID `new-1` で案 A・B（B が採用）の検討事項'
         mock: '`on.change`'
         expected: 「案 A を削除」はあり、「案 B を削除」と「項目を削除」が無い
+      - name: test_detail_edit_form_when_main_tag
+        case: 正常
+        summary: タグの主題のトグルで、主題を付けたタグの並びを溜める
+        condition: '`tags: [{name: 画面}, {name: データ}]` の検討事項 D-1。タグ `データ` の主題のトグルを押す'
+        mock: '`on.change`'
+        expected: '`on.change` が `{op: set, key: tags, value: [{name: 画面}, {name: データ, main: true}]}` で 1 回'
   - name: decorateMarkdown
     title: Markdownの本文
     kind: コンポーネント
@@ -2371,6 +2385,88 @@ components:
     status: planned
     introduced:
       pr: 348
+  - name: tagList
+    title: タグの並び
+    container: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
+    usecase: 共通
+    kind: コンポーネント
+    summary: '部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、読み上げに「主題: 」を、`title` に「主題のタグ」を持たせ、主題のタグを並びの先頭に置く（主題どうし・主題でないタグどうしは元の順）。文字列の要素は主題でないタグとして出す。表の行・資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う'
+    props:
+      - name: values
+        type: readonly (Tag | string)[] | undefined
+        required: false
+        default: '[]'
+        description: 項目の `tags`（`{name, main?}` の並び）か、名前の文字列の並び
+    unit_tests:
+      - name: test_tag_list
+        case: 正常
+        summary: 主題のタグにマーカーを付けて先頭に並べる
+        condition: '`parametrize`: `[{name: 画面}, {name: データ, main: true}]` / `[UI, 性能]` / `undefined`'
+        mock: なし（DOM を作って見る）
+        expected: '`span.tag` が `データ`・`画面` の順で、`データ` だけが二重丸のマーカーと読み上げの「主題: 」と `title`「主題のタグ」を持つ / `span.tag` が `UI`・`性能` でどれもマーカーを持たない / 子の無い断片'
+  - name: chipsInput
+    title: チップの入力
+    container: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
+    usecase: 画面で項目を編集して保存する
+    kind: コンポーネント
+    summary: 部品設計『チップの入力』の引数を受け、値のチップの並びと、候補（`datalist`）つきの入力欄を返す。Enter か入力欄を離れたときに、空白でなく並びに無い値をチップにして追加し、チップの × で外し、`onChange` を呼ぶ。`mainToggle` が真のときは値を `{name, main?}` で持ち、チップの名前の前に主題のトグル（`button`・`aria-pressed`・読み上げ名「{名前}を主題にする」）を置き、押すたびにそのタグの `main` を付け外しして `onChange` を呼ぶ（主題でないタグは `main` を持たない並びを渡す）。入力欄から追加したタグは主題でないまま並べる。`disabled` の間は入力欄・× ・トグルを押せなくする。編集の表示（項目のタグ・参照）と設定の画面が使う
+    props:
+      - name: controlId
+        type: string
+        required: true
+        description: 入力欄の `id`
+      - name: name
+        type: string
+        required: true
+        description: キーの表示名
+      - name: hint
+        type: string
+        required: true
+        description: 入力欄のプレースホルダ
+      - name: values
+        type: readonly (Tag | string)[]
+        required: true
+        description: 今の値の並び（`mainToggle` が真のときは `Tag[]`）
+      - name: suggestions
+        type: string[] | null
+        required: true
+        description: 入力欄の候補。出さないときは `null`
+      - name: monospace
+        type: boolean
+        required: true
+        description: チップを等幅の文字で出すか
+      - name: mainToggle
+        type: boolean
+        required: false
+        default: 'false'
+        description: 主題のトグルを置くか（項目のタグだけ真）
+      - name: disabled
+        type: boolean
+        required: true
+        description: 操作を止めるか
+      - name: onChange
+        type: '(values: (Tag | string)[], removed: string | null) => void'
+        required: true
+        description: 値を追加した・外した・主題を付け外ししたときに呼ぶ
+    unit_tests:
+      - name: test_chips_input
+        case: 正常
+        summary: 値を追加し・外し、並びに有るものは追加しない
+        condition: '`values: [UI]`・`mainToggle: false`。入力欄に `性能` を入れて Enter、`UI` を入れて Enter、`UI` の × を押す'
+        mock: '`onChange`'
+        expected: '`onChange` が `([UI, 性能], null)`・`([性能], UI)` の順で 2 回'
+      - name: test_chips_input_when_main_toggle
+        case: 正常
+        summary: 主題のトグルで main を付け外しし、追加したタグは主題でない
+        condition: '`values: [{name: 画面}, {name: データ, main: true}]`・`mainToggle: true`。`画面` のトグルを押す、`データ` のトグルを押す、入力欄に `保存` を入れて Enter'
+        mock: '`onChange`'
+        expected: '`データ` のトグルが `aria-pressed="true"`。`onChange` が `([{name: 画面, main: true}, {name: データ, main: true}], null)`・`([{name: 画面, main: true}, {name: データ}], null)`・`([{name: 画面, main: true}, {name: データ}, {name: 保存}], null)` の順で 3 回'
+      - name: test_chips_input_when_disabled
+        case: 異常
+        summary: disabled の間は操作できない
+        condition: '`mainToggle: true`・`disabled: true`。トグルと × を押す'
+        mock: '`onChange`'
+        expected: 入力欄・× ・トグルが `disabled` で、`onChange` が呼ばれない
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -2743,12 +2839,12 @@ functions:
     summary: ネットワークで絞る条件（種類・状態・タグ）の定義を返す
     returns:
       type: '{key, label, get, order?}[]'
-      description: '`type`（項目の種類の名前。検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`。`get` は索引の項目（`{kind, item}`）から値を取る'
+      description: '`type`（項目の種類の名前。検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`（`tagNames` の名前）。`get` は索引の項目（`{kind, item}`）から値を取る'
     unit_tests:
       - name: test_graph_conditions
         case: 正常
         summary: 種類・状態・タグの値を取る
-        condition: 未決定・タグ a の D-1 と、タグの無い N-1
+        condition: '未決定・タグ `[{name: a, main: true}]` の D-1 と、タグの無い N-1'
         mock: なし
         expected: D-1 は `検討事項`・`未決定`・`[a]`、N-1 は `メモ`・状態無し・`[]`
   - name: wheelZoom
@@ -3489,8 +3585,8 @@ functions:
         passing: positional
         description: 編集
     returns:
-      type: '{what: string, before: string | null, after: string | null}'
-      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。配列は「、」でつなぐ'
+      type: '{what: string, before: string | Tag[] | null, after: string | Tag[] | null}'
+      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。`tags` の `set` は `before`・`after` を `{name, main?}` の並びのまま返し（行は `tagList` で描く）、それ以外の配列は「、」でつなぐ'
     unit_tests:
       - name: test_edit_row_text
         case: 正常
@@ -3498,6 +3594,12 @@ functions:
         condition: '`parametrize`: `set`（`status` を 未着手 → 中止）/ `set`（`body`）/ `option-add`（C）/ `adopt`（A → C）/ `item-remove` / `setting`（`tags`）'
         mock: なし
         expected: '`{what: 状態, before: 未着手, after: 中止}` / `{what: 本文, before: null, after: null}` / `{what: 案 C を追加, before: null, after: 中身}` / `{what: 採用する案, before: A, after: C}` / `{what: 項目を削除, before: null, after: null}` / `{what: タグの語彙, ...}`'
+      - name: test_edit_row_text_when_tags
+        case: 正常
+        summary: タグの編集は前後をタグの並びのまま返す
+        condition: '`set`（`tags` を `[{name: 画面}]` → `[{name: 画面, main: true}, {name: データ}]`）'
+        mock: なし
+        expected: '`{what: タグ, before: [{name: 画面}], after: [{name: 画面, main: true}, {name: データ}]}`'
   - name: groupEdits
     title: 編集の項目ごとのまとまり
     kind: 関数
@@ -3732,7 +3834,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     usecase: 画面で項目を編集して保存する
     scope: public
-    summary: 項目とスレッドが使っているタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる
+    summary: 項目のタグの名前（`tagNames`。主題かどうかによらない）とスレッドのタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる
     args:
       - name: args
         type: '{index: RecordIndex, threads: Thread[]}'
@@ -3746,7 +3848,7 @@ functions:
       - name: test_used_tags
         case: 正常
         summary: 表記をそろえて重なりを除き、件数の多い順に並べる
-        condition: 'D-1: `[API]`・T-1: `[ａｐｉ, 画面]`・N-1: `[保存]`・TH-1: `[画面]`'
+        condition: 'D-1: `[{name: API, main: true}]`・T-1: `[{name: ａｐｉ}, {name: 画面}]`・N-1: `[{name: 保存}]`・TH-1: `[画面]`'
         mock: なし
         expected: '`[api, 画面, 保存]`'
 test_files:
@@ -3778,6 +3880,8 @@ test_files:
   - tests/unit/preview/test_detail_edit.py
   - tests/unit/preview/test_markdown_body.py
   - tests/unit/preview/test_review_body_fold.py
+  - tests/unit/preview/test_tag_list.py
+  - tests/unit/preview/test_chips_input.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ
