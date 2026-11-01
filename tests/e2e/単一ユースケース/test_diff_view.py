@@ -1272,8 +1272,12 @@ SIDE_PANEL_A1_AFTER = "1 つ目の段落です。\n\n2 つ目の段落は、今�
 SIDE_BODY_D1_BEFORE = "1 つ目の段落です。\n\n2 つ目の段落は、来週に決めます。\n\n3 つ目の段落です。\n"
 SIDE_BODY_D1_AFTER = "1 つ目の段落です。\n\n2 つ目の段落は、今週に決めます。\n\n3 つ目の段落です。\n"
 
-# 資料の詳細パネルの本文が 560px 以上になる画面の幅
+# 詳細パネルの幅の区切りが出て（901px 以上）、既定の幅 640px の詳細パネルの本文が 560px 以上になる画面の幅
 SIDE_VIEWPORT_WIDTH = 1280
+
+# 詳細パネルの幅の区切りと、その下限の幅（この幅では本文が 560px に満たない）
+PANEL_RESIZER = f"{PANEL_SCOPE} .panel-resizer"
+PANEL_MIN_WIDTH = 480
 
 # 書き換えのまとまりの説明
 SIDE_COMMIT_SUMMARY = "段落を直す"
@@ -1422,7 +1426,7 @@ def test_normal_when_side_by_side_in_panel(
     snapshot_tree: SnapshotTree,
     page: Page,
 ) -> None:
-    """幅の足りる資料の詳細パネルで「左右に並べる」を押すと上書きを残し、幅の足りない検討事項の詳細パネルでは切り替えを出さず、その全画面では上書きに従って左右に並べ、読み込み直しても保つ（正常系）。"""
+    """既定の幅の詳細パネルで「左右に並べる」を押すと上書きを残し、下限の幅に狭めた詳細パネルでは切り替えを出さず、その全画面では上書きに従って左右に並べ、読み込み直しても保つ（正常系）。"""
     # 準備（Markdown の A-1 と D-1 の 2 つ目の段落をそれぞれ書き換えて 1 つのまとまりにする）
     root = make_workspace(
         make_item("A-1"),
@@ -1454,12 +1458,20 @@ def test_normal_when_side_by_side_in_panel(
     assert [row[1] for row in left] == [False, True, False]
     prefs = page.evaluate(SAVED_PREFS_SCRIPT)
     assert prefs["bodyLayout"] == "side"
+    # 実行（詳細パネルの幅の区切りにフォーカスして Home を押し、下限の幅に狭める）
+    page.focus(PANEL_RESIZER)
+    page.keyboard.press("Home")
+    page.wait_for_function(
+        "([selector, width]) => document.querySelector(selector)?.getAttribute('aria-valuenow') === String(width)",
+        arg=[PANEL_RESIZER, PANEL_MIN_WIDTH],
+    )
     # 実行（検討事項のタブで D-1 を押す）
     page.click('nav.tabbar a[data-tab="decisions"]')
     page.click('.segment button[data-view="table"]')
     _open_decision(page, "D-1")
     page.wait_for_selector(f"{PANEL_SCOPE} .md:not(.md-value) ins.df-blk:visible")
-    # 検証（切り替えが無く、本文の差分はインラインで出る）
+    # 検証（下限の幅のまま開き、切り替えが無く、本文の差分はインラインで出る）
+    assert page.get_attribute(PANEL_RESIZER, "aria-valuenow") == str(PANEL_MIN_WIDTH)
     assert page.locator(f"{PANEL_SCOPE} {SWITCH}").is_visible() is False
     assert page.locator(f"{PANEL_SCOPE} .sbs").is_visible() is False
     assert "来週に決めます" in page.inner_text(f"{PANEL_SCOPE} .md:not(.md-value) del.df-blk:visible")

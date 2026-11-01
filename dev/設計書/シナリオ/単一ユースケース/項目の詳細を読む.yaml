@@ -75,7 +75,7 @@ scenarios:
   - name: 異常シナリオ（本文の描画のライブラリが読めない）
     setup:
       - name: Mock
-        description: CDN への marked・mermaid の要求をブラウザの通信の差し替えで失敗させる
+        description: CDN への mdmark・mermaid の要求をブラウザの通信の差し替えで失敗させる
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
@@ -93,7 +93,7 @@ scenarios:
         P-->>U: 読めなかったライブラリの名前と、描画しない本文
       ```
     expected:
-      - 読めなかったライブラリとして marked と mermaid の名前が出る
+      - 読めなかったライブラリとして mdmark と mermaid の名前が出る
       - 本文の Markdown が、描画されないままの文字として読める
       - 説明が、描画されないままの文字で、改行の位置で改行されて 2 行に出る
     test: test_error_when_render_library_unavailable

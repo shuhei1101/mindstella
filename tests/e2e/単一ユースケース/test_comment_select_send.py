@@ -274,7 +274,7 @@ def test_normal_when_edit_remove_restore(
     page.fill(f"{_row('C-1')} form.row-edit textarea", "案 A に決める")
     page.locator(f"{_row('C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent === '案 A に決める'",
+        "document.querySelector(\"li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 A に決める'",
         timeout=RESULT_TIMEOUT_MS,
     )
     # 実行（消す）
@@ -296,7 +296,7 @@ def test_normal_when_edit_remove_restore(
     page.wait_for_selector("main#main > *", state="attached")
     open_review(page)
     assert page.eval_on_selector_all(
-        f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent)"
+        f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent.trim())"
     ) == ["案 A に決める", "案 B も見たい"]
 
 
@@ -631,11 +631,15 @@ def test_error_when_thread_closed(
 
 
 # 本文の各行が、本文の枠の中に見えているかを行の順に返す（畳んだ行は枠の下に外れる）
+# 枠は畳む `.review-body`、行は描いた段落の中で強制改行に分かれた文字
 VISIBLE_LINES_SCRIPT = """(lines) => {
-    const body = document.querySelector('p.review-body');
+    const body = document.querySelector('.review-body');
     const frame = body.getBoundingClientRect();
-    const text = [...body.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+    const walker = document.createTreeWalker(body.querySelector('p'), NodeFilter.SHOW_TEXT);
+    const texts = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node);
     return lines.map((line) => {
+        const text = texts.find((node) => node.textContent.includes(line));
         const at = text.textContent.indexOf(line);
         const range = document.createRange();
         range.setStart(text, at);
