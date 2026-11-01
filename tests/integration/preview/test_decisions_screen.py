@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Route, expect
 from preview_edit_helpers import (
     ADD_BUTTON,
     ADD_PANEL,
@@ -2459,3 +2460,99 @@ def test_add_item_with_options(
     expect(page.get_by_label("案 B の中身")).to_have_value("まとめて")
     expect(page.get_by_role("radio", name="採用")).to_be_checked()
     expect(page.get_by_label("案 A の中身")).to_have_count(0)
+
+
+# 保存待ちの item-add の件数と、その value が渡したキーと値を全て持つかを読む。
+# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
+ADDED_VALUE_JS = """(expected) => {
+  fetch('/api/edits').then(r => r.json()).then(d => {
+    const adds = d.items.filter(e => e.op === 'item-add');
+    window.addedValueSaved = adds.length === 1
+      && Object.entries(expected).every(([k, v]) => JSON.stringify(adds[0].value[k]) === JSON.stringify(v));
+  });
+  return window.addedValueSaved === true;
+}"""
+
+
+def _wait_added_value(page: Page, expected: dict[str, object]) -> None:
+    """保存待ちの item-add が 1 件で、その value が expected のキーと値を全て持つのを待つ。"""
+    page.evaluate("() => { window.addedValueSaved = false; }")
+    page.wait_for_function(ADDED_VALUE_JS, arg=expected, timeout=SETTLE_MS)
+
+
+def _hold_edit_posts(page: Page) -> Callable[[], None]:
+    """編集を溜める送信（POST /api/edits）の応答を止め、止めた送信を順に通して以降は止めない関数を返す。"""
+    held: list[Route] = []
+    holding = [True]
+
+    def handle(route: Route) -> None:
+        # 止めている間の溜める送信だけを止め、読み取り（GET）と止めた後の送信は通す
+        if holding[0] and route.request.method == "POST":
+            held.append(route)
+            return
+        route.continue_()
+
+    def release() -> None:
+        holding[0] = False
+        for route in held:
+            route.continue_()
+        held.clear()
+
+    page.route("**/api/edits", handle)
+    return release
+
+
+def test_add_item_with_options_when_sent_before_response(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加の入力で案 A を書いた送信の応答より前に案 B を書いても、`item-add` 1 件の value.options に A・B が溜まり、追加の入力に案 A・B が出る（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    start_add(page, "足す問い")
+    release = _hold_edit_posts(page)
+    # 実行（案 A を書いて離れ、その送信の応答より前に案 B を書いて離れる）
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 A の中身").fill("項目ごと")
+    page.get_by_label("案 A の中身").blur()
+    page.get_by_role("button", name="案を追加").click()
+    page.get_by_label("案 B の中身").fill("まとめて")
+    page.get_by_label("案 B の中身").blur()
+    release()
+    _wait_added_value(page, {"options": [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて"}]})
+    # 検証
+    edits = read_edits_file(root)["items"]
+    assert [edit["op"] for edit in edits] == ["item-add"]
+    assert edits[0]["value"]["options"] == [{"key": "A", "content": "項目ごと"}, {"key": "B", "content": "まとめて"}]
+    expect(page.get_by_label("案 A の中身")).to_have_value("項目ごと", timeout=SETTLE_MS)
+    expect(page.get_by_label("案 B の中身")).to_have_value("まとめて", timeout=SETTLE_MS)
+    expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)
+
+
+def test_add_item_with_keys_when_sent_before_response(
+    write_edit_preview: WriteReviewPreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """追加の入力でタイトル・タグ・状態を、どれも前の送信の応答より前に続けて書いても、`target` の無い `item-add` を重ねず、1 件の value に全ての値が溜まる（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    release = _hold_edit_posts(page)
+    page.click(ADD_BUTTON)
+    page.wait_for_selector(ADD_PANEL)
+    # 実行（タイトルを書いて離れ、その送信の応答より前にタグを入れ、状態を変える）
+    page.locator(ADD_TITLE_INPUT).fill("足す問い")
+    page.locator(ADD_TITLE_INPUT).blur()
+    page.get_by_label("タグを追加").fill("画面")
+    page.get_by_label("タグを追加").press("Enter")
+    page.get_by_label("状態", exact=True).select_option("保留")
+    release()
+    _wait_added_value(page, {"title": "足す問い", "tags": ["画面"], "status": "保留"})
+    # 検証
+    edits = read_edits_file(root)["items"]
+    assert [edit["op"] for edit in edits] == ["item-add"]
+    assert (edits[0]["value"]["title"], edits[0]["value"]["tags"], edits[0]["value"]["status"]) == (
+        "足す問い",
+        ["画面"],
+        "保留",
+    )
+    expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)
