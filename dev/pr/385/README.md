@@ -1,0 +1,1 @@
+# find の返す量を view・include・count_only・format にして文字数を返し、項目のタグに主題のマーカーを持たせる
