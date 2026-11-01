@@ -621,13 +621,13 @@ def test_normal_when_new_tag(
 ) -> None:
     """まだどの項目も持たないタグを持つ検討事項も、そのまま書く（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", tags=["通知"]))
+    root = make_workspace(make_item("D-1", tags=[{"name": "通知"}]))
     # 実行
     result = call_tool(
         "add",
         workspace=str(root),
         kind="decision",
-        item={**NEW_DECISION, "tags": ["通知", "通知機能"]},
+        item={**NEW_DECISION, "tags": [{"name": "通知"}, {"name": "通知機能"}]},
     )
     tags = call_tool("tags", workspace=str(root))
     # 検証
@@ -636,10 +636,67 @@ def test_normal_when_new_tag(
     assert result.data is not None
     assert result.data["id"] == "D-2"
     # 足した検討事項が、タグ 通知・通知機能 を持つ
-    assert _read_decisions(root)[1]["tags"] == ["通知", "通知機能"]
+    assert _read_decisions(root)[1]["tags"] == [{"name": "通知"}, {"name": "通知機能"}]
     # config.yaml がタグのキーを持たない
     config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert "tags" not in config
     # タグの一覧が 通知（2 件）と 通知機能（1 件）を返す
     assert tags.data is not None
     assert {row["name"]: row["count"] for row in tags.data["tags"]} == {"通知": 2, "通知機能": 1}
+
+
+def test_normal_when_main_tag_toggled(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """主題のタグを持つ検討事項を足し、主題を別のタグへ付け替えても並びを保つ（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行
+    added = call_tool(
+        "add",
+        workspace=str(root),
+        kind="decision",
+        item={**NEW_DECISION, "tags": [{"name": "データ", "main": True}, {"name": "画面"}]},
+    )
+    assert added.data is not None
+    item_id = added.data["id"]
+    after_add = _read_decisions(root)[0]
+    shown = call_tool("show", workspace=str(root), id=item_id)
+    updated = call_tool(
+        "update",
+        workspace=str(root),
+        id=item_id,
+        item={"tags": [{"name": "データ", "main": False}, {"name": "画面", "main": True}]},
+    )
+    checked = call_tool("check", workspace=str(root))
+    # 検証
+    assert added.is_error is False
+    assert after_add["tags"] == [{"name": "データ", "main": True}, {"name": "画面"}]
+    assert shown.is_error is False
+    assert shown.data is not None
+    assert shown.data["item"]["tags"] == [{"name": "データ", "main": True}, {"name": "画面"}]
+    assert updated.is_error is False
+    # 修正の後、主題が 画面 に移り、並びが変わらず、主題でないタグは main のキーを持たない
+    assert _read_decisions(root)[0]["tags"] == [{"name": "データ"}, {"name": "画面", "main": True}]
+    # ワークスペースの全ての YAML がスキーマに合う
+    assert checked.is_error is False
+
+
+def test_error_when_tag_is_string(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """タグを名前だけの文字列で渡した検討事項は足さず、合わない箇所とオブジェクトで渡すことが要るという理由を示すエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool(
+        "add", workspace=str(root), kind="decision", item={**NEW_DECISION, "tags": ["データ"]}
+    )
+    # 検証
+    assert result.is_error is True
+    # 足した検討事項は 2 件目（items[1]）で、1 つ目のタグが合わない
+    assert "decisions.yaml: items[1].tags[0]:" in result.text
+    assert "object" in result.text
+    assert snapshot_tree(root) == before

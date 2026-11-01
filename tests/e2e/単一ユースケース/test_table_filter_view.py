@@ -197,9 +197,9 @@ def test_normal_when_topic_tags(
     """ドロワーに種類・状態・タグを並べ、タグと種類を選んで表を絞り、ボードに切り替えても条件を保つ（正常系）。"""
     # 準備
     url = serve_preview(
-        make_item("T-1", kind="作業", status="未着手", tags=["保存", "画面"]),
-        make_item("T-2", kind="調査", status="進行中", tags=["保存"]),
-        make_item("T-3", kind="作業", status="未着手", tags=["通知"]),
+        make_item("T-1", kind="作業", status="未着手", tags=[{"name": "保存"}, {"name": "画面"}]),
+        make_item("T-2", kind="調査", status="進行中", tags=[{"name": "保存"}]),
+        make_item("T-3", kind="作業", status="未着手", tags=[{"name": "通知"}]),
         make_item("T-4", kind="作業", status="完了"),
         settings=valid_settings,
     )

@@ -164,9 +164,9 @@ def test_normal_when_filtered(
     """ドロワーのタグで話題を選び、状態を足して、両方の条件に合う項目の玉だけにする（正常系）。"""
     # 準備
     url = serve_preview(
-        make_item("D-1", status="決定済み", tags=["保存"], options=ADOPTED_OPTIONS),
-        make_item("D-3", status="要見直し", tags=["保存"], depends_on=["D-1"], related=["R-1"]),
-        make_item("T-2", status="進行中", tags=["通知"], **{"for": ["D-3"]}),
+        make_item("D-1", status="決定済み", tags=[{"name": "保存"}], options=ADOPTED_OPTIONS),
+        make_item("D-3", status="要見直し", tags=[{"name": "保存"}], depends_on=["D-1"], related=["R-1"]),
+        make_item("T-2", status="進行中", tags=[{"name": "通知"}], **{"for": ["D-3"]}),
         make_item("R-1", question="何を調べたか"),
         settings=valid_settings,
     )

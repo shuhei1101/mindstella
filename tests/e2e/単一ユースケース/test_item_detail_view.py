@@ -32,7 +32,7 @@ from integration.preview.preview_panel_width_helpers import (
     read_stored_width,
 )
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview
+from preview_helpers import TAG_VALUES_SCRIPT, OpenPreview, ServePreview
 from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
 
 # 本文に mermaid の図を 1 つ持つ Markdown
@@ -1359,3 +1359,29 @@ def test_normal_when_resize_panel(
         str(WIDENED_PANEL_WIDTH_PX),
     )
     assert read_stored_width(page) == str(WIDENED_PANEL_WIDTH_PX)
+
+
+def test_normal_when_main_tag_marked(
+    serve_preview: ServePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """詳細パネルと全画面のタグで主題のタグだけがマーカーと読み上げ名を持ち、表のタグの列は名前で出す（正常系）。"""
+    # 準備
+    url = serve_preview(make_item("D-1", tags=[{"name": "データ", "main": True}, {"name": "画面"}]))
+    page = open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector('table.grid tbody tr[data-id="D-1"]')
+    # 実行（表で D-1 を押す）
+    table_tags = page.evaluate(TAG_VALUES_SCRIPT, 'table.grid tbody tr[data-id="D-1"]')
+    page.click('table.grid tbody tr[data-id="D-1"]')
+    page.wait_for_selector("aside.panel.open .d-meta span.tag")
+    panel_tags = page.evaluate(TAG_VALUES_SCRIPT, "aside.panel .d-meta dd:last-of-type")
+    # 実行（「全画面表示」を押す）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open] .d-meta span.tag")
+    full_tags = page.evaluate(TAG_VALUES_SCRIPT, "dialog.full .d-meta dd:last-of-type")
+    # 検証
+    assert panel_tags == [
+        {"name": "データ", "main": True, "title": "主題", "marker": "true", "spoken": "主題"},
+        {"name": "画面", "main": False, "title": None, "marker": None, "spoken": None},
+    ]
+    assert [(tag["name"], tag["main"]) for tag in full_tags] == [("データ", True), ("画面", False)]
+    assert [(tag["name"], tag["main"]) for tag in table_tags] == [("データ", False), ("画面", False)]

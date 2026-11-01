@@ -478,7 +478,7 @@ def test_normal_when_topic_tag(
     # 準備
     url = serve_preview(
         make_item(
-            "D-2", status="未決定", target="mindmap", category="データ構造", phase="要件", tags=["保存"]
+            "D-2", status="未決定", target="mindmap", category="データ構造", phase="要件", tags=[{"name": "保存"}]
         ),
         make_item(
             "D-3",
@@ -486,10 +486,10 @@ def test_normal_when_topic_tag(
             target="mindmap",
             category="データ構造",
             phase="要件",
-            tags=["保存", "通知"],
+            tags=[{"name": "保存"}, {"name": "通知"}],
         ),
         make_item(
-            "D-5", status="未決定", target="mindmap", category="画面", phase="要件", tags=["通知"]
+            "D-5", status="未決定", target="mindmap", category="画面", phase="要件", tags=[{"name": "通知"}]
         ),
         settings=_settings(valid_settings),
     )
