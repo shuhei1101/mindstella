@@ -9776,7 +9776,7 @@ var MindmapPreview;
     /** 390: 関連の種類のバッジ。案 A は文字だけのバッジ、案 B は押せるバッジで `when` をツールチップに出す */
     function relationBadge(entry, incoming) {
         const spec = MindmapPreview.RELATION_TYPES[entry.type];
-        // 種類を持たない参照（依存先・経緯など）は、列をそろえる空きだけを置く
+        // 種類を持たない参照（依存先・経緯として指すだけの会話ログなど）は、列をそろえる空きだけを置く
         if (spec === undefined)
             return MindmapPreview.h({ tag: "span", attrs: { class: "rel-type is-none", "aria-hidden": "true" } });
         // 参照元: 相手の項目が書いた関連なので、向きの矢印を付け、読み上げは「相手から」
@@ -11047,7 +11047,8 @@ var MindmapPreview;
                     relation("前提", related.prerequisites),
                     relation("後続の項目", related.successors),
                     relation("関連タスク", related.tasks),
-                    relation("経緯（会話ログ）", related.logs),
+                    // 390: 経緯の会話ログは、会話ログが書いた関連（相手から）なので参照元と同じく種類と `when` を出す
+                    relatedSection("経緯（会話ログ）", relationEntries({ index, id, ids: related.logs }), true),
                 ],
             });
         }
