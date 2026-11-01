@@ -536,6 +536,66 @@ scenarios:
       - エラーの本文に、合わない箇所 `items[{番号}].tags[{番号}]` と、オブジェクトで渡すことが要るという理由がある
       - ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
     test: test_error_when_tag_is_string
+  - name: 正常シナリオ（関連に種類といつ読むかを付ける）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1・D-2 を足したワークスペース
+        notes: '-'
+      - name: 調査の中身
+        description: D-1 を関連に持つ調査
+        notes: '`related: [{to: D-1, type: references, when: 候補を比べた観点を確かめるとき}]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 を関連に持つ調査 R-1 を追加する
+        SV->>SV: スキーマと突き合わせる
+        SV->>WS: research.yaml に書く
+        CC->>SV: R-1 の関連に D-2 を追加し、D-1 の関連のいつ読むかを修正する
+        SV->>WS: research.yaml に書く
+      ```
+    expected:
+      - 追加の後、R-1 の関連が、相手 D-1・種類 `references`・渡したいつ読むかの 1 件である
+      - 修正の後、R-1 の関連が D-1・D-2 の 2 件で、D-1 のいつ読むかが修正した文である
+      - R-1 が変更履歴を 1 回分持ち、修正する前の関連が入っている
+      - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    test: test_normal_when_related_typed
+  - name: 異常シナリオ（関連を ID の文字列で渡す・いつ読むかを欠く）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を足したワークスペース
+        notes: '-'
+      - name: 調査の中身
+        description: 関連を ID の文字列で持つ調査と、関連のいつ読むかを持たない調査
+        notes: '`related: [D-1]` と `related: [{to: D-1, type: references}]`。2 回に分けて呼ぶ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+
+        CC->>SV: 関連を ID の文字列で渡して調査を追加する
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>CC: 合わない箇所を示すエラー
+        CC->>SV: いつ読むかを持たない関連を渡して調査を追加する
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>CC: 合わない箇所を示すエラー
+      ```
+    expected:
+      - どちらの追加もエラーを返す
+      - 1 回目のエラーの本文に、合わない箇所 `items[{番号}].related[{番号}]` と、オブジェクトで渡すことが要るという理由がある
+      - 2 回目のエラーの本文に、合わない箇所 `items[{番号}].related[{番号}]` と、欠けたキー `when` がある
+      - ワークスペースの全てのファイルの中身が、追加を呼ぶ前と同じである
+    test: test_error_when_related_untyped
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログをワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

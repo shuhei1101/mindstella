@@ -383,6 +383,48 @@ scenarios:
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
       - 最後の `check` が問題を 0 件で返す
     test: test_normal_when_item_tags_migrated
+  - name: 正常シナリオ（関連に種類といつ読むかを持たせる）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・`show`・まとめての書き込み・版の書き換えを、決めた引数で順に再生する
+        notes: まとめての書き込みは、AI が関連ごとに両方の項目を読んで決めた種類といつ読むかを、決めた値で渡す
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+        notes: '-'
+      - name: 関連を ID の並びで持つ版のワークスペース
+        description: 版のファイルが v0.11.0 で、検討事項 D-1・D-2 と、関連を ID の並びで持つ調査 R-1（D-1・D-2 を指す）を持つワークスペース
+        notes: 'YAML を直接書いて作る。R-1 `related: [D-1, D-2]`。D-2 への関連はいつ読むかを書けないものとして外す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:upgrade {フォルダ}
+        CC->>SV: 版を比べ、当てる手順を並べる
+        SV-->>CC: 関連を相手だけを持つ要素にする手順
+        CC->>SV: バックアップを取って手順を当てる
+        SV->>WS: 関連の ID の文字列を、相手だけを持つ要素に書き換える
+        CC->>SV: check
+        SV-->>CC: 種類といつ読むかを持たない関連（R-1 の D-1・D-2）
+        CC->>SV: R-1・D-1・D-2 の中身を出す
+        CC->>CC: 関連ごとに、関連の張り方に当てて種類といつ読むかを決める
+        CC->>SV: まとめての書き込み（R-1 の D-1 への関連に種類といつ読むかを書き、D-2 への関連を外す）
+        CC->>SV: check
+        SV-->>CC: 問題が無い
+        CC->>SV: 版を書き換える
+        SV->>WS: .mindstella/mindstella-version.ini を書く
+        CC-->>U: 種類といつ読むかを書いた関連と、外した関連を示す
+      ```
+    expected:
+      - 1 回目の `check` が、R-1 の D-1・D-2 への関連が種類といつ読むかを持たない旨を返す
+      - 移し替えの後、R-1 の関連が D-1 への 1 件で、種類と書いたいつ読むかを持つ
+      - D-1・D-2 の中身が移し替える前と同じである
+      - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
+      - 最後の `check` が問題を 0 件で返す
+    test: test_normal_when_related_typed_on_upgrade
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者
@@ -400,5 +442,6 @@ notes:
   E2E の範囲: E2E はモデルを呼ばず、スキルの手順が連ねるツールの呼び出しの並びを再生してワークスペースの状態を確かめる。手順の一覧の示し方・破壊的な操作を当てる前の確認・案内の文面はモデルの応答で、確かめない。破壊的な操作の印は、`mindmap.yaml` を `config.yaml` へ改める手順で確かめる
   スキルの呼び名: 移し替えのスキルは `upgrade`（`/mindstella:upgrade`）
   対応テストファイル: '`tests/e2e/単一ユースケース/test_workspace_upgrade.py`。E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` へ移す'
+  関連の種類といつ読むか: 関連の ID の文字列を相手だけを持つ要素にするのは手順のスクリプトで、種類といつ読むかは、点検の後に移し替えのスキルが関連ごとに両方の項目を読み、判定フローチャート『関連の張り方』（knowledge）で決めて `batch` 1 回でまとめて書く。いつ読むかを書けない関連は外し、外した関連を利用者に示す
   案を持たない検討事項: v0.7.0 の手順は、`決定済み` で `answer` を持ち案を持たない検討事項に、`answer` を内容・`reason` を理由にした採用した案を 1 つ作る。ほかの案と状態の合わない検討事項は、点検の後に移し替えのスキルが AI の書いたたたき台を利用者に確かめてから、`batch` 1 回でまとめて直す（書き込むツールはワークスペース全体を案と状態の決まりと突き合わせるため、1 件ずつは直せない）
 test_file: tests/e2e/単一ユースケース/test_workspace_upgrade.py

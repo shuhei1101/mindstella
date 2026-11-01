@@ -88,7 +88,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: 'ゴールに届いた状態（ゴールのフェーズまでの検討事項が決着し、納品物の資料 A-1 が `status: 完成`）で、完了した作業のタスク T-1 が `result` に成果を持ち、成果の資料を `related` に持たない'
       - name: 再生する書き込み
-        description: 'T-1 の成果を本文にした資料 A-2（`deliverable: false`）を足し、T-1 を `related: [A-2]` に更新する'
+        description: 'T-1 の成果を本文にした資料 A-2（`deliverable: false`）を足し、T-1 に A-2 への関連を付ける'
+        notes: '`related: [{to: A-2, type: references, when: タスクの成果の中身を読むとき}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -101,11 +102,11 @@ scenarios:
         CC->>SV: find（完了したタスク。続きを取る値が無くなるまでたどる）
         SV-->>CC: T-1（成果の資料が無い）
         CC->>SV: add（資料 A-2）
-        CC->>SV: update（T-1 を related: A-2 にする）
+        CC->>SV: update（T-1 に A-2 への関連を付ける）
         CC-->>U: 足した資料と、決まった検討事項と納品物を示して確定を求める
       ```
     expected:
-      - T-1 が `related` に A-2 を持ち、A-2 の本文が `.mindstella/docs/` にある
+      - T-1 が A-2 への関連（種類 `references` といつ読むか）を持ち、A-2 の本文が `.mindstella/docs/` にある
       - 書き込みの後の `goal` の出力が「届いた」のままである
       - '`.mindstella/release/` に何も書かれていない'
     test: test_normal_when_task_output_doc_missing

@@ -7,8 +7,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: 外部ライブラリを決める未決定の検討事項 D-1 を持つ
       - name: 再生する書き込み
-        description: '調査のタスク T-1（`kind`: 調査、`for: [D-1]`）を積み、確認の後に調査 R-1（ベストプラクティス）と R-2（候補の比較）を `related: [D-1]` とエイリアス・説明を付けて足し、調べた結果にある固有の言葉を用語集 G-1 に足して、T-1 を完了にする'
-        notes: '確認で示すのは「何を・どの観点で・何体で」。R-2 は `aliases: [候補の比較]`、`description` に比べた候補の名前'
+        description: '調査のタスク T-1（`kind`: 調査、`for: [D-1]`）を積み、確認の後に調査 R-1（ベストプラクティス）と R-2（候補の比較）を D-1 への関連とエイリアス・説明を付けて足し、調べた結果にある固有の言葉を用語集 G-1 に足して、T-1 を完了にする'
+        notes: '確認で示すのは「何を・どの観点で・何体で」。R-2 は `aliases: [候補の比較]`、`description` に比べた候補の名前。R-1・R-2 の関連は `{to: D-1, type: references, when: この調査が答える問いを確かめるとき}`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -22,18 +22,18 @@ scenarios:
         U->>CC: 承認する
         CC->>SA: 調べ方（references）を渡して起動する
         SA-->>CC: 結論・確度・出典
-        CC->>SV: add（調査 R-1・R-2、related: D-1）
+        CC->>SV: add（調査 R-1・R-2、D-1 への関連）
         CC->>SV: add（用語集 G-1）
         CC->>SV: update（T-1 を完了）
         CC->>SV: add（会話ログ）
         CC-->>U: 結論と、D-1 の案への反映を示す
       ```
     expected:
-      - R-1・R-2 が `question`・`conclusion`・`confidence`・`angles` を持ち、`related` に D-1 がある
+      - R-1・R-2 が `question`・`conclusion`・`confidence`・`angles` を持ち、D-1 への関連（種類 `references` といつ読むか）を持つ
       - R-1・R-2 がエイリアスと説明を持つ
       - 用語集 G-1 が `meaning` を持つ
       - T-1 が完了である
-      - '`show D-1` の参照元に R-1・R-2 がある'
+      - '`show D-1` の参照元に R-1・R-2 があり、それぞれ関連の種類といつ読むかを持つ'
   - name: 正常シナリオ（確認で断られた）
     setup:
       - name: Mock
@@ -67,7 +67,7 @@ trigger: 外部ライブラリ・外部 API を決める検討事項が積まれ
 preconditions:
   - ワークスペースが作成済みである
   - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: 調査は `question`・`conclusion`・`confidence`・`angles` を持ち、元の検討事項と `related` でつながる。利用者が自分から頼んだとき以外は、起動の前に確認を取る。
+success_guarantee: 調査は `question`・`conclusion`・`confidence`・`angles` を持ち、元の検討事項といつ読むかを持つ `related` でつながる。利用者が自分から頼んだとき以外は、起動の前に確認を取る。
 minimal_guarantee: 利用者が確認で断ったときはサブエージェントを起動せず、調査のタスクを未着手で残す。
 frequency: 話し合いの中で数回
 priority: 中

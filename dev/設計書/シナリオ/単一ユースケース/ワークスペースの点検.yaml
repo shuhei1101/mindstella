@@ -194,7 +194,38 @@ scenarios:
       - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_threads_problems_found
-lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
+  - name: 正常シナリオ（一緒に修正する関連が片側だけにある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 片側だけの関連
+        description: 資料 A-1 が、一緒に修正する関連で資料 A-2 を指し、A-2 は A-1 への関連を持たない
+        notes: 'A-1 `related: [{to: A-2, type: change_together, when: 画面の項目を修正したとき}]`'
+      - name: 両側の関連
+        description: 資料 A-3・A-4 が、互いを一緒に修正する関連で指す
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML と docs/ を読む
+        SV-->>CC: 片側だけの関連の一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、A-1 の一緒に修正する関連が A-2 の側に無い旨がある
+      - 出力に、A-3・A-4 が無い
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_change_together_one_sided
+lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項と、片側だけに書いた一緒に修正する関連を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:

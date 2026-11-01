@@ -245,6 +245,78 @@ scenarios:
       - 保存した後、詳細パネルの D-1 のタグで `記録の形` だけが主題のマーカーを持つ
       - 保存した後、保存待ちの編集が 0 件である
     test: test_normal_when_main_tag_switched
+  - name: 正常シナリオ（関連を追加して種類といつ読むかを入れる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 記録
+        description: 未決定の検討事項 D-1（案 A・B、調査 R-1 への関連を持つ）と、調査 R-2
+        notes: 'D-1 `related: [{to: R-1, type: references, when: 候補を比べた観点を確かめるとき}]`'
+      - name: 開いている画面
+        description: 検討事項のボード
+        notes: '-'
+      - name: 配信
+        description: 記録を配っているサーバー
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>P: D-1 を開いて「編集する」を押す
+        P-->>U: D-1 の詳細パネルを編集の表示にする（関連ごとに相手・種類・いつ読むか）
+        U->>P: 関連に R-2 を追加し、種類 `requires` といつ読むかを入れる
+        P->>SV: D-1 の編集を保存待ちに溜める
+        P-->>U: 関連にバッジ、トップバーに保存待ちの件数
+        U->>P: まとめて保存する
+        P->>SV: 保存する
+        SV->>WS: D-1 の関連を書く
+        SV-->>P: 受け付けた
+        P-->>U: 保存したことと、D-1 の新しい中身
+      ```
+    expected:
+      - D-1 の関連が、R-1（種類といつ読むかは編集の前のまま）と R-2（種類 `requires` と入れたいつ読むか）の 2 件である
+      - D-1 の最後に編集した人が利用者（`user`）である
+      - 保存した後、詳細パネルの D-1 の関連に R-2 が種類といつ読むかとともに出る
+      - 保存した後、保存待ちの編集が 0 件である
+    test: test_normal_when_related_added
+  - name: 異常シナリオ（関連のいつ読むかを入れずに溜める）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 記録
+        description: 未決定の検討事項 D-1（案 A・B、関連を持たない）と、調査 R-1
+        notes: '-'
+      - name: 配信
+        description: 記録を配っているサーバー
+        notes: '-'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: D-1 を開いて「編集する」を押す
+        U->>P: 関連に R-1 を追加し、種類だけを選んで、いつ読むかを空のまま確定する
+        P-->>U: いつ読むかが要ることを関連の行に示し、保存待ちに溜めない
+      ```
+    expected:
+      - 関連の行に、いつ読むかが要ることを示す文が出る
+      - 保存待ちの編集が 0 件で、トップバーに件数が出ない
+      - D-1 が関連を持たないままである
+    test: test_error_when_related_when_missing
 lead: 利用者が、サーバーが配るプレビューの詳細パネルと設定の画面で、項目のキー・本文・案・状態と設定を書き換えて保存待ちに溜め、変えた箇所のバッジを見ながら 1 件ずつ取り消し、保存待ちのパネルからまとめて保存する単一ユースケース。保存で書いた項目は、編集した人が利用者として残る。項目を足す・消す操作は単一ユースケース『画面で項目を足す』『画面で項目を消す』が持つ。
 issue: 48
 primary_actor: 利用者

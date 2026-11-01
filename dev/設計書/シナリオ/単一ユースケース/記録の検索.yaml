@@ -215,6 +215,40 @@ scenarios:
       - タグ「画面」で探した結果が T-1 だけである
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_normal_when_main_tag_first
+  - name: 正常シナリオ（関連を逆向きにたどる）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '-'
+      - name: 検討事項 D-1
+        description: 関連を持たない検討事項
+        notes: '-'
+      - name: 調査 R-1
+        description: D-1 を関連に持つ調査
+        notes: '`related: [{to: D-1, type: references, when: 候補を比べた観点を確かめるとき}]`'
+      - name: 検討事項 D-2
+        description: D-1 に依存する検討事項
+        notes: '`depends_on: [D-1]`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: D-1 の中身を出す
+        SV->>WS: 全ての YAML を読む
+        SV-->>CC: D-1 の中身と、D-1 を参照している項目
+      ```
+    expected:
+      - D-1 を参照している項目に、R-1（関連）と D-2（依存）がある
+      - R-1 の行が、関連の種類 `references` と、R-1 に書いたいつ読むかを持つ
+      - D-2 の行が、関連の種類といつ読むかを持たない
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_normal_when_related_reversed
 lead: スキルが、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っている属性名とタグを読む単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -224,5 +258,5 @@ stakeholders:
 trigger: 会話で前の記録に触れる、または属性を付ける前に使っている名前を確かめる
 preconditions:
   - ワークスペースが作成済みである
-success_guarantee: 条件に合う項目のページと全体の件数・各項目の文字数と合計文字数・1 件の中身と参照元・属性名の一覧・使われているタグの一覧が出る。どのファイルも書き換えない。
+success_guarantee: 条件に合う項目のページと全体の件数・各項目の文字数と合計文字数・1 件の中身と参照元・属性名の一覧・使われているタグの一覧が出る。関連で参照している項目は、関連の種類といつ読むかとともに出る。どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_record_search.py

@@ -79,8 +79,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 再生する書き込み
-        description: '会話で出した Mermaid の図を本文にした資料 A-1（`kind`: 図、`related: [D-1]`、エイリアス・説明を持つ）と会話ログを、1 回のまとめての書き込みで渡す'
-        notes: 'A-1 はタイトル `画面遷移図`、`aliases: [画面遷移, 遷移図]`、`description: ログインから設定までの画面の移り方`'
+        description: '会話で出した Mermaid の図を本文にした資料 A-1（`kind`: 図、D-1 への関連、エイリアス・説明を持つ）と会話ログを、1 回のまとめての書き込みで渡す'
+        notes: 'A-1 はタイトル `画面遷移図`、`aliases: [画面遷移, 遷移図]`、`description: ログインから設定までの画面の移り方`、`related: [{to: D-1, type: references, when: 画面の移り方を決めた理由を確かめるとき}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -95,7 +95,7 @@ scenarios:
         SV->>WS: docs.yaml と docs/ の本文と logs.yaml を書く
       ```
     expected:
-      - '資料 A-1 が `kind: 図` と `related: [D-1]` を持つ'
+      - '資料 A-1 が `kind: 図` と、D-1 への関連（種類 `references` といつ読むか）を持つ'
       - 資料 A-1 が渡したエイリアス（`画面遷移`・`遷移図`）と説明を持つ
       - '`.mindstella/docs/` に A-1 の本文の Markdown がある'
       - '`check` が YAML と Markdown のずれを 0 件で返す'
@@ -162,8 +162,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: ゴールの納品物に `要件定義書` を持ち、検討事項 D-1 と、D-1 を進める進行中の作業のタスク T-1 を持つ
       - name: 再生する書き込み
-        description: 'T-1 で作った画面の一覧を本文にした資料 A-1（`deliverable: false`）を足し、T-1 を `related: [A-1]`・完了・`result` を持つように更新し、会話ログを足す。この 3 つを 1 回のまとめての書き込みで渡す'
-        notes: 成果の資料はゴールの納品物に当たらないので、納品物にしない。T-1 の `related` は、同じ呼び出しで先に足す A-1 を指す
+        description: 'T-1 で作った画面の一覧を本文にした資料 A-1（`deliverable: false`）を足し、T-1 を A-1 への関連・完了・`result` を持つように更新し、会話ログを足す。この 3 つを 1 回のまとめての書き込みで渡す'
+        notes: '成果の資料はゴールの納品物に当たらないので、納品物にしない。T-1 の関連は、同じ呼び出しで先に足す A-1 を `to` で指す（`related: [{to: $1, type: references, when: 作った画面の一覧を読むとき}]`）'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -174,12 +174,12 @@ scenarios:
 
         U->>CC: 発言（画面の一覧ができた）
         CC->>CC: T-1 の成果と資料が 1 対 1 で揃っているかを確かめる
-        CC->>SV: まとめての書き込み（資料 A-1 を足す・T-1 を related: A-1・完了にする・会話ログを足す）
+        CC->>SV: まとめての書き込み（資料 A-1 を足す・T-1 に A-1 への関連を付けて完了にする・会話ログを足す）
         SV->>WS: docs.yaml・docs/ の本文・tasks.yaml・logs.yaml を書く
         CC-->>U: 完了にしたタスクと、成果の資料を示す
       ```
     expected:
-      - T-1 が完了で、`related` に A-1 を持つ
+      - T-1 が完了で、A-1 への関連（種類 `references` といつ読むか）を持つ
       - '資料 A-1 が `deliverable: false` を持ち、`.mindstella/docs/` に本文がある'
       - '`goal.deliverables` が呼ぶ前と同じである'
       - '`check` が問題を 0 件で返す'
@@ -253,7 +253,8 @@ scenarios:
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 再生する書き込み
-        description: '会話で求められた画面のモックを HTML の本文にした資料 A-1（`kind`: モック、`related: [D-1]`）と会話ログを、1 回のまとめての書き込みで渡す'
+        description: '会話で求められた画面のモックを HTML の本文にした資料 A-1（`kind`: モック、D-1 への関連）と会話ログを、1 回のまとめての書き込みで渡す'
+        notes: '`related: [{to: D-1, type: references, when: 画面に出す項目を決めた理由を確かめるとき}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -268,7 +269,7 @@ scenarios:
         CC-->>U: プレビューで開く場所を示す
       ```
     expected:
-      - '資料 A-1 が `kind: モック` と `related: [D-1]` を持ち、本文が HTML の形式である'
+      - '資料 A-1 が `kind: モック` と、D-1 への関連（種類 `references` といつ読むか）を持ち、本文が HTML の形式である'
       - '`.mindstella/docs/` に A-1 の本文の HTML がある'
       - '`check` が YAML と本文のずれを 0 件で返す'
     test: test_normal_when_visual_doc_kept_as_html
