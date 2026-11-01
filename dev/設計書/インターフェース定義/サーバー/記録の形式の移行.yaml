@@ -26,7 +26,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`workspace_version` が `null`、`plugin_version` がプラグインの版（`version.ini` の 1 行目）、`relation` が `older`'
-      - '`steps` の版の集まりが、`migrations/` にある版のうちプラグインの版までの版の集まりと一致し、`destructive` が v0.6.0 の手順（`mindmap.yaml` → `config.yaml` の改名、`.mindstella/` へ移す `rename_file`・`move_dir`、`delete`）・v0.8.0 の `delete`・v0.11.0 の `call`（`destructive: true` を持つ `remove_tag_vocabulary`）だけ `true`'
+      - '`steps` の版の集まりが、`migrations/` にある版のうちプラグインの版までの版の集まりと一致し、`destructive` が v0.6.0 の手順（`mindmap.yaml` → `config.yaml` の改名、`.mindstella/` へ移す `rename_file`・`move_dir`、`delete`）・v0.8.0 の `delete`・v0.11.0 の `call`（`destructive: true` を持つ `remove_tag_vocabulary`）・v0.12.0 の `call`（`destructive: true` を持つ `tags_to_objects`）だけ `true`'
       - '`needs_values` に `.mindstella/config.yaml` の `summary` がある（全ての手順を当てた後の名前で返す）'
       - ワークスペースの全てのファイルの中身と更新日時が呼ぶ前と同じ
     test: test_normal_when_plan
@@ -505,7 +505,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: '版 v0.10.0 で、`config.yaml` が `tags`（`{name: 保存, summary: 保存の話}`・`{name: 通知}`）を持ち、検討事項 D-1（`tags: [保存, 通知]`）とスレッド TH-1（`tags: [起票]`）を持つワークスペース'
-        notes: '`migrate` を `apply` で呼ぶ'
+        notes: '`migrate` を `apply` で、`to_version: v0.11.0` を渡して呼ぶ'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -513,7 +513,7 @@ flows:
         participant IF as migrate（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: migrate workspace apply
+        クライアント->>IF: migrate workspace apply to_version=v0.11.0
         IF->>WS: remove_tag_vocabulary を当てる
         IF-->>クライアント: JSON
       ```
@@ -523,7 +523,6 @@ flows:
       - '`config.yaml` が `tags` を持たず、ほかのキーは呼ぶ前と同じ'
       - D-1・TH-1 が呼ぶ前と同じ
       - 同じ呼び出しをもう一度当てても、`config.yaml` が変わらない
-      - '`check` が問題を 0 件で返す'
     test: test_normal_when_tag_vocabulary_removed
   - name: 正常系（項目のタグを主題を持てる形にする）
     summary: v0.11.0 のワークスペースの項目の文字列のタグを `{name}` に置き換え、スレッドのタグは残す
