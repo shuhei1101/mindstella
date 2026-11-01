@@ -6,6 +6,7 @@ import contextlib
 import fcntl
 import json
 import os
+import re
 import shutil
 import tempfile
 import threading
@@ -38,6 +39,7 @@ from kinds import (
 from readme import README_FILE, write_readme
 from referencing import Registry
 from referencing.jsonschema import DRAFT202012
+from tag_text import duplicate_tag_indexes
 
 # このファイルから見た `skills/mindmap/schemas/`
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
@@ -82,6 +84,12 @@ EDITS_FILE = "edits.yaml"
 
 # 案（`options`）を持たなくてよい検討事項の状態
 OPTIONS_OPTIONAL_STATUSES = frozenset({"未整理", "対象外", "取り下げ"})
+
+# 同じ名前のタグの重なりの問題の理由
+DUPLICATE_TAG_DETAIL = "同じタグが既にある"
+
+# 項目のタグの要素を指すキーのパス
+TAG_KEY_PATTERN = re.compile(r"items\[(\d+)\]\.tags\[(\d+)\]")
 
 # 今の日時（UTC のタイムゾーン付き ISO 8601）を返す関数。テストで決めた日時を注入する
 type NowFn = Callable[[], str]
@@ -341,6 +349,24 @@ def validate_workspace(workspace: Workspace) -> list[Problem]:
                 detail=error.message,
             )
             entries.append((file_name, _path_order(path), problem))
+    # 同じ名前のタグの重なりは、スキーマでは見られないのでここで足す
+    for spec in KINDS.values():
+        if spec.file not in workspace.raw:
+            continue
+        for index, item in enumerate(_extract_items(workspace.raw[spec.file])):
+            tags = item.get("tags")
+            if not isinstance(tags, list):
+                continue
+            for tag_index in duplicate_tag_indexes(tags):
+                path: list[str | int] = ["items", index, "tags", tag_index]
+                problem = Problem(
+                    kind="schema",
+                    file=spec.file,
+                    id=item.get("id") if isinstance(item.get("id"), str) else None,
+                    key=_format_path(path),
+                    detail=DUPLICATE_TAG_DETAIL,
+                )
+                entries.append((spec.file, _path_order(path), problem))
     # 検討事項の案と状態の決まりは、スキーマでは見られないのでここで足す
     decisions_file = KINDS["decision"].file
     if decisions_file in workspace.raw:
@@ -512,7 +538,7 @@ def build_mismatch_error(
 def is_legacy_problem(
     problem: Problem, workspace: Workspace, *, written_ids: frozenset[str] = frozenset()
 ) -> bool:
-    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す。"""
+    """問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項・書き込む項目以外の文字列のタグ）から来ているかを返す。"""
     # 案と状態の合わない検討事項は、書き込む項目のものでなければ前の版の形式から来ている
     if problem.kind == "decision_state":
         return problem.id not in written_ids
@@ -527,6 +553,16 @@ def is_legacy_problem(
             or ("field" in raw_settings and "playbooks" not in raw_settings)
             or "tags" in raw_settings
         )
+    # 項目のタグ: 書き込む項目以外の文字列のタグ
+    tag_match = TAG_KEY_PATTERN.fullmatch(problem.key or "")
+    if tag_match is not None and problem.id not in written_ids:
+        items = _extract_items(workspace.raw.get(problem.file))
+        item_index, tag_index = int(tag_match.group(1)), int(tag_match.group(2))
+        if item_index < len(items):
+            tags = items[item_index].get("tags")
+            if isinstance(tags, list) and tag_index < len(tags):
+                return isinstance(tags[tag_index], str)
+        return False
     # 資料: done を持ち、status を持たない
     if problem.file == KINDS["doc"].file and problem.id is not None:
         docs = _extract_items(workspace.raw.get(problem.file))

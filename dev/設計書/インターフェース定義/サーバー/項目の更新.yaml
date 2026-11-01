@@ -458,7 +458,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。本文は前の中身に戻し、どのファイルも書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・直す項目以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・直す項目以外の案と状態の合わない検討事項・直す項目以外の文字列のタグ）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -485,6 +485,6 @@ constraints:
   - item: 本文の形式
     constraint: 形式の表し方と、資料以外に `body_html` を渡した・両方を渡したときのエラーの行は『項目の追加』と同じ。形式を替えた書き換えは、変更履歴の `before` に前の `body`（例 `A-1.md`）を入れ、`body_diff` を新しい形式の本文の行を前の形式の本文の行へ戻す差分にする。前の形式の本文のファイルは、YAML と `changes.yaml` を置き換えた後に消す。消せなかったときは WriteFailedError にし、置き換えたものを控えに戻す（新しい形式の本文は消す）
   - item: タグ
-    constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）
+    constraint: 『項目の追加』と同じ（`{name, main?}` で、`name` は渡した表記のまま書き、同じ名前のタグを 2 件持てない）。`tags` を渡すと主題ごと置き換える
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_update.py

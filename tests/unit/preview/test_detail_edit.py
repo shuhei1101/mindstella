@@ -207,6 +207,31 @@ def test_detail_edit_form_when_title_blank(
     assert "タイトルを書いてください。" in preview_page.evaluate("() => document.body.textContent")
 
 
+def test_detail_edit_form_when_main_tag(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+) -> None:
+    """タグの主題のトグルで、主題を付けたタグの並びを溜める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    item = make_item("D-1", options=DECISION_OPTIONS, tags=[{"name": "画面"}, {"name": "データ"}])
+    _mount(preview_page, item, valid_settings)
+    # 実行
+    preview_page.get_by_role("button", name="データ を主題", exact=True).click()
+    # 検証
+    calls = preview_page.evaluate(
+        """() => window.calls
+            .filter(([name]) => name === "change")
+            .map(([, input]) => input)"""
+    )
+    assert len(calls) == 1
+    assert calls[0]["op"] == "set"
+    assert calls[0]["key"] == "tags"
+    assert calls[0]["value"] == [{"name": "画面"}, {"name": "データ", "main": True}]
+
+
 @pytest.mark.parametrize(
     ("kind", "expected_keys", "absent_keys"),
     [
@@ -247,9 +272,9 @@ def test_used_tags(
     """表記をそろえて重なりを除き、件数の多い順に並べる（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", tags=["API"])],
-        tasks=[make_item("T-1", tags=["ａｐｉ", "画面"])],
-        notes=[make_item("N-1", tags=["保存"])],
+        decisions=[make_item("D-1", tags=[{"name": "API", "main": True}])],
+        tasks=[make_item("T-1", tags=[{"name": "ａｐｉ"}, {"name": "画面"}])],
+        notes=[make_item("N-1", tags=[{"name": "保存"}])],
     )
     threads = [make_thread("TH-1", tags=["画面"])]
     load_preview_scripts()

@@ -32,6 +32,7 @@ __all__ = [
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "TAG_VALUES_SCRIPT",
     "HttpResult",
     "OpenInEmptyContext",
     "OpenPreview",
@@ -85,6 +86,15 @@ FILTER_BADGE = f"{FILTER_BUTTON} .fbadge"
 # 絞り込みのドロワー（開いているときだけ `open` 属性を持つ）
 DRAWER = "dialog.drawer"
 DRAWER_OPEN = f"{DRAWER}[open]"
+
+# タグごとに、名前・主題か・title・マーカーの aria-hidden・読み上げの文言（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+TAG_VALUES_SCRIPT = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    title: tag.getAttribute("title"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+    spoken: tag.querySelector(".sr-only")?.textContent ?? null,
+}))"""
 
 # 詳細パネルの下端のコメントの入力とその入力欄・結果
 DETAIL_FORM = "aside.panel form.send"

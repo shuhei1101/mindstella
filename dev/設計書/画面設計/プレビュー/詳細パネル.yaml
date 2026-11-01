@@ -658,6 +658,49 @@ elements:
     status: planned
     introduced:
       pr: 348
+  - name: タグ
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/タグの並び.ts#
+    args:
+      - name: values
+        value: プレビューを開く.mindmap-data（{種類}[].tags）
+    position: タイトルの下のキーの一覧の末尾の「タグ」の行
+    description: 項目のタグを記録の順のまま並べ、主題のタグは名前の前に二重丸のマーカーを置く。差分の表示の間で変わったときは、キーの差分で前の値と今の値を並べ、前の値と今の値のそれぞれをタグの並びで描き、主題のタグを二重丸のマーカーで見分ける（「主題」は読み上げと title だけで伝える）（主題を付け外ししただけの変更も変わったとして扱う）
+    io: 表示
+    visible_when: 項目がタグを持つとき、または差分の表示の間でタグが変わったとき
+    source: プレビューを開く.mindmap-data（{種類}[].tags）
+    status: planned
+    introduced:
+      pr: 385
+  - name: タグの入力
+    kind: input
+    component: dev/設計書/部品設計/プレビュー/チップの入力.ts#
+    args:
+      - name: controlId
+        value: 項目の ID とキー `tags` から作る入力欄の ID
+      - name: name
+        value: タグ
+      - name: hint
+        value: タグを入れる
+      - name: values
+        value: プレビューを開く.mindmap-data（{種類}[].tags。保存待ちの編集があればその値）
+      - name: suggestions
+        value: 記録の項目とスレッドが使っているタグの名前（NFKC と小文字にそろえ、使われている件数の多い順）
+      - name: monospace
+        value: 'false'
+      - name: mainToggle
+        value: 'true'
+      - name: disabled
+        value: 削除を溜めた項目のとき true
+    position: 編集の表示 > キーごとの入力の「タグ」
+    description: 項目のタグをチップで並べ、入力欄で追加する。チップの左端のトグルで主題を付け外しし、主題は複数にできる。追加したタグは主題でないまま並べる。並びを変えるたびに、`tags` を `{name, main?}` の並び（主題でないタグは `main` を持たない）で保存待ちの編集として溜める（追加の入力では `item-add` の `value` の `tags` を書き換える）。元の並びと主題に戻すと保存待ちから外れる
+    io: 入力
+    visible_when: 編集の表示の間
+    target: 保存待ちの編集の追加.value（key が tags。item-add は value.tags）
+    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    status: planned
+    introduced:
+      pr: 385
 lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
 mock: dev/mock/pages/detail-panel/340/a-drag/index.html
 test_file: tests/integration/preview/test_detail_panel_screen.py
@@ -669,3 +712,4 @@ notes:
   本文の差分の並べ方のモック: '本文の差分の並べ方の切り替え・左右に並べた本文の差分の見本は `dev/mock/pages/detail-panel/261/a-both/index.html`（採用した案 A。確認ログ: dev/pr/261/確認ログ.md）'
   本文の長い語と表のモック: 本文の長い URL・インラインコードを折り返し、列の多い表を表の中だけで送る見本は `dev/mock/pages/detail-panel/289/a-wrap-long-words/index.html`（包む要素の読み上げの役割は、モックの `region` ではなく本文の要素のとおり）
   埋め込んだ HTML とエクスポートのモック: '埋め込んだ HTML・チャート・操作できる部品・エクスポートの入口・埋め込んだ HTML の差分の見本は `dev/mock/pages/detail-panel/348/a-embedded-html/index.html`、エクスポートのメニューは `dev/mock/pages/doc-export-menu/348/a-in-menu/index.html`（採用した案 A。確認ログ: dev/pr/348/確認ログ.md）'
+  主題のタグのモック: 'タグの主題のマーカーと、タグの入力の主題のトグルの見本は `dev/mock/pages/detail-panel/385/a-ring/index.html`（採用した案 A。確認ログ: dev/pr/385/確認ログ.md）'

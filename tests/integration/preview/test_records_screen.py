@@ -285,9 +285,9 @@ def test_drawer_per_kind(
     """ドロワーの条件は種類ごとに持つ。調査はタグ・確度、メモはタグを並べ、別の種類へ移っても条件を持ち越さず、戻ると保っている（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("R-1", confidence="高", tags=["調査の話題"]),
+        make_item("R-1", confidence="高", tags=[{"name": "調査の話題"}]),
         make_item("R-2", confidence="低"),
-        make_item("N-1", tags=["調査の話題"]),
+        make_item("N-1", tags=[{"name": "調査の話題"}]),
         make_item("N-2"),
     )
     page = open_preview(url, "#tab=research")
@@ -326,7 +326,7 @@ def test_drawer_logs_tags(
     """会話ログもタグの列を持ち、ドロワーのタグの条件で絞れる。表の上のチップで解除できる（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("L-1", tags=["脱線"]),
+        make_item("L-1", tags=[{"name": "脱線"}]),
         make_item("L-2", date="2026-10-02"),
     )
     page = open_preview(url, "#tab=logs")
@@ -404,7 +404,7 @@ def test_drawer_text_fields_when_terms(
     """用語集のドロワーに文字の欄（ID・用語・意味・別名・使わない表記）を並べ、用語に文字を入れると表を絞ってチップに出す。× で解除できる（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("G-1", title="移し替え", tags=["mindstella"]),
+        make_item("G-1", title="移し替え", tags=[{"name": "mindstella"}]),
         make_item("G-2", title="ワークスペース"),
         make_item("G-3", title="検討事項"),
     )

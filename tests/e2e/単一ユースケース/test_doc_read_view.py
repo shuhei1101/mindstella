@@ -19,6 +19,8 @@ from embed_helpers import (
 )
 from playwright.sync_api import Page, expect
 from preview_helpers import (
+    DRAWER,
+    TAG_VALUES_SCRIPT,
     OpenPreview,
     ServeWorkspace,
     ServePreview,
@@ -245,3 +247,28 @@ def test_normal_when_embedded_html_and_parts(
     assert page.evaluate("history.length") == history_length + 1
     # ワークスペースの YAML と本文の中身が、開く前と同じ
     assert snapshot_records(snapshot_tree(root)) == before
+
+
+def test_normal_when_main_tag_marked(serve_preview: ServePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """資料のカードのタグで主題のタグだけがマーカーと読み上げ名を持ち、ドロワーのタグは名前で並んで絞り込める（正常系）。"""
+    # 準備
+    url = serve_preview(make_item("A-1", tags=[{"name": "保存", "main": True}, {"name": "画面"}]))
+    # 実行
+    page = open_preview(url, "#tab=docs")
+    page.wait_for_selector('.doc-card[data-id="A-1"] .c-tags')
+    # 検証（カードのタグ）
+    assert page.evaluate(TAG_VALUES_SCRIPT, '.doc-card[data-id="A-1"] .c-tags') == [
+        {"name": "保存", "main": True, "title": "主題", "marker": "true", "spoken": "主題"},
+        {"name": "画面", "main": False, "title": None, "marker": None, "spoken": None},
+    ]
+    # 実行（ドロワーでタグ = 画面を選ぶ）
+    open_drawer(page)
+    tag_values = page.eval_on_selector_all(
+        f'{DRAWER} input[data-key="tags"]', "inputs => inputs.map(i => i.value)"
+    )
+    toggle_value(page, "tags", "画面")
+    expect(page.locator(".chips .chip")).to_have_count(1)
+    close_drawer(page)
+    # 検証（ドロワーのタグと絞り込んだカード）
+    assert tag_values == ["保存", "画面"]
+    assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == ["A-1"]

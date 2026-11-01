@@ -84,6 +84,10 @@ var MindmapPreview;
             default:
                 if (key === "body")
                     return { what: "本文", before: null, after: null };
+                // タグは前後を `{name, main?}` の並びのまま返す（行は tagList で描く）
+                if (key === "tags") {
+                    return { what: MindmapPreview.KEY_LABELS[key], before: tagsOrFlat(edit.before), after: tagsOrFlat(edit.value) };
+                }
                 return { what: MindmapPreview.KEY_LABELS[key] ?? key, before: flat(edit.before), after: flat(edit.value) };
         }
     }
@@ -115,20 +119,30 @@ var MindmapPreview;
             return { kind: "項目", id: target, title: "" };
         return { kind: MindmapPreview.KIND_LABEL[entry.kind], id: target, title: entry.item.title };
     }
+    /** タグの値は並びのまま、それ以外は `flat` の文字にする */
+    function tagsOrFlat(value) {
+        return Array.isArray(value) ? value : flat(value);
+    }
+    /** 前後の値の表示（タグの並びは tagList で描き、空の並びは「（空）」） */
+    function valueView(value) {
+        if (typeof value === "string")
+            return value;
+        return value.length === 0 ? flat(value) : MindmapPreview.tagList(value);
+    }
     /** 読み上げ用の「前:」「後:」を添えた前 → 後の値 */
     function changeView(text) {
         if (text.after === null)
             return null;
         if (text.before === null) {
-            return MindmapPreview.h({ tag: "span", attrs: { class: "pe-change" }, children: [MindmapPreview.h({ tag: "ins", children: [text.after] })] });
+            return MindmapPreview.h({ tag: "span", attrs: { class: "pe-change" }, children: [MindmapPreview.h({ tag: "ins", children: [valueView(text.after)] })] });
         }
         return MindmapPreview.h({
             tag: "span",
             attrs: { class: "pe-change" },
             children: [
-                MindmapPreview.h({ tag: "del", children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["前: "] }), text.before] }),
+                MindmapPreview.h({ tag: "del", children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["前: "] }), valueView(text.before)] }),
                 MindmapPreview.h({ tag: "span", attrs: { class: "pe-arrow", "aria-hidden": "true" }, children: ["→"] }),
-                MindmapPreview.h({ tag: "ins", children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["後: "] }), text.after] }),
+                MindmapPreview.h({ tag: "ins", children: [MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["後: "] }), valueView(text.after)] }),
             ],
         });
     }

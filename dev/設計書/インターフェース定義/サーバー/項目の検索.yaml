@@ -18,13 +18,13 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace text スキーマ attr [担当=自分]
+        クライアント->>IF: find workspace text スキーマ attr [担当=自分] format json
         IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items）
       ```
     expected:
       - ツールのエラーにならない
-      - '`items` が D-1 の 1 件だけで、D-1 が `id`・`kind`・`title`・`status`・`tags` を持つ'
+      - '`items` が D-1 の 1 件だけで、D-1 が `id`・`kind`・`title`・`status`・`tags`・`chars` を持つ'
       - '`total` が 1、`next_cursor` が `null`、`hint` が `null`'
     test: test_normal
   - name: 正常系（入れ子の文字に当たる）
@@ -41,7 +41,7 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace text スキーマ
+        クライアント->>IF: find workspace text スキーマ format json
         IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items）
       ```
@@ -87,10 +87,10 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace tags [データ, 画面]
+        クライアント->>IF: find workspace tags [データ, 画面] format json
         IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items）
-        クライアント->>IF: find workspace any_tags [データ, 画面]
+        クライアント->>IF: find workspace any_tags [データ, 画面] format json
         IF-->>クライアント: JSON（items）
       ```
     expected:
@@ -112,10 +112,10 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace limit 3
+        クライアント->>IF: find workspace limit 3 format json
         IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items・total・next_cursor・hint）
-        クライアント->>IF: find workspace limit 3 cursor {next_cursor}
+        クライアント->>IF: find workspace limit 3 cursor {next_cursor} format json
         IF-->>クライアント: JSON（items・total・next_cursor）
       ```
     expected:
@@ -138,7 +138,7 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace kind task tags [データ]
+        クライアント->>IF: find workspace kind task tags [データ] format json
         IF-->>WS: 全ての YAML を読む
         IF-->>クライアント: JSON（items: []・total: 0・hint）
       ```
@@ -147,29 +147,6 @@ flows:
       - '`items` が空の配列、`total` が 0、`next_cursor` が `null`'
       - '`hint` が、渡した条件の引数名 `kind`・`tags` を含む'
     test: test_normal_when_empty
-  - name: 正常系（返す量を detailed にする）
-    summary: '`detailed` は対象・カテゴリー・フェーズ・属性・更新日時を足し、本文と案は返さない'
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: '対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B を持つ検討事項 D-1 を持つワークスペース'
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant クライアント
-        participant IF as find（MCP のツール）
-        participant WS as ワークスペース
-
-        クライアント->>IF: find workspace response_format detailed
-        IF-->>WS: 全ての YAML を読む
-        IF-->>クライアント: JSON（items）
-      ```
-    expected:
-      - ツールのエラーにならない
-      - 'D-1 が `target`・`category`・`phase`・`attrs`（`担当: 自分`）・`updated` を持つ'
-      - D-1 が `options` と本文を持たない
-    test: test_normal_when_detailed
   - name: 正常系（表記の違うタグで探す）
     summary: 全角・大文字の違うタグでも絞れ、どの項目も使っていないタグは 0 件と近い使われているタグの案内を返す
     setup:
@@ -186,18 +163,18 @@ flows:
         participant IF as find（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: find workspace tags [Api]
+        クライアント->>IF: find workspace tags [Api] format json
         IF-->>WS: 全ての YAML を読む
         IF->>IF: 渡したタグと項目のタグを NFKC と小文字にそろえて比べる
         IF-->>クライアント: JSON（items は D-2・D-3）
-        クライアント->>IF: find workspace tags [データー]
+        クライアント->>IF: find workspace tags [データー] format json
         IF-->>WS: 全ての YAML を読む
         IF->>IF: どの項目も使っていないタグ
         IF-->>クライアント: JSON（空の items・hint）
       ```
     expected:
       - どちらもツールのエラーにならない
-      - '`Api` で探した `items` が D-2・D-3 の 2 件で、それぞれの `tags` が書いたときの表記（`API`・`ａｐｉ`）'
+      - '`Api` で探した `items` が D-2・D-3 の 2 件で、それぞれの `tags[].name` が書いたときの表記（`API`・`ａｐｉ`）'
       - '`データー` で探した `items` が空で、`total` が 0'
       - '`データー` で探した `hint` が、`データー` と近い使われているタグ `データ` を含む'
     test: test_normal_when_tag_normalized
@@ -214,15 +191,149 @@ flows:
         participant クライアント
         participant IF as find（MCP のツール）
 
-        クライアント->>IF: find workspace limit 2
+        クライアント->>IF: find workspace limit 2 format json
         IF-->>クライアント: JSON（next_cursor）
-        クライアント->>IF: find workspace kind task limit 2 cursor {next_cursor}
+        クライアント->>IF: find workspace kind task limit 2 cursor {next_cursor} format json
         IF-->>クライアント: ツールのエラー
       ```
     expected:
       - 2 回目の呼び出しがツールのエラーになる
       - エラーの本文に引数の名前 `cursor` がある
     test: test_error_when_cursor_mismatched
+  - name: 正常系（返す量を選ぶ）
+    summary: '`view`・`include`・`exclude` で返す項目が変わり、返さなかった項目を `omitted` に並べる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 次の項目を持つワークスペース
+        notes: 'D-1: 対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B・本文 `docs/D-1.md`／D-2: 本文を持たない'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace format json
+        IF-->>WS: 全ての YAML と本文を読む
+        IF-->>クライアント: JSON（brief の items・total_chars・omitted）
+        クライアント->>IF: find workspace view standard include [body] exclude [tags] format json
+        IF-->>クライアント: JSON（items・omitted）
+        クライアント->>IF: find workspace view full format json
+        IF-->>クライアント: JSON（items・omitted）
+      ```
+    expected:
+      - どの呼び出しもツールのエラーにならない
+      - 1 回目の D-1 が `id`・`kind`・`title`・`status`・`tags`・`chars` だけを持ち、`omitted` が `target`・`category`・`phase`・`attrs`・`updated`・`extra`・`body`
+      - 1 回目の D-1 の `chars` が D-2 の `chars` より大きく、`total_chars` が D-1 と D-2 の `chars` の和
+      - '2 回目の D-1 が `target`・`category`・`phase`・`attrs`（`担当: 自分`）・`updated`・`body`（`docs/D-1.md` の中身）・`body_format`（`markdown`）を持ち、`tags` と `extra` を持たない。`omitted` が `tags`・`extra`'
+      - 3 回目の D-1 の `extra` が `options` を持ち、`omitted` が空の配列
+      - 3 回とも D-1 の `chars` が同じ
+    test: test_normal_when_view_selected
+  - name: 正常系（件数だけを返す）
+    summary: '`count_only` は一覧を返さず、全体の件数・合計文字数・タグごとの件数を返す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 次の項目を持つワークスペース
+        notes: 'D-1: タグ `データ`・`画面`／D-2: タグ `データ`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace count_only true format json
+        IF-->>WS: 全ての YAML と本文を読む
+        IF-->>クライアント: JSON（total・total_chars・tag_counts）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`total` が 2 で、`total_chars` が `find workspace format json` の `total_chars` と同じ'
+      - '`tag_counts` が `データ` 2 件・`画面` 1 件の順'
+      - '`items`・`next_cursor`・`omitted` を持たない'
+    test: test_normal_when_count_only
+  - name: 正常系（Markdown で返す）
+    summary: '`format` を渡さないと、件数の行・項目の表・省いた項目の行を Markdown の本文だけで返す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 次の項目を持つワークスペース
+        notes: 'D-1: タグ `データ`（主題）・`画面`／D-2: タグ `データ`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace
+        IF-->>WS: 全ての YAML と本文を読む
+        IF-->>クライアント: Markdown の本文
+        クライアント->>IF: find workspace count_only true
+        IF-->>クライアント: Markdown の本文
+      ```
+    expected:
+      - どちらもツールのエラーにならず、構造化の結果を持たない
+      - 1 回目の本文の先頭の行が `全 2 件・合計 {total_chars} 文字`
+      - 1 回目の本文の表の列が `id`・`kind`・`title`・`status`・`tags`・`chars` の順で、D-1 の行のタグが `データ [main]、画面`
+      - 1 回目の本文の末尾に、省いた項目の名前と `view`・`include` での取り方の行がある
+      - 2 回目の本文が先頭の行と、`データ` 2 件・`画面` 1 件のタグごとの件数の表だけを持つ
+    test: test_normal_when_markdown
+  - name: 正常系（主題のタグを上に並べる）
+    summary: タグで探すと、渡したタグを主題として持つ項目を上に並べ、続きの値は並べた後の位置を指す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 次の項目を持つワークスペース
+        notes: 'D-1: タグ `データ`／D-2: タグ `データ`（主題）／T-1: タグ `データ`（主題）・`画面`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: find workspace tags [データ] format json
+        IF-->>WS: 全ての YAML と本文を読む
+        IF->>IF: 渡したタグを主題として持つ項目を上に並べる
+        IF-->>クライアント: JSON（items）
+        クライアント->>IF: find workspace tags [データ] limit 2 format json
+        IF-->>クライアント: JSON（items・next_cursor）
+        クライアント->>IF: find workspace tags [データ] limit 2 cursor {next_cursor} format json
+        IF-->>クライアント: JSON（items）
+      ```
+    expected:
+      - どの呼び出しもツールのエラーにならない
+      - 1 回目の `items` が D-2・T-1・D-1 の順
+      - '1 回目の T-1 の `tags` が `{name: データ, main: true}`・`{name: 画面}` で、D-1 の `tags` が `{name: データ}`'
+      - 2 回目の `items` が D-2・T-1、3 回目の `items` が D-1 だけ
+    test: test_normal_when_main_tag_first
+  - name: 異常系（include と exclude に同じ名前・ArgumentError）
+    summary: '`include` と `exclude` に同じ名前を渡すとエラーで終わる'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as find（MCP のツール）
+
+        クライアント->>IF: find workspace include [attrs] exclude [attrs]
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文に引数の名前 `include`・`exclude` と、重なった名前 `attrs` がある
+    test: test_error_when_include_excluded
 lead: 文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは NFKC と小文字にそろえて比べる。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -308,13 +419,44 @@ request:
     description: 前のページの `next_cursor`。渡すとその続きのページを返す
     constraints: 前のページと同じ条件（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）で渡す
     notes: 中身は不透明な文字列で、スキルは組み立てない
-  - name: response_format
-    type: '"concise" | "detailed"'
+  - name: view
+    type: '"brief" | "standard" | "full"'
     required: false
-    default: concise
+    default: brief
     location: argument
-    description: 返す量。`concise` は ID・種類・タイトル・状態・タグ、`detailed` はそれに対象・カテゴリー・フェーズ・属性・更新日時を足す
-    notes: 本文と案は返さない（`show` で取る）
+    description: 返す量。`brief` は `title`・`status`・`tags`・`chars`、`standard` はそれに `target`・`category`・`phase`・`attrs`・`updated`、`full` はさらに `extra`・`body`・`body_format` を加える。`id`・`kind` はどの量でも返す
+    notes: '`response_format` は受け付けない'
+  - name: include
+    type: list["title" | "status" | "tags" | "chars" | "target" | "category" | "phase" | "attrs" | "updated" | "extra" | "body"]
+    required: false
+    default: なし（`view` のとおり）
+    location: argument
+    description: '`view` に加えて返す項目の名前'
+    constraints: '`exclude` と同じ名前を渡さない'
+    example: '["attrs"]'
+    notes: '`body` は `body` と `body_format` を返す'
+  - name: exclude
+    type: list["title" | "status" | "tags" | "chars" | "target" | "category" | "phase" | "attrs" | "updated" | "extra" | "body"]
+    required: false
+    default: なし（`view` のとおり）
+    location: argument
+    description: '`view` から外す項目の名前'
+    constraints: '`include` と同じ名前を渡さない'
+    example: '["tags"]'
+  - name: count_only
+    type: bool
+    required: false
+    default: 'false'
+    location: argument
+    description: '`true` のとき、一覧を返さず `total`・`total_chars`・`tag_counts` だけを返す'
+    notes: '`true` のときは `limit`・`cursor`・`view`・`include`・`exclude` を使わない'
+  - name: format
+    type: '"markdown" | "json"'
+    required: false
+    default: markdown
+    location: argument
+    description: 結果の書き方。`markdown` は本文（`content` の text）に Markdown を入れ、構造化の結果を返さない。`json` は構造化の結果と本文に同じ JSON を入れる
+    notes: Markdown の中身は制約の『Markdown の形』
 response:
   - name: items[].id
     type: str
@@ -329,34 +471,64 @@ response:
     type: str | None
     description: 状態（状態を持たない種類は `null`）
   - name: items[].tags
-    type: list[str]
+    type: list[dict]
     description: タグ（持たない項目は空の配列）
   - name: items[].target
     type: str | None
-    description: 対象（`response_format` が `detailed` のときだけ）
+    description: 対象（`view` が `standard`・`full` か、`include` に渡したときだけ）
   - name: items[].category
     type: str | None
-    description: カテゴリー（`response_format` が `detailed` のときだけ）
+    description: カテゴリー（`target` と同じとき）
   - name: items[].phase
     type: str | None
-    description: フェーズ（`response_format` が `detailed` のときだけ）
+    description: フェーズ（`target` と同じとき）
   - name: items[].attrs
     type: dict[str, Any]
-    description: 属性（`response_format` が `detailed` のときだけ。持たない項目は空のオブジェクト）
+    description: 属性（`target` と同じとき。持たない項目は空のオブジェクト）
   - name: items[].updated
     type: str
-    description: 更新日時（`response_format` が `detailed` のときだけ）
+    description: 更新日時（`target` と同じとき）
     format: date-time
   - name: total
     type: int
     description: 条件に合う全体の件数（ページに分ける前）
   - name: next_cursor
     type: str | None
-    description: 次のページを取るときに `cursor` へ渡す値。最後のページでは `null`
+    description: 次のページを取るときに `cursor` へ渡す値。最後のページでは `null`。`count_only` が `true` のときは返さない
   - name: hint
     type: str | None
     description: 絞り込みの案内。全体の件数がページより多いときは絞り込める引数（`tags`・`kind`・`status` など）を、0 件のときは外せる条件（渡した条件の引数の名前）を案内する。どの項目も使っていないタグを渡して 0 件のときは、そのタグと字面の近い使われているタグも案内する。どちらでもないときは `null`
     example: 全 45 件のうち 20 件を返しました。tags・kind・status で絞るか、next_cursor で続きを読んでください
+  - name: items[].tags[].name
+    type: str
+    description: タグの名前（書いたときの表記）
+  - name: items[].tags[].main
+    type: bool
+    description: その項目の主題のタグなら `true`。主題でないタグは持たない
+  - name: items[].chars
+    type: int
+    description: 項目の文字数。項目を YAML に書き出した文字数と、`docs/` の本文のファイルの文字数の和（コードポイントで数える）。本文を持たない項目は YAML の文字数だけ
+  - name: items[].extra
+    type: dict[str, Any]
+    description: 上の名前に当たらない残りの YAML のキー（案の `options`・関係の `depends_on` など）。`view` が `full` か、`include` に渡したときだけ
+  - name: items[].body
+    type: str | None
+    description: '`docs/` の本文の中身（書いたままの原文）。`view` が `full` か、`include` に渡したときだけ。本文を持たないか、指すファイルが無いときは `null`'
+  - name: items[].body_format
+    type: '"markdown" | "html" | None'
+    description: 本文の形式（『項目の表示』の `body_format` と同じ決め方）。`body` を返すときだけ
+  - name: total_chars
+    type: int
+    description: 条件に合う全ての項目（ページに分ける前）の `chars` の和
+  - name: tag_counts[].tag
+    type: str
+    description: 条件に合う項目が使っているタグ（NFKC と小文字にそろえた表記）。`count_only` が `true` のときだけ
+  - name: tag_counts[].count
+    type: int
+    description: そのタグを持つ項目の件数（件数の多い順、同じ件数は名前の順）
+  - name: omitted
+    type: list[str]
+    description: '`view` が `full` のときと比べて返さなかった項目の名前（`include` の名前で、並びは `include` の型の順）。省いたものが無ければ空の配列。`count_only` が `true` のときは返さない'
 exceptions:
   - name: なし（正常終了）
     condition: 探せた（合う項目が 0 件のときも含む）
@@ -365,26 +537,30 @@ exceptions:
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー
   - name: ArgumentError
-    condition: '`limit` が 1〜80 の外、`cursor` が読めない、または `cursor` を作った条件と今の条件が違う'
+    condition: '`limit` が 1〜80 の外、`cursor` が読めない、`cursor` を作った条件と今の条件が違う、または `include` と `exclude` に同じ名前を渡した'
     notes: ツールのエラー。本文に引数の名前と理由を出す
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形
-    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+    constraint: '`format` が `json` のときは、ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）。`markdown` のときは本文だけ'
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 条件の組み合わせ
     constraint: 渡した条件の全てに合う項目。条件を 1 つも渡さなければ全ての項目を、ページに分けて返す
   - item: 件数
-    constraint: 1 ページの既定は 20 件、上限は 80 件（`concise`・`detailed` で共通）
+    constraint: 1 ページの既定は 20 件、上限は 80 件（`view` によらず共通）。`full` で本文の大きい項目を読むときは、`total_chars` と `chars` を見て `limit` を下げる
     notes: '上限: Claude Code が MCP のツールの結果に設ける上限 25,000 トークンから安全率 20% を引いた 20,000 トークンを、`detailed` の 1 件の大きさの実測（項目 20 件で 4,661 文字、約 233 文字。日本語を多く含むため文字数をトークン数の上限と見なす）で割った約 85 件を、きりのよい 80 件に下げた。既定: `concise` の実測（約 113 文字）で 20 件は約 2,300 で、枠に十分収まり、スキルが一度に読み比べる候補の数として足りる 20 件。実測は PR #308 の実装の完了報告（案 2 つ・対象・カテゴリー・フェーズ・タグ 1〜2 個・属性 1 つを持つ項目）'
   - item: 並び
-    constraint: 種類の順（D・T・R・A・G・N・L）、同じ種類の中は連番の小さい順。ページはこの並びで切る
+    constraint: 種類の順（D・T・R・A・G・N・L）、同じ種類の中は連番の小さい順。`tags`・`any_tags` を渡したときは、渡したタグ（NFKC と小文字にそろえて比べる）のどれかを主題として持つ項目を先に、持たない項目を後に置き、それぞれの中はこの順。ページはこの並びで切る
   - item: 続きの値
     constraint: 読んだ位置と条件を表す。ページの間に項目が増減したときは、読んだ位置からの続きを返す（重なり・抜けは保証しない）
   - item: 近いタグの候補
     constraint: どの項目も使っていないタグを渡して 0 件のとき、`hint` にそのタグと、項目が使っているタグ（`tags` が返す正規化した表記）のうち字面が近い順に最大 5 件を書く
     notes: 近さの測り方はモジュール構成で決める
   - item: ツールの説明
-    constraint: MCP のツールの説明に、使える絞り込み（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）と、ページを `next_cursor` でたどること、タグで絞る前に `tags` を呼ぶことを書く
+    constraint: MCP のツールの説明に、使える絞り込み（`text`・`kind`・`status`・`tags`・`any_tags`・`target`・`category`・`phase`・`attr`）と、ページを `next_cursor` でたどること、量の見積もりに `count_only` と `chars` を使い `view`・`include`・`exclude` で返す量を選ぶこと、タグで絞る前に `tags` を呼ぶことを書く
+  - item: Markdown の形
+    constraint: 先頭の行に `全 {total} 件・合計 {total_chars} 文字`、次に項目の表（列は返す項目の名前の並び。タグは `、` で区切り、主題のタグは `{名前} [main]`。属性は `名前=値` を `、` で区切る）。`extra`・`body` を返すときは、表の後に項目ごとに `## {id} {title}` のセクションを置き、`extra` を YAML のコードブロックで、本文をそのまま続ける。末尾に `next_cursor`・`hint` と、省いた項目の名前を `view` か `include` での取り方を添えた行を置く。`count_only` が `true` のときは先頭の行と、タグごとの件数の表（`タグ`・`件数`）だけ
+  - item: 文字数
+    constraint: '`chars`・`total_chars` は `count_only`・`view`・`include`・`exclude` によらず、項目の全てのキーと本文で数える'
 test_file: tests/integration/server/test_find.py

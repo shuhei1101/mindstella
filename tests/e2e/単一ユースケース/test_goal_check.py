@@ -168,7 +168,7 @@ def test_normal_when_task_output_doc_missing(
     # 実行
     reached = replay("goal", **ws)
     # 確定を取る前に、完了したタスクの成果と資料が 1 対 1 で揃っているかを確かめる
-    done = replay("find", **ws, kind="task", status="完了")
+    done = replay("find", **ws, kind="task", status="完了", format="json")
     # 成果の資料が無い T-1 に、result を本文にした資料を足して結ぶ
     replay(
         "add",

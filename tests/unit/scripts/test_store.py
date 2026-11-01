@@ -1399,6 +1399,24 @@ def test_validate_workspace_when_aliases(
     assert [(problem.file, problem.key) for problem in problems] == expected
 
 
+def test_validate_workspace_when_duplicated_tag(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """表記をそろえて同じ名前になるタグの 2 件目以降を拾う（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=[{"name": "API"}, {"name": "ａｐｉ", "main": True}])
+    )
+    workspace = store.load_workspace(root)
+    # 実行
+    problems = store.validate_workspace(workspace)
+    # 検証
+    assert [
+        (problem.file, problem.key, problem.id, problem.kind, problem.detail)
+        for problem in problems
+    ] == [("decisions.yaml", "items[0].tags[1]", "D-1", "schema", "同じタグが既にある")]
+
+
 @pytest.mark.parametrize(
     ("kept_d2", "changed_d1", "expected_legacy", "expected_id"),
     [
@@ -1493,6 +1511,33 @@ def test_is_legacy_problem_when_decision_state(
         id="D-1",
         key="items[0].options",
         detail="D-1 は状態 未決定 のため案を 1 つ以上持つ（options に案を書く）",
+    )
+    # 実行
+    result = store.is_legacy_problem(problem, workspace, **kwargs)
+    # 検証
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        pytest.param({}, True, id="other_item"),
+        pytest.param({"written_ids": frozenset({"D-1"})}, False, id="written_item"),
+    ],
+)
+def test_is_legacy_problem_when_string_tag(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    kwargs: dict[str, Any],
+    expected: bool,
+) -> None:
+    """書き込む項目以外の文字列のタグだけを前のバージョンの形式とする（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1", tags=["データ"])))
+    problem = next(
+        problem
+        for problem in store.validate_workspace(workspace)
+        if problem.key == "items[0].tags[0]"
     )
     # 実行
     result = store.is_legacy_problem(problem, workspace, **kwargs)

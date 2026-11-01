@@ -1708,12 +1708,12 @@ def _load_libraries(load_library: LoadLibrary, load_mdmark: LoadMdmark, names: l
             id="unrelated",
         ),
         pytest.param(
-            {"tags": ["要件", "運用"], "date": "2026-10-08"},
-            {"tags": ["要件", "会議"], "date": "2026-10-01"},
+            {"tags": [{"name": "要件"}, {"name": "運用"}], "date": "2026-10-08"},
+            {"tags": [{"name": "要件"}, {"name": "会議"}], "date": "2026-10-01"},
             "dl.d-meta dd.df-key",
             [
                 {"was": "前の値: 2026-10-01", "now": "今の値: 2026-10-08"},
-                {"was": "前の値: 要件、会議", "now": "今の値: 要件、運用"},
+                {"was": "前の値: 要件会議", "now": "今の値: 要件運用"},
             ],
             ["marked", "mdmark", "jsdiff"],
             id="list_and_date",
@@ -1757,6 +1757,89 @@ def test_detail_panel_when_diff_key_words_skipped(
     assert result["allWords"] == 0
     # 前の値・今の値は、今までどおり del.df-was・ins.df-now で並ぶ
     assert result["texts"] == expected_texts
+
+
+# 詳細パネルを開き（diff を渡せば差分つき）、タグの行の span.tag を、置き場所・名前・マーカー・見えている「主題」で返す
+OPEN_TAGS_PANEL_SCRIPT = """async ({data, diff}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: diff === null ? null : {...diff, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const row = [...panel.querySelectorAll("dl.d-meta dt")].find((dt) => dt.textContent === "タグ")
+        .nextElementSibling;
+    return [...row.querySelectorAll("span.tag")].map((tag) => {
+        // 「主題」の文字を持つ要素（マーカーの svg を除く）
+        const spoken = [...tag.querySelectorAll("*")].find(
+            (element) => !(element instanceof SVGElement) && element.textContent === "主題",
+        );
+        const rect = spoken?.getBoundingClientRect();
+        return {
+            place: tag.closest("del.df-was") ? "was" : tag.closest("ins.df-now") ? "now" : "current",
+            name: tag.textContent.replace("主題", "").trim(),
+            mark: tag.querySelector('svg[aria-hidden="true"]') !== null,
+            shownText: rect !== undefined && (rect.width > 1 || rect.height > 1),
+        };
+    });
+}"""
+
+
+@pytest.mark.parametrize(
+    ("tags", "history", "diff", "expected"),
+    [
+        pytest.param(
+            [{"name": "画面"}, {"name": "データ", "main": True}],
+            [],
+            None,
+            [
+                {"place": "current", "name": "画面", "mark": False, "shownText": False},
+                {"place": "current", "name": "データ", "mark": True, "shownText": False},
+            ],
+            id="current",
+        ),
+        pytest.param(
+            [{"name": "データ", "main": True}],
+            [{"seq": 1, "at": ENTRY_AT, "before": {"tags": [{"name": "データ"}]}}],
+            DIFF_POINT,
+            [
+                {"place": "was", "name": "データ", "mark": False, "shownText": False},
+                {"place": "now", "name": "データ", "mark": True, "shownText": False},
+            ],
+            id="diff",
+        ),
+    ],
+)
+def test_detail_panel_when_main_tag(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    tags: list[dict[str, Any]],
+    history: list[dict[str, Any]],
+    diff: dict[str, Any] | None,
+    expected: list[dict[str, Any]],
+) -> None:
+    """タグの行は主題のマーカーを付けて描き、差分の表示でも前後をタグの並びで描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", tags=tags, history=history, seq=1)])
+    load_preview_scripts()
+    load_preview_styles()
+    _load_libraries(load_library, load_mdmark, ["marked", "mdmark", "jsdiff"])
+    # 実行
+    result = preview_page.evaluate(OPEN_TAGS_PANEL_SCRIPT, {"data": data, "diff": diff})
+    # 検証
+    assert result == expected
 
 
 # 本文の行の差分の打ち切りの時間（ミリ秒。`LINE_DIFF_TIMEOUT_MS`）

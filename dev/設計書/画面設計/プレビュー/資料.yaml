@@ -203,6 +203,20 @@ elements:
     status: planned
     introduced:
       pr: 325
+  - name: カードのタグ
+    kind: list
+    component: dev/設計書/部品設計/プレビュー/タグの並び.ts#
+    args:
+      - name: values
+        value: プレビューを開く.mindmap-data（docs[].tags）
+    position: 資料のカード・ボードのカードの下端
+    description: 資料のタグを記録の順のまま並べ、主題のタグは名前の前に二重丸のマーカーを置く。表のタグの列と絞り込みのドロワーのタグは、主題の有無によらず名前で出す
+    io: 表示
+    visible_when: 資料がタグを持つとき
+    source: プレビューを開く.mindmap-data（docs[].tags）
+    status: planned
+    introduced:
+      pr: 385
 lead: 資料をカード（既定）・ボード・表で見る画面。納品物を先頭に印付きで並べる。
 mock: dev/mock/pages/docs/126/standard/index.html
 test_file: tests/integration/preview/test_docs_screen.py
@@ -210,3 +224,4 @@ notes:
   コメントの印のモック: コメントの印の見本は `dev/mock/pages/docs/121/standard/index.html`
   消した項目と取り下げのモック: 消した項目の帯と取り下げの札の見本は `dev/mock/pages/docs/179/b-band/index.html`
   形式の札のモック: カード・ボードの形式の札と表の形式の列の見本は `dev/mock/pages/docs/214/a-kind/index.html`（種類の右に置く案 A を採用）
+  主題のタグのモック: 'カード・ボードのタグの主題のマーカーの見本は `dev/mock/pages/docs/385/a-ring/index.html`（採用した案 A。確認ログ: dev/pr/385/確認ログ.md）'

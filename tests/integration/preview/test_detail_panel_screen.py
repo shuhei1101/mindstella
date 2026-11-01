@@ -2708,8 +2708,9 @@ def test_diff_keys_when_inline_words_skipped(
     assert meta.locator("span.df-word").count() == 0
     assert meta.nth(0).locator("del.df-was").inner_text().endswith("大")
     assert meta.nth(0).locator("ins.df-now").inner_text().endswith("中")
-    assert meta.nth(1).locator("del.df-was").inner_text().endswith("要件、会議")
-    assert meta.nth(1).locator("ins.df-now").inner_text().endswith("要件、運用")
+    # タグの前の値と今の値は、それぞれタグの並びで描く
+    assert meta.nth(1).locator("del.df-was span.tag").all_inner_texts() == ["要件", "会議"]
+    assert meta.nth(1).locator("ins.df-now span.tag").all_inner_texts() == ["要件", "運用"]
 
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
@@ -4711,7 +4712,7 @@ def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
             title="最初の問い",
             answer="元の答え",
             phase="目的",
-            tags=["画面"],
+            tags=[{"name": "画面"}],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
         make_item("D-2", title="後続の問い", depends_on=["D-1"]),
@@ -4936,8 +4937,8 @@ def test_edit_tags_suggestions(
     """タグの入力は記録で使われているタグを候補に出し、候補に無いタグも入れられて、入れたときに溜める（正常系）。"""
     # 準備
     items = (
-        make_item("D-1", title="最初の問い", tags=["画面"]),
-        make_item("D-2", title="後続の問い", tags=["画面", "ＡＰＩ"]),
+        make_item("D-1", title="最初の問い", tags=[{"name": "画面"}]),
+        make_item("D-2", title="後続の問い", tags=[{"name": "画面"}, {"name": "ＡＰＩ"}]),
     )
     page, root = _open_edit_view(
         write_edit_preview, make_item, valid_settings, open_preview, items=items
@@ -4954,16 +4955,16 @@ def test_edit_tags_suggestions(
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
         "aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS
     )
-    wait_saved_edit(page, "tags", ["画面", "新しいタグ"])
+    wait_saved_edit(page, "tags", [{"name": "画面"}, {"name": "新しいタグ"}])
     # 検証（候補に無いタグを入れる）
     assert group.locator(".pe-chip").all_inner_texts() == ["画面", "新しいタグ"]
     edit = read_edits_file(root)["items"][0]
     assert (edit["key"], edit["value"], edit["before"]) == (
         "tags",
-        ["画面", "新しいタグ"],
-        ["画面"],
+        [{"name": "画面"}, {"name": "新しいタグ"}],
+        [{"name": "画面"}],
     )
-    assert read_items_file(root, "decisions.yaml")[0]["tags"] == ["画面"]
+    assert read_items_file(root, "decisions.yaml")[0]["tags"] == [{"name": "画面"}]
 
 
 def test_edit_commit_and_revert(
@@ -5973,3 +5974,164 @@ def test_embedded_html_diff_minimap(
     shapes = mark_shapes(page, PANEL_SCOPE)
     # 検証
     assert [shape["kind"] for shape in shapes] == ["df-chg"]
+
+
+# ===== タグの主題 =====
+
+# タグごとに、名前・主題か・title・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+TAG_VALUES_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    title: tag.getAttribute("title"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+# 詳細パネルのキーの一覧の末尾の「タグ」の行
+PANEL_TAG_ROW = "aside.panel .d-meta dd:last-of-type"
+
+# 主題のタグを持つ検討事項（主題を付け外しするだけのまとまりの元）
+MAIN_TAG_DECISION = {
+    "title": "タグの主題を決める問い",
+    "status": "未決定",
+    "options": [{"key": "A", "content": "案 A"}],
+    "tags": [{"name": "データ", "main": True}, {"name": "画面"}],
+}
+
+
+def _serve_main_tag_diff(make_workspace: MakeWorkspace, call_tool: CallTool, valid_settings: dict[str, Any]) -> str:
+    """実際のツールで、D-1 のタグの主題だけを付け替えたまとまり V-2 を持つワークスペースを作って配信を立て、その URL を返す。"""
+    root = make_workspace(settings=valid_settings)
+    workspace = str(root)
+    steps = (
+        call_tool("add", workspace=workspace, kind="decision", item=MAIN_TAG_DECISION),
+        call_tool("commit", workspace=workspace, summary="最初の書き込み"),
+        call_tool(
+            "update",
+            workspace=workspace,
+            id="D-1",
+            item={"tags": [{"name": "データ"}, {"name": "画面", "main": True}]},
+        ),
+        call_tool("commit", workspace=workspace, summary="主題を付け替える"),
+    )
+    assert [step.is_error for step in steps] == [False, False, False, False], [step.text for step in steps]
+    served = call_tool("preview_url", workspace=workspace)
+    assert served.is_error is False, served.text
+    return str(served.data["url"])
+
+
+def test_tags_when_main_tag(
+    write_preview: WritePreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """キーの一覧の末尾の「タグ」の行に項目のタグを記録の順のまま並べ、主題のタグは名前の前に二重丸のマーカーを置く。「主題」は読み上げと title だけで伝える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", tags=[{"name": "データ"}, {"name": "画面", "main": True}]))
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{PANEL_TAG_ROW} span.tag")
+    # 検証
+    assert page.inner_text("aside.panel .d-meta dt:last-of-type") == "タグ"
+    assert page.evaluate(TAG_VALUES_JS, PANEL_TAG_ROW) == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+    assert page.locator(f"{PANEL_TAG_ROW} span.tag.is-main .sr-only").inner_text() == "主題"
+
+
+def test_diff_keys_when_main_tag_changed(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """主題を付け外ししただけでもタグが変わったとして扱い、前の値と今の値をそれぞれタグの並びで描いて主題のタグをマーカーで見分ける（正常系）。"""
+    # 準備
+    url = _serve_main_tag_diff(make_workspace, call_tool, valid_settings)
+    # 実行
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel .d-meta dd.df-key span.tag")
+    # 検証
+    assert page.inner_text("aside.panel .d-meta dt.df-key") == "タグ"
+    assert page.evaluate(TAG_VALUES_JS, "aside.panel .d-meta dd.df-key del.df-was") == [
+        {"name": "データ", "main": True, "title": "主題", "marker": "true"},
+        {"name": "画面", "main": False, "title": None, "marker": None},
+    ]
+    assert page.evaluate(TAG_VALUES_JS, "aside.panel .d-meta dd.df-key ins.df-now") == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+
+
+def test_edit_tags_main_toggle(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """タグの入力はチップの左端のトグルで主題を付け外しし、主題は複数にできる。並びを `{name, main?}` で溜め、元の並びと主題に戻すと保存待ちから外れる（正常系）。"""
+    # 準備
+    items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}, {"name": "記録の形"}]),)
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items)
+    group = page.get_by_role("group", name="タグ")
+    # 検証（主題のトグル）
+    assert group.get_by_role("button", name="画面 を主題").get_attribute("aria-pressed") == "true"
+    assert group.get_by_role("button", name="記録の形 を主題").get_attribute("aria-pressed") == "false"
+    # 実行（2 つ目も主題にする）
+    group.get_by_role("button", name="記録の形 を主題").click()
+    wait_saved_edit(page, "tags", [{"name": "画面", "main": True}, {"name": "記録の形", "main": True}])
+    # 検証（2 つ目も主題にする）
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"], edit["before"]) == (
+        "tags",
+        [{"name": "画面", "main": True}, {"name": "記録の形", "main": True}],
+        [{"name": "画面", "main": True}, {"name": "記録の形"}],
+    )
+    assert read_items_file(root, "decisions.yaml")[0]["tags"] == [{"name": "画面", "main": True}, {"name": "記録の形"}]
+    # 実行（元の主題に戻す）
+    group.get_by_role("button", name="記録の形 を主題").click()
+    # 検証（元の主題に戻す）
+    wait_no_saved_edits(page)
+    # 実行（主題を外す）
+    group.get_by_role("button", name="画面 を主題").click()
+    wait_saved_edit(page, "tags", [{"name": "画面"}, {"name": "記録の形"}])
+    # 検証（主題を外す。主題でないタグは main を持たない）
+    assert read_edits_file(root)["items"][0]["value"] == [{"name": "画面"}, {"name": "記録の形"}]
+
+
+def test_edit_tags_when_added_not_main(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """入力欄から追加したタグは主題でないまま並べて溜める（正常系）。"""
+    # 準備
+    items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}]),)
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items)
+    group = page.get_by_role("group", name="タグ")
+    # 実行
+    page.get_by_label("タグを追加").fill("通知")
+    page.get_by_label("タグを追加").press("Enter")
+    wait_saved_edit(page, "tags", [{"name": "画面", "main": True}, {"name": "通知"}])
+    # 検証
+    assert group.get_by_role("button", name="通知 を主題").get_attribute("aria-pressed") == "false"
+    assert read_edits_file(root)["items"][0]["value"] == [{"name": "画面", "main": True}, {"name": "通知"}]
+
+
+def test_edit_tags_when_remove_pending(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """削除を溜めた項目のタグの入力は、入力欄・外すボタン・主題のトグルを押せない（正常系）。"""
+    # 準備
+    items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}, {"name": "記録の形"}]),)
+    edits = (make_edit("E-1", op="item-remove", key=None, value=None, before=None),)
+    # 実行
+    page, _ = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items, edits=edits)
+    # 検証
+    group = page.get_by_role("group", name="タグ")
+    assert page.get_by_label("タグを追加").is_disabled() is True
+    assert group.locator("button").evaluate_all("buttons => buttons.map(b => b.disabled)") == [True, True, True, True]

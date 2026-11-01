@@ -313,14 +313,13 @@ flows:
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じで、`docs/` にファイルが増えていない
     test: test_error_when_both_bodies
   - name: 正常系（まだ使われていないタグを書く）
-    summary: どの項目もまだ持たないタグを持つ項目も、そのまま書く
+    summary: どの項目もまだ持たないタグを持つ項目も、主題とあわせてそのまま書く
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-        notes: '-'
       - name: make_workspace
         description: タグ `通知` を持つ検討事項 D-1 を持つワークスペース
-        notes: 足す検討事項はタグ `通知`・`通知機能` を持つ
+        notes: '足す検討事項はタグ `{name: 通知, main: true}`・`{name: 通知機能, main: false}`・`{name: 画面}` を持つ'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -328,7 +327,7 @@ flows:
         participant IF as add（MCP のツール）
         participant WS as ワークスペース
 
-        クライアント->>IF: add workspace kind decision（tags [通知, 通知機能]）
+        クライアント->>IF: add workspace kind decision（tags [通知 main true, 通知機能 main false, 画面]）
         IF-->>WS: 全ての YAML を読む
         IF->>WS: decisions.yaml を書く
         IF-->>クライアント: JSON（id・file・body）
@@ -336,9 +335,59 @@ flows:
     expected:
       - ツールのエラーにならない
       - 結果が `id`・`file`・`body` だけを持つ
-      - '`decisions.yaml` の D-2 の `tags` が `[通知, 通知機能]`'
+      - '`decisions.yaml` の D-2 の `tags` が `[{name: 通知, main: true}, {name: 通知機能}, {name: 画面}]`'
       - '`config.yaml` の中身が呼ぶ前と同じ'
     test: test_normal_when_new_tag
+  - name: 異常系（同じタグを 2 回渡す・SchemaMismatchError）
+    summary: 表記をそろえると同じ名前になるタグを 2 件渡すと、何も書かずにエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '足す検討事項はタグ `{name: API}`・`{name: ａｐｉ, main: true}` を持つ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: add workspace kind decision（tags [API, ａｐｉ main true]）
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: 同じ名前のタグが 2 件ある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `decisions.yaml: items[0].tags[1]: 同じタグが既にある` の行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_duplicate_tag
+  - name: 異常系（文字列のタグの項目がある・SchemaMismatchError）
+    summary: 前の版の形式の文字列のタグを持つ項目があるワークスペースでは、何も書かずに移し替えを案内する
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`tags: [通知]`（文字列のタグ）の検討事項 D-1 を持つワークスペース'
+        notes: 足すメモはタグを持たない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as add（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: add workspace kind note
+        IF-->>WS: 全ての YAML を読む
+        IF->>IF: decisions.yaml の D-1 のタグがスキーマに合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `decisions.yaml: items[0].tags[0]` で始まる行と、最後に `/mindstella:upgrade` を案内するヒントの行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_string_tags
 lead: '`item` で渡した中身に ID・作成日時・更新日時・編集した人を付けて、種類の YAML に 1 項目足す。本文を渡したときは `.mindstella/docs/{ID}.md`（資料の HTML の本文は `.mindstella/docs/{ID}.html`）に書く。'
 idempotent: false
 side_effects: 種類の YAML に 1 項目を足し（`updated_by` は `ai`）、`changes.yaml` の `last_seq` を 1 進め、`pending.added` に ID を足す（無ければ作る）。`body_markdown` を渡したときは `.mindstella/docs/{ID}.md` を書き、項目の `body` を `{ID}.md` にする。`body_html` を渡したときは `.mindstella/docs/{ID}.html` を書き、項目の `body` を `{ID}.html` にする。本文・YAML・`changes.yaml` の一時ファイルを書き終えてから、本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
@@ -424,7 +473,7 @@ exceptions:
   - name: WriteFailedError
     condition: 一時ファイルの書き込みか置き換えに失敗した（権限が無い・ほかのプロセスが開いている など）
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。置き換えた本文は消し、どのファイルも書き換えない
-error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける（キーのパスは `items[0].status` の形）。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・足す項目以外の案と状態の合わない検討事項）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける（キーのパスは `items[0].status` の形）。合わない箇所に前の版の形式（資料の `done`・`config.yaml` の `summary` が無い・`config.yaml` の `field`・`config.yaml` の `tags`・足す項目以外の案と状態の合わない検討事項・足す項目以外の文字列のタグ）があるときは、最後に `ヒント: 前の版の形式の記録は /mindstella:upgrade で今の形式に移せます` の 1 行を続ける。'
 constraints:
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
@@ -448,7 +497,7 @@ constraints:
     constraint: '本文の形式は `body` のファイル名の拡張子で表す（`{ID}.md` は Markdown、`{ID}.html` は HTML）。資料以外に `body_html` を渡したときは `{ファイル名}: items[{番号}].body_html: 資料だけが HTML の本文を持てる`、両方を渡したときは `{ファイル名}: items[{番号}].body_html: body_markdown と body_html は一緒に渡せない` の行で SchemaMismatchError にする'
     notes: 要件の『本文の形式の持ち方』の案 A。キーを足さないため、今の Markdown の資料は移し替えずに読める
   - item: タグ
-    constraint: '`item.tags` はどの文字列でも、渡した表記のまま書く。タグの語彙は持たない'
+    constraint: '`item.tags` の 1 件は `{name, main?}`。`name` はどの文字列でも、渡した表記のまま書く。その項目の主題のタグは `main: true` を持ち、`main: false` を渡したときは `main` を書かない。NFKC と小文字にそろえて同じ名前のタグを 2 件持つときは `{ファイル名}: items[{番号}].tags[{番号}]: 同じタグが既にある` の行で SchemaMismatchError にする。文字列のタグはスキーマに合わない。タグの語彙は持たない'
     notes: '#333 の方針の変更（D-169）'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 test_file: tests/integration/server/test_add.py

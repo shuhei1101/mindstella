@@ -98,6 +98,8 @@ var MindmapPreview;
         star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>',
         spin: '<path d="M12 3a9 9 0 1 0 9 9"/>',
         offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/>',
+        main: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/>',
+        mainOff: '<circle cx="12" cy="12" r="8"/>',
     };
     /** 24px の枠に描いた線のアイコン（読み上げ名は付けず、装飾として隠す）。大きさは `svg.icon` の CSS が決め、無いときも広がらないよう既定の 16px を属性に持つ */
     function icon(name) {
@@ -210,14 +212,6 @@ var MindmapPreview;
         });
     }
     MindmapPreview.impactBadge = impactBadge;
-    /** タグを並べる */
-    function tagList(values) {
-        const fragment = document.createDocumentFragment();
-        for (const value of values ?? [])
-            fragment.append(h({ tag: "span", attrs: { class: "tag" }, children: [value] }));
-        return fragment;
-    }
-    MindmapPreview.tagList = tagList;
     /** 納品物の印（箱のアイコンと文字） */
     function deliverableBadge() {
         return h({ tag: "span", attrs: { class: "deliv-badge" }, children: [icon("box"), "納品物"] });

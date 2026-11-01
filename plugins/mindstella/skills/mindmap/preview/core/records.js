@@ -48,6 +48,11 @@ var MindmapPreview;
     MindmapPreview.DOC_STATUSES = ["下書き", "確認中", "完成"];
     /** 項目が別の項目を指すキー */
     const REFERENCE_KEYS = ["depends_on", "for", "related", "sources"];
+    /** 項目の `tags` から名前だけを並びの順に取り出す（文字列のタグはそのまま） */
+    function tagNames(tags) {
+        return (tags ?? []).map((tag) => (typeof tag === "string" ? tag : tag.name));
+    }
+    MindmapPreview.tagNames = tagNames;
     /** ID を種類の順 → 連番の順に比べる */
     function compareIds(a, b) {
         const rank = (id) => MindmapPreview.KIND_KEYS.indexOf(KIND_OF_PREFIX[id.slice(0, 1)] ?? "logs");

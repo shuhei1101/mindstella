@@ -172,7 +172,7 @@ var MindmapPreview;
             }
         };
         for (const { item } of index.byId.values())
-            count(item.tags ?? []);
+            count(MindmapPreview.tagNames(item.tags));
         for (const thread of threads)
             count(thread.tags);
         return [...counts.keys()].sort((left, right) => (counts.get(right) ?? 0) - (counts.get(left) ?? 0) || (left < right ? -1 : left > right ? 1 : 0));
@@ -302,13 +302,14 @@ var MindmapPreview;
             control = box;
         }
         else if (input === "tags" || input === "refs") {
-            control = chipsInput({
+            control = MindmapPreview.chipsInput({
                 controlId,
                 name,
                 hint: CHIP_HINTS[key] ?? `${name}を入れる`,
                 values: Array.isArray(value) ? value : [],
                 suggestions: key === "tags" ? props.usedTags : null,
                 monospace: key !== "tags",
+                mainToggle: key === "tags",
                 disabled: removing,
                 onChange: (next) => commit(next),
             });
@@ -391,79 +392,6 @@ var MindmapPreview;
                 return settings.phases;
         }
     }
-    /** 値を並べるキーの入力（チップと、足す入力欄）。値の並びを変えるたびに `onChange` で新しい並びを知らせる（チップを外したときは外した値も） */
-    function chipsInput({ controlId, name, hint, values, suggestions, monospace, disabled, onChange, }) {
-        let current = [...values];
-        const box = MindmapPreview.h({ tag: "div", attrs: { class: "pe-chips", role: "group", "aria-label": name } });
-        const listId = `${controlId}-list`;
-        const field = MindmapPreview.h({
-            tag: "input",
-            attrs: {
-                id: controlId,
-                class: "input pe-chip-input",
-                type: "text",
-                list: suggestions === null ? null : listId,
-                placeholder: hint,
-                "aria-label": `${name}を追加`,
-                autocomplete: "off",
-                disabled,
-            },
-        });
-        /** 入力した値を並びに足す（空と、もうある値は足さない） */
-        const addValue = () => {
-            const text = field.value.trim();
-            field.value = "";
-            if (text === "" || current.includes(text))
-                return;
-            current = [...current, text];
-            draw();
-            onChange(current, null);
-            box.querySelector(".pe-chip-input")?.focus();
-        };
-        field.addEventListener("keydown", (event) => {
-            if (event.key !== "Enter" || event.isComposing)
-                return;
-            event.preventDefault();
-            addValue();
-        });
-        field.addEventListener("change", addValue);
-        /** チップを描き直す */
-        const draw = () => {
-            box.replaceChildren(...current.map((entry) => MindmapPreview.h({
-                tag: "span",
-                attrs: { class: `tag pe-chip${monospace ? " mono" : ""}` },
-                children: [
-                    entry,
-                    MindmapPreview.h({
-                        tag: "button",
-                        attrs: {
-                            class: "pe-chip-x",
-                            type: "button",
-                            "aria-label": `${entry} を外す`,
-                            disabled,
-                            onclick: () => {
-                                current = current.filter((other) => other !== entry);
-                                draw();
-                                onChange(current, entry);
-                            },
-                        },
-                        children: [MindmapPreview.icon("x")],
-                    }),
-                ],
-            })), field, ...(suggestions === null
-                ? []
-                : [
-                    MindmapPreview.h({
-                        tag: "datalist",
-                        attrs: { id: listId },
-                        children: suggestions.map((tag) => MindmapPreview.h({ tag: "option", attrs: { value: tag } })),
-                    }),
-                ]));
-        };
-        draw();
-        return box;
-    }
-    MindmapPreview.chipsInput = chipsInput;
     /** 検討事項の案（1 案 1 枚。中身の書き換え・採用する案の切り替え・削除と、案を足す） */
     function optionsField(props) {
         const { item, removing, removedOptions, on } = props;

@@ -94,9 +94,9 @@ def test_normal_when_filtered(
     """ドロワーのタグで話題を選び、種類を足して、条件に合うタスクだけのボードにする（正常系）。"""
     # 準備
     url = serve_preview(
-        make_item("T-1", kind="作業", status="未着手", tags=["保存"]),
-        make_item("T-2", kind="調査", status="進行中", tags=["保存"]),
-        make_item("T-3", kind="作業", status="完了", tags=["通知"]),
+        make_item("T-1", kind="作業", status="未着手", tags=[{"name": "保存"}]),
+        make_item("T-2", kind="調査", status="進行中", tags=[{"name": "保存"}]),
+        make_item("T-3", kind="作業", status="完了", tags=[{"name": "通知"}]),
         settings=valid_settings,
     )
     page = open_preview(url, "#tab=tasks")

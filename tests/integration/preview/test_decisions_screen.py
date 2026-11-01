@@ -1433,8 +1433,8 @@ def test_drawer_tags(
     """タグの条件を状態の次に並べ、選ぶとそのタグを持つ検討事項に絞る。表のチップで解除できる（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="未決定", tags=["プレビュー"]),
-        make_item("D-2", status="未決定", tags=["サーバー", "プレビュー"]),
+        make_item("D-1", status="未決定", tags=[{"name": "プレビュー"}]),
+        make_item("D-2", status="未決定", tags=[{"name": "サーバー"}, {"name": "プレビュー"}]),
         make_item("D-3", status="未決定"),
     )
     page = open_preview(url, "#tab=decisions&view=table")

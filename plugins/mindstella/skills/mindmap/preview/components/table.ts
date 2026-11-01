@@ -755,6 +755,12 @@ namespace MindmapPreview {
     return Array.isArray(value) ? value.map(String) : [];
   }
 
+  /** 行の `tags` の名前（主題かどうかによらない） */
+  function rowTagNames(row: Row): string[] {
+    const value = row.tags;
+    return Array.isArray(value) ? tagNames(value as (Tag | string)[]) : [];
+  }
+
   /** 項目の ID を並べたセル（押すと詳細を開く）。無ければ「—」 */
   export function idLinksCell(ids: string[], open: (id: string) => void): Node {
     if (ids.length === 0) return h({ tag: "span", attrs: { class: "muted" }, children: ["—"] });
@@ -834,8 +840,8 @@ namespace MindmapPreview {
         label: "タグ",
         filterable: true,
         priority: 4,
-        get: (row) => texts(row, "tags"),
-        cell: (row) => tagList(texts(row, "tags")),
+        get: (row) => rowTagNames(row),
+        cell: (row) => tagList(rowTagNames(row)),
       },
       text: (key, label, options = {}) => ({
         key,

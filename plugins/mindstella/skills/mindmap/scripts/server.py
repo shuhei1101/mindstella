@@ -22,10 +22,25 @@ import commands
 from claude_input import load_input_target
 from errors import MindmapError, SchemaMismatchError
 from kinds import Kind
-from query import DEFAULT_LIMIT, MAX_LIMIT, SearchFilter, parse_attr
+from query import DEFAULT_LIMIT, MAX_LIMIT, SearchFilter, parse_attr, render_find_markdown
 from serve import PreviewRegistry, load_external_access
 from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
+
+# `find` の `include`・`exclude` に渡せる名前
+FieldName = Literal[
+    "title",
+    "status",
+    "tags",
+    "chars",
+    "target",
+    "category",
+    "phase",
+    "attrs",
+    "updated",
+    "extra",
+    "body",
+]
 
 # MCP サーバーの名前。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる
 SERVER_NAME = "mindstella"
@@ -115,10 +130,15 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
     """`TOOL_NAMES` のツールを登録した MCP サーバーを作る。"""
     server = MCPServer(SERVER_NAME)
 
-    def read(workspace: str, run: Callable[[Path], dict[str, Any]]) -> CallToolResult:
-        """ワークスペースを読むだけのツールの処理を、鍵を取らずに呼ぶ。"""
+    def read(
+        workspace: str,
+        run: Callable[[Path], dict[str, Any]],
+        *,
+        render: Callable[[dict[str, Any]], str] | None = None,
+    ) -> CallToolResult:
+        """ワークスペースを読むだけのツールの処理を、鍵を取らずに呼ぶ。render は結果を本文の文字にする関数。"""
         root = resolve_workspace(workspace, cwd)
-        return call_tool(lambda: run(root), write_lock=write_lock)
+        return call_tool(lambda: run(root), write_lock=write_lock, render=render)
 
     def write(
         workspace: str,
@@ -300,7 +320,7 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
 
     @server.tool(
         name="find",
-        description="文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは NFKC と小文字にそろえて比べる。使える絞り込みは text・kind・status・tags・any_tags・target・category・phase・attr。タグで絞る前に tags で使われているタグを引く。全体の件数が 1 ページより多いときは next_cursor を同じ条件で cursor に渡して続きを読む",
+        description="文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは NFKC と小文字にそろえて比べる。使える絞り込みは text・kind・status・tags・any_tags・target・category・phase・attr。タグで絞る前に tags で使われているタグを引く。全体の件数が 1 ページより多いときは next_cursor を同じ条件で cursor に渡して続きを読む。量の見積もりは count_only と各項目の chars・total_chars で行い、返す量は view・include・exclude で選ぶ",
     )
     def find(
         workspace: WorkspaceArg,
@@ -326,12 +346,28 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
             str | None,
             Field(description="前のページの next_cursor。前のページと同じ条件で渡す"),
         ] = None,
-        response_format: Annotated[
-            Literal["concise", "detailed"],
+        view: Annotated[
+            Literal["brief", "standard", "full"],
             Field(
-                description="返す量。concise は ID・種類・タイトル・状態・タグ、detailed はそれに対象・カテゴリー・フェーズ・属性・更新日時を足す"
+                description="返す量。brief は title・status・tags・chars、standard はそれに target・category・phase・attrs・updated、full はさらに extra・body・body_format を加える。id・kind はどの量でも返す"
             ),
-        ] = "concise",
+        ] = "brief",
+        include: Annotated[
+            list[FieldName] | None, Field(description="view に加えて返す項目の名前")
+        ] = None,
+        exclude: Annotated[
+            list[FieldName] | None, Field(description="view から外す項目の名前")
+        ] = None,
+        count_only: Annotated[
+            bool,
+            Field(description="true のとき、一覧を返さず total・total_chars・tag_counts だけを返す"),
+        ] = False,
+        format: Annotated[
+            Literal["markdown", "json"],
+            Field(
+                description="結果の書き方。markdown は本文に Markdown を入れ、json は構造化の結果と本文に同じ JSON を入れる"
+            ),
+        ] = "markdown",
     ) -> CallToolResult:
         search_filter = SearchFilter(
             text=text,
@@ -351,8 +387,12 @@ def build_server(*, previews: PreviewRegistry, write_lock: threading.Lock, cwd: 
                 search_filter,
                 limit=limit,
                 cursor=cursor,
-                response_format=response_format,
+                view=view,
+                include=list(include or []),
+                exclude=list(exclude or []),
+                count_only=count_only,
             ),
+            render=render_find_markdown if format == "markdown" else None,
         )
 
     @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
@@ -549,8 +589,9 @@ def call_tool(
     lock_root: Path | None = None,
     lock_create: bool = False,
     lock_require: Callable[[Path], None] = require_workspace,
+    render: Callable[[dict[str, Any]], str] | None = None,
 ) -> CallToolResult:
-    """ツールの処理を呼び、結果を構造化の結果に、エラーをツールのエラーにする。"""
+    """ツールの処理を呼び、結果を構造化の結果（render を渡したときは本文だけ）に、エラーをツールのエラーにする。"""
     try:
         if lock_root is not None:
             # 書き換えるツール: 読む前から書き終えるまで鍵を持つ
@@ -567,7 +608,14 @@ def call_tool(
         logger.exception("ツールの予期しないエラー")
         message = UNEXPECTED_ERROR.format(type=type(error).__name__, message=error)
         return error_result(MindmapError(message))
+    if render is not None:
+        return text_result(render(payload))
     return ok_result(payload)
+
+
+def text_result(text: str) -> CallToolResult:
+    """文字を、構造化の結果を持たない本文だけの結果にする。"""
+    return CallToolResult(content=[TextContent(type="text", text=text)])
 
 
 def ok_result(payload: dict[str, Any]) -> CallToolResult:

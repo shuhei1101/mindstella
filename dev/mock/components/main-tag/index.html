@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>主題のタグ | mindstella 部品のモック</title>
+  <!-- 明暗: クエリの theme（dark）で開く。ダークの節の枠の中で使う -->
+  <script>if (new URLSearchParams(location.search).get("theme") === "dark") document.documentElement.dataset.theme = "dark";</script>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと今のプレビューのスタイル -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <!-- この PR で足す主題のマーカーと主題のトグル -->
+  <link rel="stylesheet" href="../../refs/385/assets/style.css">
+  <style>
+    /* 部品のモックの本文: 送れる 1 枚にする */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台 */
+    .stage { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 320px; max-width: 100%; }
+    /* 横に並べる見本 */
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    /* タグを並べる見本（プレビューではタグの並びを置く先が持つ） */
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .card .tags { margin-top: 8px; }
+    /* 状態を見せるための見本のクラス（トグル） */
+    .pe-chip-main.is-hover { background: var(--hover); color: var(--text); }
+    .pe-chip-main.is-focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+    /* カードを並べる見本 */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    /* 並べたカードの下の余白を詰める */
+    .cards .card { margin: 0; }
+    /* 状態を見せるための見本のクラス */
+    .card.is-hover { border-color: var(--accent); }
+    .card.is-focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* ダークの見本の枠 */
+    .dark-frame { display: block; width: 100%; height: 640px; border: 0; }
+    /* 枠の中で開いたときは、ダークの節を出さない */
+    html.embed .cat-sec:last-child { display: none; }
+  </style>
+  <script>if (new URLSearchParams(location.search).has("embed")) document.documentElement.classList.add("embed");</script>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / main-tag</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">主題のタグ</h1>
+    <section class="cat-sec">
+      <h2>詳細のタグ（主題 1 つ・2 つ・なし）</h2>
+      <p>主題のタグは枠を濃くし、名前の前にマーカーを置く。読み上げは「主題 画面」。並びは記録の順のまま</p>
+      <div class="stage" data-main-mark="a"><div class="row"><span class="tags"><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>画面</span><span class="tag">記録の形</span></span></div><div class="row" style="margin-top:8px"><span class="tags"><span class="tag">mindstella</span><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>ゴールと設定</span><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>画面</span></span></div><div class="row" style="margin-top:8px"><span class="tags"><span class="tag">mindstella</span><span class="tag">タスク</span></span></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>資料のカード</h2>
+      <p>カードの下のタグの並び</p>
+      <div class="stage" data-main-mark="a"><div class="cards"><div class="card"><div class="c-ttl">#43 ワークスペースに版を記録し、プラグインを上げたときに版に沿って移し替えられるようにする</div><div class="c-meta"><span class="mono">A-1</span><span>完成</span></div><span class="tags"><span class="tag">mindstella</span><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>移し替え</span></span></div><div class="card"><div class="c-ttl">スキルと画面の改善の Issue 一覧</div><div class="c-meta"><span class="mono">A-2</span><span>完成</span></div><span class="tags"><span class="tag">mindstella</span><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>画面</span><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>記録の形</span><span class="tag">タスク</span></span></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>編集のタグの入力（主題でない・主題）</h2>
+      <p>チップの左端のトグルで主題を付け外しする。トグルの名前は「{タグ} を主題」で、押した状態（aria-pressed）を読み上げる。主題は複数にできる</p>
+      <div class="stage" data-main-mark="a"><div class="pe-chips"><span class="tag pe-chip has-main is-main"><button class="pe-chip-main" type="button" aria-label="画面 を主題" aria-pressed="true" title="主題を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></button>画面<button class="pe-chip-x" type="button" aria-label="画面 を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><span class="tag pe-chip has-main"><button class="pe-chip-main" type="button" aria-label="記録の形 を主題" aria-pressed="false" title="主題にする"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg><span class="tag-main-text">主題</span></button>記録の形<button class="pe-chip-x" type="button" aria-label="記録の形 を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><span class="tag pe-chip has-main"><button class="pe-chip-main" type="button" aria-label="通知 を主題" aria-pressed="false" title="主題にする"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg><span class="tag-main-text">主題</span></button>通知<button class="pe-chip-x" type="button" aria-label="通知 を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><input class="pe-chip-input" type="text" placeholder="タグを入れる" aria-label="タグを足す"></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>トグルのホバー・キーボードのフォーカス</h2>
+      <p>押せる的は縦横 24px</p>
+      <div class="stage" data-main-mark="a"><div class="row"><div class="pe-chips"><span class="tag pe-chip has-main"><button class="pe-chip-main is-hover" type="button" aria-label="記録の形 を主題" aria-pressed="false" title="主題にする"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg><span class="tag-main-text">主題</span></button>記録の形<button class="pe-chip-x" type="button" aria-label="記録の形 を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><span class="tag pe-chip has-main is-main"><button class="pe-chip-main is-focus" type="button" aria-label="画面 を主題" aria-pressed="true" title="主題を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></button>画面<button class="pe-chip-x" type="button" aria-label="画面 を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><input class="pe-chip-input" type="text" placeholder="タグを入れる" aria-label="タグを足す"></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>長いタグ・狭い幅（320px）</h2>
+      <p>収まらないタグは次の行へ回し、マーカーは名前と同じ行に残す</p>
+      <div class="stage narrow" data-main-mark="a"><span class="tags"><span class="tag is-main" title="主題"><span class="tag-main"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></span>すべての画面の絞り込みとドロワーの並び</span><span class="tag">ゴールと設定</span><span class="tag">タスク</span></span><div style="margin-top:8px"><div class="pe-chips"><span class="tag pe-chip has-main is-main"><button class="pe-chip-main" type="button" aria-label="すべての画面の絞り込みとドロワーの並び を主題" aria-pressed="true" title="主題を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span class="tag-main-text">主題</span></button>すべての画面の絞り込みとドロワーの並び<button class="pe-chip-x" type="button" aria-label="すべての画面の絞り込みとドロワーの並び を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><span class="tag pe-chip has-main"><button class="pe-chip-main" type="button" aria-label="ゴールと設定 を主題" aria-pressed="false" title="主題にする"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg><span class="tag-main-text">主題</span></button>ゴールと設定<button class="pe-chip-x" type="button" aria-label="ゴールと設定 を外す"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><input class="pe-chip-input" type="text" placeholder="タグを入れる" aria-label="タグを足す"></div></div></div>
+    </section>
+    <section class="cat-sec">
+      <h2>ダーク</h2>
+      <p>同じ見本をダークで開いたもの</p>
+      <div class="stage frames"><iframe class="dark-frame" src="index.html?theme=dark&amp;embed=1" title="主題のタグ（ダーク）"></iframe></div>
+    </section>
+  </main>
+</body>
+</html>

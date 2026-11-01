@@ -266,6 +266,37 @@ def test_build_server_when_relative_workspace(
     assert result.structured_content == {"attrs": []}
 
 
+@pytest.mark.parametrize(
+    "extra_arguments",
+    [
+        pytest.param({}, id="markdown"),
+        pytest.param({"format": "json"}, id="json"),
+    ],
+)
+def test_build_server_when_find_format(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    extra_arguments: dict[str, str],
+) -> None:
+    """find は既定で Markdown の本文、json で構造化の結果を返す（正常系）。"""
+    # 準備
+    make_workspace(make_item("D-1"), name="ws")
+    previews = serve.PreviewRegistry(threading.Lock())
+    mcp_server = server.build_server(previews=previews, write_lock=threading.Lock(), cwd=tmp_path)
+    # 実行
+    result = _run_async(mcp_server.call_tool("find", {"workspace": "ws", **extra_arguments}))
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is False
+    if extra_arguments:
+        assert result.structured_content is not None
+        assert result.structured_content["items"][0]["id"] == "D-1"
+    else:
+        assert result.structured_content is None
+        assert _text_of(result).startswith("全 1 件・合計")
+
+
 def test_call_tool() -> None:
     """辞書を結果にする（正常系）。"""
     # 実行
@@ -347,6 +378,20 @@ def test_call_tool_when_lock_require(tmp_path: Path) -> None:
     assert (tmp_path / ".mindstella.lock").exists()
 
 
+def test_call_tool_when_render() -> None:
+    """render を渡すと本文だけの結果にする（正常系）。"""
+    # 実行
+    result = server.call_tool(
+        lambda: {"total": 1},
+        write_lock=threading.Lock(),
+        render=lambda payload: f"全 {payload['total']} 件",
+    )
+    # 検証
+    assert result.is_error is False
+    assert _text_of(result) == "全 1 件"
+    assert result.structured_content is None
+
+
 def test_ok_result() -> None:
     """日本語をエスケープしない本文と構造化の結果（正常系）。"""
     # 実行
@@ -355,6 +400,16 @@ def test_ok_result() -> None:
     assert result.structured_content == {"title": "問い"}
     assert _text_of(result) == json.dumps({"title": "問い"}, ensure_ascii=False)
     assert _text_of(result) == '{"title": "問い"}'
+
+
+def test_text_result() -> None:
+    """本文だけを持つ（正常系）。"""
+    # 実行
+    result = server.text_result("全 2 件・合計 300 文字")
+    # 検証
+    assert _text_of(result) == "全 2 件・合計 300 文字"
+    assert result.structured_content is None
+    assert result.is_error is False
 
 
 def test_error_result() -> None:

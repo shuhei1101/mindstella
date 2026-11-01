@@ -574,7 +574,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/commands.py
     usecase: 記録の検索
     scope: public
-    summary: 引数を確かめ、条件で探した結果をページに分けて出力の形にする
+    summary: 引数を確かめ、条件で探した結果を、返す量を選んだページか件数だけの出力にする
     args:
       - name: root
         type: Path
@@ -596,25 +596,43 @@ functions:
         required: true
         passing: keyword
         description: '`cursor`'
-      - name: response_format
-        type: Literal["concise", "detailed"]
+      - name: view
+        type: Literal["brief", "standard", "full"]
         required: true
         passing: keyword
-        description: '`response_format`'
+        description: '`view`'
+      - name: include
+        type: Sequence[str]
+        required: true
+        passing: keyword
+        description: '`include`'
+      - name: exclude
+        type: Sequence[str]
+        required: true
+        passing: keyword
+        description: '`exclude`'
+      - name: count_only
+        type: bool
+        required: true
+        passing: keyword
+        description: '`count_only`'
     returns:
       type: dict[str, Any]
-      description: '`{items, total, next_cursor, hint}`'
+      description: '`count_only` なら `{total, total_chars, tag_counts}`、それ以外は `{items, total, total_chars, next_cursor, hint, omitted}`'
     process: |-
       1. `limit` が 1〜`MAX_LIMIT` の外なら引数の誤りにする
-      2. ワークスペースを読む（`load_workspace`）
-      3. 探し（`search_items`。`detailed` は `response_format == "detailed"`）、ページに分ける（`page_results`。`stray_tags` は `list_stray_tags`）
+      2. 返す項目の名前を決める（`resolve_fields`）
+      3. ワークスペースを読む（`load_workspace`）
+      4. 探す（`search_items`）。`total` は当たった件数、`total_chars` は当たった全ての項目の `chars` の和
+      5. `count_only` なら `tag_counts`（`count_tags`）を添えて返す（`cursor`・`limit` は見ない）
+      6. それ以外はページに分け（`page_results`。`stray_tags` は `list_stray_tags`）、切り出した項目を行にし（`build_row`）、`omitted` に `FIELD_NAMES` のうち 2 で選ばなかった名前を `FIELD_NAMES` の順で入れる
     unit_tests:
       - name: test_run_find
         case: 正常
-        summary: 検索結果をページの形にする
-        condition: D-1 だけで条件なし、`limit=20`・`cursor=None`・`response_format=concise`
+        summary: 既定の量で検索結果をページの出力にする
+        condition: D-1 だけで条件なし、`limit=20`・`cursor=None`・`view=brief`・`include=[]`・`exclude=[]`・`count_only=False`
         mock: なし
-        expected: '`{items: [{id: D-1, kind: decision, title, status, tags: []}], total: 1, next_cursor: None, hint: None}`'
+        expected: '`{items: [{id: D-1, kind: decision, title, status, tags: [], chars}], total: 1, total_chars: D-1 の chars, next_cursor: None, hint: None, omitted: [target, category, phase, attrs, updated, extra, body]}`'
       - name: test_run_find_when_limit_out_of_range
         case: 異常
         summary: 範囲の外の件数は引数の誤り
@@ -624,12 +642,24 @@ functions:
       - name: test_run_find_when_stray_tag
         case: 正常
         summary: どの項目も使っていないタグは 0 件と近いタグの案内を返す
-        condition: D-1（`[データ]`）。`tags=(データー,)`
+        condition: 'D-1（`[{name: データ}]`）。`tags=(データー,)`'
         mock: なし
-        expected: '`items` が空、`total` が 0、`hint` に `データー はどの項目も使っていないタグです（近いタグ: データ）`'
+        expected: '`items` が空、`total` が 0、`total_chars` が 0、`hint` に `データー はどの項目も使っていないタグです（近いタグ: データ）`'
+      - name: test_run_find_when_count_only
+        case: 正常
+        summary: 件数・文字数・タグの件数だけを返す
+        condition: 'D-1（`[{name: データ, main: true}]`）・D-2（`[{name: データ}, {name: 画面}]`）、`count_only=True`・`limit=1`'
+        mock: なし
+        expected: '`{total: 2, total_chars: D-1 と D-2 の chars の和, tag_counts: [{tag: データ, count: 2}, {tag: 画面, count: 1}]}` だけ（`items` を持たない）'
+      - name: test_run_find_when_total_chars_over_pages
+        case: 正常
+        summary: 合計の文字数はページに分ける前の全件の和
+        condition: D-1〜D-3、`limit=1`
+        mock: なし
+        expected: '`items` が D-1 だけで、`total_chars` が D-1〜D-3 の chars の和'
     exceptions:
       - name: ArgumentError
-        condition: '`limit` が範囲の外（引数 `limit`）。`cursor` の誤りは `page_results` から伝わる'
+        condition: '`limit` が範囲の外（引数 `limit`）。`include`・`exclude` の重なりは `resolve_fields`、`cursor` の誤りは `page_results` から伝わる'
   - name: run_show
     title: show の処理
     kind: 関数
@@ -918,7 +948,7 @@ functions:
     process: |-
       1. `MCPServer(SERVER_NAME)` を作る
       2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード。`find`・`tags` は冒頭リードに、インターフェース定義の制約「ツールの説明」の文を続ける）
-         - `find` は `tags`・`any_tags`（`list[str] | None`）をタプルにし、`attr` の要素を `parse_attr` で分けて `SearchFilter` を作り、`limit`（既定 `DEFAULT_LIMIT`）・`cursor`・`response_format`（既定 `concise`）と一緒に `run_find` へ渡す
+         - `find` は `tags`・`any_tags`（`list[str] | None`）をタプルにし、`attr` の要素を `parse_attr` で分けて `SearchFilter` を作り、`limit`（既定 `DEFAULT_LIMIT`）・`cursor`・`view`（既定 `brief`）・`include`・`exclude`（既定 空）・`count_only`（既定 偽）と一緒に `run_find` へ渡す。`format`（既定 `markdown`）が `markdown` なら `call_tool` に `render=render_find_markdown` を渡す
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
          - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`new_thread`・`reply`・`set_thread_status`・`update_thread` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
          - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドを読む』の同時の呼び出し）
@@ -936,6 +966,12 @@ functions:
         condition: '`cwd=tmp_path`、`tmp_path / "ws"` に作成済みのワークスペース。`call_tool("attrs", {"workspace": "ws"})`'
         mock: なし
         expected: '結果の `is_error` が偽で、`structured_content` が `{"attrs": []}`'
+      - name: test_build_server_when_find_format
+        case: 正常
+        summary: find は既定で Markdown の本文、json で構造化の結果を返す
+        condition: '`cwd=tmp_path`、D-1 を持つワークスペース `ws`。`parametrize`: `call_tool("find", {"workspace": "ws"})` / `call_tool("find", {"workspace": "ws", "format": "json"})`'
+        mock: なし
+        expected: 本文が `全 1 件・合計` で始まり `structured_content` が `None` / `structured_content` の `items[0].id` が `D-1`
   - name: call_tool
     title: ツールの呼び出し
     kind: 関数
@@ -973,13 +1009,19 @@ functions:
         default: require_workspace
         passing: keyword
         description: 鍵を取る前にワークスペースを確かめる関数（`workspace_lock` の `require`。`plan` でない `migrate` だけ `require_migratable`）
+      - name: render
+        type: Callable[[dict[str, Any]], str] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 成功の辞書を本文の文字にする関数。渡したときは `text_result` にする（`find` の `format` が `markdown` のとき `render_find_markdown`）
     returns:
       type: CallToolResult
       description: 成功は `ok_result`、エラーは `error_result` の結果
     process: |-
       1. `lock_root` がある場合、ワークスペースの鍵を取ってから（`workspace_lock`、`create=lock_create`、`require=lock_require`）、無い場合はそのまま `handler()` を呼ぶ。鍵を取るときの `WorkspaceNotFoundError` も 2 の `MindmapError` として扱う
       2. 結果を分ける
-         - 辞書が返った場合、それを結果にする（`ok_result`）
+         - 辞書が返った場合、`render` が無ければそれを結果にし（`ok_result`）、あれば `render` で文字にした本文を結果にする（`text_result`）
          - `MindmapError` を捕まえた場合、ツールのエラーにする（`error_result`）
          - それ以外の例外を捕まえた場合、トレースバックを記録し、`UNEXPECTED_ERROR` の文言の `MindmapError` としてツールのエラーにする
            - `[ERROR]` ツールの予期しないエラー（例外のトレースバック）
@@ -1014,6 +1056,12 @@ functions:
         condition: '`mindmap.yaml` だけを置いた `tmp_path` を `lock_root` に、`require_migratable` を `lock_require` に渡す。`handler` は `{}` を返す'
         mock: なし
         expected: '`is_error` が偽で、`tmp_path / ".mindstella.lock"` がある'
+      - name: test_call_tool_when_render
+        case: 正常
+        summary: render を渡すと本文だけの結果にする
+        condition: "`handler` が `{\"total\": 1}` を返し、`render` が `lambda r: f\"全 {r['total']} 件\"`"
+        mock: なし
+        expected: '`is_error` が偽、本文が `全 1 件`、`structured_content` が `None`'
   - name: ok_result
     title: 成功の結果
     kind: 関数
@@ -1347,7 +1395,7 @@ functions:
       type: tuple[Staged, dict[str, Any]]
       description: 新しい `Staged` と、`add` の結果 `{id, file, body}`
     process: |-
-      1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）
+      1. 渡せないキーを確かめる（`validate_input_keys`。`index` はその種類の並びの長さ）。`tags` があれば `compact_tags` で主題でないタグの `main` を除く
       2. `staged.items` のその種類で ID を振る（`next_id`。`taken` に消した項目の記録（`removed_items`）の ID を渡す）
       3. 通し番号を振り（`advance_seq`）、`id` を先頭に、`created`・`updated`・`updated_by`（`editor`）・`seq`・`added_seq` を末尾に置いた項目を作る
          - `body_markdown` がある場合、項目の `body` を `{ID}.md` にし、本文の書き込みを足す（どの種類も）
@@ -1385,6 +1433,12 @@ functions:
         condition: 'タスク `{"title": "画面を作る", "status": "未着手"}` を `editor="user"` で足す'
         mock: '`now`'
         expected: 足した T-1 の `updated_by` が `user`
+      - name: test_stage_add_when_main_false
+        case: 正常
+        summary: main が偽のタグは main を除いて書く
+        condition: '空の `Staged` に検討事項 `{"title": "t", "status": "未決定", "tags": [{"name": "通知", "main": true}, {"name": "画面", "main": false}]}`'
+        mock: '`now`'
+        expected: 'D-1 の `tags` が `[{name: 通知, main: true}, {name: 画面}]`'
   - name: stage_update
     title: 更新を当てる
     kind: 関数
@@ -1424,7 +1478,7 @@ functions:
       type: tuple[Staged, dict[str, Any]]
       description: 新しい `Staged` と、`update` の結果 `{id, file, changed}`
     process: |-
-      1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`。`index` はその項目の位置）
+      1. `staged.items` から項目を引き、渡せないキーを確かめる（`validate_input_keys`。`index` はその項目の位置）。渡した `tags` があれば `compact_tags` で主題でないタグの `main` を除く
       2. 変更を当てはめ、`updated` を今の日時、`updated_by` を `editor` にする（`merge_changes`）
          - `body_markdown` がある場合、`body` を `{ID}.md` にし、本文の書き込みを作る（どの種類も）
          - `body_html` がある場合、`body` を `{ID}.html` にし、本文の書き込みを作る（資料だけ）
@@ -1468,6 +1522,12 @@ functions:
         condition: '`updated_by: ai` の D-1 に `{"answer": "a"}` を `editor="user"` で当てる。保持する回数は既定'
         mock: '`now`'
         expected: D-1 の `updated_by` が `user`、`history[0].by` が `user`
+      - name: test_stage_update_when_main_false
+        case: 正常
+        summary: main が偽のタグは main を除いて置き換える
+        condition: '`tags: [{name: 通知, main: true}]` の D-1 に `{"tags": [{"name": "通知", "main": false}]}`'
+        mock: '`now`'
+        expected: 'D-1 の `tags` が `[{name: 通知}]` で、`changed` に `tags`'
   - name: apply_option_edit
     title: 案の書き換えを当てる
     kind: 関数
@@ -2202,6 +2262,29 @@ functions:
     process: |-
       1. ワークスペースを確かめ（`require_workspace`）、書き換える（`update_thread`）
     unit_tests: []
+  - name: text_result
+    title: 本文だけの成功の結果
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 記録の検索
+    scope: public
+    summary: 文字を、構造化の結果を持たない `CallToolResult` にする
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 本文
+    returns:
+      type: CallToolResult
+      description: '`content` が `text` の `TextContent` 1 つで、`structured_content` を持たない結果'
+    unit_tests:
+      - name: test_text_result
+        case: 正常
+        summary: 本文だけを持つ
+        condition: '`全 2 件・合計 300 文字`'
+        mock: なし
+        expected: 本文がその文字で、`structured_content` が `None`、`is_error` が偽
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
   標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く

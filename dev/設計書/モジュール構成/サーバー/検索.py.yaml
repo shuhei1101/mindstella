@@ -1,9 +1,9 @@
 title: "サーバー / 検索"
-lead: 条件で項目を探してページに分け、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証・タグの表記だけに依存し、ファイルを書かない。
+lead: 条件で項目を探してページに分け、返す量を選んで JSON か Markdown にし、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証・タグの表記だけに依存し、ファイルを書かない。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    query.py   検索・1 件の表示と参照元・属性名とタグの一覧
+    query.py   検索・返す量と文字数・結果の Markdown・1 件の表示と参照元・属性名とタグの一覧
   ```
 data_models:
   - name: SearchFilter
@@ -50,6 +50,23 @@ data_models:
         type: tuple[str, ...]
         default: ()
         description: いずれかを持つ項目に絞るタグ（OR。空なら絞らない）
+  - name: SearchHit
+    title: 検索で当たった項目
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    role: DTO
+    summary: 条件に合った 1 項目と、その種類・文字数
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
+    properties:
+      - name: kind
+        type: Kind
+        description: 種類
+      - name: item
+        type: dict[str, Any]
+        description: 読んだ項目（書き換えない）
+      - name: chars
+        type: int
+        description: 項目の文字数（`item_chars`）
 constants:
   - name: REFERENCE_KEYS
     title: 参照のキー
@@ -69,18 +86,30 @@ constants:
     usecase: 記録の検索
     summary: '`find` の `limit` に渡せる件数の上限（インターフェース定義『項目の検索』の制約「件数」が導き方を持つ）'
     value: '80'
-  - name: DETAILED_KEYS
-    title: 詳しい結果に足すキー
-    container: plugins/mindstella/skills/mindmap/scripts/query.py
-    usecase: 記録の検索
-    summary: '`response_format` が `detailed` のとき、項目ごとに足すキーとその並び'
-    value: ("target", "category", "phase", "attrs", "updated")
   - name: NARROWING_ARGUMENTS
     title: 絞り込める引数
     container: plugins/mindstella/skills/mindmap/scripts/query.py
     usecase: 記録の検索
     summary: 切り詰めたときの案内に並べる引数の名前とその並び
     value: ("tags", "kind", "status", "phase", "category", "text")
+  - name: FIELD_NAMES
+    title: 返す項目の名前
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: '`find` の `include`・`exclude` に渡せる名前とその並び。結果の列と `omitted` もこの並び（インターフェース定義『項目の検索』の `include`）'
+    value: ("title", "status", "tags", "chars", "target", "category", "phase", "attrs", "updated", "extra", "body")
+  - name: VIEW_FIELDS
+    title: 返す量ごとの項目
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: '`view` ごとに返す項目の名前（`FIELD_NAMES` の頭から）'
+    value: '{"brief": FIELD_NAMES[:4], "standard": FIELD_NAMES[:9], "full": FIELD_NAMES}'
+  - name: NAMED_ITEM_KEYS
+    title: 名前で返す項目のキー
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    summary: '`extra` に入れない項目の YAML のキー（`id` と、`FIELD_NAMES` が名前で返すキー。`body` は本文のファイル名）'
+    value: ("id", "title", "status", "tags", "target", "category", "phase", "attrs", "updated", "body")
 functions:
   - name: search_items
     title: 項目の検索
@@ -88,7 +117,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/query.py
     usecase: 記録の検索
     scope: public
-    summary: 条件の全てに合う項目を種類の順・連番の順に返す
+    summary: 条件の全てに合う項目を、文字数を添えて並べて返す
     args:
       - name: workspace
         type: Workspace
@@ -100,21 +129,16 @@ functions:
         required: true
         passing: positional
         description: 条件
-      - name: detailed
-        type: bool
-        required: false
-        default: 'False'
-        passing: keyword
-        description: 真なら `DETAILED_KEYS` も返す
     returns:
-      type: list[dict[str, Any]]
-      description: '`{id, kind, title, status, tags}` の並び（`status` を持たない種類は `None`、タグを持たない項目の `tags` は空の並び）。`detailed` なら `DETAILED_KEYS` の順に `target`・`category`・`phase`（無ければ `None`）・`attrs`（無ければ空の辞書）・`updated` を足す'
+      type: list[SearchHit]
+      description: 合った項目の並び（インターフェース定義『項目の検索』の制約「並び」の順）
     process: |-
       1. `KINDS` の順に、`kind` の条件に合う種類の項目を見る
-      2. `status`・`target`・`category`・`phase` は一致、`tags` は全てを `tags` に含む、`any_tags` はどれかを `tags` に含む（タグは渡した側も項目の側も `normalize_tag` でそろえて比べる）、`attrs` は全ての名前と値（値は文字列にして）が一致、で絞る
+      2. `status`・`target`・`category`・`phase` は一致、`tags` は全てを `tags` の名前に含む、`any_tags` はどれかを `tags` の名前に含む（タグは渡した側も項目の側も `normalize_tag` でそろえて比べる。項目の側の名前は `tag_name` で取る）、`attrs` は全ての名前と値（値は文字列にして）が一致、で絞る
       3. `text` は項目の全ての文字列の値のどれかに、英字の大小を区別せず含まれるかで絞る（`_contains_text`）
       4. 各種類の中は連番の小さい順に並べる
-      5. 合った項目を `{id, kind, title, status, tags}` にし、`detailed` なら `DETAILED_KEYS` を足す（本文・案は入れない）
+      5. `tags`・`any_tags` のどちらかを渡したときは、渡したタグのどれかを主題（`main: true`）として持つ項目を先に、持たない項目を後に置く（それぞれの中は 4 までの順を保つ安定な並べ替え）
+      6. 合った項目ごとに `item_chars` で文字数を数え、`SearchHit` にする
     unit_tests:
       - name: test_search_items_when_text_and_attr
         case: 正常
@@ -143,21 +167,27 @@ functions:
       - name: test_search_items_when_tags_and_any_tags
         case: 正常
         summary: tags は全てを持つ項目、any_tags はいずれかを持つ項目
-        condition: 'D-1: `[データ]`／D-2: `[画面]`／T-1: `[データ, 画面]`／N-1: タグ無し。`parametrize`: `tags=(データ, 画面)` / `any_tags=(データ, 画面)` / 両方 `tags=(データ,)`・`any_tags=(画面,)`'
+        condition: 'D-1: `[{name: データ}]`／D-2: `[{name: 画面}]`／T-1: `[{name: データ}, {name: 画面}]`／N-1: タグ無し。`parametrize`: `tags=(データ, 画面)` / `any_tags=(データ, 画面)` / 両方 `tags=(データ,)`・`any_tags=(画面,)`'
         mock: なし
         expected: T-1 / D-1・D-2・T-1 / T-1
-      - name: test_search_items_when_detailed
-        case: 正常
-        summary: detailed は対象・カテゴリー・フェーズ・属性・更新日時を足し、案は入れない
-        condition: '対象・カテゴリー・フェーズ・属性 `担当: 自分`・案 A・B を持つ D-1 と、どれも持たない N-1。`detailed=True`'
-        mock: なし
-        expected: D-1 が `target`・`category`・`phase`・`attrs`・`updated` を持ち `options` を持たない。N-1 は `target` が `None`、`attrs` が `{}`、`tags` が `[]`
       - name: test_search_items_when_tag_normalized
         case: 正常
         summary: 全角・大文字の違うタグでも当たる
-        condition: 'D-1: `[API]`／D-2: `[ａｐｉ]`／D-3: `[データ]`。`tags=(api,)`'
+        condition: 'D-1: `[{name: API}]`／D-2: `[{name: ａｐｉ}]`／D-3: `[{name: データ}]`。`tags=(api,)`'
         mock: なし
-        expected: D-1・D-2（`tags` は書いたときの表記のまま）
+        expected: D-1・D-2（`item` の `tags` は書いたときの表記のまま）
+      - name: test_search_items_when_main_tag_first
+        case: 正常
+        summary: 渡したタグを主題として持つ項目を先に並べ、それぞれの中は種類の順・連番の順
+        condition: 'D-1: `[{name: データ}]`／D-2: `[{name: データ, main: true}]`／T-1: `[{name: ﾃﾞｰﾀ, main: true}, {name: 画面}]`／T-2: `[{name: 画面, main: true}]`。`parametrize`: `tags=(データ,)` / `any_tags=(データ, 画面)` / 条件なし'
+        mock: なし
+        expected: D-2・T-1・D-1 / D-2・T-1・T-2・D-1 / D-1・D-2・T-1・T-2
+      - name: test_search_items_when_chars
+        case: 正常
+        summary: 各項目に `item_chars` の文字数を添える
+        condition: 本文 `D-1.md` を持つ D-1 と、本文の無い N-1
+        mock: なし
+        expected: D-1 の `chars` が `item_chars(workspace, D-1)`、N-1 の `chars` が `item_chars(workspace, N-1)`
   - name: _contains_text
     title: 文字の包含
     kind: 関数
@@ -346,19 +376,19 @@ functions:
       type: list[dict[str, Any]]
       description: '`{name, count, kinds}` の並び（件数の多い順、同じ件数は名前の順。`kinds` は `KINDS` の順で、スレッドは最後の `thread`。重なりなし。タグが無ければ空）。インターフェース定義『タグの一覧』の `tags`'
     process: |-
-      1. 全ての項目の `tags` と `thread_tags` の文字列を `normalize_tag` でそろえ、項目かスレッドごとに重なりを除いてから、そろえた表記ごとに件数と種類（スレッドは `thread`）を数える（文字列でない要素は飛ばす）
+      1. 全ての項目の `tags` の名前（`tag_name`。主題かどうかによらない）と `thread_tags` の文字列を `normalize_tag` でそろえ、項目かスレッドごとに重なりを除いてから、そろえた表記ごとに件数と種類（スレッドは `thread`）を数える（名前を取れない要素は飛ばす）
       2. 件数の多い順、同じ件数は名前の順に `{name, count, kinds}` を並べる
     unit_tests:
       - name: test_list_tags
         case: 正常
         summary: 表記の違いをまとめ、種類とスレッドをまたいで件数の多い順に並べる
-        condition: 'D-1: `[API]`／D-2: `[画面]`／T-1: `[ａｐｉ]`／N-1: タグ無し。`thread_tags=[[api, 画面]]`'
+        condition: 'D-1: `[{name: API, main: true}]`／D-2: `[{name: 画面}]`／T-1: `[{name: ａｐｉ}]`／N-1: タグ無し。`thread_tags=[[api, 画面]]`'
         mock: なし
         expected: '`api`（3・`[decision, task, thread]`）・`画面`（2・`[decision, thread]`）の順'
       - name: test_list_tags_when_duplicated
         case: 正常
         summary: 1 つの項目が同じタグを表記を変えて 2 回持っても 1 件と数える
-        condition: 'D-1: `[データ, ﾃﾞｰﾀ]`。`thread_tags=[]`'
+        condition: 'D-1: `[{name: データ}, {name: ﾃﾞｰﾀ}]`。`thread_tags=[]`'
         mock: なし
         expected: '`データ`（1・`[decision]`）だけ'
       - name: test_list_tags_when_none
@@ -376,10 +406,10 @@ functions:
     summary: 検索結果を続きの値の位置から件数だけ切り出し、全体の件数・次の続きの値・絞り込みの案内を添える
     args:
       - name: results
-        type: list[dict[str, Any]]
+        type: Sequence[T]
         required: true
         passing: positional
-        description: '`search_items` の結果（並べ終えた全件）'
+        description: '`search_items` の結果（並べ終えた全件。中身は見ない）'
       - name: search_filter
         type: SearchFilter
         required: true
@@ -403,7 +433,7 @@ functions:
         description: どの項目も使っていない渡したタグと近い使われているタグ（`list_stray_tags`。案内に使う）
     returns:
       type: dict[str, Any]
-      description: '`{items, total, next_cursor, hint}`'
+      description: '`{items, total, next_cursor, hint}`（`items` は切り出した `results` の要素）'
     process: |-
       1. `cursor` があれば読んだ位置を取り出す（`_decode_cursor`）。無ければ 0
       2. その位置から `limit` 件を切り出す
@@ -600,14 +630,193 @@ functions:
       type: list[tuple[str, list[str]]]
       description: （タグ, 近い使われているタグ）の並び（タグは渡した表記、近いタグは正規化した表記。`tags` → `any_tags` の渡した順で、正規化して重なりなし。無ければ空）
     process: |-
-      1. 全ての項目の `tags` の文字列を `normalize_tag` でそろえて集める
+      1. 全ての項目の `tags` の名前（`tag_name`）を `normalize_tag` でそろえて集める
       2. `tags`・`any_tags` を渡した順に見て、そろえた表記が 1 で集めたタグに無いタグを重ならないように拾い、それぞれに近い使われているタグ（`similar_tags`）を添える
     unit_tests:
       - name: test_list_stray_tags
         case: 正常
         summary: 項目が使うタグは表記が違っても除き、どの項目も使っていないタグだけを返す
-        condition: 'D-1: `[データ, API]`。条件 `tags=(ａｐｉ, データー)`・`any_tags=(データ, データー)`'
+        condition: 'D-1: `[{name: データ}, {name: API}]`。条件 `tags=(ａｐｉ, データー)`・`any_tags=(データ, データー)`'
         mock: なし
         expected: '`[(データー, [データ])]`'
+  - name: item_chars
+    title: 項目の文字数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: 項目を YAML に書き出した文字数と、本文のファイルの文字数の和を返す
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 項目
+    returns:
+      type: int
+      description: 文字数（コードポイントで数える）
+    process: |-
+      1. 項目を `dump_yaml` で YAML の文字列にし、その長さを数える
+      2. `body` が文字列で `read_body` が中身を返せば、その長さを加える（本文が無い・読めないときは加えない）
+    unit_tests:
+      - name: test_item_chars
+        case: 正常
+        summary: YAML の文字数に本文の文字数を加える
+        condition: '`parametrize`: 本文 `D-1.md`（`あいう` の 3 文字）を持つ D-1 / 本文を持たない N-1 / `body: D-9.md` を持つが本文のファイルが無い D-9'
+        mock: なし
+        expected: '`len(dump_yaml(D-1)) + 3` / `len(dump_yaml(N-1))` / `len(dump_yaml(D-9))`'
+  - name: resolve_fields
+    title: 返す項目の決定
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: '`view` の項目に `include` を加え、`exclude` を外した名前を `FIELD_NAMES` の順で返す'
+    args:
+      - name: view
+        type: Literal["brief", "standard", "full"]
+        required: true
+        passing: positional
+        description: 返す量
+      - name: include
+        type: Sequence[str]
+        required: true
+        passing: keyword
+        description: 加える名前（型の確かめは呼ぶ側）
+      - name: exclude
+        type: Sequence[str]
+        required: true
+        passing: keyword
+        description: 外す名前
+    returns:
+      type: tuple[str, ...]
+      description: 返す項目の名前（`FIELD_NAMES` の順）
+    process: |-
+      1. `include` と `exclude` に同じ名前があれば `ArgumentError` を送る
+      2. `VIEW_FIELDS[view]` と `include` の和から `exclude` を除き、`FIELD_NAMES` の順に並べる
+    exceptions:
+      - name: ArgumentError
+        condition: '`include` と `exclude` に同じ名前を渡した（引数の名前は `include`。理由に `exclude` と重なった名前を書く）'
+    unit_tests:
+      - name: test_resolve_fields
+        case: 正常
+        summary: 返す量に加え・外した名前を決まった順で返す
+        condition: '`parametrize`: `brief` / `standard`・`include=[body]`・`exclude=[tags]` / `full`・`exclude=[extra, body]`'
+        mock: なし
+        expected: '`(title, status, tags, chars)` / `(title, status, chars, target, category, phase, attrs, updated, body)` / `(title, status, tags, chars, target, category, phase, attrs, updated)`'
+      - name: test_resolve_fields_when_overlapped
+        case: 異常
+        summary: include と exclude に同じ名前は引数の誤り
+        condition: '`brief`・`include=[attrs]`・`exclude=[attrs]`'
+        mock: なし
+        expected: '`ArgumentError`（引数 `include`。理由に `exclude` と `attrs`）'
+  - name: build_row
+    title: 結果の行
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: 当たった項目を、選んだ項目の名前だけを持つ結果の 1 行にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース（本文を読む）
+      - name: hit
+        type: SearchHit
+        required: true
+        passing: positional
+        description: 当たった項目
+      - name: fields
+        type: tuple[str, ...]
+        required: true
+        passing: positional
+        description: 返す項目の名前（`resolve_fields`）
+    returns:
+      type: dict[str, Any]
+      description: '`id`・`kind` と `fields` の順の名前を持つ辞書（インターフェース定義『項目の検索』の `items[]`）'
+    process: |-
+      1. `id`・`kind` を入れる
+      2. `fields` の順に値を入れる。`title`・`status`・`target`・`category`・`phase`・`updated` は項目の値（無ければ `None`）、`tags` は項目の並び（無ければ空の並び）、`attrs` は辞書（無ければ空の辞書）、`chars` は `hit.chars`、`extra` は `NAMED_ITEM_KEYS` に無いキーとその値の辞書、`body` は `read_body` の中身（`body` が無いか読めなければ `None`）と `body_format` の値を `body`・`body_format` に入れる
+    unit_tests:
+      - name: test_build_row
+        case: 正常
+        summary: 選んだ名前だけを決まった中身で入れる
+        condition: '案 A・B・`depends_on: [D-2]`・属性・本文 `D-1.md` を持つ D-1。`parametrize`: `(title, status, tags, chars)` / `(target, attrs, extra, body)` / 本文の無い N-1 を `(body,)`'
+        mock: なし
+        expected: '`id`・`kind`・`title`・`status`・`tags`・`chars` だけ / `id`・`kind`・`target`・`attrs`・`extra`（`options`・`depends_on` を持ち `title` を持たない）・`body`（`D-1.md` の中身）・`body_format: markdown` / `body: None`・`body_format: None`'
+  - name: count_tags
+    title: 結果のタグの件数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: 当たった項目が使っているタグを、正規化した表記ごとに数える
+    args:
+      - name: hits
+        type: Sequence[SearchHit]
+        required: true
+        passing: positional
+        description: 当たった全ての項目
+    returns:
+      type: list[dict[str, Any]]
+      description: '`{tag, count}` の並び（件数の多い順、同じ件数は名前の順）。インターフェース定義『項目の検索』の `tag_counts`'
+    process: |-
+      1. 項目ごとに `tags` の名前を `normalize_tag` でそろえて重なりを除き、そろえた表記ごとに件数を数える（主題かどうかによらない）
+      2. 件数の多い順、同じ件数は名前の順に並べる
+    unit_tests:
+      - name: test_count_tags
+        case: 正常
+        summary: 表記の違いをまとめ、件数の多い順に並べる
+        condition: 'D-1: `[{name: データ, main: true}, {name: 画面}]`／D-2: `[{name: ﾃﾞｰﾀ}]`／N-1: タグ無し'
+        mock: なし
+        expected: '`[{tag: データ, count: 2}, {tag: 画面, count: 1}]`'
+  - name: render_find_markdown
+    title: 検索の結果の Markdown
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/query.py
+    usecase: 記録の検索
+    scope: public
+    summary: '`find` の結果の辞書を、インターフェース定義『項目の検索』の制約「Markdown の形」の本文にする'
+    args:
+      - name: result
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`run_find` の出力（`count_only` のときは `total`・`total_chars`・`tag_counts` だけ）'
+    returns:
+      type: str
+      description: Markdown の本文
+    process: |-
+      1. 先頭の行に `全 {total} 件・合計 {total_chars} 文字` を置く
+      2. `tag_counts` を持つときは、`タグ`・`件数` の表を続けて返す
+      3. 項目があれば表を置く。列は 1 件目の行のキーの並びから `extra`・`body`・`body_format` を除いたもの。タグは名前を `、` で区切り、主題のタグは `{名前} [main]`。属性は `名前=値` を `、` で区切る。`None` は空のセル。セルの `|` と改行はエスケープする
+      4. 行が `extra`・`body` を持つときは、表の後に項目ごとに `## {id} {title}` のセクションを置き、`extra` を YAML のコードブロック（`dump_yaml`）で、本文をそのまま続ける
+      5. 末尾に `next_cursor: {値}`（`None` でないとき）、`hint` の文（`None` でないとき）、`omitted` が空でなければ `省いた項目: {名前を・でつなぐ}（view か include で取れる）` の行を置く
+    unit_tests:
+      - name: test_render_find_markdown
+        case: 正常
+        summary: 件数の行・表・省いた項目の行を書く
+        condition: 'D-1（`tags: [{name: データ, main: true}, {name: 画面}]`）・D-2 の 2 件、`total: 2`・`total_chars: 300`・`next_cursor: None`・`hint: None`・`omitted: [target, extra]`'
+        mock: なし
+        expected: '1 行目が `全 2 件・合計 300 文字`、表の見出しが `id`・`kind`・`title`・`status`・`tags`・`chars`、D-1 の行のタグが `データ [main]、画面`、末尾が `省いた項目: target・extra（view か include で取れる）`'
+      - name: test_render_find_markdown_when_body
+        case: 正常
+        summary: extra と本文は表の後のセクションに書く
+        condition: "`extra: {options: [...]}`・`body: '# 本文'`・`body_format: markdown` を持つ D-1 の 1 件、`next_cursor: abc`・`hint: 続きを読んでください`・`omitted: []`"
+        mock: なし
+        expected: '表に `extra`・`body`・`body_format` の列が無く、`## D-1 {title}` の後に `options` を持つ YAML のコードブロックと `# 本文` が続き、末尾に `next_cursor: abc` と hint の行があり、省いた項目の行が無い'
+      - name: test_render_find_markdown_when_count_only
+        case: 正常
+        summary: 件数だけのときは先頭の行とタグの件数の表だけ
+        condition: '`total: 2`・`total_chars: 300`・`tag_counts: [{tag: データ, count: 2}, {tag: 画面, count: 1}]`'
+        mock: なし
+        expected: '`全 2 件・合計 300 文字` の後に `タグ`・`件数` の表（`データ`・2、`画面`・1）だけ'
 test_files:
   - tests/unit/scripts/test_query.py
