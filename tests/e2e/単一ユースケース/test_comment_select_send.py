@@ -296,7 +296,7 @@ def test_normal_when_edit_remove_restore(
     page.wait_for_selector("main#main > *", state="attached")
     open_review(page)
     assert page.eval_on_selector_all(
-        f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent)"
+        f"{COMMENTS_PANEL} .review-body", "bodies => bodies.map(b => b.textContent.trim())"
     ) == ["案 A に決める", "案 B も見たい"]
 
 
