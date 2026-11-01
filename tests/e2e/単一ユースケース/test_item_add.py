@@ -14,7 +14,7 @@ from edit_helpers import (
     wait_pending_count,
 )
 from playwright.sync_api import Page, expect
-from preview_helpers import OpenPreview, ServeWorkspace
+from preview_helpers import OpenPreview, ServeWorkspace, close_drawer, open_drawer, toggle_value
 from workspace_fixtures import MakeItem
 
 # 項目を追加するボタンと、足す項目の入力のパネル・最初の入力欄
@@ -152,4 +152,8 @@ def test_normal_when_options_written(
     assert "A" not in added[0]
     assert "B" not in added[0]
     assert read_edits(root) == []
+    # 表は既定の絞り込みで決定済みを出さないため、状態に「決定済み」を加えてから確かめる
+    open_drawer(page)
+    toggle_value(page, "status", "決定済み")
+    close_drawer(page)
     expect(page.locator("table tr[data-id='D-2']")).to_have_count(1, timeout=SETTLE_MS)

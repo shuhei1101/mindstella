@@ -326,20 +326,21 @@ def test_error_when_render_library_unavailable(
     valid_settings: dict[str, Any],
     page: Page,
 ) -> None:
-    """本文の描画のライブラリ（marked・mermaid）が読めないと、名前を出し、本文を文字のまま読める（異常系）。"""
+    """本文の描画のライブラリ（mdmark・mermaid）が読めないと、名前を出し、本文を文字のまま読める（異常系）。"""
     # 準備
     url = serve_preview(
         make_item("A-1", description=DESCRIPTION_WITH_LINE_BREAK),
         settings=valid_settings,
         bodies={"A-1.md": BODY_WITH_DIAGRAM},
     )
-    page.route(re.compile(r"/npm/(marked|mermaid)@"), lambda route: route.abort())
+    # mdmark は import map の `/gh/shuhei1101/mdmark@{バージョン}/`、mermaid は `/npm/mermaid@{バージョン}/` から読む
+    page.route(re.compile(r"/(gh/shuhei1101/mdmark|npm/mermaid)@"), lambda route: route.abort())
     # 実行
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel.open .md .lib-error[role=alert]")
     # 検証
     notice = page.inner_text("aside.panel .md .lib-error[role=alert]")
-    assert "marked" in notice
+    assert "mdmark" in notice
     assert "mermaid" in notice
     raw = page.inner_text("aside.panel .md .md-raw")
     assert "# 要件" in raw
@@ -1024,6 +1025,10 @@ def test_error_when_html_body_has_script(
     assert frame.locator("p").inner_text() == "一覧の画面"
 
 
+# 詳細パネルの本文の Markdown の段落（見出しの後ろの段落は、見出しの節の入れ物 `.md-section-body` に包まれる）
+PANEL_MD_PARAGRAPH = "aside.panel :is(.md, .md-section-body) > p"
+
+
 def test_normal_when_html_code_block(
     serve_preview: ServePreview,
     open_preview: OpenPreview,
@@ -1039,7 +1044,7 @@ def test_normal_when_html_code_block(
         settings=valid_settings,
         bodies={"A-1.md": BODY_WITH_HTML_CODE_BLOCK, "A-2.md": BODY_WITHOUT_HTML_CODE_BLOCK},
     )
-    outside = ["header.topbar", "aside.panel .d-title", "aside.panel .md > p"]
+    outside = ["header.topbar", "aside.panel .d-title", PANEL_MD_PARAGRAPH]
     open_preview(url, "#tab=docs", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
     page.click('.doc-card[data-id="A-2"]')
     page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'A-2の題'")
@@ -1055,7 +1060,7 @@ def test_normal_when_html_code_block(
     assert frame.locator("p").inner_text() == "枠の中の段落"
     assert frame.locator("svg").count() == 1
     # コードブロックの前後の Markdown の見出し・段落は、今までどおり描かれる
-    assert page.locator("aside.panel .md > p").count() == 2
+    assert page.locator(PANEL_MD_PARAGRAPH).count() == 2
     assert page.locator('aside.panel .md [data-md-level="1"]').all_inner_texts() == ["見出し"]
     # コードブロックの `<style>` が、前後の Markdown の段落・詳細パネル・トップバーの色を変えない
     assert page.evaluate(STYLE_SCRIPT, outside) == before
