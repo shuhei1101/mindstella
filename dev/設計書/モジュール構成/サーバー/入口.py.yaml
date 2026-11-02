@@ -1,9 +1,9 @@
 title: "サーバー / 入口"
-lead: MCP サーバー `mindstella` にツールを登録し、ツールの引数を各機能へ渡して、結果を構造化の結果・エラーをツールのエラーにする。プレビューの配信も同じプロセスに立てる。
+lead: 常駐する MCP サーバー `mindstella` を `127.0.0.1` の HTTP で待ち受け、ツールを登録し、ツールの引数を各機能へ渡して、結果を構造化の結果・エラーをツールのエラーにする。プレビューの配信と、常駐サーバーの状態と停止も同じプロセスに持つ。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    server.py     入口（MCP サーバーの組み立て・ツールの登録・結果とエラー・書き換えの鍵）
+    server.py     入口（常駐サーバーの待ち受けと終わり方・ツールの登録・結果とエラー・書き換えの鍵・状態と停止）
     commands.py   ツールごとの処理（引数 → 各機能 → 結果の辞書）
   ```
 diagrams:
@@ -29,7 +29,7 @@ diagrams:
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
-        入口 --> Claude Codeへの入力 : 起動時に送り先を読む
+        入口 --> Claude Codeへの入力 : セッションの値を読む
         ツールの処理 --> 配信 : preview_url
         ツールの処理 --> スレッド : threads・thread・new_thread・reply・set_thread_status・update_thread
         ツールの処理 --> 読み書きと検証
@@ -63,14 +63,44 @@ constants:
     title: サーバーの名前
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
-    summary: MCP サーバーの名前。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる
+    summary: MCP サーバーの名前（`server_status` の `name`）。Claude Code の中のツールの名前は、プラグインの `.mcp.json` の名前と合わせて `mcp__plugin_mindstella_mindstella__{ツール}` になる
     value: '"mindstella"'
   - name: TOOL_NAMES
     title: ツールの名前
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread")
+    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
+  - name: DEFAULT_PORT
+    title: 既定の待ち受けのポート
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`MINDSTELLA_PORT` が無いか空のときに待ち受けるポート（設定『サーバー』。`ensure_server.py` の同じ名前の定数と合わせる）'
+    value: '8784'
+  - name: PORT_ENV
+    title: ポートの環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: 待ち受けのポートを読む環境変数の名前
+    value: '"MINDSTELLA_PORT"'
+  - name: MCP_PATH
+    title: MCP のパス
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: Streamable HTTP で待ち受けるパス（プラグインの `.mcp.json` の URL のパス）
+    value: '"/mcp"'
+  - name: STATUS_PATH
+    title: 状態のパス
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`server_status` と同じ JSON を返す GET のパス（インターフェース定義『常駐サーバーの状態』の HTTP の入口）'
+    value: '"/_admin/status"'
+  - name: SHUTDOWN_GRACE_SEC
+    title: 終わるときに待つ上限
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: 終わり始めてから、返している途中のレスポンスとつながったままの MCP の通り道を待つ秒数（uvicorn の `timeout_graceful_shutdown`）。『常駐サーバーの停止』の結果を返し終え、5 秒以内に終わる長さ
+    value: '2'
   - name: UNEXPECTED_ERROR
     title: 予期しないエラーの文言
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -98,6 +128,29 @@ constants:
     status: implemented
     introduced:
       pr: 214
+classes:
+  - name: PortInUseError
+    title: 待ち受けのポートが使われている
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`MINDSTELLA_PORT` のポートで待ち受けられない。`main` が記録して終了コード 1 にする（ツールのエラーではないため `MindmapError` を継がない）'
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: port
+        type: int
+        description: 待ち受けようとしたポート
+  - name: InvalidPortError
+    title: ポートの値が誤り
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`MINDSTELLA_PORT` が 1〜65535 の整数でない。`main` が記録して終了コード 1 にする'
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: value
+        type: str
+        description: 環境変数の値
 functions:
   - name: validate_input_keys
     title: 渡せないキーの確認
@@ -866,11 +919,11 @@ functions:
     title: 入口
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/server.py
-    usecase: 共通
+    usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: MCP サーバーを組み立てて stdio で動かし、標準入力が閉じるか SIGTERM を受けたら、終了時のフックを呼んで配信を止めて終える
+    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える
     description: 末尾で `sys.exit(main())`。
-    side_effects: 標準入力・標準出力で MCP をやり取りし、記録を標準エラーに書く
+    side_effects: '`127.0.0.1` の `MINDSTELLA_PORT` で待ち受け、記録を標準エラーに書く'
     args:
       - name: build
         type: Callable[..., MCPServer]
@@ -878,47 +931,229 @@ functions:
         default: build_server
         passing: injected
         description: MCP サーバーを組み立てる関数
+      - name: make_server
+        type: Callable[[Starlette], uvicorn.Server]
+        required: false
+        default: 'lambda app: uvicorn.Server(uvicorn.Config(app, log_config=None, timeout_graceful_shutdown=SHUTDOWN_GRACE_SEC))'
+        passing: injected
+        description: HTTP の待ち受けを動かすサーバーを作る関数
       - name: environ
         type: Mapping[str, str]
         required: false
         default: os.environ
         passing: injected
-        description: 外から見る設定と Claude Code への入力の送り先を読む環境変数
+        description: 待ち受けのポートと外から見る設定を読む環境変数
     returns:
       type: int
-      description: 終了コード（標準入力が閉じて終えたら 0）
+      description: 終了コード（終わり方で終えたら 0、待ち受けられなければ 1）
     process: |-
       1. `logging` の出力先を標準エラーにする
-      2. プロセスの中の書き換えの鍵（`threading.Lock()`）、外から見る設定（`load_external_access(environ)`）、Claude Code への入力の送り先（`load_input_target(environ, Path.cwd())`）を渡した配信の台帳（`PreviewRegistry`）を作る
-      3. SIGTERM の受け口を置く（`install_sigterm_handler`）
-      4. サーバーを組み立て（`build_server`。`cwd` は `Path.cwd()`）、`run("stdio")` で動かす
-      5. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
-      6. 0 を返す
+      2. 待ち受けのポートを読み（`read_port(environ)`）、そのポートのソケットを取る（`bind_socket`）
+         - `InvalidPortError` を捕まえた場合、1 を返す
+           - `[ERROR]` MINDSTELLA_PORT の値が誤り（値。1〜65535 の整数を渡す案内）
+         - `PortInUseError` を捕まえた場合、1 を返す
+           - `[ERROR]` ポートが使われている（ポート。`MINDSTELLA_PORT` で別のポートを渡す案内）
+      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）を渡した配信の台帳（`PreviewRegistry`）を作る
+      4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る
+      5. サーバーを組み立て（`build`。`status` に 4 の関数、`request_stop` に HTTP のサーバーの `should_exit` を真にする関数を渡す）、`streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)` のアプリを `make_server` に渡す
+      6. 2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT の受け口は uvicorn が置き、受けると `should_exit` を真にする
+         - `[INFO]` 常駐サーバーが待ち受けを始めた（ポート、バージョン、PID）
+      7. `run` が戻ったら（例外で戻ったときも）、立てた配信を止める（`PreviewRegistry.stop_all`。終了時のフックもここで呼ぶ）
+         - `[INFO]` 常駐サーバーを終えた
+      8. 0 を返す
     unit_tests:
       - name: test_main
         case: 正常
-        summary: サーバーが戻ったら配信を止めて 0
-        condition: '`build` を、`run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
-        mock: '`build`'
-        expected: 0 を返し、`run` が `"stdio"` で 1 回呼ばれ、控えた `previews.stop_all` が呼ばれている
+        summary: 空きポートで動かし、戻ったら配信を止めて 0
+        condition: '`environ={"MINDSTELLA_PORT": "{空きポート}"}`。`build` を、受け取った `previews` を控えて偽のサーバーを返す関数に、`make_server` を `run` がすぐ戻る偽の HTTP のサーバーを返す関数に差し替える'
+        mock: '`build`・`make_server`'
+        expected: 0 を返し、`run` が 1 回、`127.0.0.1` のそのポートに bind したソケット 1 つで呼ばれ、控えた `previews.stop_all` が呼ばれている
       - name: test_main_when_server_raises
         case: 正常
-        summary: サーバーが例外で戻っても配信を止める
-        condition: '`run` が `RuntimeError` を送る偽のサーバー'
-        mock: '`build`'
+        summary: HTTP のサーバーが例外で戻っても配信を止める
+        condition: '`test_main` と同じで、`run` が `RuntimeError` を送る'
+        mock: '`build`・`make_server`'
         expected: '`RuntimeError` が伝わり、`previews.stop_all` が呼ばれている'
       - name: test_main_when_external_access_set
         case: 正常
         summary: 環境変数の外から見る設定を台帳へ渡す
-        condition: '`environ={"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"}`、`build` を `run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
-        mock: '`build`'
+        condition: '`environ` に `MINDSTELLA_PORT` の空きポートと `"MINDSTELLA_ALLOWED_HOSTS": "preview.example.test"`。`test_main` と同じ差し替え'
+        mock: '`build`・`make_server`'
         expected: 控えた `previews` の外から見る設定の `allowed_hosts` が `{"preview.example.test"}`
-      - name: test_main_when_inside_tmux
+      - name: test_main_when_stop_requested
         case: 正常
-        summary: 受け継いだ送り先を台帳へ渡す
-        condition: '`environ={"TMUX": "/s,1,0", "TMUX_PANE": "%3", "CLAUDE_CONFIG_DIR": "{tmp}/cfg"}`、`build` を `run` がすぐ戻る偽のサーバーを返す関数に差し替える。受け取った `previews` を控える'
-        mock: '`build`'
-        expected: 控えた `previews` の送り先の `socket` が `/s,1,0`、`pane` が `%3`、`config_dir` が `{tmp}/cfg`、`cwd` が今の作業フォルダ
+        summary: request_stop で HTTP のサーバーを終わらせる
+        condition: '`test_main` と同じ差し替え。`build` が受け取った `request_stop` を控え、`run` の中で呼ぶ'
+        mock: '`build`・`make_server`'
+        expected: 偽の HTTP のサーバーの `should_exit` が真になり、0 を返す
+      - name: test_main_when_port_invalid
+        case: 異常
+        summary: ポートの値が誤りなら待ち受けずに 1
+        condition: '`parametrize`: `MINDSTELLA_PORT` が `abc` / `0` / `70000`'
+        mock: '`build`・`make_server`（呼ばれないことを確かめる）'
+        expected: 1 を返し、`ERROR` の記録にその値がある。`build`・`make_server` が呼ばれない
+        exception: InvalidPortError
+      - name: test_main_when_port_in_use
+        case: 異常
+        summary: ポートが使われていれば待ち受けずに 1
+        condition: テストが `127.0.0.1` で待ち受けたままのポートを `MINDSTELLA_PORT` に渡す
+        mock: '`build`・`make_server`（呼ばれないことを確かめる）'
+        expected: 1 を返し、`ERROR` の記録にそのポートと `MINDSTELLA_PORT` がある。`build`・`make_server` が呼ばれない
+        exception: PortInUseError
+  - name: read_port
+    title: 待ち受けのポートの読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`MINDSTELLA_PORT` を読み、待ち受けのポートにする'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+    returns:
+      type: int
+      description: 待ち受けのポート（無いか空なら `DEFAULT_PORT`）
+    process: |-
+      1. `environ` の `PORT_ENV` を読み、無いか空なら `DEFAULT_PORT` を返す
+      2. 整数にして 1〜65535 なら返す
+         - 整数にできないか範囲の外なら、`InvalidPortError(値)` を送る
+    exceptions:
+      - name: InvalidPortError
+        condition: 値が 1〜65535 の整数でない
+        message: MINDSTELLA_PORT の値 {値} は誤りです。1〜65535 の整数を渡してください
+    unit_tests:
+      - name: test_read_port
+        case: 正常
+        summary: 無ければ既定、あればその値
+        condition: '`parametrize`: `{}` / `{"MINDSTELLA_PORT": ""}` / `{"MINDSTELLA_PORT": "9000"}`'
+        mock: なし
+        expected: '`8784` / `8784` / `9000`'
+      - name: test_read_port_when_invalid
+        case: 異常
+        summary: 整数でないか範囲の外なら InvalidPortError
+        condition: '`parametrize`: `abc` / `0` / `65536` / `-1`'
+        mock: なし
+        expected: '`InvalidPortError`（`value` が渡した値）'
+        exception: 1〜65535 の整数でない
+  - name: bind_socket
+    title: 待ち受けのソケット
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`LISTEN_HOST` のポートに bind したソケットを返す（uvicorn が待ち受けを始める前に、使われているかを見分ける）'
+    side_effects: ソケットを開く
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 待ち受けのポート
+    returns:
+      type: socket.socket
+      description: '`AF_INET`・`SOCK_STREAM` で `SO_REUSEADDR` を真にし、`(LISTEN_HOST, port)` に bind したソケット'
+    process: |-
+      1. ソケットを作り、`SO_REUSEADDR` を真にして `(LISTEN_HOST, port)` に bind して返す
+         - `OSError` が起きた場合、ソケットを閉じて `PortInUseError(port)` を送る（`raise ... from`）
+    exceptions:
+      - name: PortInUseError
+        condition: bind できない
+        message: ポート {port} は別のプロセスが使っています。MINDSTELLA_PORT で別のポートを渡してください
+    unit_tests:
+      - name: test_bind_socket
+        case: 正常
+        summary: 127.0.0.1 の空きポートに bind する
+        condition: テストの中で取って閉じた空きポート
+        mock: なし（後で閉じる）
+        expected: '`getsockname()` が `("127.0.0.1", そのポート)`'
+      - name: test_bind_socket_when_in_use
+        case: 異常
+        summary: 待ち受けているポートなら PortInUseError
+        condition: テストが `127.0.0.1` で待ち受けたままのポート
+        mock: なし
+        expected: '`PortInUseError`（`port` がそのポート）'
+        exception: bind できない
+  - name: build_status
+    title: 常駐サーバーの状態
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`server_status` と `GET /_admin/status` が返す JSON を作る'
+    args:
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: positional
+        description: 配信の台帳
+      - name: port
+        type: int
+        required: true
+        passing: keyword
+        description: 待ち受けのポート
+      - name: started_at
+        type: str
+        required: true
+        passing: keyword
+        description: 起動した日時（UTC のタイムゾーン付き ISO 8601）
+      - name: plugin_root
+        type: Path
+        required: true
+        passing: keyword
+        description: 起動したプラグインのフォルダ
+      - name: version
+        type: str
+        required: true
+        passing: keyword
+        description: プラグインのバージョン
+    returns:
+      type: dict[str, Any]
+      description: '`{name, version, port, pid, started_at, plugin_root, previews}`（インターフェース定義『常駐サーバーの状態』のレスポンス）'
+    process: 1. `name` に `SERVER_NAME`、`pid` に `os.getpid()`、`plugin_root` に文字列にしたパス、`previews` に `previews.listing()` を入れて返す
+    unit_tests:
+      - name: test_build_status
+        case: 正常
+        summary: 台帳の配信を並べた状態
+        condition: 作成済みのワークスペース 2 つを `start` した台帳
+        mock: なし（本物の待ち受け。後で `stop_all`）
+        expected: '`name` が `mindstella`、`pid` が `os.getpid()`、`previews` がワークスペースの絶対パスの昇順で、それぞれ `start` が返した URL のポート'
+  - name: run_server_stop
+    title: server_stop の処理
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: 止める配信を結果にし、HTTP のサーバーに終わり始めるよう頼む
+    description: 頼んだ後も、返している途中のこのレスポンスは uvicorn が返し終えてから待ち受けを閉じる（インターフェース定義『常駐サーバーの停止』の止める時）。
+    args:
+      - name: previews
+        type: PreviewRegistry
+        required: true
+        passing: positional
+        description: 配信の台帳
+      - name: request_stop
+        type: Callable[[], None]
+        required: true
+        passing: keyword
+        description: HTTP のサーバーの `should_exit` を真にする関数
+    returns:
+      type: dict[str, Any]
+      description: '`{stopping: true, previews}`（`previews` は `previews.listing()`）'
+    process: |-
+      1. `previews.listing()` を控える
+      2. `request_stop()` を呼ぶ
+         - `[INFO]` server_stop で終わり始めた
+      3. `{stopping: true, previews: 控えた配信}` を返す
+    unit_tests:
+      - name: test_run_server_stop
+        case: 正常
+        summary: 配信を返して止めるよう頼む
+        condition: 作成済みのワークスペースを 1 つ `start` した台帳と、呼ばれた回数を数える `request_stop`
+        mock: '`request_stop`'
+        expected: '`stopping` が真で `previews` にそのワークスペースがあり、`request_stop` が 1 回呼ばれている'
   - name: build_server
     title: サーバーの組み立て
     kind: 関数
@@ -937,39 +1172,66 @@ functions:
         required: true
         passing: keyword
         description: プロセスの中の書き換えの鍵（配信の送信の受け付けと同じもの）
-      - name: cwd
-        type: Path
+      - name: status
+        type: Callable[[], dict[str, Any]]
         required: true
         passing: keyword
-        description: 相対パスの `workspace`・`out` を読む基準（サーバーの作業フォルダ）
+        description: 常駐サーバーの状態を作る関数（`server_status` と `GET /_admin/status` が使う）
+      - name: request_stop
+        type: Callable[[], None]
+        required: true
+        passing: keyword
+        description: HTTP のサーバーに終わり始めるよう頼む関数（`server_stop` が使う）
     returns:
       type: MCPServer
       description: 名前が `SERVER_NAME` で、ツールを `TOOL_NAMES` の順に持つサーバー
     process: |-
       1. `MCPServer(SERVER_NAME)` を作る
-      2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード。`find`・`tags` は冒頭リードに、インターフェース定義の制約「ツールの説明」の文を続ける）
+      2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数と、全てのツールに共通の `session: dict[str, Any] | None = None` を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード。`find`・`tags` は冒頭リードに、インターフェース定義の制約「ツールの説明」の文を続ける）
+         - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送った場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
+         - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
          - `find` は `tags`・`any_tags`（`list[str] | None`）をタプルにし、`attr` の要素を `parse_attr` で分けて `SearchFilter` を作り、`limit`（既定 `DEFAULT_LIMIT`）・`cursor`・`view`（既定 `brief`）・`include`・`exclude`（既定 空）・`count_only`（既定 偽）と一緒に `run_find` へ渡す。`format`（既定 `markdown`）が `markdown` なら `call_tool` に `render=render_find_markdown` を渡す
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
          - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`new_thread`・`reply`・`set_thread_status`・`update_thread` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
          - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドを読む』の同時の呼び出し）
-      3. サーバーを返す
+      3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する
+      4. サーバーを返す
     unit_tests:
       - name: test_build_server
         case: 正常
-        summary: 全てのツールを workspace つきで登録する
-        condition: 空の `PreviewRegistry` と `tmp_path`。作ったサーバーの `list_tools()` を呼ぶ
+        summary: 管理のツールの他は全てのツールを workspace つきで登録する
+        condition: 空の `PreviewRegistry`。作ったサーバーの `list_tools()` を呼ぶ
         mock: なし
-        expected: ツールの名前が `TOOL_NAMES` と一致し、どれも入力のスキーマの `required` に `workspace` を持つ
+        expected: ツールの名前が `TOOL_NAMES` と一致し、`server_status`・`server_stop` 以外は入力のスキーマの `required` に `workspace` を持つ。どのツールも入力のスキーマの `properties` に `session` を持ち、`required` に持たない
       - name: test_build_server_when_relative_workspace
         case: 正常
-        summary: 相対パスの workspace を作業フォルダから読む
-        condition: '`cwd=tmp_path`、`tmp_path / "ws"` に作成済みのワークスペース。`call_tool("attrs", {"workspace": "ws"})`'
+        summary: 相対パスの workspace をセッションの作業フォルダから読む
+        condition: '`tmp_path / "ws"` に作成済みのワークスペース。`call_tool("attrs", {"workspace": "ws", "session": {"cwd": "{tmp_path}", "claude_config_dir": "{tmp_path}/cfg"}})`'
         mock: なし
         expected: '結果の `is_error` が偽で、`structured_content` が `{"attrs": []}`'
+      - name: test_build_server_when_relative_without_session
+        case: 異常
+        summary: セッションが無い相対パスは引数の誤り
+        condition: '`call_tool("attrs", {"workspace": "ws"})`'
+        mock: なし
+        expected: '`is_error` が真で、本文が `エラー: 引数の誤り: workspace:` で始まる'
+        exception: ArgumentError
+      - name: test_build_server_when_session_given
+        case: 正常
+        summary: セッションを受けたらそのワークスペースの宛先を書き換える
+        condition: 作成済みのワークスペース `ws`（絶対パス）。`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` を持つ `session` で `attrs` を呼ぶ。`previews` は `remember_session` を記録する偽の台帳
+        mock: '`previews`'
+        expected: '`remember_session` がワークスペースの絶対パスとそのセッションで 1 回呼ばれている'
+      - name: test_build_server_when_status_route
+        case: 正常
+        summary: GET /_admin/status が status の結果を返す
+        condition: '`status` が `{"name": "mindstella"}` を返す関数。`streamable_http_app()` のアプリを `starlette.testclient.TestClient` で開き、`GET /_admin/status` を送る'
+        mock: '`status`'
+        expected: '200 で、JSON が `{"name": "mindstella"}`'
       - name: test_build_server_when_find_format
         case: 正常
         summary: find は既定で Markdown の本文、json で構造化の結果を返す
-        condition: '`cwd=tmp_path`、D-1 を持つワークスペース `ws`。`parametrize`: `call_tool("find", {"workspace": "ws"})` / `call_tool("find", {"workspace": "ws", "format": "json"})`'
+        condition: 'D-1 を持つワークスペース `ws` を `tmp_path` に置き、`session` の `cwd` を `tmp_path` にする。`parametrize`: `call_tool("find", {"workspace": "ws", "session": ...})` / `call_tool("find", {"workspace": "ws", "format": "json", "session": ...})`'
         mock: なし
         expected: 本文が `全 1 件・合計` で始まり `structured_content` が `None` / `structured_content` の `items[0].id` が `D-1`
   - name: call_tool
@@ -1125,29 +1387,48 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: ツールに渡されたパスを、作業フォルダを基準にした絶対パスにする（`workspace`・`out` が使う）
+    summary: ツールに渡されたパスを、セッションの作業フォルダを基準にした絶対パスにする（`workspace`・`out` が使う。常駐サーバーの作業フォルダは使わない）
     args:
       - name: path
         type: str
         required: true
         passing: positional
         description: 渡されたパス（`~` を含んでよい）
-      - name: cwd
-        type: Path
+      - name: session
+        type: Session | None
         required: true
         passing: positional
-        description: サーバーの作業フォルダ
+        description: ツールを呼んだセッション（`parse_session` の結果）
+      - name: argument
+        type: str
+        required: false
+        default: '"workspace"'
+        passing: keyword
+        description: エラーに出す引数の名前
     returns:
       type: Path
       description: 絶対パス
-    process: 1. `~` を展開し、相対パスなら `cwd` とつないで返す
+    process: |-
+      1. `~` を展開し、絶対パスならそのまま返す
+      2. 相対パスで `session` があれば、`session.cwd` とつないで返す
+         - `session` が無い場合、`ArgumentError`（`argument`、`相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください`）を送る
+    exceptions:
+      - name: ArgumentError
+        condition: 相対パスで `session` が無い
     unit_tests:
       - name: test_resolve_workspace
         case: 正常
         summary: 相対パスと ~ を絶対パスにする
-        condition: '`parametrize`: `ws` / `~/ws` / `/abs/ws`。`cwd=/c`'
+        condition: '`parametrize`: `ws` / `~/ws` / `/abs/ws`。`session` の `cwd` が `/c`'
         mock: '`Path.home`（`/h`）'
         expected: '`/c/ws` / `/h/ws` / `/abs/ws`'
+      - name: test_resolve_workspace_when_no_session
+        case: 異常
+        summary: セッションが無ければ相対パスだけ誤り
+        condition: '`session=None`。`parametrize`: `ws` / `/abs/ws`'
+        mock: なし
+        expected: '`ArgumentError`（メッセージが `引数の誤り: workspace:` で始まる）/ `/abs/ws`'
+        exception: 相対パスで session が無い
   - name: run_preview_url
     title: preview_url の処理
     kind: 関数
@@ -1876,35 +2157,6 @@ functions:
         mock: '`previews`'
         expected: '`WorkspaceNotFoundError`。`tmp_path` に `README.md` が無い'
         exception: config.yaml が無い
-  - name: install_sigterm_handler
-    title: SIGTERM の受け口
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/server.py
-    usecase: プレビューを外から見る
-    scope: public
-    summary: SIGTERM を受けたら配信の台帳を止めて終わる受け口を置く（Claude Code は標準入力を閉じずに SIGTERM を送る。インターフェース定義『MCP サーバーの起動』の補足）
-    side_effects: プロセスの SIGTERM の受け口を差し替える
-    args:
-      - name: previews
-        type: PreviewRegistry
-        required: true
-        passing: positional
-        description: 止める配信の台帳
-    returns:
-      type: None
-      description: '-'
-    process: |-
-      1. `signal.signal(signal.SIGTERM, 受け口)` で受け口を置く
-      2. 受け口は、`previews.stop_all()` を呼び、記録を書き出して（`logging.shutdown`）、`os._exit(0)` で終える
-         - `[INFO]` SIGTERM を受けて配信を止めた
-         - `SystemExit` では終えない。標準入力が開いたままだと、MCP の SDK が標準入力を読む anyio の作業スレッド（daemon でない）をインタープリタの終わりが待ち続け、プロセスが残る
-    unit_tests:
-      - name: test_install_sigterm_handler
-        case: 正常
-        summary: SIGTERM で配信を止めて終わる
-        condition: 偽の台帳を渡して置き、`signal.getsignal(signal.SIGTERM)` で引いた受け口を `(signal.SIGTERM, None)` で呼ぶ。後で元の受け口に戻す
-        mock: 台帳（`stop_all` を記録する偽）、`os._exit`（`server` モジュールの参照を monkeypatch し、受け取ったコードを記録する）
-        expected: '`stop_all` が 1 回呼ばれた後に `os._exit` が 0 で 1 回呼ばれている'
   - name: run_remove
     title: remove の処理
     kind: 関数
@@ -2286,8 +2538,9 @@ functions:
         mock: なし
         expected: 本文がその文字で、`structured_content` が `None`、`is_error` が偽
 notes:
-  モジュールの読み込み: サーバーはパッケージとして入れず、起動スクリプトが書いた MCP の設定で Claude Code が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
-  標準出力: 標準出力は MCP の JSON-RPC が使う。サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く
+  モジュールの読み込み: サーバーはパッケージとして入れず、『常駐サーバーの起動の確認』（`ensure_server.py`）が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む
+  標準出力: サーバーのどのモジュールも `print` を使わず、記録は `logging` で標準エラーへ書く（『常駐サーバーの起動の確認』が標準出力と標準エラーを `~/.mindmap/server.log` へつなぐ）
+  ツールを動かすスレッド: 'MCP の SDK は同期の関数のツールを作業スレッドで呼ぶ。複数のセッションのツールの呼び出しが並ぶため、書き換えは今までどおりプロセスの中の 1 本の鍵とワークスペースのロックで順にする'
 test_files:
   - tests/unit/scripts/test_server.py
   - tests/unit/scripts/test_commands.py

@@ -1,0 +1,182 @@
+title: "サーバー / セッションの値の注入"
+lead: Claude Code の `PreToolUse` のフックが呼ぶスクリプト。mindstella のツールを呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの入力の `session` に入れて返す。
+directory: |-
+  ```
+  plugins/mindstella/
+    hooks/hooks.json                     SessionStart で reset_unread.py と ensure_server.py --hook、PreToolUse で inject_session.py を呼ぶ
+    skills/mindmap/scripts/
+      inject_session.py                  セッションの値を入れたツールの入力を返す（システムの python3 で起動。Python 3.8 で読める構文と標準ライブラリだけ）
+  ```
+constants:
+  - name: CLAUDE_COMMAND
+    title: Claude Code のコマンドの名前
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    summary: 親をたどるときに Claude Code とみなす `ps -o comm=` の値
+    value: '"claude"'
+  - name: PARENT_DEPTH_MAX
+    title: 親をたどる上限
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    summary: フックのプロセスの親から `ps` でたどる段の上限（インターフェース定義『セッションの値の注入』の上限）
+    value: '32'
+  - name: DEFAULT_CONFIG_DIR
+    title: 既定の設定のフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    summary: '`CLAUDE_CONFIG_DIR` が無いか空のときの Claude Code の設定のフォルダ'
+    value: Path.home() / ".claude"
+functions:
+  - name: main
+    title: セッションの値の注入の入口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: 標準入力のフックの入力を読み、`tool_input` の `session` をこのセッションの値で上書きした `updatedInput` を標準出力に出す
+    description: 末尾で `sys.exit(main())`。どの結末も終了コード 0 で終え、ツールの呼び出しを止めない。
+    side_effects: 標準出力に書く
+    args:
+      - name: stdin
+        type: TextIO
+        required: false
+        default: sys.stdin
+        passing: keyword
+        description: フックの入力の JSON を読む先
+      - name: stdout
+        type: TextIO
+        required: false
+        default: sys.stdout
+        passing: keyword
+        description: フックの出力の書き先
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: keyword
+        description: '`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を読む環境変数（フックは Claude Code の環境を受け継ぐ）'
+      - name: find_claude
+        type: Callable[[int], tuple[int, str] | None]
+        required: false
+        default: find_claude_process
+        passing: injected
+        description: 親をたどって Claude Code のプロセスを探す関数
+    returns:
+      type: int
+      description: 終了コード（常に 0）
+    process: |-
+      1. 標準入力を JSON として読む
+         - 読めないか、オブジェクトでないか、`cwd` が文字列でないか、`tool_input` がオブジェクトでない場合、何も出さずに 0 を返す
+      2. tmux の中（`TMUX`・`TMUX_PANE` がどちらも空でない）なら、`find_claude(os.getppid())` で Claude Code のプロセスを探す。tmux の外なら探さない
+      3. セッションの値を作る（`build_session`）
+      4. `tool_input` のコピーの `session` を 3 の値で置き換え、`{"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": コピー}}` を標準出力に JSON（`ensure_ascii=False`）で出す
+      5. 0 を返す
+    unit_tests:
+      - name: test_main
+        case: 正常
+        summary: session を入れた updatedInput を出す
+        condition: '`{"cwd": "/w", "tool_input": {"workspace": "talk", "session": {"cwd": "/etc"}}}`、`environ` は `TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を持つ。`find_claude` は `(42, "Mon Nov 2 10:00:00 2026")` を返す'
+        mock: '`find_claude`'
+        expected: 0 を返し、出力の `hookSpecificOutput.hookEventName` が `PreToolUse`、`updatedInput.workspace` が `talk`、`updatedInput.session` が `build_session` の値（`cwd` が `/w`）
+      - name: test_main_when_outside_tmux
+        case: 正常
+        summary: tmux の外では Claude Code のプロセスを探さない
+        condition: '`environ` が `TMUX` を持たない'
+        mock: '`find_claude`（呼ばれないことを確かめる）'
+        expected: 0 を返し、`updatedInput.session` のキーが `cwd` と `claude_config_dir` だけ。`find_claude` が呼ばれない
+      - name: test_main_when_input_invalid
+        case: 正常
+        summary: 読めない入力では何も出さない
+        condition: '`parametrize`: `not json` / `[]` / `{"cwd": "/w"}` / `{"cwd": 1, "tool_input": {}}`'
+        mock: '`find_claude`'
+        expected: どれも 0 を返し、標準出力が空
+      - name: test_main_when_old_syntax
+        case: 正常
+        summary: Python 3.8 の構文で読め、型注釈を実行時に評価しない
+        condition: '`inject_session.py` を `ast.parse(..., feature_version=(3, 8))` で読み、先頭の文を見る'
+        mock: なし
+        expected: '`SyntaxError` にならず、docstring の次の文が `from __future__ import annotations`'
+  - name: build_session
+    title: セッションの値の組み立て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: 作業フォルダ・環境変数・Claude Code のプロセスから、ツールの引数 `session` の辞書を作る
+    args:
+      - name: cwd
+        type: str
+        required: true
+        passing: positional
+        description: フックの入力の `cwd`
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+      - name: claude
+        type: tuple[int, str] | None
+        required: true
+        passing: positional
+        description: Claude Code のプロセスの PID と起動時刻（見つからなければ `None`）
+    returns:
+      type: dict[str, Any]
+      description: '`cwd`・`claude_config_dir` と、tmux の中なら `tmux`・`tmux_pane`、`claude` があれば `claude_pid`・`claude_started_at`（インターフェース定義『MCP サーバーの起動』の `session`）'
+    process: |-
+      1. `cwd` と、`CLAUDE_CONFIG_DIR` が空でなければそれを `expanduser` して絶対パスにしたもの、空なら `DEFAULT_CONFIG_DIR` を `claude_config_dir` に入れる
+      2. `TMUX`・`TMUX_PANE` がどちらも空でなければ、`tmux`・`tmux_pane` に入れ、`claude` があれば `claude_pid`・`claude_started_at` も入れる
+      3. 辞書を返す
+    unit_tests:
+      - name: test_build_session
+        case: 正常
+        summary: tmux の中と外で入れるキーを分ける
+        condition: '`parametrize`: `TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を持ち `claude` がある / 同じで `claude` が `None` / `TMUX_PANE` が空 / どれも無い'
+        mock: '`Path.home`（`/h`）'
+        expected: 6 つのキー / `claude_pid`・`claude_started_at` の無い 4 つのキー / `cwd`・`claude_config_dir` だけ / `cwd`・`claude_config_dir` だけで `claude_config_dir` が `/h/.claude`
+  - name: find_claude_process
+    title: Claude Code のプロセスを探す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    scope: public
+    summary: 渡した PID から親へたどり、最初に名前が `CLAUDE_COMMAND` のプロセスの PID と起動時刻を返す
+    side_effects: '`ps` を子プロセスで呼ぶ'
+    args:
+      - name: pid
+        type: int
+        required: true
+        passing: positional
+        description: たどり始めるプロセス（フックの親）
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: コマンドを呼ぶ関数
+    returns:
+      type: tuple[int, str] | None
+      description: PID と、空白の並びを 1 つにつめた `lstart`。見つからなければ `None`
+    process: |-
+      1. `PARENT_DEPTH_MAX` 段まで、`ps -o ppid=,lstart=,comm= -p {PID}` を呼ぶ（引数は配列、シェルを通さない）
+         - 終了コードが 0 以外か出力が読めなければ `None` を返す
+      2. 出力の先頭の整数を親の PID、末尾の語を `comm`（パスなら最後の名前）、間の 5 つの語を `lstart` にする
+      3. `comm` が `CLAUDE_COMMAND` ならその PID と `lstart` を返す。違えば親の PID へ移る。親が 1 以下になったら `None` を返す
+      4. 上限に着いたら `None` を返す
+    unit_tests:
+      - name: test_find_claude_process
+        case: 正常
+        summary: 間に別のコマンドが挟まっても claude で止まる
+        condition: '`run` が PID 100 → `90 Mon Nov  2 10:00:00 2026 bash`、90 → `80 Mon Nov  2 09:59:00 2026 claude-balancer`、80 → `70 Mon Nov  2 09:58:00 2026 /usr/bin/claude` を返す'
+        mock: '`run`'
+        expected: '`(80, "Mon Nov 2 09:58:00 2026")`'
+      - name: test_find_claude_process_when_not_found
+        case: 正常
+        summary: 見つからなければ None
+        condition: '`parametrize`: 親が 1 に着く / `ps` が終了コード 1 / 自分を親として返し続ける（上限に着く）'
+        mock: '`run`'
+        expected: どれも `None`。最後の条件では `run` が `PARENT_DEPTH_MAX` 回だけ呼ばれる
+notes:
+  フックの定義: '`hooks/hooks.json` は `PreToolUse` に `matcher` が `mcp__plugin_mindstella_mindstella__.*` の `command` のフックを 1 つ置き、コマンドをインターフェース定義『セッションの値の注入』の制約「起動するコマンド」の文字列にする'
+  構文: '`inject_session.py` は先頭に `from __future__ import annotations` を置き、Python 3.8 で読める構文と標準ライブラリだけで書く（ツールを呼ぶたびにシステムの `python3` で起動するため。`check_env.py` と同じ）'
+test_files:
+  - tests/unit/scripts/test_inject_session.py

@@ -1,9 +1,9 @@
 title: "サーバー / ClaudeCodeへの入力"
-lead: まとめて送った後に、MCP サーバーが受け継いだ `TMUX_PANE` のペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux を子プロセスで呼び、会話の記録（jsonl）を読む。
+lead: ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送った後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    claude_input.py   送り先の読み込み・入力する文字列・tmux への貼り付け・会話の記録での確かめ
+    claude_input.py   セッションの値の読み込み・ワークスペースごとの宛先・生きているかの確かめ・入力する文字列・tmux への貼り付け・会話の記録での確かめ
   ```
 diagrams:
   - name: 全体
@@ -11,39 +11,161 @@ diagrams:
       ```mermaid
       classDiagram
         direction LR
+        class 宛先の台帳
         class Claude Codeへの入力
         class 送り先
+        class 生きているかの確かめ
         class tmuxへの貼り付け
         class 会話の記録での確かめ
-        Claude Codeへの入力 --> 送り先 : 入力の鍵を取る
+        宛先の台帳 --> 送り先 : ワークスペースごとに持つ
+        宛先の台帳 --> Claude Codeへの入力 : 入力の鍵を渡す
+        Claude Codeへの入力 --> 生きているかの確かめ
         Claude Codeへの入力 --> tmuxへの貼り付け
         Claude Codeへの入力 --> 会話の記録での確かめ
       ```
 data_models:
+  - name: Session
+    title: セッションの値
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    role: DTO
+    summary: ツールの引数 `session`（インターフェース定義『MCP サーバーの起動』）を読んだ値。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: cwd
+        type: Path
+        description: セッションの作業フォルダ（絶対パス）
+      - name: claude_config_dir
+        type: Path
+        description: セッションの `CLAUDE_CONFIG_DIR`
+      - name: tmux
+        type: str | None
+        default: None
+        description: セッションの `TMUX`
+      - name: tmux_pane
+        type: str | None
+        default: None
+        description: セッションの `TMUX_PANE`
+      - name: claude_pid
+        type: int | None
+        default: None
+        description: Claude Code のプロセスの PID
+      - name: claude_started_at
+        type: str | None
+        default: None
+        description: そのプロセスの起動時刻（空白を 1 つにつめた `ps -o lstart=` の文字列）
   - name: InputTarget
     title: 送り先
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
-    role: 長期保持のランタイム状態
-    summary: MCP サーバーが起動時に Claude Code から受け継いだ送り先と会話の記録の場所と、入力の鍵。`@dataclass(frozen=True, slots=True, kw_only=True)`
-    description: プロセスに 1 つだけ作り、配信の台帳からワークスペースごとの配信へ渡す。`lock` はプロセスの中の 1 本の入力の鍵で、同時に送られた 2 回の入力と確かめを重ねない。
+    role: DTO
+    summary: ペインへ入力するのに要る値がそろったセッションの宛先と会話の記録の場所。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: socket
-        type: str | None
-        description: '`TMUX`（tmux のサーバーのソケット）。空なら `None`'
+        type: str
+        description: tmux のサーバーのソケット（`session.tmux` の最初の `,` より前）
       - name: pane
-        type: str | None
-        description: '`TMUX_PANE`（Claude Code が動くペイン）。空なら `None`'
+        type: str
+        description: Claude Code が動くペイン（`session.tmux_pane`）
       - name: config_dir
         type: Path
-        description: '`CLAUDE_CONFIG_DIR`。空なら `~/.claude`'
+        description: 会話の記録を引く設定のフォルダ（`session.claude_config_dir`）
       - name: cwd
         type: Path
-        description: サーバーの起動時の作業フォルダ（絶対パス）
-      - name: lock
+        description: セッションの作業フォルダ（会話の記録のフォルダ名と、行の `cwd` に使う）
+      - name: claude_pid
+        type: int
+        description: Claude Code のプロセスの PID
+      - name: claude_started_at
+        type: str
+        description: そのプロセスの起動時刻
+classes:
+  - name: InputTargets
+    title: 宛先の台帳
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    role: 長期保持のランタイム状態
+    summary: ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ。プロセスに 1 つだけ作り、配信の台帳が持つ
+    kind: クラス
+    properties:
+      - name: _targets
+        type: dict[Path, InputTarget | None]
+        access: 内部 (_)
+        description: ワークスペース → 宛先（最後のセッションが tmux の外なら `None`）
+      - name: _guard
         type: threading.Lock
-        default: threading.Lock()
-        description: 入力の鍵（`field(default_factory=threading.Lock)`）
+        access: 内部 (_)
+        description: '`_targets` を触る間だけ取る鍵'
+      - name: _input_lock
+        type: threading.Lock
+        access: 内部 (_)
+        description: プロセスの中の 1 本の入力の鍵。同時に送られた 2 回の入力と確かめを重ねない
+    methods:
+      - name: remember
+        title: 宛先を書き換える
+        kind: メソッド
+        summary: そのワークスペースの宛先を、渡したセッションの宛先にする
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+          - name: session
+            type: Session
+            required: true
+            passing: positional
+            description: ツールを呼んだセッション
+        returns:
+          type: None
+          description: '-'
+        process: 1. `_guard` を取り、`_targets[root.resolve()]` を `input_target(session)` にする（`None` でも書き換える）
+        unit_tests:
+          - name: test_remember
+            case: 正常
+            summary: 後から呼んだセッションの宛先にする
+            condition: 同じワークスペースを、ペイン `%3` のセッション → ペイン `%5` のセッション → tmux の外のセッションの順に `remember` し、そのたびに `target_of` を引く
+            mock: なし
+            expected: '`pane` が `%3` / `%5` / `None`'
+      - name: target_of
+        title: 宛先を引く
+        kind: メソッド
+        summary: そのワークスペースの宛先を返す
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+        returns:
+          type: InputTarget | None
+          description: 宛先。まだセッションを受けていないか、最後のセッションが tmux の外なら `None`
+        process: 1. `_guard` を取り、`_targets.get(root.resolve())` を返す
+      - name: enter
+        title: 宛先へ入力する
+        kind: メソッド
+        summary: そのワークスペースの宛先へ、届いた件数の 1 行を入力する
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+          - name: count
+            type: int
+            required: true
+            passing: positional
+            description: 届いた件数
+        returns:
+          type: bool
+          description: 会話の記録に入ったと確かめたか（応答の `entered`）
+        process: 1. `enter_to_claude(target_of(root), count, lock=_input_lock)` を返す
+        unit_tests:
+          - name: test_enter
+            case: 正常
+            summary: セッションを受けていないワークスペースには入力しない
+            condition: 空の台帳で `enter(tmp_path, 1)`
+            mock: '`subprocess.run`（`claude_input` モジュールの参照を monkeypatch し、呼ばれたかを記録する）'
+            expected: 偽を返し、`subprocess.run` が呼ばれない
 constants:
   - name: INPUT_TEMPLATE
     title: 入力する文字列の雛形
@@ -69,11 +191,17 @@ constants:
     usecase: コメントを選んで送る
     summary: '`load-buffer` と `paste-buffer` で使う名前の付いたバッファ（利用者のバッファを書き換えない）'
     value: '"mindstella-input"'
+  - name: PARENT_DEPTH_MAX
+    title: 親をたどる上限
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: Claude Code のプロセスからペインのプロセスまで `ps -o ppid=` でたどる段の上限（インターフェース定義『コメントをまとめて送る』の宛先が生きているかの確かめ）
+    value: '32'
   - name: DEFAULT_CONFIG_DIR
     title: 既定の設定のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
-    summary: '`CLAUDE_CONFIG_DIR` が空のときの Claude Code の設定のフォルダ'
+    summary: '`session.claude_config_dir` が無いか空のときの Claude Code の設定のフォルダ'
     value: Path.home() / ".claude"
   - name: TRANSCRIPT_NAME_MAX
     title: 会話の記録のフォルダ名の上限
@@ -82,44 +210,135 @@ constants:
     summary: Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を足す。外部ライブラリ『claude-code』）
     value: '200'
 functions:
-  - name: load_input_target
-    title: 送り先の読み込み
+  - name: parse_session
+    title: セッションの値の読み込み
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
-    summary: 環境変数と起動時の作業フォルダから `InputTarget` を作る
+    summary: ツールの引数 `session` を `Session` にする。作業フォルダが読めなければ `None`
     kind: 関数
     scope: public
     args:
-      - name: environ
-        type: Mapping[str, str]
+      - name: raw
+        type: Mapping[str, Any] | None
         required: true
         passing: positional
-        description: 読む環境変数（`os.environ`）
-      - name: cwd
-        type: Path
-        required: true
-        passing: positional
-        description: サーバーの起動時の作業フォルダ
+        description: ツールの引数 `session`
     returns:
-      type: InputTarget
-      description: 送り先（tmux の外なら `socket` か `pane` が `None`）
+      type: Session | None
+      description: セッション。`raw` が無いか、`cwd` が空でない絶対パスの文字列でなければ `None`
     process: |-
-      1. `TMUX`・`TMUX_PANE` を読み、空文字列か無ければ `None` にする
-      2. `CLAUDE_CONFIG_DIR` が空でなければそのパス、空なら `DEFAULT_CONFIG_DIR` にする
-      3. `cwd.resolve()` と合わせて `InputTarget` を返す
+      1. `raw` が無いか、`cwd` が空でない絶対パスの文字列でなければ `None` を返す
+      2. `claude_config_dir` が空でない文字列ならそのパス、それ以外は `DEFAULT_CONFIG_DIR` にする
+      3. `tmux`・`tmux_pane`・`claude_started_at` は空でない文字列だけを残し（それ以外は `None`）、`claude_started_at` の空白の並びを 1 つの空白につめる。`claude_pid` は `bool` でない正の整数だけを残す
+      4. `Session` を返す
     unit_tests:
-      - name: test_load_input_target
+      - name: test_parse_session
         case: 正常
-        summary: 3 つの環境変数と作業フォルダを持つ
-        condition: '`{TMUX: "/tmp/tmux-1000/default,1,0", TMUX_PANE: "%3", CLAUDE_CONFIG_DIR: "{tmp}/cfg"}`、`cwd` は `tmp_path`'
+        summary: 全ての値を読む
+        condition: '`{cwd: "/w", claude_config_dir: "/c", tmux: "/s,1,0", tmux_pane: "%3", claude_pid: 42, claude_started_at: "Mon Nov  2 10:00:00 2026"}`'
         mock: なし
-        expected: '`socket` が `/tmp/tmux-1000/default,1,0`、`pane` が `%3`、`config_dir` が `{tmp}/cfg`、`cwd` が `tmp_path.resolve()`'
-      - name: test_load_input_target_when_outside_tmux
+        expected: '`cwd` が `/w`、`claude_config_dir` が `/c`、`tmux` が `/s,1,0`、`tmux_pane` が `%3`、`claude_pid` が 42、`claude_started_at` が `Mon Nov 2 10:00:00 2026`'
+      - name: test_parse_session_when_partial
         case: 正常
-        summary: tmux の外では送り先が無く、設定のフォルダは既定
-        condition: '`parametrize`: 空の辞書 / `{TMUX: "", TMUX_PANE: "", CLAUDE_CONFIG_DIR: ""}`'
+        summary: 足りない値・形の違う値は None にする
+        condition: '`parametrize`: `{cwd: "/w"}` / `{cwd: "/w", tmux: "", claude_pid: "42"}` / `{cwd: "/w", claude_pid: true}`'
         mock: なし
-        expected: '`socket`・`pane` が `None`、`config_dir` が `DEFAULT_CONFIG_DIR`'
+        expected: どれも `cwd` が `/w`、`claude_config_dir` が `DEFAULT_CONFIG_DIR`、`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` が `None`
+      - name: test_parse_session_when_invalid
+        case: 正常
+        summary: 作業フォルダが読めなければ None
+        condition: '`parametrize`: `None` / `{}` / `{cwd: "w"}` / `{cwd: 1}`'
+        mock: なし
+        expected: '`None`'
+  - name: input_target
+    title: 送り先の組み立て
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: セッションから送り先を作る。ペインへ入力するのに要る値が欠けていれば `None`
+    kind: 関数
+    scope: public
+    args:
+      - name: session
+        type: Session
+        required: true
+        passing: positional
+        description: セッション
+    returns:
+      type: InputTarget | None
+      description: 送り先。`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無ければ `None`
+    process: |-
+      1. 4 つの値のどれかが `None` なら `None` を返す
+      2. `tmux` の最初の `,` より前をソケットにし、`cwd`・`claude_config_dir` と合わせて `InputTarget` を返す
+    unit_tests:
+      - name: test_input_target
+        case: 正常
+        summary: ソケットは TMUX の最初の , より前
+        condition: '`tmux` が `/tmp/tmux-1000/default,1234,0`、`tmux_pane` が `%3`、`claude_pid` と `claude_started_at` を持つセッション'
+        mock: なし
+        expected: '`socket` が `/tmp/tmux-1000/default`、`pane` が `%3`'
+      - name: test_input_target_when_missing
+        case: 正常
+        summary: 値が欠けていれば None
+        condition: '`parametrize`: `tmux` が無い / `tmux_pane` が無い / `claude_pid` が無い / `claude_started_at` が無い'
+        mock: なし
+        expected: '`None`'
+  - name: is_session_alive
+    title: 宛先が生きているかの確かめ
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: コメントを選んで送る
+    summary: 宛先の Claude Code のプロセスが起動時刻ごと残っていて、宛先のペインのプロセスかその子孫かを確かめ、違えば理由を返す
+    kind: 関数
+    scope: public
+    side_effects: '`ps` と `tmux` を子プロセスで呼ぶ（何も書かない）'
+    args:
+      - name: target
+        type: InputTarget
+        required: true
+        passing: positional
+        description: 送り先
+      - name: deadline
+        type: float
+        required: true
+        passing: keyword
+        description: 打ち切る時刻（`clock` の値）
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: コマンドを呼ぶ関数
+      - name: clock
+        type: Callable[[], float]
+        required: false
+        default: time.monotonic
+        passing: injected
+        description: 今の時刻
+    returns:
+      type: str | None
+      description: '生きていれば `None`、違えば理由（`Claude Code のプロセス {pid} が無い` / `PID {pid} が別のプロセスに使い回された` / `ペイン {pane} が無い` / `Claude Code がペイン {pane} の中に無い` / `時間切れ`）'
+    process: |-
+      1. 次を順に呼ぶ（引数は配列、シェルを通さない。`timeout` はその時点の `deadline - clock()`。呼ぶ前に残り時間が 0 以下なら `時間切れ` を返す）
+      2. `ps -o lstart= -p {claude_pid}` を呼ぶ
+         - 終了コードが 0 以外なら `Claude Code のプロセス {pid} が無い` を返す
+         - 出力の空白の並びを 1 つにつめた文字列が `claude_started_at` と違えば `PID {pid} が別のプロセスに使い回された` を返す
+      3. `tmux -S {socket} display-message -p -t {pane} "#{pane_pid}"` を呼ぶ
+         - 終了コードが 0 以外か、出力が整数でなければ `ペイン {pane} が無い` を返す
+      4. `claude_pid` から始め、PID がペインの PID と一致すれば `None` を返す。一致しなければ `ps -o ppid= -p {PID}` で親へ移り、`PARENT_DEPTH_MAX` 段まで繰り返す
+         - 親が 1 以下になるか、`ps` が失敗するか、上限に着いたら `Claude Code がペイン {pane} の中に無い` を返す
+      5. `subprocess.TimeoutExpired`・`OSError` が起きたら `時間切れ` か `{コマンド}: {OSError}` を返す
+    unit_tests:
+      - name: test_is_session_alive
+        case: 正常
+        summary: 起動時刻が一致し、ペインのプロセスの子孫なら生きている
+        condition: '`claude_pid=40`、`claude_started_at` は `ps -o lstart=` の偽の出力と空白の数だけ違う文字列。`display-message` が `10`、`ps -o ppid=` が 40 → 20、20 → 10 を返す。`parametrize`: この親子 / `display-message` が `40`（ペインで直に Claude Code を動かした）'
+        mock: '`run`・`clock`'
+        expected: どちらも `None`。後者は `ps -o ppid=` を呼ばない
+      - name: test_is_session_alive_when_ended
+        case: 異常
+        summary: プロセス・起動時刻・ペイン・親子のどれかが違えば理由を返す
+        condition: '`parametrize`: `ps -o lstart=` が終了コード 1 / 起動時刻が違う / `display-message` が終了コード 1 / 親をたどると 1 に着く / `ps -o ppid=` が 40 → 40 を返し続ける（上限に着く）/ 呼ぶ前に `clock` が `deadline` を過ぎている'
+        mock: '`run`・`clock`'
+        expected: '`Claude Code のプロセス 40 が無い` / `PID 40 が別のプロセスに使い回された` / `ペイン %3 が無い` / `Claude Code がペイン %3 の中に無い` / 同じ / `時間切れ`。最後の条件では `run` が呼ばれない'
   - name: transcript_dirs
     title: 会話の記録のフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
@@ -300,10 +519,10 @@ functions:
       type: str | None
       description: '成功なら `None`、失敗なら理由（`{コマンド}: 終了コード {n}` / `{コマンド}: 時間内に終わらない` / `{コマンド}: {OSError}` / `時間切れ`）'
     process: |-
-      1. 環境変数 `TMUX` を `target.socket` にした環境で、次を順に呼ぶ（引数は配列、シェルを通さない。`timeout` はその時点の `deadline - clock()`）
-         - `tmux load-buffer -b PASTE_BUFFER -`（標準入力に `text` を UTF-8 で渡す）
-         - `tmux paste-buffer -p -d -b PASTE_BUFFER -t {pane}`
-         - `tmux send-keys -t {pane} Enter`
+      1. 次を順に呼ぶ（引数は配列、シェルを通さない。どれも `-S {socket}` でソケットを指し、環境変数 `TMUX` に頼らない。`timeout` はその時点の `deadline - clock()`）
+         - `tmux -S {socket} load-buffer -b PASTE_BUFFER -`（標準入力に `text` を UTF-8 で渡す）
+         - `tmux -S {socket} paste-buffer -p -d -b PASTE_BUFFER -t {pane}`
+         - `tmux -S {socket} send-keys -t {pane} Enter`
       2. 呼ぶ前に残り時間が 0 以下なら、残りを呼ばずに `時間切れ` を返す
       3. 終了コードが 0 以外・`subprocess.TimeoutExpired`・`OSError` なら、残りを呼ばずに理由を返す
       4. `None` を返す
@@ -311,9 +530,9 @@ functions:
       - name: test_paste_to_pane
         case: 正常
         summary: 3 つのコマンドを順に呼ぶ
-        condition: '`socket` が `/s,1,0`、`pane` が `%3`、`text` が `x`。`run` は全て終了コード 0 を返す'
+        condition: '`socket` が `/s`、`pane` が `%3`、`text` が `x`。`run` は全て終了コード 0 を返す'
         mock: '`run`・`clock`'
-        expected: '`None` を返し、`run` が `["tmux", "load-buffer", "-b", "mindstella-input", "-"]`（`input` が `b"x"`）・`["tmux", "paste-buffer", "-p", "-d", "-b", "mindstella-input", "-t", "%3"]`・`["tmux", "send-keys", "-t", "%3", "Enter"]` の順に、`env["TMUX"]` が `/s,1,0` で呼ばれる'
+        expected: '`None` を返し、`run` が `["tmux", "-S", "/s", "load-buffer", "-b", "mindstella-input", "-"]`（`input` が `b"x"`）・`["tmux", "-S", "/s", "paste-buffer", "-p", "-d", "-b", "mindstella-input", "-t", "%3"]`・`["tmux", "-S", "/s", "send-keys", "-t", "%3", "Enter"]` の順に呼ばれる'
       - name: test_paste_to_pane_when_failed
         case: 異常
         summary: 失敗したら残りを呼ばずに理由を返す
@@ -324,22 +543,27 @@ functions:
     title: Claude Code への入力
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
-    summary: 届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由を記録する
+    summary: 宛先が生きていれば届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由を記録する
     kind: 関数
     scope: public
     thread_safe: true
     side_effects: tmux のペインへ貼る。会話の記録を読む
     args:
       - name: target
-        type: InputTarget
+        type: InputTarget | None
         required: true
         passing: positional
-        description: 送り先
+        description: 送り先（`InputTargets.target_of` の結果）
       - name: count
         type: int
         required: true
         passing: positional
         description: 届いた件数
+      - name: lock
+        type: threading.Lock
+        required: true
+        passing: keyword
+        description: プロセスの中の 1 本の入力の鍵
       - name: run
         type: Callable[..., subprocess.CompletedProcess]
         required: false
@@ -362,45 +586,54 @@ functions:
       type: bool
       description: 会話の記録に入った（または待ち行列に入った）と確かめたか（応答の `entered`）
     process: |-
-      1. `target.socket` か `target.pane` が `None` なら偽を返す（tmux を呼ばない）
-         - `[INFO]` tmux の外で立てたため Claude Code へ入力しない
-      2. `target.lock` を取り、以降を鍵の中で行う
+      1. `target` が `None` なら偽を返す（`ps`・tmux を呼ばない）
+         - `[INFO]` 宛先のセッションが無いか tmux の外のため Claude Code へ入力しない
+      2. `lock` を取り、以降を鍵の中で行う
       3. `transcript_dirs` のフォルダで `snapshot_sizes` を控え、`deadline` を `clock() + INPUT_DEADLINE_SEC` にする
-      4. `paste_to_pane(target, input_text(count), deadline=deadline)` を呼ぶ
+      4. 宛先が生きているかを確かめる（`is_session_alive(target, deadline=deadline)`）
+         - 理由が返った場合、tmux へ貼らずに偽を返す
+           - `[WARNING]` 宛先のセッションが終わったため Claude Code へ入力しない（理由）
+      5. `paste_to_pane(target, input_text(count), deadline=deadline)` を呼ぶ
          - 理由が返った場合、偽を返す
            - `[WARNING]` Claude Code へ入力できない（理由）
-      5. `deadline` まで、`transcript_dirs` を引き直して `find_delivery` を呼び、真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って読み直す（名前が上限を超えるとき、新しい会話のフォルダが貼った後に作られても拾う）
-      6. 偽を返す
+      6. `deadline` まで、`transcript_dirs` を引き直して `find_delivery` を呼び、真なら真を返し、偽なら `min(DELIVERY_POLL_SEC, 残り)` 待って読み直す（名前が上限を超えるとき、新しい会話のフォルダが貼った後に作られても拾う）
+      7. 偽を返す
          - `[WARNING]` Claude Code の会話の記録に入力が入らない（`INPUT_DEADLINE_SEC` 秒）
     unit_tests:
       - name: test_enter_to_claude
         case: 正常
         summary: 貼った後に会話の記録に入れば真
-        condition: '`pane`・`socket` を持つ送り先。`run` は終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を書き足す'
+        condition: '送り先。`run` は `ps`・`display-message` に生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を書き足す'
         mock: '`run`・`clock`・`sleep`'
         expected: 真を返し、`load-buffer` の標準入力が `input_text(2)`（`count=2`）
       - name: test_enter_to_claude_when_outside_tmux
         case: 正常
-        summary: 送り先が無ければ tmux を呼ばずに偽
-        condition: '`parametrize`: `pane` が `None` / `socket` が `None`'
+        summary: 送り先が無ければ ps・tmux を呼ばずに偽
+        condition: '`target=None`'
         mock: '`run`'
         expected: 偽を返し、`run` が呼ばれない
+      - name: test_enter_to_claude_when_session_ended
+        case: 異常
+        summary: 宛先のセッションが終わっていれば貼らずに偽
+        condition: '`run` が `ps -o lstart=` に終了コード 1 を返す'
+        mock: '`run`・`clock`・`sleep`'
+        expected: 偽を返し、`WARNING` の記録に `Claude Code のプロセス` を含む理由がある。`load-buffer` が呼ばれない
       - name: test_enter_to_claude_when_paste_failed
         case: 異常
         summary: 貼れなければ偽と理由の記録
-        condition: '`run` が `paste-buffer` で終了コード 1 を返す'
+        condition: '`run` が生きている宛先の値を返し、`paste-buffer` で終了コード 1 を返す'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`WARNING` の記録に `paste-buffer` を含む理由がある。会話の記録を読み直さない（`sleep` が呼ばれない）
       - name: test_enter_to_claude_when_not_delivered
         case: 正常
         summary: 上限までに入らなければ偽
-        condition: '`run` は全て終了コード 0 を返し、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
+        condition: '`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`sleep` に渡した秒の合計が `INPUT_DEADLINE_SEC` を超えない。`WARNING` の記録がある
       - name: test_enter_to_claude_when_concurrent
         case: 正常
         summary: 同時の入力を重ねない
-        condition: 2 つのスレッドから同じ送り先で呼ぶ。`run` は呼ばれている間に他方の `run` が始まっていないかを控える
+        condition: 2 つのスレッドから同じ送り先と同じ `lock` で呼ぶ。`run` は生きている宛先の値を返し、呼ばれている間に他方の `run` が始まっていないかを控える
         mock: '`run`・`clock`・`sleep`'
         expected: 一方の 3 つのコマンドの間に他方のコマンドが入らない
 test_files:
