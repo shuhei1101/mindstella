@@ -158,3 +158,4 @@ notes:
   状態を確かめる・止める手段: インターフェース定義で、常駐サーバーの起動と管理の仕方とあわせて決める
   E2E の範囲: 本物の Claude Code は立ち上げず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_resident_server.py
