@@ -143,9 +143,9 @@ def start_claude_pane(tmp_path: Path) -> Iterator[StartClaudePane]:
         )
         return completed.stdout.strip()
 
-    def _start(*, mode: PaneMode, cwd: Path) -> ClaudePane:
-        """cwd を作業フォルダとして会話の記録のフォルダを作り、偽のコマンドが入力を待つまで待って返す。"""
-        config_dir = tmp_path / "claude-config"
+    def _start(*, mode: PaneMode, cwd: Path, config_name: str = "claude-config") -> ClaudePane:
+        """cwd を作業フォルダとして、設定のフォルダ config_name に会話の記録のフォルダを作り、偽のコマンドが入力を待つまで待って返す。"""
+        config_dir = tmp_path / config_name
         transcript = config_dir / "projects" / transcript_folder_name(cwd) / "session.jsonl"
         transcript.parent.mkdir(parents=True, exist_ok=True)
         script = tmp_path / "fake_claude.py"

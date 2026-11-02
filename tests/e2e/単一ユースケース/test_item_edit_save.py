@@ -310,8 +310,8 @@ def test_error_when_server_unreachable(
     page = open_preview(str(served.data["url"]), "#tab=decisions&view=board")
     page.wait_for_selector(PENDING_BUTTON)
     open_pending(page)
-    # 実行（サーバーの標準入力を閉じて止め、保存する）
-    server.close_stdin()
+    # 実行（常駐サーバーを止め、保存する）
+    server.call("server_stop")
     server.wait_exit()
     page.click(SAVE_BUTTON)
     page.wait_for_selector(f"{PENDING_PANEL} .pe-alert", timeout=SETTLE_MS)

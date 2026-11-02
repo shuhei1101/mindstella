@@ -305,13 +305,6 @@ def ready_venv(make_venv: MakeVenv) -> Path:
     return make_venv("venv")
 
 
-def read_mcp_config(args_file: Path) -> dict[str, Any]:
-    """偽の `claude` が受け取った `--mcp-config` のファイルを読む。"""
-    args = args_file.read_text(encoding="utf-8").splitlines()
-    assert args[0] == "--mcp-config"
-    return json.loads(Path(args[1]).read_text(encoding="utf-8"))
-
-
 def read_tool_names(server_script: Path) -> list[str]:
     """サーバーのスクリプトが登録するツールの名前の並び（`TOOL_NAMES`）を、読み込まずに読む。"""
     tree = ast.parse(server_script.read_text(encoding="utf-8"))
