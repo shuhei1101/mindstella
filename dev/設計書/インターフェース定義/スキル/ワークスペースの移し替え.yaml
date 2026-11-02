@@ -29,7 +29,7 @@ flows:
       - 本文のツールの一覧に `migrate`（`plan`・手順を当てる・`values`・`record`）と `check`・`batch` がある
       - '本文に、`check` が返した `decision_state` を利用者に確かめてから `batch` 1 回で直すステップがあり、`record: true` より前にある'
       - 本文が `mindmap.py`・`build`・`check-env` を指さない
-      - 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
+      - 本文に、MCP のツールが無いとき常駐サーバーを起動する手順を案内して止まる分岐がある
       - スキルの Markdown に特定の開発基盤の名前が無い
       - '`claude plugin validate` が終了コード 0'
     test: test_normal
@@ -68,9 +68,10 @@ constraints:
     constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。スクリプトを Bash で起動しない
     notes: 写しの git のコミットとフォルダの複製は `migrate` の中で行う
   - item: MCP のツールが使えないとき
-    constraint: 最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる。依存は起動スクリプトが確かめるため、スキルは確かめない
-    notes: インターフェース定義『起動スクリプト』
+    constraint: 最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py`（『常駐サーバーの起動の確認』）を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直す手順を案内して止まる。依存は『常駐サーバーの起動の確認』が確かめるため、スキルは確かめない
+    notes: インターフェース定義『常駐サーバーの起動の確認』
 refs:
   - dev/設計書/インターフェース定義/サーバー/記録の形式の移行#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
 test_file: tests/integration/skill/test_upgrade.py
