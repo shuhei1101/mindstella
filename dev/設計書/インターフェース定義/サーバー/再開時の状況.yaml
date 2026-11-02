@@ -1,7 +1,7 @@
 title: "再開時の状況"
 entry:
   kind: mcp_tool
-  value: '`status`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__status`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`status`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__status`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 要見直し・進行中・再開可能・決定待ち・そのほかの保留・次の候補を分けて返す

@@ -1,7 +1,7 @@
 title: "次の候補"
 entry:
   kind: mcp_tool
-  value: '`next`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__next`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`next`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__next`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 前提が揃った未決定を決めた順に並べ、前提が揃っていないものを外す

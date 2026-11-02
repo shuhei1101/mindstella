@@ -1,5 +1,5 @@
 title: "設定: サーバー"
-lead: 起動スクリプトと MCP サーバーが読む環境変数。設定のファイルは持たない。
+lead: 起動スクリプトと常駐の MCP サーバーが読む環境変数。設定のファイルは持たない。
 settings:
   - key: MINDSTELLA_VENV
     title: 仮想環境のフォルダ
@@ -7,7 +7,7 @@ settings:
     type: str
     required: false
     default: ~/.mindmap/venv
-    description: MCP サーバーを動かす仮想環境のフォルダ。起動スクリプトが依存の確認に渡し、MCP の設定の `command` にその Python を書く
+    description: 常駐サーバーを動かす仮想環境のフォルダ。『常駐サーバーの起動の確認』と起動スクリプトが依存の確認に使い、その Python で常駐サーバーを起動する
     env_var: MINDSTELLA_VENV
     reload: restart
     status: implemented
@@ -15,6 +15,27 @@ settings:
     refs:
       - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
       - dev/設計書/インターフェース定義/サーバー/依存の確認#
+      - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
+  - key: MINDSTELLA_PORT
+    title: 常駐サーバーのポート
+    file: 環境変数
+    type: int
+    required: false
+    default: '8784'
+    description: 常駐サーバーが `127.0.0.1` で待ち受けるポート。常駐サーバーが起動時に読み、プラグインの `.mcp.json` の `url` と『常駐サーバーの起動の確認』も同じ値を使う
+    missing: 8784 で待ち受ける
+    env_var: MINDSTELLA_PORT
+    reload: restart
+    allowed: 1〜65535 の整数（違えば常駐サーバーが InvalidPortError で終わる）
+    reason: 端末で別のサービスが 8784 を使っているときに変えるため。Claude Code と常駐サーバーが同じ値を読む必要があり、ワークスペースの `config.yaml` には置かない
+    status: planned
+    visibility: user
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+      - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
+      - dev/設計書/インターフェース定義/プラグイン/プラグインの読み込み#
+    introduced:
+      pr: 392
   - key: CLAUDE_CONFIG_DIR
     title: Claude Code の設定のフォルダ
     file: 環境変数
@@ -34,11 +55,11 @@ settings:
     type: str
     required: false
     default: なし（`127.0.0.1` と `localhost` だけを受ける）
-    description: プレビューの配信が `Host` と `Origin` で受ける外のホスト名。トンネル・リバースプロキシの内側で、端末の外から開くときに設定する。起動スクリプトが、設定されていれば MCP の設定の `mcpServers.mindstella.env` に書いて MCP サーバーへ渡す
+    description: プレビューの配信が `Host` と `Origin` で受ける外のホスト名。トンネル・リバースプロキシの内側で、端末の外から開くときに設定する。常駐サーバーを起動した環境から読む
     missing: 外のホスト名を受けない（今と同じ動き）
     env_var: MINDSTELLA_ALLOWED_HOSTS
     reload: restart
-    allowed: ホスト名をカンマで区切ったもの（例 `preview.example.com,notes.example.com`）。前後の空白は外し、大文字と小文字を区別しない。スキーム・ポート・`/` を含む要素と空の要素は使わず、MCP サーバーが立つときに標準エラーへ記録する
+    allowed: ホスト名をカンマで区切ったもの（例 `preview.example.com,notes.example.com`）。前後の空白は外し、大文字と小文字を区別しない。スキーム・ポート・`/` を含む要素と空の要素は使わず、常駐サーバーが起動するときに標準エラーへ記録する
     reason: 待ち受けは `127.0.0.1` のままで、外から開く画面の認証は外の入口に任せる。端末ごとに決まる値のため、ワークスペースの `config.yaml` には置かない
     status: implemented
     visibility: user
@@ -53,7 +74,7 @@ settings:
     type: str
     required: false
     default: なし（何も呼ばない）
-    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で足して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。起動スクリプトが、設定されていれば MCP の設定の `mcpServers.mindstella.env` に書いて渡す
+    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で足して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。常駐サーバーを起動した環境から読む
     missing: 呼ばない
     env_var: MINDSTELLA_PREVIEW_START_HOOK
     reload: restart
@@ -72,7 +93,7 @@ settings:
     type: str
     required: false
     default: なし（何も呼ばない）
-    description: MCP サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で足して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を消すのに使う。起動スクリプトが、設定されていれば MCP の設定の `mcpServers.mindstella.env` に書いて渡す
+    description: 常駐サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で足して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を消すのに使う。常駐サーバーを起動した環境から読む
     missing: 呼ばない
     env_var: MINDSTELLA_PREVIEW_STOP_HOOK
     reload: restart

@@ -1,7 +1,7 @@
 title: "項目の表示"
 entry:
   kind: mcp_tool
-  value: '`show`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__show`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`show`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__show`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 項目の中身と本文、参照元をキーごとに返す

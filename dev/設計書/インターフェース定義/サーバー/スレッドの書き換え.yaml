@@ -1,7 +1,7 @@
 title: "スレッドの書き換え"
 entry:
   kind: mcp_tool
-  value: '`update_thread`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__update_thread`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`update_thread`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__update_thread`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 返信せずに、読んだ利用者の書き込みを取り込み済みにして要約を書き直す

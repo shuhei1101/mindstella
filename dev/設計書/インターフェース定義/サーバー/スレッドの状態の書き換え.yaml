@@ -1,7 +1,7 @@
 title: "スレッドの状態の書き換え"
 entry:
   kind: mcp_tool
-  value: '`set_thread_status`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__set_thread_status`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`set_thread_status`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__set_thread_status`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: AI が理由つきでクローズにし、書き手・理由・日時を残す

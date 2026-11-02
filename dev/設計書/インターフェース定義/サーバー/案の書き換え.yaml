@@ -1,7 +1,7 @@
 title: "案の書き換え"
 entry:
   kind: mcp_tool
-  value: '`edit_option`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__edit_option`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`edit_option`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__edit_option`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系（足す）
     summary: 案を並びの末尾に足し、変更履歴を積む
