@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from inject_session import PROC_DIR, process_started_at
+
 logger = logging.getLogger(__name__)
 
 # `{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分ける印
@@ -62,7 +64,7 @@ class Session:
     tmux_pane: str | None = None
     # Claude Code のプロセスの PID
     claude_pid: int | None = None
-    # そのプロセスの起動時刻（空白を 1 つにつめた `ps -o lstart=` の文字列）
+    # そのプロセスの起動時刻（`inject_session.process_started_at` の値）
     claude_started_at: str | None = None
 
 
@@ -163,6 +165,7 @@ def is_session_alive(
     deadline: float,
     run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     clock: Callable[[], float] = time.monotonic,
+    proc_dir: Path = PROC_DIR,
 ) -> str | None:
     """宛先の Claude Code が起動時刻ごと残り、宛先のペインのプロセスかその子孫かを確かめ、違えば理由を返す。"""
 
@@ -178,15 +181,24 @@ def is_session_alive(
         except OSError as error:
             return f"{' '.join(command[:2])}: {error}"
 
+    def bounded_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        """残り時間を上限に、run へそのまま渡す（起動時刻を ps で求めるときに使う）。"""
+        return run(command, **{**kwargs, "timeout": deadline - clock()})
+
     pid = target.claude_pid
-    started = call(["ps", "-o", "lstart=", "-p", str(pid)])
-    if isinstance(started, str):
-        return started
+    if deadline - clock() <= 0:
+        return "時間切れ"
+    try:
+        started = process_started_at(pid, run=bounded_run, proc_dir=proc_dir)
+    except subprocess.TimeoutExpired:
+        return "時間切れ"
+    except OSError as error:
+        return f"ps -o: {error}"
     # プロセスが無い: Claude Code が終わった
-    if started.returncode != 0:
+    if started is None:
         return f"Claude Code のプロセス {pid} が無い"
     # 起動時刻が違う: 同じ PID を別のプロセスが使っている
-    if " ".join(started.stdout.split()) != target.claude_started_at:
+    if started != target.claude_started_at:
         return f"PID {pid} が別のプロセスに使い回された"
 
     pane = target.pane
@@ -343,6 +355,7 @@ def enter_to_claude(
     run: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
+    proc_dir: Path = PROC_DIR,
 ) -> bool:
     """宛先が生きていれば届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由は記録する。"""
     # 宛先が無い（セッションを受けていないか tmux の外）: ps・tmux を呼ばない
@@ -354,7 +367,9 @@ def enter_to_claude(
         text = input_text(count)
         sizes = snapshot_sizes(transcript_dirs(target))
         deadline = clock() + INPUT_DEADLINE_SEC
-        ended = is_session_alive(target, deadline=deadline, run=run, clock=clock)
+        ended = is_session_alive(
+            target, deadline=deadline, run=run, clock=clock, proc_dir=proc_dir
+        )
         # 宛先のセッションが終わった: 別のプロセスへ貼らない
         if ended is not None:
             logger.warning("宛先のセッションが終わったため、Claude Code へ入力しません（%s）", ended)

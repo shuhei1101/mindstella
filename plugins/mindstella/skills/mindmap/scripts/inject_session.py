@@ -24,8 +24,11 @@ PARENT_DEPTH_MAX = 32
 # `CLAUDE_CONFIG_DIR` が無いか空のときの Claude Code の設定のフォルダ
 DEFAULT_CONFIG_DIR = Path.home() / ".claude"
 
-# `ps -o lstart=` の語の数（曜日・月・日・時刻・年）
-LSTART_WORDS = 5
+# 起動時刻の starttime を読む /proc（無い OS では `ps -o lstart=` を使う）
+PROC_DIR = Path("/proc")
+
+# `/proc/{PID}/stat` のコマンドの名前を閉じる最後の `)` より後ろを空白で分けたときの、22 番目の欄 starttime の位置
+STAT_STARTTIME_INDEX = 19
 
 # これ以下の PID に着いたら、親をたどるのをやめる（init）
 INIT_PID = 1
@@ -91,30 +94,49 @@ def build_session(
 
 
 def find_claude_process(
-    pid: int, run: Callable[..., Any] = subprocess.run
+    pid: int, run: Callable[..., Any] = subprocess.run, proc_dir: Path = PROC_DIR
 ) -> tuple[int, str] | None:
     """渡した PID から親へたどり、最初に名前が `CLAUDE_COMMAND` のプロセスの PID と起動時刻を返す。"""
     current = pid
     for _ in range(PARENT_DEPTH_MAX):
         result = run(
-            ["ps", "-o", "ppid=,lstart=,comm=", "-p", str(current)],
+            ["ps", "-o", "ppid=,comm=", "-p", str(current)],
             capture_output=True,
             text=True,
             check=False,
         )
         words = (result.stdout or "").split() if result.returncode == 0 else []
-        # 親の PID・起動時刻の 5 語・コマンドの名前がそろわない: 読めない
-        if len(words) < LSTART_WORDS + 2 or not words[0].isdigit():
+        # 親の PID とコマンドの名前がそろわない: 読めない
+        if len(words) <= 1 or not words[0].isdigit():
             return None
         parent = int(words[0])
         command = Path(words[-1]).name
         if command == CLAUDE_COMMAND:
-            return current, " ".join(words[1 : 1 + LSTART_WORDS])
+            started = process_started_at(current, run=run, proc_dir=proc_dir)
+            return None if started is None else (current, started)
         # init に着いた: Claude Code の外から呼ばれている
         if parent <= INIT_PID:
             return None
         current = parent
     return None
+
+
+
+def process_started_at(
+    pid: int, run: Callable[..., Any] = subprocess.run, proc_dir: Path = PROC_DIR
+) -> str | None:
+    """同じ PID の使い回しを見分ける、時計の補正で変わらない起動時刻の文字列を返す。プロセスが無ければ None。"""
+    # /proc がある: OS の起動からの clock ticks（`ps -o lstart=` は時計の補正で変わる）
+    if proc_dir.is_dir():
+        try:
+            stat = (proc_dir / str(pid) / "stat").read_text(encoding="utf-8")
+        except OSError:
+            return None
+        fields = stat.rpartition(")")[2].split()
+        return fields[STAT_STARTTIME_INDEX] if len(fields) > STAT_STARTTIME_INDEX else None
+    result = run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, check=False)
+    started = " ".join((result.stdout or "").split())
+    return started if result.returncode == 0 and started else None
 
 
 if __name__ == "__main__":
