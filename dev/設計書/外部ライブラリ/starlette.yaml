@@ -23,8 +23,9 @@ used_in:
   - plugins/mindstella/skills/mindmap/scripts/server.py
 upstream: Kludex/starlette
 verification:
-  state: 未確認
-  detail: モジュール構成の設計の時点では、仮想環境に 1.7.0 が入っていることだけを確かめた。`MCPServer.custom_route` の入口が返す `JSONResponse` は、実装のときに確かめる
+  state: 済
+  date: '2026-11-02'
+  detail: 1.7.0 で、`MCPServer.custom_route` に載せた `GET /_admin/status` の入口が返す `JSONResponse` が、`streamable_http_app` の同じアプリから `server_status` と同じ JSON で返った
 license: BSD-3-Clause（商用利用可）
 official_url: https://www.starlette.io/
 docs_url: https://www.starlette.io/responses/

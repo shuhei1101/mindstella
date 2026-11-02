@@ -29,8 +29,9 @@ used_in:
   - plugins/mindstella/skills/mindmap/scripts/server.py
 upstream: Kludex/uvicorn
 verification:
-  state: 未確認
-  detail: モジュール構成の設計の時点では、仮想環境に 0.54.0 が入っていることだけを確かめた。`sockets` を渡した `run` と `should_exit` での終わり方は、実装のときに確かめる
+  state: 済
+  date: '2026-11-02'
+  detail: 0.54.0 で、`bind` したソケットを `Server.run(sockets=[...])` に渡すとそのポートで待ち受けた。`server_stop` で `should_exit` を真にすると、返している途中のレスポンスを返し終えてから終わり、`run` が戻った。SIGTERM を受けると終わり終えてから、受けたシグナルを `signal.raise_signal` で元の受け口へ送り直す（既定の受け口のままだと `run` の後の処理を通らずにプロセスが終わる）ため、`run` の間だけ SIGTERM の受け口を `SystemExit` を投げる関数にして、終了時のフックが呼ばれることを確かめた
 license: BSD-3-Clause（商用利用可）
 official_url: https://www.uvicorn.org/
 docs_url: https://www.uvicorn.org/settings/

@@ -36,13 +36,13 @@ catalogs:
       - name: claude mcp list
         kind: コマンド
         purpose: プラグインの `.mcp.json` の常駐サーバーへの接続が `plugin:mindstella:mindstella` として載ることを確かめる（テスト）
-        status: planned
+        status: implemented
         introduced:
           pr: 392
       - name: /mcp
         kind: スラッシュコマンド
         purpose: 会話の始まりに常駐サーバーへつなげなかったときに、利用者が mindstella へつなぎ直す（『常駐サーバーの起動の確認』とスキルが案内する）
-        status: planned
+        status: implemented
         introduced:
           pr: 392
   - name: ファイル
@@ -78,7 +78,7 @@ catalogs:
         description: '標準入力に `cwd`・`tool_name`・`tool_input` などの JSON が渡る。標準出力に `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": {...}}}` を書くと、ツールは `updatedInput` を入力として呼ばれる。`permissionDecision` を出さなければ許可の判断は変えない'
         refs:
           - dev/設計書/インターフェース定義/サーバー/セッションの値の注入#
-        status: planned
+        status: implemented
         introduced:
           pr: 392
       - name: .mcp.json
@@ -87,7 +87,7 @@ catalogs:
         description: '`{"mcpServers": {"mindstella": {"type": "http", "url": "http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp"}}}` の形。`url` の `${VAR:-既定}` は Claude Code の環境変数で展開される。プラグインの MCP サーバーのツールは `mcp__plugin_{プラグイン名}_{サーバー名}__{ツール}`（`mcp__plugin_mindstella_mindstella__{ツール}`）の名前になり、`claude mcp list` には `plugin:{プラグイン名}:{サーバー名}` で出る。`type: http` は起動せずにつなぐだけで、待ち受けていなければつながらない状態になる'
         refs:
           - dev/設計書/インターフェース定義/プラグイン/プラグインの読み込み#
-        status: planned
+        status: implemented
         introduced:
           pr: 392
   - name: スキル
@@ -126,6 +126,6 @@ upstream: anthropics/claude-code
 verification:
   state: 済
   date: '2026-10-13'
-  detail: PoC（https://github.com/shuhei1101/mindmap/pull/22）で、2.1.287 の `claude -p --plugin-dir` を既定の許可モードで動かし、プラグインの 2 つのスキルの呼び名・`${CLAUDE_PLUGIN_ROOT}` の展開・`allowed-tools` の許可とサブエージェントへの及び方を確かめた（作業ツリーとインストールした形の両方）。2026-10-13 に 2.1.296 で、`hooks/hooks.json` に `matcher` なしの `SessionStart` を 1 つ持つ最小のプラグインを `claude -p --plugin-dir` で読み込み、新しい会話・`--resume`・`--resume` での `/compact`・`/clear` を流した。フックは `source` が `startup`・`resume`・`compact`・`clear` の全てで流れ（`/compact`・`/clear` はその前に `resume` も流れる）、標準入力の JSON に作業フォルダの `cwd` が入り、コマンドの `${CLAUDE_PLUGIN_ROOT}` はプラグインのフォルダへ展開された。フックが終了コード 1 で終えても会話は始まり応答した。フックが標準出力に書いた文は会話の文脈に入り（モデルがその文を答えた）、書かなければ入らなかった。`.mcp.json` の HTTP の接続と PreToolUse の `updatedInput`（状態が `planned` の行）は、このプラグインでは実装のときに確かめる
+  detail: PoC（https://github.com/shuhei1101/mindmap/pull/22）で、2.1.287 の `claude -p --plugin-dir` を既定の許可モードで動かし、プラグインの 2 つのスキルの呼び名・`${CLAUDE_PLUGIN_ROOT}` の展開・`allowed-tools` の許可とサブエージェントへの及び方を確かめた（作業ツリーとインストールした形の両方）。2026-10-13 に 2.1.296 で、`hooks/hooks.json` に `matcher` なしの `SessionStart` を 1 つ持つ最小のプラグインを `claude -p --plugin-dir` で読み込み、新しい会話・`--resume`・`--resume` での `/compact`・`/clear` を流した。フックは `source` が `startup`・`resume`・`compact`・`clear` の全てで流れ（`/compact`・`/clear` はその前に `resume` も流れる）、標準入力の JSON に作業フォルダの `cwd` が入り、コマンドの `${CLAUDE_PLUGIN_ROOT}` はプラグインのフォルダへ展開された。フックが終了コード 1 で終えても会話は始まり応答した。フックが標準出力に書いた文は会話の文脈に入り（モデルがその文を答えた）、書かなければ入らなかった。2026-11-02 に 2.1.316 で、PR #392 の作業ツリーのプラグインを `claude -p --plugin-dir` で読み込み、`MINDSTELLA_PORT` に空きポートを渡して常駐サーバーを先に立てて確かめた。`.mcp.json` の `url` の `${MINDSTELLA_PORT:-8784}` は Claude Code の環境変数で展開され、stream-json の `init` に `plugin:mindstella:mindstella` が `connected` で載り、ツールは `mcp__plugin_mindstella_mindstella__{ツール}` の名前になった。PreToolUse の `updatedInput` で `session` を入れた `status` の呼び出しは、相対パスの `talk` を会話の作業フォルダから読んだ（`session` が無ければ引数の誤りになる）。`--plugin-dir` は `claude mcp list` に効かないため、一時の `CLAUDE_CONFIG_DIR` で作業ツリーをマーケットプレイスとして登録・インストールし、`claude mcp list` に `plugin:mindstella:mindstella: http://127.0.0.1:{ポート}/mcp (HTTP) - ✔ Connected` と出ることを確かめた（`MINDSTELLA_PORT` を消すと 8784 の URL になる）。同じ設定のフォルダの会話の SessionStart のフックが 8784 で常駐サーバーを起動した。`/mcp` は stream-json の `slash_commands` に載り、`-p` では接続の数を返す（つなぎ直しの画面は対話でだけ開く）
 license: 独自の利用規約（npm のライセンス欄は `SEE LICENSE IN README.md`）。このプラグインは同梱せず、利用者が入れたものを使う
 docs_url: https://code.claude.com/docs/en/plugins/marketplace-reference
