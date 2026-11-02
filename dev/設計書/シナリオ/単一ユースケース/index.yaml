@@ -3,7 +3,9 @@ items:
   - page: プラグインのインストール.yaml
     summary: マーケットプレイスを登録してプラグイン mindstella をインストールする
   - page: 起動スクリプトで立ち上げる.yaml
-    summary: 依存を確かめ、tmux の中で MCP サーバーを渡した Claude Code を立ち上げる
+    summary: 依存を確かめ、常駐サーバーが落ちていれば起動して、tmux の中で Claude Code を立ち上げる
+  - page: 常駐サーバーの起動と停止.yaml
+    summary: Claude Code を立ち上げたときに落ちていた常駐サーバーを起動し、状態を確かめ、止める
   - page: ワークスペースの作成.yaml
     summary: 新しいワークスペースを作る
   - page: 記録の追加と更新.yaml

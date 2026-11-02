@@ -1,7 +1,7 @@
 title: "前回読んだ時点からの変更"
 entry:
   kind: mcp_tool
-  value: '`changes_since_read`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__changes_since_read`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`changes_since_read`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__changes_since_read`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 読んだ時点より後の追加と変更を、読んだ時点の値つきで返し、read_seq を進める

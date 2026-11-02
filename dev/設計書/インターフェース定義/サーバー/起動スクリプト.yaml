@@ -4,7 +4,7 @@ entry:
   value: '`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`（利用者が端末で叩くシェルスクリプト。引数・環境変数・標準出力・標準エラー・終了コード）'
 flows:
   - name: 正常系
-    summary: 依存がそろっていれば、今の版のサーバーを渡した Claude Code を tmux のセッションで立てる
+    summary: 依存がそろっていれば、常駐サーバーが落ちていれば起動してから、Claude Code を tmux のセッションで立てる
     setup:
       - name: Mock
         description: '`PATH` の先頭に偽の `claude` を置く。`plugin list --json` には `installPath` にテストのプラグインのフォルダを返し、それ以外の引数では受け取った引数と環境変数をファイルに書いて待ち続ける'
@@ -17,6 +17,8 @@ flows:
         description: 一時フォルダを `CLAUDE_CONFIG_DIR` で渡す
       - name: ワークスペースのフォルダ
         description: まだ無いフォルダ `家計簿アプリ`
+      - name: 待ち受けのポート
+        description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡す（待ち受けているプロセスが無い）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -24,6 +26,7 @@ flows:
         participant IF as bin/mindstella
         participant PY as 依存の確認
         participant CC as claude（偽）
+        participant ES as 常駐サーバーの起動の確認
         participant TM as tmux
 
         クライアント->>IF: mindstella 家計簿アプリ（標準出力は端末でない）
@@ -31,22 +34,23 @@ flows:
         PY-->>IF: 終了コード 0、python_path
         IF->>CC: plugin list --json
         CC-->>IF: installPath
-        IF->>IF: MCP の設定を書く
+        IF->>ES: installPath の ensure_server.py
+        ES-->>IF: 終了コード 0
         IF->>TM: new-session -d -s mindstella-家計簿アプリ-{ハッシュ} -c 家計簿アプリ -e CLAUDE_CONFIG_DIR
-        TM->>CC: claude --mcp-config {MCP の設定}
+        TM->>CC: claude
         IF-->>クライアント: つなぐコマンド、終了コード 0
       ```
     expected:
       - 終了コードが 0
       - フォルダ `家計簿アプリ` ができている
       - tmux に `mindstella-家計簿アプリ-{ハッシュ}`（ハッシュは `家計簿アプリ` の絶対パスの SHA-256 の先頭 6 桁）のセッションがあり、作業フォルダが `家計簿アプリ`
-      - 偽の `claude` が受け取った `--mcp-config` のファイルの `mcpServers.mindstella` の `command` が仮想環境の Python、`args` が `installPath` の `skills/mindmap/scripts/server.py`
+      - 偽の `claude` が受け取った引数に `--mcp-config` が無い
       - 偽の `claude` の環境変数 `CLAUDE_CONFIG_DIR` が渡した設定のフォルダ
-      - その MCP の設定どおりにサーバーを立てて MCP のクライアントでつなぐと、ツールの一覧が返る
+      - '`MINDSTELLA_PORT` の `GET /_admin/status` の `plugin_root` が `installPath` で、MCP のクライアントで `/mcp` につなぐとツールの一覧が返る'
       - 標準出力に `tmux attach-session -t =mindstella-家計簿アプリ-{ハッシュ}` がある
     test: test_normal
   - name: 正常系（プラグインを上げた後）
-    summary: 古い版のフォルダのスクリプトを叩いても、新しい版のサーバーを指す
+    summary: 古い版のフォルダのスクリプトを叩いても、新しい版の常駐サーバーを起動する
     setup:
       - name: Mock
         description: 正常系と同じ偽の `claude`。`installPath` は新しい版のフォルダを返す
@@ -66,12 +70,12 @@ flows:
         クライアント->>IF: mindstella {フォルダ}
         IF->>CC: plugin list --json
         CC-->>IF: 新しい版の installPath
-        IF->>IF: 新しい版のサーバーを指す MCP の設定を書く
+        IF->>IF: 新しい版の ensure_server.py で常駐サーバーを起動する
         IF-->>クライアント: 終了コード 0
       ```
     expected:
       - 終了コードが 0
-      - MCP の設定の `args` が新しい版のフォルダの `server.py` を指す
+      - '`GET /_admin/status` の `plugin_root` が新しい版のフォルダ'
     test: test_normal_when_plugin_upgraded
   - name: 正常系（同じ名前のセッションがある）
     summary: 既にあるセッションには新しく立てず、つなぐコマンドを返す
@@ -97,7 +101,7 @@ flows:
     expected:
       - 終了コードが 0
       - tmux のセッションの数が呼ぶ前と同じ
-      - 偽の `claude` が `--mcp-config` で起動されていない
+      - 偽の `claude` が起動されていない
       - 標準エラーに、既にセッションがある旨がある
     test: test_normal_when_session_exists
   - name: 異常系（依存が足りない・DependencyMissingError）
@@ -251,28 +255,87 @@ flows:
       - 標準エラーに既にセッションがある旨が無い
     test: test_normal_when_same_folder_name_elsewhere
   - name: 正常系（外から見る設定を渡す）
-    summary: 設定されている外から見る環境変数だけを MCP の設定の env に書く
+    summary: 呼び出し元の外から見る環境変数を、起動する常駐サーバーへ渡す
     setup:
       - name: Mock
-        description: '`tmux`・`claude` を、受け取った引数を記録する偽のコマンドに差し替える（正常系と同じ）'
+        description: 正常系と同じ偽の `claude`
+      - name: 仮想環境
+        description: 正常系と同じ
+      - name: tmux
+        description: 正常系と同じ
       - name: 環境変数
-        description: '`MINDSTELLA_ALLOWED_HOSTS` と `MINDSTELLA_PREVIEW_START_HOOK` だけを設定する'
-        notes: '`MINDSTELLA_ALLOWED_HOSTS=preview.example.test`、`MINDSTELLA_PREVIEW_START_HOOK=pub add`'
+        description: '`MINDSTELLA_ALLOWED_HOSTS` を設定する'
+        notes: '`MINDSTELLA_ALLOWED_HOSTS=preview.example.test`'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant 利用者
         participant IF as 起動スクリプト
-        participant FS as MCP の設定
+        participant ES as 常駐サーバーの起動の確認
 
         利用者->>IF: mindstella {フォルダ}
-        IF->>FS: mcpServers.mindstella.env に 2 つの値を書く
+        IF->>ES: 呼び出し元の環境のまま起動する
         IF-->>利用者: セッションを立てる
       ```
     expected:
-      - MCP の設定の `mcpServers.mindstella.env` が `MINDSTELLA_ALLOWED_HOSTS` と `MINDSTELLA_PREVIEW_START_HOOK` の 2 つだけで、値が設定したものと同じ
-      - どれも設定しないと、`mcpServers.mindstella` が `env` を持たない
+      - 常駐サーバーのプロセスの環境変数 `MINDSTELLA_ALLOWED_HOSTS` が `preview.example.test`
+      - 偽の `claude` の環境変数に `MINDSTELLA_ALLOWED_HOSTS` を足していない（呼び出し元から受け継いだ分を除く）
     test: test_normal_when_external_settings
+  - name: 正常系（古いバージョンの常駐サーバーが待ち受けている）
+    summary: 待ち受けている常駐サーバーのバージョンが違えば、起動し直さずに差と手順を示し、Claude Code は立ち上げる
+    setup:
+      - name: Mock
+        description: 正常系と同じ偽の `claude`。テストが `MINDSTELLA_PORT` で、`GET /_admin/status` に `name` が `mindstella`・`version` が `0.0.1` の JSON を返す HTTP のサーバーを先に待ち受ける
+      - name: 仮想環境
+        description: 正常系と同じ
+      - name: tmux
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as bin/mindstella
+        participant ES as 常駐サーバーの起動の確認
+        participant TM as tmux
+
+        クライアント->>IF: mindstella 家計簿アプリ
+        IF->>ES: ensure_server.py
+        ES-->>IF: バージョンの差と起動し直す手順、終了コード 0
+        IF->>TM: new-session
+        IF-->>クライアント: つなぐコマンド、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - 標準エラーに `0.0.1` とプラグインのバージョンと、起動し直す手順がある
+      - tmux に `mindstella-家計簿アプリ-{ハッシュ}` のセッションがある
+      - 先に待ち受けていた HTTP のサーバーが、そのまま待ち受けている
+    test: test_normal_when_server_outdated
+  - name: 異常系（常駐サーバーを起動できない・ServerStartError）
+    summary: 常駐サーバーを起動できなければ、理由を示して Claude Code を立てない
+    setup:
+      - name: Mock
+        description: 正常系と同じ偽の `claude`。テストが `MINDSTELLA_PORT` のポートを先に待ち受け、`GET /_admin/status` に 404 を返す
+      - name: 仮想環境
+        description: 正常系と同じ
+      - name: tmux
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as bin/mindstella
+        participant ES as 常駐サーバーの起動の確認
+
+        クライアント->>IF: mindstella 家計簿アプリ
+        IF->>ES: ensure_server.py
+        ES-->>IF: 使われているポート、終了コード 1
+        IF-->>クライアント: エラー、終了コード 1
+      ```
+    expected:
+      - 終了コードが 1
+      - 標準エラーに、使われているポートの番号と `MINDSTELLA_PORT` の案内がある
+      - tmux にセッションが無く、偽の `claude` が起動されていない
+    test: test_error_when_server_start_fails
   - name: 正常系（同じフォルダを別のアカウントで開く）
     summary: 同じフォルダでも `CLAUDE_CONFIG_DIR` が違えば別のセッションを立てる
     setup:
@@ -304,9 +367,9 @@ flows:
       - 新しいセッションの偽の `claude` の環境変数 `CLAUDE_CONFIG_DIR` が `claude-sub1`
       - 先にあったセッションのプロセスが立ち上げ直されていない
     test: test_normal_when_another_account
-lead: 依存を確かめ、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を立ち上げ、そのセッションへつなぐ。
+lead: 依存を確かめ、mindstella の常駐サーバーが落ちていれば起動してから、tmux のセッションの中で Claude Code を立ち上げ、そのセッションへつなぐ。
 idempotent: false
-side_effects: この起動だけの MCP の設定（`{一時フォルダ}/mindstella-{ランダム}/mcp.json`）を書き、tmux のセッションを 1 つ立てる。ワークスペースのフォルダが無ければ作る。ワークスペースの中は書かない
+side_effects: 常駐サーバーが落ちていれば起動し（『常駐サーバーの起動の確認』）、tmux のセッションを 1 つ立てる。ワークスペースのフォルダが無ければ作る。ワークスペースの中は書かない
 callers:
   - dev/設計書/シナリオ/単一ユースケース/起動スクリプトで立ち上げる#
 request:
@@ -322,7 +385,7 @@ request:
     required: false
     default: '`~/.mindmap/venv`（『依存の確認』の `venv` の既定）'
     location: argument
-    description: 環境変数。MCP サーバーを動かす仮想環境のフォルダ
+    description: 環境変数。常駐サーバーを動かす仮想環境のフォルダ
     notes: テストで一時フォルダの仮想環境を指すために使う
   - name: CLAUDE_CONFIG_DIR
     type: str
@@ -331,31 +394,34 @@ request:
     location: argument
     description: 環境変数。Claude Code の設定のフォルダ（アカウント）。あれば tmux のセッションへ `new-session -e` で渡し、セッションの名前のハッシュにも使う
     notes: tmux のサーバーが先に立っていると、呼び出し元の環境変数はセッションへ渡らない
+  - name: MINDSTELLA_PORT
+    type: str
+    required: false
+    default: '`8784`'
+    location: argument
+    description: '環境変数。常駐サーバーの待ち受けのポート（『設定: サーバー』）。『常駐サーバーの起動の確認』へ渡す'
   - name: MINDSTELLA_ALLOWED_HOSTS
     type: str
     required: false
-    default: なし（MCP の設定に書かない）
-    description: '環境変数。プレビューの配信が受ける外のホスト名（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
+    default: なし（常駐サーバーへ渡さない）
+    description: '環境変数。プレビューの配信が受ける外のホスト名（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
   - name: MINDSTELLA_PREVIEW_START_HOOK
     type: str
     required: false
-    default: なし（MCP の設定に書かない）
-    description: '環境変数。配信を立てたときのフック（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
+    default: なし（常駐サーバーへ渡さない）
+    description: '環境変数。配信を立てたときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
   - name: MINDSTELLA_PREVIEW_STOP_HOOK
     type: str
     required: false
-    default: なし（MCP の設定に書かない）
-    description: '環境変数。配信を止めるときのフック（『設定: サーバー』）。あれば MCP の設定の `mcpServers.mindstella.env` にそのまま書く'
+    default: なし（常駐サーバーへ渡さない）
+    description: '環境変数。配信を止めるときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
 response:
   - name: tmux のセッション
     type: tmux のセッション
-    description: 名前は `mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` は `-` に置き換える。ハッシュは、ワークスペースのフォルダのシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁。`CLAUDE_CONFIG_DIR` が空でないときは、絶対パスの後ろに改行と `CLAUDE_CONFIG_DIR` のシンボリックリンクを解いた絶対パスをつないだ文字列の SHA-256 にする（同じフォルダでもアカウントごとに別のセッションになる）。作業フォルダがワークスペースのフォルダで、`claude --mcp-config {MCP の設定}` が動く
-  - name: MCP の設定
-    type: JSON のファイル
-    description: '`{"mcpServers": {"mindstella": {"command": "{仮想環境の Python}", "args": ["{プラグインのフォルダ}/skills/mindmap/scripts/server.py"]}}}`。プラグインのフォルダは `claude plugin list --json` の `mindstella@mindstella` の `installPath`'
+    description: 名前は `mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` は `-` に置き換える。ハッシュは、ワークスペースのフォルダのシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁。`CLAUDE_CONFIG_DIR` が空でないときは、絶対パスの後ろに改行と `CLAUDE_CONFIG_DIR` のシンボリックリンクを解いた絶対パスをつないだ文字列の SHA-256 にする（同じフォルダでもアカウントごとに別のセッションになる）。作業フォルダがワークスペースのフォルダで、`claude` が動く
   - name: 標準エラー
     type: str
     description: '`[mindstella]` で始まる行で、使うプラグインのフォルダとセッションの名前を出す'
@@ -378,18 +444,21 @@ exceptions:
   - name: PluginNotInstalledError
     condition: '`claude plugin list --json` に `mindstella@mindstella` が無い'
     notes: 終了コード 1。プラグインのインストールの手順を案内する行を標準エラーに出す
+  - name: ServerStartError
+    condition: 『常駐サーバーの起動の確認』が終了コード 1 を返した（ポートが使われている・起動を待つ上限を超えた）
+    notes: 終了コード 1。『常駐サーバーの起動の確認』の標準エラーをそのまま出す。tmux のセッションを立てない
 error_format: '標準エラーに `[mindstella] エラー: {内容}` の行を出し、そろえるコマンドがあれば次の行に出す。'
 constraints:
   - item: 確かめる順
-    constraint: 引数 → 依存（『依存の確認』をシステムの `python3` で起動）→ `tmux` → `claude` → プラグインのフォルダ。どれかで止まったら、それより後は何もしない
+    constraint: 引数 → 依存（『依存の確認』をシステムの `python3` で起動）→ `tmux` → `claude` → プラグインのフォルダ → 常駐サーバー（『常駐サーバーの起動の確認』を `installPath` の `ensure_server.py` で起動）。どれかで止まったら、それより後は何もしない
   - item: 使う版
-    constraint: 叩いたスクリプトの版ではなく、`claude plugin list --json` の `installPath` が指すインストールした今の版のサーバーを立てる
+    constraint: 叩いたスクリプトの版ではなく、`claude plugin list --json` の `installPath` が指すインストールした今の版の常駐サーバーを起動する。既に別のバージョンの常駐サーバーが待ち受けていれば、起動し直さずに差と手順を標準エラーに出し、Claude Code は立ち上げる
   - item: 同じ名前のセッション
     constraint: 同じ名前のセッション（同じフォルダを同じアカウントで開いたセッション）が既にあれば新しく立てず、そのセッションへつなぐ（端末でなければ、つなぐコマンドを出して終わる）。標準エラーに既にあった旨を出す。別の場所にある同じ名前のフォルダと、同じフォルダを別の `CLAUDE_CONFIG_DIR` で開いたときはハッシュが違うため、別のセッションになる
   - item: MCP の設定を渡す範囲
-    constraint: '`--mcp-config` で mindstella のサーバーだけを足す。利用者のほかの MCP の設定は消さない（`--strict-mcp-config` を付けない）。プラグインのマニフェストには MCP サーバーを書かない'
+    constraint: '`--mcp-config` を渡さない。Claude Code はプラグインの `.mcp.json` から常駐サーバーへつなぐ'
   - item: 書くもの
-    constraint: MCP の設定のファイルだけ。セッションを使い終えても消さない（数百バイト。一時フォルダの片付けに任せる）
+    constraint: 書かない（常駐サーバーの記録は『常駐サーバーの起動の確認』が書く）
   - item: シェル
     constraint: '`bash`（`set -euo pipefail`）。JSON の読み書きは仮想環境の Python で行い、`jq` に頼らない'
   - item: 終了コード
@@ -397,11 +466,13 @@ constraints:
   - item: セッションの指し方
     constraint: tmux の `-t` には頭に `=` を付けた名前（`-t =mindstella-{フォルダ名}-{ハッシュ}`）を渡し、完全に一致するセッションだけを指す
     notes: '`=` が無いと tmux は名前の前方一致でも当て、別のワークスペースのセッションを指す（tmux 3.4 で確かめた）'
-  - item: MCP サーバーへ渡す環境変数
-    constraint: '`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` のうち、呼び出し元で空でない値が設定されているものだけを、MCP の設定の `mcpServers.mindstella.env` に書く（無ければ `env` を持たない）。tmux のサーバーが先に立っていても MCP サーバーにだけ届き、Claude Code の全体の環境へは入れない。同じ名前のセッションが既にあってつなぐだけのときは、新しい値は効かない（セッションの Claude Code を閉じて立ち上げ直すと効く）'
+  - item: 常駐サーバーへ渡す環境変数
+    constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` を、常駐サーバーを起動するときに呼び出し元の環境のまま渡す。Claude Code の環境へは足さない。常駐サーバーが既に待ち受けているときは、新しい値は効かない（`server_stop` で止めてから叩き直すと効く）'
+    notes: テストは常駐サーバーを起動する全てのフローで、空きポートを `MINDSTELLA_PORT` で渡す（利用者の端末の 8784 に触れない）
 refs:
   - dev/設計書/インターフェース定義/サーバー/依存の確認#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
   - dev/設計書/外部ライブラリ/tmux#
   - dev/設計書/外部ライブラリ/claude-code#
 notes:

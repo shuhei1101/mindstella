@@ -14,15 +14,18 @@ catalogs:
       - name: MCPServer.tool
         kind: デコレーター
         purpose: 関数をツールとして登録し、引数の型から入力のスキーマを作る
-      - name: MCPServer.run
+      - name: MCPServer.streamable_http_app
         kind: メソッド
-        purpose: '`stdio` で動かし、標準入力が閉じたら戻る'
+        purpose: '`streamable_http_path="/mcp"`・`host="127.0.0.1"` で、Streamable HTTP で受ける ASGI のアプリを作る（uvicorn で動かす）'
+      - name: MCPServer.custom_route
+        kind: デコレーター
+        purpose: '`GET /_admin/status` を MCP の入口と同じアプリに載せる'
       - name: mcp.ClientSession
         kind: クラス
         purpose: テストで MCP サーバーにつなぎ、ツールを呼ぶ
-      - name: mcp.client.stdio.stdio_client
+      - name: mcp.client.streamable_http.streamable_http_client
         kind: 関数
-        purpose: テストで MCP サーバーを子プロセスとして立てる
+        purpose: テストで常駐サーバーの `/mcp` へ HTTP でつなぐ
 lead: Model Context Protocol の公式の Python SDK。MCP のサーバーとクライアントを作る。
 purl: pkg:pypi/mcp
 supplier: Model Context Protocol
@@ -34,7 +37,7 @@ upstream: modelcontextprotocol/python-sdk
 verification:
   state: 済
   date: '2026-10-04'
-  detail: '2.3.0 を仮想環境に入れ、`MCPServer` の stdio のサーバーへ `ClientSession` でつないで確かめた。`CallToolResult` を自分で返すと `structured_content` と本文がそのまま届き、`is_error` を真にした本文も `エラー: ` で始まったまま届く。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き、`ToolError` 以外は内容が消える。要る引数が無いと、ツールを呼ぶ前に SDK が引数の名前を含むエラーを返す。結果の属性は `is_error`・`structured_content`・`server_info` のように snake_case'
+  detail: '2.3.0 を仮想環境に入れ、`MCPServer` の stdio のサーバーへ `ClientSession` でつないで確かめた。`CallToolResult` を自分で返すと `structured_content` と本文がそのまま届き、`is_error` を真にした本文も `エラー: ` で始まったまま届く。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き、`ToolError` 以外は内容が消える。要る引数が無いと、ツールを呼ぶ前に SDK が引数の名前を含むエラーを返す。結果の属性は `is_error`・`structured_content`・`server_info` のように snake_case。`streamable_http_app`・`custom_route`・`streamable_http_client` は Issue #338 の設計の時点では未確認で、実装のときに確かめる'
 license: MIT（商用利用可）
 official_url: https://modelcontextprotocol.io/
 docs_url: https://github.com/modelcontextprotocol/python-sdk

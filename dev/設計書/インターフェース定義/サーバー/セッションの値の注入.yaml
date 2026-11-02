@@ -1,0 +1,146 @@
+title: "セッションの値の注入"
+entry:
+  kind: trigger
+  value: Claude Code の `PreToolUse` のフック（mindstella のツールを呼ぶたび）が、プラグインの `hooks/hooks.json` から `python3 {プラグインのフォルダ}/skills/mindmap/scripts/inject_session.py` を呼ぶ
+flows:
+  - name: 正常系
+    summary: tmux の中のセッションの値を `session` に入れた入力を返す
+    setup:
+      - name: Mock
+        description: 'Claude Code の代わりに、フックの入力の JSON（`cwd` はテストの一時フォルダ、`tool_input` は `{"workspace": "talk"}`）を標準入力に渡してスクリプトを起動する'
+      - name: 環境変数
+        description: '`TMUX` に `/tmp/tmux-1000/default,1234,0`、`TMUX_PANE` に `%3`、`CLAUDE_CONFIG_DIR` にテストの一時フォルダを渡す'
+      - name: Claude Code のプロセス
+        description: テストが名前を `claude` にしたプロセスを立て、その子としてスクリプトを起動する
+        notes: 実行ファイルを `claude` という名前のリンクにして立てる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as inject_session.py
+
+        CC->>IF: PreToolUse の入力（cwd・tool_input）
+        IF->>IF: 親をたどって claude のプロセスを探す
+        IF-->>CC: updatedInput（tool_input と session）
+      ```
+    expected:
+      - 終了コードが 0
+      - 標準出力の JSON の `hookSpecificOutput.hookEventName` が `PreToolUse`
+      - '`hookSpecificOutput.updatedInput.workspace` が `talk` のまま'
+      - '`updatedInput.session` の `cwd`・`tmux`・`tmux_pane`・`claude_config_dir` が、入力の `cwd` と渡した環境変数の値'
+      - '`updatedInput.session.claude_pid` が `claude` の名前のプロセスの PID で、`claude_started_at` がそのプロセスの `ps -o lstart=` の値'
+    test: test_normal
+  - name: 正常系（tmux の外）
+    summary: '`TMUX`・`TMUX_PANE` が無ければ、`cwd` と `claude_config_dir` だけを入れる'
+    setup:
+      - name: Mock
+        description: 正常系と同じ。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を消した環境で起動する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as inject_session.py
+
+        CC->>IF: PreToolUse の入力
+        IF-->>CC: updatedInput（cwd と claude_config_dir の session）
+      ```
+    expected:
+      - '`updatedInput.session` のキーが `cwd` と `claude_config_dir` だけ'
+      - '`claude_config_dir` が `~/.claude` の絶対パス'
+    test: test_normal_when_outside_tmux
+  - name: 正常系（入力の session を上書きする）
+    summary: AI が `session` を書いて呼んでも、フックの値で置き換える
+    setup:
+      - name: Mock
+        description: '正常系と同じ。`tool_input` に `{"workspace": "talk", "session": {"cwd": "/etc"}}` を渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as inject_session.py
+
+        CC->>IF: PreToolUse の入力（session あり）
+        IF-->>CC: updatedInput（フックの値の session）
+      ```
+    expected:
+      - '`updatedInput.session.cwd` が入力の `cwd` で、`/etc` でない'
+    test: test_normal_when_session_given
+  - name: 正常系（読めない入力）
+    summary: JSON でない入力では何も出さずに終わり、ツールの呼び出しを止めない
+    setup:
+      - name: Mock
+        description: 標準入力に `not json` を渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as inject_session.py
+
+        CC->>IF: 読めない入力
+        IF-->>CC: 終了コード 0
+      ```
+    expected:
+      - 終了コードが 0 で、標準出力に何も書かない
+    test: test_normal_when_input_invalid
+lead: mindstella のツールを呼ぶたびに、呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの引数 `session` に入れる。
+idempotent: true
+side_effects: なし（何も書き込まない）
+request:
+  - name: cwd
+    type: str
+    required: true
+    location: body
+    description: Claude Code がフックの標準入力に渡す JSON の作業フォルダ
+  - name: tool_input
+    type: dict
+    required: true
+    location: body
+    description: ツールの入力。`session` 以外はそのまま返す
+  - name: TMUX
+    type: str
+    required: false
+    default: なし（`session.tmux` を入れない）
+    location: argument
+    description: 環境変数。フックは Claude Code の環境を受け継ぐ
+  - name: TMUX_PANE
+    type: str
+    required: false
+    default: なし（`session.tmux_pane` を入れない）
+    location: argument
+    description: 環境変数
+  - name: CLAUDE_CONFIG_DIR
+    type: str
+    required: false
+    default: '`~/.claude`'
+    location: argument
+    description: 環境変数
+response:
+  - name: hookSpecificOutput.hookEventName
+    type: '"PreToolUse"'
+    description: フックの種類
+  - name: hookSpecificOutput.updatedInput
+    type: dict
+    description: '`tool_input` のコピーに、`session`（『MCP サーバーの起動』の `session` のキー）を上書きで入れたもの'
+exceptions:
+  - name: なし（正常終了）
+    condition: 入力を書き換えたか、読めない入力で何もしなかった
+    notes: 終了コード 0。許可の判断（`permissionDecision`）は出さない
+constraints:
+  - item: 契機
+    constraint: プラグインの `hooks/hooks.json` の `PreToolUse`。`matcher` は `mcp__plugin_mindstella_mindstella__.*`
+  - item: 起動するコマンド
+    constraint: '`python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/inject_session.py"`。システムの `python3` で動き、標準ライブラリだけを使う'
+  - item: Claude Code のプロセスの探し方
+    constraint: フックのプロセスの親から `ps -o ppid=,lstart=,comm= -p {PID}` でたどり、最初に `comm` が `claude` のプロセスを Claude Code とする。PID 1 まで見つからなければ `claude_pid`・`claude_started_at` を入れない
+    notes: Claude Code 2.1 は、フックを `bash` を挟んで起動する。間に別のコマンド（`claude-balancer` など）が挟まっても、名前が `claude` のプロセスで止まる（2026-11-02 に確かめた）
+  - item: tmux の外
+    constraint: '`TMUX` か `TMUX_PANE` が空なら、`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` を入れない'
+  - item: 上限
+    constraint: '`ps` をたどるのは 32 段まで'
+    notes: Claude Code の下のフックのプロセスの深さは数段で、たどり続けて止まらないことを防ぐ上限
+refs:
+  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - dev/設計書/外部ライブラリ/claude-code#
+callers:
+  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+test_file: tests/integration/server/test_inject_session.py

@@ -1,0 +1,216 @@
+title: "常駐サーバーの起動の確認"
+entry:
+  kind: trigger
+  value: Claude Code の `SessionStart` のフック（新しい会話・再開・`/clear`・圧縮のたび）が、プラグインの `hooks/hooks.json` から `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py --hook` を呼ぶ。起動スクリプトは `--hook` を付けずに呼ぶ
+flows:
+  - name: 正常系
+    summary: 常駐サーバーが落ちていれば起動し、待ち受けを確かめて、つなぎ直す案内を出す
+    setup:
+      - name: Mock
+        description: Claude Code の代わりに、フックの入力の JSON を標準入力に渡してスクリプトを起動する
+      - name: 仮想環境
+        description: PyYAML・jsonschema・mcp を見せた仮想環境を `MINDSTELLA_VENV` で渡す
+      - name: 待ち受けのポート
+        description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡す（待ち受けているプロセスが無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as ensure_server.py
+        participant SV as 常駐サーバー
+
+        CC->>IF: SessionStart の入力
+        IF-->>SV: GET /_admin/status
+        IF->>SV: 仮想環境の Python で server.py を起動する
+        IF-->>SV: GET /_admin/status（待ち受けるまで）
+        SV-->>IF: name mindstella
+        IF-->>CC: つなぎ直す案内、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - '`MINDSTELLA_PORT` の `GET /_admin/status` が `name` に `mindstella` を返す'
+      - 標準出力に、mindstella の常駐サーバーを起動したことと、`/mcp` で mindstella につなぎ直す案内がある
+      - スクリプトが終わった後も常駐サーバーのプロセスが残る
+    test: test_normal
+  - name: 正常系（既に待ち受けている）
+    summary: 同じバージョンの常駐サーバーが待ち受けていれば、起動せずに何も出さない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 待ち受けている常駐サーバー
+        description: 正常系でスクリプトが起動した常駐サーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as ensure_server.py
+        participant SV as 常駐サーバー
+
+        CC->>IF: SessionStart の入力
+        IF-->>SV: GET /_admin/status
+        SV-->>IF: name mindstella、同じバージョン
+        IF-->>CC: 終了コード 0
+      ```
+    expected:
+      - 終了コードが 0 で、標準出力に何も書かない
+      - 常駐サーバーのプロセスが 1 つのまま
+    test: test_normal_when_running
+  - name: 正常系（古いバージョンが待ち受けている）
+    summary: 待ち受けている常駐サーバーのバージョンがプラグインと違えば、起動し直さずに差と手順を示す
+    setup:
+      - name: Mock
+        description: 正常系と同じ。テストが `MINDSTELLA_PORT` で、`GET /_admin/status` に `name` が `mindstella`・`version` が `0.0.1` の JSON を返す HTTP のサーバーを先に待ち受ける
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as ensure_server.py
+        participant SV as 常駐サーバー（古い）
+
+        CC->>IF: SessionStart の入力
+        IF-->>SV: GET /_admin/status
+        SV-->>IF: name mindstella、version 0.0.1
+        IF-->>CC: バージョンの差と起動し直す手順、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - 標準出力に `0.0.1` とプラグインのバージョンがあり、`server_stop` で止めてから Claude Code を立ち上げ直す手順がある
+      - 先に待ち受けていた HTTP のサーバーが、そのまま待ち受けている
+    test: test_normal_when_outdated
+  - name: 正常系（起動スクリプトから呼ぶ）
+    summary: '`--hook` を付けずに呼ぶと、標準入力を読まず、起動したことを標準エラーに出す'
+    setup:
+      - name: Mock
+        description: なし（標準入力に何も渡さずにスクリプトを起動する）
+      - name: 仮想環境
+        description: 正常系と同じ
+      - name: 待ち受けのポート
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as ensure_server.py
+        participant SV as 常駐サーバー
+
+        クライアント->>IF: ensure_server.py
+        IF-->>SV: GET /_admin/status
+        IF->>SV: 仮想環境の Python で server.py を起動する
+        SV-->>IF: name mindstella
+        IF-->>クライアント: 終了コード 0
+      ```
+    expected:
+      - 終了コードが 0 で、標準出力に何も書かない
+      - 標準エラーに `[mindstella]` で始まる、起動したポートの行がある
+    test: test_normal_when_called_by_launcher
+  - name: 異常系（待ち受けのポートが使われている・PortInUseError）
+    summary: ポートを mindstella でないプロセスが使っていて常駐サーバーが待ち受けられないと、使われているポートを示し、会話の始まりは止めない
+    setup:
+      - name: Mock
+        description: 正常系と同じ。テストが `MINDSTELLA_PORT` のポートを先に待ち受け、`GET /_admin/status` に 404 を返す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as ensure_server.py
+        participant SV as 常駐サーバー
+
+        CC->>IF: SessionStart の入力
+        IF-->>SV: GET /_admin/status
+        IF->>SV: server.py を起動する
+        SV-->>IF: 終了コード 1、使われているポート
+        IF-->>CC: ポートと MINDSTELLA_PORT の案内、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - 標準出力に、使われているポートの番号と `MINDSTELLA_PORT` で別のポートを渡す案内がある
+      - ポートを先に待ち受けていた側が、そのまま待ち受けている
+      - '`--hook` を付けずに同じ状態で呼ぶと、終了コード 1 で、標準エラーに同じ案内がある'
+    test: test_error_when_port_in_use
+  - name: 異常系（依存が足りない・DependencyMissingError）
+    summary: 仮想環境に依存がそろっていなければ、起動せずにそろえるコマンドを示す
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 仮想環境
+        description: PyYAML・jsonschema・mcp を入れていない仮想環境を `MINDSTELLA_VENV` で渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as ensure_server.py
+        participant SV as 常駐サーバー
+
+        CC->>IF: SessionStart の入力
+        IF-->>SV: GET /_admin/status
+        IF->>IF: 依存を確かめる
+        IF-->>CC: そろえるコマンド、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - 標準出力に `PyYAML`・`jsonschema`・`mcp` と、`-m pip install` を含むそろえるコマンドがある
+      - '`MINDSTELLA_PORT` のポートで待ち受けているプロセスが無い'
+    test: test_error_when_dependency_missing
+lead: Claude Code が会話を始めるたびと起動スクリプトが Claude Code を立ち上げる前に、mindstella の常駐サーバーが待ち受けているかを確かめ、落ちていれば起動する。
+idempotent: true
+side_effects: 常駐サーバーが落ちていれば、仮想環境の Python で `server.py` を新しいセッションで（`start_new_session`）起動する。常駐サーバーの標準エラーを `~/.mindmap/server.log` に書き足す。ワークスペースは書かない
+request:
+  - name: --hook
+    type: bool
+    required: false
+    default: なし（起動スクリプトからの呼び出しとして、案内を標準エラーに出し、失敗は終了コード 1）
+    location: argument
+    description: SessionStart のフックからの呼び出し。標準入力のフックの入力を読み捨て、案内を標準出力に出し、どの結末も終了コード 0 で終わる
+  - name: MINDSTELLA_PORT
+    type: str
+    required: false
+    default: '`8784`'
+    location: argument
+    description: 環境変数。確かめるポートと、起動する常駐サーバーへ渡すポート
+  - name: MINDSTELLA_VENV
+    type: str
+    required: false
+    default: '`~/.mindmap/venv`（『依存の確認』の `venv` の既定）'
+    location: argument
+    description: 環境変数。常駐サーバーを動かす仮想環境のフォルダ
+exceptions:
+  - name: なし（正常終了）
+    condition: 常駐サーバーが待ち受けていたか、起動して待ち受けた（バージョンが違うときを含む）
+    notes: 終了コード 0
+  - name: PortInUseError
+    condition: 起動した常駐サーバーが PortInUseError で終わった
+    notes: '`--hook` では終了コード 0、無ければ 1'
+  - name: DependencyMissingError
+    condition: 『依存の確認』で仮想環境・Python・ライブラリのどれかが足りない
+    notes: '`--hook` では終了コード 0、無ければ 1'
+  - name: ServerStartTimeoutError
+    condition: 起動した常駐サーバーが、終わらないまま 10 秒以内に `GET /_admin/status` へ応答しない
+    notes: '`--hook` では終了コード 0、無ければ 1。`~/.mindmap/server.log` を見るよう案内する'
+error_format: '`[mindstella] エラー: {内容}` の行を出し、そろえるコマンド・案内があれば次の行に出す。`--hook` では標準出力、無ければ標準エラーに出す'
+constraints:
+  - item: 契機
+    constraint: プラグインの `hooks/hooks.json` の `SessionStart`（`matcher` なし）。既存の `reset_unread.py` の呼び出しと並べて置く
+  - item: 起動するコマンド
+    constraint: '`python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/ensure_server.py" --hook`。システムの `python3` で動き、標準ライブラリだけを使う（仮想環境が無くても依存の不足を案内できる）'
+  - item: 待ち受けているかの判定
+    constraint: '`http://127.0.0.1:{MINDSTELLA_PORT}/_admin/status` へ 1 秒で打ち切る GET を送り、200 で JSON の `name` が `mindstella` なら待ち受けているとみなす。つながらない・200 でない・JSON でない・`name` が違うときは、落ちているとみなして起動する'
+  - item: バージョンの比べ方
+    constraint: 応答の `version` と、プラグインの `version.ini` のバージョンを比べる。違うときは起動し直さず、差と、`server_stop` で止めてから Claude Code を立ち上げ直す手順を示す（並行する別のセッションが使っているため）
+  - item: 起動の仕方
+    constraint: 依存を確かめ（『依存の確認』と同じ確かめ方）、`python_path` で `{プラグインのフォルダ}/skills/mindmap/scripts/server.py` を新しいセッションで起動する。環境変数は呼び出し元の環境をそのまま渡す（外から見る設定の 3 つを含む）。標準入力はつながず、標準出力・標準エラーは `~/.mindmap/server.log` に書き足す
+  - item: 起動を待つ上限
+    constraint: '`GET /_admin/status` を 0.2 秒ごとに送り、10 秒まで待つ。その間に常駐サーバーのプロセスが終わったら、`server.log` に書き足された分から理由を読んで示す'
+    notes: 'mcp の SDK と PyYAML を読み込んで待ち受けるまでの時間（`MCPServer` の起動。WSL で 1 秒前後）に余裕を持たせた値。会話の始まりを待たせるのは起動したときだけ'
+  - item: 標準出力
+    constraint: '`--hook` で、起動した・バージョンが違う・起動できないときだけ書く（会話の文脈に入る）。既に同じバージョンが待ち受けていれば何も書かない'
+  - item: つなぎ直す案内
+    constraint: 起動したときは、Claude Code が会話の始まりに常駐サーバーへつなげず mindstella のツールを持たないことがあるため、`/mcp` で mindstella につなぎ直す案内を出す
+refs:
+  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの状態#
+  - dev/設計書/インターフェース定義/サーバー/依存の確認#
+  - dev/設計書/外部ライブラリ/claude-code#
+callers:
+  - dev/設計書/シナリオ/単一ユースケース/常駐サーバーの起動と停止#
+  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+test_file: tests/integration/server/test_ensure_server.py

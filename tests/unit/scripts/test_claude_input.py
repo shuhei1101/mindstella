@@ -30,9 +30,34 @@ INPUT_BYTES_2 = INPUT_TEXT_2.encode("utf-8")
 LONG_CWD = Path("/" + "a" * 229)
 LONG_PREFIX = "-" + "a" * 199
 
-# tmux の送り先
-SOCKET = "/s,1,0"
+# tmux の送り先（セッションの TMUX と、その最初の , より前のソケット）
+TMUX = "/s,1,0"
+SOCKET = "/s"
 PANE = "%3"
+
+# 宛先の Claude Code のプロセスの PID と、空白を 1 つにつめた起動時刻
+CLAUDE_PID = 40
+STARTED_AT = "Mon Nov 2 10:00:00 2026"
+
+# 生きている宛先に ps・tmux が返す値（`ps -o lstart=` は空白の並びを含む）
+ALIVE_RESPONSES: dict[tuple[str, ...], tuple[int, str]] = {
+    ("ps", "-o", "lstart=", "-p", "40"): (0, "Mon Nov  2 10:00:00 2026\n"),
+    ("tmux", "-S", "/s", "display-message", "-p", "-t", "%3", "#{pane_pid}"): (0, "10\n"),
+    ("ps", "-o", "ppid=", "-p", "40"): (0, "   20\n"),
+    ("ps", "-o", "ppid=", "-p", "20"): (0, "   10\n"),
+}
+
+# ペインで直に Claude Code を動かした宛先に ps・tmux が返す値
+DIRECT_RESPONSES: dict[tuple[str, ...], tuple[int, str]] = {
+    ("ps", "-o", "lstart=", "-p", "40"): (0, "Mon Nov  2 10:00:00 2026\n"),
+    ("tmux", "-S", "/s", "display-message", "-p", "-t", "%3", "#{pane_pid}"): (0, "40\n"),
+}
+
+# 宛先が生きているかを確かめるコマンドの鍵
+LSTART_KEY = ("ps", "-o", "lstart=", "-p", "40")
+DISPLAY_KEY = ("tmux", "-S", "/s", "display-message", "-p", "-t", "%3", "#{pane_pid}")
+PPID_40_KEY = ("ps", "-o", "ppid=", "-p", "40")
+PPID_20_KEY = ("ps", "-o", "ppid=", "-p", "20")
 
 # 呼び出しの打ち切り時刻と、その手前の時刻・過ぎた時刻
 DEADLINE = 1.0
@@ -85,13 +110,38 @@ DEQUEUE_LINE = json.dumps({"type": "queue-operation", "operation": "dequeue"}) +
 PARTIAL_USER_LINE = USER_LINE.rstrip("\n")
 
 
-def _target(
-    tmp_path: Path, *, socket: str | None = SOCKET, pane: str | None = PANE
-) -> claude_input.InputTarget:
+def _target(tmp_path: Path) -> claude_input.InputTarget:
     """作業フォルダが `/work/ws`・設定のフォルダが tmp_path の下の送り先を作る。"""
     return claude_input.InputTarget(
-        socket=socket, pane=pane, config_dir=tmp_path / "cfg", cwd=WORK_DIR
+        socket=SOCKET,
+        pane=PANE,
+        config_dir=tmp_path / "cfg",
+        cwd=WORK_DIR,
+        claude_pid=CLAUDE_PID,
+        claude_started_at=STARTED_AT,
     )
+
+
+def _target_at(config_dir: Path, cwd: Path) -> claude_input.InputTarget:
+    """設定のフォルダと作業フォルダを決めた送り先を作る。"""
+    return claude_input.InputTarget(
+        socket=SOCKET,
+        pane=PANE,
+        config_dir=config_dir,
+        cwd=cwd,
+        claude_pid=CLAUDE_PID,
+        claude_started_at=STARTED_AT,
+    )
+
+
+def _session(**values: Any) -> claude_input.Session:
+    """作業フォルダが `/work/ws`・設定のフォルダが `/c` で、values を足したセッションを作る。"""
+    return claude_input.Session(cwd=WORK_DIR, claude_config_dir=Path("/c"), **values)
+
+
+def _tmux_session(pane: str) -> claude_input.Session:
+    """ペインへ入力するのに要る値がそろったセッションを作る。"""
+    return _session(tmux=TMUX, tmux_pane=pane, claude_pid=CLAUDE_PID, claude_started_at=STARTED_AT)
 
 
 def _work_folder(tmp_path: Path) -> Path:
@@ -118,30 +168,71 @@ class _FakeTime:
 
 
 class _Runner:
-    """tmux の呼び出しを控え、コマンドごとに決めた結果を返す偽の `run`。"""
+    """ps・tmux の呼び出しを控え、決めた結果を返す偽の `run`。
+
+    `responses` にあるコマンドはその終了コードと標準出力を返す。
+    無い tmux のコマンドはサブコマンドの名前ごとの `outcomes`（既定 0）、無い ps は終了コード 1 を返す。
+    """
 
     def __init__(
         self,
         *,
+        responses: dict[tuple[str, ...], tuple[int, str]] | None = None,
         outcomes: dict[str, int | Exception] | None = None,
         on_call: Callable[[list[str]], None] | None = None,
     ) -> None:
-        """コマンド名（`tmux` の次の語）ごとの結果と、呼ばれたときに動かす処理を受け取る。"""
+        """コマンドごとの応答・tmux のサブコマンドごとの結果・呼ばれたときに動かす処理を受け取る。"""
         self.commands: list[list[str]] = []
         self.kwargs: list[dict[str, Any]] = []
+        self._responses = ALIVE_RESPONSES if responses is None else responses
         self._outcomes = {} if outcomes is None else outcomes
         self._on_call = on_call
 
-    def __call__(self, command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
-        """呼ばれた引数を控え、決めた結果（終了コード・例外）を返す。"""
+    def __call__(self, command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+        """呼ばれた引数を控え、決めた結果（終了コードと標準出力・例外）を返す。"""
         self.commands.append(command)
         self.kwargs.append(kwargs)
         if self._on_call is not None:
             self._on_call(command)
-        outcome = self._outcomes.get(command[1], 0)
+        returncode, stdout = self._result_of(command)
+        return subprocess.CompletedProcess(
+            args=command, returncode=returncode, stdout=_as_output(stdout, kwargs)
+        )
+
+    def _result_of(self, command: list[str]) -> tuple[int, str]:
+        """コマンドの終了コードと標準出力を決める（tmux の決めた例外は送る）。"""
+        # 応答を決めたコマンド: その値
+        if tuple(command) in self._responses:
+            return self._responses[tuple(command)]
+        # 応答を決めていない ps: プロセスが無い
+        if command[0] == "ps":
+            return 1, ""
+        # tmux の書き込みのコマンド: サブコマンドごとの結果
+        outcome = self._outcomes.get(command[3], 0)
         if isinstance(outcome, Exception):
             raise outcome
-        return subprocess.CompletedProcess(args=command, returncode=outcome)
+        return outcome, ""
+
+    def tmux_subcommands(self) -> list[str]:
+        """呼ばれた tmux のサブコマンドの名前を順に返す。"""
+        return [command[3] for command in self.commands if command[0] == "tmux"]
+
+    def kwargs_of(self, subcommand: str) -> dict[str, Any]:
+        """最初に呼ばれた tmux のサブコマンドのキーワード引数を返す。"""
+        for command, kwargs in zip(self.commands, self.kwargs, strict=True):
+            if command[0] == "tmux" and command[3] == subcommand:
+                return kwargs
+        raise AssertionError(f"{subcommand} が呼ばれていません")
+
+    def called_with(self, word: str) -> bool:
+        """word を引数に持つコマンドが呼ばれたかを返す。"""
+        return any(word in command for command in self.commands)
+
+
+def _as_output(text: str, kwargs: dict[str, Any]) -> Any:
+    """text か encoding で呼ばれたら文字列、無ければバイト列で標準出力を返す。"""
+    is_text = bool(kwargs.get("text") or kwargs.get("encoding") or kwargs.get("universal_newlines"))
+    return text if is_text else text.encode("utf-8")
 
 
 def _write_jsonl(path: Path, text: str) -> None:
@@ -182,38 +273,223 @@ def _prepare_transcripts(
     return sizes
 
 
-def test_load_input_target(tmp_path: Path) -> None:
-    """3 つの環境変数と作業フォルダを持つ（正常系）。"""
+def test_remember() -> None:
+    """後から呼んだセッションの宛先にする（正常系）。"""
     # 準備
-    environ = {
-        "TMUX": SOCKET,
-        "TMUX_PANE": PANE,
-        "CLAUDE_CONFIG_DIR": str(tmp_path / "cfg"),
+    targets = claude_input.InputTargets()
+    root = Path("/work/ws")
+    # 実行・検証
+    targets.remember(root, _tmux_session("%3"))
+    first = targets.target_of(root)
+    assert first is not None
+    assert first.pane == "%3"
+    targets.remember(root, _tmux_session("%5"))
+    second = targets.target_of(root)
+    assert second is not None
+    assert second.pane == "%5"
+    targets.remember(root, _session())
+    assert targets.target_of(root) is None
+
+
+def test_enter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """セッションを受けていないワークスペースには入力しない（正常系）。"""
+    # 準備
+    run = _Runner()
+    monkeypatch.setattr(claude_input.subprocess, "run", run)
+    targets = claude_input.InputTargets()
+    # 実行
+    result = targets.enter(tmp_path, 1)
+    # 検証
+    assert result is False
+    assert run.commands == []
+
+
+def test_parse_session() -> None:
+    """全ての値を読む（正常系）。"""
+    # 準備
+    raw = {
+        "cwd": "/w",
+        "claude_config_dir": "/c",
+        "tmux": "/s,1,0",
+        "tmux_pane": "%3",
+        "claude_pid": 42,
+        "claude_started_at": "Mon Nov  2 10:00:00 2026",
     }
     # 実行
-    target = claude_input.load_input_target(environ, tmp_path)
+    session = claude_input.parse_session(raw)
     # 検証
-    assert target.socket == SOCKET
-    assert target.pane == PANE
-    assert target.config_dir == tmp_path / "cfg"
-    assert target.cwd == tmp_path.resolve()
+    assert session is not None
+    assert session.cwd == Path("/w")
+    assert session.claude_config_dir == Path("/c")
+    assert session.tmux == "/s,1,0"
+    assert session.tmux_pane == "%3"
+    assert session.claude_pid == 42
+    assert session.claude_started_at == "Mon Nov 2 10:00:00 2026"
 
 
 @pytest.mark.parametrize(
-    "environ",
+    "raw",
     [
-        pytest.param({}, id="empty_dict"),
-        pytest.param({"TMUX": "", "TMUX_PANE": "", "CLAUDE_CONFIG_DIR": ""}, id="empty_values"),
+        pytest.param({"cwd": "/w"}, id="cwd_only"),
+        pytest.param({"cwd": "/w", "tmux": "", "claude_pid": "42"}, id="empty_and_string_pid"),
+        pytest.param({"cwd": "/w", "claude_pid": True}, id="bool_pid"),
     ],
 )
-def test_load_input_target_when_outside_tmux(tmp_path: Path, environ: dict[str, str]) -> None:
-    """tmux の外では送り先が無く、設定のフォルダは既定（正常系）。"""
-    # 準備・実行
-    target = claude_input.load_input_target(environ, tmp_path)
+def test_parse_session_when_partial(raw: dict[str, Any]) -> None:
+    """足りない値・形の違う値は None にする（正常系）。"""
+    # 実行
+    session = claude_input.parse_session(raw)
     # 検証
-    assert target.socket is None
-    assert target.pane is None
-    assert target.config_dir == claude_input.DEFAULT_CONFIG_DIR
+    assert session is not None
+    assert session.cwd == Path("/w")
+    assert session.claude_config_dir == claude_input.DEFAULT_CONFIG_DIR
+    assert session.tmux is None
+    assert session.tmux_pane is None
+    assert session.claude_pid is None
+    assert session.claude_started_at is None
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        pytest.param(None, id="none"),
+        pytest.param({}, id="empty"),
+        pytest.param({"cwd": "w"}, id="relative_cwd"),
+        pytest.param({"cwd": 1}, id="cwd_not_string"),
+    ],
+)
+def test_parse_session_when_invalid(raw: dict[str, Any] | None) -> None:
+    """作業フォルダが読めなければ None（正常系）。"""
+    # 実行
+    session = claude_input.parse_session(raw)
+    # 検証
+    assert session is None
+
+
+def test_input_target() -> None:
+    """ソケットは TMUX の最初の , より前（正常系）。"""
+    # 準備
+    session = _session(
+        tmux="/tmp/tmux-1000/default,1234,0",
+        tmux_pane="%3",
+        claude_pid=CLAUDE_PID,
+        claude_started_at=STARTED_AT,
+    )
+    # 実行
+    target = claude_input.input_target(session)
+    # 検証
+    assert target is not None
+    assert target.socket == "/tmp/tmux-1000/default"
+    assert target.pane == "%3"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        pytest.param(
+            {"tmux_pane": "%3", "claude_pid": CLAUDE_PID, "claude_started_at": STARTED_AT},
+            id="no_tmux",
+        ),
+        pytest.param(
+            {"tmux": TMUX, "claude_pid": CLAUDE_PID, "claude_started_at": STARTED_AT},
+            id="no_pane",
+        ),
+        pytest.param(
+            {"tmux": TMUX, "tmux_pane": "%3", "claude_started_at": STARTED_AT}, id="no_pid"
+        ),
+        pytest.param(
+            {"tmux": TMUX, "tmux_pane": "%3", "claude_pid": CLAUDE_PID}, id="no_started_at"
+        ),
+    ],
+)
+def test_input_target_when_missing(values: dict[str, Any]) -> None:
+    """値が欠けていれば None（正常系）。"""
+    # 実行
+    target = claude_input.input_target(_session(**values))
+    # 検証
+    assert target is None
+
+
+@pytest.mark.parametrize(
+    ("responses", "calls_ppid"),
+    [
+        pytest.param(ALIVE_RESPONSES, True, id="descendant"),
+        pytest.param(DIRECT_RESPONSES, False, id="pane_process"),
+    ],
+)
+def test_is_session_alive(
+    tmp_path: Path, responses: dict[tuple[str, ...], tuple[int, str]], calls_ppid: bool
+) -> None:
+    """起動時刻が一致し、ペインのプロセスの子孫なら生きている（正常系）。"""
+    # 準備
+    run = _Runner(responses=responses)
+    # 実行
+    result = claude_input.is_session_alive(
+        _target(tmp_path), deadline=DEADLINE, run=run, clock=lambda: CLOCK_BEFORE
+    )
+    # 検証
+    assert result is None
+    assert run.called_with("ppid=") is calls_ppid
+
+
+@pytest.mark.parametrize(
+    ("responses", "clock_now", "expected", "runs"),
+    [
+        pytest.param(
+            {**ALIVE_RESPONSES, LSTART_KEY: (1, "")},
+            CLOCK_BEFORE,
+            "Claude Code のプロセス 40 が無い",
+            True,
+            id="process_missing",
+        ),
+        pytest.param(
+            {**ALIVE_RESPONSES, LSTART_KEY: (0, "Mon Nov  2 11:00:00 2026\n")},
+            CLOCK_BEFORE,
+            "PID 40 が別のプロセスに使い回された",
+            True,
+            id="pid_reused",
+        ),
+        pytest.param(
+            {**ALIVE_RESPONSES, DISPLAY_KEY: (1, "")},
+            CLOCK_BEFORE,
+            "ペイン %3 が無い",
+            True,
+            id="pane_missing",
+        ),
+        pytest.param(
+            {**ALIVE_RESPONSES, PPID_20_KEY: (0, "    1\n")},
+            CLOCK_BEFORE,
+            "Claude Code がペイン %3 の中に無い",
+            True,
+            id="reached_init",
+        ),
+        pytest.param(
+            {**ALIVE_RESPONSES, PPID_40_KEY: (0, "   40\n")},
+            CLOCK_BEFORE,
+            "Claude Code がペイン %3 の中に無い",
+            True,
+            id="depth_limit",
+        ),
+        pytest.param(ALIVE_RESPONSES, CLOCK_AFTER, "時間切れ", False, id="deadline_passed"),
+    ],
+)
+def test_is_session_alive_when_ended(
+    tmp_path: Path,
+    responses: dict[tuple[str, ...], tuple[int, str]],
+    clock_now: float,
+    expected: str,
+    runs: bool,
+) -> None:
+    """プロセス・起動時刻・ペイン・親子のどれかが違えば理由を返す（異常系）。"""
+    # 準備
+    run = _Runner(responses=responses)
+    # 実行
+    result = claude_input.is_session_alive(
+        _target(tmp_path), deadline=DEADLINE, run=run, clock=lambda: clock_now
+    )
+    # 検証
+    assert result == expected
+    assert (run.commands != []) is runs
 
 
 @pytest.mark.parametrize(
@@ -235,7 +511,7 @@ def test_load_input_target_when_outside_tmux(tmp_path: Path, environ: dict[str, 
 def test_transcript_dirs(cwd: Path, expected: list[Path]) -> None:
     """英数字以外を - にした名前のフォルダ（正常系）。"""
     # 準備
-    target = claude_input.InputTarget(socket=None, pane=None, config_dir=Path("/c"), cwd=cwd)
+    target = _target_at(Path("/c"), cwd)
     # 実行
     result = claude_input.transcript_dirs(target)
     # 検証
@@ -259,9 +535,7 @@ def test_transcript_dirs_when_long(
     """名前が上限を超えると先頭で始まるフォルダを全て引く（正常系）。"""
     # 準備
     _make_folders(tmp_path / "cfg" / "projects", created)
-    target = claude_input.InputTarget(
-        socket=None, pane=None, config_dir=tmp_path / "cfg", cwd=LONG_CWD
-    )
+    target = _target_at(tmp_path / "cfg", LONG_CWD)
     # 実行
     result = claude_input.transcript_dirs(target)
     # 検証
@@ -362,14 +636,11 @@ def test_paste_to_pane(tmp_path: Path) -> None:
     # 検証
     assert result is None
     assert run.commands == [
-        ["tmux", "load-buffer", "-b", "mindstella-input", "-"],
-        ["tmux", "paste-buffer", "-p", "-d", "-b", "mindstella-input", "-t", "%3"],
-        ["tmux", "send-keys", "-t", "%3", "Enter"],
+        ["tmux", "-S", "/s", "load-buffer", "-b", "mindstella-input", "-"],
+        ["tmux", "-S", "/s", "paste-buffer", "-p", "-d", "-b", "mindstella-input", "-t", "%3"],
+        ["tmux", "-S", "/s", "send-keys", "-t", "%3", "Enter"],
     ]
     assert run.kwargs[0]["input"] == b"x"
-    assert run.kwargs[0]["env"]["TMUX"] == SOCKET
-    assert run.kwargs[1]["env"]["TMUX"] == SOCKET
-    assert run.kwargs[2]["env"]["TMUX"] == SOCKET
 
 
 @pytest.mark.parametrize(
@@ -416,7 +687,7 @@ def test_paste_to_pane_when_failed(
     # 検証
     assert result is not None
     assert expected_reason in result
-    assert [command[1] for command in run.commands] == expected_called
+    assert run.tmux_subcommands() == expected_called
 
 
 def test_enter_to_claude(tmp_path: Path) -> None:
@@ -426,7 +697,7 @@ def test_enter_to_claude(tmp_path: Path) -> None:
 
     def _on_call(command: list[str]) -> None:
         """`send-keys` を受けたら、入力した文字列の user の行を会話の記録へ書き足す。"""
-        if command[1] == "send-keys":
+        if command[0] == "tmux" and command[3] == "send-keys":
             _append_jsonl(
                 transcript,
                 json.dumps(
@@ -444,38 +715,44 @@ def test_enter_to_claude(tmp_path: Path) -> None:
     fake = _FakeTime()
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
     )
     # 検証
     assert result is True
-    assert run.kwargs[0]["input"] == INPUT_BYTES_2
+    assert run.kwargs_of("load-buffer")["input"] == INPUT_BYTES_2
 
 
-@pytest.mark.parametrize(
-    ("socket", "pane"),
-    [
-        pytest.param(None, PANE, id="no_socket"),
-        pytest.param(SOCKET, None, id="no_pane"),
-    ],
-)
-def test_enter_to_claude_when_outside_tmux(
-    tmp_path: Path, socket: str | None, pane: str | None
-) -> None:
-    """送り先が無ければ tmux を呼ばずに偽（正常系）。"""
+def test_enter_to_claude_when_outside_tmux() -> None:
+    """送り先が無ければ ps・tmux を呼ばずに偽（正常系）。"""
     # 準備
     run = _Runner()
     fake = _FakeTime()
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path, socket=socket, pane=pane),
-        2,
-        run=run,
-        clock=fake.clock,
-        sleep=fake.sleep,
+        None, 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
     )
     # 検証
     assert result is False
     assert run.commands == []
+
+
+def test_enter_to_claude_when_session_ended(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """宛先のセッションが終わっていれば貼らずに偽（異常系）。"""
+    # 準備
+    run = _Runner(responses={**ALIVE_RESPONSES, LSTART_KEY: (1, "")})
+    fake = _FakeTime()
+    caplog.set_level(logging.WARNING)
+    # 実行
+    result = claude_input.enter_to_claude(
+        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
+    )
+    # 検証
+    assert result is False
+    assert "WARNING" in caplog.text
+    assert "Claude Code のプロセス" in caplog.text
+    assert "load-buffer" not in run.tmux_subcommands()
 
 
 def test_enter_to_claude_when_paste_failed(
@@ -488,7 +765,7 @@ def test_enter_to_claude_when_paste_failed(
     caplog.set_level(logging.WARNING)
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
     )
     # 検証
     assert result is False
@@ -507,24 +784,25 @@ def test_enter_to_claude_when_not_delivered(
     caplog.set_level(logging.WARNING)
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
     )
     # 検証
     assert result is False
-    assert fake.now <= claude_input.INPUT_DEADLINE_SEC
+    assert sum(fake.sleeps) <= claude_input.INPUT_DEADLINE_SEC
     assert "WARNING" in caplog.text
 
 
 def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
     """同時の入力を重ねない（正常系）。"""
-    # 準備
+    # 準備（ペインで直に Claude Code を動かした宛先にして、1 回の入力の呼び出しを 5 つにする）
     target = _target(tmp_path)
+    lock = threading.Lock()
     fake = _FakeTime()
     owners: list[int] = []
     first_call_started = threading.Event()
     second_about_to_call = threading.Event()
 
-    def _run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+    def _on_call(command: list[str]) -> None:
         """呼んだスレッドを控え、最初の呼び出しでは他方のスレッドが鍵を待ち始めるまで待つ。"""
         owners.append(threading.get_ident())
         if len(owners) == 1:
@@ -532,17 +810,22 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
             second_about_to_call.wait(timeout=5)
             # 他方のスレッドが鍵を待ち始める猶予
             time.sleep(0.1)
-        return subprocess.CompletedProcess(args=command, returncode=0)
+
+    run = _Runner(responses=DIRECT_RESPONSES, on_call=_on_call)
 
     def _first() -> None:
         """先に入力する。"""
-        claude_input.enter_to_claude(target, 2, run=_run, clock=fake.clock, sleep=fake.sleep)
+        claude_input.enter_to_claude(
+            target, 2, lock=lock, run=run, clock=fake.clock, sleep=fake.sleep
+        )
 
     def _second() -> None:
         """先の入力が始まった後に入力する。"""
         first_call_started.wait(timeout=5)
         second_about_to_call.set()
-        claude_input.enter_to_claude(target, 2, run=_run, clock=fake.clock, sleep=fake.sleep)
+        claude_input.enter_to_claude(
+            target, 2, lock=lock, run=run, clock=fake.clock, sleep=fake.sleep
+        )
 
     threads = [threading.Thread(target=_first), threading.Thread(target=_second)]
     # 実行
@@ -550,8 +833,8 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
         thread.start()
     for thread in threads:
         thread.join(timeout=10)
-    # 検証
-    assert len(owners) == 6
-    assert owners[0] == owners[1] == owners[2]
-    assert owners[3] == owners[4] == owners[5]
-    assert owners[0] != owners[3]
+    # 検証（ps・display-message・3 つの tmux のコマンドの 5 つずつが、スレッドごとにまとまる）
+    assert len(owners) == 10
+    assert len(set(owners[:5])) == 1
+    assert len(set(owners[5:])) == 1
+    assert owners[0] != owners[5]

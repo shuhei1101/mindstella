@@ -2,7 +2,7 @@
 name: upgrade
 description: プラグインを上げた後、ワークスペースの版が古いと案内されたときに、ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替えるスキル
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, mcp__mindstella__migrate, mcp__mindstella__check, mcp__mindstella__batch
+allowed-tools: Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__batch
 ---
 
 # upgrade
@@ -22,7 +22,7 @@ allowed-tools: Read, mcp__mindstella__migrate, mcp__mindstella__check, mcp__mind
 
 | ステップ | 手順 |
 | --- | --- |
-| ツールの確認 | mindstella の MCP のツール（`mcp__mindstella__migrate`・`check`・`batch`）があるかを見る。無ければ、ワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる（以降は実行しない）。依存は起動スクリプトが確かめる |
+| ツールの確認 | mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__migrate`・`check`・`batch`）があるかを見る。無ければ、ワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py` を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直すよう案内して止まる（以降は実行しない）。依存は `ensure_server.py` が確かめる |
 | 版の比較 | `migrate` を `plan: true` で呼び、結果の `relation` を読む。`same` なら移し替えるものが無いと示して終える。`newer` ならプラグインを更新するよう案内して止まる（以降は実行しない） |
 | 手順の一覧 | 結果の `steps` を版の順に、`version` と `summary` で示す。`destructive` が `true` の手順があるときだけ、当ててよいかを利用者に確かめる（利用者が断ったら止まる） |
 | 手順を当てる | `migrate`（`plan` なし）を呼ぶ。ツールのエラーが返ったら、本文の失敗した版・手順・理由を示して止まる（`migrate` が写しから戻している）。結果の `backup` が写しの場所になる |
@@ -33,7 +33,7 @@ allowed-tools: Read, mcp__mindstella__migrate, mcp__mindstella__check, mcp__mind
 
 ## ツール
 
-どれも mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
+どれも mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
 スクリプトを Bash で起動しない。
 
 | ツール | 使う引数 |

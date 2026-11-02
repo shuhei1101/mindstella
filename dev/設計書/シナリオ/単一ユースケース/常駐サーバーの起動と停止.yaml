@@ -1,0 +1,160 @@
+title: "常駐サーバーの起動と停止"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。Claude Code の代わりに、SessionStart のフックが叩く起動の処理を叩き、MCP のクライアントで常駐サーバーの `/mcp` につなぐ
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: 待ち受けのポート
+        description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡す
+        notes: 利用者の端末の 8784 に触れない
+      - name: 落ちている常駐サーバー
+        description: 待ち受けのポートで待ち受けているプロセスが無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code
+        participant HK as SessionStart のフック
+        participant SV as 常駐サーバー
+
+        U->>CC: Claude Code を立ち上げる
+        CC->>HK: SessionStart
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        HK->>SV: mindstella の応答が無いので起動する
+        SV->>SV: 127.0.0.1 の MINDSTELLA_PORT で /mcp を待ち受ける
+        CC->>SV: ツールの一覧
+        SV-->>CC: mindstella のツール
+      ```
+    expected:
+      - 常駐サーバーが `127.0.0.1` の `MINDSTELLA_PORT` のポートで `/mcp` を待ち受けている
+      - MCP のクライアントでつなぐと、mindstella のツールの一覧が返る
+      - フックが 0 の終了コードで終わり、Claude Code の立ち上げを止めない
+    test: test_normal
+  - name: 正常シナリオ（2 つのセッションが別々のワークスペースを扱う）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。MCP のクライアントを 2 つつなぎ、PreToolUse のフックが入れるセッションの作業フォルダとして、それぞれ別のフォルダを引数に入れる
+      - name: 待ち受けている常駐サーバー
+        description: 正常シナリオで起動した常駐サーバー
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つワークスペースのフォルダ A と、D-2 を持つワークスペースのフォルダ B
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant C1 as Claude Code（フォルダ A）
+        participant C2 as Claude Code（フォルダ B）
+        participant HK as SessionStart のフック
+        participant SV as 常駐サーバー
+
+        U->>C2: 2 つ目の Claude Code を立ち上げる
+        C2->>HK: SessionStart
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        SV-->>HK: mindstella の版
+        C1->>SV: 状況（ワークスペースは作業フォルダ）
+        SV-->>C1: フォルダ A の状況
+        C2->>SV: 状況（ワークスペースは作業フォルダ）
+        SV-->>C2: フォルダ B の状況
+      ```
+    expected:
+      - 常駐サーバーのプロセスが 1 つのまま
+      - フォルダ A のセッションが受けた状況が D-1 を持ち、D-2 を持たない
+      - フォルダ B のセッションが受けた状況が D-2 を持ち、D-1 を持たない
+    test: test_normal_when_two_sessions
+  - name: 正常シナリオ（状態を確かめる）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。プレビューの URL の取得を MCP のクライアントで呼ぶ
+      - name: 待ち受けている常駐サーバー
+        description: 正常シナリオで起動した常駐サーバー
+      - name: 配信しているワークスペース
+        description: プレビューの URL を取得済みのワークスペースのフォルダ A と B
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant SV as 常駐サーバー
+
+        U->>SV: 常駐サーバーの状態を確かめる
+        SV-->>U: 待ち受けのポートと、配信しているワークスペースごとのポート
+      ```
+    expected:
+      - 状態に、`MINDSTELLA_PORT` のポートがある
+      - 状態に、フォルダ A と B のそれぞれの配信のポートがある
+    test: test_normal_when_status_checked
+  - name: 正常シナリオ（止める）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。プレビューの URL の取得を MCP のクライアントで呼ぶ
+      - name: 待ち受けている常駐サーバー
+        description: 正常シナリオで起動した常駐サーバー
+      - name: 配信しているワークスペース
+        description: プレビューの URL を取得済みのワークスペースのフォルダ A と B
+      - name: 終了時のフック
+        description: 常駐サーバーを起動する環境の `MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンドを渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant SV as 常駐サーバー
+        participant HK as 終了時のフック
+
+        U->>SV: 常駐サーバーを止める
+        SV->>HK: フォルダ A の配信の終了時のフック
+        SV->>HK: フォルダ B の配信の終了時のフック
+        SV->>SV: 全ての配信を止めて終わる
+      ```
+    expected:
+      - 終了時のフックが、フォルダ A と B の配信ごとに 1 回ずつ呼ばれている
+      - 常駐サーバーのプロセスと、配信のポートの待ち受けが残っていない
+    test: test_normal_when_stopped
+  - name: 異常シナリオ（待ち受けのポートが使われている）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 使われているポート
+        description: テストが先に `127.0.0.1` で待ち受けたポートを `MINDSTELLA_PORT` で渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code
+        participant HK as SessionStart のフック
+        participant SV as 常駐サーバー
+
+        U->>CC: Claude Code を立ち上げる
+        CC->>HK: SessionStart
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        HK->>SV: mindstella の応答が無いので起動する
+        SV->>SV: ポートで待ち受けられない
+        SV-->>HK: 使われているポートを示して終わる
+        HK-->>CC: 立ち上げを止めない
+      ```
+    expected:
+      - 常駐サーバーが 1 の終了コードで終わり、出力に使われているポートがある
+      - フックが 0 の終了コードで終わる
+      - ポートを先に待ち受けていた側が、そのまま待ち受けている
+    test: test_error_when_port_in_use
+lead: Claude Code を立ち上げたときに、落ちていた mindstella の常駐の MCP サーバーが起動し、並行する複数のセッションが 1 つの常駐サーバーを共有する単一ユースケース。利用者は常駐サーバーの状態を確かめ、止められる。
+issue: 338
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 起動を意識せずに mindstella のツールを使え、セッションを並べても常駐サーバーは 1 つで済む。セッションを閉じてもプレビューの配信が止まらない
+trigger: 利用者が Claude Code を立ち上げる。または常駐サーバーの状態を確かめる・止める
+preconditions:
+  - プラグイン mindstella がインストールされている
+success_guarantee: 常駐サーバーが `127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で `/mcp` を待ち受け、並行するセッションがそれぞれ自分の作業フォルダを基準にワークスペースを扱える。止めたときは、全ての配信を止めて配信ごとに終了時のフックを呼ぶ。
+minimal_guarantee: 待ち受けのポートが使われているときは、使われているポートを示して終わり、Claude Code の立ち上げは止めない。
+frequency: 端末を起動して最初に Claude Code を立ち上げるときに 1 回
+priority: 高
+refs:
+  - dev/設計書/シナリオ/単一ユースケース/起動スクリプトで立ち上げる#
+  - dev/設計書/シナリオ/単一ユースケース/プレビューを外から見る#
+notes:
+  待ち受けているかの判定: '`MINDSTELLA_PORT` のポートで mindstella の常駐サーバーが版を返すかで決める。ポートが開いていても mindstella の応答が無ければ、落ちているとみなして起動する'
+  状態を確かめる・止める手段: インターフェース定義で、常駐サーバーの起動と管理の仕方とあわせて決める
+  E2E の範囲: 本物の Claude Code は立ち上げず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す

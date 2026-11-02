@@ -58,6 +58,25 @@ requirements:
     source_kind: 制限なし
     value: 'サーバーが配るプレビューを開くブラウザは、配信（`127.0.0.1`）と jsDelivr（描画のライブラリ）・Google Fonts（文字）へ HTTPS で届くこと。配る書き出しを開くのは通信しない。サーバーは `export` が書き出すときだけ jsDelivr へ HTTPS で届くこと（1 回の要求で接続と 1 回の読み取りをそれぞれ 30 秒まで待ち、取れなければ何も書かずにエラーで終える）。それ以外のツールと配信は外へ通信しない'
     rationale: サーバーの仕事はワークスペースのファイルの読み書きと端末の中への配信で、`export` だけが書き出すときに配布ファイルとライセンスの本文を jsDelivr から取る（ユーザーの決定。リポジトリには同梱しない）。サーバーが配るプレビューの描画のライブラリは jsDelivr から、文字は Google Fonts から読むと決めている（アーキテクチャ図の制約）。届かないときは、読めなかったライブラリの名前を画面に出す（インターフェース定義『プレビューを開く』の異常系）。配る書き出しは描画のライブラリを中に持つため、開くときに通信せず、読めなかったライブラリの知らせは出ない（インターフェース定義『配る書き出し』）。資料の HTML の本文が外の画像・CSS を指すときだけは、描くときにブラウザがその URL を読みに行き、読めなければそのまま描く（本文は記録の持ち主が書いたもので、サーバーは中身を書き換えない）
+  - name: 常駐サーバーの待ち受けのポート
+    english_name: server_port
+    category: 動作環境
+    external_constraint: 制限なし
+    source_kind: ユーザー要望
+    source: https://github.com/shuhei1101/mindstella/issues/338
+    value: '`127.0.0.1` の 8784。`MINDSTELLA_PORT` で 1〜65535 の別のポートに上書きできる'
+    rationale: '並行する複数の Claude Code のセッションが、プラグインの `.mcp.json` に書いた 1 つの URL で常駐サーバーへつなぐため、ポートを固定する。上書きは、ほかのプロセスが 8784 を使っている端末のため（『設定: サーバー』の `MINDSTELLA_PORT`）'
+    measurement: '`MINDSTELLA_PORT` を渡さずに常駐サーバーを起動し、`127.0.0.1:8784` の `GET /_admin/status` が `name` に `mindstella` を返すことと、`MINDSTELLA_PORT` に別のポートを渡すとそのポートで返すことを確かめる'
+    overflow: ポートが使われていれば、常駐サーバーは使われているポートと `MINDSTELLA_PORT` で別のポートを渡す案内を出して終了コード 1 で終わる。SessionStart のフックは会話の始まりを止めない（インターフェース定義『常駐サーバーの起動の確認』）
+  - name: 常駐サーバーの共有
+    english_name: server_sharing
+    category: 動作環境
+    external_constraint: 制限なし
+    source_kind: ユーザー要望
+    source: https://github.com/shuhei1101/mindstella/issues/338
+    value: 端末に常駐サーバーは 1 つ。並行する複数の Claude Code のセッションが共有し、それぞれが `workspace` で指した複数のワークスペースを扱う。セッションを閉じても常駐サーバーとプレビューの配信は止まらない
+    rationale: セッションごとにサーバーのプロセスを立てず、knowledge の規約『MCP サーバー作成ルール』の HTTP の常駐に合わせる（#338）。相対パスの基準と、ペインへの入力の宛先は、PreToolUse のフックがツールの引数 `session` に入れたセッションの値で決め、サーバーのプロセスの作業フォルダと環境変数を使わない（インターフェース定義『MCP サーバーの起動』）
+    measurement: 2 つの MCP のクライアントが別々の作業フォルダを `session` で渡して同じ相対パスの `status` を呼び、それぞれの作業フォルダのワークスペースの状況が返ることと、常駐サーバーのプロセスが 1 つのままであることを確かめる
   - name: ネットワークで扱う項目の数
     english_name: graph_item_count
     category: 性能
@@ -123,9 +142,9 @@ requirements:
     external_constraint: 制限なし
     source_kind: 制限なし
     source: https://github.com/shuhei1101/mindstella/issues/67
-    value: '`127.0.0.1` だけ。ポートは OS が選んだ空きポートか、`config.yaml` の `preview.port` で固定したポート'
+    value: '`127.0.0.1` だけ。常駐サーバーの MCP（`/mcp`）と `GET /_admin/status` は `MINDSTELLA_PORT`（無ければ 8784）。配信のポートは OS が選んだ空きポートか、`config.yaml` の `preview.port` で固定したポート'
     rationale: '#67 の要件で、待ち受けるのは端末の中だけにすると決めている。配信は記録を読ませ、送信でワークスペースへ書くため、端末の外からつながせない。同じ端末の別のサイトからの読み書きは、`Host`・`Origin`・`Content-Type` の確かめで防ぐ（インターフェース定義『プレビューの配信』『コメントをまとめて送る』）。端末の外から見るときも待ち受けは変えず、トンネル・リバースプロキシが `127.0.0.1` へ転送する。外から開く画面の認証は外の入口に任せ、配信は利用者が明示したホスト名（`MINDSTELLA_ALLOWED_HOSTS`）だけを `Host`・`Origin` で受ける（#138）'
-    measurement: 配信を立てた後に、待ち受けのソケットのアドレスが `127.0.0.1` であることと、端末の別のアドレス（LAN の IP）からつながらないことを確かめる
+    measurement: 常駐サーバーを起動して配信を立てた後に、常駐サーバーと配信の待ち受けのソケットのアドレスが `127.0.0.1` であることと、端末の別のアドレス（LAN の IP）からつながらないことを確かめる
   - name: 画面への反映の時間
     english_name: preview_reflect_time
     category: 性能

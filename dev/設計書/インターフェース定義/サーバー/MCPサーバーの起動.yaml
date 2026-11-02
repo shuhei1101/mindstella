@@ -1,20 +1,22 @@
 title: "MCP サーバーの起動"
 entry:
   kind: operation
-  value: '`{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py`（起動スクリプトが書いた MCP の設定で、Claude Code が stdio のサーバーとして立てる。全てのツールに共通の結果とエラーの返し方）'
+  value: '`{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py`（『常駐サーバーの起動の確認』と起動スクリプトが、落ちていたときにバックグラウンドで起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT` で Streamable HTTP の `/mcp` を待ち受ける。全てのツールに共通の結果とエラーの返し方）'
 flows:
   - name: 正常系
-    summary: 立てたサーバーがツールの一覧を返す
+    summary: 起動したサーバーがツールの一覧を返す
     setup:
       - name: Mock
-        description: なし（テストを動かす Python で MCP サーバーを立て、MCP のクライアントでつなぐ）
+        description: なし（テストを動かす Python で常駐サーバーを子プロセスとして起動し、MCP のクライアントで `/mcp` につなぐ）
+      - name: 待ち受けのポート
+        description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡す
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as MCP サーバー（mindstella）
+        participant IF as 常駐サーバー（mindstella）
 
-        クライアント->>IF: 初期化
+        クライアント->>IF: 初期化（POST /mcp）
         IF-->>クライアント: サーバーの名前 mindstella
         クライアント->>IF: ツールの一覧
         IF-->>クライアント: 全てのツール
@@ -22,20 +24,20 @@ flows:
     expected:
       - サーバーの名前が `mindstella`
       - ツールの一覧の名前が、レスポンスのツールの全てと一致する
-      - どのツールも `workspace` を要る引数に持つ
+      - どのツールも `session` を任意の引数に持ち、`server_status`・`server_stop` 以外のどのツールも `workspace` を要る引数に持つ
     test: test_normal
   - name: 正常系（ツールのエラー）
     summary: ワークスペースが無いフォルダを渡すと、ツールのエラーで返してサーバーは動き続ける
     setup:
       - name: Mock
-        description: なし（テストを動かす Python で MCP サーバーを立て、MCP のクライアントでつなぐ）
+        description: 正常系と同じ
       - name: 空のフォルダ
         description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as MCP サーバー（mindstella）
+        participant IF as 常駐サーバー（mindstella）
 
         クライアント->>IF: status（workspace は空のフォルダ）
         IF-->>クライアント: ツールのエラー
@@ -50,12 +52,12 @@ flows:
     summary: 要る引数が無いと、引数の誤りのツールのエラーで返す
     setup:
       - name: Mock
-        description: なし（テストを動かす Python で MCP サーバーを立て、MCP のクライアントでつなぐ）
+        description: 正常系と同じ
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as MCP サーバー（mindstella）
+        participant IF as 常駐サーバー（mindstella）
 
         クライアント->>IF: status（workspace なし）
         IF-->>クライアント: ツールのエラー
@@ -64,36 +66,52 @@ flows:
       - 結果の `isError` が真
       - 本文に `workspace` がある
     test: test_normal_when_argument_missing
-  - name: 正常系（標準入力が閉じる）
-    summary: Claude Code が閉じたら配信を止めて終わる
+  - name: 正常系（相対パスをセッションの作業フォルダから読む）
+    summary: 2 つのクライアントが別々の作業フォルダを `session` で渡すと、同じ相対パスがそれぞれの作業フォルダのワークスペースを指す
     setup:
       - name: Mock
-        description: なし（テストを動かす Python で MCP サーバーを子プロセスとして立て、MCP のクライアントでつなぐ）
+        description: 正常系と同じ。MCP のクライアントを 2 つつなぐ
       - name: make_workspace
-        description: 作成を済ませたワークスペース
+        description: 一時フォルダ A の直下に検討事項 D-1 だけを持つワークスペース `talk/`、一時フォルダ B の直下に D-2 だけを持つワークスペース `talk/` を作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant C1 as クライアント（A）
+        participant C2 as クライアント（B）
+        participant IF as 常駐サーバー（mindstella）
+
+        C1->>IF: status（workspace は talk、session.cwd は A）
+        IF-->>C1: A/talk の状況
+        C2->>IF: status（workspace は talk、session.cwd は B）
+        IF-->>C2: B/talk の状況
+      ```
+    expected:
+      - A のクライアントが受けた状況が D-1 を持ち、D-2 を持たない
+      - B のクライアントが受けた状況が D-2 を持ち、D-1 を持たない
+    test: test_normal_when_relative_path_with_session
+  - name: 正常系（相対パスで作業フォルダが無い）
+    summary: '`session` を渡さずに相対パスを渡すと、引数の誤りのツールのエラーで返す'
+    setup:
+      - name: Mock
+        description: 正常系と同じ。常駐サーバーの作業フォルダに、ワークスペース `talk/` を置く
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as MCP サーバー（mindstella）
-        participant P as プレビューの配信
+        participant IF as 常駐サーバー（mindstella）
 
-        クライアント->>IF: preview_url
-        IF->>P: 立てる
-        IF-->>クライアント: URL
-        クライアント->>IF: 標準入力を閉じる
-        IF->>P: 止める
-        IF-->>クライアント: プロセスが終わる
+        クライアント->>IF: status（workspace は talk、session なし）
+        IF-->>クライアント: ツールのエラー
       ```
     expected:
-      - サーバーのプロセスが 5 秒以内に終わる
-      - 返った URL へつなぐと、つながらない
-    test: test_normal_when_stdin_closed
+      - '結果の `isError` が真で、本文が `エラー: 引数の誤り: workspace: ` で始まり、絶対パスで渡す案内がある'
+      - 常駐サーバーの作業フォルダのワークスペースを読まない
+    test: test_normal_when_relative_path_without_session
   - name: 正常系（別のプロセスと同じワークスペースに書く）
     summary: 2 つのプロセスが同じワークスペースへ同時に書いても、どちらの書き換えも失わず ID も重ならない
     setup:
       - name: Mock
-        description: なし（テストを動かす Python で MCP サーバーを 2 つ子プロセスとして立て、それぞれ MCP のクライアントでつなぐ）
+        description: なし（テストを動かす Python で常駐サーバーを 2 つ、別々の空きポートで子プロセスとして起動し、それぞれ MCP のクライアントでつなぐ）
       - name: make_workspace
         description: 検討事項を持たない作成済みのワークスペース
         notes: 2 つのプロセスから `add` を 20 回ずつ並べて呼ぶ
@@ -118,18 +136,16 @@ flows:
     summary: SIGTERM を受けると、終了時のフックを呼び、配信を止めて終わる
     setup:
       - name: Mock
-        description: なし（テストを動かす Python で MCP サーバーを子プロセスとして立て、MCP のクライアントでつなぐ）
+        description: 正常系と同じ
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 終了時のフック
-        description: '`MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンド'
-      - name: 開いたままの標準入力
-        description: SIGTERM を送るとき、子プロセスの標準入力を閉じずにおく（Claude Code の終わらせ方と同じ）
+        description: '常駐サーバーを起動する環境の `MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンドを渡す'
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
-        participant IF as MCP サーバー（mindstella）
+        participant IF as 常駐サーバー（mindstella）
         participant HK as 終了時のフック
         participant P as プレビューの配信
 
@@ -142,20 +158,123 @@ flows:
         IF-->>クライアント: プロセスが終わる
       ```
     expected:
-      - サーバーのプロセスが 5 秒以内に終わる
+      - サーバーのプロセスが 5 秒以内に終わり、`MINDSTELLA_PORT` のポートで待ち受けていない
       - 返った URL へつなぐと、つながらない
       - フックの書き足すファイルに 1 行だけあり、URL のポートとワークスペースのフォルダの名前が並ぶ
     test: test_normal_when_sigterm
-lead: Claude Code が起動スクリプトの MCP の設定から立てる mindstella の MCP サーバー。ワークスペースを読み書きするツールと、プレビューの配信を 1 つのプロセスで持つ。
+  - name: 正常系（クライアントが切れても配信が残る）
+    summary: プレビューの URL を受けたクライアントが切れても、常駐サーバーと配信は止まらない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as 常駐サーバー（mindstella）
+        participant P as プレビューの配信
+
+        クライアント->>IF: preview_url
+        IF->>P: 立てる
+        IF-->>クライアント: URL
+        クライアント->>IF: セッションを閉じる
+      ```
+    expected:
+      - 常駐サーバーのプロセスが動き続けている
+      - 返った URL へ GET すると、200 で画面が返る
+    test: test_normal_when_client_disconnects
+  - name: 異常系（待ち受けのポートが使われている・PortInUseError）
+    summary: '`MINDSTELLA_PORT` のポートで待ち受けられないと、使われているポートを示して終わる'
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 使われているポート
+        description: テストが先に `127.0.0.1` で待ち受けたポートを `MINDSTELLA_PORT` で渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as 常駐サーバー（mindstella）
+
+        クライアント->>IF: 起動（使われているポート）
+        IF-->>クライアント: 標準エラーにポート、終了コード 1
+      ```
+    expected:
+      - 終了コードが 1
+      - 標準エラーに、使われているポートの番号と、`MINDSTELLA_PORT` で別のポートを渡す案内がある
+      - ポートを先に待ち受けていた側が、そのまま待ち受けている
+    test: test_error_when_port_in_use
+  - name: 異常系（ポートの値が誤り・InvalidPortError）
+    summary: '`MINDSTELLA_PORT` が 1〜65535 の整数でないと、値を示して終わる'
+    setup:
+      - name: Mock
+        description: 正常系と同じ。`MINDSTELLA_PORT` に `abc` を渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as 常駐サーバー（mindstella）
+
+        クライアント->>IF: 起動（MINDSTELLA_PORT=abc）
+        IF-->>クライアント: 標準エラーに値、終了コード 1
+      ```
+    expected:
+      - 終了コードが 1
+      - 標準エラーに `MINDSTELLA_PORT` と `abc` がある
+    test: test_error_when_port_invalid
+lead: 常駐する mindstella の MCP サーバー。並行する複数の Claude Code のセッションが、プラグインの `.mcp.json` から `/mcp` へつなぎ、1 つのプロセスを共有する。ワークスペースを読み書きするツールと、プレビューの配信と、管理のツールを 1 つのプロセスで持つ。
 idempotent: true
-side_effects: 立てただけでは何も書かない。プレビューの配信は『プレビューの URL』が呼ばれたときに立てる。Claude Code が標準入力を閉じるか SIGTERM を送ると、終了時のフックを呼び、配信を止めてプロセスを終える
+side_effects: 起動しただけでは何も書かない。プレビューの配信は『プレビューの URL』が呼ばれたときに立てる。SIGTERM・SIGINT を受けるか『常駐サーバーの停止』が呼ばれると、終了時のフックを呼び、配信を止めてプロセスを終える
+request:
+  - name: session
+    type: object | None
+    required: false
+    default: なし（相対パスの `workspace` は引数の誤り。ペインへ入力しない）
+    location: argument
+    description: 全てのツールが受ける、ツールを呼んだセッションの値。PreToolUse のフック（『セッションの値の注入』）が入れる。`server_status`・`server_stop` は受けても使わない
+  - name: session.cwd
+    type: str
+    required: true
+    location: argument
+    description: セッションの作業フォルダの絶対パス
+  - name: session.tmux
+    type: str | None
+    required: false
+    default: なし（tmux の外。ペインへ入力しない）
+    location: argument
+    description: セッションの `TMUX`（tmux のサーバーのソケット）
+  - name: session.tmux_pane
+    type: str | None
+    required: false
+    default: なし（tmux の外。ペインへ入力しない）
+    location: argument
+    description: セッションの `TMUX_PANE`（Claude Code が動くペイン）
+  - name: session.claude_config_dir
+    type: str
+    required: true
+    location: argument
+    description: セッションの `CLAUDE_CONFIG_DIR`。無ければ `~/.claude` の絶対パス。会話の記録を引く
+  - name: session.claude_pid
+    type: int | None
+    required: false
+    default: なし（ペインへ入力しない）
+    location: argument
+    description: Claude Code のプロセスの PID。フックのプロセスから親をたどり、最初に名前が `claude` のプロセス
+  - name: session.claude_started_at
+    type: str | None
+    required: false
+    default: なし（ペインへ入力しない）
+    location: argument
+    description: '`session.claude_pid` のプロセスの起動時刻（`ps -o lstart=` の文字列）。同じ PID が別のプロセスに使い回されたのを見分ける'
 response:
   - name: サーバーの名前
     type: str
-    description: '`mindstella`。Claude Code の中のツールの名前は `mcp__mindstella__{ツール}` になる'
+    description: '`mindstella`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる'
   - name: ツール
     type: list[str]
-    description: '`init`・`add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`'
+    description: '`init`・`add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`'
   - name: 結果
     type: CallToolResult
     description: ツールの結果。構造化の結果（`structuredContent`）に JSON のオブジェクトを 1 個入れ、同じ JSON を文字列の本文（`content` の text）にも入れる
@@ -163,34 +282,49 @@ response:
     type: CallToolResult（`isError` が真）
     description: '実行時のエラーと引数の誤り。本文に `エラー: {内容}` の行を出し、各ツールのエラーの形の行を続ける。トレースバックを含めない'
 exceptions:
+  - name: PortInUseError
+    condition: '`MINDSTELLA_PORT` のポートで待ち受けられない'
+    notes: 標準エラーにポートの番号を出し、終了コード 1 で終わる
+  - name: InvalidPortError
+    condition: '`MINDSTELLA_PORT` が 1〜65535 の整数でない'
+    notes: 標準エラーに値を出し、終了コード 1 で終わる
   - name: なし（正常終了）
-    condition: Claude Code が標準入力を閉じたか、SIGTERM を送った
+    condition: SIGTERM・SIGINT を受けたか、『常駐サーバーの停止』が呼ばれた
     notes: 終了時のフックを呼び、立てたプレビューの配信を止めてから終わる
-error_format: 'ツールのエラーは、本文（`content` の text）に `エラー: {内容}` の行を出す。ツールが確かめる引数の誤り（一緒に使わない引数を渡した・値の形が違う）は `エラー: 引数の誤り: {引数の名前}: {理由}` にする。要る引数が無い・型が違うときは、ツールを呼ぶ前に SDK が入力のスキーマで弾き、本文は SDK の文言（`Error executing tool {ツール}:` に続けて引数の名前と理由）になる。サーバーの記録は標準エラーにだけ書く（標準出力は MCP が使う）'
+error_format: 'ツールのエラーは、本文（`content` の text）に `エラー: {内容}` の行を出す。ツールが確かめる引数の誤り（一緒に使わない引数を渡した・値の形が違う）は `エラー: 引数の誤り: {引数の名前}: {理由}` にする。要る引数が無い・型が違うときは、ツールを呼ぶ前に SDK が入力のスキーマで弾き、本文は SDK の文言（`Error executing tool {ツール}:` に続けて引数の名前と理由）になる。サーバーの記録は標準エラーにだけ書く'
 constraints:
   - item: 通り道
-    constraint: stdio（標準入力・標準出力の JSON-RPC）。MCP の SDK（`mcp`）の `MCPServer` で作る
+    constraint: Streamable HTTP。MCP の SDK（`mcp`）の `MCPServer` の `streamable_http_app()` で作り、パスは `/mcp`。stdio では待ち受けない
+  - item: 待ち受けのポート
+    constraint: '`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）。値は起動した環境から起動時に 1 回読む'
   - item: 立てる Python
-    constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。起動スクリプトが MCP の設定の `command` に書く
+    constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。『常駐サーバーの起動の確認』と起動スクリプトが、新しいセッションで（`start_new_session`）、標準入出力をつながずに起動する
+  - item: 待ち受けの確認
+    constraint: '`GET /_admin/status` に、`server_status` と同じ JSON を返す。『常駐サーバーの起動の確認』と起動スクリプトは、この応答の `name` が `mindstella` かで、常駐サーバーが待ち受けているかを決める'
   - item: ツールの引数
     constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`init`・`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
   - item: ワークスペース
-    constraint: 全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスはサーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する
+    constraint: '`server_status`・`server_stop` 以外の全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスは `session.cwd` から読み、`session` が無いときは引数の誤りにする（常駐サーバーの作業フォルダは使わない）。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する'
+  - item: セッションの値
+    constraint: '`session` はツールの呼び出しごとに受け、モジュール変数に持たない。ペインへの入力の宛先は、そのワークスペースのプレビューの配信が最後に受けた `session` を持つ（『コメントをまとめて送る』）'
   - item: 同時の呼び出し
     constraint: ワークスペースを書き換えるツールと送信の受け付けは、プロセスの中の 1 本の鍵を取った後に、ワークスペースのロックファイル `.mindstella.lock` に `fcntl.flock` の排他ロックを取ってから読み・書く。同じワークスペースを開く別のプロセスとも排他する。ロックは取れるまで待ち、持つプロセスが落ちると OS が外す。読むだけのツールと配信はロックを取らない（書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない）
   - item: 終わり方
-    constraint: Claude Code を閉じると、標準入力が閉じるか SIGTERM が届く。どちらでも、立てた配信ごとに終了時のフック（`MINDSTELLA_PREVIEW_STOP_HOOK`）を起動時と同じポートとワークスペースのフォルダの名前を足して呼び、配信を止めてプロセスを終える。終了時のフックは 1 つの配信に 1 回だけ呼ぶ。フックのコマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない（立てられないときは標準エラーに記録して続ける）。MCP サーバーのプロセスは残らない
+    constraint: SIGTERM・SIGINT を受けるか『常駐サーバーの停止』が呼ばれると、立てた配信ごとに終了時のフック（`MINDSTELLA_PREVIEW_STOP_HOOK`）を起動時と同じポートとワークスペースのフォルダの名前を足して呼び、配信を止めてプロセスを終える。終了時のフックは 1 つの配信に 1 回だけ呼ぶ。フックのコマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない（立てられないときは標準エラーに記録して続ける）。MCP のクライアントが切れても終わらない
+  - item: 読む環境変数
+    constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` を、常駐サーバーを起動した環境から読む。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` は読まない（`session` で受ける）'
+    notes: テストで常駐サーバーを呼ぶときは、tmux への入力を確かめるフロー以外で `session` に `tmux`・`tmux_pane` を入れない（テストを動かすペインへ貼らないため）
   - item: 結果の組み立て
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
-  - item: 受け継ぐ環境変数
-    constraint: Claude Code から受け継いだ `TMUX`（tmux のサーバーのソケット）・`TMUX_PANE`（Claude Code が動くペイン）・`CLAUDE_CONFIG_DIR`（会話の記録を引く設定のフォルダ。無ければ `~/.claude`）と、起動時の作業フォルダを、起動したときの値のまま持ち続ける。『コメントをまとめて送る』が Claude Code へ入力する送り先と、届いたかを確かめる会話の記録に使う。`TMUX` か `TMUX_PANE` が空なら tmux の外で立てたものとして扱う
-    notes: 'MCP の設定の `env` は親の環境へ足され、これらを消さない（PR #201 の PoC）。テストで MCP サーバーを立てるときは、tmux への入力を確かめるフロー以外で `TMUX`・`TMUX_PANE` を外す（テストを動かすペインへ貼らないため）'
 refs:
   - dev/設計書/外部ライブラリ/mcp#
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの状態#
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの停止#
 notes:
-  1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、Claude Code を閉じたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
-  Claude Code の終わらせ方: Claude Code 2.1.294 で、`/exit`（tmux の中の対話）と `claude -p` の終わりのどちらも、標準入力を閉じずに SIGTERM を送り、約 0.3〜0.4 秒後にプロセスが消えることを確かめた（2026-10-08）。tmux のセッションが閉じると同じプロセスグループの子も消え、新しいセッションで立てた子は残る。そのため終了時のフックは SIGTERM でも呼び、新しいセッションで立てて終わりを待たない
+  1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、止めたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
+  systemd を使わない理由: 動作環境の macOS に systemd が無いため、『常駐サーバーの起動の確認』と起動スクリプトが、落ちていたときに起動する（dev-docs と同じ形）。規約の `sdk-transport-06` が主にする systemd --user から外れる（要件.md の「常駐サーバーの起動と管理の仕方」）
 callers:
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
   - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
 test_file: tests/integration/server/test_mcp_server.py

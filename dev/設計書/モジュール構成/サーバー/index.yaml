@@ -18,7 +18,7 @@ items:
   - page: 移行.py.yaml
     summary: 版の比較と、版ごとの移し替えの手順を並べる・写しを取って当てる・値を入れる・版を書く
   - page: 起動.py.yaml
-    summary: 依存の確認と、起動スクリプトが使うプラグインのフォルダ・セッションの名前・MCP の設定
+    summary: 依存の確認と、起動スクリプトが使うプラグインのフォルダ・セッションの名前と、常駐サーバーの起動の確認
   - page: 配信.py.yaml
     summary: プレビューの配信の待ち受け・画面と記録とスレッドを返す・書き換えの知らせ・コメントとスレッドの状態の受け付け
   - page: 設定の更新.py.yaml
@@ -34,7 +34,9 @@ items:
   - page: 登録.py.yaml
     summary: 起動スクリプトを呼ぶ alias と環境変数の登録・読み返し・外す
   - page: ClaudeCodeへの入力.py.yaml
-    summary: まとめて送った後に Claude Code のペインへ貼り、会話の記録で届いたかを確かめる
+    summary: ワークスペースごとの宛先を持ち、まとめて送った後に Claude Code のペインへ貼り、会話の記録で届いたかを確かめる
+  - page: セッションの値の注入.py.yaml
+    summary: PreToolUse のフックが呼ぶ、ツールの入力にセッションの値を入れるスクリプト
   - page: HTMLの本文.py.yaml
     summary: HTML の本文の行の印と、行の範囲の描いた文
   - page: スレッド.py.yaml

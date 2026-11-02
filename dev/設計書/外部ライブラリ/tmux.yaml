@@ -19,13 +19,16 @@ catalogs:
         purpose: 立てたセッションへつなぐ
       - name: tmux load-buffer -b {バッファ} -
         kind: コマンド
-        purpose: 標準入力の文字列を名前の付いたバッファへ読み込む。サーバーは受け継いだ `TMUX` を環境に入れて呼ぶ
+        purpose: 標準入力の文字列を名前の付いたバッファへ読み込む。サーバーはツールの引数 `session` の `tmux` から取ったソケットを `-S {ソケット}` で渡して呼ぶ（`paste-buffer`・`send-keys`・`display-message` も同じ）
       - name: tmux paste-buffer -p -d -b {バッファ} -t {ペイン}
         kind: コマンド
         purpose: バッファをブラケットペースト（`-p`）でペインへ貼り、貼った後にバッファを消す（`-d`）。Claude Code は貼られた改行で入力を確定しない
       - name: tmux send-keys -t {ペイン} Enter
         kind: コマンド
         purpose: ペインへ `Enter` を送り、貼った入力を確定する
+      - name: 'tmux -S {ソケット} display-message -p -t {ペイン} "#{pane_pid}"'
+        kind: コマンド
+        purpose: 貼る前に、ペインで動くシェルの PID を読み、Claude Code のプロセスがその子孫かを確かめる
 lead: 1 つの端末の中に複数のセッションを立て、端末を閉じても動かし続けられる端末多重化の CLI。
 supplier: tmux プロジェクト
 dependency_scope: 必須

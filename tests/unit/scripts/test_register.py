@@ -75,6 +75,47 @@ def _registration_file(home: Path) -> Path:
 
 
 @pytest.mark.parametrize(
+    ("argv", "extra_environ", "expected_in_tmux", "expected_env"),
+    [
+        pytest.param(
+            ["show"],
+            {"TMUX": "/tmp/tmux-1000/default,1234,0"},
+            True,
+            {},
+            id="show_inside_tmux",
+        ),
+        pytest.param(["show"], {}, False, {}, id="show_outside_tmux"),
+        pytest.param(
+            ["set", "--env", "MINDSTELLA_PORT=9000"],
+            {"TMUX": "/tmp/tmux-1000/default,1234,0"},
+            None,
+            {"MINDSTELLA_PORT": "9000"},
+            id="set_port",
+        ),
+    ],
+)
+def test_main_when_show(
+    register: ModuleType,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+    extra_environ: dict[str, str],
+    expected_in_tmux: bool | None,
+    expected_env: dict[str, str],
+) -> None:
+    """show だけが in_tmux を持つ（正常系）。"""
+    # 準備
+    environ = {**_environ(tmp_path), **extra_environ}
+    # 実行
+    code = register.main(argv, environ=environ, system="Linux")
+    # 検証
+    report = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert report.get("in_tmux") is expected_in_tmux
+    assert report["env"] == expected_env
+
+
+@pytest.mark.parametrize(
     "argv",
     [
         pytest.param(["set", "--env", "PATH=/tmp"], id="unknown_env_key"),

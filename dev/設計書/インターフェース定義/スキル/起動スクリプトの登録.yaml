@@ -48,6 +48,7 @@ flows:
     expected:
       - 終了コードが 0
       - '`registered` が `true`、`env` が登録した値'
+      - '`TMUX` を消した環境で呼ぶと `in_tmux` が `false`、`TMUX` を渡すと `true`'
       - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
     test: test_normal_when_show
   - name: 正常系（登録し直す）
@@ -180,7 +181,7 @@ request:
     default: なし（環境変数を変えない）
     location: argument
     description: '`set` で登録する環境変数。`KEY=VALUE` を繰り返し渡せる。渡したキーだけを書き換え、登録済みのほかのキーは残す'
-    constraints: キーは `MINDSTELLA_VENV`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` のどれか。値は改行を含まない
+    constraints: キーは `MINDSTELLA_VENV`・`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` のどれか。値は改行を含まない
     example: MINDSTELLA_ALLOWED_HOSTS=preview.example.com
   - name: --unset-env
     type: str
@@ -242,6 +243,9 @@ response:
   - name: aliases
     type: list[str]
     description: 登録した alias の名前（`mindstella` と `mindstella-{名前}`）
+  - name: in_tmux
+    type: bool
+    description: '`show` を呼んだ環境に空でない `TMUX` があるか（Claude Code が tmux の中で動いているか）。`show` のときだけ持つ'
   - name: error
     type: str | None
     description: 失敗したときの理由。成功したときは持たない

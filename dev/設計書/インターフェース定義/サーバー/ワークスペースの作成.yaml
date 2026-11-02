@@ -1,7 +1,7 @@
 title: "ワークスペースの作成"
 entry:
   kind: mcp_tool
-  value: '`init`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__init`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`init`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__init`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 設定を渡して空のワークスペースを作る

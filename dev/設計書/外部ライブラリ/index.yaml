@@ -24,6 +24,10 @@ items:
     summary: MCP のサーバーを立て、スキルが呼ぶツールを載せる（Python の公式の SDK）
   - page: tmux.yaml
     summary: 起動スクリプトが、MCP サーバーを渡した Claude Code を動かすセッションを立てる
+  - page: uvicorn.yaml
+    summary: 常駐サーバーの HTTP の待ち受けを動かす
+  - page: starlette.yaml
+    summary: 常駐サーバーの状態の入口の JSON を返す
   - page: jsdiff.yaml
     summary: プレビューで本文と図の記法の前後を行ごとに比べる
   - page: axe-core.yaml

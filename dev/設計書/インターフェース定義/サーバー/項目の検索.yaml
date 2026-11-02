@@ -1,7 +1,7 @@
 title: "項目の検索"
 entry:
   kind: mcp_tool
-  value: '`find`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__find`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`find`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__find`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 文字と属性で探し、両方に合う項目だけを返す

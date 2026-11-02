@@ -24,6 +24,7 @@ from typing import Any, TypedDict
 # `--env`・`--unset-env` で受ける環境変数のキー（`shell.sh` にはこの順で書く）
 ENV_KEYS = (
     "MINDSTELLA_VENV",
+    "MINDSTELLA_PORT",
     "MINDSTELLA_ALLOWED_HOSTS",
     "MINDSTELLA_PREVIEW_START_HOOK",
     "MINDSTELLA_PREVIEW_STOP_HOOK",
@@ -444,7 +445,11 @@ def main(
             _print_json({"error": str(error), **_manual_lines(updated or empty, args.command)})
             return 1
 
-    _print_json(build_report(updated, rc_file=rc_file, shell_file=shell_file))
+    report = build_report(updated, rc_file=rc_file, shell_file=shell_file)
+    # show だけ、tmux の中で呼ばれたかを添える
+    if args.command == "show":
+        report = {**report, "in_tmux": bool(environ.get("TMUX"))}
+    _print_json(report)
     return 0
 
 

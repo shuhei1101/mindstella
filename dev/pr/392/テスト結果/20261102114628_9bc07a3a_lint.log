@@ -1,0 +1,9 @@
+$ git rev-parse --short HEAD
+7f77a470
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook
+
+exit=0

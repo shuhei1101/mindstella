@@ -1,0 +1,96 @@
+title: "常駐サーバーの状態"
+entry:
+  kind: mcp_tool
+  value: '`server_status`（同じ JSON を `GET /_admin/status` でも返す）'
+flows:
+  - name: 正常系
+    summary: 待ち受けのポート・バージョン・配信しているワークスペースごとのポートを返す
+    setup:
+      - name: Mock
+        description: なし（テストを動かす Python で常駐サーバーを子プロセスとして起動し、MCP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペースのフォルダ A と B。どちらも `preview_url` を呼んで配信を立てておく
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as server_status
+
+        クライアント->>IF: server_status
+        IF-->>クライアント: name・version・port・pid・previews
+      ```
+    expected:
+      - '`name` が `mindstella`、`version` がプラグインの `version.ini` のバージョン、`port` が `MINDSTELLA_PORT`、`pid` が常駐サーバーのプロセスの PID'
+      - '`previews` に、フォルダ A と B の絶対パスと、`preview_url` が返した URL のポートが 1 行ずつある'
+      - '`GET /_admin/status` の JSON が、`server_status` の結果と同じ'
+    test: test_normal
+  - name: 正常系（配信が無い）
+    summary: 配信を立てていなければ、`previews` を空で返す
+    setup:
+      - name: Mock
+        description: 正常系と同じ。`preview_url` を呼ばない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as server_status
+
+        クライアント->>IF: server_status
+        IF-->>クライアント: previews は空
+      ```
+    expected:
+      - '`previews` が空の配列'
+    test: test_normal_when_no_previews
+lead: 常駐サーバーの待ち受けのポート・バージョン・プロセスと、配信しているワークスペースごとのポートを返す。
+idempotent: true
+side_effects: なし（何も書き込まない）
+request:
+  - name: session
+    type: object | None
+    required: false
+    default: なし
+    location: argument
+    description: PreToolUse のフックが入れるセッションの値（『MCP サーバーの起動』の `session`）。使わない
+response:
+  - name: name
+    type: '"mindstella"'
+    description: 常駐サーバーの名前。『常駐サーバーの起動の確認』が、ポートで待ち受けているのが mindstella かを見分ける
+  - name: version
+    type: str
+    description: 常駐サーバーを起動したプラグインの `version.ini` のバージョン
+    example: 0.12.0
+  - name: port
+    type: int
+    description: 待ち受けのポート（`MINDSTELLA_PORT`）
+    example: '8784'
+  - name: pid
+    type: int
+    description: 常駐サーバーのプロセスの PID
+  - name: started_at
+    type: str
+    description: 常駐サーバーを起動した日時（UTC のタイムゾーン付き ISO 8601）
+  - name: plugin_root
+    type: str
+    description: 常駐サーバーを起動したプラグインのフォルダの絶対パス
+  - name: previews[].workspace
+    type: str
+    description: 配信しているワークスペースの絶対パス
+  - name: previews[].port
+    type: int
+    description: その配信のポート
+exceptions:
+  - name: なし（正常終了）
+    condition: 状態を返した
+    notes: 結果を返す
+constraints:
+  - item: HTTP の入口
+    constraint: '`GET /_admin/status` は `/mcp` と同じポートで待ち受け、`application/json` で同じ JSON を返す。MCP のクライアントを持たない『常駐サーバーの起動の確認』と起動スクリプトが読む'
+  - item: 並び
+    constraint: '`previews` はワークスペースの絶対パスの昇順'
+refs:
+  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+callers:
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
+  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+test_file: tests/integration/server/test_server_status.py
