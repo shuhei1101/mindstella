@@ -231,8 +231,8 @@ def test_send_when_entered(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
     pane = start_claude_pane(mode="user", cwd=root)
-    server = start_server(extra_env=pane.env, cwd=root)
-    opened = server.call("preview_url", workspace=str(root))
+    server = start_server()
+    opened = server.call("preview_url", workspace=str(root), session=pane.session)
     assert opened.data is not None
     page = open_preview(str(opened.data["url"]))
     open_review(page)

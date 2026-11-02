@@ -1,7 +1,7 @@
 title: "スレッドの一覧"
 entry:
   kind: mcp_tool
-  value: '`threads`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__threads`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`threads`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__threads`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 状態を渡さなければオープンのスレッドだけを新しい順に返す

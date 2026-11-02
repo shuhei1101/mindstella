@@ -97,6 +97,33 @@ def test_normal(
     assert preview_section(readme).splitlines()[1] == url
 
 
+
+def test_normal_when_session_closed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """Claude Code を閉じても常駐サーバーが配信を続け、つなぎ直した後に取得した URL が閉じる前と同じである（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    server = start_server()
+    served = server.call("preview_url", workspace=str(root))
+    assert served.data is not None
+    url = served.data["url"]
+    # 実行（Claude Code を閉じる代わりに MCP のクライアントの接続を閉じ、URL を開いてから、別のクライアントでつなぎ直す）
+    server.client.close()
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector("table.grid tbody tr")
+    opened_ids = row_ids(page)
+    again = server.connect().call("preview_url", workspace=str(root))
+    # 検証
+    assert opened_ids == ["D-1"]
+    assert again.data is not None
+    assert again.data["url"] == url
+
+
 def test_normal_when_rewritten(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,

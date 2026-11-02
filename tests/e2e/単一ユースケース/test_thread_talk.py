@@ -574,7 +574,7 @@ def test_error_when_server_unreachable(
     open_preview(str(served.data["url"]))
     open_thread(page, "TH-1")
     # スレッドを開いた後にサーバーを止める
-    server.close_stdin()
+    server.call("server_stop")
     server.wait_exit()
     page.fill(REPLY_TEXTAREA, REPLY_BODY)
     # 実行

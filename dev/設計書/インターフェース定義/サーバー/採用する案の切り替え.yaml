@@ -1,7 +1,7 @@
 title: "採用する案の切り替え"
 entry:
   kind: mcp_tool
-  value: '`adopt`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__adopt`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`adopt`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__adopt`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 決定済みの検討事項の採用を案 A から案 B へ切り替える

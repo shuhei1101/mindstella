@@ -1,7 +1,7 @@
 title: "項目の削除"
 entry:
   kind: mcp_tool
-  value: '`remove`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__remove`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`remove`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__remove`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: まとめた後の重複したメモを消し、まだまとめていない変更に消した項目を残す

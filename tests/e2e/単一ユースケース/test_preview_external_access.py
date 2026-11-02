@@ -1,13 +1,12 @@
 """プレビューを外から見る（待ち受けのポート・許可するホスト名・起動と終了のフックを設定し、外の入口の内側で開いたプレビューで記録を読み、コメントを送る）の E2E テスト。
 
-起動スクリプトの代わりに MCP サーバーを立て、外の入口（トンネル・リバースプロキシ）の代わりに、外のホスト名の Host と Origin を付けて
+起動スクリプトの代わりに常駐の MCP サーバーを立て、外の入口（トンネル・リバースプロキシ）の代わりに、外のホスト名の Host と Origin を付けて
 配信のポートへ渡す転送を置く。その転送を通して実際のブラウザで開く。描画のライブラリは CDN から読む。
 外の入口のサービスそのものと、その認証は確かめない。
 """
 
 from __future__ import annotations
 
-import signal
 import socket
 import time
 from pathlib import Path
@@ -131,7 +130,7 @@ def test_normal_when_hooks_set(
     make_item: MakeItem,
     start_server: StartServer,
 ) -> None:
-    """起動時と終了時のフックを設定すると、配信を立てたときと止めるときに、ポートとワークスペースの名前を受け取って呼ばれる（正常系）。"""
+    """起動時と終了時のフックを設定すると、配信を立てたときと常駐サーバーを止めるときに、ポートとワークスペースの名前を受け取って呼ばれる（正常系）。"""
     # 準備
     start_record = tmp_path / "start-hook.txt"
     stop_record = tmp_path / "stop-hook.txt"
@@ -143,22 +142,27 @@ def test_normal_when_hooks_set(
             STOP_HOOK_ENV: recording_hook(stop_record),
         }
     )
-    # 実行（配信を立て、Claude Code を閉じる代わりに、標準入力は開いたまま SIGTERM を送る）
+    # 実行（配信を立て、Claude Code を閉じる代わりに MCP のクライアントの接続を閉じてから、常駐サーバーを止める）
     served = server.call("preview_url", workspace=str(root))
     assert served.is_error is False, served.text
     assert served.data is not None
     port = urlsplit(str(served.data["url"])).port
     started_lines = read_hook_lines(start_record)
-    server.process.send_signal(signal.SIGTERM)
+    server.client.close()
+    time.sleep(HOOK_SETTLE_SEC)
+    stopped_before_stop = stop_record.exists()
+    server.connect().call("server_stop")
     exit_code = server.wait_exit()
     stopped_lines = read_settled_hook_lines(stop_record)
     # 検証
     # 起動時のフックが 1 回、配信のポートとワークスペースのフォルダの名前を受け取って呼ばれている
     assert started_lines == [f"{port} 家計簿"]
     assert read_settled_hook_lines(start_record) == [f"{port} 家計簿"]
+    # Claude Code を閉じた時点では、終了時のフックが呼ばれていない
+    assert stopped_before_stop is False
     # 終了時のフックが 1 回、起動時と同じポートとワークスペースの名前を受け取って呼ばれている
     assert stopped_lines == [f"{port} 家計簿"]
-    # MCP サーバーのプロセスが残っていない
+    # 常駐サーバーのプロセスが残っていない
     assert exit_code == 0
     assert server.process.poll() == 0
 

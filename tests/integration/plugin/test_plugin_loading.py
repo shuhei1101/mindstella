@@ -1,4 +1,4 @@
-"""プラグインの読み込み（plugins/mindstella/ の .claude-plugin/plugin.json・skills/・LICENSE）の結合テスト。"""
+"""プラグインの読み込み（plugins/mindstella/ の .claude-plugin/plugin.json・.mcp.json・hooks/・skills/・LICENSE）の結合テスト。"""
 
 from __future__ import annotations
 
@@ -8,13 +8,29 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from workspace_fixtures import PORT_ENV, free_port
+
 if TYPE_CHECKING:
     from conftest import RunClaude
 
 PLUGIN_ID = "mindstella@mindstella"
 
 # 取り込まれたプラグインのフォルダに無いこと（リポジトリの開発用のファイル）
-OUTSIDE_PLUGIN_NAMES = ["dev", "docs", "tests", ".storybook", "package.json", ".mcp.json"]
+OUTSIDE_PLUGIN_NAMES = ["dev", "docs", "tests", ".storybook", "package.json"]
+
+# 常駐サーバーへつなぐ MCP サーバーの設定
+MCP_SERVER_CONFIG = {"type": "http", "url": "http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp"}
+
+# フックが呼ぶコマンド
+RESET_UNREAD_COMMAND = (
+    '"${MINDSTELLA_VENV:-$HOME/.mindmap/venv}/bin/python" '
+    '"${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/reset_unread.py"'
+)
+ENSURE_SERVER_COMMAND = 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/ensure_server.py" --hook'
+INJECT_SESSION_COMMAND = 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/inject_session.py"'
+
+# PreToolUse のフックを当てるツールの名前
+INJECT_MATCHER = "mcp__plugin_mindstella_mindstella__.*"
 
 
 def _find_installed_plugin(list_json: str) -> dict[str, object]:
@@ -22,16 +38,16 @@ def _find_installed_plugin(list_json: str) -> dict[str, object]:
     return next(plugin for plugin in json.loads(list_json) if plugin["id"] == PLUGIN_ID)
 
 
-def _count_hooks(details: str) -> int:
-    """claude plugin details の出力の部品の一覧から hooks の件数を取り出す。"""
-    match = re.search(r"Hooks \((\d+)\)", details)
+def _hook_events(details: str) -> list[str]:
+    """claude plugin details の出力の部品の一覧から、hooks のイベントの名前を取り出す。"""
+    match = re.search(r"Hooks \(\d+\)\s+([A-Za-z, ]+?)\s+\(", details)
     if match is None:
         raise ValueError(f"部品の一覧に hooks の行が無い: {details}")
-    return int(match.group(1))
+    return [name.strip() for name in match.group(1).split(",")]
 
 
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
-    """プラグイン mindstella が 2 つのスキルと共通の置き場所と起動スクリプトと LICENSE を持ち、プラグインの外のフォルダを持たず、SessionStart の hooks を 1 つだけ持って読み込まれる（正常系）。"""
+    """プラグイン mindstella が、スキルのフォルダと常駐サーバーへの接続の設定と 3 つのフックを持って読み込まれる（正常系）。"""
     # 準備
     run_claude("plugin", "marketplace", "add", str(repo_root))
 
@@ -66,15 +82,22 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
         (install_path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
     )
     assert "mcpServers" not in manifest
-    # hooks/hooks.json が SessionStart で reset_unread.py を呼ぶ 1 つだけを持ち、claude plugin details で hooks が 1 件である
+    # 直下の .mcp.json が、常駐サーバーへ HTTP でつなぐ mindstella だけを持つ
+    mcp = json.loads((install_path / ".mcp.json").read_text(encoding="utf-8"))
+    assert mcp == {"mcpServers": {"mindstella": MCP_SERVER_CONFIG}}
+    # hooks/hooks.json が SessionStart の 2 つのコマンドと、mindstella のツールの PreToolUse の 1 つを持つ
     hooks = json.loads((install_path / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
-    assert list(hooks) == ["SessionStart"]
-    assert [
-        hook["command"] for group in hooks["SessionStart"] for hook in group["hooks"]
-    ] == [
-        '"${MINDSTELLA_VENV:-$HOME/.mindmap/venv}/bin/python" '
-        '"${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/reset_unread.py"'
-    ]
-    assert _count_hooks(details.stdout) == 1
-    # その設定のフォルダで claude mcp list に mindstella が無い
-    assert "mindstella" not in run_claude("mcp", "list").stdout
+    assert {
+        event: [
+            (group.get("matcher"), [hook["command"] for hook in group["hooks"]]) for group in groups
+        ]
+        for event, groups in hooks.items()
+    } == {
+        "SessionStart": [(None, [RESET_UNREAD_COMMAND, ENSURE_SERVER_COMMAND])],
+        "PreToolUse": [(INJECT_MATCHER, [INJECT_SESSION_COMMAND])],
+    }
+    assert _hook_events(details.stdout) == ["SessionStart", "PreToolUse"]
+    # 待ち受けているプロセスの無いポートでは、claude mcp list の mindstella がつながらない
+    port = free_port()
+    listed = run_claude("mcp", "list", extra_env={PORT_ENV: str(port)}).stdout
+    assert f"plugin:mindstella:mindstella: http://127.0.0.1:{port}/mcp (HTTP) - ✘" in listed

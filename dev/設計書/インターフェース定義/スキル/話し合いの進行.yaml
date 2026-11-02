@@ -30,7 +30,7 @@ flows:
       - SKILL.md と `steps/` の本文が呼ぶツールが全て `allowed-tools` にあり、サーバーのツールの一覧（『MCP サーバーの起動』）にある
       - SKILL.md と `steps/` の本文が `mindmap.py`・`build`・`preview.html` を指さず、`config.yaml` を Edit ツールで直す手順を持たない
       - '本文が `migrate` を `plan: true` で呼び、その後に `threads` を `awaiting: true` で呼ぶ'
-      - 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
+      - 本文に、MCP のツールが無いとき常駐サーバーを起動する手順を案内して止まる分岐がある
       - '`steps/プレビュー.md` が `preview_url` を呼ぶ'
       - '`steps/範囲の見直し.md` が `update_settings` を呼ぶ'
       - '`skills/mindmap/` に SKILL.md が無く、`references/`・`playbooks/` がある'
@@ -74,7 +74,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`。`mcp__mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`。`mcp__plugin_mindstella_mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
     notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown`（資料の HTML の本文は `body_html`）で、`config.yaml` は `update_settings` で書く。`release/` の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -92,11 +92,11 @@ constraints:
     constraint: '準備のステップで `.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を読んだ後に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる'
     notes: インターフェース定義『記録の形式の移行』（サーバー）
   - item: ツールの呼び出し
-    constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。項目の中身は `add`・`update` の `item` に JSON のオブジェクトで渡し、`docs/` の本文はその `body_markdown`（資料の HTML の本文は `body_html`）で書く。スクリプトを Bash で起動しない。書き換えはサーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない
+    constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。項目の中身は `add`・`update` の `item` に JSON のオブジェクトで渡し、`docs/` の本文はその `body_markdown`（資料の HTML の本文は `body_html`）で書く。スクリプトを Bash で起動しない。書き換えはサーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない
     notes: インターフェース定義『MCP サーバーの起動』『書き換えの知らせ』
   - item: MCP のツールが使えないとき
-    constraint: 準備の最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、起動スクリプト（`{プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}`）で立ち上げ直すよう案内して止まる
-    notes: インターフェース定義『起動スクリプト』
+    constraint: 準備の最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py`（『常駐サーバーの起動の確認』）を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直す手順を案内して止まる
+    notes: インターフェース定義『常駐サーバーの起動の確認』
   - item: 送信の取り込み
     constraint: '準備のステップで版の比較の後に `threads` を `awaiting: true` で呼ぶ（状態を渡さず、オープンもクローズも拾う）。1 件以上あれば、スレッド 1 件ずつ `thread` で未読の書き込みを読み、利用者に示し、取り込みのステップで記録してから、返信するか返信せずにクローズにするかを決める。返信するときは `reply`（要約と取り込み済みを 1 回で）、クローズのスレッドへ返信が要るときは先に `set_thread_status` で理由つきでオープンに戻す。返信しないときは、話が済んでいれば `set_thread_status` で理由つきでクローズにし、`update_thread`（`take: true`・要約）で取り込み済みにする。返事の要らない書き込み（「了解」など）には返信せず、質問・依頼には返信してクローズにしない。足した・直した項目があればその ID を返信に書く。読んだだけでは取り込み済みにしない。0 件なら取り込みを飛ばす。示すとき、箇所（`loc`）を持つスレッドは本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` のスレッドは項目を指さない旨を添える。話し合いの途中で `[mindstella]` で始まる入力（インターフェース定義『コメントをまとめて送る』の「入力する文字列」）が入ったら、利用者の発言としては取り込まず、準備のときと同じく取り込む。0 件なら（既に取り込み済み）何も記録しない'
     notes: 単一ユースケース『送信の取り込み』
@@ -163,6 +163,7 @@ constraints:
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
   - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
 notes:
   確かめないもの: スキルをモデルが読んで動かす振る舞いは、費用が掛かり結果が揺れるためテストしない。サブエージェントの起動と許可が及ぶことは PoC（#22）で確かめた

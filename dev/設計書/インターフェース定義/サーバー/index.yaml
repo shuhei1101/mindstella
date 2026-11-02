@@ -2,13 +2,25 @@ summary: "起動スクリプトと、スキルが呼ぶ MCP のツール・プ�
 docs_index: true
 items:
   - page: 起動スクリプト.yaml
-    summary: 'bin/mindstella: 依存を確かめ、tmux のセッションで MCP サーバーを渡した Claude Code を立ち上げる'
+    summary: 'bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、tmux のセッションで Claude Code を立ち上げる'
     group: 起動
   - page: 依存の確認.yaml
     summary: 'check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp の版を確かめる'
     group: 起動
   - page: MCPサーバーの起動.yaml
-    summary: MCP サーバー mindstella を stdio で立てる。全てのツールに共通の結果とエラーの返し方
+    summary: 常駐の MCP サーバー mindstella を HTTP で待ち受ける。全てのツールに共通の結果とエラーの返し方
+    group: 起動
+  - page: 常駐サーバーの起動の確認.yaml
+    summary: 'ensure_server.py: SessionStart のフックと起動スクリプトが、落ちていた常駐サーバーを起動する'
+    group: 起動
+  - page: セッションの値の注入.yaml
+    summary: 'inject_session.py: PreToolUse のフックが、呼んだセッションの作業フォルダとペインをツールの引数に入れる'
+    group: 起動
+  - page: 常駐サーバーの状態.yaml
+    summary: 'server_status: 待ち受けのポート・バージョンと、配信しているワークスペースを返す'
+    group: 起動
+  - page: 常駐サーバーの停止.yaml
+    summary: 'server_stop: 配信を全て止めて常駐サーバーを終える'
     group: 起動
   - page: ワークスペースの作成.yaml
     summary: 'init: 設定を受け取って空のワークスペースを作る'

@@ -11,16 +11,19 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
+import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
-from workspace_fixtures import REPO_ROOT, MakeVenv
+from workspace_fixtures import LISTEN_HOST, PORT_ENV, REPO_ROOT, MakeVenv, free_port, read_server_status
 
 # 起動するスクリプトと、偽の `claude` が `installPath` として返す本物のプラグインのフォルダ
 PLUGIN_DIR = REPO_ROOT / "plugins" / "mindstella"
@@ -39,6 +42,12 @@ HASH_DIGITS = 6
 # 起動スクリプトが使う外部コマンド（`PATH` の唯一のフォルダにリンクを置く）
 REQUIRED_COMMANDS = ("bash", "dirname", "mkdir", "python3", "sleep")
 
+# スクリプトが起動した常駐サーバーを止めてから、待ち受けをやめるまで待つ上限秒数
+RESIDENT_STOP_WAIT_SEC = 10
+
+# 常駐サーバーの名前（状態の `name`）
+SERVER_NAME = "mindstella"
+
 # 偽の `claude`（`plugin list --json` には一覧を返し、それ以外では受け取ったものを控えて待ち続ける）
 FAKE_CLAUDE = """#!/bin/sh
 if [ "$1" = "plugin" ] && [ "$2" = "list" ]; then
@@ -48,6 +57,7 @@ fi
 record="{record_dir}/started-$$"
 printf '%s\\n' "$@" > "$record.args"
 printf '%s' "${{CLAUDE_CONFIG_DIR:-}}" > "$record.config"
+printf '%s' "${{MINDSTELLA_ALLOWED_HOSTS:-}}" > "$record.hosts"
 exec sleep 600
 """
 
@@ -69,6 +79,7 @@ class LaunchSandbox:
     socket: str
     tmux_tmpdir: Path
     real_tmux: str
+    port: int
 
     def write_claude(self, listing: list[dict[str, Any]]) -> None:
         """偽の `claude` を置く。listing が `plugin list --json` の出力になる。"""
@@ -100,6 +111,7 @@ class LaunchSandbox:
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
             "TMUX_TMPDIR": str(self.tmux_tmpdir),
+            PORT_ENV: str(self.port),
         }
         # 設定のフォルダ（アカウント）を渡すか
         if with_config:
@@ -193,8 +205,63 @@ def copy_plugin(destination: Path) -> Path:
     return destination
 
 
+def stop_resident_server(port: int) -> None:
+    """そのポートで待ち受けている mindstella の常駐サーバーを SIGTERM で止め、待ち受けをやめるまで待つ。"""
+    status = read_server_status(port)
+    if status is None or status.get("name") != SERVER_NAME:
+        return
+    os.kill(int(status["pid"]), signal.SIGTERM)
+    deadline = time.monotonic() + RESIDENT_STOP_WAIT_SEC
+    while read_server_status(port) is not None and time.monotonic() < deadline:
+        time.sleep(POLL_INTERVAL_SEC)
+
+
 @pytest.fixture
-def sandbox(tmp_path: Path) -> Iterator[LaunchSandbox]:
+def resident_port() -> Iterator[int]:
+    """スクリプトが起動する常駐サーバーに渡す空きポートを返し、テストの後でそのポートの常駐サーバーを止める。"""
+    port = free_port()
+    yield port
+    stop_resident_server(port)
+
+
+type ServeFakeStatus = Callable[[int, int, dict[str, Any] | None], None]
+
+
+@pytest.fixture
+def serve_fake_status() -> Iterator[ServeFakeStatus]:
+    """ポートで待ち受け、`GET /_admin/status` に決めた応答を返す HTTP のサーバーを立てる関数を返し、テストの後で止める。"""
+    servers: list[ThreadingHTTPServer] = []
+
+    def _serve(port: int, status: int, body: dict[str, Any] | None) -> None:
+        """status と body（JSON。None なら空）を返すサーバーを立てる。"""
+        payload = b"" if body is None else json.dumps(body).encode("utf-8")
+
+        class _Handler(BaseHTTPRequestHandler):
+            """どのパスにも同じ応答を返す。"""
+
+            def do_GET(self) -> None:
+                """決めた応答を返す。"""
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, format: str, *args: Any) -> None:
+                """記録を出さない。"""
+
+        server = ThreadingHTTPServer((LISTEN_HOST, port), _Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        servers.append(server)
+
+    yield _serve
+    for server in servers:
+        server.shutdown()
+        server.server_close()
+
+
+@pytest.fixture
+def sandbox(tmp_path: Path, resident_port: int) -> Iterator[LaunchSandbox]:
     """隔離した環境を作り、テストの後で専用の tmux のサーバーだけを止める。"""
     real_tmux = shutil.which("tmux")
     if real_tmux is None:
@@ -223,6 +290,7 @@ def sandbox(tmp_path: Path) -> Iterator[LaunchSandbox]:
         socket=socket,
         tmux_tmpdir=tmux_tmpdir,
         real_tmux=real_tmux,
+        port=resident_port,
     )
     sandbox.write_claude([{"id": "mindstella@mindstella", "installPath": str(PLUGIN_DIR)}])
     yield sandbox
@@ -235,13 +303,6 @@ def sandbox(tmp_path: Path) -> Iterator[LaunchSandbox]:
 def ready_venv(make_venv: MakeVenv) -> Path:
     """PyYAML・jsonschema・mcp が見える仮想環境を作る。"""
     return make_venv("venv")
-
-
-def read_mcp_config(args_file: Path) -> dict[str, Any]:
-    """偽の `claude` が受け取った `--mcp-config` のファイルを読む。"""
-    args = args_file.read_text(encoding="utf-8").splitlines()
-    assert args[0] == "--mcp-config"
-    return json.loads(Path(args[1]).read_text(encoding="utf-8"))
 
 
 def read_tool_names(server_script: Path) -> list[str]:

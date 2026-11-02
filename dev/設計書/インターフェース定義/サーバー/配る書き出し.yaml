@@ -1,7 +1,7 @@
 title: "配る書き出し"
 entry:
   kind: mcp_tool
-  value: '`export`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__export`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`export`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__export`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 記録・画面・描画のライブラリ・ライセンスの表示を中に持つ 1 枚の HTML を out へ書き出す
@@ -206,7 +206,7 @@ request:
     type: str
     required: true
     location: argument
-    description: 書き出す HTML のファイルのパス。相対パスは MCP サーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む。既にあるファイルは置き換える
+    description: 書き出す HTML のファイルのパス。相対パスは `workspace` と同じく `session.cwd` から読み、`session` が無ければ引数の誤り（インターフェース定義『MCP サーバーの起動』）。既にあるファイルは置き換える
     constraints: 末尾が `.html`。親のフォルダがある
     example: ~/渡す/新規事業の検討.html
 response:

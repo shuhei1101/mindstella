@@ -1,7 +1,7 @@
 title: "項目の追加"
 entry:
   kind: mcp_tool
-  value: '`add`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__add`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`add`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__add`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 本文つきの検討事項を足す

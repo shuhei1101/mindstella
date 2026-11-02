@@ -182,7 +182,7 @@ def test_error_when_server_unreachable(
     assert served.data is not None
     _open_detail(page, open_preview, served.data["url"])
     # 開いた後にサーバーを止める
-    server.close_stdin()
+    server.call("server_stop")
     server.wait_exit()
     # 実行
     page.fill(DETAIL_TEXTAREA, BODY)
@@ -214,7 +214,7 @@ def test_normal_when_draft_restored_after_restart(
     page.wait_for_function("!document.querySelector('aside.panel.open')")
     page.wait_for_timeout(DRAFT_FLUSH_WAIT_MS)
     # サーバーを止めて立て直し、新しい URL で開く
-    first_server.close_stdin()
+    first_server.call("server_stop")
     first_server.wait_exit()
     second_server = start_server()
     restarted = second_server.call("preview_url", workspace=str(root))

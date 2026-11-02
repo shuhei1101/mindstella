@@ -1,7 +1,7 @@
 title: "項目の更新"
 entry:
   kind: mcp_tool
-  value: '`update`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__update`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`update`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__update`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 検討事項の答えと状態を直して案を採用にし、不要になったキーを消す

@@ -1,0 +1,68 @@
+title: "常駐サーバーの停止"
+entry:
+  kind: mcp_tool
+  value: '`server_stop`'
+flows:
+  - name: 正常系
+    summary: 止めた配信を返してから、配信ごとに終了時のフックを呼び、全ての配信を止めて常駐サーバーを終える
+    setup:
+      - name: Mock
+        description: なし（テストを動かす Python で常駐サーバーを子プロセスとして起動し、MCP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペースのフォルダ A と B。どちらも `preview_url` を呼んで配信を立てておく
+      - name: 終了時のフック
+        description: '常駐サーバーを起動する環境の `MINDSTELLA_PREVIEW_STOP_HOOK` に、受け取った引数をテストの一時フォルダのファイルへ 1 行ずつ書き足すコマンドを渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as server_stop
+        participant HK as 終了時のフック
+        participant P as プレビューの配信
+
+        クライアント->>IF: server_stop
+        IF-->>クライアント: stopping・previews
+        IF->>HK: 配信ごとに {コマンド} {ポート} {フォルダの名前}（待たない）
+        IF->>P: 全て止める
+        IF->>IF: プロセスを終える
+      ```
+    expected:
+      - 結果の `stopping` が真で、`previews` にフォルダ A と B の配信のポートがある
+      - 常駐サーバーのプロセスが 5 秒以内に終わり、`MINDSTELLA_PORT` と配信のポートで待ち受けていない
+      - フックの書き足すファイルに 2 行あり、それぞれの配信のポートとワークスペースのフォルダの名前が並ぶ
+    test: test_normal
+lead: 常駐サーバーを止める。配信ごとに終了時のフックを呼び、全ての配信を止めて、プロセスを終える。
+idempotent: false
+side_effects: 結果を返した後に、『MCP サーバーの起動』の終わり方で終わる（終了時のフックを呼び、全ての配信を止め、プロセスを終える）。並行する全てのセッションから mindstella のツールが使えなくなる
+request:
+  - name: session
+    type: object | None
+    required: false
+    default: なし
+    location: argument
+    description: PreToolUse のフックが入れるセッションの値（『MCP サーバーの起動』の `session`）。使わない
+response:
+  - name: stopping
+    type: bool
+    description: 常に真。結果を返した後に止める
+  - name: previews[].workspace
+    type: str
+    description: 止める配信のワークスペースの絶対パス
+  - name: previews[].port
+    type: int
+    description: 止める配信のポート
+exceptions:
+  - name: なし（正常終了）
+    condition: 止め始めた
+    notes: 結果を返してから終わる
+constraints:
+  - item: 止める時
+    constraint: 結果のレスポンスを返し終えてから、SIGTERM を受けたときと同じ終わり方を始める（結果を返す前に待ち受けを閉じない）
+  - item: 起動し直し
+    constraint: 起動し直すツールは持たない。止めた後は、次に Claude Code を立ち上げたときの『常駐サーバーの起動の確認』か起動スクリプトが、そのときにインストールされているバージョンのプラグインで起動する
+    notes: 常駐サーバーが自分を起動し直すと、止めたときのバージョンのフォルダの `server.py` を起動してしまい、上げたプラグインに替わらない
+refs:
+  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+callers:
+  - dev/設計書/シナリオ/単一ユースケース/常駐サーバーの起動と停止#
+test_file: tests/integration/server/test_server_stop.py

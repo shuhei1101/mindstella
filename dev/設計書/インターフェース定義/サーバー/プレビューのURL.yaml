@@ -1,7 +1,7 @@
 title: "プレビューの URL"
 entry:
   kind: mcp_tool
-  value: '`preview_url`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__preview_url`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`preview_url`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__preview_url`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 初めて呼ぶと配信を立て、127.0.0.1 の URL を返す
@@ -370,7 +370,7 @@ constraints:
   - item: 配信の数
     constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで呼び直すと同じ URL を返す。別のプロセスが同じワークスペースを配っていても、このプロセスは別のポートで配る
   - item: 配信を止める時
-    constraint: プロセスが終わるとき（『MCP サーバーの起動』の終わり方）。途中で止めるツールは持たない
+    constraint: 常駐サーバーのプロセスが終わるとき（『MCP サーバーの起動』の終わり方。『常駐サーバーの停止』を含む）。ツールを呼んだセッションが終わっても止めない。ワークスペースごとに止めるツールは持たない
   - item: 起動時の検査
     constraint: 配信を立てる前に `config.yaml` だけをスキーマと突き合わせる（種類ごとの YAML は『記録の取得』が読むたびに確かめる）。通った設定を、配信の「最後に検査に通った設定」の初めの値にする。既に配っているワークスペースでは確かめずに同じ URL を返す
   - item: README の書き直し

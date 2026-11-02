@@ -186,6 +186,45 @@ def test_url_of(
     assert len(registry._servers) == 1
 
 
+def _start_named(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    names: list[str],
+) -> dict[str, dict[str, Any]]:
+    """名前のワークスペースを並びの順に作って start し、名前 → 一覧に出るはずの要素を返す。"""
+    started: dict[str, dict[str, Any]] = {}
+    for name in names:
+        root = make_workspace(make_item("D-1"), name=name)
+        url, _started = registry.start(root)
+        started[name] = {"workspace": str(root.resolve()), "port": _port_of(url)}
+    return started
+
+
+@pytest.mark.parametrize(
+    ("started_names", "expected_names"),
+    [
+        pytest.param(["b", "a"], ["a", "b"], id="two_previews"),
+        pytest.param([], [], id="no_previews"),
+    ],
+)
+def test_listing(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    started_names: list[str],
+    expected_names: list[str],
+) -> None:
+    """ワークスペースの昇順に並べる（正常系）。"""
+    # 準備
+    started = _start_named(registry, make_workspace, make_item, started_names)
+    expected = [started[name] for name in expected_names]
+    # 実行
+    result = registry.listing()
+    # 検証
+    assert result == expected
+
+
 def _start_expecting_mismatch(registry: serve.PreviewRegistry, root: Path) -> list[str]:
     """start が SchemaMismatchError を送ることを確かめ、その lines を返す。"""
     with pytest.raises(SchemaMismatchError) as raised:

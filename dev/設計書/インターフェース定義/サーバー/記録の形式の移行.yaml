@@ -1,7 +1,7 @@
 title: "記録の形式の移行"
 entry:
   kind: mcp_tool
-  value: '`migrate`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__migrate`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`migrate`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__migrate`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系（手順を並べる）
     summary: 版を記録する前の形式のワークスペースで、プラグインの版までの手順と値が要るキーを返す

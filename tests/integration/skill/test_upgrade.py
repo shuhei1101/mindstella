@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # front matter の allowed-tools の値
 UPGRADE_ALLOWED_TOOLS = (
-    "Read, mcp__mindstella__migrate, mcp__mindstella__check, mcp__mindstella__batch"
+    "Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__batch"
 )
 
 # 本文のツールの表に並ぶ migrate の呼び方（版を比べる・手順を当てる・値を入れる・版を書き換える）
@@ -57,8 +57,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert body.index("`batch` 1 回") < body.index("`record: true`")
     # 本文が mindmap.py・build・check-env を指さない
     assert mentions_old_mode(texts) == []
-    # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
-    assert "bin/mindstella" in body
+    # 本文に、MCP のツールが無いとき常駐サーバーを起動する手順を案内して止まる分岐がある
+    assert "skills/mindmap/scripts/ensure_server.py" in body
+    assert "`/mcp` で mindstella につなぎ直し" in body
     assert "止まる" in body
     # スキルの Markdown に特定の開発基盤の名前が無い
     assert texts_with_forbidden_name() == []

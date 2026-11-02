@@ -77,7 +77,7 @@ constants:
     container: plugins/mindstella/skills/setup/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: '`--env`・`--unset-env` で受けるキー（設定『サーバー』の環境変数。`shell.sh` にはこの順で書く）'
-    value: ("MINDSTELLA_VENV", "MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK")
+    value: ("MINDSTELLA_VENV", "MINDSTELLA_PORT", "MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK")
   - name: ALIAS_NAME
     title: alias の名前
     container: plugins/mindstella/skills/setup/scripts/register.py
@@ -132,7 +132,7 @@ functions:
         required: false
         default: os.environ
         passing: keyword
-        description: '`HOME`・`XDG_CONFIG_HOME`・`SHELL` を読む環境変数'
+        description: '`HOME`・`XDG_CONFIG_HOME`・`SHELL`・`TMUX` を読む環境変数'
       - name: system
         type: str
         required: false
@@ -153,7 +153,7 @@ functions:
          - `remove-account`: `apply_remove_account` で組み替える
          - `remove`: 登録を `None` にする
       4. `show` 以外は、書く中身を組み立てて（登録があれば `registration.json`・`render_shell`・`add_rc_block`、`None` なら 2 つのファイルを消し `remove_rc_block`）まとめて書く（`write_files`）
-      5. その後の登録を `build_report` で標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
+      5. その後の登録を `build_report` で組み立て、`show` のときは `in_tmux`（`environ` の `TMUX` が空でないか）を足して、標準出力に JSON（`ensure_ascii=False`）で出し、 0 を返す
          - `NotWritableError`・`UnsupportedShellError`・`UnknownAccountError` を捕まえた場合、`error` と（前の 2 つは）`manual_lines` を持った JSON を出して 1 を返す。`manual_lines` は印の範囲の中に `render_shell` の行をそのまま入れたもの（`remove` のときは持たせない）
          - `read_registration` が `json.JSONDecodeError` を送った場合、何も書かずに `error` に「{registration.json のパス} を読めません」を入れた JSON を出して 1 を返す
     exceptions:
@@ -170,6 +170,12 @@ functions:
         condition: '`registration.json` を JSON として読めない（捕まえて 1）'
         message: '{registration.json のパス} を読めません'
     unit_tests:
+      - name: test_main_when_show
+        case: 正常
+        summary: show だけが in_tmux を持つ
+        condition: '`HOME` は空の `tmp_path`。`parametrize`: `show` と `TMUX` が空でない / `show` と `TMUX` が無い / `set --env MINDSTELLA_PORT=9000`'
+        mock: なし
+        expected: '0 を返し、標準出力の JSON の `in_tmux` が `true` / `false` / キーが無い（3 つ目は `env` が `{"MINDSTELLA_PORT": "9000"}`）'
       - name: test_main_when_invalid_args
         case: 異常
         summary: 引数の誤りは何も書かず 2

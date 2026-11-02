@@ -1,7 +1,7 @@
 title: "タグの一覧"
 entry:
   kind: mcp_tool
-  value: '`tags`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__mindstella__tags`）。結果とエラーの返し方は『MCP サーバーの起動』'
+  value: '`tags`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__tags`）。結果とエラーの返し方は『MCP サーバーの起動』'
 flows:
   - name: 正常系
     summary: 項目とスレッドが使うタグを、表記の違いをまとめて件数の多い順に返す
