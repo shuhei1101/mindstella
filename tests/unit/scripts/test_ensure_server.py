@@ -482,36 +482,47 @@ def _expected_exit_attrs(error_type: type[Exception], port: int) -> dict[str, An
 
 
 @pytest.mark.parametrize(
-    ("port_fixture", "error_type"),
+    ("port_fixture", "fetched", "error_type"),
     [
-        pytest.param("listening_port", ensure_server.PortInUseError, id="port_in_use"),
-        pytest.param("free_port", ensure_server.ServerExitedError, id="port_free"),
+        pytest.param("listening_port", None, ensure_server.PortInUseError, id="port_in_use"),
+        pytest.param("free_port", None, ensure_server.ServerExitedError, id="port_free"),
+        pytest.param("listening_port", RUNNING_STATUS, None, id="other_server_ready"),
     ],
 )
 def test_wait_until_ready_when_exited(
     tmp_path: Path,
     request: pytest.FixtureRequest,
     port_fixture: str,
-    error_type: type[Exception],
+    fetched: dict[str, Any] | None,
+    error_type: type[Exception] | None,
 ) -> None:
-    """終わったらポートの使われ方で分ける（異常系）。"""
+    """終わったら、先に待ち受けた mindstella があればその状態を返し、無ければポートの使われ方で分ける（異常系）。"""
     # 準備
     port = request.getfixturevalue(port_fixture)
     log_file = tmp_path / "server.log"
     offset = _write_exit_log(log_file)
     fake = _FakeTime()
-    expected = _expected_exit_attrs(error_type, port)
-    # 実行・検証
-    with pytest.raises(error_type) as raised:
-        ensure_server.wait_until_ready(
+
+    def run() -> dict[str, Any]:
+        """終わったプロセスで待つ。"""
+        return ensure_server.wait_until_ready(
             _FakeProcess(1),
             port,
             log_file=log_file,
             log_offset=offset,
-            fetch=_Recorder(None),
+            fetch=_Recorder(fetched),
             clock=fake.clock,
             sleep=fake.sleep,
         )
+
+    # 実行・検証
+    # 同時に起動した mindstella が待ち受けている: 例外を送らずにその状態を返す
+    if error_type is None:
+        assert run() == fetched
+        return
+    expected = _expected_exit_attrs(error_type, port)
+    with pytest.raises(error_type) as raised:
+        run()
     assert _exit_error_attrs(raised.value, list(expected)) == expected
 
 

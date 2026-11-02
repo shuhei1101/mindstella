@@ -79,7 +79,7 @@ PYTHON_GUIDE = "Python 3.12 以上を入れてから、スキル専用の仮想�
 
 
 class PortInUseError(Exception):
-    """起動した常駐サーバーが待ち受ける前に終わり、そのポートに別のプロセスがつながる。"""
+    """起動した常駐サーバーが待ち受ける前に終わり、mindstella の状態が返らず、そのポートに別のプロセスがつながる。"""
 
     def __init__(self, port: int) -> None:
         """待ち受けのポートを持つ。"""
@@ -291,8 +291,11 @@ def wait_until_ready(
     waits_left = int(START_TIMEOUT_SEC // START_POLL_SEC) - 1
     while True:
         returncode = process.poll()
-        # 待ち受ける前に終わった: ポートの使われ方で理由を分ける
+        # 待ち受ける前に終わった: 同時に起動した mindstella が先に待ち受けていればそれを使い、無ければポートの使われ方で理由を分ける
         if returncode is not None:
+            status = read_status(port)
+            if status is not None:
+                return status
             if _is_listening(port):
                 raise PortInUseError(port)
             raise ServerExitedError(returncode, _read_log_tail(log_file, log_offset))
