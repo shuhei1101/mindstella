@@ -15,6 +15,8 @@ scenarios:
         description: Claude Code の設定のフォルダを環境変数 `CLAUDE_CONFIG_DIR` で渡す
       - name: ワークスペースのフォルダ
         description: 作成済みかどうかを問わないフォルダ
+      - name: 落ちている常駐サーバー
+        description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡し、そのポートで待ち受けているプロセスが無い
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -22,22 +24,23 @@ scenarios:
         participant LS as 起動スクリプト
         participant TM as tmux
         participant CC as Claude Code
-        participant SV as サーバー
+        participant SV as 常駐サーバー
 
         U->>LS: 起動スクリプト {フォルダ}
         LS->>LS: 依存を確かめる
         LS->>CC: インストールしたプラグインの一覧
         CC-->>LS: 今の版のフォルダ
-        LS->>LS: この起動だけの MCP の設定を書く
+        LS->>SV: 待ち受けているか
+        LS->>SV: 落ちているので今の版のフォルダのサーバーを起動する
         LS->>TM: セッションを立てる（設定のフォルダを渡す）
-        TM->>CC: MCP の設定を渡して立ち上げる
-        CC->>SV: MCP サーバーを立てる
+        TM->>CC: 立ち上げる
         LS->>TM: セッションへつなぐ
       ```
     expected:
       - tmux に、ワークスペースのフォルダを開いたセッションがある
-      - Claude Code に MCP の設定が渡り、mindstella の起動コマンドが `installPath` の版のフォルダのサーバーを指す
-      - その設定どおりに MCP サーバーを立てると、mindstella のツールの一覧が返る
+      - 常駐サーバーが、`installPath` の版のフォルダのサーバーで、`MINDSTELLA_PORT` のポートで待ち受けている
+      - MCP のクライアントで常駐サーバーにつなぐと、mindstella のツールの一覧が返る
+      - Claude Code が `--mcp-config` を受け取っていない
       - Claude Code に設定のフォルダの `CLAUDE_CONFIG_DIR` が渡る
     test: test_normal
   - name: 正常シナリオ（プラグインを上げた後）
@@ -51,21 +54,55 @@ scenarios:
         notes: 古い版のフォルダの起動スクリプトを叩く
       - name: tmux
         description: テストごとに専用のソケットで立てた tmux のサーバー
+      - name: 落ちている常駐サーバー
+        description: 正常シナリオと同じ
     flow: |-
       ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant LS as 起動スクリプト（古い版）
         participant CC as Claude Code
+        participant SV as 常駐サーバー
 
         U->>LS: 起動スクリプト {フォルダ}
         LS->>CC: インストールしたプラグインの一覧
         CC-->>LS: 新しい版のフォルダ
-        LS->>LS: 新しい版のサーバーを指す MCP の設定を書く
+        LS->>SV: 落ちているので新しい版のフォルダのサーバーを起動する
       ```
     expected:
-      - MCP の設定の mindstella の起動コマンドが、新しい版のフォルダのサーバーを指す
+      - 常駐サーバーが、新しい版のフォルダのサーバーで待ち受けている
     test: test_normal_when_plugin_upgraded
+  - name: 正常シナリオ（古い版の常駐サーバーが待ち受けている）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ偽の Claude Code。`installPath` は新しい版のフォルダを返す
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: インストールしたプラグイン
+        description: 古い版と新しい版の 2 つのフォルダ
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー
+      - name: 古い版の常駐サーバー
+        description: 古い版のフォルダのサーバーが `MINDSTELLA_PORT` のポートで待ち受け、別のワークスペースのプレビューを配信している
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant LS as 起動スクリプト
+        participant SV as 常駐サーバー（古い版）
+        participant TM as tmux
+
+        U->>LS: 起動スクリプト {フォルダ}
+        LS->>SV: 待ち受けている版
+        SV-->>LS: 古い版
+        LS-->>U: 版が違うことと、常駐サーバーを立ち上げ直す手順を示す
+        LS->>TM: セッションを立てる
+      ```
+    expected:
+      - 出力に、待ち受けている常駐サーバーの版とインストールした今の版と、立ち上げ直す手順がある
+      - 古い版の常駐サーバーが立ち上げ直されず、別のワークスペースのプレビューの配信が止まっていない
+      - tmux に、ワークスペースのフォルダを開いたセッションがある
+    test: test_normal_when_old_server_running
   - name: 異常シナリオ（依存が足りない）
     setup:
       - name: Mock
@@ -89,7 +126,36 @@ scenarios:
       - 出力に、足りないライブラリの名前と、そろえるコマンドがある
       - tmux にセッションが立っていない
       - Claude Code が立ち上がっていない
+      - 常駐サーバーが起動していない
     test: test_error_when_dependency_missing
+  - name: 異常シナリオ（常駐サーバーを起動できない）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ偽の Claude Code
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー
+      - name: 使われているポート
+        description: テストが先に `127.0.0.1` で待ち受けたポートを `MINDSTELLA_PORT` で渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant LS as 起動スクリプト
+        participant SV as 常駐サーバー
+
+        U->>LS: 起動スクリプト {フォルダ}
+        LS->>SV: 落ちているので起動する
+        SV-->>LS: 使われているポートを示して終わる
+        LS-->>U: 使われているポートと、MINDSTELLA_PORT で変える手順を示して止まる
+      ```
+    expected:
+      - 起動スクリプトが 0 以外の終了コードで終わる
+      - 出力に、使われているポートと `MINDSTELLA_PORT` がある
+      - tmux にセッションが立っていない
+      - Claude Code が立ち上がっていない
+    test: test_error_when_server_not_started
   - name: 異常シナリオ（tmux が無い）
     setup:
       - name: Mock
@@ -141,20 +207,20 @@ scenarios:
       - 新しいセッションの Claude Code に `CLAUDE_CONFIG_DIR=~/.claude-sub1` が渡る
       - 先にあったセッションは立ち上げ直されていない
     test: test_normal_when_another_account
-lead: 利用者が起動スクリプトにワークスペースのフォルダを渡し、依存を確かめてから、tmux のセッションの中で mindstella の MCP サーバーを渡した Claude Code を立ち上げる単一ユースケース。
+lead: 利用者が起動スクリプトにワークスペースのフォルダを渡し、依存を確かめ、mindstella の常駐の MCP サーバーが落ちていれば起動してから、tmux のセッションの中で Claude Code を立ち上げる単一ユースケース。
 issue: 67
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
-    interest: 話し合いをするときだけ mindstella の MCP のツールが載り、ほかの作業のコンテキストを太らせない。依存が足りなければ何をすればよいかが分かる
+    interest: コメントを送ったときに Claude Code へ入力される tmux のセッションで話し合いを始められる。依存が足りなければ何をすればよいかが分かる
 trigger: 利用者が起動スクリプト（『起動スクリプトの登録』で登録した alias、アカウントごとの alias を含む）にワークスペースのフォルダを渡して叩く
 preconditions:
   - プラグイン mindstella がインストールされている
-success_guarantee: tmux のセッションの中で Claude Code が立ち、mindstella の MCP のツールが使える。MCP サーバーは、インストールしたプラグインの今の版のフォルダから立つ。
-minimal_guarantee: 依存が足りないとき・tmux が無いときは、Claude Code を立ち上げずに、足りないものとそろえるコマンドを示して止まる。
+success_guarantee: tmux のセッションの中で Claude Code が立ち、mindstella の MCP のツールが使える。常駐サーバーが落ちていたときは、インストールしたプラグインの今の版のフォルダから起動する。
+minimal_guarantee: 依存が足りないとき・tmux が無いとき・常駐サーバーを起動できないときは、Claude Code を立ち上げずに、足りないものとそろえるコマンドを示して止まる。待ち受けている常駐サーバーは、版が違っても立ち上げ直さない。
 frequency: 話し合いを始める・再開するたびに 1 回
 priority: 高
 notes:
-  E2E の範囲: 本物の Claude Code は立ち上げず、偽のコマンドが受け取った MCP の設定と環境変数を確かめる。起動スクリプトで立ち上げたときだけツールが載り、スキルの `allowed-tools` で許可が通ることは PoC（#73）で本物の Claude Code で確かめた
+  E2E の範囲: 本物の Claude Code は立ち上げず、偽のコマンドが受け取った引数と環境変数と、常駐サーバーの待ち受けを確かめる。スキルの `allowed-tools` で許可が通ることは PoC（#73）で本物の Claude Code で確かめた
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
 test_file: tests/e2e/単一ユースケース/test_launch_script.py

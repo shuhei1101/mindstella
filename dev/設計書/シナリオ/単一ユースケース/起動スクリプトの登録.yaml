@@ -4,7 +4,7 @@ scenarios:
     setup:
       - name: Mock
         description: モデルを呼ばない。スキルの手順が連ねる登録のスクリプトの呼び出しを、決めた引数で再生する。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返す偽のコマンドに差し替える。`installPath` の版のフォルダの `bin/mindstella` を、受け取った引数をファイルに書く偽のスクリプトに差し替える
-        notes: 本物の起動スクリプトの先（依存の確認・tmux・MCP の設定）は『起動スクリプトで立ち上げる』が確かめる
+        notes: 本物の起動スクリプトの先（依存の確認・常駐サーバーの起動・tmux）は『起動スクリプトで立ち上げる』が確かめる
       - name: ホームのフォルダ
         description: テストごとの空の一時フォルダを `HOME` にする。ログインシェルは bash で、`~/.bashrc` に利用者が書いた行を 1 行持つ
         notes: 利用者のシェルの設定に触れない
@@ -22,7 +22,7 @@ scenarios:
         participant SH as シェルの設定
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>CC: mindstella の MCP のツールが無い
+        CC->>CC: tmux の外で立ち上がっている（`TMUX` が無い）
         CC->>RS: 登録を読む
         RS-->>CC: 未登録
         CC-->>U: 起動スクリプトの登録を持ちかけ、設定したい環境変数を尋ねる
@@ -34,6 +34,7 @@ scenarios:
     expected:
       - 新しく開いた bash で `mindstella` が定義され、`MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com` になっている
       - 新しく開いた bash で `mindstella {フォルダ}` を叩くと、`installPath` の版の起動スクリプトが `{フォルダ}` を受け取る
+      - 登録した後に起動した常駐サーバーが、`MINDSTELLA_ALLOWED_HOSTS` を `preview.example.com` として読む
       - 利用者が書いた `~/.bashrc` の行がそのまま残っている
       - ワークスペースのフォルダに何も書かれていない
     test: test_normal
@@ -60,6 +61,7 @@ scenarios:
         U->>CC: 外から見るホスト名だけを変える
         CC->>RS: 変える環境変数だけを渡して登録する
         RS->>SH: 登録の範囲を書き直す
+        CC-->>U: 常駐サーバーを立ち上げ直すと新しい値が効くことを案内する
       ```
     expected:
       - 新しく開いた bash で `MINDSTELLA_ALLOWED_HOSTS` が `b.example.com`、`MINDSTELLA_VENV` が `~/venvs/mindstella` のまま
@@ -172,13 +174,13 @@ scenarios:
       - シェルの設定に、`mindstella` と `mindstella-sub1` の登録が 1 つずつしかない
       - 利用者が書いた `~/.bashrc` の行がそのまま残っている
     test: test_normal_when_account_added
-lead: 利用者が、起動スクリプトで立ち上げていない Claude Code でセットアップのスキル `setup` を呼び、起動スクリプトを呼ぶ alias と、起動スクリプトが読む環境変数を、スキルの配下のスクリプトでシェルの設定に登録する単一ユースケース。
+lead: 利用者が、tmux の外で立ち上げた Claude Code でセットアップのスキル `setup` を呼び、起動スクリプトを呼ぶ alias と、起動スクリプトが読む環境変数を、スキルの配下のスクリプトでシェルの設定に登録する単一ユースケース。
 issue: 10
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 起動スクリプトのパスを毎回引かずに、短い名前で話し合いを立ち上げられる。外から見る設定などの環境変数を毎回打たずに済む。自分で書いたシェルの設定は変わらない
-trigger: 利用者が、起動スクリプトで立ち上げていない Claude Code で `/mindstella:setup` を呼ぶ（未登録なら登録を持ちかけられる）。または `/mindstella:setup` で登録を変えたい・外したい・アカウントを足したいと伝える
+trigger: 利用者が、tmux の外で立ち上げた Claude Code で `/mindstella:setup` を呼ぶ（未登録なら登録を持ちかけられる）。または `/mindstella:setup` で登録を変えたい・外したい・アカウントを足したいと伝える
 preconditions:
   - プラグイン mindstella がインストールされている
   - システムの `bash` と `python3` がある（mindstella の仮想環境と MCP のツールは要らない）
