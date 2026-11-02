@@ -106,6 +106,71 @@ scenarios:
       - ワークスペースのフォルダに何も書かれていない
     notes:
       E2E: 持たない。ツールが無いと気付いて案内するのはモデルの応答で、スキルの手順にその分岐があることは結合テストが確かめる。常駐サーバーの起動は『常駐サーバーの起動と停止』が確かめる
+  - name: 正常シナリオ（tmux の外で登録を断る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる登録の読み取り・版の比較・`status` を、決めた引数で順に再生する
+      - name: tmux の外で立ち上げた Claude Code
+        description: 環境変数 `TMUX` を持たず、mindstella の MCP のツールを持つ
+      - name: 未登録のホーム
+        description: 起動スクリプトの登録が無いホームのフォルダ
+      - name: 途中まで進んだワークスペース
+        description: 正常シナリオ（既存のワークスペース）と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SV as サーバー
+
+        U->>CC: /mindstella:setup {フォルダ}
+        CC->>CC: tmux の外で立ち上がっている（`TMUX` が無い）
+        CC->>RS: 登録を読む
+        RS-->>CC: 未登録
+        CC-->>U: コメントが Claude Code へ入力されないことを示し、起動スクリプトの登録を持ちかける
+        U->>CC: 登録しない
+        CC->>SV: 版を比べる
+        CC->>SV: status
+        CC-->>U: 状況と続きの推奨を示し、/mindstella:session で続けるよう案内する
+      ```
+    expected:
+      - '`status` が呼ばれる'
+      - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
+    notes:
+      E2E: 持たない。登録を持ちかける・断られて続けるのはモデルの応答で、スキルの手順にその分岐があることは結合テストが確かめる。登録したときは『起動スクリプトの登録』が確かめる
+  - name: 正常シナリオ（tmux の外で登録済み）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる登録の読み取り・版の比較・`status` を、決めた引数で順に再生する
+      - name: tmux の外で立ち上げた Claude Code
+        description: 環境変数 `TMUX` を持たず、mindstella の MCP のツールを持つ
+      - name: 登録済みのホーム
+        description: alias `mindstella` を登録済みのホームのフォルダ
+      - name: 途中まで進んだワークスペース
+        description: 正常シナリオ（既存のワークスペース）と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（setup）
+        participant RS as 登録のスクリプト
+        participant SV as サーバー
+
+        U->>CC: /mindstella:setup {フォルダ}
+        CC->>CC: tmux の外で立ち上がっている（`TMUX` が無い）
+        CC->>RS: 登録を読む
+        RS-->>CC: 登録済みの alias
+        CC-->>U: コメントが Claude Code へ入力されないことと、alias で立ち上げれば入力されることを示す
+        CC->>SV: 版を比べる
+        CC->>SV: status
+        CC-->>U: 状況と続きの推奨を示し、/mindstella:session で続けるよう案内する
+      ```
+    expected:
+      - '`status` が呼ばれる'
+      - ホームのフォルダのどのファイルの中身も、呼ぶ前と同じ
+    notes:
+      E2E: 持たない。登録済みの alias を示すのはモデルの応答で、スキルの手順にその分岐があることは結合テストが確かめる
   - name: 正常シナリオ（版が古いワークスペース）
     setup:
       - name: Mock

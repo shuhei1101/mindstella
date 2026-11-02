@@ -25,11 +25,11 @@ scenarios:
         CC->>CC: tmux の外で立ち上がっている（`TMUX` が無い）
         CC->>RS: 登録を読む
         RS-->>CC: 未登録
-        CC-->>U: 起動スクリプトの登録を持ちかけ、設定したい環境変数を尋ねる
+        CC-->>U: コメントが Claude Code へ入力されないことを示し、起動スクリプトの登録を持ちかけ、設定したい環境変数を尋ねる
         U->>CC: 外から見るホスト名を渡して登録する
         CC->>RS: alias と環境変数を登録する
         RS->>SH: alias と環境変数を書く
-        CC-->>U: 新しいシェルで mindstella {フォルダ} を叩くよう案内して止まる
+        CC-->>U: 新しいシェルで mindstella {フォルダ} を叩けばコメントが入力されることを案内し、セットアップを続ける
       ```
     expected:
       - 新しく開いた bash で `mindstella` が定義され、`MINDSTELLA_ALLOWED_HOSTS` が `preview.example.com` になっている

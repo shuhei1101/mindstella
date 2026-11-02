@@ -21,8 +21,8 @@ scenarios:
 
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
-        HK->>SV: 待ち受けているか
-        HK->>SV: 落ちているので起動する
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        HK->>SV: mindstella の応答が無いので起動する
         SV->>SV: 127.0.0.1 の MINDSTELLA_PORT で /mcp を待ち受ける
         CC->>SV: ツールの一覧
         SV-->>CC: mindstella のツール
@@ -51,8 +51,8 @@ scenarios:
 
         U->>C2: 2 つ目の Claude Code を立ち上げる
         C2->>HK: SessionStart
-        HK->>SV: 待ち受けているか
-        SV-->>HK: 待ち受けている
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        SV-->>HK: mindstella の版
         C1->>SV: 状況（ワークスペースは作業フォルダ）
         SV-->>C1: フォルダ A の状況
         C2->>SV: 状況（ワークスペースは作業フォルダ）
@@ -109,7 +109,6 @@ scenarios:
     expected:
       - 終了時のフックが、フォルダ A と B の配信ごとに 1 回ずつ呼ばれている
       - 常駐サーバーのプロセスと、配信のポートの待ち受けが残っていない
-      - 止めた後に Claude Code を立ち上げると、常駐サーバーが起動し直す
     test: test_normal_when_stopped
   - name: 異常シナリオ（待ち受けのポートが使われている）
     setup:
@@ -127,7 +126,8 @@ scenarios:
 
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
-        HK->>SV: 落ちているので起動する
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
+        HK->>SV: mindstella の応答が無いので起動する
         SV->>SV: ポートで待ち受けられない
         SV-->>HK: 使われているポートを示して終わる
         HK-->>CC: 立ち上げを止めない
@@ -154,6 +154,7 @@ refs:
   - dev/設計書/シナリオ/単一ユースケース/起動スクリプトで立ち上げる#
   - dev/設計書/シナリオ/単一ユースケース/プレビューを外から見る#
 notes:
+  待ち受けているかの判定: `MINDSTELLA_PORT` のポートで mindstella の常駐サーバーが版を返すかで決める。ポートが開いていても mindstella の応答が無ければ、落ちているとみなして起動する
   状態を確かめる・止める手段: インターフェース定義で、常駐サーバーの起動と管理の仕方とあわせて決める
   E2E の範囲: 本物の Claude Code は立ち上げず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
