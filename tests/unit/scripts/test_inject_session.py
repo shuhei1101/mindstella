@@ -191,13 +191,13 @@ def test_build_session(
     assert result == expected
 
 
-def _write_stat(proc_dir: Path, pid: int, text: str) -> None:
+def _write_stat(proc_dir: Path, pid: int, text: str | bytes) -> None:
     """偽の `/proc/{pid}/stat` を書く。"""
     (proc_dir / str(pid)).mkdir(parents=True)
-    (proc_dir / str(pid) / "stat").write_text(text, encoding="utf-8")
+    (proc_dir / str(pid) / "stat").write_bytes(text if isinstance(text, bytes) else text.encode())
 
 
-def _make_proc(proc_dir: Path, stats: dict[int, str] | None) -> None:
+def _make_proc(proc_dir: Path, stats: dict[int, str] | dict[int, bytes] | None) -> None:
     """stats が None でなければ偽の `/proc` を作り、PID ごとの stat を書く（None なら `/proc` を作らない）。"""
     if stats is None:
         return
@@ -256,7 +256,7 @@ def test_find_claude_process_when_not_found(
     ("stats", "ps_output", "expected", "expected_calls"),
     [
         pytest.param(
-            {40: "40 (cl) aude) S 1 40 40 0 -1 4194560 0 0 0 0 0 0 0 0 20 0 1 0 5000 0 0\n"},
+            {40: b"40 (cl) a\xffude) S 1 40 40 0 -1 4194560 0 0 0 0 0 0 0 0 20 0 1 0 5000 0 0\n"},
             "",
             "5000",
             0,
@@ -266,7 +266,7 @@ def test_find_claude_process_when_not_found(
     ],
 )
 def test_process_started_at(
-    stats: dict[int, str] | None, ps_output: str, expected: str, expected_calls: int, tmp_path: Path
+    stats: dict[int, bytes] | None, ps_output: str, expected: str, expected_calls: int, tmp_path: Path
 ) -> None:
     """/proc があれば starttime、無ければ ps の lstart（正常系）。"""
     # 準備
