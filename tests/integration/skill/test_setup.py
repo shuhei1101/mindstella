@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # front matter の allowed-tools の値
 SETUP_ALLOWED_TOOLS = (
-    "Read, mcp__mindstella__init, mcp__mindstella__status, mcp__mindstella__migrate, "
+    "Read, mcp__plugin_mindstella_mindstella__init, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__migrate, "
     "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/register.py:*)"
 )
 
@@ -63,9 +63,14 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert mentions_old_mode(texts) == []
     # 本文が migrate を plan: true で呼ぶ
     assert any("`migrate`" in text and PLAN_CALL in text for text in texts)
-    # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
-    assert any("bin/mindstella" in text and "止まる" in text for text in texts)
-    # その分岐は、登録のスクリプトを show で呼んで登録の有無を見る
+    # 本文に、MCP のツールが無いとき常駐サーバーを起動する手順を案内して止まる分岐がある
+    assert any(
+        "skills/mindmap/scripts/ensure_server.py" in text
+        and "`/mcp` で mindstella につなぎ直し" in text
+        and "止まる" in text
+        for text in texts
+    )
+    # tmux の外の分岐は、登録のスクリプトを show で呼んで登録の有無を見る
     assert any(
         REGISTER_SCRIPT_PATH in text and SHOW_CALL in text and "止まる" in text for text in texts
     )

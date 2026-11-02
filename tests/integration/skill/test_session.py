@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 # front matter の allowed-tools の値（`init` を除く mindstella の MCP のツールを並べる）
 SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
-    f"mcp__mindstella__{name}"
+    f"mcp__plugin_mindstella_mindstella__{name}"
     for name in (
         "add",
         "update",
@@ -130,8 +130,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert "`readme`" in preparation
     assert preparation.index("`readme`") < preparation.index("`changes_since_read`")
     assert "準備を続ける" in preparation
-    # 本文に、MCP のツールが無いとき起動スクリプトを案内して止まる分岐がある
-    assert "bin/mindstella" in preparation
+    # 本文に、MCP のツールが無いとき常駐サーバーを起動する手順を案内して止まる分岐がある
+    assert "skills/mindmap/scripts/ensure_server.py" in preparation
+    assert "`/mcp` で mindstella につなぎ直し" in preparation
     assert "止まる" in preparation
     # steps/プレビュー.md が preview_url を呼ぶ
     preview_step = (SKILLS_DIR / "session" / "steps" / "プレビュー.md").read_text(encoding="utf-8")

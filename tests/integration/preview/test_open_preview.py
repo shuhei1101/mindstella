@@ -629,8 +629,8 @@ def test_error_when_server_unreachable(
     page.set_viewport_size(WIDE_SIZE)
     open_preview(served.data["url"], "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector("aside.panel.open .d-title")
-    # 実行（サーバーの標準入力を閉じて止める）
-    server.close_stdin()
+    # 実行（server_stop で常駐サーバーを止める）
+    server.call("server_stop")
     server.wait_exit()
     page.wait_for_selector(CONNECTION, timeout=UPDATE_TIMEOUT_MS)
     page.fill(SEND_TEXTAREA, "案 A にする")
