@@ -233,7 +233,7 @@ flows:
     summary: サーバーが止まると接続の状態を出し、前に読んだ記録で描き続け、送れなかった本文を残す
     setup:
       - name: Mock
-        description: なし（MCP サーバーを子プロセスとして立て、`preview_url` が返した URL を実際のブラウザで開いた後に、サーバーの標準入力を閉じて止める）
+        description: なし（常駐サーバーを子プロセスとして起動し、`preview_url` が返した URL を実際のブラウザで開いた後に、`server_stop` で止める）
       - name: make_workspace
         description: 検討事項 D-1・D-3 を持つワークスペース
         notes: ハッシュは `tab=decisions&view=table&id=D-1`
