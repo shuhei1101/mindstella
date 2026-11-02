@@ -55,6 +55,9 @@ DIRECT_RESPONSES: dict[tuple[str, ...], tuple[int, str]] = {
 
 # 宛先が生きているかを確かめるコマンドの鍵
 LSTART_KEY = ("ps", "-o", "lstart=", "-p", "40")
+
+# 無い /proc（起動時刻を ps -o lstart= で求めさせる）
+NO_PROC_DIR = Path("/nonexistent/proc")
 DISPLAY_KEY = ("tmux", "-S", "/s", "display-message", "-p", "-t", "%3", "#{pane_pid}")
 PPID_40_KEY = ("ps", "-o", "ppid=", "-p", "40")
 PPID_20_KEY = ("ps", "-o", "ppid=", "-p", "20")
@@ -425,7 +428,11 @@ def test_is_session_alive(
     run = _Runner(responses=responses)
     # 実行
     result = claude_input.is_session_alive(
-        _target(tmp_path), deadline=DEADLINE, run=run, clock=lambda: CLOCK_BEFORE
+        _target(tmp_path),
+        deadline=DEADLINE,
+        run=run,
+        clock=lambda: CLOCK_BEFORE,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result is None
@@ -485,7 +492,11 @@ def test_is_session_alive_when_ended(
     run = _Runner(responses=responses)
     # 実行
     result = claude_input.is_session_alive(
-        _target(tmp_path), deadline=DEADLINE, run=run, clock=lambda: clock_now
+        _target(tmp_path),
+        deadline=DEADLINE,
+        run=run,
+        clock=lambda: clock_now,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result == expected
@@ -715,7 +726,13 @@ def test_enter_to_claude(tmp_path: Path) -> None:
     fake = _FakeTime()
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path),
+        2,
+        lock=threading.Lock(),
+        run=run,
+        clock=fake.clock,
+        sleep=fake.sleep,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result is True
@@ -729,7 +746,13 @@ def test_enter_to_claude_when_outside_tmux() -> None:
     fake = _FakeTime()
     # 実行
     result = claude_input.enter_to_claude(
-        None, 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
+        None,
+        2,
+        lock=threading.Lock(),
+        run=run,
+        clock=fake.clock,
+        sleep=fake.sleep,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result is False
@@ -746,7 +769,13 @@ def test_enter_to_claude_when_session_ended(
     caplog.set_level(logging.WARNING)
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path),
+        2,
+        lock=threading.Lock(),
+        run=run,
+        clock=fake.clock,
+        sleep=fake.sleep,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result is False
@@ -765,7 +794,13 @@ def test_enter_to_claude_when_paste_failed(
     caplog.set_level(logging.WARNING)
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path),
+        2,
+        lock=threading.Lock(),
+        run=run,
+        clock=fake.clock,
+        sleep=fake.sleep,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result is False
@@ -784,7 +819,13 @@ def test_enter_to_claude_when_not_delivered(
     caplog.set_level(logging.WARNING)
     # 実行
     result = claude_input.enter_to_claude(
-        _target(tmp_path), 2, lock=threading.Lock(), run=run, clock=fake.clock, sleep=fake.sleep
+        _target(tmp_path),
+        2,
+        lock=threading.Lock(),
+        run=run,
+        clock=fake.clock,
+        sleep=fake.sleep,
+        proc_dir=NO_PROC_DIR,
     )
     # 検証
     assert result is False
@@ -816,7 +857,13 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
     def _first() -> None:
         """先に入力する。"""
         claude_input.enter_to_claude(
-            target, 2, lock=lock, run=run, clock=fake.clock, sleep=fake.sleep
+            target,
+            2,
+            lock=lock,
+            run=run,
+            clock=fake.clock,
+            sleep=fake.sleep,
+            proc_dir=NO_PROC_DIR,
         )
 
     def _second() -> None:
@@ -824,7 +871,13 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
         first_call_started.wait(timeout=5)
         second_about_to_call.set()
         claude_input.enter_to_claude(
-            target, 2, lock=lock, run=run, clock=fake.clock, sleep=fake.sleep
+            target,
+            2,
+            lock=lock,
+            run=run,
+            clock=fake.clock,
+            sleep=fake.sleep,
+            proc_dir=NO_PROC_DIR,
         )
 
     threads = [threading.Thread(target=_first), threading.Thread(target=_second)]

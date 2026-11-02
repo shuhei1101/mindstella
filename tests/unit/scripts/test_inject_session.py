@@ -42,7 +42,7 @@ class _FindRecorder:
 
 
 class _PsRunner:
-    """`ps -o ppid=,lstart=,comm= -p {PID}` に、PID ごとに決めた行を返す偽の run。"""
+    """`ps -o ... -p {PID}` に、PID ごとに決めた行を返す偽の run。"""
 
     def __init__(self, rows: dict[str, str], *, returncode: int = 0) -> None:
         """PID（文字列）→ 出力の行と、終了コードを受け取る。"""
@@ -191,29 +191,48 @@ def test_build_session(
     assert result == expected
 
 
-def test_find_claude_process() -> None:
+def _write_stat(proc_dir: Path, pid: int, text: str) -> None:
+    """偽の `/proc/{pid}/stat` を書く。"""
+    (proc_dir / str(pid)).mkdir(parents=True)
+    (proc_dir / str(pid) / "stat").write_text(text, encoding="utf-8")
+
+
+def _make_proc(proc_dir: Path, stats: dict[int, str] | None) -> None:
+    """stats が None でなければ偽の `/proc` を作り、PID ごとの stat を書く（None なら `/proc` を作らない）。"""
+    if stats is None:
+        return
+    proc_dir.mkdir()
+    for pid, text in stats.items():
+        _write_stat(proc_dir, pid, text)
+
+
+def test_find_claude_process(tmp_path: Path) -> None:
     """間に別のコマンドが挟まっても claude で止まる（正常系）。"""
     # 準備
     run = _PsRunner(
         {
-            "100": "   90 Mon Nov  2 10:00:00 2026 bash\n",
-            "90": "   80 Mon Nov  2 09:59:00 2026 claude-balancer\n",
-            "80": "   70 Mon Nov  2 09:58:00 2026 /usr/bin/claude\n",
+            "100": "   90 bash\n",
+            "90": "   80 claude-balancer\n",
+            "80": "   70 /usr/bin/claude\n",
         }
     )
+    _make_proc(
+        tmp_path / "proc",
+        {80: "80 (claude) S 70 80 80 0 -1 4194560 0 0 0 0 0 0 0 0 20 0 1 0 5000 0 0\n"},
+    )
     # 実行
-    result = inject_session.find_claude_process(100, run=run)
+    result = inject_session.find_claude_process(100, run=run, proc_dir=tmp_path / "proc")
     # 検証
-    assert result == (80, "Mon Nov 2 09:58:00 2026")
+    assert result == (80, "5000")
 
 
 @pytest.mark.parametrize(
     ("rows", "returncode", "expected_calls"),
     [
-        pytest.param({"100": "    1 Mon Nov  2 10:00:00 2026 bash\n"}, 0, 1, id="reached_init"),
+        pytest.param({"100": "    1 bash\n"}, 0, 1, id="reached_init"),
         pytest.param({}, 1, 1, id="ps_failed"),
         pytest.param(
-            {"100": "  100 Mon Nov  2 10:00:00 2026 bash\n"},
+            {"100": "  100 bash\n"},
             0,
             inject_session.PARENT_DEPTH_MAX,
             id="depth_limit",
@@ -221,13 +240,62 @@ def test_find_claude_process() -> None:
     ],
 )
 def test_find_claude_process_when_not_found(
-    rows: dict[str, str], returncode: int, expected_calls: int
+    rows: dict[str, str], returncode: int, expected_calls: int, tmp_path: Path
 ) -> None:
     """見つからなければ None（正常系）。"""
     # 準備
     run = _PsRunner(rows, returncode=returncode)
     # 実行
-    result = inject_session.find_claude_process(100, run=run)
+    result = inject_session.find_claude_process(100, run=run, proc_dir=tmp_path)
     # 検証
     assert result is None
     assert len(run.commands) == expected_calls
+
+
+@pytest.mark.parametrize(
+    ("stats", "ps_output", "expected", "expected_calls"),
+    [
+        pytest.param(
+            {40: "40 (cl) aude) S 1 40 40 0 -1 4194560 0 0 0 0 0 0 0 0 20 0 1 0 5000 0 0\n"},
+            "",
+            "5000",
+            0,
+            id="proc",
+        ),
+        pytest.param(None, "Mon Nov  2 10:00:00 2026\n", "Mon Nov 2 10:00:00 2026", 1, id="ps"),
+    ],
+)
+def test_process_started_at(
+    stats: dict[int, str] | None, ps_output: str, expected: str, expected_calls: int, tmp_path: Path
+) -> None:
+    """/proc があれば starttime、無ければ ps の lstart（正常系）。"""
+    # 準備
+    proc_dir = tmp_path / "proc"
+    _make_proc(proc_dir, stats)
+    run = _PsRunner({"40": ps_output})
+    # 実行
+    result = inject_session.process_started_at(40, run=run, proc_dir=proc_dir)
+    # 検証
+    assert result == expected
+    assert len(run.commands) == expected_calls
+
+
+@pytest.mark.parametrize(
+    ("stats", "returncode"),
+    [
+        pytest.param({}, 0, id="stat_missing"),
+        pytest.param(None, 1, id="ps_failed"),
+    ],
+)
+def test_process_started_at_when_missing(
+    stats: dict[int, str] | None, returncode: int, tmp_path: Path
+) -> None:
+    """プロセスが無ければ None（異常系）。"""
+    # 準備
+    proc_dir = tmp_path / "proc"
+    _make_proc(proc_dir, stats)
+    run = _PsRunner({}, returncode=returncode)
+    # 実行
+    result = inject_session.process_started_at(40, run=run, proc_dir=proc_dir)
+    # 検証
+    assert result is None

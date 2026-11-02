@@ -26,6 +26,9 @@ import pytest
 # tmux の 1 コマンドを待つ上限秒数
 TMUX_TIMEOUT_SEC = 10
 
+# `/proc/{PID}/stat` のコマンドの名前を閉じる最後の `)` より後ろの、starttime の位置（0 始まり）
+STAT_STARTTIME_INDEX = 19
+
 # 偽のコマンドが入力を待つ状態になるのを待つ上限秒数と、確かめる間隔
 READY_WAIT_SEC = 10
 POLL_INTERVAL_SEC = 0.05
@@ -109,15 +112,9 @@ def _is_running(pid: int) -> bool:
 
 
 def _started_at(pid: int) -> str:
-    """プロセスの起動時刻（`ps -o lstart=` の値の空白を 1 つに詰めたもの）を返す。"""
-    completed = subprocess.run(
-        ["ps", "-o", "lstart=", "-p", str(pid)],
-        capture_output=True,
-        text=True,
-        timeout=TMUX_TIMEOUT_SEC,
-        check=True,
-    )
-    return " ".join(completed.stdout.split())
+    """プロセスの起動時刻（`/proc/{PID}/stat` の 22 番目の欄 starttime）を返す。"""
+    stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    return stat.rpartition(")")[2].split()[STAT_STARTTIME_INDEX]
 
 
 @pytest.fixture

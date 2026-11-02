@@ -24,19 +24,18 @@ TMUX_PANE_VALUE = "%3"
 # 子プロセス 1 回を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 30
 
-# Claude Code の代わりに立てるプロセスのコード。スクリプトを子として起動し、自分の PID・起動時刻と子の出力を JSON で出す
+# Claude Code の代わりに立てるプロセスのコード。スクリプトを子として起動し、自分の PID・起動時刻（`/proc/{PID}/stat` の starttime）と子の出力を JSON で出す
 CLAUDE_CODE = """\
 import json, os, subprocess, sys
 script, payload = sys.argv[1:3]
 child = subprocess.run(
     [sys.executable, script], input=payload, capture_output=True, text=True, encoding="utf-8"
 )
-started = subprocess.run(
-    ["ps", "-o", "lstart=", "-p", str(os.getpid())], capture_output=True, text=True
-).stdout
+with open("/proc/%d/stat" % os.getpid(), encoding="utf-8") as stat:
+    started = stat.read().rpartition(")")[2].split()[19]
 print(json.dumps({
     "pid": os.getpid(),
-    "started_at": " ".join(started.split()),
+    "started_at": started,
     "returncode": child.returncode,
     "stdout": child.stdout,
 }))
