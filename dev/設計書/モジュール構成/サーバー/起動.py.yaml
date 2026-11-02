@@ -908,13 +908,13 @@ functions:
       description: 待ち受けた常駐サーバーの状態
     process: |-
       1. 上限を `clock() + START_TIMEOUT_SEC` にし、上限まで次を繰り返す
-         - `process.poll()` が終了コードを返した場合、`127.0.0.1` のそのポートへつながれば `PortInUseError(port)`、つながらなければ記録のファイルの `log_offset` より後ろの末尾 `LOG_TAIL_LINES` 行を持った `ServerExitedError` を送る
+         - `process.poll()` が終了コードを返した場合、`fetch(port)` をもう 1 回呼び、状態が返ればそれを返す（同時に起動した別の `ensure_server.py` の常駐サーバーが先に待ち受けた）。状態が返らず、`127.0.0.1` のそのポートへつながれば `PortInUseError(port)`、つながらなければ記録のファイルの `log_offset` より後ろの末尾 `LOG_TAIL_LINES` 行を持った `ServerExitedError` を送る
          - `fetch(port)` が状態を返せば、それを返す
          - `START_POLL_SEC` 待つ
       2. 上限を過ぎたら `ServerStartTimeoutError` を送る
     exceptions:
       - name: PortInUseError
-        condition: プロセスが終わり、ポートに別のプロセスがつながる
+        condition: プロセスが終わり、`fetch` が状態を返さず、ポートに別のプロセスがつながる
       - name: ServerExitedError
         condition: プロセスが終わり、ポートが空いている
       - name: ServerStartTimeoutError
@@ -928,10 +928,10 @@ functions:
         expected: その状態を返し、`sleep` が 2 回呼ばれる
       - name: test_wait_until_ready_when_exited
         case: 異常
-        summary: 終わったらポートの使われ方で分ける
-        condition: '`process.poll()` が 1 を返す。`log_file` の `log_offset` より後ろに 30 行。`parametrize`: テストが待ち受けているポート / 空きポート'
+        summary: 終わったら、先に待ち受けた mindstella があればその状態を返し、無ければポートの使われ方で分ける
+        condition: '`process.poll()` が 1 を返す。`log_file` の `log_offset` より後ろに 30 行。`parametrize`: `fetch` が常に `None` でテストが待ち受けているポート / `fetch` が常に `None` で空きポート / `fetch` が状態を返し、テストが待ち受けているポート'
         mock: '`process`・`fetch`'
-        expected: '`PortInUseError`（`port` がそのポート）/ `ServerExitedError`（`returncode` が 1、`log_tail` が書き足した末尾の 20 行）'
+        expected: '`PortInUseError`（`port` がそのポート）/ `ServerExitedError`（`returncode` が 1、`log_tail` が書き足した末尾の 20 行）/ 例外を送らずにその状態を返す'
         exception: プロセスが終わった
       - name: test_wait_until_ready_when_timeout
         case: 異常
