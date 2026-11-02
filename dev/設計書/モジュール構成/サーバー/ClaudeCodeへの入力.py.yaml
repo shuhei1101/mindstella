@@ -52,7 +52,7 @@ data_models:
       - name: claude_started_at
         type: str | None
         default: None
-        description: そのプロセスの起動時刻（空白を 1 つにつめた `ps -o lstart=` の文字列）
+        description: そのプロセスの起動時刻（`inject_session.process_started_at` の値）
   - name: InputTarget
     title: 送り先
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
@@ -313,14 +313,20 @@ functions:
         default: time.monotonic
         passing: injected
         description: 今の時刻
+      - name: proc_dir
+        type: Path
+        required: false
+        default: inject_session.PROC_DIR
+        passing: injected
+        description: 起動時刻を読む `/proc`（`inject_session.process_started_at` へ渡す）
     returns:
       type: str | None
       description: '生きていれば `None`、違えば理由（`Claude Code のプロセス {pid} が無い` / `PID {pid} が別のプロセスに使い回された` / `ペイン {pane} が無い` / `Claude Code がペイン {pane} の中に無い` / `時間切れ`）'
     process: |-
       1. 次を順に呼ぶ（引数は配列、シェルを通さない。`timeout` はその時点の `deadline - clock()`。呼ぶ前に残り時間が 0 以下なら `時間切れ` を返す）
-      2. `ps -o lstart= -p {claude_pid}` を呼ぶ
-         - 終了コードが 0 以外なら `Claude Code のプロセス {pid} が無い` を返す
-         - 出力の空白の並びを 1 つにつめた文字列が `claude_started_at` と違えば `PID {pid} が別のプロセスに使い回された` を返す
+      2. `inject_session.process_started_at(claude_pid, run=run, proc_dir=proc_dir)` で起動時刻を求める（`ps` を呼ぶときは同じく `timeout` を渡す）
+         - `None` なら `Claude Code のプロセス {pid} が無い` を返す
+         - `claude_started_at` と違えば `PID {pid} が別のプロセスに使い回された` を返す
       3. `tmux -S {socket} display-message -p -t {pane} "#{pane_pid}"` を呼ぶ
          - 終了コードが 0 以外か、出力が整数でなければ `ペイン {pane} が無い` を返す
       4. `claude_pid` から始め、PID がペインの PID と一致すれば `None` を返す。一致しなければ `ps -o ppid= -p {PID}` で親へ移り、`PARENT_DEPTH_MAX` 段まで繰り返す
@@ -330,13 +336,13 @@ functions:
       - name: test_is_session_alive
         case: 正常
         summary: 起動時刻が一致し、ペインのプロセスの子孫なら生きている
-        condition: '`claude_pid=40`、`claude_started_at` は `ps -o lstart=` の偽の出力と空白の数だけ違う文字列。`display-message` が `10`、`ps -o ppid=` が 40 → 20、20 → 10 を返す。`parametrize`: この親子 / `display-message` が `40`（ペインで直に Claude Code を動かした）'
+        condition: '`proc_dir` は無いフォルダ。`claude_pid=40`、`claude_started_at` は `ps -o lstart=` の偽の出力と空白の数だけ違う文字列。`display-message` が `10`、`ps -o ppid=` が 40 → 20、20 → 10 を返す。`parametrize`: この親子 / `display-message` が `40`（ペインで直に Claude Code を動かした）'
         mock: '`run`・`clock`'
         expected: どちらも `None`。後者は `ps -o ppid=` を呼ばない
       - name: test_is_session_alive_when_ended
         case: 異常
         summary: プロセス・起動時刻・ペイン・親子のどれかが違えば理由を返す
-        condition: '`parametrize`: `ps -o lstart=` が終了コード 1 / 起動時刻が違う / `display-message` が終了コード 1 / 親をたどると 1 に着く / `ps -o ppid=` が 40 → 40 を返し続ける（上限に着く）/ 呼ぶ前に `clock` が `deadline` を過ぎている'
+        condition: '`proc_dir` は無いフォルダ。`parametrize`: `ps -o lstart=` が終了コード 1 / 起動時刻が違う / `display-message` が終了コード 1 / 親をたどると 1 に着く / `ps -o ppid=` が 40 → 40 を返し続ける（上限に着く）/ 呼ぶ前に `clock` が `deadline` を過ぎている'
         mock: '`run`・`clock`'
         expected: '`Claude Code のプロセス 40 が無い` / `PID 40 が別のプロセスに使い回された` / `ペイン %3 が無い` / `Claude Code がペイン %3 の中に無い` / 同じ / `時間切れ`。最後の条件では `run` が呼ばれない'
   - name: transcript_dirs
@@ -582,6 +588,12 @@ functions:
         default: time.sleep
         passing: injected
         description: 待つ関数
+      - name: proc_dir
+        type: Path
+        required: false
+        default: inject_session.PROC_DIR
+        passing: injected
+        description: 起動時刻を読む `/proc`（`is_session_alive` へ渡す）
     returns:
       type: bool
       description: 会話の記録に入った（または待ち行列に入った）と確かめたか（応答の `entered`）
@@ -590,7 +602,7 @@ functions:
          - `[INFO]` 宛先のセッションが無いか tmux の外のため Claude Code へ入力しない
       2. `lock` を取り、以降を鍵の中で行う
       3. `transcript_dirs` のフォルダで `snapshot_sizes` を控え、`deadline` を `clock() + INPUT_DEADLINE_SEC` にする
-      4. 宛先が生きているかを確かめる（`is_session_alive(target, deadline=deadline)`）
+      4. 宛先が生きているかを確かめる（`is_session_alive(target, deadline=deadline, proc_dir=proc_dir)`）
          - 理由が返った場合、tmux へ貼らずに偽を返す
            - `[WARNING]` 宛先のセッションが終わったため Claude Code へ入力しない（理由）
       5. `paste_to_pane(target, input_text(count), deadline=deadline)` を呼ぶ
@@ -603,7 +615,7 @@ functions:
       - name: test_enter_to_claude
         case: 正常
         summary: 貼った後に会話の記録に入れば真
-        condition: '送り先。`run` は `ps`・`display-message` に生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を書き足す'
+        condition: '`proc_dir` は無いフォルダ。送り先。`run` は `ps`・`display-message` に生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、`send-keys` を受けたときに会話の記録のフォルダの jsonl へ `cwd` が一致し本文が入力の文字列の user の行を書き足す'
         mock: '`run`・`clock`・`sleep`'
         expected: 真を返し、`load-buffer` の標準入力が `input_text(2)`（`count=2`）
       - name: test_enter_to_claude_when_outside_tmux
@@ -615,25 +627,25 @@ functions:
       - name: test_enter_to_claude_when_session_ended
         case: 異常
         summary: 宛先のセッションが終わっていれば貼らずに偽
-        condition: '`run` が `ps -o lstart=` に終了コード 1 を返す'
+        condition: '`proc_dir` は無いフォルダ。`run` が `ps -o lstart=` に終了コード 1 を返す'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`WARNING` の記録に `Claude Code のプロセス` を含む理由がある。`load-buffer` が呼ばれない
       - name: test_enter_to_claude_when_paste_failed
         case: 異常
         summary: 貼れなければ偽と理由の記録
-        condition: '`run` が生きている宛先の値を返し、`paste-buffer` で終了コード 1 を返す'
+        condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、`paste-buffer` で終了コード 1 を返す'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`WARNING` の記録に `paste-buffer` を含む理由がある。会話の記録を読み直さない（`sleep` が呼ばれない）
       - name: test_enter_to_claude_when_not_delivered
         case: 正常
         summary: 上限までに入らなければ偽
-        condition: '`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
+        condition: '`proc_dir` は無いフォルダ。`run` が生きている宛先の値を返し、tmux の 3 つのコマンドに終了コード 0 を返し、会話の記録に何も書き足さない。`clock` は `sleep` の分だけ進む'
         mock: '`run`・`clock`・`sleep`'
         expected: 偽を返し、`sleep` に渡した秒の合計が `INPUT_DEADLINE_SEC` を超えない。`WARNING` の記録がある
       - name: test_enter_to_claude_when_concurrent
         case: 正常
         summary: 同時の入力を重ねない
-        condition: 2 つのスレッドから同じ送り先と同じ `lock` で呼ぶ。`run` は生きている宛先の値を返し、呼ばれている間に他方の `run` が始まっていないかを控える
+        condition: '`proc_dir` は無いフォルダ。2 つのスレッドから同じ送り先と同じ `lock` で呼ぶ。`run` は生きている宛先の値を返し、呼ばれている間に他方の `run` が始まっていないかを控える'
         mock: '`run`・`clock`・`sleep`'
         expected: 一方の 3 つのコマンドの間に他方のコマンドが入らない
 test_files:

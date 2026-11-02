@@ -267,7 +267,7 @@ request:
     required: false
     default: なし（ペインへ入力しない）
     location: argument
-    description: '`session.claude_pid` のプロセスの起動時刻（`ps -o lstart=` の文字列）。同じ PID が別のプロセスに使い回されたのを見分ける'
+    description: '`session.claude_pid` のプロセスの起動時刻の文字列（Linux は `/proc/{PID}/stat` の 22 番目の欄 `starttime`、`/proc` が無い OS は `ps -o lstart=`）。同じ PID が別のプロセスに使い回されたのを見分ける'
 response:
   - name: サーバーの名前
     type: str

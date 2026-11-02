@@ -28,7 +28,7 @@ flows:
       - 標準出力の JSON の `hookSpecificOutput.hookEventName` が `PreToolUse`
       - '`hookSpecificOutput.updatedInput.workspace` が `talk` のまま'
       - '`updatedInput.session` の `cwd`・`tmux`・`tmux_pane`・`claude_config_dir` が、入力の `cwd` と渡した環境変数の値'
-      - '`updatedInput.session.claude_pid` が `claude` の名前のプロセスの PID で、`claude_started_at` がそのプロセスの `ps -o lstart=` の値'
+      - '`updatedInput.session.claude_pid` が `claude` の名前のプロセスの PID で、`claude_started_at` がそのプロセスの `/proc/{PID}/stat` の 22 番目の欄 `starttime`'
     test: test_normal
   - name: 正常系（tmux の外）
     summary: '`TMUX`・`TMUX_PANE` が無ければ、`cwd` と `claude_config_dir` だけを入れる'
@@ -131,8 +131,11 @@ constraints:
   - item: 起動するコマンド
     constraint: '`python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/inject_session.py"`。システムの `python3` で動き、標準ライブラリだけを使う'
   - item: Claude Code のプロセスの探し方
-    constraint: フックのプロセスの親から `ps -o ppid=,lstart=,comm= -p {PID}` でたどり、最初に `comm` が `claude` のプロセスを Claude Code とする。PID 1 まで見つからなければ `claude_pid`・`claude_started_at` を入れない
+    constraint: フックのプロセスの親から `ps -o ppid=,comm= -p {PID}` でたどり、最初に `comm` が `claude` のプロセスを Claude Code とする。PID 1 まで見つからなければ `claude_pid`・`claude_started_at` を入れない
     notes: Claude Code 2.1 は、フックを `bash` を挟んで起動する。間に別のコマンド（`claude-balancer` など）が挟まっても、名前が `claude` のプロセスで止まる（2026-11-02 に確かめた）
+  - item: 起動時刻
+    constraint: '`claude_started_at` は、`/proc/{PID}/stat` があればその 22 番目の欄 `starttime`（OS の起動からの clock ticks）、`/proc` が無い OS（macOS）は空白を 1 つにつめた `ps -o lstart= -p {PID}` の文字列。常駐サーバーも同じ求め方で比べる'
+    notes: '`ps -o lstart=` は OS の起動時刻（`/proc/stat` の `btime`）に `starttime` を足した時刻で、時計の補正で `btime` が動くと同じプロセスでも値が変わる（WSL2 で、約 14 秒ごとに 1 秒ずれるのを確かめた）'
   - item: tmux の外
     constraint: '`TMUX` か `TMUX_PANE` が空なら、`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` を入れない'
   - item: 上限

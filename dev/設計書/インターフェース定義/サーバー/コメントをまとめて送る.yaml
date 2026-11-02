@@ -499,7 +499,7 @@ constraints:
     constraint: 'このワークスペースを指して最後にツールを呼んだセッションの `session`（『MCP サーバーの起動』の `session`）を宛先にし、`session.tmux_pane` のペインへ、`session.tmux` の最初の `,` より前のソケット（`tmux -S {ソケット}`）で入力する。常駐サーバーは、`workspace` と `session` を受けたツールの呼び出しのたびに、そのワークスペースの宛先を書き換える（配信の前に受けた分も持つ）。宛先が無い・`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無いときは tmux を呼ばずに `entered: false` にする'
     notes: 宛先はワークスペースごとに 1 つ。同じワークスペースを 2 つのセッションが指すと、後から呼んだ方に貼る
   - item: 宛先が生きているかの確かめ
-    constraint: '貼る前に、`ps -o lstart= -p {claude_pid}` が `claude_started_at` と一致し、そのプロセスが `tmux -S {ソケット} display-message -p -t {tmux_pane} "#{pane_pid}"` の PID かその子孫であることを確かめる。どれかが違えば（プロセスが無い・PID が使い回された・ペインが無い・別のペインへ移った）、tmux へ貼らずに `entered: false` にし、宛先のセッションが終わった旨を標準エラーに記録する'
+    constraint: '貼る前に、`claude_pid` のプロセスの起動時刻（Linux は `/proc/{claude_pid}/stat` の 22 番目の欄 `starttime`、`/proc` が無い OS は `ps -o lstart= -p {claude_pid}`）が `claude_started_at` と一致し、そのプロセスが `tmux -S {ソケット} display-message -p -t {tmux_pane} "#{pane_pid}"` の PID かその子孫であることを確かめる。どれかが違えば（プロセスが無い・PID が使い回された・ペインが無い・別のペインへ移った）、tmux へ貼らずに `entered: false` にし、宛先のセッションが終わった旨を標準エラーに記録する'
     notes: 子孫かは、`claude_pid` から `ps -o ppid=` で親をたどって `pane_pid` に着くかで決める（32 段まで）。`#{pane_pid}` はペインで最初に動いたプロセス（多くはシェル）で、Claude Code はその子孫になる
   - item: 入力の時点
     constraint: '`threads.yaml` と `comments.yaml` を書き終え、書き換えの鍵とワークスペースのロックを外してから入力する。鍵を持ったまま tmux と会話の記録を待たない。入力と確かめはプロセスの中の 1 本の入力の鍵で順に行い、同時に送られた 2 回の入力を重ねない'
