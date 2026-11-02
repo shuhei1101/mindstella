@@ -1,0 +1,1 @@
+# 結合テスト test_add_item_with_keys_when_sent_before_response の tags の期待値を {name} の並びに合わせる
