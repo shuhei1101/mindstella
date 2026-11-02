@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -130,3 +131,20 @@ def failing_unlink(monkeypatch: pytest.MonkeyPatch) -> FailingUnlink:
         monkeypatch.setattr(Path, "unlink", _unlink)
 
     return _install
+
+
+@pytest.fixture
+def free_port() -> int:
+    """127.0.0.1 の空きポートを 1 つ取って閉じ、その番号を返す。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+@pytest.fixture
+def listening_port() -> Iterator[int]:
+    """127.0.0.1 で待ち受けたままのポートの番号を返し、テストの後に閉じる。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupier:
+        occupier.bind(("127.0.0.1", 0))
+        occupier.listen()
+        yield int(occupier.getsockname()[1])
