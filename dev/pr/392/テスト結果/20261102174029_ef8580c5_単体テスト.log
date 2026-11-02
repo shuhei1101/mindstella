@@ -241,5 +241,5 @@ tests/unit/scripts/test_threads.py ..................................... [ 97%]
 tests/unit/scripts/test_versions.py .................                    [ 99%]
 tests/unit/test_isolated_environment.py ...                              [100%]
 
-================= 1970 passed, 1 skipped in 647.43s (0:10:47) ==================
+================= 1970 passed, 1 skipped in 647.58s (0:10:47) ==================
 exit=0
