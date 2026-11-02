@@ -2546,13 +2546,13 @@ def test_add_item_with_keys_when_sent_before_response(
     page.get_by_label("タグを追加").press("Enter")
     page.get_by_label("状態", exact=True).select_option("保留")
     release()
-    _wait_added_value(page, {"title": "足す問い", "tags": ["画面"], "status": "保留"})
+    _wait_added_value(page, {"title": "足す問い", "tags": [{"name": "画面"}], "status": "保留"})
     # 検証
     edits = read_edits_file(root)["items"]
     assert [edit["op"] for edit in edits] == ["item-add"]
     assert (edits[0]["value"]["title"], edits[0]["value"]["tags"], edits[0]["value"]["status"]) == (
         "足す問い",
-        ["画面"],
+        [{"name": "画面"}],
         "保留",
     )
     expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)
