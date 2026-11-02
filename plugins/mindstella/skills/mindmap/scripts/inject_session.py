@@ -129,11 +129,14 @@ def process_started_at(
     # /proc がある: OS の起動からの clock ticks（`ps -o lstart=` は時計の補正で変わる）
     if proc_dir.is_dir():
         try:
-            stat = (proc_dir / str(pid) / "stat").read_text(encoding="utf-8")
+            stat = (proc_dir / str(pid) / "stat").read_bytes()
         except OSError:
             return None
-        fields = stat.rpartition(")")[2].split()
-        return fields[STAT_STARTTIME_INDEX] if len(fields) > STAT_STARTTIME_INDEX else None
+        # コマンドの名前は UTF-8 とは限らないため、バイト列のまま後ろの欄だけを取り出す
+        fields = stat.rpartition(b")")[2].split()
+        if len(fields) <= STAT_STARTTIME_INDEX:
+            return None
+        return fields[STAT_STARTTIME_INDEX].decode("ascii")
     result = run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True, check=False)
     started = " ".join((result.stdout or "").split())
     return started if result.returncode == 0 and started else None
