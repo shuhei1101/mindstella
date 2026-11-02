@@ -1,8 +1,8 @@
-"""起動スクリプト（`bin/mindstella`）が呼ぶ、プラグインのフォルダ・セッションの名前・MCP の設定の手助け。
+"""起動スクリプト（`bin/mindstella`）が呼ぶ、プラグインのフォルダ・セッションの名前の手助け。
 
 使い方（起動スクリプトが仮想環境の Python で起動し、`claude plugin list --json` の出力を標準入力へ渡す）:
-  {python_path} launch.py --python {python_path} --folder {ワークスペースのフォルダ}
-標準出力にプラグインのフォルダ・セッションの名前・MCP の設定のパスを 1 行ずつこの順で出す。
+  {python_path} launch.py --folder {ワークスペースのフォルダ}
+標準出力にプラグインのフォルダ・セッションの名前を 1 行ずつこの順で出す。
 """
 
 from __future__ import annotations
@@ -12,23 +12,12 @@ import hashlib
 import json
 import os
 import sys
-import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, TextIO
 
 # `claude plugin list --json` の要素の `id` で引く値
 PLUGIN_ID = "mindstella@mindstella"
-
-# プラグインのフォルダからの MCP サーバーの入口の相対パス
-SERVER_SCRIPT = "skills/mindmap/scripts/server.py"
-
-# MCP の設定の `env` に書く環境変数の名前（`serve.py` の同じ名前の定数と合わせる）
-EXTERNAL_ENV_KEYS = (
-    "MINDSTELLA_ALLOWED_HOSTS",
-    "MINDSTELLA_PREVIEW_START_HOOK",
-    "MINDSTELLA_PREVIEW_STOP_HOOK",
-)
 
 # tmux のセッションの名前の頭
 SESSION_PREFIX = "mindstella-"
@@ -72,41 +61,14 @@ def session_name(folder: Path, *, config_dir: Path | None = None) -> str:
     return f"{SESSION_PREFIX}{name}-{digest}"
 
 
-def external_env(environ: Mapping[str, str]) -> dict[str, str]:
-    """`EXTERNAL_ENV_KEYS` のうち、空でない値が設定されているものだけを返す。"""
-    return {key: environ[key] for key in EXTERNAL_ENV_KEYS if environ.get(key)}
-
-
-def write_mcp_config(
-    python_path: Path,
-    plugin_dir: Path,
-    *,
-    temp_root: Path | None = None,
-    env: Mapping[str, str] | None = None,
-) -> Path:
-    """この起動だけの MCP の設定を一時フォルダに書き、そのパスを返す。env が空でなければ MCP サーバーへ渡す環境変数にする。"""
-    config_dir = Path(tempfile.mkdtemp(prefix=SESSION_PREFIX, dir=temp_root))
-    server_config: dict[str, Any] = {
-        "command": str(python_path),
-        "args": [str(plugin_dir / SERVER_SCRIPT)],
-    }
-    if env:
-        server_config["env"] = dict(env)
-    config = {"mcpServers": {"mindstella": server_config}}
-    path = config_dir / "mcp.json"
-    path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return path
-
-
 def run_launch(
     argv: list[str] | None = None,
     *,
     stdin: TextIO | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> int:
-    """標準入力のプラグインの一覧から、3 つの値を作って標準出力に 1 行ずつ出す。"""
+    """標準入力のプラグインの一覧から、プラグインのフォルダ・セッションの名前を作って標準出力に 1 行ずつ出す。"""
     parser = argparse.ArgumentParser(description="起動スクリプトの手助け")
-    parser.add_argument("--python", type=Path, required=True, help="MCP サーバーを動かす Python")
     parser.add_argument("--folder", type=Path, required=True, help="ワークスペースのフォルダ")
     parser.add_argument("--format", choices=["lines"], default="lines", help="出力の形")
     args = parser.parse_args(argv)
@@ -133,11 +95,9 @@ def run_launch(
     # CLAUDE_CONFIG_DIR が空でなければ、アカウントとしてセッションの名前に入れる
     config_dir = Path(env["CLAUDE_CONFIG_DIR"]) if env.get("CLAUDE_CONFIG_DIR") else None
     name = session_name(args.folder, config_dir=config_dir)
-    config = write_mcp_config(args.python, plugin_dir, env=external_env(env))
     # 起動スクリプトが `read` で 1 行ずつ受ける
     print(plugin_dir)
     print(name)
-    print(config)
     return 0
 
 

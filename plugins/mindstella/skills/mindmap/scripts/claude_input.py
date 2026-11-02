@@ -1,19 +1,20 @@
-"""まとめて送った後に、受け継いだ `TMUX_PANE` のペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。
+"""ツールの呼び出しが運んだセッションの値をワークスペースごとの宛先として持ち、まとめて送った後にそのペインへ 1 行の文字列を貼る。
 
-tmux を子プロセスで呼び、会話の記録（jsonl）を読む。
+貼る前に宛先の Claude Code が生きているかを確かめ、貼った後に Claude Code の会話の記録に入ったかを確かめる。
+tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
+import math
 import re
 import subprocess
 import threading
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,13 @@ DELIVERY_POLL_SEC = 0.05
 # `load-buffer` と `paste-buffer` で使う名前の付いたバッファ（利用者のバッファを書き換えない）
 PASTE_BUFFER = "mindstella-input"
 
-# `CLAUDE_CONFIG_DIR` が空のときの Claude Code の設定のフォルダ
+# Claude Code のプロセスからペインのプロセスまで `ps -o ppid=` でたどる段の上限
+PARENT_DEPTH_MAX = 32
+
+# これ以下の PID に着いたら、親をたどるのをやめる（init）
+INIT_PID = 1
+
+# `session.claude_config_dir` が無いか空のときの Claude Code の設定のフォルダ
 DEFAULT_CONFIG_DIR = Path.home() / ".claude"
 
 # Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を足す）
@@ -42,31 +49,168 @@ UTF16_SINGLE_UNIT_MAX = 0xFFFF
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class InputTarget:
-    """起動時に Claude Code から受け継いだ送り先と会話の記録の場所と、同時の入力を重ねない 1 本の鍵。"""
+class Session:
+    """ツールの引数 `session` を読んだ、ツールを呼んだセッションの値。"""
 
-    # `TMUX`（tmux のサーバーのソケット）。空なら None
-    socket: str | None
-    # `TMUX_PANE`（Claude Code が動くペイン）。空なら None
-    pane: str | None
-    # `CLAUDE_CONFIG_DIR`（空なら `~/.claude`）
-    config_dir: Path
-    # サーバーの起動時の作業フォルダ（絶対パス）
+    # セッションの作業フォルダ（絶対パス）
     cwd: Path
-    # 入力の鍵（同時に送られた 2 回の入力と確かめを重ねない）
-    lock: threading.Lock = field(default_factory=threading.Lock)
+    # セッションの `CLAUDE_CONFIG_DIR`
+    claude_config_dir: Path
+    # セッションの `TMUX`（tmux の外なら None）
+    tmux: str | None = None
+    # セッションの `TMUX_PANE`（tmux の外なら None）
+    tmux_pane: str | None = None
+    # Claude Code のプロセスの PID
+    claude_pid: int | None = None
+    # そのプロセスの起動時刻（空白を 1 つにつめた `ps -o lstart=` の文字列）
+    claude_started_at: str | None = None
 
 
-def load_input_target(environ: Mapping[str, str], cwd: Path) -> InputTarget:
-    """環境変数と起動時の作業フォルダから `InputTarget` を作る。"""
-    config_dir = environ.get("CLAUDE_CONFIG_DIR", "")
-    return InputTarget(
-        # 空文字列か無ければ tmux の外として None にする
-        socket=environ.get("TMUX") or None,
-        pane=environ.get("TMUX_PANE") or None,
-        config_dir=Path(config_dir) if config_dir else DEFAULT_CONFIG_DIR,
-        cwd=cwd.resolve(),
+@dataclass(frozen=True, slots=True, kw_only=True)
+class InputTarget:
+    """ペインへ入力するのに要る値がそろったセッションの宛先と会話の記録の場所。"""
+
+    # tmux のサーバーのソケット（`session.tmux` の最初の `,` より前）
+    socket: str
+    # Claude Code が動くペイン
+    pane: str
+    # 会話の記録を引く設定のフォルダ
+    config_dir: Path
+    # セッションの作業フォルダ（会話の記録のフォルダ名と、行の `cwd` に使う）
+    cwd: Path
+    # Claude Code のプロセスの PID（終わったか・使い回されたかの確かめに使う）
+    claude_pid: int
+    # そのプロセスの起動時刻
+    claude_started_at: str
+
+
+class InputTargets:
+    """ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ台帳。"""
+
+    def __init__(self) -> None:
+        """空の台帳と、台帳の鍵・入力の鍵を作る。"""
+        # ワークスペース → 宛先（最後のセッションが tmux の外なら None）
+        self._targets: dict[Path, InputTarget | None] = {}
+        self._guard = threading.Lock()
+        # プロセスの中の 1 本の入力の鍵（同時に送られた 2 回の入力と確かめを重ねない）
+        self._input_lock = threading.Lock()
+
+    def remember(self, root: Path, session: Session) -> None:
+        """そのワークスペースの宛先を、渡したセッションの宛先にする（tmux の外なら宛先を外す）。"""
+        target = input_target(session)
+        with self._guard:
+            self._targets[root.resolve()] = target
+
+    def target_of(self, root: Path) -> InputTarget | None:
+        """そのワークスペースの宛先を返す。"""
+        with self._guard:
+            return self._targets.get(root.resolve())
+
+    def enter(self, root: Path, count: int) -> bool:
+        """そのワークスペースの宛先へ、届いた件数の 1 行を入力し、会話の記録に入ったかを返す。"""
+        return enter_to_claude(self.target_of(root), count, lock=self._input_lock)
+
+
+def parse_session(raw: Mapping[str, Any] | None) -> Session | None:
+    """ツールの引数 `session` を `Session` にする。作業フォルダが読めなければ None。"""
+    if raw is None:
+        return None
+    cwd = raw.get("cwd")
+    # 作業フォルダが空でない絶対パスの文字列でない: 相対パスを解けない
+    if not isinstance(cwd, str) or not cwd or not Path(cwd).is_absolute():
+        return None
+    config_dir = _text_or_none(raw.get("claude_config_dir"))
+    started_at = _text_or_none(raw.get("claude_started_at"))
+    pid = raw.get("claude_pid")
+    return Session(
+        cwd=Path(cwd),
+        claude_config_dir=Path(config_dir) if config_dir else DEFAULT_CONFIG_DIR,
+        tmux=_text_or_none(raw.get("tmux")),
+        tmux_pane=_text_or_none(raw.get("tmux_pane")),
+        # bool は int の仲間なので除く
+        claude_pid=pid if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0 else None,
+        claude_started_at=" ".join(started_at.split()) if started_at else None,
     )
+
+
+def _text_or_none(value: Any) -> str | None:
+    """空でない文字列ならそのまま、それ以外は None を返す。"""
+    return value if isinstance(value, str) and value else None
+
+
+def input_target(session: Session) -> InputTarget | None:
+    """セッションから送り先を作る。ペインへ入力するのに要る値が欠けていれば None。"""
+    if (
+        session.tmux is None
+        or session.tmux_pane is None
+        or session.claude_pid is None
+        or session.claude_started_at is None
+    ):
+        return None
+    return InputTarget(
+        socket=session.tmux.split(",", 1)[0],
+        pane=session.tmux_pane,
+        config_dir=session.claude_config_dir,
+        cwd=session.cwd,
+        claude_pid=session.claude_pid,
+        claude_started_at=session.claude_started_at,
+    )
+
+
+def is_session_alive(
+    target: InputTarget,
+    *,
+    deadline: float,
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    clock: Callable[[], float] = time.monotonic,
+) -> str | None:
+    """宛先の Claude Code が起動時刻ごと残り、宛先のペインのプロセスかその子孫かを確かめ、違えば理由を返す。"""
+
+    def call(command: list[str]) -> subprocess.CompletedProcess[str] | str:
+        """残り時間を上限にコマンドを呼ぶ。時間切れか起動できなければ理由を返す。"""
+        remaining = deadline - clock()
+        if remaining <= 0:
+            return "時間切れ"
+        try:
+            return run(command, capture_output=True, text=True, timeout=remaining, check=False)
+        except subprocess.TimeoutExpired:
+            return "時間切れ"
+        except OSError as error:
+            return f"{' '.join(command[:2])}: {error}"
+
+    pid = target.claude_pid
+    started = call(["ps", "-o", "lstart=", "-p", str(pid)])
+    if isinstance(started, str):
+        return started
+    # プロセスが無い: Claude Code が終わった
+    if started.returncode != 0:
+        return f"Claude Code のプロセス {pid} が無い"
+    # 起動時刻が違う: 同じ PID を別のプロセスが使っている
+    if " ".join(started.stdout.split()) != target.claude_started_at:
+        return f"PID {pid} が別のプロセスに使い回された"
+
+    pane = target.pane
+    shown = call(["tmux", "-S", target.socket, "display-message", "-p", "-t", pane, "#{pane_pid}"])
+    if isinstance(shown, str):
+        return shown
+    pane_pid = shown.stdout.strip()
+    if shown.returncode != 0 or not pane_pid.isdigit():
+        return f"ペイン {pane} が無い"
+
+    # Claude Code のプロセスから親へたどり、ペインのプロセスに着けばペインの中で動いている
+    current = pid
+    for _ in range(PARENT_DEPTH_MAX):
+        if current == int(pane_pid):
+            return None
+        parent = call(["ps", "-o", "ppid=", "-p", str(current)])
+        if isinstance(parent, str):
+            return parent
+        text = parent.stdout.strip()
+        # 親を引けないか init に着いた: ペインの外で動いている
+        if parent.returncode != 0 or not text.isdigit() or int(text) <= INIT_PID:
+            break
+        current = int(text)
+    return f"Claude Code がペイン {pane} の中に無い"
 
 
 def transcript_dirs(target: InputTarget) -> list[Path]:
@@ -163,23 +307,23 @@ def paste_to_pane(
     clock: Callable[[], float] = time.monotonic,
 ) -> str | None:
     """文字列をブラケットペーストでペインへ貼り、`Enter` で確定する。失敗の理由を返す（成功なら None）。"""
-    # tmux のサーバーのソケットは環境変数 `TMUX` で渡す
-    env = {**os.environ, "TMUX": str(target.socket)}
-    pane = str(target.pane)
+    # どのコマンドもソケットを `-S` で指し、環境変数 `TMUX` に頼らない
+    tmux = ["tmux", "-S", target.socket]
+    pane = target.pane
     commands: list[tuple[list[str], bytes | None]] = [
-        (["tmux", "load-buffer", "-b", PASTE_BUFFER, "-"], text.encode("utf-8")),
-        (["tmux", "paste-buffer", "-p", "-d", "-b", PASTE_BUFFER, "-t", pane], None),
-        (["tmux", "send-keys", "-t", pane, "Enter"], None),
+        ([*tmux, "load-buffer", "-b", PASTE_BUFFER, "-"], text.encode("utf-8")),
+        ([*tmux, "paste-buffer", "-p", "-d", "-b", PASTE_BUFFER, "-t", pane], None),
+        ([*tmux, "send-keys", "-t", pane, "Enter"], None),
     ]
     for command, stdin in commands:
-        name = " ".join(command[:2])
+        name = f"tmux {command[3]}"
         remaining = deadline - clock()
         # 打ち切りの時刻を過ぎた: 残りを呼ばない
         if remaining <= 0:
             return "時間切れ"
         try:
             completed = run(
-                command, input=stdin, env=env, timeout=remaining, check=False, capture_output=True
+                command, input=stdin, timeout=remaining, check=False, capture_output=True
             )
         except subprocess.TimeoutExpired:
             return f"{name}: 時間内に終わらない"
@@ -192,35 +336,45 @@ def paste_to_pane(
 
 
 def enter_to_claude(
-    target: InputTarget,
+    target: InputTarget | None,
     count: int,
     *,
-    run: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
+    lock: threading.Lock,
+    run: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
 ) -> bool:
-    """届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由は記録する。"""
-    # tmux の外で立てた: tmux を呼ばない
-    if target.socket is None or target.pane is None:
-        logger.info("tmux の外で立てたため、Claude Code へ入力しません")
+    """宛先が生きていれば届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由は記録する。"""
+    # 宛先が無い（セッションを受けていないか tmux の外）: ps・tmux を呼ばない
+    if target is None:
+        logger.info("宛先のセッションが無いか tmux の外のため、Claude Code へ入力しません")
         return False
     # 同時に送られた入力と確かめを重ねない
-    with target.lock:
+    with lock:
         text = input_text(count)
         sizes = snapshot_sizes(transcript_dirs(target))
         deadline = clock() + INPUT_DEADLINE_SEC
+        ended = is_session_alive(target, deadline=deadline, run=run, clock=clock)
+        # 宛先のセッションが終わった: 別のプロセスへ貼らない
+        if ended is not None:
+            logger.warning("宛先のセッションが終わったため、Claude Code へ入力しません（%s）", ended)
+            return False
         reason = paste_to_pane(target, text, deadline=deadline, run=run, clock=clock)
         # 貼れなかった: 会話の記録は読み直さない
         if reason is not None:
             logger.warning("Claude Code へ入力できません（%s）", reason)
             return False
         # 上限まで、書き足された行を読み直す（新しい会話のフォルダが貼った後に作られても拾うため、毎回引き直す）
+        # 待った秒の合計も上限を越えないよう、待った秒を誤差なく足し合わせて残りを出す
+        waited: list[float] = []
         while True:
             if find_delivery(transcript_dirs(target), sizes, cwd=target.cwd, text=text):
                 return True
-            remaining = deadline - clock()
+            remaining = min(deadline - clock(), INPUT_DEADLINE_SEC - math.fsum(waited))
             if remaining <= 0:
                 break
-            sleep(min(DELIVERY_POLL_SEC, remaining))
+            wait = min(DELIVERY_POLL_SEC, remaining)
+            sleep(wait)
+            waited.append(wait)
         logger.warning("Claude Code の会話の記録に入力が入りません（%s 秒）", INPUT_DEADLINE_SEC)
         return False

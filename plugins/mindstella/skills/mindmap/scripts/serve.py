@@ -21,7 +21,7 @@ from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 from builder import PREVIEW_DIR, assemble_template, read_records
-from claude_input import InputTarget, enter_to_claude
+from claude_input import InputTargets, Session
 from comments import (
     ReviewComment,
     add_comment,
@@ -182,8 +182,8 @@ class ServeContext:
     preview_dir: Path = PREVIEW_DIR
     # 許可するホスト名（`check_host`・`check_origin` に渡す）
     allowed_hosts: frozenset[str] = frozenset()
-    # Claude Code への入力の送り先（None ならまとめて送った後に入力しない）
-    input_target: InputTarget | None = None
+    # ワークスペースごとの Claude Code への入力の宛先（None ならまとめて送った後に入力しない）
+    input_targets: InputTargets | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -235,14 +235,13 @@ class PreviewRegistry:
         write_lock: threading.Lock,
         *,
         external: ExternalAccess | None = None,
-        input_target: InputTarget | None = None,
     ) -> None:
-        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と Claude Code への入力の送り先（無ければ入力しない）を受け取り、空の台帳を作る。"""
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）を受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
-        # 立てる配信へ渡す送り先（プロセスに 1 つで、入力の鍵を共有する）
-        self._input_target = input_target
+        # ワークスペースごとの Claude Code への入力の宛先（立てる配信へ渡す。配信の前に受けたセッションも持つ）
+        self._input_targets = InputTargets()
         # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
@@ -264,7 +263,7 @@ class PreviewRegistry:
                 settings=settings,
                 port=settings.get("preview", {}).get("port", 0),
                 allowed_hosts=self._external.allowed_hosts,
-                input_target=self._input_target,
+                input_targets=self._input_targets,
             )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
@@ -278,6 +277,16 @@ class PreviewRegistry:
         with self._guard:
             preview = self._servers.get(root.resolve())
         return None if preview is None else preview.url
+
+    def listing(self) -> list[dict[str, Any]]:
+        """立てた配信のワークスペースとポートを、ワークスペースの絶対パスの昇順で返す。"""
+        with self._guard:
+            servers = sorted(self._servers.items())
+        return [{"workspace": str(root), "port": preview.port} for root, preview in servers]
+
+    def remember_session(self, root: Path, session: Session) -> None:
+        """そのワークスペースの Claude Code への入力の宛先を、ツールを呼んだセッションにする。"""
+        self._input_targets.remember(root, session)
 
     def stop_all(self) -> None:
         """立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
@@ -513,7 +522,7 @@ def start_preview_server(
     settings: dict[str, Any],
     port: int = 0,
     allowed_hosts: frozenset[str] = frozenset(),
-    input_target: InputTarget | None = None,
+    input_targets: InputTargets | None = None,
 ) -> PreviewServer:
     """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
@@ -531,7 +540,7 @@ def start_preview_server(
         write_lock=write_lock,
         settings=SettingsHolder(settings),
         allowed_hosts=allowed_hosts,
-        input_target=input_target,
+        input_targets=input_targets,
     )
     setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -1027,9 +1036,9 @@ def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
 
 def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
     """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
-    target = context.input_target
-    # 送り先が無い: 入力しない
-    entered = False if target is None else enter_to_claude(target, len(body["items"]))
+    targets = context.input_targets
+    # 宛先の台帳が無い: 入力しない
+    entered = False if targets is None else targets.enter(context.root, len(body["items"]))
     return {**body, "entered": entered}
 
 
