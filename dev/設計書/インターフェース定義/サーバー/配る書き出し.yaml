@@ -206,7 +206,7 @@ request:
     type: str
     required: true
     location: argument
-    description: 書き出す HTML のファイルのパス。相対パスは MCP サーバーの作業フォルダ（起動スクリプトが Claude Code を立ち上げたフォルダ）から読む。既にあるファイルは置き換える
+    description: 書き出す HTML のファイルのパス。相対パスは `workspace` と同じく `session.cwd` から読み、`session` が無ければ引数の誤り（インターフェース定義『MCP サーバーの起動』）。既にあるファイルは置き換える
     constraints: 末尾が `.html`。親のフォルダがある
     example: ~/渡す/新規事業の検討.html
 response:
