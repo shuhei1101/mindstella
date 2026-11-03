@@ -162,7 +162,7 @@ elements:
     io: 入力
     visible_when: サーバーの配信で開いたとき、レビュー中のコメントの行（消した行を含む）が 2 件以上のとき
     action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[レビュー中のコメントの並び]
-    status: planned
+    status: implemented
   - name: 選んだ箇所のコメントの入口
     kind: button
     component: dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
