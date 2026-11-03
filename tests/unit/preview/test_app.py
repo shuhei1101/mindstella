@@ -20,6 +20,7 @@ DEFAULT_PREFS = {
     "filters": {},
     "minimap": None,
     "bodyLayout": None,
+    "reviewOrder": None,
     "tablePin": None,
     "tableHead": None,
     "tableStripes": None,
@@ -279,6 +280,36 @@ def test_load_prefs_when_body_layout(
 
 
 @pytest.mark.parametrize(
+    ("stored", "expected_review_order"),
+    [
+        pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+        pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+        pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+        pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+    ],
+)
+def test_load_prefs_when_review_order(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str,
+    expected_review_order: str | None,
+) -> None:
+    """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    prefs = preview_page.evaluate(
+        """(stored) => {
+            const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+            return MindmapPreview.loadPrefs(storage);
+        }""",
+        stored,
+    )
+    # 検証（ほかの項目はそのまま読める）
+    assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+
+
+@pytest.mark.parametrize(
     ("stored", "expected_overrides"),
     [
         pytest.param(
@@ -333,6 +364,7 @@ SAVED_PREFS = {
     "filters": {"tasks": TASKS_FILTERS},
     "minimap": None,
     "bodyLayout": None,
+    "reviewOrder": None,
     "tablePin": None,
     "tableHead": None,
     "tableStripes": None,
@@ -634,6 +666,47 @@ def test_resolve_display_when_body_layout(
     ("prefs", "expected"),
     [
         pytest.param(
+            {**DEFAULT_PREFS, "reviewOrder": None},
+            {"reviewOrder": "newest", "overrides": []},
+            id="no_override",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "reviewOrder": "oldest"},
+            {"reviewOrder": "oldest", "overrides": ["コメントの並び"]},
+            id="oldest",
+        ),
+        pytest.param(
+            {**DEFAULT_PREFS, "reviewOrder": "oldest", "bodyLayout": "side"},
+            {"reviewOrder": "oldest", "overrides": ["本文の差分の並べ方", "コメントの並び"]},
+            id="side_and_oldest",
+        ),
+    ],
+)
+def test_resolve_display_when_review_order(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    prefs: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """レビュー中のコメントの並びは上書きが oldest のときだけ oldest で、変えている項目の末尾に並ぶ（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    resolved = preview_page.evaluate(
+        """(prefs) => {
+            const result = MindmapPreview.resolveDisplay(prefs, undefined);
+            return {reviewOrder: result.reviewOrder, overrides: result.overrides};
+        }""",
+        prefs,
+    )
+    # 検証
+    assert resolved == expected
+
+
+@pytest.mark.parametrize(
+    ("prefs", "expected"),
+    [
+        pytest.param(
             DEFAULT_PREFS,
             {
                 "bodyView": {"pin": True, "head": True, "stripes": False, "fold": True},
@@ -693,6 +766,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "filters": {"tasks": TASKS_FILTERS},
         "minimap": False,
         "bodyLayout": "side",
+        "reviewOrder": "oldest",
         "tablePin": False,
         "tableHead": False,
         "tableStripes": True,
@@ -712,6 +786,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "filters": {},
         "minimap": None,
         "bodyLayout": None,
+        "reviewOrder": None,
         "tablePin": None,
         "tableHead": None,
         "tableStripes": None,

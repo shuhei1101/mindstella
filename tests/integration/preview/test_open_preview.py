@@ -2012,6 +2012,65 @@ def test_normal_when_html_body_diff_side_by_side(
     assert "data-line" not in page.inner_text(f"{full_scope} .df-raw.df-split")
 
 
+# 詳細パネルのレビュー中のコメントの本文と、並びの切り替え
+REVIEW_BODIES_JS = "rows => rows.map(r => r.querySelector('.review-body').textContent)"
+REVIEW_ORDER_BUTTON = "aside.panel .d-review button.review-order"
+
+
+def test_normal_when_review_order_switched(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    page: Page,
+) -> None:
+    """既定の新しい順で出したレビュー中のコメントを、並びのボタンで古い順に切り替えて上書きに残し、開き直しても古い順で出し、もう一度押すと新しい順に戻して上書きを外す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+            make_comment("C-3", target="D-1", body="案 C は外す"),
+        ),
+    )
+    review_rows = "aside.panel .d-review li[data-comment]"
+    # 実行
+    open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    # 検証（既定は新しい順）
+    assert page.eval_on_selector_all(review_rows, REVIEW_BODIES_JS) == ["案 C は外す", "案 B も見たい", "案 A にする"]
+    assert page.inner_text(REVIEW_ORDER_BUTTON) == "新しい順"
+    assert page.get_attribute(REVIEW_ORDER_BUTTON, "aria-label") == "コメントの並び: 新しい順"
+    assert read_prefs(page) is None
+    # 実行（並びのボタンを押す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    # 検証（古い順に並べ替え、フォーカスはボタンにあり、個人の上書きに oldest が残る）
+    assert page.eval_on_selector_all(review_rows, REVIEW_BODIES_JS) == ["案 A にする", "案 B も見たい", "案 C は外す"]
+    assert page.get_attribute(REVIEW_ORDER_BUTTON, "aria-label") == "コメントの並び: 古い順"
+    page.wait_for_function(f"document.activeElement === document.querySelector('{REVIEW_ORDER_BUTTON}')")
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["reviewOrder"] == "oldest"
+    # 実行（開き直す）
+    page.reload()
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    # 検証（古い順のまま）
+    assert page.eval_on_selector_all(review_rows, REVIEW_BODIES_JS) == ["案 A にする", "案 B も見たい", "案 C は外す"]
+    assert page.inner_text(REVIEW_ORDER_BUTTON) == "古い順"
+    # 実行（もう一度押す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'")
+    # 検証（新しい順に戻り、上書きが外れる。ハッシュと件数は変わらない）
+    assert page.eval_on_selector_all(review_rows, REVIEW_BODIES_JS) == ["案 C は外す", "案 B も見たい", "案 A にする"]
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["reviewOrder"] is None
+    assert page.evaluate("location.hash") == "#tab=decisions&id=D-1"
+    assert page.inner_text("aside.panel .d-review h3 .count") == "3"
+
+
 def test_normal_when_edits_saved(
     write_edit_preview: WriteReviewPreview,
     make_item: MakeItem,

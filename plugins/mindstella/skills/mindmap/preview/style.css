@@ -956,6 +956,11 @@ dialog.full:has(.full-viewer) .send { display: none; }
 
 /* 詳細パネルの一番下の、その項目へのレビュー中のコメント: 見出しの件数 */
 .d-review h3 .count { margin-left: 8px; font-family: var(--font-mono); font-weight: 400; color: var(--text-3); }
+/* レビュー中のコメントの見出しの行。並びの切り替えを右端に寄せ、見出しの区切り線を行に移す */
+.d-review > .review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-soft); }
+.d-review > .review-head > h3 { min-width: 0; margin: 0; font-size: var(--fs-small); }
+.review-order { margin-left: auto; white-space: nowrap; }
+.review-order svg.icon { width: 14px; height: 14px; }
 /* レビュー中のコメントの並び: 行どうしを細い線で区切る */
 .review-list li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 /* 最後の行: 下の線を引かない */

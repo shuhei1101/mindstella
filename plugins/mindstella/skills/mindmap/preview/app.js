@@ -72,6 +72,7 @@ var MindmapPreview;
             filters: {},
             minimap: null,
             bodyLayout: null,
+            reviewOrder: null,
             tablePin: null,
             tableHead: null,
             tableStripes: null,
@@ -101,6 +102,9 @@ var MindmapPreview;
             // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
             if (parsed.bodyLayout !== "side")
                 parsed.bodyLayout = null;
+            // レビュー中のコメントの並びの上書きは oldest だけを読む（新しい順は上書きを持たない）
+            if (parsed.reviewOrder !== "oldest")
+                parsed.reviewOrder = null;
             // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
             if (parsed.tablePin !== false)
                 parsed.tablePin = null;
@@ -153,7 +157,7 @@ var MindmapPreview;
     function resolveDisplay(prefs, display) {
         const defaultLook = display?.network_look ?? MindmapPreview.BUILTIN_LOOK;
         const defaultKinds = new Set(display?.visible_kinds ?? MindmapPreview.KIND_KEYS);
-        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
+        // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びの順に並べる（条件が画面の既定と同じ画面は並べない）
         const overrides = [
             ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
             ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -166,6 +170,7 @@ var MindmapPreview;
             ...(prefs.tableStripes === true ? [MindmapPreview.BODY_VIEW_LABELS.stripes] : []),
             ...(prefs.sectionFold === false ? [MindmapPreview.BODY_VIEW_LABELS.fold] : []),
             ...(prefs.bodyLayout === "side" ? [MindmapPreview.BODY_LAYOUT_LABEL] : []),
+            ...(prefs.reviewOrder === "oldest" ? [MindmapPreview.REVIEW_ORDER_LABEL] : []),
         ];
         return {
             look: prefs.look ?? defaultLook,
@@ -177,6 +182,8 @@ var MindmapPreview;
             minimap: prefs.minimap !== false,
             // 上書きが side のときだけ左右に並べる
             bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
+            // 上書きが oldest のときだけ古い順に並べる
+            reviewOrder: prefs.reviewOrder === "oldest" ? "oldest" : "newest",
             // 上書きのある項目だけ既定と逆にする
             bodyView: {
                 pin: prefs.tablePin !== false,
@@ -187,7 +194,7 @@ var MindmapPreview;
         };
     }
     MindmapPreview.resolveDisplay = resolveDisplay;
-    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+    /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
     function clearOverrides(prefs) {
         return {
             ...prefs,
@@ -198,6 +205,7 @@ var MindmapPreview;
             filters: {},
             minimap: null,
             bodyLayout: null,
+            reviewOrder: null,
             tablePin: null,
             tableHead: null,
             tableStripes: null,
@@ -782,6 +790,24 @@ var MindmapPreview;
             });
             renderSettings();
         };
+        /** レビュー中のコメントの並びを切り替えた: 個人の上書きに残し、開いている詳細パネル・詳細の全画面だけを描き直す（履歴にもハッシュにも書かない）。本文を送った位置と、並びの切り替えのフォーカスを保つ */
+        const changeReviewOrder = (order) => {
+            const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+            const scrollTop = document.querySelector(bodySelector)?.scrollTop ?? 0;
+            prefs.reviewOrder = order === "oldest" ? "oldest" : null;
+            display.storageOk = persist();
+            resolved = resolveDisplay(prefs, data.settings.display);
+            renderDetail();
+            // 描き直した本文の高さは、文書に入った後の次のコマで決まる
+            requestAnimationFrame(() => {
+                const next = document.querySelector(bodySelector);
+                if (next === null)
+                    return;
+                next.scrollTop = scrollTop;
+                next.querySelector(`[data-focus="${MindmapPreview.REVIEW_FOCUS}review-order"]`)?.focus({ preventScroll: true });
+            });
+            renderSettings();
+        };
         /** 詳細パネルと全画面 */
         const renderDetail = () => {
             // 項目を追加する入力: 詳細パネルと同じ置き方で、追加の入力を開く
@@ -845,6 +871,7 @@ var MindmapPreview;
                 full: route.full,
                 minimap: resolved.minimap,
                 bodyLayout: resolved.bodyLayout,
+                reviewOrder: resolved.reviewOrder,
                 bodyView: resolved.bodyView,
                 edit: detailEdit(),
                 // 詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面は置かない。幅 900px 以下は CSS が隠し、窓を広げたときに出る）
@@ -858,6 +885,7 @@ var MindmapPreview;
                 on: {
                     open: (id) => openItem(id, true),
                     layout: changeBodyLayout,
+                    order: changeReviewOrder,
                     close: closeDetail,
                     full: (full) => {
                         // 全画面の中で図を拡大しているときは、本文へ戻る
