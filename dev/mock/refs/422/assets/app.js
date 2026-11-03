@@ -15808,6 +15808,8 @@ var MindmapPreview;
             }
             flushDrafts();
             leaveEditViews();
+            // 422: 開いている左のパネルの中の押下で開いたか
+            markDetailFromPanel422();
             const next = { ...route, id, filters: {}, heading: null };
             const trail = history.state;
             if (inPanel && route.id !== null) {
@@ -16269,8 +16271,20 @@ var MindmapPreview;
                 return false;
             }
         };
-        /** 422: 左のパネルを開いたときに開いていた詳細パネルの項目（パネルが閉じているときは undefined） */
-        let detailAtOpen422 = undefined;
+        /** 422: 今の詳細パネルを、開いている左のパネルの中の操作で開いたか（幕の上に出すか） */
+        let detailFromPanel422 = false;
+        /** 422: 最後の押下が、開いている左のパネルの中（幕の上に出した詳細パネルの中を含む）だったか */
+        let lastPressInPanel422 = false;
+        /** 422: 今の押下が開いている左のパネルの中なら、詳細パネルを幕の上に出す */
+        const markDetailFromPanel422 = () => {
+            detailFromPanel422 = openLeftPanel() !== null && lastPressInPanel422;
+        };
+        document.addEventListener("click", (event) => {
+            const panel = openLeftPanel();
+            const target = event.target instanceof Node ? event.target : null;
+            const detail = detailFromPanel422 ? document.querySelector("aside.panel") : null;
+            lastPressInPanel422 = panel !== null && target !== null && (panel.contains(target) || (detail?.contains(target) ?? false));
+        }, true);
         /** 422: 左のパネル以外を覆う幕。押したら、開いているパネルをトップバーの同じボタンで閉じる */
         const scrimElement422 = () => {
             const found = document.querySelector(".left-scrim");
@@ -16295,9 +16309,10 @@ var MindmapPreview;
         const inertOutside422 = (panel) => {
             const attached = [];
             const visit = (element) => {
-                if (element === panel || element.inert)
+                // 詳細パネルは、幕の上に出すかで applyInert が別に決める
+                if (element === panel || element.inert || element.matches("aside.panel"))
                     return;
-                if (element.contains(panel)) {
+                if (element.contains(panel) || element.querySelector("aside.panel") !== null) {
                     for (const child of element.children)
                         if (child instanceof HTMLElement)
                             visit(child);
@@ -16306,11 +16321,10 @@ var MindmapPreview;
                 element.inert = true;
                 attached.push(element);
             };
+            // 422: パネルを中に持たない本文は、子ではなく本文（スクロールする #main）自体を止める
             const main = document.querySelector("main");
             if (main !== null)
-                for (const child of main.children)
-                    if (child instanceof HTMLElement)
-                        visit(child);
+                visit(main);
             return () => {
                 for (const element of attached)
                     element.inert = false;
@@ -16352,12 +16366,10 @@ var MindmapPreview;
             // 422: ピン止めしたコメントの一覧は今のまま（覆った範囲だけを止め、幕を出さない）。それ以外の左のパネルは幕で覆い、幕の下の部品を止める
             const pinned = panel !== null && comment.listOpen && pinned422();
             const scrim = panel !== null && !pinned;
-            // 422: パネルを開いたときの詳細パネルの項目。後から別の項目を開いたら、パネルの中から開いた詳細パネルとして幕の上に出す
-            if (panel === null)
-                detailAtOpen422 = undefined;
-            else if (detailAtOpen422 === undefined)
-                detailAtOpen422 = route.id;
-            const detailAbove = scrim && route.id !== null && !route.full && route.id !== detailAtOpen422;
+            // 422: パネルの中の操作で開いた詳細パネルだけを幕の上に出す（項目 ID ではなく、開いた操作の出どころで決める）
+            if (panel === null || route.id === null)
+                detailFromPanel422 = false;
+            const detailAbove = scrim && route.id !== null && !route.full && detailFromPanel422;
             if (panel !== null)
                 releaseInert = pinned ? MindmapPreview.inertBehind(panel) : inertOutside422(panel);
             applyStack();
@@ -16879,8 +16891,11 @@ var MindmapPreview;
             // いま開いている項目を指す行でも、詳細パネルを一覧の前に出す
             stack.front = "detail";
             if (route.id === item.target) {
+                // 422: 開いていた項目でも、パネルの中から開いた詳細パネルとして幕の上に出す
+                markDetailFromPanel422();
                 renderDetail();
                 renderComments();
+                scheduleInert();
                 return;
             }
             openItem(item.target, false);
@@ -16893,8 +16908,11 @@ var MindmapPreview;
             // いま開いている項目を指すときでも、詳細パネルをパネルの前に出す
             stack.front = "detail";
             if (route.id === id) {
+                // 422: 開いていた項目でも、パネルの中から開いた詳細パネルとして幕の上に出す
+                markDetailFromPanel422();
                 renderDetail();
                 renderComments();
+                scheduleInert();
                 return;
             }
             openItem(id, false);
