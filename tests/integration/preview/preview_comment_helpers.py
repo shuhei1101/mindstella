@@ -42,6 +42,7 @@ __all__ = [
     "open_review",
     "open_thread",
     "read_workspace_yaml",
+    "reopen_review",
     "review_row",
     "select_text",
     "select_text_for_pill",
@@ -229,6 +230,12 @@ def open_review(page: Page) -> None:
     """一覧を開き、見出しの帯の「レビュー中」でレビュー中の書き込みの画面へ切り替える。"""
     open_list(page)
     page.click(REVIEW_ENTRY)
+    page.wait_for_selector(REVIEW_HEAD)
+
+
+def reopen_review(page: Page) -> None:
+    """レビュー中の書き込みの画面で閉じた一覧を開き直し、閉じる前のレビュー中の書き込みの画面に戻るのを待つ。"""
+    open_list(page)
     page.wait_for_selector(REVIEW_HEAD)
 
 

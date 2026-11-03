@@ -1451,6 +1451,9 @@ def test_drawer_tags(
     selected = (_table_row_ids(page), drawer_head(page)["count"], badge_text(page))
     tag_chip = ".table-block .chip:has(button[aria-label='タグ: プレビュー の条件を解除'])"
     chip = page.inner_text(tag_chip)
+    # ドロワーを開いている間は本文を止めるため、閉じてから表のチップで解除する
+    page.keyboard.press("Escape")
+    page.wait_for_selector(DRAWER, state="detached")
     page.click(f"{tag_chip} button")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
     # 検証
@@ -1495,9 +1498,9 @@ def test_drawer_keyword_hits(
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
-    open_drawer(page)
-    # 実行
+    # 実行（ドロワーを開いている間は本文を止めるため、キーワードを入れてから開く）
     page.fill("input.map-q", "D-2")
+    open_drawer(page)
     page.wait_for_selector(f"{DRAWER} .hit-n")
     hits = page.eval_on_selector_all(
         f'{DRAWER} .fd-opt:has(input[data-key="status"]):has(.hit-n)',

@@ -5389,6 +5389,9 @@ def test_blocked_reason(
     # 実行
     page.click(EDIT_SAVE_BUTTON)
     page.wait_for_selector(f"{EDIT_PENDING_PANEL} .pe-alert", timeout=EDIT_SETTLE_MS)
+    # 保存待ちのパネルの外で開いた詳細パネルはグレーアウトの下になるため、パネルを閉じてから編集の表示にする
+    page.get_by_role("button", name="保存待ちの編集を閉じる").click()
+    page.wait_for_selector(EDIT_PENDING_PANEL, state="detached")
     page.click(EDIT_TOGGLE)
     page.wait_for_selector(EDIT_FORM)
     # 検証

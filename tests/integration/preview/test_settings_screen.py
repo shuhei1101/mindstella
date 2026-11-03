@@ -492,7 +492,7 @@ def test_narrow_when_width_crosses_900(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` と `inert` が外れ、また 900px 以下に戻ると付け直す（正常系）。"""
+    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` が外れて表示の設定の `inert` が外れ、パネルの外で開いた詳細パネルはグレーアウトの下で `inert` になる。また 900px 以下に戻ると付け直す（正常系）。"""
     # 準備
     url, _ = _preview(write_review_preview, make_item, valid_settings)
     page = open_preview(url, DETAIL_HASH)
@@ -511,7 +511,7 @@ def test_narrow_when_width_crosses_900(
     page.set_viewport_size(NARROW_VIEWPORT)
     page.wait_for_function("document.body.classList.contains('left-front')")
     # 検証
-    assert wide == {"left_front": False, "detail_inert": False, "settings_inert": False}
+    assert wide == {"left_front": False, "detail_inert": True, "settings_inert": False}
     assert is_inert(page, "detail") is True
     assert is_inert(page, "settings") is False
 

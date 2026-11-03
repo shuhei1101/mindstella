@@ -287,7 +287,7 @@ def test_empty(
     expect(page.locator(f"{PENDING_PANEL} .comments-empty")).to_have_text("保存待ちの編集はありません。")
     assert page.locator(f"{PENDING_PANEL} .pe-foot-sum").count() == 0
     assert page.is_disabled(SAVE_BUTTON)
-    assert page.evaluate("document.activeElement.tagName") == "H2"
+    page.wait_for_function("document.activeElement?.tagName === 'H2'")
     assert read_edits_file(root)["items"] == []
 
 
