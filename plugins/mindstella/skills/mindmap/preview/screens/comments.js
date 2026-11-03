@@ -406,7 +406,24 @@ var MindmapPreview;
         checkbox.indeterminate = count > 0 && count < ids.length;
         return MindmapPreview.h({ tag: "label", attrs: { class: "legend-all-check", title: "すべて選ぶ" }, children: [checkbox] });
     }
-    /** 見出しの帯（見出し・レビュー中の入口・閉じる） */
+    /** ピン止めの切り替えのボタン。押した状態は `aria-pressed` で示し、ピンのアイコンは外している間だけ 45° 傾ける（CSS） */
+    function pinButton(props) {
+        const label = props.pinned ? "ピン止めを外す（外側を押したら閉じる）" : "ピン止めする（外側を押しても閉じない）";
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: "icon-btn pin-toggle",
+                type: "button",
+                "aria-pressed": props.pinned ? "true" : "false",
+                "aria-label": label,
+                title: label,
+                "data-focus": "pin",
+                onclick: () => props.on.pin(),
+            },
+            children: [MindmapPreview.icon("pin")],
+        });
+    }
+    /** 見出しの帯（見出し・レビュー中の入口・ピン止め・閉じる） */
     function panelHead(props) {
         const count = props.items.length;
         return MindmapPreview.h({
@@ -429,6 +446,7 @@ var MindmapPreview;
                         },
                         children: ["レビュー中", MindmapPreview.h({ tag: "span", attrs: { class: "count", "aria-hidden": "true" }, children: [count] })],
                     }),
+                pinButton(props),
                 MindmapPreview.h({
                     tag: "button",
                     attrs: { class: "icon-btn", type: "button", "aria-label": "コメントの一覧を閉じる", "data-focus": "close", onclick: props.on.close },

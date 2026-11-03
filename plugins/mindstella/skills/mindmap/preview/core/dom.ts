@@ -161,7 +161,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 左から重ねるパネル（絞り込みのドロワー・コメントの一覧）が覆った本文の部品に `inert` を付け、外す関数を返す */
+  /** ピン止めしたコメントの一覧が覆った本文の部品に `inert` を付け、外す関数を返す */
   export function inertBehind(panel: HTMLElement): () => void {
     // 開く動き（`transform`）の途中でも、重なる先の位置で覆う範囲を決めるため、配置の位置から求める
     const covered = {
@@ -196,6 +196,28 @@ namespace MindmapPreview {
     };
     const main = document.querySelector("main");
     if (main !== null) for (const child of main.children) if (child instanceof HTMLElement) visit(child);
+    return () => {
+      for (const element of attached) element.inert = false;
+    };
+  }
+
+  /** グレーアウトで覆う間、左から重ねるパネルと詳細パネル（`aside.panel`）を除いた本文の部品に `inert` を付け、外す関数を返す */
+  export function inertOutside(panel: HTMLElement): () => void {
+    const attached: HTMLElement[] = [];
+    /** パネルか詳細パネルを中に持つ要素は子をたどり、それ以外はまとめて止める */
+    const visit = (element: HTMLElement): void => {
+      // パネル自身・詳細パネル・始めから `inert` の要素（その子も止まっている）には付けない
+      if (element === panel || element.inert || element.matches("aside.panel")) return;
+      if (element.contains(panel) || element.querySelector("aside.panel") !== null) {
+        for (const child of element.children) if (child instanceof HTMLElement) visit(child);
+        return;
+      }
+      element.inert = true;
+      attached.push(element);
+    };
+    // パネルを中に持たない本文は、子ではなく `main` 自体を止める
+    const main = document.querySelector("main");
+    if (main !== null) visit(main);
     return () => {
       for (const element of attached) element.inert = false;
     };

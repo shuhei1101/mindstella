@@ -772,7 +772,7 @@ dialog.viewer.dragging .v-canvas { cursor: grabbing; }
 dialog.full { width: calc(100vw - 64px); max-width: 1600px; height: calc(100dvh - 64px); max-height: none; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); }
 /* 全画面を開いているとき */
 dialog.full[open] { display: flex; flex-direction: column; }
-dialog.full::backdrop { background: var(--scrim-soft); }
+dialog.full::backdrop { background: var(--scrim); }
 /* 全画面の中身 */
 dialog.full .panel-body { flex: 1; max-width: none; width: 100%; margin: 0 auto; overscroll-behavior: contain; }
 /* 全画面の中の図の拡大 */
@@ -1069,6 +1069,19 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .comments-free .send.send-footer { padding: 12px 16px 14px; border-top: 0; }
 /* 狭い幅（900px 以下）: 詳細パネルと同じく画面の幅いっぱいにする */
 @media (max-width: 900px) { .comments-panel, .pending-panel { width: 100%; top: var(--topbar-h); z-index: 34; } }
+/* 左のパネルのグレーアウト: トップバーとタブの帯の下から、左のパネル以外を覆う。詳細パネル（20）より上、左のパネル（22）より下 */
+.left-scrim { position: fixed; z-index: 21; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; right: 0; bottom: 0; background: var(--scrim); opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s linear .2s; }
+.left-scrim.on { opacity: 1; visibility: visible; transition: opacity .2s; }
+/* 左のパネルの中から開いた詳細パネルは、グレーアウトの上に出して操作できるようにする */
+body.detail-above-scrim .panel { z-index: 23; }
+/* 幅 900px 以下: 左のパネルが幅いっぱいに出るため、グレーアウトは出さない（後ろの部品は止める） */
+@media (max-width: 900px) { .left-scrim { display: none; } }
+/* ピン止めの切り替え: 押した状態はアクセントの色で塗り、外している間はピンを 45° 傾ける */
+.comments-head .pin-toggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-weak); }
+.comments-head .pin-toggle svg.icon { transition: transform .15s; transform: rotate(45deg); }
+.comments-head .pin-toggle[aria-pressed="true"] svg.icon { transform: none; }
+.comments-head .pin-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .left-scrim, .comments-head .pin-toggle svg.icon { transition: none; } }
 /* 狭い幅（720px 以下）: 行の余白を詰め、直す・削除を右上に重ねる */
 @media (max-width: 720px) {
   .comments-list .row { position: relative; grid-template-columns: var(--target-min) minmax(0, 1fr); padding: 10px; gap: 4px 8px; }
