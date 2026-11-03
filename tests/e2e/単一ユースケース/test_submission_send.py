@@ -86,6 +86,11 @@ FIT_SETTLE_MS = 2_500
 
 # 詳細パネルのレビュー中のコメントの行と、D-1 のカードのコメントの印の読み上げの文字
 REVIEW_ROW = "aside.panel .d-review li[data-comment='{id}']"
+
+# 詳細パネルのレビュー中のコメントの並びのボタンと、その本文を並びの順に返すスクリプト
+REVIEW_ORDER_BUTTON = "aside.panel .d-review button.review-order"
+REVIEW_BODIES = "aside.panel .d-review .review-body"
+BODIES_JS = "bodies => bodies.map(b => b.textContent)"
 D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
 
 # 画面に結果が出るまで待つ上限ミリ秒
@@ -353,7 +358,7 @@ def test_normal_when_edit_remove_restore_in_detail(
     assert page.locator("aside.comments-panel.open").count() == 0
     assert page.eval_on_selector_all(
         "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
-    ) == ["案 A に決める", "案 B も見たい"]
+    ) == ["案 B も見たい", "案 A に決める"]
     assert [(item["id"], item["body"]) for item in _read_comments(root)] == [
         ("C-1", "案 A に決める"),
         ("C-2", "案 B も見たい"),
@@ -363,5 +368,59 @@ def test_normal_when_edit_remove_restore_in_detail(
     page.wait_for_selector(REVIEW_ROW.format(id="C-2"))
     assert page.eval_on_selector_all(
         "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
-    ) == ["案 A に決める", "案 B も見たい"]
+    ) == ["案 B も見たい", "案 A に決める"]
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+def test_normal_when_review_order_switched(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """詳細パネルのレビュー中のコメントを、既定の新しい順から古い順へ切り替え、開き直しても古い順のまま出し、新しい順へ戻す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=OPTIONS))
+    write_comments(
+        root,
+        make_comment("C-1", target="D-1", body="案 A にする"),
+        make_comment("C-2", target="D-1", body="案 B も見たい"),
+        make_comment("C-3", target="D-1", body="案 C は外す"),
+    )
+    comments_before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    newest = ["案 C は外す", "案 B も見たい", "案 A にする"]
+    oldest = ["案 A にする", "案 B も見たい", "案 C は外す"]
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], BOARD_HASH)
+    page.click('.board button.card[data-id="D-1"]')
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    # 検証（開いた直後は新しい順）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == newest
+    # 実行（古い順へ切り替える）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(
+        f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'",
+        timeout=RESULT_TIMEOUT_MS,
+    )
+    # 検証（溜めた順に並べ直す）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == oldest
+    assert page.inner_text("aside.panel .d-review h3 .count") == "3"
+    # 実行（開き直す。ハッシュが D-1 の詳細パネルを開く）
+    page.reload()
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    # 検証（古い順のまま）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == oldest
+    # 実行（新しい順へ戻す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(
+        f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'",
+        timeout=RESULT_TIMEOUT_MS,
+    )
+    # 検証（開いた直後と同じ順。件数とワークスペースのコメントは変わらない）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == newest
+    assert page.inner_text("aside.panel .d-review h3 .count") == "3"
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == comments_before
