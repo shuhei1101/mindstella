@@ -16086,6 +16086,42 @@ var MindmapPreview;
             });
             renderSettings();
         };
+        // 422: 詳細の本文を送った位置を、項目ごとにタブの間だけ（sessionStorage）残す
+        const BODY_SCROLL_KEY_422 = "mindmap-preview-422-body-scroll";
+        const bodyScroll422 = (() => {
+            try {
+                return JSON.parse(sessionStorage.getItem(BODY_SCROLL_KEY_422) ?? "{}");
+            }
+            catch {
+                return {};
+            }
+        })();
+        /** 422: 詳細パネル・詳細の全画面の本文を送ったら、開いている項目の位置を残す（scroll は伝わらないため捕捉フェーズで受ける） */
+        document.addEventListener("scroll", (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement) || !target.matches("aside.panel .panel-body, dialog.full .panel-body") || route.id === null)
+                return;
+            bodyScroll422[route.id] = target.scrollTop;
+            try {
+                sessionStorage.setItem(BODY_SCROLL_KEY_422, JSON.stringify(bodyScroll422));
+            }
+            catch {
+                // 残せなくても、開いている間はメモリの位置で戻す
+            }
+        }, true);
+        /** 422: 描き直した本文を、その項目で最後に送った位置へ戻す（見出し・コメントの箇所を示すときは、そちらを優先する） */
+        const restoreBodyScroll422 = (showsTarget) => {
+            const id = route.id;
+            const top = id === null ? undefined : bodyScroll422[id];
+            if (showsTarget || top === undefined)
+                return;
+            const selector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+            requestAnimationFrame(() => {
+                const body = document.querySelector(selector);
+                if (body !== null && route.id === id)
+                    body.scrollTop = top;
+            });
+        };
         /** 詳細パネルと全画面 */
         const renderDetail = () => {
             // 項目を追加する入力: 詳細パネルと同じ置き方で、追加の入力を開く
@@ -16203,12 +16239,15 @@ var MindmapPreview;
                 // 開いたときにだけ見出しを画面に入れる
                 heading: shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading,
             });
+            // 422: 見出し・コメントの箇所を示さないときは、その項目で最後に送った位置へ戻す
+            const showsTarget422 = (shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading) !== null || openedLocation() !== null;
             shownHeading = route.heading === null ? null : { id: route.id, heading: route.heading };
             if (route.full) {
                 existing?.classList.remove("open");
                 fullDialog?.remove();
                 document.body.append(panel);
                 panel.showModal();
+                restoreBodyScroll422(showsTarget422);
                 return;
             }
             fullDialog?.close();
@@ -16223,6 +16262,7 @@ var MindmapPreview;
                 existing.className = `${panel.className} open`;
                 existing.replaceChildren(...panel.children);
             }
+            restoreBodyScroll422(showsTarget422);
         };
         /** コメントの一覧の行から開いたとき、そのコメントの箇所。別の項目へ移っていれば示すのをやめる */
         const openedLocation = () => {
