@@ -1,0 +1,19 @@
+$ pytest tests/integration/preview/test_comments_screen.py tests/integration/preview/test_detail_panel_screen.py -p no:cacheprovider   # レビューの指摘で追加したテストを持つファイル（実装は cfbacccf から変えていない）
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-scrim-close-on-outside-press
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 293 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  7%]
+..........                                                               [ 10%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 17%]
+........................................................................ [ 41%]
+........................................................................ [ 66%]
+............................................................             [ 86%]
+tests/integration/preview/test_comments_screen.py ..                     [ 87%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 93%]
+...................                                                      [100%]
+
+======================= 293 passed in 622.76s (0:10:22) ========================
