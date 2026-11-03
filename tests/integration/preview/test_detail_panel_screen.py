@@ -2364,6 +2364,80 @@ def test_body_scroll_restored(
     assert reloaded == BODY_SCROLL_TOP
 
 
+# 本文の末尾に見出しを持つ、縦にあふれる本文
+TAIL_HEADING = "末尾の見出し"
+TAIL_HEADING_BODY = LONG_BODY + f"\n## {TAIL_HEADING}\n\n末尾の段落\n"
+
+# 要素が本文のスクロール領域の中に見えていて、上端からの距離を返す式
+OFFSET_IN_BODY_JS = """([scroller, target]) => {
+    const body = document.querySelector(scroller).getBoundingClientRect();
+    const element = document.querySelector(target).getBoundingClientRect();
+    return element.top - body.top;
+}"""
+
+
+def test_body_scroll_when_heading(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-2", body="D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-1'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    # 実行
+    page.evaluate(f"location.hash = '#tab=decisions&view=table&id=D-2&h={TAIL_HEADING}'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    top = _scroll_top(page, PANEL_BODY)
+    offset = page.evaluate(OFFSET_IN_BODY_JS, [PANEL_BODY, f'aside.panel [data-heading="{TAIL_HEADING}"]'])
+    # 検証
+    assert top != BODY_SCROLL_TOP
+    assert 0 <= offset <= page.eval_on_selector(PANEL_BODY, "e => e.clientHeight")
+
+
+def test_body_scroll_when_comment_location(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """位置を残した項目でも、コメントの箇所を示して開くときは残した位置ではなく箇所を出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item(
+            "D-3",
+            status="要見直し",
+            options=[{"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True}],
+            body="D-3.md",
+        ),
+        bodies={"D-3.md": LONG_BODY},
+        comments=(
+            make_comment(
+                "C-1",
+                target="D-3",
+                body="ここは別の言い方にしたい",
+                loc={"kind": "value", "key": "options[A].pros", "text": "並べやすい"},
+            ),
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-3\":900') === true")
+    open_review(page)
+    # 実行
+    page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
+    page.wait_for_selector("aside.panel.open .loc-hit")
+    top = _scroll_top(page, PANEL_BODY)
+    offset = page.evaluate(OFFSET_IN_BODY_JS, [PANEL_BODY, "aside.panel .loc-hit"])
+    # 検証
+    assert top != BODY_SCROLL_TOP
+    assert 0 <= offset <= page.eval_on_selector(PANEL_BODY, "e => e.clientHeight")
+
+
 def test_stack_when_left_panel_open(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:

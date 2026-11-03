@@ -25,8 +25,9 @@ from preview_comment_helpers import (
 )
 from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
-from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
-from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
+from preview_body_scroll_helpers import SETTLED_SCROLL_TOP_JS
+from preview_scrim_helpers import SCRIM_ON, click_scrim, detail_above_scrim, main_inert, scrim_visible
+from preview_stack_helpers import DETAIL_HASH, WIDE_VIEWPORT, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import (
     RECORD_DIR,
     CallTool,
@@ -249,6 +250,97 @@ def test_reopen_restores_thread(served_threads: tuple[str, Path], open_preview: 
     # 検証
     assert reopened == 1
     assert reloaded == (0, True)
+
+
+# パネルの中を送る位置（px）と、送れるだけのスレッドの件数
+LIST_SCROLL_TOP = 500
+MANY_THREADS = 39
+
+# スレッドの画面の、向けた項目を開くボタン
+THREAD_TARGET = f"{COMMENTS_PANEL} button.row-target[data-focus='target']"
+
+
+def _many_threads(make_thread: MakeThread, make_post: MakePost) -> tuple[dict, ...]:
+    """パネルの中が縦にあふれる件数のスレッド TH-1〜TH-39 を返す。"""
+    return tuple(
+        make_thread(f"TH-{n}", make_post(f"TH-{n}-1", body=f"{n} 件目の質問"), summary=f"{n} 件目の要約")
+        for n in range(1, MANY_THREADS + 1)
+    )
+
+
+def test_reopen_restores_scroll(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    make_post: MakePost,
+) -> None:
+    """閉じて開き直すと、閉じる前のパネルの中のスクロールの位置に戻る（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=_many_threads(make_thread, make_post))
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_list(page)
+    page.wait_for_selector(thread_row(f"TH-{MANY_THREADS}"))
+    page.eval_on_selector(f"{COMMENTS_PANEL} .comments-body", "(body, top) => { body.scrollTop = top; }", LIST_SCROLL_TOP)
+    before = page.evaluate(SETTLED_SCROLL_TOP_JS, f"{COMMENTS_PANEL} .comments-body")
+    # 実行
+    page.get_by_role("button", name="コメントの一覧を閉じる").click()
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    open_list(page)
+    # 検証
+    assert before == LIST_SCROLL_TOP
+    assert page.evaluate(SETTLED_SCROLL_TOP_JS, f"{COMMENTS_PANEL} .comments-body") == LIST_SCROLL_TOP
+
+
+def test_reopen_when_thread_removed(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """開き直したとき、開いていたスレッドが読み直したスレッドに無くなっていれば、スレッドの一覧から始める（正常系）。"""
+    # 準備
+    url, root = served_threads
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_list(page)
+    page.click(f"{thread_row('TH-2')} button.th-open")
+    page.wait_for_selector(THREAD_BODY)
+    page.get_by_role("button", name="コメントの一覧を閉じる").click()
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    threads_file = root / RECORD_DIR / "threads.yaml"
+    data = yaml.safe_load(threads_file.read_text(encoding="utf-8"))
+    data["items"] = [thread for thread in data["items"] if thread["id"] != "TH-2"]
+    threads_file.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    # 実行
+    open_list(page)
+    # 検証
+    page.wait_for_selector(thread_row("TH-1"), timeout=UPDATE_TIMEOUT_MS)
+    assert page.locator(THREAD_BODY).count() == 0
+    assert page.locator(thread_row("TH-2")).count() == 0
+
+
+@pytest.mark.parametrize(
+    "start_hash",
+    [
+        pytest.param("#tab=decisions&view=table", id="other_item"),
+        pytest.param(DETAIL_HASH, id="same_item"),
+    ],
+)
+def test_detail_from_panel_above_scrim(
+    served_threads: tuple[str, Path], open_preview: OpenPreview, start_hash: str
+) -> None:
+    """幅 1200px で一覧の中（スレッドの向けた項目）から開いた詳細パネルはグレーアウトの上に出し、操作できる。パネルの外で開いていた項目と同じ項目を押しても上に出す（正常系）。"""
+    # 準備
+    url, _ = served_threads
+    page = open_preview(url, start_hash)
+    page.set_viewport_size(WIDE_VIEWPORT)
+    open_list(page)
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_selector(THREAD_TARGET)
+    # 実行
+    page.click(THREAD_TARGET)
+    page.wait_for_selector("aside.panel.open")
+    page.wait_for_function("document.body.classList.contains('detail-above-scrim')")
+    # 検証
+    assert scrim_visible(page) is True
+    assert detail_above_scrim(page) is True
+    assert is_inert(page, "detail") is False
+    assert page.locator(f"{COMMENTS_PANEL}.open").count() == 1
 
 
 def test_close_when_detail_open(
