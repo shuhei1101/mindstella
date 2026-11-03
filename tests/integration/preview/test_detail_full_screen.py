@@ -225,6 +225,27 @@ def test_restore_by_backdrop(
     assert page.locator("dialog.full").count() == 0
 
 
+def test_backdrop_color(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """後ろの幕は、ほかのモーダルと同じ濃さ（`--scrim`）で後ろの画面をグレーアウトする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    # 実行
+    colors = page.evaluate(
+        """() => {
+            const probe = document.createElement("div");
+            probe.style.background = "var(--scrim)";
+            document.body.append(probe);
+            const scrim = getComputedStyle(probe).backgroundColor;
+            probe.remove();
+            return {backdrop: getComputedStyle(document.querySelector("dialog.full"), "::backdrop").backgroundColor, scrim};
+        }"""
+    )
+    # 検証
+    assert colors["backdrop"] == colors["scrim"]
+
+
 def test_navigate_inside(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:

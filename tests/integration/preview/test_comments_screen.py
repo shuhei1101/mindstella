@@ -25,6 +25,7 @@ from preview_comment_helpers import (
 )
 from preview_drawer_helpers import DRAWER, DRAWER_OPEN, FILTER_BUTTON, open_drawer
 from preview_fixture_types import OpenPreview, WriteReviewPreview
+from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
 from preview_stack_helpers import DETAIL_HASH, has_left_front, is_inert, open_narrow, wait_front
 from workspace_fixtures import (
     RECORD_DIR,
@@ -40,7 +41,7 @@ NARROW_WIDTH = 800
 VIEWPORT_HEIGHT = 700
 
 # 覆われた本文の部品に付けた `inert` の数
-INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
+INERT_COUNT_SCRIPT = "document.querySelectorAll('main[inert], main [inert]').length"
 
 # 絞り込みの帯のセグメント・タグのチップ・空の状態
 SEGMENTS = f"{COMMENTS_PANEL} .talk-filter button"
@@ -172,6 +173,82 @@ def test_close(served_threads: tuple[str, Path], open_preview: OpenPreview) -> N
     page.click(COMMENTS_BUTTON)
     page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
     assert page.evaluate("history.length") == history_length
+
+
+# ピン止めのボタンと、スレッドの画面の本文
+PIN_BUTTON = f"{COMMENTS_PANEL} .comments-head button[data-focus='pin']"
+THREAD_BODY = f"{COMMENTS_PANEL} .comments-body.th-body"
+
+
+def test_close_by_scrim(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """ピン止めしていない間はトップバーとタブの帯とパネル以外をグレーアウトし、グレーアウトした所を押すとパネルを閉じてコメントのボタンへフォーカスを戻す（正常系）。"""
+    # 準備
+    url, _ = served_threads
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_list(page)
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行
+    click_scrim(page)
+    # 検証
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    assert covered == (True, True)
+    assert page.evaluate("document.activeElement?.dataset.act ?? null") == "comments"
+    assert scrim_visible(page) is False
+
+
+def test_pin(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """ピン止めの間はグレーアウトせず外側を押しても閉じない。ピン止めは端末に残り、読み込み直しても保たれる（正常系）。"""
+    # 準備
+    url, _ = served_threads
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_list(page)
+    unpinned = (
+        page.get_attribute(PIN_BUTTON, "aria-pressed"),
+        page.get_attribute(PIN_BUTTON, "aria-label"),
+    )
+    # 実行（ピン止めして外側を押す）
+    page.click(PIN_BUTTON)
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    pinned = (
+        page.get_attribute(PIN_BUTTON, "aria-pressed"),
+        page.get_attribute(PIN_BUTTON, "aria-label"),
+    )
+    click_scrim(page)
+    still_open = page.locator(f"{COMMENTS_PANEL}.open").count()
+    # 実行（読み込み直して開き直す）
+    page.reload()
+    page.wait_for_selector("main#main > *")
+    open_list(page)
+    reloaded = (page.get_attribute(PIN_BUTTON, "aria-pressed"), scrim_visible(page))
+    # 検証
+    assert unpinned == ("false", "ピン止めする（外側を押しても閉じない）")
+    assert pinned == ("true", "ピン止めを外す（外側を押したら閉じる）")
+    assert still_open == 1
+    assert reloaded == ("true", False)
+
+
+def test_reopen_restores_thread(served_threads: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """閉じて開き直すと、閉じる前に開いていたスレッドに戻る。読み込み直すとスレッドの一覧から始める（正常系）。"""
+    # 準備
+    url, _ = served_threads
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_list(page)
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_selector(THREAD_BODY)
+    # 実行（閉じて開き直す）
+    page.get_by_role("button", name="コメントの一覧を閉じる").click()
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    open_list(page)
+    reopened = page.locator(THREAD_BODY).count()
+    # 実行（読み込み直して開く）
+    page.reload()
+    page.wait_for_selector("main#main > *")
+    open_list(page)
+    reloaded = (page.locator(THREAD_BODY).count(), page.locator(THREAD_ROWS).count() > 0)
+    # 検証
+    assert reopened == 1
+    assert reloaded == (0, True)
 
 
 def test_close_when_detail_open(

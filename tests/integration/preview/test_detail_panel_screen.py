@@ -188,6 +188,7 @@ from preview_word_diff_helpers import (
     serve_word_diff_workspace,
 )
 from preview_settings_helpers import SETTINGS_PANEL, SETTINGS_PANEL_OPEN, open_settings
+from preview_scrim_helpers import SCRIM_ON, detail_above_scrim, scrim_visible
 from preview_stack_helpers import (
     DETAIL_HASH,
     WIDE_VIEWPORT,
@@ -2312,6 +2313,73 @@ def test_body_escape_closes_panel(
     # 検証
     page.wait_for_selector("aside.panel.open", state="detached")
     assert "id=" not in page.evaluate("location.hash")
+
+
+# 本文を送る位置（px）
+BODY_SCROLL_TOP = 900
+
+# 詳細の全画面の本文のスクロール領域
+FULL_BODY = "dialog.full .panel-body"
+
+
+def _scroll_top(page: Page, selector: str) -> int:
+    """スクロールが止まった後の、本文のスクロール領域の位置を返す。"""
+    return page.evaluate(SETTLED_SCROLL_TOP_JS, selector)
+
+
+def test_body_scroll_restored(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文を送った位置を項目ごとに残し、別の項目は先頭から開く。前の項目へ戻る・全画面に切り替える・読み込み直すと、その項目で最後に送った位置へ戻す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"], body="D-2.md"),
+        bodies={"D-2.md": LONG_BODY},
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    # 実行（前提の D-1 へ移る。押す操作で本文を送らないよう、要素の click を呼ぶ）
+    page.eval_on_selector("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink", "b => b.click()")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    other = _scroll_top(page, PANEL_BODY)
+    # 実行（前の項目へ戻る）
+    page.click('aside.panel button[data-act="back"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    back = _scroll_top(page, PANEL_BODY)
+    # 実行（全画面に切り替える）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open]")
+    full = _scroll_top(page, FULL_BODY)
+    # 実行（読み込み直す）
+    page.reload()
+    page.wait_for_selector(f"{FULL_BODY} .md")
+    reloaded = _scroll_top(page, FULL_BODY)
+    # 検証
+    assert other == 0
+    assert back == BODY_SCROLL_TOP
+    assert full == BODY_SCROLL_TOP
+    assert reloaded == BODY_SCROLL_TOP
+
+
+def test_stack_when_left_panel_open(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 1200px で左のパネルを開いている間は、パネルの外で開いた詳細パネルをグレーアウトの下に置いて止める（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("aside.panel.open")
+    # 実行
+    open_settings(page)
+    page.wait_for_selector(SCRIM_ON)
+    # 検証
+    assert scrim_visible(page) is True
+    assert detail_above_scrim(page) is False
+    assert is_inert(page, "detail") is True
 
 
 @pytest.mark.parametrize(

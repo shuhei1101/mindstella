@@ -23,6 +23,7 @@ from preview_edit_helpers import (
     start_add,
 )
 from preview_fit_helpers import assert_fits_smallest, set_smallest
+from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -1377,20 +1378,21 @@ def test_drawer_keeps_when_view_switched(
 
 
 def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタンで閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。外側を押しても閉じない（正常系）。"""
+    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタン・グレーアウトした所で閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。開いている間はトップバーとタブの帯とドロワー以外をグレーアウトして止める（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table")
     focused: list[str | None] = []
-    # 実行（外側を押しても閉じない）
+    # 実行（開いている間のグレーアウト）
     open_drawer(page)
-    page.mouse.click(900, 500)
-    still_open = page.locator(DRAWER_OPEN).count()
-    # 実行（×・下端のボタン・Esc で閉じる）
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行（×・下端のボタン・Esc・グレーアウトで閉じる）
     for close in (
         lambda: page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']"),
         lambda: page.click(f"{DRAWER} .fd-foot .btn.primary"),
         lambda: page.keyboard.press("Escape"),
+        lambda: click_scrim(page),
     ):
         if page.locator(DRAWER_OPEN).count() == 0:
             open_drawer(page)
@@ -1401,9 +1403,11 @@ def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: Op
     open_drawer(page)
     page.click(FILTER_BUTTON)
     page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
     # 検証
-    assert still_open == 1
-    assert focused == ["filter", "filter", "filter"]
+    assert covered == (True, True)
+    assert focused == ["filter", "filter", "filter", "filter"]
+    assert main_inert(page) is False
 
 
 def test_drawer_clear(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
