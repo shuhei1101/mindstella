@@ -456,7 +456,7 @@ def test_review_row_remove_and_restore(
     page.locator(f"{row}.removed").get_by_role("button", name="元に戻す").click()
     page.wait_for_selector(f"{row} .review-body", timeout=UPDATE_TIMEOUT_MS)
     # 検証（戻す）
-    assert page.eval_on_selector_all(f"{FULL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == ["C-1", "C-2"]
+    assert page.eval_on_selector_all(f"{FULL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == ["C-2", "C-1"]
     assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント2"
     wait_until_focused(page, f"{row} button[title='修正']")
 

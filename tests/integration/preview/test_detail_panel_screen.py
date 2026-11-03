@@ -1528,7 +1528,7 @@ def test_review_row_remove(
 def test_review_row_remove_updates_counts(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """削除した後、見出しの件数とトップバーのコメントのボタンの件数を、消した行を数えずに描き直し、消した行は溜めた順の元の場所に残す（正常系）。"""
+    """削除した後、見出しの件数とトップバーのコメントのボタンの件数を、消した行を数えずに描き直し、消した行は新しい順の元の場所に残す（正常系）。"""
     # 準備
     url, _ = served_review_rows
     page = open_preview(url, "#tab=decisions&id=D-1")
@@ -1540,7 +1540,7 @@ def test_review_row_remove_updates_counts(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
     assert page.eval_on_selector_all(
         f"{PANEL_REVIEW} li", "rows => rows.map(r => [r.dataset.comment, r.classList.contains('removed')])"
-    ) == [["C-1", True], ["C-2", False]]
+    ) == [["C-2", False], ["C-1", True]]
 
 
 def test_review_row_remove_updates_mark(
@@ -1831,8 +1831,8 @@ def test_review_row_restore(
     # 検証
     assert page.inner_text(f"{row} .review-body") == "案 A にする"
     assert page.eval_on_selector_all(f"{PANEL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == [
-        "C-1",
         "C-2",
+        "C-1",
     ]
     assert page.inner_text(f"{PANEL_REVIEW} h3") == "レビュー中のコメント2"
     restored = read_workspace_yaml(root, "comments.yaml")["items"][0]
