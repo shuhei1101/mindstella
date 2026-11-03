@@ -1500,6 +1500,7 @@ def test_drawer_keyword_hits(
     page.wait_for_selector("#decision-map .map-node.n-item")
     # 実行（ドロワーを開いている間は本文を止めるため、キーワードを入れてから開く）
     page.fill("input.map-q", "D-2")
+    page.wait_for_selector("#decision-map button.n-item.hit")
     open_drawer(page)
     page.wait_for_selector(f"{DRAWER} .hit-n")
     hits = page.eval_on_selector_all(
