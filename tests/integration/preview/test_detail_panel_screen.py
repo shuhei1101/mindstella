@@ -1236,7 +1236,7 @@ def test_review_comments(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """その項目へのレビュー中のコメントを溜めた順に、箇所（名前と選んだ文）と本文つきで並べ、行ごとに「修正」「削除」を置く（正常系）。"""
+    """その項目へのレビュー中のコメントを新しい順に、箇所（名前と選んだ文）と本文つきで並べ、行ごとに「修正」「削除」を置く（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"),
@@ -1260,8 +1260,8 @@ def test_review_comments(
         "aside.panel .d-review li",
         "rows => rows.map(r => [r.querySelector('.review-loc-name')?.textContent ?? null, r.querySelector('.send-quote')?.textContent ?? null, r.querySelector('.review-body').textContent])",
     ) == [
-        [None, None, "案 A にする"],
         ["案 C のデメリット", "表の密度が下がる", "ここは別の言い方にしたい"],
+        [None, None, "案 A にする"],
     ]
     # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送るは一覧で行う）
     assert page.eval_on_selector_all(
@@ -1288,6 +1288,116 @@ def test_review_comments_when_empty(
     # 検証
     assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント0"
     assert "レビュー中のコメントはありません。" in page.inner_text("aside.panel .d-review")
+
+
+# レビュー中のコメントの並びの切り替えと、詳細パネルのレビュー中のコメントの行
+REVIEW_ORDER_BUTTON = "aside.panel .d-review > .review-head > button.review-order"
+PANEL_REVIEW_ROWS = "aside.panel .d-review li[data-comment]"
+
+# 行の ID の並びを読む
+ROW_IDS_JS = "rows => rows.map(r => r.dataset.comment)"
+
+# 見出しと並びの切り替えの縦の中心の差の上限（px）
+REVIEW_HEAD_CENTER_TOLERANCE_PX = 4
+
+# 見出しの行の中の見出しと並びの切り替えの位置を読む
+REVIEW_HEAD_BOXES_JS = """head => {
+    const box = el => el.getBoundingClientRect();
+    const h3 = box(head.querySelector('h3'));
+    const button = box(head.querySelector('button.review-order'));
+    return {
+        headRight: box(head).right,
+        h3Right: h3.right,
+        h3Center: h3.top + h3.height / 2,
+        buttonLeft: button.left,
+        buttonRight: button.right,
+        buttonCenter: button.top + button.height / 2,
+    };
+}"""
+
+
+def test_review_order(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """レビュー中のコメントが 2 件以上のとき、見出しの行の右に今の並びを示す並びの切り替えを置き、押すたびに並びを入れ替えてフォーカスを保ち、履歴に積まない（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    history_length = page.evaluate("history.length")
+    # 検証（見出しの行の右に、今の並びと読み上げの名前を持つボタン）
+    assert page.inner_text(REVIEW_ORDER_BUTTON) == "新しい順"
+    assert page.get_attribute(REVIEW_ORDER_BUTTON, "aria-label") == "コメントの並び: 新しい順"
+    assert page.locator(f"{REVIEW_ORDER_BUTTON} svg").count() == 1
+    boxes = page.eval_on_selector("aside.panel .d-review > .review-head", REVIEW_HEAD_BOXES_JS)
+    assert boxes["buttonLeft"] > boxes["h3Right"]
+    assert abs(boxes["headRight"] - boxes["buttonRight"]) <= FIELD_WIDTH_TOLERANCE_PX
+    assert abs(boxes["h3Center"] - boxes["buttonCenter"]) <= REVIEW_HEAD_CENTER_TOLERANCE_PX
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-2", "C-1"]
+    # 実行（押す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    # 検証（古い順に入れ替え、フォーカスはボタンにあり、履歴に積まない）
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-1", "C-2"]
+    assert page.get_attribute(REVIEW_ORDER_BUTTON, "aria-label") == "コメントの並び: 古い順"
+    wait_until_focused(page, REVIEW_ORDER_BUTTON)
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == "#tab=decisions&id=D-1"
+    # 実行（もう一度押す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'")
+    # 検証
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-2", "C-1"]
+    wait_until_focused(page, REVIEW_ORDER_BUTTON)
+
+
+def test_review_order_when_one_row(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """レビュー中のコメントが 1 件のときは、並びの切り替えを置かない（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"), comments=(make_comment("C-1", target="D-1", body="案 A にする"),)
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector(PANEL_REVIEW_ROWS)
+    # 検証
+    assert page.locator("aside.panel .d-review button.review-order").count() == 0
+    assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント1"
+
+
+def test_review_order_when_removed_row(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """消した行を含めて 2 行あれば並びの切り替えを残し、消した行は並べ替えても並びの中の元の場所に「元に戻す」と共に出す（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（件数は 1 でも、消した行を含めて 2 行なので切り替えを残す）
+    assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント1"
+    assert page.locator(REVIEW_ORDER_BUTTON).count() == 1
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-2", "C-1"]
+    # 実行
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    # 検証（消した行は古い順の中の元の場所に、「元に戻す」と共に残る）
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-1", "C-2"]
+    assert page.locator(f"{review_row('aside.panel', 'C-1')}.removed").get_by_role("button", name="元に戻す").count() == 1
 
 
 def test_review_row_actions_at_top_right(

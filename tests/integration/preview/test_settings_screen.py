@@ -48,7 +48,7 @@ from preview_stack_helpers import (
     open_narrow,
     wait_front,
 )
-from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeItem, MakeWorkspace
 
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -775,6 +775,52 @@ def test_save_default_when_body_diff_layout(
     assert prefs is not None
     assert prefs["bodyLayout"] == "side"
     assert page.locator(f"{PANEL_SCOPE} .sbs").count() == 1
+
+
+# 「この端末で変えている項目」に並ぶ、レビュー中のコメントの並びの名前
+REVIEW_ORDER_LABEL = "コメントの並び"
+
+# 詳細パネルのレビュー中のコメントの並びの切り替えと行
+REVIEW_ORDER_BUTTON = f"{PANEL_SCOPE} .d-review button.review-order"
+REVIEW_ROWS = f"{PANEL_SCOPE} .d-review li[data-comment]"
+
+
+def test_reset_when_review_order(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    page: Page,
+) -> None:
+    """詳細で選んだ古い順は、「この端末で変えている項目」に「コメントの並び」として並び、「既定に戻す」で外れて開いている詳細パネルを新しい順に描き直す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+        ),
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    history_length = page.evaluate("history.length")
+    # 実行
+    open_settings(page)
+    # 検証（見た目と表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
+    assert REVIEW_ORDER_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    # 実行（既定に戻す）
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'")
+    # 検証（詳細パネルは開いたまま新しい順に戻り、全ての上書きが外れる）
+    assert page.eval_on_selector_all(REVIEW_ROWS, "rows => rows.map(r => r.dataset.comment)") == ["C-2", "C-1"]
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["reviewOrder"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert page.evaluate("history.length") == history_length
 
 
 def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:

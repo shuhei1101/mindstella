@@ -363,6 +363,30 @@ def test_review_row_actions_at_top_right_when_narrow(
     assert 0 <= gaps["top"] <= ROW_CORNER_TOLERANCE_PX
 
 
+# 全画面のレビュー中のコメントの並びの切り替え
+FULL_REVIEW_ORDER = f"{FULL_REVIEW} button.review-order"
+
+
+def test_review_order(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """全画面でもレビュー中のコメントを新しい順に並べ、並びの切り替えで古い順に入れ替えて、全画面を開いたままフォーカスを保つ（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    page.wait_for_selector(FULL_REVIEW_ORDER)
+    rows = f"{FULL_REVIEW} li[data-comment]"
+    ids_js = "rows => rows.map(r => r.dataset.comment)"
+    # 検証
+    assert page.eval_on_selector_all(rows, ids_js) == ["C-2", "C-1"]
+    assert page.get_attribute(FULL_REVIEW_ORDER, "aria-label") == "コメントの並び: 新しい順"
+    # 実行
+    page.click(FULL_REVIEW_ORDER)
+    page.wait_for_function(f"document.querySelector('{FULL_REVIEW_ORDER}')?.textContent === '古い順'")
+    # 検証
+    assert page.eval_on_selector_all(rows, ids_js) == ["C-1", "C-2"]
+    assert page.locator("dialog.full[open]").count() == 1
+    wait_until_focused(page, FULL_REVIEW_ORDER)
+
+
 def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
     """全画面でも「修正」で行の本文を直し、200 なら本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
     # 準備
