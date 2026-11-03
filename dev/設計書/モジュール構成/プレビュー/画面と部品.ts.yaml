@@ -478,8 +478,8 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて ID の連番で、`reviewOrder` が `newest` なら大きい順、`oldest` なら小さい順に並べ、行が 2 件以上のときだけ見出し「レビュー中のコメント」の行の右に並びの切り替えを置き（`button.btn.ghost.review-order`。文字は `REVIEW_ORDER_TEXT` の今の並びと上下の矢印のアイコン、読み上げの名前は「{`REVIEW_ORDER_LABEL`}: {今の並び}」、`data-focus` は `detail-review-order`。押すと `on.order` を入れ替えた後の並びで呼ぶ）、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）。`linkBody` には描いた本文の原文を `source` で渡す。本文が Markdown（`bodyFormatOf` が `md`）の資料は、編集の表示の間を除き（配る書き出しでも）、見出しの全画面表示のボタンの左に「エクスポート」（`aria-haspopup="dialog"`・`aria-expanded`）を置き、押すと `docExportMenu` を入口の下に開く（開いているときにもう一度押すと閉じる）。「HTML でエクスポート」では `view` を `busy` にして `mdmarkAssets` を待ち、取れたら `buildDocHtml` で組み立てて `downloadText` で `{ID}.html` を保存させ、メニューを閉じる（取れなければ `error` にし、「再試行」でやり直す。組み立てている間に閉じたら保存させない）。「Markdown でエクスポート」では `view` を `warn` にし、「エクスポート」で `stripEmbeddedHtml` した本文を `{ID}.md`
-      で保存させて閉じる。閉じたら入口の `aria-expanded` を `false` に戻してフォーカスを入口へ戻す。差分の表示の間、Markdown の本文は `pairEmbeddedHtml` で変わった埋め込んだ HTML の範囲の対を取り、対ごとに今の本文の `order` 番目の `.mdmark-html` を `htmlBodyDiff`（`before`・`after` は範囲の原文、`initial` は `raw`、`heading` は「埋め込んだ HTML」）に置き換える。`beforeView` は前の範囲を `renderMarkdown` で描いたもの、`afterView` は今の `.mdmark-html` で、前後の `.mdmark-html` の直下の子の `outerHTML` を `childMarks` に渡し、`''added''` の子に足したマーカー、`''changed''` の子に変わったマーカーを付ける（`null` ならマーカーを付けない）。範囲の中には本文の行の差分のマーカーを付けない'
+    summary: "画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover=\"manual\"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon(\"star\")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて ID の連番で、`reviewOrder` が `newest` なら大きい順、`oldest` なら小さい順に並べ、行が 2 件以上のときだけ見出し「レビュー中のコメント」の行の右に並びの切り替えを置き（`button.btn.ghost.review-order`。文字は `REVIEW_ORDER_TEXT` の今の並びと上下の矢印のアイコン、読み上げの名前は「{`REVIEW_ORDER_LABEL`}: {今の並び}」、`data-focus` は `detail-review-order`。押すと `on.order` を入れ替えた後の並びで呼ぶ）、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `'detail'` なら `reviewEditForm`、`'list'` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex=\"0\"`・`role=\"region\"`・`aria-label=\"詳細の本文\"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden=\"true\"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）。`linkBody` には描いた本文の原文を `source` で渡す。本文が Markdown（`bodyFormatOf` が `md`）の資料は、編集の表示の間を除き（配る書き出しでも）、見出しの全画面表示のボタンの左に「エクスポート」（`aria-haspopup=\"dialog\"`・`aria-expanded`）を置き、押すと `docExportMenu` を入口の下に開く（開いているときにもう一度押すと閉じる）。「HTML
+      でエクスポート」では `view` を `busy` にして `mdmarkAssets` を待ち、取れたら `buildDocHtml` で組み立てて `downloadText` で `{ID}.html` を保存させ、メニューを閉じる（取れなければ `error` にし、「再試行」でやり直す。組み立てている間に閉じたら保存させない）。「Markdown でエクスポート」では `view` を `warn` にし、「エクスポート」で `stripEmbeddedHtml` した本文を `{ID}.md` で保存させて閉じる。閉じたら入口の `aria-expanded` を `false` に戻してフォーカスを入口へ戻す。差分の表示の間、Markdown の本文は `pairEmbeddedHtml` で変わった埋め込んだ HTML の範囲の対を取り、対ごとに今の本文の `order` 番目の `.mdmark-html` を `htmlBodyDiff`（`before`・`after` は範囲の原文、`initial` は `raw`、`heading` は「埋め込んだ HTML」）に置き換える。`beforeView` は前の範囲を `renderMarkdown` で描いたもの、`afterView` は今の `.mdmark-html` で、前後の `.mdmark-html` の直下の子の `outerHTML` を `childMarks` に渡し、`'added'` の子に足したマーカー、`'changed'` の子に変わったマーカーを付ける（`null` ならマーカーを付けない）。範囲の中には本文の行の差分のマーカーを付けない"
     props:
       - name: id
         type: string
@@ -883,7 +883,7 @@ components:
       - name: look
         type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
         required: true
-        description: '今当てているネットワークの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れて `drawLook` に渡し、見た目のドロップダウンで選んでいる値にする'
+        description: 今当てているネットワークの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れて `drawLook` に渡し、見た目のドロップダウンで選んでいる値にする
       - name: comments
         type: Record<string, number>
         required: false
@@ -1028,7 +1028,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     kind: 画面
-    summary: 左から出すパネル（`aside`。読み上げの名前「コメントの一覧」）を描く。見出しの帯（「コメント」・レビュー中の入口・閉じる）の下に、`view` で画面設計『コメントの一覧』（`threadListView`）・『スレッド』（`threadView`）・『レビュー中の書き込み』（`reviewView`）のどれかを入れる。レビュー中の入口は `view` が `review` のとき出さず、0 件のときは件数の塗りを外す（`data-focus` は `review`）。操作はコールバックで入口に知らせ、描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
+    summary: 左から出すパネル（`aside`。読み上げの名前「コメントの一覧」）を描く。見出しの帯（「コメント」・レビュー中の入口・ピン止め・閉じる）の下に、`view` で画面設計『コメントの一覧』（`threadListView`）・『スレッド』（`threadView`）・『レビュー中の書き込み』（`reviewView`）のどれかを入れる。レビュー中の入口は `view` が `review` のとき出さず、0 件のときは件数の塗りを外す（`data-focus` は `review`）。操作はコールバックで入口に知らせ、描き直しても操作していた部品にフォーカスを戻す。ピン止めは `pinned` を `aria-pressed` で示すアイコンのボタン（`data-focus` は `pin`。読み上げの名前と `title` は画面設計『コメントの一覧』の要素「ピン止め」）で、押すと `on.pin` を知らせる。開いている間のグレーアウトと本文の部品を止めるのは入口（`start` の 5）
     props:
       - name: view
         type: "'list' | 'thread' | 'review'"
@@ -1122,9 +1122,9 @@ components:
         required: true
         description: 項目のタイトル（記録から消えていれば `null`）
       - name: on
-        type: '{close, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
+        type: '{close, pin, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
         required: true
-        description: 閉じる・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
+        description: 閉じる・ピン止めの切り替え・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
       - name: changeSetOf
         type: '(id: string) => string | null'
         required: true
@@ -1133,6 +1133,10 @@ components:
         type: Set<string>
         required: true
         description: 本文を開いているレビュー中の書き込みの ID
+      - name: pinned
+        type: boolean
+        required: true
+        description: ピン止めしているか（入口の `Prefs.commentsPinned`）
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -1146,6 +1150,12 @@ components:
         condition: '`items` が空で `view` が `list`'
         mock: なし
         expected: 入口があり、クラス `zero` を持ち、読み上げの名前が「レビュー中の書き込みを確かめる（0 件）」
+      - name: test_comments_panel_when_pin
+        case: 正常
+        summary: ピン止めのボタンは押した状態と読み上げの名前を切り替える
+        condition: '`parametrize`: `pinned` が偽 / 真'
+        mock: '`on.pin`'
+        expected: 「コメントの一覧を閉じる」の左にピン止めのボタンがあり、`aria-pressed` が `false`、読み上げの名前が「ピン止めする（外側を押しても閉じない）」 / `aria-pressed` が `true`、読み上げの名前が「ピン止めを外す（外側を押したら閉じる）」。どちらも押すと `on.pin` が 1 回
   - name: diffMark
     title: 差分の印
     container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
@@ -1344,7 +1354,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の条件より上に「文字を含む」の欄を並べ、文字の入力（打ち終えて 250 ミリ秒後）・値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値・打っていた文字の欄とカーソルの位置へのフォーカスを保つ。初めて開くときは先頭の文字の欄（無ければ最初の値）へフォーカスを移す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
+    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の条件より上に「文字を含む」の欄を並べ、文字の入力（打ち終えて 250 ミリ秒後）・値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値・打っていた文字の欄とカーソルの位置へのフォーカスを保つ。初めて開くときは先頭の文字の欄（無ければ最初の値）へフォーカスを移す。開いている間のグレーアウトと本文の部品を止めるのは入口（`start` の 5）
     props:
       - name: groups
         type: FilterGroup[]
@@ -1917,7 +1927,7 @@ components:
       - name: className
         type: "'post-body' | 'review-body'"
         required: true
-        description: '本文の要素のクラス'
+        description: 本文の要素のクラス
       - name: on
         type: '{openId, changeSet}'
         required: true
@@ -2175,7 +2185,7 @@ components:
       - name: test_detail_edit_form
         case: 正常
         summary: 離れたときにキー・案を溜める
-        condition: '案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。`optionDrafts: [{key: C, content: ''''}]` の案 C の中身を書いて離れる'
+        condition: "案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。`optionDrafts: [{key: C, content: ''}]` の案 C の中身を書いて離れる"
         mock: '`on.change`'
         expected: '`on.change` が `{op: set, key: answer}`・`{op: adopt, key: B, value: B}`・`{op: option-add, key: C}` の順で 1 回ずつ'
       - name: test_detail_edit_form_when_removing_or_referenced
@@ -2195,7 +2205,7 @@ components:
         summary: 書きかけの案を状態から描き、置く・打つたびに知らせる
         condition: '案 A・B の検討事項 D-1、`optionDrafts: [{key: C, content: 下書き}]`。案 C の入力に「下書き」が出ているか見る。「案を追加」を押す。案 C に「下書き 2」と打つ'
         mock: '`on.draft`・`on.change`'
-        expected: '案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない'
+        expected: "案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない"
       - name: test_detail_edit_form_when_adding_adopted_option
         case: 正常
         summary: 追加の入力では、採用している案の削除ボタンを出さない
@@ -2413,7 +2423,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
     usecase: 共通
     kind: コンポーネント
-    summary: '部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、名前の前に読み上げだけの「主題」の文字（読み上げは「主題 画面」）を、`title` に「主題」を持たせる。並びは記録の順のまま（主題を先頭へ寄せない）。文字列の要素は主題でないタグとして出す。資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う（表のタグの列は `tagNames` の名前を渡すため、マーカーを持たない）'
+    summary: 部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、名前の前に読み上げだけの「主題」の文字（読み上げは「主題 画面」）を、`title` に「主題」を持たせる。並びは記録の順のまま（主題を先頭へ寄せない）。文字列の要素は主題でないタグとして出す。資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う（表のタグの列は `tagNames` の名前を渡すため、マーカーを持たない）
     props:
       - name: values
         type: readonly (Tag | string)[] | undefined
