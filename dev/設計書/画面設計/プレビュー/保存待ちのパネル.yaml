@@ -13,7 +13,7 @@ elements:
   - name: パネルを閉じる
     kind: button
     position: 見出し
-    description: パネルを閉じ、重ねていた画面に戻ってトップバーの保存待ちのボタンへフォーカスを戻す（履歴に積まない）。Esc とトップバーの保存待ちのボタンでも閉じる。保存待ちの編集は残る。読み上げの名前は「保存待ちの編集を閉じる」
+    description: パネルを閉じ、重ねていた画面に戻ってトップバーの保存待ちのボタンへフォーカスを戻す（履歴に積まない）。Esc とトップバーの保存待ちのボタンと、グレーアウトした所の押下でも閉じる。保存待ちの編集は残る。読み上げの名前は「保存待ちの編集を閉じる」
     status: planned
     introduced:
       pr: 325
@@ -106,6 +106,14 @@ elements:
     status: planned
     introduced:
       pr: 325
+  - name: グレーアウト
+    kind: backdrop
+    position: トップバーとタブの帯の下から画面の下端まで（パネルの後ろ）
+    description: コメントの一覧のグレーアウトと同じ。押すとパネルを閉じ、押した操作は後ろの部品へ届けない。まとまりの見出しから開いた詳細パネルはグレーアウトの上に出す
+    visible_when: 幅 901px 以上
+    status: planned
+    introduced:
+      pr: 422
 screen: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
 mock: dev/mock/pages/pending-edits/325/a-count-in-button/index.html
 lead: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめてワークスペースに保存する。トップバーの保存待ちのボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧・表示の設定とは片方だけを開き、行から開いた項目は右の詳細パネルで読む。差分の表示中と配る書き出しでは開かない。
