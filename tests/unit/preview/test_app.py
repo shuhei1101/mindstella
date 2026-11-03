@@ -364,6 +364,7 @@ SAVED_PREFS = {
     "filters": {"tasks": TASKS_FILTERS},
     "minimap": None,
     "bodyLayout": None,
+    "reviewOrder": None,
     "tablePin": None,
     "tableHead": None,
     "tableStripes": None,
