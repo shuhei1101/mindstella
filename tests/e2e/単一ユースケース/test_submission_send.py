@@ -86,12 +86,12 @@ FIT_SETTLE_MS = 2_500
 
 # 詳細パネルのレビュー中のコメントの行と、D-1 のカードのコメントの印の読み上げの文字
 REVIEW_ROW = "aside.panel .d-review li[data-comment='{id}']"
+D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
 
 # 詳細パネルのレビュー中のコメントの並びのボタンと、その本文を並びの順に返すスクリプト
 REVIEW_ORDER_BUTTON = "aside.panel .d-review button.review-order"
 REVIEW_BODIES = "aside.panel .d-review .review-body"
 BODIES_JS = "bodies => bodies.map(b => b.textContent)"
-D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
 
 # 画面に結果が出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
@@ -356,9 +356,7 @@ def test_normal_when_edit_remove_restore_in_detail(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
     _wait_d1_mark(page, "コメント 2 件")
     assert page.locator("aside.comments-panel.open").count() == 0
-    assert page.eval_on_selector_all(
-        "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
-    ) == ["案 B も見たい", "案 A に決める"]
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == ["案 B も見たい", "案 A に決める"]
     assert [(item["id"], item["body"]) for item in _read_comments(root)] == [
         ("C-1", "案 A に決める"),
         ("C-2", "案 B も見たい"),
@@ -366,9 +364,7 @@ def test_normal_when_edit_remove_restore_in_detail(
     # 開き直しても、D-1 の詳細パネルに同じ 2 件が出る
     page.reload()
     page.wait_for_selector(REVIEW_ROW.format(id="C-2"))
-    assert page.eval_on_selector_all(
-        "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
-    ) == ["案 B も見たい", "案 A に決める"]
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == ["案 B も見たい", "案 A に決める"]
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
 
 
