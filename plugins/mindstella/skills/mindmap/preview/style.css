@@ -1073,7 +1073,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .left-scrim { position: fixed; z-index: 21; top: calc(var(--topbar-h) + var(--tab-h) + 1px); left: 0; right: 0; bottom: 0; background: var(--scrim); opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s linear .2s; }
 .left-scrim.on { opacity: 1; visibility: visible; transition: opacity .2s; }
 /* 左のパネルの中から開いた詳細パネルは、グレーアウトの上に出して操作できるようにする */
-body.detail-above-scrim .panel { z-index: 23; }
+@media (min-width: 901px) { body.detail-above-scrim .panel { z-index: 23; } }
 /* 幅 900px 以下: 左のパネルが幅いっぱいに出るため、グレーアウトは出さない（後ろの部品は止める） */
 @media (max-width: 900px) { .left-scrim { display: none; } }
 /* ピン止めの切り替え: 押した状態はアクセントの色で塗り、外している間はピンを 45° 傾ける */
