@@ -188,6 +188,8 @@ namespace MindmapPreview {
     minimap: false | null;
     /** 本文の差分を左右に並べる上書き。null はインライン（ワークスペースの既定は持たない） */
     bodyLayout: "side" | null;
+    /** 詳細のレビュー中のコメントを古い順に並べる上書き。null は新しい順（ワークスペースの既定は持たない） */
+    reviewOrder: "oldest" | null;
     /** 表の列の固定をオフにする上書き。null はオン（ワークスペースの既定は持たない） */
     tablePin: false | null;
     /** 表の見出しの固定をオフにする上書き。null はオン */
@@ -250,6 +252,7 @@ namespace MindmapPreview {
       filters: {},
       minimap: null,
       bodyLayout: null,
+      reviewOrder: null,
       tablePin: null,
       tableHead: null,
       tableStripes: null,
@@ -274,6 +277,8 @@ namespace MindmapPreview {
       if (parsed.minimap !== false) parsed.minimap = null;
       // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
       if (parsed.bodyLayout !== "side") parsed.bodyLayout = null;
+      // レビュー中のコメントの並びの上書きは oldest だけを読む（新しい順は上書きを持たない）
+      if (parsed.reviewOrder !== "oldest") parsed.reviewOrder = null;
       // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
       if (parsed.tablePin !== false) parsed.tablePin = null;
       if (parsed.tableHead !== false) parsed.tableHead = null;
@@ -336,11 +341,12 @@ namespace MindmapPreview {
     overrides: string[];
     minimap: boolean;
     bodyLayout: BodyLayout;
+    reviewOrder: ReviewOrder;
     bodyView: BodyView;
   } {
     const defaultLook = display?.network_look ?? BUILTIN_LOOK;
     const defaultKinds = new Set<Kind>(display?.visible_kinds ?? KIND_KEYS);
-    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
+    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びの順に並べる（条件が画面の既定と同じ画面は並べない）
     const overrides = [
       ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
       ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -355,6 +361,7 @@ namespace MindmapPreview {
       ...(prefs.tableStripes === true ? [BODY_VIEW_LABELS.stripes] : []),
       ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
       ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
+      ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
     ];
     return {
       look: prefs.look ?? defaultLook,
@@ -366,6 +373,8 @@ namespace MindmapPreview {
       minimap: prefs.minimap !== false,
       // 上書きが side のときだけ左右に並べる
       bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
+      // 上書きが oldest のときだけ古い順に並べる
+      reviewOrder: prefs.reviewOrder === "oldest" ? "oldest" : "newest",
       // 上書きのある項目だけ既定と逆にする
       bodyView: {
         pin: prefs.tablePin !== false,
@@ -376,7 +385,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
   export function clearOverrides(prefs: Prefs): Prefs {
     return {
       ...prefs,
@@ -387,6 +396,7 @@ namespace MindmapPreview {
       filters: {},
       minimap: null,
       bodyLayout: null,
+      reviewOrder: null,
       tablePin: null,
       tableHead: null,
       tableStripes: null,
@@ -1011,6 +1021,24 @@ namespace MindmapPreview {
       renderSettings();
     };
 
+    /** レビュー中のコメントの並びを切り替えた: 個人の上書きに残し、開いている詳細パネル・詳細の全画面だけを描き直す（履歴にもハッシュにも書かない）。本文を送った位置と、並びの切り替えのフォーカスを保つ */
+    const changeReviewOrder = (order: ReviewOrder): void => {
+      const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+      const scrollTop = document.querySelector<HTMLElement>(bodySelector)?.scrollTop ?? 0;
+      prefs.reviewOrder = order === "oldest" ? "oldest" : null;
+      display.storageOk = persist();
+      resolved = resolveDisplay(prefs, data.settings.display);
+      renderDetail();
+      // 描き直した本文の高さは、文書に入った後の次のコマで決まる
+      requestAnimationFrame(() => {
+        const next = document.querySelector<HTMLElement>(bodySelector);
+        if (next === null) return;
+        next.scrollTop = scrollTop;
+        next.querySelector<HTMLElement>(`[data-focus="${REVIEW_FOCUS}review-order"]`)?.focus({ preventScroll: true });
+      });
+      renderSettings();
+    };
+
     /** 詳細パネルと全画面 */
     const renderDetail = (): void => {
       // 項目を追加する入力: 詳細パネルと同じ置き方で、追加の入力を開く
@@ -1071,6 +1099,7 @@ namespace MindmapPreview {
         full: route.full,
         minimap: resolved.minimap,
         bodyLayout: resolved.bodyLayout,
+        reviewOrder: resolved.reviewOrder,
         bodyView: resolved.bodyView,
         edit: detailEdit(),
         // 詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面は置かない。幅 900px 以下は CSS が隠し、窓を広げたときに出る）
@@ -1084,6 +1113,7 @@ namespace MindmapPreview {
         on: {
           open: (id) => openItem(id, true),
           layout: changeBodyLayout,
+          order: changeReviewOrder,
           close: closeDetail,
           full: (full) => {
             // 全画面の中で図を拡大しているときは、本文へ戻る
