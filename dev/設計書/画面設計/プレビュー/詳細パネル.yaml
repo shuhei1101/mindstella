@@ -716,7 +716,7 @@ test_file: tests/integration/preview/test_detail_panel_screen.py
 notes:
   取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`
   HTML の本文のモック: 形式の札・HTML の本文・html のコードブロック・HTML の本文の差分の見本は `dev/mock/pages/detail-panel/214/c-marks/index.html`（差分の見せ方は案 C を採用）
-  幅 900px 以下の重なり: 左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。幅 901px 以上の重なり順は変えない
+  幅 900px 以下の重なり: 左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。幅 901px 以上で左のパネル（ピン止めしていないコメントの一覧・表示の設定・保存待ち・絞り込みのドロワー）を開いている間は、詳細パネルをグレーアウトの下に置いて `inert` にする。左のパネルの中から開いた詳細パネルだけはグレーアウトの上に出し、パネルと詳細パネルの両方を操作できる
   差分のミニマップのモック: 差分のミニマップの見本は `dev/mock/pages/detail-panel/237/a-right-rail/index.html`（採用した案 A）
   本文の差分の並べ方のモック: '本文の差分の並べ方の切り替え・左右に並べた本文の差分の見本は `dev/mock/pages/detail-panel/261/a-both/index.html`（採用した案 A。確認ログ: dev/pr/261/確認ログ.md）'
   本文の長い語と表のモック: 本文の長い URL・インラインコードを折り返し、列の多い表を表の中だけで送る見本は `dev/mock/pages/detail-panel/289/a-wrap-long-words/index.html`（包む要素の読み上げの役割は、モックの `region` ではなく本文の要素のとおり）
