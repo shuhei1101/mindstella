@@ -896,7 +896,7 @@ def _review_item(item_id: str, body: str) -> dict[str, object]:
 
 
 # 詳細パネルに渡す、下端の入力欄とレビュー中のコメントと行の操作の引数を作り、文書に置く関数
-OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls}) => {
+OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls, reviewOrder}) => {
     const index = MindmapPreview.buildIndex(data);
     const noop = () => {};
     const count = (name) => () => { calls[name] += 1; };
@@ -906,7 +906,7 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
         full,
         on: {
             open: noop, close: noop, full: count("full"), back: noop, forward: noop, diagram: noop,
-            heading: noop,
+            heading: noop, order: (value) => { (calls.order ??= []).push(value); },
         },
         comment: {
             form: {
@@ -928,6 +928,7 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
         },
         highlight: null,
         diff: null,
+        ...(reviewOrder == null ? {} : {reviewOrder}),
     });
     document.body.append(panel);
     if (full) panel.showModal();
@@ -939,9 +940,11 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
 REVIEW_ROWS_SCRIPT = (
     OPEN_REVIEW_PANEL_FUNCTION
     + """
-async ({data, reviews, removed, editing, editingIn}) => {
+async ({data, reviews, removed, editing, editingIn, reviewOrder}) => {
     const calls = {full: 0, cancelEdit: 0};
-    const panel = await openReviewPanel({data, reviews, removed, editing, editingIn, full: false, calls});
+    const panel = await openReviewPanel({
+        data, reviews, removed, editing, editingIn, full: false, calls, reviewOrder,
+    });
     const section = panel.querySelector(".d-review");
     const labelOf = (button) => button.getAttribute("aria-label") ?? button.textContent.trim();
     return {
@@ -952,7 +955,7 @@ async ({data, reviews, removed, editing, editingIn}) => {
             hasField: row.querySelector("textarea") !== null,
             body: row.querySelector(".review-body")?.textContent ?? null,
         })),
-        focuses: [...section.querySelectorAll("[data-focus]")].map((element) => element.getAttribute("data-focus")),
+        focuses: [...section.querySelectorAll("li [data-focus]")].map((element) => element.getAttribute("data-focus")),
     };
 }"""
 )
@@ -981,6 +984,7 @@ def test_detail_panel_when_review_rows(
             ],
             "removed": [_review_item("C-2", "消したコメント")],
             "editing": "C-3",
+            "reviewOrder": "oldest",
         },
     )
     # 検証
@@ -1011,6 +1015,126 @@ def test_detail_panel_when_review_rows(
         "detail-restore:C-2",
         "detail-edit:C-3",
     ]
+
+
+# レビュー中のコメントの行の ID の並びと、並びの切り替えの文字と読み上げの名前を調べる
+REVIEW_ORDER_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews, removed, reviewOrder}) => {
+    const calls = {full: 0, cancelEdit: 0};
+    const panel = await openReviewPanel({
+        data, reviews, removed, editing: null, full: false, calls, reviewOrder,
+    });
+    const section = panel.querySelector(".d-review");
+    const toggle = section.querySelector("button.review-order");
+    return {
+        ids: [...section.querySelectorAll("li")].map(
+            (row) => row.querySelector("[data-focus]").getAttribute("data-focus").split(":")[1],
+        ),
+        toggle: toggle === null ? null : {
+            text: toggle.textContent.trim(),
+            label: toggle.getAttribute("aria-label"),
+        },
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("reviews", "removed", "review_order", "expected"),
+    [
+        pytest.param(
+            ["C-1", "C-3"],
+            ["C-2"],
+            None,
+            {
+                "ids": ["C-3", "C-2", "C-1"],
+                "toggle": {"text": "新しい順", "label": "コメントの並び: 新しい順"},
+            },
+            id="default_newest",
+        ),
+        pytest.param(
+            ["C-1", "C-3"],
+            ["C-2"],
+            "oldest",
+            {
+                "ids": ["C-1", "C-2", "C-3"],
+                "toggle": {"text": "古い順", "label": "コメントの並び: 古い順"},
+            },
+            id="oldest",
+        ),
+        pytest.param(["C-1"], [], None, {"ids": ["C-1"], "toggle": None}, id="single_row"),
+    ],
+)
+def test_detail_panel_when_review_order(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    reviews: list[str],
+    removed: list[str],
+    review_order: str | None,
+    expected: dict[str, object],
+) -> None:
+    """レビュー中のコメントを既定は新しい順に並べ、2 件以上のときだけ並びの切り替えを置く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ORDER_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item(item_id, f"{item_id} の本文") for item_id in reviews],
+            "removed": [_review_item(item_id, f"{item_id} の本文") for item_id in removed],
+            "reviewOrder": review_order,
+        },
+    )
+    # 検証
+    assert result == expected
+
+
+# 並びの切り替えを押し、on.order の呼ばれ方とハッシュを調べる
+PRESS_REVIEW_ORDER_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews}) => {
+    history.replaceState(null, "", "#keep");
+    const calls = {full: 0, cancelEdit: 0, order: []};
+    const panel = await openReviewPanel({
+        data, reviews, removed: [], editing: null, full: false, calls,
+    });
+    panel.querySelector(".d-review button.review-order").click();
+    return {calls: calls.order, hash: location.hash};
+}"""
+)
+
+
+def test_detail_panel_when_review_order_changed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """並びの切り替えを押すと on.order を入れ替えた後の並びで呼ぶ（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        PRESS_REVIEW_ORDER_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-1", "案 A にする"), _review_item("C-2", "案 B も見たい")],
+        },
+    )
+    # 検証（URL のハッシュは変わらない）
+    assert result == {"calls": ["oldest"], "hash": "#keep"}
 
 
 # 全画面で書き換えの入力欄にフォーカスして Esc を押す前の用意（押した後の結果は別に読む）
