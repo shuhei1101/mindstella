@@ -25,6 +25,7 @@ DEFAULT_PREFS = {
     "tableHead": None,
     "tableStripes": None,
     "sectionFold": None,
+    "commentsPinned": None,
 }
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
@@ -354,6 +355,36 @@ def test_load_prefs_when_body_view(
     assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
 
 
+@pytest.mark.parametrize(
+    ("stored", "expected_pinned"),
+    [
+        pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+        pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+        pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+        pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+    ],
+)
+def test_load_prefs_when_comments_pinned(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str,
+    expected_pinned: bool | None,
+) -> None:
+    """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    prefs = preview_page.evaluate(
+        """(stored) => {
+            const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+            return MindmapPreview.loadPrefs(storage);
+        }""",
+        stored,
+    )
+    # 検証（ほかの項目はそのまま読める）
+    assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+
+
 # 保存する設定
 SAVED_PREFS = {
     "theme": "dark",
@@ -369,6 +400,7 @@ SAVED_PREFS = {
     "tableHead": None,
     "tableStripes": None,
     "sectionFold": None,
+    "commentsPinned": None,
 }
 
 
@@ -771,6 +803,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "tableHead": False,
         "tableStripes": True,
         "sectionFold": False,
+        "commentsPinned": True,
     }
     # 実行
     result = preview_page.evaluate(
@@ -791,6 +824,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "tableHead": None,
         "tableStripes": None,
         "sectionFold": None,
+        "commentsPinned": True,
     }
     assert result["original"] == prefs
 
@@ -1044,3 +1078,66 @@ def test_write_panel_width(
     )
     # 検証
     assert width == expected
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        pytest.param('{"A-3": 820, "A-4": -5, "A-5": "x"}', {"A-3": 820}, id="mixed"),
+        pytest.param(None, {}, id="missing"),
+        pytest.param("abc", {}, id="not_json"),
+        pytest.param("[1]", {}, id="array"),
+    ],
+)
+def test_read_body_scrolls(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str | None,
+    expected: dict[str, int],
+) -> None:
+    """0 以上の数の位置だけを読み、読めなければ空（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    scrolls = preview_page.evaluate(
+        """(stored) => {
+            const session = {getItem: (key) => (key === "mindmap-body-scroll" ? stored : null)};
+            return MindmapPreview.readBodyScrolls(session);
+        }""",
+        stored,
+    )
+    # 検証
+    assert scrolls == expected
+
+
+@pytest.mark.parametrize(
+    ("throws", "expected"),
+    [
+        pytest.param(False, {"A-3": 820}, id="empty_session"),
+        pytest.param(True, {}, id="set_item_throws"),
+    ],
+)
+def test_write_body_scrolls(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    throws: bool,
+    expected: dict[str, int],
+) -> None:
+    """書いた位置を読み直せ、書けない保存領域では例外を出さない（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行（書けない保存領域で例外が出れば、evaluate が失敗する）
+    scrolls = preview_page.evaluate(
+        STORAGE_AND_POST_SCRIPT
+        + """({throws}) => {
+            const session = makeSession({});
+            if (throws) {
+                session.setItem = () => { throw new Error("保存領域に書けません"); };
+            }
+            MindmapPreview.writeBodyScrolls({session, scrolls: {"A-3": 820}});
+            return MindmapPreview.readBodyScrolls(session);
+        }""",
+        {"throws": throws},
+    )
+    # 検証
+    assert scrolls == expected
