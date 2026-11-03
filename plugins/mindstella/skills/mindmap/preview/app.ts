@@ -1367,14 +1367,16 @@ namespace MindmapPreview {
       const scrim = panel !== null && !pinned;
       // 左のパネルか詳細パネルを閉じたら、押下の出どころを忘れる
       if (panel === null || route.id === null) detailFromPanel = false;
-      const detailAbove = scrim && route.id !== null && !route.full && detailFromPanel;
+      // 幅 900px 以下はグレーアウトを出さず、詳細パネルとの前後は `applyStack` だけで決める
+      const wideScrim = scrim && !isNarrow();
+      const detailAbove = wideScrim && route.id !== null && !route.full && detailFromPanel;
       if (panel !== null) releaseInert = pinned ? inertBehind(panel) : inertOutside(panel);
       applyStack();
       scrimElement().classList.toggle("on", scrim);
       document.body.classList.toggle("detail-above-scrim", detailAbove);
       // グレーアウトの下に置いた詳細パネルは止める（上に出した詳細パネルは `applyStack` の決めたまま）
       const detail = document.querySelector<HTMLElement>("aside.panel");
-      if (scrim && detail !== null && !detailAbove) detail.inert = true;
+      if (wideScrim && detail !== null && !detailAbove) detail.inert = true;
     };
 
     // 幅が 900px をまたいだとき、前後と `inert` をやり直す
