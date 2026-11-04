@@ -1,4 +1,4 @@
-title: "サーバー / 配信"
+title: サーバー / 配信
 lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込みを受け付ける。まとめて送った後は Claude Code へ入力する。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と読み書きと検証に依存する。
 directory: |-
   ```
@@ -96,6 +96,32 @@ constants:
     usecase: 画面で項目を編集して保存する
     summary: POST で保存待ちの編集をまとめて保存する
     value: '"/api/edits/save"'
+  - name: SPA_PATH
+    title: SPA のパスの頭
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    summary: SPA を配るパスの頭（インターフェース定義『SPAの配信』）
+    value: '"/spa"'
+  - name: SPA_DIR
+    title: SPA の出力のフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    summary: プレビューのフォルダの中で Vite が書き出すフォルダの名前
+    value: '"spa"'
+  - name: SPA_TYPES
+    title: SPA の Content-Type
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    summary: 出力のファイルの拡張子から Content-Type を引く。表に無い拡張子は `application/octet-stream`
+    entries:
+      - key: .html
+        value: '"text/html; charset=utf-8"'
+      - key: .js
+        value: '"text/javascript; charset=utf-8"'
+      - key: .css
+        value: '"text/css; charset=utf-8"'
+      - key: .svg
+        value: '"image/svg+xml"'
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
@@ -314,7 +340,7 @@ classes:
       - name: do_GET
         title: GET の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける'
+        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける'
         returns:
           type: None
           description: '-'
@@ -323,6 +349,8 @@ classes:
           2. パスで分ける（クエリとハッシュは見ない）
              - `/` の場合、`302`・`Location: /mindstella.html`・本文なしで送り直す（`PAGE_PATH`）
              - `/mindstella.html` の場合、画面を返す（`index_response`）
+             - `/spa` の場合、`302`・`Location: /spa/`・本文なしで送り直す（`SPA_PATH`）
+             - `/spa/` で始まる場合、SPA の出力のファイルを返す（`spa_response`。`{プレビューのフォルダ}/{SPA_DIR}` と `/spa` より後ろのパスを渡す）
              - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
              - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えの印は `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
              - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
@@ -1542,5 +1570,63 @@ functions:
         condition: 'D-1 と E-1（D-1 の `answer`）。`parametrize`: そのまま / `Origin: https://attacker.example` / E-1 を溜めた後に MCP で D-1 を書き換える'
         mock: なし
         expected: 200 で `changed` が `[D-1]` / 403 / 409 で本文の `blocked` が E-1（`changed`）
+  - name: spa_response
+    title: SPA の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    scope: public
+    summary: SPA の出力のファイルを返す。出力に無いパスと出力の外を指すパスは `index.html` を返す
+    args:
+      - name: spa_dir
+        type: Path
+        required: true
+        passing: positional
+        description: SPA の出力のフォルダ（`{プレビューのフォルダ}/{SPA_DIR}`）
+      - name: sub_path
+        type: str
+        required: true
+        passing: positional
+        description: '`/spa` より後ろのパス（`/` で始まる。URL エンコードのまま）'
+    returns:
+      type: Response
+      description: 200 とファイルの中身。`index.html` が無ければ 500
+    process: |-
+      1. `sub_path` を URL デコードし、先頭の `/` を外して `spa_dir` につなぎ、解決する
+      2. 解決したパスが `spa_dir` の配下のファイルでなければ、`spa_dir/index.html` に置き換える
+         - `index.html` も無い場合、500 を返す（`problem_response`）
+           - `[ERROR]` SPA の出力がありません（`spa_dir`）
+      3. 拡張子を `SPA_TYPES` で引いて Content-Type にし、中身を読んで 200 を返す（要求ごとに読み、控えない）
+    unit_tests:
+      - name: test_spa_response
+        case: 正常
+        summary: 出力のファイルを返す
+        condition: '`index.html` と `assets/app.js` を持つ一時フォルダで `/assets/app.js`'
+        mock: なし（一時ディレクトリ）
+        expected: 200、`text/javascript; charset=utf-8`、`app.js` の中身
+      - name: test_spa_response_when_client_route
+        case: 正常
+        summary: 出力に無いパスは index.html
+        condition: 同じフォルダで `/decisions` と `/`
+        mock: なし（一時ディレクトリ）
+        expected: どちらも 200、`text/html; charset=utf-8`、`index.html` の中身
+      - name: test_spa_response_when_outside
+        case: 正常
+        summary: 出力の外を指すパスは index.html
+        condition: 一時フォルダの親に `secret.txt` を置き、`/../secret.txt` と `/%2e%2e/secret.txt`
+        mock: なし（一時ディレクトリ）
+        expected: どちらも `index.html` の中身で、`secret.txt` の中身が無い
+      - name: test_spa_response_when_unknown_suffix
+        case: 正常
+        summary: 表に無い拡張子
+        condition: '`assets/app.js.map` を置き `/assets/app.js.map`'
+        mock: なし（一時ディレクトリ）
+        expected: 200、`application/octet-stream`
+      - name: test_spa_response_when_index_missing
+        case: 正常
+        summary: index.html が無いと 500
+        condition: 空の一時フォルダで `/`
+        mock: なし（一時ディレクトリ）
+        expected: 500 の問題の応答
 test_files:
   - tests/unit/scripts/test_serve.py

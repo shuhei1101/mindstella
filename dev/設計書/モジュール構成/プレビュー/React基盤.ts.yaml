@@ -1,0 +1,246 @@
+title: プレビュー / React の基盤
+lead: React のプレビューのサーバーとのやり取り（API の呼び出し・書き換えの知らせ・接続の状態）・エラー・テーマ・今の画面への URL。
+directory: "```\nfrontend/src/shared/\n  adapters/\n    api-client.ts       orval の mutator。fetch を呼び、失敗を AppError にする\n    events-client.ts    書き換えの知らせ（EventSource）につなぎ、query を読み直す\n  api/generated/        orval の生成物（手で書かない）\n  core/\n    app-error.ts        AppError\n    legacy-url.ts       今の画面の URL を組み立てる\n  stores/\n    connection-store.ts 接続の状態（Zustand）\n    theme-store.ts      ライト / ダーク（Zustand・端末の保存領域）\n  lib/\n    cn.ts               クラス名を合わせる\n```"
+diagrams:
+- name: 全体
+  diagram: "```mermaid\nclassDiagram\n  direction LR\n  class API の呼び出し\n  class アプリのエラー\n  class 書き換えの知らせへの接続\n  class 接続の状態\n  API の呼び出し --> アプリのエラー\n  書き換えの知らせへの接続 --> 接続の状態\n```"
+constants:
+- name: EVENTS_URL
+  title: 書き換えの知らせのパス
+  container: frontend/src/shared/adapters/events-client.ts
+  usecase: SPAを開く
+  summary: インターフェース定義『書き換えの知らせ』
+  value: '"/api/events"'
+- name: PREFS_KEY
+  title: 端末の保存領域のキー
+  container: frontend/src/shared/stores/theme-store.ts
+  usecase: 共通
+  summary: 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す
+  value: '"mindmap-preview"'
+- name: LEGACY_PAGE_PATH
+  title: 今の画面のパス
+  container: frontend/src/shared/core/legacy-url.ts
+  usecase: SPAを開く
+  summary: React に無い画面を開くときの今の画面（インターフェース定義『プレビューの配信』）
+  value: '"/mindstella.html"'
+classes:
+- name: AppError
+  title: アプリのエラー
+  kind: クラス
+  container: frontend/src/shared/core/app-error.ts
+  usecase: 共通
+  inherits: Error
+  summary: 失敗した応答から作るエラー。`detail` を画面に出す
+  properties:
+  - name: statusCode
+    type: number
+    description: HTTP のステータス
+  - name: code
+    type: string
+    description: '`type` の値（problem+json）'
+  - name: message
+    type: string
+    description: '`detail` の値'
+  methods:
+  - name: fromResponse
+    title: 応答からの復元
+    kind: メソッド
+    summary: problem+json の本文とステータスから作る
+    args:
+    - name: data
+      type: unknown
+      required: true
+      description: 応答の本文
+    - name: statusCode
+      type: number
+      required: true
+      description: HTTP のステータス
+    returns:
+      type: AppError
+      description: 復元したエラー
+    unit_tests:
+    - name: test_from_response
+      case: 正常
+      summary: problem+json から作る
+      condition: '`{type, title, status: 422, detail: ''...''}` と 422'
+      mock: なし
+      expected: '`statusCode` 422・`message` が detail'
+    - name: test_from_response_when_not_problem
+      case: 正常
+      summary: problem+json でない本文
+      condition: '`null` と 500'
+      mock: なし
+      expected: '`statusCode` 500・`message` が HTTP のステータスの文言'
+functions:
+- name: apiClient
+  title: API の呼び出し
+  kind: 関数
+  container: frontend/src/shared/adapters/api-client.ts
+  usecase: 共通
+  is_async: true
+  summary: orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
+  args:
+  - name: url
+    type: string
+    required: true
+    description: 生成した関数が組んだ URL
+  - name: options
+    type: RequestInit
+    required: false
+    description: fetch の option
+  returns:
+    type: Promise<{data, status, headers}>
+    description: orval が期待する応答
+  exceptions:
+  - name: AppError
+    condition: ステータスが 2xx でない
+  unit_tests:
+  - name: test_api_client
+    case: 正常
+    summary: 成功の本文を返す
+    condition: MSW で 200 と JSON
+    mock: MSW
+    expected: '`data` が本文、`status` が 200'
+  - name: test_api_client_when_error
+    case: 異常
+    summary: 失敗を AppError にする
+    condition: MSW で 422 と problem+json
+    mock: MSW
+    expected: '`AppError`（`statusCode` 422）を投げる'
+- name: connectEvents
+  title: 書き換えの知らせへの接続
+  kind: 関数
+  container: frontend/src/shared/adapters/events-client.ts
+  usecase: SPAを開く
+  summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` で記録の query を読み直し、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
+  args:
+  - name: queryClient
+    type: QueryClient
+    required: true
+    description: 読み直す query を持つ QueryClient
+  returns:
+    type: () => void
+    description: 接続を閉じる関数
+  process: '1. EventSource を `EVENTS_URL` で作る
+
+    2. `open` で接続の状態を online にし、記録の query を読み直す（切れている間の書き換えを拾う）
+
+    3. `changed` で記録・レビュー中のコメント・保存待ちの編集・スレッドの query を読み直す
+
+    4. `error` で接続の状態を offline にする（前の記録の query は残す）'
+  unit_tests:
+  - name: test_connect_events_when_changed
+    case: 正常
+    summary: changed で読み直す
+    condition: 偽物の EventSource から `changed` を送る
+    mock: EventSource（偽物）
+    expected: 記録の query が invalidate される
+  - name: test_connect_events_when_error
+    case: 正常
+    summary: 切れたら offline
+    condition: 偽物の EventSource から `error` を送り、続けて `open` を送る
+    mock: EventSource（偽物）
+    expected: '`error` の後に offline、`open` の後に online'
+- name: toLegacyUrl
+  title: 今の画面の URL
+  kind: 関数
+  container: frontend/src/shared/core/legacy-url.ts
+  usecase: SPAを開く
+  summary: React に無い画面を開くための、今の画面の URL を組み立てる（画面設計『概要.tsx』の notes）
+  args:
+  - name: hash
+    type: Record<string, string>
+    required: true
+    description: 今の画面のハッシュの引数（`tab`・`view`・`id`・`f.{列}`）
+  returns:
+    type: string
+    description: '`/mindstella.html#{引数}`'
+  unit_tests:
+  - name: test_to_legacy_url
+    case: 正常
+    summary: 引数をハッシュにする
+    condition: '`{tab: ''decisions'', view: ''table'', ''f.status'': ''要見直し''}`'
+    mock: なし
+    expected: '`/mindstella.html#tab=decisions&view=table&f.status=%E8%A6%81...`（値を URL エンコードする）'
+- name: cn
+  title: クラス名を合わせる
+  kind: 関数
+  container: frontend/src/shared/lib/cn.ts
+  usecase: 共通
+  summary: clsx と tailwind-merge でクラス名を 1 つにする
+  args:
+  - name: inputs
+    type: ClassValue[]
+    required: true
+    description: クラス名
+  returns:
+    type: string
+    description: 合わせたクラス名
+  unit_tests:
+  - name: test_cn
+    case: 正常
+    summary: 後のクラスで上書きする
+    condition: '`''px-2'', ''px-4''`'
+    mock: なし
+    expected: '`''px-4''`'
+stores:
+- name: useConnectionStore
+  title: 接続の状態
+  container: frontend/src/shared/stores/connection-store.ts
+  usecase: SPAを開く
+  summary: 書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）
+  state:
+  - name: connection
+    type: '''online'' | ''offline'''
+    initial: online
+    description: トップバーの `connection` に渡す
+  actions:
+  - name: setConnection
+    title: 接続の状態の書き換え
+    kind: メソッド
+    summary: 接続の状態を書き換える
+    args:
+    - name: connection
+      type: '''online'' | ''offline'''
+      required: true
+      description: 新しい状態
+    returns:
+      type: void
+      description: '-'
+    unit_tests:
+    - name: test_set_connection
+      case: 正常
+      summary: 書き換える
+      condition: offline を渡す
+      mock: なし
+      expected: '`connection` が offline'
+- name: useThemeStore
+  title: ライト / ダーク
+  container: frontend/src/shared/stores/theme-store.ts
+  usecase: 共通
+  summary: ライト / ダークを持ち、`PREFS_KEY` の `theme` に残す。無ければ OS の設定
+  state:
+  - name: theme
+    type: '''light'' | ''dark'''
+    initial: '`PREFS_KEY` の `theme`、無ければ OS の設定'
+    description: '`document.documentElement.dataset.theme` にも当てる'
+  actions:
+  - name: setTheme
+    title: テーマの切り替え
+    kind: メソッド
+    summary: テーマを書き換え、`PREFS_KEY` の `theme` だけを書き換えて残す
+    args:
+    - name: theme
+      type: '''light'' | ''dark'''
+      required: true
+      description: 新しいテーマ
+    returns:
+      type: void
+      description: '-'
+    unit_tests:
+    - name: test_set_theme
+      case: 正常
+      summary: theme だけを残す
+      condition: '`PREFS_KEY` に `{theme: ''light'', columns: {...}}` を置いて dark を渡す'
+      mock: なし（jsdom の localStorage）
+      expected: '`PREFS_KEY` が `{theme: ''dark'', columns: {...}}`、`dataset.theme` が dark'
