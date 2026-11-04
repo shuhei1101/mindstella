@@ -12,7 +12,7 @@ export default defineConfig({
       clean: true,
       override: {
         mutator: { path: "./frontend/src/shared/adapters/api-client.ts", name: "apiClient" },
-        query: { useQuery: true, useSuspenseQuery: false, queryOptions: true },
+        query: { useQuery: true, useSuspenseQuery: false },
       },
     },
   },
