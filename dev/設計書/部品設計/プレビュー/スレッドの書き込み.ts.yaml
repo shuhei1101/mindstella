@@ -1,6 +1,6 @@
-title: "スレッドの書き込み"
-implementation: "plugins/mindstella/skills/mindmap/preview/components/thread-post.ts#MindmapPreview.threadPost"
-story: "Preview/ThreadPost"
+title: スレッドの書き込み
+implementation: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts#MindmapPreview.threadPost
+story: Preview/ThreadPost
 states:
   - name: UserPost
     description: 利用者の書き込み。右に寄せ、頭に「あなた」と日時
@@ -119,6 +119,23 @@ states:
     args:
       - name: pending
         value: '{"id":"C-45","thread":"TH-1","target":null,"body":"**起票してよい**","created":"2026-10-12T05:30:00+00:00"}'
+  - name: PendingFolded
+    description: 改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを読む」を出す
+    args:
+      - name: pending
+        value: '{"id":"C-61","thread":"TH-1","target":null,"body":"挙げてもらった点に、優先する順を付けました。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. ネットワークの玉の色が近い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい","created":"2026-11-04T05:10:00+00:00"}'
+  - name: PendingOpened
+    description: 開いたレビュー中の返信。全文を出し、本文の下の行に上向きの印と「折りたたむ」を出す（`aria-expanded="true"`）
+    args:
+      - name: pending
+        value: '{"id":"C-61","thread":"TH-1","target":null,"body":"挙げてもらった点に、優先する順を付けました。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. ネットワークの玉の色が近い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい","created":"2026-11-04T05:10:00+00:00"}'
+      - name: open
+        value: 'true'
+  - name: LongAiPost
+    description: 改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを読む」を出さない
+    args:
+      - name: post
+        value: '{"id":"TH-1-2","author":"ai","body":"見直して気になった点を挙げます。\n1. 概要のタイルの並びが毎回変わる\n2. 検討事項の表で列の幅が狭い\n3. タスクのボードで完了の列が長い\n4. 資料のカードの日付が読みにくい\n5. ネットワークの玉の色が近い\n6. 詳細パネルの本文の図が小さい\n7. 変更履歴の時点の並びが分かりにくい","created":"2026-11-04T01:24:00+00:00"}'
 lead: スレッドの中に書いた順で並べる 1 件。利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の返信を、書き手と種類が見分けられる形で出す。
 status: implemented
 args:
@@ -135,7 +152,7 @@ args:
   - name: pending
     type: オブジェクト
     default: なし（`post` か `event` を渡す）
-    description: レビュー中の書き込み（『レビュー中のコメントの読み取り』の `items[]` の 1 件。スレッドへの返信か、まだ送っていない新しいスレッドの最初の書き込み）。本文を `post` と同じく Markdown として描き、利用者の書き込みの形に破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く
+    description: レビュー中の書き込み（『レビュー中のコメントの読み取り』の `items[]` の 1 件。スレッドへの返信か、まだ送っていない新しいスレッドの最初の書き込み）。本文を `post` と同じく Markdown として描き、利用者の書き込みの形に破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く。書き換えていない本文は部品『本文の折りたたみ』で描き（`titles`・`change_sets` をそのまま渡す）、本文の下に「続きを読む」「折りたたむ」だけの行を置く（開閉のボタンを出さないときは行ごと出さない）。送った書き込み（`post`）は畳まない
     status: implemented
   - name: titles
     type: オブジェクト
@@ -167,6 +184,12 @@ args:
     enabled_when: '`post` か `pending` を渡したとき'
     description: 記録にある書き換えのまとまりの ID からその説明への対応。本文の中の `[文言](#...)` のうち、`#` の後ろを `URLSearchParams` で読んだ `diff` の値が対応にあるものを、`文言` だけを出すまとまりのリンクにする（詳細の本文のまとまりのリンクと同じく、色の付いた文字と下線）。`文言` の中の項目の ID はボタンにしない。対応に無い値・`since`・`pending`・空の値を指すものと `diff` を持たないものは、リンクにせず `文言` だけを出す。`#` で始まらないリンクは詳細の本文と同じく描く
     status: implemented
+  - name: open
+    type: 真偽値
+    default: 'false'
+    enabled_when: '`pending` を渡したとき'
+    description: レビュー中の書き込みの本文を開いているか。部品『本文の折りたたみ』の `open` へそのまま渡す。使う側が書き込みごとに覚え、描き直しと本文の書き換えをまたいで保つ
+    status: planned
 events:
   - name: 項目を開く
     when: 本文の中の項目の ID のリンクを押したとき
@@ -192,6 +215,10 @@ events:
     when: 本文の中のまとまりのリンクを押したとき（既定の動作を止める）
     value: まとまりの ID
     description: 使う側が変更履歴でそのまとまりを選んだときと同じく差分の表示に切り替え、スレッドの画面は開いたままにする
+  - name: 開閉
+    when: '`pending` の「続きを読む」か「折りたたむ」を押したとき'
+    value: '`pending.id`・開くか（真偽値）'
+    description: 部品『本文の折りたたみ』の開閉をそのまま使う側へ渡す。使う側が書き込みの開閉を覚える
 accessibility:
   - 書き手は寄せと面の色だけでなく、頭の文字（「あなた」「AI」）でも示す。レビュー中は破線の枠に加えて印のアイコンと「レビュー中」の文字で示す
   - 日時は `time` 要素で `datetime` に元の日時を持つ
@@ -204,3 +231,5 @@ test_file: tests/integration/storybook/test_thread_post_stories.py
 uses:
   - component: dev/設計書/部品設計/プレビュー/Markdownの本文.ts#
     how: mdmark で描いた書き込みの本文に `tables`・`fold` を false にして当てる
+  - component: dev/設計書/部品設計/プレビュー/本文の折りたたみ.ts#
+    how: '`pending` の書き換えていない本文を描いて畳み、開閉のボタンを本文の下の行に置く'
