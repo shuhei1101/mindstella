@@ -1088,3 +1088,87 @@ def test_normal_when_markdown_post(
     assert page.locator(f"{THREAD_POSTS}[data-comment] .th-pending").count() == 1
     assert page.inner_text(f"{reply} strong") == "起票してよい"
     assert "**" not in page.inner_text(reply)
+
+
+# 改行で 8 行の本文（各行はパネルの幅で折り返さない短さ）
+LONG_LINES = [f"{number} 行目の気づき" for number in range(1, 9)]
+
+# 畳んだときに出す、折り返した後の見た目の行の数
+FOLD_LINES = 5
+
+# 本文の各行が、本文の枠の中に見えているかを行の順に返す（畳んだ行は枠の下に外れる）
+VISIBLE_LINES_SCRIPT = """({body, lines}) => {
+    const element = document.querySelector(body);
+    const frame = element.getBoundingClientRect();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node);
+    return lines.map((line) => {
+        const text = texts.find((node) => node.textContent.includes(line));
+        const at = text.textContent.indexOf(line);
+        const range = document.createRange();
+        range.setStart(text, at);
+        range.setEnd(text, at + line.length);
+        return range.getBoundingClientRect().bottom <= frame.bottom + 1;
+    });
+}"""
+
+
+def test_normal_when_read_long_pending_reply(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """8 行のレビュー中の返信は 5 行までに畳まれ、「続きを読む」で 8 行が全て見え、「折りたたむ」で 5 行に戻る。8 行の AI の返信は畳まれない（正常系）。"""
+    # 準備
+    url, root = _serve(
+        make_workspace,
+        call_tool,
+        write_threads,
+        write_comments,
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body="\n".join(LONG_LINES), created=T_0100),
+                summary="見直しの相談",
+            ),
+        ),
+        comments=(_without_target(make_comment("C-1", body="\n".join(LONG_LINES), thread="TH-1")),),
+    )
+    open_preview(url)
+    reply = f"{THREAD_POSTS}[data-comment='C-1']"
+    reply_body = f"{reply} .post-body"
+    more = f"{reply} button.review-more"
+    ai_body = f"{THREAD_POSTS}.ai .post-body"
+    # 実行（コメントのボタンを押し、スレッドを開く）
+    open_thread(page, "TH-1")
+    page.wait_for_selector(more, state="visible", timeout=UPDATE_TIMEOUT_MS)
+    folded = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": reply_body, "lines": LONG_LINES})
+    folded_text = page.inner_text(more)
+    ai_lines = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": ai_body, "lines": LONG_LINES})
+    ai_more = page.locator(f"{THREAD_POSTS}.ai button.review-more").count()
+    # 実行（「続きを読む」を押す）
+    page.click(more)
+    opened = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": reply_body, "lines": LONG_LINES})
+    opened_text = page.inner_text(more)
+    # 実行（「折りたたむ」を押す）
+    page.click(more)
+    refolded = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": reply_body, "lines": LONG_LINES})
+    # 検証
+    assert folded == [True] * FOLD_LINES + [False] * (len(LONG_LINES) - FOLD_LINES)
+    assert folded_text == "続きを読む"
+    assert opened == [True] * len(LONG_LINES)
+    assert opened_text == "折りたたむ"
+    assert refolded == folded
+    assert ai_lines == [True] * len(LONG_LINES)
+    assert ai_more == 0
+    assert [post["body"] for post in _thread(root, "TH-1")["posts"]] == ["\n".join(LONG_LINES)]
+    assert [item["body"] for item in _read(root, "comments.yaml")] == ["\n".join(LONG_LINES)]

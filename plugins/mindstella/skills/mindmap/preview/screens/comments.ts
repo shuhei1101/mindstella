@@ -149,12 +149,16 @@ namespace MindmapPreview {
     editError: string | null;
     /** 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文） */
     editBody: string | null;
+    /** 本文を開いているコメントの ID */
+    expanded: Set<string>;
     on: {
       edit: (id: string) => void;
       saveEdit: (id: string, body: string) => void;
       cancelEdit: () => void;
       remove: (id: string) => void;
       restore: (id: string) => void;
+      /** 本文を開いた・畳んだ（コメントの ID と、開いたか） */
+      fold: (id: string, open: boolean) => void;
     };
   };
 
@@ -258,7 +262,7 @@ namespace MindmapPreview {
   }
 
   /** レビュー中の書き込みの読み上げの名前の頭（返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」） */
-  function reviewLabel(item: ReviewItem): string {
+  export function reviewLabel(item: ReviewItem): string {
     // 詳細パネルへ渡す行には `thread` を持たないものもある
     if (item.thread !== null && item.thread !== undefined) return `${item.thread} への返信`;
     return item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
@@ -938,6 +942,7 @@ namespace MindmapPreview {
       editing: props.editing === item.id && props.editingIn !== "detail",
       editBody: props.editBody ?? null,
       editError: props.editError ?? null,
+      open: props.expanded.has(item.id),
       on: {
         openId: (id) => props.on.openId(id),
         changeSet: props.on.changeSet,
@@ -945,6 +950,7 @@ namespace MindmapPreview {
         saveEdit: props.on.saveEdit,
         cancelEdit: props.on.cancelEdit,
         remove: props.on.remove,
+        fold: props.on.fold,
       },
     });
   }
@@ -1037,8 +1043,8 @@ namespace MindmapPreview {
             children: [
               ...threadTimeline(thread).map((entry) =>
                 "post" in entry
-                  ? threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
-                  : threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } }),
+                  ? threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove, fold: on.fold } })
+                  : threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove, fold: on.fold } }),
               ),
               ...replies.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : pendingPostItem(item, props))),
             ],

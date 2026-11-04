@@ -41,7 +41,7 @@ const meta = {
     list.append(row);
     return list;
   },
-  args: { id: "C-51", label: "項目を指さないコメント", body: EIGHT_LINES, on: { toggle: fn(), changeSet: fn() } },
+  args: { id: "C-51", label: "項目を指さないコメント", body: EIGHT_LINES, on: { toggle: fn(), changeSet: fn(), openId: fn() } },
 } satisfies Meta<MindmapPreview.ReviewBodyFoldProps>;
 
 export default meta;
@@ -79,4 +79,14 @@ export const Narrow: Story = {
     },
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** `titles` を渡した本文。記録にある T-14 は項目を開くボタン、対応に無い D-99 は文字のまま出す */
+export const IdLink: Story = {
+  args: {
+    id: "C-55",
+    label: "TH-1 への返信",
+    body: "T-14 は今週中に書いてほしい。\nD-99 は重なっているので消してよい",
+    titles: (id: string) => (id === "T-14" ? "移し替えの失敗の扱いを書く" : null),
+  },
 };

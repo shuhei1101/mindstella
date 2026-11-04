@@ -1,4 +1,4 @@
-title: "プレビュー / 入口"
+title: プレビュー / 入口
 lead: プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。
 directory: |-
   ```
@@ -124,10 +124,13 @@ data_models:
         description: スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（一覧から開いたときは `null`）
       - name: expanded
         type: Set<string>
-        description: レビュー中の書き込みの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする）
+        description: レビュー中の書き込みの画面とスレッドの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする）
       - name: listScroll
         type: number
         description: コメントの一覧を閉じたときのパネルの中（`.comments-body`）のスクロールの位置。開き直したときに戻す（ページを開いたときは 0）
+      - name: detailExpanded
+        type: Set<string>
+        description: 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（`detailPanel` の `comment.edit.on.fold` で足し引きし、`comment.edit.expanded` で渡す。描き直し・本文の書き換え・詳細の全画面との行き来では保ち、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
   - name: DisplayState
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts

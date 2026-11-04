@@ -23,7 +23,7 @@ const meta = {
     list.append(MindmapPreview.threadPost(args));
     return list;
   },
-  args: { titles, on: { openId: fn(), changeSet: fn(), edit: fn(), saveEdit: fn(), cancelEdit: fn(), remove: fn() } },
+  args: { titles, on: { openId: fn(), changeSet: fn(), edit: fn(), saveEdit: fn(), cancelEdit: fn(), remove: fn(), fold: fn() } },
 } satisfies Meta<MindmapPreview.ThreadPostProps>;
 
 export default meta;
@@ -221,5 +221,43 @@ export const ChangeSetLinkLong: Story = {
     },
     titles: lookup({ "A-11": "設定のパネルの画面の流れ（モック）" }),
     changeSets: lookup({ "V-5": "A-11 の段落を直す" }),
+  },
+};
+
+/** 改行で 8 行の本文 */
+const EIGHT_LINES = [
+  "1. 概要のタイルの並びが毎回変わる",
+  "2. 検討事項の表で列の幅が狭い",
+  "3. タスクのボードで完了の列が長い",
+  "4. 資料のカードの日付が読みにくい",
+  "5. ネットワークの玉の色が近い",
+  "6. 詳細パネルの本文の図が小さい",
+  "7. 変更履歴の時点の並びが分かりにくい",
+];
+
+/** 改行で 8 行のレビュー中の返信 */
+const LONG_PENDING = {
+  ...PENDING,
+  id: "C-61",
+  body: ["挙げてもらった点に、優先する順を付けました。", ...EIGHT_LINES].join("\n"),
+  created: "2026-11-04T05:10:00+00:00",
+};
+
+/** 改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを読む」を出す */
+export const PendingFolded: Story = { args: { pending: LONG_PENDING } };
+
+/** 開いたレビュー中の返信。全文を出し、本文の下の行に上向きの印と「折りたたむ」を出す（`aria-expanded="true"`） */
+export const PendingOpened: Story = { args: { pending: LONG_PENDING, open: true } };
+
+/** 改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを読む」を出さない */
+export const LongAiPost: Story = {
+  args: {
+    post: {
+      id: "TH-1-2",
+      author: "ai",
+      body: ["見直して気になった点を挙げます。", ...EIGHT_LINES].join("\n"),
+      created: "2026-11-04T01:24:00+00:00",
+      seen: true,
+    },
   },
 };

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadMdmark, LoadPreviewScripts
+from .fixture_types import LoadMdmark, LoadPreviewScripts, LoadPreviewStyles
 
 # 利用者の書き込み
 USER_POST = {
@@ -51,7 +51,7 @@ POST_SCRIPT = """(props) => {
         },
     });
     document.body.append(item);
-    const buttons = [...item.querySelectorAll("button")];
+    const buttons = [...item.querySelectorAll("button:not([hidden])")];
     const named = (name) => buttons.find((button) => button.getAttribute("aria-label") === name);
     const idButton = buttons.find((button) => button.textContent.trim() === "D-12");
     if (idButton !== undefined) idButton.click();
@@ -446,3 +446,155 @@ def test_thread_post_when_change_set_link(
     # 検証
     assert observed["linkCount"] == 1
     assert observed["calls"] == [["changeSet", "V-6"]]
+
+
+# 書き込みを置く入れ物の幅（px）
+FOLD_CONTAINER_WIDTH = 320
+
+# 改行で 8 行の本文（各行は折り返さない短さ）
+EIGHT_LINE_BODY = "\n".join(f"{number} 行目の気づき" for number in range(1, 9))
+
+# TH-1 への、改行で 8 行のレビュー中の返信
+LONG_PENDING_REPLY = {
+    "id": "C-61",
+    "target": None,
+    "target_title": None,
+    "loc": None,
+    "thread": "TH-1",
+    "body": EIGHT_LINE_BODY,
+    "created": "2026-11-04T05:10:00+00:00",
+}
+
+# 改行で 8 行の AI の書き込み
+LONG_AI_POST = {
+    "id": "TH-1-2",
+    "author": "ai",
+    "body": EIGHT_LINE_BODY,
+    "created": "2026-11-04T01:24:00+00:00",
+}
+
+# 書き込みを 320px の入れ物に描き、開閉のボタンを押した前後の見た目と知らせた開閉を集める JavaScript
+FOLDED_POST_SCRIPT = """async ({props, press, width}) => {
+    const calls = [];
+    const item = MindmapPreview.threadPost({
+        ...props,
+        on: {
+            openId: () => {}, changeSet: () => {}, edit: () => {}, saveEdit: () => {}, cancelEdit: () => {},
+            remove: () => {}, fold: (...a) => calls.push(["fold", ...a]),
+        },
+    });
+    const list = document.createElement("ol");
+    list.style.width = `${width}px`;
+    list.append(item);
+    document.body.append(list);
+    // 開閉のボタンを出すかの測りは、描いた後の ResizeObserver の通知で決まる
+    const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await settle();
+    const norm = (text) => text.replace(/\\s+/g, " ").trim();
+    const observe = () => {
+        const body = item.querySelector(".post-body");
+        const more = item.querySelector(".review-more");
+        const row = item.querySelector(".review-more-row");
+        return {
+            folded: body === null ? null : body.classList.contains("folded"),
+            fullyVisible: body === null ? null : body.scrollHeight <= body.clientHeight,
+            moreShown: more !== null && !more.hidden && row !== null && getComputedStyle(row).display !== "none",
+            moreText: more === null ? null : norm(more.textContent),
+            moreLabel: more === null ? null : more.getAttribute("aria-label"),
+            moreInRow: more !== null && more.parentElement === row,
+            hasField: item.querySelector("textarea") !== null,
+        };
+    };
+    const before = observe();
+    if (press) item.querySelector(".review-more").click();
+    return {before, after: observe(), calls};
+}"""
+
+
+@pytest.mark.parametrize(
+    ("props", "press", "expected_before", "expected_calls"),
+    [
+        pytest.param(
+            {"pending": LONG_PENDING_REPLY},
+            True,
+            {
+                "folded": True,
+                "fullyVisible": False,
+                "moreShown": True,
+                "moreText": "続きを読む",
+                "moreLabel": "TH-1 への返信の続きを読む",
+                "moreInRow": True,
+                "hasField": False,
+            },
+            [["fold", "C-61", True]],
+            id="folded",
+        ),
+        pytest.param(
+            {"pending": LONG_PENDING_REPLY, "open": True},
+            False,
+            {
+                "folded": False,
+                "fullyVisible": True,
+                "moreShown": True,
+                "moreText": "折りたたむ",
+                "moreLabel": "TH-1 への返信の本文を折りたたむ",
+                "moreInRow": True,
+                "hasField": False,
+            },
+            [],
+            id="opened",
+        ),
+        pytest.param(
+            {"pending": LONG_PENDING_REPLY, "editing": True},
+            False,
+            {
+                "folded": None,
+                "fullyVisible": None,
+                "moreShown": False,
+                "moreText": None,
+                "moreLabel": None,
+                "moreInRow": False,
+                "hasField": True,
+            },
+            [],
+            id="editing",
+        ),
+        pytest.param(
+            {"post": LONG_AI_POST},
+            False,
+            {
+                "folded": False,
+                "fullyVisible": True,
+                "moreShown": False,
+                "moreText": None,
+                "moreLabel": None,
+                "moreInRow": False,
+                "hasField": False,
+            },
+            [],
+            id="ai_post",
+        ),
+    ],
+)
+def test_thread_post_when_pending_folded(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    props: dict[str, Any],
+    press: bool,
+    expected_before: dict[str, Any],
+    expected_calls: list[list[Any]],
+) -> None:
+    """レビュー中の書き込みだけを畳み、開閉を知らせる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    # 実行
+    observed = preview_page.evaluate(
+        FOLDED_POST_SCRIPT, {"props": props, "press": press, "width": FOLD_CONTAINER_WIDTH}
+    )
+    # 検証
+    assert observed["before"] == expected_before
+    assert observed["calls"] == expected_calls

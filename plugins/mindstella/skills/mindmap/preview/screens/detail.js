@@ -318,7 +318,7 @@ var MindmapPreview;
         return MindmapPreview.h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
     }
     /** この項目へのレビュー中のコメントの節（各行の右上の「修正」「削除」で、その場で直す・消す・戻す。チェックとまとめて送るはコメントの一覧で行う） */
-    function reviewSection({ items, edit, order, onOrder }) {
+    function reviewSection({ items, edit, order, onOrder, titles, changeSets, onOpen, onChangeSet }) {
         // ID の連番で並べ（新しい順は大きい順）、消した行も同じ並びの中の元の場所に「元に戻す」と共に残す
         const sign = order === "newest" ? -1 : 1;
         const rows = [...items.map((item) => ({ item, gone: false })), ...edit.removed.map((item) => ({ item, gone: true }))].sort((a, b) => (MindmapPreview.commentNumber(a.item.id) - MindmapPreview.commentNumber(b.item.id)) * sign);
@@ -362,6 +362,19 @@ var MindmapPreview;
                             const editing = edit.editing === item.id;
                             // 入力欄は修正を始めた場所だけに描く。コメントの一覧で始めた行は、ここでは本文だけにして「修正」「削除」も出さない
                             const editingHere = editing && edit.editingIn === "detail";
+                            // この詳細パネルで書き換えていない行の本文は、Markdown で描いて折り返した後の見た目の行で畳む
+                            const fold = editingHere
+                                ? null
+                                : MindmapPreview.reviewBodyFold({
+                                    id: item.id,
+                                    label: MindmapPreview.reviewLabel(item),
+                                    body: item.body,
+                                    titles,
+                                    changeSets,
+                                    open: edit.expanded.has(item.id),
+                                    focus: MindmapPreview.REVIEW_FOCUS,
+                                    on: { toggle: edit.on.fold, changeSet: onChangeSet, openId: onOpen },
+                                });
                             return MindmapPreview.h({
                                 tag: "li",
                                 attrs: { class: `review-row${editing ? " editing" : ""}`, "data-comment": item.id },
@@ -388,7 +401,9 @@ var MindmapPreview;
                                                     focus: MindmapPreview.REVIEW_FOCUS,
                                                     on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit },
                                                 })
-                                                : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                                                : fold?.body ?? null,
+                                            // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）
+                                            fold === null ? null : MindmapPreview.h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
                                         ],
                                     }),
                                     // 書き換えている行には「修正」「削除」を出さない（入力欄の「キャンセル」「修正」と並べない）
@@ -1365,7 +1380,15 @@ var MindmapPreview;
             children: [
                 relation(kind === "logs" ? "更新した項目" : "関連", related.related),
                 relation("参照元", related.referencedBy),
-                review === null ? null : reviewSection(review),
+                review === null
+                    ? null
+                    : reviewSection({
+                        ...review,
+                        titles: (target) => index.byId.get(target)?.item.title ?? null,
+                        changeSets: (setId) => index.data.changes.sets.find((set) => set.id === setId)?.summary ?? null,
+                        onOpen: on.open,
+                        onChangeSet: on.changeSet,
+                    }),
             ],
         });
         // 本文の差分を描かなかったとき、キーの値の語の面をここで付ける

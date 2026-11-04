@@ -85,8 +85,10 @@ namespace MindmapPreview {
     reason: ReasonState;
     /** スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID */
     reviewFocus: string | null;
-    /** レビュー中の書き込みの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする） */
+    /** レビュー中の書き込みの画面とスレッドの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする） */
     expanded: Set<string>;
+    /** 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（描き直し・本文の書き換え・全画面との行き来では保ち、別の項目へ移るかパネルを閉じると空にする） */
+    detailExpanded: Set<string>;
   };
 
   /** 表示の設定の画面の状態（開いている間だけ持つ。描き直し・書き換えの知らせでも保つ） */
@@ -1104,6 +1106,7 @@ namespace MindmapPreview {
         // 詳細パネルを開く・別の項目へ移った: 左のパネルを開いていても詳細パネルを前に出す
         if (route.id !== null) stack.front = "detail";
         const hadEdit = editing !== null;
+        comment.detailExpanded.clear();
         if (!comment.listOpen) {
           comment.removed = [];
           editing = null;
@@ -1181,6 +1184,7 @@ namespace MindmapPreview {
               editingIn,
               editError,
               editBody,
+              expanded: comment.detailExpanded,
               on: reviewRowHandlers(REVIEW_FOCUS),
             },
           }
@@ -1497,6 +1501,7 @@ namespace MindmapPreview {
       reason: { open: false, body: "", status: "idle", detail: null },
       reviewFocus: null,
       expanded: new Set(),
+      detailExpanded: new Set(),
     };
     const threadsApi = threadApi();
     /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
@@ -2138,11 +2143,6 @@ namespace MindmapPreview {
         open: openRow,
         ...reviewRowHandlers(""),
         unloc: (id) => void detachLocation(id),
-        fold: (id, open) => {
-          // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
-          if (open) comment.expanded.add(id);
-          else comment.expanded.delete(id);
-        },
       },
     });
 
@@ -2228,6 +2228,12 @@ namespace MindmapPreview {
         },
         remove: (id) => void removeComment(id).then(() => toDetail(`restore:${id}`)),
         restore: (id) => void restoreComment(id).then(() => toDetail(`edit-open:${id}`)),
+        fold: (id, open) => {
+          // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
+          const opened = focus === "" ? comment.expanded : comment.detailExpanded;
+          if (open) opened.add(id);
+          else opened.delete(id);
+        },
       };
     };
 

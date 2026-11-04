@@ -470,10 +470,18 @@ namespace MindmapPreview {
     order: ReviewOrder;
     /** 並びの切り替えを押した（入れ替えた後の並び） */
     onOrder: (order: ReviewOrder) => void;
+    /** 項目のタイトル（記録に無ければ null）。あるものだけ、本文の中の ID を項目を開くボタンにする */
+    titles: (id: string) => string | null;
+    /** まとまりの説明（記録に無ければ null） */
+    changeSets: (id: string) => string | null;
+    /** 本文の中の項目の ID を押した */
+    onOpen: (id: string) => void;
+    /** 本文の中のまとまりのリンクを押した（まとまりの ID） */
+    onChangeSet: (id: string) => void;
   };
 
   /** この項目へのレビュー中のコメントの節（各行の右上の「修正」「削除」で、その場で直す・消す・戻す。チェックとまとめて送るはコメントの一覧で行う） */
-  function reviewSection({ items, edit, order, onOrder }: ReviewSectionProps): HTMLElement {
+  function reviewSection({ items, edit, order, onOrder, titles, changeSets, onOpen, onChangeSet }: ReviewSectionProps): HTMLElement {
     // ID の連番で並べ（新しい順は大きい順）、消した行も同じ並びの中の元の場所に「元に戻す」と共に残す
     const sign = order === "newest" ? -1 : 1;
     const rows = [...items.map((item) => ({ item, gone: false })), ...edit.removed.map((item) => ({ item, gone: true }))].sort(
@@ -518,6 +526,19 @@ namespace MindmapPreview {
               const editing = edit.editing === item.id;
               // 入力欄は修正を始めた場所だけに描く。コメントの一覧で始めた行は、ここでは本文だけにして「修正」「削除」も出さない
               const editingHere = editing && edit.editingIn === "detail";
+              // この詳細パネルで書き換えていない行の本文は、Markdown で描いて折り返した後の見た目の行で畳む
+              const fold = editingHere
+                ? null
+                : reviewBodyFold({
+                  id: item.id,
+                  label: reviewLabel(item),
+                  body: item.body,
+                  titles,
+                  changeSets,
+                  open: edit.expanded.has(item.id),
+                  focus: REVIEW_FOCUS,
+                  on: { toggle: edit.on.fold, changeSet: onChangeSet, openId: onOpen },
+                });
               return h({
                 tag: "li",
                 attrs: { class: `review-row${editing ? " editing" : ""}`, "data-comment": item.id },
@@ -544,7 +565,9 @@ namespace MindmapPreview {
                           focus: REVIEW_FOCUS,
                           on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit },
                         })
-                        : h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                        : fold?.body ?? null,
+                      // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）
+                      fold === null ? null : h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
                     ],
                   }),
                   // 書き換えている行には「修正」「削除」を出さない（入力欄の「キャンセル」「修正」と並べない）
@@ -1143,8 +1166,8 @@ namespace MindmapPreview {
     id: string;
     index: RecordIndex;
     on: DetailProps["on"];
-    /** その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。配る書き出しでは null（節を置かない） */
-    review: ReviewSectionProps | null;
+    /** その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数（本文の描き方は詳細パネルの記録と操作から足す）。配る書き出しでは null（節を置かない） */
+    review: Omit<ReviewSectionProps, "titles" | "changeSets" | "onOpen" | "onChangeSet"> | null;
     view: DiffView | null;
     bodyLayout: BodyLayout;
     bodyView: BodyView;
@@ -1520,7 +1543,15 @@ namespace MindmapPreview {
       children: [
         relation(kind === "logs" ? "更新した項目" : "関連", related.related),
         relation("参照元", related.referencedBy),
-        review === null ? null : reviewSection(review),
+        review === null
+          ? null
+          : reviewSection({
+            ...review,
+            titles: (target) => index.byId.get(target)?.item.title ?? null,
+            changeSets: (setId) => index.data.changes.sets.find((set) => set.id === setId)?.summary ?? null,
+            onOpen: on.open,
+            onChangeSet: on.changeSet,
+          }),
       ],
     });
     // 本文の差分を描かなかったとき、キーの値の語の面をここで付ける

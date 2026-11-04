@@ -310,3 +310,69 @@ def test_change_set_link_long(open_story: OpenStory) -> None:
         for rect in rects
     )
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def _wait_more_measured(page: Page) -> None:
+    """レビュー中の書き込みの本文を測り終え、開閉のボタンを出すまで待つ。"""
+    page.wait_for_function("() => document.querySelector('button.review-more')?.hidden === false")
+
+
+# レビュー中の書き込みの本文を畳んでいるかと、開閉のボタンの文字・読み上げの名前・開いているか・置いた行を返す
+FOLD_STATE_SCRIPT = """(post) => {
+    const more = document.querySelector(`${post} button.review-more`);
+    return {
+        folded: document.querySelector(`${post} .post-body`).classList.contains('folded'),
+        text: more.textContent.trim(),
+        label: more.getAttribute('aria-label'),
+        expanded: more.getAttribute('aria-expanded'),
+        inRow: more.parentElement.classList.contains('review-more-row'),
+    };
+}"""
+
+
+def test_pending_folded(open_story: OpenStory) -> None:
+    """改行で 8 行のレビュー中の返信。行の高さの 5 行分までを出し、本文の下の行に下向きの印と「続きを読む」を出す（正常系）。"""
+    # 準備
+    page = open_story("preview-threadpost--pending-folded")
+    _wait_more_measured(page)
+    before = page.evaluate(FOLD_STATE_SCRIPT, POST)
+    # 実行
+    page.click(f"{POST} button.review-more")
+    # 検証
+    assert before == {
+        "folded": True,
+        "text": "続きを読む",
+        "label": "TH-1 への返信の続きを読む",
+        "expanded": "false",
+        "inRow": True,
+    }
+    assert page.evaluate(FOLD_STATE_SCRIPT, POST) == {
+        "folded": False,
+        "text": "折りたたむ",
+        "label": "TH-1 への返信の本文を折りたたむ",
+        "expanded": "true",
+        "inRow": True,
+    }
+
+
+def test_pending_opened(open_story: OpenStory) -> None:
+    """開いたレビュー中の返信。全文を出し、本文の下の行に上向きの印と「折りたたむ」を出す（`aria-expanded="true"`）（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadpost--pending-opened")
+    _wait_more_measured(page)
+    # 検証
+    assert page.eval_on_selector(f"{POST} .post-body", "e => e.classList.contains('folded')") is False
+    assert page.eval_on_selector(f"{POST} .post-body", "e => e.scrollHeight <= e.clientHeight + 1") is True
+    assert page.inner_text(f"{POST} .review-more-row button.review-more") == "折りたたむ"
+    assert page.get_attribute(f"{POST} button.review-more", "aria-expanded") == "true"
+
+
+def test_long_ai_post(open_story: OpenStory) -> None:
+    """改行で 8 行の AI の書き込み。送った書き込みは畳まず全文を出し、「続きを読む」を出さない（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-threadpost--long-ai-post")
+    page.wait_for_selector(f"{POST} .post-body ol")
+    # 検証
+    assert page.locator(f"{POST} button.review-more").count() == 0
+    assert page.eval_on_selector(f"{POST} .post-body", "e => e.classList.contains('folded')") is False
+    assert page.locator(f"{POST} .post-body ol > li").count() == 7
