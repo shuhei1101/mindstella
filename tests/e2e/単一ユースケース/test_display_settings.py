@@ -42,9 +42,13 @@ from playwright.sync_api import BrowserContext, Locator, Page
 from preview_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
+    SCRIM_ON,
     OpenPreview,
     ServeWorkspace,
+    is_inert,
     pick_history_point,
+    press_through_scrim,
+    scrim_shown,
 )
 from workspace_fixtures import RECORD_DIR, MakeItem
 
@@ -57,6 +61,12 @@ TABS_WITHOUT_NOTES = 8
 
 # 端末のライト / ダークを上書きするテーマ
 OVERRIDE_THEME = "dark"
+
+# グレーアウトを出す表示の幅（px。900px 以下はグレーアウトを出さない）
+WIDE_WIDTH = 1280
+
+# 詳細パネルの「全画面表示」のボタン
+FULL_BUTTON = 'aside.panel button[data-act="full"]'
 
 # 調査の表で隠しておく列の key と、その列の名前
 HIDDEN_COLUMN_KEY = "conclusion"
@@ -290,8 +300,10 @@ def test_normal_when_switched_with_comments(
     # トップバーからコメントの一覧を左に開く
     page.click(COMMENTS_BUTTON)
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
-    # 実行（表示の設定を押す）
-    page.click("header.topbar button.settings-btn", force=True)
+    page.wait_for_selector(SCRIM_ON)
+    topbar_with_comments = (is_inert(page, SETTINGS_BUTTON), is_inert(page, COMMENTS_BUTTON))
+    # 実行（表示の設定を押す。トップバーはグレーアウトの外なので、そのまま押せる）
+    page.click(SETTINGS_BUTTON)
     page.wait_for_selector(SETTINGS_PANEL_OPEN)
     page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
     after_settings = {
@@ -299,8 +311,9 @@ def test_normal_when_switched_with_comments(
         "comments": page.locator(f"{COMMENTS_PANEL}.open").count(),
         "detail": page.locator("aside.panel.open").count(),
     }
+    topbar_with_settings = (is_inert(page, SETTINGS_BUTTON), is_inert(page, COMMENTS_BUTTON))
     # 実行（コメントを押す）
-    page.click(COMMENTS_BUTTON, force=True)
+    page.click(COMMENTS_BUTTON)
     page.wait_for_selector(f"{COMMENTS_PANEL}.open")
     page.wait_for_selector(SETTINGS_PANEL, state="detached")
     after_comments = {
@@ -318,6 +331,55 @@ def test_normal_when_switched_with_comments(
     # どちらの間も、右の D-1 の詳細パネルが開いたままである
     assert after_settings["detail"] == 1
     assert after_comments["detail"] == 1
+    # 左のパネルを開いている間もトップバーはグレーアウトされず、表示の設定とコメントのボタンを押せる
+    assert topbar_with_comments == (False, False)
+    assert topbar_with_settings == (False, False)
+
+
+def test_normal_when_outside_pressed(
+    serve_workspace: ServeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """表示の設定のパネルを開いている間はパネルとトップバー以外をグレーアウトし、グレーアウトした所を押すとパネルだけを閉じる（正常系）。"""
+    # 準備
+    url, _ = serve_workspace(make_item("D-1"), make_item("D-2"), settings=valid_settings)
+    open_preview(url, "#tab=decisions&view=table&id=D-1", width=WIDE_WIDTH)
+    page.wait_for_selector("aside.panel.open")
+    # 実行（トップバーの表示の設定を押す）
+    open_settings(page)
+    page.wait_for_selector(SCRIM_ON)
+    covered = {
+        "scrim": scrim_shown(page),
+        "table": is_inert(page, 'table.grid tbody tr[data-id="D-2"]'),
+        "detail": is_inert(page, FULL_BUTTON),
+        "panel": is_inert(page, SETTINGS_PANEL_OPEN),
+    }
+    # 実行（グレーアウトした D-1 の詳細パネルの「全画面表示」を押す）
+    press_through_scrim(page, FULL_BUTTON)
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    after_press = {
+        "detail": page.locator("aside.panel.open").count(),
+        "full": page.locator("dialog.full[open]").count(),
+        "hash": page.evaluate("location.hash"),
+    }
+    # 実行（表の D-2 の行を押す）
+    page.click('table.grid tbody tr[data-id="D-2"]')
+    page.wait_for_function("location.hash.includes('id=D-2')")
+    # 検証
+    # パネルを開いている間、パネルとトップバー以外（表と D-1 の詳細パネル）がグレーアウトされ、その中の部品にフォーカスが移らない
+    assert covered == {"scrim": True, "table": True, "detail": True, "panel": False}
+    # グレーアウトした所を押すとパネルが閉じ、D-1 の詳細パネルは全画面にならず開いたままである
+    assert after_press["detail"] == 1
+    assert after_press["full"] == 0
+    assert "id=D-1" in after_press["hash"]
+    assert "full=1" not in after_press["hash"]
+    # パネルを閉じた後は、表の D-2 の行を押すと D-2 の詳細パネルが開く
+    page.wait_for_selector("aside.panel.open")
+    assert "D-2" in page.inner_text("aside.panel .panel-kind")
 
 
 def test_normal_when_narrow_with_detail_open(

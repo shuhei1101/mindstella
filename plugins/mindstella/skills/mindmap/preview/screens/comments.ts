@@ -36,6 +36,8 @@ namespace MindmapPreview {
   export type CommentsPanelProps = {
     /** パネルの中に出す画面 */
     view: PanelView;
+    /** ピン止めしているか（入口の `Prefs.commentsPinned`） */
+    pinned: boolean;
     /** レビュー中の書き込み（新しいスレッドと返信） */
     items: ReviewItem[];
     /** パネルを開いている間に消した書き込み（元の場所に「元に戻す」を出す） */
@@ -83,6 +85,8 @@ namespace MindmapPreview {
     expanded: Set<string>;
     on: {
       close: () => void;
+      /** ピン止めを切り替える */
+      pin: () => void;
       /** レビュー中の書き込みの画面を開く */
       review: () => void;
       /** 一覧（スレッドの画面から）か、開く前の画面（レビュー中の書き込みの画面から）へ戻る */
@@ -596,7 +600,25 @@ namespace MindmapPreview {
     return h({ tag: "label", attrs: { class: "legend-all-check", title: "すべて選ぶ" }, children: [checkbox] });
   }
 
-  /** 見出しの帯（見出し・レビュー中の入口・閉じる） */
+  /** ピン止めの切り替えのボタン。押した状態は `aria-pressed` で示し、ピンのアイコンは外している間だけ 45° 傾ける（CSS） */
+  function pinButton(props: CommentsPanelProps): HTMLElement {
+    const label = props.pinned ? "ピン止めを外す（外側を押したら閉じる）" : "ピン止めする（外側を押しても閉じない）";
+    return h({
+      tag: "button",
+      attrs: {
+        class: "icon-btn pin-toggle",
+        type: "button",
+        "aria-pressed": props.pinned ? "true" : "false",
+        "aria-label": label,
+        title: label,
+        "data-focus": "pin",
+        onclick: () => props.on.pin(),
+      },
+      children: [icon("pin")],
+    });
+  }
+
+  /** 見出しの帯（見出し・レビュー中の入口・ピン止め・閉じる） */
   function panelHead(props: CommentsPanelProps): HTMLElement {
     const count = props.items.length;
     return h({
@@ -619,6 +641,7 @@ namespace MindmapPreview {
             },
             children: ["レビュー中", h({ tag: "span", attrs: { class: "count", "aria-hidden": "true" }, children: [count] })],
           }),
+        pinButton(props),
         h({
           tag: "button",
           attrs: { class: "icon-btn", type: "button", "aria-label": "コメントの一覧を閉じる", "data-focus": "close", onclick: props.on.close },

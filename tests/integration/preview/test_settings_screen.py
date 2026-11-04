@@ -39,6 +39,7 @@ from preview_settings_helpers import (
     tab_keys,
     toggle_kind,
 )
+from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
 from preview_stack_helpers import (
     DETAIL_HASH,
     NARROW_VIEWPORT,
@@ -61,7 +62,7 @@ KINDS_WITHOUT_TERMS_LOGS = ["decisions", "tasks", "research", "docs", "notes"]
 PHONE_VIEWPORT = {"width": 390, "height": 844}
 
 # 覆われた本文の部品に付けた `inert` の数
-INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
+INERT_COUNT_SCRIPT = "document.querySelectorAll('main[inert], main [inert]').length"
 
 # 既定が変わった知らせが画面の下に出てから消えるまでの余裕の上限ミリ秒（画面は 6 秒出す）
 NOTICE_GONE_MS = 9_000
@@ -128,6 +129,28 @@ def test_open_and_close(
     assert focus_after_esc == "settings"
     assert focus_after_close == "settings"
     assert page.get_attribute(SETTINGS_BUTTON, "aria-expanded") == "false"
+
+
+def test_close_by_scrim(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """開いている間はトップバーとタブの帯とパネル以外をグレーアウトし、グレーアウトした所を押すとパネルを閉じてボタンへフォーカスを戻す（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_settings(page)
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行
+    click_scrim(page)
+    # 検証
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    assert covered == (True, True)
+    assert page.evaluate("document.activeElement?.dataset.act ?? null") == "settings"
+    assert scrim_visible(page) is False
 
 
 def test_look_override(
@@ -469,7 +492,7 @@ def test_narrow_when_width_crosses_900(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` と `inert` が外れ、また 900px 以下に戻ると付け直す（正常系）。"""
+    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` が外れて表示の設定の `inert` が外れ、パネルの外で開いた詳細パネルはグレーアウトの下で `inert` になる。また 900px 以下に戻ると付け直す（正常系）。"""
     # 準備
     url, _ = _preview(write_review_preview, make_item, valid_settings)
     page = open_preview(url, DETAIL_HASH)
@@ -488,7 +511,7 @@ def test_narrow_when_width_crosses_900(
     page.set_viewport_size(NARROW_VIEWPORT)
     page.wait_for_function("document.body.classList.contains('left-front')")
     # 検証
-    assert wide == {"left_front": False, "detail_inert": False, "settings_inert": False}
+    assert wide == {"left_front": False, "detail_inert": True, "settings_inert": False}
     assert is_inert(page, "detail") is True
     assert is_inert(page, "settings") is False
 

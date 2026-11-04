@@ -23,6 +23,7 @@ from preview_edit_helpers import (
     start_add,
 )
 from preview_fit_helpers import assert_fits_smallest, set_smallest
+from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -1377,20 +1378,21 @@ def test_drawer_keeps_when_view_switched(
 
 
 def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタンで閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。外側を押しても閉じない（正常系）。"""
+    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタン・グレーアウトした所で閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。開いている間はトップバーとタブの帯とドロワー以外をグレーアウトして止める（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table")
     focused: list[str | None] = []
-    # 実行（外側を押しても閉じない）
+    # 実行（開いている間のグレーアウト）
     open_drawer(page)
-    page.mouse.click(900, 500)
-    still_open = page.locator(DRAWER_OPEN).count()
-    # 実行（×・下端のボタン・Esc で閉じる）
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行（×・下端のボタン・Esc・グレーアウトで閉じる）
     for close in (
         lambda: page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']"),
         lambda: page.click(f"{DRAWER} .fd-foot .btn.primary"),
         lambda: page.keyboard.press("Escape"),
+        lambda: click_scrim(page),
     ):
         if page.locator(DRAWER_OPEN).count() == 0:
             open_drawer(page)
@@ -1401,9 +1403,11 @@ def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: Op
     open_drawer(page)
     page.click(FILTER_BUTTON)
     page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
     # 検証
-    assert still_open == 1
-    assert focused == ["filter", "filter", "filter"]
+    assert covered == (True, True)
+    assert focused == ["filter", "filter", "filter", "filter"]
+    assert main_inert(page) is False
 
 
 def test_drawer_clear(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -1447,6 +1451,9 @@ def test_drawer_tags(
     selected = (_table_row_ids(page), drawer_head(page)["count"], badge_text(page))
     tag_chip = ".table-block .chip:has(button[aria-label='タグ: プレビュー の条件を解除'])"
     chip = page.inner_text(tag_chip)
+    # ドロワーを開いている間は本文を止めるため、閉じてから表のチップで解除する
+    page.keyboard.press("Escape")
+    page.wait_for_selector(DRAWER, state="detached")
     page.click(f"{tag_chip} button")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
     # 検証
@@ -1491,9 +1498,10 @@ def test_drawer_keyword_hits(
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
-    open_drawer(page)
-    # 実行
+    # 実行（ドロワーを開いている間は本文を止めるため、キーワードを入れてから開く）
     page.fill("input.map-q", "D-2")
+    page.wait_for_selector("#decision-map button.n-item.hit")
+    open_drawer(page)
     page.wait_for_selector(f"{DRAWER} .hit-n")
     hits = page.eval_on_selector_all(
         f'{DRAWER} .fd-opt:has(input[data-key="status"]):has(.hit-n)',

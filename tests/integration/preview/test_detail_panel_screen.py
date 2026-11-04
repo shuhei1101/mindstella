@@ -188,6 +188,7 @@ from preview_word_diff_helpers import (
     serve_word_diff_workspace,
 )
 from preview_settings_helpers import SETTINGS_PANEL, SETTINGS_PANEL_OPEN, open_settings
+from preview_scrim_helpers import SCRIM_ON, detail_above_scrim, scrim_visible
 from preview_stack_helpers import (
     DETAIL_HASH,
     WIDE_VIEWPORT,
@@ -2312,6 +2313,147 @@ def test_body_escape_closes_panel(
     # 検証
     page.wait_for_selector("aside.panel.open", state="detached")
     assert "id=" not in page.evaluate("location.hash")
+
+
+# 本文を送る位置（px）
+BODY_SCROLL_TOP = 900
+
+# 詳細の全画面の本文のスクロール領域
+FULL_BODY = "dialog.full .panel-body"
+
+
+def _scroll_top(page: Page, selector: str) -> int:
+    """スクロールが止まった後の、本文のスクロール領域の位置を返す。"""
+    return page.evaluate(SETTLED_SCROLL_TOP_JS, selector)
+
+
+def test_body_scroll_restored(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文を送った位置を項目ごとに残し、別の項目は先頭から開く。前の項目へ戻る・全画面に切り替える・読み込み直すと、その項目で最後に送った位置へ戻す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"], body="D-2.md"),
+        bodies={"D-2.md": LONG_BODY},
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    # 実行（前提の D-1 へ移る。押す操作で本文を送らないよう、要素の click を呼ぶ）
+    page.eval_on_selector("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink", "b => b.click()")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    other = _scroll_top(page, PANEL_BODY)
+    # 実行（前の項目へ戻る）
+    page.click('aside.panel button[data-act="back"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    back = _scroll_top(page, PANEL_BODY)
+    # 実行（全画面に切り替える）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open]")
+    full = _scroll_top(page, FULL_BODY)
+    # 実行（読み込み直す）
+    page.reload()
+    page.wait_for_selector(f"{FULL_BODY} .md")
+    reloaded = _scroll_top(page, FULL_BODY)
+    # 検証
+    assert other == 0
+    assert back == BODY_SCROLL_TOP
+    assert full == BODY_SCROLL_TOP
+    assert reloaded == BODY_SCROLL_TOP
+
+
+# 本文の末尾に見出しを持つ、縦にあふれる本文
+TAIL_HEADING = "末尾の見出し"
+TAIL_HEADING_BODY = LONG_BODY + f"\n## {TAIL_HEADING}\n\n末尾の段落\n"
+
+# 要素が本文のスクロール領域の中に見えていて、上端からの距離を返す式
+OFFSET_IN_BODY_JS = """([scroller, target]) => {
+    const body = document.querySelector(scroller).getBoundingClientRect();
+    const element = document.querySelector(target).getBoundingClientRect();
+    return element.top - body.top;
+}"""
+
+
+def test_body_scroll_when_heading(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-2", body="D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-1'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    # 実行
+    page.evaluate(f"location.hash = '#tab=decisions&view=table&id=D-2&h={TAIL_HEADING}'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    top = _scroll_top(page, PANEL_BODY)
+    offset = page.evaluate(OFFSET_IN_BODY_JS, [PANEL_BODY, f'aside.panel [data-heading="{TAIL_HEADING}"]'])
+    # 検証
+    assert top != BODY_SCROLL_TOP
+    assert 0 <= offset <= page.eval_on_selector(PANEL_BODY, "e => e.clientHeight")
+
+
+def test_body_scroll_when_comment_location(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """位置を残した項目でも、コメントの箇所を示して開くときは残した位置ではなく箇所を出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item(
+            "D-3",
+            status="要見直し",
+            options=[{"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True}],
+            body="D-3.md",
+        ),
+        bodies={"D-3.md": LONG_BODY},
+        comments=(
+            make_comment(
+                "C-1",
+                target="D-3",
+                body="ここは別の言い方にしたい",
+                loc={"kind": "value", "key": "options[A].pros", "text": "並べやすい"},
+            ),
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-3\":900') === true")
+    open_review(page)
+    # 実行
+    page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
+    page.wait_for_selector("aside.panel.open .loc-hit")
+    top = _scroll_top(page, PANEL_BODY)
+    offset = page.evaluate(OFFSET_IN_BODY_JS, [PANEL_BODY, "aside.panel .loc-hit"])
+    # 検証
+    assert top != BODY_SCROLL_TOP
+    assert 0 <= offset <= page.eval_on_selector(PANEL_BODY, "e => e.clientHeight")
+
+
+def test_stack_when_left_panel_open(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 1200px で左のパネルを開いている間は、パネルの外で開いた詳細パネルをグレーアウトの下に置いて止める（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("aside.panel.open")
+    # 実行
+    open_settings(page)
+    page.wait_for_selector(SCRIM_ON)
+    # 検証
+    assert scrim_visible(page) is True
+    assert detail_above_scrim(page) is False
+    assert is_inert(page, "detail") is True
 
 
 @pytest.mark.parametrize(
@@ -5321,6 +5463,9 @@ def test_blocked_reason(
     # 実行
     page.click(EDIT_SAVE_BUTTON)
     page.wait_for_selector(f"{EDIT_PENDING_PANEL} .pe-alert", timeout=EDIT_SETTLE_MS)
+    # 保存待ちのパネルの外で開いた詳細パネルはグレーアウトの下になるため、パネルを閉じてから編集の表示にする
+    page.get_by_role("button", name="保存待ちの編集を閉じる").click()
+    page.wait_for_selector(EDIT_PENDING_PANEL, state="detached")
     page.click(EDIT_TOGGLE)
     page.wait_for_selector(EDIT_FORM)
     # 検証

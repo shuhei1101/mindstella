@@ -9,7 +9,7 @@ elements:
   - name: パネルを閉じる
     kind: button
     position: 見出し
-    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーの表示の設定のボタンでも閉じる。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる。読み上げの名前は「表示の設定を閉じる」
+    description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーの表示の設定のボタンでも閉じる。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる。グレーアウトした所を押しても閉じる。読み上げの名前は「表示の設定を閉じる」
   - name: 表示の設定の中身
     kind: form
     component: dev/設計書/部品設計/プレビュー/表示の設定.ts#
@@ -57,6 +57,14 @@ elements:
     status: planned
     introduced:
       pr: 325
+  - name: グレーアウト
+    kind: backdrop
+    position: トップバーとタブの帯の下から画面の下端まで（パネルの後ろ）
+    description: コメントの一覧のグレーアウトと同じ。押すとパネルを閉じ、押した操作は後ろの部品へ届けない
+    visible_when: 幅 901px 以上
+    status: planned
+    introduced:
+      pr: 422
 lead: 表示する種類と差分のミニマップと本文の表とセクションの見せ方を、この端末だけの個人の上書きとして変える。ネットワークの見た目はネットワークのドロップダウンで選び、このパネルではこの端末で変えている項目・既定に戻す・ワークスペースの既定にするの対象としてだけ扱う。トップバーの表示の設定のボタンで開き、コメントの一覧と同じ左のパネルで見ている画面に重ねる。幅 900px 以下は画面の幅いっぱいに出す。コメントの一覧とは片方だけを開き、右の詳細パネルは開いたままにする。
 mock: dev/mock/pages/settings-panel/327/standard/index.html
 screen: plugins/mindstella/skills/mindmap/preview/screens/settings.ts

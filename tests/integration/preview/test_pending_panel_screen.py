@@ -16,6 +16,7 @@ from preview_edit_helpers import (
     read_edits_file,
     read_items_file,
 )
+from preview_scrim_helpers import SCRIM_ON, click_scrim, detail_above_scrim, main_inert, scrim_visible
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from workspace_fixtures import RECORD_DIR, MakeEdit, MakeItem
 
@@ -124,6 +125,27 @@ def test_close(
     assert page.get_by_role("button", name="保存待ち（4 件）").count() == 1
 
 
+def test_close_by_scrim(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """開いている間はトップバーとタブの帯とパネル以外をグレーアウトし、グレーアウトした所を押すとパネルを閉じてトップバーのボタンへフォーカスを戻す（正常系）。"""
+    # 準備
+    page, root = _open_panel(write_edit_preview, make_item, make_edit, open_preview)
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行
+    click_scrim(page)
+    # 検証
+    expect(page.locator(PENDING_PANEL)).to_have_count(0)
+    assert covered == (True, True)
+    assert page.evaluate("document.activeElement?.dataset.act") == "pending"
+    assert scrim_visible(page) is False
+    assert len(read_edits_file(root)["items"]) == 4
+
+
 def test_groups(
     write_edit_preview: WriteReviewPreview,
     make_item: MakeItem,
@@ -160,6 +182,26 @@ def test_group_opens_item(
     assert page.inner_text(f"{DETAIL_PANEL} .panel-kind") == "検討事項 D-1"
     assert page.get_by_role("button", name="編集を終える").count() == 1
     assert page.locator(f"{DETAIL_PANEL} form.pe-form").count() == 1
+
+
+def test_group_opens_item_above_scrim(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """まとまりの見出しから開いた詳細パネルはグレーアウトの上に出し、操作できる（正常系）。"""
+    # 準備
+    page, _ = _open_panel(write_edit_preview, make_item, make_edit, open_preview)
+    # 実行
+    page.get_by_role("button", name="D-1「最初の問い」を開く").click()
+    page.wait_for_selector(f"{DETAIL_PANEL}.open")
+    page.wait_for_function("document.body.classList.contains('detail-above-scrim')")
+    # 検証
+    assert scrim_visible(page) is True
+    assert detail_above_scrim(page) is True
+    assert page.evaluate(f"document.querySelector('{DETAIL_PANEL}').inert") is False
+    assert page.locator(PENDING_PANEL).count() == 1
 
 
 def test_group_opens_settings(
@@ -245,7 +287,7 @@ def test_empty(
     expect(page.locator(f"{PENDING_PANEL} .comments-empty")).to_have_text("保存待ちの編集はありません。")
     assert page.locator(f"{PENDING_PANEL} .pe-foot-sum").count() == 0
     assert page.is_disabled(SAVE_BUTTON)
-    assert page.evaluate("document.activeElement.tagName") == "H2"
+    page.wait_for_function("document.activeElement?.tagName === 'H2'")
     assert read_edits_file(root)["items"] == []
 
 

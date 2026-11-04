@@ -23,7 +23,15 @@ from edit_helpers import (
 )
 from integration.preview.preview_edit_helpers import wait_saved_edit
 from playwright.sync_api import Page, expect
-from preview_helpers import TAG_VALUES_SCRIPT, OpenPreview, ServeWorkspace, pick_history_point
+from preview_helpers import (
+    SCRIM_ON,
+    TAG_VALUES_SCRIPT,
+    OpenPreview,
+    ServeWorkspace,
+    is_inert,
+    pick_history_point,
+    scrim_shown,
+)
 from workspace_fixtures import RECORD_DIR, CallTool, MakeEdit, MakeItem, MakeWorkspace, StartServer, WriteEdits
 
 # 溜めた編集の取り消しに使う、項目を指す見出しの文字
@@ -124,6 +132,11 @@ def test_normal(
     # 実行（保存待ちのパネルを開き、T-1 の編集を取り消す）
     open_pending(page)
     assert page.locator(f"{PENDING_PANEL} .pe-row").count() == 5
+    # 検証（開いている間はパネルとトップバー以外がグレーアウトされ、ボードのカードを押せない）
+    page.wait_for_selector(SCRIM_ON)
+    assert scrim_shown(page) is True
+    assert is_inert(page, ".board button.card[data-id='D-1']") is True
+    assert is_inert(page, PENDING_BUTTON) is False
     page.get_by_role("button", name=UNDO_TASK_STATUS).click()
     wait_pending_count(page, 4)
     # 検証（取り消した後、D-1 の 4 件は残る）
