@@ -500,7 +500,7 @@ components:
       - name: comment
         type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
-        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editingIn: 'list' | 'detail', editError: string | null, editBody: string | null, expanded: Set<string>, on: {edit, saveEdit, cancelEdit, remove, restore, fold}}`（`expanded` は本文を開いている行の ID、`on.fold` は本文を開く／畳む（書き込みの ID・開くか））。書き換えていない行の本文は `reviewBodyFold`（`label` は「{向けた項目の ID} へのコメント」、`titles` は記録の項目のタイトル、`changeSets` は記録のまとまりの説明、`open` は `expanded` にあるか、`focus` は `REVIEW_FOCUS`、`on.toggle` は `edit.on.fold`、`on.openId` は `on.open`、`on.changeSet` は `on.changeSet`）で描き、本文の下に開閉のボタンだけの行（`review-more-row`）を置く（`removed` はその項目への消したコメントだけ。`editingIn` は修正を始めた場所。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
+        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editingIn: 'list' | 'detail', editError: string | null, editBody: string | null, expanded: Set<string>, on: {edit, saveEdit, cancelEdit, remove, restore, fold}}`（`expanded` は本文を開いている行の ID、`on.fold` は本文を開く／畳む（書き込みの ID・開くか））。書き換えていない行の本文は `reviewBodyFold`（`label` は `reviewLabel`（「{向けた項目の ID} へのコメント」）、`titles` は記録の項目のタイトル、`changeSets` は記録のまとまりの説明、`open` は `expanded` にあるか、`focus` は `REVIEW_FOCUS`、`on.toggle` は `edit.on.fold`、`on.openId` は `on.open`、`on.changeSet` は `on.changeSet`）で描き、本文の下に開閉のボタンだけの行（`review-more-row`）を置く（`removed` はその項目への消したコメントだけ。`editingIn` は修正を始めた場所。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
       - name: highlight
         type: Location | null
         required: false
@@ -3917,6 +3917,29 @@ functions:
         condition: 'D-1: `[{name: API, main: true}]`・T-1: `[{name: ａｐｉ}, {name: 画面}]`・N-1: `[{name: 保存}]`・TH-1: `[画面]`'
         mock: なし
         expected: '`[api, 画面, 保存]`'
+  - name: reviewLabel
+    title: レビュー中の書き込みの読み上げの名前の頭
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中の書き込みの行の読み上げの名前の頭を返す。返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」、項目を指さないものは「項目を指さないコメント」（`thread` を持たない詳細パネルの行は新しいスレッドと同じ扱い）。`commentsPanel`・`threadPost`・`detailPanel`・`reviewRowActions` が使う
+    args:
+      - name: item
+        type: ReviewItem
+        required: true
+        passing: positional
+        description: レビュー中の書き込み
+    returns:
+      type: string
+      description: 読み上げの名前の頭
+    unit_tests:
+      - name: test_review_label
+        case: 正常
+        summary: 返信・項目へのコメント・項目を指さないコメントの頭
+        condition: '`parametrize`: `thread: TH-1` / `thread: null`・`target: D-1` / `thread` を持たず `target: D-1` / `thread: null`・`target: null`'
+        mock: なし
+        expected: 「TH-1 への返信」/「D-1 へのコメント」/「D-1 へのコメント」/「項目を指さないコメント」
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
