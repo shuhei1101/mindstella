@@ -1,0 +1,9 @@
+# commit の前に、React の側（frontend/src）の lint と型検査を npm scripts で流す
+pre-commit:
+  jobs:
+    - name: lint
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: npm run --silent lint -- {staged_files}
+    - name: typecheck
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: npm run --silent typecheck

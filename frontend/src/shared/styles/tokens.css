@@ -1,0 +1,200 @@
+/* デザイン方針のトークン（スタイル: 開発者ツール × スイス、見本 dev/mock/styles/shadcn-swiss-cards/）。:root の 3 ティアで持つ */
+
+/* ===== プリミティブ: 明暗どちらでも同じ生の値 ===== */
+:root {
+  /* 無彩色（ライト側） */
+  --zinc-0: #ffffff;
+  --zinc-50: #fafafa;
+  --zinc-75: #f5f5f7;
+  --zinc-100: #f4f4f5;
+  --zinc-300: #d4d4d8;
+  --zinc-400: #a1a1aa;
+  --zinc-450: #71717a;
+  --zinc-500: #6b6b74;
+  --zinc-600: #52525b;
+  --zinc-700: #3f3f46;
+  --zinc-800: #27272a;
+  --zinc-900: #18181b;
+  /* 無彩色（ダーク側） */
+  --ink-0: #000000;
+  --ink-50: #0b0b0c;
+  --ink-100: #131316;
+  --ink-150: #16161a;
+  --ink-200: #1b1b1f;
+  --ink-250: #1d1d22;
+  --ink-400: #33333a;
+  --ink-600: #8f8f99;
+  --ink-700: #b4b4bc;
+  --ink-900: #ededef;
+  /* 印の色（青緑） */
+  --teal-400: #2dd4bf;
+  --teal-700: #0f766e;
+  /* 状態の色 */
+  --green-700: #15803d;
+  --green-300: #4ade80;
+  --blue-700: #1d4ed8;
+  --blue-300: #7aa2ff;
+  --red-700: #b91c1c;
+  --red-300: #f87171;
+  --amber-700: #b45309;
+  --amber-300: #fbbf24;
+  --violet-700: #6d28d9;
+  --violet-300: #c4a7ff;
+  /* 当たった語の地 */
+  --yellow-200: #fde68a;
+  --yellow-900: #5c4a12;
+  /* 文字 */
+  --font-stack-sans: "Inter", "Noto Sans JP", system-ui, sans-serif;
+  --font-stack-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --fs-body: 0.875rem;
+  --fs-small: 0.8125rem;
+  --fs-xs: 0.75rem;
+  --fs-h2: 0.9375rem;
+  --fs-big: 2.75rem;
+  /* 寸法 */
+  --radius: 4px;
+  --control-h: 32px;
+  --target-min: 24px;
+}
+
+/* ===== セマンティック: ライト（明暗の既定は端末の設定に従う） ===== */
+:root {
+  color-scheme: light dark;
+  --background: var(--zinc-75);
+  --foreground: var(--zinc-900);
+  --card: var(--zinc-0);
+  --card-foreground: var(--zinc-900);
+  --muted: var(--zinc-100);
+  --muted-foreground: var(--zinc-600);
+  --subtle-foreground: var(--zinc-500);
+  --popover: var(--zinc-0);
+  --popover-foreground: var(--zinc-900);
+  --primary: var(--zinc-900);
+  --primary-foreground: var(--zinc-50);
+  --secondary: var(--zinc-100);
+  --secondary-foreground: var(--zinc-900);
+  --accent: var(--zinc-100);
+  --accent-foreground: var(--zinc-900);
+  --destructive: var(--red-700);
+  --destructive-foreground: var(--zinc-0);
+  --border: var(--zinc-300);
+  --input: var(--zinc-300);
+  --ring: var(--teal-700);
+  --thead: var(--zinc-50);
+  --mark: var(--teal-700);
+  --on-mark: var(--zinc-0);
+  --st-done: var(--green-700);
+  --st-open: var(--blue-700);
+  --st-review: var(--red-700);
+  --st-hold: var(--amber-700);
+  --st-loose: var(--violet-700);
+  --st-off: var(--zinc-450);
+  --hit: var(--yellow-200);
+  --topbar-bg: var(--zinc-900);
+  --topbar-fg: var(--zinc-50);
+  --topbar-fg-2: var(--zinc-400);
+  --topbar-line: var(--zinc-700);
+  --topbar-hover: var(--zinc-800);
+  /* トップバーの上の失敗と未読の点（明暗どちらでも暗い帯の上で読める色） */
+  --topbar-danger: var(--red-300);
+  --topbar-unread: var(--teal-400);
+}
+
+/* ===== セマンティック: ダーク ===== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: var(--ink-50);
+    --foreground: var(--ink-900);
+    --card: var(--ink-100);
+    --card-foreground: var(--ink-900);
+    --muted: var(--ink-200);
+    --muted-foreground: var(--ink-700);
+    --subtle-foreground: var(--ink-600);
+    --popover: var(--ink-200);
+    --popover-foreground: var(--ink-900);
+    --primary: var(--ink-900);
+    --primary-foreground: var(--ink-50);
+    --secondary: var(--ink-200);
+    --secondary-foreground: var(--ink-900);
+    --accent: var(--ink-250);
+    --accent-foreground: var(--ink-900);
+    --destructive: var(--red-300);
+    --destructive-foreground: var(--ink-50);
+    --border: var(--ink-400);
+    --input: var(--ink-400);
+    --ring: var(--teal-400);
+    --thead: var(--ink-150);
+    --mark: var(--teal-400);
+    --on-mark: var(--ink-50);
+    --st-done: var(--green-300);
+    --st-open: var(--blue-300);
+    --st-review: var(--red-300);
+    --st-hold: var(--amber-300);
+    --st-loose: var(--violet-300);
+    --st-off: var(--ink-600);
+    --hit: var(--yellow-900);
+    --topbar-bg: var(--ink-0);
+    --topbar-fg: var(--ink-900);
+    --topbar-fg-2: var(--zinc-400);
+    --topbar-line: var(--ink-400);
+    --topbar-hover: var(--ink-250);
+  }
+}
+
+/* ダークに固定したとき（値はダークの節と同じ） */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: var(--ink-50);
+  --foreground: var(--ink-900);
+  --card: var(--ink-100);
+  --card-foreground: var(--ink-900);
+  --muted: var(--ink-200);
+  --muted-foreground: var(--ink-700);
+  --subtle-foreground: var(--ink-600);
+  --popover: var(--ink-200);
+  --popover-foreground: var(--ink-900);
+  --primary: var(--ink-900);
+  --primary-foreground: var(--ink-50);
+  --secondary: var(--ink-200);
+  --secondary-foreground: var(--ink-900);
+  --accent: var(--ink-250);
+  --accent-foreground: var(--ink-900);
+  --destructive: var(--red-300);
+  --destructive-foreground: var(--ink-50);
+  --border: var(--ink-400);
+  --input: var(--ink-400);
+  --ring: var(--teal-400);
+  --thead: var(--ink-150);
+  --mark: var(--teal-400);
+  --on-mark: var(--ink-50);
+  --st-done: var(--green-300);
+  --st-open: var(--blue-300);
+  --st-review: var(--red-300);
+  --st-hold: var(--amber-300);
+  --st-loose: var(--violet-300);
+  --st-off: var(--ink-600);
+  --hit: var(--yellow-900);
+  --topbar-bg: var(--ink-0);
+  --topbar-fg: var(--ink-900);
+  --topbar-fg-2: var(--zinc-400);
+  --topbar-line: var(--ink-400);
+  --topbar-hover: var(--ink-250);
+}
+
+/* ライトに固定したとき */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* ===== 派生: セマンティックトークンから color-mix で作る ===== */
+:root {
+  --border-soft: color-mix(in oklab, var(--border) 55%, var(--card));
+  --mark-weak: color-mix(in oklab, var(--mark) 8%, var(--card));
+  --mark-line: color-mix(in oklab, var(--mark) 45%, var(--card));
+  --row-hover: color-mix(in oklab, var(--foreground) 4%, var(--card));
+  --row-selected: var(--mark-weak);
+  /* 差分の表示の変更の点（保留の色） */
+  --diff-changed: var(--st-hold);
+  /* 差分の札の × に乗せたときの面 */
+  --topbar-chip-hover: color-mix(in oklab, var(--topbar-bg) 12%, var(--topbar-fg));
+}
