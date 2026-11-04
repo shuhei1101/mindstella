@@ -12,4 +12,4 @@ notes:
   置き場所: knowledge の規約『ビルド構成』『フォルダ構成』のとおり、package.json と各ツールの設定をリポジトリの直下に、ソースを `frontend/` に置く。React の側の `tsconfig.json` だけは `frontend/` に置く（typescript-eslint の `projectService` が対象に最も近い `tsconfig.json` を引き、直下の `tsconfig.json` は今の画面の設定のため。PoC 検証の所見）
   ルート: TanStack Router のファイルのルートで `routes/` を置き、`@tanstack/router-plugin` の Vite のプラグインで `route-tree.gen.ts` を生成する
   ストーリー: 共通の部品（`shared/components/`）は状態ごとのストーリーを横に置き、画面の部品（`components/`）にはストーリーを置かない（knowledge の規約『Storybook』）。概要の画面の本体のストーリーは MSW の handler でデータを差し込む
-  単体テスト: Vitest と Testing Library で、テストのファイルを対象の横に `{名前}.test.ts(x)` で置く（knowledge の規約『フォルダ構成』『Unit / Component テスト』）。単体テストの表の名前は、各テストの `it` の名前にする
+  単体テスト: Vitest と Testing Library で、テストのファイルを対象の横に `{名前}.test.ts(x)` で置く（knowledge の規約『フォルダ構成』『Unit / Component テスト』）。単体テストの表の名前から先頭の `test_` を除いた名前を、各テストの `test` の名前にする

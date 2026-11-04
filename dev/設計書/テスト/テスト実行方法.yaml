@@ -36,6 +36,21 @@ layers:
         ```bash
         pytest {テストファイルパス}
         ```
+  - name: 単体テスト（React）
+    description: Vitest（jsdom）で、`frontend/src/` の関数・フック・部品を、テストファイルを同じフォルダに置いて確かめる。API は MSW のハンドラ（`frontend/src/testing/msw/`）で、`EventSource` は偽物（`frontend/src/testing/fake-event-source.ts`）で差し替える。画面はメモリの上の Router で描く（`frontend/src/testing/render.tsx`）
+    prerequisites:
+      - Node 20.19 以上で `npm ci` を済ませてある
+      - 実行はリポジトリの直下で行う
+    run_all: |-
+      ```bash
+      npx vitest run
+      ```
+    run_one:
+      label: ファイル
+      command: |-
+        ```bash
+        npx vitest run {テストファイルパス}
+        ```
   - name: 結合テスト（バック）
     run_all: |-
       ```bash
