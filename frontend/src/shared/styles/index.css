@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-*: initial;
+}
+
+/* 3 ティアのトークン（値は仮。デザインスタイル選定で決める） */
+:root {
+  --palette-gray-50: oklch(0.98 0 0);
+  --palette-gray-900: oklch(0.2 0 0);
+  --palette-blue-600: oklch(0.55 0.2 260);
+  --background: var(--palette-gray-50);
+  --foreground: var(--palette-gray-900);
+  --primary: var(--palette-blue-600);
+  --primary-foreground: var(--palette-gray-50);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+}

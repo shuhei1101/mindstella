@@ -325,6 +325,9 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(redirect_response(PAGE_PATH))
         elif path == PAGE_PATH:
             self._reply(index_response(context.preview_dir))
+        elif path == SPA_PATH or path.startswith(f"{SPA_PATH}/"):
+            # PoC: ビルドした SPA の静的なファイル。無いパスは SPA の中のルートとして index.html を返す
+            self._reply(spa_response(context.preview_dir / "spa", path.removeprefix(SPA_PATH)))
         elif path == "/api/records":
             self._reply(records_response(context))
         elif path == "/api/events":
@@ -651,6 +654,20 @@ def problem_response(status: int, detail: str) -> Response:
 def redirect_response(location: str) -> Response:
     """本文を持たない 302 で、location へ送り直す応答を作る。"""
     return Response(status=HTTPStatus.FOUND, content_type=HTML_TYPE, body=b"", location=location)
+
+
+SPA_PATH = "/spa"
+SPA_TYPES = {".html": HTML_TYPE, ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml"}
+
+
+def spa_response(spa_dir: Path, sub_path: str) -> Response:
+    """PoC: SPA の出力のファイルを返す。出力の外を指すか、無いファイルは index.html を返す。"""
+    base = spa_dir.resolve()
+    target = (base / unquote(sub_path).lstrip("/")).resolve()
+    if not target.is_relative_to(base) or not target.is_file():
+        target = base / "index.html"
+    content_type = SPA_TYPES.get(target.suffix, "application/octet-stream")
+    return Response(status=HTTPStatus.OK, content_type=content_type, body=target.read_bytes())
 
 
 def index_response(preview_dir: Path) -> Response:

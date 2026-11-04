@@ -1,0 +1,40 @@
+vite v8.3.2 building client environment for production...
+transforming...
+✓ 285 modules transformed.
+rendering chunks...
+computing gzip size...
+plugins/mindstella/skills/mindmap/preview/spa/index.html                   0.40 kB │ gzip:   0.26 kB
+plugins/mindstella/skills/mindmap/preview/spa/assets/index-D9azpJgm.css    5.22 kB │ gzip:   1.72 kB
+plugins/mindstella/skills/mindmap/preview/spa/assets/index-DFifv8VP.js   428.35 kB │ gzip: 135.29 kB
+
+✓ built in 5.01s
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 4.4s of this 5.0s build (88%).
+The slowest callbacks, timed inside each callback (the wait before a callback starts is excluded, the time it awaits is included):
+  - plugin @rolldown/plugin-babel transform (75%, 3.7s, 12 calls)
+  - plugin vite:build-html transform (75%, 3.7s, 1 call)
+These rows add up to more than the total. Callbacks can overlap, so the same time counts for more than one row.
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+
+	Command being timed: "npx vite build"
+	User time (seconds): 1.10
+	System time (seconds): 1.81
+	Percent of CPU this job got: 40%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:07.15
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 348440
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 625
+	Minor (reclaiming a frame) page faults: 54347
+	Voluntary context switches: 56150
+	Involuntary context switches: 3326
+	Swaps: 0
+	File system inputs: 46040
+	File system outputs: 8216
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

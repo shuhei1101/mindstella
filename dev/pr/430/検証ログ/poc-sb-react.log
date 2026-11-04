@@ -1,0 +1,95 @@
+
+┌  Building storybook v10.6.1
+│
+◇  Cleaning outputDir: ../../../../../../../../../tmp/poc-sb-react
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+●  Building open services..
+│
+●  Building preview..
+│  Vite vite v8.3.2 building client environment for production...
+transforming...
+│
+●  Copying static files: .storybook-react/public at
+│  ../../../../../../../../../tmp/poc-sb-react
+✓ 270 modules transformed.
+rendering chunks...
+computing gzip size...
+│  Vite ../../../../../../../../../tmp/poc-sb-react/iframe.html
+│  18.68 kB │ gzip:   5.28 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/iframe-DpA6-OK5.css
+│  22.60 kB │ gzip:   4.30 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/iframe-Cn3dRI4l.js
+│  0.04 kB │ gzip:   0.06 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/compiler-runtime-F44Iwk8k.js
+│  0.27 kB │ gzip:   0.23 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/rolldown-runtime-DkW27tQK.js
+│  1.19 kB │ gzip:   0.67 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/preload-helper-BVscJdOD.js
+│  1.50 kB │ gzip:   0.82 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/records-title.stories-BNlIovqr.js
+│  9.79 kB │ gzip:   3.84 kB
+│  ../../../../../../../../../tmp/poc-sb-react/vite-inject-mocker-entry.js
+│  27.84 kB │ gzip:   9.66 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/topbar.stories-DwXIJ5dp.js
+│  37.89 kB │ gzip:  12.91 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/react-18-BfP44qx6.js
+│  211.37 kB │ gzip:  66.04 kB
+│  ../../../../../../../../../tmp/poc-sb-react/assets/iframe-CbsxzOIC.js
+│  1,966.12 kB │ gzip: 637.77 kB
+
+│
+▲  Vite [plugin builtin:vite-reporter]
+│  (!) Some chunks are larger than 500 kB after minification. Consider:
+│  - Using dynamic import() to code-split the application
+│  - Use build.rolldownOptions.output.codeSplitting to improve chunking:
+│  ]8;;https://rolldown.rs/reference/OutputOptions.codeSplittinghttps://rolldown.rs/reference/OutputOptions.codeSplitting]8;;
+│  - Adjust chunk size limit for this warning via
+│  build.chunkSizeWarningLimit.
+│  Vite ✓ built in 38.61s
+│
+▲  Vite [33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 37.9s of this 38.6s
+│  build (98%).
+│  The slowest callbacks, timed inside each callback (the wait before a
+│  callback starts is excluded, the time it awaits is included):
+│  - plugin @tailwindcss/vite:generate:build transform (86%, 33.1s, 2
+│  calls)
+│  - plugin storybook:react-docgen-plugin transform (7%, 2.6s, 270 calls)
+│  - plugin @rolldown/plugin-babel transform (4%, 1.5s, 16 calls)
+│  - plugin vite:build-html transform (3%, 1.3s, 1 call)
+│  These rows add up to more than the total. Callbacks can overlap, so
+│  the same time counts for more than one row.
+│  See ]8;;https://rolldown.rs/reference/InputOptions.checks#bundlertimingshttps://rolldown.rs/reference/InputOptions.checks#bundlertimings]8;;
+│  for more details.
+
+│
+◇  Output directory: /tmp/poc-sb-react
+│
+└  Storybook build completed successfully
+
+	Command being timed: "npx storybook build -c .storybook-react -o /tmp/poc-sb-react"
+	User time (seconds): 3.52
+	System time (seconds): 8.15
+	Percent of CPU this job got: 23%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:50.33
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 700728
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 757
+	Minor (reclaiming a frame) page faults: 174803
+	Voluntary context switches: 526280
+	Involuntary context switches: 918
+	Swaps: 0
+	File system inputs: 55888
+	File system outputs: 21432
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

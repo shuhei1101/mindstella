@@ -1,0 +1,17 @@
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/poc-preview-react-foundation/frontend/src/shared/components/violation.tsx
+  1:32  error    There is no policy allowing dependencies from elements of type "shared" to elements of type "features"  boundaries/dependencies
+  5:18  warning  Incorrect class order. Expected
+
+"w-[321px]·bg-red-500"
+
+to be
+
+"bg-red-500·w-[321px]"                  better-tailwindcss/enforce-consistent-class-order
+  5:19  error    任意値は使わない                                                                                                better-tailwindcss/no-restricted-classes
+  5:29  error    Unknown class detected: bg-red-500                                                                      better-tailwindcss/no-unknown-classes
+  6:6   error    `legacyCount` is deprecated. lint の検証用                                                                  @typescript-eslint/no-deprecated
+
+✖ 5 problems (4 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

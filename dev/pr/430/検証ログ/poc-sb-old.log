@@ -1,0 +1,139 @@
+
+┌  Building storybook v10.6.1
+│
+◇  Cleaning outputDir: storybook-static
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+●  Building open services..
+│
+●  Building preview..
+│  Vite vite v8.3.2 building client environment for production...
+transforming...
+│
+●  Copying static files: plugins/mindstella/skills/mindmap/preview at
+│  storybook-static/preview
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+│  Vite storybook-static/iframe.html
+│  23.09 kB │ gzip:   6.38 kB
+│  storybook-static/assets/comment-mark.stories-txXeduhI.js
+│  0.42 kB │ gzip:   0.29 kB
+│  storybook-static/assets/diff-mark.stories-CGNeHJgG.js
+│  0.49 kB │ gzip:   0.31 kB
+│  storybook-static/assets/body-diff-layout-switch.stories-VbmrczYz.js
+│  0.55 kB │ gzip:   0.38 kB
+│  storybook-static/assets/rolldown-runtime-Dh6celcD.js
+│  0.62 kB │ gzip:   0.41 kB
+│  storybook-static/assets/withdrawn-badge.stories-B6ZH_LRP.js
+│  0.67 kB │ gzip:   0.43 kB
+│  storybook-static/assets/view-switch.stories-eoqvYlBg.js
+│  0.68 kB │ gzip:   0.39 kB
+│  storybook-static/assets/body-format-badge.stories-Bn6kOyb2.js
+│  0.74 kB │ gzip:   0.40 kB
+│  storybook-static/assets/tag-list.stories-CiJLpjPz.js
+│  0.94 kB │ gzip:   0.57 kB
+│  storybook-static/assets/pending-mark.stories-BxO3LIBb.js
+│  0.96 kB │ gzip:   0.47 kB
+│  storybook-static/assets/removed-band.stories-BQAYCTDt.js
+│  1.08 kB │ gzip:   0.72 kB
+│  storybook-static/assets/doc-export-menu.stories-BqPhYvDB.js
+│  1.11 kB │ gzip:   0.61 kB
+│  storybook-static/assets/selection-comment.stories-B9co-RiB.js
+│  1.12 kB │ gzip:   0.62 kB
+│  storybook-static/assets/chips-input.stories-BIjDeUj5.js
+│  1.15 kB │ gzip:   0.68 kB
+│  storybook-static/assets/reply-form.stories-BYb7HfHg.js
+│  1.24 kB │ gzip:   0.81 kB
+│  storybook-static/assets/preload-helper-DX4WCqxR.js
+│  1.50 kB │ gzip:   0.82 kB
+│  storybook-static/assets/settings-confirm.stories-B6dvlqZP.js
+│  1.52 kB │ gzip:   0.93 kB
+│  storybook-static/assets/history-dialog.stories-D3dIXtni.js
+│  1.63 kB │ gzip:   1.04 kB
+│  storybook-static/assets/side-by-side-body-diff.stories-ccEMHesq.js
+│  1.99 kB │ gzip:   0.94 kB
+│  storybook-static/assets/settings-panel.stories-C_sxJka6.js
+│  2.36 kB │ gzip:   1.14 kB
+│  storybook-static/assets/filter-drawer.stories-C2YsVUHv.js
+│  2.65 kB │ gzip:   1.18 kB
+│  storybook-static/assets/send-form.stories-GheY-kAi.js
+│  2.79 kB │ gzip:   1.43 kB
+│  storybook-static/assets/review-body-fold.stories-OLHe8iXR.js
+│  2.87 kB │ gzip:   1.51 kB
+│  storybook-static/assets/html-body-diff.stories-BBGXFOkN.js
+│  3.14 kB │ gzip:   1.16 kB
+│  storybook-static/assets/table.stories-pya-akPu.js
+│  3.38 kB │ gzip:   1.63 kB
+│  storybook-static/assets/term-tip.stories-BW7fpf9v.js
+│  3.45 kB │ gzip:   1.76 kB
+│  storybook-static/assets/diff-minimap.stories-tzboi2LO.js
+│  4.08 kB │ gzip:   1.69 kB
+│  storybook-static/assets/thread-row.stories-cFzblUJ-.js
+│  4.57 kB │ gzip:   1.79 kB
+│  storybook-static/assets/html-body-frame.stories-D5oaonza.js
+│  4.89 kB │ gzip:   2.00 kB
+│  storybook-static/assets/markdown-body.stories-BMksQvi8.js
+│  5.48 kB │ gzip:   2.71 kB
+│  storybook-static/assets/thread-post.stories-mf-AfG9N.js
+│  6.15 kB │ gzip:   2.70 kB
+│  storybook-static/assets/topbar.stories-ixHssIcK.js
+│  10.17 kB │ gzip:   2.07 kB
+│  storybook-static/vite-inject-mocker-entry.js
+│  27.84 kB │ gzip:   9.66 kB
+│  storybook-static/assets/iframe-Dz1J23bX.js
+│  863.90 kB │ gzip: 240.99 kB
+
+│  Vite ✓ built in 4.65s
+│
+▲  Vite [plugin builtin:vite-reporter]
+│  (!) Some chunks are larger than 500 kB after minification. Consider:
+│  - Using dynamic import() to code-split the application
+│  - Use build.rolldownOptions.output.codeSplitting to improve chunking:
+│  ]8;;https://rolldown.rs/reference/OutputOptions.codeSplittinghttps://rolldown.rs/reference/OutputOptions.codeSplitting]8;;
+│  - Adjust chunk size limit for this warning via
+│  build.chunkSizeWarningLimit.
+│
+▲  Vite [33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 4.3s of this 4.6s
+│  build (92%).
+│  The slowest callbacks, timed inside each callback (the wait before a
+│  callback starts is excluded, the time it awaits is included):
+│  - plugin @rolldown/plugin-babel transform (79%, 3.7s, 36 calls)
+│  - plugin vite:build-html transform (75%, 3.5s, 1 call)
+│  These rows add up to more than the total. Callbacks can overlap, so
+│  the same time counts for more than one row.
+│  See ]8;;https://rolldown.rs/reference/InputOptions.checks#bundlertimingshttps://rolldown.rs/reference/InputOptions.checks#bundlertimings]8;;
+│  for more details.
+
+│
+◇  Output directory:
+│  /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/poc-preview-react-foundation/storybook-static
+│
+└  Storybook build completed successfully
+
+	Command being timed: "npx storybook build -o storybook-static"
+	User time (seconds): 2.22
+	System time (seconds): 1.76
+	Percent of CPU this job got: 28%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:13.86
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 560936
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 632
+	Minor (reclaiming a frame) page faults: 116526
+	Voluntary context switches: 97552
+	Involuntary context switches: 1370
+	Swaps: 0
+	File system inputs: 47016
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

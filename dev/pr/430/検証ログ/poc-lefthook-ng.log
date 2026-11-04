@@ -1,0 +1,30 @@
+[38;2;56;56;56m╭─────────────────────────────────────────╮[m
+[38;2;56;56;56m│[m 🥊 lefthook  v2.2.2   hook:  [1mpre-commit[m [38;2;56;56;56m│[m
+[38;2;56;56;56m╰─────────────────────────────────────────╯[m
+sync hooks: ✔️(pre-commit)
+┃  eslint ❯ 
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/poc-preview-react-foundation/frontend/src/shared/components/violation.tsx
+  1:32  error    There is no policy allowing dependencies from elements of type "shared" to elements of type "features"  boundaries/dependencies
+  5:18  warning  Incorrect class order. Expected
+
+"w-[321px]·bg-red-500"
+
+to be
+
+"bg-red-500·w-[321px]"                  better-tailwindcss/enforce-consistent-class-order
+  5:19  error    任意値は使わない                                                                                                better-tailwindcss/no-restricted-classes
+  5:29  error    Unknown class detected: bg-red-500                                                                      better-tailwindcss/no-unknown-classes
+  6:6   error    `legacyCount` is deprecated. lint の検証用                                                                  @typescript-eslint/no-deprecated
+
+✖ 5 problems (4 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+
+exit status 1
+┃  typecheck ❯ 
+
+[38;2;56;56;56m  ────────────────────────────────────[m
+summary: (done in 64.53 seconds)
+✔️ typecheck (8.07 seconds)
+🥊 eslint (56.46 seconds)

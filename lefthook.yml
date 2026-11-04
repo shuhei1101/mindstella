@@ -1,0 +1,8 @@
+pre-commit:
+  jobs:
+    - name: eslint
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: npx eslint {staged_files}
+    - name: typecheck
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: npx tsc -p frontend --noEmit

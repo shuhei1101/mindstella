@@ -1,0 +1,39 @@
+openapi: 3.1.0
+info:
+  title: mindstella preview
+  version: 0.0.0
+paths:
+  /api/records:
+    get:
+      operationId: getRecords
+      responses:
+        "200":
+          description: ワークスペースの記録
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Records"
+components:
+  schemas:
+    Item:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string }
+    Records:
+      type: object
+      required: [settings, decisions, tasks, built_at]
+      properties:
+        settings:
+          type: object
+          required: [summary]
+          properties:
+            summary: { type: string }
+        decisions:
+          type: array
+          items: { $ref: "#/components/schemas/Item" }
+        tasks:
+          type: array
+          items: { $ref: "#/components/schemas/Item" }
+        built_at: { type: string }
