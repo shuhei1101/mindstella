@@ -1,4 +1,4 @@
-title: "プレビューの配信"
+title: プレビューの配信
 entry:
   kind: endpoint
   value: GET /mindstella.html
@@ -137,7 +137,7 @@ status_codes:
     condition: '`Host` が制約「接続先の確かめ」に合わない'
     notes: 本文は返さない
   - code: '404'
-    condition: '`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts`・`/api/config/display`・`/api/config/reload` 以外のパス'
+    condition: '`/`・`/mindstella.html`・`/spa`（`/spa/{path}` を含む。『SPAの配信』）・`/api/records`・`/api/events`・`/api/comments`（`/api/comments/{id}`・`/api/comments/send` を含む）・`/api/drafts`・`/api/config/display`・`/api/config/reload` 以外のパス'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 待ち受け
