@@ -2,7 +2,7 @@ title: SPAを開く
 entry:
   kind: screen
   value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数）・`GET /api/edits`（保存待ちの編集の件数）'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数）・`GET /api/edits`（保存待ちの編集の件数）・`GET /api/threads`（スレッドの利用者の未読）'
 flows:
 - name: 正常系
   summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
@@ -10,11 +10,12 @@ flows:
   - name: Mock
     description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
   - name: make_workspace
-    description: 検討事項 D-1・D-2 とタスク T-1 を持つワークスペース
+    description: 検討事項 D-1・D-2 とタスク T-1、利用者の未読の書き込みを持つオープンのスレッド 1 件と、レビュー中のコメント 2 件を持つワークスペース
   flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>SV: GET /api/events につなぐ\n  IF-->>ユーザー: トップバーと概要\n```"
   expected:
   - トップバーに話し合いの題名があり、タブの帯で概要が選ばれている
   - 概要のタイルが記録の値で描かれている
+  - トップバーのコメントのボタンに件数 2 と未読の点がある
   - URL が `/spa/`（search params が付かない）
   - ブラウザのコンソールにエラーが出ていない
   test: test_normal
