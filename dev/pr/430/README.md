@@ -1,0 +1,1 @@
+# PoC: React 移行の土台（型検査・lint・ビルド・配信・生成・Storybook）の成立を確認する
