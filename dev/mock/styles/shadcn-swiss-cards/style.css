@@ -7,22 +7,25 @@
   --foreground: #18181b;
   --card: #ffffff;
   --muted: #f4f4f5;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --accent-foreground: #18181b;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
   --muted-foreground: #52525b;
   --subtle-foreground: #6b6b74;
   --accent: #f4f4f5;
   --border: #d4d4d8;
-  --border-soft: #e4e4e7;
   --input: #d4d4d8;
   --ring: #0f766e;
   --primary: #18181b;
   --primary-foreground: #fafafa;
   --thead: #fafafa;
   --mark: #0f766e;
-  --mark-weak: #e6f3f1;
-  --mark-line: #99d0c8;
   --on-mark: #ffffff;
-  --row-hover: #f8f8f9;
-  --row-selected: #e6f3f1;
   --st-done: #15803d;
   --st-open: #1d4ed8;
   --st-review: #b91c1c;
@@ -59,22 +62,25 @@
   --foreground: #ededef;
   --card: #131316;
   --muted: #1b1b1f;
+  --card-foreground: #ededef;
+  --popover: #1b1b1f;
+  --popover-foreground: #ededef;
+  --secondary: #1b1b1f;
+  --secondary-foreground: #ededef;
+  --accent-foreground: #ededef;
+  --destructive: #f87171;
+  --destructive-foreground: #0b0b0c;
   --muted-foreground: #b4b4bc;
   --subtle-foreground: #8f8f99;
   --accent: #1d1d22;
   --border: #33333a;
-  --border-soft: #26262b;
   --input: #33333a;
   --ring: #2dd4bf;
   --primary: #ededef;
   --primary-foreground: #0b0b0c;
   --thead: #16161a;
   --mark: #2dd4bf;
-  --mark-weak: #10302c;
-  --mark-line: #1f5f57;
   --on-mark: #0b0b0c;
-  --row-hover: #18181c;
-  --row-selected: #10302c;
   --st-done: #4ade80;
   --st-open: #7aa2ff;
   --st-review: #f87171;
@@ -112,22 +118,25 @@
   --foreground: #ededef;
   --card: #131316;
   --muted: #1b1b1f;
+  --card-foreground: #ededef;
+  --popover: #1b1b1f;
+  --popover-foreground: #ededef;
+  --secondary: #1b1b1f;
+  --secondary-foreground: #ededef;
+  --accent-foreground: #ededef;
+  --destructive: #f87171;
+  --destructive-foreground: #0b0b0c;
   --muted-foreground: #b4b4bc;
   --subtle-foreground: #8f8f99;
   --accent: #1d1d22;
   --border: #33333a;
-  --border-soft: #26262b;
   --input: #33333a;
   --ring: #2dd4bf;
   --primary: #ededef;
   --primary-foreground: #0b0b0c;
   --thead: #16161a;
   --mark: #2dd4bf;
-  --mark-weak: #10302c;
-  --mark-line: #1f5f57;
   --on-mark: #0b0b0c;
-  --row-hover: #18181c;
-  --row-selected: #10302c;
   --st-done: #4ade80;
   --st-open: #7aa2ff;
   --st-review: #f87171;
@@ -177,6 +186,14 @@
   --content-max: 1320px;
   --font-sans: "Inter", "Noto Sans JP", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+/* 派生: セマンティックトークンから color-mix で作る */
+:root {
+  --border-soft: color-mix(in oklab, var(--border) 55%, var(--card));
+  --mark-weak: color-mix(in oklab, var(--mark) 8%, var(--card));
+  --mark-line: color-mix(in oklab, var(--mark) 45%, var(--card));
+  --row-hover: color-mix(in oklab, var(--foreground) 4%, var(--card));
+  --row-selected: var(--mark-weak);
 }
 /* 見本の部品の CSS が読む名前を、shadcn のトークンへ割り当てる */
 :root {
@@ -518,4 +535,15 @@ mark { background: var(--hit); color: inherit; padding: 0 1px; }
 }
 
 /* ===== この候補の見せ方 ===== */
+/* 補助のボタン */
+.btn.secondary { background: var(--secondary); color: var(--secondary-foreground); border-color: transparent; }
+/* 取り消せない操作のボタン */
+.btn.destructive { background: var(--destructive); color: var(--destructive-foreground); border-color: var(--destructive); }
+/* 重ねるメニュー: popover の地 */
+.menu { display: grid; gap: 2px; width: 220px; padding: 4px; background: var(--popover); color: var(--popover-foreground); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px var(--shadow-color); }
+.menu label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius); font-size: var(--fs-small); }
+.menu label:hover { background: var(--accent); color: var(--accent-foreground); }
+/* 部品と状態の見本: 実際の画面と同じタイルの地に置く */
+.parts-tile { display: grid; gap: 20px; }
+.parts-tile .states { margin-top: 0; }
 .tile { background: var(--card); border-radius: var(--radius); padding: var(--tile-pad); }
