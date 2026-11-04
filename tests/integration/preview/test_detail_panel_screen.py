@@ -6390,3 +6390,82 @@ def test_edit_tags_when_remove_pending(
     group = page.get_by_role("group", name="タグ")
     assert page.get_by_label("タグを追加").is_disabled() is True
     assert group.locator("button").evaluate_all("buttons => buttons.map(b => b.disabled)") == [True, True, True, True]
+
+
+# 頭の 1 行と番号付きの 7 行の、改行で 8 行のコメントの本文（各行は詳細パネルの幅で折り返さない短さ）
+LIST_COMMENT_BODY = "\n".join(["D-1 の画面で気になった点", *(f"{number}. {number} 行目の気づき" for number in range(1, 8))])
+
+# 詳細パネル・全画面の、レビュー中のコメントの行の本文を畳んでいるかと、本文の下の開閉のボタン・本文の中のリストの見た目を返す
+REVIEW_FOLD_STATE_JS = """({host, id}) => {
+    const row = document.querySelector(`${host} .d-review li[data-comment="${id}"]`);
+    const body = row.querySelector('.review-body');
+    const more = row.querySelector('.review-more-row button.review-more');
+    const item = body.querySelector('ol > li');
+    return {
+        folded: body.classList.contains('folded'),
+        text: more === null || more.hidden ? null : more.textContent.trim(),
+        label: more === null || more.hidden ? null : more.getAttribute('aria-label'),
+        focus: more === null || more.hidden ? null : more.getAttribute('data-focus'),
+        listItem: item === null ? null : [getComputedStyle(item).display, getComputedStyle(item).borderBottomWidth],
+    };
+}"""
+
+
+@pytest.fixture
+def served_long_review(
+    write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment
+) -> tuple[str, Path]:
+    """D-1 への、番号付きのリストを持つ改行で 8 行のコメント C-1 と 1 行の C-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body=LIST_COMMENT_BODY),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+        ),
+    )
+
+
+def test_review_row_body_folded(served_long_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """行の本文を Markdown で描き、5 行を超える本文は 5 行までに畳んで本文の下に「続きを読む」を出す。5 行以下の行には出さない（正常系）。"""
+    # 準備
+    url, _ = served_long_review
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector("aside.panel .d-review li[data-comment='C-1'] button.review-more:not([hidden])")
+    # 検証
+    assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "aside.panel", "id": "C-1"}) == {
+        "folded": True,
+        "text": "続きを読む",
+        "label": "D-1 へのコメントの続きを読む",
+        "focus": "detail-more:C-1",
+        "listItem": ["list-item", "0px"],
+    }
+    assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "aside.panel", "id": "C-2"}) == {
+        "folded": False,
+        "text": None,
+        "label": None,
+        "focus": None,
+        "listItem": None,
+    }
+
+
+def test_review_row_more(served_long_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """「続きを読む」で全文を開いて「折りたたむ」に変え、詳細の全画面へ切り替えても開いたまま。ハッシュの項目は変えない（正常系）。"""
+    # 準備
+    url, _ = served_long_review
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    more = "aside.panel .d-review li[data-comment='C-1'] button.review-more:not([hidden])"
+    page.wait_for_selector(more)
+    # 実行
+    page.click(more)
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open] .d-review li[data-comment='C-1'] button.review-more:not([hidden])")
+    # 検証
+    assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "dialog.full", "id": "C-1"}) == {
+        "folded": False,
+        "text": "折りたたむ",
+        "label": "D-1 へのコメントの本文を折りたたむ",
+        "focus": "detail-more:C-1",
+        "listItem": ["list-item", "0px"],
+    }
+    assert "id=D-1" in page.evaluate("() => location.hash")

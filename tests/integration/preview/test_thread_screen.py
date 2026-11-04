@@ -869,3 +869,80 @@ def test_fit_smallest(served_thread: tuple[str, Path], open_preview: OpenPreview
         (COMMENTS_PANEL, f"{COMMENTS_PANEL} button[aria-label='コメントの一覧を閉じる']"),
         scope=COMMENTS_PANEL,
     )
+
+
+# 改行で 8 行の本文（各行はパネルの幅で折り返さない短さ）
+EIGHT_LINES = "\n".join(f"{number} 行目の気づき" for number in range(1, 9))
+
+
+def _post_more(comment_id: str) -> str:
+    """スレッドの画面の、レビュー中の書き込みの開閉のボタンの選択子を返す。"""
+    return f"{COMMENTS_PANEL} ol.posts > li[data-comment='{comment_id}'] .review-more-row button.review-more"
+
+
+@pytest.fixture
+def served_long_thread(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """改行で 8 行の AI の書き込みで終わる TH-1 と、TH-1 への改行で 8 行のレビュー中の返信 C-1 と 1 行の C-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1", title="最初の問い"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body=EIGHT_LINES, created="2026-10-12T01:00:00+00:00"),
+                summary="見直しの相談",
+            ),
+        ),
+        comments=(
+            free_comment(make_comment("C-1", body=EIGHT_LINES, thread="TH-1")),
+            free_comment(make_comment("C-2", body="了解です", thread="TH-1")),
+        ),
+    )
+
+
+def test_pending_post_folded(served_long_thread: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """レビュー中の書き込みの本文は 5 行を超えると畳み、本文の下に「続きを読む」だけの行を出す。5 行以下と送った書き込みは畳まない（正常系）。"""
+    # 準備
+    url, _ = served_long_thread
+    page = open_preview(url)
+    # 実行
+    open_thread(page, "TH-1")
+    page.wait_for_selector(_post_more("C-1"), state="visible")
+    # 検証
+    assert page.eval_on_selector(
+        f"{COMMENTS_PANEL} li[data-comment='C-1'] .post-body", "e => e.classList.contains('folded')"
+    ) is True
+    assert page.inner_text(_post_more("C-1")) == "続きを読む"
+    assert page.get_attribute(_post_more("C-1"), "aria-label") == "TH-1 への返信の続きを読む"
+    assert page.is_visible(f"{COMMENTS_PANEL} li[data-comment='C-2'] .review-more-row") is False
+    assert page.locator(f"{COMMENTS_PANEL} ol.posts > li.post.ai button.review-more").count() == 0
+    assert page.eval_on_selector(
+        f"{COMMENTS_PANEL} ol.posts > li.post.ai .post-body", "e => e.scrollHeight <= e.clientHeight + 1"
+    ) is True
+
+
+def test_pending_post_more(served_long_thread: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """「続きを読む」で全文を開いて「折りたたむ」に変え、一覧へ戻ってスレッドを開き直しても開いたまま。ハッシュは変えない（正常系）。"""
+    # 準備
+    url, _ = served_long_thread
+    page = open_preview(url)
+    open_thread(page, "TH-1")
+    page.wait_for_selector(_post_more("C-1"), state="visible")
+    hash_before = page.evaluate("() => location.hash")
+    # 実行
+    page.click(_post_more("C-1"))
+    page.click(f"{COMMENTS_PANEL} button[data-focus='back']")
+    page.click(f"{thread_row('TH-1')} button.th-open")
+    page.wait_for_selector(_post_more("C-1"), state="visible")
+    # 検証
+    assert page.eval_on_selector(
+        f"{COMMENTS_PANEL} li[data-comment='C-1'] .post-body", "e => e.classList.contains('folded')"
+    ) is False
+    assert page.inner_text(_post_more("C-1")) == "折りたたむ"
+    assert page.get_attribute(_post_more("C-1"), "aria-expanded") == "true"
+    assert page.evaluate("() => location.hash") == hash_before
