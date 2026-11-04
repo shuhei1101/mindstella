@@ -1259,7 +1259,7 @@ def test_review_comments(
     assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント2"
     assert page.eval_on_selector_all(
         "aside.panel .d-review li",
-        "rows => rows.map(r => [r.querySelector('.review-loc-name')?.textContent ?? null, r.querySelector('.send-quote')?.textContent ?? null, r.querySelector('.review-body').textContent])",
+        "rows => rows.map(r => [r.querySelector('.review-loc-name')?.textContent ?? null, r.querySelector('.send-quote')?.textContent ?? null, r.querySelector('.review-body').textContent.trim()])",
     ) == [
         ["案 C のデメリット", "表の密度が下がる", "ここは別の言い方にしたい"],
         [None, None, "案 A にする"],
