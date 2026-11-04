@@ -4,6 +4,9 @@ items:
   - page: 概要.yaml
     summary: 既定で開く画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイル
     group: タブ
+  - page: 概要.tsx.yaml
+    summary: React のプレビューの概要。今の概要と同じタイルを、React へ移していない画面には今の画面で移る
+    group: タブ
   - page: 検討事項.yaml
     summary: 検討事項のマップ・ボード・表
     group: タブ
