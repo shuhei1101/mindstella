@@ -51,7 +51,7 @@ POST_SCRIPT = """(props) => {
         },
     });
     document.body.append(item);
-    const buttons = [...item.querySelectorAll("button")];
+    const buttons = [...item.querySelectorAll("button:not([hidden])")];
     const named = (name) => buttons.find((button) => button.getAttribute("aria-label") === name);
     const idButton = buttons.find((button) => button.textContent.trim() === "D-12");
     if (idButton !== undefined) idButton.click();

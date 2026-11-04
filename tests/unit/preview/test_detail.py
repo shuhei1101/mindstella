@@ -954,7 +954,7 @@ async ({data, reviews, removed, editing, editingIn, reviewOrder}) => {
             buttons: [...row.querySelectorAll("button:not([hidden])")].map(labelOf),
             status: [...row.querySelectorAll('[role="status"]')].map((status) => status.textContent.trim()),
             hasField: row.querySelector("textarea") !== null,
-            body: row.querySelector(".review-body")?.textContent ?? null,
+            body: row.querySelector(".review-body")?.textContent.trim() ?? null,
         })),
         focuses: [...section.querySelectorAll("li [data-focus]:not([hidden])")].map((element) => element.getAttribute("data-focus")),
     };
