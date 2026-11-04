@@ -420,3 +420,63 @@ def test_normal_when_review_order_switched(
     assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == newest
     assert page.inner_text("aside.panel .d-review h3 .count") == "3"
     assert (root / RECORD_DIR / "comments.yaml").read_bytes() == comments_before
+
+
+# 改行で 8 行のコメントの本文（各行は詳細パネルの幅で折り返さない短さ）
+LONG_LINES = [f"{number} 行目の気づき" for number in range(1, 9)]
+
+# 畳んだときに出す、折り返した後の見た目の行の数
+FOLD_LINES = 5
+
+# 本文の各行が、本文の枠の中に見えているかを行の順に返す（畳んだ行は枠の下に外れる）
+VISIBLE_LINES_SCRIPT = """({body, lines}) => {
+    const element = document.querySelector(body);
+    const frame = element.getBoundingClientRect();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node);
+    return lines.map((line) => {
+        const text = texts.find((node) => node.textContent.includes(line));
+        const at = text.textContent.indexOf(line);
+        const range = document.createRange();
+        range.setStart(text, at);
+        range.setEnd(text, at + line.length);
+        return range.getBoundingClientRect().bottom <= frame.bottom + 1;
+    });
+}"""
+
+
+def test_normal_when_read_long_comment_in_detail(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """詳細パネルを開いた直後、8 行のレビュー中のコメントは 5 行までに畳まれ、「続きを読む」を押すと 8 行が全て見える。コメントの中身は変わらない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=OPTIONS))
+    write_comments(root, make_comment("C-1", target="D-1", body="\n".join(LONG_LINES)))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], BOARD_HASH)
+    row = REVIEW_ROW.format(id="C-1")
+    body = f"{row} .review-body"
+    more = f"{row} button.review-more"
+    # 実行（D-1 の詳細パネルを開く）
+    page.click('.board button.card[data-id="D-1"]')
+    page.wait_for_selector(more, state="visible")
+    page.locator(more).scroll_into_view_if_needed()
+    folded = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": body, "lines": LONG_LINES})
+    folded_text = page.inner_text(more)
+    # 実行（「続きを読む」を押す）
+    page.click(more)
+    opened = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": body, "lines": LONG_LINES})
+    # 検証
+    assert folded == [True] * FOLD_LINES + [False] * (len(LONG_LINES) - FOLD_LINES)
+    assert folded_text == "続きを読む"
+    assert opened == [True] * len(LONG_LINES)
+    assert page.inner_text(more) == "折りたたむ"
+    assert [item["body"] for item in _read_comments(root)] == ["\n".join(LONG_LINES)]
