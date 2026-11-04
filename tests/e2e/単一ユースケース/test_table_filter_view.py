@@ -9,16 +9,21 @@ from playwright.sync_api import Page
 from preview_helpers import (
     DRAWER,
     FILTER_BUTTON,
+    SCRIM_ON,
     OpenPreview,
     ServePreview,
     ServeWorkspace,
     badge_text,
     bands_stay_on_top,
     close_drawer,
+    close_drawer_by_escape,
     drawer_counts,
+    is_inert,
     open_drawer,
     page_scroll_overflow,
+    press_through_scrim,
     row_ids,
+    scrim_shown,
     toggle_value,
 )
 from workspace_fixtures import RECORD_DIR, MakeItem
@@ -33,6 +38,12 @@ SCROLL_TOLERANCE_PX = 4
 # 横に送る量（px）とピン留めを確かめる幅（px）
 SCROLL_LEFT = 150
 NARROW_TABLE_WIDTH = 760
+
+# ドロワーの外側を押す間の表示の大きさ（幅 900px 以下はドロワーが幅いっぱいに出て外側が無い）
+WIDE_VIEWPORT = {"width": 1280, "height": 800}
+
+# 行の中で、左のドロワーに重ならない右寄りの位置を押すときの、行の幅に対する割合
+OUTSIDE_X_RATIO = 0.8
 
 
 def _headers(page: Page) -> dict[str, str | None]:
@@ -99,11 +110,25 @@ def test_normal(
     assert page.locator('button[data-popover^="filter:"]').count() == 0
     assert page.locator(FILTER_BUTTON).count() == 1
     # ドロワーの確度の選択肢に値ごとの件数が出る。「高」で絞ると R-2 が無く、確度 = 高のチップが出る
+    viewport = page.viewport_size
+    page.set_viewport_size(WIDE_VIEWPORT)
     open_drawer(page)
     assert drawer_counts(page, "confidence") == {"高": 2, "中": EXTRA_RESEARCH_COUNT, "低": 1}
     toggle_value(page, "confidence", "高")
     page.wait_for_selector(".chips .chip")
-    close_drawer(page)
+    # ドロワーを開いている間、ドロワーとトップバー以外がグレーアウトされる
+    page.wait_for_selector(SCRIM_ON)
+    assert scrim_shown(page) is True
+    assert is_inert(page, 'table.grid tbody tr[data-id="R-1"]') is True
+    assert is_inert(page, FILTER_BUTTON) is False
+    # 外側の R-1 の行を押すとドロワーが閉じ、R-1 の詳細パネルは開かない
+    press_through_scrim(page, 'table.grid tbody tr[data-id="R-1"]', x_ratio=OUTSIDE_X_RATIO)
+    page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    assert page.locator("aside.panel.open").count() == 0
+    assert "id=R-1" not in page.evaluate("location.hash")
+    assert viewport is not None
+    page.set_viewport_size(viewport)
     assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
         "確度: 高"
     ]
@@ -221,7 +246,7 @@ def test_normal_when_topic_tags(
     toggle_value(page, "kind", "作業")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
     assert row_ids(page) == ["T-1", "T-3"]
-    close_drawer(page)
+    close_drawer_by_escape(page)
     # 実行・検証（ボードに切り替えても同じ条件で絞り、バッジが付いたまま）
     page.click('.segment button[data-view="board"]')
     page.wait_for_selector(".board")

@@ -16,6 +16,7 @@ from preview_helpers import (
     checked_values,
     clear_condition,
     close_drawer,
+    close_drawer_by_escape,
     open_drawer,
     page_scroll_overflow,
     row_ids,
@@ -192,8 +193,8 @@ def test_normal(
     toggle_value(page, "status", "決定済み")
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
     assert _map_item_ids(page) == ["D-1", "D-3", "D-5"]
-    # ドロワーを閉じてから、マップの項目を押す
-    close_drawer(page)
+    # Esc でドロワーを閉じてから、マップの項目を押す
+    close_drawer_by_escape(page)
     # D-3 を押すと、根までの枝と D-1・D-5 への依存の線を強調し、それ以外を薄くする
     page.click('#decision-map button[data-node="D-3"]')
     page.wait_for_selector("#decision-map.focusing")
@@ -570,7 +571,7 @@ def test_normal_when_background_pressed(
     open_drawer(page)
     toggle_value(page, "status", "決定済み")
     page.wait_for_selector('#decision-map button[data-node="D-1"]')
-    close_drawer(page)
+    close_drawer_by_escape(page)
     # 拡大を最大の 150% にして、詳細パネルが閉じて広がった枠でも横に送れる幅を残す
     _zoom_to_max(page)
     before_select = _map_snapshot(page)

@@ -32,6 +32,7 @@ __all__ = [
     "HISTORY_REDRAW_TIMEOUT_MS",
     "HISTORY_ROW",
     "PILL",
+    "SCRIM_ON",
     "TAG_VALUES_SCRIPT",
     "HttpResult",
     "OpenInEmptyContext",
@@ -46,6 +47,7 @@ __all__ = [
     "clear_condition",
     "click_item_ball",
     "close_drawer",
+    "close_drawer_by_escape",
     "closed_keys",
     "count_balls",
     "drag_select_in_frame",
@@ -53,13 +55,16 @@ __all__ = [
     "fetch_records",
     "http_call",
     "install_closed_key_spy",
+    "is_inert",
     "open_drawer",
     "page_scroll_overflow",
     "pick_history_point",
     "press_ball_keeping_detail",
     "press_blank",
     "press_center_ball",
+    "press_through_scrim",
     "row_ids",
+    "scrim_shown",
     "select_text",
     "select_text_for_pill",
     "shown_ball_item_ids",
@@ -86,6 +91,9 @@ FILTER_BADGE = f"{FILTER_BUTTON} .fbadge"
 # 絞り込みのドロワー（開いているときだけ `open` 属性を持つ）
 DRAWER = "dialog.drawer"
 DRAWER_OPEN = f"{DRAWER}[open]"
+
+# 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）以外を覆うグレーアウト（出している間だけ `on` を持つ）
+SCRIM_ON = "div.left-scrim.on"
 
 # タグごとに、名前・主題か・title・マーカーの aria-hidden・読み上げの文言（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
 TAG_VALUES_SCRIPT = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
@@ -327,6 +335,35 @@ def close_drawer(page: Page) -> None:
     """ドロワーの見出しの × を押して閉じ、ドロワーが無くなるのを待つ（開いている間は本文が操作できないため）。"""
     page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']")
     page.wait_for_selector(DRAWER, state="detached")
+
+
+def close_drawer_by_escape(page: Page) -> None:
+    """Esc でドロワーを閉じ、ドロワーが無くなるのを待つ。"""
+    page.keyboard.press("Escape")
+    page.wait_for_selector(DRAWER, state="detached")
+
+
+def scrim_shown(page: Page) -> bool:
+    """グレーアウトが出ていて、押せる（`visibility` が `visible`）かを返す。"""
+    return page.evaluate(
+        """selector => {
+            const scrim = document.querySelector(selector);
+            return scrim !== null && getComputedStyle(scrim).visibility === "visible";
+        }""",
+        SCRIM_ON,
+    )
+
+
+def is_inert(page: Page, selector: str) -> bool:
+    """selector に当たる要素が、それ自体か祖先の `inert` で押下とフォーカスを受けないかを返す。"""
+    return page.eval_on_selector(selector, "element => element.closest('[inert]') !== null")
+
+
+def press_through_scrim(page: Page, selector: str, *, x_ratio: float = 0.5) -> None:
+    """selector に当たる要素の、左端から幅の x_ratio の位置の縦の中央の点をマウスで押す（グレーアウトが覆っていればグレーアウトを押す）。"""
+    box = page.locator(selector).bounding_box()
+    assert box is not None, selector
+    page.mouse.click(box["x"] + box["width"] * x_ratio, box["y"] + box["height"] / 2)
 
 
 def toggle_value(page: Page, key: str, value: str) -> None:

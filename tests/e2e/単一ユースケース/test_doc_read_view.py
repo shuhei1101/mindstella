@@ -26,6 +26,7 @@ from preview_helpers import (
     ServePreview,
     badge_text,
     close_drawer,
+    close_drawer_by_escape,
     open_drawer,
     snapshot_records,
     toggle_value,
@@ -95,7 +96,7 @@ def test_normal(
     open_drawer(page)
     toggle_value(page, "kind", "仕様書")
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
-    close_drawer(page)
+    close_drawer_by_escape(page)
     assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == [
         "A-2"
     ]
