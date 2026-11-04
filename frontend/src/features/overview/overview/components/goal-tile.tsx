@@ -39,7 +39,7 @@ export const GoalTile = ({ goal, settings, hasItem, onOpen, onShowAllDeliverable
         {goal.has_goal ? "ゴールまでの進捗" : "フェーズ別の進捗"}
       </h2>
       {goal.has_goal ? null : <p className="mt-2.5 mb-0 text-muted-foreground">ゴールは決まっていません</p>}
-      <p className="mono mt-3.5 mb-0 text-goal leading-none font-bold tracking-tighter">
+      <p className="mt-3.5 mb-0 mono text-goal leading-none font-bold tracking-tighter">
         {settled}
         <small className="text-goal-sub font-medium tracking-normal text-subtle-foreground"> / {total}</small>
       </p>
@@ -49,7 +49,7 @@ export const GoalTile = ({ goal, settings, hasItem, onOpen, onShowAllDeliverable
           <li key={cell.phase} className="grid grid-cols-stage items-center gap-2.5 text-small">
             <span>{cell.phase}</span>
             <ProgressBar settled={cell.settled} total={cell.total} />
-            <span className="mono text-right text-muted-foreground">
+            <span className="text-right mono text-muted-foreground">
               {cell.settled}/{cell.total}
             </span>
           </li>

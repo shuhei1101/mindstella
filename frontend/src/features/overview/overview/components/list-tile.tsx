@@ -23,7 +23,7 @@ export type ListTileProps = {
 export const ListTile = ({ tileId, headingId, icon, title, items, emptyText, onShowAll, onOpen }: ListTileProps) => (
   <section id={tileId} aria-labelledby={headingId} className="min-w-0 rounded-control bg-card px-6.5 py-6 max-md:p-5 dark:border dark:border-border-soft">
     <TileHead id={headingId} icon={icon} title={title} count={items.length > 0 ? items.length : null} onShowAll={onShowAll} />
-    <p className="mono mt-1.5 mb-2.5 text-num leading-tight font-bold tracking-tight">{items.length}</p>
+    <p className="mt-1.5 mb-2.5 mono text-num/tight font-bold tracking-tight">{items.length}</p>
     {items.length === 0 ? (
       <p className="my-1.5 text-subtle-foreground">{emptyText}</p>
     ) : (

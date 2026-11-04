@@ -85,10 +85,10 @@ export const NextTile = ({ candidates, itemOf, onOpen, onShowAll }: NextTileProp
                 }}
                 className="group grid w-full cursor-pointer grid-cols-next gap-x-0 gap-y-0.5 border-0 bg-transparent py-3.5 text-left"
               >
-                <span aria-hidden="true" className="mono row-span-2 text-rank leading-tight font-semibold text-mark">
+                <span aria-hidden="true" className="row-span-2 mono text-rank/tight font-semibold text-mark">
                   {position + 1}
                 </span>
-                <span className="text-next leading-snug font-bold tracking-tight group-hover:text-mark max-md:text-next-narrow">
+                <span className="text-next/snug font-bold tracking-tight group-hover:text-mark max-md:text-next-narrow">
                   {candidate.title}
                 </span>
                 <span aria-hidden="true" className="col-start-3 row-span-2 row-start-1 self-center text-subtle-foreground group-hover:text-mark">
@@ -97,7 +97,7 @@ export const NextTile = ({ candidates, itemOf, onOpen, onShowAll }: NextTileProp
                 <span className="col-start-2 flex flex-wrap items-center gap-x-3 text-small text-muted-foreground">
                   <span>{[itemOf(candidate.id)?.category, candidate.phase].filter(Boolean).join(" · ")}</span>
                   <ImpactBadge weight={candidate.weight} />
-                  <span title="後続の件数" className="mono inline-flex items-center gap-1">
+                  <span title="後続の件数" className="inline-flex items-center gap-1 mono">
                     <Icon name="follow" className="size-3.5" />
                     {candidate.followers}
                   </span>

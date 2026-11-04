@@ -16,11 +16,13 @@ export const Route = createFileRoute("/")({
   },
   loader: async ({ context: { queryClient } }) => {
     const [records, comments, edits, threads] = overviewQueries();
+    // 失敗は画面が query の error で出すので、先読みでは握りつぶす
+    const ignore = (): undefined => undefined;
     await Promise.all([
-      queryClient.prefetchQuery(records),
-      queryClient.prefetchQuery(comments),
-      queryClient.prefetchQuery(edits),
-      queryClient.prefetchQuery(threads),
+      queryClient.query(records).catch(ignore),
+      queryClient.query(comments).catch(ignore),
+      queryClient.query(edits).catch(ignore),
+      queryClient.query(threads).catch(ignore),
     ]);
   },
   component: OverviewScreen,

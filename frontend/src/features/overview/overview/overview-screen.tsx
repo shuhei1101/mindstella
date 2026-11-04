@@ -66,6 +66,19 @@ const openItem = (kind: Kind) => (id: string) => {
   openLegacy({ tab: kind, id });
 };
 
+/** その種類の画面を表示するときだけ、今の画面を開く関数を返す（表示しないときは「すべて表示」を出さない） */
+const legacyLink = (shown: boolean, hash: Record<string, string>): (() => void) | undefined =>
+  shown
+    ? () => {
+        openLegacy(hash);
+      }
+    : undefined;
+
+/** カテゴリー別の進捗のセル（フェーズあり）と行の見出し（フェーズなし）で、検討事項の表を絞って開く */
+const openCategory = (category: string, phase: string | null): void => {
+  openLegacy({ tab: "decisions", view: "table", "f.category": category, ...(phase === null ? {} : { "f.phase": phase }) });
+};
+
 /** 記録を読めなかったときの表示（detail の行） */
 const RecordsError = ({ error }: { error: Error }) => (
   <section role="alert" className="rounded-control bg-card px-6.5 py-6">
@@ -91,25 +104,25 @@ const Tiles = ({ records }: { records: Records }) => {
     <>
       <header className="pt-3 pb-7">
         {records.settings.description === undefined ? null : (
-          <p id="overview-description" className="readable-width m-0 mb-2 text-h2 leading-relaxed text-muted-foreground">
+          <p id="overview-description" className="m-0 mb-2 readable-width text-h2/relaxed text-muted-foreground">
             {records.settings.description}
           </p>
         )}
-        <h1 className="m-0 mt-1.5 text-hero leading-tight font-bold tracking-tight max-md:text-hero-narrow">{records.settings.summary}</h1>
+        <h1 className="m-0 mt-1.5 text-hero/tight font-bold tracking-tight max-md:text-hero-narrow">{records.settings.summary}</h1>
       </header>
       <div className="grid grid-cols-3 gap-4 max-xl:grid-cols-2 max-md:grid-cols-1">
         <NextTile
           candidates={records.derived.next}
           itemOf={(id) => byId.get(id)}
           onOpen={openItem("decisions")}
-          onShowAll={decisionsShown ? () => openLegacy({ tab: "decisions", view: "table", "f.status": "未決定", "f.ready": "着手可能" }) : undefined}
+          onShowAll={legacyLink(decisionsShown, { tab: "decisions", view: "table", "f.status": "未決定", "f.ready": "着手可能" })}
         />
         <GoalTile
           goal={records.derived.goal}
           settings={records.settings}
           hasItem={(id) => byId.has(id)}
           onOpen={openItem("docs")}
-          onShowAllDeliverables={visible.has("docs") ? () => openLegacy({ tab: "docs", view: "cards", "f.deliverable": "納品物" }) : undefined}
+          onShowAllDeliverables={legacyLink(visible.has("docs"), { tab: "docs", view: "cards", "f.deliverable": "納品物" })}
         />
         <ListTile
           tileId="tile-review"
@@ -119,7 +132,7 @@ const Tiles = ({ records }: { records: Records }) => {
           items={review}
           emptyText="要見直しの検討事項はありません。"
           onOpen={openItem("decisions")}
-          onShowAll={decisionsShown ? () => openLegacy({ tab: "decisions", view: "table", "f.status": "要見直し" }) : undefined}
+          onShowAll={legacyLink(decisionsShown, { tab: "decisions", view: "table", "f.status": "要見直し" })}
         />
         <ListTile
           tileId="tile-hold"
@@ -129,7 +142,7 @@ const Tiles = ({ records }: { records: Records }) => {
           items={hold}
           emptyText="保留の検討事項はありません。"
           onOpen={openItem("decisions")}
-          onShowAll={decisionsShown ? () => openLegacy({ tab: "decisions", view: "table", "f.status": "保留" }) : undefined}
+          onShowAll={legacyLink(decisionsShown, { tab: "decisions", view: "table", "f.status": "保留" })}
         />
         <ListTile
           tileId="tile-running"
@@ -139,18 +152,12 @@ const Tiles = ({ records }: { records: Records }) => {
           items={running}
           emptyText="進行中のタスクはありません。"
           onOpen={openItem("tasks")}
-          onShowAll={tasksShown ? () => openLegacy({ tab: "tasks", view: "table", "f.status": "進行中" }) : undefined}
+          onShowAll={legacyLink(tasksShown, { tab: "tasks", view: "table", "f.status": "進行中" })}
         />
         <ProgressTable
           progress={records.derived.progress}
           settings={records.settings}
-          onSelect={
-            decisionsShown
-              ? (category, phase) => {
-                  openLegacy({ tab: "decisions", view: "table", "f.category": category, ...(phase === null ? {} : { "f.phase": phase }) });
-                }
-              : undefined
-          }
+          onSelect={decisionsShown ? openCategory : undefined}
         />
       </div>
     </>

@@ -184,7 +184,7 @@ const ConnectionNotice = ({ readAt }: { readAt: string | null }) => {
 const DiffChip = ({ point, fit, onClear }: { point: DiffPoint; fit: Fit; onClear: (() => void) | undefined }) => (
   <span
     className={cn(
-      "chip-width inline-flex h-8 items-center gap-0.5 rounded-control bg-topbar-fg pr-0.5 pl-2.5 text-small font-semibold text-topbar-bg",
+      "inline-flex h-8 chip-width items-center gap-0.5 rounded-control bg-topbar-fg pr-0.5 pl-2.5 text-small font-semibold text-topbar-bg",
       "max-xl:chip-width-narrow",
       fit.offline && "max-2xl:chip-width-narrow",
     )}
@@ -205,260 +205,320 @@ const DiffChip = ({ point, fit, onClear }: { point: DiffPoint; fit: Fit; onClear
   </span>
 );
 
-export const Topbar = ({
-  title,
-  tabs,
-  current,
-  theme,
-  connection = "online",
-  readAt = null,
-  diffPoint = null,
-  comments = false,
-  commentCount = 0,
-  commentsOpen = false,
-  commentsUnread = false,
-  settingsOpen = false,
-  filter = false,
-  filterCount = 0,
-  filterOpen = false,
-  pending = false,
-  pendingCount = 0,
-  pendingOpen = false,
-  pendingBlocked = false,
-  onNavigate,
-  onOpenSearch,
-  onThemeChange,
-  onOpenHistory,
-  onClearDiff,
-  onToggleComments,
-  onToggleSettings,
-  onToggleFilter,
-  onTogglePending,
-}: TopbarProps) => {
+/** トップバーの帯のクラス（幅ごとの要素の間隔と左右の余白） */
+const headerClass = (fit: Fit): string =>
+  cn(
+    "relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg",
+    "sm:max-lg:gap-2",
+    fit.diff && "max-xl:gap-2",
+    fit.offline && fit.diff && "max-2xl:gap-2",
+    fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
+    fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
+    "max-xs:gap-px max-xs:px-2",
+  );
+
+/** 差分の札を出している間（つながらない間は 1440px 以下、それ以外は 1100px 以下）に、札へ幅を回すため隠す */
+const diffSqueezeClass = (fit: Fit): string => cn(fit.diff && "max-xl:hidden", fit.offline && fit.diff && "max-2xl:hidden");
+
+/** ツール名の印と文字（押せない飾り） */
+const Brand = ({ fit }: { fit: Fit }) => (
+  <span
+    className={cn(
+      "flex min-w-0 flex-none items-center gap-2.5",
+      fit.offline && fit.diff && "max-sm:hidden",
+      fit.wide && fit.diff && "max-sm:hidden",
+      fit.diff && "max-xs:hidden",
+    )}
+  >
+    <svg
+      className="size-5.5 flex-none text-mark"
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="8" cy="16" r="4" />
+      <path d="M12 16h5M17 16V7h5M17 16v9h5" />
+      <circle cx="25" cy="7" r="2.6" />
+      <circle cx="25" cy="25" r="2.6" />
+    </svg>
+    <span
+      className={cn(
+        "font-bold tracking-tight",
+        diffSqueezeClass(fit),
+        fit.wide && (fit.diff || fit.offline) && "max-sm:hidden",
+        fit.pending && "max-sm:hidden",
+        "max-xs:hidden",
+      )}
+    >
+      mindstella
+    </span>
+  </span>
+);
+
+/** 全体の検索の入口 */
+const SearchButton = ({ fit, onClick }: { fit: Fit; onClick: (() => void) | undefined }) => (
+  <button
+    type="button"
+    aria-label="すべての項目を検索"
+    aria-keyshortcuts="Control+K Meta+K"
+    onClick={onClick}
+    className={cn(
+      "flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+      fit.diff && "max-xl:flex-none",
+      fit.offline && "max-2xl:flex-none",
+      "max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0",
+      iconButtonFitClass(fit),
+    )}
+  >
+    <Icon name="search" />
+    <span className="max-lg:hidden">すべての項目を検索</span>
+    <kbd className="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden">
+      {searchKey()}
+    </kbd>
+  </button>
+);
+
+/** 「変更履歴」のボタン */
+const HistoryButton = ({ fit, onClick }: { fit: Fit; onClick: () => void }) => (
+  <button
+    type="button"
+    aria-haspopup="dialog"
+    aria-label="変更履歴"
+    onClick={onClick}
+    className={cn(
+      "inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+      "max-xl:w-8 max-xl:justify-center max-xl:p-0",
+      fit.offline && "max-2xl:w-8 max-2xl:justify-center max-2xl:p-0",
+      iconButtonFitClass(fit),
+    )}
+  >
+    <Icon name="history" />
+    <span className={cn("max-xl:hidden", fit.offline && "max-2xl:hidden")}>変更履歴</span>
+  </button>
+);
+
+/** 表示の設定のボタン */
+const SettingsButton = ({ fit, open, onClick }: { fit: Fit; open: boolean; onClick: () => void }) => (
+  <Button
+    variant="ghost"
+    aria-label="表示の設定"
+    aria-expanded={open}
+    onClick={onClick}
+    className={cn(
+      panelButtonClass(fit, open),
+      fit.diff && "max-xl:ml-auto max-xl:px-1",
+      fit.offline && fit.diff && "max-2xl:ml-auto max-2xl:px-1",
+      fit.diff && "max-sm:px-1",
+      fit.wide && (fit.diff || fit.offline) && "max-sm:px-0.5",
+      "max-xs:px-0.5",
+    )}
+  >
+    <Icon name="sliders" />
+    <span className={panelLabelClass(fit)}>表示の設定</span>
+  </Button>
+);
+
+/** 絞り込みのボタンと、値を選んでいる条件の数のバッジ */
+const FilterButton = ({ fit, count, open, onClick }: { fit: Fit; count: number; open: boolean; onClick: (() => void) | undefined }) => (
+  <Button
+    variant="ghost"
+    aria-label={count === 0 ? "絞り込み" : `絞り込み（${String(count)} つの条件で絞り込み中）`}
+    aria-expanded={open}
+    onClick={onClick}
+    className={panelButtonClass(fit, open)}
+  >
+    <Icon name="filter" />
+    <span className={panelLabelClass(fit)}>絞り込み</span>
+    {count === 0 ? null : (
+      <span
+        aria-hidden="true"
+        data-wide={count >= FILTER_BADGE_WIDE_FROM ? "" : undefined}
+        className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-mark px-1.25 mono text-count leading-none font-semibold text-on-mark"
+      >
+        {count}
+      </span>
+    )}
+  </Button>
+);
+
+/** 保存待ちのボタン（重ねた紙の印・「保存待ち」・件数） */
+const PendingButton = ({
+  fit,
+  count,
+  open,
+  blocked,
+  onClick,
+}: {
+  fit: Fit;
+  count: number;
+  open: boolean;
+  blocked: boolean;
+  onClick: (() => void) | undefined;
+}) => (
+  <Button
+    variant="ghost"
+    aria-label={`保存待ち（${String(count)} 件${blocked ? "・書き込めない編集あり" : ""}）`}
+    aria-expanded={open}
+    onClick={onClick}
+    className={panelButtonClass(fit, open)}
+  >
+    <span className={cn("inline-grid place-items-center", blocked && "text-topbar-danger")}>
+      <Icon name={blocked ? "alert" : "layers"} />
+    </span>
+    <span className={panelLabelClass(fit)}>保存待ち</span>
+    <span
+      data-wide={count > COUNT_CAP ? "" : undefined}
+      className={cn(
+        "inline-grid h-4.5 min-w-4.5 place-items-center rounded-full px-1.25 mono text-count font-bold text-topbar-bg",
+        blocked ? "bg-topbar-danger" : "bg-topbar-unread",
+      )}
+    >
+      {capped(count)}
+    </span>
+  </Button>
+);
+
+/** コメントのボタン（吹き出しの印と未読の点・「コメント」・件数） */
+const CommentsButton = ({
+  fit,
+  count,
+  open,
+  unread,
+  onClick,
+}: {
+  fit: Fit;
+  count: number;
+  open: boolean;
+  unread: boolean;
+  onClick: (() => void) | undefined;
+}) => (
+  <Button
+    variant="ghost"
+    aria-label={`コメント（${unread ? "未読あり・" : ""}レビュー中 ${String(count)} 件）`}
+    aria-expanded={open}
+    onClick={onClick}
+    className={cn("group", panelButtonClass(fit, open))}
+  >
+    <span className="relative inline-grid place-items-center">
+      <Icon name="comment" />
+      {unread ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute -top-0.75 -right-1 size-2.25 rounded-full bg-topbar-unread ring-2 ring-topbar-bg group-hover:ring-topbar-hover",
+            open && "ring-topbar-hover",
+          )}
+        />
+      ) : null}
+    </span>
+    <span className={panelLabelClass(fit)}>コメント</span>
+    <span
+      data-wide={count > COUNT_CAP ? "" : undefined}
+      className={cn(
+        "inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-topbar-fg px-1.25 mono text-count font-semibold text-topbar-bg",
+        count === 0 && "bg-transparent text-topbar-fg-2 ring-1 ring-topbar-line ring-inset",
+      )}
+    >
+      {capped(count)}
+    </span>
+  </Button>
+);
+
+/** ライト / ダークの切り替え */
+const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChange: ((theme: Theme) => void) | undefined }) => {
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
+  return (
+    <button
+      type="button"
+      data-theme={nextTheme}
+      aria-label={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"}
+      onClick={() => {
+        onChange?.(nextTheme);
+      }}
+      className={cn(
+        "inline-grid size-8 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
+        iconButtonFitClass(fit),
+      )}
+    >
+      <Icon name={theme === "dark" ? "sun" : "moon"} />
+    </button>
+  );
+};
+
+/** 画面を移るタブの帯（右端にネットワークの入口） */
+const TabBar = ({ tabs, current, onNavigate }: { tabs: TopbarTab[]; current: TopbarCurrent; onNavigate: ((key: TopbarCurrent) => void) | undefined }) => (
+  <nav aria-label="項目の種類" className="relative z-25 no-scrollbar flex gap-1 overflow-x-auto border-b border-border bg-card px-5">
+    {tabs.map((tab) => (
+      <TabLink key={tab.key} tab={tab} current={current} onNavigate={onNavigate} />
+    ))}
+    <span className="min-w-4 flex-1" />
+    <TabLink tab={{ key: "graph", label: "ネットワーク", icon: "network" }} current={current} onNavigate={onNavigate} special />
+  </nav>
+);
+
+/** 幅で詰め方を切り替える条件を引数から求める */
+const fitOf = (props: TopbarProps): Fit => {
+  const { connection = "online", diffPoint = null, comments = false, commentCount = 0, filter = false, filterCount = 0, pending = false, pendingCount = 0 } = props;
   const showPending = pending && pendingCount > 0;
-  const fit: Fit = {
+  return {
     offline: connection === "offline",
     diff: diffPoint !== null,
-    wide:
-      (filter && filterCount >= FILTER_BADGE_WIDE_FROM) ||
-      (comments && commentCount > COUNT_CAP) ||
-      (showPending && pendingCount > COUNT_CAP),
+    wide: (filter && filterCount >= FILTER_BADGE_WIDE_FROM) || (comments && commentCount > COUNT_CAP) || (showPending && pendingCount > COUNT_CAP),
     pending: showPending,
   };
-  // 差分の札を出している間（つながらない間は 1440px 以下、それ以外は 1100px 以下）は、ツール名の文字と空きを隠して札に幅を回す
-  const diffSqueeze = cn(fit.diff && "max-xl:hidden", fit.offline && fit.diff && "max-2xl:hidden");
+};
+
+export const Topbar = (props: TopbarProps) => {
+  const {
+    title,
+    tabs,
+    current,
+    theme,
+    readAt = null,
+    diffPoint = null,
+    comments = false,
+    commentCount = 0,
+    commentsOpen = false,
+    commentsUnread = false,
+    settingsOpen = false,
+    filter = false,
+    filterCount = 0,
+    filterOpen = false,
+    pendingCount = 0,
+    pendingOpen = false,
+    pendingBlocked = false,
+    onOpenHistory,
+    onToggleSettings,
+  } = props;
+  const fit = fitOf(props);
   return (
     <div>
-      <header
-        className={cn(
-          "relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg",
-          "sm:max-lg:gap-2",
-          fit.diff && "max-xl:gap-2",
-          fit.offline && fit.diff && "max-2xl:gap-2",
-          fit.diff ? "max-sm:gap-2 max-sm:px-2.5" : "max-sm:gap-0.75 max-sm:px-2.5",
-          fit.wide && (fit.diff || fit.offline) && "max-sm:gap-px max-sm:px-2",
-          "max-xs:gap-px max-xs:px-2",
-        )}
-      >
-        <span
-          className={cn(
-            "flex min-w-0 flex-none items-center gap-2.5",
-            fit.offline && fit.diff && "max-sm:hidden",
-            fit.wide && fit.diff && "max-sm:hidden",
-            fit.diff && "max-xs:hidden",
-          )}
-        >
-          <svg
-            className="size-5.5 flex-none text-mark"
-            viewBox="0 0 32 32"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="8" cy="16" r="4" />
-            <path d="M12 16h5M17 16V7h5M17 16v9h5" />
-            <circle cx="25" cy="7" r="2.6" />
-            <circle cx="25" cy="25" r="2.6" />
-          </svg>
-          <span
-            className={cn(
-              "font-bold tracking-tight",
-              diffSqueeze,
-              fit.wide && (fit.diff || fit.offline) && "max-sm:hidden",
-              fit.pending && "max-sm:hidden",
-              "max-xs:hidden",
-            )}
-          >
-            mindstella
-          </span>
-        </span>
+      <header className={headerClass(fit)}>
+        <Brand fit={fit} />
         <span title={title} className="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden">
           {title}
         </span>
-        <span className={cn("flex-1", comments && "basis-0", diffSqueeze)} />
+        <span className={cn("flex-1", comments && "basis-0", diffSqueezeClass(fit))} />
         {fit.offline ? <ConnectionNotice readAt={readAt} /> : null}
-        <button
-          type="button"
-          aria-label="すべての項目を検索"
-          aria-keyshortcuts="Control+K Meta+K"
-          onClick={onOpenSearch}
-          className={cn(
-            "flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
-            fit.diff && "max-xl:flex-none",
-            fit.offline && "max-2xl:flex-none",
-            "max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0",
-            iconButtonFitClass(fit),
-          )}
-        >
-          <Icon name="search" />
-          <span className="max-lg:hidden">すべての項目を検索</span>
-          <kbd className="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden">
-            {searchKey()}
-          </kbd>
-        </button>
-        {onOpenHistory === undefined ? null : (
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-label="変更履歴"
-            onClick={onOpenHistory}
-            className={cn(
-              "inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
-              "max-xl:w-8 max-xl:justify-center max-xl:p-0",
-              fit.offline && "max-2xl:w-8 max-2xl:justify-center max-2xl:p-0",
-              iconButtonFitClass(fit),
-            )}
-          >
-            <Icon name="history" />
-            <span className={cn("max-xl:hidden", fit.offline && "max-2xl:hidden")}>変更履歴</span>
-          </button>
-        )}
-        {diffPoint === null ? null : <DiffChip point={diffPoint} fit={fit} onClear={onClearDiff} />}
-        {comments ? <span className={cn("flex-1 basis-0", diffSqueeze)} /> : null}
-        {onToggleSettings === undefined ? null : (
-          <Button
-            variant="ghost"
-            aria-label="表示の設定"
-            aria-expanded={settingsOpen}
-            onClick={onToggleSettings}
-            className={cn(
-              panelButtonClass(fit, settingsOpen),
-              fit.diff && "max-xl:ml-auto max-xl:px-1",
-              fit.offline && fit.diff && "max-2xl:ml-auto max-2xl:px-1",
-              fit.diff && "max-sm:px-1",
-              fit.wide && (fit.diff || fit.offline) && "max-sm:px-0.5",
-              "max-xs:px-0.5",
-            )}
-          >
-            <Icon name="sliders" />
-            <span className={panelLabelClass(fit)}>表示の設定</span>
-          </Button>
-        )}
-        {filter ? (
-          <Button
-            variant="ghost"
-            aria-label={filterCount === 0 ? "絞り込み" : `絞り込み（${String(filterCount)} つの条件で絞り込み中）`}
-            aria-expanded={filterOpen}
-            onClick={onToggleFilter}
-            className={panelButtonClass(fit, filterOpen)}
-          >
-            <Icon name="filter" />
-            <span className={panelLabelClass(fit)}>絞り込み</span>
-            {filterCount === 0 ? null : (
-              <span
-                aria-hidden="true"
-                data-wide={filterCount >= FILTER_BADGE_WIDE_FROM ? "" : undefined}
-                className="mono inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-mark px-1.25 text-count leading-none font-semibold text-on-mark"
-              >
-                {filterCount}
-              </span>
-            )}
-          </Button>
-        ) : null}
-        {showPending ? (
-          <Button
-            variant="ghost"
-            aria-label={`保存待ち（${String(pendingCount)} 件${pendingBlocked ? "・書き込めない編集あり" : ""}）`}
-            aria-expanded={pendingOpen}
-            onClick={onTogglePending}
-            className={panelButtonClass(fit, pendingOpen)}
-          >
-            <span className={cn("inline-grid place-items-center", pendingBlocked && "text-topbar-danger")}>
-              <Icon name={pendingBlocked ? "alert" : "layers"} />
-            </span>
-            <span className={panelLabelClass(fit)}>保存待ち</span>
-            <span
-              data-wide={pendingCount > COUNT_CAP ? "" : undefined}
-              className={cn(
-                "mono inline-grid h-4.5 min-w-4.5 place-items-center rounded-full px-1.25 text-count font-bold text-topbar-bg",
-                pendingBlocked ? "bg-topbar-danger" : "bg-topbar-unread",
-              )}
-            >
-              {capped(pendingCount)}
-            </span>
-          </Button>
+        <SearchButton fit={fit} onClick={props.onOpenSearch} />
+        {onOpenHistory === undefined ? null : <HistoryButton fit={fit} onClick={onOpenHistory} />}
+        {diffPoint === null ? null : <DiffChip point={diffPoint} fit={fit} onClear={props.onClearDiff} />}
+        {comments ? <span className={cn("flex-1 basis-0", diffSqueezeClass(fit))} /> : null}
+        {onToggleSettings === undefined ? null : <SettingsButton fit={fit} open={settingsOpen} onClick={onToggleSettings} />}
+        {filter ? <FilterButton fit={fit} count={filterCount} open={filterOpen} onClick={props.onToggleFilter} /> : null}
+        {fit.pending ? (
+          <PendingButton fit={fit} count={pendingCount} open={pendingOpen} blocked={pendingBlocked} onClick={props.onTogglePending} />
         ) : null}
         {comments ? (
-          <Button
-            variant="ghost"
-            aria-label={`コメント（${commentsUnread ? "未読あり・" : ""}レビュー中 ${String(commentCount)} 件）`}
-            aria-expanded={commentsOpen}
-            onClick={onToggleComments}
-            className={cn("group", panelButtonClass(fit, commentsOpen))}
-          >
-            <span className="relative inline-grid place-items-center">
-              <Icon name="comment" />
-              {commentsUnread ? (
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute -top-0.75 -right-1 size-2.25 rounded-full bg-topbar-unread ring-2 ring-topbar-bg group-hover:ring-topbar-hover",
-                    commentsOpen && "ring-topbar-hover",
-                  )}
-                />
-              ) : null}
-            </span>
-            <span className={panelLabelClass(fit)}>コメント</span>
-            <span
-              data-wide={commentCount > COUNT_CAP ? "" : undefined}
-              className={cn(
-                "mono inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-topbar-fg px-1.25 text-count font-semibold text-topbar-bg",
-                commentCount === 0 && "bg-transparent text-topbar-fg-2 ring-1 ring-topbar-line ring-inset",
-              )}
-            >
-              {capped(commentCount)}
-            </span>
-          </Button>
+          <CommentsButton fit={fit} count={commentCount} open={commentsOpen} unread={commentsUnread} onClick={props.onToggleComments} />
         ) : null}
-        <button
-          type="button"
-          data-theme={nextTheme}
-          aria-label={theme === "dark" ? "ライトに切り替え" : "ダークに切り替え"}
-          onClick={() => {
-            onThemeChange?.(nextTheme);
-          }}
-          className={cn(
-            "inline-grid size-8 cursor-pointer place-items-center rounded-control border-0 bg-transparent text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg",
-            iconButtonFitClass(fit),
-          )}
-        >
-          <Icon name={theme === "dark" ? "sun" : "moon"} />
-        </button>
+        <ThemeButton fit={fit} theme={theme} onChange={props.onThemeChange} />
       </header>
-      <nav
-        aria-label="項目の種類"
-        className="no-scrollbar relative z-25 flex gap-1 overflow-x-auto border-b border-border bg-card px-5"
-      >
-        {tabs.map((tab) => (
-          <TabLink key={tab.key} tab={tab} current={current} onNavigate={onNavigate} />
-        ))}
-        <span className="min-w-4 flex-1" />
-        <TabLink tab={{ key: "graph", label: "ネットワーク", icon: "network" }} current={current} onNavigate={onNavigate} special />
-      </nav>
+      <TabBar tabs={tabs} current={current} onNavigate={props.onNavigate} />
     </div>
   );
 };

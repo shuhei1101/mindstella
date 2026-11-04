@@ -102,7 +102,7 @@ export const ProgressTable = ({ progress, settings, onSelect }: ProgressTablePro
                       )}
                     </td>
                   ))}
-                  <td className="mono border-b border-border-soft px-2.5 py-2.25 text-right whitespace-nowrap">
+                  <td className="border-b border-border-soft px-2.5 py-2.25 text-right mono whitespace-nowrap">
                     {entry.settled}/{entry.total}
                   </td>
                 </tr>
