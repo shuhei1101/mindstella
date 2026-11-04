@@ -11,6 +11,8 @@ export const createAppRouter = (queryClient: QueryClient) =>
   createRouter({ routeTree, basepath: ROUTER_BASEPATH, context: { queryClient } });
 
 declare module "@tanstack/react-router" {
+  // 宣言のマージで TanStack Router の型を登録するには interface が要る
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Register {
     router: ReturnType<typeof createAppRouter>;
   }

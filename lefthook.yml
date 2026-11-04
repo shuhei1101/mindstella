@@ -7,3 +7,7 @@ pre-commit:
     - name: typecheck
       glob: "frontend/src/**/*.{ts,tsx}"
       run: npm run --silent typecheck
+    # ソースかビルドの設定を変えた commit で、commit するビルドの出力（preview/spa/）がソースと合っているかを確かめる
+    - name: spa-build
+      glob: "{frontend/**/*,vite.config.ts,package.json,package-lock.json}"
+      run: npm run --silent build && test -z "$(git ls-files --others --exclude-standard -- plugins/mindstella/skills/mindmap/preview/spa)" && git diff --exit-code -- plugins/mindstella/skills/mindmap/preview/spa

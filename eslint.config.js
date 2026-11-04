@@ -1,7 +1,9 @@
 // React の側（frontend/src）だけに当てる ESLint の設定
 import js from "@eslint/js";
+import eslintConfigPrettier from "eslint-config-prettier";
 import betterTailwindcss from "eslint-plugin-better-tailwindcss";
 import boundaries from "eslint-plugin-boundaries";
+import importPlugin from "eslint-plugin-import";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import reactHooks from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
@@ -18,6 +20,7 @@ export default tseslint.config(
     plugins: {
       "better-tailwindcss": betterTailwindcss,
       boundaries,
+      import: importPlugin,
       "jsx-a11y": jsxA11y,
       "react-hooks": reactHooks,
       sonarjs,
@@ -41,6 +44,11 @@ export default tseslint.config(
       "better-tailwindcss/enforce-consistent-line-wrapping": "off",
       "@typescript-eslint/no-deprecated": "error",
       "sonarjs/cognitive-complexity": ["error", 15],
+      "func-style": ["error", "expression"],
+      "@typescript-eslint/consistent-type-definitions": ["error", "type"],
+      "no-restricted-syntax": ["error", { selector: "TSEnumDeclaration", message: "enum は使わず、as const のオブジェクトか文字列のユニオンにする" }],
+      "import/no-default-export": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
       "boundaries/dependencies": [
         "error",
         {
@@ -55,4 +63,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Storybook のストーリーは default export を求める
+    files: ["frontend/src/**/*.stories.tsx"],
+    rules: { "import/no-default-export": "off" },
+  },
+  eslintConfigPrettier,
 );
