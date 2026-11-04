@@ -64,10 +64,11 @@ flows:
     description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
   - name: make_workspace
     description: 検討事項 D-1 を持つワークスペース
-    notes: 開いた後に `server_stop` で常駐サーバーを止め、立ち上げ直して同じワークスペースで `preview_url` を呼ぶ
+    notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、立ち上げ直して同じワークスペースで `preview_url` を呼ぶ'
   flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの知らせが切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ直す\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を消す\n```"
   expected:
   - 止めた後、トップバーに接続が切れたことの表示が出る
+  - 止めた後も、前に読んだ記録の概要のタイルが残っている
   - 立ち上げ直した後、表示が消えて概要が描かれている
   test: test_error_when_server_stopped
 lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を読み直して描き直す。
@@ -87,6 +88,8 @@ constraints:
 - item: 画面への反映の時間
   constraint: 書き換えの知らせを受けてから 2 秒以内に描き直す
   decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
+- item: 接続の状態
+  constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ直しは `EventSource` に任せる
 - item: URL の状態
   constraint: 画面で見ているものに影響する状態は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する
 refs:
