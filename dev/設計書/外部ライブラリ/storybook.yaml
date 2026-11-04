@@ -43,6 +43,9 @@ catalogs:
       - name: preview.tsx の loaders・decorators
         kind: 設定
         purpose: MSW の worker（`public/mockServiceWorker.js`）を始め、QueryClientProvider で包む
+      - name: previewHead（React の側）
+        kind: 設定
+        purpose: '`frontend/index.html` から Google Fonts の link 要素を取り出して差し込み、ストーリーを SPA と同じ文字で描く'
   - name: API
     version: 10.6.1
     entries:
