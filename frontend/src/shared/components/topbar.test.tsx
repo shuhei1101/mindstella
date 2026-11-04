@@ -5,8 +5,8 @@ import { describe, expect, test, vi } from "vitest";
 import { Topbar } from "@/shared/components/topbar";
 
 const TABS = [
-  { key: "overview", label: "概要", icon: "overview" },
-  { key: "decisions", label: "検討事項", icon: "decisions", count: 2 },
+  { key: "overview", label: "概要", icon: "home" },
+  { key: "decisions", label: "検討事項", icon: "decision", count: 2 },
 ] as const;
 
 describe("Topbar", () => {

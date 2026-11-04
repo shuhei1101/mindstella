@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, test, vi } from "vitest";
@@ -47,7 +47,7 @@ describe("OverviewScreen", () => {
     renderRoute("/spa/");
     const review = await screen.findByRole("region", { name: "要見直し" });
     // 実行
-    await userEvent.click(review.querySelector("button.t-link") ?? review);
+    await userEvent.click(within(review).getByRole("button", { name: /すべて表示/ }));
     // 検証
     expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=decisions&view=table&f.status=%E8%A6%81%E8%A6%8B%E7%9B%B4%E3%81%97");
   });

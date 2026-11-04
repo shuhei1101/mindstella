@@ -4,9 +4,17 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 
 import { server } from "@/testing/msw/server";
 
+// jsdom は ResizeObserver を持たないため、大きさを知らせない空の実装を置く
+class NoopResizeObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= NoopResizeObserver;
+
 beforeAll(() => {
   // handler の無い要求はテストを失敗させる
-  server.listen({ onUnhandledRequest: "error" });
+  server.listen({ onUnhandledFrame: "error" });
 });
 
 afterEach(() => {
