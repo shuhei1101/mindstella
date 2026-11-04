@@ -3,9 +3,9 @@ kind: "フレームワーク"
 version:
   current: 10.6.1
   latest: 10.6.1
-  checked_on: '2026-10-02'
+  checked_on: '2026-11-04'
   source: package.json
-  pinning: '`storybook`・`@storybook/html-vite` を 10.6.1、`vite` を 8.3.2 に固定する（`^` を付けない）'
+  pinning: '`storybook`・`@storybook/html-vite`・`@storybook/react-vite` を 10.6.1、`vite` を 8.3.2 に固定する（`^` を付けない）'
 catalogs:
   - name: コマンド
     version: 10.6.1
@@ -31,6 +31,18 @@ catalogs:
       - name: core.disableTelemetry
         kind: 設定
         purpose: 利用状況の送信を止める
+  - name: React の側（.storybook-react/）
+    version: 10.6.1
+    entries:
+      - name: npm run storybook-react / npm run build-storybook-react
+        kind: コマンド
+        purpose: '`-c .storybook-react` で React の部品のストーリー（`frontend/src/**/*.stories.tsx`）を開く・書き出す（`storybook-react-static/`）'
+      - name: framework（@storybook/react-vite）
+        kind: 設定
+        purpose: ルートの vite.config.ts の Tailwind・React Compiler を使う。`viteFinal` で root と出力のフォルダを外す
+      - name: preview.tsx の loaders・decorators
+        kind: 設定
+        purpose: MSW の worker（`public/mockServiceWorker.js`）を始め、QueryClientProvider で包む
   - name: API
     version: 10.6.1
     entries:
@@ -46,6 +58,7 @@ dependency_scope: 開発のみ
 adoption: 採用
 used_in:
   - .storybook/main.js
+  - .storybook-react/main.ts
 upstream: storybookjs/storybook
 verification:
   state: 済
@@ -70,6 +83,8 @@ install: |
   - `staticDirs` で `plugins/mindstella/skills/mindmap/preview/` を配り、`previewHead` で部品の CSS・JavaScript を読む
   - 描画のライブラリの script 要素は、雛形 `template.html` から取り出して `previewHead` に差し込む（版・integrity を雛形の 1 か所に保つ）
 limitations:
+  - item: 2 つの設定の並存
+    content: 子 6（#371）で今の画面を React へ切り替えるまで、今の画面の `.storybook/`（html-vite）と React の `.storybook-react/`（react-vite）を並べる。PoC 検証（#430）で、同じ node_modules の上で両方がビルドでき、今のストーリーの結合テストが通ることを確かめた
   - item: Node の版
     content: vite 8.3.2 が `^20.19.0 || >=22.12.0` を求める
   - item: 部品の書き方

@@ -1,0 +1,34 @@
+title: zustand
+kind: ライブラリ
+version:
+  current: 5.0.16
+  latest: 5.0.16
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 5.0.16 に固定する（`^` を付けない）
+catalogs:
+- name: 使うもの
+  version: 5.0.16
+  entries:
+  - name: create
+    kind: 関数
+    purpose: 接続の状態とライト / ダークのストア
+lead: フックで読む小さなクライアントの状態のストア。
+purl: pkg:npm/zustand
+dependency_scope: 必須
+adoption: 採用
+used_in:
+- frontend/src/shared/stores/
+upstream: pmndrs/zustand
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: Vitest で setConnection・setTheme の書き換えと、端末の保存領域の theme だけが書き換わることを確かめた
+license: MIT
+official_url: https://zustand.docs.pmnd.rs/
+docs_url: https://zustand.docs.pmnd.rs/apis/create
+install: '```bash
+
+  npm install --save-exact zustand@5.0.16
+
+  ```'

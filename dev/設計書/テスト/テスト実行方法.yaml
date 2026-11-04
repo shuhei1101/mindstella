@@ -19,7 +19,7 @@ layers:
         pytest {テストファイルパス}
         ```
   - name: 単体テスト（フロント）
-    description: pytest-playwright で、プレビューの部品・画面の `.ts` から tsc が生成した `.js` を `page.add_script_tag` で読み、`page.evaluate` で関数を引数付きで呼んで、返った DOM と計算した値を本物のブラウザ（Chromium）で確かめる。描画のライブラリは `page.route` で差し替える
+    description: 今の画面（`plugins/mindstella/skills/mindmap/preview/`）は、pytest-playwright で、部品・画面の `.ts` から tsc が生成した `.js` を `page.add_script_tag` で読み、`page.evaluate` で関数を引数付きで呼んで、返った DOM と計算した値を本物のブラウザ（Chromium）で確かめる。描画のライブラリは `page.route` で差し替える。React の側（`frontend/src/`）は、Vitest（jsdom）と Testing Library で、テストファイルを対象と同じフォルダに置いて確かめる。API は MSW のハンドラ（`frontend/src/testing/msw/`）で、`EventSource` は偽物（`frontend/src/testing/fake-event-source.ts`）で差し替え、画面はルーターごと描く（`frontend/src/testing/render.tsx`）
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` の開発用の依存（pytest・pytest-playwright・playwright ほか）
       - '`python -m playwright install --only-shell chromium` でブラウザを入れてある（CI は `--with-deps` を付ける）'
@@ -28,28 +28,14 @@ layers:
       - mdmark の配布物は、外部ライブラリの設計書が固定した jsDelivr の URL から初回だけ取り、設計書の integrity と突き合わせて `node_modules/.cache/mindstella-tests/` に置く（次からは取らない。初回は jsDelivr へ HTTPS で届くこと）
     run_all: |-
       ```bash
-      pytest tests/unit/preview
+      pytest tests/unit/preview && npx vitest run
       ```
     run_one:
       label: ファイル
       command: |-
         ```bash
         pytest {テストファイルパス}
-        ```
-  - name: 単体テスト（React）
-    description: Vitest（jsdom）で、`frontend/src/` の関数・フック・部品を、テストファイルを同じフォルダに置いて確かめる。API は MSW のハンドラ（`frontend/src/testing/msw/`）で、`EventSource` は偽物（`frontend/src/testing/fake-event-source.ts`）で差し替える。画面はメモリの上の Router で描く（`frontend/src/testing/render.tsx`）
-    prerequisites:
-      - Node 20.19 以上で `npm ci` を済ませてある
-      - 実行はリポジトリの直下で行う
-    run_all: |-
-      ```bash
-      npx vitest run
-      ```
-    run_one:
-      label: ファイル
-      command: |-
-        ```bash
-        npx vitest run {テストファイルパス}
+        npx vitest run {React の側のテストファイルパス}
         ```
   - name: 結合テスト（バック）
     run_all: |-
@@ -120,14 +106,14 @@ layers:
   - name: 外部疎通テスト
     run_all: 未確定
   - name: lint
-    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）でプレビューの `.ts` とストーリーの `.ts` を検査する。formatter と import の並びの検査は含めない
+    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）で今の画面の `.ts`・ストーリーの `.ts` と React の側（`frontend/tsconfig.json`）を、ESLint（`npm run lint`。`eslint.config.js`）で React の側の `frontend/src/` を検査する。formatter と import の並びの検査は含めない。commit の前に lefthook（`lefthook.yml`）が、React の側の変更ファイルに ESLint と型検査を流す
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` で固定した版の ruff（外部ライブラリ『ruff』）
-      - Node 20.19 以上で `npm ci` を済ませてある
-      - 実行はリポジトリの直下で行う
+      - Node 20.19 以上で `npm ci` を済ませてある（postinstall が lefthook のフックを共有の `.git/hooks/` に入れる）
+      - 実行はリポジトリの直下で行う。`/mnt/c` の上の worktree では ESLint に約 60 秒かかる
     run_all: |-
       ```bash
-      ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+      ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
       ```
     run_one:
       label: ファイル
@@ -144,6 +130,8 @@ notes:
     ```
 
     静的なファイルに書き出すときは `npx storybook build -o storybook-static`。
+
+    React の部品のストーリーは別の設定（`.storybook-react/`）で、`npm run storybook-react`（ポート 6007）で開き、`npm run build-storybook-react` で `storybook-react-static/` に書き出す。API は MSW の worker が返す。
 prerequisites:
   - conftest がテスト全体の始まる前に `MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_ALLOWED_HOSTS` をテストのプロセスから消して走らせる。手元のシェルに設定してあっても、テストは手元のフックのコマンドを呼ばず、結果は設定していないシェルと変わらない
   - フックと許可するホスト名を確かめるテストは、値を `start_server` の `extra_env` や関数の引数で自分で渡す
