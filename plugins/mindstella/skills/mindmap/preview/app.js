@@ -871,6 +871,7 @@ var MindmapPreview;
                 if (route.id !== null)
                     stack.front = "detail";
                 const hadEdit = editing !== null;
+                comment.detailExpanded.clear();
                 if (!comment.listOpen) {
                     comment.removed = [];
                     editing = null;
@@ -951,6 +952,7 @@ var MindmapPreview;
                             editingIn,
                             editError,
                             editBody,
+                            expanded: comment.detailExpanded,
                             on: reviewRowHandlers(MindmapPreview.REVIEW_FOCUS),
                         },
                     }
@@ -1252,6 +1254,7 @@ var MindmapPreview;
             reason: { open: false, body: "", status: "idle", detail: null },
             reviewFocus: null,
             expanded: new Set(),
+            detailExpanded: new Set(),
         };
         const threadsApi = MindmapPreview.threadApi();
         /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
@@ -1882,13 +1885,6 @@ var MindmapPreview;
                 open: openRow,
                 ...reviewRowHandlers(""),
                 unloc: (id) => void detachLocation(id),
-                fold: (id, open) => {
-                    // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
-                    if (open)
-                        comment.expanded.add(id);
-                    else
-                        comment.expanded.delete(id);
-                },
             },
         });
         /** 読み直して一覧まで描き直す */
@@ -1972,6 +1968,14 @@ var MindmapPreview;
                 },
                 remove: (id) => void removeComment(id).then(() => toDetail(`restore:${id}`)),
                 restore: (id) => void restoreComment(id).then(() => toDetail(`edit-open:${id}`)),
+                fold: (id, open) => {
+                    // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
+                    const opened = focus === "" ? comment.expanded : comment.detailExpanded;
+                    if (open)
+                        opened.add(id);
+                    else
+                        opened.delete(id);
+                },
             };
         };
         /** 箇所が合わないコメントから箇所を外し、項目へのコメントにする */

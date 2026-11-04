@@ -249,8 +249,8 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 /* 説明の節の名前 */
 .d-sec.d-answer > h3 { margin: 0 0 2px; padding: 0; border-bottom: 0; font-size: var(--fs-xs); color: var(--text-2); }
 .d-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.d-list li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-small); }
-.d-list li .t { flex: 1; }
+.d-list > li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-small); }
+.d-list > li .t { flex: 1; }
 .opt { padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: var(--radius); margin-bottom: 8px; }
 .opt.adopted { border-color: var(--accent); }
 .opt .o-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
@@ -962,9 +962,9 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .review-order { margin-left: auto; white-space: nowrap; }
 .review-order svg.icon { width: 14px; height: 14px; }
 /* レビュー中のコメントの並び: 行どうしを細い線で区切る */
-.review-list li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+.review-list > li { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 /* 最後の行: 下の線を引かない */
-.review-list li:last-child { border-bottom: 0; }
+.review-list > li:last-child { border-bottom: 0; }
 /* 詳細パネルの行: 中身と行の操作の 2 列。操作は 1 行目の高さに揃える */
 .review-list li.review-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: start; }
 /* 行の中身: 箇所と本文（書き換えているときは入力）を縦に積む */

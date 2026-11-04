@@ -103,7 +103,20 @@ var MindmapPreview;
         });
     }
     /** レビュー中の書き込み（破線の枠と「レビュー中」の印を付け、右上に「修正」「削除」を置く） */
-    function pendingItem({ item, titles, changeSets, editing, editBody, editError, on, }) {
+    function pendingItem({ item, titles, changeSets, editing, editBody, editError, open, on, }) {
+        // 書き換えていない本文は、折り返した後の見た目の行で畳む
+        const fold = editing
+            ? null
+            : MindmapPreview.reviewBodyFold({
+                id: item.id,
+                label: MindmapPreview.reviewLabel(item),
+                body: item.body,
+                titles,
+                changeSets,
+                open,
+                on: { toggle: on.fold, changeSet: on.changeSet, openId: on.openId },
+            });
+        fold?.body.classList.add("post-body");
         return MindmapPreview.h({
             tag: "li",
             attrs: { class: "post user pending", "data-comment": item.id },
@@ -120,18 +133,20 @@ var MindmapPreview;
                 }),
                 editing
                     ? MindmapPreview.reviewEditForm({ item, body: editBody, error: editError, focus: "", on: { saveEdit: on.saveEdit, cancelEdit: on.cancelEdit } })
-                    : postBody({ body: item.body, titles, changeSets, className: "post-body", on: { openId: on.openId, changeSet: on.changeSet } }),
+                    : fold?.body ?? null,
+                // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）
+                fold === null ? null : MindmapPreview.h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
             ],
         });
     }
     /** スレッドの書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す */
-    function threadPost({ post = null, event = null, pending = null, titles = () => null, changeSets = () => null, editing = false, editBody = null, editError = null, on, }) {
+    function threadPost({ post = null, event = null, pending = null, titles = () => null, changeSets = () => null, editing = false, editBody = null, editError = null, open = false, on, }) {
         // 状態の記録
         if (event !== null)
             return eventItem(event);
         // レビュー中の書き込み
         if (pending !== null)
-            return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, on });
+            return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, open, on });
         // 書き込みが無い（渡し方の誤り）
         if (post === null)
             throw new Error("threadPost には post・event・pending のどれか 1 つを渡す");

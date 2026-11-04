@@ -12,6 +12,8 @@ namespace MindmapPreview {
     changeSets?: (id: string) => string | null;
     /** レビュー中の書き込みを書き換えているか */
     editing?: boolean;
+    /** レビュー中の書き込みの本文を開いているか */
+    open?: boolean;
     /** 直せなかったときに入力欄に残す中身 */
     editBody?: string | null;
     /** 直せなかった理由 */
@@ -29,6 +31,8 @@ namespace MindmapPreview {
       cancelEdit: () => void;
       /** レビュー中の書き込みを消す */
       remove: (id: string) => void;
+      /** レビュー中の書き込みの本文を開いた・畳んだ（書き込みの ID と、開いたか） */
+      fold: (id: string, open: boolean) => void;
     };
   };
 
@@ -171,6 +175,7 @@ namespace MindmapPreview {
     editing,
     editBody,
     editError,
+    open,
     on,
   }: {
     item: ReviewState["items"][number];
@@ -179,8 +184,22 @@ namespace MindmapPreview {
     editing: boolean;
     editBody: string | null;
     editError: string | null;
+    open: boolean;
     on: ThreadPostProps["on"];
   }): HTMLElement {
+    // 書き換えていない本文は、折り返した後の見た目の行で畳む
+    const fold = editing
+      ? null
+      : reviewBodyFold({
+        id: item.id,
+        label: reviewLabel(item),
+        body: item.body,
+        titles,
+        changeSets,
+        open,
+        on: { toggle: on.fold, changeSet: on.changeSet, openId: on.openId },
+      });
+    fold?.body.classList.add("post-body");
     return h({
       tag: "li",
       attrs: { class: "post user pending", "data-comment": item.id },
@@ -197,7 +216,9 @@ namespace MindmapPreview {
         }),
         editing
           ? reviewEditForm({ item, body: editBody, error: editError, focus: "", on: { saveEdit: on.saveEdit, cancelEdit: on.cancelEdit } })
-          : postBody({ body: item.body, titles, changeSets, className: "post-body", on: { openId: on.openId, changeSet: on.changeSet } }),
+          : fold?.body ?? null,
+        // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）
+        fold === null ? null : h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
       ],
     });
   }
@@ -212,12 +233,13 @@ namespace MindmapPreview {
     editing = false,
     editBody = null,
     editError = null,
+    open = false,
     on,
   }: ThreadPostProps): HTMLElement {
     // 状態の記録
     if (event !== null) return eventItem(event);
     // レビュー中の書き込み
-    if (pending !== null) return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, on });
+    if (pending !== null) return pendingItem({ item: pending, titles, changeSets, editing, editBody, editError, open, on });
     // 書き込みが無い（渡し方の誤り）
     if (post === null) throw new Error("threadPost には post・event・pending のどれか 1 つを渡す");
     return h({

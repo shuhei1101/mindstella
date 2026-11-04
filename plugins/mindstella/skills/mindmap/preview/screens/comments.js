@@ -110,6 +110,7 @@ var MindmapPreview;
             return `${item.thread} への返信`;
         return item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
     }
+    MindmapPreview.reviewLabel = reviewLabel;
     /** 行の向けた項目（押すとその項目を開く。消えた項目は押せない。項目を指さないときは何も出さない） */
     function targetCell(item, props) {
         // 項目を指さない
@@ -714,6 +715,7 @@ var MindmapPreview;
             editing: props.editing === item.id && props.editingIn !== "detail",
             editBody: props.editBody ?? null,
             editError: props.editError ?? null,
+            open: props.expanded.has(item.id),
             on: {
                 openId: (id) => props.on.openId(id),
                 changeSet: props.on.changeSet,
@@ -721,6 +723,7 @@ var MindmapPreview;
                 saveEdit: props.on.saveEdit,
                 cancelEdit: props.on.cancelEdit,
                 remove: props.on.remove,
+                fold: props.on.fold,
             },
         });
     }
@@ -812,8 +815,8 @@ var MindmapPreview;
                         attrs: { class: "posts", "aria-label": "書き込み" },
                         children: [
                             ...threadTimeline(thread).map((entry) => "post" in entry
-                                ? MindmapPreview.threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
-                                : MindmapPreview.threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })),
+                                ? MindmapPreview.threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove, fold: on.fold } })
+                                : MindmapPreview.threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove, fold: on.fold } })),
                             ...replies.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : pendingPostItem(item, props))),
                         ],
                     }),
