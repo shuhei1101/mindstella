@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadPreviewScripts, LoadPreviewStyles
+from .fixture_types import LoadMdmark, LoadPreviewScripts, LoadPreviewStyles
 
 # 部品を置く入れ物の幅（px）
 CONTAINER_WIDTH = 320
@@ -180,3 +180,56 @@ def test_review_body_fold_when_open(
     assert shown["moreText"] == "折りたたむ"
     assert shown["expanded"] == "true"
     assert observed["calls"] == []
+
+
+# 記録にある T-14 と記録に無い D-99 を含む本文を、`titles` と `focus` を渡して描き、T-14 を押した結果を集める JavaScript
+TITLES_FOCUS_SCRIPT = """async ({width}) => {
+    const calls = [];
+    const parts = MindmapPreview.reviewBodyFold({
+        id: "C-55",
+        label: "TH-1 への返信",
+        body: "T-14 は今週中に。D-99 は重なる",
+        titles: (id) => (id === "T-14" ? "移し替えの失敗の扱いを書く" : null),
+        focus: "detail-",
+        on: {
+            toggle: (...a) => calls.push(["toggle", ...a]),
+            changeSet: (...a) => calls.push(["changeSet", ...a]),
+            openId: (...a) => calls.push(["openId", ...a]),
+        },
+    });
+    const host = document.createElement("li");
+    host.style.width = `${width}px`;
+    host.append(parts.body, parts.more);
+    document.body.append(host);
+    const buttons = [...parts.body.querySelectorAll("button")];
+    const idButton = buttons.find((button) => button.textContent.trim() === "T-14");
+    const result = {
+        idButtonTitle: idButton === undefined ? null : idButton.title,
+        unknownIdIsButton: buttons.some((button) => button.textContent.trim() === "D-99"),
+        text: parts.body.textContent,
+        focus: parts.more.getAttribute("data-focus"),
+    };
+    if (idButton !== undefined) idButton.click();
+    return {...result, calls};
+}"""
+
+
+def test_review_body_fold_when_titles_and_focus(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+) -> None:
+    """記録にある項目の ID のリンクと、開閉のボタンの接頭辞（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    # 実行
+    observed = preview_page.evaluate(TITLES_FOCUS_SCRIPT, {"width": CONTAINER_WIDTH})
+    # 検証
+    assert observed["idButtonTitle"] == "移し替えの失敗の扱いを書く"
+    assert observed["unknownIdIsButton"] is False
+    assert "D-99" in observed["text"]
+    assert observed["focus"] == "detail-more:C-55"
+    assert observed["calls"] == [["openId", "T-14"]]

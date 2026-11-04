@@ -1498,3 +1498,27 @@ def test_removed_review_row(
         "rowClass": "row removed",
         "restored": ["C-2"],
     }
+
+
+@pytest.mark.parametrize(
+    ("item", "expected"),
+    [
+        pytest.param({"thread": "TH-1", "target": None}, "TH-1 への返信", id="reply"),
+        pytest.param({"thread": None, "target": "D-1"}, "D-1 へのコメント", id="new_thread"),
+        pytest.param({"target": "D-1"}, "D-1 へのコメント", id="detail_row"),
+        pytest.param({"thread": None, "target": None}, "項目を指さないコメント", id="no_target"),
+    ],
+)
+def test_review_label(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    item: dict[str, Any],
+    expected: str,
+) -> None:
+    """返信・項目へのコメント・項目を指さないコメントの頭（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    label = preview_page.evaluate("(item) => MindmapPreview.reviewLabel(item)", item)
+    # 検証
+    assert label == expected

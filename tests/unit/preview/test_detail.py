@@ -896,7 +896,7 @@ def _review_item(item_id: str, body: str) -> dict[str, object]:
 
 
 # 詳細パネルに渡す、下端の入力欄とレビュー中のコメントと行の操作の引数を作り、文書に置く関数
-OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls, reviewOrder}) => {
+OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls, reviewOrder, expanded = []}) => {
     const index = MindmapPreview.buildIndex(data);
     const noop = () => {};
     const count = (name) => () => { calls[name] += 1; };
@@ -920,9 +920,10 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
                 editingIn,
                 editError: null,
                 editBody: null,
+                expanded: new Set(expanded),
                 on: {
                     edit: noop, saveEdit: noop, cancelEdit: count("cancelEdit"), remove: noop,
-                    restore: noop,
+                    restore: noop, fold: (...a) => { (calls.fold ??= []).push(a); },
                 },
             },
         },
@@ -950,12 +951,12 @@ async ({data, reviews, removed, editing, editingIn, reviewOrder}) => {
     return {
         count: section.querySelector("h3 .count").textContent.trim(),
         rows: [...section.querySelectorAll("li")].map((row) => ({
-            buttons: [...row.querySelectorAll("button")].map(labelOf),
+            buttons: [...row.querySelectorAll("button:not([hidden])")].map(labelOf),
             status: [...row.querySelectorAll('[role="status"]')].map((status) => status.textContent.trim()),
             hasField: row.querySelector("textarea") !== null,
             body: row.querySelector(".review-body")?.textContent ?? null,
         })),
-        focuses: [...section.querySelectorAll("li [data-focus]")].map((element) => element.getAttribute("data-focus")),
+        focuses: [...section.querySelectorAll("li [data-focus]:not([hidden])")].map((element) => element.getAttribute("data-focus")),
     };
 }"""
 )
@@ -1015,6 +1016,117 @@ def test_detail_panel_when_review_rows(
         "detail-restore:C-2",
         "detail-edit:C-3",
     ]
+
+
+# 頭の 1 行と番号付きの 7 行の、改行で 8 行の本文（各行は折り返さない短さ）
+LIST_REVIEW_BODY = "\n".join(["D-1 の画面で気になった点をまとめます。", *(f"{number}. {number} 行目の気づき" for number in range(1, 8))])
+
+# レビュー中のコメントの行の本文の畳み方・リストの見た目・開閉のボタンを調べ、C-63 の開閉のボタンを押す
+REVIEW_FOLD_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews, expanded}) => {
+    const calls = {full: 0, cancelEdit: 0};
+    const panel = await openReviewPanel({data, reviews, removed: [], editing: null, full: false, calls, expanded});
+    // 開閉のボタンを出すかの測りは、描いた後の ResizeObserver の通知で決まる
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const norm = (text) => text.replace(/\\s+/g, " ").trim();
+    const rowOf = (id) => panel.querySelector(`.d-review li[data-comment="${id}"]`);
+    const observe = (id) => {
+        const row = rowOf(id);
+        const body = row.querySelector(".review-body");
+        const more = row.querySelector(".review-more");
+        const moreRow = row.querySelector(".review-more-row");
+        const listItem = body.querySelector("ol > li");
+        return {
+            folded: body.classList.contains("folded"),
+            hasList: body.querySelector("ol") !== null,
+            listItemBorder: listItem === null ? null : getComputedStyle(listItem).borderBottomWidth,
+            listItemDisplay: listItem === null ? null : getComputedStyle(listItem).display,
+            moreShown: more !== null && !more.hidden && moreRow !== null && getComputedStyle(moreRow).display !== "none",
+            moreText: more === null || more.hidden ? null : norm(more.textContent),
+            moreFocus: more === null || more.hidden ? null : more.getAttribute("data-focus"),
+        };
+    };
+    const long = observe("C-63");
+    const short = observe("C-65");
+    rowOf("C-63").querySelector(".review-more").click();
+    return {long, short, fold: calls.fold ?? []};
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("expanded", "expected_long", "expected_fold"),
+    [
+        pytest.param(
+            [],
+            {
+                "folded": True,
+                "hasList": True,
+                "listItemBorder": "0px",
+                "listItemDisplay": "list-item",
+                "moreShown": True,
+                "moreText": "続きを読む",
+                "moreFocus": "detail-more:C-63",
+            },
+            [["C-63", True]],
+            id="folded",
+        ),
+        pytest.param(
+            ["C-63"],
+            {
+                "folded": False,
+                "hasList": True,
+                "listItemBorder": "0px",
+                "listItemDisplay": "list-item",
+                "moreShown": True,
+                "moreText": "折りたたむ",
+                "moreFocus": "detail-more:C-63",
+            },
+            [["C-63", False]],
+            id="opened",
+        ),
+    ],
+)
+def test_detail_panel_when_review_folded(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    expanded: list[str],
+    expected_long: dict[str, Any],
+    expected_fold: list[list[Any]],
+) -> None:
+    """レビュー中のコメントの長い本文を Markdown で描いて畳む（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_FOLD_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-63", LIST_REVIEW_BODY), _review_item("C-65", "案 B も見たい")],
+            "expanded": expanded,
+        },
+    )
+    # 検証
+    assert result["long"] == expected_long
+    assert result["short"] == {
+        "folded": False,
+        "hasList": False,
+        "listItemBorder": None,
+        "listItemDisplay": None,
+        "moreShown": False,
+        "moreText": None,
+        "moreFocus": None,
+    }
+    assert result["fold"] == expected_fold
 
 
 # レビュー中のコメントの行の ID の並びと、並びの切り替えの文字と読み上げの名前を調べる
