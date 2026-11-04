@@ -1,0 +1,8 @@
+summary: '`frontend/src/app/` の React のプレビューのモジュール'
+items:
+- page: app.tsx.yaml
+  summary: QueryClientProvider と RouterProvider を組み、書き換えの知らせへつなぐ（書き換えの知らせへの接続）
+- page: query-client.ts.yaml
+  summary: knowledge の規約『QueryClient』の defaultOptions
+- page: router.tsx.yaml
+  summary: SPA を配るパスの頭（インターフェース定義『SPAの配信』）

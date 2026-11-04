@@ -9,9 +9,5 @@ items:
     summary: 表・トップバー・表示形式の切り替え・コメントの入力・選んだ箇所の入口と、概要からネットワーク・コメントの一覧までの画面
   - page: 差分.ts.yaml
     summary: 選んだ時点の印・前の版の組み立て・行の差分・図の要素の突き合わせ
-  - page: React入口.tsx.yaml
-    summary: React のプレビューの起動・Provider と QueryClient とルーター・ルートの定義
-  - page: React基盤.ts.yaml
-    summary: React のプレビューの API の呼び出し・書き換えの知らせ・接続の状態・エラー・テーマ・今の画面への URL
-  - page: React画面と部品.tsx.yaml
-    summary: React のプレビューのトップバー・shadcn/ui の部品・概要の画面・トークン
+  - page: React.yaml
+    summary: React のプレビューのファイルの並び・つながり・置き場所の決まり（各ファイルの設計書は frontend/ の下）

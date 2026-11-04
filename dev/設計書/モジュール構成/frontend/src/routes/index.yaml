@@ -1,0 +1,4 @@
+summary: '`frontend/src/routes/` の React のプレビューのモジュール'
+items:
+- page: __root.tsx.yaml
+  summary: 子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける

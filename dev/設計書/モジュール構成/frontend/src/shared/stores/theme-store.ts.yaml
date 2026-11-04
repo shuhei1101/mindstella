@@ -1,0 +1,42 @@
+title: プレビュー / theme-store
+lead: 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す。
+constants:
+- name: PREFS_KEY
+  title: 端末の保存領域のキー
+  container: frontend/src/shared/stores/theme-store.ts
+  usecase: 共通
+  summary: 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す
+  value: '"mindmap-preview"'
+stores:
+- name: useThemeStore
+  title: ライト / ダーク
+  container: frontend/src/shared/stores/theme-store.ts
+  usecase: 共通
+  summary: ライト / ダークを持ち、`PREFS_KEY` の `theme` に残す。無ければ OS の設定
+  state:
+  - name: theme
+    type: '''light'' | ''dark'''
+    initial: '`PREFS_KEY` の `theme`、無ければ OS の設定'
+    description: '`document.documentElement.dataset.theme` にも当てる'
+  actions:
+  - name: setTheme
+    title: テーマの切り替え
+    kind: メソッド
+    summary: テーマを書き換え、`PREFS_KEY` の `theme` だけを書き換えて残す
+    args:
+    - name: theme
+      type: '''light'' | ''dark'''
+      required: true
+      description: 新しいテーマ
+    returns:
+      type: void
+      description: '-'
+    unit_tests:
+    - name: test_set_theme
+      case: 正常
+      summary: theme だけを残す
+      condition: '`PREFS_KEY` に `{theme: ''light'', columns: {...}}` を置いて dark を渡す'
+      mock: なし（jsdom の localStorage）
+      expected: '`PREFS_KEY` が `{theme: ''dark'', columns: {...}}`、`dataset.theme` が dark'
+notes:
+  単体テスト: 同じフォルダの `theme-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

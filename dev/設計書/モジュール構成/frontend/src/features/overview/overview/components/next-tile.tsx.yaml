@@ -1,0 +1,11 @@
+title: プレビュー / next-tile
+lead: '`derived.next` を並べる。'
+components:
+- name: NextTile
+  title: 次に検討する項目のタイル
+  kind: コンポーネント
+  container: frontend/src/features/overview/overview/components/next-tile.tsx
+  usecase: 概要を見る
+  summary: '`derived.next` を並べる'
+notes:
+  単体テスト: 同じフォルダの `next-tile.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,6 @@
+summary: '`frontend/src/shared/components/` の React のプレビューのモジュール'
+items:
+- page: topbar.tsx.yaml
+  summary: 部品設計『トップバー.tsx』の props・イベント・状態を持つ
+- page: ui/
+  summary: '`frontend/src/shared/components/ui/` の React のプレビューのモジュール'
