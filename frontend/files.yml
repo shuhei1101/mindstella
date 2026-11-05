@@ -1,0 +1,508 @@
+# yaml-language-server: $schema=../schemas/files.schema.yaml
+files:
+- path: index.html
+  name: React のプレビューの HTML の入口
+  description: Vite が React のプレビューを組み立てるときの HTML の入口。SPA の HTML の入口や読み込むスクリプトを変更するときに読む。
+  tags:
+  - tool:html
+  - tool:vite
+  - topic:spa
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: openapi.yaml
+  name: React のプレビューが読む配信の API の定義
+  description: React のプレビューが読む、サーバーの配信の API の OpenAPI の定義で、orval が query とスキーマと MSW の handler を生成する元。React のプレビューが呼ぶ配信の API を追加・変更するときに読む。
+  tags:
+  - tool:openapi
+  - tool:orval
+  - topic:api
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/app/app.test.tsx
+  name: React のプレビューのアプリの組み立ての単体テスト
+  description: React のプレビューのアプリの組み立ての振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/app/app.tsx
+    type: tests
+- path: src/app/app.tsx
+  name: React のプレビューのアプリの組み立て
+  description: QueryClientProvider と RouterProvider を組み、書き換えの知らせへつなぐ。Provider とルーターの組み方を変更するときに読む。
+  tags:
+  - tool:react
+  - tool:tanstack-query
+  - topic:アプリ
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/app/app.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/app/query-client.test.ts
+  name: React のプレビューの QueryClient の単体テスト
+  description: React のプレビューの QueryClient の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/app/query-client.ts
+    type: tests
+- path: src/app/query-client.ts
+  name: React のプレビューの QueryClient
+  description: アプリで 1 つの QueryClient（knowledge の規約『QueryClient』の defaultOptions）。query の既定の設定を変更するときに読む。
+  tags:
+  - tool:tanstack-query
+  - topic:クエリ
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/app/query-client.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/app/router.test.tsx
+  name: React のプレビューのルーターの単体テスト
+  description: React のプレビューのルーターの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/app/router.tsx
+    type: tests
+- path: src/app/router.tsx
+  name: React のプレビューのルーター
+  description: 生成したルートのツリーで、SPA を配るパスの頭（インターフェース定義『SPAの配信』）を付けたルーターを作る。ルーターの組み立てや SPA を配るパスの頭を変更するときに読む。
+  tags:
+  - tool:tanstack-router
+  - topic:ルーティング
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/app/router.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/overview/overview/components/goal-tile.tsx
+  name: ゴールまでの進捗のタイル
+  description: ゴールが無いときはフェーズ別の進捗。ゴールまでの進捗のタイルの表示を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:概要
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/goal-tile.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/overview/overview/components/list-tile.tsx
+  name: 件数と名前のタイル
+  description: 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」のタイル。要見直し・保留・進行中のタスクのタイルの表示を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:概要
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/list-tile.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/overview/overview/components/next-tile.tsx
+  name: 次に検討する項目のタイル
+  description: 横に並べる幅では枠に収まるだけ、縦に積む幅では上位 3 件を出す。次に検討する項目のタイルの表示を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:概要
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/next-tile.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/overview/overview/components/progress-table.tsx
+  name: カテゴリー別の進捗のタイル
+  description: カテゴリーを行、フェーズを列にする）。カテゴリー別の進捗の表を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:概要
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/progress-table.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/overview/overview/overview-screen.stories.tsx
+  name: React の概要の画面のストーリー
+  description: 記録・レビュー中のコメント・保存待ちの編集・スレッドは MSW の handler（testing/msw/handlers.ts）が返す。React の概要の画面の状態を追加・変更するときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  - topic:ストーリー
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+  - to: frontend/src/features/overview/overview/overview-screen.tsx
+    type: see_also
+- path: src/features/overview/overview/overview-screen.test.tsx
+  name: React の概要の画面の単体テスト
+  description: React の概要の画面の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/overview/overview/overview-screen.tsx
+    type: tests
+- path: src/features/overview/overview/overview-screen.tsx
+  name: React の概要の画面
+  description: トップバーとタイルを描き、記録が読めないときは detail の行を出す。React の概要の画面の構成を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:概要
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/overview-screen.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/概要.tsx.yaml
+    type: implements
+- path: src/features/overview/overview/queries.test.ts
+  name: 概要が読む query の単体テスト
+  description: 概要が読む query の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/overview/overview/queries.ts
+    type: tests
+- path: src/features/overview/overview/queries.ts
+  name: 概要が読む query
+  description: 生成した queryOptions を成功の本文で選ぶ。概要の画面が読むデータを変更するときに読む。
+  tags:
+  - tool:tanstack-query
+  - topic:クエリ
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/queries.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/overview/overview/search.test.ts
+  name: 概要のルートの search params の単体テスト
+  description: 概要のルートの search params の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/overview/overview/search.ts
+    type: tests
+- path: src/features/overview/overview/search.ts
+  name: 概要のルートの search params
+  description: 概要のルートの search params の tab を検証し、決めた値以外は既定に落とす。概要の URL の search の受け方を変更するときに読む。
+  tags:
+  - tool:zod
+  - topic:url
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/search.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/main.tsx
+  name: React のプレビューの起動
+  description: '起動: QueryClient とルーターを作り、#root に描く。React のプレビューの起動の流れを変更するときに読む。'
+  tags:
+  - tool:react
+  - topic:起動
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/routes/__root.tsx
+  name: ルートの外枠
+  description: 描画中のエラーは errorComponent（ルーターの ErrorBoundary）で受ける。全てのルートに共通の外枠やエラーの受け方を変更するときに読む。
+  tags:
+  - tool:tanstack-router
+  - topic:エラー
+  - topic:ルート
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/routes/__root.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/routes/index.tsx
+  name: 概要のルート
+  description: search を検証し、決めた値以外の search は URL から外して開き直す。概要のルートの search の検証を変更するときに読む。
+  tags:
+  - tool:tanstack-router
+  - topic:url
+  - topic:ルート
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/adapters/api-client.test.ts
+  name: 配信の API の呼び出しの単体テスト
+  description: 配信の API の呼び出しの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/adapters/api-client.ts
+    type: tests
+- path: src/shared/adapters/api-client.ts
+  name: 配信の API の呼び出し
+  description: orval の mutator として fetch を呼ぶ場所を 1 か所にし、失敗を AppError にする。fetch の呼び方や失敗の扱いを変更するときに読む。
+  tags:
+  - tool:orval
+  - topic:api
+  - topic:エラー
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/adapters/api-client.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/adapters/events-client.test.ts
+  name: 書き換えの知らせへの接続の単体テスト
+  description: 書き換えの知らせへの接続の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/adapters/events-client.ts
+    type: tests
+- path: src/shared/adapters/events-client.ts
+  name: 書き換えの知らせへの接続
+  description: 書き換えの知らせ（インターフェース定義『書き換えの知らせ』）へつなぎ、記録の query を読み直す。書き換えの知らせを受けたときの読み直しを変更するときに読む。
+  tags:
+  - tool:tanstack-query
+  - topic:sse
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/adapters/events-client.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/components/icon.tsx
+  name: React のアイコンと状態の印
+  description: 24px の枠に描いた線のアイコンと、状態の 10px の印（今の画面の `core/dom.ts` と同じ絵）。アイコンや状態の印の絵を追加・変更するときに読む。
+  tags:
+  - tool:react
+  - tool:svg
+  - topic:アイコン
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/components/icon.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/components/topbar.stories.tsx
+  name: React のトップバーのストーリー
+  description: トップバーのストーリー（部品設計『トップバー.tsx』の状態）。React のトップバーの状態を追加・変更するときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  - topic:ストーリー
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+  - to: frontend/src/shared/components/topbar.tsx
+    type: see_also
+- path: src/shared/components/topbar.test.tsx
+  name: React のトップバーの単体テスト
+  description: React のトップバーの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/components/topbar.tsx
+    type: tests
+- path: src/shared/components/topbar.tsx
+  name: React のトップバー
+  description: 題名・接続の状態・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・コメントのボタンと、画面を移るタブの帯を出す。React のトップバーのボタンやタブの帯を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:トップバー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/components/topbar.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/トップバー.tsx.yaml
+    type: implements
+- path: src/shared/components/ui/button.tsx
+  name: ボタンの部品
+  description: 見た目の違いは variants で持つ。ボタンの見た目の種類を追加・変更するときに読む。
+  tags:
+  - tool:react
+  - tool:shadcn-ui
+  - topic:ボタン
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/components/ui/button.tsx.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/core/app-error.test.ts
+  name: 配信の応答のエラーの単体テスト
+  description: 配信の応答のエラーの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/core/app-error.ts
+    type: tests
+- path: src/shared/core/app-error.ts
+  name: 配信の応答のエラー
+  description: 失敗した応答から、画面に detail を出すエラーを作る。失敗した応答から作るエラーの形を変更するときに読む。
+  tags:
+  - topic:エラー
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/core/app-error.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/core/legacy-url.test.ts
+  name: 今の画面の URL の単体テスト
+  description: 今の画面の URL の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/core/legacy-url.ts
+    type: tests
+- path: src/shared/core/legacy-url.ts
+  name: 今の画面の URL
+  description: React に無い画面を開くときの、今の画面の URL（インターフェース定義『プレビューの配信』）。React に無い画面を開くときの URL の求め方を変更するときに読む。
+  tags:
+  - topic:url
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/core/legacy-url.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/lib/cn.test.ts
+  name: クラス名の結合の単体テスト
+  description: クラス名の結合の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/lib/cn.ts
+    type: tests
+- path: src/shared/lib/cn.ts
+  name: クラス名の結合
+  description: クラス名を合わせる（後のクラスで前の同じ種類のクラスを上書きする）。クラス名の合わせ方を変更するときに読む。
+  tags:
+  - tool:tailwind-css
+  - topic:スタイル
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/lib/cn.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/stores/connection-store.test.ts
+  name: 接続の状態のストアの単体テスト
+  description: 接続の状態のストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/stores/connection-store.ts
+    type: tests
+- path: src/shared/stores/connection-store.ts
+  name: 接続の状態のストア
+  description: 書き換えの知らせがつながっているかを持つ。書き換えの知らせの接続の状態の持ち方を変更するときに読む。
+  tags:
+  - tool:zustand
+  - topic:sse
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/stores/connection-store.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/stores/theme-store.test.ts
+  name: ライト / ダークのストアの単体テスト
+  description: ライト / ダークのストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/stores/theme-store.ts
+    type: tests
+- path: src/shared/stores/theme-store.ts
+  name: ライト / ダークのストア
+  description: ライト / ダークを、今の画面と同じ端末の保存領域のキーで読み書きする。テーマの保存と切り替えを変更するときに読む。
+  tags:
+  - tool:zustand
+  - topic:ダークモード
+  - topic:テーマ
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/stores/theme-store.ts.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/styles/index.css
+  name: React のプレビューのスタイル
+  description: Tailwind を読み、標準のパレットを消して、tokens.css のトークンを割り当てる。React のプレビューの共通のスタイルを変更するときに読む。
+  tags:
+  - tool:css
+  - tool:tailwind-css
+  - topic:スタイル
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/styles/index.css.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/styles/tokens.css
+  name: React のプレビューのデザイントークン
+  description: :root の 3 ティアで持つ。React のプレビューのデザイン値を変更するときに読む。
+  tags:
+  - tool:css
+  - tool:tailwind-css
+  - topic:デザイントークン
+  related:
+  - to: dev/設計書/モジュール構成/frontend/src/shared/styles/tokens.css.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/testing/fake-event-source.ts
+  name: テスト用の EventSource
+  description: 'テスト用の EventSource: テストから open・changed・error を送る。書き換えの知らせを送るテストの補助を変更するときに読む。'
+  tags:
+  - tool:vitest
+  - topic:sse
+  - topic:テスト
+- path: src/testing/msw/handlers.ts
+  name: 配信の API の MSW の handler
+  description: 配信の API の MSW の handler（Storybook・Vitest で共有する）。Storybook と Vitest が返す API の応答を変更するときに読む。
+  tags:
+  - tool:msw
+  - topic:モック
+- path: src/testing/msw/server.ts
+  name: Vitest の MSW のサーバー
+  description: Vitest で配信の API の MSW のサーバーを立てる。Vitest で MSW を立てる設定を変更するときに読む。
+  tags:
+  - tool:msw
+  - tool:vitest
+  - topic:モック
+- path: src/testing/render.tsx
+  name: テストで画面を描く補助
+  description: Provider とルーターつきで画面を描く。Provider とルーターつきで画面を描く補助を変更するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:テスト
+- path: src/testing/setup-tests.ts
+  name: 単体テストの共通の準備
+  description: '単体テストの共通の準備: jest-dom の matcher・MSW のサーバー・端末の保存領域の後始末。Vitest の単体テストの前後の準備を変更するときに読む。'
+  tags:
+  - tool:vitest
+  - topic:セットアップ
+  - topic:テスト
