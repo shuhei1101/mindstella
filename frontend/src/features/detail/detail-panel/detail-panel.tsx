@@ -282,17 +282,25 @@ const KeyLead = ({ name, value, keys }: { name: string; value: string | undefine
   );
 };
 
+/** そのタブで変えた幅を残す sessionStorage のキー（今の画面と同じ） */
+const PANEL_WIDTH_KEY = "mindmap-panel-width";
+
+const readPanelWidth = (): number => {
+  const saved = sessionStorage.getItem(PANEL_WIDTH_KEY);
+  return saved !== null && /^[1-9]\d*$/.test(saved) ? Number(saved) : PANEL_WIDTH.default;
+};
+
 export type DetailPanelProps = { id: string; index: RecordIndex };
 
 export const DetailPanel = ({ id, index }: DetailPanelProps) => {
-  const [width, setWidth] = useState(() => readPrefs().panelWidth ?? PANEL_WIDTH.default);
+  const [width, setWidth] = useState(readPanelWidth);
   return (
     <aside aria-label="詳細" style={{ width }} className="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!">
       <DetailResizer
         width={width}
         onChange={(next) => {
           setWidth(next);
-          writePrefs({ panelWidth: next });
+          sessionStorage.setItem(PANEL_WIDTH_KEY, String(next));
         }}
       />
       <DetailContent id={id} index={index} full={false} />

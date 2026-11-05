@@ -1,7 +1,7 @@
 // SPA のルート（/）。search を検証し、記録に合わない値は画面が外す
 import { createFileRoute } from "@tanstack/react-router";
 
-import { OverviewScreen } from "@/features/overview/overview/overview-screen";
+import { PreviewShell } from "@/app/preview-shell";
 import { parsePreviewSearch } from "@/shared/core/preview-search";
 import { previewQueries } from "@/shared/hooks/preview-queries";
 
@@ -18,5 +18,5 @@ export const Route = createFileRoute("/")({
       queryClient.query(threads).catch(ignore),
     ]);
   },
-  component: OverviewScreen,
+  component: PreviewShell,
 });

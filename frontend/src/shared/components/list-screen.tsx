@@ -1,6 +1,6 @@
 // 一覧の画面の枠。表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと、表の状態を持つ
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { DiffMarks } from "@/shared/components/diff-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
@@ -69,6 +69,12 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     }
     return result;
   }, [comments.data]);
+  const columnKeys = index === null ? null : columnsOf(index, openItem).map((column) => column.key);
+  // 記録に合わない並べ替えの列は URL から外す
+  useEffect(() => {
+    if (search.sort !== undefined && columnKeys !== null && !columnKeys.includes(search.sort.replace(/^-/, ""))) setSort(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 列の並びと並べ替えが変わったときだけ確かめる
+  }, [search.sort, columnKeys?.join()]);
   if (index === null) return null;
   const columns = columnsOf(index, openItem);
   const list = asColumns(columns);
@@ -124,7 +130,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       </div>
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} onFilter={setFilters} />}
       <RemovedBand items={removedOf({ point, kind })} />
-      {view === "table" || content === undefined ? table : content({ index, view, shown: sortRowsToItems(filtered), filters, marks, comments: counts, edit, onOpen: openItem, selectedId: search.id, table })}
+      {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, marks, comments: counts, edit, onOpen: openItem, selectedId: search.id, table })}
       {drawerOpen ? (
         <FilterDrawer
           groups={drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters })}
@@ -155,5 +161,3 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
     </div>
   );
 };
-
-const sortRowsToItems = (rows: Row[]): Item[] => rows as unknown as Item[];

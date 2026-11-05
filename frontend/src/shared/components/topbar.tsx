@@ -11,7 +11,7 @@ import type { Theme } from "@/shared/stores/theme-store";
 export type TabKey = "overview" | "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs";
 
 /** 開いている画面（ネットワークを含む） */
-export type TopbarCurrent = TabKey | "graph";
+export type TopbarCurrent = TabKey | "graph" | "settings";
 
 /** タブの帯に並べる 1 つの画面 */
 export type TopbarTab = {

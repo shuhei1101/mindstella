@@ -20,7 +20,6 @@ export type Prefs = {
   tableStripes?: true | null;
   sectionFold?: false | null;
   kinds?: Kind[] | null;
-  panelWidth?: number | null;
 };
 
 /** 保存領域の値の JSON（読めなければ空） */

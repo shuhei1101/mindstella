@@ -24,6 +24,8 @@ export type PreviewSearchApi = {
   setSort: (sort: string | undefined) => void;
   setDiff: (diff: string | undefined) => void;
   setPanel: (panel: PreviewSearch["panel"]) => void;
+  /** 別の画面の項目か一覧を開く（履歴に積む） */
+  openList: (tab: PreviewTab, patch: Patch) => void;
   /** 記録に合わない値を外した search へ置き換える */
   replaceSearch: (search: PreviewSearch) => void;
 };
@@ -65,6 +67,9 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     },
     setPanel: (panel) => {
       apply({ panel }, true);
+    },
+    openList: (tab, patch) => {
+      void navigate({ search: { f: {}, tab, ...patch } });
     },
     replaceSearch: (next) => {
       void navigate({ search: next, replace: true });
