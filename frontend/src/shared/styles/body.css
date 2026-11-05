@@ -1,0 +1,357 @@
+/* mdmark が描いた本文と差分の DOM に当てるスタイル。React の外で作る要素なので、今の画面の style.css の規則をトークンの名前に写して持つ */
+:root {
+  --df-add: var(--st-done);
+  --df-del: var(--st-review);
+  --df-chg: var(--st-hold);
+  --df-add-bg: color-mix(in oklab, var(--st-done) 14%, var(--card));
+  --df-del-bg: color-mix(in oklab, var(--st-review) 12%, var(--card));
+  --df-chg-bg: color-mix(in oklab, var(--st-hold) 16%, var(--card));
+  --df-add-word-bg: color-mix(in oklab, var(--st-done) 40%, var(--card));
+  --df-del-word-bg: color-mix(in oklab, var(--st-review) 36%, var(--card));
+  --df-map-w: 20px;
+  --df-map-pad: 4px;
+  --shadow-color: color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+
+.mdmark {
+  --mdmark-color-bg: transparent;
+  --mdmark-color-text: var(--foreground);
+  --mdmark-color-heading: var(--foreground);
+  --mdmark-color-muted: var(--muted-foreground);
+  --mdmark-color-link: var(--mark);
+  --mdmark-color-border: var(--border);
+  --mdmark-color-surface: var(--muted);
+  --mdmark-color-table-head: var(--thead);
+  --mdmark-color-callout-note: var(--st-open);
+  --mdmark-color-callout-tip: var(--st-done);
+  --mdmark-color-callout-important: var(--st-loose);
+  --mdmark-color-callout-warning: var(--st-hold);
+  --mdmark-color-callout-caution: var(--st-review);
+  --mdmark-font-mono: var(--font-stack-mono);
+  --mdmark-line-height: 1.8;
+  --mdmark-content-width: none;
+  --mdmark-padding: 0;
+}
+
+.panel-body { overflow-y: auto; padding: 22px 24px 56px; container: detail-body / inline-size; }
+.panel-body:focus-visible { outline-offset: -2px; }
+.d-answer { margin: 0 0 18px; padding: 12px 14px; border-left: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); }
+.d-answer b { display: block; font-size: var(--fs-xs); color: var(--muted-foreground); margin-bottom: 2px; }
+.d-sec.d-answer { margin: 0 0 18px; }
+.d-sec.d-answer > h3 { margin: 0 0 2px; padding: 0; border-bottom: 0; font-size: var(--fs-xs); color: var(--muted-foreground); }
+.opt dd .md-value { line-height: 1.6; }
+.md { font-size: var(--fs-small); line-height: 1.8; }
+.md-value { font-size: inherit; line-height: 1.7; }
+.md-value > :first-child { margin-top: 0; }
+.md-value > :last-child { margin-bottom: 0; }
+.md-value :is(p, ul, ol) { margin: 6px 0; }
+.md-value :is(ul, ol) { padding-left: 1.4em; }
+.md-value-raw { white-space: pre-wrap; }
+.d-lead .md-value { color: var(--muted-foreground); }
+.md [data-md-level] { font-weight: 700; }
+.md [data-md-level="1"] { font-size: 2em; margin: .67em 0; }
+.md [data-md-level="2"] { font-size: 1.5em; margin: .83em 0; }
+.md [data-md-level="3"] { font-size: 1.17em; margin: 1em 0; }
+.md [data-md-level="4"] { font-size: 1em; margin: 1.33em 0; }
+.md [data-md-level="5"] { font-size: .83em; margin: 1.67em 0; }
+.md [data-md-level="6"] { font-size: .67em; margin: 2.33em 0; }
+.md table { border-collapse: separate; border-spacing: 0; margin: 8px 0; width: auto; }
+.md .md-table-wrap { overflow-x: auto; margin: 8px 0; }
+.md .md-table-wrap > table { margin: 0; display: table; overflow: visible; max-width: none; }
+.md .md-table-wrap:focus-visible { outline-offset: -2px; }
+.md a:not(.idref), .md code { overflow-wrap: anywhere; }
+.md th, .md td { border: 0; border-right: 1px solid var(--border-soft); border-bottom: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
+.md :is(th, td):first-child { border-left: 1px solid var(--border-soft); }
+.md thead th { border-top: 1px solid var(--border-soft); }
+.md th { background: var(--muted); }
+.md pre { background: var(--muted); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.md code { font-family: var(--font-stack-mono); font-size: .92em; }
+.md-error { color: var(--st-review); font-size: var(--fs-small); }
+/* 本文の表の枠: 右端のフェードの基準。枠は送らないので、フェードの位置が動かない */
+.md .md-table-frame { position: relative; margin: 8px 0; }
+.md .md-table-frame > .md-table-wrap { margin: 0; }
+.md [data-col-size="short"] { white-space: nowrap; }
+.md [data-col-size="medium"] { min-width: var(--md-col-min); word-break: auto-phrase; }
+.md [data-col-size="long"] { width: var(--md-col-long); min-width: var(--md-col-long); overflow-wrap: anywhere; }
+.md .md-table-frame[data-fade]::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 32px; z-index: 5; pointer-events: none; background: linear-gradient(to right, transparent, var(--card)); }
+.md table.md-stripes tbody tr:nth-child(even):not(.df-row) > td { background-color: color-mix(in oklab, var(--foreground) 5%, var(--card)); }
+.md table.md-head-stick thead th { z-index: 2; transform: translateY(var(--head-offset, 0px)); }
+.md table.md-head-stuck thead th { box-shadow: 0 6px 8px -6px var(--shadow-color); }
+.md table:is(.md-head-stick, .md-has-pin) thead th:not(.md-pinned) { position: relative; }
+.md table.md-has-pin thead th { padding-right: 30px; }
+.md .md-pin { position: absolute; top: 50%; right: 4px; width: 24px; height: 24px; transform: translateY(-50%); opacity: 0; }
+.md th:hover .md-pin, .md th:focus-within .md-pin, .md .md-pin[aria-pressed="true"] { opacity: 1; }
+.md .md-pinned { position: sticky; z-index: 1; }
+.md td.md-pinned { background-color: var(--card); }
+.md table thead th.md-pinned { z-index: 3; }
+.md .md-pin-edge { box-shadow: 6px 0 8px -6px var(--shadow-color); }
+.md table.md-head-stuck thead th.md-pin-edge { box-shadow: 6px 0 8px -6px var(--shadow-color), 0 6px 8px -6px var(--shadow-color); }
+.md :is(.md-pin, .md-fold, .code-copy):focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+@media (hover: none) {
+  .md .md-pin { opacity: 1; }
+}
+@media (max-width: 720px) {
+  .md .md-pin { display: none; }
+  .md .md-pinned { position: static; box-shadow: none; }
+  .md table.md-has-pin thead th { padding-right: 8px; }
+}
+/* コードブロックの入れ物: 札とボタンの基準 */
+.md .md-code { position: relative; margin: 8px 0; }
+.md .md-code > pre { margin: 0; padding-right: 40px; }
+.md .md-code.has-lang > pre { padding-top: 30px; }
+.md .code-lang { position: absolute; top: 6px; left: 12px; font-family: var(--font-stack-mono); font-size: var(--fs-xs); line-height: 1.5; color: var(--subtle-foreground); }
+.md .code-copy { position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; opacity: 0; }
+.md .md-code:hover > .code-copy, .md .code-copy:focus-visible { opacity: 1; }
+@media (hover: none) {
+  .md .code-copy { opacity: 1; }
+}
+/* 囲み: 見た目は mdmark の囲み（種類の色の薄い面と細い枠）に任せる。見出しのアイコンは decorateMarkdown が足すので、mdmark の見出しの飾りは出さない */
+.md .markdown-alert-title::before { display: none; }
+.md .markdown-alert .markdown-alert-title { color: color-mix(in oklab, var(--mdmark-callout-color) 70%, var(--foreground)); }
+.md .markdown-alert-title .icon { width: 14px; height: 14px; }
+/* 開閉のボタン: 見出しの頭の矢印だけを押せる。見出しの文言は選べるまま */
+.md .md-fold { display: inline-grid; place-items: center; width: 24px; height: 24px; margin: 0 4px 0 -4px; padding: 0; vertical-align: middle; border: 1px solid transparent; border-radius: 3px; background: none; color: var(--subtle-foreground); }
+.md .md-fold:hover { color: var(--foreground); background: var(--row-hover); }
+.md .md-fold .icon { width: 14px; height: 14px; transform: rotate(90deg); transition: transform .15s ease; }
+.md .md-fold[aria-expanded="false"] .icon { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .md .md-fold .icon { transition: none; }
+}
+.mermaid { margin: 8px 0; text-align: center; }
+.diagram { position: relative; margin: 8px 0 16px; padding: 36px 10px 10px; border: 1px solid var(--border-soft); border-radius: var(--radius); background: var(--card); }
+.dg-tools { position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 2px; }
+.dg-tools .btn { height: 28px; padding: 0 8px; font-size: var(--fs-xs); }
+.dg-tools .icon-btn { width: 28px; height: 28px; }
+.diagram .mermaid svg text, .diagram .mermaid svg foreignObject, .diagram .mermaid svg .nodeLabel, .diagram .mermaid svg .edgeLabel { user-select: text; cursor: text; }
+.dg-raw { margin: 0; background: var(--muted); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font: 12px var(--font-stack-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+dialog.full .panel-body { flex: 1; max-width: none; width: 100%; margin: 0 auto; overscroll-behavior: contain; }
+/* 見出しと下端の入力の間の枠: 本文のスクロール領域とミニマップを横に並べる */
+.panel-scroll { flex: 1; min-height: 0; display: flex; }
+.panel-scroll > .panel-body { flex: 1; min-width: 0; min-height: 0; }
+.loc-hit { background: var(--hit); border-radius: 2px; box-shadow: 0 0 0 2px var(--hit); }
+.df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 5.5em; max-width: 24em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
+.df-chip-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-chip button { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius); background: none; color: inherit; }
+.df-chip button:hover { background: color-mix(in oklab, var(--topbar-bg) 12%, var(--topbar-fg)); }
+.df-chip button:focus-visible { outline: 2px solid var(--mark); outline-offset: 1px; }
+.df-chip button svg.icon { width: 16px; height: 16px; }
+@media (max-width: 1100px) {
+  .df-chip { max-width: 12em; }
+  .topbar:has(.df-chip) { gap: 8px; }
+  .topbar:has(.df-chip) .brand { flex: none; }
+  .topbar:has(.df-chip) .brand-name, .topbar:has(.df-chip) .spacer { display: none; }
+  .topbar:has(.df-chip) .settings-btn { margin-left: auto; }
+  /* 表示の設定のボタン: 札の文字の幅を確保するため、余白を詰める */
+  .topbar:has(.df-chip) .settings-btn { padding: 0 4px; }
+}
+@media (max-width: 1440px) {
+  .topbar:has(.conn) .df-chip { max-width: 12em; }
+  .topbar:has(.conn):has(.df-chip) { gap: 8px; }
+  .topbar:has(.conn):has(.df-chip) .brand { flex: none; }
+  .topbar:has(.conn):has(.df-chip) .brand-name, .topbar:has(.conn):has(.df-chip) .spacer { display: none; }
+  .topbar:has(.conn):has(.df-chip) .settings-btn { margin-left: auto; }
+  /* 表示の設定のボタン: 札の文字の幅を確保するため、余白を詰める */
+  .topbar:has(.conn):has(.df-chip) .settings-btn { padding: 0 4px; }
+}
+.tab .df-dot { position: absolute; top: 11px; left: 22px; width: 8px; height: 8px; border-radius: 50%; background: var(--df-chg); box-shadow: 0 0 0 2px var(--card); }
+/* 詳細パネルの題の横の札: 題との間を空け、題の行の中央に揃える */
+.d-title .df-badge { margin-left: 12px; vertical-align: 4px; }
+.df-badge { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 20px; padding: 0 6px; border: 1px solid; border-radius: var(--radius); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; color: var(--foreground); text-decoration: none; }
+.df-badge svg.icon { width: 12px; height: 12px; stroke-width: 2.6; }
+.df-badge.df-new { border-color: var(--df-add); background: var(--df-add-bg); }
+.df-badge.df-new svg.icon { color: var(--df-add); }
+.df-badge.df-chg { border-color: var(--df-chg); background: var(--df-chg-bg); }
+.df-badge.df-chg svg.icon { color: var(--df-chg); fill: currentColor; }
+.df-mark { display: inline-grid; place-items: center; flex: none; width: 16px; height: 16px; vertical-align: -3px; }
+.df-mark svg.icon { width: 16px; height: 16px; stroke-width: 3; }
+.df-mark.df-new { color: var(--df-add); }
+.df-mark.df-chg { color: var(--df-chg); }
+.df-mark.df-chg svg.icon { fill: currentColor; }
+.row-open + .df-mark { margin-left: 8px; }
+.n-item .r2 .df-mark { width: 14px; height: 14px; }
+.n-item .r2 .df-mark svg.icon { width: 9px; height: 9px; }
+/* 一覧の消した印（−）: 差分の色の赤 */
+.df-mark.df-del { color: var(--df-del); }
+.df-badge.df-del { border-color: var(--df-del); background: var(--df-del-bg); }
+.df-badge.df-del svg.icon { color: var(--df-del); }
+.rm-item .df-mark { margin-top: 1px; }
+.wd-badge + .df-mark { margin-left: 6px; }
+.df-now .wd-badge { color: var(--foreground); }
+/* 冒頭の帯: 選んだ時点の名前と日時 */
+.df-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 14px; padding: 8px 12px; border-radius: var(--radius); background: var(--df-chg-bg); font-size: var(--fs-small); }
+.df-head-t { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.df-head-t svg.icon { width: 16px; height: 16px; color: var(--df-chg); }
+.df-when { color: var(--muted-foreground); font-family: var(--font-stack-mono); }
+.df-kv { display: inline; }
+.df-was { padding: 0 4px; border-radius: 3px; background: var(--df-del-bg); color: var(--muted-foreground); text-decoration: line-through; text-decoration-thickness: 1.5px; white-space: pre-wrap; }
+.df-now { padding: 0 4px; border-radius: 3px; background: var(--df-add-bg); color: var(--foreground); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; white-space: pre-wrap; }
+.df-was .st, .df-was .tag { text-decoration: inherit; }
+.df-kv.df-plain :is(.df-was, .df-now) { padding: 0; background: none; }
+.df-arrow { margin: 0 8px; color: var(--subtle-foreground); }
+.d-meta dt.df-key { color: var(--foreground); font-weight: 600; }
+.df-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--df-chg); border-radius: var(--radius); background: var(--card); font-size: var(--fs-small); }
+.df-note svg.icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--df-chg); }
+/* 足した塊・消した塊: 面の色に加えて、左の余白に + / − の記号を置く */
+.md .df-blk { display: block; position: relative; margin: 6px 0; padding: 2px 10px 2px 26px; border-radius: var(--radius); text-decoration: none; }
+.md .df-blk > :is(p, ul, ol, .md-table-frame, .md-code, pre), .md .df-blk > [data-md-level="1"] { margin: 4px 0; }
+.md ins.df-blk { background: var(--df-add-bg); }
+.md del.df-blk { background: var(--df-del-bg); color: var(--muted-foreground); }
+.md del.df-blk > :not(.df-sign) { text-decoration: line-through; }
+.md .df-blk > .df-sign { position: absolute; top: 4px; left: 9px; font-family: var(--font-stack-mono); font-weight: 700; }
+.md ins.df-blk > .df-sign { color: var(--df-add); }
+.md del.df-blk > .df-sign { color: var(--df-del); }
+.md li.df-li-add { background: var(--df-add-bg); border-radius: var(--radius); }
+.md li.df-li-add > .df-sign { display: inline-block; margin-right: 6px; color: var(--df-add); font-family: var(--font-stack-mono); font-weight: 700; text-decoration: none; }
+.md li.df-li-del { background: var(--df-del-bg); border-radius: var(--radius); color: var(--muted-foreground); text-decoration: line-through; }
+.md tr.df-add td { background: var(--df-add-bg); }
+.md tr.df-del td { background: var(--df-del-bg); color: var(--muted-foreground); text-decoration: line-through; }
+.md tr.df-row .df-sign { display: inline-block; margin-right: 6px; font-family: var(--font-stack-mono); font-weight: 700; text-decoration: none; }
+.md tr.df-add .df-sign { color: var(--df-add); }
+.md tr.df-del .df-sign { color: var(--df-del); }
+/* 変わった図: 枠を変わった色にする */
+.diagram.df-changed { border-color: var(--df-chg); }
+.diagram.df-frame { border: 2px dashed var(--df-chg); }
+:is(rect, polygon, circle, ellipse, path).df-n-add, .df-n-add :is(rect, polygon, circle, ellipse, path) { fill: var(--df-add-bg) !important; stroke: var(--df-add) !important; stroke-width: 2.5px !important; }
+:is(rect, polygon, circle, ellipse, path).df-n-chg, .df-n-chg :is(rect, polygon, circle, ellipse, path) { fill: var(--df-chg-bg) !important; stroke: var(--df-chg) !important; stroke-width: 2.5px !important; stroke-dasharray: 5 3 !important; }
+.df-e-add { stroke: var(--df-add) !important; stroke-width: 2.5px !important; }
+.df-e-chg { stroke: var(--df-chg) !important; stroke-width: 2.5px !important; stroke-dasharray: 5 3 !important; }
+text.df-t-add { fill: var(--df-add) !important; font-weight: 700 !important; }
+text.df-t-chg { font-weight: 700 !important; }
+.df-notes { display: grid; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: var(--fs-xs); color: var(--muted-foreground); }
+.df-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.df-lg { display: inline-flex; align-items: center; gap: 6px; }
+.df-lg i { width: 16px; height: 11px; border-radius: 2px; }
+.df-lg-add i { background: var(--df-add-bg); border: 2px solid var(--df-add); }
+.df-lg-chg i { background: var(--df-chg-bg); border: 2px dashed var(--df-chg); }
+.df-removed { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.df-removed-t { font-weight: 600; color: var(--foreground); }
+.df-removed ul { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 0; list-style: none; }
+.df-removed li { padding: 1px 6px; border-radius: 3px; background: var(--df-del-bg); color: var(--foreground); text-decoration: line-through; }
+.df-removed .df-sign { display: inline-block; margin-right: 4px; color: var(--df-del); font-weight: 700; text-decoration: none; }
+/* 行ごとの差分の Raw: 行の面を端まで塗るため、左右の余白を行に持たせる */
+.dg-raw.df-raw { padding: 6px 0; }
+.df-raw .df-line { display: block; padding-right: 12px; padding-left: 2em; text-indent: -2em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.df-raw .df-line .df-sign { display: inline-block; width: 2em; text-indent: 0; text-align: center; color: var(--subtle-foreground); text-decoration: none; }
+.df-raw .df-line.df-add { background: var(--df-add-bg); }
+.df-raw .df-line.df-add .df-sign { color: var(--df-add); font-weight: 700; }
+.df-raw .df-line.df-del { background: var(--df-del-bg); color: var(--muted-foreground); text-decoration: line-through; }
+.df-raw .df-line.df-del .df-sign { color: var(--df-del); font-weight: 700; }
+/* 変わった語: 行の面の上に濃い面を重ねる。行の取り消し線・下線はそのまま引き継ぎ、文字は行の淡い文字色でなく本文の文字色にして対比を保つ */
+.df-word { border-radius: 2px; color: var(--foreground); }
+.df-word.df-add { background: var(--df-add-word-bg); }
+.df-word.df-del { background: var(--df-del-word-bg); }
+.viewer-body.df-frame .v-canvas { outline: 2px dashed var(--df-chg); outline-offset: -6px; }
+@media (max-width: 480px) {
+  /* つながらない間に差分を出すと札の幅が足りなくなるため、押せない飾りのツール名の印を隠す */
+  .topbar:has(.conn):has(.df-chip) .brand { display: none; }
+  /* 件数の札が幅の広い中身（絞り込みのバッジ 2 桁・コメントの `99+`）で、差分の札か接続の状態を出している間: 幅 389px 以下と同じ詰め方を、幅 390px 以上のこの範囲でも効かせる。ツール名の文字は隠し、差分の札を出している間は印も隠す */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) .brand-name, .topbar:has([data-wide]):has(.df-chip) .brand { display: none; }
+  /* 同じ条件のトップバー: 要素の間隔を 1px、左右の余白を 8px にする */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) { gap: 1px; padding: 0 8px; }
+  /* 同じ条件の印だけのボタン（検索・ライト / ダーク・変更履歴）: 幅を 28px に揃えて縮ませない */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.search-trigger, .top-btn, .hist-btn) { flex: none; width: 28px; }
+  /* 同じ条件の表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える */
+  .topbar:has([data-wide]):is(:has(.df-chip), :has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { gap: 2px; padding: 0 2px; }
+}
+@media (max-width: 389px) {
+  /* 押せない飾りのツール名: 名前は常に隠し、差分の札を出している間は印も隠して札に幅を回す */
+  .topbar .brand-name, .topbar:has(.df-chip) .brand { display: none; }
+  /* トップバー: 左右の余白を詰め、差分の札を出している間も要素の間隔を 1px にする */
+  .topbar, .topbar:has(.df-chip), .topbar:has(.conn):has(.df-chip) { gap: 1px; padding: 0 8px; }
+  /* 表示の設定・絞り込み・コメントのボタン: 左右の余白と、印と件数の間隔を 2px に揃える。差分の札を出している間の表示の設定のボタンは、既存の余白 4px の規則に勝つようセレクタを重ねる */
+  .topbar :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn), .topbar:has(.df-chip) .settings-btn, .topbar:has(.conn):has(.df-chip) .settings-btn { gap: 2px; padding: 0 2px; }
+  /* つながらない・差分ありの間: 印だけのボタンを幅 26px にし、下限で広がった分を右の余白から取らない（既存の 28px の規則に勝つようセレクタを重ねる） */
+  .topbar:has(.conn):has(.df-chip) :is(.search-trigger, .top-btn, .hist-btn) { width: 26px; }
+}
+/* 見出しのリンク: 見出しの右に置き、乗せたとき・フォーカスしたときに出す */
+.md .h-link { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 4px; vertical-align: middle; border-radius: 3px; color: var(--subtle-foreground); opacity: 0; }
+.md .h-link .icon { width: 14px; height: 14px; }
+.md :is(h1, h2, h3, h4, h5, h6):hover .h-link, .md .h-link:focus-visible { opacity: 1; }
+.md .h-link:hover { color: var(--mark); background: var(--row-hover); }
+@media (hover: none) {
+  .md .h-link { opacity: 1; }
+}
+.md [data-heading] { scroll-margin-top: 12px; }
+.md a.term { color: inherit; text-decoration: underline dotted var(--subtle-foreground); text-decoration-thickness: 1.5px; text-underline-offset: 4px; cursor: pointer; }
+.md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--mark); background: var(--mark-weak); border-radius: 2px; }
+.md a.idref { white-space: nowrap; overflow-wrap: normal; font-family: var(--font-stack-mono); font-size: .92em; color: var(--mark); text-decoration: underline; text-decoration-color: var(--mark-line); text-underline-offset: 3px; }
+.md a.idref:hover { text-decoration-color: var(--mark); }
+.md code a.idref { font-size: inherit; }
+.term-tip { position: fixed; inset: auto; margin: 0; max-width: min(360px, calc(100vw - 16px)); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground); box-shadow: var(--shadow-pop); font-size: var(--fs-small); line-height: 1.55; }
+.term-tip .tt-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-weight: 700; }
+.term-tip .tt-head .mono { color: var(--subtle-foreground); font-weight: 400; font-size: var(--fs-xs); }
+.term-tip .tt-body { display: block; color: var(--muted-foreground); }
+.term-tip { box-sizing: border-box; max-height: min(360px, calc(100vh - 16px)); overflow-y: auto; overscroll-behavior: contain; }
+.term-tip.is-multi { width: min(380px, calc(100vw - 16px)); max-width: none; padding: 0; }
+.term-tip .tt-group { padding: 8px 10px 4px; }
+.term-tip .tt-group + .tt-group { border-top: 1px solid var(--border); }
+.term-tip .tt-kind { display: flex; align-items: baseline; gap: 6px; margin: 0; color: var(--muted-foreground); font-size: var(--fs-xs); font-weight: 700; }
+.term-tip .tt-kind .tt-n { color: var(--subtle-foreground); font-weight: 400; font-variant-numeric: tabular-nums; }
+.term-tip .tt-items { margin: 0; padding: 0; list-style: none; }
+.term-tip .tt-item { padding: 6px 0; }
+.term-tip .tt-item + .tt-item { border-top: 1px solid var(--border-soft); }
+.term-tip.is-multi .tt-head { margin-bottom: 0; }
+.term-tip.is-multi .tt-head .mono { flex: none; white-space: nowrap; }
+.term-tip .tt-link { color: var(--mark); text-decoration: underline; text-decoration-color: var(--mark-line); text-underline-offset: 3px; }
+.term-tip .tt-link:hover { text-decoration-color: var(--mark); }
+.term-tip .tt-link:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; border-radius: 2px; }
+/* 枠: 幅いっぱい。描く前は 120px で、描いた後は中身の高さに合わせる（スクリプトが height を入れる）。地は白にして、ダークでも資料の色のまま読む */
+iframe.html-frame { display: block; width: 100%; height: 120px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; }
+.md .html-block { margin: 12px 0; }
+.md pre.html-block-src { margin: 12px 0; }
+/* 見せ方の切り替えと凡例の行を持つ、描いた結果と原文の差分の入れ物 */
+.html-diff-c { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.html-diff-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.html-diff-bar .segment { max-width: 100%; overflow-x: auto; }
+.html-diff-bar .segment button { width: auto; white-space: nowrap; }
+.html-diff-bar .df-legend { margin: 0; }
+.html-diff-c [hidden], .html-diff[hidden] { display: none; }
+.html-diff { display: grid; gap: 6px; }
+.html-diff-head { margin: 0; color: var(--subtle-foreground); font-size: var(--fs-xs); font-weight: 600; }
+.df-raw .df-line.df-skip { padding-left: 2em; text-indent: 0; color: var(--subtle-foreground); font-family: var(--font-sans); font-size: var(--fs-xs); }
+.panel-scroll > .df-map { position: relative; flex: none; width: var(--df-map-w); background: var(--muted); border-left: 1px solid var(--border-soft); }
+.panel-scroll.has-map > .panel-body { padding-right: 12px; }
+.df-map-view { position: absolute; left: 0; right: 0; background: color-mix(in oklab, var(--foreground) 12%, transparent); pointer-events: none; }
+.df-map-m { position: absolute; left: 0; display: block; width: 100%; padding: 0 var(--df-map-pad); border: 0; border-radius: 2px; background: none; cursor: pointer; }
+.df-map-m:hover { background: var(--row-hover); }
+.df-map-m:focus-visible { z-index: 1; outline: 2px solid var(--mark); outline-offset: 1px; }
+.df-map-m i { display: block; width: 100%; height: 100%; border-radius: 2px; }
+.df-map-m.df-add i { background: var(--df-add); }
+.df-map-m.df-del i { border: 2px solid var(--df-del); background: var(--card); }
+.df-map-m.df-chg i { border: 1px solid var(--df-chg); background: repeating-linear-gradient(135deg, var(--df-chg) 0 3px, var(--card) 3px 6px); }
+@media (pointer: fine) {
+  .panel-scroll > .df-map { cursor: grab; }
+  .panel-scroll > .df-map .df-map-m { cursor: pointer; }
+}
+.df-map.is-dragging .df-map-view { background: color-mix(in oklab, var(--foreground) 24%, transparent); }
+body.df-map-dragging, body.df-map-dragging .df-map, body.df-map-dragging .df-map .df-map-m { cursor: grabbing; user-select: none; }
+.df-map.is-dragging .df-map-m:hover { background: none; }
+.df-map-hit { box-shadow: 0 0 0 2px var(--hit); }
+.sbs-switch button { min-width: 0; width: auto; }
+.sbs { display: grid; gap: 6px; }
+.sbs-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; color: var(--subtle-foreground); font-size: var(--fs-xs); font-weight: 600; }
+.sbs-head > span { padding-bottom: 4px; border-bottom: 1px solid var(--border-soft); }
+.sbs-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; }
+.sbs-col { min-width: 0; }
+.sbs-row { display: flow-root; }
+.sbs-row > .md > :first-child { margin-top: 8px; }
+.sbs-row.sbs-gap { padding: 6px 0; border-radius: var(--radius); background: repeating-linear-gradient(135deg, var(--muted) 0 6px, transparent 6px 12px) content-box; }
+.diagram.sbs-was { outline: 1px dashed var(--df-del); outline-offset: 2px; border-radius: var(--radius); }
+.sbs-html .sbs-col > * { width: 100%; }
+.df-raw.df-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1px; background: var(--border-soft); }
+.df-raw.df-split .df-line { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--muted); }
+.df-raw.df-split .df-line.df-gap { background: repeating-linear-gradient(135deg, var(--muted) 0 6px, var(--card) 6px 12px); }
+.df-raw.df-split .df-line.df-span { grid-column: 1 / -1; }
+.sbs-fallback { display: none; }
+.html-marked > iframe.sbs-fallback { display: none; }
+.sbs-fallback[hidden] { display: none !important; }
+@container detail-body (width < 560px) {
+  .sbs, .sbs-only, .sbs-switch { display: none !important; }
+  .sbs-fallback { display: block; }
+  .html-marked > iframe.sbs-fallback { display: block; }
+  .body-diff-bar:not(:has(> :not(.sbs-switch))) { display: none; }
+}
+/* 変更後の描いた結果で足した要素 */
+.html-marked [data-df="add"] { outline: 2px solid var(--df-add); outline-offset: 2px; background-color: var(--df-add-bg); }
+.html-marked [data-df="chg"] { outline: 2px dashed var(--df-chg); outline-offset: 2px; background-color: var(--df-chg-bg); }
+.html-diff-heading { color: var(--subtle-foreground); font-size: var(--fs-xs); font-weight: 600; }

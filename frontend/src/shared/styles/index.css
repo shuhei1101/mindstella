@@ -1,6 +1,7 @@
 /* Tailwind を読み、標準のパレットを消して、tokens.css のトークンを割り当てる */
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./body.css";
 
 /* ダーク: data-theme が dark のとき（今の画面と同じく、明示したダークだけに当てる） */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
