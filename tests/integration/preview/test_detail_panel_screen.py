@@ -4788,7 +4788,7 @@ def test_diff_body_side_by_side_when_linked(
     assert page.eval_on_selector_all(f"{SIDE_AFTER} a.term", "a => a.map(x => x.dataset.id)") == ["G-1"]
     assert page.eval_on_selector_all(f"{SIDE_AFTER} a.idref", "a => a.map(x => x.dataset.id)") == ["D-1"]
     # 検証（書き換えた段落の対は、変わった語だけに濃い面を付ける）
-    removed =page.eval_on_selector_all(f"{SIDE_BEFORE} span.df-word", "e => e.map(x => x.textContent)")
+    removed = page.eval_on_selector_all(f"{SIDE_BEFORE} span.df-word", "e => e.map(x => x.textContent)")
     added = page.eval_on_selector_all(f"{SIDE_AFTER} span.df-word", "e => e.map(x => x.textContent)")
     assert removed
     assert added
