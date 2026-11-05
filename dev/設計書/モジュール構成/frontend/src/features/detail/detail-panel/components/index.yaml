@@ -18,3 +18,5 @@ items:
   summary: 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く
 - page: detail-resizer.tsx.yaml
   summary: 詳細パネルの幅をドラッグとキーで変える
+- page: item-add-panel.tsx.yaml
+  summary: 項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える

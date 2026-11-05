@@ -5,10 +5,16 @@ from __future__ import annotations
 import re
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, ViewportSize, expect
 from preview_fixture_types import WritePreview
-from preview_spa_helpers import open_spa
+from preview_spa_helpers import AXE_SCRIPT, open_spa
 from workspace_fixtures import MakeItem
+
+# 押せる範囲と h1 の axe の規則を当て、違反を返す
+AXE_RULES_JS = """async () => {
+  const result = await axe.run(document, { runOnly: ["target-size", "page-has-heading-one"] });
+  return result.violations.flatMap((rule) => rule.nodes.map((node) => `${rule.id}: ${node.target.join(" ")}`));
+}"""
 
 BODY = "## 決め方\n\n本文の段落\n\n| ID | 名前 |\n| --- | --- |\n| A-1 | 表の行 |\n"
 
@@ -119,4 +125,15 @@ def test_detail_back_disabled_at_start(page: Page, spa_url: str) -> None:
     expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_disabled()
     panel.get_by_role("button", name="D-2").click()
     expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_enabled()
+
+
+@pytest.mark.parametrize("search", ["?tab=decisions&view=table", "?tab=decisions", "?tab=tasks", "?tab=docs", "?tab=research"])
+@pytest.mark.parametrize("viewport", [{"width": 1280, "height": 800}, {"width": 390, "height": 844}])
+def test_list_screens_pass_axe_rules(page: Page, spa_url: str, search: str, viewport: ViewportSize) -> None:
+    """一覧の画面に見出しの h1 があり、表の見出しのボタンが押せる範囲を持つ。"""
+    page.set_viewport_size(viewport)
+    open_spa(page, spa_url, search)
+    page.add_script_tag(path=str(AXE_SCRIPT))
+    violations = page.evaluate(AXE_RULES_JS)
+    assert violations == []
 

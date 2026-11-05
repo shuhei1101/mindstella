@@ -1066,22 +1066,6 @@ files:
   related:
   - to: dev/設計書/モジュール構成/プレビュー/React.yaml
     type: implements
-- path: src/shared/components/item-add-form.test.tsx
-  name: import { QueryClient, QueryClientProvider } from @tanstack/
-  description: import { QueryClient, QueryClientProvider } from @tanstack/。
-  tags:
-  - tool:react
-  related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
-    type: tests
-- path: src/shared/components/item-add-form.tsx
-  name: 項目の追加の入力
-  description: 項目の追加の入力。
-  tags:
-  - tool:react
-  related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
-    type: implements
 - path: src/shared/components/list-columns.tsx
   name: 一覧の表の共通の列
   description: 一覧の表の共通の列。

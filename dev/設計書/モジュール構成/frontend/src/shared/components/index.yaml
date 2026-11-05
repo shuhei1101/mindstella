@@ -46,8 +46,6 @@ items:
   summary: 部品設計『コメントの印.tsx』の props・イベント・状態を持つ
 - page: pending-mark.tsx.yaml
   summary: 部品設計『保存待ちの印.tsx』の props・イベント・状態を持つ
-- page: item-add-form.tsx.yaml
-  summary: 種類ごとの画面の「項目を追加」で開く追加の入力
 - page: dom-host.tsx.yaml
   summary: React の外で組み立てた要素を置く入れ物
 - page: filter-chips.tsx.yaml
@@ -58,3 +56,5 @@ items:
   summary: 一覧の表の共通の列
 - page: list-screen.tsx.yaml
   summary: 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態）
+- page: blocked-note.tsx.yaml
+  summary: 書き込めない理由の表示
