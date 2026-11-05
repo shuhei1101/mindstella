@@ -1,0 +1,582 @@
+$ npx vitest run --reporter=dot
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail
+
+·······Not implemented: Window's scrollTo() method
+·········
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 38 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx [ frontend/src/app/preview-shell.test.tsx ]
+ FAIL  frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx [ frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx ]
+ FAIL  frontend/src/features/decisions/decisions/decisions-screen.test.tsx [ frontend/src/features/decisions/decisions/decisions-screen.test.tsx ]
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx [ frontend/src/features/detail/detail-panel/detail-panel.test.tsx ]
+ FAIL  frontend/src/features/docs/docs/docs-screen.test.tsx [ frontend/src/features/docs/docs/docs-screen.test.tsx ]
+ FAIL  frontend/src/features/edits/pending-edits/pending-edits-panel.test.tsx [ frontend/src/features/edits/pending-edits/pending-edits-panel.test.tsx ]
+ FAIL  frontend/src/features/history/history/history-dialog.test.tsx [ frontend/src/features/history/history/history-dialog.test.tsx ]
+ FAIL  frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx [ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx ]
+ FAIL  frontend/src/features/tasks/tasks/tasks-screen.test.tsx [ frontend/src/features/tasks/tasks/tasks-screen.test.tsx ]
+ FAIL  frontend/src/features/records/records/records-screen.test.tsx [ frontend/src/features/records/records/records-screen.test.tsx ]
+ FAIL  frontend/src/features/detail/detail-panel/components/body-view.test.tsx [ frontend/src/features/detail/detail-panel/components/body-view.test.tsx ]
+Error: Failed to resolve import "@/shared/core/preview-search" from "frontend/src/testing/render.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/testing/render.tsx:9:35
+  6  |  import { createQueryClient } from "@/app/query-client";
+  7  |  import { createAppRouter } from "@/app/router";
+  8  |  import { parsePreviewSearch } from "@/shared/core/preview-search";
+     |                                      ^
+  9  |  import { FakeEventSource } from "@/testing/fake-event-source";
+  10 |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+ ❯ fetchModule node_modules/vite/dist/node/chunks/node.js:35939:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/38]⎯
+
+ FAIL  frontend/src/shared/adapters/libraries.test.ts [ frontend/src/shared/adapters/libraries.test.ts ]
+Error: Failed to resolve import "@/shared/adapters/libraries" from "frontend/src/shared/adapters/libraries.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/adapters/libraries.test.ts:3:51
+  1  |  import { afterEach, describe, expect, test, vi } from "vitest";
+  2  |  import { loadLibrary, resetLibrariesForTest } from "@/shared/adapters/libraries";
+     |                                                      ^
+  3  |  const fireOn = (succeed) => vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+  4  |  	const element = node;
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/38]⎯
+
+ FAIL  frontend/src/shared/components/chips-input.test.tsx [ frontend/src/shared/components/chips-input.test.tsx ]
+Error: Failed to resolve import "@/shared/components/chips-input" from "frontend/src/shared/components/chips-input.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/chips-input.test.tsx:5:27
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { ChipsInput } from "@/shared/components/chips-input";
+     |                              ^
+  5  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/38]⎯
+
+ FAIL  frontend/src/shared/components/diff-minimap.test.tsx [ frontend/src/shared/components/diff-minimap.test.tsx ]
+Error: Failed to resolve import "@/shared/components/diff-minimap" from "frontend/src/shared/components/diff-minimap.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/diff-minimap.test.tsx:4:28
+  1  |  import { render, screen } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { DiffMinimap } from "@/shared/components/diff-minimap";
+     |                               ^
+  4  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  5  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/38]⎯
+
+ FAIL  frontend/src/shared/components/filter-drawer.test.tsx [ frontend/src/shared/components/filter-drawer.test.tsx ]
+Error: Failed to resolve import "@/shared/components/filter-drawer" from "frontend/src/shared/components/filter-drawer.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/filter-drawer.test.tsx:5:29
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { FilterDrawer } from "@/shared/components/filter-drawer";
+     |                                ^
+  5  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/38]⎯
+
+ FAIL  frontend/src/shared/components/history-dialog.test.tsx [ frontend/src/shared/components/history-dialog.test.tsx ]
+Error: Failed to resolve import "@/shared/components/history-dialog" from "frontend/src/shared/components/history-dialog.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/history-dialog.test.tsx:5:30
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { HistoryDialog } from "@/shared/components/history-dialog";
+     |                                 ^
+  5  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/38]⎯
+
+ FAIL  frontend/src/shared/components/html-body-frame.test.tsx [ frontend/src/shared/components/html-body-frame.test.tsx ]
+Error: Failed to resolve import "@/shared/components/html-body-frame" from "frontend/src/shared/components/html-body-frame.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/html-body-frame.test.tsx:4:30
+  1  |  import { render, screen } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { HtmlBodyFrame } from "@/shared/components/html-body-frame";
+     |                                 ^
+  4  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  5  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/38]⎯
+
+ FAIL  frontend/src/shared/components/item-add-form.test.tsx [ frontend/src/shared/components/item-add-form.test.tsx ]
+Error: Failed to resolve import "@/shared/components/item-add-form" from "frontend/src/shared/components/item-add-form.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/item-add-form.test.tsx:9:28
+  5  |  import { describe, expect, test, vi } from "vitest";
+  6  |  import { createQueryClient } from "@/app/query-client";
+  7  |  import { ItemAddForm } from "@/shared/components/item-add-form";
+     |                               ^
+  8  |  import { server } from "@/testing/msw/server";
+  9  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/38]⎯
+
+ FAIL  frontend/src/shared/components/markdown-body.test.tsx [ frontend/src/shared/components/markdown-body.test.tsx ]
+Error: Failed to resolve import "@/shared/components/markdown-body" from "frontend/src/shared/components/markdown-body.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/markdown-body.test.tsx:4:0
+  2  |  vi.mock("@/shared/adapters/libraries", () => ({ useLibrary }));
+  3  |  const __vi_import_0__ = await import("@testing-library/react");
+  4  |  const __vi_import_1__ = await import("@/shared/components/markdown-body");
+     |                                       ^
+  5  |  const __vi_import_2__ = await import("react/jsx-dev-runtime");
+  6  |  
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/38]⎯
+
+ FAIL  frontend/src/shared/components/table.test.tsx [ frontend/src/shared/components/table.test.tsx ]
+Error: Failed to resolve import "@/shared/components/table" from "frontend/src/shared/components/table.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/table.test.tsx:5:39
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { Table } from "@/shared/components/table";
+     |                         ^
+  5  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/38]⎯
+
+ FAIL  frontend/src/shared/components/view-switch.test.tsx [ frontend/src/shared/components/view-switch.test.tsx ]
+Error: Failed to resolve import "@/shared/components/view-switch" from "frontend/src/shared/components/view-switch.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/view-switch.test.tsx:5:27
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { ViewSwitch } from "@/shared/components/view-switch";
+     |                              ^
+  5  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  6  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/38]⎯
+
+ FAIL  frontend/src/shared/core/body-links.test.ts [ frontend/src/shared/core/body-links.test.ts ]
+Error: Failed to resolve import "@/shared/core/body-links" from "frontend/src/shared/core/body-links.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/body-links.test.ts:3:39
+  1  |  import { describe, expect, test, vi } from "vitest";
+  2  |  import { linkBody, linkHeadings } from "@/shared/core/body-links";
+     |                                          ^
+  3  |  import { buildIndex } from "@/shared/core/records";
+  4  |  describe("linkHeadings", () => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/38]⎯
+
+ FAIL  frontend/src/shared/core/diff.test.ts [ frontend/src/shared/core/diff.test.ts ]
+Error: Failed to resolve import "@/shared/core/diff" from "frontend/src/shared/core/diff.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/diff.test.ts:5:124
+  2  |  import { marked } from "marked";
+  3  |  import { describe, expect, test } from "vitest";
+  4  |  ...dLines, removedOf, resolveDiffPoint, sideBySideRows } from "@/shared/core/diff";
+     |                                                                 ^
+  5  |  const changes = {
+  6  |  	last_seq: 3,
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/38]⎯
+
+ FAIL  frontend/src/shared/core/doc-export.test.ts [ frontend/src/shared/core/doc-export.test.ts ]
+Error: Failed to resolve import "@/shared/core/doc-export" from "frontend/src/shared/core/doc-export.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/doc-export.test.ts:3:48
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { buildDocHtml, stripEmbeddedHtml } from "@/shared/core/doc-export";
+     |                                                   ^
+  3  |  describe("buildDocHtml", () => {
+  4  |  	// 本文と中身を持つ（正常系）
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/38]⎯
+
+ FAIL  frontend/src/shared/core/edits.test.ts [ frontend/src/shared/core/edits.test.ts ]
+Error: Failed to resolve import "@/shared/core/edits" from "frontend/src/shared/core/edits.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/edits.test.ts:3:60
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { applyEdits, pendingMarkOf } from "@/shared/core/edits";
+     |                                             ^
+  3  |  const data = {
+  4  |  	settings: {},
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/38]⎯
+
+ FAIL  frontend/src/shared/core/filters.test.ts [ frontend/src/shared/core/filters.test.ts ]
+Error: Failed to resolve import "@/shared/core/filters" from "frontend/src/shared/core/filters.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/filters.test.ts:3:83
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { defaultFilters, filtersFromSearch, filtersToSearch, matchesFilters } from "@/shared/core/filters";
+     |                                                                                      ^
+  3  |  describe("matchesFilters", () => {
+  4  |  	// 値の条件（正常系）
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/38]⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts [ frontend/src/shared/core/preview-search.test.ts ]
+Error: Failed to resolve import "@/shared/core/preview-search" from "frontend/src/shared/core/preview-search.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/preview-search.test.ts:3:106
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { normalizeSearch, parsePreviewSearch, toLegacyHash } from "@/shared/core/preview-search";
+     |                                                                     ^
+  3  |  import { buildIndex } from "@/shared/core/records";
+  4  |  const empty = {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/38]⎯
+
+ FAIL  frontend/src/shared/core/records.test.ts [ frontend/src/shared/core/records.test.ts ]
+Error: Failed to resolve import "@/shared/core/records" from "frontend/src/shared/core/records.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/records.test.ts:3:85
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { bodyFormatOf, buildIndex, compareIds, relatedItems } from "@/shared/core/records";
+     |                                                                      ^
+  3  |  const data = {
+  4  |  	decisions: [{
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/38]⎯
+
+ FAIL  frontend/src/shared/hooks/preview-queries.test.ts [ frontend/src/shared/hooks/preview-queries.test.ts ]
+Error: Failed to resolve import "@/shared/hooks/preview-queries" from "frontend/src/shared/hooks/preview-queries.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/preview-queries.test.ts:4:50
+  1  |  import { QueryClient } from "@tanstack/react-query";
+  2  |  import { describe, expect, test, vi } from "vitest";
+  3  |  import { invalidatePreview, previewQueries } from "@/shared/hooks/preview-queries";
+     |                                                     ^
+  4  |  const KEYS = [
+  5  |  	["/api/records"],
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/38]⎯
+
+ FAIL  frontend/src/shared/hooks/use-diff-view.test.tsx [ frontend/src/shared/hooks/use-diff-view.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-diff-view" from "frontend/src/shared/hooks/use-diff-view.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-diff-view.test.tsx:5:48
+  2  |  import { http, HttpResponse } from "msw";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { OPENED_SESSION_KEY, useDiffView } from "@/shared/hooks/use-diff-view";
+     |                                                   ^
+  5  |  import { PREFS_KEY } from "@/shared/stores/theme-store";
+  6  |  import { RECORDS } from "@/testing/msw/handlers";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/38]⎯
+
+ FAIL  frontend/src/shared/hooks/use-edits.test.tsx [ frontend/src/shared/hooks/use-edits.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-edits" from "frontend/src/shared/hooks/use-edits.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-edits.test.tsx:6:56
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { AppError } from "@/shared/core/app-error";
+  5  |  import { useAddEdit, useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
+     |                                                           ^
+  6  |  import { server } from "@/testing/msw/server";
+  7  |  import { renderPreviewHook } from "@/testing/render";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/38]⎯
+
+ FAIL  frontend/src/shared/hooks/use-preview-search.test.tsx [ frontend/src/shared/hooks/use-preview-search.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-preview-search" from "frontend/src/shared/hooks/use-preview-search.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-preview-search.test.tsx:4:33
+  1  |  import { act, waitFor } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+     |                                    ^
+  4  |  import { renderPreviewHook } from "@/testing/render";
+  5  |  describe("usePreviewSearch", () => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/38]⎯
+
+ FAIL  frontend/src/shared/hooks/use-screen-filters.test.tsx [ frontend/src/shared/hooks/use-screen-filters.test.tsx ]
+Error: Failed to resolve import "@/shared/hooks/use-screen-filters" from "frontend/src/shared/hooks/use-screen-filters.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-screen-filters.test.tsx:4:33
+  1  |  import { waitFor } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
+     |                                    ^
+  4  |  import { readPrefs } from "@/shared/stores/prefs-store";
+  5  |  import { PREFS_KEY } from "@/shared/stores/theme-store";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/38]⎯
+
+ FAIL  frontend/src/shared/stores/prefs-store.test.ts [ frontend/src/shared/stores/prefs-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/prefs-store" from "frontend/src/shared/stores/prefs-store.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/stores/prefs-store.test.ts:3:38
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
+     |                                         ^
+  3  |  import { PREFS_KEY } from "@/shared/stores/theme-store";
+  4  |  describe("readPrefs", () => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/38]⎯
+
+ FAIL  frontend/src/features/decisions/decisions/map-layout.test.ts [ frontend/src/features/decisions/decisions/map-layout.test.ts ]
+Error: Failed to resolve import "@/features/decisions/decisions/map-layout" from "frontend/src/features/decisions/decisions/map-layout.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/features/decisions/decisions/map-layout.test.ts:3:30
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { buildMapGraph } from "@/features/decisions/decisions/map-layout";
+     |                                 ^
+  3  |  describe("buildMapGraph", () => {
+  4  |  	// 項目を持たない節を描かない（正常系）
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/38]⎯
+
+ FAIL  frontend/src/features/detail/diagram-viewer/diagram-viewer.test.tsx [ frontend/src/features/detail/diagram-viewer/diagram-viewer.test.tsx ]
+Error: Failed to resolve import "@/features/detail/diagram-viewer/diagram-viewer" from "frontend/src/features/detail/diagram-viewer/diagram-viewer.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/features/detail/diagram-viewer/diagram-viewer.test.tsx:4:30
+  1  |  import { render, screen } from "@testing-library/react";
+  2  |  import { describe, expect, test, vi } from "vitest";
+  3  |  import { DiagramViewer } from "@/features/detail/diagram-viewer/diagram-viewer";
+     |                                 ^
+  4  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+  5  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/38]⎯
+
+ FAIL  frontend/src/features/overview/overview/overview-screen.test.tsx [ frontend/src/features/overview/overview/overview-screen.test.tsx ]
+Error: Failed to resolve import "@/shared/core/preview-search" from "frontend/src/testing/render.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/testing/render.tsx:9:35
+  6  |  import { createQueryClient } from "@/app/query-client";
+  7  |  import { createAppRouter } from "@/app/router";
+  8  |  import { parsePreviewSearch } from "@/shared/core/preview-search";
+     |                                      ^
+  9  |  import { FakeEventSource } from "@/testing/fake-event-source";
+  10 |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/38]⎯
+
+ FAIL  frontend/src/features/decisions/decisions/components/decision-map.test.tsx [ frontend/src/features/decisions/decisions/components/decision-map.test.tsx ]
+Error: Failed to resolve import "@/features/decisions/decisions/components/decision-map" from "frontend/src/features/decisions/decisions/components/decision-map.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/features/decisions/decisions/components/decision-map.test.tsx:4:0
+  2  |  vi.mock("@/shared/adapters/libraries", () => ({ useLibrary }));
+  3  |  const __vi_import_0__ = await import("@testing-library/react");
+  4  |  const __vi_import_1__ = await import("@/features/decisions/decisions/components/decision-map");
+     |                                       ^
+  5  |  const __vi_import_2__ = await import("react/jsx-dev-runtime");
+  6  |  
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/38]⎯
+
+
+ Test Files  38 failed | 11 passed (49)
+      Tests  16 passed (16)
+   Start at  03:05:12
+   Duration  278.48s (environment 71%, setup 25%, import 2%, worker 1%)
+
+Environment  jsdom was created 49 times · 1193.60s total, 71% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit 1
