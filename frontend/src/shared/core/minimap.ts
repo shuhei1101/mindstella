@@ -66,12 +66,12 @@ const MINIMAP_TARGET_SELECTOR = [
 ].join(", ");
 
 /** 要素が見えているか（畳んだ Raw などは矩形を持たない） */
-export function isRendered(element: Element): boolean {
+export const isRendered = (element: Element): boolean => {
   return element.getClientRects().length > 0;
-}
+};
 
 /** 前に無かったキーの差分の行か（前の値が「（なし）」） */
-function isNewKey(row: Element): boolean {
+const isNewKey = (row: Element): boolean => {
   const was = row.querySelector("del.df-was");
   if (was === null) return false;
   // 読み上げだけに残した「前の値: 」は除く
@@ -81,17 +81,18 @@ function isNewKey(row: Element): boolean {
     .join("")
     .trim();
   return text === NO_VALUE;
-}
+};
 
 /** 印にする要素の種類 */
-function minimapKindOf(element: Element): MinimapKind {
+const minimapKindOf = (element: Element): MinimapKind => {
   if (element.matches(".diagram, .html-diff-range")) return "chg";
   if (element.matches(".df-kv")) return isNewKey(element) ? "add" : "chg";
   return element.matches("del, .df-del") ? "del" : "add";
-}
+};
 
 /** 本文のスクロール領域の中の差分の印を、文書の順にミニマップの印にまとめて返す */
-export function minimapTargets(body: HTMLElement): MinimapTarget[] {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+export const minimapTargets = (body: HTMLElement): MinimapTarget[] => {
   const found: MinimapTarget[] = [];
   for (const element of body.querySelectorAll(MINIMAP_TARGET_SELECTOR)) {
     // 見えていない印と、Raw を出している図の枠（Raw の行を並べる）は飛ばす。Raw を畳んだ図は枠を印にする
@@ -137,20 +138,20 @@ export function minimapTargets(body: HTMLElement): MinimapTarget[] {
     }
   }
   return found;
-}
+};
 
 /** 印が指す箇所の、本文の中身の上端からの位置と高さ */
-function minimapExtent({ body, target }: { body: HTMLElement; target: MinimapTarget }): MinimapExtent {
+const minimapExtent = ({ body, target }: { body: HTMLElement; target: MinimapTarget }): MinimapExtent => {
   const base = body.getBoundingClientRect().top - body.scrollTop;
   // 枠の中の要素の位置は枠の上端から測るため、枠の上端を足す
   const shift = target.frame === null ? 0 : target.frame.getBoundingClientRect().top;
   const top = target.first.getBoundingClientRect().top + shift - base;
   const bottom = target.last.getBoundingClientRect().bottom + shift - base;
   return { top, size: bottom - top };
-}
+};
 
 /** 印の本文の中の位置と高さから、帯の中の印の始まりと長さを決める。位置と長さは本文の全体の高さに対する割合で置き、最小の長さと重なりを直す */
-export function minimapLayout({ extents, total, length }: { extents: MinimapExtent[]; total: number; length: number }): MinimapMark[] {
+export const minimapLayout = ({ extents, total, length }: { extents: MinimapExtent[]; total: number; length: number }): MinimapMark[] => {
   // 印が多いときは最小の長さを詰める
   const min = Math.max(MINIMAP_MARK_FLOOR_PX, Math.min(MINIMAP_MARK_MIN_PX, Math.floor(length / Math.max(extents.length, 1)) - MINIMAP_MARK_GAP_PX));
   const placed: MinimapMark[] = [];
@@ -168,10 +169,10 @@ export function minimapLayout({ extents, total, length }: { extents: MinimapExte
     limit = mark.start - MINIMAP_MARK_GAP_PX;
   }
   return placed;
-}
+};
 
 /** 印の箇所まで本文を送り、その箇所を少しの間だけ枠で示す（履歴にもハッシュにも触れない） */
-function jumpToTarget({ body, target }: { body: HTMLElement; target: MinimapTarget }): void {
+const jumpToTarget = ({ body, target }: { body: HTMLElement; target: MinimapTarget }): void => {
   const { top } = minimapExtent({ body, target });
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   body.scrollTo({ top: Math.max(0, top - body.clientHeight * MINIMAP_JUMP_RATIO), behavior: reduce ? "auto" : "smooth" });
@@ -184,10 +185,10 @@ function jumpToTarget({ body, target }: { body: HTMLElement; target: MinimapTarg
   }
   for (const element of hits) element.classList.add("df-map-hit");
   window.setTimeout(() => hits.forEach((element) => element.classList.remove("df-map-hit")), MINIMAP_HIT_MS);
-}
+};
 
 /** 帯のマウスの操作。押したまま上下に動かすと本文をスクロールバーと同じように送り、印の無い所を押すとその位置まで本文をすぐ送る */
-function bindMinimapPointer({ map, view, body }: { map: HTMLElement; view: HTMLElement; body: HTMLElement }): { justDragged: () => boolean } {
+const bindMinimapPointer = ({ map, view, body }: { map: HTMLElement; view: HTMLElement; body: HTMLElement }): { justDragged: () => boolean } => {
   let drag: { id: number; startY: number; grab: number } | null = null;
   let dragged = false;
   /** ドラッグの間の指の位置に、見えている範囲の面が来るまで本文を送る */
@@ -244,10 +245,10 @@ function bindMinimapPointer({ map, view, body }: { map: HTMLElement; view: HTMLE
     body.scrollTop = ((event.clientY - rect.top) / rect.height) * body.scrollHeight - body.clientHeight / 2;
   });
   return { justDragged: () => dragged };
-}
+};
 
 /** 枠に帯を足して本文を見張り、片付ける関数を返す。帯は印があるときだけ出す */
-export function attachMinimap({ frame, body }: DiffMinimapFrameProps): () => void {
+export const attachMinimap = ({ frame, body }: DiffMinimapFrameProps): () => void => {
   // 見えている範囲の面
   const view = h({ tag: "span", attrs: { class: "df-map-view", "aria-hidden": "true" } });
   const map = h({
@@ -355,4 +356,4 @@ export function attachMinimap({ frame, body }: DiffMinimapFrameProps): () => voi
     map.remove();
     frame.classList.remove("has-map");
   };
-}
+};

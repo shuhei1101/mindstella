@@ -5,7 +5,7 @@ import { Icon } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
 import { Button } from "@/shared/components/ui/button";
 import { SETTINGS_TARGET, type BlockedEdit, type PendingEdit } from "@/shared/core/edits";
-import { formatJst } from "@/shared/core/format";
+import { formatJst, toText } from "@/shared/core/format";
 import { KIND_LABEL, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
 import { useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
 
@@ -20,7 +20,7 @@ const flat = (value: unknown): string => {
   if (value === true) return "はい";
   if (value === false) return "いいえ";
   if (typeof value === "object") return JSON.stringify(value);
-  return String(value as string | number).replace(/\s+/g, " ");
+  return toText(value).replace(/\s+/g, " ");
 };
 
 type RowText = { what: string; before: string | Tag[] | null; after: string | Tag[] | null };

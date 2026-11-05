@@ -14,7 +14,7 @@ import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/
 import { TasksScreen } from "@/features/tasks/tasks/tasks-screen";
 import type { Threads } from "@/shared/api/generated/model";
 import type { IconName } from "@/shared/components/icon";
-import { Topbar, type TabKey, type TopbarCurrent, type TopbarTab } from "@/shared/components/topbar";
+import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar";
 import { AppError } from "@/shared/core/app-error";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
 import { toLegacyUrl } from "@/shared/core/legacy-url";
@@ -31,7 +31,7 @@ import { useThemeStore } from "@/shared/stores/theme-store";
 
 const TAB_ICON: Record<TabKey, IconName> = { overview: "home", decisions: "decision", tasks: "task", research: "research", docs: "doc", terms: "term", notes: "note", logs: "log" };
 
-const RECORD_KINDS: readonly string[] = ["research", "terms", "notes", "logs"];
+const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "notes", "logs"].includes(tab);
 
 const hasUnread = (threads: Threads | undefined): boolean => threads?.threads.some((thread) => thread.status === "open" && thread.posts.some((post) => !post.seen)) ?? false;
 
@@ -46,6 +46,7 @@ const RecordsError = ({ error }: { error: Error }) => (
   </section>
 );
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
   const { search, setTab, openItem, setDiff, setPanel, replaceSearch } = usePreviewSearch();
   const records = useQuery(recordsQuery());
@@ -94,7 +95,7 @@ export const PreviewShell = () => {
       if (tab === "decisions") return <DecisionsScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;
       if (tab === "tasks") return <TasksScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;
       if (tab === "docs") return <DocsScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;
-      return RECORD_KINDS.includes(tab) ? <RecordsScreen key={tab} kind={tab as RecordKind} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} /> : null;
+      return isRecordKind(tab) ? <RecordsScreen key={tab} kind={tab} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} /> : null;
     })();
     return (
       <main id="main" className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -107,7 +108,7 @@ export const PreviewShell = () => {
       <Topbar
         title={data?.settings.summary ?? ""}
         tabs={tabs}
-        current={tab as TopbarCurrent}
+        current={tab}
         theme={theme}
         connection={connection === "offline" || !reachable ? "offline" : "online"}
         readAt={data?.built_at ?? null}

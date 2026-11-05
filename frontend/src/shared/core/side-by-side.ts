@@ -41,7 +41,7 @@ type PendingRow = { leftCell: HTMLElement; rightCell: HTMLElement; changed: bool
 type RenderedPiece = { cell: HTMLElement; block: SideBlock; lines: string[]; op: "add" | "del"; rendered: HTMLElement };
 
 /** 片側の描いたブロックの、変えた行を持つ要素に印を付ける（段落・見出し・コードは囲み、表の行と箇条書きの項目は行の印にする） */
-function markSideBlocks({ root, lines, changed, op }: { root: HTMLElement; lines: string[]; changed: Set<number>; op: "add" | "del" }): void {
+const markSideBlocks = ({ root, lines, changed, op }: { root: HTMLElement; lines: string[]; changed: Set<number>; op: "add" | "del" }): void => {
   if (changed.size === 0) return;
   const blocks = [...root.querySelectorAll<HTMLElement>(`[${LINE_ATTR}]`)];
   const owners = blockOwners({ now: lines, starts: blocks.map((block) => Number(block.getAttribute(LINE_ATTR))) });
@@ -64,18 +64,18 @@ function markSideBlocks({ root, lines, changed, op }: { root: HTMLElement; lines
       wrapper.append(block);
     }
   }
-}
+};
 
 /** 片側の列の中で、語の面を付ける印の付いたブロック（文書の順） */
-function sideWordBlocks({ cell, op }: { cell: HTMLElement; op: "add" | "del" }): HTMLElement[] {
+const sideWordBlocks = ({ cell, op }: { cell: HTMLElement; op: "add" | "del" }): HTMLElement[] => {
   const tag = op === "del" ? "del" : "ins";
   return [...cell.querySelectorAll<HTMLElement>(`${tag}.df-blk, tr.df-${op}, li.df-li-${op}`)].flatMap((element) =>
     element.matches(".df-blk") ? wordBlocksIn(element) : [element],
   );
-}
+};
 
 /** 左右の列の行の高さを揃える（変えていない部分を向かい合わせる）。描いた図・文字の読み込みで高さが変わったら、次のコマで 1 回だけ揃え直す */
-function alignSideRows(wrapper: HTMLElement): void {
+const alignSideRows = (wrapper: HTMLElement): void => {
   const [left, right] = wrapper.querySelectorAll<HTMLElement>(".sbs-col");
   if (left === undefined || right === undefined) return;
   let queued = false;
@@ -105,10 +105,11 @@ function alignSideRows(wrapper: HTMLElement): void {
   observer.observe(wrapper);
   for (const block of wrapper.querySelectorAll(".sbs-row > *")) observer.observe(block);
   schedule();
-}
+};
 
 /** 前後の本文を、左に選んだ時点・右に今を描いて並べる。行の差分を打ち切ったら null */
-export function sideBySideBodyDiff({ before, after, lined = true, deadline }: SideBySideBodyDiffProps): SideBySideBodyDiff | null {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+export const sideBySideBodyDiff = ({ before, after, lined = true, deadline }: SideBySideBodyDiffProps): SideBySideBodyDiff | null => {
   const rows = sideBySideRows({ before, after, lexer: lexerOf(), jsdiff: jsdiffOf() });
   if (rows === null) return null;
   const beforeLines = linesOfText(before);
@@ -199,4 +200,4 @@ export function sideBySideBodyDiff({ before, after, lined = true, deadline }: Si
     markWords: () => wordPairsFound.forEach((pair) => markWords({ pair, deadline })),
     decorate: () => diagramPairs.forEach(({ figure, beforeSource }) => void decorateDiagram({ figure, beforeSource })),
   };
-}
+};

@@ -16,6 +16,8 @@ export const DetailResizer = ({ width, onChange }: DetailResizerProps) => {
   const drag = useRef<{ startX: number; startWidth: number } | null>(null);
   const [active, setActive] = useState(false);
   return (
+    // 幅を変えられる区切りは `separator` がフォーカスと操作を持つ
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       role="separator"
       aria-orientation="vertical"
@@ -23,6 +25,7 @@ export const DetailResizer = ({ width, onChange }: DetailResizerProps) => {
       aria-valuenow={width}
       aria-valuemin={PANEL_WIDTH.min}
       aria-valuemax={panelWidthMax(window.innerWidth)}
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
       className={active ? "absolute inset-y-0 left-0 w-1 cursor-col-resize bg-mark max-lg:hidden" : "absolute inset-y-0 left-0 w-1 cursor-col-resize hover:bg-mark-line max-lg:hidden"}
       onPointerDown={(event) => {

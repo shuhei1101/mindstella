@@ -1,4 +1,5 @@
 // 項目の一覧の表（部品設計『表.tsx』）。TanStack Table と shadcn の data-table のガイドで組む。並べ替えと絞り込みの状態は使う側が URL から渡す
+import { toText } from "@/shared/core/format";
 import { columnVisibilityFeature, tableFeatures, useTable, type ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 
@@ -58,7 +59,7 @@ const features = tableFeatures({ columnVisibilityFeature });
 
 const cellText = (value: unknown): string => {
   if (Array.isArray(value)) return value.map(String).join("・");
-  return value === undefined || value === null ? "" : String(value as string | number);
+  return value === undefined || value === null ? "" : toText(value);
 };
 
 /** 見出しの並べ替えの向き */

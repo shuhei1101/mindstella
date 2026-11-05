@@ -1,12 +1,12 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
-import { useRecords } from "@/testing/msw/fixtures";
+import { stubRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
 
 vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
 
-const record = () => useRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", body: "docs/D-1.md" }], bodies: { "docs/D-1.md": "<h2>決め方</h2>" } });
+const record = () => stubRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", body: "docs/D-1.md" }], bodies: { "docs/D-1.md": "<h2>決め方</h2>" } });
 
 describe("BodyView", () => {
   // 見出しへ送る（正常系）
@@ -19,7 +19,7 @@ describe("BodyView", () => {
     // 実行
     renderRoute("/spa/?tab=decisions&id=D-1&h=%E6%B1%BA%E3%82%81%E6%96%B9");
     // 検証
-    expect(await screen.findByRole("heading", { name: "決め方" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /決め方/ })).toBeInTheDocument();
     await waitFor(() => expect(scroll).toHaveBeenCalled());
   });
 

@@ -74,6 +74,7 @@ const diffExists = (diff: string, index: RecordIndex): boolean => {
 };
 
 /** 記録・画面に合わない値を外す */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const normalizeSearch = (search: PreviewSearch, context: SearchContext): PreviewSearch => {
   const { index, pendingCount, visibleKinds, diffActive, sortColumns } = context;
   const next: PreviewSearch = { ...search };

@@ -12,7 +12,7 @@ export const DialogClose = BaseDialog.Close;
 export const DialogContent = ({ className, children, ...props }: Omit<ComponentProps<typeof BaseDialog.Popup>, "className" | "children"> & { className?: string; children: ReactNode }) => (
   <BaseDialog.Portal>
     <BaseDialog.Backdrop className="fixed inset-0 z-40 bg-foreground/40" />
-    <BaseDialog.Popup className={cn("fixed top-1/2 left-1/2 z-50 max-h-full w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-card border border-border bg-popover text-popover-foreground shadow-lg", className)} {...props}>
+    <BaseDialog.Popup className={cn("fixed top-1/2 left-1/2 z-50 max-h-full w-full max-w-lg -translate-1/2 overflow-auto rounded-card border border-border bg-popover text-popover-foreground shadow-lg", className)} {...props}>
       {children}
     </BaseDialog.Popup>
   </BaseDialog.Portal>

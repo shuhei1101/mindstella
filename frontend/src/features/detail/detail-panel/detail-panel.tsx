@@ -1,5 +1,5 @@
 // 詳細パネル（画面設計『詳細パネル.tsx』）。項目 1 件の中身を本文の右に出し、差分の表示の間は前後の差分を出す
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
@@ -89,7 +89,7 @@ const Meta = ({ item, index, keys }: { item: Item; index: RecordIndex; keys: Key
   ];
   const tagsChanged = keys?.has("tags") === true;
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-small">
+    <dl className="grid grid-cols-meta gap-x-2 text-small">
       {rows
         .filter(([, name, value]) => (value !== undefined && value !== "") || keys?.has(name) === true)
         .map(([label, name, value]) => (
@@ -119,6 +119,7 @@ const bodyDisplayOf = (): BodyDisplay => {
 export type DetailContentProps = { id: string; index: RecordIndex; full: boolean; onClose: () => void; onTitle?: (id: string) => string };
 
 /** 見出しと本文。パネルと全画面が共通で使う */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onClose" | "onTitle">) => {
   const { search, openItem, closeItem, setFull, setHeading, setDiff } = usePreviewSearch();
   const { point } = useDiffView();
@@ -128,12 +129,8 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<BodyLayout>(() => (readPrefs().bodyLayout === "side" ? "side" : "inline"));
   const [diagram, setDiagram] = useState<string | null>(null);
-  const display = useMemo(bodyDisplayOf, []);
+  const [display] = useState(bodyDisplayOf);
   const entry = index.byId.get(id);
-  // 別の項目へ移ったら読む表示へ戻す
-  useEffect(() => {
-    setEditing(false);
-  }, [id]);
   if (entry === undefined) return null;
   const { kind } = entry;
   const diff = resolveDiff(id, index, point);
@@ -234,9 +231,6 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
                   {diff.point.name}
                 </span>
                 <span className="text-muted-foreground">{diff.point.sub}</span>
-                <Button variant="ghost" onClick={() => { window.location.assign(toLegacyUrl(toLegacyHash(search))); }}>
-                  今の画面でコメントする
-                </Button>
               </div>
             )}
             {diff?.versions?.trimmed === true ? <p role="note" className="text-small text-muted-foreground">{NOTE_TRIMMED}</p> : null}
@@ -265,6 +259,10 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             ) : null}
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
+            {/* コメントの入力は React へ移すまで今の画面で開く */}
+            <Button variant="outline" className="self-start" onClick={() => { window.location.assign(toLegacyUrl(toLegacyHash(search))); }}>
+              今の画面でコメントする
+            </Button>
           </div>
         )}
       </DiffMinimap>
@@ -303,7 +301,7 @@ export const DetailPanel = ({ id, index }: DetailPanelProps) => {
           sessionStorage.setItem(PANEL_WIDTH_KEY, String(next));
         }}
       />
-      <DetailContent id={id} index={index} full={false} />
+      <DetailContent key={id} id={id} index={index} full={false} />
     </aside>
   );
 };

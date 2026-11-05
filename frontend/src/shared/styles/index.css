@@ -49,6 +49,8 @@
   --color-mark-line: var(--mark-line);
   --color-on-mark: var(--on-mark);
   --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
+  --color-hit: var(--hit);
   --color-st-done: var(--st-done);
   --color-st-open: var(--st-open);
   --color-st-review: var(--st-review);
@@ -82,6 +84,7 @@
   --text-goal: 4rem;
   --text-goal-sub: 1.625rem;
   --radius-control: var(--radius);
+  --radius-card: var(--radius);
   --radius-kbd: 3px;
 }
 
@@ -126,6 +129,11 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* 名前と値の 2 列の並び */
+@utility grid-cols-meta {
+  grid-template-columns: auto 1fr;
 }
 
 /* 等幅の数字 */

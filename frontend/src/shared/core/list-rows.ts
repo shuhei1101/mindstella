@@ -1,4 +1,5 @@
 // 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て（今の画面の `components/table.ts` と同じ振る舞い）
+import { toText } from "@/shared/core/format";
 import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
 
 /** 列から値を取る定義 */
@@ -18,7 +19,7 @@ const LEADING_CONDITION_KEYS = ["kind", "type", "status", "tags"];
 const valuesOf = <R,>(column: ListColumn<R>, row: R): string[] => {
   const value = column.get(row);
   if (value === null || value === undefined) return [];
-  return Array.isArray(value) ? value.map(String) : [String(value as string | number)];
+  return Array.isArray(value) ? value.map(String) : [toText(value)];
 };
 
 const compareValues = <R,>(column: ListColumn<R>, a: string, b: string): number => {

@@ -59,7 +59,7 @@ describe("OverviewScreen", () => {
     vi.stubGlobal("location", { ...window.location, assign });
     renderRoute("/spa/");
     // 実行
-    await userEvent.click(await screen.findByRole("button", { name: /ネットワーク/ }));
+    await userEvent.click(await screen.findByRole("link", { name: /ネットワーク/ }));
     // 検証
     expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=graph");
     vi.unstubAllGlobals();

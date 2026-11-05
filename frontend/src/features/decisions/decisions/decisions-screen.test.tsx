@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
-import { useRecords } from "@/testing/msw/fixtures";
+import { stubRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
 
 describe("DecisionsScreen", () => {
@@ -25,7 +25,7 @@ describe("DecisionsScreen", () => {
   // 消した項目の帯（正常系）
   test("decisions_screen_when_diff", async () => {
     // 準備
-    useRecords({ changes: { last_seq: 2, sets: [{ id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 2, added: [], changed: [], removed: [{ id: "D-9", kind: "decision", title: "消した検討事項" }] }], pending: { added: [], changed: [] } } });
+    stubRecords({ changes: { last_seq: 2, sets: [{ id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 2, added: [], changed: [], removed: [{ id: "D-9", kind: "decision", title: "消した検討事項" }] }], pending: { added: [], changed: [] } } });
     // 実行
     renderRoute("/spa/?tab=decisions&diff=V-2");
     // 検証

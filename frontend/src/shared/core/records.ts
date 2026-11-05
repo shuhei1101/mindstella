@@ -256,18 +256,18 @@ export type RecordIndex = {
 const REFERENCE_KEYS = ["depends_on", "for", "related", "sources"] as const;
 
 /** 項目の `tags` から名前だけを並びの順に取り出す（文字列のタグはそのまま） */
-export function tagNames(tags: readonly (Tag | string)[] | undefined): string[] {
+export const tagNames = (tags: readonly (Tag | string)[] | undefined): string[] => {
   return (tags ?? []).map((tag) => (typeof tag === "string" ? tag : tag.name));
-}
+};
 
 /** ID を種類の順 → 連番の順に比べる */
-export function compareIds(a: string, b: string): number {
+export const compareIds = (a: string, b: string): number => {
   const rank = (id: string) => KIND_KEYS.indexOf(KIND_OF_PREFIX[id.slice(0, 1)] ?? "logs");
   return rank(a) - rank(b) || Number(a.slice(2)) - Number(b.slice(2));
-}
+};
 
 /** 埋め込みのデータから記録の索引を作る */
-export function buildIndex(data: MindmapData): RecordIndex {
+export const buildIndex = (data: MindmapData): RecordIndex => {
   const byId = new Map<string, { kind: Kind; item: Item }>();
   for (const kind of KIND_KEYS) {
     for (const item of data[kind]) byId.set(item.id, { kind, item });
@@ -290,7 +290,7 @@ export function buildIndex(data: MindmapData): RecordIndex {
     referencedBy,
     readyIds: new Set(data.derived.next.map((candidate) => candidate.id)),
   };
-}
+};
 
 /** 詳細パネルに出す関係する項目（それぞれ ID の並び） */
 export type RelatedItems = {
@@ -303,7 +303,7 @@ export type RelatedItems = {
 };
 
 /** 前提・後続・関連タスク・経緯・関連・参照している項目を返す */
-export function relatedItems({ id, index }: { id: string; index: RecordIndex }): RelatedItems {
+export const relatedItems = ({ id, index }: { id: string; index: RecordIndex }): RelatedItems => {
   const entry = index.byId.get(id);
   const item = entry?.item;
   const referrers = index.referencedBy.get(id) ?? [];
@@ -331,7 +331,7 @@ export function relatedItems({ id, index }: { id: string; index: RecordIndex }):
     related,
     referencedBy: referrers.filter((referrer) => !shown.has(referrer)),
   };
-}
+};
 
 /** 全体の検索の段（1 は ID かタイトルが言葉と完全に一致、2 はタイトルが語を全て含む、3 はそれ以外） */
 export type SearchTier = 1 | 2 | 3;
@@ -343,35 +343,35 @@ export type SearchHit = { id: string; kind: Kind; title: string; tier: SearchTie
 const SEARCH_TIERS: SearchTier[] = [1, 2, 3];
 
 /** 項目の `body` の拡張子から本文の形式を返す（`body` を持たないか、知らない拡張子なら `null`） */
-export function bodyFormatOf(body: string | undefined): "md" | "html" | null {
+export const bodyFormatOf = (body: string | undefined): "md" | "html" | null => {
   if (body === undefined) return null;
   if (body.endsWith(".html")) return "html";
   if (body.endsWith(".md")) return "md";
   return null;
-}
+};
 
 /** 描いた文に出ない中身を持つ要素 */
 const HIDDEN_TEXT_SELECTOR = "style, script, template, title";
 
 /** HTML をスクリプトを動かさずに解析し、`style`・`script`・`template`・`title` の中身とコメントを除いた描いた文を返す */
-export function htmlText(source: string): string {
+export const htmlText = (source: string): string => {
   const doc = new DOMParser().parseFromString(source, "text/html");
   for (const hidden of doc.querySelectorAll(HIDDEN_TEXT_SELECTOR)) hidden.remove();
   return doc.documentElement.textContent ?? "";
-}
+};
 
 /** Markdown の本文の中の言語指定 `html` のコードブロック（フェンスは ``` か ~~~） */
 const HTML_FENCE = /^(```|~~~)html[^\n]*\n([\s\S]*?)^\1[ \t]*$/gm;
 
 /** 検索で当てる本文の文。HTML の本文と Markdown の `html` のコードブロックは、タグではなく描いた文にする */
-function searchableBody(body: string | undefined, bodies: Record<string, string>): string {
+const searchableBody = (body: string | undefined, bodies: Record<string, string>): string => {
   const text = bodies[body ?? ""] ?? "";
   if (bodyFormatOf(body) === "html") return htmlText(text);
   return text.replace(HTML_FENCE, (_block, _fence, code: string) => htmlText(code));
-}
+};
 
 /** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
-function searchableText(item: Item, bodies: Record<string, string>): string {
+const searchableText = (item: Item, bodies: Record<string, string>): string => {
   const parts: string[] = [];
   for (const value of Object.values(item)) {
     if (typeof value === "string") parts.push(value);
@@ -381,10 +381,11 @@ function searchableText(item: Item, bodies: Record<string, string>): string {
   }
   parts.push(searchableBody(item.body, bodies));
   return parts.join("\n").toLowerCase();
-}
+};
 
 /** 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す（大文字・小文字と前後の空白を区別しない） */
-export function searchItems({ query, index }: { query: string; index: RecordIndex }): SearchHit[] {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+export const searchItems = ({ query, index }: { query: string; index: RecordIndex }): SearchHit[] => {
   const whole = query.trim().toLowerCase();
   const terms = whole.split(/\s+/).filter(Boolean);
   // 言葉が空なら何も探さない
@@ -404,12 +405,12 @@ export function searchItems({ query, index }: { query: string; index: RecordInde
   }
   // 段の順にする（段の中は種類の順・連番の順のまま）
   return SEARCH_TIERS.flatMap((tier) => hits.filter((hit) => hit.tier === tier));
-}
+};
 
 /** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */
-export function titleOf(index: RecordIndex, id: string): string {
+export const titleOf = (index: RecordIndex, id: string): string => {
   return index.byId.get(id)?.item.title ?? "（記録にありません）";
-}
+};
 
 /** 項目のキー → 詳細パネルがそのキーに出す見出し（案の中のキーも同じ辞書） */
 const VALUE_HEADINGS: Record<string, string> = {
@@ -432,7 +433,7 @@ const VALUE_HEADINGS: Record<string, string> = {
 const OPTION_KEY = /^options\[([^\]]+)\]\.(\w+)$/;
 
 /** 箇所を画面に出す名前にする。本文は行（範囲は「〜」でつなぐ）、値は詳細パネルがそのキーに出す見出し（案の中は「案 {key} の{見出し}」） */
-export function locationLabel(loc: Location): string {
+export const locationLabel = (loc: Location): string => {
   if (loc.kind === "body") {
     const start = loc.start ?? 0;
     const end = loc.end ?? start;
@@ -443,4 +444,4 @@ export function locationLabel(loc: Location): string {
   // 案の中の値: 案の記号と見出し
   if (option !== null) return `案 ${option[1]} の${VALUE_HEADINGS[option[2] ?? ""] ?? option[2]}`;
   return VALUE_HEADINGS[key] ?? key;
-}
+};

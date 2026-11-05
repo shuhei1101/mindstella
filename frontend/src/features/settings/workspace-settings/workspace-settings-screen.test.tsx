@@ -10,7 +10,7 @@ describe("WorkspaceSettingsScreen", () => {
   // 題名を溜める（正常系）
   test("workspace_settings_screen", async () => {
     // 準備
-    const posted = vi.fn((_body: unknown) => HttpResponse.json({ id: "E-1", target: "settings", count: 1 }, { status: 201 }));
+    const posted = vi.fn<(body: unknown) => Response>(() => HttpResponse.json({ id: "E-1", target: "settings", count: 1 }, { status: 201 }));
     server.use(http.post("/api/edits", async ({ request }) => posted(await request.json())));
     renderRoute("/spa/?tab=settings");
     const title = await screen.findByRole("textbox", { name: "題名" });

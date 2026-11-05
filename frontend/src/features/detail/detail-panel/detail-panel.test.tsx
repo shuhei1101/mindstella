@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
-import { useRecords } from "@/testing/msw/fixtures";
+import { stubRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
 
 vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
@@ -21,7 +21,7 @@ describe("DetailPanel", () => {
   // 項目を描く（正常系）
   test("detail_panel", async () => {
     // 準備
-    useRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", depends_on: ["D-1"] }], bodies: { "docs/D-1.md": "本文の文" } });
+    stubRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", depends_on: ["D-1"] }], bodies: { "docs/D-1.md": "本文の文" } });
     // 実行
     renderRoute("/spa/?tab=decisions&id=D-1");
     // 検証
@@ -35,7 +35,7 @@ describe("DetailPanel", () => {
   // 本文の差分（正常系）
   test("detail_panel_when_diff", async () => {
     // 準備
-    useRecords({ decisions: [decision], bodies: { "docs/D-1.md": "今の行\n" }, changes });
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "今の行\n" }, changes });
     // 実行
     renderRoute("/spa/?tab=decisions&id=D-1&diff=V-2");
     // 検証
@@ -45,7 +45,7 @@ describe("DetailPanel", () => {
   // 編集の表示（正常系）
   test("detail_panel_when_editing", async () => {
     // 準備
-    useRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
     renderRoute("/spa/?tab=decisions&id=D-1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "編集する" }));
@@ -58,7 +58,7 @@ describe("DetailPanel", () => {
     // 準備
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign });
-    useRecords({ decisions: [decision], changes });
+    stubRecords({ decisions: [decision], changes });
     renderRoute("/spa/?tab=decisions&view=table&id=D-1&diff=V-1");
     // 実行
     await userEvent.click(await screen.findByRole("button", { name: "今の画面でコメントする" }));

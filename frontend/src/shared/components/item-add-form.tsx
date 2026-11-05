@@ -26,10 +26,10 @@ export const ItemAddForm = ({ kind, onClose }: ItemAddFormProps) => {
         add.mutate({ op: "item-add", key: kind, value: { title: value } }, { onSuccess: onClose, onError: (failure) => { setError(failure.message); } });
       }}
     >
-      <label className="flex flex-col gap-1 text-small">
+      <label htmlFor="item-add-title" className="text-small">
         タイトル
-        <Input value={title} autoComplete="off" aria-invalid={error !== null} onChange={(event) => { setTitle(event.target.value); }} />
       </label>
+      <Input id="item-add-title" value={title} autoComplete="off" aria-invalid={error !== null} onChange={(event) => { setTitle(event.target.value); }} />
       {error === null ? null : (
         <p role="alert" className="text-small text-destructive">
           {error}

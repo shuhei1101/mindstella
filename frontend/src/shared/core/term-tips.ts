@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
 // 本文の印のツールチップ（今の画面の `components/term-tip.ts`・`screens/detail.ts` の本文の印と同じ振る舞い）
 import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { hashWith, LINE_ATTR, MARK_KINDS, TERM_TIP_ID, VALUE_KEY_ATTR } from "@/shared/core/body-links";
@@ -34,14 +35,14 @@ const TIP_GAP = 6;
 const SCREEN_EDGE = 8;
 
 /** 要素の中のフォーカスできる要素 */
-function focusablesIn(parent: ParentNode): HTMLElement[] {
+const focusablesIn = (parent: ParentNode): HTMLElement[] => {
   return [...parent.querySelectorAll<HTMLElement>("a[href], button, [tabindex]:not([tabindex='-1'])")].filter(
     (node) => node.closest("[hidden]") === null,
   );
-}
+};
 
 /** 項目 1 件。用語は用語・ID・意味、資料・調査はタイトル・ID・説明（無ければ出さない） */
-function tipItem({ entry }: { entry: TermTipEntry }): HTMLElement {
+const tipItem = ({ entry }: { entry: TermTipEntry }): HTMLElement => {
   const { item } = entry;
   const text = entry.kind === "terms" ? item.meaning : item.description;
   return h({
@@ -59,10 +60,10 @@ function tipItem({ entry }: { entry: TermTipEntry }): HTMLElement {
       text === undefined || text === "" ? null : h({ tag: "span", attrs: { class: "tt-body" }, children: [text] }),
     ],
   });
-}
+};
 
 /** 用語と資料・調査を含むツールチップの中身。種類ごとの見出し（種類名と件数）とリストに分ける */
-function groupedContent(entries: TermTipEntry[]): HTMLElement[] {
+const groupedContent = (entries: TermTipEntry[]): HTMLElement[] => {
   return MARK_KINDS.map((kind) => ({ kind, entries: entries.filter((entry) => entry.kind === kind) }))
     .filter((group) => group.entries.length > 0)
     .map((group) =>
@@ -83,10 +84,10 @@ function groupedContent(entries: TermTipEntry[]): HTMLElement[] {
         ],
       }),
     );
-}
+};
 
 /** ツールチップを返す。使う側が文書に入れて `showPopover()` で開く。開くと印の上に置き、上に収まらなければ下に、どちらにも収まらなければ広い側の高さに縮める */
-export function termTip({ entries, anchor, pinned = false, on }: TermTipProps): HTMLElement {
+export const termTip = ({ entries, anchor, pinned = false, on }: TermTipProps): HTMLElement => {
   // 用語 2 件以上か、資料・調査を含むときは、種類ごとの見出しとリンクで並べる
   const multi = entries.length > 1 || entries.some((entry) => entry.kind !== "terms");
   const tip = h({
@@ -137,7 +138,7 @@ export function termTip({ entries, anchor, pinned = false, on }: TermTipProps): 
 
   // 開いたとき（と、開いた直後の描画の前）に置き場所を決める。押して残した状態なら外の押下も見る
   tip.addEventListener("toggle", (event) => {
-    if ((event as ToggleEvent).newState === "open") {
+    if ((event).newState === "open") {
       place();
       if (pinned) document.addEventListener("pointerdown", closeOnOutsidePress, true);
     } else {
@@ -189,18 +190,18 @@ export function termTip({ entries, anchor, pinned = false, on }: TermTipProps): 
   });
 
   return tip;
-}
+};
 
 
 /** 本文の見出しを、本文のスクロール領域の中で画面に入れる（見えている見出しが本文に無ければ false。左右に並べるときは同じ見出しが 3 か所にあるので、矩形を持つ最初のものへ送る） */
-export function scrollToHeading({ root, slug }: { root: ParentNode; slug: string }): boolean {
+export const scrollToHeading = ({ root, slug }: { root: ParentNode; slug: string }): boolean => {
   // 畳んだ節の中の見出しは、包む入れ物を開いてから送る
   revealHeading({ root, slug });
   const target = [...root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)].find(isRendered);
   if (target === undefined) return false;
   target.scrollIntoView({ block: "start" });
   return true;
-}
+};
 
 /** 本文の印のツールチップを隠すまで待つミリ秒（印からツールチップへポインターを動かす間に消さない） */
 const TIP_HIDE_DELAY_MS = 150;
@@ -215,17 +216,17 @@ let tipState: { mark: HTMLElement; pinned: boolean } | null = null;
 let refocused: Element | null = null;
 
 /** 今のツールチップの要素（使い回す 1 つ。隠していても文書に残る） */
-function currentTip(): HTMLElement | null {
+const currentTip = (): HTMLElement | null => {
   return document.getElementById(TERM_TIP_ID);
-}
+};
 
 /** 押して残しているか。ツールチップがまだ文書にあって開いているときに限る（詳細パネルの描き直しで外れたものは残していないとみなす） */
-function isPinned(): boolean {
+const isPinned = (): boolean => {
   return tipState?.pinned === true && currentTip()?.matches(":popover-open") === true;
-}
+};
 
 /** ツールチップを隠す（`now` が偽のときは、少し待ってから） */
-export function hideTermTip(now: boolean): void {
+export const hideTermTip = (now: boolean): void => {
   window.clearTimeout(tipTimer);
   const hide = (): void => {
     const tip = currentTip();
@@ -234,10 +235,10 @@ export function hideTermTip(now: boolean): void {
   };
   if (now) hide();
   else tipTimer = window.setTimeout(hide, TIP_HIDE_DELAY_MS);
-}
+};
 
 /** 印の上に、一致した項目のツールチップを出す。重ねる面の上にも出せるよう、印のある詳細パネル・全画面のモーダルの中に置く（モーダルの外は操作できない） */
-function showTermTip({
+const showTermTip = ({
   mark,
   entries,
   pinned,
@@ -247,7 +248,7 @@ function showTermTip({
   entries: TermTipEntry[];
   pinned: boolean;
   onOpen: (id: string) => void;
-}): void {
+}): void => {
   window.clearTimeout(tipTimer);
   const previous = currentTip();
   // 同じ印を同じ出し方で出しているときは出し直さない（中のスクロールを保つ）
@@ -276,7 +277,7 @@ function showTermTip({
   (mark.closest("dialog, aside") ?? document.body).append(tip);
   tip.showPopover();
   tipState = { mark, pinned };
-}
+};
 
 /** Esc でツールチップを隠す。中にフォーカスがあれば印へ戻し、全画面の Esc（元の大きさに戻す）を起こさない */
 document.addEventListener(
@@ -297,7 +298,7 @@ document.addEventListener(
 );
 
 /** 本文の印に乗せる・フォーカスするとツールチップを出し、外れると隠す（本文の要素に委ねて付ける）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し、Tab で中へ移れる */
-export function attachTermTips({ root, index, onOpen }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void }): void {
+export const attachTermTips = ({ root, index, onOpen }: { root: HTMLElement; index: RecordIndex; onOpen: (id: string) => void }): void => {
   /** イベントの先の印と、一致した項目（用語 → 資料 → 調査の順）。用語 2 件以上か、資料・調査を含むか */
   const markOf = (event: Event): { mark: HTMLElement; entries: TermTipEntry[]; multi: boolean } | null => {
     const mark = (event.target as Element).closest?.<HTMLElement>("a.term") ?? null;
@@ -322,7 +323,7 @@ export function attachTermTips({ root, index, onOpen }: { root: HTMLElement; ind
     if (markOf(event) !== null && !isPinned()) hideTermTip(false);
   });
   root.addEventListener("focusout", (event) => {
-    const to = (event as FocusEvent).relatedTarget;
+    const to = (event).relatedTarget;
     // ツールチップの中へ移るときは残す。押して残している間は、フォーカスの行き先が無い（余白を押した）ときも残す
     if (markOf(event) === null || (to instanceof Node && currentTip()?.contains(to) === true)) return;
     if (to === null && isPinned()) return;
@@ -349,10 +350,10 @@ export function attachTermTips({ root, index, onOpen }: { root: HTMLElement; ind
     // 用語 1 件だけに一致した印を押して項目へ移るときは、ツールチップを残さない
     hideTermTip(true);
   });
-}
+};
 
 /** コメントの一覧から開いたとき、そのコメントの箇所に印の色の地を付け、描いた後にその箇所までスクロールする。合わなければ示さず、項目の先頭を出す */
-export function applyHighlight({ root, loc }: { root: ParentNode; loc: Location }): void {
+export const applyHighlight = ({ root, loc }: { root: ParentNode; loc: Location }): void => {
   let hits: Element[] = [];
   if (loc.kind === "value") {
     hits = [...root.querySelectorAll(`[${VALUE_KEY_ATTR}]`)].filter((element) => element.getAttribute(VALUE_KEY_ATTR) === loc.key);
@@ -375,4 +376,4 @@ export function applyHighlight({ root, loc }: { root: ParentNode; loc: Location 
   // 文書に入れた後でないとスクロールできない
   const target = hits[0];
   if (target !== undefined) requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
-}
+};

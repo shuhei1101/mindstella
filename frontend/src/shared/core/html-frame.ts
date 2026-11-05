@@ -39,12 +39,12 @@ const MARK_ATTR = "data-df";
 const HTML_LINE_END_ATTR = "data-line-end";
 
 /** 行の印（` data-line="n"`・` data-line-end="n"`）を外して、原文に戻す */
-function withoutHtmlLineMarks(marked: string): string {
+const withoutHtmlLineMarks = (marked: string): string => {
   return marked.replace(/ data-line(?:-end)?="\d+"/g, "");
-}
+};
 
 /** 枠の文書の中で、行を含む最も内側の行の印を持つ要素（無ければ null）。要素の範囲は、始まりの行（`data-line`）から終わりの行（`data-line-end`）まで。範囲に行を含む要素のうち、文書の順で最後のもの */
-function innermostAt({ doc, line }: { doc: Document; line: number }): Element | null {
+const innermostAt = ({ doc, line }: { doc: Document; line: number }): Element | null => {
   let found: Element | null = null;
   for (const element of doc.body.querySelectorAll(`[${HTML_LINE_ATTR}]`)) {
     // 文書の順で始まりの行は小さい順に並ぶので、行より後に始まる要素に着いたら終える
@@ -53,10 +53,10 @@ function innermostAt({ doc, line }: { doc: Document; line: number }): Element | 
     if (Number(element.getAttribute(HTML_LINE_END_ATTR)) >= line) found = element;
   }
   return found;
-}
+};
 
 /** コメントの一覧から開いたとき、枠の中でその行を含む最も内側の行の印を持つ要素を印の色の地で示し、その要素が見える位置まで `scroller` を送る。枠を描いた後に呼ぶ */
-export function highlightFrameLine({ frame, line, scroller }: { frame: HTMLIFrameElement; line: number; scroller: HTMLElement | null }): void {
+export const highlightFrameLine = ({ frame, line, scroller }: { frame: HTMLIFrameElement; line: number; scroller: HTMLElement | null }): void => {
   const show = (): void => {
     const doc = frame.contentDocument;
     const hit = doc === null ? null : innermostAt({ doc, line });
@@ -74,10 +74,10 @@ export function highlightFrameLine({ frame, line, scroller }: { frame: HTMLIFram
   // 描き終わっていれば今、そうでなければ描き終えてから
   if (frame.hasAttribute(RENDERED_ATTR)) show();
   else frame.addEventListener("load", show, { once: true });
-}
+};
 
 /** 描いた結果の上で、足した行・変わった行を含む要素に枠と地の色の印を付ける（色は画面の差分の色を枠の文書へ写す） */
-function paintMarks({ doc, marks }: { doc: Document; marks: { added: number[]; changed: number[] } }): void {
+const paintMarks = ({ doc, marks }: { doc: Document; marks: { added: number[]; changed: number[] } }): void => {
   const css = getComputedStyle(document.documentElement);
   const color = (name: string): string => css.getPropertyValue(name).trim();
   const style = doc.createElement("style");
@@ -91,10 +91,10 @@ function paintMarks({ doc, marks }: { doc: Document; marks: { added: number[]; c
   ] as const) {
     for (const line of lines) innermostAt({ doc, line })?.setAttribute(MARK_ATTR, mark);
   }
-}
+};
 
 /** 枠の文書で選んでいる範囲を、親の画面の座標の矩形つきの選択にする（空の選択・行の印の外は null） */
-function frameSelection({ frame, original }: { frame: HTMLIFrameElement; original: string }): HtmlFrameSelection | null {
+const frameSelection = ({ frame, original }: { frame: HTMLIFrameElement; original: string }): HtmlFrameSelection | null => {
   const selection = frame.contentWindow?.getSelection() ?? null;
   if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) return null;
   const range = selection.getRangeAt(0);
@@ -108,29 +108,29 @@ function frameSelection({ frame, original }: { frame: HTMLIFrameElement; origina
   const shift = (rect: DOMRect): DOMRect =>
     new DOMRect(rect.left + outer.left + frame.clientLeft, rect.top + outer.top + frame.clientTop, rect.width, rect.height);
   return { start: location.start, end: location.end, text: location.text, rects: { first: shift(first), last: shift(last) } };
-}
+};
 
 /** 枠から親をたどって最初に当たる、縦にスクロールできる要素（計算した `overflow-y` が `auto` か `scroll`）。無ければ null */
-function verticalScroller(frame: HTMLIFrameElement): HTMLElement | null {
+const verticalScroller = (frame: HTMLIFrameElement): HTMLElement | null => {
   for (let element = frame.parentElement; element !== null; element = element.parentElement) {
     const overflowY = getComputedStyle(element).overflowY;
     if (overflowY === "auto" || overflowY === "scroll") return element;
   }
   return null;
-}
+};
 
 /** 本文のスクロール領域を、枠の中の `id` の要素の上端が領域の上端に来る位置まで送る（要素か領域が無ければ送らない） */
-function scrollToAnchor({ frame, id }: { frame: HTMLIFrameElement; id: string }): void {
+const scrollToAnchor = ({ frame, id }: { frame: HTMLIFrameElement; id: string }): void => {
   const target = frame.contentDocument?.getElementById(id) ?? null;
   const scroller = verticalScroller(frame);
   if (target === null || scroller === null) return;
   // 枠の位置に枠の中の要素の位置を足して、領域の上端からの距離を求める
   const offset = frame.getBoundingClientRect().top + frame.clientTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
   scroller.scrollTop += offset;
-}
+};
 
 /** 枠の文書の `click`・`auxclick`（中ボタン）を受け、リンクの押下を枠の中で移らせず、`htmlLinkAction` の決めたとおりに開く・送る */
-function bindLinks({ frame, doc }: { frame: HTMLIFrameElement; doc: Document }): void {
+const bindLinks = ({ frame, doc }: { frame: HTMLIFrameElement; doc: Document }): void => {
   const view = doc.defaultView;
   if (view === null) return;
   // ポインターを押してから離すまでの間に選択が変わったか（リンクの文をなぞって選んだ直後の `click` を見分ける）
@@ -166,10 +166,10 @@ function bindLinks({ frame, doc }: { frame: HTMLIFrameElement; doc: Document }):
   doc.addEventListener("auxclick", (event) => {
     if (event.button === 1) onPress(event);
   });
-}
+};
 
 /** HTML の本文の枠。スクリプトを動かさず（sandbox に `allow-scripts` を付けない）、高さを描いた中身に合わせる */
-export function htmlFrameElement({ source, selectable = true, label = "本文（HTML）", marks, on }: HtmlBodyFrameProps): HTMLIFrameElement {
+export const htmlFrameElement = ({ source, selectable = true, label = "本文（HTML）", marks, on }: HtmlBodyFrameProps): HTMLIFrameElement => {
   const frame = h({
     tag: "iframe",
     attrs: {
@@ -221,4 +221,4 @@ export function htmlFrameElement({ source, selectable = true, label = "本文（
   });
   frame.srcdoc = source;
   return frame;
-}
+};

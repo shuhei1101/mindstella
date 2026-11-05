@@ -68,21 +68,21 @@ const SECTION_BODY_CLASS = "md-section-body";
 let sectionSeq = 0;
 
 /** 前後の空白を除いた文字列の幅を、符号位置が U+00FF 以下の文字を 0.5、それ以外を 1 として数える */
-export function textWidth(text: string): number {
+export const textWidth = (text: string): number => {
   let width = 0;
   for (const char of text.trim()) width += (char.codePointAt(0) ?? 0) <= HALF_WIDTH_MAX ? 0.5 : 1;
   return width;
-}
+};
 
 /** 列のセルの最大の文字の幅から、列の種類と最小の幅（em。中くらいの列だけ持つ）を決める */
-export function columnSize(maxWidth: number): { kind: "short" | "medium" | "long"; minEm: number | null } {
+export const columnSize = (maxWidth: number): { kind: "short" | "medium" | "long"; minEm: number | null } => {
   if (maxWidth <= COLUMN_BOUNDS.shortMax) return { kind: "short", minEm: null };
   if (maxWidth >= COLUMN_BOUNDS.longMin) return { kind: "long", minEm: null };
   return { kind: "medium", minEm: Math.min(Math.ceil(maxWidth / 2) + MEDIUM_MIN_EM_SLACK, MEDIUM_MIN_EM_MAX) };
-}
+};
 
 /** 表の列ごとにセルの最大の文字の幅を数え、列のセルに種類（`data-col-size`）と中くらいの列の最小の幅（`--md-col-min`）を付ける */
-function sizeColumns(table: HTMLTableElement): void {
+const sizeColumns = (table: HTMLTableElement): void => {
   const widths: number[] = [];
   for (const row of table.rows) {
     [...row.cells].forEach((cell, column) => {
@@ -97,10 +97,10 @@ function sizeColumns(table: HTMLTableElement): void {
     });
   }
   table.style.setProperty("--md-col-long", `${LONG_COLUMN_EM}em`);
-}
+};
 
 /** 表の入れ物を送らない枠で包み、右へまだ送れる間だけ枠に `data-fade` を付ける */
-function frameTable(wrap: HTMLElement): void {
+const frameTable = (wrap: HTMLElement): void => {
   if (wrap.parentElement?.classList.contains(TABLE_FRAME_CLASS) === true) return;
   const frame = h({ tag: "div", attrs: { class: TABLE_FRAME_CLASS } });
   wrap.replaceWith(frame);
@@ -114,19 +114,19 @@ function frameTable(wrap: HTMLElement): void {
   const table = wrap.querySelector("table");
   if (table !== null) observer.observe(table);
   update();
-}
+};
 
 /** 見出しのセルの文言（固定のボタンを除く） */
-function headText(cell: HTMLTableCellElement): string {
+const headText = (cell: HTMLTableCellElement): string => {
   return [...cell.childNodes]
     .filter((node) => !(node instanceof HTMLElement && node.classList.contains("md-pin")))
     .map((node) => node.textContent ?? "")
     .join("")
     .trim();
-}
+};
 
 /** 表の固定した列（左から `pinTo` 列目まで）に、左の位置と右端の影のマーカーを付ける。`pinTo` が -1 なら固定しない */
-function applyPins(table: HTMLTableElement): void {
+const applyPins = (table: HTMLTableElement): void => {
   const pinTo = Number(table.dataset["pinTo"] ?? "-1");
   const head = table.tHead?.rows[0];
   if (head === undefined) return;
@@ -148,10 +148,10 @@ function applyPins(table: HTMLTableElement): void {
   head.querySelectorAll(".md-pin").forEach((button, column) => {
     button.setAttribute("aria-pressed", String(column === pinTo));
   });
-}
+};
 
 /** 表の見出し（最後の列を除く）に固定のボタンを置く。押した列より左を固定し、もう一度押すと外す。押すまで固定しない */
-function addPinButtons(table: HTMLTableElement): void {
+const addPinButtons = (table: HTMLTableElement): void => {
   const head = table.tHead?.rows[0];
   if (head === undefined || head.cells.length < 2 || head.querySelector(".md-pin") !== null) return;
   table.classList.add("md-has-pin");
@@ -177,20 +177,20 @@ function addPinButtons(table: HTMLTableElement): void {
   });
   // 文字の読み込み・幅の変化で列の幅が変わったら、固定した列の位置を直す
   new ResizeObserver(() => applyPins(table)).observe(table);
-}
+};
 
 /** 見出しの階層（元の Markdown の階層。無ければ要素の階層） */
-function headingLevel(element: HTMLElement): number {
+const headingLevel = (element: HTMLElement): number => {
   return Number(element.dataset["mdLevel"] ?? element.tagName.slice(1));
-}
+};
 
 /** 見出しの要素か */
-function isHeading(element: Element): element is HTMLElement {
+const isHeading = (element: Element): element is HTMLElement => {
   return /^H[1-6]$/.test(element.tagName);
-}
+};
 
 /** 見出しの節の中身（次の同じか上の階層の見出しまで）を入れ物で包んで返す。中身が無ければ null */
-function wrapSection(heading: HTMLElement): HTMLElement | null {
+const wrapSection = (heading: HTMLElement): HTMLElement | null => {
   const level = headingLevel(heading);
   const items: Element[] = [];
   for (
@@ -205,10 +205,10 @@ function wrapSection(heading: HTMLElement): HTMLElement | null {
   heading.after(body);
   body.append(...items);
   return body;
-}
+};
 
 /** 見出しを開く・畳む。畳んだ中身は `hidden="until-found"` にし、ページ内の検索の対象に残す */
-function setFolded({ heading, folded }: { heading: HTMLElement; folded: boolean }): void {
+const setFolded = ({ heading, folded }: { heading: HTMLElement; folded: boolean }): void => {
   const body = heading.nextElementSibling;
   if (body === null || !body.classList.contains(SECTION_BODY_CLASS)) return;
   heading.dataset["folded"] = String(folded);
@@ -217,19 +217,19 @@ function setFolded({ heading, folded }: { heading: HTMLElement; folded: boolean 
   else body.removeAttribute("hidden");
   // 本文の高さが変わったので、表の見出しの固定の位置を直す
   heading.closest(".panel-body")?.dispatchEvent(new Event("scroll"));
-}
+};
 
 /** 本文の見出しの文言（# のリンクと開閉のボタンを除く） */
-function headingLabel(heading: HTMLElement): string {
+const headingLabel = (heading: HTMLElement): string => {
   return [...heading.childNodes]
     .filter((node) => !(node instanceof HTMLElement && node.matches(".h-link, .md-fold")))
     .map((node) => node.textContent ?? "")
     .join("")
     .trim();
-}
+};
 
 /** 本文の見出しに開閉の矢印のボタンを置く（上位の `FOLD_LEVELS` 階層だけ）。節の中身を入れ物で包み、開いた状態で描く */
-function addFoldButtons(root: HTMLElement): void {
+const addFoldButtons = (root: HTMLElement): void => {
   if (root.querySelector(".md-fold") !== null) return;
   const levels = [...new Set([...root.children].filter(isHeading).map(headingLevel))]
     .sort((a, b) => a - b)
@@ -261,10 +261,10 @@ function addFoldButtons(root: HTMLElement): void {
       body.addEventListener("beforematch", () => setFolded({ heading, folded: false }));
     }
   }
-}
+};
 
 /** 本文の中の見出しへ移る前に、その見出しを包む畳んだ入れ物を全て開く（開閉の矢印の `aria-expanded` も合わせる） */
-export function revealHeading({ root, slug }: { root: ParentNode; slug: string }): void {
+export const revealHeading = ({ root, slug }: { root: ParentNode; slug: string }): void => {
   for (const target of root.querySelectorAll(`[data-heading="${CSS.escape(slug)}"]`)) {
     for (
       let body = target.closest<HTMLElement>(`.${SECTION_BODY_CLASS}`);
@@ -275,15 +275,15 @@ export function revealHeading({ root, slug }: { root: ParentNode; slug: string }
       if (heading instanceof HTMLElement && heading.dataset["folded"] === "true") setFolded({ heading, folded: false });
     }
   }
-}
+};
 
 /** 要素が、埋め込んだ HTML の範囲（`.mdmark-html`）の中にあるか（範囲の中の要素には、表・コードブロック・Alert の見せ方を当てない） */
-function inEmbeddedHtml(element: Element): boolean {
+const inEmbeddedHtml = (element: Element): boolean => {
   return element.closest(`.${EMBEDDED_HTML_CLASS}`) !== null;
-}
+};
 
 /** コードブロックを入れ物で包み、右上にコピーのボタン、言語を書いたものは左上に言語の札を置く（札とボタンはコードの文字に入れない） */
-function decorateCodeBlocks(root: HTMLElement): void {
+const decorateCodeBlocks = (root: HTMLElement): void => {
   for (const code of root.querySelectorAll<HTMLElement>("pre > code")) {
     const pre = code.parentElement as HTMLElement;
     if (pre.parentElement?.classList.contains("md-code") === true || inEmbeddedHtml(code)) continue;
@@ -308,10 +308,10 @@ function decorateCodeBlocks(root: HTMLElement): void {
     pre.replaceWith(box);
     box.append(...(lang === null ? [] : [h({ tag: "span", attrs: { class: "code-lang" }, children: [lang] })]), pre, copy, status);
   }
-}
+};
 
 /** mdmark が描いた Alert の囲み（`div.markdown-alert`）の見出し（`p.markdown-alert-title`）の頭に、種類のアイコンを置く（置いてあれば重ねない） */
-function decorateCallouts(root: HTMLElement): void {
+const decorateCallouts = (root: HTMLElement): void => {
   for (const callout of root.querySelectorAll<HTMLElement>("div.markdown-alert")) {
     if (inEmbeddedHtml(callout)) continue;
     const title = callout.querySelector<HTMLElement>(":scope > p.markdown-alert-title");
@@ -320,10 +320,10 @@ function decorateCallouts(root: HTMLElement): void {
     if (title === null || name === undefined || title.firstElementChild?.matches("svg.icon") === true) continue;
     title.prepend(markupIcon(name));
   }
-}
+};
 
 /** 描いた本文に見せ方を当てる。`display` は表示の設定の値、`fold` は開閉を置ける本文か（本文の差分では偽にする）、`tables` は表の見せ方を当てるか（スレッドの書き込みでは偽にし、表は mdmark の共通のスタイルのまま描く） */
-export function decorateMarkdown({
+export const decorateMarkdown = ({
   root,
   display = BODY_VIEW_DEFAULT,
   fold = true,
@@ -333,7 +333,7 @@ export function decorateMarkdown({
   display?: BodyView;
   fold?: boolean;
   tables?: boolean;
-}): void {
+}): void => {
   for (const table of tables ? root.querySelectorAll("table") : []) {
     // 埋め込んだ HTML の範囲の中の表には当てない
     if (inEmbeddedHtml(table)) continue;
@@ -347,10 +347,10 @@ export function decorateMarkdown({
   if (fold && display.fold) addFoldButtons(root);
   decorateCodeBlocks(root);
   decorateCallouts(root);
-}
+};
 
 /** 本文のスクロール領域を縦に送っても、見出しを固定した表の見出しの行を領域の上端に残す。受け取りを外す関数を返す（表の入れ物が横に送るため CSS の sticky では残せず、領域の送り量を見出しのセルへ縦のずらしとして入れる） */
-export function bindTableHeads(scroller: HTMLElement): () => void {
+export const bindTableHeads = (scroller: HTMLElement): () => void => {
   let frame = 0;
   const update = (): void => {
     frame = 0;
@@ -375,4 +375,4 @@ export function bindTableHeads(scroller: HTMLElement): () => void {
     scroller.removeEventListener("scroll", onScroll);
     if (frame !== 0) cancelAnimationFrame(frame);
   };
-}
+};

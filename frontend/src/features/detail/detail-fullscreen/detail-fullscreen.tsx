@@ -17,7 +17,7 @@ export const DetailFullscreen = ({ id, index }: DetailFullscreenProps) => {
     >
       <DialogContent className="flex h-full max-w-5xl flex-col p-0">
         <DialogTitle className="sr-only">{index.byId.get(id)?.item.title}</DialogTitle>
-        <DetailContent id={id} index={index} full />
+        <DetailContent key={id} id={id} index={index} full />
       </DialogContent>
     </Dialog>
   );

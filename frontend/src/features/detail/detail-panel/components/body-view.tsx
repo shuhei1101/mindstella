@@ -49,6 +49,7 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
   const comparing = versions !== null && versions.before !== null && !versions.trimmed;
   const before = comparing ? versions.beforeBody : null;
   const canLayout = comparing && before !== null && before !== source && jsdiff === "ready";
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
   const create = useCallback(() => {
     const wrapper = h({ tag: "div" });
     const notes: HTMLElement[] = [];

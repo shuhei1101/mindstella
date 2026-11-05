@@ -13,7 +13,7 @@ describe("MarkdownBody", () => {
   test("markdown_body", async () => {
     // 準備
     const destroy = vi.fn();
-    const mount = vi.fn((_root: HTMLElement, _options: { markdown: string }) => ({ destroy }));
+    const mount = vi.fn<(root: HTMLElement, options: { markdown: string }) => { destroy: () => void }>(() => ({ destroy }));
     useLibrary.mockReturnValue({ status: "ready", library: { mount } });
     // 実行
     const { unmount } = render(<MarkdownBody source="# 見出し" />);

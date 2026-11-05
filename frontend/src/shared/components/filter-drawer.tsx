@@ -42,6 +42,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
   }, []);
   const filtering = Object.values(selected).some((values) => values.length > 0);
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ドロワーが Esc を受ける
     <div
       ref={root}
       role="dialog"

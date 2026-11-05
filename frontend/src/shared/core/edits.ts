@@ -40,12 +40,13 @@ export const NEW_ID_PREFIX = "new-";
 export const SETTINGS_TARGET = "settings";
 
 /** 値の入った案（記号と中身）を作る */
-function optionOf(key: string, value: unknown): Option {
+const optionOf = (key: string, value: unknown): Option => {
   return { key, content: "", ...(value as Partial<Option>) };
-}
+};
 
 /** 記録の写しに保存待ちの編集を溜めた順に当て、画面に出す値を返す（元の記録は変えない） */
-export function applyEdits(data: MindmapData, edits: readonly PendingEdit[]): MindmapData {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+export const applyEdits = (data: MindmapData, edits: readonly PendingEdit[]): MindmapData => {
   const applied = structuredClone(data);
   const find = (id: string): Item | undefined => {
     for (const kind of KIND_KEYS) {
@@ -76,7 +77,7 @@ export function applyEdits(data: MindmapData, edits: readonly PendingEdit[]): Mi
         if (key === "body") {
           const name = item.body ?? `${item.id}.md`;
           item.body = name;
-          applied.bodies[name] = String(edit.value ?? "");
+          applied.bodies[name] = typeof edit.value === "string" ? edit.value : "";
         } else if (edit.value === null) {
           delete (item as Record<string, unknown>)[key];
         } else {
@@ -94,10 +95,10 @@ export function applyEdits(data: MindmapData, edits: readonly PendingEdit[]): Mi
     }
   }
   return applied;
-}
+};
 
 /** 項目（`key` を渡せばそのキーか案）に付ける保存待ちの印の種類。当たる編集が無ければ null */
-export function pendingMarkOf({
+export const pendingMarkOf = ({
   edits,
   blocked,
   target,
@@ -107,7 +108,7 @@ export function pendingMarkOf({
   blocked: ReadonlySet<string>;
   target: string;
   key?: string;
-}): PendingMarkKind | null {
+}): PendingMarkKind | null => {
   const hits = edits.filter((edit) => {
     if (edit.target !== target) return false;
     // キーを渡さないときは、その項目への編集の全て
@@ -118,4 +119,4 @@ export function pendingMarkOf({
   if (hits.some((edit) => blocked.has(edit.id))) return "blocked";
   if (key === undefined && hits.some((edit) => edit.op === "item-remove")) return "remove";
   return "pending";
-}
+};

@@ -83,16 +83,15 @@ export type DetailEditorProps = {
 const Field = ({ label, controlId, required, mark, children }: { label: string; controlId: string; required?: boolean; mark: PendingMarkKind | undefined; children: ReactNode }) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1 text-small font-medium">
-      <label htmlFor={controlId}>
-        {label}
-        {required === true ? <span className="ml-1 text-xs text-destructive">必須</span> : null}
-      </label>
+      <label htmlFor={controlId}>{label}</label>
+      {required === true ? <span className="text-xs text-destructive">必須</span> : null}
       {mark === undefined ? null : <PendingMark kind={mark} compact />}
     </div>
     {children}
   </div>
 );
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const DetailEditor = ({ kind, item, settings, marks, removing, removedOptions, referrers, usedTags, body, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
   const adding = item.id.startsWith(NEW_ID_PREFIX);
   const [titleEmpty, setTitleEmpty] = useState(false);
@@ -100,6 +99,7 @@ export const DetailEditor = ({ kind, item, settings, marks, removing, removedOpt
   const keys = adding ? EDITABLE_KEYS[kind].filter((entry) => ADD_KEYS[kind].includes(entry.key)) : EDITABLE_KEYS[kind];
   const record = item as unknown as Record<string, unknown>;
   const set = (name: string, value: unknown): void => { onChange({ op: "set", key: name, value }); };
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
   const field = (name: string, input: Input) => {
     const controlId = `pe-${item.id.replace(/[^A-Za-z0-9]/g, "")}-${name}`;
     const value = name === "body" ? (body ?? "") : record[name];
@@ -160,15 +160,15 @@ export const DetailEditor = ({ kind, item, settings, marks, removing, removedOpt
           削除を溜めています。削除を取り消すと編集できます。
         </p>
       ) : null}
-      <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-small text-muted-foreground">
+      <dl className="grid grid-cols-meta gap-x-2 text-small text-muted-foreground">
         <dt>ID</dt>
         <dd className="font-mono">{adding ? "保存で決まる" : item.id}</dd>
         {adding ? null : (
           <>
             <dt>作成</dt>
-            <dd>{formatJst(item.created ?? "")}</dd>
+            <dd>{item.created === undefined ? "" : formatJst(item.created)}</dd>
             <dt>更新</dt>
-            <dd>{`${formatJst(item.updated ?? "")}（${item.updated_by === "user" ? "利用者" : "AI"}）`}</dd>
+            <dd>{`${item.updated === undefined ? "" : formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : "AI"}）`}</dd>
           </>
         )}
       </dl>

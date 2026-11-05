@@ -1,7 +1,7 @@
 // 設定の画面（画面設計『設定の画面.tsx』）。ワークスペースの設定をキーごとの入力で書き換え、保存待ちに溜める
 import { useId, useState, type ReactNode } from "react";
 
-import { HistoryLimitSchema, usageCount, type UsedSettingKey } from "@/features/settings/workspace-settings/form";
+import { HistoryLimitSchema, usageCount } from "@/features/settings/workspace-settings/form";
 import { ChipsInput } from "@/shared/components/chips-input";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
@@ -70,9 +70,7 @@ const TableField = ({ settingKey, rows, index, commit }: { settingKey: keyof typ
         </thead>
         <tbody>
           {rows.map((row, at) => (
-            // 行は位置で指す
-            // eslint-disable-next-line @eslint-react/no-array-index-key
-            <tr key={at}>
+            <tr key={`${String(at)}:${row[columns[0]?.key ?? ""] ?? ""}`}>
               {columns.map((column) => (
                 <td key={column.key} className="pr-1">
                   <Input
@@ -132,7 +130,7 @@ const ChipsField = ({ settingKey, name, values, index, commit }: { settingKey: "
         values={values}
         onChange={(next, removed) => {
           const names = next as string[];
-          const used = removed !== null && settingKey !== "playbooks" ? usageCount(index, settingKey as UsedSettingKey, removed) : 0;
+          const used = removed !== null && settingKey !== "playbooks" ? usageCount(index, settingKey, removed) : 0;
           if (removed === null || used === 0) commit(settingKey, names);
           else setMoves([...moves.filter((move) => move.removed !== removed), { removed, count: used, next: names }]);
         }}
@@ -192,20 +190,20 @@ export const WorkspaceSettingsScreen = () => {
               "goal",
               "ゴール",
               <>
-                <label className="flex flex-col gap-1 text-small">
+                <label htmlFor="pe-ws-goal-phase" className="text-small">
                   届けるフェーズ
-                  <Select value={goal.phase} onChange={(event) => { commit("goal", { ...goal, phase: event.target.value }); }}>
+                </label>
+                <Select id="pe-ws-goal-phase" value={goal.phase} onChange={(event) => { commit("goal", { ...goal, phase: event.target.value }); }}>
                     {settings.phases.map((entry) => (
                       <option key={entry} value={entry}>
                         {entry}
                       </option>
                     ))}
-                  </Select>
-                </label>
-                <label className="flex flex-col gap-1 text-small">
+                </Select>
+                <label htmlFor="pe-ws-goal-summary" className="text-small">
                   ゴールの中身
-                  <Textarea key={goal.summary} rows={2} defaultValue={goal.summary} onBlur={(event) => { if (event.target.value !== goal.summary) commit("goal", { ...goal, summary: event.target.value }); }} />
                 </label>
+                <Textarea key={goal.summary} id="pe-ws-goal-summary" rows={2} defaultValue={goal.summary} onBlur={(event) => { if (event.target.value !== goal.summary) commit("goal", { ...goal, summary: event.target.value }); }} />
                 <div className="text-small">
                   納品物
                   <ul>

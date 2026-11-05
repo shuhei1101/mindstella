@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, test, vi } from "vitest";
 
-import { useEdits } from "@/testing/msw/fixtures";
+import { stubEdits } from "@/testing/msw/fixtures";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
@@ -13,7 +13,7 @@ describe("PendingEditsPanel", () => {
   // 取り消す（正常系）
   test("pending_edits_panel", async () => {
     // 準備
-    useEdits([EDIT]);
+    stubEdits([EDIT]);
     const removed = vi.fn(() => HttpResponse.json({ removed: ["E-1"], count: 0 }));
     server.use(http.delete("/api/edits/E-1", removed));
     renderRoute("/spa/?tab=decisions&panel=pending");
@@ -26,7 +26,7 @@ describe("PendingEditsPanel", () => {
   // 書き込めない編集（異常系）
   test("pending_edits_panel_when_blocked", async () => {
     // 準備
-    useEdits([EDIT]);
+    stubEdits([EDIT]);
     server.use(http.post("/api/edits/save", () => HttpResponse.json({ type: "about:blank", title: "Conflict", status: 409, detail: "書き込めません", blocked: [{ id: "E-1", reason: "changed", detail: "溜めた後に書き換わりました", refs: [] }] }, { status: 409, headers: { "Content-Type": "application/problem+json" } })));
     renderRoute("/spa/?tab=decisions&panel=pending");
     // 実行

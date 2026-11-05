@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
 // HTML の本文の差分（今の画面の `components/html-body-diff.ts` と同じ振る舞い）
 import { getLibrary } from "@/shared/adapters/libraries";
 import { headingShift, lowerHeadings, rawDiffLines } from "@/shared/core/body-render";
@@ -36,7 +37,7 @@ export type HtmlBodyDiffProps = {
 const RAW_DIFF_CONTEXT = 3;
 
 /** 原文の行の差分。足した行・消した行に印を付け、変わっていない長い並びは前後 3 行を残して件数の行にする */
-function rawDiff({ parts }: { parts: LinePart[] }): HTMLElement {
+const rawDiff = ({ parts }: { parts: LinePart[] }): HTMLElement => {
   const lines: HTMLElement[] = [];
   const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
   parts.forEach((part, position) => {
@@ -67,19 +68,19 @@ function rawDiff({ parts }: { parts: LinePart[] }): HTMLElement {
       h({ tag: "pre", attrs: { class: "dg-raw df-raw", tabindex: "0", "aria-label": "原文の差分" }, children: lines }),
     ],
   });
-}
+};
 
 /** 左右に並べた表示の列の名前の行 */
-function sideHead(): HTMLElement {
+const sideHead = (): HTMLElement => {
   return h({
     tag: "div",
     attrs: { class: "sbs-head", "aria-hidden": "true" },
     children: [h({ tag: "span", children: ["選んだ時点"] }), h({ tag: "span", children: ["今"] })],
   });
-}
+};
 
 /** 原文の行の差分を左右に並べる。左に選んだ時点の行（消した行に印）、右に今の行（足した行に印）を置き、片側にしか無い行の向かいは空けて高さを揃える */
-function rawSideDiff({ parts }: { parts: LinePart[] }): HTMLElement {
+const rawSideDiff = ({ parts }: { parts: LinePart[] }): HTMLElement => {
   const cells: HTMLElement[] = [];
   const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
   const gap = (): HTMLElement => h({ tag: "span", attrs: { class: "df-line df-gap", "aria-hidden": "true" } });
@@ -90,6 +91,7 @@ function rawSideDiff({ parts }: { parts: LinePart[] }): HTMLElement {
     }
   };
   const sameLines = (lines: string[]): HTMLElement[] => rawDiffLines({ parts: [{ kind: "same", lines }], deadline });
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
   parts.forEach((part, position) => {
     if (part.kind === "same") {
       // 変わっていない長い並びは、前後の 3 行を残して件数の行にする
@@ -127,17 +129,17 @@ function rawSideDiff({ parts }: { parts: LinePart[] }): HTMLElement {
       h({ tag: "pre", attrs: { class: "dg-raw df-raw df-split", tabindex: "0", "aria-label": "原文の差分（左に選んだ時点、右に今）" }, children: cells }),
     ],
   });
-}
+};
 
 /** 選んだ時点の Markdown の本文を描き、見出しを節の見出し「本文」（h3）の次の段から並べる */
-function renderedMarkdown({ source }: { source: string }): HTMLElement {
+const renderedMarkdown = ({ source }: { source: string }): HTMLElement => {
   const root = renderMarkdown(source);
   lowerHeadings({ root, shift: headingShift({ roots: [root] }) });
   return root;
-}
+};
 
 /** 描いた結果を左右に並べる。左は選んだ時点の本文（Markdown のときは Markdown として描く）、右は今の本文 */
-function renderedSide({ before, beforeFormat, right }: { before: string; beforeFormat: "md" | "html"; right: HTMLElement }): HTMLElement {
+const renderedSide = ({ before, beforeFormat, right }: { before: string; beforeFormat: "md" | "html"; right: HTMLElement }): HTMLElement => {
   const left = beforeFormat === "md" ? renderedMarkdown({ source: before }) : htmlFrameElement({ source: before, selectable: false, label: "選んだ時点の本文" });
   return h({
     tag: "div",
@@ -154,10 +156,10 @@ function renderedSide({ before, beforeFormat, right }: { before: string; beforeF
       }),
     ],
   });
-}
+};
 
 /** 凡例（足した・変わった）。消しただけの箇所があるときは、原文の差分で見られる旨を添える */
-function legend({ removedOnly }: { removedOnly: boolean }): HTMLElement {
+const legend = ({ removedOnly }: { removedOnly: boolean }): HTMLElement => {
   return h({
     tag: "div",
     attrs: { class: "df-legend" },
@@ -167,10 +169,10 @@ function legend({ removedOnly }: { removedOnly: boolean }): HTMLElement {
       removedOnly ? h({ tag: "span", attrs: { class: "muted" }, children: ["消した箇所は原文の差分で見られます"] }) : null,
     ],
   });
-}
+};
 
 /** HTML の本文の差分。差分を計算しきれなかったときは null */
-export function htmlBodyDiff({
+export const htmlBodyDiff = ({
   before,
   after,
   marked,
@@ -181,7 +183,7 @@ export function htmlBodyDiff({
   beforeView = null,
   afterView = null,
   heading = null,
-}: HtmlBodyDiffProps): HTMLElement | null {
+}: HtmlBodyDiffProps): HTMLElement | null => {
   const parts = diffLineParts(before, after, jsdiffOf());
   if (parts === null) return null;
   const raw = rawDiff({ parts });
@@ -267,20 +269,20 @@ export function htmlBodyDiff({
   // 「原文の差分」を選んだ状態で開く
   if (initial === "raw") container.querySelector<HTMLElement>(".segment button:last-child")?.click();
   return container;
-}
+};
 
 /** 見せ方の切り替えの組の読み上げの名前 */
-function viewGroupName({ heading }: { heading: string | null }): string {
+const viewGroupName = ({ heading }: { heading: string | null }): string => {
   return heading === null ? "本文の差分の見せ方" : `${heading}の差分の見せ方`;
-}
+};
 
 /** 切り替えの組の前に出す名前（無ければ null） */
-function headingLabel({ heading }: { heading: string | null }): HTMLElement | null {
+const headingLabel = ({ heading }: { heading: string | null }): HTMLElement | null => {
   return heading === null ? null : h({ tag: "span", attrs: { class: "html-diff-heading" }, children: [heading] });
-}
+};
 
 /** 埋め込んだ HTML の範囲の差分。「描いた結果（変更前）」「描いた結果（変更後）」「原文の差分」を切り替える。凡例は「描いた結果（変更後）」でだけ出す */
-function rangeDiff({
+const rangeDiff = ({
   raw,
   beforeView,
   afterView,
@@ -294,7 +296,7 @@ function rangeDiff({
   marked: string;
   initial: "rendered" | "raw";
   heading: string | null;
-}): HTMLElement {
+}): HTMLElement => {
   const views = [
     { label: "描いた結果（変更前）", element: h({ tag: "div", attrs: { class: "html-marked" }, children: [beforeView] }), legended: false },
     {
@@ -352,4 +354,4 @@ function rangeDiff({
       ...views.map((view) => view.element),
     ],
   });
-}
+};

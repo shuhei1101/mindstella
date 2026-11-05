@@ -57,7 +57,7 @@ export const OptionList = ({ options, previous, marks = {} }: OptionListProps) =
               {marks[option.key]}
             </div>
             {rows.length > 0 ? (
-              <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 text-small">
+              <dl className="mt-1 grid grid-cols-meta gap-x-2 text-small">
                 {rows.map(({ label, field, value, was }) => (
                   <div key={field} className="contents">
                     <dt className="text-muted-foreground">{label}</dt>

@@ -117,6 +117,8 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <Input type="search" placeholder="タイトルで強調" aria-label="タイトルで強調するキーワード" value={keyword} className="max-w-60" onChange={(event) => { setKeyword(event.target.value); }} />
       {items.length === 0 ? <p className="text-small text-muted-foreground">表示する検討事項はありません。</p> : null}
+      {/* 余白の押下は選びを外すだけの補助で、詳細を閉じるボタンがキーボードの手段になる */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         ref={wrap}
         className="relative min-h-0 flex-1 overflow-auto rounded-control border border-border-soft max-lg:hidden"
@@ -158,6 +160,7 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
                   </g>
                 ))}
               </svg>
+              {/* eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ */}
               {laid.nodes.map((node) => {
                 const box = { left: node.x ?? 0, top: node.y ?? 0, width: node.width, height: node.height };
                 const dimmed = focus !== null && !near.has(node.id);

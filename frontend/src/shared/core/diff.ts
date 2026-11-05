@@ -131,7 +131,7 @@ const PENDING_SUB = "AI がまだ区切っていない書き換え";
 const SINCE_NAME = "前回開いてから";
 
 /** 選んだ時点の名前・補足・印・範囲から、時点を組み立てる */
-function buildPoint({
+const buildPoint = ({
   sel,
   name,
   sub,
@@ -145,7 +145,7 @@ function buildPoint({
   groups: { added: string[]; changed: string[]; removed?: RemovedItem[] }[];
   fromSeq: number;
   untilSeq: number | null;
-}): DiffPoint {
+}): DiffPoint => {
   // `removed` を持たないまとまりは、何も足さない
   const removed = new Map(groups.flatMap((group) => group.removed ?? []).map((item) => [item.id, item]));
   // 合わせた範囲で足して消した項目は、消した項目としてだけ出す
@@ -155,18 +155,18 @@ function buildPoint({
     groups.flatMap((group) => group.changed).filter((id) => !added.has(id) && !removed.has(id)),
   );
   return { sel, name, sub, added, changed, fromSeq, untilSeq, removed };
-}
+};
 
 /** 選んだ時点で消した項目のうち、その画面の種類のものを ID の順に返す。時点が null のときは空 */
-export function removedOf({ point, kind }: { point: DiffPoint | null; kind: Kind }): RemovedItem[] {
+export const removedOf = ({ point, kind }: { point: DiffPoint | null; kind: Kind }): RemovedItem[] => {
   if (point === null) return [];
   return [...point.removed.values()]
     .filter((item) => REMOVED_KIND_TAB[item.kind] === kind)
     .sort((a, b) => compareIds(a.id, b.id));
-}
+};
 
 /** 選んだ時点の識別子から、印を付ける項目と変更履歴の範囲を決める。差分を出さないときは null */
-export function resolveDiffPoint(changes: Changes, sel: string | null, since: OpenedPoint): DiffPoint | null {
+export const resolveDiffPoint = (changes: Changes, sel: string | null, since: OpenedPoint): DiffPoint | null => {
   if (sel === null) return null;
   const sets = changes.sets;
   // 先頭のまとまりまでの変更履歴（それより後がまだまとめていない分）
@@ -205,18 +205,20 @@ export function resolveDiffPoint(changes: Changes, sel: string | null, since: Op
     fromSeq: sets[position + 1]?.until_seq ?? 0,
     untilSeq: set.until_seq,
   });
-}
+};
 
 /** サーバーが本文を行に分けるのと同じ分け方（Python の `splitlines`）で、本文を行の並びにする */
-function bodyLines(text: string): string[] {
+const bodyLines = (text: string): string[] => {
+  // Python の splitlines と同じ区切り
+  // eslint-disable-next-line no-control-regex -- 区切りの制御文字をそのまま書く
   const lines = text.split(/\r\n|[\n\r\v\f\u001c\u001d\u001e\u0085\u2028\u2029]/);
   // 末尾の改行で出る空の最後の要素は、行ではない
   if (lines.at(-1) === "") lines.pop();
   return lines;
-}
+};
 
 /** 本文に差分を後ろの箇所から当てて前の本文にする。`now` が当てる先の行と合わなければ null */
-function applyBodyDiff(text: string, hunks: BodyDiffHunk[]): string | null {
+const applyBodyDiff = (text: string, hunks: BodyDiffHunk[]): string | null => {
   const lines = bodyLines(text);
   for (const hunk of [...hunks].sort((a, b) => b.line - a.line)) {
     const start = hunk.line - 1;
@@ -226,13 +228,13 @@ function applyBodyDiff(text: string, hunks: BodyDiffHunk[]): string | null {
     lines.splice(start, hunk.now.length, ...hunk.before);
   }
   return lines.length > 0 ? `${lines.join("\n")}\n` : "";
-}
+};
 
 /** 項目の版（キーと本文）。変更履歴を当てる途中の形 */
 type Version = { item: Item; body: string | null };
 
 /** 変更履歴の 1 回分を版に当てる（前に無かったキーは消し、本文は差分で戻す）。本文を戻せなかったら本文を null にする */
-function undoEntry(version: Version, entry: HistoryEntry): Version {
+const undoEntry = (version: Version, entry: HistoryEntry): Version => {
   const item: Record<string, unknown> = { ...version.item };
   let body = version.body;
   for (const [key, value] of Object.entries(entry.before)) {
@@ -249,10 +251,10 @@ function undoEntry(version: Version, entry: HistoryEntry): Version {
   }
   if (entry.body_diff !== undefined && body !== null) body = applyBodyDiff(body, entry.body_diff);
   return { item: item as Item, body };
-}
+};
 
 /** 今の項目と本文に `history` を新しいものから当て、選んだ時点の前後の版を作る */
-export function buildVersions(item: Item, body: string, point: DiffPoint): VersionPair {
+export const buildVersions = (item: Item, body: string, point: DiffPoint): VersionPair => {
   const history = [...(item.history ?? [])].sort((a, b) => b.seq - a.seq);
   let after: Version = { item, body };
   let before: Version = { item, body };
@@ -277,15 +279,15 @@ export function buildVersions(item: Item, body: string, point: DiffPoint): Versi
     trimmed: false,
     bodyUnavailable,
   };
-}
+};
 
 /** jsdiff が返した値（行の並びを `\n` でつないだもの）を、行の並びにする */
-function splitLines(value: string): string[] {
+const splitLines = (value: string): string[] => {
   return (value.endsWith("\n") ? value.slice(0, -1) : value).split("\n");
-}
+};
 
 /** 前後の文字列を行ごとに比べる。jsdiff が読めていないときと、打ち切ったときは null */
-export function diffLineParts(before: string, after: string, jsdiff: JsDiff): LinePart[] | null {
+export const diffLineParts = (before: string, after: string, jsdiff: JsDiff): LinePart[] | null => {
   const parts = jsdiff.diffLines(before, after, { timeout: LINE_DIFF_TIMEOUT_MS });
   // 時間内に終わらなかった
   if (parts === undefined) return null;
@@ -293,7 +295,7 @@ export function diffLineParts(before: string, after: string, jsdiff: JsDiff): Li
     kind: part.added ? "added" : part.removed ? "removed" : "same",
     lines: splitLines(part.value),
   }));
-}
+};
 
 /** 本文を marked の最上位の token ごとに分けた 1 つの塊 */
 export type SideBlock = {
@@ -318,7 +320,7 @@ export type SideRow = {
 };
 
 /** 本文を、marked の最上位の token（空行の token を除く）ごとの塊に分ける。塊の変えた行は空で返す */
-function topBlocks(source: string, lexer: MarkedLexer): SideBlock[] {
+const topBlocks = (source: string, lexer: MarkedLexer): SideBlock[] => {
   const blocks: SideBlock[] = [];
   let line = 0;
   for (const token of lexer(source)) {
@@ -329,7 +331,7 @@ function topBlocks(source: string, lexer: MarkedLexer): SideBlock[] {
     line += token.raw.split("\n").length - 1;
   }
   return blocks;
-}
+};
 
 /** 行の差分の各行の種類（前の版・今の版の 1 始まりの行）と、変えていない行の前の版 → 今の版の行の対応 */
 type SideLineKinds = {
@@ -339,12 +341,12 @@ type SideLineKinds = {
 };
 
 /** 行の差分から、前の版と今の版の各行の種類と、変えていない行の前の版 → 今の版の行の対応を作る */
-function sideLineKinds(parts: LinePart[]): SideLineKinds {
+const sideLineKinds = (parts: LinePart[]): SideLineKinds => {
   const before: SideLineKinds["before"] = [null];
   const after: SideLineKinds["after"] = [null];
   const map: SideLineKinds["map"] = [null];
   for (const part of parts) {
-    for (const _ of part.lines) {
+    for (let position = 0; position < part.lines.length; position += 1) {
       if (part.kind !== "added") {
         before.push(part.kind);
         map.push(part.kind === "same" ? after.length : null);
@@ -353,10 +355,10 @@ function sideLineKinds(parts: LinePart[]): SideLineKinds {
     }
   }
   return { before, after, map };
-}
+};
 
 /** 塊の範囲の行のうち、その種類（消した・足した）で空行でない行を塊の変えた行に入れる */
-function markChangedLines({
+const markChangedLines = ({
   blocks,
   kinds,
   lines,
@@ -366,23 +368,23 @@ function markChangedLines({
   kinds: (LinePart["kind"] | null)[];
   lines: string[];
   kind: "removed" | "added";
-}): void {
+}): void => {
   for (const block of blocks) {
     for (let line = block.start; line <= block.end; line += 1) {
       if (kinds[line] === kind && (lines[line - 1] ?? "").trim() !== "") block.changed.add(line);
     }
   }
-}
+};
 
 /** 本文を行の並びにする（末尾の改行で出る空の最後の要素は行ではない） */
-export function linesOfText(text: string): string[] {
+export const linesOfText = (text: string): string[] => {
   const lines = text.split("\n");
   if (lines.at(-1) === "") lines.pop();
   return lines;
-}
+};
 
 /** 前後の Markdown の本文を塊に分け、変えていない塊を向かい合わせた左右の列の行にする。行の差分を打ち切ったら null */
-export function sideBySideRows({ before, after, lexer, jsdiff }: { before: string; after: string; lexer: MarkedLexer; jsdiff: JsDiff }): SideRow[] | null {
+export const sideBySideRows = ({ before, after, lexer, jsdiff }: { before: string; after: string; lexer: MarkedLexer; jsdiff: JsDiff }): SideRow[] | null => {
   const parts = diffLineParts(before, after, jsdiff);
   if (parts === null) return null;
   const kinds = sideLineKinds(parts);
@@ -437,13 +439,13 @@ export function sideBySideRows({ before, after, lexer, jsdiff }: { before: strin
     j = aj + 1;
   }
   return rows;
-}
+};
 
 /** HTML の本文の差分: 今の本文で足した行と変えた行（今の本文の 1 始まりの行）と、消しただけの箇所があるか */
 export type HtmlChangedLines = { added: number[]; changed: number[]; removedOnly: boolean };
 
 /** 前後の HTML の原文を行ごとに比べ、足した行・変えた行（消した行と入れ替えた行）と、足した行と隣り合わない消した行があるかを返す。差分を打ち切ったら null */
-export function htmlChangedLines(before: string, after: string, jsdiff: JsDiff): HtmlChangedLines | null {
+export const htmlChangedLines = (before: string, after: string, jsdiff: JsDiff): HtmlChangedLines | null => {
   const parts = diffLineParts(before, after, jsdiff);
   if (parts === null) return null;
   const added: number[] = [];
@@ -467,10 +469,10 @@ export function htmlChangedLines(before: string, after: string, jsdiff: JsDiff):
     nowLine += part.lines.length;
   });
   return { added, changed, removedOnly };
-}
+};
 
 /** 行の差分のうち、消した行のすぐ後に同じ行の数の足した行が続くところを、変えた行の対にして返す（`parts` の添え字の並び。前から 1 行ずつが対になる） */
-export function pairedParts(parts: LinePart[]): { removed: number; added: number }[] {
+export const pairedParts = (parts: LinePart[]): { removed: number; added: number }[] => {
   const pairs: { removed: number; added: number }[] = [];
   parts.forEach((part, position) => {
     const next = parts[position + 1];
@@ -480,26 +482,26 @@ export function pairedParts(parts: LinePart[]): { removed: number; added: number
     }
   });
   return pairs;
-}
+};
 
 /** 語の区切りに使う分け方。ブラウザが `Intl.Segmenter` を持たなければ null（jsdiff の既定の区切りで比べる） */
 let wordSegmenter: Intl.Segmenter | null | undefined;
 
 /** 語の区切りに使う分け方を、最初に呼んだときに 1 つ作って使い回す */
-function segmenterOf(): Intl.Segmenter | null {
+const segmenterOf = (): Intl.Segmenter | null => {
   if (wordSegmenter === undefined) {
     wordSegmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter("ja", { granularity: "word" }) : null;
   }
   return wordSegmenter;
-}
+};
 
 /** 部分の文字をつないだもの */
-function joinText(parts: InlinePart[]): string {
+const joinText = (parts: InlinePart[]): string => {
   return parts.map((part) => part.text).join("");
-}
+};
 
 /** 変えた行の対の前と今の文字を語の単位で比べる。jsdiff を読めていない・時刻を過ぎた・打ち切った・同じ部分が少ない・部分をつないでも元の文字に戻らないときは null */
-export function diffInline(before: string, after: string, deadline: number, jsdiff: JsDiff): InlineDiff | null {
+export const diffInline = (before: string, after: string, deadline: number, jsdiff: JsDiff): InlineDiff | null => {
   const remaining = deadline - performance.now();
   if (remaining <= 0) return null;
   const segmenter = segmenterOf();
@@ -517,10 +519,10 @@ export function diffInline(before: string, after: string, deadline: number, jsdi
   // 同じ部分の文字が空白の違いで片側の文字とずれたとき、範囲を元の文字に当てられない
   if (joinText(inline.before) !== before || joinText(inline.after) !== after) return null;
   return inline;
-}
+};
 
 /** 行の差分の並びから、消した行のかたまりごとに、今の本文のどの行の前へ差し込むかを返す */
-export function placeRemovedBlocks(parts: LinePart[]): RemovedBlock[] {
+export const placeRemovedBlocks = (parts: LinePart[]): RemovedBlock[] => {
   const blocks: RemovedBlock[] = [];
   // 前の版の行を前から並べておく（表の見出しをさかのぼって引くため）
   const beforeLines: string[] = [];
@@ -545,23 +547,23 @@ export function placeRemovedBlocks(parts: LinePart[]): RemovedBlock[] {
     if (part.kind === "same") beforeLines.push(...part.lines);
   });
   return blocks;
-}
+};
 
 /** 前の版の `start` 行目（0 始まり）から続く表の、頭までさかのぼった見出しの行と区切りの行 */
-function tableHeaderOf(beforeLines: string[], start: number): string[] | null {
+const tableHeaderOf = (beforeLines: string[], start: number): string[] | null => {
   let top = start;
   while (top > 0 && (beforeLines[top - 1] ?? "").startsWith("|")) top -= 1;
   const header = beforeLines[top];
   const separator = beforeLines[top + 1];
   if (header === undefined || separator === undefined) return null;
   return [header, separator];
-}
+};
 
 /** 図の種類（記法の 1 行目の語）→ 突き合わせの方式 */
 type DiagramFlavor = "flowchart" | "sequence" | "class" | "er" | "state";
 
 /** 図の種類（記法の 1 行目の語）から、突き合わせの方式を決める。色を付けない種類は null */
-function flavorOf(type: string): DiagramFlavor | null {
+const flavorOf = (type: string): DiagramFlavor | null => {
   if (!COLORED_DIAGRAM_TYPES.includes(type)) return null;
   const flavors: Record<string, DiagramFlavor> = {
     flowchart: "flowchart",
@@ -572,7 +574,7 @@ function flavorOf(type: string): DiagramFlavor | null {
     "stateDiagram-v2": "state",
   };
   return flavors[type] ?? null;
-}
+};
 
 /** 図のノード 1 つ・辺 1 本の、突き合わせの材料。`name` は消したものの一覧に出す名前（無ければ `text`） */
 type DiagramPart = { key: string; text: string; name?: string; element: Element; box?: DOMRect };
@@ -584,25 +586,25 @@ type PreviousPart = Pick<DiagramPart, "key" | "text" | "name">;
 type DiagramParts<Part> = { nodes: Map<string, Part>; edges: Part[] };
 
 /** 空白を 1 つにして前後を除く */
-function normalized(text: string | null | undefined): string {
+const normalized = (text: string | null | undefined): string => {
   return (text ?? "").replace(/\s+/g, " ").trim();
-}
+};
 
 /** ノードの要素の id から「{描画の id}-」と末尾の「-{連番}」を外したものを、ノードの鍵にする */
-function nodeKey(element: Element, prefix: string): string {
+const nodeKey = (element: Element, prefix: string): string => {
   const id = element.id.startsWith(`${prefix}-`) ? element.id.slice(prefix.length + 1) : element.id;
   return id.replace(/-\d+$/, "");
-}
+};
 
 /** ノードの要素の、図の座標での枠 */
-function boxOf(element: SVGGraphicsElement): DOMRect {
+const boxOf = (element: SVGGraphicsElement): DOMRect => {
   const box = element.getBBox();
   const matrix = element.transform.baseVal.consolidate()?.matrix;
   return new DOMRect(box.x + (matrix?.e ?? 0), box.y + (matrix?.f ?? 0), box.width, box.height);
-}
+};
 
 /** 点に一番近い枠のノードの鍵 */
-function nearestKey(nodes: DiagramPart[], point: DOMPoint): string {
+const nearestKey = (nodes: DiagramPart[], point: DOMPoint): string => {
   let best = "?";
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const node of nodes) {
@@ -617,19 +619,20 @@ function nearestKey(nodes: DiagramPart[], point: DOMPoint): string {
     }
   }
   return best;
-}
+};
 
 /** 辺の `data-id` から端点の鍵を引く。端点はノードの鍵の一覧と突き合わせて決める（ノードの id に `_` を含んでも取り違えない） */
-function edgeEnds(dataId: string, nodeKeys: Set<string>): string {
+const edgeEnds = (dataId: string, nodeKeys: Set<string>): string => {
   const rest = dataId.replace(/^(L_|id_)/, "").replace(/_\d+$/, "").replace(/-\d+(?=_|$)/g, "");
   const cuts = [...rest.matchAll(/_/g)].map((found) => found.index ?? 0);
   const matched = cuts.find((cut) => nodeKeys.has(rest.slice(0, cut)) && nodeKeys.has(rest.slice(cut + 1)));
   const cut = matched ?? cuts[0];
   return cut === undefined ? rest : `${rest.slice(0, cut)}>${rest.slice(cut + 1)}`;
-}
+};
 
 /** 1 枚の SVG から、ノードと辺の材料を取り出す。同じ端点の辺は出てきた順の番号で分ける */
-function extractDiagram(root: SVGElement, flavor: DiagramFlavor): DiagramParts<DiagramPart> {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+const extractDiagram = (root: SVGElement, flavor: DiagramFlavor): DiagramParts<DiagramPart> => {
   const prefix = root.id;
   const nodeList: DiagramPart[] = [];
   const edges: { base: string; text: string; element: Element }[] = [];
@@ -686,23 +689,23 @@ function extractDiagram(root: SVGElement, flavor: DiagramFlavor): DiagramParts<D
   const nodes = new Map<string, DiagramPart>();
   for (const node of nodeList) if (!nodes.has(node.key)) nodes.set(node.key, node);
   return { nodes, edges: keyedEdges };
-}
+};
 
 /** 辺の鍵 `{元}>{先}#{番号}` を、消したものの一覧に出す名前にする */
-function edgeName(edge: PreviousPart): string {
+const edgeName = (edge: PreviousPart): string => {
   const name = edge.name ?? edge.text;
   return name !== "" ? name : edge.key.replace(/#\d+$/, "").replace(">", " → ");
-}
+};
 
 /** 前後の版で描いた SVG のノード・辺を鍵で突き合わせる。色を付けない種類と、突き合わせを打ち切ったときは null */
-export function diffDiagram(type: string, beforeSvg: SVGElement, afterSvg: SVGElement): DiagramDiff | null {
+export const diffDiagram = (type: string, beforeSvg: SVGElement, afterSvg: SVGElement): DiagramDiff | null => {
   const flavor = flavorOf(type);
   if (flavor === null) return null;
   return compareDiagrams({ flavor, previous: extractDiagram(beforeSvg, flavor), current: extractDiagram(afterSvg, flavor) });
-}
+};
 
 /** 前後の版のノード・辺の材料を鍵で突き合わせて、足した・変えた・消したものに分ける。並びの突き合わせを打ち切ったときは null */
-function compareDiagrams({
+const compareDiagrams = ({
   flavor,
   previous,
   current,
@@ -710,7 +713,8 @@ function compareDiagrams({
   flavor: DiagramFlavor;
   previous: DiagramParts<PreviousPart>;
   current: DiagramParts<DiagramPart>;
-}): DiagramDiff | null {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+}): DiagramDiff | null => {
   const result: DiagramDiff = { added: [], changed: [], removed: [] };
   for (const [key, node] of current.nodes) {
     const old = previous.nodes.get(key);
@@ -758,7 +762,7 @@ function compareDiagrams({
   }
   for (const edge of previous.edges) if (!currentKeys.has(edge.key)) result.removed.push(edgeName(edge));
   return result;
-}
+};
 
 /** 解析した flowchart の db のうち、図の差分に使う形（`mermaidAPI` は mermaid の型定義で `@internal` のため、使う形だけを書く） */
 type ParsedFlowchart = {
@@ -773,7 +777,7 @@ type ParsedFlowchart = {
 const PARSED_FLOWCHART_TYPES: readonly string[] = ["flowchart-v2", "flowchart-elk"];
 
 /** ラベルを画面に出る文字にそろえる（Markdown の記号と前後の `` ` ``・`<br>`・ほかのタグ・文字参照・`fa:fa-…` を外す） */
-function displayText({ text, labelType }: { text: string; labelType: string | undefined }): string {
+const displayText = ({ text, labelType }: { text: string; labelType: string | undefined }): string => {
   let shown = text;
   if (labelType === "markdown") {
     shown = shown
@@ -787,13 +791,13 @@ function displayText({ text, labelType }: { text: string; labelType: string | un
   const decoder = document.createElement("textarea");
   decoder.innerHTML = shown;
   return normalized(decoder.value.replace(/\bfa[bsrl]?:fa-[\w-]+/g, ""));
-}
+};
 
 /** 解析した結果から取り出したノードと辺。辺は SVG の辺の `data-id` と同じ値の `id` を持つ */
 type ParsedParts = { nodes: Map<string, PreviousPart>; edges: (PreviousPart & { id: string })[] };
 
 /** 記法を mermaid で解析して、flowchart のノードと辺の鍵・文字（と消したものに出す名前）を取り出す。flowchart でないときは null */
-async function parseFlowchart(source: string): Promise<ParsedParts | null> {
+const parseFlowchart = async (source: string): Promise<ParsedParts | null> => {
   const parser = getLibrary("mermaid") as { mermaidAPI: { getDiagramFromText: (text: string) => Promise<ParsedFlowchart> } };
   const parsed = await parser.mermaidAPI.getDiagramFromText(source);
   if (!PARSED_FLOWCHART_TYPES.includes(parsed.type)) return null;
@@ -813,10 +817,10 @@ async function parseFlowchart(source: string): Promise<ParsedParts | null> {
     return { id: edge.id, key: `${base}#${number}`, text: normalized(text), name: displayText({ text, labelType: edge.labelType }) };
   });
   return { nodes, edges };
-}
+};
 
 /** flowchart の図の差分を、前の版を SVG に描かず、前後の記法の解析で突き合わせる。flowchart でない種類と解析できなかったときは null */
-export async function diffDiagramFromSource(type: string, beforeSource: string, afterSource: string, afterSvg: SVGElement): Promise<DiagramDiff | null> {
+export const diffDiagramFromSource = async (type: string, beforeSource: string, afterSource: string, afterSvg: SVGElement): Promise<DiagramDiff | null> => {
   if (flavorOf(type) !== "flowchart") return null;
   let previous: ParsedParts | null;
   let parsedNow: ParsedParts | null;
@@ -842,7 +846,7 @@ export async function diffDiagramFromSource(type: string, beforeSource: string, 
     edges.push({ ...edge, key: parsedEdge.key, text: parsedEdge.text });
   }
   return compareDiagrams({ flavor: "flowchart", previous, current: { nodes, edges } });
-}
+};
 
 /** 本文の中の並びの順で対にした、選んだ時点と今の埋め込んだ HTML の範囲の中身 */
 export type EmbeddedHtmlPair = {
@@ -855,12 +859,12 @@ export type EmbeddedHtmlPair = {
 };
 
 /** 範囲の印の行（1 始まり）の間にある行を、改行でつないだ文字列にする */
-function embeddedHtmlContent({ lines, open, close }: { lines: string[]; open: number; close: number }): string {
+const embeddedHtmlContent = ({ lines, open, close }: { lines: string[]; open: number; close: number }): string => {
   return lines.slice(open, close - 1).join("\n");
-}
+};
 
 /** 前後の Markdown の本文の埋め込んだ HTML の範囲を並びの順で対にし、中身が違う対だけを返す。選んだ時点に対になる範囲が無い今の範囲は入れない */
-export function pairEmbeddedHtml({ before, after }: { before: string; after: string }): EmbeddedHtmlPair[] {
+export const pairEmbeddedHtml = ({ before, after }: { before: string; after: string }): EmbeddedHtmlPair[] => {
   const beforeLines = before.split("\n");
   const afterLines = after.split("\n");
   const beforeRanges = embeddedHtmlRanges(before);
@@ -876,10 +880,11 @@ export function pairEmbeddedHtml({ before, after }: { before: string; after: str
     if (pair.before !== pair.after) pairs.push(pair);
   });
   return pairs;
-}
+};
 
 /** 描いた前後の範囲の直下の要素（`outerHTML`）を並びで比べ、今の要素ごとに足した・変わったのマーカーを返す。変えていない要素は null。比べるのを打ち切ったら null */
-export function childMarks({ before, after, jsdiff }: { before: string[]; after: string[]; jsdiff: JsDiff }): ("added" | "changed" | null)[] | null {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+export const childMarks = ({ before, after, jsdiff }: { before: string[]; after: string[]; jsdiff: JsDiff }): ("added" | "changed" | null)[] | null => {
   const parts = jsdiff.diffArrays(before, after, { timeout: ARRAY_DIFF_TIMEOUT_MS });
   // 打ち切り
   if (parts === undefined) return null;
@@ -901,4 +906,4 @@ export function childMarks({ before, after, jsdiff }: { before: string[]; after:
     }
   }
   return marks;
-}
+};

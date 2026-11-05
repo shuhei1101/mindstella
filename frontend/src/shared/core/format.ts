@@ -12,3 +12,6 @@ export const NO_VALUE = "（なし）";
 
 /** 押した位置からこの距離（px）までの動きは、押しただけとして扱う */
 export const PRESS_SLOP_PX = 5;
+
+/** 値を文字にする（オブジェクトは JSON の文字にする） */
+export const toText = (value: unknown): string => (typeof value === "object" ? JSON.stringify(value) : String(value));

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
 // 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）。今の画面の `core/libs.ts` と同じ振る舞い
 import { getLibrary, libraryState } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
@@ -101,12 +102,12 @@ const LINE_MARK_TAGS: ReadonlySet<string> = new Set(["H1", "H2", "H3", "H4", "H5
 const FENCE_LINE = /^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/;
 
 /** 改行の数を返す */
-function countNewlines(text: string): number {
+const countNewlines = (text: string): number => {
   return text.split("\n").length - 1;
-}
+};
 
 /** mdmark が付けた `data-source-line`（0 始まり）を元の行の印 `data-line-start`（1 始まり。フェンスのコードは中身の最初の行）に読み替え、全ての `data-source-line` を外す。段落を持つリストの項目は中の段落が印を持つので付けない */
-function convertSourceLines({ root, source }: { root: HTMLElement; source: string }): void {
+const convertSourceLines = ({ root, source }: { root: HTMLElement; source: string }): void => {
   const lines = source.split("\n");
   for (const element of root.querySelectorAll<HTMLElement>(`[${SOURCE_LINE_ATTR}]`)) {
     const start = Number(element.getAttribute(SOURCE_LINE_ATTR));
@@ -116,30 +117,30 @@ function convertSourceLines({ root, source }: { root: HTMLElement; source: strin
     const fence = element.tagName === "PRE" && FENCE_LINE.test(lines[start] ?? "") ? 1 : 0;
     element.setAttribute(LINE_ATTR, String(start + 1 + fence));
   }
-}
+};
 
 /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
-function mountMarkdown({ root, markdown }: { root: HTMLElement; markdown: string }): void {
+const mountMarkdown = ({ root, markdown }: { root: HTMLElement; markdown: string }): void => {
   mdmarkOf().mount(root, { markdown, config: { features: MDMARK_FEATURES } });
   trimBreakNewlines(root);
   relabelParamCopy(root);
-}
+};
 
 /** 引用の `>` を除いた先が `[!{英字}]` だけの Alert の種類の行（後ろに `-` を許す）。mdmark はこの行の後ろが強制改行だと Alert にしない */
 const ALERT_MARKER_LINE = /^[ \t]*(?:>[ \t]*)+\[![A-Za-z]+\]-?[ \t]*$/;
 
 /** `br` の直後の改行の文字を取り除く（mdmark は強制改行を `<br>` と改行の文字で描くので、改行の数え方が `br` の分と二重になる） */
-function trimBreakNewlines(root: HTMLElement): void {
+const trimBreakNewlines = (root: HTMLElement): void => {
   for (const br of root.querySelectorAll("br")) {
     const next = br.nextSibling;
     if (next?.nodeType !== Node.TEXT_NODE || !(next.textContent ?? "").startsWith("\n")) continue;
     next.textContent = (next.textContent ?? "").slice(1);
     if (next.textContent === "") next.remove();
   }
-}
+};
 
 /** フェンスと字下げのコードの外で、次の行が空行でない行の末尾に空白 2 つを足した Markdown を返す（mdmark は `breaks` を持たないため、段落の中の 1 つの改行を `br` にする。Alert の種類の行は足さない）。行の数は変えない */
-export function withHardBreaks(source: string): string {
+export const withHardBreaks = (source: string): string => {
   const lines = source.split("\n");
   // 開いているフェンスの記号と、閉じるのに要る数
   let fence: { symbol: string; count: number } | null = null;
@@ -169,10 +170,10 @@ export function withHardBreaks(source: string): string {
       return next !== undefined && next.trim() !== "" ? `${line}  ` : line;
     })
     .join("\n");
-}
+};
 
 /** Markdown の本文の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲を、本文の中の並びの順に印の行（1 始まり）で返す。フェンスの中の印は範囲にせず、閉じていない始まりは範囲にしない */
-export function embeddedHtmlRanges(source: string): { open: number; close: number }[] {
+export const embeddedHtmlRanges = (source: string): { open: number; close: number }[] => {
   const ranges: { open: number; close: number }[] = [];
   // 開いているフェンスの記号と、閉じるのに要る数
   let fence: { symbol: string; count: number } | null = null;
@@ -197,21 +198,21 @@ export function embeddedHtmlRanges(source: string): { open: number; close: numbe
     }
   });
   return ranges;
-}
+};
 
 /** 見張りを付け済みの本文（同じ本文に 2 回当てても見張りを重ねない） */
 const relabeledRoots = new WeakSet<HTMLElement>();
 
 /** 今の値をコピーするボタンの文言を `MDMARK_PARAM_COPY_LABEL` に替える。アイコンの要素は残し、文字のノードだけを置き換える（文言が同じボタンは触らない） */
-function relabelButton(button: Element): void {
+const relabelButton = (button: Element): void => {
   const texts = [...button.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
   if (texts.length === 1 && texts[0]!.textContent === MDMARK_PARAM_COPY_LABEL) return;
   for (const text of texts) text.remove();
   button.append(document.createTextNode(MDMARK_PARAM_COPY_LABEL));
-}
+};
 
 /** mdmark が描いた部品の今の値をコピーするボタンの文言を替える。部品が描き直したボタンにも当てるため、本文の子孫の追加を見張る */
-export function relabelParamCopy(root: HTMLElement): void {
+export const relabelParamCopy = (root: HTMLElement): void => {
   for (const button of root.querySelectorAll(".mdmark-param-copy")) relabelButton(button);
   if (relabeledRoots.has(root)) return;
   relabeledRoots.add(root);
@@ -224,10 +225,10 @@ export function relabelParamCopy(root: HTMLElement): void {
       }
     }
   }).observe(root, { childList: true, subtree: true });
-}
+};
 
 /** 印を持つブロックの先頭から、選択の端までにある改行（文の \n と br）の数を返す */
-function linesBefore({ block, node, offset }: { block: Element; node: Node; offset: number }): number {
+const linesBefore = ({ block, node, offset }: { block: Element; node: Node; offset: number }): number => {
   // 表の行は 1 行で、セルの間の空白の改行は数えない
   if (block.tagName === "TR") return 0;
   const range = document.createRange();
@@ -235,24 +236,24 @@ function linesBefore({ block, node, offset }: { block: Element; node: Node; offs
   range.setEnd(node, offset);
   const fragment = range.cloneContents();
   return countNewlines(fragment.textContent ?? "") + fragment.querySelectorAll("br").length;
-}
+};
 
 /** 選択の端から、本文の中で印を持つ最も近いブロックを返す（本文の外なら null） */
-function lineBlock(node: Node): Element | null {
+const lineBlock = (node: Node): Element | null => {
   const element = node instanceof Element ? node : node.parentElement;
   const block = element?.closest(`[${LINE_ATTR}]`) ?? null;
   return block?.closest(".md") ? block : null;
-}
+};
 
 /** 選択の端から、本文の中で行の印（`data-html-open`）を持つ埋め込んだ HTML の範囲の要素を返す（範囲の中でなければ null） */
-function embeddedHtmlElement(node: Node): Element | null {
+const embeddedHtmlElement = (node: Node): Element | null => {
   const element = node instanceof Element ? node : node.parentElement;
   const range = element?.closest(`.${EMBEDDED_HTML_CLASS}[${HTML_OPEN_ATTR}]`) ?? null;
   return range?.closest(".md") ? range : null;
-}
+};
 
 /** 選んだ範囲を、本文なら元の Markdown の行の範囲、値ならキーのパスの箇所にする。本文と値の外・空の選択は null */
-export function selectionLocation(range: Range): Location | null {
+export const selectionLocation = (range: Range): Location | null => {
   if (range.collapsed) return null;
   const text = range.toString().trim();
   // 文が空白だけ
@@ -278,10 +279,10 @@ export function selectionLocation(range: Range): Location | null {
       ? Number(endRange.getAttribute(HTML_CLOSE_ATTR))
       : Number(endBlock!.getAttribute(LINE_ATTR)) + linesBefore({ block: endBlock!, node: range.endContainer, offset: range.endOffset });
   return { kind: "body", start, end, text };
-}
+};
 
 /** 文書の順で端より前にある、行の印（`data-line`）を持つ要素のうち最も後のものを返す（無ければ null） */
-function htmlLineElement({ doc, node, offset }: { doc: Document; node: Node; offset: number }): Element | null {
+const htmlLineElement = ({ doc, node, offset }: { doc: Document; node: Node; offset: number }): Element | null => {
   const probe = doc.createRange();
   probe.setStart(node, offset);
   probe.collapse(true);
@@ -292,10 +293,10 @@ function htmlLineElement({ doc, node, offset }: { doc: Document; node: Node; off
     found = element;
   }
   return found;
-}
+};
 
 /** 行の印を持つ要素の開きタグの直後から端までにある改行（文とコメントの中の改行。`br` は数えない）の数を返す */
-function htmlLinesBefore({ element, node, offset }: { element: Element; node: Node; offset: number }): number {
+const htmlLinesBefore = ({ element, node, offset }: { element: Element; node: Node; offset: number }): number => {
   const range = element.ownerDocument.createRange();
   range.setStart(element, 0);
   range.setEnd(node, offset);
@@ -305,17 +306,17 @@ function htmlLinesBefore({ element, node, offset }: { element: Element; node: No
   const walker = element.ownerDocument.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
   while (walker.nextNode()) count += countNewlines((walker.currentNode as Comment).data);
   return count;
-}
+};
 
 /** `pre`・`textarea`・`listing` の開きタグの直後に改行があるとき 1（その改行は解析のときに取り除かれる）を返す */
-function leadingNewlineBefore({ element, source }: { element: Element; source: string }): number {
+const leadingNewlineBefore = ({ element, source }: { element: Element; source: string }): number => {
   if (!LEADING_NEWLINE_TAGS.includes(element.tagName)) return 0;
   const line = source.split("\n")[Number(element.getAttribute(HTML_LINE_ATTR)) - 1] ?? "";
   return /<(?:pre|textarea|listing)\b[^>]*>\r?$/i.test(line) ? 1 : 0;
-}
+};
 
 /** HTML の本文の枠の中で選んだ範囲を、元の HTML の行の範囲の箇所にする。空の選択・端より前に行の印を持つ要素が無い選択は null */
-export function htmlSelectionLocation(range: Range, source: string): Location | null {
+export const htmlSelectionLocation = (range: Range, source: string): Location | null => {
   if (range.collapsed) return null;
   const text = range.toString().trim();
   // 文が空白だけ
@@ -335,7 +336,7 @@ export function htmlSelectionLocation(range: Range, source: string): Location | 
     end: lineOfBoundary(endElement, range.endContainer, range.endOffset),
     text,
   };
-}
+};
 
 /** HTML の本文の枠の中のリンクのうち、新しいタブで開く URL のスキーム（`URL` の `protocol` の形） */
 export const HTML_LINK_OPEN_SCHEMES: readonly string[] = ["http:", "https:", "mailto:"];
@@ -344,7 +345,7 @@ export const HTML_LINK_OPEN_SCHEMES: readonly string[] = ["http:", "https:", "ma
 export type HtmlLinkAction = { kind: "open"; url: string } | { kind: "anchor"; id: string } | { kind: "none" };
 
 /** HTML の本文の枠の中のリンクの `href`（書かれたままの値）から、新しいタブで開く・本文の中の場所まで送る・何もしないのどれかを決める */
-export function htmlLinkAction(href: string): HtmlLinkAction {
+export const htmlLinkAction = (href: string): HtmlLinkAction => {
   const value = href.trim();
   // `#` で始まる: 本文の中の場所を指す。`#` の後ろを戻した id を送り先にする
   if (value.startsWith("#")) {
@@ -363,16 +364,16 @@ export function htmlLinkAction(href: string): HtmlLinkAction {
   // 開くスキーム以外（`javascript:`・`data:`・`file:` ほか）
   if (!HTML_LINK_OPEN_SCHEMES.includes(url.protocol)) return { kind: "none" };
   return { kind: "open", url: url.href };
-}
+};
 
 /** 選択の端から、値のキーのパスを持つ最も近い要素を返す（無ければ null） */
-function keyElement(node: Node): Element | null {
+const keyElement = (node: Node): Element | null => {
   const element = node instanceof Element ? node : node.parentElement;
   return element?.closest(`[${VALUE_KEY_ATTR}]`) ?? null;
-}
+};
 
 /** 項目の文字列の値の Markdown を、段落の中の改行も改行にして mdmark で描いた要素にする。mdmark が読めないときは、改行を残した文字のままの要素にする（知らせは本文の描画が出す） */
-export function renderValue(source: string): HTMLElement {
+export const renderValue = (source: string): HTMLElement => {
   if (missingLibraries(["mdmark"]).length > 0) {
     return h({ tag: "span", attrs: { class: "md-value-raw" }, children: [source] });
   }
@@ -381,10 +382,10 @@ export function renderValue(source: string): HTMLElement {
   mountMarkdown({ root, markdown: withHardBreaks(source) });
   for (const element of root.querySelectorAll(`[${SOURCE_LINE_ATTR}]`)) element.removeAttribute(SOURCE_LINE_ATTR);
   return root;
-}
+};
 
 /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む */
-export function renderMarkdown(source: string): HTMLElement {
+export const renderMarkdown = (source: string): HTMLElement => {
   const root = h({ tag: "div", attrs: { class: "md" } });
   const missing = missingLibraries(["mdmark"]);
   const hasDiagram = source.includes("```mermaid");
@@ -467,27 +468,27 @@ export function renderMarkdown(source: string): HTMLElement {
     wrap.append(table);
   }
   return root;
-}
+};
 
 /** 見出しの文言から、見出しを指す名前を作る（前後の空白を除き、間の空白の並びを `-` 1 つにする。同じ名前の 2 つ目から `-1`・`-2` を続ける）。`seen` は同じ本文でこれまでに作った名前 → 出た回数で、呼ぶたびに書き換える */
-export function headingSlug({ text, seen }: { text: string; seen: Map<string, number> }): string {
+export const headingSlug = ({ text, seen }: { text: string; seen: Map<string, number> }): string => {
   const base = text.trim().replace(/\s+/g, "-");
   const count = seen.get(base) ?? 0;
   seen.set(base, count + 1);
   return count === 0 ? base : `${base}-${count}`;
-}
+};
 
 /** 今のハッシュの `id`・`h` を替えた URL のハッシュ（キーボードとリンクのコピーで使うリンク先。押したときは使う側の移動に替える） */
-export function hashWith({ id, heading }: { id?: string; heading: string | null }): string {
+export const hashWith = ({ id, heading }: { id?: string; heading: string | null }): string => {
   const params = new URLSearchParams(location.hash.replace(/^#/, ""));
   if (id !== undefined) params.set("id", id);
   if (heading === null) params.delete("h");
   else params.set("h", heading);
   return `#${params.toString()}`;
-}
+};
 
 /** 描いた本文の見出しに、見出しを指す名前（`data-heading`）と右の # のリンクを付け、本文の中の `#見出し` のリンクをその見出しへの移動に、`#diff=` のリンクをまとまりの知らせにする。押したときは既定の動作を止め、見出しの名前を `onHeading` に、`diff` の値を `onChangeSet` に知らせる */
-export function linkHeadings({
+export const linkHeadings = ({
   root,
   onHeading,
   onChangeSet,
@@ -495,7 +496,7 @@ export function linkHeadings({
   root: HTMLElement;
   onHeading: (slug: string) => void;
   onChangeSet: (id: string) => void;
-}): void {
+}): void => {
   // 本文の中の `[文言](#...)` のリンク（# のリンクを足す前の分）。`diff` の引数を持つものはまとまりのリンク、持たないものは見出しのリンクで、同じ名前の見出しがあるときだけ知らせ、無ければ何もしない
   const bodyLinks = [...root.querySelectorAll<HTMLAnchorElement>("a[href^='#']")];
   const seen = new Map<string, number>();
@@ -539,7 +540,7 @@ export function linkHeadings({
       if (root.querySelector(`[data-heading="${CSS.escape(slug)}"]`) !== null) onHeading(slug);
     });
   }
-}
+};
 
 /** 英数字だけの語か（前後が英数字のときと、後ろが `-` と数字のとき（`API-2` の `API`）は印にしない） */
 const ALPHANUMERIC_WORD = /^[A-Za-z0-9]+$/;
@@ -554,7 +555,7 @@ const UNMARKED_ANCESTORS = "pre, code, figure, a, button, svg, .mermaid, h1, h2,
 const ITEM_ID_PATTERN = /(?<![A-Za-z0-9-])[A-Z]+-[0-9]+(?![0-9])/g;
 
 /** 本文の中の、用語の印に当てられる文字のノード（祖先が `UNMARKED_ANCESTORS` でなく、本文のブロック `block` 自身の行を持つもの）を文書の順に返す */
-function markableTextNodes(block: Element): Text[] {
+const markableTextNodes = (block: Element): Text[] => {
   const own = block.classList.contains(EMBEDDED_HTML_CLASS);
   const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) => {
@@ -568,10 +569,10 @@ function markableTextNodes(block: Element): Text[] {
   const nodes: Text[] = [];
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) nodes.push(node as Text);
   return nodes;
-}
+};
 
 /** 描いた本文の文中（埋め込んだ HTML の範囲の中を含む）の、用語集の用語のタイトルと別名、資料・調査のエイリアスを印に、記録にある項目の ID をリンクにする。語の一致と一致の前の正規化は mdmark の `collectMatches` に任せる。`pre`・図・リンク・見出しの中は飛ばし、インラインコードは中身がちょうど語か ID のときだけ当てる。押したときは既定の動作を止め、ID のリンクと用語 1 件だけに一致した印はその項目の ID を `onOpen` に知らせる（用語 2 件以上か、資料・調査にも一致した印は知らせず、ツールチップを残す使う側に任せる） */
-export function linkBody({
+export const linkBody = ({
   root,
   index,
   selfId,
@@ -583,7 +584,8 @@ export function linkBody({
   selfId: string;
   onOpen: (id: string) => void;
   source: string;
-}): void {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+}): void => {
   // 語 → 一致した項目の ID（用語 → 資料 → 調査の順）。項目自身・取り下げた資料と調査・空の語は当てない
   const byWord = new Map<string, string[]>();
   for (const kind of MARK_KINDS) {
@@ -748,7 +750,7 @@ export function linkBody({
     }
     if (ranges.length > 0) replaceRanges({ node, ranges });
   }
-}
+};
 
 /** 用語のツールチップの要素の id（用語の印の `aria-describedby` が指す） */
 export const TERM_TIP_ID = "term-tip";
@@ -763,17 +765,17 @@ let diagramCounter = 0;
 let lastDrawn = new Map<string, { svg: string; id: string }>();
 
 /** 図の ID を新しく振る */
-function nextDiagramId(): string {
+const nextDiagramId = (): string => {
   return `mindmap-diagram-${(diagramCounter += 1)}`;
-}
+};
 
 /** 色の値をトークンから引く */
-function token(name: string): string {
+const token = (name: string): string => {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
+};
 
 /** 初めて描くとき（と、テーマが変わったとき）に、トークンの色で mermaid を初期化する */
-function initializeMermaid(): void {
+const initializeMermaid = (): void => {
   // 初めて描くとき（と、テーマが変わったとき）に、トークンの色で初期化する
   const surface = token("--surface");
   if (initializedFor !== surface) {
@@ -807,10 +809,10 @@ function initializeMermaid(): void {
     // 古いテーマの色で描いた SVG は使い回さない
     lastDrawn = new Map();
   }
-}
+};
 
 /** 記法を mermaid で SVG に描いて返す（画面には出さない）。mermaid が読めていないか、描けないときは null */
-export async function renderDiagramSvg(source: string): Promise<SVGElement | null> {
+export const renderDiagramSvg = async (source: string): Promise<SVGElement | null> => {
   if (missingLibraries(["mermaid"]).length > 0) return null;
   initializeMermaid();
   const id = nextDiagramId();
@@ -825,10 +827,10 @@ export async function renderDiagramSvg(source: string): Promise<SVGElement | nul
     document.getElementById(id)?.remove();
     return null;
   }
-}
+};
 
 /** 要素の中の図の入れ物を mermaid で SVG に描く。描けない図は原文を残し、ほかの図は続ける */
-export async function renderDiagrams(root: HTMLElement): Promise<void> {
+export const renderDiagrams = async (root: HTMLElement): Promise<void> => {
   const containers = [...root.querySelectorAll<HTMLElement>(`[${DIAGRAM_SOURCE_ATTR}]`)];
   // mermaid が読めていない: 各入れ物に知らせと原文を入れる
   if (missingLibraries(["mermaid"]).length > 0) {
@@ -870,4 +872,4 @@ export async function renderDiagrams(root: HTMLElement): Promise<void> {
     }
   }
   lastDrawn = drawn;
-}
+};

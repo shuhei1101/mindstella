@@ -1,4 +1,5 @@
 // 画面ごとの絞り込みの条件（今の画面の `Filters` と同じ形）の計算
+import { toText } from "@/shared/core/format";
 import type { PreviewTab } from "@/shared/core/preview-search";
 
 /** 列の `key` → 選んだ値の配列。`~{列}` は文字の条件 */
@@ -15,7 +16,7 @@ const DECISION_DEFAULT_STATUSES = ["要見直し", "未決定", "未整理", "�
 
 const toStrings = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(String);
-  return value === undefined || value === null ? [] : [String(value)];
+  return value === undefined || value === null ? [] : [toText(value)];
 };
 
 /** 条件に行が合うかを返す（条件の中はどれか、条件の間は全て。`~{列}` は文字の条件） */
