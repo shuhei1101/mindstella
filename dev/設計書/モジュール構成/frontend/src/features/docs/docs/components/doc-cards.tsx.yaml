@@ -1,0 +1,11 @@
+title: プレビュー / doc-cards
+lead: 資料を納品物を先頭にカードで並べる。
+components:
+- name: DocCards
+  title: 資料のカード
+  kind: コンポーネント
+  usecase: 資料を読む
+  summary: 資料を納品物を先頭にカードで並べる
+  container: frontend/src/features/docs/docs/components/doc-cards.tsx
+notes:
+  単体テスト: 同じフォルダの `doc-cards.test.tsx` に置く（knowledge の規約『フォルダ構成』）

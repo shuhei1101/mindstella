@@ -1,0 +1,6 @@
+summary: '`frontend/src/features/docs/docs/components/` の React のプレビューのモジュール'
+items:
+- page: doc-cards.tsx.yaml
+  summary: 資料を納品物を先頭にカードで並べる
+- page: doc-board.tsx.yaml
+  summary: 状態ごとの列に資料のカードを並べる

@@ -1,0 +1,67 @@
+title: プレビュー / prefs-store
+lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）。
+functions:
+- name: readPrefs
+  title: 保存領域の読み取り
+  kind: 関数
+  usecase: SPAを開く
+  summary: 保存領域の JSON を読み、読めない項目は持たないものとして扱う
+  returns:
+    type: Prefs
+    description: 個人の上書き
+  unit_tests:
+  - name: test_read_prefs_when_invalid
+    case: 異常
+    summary: 読めない JSON
+    condition: 壊れた JSON
+    mock: '`localStorage`'
+    expected: 空の上書き
+  container: frontend/src/shared/stores/prefs-store.ts
+- name: writePrefs
+  title: 保存領域の書き込み
+  kind: 関数
+  usecase: SPAを開く
+  summary: 変えた項目だけを書き、ほかの項目を残す
+  args:
+  - name: patch
+    type: Partial<Prefs>
+    required: true
+    description: 変える項目
+  returns:
+    type: void
+    description: なし
+  unit_tests:
+  - name: test_write_prefs
+    case: 正常
+    summary: 知らない項目を残す
+    condition: '`theme` と `network_look` を持つ保存領域'
+    mock: '`localStorage`'
+    expected: 両方が残る
+  container: frontend/src/shared/stores/prefs-store.ts
+stores:
+- name: usePrefsStore
+  title: 端末の保存領域
+  usecase: SPAを開く
+  summary: 今の画面と同じキーの JSON のうち、持つ項目だけを読み書きし、知らない項目を消さない
+  state:
+  - name: columns
+    type: Record<string, string[]>
+    description: 表ごとの隠す列
+  - name: pins
+    type: Record<string, string>
+    description: 表ごとのピン留め
+  - name: diffMinimap
+    type: boolean | undefined
+    description: 差分のミニマップ
+  - name: bodyDiffLayout
+    type: '''side'' | undefined'
+    description: 本文の差分の並べ方
+  - name: filters
+    type: Record<string, Record<string, string>>
+    description: 画面ごとの絞り込みの条件
+  - name: diffPoint
+    type: string | null
+    description: 変更履歴で選んだ時点
+  container: frontend/src/shared/stores/prefs-store.ts
+notes:
+  単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

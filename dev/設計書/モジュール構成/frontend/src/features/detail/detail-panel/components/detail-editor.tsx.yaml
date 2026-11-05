@@ -1,0 +1,11 @@
+title: プレビュー / detail-editor
+lead: 編集の表示の入力欄を描き、入力欄を離れたらキーの編集を溜める。
+components:
+- name: DetailEditor
+  title: 項目の編集
+  kind: コンポーネント
+  usecase: 画面で項目を編集して保存する
+  summary: 編集の表示の入力欄を描き、入力欄を離れたらキーの編集を溜める
+  container: frontend/src/features/detail/detail-panel/components/detail-editor.tsx
+notes:
+  単体テスト: 同じフォルダの `detail-editor.test.tsx` に置く（knowledge の規約『フォルダ構成』）

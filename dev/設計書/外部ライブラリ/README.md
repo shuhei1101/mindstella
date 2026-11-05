@@ -32,6 +32,7 @@
 | [base-ui](./base-ui.yaml) | プレビュー（React）の shadcn/ui の部品の土台 |
 | [tanstack-router](./tanstack-router.yaml) | プレビュー（React）のルートと search params の検証 |
 | [tanstack-query](./tanstack-query.yaml) | プレビュー（React）がサーバーの記録を取得し、書き換えで読み直す |
+| [tanstack-table](./tanstack-table.yaml) | プレビュー（React）の表の並べ替え・絞り込み・列の表示・ピン留めの状態を持つ |
 | [zustand](./zustand.yaml) | プレビュー（React）の接続の状態とライト / ダークを持つ |
 | [zod](./zod.yaml) | プレビュー（React）の search params を検証する |
 | [orval](./orval.yaml) | OpenAPI から API の呼び出し・query・Zod・MSW を生成する（開発用） |

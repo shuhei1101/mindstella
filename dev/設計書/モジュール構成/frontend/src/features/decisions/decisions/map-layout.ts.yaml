@@ -1,0 +1,44 @@
+title: プレビュー / map-layout
+lead: マップの木を elkjs へ渡す形に組み、配置の結果を節と枝にする。
+functions:
+- name: buildMapGraph
+  title: マップの木の組み立て
+  kind: 関数
+  usecase: 検討事項をマップで辿る
+  summary: 検討事項から対象・カテゴリー・フェーズの節と枝を作る
+  args:
+  - name: items
+    type: Item[]
+    required: true
+    description: 検討事項
+  - name: settings
+    type: Settings
+    required: true
+    description: 設定
+  returns:
+    type: MapGraph
+    description: 節と枝
+  unit_tests:
+  - name: test_build_map_graph
+    case: 正常
+    summary: 項目を持たない節を描かない
+    condition: 対象 2 つのうち 1 つだけ項目を持つ
+    mock: なし
+    expected: 項目を持たない対象の節が無い
+  container: frontend/src/features/decisions/decisions/map-layout.ts
+- name: useMapLayout
+  title: マップの配置
+  kind: フック
+  usecase: 検討事項をマップで辿る
+  summary: elkjs で配置を計算して返す
+  args:
+  - name: graph
+    type: MapGraph
+    required: true
+    description: 節と枝
+  returns:
+    type: MapLayoutState
+    description: 配置の状態
+  container: frontend/src/features/decisions/decisions/map-layout.ts
+notes:
+  単体テスト: 同じフォルダの `map-layout.test.ts` に置く（knowledge の規約『フォルダ構成』）

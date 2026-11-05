@@ -1,0 +1,59 @@
+title: プレビュー / body-links
+lead: 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）。
+functions:
+- name: linkHeadings
+  title: 見出しのリンク
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: '見出しに `h` の値の ID と # のリンクを付ける'
+  args:
+  - name: root
+    type: HTMLElement
+    required: true
+    description: 描いた本文
+  - name: onHeading
+    type: '(slug: string) => void'
+    required: true
+    description: '# を押したとき'
+  returns:
+    type: void
+    description: なし
+  unit_tests:
+  - name: test_link_headings
+    case: 正常
+    summary: 同じ文言に番号
+    condition: 同じ見出しが 2 つ
+    mock: なし
+    expected: 2 つ目の ID の末尾が `-1`
+  container: frontend/src/shared/core/body-links.ts
+- name: linkBody
+  title: 本文の印と項目のリンク
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 用語・資料・調査の語に印を付け、項目の ID をリンクにする
+  args:
+  - name: root
+    type: HTMLElement
+    required: true
+    description: 描いた本文
+  - name: index
+    type: RecordIndex
+    required: true
+    description: 索引
+  - name: onOpen
+    type: '(id: string) => void'
+    required: true
+    description: 項目へ移る
+  returns:
+    type: void
+    description: なし
+  unit_tests:
+  - name: test_link_body
+    case: 正常
+    summary: ID をリンクにする
+    condition: '`D-1` を含む本文'
+    mock: なし
+    expected: D-1 のリンクを押すと `onOpen('D-1')`
+  container: frontend/src/shared/core/body-links.ts
+notes:
+  単体テスト: 同じフォルダの `body-links.test.ts` に置く（knowledge の規約『フォルダ構成』）

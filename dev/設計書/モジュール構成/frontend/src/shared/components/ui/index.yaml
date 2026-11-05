@@ -2,3 +2,21 @@ summary: '`frontend/src/shared/components/ui/` の React のプレビューの�
 items:
 - page: button.tsx.yaml
   summary: shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ
+- page: table.tsx.yaml
+  summary: shadcn/ui の Table
+- page: dialog.tsx.yaml
+  summary: shadcn/ui の Dialog（Base UI 版）
+- page: sheet.tsx.yaml
+  summary: shadcn/ui の Sheet（Base UI 版）
+- page: popover.tsx.yaml
+  summary: shadcn/ui の Popover（Base UI 版）
+- page: checkbox.tsx.yaml
+  summary: shadcn/ui の Checkbox（Base UI 版）
+- page: input.tsx.yaml
+  summary: shadcn/ui の Input
+- page: textarea.tsx.yaml
+  summary: shadcn/ui の Textarea
+- page: select.tsx.yaml
+  summary: shadcn/ui の Select（Base UI 版）
+- page: tooltip.tsx.yaml
+  summary: shadcn/ui の Tooltip（Base UI 版）

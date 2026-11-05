@@ -1,0 +1,6 @@
+summary: '`frontend/src/features/tasks/tasks/` の React のプレビューのモジュール'
+items:
+- page: tasks-screen.tsx.yaml
+  summary: 画面設計『タスク.tsx』の要素と操作を描く
+- page: components/
+  summary: '`frontend/src/features/tasks/tasks/components/` の React のプレビューのモジュール'

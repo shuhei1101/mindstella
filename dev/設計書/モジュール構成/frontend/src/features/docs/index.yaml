@@ -1,0 +1,4 @@
+summary: '`frontend/src/features/docs/` の React のプレビューのモジュール'
+items:
+- page: docs/
+  summary: '`frontend/src/features/docs/docs/` の React のプレビューのモジュール'

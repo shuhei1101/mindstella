@@ -12,3 +12,5 @@ items:
   summary: '`frontend/src/shared/stores/` の React のプレビューのモジュール'
 - page: styles/
   summary: '`frontend/src/shared/styles/` の React のプレビューのモジュール'
+- page: hooks/
+  summary: '`frontend/src/shared/hooks/` の React のプレビューのモジュール'

@@ -1,0 +1,52 @@
+title: プレビュー / libraries
+lead: 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）。
+constants:
+- name: LIBRARIES
+  title: 描画のライブラリの一覧
+  usecase: SPAを開く
+  summary: 名前ごとの URL と integrity。値は今の画面の `template.html`・`core/libs.ts` と同じ
+  container: frontend/src/shared/adapters/libraries.ts
+functions:
+- name: loadLibrary
+  title: ライブラリの読み込み
+  kind: 関数
+  usecase: SPAを開く
+  summary: 1 つのライブラリを 1 度だけ読み、結果を返す。読めなかったら代わりを読まない
+  args:
+  - name: name
+    type: LibraryName
+    required: true
+    description: 名前
+  returns:
+    type: Promise<Library | null>
+    description: 読めなければ null
+  unit_tests:
+  - name: test_load_library
+    case: 正常
+    summary: 1 度だけ読む
+    condition: 同じ名前で 2 回呼ぶ
+    mock: script 要素の読み込み
+    expected: 読み込みが 1 回
+  - name: test_load_library_when_failed
+    case: 異常
+    summary: 読めない
+    condition: 読み込みが失敗
+    mock: script 要素の読み込み
+    expected: 'null'
+  container: frontend/src/shared/adapters/libraries.ts
+- name: useLibrary
+  title: ライブラリの hook
+  kind: フック
+  usecase: SPAを開く
+  summary: ライブラリの読み込みの状態（`loading`・`ready`・`failed`）を返す
+  args:
+  - name: name
+    type: LibraryName
+    required: true
+    description: 名前
+  returns:
+    type: LibraryState
+    description: 状態
+  container: frontend/src/shared/adapters/libraries.ts
+notes:
+  単体テスト: 同じフォルダの `libraries.test.ts` に置く（knowledge の規約『フォルダ構成』）

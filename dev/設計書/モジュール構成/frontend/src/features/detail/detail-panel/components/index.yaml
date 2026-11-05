@@ -1,0 +1,20 @@
+summary: '`frontend/src/features/detail/detail-panel/components/` の React のプレビューのモジュール'
+items:
+- page: detail-header.tsx.yaml
+  summary: 戻る・進む・全画面・エクスポート・編集・閉じるを並べる
+- page: option-list.tsx.yaml
+  summary: 検討事項の案をカードで並べる
+- page: related-list.tsx.yaml
+  summary: 前提・後続・関連タスク・経緯・関連・参照元を並べる
+- page: value-text.tsx.yaml
+  summary: 文字列の値を mdmark で描く
+- page: body-view.tsx.yaml
+  summary: 本文の形式と差分の表示に応じて描く部品を選ぶ
+- page: key-diff.tsx.yaml
+  summary: 差分の表示の間、キーの前後の値を並べる
+- page: detail-editor.tsx.yaml
+  summary: 編集の表示の入力欄を描き、入力欄を離れたらキーの編集を溜める
+- page: diagram-block.tsx.yaml
+  summary: 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く
+- page: detail-resizer.tsx.yaml
+  summary: 詳細パネルの幅をドラッグとキーで変える

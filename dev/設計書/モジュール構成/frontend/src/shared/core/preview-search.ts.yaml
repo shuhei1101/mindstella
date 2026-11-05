@@ -1,0 +1,146 @@
+title: プレビュー / preview-search
+lead: SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理、今の画面へ写すハッシュ。
+data_models:
+- name: PreviewSearchSchema
+  title: プレビューの search
+  usecase: SPAを開く
+  role: Zod スキーマ
+  summary: '`tab`・`view`・`id`・`full`・`h`・`diff`・`sort`・`panel` と `f.{列}`。合わない値は既定に落とす'
+  properties:
+  - name: tab
+    type: PreviewTab | undefined
+    description: 開く画面
+  - name: view
+    type: '''map'' | ''board'' | ''cards'' | ''table'' | undefined'
+    description: 表示形式
+  - name: id
+    type: string | undefined
+    description: 開いている項目
+  - name: full
+    type: '''1'' | undefined'
+    description: 全画面
+  - name: h
+    type: string | undefined
+    description: 見出し
+  - name: diff
+    type: string | undefined
+    description: 差分の時点
+  - name: sort
+    type: string | undefined
+    description: 並べる列
+  - name: panel
+    type: '''pending'' | undefined'
+    description: 左のパネル
+  - name: f
+    type: Record<string, string>
+    description: '`f.{列}` の引数'
+  container: frontend/src/shared/core/preview-search.ts
+functions:
+- name: parsePreviewSearch
+  title: search の検証
+  kind: 関数
+  usecase: SPAを開く
+  summary: ルートの `validateSearch`。`f.` で始まるキーを `f` に集めて `PreviewSearchSchema` で parse する
+  args:
+  - name: search
+    type: Record<string, unknown>
+    required: true
+    description: URL の search params
+  returns:
+    type: PreviewSearch
+    description: 検証した search
+  unit_tests:
+  - name: test_parse_preview_search
+    case: 正常
+    summary: 決めた値を受ける
+    condition: '`{tab: ''decisions'', view: ''table'', ''f.status'': ''要見直し''}`'
+    mock: なし
+    expected: '`tab`・`view` と `f.status` が入る'
+  - name: test_parse_preview_search_when_unknown
+    case: 正常
+    summary: 決めた値以外は落とす
+    condition: '`{tab: ''unknown'', full: ''true''}`'
+    mock: なし
+    expected: '`tab`・`full` が `undefined`'
+  container: frontend/src/shared/core/preview-search.ts
+- name: normalizeSearch
+  title: 記録に合わせた search
+  kind: 関数
+  usecase: SPAを開く
+  summary: 画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、0 件の `panel` を外す
+  args:
+  - name: search
+    type: PreviewSearch
+    required: true
+    description: 検証した search
+  - name: index
+    type: RecordIndex
+    required: true
+    description: 記録の索引
+  - name: pendingCount
+    type: number
+    required: true
+    description: 保存待ちの編集の件数
+  returns:
+    type: PreviewSearch
+    description: 外した後の search
+  unit_tests:
+  - name: test_normalize_search_when_view_mismatched
+    case: 正常
+    summary: 画面が持たない形式
+    condition: '`{tab: ''tasks'', view: ''map''}`'
+    mock: なし
+    expected: '`view` が無い'
+  - name: test_normalize_search_when_item_missing
+    case: 正常
+    summary: 記録に無い項目
+    condition: '`{id: ''T-99'', full: ''1'', h: ''決め方''}`'
+    mock: なし
+    expected: '`id`・`full`・`h` が無い'
+  - name: test_normalize_search_when_diff_missing
+    case: 正常
+    summary: 記録に無い時点
+    condition: '`{diff: ''V-99''}`'
+    mock: なし
+    expected: '`diff` が無い'
+  - name: test_normalize_search_when_no_pending
+    case: 正常
+    summary: 保存待ちが 0 件
+    condition: '`{panel: ''pending''}` と 0 件'
+    mock: なし
+    expected: '`panel` が無い'
+  container: frontend/src/shared/core/preview-search.ts
+- name: toLegacyHash
+  title: 今の画面へ写すハッシュ
+  kind: 関数
+  usecase: SPAを開く
+  summary: 制約「React に無い画面」のとおり `tab`・`view`・`id`・`full`・`diff` を写す。`graph` は `view` を写さない
+  args:
+  - name: search
+    type: PreviewSearch
+    required: true
+    description: 今の search
+  - name: tab
+    type: string
+    required: false
+    description: 開く今の画面の `tab`
+    default: search の `tab`
+  returns:
+    type: Record<string, string>
+    description: '`toLegacyUrl` へ渡す引数'
+  unit_tests:
+  - name: test_to_legacy_hash
+    case: 正常
+    summary: 同じ名前で写す
+    condition: '`{tab: ''decisions'', view: ''table'', id: ''D-1'', diff: ''V-1''}`'
+    mock: なし
+    expected: 同じキーと値
+  - name: test_to_legacy_hash_when_graph
+    case: 正常
+    summary: ネットワークは view を写さない
+    condition: '`tab` に `graph`'
+    mock: なし
+    expected: '`tab=graph` で `view` が無い'
+  container: frontend/src/shared/core/preview-search.ts
+notes:
+  単体テスト: 同じフォルダの `preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）

@@ -4,3 +4,17 @@ items:
   summary: 失敗した応答から作るエラー。`detail` を画面に出す
 - page: legacy-url.ts.yaml
   summary: React に無い画面を開くときの今の画面（インターフェース定義『プレビューの配信』）
+- page: preview-search.ts.yaml
+  summary: SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理、今の画面へ写すハッシュ
+- page: records.ts.yaml
+  summary: 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）
+- page: filters.ts.yaml
+  summary: 画面ごとの絞り込みの条件を行に当てる計算
+- page: diff.ts.yaml
+  summary: 差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い
+- page: edits.ts.yaml
+  summary: 保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い）
+- page: doc-export.ts.yaml
+  summary: 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）
+- page: body-links.ts.yaml
+  summary: 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）

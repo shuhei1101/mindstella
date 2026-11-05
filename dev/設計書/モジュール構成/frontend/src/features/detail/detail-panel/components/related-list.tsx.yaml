@@ -1,0 +1,11 @@
+title: プレビュー / related-list
+lead: 前提・後続・関連タスク・経緯・関連・参照元を並べる。
+components:
+- name: RelatedList
+  title: 関係する項目
+  kind: コンポーネント
+  usecase: 項目の詳細を読む
+  summary: 前提・後続・関連タスク・経緯・関連・参照元を並べる
+  container: frontend/src/features/detail/detail-panel/components/related-list.tsx
+notes:
+  単体テスト: 同じフォルダの `related-list.test.tsx` に置く（knowledge の規約『フォルダ構成』）

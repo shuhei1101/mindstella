@@ -1,0 +1,24 @@
+title: プレビュー / item-add-form
+lead: 種類ごとの画面の「項目を追加」で開く追加の入力。溜めると `item-add` の編集にする。
+components:
+- name: ItemAddForm
+  title: 項目の追加の入力
+  kind: コンポーネント
+  usecase: 画面で項目を足す
+  summary: 種類ごとの画面の「項目を追加」で開く追加の入力
+  unit_tests:
+  - name: test_item_add_form
+    case: 正常
+    summary: 足す項目を溜める
+    condition: タイトルを書いて送る
+    mock: MSW
+    expected: '`POST /api/edits` が `item-add` で呼ばれる'
+  - name: test_item_add_form_when_title_empty
+    case: 異常
+    summary: 空のタイトル
+    condition: 空白だけ
+    mock: MSW
+    expected: 呼ばれず入力の誤りを出す
+  container: frontend/src/shared/components/item-add-form.tsx
+notes:
+  単体テスト: 同じフォルダの `item-add-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）
