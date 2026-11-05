@@ -7,6 +7,9 @@ export type Filters = Record<string, string[]>;
 /** 文字の条件のキーの頭 */
 export const TEXT_FILTER_PREFIX = "~";
 
+/** 条件から 1 つのキーを除く */
+export const withoutKey = (filters: Filters, key: string): Filters => Object.fromEntries(Object.entries(filters).filter(([name]) => name !== key));
+
 /** 検討事項の既定の状態の条件 */
 const DECISION_DEFAULT_STATUSES = ["要見直し", "未決定", "未整理", "保留"];
 

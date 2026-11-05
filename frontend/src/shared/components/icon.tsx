@@ -5,6 +5,131 @@ import { cn } from "@/shared/lib/cn";
 
 /** アイコンの名前 → SVG の中身 */
 const ICONS = {
+  map: (
+    <>
+      <circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12h3l4-5M11.5 12l4 5"/>
+    </>
+  ),
+  board: (
+    <>
+      <rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="11" rx="1"/><rect x="17" y="4" width="4" height="7" rx="1"/>
+    </>
+  ),
+  cards: (
+    <>
+      <rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/>
+    </>
+  ),
+  table: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 10h18M9 10v10"/>
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5v14M5 12h14"/>
+    </>
+  ),
+  minus: (
+    <>
+      <path d="M5 12h14"/>
+    </>
+  ),
+  changed: (
+    <>
+      <circle cx="12" cy="12" r="5"/>
+    </>
+  ),
+  bubble: (
+    <>
+      <path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/>
+    </>
+  ),
+  main: (
+    <>
+      <circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/>
+    </>
+  ),
+  mainOff: (
+    <>
+      <circle cx="12" cy="12" r="8"/>
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/><path d="M10 11v6M14 11v6"/>
+    </>
+  ),
+  check: (
+    <>
+      <path d="m5 12 5 5 9-10"/>
+    </>
+  ),
+  edit: (
+    <>
+      <path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/>
+    </>
+  ),
+  expand: (
+    <>
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+    </>
+  ),
+  shrink: (
+    <>
+      <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V4a1 1 0 0 1 1-1h11"/>
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/>
+    </>
+  ),
+  cols: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 4v16M15 4v16"/>
+    </>
+  ),
+  updown: (
+    <>
+      <path d="m8 9 4-4 4 4M8 15l4 4 4-4"/>
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </>
+  ),
+  unlock: (
+    <>
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+    </>
+  ),
+  save: (
+    <>
+      <path d="M5 4h11l3 3v13H5Z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>
+    </>
+  ),
+  undo: (
+    <>
+      <path d="M9 7 4 12l5 5"/><path d="M4 12h10a5 5 0 0 1 0 10h-2"/>
+    </>
+  ),
+  arrow: (
+    <>
+      <path d="M5 12h14M13 6l6 6-6 6"/>
+    </>
+  ),
+  link: (
+    <>
+      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>

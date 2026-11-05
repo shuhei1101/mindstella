@@ -47,7 +47,7 @@ describe("Table", () => {
     const onPin = vi.fn();
     render(<Table {...props({ onPin })} />);
     // 実行
-    await userEvent.click(screen.getByRole("button", { name: "タイトルまでピン留め" }));
+    await userEvent.click(screen.getByRole("button", { name: "タイトルまで固定" }));
     // 検証
     expect(onPin).toHaveBeenCalledWith("title");
   });
