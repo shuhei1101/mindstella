@@ -1399,7 +1399,7 @@ def test_normal_when_main_tag_marked(
     page.wait_for_selector('table.grid tbody tr[data-id="D-1"]')
     # 実行（表で D-1 を押す）
     table_tags = page.evaluate(TAG_VALUES_SCRIPT, 'table.grid tbody tr[data-id="D-1"]')
-    page.click('table.grid tbody tr[data-id="D-1"]')
+    page.click('table.grid tbody tr[data-id="D-1"] button.row-open')
     page.wait_for_selector("aside.panel.open .d-meta span.tag")
     panel_tags = page.evaluate(TAG_VALUES_SCRIPT, "aside.panel .d-meta dd:last-of-type")
     # 実行（「全画面表示」を押す）
