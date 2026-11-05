@@ -91,7 +91,7 @@ D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
 # 詳細パネルのレビュー中のコメントの並びのボタンと、その本文を並びの順に返すスクリプト
 REVIEW_ORDER_BUTTON = "aside.panel .d-review button.review-order"
 REVIEW_BODIES = "aside.panel .d-review .review-body"
-BODIES_JS = "bodies => bodies.map(b => b.textContent)"
+BODIES_JS = "bodies => bodies.map(b => b.textContent.trim())"
 
 # 画面に結果が出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
@@ -340,7 +340,7 @@ def test_normal_when_edit_remove_restore_in_detail(
     page.fill(f"{REVIEW_ROW.format(id='C-1')} form.row-edit textarea", "案 A に決める")
     page.locator(f"{REVIEW_ROW.format(id='C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 A に決める'",
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 A に決める'",
         timeout=RESULT_TIMEOUT_MS,
     )
     # 実行（消す）
