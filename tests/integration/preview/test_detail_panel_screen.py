@@ -2800,6 +2800,8 @@ def test_diff_body_when_inline_words(
     """変えた行の対は、描いた文字のうち変わった語だけに濃い面を付ける。行の面・記号・取り消し線は残り、変えていない段落と消しただけの段落には付けない（正常系）。"""
     # 準備・実行
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_BODY} span.df-word")
     # 検証（段落: 消した段落・足した段落・消しただけの段落の順）
@@ -2840,6 +2842,8 @@ def test_diff_body_when_inline_words_unpaired(
     """消した行と足した行の行の数が揃わない書き換えは、語の面を付けず、行の面と記号だけで示す（正常系）。"""
     # 準備・実行
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D2_HASH)
     page.wait_for_selector(f"{DIFF_BODY} ins.df-blk")
     # 検証
@@ -2854,6 +2858,8 @@ def test_diff_body_when_inline_words_little_same(
     """行の数が揃っても、同じ部分が少ない（ほとんど書き換えた）対には語の面を付けない（正常系）。"""
     # 準備・実行
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D3_HASH)
     page.wait_for_selector(f"{DIFF_BODY} ins.df-blk")
     # 検証
@@ -2873,6 +2879,8 @@ def test_diff_body_when_inline_words_color(
     """語の面は行の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
     # 準備
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.emulate_media(color_scheme=scheme)
     page.reload()
@@ -2908,6 +2916,8 @@ def test_diff_keys_when_inline_words(
     """背景と案の内容の前の値・今の値は、変わった語だけに濃い面を付ける。値の面・取り消し線・下線・矢印と、読み上げの名前は残る（正常系）。"""
     # 準備・実行
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2944,6 +2954,8 @@ def test_diff_keys_when_inline_words_skipped(
     """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
     # 準備・実行
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2978,6 +2990,8 @@ def test_diff_keys_when_inline_words_color(
     """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
     # 準備
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.emulate_media(color_scheme=scheme)
     page.reload()
@@ -3009,6 +3023,8 @@ def test_diff_keys_when_newlines(
     """背景の前の値・今の値は、書かれた改行の位置で改行して出し、語の面は書き換えた語だけに付く（正常系）。"""
     # 準備
     url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 実行
@@ -3032,6 +3048,8 @@ def test_diff_keys_when_newlines_across_words(
     """書き換えた範囲が改行をまたぐとき、改行の前後の行それぞれで、その範囲の文字に語の面を付ける（正常系）。"""
     # 準備
     url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D2_HASH)
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 実行
@@ -3052,6 +3070,8 @@ def test_diff_keys_when_newlines_long_line(
     """改行を持たない長い 1 行の前の値・今の値は、幅に合わせて折り返し、パネルからはみ出さない（正常系）。"""
     # 準備
     url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D3_HASH)
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 実行
@@ -3069,6 +3089,8 @@ def test_diff_diagram_raw_when_inline_words(
     """図の Raw の変えた行の対は、変わった語だけに濃い面を付け、ほかの行には付けない（正常系）。"""
     # 準備
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector("aside.panel figure.diagram.df-changed", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
     # 実行

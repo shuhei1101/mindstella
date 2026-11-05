@@ -24,7 +24,7 @@ from preview_fixture_types import (
     WriteSamplePreview,
 )
 from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
-from preview_word_diff_helpers import WORD_MARKS_JS, serve_word_diff_workspace
+from preview_word_diff_helpers import FREEZE_PERFORMANCE_NOW_JS, WORD_MARKS_JS, serve_word_diff_workspace
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
 
 # 図を描き終わるまで待つ上限ミリ秒
@@ -238,6 +238,8 @@ def test_diff_raw_when_inline_words(
     # 準備
     url = serve_word_diff_workspace(make_workspace, call_tool)
     preselect_diff(page, "V-2")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     open_preview(url, "#tab=decisions&view=table&id=D-1")
     page.wait_for_selector("aside.panel figure.diagram.df-colored", timeout=DIAGRAM_TIMEOUT_MS)
     page.click('aside.panel button[data-act="diagram-zoom"]')
