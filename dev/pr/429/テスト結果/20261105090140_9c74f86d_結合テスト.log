@@ -1,0 +1,14 @@
+$ pytest tests/integration/preview/test_spa_open.py tests/integration/preview/test_spa_overview_screen.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-foundation
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 39 items
+
+tests/integration/preview/test_spa_open.py .....                         [ 12%]
+tests/integration/preview/test_spa_overview_screen.py .................. [ 58%]
+................                                                         [100%]
+
+======================== 39 passed in 68.56s (0:01:08) =========================
+exit=0
