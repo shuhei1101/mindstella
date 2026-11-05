@@ -36,7 +36,8 @@ export type DiagramViewerProps = {
 
 export const DiagramViewer = ({ svg, source = null, beforeSource = null, notes = null, framed = false, onClose }: DiagramViewerProps) => {
   const { status, library } = useLibrary("jsdiff");
-  const canvas = useRef<HTMLDivElement>(null);
+  // Dialog は portal へ描くので、窓の要素を受け取ってから配置する
+  const [canvas, setCanvas] = useState<HTMLDivElement | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
   const [raw, setRaw] = useState(false);
@@ -48,11 +49,11 @@ export const DiagramViewer = ({ svg, source = null, beforeSource = null, notes =
     });
   }, []);
   const centerZoom = (factor: number): void => {
-    const box = canvas.current?.getBoundingClientRect();
+    const box = canvas?.getBoundingClientRect();
     if (box !== undefined) zoomAt(factor, box.width / 2, box.height / 2);
   };
   useEffect(() => {
-    const element = canvas.current;
+    const element = canvas;
     if (element === null) return undefined;
     const onWheel = (event: WheelEvent): void => {
       event.preventDefault();
@@ -84,7 +85,7 @@ export const DiagramViewer = ({ svg, source = null, beforeSource = null, notes =
       element.removeEventListener("wheel", onWheel);
       observer.disconnect();
     };
-  }, [zoomAt]);
+  }, [canvas, zoomAt]);
   const createRaw = useCallback(() => {
     const pre = h({ tag: "pre", attrs: { class: "dg-raw", tabindex: "0", role: "region", "aria-label": "図の記法" }, children: [source ?? ""] });
     if (beforeSource === null || status !== "ready" || source === null) return { node: pre };
@@ -136,7 +137,7 @@ export const DiagramViewer = ({ svg, source = null, beforeSource = null, notes =
         </div>
         {/* 背景のドラッグはポインターの操作で、拡大と Raw のボタンがキーボードの手段になる */}
         { }
-        <div ref={canvas} hidden={raw} className="relative min-h-0 flex-1 cursor-grab touch-none overflow-hidden" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={release} onPointerCancel={release}>
+        <div ref={setCanvas} hidden={raw} className="relative min-h-0 flex-1 cursor-grab touch-none overflow-hidden" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={release} onPointerCancel={release}>
           {/* mermaid が描いた SVG をそのまま置く */}
           <div ref={stage} className="absolute top-0 left-0 origin-top-left select-text" style={{ transform: `translate(${String(view.x)}px, ${String(view.y)}px) scale(${String(view.scale)})` }} dangerouslySetInnerHTML={{ __html: svg }} />
         </div>

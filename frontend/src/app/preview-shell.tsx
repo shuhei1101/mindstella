@@ -26,7 +26,6 @@ import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
-import { useDetailTrailStore } from "@/shared/stores/detail-trail-store";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
@@ -66,8 +65,6 @@ export const PreviewShell = () => {
   const openAdded = useEditSessionStore((state) => state.openAdded);
   const closeAdd = useEditSessionStore((state) => state.closeAdd);
   const blocked = useEditSessionStore((state) => state.blocked);
-  const visitDetail = useDetailTrailStore((state) => state.visit);
-  useEffect(() => { visitDetail(search.id); }, [search.id, visitDetail]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const data = records.data?.status === 200 ? records.data.data : undefined;
@@ -110,7 +107,7 @@ export const PreviewShell = () => {
     })();
     return (
       <main id="main" className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <h1 className="sr-only">{isListKind(tab) ? KIND_LABEL[tab] : ""}</h1>
+        <h1 className="sr-only text-next">{isListKind(tab) ? KIND_LABEL[tab] : ""}</h1>
         {list}
       </main>
     );

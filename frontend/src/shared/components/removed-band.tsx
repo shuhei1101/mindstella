@@ -6,7 +6,7 @@ export type RemovedBandProps = { items: { id: string; title: string }[] };
 export const RemovedBand = ({ items }: RemovedBandProps) =>
   items.length === 0 ? null : (
     <section aria-label="この時点で消した項目" className="rounded-control border border-border-soft bg-muted p-2">
-      <h2 className="flex items-center gap-1 text-small font-medium">
+      <h2 className="flex items-center gap-1 text-h2 font-medium">
         消した項目
         <span className="font-mono text-xs text-muted-foreground">{items.length}</span>
       </h2>

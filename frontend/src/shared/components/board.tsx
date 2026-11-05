@@ -35,7 +35,7 @@ export const Board = ({ columns, card, emptyText, added }: BoardProps) => (
       const adds = added?.(status) ?? [];
       return (
       <section key={status} aria-label={status} className="flex w-72 flex-none flex-col gap-2">
-        <h2 className="flex items-center gap-1 text-small font-medium">
+        <h2 className="flex items-center gap-1 text-h2 font-medium">
           <StatusMark status={status} />
           {status}
           <span className="font-mono text-xs text-muted-foreground">{items.length}</span>

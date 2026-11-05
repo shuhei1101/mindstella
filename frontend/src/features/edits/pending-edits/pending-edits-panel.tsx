@@ -101,7 +101,7 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
   return (
     <aside id="pending-panel" aria-label="保存待ちの編集" className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border-soft p-2">
-        <h2 className="m-0 text-small font-semibold">保存待ち</h2>
+        <h2 className="m-0 text-h2 font-semibold">保存待ち</h2>
         <span className="text-xs text-muted-foreground">{edits.length} 件</span>
         <Button variant="ghost" size="icon" aria-label="保存待ちの編集を閉じる" className="ml-auto" onClick={onClose}>
           <Icon name="x" />

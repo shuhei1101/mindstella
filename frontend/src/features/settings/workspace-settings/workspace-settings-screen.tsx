@@ -174,7 +174,7 @@ export const WorkspaceSettingsScreen = () => {
     <main id="main" className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="m-0 text-h2 font-semibold">ワークスペースの設定</h1>
+          <h1 className="m-0 text-next font-semibold">ワークスペースの設定</h1>
           <Button variant="outline" className="ml-auto" onClick={() => { setTab("overview"); }}>
             <Icon name="x" />
             閉じる

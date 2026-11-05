@@ -235,7 +235,7 @@ export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, r
       )}
       {adding ? null : (
         <section className="flex flex-col gap-1 border-t border-border-soft pt-2">
-          <h2 className="text-small font-semibold">項目を削除</h2>
+          <h3 className="m-0 text-h2 font-semibold">項目を削除</h3>
           {removing ? (
             <Button type="button" variant="outline" className="self-start" onClick={onCancelRemove}>
               <Icon name="undo" />

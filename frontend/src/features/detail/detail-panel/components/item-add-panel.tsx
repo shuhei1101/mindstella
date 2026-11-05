@@ -90,7 +90,7 @@ export const ItemAddPanel = ({ kind, target, index, edits }: ItemAddPanelProps) 
   return (
     <aside aria-label={`${KIND_LABEL[kind]}を追加`} className="relative flex min-h-0 w-160 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full">
       <div className="flex items-center gap-1 border-b border-border-soft p-2">
-        <h2 className="m-0 flex-1 text-small font-semibold">{`${KIND_LABEL[kind]}を追加`}</h2>
+        <h2 className="m-0 flex-1 text-h2 font-semibold">{`${KIND_LABEL[kind]}を追加`}</h2>
         <Button variant="ghost" size="icon" aria-label="追加の入力を閉じる" onClick={closeAdd}>
           <Icon name="x" />
         </Button>

@@ -5,7 +5,7 @@ import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
-import { useDetailTrailStore } from "@/shared/stores/detail-trail-store";
+import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 
 export type DetailHeaderProps = {
@@ -22,8 +22,7 @@ export type DetailHeaderProps = {
 };
 
 export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
-  const canBack = useDetailTrailStore((state) => state.position > 0);
-  const canForward = useDetailTrailStore((state) => state.position < state.items.length - 1);
+  const { canBack, canForward } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";

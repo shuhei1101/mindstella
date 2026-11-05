@@ -1,9 +1,22 @@
 // search の読み書き。履歴に積むかをインターフェース定義『SPAを開く』の制約「履歴」のとおりに分ける
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, useRouterState, type HistoryState } from "@tanstack/react-router";
 
 import type { PreviewSearch, PreviewTab } from "@/shared/core/preview-search";
 
 const route = getRouteApi("/");
+
+/** 詳細パネルと全画面の中で見てきた項目と、今の位置。その履歴の項目の `history.state` に持つ */
+export type DetailTrail = { items: string[]; position: number };
+
+const EMPTY_TRAIL: DetailTrail = { items: [], position: -1 };
+
+declare module "@tanstack/react-router" {
+  // 宣言のマージで history.state の型を足すには interface が要る
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  interface HistoryState {
+    trail?: DetailTrail;
+  }
+}
 
 /** search の変更 */
 type Patch = Partial<PreviewSearch>;
@@ -11,6 +24,9 @@ type Patch = Partial<PreviewSearch>;
 /** search と操作 */
 export type PreviewSearchApi = {
   search: PreviewSearch;
+  /** 見てきた項目の向きに項目があるか（`history.state` の `trail` から決める） */
+  canBack: boolean;
+  canForward: boolean;
   /** 項目を開く・移る（履歴に積む） */
   openItem: (id: string) => void;
   /** 詳細を閉じる（置き換える） */
@@ -33,16 +49,26 @@ export type PreviewSearchApi = {
 export const usePreviewSearch = (): PreviewSearchApi => {
   const search = route.useSearch();
   const navigate = route.useNavigate();
+  const location = useRouterState({ select: (state) => state.location.state });
+  const trail: DetailTrail = location.trail ?? (search.id === undefined ? EMPTY_TRAIL : { items: [search.id], position: 0 });
+  // 項目を変えない移動では、見てきた項目の履歴を引き継ぐ
+  const keepTrail = (previous: HistoryState | undefined): HistoryState => ({ ...previous, ...(previous?.trail === undefined ? {} : { trail: previous.trail }) });
   const apply = (patch: Patch, replace: boolean): void => {
-    void navigate({ search: (previous) => ({ ...previous, ...patch }), replace });
+    void navigate({ search: (previous) => ({ ...previous, ...patch }), replace, state: keepTrail });
   };
   return {
     search,
+    canBack: trail.position > 0,
+    canForward: trail.position < trail.items.length - 1,
     openItem: (id) => {
-      apply({ id, full: search.full, h: undefined }, false);
+      const items = [...trail.items.slice(0, trail.position + 1), id];
+      const next: DetailTrail = { items, position: trail.position + 1 };
+      // 戻った先で「進む」を押せるよう、今の履歴の項目にも次の項目を残す
+      window.history.replaceState({ ...(window.history.state as object), trail: { items, position: trail.position } }, "");
+      void navigate({ search: (previous) => ({ ...previous, id, full: search.full, h: undefined }), state: (previous) => ({ ...previous, trail: next }) });
     },
     closeItem: () => {
-      apply({ id: undefined, full: undefined, h: undefined }, true);
+      void navigate({ search: (previous) => ({ ...previous, id: undefined, full: undefined, h: undefined }), replace: true, state: (previous) => ({ ...previous, trail: EMPTY_TRAIL }) });
     },
     setTab: (tab) => {
       apply({ tab, view: undefined, f: {}, sort: undefined }, false);
@@ -69,10 +95,11 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       apply({ panel }, true);
     },
     openList: (tab, patch) => {
-      void navigate({ search: { f: {}, tab, ...patch } });
+      const next = patch.id === undefined ? EMPTY_TRAIL : { items: [patch.id], position: 0 };
+      void navigate({ search: { f: {}, tab, ...patch }, state: (previous) => ({ ...previous, trail: next }) });
     },
     replaceSearch: (next) => {
-      void navigate({ search: next, replace: true });
+      void navigate({ search: next, replace: true, state: keepTrail });
     },
   };
 };

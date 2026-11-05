@@ -118,13 +118,35 @@ def test_map_lock_and_shake(page: Page, spa_url: str) -> None:
     expect(page).to_have_url(re.compile("id=D-1"))
 
 
-def test_detail_back_disabled_at_start(page: Page, spa_url: str) -> None:
-    """パネルで最初に開いた項目では戻るを押せず、移った後は押せる。"""
+def test_detail_back_keeps_trail_over_reload(page: Page, spa_url: str) -> None:
+    """見てきた項目の位置は履歴に持つので、再読み込みしても戻る・進むを押せる。"""
     open_spa(page, spa_url, "?tab=decisions&id=D-1")
     panel = page.get_by_role("complementary", name="詳細")
-    expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_disabled()
+    back = panel.get_by_role("button", name="前の項目へ戻る")
+    forward = panel.get_by_role("button", name="次の項目へ進む")
+    expect(back).to_be_disabled()
     panel.get_by_role("button", name="D-2").click()
-    expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_enabled()
+    expect(back).to_be_enabled()
+    page.reload()
+    expect(back).to_be_enabled()
+    back.click()
+    expect(page).to_have_url(re.compile("id=D-1"))
+    expect(back).to_be_disabled()
+    expect(forward).to_be_enabled()
+
+
+def test_diagram_viewer_fits_on_open(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """図の拡大は、開いた直後に窓へ収まる大きさで中央に置く。"""
+    url = write_preview(make_item("D-1", title="図", status="未決定", body="D-1.md"), bodies={"D-1.md": "```mermaid\nflowchart LR; A-->B\n```\n"})
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    page.locator(".mermaid svg").wait_for()
+    page.get_by_role("button", name="図を拡大表示").click()
+    dialog = page.get_by_role("dialog", name="図の拡大")
+    expect(dialog.locator(".font-mono")).not_to_have_text("100%")
+    box = dialog.locator(".select-text svg").bounding_box()
+    frame = dialog.bounding_box()
+    assert box is not None and frame is not None
+    assert abs((box["x"] + box["width"] / 2) - (frame["x"] + frame["width"] / 2)) < 16
 
 
 @pytest.mark.parametrize("search", ["?tab=decisions&view=table", "?tab=decisions", "?tab=tasks", "?tab=docs", "?tab=research"])
@@ -136,4 +158,3 @@ def test_list_screens_pass_axe_rules(page: Page, spa_url: str, search: str, view
     page.add_script_tag(path=str(AXE_SCRIPT))
     violations = page.evaluate(AXE_RULES_JS)
     assert violations == []
-
