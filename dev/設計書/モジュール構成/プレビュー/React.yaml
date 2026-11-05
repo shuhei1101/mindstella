@@ -5,7 +5,7 @@ diagrams:
 - name: React の入口
   diagram: "```mermaid\nclassDiagram\n  direction LR\n  class 起動\n  class アプリ\n  class QueryClientの作成\n  class ルーターの作成\n  class SPAのルート\n  class searchの検証\n  class 先読みするquery\n  class プレビューの外枠\n  起動 --> アプリ\n  アプリ --> QueryClientの作成\n  アプリ --> ルーターの作成\n  ルーターの作成 --> SPAのルート\n  SPAのルート --> searchの検証\n  SPAのルート --> 先読みするquery\n  SPAのルート --> プレビューの外枠\n```"
 - name: プレビューの外枠
-  diagram: "```mermaid\nclassDiagram\n  direction LR\n  class プレビューの外枠\n  class 概要の画面\n  class 検討事項の画面\n  class タスクの画面\n  class 資料の画面\n  class 記録の表の画面\n  class 設定の画面\n  class 詳細パネル\n  class 詳細の全画面\n  class 保存待ちのパネル\n  プレビューの外枠 --> 概要の画面\n  プレビューの外枠 --> 検討事項の画面\n  プレビューの外枠 --> タスクの画面\n  プレビューの外枠 --> 資料の画面\n  プレビューの外枠 --> 記録の表の画面\n  プレビューの外枠 --> 設定の画面\n  プレビューの外枠 --> 詳細パネル\n  プレビューの外枠 --> 詳細の全画面\n  プレビューの外枠 --> 保存待ちのパネル\n```"
+  diagram: "```mermaid\nclassDiagram\n  direction LR\n  class プレビューの外枠\n  class 概要の画面\n  class 検討事項の画面\n  class タスクの画面\n  class 資料の画面\n  class 記録の表の画面\n  class 設定の画面\n  class 詳細パネル\n  class 詳細の全画面\n  class 保存待ちのパネル\n  class 変更履歴\n  class 図の拡大\n  プレビューの外枠 --> 概要の画面\n  プレビューの外枠 --> 検討事項の画面\n  プレビューの外枠 --> タスクの画面\n  プレビューの外枠 --> 資料の画面\n  プレビューの外枠 --> 記録の表の画面\n  プレビューの外枠 --> 設定の画面\n  プレビューの外枠 --> 詳細パネル\n  プレビューの外枠 --> 詳細の全画面\n  プレビューの外枠 --> 保存待ちのパネル\n  プレビューの外枠 --> 変更履歴\n  詳細パネル --> 図の拡大\n  詳細の全画面 --> 図の拡大\n```"
 - name: React の基盤
   diagram: "```mermaid\nclassDiagram\n  direction LR\n  class API の呼び出し\n  class アプリのエラー\n  class 書き換えの知らせへの接続\n  class 接続の状態\n  API の呼び出し --> アプリのエラー\n  書き換えの知らせへの接続 --> 接続の状態\n```"
 notes:
