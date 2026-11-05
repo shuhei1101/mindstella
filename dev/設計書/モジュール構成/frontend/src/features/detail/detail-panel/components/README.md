@@ -17,5 +17,6 @@
 | [detail-editor.tsx](./detail-editor.tsx.yaml) | 編集の表示の入力欄を描き、入力欄を離れたらキーの編集を溜める |
 | [diagram-block.tsx](./diagram-block.tsx.yaml) | 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く |
 | [detail-resizer.tsx](./detail-resizer.tsx.yaml) | 詳細パネルの幅をドラッグとキーで変える |
+| [item-add-panel.tsx](./item-add-panel.tsx.yaml) | 項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える |
 
 <!-- /table -->

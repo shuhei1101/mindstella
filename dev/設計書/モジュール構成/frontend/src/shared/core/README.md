@@ -27,5 +27,6 @@
 | [list-rows.ts](./list-rows.ts.yaml) | 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て |
 | [format.ts](./format.ts.yaml) | 日時と値の文字の組み立て |
 | [dom-parts.ts](./dom-parts.ts.yaml) | mdmark が描いた本文の中へ足す要素の組み立て |
+| [lock.ts](./lock.ts.yaml) | 注目の起点のロックの判定と鍵の震え |
 
 <!-- /table -->
