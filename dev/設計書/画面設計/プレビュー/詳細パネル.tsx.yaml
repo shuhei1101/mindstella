@@ -1,0 +1,746 @@
+title: 詳細パネル
+screen: frontend/src/features/detail/detail-panel/detail-panel.tsx
+elements:
+- name: 戻る・進む
+  kind: button
+  position: 見出し
+  description: パネルと全画面の中で移ってきた項目を行き来する（ブラウザの戻る・進むと同じ履歴）。読み上げの名前は「前の項目へ戻る」「次の項目へ進む」
+  label: ← →
+  enabled_when: その向きに見てきた項目がある
+- name: タイトル
+  kind: heading
+  position: 本文のスクロール領域 > 先頭
+  description: 項目の状態とタイトル。納品物の資料はタイトルの右に余白を空けて納品物の印を置く（状態の横に並べない）。本文を送るとスクロール領域と一緒に隠れ、代わりに見出しのタイトルが出る
+  io: 表示
+  source: SPAを開く.id の項目
+- name: 全画面表示
+  kind: button
+  position: 見出し
+  description: 詳細の全画面を開く（履歴に積まない）。全画面の中では、画面設計『詳細の全画面』の「元の大きさに戻す」に替わる
+  label: 全画面表示
+- name: 閉じる
+  kind: button
+  position: 見出し
+  description: パネルを閉じる。Esc でも閉じる（幅 900px 以下で左のパネルが前に出ているときは、左のパネルを先に閉じる）。検討事項のマップでは、余白を押しても閉じる
+- name: 案
+  kind: list
+  description: 背景の後に、検討事項の案をカードの縦並びで出す。カードの見出しに記号と内容、その下にメリット・デメリット・備考・理由を出し、値は文字列の値の描画で描く。採用した案に「採用」、`adopted` が偽の案に「不採用」を出し、どちらでもない案には何も出さない
+  io: 表示
+  source: 記録の取得.decisions[].options
+  visible_when: 検討事項で案を持つ
+- name: 本文
+  kind: article
+  component: dev/設計書/部品設計/プレビュー/Markdownの本文.tsx#
+  args:
+  - name: root
+    value: 本文を mdmark の `mount` で描いた要素
+  - name: display
+    value: プレビューを開く.個人の上書き の table_pin・table_head・table_stripes・section_fold（無ければ列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
+  - name: fold
+    value: 差分の表示で本文の差分を描いているときは false、それ以外は true
+  description: 本文の Markdown を mdmark で描き（描くときに無害化する）、見出しのリンク・本文の印・項目の ID のリンクを付ける。mermaid の図は SVG に描き、「拡大表示」「Raw」「コピー」を置く。図は押しても拡大せず、図の上で虫眼鏡のカーソルを出さない。図の文字の上は文字を選ぶカーソルにし、ドラッグで選んでコピーできる。図を描けないときは「この図は表示できませんでした。原文を表示します。」と原文。ライブラリが読めないときは読めなかったライブラリの知らせと原文。コードブロックと図の原文（Raw・描けないときの原文・Raw の差分）は、長い行を折り返して本文の幅に収め、横にスクロールさせない。本文の長い URL とインラインコードは、どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない）。本文の表は、どの幅でも横に送れる要素（役割 `group`、読み上げの名前「本文の表」、キーボードのフォーカスで止まり矢印で送れる）で包み、表の中だけで横に送る。本文の区画は横に送らせない。表の列の幅と折り返し・右端のフェード・表の列の固定・表の見出しの固定・表のしま模様・セクションの折りたたみ・コードブロックの言語の札とコピー・Alert の見出しのアイコンは『Markdownの本文』で当てる（『プレビューを開く』の制約「本文の表とセクションの見せ方」）。表示の設定で切り替えるとその場で描き直し、固定した列と畳んだセクションは初めの状態に戻る
+  io: 表示
+  visible_when: 項目が `body` を持ち、本文が Markdown（`body` が `.md` で終わる）
+  source: 記録の取得.bodies[{項目の body}]
+- name: 図の拡大表示
+  kind: button
+  position: 本文 > 図
+  description: 図の拡大を開く。読み上げの名前は「図を拡大表示」
+  label: 拡大表示
+- name: 図の Raw
+  kind: button
+  position: 本文 > 図
+  description: 図と mermaid の原文を切り替える（`aria-pressed`）
+  label: Raw
+- name: 図のコピー
+  kind: button
+  position: 本文 > 図
+  description: mermaid の原文をクリップボードに写す
+  label: コピー
+- name: 関係する項目
+  kind: list
+  description: 前提・後続の項目・関連タスク・経緯・関連・参照元。押すとその項目へ移り、履歴に積む
+  io: 表示
+  source: 記録の取得（`depends_on`・`for`・`related`・`sources` とその逆向き）
+  visible_when: その種類の項目が 1 件以上
+- name: コメントの入力
+  kind: link
+  position: 下端
+  description: 「今の画面でコメントする」のリンク。押すと今の画面の同じ項目の詳細（`/mindstella.html#tab={tab}&id={ID}`。インターフェース定義『SPAを開く』の制約「React に無い画面」）を同じタブで開く。コメントの入力欄は子 4（#369）で移す
+  io: 入力
+  visible_when: サーバーの配信で開いたとき
+  status: implemented
+- name: 選んだ時点
+  kind: label
+  description: 本文の冒頭に、変更履歴で選んだ時点の名前と日時（前回開いてからは範囲の始まり）を出す
+  io: 表示
+  source: SPAを開く.diffと記録の取得.changes
+  visible_when: 差分の表示の間で、開いた項目がその時点で足されたか変わったとき
+- name: 新規の札
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/差分の印.tsx#
+  args:
+  - name: kind
+    value: new
+  - name: labeled
+    value: 'true'
+  description: タイトルの横に「新規」の札を置く
+  io: 表示
+  visible_when: 差分の表示の間で、開いた項目がその時点で足されたとき
+- name: キーの差分
+  kind: label
+  description: 変わったキー（状態・答え・案 など）の前の値と今の値を並べる。前の値は消した色の面と取り消し線、今の値は足した色の面と下線。状態のキーだけは面を塗らず、取り消し線・下線と矢印で示す。前に無かったキーは今の値だけを足した印で出す。前の値と今の値は、値の中の改行を改行として出し、長い行は幅に合わせて折り返す。`withdrawn` はキーの一覧に値を出さず（取り下げの札が示す）、選んだ時点で変わったときだけ「取り下げ」の行に前後を並べ、真の値を取り下げの札で出す。題と、文字列の値の描画が描く値は、前の値と今の値がどちらもあるとき、本文の差分と同じく変わった語だけに値の面より濃い面（前の値は濃い赤、今の値は濃い緑）を付ける。値の面・下線・取り消し線・矢印はそのまま残し、濃い面の上の文字も 4.5:1 以上にする。変わった語の範囲が改行をまたぐときは、改行の前後の行それぞれで、その範囲の文字に濃い面を付ける。配列のキー・キーの一覧・状態・案の採用の状態と、語の差分を計算しきれなかった値には濃い面を付けない
+  io: 表示
+  source: 記録の取得.{種類}[].history から組み立てた前の値
+  visible_when: 差分の表示の間で、そのキーが選んだ時点で変わったとき
+- name: 本文の差分
+  kind: label
+  description: 本文を Markdown として描いたまま、足した段落・見出し・箇条書き・表の行に足した印（足した色の面と +）、消したものを消した印（消した色の面と −・取り消し線）つきで元の位置に差し込む。変えていないものには印を付けない。足した部分と変えていない部分は今の本文の行で選んだ箇所に対応づき、消した部分は選んだ箇所の対応づけの外にする。変えた行（消した行と、すぐ後に続く同じ行の数の足した行を前から 1 行ずつ対にしたもの）は、対の消した方と足した方の描いた文字のうち変わった語だけに、行の面より濃い面（消した方は濃い赤、足した方は濃い緑）を付ける。行の面・記号・取り消し線はそのまま残し、濃い面の上の文字も置く面の上で 4.5:1 以上にする。対にならない行と、語の差分を計算しきれなかった対には濃い面を付けない。本文の差分（インライン・左右に並べる）にも『Markdownの本文』で表の見せ方を当て、セクションの開閉は置かない。しま模様をオンにしても、差分の印の行は差分の面のままにする
+  io: 表示
+  source: 記録の取得.bodies と、history の body_diff から組み立てた前の本文
+  visible_when: 差分の表示の間で、Markdown の本文が選んだ時点で変わったとき（並べ方が「左右に並べる」で、本文の幅が 560px 以上のときは「左右に並べた本文の差分」が代わる）
+- name: 図の差分
+  kind: label
+  description: flowchart・sequenceDiagram・classDiagram・erDiagram・stateDiagram-v2 は、足した・変えたノードと辺に色を付け、図の下に凡例と「消したもの」の札を並べる。それ以外の種類は変わった図の枠に色を付け、Raw で差分を見るよう案内する
+  io: 表示
+  visible_when: 差分の表示の間で、本文のその図の記法が選んだ時点で変わったとき
+- name: 図の Raw の差分
+  kind: label
+  description: 図の Raw で、記法の行ごとに足した行（+）と消した行（−）を印つきで出す。変えた行の対は、本文の差分と同じく変わった語だけに濃い面を付ける。記法の行の差分を打ち切ったときは、今の記法を差分なしで出す。長い行の折り返した続きは印の幅だけ下げて、印の列の下へ回り込ませない
+  io: 表示
+  visible_when: 差分の表示の間で、jsdiff を読めていて、図の Raw を押していて、その図の記法が変わったとき
+- name: 前後を組み立てられない旨
+  kind: label
+  description: 選んだまとまりの変更履歴が保持する回数を超えて消えているとき、本文の頭に出し、今の内容を差分なしで描く
+  label: このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。
+  io: 表示
+  visible_when: 差分の表示の間で、開いた項目が選んだ時点で変わっていて、その変更履歴が無いとき
+- name: 本文の差分を出せない旨
+  kind: label
+  description: 本文の差分が今の本文に当たらないとき、本文の頭に出し、今の本文を差分なしで描く。キーの差分は出す
+  label: 本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。
+  io: 表示
+  visible_when: 差分の表示の間で、body_diff の now が今の本文に当たらないとき
+- name: 本文の差分を計算しきれない旨
+  kind: label
+  description: 本文の行の差分を打ち切ったとき、本文の頭に出し、今の本文を差分なしで描く。キーの差分は出す
+  label: 本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。今の本文を出しています。
+  io: 表示
+  visible_when: 差分の表示の間で、jsdiff を読めていて、本文の行の差分を打ち切ったとき（モジュール構成『差分』の `diffLineParts` が `null`）
+- name: 差分のライブラリを読めない旨
+  kind: label
+  description: jsdiff を読めなかったとき、本文の頭に出し、本文・図・図の Raw を今の版で差分なしで描く。キーの差分は出す
+  label: '本文と図の差分を表示できません。読み込めなかったライブラリ: jsdiff 通信を確認して、ページを再読み込みしてください。'
+  io: 表示
+  visible_when: 差分の表示の間で、開いた項目が選んだ時点で変わっていて、jsdiff を読めなかったとき（モジュール構成『基盤』の `missingLibraries`）
+- name: レビュー中のコメント
+  kind: list
+  position: 関係する項目の後
+  description: その項目へのレビュー中のコメントを、既定は新しい順に並べ、レビュー中のコメントの並びの切り替えで古い順にする。見出し「レビュー中のコメント」と件数、行ごとに箇所（名前と選んだ文）と本文（行の本文）を出し、行の右上に「修正」「削除」を置く。消した行は並びの中の元の場所に「元に戻す」と共に残す。チェックとまとめて送るはコメントの一覧のレビュー中の書き込みの画面で行う。0 件のときは「レビュー中のコメントはありません。」。件数は消した行を数えない
+  io: 表示
+  source: レビュー中のコメントの読み取り.items（target がこの項目のもの）
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: レビュー中のコメントの並びの切り替え
+  kind: button
+  position: レビュー中のコメント > 見出しの行 > 右
+  description: '今の並び（「新しい順」「古い順」）と矢印を出す 1 つのボタンで、押すたびに並びを入れ替え、その場で描き直す（『プレビューを開く』の制約「レビュー中のコメントの並び」）。古い順は個人の上書きに残し、新しい順に戻すと上書きを外す。読み上げの名前は「コメントの並び: {今の並び}」。押したボタンのフォーカスを保ち、履歴に積まず URL の search paramsも変えない'
+  label: 新しい順 / 古い順
+  io: 入力
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[レビュー中のコメントの並び]
+  status: planned
+- name: 選んだ箇所のコメントの入口
+  kind: button
+  component: dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
+  args:
+  - name: anchor
+    value: 選んだ範囲の端の矩形
+  - name: area
+    value: 画面の大きさと、開いている詳細（パネルか全画面）の要素「本文のスクロール領域」の矩形
+  position: 本文・値 > 選んだ範囲の始まりの上（収まらなければ終わりの下）
+  description: 本文の文章か項目の値（案の中の値を含む）を選び終えたときに出す。本文は元の行の印から行の範囲を、値は描いた要素のキーのパスを求める（『プレビューを開く』の選んだ箇所の対応づけ）。HTML の本文は、「HTML の本文」の「選び終えた」で受けた行の範囲と矩形で出す。埋め込んだ HTML の範囲の中の選択の端は、要素「埋め込んだ HTML」のとおり範囲の行に読み替える。押すと入口を閉じ、コメントの入力に箇所を添えて入力欄へフォーカスを移す。履歴に積まない
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: 示す箇所
+  kind: highlight
+  position: 本文・値
+  description: レビュー中の書き込みの行かスレッドの向けた項目から開いたとき、その書き込みの箇所（本文はその行の範囲のブロック、値はそのキーの要素）までスクロールし、印の色の地で示す。HTML の本文は、枠の中でその行を含む最も内側の `data-line` を持つ要素を印の色の地で示し、その要素が見える位置まで本文のスクロール領域を送る。箇所の行の範囲が埋め込んだ HTML の範囲の行を含むときは、その範囲の要素も印の色の地で示す。別の項目へ移るかパネルを閉じると消す。箇所が今の本文に合わなければ示さず、項目の先頭を出す
+  io: 表示
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: 本文のスクロール領域
+  kind: region
+  position: 見出しと下端の間
+  description: 背景・案・採用した案と理由・本文・関係する項目・レビュー中のコメントを入れ、見出しと下端の間だけを縦にスクロールする。Tab の順で見出しのボタンの後・中の要素の前に入り、フォーカスしたら矢印・PageUp / PageDown・Home / End・Space で送る。中にフォーカスできる要素が無い項目でもキーボードで送れる。読み上げの名前は「詳細の本文」で、フォーカスの輪郭は全画面で共通の輪郭の色と太さで、領域の内側に描く。フォーカスがあるときに描き直したら、描き直した後のこの領域へフォーカスを戻し、スクロールの位置も保つ。スクロールの位置は項目ごとにタブを閉じるまで（sessionStorage）残し、別の項目から「前の項目へ戻る」で戻ったとき・詳細の全画面から戻ったとき・ページを読み込み直したときに、その項目で最後にスクロールした位置へ戻す（詳細の全画面の本文も同じ位置で開く）。見出し・コメントの箇所を示して開くときは、示す箇所を優先する
+  io: 表示
+  visible_when: 常時
+  reason: 非機能要件の入力方式（全ての操作にキーボードで届く）を満たすため
+  status: implemented
+- name: 見出しのリンク
+  kind: link
+  position: 本文 > 見出しの右
+  description: '本文の見出しを指す #。乗せる・フォーカスで出す（乗せる操作の無い端末は常に出す）。押すと本文の中でその見出しまで送り、URL の search params の `h` をその見出しにする（履歴に積まない）。本文の中の `[文言](#見出し)` のリンクも同じく、その見出しまで送る（`#` の後ろが `diff` の引数を持つリンクは要素「まとまりのリンク」）。読み上げの名前は「見出し「{見出し}」へのリンク」'
+  label: '#'
+  visible_when: 本文に見出しがあるとき
+- name: 本文の印
+  kind: link
+  position: 本文 > 文中
+  description: 本文の文中（コードブロック・図・リンク・見出しの外。インラインコードは中身がちょうど語のときだけ。埋め込んだ HTML の範囲の中の文を含む）に出てくる用語集の用語（用語の項目のタイトルと別名 `aliases`）と、資料・調査のエイリアス（`aliases`）を、文字の色を変えない点線の下線で示す。出てくる全ての箇所に付け、長い語から順に当て、英数字の語は語の切れ目でだけ当てる。同じ語に複数の項目が一致したときは 1 つの印にまとめ、同じ用語のタイトルと別名が同じ語のときはその用語を 1 回だけ数える。開いている項目自身と、取り下げた資料・調査は当てる項目に含めない（それだけに一致する語には印を付けない）。用語 1 件だけに一致した印は押すとその用語の詳細へ移り、履歴に積む。用語 2 件以上か、資料・調査にも一致した印は押しても移らず、本文の印のツールチップを出したままにする（外を押すか Esc で閉じる）。その印から Tab で、ツールチップの中の最初のリンクへ移る
+  visible_when: 本文に用語集の用語のタイトルか別名、資料・調査のエイリアスが出てくるとき
+  source: 記録の取得（terms[].title・terms[].aliases・docs[].aliases・research[].aliases）
+- name: 本文の印のツールチップ
+  kind: tooltip
+  position: 本文の印の上（収まらなければ下）
+  description: 本文の印に乗せる・フォーカスすると、その語に一致した項目を用語 → 資料 → 調査の順に並べて出す。用語 1 件だけのときは今と同じく用語・ID・意味だけを出し、用語 2 件以上か、資料・調査を含むときは種類ごとの見出しと区切り線で分け、項目のタイトルを詳細へのリンクにする（押すとその項目へ移り、履歴に積む）。最大の高さを超えた分は中でスクロールする。ツールチップに乗せている間は消さず、Esc で消す。印から外れて 150 ミリ秒たつと消す（その間にツールチップへ乗せれば消さない。押して残したときは消さない）。詳細パネル（全画面ではモーダル）の中に置く
+  io: 表示
+  visible_when: 本文の印に乗せる・フォーカスしている間と、用語 2 件以上か、資料・調査にも一致した印を押して残した間
+  source: 記録の取得（terms[].meaning・docs[].description・research[].description）
+  component: dev/設計書/部品設計/プレビュー/本文の印のツールチップ.tsx#
+  args:
+  - name: entries
+    value: 印の語に一致した項目（記録の取得 の terms・docs・research から。開いている項目自身と取り下げた資料・調査を除く）
+  - name: anchor
+    value: 本文の印の要素
+- name: 項目の ID のリンク
+  kind: link
+  position: 本文 > 文中
+  description: 本文の文中（コードブロック・図・リンクの外。インラインコードは中身がちょうど ID のときだけ。埋め込んだ HTML の範囲の中の文を含む）に出てくる、記録にある項目の ID を、等幅の印の色の文字と下線のリンクにする（折り返さない）。記録に無い ID と、開いている項目自身の ID はリンクにしない。押すとその項目の詳細へ移り、履歴に積む
+  visible_when: 本文に記録にある項目の ID が出てくるとき
+  source: 記録の取得
+- name: 背景
+  kind: label
+  position: タイトルの下
+  description: 検討事項のリード（何を決めるか）を出す。値は文字列の値の描画で描く
+  io: 表示
+  visible_when: 検討事項が `lead` を持つ
+  source: 記録の取得.decisions[].lead
+  status: implemented
+- name: 推奨の印
+  kind: label
+  position: 案 > 推奨の案のカードの見出しの右
+  description: AI が推す案のカードに、星のアイコンと「推奨」の枠線のバッジを出す
+  label: 推奨
+  io: 表示
+  visible_when: 推奨の印を持つ案があり、どの案も採用でないとき
+  source: 記録の取得.decisions[].options[].recommended
+  status: implemented
+- name: 採用した案と理由
+  kind: section
+  position: 案の後・本文の前
+  description: 見出し「採用した案と理由」の節に、「決定内容」（`answer`）と「理由」（`reason`）を値のあるものだけ並べる。値は文字列の値の描画で描く
+  label: 採用した案と理由
+  io: 表示
+  visible_when: 検討事項が `answer`・`reason` のどちらかを持つ
+  source: 記録の取得.decisions[].answer・reason
+  status: implemented
+- name: 文字列の値の描画
+  kind: label
+  position: 背景・案・採用した案と理由と、ほかの種類の値
+  description: 詳細に出す文字列の値（検討事項の `lead`・`answer`・`reason`・案の各値、タスクの `reason`、調査の `question`・`conclusion`、用語の `meaning`、メモの `content`、調査・資料の `description`、調査・資料・用語集・メモ・会話ログの取り下げた理由 `reason`）を、本文と同じく mdmark で描いて差し込む。本文と違い、段落の中の 1 つの改行も改行として出す。値の要素はキーのパスを持ち、選んだ箇所のコメント・示す箇所・キーの差分が指せる。mdmark を読めないときは文字のまま、改行を改行として出す。差分の表示の間で変わった値は、キーの差分で前の値と今の値を文字で並べ、改行を改行として出す
+  io: 表示
+  visible_when: 項目がその値を持つ
+  source: 記録の取得
+  status: implemented
+- name: 取り下げの札
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/取り下げの札.tsx#
+  args:
+  - name: large
+    value: 'true'
+  position: タイトル > 納品物の印・新規の札の右
+  description: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に置く。タイトルの文字は薄くしない（薄くするのは表の行とカード）
+  io: 表示
+  source: SPAを開く.id の項目の withdrawn
+  visible_when: 開いた項目の `withdrawn` が真のとき（差分の表示によらない）
+  status: implemented
+- name: 取り下げた理由
+  kind: section
+  position: タイトルの下のキーの一覧の後
+  description: 見出し「取り下げた理由」の節に、取り下げた理由 `reason` を出す。値は文字列の値の描画で描く。差分の表示で選んだ時点に取り下げたときは、キーの差分と同じく前の値（なし）と今の値を並べる。検討事項・タスクの `reason` はこの節に出さない（採用した案と理由・タスクの理由が持つ）
+  label: 取り下げた理由
+  io: 表示
+  source: 記録の取得.{research・docs・terms・notes・logs}[].reason
+  visible_when: 調査・資料・用語集・メモ・会話ログが `reason` を持つか、差分の表示で `reason` が選んだ時点に変わったとき
+  status: implemented
+- name: 行の修正
+  kind: button
+  position: レビュー中のコメント > 行 > 右上
+  description: 行の本文をその場で「行の本文の書き換え」に切り替え、入力欄へフォーカスを移す。アイコンのボタンを常に出す（レビュー中の書き込みの行の「修正」と同じアイコン）。読み上げの名前は「{項目の ID} へのコメントを修正」、`title` は「修正」。書き換えている行には出さない
+  label: （鉛筆の印）
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: 行の削除
+  kind: button
+  position: レビュー中のコメント > 行 > 右上
+  description: 確認のモーダルを挟まず `DELETE /api/comments/{id}` で消し、行を「行の元に戻す」に置き換えて「元に戻す」へフォーカスを移す。トップバーのコメントのボタンの件数・コメントの印・見出しの件数・開いていればコメントの一覧を描き直す。読み上げの名前は「{項目の ID} へのコメントを削除」、`title` は「削除」。書き換えている行には出さない
+  label: （ごみ箱の印）
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: 行の本文の書き換え
+  kind: form
+  position: レビュー中のコメント > 行 > 本文
+  description: 本文の入力欄（行の幅いっぱい）と「キャンセル」「修正」。「修正」と入力欄の Ctrl+Enter（macOS は Cmd+Enter。変換の確定の Enter を除く）で `PATCH /api/comments/{id}` へ `body` を送り、200 なら本文に戻して「行の修正」へフォーカスを戻す。空白だけは送らず「コメントを入れてから直してください。」を出して入力欄の枠を赤くする。届かない・エラーのときは入力を残し、届かないときは「サーバーが止まっています。立ち上げ直してから直してください。」、そのほかはエラーの `detail` を出す。理由は `role="alert"` と印のアイコンで出す。入力欄は `aria-keyshortcuts` に Ctrl+Enter を持ち、「修正」の `title` は「修正（Ctrl+Enter）」。「キャンセル」と入力欄の Esc で書き換えを捨てて「行の修正」へフォーカスを戻す（詳細の全画面では Esc で全画面を閉じない）。同時に書き換えられる行は詳細パネルとコメントの一覧（レビュー中の書き込み・スレッドの画面）を合わせて 1 行で、別の行の「修正」を押すと前の書き換えを捨てる。入力欄は修正を始めた側だけに出し、コメントの一覧で書き換えている行は、詳細パネルでは本文だけを出す
+  io: 入力
+  max_length: 10000
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: 行の元に戻す
+  kind: button
+  position: レビュー中のコメント > 消した行
+  description: 消した行を点線の枠の面にし、「コメントを削除しました。」（`role="status"`）と「元に戻す」を出す。「元に戻す」は消した中身を『レビュー中のコメントの追加』へ同じ `id` と `created` で送り、元の場所に戻して戻した行の「行の修正」へフォーカスを移す。詳細パネルで別の項目へ移るか、パネルを閉じるまで出す。コメントの一覧を開いている間は一覧と同じ消した行を見て、一覧を閉じた時点で一覧と一緒に消える
+  label: 元に戻す
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  status: planned
+- name: 形式の札
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/本文の形式の札.tsx#
+  args:
+  - name: format
+    value: 資料の `body` が `.html` で終われば `html`、それ以外は `md`
+  position: 見出し > 種類と ID の右
+  description: 資料の本文の形式を示す
+  io: 表示
+  source: SPAを開く.id の項目の body
+  visible_when: 資料で `body` を持つ
+  status: implemented
+  introduced:
+    pr: 214
+- name: HTML の本文
+  kind: iframe
+  component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.tsx#
+  args:
+  - name: source
+    value: 記録の取得.marked_bodies[{項目の body}]
+  - name: selectable
+    value: サーバーの配信では true、配る書き出しでは false
+  - name: label
+    value: 本文（HTML）
+  position: 本文の場所
+  description: 本文が HTML の資料は、要素「本文」の代わりにこの枠で描く。本文のスクリプトは動かさず、本文の CSS は枠の外へ漏らさない。枠の高さは描いた中身に合わせ、本文のスクロール領域ごと縦に送る。見出しのリンク・本文の印・項目の ID のリンクは付けない
+  io: 表示
+  source: 記録の取得.marked_bodies[{項目の body}]
+  visible_when: 資料の `body` が `.html` で終わる（差分の表示の間で本文が変わったときは「HTML の本文の差分」が代わる）
+  status: implemented
+  introduced:
+    pr: 214
+  action: 本文の中の `http:`・`https:`・`mailto:` のリンクを押すと、枠の中では移らず、リンク先を新しいタブで開く（`mailto:` はメールのアプリへ渡る）。`#` で始まるリンクは、本文のスクロール領域をその `id` の要素まで送る（URL の search paramsは変えず、履歴に積まない）。ほかのリンクは押しても移らない（『プレビューを開く』の制約「HTML の本文の中のリンク」）
+- name: html のコードブロック
+  kind: iframe
+  component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.tsx#
+  args:
+  - name: source
+    value: コードブロックの中身（フェンスの行を除く）
+  - name: selectable
+    value: 'false'
+  - name: label
+    value: html のコードブロック
+  position: 本文 > コードブロックの場所
+  description: Markdown の本文の中の、埋め込んだ HTML の範囲の外の言語指定 `html` のコードブロックを、コードではなく描いた結果で出す。前後の Markdown は今までどおり描き、枠の中で文を選んでもコメントの入口は出さない。差分の表示の間でそのコードブロックが変わったときは、枠に描かず、コードブロックの原文に「本文の差分」と同じ足した・消した印を付けて出す
+  io: 表示
+  source: 記録の取得.bodies[{項目の body}] の言語指定 `html` のコードブロック
+  visible_when: Markdown の本文が言語指定 `html` のコードブロックを持つ
+  status: implemented
+  introduced:
+    pr: 214
+  action: 枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
+- name: HTML の本文の差分
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/HTMLの本文の差分.tsx#
+  args:
+  - name: before
+    value: history の body_diff で組み立てた選んだ時点の本文
+  - name: after
+    value: 記録の取得.bodies[{項目の body}]
+  - name: marked
+    value: 記録の取得.marked_bodies[{項目の body}]
+  - name: beforeFormat
+    value: 選んだ時点の `body`（history の before にあればその値）が `.md` で終われば `md`、それ以外は `html`
+  - name: layout
+    value: 並べ方の切り替えを置き、プレビューを開く.個人の上書き.body_diff_layout が side のとき side、それ以外は inline
+  position: 本文の場所
+  description: 差分の表示の間、HTML の本文を描いた結果の上で変わった要素に印を付け、「原文の差分」で原文の行の差分に切り替える（『プレビューを開く』の制約「HTML の本文の差分」）。本文の差分を出せない・計算しきれない・差分のライブラリを読めないときは、Markdown の本文と同じ旨を出し、「HTML の本文」で今の本文を印なしで描く
+  io: 表示
+  source: 記録の取得.bodies・marked_bodies と、history の body_diff から組み立てた前の本文
+  visible_when: 差分の表示の間で、HTML の本文が選んだ時点で変わったとき
+  status: implemented
+  introduced:
+    pr: 214
+  action: 描いた結果の枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
+  slots:
+  - name: layout_switch
+    value: 本文の差分の並べ方の切り替え
+- name: 説明
+  kind: section
+  position: 資料はタイトルの下のキーの一覧の後・エイリアスの前。調査は問いの後・結論の前
+  description: 資料・調査の詳細に、見出し「説明」の節で `description` を出す（用語の詳細の「意味」と同じ出し方）。値は文字列の値の描画で描く。差分の表示の間で変わったときは、キーの差分で前の値と今の値を並べる
+  io: 表示
+  visible_when: 資料・調査が `description` を持つ
+  source: 記録の取得（docs[].description・research[].description）
+  status: implemented
+- name: エイリアス
+  kind: section
+  position: 資料は説明の後・本文の前。調査は結論の後・調査の観点の前
+  description: 資料・調査の詳細に、見出し「エイリアス」の節で `aliases` をタグの形で並べる（用語の詳細の「別名」と同じ出し方）。差分の表示の間で変わったときは、キーの差分で前の値と今の値を並べる
+  io: 表示
+  visible_when: 資料・調査が `aliases` を持つ
+  source: 記録の取得（docs[].aliases・research[].aliases）
+  status: implemented
+- name: 種類と ID
+  kind: label
+  position: 見出し
+  description: 項目の種類の名前と ID（等幅）。幅 480px 以下で見出しのタイトルを出している間は、種類の名前を見た目から外して ID だけにする（読み上げには残す）
+  io: 表示
+  source: SPAを開く.id の項目
+  visible_when: 常時
+- name: 見出しのタイトル
+  kind: label
+  position: 見出し > 形式の札の右（形式の札が無い項目は種類と ID の右）
+  description: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間だけ、項目のタイトルを出す。本文を先頭へ戻すと隠す。隠している間も場所は取ったままにし、出し入れで種類と ID を動かさない。出し入れは 0.15 秒で薄く現れる・消える（動きを減らす設定では切り替えるだけ）。見出しの帯に収まらないタイトルは 1 行で省略記号を付けて切り、戻る・進む・全画面表示・閉じるのボタンを押し出さない。乗せると全文が出る（`title`）。本文の先頭のタイトルと二重に読ませないよう読み上げから外す（`aria-hidden`）。新規・取り下げ・納品物の札は出さず、文字だけにする
+  io: 表示
+  source: SPAを開く.id の項目の title
+  visible_when: 本文の先頭のタイトルが本文のスクロール領域の上へ外れている間
+  reason: '本文を送っても何の項目を読んでいるかが分かるようにし、開いた直後は同じ題を 2 度見せないため（確認ログ: dev/pr/230/確認ログ.md）'
+- name: まとまりのリンク
+  kind: link
+  position: 本文 > 文中
+  description: 本文に書かれた `[文言](#diff=V-2)` のリンク（`#` の後ろが `diff` の引数を持つリンク）。見た目は本文のほかのリンクと同じ。差分の表示の間に描く本文でも同じ
+  visible_when: 本文に `#diff=` のリンクがあるとき
+  action: 押すと、`diff` が記録にあるまとまりの ID のときだけ、開いている画面・項目のままそのまとまりの差分の表示に切り替え、URL の search params の `diff` を書き換える（履歴に積まない）。記録に無いまとまり・`since`・`pending` を指すときは何もしない。`diff` 以外の引数は読まない
+  refs:
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文のまとまりのリンク]
+- name: 差分のミニマップ
+  kind: toolbar
+  component: dev/設計書/部品設計/プレビュー/差分のミニマップ.tsx#
+  args:
+  - name: shown
+    value: 差分の表示の間（SPAを開く.diffがある）で、プレビューを開く.個人の上書き.diff_minimap が偽でないとき true
+  slots:
+  - name: default
+    value: 本文のスクロール領域
+  position: 本文のスクロール領域の右（スクロールバーの外側）
+  description: 本文のスクロール領域の全体を縮めた太さ 20px の縦の帯。キーの差分・本文の差分・図の差分・図の Raw の差分・HTML の本文の差分の印の高さに、足した・消した・変わったを形で分けた印と見えている範囲の面を並べる。印を押すとその箇所まで、印の無い所を押すとその位置まで本文を送り、マウスで押したまま上下に動かすとスクロールバーと同じように送る（どれも履歴に積まず、URL の search paramsを変えない）。帯を出している間だけ本文のスクロール領域の幅を帯の分狭め、本文には重ねない。印の集め方・置き方・押したときの動きは部品設計『差分のミニマップ』
+  io: 表示
+  visible_when: 差分の表示の間で、本文のスクロール領域に変わった箇所の印が 1 つ以上あり、表示の設定で差分のミニマップを外していないとき（前後を組み立てられない・本文の差分を出せない旨だけを出しているときは印が無いので出さない）
+  source: 本文のスクロール領域の中の差分の印
+  reason: '置き場所・形・印のまとめ方・ドラッグと印の無い所を押す動きはユーザーが決めた（確認ログ: dev/pr/237/確認ログ.md）'
+  status: implemented
+- name: 本文の差分の並べ方の切り替え
+  kind: button
+  component: dev/設計書/部品設計/プレビュー/本文の差分の並べ方の切り替え.tsx#
+  args:
+  - name: layout
+    value: プレビューを開く.個人の上書き.body_diff_layout が side のとき side、それ以外は inline
+  position: 本文の差分の頭（HTML の本文では「HTML の本文の差分」の見せ方の切り替えの前）
+  description: 本文の差分を、インラインと左右に並べる表示で切り替える（『プレビューを開く』の制約「本文の差分の並べ方」）。「左右に並べる」を押すと個人の上書きに side を残し、「インライン」を押すと上書きを外して、その場で描き直す。本文を送った位置と押したボタンのフォーカスを保ち、履歴に積まず URL の search paramsも変えない
+  io: 入力
+  visible_when: 差分の表示の間で、本文が選んだ時点で変わっていて本文の差分を描けたとき（前後を組み立てられない・本文の差分を出せない・計算しきれない・差分のライブラリを読めない旨を出しているときは出さない）で、本文のスクロール領域の幅（パディング・差分のミニマップを除く）が 560px 以上のとき
+  action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文の差分の並べ方]
+  status: implemented
+- name: 左右に並べた本文の差分
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/左右に並べた本文の差分.tsx#
+  args:
+  - name: before
+    value: history の body_diff で組み立てた選んだ時点の本文
+  - name: after
+    value: 記録の取得.bodies[{項目の body}]
+  - name: lined
+    value: 古いまとまりを選んでいてその後に本文を直した項目では false、それ以外は true
+  position: 本文の場所
+  description: Markdown の本文の差分を、左に選んだ時点、右に今で描いて並べる。右の列には「本文」と同じく見出しのリンク・本文の印・項目の ID のリンクを付け、選んだ箇所のコメントの入口は右の列の選択でだけ出す。図は左に選んだ時点、右に今の記法で描き、「図の差分」の色付けと「図の Raw の差分」は右の図にだけ付ける。左右の列に『Markdownの本文』を `fold` を false にして当てる（しま模様をオンにしても差分の印の行は差分の面のまま）
+  io: 表示
+  visible_when: 差分の表示の間で、Markdown の本文が選んだ時点で変わっていて、並べ方が「左右に並べる」で、「本文の差分の並べ方の切り替え」を出しているとき
+  source: 記録の取得.bodies と、history の body_diff から組み立てた前の本文
+  status: implemented
+- name: 編集する
+  kind: button
+  position: 見出し > 前後の移動の左
+  description: 読む表示と編集の表示を切り替える（`aria-pressed`）。編集の表示の間は文字色の塗りで「編集を終える」にする。幅 480px 以下は鉛筆の印だけにし、文字を読み上げと `title` に残す。別の項目を開くと読む表示に戻る（溜めた編集は保存待ちに残る）
+  label: 編集する（編集の表示の間は「編集を終える」）
+  visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
+  status: planned
+  introduced:
+    pr: 325
+- name: 見出しの保存待ちの印
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/保存待ちの印.tsx#
+  args:
+  - name: kind
+    value: その項目の削除を溜めていれば remove、直前の保存で書き込めなかった編集を持てば blocked、それ以外は pending
+  - name: compact
+    value: 'true'
+  position: 見出し > 種類と ID の右
+  description: その項目に保存待ちの編集があることを示す。幅 480px 以下では出さず、キー・案の印に任せる
+  io: 表示
+  visible_when: その項目に保存待ちの編集が 1 件以上あり、差分の表示をしていない
+  source: 保存待ちの編集の読み取り.items（target がその項目のもの）
+  status: planned
+  introduced:
+    pr: 325
+- name: キー・案の保存待ちの印
+  kind: label
+  component: dev/設計書/部品設計/プレビュー/保存待ちの印.tsx#
+  args:
+  - name: kind
+    value: そのキー・案の編集が直前の保存で書き込めなかったら blocked、それ以外は pending
+  - name: compact
+    value: 'true'
+  position: 読む表示と編集の表示のキーの名前・案の見出しの後ろ
+  description: 保存待ちの編集があるキー・案に印だけを置く。足した案を採用したときも案の見出しの印は 1 つにする。読む表示は保存待ちの編集を当てた値で描く
+  io: 表示
+  visible_when: そのキー・案に保存待ちの編集があり、差分の表示をしていない
+  source: 保存待ちの編集の読み取り.items
+  status: planned
+  introduced:
+    pr: 325
+- name: 編集の表示
+  kind: form
+  position: 本文のスクロール領域
+  description: 編集できないキー（ID・作成・更新）を頭に並べ、その種類のキーをキーごとの入力にする（状態・フェーズ・カテゴリー・機能は選ぶ、タグは記録で使われているタグを候補に出し、候補に無いタグも入れられるチップ、参照のキーは ID を入れるチップ、取り下げ・納品物はチェック、答え・理由・結果などは何行も書く欄、本文は等幅の何行も書く欄）。入力欄を離れたとき（選ぶ・チェックは選んだとき）にそのキーの編集を 1 件ずつ溜め（追加の入力では同じ `item-add` の `value` を書き換える）、溜めたキーの入力欄の枠を印の色の破線にする。元の値に戻すと保存待ちから外れる。届かない・エラーのときは入力を残してキーの下に理由を出す。削除を溜めた項目では入力を読むだけにし、頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。編集の表示の間は下端のコメントの入力を隠す
+  io: 入力
+  visible_when: 「編集する」を押した間、または種類ごとの画面の「項目を追加」で開いた追加の入力
+  target: 保存待ちの編集の追加.op・target・key・value
+  action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+  status: planned
+  introduced:
+    pr: 325
+- name: タイトルの入力
+  kind: input
+  position: 編集の表示 > 状態の下
+  description: 項目のタイトル。空（空白だけを含む）のときは溜めず、入力欄を離れたときに失敗の赤の枠と誤りを出す
+  label: タイトル
+  io: 入力
+  type: 文字列
+  required: true
+  required_label: 「必須」をキーの名前の右に出す
+  error_message: タイトルを書いてください。
+  target: 保存待ちの編集の追加.value（key が title）
+  status: planned
+  introduced:
+    pr: 325
+- name: 案の入力
+  kind: list
+  position: 編集の表示 > 依存先の下
+  description: 検討事項の案を 1 案 1 枚で並べる。各案に記号・「採用」のラジオ・中身の入力欄・「案 {記号} を削除」を置き、末尾に「案を追加」を置く。中身を離れたときに `option-edit`（足した案は `option-add`）、採用を選んだときに `adopt`、削除で `option-remove` を溜める。削除を溜めた案は中身に取り消し線を引く。「案を追加」は次の記号の空の案を足し、中身を書いて離れたときに溜める。追加の入力では、案の操作ごとに同じ `item-add` の `value` の `options` を書き換え（採用を選んだときは `status` も決定済みにする）、採用している案には「案 {記号} を削除」を出さない
+  io: 入力
+  visible_when: 検討事項の編集の表示
+  target: 保存待ちの編集の追加（op が option-add・option-edit・option-remove・adopt。追加の入力では op が item-add の value.options）
+  action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+  status: planned
+  introduced:
+    pr: 325
+- name: 項目を削除
+  kind: button
+  position: 編集の表示 > 末尾（上の区切り線で入力と分ける「項目を削除」の区画）
+  description: その項目の削除を保存待ちに溜める（確認のモーダルは挟まない）。失敗の赤の文字と枠で、取り返しのつかない操作と示す。溜めた後は同じ場所を「削除を取り消す」に替え、押すと削除の編集を取り消す（『保存待ちの編集の取り消し』）。ほかの項目が指しているときは、ボタンの下に警告の印と「{指している項目の ID} が指しているため、保存のときに削除できません。指している項目から外すと削除できます。」を出す（削除は溜められ、保存で書き込めない編集になる）
+  label: 項目を削除（溜めた後は「削除を取り消す」）
+  visible_when: 編集の表示（追加の入力では出さない）
+  target: 保存待ちの編集の追加（op が item-remove）
+  action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+  status: planned
+  introduced:
+    pr: 325
+- name: 書き込めない理由
+  kind: label
+  position: 読む表示と編集の表示の、書き込めなかったキーの下
+  description: 直前の保存で書き込めなかった編集の理由を警告の印と共に出し、入力欄の枠を失敗の赤の実線にする。`changed` は「溜めた後の {MM/DD HH:mm} に AI がこの項目を書き換えたため、書き込めません。取り消してから入れ直してください。」、そのほかは `detail`
+  io: 表示
+  visible_when: 直前の保存が 409 で、その項目の編集が `blocked` にあった
+  source: 保存待ちの編集をまとめて保存.blocked
+  status: planned
+  introduced:
+    pr: 325
+- name: 幅の区切り
+  id: panel-resizer
+  kind: separator
+  position: パネルの内側の左端
+  description: ドラッグかキーで詳細パネルの幅を変える縦の帯（`role="separator"`・`aria-orientation="vertical"`・`aria-valuemin` / `aria-valuemax` / `aria-valuenow` に下限・上限・今の幅）。読み上げの名前は「詳細パネルの幅」。帯の幅は 24px で、本文のスクロールバーに重ねない。帯の縦の中央につまみをふだんから薄く出し、乗せると線とつまみを濃く、ドラッグ中とキーボードのフォーカスではアクセントの色にする（フォーカスはつまみの周りだけを枠で囲み、見出しと本文の文字に重ねない）。押すとフォーカスを移す。下限・上限で止まっている間は、その向きだけのカーソルにする
+  io: 入出力
+  type: 数値（px）
+  visible_when: 表示の幅が 901px 以上
+  range:
+    min: '480'
+    max: 本文を寄せる幅（1100px 以上、マップは 901px 以上）では表示の幅 − 400、本文に重ねる幅（901〜1099px のマップ以外）では表示の幅 − 160
+    step: 矢印キー 1 回で 16
+  initial_value: そのタブの `sessionStorage` に残した幅。無ければ既定の 640。上限を超えるときは上限に収めて出し、残した値は書き換えない。開いたまま窓の幅が変わったときも、残した幅を今の上限に収め直し（`aria-valuemax` / `aria-valuenow` も合わせる）、窓を広げ直すと残した幅に戻す
+  source: プレビューを開く.詳細パネル
+  action: 左へドラッグで広げ、右へドラッグで狭める。フォーカス中は ← で広げ、→ で狭め、Home で下限、End で上限にする。変えるたびに詳細パネルの幅と、本文を寄せる幅では本文・マップ・パンくずの帯の右の寄せを合わせる（ドラッグ中は 1 フレームに 1 回）。変えた幅は、ドラッグを終えたとき（離した・中断した）とキーで変えたときにそのタブの `sessionStorage` に残し、ドラッグ中は残さない。種類で分けず、別の項目・読み込み直しでもその幅で開く。ダブルクリックで既定に戻す操作は持たない
+  action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[端末の保存領域]
+  status: planned
+  introduced:
+    pr: 340
+- name: エクスポート
+  kind: button
+  position: 見出し > 編集するの右・前後の移動の左
+  description: 下向きの矢印と線のアイコンだけの枠の無いボタン。押すと要素「エクスポートのメニュー」を開き、開いているときに押すと閉じる。開閉を `aria-expanded` で示し、開いている間は押した面にする。読み上げの名前と `title` は「エクスポート」。履歴に積まない
+  label: エクスポート
+  visible_when: 資料で、本文が Markdown（`body` が `.md` で終わる）のとき。本文が HTML の資料と資料以外の種類、編集の表示の間は置かない
+  status: planned
+  introduced:
+    pr: 348
+- name: エクスポートのメニュー
+  kind: dialog
+  component: dev/設計書/部品設計/プレビュー/資料のエクスポートのメニュー.tsx#
+  args:
+  - name: view
+    value: 開いた時点は choose。イベントごとに部品設計のとおり替える
+  - name: focus
+    value: 開いた時点は html。警告から戻したときは md
+  position: 見出し > エクスポートの下（右端を揃える。画面の幅から左右 8px を引いた幅を超えない）
+  description: 開いている資料を書き出す形式を選ぶ（『プレビューを開く』の制約「資料のエクスポート」）。「HTML でエクスポート」はメニューを開いたまま 1 枚の HTML を組み立てて `{資料の ID}.html` をダウンロードさせ、組み立てたら閉じる。「Markdown でエクスポート」は同じメニューに警告を出し、「エクスポート」で埋め込んだ HTML の範囲を除いた `{資料の ID}.md` をダウンロードさせて閉じる。Esc とメニューの外を押すとメニューだけを閉じ（詳細パネルは閉じない）、「エクスポート」へフォーカスを戻す。開閉と中身の切り替えは履歴に積まず、画面は移らない。別の項目へ移るかパネルを閉じるとメニューも閉じる
+  visible_when: 「エクスポート」で開いた間
+  action: 組み立てたファイルを `Blob` と `download` を持つ `a` 要素でダウンロードさせる（サーバーの API を呼ばない）
+  action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  status: planned
+  introduced:
+    pr: 348
+- name: 埋め込んだ HTML
+  kind: section
+  position: 本文 > `<!-- html -->` の範囲の場所
+  description: Markdown の本文の `<!-- html -->` 〜 `<!-- /html -->` の範囲を、枠に入れず mdmark の HTML の埋め込みの機能で本文の要素として描く（`.mdmark-html`）。範囲に書いたスクリプトとイベントの属性は動かさない。範囲の中の文にも本文の印とそのツールチップ、項目の ID のリンクを付ける。範囲は行の印を持たないため、選んだ箇所の対応づけでは、本文の中で n 番目の範囲の中にある選択の端を、元の Markdown の n 番目の範囲の `<!-- html -->` の行（始まりの端）か `<!-- /html -->` の行（終わりの端）に読み替える。範囲の外の端は今までどおり求める
+  io: 表示
+  source: 記録の取得.bodies[{項目の body}]
+  status: planned
+  introduced:
+    pr: 348
+- name: チャート
+  kind: figure
+  position: 本文 > 埋め込んだ HTML > `<mdmark-chart>` の場所
+  description: mdmark の部品で描くチャート（『プレビューを開く』の制約「埋め込んだ HTML と部品」）。拡大・縮小のボタンとキーで倍率を変え、拡大した後はドラッグで表示の位置を変える。図の拡大の画面は開かず、倍率と位置は履歴に積まない。範囲の中のチャート以外の要素には拡大・縮小のボタンを付けない。描き方とボタンの読み上げの名前は mdmark の部品のまま
+  io: 表示
+  status: planned
+  introduced:
+    pr: 348
+- name: 操作できる部品
+  kind: input
+  position: 本文 > 埋め込んだ HTML > `<mdmark-param>` ほかの場所
+  description: mdmark の部品で描くスライダーなど。値を動かすと、その値を使うグラフと値の表示を描き直す。動かした値は記録に書かず、詳細を描き直すと資料に書いた初めの値に戻る。履歴に積まない。入力の種類・範囲・読み上げの名前は資料に書いた部品の属性と mdmark の部品の決まりに従う
+  io: 入力
+  status: planned
+  introduced:
+    pr: 348
+- name: 今の値をコピー
+  kind: button
+  position: 本文 > 埋め込んだ HTML > 操作できる部品の場所
+  description: '操作できる部品の今の値を `{"{キー}": {"name": ..., "value": ...}}` の JSON にしてクリップボードへ書き込む（『プレビューを開く』の制約「埋め込んだ HTML と部品」）。利用者はそのまま下端のコメントの入力に貼る。書き込んだことの知らせは mdmark の部品のまま'
+  label: 今の値をコピー
+  reason: 文言はモック作成でユーザーが推奨案を選んだ（PR ドキュメントの確認ログ）。mdmark の既定の文言から替える手段はモジュール構成設計で確かめる
+  status: planned
+  introduced:
+    pr: 348
+- name: 埋め込んだ HTML の差分
+  kind: section
+  component: dev/設計書/部品設計/プレビュー/HTMLの本文の差分.tsx#
+  args:
+  - name: before
+    value: history の body_diff で組み立てた選んだ時点の本文の n 番目の範囲の中の HTML
+  - name: after
+    value: 記録の取得.bodies[{項目の body}] の n 番目の範囲の中の HTML
+  - name: marked
+    value: after と同じ
+  - name: initial
+    value: raw
+  - name: beforeView
+    value: before を範囲として mdmark で描いたもの
+  - name: afterView
+    value: after を範囲として mdmark で描き、before を描いた範囲と直下の要素ごとに比べ、足した要素に足したマーカー、変えた要素に変わったマーカーを付けたもの
+  - name: heading
+    value: 埋め込んだ HTML
+  position: 本文の差分 > 変わった範囲の場所
+  description: 差分の表示の間、選んだ時点と中身が違う範囲を、本文の中の並びの順で選んだ時点の範囲と対にして、範囲ごとにこの差分に置き替える（『プレビューを開く』の制約「埋め込んだ HTML の差分」）。既定は「原文の差分」で、「描いた結果（変更前）」「描いた結果（変更後）」に切り替える。切り替えは履歴に積まず、URL の search paramsを変えない。中身が同じ範囲、選んだ時点に対になる範囲が無い範囲、差分を計算しきれない範囲は、本文の差分のまま出す。差分のミニマップには範囲の差分の高さに変わった印を 1 つ置く
+  visible_when: 差分の表示の間で、本文が Markdown の資料に変わった範囲があるとき
+  io: 表示
+  status: planned
+  introduced:
+    pr: 348
+- name: タグ
+  kind: list
+  component: dev/設計書/部品設計/プレビュー/タグの並び.tsx#
+  args:
+  - name: values
+    value: 記録の取得（{種類}[].tags）
+  position: タイトルの下のキーの一覧の末尾の「タグ」の行
+  description: 項目のタグを記録の順のまま並べ、主題のタグは名前の前に二重丸のマーカーを置く。差分の表示の間で変わったときは、キーの差分で前の値と今の値を並べ、前の値と今の値のそれぞれをタグの並びで描き、主題のタグを二重丸のマーカーで見分ける（「主題」は読み上げと title だけで伝える）（主題を付け外ししただけの変更も変わったとして扱う）
+  io: 表示
+  visible_when: 項目がタグを持つとき、または差分の表示の間でタグが変わったとき
+  source: 記録の取得（{種類}[].tags）
+  status: planned
+  introduced:
+    pr: 385
+- name: タグの入力
+  kind: input
+  component: dev/設計書/部品設計/プレビュー/チップの入力.tsx#
+  args:
+  - name: controlId
+    value: 項目の ID とキー `tags` から作る入力欄の ID
+  - name: name
+    value: タグ
+  - name: hint
+    value: タグを入れる
+  - name: values
+    value: 記録の取得（{種類}[].tags。保存待ちの編集があればその値）
+  - name: suggestions
+    value: 記録の項目とスレッドが使っているタグの名前（NFKC と小文字にそろえ、使われている件数の多い順）
+  - name: monospace
+    value: 'false'
+  - name: mainToggle
+    value: 'true'
+  - name: disabled
+    value: 削除を溜めた項目のとき true
+  position: 編集の表示 > キーごとの入力の「タグ」
+  description: 項目のタグをチップで並べ、入力欄で追加する。チップの左端のトグルで主題を付け外しし、主題は複数にできる。追加したタグは主題でないまま並べる。並びを変えるたびに、`tags` を `{name, main?}` の並び（主題でないタグは `main` を持たない）で保存待ちの編集として溜める（追加の入力では `item-add` の `value` の `tags` を書き換える）。元の並びと主題に戻すと保存待ちから外れる
+  io: 入力
+  visible_when: 編集の表示の間
+  target: 保存待ちの編集の追加.value（key が tags。item-add は value.tags）
+  action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+  status: planned
+  introduced:
+    pr: 385
+- name: 行の本文
+  kind: label
+  position: レビュー中のコメント > 行 > 本文
+  description: コメントの本文。スレッドの書き込みと同じく、改行を保って mdmark で Markdown として描く。本文の中のリスト・表は、行の並び（罫線で区切った行）の見た目を引き継がず Markdown の見た目で出す。折り返した後の見た目の行で 5 行を超える本文は、行の高さの 5 行分までを出してはみ出しを隠す（5 行以下の本文はそのまま）。開閉は行ごとに画面が覚え、描き直し・本文の書き換え・詳細の全画面との行き来をまたいで保つ（詳細パネルで別の項目へ移るか、パネルを閉じるまで）。項目の ID は、記録にあるものをその項目を開くリンクにする。記録にあるまとまりを指す `[文言](#diff=...)` は `文言` だけのまとまりのリンクにし、押すと変更履歴でそのまとまりを選んだときと同じく差分の表示に切り替える。コメントの一覧で書き換えている行も、ここでは書き換える前の本文を畳んで出す
+  io: 表示
+  source: レビュー中のコメントの読み取り.items[].body・記録の取得.changes.sets のまとまりの ID と説明
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  component: dev/設計書/部品設計/プレビュー/本文の折りたたみ.ts#
+  args:
+  - name: id
+    value: レビュー中のコメントの読み取り.items[].id
+  - name: label
+    value: 行の読み上げの名前の頭（「{向けた項目の ID} へのコメント」）
+  - name: body
+    value: レビュー中のコメントの読み取り.items[].body
+  - name: titles
+    value: 記録の取得の項目の ID とタイトル
+  - name: changeSets
+    value: 記録の取得.changes.sets のまとまりの ID と説明
+  - name: open
+    value: 画面が行ごとに覚えた開閉（既定は畳む）
+  - name: focus
+    value: '`detail-`'
+  status: planned
+- name: 続きを読む
+  kind: button
+  position: レビュー中のコメント > 行 > 本文の下
+  description: 行の本文を開く・畳み直す（部品『本文の折りたたみ』が返す開閉のボタン）。畳んでいるときは下向きの印と「続きを読む」、開いているときは上向きの印と「折りたたむ」。本文の下にこのボタンだけの行を置き、ボタンの中の文字は折り返さない。読み上げの名前は「{向けた項目の ID} へのコメントの続きを読む」「{向けた項目の ID} へのコメントの本文を折りたたむ」
+  label: 続きを読む / 折りたたむ
+  visible_when: 子 4（#369）でコメントを移すまで出さない
+  action: その行の本文を開くか畳み直す（履歴に積まない）。折りたたんだときは行が画面から外れないように寄せる
+  status: planned
+lead: 項目 1 件の中身を本文の右に出すパネル。幅 1100px 以上（マップは 901px 以上）は本文を寄せて並べ、それより狭いと本文に重ねる。本文の寄せは開閉と同時に切り替え、パネルだけがすべり込む。
+notes:
+  取り下げのモック: 取り下げの札と取り下げた理由の見本は `dev/mock/pages/detail-panel/179/standard/index.html`
+  HTML の本文のモック: 形式の札・HTML の本文・html のコードブロック・HTML の本文の差分の見本は `dev/mock/pages/detail-panel/214/c-marks/index.html`（差分の見せ方は案 C を採用）
+  幅 900px 以下の重なり: 左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）と重なるときは、後から開いた側を前に出し、後ろになった側の部品を `inert` にする。幅 901px 以上で左のパネル（ピン止めしていないコメントの一覧・表示の設定・保存待ち・絞り込みのドロワー）を開いている間は、詳細パネルをグレーアウトの下に置いて `inert` にする。左のパネルの中から開いた詳細パネルだけはグレーアウトの上に出し、パネルと詳細パネルの両方を操作できる
+  差分のミニマップのモック: 差分のミニマップの見本は `dev/mock/pages/detail-panel/237/a-right-rail/index.html`（採用した案 A）
+  本文の差分の並べ方のモック: '本文の差分の並べ方の切り替え・左右に並べた本文の差分の見本は `dev/mock/pages/detail-panel/261/a-both/index.html`（採用した案 A。確認ログ: dev/pr/261/確認ログ.md）'
+  本文の長い語と表のモック: 本文の長い URL・インラインコードを折り返し、列の多い表を表の中だけで送る見本は `dev/mock/pages/detail-panel/289/a-wrap-long-words/index.html`（包む要素の読み上げの役割は、モックの `region` ではなく本文の要素のとおり）
+  埋め込んだ HTML とエクスポートのモック: '埋め込んだ HTML・チャート・操作できる部品・エクスポートの入口・埋め込んだ HTML の差分の見本は `dev/mock/pages/detail-panel/348/a-embedded-html/index.html`、エクスポートのメニューは `dev/mock/pages/doc-export-menu/348/a-in-menu/index.html`（採用した案 A。確認ログ: dev/pr/348/確認ログ.md）'
+  レビュー中のコメントの並びのモック: レビュー中のコメントの並びの切り替えの見本は `dev/mock/pages/detail-panel/396/b-toggle/index.html`（採用した案 B。確認ログは `dev/pr/396/確認ログ.md`）
+  主題のタグのモック: 'タグの主題のマーカーと、タグの入力の主題のトグルの見本は `dev/mock/pages/detail-panel/385/a-ring/index.html`（採用した案 A。確認ログ: dev/pr/385/確認ログ.md）'
+test_file: tests/integration/preview/test_spa_detail_panel_screen.py
+refs:
+- dev/設計書/画面設計/プレビュー/詳細パネル#
+- dev/設計書/インターフェース定義/プレビュー/SPAを開く#

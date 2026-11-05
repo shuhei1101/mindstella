@@ -10,14 +10,26 @@ items:
   - page: 検討事項.yaml
     summary: 検討事項のマップ・ボード・表
     group: タブ
+  - page: 検討事項.tsx.yaml
+    summary: React のプレビューの検討事項。今の検討事項と同じ要素と操作を持つ
+    group: タブ
   - page: タスク.yaml
     summary: タスクのボード・表
+    group: タブ
+  - page: タスク.tsx.yaml
+    summary: React のプレビューのタスク。今のタスクと同じ要素と操作を持つ
     group: タブ
   - page: 資料.yaml
     summary: 資料のカード・ボード・表（納品物を先頭に）
     group: タブ
+  - page: 資料.tsx.yaml
+    summary: React のプレビューの資料。今の資料と同じ要素と操作を持つ
+    group: タブ
   - page: 記録の表.yaml
     summary: 調査・用語集・メモ・会話ログの表
+    group: タブ
+  - page: 記録の表.tsx.yaml
+    summary: React のプレビューの記録の表。今の記録の表と同じ要素と操作を持つ
     group: タブ
   - page: ネットワーク.yaml
     summary: 全種類の項目を星として関連でつなぎ、3D で描く。5 つの見た目から選び、注目の起点をロックする
@@ -25,8 +37,14 @@ items:
   - page: 詳細パネル.yaml
     summary: 項目 1 件の中身を本文の右に出す
     group: 重ねる画面
+  - page: 詳細パネル.tsx.yaml
+    summary: React のプレビューの詳細パネル。今の詳細パネルと同じ要素と操作を持つ
+    group: 重ねる画面
   - page: 詳細の全画面.yaml
     summary: 詳細パネルの中身を中央のモーダルで大きく出す
+    group: 重ねる画面
+  - page: 詳細の全画面.tsx.yaml
+    summary: React のプレビューの詳細の全画面。今の詳細の全画面と同じ要素と操作を持つ
     group: 重ねる画面
   - page: 全体の検索.yaml
     summary: 全種類の項目を ID・タイトル・本文で検索する
@@ -34,8 +52,13 @@ items:
   - page: 図の拡大.yaml
     summary: 本文の図を大きく見る
     group: 重ねる画面
+  - page: 図の拡大.tsx.yaml
+    summary: React のプレビューの図の拡大。今の図の拡大と同じ要素と操作を持つ
+    group: 重ねる画面
   - page: 変更履歴.yaml
     summary: 差分の表示で比べる時点を選ぶモーダル
+  - page: 変更履歴.tsx.yaml
+    summary: React のプレビューの変更履歴。今の変更履歴と同じ要素と操作を持つ
   - page: コメントの一覧.yaml
     summary: スレッドを状態とタグで絞って並べ、新しいスレッドを立てる。左から出すパネル
     group: 重ねる画面
@@ -54,5 +77,10 @@ items:
   - page: 保存待ちのパネル.yaml
     summary: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめて保存する。左から出すパネル
     group: 重ねる画面
+  - page: 保存待ちのパネル.tsx.yaml
+    summary: React のプレビューの保存待ちのパネル。今の保存待ちのパネルと同じ要素と操作を持つ
+    group: 重ねる画面
   - page: 設定の画面.yaml
     summary: ワークスペースの設定を書き換え、保存待ちに溜める。本文の区画を置き換える別の画面
+  - page: 設定の画面.tsx.yaml
+    summary: React のプレビューの設定の画面。今の設定の画面と同じ要素と操作を持つ
