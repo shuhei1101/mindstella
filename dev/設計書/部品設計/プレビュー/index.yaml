@@ -3,6 +3,8 @@ docs_index: true
 items:
   - page: トップバー.ts.yaml
     summary: 題名・検索の入口・ライト / ダークと、画面を移るタブの帯
+  - page: トップバー.tsx.yaml
+    summary: React のプレビューのトップバー。今のトップバーと同じ引数・イベント・状態を props で持つ
   - page: 表示形式の切り替え.ts.yaml
     summary: マップ・ボード・カード・表を切り替えるセグメント
   - page: 表.ts.yaml

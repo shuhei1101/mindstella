@@ -76,6 +76,9 @@ items:
   - page: プレビューの配信.yaml
     summary: 'GET /mindstella.html: プレビューの画面を返す（/ はここへ送り直す）'
     group: プレビューの配信
+  - page: SPAの配信.yaml
+    summary: 'GET /spa/{path}: React のプレビュー（SPA）の index.html と出力の静的なファイルを返す（出力に無いパスは index.html）'
+    group: プレビューの配信
   - page: 記録の取得.yaml
     summary: 'GET /api/records: ワークスペースの記録をその場で読んで返す'
     group: プレビューの配信

@@ -19,7 +19,7 @@ layers:
         pytest {テストファイルパス}
         ```
   - name: 単体テスト（フロント）
-    description: pytest-playwright で、プレビューの部品・画面の `.ts` から tsc が生成した `.js` を `page.add_script_tag` で読み、`page.evaluate` で関数を引数付きで呼んで、返った DOM と計算した値を本物のブラウザ（Chromium）で確かめる。描画のライブラリは `page.route` で差し替える
+    description: 今の画面（`plugins/mindstella/skills/mindmap/preview/`）は、pytest-playwright で、部品・画面の `.ts` から tsc が生成した `.js` を `page.add_script_tag` で読み、`page.evaluate` で関数を引数付きで呼んで、返った DOM と計算した値を本物のブラウザ（Chromium）で確かめる。描画のライブラリは `page.route` で差し替える。React の側（`frontend/src/`）は、Vitest（jsdom）と Testing Library で、テストファイルを対象と同じフォルダに置いて確かめる。API は MSW のハンドラ（`frontend/src/testing/msw/`）で、`EventSource` は偽物（`frontend/src/testing/fake-event-source.ts`）で差し替え、画面はルーターごと描く（`frontend/src/testing/render.tsx`）
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` の開発用の依存（pytest・pytest-playwright・playwright ほか）
       - '`python -m playwright install --only-shell chromium` でブラウザを入れてある（CI は `--with-deps` を付ける）'
@@ -28,13 +28,14 @@ layers:
       - mdmark の配布物は、外部ライブラリの設計書が固定した jsDelivr の URL から初回だけ取り、設計書の integrity と突き合わせて `node_modules/.cache/mindstella-tests/` に置く（次からは取らない。初回は jsDelivr へ HTTPS で届くこと）
     run_all: |-
       ```bash
-      pytest tests/unit/preview
+      pytest tests/unit/preview && npx vitest run
       ```
     run_one:
       label: ファイル
       command: |-
         ```bash
         pytest {テストファイルパス}
+        npx vitest run {React の側のテストファイルパス}
         ```
   - name: 結合テスト（バック）
     run_all: |-
@@ -59,14 +60,15 @@ layers:
         pytest {テストファイルパス}
         ```
   - name: 結合テスト（フロント）
-    description: pytest-playwright で 2 つを確かめる。インターフェース定義『プレビューを開く』と画面設計は、`make_workspace` で作ったワークスペースを MCP サーバー（`preview_url`）が配る URL を URL のハッシュ付きで開く。配る書き出しは `export` で書き出した HTML を file:// で開き、描画のライブラリの配信元を失敗させるときは `page.route` で要求を abort する。部品設計の状態は、`storybook build` の出力を一時の HTTP サーバーで配る fixture から `iframe.html?id={story}--{state}` を開いて確かめる
+    description: pytest-playwright で 2 つを確かめる。インターフェース定義『プレビューを開く』と画面設計は、`make_workspace` で作ったワークスペースを MCP サーバー（`preview_url`）が配る URL を URL のハッシュ付きで開く。配る書き出しは `export` で書き出した HTML を file:// で開き、描画のライブラリの配信元を失敗させるときは `page.route` で要求を abort する。部品設計の状態は、`storybook build` の出力を一時の HTTP サーバーで配る fixture から `iframe.html?id={story}--{state}` を開いて確かめる。React のプレビュー（SPA）は、同じ配信の `/spa/` を開き（`tests/integration/preview/test_spa_*.py`）、React の部品は `npm run build-storybook-react` の出力を配る fixture から開く（`tests/integration/storybook_react/`）
     prerequisites:
       - 単体テスト（フロント）の前提
       - jsDelivr と Google Fonts へ HTTPS で届く（『プレビューを開く』の正常系は描画のライブラリを配信元から読む）
       - '部品のテスト（`tests/integration/storybook/`）: 先に `npx storybook build -o storybook-static` を済ませておく（Node 20.19 以上。部品のストーリー（Storybook）の節）'
+      - 'React の部品のテスト（`tests/integration/storybook_react/`）: 先に `npm run build-storybook-react` を済ませておく。SPA のテストは、commit したビルドの出力（`preview/spa/`）を開く'
     run_all: |-
       ```bash
-      pytest tests/integration/preview tests/integration/storybook
+      pytest tests/integration/preview tests/integration/storybook tests/integration/storybook_react
       ```
     run_one:
       label: ファイル
@@ -105,14 +107,14 @@ layers:
   - name: 外部疎通テスト
     run_all: 未確定
   - name: lint
-    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）でプレビューの `.ts` とストーリーの `.ts` を検査する。formatter と import の並びの検査は含めない
+    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）で今の画面の `.ts`・ストーリーの `.ts` と React の側（`frontend/tsconfig.json`）を、ESLint（`npm run lint`。`eslint.config.js`）で React の側の `frontend/src/` を検査する。formatter と import の並びの検査は含めない。commit の前に lefthook（`lefthook.yml`）が、React の側の変更ファイルに ESLint と型検査を流し、`frontend/` かビルドの設定を変えたときは `npm run build` の後に `preview/spa/` に未 commit の差分があれば止める
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` で固定した版の ruff（外部ライブラリ『ruff』）
-      - Node 20.19 以上で `npm ci` を済ませてある
-      - 実行はリポジトリの直下で行う
+      - Node 20.19 以上で `npm ci` を済ませてある（postinstall が lefthook のフックを共有の `.git/hooks/` に入れる）
+      - 実行はリポジトリの直下で行う。`/mnt/c` の上の worktree では ESLint に約 60 秒かかる
     run_all: |-
       ```bash
-      ruff check plugins tests; ruff_status=$?; npm run typecheck && [ "$ruff_status" -eq 0 ]
+      ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
       ```
     run_one:
       label: ファイル
@@ -129,6 +131,8 @@ notes:
     ```
 
     静的なファイルに書き出すときは `npx storybook build -o storybook-static`。
+
+    React の部品のストーリーは別の設定（`.storybook-react/`）で、`npm run storybook-react`（ポート 6007）で開き、`npm run build-storybook-react` で `storybook-react-static/` に書き出す。API は MSW の worker が返す。
 prerequisites:
   - conftest がテスト全体の始まる前に `MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_ALLOWED_HOSTS` をテストのプロセスから消して走らせる。手元のシェルに設定してあっても、テストは手元のフックのコマンドを呼ばず、結果は設定していないシェルと変わらない
   - フックと許可するホスト名を確かめるテストは、値を `start_server` の `extra_env` や関数の引数で自分で渡す

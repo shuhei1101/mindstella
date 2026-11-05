@@ -1,4 +1,4 @@
-title: "アーキテクチャ図"
+title: アーキテクチャ図
 overview:
   direction: LR
   nodes:
@@ -106,7 +106,7 @@ repository:
   style: モノレポ
   repositories:
     - name: shuhei1101/mindstella
-  layout: '`.claude-plugin/`（マーケットプレイスのマニフェスト）/ `plugins/mindstella/.claude-plugin/`（プラグインのマニフェスト）/ `plugins/mindstella/version.ini`（プラグインの版）/ `plugins/mindstella/bin/`（起動スクリプト `mindstella`）/ `plugins/mindstella/skills/setup/`・`plugins/mindstella/skills/session/`・`plugins/mindstella/skills/upgrade/`（スキル。SKILL.md と `steps/`）/ `plugins/mindstella/skills/mindmap/`（スキルが共通で読む `references/`・`playbooks/`・`README.md` と、サーバーの `schemas/`・`scripts/`・版ごとの移し替えの手順 `migrations/`・プレビューの `preview/`。SKILL.md は持たない）'
+  layout: '`.claude-plugin/`（マーケットプレイスのマニフェスト）/ `plugins/mindstella/.claude-plugin/`（プラグインのマニフェスト）/ `plugins/mindstella/version.ini`（プラグインの版）/ `plugins/mindstella/bin/`（起動スクリプト `mindstella`）/ `plugins/mindstella/skills/setup/`・`plugins/mindstella/skills/session/`・`plugins/mindstella/skills/upgrade/`（スキル。SKILL.md と `steps/`）/ `plugins/mindstella/skills/mindmap/`（スキルが共通で読む `references/`・`playbooks/`・`README.md` と、サーバーの `schemas/`・`scripts/`・版ごとの移し替えの手順 `migrations/`・プレビューの `preview/`（React の画面のビルドの出力 `preview/spa/` を含む）。SKILL.md は持たない） / `frontend/`（React の画面のソースと OpenAPI の定義。利用者へは配らない） / 直下の `package.json`・`vite.config.ts`・`eslint.config.js`・`lefthook.yml`・`.storybook/`（今の画面の部品）・`.storybook-react/`（React の部品）'
   notes: マーケットプレイスはリポジトリの直下の `.claude-plugin/` に置き、プラグインを `./plugins/mindstella` で指す。プラグインは `plugins/mindstella/` の下に分け、利用者へ配るのはその中身だけにする。
 subsystems:
   - name: プラグイン
@@ -123,8 +123,8 @@ subsystems:
   - name: プレビュー
     scope: preview
     role: サーバーが配るワークスペースの記録を読み返し、詳細パネルから項目ごとに回答・意見を送る画面。配る書き出しは記録を中に持つ見るだけの 1 枚の HTML
-    runtime: TypeScript 7（tsc が生成した JavaScript をブラウザで動かす）
-    runs_on: 利用者の端末のブラウザ（サーバーの配信の URL で開く。配る書き出しはファイルとして開く）
+    runtime: TypeScript（今の画面は tsc が生成した JavaScript、React の画面（SPA）は Vite と React Compiler でビルドした JavaScript をブラウザで動かす）
+    runs_on: 利用者の端末のブラウザ（サーバーの配信の URL で開く。React の画面は同じ配信の `/spa/` で開く。配る書き出しはファイルとして開く）
     status: implemented
   - name: サーバー
     scope: server

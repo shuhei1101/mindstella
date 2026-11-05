@@ -1,0 +1,10 @@
+summary: '`frontend/src/features/overview/overview/components/` の React のプレビューのモジュール'
+items:
+- page: goal-tile.tsx.yaml
+  summary: '`derived.goal` の数・棒・納品物。ゴールが無いときはフェーズ別の進捗'
+- page: list-tile.tsx.yaml
+  summary: 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」
+- page: next-tile.tsx.yaml
+  summary: '`derived.next` を並べる'
+- page: progress-table.tsx.yaml
+  summary: '`derived.progress` の表'

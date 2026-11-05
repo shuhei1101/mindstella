@@ -1,0 +1,4 @@
+summary: '`frontend/src/shared/components/ui/` の React のプレビューのモジュール'
+items:
+- page: button.tsx.yaml
+  summary: shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ

@@ -609,6 +609,84 @@ def test_index_response_when_template_invalid(tmp_path: Path) -> None:
     assert response.content_type == "application/problem+json; charset=utf-8"
 
 
+def _write_spa_dir(spa_dir: Path) -> None:
+    """SPA の出力のフォルダに index.html と assets/app.js を置く。"""
+    (spa_dir / "assets").mkdir(parents=True)
+    (spa_dir / "index.html").write_text('<div id="root"></div>', encoding="utf-8")
+    (spa_dir / "assets" / "app.js").write_text("console.log('app');", encoding="utf-8")
+
+
+def test_spa_response(tmp_path: Path) -> None:
+    """出力のファイルを返す（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    # 実行
+    response = serve.spa_response(spa_dir, "/assets/app.js")
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "text/javascript; charset=utf-8"
+    assert response.body == b"console.log('app');"
+
+
+@pytest.mark.parametrize(
+    "sub_path",
+    [pytest.param("/decisions", id="route"), pytest.param("/", id="root")],
+)
+def test_spa_response_when_client_route(tmp_path: Path, sub_path: str) -> None:
+    """出力に無いパスは index.html（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    # 実行
+    response = serve.spa_response(spa_dir, sub_path)
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "text/html; charset=utf-8"
+    assert response.body == b'<div id="root"></div>'
+
+
+@pytest.mark.parametrize(
+    "sub_path",
+    [pytest.param("/../secret.txt", id="dot"), pytest.param("/%2e%2e/secret.txt", id="encoded")],
+)
+def test_spa_response_when_outside(tmp_path: Path, sub_path: str) -> None:
+    """出力の外を指すパスは index.html（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    # 実行
+    response = serve.spa_response(spa_dir, sub_path)
+    # 検証
+    assert response.body == b'<div id="root"></div>'
+
+
+def test_spa_response_when_unknown_suffix(tmp_path: Path) -> None:
+    """表に無い拡張子は application/octet-stream（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    (spa_dir / "assets" / "app.js.map").write_text("{}", encoding="utf-8")
+    # 実行
+    response = serve.spa_response(spa_dir, "/assets/app.js.map")
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/octet-stream"
+
+
+def test_spa_response_when_index_missing(tmp_path: Path) -> None:
+    """index.html が無いと 500（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    spa_dir.mkdir()
+    # 実行
+    response = serve.spa_response(spa_dir, "/")
+    # 検証
+    assert response.status == 500
+    assert response.content_type == "application/problem+json; charset=utf-8"
+
+
 def test_records_response(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """記録を JSON で返す（正常系）。"""
     # 準備

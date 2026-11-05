@@ -119,6 +119,10 @@ OPENED_PATH = "/api/opened"
 # 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
 PAGE_PATH = "/mindstella.html"
 
+# React のプレビュー（SPA）を配るパスの頭と、プレビューのフォルダの中の出力のフォルダの名前
+SPA_PATH = "/spa"
+SPA_DIR = "spa"
+
 # 設定の既定の書き換えと、設定の再読み込みのパス
 CONFIG_DISPLAY_PATH = "/api/config/display"
 CONFIG_RELOAD_PATH = "/api/config/reload"
@@ -127,6 +131,14 @@ CONFIG_RELOAD_PATH = "/api/config/reload"
 JSON_TYPE = "application/json; charset=utf-8"
 HTML_TYPE = "text/html; charset=utf-8"
 PROBLEM_TYPE = "application/problem+json; charset=utf-8"
+
+# SPA の出力のファイルの拡張子ごとの `Content-Type`（表に無い拡張子は `application/octet-stream`）
+SPA_TYPES = {
+    ".html": HTML_TYPE,
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+}
 
 # 書き込む要求が持つべきメディアタイプ
 REQUEST_JSON_TYPE = "application/json"
@@ -325,6 +337,10 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(redirect_response(PAGE_PATH))
         elif path == PAGE_PATH:
             self._reply(index_response(context.preview_dir))
+        elif path == SPA_PATH:
+            self._reply(redirect_response(f"{SPA_PATH}/"))
+        elif path.startswith(f"{SPA_PATH}/"):
+            self._reply(spa_response(context.preview_dir / SPA_DIR, path.removeprefix(SPA_PATH)))
         elif path == "/api/records":
             self._reply(records_response(context))
         elif path == "/api/events":
@@ -651,6 +667,20 @@ def problem_response(status: int, detail: str) -> Response:
 def redirect_response(location: str) -> Response:
     """本文を持たない 302 で、location へ送り直す応答を作る。"""
     return Response(status=HTTPStatus.FOUND, content_type=HTML_TYPE, body=b"", location=location)
+
+
+def spa_response(spa_dir: Path, sub_path: str) -> Response:
+    """SPA の出力のファイルを返す。出力に無いパスと出力の外を指すパスは `index.html` を返す。"""
+    base = spa_dir.resolve()
+    target = (base / unquote(sub_path).lstrip("/")).resolve()
+    if not target.is_relative_to(base) or not target.is_file():
+        target = base / "index.html"
+        if not target.is_file():
+            return problem_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR, f"SPA の出力がありません（{spa_dir}）"
+            )
+    content_type = SPA_TYPES.get(target.suffix, "application/octet-stream")
+    return Response(status=HTTPStatus.OK, content_type=content_type, body=target.read_bytes())
 
 
 def index_response(preview_dir: Path) -> Response:

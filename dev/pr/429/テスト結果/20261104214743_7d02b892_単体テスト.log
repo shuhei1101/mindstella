@@ -1,0 +1,45 @@
+$ python3 -m pytest tests/unit/scripts/test_serve.py -q -p no:cacheprovider
+E       AttributeError: module 'serve' has no attribute 'spa_response'. Did you mean: 'seen_response'?
+
+tests/unit/scripts/test_serve.py:684: AttributeError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_serve.py::test_spa_response - AttributeError: ...
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_client_route[route]
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_client_route[root]
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_outside[dot]
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_outside[encoded]
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_unknown_suffix
+FAILED tests/unit/scripts/test_serve.py::test_spa_response_when_index_missing
+7 failed, 115 passed in 23.66s
+
+$ npx vitest run
+ FAIL  frontend/src/app/app.test.tsx [ frontend/src/app/app.test.tsx ]
+Error: Failed to resolve import "@/app/app" from "frontend/src/app/app.test.tsx". Does the file exist?
+ FAIL  frontend/src/app/query-client.test.ts [ frontend/src/app/query-client.test.ts ]
+Error: Failed to resolve import "@/app/query-client" from "frontend/src/app/query-client.test.ts". Does the file exist?
+ FAIL  frontend/src/app/router.test.tsx [ frontend/src/app/router.test.tsx ]
+Error: Failed to resolve import "@/app/router" from "frontend/src/app/router.test.tsx". Does the file exist?
+ FAIL  frontend/src/shared/components/topbar.test.tsx [ frontend/src/shared/components/topbar.test.tsx ]
+Error: Failed to resolve import "@/shared/components/topbar" from "frontend/src/shared/components/topbar.test.tsx". Does the file exist?
+ FAIL  frontend/src/shared/adapters/api-client.test.ts [ frontend/src/shared/adapters/api-client.test.ts ]
+Error: Failed to resolve import "@/shared/adapters/api-client" from "frontend/src/shared/adapters/api-client.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/adapters/events-client.test.ts [ frontend/src/shared/adapters/events-client.test.ts ]
+Error: Failed to resolve import "@/shared/adapters/events-client" from "frontend/src/shared/adapters/events-client.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/core/app-error.test.ts [ frontend/src/shared/core/app-error.test.ts ]
+Error: Failed to resolve import "@/shared/core/app-error" from "frontend/src/shared/core/app-error.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/core/legacy-url.test.ts [ frontend/src/shared/core/legacy-url.test.ts ]
+Error: Failed to resolve import "@/shared/core/legacy-url" from "frontend/src/shared/core/legacy-url.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/lib/cn.test.ts [ frontend/src/shared/lib/cn.test.ts ]
+Error: Failed to resolve import "@/shared/lib/cn" from "frontend/src/shared/lib/cn.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/stores/connection-store.test.ts [ frontend/src/shared/stores/connection-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/connection-store" from "frontend/src/shared/stores/connection-store.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/stores/theme-store.test.ts [ frontend/src/shared/stores/theme-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/theme-store" from "frontend/src/shared/stores/theme-store.test.ts". Does the file exist?
+ FAIL  frontend/src/features/overview/overview/overview-screen.test.tsx [ frontend/src/features/overview/overview/overview-screen.test.tsx ]
+Error: Failed to resolve import "@/app/query-client" from "frontend/src/testing/render.tsx". Does the file exist?
+ FAIL  frontend/src/features/overview/overview/queries.test.ts [ frontend/src/features/overview/overview/queries.test.ts ]
+Error: Failed to resolve import "@/features/overview/overview/queries" from "frontend/src/features/overview/overview/queries.test.ts". Does the file exist?
+ FAIL  frontend/src/features/overview/overview/search.test.ts [ frontend/src/features/overview/overview/search.test.ts ]
+Error: Failed to resolve import "@/features/overview/overview/search" from "frontend/src/features/overview/overview/search.test.ts". Does the file exist?
+ Test Files  14 failed (14)
+      Tests  no tests

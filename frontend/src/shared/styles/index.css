@@ -1,0 +1,145 @@
+/* Tailwind を読み、標準のパレットを消して、tokens.css のトークンを割り当てる */
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* ダーク: data-theme が dark のとき（今の画面と同じく、明示したダークだけに当てる） */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-*: initial;
+  /* 本文の幅の上限 */
+  --container-content: 82.5rem;
+  /* 画面幅の区切り（今の画面の区切りと同じ。max-* はその幅未満） */
+  --breakpoint-*: initial;
+  --breakpoint-2xs: 361px;
+  --breakpoint-xs: 390px;
+  --breakpoint-sm: 481px;
+  --breakpoint-md: 721px;
+  --breakpoint-lg: 901px;
+  --breakpoint-xl: 1101px;
+  --breakpoint-2xl: 1441px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-thead: var(--thead);
+  --color-mark: var(--mark);
+  --color-mark-weak: var(--mark-weak);
+  --color-mark-line: var(--mark-line);
+  --color-on-mark: var(--on-mark);
+  --color-row-hover: var(--row-hover);
+  --color-st-done: var(--st-done);
+  --color-st-open: var(--st-open);
+  --color-st-review: var(--st-review);
+  --color-st-hold: var(--st-hold);
+  --color-st-loose: var(--st-loose);
+  --color-st-off: var(--st-off);
+  --color-diff-changed: var(--diff-changed);
+  --color-topbar-bg: var(--topbar-bg);
+  --color-topbar-fg: var(--topbar-fg);
+  --color-topbar-fg-2: var(--topbar-fg-2);
+  --color-topbar-line: var(--topbar-line);
+  --color-topbar-hover: var(--topbar-hover);
+  --color-topbar-danger: var(--topbar-danger);
+  --color-topbar-unread: var(--topbar-unread);
+  --color-topbar-chip-hover: var(--topbar-chip-hover);
+  --color-transparent: transparent;
+  --font-sans: var(--font-stack-sans);
+  --font-mono: var(--font-stack-mono);
+  --text-body: var(--fs-body);
+  --text-small: var(--fs-small);
+  --text-xs: var(--fs-xs);
+  --text-h2: var(--fs-h2);
+  --text-num: var(--fs-big);
+  --text-count: 0.6875rem;
+  --text-tab-count: 0.71875rem;
+  --text-rank: 1.375rem;
+  --text-next: 1.25rem;
+  --text-next-narrow: 1.0625rem;
+  --text-hero: 2.5rem;
+  --text-hero-narrow: 1.75rem;
+  --text-goal: 4rem;
+  --text-goal-sub: 1.625rem;
+  --radius-control: var(--radius);
+  --radius-kbd: 3px;
+}
+
+@layer base {
+  /* 本文: 地の色・文字・行の高さ */
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-stack-sans);
+    font-size: var(--fs-body);
+    line-height: 1.6;
+    font-feature-settings: "palt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* キーボードのフォーカス: 印の色の 2px の輪 */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* 差分の札の幅（名前が数文字読める下限と上限） */
+@utility chip-width {
+  min-width: 5.5em;
+  max-width: 24em;
+}
+
+/* 狭い幅の差分の札の上限 */
+@utility chip-width-narrow {
+  max-width: 12em;
+}
+
+/* 話し合いの概要を読める幅で折り返す */
+@utility readable-width {
+  max-width: 46em;
+}
+
+/* 横に送る帯のスクロールバーを隠す */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 等幅の数字 */
+@utility mono {
+  font-family: var(--font-stack-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* 次に検討する項目の行: 順位・タイトルと補足・矢印 */
+@utility grid-cols-next {
+  grid-template-columns: 2.2em 1fr auto;
+}
+
+/* フェーズごとの棒の行: フェーズ・棒・数 */
+@utility grid-cols-stage {
+  grid-template-columns: 8.5em 1fr 3.2em;
+}

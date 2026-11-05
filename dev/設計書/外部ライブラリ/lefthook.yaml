@@ -1,0 +1,44 @@
+title: lefthook
+kind: CLI
+version:
+  current: 2.2.2
+  latest: 2.2.2
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 2.2.2 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 2.2.2
+    entries:
+      - name: pre-commit
+        kind: 設定
+        purpose: frontend/src の .ts・.tsx を commit するときに npm run lint と npm run typecheck を流す
+      - name: postinstall（lefthook install）
+        kind: コマンド
+        purpose: npm ci の後に .git/hooks/ へフックを入れる
+      - name: pre-commit の spa-build
+        kind: 設定
+        purpose: frontend/ か vite.config.ts・package.json・package-lock.json を commit するときに npm run build を流し、preview/spa/ に未 commit の差分か追跡していないファイルが残れば止める
+lead: Git のフックを YAML の設定で管理して流す。
+purl: pkg:npm/lefthook
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+  - lefthook.yml
+  - package.json
+upstream: evilmartians/lefthook
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: PoC 検証（#430）で、違反を含む commit が pre-commit で止まり、直すと通ることを確かめた
+license: MIT（開発用だけで配る物に入らない）
+official_url: https://lefthook.dev/
+docs_url: https://lefthook.dev/configuration/
+install: '```bash
+
+  npm install --save-dev --save-exact lefthook@2.2.2
+
+  ```'
+limitations:
+  - item: 共有のフック
+    content: npm ci の postinstall は、リポジトリの全ての worktree が共有する .git/hooks/ に pre-commit・prepare-commit-msg を書く。設定を持たない worktree の commit では警告だけを出して止めない

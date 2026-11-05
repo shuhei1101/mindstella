@@ -1,0 +1,551 @@
+// トップバーのストーリー（部品設計『トップバー.tsx』の状態）
+
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
+
+import { Topbar, type TopbarProps } from "@/shared/components/topbar";
+
+const meta = {
+  title: "Shared/Topbar",
+  component: Topbar,
+  // ダークのときは、画面全体の色の組も切り替える（アプリが `data-theme` に持つ値と同じ）
+  render: (args) => {
+    document.documentElement.dataset["theme"] = args.theme;
+    return <Topbar {...args} />;
+  },
+  args: {
+    title: "要件出しのスキル mindmap を設計する",
+    tabs: [
+      { key: "overview", label: "概要", icon: "home" },
+      { key: "decisions", label: "検討事項", icon: "decision", count: 12 },
+      { key: "tasks", label: "タスク", icon: "task", count: 8 },
+      { key: "research", label: "調査", icon: "research", count: 3 },
+      { key: "docs", label: "資料", icon: "doc", count: 5 },
+      { key: "terms", label: "用語集", icon: "term", count: 9 },
+      { key: "notes", label: "メモ", icon: "note", count: 4 },
+      { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+    ],
+    current: "overview",
+    theme: "light",
+    onNavigate: fn(),
+    onOpenSearch: fn(),
+    onThemeChange: fn(),
+    onToggleSettings: fn(),
+  },
+} satisfies Meta<TopbarProps>;
+
+export default meta;
+
+type Story = StoryObj<TopbarProps>;
+
+/** 概要を開いている。開いている画面のタブに印の色の下線 */
+export const Overview: Story = { args: { current: "overview" } };
+
+/** ネットワークを開いている。ネットワークの入口だけを選んだ見た目にする */
+export const Graph: Story = { args: { current: "graph" } };
+
+/** 題名が長い。1 行で末尾を省略し、検索の入口とテーマの切り替えを押し出さない */
+export const LongTitle: Story = {
+  args: {
+    title:
+      "プレビューの画面（概要・検討事項・タスク・資料・ネットワーク・詳細パネル）を見本に沿って作るための話し合いの記録",
+  },
+};
+
+/** ダーク */
+export const Dark: Story = { args: { theme: "dark" } };
+
+/** 幅 390px。検索の入口を虫眼鏡だけにし、題名を隠す。タブは帯の中で横に送る */
+export const Narrow: Story = {
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** サーバーにつながらない。検索の入口の左に、印と読んだ日時つきの接続の状態を出す（全文が出る幅 1441px で見せる） */
+export const Offline: Story = {
+  args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+  parameters: {
+    viewport: {
+      options: { wide: { name: "幅 1441px", styles: { width: "1441px", height: "900px" } } },
+    },
+  },
+  globals: { viewport: { value: "wide", isRotated: false } },
+};
+
+/** 幅 390px でサーバーにつながらない。幅 900px 以下は印だけを見せ、「つながりません」は読み上げにだけ残して、読んだ日時を title に持つ */
+export const OfflineNarrow: Story = {
+  args: { connection: "offline", readAt: "2026-10-04T02:21:00+00:00" },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 変更履歴で「前回開いてから」を選んだ間。「変更履歴」の右に札と ×、検討事項・資料のタブに点 */
+export const DiffOn: Story = {
+  args: {
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+    tabs: [
+      { key: "overview", label: "概要", icon: "home" },
+      { key: "decisions", label: "検討事項", icon: "decision", count: 12, marked: true },
+      { key: "tasks", label: "タスク", icon: "task", count: 8 },
+      { key: "research", label: "調査", icon: "research", count: 3 },
+      { key: "docs", label: "資料", icon: "doc", count: 5, marked: true },
+      { key: "terms", label: "用語集", icon: "term", count: 9 },
+      { key: "notes", label: "メモ", icon: "note", count: 4 },
+      { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+    ],
+  },
+};
+
+/** 幅 390px のサーバーの配信で、差分の表示の間。「変更履歴」とコメントのボタンをアイコン（コメントは件数も）だけにし、札の名前の末尾を省略して、コメントのボタンと × を押し出さずに収める */
+export const DiffOnNarrow: Story = {
+  args: {
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+    comments: true,
+    commentCount: 3,
+  },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** コメントのボタンを右端に置き、全体の検索の入口を中央へ寄せる。件数を塗りで出す */
+export const Comments: Story = { args: { comments: true, commentCount: 3 } };
+
+/** レビュー中のコメントが 0 件。押せるまま、件数の塗りを外して目立たせない */
+export const CommentsZero: Story = { args: { comments: true, commentCount: 0 } };
+
+/** 100 件以上。件数を 99+ にし、読み上げの名前には実際の件数を持つ */
+export const CommentsMany: Story = { args: { comments: true, commentCount: 120 } };
+
+/** コメントの一覧を開いている。ボタンを枠と面で選んだ見た目にする */
+export const CommentsOpen: Story = { args: { comments: true, commentCount: 3, commentsOpen: true } };
+
+/** 幅 390px。コメントのボタンの文字を隠し、印と件数だけにする */
+export const CommentsNarrow: Story = {
+  args: { comments: true, commentCount: 3 },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** オープンのスレッドに未読がある。吹き出しの印の右上に点を重ね、レビュー中の件数はそのまま出す。ボタンの幅は `Comments` と同じ */
+export const CommentsUnread: Story = { args: { comments: true, commentCount: 3, commentsUnread: true } };
+
+/** 未読があり、レビュー中は 0 件。点を出し、件数は塗りを外した 0 のまま */
+export const CommentsUnreadZero: Story = { args: { comments: true, commentCount: 0, commentsUnread: true } };
+
+/** 未読があり、コメントの一覧を開いている。選んだ見た目の枠と面に点を重ねる */
+export const CommentsUnreadOpen: Story = { args: { comments: true, commentCount: 3, commentsUnread: true, commentsOpen: true } };
+
+/** 幅 390px で未読がある。コメントのボタンは印と件数だけで、点を重ねてもボタンと × を押し出さず 390px の中に収める */
+export const CommentsUnreadNarrow: Story = {
+  args: { comments: true, commentCount: 3, commentsUnread: true },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 表示の設定のパネルを開いている。表示の設定のボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
+export const SettingsOpen: Story = { args: { comments: true, commentCount: 3, settingsOpen: true } };
+
+/** 表示の設定でタスクと資料を外した。タブの帯からその 2 つを外し、概要とネットワークの入口は残す */
+export const KindsHidden: Story = {
+  args: {
+    comments: true,
+    commentCount: 3,
+    tabs: [
+      { key: "overview", label: "概要", icon: "home" },
+      { key: "decisions", label: "検討事項", icon: "decision", count: 12 },
+      { key: "research", label: "調査", icon: "research", count: 3 },
+      { key: "terms", label: "用語集", icon: "term", count: 9 },
+      { key: "notes", label: "メモ", icon: "note", count: 4 },
+      { key: "logs", label: "会話ログ", icon: "log", count: 20 },
+    ],
+  },
+};
+
+/** 配る書き出し。表示の設定のボタンを出し、コメントのボタンは出さない */
+export const Export: Story = { args: { comments: false } };
+
+/** 絞り込みのボタンをコメントのボタンの左に置き、絞っていないのでバッジを出さない */
+export const Filter: Story = { args: { filter: true, onToggleFilter: fn(), comments: true, commentCount: 3 } };
+
+/** 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す */
+export const FilterOn: Story = {
+  args: { filter: true, filterCount: 2, onToggleFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 絞り込みのドロワーを開いている。ボタンを枠と面で選んだ見た目にする */
+export const FilterOpen: Story = {
+  args: { filter: true, filterCount: 2, filterOpen: true, onToggleFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に 5.5em 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は 5.5em 以上を保ったまま題名の側を縮める */
+export const FilterDiffMedium: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+};
+
+/** サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 1440px 以下では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない（幅 900px 以下は印だけにする）。札は 5.5em 以上を取る */
+export const FilterDiffOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+};
+
+/** 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする */
+export const FilterNarrow: Story = {
+  args: { filter: true, filterCount: 1, onToggleFilter: fn(), comments: true, commentCount: 3 },
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+// 配信の画面のトップバーは余白なしで表示幅いっぱいに出るため、狭い幅のストーリーも余白を付けない
+const narrowViewport = {
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+} satisfies Story;
+
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態を印だけにし、要素の間隔は差分を出している間のどの幅でも 8px にする。幅 480px 以下ではツール名の印も隠す。トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+export const FilterDiffOfflineNarrow: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。接続の状態を印だけにし、幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない */
+export const FilterOfflineNarrow: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onOpenHistory: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。幅 481〜900px は要素の間隔を 8px に詰めて、トップバーもページも横にはみ出さない */
+export const FilterHistoryNarrow: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onOpenHistory: fn(),
+  },
+  ...narrowViewport,
+};
+
+/** 幅 390〜900px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。要素の間隔は差分を出している間のどの幅でも 8px にし、トップバーもページも横にはみ出さず、札は 5.5em 以上を取る */
+export const FilterDiffNarrow: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "フェーズの切り方を見直しに戻す", sub: "10/04 14:45" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...narrowViewport,
+};
+
+// 幅 320〜389px のストーリーは、設計書の見せ方の 4 つの幅（320・361・389・390px）を切り替えて見せる。既定は最も狭い 320px
+const fitViewport = {
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: {
+        w320: { name: "幅 320px", styles: { width: "320px", height: "568px" } },
+        w361: { name: "幅 361px", styles: { width: "361px", height: "844px" } },
+        w389: { name: "幅 389px", styles: { width: "389px", height: "844px" } },
+        w390: { name: "幅 390px", styles: { width: "390px", height: "844px" } },
+      },
+    },
+  },
+  globals: { viewport: { value: "w320", isRotated: false } },
+} satisfies Story;
+
+/** 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。ツール名の文字を隠し（印は残す）、印だけのボタンを高さ 32px・幅 28px に揃えて縮ませず、要素の間隔 1px・左右の余白 8px、表示の設定・絞り込み・コメントのボタンの左右の余白 2px・ボタンの中の印と件数の間隔 2px に詰める。ボタンを 1 つも隠さず、絞り込みのバッジ 2 桁・コメントの件数 `99+` までトップバーもページも横にはみ出さない */
+export const FitNarrowest: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onOpenHistory: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながり、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。`FitNarrowest` の詰め方に加えてツール名の印も隠し、差分の間の要素の間隔も 1px にする。札は空いた幅まで伸び、どの幅でも 5.5em 以上を取る。トップバーもページも横にはみ出さない */
+export const FitNarrowestDiff: Story = {
+  args: {
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながらず、絞り込み・表示の設定・コメント・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、接続の状態は印だけにする。ツール名の印は残す。トップバーもページも横にはみ出さない */
+export const FitNarrowestOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 2,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onOpenHistory: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。収める中身が最も広い組み合わせ。`FitNarrowestDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも 5.5em 以上を取り、トップバーもページも横にはみ出さない */
+export const FitNarrowestOfflineDiff: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...fitViewport,
+};
+
+/** 幅 320〜389px で、サーバーにつながり、絞り込み（件数なし）・表示の設定・コメント（0 件）・変更履歴のボタンを出し、差分を表示していない間。`FitNarrowest` と同じ詰め方で、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く */
+export const FitNarrowestNoCount: Story = {
+  args: {
+    filter: true,
+    filterCount: 0,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 0,
+    onOpenHistory: fn(),
+  },
+  ...fitViewport,
+};
+
+// 幅 390〜480px のストーリーは、この範囲の両端（390px・480px）を切り替えて見せる。既定は 390px
+const fitWideViewport = {
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: {
+        w390: { name: "幅 390px", styles: { width: "390px", height: "844px" } },
+        w480: { name: "幅 480px", styles: { width: "480px", height: "844px" } },
+      },
+    },
+  },
+  globals: { viewport: { value: "w390", isRotated: false } },
+} satisfies Story;
+
+/** 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` が付くが、差分の札も接続の状態も出していないので詰め方は `FilterHistoryNarrow` と同じ。トップバーもページも横にはみ出さない */
+export const FitWide: Story = {
+  args: {
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    onOpenHistory: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながり、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。件数の札に `data-wide` があり差分の札を出しているので、`FitNarrowestDiff` と同じ詰め方（ツール名の文字と印を隠し、要素の間隔 1px・左右の余白 8px、印だけのボタンを幅 28px、3 つのボタンの左右の余白と印と件数の間隔 2px）にする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffNarrow` と同じ */
+export const FitWideDiff: Story = {
+  args: {
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）・変更履歴のボタンを出し、差分を表示していない間。件数の札に `data-wide` があり接続の状態を出しているので、`FitNarrowestOffline` と同じ詰め方（ツール名の文字を隠し、印は残す）にする。トップバーもページも横にはみ出さない。幅 481px 以上は `FilterOfflineNarrow` と同じ */
+export const FitWideOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    onOpenHistory: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（バッジ 2 桁）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。`FitNarrowestOfflineDiff` と同じ詰め方で、接続の状態は印だけにする。札はどの幅でも `5.5em` 以上を取り、トップバーもページも横にはみ出さない。幅 481px 以上は `FilterDiffOfflineNarrow` と同じ */
+export const FitWideOfflineDiff: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 幅 390〜480px で、サーバーにつながらず、絞り込み（件数なし）・表示の設定・コメント（`99+`）のボタンを出し、差分を表示している間。コメントの件数に `data-wide` が付き `FitWideOfflineDiff` と同じ詰め方になるので、件数の札を持たない表示の設定・絞り込みのボタンも幅 `--target-min`（24px）を割らず、印を中央に置く */
+export const FitWideOfflineDiffNoFilter: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    filter: true,
+    filterCount: 0,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    diffPoint: { name: "前回開いてから", sub: "10/04 13:05 より後" },
+    onOpenHistory: fn(),
+    onClearDiff: fn(),
+  },
+  ...fitWideViewport,
+};
+
+/** 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙の印・「保存待ち」・印の色の塗りの件数「5」を出す */
+export const Pending: Story = {
+  args: { pending: true, pendingCount: 5, onTogglePending: fn(), filter: true, onToggleFilter: fn(), comments: true, commentCount: 3 },
+};
+
+/** 保存待ちのパネルを開いている。保存待ちのボタンを枠と面で選んだ見た目にし、コメントのボタンは選んでいない見た目のまま */
+export const PendingOpen: Story = {
+  args: { pending: true, pendingCount: 5, pendingOpen: true, onTogglePending: fn(), comments: true, commentCount: 3 },
+};
+
+/** 直前の保存で書き込めない編集があった。印を警告に替え、件数の塗りを失敗の赤にする */
+export const PendingBlocked: Story = {
+  args: { pending: true, pendingCount: 3, pendingBlocked: true, onTogglePending: fn(), comments: true, commentCount: 3 },
+};
+
+/** 保存待ちが 100 件以上。件数を 99+ にし、読み上げの名前には実際の件数を持つ */
+export const PendingMany: Story = {
+  args: { pending: true, pendingCount: 120, onTogglePending: fn(), comments: true, commentCount: 3 },
+};
+
+/** 幅 390px。保存待ちのボタンの文字を隠して印と件数だけにし、ツール名の文字を隠す（印は残す）。絞り込み・表示の設定・コメント・変更履歴のボタンを 1 つも隠さず、トップバーもページも横にはみ出さない */
+export const PendingNarrow: Story = {
+  args: {
+    pending: true,
+    pendingCount: 7,
+    onTogglePending: fn(),
+    filter: true,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onOpenHistory: fn(),
+  },
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 幅 320〜389px で、保存待ち（99+）・絞り込み（バッジ 2 桁）・表示の設定・コメント（99+）・変更履歴のボタンを出す間。`FitNarrowest` の詰め方に保存待ちのボタンも加え（左右の余白 2px・印と件数の間隔 2px・幅の下限 `--target-min`）、トップバーもページも横にはみ出さない */
+export const PendingFitNarrowest: Story = {
+  args: {
+    pending: true,
+    pendingCount: 120,
+    onTogglePending: fn(),
+    filter: true,
+    filterCount: 12,
+    onToggleFilter: fn(),
+    comments: true,
+    commentCount: 120,
+    onOpenHistory: fn(),
+  },
+  ...fitViewport,
+};
