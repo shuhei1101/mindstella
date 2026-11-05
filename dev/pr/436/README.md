@@ -1,0 +1,1 @@
+# 結合テスト test_diff_body_side_by_side_when_linked で、左の列の語の差分を待ってから参照する
