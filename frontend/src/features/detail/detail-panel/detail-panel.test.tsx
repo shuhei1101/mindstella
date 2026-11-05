@@ -1,0 +1,70 @@
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, test, vi } from "vitest";
+
+import { useRecords } from "@/testing/msw/fixtures";
+import { renderRoute } from "@/testing/render";
+
+const { useLibrary } = vi.hoisted(() => ({ useLibrary: vi.fn(() => ({ status: "ready", library: { mount: (root: HTMLElement, source: string) => ((root.textContent = source), { destroy: () => undefined }) } })) }));
+vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), useLibrary }));
+
+const decision = {
+  id: "D-1",
+  title: "D-1の題",
+  status: "未決定",
+  body: "docs/D-1.md",
+  options: [{ key: "A", content: "案 A" }],
+  history: [{ seq: 2, at: "2026-11-02T00:00:00+00:00", before: {}, body_diff: [{ line: 1, now: ["今の行"], before: ["前の行"] }] }],
+};
+const changes = { last_seq: 2, sets: [{ id: "V-2", at: "2026-11-02T00:00:00+00:00", summary: "2 回目", until_seq: 2, added: [], changed: ["D-1"] }, { id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "1 回目", until_seq: 1, added: [], changed: [] }], pending: { added: [], changed: [] } };
+
+describe("DetailPanel", () => {
+  // 項目を描く（正常系）
+  test("detail_panel", async () => {
+    // 準備
+    useRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", depends_on: ["D-1"] }], bodies: { "docs/D-1.md": "本文の文" } });
+    // 実行
+    renderRoute("/spa/?tab=decisions&id=D-1");
+    // 検証
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    expect(panel).toHaveTextContent("D-1の題");
+    expect(panel).toHaveTextContent("案 A");
+    expect(panel).toHaveTextContent("本文の文");
+    expect(panel).toHaveTextContent("D-2の題");
+  });
+
+  // 本文の差分（正常系）
+  test("detail_panel_when_diff", async () => {
+    // 準備
+    useRecords({ decisions: [decision], bodies: { "docs/D-1.md": "今の行\n" }, changes });
+    // 実行
+    renderRoute("/spa/?tab=decisions&id=D-1&diff=V-2");
+    // 検証
+    expect(await screen.findByText(/前の行/)).toBeInTheDocument();
+  });
+
+  // 編集の表示（正常系）
+  test("detail_panel_when_editing", async () => {
+    // 準備
+    useRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    renderRoute("/spa/?tab=decisions&id=D-1");
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: "編集する" }));
+    // 検証
+    expect(await screen.findByRole("textbox", { name: "タイトル" })).toHaveValue("D-1の題");
+  });
+
+  // 今の画面でコメントする（正常系）
+  test("detail_panel_when_comment_link", async () => {
+    // 準備
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    useRecords({ decisions: [decision], changes });
+    renderRoute("/spa/?tab=decisions&view=table&id=D-1&diff=V-1");
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: "今の画面でコメントする" }));
+    // 検証
+    expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1");
+    vi.unstubAllGlobals();
+  });
+});

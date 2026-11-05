@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, test, vi } from "vitest";
@@ -39,16 +39,29 @@ describe("OverviewScreen", () => {
     expect(document.querySelector("#tile-next")).not.toBeInTheDocument();
   });
 
-  // すべて表示は今の画面へ（正常系）
+  // すべて表示は SPA の一覧へ（正常系）
   test("overview_screen_when_show_all", async () => {
     // 準備
-    const assign = vi.fn();
-    vi.stubGlobal("location", { ...window.location, assign });
     renderRoute("/spa/");
     const review = await screen.findByRole("region", { name: "要見直し" });
     // 実行
     await userEvent.click(within(review).getByRole("button", { name: /すべて表示/ }));
     // 検証
-    expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=decisions&view=table&f.status=%E8%A6%81%E8%A6%8B%E7%9B%B4%E3%81%97");
+    await waitFor(() => expect(decodeURIComponent(window.location.search)).toContain("f.status=要見直し"));
+    expect(window.location.search).toContain("tab=decisions");
+    expect(window.location.search).toContain("view=table");
+  });
+
+  // ネットワークは今の画面へ（正常系）
+  test("overview_screen_when_network", async () => {
+    // 準備
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    renderRoute("/spa/");
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: /ネットワーク/ }));
+    // 検証
+    expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=graph");
+    vi.unstubAllGlobals();
   });
 });
