@@ -82,7 +82,7 @@ export const PreviewShell = () => {
   };
   // React に無い画面（検索・コメント・表示の設定・ネットワーク）は今の画面を開く
   const toLegacy = (): void => {
-    openLegacy(toLegacyHash(search));
+    openLegacy(toLegacyHash(search, tab));
   };
   const closeDrawer = (): void => {
     setDrawerOpen(false);
@@ -139,7 +139,13 @@ export const PreviewShell = () => {
         onTogglePending={() => { setPanel(search.panel === "pending" ? undefined : "pending"); }}
       />
       <div className="flex min-h-0 flex-1">
-        {data === undefined && records.error instanceof AppError ? <RecordsError error={records.error} /> : null}
+        {data === undefined && records.error instanceof AppError ? (
+          <main id="main" className="min-h-0 flex-1 overflow-y-auto">
+            <div>
+              <RecordsError error={records.error} />
+            </div>
+          </main>
+        ) : null}
         {screen()}
         {index !== null && search.id !== undefined && search.full === undefined ? <DetailPanel id={search.id} index={index} /> : null}
       </div>
