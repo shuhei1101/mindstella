@@ -251,7 +251,7 @@ def test_normal_when_embedded_html_and_parts(
 
 
 def test_normal_when_main_tag_marked(serve_preview: ServePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
-    """資料のカードのタグで主題のタグだけがマーカーと読み上げ名を持ち、ドロワーのタグは名前で並んで絞り込める（正常系）。"""
+    """資料のカードのタグで主題のタグだけがマーカーと読み上げ名を持ち、ドロワーのタグは五十音の順で並んで絞り込める（正常系）。"""
     # 準備
     url = serve_preview(make_item("A-1", tags=[{"name": "保存", "main": True}, {"name": "画面"}]))
     # 実行
@@ -271,5 +271,5 @@ def test_normal_when_main_tag_marked(serve_preview: ServePreview, open_preview: 
     expect(page.locator(".chips .chip")).to_have_count(1)
     close_drawer(page)
     # 検証（ドロワーのタグと絞り込んだカード）
-    assert tag_values == ["保存", "画面"]
+    assert tag_values == ["画面", "保存"]
     assert page.eval_on_selector_all(".doc-card", "cards => cards.map(c => c.dataset.id)") == ["A-1"]
