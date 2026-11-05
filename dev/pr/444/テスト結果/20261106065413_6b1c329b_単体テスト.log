@@ -5,22 +5,27 @@ $ npx vitest run
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+··Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+···Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+··Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+··Not implemented: Window's scrollTo() method
 ·Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-···Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 ··Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 ··Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
 ··Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
@@ -29,36 +34,32 @@ Not implemented: Window's scrollTo() method
 ···Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 ··Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+··Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+··Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+···Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+·······Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+·Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
 ····Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-·····Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-·····Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 ·Not implemented: Window's scrollTo() method
 ········································································
 
  Test Files  49 passed (49)
-      Tests  120 passed (120)
-   Start at  05:24:47
-   Duration  471.06s (environment 54%, import 24%, setup 20%, transform 1%, worker 1%)
+      Tests  123 passed (123)
+   Start at  06:54:17
+   Duration  304.82s (environment 54%, import 24%, setup 19%, transform 1%, worker 1%)
 
-Environment  jsdom was created 49 times · 1621.85s total, 54% of tracked time
+Environment  jsdom was created 49 times · 1070.62s total, 54% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
 
