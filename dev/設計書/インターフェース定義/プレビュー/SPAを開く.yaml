@@ -2,7 +2,7 @@ title: SPAを開く
 entry:
   kind: screen
   value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数）・`GET /api/edits`（保存待ちの編集の件数）・`GET /api/threads`（スレッドの利用者の未読）'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数と、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドの利用者の未読）・`POST /api/opened`（前回開いた日時）'
 flows:
 - name: 正常系
   summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
@@ -45,6 +45,125 @@ flows:
   - タブの帯で概要が選ばれている
   - URL の search params に `tab` が無い
   test: test_normal_when_search_invalid
+- name: 正常系（一覧の画面を開く）
+  summary: '`tab` と `view` が指す一覧の画面と表示形式を開く'
+  setup:
+  - &id001
+    name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 検討事項 D-1（決定済み）・D-2（要見直し）と、タスク T-1 を持つワークスペース
+    notes: '`/spa/?tab=decisions&view=table` で開き、続けてタブの帯でタスクへ移る'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&view=table を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項の表\n  ユーザー->>IF: タブの帯でタスクを押す\n  IF-->>ユーザー: タスクのボード\n```"
+  expected:
+  - タブの帯で検討事項が選ばれ、表示形式の切り替えで表が選ばれている
+  - 表に D-1・D-2 の行がある
+  - タスクへ移った後、タスクのボードに T-1 があり、URL の search params が `tab=tasks` だけ
+  - ブラウザで戻ると検討事項の表に戻る
+  - ブラウザのコンソールにエラーが出ていない
+  test: test_normal_when_list_screen
+- name: 正常系（項目を指す）
+  summary: '`id` が指す項目の詳細パネルを開き、`full` で全画面に切り替える'
+  setup:
+  - *id001
+  - name: make_workspace
+    description: 本文に見出し「決め方」を持つ検討事項 D-1 と、タスク T-1 を持つワークスペース
+    notes: '`/spa/?tab=decisions&id=D-1&h=決め方` で開き、全画面のボタンを押す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のマップと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
+  expected:
+  - 詳細パネルに D-1 のタイトルと、mdmark で描いた本文がある
+  - 本文の見出し「決め方」が詳細パネルの本文の区画に入っている
+  - 全画面のボタンを押した後、URL に `full=true` があり、履歴の数が変わらない
+  - 詳細の本文の T-1 へのリンクを押すと、詳細が T-1 に移り、ブラウザで戻ると D-1 に戻る
+  test: test_normal_when_item
+- name: 正常系（search params の値が記録・画面に合わない）
+  summary: 画面が持たない表示形式・記録に無い項目・本文に無い見出しを外して開く
+  setup:
+  - *id001
+  - name: make_workspace
+    description: タスク T-1 を持つワークスペース
+    notes: '`/spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown` で開く'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown を開く\n  IF-->>ユーザー: タスクのボード\n```"
+  expected:
+  - タスクがボードで開き、詳細パネルが開いていない
+  - URL の search params が `tab=tasks` だけ
+  test: test_normal_when_search_mismatched
+- name: 正常系（絞り込みの条件がある）
+  summary: '`f.{列}` と `sort` で絞って並べた表を、条件のチップ付きで開く'
+  setup:
+  - *id001
+  - name: make_workspace
+    description: 検討事項 D-1（決定済み）・D-2（要見直し）・D-3（要見直し）を持つワークスペース
+    notes: '`/spa/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して読み込み直す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 読み込み直す\n  IF-->>ユーザー: 全ての行の表\n```"
+  expected:
+  - 開いたとき、表の行が D-3・D-2 の順で、D-1 の行が無く、表の上に状態「要見直し」のチップがある
+  - チップを外した後、URL に `f.status` が無く、履歴の数が変わらない
+  - 読み込み直した後も、表に D-1・D-2・D-3 の行がある（外した条件を端末に残している）
+  test: test_normal_when_filter
+- name: 正常系（時点を指す）
+  summary: '`diff` が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに `diff` を置き換える'
+  setup:
+  - *id001
+  - name: make_workspace
+    description: まとまり V-1（D-1 を足した）と V-2（D-1 の本文を変え、D-2 を足し、D-3 を消した）を持つワークスペース
+    notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分の印と消した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
+  expected:
+  - 表の D-1 の行に変更の印、D-2 の行に新規の印があり、表の上の消した項目の帯に D-3 がある
+  - 詳細パネルの本文に、足した行と消した行の差分の色分けがある
+  - V-1 を選んだ後、URL の `diff` が `V-1` になり、履歴の数が変わらない
+  - 読み込み直すと、`diff=V-1` の差分の表示で開く
+  test: test_normal_when_diff
+- name: 正常系（記録に無い時点を指す）
+  summary: 記録に無いまとまりを指す `diff` では差分を出さずに開き、`diff` を外す
+  setup:
+  - *id001
+  - name: make_workspace
+    description: まとまり V-1 を持つワークスペース
+    notes: '`/spa/?tab=decisions&diff=V-99` で開く'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分の印の無い検討事項\n```"
+  expected:
+  - 差分の印と消した項目の帯が無い
+  - URL の search params に `diff` が無い
+  test: test_normal_when_diff_missing
+- name: 正常系（前回開いてから）
+  summary: 「前回開いてから」を選ぶと、`POST /api/opened` が返した前回の時点より後の変更に印を付ける
+  setup:
+  - *id001
+  - name: make_workspace
+    description: まとまり V-1 を持ち、前回開いた日時の通し番号が V-1 の `until_seq` のワークスペース
+    notes: 開いた後に MCP の `add` で D-2 を足し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規の印\n```"
+  expected:
+  - D-2 に新規の印があり、D-1 に印が無い
+  - URL の `diff` が `since`
+  - 同じタブで読み込み直しても `POST /api/opened` が呼ばれない
+  test: test_normal_when_since
+- name: 正常系（書き換えで項目と表示を保つ）
+  summary: 詳細と絞り込みを開いたまま書き換えると、URL と詳細を保って描き直し、開いていた項目が消えたら詳細を閉じる
+  setup:
+  - *id001
+  - name: make_workspace
+    description: 検討事項 D-1・D-2 を持つワークスペース
+    notes: '`/spa/?tab=decisions&view=table&id=D-1&f.status=未決定` で開き、MCP の `update` で D-1 のタイトルを変え、続けて `remove` で D-1 を消す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 詳細と絞り込みを付けて開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 新しいタイトルの詳細\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 詳細を閉じた表\n```"
+  expected:
+  - タイトルを変えた後 2 秒以内に、詳細パネルと表の D-1 が新しいタイトルになり、URL が変わらない
+  - D-1 を消した後、詳細パネルが閉じ、URL に `id` が無く、`f.status` が残っている
+  test: test_normal_when_records_changed_with_item
+- name: 正常系（React に無い画面を開く）
+  summary: 詳細の編集とネットワークの入口は、今の画面を同じタブで開く
+  setup:
+  - *id001
+  - name: make_workspace
+    description: 検討事項 D-1 を持つワークスペース
+    notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、詳細パネルの「今の画面で編集する」を押す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: 詳細パネルの「今の画面で編集する」を押す\n  IF->>OLD: /mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 の詳細パネル\n```"
+  expected:
+  - 同じタブで `/mindstella.html` が開き、ハッシュが `tab=decisions&view=table&id=D-1&diff=V-1`
+  - 今の画面の詳細パネルに D-1 がある
+  test: test_normal_when_legacy_screen
 - name: 異常系（記録が読めない・422）
   summary: 記録がスキーマに合わず読めないとき、読めなかった箇所を画面に出す
   setup:
@@ -72,30 +191,129 @@ flows:
   - 止めた後も、前に読んだ記録の概要のタイルが残っている
   - 立ち上げ直した後、表示が消えて概要が描かれている
   test: test_error_when_server_stopped
+- name: 異常系（描画のライブラリが読めない）
+  summary: 描画のライブラリの配信元に届かないと、使う箇所にライブラリの名前を出し、表は使える
+  setup:
+  - *id001
+  - name: make_workspace
+    description: 本文に Mermaid の図を持つ検討事項 D-1 を持つワークスペース
+    notes: 描画のライブラリの配信元へのリクエストをブラウザで止めてから `/spa/?tab=decisions&view=table&id=D-1` で開く
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 開く\n  IF--xIF: 描画のライブラリが読めない\n  IF-->>ユーザー: 表と、原文の本文と、読めなかったライブラリの名前\n```"
+  expected:
+  - 表に D-1 の行がある
+  - 詳細パネルの本文に Markdown の原文と、読めなかった mdmark の名前がある
+  - ブラウザのコンソールに未処理の例外が出ていない
+  test: test_error_when_library_unavailable
 lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を読み直して描き直す。
 callers:
 - dev/設計書/シナリオ/単一ユースケース/プレビューを開く#
 request:
 - name: tab
-  type: '''overview'''
+  type: '''overview'' | ''decisions'' | ''tasks'' | ''research'' | ''docs'' | ''terms'' | ''notes'' | ''logs'''
   required: false
   default: なし（概要を開く）
   location: query
   description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す
-  constraints: 決めた値以外は無いものとして扱い、URL から外す
+  constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す
+- name: view
+  type: '''map'' | ''board'' | ''cards'' | ''table'''
+  required: false
+  default: なし（画面ごとの既定。`decisions` は `map`、`tasks` は `board`、`docs` は `cards`、それ以外は `table`）
+  location: query
+  description: 表示形式。既定と違うときだけ書く
+  constraints: その画面が持たない形式は無いものとして扱い、URL から外す
+- name: id
+  type: str
+  required: false
+  default: なし（詳細パネルを開かない）
+  location: query
+  description: 詳細パネルで開く項目の ID
+  constraints: '`D-`・`T-`・`R-`・`A-`・`G-`・`N-`・`L-` に数字。記録に無い ID は無いものとして扱い、URL から外す'
+  example: D-3
+- name: full
+  type: 'true'
+  required: false
+  default: なし（詳細パネルで開く）
+  location: query
+  description: 詳細を全画面で開く
+  constraints: '`id` があるときだけ効く。`id` が無いときは URL から外す'
+- name: h
+  type: str
+  required: false
+  default: なし（本文の頭で開く）
+  location: query
+  description: 詳細の本文の、開いたときに画面に入れる見出し
+  constraints: 形は『プレビューを開く』のハッシュの引数 `h` と同じ。`id` があるときだけ効く。本文に無い見出しと、本文が HTML の資料のときは本文の頭で開き、URL から外す
+  example: 決め方
+- name: diff
+  type: '''since'' | ''pending'' | str'
+  required: false
+  default: なし（端末の保存領域に残した時点。残していなければ差分を出さない）
+  location: query
+  description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
+  constraints: 端末の保存領域に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID と、まだまとめていない変更が空の `pending` は差分を出さず、URL から外す。URL に無く、保存領域の時点で差分を出せたときは、その時点を URL に書く
+  example: V-2
+- name: f.{列}
+  type: str
+  required: false
+  default: なし（その画面の保存した条件、無ければ画面の既定の条件で絞る）
+  location: query
+  description: 開いている画面を、その列の値で絞る。どの表示形式でも絞り込みのドロワーの条件として効く。概要の「すべて表示」・表のセル・絞り込みのドロワーとチップが書く
+  constraints: 形は『プレビューを開く』のハッシュの引数 `f.{列}` と同じ（複数の値は `|`、`~{列}` は文字の条件）。絞り込みを変えるたびに書き直す
+  example: f.status=要見直し
+- name: sort
+  type: str
+  required: false
+  default: なし（画面ごとの既定の並び）
+  location: query
+  description: 表を並べる列。降順は列の前に `-` を付ける
+  constraints: 表に無い列は無いものとして扱い、URL から外す。表の見出しで並べ替えるたびに書き直す
+  example: -updated
 constraints:
 - item: 通信
-  constraint: サーバーの配信（同じオリジンの `/api/`）と Google Fonts の文字だけへ通信する
+  constraint: サーバーの配信（同じオリジンの `/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送らない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
+- item: 描画のライブラリ
+  constraint: mdmark・mermaid・elkjs・marked・jsdiff は、今の画面と同じ配信元と版から、`integrity` で中身を確かめて読む。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
+- item: 本文の無害化
+  constraint: 『プレビューを開く』の制約「本文の無害化」と同じ
 - item: 画面への反映の時間
   constraint: 書き換えの知らせを受けてから 2 秒以内に描き直す
   decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
+- item: 描き直し
+  constraint: '`changed` を受けたら `GET /api/records`・`GET /api/comments`・`GET /api/edits`・`GET /api/threads` を読み直す。開いている画面・URL の search params・表の列の表示・本文のスクロールの位置を保ったまま描き直し、履歴に積まない。開いていた項目が記録から消えたら詳細を閉じ、URL から `id`・`full`・`h` を外す。読み直しが 422 なら前に読んだ記録で描き続ける'
 - item: 接続の状態
   constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ直しは `EventSource` に任せる
 - item: URL の状態
-  constraint: 画面で見ているものに影響する状態は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する
+  constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
+- item: 履歴
+  constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直しは積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
+- item: 画面の移動と項目
+  constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップのときは、`id` の項目を選んだ項目として示す
+- item: 保存した絞り込みの条件
+  constraint: 画面ごとの絞り込みの条件を、今の画面と同じ端末の保存領域のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
+- item: 端末の保存領域
+  constraint: ライト / ダーク・表ごとの表示する列とピン留め・変更履歴で選んだ時点・差分のミニマップ・本文の差分の並べ方・本文の表とセクションの見せ方・画面ごとの絞り込みの条件は、今の画面と同じ `localStorage` のキーと値の形で読み書きし、知らない項目を消さない。詳細パネルの幅は今の画面と同じ `sessionStorage` のキーに持つ
+- item: 「前回開いてから」の範囲
+  constraint: 『プレビューを開く』の制約「「前回開いてから」の範囲」のサーバーの配信の決め方と同じ。`sessionStorage` のキーも今の画面と同じにし、同じタブで今の画面と SPA を行き来しても `POST /api/opened` を呼び直さない
+- item: 前の版の組み立て
+  constraint: 『プレビューを開く』の制約「前の版の組み立て」と同じ
+- item: 差分の表示と書き換え
+  constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さない。画面・項目を移っても `diff` を保つ。書き換えの知らせで読み直したときは同じ時点の差分の表示のまま描き直し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
+- item: React に無い画面
+  constraint: ネットワーク・全体の検索・コメントの一覧・表示の設定・保存待ちのパネル・設定の画面と、詳細の編集・コメントの入力は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す
 refs:
 - dev/設計書/インターフェース定義/サーバー/SPAの配信#
 - dev/設計書/インターフェース定義/サーバー/記録の取得#
 - dev/設計書/インターフェース定義/サーバー/書き換えの知らせ#
+- dev/設計書/インターフェース定義/サーバー/前回開いた日時#
+- dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの読み取り#
+- dev/設計書/インターフェース定義/サーバー/保存待ちの編集の読み取り#
+- dev/設計書/インターフェース定義/サーバー/スレッドの読み取り#
 - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+- dev/設計書/外部ライブラリ/mdmark#
+- dev/設計書/外部ライブラリ/mermaid#
+- dev/設計書/外部ライブラリ/elkjs#
+- dev/設計書/外部ライブラリ/marked#
+- dev/設計書/外部ライブラリ/jsdiff#
+- dev/設計書/外部API/GoogleFonts#
 test_file: tests/integration/preview/test_spa_open.py
