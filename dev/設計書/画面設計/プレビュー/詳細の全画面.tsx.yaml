@@ -17,7 +17,7 @@ elements:
 - name: コメントの入力
   kind: link
   position: 詳細の中身 > 下端
-  description: 「今の画面でコメントする」のリンク。押すと今の画面の同じ項目の詳細（`/mindstella.html#tab={tab}&id={ID}`。インターフェース定義『SPAを開く』の制約「React に無い画面」）を同じタブで開く。コメントの入力欄は子 4（#369）で移す
+  description: 「今の画面でコメントする」のリンク。押すと今の画面の同じ項目の詳細（インターフェース定義『SPAを開く』の制約「React に無い画面」のとおり `tab`・`view`・`id`・`full`・`diff` を写したハッシュの `/mindstella.html`）を同じタブで開く。コメントの入力欄は子 4（#369）で移す
   io: 入力
   visible_when: サーバーの配信で開いたとき
   status: implemented
