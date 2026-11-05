@@ -43,6 +43,7 @@ from preview_body_view_helpers import (
     seed_body_view,
     table_state,
 )
+from preview_clock_helpers import FREEZE_PERFORMANCE_NOW_JS
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
     COMMENTS_PANEL,
@@ -2534,6 +2535,8 @@ def test_normal_when_embedded_html_diff(
     root = build_embedded_diff_workspace(make_workspace, call_tool)
     url = str(call_tool("preview_url", workspace=str(root)).data["url"])
     preselect_diff(page, "V-2")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     open_preview(url, "#tab=docs&id=A-1")
     page.wait_for_selector("aside.panel .df-raw", timeout=DIAGRAM_TIMEOUT_MS)
     history_length = page.evaluate("history.length")

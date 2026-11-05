@@ -1,0 +1,12 @@
+$ ruff --version
+ruff 0.17.1
+$ ruff check plugins tests
+All checks passed!
+$ npm run typecheck
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+$ npm run lint
+> lint
+> eslint
+
