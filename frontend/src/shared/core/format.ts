@@ -6,3 +6,9 @@ export const formatJst = (iso: string): string => {
   const part = (type: Intl.DateTimeFormatPartTypes): string => parts.find((entry) => entry.type === type)?.value ?? "";
   return `${part("month")}/${part("day")} ${part("hour")}:${part("minute")}`;
 };
+
+/** 値が無いときに出す文字 */
+export const NO_VALUE = "（なし）";
+
+/** 押した位置からこの距離（px）までの動きは、押しただけとして扱う */
+export const PRESS_SLOP_PX = 5;

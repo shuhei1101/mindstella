@@ -4,18 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 import { useRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
 
-const { useLibrary } = vi.hoisted(() => ({
-  useLibrary: vi.fn(() => ({
-    status: "ready",
-    library: {
-      mount: (root: HTMLElement, source: string) => {
-        root.innerHTML = source;
-        return { destroy: () => undefined };
-      },
-    },
-  })),
-}));
-vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), useLibrary }));
+vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
 
 const record = () => useRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", body: "docs/D-1.md" }], bodies: { "docs/D-1.md": "<h2>決め方</h2>" } });
 
@@ -26,6 +15,7 @@ describe("BodyView", () => {
     record();
     const scroll = vi.fn();
     Element.prototype.scrollIntoView = scroll;
+    Element.prototype.getClientRects = () => [{}] as unknown as DOMRectList;
     // 実行
     renderRoute("/spa/?tab=decisions&id=D-1&h=%E6%B1%BA%E3%82%81%E6%96%B9");
     // 検証

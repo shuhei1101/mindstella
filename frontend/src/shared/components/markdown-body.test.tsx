@@ -13,14 +13,14 @@ describe("MarkdownBody", () => {
   test("markdown_body", async () => {
     // 準備
     const destroy = vi.fn();
-    const mount = vi.fn(() => ({ destroy }));
+    const mount = vi.fn((_root: HTMLElement, _options: { markdown: string }) => ({ destroy }));
     useLibrary.mockReturnValue({ status: "ready", library: { mount } });
     // 実行
     const { unmount } = render(<MarkdownBody source="# 見出し" />);
     await waitFor(() => expect(mount).toHaveBeenCalled());
     unmount();
     // 検証
-    expect(mount.mock.calls[0]).toContain("# 見出し");
+    expect(mount.mock.calls[0]?.[1]).toMatchObject({ markdown: "# 見出し" });
     expect(destroy).toHaveBeenCalled();
   });
 

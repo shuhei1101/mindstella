@@ -5,8 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import { useRecords } from "@/testing/msw/fixtures";
 import { renderRoute } from "@/testing/render";
 
-const { useLibrary } = vi.hoisted(() => ({ useLibrary: vi.fn(() => ({ status: "ready", library: { mount: (root: HTMLElement, source: string) => ((root.textContent = source), { destroy: () => undefined }) } })) }));
-vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), useLibrary }));
+vi.mock("@/shared/adapters/libraries", async (original) => ({ ...(await original<object>()), ...(await import("@/testing/libraries")) }));
 
 const decision = {
   id: "D-1",
