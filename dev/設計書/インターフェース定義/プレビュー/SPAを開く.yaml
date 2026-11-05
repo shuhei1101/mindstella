@@ -2,7 +2,7 @@ title: SPAを開く
 entry:
   kind: screen
   value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数と、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドの利用者の未読）・`POST /api/opened`（前回開いた日時）'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数と、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドの利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）'
 flows:
 - name: 正常系
   summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
@@ -153,17 +153,59 @@ flows:
   - D-1 を消した後、詳細パネルが閉じ、URL に `id` が無く、`f.status` が残っている
   test: test_normal_when_records_changed_with_item
 - name: 正常系（React に無い画面を開く）
-  summary: 詳細の編集とネットワークの入口は、今の画面を同じタブで開く
+  summary: ネットワークの入口は、今の画面を同じタブで開く
   setup:
   - *id001
   - name: make_workspace
     description: 検討事項 D-1 と、D-1 を追加したまとまり V-1 を持つワークスペース
-    notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、詳細パネルの「今の画面で編集する」を押す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: 詳細パネルの「今の画面で編集する」を押す\n  IF->>OLD: /mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 の詳細パネル\n```"
+    notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、タブの帯の右端のネットワークの入口を押す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: ネットワークの入口を押す\n  IF->>OLD: /mindstella.html#tab=graph&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 を選んだネットワーク\n```"
   expected:
-  - 同じタブで `/mindstella.html` が開き、ハッシュが `tab=decisions&view=table&id=D-1&diff=V-1`
-  - 今の画面の詳細パネルに D-1 がある
+  - 同じタブで `/mindstella.html` が開き、ハッシュが `tab=graph&id=D-1&diff=V-1`
+  - 今の画面のネットワークで D-1 が選ばれている
   test: test_normal_when_legacy_screen
+- name: 正常系（編集を溜めて保存する）
+  summary: 詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する
+  setup:
+  - &id002
+    name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+    notes: '`/spa/?tab=decisions&id=D-1` で開く'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、答えを書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 答えとカードに保存待ちの印、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい答え\n```"
+  expected:
+  - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちの印があり、トップバーの件数が 1
+  - 保存待ちのパネルを開いた後、URL に `panel=pending` があり、履歴の数が変わらない
+  - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、印と件数が開き直さずに消え、URL から `panel` が外れる
+  - 「編集する」・入力欄・トップバーの件数・取り消す・まとめて保存するに Tab キーで届く
+  test: test_normal_when_edits_saved
+- name: 正常系（一覧の画面から項目を足して消す）
+  summary: 一覧の画面の追加の入力で足す項目を溜め、詳細で消す項目を溜め、保存待ちのパネルで 1 件ずつ取り消す
+  setup:
+  - *id002
+  - name: make_workspace
+    description: タスク T-1 と、どの項目からも指されていないメモ N-1 を持ち、`edits.yaml` を持たないワークスペース
+    notes: '`/spa/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を足し、続けて `/spa/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて足す\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 足す項目だけの保存待ち\n```"
+  expected:
+  - 足した後、タスクのボードに「画面を作る」の ID の無いカードが保存待ちの印つきであり、`tasks.yaml` は T-1 だけ
+  - 削除を溜めた後、表の N-1 の行に「保存で削除」の印がある
+  - 取り消した後、保存待ちのパネルに「画面を作る」の 1 件だけがあり、トップバーの件数が 1
+  test: test_normal_when_item_added_and_removed
+- name: 正常系（設定の画面で書き換える）
+  summary: '`tab=settings` の設定の画面で題名を書き換えて保存待ちに溜める'
+  setup:
+  - *id002
+  - name: make_workspace
+    description: 題名が「話し合い」のワークスペース
+    notes: '`/spa/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちの印、トップバーに件数 1\n```"
+  expected:
+  - 設定の画面に今の題名「話し合い」が出ている
+  - 書き換えた後、題名の欄に保存待ちの印があり、`config.yaml` の題名が「話し合い」のまま
+  - タブの帯でどのタブも選ばれていない
+  test: test_normal_when_settings
 - name: 異常系（記録が読めない・422）
   summary: 記録がスキーマに合わず読めないとき、読めなかった箇所を画面に出す
   setup:
@@ -204,17 +246,30 @@ flows:
   - 詳細パネルの本文に Markdown の原文と、読めなかった mdmark の名前がある
   - ブラウザのコンソールに未処理の例外が出ていない
   test: test_error_when_library_unavailable
+- name: 異常系（書き込めない編集がある・409）
+  summary: 保存の 409 では、書き込めない編集の行に理由を出し、保存待ちの編集を残す
+  setup:
+  - *id002
+  - name: make_workspace
+    description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer`）を持つワークスペース
+    notes: '`/spa/?tab=decisions&panel=pending` で開き、MCP の `update` で D-1 の `title` を書き換えてから、まとめて保存するを押す'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: まとめて保存するを押す\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 409、blocked は E-1（changed）\n  IF-->>ユーザー: E-1 の行に書き込めない理由\n```"
+  expected:
+  - 保存待ちのパネルの E-1 の行に、溜めた後に書き換わった旨の理由がある
+  - トップバーの件数が 1 のままで、`edits.yaml` に E-1 が残っている
+  - ブラウザのコンソールに未処理の例外が出ていない
+  test: test_error_when_save_blocked
 lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を読み直して描き直す。
 callers:
 - dev/設計書/シナリオ/単一ユースケース/プレビューを開く#
 request:
 - name: tab
-  type: '''overview'' | ''decisions'' | ''tasks'' | ''research'' | ''docs'' | ''terms'' | ''notes'' | ''logs'''
+  type: '''overview'' | ''decisions'' | ''tasks'' | ''research'' | ''docs'' | ''terms'' | ''notes'' | ''logs'' | ''settings'''
   required: false
   default: なし（概要を開く）
   location: query
-  description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す
-  constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す
+  description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す。`settings` は設定の画面で、タブの帯には出さない
+  constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す。差分の表示中の `settings` も無いものとして扱う
 - name: view
   type: '''map'' | ''board'' | ''cards'' | ''table'''
   required: false
@@ -269,6 +324,20 @@ request:
   description: 表を並べる列。降順は列の前に `-` を付ける
   constraints: 表に無い列は無いものとして扱い、URL から外す。表の見出しで並べ替えるたびに書き直す
   example: -updated
+- name: panel
+  type: '''pending'''
+  required: false
+  default: なし（左のパネルを開かない）
+  location: query
+  description: 開いている左のパネル。`pending` は保存待ちのパネル
+  constraints: 保存待ちの編集が 0 件のときと、差分の表示中は無いものとして扱い、URL から外す
+- name: 編集の値
+  type: Any
+  required: false
+  default: なし（溜めない）
+  location: body
+  description: 詳細の編集の入力欄・一覧の画面の追加の入力・設定の画面で書いた値。キーと一緒に『保存待ちの編集の追加』へ送る
+  constraints: 『保存待ちの編集の追加』の request `value` と同じ。`title` は前後の空白を除いて 1 文字以上
 constraints:
 - item: 通信
   constraint: サーバーの配信（同じオリジンの `/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送らない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
@@ -280,13 +349,13 @@ constraints:
   constraint: 書き換えの知らせを受けてから 2 秒以内に描き直す
   decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
 - item: 描き直し
-  constraint: '`changed` を受けたら `GET /api/records`・`GET /api/comments`・`GET /api/edits`・`GET /api/threads` を読み直す。開いている画面・URL の search params・表の列の表示・本文のスクロールの位置を保ったまま描き直し、履歴に積まない。開いていた項目が記録から消えたら詳細を閉じ、URL から `id`・`full`・`h` を外す。読み直しが 422 なら前に読んだ記録で描き続ける'
+  constraint: '`changed` を受けたら `GET /api/records`・`GET /api/comments`・`GET /api/edits`・`GET /api/threads` を読み直す。開いている画面・URL の search params・表の列の表示・本文のスクロールの位置・編集の入力欄の書きかけを保ったまま描き直し、履歴に積まない。開いていた項目が記録から消えたら詳細を閉じ、URL から `id`・`full`・`h` を外す。読み直しが 422 なら前に読んだ記録で描き続ける'
 - item: 接続の状態
   constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ直しは `EventSource` に任せる
 - item: URL の状態
   constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
 - item: 履歴
-  constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直しは積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
+  constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直し・保存待ちのパネルの開閉は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
 - item: 画面の移動と項目
   constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップのときは、`id` の項目を選んだ項目として示す
 - item: 保存した絞り込みの条件
@@ -299,8 +368,12 @@ constraints:
   constraint: 『プレビューを開く』の制約「前の版の組み立て」と同じ
 - item: 差分の表示と書き換え
   constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さない。画面・項目を移っても `diff` を保つ。書き換えの知らせで読み直したときは同じ時点の差分の表示のまま描き直し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
+- item: 編集の読み書き
+  constraint: 『プレビューを開く』の制約「編集の読み書き」のサーバーの配信の振る舞いと同じ（入力欄を離れたときに `POST /api/edits`、取り消しは `DELETE /api/edits/{id}`、保存は `POST /api/edits/save`。保存の 409 は `blocked` を行ごとの書き込めない理由として出し、届かないときは保存待ちの編集を残す。差分の表示中は編集の操作・保存待ちの印・件数を出さず、保存待ちのパネルを閉じる）。送っている間はそのボタンを押せなくし、二重に送らない
+- item: 設定の画面の入口
+  constraint: 設定の画面は `tab=settings` で開く。入口の「設定を編集する」を持つ表示の設定のパネルは今の画面にあるため、React の側の入口は子 4（#369）で表示の設定を移すときに置く
 - item: React に無い画面
-  constraint: ネットワーク・全体の検索・コメントの一覧・表示の設定・保存待ちのパネル・設定の画面と、詳細の編集・コメントの入力は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す
+  constraint: ネットワーク・全体の検索・コメントの一覧・表示の設定と、詳細のコメントの入力は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す
 refs:
 - dev/設計書/インターフェース定義/サーバー/SPAの配信#
 - dev/設計書/インターフェース定義/サーバー/記録の取得#
@@ -316,4 +389,7 @@ refs:
 - dev/設計書/外部ライブラリ/marked#
 - dev/設計書/外部ライブラリ/jsdiff#
 - dev/設計書/外部API/GoogleFonts#
+- dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+- dev/設計書/インターフェース定義/サーバー/保存待ちの編集の取り消し#
+- dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
 test_file: tests/integration/preview/test_spa_open.py
