@@ -22,6 +22,10 @@ export type Row = { id: string } & Record<string, unknown>;
 export type TableColumn = {
   key: string;
   label: string;
+  /** 絞り込みと並べ替えに使う値。無ければ行の同じキーの値 */
+  get?: (row: Row) => unknown;
+  /** 値の並びの順 */
+  order?: readonly string[];
   filterable?: boolean;
   fixed?: boolean;
   hidden?: boolean;
@@ -65,7 +69,7 @@ const sortOf = (sort: string | undefined, key: string): "ascending" | "descendin
 
 export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem }: TableProps) => {
   const hidden = hiddenColumns ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
-  const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(row[column.key]), header: column.label }));
+  const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(column.get === undefined ? row[column.key] : column.get(row)), header: column.label }));
   const table = useTable({ features, columns: defs, data: rows, state: { columnVisibility: Object.fromEntries(hidden.map((key) => [key, false])) }, getRowId: (row) => row.id });
   const visible = columns.filter((column) => !hidden.includes(column.key));
   const pinIndex = pinTo === null ? -1 : visible.findIndex((column) => column.key === pinTo);
@@ -132,7 +136,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
             {table.getRowModel().rows.map(({ original: row }) => (
               <TableRow key={row.id} data-id={row.id}>
                 {visible.map((column, position) => {
-                  const content = column.cell?.(row) ?? cellText(row[column.key]);
+                  const content = column.cell?.(row) ?? cellText(column.get === undefined ? row[column.key] : column.get(row));
                   const kindMark = marks?.[row.id];
                   const pendingMark = pendingMarks?.[row.id];
                   const count = comments?.[row.id] ?? 0;
