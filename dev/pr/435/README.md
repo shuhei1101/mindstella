@@ -1,0 +1,1 @@
+# 結合テスト test_normal_when_review_order_switched で、レビュー中のコメントの本文を末尾の改行を除いて比較する
