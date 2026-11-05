@@ -81,5 +81,44 @@ stores:
     type: Kind[] | null
     description: 表示する種類の上書き（読むだけ）
   container: frontend/src/shared/stores/prefs-store.ts
+- name: readBodyScrolls
+  title: 本文のスクロール位置の読み取り
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 詳細の本文をスクロールした位置を、項目の ID ごとに sessionStorage のキー `mindmap-body-scroll` から読む
+  args: []
+  returns:
+    type: Record<string, number>
+    description: 項目の ID → 位置。0 以上の数だけ
+  unit_tests:
+  - name: test_read_body_scrolls
+    case: 正常
+    summary: 書いた位置を読む
+    condition: 2 件の項目の位置を書く
+    mock: なし
+    expected: 項目の ID ごとの位置を返す
+  - name: test_read_body_scrolls_when_broken
+    case: 異常
+    summary: 壊れた値は読まない
+    condition: 負の数・文字・読めない JSON
+    mock: なし
+    expected: 0 以上の数だけを返す
+- name: writeBodyScroll
+  title: 本文のスクロール位置の書き込み
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 項目の本文をスクロールした位置を残す。書けない保存領域では何もしない
+  args:
+  - name: id
+    type: string
+    required: true
+    description: 項目の ID
+  - name: top
+    type: number
+    required: true
+    description: スクロールの位置
+  returns:
+    type: void
+    description: 無し
 notes:
   単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

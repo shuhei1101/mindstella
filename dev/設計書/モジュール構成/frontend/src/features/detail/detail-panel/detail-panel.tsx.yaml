@@ -9,6 +9,12 @@ components:
   refs:
   - dev/設計書/画面設計/プレビュー/詳細パネル.tsx#
   unit_tests:
+  - name: test_detail_panel_when_body_scroll_saved
+    case: 正常
+    summary: 本文のスクロール位置へ戻す
+    condition: 項目の位置が保存領域にある
+    mock: MSW
+    expected: 本文のスクロール領域がその位置に戻る
   - name: test_detail_panel
     case: 正常
     summary: 項目を描く

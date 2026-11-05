@@ -22,6 +22,29 @@ export type Prefs = {
   kinds?: Kind[] | null;
 };
 
+/** 詳細の本文をスクロールした位置を残す sessionStorage のキー（今の画面と同じ） */
+export const BODY_SCROLL_KEY = "mindmap-body-scroll";
+
+/** そのタブで詳細の本文をスクロールした位置を読む（項目の ID → 位置。0 以上の数だけを返す） */
+export const readBodyScrolls = (): Record<string, number> => {
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(BODY_SCROLL_KEY) ?? "{}");
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] >= 0));
+  } catch {
+    return {};
+  }
+};
+
+/** 項目の本文をスクロールした位置を残す */
+export const writeBodyScroll = (id: string, top: number): void => {
+  try {
+    sessionStorage.setItem(BODY_SCROLL_KEY, JSON.stringify({ ...readBodyScrolls(), [id]: top }));
+  } catch {
+    // 書けない保存領域では残さない
+  }
+};
+
 /** 保存領域の値の JSON（読めなければ空） */
 const readAll = (): Record<string, unknown> => {
   try {
