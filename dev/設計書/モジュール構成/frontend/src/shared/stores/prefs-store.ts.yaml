@@ -16,6 +16,12 @@ functions:
     condition: 壊れた JSON
     mock: '`localStorage`'
     expected: 空の上書き
+  - name: test_read_prefs_when_legacy_written
+    case: 正常
+    summary: 今の画面が書いた JSON を読める
+    condition: 今の画面の `Prefs` の形の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`・`tablePin`）
+    mock: '`localStorage`'
+    expected: 全ての項目を同じ値で読める
   container: frontend/src/shared/stores/prefs-store.ts
 - name: writePrefs
   title: 保存領域の書き込み
@@ -34,34 +40,46 @@ functions:
   - name: test_write_prefs
     case: 正常
     summary: 知らない項目を残す
-    condition: '`theme` と `network_look` を持つ保存領域'
+    condition: '`theme`・`look`・`commentsPinned` を持つ保存領域に `diffSel` を書く'
     mock: '`localStorage`'
-    expected: 両方が残る
+    expected: 3 つの項目が残り、`diffSel` が書かれる
   container: frontend/src/shared/stores/prefs-store.ts
 stores:
 - name: usePrefsStore
   title: 端末の保存領域
   usecase: SPAを開く
-  summary: 今の画面と同じキーの JSON のうち、持つ項目だけを読み書きし、知らない項目を消さない
+  summary: 今の画面の `Prefs`（`app.ts`）と同じ `mindmap-preview` のキーと値の形の JSON のうち、移す画面が使う項目だけを読み書きし、知らない項目を消さない
   state:
   - name: columns
-    type: Record<string, string[]>
-    description: 表ごとの隠す列
-  - name: pins
-    type: Record<string, string>
-    description: 表ごとのピン留め
-  - name: diffMinimap
-    type: boolean | undefined
-    description: 差分のミニマップ
-  - name: bodyDiffLayout
-    type: '''side'' | undefined'
-    description: 本文の差分の並べ方
+    type: Record<string, TablePrefs>
+    description: '種類ごとの表示する列とピン留め。`TablePrefs` は `{hidden: string[]; pinTo: string | null}`'
   - name: filters
-    type: Record<string, Record<string, string>>
-    description: 画面ごとの絞り込みの条件
-  - name: diffPoint
+    type: Record<string, Filters>
+    description: 画面（記録の表は種類）ごとの絞り込みの条件。`Filters` は列 → 選んだ値の配列（`~{列}` は文字の条件）
+  - name: diffSel
     type: string | null
     description: 変更履歴で選んだ時点
+  - name: minimap
+    type: false | null
+    description: 差分のミニマップを表示しない上書き
+  - name: bodyLayout
+    type: '''side'' | null'
+    description: 本文の差分を左右に並べる上書き
+  - name: tablePin
+    type: false | null
+    description: 表の列の固定をオフにする上書き
+  - name: tableHead
+    type: false | null
+    description: 表の見出しの固定をオフにする上書き
+  - name: tableStripes
+    type: true | null
+    description: 表のしま模様をオンにする上書き
+  - name: sectionFold
+    type: false | null
+    description: セクションの折りたたみをオフにする上書き
+  - name: kinds
+    type: Kind[] | null
+    description: 表示する種類の上書き（読むだけ）
   container: frontend/src/shared/stores/prefs-store.ts
 notes:
   単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

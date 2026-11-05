@@ -67,20 +67,16 @@ functions:
   title: 記録に合わせた search
   kind: 関数
   usecase: SPAを開く
-  summary: 画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、0 件の `panel` を外す
+  summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
   args:
   - name: search
     type: PreviewSearch
     required: true
     description: 検証した search
-  - name: index
-    type: RecordIndex
+  - name: context
+    type: SearchContext
     required: true
-    description: 記録の索引
-  - name: pendingCount
-    type: number
-    required: true
-    description: 保存待ちの編集の件数
+    description: 判定に要る値。`index`（記録の索引）・`pendingCount`（保存待ちの編集の件数）・`visibleKinds`（表示する種類）・`diffActive`（差分の表示中か）・`sortColumns`（開く画面の表の並べられる列）
   returns:
     type: PreviewSearch
     description: 外した後の search
@@ -109,6 +105,36 @@ functions:
     condition: '`{panel: ''pending''}` と 0 件'
     mock: なし
     expected: '`panel` が無い'
+  - name: test_normalize_search_when_kind_hidden
+    case: 正常
+    summary: 表示しない種類
+    condition: '`{tab: ''notes''}` と `visibleKinds` に notes が無い'
+    mock: なし
+    expected: '`tab` が無い'
+  - name: test_normalize_search_when_settings_in_diff
+    case: 正常
+    summary: 差分の表示中の設定の画面
+    condition: '`{tab: ''settings''}` と `diffActive: true`'
+    mock: なし
+    expected: '`tab` が無い'
+  - name: test_normalize_search_when_panel_in_diff
+    case: 正常
+    summary: 差分の表示中の保存待ちのパネル
+    condition: '`{panel: ''pending''}` と `diffActive: true`'
+    mock: なし
+    expected: '`panel` が無い'
+  - name: test_normalize_search_when_sort_unknown
+    case: 正常
+    summary: 表に無い列
+    condition: '`{sort: ''unknown''}`'
+    mock: なし
+    expected: '`sort` が無い'
+  - name: test_normalize_search_when_html_body
+    case: 正常
+    summary: 本文が HTML の資料
+    condition: '`{id: ''A-1'', h: ''決め方''}` と本文が `.html` の A-1'
+    mock: なし
+    expected: '`h` が無い'
   container: frontend/src/shared/core/preview-search.ts
 - name: toLegacyHash
   title: 今の画面へ写すハッシュ
