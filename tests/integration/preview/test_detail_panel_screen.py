@@ -3564,12 +3564,12 @@ def test_body_alias_tooltip_open_link(
 # 印から外してから、押して残したツールチップが開いたままかを確認するまでのミリ秒（隠す待ち `TIP_HIDE_DELAY_MS` の 150 より長く）
 TIP_KEEP_CHECK_MS = 400
 
-# 候補の要素（skip 個目から）の矩形の中の点を順に調べ、その点の一番上の要素が候補の中でツールチップの外になる最初の点を返却する（無ければ null）
-UNCOVERED_POINT_SCRIPT = """([selector, skip]) => {
+# 候補の要素（`data-ids` が除く値と同じ要素は飛ばす）の矩形の中の点を順に調べ、その点の一番上の要素が候補の中でツールチップの外になる最初の点を返却する（無ければ null）
+UNCOVERED_POINT_SCRIPT = """([selector, excludeIds]) => {
     const tip = document.getElementById('term-tip');
     const candidates = [...document.querySelectorAll(selector)];
     for (const [index, element] of candidates.entries()) {
-        if (index < skip) continue;
+        if (excludeIds !== null && element.dataset.ids === excludeIds) continue;
         const rect = element.getBoundingClientRect();
         for (const fy of [0.5, 0.25, 0.75]) {
             for (const fx of [0.5, 0.25, 0.75, 0.1, 0.9]) {
@@ -3600,8 +3600,8 @@ def test_body_alias_tooltip_pinned(
         "([at, ms]) => performance.now() - at >= ms", arg=[left_at, TIP_KEEP_CHECK_MS]
     )
     kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
-    # 実行（1 つ目より後の印のうち、ツールチップに覆われていない点へ乗せても替わらない）
-    other = page.evaluate(UNCOVERED_POINT_SCRIPT, [PANEL_MARKS, 1])
+    # 実行（押した印と違う項目に一致した印のうち、ツールチップに覆われていない点へ乗せても替わらない）
+    other = page.evaluate(UNCOVERED_POINT_SCRIPT, [PANEL_MARKS, MIXED_IDS])
     assert other is not None, "ツールチップに覆われていない印がありません"
     page.mouse.move(other["x"], other["y"])
     page.wait_for_function(
@@ -3617,7 +3617,7 @@ def test_body_alias_tooltip_pinned(
     # 実行（もう一度押して、詳細パネルの中のツールチップに覆われていない点を押して閉じる）
     page.click(mixed)
     page.wait_for_selector(TIP_OPEN)
-    outside = page.evaluate(UNCOVERED_POINT_SCRIPT, ["aside.panel .panel-kind", 0])
+    outside = page.evaluate(UNCOVERED_POINT_SCRIPT, ["aside.panel .panel-kind", None])
     assert outside is not None, "ツールチップに覆われていない外の点がありません"
     page.mouse.click(outside["x"], outside["y"])
     page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
