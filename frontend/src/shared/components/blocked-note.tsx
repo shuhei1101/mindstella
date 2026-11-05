@@ -7,10 +7,7 @@ export type BlockedNoteProps = { blocked: BlockedEdit; updated: string | null; o
 
 export const BlockedNote = ({ blocked, updated, onOpen }: BlockedNoteProps) => {
   const body = () => {
-    if (blocked.reason === "changed") {
-      const when = updated === null ? "" : `${formatJst(updated)} `;
-      return `溜めた後の ${when}に AI がこの項目を書き換えたため、書き込めません。取り消して溜め直してください。`;
-    }
+    if (blocked.reason === "changed" && updated !== null) return `溜めた後の ${formatJst(updated)} に AI がこの項目を書き換えたため、書き込めません。取り消して溜め直してください。`;
     if (blocked.reason !== "referenced" || blocked.refs.length === 0) return blocked.detail;
     return (
       <>

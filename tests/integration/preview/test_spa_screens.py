@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 from preview_fixture_types import WritePreview
@@ -79,3 +81,42 @@ def test_detail_restores_body_scroll(page: Page, write_preview: WritePreview, ma
     page.get_by_text("段落 199").wait_for()
     # 本文の高さの変化でブラウザが位置を少し補正する
     page.wait_for_function("Math.abs(document.querySelector('aside .panel-body').scrollTop - 600) < 10")
+
+
+def test_item_add_flow(page: Page, spa_url: str) -> None:
+    """項目を追加すると、詳細の場所の入力で溜まり、ボードの先頭に出て、押すと入力を開き直す。"""
+    open_spa(page, spa_url, "?tab=tasks")
+    page.get_by_role("button", name="タスクの項目を追加").click()
+    panel = page.get_by_role("complementary", name="タスクを追加")
+    title = panel.get_by_role("textbox", name="タイトル")
+    title.fill("足すタスク")
+    title.blur()
+    card = page.locator("[data-new-id]")
+    expect(card).to_contain_text("足すタスク")
+    expect(card).to_contain_text("ID は保存で決まる")
+    panel.get_by_role("button", name="追加の入力を閉じる").click()
+    expect(panel).to_be_hidden()
+    card.click()
+    expect(page.get_by_role("complementary", name="タスクを追加").get_by_role("textbox", name="タイトル")).to_have_value("足すタスク")
+
+
+def test_map_lock_and_shake(page: Page, spa_url: str) -> None:
+    """開いている節をもう一度押すとロックし、ロック中に余白を押しても選択を解除しない。"""
+    open_spa(page, spa_url, "?tab=decisions&view=map&id=D-1")
+    page.wait_for_timeout(500)
+    node = page.locator('[data-node="D-1"]')
+    node.click()
+    expect(page.locator("[data-locked-key]")).to_be_visible()
+    page.wait_for_timeout(500)
+    page.locator("#decision-map").click(position={"x": 2, "y": 2})
+    expect(page).to_have_url(re.compile("id=D-1"))
+
+
+def test_detail_back_disabled_at_start(page: Page, spa_url: str) -> None:
+    """パネルで最初に開いた項目では戻るを押せず、移った後は押せる。"""
+    open_spa(page, spa_url, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_disabled()
+    panel.get_by_role("button", name="D-2").click()
+    expect(panel.get_by_role("button", name="前の項目へ戻る")).to_be_enabled()
+

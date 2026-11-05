@@ -111,8 +111,8 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
   );
   const lowered = keyword.toLowerCase();
   /** 節（余白なら null）を押した。素早い 2 回目は、描き直しで節が消えた位置でも前に押した節への 2 回押しとして扱う */
-  const press = (hit: string | null, event: { clientX: number; clientY: number }): void => {
-    const info: Press = { time: performance.now(), x: event.clientX, y: event.clientY, id: hit };
+  const press = (hit: string | null, event: { clientX: number; clientY: number; timeStamp: number }): void => {
+    const info: Press = { time: event.timeStamp, x: event.clientX, y: event.clientY, id: hit };
     const pressed = resolvePress({ last: lastPress.current, press: info });
     lastPress.current = info;
     const { action, locked: next } = lockTap({ locked, pressed, open: selectedId ?? null });
