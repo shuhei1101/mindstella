@@ -69,11 +69,11 @@ flows:
   - name: make_workspace
     description: 本文に見出し「決め方」を持つ検討事項 D-1 と、タスク T-1 を持つワークスペース
     notes: '`/spa/?tab=decisions&id=D-1&h=決め方` で開き、全画面のボタンを押す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のマップと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のボードと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
   expected:
   - 詳細パネルに D-1 のタイトルと、mdmark で描いた本文がある
   - 本文の見出し「決め方」が詳細パネルの本文の区画に入っている
-  - 全画面のボタンを押した後、URL に `full=true` があり、履歴の数が変わらない
+  - 全画面のボタンを押した後、URL に `full=1` があり、履歴の数が変わらない
   - 詳細の本文の T-1 へのリンクを押すと、詳細が T-1 に移り、ブラウザで戻ると D-1 に戻る
   test: test_normal_when_item
 - name: 正常系（search params の値が記録・画面に合わない）
@@ -157,7 +157,7 @@ flows:
   setup:
   - *id001
   - name: make_workspace
-    description: 検討事項 D-1 を持つワークスペース
+    description: 検討事項 D-1 と、D-1 を追加したまとまり V-1 を持つワークスペース
     notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、詳細パネルの「今の画面で編集する」を押す'
   flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: 詳細パネルの「今の画面で編集する」を押す\n  IF->>OLD: /mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 の詳細パネル\n```"
   expected:
@@ -218,7 +218,7 @@ request:
 - name: view
   type: '''map'' | ''board'' | ''cards'' | ''table'''
   required: false
-  default: なし（画面ごとの既定。`decisions` は `map`、`tasks` は `board`、`docs` は `cards`、それ以外は `table`）
+  default: なし（画面ごとの既定。`decisions` と `tasks` は `board`、`docs` は `cards`、それ以外は `table`）
   location: query
   description: 表示形式。既定と違うときだけ書く
   constraints: その画面が持たない形式は無いものとして扱い、URL から外す
@@ -231,7 +231,7 @@ request:
   constraints: '`D-`・`T-`・`R-`・`A-`・`G-`・`N-`・`L-` に数字。記録に無い ID は無いものとして扱い、URL から外す'
   example: D-3
 - name: full
-  type: 'true'
+  type: '''1'''
   required: false
   default: なし（詳細パネルで開く）
   location: query
