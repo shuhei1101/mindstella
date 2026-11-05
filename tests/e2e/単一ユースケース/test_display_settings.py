@@ -366,8 +366,8 @@ def test_normal_when_outside_pressed(
         "full": page.locator("dialog.full[open]").count(),
         "hash": page.evaluate("location.hash"),
     }
-    # 実行（表の D-2 の行を押す）
-    page.click('table.grid tbody tr[data-id="D-2"]')
+    # 実行（表の D-2 のタイトルを押す）
+    page.click('table.grid tbody tr[data-id="D-2"] button.row-open')
     page.wait_for_function("location.hash.includes('id=D-2')")
     # 検証
     # パネルを開いている間、パネルとトップバー以外（表と D-1 の詳細パネル）がグレーアウトされ、その中の部品にフォーカスが移らない
@@ -377,7 +377,7 @@ def test_normal_when_outside_pressed(
     assert after_press["full"] == 0
     assert "id=D-1" in after_press["hash"]
     assert "full=1" not in after_press["hash"]
-    # パネルを閉じた後は、表の D-2 の行を押すと D-2 の詳細パネルが開く
+    # パネルを閉じた後は、表の D-2 のタイトルを押すと D-2 の詳細パネルが開く
     page.wait_for_selector("aside.panel.open")
     assert "D-2" in page.inner_text("aside.panel .panel-kind")
 
