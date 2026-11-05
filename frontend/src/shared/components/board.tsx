@@ -5,7 +5,8 @@ import { CommentMark } from "@/shared/components/comment-mark";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
 import { StatusMark } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
-import type { ScreenEdit } from "@/shared/core/edits";
+import { addedTitle } from "@/shared/components/table";
+import type { PendingMarkKind, ScreenEdit } from "@/shared/core/edits";
 import { compareIds, titleOf, type Item, type RecordIndex } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
@@ -20,11 +21,19 @@ export const boardColumns = ({ items, statuses, statusFilter = [] }: { items: re
     excluded: statusFilter.length > 0 && !statusFilter.includes(status),
   }));
 
-export type BoardProps = { columns: BoardColumn[]; card: (item: Item) => ReactNode; emptyText: string };
+export type BoardProps = {
+  columns: BoardColumn[];
+  card: (item: Item) => ReactNode;
+  emptyText: string;
+  /** 状態の列の先頭に置く追加する項目のカード */
+  added?: (status: string) => ReactNode[];
+};
 
-export const Board = ({ columns, card, emptyText }: BoardProps) => (
+export const Board = ({ columns, card, emptyText, added }: BoardProps) => (
   <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
-    {columns.map(({ status, items, excluded }) => (
+    {columns.map(({ status, items, excluded }) => {
+      const adds = added?.(status) ?? [];
+      return (
       <section key={status} aria-label={status} className="flex w-72 flex-none flex-col gap-2">
         <h2 className="flex items-center gap-1 text-small font-medium">
           <StatusMark status={status} />
@@ -32,12 +41,33 @@ export const Board = ({ columns, card, emptyText }: BoardProps) => (
           <span className="font-mono text-xs text-muted-foreground">{items.length}</span>
         </h2>
         {excluded ? <p className="text-small text-muted-foreground">状態の条件で外しています。</p> : null}
-        {!excluded && items.length === 0 ? <p className="text-small text-muted-foreground">{emptyText}</p> : null}
+        {!excluded && items.length === 0 && adds.length === 0 ? <p className="text-small text-muted-foreground">{emptyText}</p> : null}
+        {excluded ? null : adds}
         {excluded ? null : items.map(card)}
       </section>
-    ))}
+      );
+    })}
   </div>
 );
+
+export type AddedCardProps = { item: Item; mark: PendingMarkKind; onOpen: (id: string) => void };
+
+/** 追加する項目のカード。破線の枠で、ID の場所に「ID は保存で決まる」を置く */
+export const AddedCard = ({ item, mark, onOpen }: AddedCardProps) => (
+  <button type="button" data-new-id={item.id} className="flex w-full cursor-pointer flex-col gap-1 rounded-card border border-dashed border-mark-line bg-card p-2 text-left hover:bg-row-hover" onClick={() => { onOpen(item.id); }}>
+    <span className="text-small font-medium">{addedTitle(item.title)}</span>
+    <span className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+      <span>ID は保存で決まる</span>
+      <PendingMark kind={mark} />
+    </span>
+  </button>
+);
+
+/** 追加する項目が属する列（状態が並びに無ければ最初の列）のカードを返す関数を作る */
+export const addedCards = (edit: ScreenEdit | null, statuses: readonly string[], onOpen: (id: string) => void) => (status: string): ReactNode[] =>
+  (edit?.adds ?? [])
+    .filter((item) => (statuses.includes(item.status ?? "") ? item.status : statuses[0]) === status)
+    .map((item) => <AddedCard key={item.id} item={item} mark={edit?.marks[item.id] ?? "pending"} onOpen={onOpen} />);
 
 export type ItemCardProps = {
   index: RecordIndex;

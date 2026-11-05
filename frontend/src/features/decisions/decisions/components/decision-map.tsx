@@ -11,6 +11,7 @@ import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import type { ScreenEdit } from "@/shared/core/edits";
+import { lockTap, resolvePress, shakeKeyElement, type Press } from "@/shared/core/lock";
 import type { Item, Settings } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
@@ -44,6 +45,7 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
   const [fitScale, setFitScale] = useState(1);
   const [keyword, setKeyword] = useState("");
   const [locked, setLocked] = useState<string | null>(null);
+  const lastPress = useRef<Press | null>(null);
   const key = items.map((item) => item.id).join(",");
   useEffect(() => {
     if (status !== "ready") return undefined;
@@ -108,10 +110,16 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
     }),
   );
   const lowered = keyword.toLowerCase();
-  const press = (id: string): void => {
-    // 詳細を開いている節をもう一度押すとロックし、ロックした節を開いてもう一度押すと外す（今の画面の `lockTap`）
-    if (id === selectedId) setLocked(locked === id ? null : (locked ?? id));
-    else onOpen(id);
+  /** 節（余白なら null）を押した。素早い 2 回目は、描き直しで節が消えた位置でも前に押した節への 2 回押しとして扱う */
+  const press = (hit: string | null, event: { clientX: number; clientY: number }): void => {
+    const info: Press = { time: performance.now(), x: event.clientX, y: event.clientY, id: hit };
+    const pressed = resolvePress({ last: lastPress.current, press: info });
+    lastPress.current = info;
+    const { action, locked: next } = lockTap({ locked, pressed, open: selectedId ?? null });
+    setLocked(next);
+    if (action === "shake") shakeKeyElement(() => wrap.current?.querySelector<HTMLElement>("[data-locked-key]") ?? null);
+    else if (action === "open" && pressed !== null) onOpen(pressed);
+    else if (action === "blank") onClear?.();
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -131,7 +139,7 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
           element.scrollTo(next.scroll);
         }}
         onClick={(event) => {
-          if (event.target === event.currentTarget && locked === null) onClear?.();
+          if ((event.target as Element).closest("[data-node]") === null) press(null, event);
         }}
       >
         {laid === null ? null : (
@@ -171,11 +179,16 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
                   const count = comments[item.id] ?? 0;
                   const hit = lowered !== "" && item.title.toLowerCase().includes(lowered);
                   return (
-                    <button key={node.id} type="button" data-node={item.id} style={box} title={`${item.title}（${item.status ?? ""}）`} className={cn("absolute flex cursor-pointer flex-col justify-center gap-0.5 rounded-control border border-border bg-card px-2 text-left text-xs", dimmed && "opacity-50", selectedId === item.id && "border-mark bg-row-selected", hit && "bg-hit")} onClick={() => { press(item.id); }}>
+                    <button key={node.id} type="button" data-node={item.id} style={box} title={`${item.title}（${item.status ?? ""}）`} className={cn("group absolute flex cursor-pointer flex-col justify-center gap-0.5 rounded-control border border-border bg-card px-2 text-left text-xs", dimmed && "opacity-50", selectedId === item.id && "border-mark bg-row-selected", hit && "bg-hit")} onClick={(event) => { press(item.id, event); }}>
                       <span className="flex items-center gap-1 text-small">
                         <StatusMark status={item.status} />
                         <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                        {locked === item.id ? <Icon name="lock" className="size-3 flex-none" /> : null}
+                        {locked === item.id ? (
+                          <span data-locked-key="" className="flex-none">
+                            <Icon name="lock" className="size-3" />
+                          </span>
+                        ) : null}
+                        {locked === null && selectedId === item.id ? <Icon name="unlock" className="invisible size-3 flex-none group-hover:visible" /> : null}
                       </span>
                       <span className="flex items-center gap-1 text-muted-foreground">
                         {mark === undefined ? null : <DiffMark kind={mark} />}

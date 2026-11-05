@@ -53,7 +53,13 @@ export type TableProps = {
   onHiddenColumnsChange: (hiddenColumns: string[]) => void;
   onResetColumns: () => void;
   onOpenItem: (id: string) => void;
+  /** 追加する項目（先頭の行に置く） */
+  addedRows?: Row[];
+  onOpenAdded?: (id: string) => void;
 };
+
+/** 追加する項目のタイトル（まだ書いていなければ「（タイトル未入力）」） */
+export const addedTitle = (title: string): string => (title === "" ? "（タイトル未入力）" : title);
 
 const features = tableFeatures({ columnVisibilityFeature });
 
@@ -68,7 +74,7 @@ const sortOf = (sort: TableProps["sort"], key: string): "ascending" | "descendin
   return sort.dir === "asc" ? "ascending" : "descending";
 };
 
-export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem }: TableProps) => {
+export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, addedRows = [], onOpenAdded, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem }: TableProps) => {
   const hidden = hiddenColumns ?? columns.filter((column) => column.hidden === true).map((column) => column.key);
   const defs: ColumnDef<typeof features, Row>[] = columns.map((column) => ({ id: column.key, accessorFn: (row: Row) => cellText(column.get === undefined ? row[column.key] : column.get(row)), header: column.label }));
   const table = useTable({ features, columns: defs, data: rows, state: { columnVisibility: Object.fromEntries(hidden.map((key) => [key, false])) }, getRowId: (row) => row.id });
@@ -113,11 +119,11 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
                 return (
                   <TableHead key={column.key} aria-sort={direction} className={cn(position <= pinIndex && "sticky left-0 z-20 bg-thead", column.num === true && "text-right")}>
                     <span className="inline-flex items-center gap-1">
-                      <button type="button" data-sort={column.key} aria-label={`${column.label}で並べ替え`} className="inline-flex cursor-pointer items-center gap-0.5" onClick={() => { onSort(column.key); }}>
+                      <button type="button" data-sort={column.key} aria-label={`${column.label}で並べ替え`} className="inline-flex min-h-6 min-w-6 cursor-pointer items-center gap-0.5" onClick={() => { onSort(column.key); }}>
                         {column.label}
                         <Icon name="updown" className={cn("size-3", direction === undefined && "text-subtle-foreground")} />
                       </button>
-                      <button type="button" data-pin={column.key} aria-pressed={pinTo === column.key} aria-label={`${column.label}まで固定`} className="cursor-pointer text-subtle-foreground hover:text-foreground" onClick={() => { onPin(column.key); }}>
+                      <button type="button" data-pin={column.key} aria-pressed={pinTo === column.key} aria-label={`${column.label}まで固定`} className="inline-flex size-6 cursor-pointer items-center justify-center text-subtle-foreground hover:text-foreground" onClick={() => { onPin(column.key); }}>
                         <Icon name={pinTo === column.key ? "lock" : "unlock"} className="size-3" />
                       </button>
                     </span>
@@ -127,7 +133,27 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
             </tr>
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length === 0 ? (
+            {addedRows.map((row) => (
+              <TableRow key={row.id} data-new-id={row.id} className="border-dashed">
+                {visible.map((column) => (
+                  <TableCell key={column.key}>
+                    {column.key === "id" ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : column.key === "title" ? (
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <button type="button" className="cursor-pointer text-left underline-offset-2 hover:underline" onClick={() => { onOpenAdded?.(row.id); }}>
+                          {addedTitle(cellText(row["title"]))}
+                        </button>
+                        <PendingMark kind={pendingMarks?.[row.id] ?? "pending"} />
+                      </span>
+                    ) : (
+                      (column.cell?.(row) ?? cellText(column.get === undefined ? row[column.key] : column.get(row)))
+                    )}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+            {table.getRowModel().rows.length === 0 && addedRows.length === 0 ? (
               <tr>
                 <td colSpan={visible.length} className="p-4 text-center text-muted-foreground">
                   条件に合う項目はありません。

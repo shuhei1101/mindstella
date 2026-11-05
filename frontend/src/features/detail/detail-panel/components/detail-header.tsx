@@ -5,6 +5,7 @@ import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
+import { useDetailTrailStore } from "@/shared/stores/detail-trail-store";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 
 export type DetailHeaderProps = {
@@ -21,6 +22,8 @@ export type DetailHeaderProps = {
 };
 
 export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
+  const canBack = useDetailTrailStore((state) => state.position > 0);
+  const canForward = useDetailTrailStore((state) => state.position < state.items.length - 1);
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
   const editLabel = editing ? "編集を終える" : "編集する";
@@ -43,10 +46,10 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, pendi
         </Button>
       ) : null}
       {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
-      <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" onClick={() => { window.history.back(); }}>
+      <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" disabled={!canBack} onClick={() => { window.history.back(); }}>
         ←
       </Button>
-      <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" onClick={() => { window.history.forward(); }}>
+      <Button variant="ghost" size="icon" aria-label="次の項目へ進む" title="次の項目へ進む" disabled={!canForward} onClick={() => { window.history.forward(); }}>
         →
       </Button>
       <Button variant="ghost" size="icon" aria-label={fullLabel} title={fullLabel} onClick={onToggleFull}>

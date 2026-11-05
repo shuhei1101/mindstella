@@ -1,13 +1,15 @@
 // 保存待ちのパネル（画面設計『保存待ちのパネル.tsx』）。保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめて保存する
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icon } from "@/shared/components/icon";
+import { BlockedNote } from "@/shared/components/blocked-note";
 import { TagList } from "@/shared/components/tag-list";
 import { Button } from "@/shared/components/ui/button";
-import { SETTINGS_TARGET, type BlockedEdit, type PendingEdit } from "@/shared/core/edits";
-import { formatJst, toText } from "@/shared/core/format";
+import { SETTINGS_TARGET, type PendingEdit } from "@/shared/core/edits";
+import { toText } from "@/shared/core/format";
 import { KIND_LABEL, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
 import { useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 
 const SETTING_LABELS: Record<string, string> = { summary: "題名", description: "説明", playbooks: "プレイブック", phases: "フェーズ", target_label: "最上位の軸の呼び名", goal: "ゴール", targets: "対象", categories: "カテゴリー", links: "関連する場所", history_limit: "保持する回数" };
 
@@ -74,34 +76,27 @@ const valueView = (value: string | Tag[]): ReactNode => {
   return value.length === 0 ? flat(value) : <TagList values={value} />;
 };
 
-const BlockedNote = ({ blocked, updated, onOpen }: { blocked: BlockedEdit; updated: string | null; onOpen: (id: string) => void }) => {
-  if (blocked.reason === "changed" && updated !== null) return <p className="text-small text-destructive">{`溜めた後の ${formatJst(updated)} に AI がこの項目を書き換えたため、書き込めません。取り消して溜め直してください。`}</p>;
-  if (blocked.reason === "referenced" && blocked.refs.length > 0) {
-    return (
-      <p className="text-small text-destructive">
-        {blocked.refs.map((ref) => (
-          <button key={ref} type="button" className="mr-1 cursor-pointer font-mono underline" onClick={() => { onOpen(ref); }}>
-            {ref}
-          </button>
-        ))}
-        が指しているため削除できません。指している項目から外してください。
-      </p>
-    );
-  }
-  return <p className="text-small text-destructive">{blocked.detail}</p>;
-};
-
 export type PendingEditsPanelProps = { edits: readonly PendingEdit[]; index: RecordIndex; onClose: () => void; onOpen: (target: string) => void };
 
 export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEditsPanelProps) => {
   const save = useSaveEdits();
   const cancel = useCancelEdit();
-  const [blocked, setBlocked] = useState<BlockedEdit[]>([]);
+  const blocked = useEditSessionStore((state) => state.blocked);
+  const setBlocked = useEditSessionStore((state) => state.setBlocked);
+  const alert = useRef<HTMLDivElement>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [saved, setSaved] = useState<number | null>(null);
   const removals = edits.filter((edit) => edit.op === "item-remove").length;
   const blockedBy = new Map(blocked.map((entry) => [entry.id, entry]));
   const blockedEdits = edits.filter((edit) => blockedBy.has(edit.id));
+  const nameOf = (edit: PendingEdit): string => {
+    const who = describeTarget(edit.target, edits.filter((other) => other.target === edit.target), index);
+    return `${who.id ?? who.kind} の${rowText(edit).what}`;
+  };
+  // 書き込めない編集の知らせを出したら、知らせへフォーカスを移す
+  useEffect(() => {
+    if (blocked.length > 0) alert.current?.focus();
+  }, [blocked]);
   const label = save.isPending ? "保存しています…" : removals > 0 ? `まとめて保存する（${String(removals)} 件を削除）` : "まとめて保存する";
   return (
     <aside id="pending-panel" aria-label="保存待ちの編集" className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card">
@@ -114,11 +109,20 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-2">
         {blockedEdits.length > 0 ? (
-          <div role="alert" className="rounded-control border border-destructive p-2 text-small">
+          <div ref={alert} role="alert" tabIndex={-1} className="rounded-control border border-destructive p-2 text-small">
             <p className="m-0 flex items-center gap-1 font-medium">
               <Icon name="alert" className="size-4" />
               {`${String(blockedEdits.length)} 件の編集を書き込めないため、何も保存していません。`}
             </p>
+            <ul className="my-1">
+              {blockedEdits.map((edit) => (
+                <li key={edit.id}>
+                  <button type="button" className="cursor-pointer text-left underline" onClick={() => { document.getElementById(`pe-row-${edit.id}`)?.querySelector("button")?.focus(); }}>
+                    {nameOf(edit)}
+                  </button>
+                </li>
+              ))}
+            </ul>
             <p className="m-0">書き込めない編集を取り消してから、もう一度保存してください。</p>
           </div>
         ) : null}

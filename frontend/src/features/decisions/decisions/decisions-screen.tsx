@@ -1,6 +1,6 @@
 // 検討事項の画面（画面設計『検討事項.tsx』）。ボード（既定）・マップ・表で見る
 import { DecisionMap } from "@/features/decisions/decisions/components/decision-map";
-import { Board, boardColumns, ItemCard } from "@/shared/components/board";
+import { addedCards, Board, boardColumns, ItemCard } from "@/shared/components/board";
 import { commonColumns, IdLinks, rowTexts } from "@/shared/components/list-columns";
 import { ListScreen } from "@/shared/components/list-screen";
 import type { TableColumn } from "@/shared/components/table";
@@ -40,13 +40,14 @@ export const DecisionsScreen = ({ drawerOpen, onCloseDrawer }: DecisionsScreenPr
       columnsOf={decisionColumns}
       drawerOpen={drawerOpen}
       onCloseDrawer={onCloseDrawer}
-      content={({ index, view, shown, filters, marks, comments, edit, onOpen, selectedId }) =>
+      content={({ index, view, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) =>
         view === "map" ? (
           <DecisionMap items={shown} settings={index.data.settings} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onClear={closeItem} />
         ) : (
           <Board
             columns={boardColumns({ items: shown, statuses: DECISION_STATUSES, statusFilter: filters["status"] ?? [] })}
             emptyText="検討事項はありません。"
+            added={addedCards(edit, DECISION_STATUSES, onOpenAdded)}
             card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.category, item.phase]} links={item.depends_on ?? []} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
           />
         )

@@ -6,7 +6,7 @@ import { BodyDiffLayoutSwitch } from "@/shared/components/body-diff-layout-switc
 import { DomHost } from "@/shared/components/dom-host";
 import { DIAGRAM_SOURCE_ATTR, libraryNotice, linkBody, linkHeadings, renderDiagrams, renderMarkdown } from "@/shared/core/body-links";
 import { BEFORE_SOURCE_ATTR, decorateDiagrams, drawHtmlBlocks, headingShift, HTML_BODY_ATTR, lowerHeadings, noteBox, renderBodyDiff, replaceChangedRanges, withoutLineMarks } from "@/shared/core/body-render";
-import { LINE_DIFF_TIMEOUT_MS, type VersionPair } from "@/shared/core/diff";
+import type { VersionPair } from "@/shared/core/diff";
 import { h } from "@/shared/core/dom-parts";
 import { htmlBodyDiff } from "@/shared/core/html-body-diff";
 import { htmlFrameElement } from "@/shared/core/html-frame";
@@ -32,14 +32,16 @@ export type BodyViewProps = {
   layout: BodyLayout;
   display: BodyDisplay;
   heading: string | undefined;
+  /** キーの差分と共有する語の差分の打ち切りの時刻 */
+  deadline: number;
   onOpen: (id: string) => void;
   onHeading: (slug: string | undefined) => void;
   onChangeSet: (id: string) => void;
   onLayout: (layout: BodyLayout) => void;
-  onDiagram: (svg: SVGElement, beforeSource: string | null) => void;
+  onDiagram: (figure: { svg: SVGElement; source: string | null; beforeSource: string | null; notes: string | null; framed: boolean }) => void;
 };
 
-export const BodyView = ({ label, item, id, index, source, versions, layout, display, heading, onOpen, onHeading, onChangeSet, onLayout, onDiagram }: BodyViewProps) => {
+export const BodyView = ({ label, item, id, index, source, versions, layout, display, heading, deadline, onOpen, onHeading, onChangeSet, onLayout, onDiagram }: BodyViewProps) => {
   const mdmark = useLibrary("mdmark").status;
   const jsdiff = useLibrary("jsdiff").status;
   const marked = useLibrary("marked").status;
@@ -73,7 +75,6 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
     let markWords: (() => void) | null = null;
     let side: ReturnType<typeof sideBySideBodyDiff> = null;
     if (comparing && jsdiff === "ready" && before !== null) {
-      const deadline = performance.now() + LINE_DIFF_TIMEOUT_MS;
       const diff = renderBodyDiff({ before, after: source, deadline });
       rendered = diff?.root ?? null;
       markWords = diff?.markWords ?? null;
@@ -122,7 +123,9 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
       const act = button.dataset["act"];
       if (act === "diagram-zoom") {
         const svg = figure.querySelector<SVGElement>(".mermaid svg");
-        if (svg !== null) onDiagram(svg, figure.getAttribute(BEFORE_SOURCE_ATTR));
+        const notes = figure.querySelector(":scope > .df-notes");
+        const beforeSource = figure.getAttribute(BEFORE_SOURCE_ATTR);
+        if (svg !== null) onDiagram({ svg, source: figure.querySelector(`[${DIAGRAM_SOURCE_ATTR}]`)?.getAttribute(DIAGRAM_SOURCE_ATTR) ?? null, beforeSource, notes: beforeSource === null || notes === null ? null : notes.outerHTML, framed: beforeSource !== null && figure.classList.contains("df-frame") });
       } else if (act === "diagram-raw") {
         const pressed = button.getAttribute("aria-pressed") !== "true";
         button.setAttribute("aria-pressed", String(pressed));
@@ -150,10 +153,10 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
     };
     // heading の変更では描き直さない（見出しのリンクが送る）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mdmark, jsdiff, marked, mermaid, html, source, current, comparing, before, layout, display, index, id, item.body]);
+  }, [mdmark, jsdiff, marked, mermaid, html, source, current, comparing, before, layout, display, index, id, item.body, deadline]);
   return (
     <section className="flex flex-col gap-1">
-      <h3 className="text-small font-semibold">{label}</h3>
+      <h3 className="m-0 text-h2 font-semibold">{label}</h3>
       {canLayout ? <BodyDiffLayoutSwitch layout={layout} onChange={onLayout} /> : null}
       <DomHost create={create} />
     </section>

@@ -19,36 +19,44 @@ export const DiffMinimap = ({ shown, children, initialScrollTop, onBodyScroll }:
     if (!shown || frame.current === null || body.current === null) return undefined;
     return attachMinimap({ frame: frame.current, body: body.current });
   }, [shown]);
-  // 本文を描いた次のコマで戻す。ライブラリや図の読み込みで本文が後から伸びるので、位置に届くまで伸びるたびに戻し直す。利用者が動かしたら戻すのをやめる
+  // 利用者が動かすまで、本文が描き直されても位置を戻し続ける（ライブラリや図の読み込みで本文は後から伸び縮みする）
+  const restoring = useRef(initialScrollTop !== undefined);
   useEffect(() => {
     const element = body.current;
-    if (initialScrollTop === undefined || element === null) return undefined;
+    const outer = frame.current;
+    if (initialScrollTop === undefined || element === null || outer === null) return undefined;
     const restore = (): void => {
       element.scrollTop = initialScrollTop;
-      if (Math.abs(element.scrollTop - initialScrollTop) < 1) stop();
     };
     const resized = new ResizeObserver(restore);
-    const stop = (): void => {
-      resized.disconnect();
-      element.removeEventListener("wheel", stop);
-      element.removeEventListener("pointerdown", stop);
-      element.removeEventListener("keydown", stop);
+    const watchChildren = (): void => {
+      for (const child of element.querySelectorAll(":scope > *, :scope > * > *")) resized.observe(child);
+      restore();
     };
-    for (const child of element.children) resized.observe(child);
-    element.addEventListener("wheel", stop, { passive: true });
-    element.addEventListener("pointerdown", stop);
-    element.addEventListener("keydown", stop);
-    const handle = requestAnimationFrame(restore);
+    const mutated = new MutationObserver(watchChildren);
+    const stop = (): void => {
+      restoring.current = false;
+      resized.disconnect();
+      mutated.disconnect();
+      outer.removeEventListener("wheel", stop);
+      outer.removeEventListener("pointerdown", stop);
+      outer.removeEventListener("keydown", stop);
+    };
+    mutated.observe(element, { childList: true, subtree: true });
+    outer.addEventListener("wheel", stop, { passive: true });
+    outer.addEventListener("pointerdown", stop);
+    outer.addEventListener("keydown", stop);
+    const handle = requestAnimationFrame(watchChildren);
     return () => {
       cancelAnimationFrame(handle);
       stop();
     };
-    // 開いたときに 1 度だけ戻す
+    // 開いたときに 1 度だけ始める
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <div ref={frame} className="panel-scroll">
-      <div ref={body} className="panel-body" onScroll={(event) => { onBodyScroll?.(event.currentTarget.scrollTop); }}>
+      <div ref={body} className="panel-body" onScroll={(event) => { if (!restoring.current) onBodyScroll?.(event.currentTarget.scrollTop); }}>
         {children}
       </div>
     </div>

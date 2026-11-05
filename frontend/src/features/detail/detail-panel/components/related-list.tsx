@@ -7,7 +7,7 @@ export type RelatedListProps = { label: string; ids: readonly string[]; index: R
 export const RelatedList = ({ label, ids, index, onOpen }: RelatedListProps) =>
   ids.length === 0 ? null : (
     <section className="flex flex-col gap-1">
-      <h3 className="text-small font-semibold">{label}</h3>
+      <h3 className="m-0 text-h2 font-semibold">{label}</h3>
       <ul className="flex flex-col gap-1">
         {ids.map((id) => {
           const status = index.byId.get(id)?.item.status;

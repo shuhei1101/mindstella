@@ -6,14 +6,12 @@ import type { DiffMarks } from "@/shared/components/diff-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { FilterDrawer } from "@/shared/components/filter-drawer";
 import { Icon } from "@/shared/components/icon";
-import { ItemAddForm } from "@/shared/components/item-add-form";
 import { RemovedBand } from "@/shared/components/removed-band";
 import { Table, type Row, type TableColumn } from "@/shared/components/table";
 import { Button } from "@/shared/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 import { ViewSwitch, type View } from "@/shared/components/view-switch";
 import { removedOf } from "@/shared/core/diff";
-import type { ScreenEdit } from "@/shared/core/edits";
+import { NEW_ID_PREFIX, type ScreenEdit } from "@/shared/core/edits";
 import { TEXT_FILTER_PREFIX, withoutKey, type Filters } from "@/shared/core/filters";
 import { drawerGroups, filterRows, nextSort, sortRows, type ListColumn } from "@/shared/core/list-rows";
 import { KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
@@ -23,6 +21,7 @@ import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useScreenEdit } from "@/shared/hooks/use-screen-edit";
 import { useScreenFilters } from "@/shared/hooks/use-screen-filters";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 /** 画面の枠が中身に渡す値 */
@@ -35,6 +34,7 @@ export type ListContext = {
   comments: Record<string, number>;
   edit: ScreenEdit | null;
   onOpen: (id: string) => void;
+  onOpenAdded: (id: string) => void;
   selectedId: string | undefined;
   /** 表（並べ替え・列の表示・固定は URL と端末の保存領域で持つ） */
   table: ReactNode;
@@ -53,14 +53,27 @@ export type ListScreenProps = {
 const asColumns = (columns: TableColumn[]): ListColumn<Row>[] => columns.map((column) => ({ key: column.key, label: column.label, get: column.get ?? ((row) => row[column.key]), ...(column.order === undefined ? {} : { order: column.order }) }));
 
 export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, content }: ListScreenProps) => {
-  const { search, openItem, setSort, setView } = usePreviewSearch();
+  const { search, openItem, closeItem, setSort, setView } = usePreviewSearch();
   const { index } = useRecords();
   const { point } = useDiffView();
   const { filters, setFilters } = useScreenFilters(kind);
   const comments = useQuery(commentsQuery());
-  const [adding, setAdding] = useState(false);
+  const startAdd = useEditSessionStore((state) => state.startAdd);
+  const openAdded = useEditSessionStore((state) => state.openAdded);
+  const closeAdd = useEditSessionStore((state) => state.closeAdd);
   const [saved, setSaved] = useState(() => readPrefs().columns?.[kind]);
-  const onAdd = useCallback(() => { setAdding(true); }, []);
+  const onAdd = useCallback(() => {
+    closeItem();
+    startAdd(kind);
+  }, [closeItem, startAdd, kind]);
+  const openItemFromList = (id: string): void => {
+    closeAdd();
+    openItem(id);
+  };
+  const onOpenAdded = (id: string): void => {
+    closeItem();
+    openAdded(kind, id);
+  };
   const edit = useScreenEdit(kind, point !== null, onAdd);
   const counts = useMemo(() => {
     const result: Record<string, number> = {};
@@ -78,7 +91,8 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
   if (index === null) return null;
   const columns = columnsOf(index, openItem);
   const list = asColumns(columns);
-  const rows = index.data[kind] as unknown as Row[];
+  // 追加する項目は絞り込みに関わらず先頭に置く
+  const rows = index.data[kind].filter((item) => !item.id.startsWith(NEW_ID_PREFIX)) as unknown as Row[];
   const filtered = filterRows({ rows, columns: list, filters });
   const sorted = sortRows({ rows: filtered, columns: list, sort: search.sort });
   const view = search.view ?? views?.[0]?.key ?? "table";
@@ -113,7 +127,9 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
         store(undefined);
         setSort(undefined);
       }}
-      onOpenItem={openItem}
+      onOpenItem={openItemFromList}
+      addedRows={edit?.adds ?? []}
+      onOpenAdded={onOpenAdded}
     />
   );
   const conditions = columns.filter((column) => column.filterable === true);
@@ -130,7 +146,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       </div>
       {view === "table" ? null : <FilterChips filters={filters} labels={labels} onFilter={setFilters} />}
       <RemovedBand items={removedOf({ point, kind })} />
-      {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, marks, comments: counts, edit, onOpen: openItem, selectedId: search.id, table })}
+      {view === "table" || content === undefined ? table : content({ index, view, shown: filtered as unknown as Item[], filters, marks, comments: counts, edit, onOpen: openItemFromList, onOpenAdded, selectedId: search.id, table })}
       {drawerOpen ? (
         <FilterDrawer
           groups={drawerGroups({ rows, columns: list, conditions: asColumns(conditions), filters })}
@@ -152,12 +168,6 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
           }}
         />
       ) : null}
-      <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent>
-          <DialogTitle className="mb-2 text-h2 font-semibold">項目を追加</DialogTitle>
-          <ItemAddForm kind={kind} onClose={() => { setAdding(false); }} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { DetailPanel } from "@/features/detail/detail-panel/detail-panel";
 import { DocsScreen } from "@/features/docs/docs/docs-screen";
 import { PendingEditsPanel } from "@/features/edits/pending-edits/pending-edits-panel";
 import { HistoryScreen } from "@/features/history/history/history-dialog";
+import { ItemAddPanel } from "@/features/detail/detail-panel/components/item-add-panel";
 import { OverviewScreen } from "@/features/overview/overview/overview-screen";
 import { RecordsScreen, type RecordKind } from "@/features/records/records/records-screen";
 import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/workspace-settings-screen";
@@ -19,17 +20,21 @@ import { AppError } from "@/shared/core/app-error";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
 import { toLegacyUrl } from "@/shared/core/legacy-url";
 import { normalizeSearch, toLegacyHash } from "@/shared/core/preview-search";
-import { KIND_KEYS, KIND_LABEL } from "@/shared/core/records";
+import { KIND_KEYS, KIND_LABEL, type Kind } from "@/shared/core/records";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
+import { useDetailTrailStore } from "@/shared/stores/detail-trail-store";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 
 const TAB_ICON: Record<TabKey, IconName> = { overview: "home", decisions: "decision", tasks: "task", research: "research", docs: "doc", terms: "term", notes: "note", logs: "log" };
+
+const isListKind = (tab: string): tab is Kind => (KIND_KEYS as readonly string[]).includes(tab);
 
 const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "notes", "logs"].includes(tab);
 
@@ -57,6 +62,12 @@ export const PreviewShell = () => {
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
   const connection = useConnectionStore((state) => state.connection);
+  const adding = useEditSessionStore((state) => state.adding);
+  const openAdded = useEditSessionStore((state) => state.openAdded);
+  const closeAdd = useEditSessionStore((state) => state.closeAdd);
+  const blocked = useEditSessionStore((state) => state.blocked);
+  const visitDetail = useDetailTrailStore((state) => state.visit);
+  useEffect(() => { visitDetail(search.id); }, [search.id, visitDetail]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const data = records.data?.status === 200 ? records.data.data : undefined;
@@ -99,12 +110,13 @@ export const PreviewShell = () => {
     })();
     return (
       <main id="main" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <h1 className="sr-only">{isListKind(tab) ? KIND_LABEL[tab] : ""}</h1>
         {list}
       </main>
     );
   };
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex h-dvh flex-col">
       <Topbar
         title={data?.settings.summary ?? ""}
         tabs={tabs}
@@ -122,6 +134,7 @@ export const PreviewShell = () => {
         pending={!diffActive}
         pendingCount={pendingCount}
         pendingOpen={search.panel === "pending"}
+        pendingBlocked={blocked.length > 0}
         onNavigate={(key) => {
           if (key === "graph" || key === "settings") openLegacy({ tab: key });
           else setTab(key);
@@ -148,6 +161,7 @@ export const PreviewShell = () => {
         ) : null}
         {screen()}
         {index !== null && search.id !== undefined && search.full === undefined ? <DetailPanel id={search.id} index={index} /> : null}
+        {index !== null && adding !== null && search.id === undefined ? <ItemAddPanel key={adding.target ?? adding.kind} kind={adding.kind} target={adding.target} index={index} edits={edits} /> : null}
       </div>
       {index !== null && search.id !== undefined && search.full !== undefined ? <DetailFullscreen id={search.id} index={index} /> : null}
       {rawIndex !== null && search.panel === "pending" ? (
@@ -156,8 +170,12 @@ export const PreviewShell = () => {
           index={rawIndex}
           onClose={() => { setPanel(undefined); }}
           onOpen={(target) => {
+            const added = edits.find((edit) => edit.op === "item-add" && edit.target === target);
             if (target === SETTINGS_TARGET) setTab("settings");
-            else openItem(target);
+            else if (added === undefined) {
+              closeAdd();
+              openItem(target);
+            } else openAdded(added.key as Kind, target);
           }}
         />
       ) : null}

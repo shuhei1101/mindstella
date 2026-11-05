@@ -1,5 +1,5 @@
 // タスクの画面（画面設計『タスク.tsx』）。ボード（既定）と表で見る
-import { Board, boardColumns, ItemCard } from "@/shared/components/board";
+import { addedCards, Board, boardColumns, ItemCard } from "@/shared/components/board";
 import { commonColumns, IdLinks, rowTexts } from "@/shared/components/list-columns";
 import { ListScreen } from "@/shared/components/list-screen";
 import type { TableColumn } from "@/shared/components/table";
@@ -34,10 +34,11 @@ export const TasksScreen = ({ drawerOpen, onCloseDrawer }: TasksScreenProps) => 
     columnsOf={taskColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ index, shown, filters, marks, comments, edit, onOpen, selectedId }) => (
+    content={({ index, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) => (
       <Board
         columns={boardColumns({ items: shown, statuses: TASK_STATUSES, statusFilter: filters["status"] ?? [] })}
         emptyText="タスクはありません。"
+        added={addedCards(edit, TASK_STATUSES, onOpenAdded)}
         card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind, item.category]} links={item.for ?? []} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
       />
     )}

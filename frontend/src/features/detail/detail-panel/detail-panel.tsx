@@ -1,15 +1,15 @@
 // 詳細パネル（画面設計『詳細パネル.tsx』）。項目 1 件の中身を本文の右に出し、差分の表示の間は前後の差分を出す
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView, type BodyLayout } from "@/features/detail/detail-panel/components/body-view";
-import { KeyDiff, keyDiffs, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
+import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
 import { OptionList } from "@/features/detail/detail-panel/components/option-list";
 import { RelatedList } from "@/features/detail/detail-panel/components/related-list";
 import { ValueText } from "@/features/detail/detail-panel/components/value-text";
-import { DiagramViewer } from "@/features/detail/diagram-viewer/diagram-viewer";
+import { DiagramViewer, type DiagramViewerProps } from "@/features/detail/diagram-viewer/diagram-viewer";
 import { DiffMark } from "@/shared/components/diff-mark";
 import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
@@ -17,7 +17,7 @@ import { TagList } from "@/shared/components/tag-list";
 import { Button } from "@/shared/components/ui/button";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
-import { pendingMarkOf, type PendingMarkKind } from "@/shared/core/edits";
+import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
 import { toLegacyUrl } from "@/shared/core/legacy-url";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { toLegacyHash } from "@/shared/core/preview-search";
@@ -26,11 +26,10 @@ import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { readBodyScrolls, readPrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い履歴です。";
-
-const NO_BLOCKED: ReadonlySet<string> = new Set();
 
 /** 差分の表示で開いた項目の内容 */
 type DetailDiff = { point: DiffPoint; kind: "new" | "changed"; versions: VersionPair | null; keys: KeyDiffs | null; shown: Item; body: string | undefined };
@@ -49,7 +48,7 @@ const resolveDiff = (id: string, index: RecordIndex, diff: DiffPoint | null): De
 
 const Section = ({ label, children }: { label: string; children: ReactNode }) => (
   <section className="flex flex-col gap-1">
-    <h3 className="text-small font-semibold">{label}</h3>
+    <h3 className="m-0 text-h2 font-semibold">{label}</h3>
     {children}
   </section>
 );
@@ -128,7 +127,11 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const cancel = useCancelEdit();
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<BodyLayout>(() => (readPrefs().bodyLayout === "side" ? "side" : "inline"));
-  const [diagram, setDiagram] = useState<string | null>(null);
+  const [diagram, setDiagram] = useState<Omit<DiagramViewerProps, "onClose"> | null>(null);
+  const blockedEdits = useEditSessionStore((state) => state.blocked);
+  // 語の差分の打ち切りの時刻は、描き直す項目と時点ごとに 1 つ
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 項目と時点が変わるたびに決め直す
+  const deadline = useMemo(() => nextDiffDeadline(), [id, point?.sel]);
   const [display] = useState(bodyDisplayOf);
   const entry = index.byId.get(id);
   if (entry === undefined) return null;
@@ -140,7 +143,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const source = diff?.body ?? index.data.bodies[item.body ?? ""];
   const body = (label: string) =>
     source === undefined ? null : (
-      <BodyView label={label} item={entry.item} id={id} index={index} source={source} versions={diff?.versions ?? null} layout={layout} display={display} heading={search.h} onOpen={openItem} onHeading={setHeading} onChangeSet={setDiff} onLayout={(next) => { setLayout(next); writePrefs({ bodyLayout: next === "side" ? "side" : null }); }} onDiagram={(svg) => { setDiagram(svg.outerHTML); }} />
+      <BodyView label={label} item={entry.item} id={id} index={index} source={source} versions={diff?.versions ?? null} layout={layout} display={display} heading={search.h} deadline={deadline} onOpen={openItem} onHeading={setHeading} onChangeSet={setDiff} onLayout={(next) => { setLayout(next); writePrefs({ bodyLayout: next === "side" ? "side" : null }); }} onDiagram={({ svg, ...figure }) => { setDiagram({ ...figure, svg: svg.outerHTML }); }} />
     );
   const relation = (label: string, ids: readonly string[]) => <RelatedList label={label} ids={ids} index={index} onOpen={openItem} />;
   const list = (label: string, name: string, values: readonly string[] | undefined) =>
@@ -209,19 +212,24 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   };
   const canEdit = point === null;
   const marks: Record<string, PendingMarkKind> = {};
+  const blockedIds = new Set(blockedEdits.map((entry) => entry.id));
+  const blockedByKey: Record<string, BlockedEdit> = {};
   for (const edit of edits.filter((candidate) => candidate.target === id)) {
     const name = edit.op === "adopt" ? String(edit.value) : edit.key;
-    if (name !== null) marks[name] = pendingMarkOf({ edits, blocked: NO_BLOCKED, target: id, key: name }) ?? "pending";
+    if (name === null) continue;
+    marks[name] = pendingMarkOf({ edits, blocked: blockedIds, target: id, key: name }) ?? "pending";
+    const entry = blockedEdits.find((candidate) => candidate.id === edit.id);
+    if (entry !== undefined) blockedByKey[name] = entry;
   }
   const removal = edits.find((edit) => edit.target === id && edit.op === "item-remove");
   const referrers = [...index.byId.values()].filter(({ item: other }) => (other.depends_on ?? []).includes(id) || (other.related ?? []).includes(id)).map(({ item: other }) => other.id);
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
   return (
-    <>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: NO_BLOCKED, target: id })} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
+    <DiffDeadlineContext.Provider value={deadline}>
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
       <DiffMinimap shown={diff !== null && readPrefs().minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
-          <DetailEditor kind={kind} item={entry.item} settings={index.data.settings} marks={marks} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
+          <DetailEditor kind={kind} item={entry.item} settings={index.data.settings} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
         ) : (
           <div className="flex flex-col gap-3 p-3">
             {diff === null ? null : (
@@ -235,7 +243,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             )}
             {diff?.versions?.trimmed === true ? <p role="note" className="text-small text-muted-foreground">{NOTE_TRIMMED}</p> : null}
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
-            <h2 data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-h2 font-semibold">
+            <h2 data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
               <KeyValue name="title" value={item.title} keys={keys} />
               {diff?.kind === "new" ? <DiffMark kind="new" labeled /> : null}
               {item.withdrawn === true ? <WithdrawnBadge large /> : null}
@@ -266,8 +274,8 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
           </div>
         )}
       </DiffMinimap>
-      {diagram === null ? null : <DiagramViewer svg={diagram} onClose={() => { setDiagram(null); }} />}
-    </>
+      {diagram === null ? null : <DiagramViewer {...diagram} onClose={() => { setDiagram(null); }} />}
+    </DiffDeadlineContext.Provider>
   );
 };
 

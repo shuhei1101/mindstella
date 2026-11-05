@@ -1,6 +1,7 @@
 // 詳細の編集の表示。キーごとの入力と、検討事項の案の入力、項目の削除
 import { useState, type ReactNode } from "react";
 
+import { BlockedNote } from "@/shared/components/blocked-note";
 import { ChipsInput } from "@/shared/components/chips-input";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
@@ -9,7 +10,7 @@ import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
 import { Select } from "@/shared/components/ui/select";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { NEW_ID_PREFIX, type PendingEdit, type PendingMarkKind } from "@/shared/core/edits";
+import { NEW_ID_PREFIX, type BlockedEdit, type PendingEdit, type PendingMarkKind } from "@/shared/core/edits";
 import { formatJst } from "@/shared/core/format";
 import { DECISION_STATUSES, DOC_STATUSES, KIND_LABEL, TASK_STATUSES, type Item, type Kind, type Settings, type Tag } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
@@ -70,6 +71,8 @@ export type DetailEditorProps = {
   item: Item;
   settings: Settings;
   marks: Record<string, PendingMarkKind>;
+  /** キーか案の記号 → 直前の保存で書き込めなかった編集 */
+  blocked: Record<string, BlockedEdit>;
   removing: boolean;
   removedOptions: readonly string[];
   referrers: readonly string[];
@@ -92,7 +95,7 @@ const Field = ({ label, controlId, required, mark, children }: { label: string; 
 );
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
-export const DetailEditor = ({ kind, item, settings, marks, removing, removedOptions, referrers, usedTags, body, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
+export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, removedOptions, referrers, usedTags, body, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
   const adding = item.id.startsWith(NEW_ID_PREFIX);
   const [titleEmpty, setTitleEmpty] = useState(false);
   const [drafts, setDrafts] = useState<{ key: string; content: string }[]>([]);
@@ -196,6 +199,7 @@ export const DetailEditor = ({ kind, item, settings, marks, removing, removedOpt
                     )}
                   </div>
                   <Textarea key={option.content} rows={2} aria-label={`案 ${option.key} の中身`} disabled={removing || removed} defaultValue={option.content} onBlur={(event) => { if (event.target.value !== option.content) onChange({ op: "option-edit", key: option.key, value: { content: event.target.value } }); }} />
+                  {blocked[option.key] === undefined ? null : <BlockedNote blocked={blocked[option.key] as BlockedEdit} updated={item.updated ?? null} />}
                 </div>
               );
             })}
@@ -225,6 +229,7 @@ export const DetailEditor = ({ kind, item, settings, marks, removing, removedOpt
         ) : (
           <Field key={name} label={labelOf(kind, name)} controlId={`pe-${item.id.replace(/[^A-Za-z0-9]/g, "")}-${name}`} required={name === "title"} mark={marks[name]}>
             {field(name, input)}
+            {blocked[name] === undefined ? null : <BlockedNote blocked={blocked[name]} updated={item.updated ?? null} />}
           </Field>
         ),
       )}

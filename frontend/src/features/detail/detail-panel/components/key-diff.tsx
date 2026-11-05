@@ -1,5 +1,5 @@
 // 変わったキーの前の値と今の値を並べる。文字どうしは変わった語に面を付ける
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 import { useLibrary } from "@/shared/adapters/libraries";
 import { diffInline, LINE_DIFF_TIMEOUT_MS, type InlinePart, type JsDiff } from "@/shared/core/diff";
@@ -26,8 +26,11 @@ export const keyDiffs = (before: Item, after: Item): KeyDiffs => {
   return { has: (key) => changed.has(key), left, right };
 };
 
-/** 語の差分を求める（打ち切りの時刻は比べる直前に決める） */
-const inlineOf = (was: string, now: string, jsdiff: JsDiff) => diffInline(was, now, performance.now() + LINE_DIFF_TIMEOUT_MS, jsdiff);
+/** 1 回の描画で本文の差分と共有する、語の差分を打ち切る時刻 */
+export const DiffDeadlineContext = createContext(0);
+
+/** 今から語の差分に使える時間の後の時刻を返す */
+export const nextDiffDeadline = (): number => performance.now() + LINE_DIFF_TIMEOUT_MS;
 
 const WORD_CLASS = { added: "df-word df-add", removed: "df-word df-del" };
 
@@ -49,8 +52,9 @@ export type KeyDiffProps = { was: ReactNode; now: ReactNode; plain?: boolean };
 
 export const KeyDiff = ({ was, now, plain = false }: KeyDiffProps) => {
   const { library } = useLibrary("jsdiff");
+  const deadline = useContext(DiffDeadlineContext);
   const empty = (value: ReactNode): boolean => value === null || value === undefined || value === false || value === "";
-  const inline = typeof was === "string" && typeof now === "string" && was !== "" && now !== "" && library !== null ? inlineOf(was, now, library as JsDiff) : null;
+  const inline = typeof was === "string" && typeof now === "string" && was !== "" && now !== "" && library !== null ? diffInline(was, now, deadline, library as JsDiff) : null;
   return (
     <span className={plain ? "df-kv df-plain" : "df-kv"}>
       <del className="df-was">

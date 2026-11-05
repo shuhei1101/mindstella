@@ -1,6 +1,6 @@
 // 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。納品物を先頭に並べる
 import { DeliverableBadge, DocCard, orderDocs } from "@/features/docs/docs/components/doc-cards";
-import { Board, boardColumns } from "@/shared/components/board";
+import { AddedCard, addedCards, Board, boardColumns } from "@/shared/components/board";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
 import { commonColumns } from "@/shared/components/list-columns";
 import { ListScreen } from "@/shared/components/list-screen";
@@ -54,20 +54,25 @@ export const DocsScreen = ({ drawerOpen, onCloseDrawer }: DocsScreenProps) => (
     columnsOf={docColumns}
     drawerOpen={drawerOpen}
     onCloseDrawer={onCloseDrawer}
-    content={({ view, shown, filters, marks, comments, edit, onOpen, selectedId }) => {
+    content={({ view, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) => {
       if (view === "board") {
         return (
           <Board
             columns={boardColumns({ items: shown, statuses: DOC_STATUSES, statusFilter: filters["status"] ?? [] }).map((column) => ({ ...column, items: orderDocs(column.items) }))}
             emptyText="資料はありません。"
+            added={addedCards(edit, DOC_STATUSES, onOpenAdded)}
             card={(item) => <DocCard key={item.id} doc={item} inBoard selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
           />
         );
       }
-      return shown.length === 0 ? (
+      const adds = edit?.adds ?? [];
+      return shown.length === 0 && adds.length === 0 ? (
         <p className="text-small text-muted-foreground">該当する資料はありません。別の条件を試してください。</p>
       ) : (
         <div className="grid grid-cols-3 gap-3 overflow-auto max-xl:grid-cols-2 max-md:grid-cols-1">
+          {adds.map((item) => (
+            <AddedCard key={item.id} item={item} mark={edit?.marks[item.id] ?? "pending"} onOpen={onOpenAdded} />
+          ))}
           {orderDocs(shown).map((doc) => (
             <DocCard key={doc.id} doc={doc} inBoard={false} selected={doc.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />
           ))}
