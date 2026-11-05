@@ -103,7 +103,8 @@ const subscribe = (listener: () => void): (() => void) => {
 export const useLibrary = (name: LibraryName): LibraryState => {
   void loadLibrary(name);
   const status = useSyncExternalStore(subscribe, () => libraryState(name));
-  return { status, library: getLibrary(name) };
+  // React Compiler が取得を覚えないよう、状態で分ける
+  return { status, library: status === "ready" ? getLibrary(name) : null };
 };
 
 /** テストの間で読み込みの状態を消す */

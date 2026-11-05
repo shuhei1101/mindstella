@@ -2731,3 +2731,11 @@ files:
   - topic:ヘルパー
   - topic:ワークスペース
   - topic:起動
+- path: integration/preview/test_spa_screens.py
+  name: SPA の一覧・詳細・変更履歴・保存待ち・設定の画面を、配信した記録で実ブラウザに開いて確かめる
+  description: SPA の一覧・詳細・変更履歴・保存待ち・設定の画面を、配信した記録で実ブラウザに開いて確かめる。
+  tags:
+  - tool:playwright
+  related:
+  - to: dev/設計書/インターフェース定義/プレビュー/SPAを開く.yaml
+    type: tests

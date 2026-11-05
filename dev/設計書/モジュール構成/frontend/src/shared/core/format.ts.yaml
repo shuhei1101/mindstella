@@ -1,0 +1,12 @@
+title: プレビュー / format
+lead: 日時と値の文字の組み立て。
+functions:
+- name: formatJst
+  title: 日時の表示
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 日時と値の文字の組み立て
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

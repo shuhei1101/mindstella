@@ -18,3 +18,23 @@ items:
   summary: 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）
 - page: body-links.ts.yaml
   summary: 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い）
+- page: markdown-decorate.ts.yaml
+  summary: 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）
+- page: minimap.ts.yaml
+  summary: 差分のミニマップの印の計算と操作
+- page: body-render.ts.yaml
+  summary: 本文の差分の描画（足した・消した塊・語の面・図の差分）
+- page: side-by-side.ts.yaml
+  summary: 左右に並べた本文の差分の組み立て
+- page: html-body-diff.ts.yaml
+  summary: HTML の本文の差分の組み立て
+- page: html-frame.ts.yaml
+  summary: スクリプトを動かさない HTML の本文の枠の組み立て
+- page: term-tips.ts.yaml
+  summary: 本文の印のツールチップと、見出しへの送り・示す箇所
+- page: list-rows.ts.yaml
+  summary: 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
+- page: format.ts.yaml
+  summary: 日時と値の文字の組み立て
+- page: dom-parts.ts.yaml
+  summary: mdmark が描いた本文の中へ足す要素の組み立て

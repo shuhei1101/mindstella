@@ -1,0 +1,12 @@
+title: プレビュー / minimap
+lead: 差分のミニマップの印の計算と操作。
+functions:
+- name: attachMinimap
+  title: 差分のミニマップの取り付け
+  kind: 関数
+  usecase: 前回からの差分を見る
+  summary: 差分のミニマップの印の計算と操作
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

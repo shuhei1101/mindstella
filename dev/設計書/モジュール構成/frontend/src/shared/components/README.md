@@ -32,5 +32,10 @@
 | [comment-mark.tsx](./comment-mark.tsx.yaml) | 部品設計『コメントの印.tsx』の props・イベント・状態を持つ |
 | [pending-mark.tsx](./pending-mark.tsx.yaml) | 部品設計『保存待ちの印.tsx』の props・イベント・状態を持つ |
 | [item-add-form.tsx](./item-add-form.tsx.yaml) | 種類ごとの画面の「項目を追加」で開く追加の入力 |
+| [dom-host.tsx](./dom-host.tsx.yaml) | React の外で組み立てた要素を置く入れ物 |
+| [filter-chips.tsx](./filter-chips.tsx.yaml) | 絞り込みの条件のチップ |
+| [board.tsx](./board.tsx.yaml) | 状態ごとの列にカードを並べたボードと項目のカード |
+| [list-columns.tsx](./list-columns.tsx.yaml) | 一覧の表の共通の列 |
+| [list-screen.tsx](./list-screen.tsx.yaml) | 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態） |
 
 <!-- /table -->

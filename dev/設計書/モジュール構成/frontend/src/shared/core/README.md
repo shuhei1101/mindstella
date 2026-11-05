@@ -17,5 +17,15 @@
 | [edits.ts](./edits.ts.yaml) | 保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い） |
 | [doc-export.ts](./doc-export.ts.yaml) | 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い） |
 | [body-links.ts](./body-links.ts.yaml) | 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い） |
+| [markdown-decorate.ts](./markdown-decorate.ts.yaml) | 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
+| [minimap.ts](./minimap.ts.yaml) | 差分のミニマップの印の計算と操作 |
+| [body-render.ts](./body-render.ts.yaml) | 本文の差分の描画（足した・消した塊・語の面・図の差分） |
+| [side-by-side.ts](./side-by-side.ts.yaml) | 左右に並べた本文の差分の組み立て |
+| [html-body-diff.ts](./html-body-diff.ts.yaml) | HTML の本文の差分の組み立て |
+| [html-frame.ts](./html-frame.ts.yaml) | スクリプトを動かさない HTML の本文の枠の組み立て |
+| [term-tips.ts](./term-tips.ts.yaml) | 本文の印のツールチップと、見出しへの送り・示す箇所 |
+| [list-rows.ts](./list-rows.ts.yaml) | 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て |
+| [format.ts](./format.ts.yaml) | 日時と値の文字の組み立て |
+| [dom-parts.ts](./dom-parts.ts.yaml) | mdmark が描いた本文の中へ足す要素の組み立て |
 
 <!-- /table -->
