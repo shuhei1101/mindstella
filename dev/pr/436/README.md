@@ -1,8 +1,8 @@
-# 結合テスト test_diff_body_side_by_side_when_linked で、左の列の語の差分を待ってから参照する
+# 結合テスト test_diff_body_side_by_side_when_linked で、語の差分の打ち切り時刻が描画の遅れで過ぎないようにする
 
 ## 概要
 
-結合テスト `test_diff_body_side_by_side_when_linked` が、左右に並べた本文の左の列の語の差分を待ってから参照し、負荷が高いときにも毎回 pass するようにする。
+結合テスト `test_diff_body_side_by_side_when_linked` が、負荷が高いときにも毎回 pass するようにする。
 
 ## 背景
 
