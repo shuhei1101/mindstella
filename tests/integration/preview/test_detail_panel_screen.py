@@ -177,6 +177,7 @@ from preview_minimap_helpers import (
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from preview_word_diff_helpers import (
+    FREEZE_PERFORMANCE_NOW_JS,
     KEY_LINES_JS,
     MIN_TEXT_CONTRAST,
     WORD_COLORS_JS,
@@ -4776,6 +4777,8 @@ def test_diff_body_side_by_side_when_linked(
     # 準備・実行
     url, _ = write_linked_body_layout_preview()
     seed_side_layout(page, "V-1")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     page.set_viewport_size(SIDE_VIEWPORT)
     open_preview(url, "#tab=docs&id=A-1")
     open_side_by_side(page, LAYOUT_PANEL)

@@ -1,0 +1,12 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+# ruff は requirements-dev.txt で固定した 0.17.1 を uvx で流す
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+exit=0

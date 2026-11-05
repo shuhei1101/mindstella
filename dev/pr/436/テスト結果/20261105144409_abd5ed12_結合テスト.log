@@ -1,0 +1,31 @@
+# 負荷を掛けた実行（CPU を使い切る busy loop を 4 本並べて流す）
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 1 回目
+.                                                                        [100%]
+1 passed in 16.24s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 2 回目
+.                                                                        [100%]
+1 passed in 15.88s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 3 回目
+.                                                                        [100%]
+1 passed in 17.83s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 4 回目
+.                                                                        [100%]
+1 passed in 16.33s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 5 回目
+.                                                                        [100%]
+1 passed in 17.14s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 6 回目
+.                                                                        [100%]
+1 passed in 22.65s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 7 回目
+.                                                                        [100%]
+1 passed in 17.58s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 8 回目
+.                                                                        [100%]
+1 passed in 17.40s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 9 回目
+.                                                                        [100%]
+1 passed in 17.31s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked  # 10 回目
+.                                                                        [100%]
+1 passed in 19.32s
