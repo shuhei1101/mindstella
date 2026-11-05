@@ -2013,7 +2013,7 @@ def test_normal_when_html_body_diff_side_by_side(
 
 
 # 詳細パネルのレビュー中のコメントの本文と、並びの切り替え
-REVIEW_BODIES_JS = "rows => rows.map(r => r.querySelector('.review-body').textContent)"
+REVIEW_BODIES_JS = "rows => rows.map(r => r.querySelector('.review-body').textContent.trim())"
 REVIEW_ORDER_BUTTON = "aside.panel .d-review button.review-order"
 
 
