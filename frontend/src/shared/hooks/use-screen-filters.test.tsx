@@ -23,7 +23,7 @@ describe("useScreenFilters", () => {
     // 実行
     const { router } = await renderPreviewHook("/?tab=tasks", () => useScreenFilters("tasks"));
     // 検証
-    await waitFor(() => expect(router.state.location.search).toMatchObject({ f: { status: "保留" } }));
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ "f.status": "保留" }));
   });
 
   // 既定の条件（正常系）

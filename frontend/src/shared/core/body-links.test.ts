@@ -10,9 +10,9 @@ describe("linkHeadings", () => {
     const root = document.createElement("div");
     root.innerHTML = "<h2>決め方</h2><h2>決め方</h2>";
     // 実行
-    linkHeadings({ root, onHeading: vi.fn() });
+    linkHeadings({ root, onHeading: vi.fn(), onChangeSet: vi.fn() });
     // 検証
-    expect(root.querySelectorAll("h2")[1]?.id).toBe("決め方-1");
+    expect(root.querySelectorAll("h2")[1]?.dataset["heading"]).toBe("決め方-1");
   });
 });
 
@@ -25,7 +25,7 @@ describe("linkBody", () => {
     root.innerHTML = "<p>D-1 を見る</p>";
     const onOpen = vi.fn();
     // 実行
-    linkBody({ root, index: buildIndex(data), onOpen });
+    linkBody({ root, index: buildIndex(data), selfId: "D-9", onOpen, source: "D-1 を見る" });
     root.querySelector<HTMLElement>("[data-id='D-1']")?.click();
     // 検証
     expect(onOpen).toHaveBeenCalledWith("D-1");

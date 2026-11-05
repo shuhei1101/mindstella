@@ -6,7 +6,7 @@ import { vi } from "vitest";
 
 import { createQueryClient } from "@/app/query-client";
 import { createAppRouter } from "@/app/router";
-import { parsePreviewSearch } from "@/shared/core/preview-search";
+import { parsePreviewSearch, parseSearchString, stringifySearchString } from "@/shared/core/preview-search";
 import { FakeEventSource } from "@/testing/fake-event-source";
 
 /** URL のパスでルートを開き、その画面を描く */
@@ -32,7 +32,7 @@ export const renderPreviewHook = async <T,>(path: string, useHook: () => T) => {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", validateSearch: parsePreviewSearch, component: Host });
   const history = createMemoryHistory({ initialEntries: [path] });
-  const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute]), history });
+  const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute]), history, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
   const queryClient = createQueryClient();
   render(
     <QueryClientProvider client={queryClient}>

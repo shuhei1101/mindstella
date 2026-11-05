@@ -28,7 +28,7 @@ describe("useAddEdit", () => {
     const error = await result.current.mutateAsync({ op: "set", target: "D-1", key: "updated_by", value: "user" }).catch((reason: unknown) => reason);
     // 検証
     expect(error).toBeInstanceOf(AppError);
-    expect((error as AppError).detail).toBe("編集できないキーです");
+    expect((error as AppError).message).toBe("編集できないキーです");
   });
 });
 
