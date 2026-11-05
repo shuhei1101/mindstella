@@ -7,6 +7,7 @@ from typing import Any
 
 __all__ = [
     "BEFORE_PARAGRAPHS",
+    "FREEZE_PERFORMANCE_NOW_JS",
     "KEY_LINES_JS",
     "MIN_TEXT_CONTRAST",
     "WORD_COLORS_JS",
@@ -67,6 +68,13 @@ UNPAIRED_AFTER = "要件は今週までに決める。\n"
 # 検討事項 D-3 の本文: 同じ語を持たない文への書き換え（行の数は揃うが、同じ部分が少ない）
 LITTLE_SAME_BEFORE = "東京は晴れ\n"
 LITTLE_SAME_AFTER = "Hello world\n"
+
+# 開く前に `page.add_init_script` で当てる、`performance.now()` を読み込んだ時刻で止めるスクリプト。
+# 語の差分の打ち切り時刻（行の差分を呼ぶ直前の時刻 + `LINE_DIFF_TIMEOUT_MS`）が、その間の描画にかかった時間で過ぎないようにする
+FREEZE_PERFORMANCE_NOW_JS = """{
+    const frozen = performance.now();
+    performance.now = () => frozen;
+}"""
 
 # 変えた行の対の、語の面（`span.df-word`）を持つ要素を、面の種類と文字に直して並べる。`selector` の要素ごとに返す
 WORD_MARKS_JS = """selector => [...document.querySelectorAll(selector)].map(element => ({

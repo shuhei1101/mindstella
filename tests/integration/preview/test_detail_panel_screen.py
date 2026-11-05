@@ -177,6 +177,7 @@ from preview_minimap_helpers import (
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from preview_word_diff_helpers import (
+    FREEZE_PERFORMANCE_NOW_JS,
     KEY_LINES_JS,
     MIN_TEXT_CONTRAST,
     WORD_COLORS_JS,
@@ -4776,6 +4777,8 @@ def test_diff_body_side_by_side_when_linked(
     # 準備・実行
     url, _ = write_linked_body_layout_preview()
     seed_side_layout(page, "V-1")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     page.set_viewport_size(SIDE_VIEWPORT)
     open_preview(url, "#tab=docs&id=A-1")
     open_side_by_side(page, LAYOUT_PANEL)
@@ -4784,9 +4787,7 @@ def test_diff_body_side_by_side_when_linked(
     assert page.locator(f"{SIDE_AFTER} [data-heading] .h-link").count() == 1
     assert page.eval_on_selector_all(f"{SIDE_AFTER} a.term", "a => a.map(x => x.dataset.id)") == ["G-1"]
     assert page.eval_on_selector_all(f"{SIDE_AFTER} a.idref", "a => a.map(x => x.dataset.id)") == ["D-1"]
-    # 検証（書き換えた段落の対は、変わった語だけに濃い面を付ける。左右の列の語の差分が描かれるのを待つ）
-    page.wait_for_selector(f"{SIDE_BEFORE} span.df-word")
-    page.wait_for_selector(f"{SIDE_AFTER} span.df-word")
+    # 検証（書き換えた段落の対は、変わった語だけに濃い面を付ける）
     removed =page.eval_on_selector_all(f"{SIDE_BEFORE} span.df-word", "e => e.map(x => x.textContent)")
     added = page.eval_on_selector_all(f"{SIDE_AFTER} span.df-word", "e => e.map(x => x.textContent)")
     assert removed
