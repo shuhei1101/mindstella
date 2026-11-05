@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from playwright.sync_api import Page, expect
+from preview_clock_helpers import FREEZE_PERFORMANCE_NOW_JS
 
 from .fixture_types import (
     LoadLibrary,
@@ -1538,6 +1539,8 @@ def test_detail_panel_when_diff_inline_words(
     load_library("marked")
     load_mdmark()
     load_library("jsdiff")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
     # 検証
@@ -1588,6 +1591,8 @@ def test_detail_panel_when_diff_lines_unpaired(
     load_library("marked")
     load_mdmark()
     load_library("jsdiff")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
     # 検証
@@ -1630,6 +1635,8 @@ def test_detail_panel_when_diff_inline_words_keep_links(
     load_library("marked")
     load_mdmark()
     load_library("jsdiff")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
     # 検証
@@ -1669,6 +1676,8 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     load_library("marked")
     load_mdmark()
     load_library("jsdiff")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(OPEN_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
     # 検証
@@ -1782,6 +1791,8 @@ def test_detail_panel_when_diff_raw_inline_words(
     load_mdmark()
     load_library("jsdiff")
     load_library("mermaid")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     preview_page.evaluate(OPEN_DIAGRAM_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT})
     preview_page.wait_for_function("() => document.querySelector('pre.dg-raw.df-raw') !== null")
@@ -1888,6 +1899,8 @@ def test_detail_panel_when_diff_key_words(
     load_library("marked")
     load_mdmark()
     load_library("jsdiff")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(
         OPEN_KEY_WORD_DIFF_PANEL_SCRIPT,
@@ -1984,6 +1997,8 @@ def test_detail_panel_when_diff_key_words_skipped(
     load_preview_scripts()
     # jsdiff を読めないケースは、jsdiff を差し込まない
     _load_libraries(load_library, load_mdmark, libraries)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(
         OPEN_KEY_WORD_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT, "selectors": [selector]}
@@ -3383,6 +3398,8 @@ def test_detail_panel_when_diff_key_newlines(
     load_library("marked")
     load_mdmark()
     load_library("jsdiff")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    preview_page.evaluate(FREEZE_PERFORMANCE_NOW_JS)
     # 実行
     result = preview_page.evaluate(
         OPEN_KEY_NEWLINE_DIFF_PANEL_SCRIPT, {"data": data, "point": DIFF_POINT}
