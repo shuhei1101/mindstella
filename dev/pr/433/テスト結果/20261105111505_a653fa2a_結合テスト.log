@@ -1,0 +1,41 @@
+$ pytest tests/integration/preview/test_comments_screen.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_diagram_viewer_screen.py tests/integration/preview/test_workspace_settings_screen.py
+
+write_linked_body_layout_preview = <function write_linked_body_layout_preview.<locals>._write at 0x726a6d1e0d60>
+open_preview = <function open_preview.<locals>._open at 0x726a6d1e0c20>
+page = <Page url='http://127.0.0.1:58582/mindstella.html#tab=docs&id=A-1&diff=V-1'>
+
+    def test_diff_body_side_by_side_when_linked(
+        write_linked_body_layout_preview: WriteReviewPreview, open_preview: OpenPreview, page: Page
+    ) -> None:
+        """左右に並べた本文の右の列には見出しのリンク・本文の印・項目の ID のリンクを付ける。変わった語だけに濃い面を付ける（正常系）。"""
+        # 準備・実行
+        url, _ = write_linked_body_layout_preview()
+        seed_side_layout(page, "V-1")
+        page.set_viewport_size(SIDE_VIEWPORT)
+        open_preview(url, "#tab=docs&id=A-1")
+        open_side_by_side(page, LAYOUT_PANEL)
+        page.wait_for_selector(f"{SIDE_AFTER} a.term")
+        # 検証（右の列）
+        assert page.locator(f"{SIDE_AFTER} [data-heading] .h-link").count() == 1
+        assert page.eval_on_selector_all(f"{SIDE_AFTER} a.term", "a => a.map(x => x.dataset.id)") == ["G-1"]
+        assert page.eval_on_selector_all(f"{SIDE_AFTER} a.idref", "a => a.map(x => x.dataset.id)") == ["D-1"]
+        # 検証（書き換えた段落の対は、変わった語だけに濃い面を付ける）
+        removed = page.eval_on_selector_all(f"{SIDE_BEFORE} span.df-word", "e => e.map(x => x.textContent)")
+        added = page.eval_on_selector_all(f"{SIDE_AFTER} span.df-word", "e => e.map(x => x.textContent)")
+>       assert removed
+E       assert []
+
+tests/integration/preview/test_detail_panel_screen.py:4790: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_diff_body_side_by_side_when_linked[chromium]
+1 failed, 384 passed in 950.99s (0:15:50)
+# 負荷を掛けた繰り返し（CPU を使い切る busy loop を 4 本並べて流す）
+$ pytest tests/integration/preview/test_comments_screen.py tests/integration/preview/test_workspace_settings_screen.py  # 1 回目
+............................................                             [100%]
+44 passed in 128.70s (0:02:08)
+$ pytest tests/integration/preview/test_comments_screen.py tests/integration/preview/test_workspace_settings_screen.py  # 2 回目
+............................................                             [100%]
+44 passed in 151.49s (0:02:31)
+$ pytest tests/integration/preview/test_comments_screen.py tests/integration/preview/test_workspace_settings_screen.py  # 3 回目
+............................................                             [100%]
+44 passed in 122.47s (0:02:02)
