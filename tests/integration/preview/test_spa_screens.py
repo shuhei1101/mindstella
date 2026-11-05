@@ -72,10 +72,10 @@ def test_detail_restores_body_scroll(page: Page, write_preview: WritePreview, ma
     body = page.locator("aside .panel-body")
     page.get_by_text("段落 199").wait_for()
     body.evaluate("(element) => { element.scrollTop = 600; }")
-    page.wait_for_timeout(100)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll') !== null")
     page.goto(page.url.replace("id=D-1", "id=D-2"))
     page.get_by_role("complementary", name="詳細").wait_for()
     page.goto(page.url.replace("id=D-2", "id=D-1"))
     page.get_by_text("段落 199").wait_for()
-    page.wait_for_function("document.querySelector('aside .panel-body').scrollTop === 600")
-
+    # 本文の高さの変化でブラウザが位置を少し補正する
+    page.wait_for_function("Math.abs(document.querySelector('aside .panel-body').scrollTop - 600) < 10")

@@ -19,14 +19,29 @@ export const DiffMinimap = ({ shown, children, initialScrollTop, onBodyScroll }:
     if (!shown || frame.current === null || body.current === null) return undefined;
     return attachMinimap({ frame: frame.current, body: body.current });
   }, [shown]);
-  // 本文を描いた次のコマで戻す
+  // 本文を描いた次のコマで戻す。ライブラリや図の読み込みで本文が後から伸びるので、位置に届くまで伸びるたびに戻し直す。利用者が動かしたら戻すのをやめる
   useEffect(() => {
-    if (initialScrollTop === undefined) return undefined;
-    const handle = requestAnimationFrame(() => {
-      if (body.current !== null) body.current.scrollTop = initialScrollTop;
-    });
+    const element = body.current;
+    if (initialScrollTop === undefined || element === null) return undefined;
+    const restore = (): void => {
+      element.scrollTop = initialScrollTop;
+      if (Math.abs(element.scrollTop - initialScrollTop) < 1) stop();
+    };
+    const resized = new ResizeObserver(restore);
+    const stop = (): void => {
+      resized.disconnect();
+      element.removeEventListener("wheel", stop);
+      element.removeEventListener("pointerdown", stop);
+      element.removeEventListener("keydown", stop);
+    };
+    for (const child of element.children) resized.observe(child);
+    element.addEventListener("wheel", stop, { passive: true });
+    element.addEventListener("pointerdown", stop);
+    element.addEventListener("keydown", stop);
+    const handle = requestAnimationFrame(restore);
     return () => {
       cancelAnimationFrame(handle);
+      stop();
     };
     // 開いたときに 1 度だけ戻す
     // eslint-disable-next-line react-hooks/exhaustive-deps
