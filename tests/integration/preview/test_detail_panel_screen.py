@@ -3561,6 +3561,29 @@ def test_body_alias_tooltip_open_link(
     assert page.inner_text("aside.panel .d-title") == "特殊効果のスキーマ"
 
 
+# 印から外してから、押して残したツールチップが開いたままかを確認するまでのミリ秒（隠す待ち `TIP_HIDE_DELAY_MS` の 150 より長く）
+TIP_KEEP_CHECK_MS = 400
+
+# 候補の要素（skip 個目から）の矩形の中の点を順に調べ、その点の一番上の要素が候補の中でツールチップの外になる最初の点を返却する（無ければ null）
+UNCOVERED_POINT_SCRIPT = """([selector, skip]) => {
+    const tip = document.getElementById('term-tip');
+    const candidates = [...document.querySelectorAll(selector)];
+    for (const [index, element] of candidates.entries()) {
+        if (index < skip) continue;
+        const rect = element.getBoundingClientRect();
+        for (const fy of [0.5, 0.25, 0.75]) {
+            for (const fx of [0.5, 0.25, 0.75, 0.1, 0.9]) {
+                const x = rect.left + rect.width * fx;
+                const y = rect.top + rect.height * fy;
+                const top = document.elementFromPoint(x, y);
+                if (top !== null && element.contains(top) && !tip.contains(top)) return {index, x, y};
+            }
+        }
+    }
+    return null;
+}"""
+
+
 def test_body_alias_tooltip_pinned(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
@@ -3568,24 +3591,35 @@ def test_body_alias_tooltip_pinned(
     # 準備
     page = _open_alias_panel(write_preview, open_preview, make_item)
     mixed = f"{PANEL_MARKS} >> nth=0"
-    # 実行（押して、印から外して待つ）
+    # 実行（押して、印から外し、隠す待ちを過ぎるまで待つ）
     page.click(mixed)
+    page.wait_for_selector(TIP_OPEN)
     page.mouse.move(2, 2)
-    page.wait_for_timeout(400)
+    left_at = page.evaluate("performance.now()")
+    page.wait_for_function(
+        "([at, ms]) => performance.now() - at >= ms", arg=[left_at, TIP_KEEP_CHECK_MS]
+    )
     kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
-    # 実行（ほかの印に乗せても替わらない）
-    page.hover(f"{PANEL_MARKS} >> nth=1")
-    page.wait_for_timeout(300)
+    # 実行（1 つ目より後の印のうち、ツールチップに覆われていない点へ乗せても替わらない）
+    other = page.evaluate(UNCOVERED_POINT_SCRIPT, [PANEL_MARKS, 1])
+    assert other is not None, "ツールチップに覆われていない印がありません"
+    page.mouse.move(other["x"], other["y"])
+    page.wait_for_function(
+        "([selector, index]) => document.querySelectorAll(selector)[index].matches(':hover')",
+        arg=[PANEL_MARKS, other["index"]],
+    )
     still = page.evaluate(
         "[...document.querySelectorAll('#term-tip a.tt-link')].map((a) => a.dataset.id).join(' ')"
     )
     # 実行（Esc で閉じる）
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
-    # 実行（もう一度押して、外を押して閉じる）
+    # 実行（もう一度押して、詳細パネルの中のツールチップに覆われていない点を押して閉じる）
     page.click(mixed)
     page.wait_for_selector(TIP_OPEN)
-    page.click("aside.panel .panel-kind")
+    outside = page.evaluate(UNCOVERED_POINT_SCRIPT, ["aside.panel .panel-kind", 0])
+    assert outside is not None, "ツールチップに覆われていない外の点がありません"
+    page.mouse.click(outside["x"], outside["y"])
     page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
     # 検証
     assert kept is True
