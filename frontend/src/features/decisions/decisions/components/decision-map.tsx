@@ -109,9 +109,8 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
   );
   const lowered = keyword.toLowerCase();
   const press = (id: string): void => {
-    // 開いている節をもう一度押すと、注目の起点をロックする
-    if (locked === id) setLocked(null);
-    else if (selectedId === id) setLocked(id);
+    // 詳細を開いている節をもう一度押すとロックし、ロックした節を開いてもう一度押すと外す（今の画面の `lockTap`）
+    if (id === selectedId) setLocked(locked === id ? null : (locked ?? id));
     else onOpen(id);
   };
   return (

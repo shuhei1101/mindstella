@@ -12,7 +12,7 @@ const diffInlineOf = (before: string, after: string, deadline: number): InlineDi
 const childMarksOf = (input: { before: string[]; after: string[] }) => childMarks({ ...input, jsdiff: jsdiffOf() });
 
 /** 図の前の版の記法を、図の要素に持たせる属性の名前（図の拡大が Raw の差分に読む） */
-const BEFORE_SOURCE_ATTR = "data-before-source";
+export const BEFORE_SOURCE_ATTR = "data-before-source";
 
 /** 前の版の図を描いて突き合わせる間、描いた SVG を置く画面の外の位置（px）と幅（px） */
 const OFFSCREEN_LEFT_PX = -10000;
