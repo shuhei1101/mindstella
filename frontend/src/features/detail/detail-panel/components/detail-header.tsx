@@ -1,6 +1,6 @@
 // 詳細の見出し（種類と ID・戻る・進む・編集・エクスポート・全画面・閉じる）
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";
-import { DocExportMenu } from "@/shared/components/doc-export-menu";
+import { DocExportControl } from "@/shared/components/doc-export-menu";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
@@ -42,7 +42,7 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, pendi
           <span>{editLabel}</span>
         </Button>
       ) : null}
-      {source === undefined ? null : <DocExportMenu item={item} source={source} index={index} />}
+      {source === undefined ? null : <DocExportControl item={item} source={source} index={index} />}
       <Button variant="ghost" size="icon" aria-label="前の項目へ戻る" title="前の項目へ戻る" onClick={() => { window.history.back(); }}>
         ←
       </Button>

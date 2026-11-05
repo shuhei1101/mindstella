@@ -98,7 +98,7 @@ export const ListScreen = ({ kind, views, columnsOf, drawerOpen, onCloseDrawer, 
       kind={kind}
       columns={columns}
       rows={sorted}
-      sort={search.sort}
+      sort={search.sort === undefined ? null : { key: search.sort.replace(/^-/, ""), dir: search.sort.startsWith("-") ? "desc" : "asc" }}
       filters={filters}
       pinTo={pinTo}
       hiddenColumns={hidden}

@@ -39,8 +39,8 @@ export type TableProps = {
   kind: string;
   columns: TableColumn[];
   rows: Row[];
-  /** 並べている列。降順は頭に `-` */
-  sort?: string | undefined;
+  /** 並べている列と向き */
+  sort?: { key: string; dir: "asc" | "desc" } | null | undefined;
   filters?: Filters;
   pinTo?: string | null;
   hiddenColumns?: string[];
@@ -63,9 +63,9 @@ const cellText = (value: unknown): string => {
 };
 
 /** 見出しの並べ替えの向き */
-const sortOf = (sort: string | undefined, key: string): "ascending" | "descending" | undefined => {
-  if (sort === key) return "ascending";
-  return sort === `-${key}` ? "descending" : undefined;
+const sortOf = (sort: TableProps["sort"], key: string): "ascending" | "descending" | undefined => {
+  if (sort?.key !== key) return undefined;
+  return sort.dir === "asc" ? "ascending" : "descending";
 };
 
 export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, hiddenColumns, marks, comments, pendingMarks, onSort, onFilter, onPin, onHiddenColumnsChange, onResetColumns, onOpenItem }: TableProps) => {

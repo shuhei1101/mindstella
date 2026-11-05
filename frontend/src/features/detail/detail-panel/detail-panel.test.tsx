@@ -56,12 +56,13 @@ describe("DetailPanel", () => {
   // 今の画面でコメントする（正常系）
   test("detail_panel_when_comment_link", async () => {
     // 準備
-    const assign = vi.fn();
-    vi.stubGlobal("location", { ...window.location, assign });
     stubRecords({ decisions: [decision], changes });
     renderRoute("/spa/?tab=decisions&view=table&id=D-1&diff=V-1");
+    const button = await screen.findByRole("button", { name: "今の画面でコメントする" });
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
     // 実行
-    await userEvent.click(await screen.findByRole("button", { name: "今の画面でコメントする" }));
+    await userEvent.click(button);
     // 検証
     expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1");
     vi.unstubAllGlobals();

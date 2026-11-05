@@ -14,4 +14,4 @@ export const NO_VALUE = "（なし）";
 export const PRESS_SLOP_PX = 5;
 
 /** 値を文字にする（オブジェクトは JSON の文字にする） */
-export const toText = (value: unknown): string => (typeof value === "object" ? JSON.stringify(value) : String(value));
+export const toText = (value: unknown): string => (typeof value === "object" ? JSON.stringify(value) : `${value as string | number | boolean}`);
