@@ -20,6 +20,7 @@ from preview_comment_helpers import (
     free_comment,
     fulfill_problem,
     open_review,
+    reopen_review,
     read_workspace_yaml,
     review_row,
 )
@@ -231,8 +232,8 @@ def test_send_when_entered(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
     pane = start_claude_pane(mode="user", cwd=root)
-    server = start_server(extra_env=pane.env, cwd=root)
-    opened = server.call("preview_url", workspace=str(root))
+    server = start_server()
+    opened = server.call("preview_url", workspace=str(root), session=pane.session)
     assert opened.data is not None
     page = open_preview(str(opened.data["url"]))
     open_review(page)
@@ -796,7 +797,7 @@ def test_edit_when_list_closed(
     assert page.locator(f"{detail_row} form.row-edit").count() == 0
     assert page.locator(f"{detail_row} .row-actions").count() == 1
     assert page.inner_text(f"{detail_row} .review-body") == "案 A にする"
-    open_review(page)
+    reopen_review(page)
     assert page.locator(f"{_row('C-1')} form.row-edit").count() == 0
     assert page.inner_text(f"{_row('C-1')} .review-body") == "案 A にする"
     assert read_workspace_yaml(root, "comments.yaml")["items"][0]["body"] == "案 A にする"
@@ -874,7 +875,7 @@ def test_restore_when_list_closed(
     # 実行
     page.get_by_role("button", name="コメントの一覧を閉じる").click()
     page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
-    open_review(page)
+    reopen_review(page)
     # 検証
     assert page.get_by_role("button", name="元に戻す").count() == 0
     assert page.locator(_row("C-1")).count() == 0
@@ -1322,7 +1323,7 @@ def test_row_body_when_redrawn(served_long: tuple[str, Path], open_preview: Open
     # 実行（パネルを閉じて開き直す）
     page.click(COMMENTS_BUTTON)
     page.wait_for_selector(f"{COMMENTS_PANEL}.open", state="detached")
-    open_review(page)
+    reopen_review(page)
     _wait_more(page, "C-1")
     # 検証
     assert page.inner_text(_more("C-1")) == "続きを読む"

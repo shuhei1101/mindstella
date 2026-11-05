@@ -296,3 +296,28 @@ def test_location_label(
     label = preview_page.evaluate("(loc) => MindmapPreview.locationLabel(loc)", loc)
     # 検証
     assert label == expected
+
+
+@pytest.mark.parametrize(
+    ("tags", "expected"),
+    [
+        pytest.param(
+            [{"name": "データ", "main": True}, {"name": "画面"}], ["データ", "画面"], id="objects"
+        ),
+        pytest.param(["起票"], ["起票"], id="strings"),
+        pytest.param(None, [], id="undefined"),
+    ],
+)
+def test_tag_names(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    tags: list[Any] | None,
+    expected: list[str],
+) -> None:
+    """オブジェクトと文字列のタグから名前を取る（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(tags) => MindmapPreview.tagNames(tags ?? undefined)", tags)
+    # 検証
+    assert result == expected

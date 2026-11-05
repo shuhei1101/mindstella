@@ -234,7 +234,7 @@ namespace MindmapPreview {
         counts.set(name, (counts.get(name) ?? 0) + 1);
       }
     };
-    for (const { item } of index.byId.values()) count(item.tags ?? []);
+    for (const { item } of index.byId.values()) count(tagNames(item.tags));
     for (const thread of threads) count(thread.tags);
     return [...counts.keys()].sort((left, right) => (counts.get(right) ?? 0) - (counts.get(left) ?? 0) || (left < right ? -1 : left > right ? 1 : 0));
   }
@@ -389,9 +389,10 @@ namespace MindmapPreview {
         controlId,
         name,
         hint: CHIP_HINTS[key] ?? `${name}を入れる`,
-        values: Array.isArray(value) ? (value as string[]) : [],
+        values: Array.isArray(value) ? (value as (Tag | string)[]) : [],
         suggestions: key === "tags" ? props.usedTags : null,
         monospace: key !== "tags",
+        mainToggle: key === "tags",
         disabled: removing,
         onChange: (next) => commit(next),
       });
@@ -475,102 +476,6 @@ namespace MindmapPreview {
       default:
         return settings.phases;
     }
-  }
-
-  /** 値を並べるキーの入力（チップと、足す入力欄）。値の並びを変えるたびに `onChange` で新しい並びを知らせる（チップを外したときは外した値も） */
-  export function chipsInput({
-    controlId,
-    name,
-    hint,
-    values,
-    suggestions,
-    monospace,
-    disabled,
-    onChange,
-  }: {
-    controlId: string;
-    name: string;
-    hint: string;
-    values: string[];
-    /** 入力欄に出す候補（記録で使われているタグ。候補に無い値も入れられる） */
-    suggestions: readonly string[] | null;
-    monospace: boolean;
-    disabled: boolean;
-    onChange: (values: string[], removed: string | null) => void;
-  }): HTMLElement {
-    let current = [...values];
-    const box = h({ tag: "div", attrs: { class: "pe-chips", role: "group", "aria-label": name } });
-    const listId = `${controlId}-list`;
-    const field = h({
-      tag: "input",
-      attrs: {
-        id: controlId,
-        class: "input pe-chip-input",
-        type: "text",
-        list: suggestions === null ? null : listId,
-        placeholder: hint,
-        "aria-label": `${name}を追加`,
-        autocomplete: "off",
-        disabled,
-      },
-    });
-    /** 入力した値を並びに足す（空と、もうある値は足さない） */
-    const addValue = (): void => {
-      const text = field.value.trim();
-      field.value = "";
-      if (text === "" || current.includes(text)) return;
-      current = [...current, text];
-      draw();
-      onChange(current, null);
-      box.querySelector<HTMLInputElement>(".pe-chip-input")?.focus();
-    };
-    field.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" || event.isComposing) return;
-      event.preventDefault();
-      addValue();
-    });
-    field.addEventListener("change", addValue);
-    /** チップを描き直す */
-    const draw = (): void => {
-      box.replaceChildren(
-        ...current.map((entry) =>
-          h({
-            tag: "span",
-            attrs: { class: `tag pe-chip${monospace ? " mono" : ""}` },
-            children: [
-              entry,
-              h({
-                tag: "button",
-                attrs: {
-                  class: "pe-chip-x",
-                  type: "button",
-                  "aria-label": `${entry} を外す`,
-                  disabled,
-                  onclick: () => {
-                    current = current.filter((other) => other !== entry);
-                    draw();
-                    onChange(current, entry);
-                  },
-                },
-                children: [icon("x")],
-              }),
-            ],
-          }),
-        ),
-        field,
-        ...(suggestions === null
-          ? []
-          : [
-              h({
-                tag: "datalist",
-                attrs: { id: listId },
-                children: suggestions.map((tag) => h({ tag: "option", attrs: { value: tag } })),
-              }),
-            ]),
-      );
-    };
-    draw();
-    return box;
   }
 
   /** 検討事項の案（1 案 1 枚。中身の書き換え・採用する案の切り替え・削除と、案を足す） */

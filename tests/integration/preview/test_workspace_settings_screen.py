@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Page, expect
-from preview_edit_helpers import PENDING_BUTTON, read_edits_file, wait_saved_edit
+from preview_edit_helpers import PENDING_BUTTON, read_edits_file, wait_edits_match, wait_saved_edit
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_settings_helpers import SETTINGS_PANEL_OPEN, open_settings
 from workspace_fixtures import RECORD_DIR, MakeItem
@@ -22,6 +22,10 @@ DECISIONS_HASH = "#tab=decisions&view=board"
 
 # 溜めた編集を待つ上限ミリ秒
 EDIT_TIMEOUT_MS = 10_000
+
+# 保存待ちの編集のゴールの中身に 2 行目が入ったか
+GOAL_SUMMARY_MATCH_JS = "(items) => items.some(e => e.key === 'goal' && e.value.summary.includes('2 行目'))"
+
 
 def _settings(valid_settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
     """フェーズ 3 つ・説明つきの設定を返す。"""
@@ -254,11 +258,7 @@ def test_goal(
         "() => document.querySelector('.pe-ws [data-key=goal] textarea').value.includes('2 行目')"
     )
     # 溜めた編集にゴールの中身が入るのを待つ
-    page.wait_for_function(
-        "async () => (await (await fetch('/api/edits')).json()).items"
-        ".some(e => e.key === 'goal' && e.value.summary.includes('2 行目'))",
-        timeout=EDIT_TIMEOUT_MS,
-    )
+    wait_edits_match(page, GOAL_SUMMARY_MATCH_JS)
     # 検証
     value = _edit_of(root, "goal")["value"]
     assert value["phase"] == "要件"

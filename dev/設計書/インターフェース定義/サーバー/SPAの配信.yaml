@@ -1,0 +1,138 @@
+title: SPAの配信
+entry:
+  kind: endpoint
+  value: GET /spa/{path}
+flows:
+- name: 正常系
+  summary: '`/spa/` で SPA の `index.html` を返す'
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa/\n\n  クライアント->>IF: GET /spa/（Host: 127.0.0.1:{ポート}）\n  IF-->>クライアント: 200、index.html\n```"
+  expected:
+  - ステータスが 200 で、`Content-Type` が `text/html; charset=utf-8`、`Cache-Control` が `no-store`
+  - 本文に `id="root"` の要素と、`/spa/assets/` を指す `<script type="module">` がある
+  test: test_normal
+- name: 正常系（静的なファイル）
+  summary: 出力の静的なファイルを拡張子に合う Content-Type で返す
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+    notes: '`/spa/` の本文の `<script>` の `src` と `<link rel="stylesheet">` の `href` を GET する'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa/assets/{名前}\n\n  クライアント->>IF: GET /spa/assets/{名前}.js\n  IF-->>クライアント: 200、JavaScript\n  クライアント->>IF: GET /spa/assets/{名前}.css\n  IF-->>クライアント: 200、CSS\n```"
+  expected:
+  - JavaScript はステータスが 200 で、`Content-Type` が `text/javascript; charset=utf-8`
+  - CSS はステータスが 200 で、`Content-Type` が `text/css; charset=utf-8`
+  test: test_normal_when_asset
+- name: 正常系（SPA の中のルート）
+  summary: 出力に無いパスと出力の外を指すパスは、SPA の中のルートとして `index.html` を返す
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+    notes: '`/spa/decisions?view=table` と、出力の外を指す `/spa/../config.yaml`（`..` を正規化せずに送る）を GET する'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa/{path}\n\n  クライアント->>IF: GET /spa/decisions?view=table\n  IF-->>クライアント: 200、index.html\n  クライアント->>IF: GET /spa/../config.yaml\n  IF-->>クライアント: 200、index.html\n```"
+  expected:
+  - どちらもステータスが 200 で、本文が `/spa/` の本文と同じ
+  - 本文に `config.yaml` の中身が無い
+  test: test_normal_when_client_route
+- name: 正常系（末尾のスラッシュが無い）
+  summary: '`/spa` は `/spa/` へ送り直す'
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+    notes: 送り直しを辿らずに `/spa` を GET する
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa\n\n  クライアント->>IF: GET /spa\n  IF-->>クライアント: 302、Location: /spa/\n```"
+  expected:
+  - ステータスが 302 で、`Location` が `/spa/`
+  test: test_normal_when_no_trailing_slash
+- name: 異常系（接続先が違う・403）
+  summary: Host が端末の中の名前でなければ SPA を返さない
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+    notes: '`Host: attacker.example:{ポート}` を付けて `/spa/` と `/spa/assets/{名前}.js` を GET する'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa/\n\n  クライアント->>IF: GET /spa/（Host: attacker.example）\n  IF-->>クライアント: 403\n```"
+  expected:
+  - どちらもステータスが 403
+  - 本文に HTML と JavaScript が無い
+  test: test_error_when_host_mismatch
+- name: 異常系（出力が無い・500）
+  summary: 出力のフォルダに `index.html` が無いとき、SPA を返さず今の画面はそのまま返す
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+    notes: 配信が読む出力のフォルダを、`index.html` を置かない一時フォルダに差し替えて `/spa/` と `/mindstella.html` を GET する
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /spa/\n\n  クライアント->>IF: GET /spa/\n  IF-->>クライアント: 500、problem+json\n```"
+  expected:
+  - '`/spa/` はステータスが 500 で、`Content-Type` が `application/problem+json`'
+  - '`/mindstella.html` はステータスが 200'
+  test: test_error_when_index_missing
+lead: '`preview_url` が立てた配信が、ビルドした React のプレビュー（SPA）の `index.html` と出力の静的なファイルを `/spa/` の下で返す。今の画面（`/mindstella.html`）と並べて配り、今の画面の挙動を変えない。'
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+- dev/設計書/インターフェース定義/プレビュー/SPAを開く#
+request:
+- name: path
+  type: str
+  required: false
+  default: なし（`/spa/` は `index.html` を返す）
+  location: path
+  description: '`/spa/` より後ろのパス。出力の静的なファイル（`assets/{名前}.js` など）か、SPA の中のルートのパス'
+  constraints: 出力のフォルダの外を指すパスは、SPA の中のルートとして扱う
+- name: Host
+  type: str
+  required: true
+  location: header
+  description: ブラウザが付ける接続先
+  constraints: 『プレビューの配信』の制約「接続先の確かめ」と同じ
+response:
+- name: 本文
+  type: text/html / text/javascript / text/css / image/svg+xml
+  description: 出力のフォルダに `path` のファイルがあればその中身、無ければ `index.html`
+- name: Content-Type
+  type: str
+  description: 拡張子から決める。`.html` は `text/html; charset=utf-8`、`.js` は `text/javascript; charset=utf-8`、`.css` は `text/css; charset=utf-8`、`.svg` は `image/svg+xml`。表に無い拡張子は `application/octet-stream`
+- name: Cache-Control
+  type: str
+  description: '`no-store`（プラグインを上げた後に古い画面を読ませない）'
+status_codes:
+- code: '200'
+  condition: 出力のファイルか `index.html` を返せた
+- code: '302'
+  condition: '`/spa` を開いた'
+  notes: '`Location: /spa/`'
+- code: '403'
+  condition: '`Host` が『プレビューの配信』の制約「接続先の確かめ」に合わない'
+  notes: 本文は返さない
+- code: '500'
+  condition: 出力のフォルダに `index.html` が無い（同梱の誤り）
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
+constraints:
+- item: 待ち受け
+  constraint: '`127.0.0.1` だけ（『プレビューのURL』）'
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+- item: 接続先の確かめ
+  constraint: 『プレビューの配信』の制約「接続先の確かめ」と同じ確かめを、`/spa` の下の全てのパスに当てる
+- item: 出力の外のファイル
+  constraint: パスを解決した後に出力のフォルダの配下にあることを確かめ、外を指すときは `index.html` を返す
+- item: 読み込むファイル
+  constraint: 返す HTML は、出力のフォルダの中のファイルと、Google Fonts の文字だけを読む
+- item: 通信
+  constraint: 配信は外へ通信しない
+refs:
+- dev/設計書/インターフェース定義/サーバー/プレビューの配信#
+- dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+test_file: tests/integration/server/test_spa_serve.py

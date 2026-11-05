@@ -9,6 +9,7 @@ from __future__ import annotations
 import platform
 import shlex
 import shutil
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,7 +20,8 @@ from launch_registration_helpers import (
     RegistrationSandbox,
     read_report,
 )
-from workspace_fixtures import SnapshotTree
+from launch_fixtures import PLUGIN_DIR
+from workspace_fixtures import PORT_ENV, SnapshotTree, read_server_status
 
 if TYPE_CHECKING:
     from conftest import LockDirs
@@ -32,6 +34,15 @@ pytestmark = pytest.mark.skipif(
 # 登録する環境変数
 ALLOWED_HOSTS = "MINDSTELLA_ALLOWED_HOSTS"
 VENV = "MINDSTELLA_VENV"
+
+# 常駐サーバーが落ちていれば起動する、SessionStart のフックと起動スクリプトが呼ぶスクリプト
+ENSURE_SCRIPT = PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "ensure_server.py"
+
+
+def _process_env(pid: int) -> dict[str, str]:
+    """プロセスの環境変数を読む（Linux の /proc）。"""
+    raw = Path(f"/proc/{pid}/environ").read_bytes().decode("utf-8")
+    return dict(entry.split("=", 1) for entry in raw.split("\0") if "=" in entry)
 
 
 @pytest.fixture
@@ -50,8 +61,13 @@ def registered(stubbed: RegistrationSandbox) -> RegistrationSandbox:
     return stubbed
 
 
-def test_normal(stubbed: RegistrationSandbox, snapshot_tree: SnapshotTree) -> None:
-    """未登録のホームで、登録を読み、`mindstella` と環境変数を登録して、新しいシェルから起動スクリプトを叩ける（正常系）。"""
+def test_normal(
+    stubbed: RegistrationSandbox,
+    snapshot_tree: SnapshotTree,
+    ready_venv: Path,
+    resident_port: int,
+) -> None:
+    """未登録のホームで、登録を読み、`mindstella` と環境変数を登録して、新しいシェルから起動スクリプトを叩け、起動した常駐サーバーが環境変数を読む（正常系）。"""
     # 準備
     workspace = stubbed.root / "家計簿アプリ"
     workspace.mkdir()
@@ -70,6 +86,15 @@ def test_normal(stubbed: RegistrationSandbox, snapshot_tree: SnapshotTree) -> No
     # 新しく開いた bash で alias にフォルダを渡すと、installPath の版の起動スクリプトがそのフォルダを受け取る
     stubbed.bash(f"mindstella {shlex.quote(str(workspace))}")
     assert stubbed.launch_record("default") == ([str(workspace)], CONFIG_UNSET)
+    # 新しく開いた bash から常駐サーバーを起動すると、登録した環境変数を読む
+    ensured = stubbed.bash(
+        f"{PORT_ENV}={resident_port} {VENV}={shlex.quote(str(ready_venv))} "
+        f"python3 {shlex.quote(str(ENSURE_SCRIPT))}"
+    )
+    assert ensured.returncode == 0, ensured.stderr
+    status = read_server_status(resident_port)
+    assert status is not None
+    assert _process_env(int(status["pid"]))[ALLOWED_HOSTS] == "preview.example.com"
     # 利用者が書いた行はそのままで、印の範囲は 1 つだけ
     rc_lines = stubbed.bashrc.read_text(encoding="utf-8").splitlines()
     assert rc_lines[0] == BASHRC_USER_LINE

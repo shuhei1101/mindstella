@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# mindstella の MCP サーバーを渡した Claude Code を、tmux のセッションの中で立ち上げてつなぐ。
+# mindstella の常駐サーバーが落ちていれば起動してから、Claude Code を tmux のセッションの中で立ち上げてつなぐ。
 # 使い方:
 #   {プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}
 # 環境変数:
-#   MINDSTELLA_VENV    MCP サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
+#   MINDSTELLA_VENV    常駐サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
+#   MINDSTELLA_PORT    常駐サーバーの待ち受けのポート（既定は 8784）
 #   CLAUDE_CONFIG_DIR  あれば、Claude Code の設定のフォルダ（アカウント）として tmux のセッションへ渡し、セッションの名前にも使う
 #   MINDSTELLA_ALLOWED_HOSTS / MINDSTELLA_PREVIEW_START_HOOK / MINDSTELLA_PREVIEW_STOP_HOOK
-#                      あれば、launch.py が MCP の設定の env に書いて MCP サーバーへ渡す
+#                      あれば、常駐サーバーを起動するときにそのまま渡す
 # 終了コード: 0 正常 / 1 実行時のエラー / 2 引数の誤り
 set -euo pipefail
 
@@ -88,18 +89,20 @@ PYTHON_PATH="$(read_report python_path <<<"$REPORT")"
 command -v tmux >/dev/null 2>&1 || fail "tmux が見つかりません。tmux を入れてください"
 command -v claude >/dev/null 2>&1 || fail "claude が見つかりません。Claude Code を入れてください"
 
-# 4. プラグインのフォルダ・セッションの名前・MCP の設定（標準出力の 3 行を 1 行ずつ受ける）
+# 4. プラグインのフォルダ・セッションの名前（標準出力の 2 行を 1 行ずつ受ける）
 LISTING="$(claude plugin list --json)" || fail "claude plugin list --json を実行できません"
-LAUNCHED="$("$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --python "$PYTHON_PATH" --folder "$FOLDER" --format lines <<<"$LISTING")" || exit 1
+LAUNCHED="$("$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --folder "$FOLDER" --format lines <<<"$LISTING")" || exit 1
 {
   IFS= read -r PLUGIN_DIR
   IFS= read -r SESSION
-  IFS= read -r MCP_CONFIG
 } <<<"$LAUNCHED"
 echo "[mindstella] プラグイン: $PLUGIN_DIR" >&2
 echo "[mindstella] セッション: $SESSION" >&2
 
-# 5. セッション: 同じ名前（同じフォルダ）のセッションが既にあれば立てず、そのセッションへつなぐ
+# 5. 常駐サーバー: インストールした今の版の起動の確認で、落ちていれば起動する（案内は標準エラーに出る）
+python3 "$PLUGIN_DIR/skills/mindmap/scripts/ensure_server.py" || exit 1
+
+# 6. セッション: 同じ名前（同じフォルダ）のセッションが既にあれば立てず、そのセッションへつなぐ
 if tmux has-session -t "=$SESSION" 2>/dev/null; then
   echo "[mindstella] 既にあるセッションへつなぎます: $SESSION" >&2
 else
@@ -110,10 +113,10 @@ else
     # tmux のサーバーが先に立っていると呼び出し元の環境変数は渡らないので、セッションへ渡す
     ENV_ARGS=(-e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR")
   fi
-  tmux new-session -d -s "$SESSION" -c "$WORK_DIR" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} -- claude --mcp-config "$MCP_CONFIG"
+  tmux new-session -d -s "$SESSION" -c "$WORK_DIR" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} -- claude
 fi
 
-# 6. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければつなぐコマンドを出して終わる
+# 7. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければつなぐコマンドを出して終わる
 if [ -t 1 ]; then
   if [ -n "${TMUX:-}" ]; then
     exec tmux switch-client -t "=$SESSION"

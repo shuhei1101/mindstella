@@ -63,6 +63,7 @@ from store import (
     write_failed,
     write_temp,
 )
+from tag_text import duplicate_tag_indexes
 
 # `SCHEMA_DIR` の下の保存待ちの編集のスキーマのファイル名
 EDITS_SCHEMA = "edits.schema.json"
@@ -124,6 +125,9 @@ BODY_KEY = "body"
 
 # 案の並びのキー（`item-add` の `value` だけが持てる）
 OPTIONS_KEY = "options"
+
+# 項目のタグの並びのキー（同じ名前のタグの重なりも確かめる）
+TAGS_KEY = "tags"
 
 # 検討事項の種類
 DECISION_KIND: Kind = "decision"
@@ -528,6 +532,8 @@ def _check_values(kind: Kind | None, op: EditOp, key: str | None, value: Any) ->
             raise EditInvalidError("title: タイトルを書いてください")
         if name == OPTIONS_KEY:
             _check_option_symbols(entry)
+        if name == TAGS_KEY:
+            _check_tag_names(entry)
 
 
 def _check_option_symbols(options: list[dict[str, Any]]) -> None:
@@ -539,6 +545,13 @@ def _check_option_symbols(options: list[dict[str, Any]]) -> None:
         if symbol in seen:
             raise EditInvalidError(f"options: 案の記号 {symbol} が重なっています")
         seen.add(symbol)
+
+
+def _check_tag_names(tags: list[dict[str, Any]]) -> None:
+    """タグの並びに、表記をそろえて同じ名前のタグが重ならないかを確かめる。"""
+    duplicated = duplicate_tag_indexes(tags)
+    if duplicated:
+        raise EditInvalidError(f"tags: 同じタグが既にあります（{tags[duplicated[0]]['name']}）")
 
 
 def _check_setting(key: str | None, value: Any) -> None:

@@ -88,6 +88,11 @@ FIT_SETTLE_MS = 2_500
 REVIEW_ROW = "aside.panel .d-review li[data-comment='{id}']"
 D1_MARK = '.board button.card[data-id="D-1"] .cmk .sr-only'
 
+# 詳細パネルのレビュー中のコメントの並びのボタンと、その本文を並びの順に返すスクリプト
+REVIEW_ORDER_BUTTON = "aside.panel .d-review button.review-order"
+REVIEW_BODIES = "aside.panel .d-review .review-body"
+BODIES_JS = "bodies => bodies.map(b => b.textContent.trim())"
+
 # 画面に結果が出るまで待つ上限ミリ秒
 RESULT_TIMEOUT_MS = 10_000
 
@@ -182,7 +187,7 @@ def test_error_when_server_unreachable(
     assert served.data is not None
     _open_detail(page, open_preview, served.data["url"])
     # 開いた後にサーバーを止める
-    server.close_stdin()
+    server.call("server_stop")
     server.wait_exit()
     # 実行
     page.fill(DETAIL_TEXTAREA, BODY)
@@ -214,7 +219,7 @@ def test_normal_when_draft_restored_after_restart(
     page.wait_for_function("!document.querySelector('aside.panel.open')")
     page.wait_for_timeout(DRAFT_FLUSH_WAIT_MS)
     # サーバーを止めて立て直し、新しい URL で開く
-    first_server.close_stdin()
+    first_server.call("server_stop")
     first_server.wait_exit()
     second_server = start_server()
     restarted = second_server.call("preview_url", workspace=str(root))
@@ -335,7 +340,7 @@ def test_normal_when_edit_remove_restore_in_detail(
     page.fill(f"{REVIEW_ROW.format(id='C-1')} form.row-edit textarea", "案 A に決める")
     page.locator(f"{REVIEW_ROW.format(id='C-1')} form.row-edit").get_by_role("button", name="修正", exact=True).click()
     page.wait_for_function(
-        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent === '案 A に決める'",
+        "document.querySelector(\"aside.panel li[data-comment='C-1'] .review-body\")?.textContent.trim() === '案 A に決める'",
         timeout=RESULT_TIMEOUT_MS,
     )
     # 実行（消す）
@@ -351,9 +356,7 @@ def test_normal_when_edit_remove_restore_in_detail(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
     _wait_d1_mark(page, "コメント 2 件")
     assert page.locator("aside.comments-panel.open").count() == 0
-    assert page.eval_on_selector_all(
-        "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
-    ) == ["案 A に決める", "案 B も見たい"]
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == ["案 B も見たい", "案 A に決める"]
     assert [(item["id"], item["body"]) for item in _read_comments(root)] == [
         ("C-1", "案 A に決める"),
         ("C-2", "案 B も見たい"),
@@ -361,7 +364,119 @@ def test_normal_when_edit_remove_restore_in_detail(
     # 開き直しても、D-1 の詳細パネルに同じ 2 件が出る
     page.reload()
     page.wait_for_selector(REVIEW_ROW.format(id="C-2"))
-    assert page.eval_on_selector_all(
-        "aside.panel .d-review .review-body", "bodies => bodies.map(b => b.textContent)"
-    ) == ["案 A に決める", "案 B も見たい"]
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == ["案 B も見たい", "案 A に決める"]
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == decisions_before
+
+
+def test_normal_when_review_order_switched(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """詳細パネルのレビュー中のコメントを、既定の新しい順から古い順へ切り替え、開き直しても古い順のまま出し、新しい順へ戻す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=OPTIONS))
+    write_comments(
+        root,
+        make_comment("C-1", target="D-1", body="案 A にする"),
+        make_comment("C-2", target="D-1", body="案 B も見たい"),
+        make_comment("C-3", target="D-1", body="案 C は外す"),
+    )
+    comments_before = (root / RECORD_DIR / "comments.yaml").read_bytes()
+    newest = ["案 C は外す", "案 B も見たい", "案 A にする"]
+    oldest = ["案 A にする", "案 B も見たい", "案 C は外す"]
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], BOARD_HASH)
+    page.click('.board button.card[data-id="D-1"]')
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    # 検証（開いた直後は新しい順）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == newest
+    # 実行（古い順へ切り替える）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(
+        f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'",
+        timeout=RESULT_TIMEOUT_MS,
+    )
+    # 検証（溜めた順に並べ直す）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == oldest
+    assert page.inner_text("aside.panel .d-review h3 .count") == "3"
+    # 実行（開き直す。ハッシュが D-1 の詳細パネルを開く）
+    page.reload()
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    # 検証（古い順のまま）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == oldest
+    # 実行（新しい順へ戻す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(
+        f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'",
+        timeout=RESULT_TIMEOUT_MS,
+    )
+    # 検証（開いた直後と同じ順。件数とワークスペースのコメントは変わらない）
+    assert page.eval_on_selector_all(REVIEW_BODIES, BODIES_JS) == newest
+    assert page.inner_text("aside.panel .d-review h3 .count") == "3"
+    assert (root / RECORD_DIR / "comments.yaml").read_bytes() == comments_before
+
+
+# 改行で 8 行のコメントの本文（各行は詳細パネルの幅で折り返さない短さ）
+LONG_LINES = [f"{number} 行目の気づき" for number in range(1, 9)]
+
+# 畳んだときに出す、折り返した後の見た目の行の数
+FOLD_LINES = 5
+
+# 本文の各行が、本文の枠の中に見えているかを行の順に返す（畳んだ行は枠の下に外れる）
+VISIBLE_LINES_SCRIPT = """({body, lines}) => {
+    const element = document.querySelector(body);
+    const frame = element.getBoundingClientRect();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node);
+    return lines.map((line) => {
+        const text = texts.find((node) => node.textContent.includes(line));
+        const at = text.textContent.indexOf(line);
+        const range = document.createRange();
+        range.setStart(text, at);
+        range.setEnd(text, at + line.length);
+        return range.getBoundingClientRect().bottom <= frame.bottom + 1;
+    });
+}"""
+
+
+def test_normal_when_read_long_comment_in_detail(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """詳細パネルを開いた直後、8 行のレビュー中のコメントは 5 行までに畳まれ、「続きを読む」を押すと 8 行が全て見える。コメントの中身は変わらない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=OPTIONS))
+    write_comments(root, make_comment("C-1", target="D-1", body="\n".join(LONG_LINES)))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], BOARD_HASH)
+    row = REVIEW_ROW.format(id="C-1")
+    body = f"{row} .review-body"
+    more = f"{row} button.review-more"
+    # 実行（D-1 の詳細パネルを開く）
+    page.click('.board button.card[data-id="D-1"]')
+    page.wait_for_selector(more, state="visible")
+    page.locator(more).scroll_into_view_if_needed()
+    folded = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": body, "lines": LONG_LINES})
+    folded_text = page.inner_text(more)
+    # 実行（「続きを読む」を押す）
+    page.click(more)
+    opened = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": body, "lines": LONG_LINES})
+    # 検証
+    assert folded == [True] * FOLD_LINES + [False] * (len(LONG_LINES) - FOLD_LINES)
+    assert folded_text == "続きを読む"
+    assert opened == [True] * len(LONG_LINES)
+    assert page.inner_text(more) == "折りたたむ"
+    assert [item["body"] for item in _read_comments(root)] == ["\n".join(LONG_LINES)]

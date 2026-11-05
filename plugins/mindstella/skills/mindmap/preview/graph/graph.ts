@@ -76,7 +76,7 @@ namespace MindmapPreview {
         order: GRAPH_STATUS_ORDER,
         get: (row) => entry(row).item.status,
       },
-      { key: "tags", label: "タグ", get: (row) => entry(row).item.tags ?? [] },
+      { key: "tags", label: "タグ", get: (row) => tagNames(entry(row).item.tags) },
     ];
   }
 

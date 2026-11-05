@@ -75,8 +75,8 @@ SERVER_TOOL_NAMES = [
     "update_thread",
 ]
 
-# Claude Code の中のツールの名前の頭（`mcp__{サーバーの名前}__{ツール}`）
-MCP_TOOL_PREFIX = "mcp__mindstella__"
+# Claude Code の中のツールの名前の頭（`mcp__plugin_{プラグインの名前}_{サーバーの名前}__{ツール}`）
+MCP_TOOL_PREFIX = "mcp__plugin_mindstella_mindstella__"
 
 # 本文のツールの表を持つ節の見出し
 TOOL_SECTION_HEAD = "## ツール\n"

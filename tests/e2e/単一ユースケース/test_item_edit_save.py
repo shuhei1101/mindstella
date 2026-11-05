@@ -21,8 +21,17 @@ from edit_helpers import (
     save_pending,
     wait_pending_count,
 )
+from integration.preview.preview_edit_helpers import wait_saved_edit
 from playwright.sync_api import Page, expect
-from preview_helpers import OpenPreview, ServeWorkspace, pick_history_point
+from preview_helpers import (
+    SCRIM_ON,
+    TAG_VALUES_SCRIPT,
+    OpenPreview,
+    ServeWorkspace,
+    is_inert,
+    pick_history_point,
+    scrim_shown,
+)
 from workspace_fixtures import RECORD_DIR, CallTool, MakeEdit, MakeItem, MakeWorkspace, StartServer, WriteEdits
 
 # 溜めた編集の取り消しに使う、項目を指す見出しの文字
@@ -77,8 +86,8 @@ def test_normal(
     # 準備
     options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
     url, root = serve_workspace(
-        make_item("D-1", tags=["画面"], options=options),
-        make_item("T-1", tags=["記録の形"]),
+        make_item("D-1", tags=[{"name": "画面"}], options=options),
+        make_item("T-1", tags=[{"name": "記録の形"}]),
         settings=valid_settings,
     )
     page = open_preview(url, "#tab=decisions&view=board&id=D-1")
@@ -123,6 +132,11 @@ def test_normal(
     # 実行（保存待ちのパネルを開き、T-1 の編集を取り消す）
     open_pending(page)
     assert page.locator(f"{PENDING_PANEL} .pe-row").count() == 5
+    # 検証（開いている間はパネルとトップバー以外がグレーアウトされ、ボードのカードを押せない）
+    page.wait_for_selector(SCRIM_ON)
+    assert scrim_shown(page) is True
+    assert is_inert(page, ".board button.card[data-id='D-1']") is True
+    assert is_inert(page, PENDING_BUTTON) is False
     page.get_by_role("button", name=UNDO_TASK_STATUS).click()
     wait_pending_count(page, 4)
     # 検証（取り消した後、D-1 の 4 件は残る）
@@ -133,7 +147,7 @@ def test_normal(
     # 検証（保存した後）
     decision = read_items(root, "decisions.yaml")[0]
     assert decision["answer"] == "案 C にする"
-    assert decision["tags"] == ["画面", "記録の形"]
+    assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形"}]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["C"]
     assert decision["updated_by"] == "user"
     assert decision["history"][-1]["by"] == "user"
@@ -309,8 +323,8 @@ def test_error_when_server_unreachable(
     page = open_preview(str(served.data["url"]), "#tab=decisions&view=board")
     page.wait_for_selector(PENDING_BUTTON)
     open_pending(page)
-    # 実行（サーバーの標準入力を閉じて止め、保存する）
-    server.close_stdin()
+    # 実行（常駐サーバーを止め、保存する）
+    server.call("server_stop")
     server.wait_exit()
     page.click(SAVE_BUTTON)
     page.wait_for_selector(f"{PENDING_PANEL} .pe-alert", timeout=SETTLE_MS)
@@ -319,3 +333,50 @@ def test_error_when_server_unreachable(
     assert page.locator(f"{PENDING_PANEL} #pe-row-E-1").count() == 1
     assert read_items(root, "decisions.yaml")[0].get("answer") is None
     assert len(read_edits(root)) == 1
+
+
+def test_normal_when_main_tag_switched(
+    serve_workspace: ServeWorkspace,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """タグの主題を別のタグへ切り替え、タグを追加して保存すると、詳細パネルで主題のタグだけがマーカーを持つ（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    url, root = serve_workspace(
+        make_item("D-1", tags=[{"name": "画面", "main": True}, {"name": "記録の形"}], options=options)
+    )
+    page = open_preview(url, "#tab=decisions&view=board&id=D-1")
+    page.wait_for_selector(f"{DETAIL_PANEL}.open")
+    # 実行（主題を切り替え、タグを追加して溜める）
+    _edit_form_ready(page)
+    group = page.get_by_role("group", name="タグ")
+    group.get_by_role("button", name="記録の形 を主題").click()
+    wait_saved_edit(page, "tags", [{"name": "画面", "main": True}, {"name": "記録の形", "main": True}])
+    group.get_by_role("button", name="画面 を主題").click()
+    wait_saved_edit(page, "tags", [{"name": "画面"}, {"name": "記録の形", "main": True}])
+    tags = page.get_by_label("タグを追加")
+    tags.fill("通知")
+    tags.press("Enter")
+    wait_saved_edit(
+        page, "tags", [{"name": "画面"}, {"name": "記録の形", "main": True}, {"name": "通知"}]
+    )
+    # 検証（タグにバッジ、トップバーに保存待ちの件数）
+    wait_pending_count(page, 1)
+    assert page.locator(".pe-field[data-key='tags'] .pm").count() == 1
+    # 実行（まとめて保存する）
+    open_pending(page)
+    save_pending(page)
+    # 検証
+    decision = read_items(root, "decisions.yaml")[0]
+    assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形", "main": True}, {"name": "通知"}]
+    assert decision["updated_by"] == "user"
+    expect(page.locator(f"{DETAIL_PANEL} span.tag.is-main")).to_have_count(1, timeout=SETTLE_MS)
+    tags = page.evaluate(TAG_VALUES_SCRIPT, DETAIL_PANEL)
+    assert [(tag["name"], tag["main"]) for tag in tags] == [
+        ("画面", False),
+        ("記録の形", True),
+        ("通知", False),
+    ]
+    assert read_edits(root) == []
+    assert page.locator(PENDING_BUTTON).count() == 0

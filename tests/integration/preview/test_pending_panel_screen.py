@@ -16,6 +16,7 @@ from preview_edit_helpers import (
     read_edits_file,
     read_items_file,
 )
+from preview_scrim_helpers import SCRIM_ON, click_scrim, detail_above_scrim, main_inert, scrim_visible
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from workspace_fixtures import RECORD_DIR, MakeEdit, MakeItem
 
@@ -124,6 +125,27 @@ def test_close(
     assert page.get_by_role("button", name="保存待ち（4 件）").count() == 1
 
 
+def test_close_by_scrim(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """開いている間はトップバーとタブの帯とパネル以外をグレーアウトし、グレーアウトした所を押すとパネルを閉じてトップバーのボタンへフォーカスを戻す（正常系）。"""
+    # 準備
+    page, root = _open_panel(write_edit_preview, make_item, make_edit, open_preview)
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行
+    click_scrim(page)
+    # 検証
+    expect(page.locator(PENDING_PANEL)).to_have_count(0)
+    assert covered == (True, True)
+    assert page.evaluate("document.activeElement?.dataset.act") == "pending"
+    assert scrim_visible(page) is False
+    assert len(read_edits_file(root)["items"]) == 4
+
+
 def test_groups(
     write_edit_preview: WriteReviewPreview,
     make_item: MakeItem,
@@ -160,6 +182,26 @@ def test_group_opens_item(
     assert page.inner_text(f"{DETAIL_PANEL} .panel-kind") == "検討事項 D-1"
     assert page.get_by_role("button", name="編集を終える").count() == 1
     assert page.locator(f"{DETAIL_PANEL} form.pe-form").count() == 1
+
+
+def test_group_opens_item_above_scrim(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """まとまりの見出しから開いた詳細パネルはグレーアウトの上に出し、操作できる（正常系）。"""
+    # 準備
+    page, _ = _open_panel(write_edit_preview, make_item, make_edit, open_preview)
+    # 実行
+    page.get_by_role("button", name="D-1「最初の問い」を開く").click()
+    page.wait_for_selector(f"{DETAIL_PANEL}.open")
+    page.wait_for_function("document.body.classList.contains('detail-above-scrim')")
+    # 検証
+    assert scrim_visible(page) is True
+    assert detail_above_scrim(page) is True
+    assert page.evaluate(f"document.querySelector('{DETAIL_PANEL}').inert") is False
+    assert page.locator(PENDING_PANEL).count() == 1
 
 
 def test_group_opens_settings(
@@ -245,7 +287,7 @@ def test_empty(
     expect(page.locator(f"{PENDING_PANEL} .comments-empty")).to_have_text("保存待ちの編集はありません。")
     assert page.locator(f"{PENDING_PANEL} .pe-foot-sum").count() == 0
     assert page.is_disabled(SAVE_BUTTON)
-    assert page.evaluate("document.activeElement.tagName") == "H2"
+    page.wait_for_function("document.activeElement?.tagName === 'H2'")
     assert read_edits_file(root)["items"] == []
 
 
@@ -399,3 +441,45 @@ def test_offline(
     page.click(SAVE_BUTTON)
     page.wait_for_selector(".pe-toast", timeout=SAVE_TIMEOUT_MS)
     assert read_edits_file(root)["items"] == []
+
+
+# タグごとに、名前・主題か・title・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+ROW_TAGS_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    title: tag.getAttribute("title"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+
+def test_rows_when_tags(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    open_preview: OpenPreview,
+) -> None:
+    """タグの編集の行は、前の値と後の値のそれぞれをタグの並びで描き、主題のタグを二重丸のマーカーで見分ける（「主題」は読み上げと title だけ）（正常系）。"""
+    # 準備
+    before = [{"name": "データ", "main": True}, {"name": "画面"}]
+    after = [{"name": "データ"}, {"name": "画面", "main": True}]
+    url, _ = write_edit_preview(
+        make_item("D-1", title="最初の問い", tags=before),
+        edits=(make_edit("E-1", key="tags", value=after, before=before),),
+    )
+    page = open_preview(url, DECISIONS_HASH)
+    page.wait_for_selector(PENDING_BUTTON)
+    # 実行
+    open_pending(page)
+    # 検証
+    row = page.locator("#pe-row-E-1")
+    assert row.locator(".pe-what").inner_text() == "タグ"
+    assert page.evaluate(ROW_TAGS_JS, "#pe-row-E-1 del") == [
+        {"name": "データ", "main": True, "title": "主題", "marker": "true"},
+        {"name": "画面", "main": False, "title": None, "marker": None},
+    ]
+    assert page.evaluate(ROW_TAGS_JS, "#pe-row-E-1 ins") == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+    assert row.locator("del > .sr-only").inner_text().strip() == "前:"
+    assert row.locator("ins > .sr-only").inner_text().strip() == "後:"

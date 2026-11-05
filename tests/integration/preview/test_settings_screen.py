@@ -39,6 +39,7 @@ from preview_settings_helpers import (
     tab_keys,
     toggle_kind,
 )
+from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
 from preview_stack_helpers import (
     DETAIL_HASH,
     NARROW_VIEWPORT,
@@ -48,7 +49,7 @@ from preview_stack_helpers import (
     open_narrow,
     wait_front,
 )
-from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
+from workspace_fixtures import RECORD_DIR, CallTool, MakeComment, MakeItem, MakeWorkspace
 
 
 # 画面が描き終わるまで待つ上限ミリ秒
@@ -61,7 +62,7 @@ KINDS_WITHOUT_TERMS_LOGS = ["decisions", "tasks", "research", "docs", "notes"]
 PHONE_VIEWPORT = {"width": 390, "height": 844}
 
 # 覆われた本文の部品に付けた `inert` の数
-INERT_COUNT_SCRIPT = "document.querySelectorAll('main [inert]').length"
+INERT_COUNT_SCRIPT = "document.querySelectorAll('main[inert], main [inert]').length"
 
 # 既定が変わった知らせが画面の下に出てから消えるまでの余裕の上限ミリ秒（画面は 6 秒出す）
 NOTICE_GONE_MS = 9_000
@@ -128,6 +129,28 @@ def test_open_and_close(
     assert focus_after_esc == "settings"
     assert focus_after_close == "settings"
     assert page.get_attribute(SETTINGS_BUTTON, "aria-expanded") == "false"
+
+
+def test_close_by_scrim(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """開いている間はトップバーとタブの帯とパネル以外をグレーアウトし、グレーアウトした所を押すとパネルを閉じてボタンへフォーカスを戻す（正常系）。"""
+    # 準備
+    url, _ = _preview(write_review_preview, make_item, valid_settings)
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_settings(page)
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行
+    click_scrim(page)
+    # 検証
+    page.wait_for_selector(SETTINGS_PANEL, state="detached")
+    assert covered == (True, True)
+    assert page.evaluate("document.activeElement?.dataset.act ?? null") == "settings"
+    assert scrim_visible(page) is False
 
 
 def test_look_override(
@@ -469,7 +492,7 @@ def test_narrow_when_width_crosses_900(
     valid_settings: dict[str, Any],
     open_preview: OpenPreview,
 ) -> None:
-    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` と `inert` が外れ、また 900px 以下に戻ると付け直す（正常系）。"""
+    """詳細パネルと両方開いたまま幅が 900px をまたぐと、`left-front` が外れて表示の設定の `inert` が外れ、パネルの外で開いた詳細パネルはグレーアウトの下で `inert` になる。また 900px 以下に戻ると付け直す（正常系）。"""
     # 準備
     url, _ = _preview(write_review_preview, make_item, valid_settings)
     page = open_preview(url, DETAIL_HASH)
@@ -488,7 +511,7 @@ def test_narrow_when_width_crosses_900(
     page.set_viewport_size(NARROW_VIEWPORT)
     page.wait_for_function("document.body.classList.contains('left-front')")
     # 検証
-    assert wide == {"left_front": False, "detail_inert": False, "settings_inert": False}
+    assert wide == {"left_front": False, "detail_inert": True, "settings_inert": False}
     assert is_inert(page, "detail") is True
     assert is_inert(page, "settings") is False
 
@@ -775,6 +798,52 @@ def test_save_default_when_body_diff_layout(
     assert prefs is not None
     assert prefs["bodyLayout"] == "side"
     assert page.locator(f"{PANEL_SCOPE} .sbs").count() == 1
+
+
+# 「この端末で変えている項目」に並ぶ、レビュー中のコメントの並びの名前
+REVIEW_ORDER_LABEL = "コメントの並び"
+
+# 詳細パネルのレビュー中のコメントの並びの切り替えと行
+REVIEW_ORDER_BUTTON = f"{PANEL_SCOPE} .d-review button.review-order"
+REVIEW_ROWS = f"{PANEL_SCOPE} .d-review li[data-comment]"
+
+
+def test_reset_when_review_order(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    page: Page,
+) -> None:
+    """詳細で選んだ古い順は、「この端末で変えている項目」に「コメントの並び」として並び、「既定に戻す」で外れて開いている詳細パネルを新しい順に描き直す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+        ),
+    )
+    open_preview(url, "#tab=decisions&id=D-1")
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    history_length = page.evaluate("history.length")
+    # 実行
+    open_settings(page)
+    # 検証（見た目と表示する種類は既定のままなので、ボタンの代わりにその旨を出す）
+    assert REVIEW_ORDER_LABEL in page.inner_text(f"{SETTINGS_PANEL} .st-over")
+    assert page.get_by_role("button", name="ワークスペースの既定にする").count() == 0
+    assert "見た目と表示する種類は、ワークスペースの既定と同じです。" in panel_text(page)
+    # 実行（既定に戻す）
+    page.click(f"{SETTINGS_PANEL} button:has-text('既定に戻す')")
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'")
+    # 検証（詳細パネルは開いたまま新しい順に戻り、全ての上書きが外れる）
+    assert page.eval_on_selector_all(REVIEW_ROWS, "rows => rows.map(r => r.dataset.comment)") == ["C-2", "C-1"]
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs["reviewOrder"] is None
+    assert "ワークスペースの既定のまま表示しています。" in panel_text(page)
+    assert page.evaluate("history.length") == history_length
 
 
 def test_fit_smallest(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:

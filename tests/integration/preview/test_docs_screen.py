@@ -1174,3 +1174,57 @@ def test_topbar_pending(
     page.wait_for_selector(PENDING_BUTTON)
     # 検証
     assert_topbar_pending(page)
+
+
+# タグごとに、名前・主題か・title・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+DOC_TAGS_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    title: tag.getAttribute("title"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+
+@pytest.mark.parametrize("view", ["cards", "board"])
+def test_card_tags(
+    write_preview: WritePreview, make_item: MakeItem, open_preview: OpenPreview, view: str
+) -> None:
+    """カード・ボードのカードの下端に資料のタグを記録の順のまま並べ、主題のタグは名前の前に二重丸のマーカーを置く。タグの無い資料はタグを出さない（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", tags=[{"name": "データ"}, {"name": "画面", "main": True}]),
+        make_item("A-2"),
+    )
+    # 実行
+    page = open_preview(url, f"#tab=docs&view={view}")
+    page.wait_for_selector('.doc-card[data-id="A-1"] .c-tags')
+    # 検証
+    assert page.evaluate(DOC_TAGS_JS, '.doc-card[data-id="A-1"] .c-tags') == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+    assert page.inner_text('.doc-card[data-id="A-1"] .c-tags span.tag.is-main .sr-only') == "主題"
+    assert page.locator('.doc-card[data-id="A-2"] .c-tags').count() == 0
+
+
+def test_table_tags_by_name(
+    write_preview: WritePreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """表のタグの列と絞り込みのドロワーのタグは、主題の有無によらず名前で出す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("A-1", tags=[{"name": "データ"}, {"name": "画面", "main": True}]),
+        make_item("A-2", tags=[{"name": "画面"}]),
+    )
+    page = open_preview(url, "#tab=docs&view=table")
+    page.wait_for_selector("table.grid")
+    # 実行
+    open_drawer(page)
+    # 検証
+    assert page.evaluate(DOC_TAGS_JS, 'table.grid tbody tr[data-id="A-1"]') == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": False, "title": None, "marker": None},
+    ]
+    assert page.eval_on_selector_all(
+        f'{DRAWER} input[data-key="tags"]', "inputs => inputs.map(i => i.value)"
+    ) == ["データ", "画面"]

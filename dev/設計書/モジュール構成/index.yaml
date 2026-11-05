@@ -1,5 +1,7 @@
 summary: クラス / 関数 / 関数型 インデックス（単体テストの元）
 items:
+  - page: frontend/
+    summary: React のプレビューのファイルごとのモジュール（束ねる設計書はプレビュー/React）
   - page: プレビュー/
     summary: サーバーが配るプレビューの画面と部品の TypeScript
   - page: サーバー/

@@ -30,6 +30,33 @@ scenarios:
       - ワークスペースに `preview.html` が無い
       - 直下の `README.md` のプレビューの節が、示した URL である
     test: test_normal
+  - name: 正常シナリオ（Claude Code を閉じた後も開ける）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐の MCP サーバーを立て、MCP のクライアントでプレビューの URL を取得した後、クライアントの接続を閉じる。別の MCP のクライアントでつなぎ直す。示された URL を実際のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as 常駐サーバー
+        participant P as プレビュー（ブラウザ）
+
+        CC->>SV: プレビューの URL
+        SV-->>CC: 127.0.0.1 の URL
+        U->>CC: Claude Code を閉じる
+        U->>P: URL を開く
+        P-->>U: 概要
+        U->>CC: Claude Code を立ち上げ直して記録を見たい
+        CC->>SV: プレビューの URL
+        SV-->>CC: 同じ URL
+      ```
+    expected:
+      - クライアントの接続を閉じた後に開いた画面に D-1 がある
+      - つなぎ直した後に取得した URL が、閉じる前と同じである
+    test: test_normal_when_session_closed
   - name: 正常シナリオ（記録を書き換える）
     setup:
       - name: Mock
@@ -207,8 +234,8 @@ primary_actor: 利用者
 trigger: 利用者が記録を見たいと言う
 preconditions:
   - ワークスペースが作成済みである
-  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: '応答にサーバーが配るプレビューの URL があり、開くと今の記録が出る。ワークスペースの YAML を書き換えると、開いている画面が再読み込みの操作なしで描き直される。記録を直したときは、応答にそのまとまりの差分を開くリンクがあり、開くとそのまとまりの差分の表示で開く。記録の本文とワークスペースの中のスレッドに直したまとまりを書くときは、ホストとポートを含まないリンクで書き、配信のポートが変わっても押すとそのまとまりの差分の表示に切り替わる。'
+  - mindstella の MCP のツールが使える
+success_guarantee: '応答にサーバーが配るプレビューの URL があり、開くと今の記録が出る。Claude Code を閉じても、常駐サーバーが止まるまで配信は続く。ワークスペースの YAML を書き換えると、開いている画面が再読み込みの操作なしで描き直される。記録を直したときは、応答にそのまとまりの差分を開くリンクがあり、開くとそのまとまりの差分の表示で開く。記録の本文とワークスペースの中のスレッドに直したまとまりを書くときは、ホストとポートを含まないリンクで書き、配信のポートが変わっても押すとそのまとまりの差分の表示に切り替わる。'
 frequency: 話し合いの中で数回
 priority: 中
 notes:

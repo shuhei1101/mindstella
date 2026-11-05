@@ -1,0 +1,956 @@
+$ pytest tests/unit/preview
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-fold-pending-comment-body
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 846 items
+
+tests/unit/preview/test_api.py ..............                            [  1%]
+tests/unit/preview/test_app.py ...........................               [  4%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [  4%]
+tests/unit/preview/test_chips_input.py ...                               [  5%]
+tests/unit/preview/test_comment_mark.py ..                               [  5%]
+tests/unit/preview/test_comments_panel.py .............................. [  9%]
+F                                                                        [  9%]
+tests/unit/preview/test_decisions.py ....                                [  9%]
+tests/unit/preview/test_detail.py ...........F.......................... [ 14%]
+.................                                                        [ 16%]
+tests/unit/preview/test_detail_edit.py ........                          [ 17%]
+tests/unit/preview/test_diff.py .................................        [ 21%]
+tests/unit/preview/test_diff_minimap.py .....                            [ 21%]
+tests/unit/preview/test_doc_export.py ......                             [ 22%]
+tests/unit/preview/test_docs.py ..                                       [ 22%]
+tests/unit/preview/test_dom.py ...............                           [ 24%]
+tests/unit/preview/test_edits.py ..                                      [ 24%]
+tests/unit/preview/test_graph.py ..                                      [ 24%]
+tests/unit/preview/test_libs.py .......................................  [ 29%]
+tests/unit/preview/test_lock.py ...                                      [ 29%]
+tests/unit/preview/test_looks.py ....                                    [ 30%]
+tests/unit/preview/test_markdown_body.py ..........                      [ 31%]
+tests/unit/preview/test_overview.py .                                    [ 31%]
+tests/unit/preview/test_pending_edits.py ......                          [ 32%]
+tests/unit/preview/test_pending_mark.py ..                               [ 32%]
+tests/unit/preview/test_records.py .........                             [ 33%]
+tests/unit/preview/test_reply_form.py ..                                 [ 33%]
+tests/unit/preview/test_review_body_fold.py ...F                         [ 34%]
+tests/unit/preview/test_router.py ......                                 [ 34%]
+tests/unit/preview/test_selection_comment.py ..                          [ 35%]
+tests/unit/preview/test_send_form.py ....                                [ 35%]
+tests/unit/preview/test_settings.py .                                    [ 35%]
+tests/unit/preview/test_settings_confirm.py .                            [ 35%]
+tests/unit/preview/test_settings_panel.py ....                           [ 36%]
+tests/unit/preview/test_side_by_side_body_diff.py ....                   [ 36%]
+tests/unit/preview/test_table.py .............                           [ 38%]
+tests/unit/preview/test_tag_list.py .                                    [ 38%]
+tests/unit/preview/test_tasks.py ..                                      [ 38%]
+tests/unit/preview/test_term_tip.py ...                                  [ 39%]
+tests/unit/preview/test_thread_post.py ........F                         [ 40%]
+tests/unit/preview/test_thread_row.py .........                          [ 41%]
+tests/unit/preview/test_workspace_settings.py ...                        [ 41%]
+tests/unit/preview/test_api.py ...........                               [ 42%]
+tests/unit/preview/test_app.py ......................                    [ 45%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [ 45%]
+tests/unit/preview/test_comment_mark.py .                                [ 45%]
+tests/unit/preview/test_comments_panel.py ..................F            [ 47%]
+tests/unit/preview/test_decisions.py ...                                 [ 48%]
+tests/unit/preview/test_detail.py ...F................                   [ 50%]
+tests/unit/preview/test_detail_edit.py ..                                [ 50%]
+tests/unit/preview/test_diff.py .............                            [ 52%]
+tests/unit/preview/test_diff_minimap.py ...                              [ 52%]
+tests/unit/preview/test_doc_export.py ...                                [ 53%]
+tests/unit/preview/test_docs.py .                                        [ 53%]
+tests/unit/preview/test_dom.py ......                                    [ 54%]
+tests/unit/preview/test_edits.py .                                       [ 54%]
+tests/unit/preview/test_libs.py ................                         [ 56%]
+tests/unit/preview/test_lock.py ...                                      [ 56%]
+tests/unit/preview/test_looks.py ...                                     [ 56%]
+tests/unit/preview/test_markdown_body.py .......                         [ 57%]
+tests/unit/preview/test_overview.py .                                    [ 57%]
+tests/unit/preview/test_pending_edits.py ..                              [ 57%]
+tests/unit/preview/test_pending_mark.py .                                [ 58%]
+tests/unit/preview/test_records.py ......                                [ 58%]
+tests/unit/preview/test_reply_form.py ..                                 [ 58%]
+tests/unit/preview/test_review_body_fold.py .                            [ 59%]
+tests/unit/preview/test_router.py .....                                  [ 59%]
+tests/unit/preview/test_selection_comment.py .                           [ 59%]
+tests/unit/preview/test_send_form.py ....                                [ 60%]
+tests/unit/preview/test_settings_confirm.py .                            [ 60%]
+tests/unit/preview/test_settings_panel.py ...                            [ 60%]
+tests/unit/preview/test_side_by_side_body_diff.py .                      [ 60%]
+tests/unit/preview/test_table.py .......                                 [ 61%]
+tests/unit/preview/test_tag_list.py .                                    [ 61%]
+tests/unit/preview/test_tasks.py .                                       [ 61%]
+tests/unit/preview/test_term_tip.py ..                                   [ 62%]
+tests/unit/preview/test_thread_post.py .....F                            [ 62%]
+tests/unit/preview/test_thread_row.py .....                              [ 63%]
+tests/unit/preview/test_workspace_settings.py .                          [ 63%]
+tests/unit/preview/test_api.py .......                                   [ 64%]
+tests/unit/preview/test_app.py .................                         [ 66%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [ 66%]
+tests/unit/preview/test_comment_mark.py .                                [ 66%]
+tests/unit/preview/test_comments_panel.py .........F                     [ 67%]
+tests/unit/preview/test_decisions.py ..                                  [ 68%]
+tests/unit/preview/test_detail.py ................                       [ 69%]
+tests/unit/preview/test_diff.py .......                                  [ 70%]
+tests/unit/preview/test_diff_minimap.py ...                              [ 71%]
+tests/unit/preview/test_doc_export.py .                                  [ 71%]
+tests/unit/preview/test_dom.py ...                                       [ 71%]
+tests/unit/preview/test_edits.py .                                       [ 71%]
+tests/unit/preview/test_libs.py ..........                               [ 72%]
+tests/unit/preview/test_lock.py ...                                      [ 73%]
+tests/unit/preview/test_looks.py ...                                     [ 73%]
+tests/unit/preview/test_markdown_body.py ......                          [ 74%]
+tests/unit/preview/test_pending_edits.py ..                              [ 74%]
+tests/unit/preview/test_pending_mark.py .                                [ 74%]
+tests/unit/preview/test_records.py ......                                [ 75%]
+tests/unit/preview/test_reply_form.py ..                                 [ 75%]
+tests/unit/preview/test_review_body_fold.py .                            [ 75%]
+tests/unit/preview/test_router.py ....                                   [ 76%]
+tests/unit/preview/test_selection_comment.py .                           [ 76%]
+tests/unit/preview/test_send_form.py ..                                  [ 76%]
+tests/unit/preview/test_settings_confirm.py .                            [ 76%]
+tests/unit/preview/test_settings_panel.py .                              [ 76%]
+tests/unit/preview/test_table.py ......                                  [ 77%]
+tests/unit/preview/test_tag_list.py .                                    [ 77%]
+tests/unit/preview/test_term_tip.py ..                                   [ 77%]
+tests/unit/preview/test_thread_post.py ...                               [ 78%]
+tests/unit/preview/test_thread_row.py ....                               [ 78%]
+tests/unit/preview/test_workspace_settings.py .                          [ 78%]
+tests/unit/preview/test_api.py .....                                     [ 79%]
+tests/unit/preview/test_app.py ...........                               [ 80%]
+tests/unit/preview/test_comment_mark.py .                                [ 80%]
+tests/unit/preview/test_comments_panel.py ......F                        [ 81%]
+tests/unit/preview/test_decisions.py ..                                  [ 81%]
+tests/unit/preview/test_detail.py .........                              [ 82%]
+tests/unit/preview/test_diff.py ......                                   [ 83%]
+tests/unit/preview/test_diff_minimap.py ..                               [ 83%]
+tests/unit/preview/test_dom.py ...                                       [ 84%]
+tests/unit/preview/test_edits.py .                                       [ 84%]
+tests/unit/preview/test_libs.py ........                                 [ 85%]
+tests/unit/preview/test_lock.py ..                                       [ 85%]
+tests/unit/preview/test_looks.py ..                                      [ 85%]
+tests/unit/preview/test_markdown_body.py ...                             [ 86%]
+tests/unit/preview/test_pending_edits.py ..                              [ 86%]
+tests/unit/preview/test_records.py ...                                   [ 86%]
+tests/unit/preview/test_reply_form.py ..                                 [ 86%]
+tests/unit/preview/test_router.py ...                                    [ 87%]
+tests/unit/preview/test_send_form.py .                                   [ 87%]
+tests/unit/preview/test_settings_panel.py .                              [ 87%]
+tests/unit/preview/test_table.py ....                                    [ 88%]
+tests/unit/preview/test_thread_post.py ..                                [ 88%]
+tests/unit/preview/test_thread_row.py .                                  [ 88%]
+tests/unit/preview/test_api.py ...                                       [ 88%]
+tests/unit/preview/test_app.py ..                                        [ 89%]
+tests/unit/preview/test_comments_panel.py .                              [ 89%]
+tests/unit/preview/test_decisions.py .                                   [ 89%]
+tests/unit/preview/test_detail.py ....                                   [ 89%]
+tests/unit/preview/test_diff.py ..                                       [ 89%]
+tests/unit/preview/test_diff_minimap.py .                                [ 90%]
+tests/unit/preview/test_dom.py ..                                        [ 90%]
+tests/unit/preview/test_edits.py .                                       [ 90%]
+tests/unit/preview/test_libs.py ......                                   [ 91%]
+tests/unit/preview/test_lock.py ..                                       [ 91%]
+tests/unit/preview/test_looks.py ..                                      [ 91%]
+tests/unit/preview/test_markdown_body.py ...                             [ 91%]
+tests/unit/preview/test_pending_edits.py .                               [ 92%]
+tests/unit/preview/test_reply_form.py ..                                 [ 92%]
+tests/unit/preview/test_router.py .                                      [ 92%]
+tests/unit/preview/test_send_form.py .                                   [ 92%]
+tests/unit/preview/test_table.py .                                       [ 92%]
+tests/unit/preview/test_thread_row.py .                                  [ 92%]
+tests/unit/preview/test_api.py ...                                       [ 93%]
+tests/unit/preview/test_app.py .                                         [ 93%]
+tests/unit/preview/test_decisions.py .                                   [ 93%]
+tests/unit/preview/test_detail.py .                                      [ 93%]
+tests/unit/preview/test_diff.py .                                        [ 93%]
+tests/unit/preview/test_diff_minimap.py .                                [ 93%]
+tests/unit/preview/test_dom.py .                                         [ 93%]
+tests/unit/preview/test_edits.py .                                       [ 93%]
+tests/unit/preview/test_libs.py ....                                     [ 94%]
+tests/unit/preview/test_lock.py .                                        [ 94%]
+tests/unit/preview/test_reply_form.py .                                  [ 94%]
+tests/unit/preview/test_router.py .                                      [ 94%]
+tests/unit/preview/test_api.py .                                         [ 94%]
+tests/unit/preview/test_app.py .                                         [ 95%]
+tests/unit/preview/test_diff.py .                                        [ 95%]
+tests/unit/preview/test_diff_minimap.py .                                [ 95%]
+tests/unit/preview/test_libs.py ....                                     [ 95%]
+tests/unit/preview/test_lock.py .                                        [ 95%]
+tests/unit/preview/test_router.py .                                      [ 95%]
+tests/unit/preview/test_diff.py .                                        [ 96%]
+tests/unit/preview/test_diff_minimap.py .                                [ 96%]
+tests/unit/preview/test_libs.py ....                                     [ 96%]
+tests/unit/preview/test_lock.py .                                        [ 96%]
+tests/unit/preview/test_router.py .                                      [ 96%]
+tests/unit/preview/test_diff.py .                                        [ 97%]
+tests/unit/preview/test_libs.py ...                                      [ 97%]
+tests/unit/preview/test_router.py .                                      [ 97%]
+tests/unit/preview/test_libs.py .....................                    [100%]
+
+=================================== FAILURES ===================================
+______________________ test_review_label[chromium-reply] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c95bef100>
+item = {'thread': 'TH-1', 'target': None}, expected = 'TH-1 への返信'
+
+    @pytest.mark.parametrize(
+        ("item", "expected"),
+        [
+            pytest.param({"thread": "TH-1", "target": None}, "TH-1 への返信", id="reply"),
+            pytest.param({"thread": None, "target": "D-1"}, "D-1 へのコメント", id="new_thread"),
+            pytest.param({"target": "D-1"}, "D-1 へのコメント", id="detail_row"),
+            pytest.param({"thread": None, "target": None}, "項目を指さないコメント", id="no_target"),
+        ],
+    )
+    def test_review_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        item: dict[str, Any],
+        expected: str,
+    ) -> None:
+        """返信・項目へのコメント・項目を指さないコメントの頭（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       label = preview_page.evaluate("(item) => MindmapPreview.reviewLabel(item)", item)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_comments_panel.py:1522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c95b4d3a0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.reviewLabel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:26)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________ test_detail_panel_when_review_folded[chromium-folded] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c95aabec0>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x795c95a3a700>
+load_mdmark = <function load_mdmark.<locals>._load at 0x795c95af0cc0>
+make_data = <function make_data.<locals>._make at 0x795c95adb420>
+make_item = <function make_item.<locals>._make at 0x795c95adae80>, expanded = []
+expected_long = {'folded': True, 'hasList': True, 'listItemBorder': '0px', 'listItemDisplay': 'list-item', ...}
+expected_fold = [['C-63', True]]
+
+    @pytest.mark.parametrize(
+        ("expanded", "expected_long", "expected_fold"),
+        [
+            pytest.param(
+                [],
+                {
+                    "folded": True,
+                    "hasList": True,
+                    "listItemBorder": "0px",
+                    "listItemDisplay": "list-item",
+                    "moreShown": True,
+                    "moreText": "続きを読む",
+                    "moreFocus": "detail-more:C-63",
+                },
+                [["C-63", True]],
+                id="folded",
+            ),
+            pytest.param(
+                ["C-63"],
+                {
+                    "folded": False,
+                    "hasList": True,
+                    "listItemBorder": "0px",
+                    "listItemDisplay": "list-item",
+                    "moreShown": True,
+                    "moreText": "折りたたむ",
+                    "moreFocus": "detail-more:C-63",
+                },
+                [["C-63", False]],
+                id="opened",
+            ),
+        ],
+    )
+    def test_detail_panel_when_review_folded(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+        expanded: list[str],
+        expected_long: dict[str, Any],
+        expected_fold: list[list[Any]],
+    ) -> None:
+        """レビュー中のコメントの長い本文を Markdown で描いて畳む（正常系）。"""
+        # 準備
+        data = make_data(decisions=[make_item("D-1", status="未決定")])
+        load_preview_scripts()
+        load_preview_styles()
+        load_mdmark()
+        # 実行
+>       result = preview_page.evaluate(
+            REVIEW_FOLD_SCRIPT,
+            {
+                "data": data,
+                "reviews": [_review_item("C-63", LIST_REVIEW_BODY), _review_item("C-65", "案 B も見たい")],
+                "expanded": expanded,
+            },
+        )
+
+tests/unit/preview/test_detail.py:1110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c95adad40>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of null (reading 'click')
+E               at eval (eval at evaluate (:311:30), <anonymous>:66:48)
+E               at async <anonymous>:337:30
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________ test_review_body_fold_when_titles_and_focus[chromium] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c9577dc60>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x795c9577d760>
+load_mdmark = <function load_mdmark.<locals>._load at 0x795c9577cfe0>
+
+    def test_review_body_fold_when_titles_and_focus(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_mdmark: LoadMdmark,
+    ) -> None:
+        """記録にある項目の ID のリンクと、開閉のボタンの接頭辞（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_preview_styles()
+        load_mdmark()
+        # 実行
+        observed = preview_page.evaluate(TITLES_FOCUS_SCRIPT, {"width": CONTAINER_WIDTH})
+        # 検証
+>       assert observed["idButtonTitle"] == "移し替えの失敗の扱いを書く"
+E       AssertionError: assert None == '移し替えの失敗の扱いを書く'
+
+tests/unit/preview/test_review_body_fold.py:231: AssertionError
+____________ test_thread_post_when_pending_folded[chromium-folded] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c96b0e7a0>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x795c96b0df80>
+load_mdmark = <function load_mdmark.<locals>._load at 0x795c96b0c400>
+props = {'pending': {'id': 'C-61', 'target': None, 'target_title': None, 'loc': None, ...}}
+press = True
+expected_before = {'folded': True, 'fullyVisible': False, 'moreShown': True, 'moreText': '続きを読む', ...}
+expected_calls = [['fold', 'C-61', True]]
+
+    @pytest.mark.parametrize(
+        ("props", "press", "expected_before", "expected_calls"),
+        [
+            pytest.param(
+                {"pending": LONG_PENDING_REPLY},
+                True,
+                {
+                    "folded": True,
+                    "fullyVisible": False,
+                    "moreShown": True,
+                    "moreText": "続きを読む",
+                    "moreLabel": "TH-1 への返信の続きを読む",
+                    "moreInRow": True,
+                    "hasField": False,
+                },
+                [["fold", "C-61", True]],
+                id="folded",
+            ),
+            pytest.param(
+                {"pending": LONG_PENDING_REPLY, "open": True},
+                False,
+                {
+                    "folded": False,
+                    "fullyVisible": True,
+                    "moreShown": True,
+                    "moreText": "折りたたむ",
+                    "moreLabel": "TH-1 への返信の本文を折りたたむ",
+                    "moreInRow": True,
+                    "hasField": False,
+                },
+                [],
+                id="opened",
+            ),
+            pytest.param(
+                {"pending": LONG_PENDING_REPLY, "editing": True},
+                False,
+                {
+                    "folded": None,
+                    "fullyVisible": None,
+                    "moreShown": False,
+                    "moreText": None,
+                    "moreLabel": None,
+                    "moreInRow": False,
+                    "hasField": True,
+                },
+                [],
+                id="editing",
+            ),
+            pytest.param(
+                {"post": LONG_AI_POST},
+                False,
+                {
+                    "folded": False,
+                    "fullyVisible": True,
+                    "moreShown": False,
+                    "moreText": None,
+                    "moreLabel": None,
+                    "moreInRow": False,
+                    "hasField": False,
+                },
+                [],
+                id="ai_post",
+            ),
+        ],
+    )
+    def test_thread_post_when_pending_folded(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_mdmark: LoadMdmark,
+        props: dict[str, Any],
+        press: bool,
+        expected_before: dict[str, Any],
+        expected_calls: list[list[Any]],
+    ) -> None:
+        """レビュー中の書き込みだけを畳み、開閉を知らせる（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_preview_styles()
+        load_mdmark()
+        # 実行
+>       observed = preview_page.evaluate(
+            FOLDED_POST_SCRIPT, {"props": props, "press": press, "width": FOLD_CONTAINER_WIDTH}
+        )
+
+tests/unit/preview/test_thread_post.py:595: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c96b0e340>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of null (reading 'click')
+E               at eval (eval at evaluate (:311:30), <anonymous>:33:50)
+E               at async <anonymous>:337:30
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________________ test_review_label[chromium-new_thread] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c95a68ea0>
+item = {'thread': None, 'target': 'D-1'}, expected = 'D-1 へのコメント'
+
+    @pytest.mark.parametrize(
+        ("item", "expected"),
+        [
+            pytest.param({"thread": "TH-1", "target": None}, "TH-1 への返信", id="reply"),
+            pytest.param({"thread": None, "target": "D-1"}, "D-1 へのコメント", id="new_thread"),
+            pytest.param({"target": "D-1"}, "D-1 へのコメント", id="detail_row"),
+            pytest.param({"thread": None, "target": None}, "項目を指さないコメント", id="no_target"),
+        ],
+    )
+    def test_review_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        item: dict[str, Any],
+        expected: str,
+    ) -> None:
+        """返信・項目へのコメント・項目を指さないコメントの頭（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       label = preview_page.evaluate("(item) => MindmapPreview.reviewLabel(item)", item)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_comments_panel.py:1522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c96b1ff60>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.reviewLabel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:26)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________ test_detail_panel_when_review_folded[chromium-opened] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c947220c0>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x795c95a73ec0>
+load_mdmark = <function load_mdmark.<locals>._load at 0x795c95a70400>
+make_data = <function make_data.<locals>._make at 0x795c95a73b00>
+make_item = <function make_item.<locals>._make at 0x795c95a736a0>
+expanded = ['C-63']
+expected_long = {'folded': False, 'hasList': True, 'listItemBorder': '0px', 'listItemDisplay': 'list-item', ...}
+expected_fold = [['C-63', False]]
+
+    @pytest.mark.parametrize(
+        ("expanded", "expected_long", "expected_fold"),
+        [
+            pytest.param(
+                [],
+                {
+                    "folded": True,
+                    "hasList": True,
+                    "listItemBorder": "0px",
+                    "listItemDisplay": "list-item",
+                    "moreShown": True,
+                    "moreText": "続きを読む",
+                    "moreFocus": "detail-more:C-63",
+                },
+                [["C-63", True]],
+                id="folded",
+            ),
+            pytest.param(
+                ["C-63"],
+                {
+                    "folded": False,
+                    "hasList": True,
+                    "listItemBorder": "0px",
+                    "listItemDisplay": "list-item",
+                    "moreShown": True,
+                    "moreText": "折りたたむ",
+                    "moreFocus": "detail-more:C-63",
+                },
+                [["C-63", False]],
+                id="opened",
+            ),
+        ],
+    )
+    def test_detail_panel_when_review_folded(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_mdmark: LoadMdmark,
+        make_data: MakeData,
+        make_item: MakeItem,
+        expanded: list[str],
+        expected_long: dict[str, Any],
+        expected_fold: list[list[Any]],
+    ) -> None:
+        """レビュー中のコメントの長い本文を Markdown で描いて畳む（正常系）。"""
+        # 準備
+        data = make_data(decisions=[make_item("D-1", status="未決定")])
+        load_preview_scripts()
+        load_preview_styles()
+        load_mdmark()
+        # 実行
+>       result = preview_page.evaluate(
+            REVIEW_FOLD_SCRIPT,
+            {
+                "data": data,
+                "reviews": [_review_item("C-63", LIST_REVIEW_BODY), _review_item("C-65", "案 B も見たい")],
+                "expanded": expanded,
+            },
+        )
+
+tests/unit/preview/test_detail.py:1110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c9582a7a0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: Cannot read properties of null (reading 'click')
+E               at eval (eval at evaluate (:311:30), <anonymous>:66:48)
+E               at async <anonymous>:337:30
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________ test_thread_post_when_pending_folded[chromium-opened] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c9469d260>
+load_preview_styles = <function load_preview_styles.<locals>._load at 0x795c9469d3a0>
+load_mdmark = <function load_mdmark.<locals>._load at 0x795c9469d760>
+props = {'pending': {'id': 'C-61', 'target': None, 'target_title': None, 'loc': None, ...}, 'open': True}
+press = False
+expected_before = {'folded': False, 'fullyVisible': True, 'moreShown': True, 'moreText': '折りたたむ', ...}
+expected_calls = []
+
+    @pytest.mark.parametrize(
+        ("props", "press", "expected_before", "expected_calls"),
+        [
+            pytest.param(
+                {"pending": LONG_PENDING_REPLY},
+                True,
+                {
+                    "folded": True,
+                    "fullyVisible": False,
+                    "moreShown": True,
+                    "moreText": "続きを読む",
+                    "moreLabel": "TH-1 への返信の続きを読む",
+                    "moreInRow": True,
+                    "hasField": False,
+                },
+                [["fold", "C-61", True]],
+                id="folded",
+            ),
+            pytest.param(
+                {"pending": LONG_PENDING_REPLY, "open": True},
+                False,
+                {
+                    "folded": False,
+                    "fullyVisible": True,
+                    "moreShown": True,
+                    "moreText": "折りたたむ",
+                    "moreLabel": "TH-1 への返信の本文を折りたたむ",
+                    "moreInRow": True,
+                    "hasField": False,
+                },
+                [],
+                id="opened",
+            ),
+            pytest.param(
+                {"pending": LONG_PENDING_REPLY, "editing": True},
+                False,
+                {
+                    "folded": None,
+                    "fullyVisible": None,
+                    "moreShown": False,
+                    "moreText": None,
+                    "moreLabel": None,
+                    "moreInRow": False,
+                    "hasField": True,
+                },
+                [],
+                id="editing",
+            ),
+            pytest.param(
+                {"post": LONG_AI_POST},
+                False,
+                {
+                    "folded": False,
+                    "fullyVisible": True,
+                    "moreShown": False,
+                    "moreText": None,
+                    "moreLabel": None,
+                    "moreInRow": False,
+                    "hasField": False,
+                },
+                [],
+                id="ai_post",
+            ),
+        ],
+    )
+    def test_thread_post_when_pending_folded(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        load_preview_styles: LoadPreviewStyles,
+        load_mdmark: LoadMdmark,
+        props: dict[str, Any],
+        press: bool,
+        expected_before: dict[str, Any],
+        expected_calls: list[list[Any]],
+    ) -> None:
+        """レビュー中の書き込みだけを畳み、開閉を知らせる（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        load_preview_styles()
+        load_mdmark()
+        # 実行
+        observed = preview_page.evaluate(
+            FOLDED_POST_SCRIPT, {"props": props, "press": press, "width": FOLD_CONTAINER_WIDTH}
+        )
+        # 検証
+>       assert observed["before"] == expected_before
+E       AssertionError: assert {'folded': Fa...t': None, ...} == {'folded': Fa... '折りたたむ', ...}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Differing items:
+E         {'moreInRow': False} != {'moreInRow': True}
+E         {'moreText': None} != {'moreText': '折りたたむ'}
+E         {'moreLabel': None} != {'moreLabel': 'TH-1 への返信の本文を折りたたむ'}
+E         {'moreShown': False} != {'moreShown': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_thread_post.py:599: AssertionError
+____________________ test_review_label[chromium-detail_row] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c96b97b00>
+item = {'target': 'D-1'}, expected = 'D-1 へのコメント'
+
+    @pytest.mark.parametrize(
+        ("item", "expected"),
+        [
+            pytest.param({"thread": "TH-1", "target": None}, "TH-1 への返信", id="reply"),
+            pytest.param({"thread": None, "target": "D-1"}, "D-1 へのコメント", id="new_thread"),
+            pytest.param({"target": "D-1"}, "D-1 へのコメント", id="detail_row"),
+            pytest.param({"thread": None, "target": None}, "項目を指さないコメント", id="no_target"),
+        ],
+    )
+    def test_review_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        item: dict[str, Any],
+        expected: str,
+    ) -> None:
+        """返信・項目へのコメント・項目を指さないコメントの頭（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       label = preview_page.evaluate("(item) => MindmapPreview.reviewLabel(item)", item)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_comments_panel.py:1522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c96b851c0>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.reviewLabel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:26)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+____________________ test_review_label[chromium-no_target] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x795c95d33ba0>
+item = {'thread': None, 'target': None}, expected = '項目を指さないコメント'
+
+    @pytest.mark.parametrize(
+        ("item", "expected"),
+        [
+            pytest.param({"thread": "TH-1", "target": None}, "TH-1 への返信", id="reply"),
+            pytest.param({"thread": None, "target": "D-1"}, "D-1 へのコメント", id="new_thread"),
+            pytest.param({"target": "D-1"}, "D-1 へのコメント", id="detail_row"),
+            pytest.param({"thread": None, "target": None}, "項目を指さないコメント", id="no_target"),
+        ],
+    )
+    def test_review_label(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        item: dict[str, Any],
+        expected: str,
+    ) -> None:
+        """返信・項目へのコメント・項目を指さないコメントの頭（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       label = preview_page.evaluate("(item) => MindmapPreview.reviewLabel(item)", item)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/preview/test_comments_panel.py:1522: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x795c966e3d70>
+cb = <function Channel.send.<locals>.<lambda> at 0x795c9469f240>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.reviewLabel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:1:26)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+/home/shuhei2441/.cache/mindstella/venv-dev/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_comments_panel.py::test_review_label[chromium-reply]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_review_folded[chromium-folded]
+FAILED tests/unit/preview/test_review_body_fold.py::test_review_body_fold_when_titles_and_focus[chromium]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post_when_pending_folded[chromium-folded]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_label[chromium-new_thread]
+FAILED tests/unit/preview/test_detail.py::test_detail_panel_when_review_folded[chromium-opened]
+FAILED tests/unit/preview/test_thread_post.py::test_thread_post_when_pending_folded[chromium-opened]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_label[chromium-detail_row]
+FAILED tests/unit/preview/test_comments_panel.py::test_review_label[chromium-no_target]
+================== 9 failed, 837 passed in 830.60s (0:13:50) ===================

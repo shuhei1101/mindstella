@@ -1,0 +1,21 @@
+title: プレビュー / queries
+lead: 生成した queryOptions（記録・レビュー中のコメント・保存待ちの編集・スレッド）をまとめ、ルートの loader で先読みする。
+functions:
+- name: overviewQueries
+  title: 概要の query
+  kind: 関数
+  container: frontend/src/features/overview/overview/queries.ts
+  usecase: 概要を見る
+  summary: 生成した queryOptions（記録・レビュー中のコメント・保存待ちの編集・スレッド）をまとめ、ルートの loader で先読みする
+  returns:
+    type: QueryOptions[]
+    description: 概要が読む queryOptions
+  unit_tests:
+  - name: test_overview_queries
+    case: 正常
+    summary: 4 つの API の query
+    condition: なし
+    mock: なし
+    expected: queryKey が `/api/records`・`/api/comments`・`/api/edits`・`/api/threads` の 4 つ
+notes:
+  単体テスト: 同じフォルダの `queries.test.ts` に置く（knowledge の規約『フォルダ構成』）

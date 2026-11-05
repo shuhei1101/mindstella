@@ -225,6 +225,27 @@ def test_restore_by_backdrop(
     assert page.locator("dialog.full").count() == 0
 
 
+def test_backdrop_color(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
+    """後ろの幕は、ほかのモーダルと同じ濃さ（`--scrim`）で後ろの画面をグレーアウトする（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2&full=1")
+    page.wait_for_selector("dialog.full[open]")
+    # 実行
+    colors = page.evaluate(
+        """() => {
+            const probe = document.createElement("div");
+            probe.style.background = "var(--scrim)";
+            document.body.append(probe);
+            const scrim = getComputedStyle(probe).backgroundColor;
+            probe.remove();
+            return {backdrop: getComputedStyle(document.querySelector("dialog.full"), "::backdrop").backgroundColor, scrim};
+        }"""
+    )
+    # 検証
+    assert colors["backdrop"] == colors["scrim"]
+
+
 def test_navigate_inside(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
@@ -363,6 +384,30 @@ def test_review_row_actions_at_top_right_when_narrow(
     assert 0 <= gaps["top"] <= ROW_CORNER_TOLERANCE_PX
 
 
+# 全画面のレビュー中のコメントの並びの切り替え
+FULL_REVIEW_ORDER = f"{FULL_REVIEW} button.review-order"
+
+
+def test_review_order(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """全画面でもレビュー中のコメントを新しい順に並べ、並びの切り替えで古い順に入れ替えて、全画面を開いたままフォーカスを保つ（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1&full=1")
+    page.wait_for_selector(FULL_REVIEW_ORDER)
+    rows = f"{FULL_REVIEW} li[data-comment]"
+    ids_js = "rows => rows.map(r => r.dataset.comment)"
+    # 検証
+    assert page.eval_on_selector_all(rows, ids_js) == ["C-2", "C-1"]
+    assert page.get_attribute(FULL_REVIEW_ORDER, "aria-label") == "コメントの並び: 新しい順"
+    # 実行
+    page.click(FULL_REVIEW_ORDER)
+    page.wait_for_function(f"document.querySelector('{FULL_REVIEW_ORDER}')?.textContent === '古い順'")
+    # 検証
+    assert page.eval_on_selector_all(rows, ids_js) == ["C-1", "C-2"]
+    assert page.locator("dialog.full[open]").count() == 1
+    wait_until_focused(page, FULL_REVIEW_ORDER)
+
+
 def test_review_row_edit(served_review_rows: tuple[str, Path], open_preview: OpenPreview) -> None:
     """全画面でも「修正」で行の本文を直し、200 なら本文に戻して「行の修正」へフォーカスを戻す（正常系）。"""
     # 準備
@@ -432,7 +477,7 @@ def test_review_row_remove_and_restore(
     page.locator(f"{row}.removed").get_by_role("button", name="元に戻す").click()
     page.wait_for_selector(f"{row} .review-body", timeout=UPDATE_TIMEOUT_MS)
     # 検証（戻す）
-    assert page.eval_on_selector_all(f"{FULL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == ["C-1", "C-2"]
+    assert page.eval_on_selector_all(f"{FULL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == ["C-2", "C-1"]
     assert page.inner_text(f"{FULL_REVIEW} h3") == "レビュー中のコメント2"
     wait_until_focused(page, f"{row} button[title='修正']")
 
@@ -1389,3 +1434,43 @@ def test_embedded_html_diff_minimap_in_full(
     shapes = mark_shapes(page, FULL_SCOPE)
     # 検証
     assert [shape["kind"] for shape in shapes] == ["df-chg"]
+
+
+# タグごとに、名前・主題か・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+FULL_TAG_VALUES_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+
+def test_tags_and_tag_input_in_full(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    open_preview: OpenPreview,
+) -> None:
+    """全画面にも詳細パネルと同じタグの行とタグの入力を出し、主題のトグルで付け外しした並びを溜める（正常系）。"""
+    # 準備
+    url, root = write_edit_preview(
+        make_item("D-1", title="最初の問い", tags=[{"name": "データ"}, {"name": "画面", "main": True}]),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1&full=1")
+    page.wait_for_selector("dialog.full[open] .d-meta span.tag")
+    # 検証（タグの行）
+    assert page.inner_text("dialog.full .d-meta dt:last-of-type") == "タグ"
+    assert page.evaluate(FULL_TAG_VALUES_JS, "dialog.full .d-meta dd:last-of-type") == [
+        {"name": "データ", "main": False, "marker": None},
+        {"name": "画面", "main": True, "marker": "true"},
+    ]
+    # 実行（タグの入力で主題を付け替える）
+    page.click(FULL_EDIT_TOGGLE)
+    page.wait_for_selector(FULL_EDIT_FORM)
+    group = page.locator("dialog.full").get_by_role("group", name="タグ")
+    group.get_by_role("button", name="データ を主題").click()
+    expect(page.locator(FULL_PENDING_BUTTON)).to_have_attribute(
+        "aria-label", "保存待ち（1 件）", timeout=FULL_EDIT_SETTLE_MS
+    )
+    # 検証（タグの入力）
+    assert group.get_by_role("button", name="データ を主題").get_attribute("aria-pressed") == "true"
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"]) == ("tags", [{"name": "データ", "main": True}, {"name": "画面", "main": True}])

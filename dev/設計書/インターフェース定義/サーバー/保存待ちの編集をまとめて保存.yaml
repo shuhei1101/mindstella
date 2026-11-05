@@ -9,8 +9,8 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
       - name: make_workspace
-        description: 未決定の検討事項 D-1（案 A・B、タグ `画面`）を持ち、まだまとめていない変更が無いワークスペース
-        notes: 保存待ちの編集は E-1（`answer`）・E-2（`tags` を `[画面, 記録の形]`）・E-3（案 C の追加）・E-4（採用する案を C）
+        description: '未決定の検討事項 D-1（案 A・B、タグ `{name: 画面}`）を持ち、まだまとめていない変更が無いワークスペース'
+        notes: '保存待ちの編集は E-1（`answer`）・E-2（`tags` を `[{name: 画面}, {name: 記録の形, main: true}]`）・E-3（案 C の追加）・E-4（採用する案を C）'
     flow: |-
       sequenceDiagram
         participant クライアント
@@ -162,7 +162,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
       - name: make_workspace
-        description: タグ `画面` を持つ検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `tags` を `[保存]`）・E-2（D-1 の `depends_on` を `[D-99]`）を持つワークスペース
+        description: 'タグ `{name: 画面}` を持つ検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `tags` を `[{name: 保存}]`）・E-2（D-1 の `depends_on` を `[D-99]`）を持つワークスペース'
     flow: |-
       sequenceDiagram
         participant クライアント

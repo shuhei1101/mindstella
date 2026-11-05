@@ -26,7 +26,7 @@ namespace MindmapPreview {
   };
 
   /** 編集の行の文言 */
-  export type EditRowText = { what: string; before: string | null; after: string | null };
+  export type EditRowText = { what: string; before: string | Tag[] | null; after: string | Tag[] | null };
 
   /** 設定のキーの呼び名 */
   const SETTING_LABELS: Record<string, string> = {
@@ -107,6 +107,10 @@ namespace MindmapPreview {
         return { what: "採用する案", before: flat(edit.before ?? "なし"), after: flat(edit.value) };
       default:
         if (key === "body") return { what: "本文", before: null, after: null };
+        // タグは前後を `{name, main?}` の並びのまま返す（行は tagList で描く）
+        if (key === "tags") {
+          return { what: KEY_LABELS[key], before: tagsOrFlat(edit.before), after: tagsOrFlat(edit.value) };
+        }
         return { what: KEY_LABELS[key] ?? key, before: flat(edit.before), after: flat(edit.value) };
     }
   }
@@ -143,19 +147,30 @@ namespace MindmapPreview {
     return { kind: KIND_LABEL[entry.kind], id: target, title: entry.item.title };
   }
 
+  /** タグの値は並びのまま、それ以外は `flat` の文字にする */
+  function tagsOrFlat(value: unknown): string | Tag[] | null {
+    return Array.isArray(value) ? (value as Tag[]) : flat(value);
+  }
+
+  /** 前後の値の表示（タグの並びは tagList で描き、空の並びは「（空）」） */
+  function valueView(value: string | Tag[]): Child {
+    if (typeof value === "string") return value;
+    return value.length === 0 ? flat(value) : tagList(value);
+  }
+
   /** 読み上げ用の「前:」「後:」を添えた前 → 後の値 */
   function changeView(text: EditRowText): HTMLElement | null {
     if (text.after === null) return null;
     if (text.before === null) {
-      return h({ tag: "span", attrs: { class: "pe-change" }, children: [h({ tag: "ins", children: [text.after] })] });
+      return h({ tag: "span", attrs: { class: "pe-change" }, children: [h({ tag: "ins", children: [valueView(text.after)] })] });
     }
     return h({
       tag: "span",
       attrs: { class: "pe-change" },
       children: [
-        h({ tag: "del", children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["前: "] }), text.before] }),
+        h({ tag: "del", children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["前: "] }), valueView(text.before)] }),
         h({ tag: "span", attrs: { class: "pe-arrow", "aria-hidden": "true" }, children: ["→"] }),
-        h({ tag: "ins", children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["後: "] }), text.after] }),
+        h({ tag: "ins", children: [h({ tag: "span", attrs: { class: "sr-only" }, children: ["後: "] }), valueView(text.after)] }),
       ],
     });
   }

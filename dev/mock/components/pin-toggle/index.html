@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>コメントの一覧のピン止めのボタン | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/422/assets/style.css">
+  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
+  <style>
+    /* 案の並びの注記 */
+    .cat-note { font-size: var(--fs-xs) !important; }
+    /* 見本の状態: ピン止めのボタンのホバー */
+    .is-hover.pin-toggle { background: var(--hover); color: var(--text); }
+  </style>
+</head>
+<body>
+  <main class="catalog">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / pin-toggle</nav>
+    <h1>コメントの一覧のピン止めのボタン</h1>
+
+    <section class="cat-sec">
+      <h2>ピン止めしていない（既定）</h2>
+      <p>閉じるボタンの左に置く。外側を押すとパネルを閉じ、パネル以外は幕で覆う。</p>
+      <p class="cat-note">左（上）: 案 A ピンのアイコン / 右（下）: 案 B ピンと文字</p>
+      <div class="stage">
+        <div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="icon-btn pin-toggle" type="button" aria-pressed="false" aria-label="ピン止めする（外側を押しても閉じない）" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg></button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="btn pin-toggle labeled" type="button" aria-pressed="false" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg>ピン止め</button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+      </div>
+    </section>
+    <section class="cat-sec">
+      <h2>ピン止めした</h2>
+      <p>アクセントの色で塗る。幕を出さず、外側を押しても閉じない。</p>
+      <p class="cat-note">左（上）: 案 A ピンのアイコン / 右（下）: 案 B ピンと文字</p>
+      <div class="stage">
+        <div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="icon-btn pin-toggle" type="button" aria-pressed="true" aria-label="ピン止めを外す（外側を押したら閉じる）" title="ピン止めを外す（外側を押したら閉じる）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg></button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="btn pin-toggle labeled" type="button" aria-pressed="true" title="ピン止めを外す（外側を押したら閉じる）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg>ピン止め</button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+      </div>
+    </section>
+    <section class="cat-sec">
+      <h2>ホバー・フォーカス</h2>
+      <p>ホバーは面の色を変え、キーボードのフォーカスは枠の全体に出す。</p>
+      <p class="cat-note">上の段: 案 A のホバー・フォーカス / 下の段: 案 B のホバー・フォーカス</p>
+      <div class="stage">
+        <div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="icon-btn pin-toggle is-hover" type="button" aria-pressed="false" aria-label="ピン止めする（外側を押しても閉じない）" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg></button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="icon-btn pin-toggle is-focus" type="button" aria-pressed="false" aria-label="ピン止めする（外側を押しても閉じない）" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg></button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="btn pin-toggle labeled is-hover" type="button" aria-pressed="false" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg>ピン止め</button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="btn pin-toggle labeled is-focus" type="button" aria-pressed="false" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg>ピン止め</button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+      </div>
+    </section>
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>幅 900px 以下はパネルが幅いっぱいに出る。案 B の文字があっても閉じるボタンを押し出さない。</p>
+      <p class="cat-note">左（上）: 案 A ピンのアイコン / 右（下）: 案 B ピンと文字</p>
+      <div class="stage narrow">
+        <div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="icon-btn pin-toggle" type="button" aria-pressed="false" aria-label="ピン止めする（外側を押しても閉じない）" title="ピン止めする（外側を押しても閉じない）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg></button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div><div class="pane"><div class="comments-head"><h2>コメント</h2><span class="spacer"></span><button class="btn review-entry" type="button" aria-label="レビュー中の書き込みを確かめる（3 件）">レビュー中<span class="count" aria-hidden="true">3</span></button><button class="btn pin-toggle labeled" type="button" aria-pressed="true" title="ピン止めを外す（外側を押したら閉じる）"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 5 3 3v2H7v-2l3-3Z"/><path d="M12 14v6"/></svg>ピン止め</button><button class="icon-btn" type="button" aria-label="コメントの一覧を閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

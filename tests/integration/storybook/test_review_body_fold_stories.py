@@ -140,3 +140,15 @@ def test_folded_lines_when_keyboard(open_story: OpenStory) -> None:
     assert page.inner_text(MORE) == "折りたたむ"
     assert _lines(page) > FOLD_LINES
     assert page.evaluate(SHOWS_ALL_SCRIPT) is True
+
+
+def test_id_link(open_story: OpenStory) -> None:
+    """`titles` を渡した本文。記録にある T-14 は項目を開くボタン、対応に無い D-99 は文字のまま出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-reviewbodyfold--id-link")
+    _wait_measured(page, hidden=True)
+    # 検証
+    assert page.get_attribute(f"{BODY} button.idlink", "title") == "移し替えの失敗の扱いを書く"
+    assert page.inner_text(f"{BODY} button.idlink") == "T-14"
+    assert page.locator(f"{BODY} button.idlink").count() == 1
+    assert "D-99" in page.inner_text(BODY)

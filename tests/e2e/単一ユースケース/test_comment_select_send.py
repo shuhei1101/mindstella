@@ -1,6 +1,6 @@
 """コメントを選んで送る（レビュー中を確かめる画面でレビュー中の書き込みを確かめ、直し・消し・足して、チェックしたものだけをまとめて送る）の E2E テスト。
 
-MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む。
+常駐の MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む。
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ from workspace_fixtures import (
     MakePost,
     MakeThread,
     MakeWorkspace,
+    McpServer,
     StartServer,
     WriteComments,
     WriteThreads,
@@ -322,8 +323,8 @@ def test_error_when_server_unreachable(
     assert served.data is not None
     open_preview(served.data["url"])
     open_review(page)
-    # 一覧を開いた後にサーバーを止める
-    server.close_stdin()
+    # 一覧を開いた後に常駐サーバーを止める
+    server.call("server_stop")
     server.wait_exit()
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
@@ -418,10 +419,9 @@ def test_error_when_location_stale(
     assert threads[0].get("loc") is None
 
 
-def _serve_with_pane(root: Path, start_server: StartServer, pane_env: dict[str, str]) -> str:
-    """偽の Claude Code のペインを送り先にした MCP サーバーを立て、ワークスペースの配信の URL を返す。"""
-    server = start_server(extra_env=pane_env, cwd=root)
-    served = server.call("preview_url", workspace=str(root))
+def _serve_with_pane(root: Path, server: McpServer, session: dict[str, Any]) -> str:
+    """PreToolUse のフックが入れる値として偽の Claude Code のペインのセッションを引数に入れてプレビューの URL を取得し、配信の URL を返す。"""
+    served = server.call("preview_url", workspace=str(root), session=session)
     assert served.data is not None
     return str(served.data["url"])
 
@@ -445,7 +445,7 @@ def test_normal_when_entered_to_claude_code(
         _without_target(make_comment("C-2", body="全体に目を通した\n2 行目")),
     )
     pane = start_claude_pane(mode="user", cwd=root)
-    open_preview(_serve_with_pane(root, start_server, pane.env), BOARD_HASH)
+    open_preview(_serve_with_pane(root, start_server(), pane.session), BOARD_HASH)
     open_review(page)
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
@@ -479,7 +479,7 @@ def test_error_when_not_entered(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
     pane = start_claude_pane(mode="silent", cwd=root)
-    open_preview(_serve_with_pane(root, start_server, pane.env), BOARD_HASH)
+    open_preview(_serve_with_pane(root, start_server(), pane.session), BOARD_HASH)
     open_review(page)
     # 実行
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
@@ -491,6 +491,80 @@ def test_error_when_not_entered(
         "1 件を送りましたが、Claude Code には入力できませんでした（"
     )
     assert pane.lines() == []
+
+
+def test_normal_when_two_sessions(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """1 つの常駐サーバーで 2 つのセッションが別々のワークスペースを開くと、それぞれのプレビューから送ったコメントがそれぞれのペインへ入力される（正常系）。"""
+    # 準備
+    first_root = make_workspace(make_item("D-1"), name="a")
+    second_root = make_workspace(make_item("D-1"), name="b")
+    write_comments(first_root, make_comment("C-1", target="D-1", body="案 A にする"))
+    write_comments(second_root, make_comment("C-1", target="D-1", body="案 B にする"))
+    first_pane = start_claude_pane(mode="user", cwd=first_root, config_name="claude-config-1")
+    second_pane = start_claude_pane(mode="user", cwd=second_root, config_name="claude-config-2")
+    server = start_server()
+    first_url = _serve_with_pane(first_root, server, first_pane.session)
+    second_url = _serve_with_pane(second_root, server, second_pane.session)
+    # 実行（A のプレビューから送る）
+    open_preview(first_url, BOARD_HASH)
+    open_review(page)
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    first_band = page.inner_text(BAND_RESULT)
+    # 実行（B のプレビューから送る）
+    open_preview(second_url, BOARD_HASH)
+    open_review(page)
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    second_band = page.inner_text(BAND_RESULT)
+    # 検証
+    assert len(first_pane.lines()) == 1
+    assert f'"cwd": "{first_root.resolve()}"' in first_pane.lines()[0]
+    assert len(second_pane.lines()) == 1
+    assert f'"cwd": "{second_root.resolve()}"' in second_pane.lines()[0]
+    assert first_band.startswith("1 件を送り、Claude Code に入力しました（")
+    assert second_band.startswith("1 件を送り、Claude Code に入力しました（")
+
+
+def test_error_when_session_ended(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """プレビューの URL を取得したセッションの Claude Code が終わっていれば、スレッドは残したままペインへ入力せず、入力できなかったことが出る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, make_comment("C-1", target="D-1", body="案 A にする"))
+    pane = start_claude_pane(mode="user", cwd=root)
+    url = _serve_with_pane(root, start_server(), pane.session)
+    pane.end_claude()
+    open_preview(url, BOARD_HASH)
+    open_review(page)
+    # 実行
+    page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
+    page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=RESULT_TIMEOUT_MS)
+    # 検証
+    assert _openers(_read(root, "threads.yaml")) == [("D-1", "案 A にする")]
+    assert all(item["status"] == "open" for item in _read(root, "threads.yaml"))
+    assert _read(root, "comments.yaml") == []
+    assert "ユーザーからのコメント" not in pane.capture()
+    assert page.inner_text(BAND_RESULT).startswith(
+        "1 件を送りましたが、Claude Code には入力できませんでした（"
+    )
 
 
 # 4 行目より前に `<style>` とコメントを置き、4 行目に `<b>` のタグをまたぐ文を持つ HTML の本文と、4 行目を書き換えた本文

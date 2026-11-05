@@ -449,6 +449,71 @@ def test_add_edit_when_item_add_options_invalid(
     assert snapshot_tree(root) == before
 
 
+def test_add_edit_when_tags(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """主題を持つタグの並びを溜める（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=[{"name": "画面"}]))
+    value = [{"name": "画面", "main": True}, {"name": "データ"}]
+    data = {"op": "set", "target": "D-1", "key": "tags", "value": value}
+    # 実行
+    body, created = edits.add_edit(root, data, now=_fixed_now)
+    # 検証
+    assert (body, created) == ({"id": "E-1", "target": "D-1", "count": 1}, True)
+    saved = _read_edits(root)
+    assert saved["items"][0]["before"] == [{"name": "画面"}]
+    assert saved["items"][0]["value"] == value
+
+
+@pytest.mark.parametrize(
+    ("data", "pattern"),
+    [
+        pytest.param(
+            {
+                "op": "set",
+                "target": "D-1",
+                "key": "tags",
+                "value": [{"name": "API"}, {"name": "ａｐｉ"}],
+            },
+            r"tags.*ａｐｉ",
+            id="duplicated",
+        ),
+        pytest.param(
+            {"op": "set", "target": "D-1", "key": "tags", "value": ["画面"]},
+            "tags",
+            id="string_tag",
+        ),
+        pytest.param(
+            {
+                "op": "item-add",
+                "key": "tasks",
+                "value": {
+                    "title": "t",
+                    "status": "未着手",
+                    "tags": [{"name": "画面"}, {"name": "画面"}],
+                },
+            },
+            r"tags.*画面",
+            id="item_add_duplicated",
+        ),
+    ],
+)
+def test_add_edit_when_tags_invalid(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    snapshot_tree: SnapshotTree,
+    data: dict[str, Any],
+    pattern: str,
+) -> None:
+    """重なるタグ・文字列のタグは溜めない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(EditInvalidError, match=pattern):
+        edits.add_edit(root, data, now=_fixed_now)
+    assert snapshot_tree(root) == before
+
+
 def test_delete_edit(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -524,7 +589,7 @@ def test_save_edits(
         make_item(
             "D-1",
             status="未決定",
-            tags=["画面"],
+            tags=[{"name": "画面"}],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
         settings=valid_settings,
@@ -532,7 +597,12 @@ def test_save_edits(
     write_edits(
         root,
         make_edit("E-1", value="案 C にする"),
-        make_edit("E-2", key="tags", value=["画面", "記録の形"], before=["画面"]),
+        make_edit(
+            "E-2",
+            key="tags",
+            value=[{"name": "画面"}, {"name": "記録の形"}],
+            before=[{"name": "画面"}],
+        ),
         make_edit("E-3", op="option-add", key="C", value={"content": "案 C"}, before=None),
         make_edit("E-4", op="adopt", key="C", value="C"),
     )
@@ -543,7 +613,7 @@ def test_save_edits(
     assert result["changed"] == ["D-1"]
     decision = _find(_read_items(root, "decisions.yaml"), "D-1")
     assert decision["answer"] == "案 C にする"
-    assert decision["tags"] == ["画面", "記録の形"]
+    assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形"}]
     assert [option["key"] for option in decision["options"]] == ["A", "B", "C"]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["C"]
     assert decision["updated_by"] == "user"

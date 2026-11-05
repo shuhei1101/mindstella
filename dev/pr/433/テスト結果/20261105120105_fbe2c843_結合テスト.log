@@ -1,0 +1,22 @@
+# 負荷を掛けた実行（CPU を使い切る busy loop を 4 本並べて流す）
+$ pytest tests/integration/preview/test_workspace_settings_screen.py tests/integration/preview/test_comments_screen.py  # 1 回目
+............................................                             [100%]
+44 passed in 173.65s (0:02:53)
+$ pytest tests/integration/preview/test_workspace_settings_screen.py tests/integration/preview/test_comments_screen.py  # 2 回目
+............................................                             [100%]
+44 passed in 139.81s (0:02:19)
+$ pytest tests/integration/preview/test_workspace_settings_screen.py tests/integration/preview/test_comments_screen.py  # 3 回目
+............................................                             [100%]
+44 passed in 129.64s (0:02:09)
+$ pytest tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_decisions_screen.py  # 負荷あり
+........................................................................ [ 19%]
+........................................................................ [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+........................................................................ [ 95%]
+.................                                                        [100%]
+377 passed in 912.03s (0:15:12)
+$ pytest tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_diagram_viewer_screen.py
+........................................................................ [ 90%]
+........                                                                 [100%]
+80 passed in 172.22s (0:02:52)

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client", "vitest/globals"],
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src", "../.storybook-react", "../vite.config.ts", "../vitest.config.ts", "../orval.config.ts"]
+}

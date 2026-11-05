@@ -56,9 +56,23 @@
         },
         "tags": {
           "type": "array",
-          "description": "話題のタグ。どの文字列でも持て、`tags` のツールが NFKC と小文字にそろえた表記で数える",
+          "description": "話題のタグ。要素は `{name, main?}`。`name` はどの文字列でも持て、`tags` のツールが NFKC と小文字にそろえた表記で数える。その項目の主題のタグだけが `main: true` を持つ",
           "items": {
-            "type": "string"
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "タグの名前（書いたときの表記）"
+              },
+              "main": {
+                "type": "boolean",
+                "description": "その項目の主題のタグなら true"
+              }
+            }
           }
         },
         "attrs": {

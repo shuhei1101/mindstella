@@ -25,6 +25,9 @@ namespace MindmapPreview {
   /** そのタブで変えた詳細パネルの幅（px の整数の文字列）を残す sessionStorage のキー。種類で分けない。配る書き出しでも同じ */
   export const PANEL_WIDTH_KEY = "mindmap-panel-width";
 
+  /** そのタブで詳細パネル・全画面の本文をスクロールした位置（項目の ID → px の JSON）を残す sessionStorage のキー。配る書き出しでも同じ */
+  export const BODY_SCROLL_KEY = "mindmap-body-scroll";
+
   /** 入力欄 1 つ（向けた先ごと）の書きかけと溜める状態（開いている間だけ持つ。書きかけの本文はサーバーにも残す） */
   export type FormState = {
     target: string | null;
@@ -64,8 +67,10 @@ namespace MindmapPreview {
     threads: Thread[];
     /** 直前のスレッドの読み取りが断られた・届かなかったときの理由。読めたら null */
     threadsError: { detail: string | null } | null;
-    /** パネルの中に出している画面。パネルを開くたびに `list` に戻す */
+    /** パネルの中に出している画面。パネルを閉じても保ち、開き直したときにこの画面へ戻す */
     view: PanelView;
+    /** コメントの一覧を閉じたときのパネルの中（`.comments-body`）のスクロールの位置。開き直したときに戻す（ページを開いたときは 0） */
+    listScroll: number;
     /** レビュー中の書き込みを開く前の画面（「戻る」の戻り先） */
     reviewFrom: "list" | "thread";
     /** スレッドの状態の絞り込み。ページを開いたときは `open` で、パネルを閉じても保つ */
@@ -80,8 +85,10 @@ namespace MindmapPreview {
     reason: ReasonState;
     /** スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID */
     reviewFocus: string | null;
-    /** レビュー中の書き込みの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする） */
+    /** レビュー中の書き込みの画面とスレッドの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする） */
     expanded: Set<string>;
+    /** 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（描き直し・本文の書き換え・全画面との行き来では保ち、別の項目へ移るかパネルを閉じると空にする） */
+    detailExpanded: Set<string>;
   };
 
   /** 表示の設定の画面の状態（開いている間だけ持つ。描き直し・書き換えの知らせでも保つ） */
@@ -188,6 +195,8 @@ namespace MindmapPreview {
     minimap: false | null;
     /** 本文の差分を左右に並べる上書き。null はインライン（ワークスペースの既定は持たない） */
     bodyLayout: "side" | null;
+    /** 詳細のレビュー中のコメントを古い順に並べる上書き。null は新しい順（ワークスペースの既定は持たない） */
+    reviewOrder: "oldest" | null;
     /** 表の列の固定をオフにする上書き。null はオン（ワークスペースの既定は持たない） */
     tablePin: false | null;
     /** 表の見出しの固定をオフにする上書き。null はオン */
@@ -196,6 +205,8 @@ namespace MindmapPreview {
     tableStripes: true | null;
     /** セクションの折りたたみをオフにする上書き。null はオン */
     sectionFold: false | null;
+    /** コメントの一覧をピン止めしているか。null はピン止めしない。個人の上書きではなく、「既定に戻す」でも消さない */
+    commentsPinned: true | null;
     /** 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う */
     opened?: unknown;
   };
@@ -250,10 +261,12 @@ namespace MindmapPreview {
       filters: {},
       minimap: null,
       bodyLayout: null,
+      reviewOrder: null,
       tablePin: null,
       tableHead: null,
       tableStripes: null,
       sectionFold: null,
+      commentsPinned: null,
     };
   }
 
@@ -274,11 +287,15 @@ namespace MindmapPreview {
       if (parsed.minimap !== false) parsed.minimap = null;
       // 本文の差分の並べ方の上書きは side だけを読む（インラインは上書きを持たない）
       if (parsed.bodyLayout !== "side") parsed.bodyLayout = null;
+      // レビュー中のコメントの並びの上書きは oldest だけを読む（新しい順は上書きを持たない）
+      if (parsed.reviewOrder !== "oldest") parsed.reviewOrder = null;
       // 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
       if (parsed.tablePin !== false) parsed.tablePin = null;
       if (parsed.tableHead !== false) parsed.tableHead = null;
       if (parsed.tableStripes !== true) parsed.tableStripes = null;
       if (parsed.sectionFold !== false) parsed.sectionFold = null;
+      // コメントの一覧のピン止めは true だけを読む（ピン止めしないは値を持たない）
+      if (parsed.commentsPinned !== true) parsed.commentsPinned = null;
       return parsed;
     } catch {
       return defaultPrefs();
@@ -336,11 +353,12 @@ namespace MindmapPreview {
     overrides: string[];
     minimap: boolean;
     bodyLayout: BodyLayout;
+    reviewOrder: ReviewOrder;
     bodyView: BodyView;
   } {
     const defaultLook = display?.network_look ?? BUILTIN_LOOK;
     const defaultKinds = new Set<Kind>(display?.visible_kinds ?? KIND_KEYS);
-    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方の順に並べる（条件が画面の既定と同じ画面は並べない）
+    // 上書きを持つ項目の名前を、見た目・種類・ライト / ダーク・表の列・絞り込み・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びの順に並べる（条件が画面の既定と同じ画面は並べない）
     const overrides = [
       ...(prefs.look === null ? [] : ["ネットワークの見た目"]),
       ...(prefs.kinds === null ? [] : ["表示する種類"]),
@@ -355,6 +373,7 @@ namespace MindmapPreview {
       ...(prefs.tableStripes === true ? [BODY_VIEW_LABELS.stripes] : []),
       ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
       ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
+      ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
     ];
     return {
       look: prefs.look ?? defaultLook,
@@ -366,6 +385,8 @@ namespace MindmapPreview {
       minimap: prefs.minimap !== false,
       // 上書きが side のときだけ左右に並べる
       bodyLayout: prefs.bodyLayout === "side" ? "side" : "inline",
+      // 上書きが oldest のときだけ古い順に並べる
+      reviewOrder: prefs.reviewOrder === "oldest" ? "oldest" : "newest",
       // 上書きのある項目だけ既定と逆にする
       bodyView: {
         pin: prefs.tablePin !== false,
@@ -376,7 +397,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した設定を返す（`diffSel` は残し、渡した設定は変えない） */
+  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した設定を返す（`diffSel`・`commentsPinned` は残し、渡した設定は変えない） */
   export function clearOverrides(prefs: Prefs): Prefs {
     return {
       ...prefs,
@@ -387,6 +408,7 @@ namespace MindmapPreview {
       filters: {},
       minimap: null,
       bodyLayout: null,
+      reviewOrder: null,
       tablePin: null,
       tableHead: null,
       tableStripes: null,
@@ -438,6 +460,30 @@ namespace MindmapPreview {
   export function writePanelWidth({ session, width }: { session: Storage; width: number }): void {
     try {
       session.setItem(PANEL_WIDTH_KEY, String(width));
+    } catch {
+      return;
+    }
+  }
+
+  /** そのタブで詳細の本文をスクロールした位置を読む。0 以上の数の位置だけを返し、読めなければ空 */
+  export function readBodyScrolls(session: Storage): Record<string, number> {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(session.getItem(BODY_SCROLL_KEY) ?? "{}");
+    } catch {
+      return {};
+    }
+    // 項目の ID → 位置の対応でなければ、残っていないものとして扱う
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, number] => typeof entry[1] === "number" && entry[1] >= 0)
+    );
+  }
+
+  /** 詳細の本文をスクロールした位置をそのタブに残す。書けない保存領域では何もしない（開いている間は `start` が持つ値で戻す） */
+  export function writeBodyScrolls({ session, scrolls }: { session: Storage; scrolls: Record<string, number> }): void {
+    try {
+      session.setItem(BODY_SCROLL_KEY, JSON.stringify(scrolls));
     } catch {
       return;
     }
@@ -597,6 +643,8 @@ namespace MindmapPreview {
     const serverMode = embedded === null;
     const storage = openStorage("localStorage");
     const session = openStorage("sessionStorage");
+    /** そのタブで詳細の本文をスクロールした位置（項目の ID → px。残せない保存領域でも、開いている間はこの値で戻す） */
+    const bodyScrolls = readBodyScrolls(session);
     const prefs = loadPrefs(storage);
     const persist = (): boolean => savePrefs({ storage, prefs });
     restoreTablePrefs(prefs.columns, (kind, tablePrefs) => {
@@ -743,6 +791,7 @@ namespace MindmapPreview {
       }
       flushDrafts();
       leaveEditViews();
+      markDetailFromPanel();
       const next: Route = { ...route, id, filters: {}, heading: null };
       const trail = history.state as Trail | null;
       if (inPanel && route.id !== null) {
@@ -1011,6 +1060,24 @@ namespace MindmapPreview {
       renderSettings();
     };
 
+    /** レビュー中のコメントの並びを切り替えた: 個人の上書きに残し、開いている詳細パネル・詳細の全画面だけを描き直す（履歴にもハッシュにも書かない）。本文を送った位置と、並びの切り替えのフォーカスを保つ */
+    const changeReviewOrder = (order: ReviewOrder): void => {
+      const bodySelector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+      const scrollTop = document.querySelector<HTMLElement>(bodySelector)?.scrollTop ?? 0;
+      prefs.reviewOrder = order === "oldest" ? "oldest" : null;
+      display.storageOk = persist();
+      resolved = resolveDisplay(prefs, data.settings.display);
+      renderDetail();
+      // 描き直した本文の高さは、文書に入った後の次のコマで決まる
+      requestAnimationFrame(() => {
+        const next = document.querySelector<HTMLElement>(bodySelector);
+        if (next === null) return;
+        next.scrollTop = scrollTop;
+        next.querySelector<HTMLElement>(`[data-focus="${REVIEW_FOCUS}review-order"]`)?.focus({ preventScroll: true });
+      });
+      renderSettings();
+    };
+
     /** 詳細パネルと全画面 */
     const renderDetail = (): void => {
       // 項目を追加する入力: 詳細パネルと同じ置き方で、追加の入力を開く
@@ -1039,6 +1106,7 @@ namespace MindmapPreview {
         // 詳細パネルを開く・別の項目へ移った: 左のパネルを開いていても詳細パネルを前に出す
         if (route.id !== null) stack.front = "detail";
         const hadEdit = editing !== null;
+        comment.detailExpanded.clear();
         if (!comment.listOpen) {
           comment.removed = [];
           editing = null;
@@ -1065,12 +1133,14 @@ namespace MindmapPreview {
         fullDialog?.remove();
         return;
       }
+      const highlight = openedLocation();
       const panel = detailPanel({
         id: route.id,
         index,
         full: route.full,
         minimap: resolved.minimap,
         bodyLayout: resolved.bodyLayout,
+        reviewOrder: resolved.reviewOrder,
         bodyView: resolved.bodyView,
         edit: detailEdit(),
         // 詳細パネルの左端に、そのタブで変えた幅から始める幅の区切りを置く（全画面は置かない。幅 900px 以下は CSS が隠し、窓を広げたときに出る）
@@ -1084,6 +1154,7 @@ namespace MindmapPreview {
         on: {
           open: (id) => openItem(id, true),
           layout: changeBodyLayout,
+          order: changeReviewOrder,
           close: closeDetail,
           full: (full) => {
             // 全画面の中で図を拡大しているときは、本文へ戻る
@@ -1113,21 +1184,25 @@ namespace MindmapPreview {
               editingIn,
               editError,
               editBody,
+              expanded: comment.detailExpanded,
               on: reviewRowHandlers(REVIEW_FOCUS),
             },
           }
           : null,
-        highlight: openedLocation(),
+        highlight,
         diff: point,
         // 開いたときにだけ見出しを画面に入れる
         heading: shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading,
       });
+      // 見出しもコメントの箇所も示さないときだけ、その項目で最後にスクロールした位置へ戻す
+      const showsTarget = (shownHeading?.id === route.id && shownHeading.heading === route.heading ? null : route.heading) !== null || highlight !== null;
       shownHeading = route.heading === null ? null : { id: route.id, heading: route.heading };
       if (route.full) {
         existing?.classList.remove("open");
         fullDialog?.remove();
         document.body.append(panel);
         (panel as HTMLDialogElement).showModal();
+        restoreBodyScroll(showsTarget);
         return;
       }
       fullDialog?.close();
@@ -1141,7 +1216,34 @@ namespace MindmapPreview {
         existing.className = `${panel.className} open`;
         existing.replaceChildren(...panel.children);
       }
+      restoreBodyScroll(showsTarget);
     };
+
+    /** 描いた詳細パネル・全画面の本文を、その項目で最後にスクロールした位置へ次のコマで戻す。見出し・コメントの箇所を示すときは、そちらを優先する */
+    const restoreBodyScroll = (showsTarget: boolean): void => {
+      const id = route.id;
+      const top = id === null ? undefined : bodyScrolls[id];
+      if (showsTarget || top === undefined) return;
+      const selector = route.full ? "dialog.full .panel-body" : "aside.panel .panel-body";
+      requestAnimationFrame(() => {
+        const body = document.querySelector<HTMLElement>(selector);
+        // 待つ間に別の項目へ移っていれば戻さない
+        if (body !== null && route.id === id) body.scrollTop = top;
+      });
+    };
+
+    // 詳細パネル・全画面の本文をスクロールしたら、開いている項目の位置を残す（`scroll` は伝わらないため、キャプチャフェーズで受ける）
+    document.addEventListener(
+      "scroll",
+      (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || route.id === null) return;
+        if (!target.matches("aside.panel .panel-body, dialog.full .panel-body")) return;
+        bodyScrolls[route.id] = target.scrollTop;
+        writeBodyScrolls({ session, scrolls: bodyScrolls });
+      },
+      true
+    );
 
     /** コメントの一覧の行から開いたとき、そのコメントの箇所。別の項目へ移っていれば示すのをやめる */
     const openedLocation = (): Location | null => {
@@ -1211,13 +1313,74 @@ namespace MindmapPreview {
       if (left !== null) left.inert = both && !leftFront;
     };
 
-    /** 前に止めた分を外してから、開いているパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品を止め、詳細パネルとの前後を当てる */
+    /** 今の詳細パネルを、開いている左のパネルの中の押下で開いたか（グレーアウトの上に出すか） */
+    let detailFromPanel = false;
+    /** 最後の押下が、開いている左のパネルの中（グレーアウトの上に出した詳細パネルの中を含む）だったか */
+    let lastPressInPanel = false;
+
+    /** 今の押下が開いている左のパネルの中なら、これから開く詳細パネルをグレーアウトの上に出す */
+    const markDetailFromPanel = (): void => {
+      detailFromPanel = openLeftPanel() !== null && lastPressInPanel;
+    };
+
+    // 押下の出どころを、詳細パネルを開く処理より先に控える
+    document.addEventListener(
+      "click",
+      (event) => {
+        const panel = openLeftPanel();
+        const target = event.target instanceof Node ? event.target : null;
+        const detail = detailFromPanel ? document.querySelector<HTMLElement>("aside.panel") : null;
+        lastPressInPanel = panel !== null && target !== null && (panel.contains(target) || (detail?.contains(target) ?? false));
+      },
+      true
+    );
+
+    /** 開いている左のパネルを開くトップバーのボタンの `data-act`。開いていなければ null */
+    const openLeftAct = (): string | null =>
+      filterState.drawerOpen ? "filter" : comment.listOpen ? "comments" : editState.open ? "pending" : display.open ? "settings" : null;
+
+    /** 左のパネル以外を覆うグレーアウト。押したら、開いているパネルをトップバーの同じボタンを押したときと同じに閉じ、そのボタンへフォーカスを戻す */
+    const scrimElement = (): HTMLElement => {
+      const found = document.querySelector<HTMLElement>(".left-scrim");
+      if (found !== null) return found;
+      const scrim = h({
+        tag: "div",
+        attrs: {
+          class: "left-scrim",
+          "aria-hidden": "true",
+          onclick: () => {
+            const act = openLeftAct();
+            if (act === null) return;
+            document.querySelector<HTMLElement>(`[data-act='${act}']`)?.click();
+            // 閉じるとトップバーを描き直すため、描き直した後のボタンを引き直す
+            document.querySelector<HTMLElement>(`[data-act='${act}']`)?.focus();
+          },
+        },
+      });
+      document.body.append(scrim);
+      return scrim;
+    };
+
+    /** 前に止めた分を外してから、開いている左のパネルの外の本文の部品を止め、詳細パネルとの前後とグレーアウトを当てる */
     const applyInert = (): void => {
       releaseInert?.();
       releaseInert = null;
       const panel = openLeftPanel();
-      if (panel !== null) releaseInert = inertBehind(panel);
+      // ピン止めしたコメントの一覧は、覆った範囲だけを止めてグレーアウトを出さない。それ以外の左のパネルはグレーアウトで覆い、その下を止める
+      const pinned = panel !== null && comment.listOpen && prefs.commentsPinned === true;
+      const scrim = panel !== null && !pinned;
+      // 左のパネルか詳細パネルを閉じたら、押下の出どころを忘れる
+      if (panel === null || route.id === null) detailFromPanel = false;
+      // 幅 900px 以下はグレーアウトを出さず、詳細パネルとの前後は `applyStack` だけで決める
+      const wideScrim = scrim && !isNarrow();
+      const detailAbove = wideScrim && route.id !== null && !route.full && detailFromPanel;
+      if (panel !== null) releaseInert = pinned ? inertBehind(panel) : inertOutside(panel);
       applyStack();
+      scrimElement().classList.toggle("on", scrim);
+      document.body.classList.toggle("detail-above-scrim", detailAbove);
+      // グレーアウトの下に置いた詳細パネルは止める（上に出した詳細パネルは `applyStack` の決めたまま）
+      const detail = document.querySelector<HTMLElement>("aside.panel");
+      if (wideScrim && detail !== null && !detailAbove) detail.inert = true;
     };
 
     // 幅が 900px をまたいだとき、前後と `inert` をやり直す
@@ -1329,6 +1492,7 @@ namespace MindmapPreview {
       threads: [],
       threadsError: null,
       view: "list",
+      listScroll: 0,
       reviewFrom: "list",
       filter: "open",
       tag: null,
@@ -1337,6 +1501,7 @@ namespace MindmapPreview {
       reason: { open: false, body: "", status: "idle", detail: null },
       reviewFocus: null,
       expanded: new Set(),
+      detailExpanded: new Set(),
     };
     const threadsApi = threadApi();
     /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
@@ -1628,6 +1793,8 @@ namespace MindmapPreview {
     const renderComments = (): void => {
       const current = document.querySelector<HTMLElement>(".comments-panel");
       if (!comment.listOpen) {
+        // 閉じる前のスクロールの位置を控え、開き直したときに戻す
+        if (current !== null) comment.listScroll = current.querySelector<HTMLElement>(".comments-body")?.scrollTop ?? 0;
         current?.remove();
         scheduleInert();
         return;
@@ -1642,7 +1809,8 @@ namespace MindmapPreview {
           : null;
       const typingForm = typing?.closest("form")?.classList.contains("th-reason") === true ? "form.th-reason" : "form.send";
       const selection = typing === null ? null : { start: typing.selectionStart, end: typing.selectionEnd };
-      const scroll = current?.querySelector<HTMLElement>(".comments-body")?.scrollTop ?? 0;
+      // 開き直したときは閉じる前の位置、開いたまま描き直すときは今の位置を保つ
+      const scroll = current === null ? comment.listScroll : (current.querySelector<HTMLElement>(".comments-body")?.scrollTop ?? 0);
       const next = commentsPanel(panelProps());
       if (current === null) {
         document.body.append(next);
@@ -1683,7 +1851,7 @@ namespace MindmapPreview {
       comment.reviewFocus = null;
     };
 
-    /** コメントの一覧を開く（絞り込みのドロワーは閉じ、スレッドの一覧から始める） */
+    /** コメントの一覧を開く（絞り込みのドロワーは閉じ、閉じる前の画面・開いていたスレッドから始める） */
     const openList = (): void => {
       // 絞り込みのドロワー・表示の設定のパネルとは 1 つだけを開く
       if (filterState.drawerOpen) {
@@ -1696,11 +1864,16 @@ namespace MindmapPreview {
       renderPending();
       comment.listOpen = true;
       stack.front = "left";
-      resetPanelView();
       renderTop();
       renderComments();
-      // スレッドを読み直して、届いていた AI の返信などを足す
-      void loadThreads().then(renderComments);
+      // スレッドを読み直して、届いていた AI の返信などを足す。開いていた送ったスレッドが無くなっていれば、スレッドの一覧へ戻す
+      void loadThreads().then(() => {
+        const opened = comment.openedThread;
+        if (comment.view === "thread" && opened !== null && !opened.pending && !comment.threads.some((thread) => thread.id === opened.id)) {
+          resetPanelView();
+        }
+        renderComments();
+      });
     };
 
     /** 一覧で始めた書き換えを捨てる（一覧を閉じると、詳細パネルの行が本文だけのまま残るため）。捨てたかを返す */
@@ -1734,6 +1907,8 @@ namespace MindmapPreview {
       // いま開いている項目を指す行でも、詳細パネルを一覧の前に出す
       stack.front = "detail";
       if (route.id === item.target) {
+        // 開いていた項目でも、パネルの中から開いた詳細パネルとしてグレーアウトの上に出す
+        markDetailFromPanel();
         renderDetail();
         renderComments();
         return;
@@ -1749,6 +1924,8 @@ namespace MindmapPreview {
       // いま開いている項目を指すときでも、詳細パネルをパネルの前に出す
       stack.front = "detail";
       if (route.id === id) {
+        // 開いていた項目でも、パネルの中から開いた詳細パネルとしてグレーアウトの上に出す
+        markDetailFromPanel();
         renderDetail();
         renderComments();
         return;
@@ -1906,8 +2083,15 @@ namespace MindmapPreview {
       titleOf: (id) => index.byId.get(id)?.item.title ?? null,
       changeSetOf: (id) => data.changes.sets.find((set) => set.id === id)?.summary ?? null,
       expanded: comment.expanded,
+      pinned: prefs.commentsPinned === true,
       on: {
         close: closeList,
+        // ピン止めを切り替えて端末に残し、パネルを開いたまま描き直してグレーアウトと止める部品をやり直す
+        pin: () => {
+          prefs.commentsPinned = prefs.commentsPinned === true ? null : true;
+          display.storageOk = persist();
+          renderComments();
+        },
         review: openReview,
         back: goBack,
         filter: (filter) => {
@@ -1959,11 +2143,6 @@ namespace MindmapPreview {
         open: openRow,
         ...reviewRowHandlers(""),
         unloc: (id) => void detachLocation(id),
-        fold: (id, open) => {
-          // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
-          if (open) comment.expanded.add(id);
-          else comment.expanded.delete(id);
-        },
       },
     });
 
@@ -2049,6 +2228,12 @@ namespace MindmapPreview {
         },
         remove: (id) => void removeComment(id).then(() => toDetail(`restore:${id}`)),
         restore: (id) => void restoreComment(id).then(() => toDetail(`edit-open:${id}`)),
+        fold: (id, open) => {
+          // 部品が行の中でその場で切り替えているので、描き直さず覚えるだけにする
+          const opened = focus === "" ? comment.expanded : comment.detailExpanded;
+          if (open) opened.add(id);
+          else opened.delete(id);
+        },
       };
     };
 
@@ -2307,6 +2492,8 @@ namespace MindmapPreview {
 
     /** 表示の設定のパネルを作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
     const renderSettings = (): void => {
+      // 開閉のたびに、グレーアウトと止める部品をやり直す
+      scheduleInert();
       const current = document.querySelector<HTMLElement>(".settings-drawer");
       if (!display.open) {
         current?.remove();
@@ -2971,6 +3158,8 @@ namespace MindmapPreview {
 
     /** 保存待ちのパネルを作り直す（描き直しても、操作していた部品へフォーカスを戻す） */
     const renderPending = (): void => {
+      // 開閉のたびに、グレーアウトと止める部品をやり直す
+      scheduleInert();
       const current = document.querySelector<HTMLElement>(".pending-panel");
       if (!editState.open || point !== null || !serverMode) {
         current?.remove();

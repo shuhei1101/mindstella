@@ -47,12 +47,16 @@ from kinds import EDITOR, KINDS, RECORD_DIR, Kind, records_root
 from migration_ops import DESTRUCTIVE_OPS, describe_step
 from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
 from query import (
+    FIELD_NAMES,
     MAX_LIMIT,
     SearchFilter,
+    build_row,
+    count_tags,
     list_attrs,
     list_stray_tags,
     list_tags,
     page_results,
+    resolve_fields,
     search_items,
     show_item,
 )
@@ -82,6 +86,7 @@ from store import (
     write_failed,
     write_temp,
 )
+from tag_text import compact_tags
 from threads import (
     create_thread,
     list_threads,
@@ -329,6 +334,9 @@ def stage_add(
 ) -> tuple[Staged, dict[str, Any]]:
     """ID・日時・通し番号・本文を付けた 1 項目を、メモリの上の並びに足す。editor は足した項目の編集した人。"""
     validate_input_keys(kind, item, index=len(staged.items[kind]))
+    # 主題でないタグは main を持たない
+    if "tags" in item:
+        item = {**item, "tags": compact_tags(item["tags"])}
     # 消した項目の ID は振り直さない
     item_id = next_id(
         replace(staged.workspace, items=staged.items),
@@ -384,6 +392,9 @@ def stage_update(
     workspace = replace(staged.workspace, items=staged.items)
     ref = find_item(workspace, item_id)
     validate_input_keys(ref.kind, item, index=ref.index)
+    # 主題でないタグは main を持たない
+    if "tags" in item:
+        item = {**item, "tags": compact_tags(item["tags"])}
     changes = {key: value for key, value in item.items() if key not in BODY_INPUT_KEYS}
     merged, changed = merge_changes(ref.item, changes)
     merged["updated"] = now()
@@ -721,21 +732,37 @@ def run_find(
     *,
     limit: int,
     cursor: str | None,
-    response_format: Literal["concise", "detailed"],
+    view: Literal["brief", "standard", "full"],
+    include: list[str],
+    exclude: list[str],
+    count_only: bool,
 ) -> dict[str, Any]:
-    """引数を確かめ、条件で探した結果をページに分けて出力の形にする。"""
+    """引数を確かめ、条件で探した結果をページに分けて、選んだ項目だけの出力の形にする。"""
     # 件数が範囲の外
     if not 1 <= limit <= MAX_LIMIT:
         raise ArgumentError("limit", f"1〜{MAX_LIMIT} の整数で渡してください")
+    fields = resolve_fields(view, include=include, exclude=exclude)
     workspace = load_workspace(root)
-    results = search_items(workspace, search_filter, detailed=response_format == "detailed")
-    return page_results(
-        results,
+    hits = search_items(workspace, search_filter)
+    total_chars = sum(hit.chars for hit in hits)
+    # 件数だけ: 一覧を返さず、タグごとの件数を添える
+    if count_only:
+        return {"total": len(hits), "total_chars": total_chars, "tag_counts": count_tags(hits)}
+    page = page_results(
+        hits,
         search_filter,
         limit=limit,
         cursor=cursor,
         stray_tags=list_stray_tags(workspace, search_filter),
     )
+    return {
+        "items": [build_row(workspace, hit, fields) for hit in page["items"]],
+        "total": page["total"],
+        "total_chars": total_chars,
+        "next_cursor": page["next_cursor"],
+        "hint": page["hint"],
+        "omitted": [name for name in FIELD_NAMES if name not in fields],
+    }
 
 
 def run_show(root: Path, item_id: str) -> dict[str, Any]:

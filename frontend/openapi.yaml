@@ -1,0 +1,246 @@
+# React のプレビューが読む、サーバーの配信の API（インターフェース定義『記録の取得』『レビュー中のコメントの読み取り』『保存待ちの編集の読み取り』『スレッドの読み取り』）
+openapi: 3.1.0
+info:
+  title: mindstella preview
+  version: 0.0.0
+paths:
+  /api/records:
+    get:
+      operationId: getRecords
+      summary: ワークスペースの記録をその場で読んで返す
+      responses:
+        "200":
+          description: ワークスペースの記録
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Records"
+        "422":
+          description: config.yaml 以外の YAML がスキーマに合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/comments:
+    get:
+      operationId: getComments
+      summary: レビュー中のコメントと書きかけを返す
+      responses:
+        "200":
+          description: レビュー中のコメントと書きかけ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comments"
+  /api/edits:
+    get:
+      operationId: getEdits
+      summary: 保存待ちの編集を返す
+      responses:
+        "200":
+          description: 保存待ちの編集
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Edits"
+  /api/threads:
+    get:
+      operationId: getThreads
+      summary: スレッドを書き込みと状態の記録ごと返す
+      responses:
+        "200":
+          description: スレッド
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Threads"
+components:
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+    Item:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { type: string }
+        category: { type: string }
+        phase: { type: string }
+      additionalProperties: true
+    Deliverable:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        doc: { type: string }
+    Settings:
+      type: object
+      required: [summary, phases, targets, categories, target_label]
+      properties:
+        summary: { type: string }
+        description: { type: string }
+        target_label: { type: string }
+        phases:
+          type: array
+          items: { type: string }
+        targets:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string }
+        categories:
+          type: array
+          items:
+            type: object
+            required: [name, target]
+            properties:
+              name: { type: string }
+              target: { type: string }
+        goal:
+          type: object
+          required: [deliverables]
+          properties:
+            deliverables:
+              type: array
+              items: { $ref: "#/components/schemas/Deliverable" }
+        display:
+          type: object
+          properties:
+            visible_kinds:
+              type: array
+              items: { $ref: "#/components/schemas/Kind" }
+      additionalProperties: true
+    Kind:
+      type: string
+      enum: [decisions, tasks, research, docs, terms, notes, logs]
+    ProgressCell:
+      type: object
+      required: [phase, settled, total]
+      properties:
+        phase: { type: string }
+        settled: { type: integer }
+        total: { type: integer }
+    NextCandidate:
+      type: object
+      required: [id, title, phase, weight, followers]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        phase: { type: [string, "null"] }
+        weight: { type: [string, "null"] }
+        followers: { type: integer }
+    Goal:
+      type: object
+      required: [has_goal, remaining_deliverables, phase_progress]
+      properties:
+        has_goal: { type: boolean }
+        remaining_deliverables:
+          type: array
+          items:
+            type: object
+            required: [title]
+            properties:
+              title: { type: string }
+              doc: { type: [string, "null"] }
+        phase_progress:
+          type: array
+          items: { $ref: "#/components/schemas/ProgressCell" }
+      additionalProperties: true
+    CategoryProgress:
+      type: object
+      required: [category, cells, settled, total]
+      properties:
+        category: { type: string }
+        cells:
+          type: array
+          items: { $ref: "#/components/schemas/ProgressCell" }
+        settled: { type: integer }
+        total: { type: integer }
+    Derived:
+      type: object
+      required: [next, goal, progress]
+      properties:
+        next:
+          type: array
+          items: { $ref: "#/components/schemas/NextCandidate" }
+        goal: { $ref: "#/components/schemas/Goal" }
+        progress:
+          type: array
+          items: { $ref: "#/components/schemas/CategoryProgress" }
+    ItemList:
+      type: array
+      items: { $ref: "#/components/schemas/Item" }
+    Records:
+      type: object
+      required: [settings, decisions, tasks, research, docs, terms, notes, logs, derived, built_at]
+      properties:
+        settings: { $ref: "#/components/schemas/Settings" }
+        decisions: { $ref: "#/components/schemas/ItemList" }
+        tasks: { $ref: "#/components/schemas/ItemList" }
+        research: { $ref: "#/components/schemas/ItemList" }
+        docs: { $ref: "#/components/schemas/ItemList" }
+        terms: { $ref: "#/components/schemas/ItemList" }
+        notes: { $ref: "#/components/schemas/ItemList" }
+        logs: { $ref: "#/components/schemas/ItemList" }
+        derived: { $ref: "#/components/schemas/Derived" }
+        built_at: { type: string }
+      additionalProperties: true
+    Comments:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id: { type: string }
+            additionalProperties: true
+      additionalProperties: true
+    Edits:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id: { type: string }
+            additionalProperties: true
+      additionalProperties: true
+    Post:
+      type: object
+      required: [seen]
+      properties:
+        seen: { type: boolean }
+      additionalProperties: true
+    Thread:
+      type: object
+      required: [id, status, posts]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [open, closed] }
+        posts:
+          type: array
+          items: { $ref: "#/components/schemas/Post" }
+      additionalProperties: true
+    Threads:
+      type: object
+      required: [threads]
+      properties:
+        threads:
+          type: array
+          items: { $ref: "#/components/schemas/Thread" }
+      additionalProperties: true

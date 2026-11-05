@@ -1,0 +1,47 @@
+title: "タグの並び"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/tag-list.ts#MindmapPreview.tagList"
+story: "Preview/TagList"
+states:
+  - name: OneMain
+    description: 主題のタグが 1 つと、主題でないタグが 1 つ
+    args:
+      - name: values
+        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}]'
+  - name: TwoMain
+    description: 主題のタグが 2 つ。主題を先頭へ寄せず、記録の順のまま並べる
+    args:
+      - name: values
+        value: '[{"name": "mindstella"}, {"name": "ゴールと設定", "main": true}, {"name": "画面", "main": true}]'
+  - name: NoMain
+    description: 主題のタグが無い。どのタグもマーカーを持たない
+    args:
+      - name: values
+        value: '[{"name": "mindstella"}, {"name": "タスク"}]'
+  - name: StringTags
+    description: スレッドのタグのように名前の文字列の並びを渡したとき。どれも主題でないタグとして出す
+    args:
+      - name: values
+        value: '["通知", "画面"]'
+  - name: LongNarrow
+    description: 幅 320px で長い名前の主題のタグを並べる。収まらないタグは次の行へ回し、マーカーは名前と同じ行に残す
+    args:
+      - name: values
+        value: '[{"name": "すべての画面の絞り込みとドロワーの並び", "main": true}, {"name": "ゴールと設定"}, {"name": "タスク"}]'
+lead: 項目のタグを記録の順のまま並べる。主題のタグは枠と文字を 1 段濃くし、名前の前に二重丸のマーカーを置く。
+args:
+  - name: values
+    type: オブジェクトの配列
+    required: false
+    default: '[]'
+    description: 項目の `tags`（`{name, main?}` の並び）。`main` が `true` のタグを主題として出す。スレッドのタグのように名前の文字列の並びを渡したときは、どれも主題でないタグとして出す
+    status: planned
+accessibility:
+  - 二重丸のマーカーは `aria-hidden` にし、名前の前に読み上げだけの「主題」の文字を置く（読み上げは「主題 画面」）
+  - 主題のタグに `title` で「主題」を持たせ、ポインターを重ねたときに文字で伝える
+  - 色だけに頼らず、二重丸のマーカーと枠の濃さで主題のタグを見分ける
+status: planned
+introduced:
+  pr: 385
+notes:
+  モック: '`dev/mock/components/main-tag/index.html`（採用は案 A: 二重丸）'
+test_file: tests/integration/storybook/test_tag_list_stories.py

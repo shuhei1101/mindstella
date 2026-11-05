@@ -25,9 +25,9 @@ def test_normal(
     """項目とスレッドが使うタグを、表記の違いをまとめて件数の多い順に返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", tags=["API"]),
-        make_item("D-2", tags=["画面"]),
-        make_item("T-1", tags=["ａｐｉ"]),
+        make_item("D-1", tags=[{"name": "API"}]),
+        make_item("D-2", tags=[{"name": "画面"}]),
+        make_item("T-1", tags=[{"name": "ａｐｉ"}]),
         make_item("N-1"),
     )
     write_threads(root, make_thread("TH-1", tags=["api", "画面"]))

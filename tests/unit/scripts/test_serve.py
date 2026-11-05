@@ -186,6 +186,45 @@ def test_url_of(
     assert len(registry._servers) == 1
 
 
+def _start_named(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    names: list[str],
+) -> dict[str, dict[str, Any]]:
+    """名前のワークスペースを並びの順に作って start し、名前 → 一覧に出るはずの要素を返す。"""
+    started: dict[str, dict[str, Any]] = {}
+    for name in names:
+        root = make_workspace(make_item("D-1"), name=name)
+        url, _started = registry.start(root)
+        started[name] = {"workspace": str(root.resolve()), "port": _port_of(url)}
+    return started
+
+
+@pytest.mark.parametrize(
+    ("started_names", "expected_names"),
+    [
+        pytest.param(["b", "a"], ["a", "b"], id="two_previews"),
+        pytest.param([], [], id="no_previews"),
+    ],
+)
+def test_listing(
+    registry: serve.PreviewRegistry,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    started_names: list[str],
+    expected_names: list[str],
+) -> None:
+    """ワークスペースの昇順に並べる（正常系）。"""
+    # 準備
+    started = _start_named(registry, make_workspace, make_item, started_names)
+    expected = [started[name] for name in expected_names]
+    # 実行
+    result = registry.listing()
+    # 検証
+    assert result == expected
+
+
 def _start_expecting_mismatch(registry: serve.PreviewRegistry, root: Path) -> list[str]:
     """start が SchemaMismatchError を送ることを確かめ、その lines を返す。"""
     with pytest.raises(SchemaMismatchError) as raised:
@@ -565,6 +604,84 @@ def test_index_response_when_template_invalid(tmp_path: Path) -> None:
     (preview_dir / builder.SCRIPT_FILES[-1]).write_text("</script>", encoding="utf-8")
     # 実行
     response = serve.index_response(preview_dir)
+    # 検証
+    assert response.status == 500
+    assert response.content_type == "application/problem+json; charset=utf-8"
+
+
+def _write_spa_dir(spa_dir: Path) -> None:
+    """SPA の出力のフォルダに index.html と assets/app.js を置く。"""
+    (spa_dir / "assets").mkdir(parents=True)
+    (spa_dir / "index.html").write_text('<div id="root"></div>', encoding="utf-8")
+    (spa_dir / "assets" / "app.js").write_text("console.log('app');", encoding="utf-8")
+
+
+def test_spa_response(tmp_path: Path) -> None:
+    """出力のファイルを返す（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    # 実行
+    response = serve.spa_response(spa_dir, "/assets/app.js")
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "text/javascript; charset=utf-8"
+    assert response.body == b"console.log('app');"
+
+
+@pytest.mark.parametrize(
+    "sub_path",
+    [pytest.param("/decisions", id="route"), pytest.param("/", id="root")],
+)
+def test_spa_response_when_client_route(tmp_path: Path, sub_path: str) -> None:
+    """出力に無いパスは index.html（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    # 実行
+    response = serve.spa_response(spa_dir, sub_path)
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "text/html; charset=utf-8"
+    assert response.body == b'<div id="root"></div>'
+
+
+@pytest.mark.parametrize(
+    "sub_path",
+    [pytest.param("/../secret.txt", id="dot"), pytest.param("/%2e%2e/secret.txt", id="encoded")],
+)
+def test_spa_response_when_outside(tmp_path: Path, sub_path: str) -> None:
+    """出力の外を指すパスは index.html（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    (tmp_path / "secret.txt").write_text("secret", encoding="utf-8")
+    # 実行
+    response = serve.spa_response(spa_dir, sub_path)
+    # 検証
+    assert response.body == b'<div id="root"></div>'
+
+
+def test_spa_response_when_unknown_suffix(tmp_path: Path) -> None:
+    """表に無い拡張子は application/octet-stream（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    _write_spa_dir(spa_dir)
+    (spa_dir / "assets" / "app.js.map").write_text("{}", encoding="utf-8")
+    # 実行
+    response = serve.spa_response(spa_dir, "/assets/app.js.map")
+    # 検証
+    assert response.status == 200
+    assert response.content_type == "application/octet-stream"
+
+
+def test_spa_response_when_index_missing(tmp_path: Path) -> None:
+    """index.html が無いと 500（正常系）。"""
+    # 準備
+    spa_dir = tmp_path / "spa"
+    spa_dir.mkdir()
+    # 実行
+    response = serve.spa_response(spa_dir, "/")
     # 検証
     assert response.status == 500
     assert response.content_type == "application/problem+json; charset=utf-8"

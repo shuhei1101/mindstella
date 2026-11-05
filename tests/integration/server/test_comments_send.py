@@ -367,8 +367,8 @@ def test_normal_when_entered_to_claude_code(
         no_target,
     )
     pane = start_claude_pane(mode="user", cwd=root)
-    server = start_server(extra_env=pane.env, cwd=root)
-    opened = server.call("preview_url", workspace=str(root))
+    server = start_server()
+    opened = server.call("preview_url", workspace=str(root), session=pane.session)
     assert opened.data is not None
     started = time.monotonic()
     # 実行
@@ -404,8 +404,8 @@ def test_normal_when_queued(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1", body="案 A にする"))
     pane = start_claude_pane(mode="queue", cwd=root)
-    server = start_server(extra_env=pane.env, cwd=root)
-    opened = server.call("preview_url", workspace=str(root))
+    server = start_server()
+    opened = server.call("preview_url", workspace=str(root), session=pane.session)
     assert opened.data is not None
     # 実行
     result = post_json(str(opened.data["url"]), SEND_PATH, {"ids": ["C-1"]})
@@ -429,8 +429,8 @@ def test_normal_when_not_entered(
     root = make_workspace(make_item("D-1"))
     write_comments(root, make_comment("C-1", body="案 A にする"))
     pane = start_claude_pane(mode="silent", cwd=root)
-    server = start_server(extra_env=pane.env, cwd=root)
-    opened = server.call("preview_url", workspace=str(root))
+    server = start_server()
+    opened = server.call("preview_url", workspace=str(root), session=pane.session)
     assert opened.data is not None
     started = time.monotonic()
     # 実行
@@ -449,3 +449,67 @@ def test_normal_when_not_entered(
         time.sleep(POLL_INTERVAL_SEC)
     assert "Claude Code" in server.stderr_text()
     assert "WARNING" in server.stderr_text()
+
+
+def test_normal_when_two_sessions(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+) -> None:
+    """別々のペインのセッションが別々のワークスペースのプレビューを開くと、それぞれから送ったコメントがそれぞれのペインに貼られる（正常系）。"""
+    # 準備
+    first_root = make_workspace(make_item("D-1"), name="a")
+    second_root = make_workspace(make_item("D-1"), name="b")
+    write_comments(first_root, make_comment("C-1", body="案 A にする"))
+    write_comments(second_root, make_comment("C-1", body="案 B にする"))
+    first_pane = start_claude_pane(mode="user", cwd=first_root)
+    second_pane = start_claude_pane(mode="user", cwd=second_root)
+    server = start_server()
+    first = server.call("preview_url", workspace=str(first_root), session=first_pane.session)
+    second = server.call("preview_url", workspace=str(second_root), session=second_pane.session)
+    assert first.data is not None
+    assert second.data is not None
+    # 実行
+    first_result = post_json(str(first.data["url"]), SEND_PATH, {"ids": ["C-1"]})
+    second_result = post_json(str(second.data["url"]), SEND_PATH, {"ids": ["C-1"]})
+    # 検証
+    assert (first_result.status, first_result.json()["entered"]) == (201, True)
+    assert (second_result.status, second_result.json()["entered"]) == (201, True)
+    assert len(first_pane.lines()) == 1
+    assert f'"cwd": "{first_root.resolve()}"' in first_pane.lines()[0]
+    assert len(second_pane.lines()) == 1
+    assert f'"cwd": "{second_root.resolve()}"' in second_pane.lines()[0]
+
+
+def test_normal_when_session_ended(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+) -> None:
+    """宛先の Claude Code のプロセスが終わっていれば、ペインへ貼らずに入力できなかったと返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, make_comment("C-1", body="案 A にする"))
+    pane = start_claude_pane(mode="user", cwd=root)
+    server = start_server()
+    opened = server.call("preview_url", workspace=str(root), session=pane.session)
+    assert opened.data is not None
+    pane.end_claude()
+    # 実行
+    result = post_json(str(opened.data["url"]), SEND_PATH, {"ids": ["C-1"]})
+    # 検証
+    assert result.status == 201
+    assert result.json()["entered"] is False
+    assert "ユーザーからのコメント" not in pane.capture()
+    assert [item["id"] for item in read_threads(root)] == ["TH-1"]
+    # 標準エラーの読み取りは別のスレッドなので、理由の行が届くまで少し待つ
+    deadline = time.monotonic() + TRANSCRIPT_WAIT_SEC
+    while "プロセス" not in server.stderr_text() and time.monotonic() < deadline:
+        time.sleep(POLL_INTERVAL_SEC)
+    assert f"Claude Code のプロセス {pane.session['claude_pid']} が無い" in server.stderr_text()

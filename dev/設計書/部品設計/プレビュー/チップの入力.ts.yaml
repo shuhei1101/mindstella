@@ -1,0 +1,92 @@
+title: "チップの入力"
+implementation: "plugins/mindstella/skills/mindmap/preview/components/chips-input.ts#MindmapPreview.chipsInput"
+story: "Preview/ChipsInput"
+states:
+  - name: Default
+    description: 参照の ID を等幅の文字のチップで並べる。主題のトグルを持たない
+    args:
+      - name: values
+        value: '["D-1", "T-3"]'
+      - name: monospace
+        value: 'true'
+  - name: MainToggle
+    description: 項目のタグ。主題のタグ 1 つ（トグルが押した状態の二重丸）と、主題でないタグ 2 つ（押していない状態の輪）
+    args:
+      - name: values
+        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}, {"name": "通知"}]'
+      - name: mainToggle
+        value: 'true'
+      - name: suggestions
+        value: '["画面", "記録の形", "通知", "タスク"]'
+  - name: MainToggleDisabled
+    description: 削除を溜めた項目のタグ。入力欄・外すボタン・主題のトグルを押せない
+    args:
+      - name: values
+        value: '[{"name": "画面", "main": true}, {"name": "記録の形"}]'
+      - name: mainToggle
+        value: 'true'
+      - name: disabled
+        value: 'true'
+  - name: MainToggleLongNarrow
+    description: 幅 320px で長い名前の主題のタグを並べる。収まらないチップは次の行へ回し、トグルは名前と同じ行に残す
+    args:
+      - name: values
+        value: '[{"name": "すべての画面の絞り込みとドロワーの並び", "main": true}, {"name": "ゴールと設定"}]'
+      - name: mainToggle
+        value: 'true'
+lead: 値を並べるキー（タグ・参照・設定の名前の並び）の入力。値ごとのチップと、値を追加する入力欄を並べる。項目のタグでは、チップの左端のトグルで主題を付け外しする。
+args:
+  - name: controlId
+    type: 文字列
+    required: true
+    description: 入力欄の `id`（ラベルの `for` が指す）
+  - name: name
+    type: 文字列
+    required: true
+    description: キーの表示名。チップの並びの `aria-label` と、入力欄の読み上げ名「{name}を追加」に使う
+  - name: hint
+    type: 文字列
+    required: true
+    description: 入力欄のプレースホルダ
+  - name: values
+    type: 配列
+    required: true
+    description: 今の値の並び。`mainToggle` が `true` のときは `{name, main?}` の並び、それ以外は文字列の並び
+  - name: suggestions
+    type: 配列
+    required: true
+    description: 入力欄に出す候補（記録で使われているタグ）。候補を出さないときは `null`。候補に無い値も入れられる
+  - name: monospace
+    type: 真偽値
+    required: true
+    description: 真のとき、チップを等幅の文字で出す（参照の ID）
+  - name: mainToggle
+    type: 真偽値
+    required: false
+    default: 'false'
+    description: 真のとき、チップの名前の前に主題のトグルを置き、値を `{name, main?}` で持つ。項目のタグでだけ真にする。入力欄から追加したタグは主題でないまま並べる
+    status: planned
+  - name: disabled
+    type: 真偽値
+    required: true
+    description: 真のとき、入力欄・チップを外すボタン・主題のトグルを押せなくする（削除を溜めた項目）
+events:
+  - name: change
+    when: 値を追加したとき・チップを外したとき・主題のトグルを押したとき
+    value: '`onChange(values, removed)`。`values` は新しい並び（`mainToggle` が真のときは `{name, main?}` の並びで、主題でないタグは `main` を持たない）、`removed` は外した値の名前（外したときだけ。それ以外は `null`）'
+    description: 使う側は新しい並びを保存待ちの編集として溜める
+uses:
+  - component: dev/設計書/部品設計/プレビュー/タグの並び.ts#
+    how: 主題のチップに、タグの並びと同じ二重丸のマーカーと枠の濃さを当てる
+accessibility:
+  - 主題のトグルは `button` で、読み上げ名「{タグ} を主題」と押した状態（`aria-pressed`）を読み上げる。`title` は主題のとき「主題を外す」、それ以外は「主題にする」
+  - 主題のトグルの押せる範囲は縦横 24px にする
+  - トグルを押した後も、同じタグのトグルにフォーカスを残す
+  - チップを外すボタンの読み上げ名は「{値} を外す」
+  - 主題は色だけに頼らず、二重丸と輪の形で見分ける
+status: planned
+introduced:
+  pr: 385
+notes:
+  モック: '`dev/mock/components/main-tag/index.html` の「編集のタグの入力」「トグルのホバー・キーボードのフォーカス」「長いタグ・狭い幅」（採用は案 A: 二重丸）'
+test_file: tests/integration/storybook/test_chips_input_stories.py

@@ -241,3 +241,29 @@ def test_normal_when_html_body_problems_found(
         ("missing_body", ".mindstella/docs.yaml", "A-1", "items[0].body"),
         ("orphan_body", ".mindstella/docs/A-9.html", None, None),
     }
+
+
+def test_normal_when_string_tags(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """前の版の形式の文字列のタグを schema の問題として拾い、移し替えを案内する（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=["通知"]),
+        make_item("D-2", tags=[{"name": "画面", "main": True}]),
+    )
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    assert _problem_keys(result.data["problems"]) == {
+        ("schema", ".mindstella/decisions.yaml", "D-1", "items[0].tags[0]"),
+    }
+    assert "/mindstella:upgrade" in result.data["problems"][0]["detail"]
+    assert snapshot_tree(root) == before

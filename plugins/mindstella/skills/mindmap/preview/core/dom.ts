@@ -110,6 +110,8 @@ namespace MindmapPreview {
     star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>',
     spin: '<path d="M12 3a9 9 0 1 0 9 9"/>',
     offline: '<path d="M3 3l18 18"/><path d="M8.5 8.6A4.5 4.5 0 0 0 7 17h10.5M16 10.2A4.5 4.5 0 0 1 20.2 16"/>',
+    main: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/>',
+    mainOff: '<circle cx="12" cy="12" r="8"/>',
   } as const;
 
   /** アイコンの名前 */
@@ -159,7 +161,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 左から重ねるパネル（絞り込みのドロワー・コメントの一覧）が覆った本文の部品に `inert` を付け、外す関数を返す */
+  /** ピン止めしたコメントの一覧が覆った本文の部品に `inert` を付け、外す関数を返す */
   export function inertBehind(panel: HTMLElement): () => void {
     // 開く動き（`transform`）の途中でも、重なる先の位置で覆う範囲を決めるため、配置の位置から求める
     const covered = {
@@ -199,6 +201,28 @@ namespace MindmapPreview {
     };
   }
 
+  /** グレーアウトで覆う間、左から重ねるパネルと詳細パネル（`aside.panel`）を除いた本文の部品に `inert` を付け、外す関数を返す */
+  export function inertOutside(panel: HTMLElement): () => void {
+    const attached: HTMLElement[] = [];
+    /** パネルか詳細パネルを中に持つ要素は子をたどり、それ以外はまとめて止める */
+    const visit = (element: HTMLElement): void => {
+      // パネル自身・詳細パネル・始めから `inert` の要素（その子も止まっている）には付けない
+      if (element === panel || element.inert || element.matches("aside.panel")) return;
+      if (element.contains(panel) || element.querySelector("aside.panel") !== null) {
+        for (const child of element.children) if (child instanceof HTMLElement) visit(child);
+        return;
+      }
+      element.inert = true;
+      attached.push(element);
+    };
+    // パネルを中に持たない本文は、子ではなく `main` 自体を止める
+    const main = document.querySelector("main");
+    if (main !== null) visit(main);
+    return () => {
+      for (const element of attached) element.inert = false;
+    };
+  }
+
   /** 影響度（大・中・小）の 3 本の目盛りと文字 */
   export function impactBadge(weight: string | undefined, labeled = false): Node {
     const levels = ["大", "中", "小"];
@@ -214,13 +238,6 @@ namespace MindmapPreview {
         labeled ? `影響度 ${weight}` : weight,
       ],
     });
-  }
-
-  /** タグを並べる */
-  export function tagList(values: readonly string[] | undefined): Node {
-    const fragment = document.createDocumentFragment();
-    for (const value of values ?? []) fragment.append(h({ tag: "span", attrs: { class: "tag" }, children: [value] }));
-    return fragment;
   }
 
   /** 納品物の印（箱のアイコンと文字） */

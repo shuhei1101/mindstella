@@ -896,7 +896,7 @@ def _review_item(item_id: str, body: str) -> dict[str, object]:
 
 
 # 詳細パネルに渡す、下端の入力欄とレビュー中のコメントと行の操作の引数を作り、文書に置く関数
-OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls}) => {
+OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, removed, editing, editingIn = "detail", full, calls, reviewOrder, expanded = []}) => {
     const index = MindmapPreview.buildIndex(data);
     const noop = () => {};
     const count = (name) => () => { calls[name] += 1; };
@@ -906,7 +906,7 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
         full,
         on: {
             open: noop, close: noop, full: count("full"), back: noop, forward: noop, diagram: noop,
-            heading: noop,
+            heading: noop, order: (value) => { (calls.order ??= []).push(value); },
         },
         comment: {
             form: {
@@ -920,14 +920,16 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
                 editingIn,
                 editError: null,
                 editBody: null,
+                expanded: new Set(expanded),
                 on: {
                     edit: noop, saveEdit: noop, cancelEdit: count("cancelEdit"), remove: noop,
-                    restore: noop,
+                    restore: noop, fold: (...a) => { (calls.fold ??= []).push(a); },
                 },
             },
         },
         highlight: null,
         diff: null,
+        ...(reviewOrder == null ? {} : {reviewOrder}),
     });
     document.body.append(panel);
     if (full) panel.showModal();
@@ -939,20 +941,22 @@ OPEN_REVIEW_PANEL_FUNCTION = """const openReviewPanel = async ({data, reviews, r
 REVIEW_ROWS_SCRIPT = (
     OPEN_REVIEW_PANEL_FUNCTION
     + """
-async ({data, reviews, removed, editing, editingIn}) => {
+async ({data, reviews, removed, editing, editingIn, reviewOrder}) => {
     const calls = {full: 0, cancelEdit: 0};
-    const panel = await openReviewPanel({data, reviews, removed, editing, editingIn, full: false, calls});
+    const panel = await openReviewPanel({
+        data, reviews, removed, editing, editingIn, full: false, calls, reviewOrder,
+    });
     const section = panel.querySelector(".d-review");
     const labelOf = (button) => button.getAttribute("aria-label") ?? button.textContent.trim();
     return {
         count: section.querySelector("h3 .count").textContent.trim(),
         rows: [...section.querySelectorAll("li")].map((row) => ({
-            buttons: [...row.querySelectorAll("button")].map(labelOf),
+            buttons: [...row.querySelectorAll("button:not([hidden])")].map(labelOf),
             status: [...row.querySelectorAll('[role="status"]')].map((status) => status.textContent.trim()),
             hasField: row.querySelector("textarea") !== null,
-            body: row.querySelector(".review-body")?.textContent ?? null,
+            body: row.querySelector(".review-body")?.textContent.trim() ?? null,
         })),
-        focuses: [...section.querySelectorAll("[data-focus]")].map((element) => element.getAttribute("data-focus")),
+        focuses: [...section.querySelectorAll("li [data-focus]:not([hidden])")].map((element) => element.getAttribute("data-focus")),
     };
 }"""
 )
@@ -981,6 +985,7 @@ def test_detail_panel_when_review_rows(
             ],
             "removed": [_review_item("C-2", "消したコメント")],
             "editing": "C-3",
+            "reviewOrder": "oldest",
         },
     )
     # 検証
@@ -1011,6 +1016,237 @@ def test_detail_panel_when_review_rows(
         "detail-restore:C-2",
         "detail-edit:C-3",
     ]
+
+
+# 頭の 1 行と番号付きの 7 行の、改行で 8 行の本文（各行は折り返さない短さ）
+LIST_REVIEW_BODY = "\n".join(["D-1 の画面で気になった点をまとめます。", *(f"{number}. {number} 行目の気づき" for number in range(1, 8))])
+
+# レビュー中のコメントの行の本文の畳み方・リストの見た目・開閉のボタンを調べ、C-63 の開閉のボタンを押す
+REVIEW_FOLD_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews, expanded}) => {
+    const calls = {full: 0, cancelEdit: 0};
+    const panel = await openReviewPanel({data, reviews, removed: [], editing: null, full: false, calls, expanded});
+    // 開閉のボタンを出すかの測りは、描いた後の ResizeObserver の通知で決まる
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const norm = (text) => text.replace(/\\s+/g, " ").trim();
+    const rowOf = (id) => panel.querySelector(`.d-review li[data-comment="${id}"]`);
+    const observe = (id) => {
+        const row = rowOf(id);
+        const body = row.querySelector(".review-body");
+        const more = row.querySelector(".review-more");
+        const moreRow = row.querySelector(".review-more-row");
+        const listItem = body.querySelector("ol > li");
+        return {
+            folded: body.classList.contains("folded"),
+            hasList: body.querySelector("ol") !== null,
+            listItemBorder: listItem === null ? null : getComputedStyle(listItem).borderBottomWidth,
+            listItemDisplay: listItem === null ? null : getComputedStyle(listItem).display,
+            moreShown: more !== null && !more.hidden && moreRow !== null && getComputedStyle(moreRow).display !== "none",
+            moreText: more === null || more.hidden ? null : norm(more.textContent),
+            moreFocus: more === null || more.hidden ? null : more.getAttribute("data-focus"),
+        };
+    };
+    const long = observe("C-63");
+    const short = observe("C-65");
+    rowOf("C-63").querySelector(".review-more").click();
+    return {long, short, fold: calls.fold ?? []};
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("expanded", "expected_long", "expected_fold"),
+    [
+        pytest.param(
+            [],
+            {
+                "folded": True,
+                "hasList": True,
+                "listItemBorder": "0px",
+                "listItemDisplay": "list-item",
+                "moreShown": True,
+                "moreText": "続きを読む",
+                "moreFocus": "detail-more:C-63",
+            },
+            [["C-63", True]],
+            id="folded",
+        ),
+        pytest.param(
+            ["C-63"],
+            {
+                "folded": False,
+                "hasList": True,
+                "listItemBorder": "0px",
+                "listItemDisplay": "list-item",
+                "moreShown": True,
+                "moreText": "折りたたむ",
+                "moreFocus": "detail-more:C-63",
+            },
+            [["C-63", False]],
+            id="opened",
+        ),
+    ],
+)
+def test_detail_panel_when_review_folded(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    expanded: list[str],
+    expected_long: dict[str, Any],
+    expected_fold: list[list[Any]],
+) -> None:
+    """レビュー中のコメントの長い本文を Markdown で描いて畳む（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_preview_styles()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_FOLD_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-63", LIST_REVIEW_BODY), _review_item("C-65", "案 B も見たい")],
+            "expanded": expanded,
+        },
+    )
+    # 検証
+    assert result["long"] == expected_long
+    assert result["short"] == {
+        "folded": False,
+        "hasList": False,
+        "listItemBorder": None,
+        "listItemDisplay": None,
+        "moreShown": False,
+        "moreText": None,
+        "moreFocus": None,
+    }
+    assert result["fold"] == expected_fold
+
+
+# レビュー中のコメントの行の ID の並びと、並びの切り替えの文字と読み上げの名前を調べる
+REVIEW_ORDER_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews, removed, reviewOrder}) => {
+    const calls = {full: 0, cancelEdit: 0};
+    const panel = await openReviewPanel({
+        data, reviews, removed, editing: null, full: false, calls, reviewOrder,
+    });
+    const section = panel.querySelector(".d-review");
+    const toggle = section.querySelector("button.review-order");
+    return {
+        ids: [...section.querySelectorAll("li")].map(
+            (row) => row.querySelector("[data-focus]").getAttribute("data-focus").split(":")[1],
+        ),
+        toggle: toggle === null ? null : {
+            text: toggle.textContent.trim(),
+            label: toggle.getAttribute("aria-label"),
+        },
+    };
+}"""
+)
+
+
+@pytest.mark.parametrize(
+    ("reviews", "removed", "review_order", "expected"),
+    [
+        pytest.param(
+            ["C-1", "C-3"],
+            ["C-2"],
+            None,
+            {
+                "ids": ["C-3", "C-2", "C-1"],
+                "toggle": {"text": "新しい順", "label": "コメントの並び: 新しい順"},
+            },
+            id="default_newest",
+        ),
+        pytest.param(
+            ["C-1", "C-3"],
+            ["C-2"],
+            "oldest",
+            {
+                "ids": ["C-1", "C-2", "C-3"],
+                "toggle": {"text": "古い順", "label": "コメントの並び: 古い順"},
+            },
+            id="oldest",
+        ),
+        pytest.param(["C-1"], [], None, {"ids": ["C-1"], "toggle": None}, id="single_row"),
+    ],
+)
+def test_detail_panel_when_review_order(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    reviews: list[str],
+    removed: list[str],
+    review_order: str | None,
+    expected: dict[str, object],
+) -> None:
+    """レビュー中のコメントを既定は新しい順に並べ、2 件以上のときだけ並びの切り替えを置く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        REVIEW_ORDER_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item(item_id, f"{item_id} の本文") for item_id in reviews],
+            "removed": [_review_item(item_id, f"{item_id} の本文") for item_id in removed],
+            "reviewOrder": review_order,
+        },
+    )
+    # 検証
+    assert result == expected
+
+
+# 並びの切り替えを押し、on.order の呼ばれ方とハッシュを調べる
+PRESS_REVIEW_ORDER_SCRIPT = (
+    OPEN_REVIEW_PANEL_FUNCTION
+    + """
+async ({data, reviews}) => {
+    history.replaceState(null, "", "#keep");
+    const calls = {full: 0, cancelEdit: 0, order: []};
+    const panel = await openReviewPanel({
+        data, reviews, removed: [], editing: null, full: false, calls,
+    });
+    panel.querySelector(".d-review button.review-order").click();
+    return {calls: calls.order, hash: location.hash};
+}"""
+)
+
+
+def test_detail_panel_when_review_order_changed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """並びの切り替えを押すと on.order を入れ替えた後の並びで呼ぶ（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", status="未決定")])
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        PRESS_REVIEW_ORDER_SCRIPT,
+        {
+            "data": data,
+            "reviews": [_review_item("C-1", "案 A にする"), _review_item("C-2", "案 B も見たい")],
+        },
+    )
+    # 検証（URL のハッシュは変わらない）
+    assert result == {"calls": ["oldest"], "hash": "#keep"}
 
 
 # 全画面で書き換えの入力欄にフォーカスして Esc を押す前の用意（押した後の結果は別に読む）
@@ -1708,12 +1944,12 @@ def _load_libraries(load_library: LoadLibrary, load_mdmark: LoadMdmark, names: l
             id="unrelated",
         ),
         pytest.param(
-            {"tags": ["要件", "運用"], "date": "2026-10-08"},
-            {"tags": ["要件", "会議"], "date": "2026-10-01"},
+            {"tags": [{"name": "要件"}, {"name": "運用"}], "date": "2026-10-08"},
+            {"tags": [{"name": "要件"}, {"name": "会議"}], "date": "2026-10-01"},
             "dl.d-meta dd.df-key",
             [
                 {"was": "前の値: 2026-10-01", "now": "今の値: 2026-10-08"},
-                {"was": "前の値: 要件、会議", "now": "今の値: 要件、運用"},
+                {"was": "前の値: 要件会議", "now": "今の値: 要件運用"},
             ],
             ["marked", "mdmark", "jsdiff"],
             id="list_and_date",
@@ -1757,6 +1993,89 @@ def test_detail_panel_when_diff_key_words_skipped(
     assert result["allWords"] == 0
     # 前の値・今の値は、今までどおり del.df-was・ins.df-now で並ぶ
     assert result["texts"] == expected_texts
+
+
+# 詳細パネルを開き（diff を渡せば差分つき）、タグの行の span.tag を、置き場所・名前・マーカー・見えている「主題」で返す
+OPEN_TAGS_PANEL_SCRIPT = """async ({data, diff}) => {
+    const index = MindmapPreview.buildIndex(data);
+    const noop = () => {};
+    const panel = MindmapPreview.detailPanel({
+        id: "D-1",
+        index,
+        full: false,
+        on: {open: noop, close: noop, full: noop, back: noop, forward: noop, diagram: noop},
+        comment: null,
+        highlight: null,
+        diff: diff === null ? null : {...diff, added: new Set(), changed: new Set(["D-1"])},
+    });
+    document.body.append(panel);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const row = [...panel.querySelectorAll("dl.d-meta dt")].find((dt) => dt.textContent === "タグ")
+        .nextElementSibling;
+    return [...row.querySelectorAll("span.tag")].map((tag) => {
+        // 「主題」の文字を持つ要素（マーカーの svg を除く）
+        const spoken = [...tag.querySelectorAll("*")].find(
+            (element) => !(element instanceof SVGElement) && element.textContent === "主題",
+        );
+        const rect = spoken?.getBoundingClientRect();
+        return {
+            place: tag.closest("del.df-was") ? "was" : tag.closest("ins.df-now") ? "now" : "current",
+            name: tag.textContent.replace("主題", "").trim(),
+            mark: tag.querySelector('svg[aria-hidden="true"]') !== null,
+            shownText: rect !== undefined && (rect.width > 1 || rect.height > 1),
+        };
+    });
+}"""
+
+
+@pytest.mark.parametrize(
+    ("tags", "history", "diff", "expected"),
+    [
+        pytest.param(
+            [{"name": "画面"}, {"name": "データ", "main": True}],
+            [],
+            None,
+            [
+                {"place": "current", "name": "画面", "mark": False, "shownText": False},
+                {"place": "current", "name": "データ", "mark": True, "shownText": False},
+            ],
+            id="current",
+        ),
+        pytest.param(
+            [{"name": "データ", "main": True}],
+            [{"seq": 1, "at": ENTRY_AT, "before": {"tags": [{"name": "データ"}]}}],
+            DIFF_POINT,
+            [
+                {"place": "was", "name": "データ", "mark": False, "shownText": False},
+                {"place": "now", "name": "データ", "mark": True, "shownText": False},
+            ],
+            id="diff",
+        ),
+    ],
+)
+def test_detail_panel_when_main_tag(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    load_preview_styles: LoadPreviewStyles,
+    load_library: LoadLibrary,
+    load_mdmark: LoadMdmark,
+    make_data: MakeData,
+    make_item: MakeItem,
+    tags: list[dict[str, Any]],
+    history: list[dict[str, Any]],
+    diff: dict[str, Any] | None,
+    expected: list[dict[str, Any]],
+) -> None:
+    """タグの行は主題のマーカーを付けて描き、差分の表示でも前後をタグの並びで描く（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", tags=tags, history=history, seq=1)])
+    load_preview_scripts()
+    load_preview_styles()
+    _load_libraries(load_library, load_mdmark, ["marked", "mdmark", "jsdiff"])
+    # 実行
+    result = preview_page.evaluate(OPEN_TAGS_PANEL_SCRIPT, {"data": data, "diff": diff})
+    # 検証
+    assert result == expected
 
 
 # 本文の行の差分の打ち切りの時間（ミリ秒。`LINE_DIFF_TIMEOUT_MS`）

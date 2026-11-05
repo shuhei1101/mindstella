@@ -710,11 +710,12 @@ def test_normal_when_submission_from_preview(
         raw_files={"mindstella-version.ini": f"{plugin_version()}\n"},
     )
     ws = {"workspace": str(root)}
-    first_server = start_server()
+    server = start_server()
+    first_client = server.client
     # 実行
     # 1 回目の立ち上げ: セットアップが既存のワークスペースの状況を読み、プレビューの URL を示す
-    first_status = first_server.call("status", **ws)
-    served = first_server.call("preview_url", **ws)
+    first_status = first_client.call("status", **ws)
+    served = first_client.call("preview_url", **ws)
     assert served.data is not None
     # 示された URL をブラウザで開き、D-1 の詳細パネルでコメントを溜める
     open_preview(served.data["url"], "#tab=decisions&id=D-1")
@@ -745,22 +746,21 @@ def test_normal_when_submission_from_preview(
     page.locator(f"{COMMENTS_PANEL} li[data-comment='C-3'] input.row-check").uncheck()
     page.locator(SEND_BAND).get_by_role("button", name="まとめて送る").click()
     page.wait_for_selector(f"{BAND_RESULT}.sent", timeout=SEND_TIMEOUT_MS)
-    # Claude Code を閉じる（MCP サーバーが止まる）
-    first_server.close_stdin()
-    first_server.wait_exit()
-    # 立ち上げ直し: 同じワークスペースを渡した新しい MCP サーバーで、セットアップの後に取り込みを再生する
-    second_server = start_server()
-    second_status = second_server.call("status", **ws)
-    pending = second_server.call("threads", **ws, awaiting=True)
+    # Claude Code を閉じる（MCP のクライアントの接続を閉じ、常駐サーバーは止めない）
+    first_client.close()
+    # 立ち上げ直し: 同じ常駐サーバーへつなぎ直した MCP のクライアントで、セットアップの後に取り込みを再生する
+    second_client = server.connect()
+    second_status = second_client.call("status", **ws)
+    pending = second_client.call("threads", **ws, awaiting=True)
     assert pending.data is not None
     decision_thread, doc_thread = (item["id"] for item in pending.data["items"][::-1])
     # 取り込みのステップ: D-1 へのスレッドの書き込みから採用する案を A にして決定済みにし、会話ログに本文を残す
-    decision_read = second_server.call("thread", **ws, id=decision_thread)
-    adopted = second_server.call("adopt", **ws, id="D-1", key="A")
-    updated = second_server.call(
+    decision_read = second_client.call("thread", **ws, id=decision_thread)
+    adopted = second_client.call("adopt", **ws, id="D-1", key="A")
+    updated = second_client.call(
         "update", **ws, id="D-1", item={"status": "決定済み", "answer": "表で見せる"}
     )
-    first_logged = second_server.call(
+    first_logged = second_client.call(
         "add",
         **ws,
         kind="log",
@@ -772,7 +772,7 @@ def test_normal_when_submission_from_preview(
         },
     )
     # 記録した後に、D-1 の ID を含む返信で取り込み済みにし、要約を書く
-    first_replied = second_server.call(
+    first_replied = second_client.call(
         "reply",
         **ws,
         id=decision_thread,
@@ -780,8 +780,8 @@ def test_normal_when_submission_from_preview(
         summary="D-1 の見せ方の回答。案 A で決定",
     )
     # A-1 の箇所を持つスレッドは、本文の 2 行目と選んだ文を添えて会話ログに残し、返信して取り込み済みにする
-    doc_read = second_server.call("thread", **ws, id=doc_thread)
-    second_logged = second_server.call(
+    doc_read = second_client.call("thread", **ws, id=doc_thread)
+    second_logged = second_client.call(
         "add",
         **ws,
         kind="log",
@@ -792,16 +792,16 @@ def test_normal_when_submission_from_preview(
             "body_markdown": f"A-1 の本文の 2 行目「{SUBMISSION_SENTENCE}」へ: {SUBMISSION_LOCATION_BODY}",
         },
     )
-    second_replied = second_server.call(
+    second_replied = second_client.call(
         "reply",
         **ws,
         id=doc_thread,
         body="A-1 の 2 行目を言い換えます",
         summary="A-1 の 2 行目の言い換えの依頼",
     )
-    again = second_server.call("threads", **ws, awaiting=True)
-    # 新しい MCP サーバーが配るプレビューで、スレッドの一覧から D-1 へのスレッドの AI の返信を読み、クローズにする
-    served_again = second_server.call("preview_url", **ws)
+    again = second_client.call("threads", **ws, awaiting=True)
+    # つなぎ直した後に取得したプレビューの URL で、スレッドの一覧から D-1 へのスレッドの AI の返信を読み、クローズにする
+    served_again = second_client.call("preview_url", **ws)
     assert served_again.data is not None
     open_preview(served_again.data["url"])
     open_thread(page, decision_thread)
@@ -809,9 +809,9 @@ def test_normal_when_submission_from_preview(
     page.click(STATUS_BUTTON)
     page.click(REASON_OK)
     page.wait_for_selector(CLOSED_NOTE, timeout=SEND_TIMEOUT_MS)
-    unread_after = second_server.call("thread", **ws, id=decision_thread)
-    open_only = second_server.call("threads", **ws)
-    checked = second_server.call("check", **ws)
+    unread_after = second_client.call("thread", **ws, id=decision_thread)
+    open_only = second_client.call("threads", **ws)
+    checked = second_client.call("check", **ws)
     # 検証
     assert first_status.is_error is False
     assert second_status.is_error is False
@@ -826,6 +826,8 @@ def test_normal_when_submission_from_preview(
     }
     for result in (adopted, updated, first_logged, first_replied, second_logged, second_replied):
         assert result.is_error is False, result.text
+    # 立ち上げ直しの前に開いたプレビューの URL が、立ち上げ直しの後も同じ配信を返す
+    assert served_again.data["url"] == served.data["url"]
     # D-1 の採用する案が A で、決定済みである
     decision = read_yaml(root, "decisions.yaml")["items"][0]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["A"]

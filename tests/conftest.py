@@ -13,7 +13,7 @@ import pytest
 from claude_pane_fixtures import start_claude_pane  # noqa: F401
 
 # 起動スクリプトを隔離して動かす fixture
-from launch_fixtures import ready_venv, sandbox  # noqa: F401
+from launch_fixtures import ready_venv, resident_port, sandbox, serve_fake_status  # noqa: F401
 
 # 単体・結合・E2E が共有する fixture（pytest は conftest の名前空間にある fixture を登録する）
 from workspace_fixtures import (  # noqa: F401
@@ -79,11 +79,11 @@ def run_claude(tmp_path: Path) -> RunClaude:
     config_dir.mkdir()
     env = {**os.environ, "CLAUDE_CONFIG_DIR": str(config_dir)}
 
-    def _run(*args: str) -> subprocess.CompletedProcess[str]:
-        """claude にサブコマンドを渡して実行し、終了コードが 0 以外なら例外にする。"""
+    def _run(*args: str, extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        """claude にサブコマンドを渡して実行し、終了コードが 0 以外なら例外にする。extra_env は環境変数に足す。"""
         return subprocess.run(
             ["claude", *args],
-            env=env,
+            env={**env, **(extra_env or {})},
             capture_output=True,
             text=True,
             encoding="utf-8",

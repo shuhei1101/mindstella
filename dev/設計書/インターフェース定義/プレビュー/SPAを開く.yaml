@@ -1,0 +1,101 @@
+title: SPAを開く
+entry:
+  kind: screen
+  value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数）・`GET /api/edits`（保存待ちの編集の件数）・`GET /api/threads`（スレッドの利用者の未読）'
+flows:
+- name: 正常系
+  summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 検討事項 D-1・D-2 とタスク T-1、利用者の未読の書き込みを持つオープンのスレッド 1 件と、レビュー中のコメント 2 件を持つワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>SV: GET /api/events につなぐ\n  IF-->>ユーザー: トップバーと概要\n```"
+  expected:
+  - トップバーに話し合いの題名があり、タブの帯で概要が選ばれている
+  - 概要のタイルが記録の値で描かれている
+  - トップバーのコメントのボタンに件数 2 と未読の点がある
+  - URL が `/spa/`（search params が付かない）
+  - ブラウザのコンソールにエラーが出ていない
+  test: test_normal
+- name: 正常系（書き換えの知らせ）
+  summary: ツールで記録を書き換えると、開き直さずに概要を描き直す
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 検討事項 D-1 を持つワークスペース
+    notes: 開いた後に MCP の `add` で検討事項を 1 件追加する
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 描き直した概要\n```"
+  expected:
+  - 追加してから 2 秒以内に、タブの帯の検討事項の件数が 1 増える
+  - URL とスクロールの位置が変わらない
+  test: test_normal_when_records_changed
+- name: 正常系（search params が正しくない）
+  summary: '`tab` が決めた値でなければ概要を開き、URL から外す'
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 検討事項 D-1 を持つワークスペース
+    notes: '`/spa/?tab=unknown` で開く'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=unknown を開く\n  IF-->>ユーザー: 概要\n```"
+  expected:
+  - タブの帯で概要が選ばれている
+  - URL の search params に `tab` が無い
+  test: test_normal_when_search_invalid
+- name: 異常系（記録が読めない・422）
+  summary: 記録がスキーマに合わず読めないとき、読めなかった箇所を画面に出す
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 検討事項 D-1 を持ち、`decisions.yaml` の D-1 の `status` を決めた値以外に書き換えたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 422（detail に合わない箇所の行）\n  IF-->>ユーザー: 読めなかった箇所の表示\n```"
+  expected:
+  - 本文の区画に、記録を読めなかったことと `detail` の行が出る
+  - タイルが描かれていない
+  - ブラウザのコンソールに未処理の例外が出ていない
+  test: test_error_when_records_invalid
+- name: 異常系（サーバーが止まった）
+  summary: 書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち上がり直すとつなぎ直す
+  setup:
+  - name: Mock
+    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+  - name: make_workspace
+    description: 検討事項 D-1 を持つワークスペース
+    notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、立ち上げ直して同じワークスペースで `preview_url` を呼ぶ'
+  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの知らせが切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ直す\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を消す\n```"
+  expected:
+  - 止めた後、トップバーに接続が切れたことの表示が出る
+  - 止めた後も、前に読んだ記録の概要のタイルが残っている
+  - 立ち上げ直した後、表示が消えて概要が描かれている
+  test: test_error_when_server_stopped
+lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を読み直して描き直す。
+callers:
+- dev/設計書/シナリオ/単一ユースケース/プレビューを開く#
+request:
+- name: tab
+  type: '''overview'''
+  required: false
+  default: なし（概要を開く）
+  location: query
+  description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す
+  constraints: 決めた値以外は無いものとして扱い、URL から外す
+constraints:
+- item: 通信
+  constraint: サーバーの配信（同じオリジンの `/api/`）と Google Fonts の文字だけへ通信する
+- item: 画面への反映の時間
+  constraint: 書き換えの知らせを受けてから 2 秒以内に描き直す
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
+- item: 接続の状態
+  constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ直しは `EventSource` に任せる
+- item: URL の状態
+  constraint: 画面で見ているものに影響する状態は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する
+refs:
+- dev/設計書/インターフェース定義/サーバー/SPAの配信#
+- dev/設計書/インターフェース定義/サーバー/記録の取得#
+- dev/設計書/インターフェース定義/サーバー/書き換えの知らせ#
+- dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+test_file: tests/integration/preview/test_spa_open.py

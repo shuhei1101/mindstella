@@ -1,0 +1,11 @@
+title: プレビュー / __root
+lead: 子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける。
+components:
+- name: RootLayout
+  title: ルートの外枠
+  kind: コンポーネント
+  container: frontend/src/routes/__root.tsx
+  usecase: 共通
+  summary: 子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける
+notes:
+  単体テスト: 同じフォルダの `__root.test.tsx` に置く（knowledge の規約『フォルダ構成』）

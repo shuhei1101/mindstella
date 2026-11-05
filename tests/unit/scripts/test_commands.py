@@ -17,6 +17,7 @@ import builder
 import commands
 import errors
 import history
+import query
 import store
 from errors import (
     ArgumentError,
@@ -544,6 +545,23 @@ def test_stage_add_when_user_editor(make_workspace: MakeWorkspace) -> None:
     assert new_staged.items["task"][0]["updated_by"] == "user"
 
 
+def test_stage_add_when_main_false(make_workspace: MakeWorkspace) -> None:
+    """main が偽のタグは main を除いて書く（正常系）。"""
+    # 準備
+    staged = _make_staged(make_workspace(), 0)
+    item = {
+        "title": "t",
+        "status": "未決定",
+        "tags": [{"name": "通知", "main": True}, {"name": "画面", "main": False}],
+    }
+    # 実行
+    new_staged, _ = commands.stage_add(staged, "decision", item, now=_fixed_now)
+    # 検証
+    added = new_staged.items["decision"][0]
+    assert added["id"] == "D-1"
+    assert added["tags"] == [{"name": "通知", "main": True}, {"name": "画面"}]
+
+
 def test_stage_update_when_limit_zero(
     make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
 ) -> None:
@@ -588,6 +606,20 @@ def test_stage_update_when_user_editor(make_workspace: MakeWorkspace, make_item:
     updated = new_staged.items["decision"][0]
     assert updated["updated_by"] == "user"
     assert updated["history"][0]["by"] == "user"
+
+
+def test_stage_update_when_main_false(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """main が偽のタグは main を除いて置き換える（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", tags=[{"name": "通知", "main": True}]))
+    staged = _make_staged(root, 3)
+    # 実行
+    new_staged, result = commands.stage_update(
+        staged, "D-1", {"tags": [{"name": "通知", "main": False}]}, now=_fixed_now
+    )
+    # 検証
+    assert new_staged.items["decision"][0]["tags"] == [{"name": "通知"}]
+    assert "tags" in result["changed"]
 
 
 def test_stage_update_when_nothing_changed(
@@ -1147,22 +1179,50 @@ def test_run_status(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     assert {"in_progress", "resumable", "waiting", "on_hold", "next"} <= set(payload)
 
 
+def _find(root: Path, search_filter: SearchFilter, **overrides: Any) -> dict[str, Any]:
+    """既定の量（view=brief・include と exclude は空・count_only は偽）で run_find を呼ぶ。"""
+    arguments: dict[str, Any] = {
+        "limit": 20,
+        "cursor": None,
+        "view": "brief",
+        "include": [],
+        "exclude": [],
+        "count_only": False,
+    }
+    arguments.update(overrides)
+    return commands.run_find(root, search_filter, **arguments)
+
+
+def _chars(root: Path, item_id: str) -> int:
+    """ワークスペースを読み、ID が item_id の項目の文字数（item_chars）を返す。"""
+    workspace = store.load_workspace(root)
+    return query.item_chars(workspace, store.find_item(workspace, item_id).item)
+
+
 def test_run_find(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """検索結果をページの形にする（正常系）。"""
+    """既定の量で検索結果をページの出力にする（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", title="最初の問い"))
+    chars = _chars(root, "D-1")
     # 実行
-    payload = commands.run_find(
-        root, SearchFilter(), limit=20, cursor=None, response_format="concise"
-    )
+    payload = _find(root, SearchFilter())
     # 検証
     assert payload == {
         "items": [
-            {"id": "D-1", "kind": "decision", "title": "最初の問い", "status": "未決定", "tags": []}
+            {
+                "id": "D-1",
+                "kind": "decision",
+                "title": "最初の問い",
+                "status": "未決定",
+                "tags": [],
+                "chars": chars,
+            }
         ],
         "total": 1,
+        "total_chars": chars,
         "next_cursor": None,
         "hint": None,
+        "omitted": ["target", "category", "phase", "attrs", "updated", "extra", "body"],
     }
 
 
@@ -1175,24 +1235,51 @@ def test_run_find_when_limit_out_of_range(
     root = make_workspace(make_item("D-1"))
     # 実行・検証
     with pytest.raises(ArgumentError) as raised:
-        commands.run_find(
-            root, SearchFilter(), limit=limit, cursor=None, response_format="concise"
-        )
+        _find(root, SearchFilter(), limit=limit)
     assert raised.value.argument == "limit"
 
 
 def test_run_find_when_stray_tag(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """どの項目も使っていないタグは 0 件と近いタグの案内を返す（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", tags=["データ"]))
+    root = make_workspace(make_item("D-1", tags=[{"name": "データ"}]))
     # 実行
-    payload = commands.run_find(
-        root, SearchFilter(tags=("データー",)), limit=20, cursor=None, response_format="concise"
-    )
+    payload = _find(root, SearchFilter(tags=("データー",)))
     # 検証
     assert payload["items"] == []
     assert payload["total"] == 0
+    assert payload["total_chars"] == 0
     assert "データー はどの項目も使っていないタグです（近いタグ: データ）" in payload["hint"]
+
+
+def test_run_find_when_count_only(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """件数・文字数・タグの件数だけを返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=[{"name": "データ", "main": True}]),
+        make_item("D-2", tags=[{"name": "データ"}, {"name": "画面"}]),
+    )
+    # 実行
+    payload = _find(root, SearchFilter(), limit=1, count_only=True)
+    # 検証
+    assert payload == {
+        "total": 2,
+        "total_chars": _chars(root, "D-1") + _chars(root, "D-2"),
+        "tag_counts": [{"tag": "データ", "count": 2}, {"tag": "画面", "count": 1}],
+    }
+
+
+def test_run_find_when_total_chars_over_pages(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """合計の文字数はページに分ける前の全件の和にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-2"), make_item("D-3"))
+    # 実行
+    payload = _find(root, SearchFilter(), limit=1)
+    # 検証
+    assert [row["id"] for row in payload["items"]] == ["D-1"]
+    assert payload["total_chars"] == sum(_chars(root, f"D-{number}") for number in range(1, 4))
 
 
 def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

@@ -1,0 +1,13 @@
+$ pytest tests/integration/server/test_inject_session.py tests/integration/server/test_comments_send.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-mcp-http-resident-server
+configfile: pytest.ini
+plugins: xdist-3.8.0, anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 19 items
+
+tests/integration/server/test_inject_session.py ....                     [ 21%]
+tests/integration/server/test_comments_send.py ...............           [100%]
+
+============================= 19 passed in 16.41s ==============================
+exit=0

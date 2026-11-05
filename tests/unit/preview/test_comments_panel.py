@@ -71,14 +71,14 @@ RUN_SCRIPT = """async (args) => {
     const noop = () => {};
     const calls = [];
     const names = [
-        "close", "review", "back", "filter", "tag", "clearTag", "compose", "openThread", "openId",
+        "close", "pin", "review", "back", "filter", "tag", "clearTag", "compose", "openThread", "openId",
         "reply", "replyInput", "reasonOpen", "reasonInput", "setStatus", "check", "checkAll",
         "send", "open", "edit", "saveEdit", "cancelEdit", "remove", "restore", "unloc", "changeSet", "fold",
     ];
     const on = Object.fromEntries(names.map((name) => [name, (...a) => calls.push([name, ...a])]));
     const props = {
         view: "list", items: [], removed: [], threads: [], threadsError: null, filter: "open",
-        tag: null, opened: null, composing: false,
+        tag: null, opened: null, composing: false, pinned: false,
         free: {
             target: null, body: "", status: "idle", label: "新しいスレッド", collapsed: false,
             on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
@@ -284,6 +284,35 @@ def test_comments_panel_when_no_pending(
         button for button in observed["buttons"] if button["label"] == "レビュー中の書き込みを確かめる（0 件）"
     )
     assert "zero" in entrance["classes"]
+
+
+@pytest.mark.parametrize(
+    ("pinned", "expected_pressed", "expected_label"),
+    [
+        pytest.param(False, "false", "ピン止めする（外側を押しても閉じない）", id="unpinned"),
+        pytest.param(True, "true", "ピン止めを外す（外側を押したら閉じる）", id="pinned"),
+    ],
+)
+def test_comments_panel_when_pin(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    pinned: bool,
+    expected_pressed: str,
+    expected_label: str,
+) -> None:
+    """ピン止めのボタンは押した状態と読み上げの名前を切り替える（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    props = {"view": "list", "pinned": pinned}
+    # 実行
+    observed = _run(preview_page, "commentsPanel", props, actions=[{"click": {"focus": "pin"}}])
+    # 検証
+    labels = _labels(observed)
+    # 「コメントの一覧を閉じる」の左（直前）にピン止めのボタンを置く
+    assert labels[labels.index("コメントの一覧を閉じる") - 1] == expected_label
+    pin = next(button for button in observed["buttons"] if button["focus"] == "pin")
+    assert pin["pressed"] == expected_pressed
+    assert _call_names(observed) == ["pin"]
 
 
 # --- スレッドの一覧 ---------------------------------------------------------
@@ -1469,3 +1498,27 @@ def test_removed_review_row(
         "rowClass": "row removed",
         "restored": ["C-2"],
     }
+
+
+@pytest.mark.parametrize(
+    ("item", "expected"),
+    [
+        pytest.param({"thread": "TH-1", "target": None}, "TH-1 への返信", id="reply"),
+        pytest.param({"thread": None, "target": "D-1"}, "D-1 へのコメント", id="new_thread"),
+        pytest.param({"target": "D-1"}, "D-1 へのコメント", id="detail_row"),
+        pytest.param({"thread": None, "target": None}, "項目を指さないコメント", id="no_target"),
+    ],
+)
+def test_review_label(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    item: dict[str, Any],
+    expected: str,
+) -> None:
+    """返信・項目へのコメント・項目を指さないコメントの頭（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    label = preview_page.evaluate("(item) => MindmapPreview.reviewLabel(item)", item)
+    # 検証
+    assert label == expected

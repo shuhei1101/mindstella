@@ -1,0 +1,32 @@
+$ pytest tests/unit
+..........................................................s............. [ 78%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 96%]
+......................................................................   [100%]
+2013 passed, 1 skipped in 1306.34s (0:21:46)
+exit=0
+
+$ pytest tests/unit/preview
+........................................................................ [ 85%]
+........................................................................ [ 93%]
+......................................................                   [100%]
+846 passed in 1233.72s (0:20:33)
+exit=0
+
+$ npx vitest run
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  14 passed (14)
+      Tests  22 passed (22)
+   Start at  03:54:27
+   Duration  55.67s (environment 68%, setup 19%, import 9%, transform 3%, worker 1%)
+
+Environment  jsdom was created 14 times · 202.12s total, 68% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=0

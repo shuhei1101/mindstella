@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 import yaml
+from display_settings_helpers import read_prefs
+from integration.preview.preview_body_scroll_helpers import SETTLED_SCROLL_TOP_JS
 from playwright.sync_api import Page
 from preview_helpers import (
     BACK_BUTTON,
@@ -26,6 +28,7 @@ from preview_helpers import (
     REPLY_TEXTAREA,
     REVIEW_ENTRY,
     REVIEW_HEAD,
+    SCRIM_ON,
     SEND_BAND,
     STATE_SEGMENTS,
     STATUS_BUTTON,
@@ -34,9 +37,12 @@ from preview_helpers import (
     THREAD_ROWS,
     UPDATE_TIMEOUT_MS,
     OpenPreview,
+    is_inert,
     open_closed_thread,
     open_list,
     open_thread,
+    press_through_scrim,
+    scrim_shown,
     thread_row,
 )
 from workspace_fixtures import (
@@ -80,6 +86,23 @@ NO_UNREAD_DOT_JS = "() => !document.querySelector('header.topbar button.comments
 
 # 利用者がクローズにした記録
 USER_CLOSED = {"kind": "closed", "author": "user", "reason": None, "created": T_0400}
+
+# 詳細パネルの中央の点で、一番上に出ている要素が詳細パネルの中にあるか（グレーアウトの上に出ているか）を返す
+DETAIL_ON_TOP_JS = """() => {
+    const box = document.querySelector('aside.panel').getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return hit !== null && hit.closest('aside.panel') !== null;
+}"""
+
+# 表の D-1 の行と、左のパネルが覆わない D-2 の前提の D-1 のボタン、コメントの一覧の見出しの帯のピン止めのボタン、スレッドの画面の本文
+D1_ROW = 'table.grid tbody tr[data-id="D-1"]'
+D2_PREREQUISITE_LINK = 'table.grid tbody tr[data-id="D-2"] button.idlink'
+PIN_BUTTON = f"{COMMENTS_PANEL} .comments-head button[data-focus='pin']"
+THREAD_BODY = f"{COMMENTS_PANEL} .comments-body.th-body"
+
+# パネルの高さを超えて縦に送れる書き込みの件数と、書き込みの上でホイールを回す量（px）
+MANY_POSTS = 30
+POSTS_WHEEL_PX = 600
 
 
 def _read(root: Path, name: str) -> list[dict[str, Any]]:
@@ -237,8 +260,11 @@ def test_normal_when_close(
     # 実行（AI の返信の中の D-1 を押して、詳細パネルを開き、閉じる）
     page.click(f"{THREAD_POSTS}:nth-child(2) button.idlink")
     page.wait_for_selector("aside.panel.open")
-    # 検証
+    # 検証（スレッドから開いた D-1 の詳細パネルはグレーアウトされず、コメントの一覧と両方を操作できる）
     assert "D-1" in page.inner_text("aside.panel .panel-kind")
+    page.wait_for_function(DETAIL_ON_TOP_JS)
+    assert is_inert(page, "aside.panel .panel-body") is False
+    assert is_inert(page, STATUS_BUTTON) is False
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('aside.panel.open')")
     # 実行（理由を書いてクローズにする）
@@ -265,6 +291,141 @@ def test_normal_when_close(
     assert _row_ids(page) == []
     page.click(f"{STATE_SEGMENTS}[data-focus='filter:closed']")
     assert _row_ids(page) == ["TH-1"]
+
+
+def test_normal_when_outside_pressed_and_reopened(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """パネルを開いている間はパネルとトップバー以外をグレーアウトし、グレーアウトした所を押すとパネルだけを閉じ、開き直すと閉じる前のスレッドとスクロールの位置に戻る（正常系）。"""
+    # 準備
+    url, _ = _serve(
+        make_workspace,
+        call_tool,
+        write_threads,
+        write_comments,
+        make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"]),
+        threads=(
+            make_thread(
+                "TH-1",
+                *(make_post(f"TH-1-{number}", body=f"{number} 件目の書き込み") for number in range(1, MANY_POSTS + 1)),
+                summary="長く続いたスレッド",
+            ),
+        ),
+    )
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(D1_ROW)
+    # 実行（コメントのボタンを押してスレッドを開く）
+    open_thread(page, "TH-1")
+    page.wait_for_selector(SCRIM_ON)
+    covered = {
+        "scrim": scrim_shown(page),
+        "row": is_inert(page, D1_ROW),
+        "topbar": is_inert(page, COMMENTS_BUTTON),
+        "panel": is_inert(page, THREAD_BODY),
+    }
+    # 実行（書き込みを下へ送る）
+    body_box = page.locator(THREAD_BODY).bounding_box()
+    assert body_box is not None
+    page.mouse.move(body_box["x"] + body_box["width"] / 2, body_box["y"] + body_box["height"] / 2)
+    page.mouse.wheel(0, POSTS_WHEEL_PX)
+    page.wait_for_function("selector => document.querySelector(selector).scrollTop > 0", arg=THREAD_BODY)
+    scrolled = page.evaluate(SETTLED_SCROLL_TOP_JS, THREAD_BODY)
+    # 実行（グレーアウトした表の D-2 の前提の D-1 を押す）
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    after_press = {
+        "detail": page.locator("aside.panel.open").count(),
+        "hash": page.evaluate("location.hash"),
+        "scrim": scrim_shown(page),
+    }
+    # 実行（コメントのボタンを押す）
+    open_list(page)
+    page.wait_for_selector(THREAD_BODY)
+    reopened = page.evaluate(SETTLED_SCROLL_TOP_JS, THREAD_BODY)
+    # 検証
+    # パネルを開いている間、パネルとトップバー以外がグレーアウトされ、その中の部品にフォーカスが移らない
+    assert covered == {"scrim": True, "row": True, "topbar": False, "panel": False}
+    # グレーアウトした表の D-2 の前提の D-1 を押すとパネルが閉じ、D-1 の詳細パネルは開かない
+    assert after_press["detail"] == 0
+    assert "id=D-1" not in after_press["hash"]
+    assert after_press["scrim"] is False
+    # 開き直すと、スレッドの一覧ではなく閉じる前のスレッドが出て、書き込みのスクロールの位置が閉じる前と同じである
+    assert page.locator(THREAD_ROWS).count() == 0
+    assert page.locator(f"{THREAD_POSTS}:has-text('{MANY_POSTS} 件目の書き込み')").count() == 1
+    assert scrolled > 0
+    assert reopened == scrolled
+
+
+def test_normal_when_pinned(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """ピン止めの間はグレーアウトせず、パネルを開いたまま覆っていない部分を操作でき、ピン止めは読み込み直しても残り、外すとグレーアウトした所の押下で閉じる（正常系）。"""
+    # 準備
+    url, _ = _serve(
+        make_workspace,
+        call_tool,
+        write_threads,
+        write_comments,
+        make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"]),
+        threads=(make_thread("TH-1", summary="ピン止めの確認"),),
+    )
+    open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(D1_ROW)
+    # 実行（コメントのボタンを押し、パネルの見出しの帯のピン止めを押す）
+    open_list(page)
+    page.wait_for_selector(SCRIM_ON)
+    page.click(PIN_BUTTON)
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    pinned = {"pressed": page.get_attribute(PIN_BUTTON, "aria-pressed"), "scrim": scrim_shown(page)}
+    # 実行（パネルが覆っていない表の D-2 の前提の D-1 を押す）
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
+    page.wait_for_selector("aside.panel.open")
+    with_detail = {
+        "panel": page.locator(f"{COMMENTS_PANEL}.open").count(),
+        "detail": page.inner_text("aside.panel .panel-kind"),
+    }
+    # 実行（画面を読み込み直し、コメントのボタンを押す）
+    page.reload()
+    page.wait_for_selector("main#main > *", state="attached")
+    open_list(page)
+    reloaded = {"pressed": page.get_attribute(PIN_BUTTON, "aria-pressed"), "scrim": scrim_shown(page)}
+    # 実行（ピン止めを外し、グレーアウトした所を押す）
+    page.click(PIN_BUTTON)
+    page.wait_for_selector(SCRIM_ON)
+    unpinned = {"pressed": page.get_attribute(PIN_BUTTON, "aria-pressed"), "scrim": scrim_shown(page)}
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
+    page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+    # 検証
+    # ピン止めを押すと、ピン止めのボタンが押された状態になり、グレーアウトが外れる
+    assert pinned == {"pressed": "true", "scrim": False}
+    # ピン止めの間は、パネルが覆っていない表の D-2 の前提の D-1 を押すとパネルを開いたまま D-1 の詳細パネルが開く
+    assert with_detail["panel"] == 1
+    assert "D-1" in with_detail["detail"]
+    # 読み込み直した後もピン止めのままで、開いたパネルにグレーアウトが無い
+    assert reloaded == {"pressed": "true", "scrim": False}
+    # ピン止めを外すとグレーアウトが戻り、グレーアウトした所を押すとパネルが閉じる
+    assert unpinned == {"pressed": "false", "scrim": True}
+    # 端末の保存領域に、ピン止めを外した状態が残っている
+    prefs = read_prefs(page)
+    assert prefs is not None
+    assert prefs.get("commentsPinned") is None
 
 
 def test_normal_when_reopen(
@@ -574,7 +735,7 @@ def test_error_when_server_unreachable(
     open_preview(str(served.data["url"]))
     open_thread(page, "TH-1")
     # スレッドを開いた後にサーバーを止める
-    server.close_stdin()
+    server.call("server_stop")
     server.wait_exit()
     page.fill(REPLY_TEXTAREA, REPLY_BODY)
     # 実行
@@ -927,3 +1088,87 @@ def test_normal_when_markdown_post(
     assert page.locator(f"{THREAD_POSTS}[data-comment] .th-pending").count() == 1
     assert page.inner_text(f"{reply} strong") == "起票してよい"
     assert "**" not in page.inner_text(reply)
+
+
+# 改行で 8 行の本文（各行はパネルの幅で折り返さない短さ）
+LONG_LINES = [f"{number} 行目の気づき" for number in range(1, 9)]
+
+# 畳んだときに出す、折り返した後の見た目の行の数
+FOLD_LINES = 5
+
+# 本文の各行が、本文の枠の中に見えているかを行の順に返す（畳んだ行は枠の下に外れる）
+VISIBLE_LINES_SCRIPT = """({body, lines}) => {
+    const element = document.querySelector(body);
+    const frame = element.getBoundingClientRect();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node);
+    return lines.map((line) => {
+        const text = texts.find((node) => node.textContent.includes(line));
+        const at = text.textContent.indexOf(line);
+        const range = document.createRange();
+        range.setStart(text, at);
+        range.setEnd(text, at + line.length);
+        return range.getBoundingClientRect().bottom <= frame.bottom + 1;
+    });
+}"""
+
+
+def test_normal_when_read_long_pending_reply(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    write_comments: WriteComments,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """8 行のレビュー中の返信は 5 行までに畳まれ、「続きを読む」で 8 行が全て見え、「折りたたむ」で 5 行に戻る。8 行の AI の返信は畳まれない（正常系）。"""
+    # 準備
+    url, root = _serve(
+        make_workspace,
+        call_tool,
+        write_threads,
+        write_comments,
+        make_item("D-1"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", author="ai", body="\n".join(LONG_LINES), created=T_0100),
+                summary="見直しの相談",
+            ),
+        ),
+        comments=(_without_target(make_comment("C-1", body="\n".join(LONG_LINES), thread="TH-1")),),
+    )
+    open_preview(url)
+    reply = f"{THREAD_POSTS}[data-comment='C-1']"
+    reply_body = f"{reply} .post-body"
+    more = f"{reply} button.review-more"
+    ai_body = f"{THREAD_POSTS}.ai .post-body"
+    # 実行（コメントのボタンを押し、スレッドを開く）
+    open_thread(page, "TH-1")
+    page.wait_for_selector(more, state="visible", timeout=UPDATE_TIMEOUT_MS)
+    folded = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": reply_body, "lines": LONG_LINES})
+    folded_text = page.inner_text(more)
+    ai_lines = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": ai_body, "lines": LONG_LINES})
+    ai_more = page.locator(f"{THREAD_POSTS}.ai button.review-more").count()
+    # 実行（「続きを読む」を押す）
+    page.click(more)
+    opened = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": reply_body, "lines": LONG_LINES})
+    opened_text = page.inner_text(more)
+    # 実行（「折りたたむ」を押す）
+    page.click(more)
+    refolded = page.evaluate(VISIBLE_LINES_SCRIPT, {"body": reply_body, "lines": LONG_LINES})
+    # 検証
+    assert folded == [True] * FOLD_LINES + [False] * (len(LONG_LINES) - FOLD_LINES)
+    assert folded_text == "続きを読む"
+    assert opened == [True] * len(LONG_LINES)
+    assert opened_text == "折りたたむ"
+    assert refolded == folded
+    assert ai_lines == [True] * len(LONG_LINES)
+    assert ai_more == 0
+    assert [post["body"] for post in _thread(root, "TH-1")["posts"]] == ["\n".join(LONG_LINES)]
+    assert [item["body"] for item in _read(root, "comments.yaml")] == ["\n".join(LONG_LINES)]

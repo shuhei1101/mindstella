@@ -1,29 +1,51 @@
 """bin/mindstella（起動スクリプト）の結合テスト。
 
-隔離した環境（偽の `claude`・専用のソケットの `tmux`）は `tests/launch_fixtures.py`。
-MCP の設定どおりのサーバーは、本物の MCP サーバーとして立てて確かめる。
+隔離した環境（偽の `claude`・専用のソケットの `tmux`・空きポート）は `tests/launch_fixtures.py`。
+起動スクリプトが起動した常駐サーバーへは、MCP のクライアントでつないで確かめる。
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from launch_fixtures import (
     PLUGIN_DIR,
     LaunchSandbox,
+    ServeFakeStatus,
     copy_plugin,
-    read_mcp_config,
     read_tool_names,
     session_name,
 )
-from workspace_fixtures import McpServer
+from workspace_fixtures import (
+    LISTEN_HOST,
+    MCP_PATH,
+    McpClient,
+    is_listening,
+    plugin_version,
+    read_server_status,
+)
 
 from .fixture_types import MakeVenv
 
+# 起動スクリプトが起動する常駐サーバーの入口
+SERVER_SCRIPT = PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py"
+
+# 古いバージョンの常駐サーバーの代わりが返す状態
+OUTDATED_STATUS = {"name": "mindstella", "version": "0.0.1"}
+
+# 外から見る設定の環境変数とその値
+ALLOWED_HOSTS_ENV = "MINDSTELLA_ALLOWED_HOSTS"
+ALLOWED_HOST = "preview.example.test"
+
+
+def _process_env(pid: int) -> dict[str, str]:
+    """プロセスの環境変数を読む（Linux の /proc）。"""
+    raw = Path(f"/proc/{pid}/environ").read_bytes().decode("utf-8")
+    return dict(entry.split("=", 1) for entry in raw.split("\0") if "=" in entry)
+
 
 def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-    """依存がそろっていれば、今の版のサーバーを渡した Claude Code を tmux のセッションで立てる（正常系）。"""
+    """依存がそろっていれば、常駐サーバーが落ちていれば起動してから、Claude Code を tmux のセッションで立てる（正常系）。"""
     # 準備
     folder = sandbox.root / "家計簿アプリ"
     # 実行
@@ -37,54 +59,41 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     assert sandbox.session_path(name) == folder.resolve()
     started = sandbox.wait_started()
     assert len(started) == 1
-    config = read_mcp_config(started[0])
-    mindstella = config["mcpServers"]["mindstella"]
-    assert mindstella["command"] == str(ready_venv / "bin" / "python")
-    assert mindstella["args"] == [str(PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py")]
+    assert "--mcp-config" not in started[0].read_text(encoding="utf-8").splitlines()
     assert started[0].with_suffix(".config").read_text(encoding="utf-8") == str(sandbox.config_dir)
-    # その MCP の設定どおりにサーバーを立ててつなぐと、そのサーバーが登録するツールの一覧が返る
-    server_script = Path(mindstella["args"][0])
-    server = McpServer(
-        python=mindstella["command"],
-        env={**os.environ, "PYTHONUTF8": "1"},
-        cwd=folder,
-        script=server_script,
-    )
+    status = read_server_status(sandbox.port)
+    assert status is not None
+    assert status["plugin_root"] == str(PLUGIN_DIR)
+    client = McpClient(f"http://{LISTEN_HOST}:{sandbox.port}{MCP_PATH}")
     try:
-        assert [tool["name"] for tool in server.list_tools()] == read_tool_names(server_script)
+        assert [tool["name"] for tool in client.list_tools()] == read_tool_names(SERVER_SCRIPT)
     finally:
-        server.stop()
+        client.close()
     assert f"tmux attach-session -t ={name}" in result.stdout
 
 
 def test_normal_when_external_settings(sandbox: LaunchSandbox, ready_venv: Path) -> None:
-    """設定されている外から見る環境変数だけを MCP の設定の env に書く（正常系）。"""
-    # 準備
-    external = {
-        "MINDSTELLA_ALLOWED_HOSTS": "preview.example.test",
-        "MINDSTELLA_PREVIEW_START_HOOK": "pub add",
-    }
+    """呼び出し元の外から見る環境変数を、起動する常駐サーバーへ渡す（正常系）。"""
     # 実行
-    with_env = sandbox.launch("家計簿アプリ", venv=ready_venv, extra_env=external)
-    without_env = sandbox.launch("別の話し合い", venv=ready_venv)
+    result = sandbox.launch(
+        "家計簿アプリ", venv=ready_venv, extra_env={ALLOWED_HOSTS_ENV: ALLOWED_HOST}
+    )
     # 検証
-    assert with_env.returncode == 0, with_env.stderr
-    assert without_env.returncode == 0, without_env.stderr
-    started = sandbox.wait_started(2)
-    assert len(started) == 2
-    configs = {
-        path: read_mcp_config(path)["mcpServers"]["mindstella"] for path in started
-    }
-    with_config = [config for config in configs.values() if "env" in config]
-    without_config = [config for config in configs.values() if "env" not in config]
-    assert [config["env"] for config in with_config] == [external]
-    assert len(without_config) == 1
+    assert result.returncode == 0, result.stderr
+    status = read_server_status(sandbox.port)
+    assert status is not None
+    assert _process_env(int(status["pid"]))[ALLOWED_HOSTS_ENV] == ALLOWED_HOST
+    started = sandbox.wait_started()
+    assert len(started) == 1
+    # Claude Code の環境は呼び出し元から受け継いだ分だけで、起動スクリプトは値を足さない
+    assert started[0].with_suffix(".hosts").read_text(encoding="utf-8") in ("", ALLOWED_HOST)
+    assert started[0].read_text(encoding="utf-8") == "\n"
 
 
 def test_normal_when_plugin_upgraded(
     sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
 ) -> None:
-    """古い版のフォルダのスクリプトを叩いても、新しい版のサーバーを指す（正常系）。"""
+    """古い版のフォルダのスクリプトを叩いても、新しい版の常駐サーバーを起動する（正常系）。"""
     # 準備
     old_dir = copy_plugin(tmp_path / "plugin-old")
     new_dir = copy_plugin(tmp_path / "plugin-new")
@@ -93,12 +102,9 @@ def test_normal_when_plugin_upgraded(
     result = sandbox.launch("家計簿アプリ", venv=ready_venv, script=old_dir / "bin" / "mindstella")
     # 検証
     assert result.returncode == 0, result.stderr
-    started = sandbox.wait_started()
-    assert len(started) == 1
-    config = read_mcp_config(started[0])
-    assert config["mcpServers"]["mindstella"]["args"] == [
-        str(new_dir / "skills" / "mindmap" / "scripts" / "server.py")
-    ]
+    status = read_server_status(sandbox.port)
+    assert status is not None
+    assert status["plugin_root"] == str(new_dir)
 
 
 def test_normal_when_session_exists(sandbox: LaunchSandbox, ready_venv: Path) -> None:
@@ -231,3 +237,39 @@ def test_normal_when_another_account(
     assert before[0].with_suffix(".config").read_text(encoding="utf-8") == ""
     assert f"tmux attach-session -t ={sub1_name}" in result.stdout
     assert "既にある" not in result.stderr
+
+
+def test_normal_when_server_outdated(
+    sandbox: LaunchSandbox, ready_venv: Path, serve_fake_status: ServeFakeStatus
+) -> None:
+    """待ち受けている常駐サーバーのバージョンが違えば、起動し直さずに差と手順を示し、Claude Code は立ち上げる（正常系）。"""
+    # 準備
+    serve_fake_status(sandbox.port, 200, OUTDATED_STATUS)
+    folder = sandbox.root / "家計簿アプリ"
+    # 実行
+    result = sandbox.launch("家計簿アプリ", venv=ready_venv)
+    # 検証
+    assert result.returncode == 0, result.stderr
+    assert (
+        f"常駐サーバーのバージョン 0.0.1 と、インストールしたプラグインのバージョン {plugin_version()} が違います"
+        in result.stderr
+    )
+    assert "server_stop で常駐サーバーを止めてから、Claude Code を立ち上げ直してください" in result.stderr
+    assert sandbox.sessions() == [session_name(folder, sandbox.config_dir)]
+    assert read_server_status(sandbox.port) == OUTDATED_STATUS
+
+
+def test_error_when_server_start_fails(
+    sandbox: LaunchSandbox, ready_venv: Path, serve_fake_status: ServeFakeStatus
+) -> None:
+    """常駐サーバーを起動できなければ、理由を示して Claude Code を立てない（異常系）。"""
+    # 準備
+    serve_fake_status(sandbox.port, 404, None)
+    # 実行
+    result = sandbox.launch("家計簿アプリ", venv=ready_venv)
+    # 検証
+    assert result.returncode == 1
+    assert f"ポート {sandbox.port} は別のプロセスが使っています" in result.stderr
+    assert "MINDSTELLA_PORT" in result.stderr
+    assert (sandbox.sessions(), sandbox.started()) == ([], [])
+    assert is_listening(sandbox.port) is True

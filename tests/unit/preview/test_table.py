@@ -480,3 +480,39 @@ def test_table_when_withdrawn(preview_page: Page, load_preview_scripts: LoadPrev
     assert "取り下げ" in result["withdrawn"]["badgeText"]
     assert result["withdrawn"]["dimmed"] is True
     assert result["kept"] == {"order": ["title"], "badgeText": None, "dimmed": False}
+
+
+def test_table_when_main_tag(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """タグの列は主題の有無によらず名前で出す（正常系）。"""
+    # 準備
+    rows = [
+        {"id": "A-1", "title": "資料", "tags": [{"name": "画面"}, {"name": "データ", "main": True}]}
+    ]
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """(rows) => {
+            const noop = () => {};
+            const common = MindmapPreview.commonColumns({target_label: "対象"});
+            const element = MindmapPreview.table({
+                kind: "docs",
+                columns: [common.id, common.title(), common.tags],
+                rows,
+                marks: {},
+                on: {sort: noop, filter: noop, pin: noop, columns: noop, reset: noop, open: noop},
+            });
+            document.body.append(element);
+            const tags = [...element.querySelectorAll('tr[data-id="A-1"] span.tag')];
+            return tags.map((tag) => ({
+                text: tag.textContent.trim(),
+                mark: tag.querySelector(".tag-main, svg") !== null,
+                main: tag.classList.contains("is-main"),
+            }));
+        }""",
+        rows,
+    )
+    # 検証
+    assert result == [
+        {"text": "画面", "mark": False, "main": False},
+        {"text": "データ", "mark": False, "main": False},
+    ]

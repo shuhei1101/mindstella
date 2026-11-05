@@ -6,14 +6,14 @@ import base64
 import binascii
 import hashlib
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from errors import ArgumentError
 from kinds import KINDS, Kind, id_number
-from store import Workspace, as_ids, body_format, find_item, read_body
-from tag_text import normalize_tag, similar_tags
+from store import Workspace, as_ids, body_format, dump_yaml, find_item, read_body
+from tag_text import normalize_tag, similar_tags, tag_name
 
 # 参照元として拾うキーとその並び
 REFERENCE_KEYS = ("depends_on", "parent", "for", "related", "sources")
@@ -24,8 +24,44 @@ DEFAULT_LIMIT = 20
 # `find` の `limit` に渡せる件数の上限
 MAX_LIMIT = 80
 
-# `response_format` が `detailed` のとき、項目ごとに足すキーとその並び
-DETAILED_KEYS = ("target", "category", "phase", "attrs", "updated")
+# `find` が返せる項目の名前とその並び（`include`・`exclude` に渡せる名前）
+FIELD_NAMES = (
+    "title",
+    "status",
+    "tags",
+    "chars",
+    "target",
+    "category",
+    "phase",
+    "attrs",
+    "updated",
+    "extra",
+    "body",
+)
+
+# `view` ごとに返す項目の名前
+VIEW_FIELDS: dict[str, tuple[str, ...]] = {
+    "brief": FIELD_NAMES[:4],
+    "standard": FIELD_NAMES[:9],
+    "full": FIELD_NAMES,
+}
+
+# `extra` に入れないキー（名前を持つ項目に当たるキー）
+NAMED_ITEM_KEYS = (
+    "id",
+    "title",
+    "status",
+    "tags",
+    "target",
+    "category",
+    "phase",
+    "attrs",
+    "updated",
+    "body",
+)
+
+# Markdown の表に列として出さない項目の名前
+SECTION_FIELDS = ("extra", "body", "body_format")
 
 # スレッドをタグの一覧の種類に並べるときの名前
 THREAD_KIND = "thread"
@@ -56,12 +92,20 @@ class SearchFilter:
     any_tags: tuple[str, ...] = ()
 
 
-def search_items(
-    workspace: Workspace, search_filter: SearchFilter, *, detailed: bool = False
-) -> list[dict[str, Any]]:
-    """条件の全てに合う項目を種類の順・連番の順に返す（detailed なら `DETAILED_KEYS` も返す）。"""
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SearchHit:
+    """`find` の条件に合った 1 項目と、その文字数。"""
+
+    kind: Kind
+    item: dict[str, Any]
+    # 項目の文字数（`item_chars`）
+    chars: int
+
+
+def search_items(workspace: Workspace, search_filter: SearchFilter) -> list[SearchHit]:
+    """条件の全てに合う項目を、文字数を添えて並べて返す。"""
     needle = search_filter.text.lower() if search_filter.text is not None else None
-    results: list[dict[str, Any]] = []
+    matched: list[tuple[Kind, dict[str, Any]]] = []
     for kind, item in _iter_sorted_items(workspace):
         # 種類で絞る
         if search_filter.kind is not None and kind != search_filter.kind:
@@ -71,21 +115,163 @@ def search_items(
         # 文字で絞る（項目の全ての文字列の値が対象）
         if needle is not None and not _contains_text(item, needle):
             continue
-        tags = item.get("tags")
-        row: dict[str, Any] = {
-            "id": item.get("id"),
-            "kind": kind,
-            "title": item.get("title"),
-            "status": item.get("status"),
-            "tags": list(tags) if isinstance(tags, list) else [],
-        }
-        # 詳しい結果: 対象・カテゴリー・フェーズ・属性・更新日時を足す（本文・案は入れない）
-        if detailed:
+        matched.append((kind, item))
+    # タグで絞ったときは、渡したタグを主題として持つ項目を先に置く（安定な並べ替え）
+    wanted = {normalize_tag(tag) for tag in (*search_filter.tags, *search_filter.any_tags)}
+    if wanted:
+        matched.sort(key=lambda pair: 0 if wanted & _main_tags(pair[1]) else 1)
+    return [
+        SearchHit(kind=kind, item=item, chars=item_chars(workspace, item))
+        for kind, item in matched
+    ]
+
+
+def item_chars(workspace: Workspace, item: dict[str, Any]) -> int:
+    """項目を YAML に書き出した文字数と、本文のファイルの文字数の和を返す。"""
+    chars = len(dump_yaml(item))
+    body_name = item.get("body")
+    # 本文が無い・読めないときは YAML の文字数だけ
+    text = read_body(workspace, body_name) if isinstance(body_name, str) else None
+    if text is not None:
+        chars += len(text)
+    return chars
+
+
+def resolve_fields(
+    view: Literal["brief", "standard", "full"],
+    *,
+    include: Sequence[str],
+    exclude: Sequence[str],
+) -> tuple[str, ...]:
+    """`view` の項目に `include` を加え、`exclude` を外した名前を `FIELD_NAMES` の順で返す。"""
+    overlapped = [name for name in include if name in exclude]
+    if overlapped:
+        raise ArgumentError(
+            "include", f"exclude と同じ名前は渡せません（{'・'.join(overlapped)}）"
+        )
+    chosen = (set(VIEW_FIELDS[view]) | set(include)) - set(exclude)
+    return tuple(name for name in FIELD_NAMES if name in chosen)
+
+
+def build_row(workspace: Workspace, hit: SearchHit, fields: tuple[str, ...]) -> dict[str, Any]:
+    """当たった項目を、選んだ項目の名前だけを持つ結果の 1 行にする。"""
+    item = hit.item
+    row: dict[str, Any] = {"id": item.get("id"), "kind": hit.kind}
+    for name in fields:
+        if name == "tags":
+            tags = item.get("tags")
+            row["tags"] = list(tags) if isinstance(tags, list) else []
+        elif name == "attrs":
             attrs = item.get("attrs")
-            row.update({key: item.get(key) for key in DETAILED_KEYS})
             row["attrs"] = attrs if isinstance(attrs, dict) else {}
-        results.append(row)
-    return results
+        elif name == "chars":
+            row["chars"] = hit.chars
+        elif name == "extra":
+            row["extra"] = {
+                key: value for key, value in item.items() if key not in NAMED_ITEM_KEYS
+            }
+        elif name == "body":
+            body_name = item.get("body")
+            row["body"] = read_body(workspace, body_name) if isinstance(body_name, str) else None
+            row["body_format"] = body_format(body_name)
+        else:
+            row[name] = item.get(name)
+    return row
+
+
+def count_tags(hits: Sequence[SearchHit]) -> list[dict[str, Any]]:
+    """当たった項目が使っているタグを、正規化した表記ごとに数える（件数の多い順）。"""
+    counts: dict[str, int] = {}
+    for hit in hits:
+        tags = hit.item.get("tags")
+        if not isinstance(tags, list):
+            continue
+        # 1 つの項目が同じタグを表記を変えて 2 回持っても 1 件と数える
+        for name in _normalized_tags(tags):
+            counts[name] = counts.get(name, 0) + 1
+    return [
+        {"tag": name, "count": counts[name]}
+        for name in sorted(counts, key=lambda name: (-counts[name], name))
+    ]
+
+
+def render_find_markdown(result: dict[str, Any]) -> str:
+    """`find` の結果の辞書を Markdown の本文にする。"""
+    lines = [f"全 {result['total']} 件・合計 {result['total_chars']} 文字"]
+    # 件数だけ: タグごとの件数の表を続けて返す
+    if "tag_counts" in result:
+        lines += ["", "| タグ | 件数 |", "| --- | --- |"]
+        lines += [
+            f"| {_markdown_cell(entry['tag'])} | {entry['count']} |"
+            for entry in result["tag_counts"]
+        ]
+        return "\n".join(lines) + "\n"
+    rows: list[dict[str, Any]] = result.get("items", [])
+    if rows:
+        columns = [key for key in rows[0] if key not in SECTION_FIELDS]
+        lines += [
+            "",
+            "| " + " | ".join(columns) + " |",
+            "| " + " | ".join("---" for _ in columns) + " |",
+        ]
+        lines += [
+            "| " + " | ".join(_render_cell(column, row.get(column)) for column in columns) + " |"
+            for row in rows
+        ]
+        # extra・本文は表の後に項目ごとのセクションで書く
+        for row in rows:
+            if "extra" not in row and "body" not in row:
+                continue
+            lines += ["", f"## {row.get('id')} {row.get('title') or ''}".rstrip()]
+            if "extra" in row:
+                lines += ["", "```yaml", dump_yaml(row["extra"]).rstrip("\n"), "```"]
+            if row.get("body") is not None:
+                lines += ["", row["body"].rstrip("\n")]
+    tail: list[str] = []
+    if result.get("next_cursor") is not None:
+        tail.append(f"next_cursor: {result['next_cursor']}")
+    if result.get("hint") is not None:
+        tail.append(result["hint"])
+    if result.get("omitted"):
+        tail.append(f"省いた項目: {'・'.join(result['omitted'])}（view か include で取れる）")
+    if tail:
+        lines += ["", *tail]
+    return "\n".join(lines) + "\n"
+
+
+def _render_cell(column: str, value: Any) -> str:
+    """表の 1 セルの文字にする（タグ・属性は `、` で区切り、None は空）。"""
+    if value is None:
+        return ""
+    if column == "tags" and isinstance(value, list):
+        names: list[str] = []
+        for entry in value:
+            name = tag_name(entry)
+            if name is None:
+                continue
+            is_main = isinstance(entry, dict) and entry.get("main") is True
+            names.append(f"{name} [main]" if is_main else name)
+        return _markdown_cell("、".join(names))
+    if column == "attrs" and isinstance(value, dict):
+        return _markdown_cell("、".join(f"{key}={item}" for key, item in value.items()))
+    return _markdown_cell(str(value))
+
+
+def _markdown_cell(text: str) -> str:
+    """セルの `|` と改行をエスケープする。"""
+    return text.replace("|", "\\|").replace("\r\n", "<br>").replace("\n", "<br>")
+
+
+def _main_tags(item: dict[str, Any]) -> set[str]:
+    """項目が主題として持つタグの正規化した名前を返す。"""
+    tags = item.get("tags")
+    if not isinstance(tags, list):
+        return set()
+    return {
+        normalize_tag(entry["name"])
+        for entry in tags
+        if isinstance(entry, dict) and entry.get("main") is True and isinstance(entry.get("name"), str)
+    }
 
 
 def parse_attr(text: str) -> tuple[str, str | None]:
@@ -196,12 +382,13 @@ def list_stray_tags(
 
 
 def _normalized_tags(tags: list[Any]) -> set[str]:
-    """`tags` の文字列を正規化し、重なりを除く。"""
-    return {normalize_tag(tag) for tag in tags if isinstance(tag, str)}
+    """`tags` の名前を正規化し、重なりを除く。"""
+    names = (tag_name(entry) for entry in tags)
+    return {normalize_tag(name) for name in names if name is not None}
 
 
 def page_results(
-    results: list[dict[str, Any]],
+    results: list[Any],
     search_filter: SearchFilter,
     *,
     limit: int,

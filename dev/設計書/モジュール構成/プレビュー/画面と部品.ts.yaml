@@ -1,4 +1,4 @@
-title: "プレビュー / 画面と部品"
+title: プレビュー / 画面と部品
 lead: 部品（表・トップバー・表示形式の切り替え）と画面。どれも「引数を受けて要素を返す関数」で、操作は引数のコールバックで入口に知らせる。
 directory: |
   ```
@@ -31,6 +31,8 @@ directory: |
       pending-mark.ts       保存待ちの印（部品設計『保存待ちの印』）
       review-body-fold.ts   レビュー中の書き込みの本文の折りたたみ（部品設計『本文の折りたたみ』）
       doc-export-menu.ts    資料のエクスポートのメニュー（部品設計『資料のエクスポートのメニュー』）
+      tag-list.ts           タグの並び（部品設計『タグの並び』）
+      chips-input.ts        チップの入力（部品設計『チップの入力』）
     screens/
       overview.ts         概要
       decisions.ts        検討事項（ボード・マップ・表）
@@ -50,7 +52,7 @@ directory: |
       graph.ts            ネットワーク（3D）。玉と線の配置・視点・押下とロック・名前と印の重ね描き
   ```
 
-  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py`・`test_review_body_fold.py` に置く。
+  `.ts` の書き方と生成した `.js` の扱いは、モジュール構成『基盤』のディレクトリ構成と同じ。新しい部品の単体テストは `tests/unit/preview/test_reply_form.py`・`test_thread_row.py`・`test_thread_post.py`・`test_diff_minimap.py`・`test_body_diff_layout_switch.py`・`test_side_by_side_body_diff.py`・`test_markdown_body.py`・`test_review_body_fold.py`・`test_tag_list.py`・`test_chips_input.py` に置く。
 components:
   - name: viewSwitch
     title: 表示形式の切り替え
@@ -166,7 +168,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`。タグの列は値を `tagNames` の名前にし（絞り込み・並べ替えは名前で、主題かどうかによらない）、セルは `tagNames` の名前を `tagList` に渡す（主題のマーカーを出さない）
     description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
     props:
       - name: kind
@@ -221,6 +223,12 @@ components:
         condition: '`withdrawn: true` の R-1 と、`withdrawn` を持たない R-2 の行。`marks` が `{"R-1": "changed"}`'
         mock: なし（DOM を作って見る）
         expected: R-1 の行のタイトルの右に取り下げの札、その後ろに変更の印が並び、行が薄い文字の class を持つ。R-2 の行は札も薄い文字の class も持たない
+      - name: test_table_when_main_tag
+        case: 正常
+        summary: タグの列は主題の有無によらず名前で出す
+        condition: '`tags` が `[{name: 画面}, {name: データ, main: true}]` の A-1 の行を、タグの列を持つ表で描く'
+        mock: なし（DOM を作って見る）
+        expected: タグの列のセルの `span.tag` が `画面`・`データ` で、どれも二重丸のマーカーと読み上げの「主題」を持たない
   - name: filterChips
     title: 条件のチップの行
     container: plugins/mindstella/skills/mindmap/preview/components/table.ts
@@ -470,8 +478,8 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
     usecase: 項目の詳細を読む
     kind: 画面
-    summary: '画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover="manual"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon("star")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて溜めた順（ID の連番）に並べ、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `''detail''` なら `reviewEditForm`、`''list''` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex="0"`・`role="region"`・`aria-label="詳細の本文"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden="true"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）。`linkBody` には描いた本文の原文を `source` で渡す。本文が Markdown（`bodyFormatOf` が `md`）の資料は、編集の表示の間を除き（配る書き出しでも）、見出しの全画面表示のボタンの左に「エクスポート」（`aria-haspopup="dialog"`・`aria-expanded`）を置き、押すと `docExportMenu` を入口の下に開く（開いているときにもう一度押すと閉じる）。「HTML でエクスポート」では `view` を `busy` にして `mdmarkAssets` を待ち、取れたら `buildDocHtml` で組み立てて `downloadText` で `{ID}.html` を保存させ、メニューを閉じる（取れなければ `error` にし、「再試行」でやり直す。組み立てている間に閉じたら保存させない）。「Markdown でエクスポート」では `view` を `warn` にし、「エクスポート」で `stripEmbeddedHtml` した本文を `{ID}.md`
-      で保存させて閉じる。閉じたら入口の `aria-expanded` を `false` に戻してフォーカスを入口へ戻す。差分の表示の間、Markdown の本文は `pairEmbeddedHtml` で変わった埋め込んだ HTML の範囲の対を取り、対ごとに今の本文の `order` 番目の `.mdmark-html` を `htmlBodyDiff`（`before`・`after` は範囲の原文、`initial` は `raw`、`heading` は「埋め込んだ HTML」）に置き換える。`beforeView` は前の範囲を `renderMarkdown` で描いたもの、`afterView` は今の `.mdmark-html` で、前後の `.mdmark-html` の直下の子の `outerHTML` を `childMarks` に渡し、`''added''` の子に足したマーカー、`''changed''` の子に変わったマーカーを付ける（`null` ならマーカーを付けない）。範囲の中には本文の行の差分のマーカーを付けない'
+    summary: "画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover=\"manual\"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon(\"star\")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて ID の連番で、`reviewOrder` が `newest` なら大きい順、`oldest` なら小さい順に並べ、行が 2 件以上のときだけ見出し「レビュー中のコメント」の行の右に並びの切り替えを置き（`button.btn.ghost.review-order`。文字は `REVIEW_ORDER_TEXT` の今の並びと上下の矢印のアイコン、読み上げの名前は「{`REVIEW_ORDER_LABEL`}: {今の並び}」、`data-focus` は `detail-review-order`。押すと `on.order` を入れ替えた後の並びで呼ぶ）、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `'detail'` なら `reviewEditForm`、`'list'` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex=\"0\"`・`role=\"region\"`・`aria-label=\"詳細の本文\"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden=\"true\"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）。`linkBody` には描いた本文の原文を `source` で渡す。本文が Markdown（`bodyFormatOf` が `md`）の資料は、編集の表示の間を除き（配る書き出しでも）、見出しの全画面表示のボタンの左に「エクスポート」（`aria-haspopup=\"dialog\"`・`aria-expanded`）を置き、押すと `docExportMenu` を入口の下に開く（開いているときにもう一度押すと閉じる）。「HTML
+      でエクスポート」では `view` を `busy` にして `mdmarkAssets` を待ち、取れたら `buildDocHtml` で組み立てて `downloadText` で `{ID}.html` を保存させ、メニューを閉じる（取れなければ `error` にし、「再試行」でやり直す。組み立てている間に閉じたら保存させない）。「Markdown でエクスポート」では `view` を `warn` にし、「エクスポート」で `stripEmbeddedHtml` した本文を `{ID}.md` で保存させて閉じる。閉じたら入口の `aria-expanded` を `false` に戻してフォーカスを入口へ戻す。差分の表示の間、Markdown の本文は `pairEmbeddedHtml` で変わった埋め込んだ HTML の範囲の対を取り、対ごとに今の本文の `order` 番目の `.mdmark-html` を `htmlBodyDiff`（`before`・`after` は範囲の原文、`initial` は `raw`、`heading` は「埋め込んだ HTML」）に置き換える。`beforeView` は前の範囲を `renderMarkdown` で描いたもの、`afterView` は今の `.mdmark-html` で、前後の `.mdmark-html` の直下の子の `outerHTML` を `childMarks` に渡し、`'added'` の子に足したマーカー、`'changed'` の子に変わったマーカーを付ける（`null` ならマーカーを付けない）。範囲の中には本文の行の差分のマーカーを付けない"
     props:
       - name: id
         type: string
@@ -486,13 +494,13 @@ components:
         required: true
         description: 全画面か
       - name: on
-        type: '{open, close, full, back, forward, diagram, heading, changeSet, layout}'
+        type: '{open, close, full, back, forward, diagram, heading, changeSet, layout, order}'
         required: true
-        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）・本文の差分の並べ方を切り替える（`bodyDiffLayoutSwitch` が知らせた並べ方。使う側が個人の上書きに残して描き直す）
+        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）・本文の差分の並べ方を切り替える（`bodyDiffLayoutSwitch` が知らせた並べ方。使う側が個人の上書きに残して描き直す）・レビュー中のコメントの並びを切り替える（入れ替えた後の並び `'newest' | 'oldest'`。使う側が個人の上書きに残して描き直す）
       - name: comment
         type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
         required: true
-        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editingIn: 'list' | 'detail', editError: string | null, editBody: string | null, on: {edit, saveEdit, cancelEdit, remove, restore}}`（`removed` はその項目への消したコメントだけ。`editingIn` は修正を始めた場所。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
+        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editingIn: 'list' | 'detail', editError: string | null, editBody: string | null, expanded: Set<string>, on: {edit, saveEdit, cancelEdit, remove, restore, fold}}`（`expanded` は本文を開いている行の ID、`on.fold` は本文を開く／畳む（書き込みの ID・開くか））。書き換えていない行の本文は `reviewBodyFold`（`label` は `reviewLabel`（「{向けた項目の ID} へのコメント」）、`titles` は記録の項目のタイトル、`changeSets` は記録のまとまりの説明、`open` は `expanded` にあるか、`focus` は `REVIEW_FOCUS`、`on.toggle` は `edit.on.fold`、`on.openId` は `on.open`、`on.changeSet` は `on.changeSet`）で描き、本文の下に開閉のボタンだけの行（`review-more-row`）を置く（`removed` はその項目への消したコメントだけ。`editingIn` は修正を始めた場所。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
       - name: highlight
         type: Location | null
         required: false
@@ -517,6 +525,11 @@ components:
         required: false
         default: "'inline'"
         description: 本文の差分の並べ方（`resolveDisplay` の `bodyLayout`）。`diff` があり本文の差分を描けたとき（前後を組み立てられない・出せない・計算しきれない・ライブラリを読めない旨を出していない）だけ、本文の差分の頭に `bodyDiffLayoutSwitch` を置く（HTML の本文では `htmlBodyDiff` の `layoutSwitch` に渡し、`layout` にもこの値を渡す）。Markdown の本文で `side` のときは `sideBySideBodyDiff` で描いた左右の本文と、今までどおり描いたインラインの本文（`div.sbs-fallback`）の両方を置き、`style.css` の `@container detail-body (width < 560px)`（`.panel-body` を入れ物にする）で、本文の幅が足りないときは切り替えと左右の本文を隠してインラインの方を出す。HTML の本文の左右の表示も同じ入れ物で切り替える。`sideBySideBodyDiff` が `null` を返したら「本文の差分を計算しきれない旨」を出し、切り替えを置かない
+      - name: reviewOrder
+        type: "'newest' | 'oldest'"
+        required: false
+        default: "'newest'"
+        description: レビュー中のコメントの並び（`resolveDisplay` の `reviewOrder`）
       - name: edit
         type: '{editing, marks, form, onToggle} | null'
         required: false
@@ -596,9 +609,21 @@ components:
       - name: test_detail_panel_when_review_rows
         case: 正常
         summary: レビュー中のコメントの行に修正・削除を置き、書き換えている行と消した行を元の場所に描く
-        condition: D-1 への C-1・C-3 を `reviews`、C-2 を `edit.removed`、`edit.editing` を C-3 で開く
+        condition: 'D-1 への C-1・C-3 を `reviews`、C-2 を `edit.removed`、`edit.editing` を C-3、`reviewOrder: oldest` で開く'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 行が C-1・C-2・C-3 の順で、C-1 に読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタン。C-2 は「コメントを削除しました。」と「元に戻す」。C-3 は入力欄と「キャンセル」「修正」で、修正・削除のボタンが無い。見出しの件数が 2。どのボタンの `data-focus` も `detail-` で始まる
+      - name: test_detail_panel_when_review_order
+        case: 正常
+        summary: レビュー中のコメントを既定は新しい順に並べ、2 件以上のときだけ並びの切り替えを置く
+        condition: '`parametrize`: D-1 への C-1・C-3 を `reviews`、C-2 を `edit.removed` で `reviewOrder` を渡さずに開く / 同じ行で `reviewOrder: oldest` / C-1 だけを `reviews` で開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '行が C-3・C-2・C-1 の順で、切り替えの文字が「新しい順」、読み上げの名前が「コメントの並び: 新しい順」 / 行が C-1・C-2・C-3 の順で、切り替えの文字が「古い順」 / 切り替えが無い'
+      - name: test_detail_panel_when_review_order_changed
+        case: 正常
+        summary: 並びの切り替えを押すと on.order を入れ替えた後の並びで呼ぶ
+        condition: D-1 への C-1・C-2 を `reviews` で開き、並びの切り替えを押す
+        mock: 描画のライブラリの配信元（`page.route`）・`on.order` を数える関数
+        expected: '`on.order` が `oldest` で 1 回呼ばれ、`location.hash` が変わらない'
       - name: test_detail_panel_when_review_escape_in_full
         case: 正常
         summary: 全画面で書き換えの入力欄の Esc は、書き換えだけを捨てて全画面を閉じない
@@ -698,7 +723,7 @@ components:
       - name: test_detail_panel_when_diff_key_words_skipped
         case: 正常
         summary: 語の面の対でないキーと、比べられない値には語の面を付けない
-        condition: '`parametrize`: 選んだ時点で `lead` を足した D-1 / `lead` を同じ語を持たない文に書き換えた D-1 / `tags` を `["要件", "会議"]` → `["要件", "運用"]`、`date` を `2026-10-01` → `2026-10-08` にした D-1 / `lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、jsdiff を読めない D-1 を、いずれも `diff` つきで開く'
+        condition: '`parametrize`: 選んだ時点で `lead` を足した D-1 / `lead` を同じ語を持たない文に書き換えた D-1 / `tags` を `[{name: 要件}, {name: 会議}]` → `[{name: 要件}, {name: 運用}]`、`date` を `2026-10-01` → `2026-10-08` にした D-1 / `lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、jsdiff を読めない D-1 を、いずれも `diff` つきで開く'
         mock: 描画のライブラリの配信元（`page.route`。jsdiff を読めないケースは jsdiff の要求を失敗させる）
         expected: どのケースも `span.df-kv` の中に `span.df-word` が無く、前の値・今の値（前に無かったキーは今の値だけ）は今までどおり `del.df-was`・`ins.df-now` で並ぶ
       - name: test_detail_panel_when_diff_key_words_body_too_large
@@ -791,6 +816,18 @@ components:
         condition: 範囲 2 つを持ち、2 つ目の範囲の 1 つ目の段落を書き換えて末尾に段落を足した A-1 を `diff` つきで開き、「描いた結果（変更後）」を押す
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 1 つ目の範囲はそのまま描かれ、2 つ目の範囲の場所に「埋め込んだ HTML」の差分が「原文の差分」を選んだ状態で出る。変更後では書き換えた段落に変わったマーカー、足した段落に足したマーカーが付き、範囲の中に本文の行の差分のマーカー（`ins.df-blk`）が無い
+      - name: test_detail_panel_when_main_tag
+        case: 正常
+        summary: タグの行は主題のマーカーを付けて描き、差分の表示でも前後をタグの並びで描く
+        condition: '`parametrize`: `tags` が `[{name: 画面}, {name: データ, main: true}]` の D-1 を開く / 選んだ時点で `tags` を `[{name: データ}]` → `[{name: データ, main: true}]` にした D-1 を `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: タグの行の `span.tag` が `画面`・`データ` の順（記録の順）で `データ` だけが主題のマーカーを持ち、画面に「主題」の文字が出ない / `del.df-was` の `span.tag` `データ` がマーカーを持たず、`ins.df-now` の `span.tag` `データ` がマーカーを持つ
+      - name: test_detail_panel_when_review_folded
+        case: 正常
+        summary: レビュー中のコメントの長い本文を Markdown で描いて畳む
+        condition: 'D-1 へのコメント C-63（「頭の 1 行 + `1.`〜`7.` の番号付きのリスト」の 8 行）と C-65（1 行）。`parametrize`: `expanded` が空 / `expanded` に C-63'
+        mock: '`comment.edit.on.fold`'
+        expected: C-63 の本文が `ol` を持ち（リストの行に行の並びの罫線が無い）、`folded` で本文の下に `data-focus` が `detail-more:C-63` の「続きを読む」。C-65 には開閉のボタンが無い。押すと `on.fold` が `(C-63, true)` / C-63 が `folded` を持たず「折りたたむ」
   - name: searchDialog
     title: 全体の検索
     container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
@@ -852,7 +889,7 @@ components:
       - name: look
         type: "'glow' | 'starlight' | 'constellation' | 'deep' | 'dust'"
         required: true
-        description: '今当てているネットワークの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れて `drawLook` に渡し、見た目のドロップダウンで選んでいる値にする'
+        description: 今当てているネットワークの見た目（`resolveDisplay`）。キャンバスの入れ物の `data-look` に入れて `drawLook` に渡し、見た目のドロップダウンで選んでいる値にする
       - name: comments
         type: Record<string, number>
         required: false
@@ -997,7 +1034,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     kind: 画面
-    summary: 左から出すパネル（`aside`。読み上げの名前「コメントの一覧」）を描く。見出しの帯（「コメント」・レビュー中の入口・閉じる）の下に、`view` で画面設計『コメントの一覧』（`threadListView`）・『スレッド』（`threadView`）・『レビュー中の書き込み』（`reviewView`）のどれかを入れる。レビュー中の入口は `view` が `review` のとき出さず、0 件のときは件数の塗りを外す（`data-focus` は `review`）。操作はコールバックで入口に知らせ、描き直しても操作していた部品にフォーカスを戻す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
+    summary: 左から出すパネル（`aside`。読み上げの名前「コメントの一覧」）を描く。見出しの帯（「コメント」・レビュー中の入口・ピン止め・閉じる）の下に、`view` で画面設計『コメントの一覧』（`threadListView`）・『スレッド』（`threadView`）・『レビュー中の書き込み』（`reviewView`）のどれかを入れる。レビュー中の入口は `view` が `review` のとき出さず、0 件のときは件数の塗りを外す（`data-focus` は `review`）。操作はコールバックで入口に知らせ、描き直しても操作していた部品にフォーカスを戻す。ピン止めは `pinned` を `aria-pressed` で示すアイコンのボタン（`data-focus` は `pin`。読み上げの名前と `title` は画面設計『コメントの一覧』の要素「ピン止め」）で、押すと `on.pin` を知らせる。開いている間のグレーアウトと本文の部品を止めるのは入口（`start` の 5）
     props:
       - name: view
         type: "'list' | 'thread' | 'review'"
@@ -1091,9 +1128,9 @@ components:
         required: true
         description: 項目のタイトル（記録から消えていれば `null`）
       - name: on
-        type: '{close, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
+        type: '{close, pin, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
         required: true
-        description: 閉じる・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
+        description: 閉じる・ピン止めの切り替え・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
       - name: changeSetOf
         type: '(id: string) => string | null'
         required: true
@@ -1101,7 +1138,11 @@ components:
       - name: expanded
         type: Set<string>
         required: true
-        description: 本文を開いているレビュー中の書き込みの ID
+        description: 本文を開いているレビュー中の書き込みの ID（レビュー中の書き込みの画面とスレッドの画面で同じものを使う）
+      - name: pinned
+        type: boolean
+        required: true
+        description: ピン止めしているか（入口の `Prefs.commentsPinned`）
     unit_tests:
       - name: test_comments_panel
         case: 正常
@@ -1115,6 +1156,12 @@ components:
         condition: '`items` が空で `view` が `list`'
         mock: なし
         expected: 入口があり、クラス `zero` を持ち、読み上げの名前が「レビュー中の書き込みを確かめる（0 件）」
+      - name: test_comments_panel_when_pin
+        case: 正常
+        summary: ピン止めのボタンは押した状態と読み上げの名前を切り替える
+        condition: '`parametrize`: `pinned` が偽 / 真'
+        mock: '`on.pin`'
+        expected: 「コメントの一覧を閉じる」の左にピン止めのボタンがあり、`aria-pressed` が `false`、読み上げの名前が「ピン止めする（外側を押しても閉じない）」 / `aria-pressed` が `true`、読み上げの名前が「ピン止めを外す（外側を押したら閉じる）」。どちらも押すと `on.pin` が 1 回
   - name: diffMark
     title: 差分の印
     container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
@@ -1313,7 +1360,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts
     usecase: 項目を表で絞り込む
     kind: コンポーネント
-    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の条件より上に「文字を含む」の欄を並べ、文字の入力（打ち終えて 250 ミリ秒後）・値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値・打っていた文字の欄とカーソルの位置へのフォーカスを保つ。初めて開くときは先頭の文字の欄（無ければ最初の値）へフォーカスを移す。開いている間は `inertBehind` で覆った本文の部品を止め、閉じたら外す
+    summary: 部品設計『絞り込み』の引数を受け、タブの帯の下に非モーダルの `dialog` を `show()` で開く。値の条件より上に「文字を含む」の欄を並べ、文字の入力（打ち終えて 250 ミリ秒後）・値の選択・条件の解除・すべて解除・閉じるをコールバックで知らせる。描き直しても中のスクロールの位置と、押した値・打っていた文字の欄とカーソルの位置へのフォーカスを保つ。初めて開くときは先頭の文字の欄（無ければ最初の値）へフォーカスを移す。開いている間のグレーアウトと本文の部品を止めるのは入口（`start` の 5）
     props:
       - name: groups
         type: FilterGroup[]
@@ -1627,7 +1674,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `postBody`（クラス `post-body`）で描く。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
+    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `postBody`（クラス `post-body`）で描く。レビュー中の書き込みの書き換えていない本文は `reviewBodyFold`（`label` は `reviewLabel`、`titles`・`changeSets` はそのまま、`open` は `open`、`on.toggle` は `on.fold`、`on.openId`・`on.changeSet` はそのまま）で描き、本文にクラス `post-body` を足して、本文の下に開閉のボタンだけの行（`review-more-row`。ボタンが `hidden` の間は行ごと出さない）を置く。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
     props:
       - name: post
         type: Thread['posts'][number] | null
@@ -1665,14 +1712,19 @@ components:
         default: 'null'
         description: 直せなかった理由
       - name: on
-        type: '{openId, changeSet, edit, saveEdit, cancelEdit, remove}'
+        type: '{openId, changeSet, edit, saveEdit, cancelEdit, remove, fold}'
         required: true
-        description: 本文の中の項目の ID を押した・まとまりのリンクを押した・修正を始める・書き換えを送る・キャンセル・削除
+        description: 本文の中の項目の ID を押した・まとまりのリンクを押した・修正を始める・書き換えを送る・キャンセル・削除・レビュー中の書き込みの本文を開く／畳む（書き込みの ID・開くか）
       - name: changeSets
         type: '(id: string) => string | null'
         required: false
         default: () => null
         description: まとまりの説明（記録に無ければ `null`）。部品設計の `change_sets` の対応を関数で受ける
+      - name: open
+        type: boolean
+        required: false
+        default: 'false'
+        description: レビュー中の書き込みの本文を開いているか。`reviewBodyFold` の `open` へ渡す
     unit_tests:
       - name: test_thread_post
         case: 正常
@@ -1698,6 +1750,12 @@ components:
         condition: '`changeSets` は V-6 だけ。`parametrize`: 本文に `[A-14 の書き直し](#diff=V-6)` を持つ AI の `post` / 同じ本文の `pending`'
         mock: '`on.changeSet`'
         expected: どちらも `.post-body` の中に `a.setlink` が 1 つで、押すと `on.changeSet` が `V-6` で 1 回
+      - name: test_thread_post_when_pending_folded
+        case: 正常
+        summary: レビュー中の書き込みだけを畳み、開閉を知らせる
+        condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 8 行の `pending`（C-61、`thread: TH-1`）/ 同じ本文の `pending` を `open: true` / 同じ本文の `pending` を `editing: true` / 同じ本文の AI の `post`。最初の場合だけ「続きを読む」を押す'
+        mock: '`on.fold`'
+        expected: 本文が `folded` で本文の下の `review-more-row` に「続きを読む」（読み上げの名前「TH-1 への返信の続きを読む」）。押すと `on.fold` が `(C-61, true)` で 1 回 / `folded` を持たず「折りたたむ」/ 入力欄だけで開閉のボタンが無い / 8 行が全て見え、開閉のボタンが無い
   - name: threadListView
     title: スレッドの一覧
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
@@ -1739,7 +1797,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
     usecase: スレッドで話す
     kind: 画面
-    summary: 画面設計『スレッド』を描く。見出し（一覧へ戻る・状態を変える・理由の入力・状態を変えられなかった理由・状態の札と題・向けた項目・タグ）、書き込みの並び（`threadTimeline` の後にレビュー中の返信と消した返信をコメントの連番の順。`threadPost`・`removedReviewRow`）、下端（オープンは `replyForm`、クローズは「クローズにしたスレッドです。」）を持つ。`opened.pending` が真のときは、そのレビュー中の書き込み（消していれば消した行）から組み立て、状態の札を「レビュー中」にして「状態を変える」と返信の入力を出さず、下端に「まだ送っていないスレッドです。」を出す。理由の入力欄は `maxlength` 400 で、Ctrl+Enter で確定、Esc で閉じる（`stopPropagation`）。`data-focus` は戻るが `back`、状態を変えるが `status`、理由が `reason`・`reason-cancel`・`reason-ok`、向けた項目が `target`
+    summary: 画面設計『スレッド』を描く。見出し（一覧へ戻る・状態を変える・理由の入力・状態を変えられなかった理由・状態の札と題・向けた項目・タグ）、書き込みの並び（`threadTimeline` の後にレビュー中の返信と消した返信をコメントの連番の順。`threadPost`・`removedReviewRow`。レビュー中の書き込みには `open` を `expanded` にあるかで、`on.fold` を `commentsPanel` の `on.fold` で渡す）、下端（オープンは `replyForm`、クローズは「クローズにしたスレッドです。」）を持つ。`opened.pending` が真のときは、そのレビュー中の書き込み（消していれば消した行）から組み立て、状態の札を「レビュー中」にして「状態を変える」と返信の入力を出さず、下端に「まだ送っていないスレッドです。」を出す。理由の入力欄は `maxlength` 400 で、Ctrl+Enter で確定、Esc で閉じる（`stopPropagation`）。`data-focus` は戻るが `back`、状態を変えるが `status`、理由が `reason`・`reason-cancel`・`reason-ok`、向けた項目が `target`
     props:
       - name: props
         type: CommentsPanelProps
@@ -1886,7 +1944,7 @@ components:
       - name: className
         type: "'post-body' | 'review-body'"
         required: true
-        description: '本文の要素のクラス'
+        description: 本文の要素のクラス
       - name: on
         type: '{openId, changeSet}'
         required: true
@@ -2090,7 +2148,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     usecase: 画面で項目を編集して保存する
     kind: 画面
-    summary: 画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ
+    summary: '画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。タグは `chipsInput`（`mainToggle: true`、`suggestions` は `usedTags`）で描き、`onChange` の並びを `{op: set, key: tags, value}` で溜める。参照は `chipsInput`（`mainToggle: false`）で描く。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ'
     props:
       - name: kind
         type: Kind
@@ -2144,7 +2202,7 @@ components:
       - name: test_detail_edit_form
         case: 正常
         summary: 離れたときにキー・案を溜める
-        condition: '案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。`optionDrafts: [{key: C, content: ''''}]` の案 C の中身を書いて離れる'
+        condition: "案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。`optionDrafts: [{key: C, content: ''}]` の案 C の中身を書いて離れる"
         mock: '`on.change`'
         expected: '`on.change` が `{op: set, key: answer}`・`{op: adopt, key: B, value: B}`・`{op: option-add, key: C}` の順で 1 回ずつ'
       - name: test_detail_edit_form_when_removing_or_referenced
@@ -2164,13 +2222,19 @@ components:
         summary: 書きかけの案を状態から描き、置く・打つたびに知らせる
         condition: '案 A・B の検討事項 D-1、`optionDrafts: [{key: C, content: 下書き}]`。案 C の入力に「下書き」が出ているか見る。「案を追加」を押す。案 C に「下書き 2」と打つ'
         mock: '`on.draft`・`on.change`'
-        expected: '案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない'
+        expected: "案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない"
       - name: test_detail_edit_form_when_adding_adopted_option
         case: 正常
         summary: 追加の入力では、採用している案の削除ボタンを出さない
         condition: '`item` が仮の ID `new-1` で案 A・B（B が採用）の検討事項'
         mock: '`on.change`'
         expected: 「案 A を削除」はあり、「案 B を削除」と「項目を削除」が無い
+      - name: test_detail_edit_form_when_main_tag
+        case: 正常
+        summary: タグの主題のトグルで、主題を付けたタグの並びを溜める
+        condition: '`tags: [{name: 画面}, {name: データ}]` の検討事項 D-1。タグ `データ` の主題のトグルを押す'
+        mock: '`on.change`'
+        expected: '`on.change` が `{op: set, key: tags, value: [{name: 画面}, {name: データ, main: true}]}` で 1 回'
   - name: decorateMarkdown
     title: Markdownの本文
     kind: コンポーネント
@@ -2239,7 +2303,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
     usecase: コメントを選んで送る
     kind: コンポーネント
-    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles` は `() => null`）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で高さを行の高さ × `lines` に限り、はみ出しを隠す（本文は Markdown のブロックを持つ）。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
+    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles`・`changeSets`・`on.openId`・`on.changeSet` をそのまま渡す）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で高さを行の高さ × `lines` に限り、はみ出しを隠す（本文は Markdown のブロックを持つ）。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `{focus}more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
     props:
       - name: id
         type: string
@@ -2269,9 +2333,19 @@ components:
         default: REVIEW_FOLD_LINES
         description: 畳んだときに出す行の数
       - name: on
-        type: '{toggle, changeSet}'
+        type: '{toggle, changeSet, openId?}'
         required: true
-        description: 開閉した（`id`・開くか）・まとまりのリンクを押した。`postBody` の `openId` には部品の中で何もしない関数を渡す（項目の ID は文字のまま出す）
+        description: 開閉した（`id`・開くか）・まとまりのリンクを押した・本文の中の項目の ID を押した（`openId`。省くと何もしない関数を `postBody` へ渡す。`titles` を渡さなければ ID は文字のまま出るため押されない）
+      - name: titles
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: 項目のタイトル（記録に無ければ `null`）。部品設計の `titles` の対応を関数で受け、`postBody` へそのまま渡す
+      - name: focus
+        type: string
+        required: false
+        default: "''"
+        description: 開閉のボタンの `data-focus` の接頭辞
     unit_tests:
       - name: test_review_body_fold
         case: 正常
@@ -2291,6 +2365,12 @@ components:
         condition: '改行で 8 行の本文を `open: true` で描く'
         mock: なし
         expected: 本文が `folded` を持たず 8 行が見え、ボタンが「折りたたむ」で `aria-expanded="true"`
+      - name: test_review_body_fold_when_titles_and_focus
+        case: 正常
+        summary: 記録にある項目の ID のリンクと、開閉のボタンの接頭辞
+        condition: 本文「T-14 は今週中に。D-99 は重なる」、`titles` は T-14 だけ、`focus` は `detail-`。T-14 を押す
+        mock: '`on.openId`'
+        expected: T-14 がボタン（`title` がタイトル）で D-99 は文字のまま。開閉のボタンの `data-focus` が `detail-more:{ID}`。押すと `on.openId` が `T-14` で 1 回
   - name: panelResizer
     title: 幅の区切り
     kind: コンポーネント
@@ -2371,6 +2451,88 @@ components:
     status: planned
     introduced:
       pr: 348
+  - name: tagList
+    title: タグの並び
+    container: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
+    usecase: 共通
+    kind: コンポーネント
+    summary: 部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、名前の前に読み上げだけの「主題」の文字（読み上げは「主題 画面」）を、`title` に「主題」を持たせる。並びは記録の順のまま（主題を先頭へ寄せない）。文字列の要素は主題でないタグとして出す。資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う（表のタグの列は `tagNames` の名前を渡すため、マーカーを持たない）
+    props:
+      - name: values
+        type: readonly (Tag | string)[] | undefined
+        required: false
+        default: '[]'
+        description: 項目の `tags`（`{name, main?}` の並び）か、名前の文字列の並び
+    unit_tests:
+      - name: test_tag_list
+        case: 正常
+        summary: 主題のタグにマーカーを付け、記録の順のまま並べる
+        condition: '`parametrize`: `[{name: 画面}, {name: データ, main: true}]` / `[UI, 性能]` / `undefined`'
+        mock: なし（DOM を作って見る）
+        expected: '`span.tag` が `画面`・`データ` の順で、`データ` だけが二重丸のマーカーと読み上げだけの「主題」の文字と `title`「主題」を持つ / `span.tag` が `UI`・`性能` でどれもマーカーを持たない / 子の無い断片'
+  - name: chipsInput
+    title: チップの入力
+    container: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
+    usecase: 画面で項目を編集して保存する
+    kind: コンポーネント
+    summary: 部品設計『チップの入力』の引数を受け、値のチップの並びと、候補（`datalist`）つきの入力欄を返す。Enter か入力欄を離れたときに、空白でなく並びに無い値をチップにして追加し、チップの × で外し、`onChange` を呼ぶ。`mainToggle` が真のときは値を `{name, main?}` で持ち、チップの名前の前に主題のトグル（`button`・`aria-pressed`・読み上げ名「{タグ} を主題」・`title` は主題のとき「主題を外す」、それ以外は「主題にする」・押せる範囲は縦横 24px）を置き、押すたびにそのタグの `main` を付け外しして `onChange` を呼ぶ（主題でないタグは `main` を持たない並びを渡す）。押した後も同じタグのトグルにフォーカスを残す。入力欄から追加したタグは主題でないまま並べる。`disabled` の間は入力欄・× ・トグルを押せなくする。編集の表示（項目のタグ・参照）と設定の画面が使う
+    props:
+      - name: controlId
+        type: string
+        required: true
+        description: 入力欄の `id`
+      - name: name
+        type: string
+        required: true
+        description: キーの表示名
+      - name: hint
+        type: string
+        required: true
+        description: 入力欄のプレースホルダ
+      - name: values
+        type: readonly (Tag | string)[]
+        required: true
+        description: 今の値の並び（`mainToggle` が真のときは `Tag[]`）
+      - name: suggestions
+        type: string[] | null
+        required: true
+        description: 入力欄の候補。出さないときは `null`
+      - name: monospace
+        type: boolean
+        required: true
+        description: チップを等幅の文字で出すか
+      - name: mainToggle
+        type: boolean
+        required: false
+        default: 'false'
+        description: 主題のトグルを置くか（項目のタグだけ真）
+      - name: disabled
+        type: boolean
+        required: true
+        description: 操作を止めるか
+      - name: onChange
+        type: '(values: (Tag | string)[], removed: string | null) => void'
+        required: true
+        description: 値を追加した・外した・主題を付け外ししたときに呼ぶ
+    unit_tests:
+      - name: test_chips_input
+        case: 正常
+        summary: 値を追加し・外し、並びに有るものは追加しない
+        condition: '`values: [UI]`・`mainToggle: false`。入力欄に `性能` を入れて Enter、`UI` を入れて Enter、`UI` の × を押す'
+        mock: '`onChange`'
+        expected: '`onChange` が `([UI, 性能], null)`・`([性能], UI)` の順で 2 回'
+      - name: test_chips_input_when_main_toggle
+        case: 正常
+        summary: 主題のトグルで main を付け外しし、追加したタグは主題でない
+        condition: '`values: [{name: 画面}, {name: データ, main: true}]`・`mainToggle: true`。`画面` のトグルを押す、`データ` のトグルを押す、入力欄に `保存` を入れて Enter'
+        mock: '`onChange`'
+        expected: '`データ` のトグルが `aria-pressed="true"`・読み上げ名「データ を主題」・`title`「主題を外す」で、`画面` のトグルが `aria-pressed="false"`・`title`「主題にする」。押した後のフォーカスが押したタグのトグルにある。`onChange` が `([{name: 画面, main: true}, {name: データ, main: true}], null)`・`([{name: 画面, main: true}, {name: データ}], null)`・`([{name: 画面, main: true}, {name: データ}, {name: 保存}], null)` の順で 3 回'
+      - name: test_chips_input_when_disabled
+        case: 異常
+        summary: disabled の間は操作できない
+        condition: '`mainToggle: true`・`disabled: true`。トグルと × を押す'
+        mock: '`onChange`'
+        expected: 入力欄・× ・トグルが `disabled` で、`onChange` が呼ばれない
 functions:
   - name: filterRows
     title: 行の絞り込み
@@ -2743,12 +2905,12 @@ functions:
     summary: ネットワークで絞る条件（種類・状態・タグ）の定義を返す
     returns:
       type: '{key, label, get, order?}[]'
-      description: '`type`（項目の種類の名前。検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`。`get` は索引の項目（`{kind, item}`）から値を取る'
+      description: '`type`（項目の種類の名前。検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`（`tagNames` の名前）。`get` は索引の項目（`{kind, item}`）から値を取る'
     unit_tests:
       - name: test_graph_conditions
         case: 正常
         summary: 種類・状態・タグの値を取る
-        condition: 未決定・タグ a の D-1 と、タグの無い N-1
+        condition: '未決定・タグ `[{name: a, main: true}]` の D-1 と、タグの無い N-1'
         mock: なし
         expected: D-1 は `検討事項`・`未決定`・`[a]`、N-1 は `メモ`・状態無し・`[]`
   - name: wheelZoom
@@ -3489,8 +3651,8 @@ functions:
         passing: positional
         description: 編集
     returns:
-      type: '{what: string, before: string | null, after: string | null}'
-      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。配列は「、」でつなぐ'
+      type: '{what: string, before: string | Tag[] | null, after: string | Tag[] | null}'
+      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。`tags` の `set` は `before`・`after` を `{name, main?}` の並びのまま返し（行は `tagList` で描く）、それ以外の配列は「、」でつなぐ'
     unit_tests:
       - name: test_edit_row_text
         case: 正常
@@ -3498,6 +3660,12 @@ functions:
         condition: '`parametrize`: `set`（`status` を 未着手 → 中止）/ `set`（`body`）/ `option-add`（C）/ `adopt`（A → C）/ `item-remove` / `setting`（`tags`）'
         mock: なし
         expected: '`{what: 状態, before: 未着手, after: 中止}` / `{what: 本文, before: null, after: null}` / `{what: 案 C を追加, before: null, after: 中身}` / `{what: 採用する案, before: A, after: C}` / `{what: 項目を削除, before: null, after: null}` / `{what: タグの語彙, ...}`'
+      - name: test_edit_row_text_when_tags
+        case: 正常
+        summary: タグの編集は前後をタグの並びのまま返す
+        condition: '`set`（`tags` を `[{name: 画面}]` → `[{name: 画面, main: true}, {name: データ}]`）'
+        mock: なし
+        expected: '`{what: タグ, before: [{name: 画面}], after: [{name: 画面, main: true}, {name: データ}]}`'
   - name: groupEdits
     title: 編集の項目ごとのまとまり
     kind: 関数
@@ -3732,7 +3900,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     usecase: 画面で項目を編集して保存する
     scope: public
-    summary: 項目とスレッドが使っているタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる
+    summary: 項目のタグの名前（`tagNames`。主題かどうかによらない）とスレッドのタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる
     args:
       - name: args
         type: '{index: RecordIndex, threads: Thread[]}'
@@ -3746,9 +3914,32 @@ functions:
       - name: test_used_tags
         case: 正常
         summary: 表記をそろえて重なりを除き、件数の多い順に並べる
-        condition: 'D-1: `[API]`・T-1: `[ａｐｉ, 画面]`・N-1: `[保存]`・TH-1: `[画面]`'
+        condition: 'D-1: `[{name: API, main: true}]`・T-1: `[{name: ａｐｉ}, {name: 画面}]`・N-1: `[{name: 保存}]`・TH-1: `[画面]`'
         mock: なし
         expected: '`[api, 画面, 保存]`'
+  - name: reviewLabel
+    title: レビュー中の書き込みの読み上げの名前の頭
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中の書き込みの行の読み上げの名前の頭を返す。返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」、項目を指さないものは「項目を指さないコメント」（`thread` を持たない詳細パネルの行は新しいスレッドと同じ扱い）。`commentsPanel`・`threadPost`・`detailPanel`・`reviewRowActions` が使う
+    args:
+      - name: item
+        type: ReviewItem
+        required: true
+        passing: positional
+        description: レビュー中の書き込み
+    returns:
+      type: string
+      description: 読み上げの名前の頭
+    unit_tests:
+      - name: test_review_label
+        case: 正常
+        summary: 返信・項目へのコメント・項目を指さないコメントの頭
+        condition: '`parametrize`: `thread: TH-1` / `thread: null`・`target: D-1` / `thread` を持たず `target: D-1` / `thread: null`・`target: null`'
+        mock: なし
+        expected: 「TH-1 への返信」/「D-1 へのコメント」/「D-1 へのコメント」/「項目を指さないコメント」
 test_files:
   - tests/unit/preview/test_table.py
   - tests/unit/preview/test_tasks.py
@@ -3778,6 +3969,8 @@ test_files:
   - tests/unit/preview/test_detail_edit.py
   - tests/unit/preview/test_markdown_body.py
   - tests/unit/preview/test_review_body_fold.py
+  - tests/unit/preview/test_tag_list.py
+  - tests/unit/preview/test_chips_input.py
 constants:
   - name: MINIMAP_MARK_MIN_PX
     title: ミニマップの印の最小の長さ
@@ -3821,6 +4014,18 @@ constants:
     usecase: 表示の設定を変える
     summary: 切り替えの読み上げの名前と、表示の設定の「この端末で変えている項目」に出す名前。`resolveDisplay` もこの名前を並べる
     value: '"本文の差分の並べ方"'
+  - name: REVIEW_ORDER_LABEL
+    title: レビュー中のコメントの並びの呼び名
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目へコメントする
+    summary: 並びの切り替えの読み上げの名前の頭と、表示の設定の「この端末で変えている項目」に出す名前（確認ログの決定）。`resolveDisplay` もこの名前を並べる
+    value: '"コメントの並び"'
+  - name: REVIEW_ORDER_TEXT
+    title: レビュー中のコメントの並びの文言
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目へコメントする
+    summary: 並びの切り替えに出す今の並びの文言（確認ログの決定）
+    value: '{newest: "新しい順", oldest: "古い順"}'
   - name: BODY_VIEW_LABELS
     title: 本文の見せ方の呼び名
     container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts

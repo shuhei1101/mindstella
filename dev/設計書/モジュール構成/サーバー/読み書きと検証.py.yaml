@@ -686,6 +686,7 @@ functions:
          - キーのパスは `absolute_path` を `items[0].status` の形にする（`_format_path`。一番上は `(全体)`）
          - パスが `items[{n}]` を含み、その要素が `id` を持つ場合、その `id` を問題の `id` に入れる
       3. `raw` に `decisions.yaml` があれば、`check_decision_rules` の問題を足す（キーのパスの順に並べる）
+         - 種類ごとの YAML の `items` の各要素の `tags` が並びなら、`duplicate_tag_indexes` が返す位置ごとに `kind: schema`・キーのパス `items[{i}].tags[{j}]`・`detail` `同じタグが既にある` の問題を追加する（`id` はその要素の `id`）
       4. `load_problems` と合わせて並べて返す
     unit_tests:
       - name: test_validate_workspace
@@ -730,6 +731,12 @@ functions:
         condition: '`parametrize`: `aliases: [特殊効果]`・`description` を持つ資料 A-1 と調査 R-1 / どちらも持たない A-1 / `aliases: [特殊効果, ""]` の A-1'
         mock: なし
         expected: '空の並び / 空の並び / `file: docs.yaml`・`key: items[0].aliases[1]` の 1 件'
+      - name: test_validate_workspace_when_duplicated_tag
+        case: 正常
+        summary: 表記をそろえて同じ名前になるタグの 2 件目以降を拾う
+        condition: 'D-1 の `tags` が `[{name: API}, {name: ａｐｉ, main: true}]`'
+        mock: なし
+        expected: '`file: decisions.yaml`・`key: items[0].tags[1]`・`id: D-1`・`kind: schema`・`detail` が `同じタグが既にある` の 1 件'
   - name: load_validators
     title: 検証器の用意
     kind: 関数
@@ -1202,7 +1209,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の文字列のタグ・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1228,7 +1235,8 @@ functions:
       2. `kind` が `schema` でない場合、偽を返す
       3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field` を持ち `playbooks` を持たないか、`tags` を持てば真
       4. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
-      5. それ以外は偽
+      5. `key` が `items[{i}].tags[{j}]` の形で、`id` が `written_ids` に無く、その要素が文字列なら真
+      6. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
@@ -1242,6 +1250,12 @@ functions:
         condition: 'D-1 の `kind: decision_state` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}` / `written_ids` が `{D-2}`'
         mock: なし
         expected: 真 / 偽 / 真
+      - name: test_is_legacy_problem_when_string_tag
+        case: 正常
+        summary: 書き込む項目以外の文字列のタグだけを前のバージョンの形式とする
+        condition: 'D-1 の `tags` が `[データ]` のワークスペースを検証した `items[0].tags[0]` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}`'
+        mock: なし
+        expected: 真 / 偽
   - name: clear_release
     title: リリースの片付け
     kind: 関数

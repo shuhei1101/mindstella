@@ -9,16 +9,21 @@ from playwright.sync_api import Page
 from preview_helpers import (
     DRAWER,
     FILTER_BUTTON,
+    SCRIM_ON,
     OpenPreview,
     ServePreview,
     ServeWorkspace,
     badge_text,
     bands_stay_on_top,
     close_drawer,
+    close_drawer_by_escape,
     drawer_counts,
+    is_inert,
     open_drawer,
     page_scroll_overflow,
+    press_through_scrim,
     row_ids,
+    scrim_shown,
     toggle_value,
 )
 from workspace_fixtures import RECORD_DIR, MakeItem
@@ -33,6 +38,15 @@ SCROLL_TOLERANCE_PX = 4
 # 横に送る量（px）とピン留めを確かめる幅（px）
 SCROLL_LEFT = 150
 NARROW_TABLE_WIDTH = 760
+
+# ドロワーの外側を押す間の表示の大きさ（幅 900px 以下はドロワーが幅いっぱいに出て外側が無い）
+WIDE_VIEWPORT = {"width": 1280, "height": 800}
+
+# 行の中で、左のドロワーに重ならない右寄りの位置を押すときの、行の幅に対する割合
+OUTSIDE_X_RATIO = 0.8
+
+# 左のドロワーが覆わない、表の D-2 の前提の D-1 のボタン
+D2_PREREQUISITE_LINK = 'table.grid tbody tr[data-id="D-2"] button.idlink'
 
 
 def _headers(page: Page) -> dict[str, str | None]:
@@ -99,11 +113,23 @@ def test_normal(
     assert page.locator('button[data-popover^="filter:"]').count() == 0
     assert page.locator(FILTER_BUTTON).count() == 1
     # ドロワーの確度の選択肢に値ごとの件数が出る。「高」で絞ると R-2 が無く、確度 = 高のチップが出る
+    viewport = page.viewport_size
+    page.set_viewport_size(WIDE_VIEWPORT)
     open_drawer(page)
     assert drawer_counts(page, "confidence") == {"高": 2, "中": EXTRA_RESEARCH_COUNT, "低": 1}
     toggle_value(page, "confidence", "高")
     page.wait_for_selector(".chips .chip")
-    close_drawer(page)
+    # ドロワーを開いている間、ドロワーとトップバー以外がグレーアウトされる
+    page.wait_for_selector(SCRIM_ON)
+    assert scrim_shown(page) is True
+    assert is_inert(page, 'table.grid tbody tr[data-id="R-1"]') is True
+    assert is_inert(page, FILTER_BUTTON) is False
+    # 外側のグレーアウトした所を押すとドロワーが閉じる
+    press_through_scrim(page, 'table.grid tbody tr[data-id="R-1"]', x_ratio=OUTSIDE_X_RATIO)
+    page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    assert viewport is not None
+    page.set_viewport_size(viewport)
     assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
         "確度: 高"
     ]
@@ -156,6 +182,29 @@ def test_normal(
     assert pressed_after == 0
 
 
+def test_normal_when_outside_pressed(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+) -> None:
+    """ドロワーの外側のグレーアウトした前提のボタンを押すとドロワーだけが閉じ、詳細パネルは開かない（正常系）。"""
+    # 準備
+    url = serve_preview(make_item("D-1"), make_item("D-2", depends_on=["D-1"]))
+    page = open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(D2_PREREQUISITE_LINK)
+    # 実行（絞り込みのボタンを押す）
+    open_drawer(page)
+    page.wait_for_selector(SCRIM_ON)
+    # 実行（グレーアウトした表の D-2 の前提の D-1 を押す）
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
+    page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    # 検証
+    # グレーアウトした表の D-2 の前提の D-1 を押すとドロワーが閉じ、D-1 の詳細パネルは開かない
+    assert page.locator("aside.panel.open").count() == 0
+    assert "id=D-1" not in page.evaluate("location.hash")
+
+
 def test_normal_when_no_match(
     serve_preview: ServePreview,
     open_preview: OpenPreview,
@@ -197,9 +246,9 @@ def test_normal_when_topic_tags(
     """ドロワーに種類・状態・タグを並べ、タグと種類を選んで表を絞り、ボードに切り替えても条件を保つ（正常系）。"""
     # 準備
     url = serve_preview(
-        make_item("T-1", kind="作業", status="未着手", tags=["保存", "画面"]),
-        make_item("T-2", kind="調査", status="進行中", tags=["保存"]),
-        make_item("T-3", kind="作業", status="未着手", tags=["通知"]),
+        make_item("T-1", kind="作業", status="未着手", tags=[{"name": "保存"}, {"name": "画面"}]),
+        make_item("T-2", kind="調査", status="進行中", tags=[{"name": "保存"}]),
+        make_item("T-3", kind="作業", status="未着手", tags=[{"name": "通知"}]),
         make_item("T-4", kind="作業", status="完了"),
         settings=valid_settings,
     )
@@ -221,7 +270,7 @@ def test_normal_when_topic_tags(
     toggle_value(page, "kind", "作業")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
     assert row_ids(page) == ["T-1", "T-3"]
-    close_drawer(page)
+    close_drawer_by_escape(page)
     # 実行・検証（ボードに切り替えても同じ条件で絞り、バッジが付いたまま）
     page.click('.segment button[data-view="board"]')
     page.wait_for_selector(".board")

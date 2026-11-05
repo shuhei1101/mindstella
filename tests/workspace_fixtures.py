@@ -5,21 +5,29 @@ fixture は `tests/conftest.py` が読み込み、`tests/` の下の全てのテ
 
 from __future__ import annotations
 
+import asyncio
+import itertools
 import copy
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import threading
+import time
+import urllib.request
 from collections import deque
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator
+from concurrent.futures import Future
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
 
 # このファイルから見たリポジトリの直下（tests の 1 つ上）
 REPO_ROOT_PARENT_DEPTH = 1
@@ -30,19 +38,38 @@ SERVER_SCRIPT = (
     REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "scripts" / "server.py"
 )
 
-# MCP サーバーが送り先に使う、tmux のサーバーとペインを指す環境変数の名前
-TMUX_ENV_NAMES = ("TMUX", "TMUX_PANE")
-
 # 子プロセス 1 回を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 120
 
-# MCP のクライアントが名乗る版（サーバーが受け入れる通信の版）
-MCP_PROTOCOL_VERSION = "2025-06-18"
+# 常駐サーバーが待ち受けるホストと、待ち受けのポートを読む環境変数の名前
+LISTEN_HOST = "127.0.0.1"
+PORT_ENV = "MINDSTELLA_PORT"
 
-# サーバーが標準入力を閉じられてから終わるまで待つ上限秒数
+
+# テストの常駐サーバーに渡すポートの範囲（OS の一時ポートの範囲より下）の始まりと、xdist のワーカー 1 つ分の個数
+TEST_PORT_BASE = 20000
+TEST_PORTS_PER_WORKER = 500
+
+# ワーカーの範囲の中で次に試す位置
+_port_counter = itertools.count()
+# 常駐サーバーの MCP の入口と、状態を返す GET のパス
+MCP_PATH = "/mcp"
+STATUS_PATH = "/_admin/status"
+
+# 状態の GET 1 回を打ち切る秒数
+STATUS_TIMEOUT_SEC = 1
+
+# 常駐サーバーが待ち受けるまで待つ上限秒数と、確かめる間隔
+SERVER_START_TIMEOUT_SEC = 20
+START_POLL_SEC = 0.1
+
+# MCP のクライアントがつなぐ・1 回のリクエストを待つ上限秒数
+CLIENT_TIMEOUT_SEC = 60
+
+# 常駐サーバーが終わり始めてから終わるまで待つ上限秒数
 SERVER_EXIT_TIMEOUT_SEC = 5
 
-# サーバーの標準エラーのうち、失敗の報告に残す直近の行数（残りは読み捨てる）
+# サーバーの出力のうち、失敗の報告に残す直近の行数（残りは読み捨てる）
 STDERR_KEEP_LINES = 200
 
 # 標準エラーを読み切るのを待つ上限秒数
@@ -103,9 +130,35 @@ type SnapshotTree = Callable[[Path], dict[str, bytes]]
 type MakeVenv = Callable[..., Path]
 
 
-def _without_tmux(environ: Mapping[str, str]) -> dict[str, str]:
-    """tmux のペインを指す環境変数を外した環境変数を返す（テストを流すペインへ、サーバーが入力しないため）。"""
-    return {key: value for key, value in environ.items() if key not in TMUX_ENV_NAMES}
+def free_port() -> int:
+    """`127.0.0.1` の空きポートを、OS の一時ポートの範囲（プレビューの配信が使う）の外の、xdist のワーカーごとの範囲から 1 つ選んで返す。"""
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "gw0").removeprefix("gw")
+    start = TEST_PORT_BASE + int(worker if worker.isdigit() else 0) * TEST_PORTS_PER_WORKER
+    for offset in range(TEST_PORTS_PER_WORKER):
+        port = start + (next(_port_counter) + offset) % TEST_PORTS_PER_WORKER
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            try:
+                probe.bind((LISTEN_HOST, port))
+            except OSError:
+                continue
+        return port
+    raise AssertionError(f"{start} からの {TEST_PORTS_PER_WORKER} 個のポートに空きが無い")
+
+
+def is_listening(port: int) -> bool:
+    """`127.0.0.1` のそのポートへつながるかを返す。"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        return probe.connect_ex((LISTEN_HOST, port)) == 0
+
+
+def read_server_status(port: int) -> dict[str, Any] | None:
+    """`GET /_admin/status` の JSON を返す。つながらなければ None。"""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(f"http://{LISTEN_HOST}:{port}{STATUS_PATH}", timeout=STATUS_TIMEOUT_SEC) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except OSError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -117,113 +170,163 @@ class ToolResult:
     data: dict[str, Any] | None
 
 
+class McpClient:
+    """常駐サーバーの `/mcp` へ MCP の SDK のクライアントでつなぎ、ツールを同期で呼ぶ。
+
+    SDK のクライアントは非同期で、つないだタスクの中で使い続ける必要があるため、専用のスレッドのイベントループの 1 つのタスクで動かす。
+    """
+
+    def __init__(self, url: str) -> None:
+        """つないで初期化を済ませ、サーバーの名前を控える。"""
+        self._loop = asyncio.new_event_loop()
+        self._requests: asyncio.Queue[tuple[Callable[[ClientSession], Any], Future[Any]] | None]
+        ready: Future[str] = Future()
+        self._thread = threading.Thread(target=self._run, args=(url, ready), daemon=True)
+        self._thread.start()
+        self.server_name = ready.result(timeout=CLIENT_TIMEOUT_SEC)
+
+    def _run(self, url: str, ready: Future[str]) -> None:
+        """イベントループを動かし、つないだクライアントでリクエストを待つ。"""
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_until_complete(self._serve(url, ready))
+
+    async def _serve(self, url: str, ready: Future[str]) -> None:
+        """つないで初期化し、閉じるまで届いたリクエストを順に呼ぶ。"""
+        self._requests = asyncio.Queue()
+        try:
+            async with (
+                streamable_http_client(url) as (read_stream, write_stream, *_),
+                ClientSession(read_stream, write_stream) as session,
+            ):
+                initialized = await session.initialize()
+                ready.set_result(initialized.server_info.name)
+                while (request := await self._requests.get()) is not None:
+                    run, result = request
+                    try:
+                        result.set_result(await run(session))
+                    except Exception as error:  # noqa: BLE001 - 呼び出し元のスレッドで送り直す
+                        result.set_exception(error)
+        except BaseException as error:
+            # つなぐ前に失敗した: 呼び出し元へ知らせる
+            if not ready.done():
+                ready.set_exception(error)
+            raise
+
+    def _request(self, run: Callable[[ClientSession], Any]) -> Any:
+        """クライアントのスレッドで run を呼び、結果を返す。"""
+        result: Future[Any] = Future()
+        self._loop.call_soon_threadsafe(self._requests.put_nowait, (run, result))
+        return result.result(timeout=CLIENT_TIMEOUT_SEC)
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        """ツールの一覧（名前・入力のスキーマ）を返す。"""
+        listed = self._request(lambda session: session.list_tools())
+        return [{"name": tool.name, "inputSchema": tool.input_schema} for tool in listed.tools]
+
+    def call(self, name: str, **arguments: Any) -> ToolResult:
+        """ツールを呼び、結果の本文・エラーかどうか・構造化の結果を返す。"""
+        result = self._request(lambda session: session.call_tool(name, arguments))
+        text = "".join(part.text for part in result.content if part.type == "text")
+        return ToolResult(
+            is_error=bool(result.is_error), text=text, data=result.structured_content
+        )
+
+    def close(self) -> None:
+        """セッションを閉じて、クライアントのスレッドを終える（既に閉じていれば何もしない）。"""
+        if not self._thread.is_alive():
+            return
+        self._loop.call_soon_threadsafe(self._requests.put_nowait, None)
+        self._thread.join(timeout=CLIENT_TIMEOUT_SEC)
+
+
 class McpServer:
-    """MCP サーバーを子プロセスとして立て、標準入出力の JSON-RPC でツールを呼ぶ同期のクライアント。"""
+    """常駐サーバーを空きポートで子プロセスとして起動し、MCP のクライアントでつないでツールを呼ぶ。"""
 
     def __init__(
         self, *, python: str, env: dict[str, str], cwd: Path | None, script: Path = SERVER_SCRIPT
     ) -> None:
-        """サーバーを立てて初期化を済ませ、サーバーの名前を控える。"""
-        self._next_id = 0
+        """常駐サーバーを起動して待ち受けを待ち、クライアントを 1 つつなぐ。"""
+        self.port = int(env.get(PORT_ENV) or free_port())
+        self.url = f"http://{LISTEN_HOST}:{self.port}{MCP_PATH}"
         self.process = subprocess.Popen(
             [python, str(script)],
-            stdin=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
-            env=env,
+            env={**env, PORT_ENV: str(self.port)},
             cwd=cwd,
         )
-        # 標準エラーのパイプは満杯になるとサーバーの書き込みが止まり、応答が返らなくなる。別のスレッドで読み続ける
-        self._stderr_lines: deque[str] = deque(maxlen=STDERR_KEEP_LINES)
-        self._stderr_reader = threading.Thread(target=self._drain_stderr, daemon=True)
-        self._stderr_reader.start()
-        initialized = self._request(
-            "initialize",
-            {
-                "protocolVersion": MCP_PROTOCOL_VERSION,
-                "capabilities": {},
-                "clientInfo": {"name": "integration-test", "version": "0"},
-            },
-        )
-        self.server_name: str = initialized["serverInfo"]["name"]
-        self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        # 出力のパイプは満杯になるとサーバーの書き込みが止まるので、別のスレッドで読み続ける
+        self._output_lines: deque[str] = deque(maxlen=STDERR_KEEP_LINES)
+        self._output_reader = threading.Thread(target=self._drain_output, daemon=True)
+        self._output_reader.start()
+        self._wait_listening()
+        self._clients: list[McpClient] = []
+        self.client = self.connect()
+        self.server_name = self.client.server_name
 
-    def _drain_stderr(self) -> None:
-        """サーバーの標準エラーを終わりまで読み、直近の行だけを残す。"""
-        assert self.process.stderr is not None
-        for line in self.process.stderr:
-            self._stderr_lines.append(line)
+    def _drain_output(self) -> None:
+        """サーバーの標準出力と標準エラーを終わりまで読み、直近の行だけを残す。"""
+        assert self.process.stdout is not None
+        for line in self.process.stdout:
+            self._output_lines.append(line)
+
+    def _wait_listening(self) -> None:
+        """`GET /_admin/status` が返るまで待つ。先に終わるか上限を過ぎたらテストを止める。"""
+        deadline = time.monotonic() + SERVER_START_TIMEOUT_SEC
+        while read_server_status(self.port) is None:
+            assert self.process.poll() is None, f"常駐サーバーが終わりました: {self.stderr_text()}"
+            assert time.monotonic() < deadline, f"常駐サーバーが待ち受けません: {self.stderr_text()}"
+            time.sleep(START_POLL_SEC)
 
     def stderr_text(self) -> str:
         """サーバーが標準エラーへ書いた直近の行を返す（サーバーが終わっていれば読み切ってから）。"""
         if self.process.poll() is not None:
-            self._stderr_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
-        return "".join(self._stderr_lines)
+            self._output_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
+        return "".join(self._output_lines)
 
-    def _send(self, message: dict[str, Any]) -> None:
-        """JSON-RPC の 1 通を、標準入力へ 1 行で書く。"""
-        assert self.process.stdin is not None
-        self.process.stdin.write(json.dumps(message, ensure_ascii=False) + "\n")
-        self.process.stdin.flush()
-
-    def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        """リクエストを送り、同じ id の応答の `result` を返す。"""
-        assert self.process.stdout is not None
-        self._next_id += 1
-        self._send({"jsonrpc": "2.0", "id": self._next_id, "method": method, "params": params})
-        line = self.process.stdout.readline()
-        assert line, f"サーバーが応答せずに終わりました: {self.stderr_text()}"
-        response = json.loads(line)
-        assert response["id"] == self._next_id
-        return response["result"]
+    def connect(self) -> McpClient:
+        """同じ常駐サーバーへ、もう 1 つのクライアントをつなぐ。"""
+        client = McpClient(self.url)
+        self._clients.append(client)
+        return client
 
     def list_tools(self) -> list[dict[str, Any]]:
-        """ツールの一覧（名前・入力のスキーマ）を返す。"""
-        return self._request("tools/list", {})["tools"]
+        """最初につないだクライアントでツールの一覧を返す。"""
+        return self.client.list_tools()
 
     def call(self, name: str, **arguments: Any) -> ToolResult:
-        """ツールを呼び、結果の本文・エラーかどうか・構造化の結果を返す。"""
-        result = self._request("tools/call", {"name": name, "arguments": arguments})
-        text = "".join(part["text"] for part in result["content"] if part["type"] == "text")
-        return ToolResult(
-            is_error=bool(result.get("isError")),
-            text=text,
-            data=result.get("structuredContent"),
-        )
-
-    def close_stdin(self) -> None:
-        """標準入力を閉じる（Claude Code を閉じたのと同じ）。"""
-        assert self.process.stdin is not None
-        self.process.stdin.close()
+        """最初につないだクライアントでツールを呼ぶ。"""
+        return self.client.call(name, **arguments)
 
     def wait_exit(self, timeout: float = SERVER_EXIT_TIMEOUT_SEC) -> int:
         """プロセスが終わるのを待ち、終了コードを返す。"""
         return self.process.wait(timeout=timeout)
 
     def stop(self) -> None:
-        """まだ動いていれば標準入力を閉じて終わらせ、動いたままなら止める。"""
+        """クライアントを閉じ、まだ動いていれば SIGTERM で終わらせ、動いたままなら止める。"""
+        for client in self._clients:
+            client.close()
         if self.process.poll() is None:
-            if self.process.stdin is not None and not self.process.stdin.closed:
-                self.process.stdin.close()
+            self.process.terminate()
             try:
                 self.process.wait(timeout=SERVER_EXIT_TIMEOUT_SEC)
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()
-        # 標準エラーは読むスレッドが終わりまで読むので、読み切ってから閉じる
-        self._stderr_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
-        for stream in (self.process.stdout, self.process.stderr):
-            if stream is not None:
-                stream.close()
+        # 出力は読むスレッドが終わりまで読むので、読み切ってから閉じる
+        self._output_reader.join(timeout=STDERR_JOIN_TIMEOUT_SEC)
+        if self.process.stdout is not None:
+            self.process.stdout.close()
 
 
 @pytest.fixture
 def start_server(tmp_path: Path) -> Iterator[StartServer]:
-    """MCP サーバーを子プロセスとして立てる関数を返し、テストの後で全て止める。"""
+    """常駐サーバーを空きポートで子プロセスとして起動する関数を返し、テストの後で全て止める。"""
     # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    base_env = {**_without_tmux(os.environ), "PYTHONUTF8": "1"}
+    base_env = {**os.environ, "PYTHONUTF8": "1"}
     started: list[McpServer] = []
 
     def _start(
@@ -233,7 +336,7 @@ def start_server(tmp_path: Path) -> Iterator[StartServer]:
         cwd: Path | None = None,
         script: Path = SERVER_SCRIPT,
     ) -> McpServer:
-        """サーバーを立てて初期化を済ませる。cwd が相対パスの workspace の基準になる。"""
+        """常駐サーバーを起動してクライアントをつなぐ。cwd は常駐サーバーの作業フォルダ。"""
         server = McpServer(
             python=python, env={**base_env, **(extra_env or {})}, cwd=cwd or tmp_path, script=script
         )
@@ -247,10 +350,10 @@ def start_server(tmp_path: Path) -> Iterator[StartServer]:
 
 @pytest.fixture(scope="session")
 def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
-    """テスト全体で共有する MCP サーバーを 1 つ立てて返す（立ち上げに数秒かかるため）。"""
+    """テスト全体で共有する常駐サーバーを 1 つ起動して返す（立ち上げに数秒かかるため）。"""
     server = McpServer(
         python=sys.executable,
-        env={**_without_tmux(os.environ), "PYTHONUTF8": "1"},
+        env={**os.environ, "PYTHONUTF8": "1"},
         cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
     )
     yield server

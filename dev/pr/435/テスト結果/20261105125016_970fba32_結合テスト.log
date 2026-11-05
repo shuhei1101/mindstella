@@ -1,0 +1,12 @@
+$ pytest tests/integration/preview/test_open_preview.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/test-preview-review-order-body-trim
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 55 items
+
+tests/integration/preview/test_open_preview.py ......................... [ 45%]
+..............................                                           [100%]
+
+======================== 55 passed in 144.45s (0:02:24) ========================

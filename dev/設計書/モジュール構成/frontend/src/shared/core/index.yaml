@@ -1,0 +1,6 @@
+summary: '`frontend/src/shared/core/` の React のプレビューのモジュール'
+items:
+- page: app-error.ts.yaml
+  summary: 失敗した応答から作るエラー。`detail` を画面に出す
+- page: legacy-url.ts.yaml
+  summary: React に無い画面を開くときの今の画面（インターフェース定義『プレビューの配信』）

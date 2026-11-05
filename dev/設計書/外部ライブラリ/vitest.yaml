@@ -1,0 +1,44 @@
+title: vitest
+kind: CLI
+version:
+  current: 5.1.0
+  latest: 5.1.0
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 5.1.0 に固定する（`^` を付けない）
+catalogs:
+- name: 使うもの
+  version: 5.1.0
+  entries:
+  - name: npx vitest run
+    kind: コマンド
+    purpose: frontend/src の *.test.ts(x) を流す
+  - name: 'environment: jsdom'
+    kind: 設定
+    purpose: ブラウザの DOM の代わり
+  - name: '@testing-library/react・user-event・jest-dom'
+    kind: ライブラリ
+    purpose: 役割と名前で要素を引き、操作して確かめる
+lead: Vite の設定で動くテストランナー。
+purl: pkg:npm/vitest
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+- vitest.config.ts
+- frontend/src/testing/
+upstream: vitest-dev/vitest
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: npx vitest run で 14 ファイル 22 件が通ることを確かめた
+license: MIT（開発用だけで配る物に入らない）
+official_url: https://vitest.dev/
+docs_url: https://vitest.dev/config/
+install: '```bash
+
+  npm install --save-dev --save-exact vitest@5.1.0 jsdom@29.1.1 @testing-library/react@16.3.3 @testing-library/jest-dom@7.0.1 @testing-library/user-event@14.6.8
+
+  ```'
+limitations:
+- item: jsdom に無い API
+  content: ResizeObserver・matchMedia を持たない。ResizeObserver は setup-tests.ts で空の実装を置き、matchMedia は使う側が無いときをライトとして扱う

@@ -253,37 +253,6 @@ def test_impact_badge(
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    ("values", "expected"),
-    [
-        pytest.param(["UI", "性能"], {"tags": 2}, id="two_tags"),
-        pytest.param(None, EMPTY_FRAGMENT, id="undefined"),
-    ],
-)
-def test_tag_list(
-    preview_page: Page,
-    load_preview_scripts: LoadPreviewScripts,
-    values: list[str] | None,
-    expected: dict[str, Any],
-) -> None:
-    """タグを span.tag で並べる。未指定は空の断片（正常系）。"""
-    # 準備
-    load_preview_scripts()
-    # 実行
-    result = preview_page.evaluate(
-        """(values) => {
-            const node = MindmapPreview.tagList(values ?? undefined);
-            if (node.childNodes.length === 0) {
-                return {nodeType: node.nodeType, childCount: 0};
-            }
-            return {tags: node.querySelectorAll("span.tag").length};
-        }""",
-        values,
-    )
-    # 検証
-    assert result == expected
-
-
 def test_deliverable_badge(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
     """箱のアイコンと「納品物」を持つ印を返す（正常系）。"""
     # 準備
@@ -508,3 +477,90 @@ def test_inert_behind_when_redrawn(
     )
     # 検証
     assert result == {"inert": True, "focused": False}
+
+
+def test_inert_outside(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """パネルと詳細パネルを除いた本文を止め、外すと付けた分だけ戻す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """() => {
+            const button = (parent, id) => {
+                const element = document.createElement("button");
+                element.id = id;
+                parent.append(element);
+                return element;
+            };
+            const topbar = document.createElement("header");
+            button(topbar, "D");
+            const main = document.createElement("main");
+            // パネル P とボタン A を持つ囲み W
+            const wrap = document.createElement("div");
+            wrap.id = "W";
+            const panel = document.createElement("div");
+            panel.id = "P";
+            wrap.append(panel);
+            button(wrap, "A");
+            button(main, "B");
+            button(main, "C").inert = true;
+            const detail = document.createElement("aside");
+            detail.id = "E";
+            detail.className = "panel";
+            main.append(wrap, detail);
+            document.body.append(topbar, main);
+            const states = () => Object.fromEntries(
+                ["A", "B", "C", "D", "E", "P", "W"].map((id) => [id, document.getElementById(id).inert])
+            );
+            const release = MindmapPreview.inertOutside(panel);
+            const covered = states();
+            release();
+            return {covered, released: states()};
+        }"""
+    )
+    # 検証
+    assert result["covered"] == {
+        "A": True,
+        "B": True,
+        "C": True,
+        "D": False,
+        "E": False,
+        "P": False,
+        "W": False,
+    }
+    # 始めから inert の C は外さない
+    assert result["released"] == {
+        "A": False,
+        "B": False,
+        "C": True,
+        "D": False,
+        "E": False,
+        "P": False,
+        "W": False,
+    }
+
+
+def test_inert_outside_when_no_panel_inside(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """パネルを中に持たない本文は main ごと止める（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """() => {
+            const main = document.createElement("main");
+            const button = document.createElement("button");
+            main.append(button);
+            // パネルは main の外（body の直下）に置く
+            const panel = document.createElement("div");
+            document.body.append(main, panel);
+            const release = MindmapPreview.inertOutside(panel);
+            button.focus();
+            const covered = {inert: main.inert, focused: document.activeElement === button};
+            release();
+            return {covered, released: main.inert};
+        }"""
+    )
+    # 検証
+    assert result == {"covered": {"inert": True, "focused": False}, "released": False}

@@ -1,0 +1,27 @@
+title: プレビュー / app
+lead: QueryClientProvider と RouterProvider を組み、書き換えの知らせへつなぐ（書き換えの知らせへの接続）。
+components:
+- name: App
+  title: アプリ
+  kind: コンポーネント
+  container: frontend/src/app/app.tsx
+  usecase: 共通
+  summary: QueryClientProvider と RouterProvider を組み、書き換えの知らせへつなぐ（書き換えの知らせへの接続）
+  props:
+  - name: queryClient
+    type: QueryClient
+    required: true
+    description: createQueryClient が作った QueryClient
+  - name: router
+    type: Router
+    required: true
+    description: createAppRouter が作ったルーター
+  unit_tests:
+  - name: test_app
+    case: 正常
+    summary: ルートの画面を描く
+    condition: MSW で `GET /api/records` を返す
+    mock: MSW（`GET /api/records`）・EventSource（偽物）
+    expected: 概要の画面が描かれ、EventSource が `/api/events` へつながる
+notes:
+  単体テスト: 同じフォルダの `app.test.tsx` に置く（knowledge の規約『フォルダ構成』）

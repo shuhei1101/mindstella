@@ -1,0 +1,11 @@
+title: プレビュー / list-tile
+lead: 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」。
+components:
+- name: ListTile
+  title: 件数と名前のタイル
+  kind: コンポーネント
+  container: frontend/src/features/overview/overview/components/list-tile.tsx
+  usecase: 概要を見る
+  summary: 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」
+notes:
+  単体テスト: 同じフォルダの `list-tile.test.tsx` に置く（knowledge の規約『フォルダ構成』）

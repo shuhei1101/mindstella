@@ -1,4 +1,4 @@
-title: "サーバー / 配信"
+title: サーバー / 配信
 lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込みを受け付ける。まとめて送った後は Claude Code へ入力する。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と読み書きと検証に依存する。
 directory: |-
   ```
@@ -96,13 +96,39 @@ constants:
     usecase: 画面で項目を編集して保存する
     summary: POST で保存待ちの編集をまとめて保存する
     value: '"/api/edits/save"'
+  - name: SPA_PATH
+    title: SPA のパスの頭
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    summary: SPA を配るパスの頭（インターフェース定義『SPAの配信』）
+    value: '"/spa"'
+  - name: SPA_DIR
+    title: SPA の出力のフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    summary: プレビューのフォルダの中で Vite が書き出すフォルダの名前
+    value: '"spa"'
+  - name: SPA_TYPES
+    title: SPA の Content-Type
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    summary: 出力のファイルの拡張子から Content-Type を引く。表に無い拡張子は `application/octet-stream`
+    entries:
+      - key: .html
+        value: '"text/html; charset=utf-8"'
+      - key: .js
+        value: '"text/javascript; charset=utf-8"'
+      - key: .css
+        value: '"text/css; charset=utf-8"'
+      - key: .svg
+        value: '"image/svg+xml"'
 classes:
   - name: PreviewRegistry
     title: 配信の台帳
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定と Claude Code への入力の送り先をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess(), input_target=None)`）
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ
     kind: クラス
     properties:
       - name: _servers
@@ -121,10 +147,10 @@ classes:
         type: ExternalAccess
         access: 内部 (_)
         description: 外から見る設定（許可するホスト名を配信へ渡し、フックを呼ぶ）
-      - name: _input_target
-        type: InputTarget | None
+      - name: _input_targets
+        type: InputTargets
         access: 内部 (_)
-        description: Claude Code への入力の送り先（立てる配信へ渡す。プロセスに 1 つで、入力の鍵を共有する）
+        description: ワークスペースごとの Claude Code への入力の宛先（`InputTargets()`。立てる配信へ渡す。配信の前に受けたセッションも持つ）
     methods:
       - name: start
         title: 配信を立てる
@@ -143,7 +169,7 @@ classes:
           1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
              - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
-          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_target` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
+          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
              - `[INFO]` 配信を立てた（ワークスペース、URL）
           4. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
           5. URL と `True` を返す
@@ -232,6 +258,40 @@ classes:
             condition: 作成済みのワークスペース 2 つ。一つ目だけ `start` する
             mock: なし（本物の待ち受け。後で `stop_all`）
             expected: 一つ目は `start` が返した URL、二つ目は `None`。台帳の配信が 1 つのまま
+      - name: listing
+        title: 配信の一覧
+        kind: メソッド
+        summary: 立てた配信のワークスペースとポートを、ワークスペースの絶対パスの昇順で返す（`server_status`・`server_stop` の `previews`）
+        returns:
+          type: list[dict[str, Any]]
+          description: '`[{workspace: 絶対パスの文字列, port}]`'
+        process: 1. `_guard` を取り、`_servers` をワークスペースの昇順に並べて返す
+        unit_tests:
+          - name: test_listing
+            case: 正常
+            summary: ワークスペースの昇順に並べる
+            condition: '作成済みのワークスペース `b`・`a` の順に `start` する。`parametrize`: この 2 つ / 立てていない台帳'
+            mock: なし（本物の待ち受け。後で `stop_all`）
+            expected: '`a`・`b` の順で、それぞれ `start` が返した URL のポート / `[]`'
+      - name: remember_session
+        title: 宛先を書き換える
+        kind: メソッド
+        summary: そのワークスペースの Claude Code への入力の宛先を、ツールを呼んだセッションにする（配信を立てていなくても持つ）
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+          - name: session
+            type: Session
+            required: true
+            passing: positional
+            description: ツールを呼んだセッション
+        returns:
+          type: None
+          description: '-'
+        process: 1. `_input_targets.remember(root, session)` を呼ぶ
   - name: PreviewServer
     title: 配信
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -280,7 +340,7 @@ classes:
       - name: do_GET
         title: GET の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける'
+        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける'
         returns:
           type: None
           description: '-'
@@ -289,6 +349,8 @@ classes:
           2. パスで分ける（クエリとハッシュは見ない）
              - `/` の場合、`302`・`Location: /mindstella.html`・本文なしで送り直す（`PAGE_PATH`）
              - `/mindstella.html` の場合、画面を返す（`index_response`）
+             - `/spa` の場合、`302`・`Location: /spa/`・本文なしで送り直す（`SPA_PATH`）
+             - `/spa/` で始まる場合、SPA の出力のファイルを返す（`spa_response`。`{プレビューのフォルダ}/{SPA_DIR}` と `/spa` より後ろのパスを渡す）
              - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
              - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えの印は `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
              - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
@@ -311,7 +373,7 @@ classes:
              - `/api/edits` の場合、`add_edit` を受け付けの処理にする（`handle` は `add_edit` の本文と、新しく溜めたら 201・書き換えたか外したら 200 を組にして返す）
              - `/api/threads/{id}/seen`（`id` は `/` を含まない）の場合、本文を読まずにそのスレッドを利用者の既読にする（`seen_response`）
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
-             - `/api/comments/send` は、`context.input_target` があれば `enter_to_claude(context.input_target, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered}`
+             - `/api/comments/send` は、`context.input_targets` があれば `context.input_targets.enter(context.root, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered}`
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
           4. 本文を読み、受け付ける（`write_response`。成功は 201）
       - name: log_message
@@ -463,10 +525,10 @@ data_models:
         type: frozenset[str]
         default: frozenset()
         description: 許可するホスト名（`check_host`・`check_origin` に渡す）
-      - name: input_target
-        type: InputTarget | None
+      - name: input_targets
+        type: InputTargets | None
         default: None
-        description: Claude Code への入力の送り先（モジュール構成『ClaudeCodeへの入力』）。`None` ならまとめて送った後に入力しない
+        description: ワークスペースごとの Claude Code への入力の宛先（モジュール構成『ClaudeCodeへの入力』）。`None` ならまとめて送った後に入力しない
   - name: Response
     title: 応答
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -539,19 +601,19 @@ functions:
         default: frozenset()
         passing: keyword
         description: 許可するホスト名（`ServeContext` に持たせる）
-      - name: input_target
-        type: InputTarget | None
+      - name: input_targets
+        type: InputTargets | None
         required: false
         default: None
         passing: keyword
-        description: Claude Code への入力の送り先（`ServeContext` に持たせる）
+        description: ワークスペースごとの Claude Code への入力の宛先（`ServeContext` に持たせる）
     returns:
       type: PreviewServer
       description: 立てた配信
     process: |-
       1. `ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)` を作り、`daemon_threads` を真にする
          - `OSError` が起きた場合、`ServeFailedError` を送る
-      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_target` で `ServeContext` を作り、待ち受けの `context` に持たせる
+      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_targets` で `ServeContext` を作り、待ち受けの `context` に持たせる
       3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` とポートを持つ `PreviewServer` を返す
     exceptions:
       - name: ServeFailedError
@@ -1508,5 +1570,63 @@ functions:
         condition: 'D-1 と E-1（D-1 の `answer`）。`parametrize`: そのまま / `Origin: https://attacker.example` / E-1 を溜めた後に MCP で D-1 を書き換える'
         mock: なし
         expected: 200 で `changed` が `[D-1]` / 403 / 409 で本文の `blocked` が E-1（`changed`）
+  - name: spa_response
+    title: SPA の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: SPAを開く
+    scope: public
+    summary: SPA の出力のファイルを返す。出力に無いパスと出力の外を指すパスは `index.html` を返す
+    args:
+      - name: spa_dir
+        type: Path
+        required: true
+        passing: positional
+        description: SPA の出力のフォルダ（`{プレビューのフォルダ}/{SPA_DIR}`）
+      - name: sub_path
+        type: str
+        required: true
+        passing: positional
+        description: '`/spa` より後ろのパス（`/` で始まる。URL エンコードのまま）'
+    returns:
+      type: Response
+      description: 200 とファイルの中身。`index.html` が無ければ 500
+    process: |-
+      1. `sub_path` を URL デコードし、先頭の `/` を外して `spa_dir` につなぎ、解決する
+      2. 解決したパスが `spa_dir` の配下のファイルでなければ、`spa_dir/index.html` に置き換える
+         - `index.html` も無い場合、500 を返す（`problem_response`）
+           - `[ERROR]` SPA の出力がありません（`spa_dir`）
+      3. 拡張子を `SPA_TYPES` で引いて Content-Type にし、中身を読んで 200 を返す（要求ごとに読み、控えない）
+    unit_tests:
+      - name: test_spa_response
+        case: 正常
+        summary: 出力のファイルを返す
+        condition: '`index.html` と `assets/app.js` を持つ一時フォルダで `/assets/app.js`'
+        mock: なし（一時ディレクトリ）
+        expected: 200、`text/javascript; charset=utf-8`、`app.js` の中身
+      - name: test_spa_response_when_client_route
+        case: 正常
+        summary: 出力に無いパスは index.html
+        condition: 同じフォルダで `/decisions` と `/`
+        mock: なし（一時ディレクトリ）
+        expected: どちらも 200、`text/html; charset=utf-8`、`index.html` の中身
+      - name: test_spa_response_when_outside
+        case: 正常
+        summary: 出力の外を指すパスは index.html
+        condition: 一時フォルダの親に `secret.txt` を置き、`/../secret.txt` と `/%2e%2e/secret.txt`
+        mock: なし（一時ディレクトリ）
+        expected: どちらも `index.html` の中身で、`secret.txt` の中身が無い
+      - name: test_spa_response_when_unknown_suffix
+        case: 正常
+        summary: 表に無い拡張子
+        condition: '`assets/app.js.map` を置き `/assets/app.js.map`'
+        mock: なし（一時ディレクトリ）
+        expected: 200、`application/octet-stream`
+      - name: test_spa_response_when_index_missing
+        case: 正常
+        summary: index.html が無いと 500
+        condition: 空の一時フォルダで `/`
+        mock: なし（一時ディレクトリ）
+        expected: 500 の問題の応答
 test_files:
   - tests/unit/scripts/test_serve.py

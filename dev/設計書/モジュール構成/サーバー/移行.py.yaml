@@ -30,6 +30,10 @@ directory: |-
           steps.yaml                   v0.10.0 の形式 → v0.11.0 の手順（タグの語彙を外す）
           scripts/
             remove_tag_vocabulary.py   設定から `tags` を削除する変換
+        v0.12.0/
+          steps.yaml                   v0.11.0 の形式 → v0.12.0 の手順（項目のタグをオブジェクトにする）
+          scripts/
+            tags_to_objects.py         項目の文字列のタグを `{name}` にする変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/
@@ -1300,6 +1304,54 @@ functions:
         condition: 一番上が配列の `config.yaml`
         mock: なし
         expected: '`ValueError`。`config.yaml` が呼ぶ前と同じ'
+  - name: tags_to_objects.migrate
+    title: 項目のタグをオブジェクトにする移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.12.0/scripts/tags_to_objects.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.12.0 の `call`（`tags_to_objects`）が呼ぶ変換（関数名は `migrate`）。項目の `tags` の文字列の要素を `{name}` にし、表記をそろえて同じ名前のタグは最初の 1 件だけを残す
+    side_effects: '`.mindstella/` の種類ごとの YAML を書き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。種類の順。変えなければ空）
+    process: |-
+      1. `.mindstella/` の種類ごとの YAML（`KINDS` のファイル）を、あるものだけ `yaml.safe_load` で読む。一番上が辞書でないか `items` が並びでなければ `{ファイル} の形が崩れています` の `ValueError` を送る
+      2. 各項目の `tags` が並びなら、要素を頭から見て、文字列は `{name: {文字列}}` にし、名前を NFKC と小文字にそろえて前の要素と同じなら外す（辞書の要素はそのまま。名前を取れない要素はそのまま残す）
+         - 並びが変わらない項目は触らない。`updated`・`history` は変えない
+      3. 変わった項目があるファイルだけ、キーの並びを保って読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して送り直す
+      4. 変えたファイルの相対パスを返す（`threads.yaml` は読まない）
+    exceptions:
+      - name: ValueError
+        condition: 種類ごとの YAML の形が崩れている
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_tags_to_objects
+        case: 正常
+        summary: 文字列のタグを name のオブジェクトにし、表記をそろえて重なるタグは最初だけ残す
+        condition: 'D-1: `[API, 画面, ａｐｉ]`・`updated: T0`／T-1: `[{name: 通知, main: true}]`／N-1: タグ無し／`threads.yaml` の TH-1: `[起票]`'
+        mock: なし
+        expected: '戻り値が `[.mindstella/decisions.yaml]`。D-1 の `tags` が `[{name: API}, {name: 画面}]` で `updated` が `T0` のまま。T-1・N-1・TH-1 が呼ぶ前と同じ'
+      - name: test_tags_to_objects_when_applied
+        case: 正常
+        summary: もう一度当てても変えない
+        condition: 同じワークスペースに 2 回呼ぶ
+        mock: なし
+        expected: 2 回目の戻り値が空で、ファイルが 1 回目の後と同じ
+      - name: test_tags_to_objects_when_broken
+        case: 異常
+        summary: 形が崩れていれば移さない
+        condition: 一番上が配列の `decisions.yaml`
+        mock: なし
+        expected: '`ValueError`。どのファイルも呼ぶ前と同じ'
 diagrams:
   - name: 全体
     diagram: |-
@@ -1342,6 +1394,7 @@ notes:
   決定済みの答えから採用した案を作る手順: '`migrations/v0.7.0/steps.yaml` は `call`（`script: answer_to_adopted_option`）の 1 つだけを並べる（`destructive` は持たない）。`scripts/answer_to_adopted_option.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_answer_to_adopted_option.py` に置く。`schemas/decisions.schema.json` の案に `recommended`（真偽値。真の案は 0 か 1 つ。`adopted` の `contains` と `allOf` で並べる）を足すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.7.0` にする。状態ごとの案の要否と、採用した案と状態の組は、スキーマではなく読み書きと検証の `check_decision_rules` が見る'
   送信をスレッドへ移す手順: '`migrations/v0.8.0/steps.yaml` は `call`（`script: submissions_to_threads`）と `delete`（`path: .mindstella/submissions.yaml`）をこの順に並べる（破壊的な操作は `delete` だけ）。`scripts/submissions_to_threads.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_submissions_to_threads.py` に置く。`schemas/submissions.schema.json` を消して `schemas/threads.schema.json` を足し、`comments.schema.json`・`drafts.schema.json` に `thread` を足すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.8.0` にする。変換はプラグインの `threads.py` を読まず、この版の形を自分で組み立てる（後の版で `threads.py` の形が変わっても、この版の手順が変わらないように）'
   タグの語彙を外す手順: '`migrations/v0.11.0/steps.yaml` は `call`（`script: remove_tag_vocabulary`、`destructive: true`）の 1 つだけを並べる。`schemas/migration-steps.schema.json` の `call` に任意の `destructive`（真偽値。省いたら偽）を足し、入口は `op` が `DESTRUCTIVE_OPS` にあるか `args` の `destructive` が真の手順を破壊的として出す（タグの説明が戻せなくなるため）。`scripts/remove_tag_vocabulary.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_remove_tag_vocabulary.py` に置く。`schemas/settings.schema.json` から `tags` を外すため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.11.0` にする'
+  項目のタグをオブジェクトにする手順: '`migrations/v0.12.0/steps.yaml` は `call`（`script: tags_to_objects`、`destructive: true`）の 1 つだけを並べる（表記をそろえて重なるタグを外すと戻せないため）。`scripts/tags_to_objects.py` が `migrate(root)` を持ち、単体テストは `tests/unit/scripts/test_tags_to_objects.py` に置く。`schemas/common.schema.json` の `tags` の要素を `{name, main?}` にするため、プラグインの版（`plugins/mindstella/version.ini`）を `v0.12.0` にする'
 test_files:
   - tests/unit/scripts/test_versions.py
   - tests/unit/scripts/test_migrator.py
@@ -1353,3 +1406,4 @@ test_files:
   - tests/unit/scripts/test_submissions_to_threads.py
   - tests/unit/scripts/test_tags_to_vocabulary.py
   - tests/unit/scripts/test_remove_tag_vocabulary.py
+  - tests/unit/scripts/test_tags_to_objects.py

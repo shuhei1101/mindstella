@@ -1,0 +1,129 @@
+$ pytest tests/integration/storybook/test_review_body_fold_stories.py tests/integration/storybook/test_thread_post_stories.py tests/integration/preview/test_thread_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_review_screen.py tests/integration/preview/test_comments_screen.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-fold-pending-comment-body
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 474 items
+
+tests/integration/storybook/test_review_body_fold_stories.py .......     [  1%]
+tests/integration/storybook/test_thread_post_stories.py ................ [  4%]
+....                                                                     [  5%]
+tests/integration/preview/test_thread_screen.py ........................ [ 10%]
+..........                                                               [ 12%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 16%]
+........................................................................ [ 31%]
+........................................................................ [ 47%]
+.........................................................F....           [ 60%]
+tests/integration/preview/test_detail_full_screen.py ................... [ 64%]
+.....................................                                    [ 71%]
+tests/integration/preview/test_review_screen.py ........................ [ 77%]
+.............................                                            [ 83%]
+tests/integration/preview/test_comments_screen.py .......F.............. [ 87%]
+..........                                                               [ 89%]
+tests/integration/preview/test_thread_screen.py .                        [ 90%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 93%]
+...                                                                      [ 94%]
+tests/integration/preview/test_detail_full_screen.py ....                [ 95%]
+tests/integration/preview/test_review_screen.py ..                       [ 95%]
+tests/integration/preview/test_comments_screen.py ..                     [ 96%]
+tests/integration/preview/test_detail_panel_screen.py .........          [ 98%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 98%]
+tests/integration/preview/test_detail_panel_screen.py .....              [ 99%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 99%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_edit_tags_main_toggle[chromium] _____________________
+
+write_edit_preview = <function write_edit_preview.<locals>._write at 0x751b60e5a200>
+make_item = <function make_item.<locals>._make at 0x751b60e159e0>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'playbooks': ['システム開発'], 'target_label': 'システム', 'phases': ['目的', '要件', '構成'], ...}
+open_preview = <function open_preview.<locals>._open at 0x751b60e17e20>
+
+    def test_edit_tags_main_toggle(
+        write_edit_preview: WriteReviewPreview,
+        make_item: MakeItem,
+        valid_settings: dict[str, Any],
+        open_preview: OpenPreview,
+    ) -> None:
+        """タグの入力はチップの左端のトグルで主題を付け外しし、主題は複数にできる。並びを `{name, main?}` で溜め、元の並びと主題に戻すと保存待ちから外れる（正常系）。"""
+        # 準備
+        items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}, {"name": "記録の形"}]),)
+        page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items)
+        group = page.get_by_role("group", name="タグ")
+        # 検証（主題のトグル）
+        assert group.get_by_role("button", name="画面 を主題").get_attribute("aria-pressed") == "true"
+        assert group.get_by_role("button", name="記録の形 を主題").get_attribute("aria-pressed") == "false"
+        # 実行（2 つ目も主題にする）
+        group.get_by_role("button", name="記録の形 を主題").click()
+        wait_saved_edit(page, "tags", [{"name": "画面", "main": True}, {"name": "記録の形", "main": True}])
+        # 検証（2 つ目も主題にする）
+>       edit = read_edits_file(root)["items"][0]
+               ^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/preview/test_detail_panel_screen.py:6338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/preview/preview_edit_helpers.py:97: in read_edits_file
+    return yaml.safe_load((root / RECORD_DIR / "edits.yaml").read_text(encoding="utf-8"))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pytest-of-shuhei2441/pytest-6065/test_edit_tags_main_toggle_chr0/workspace/.mindstella/edits.yaml')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-shuhei2441/pytest-6065/test_edit_tags_main_toggle_chr0/workspace/.mindstella/edits.yaml'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+____________________ test_reopen_restores_scroll[chromium] _____________________
+
+write_review_preview = <function write_review_preview.<locals>._write at 0x751b60cb4ae0>
+open_preview = <function open_preview.<locals>._open at 0x751b60b18860>
+make_item = <function make_item.<locals>._make at 0x751b60b191c0>
+make_thread = <function make_thread.<locals>._make at 0x751b60771760>
+make_post = <function make_post.<locals>._make at 0x751b60773240>
+
+    def test_reopen_restores_scroll(
+        write_review_preview: WriteReviewPreview,
+        open_preview: OpenPreview,
+        make_item: MakeItem,
+        make_thread: MakeThread,
+        make_post: MakePost,
+    ) -> None:
+        """閉じて開き直すと、閉じる前のパネルの中のスクロールの位置に戻る（正常系）。"""
+        # 準備
+        url, _ = write_review_preview(make_item("D-1"), threads=_many_threads(make_thread, make_post))
+        page = open_preview(url, "#tab=decisions&view=table")
+        open_list(page)
+        page.wait_for_selector(thread_row(f"TH-{MANY_THREADS}"))
+        page.eval_on_selector(f"{COMMENTS_PANEL} .comments-body", "(body, top) => { body.scrollTop = top; }", LIST_SCROLL_TOP)
+        before = page.evaluate(SETTLED_SCROLL_TOP_JS, f"{COMMENTS_PANEL} .comments-body")
+        # 実行
+        page.get_by_role("button", name="コメントの一覧を閉じる").click()
+        page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
+        open_list(page)
+        # 検証
+        assert before == LIST_SCROLL_TOP
+>       assert page.evaluate(SETTLED_SCROLL_TOP_JS, f"{COMMENTS_PANEL} .comments-body") == LIST_SCROLL_TOP
+E       AssertionError: assert 0 == 500
+E        +  where 0 = evaluate('async (selector) => {\n  const element = document.querySelector(selector);\n  let last = -1;\n  while (element.scroll...\n    last = element.scrollTop;\n    await new Promise((resolve) => setTimeout(resolve, 150));\n  }\n  return last;\n}', 'aside.comments-panel .comments-body')
+E        +    where evaluate = <Page url='http://127.0.0.1:58782/mindstella.html#tab=decisions&view=table'>.evaluate
+
+tests/integration/preview/test_comments_screen.py:292: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_edit_tags_main_toggle[chromium]
+FAILED tests/integration/preview/test_comments_screen.py::test_reopen_restores_scroll[chromium]
+================== 2 failed, 472 passed in 839.79s (0:13:59) ===================

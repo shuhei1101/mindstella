@@ -21,8 +21,10 @@ from preview_edit_helpers import (
     item_marks,
     read_edits_file,
     start_add,
+    wait_edits_match,
 )
 from preview_fit_helpers import assert_fits_smallest, set_smallest
+from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
 from preview_fixture_types import (
     ID_BUTTON_MIN_SIZE_PX,
     ID_BUTTON_SIZE_JS,
@@ -1377,20 +1379,21 @@ def test_drawer_keeps_when_view_switched(
 
 
 def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタンで閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。外側を押しても閉じない（正常系）。"""
+    """見出しの ×・下端の「{件数} 件を表示」・ドロワーの中の Esc・絞り込みのボタン・グレーアウトした所で閉じ、閉じたら絞り込みのボタンへフォーカスを戻す。開いている間はトップバーとタブの帯とドロワー以外をグレーアウトして止める（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table")
     focused: list[str | None] = []
-    # 実行（外側を押しても閉じない）
+    # 実行（開いている間のグレーアウト）
     open_drawer(page)
-    page.mouse.click(900, 500)
-    still_open = page.locator(DRAWER_OPEN).count()
-    # 実行（×・下端のボタン・Esc で閉じる）
+    page.wait_for_selector(SCRIM_ON)
+    covered = (scrim_visible(page), main_inert(page))
+    # 実行（×・下端のボタン・Esc・グレーアウトで閉じる）
     for close in (
         lambda: page.click(f"{DRAWER} button[aria-label='絞り込みを閉じる']"),
         lambda: page.click(f"{DRAWER} .fd-foot .btn.primary"),
         lambda: page.keyboard.press("Escape"),
+        lambda: click_scrim(page),
     ):
         if page.locator(DRAWER_OPEN).count() == 0:
             open_drawer(page)
@@ -1401,9 +1404,11 @@ def test_drawer_close(write_sample_preview: WriteSamplePreview, open_preview: Op
     open_drawer(page)
     page.click(FILTER_BUTTON)
     page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
     # 検証
-    assert still_open == 1
-    assert focused == ["filter", "filter", "filter"]
+    assert covered == (True, True)
+    assert focused == ["filter", "filter", "filter", "filter"]
+    assert main_inert(page) is False
 
 
 def test_drawer_clear(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
@@ -1434,8 +1439,8 @@ def test_drawer_tags(
     """タグの条件を状態の次に並べ、選ぶとそのタグを持つ検討事項に絞る。表のチップで解除できる（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="未決定", tags=["プレビュー"]),
-        make_item("D-2", status="未決定", tags=["サーバー", "プレビュー"]),
+        make_item("D-1", status="未決定", tags=[{"name": "プレビュー"}]),
+        make_item("D-2", status="未決定", tags=[{"name": "サーバー"}, {"name": "プレビュー"}]),
         make_item("D-3", status="未決定"),
     )
     page = open_preview(url, "#tab=decisions&view=table")
@@ -1447,6 +1452,9 @@ def test_drawer_tags(
     selected = (_table_row_ids(page), drawer_head(page)["count"], badge_text(page))
     tag_chip = ".table-block .chip:has(button[aria-label='タグ: プレビュー の条件を解除'])"
     chip = page.inner_text(tag_chip)
+    # ドロワーを開いている間は本文を止めるため、閉じてから表のチップで解除する
+    page.keyboard.press("Escape")
+    page.wait_for_selector(DRAWER, state="detached")
     page.click(f"{tag_chip} button")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 3")
     # 検証
@@ -1491,9 +1499,10 @@ def test_drawer_keyword_hits(
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=map")
     page.wait_for_selector("#decision-map .map-node.n-item")
-    open_drawer(page)
-    # 実行
+    # 実行（ドロワーを開いている間は本文を止めるため、キーワードを入れてから開く）
     page.fill("input.map-q", "D-2")
+    page.wait_for_selector("#decision-map button.n-item.hit")
+    open_drawer(page)
     page.wait_for_selector(f"{DRAWER} .hit-n")
     hits = page.eval_on_selector_all(
         f'{DRAWER} .fd-opt:has(input[data-key="status"]):has(.hit-n)',
@@ -2400,20 +2409,14 @@ def test_added_item_reopens_input(
     assert page.locator(ADD_TITLE_INPUT).input_value() == "足す問い"
 
 
-# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったかを読む。
-# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
-ADDED_OPTIONS_JS = """(expected) => {
-  fetch('/api/edits').then(r => r.json()).then(d => {
-    window.addedOptionsSaved = d.items.some(e => e.op === 'item-add' && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected));
-  });
-  return window.addedOptionsSaved === true;
-}"""
+# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったか
+ADDED_OPTIONS_MATCH_JS = """(items, expected) => items.some(e => e.op === 'item-add'
+  && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected))"""
 
 
 def _wait_added_options(page: Page, expected: list[dict[str, object]]) -> None:
     """保存待ちの item-add の value.options が expected になるのを待つ。"""
-    page.evaluate("() => { window.addedOptionsSaved = false; }")
-    page.wait_for_function(ADDED_OPTIONS_JS, arg=expected, timeout=SETTLE_MS)
+    wait_edits_match(page, ADDED_OPTIONS_MATCH_JS, expected)
 
 
 def test_add_item_with_options(
@@ -2462,22 +2465,17 @@ def test_add_item_with_options(
     expect(page.get_by_label("案 A の中身")).to_have_count(0)
 
 
-# 保存待ちの item-add の件数と、その value が渡したキーと値を全て持つかを読む。
-# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
-ADDED_VALUE_JS = """(expected) => {
-  fetch('/api/edits').then(r => r.json()).then(d => {
-    const adds = d.items.filter(e => e.op === 'item-add');
-    window.addedValueSaved = adds.length === 1
-      && Object.entries(expected).every(([k, v]) => JSON.stringify(adds[0].value[k]) === JSON.stringify(v));
-  });
-  return window.addedValueSaved === true;
+# 保存待ちの item-add が 1 件で、その value が渡したキーと値を全て持つか
+ADDED_VALUE_MATCH_JS = """(items, expected) => {
+  const adds = items.filter(e => e.op === 'item-add');
+  return adds.length === 1
+    && Object.entries(expected).every(([k, v]) => JSON.stringify(adds[0].value[k]) === JSON.stringify(v));
 }"""
 
 
 def _wait_added_value(page: Page, expected: dict[str, object]) -> None:
     """保存待ちの item-add が 1 件で、その value が expected のキーと値を全て持つのを待つ。"""
-    page.evaluate("() => { window.addedValueSaved = false; }")
-    page.wait_for_function(ADDED_VALUE_JS, arg=expected, timeout=SETTLE_MS)
+    wait_edits_match(page, ADDED_VALUE_MATCH_JS, expected)
 
 
 def _hold_edit_posts(page: Page) -> Callable[[], None]:
@@ -2546,13 +2544,13 @@ def test_add_item_with_keys_when_sent_before_response(
     page.get_by_label("タグを追加").press("Enter")
     page.get_by_label("状態", exact=True).select_option("保留")
     release()
-    _wait_added_value(page, {"title": "足す問い", "tags": ["画面"], "status": "保留"})
+    _wait_added_value(page, {"title": "足す問い", "tags": [{"name": "画面"}], "status": "保留"})
     # 検証
     edits = read_edits_file(root)["items"]
     assert [edit["op"] for edit in edits] == ["item-add"]
     assert (edits[0]["value"]["title"], edits[0]["value"]["tags"], edits[0]["value"]["status"]) == (
         "足す問い",
-        ["画面"],
+        [{"name": "画面"}],
         "保留",
     )
     expect(page.locator(PENDING_BUTTON)).to_have_attribute("aria-label", "保存待ち（1 件）", timeout=SETTLE_MS)

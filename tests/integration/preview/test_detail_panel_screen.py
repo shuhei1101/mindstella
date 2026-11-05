@@ -177,6 +177,7 @@ from preview_minimap_helpers import (
 from preview_removed_helpers import WITHDRAWN_BADGE, WITHDRAWN_REASONS
 from preview_style_checks import TRANSPARENT, animated_properties, pin_id_column, row_backgrounds
 from preview_word_diff_helpers import (
+    FREEZE_PERFORMANCE_NOW_JS,
     KEY_LINES_JS,
     MIN_TEXT_CONTRAST,
     WORD_COLORS_JS,
@@ -188,6 +189,7 @@ from preview_word_diff_helpers import (
     serve_word_diff_workspace,
 )
 from preview_settings_helpers import SETTINGS_PANEL, SETTINGS_PANEL_OPEN, open_settings
+from preview_scrim_helpers import SCRIM_ON, detail_above_scrim, scrim_visible
 from preview_stack_helpers import (
     DETAIL_HASH,
     WIDE_VIEWPORT,
@@ -1236,7 +1238,7 @@ def test_review_comments(
     make_item: MakeItem,
     make_comment: MakeComment,
 ) -> None:
-    """その項目へのレビュー中のコメントを溜めた順に、箇所（名前と選んだ文）と本文つきで並べ、行ごとに「修正」「削除」を置く（正常系）。"""
+    """その項目へのレビュー中のコメントを新しい順に、箇所（名前と選んだ文）と本文つきで並べ、行ごとに「修正」「削除」を置く（正常系）。"""
     # 準備
     url, _ = write_review_preview(
         make_item("D-1"),
@@ -1258,10 +1260,10 @@ def test_review_comments(
     assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント2"
     assert page.eval_on_selector_all(
         "aside.panel .d-review li",
-        "rows => rows.map(r => [r.querySelector('.review-loc-name')?.textContent ?? null, r.querySelector('.send-quote')?.textContent ?? null, r.querySelector('.review-body').textContent])",
+        "rows => rows.map(r => [r.querySelector('.review-loc-name')?.textContent ?? null, r.querySelector('.send-quote')?.textContent ?? null, r.querySelector('.review-body').textContent.trim()])",
     ) == [
-        [None, None, "案 A にする"],
         ["案 C のデメリット", "表の密度が下がる", "ここは別の言い方にしたい"],
+        [None, None, "案 A にする"],
     ]
     # 行ごとの「修正」「削除」（読み上げの名前と `title`）。チェックは持たない（まとめて送るは一覧で行う）
     assert page.eval_on_selector_all(
@@ -1288,6 +1290,116 @@ def test_review_comments_when_empty(
     # 検証
     assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント0"
     assert "レビュー中のコメントはありません。" in page.inner_text("aside.panel .d-review")
+
+
+# レビュー中のコメントの並びの切り替えと、詳細パネルのレビュー中のコメントの行
+REVIEW_ORDER_BUTTON = "aside.panel .d-review > .review-head > button.review-order"
+PANEL_REVIEW_ROWS = "aside.panel .d-review li[data-comment]"
+
+# 行の ID の並びを読む
+ROW_IDS_JS = "rows => rows.map(r => r.dataset.comment)"
+
+# 見出しと並びの切り替えの縦の中心の差の上限（px）
+REVIEW_HEAD_CENTER_TOLERANCE_PX = 4
+
+# 見出しの行の中の見出しと並びの切り替えの位置を読む
+REVIEW_HEAD_BOXES_JS = """head => {
+    const box = el => el.getBoundingClientRect();
+    const h3 = box(head.querySelector('h3'));
+    const button = box(head.querySelector('button.review-order'));
+    return {
+        headRight: box(head).right,
+        h3Right: h3.right,
+        h3Center: h3.top + h3.height / 2,
+        buttonLeft: button.left,
+        buttonRight: button.right,
+        buttonCenter: button.top + button.height / 2,
+    };
+}"""
+
+
+def test_review_order(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """レビュー中のコメントが 2 件以上のとき、見出しの行の右に今の並びを示す並びの切り替えを置き、押すたびに並びを入れ替えてフォーカスを保ち、履歴に積まない（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body="案 A にする"),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector(REVIEW_ORDER_BUTTON)
+    history_length = page.evaluate("history.length")
+    # 検証（見出しの行の右に、今の並びと読み上げの名前を持つボタン）
+    assert page.inner_text(REVIEW_ORDER_BUTTON) == "新しい順"
+    assert page.get_attribute(REVIEW_ORDER_BUTTON, "aria-label") == "コメントの並び: 新しい順"
+    assert page.locator(f"{REVIEW_ORDER_BUTTON} svg").count() == 1
+    boxes = page.eval_on_selector("aside.panel .d-review > .review-head", REVIEW_HEAD_BOXES_JS)
+    assert boxes["buttonLeft"] > boxes["h3Right"]
+    assert abs(boxes["headRight"] - boxes["buttonRight"]) <= FIELD_WIDTH_TOLERANCE_PX
+    assert abs(boxes["h3Center"] - boxes["buttonCenter"]) <= REVIEW_HEAD_CENTER_TOLERANCE_PX
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-2", "C-1"]
+    # 実行（押す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    # 検証（古い順に入れ替え、フォーカスはボタンにあり、履歴に積まない）
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-1", "C-2"]
+    assert page.get_attribute(REVIEW_ORDER_BUTTON, "aria-label") == "コメントの並び: 古い順"
+    wait_until_focused(page, REVIEW_ORDER_BUTTON)
+    assert page.evaluate("history.length") == history_length
+    assert page.evaluate("location.hash") == "#tab=decisions&id=D-1"
+    # 実行（もう一度押す）
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '新しい順'")
+    # 検証
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-2", "C-1"]
+    wait_until_focused(page, REVIEW_ORDER_BUTTON)
+
+
+def test_review_order_when_one_row(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """レビュー中のコメントが 1 件のときは、並びの切り替えを置かない（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item("D-1"), comments=(make_comment("C-1", target="D-1", body="案 A にする"),)
+    )
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector(PANEL_REVIEW_ROWS)
+    # 検証
+    assert page.locator("aside.panel .d-review button.review-order").count() == 0
+    assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント1"
+
+
+def test_review_order_when_removed_row(
+    served_review_rows: tuple[str, Path], open_preview: OpenPreview
+) -> None:
+    """消した行を含めて 2 行あれば並びの切り替えを残し、消した行は並べ替えても並びの中の元の場所に「元に戻す」と共に出す（正常系）。"""
+    # 準備
+    url, _ = served_review_rows
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    _row_button(page, "C-1", ROW_REMOVE_NAME).click()
+    page.wait_for_selector(f"{review_row('aside.panel', 'C-1')}.removed", timeout=UPDATE_TIMEOUT_MS)
+    # 検証（件数は 1 でも、消した行を含めて 2 行なので切り替えを残す）
+    assert page.inner_text("aside.panel .d-review h3") == "レビュー中のコメント1"
+    assert page.locator(REVIEW_ORDER_BUTTON).count() == 1
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-2", "C-1"]
+    # 実行
+    page.click(REVIEW_ORDER_BUTTON)
+    page.wait_for_function(f"document.querySelector('{REVIEW_ORDER_BUTTON}')?.textContent === '古い順'")
+    # 検証（消した行は古い順の中の元の場所に、「元に戻す」と共に残る）
+    assert page.eval_on_selector_all(PANEL_REVIEW_ROWS, ROW_IDS_JS) == ["C-1", "C-2"]
+    assert page.locator(f"{review_row('aside.panel', 'C-1')}.removed").get_by_role("button", name="元に戻す").count() == 1
 
 
 def test_review_row_actions_at_top_right(
@@ -1418,7 +1530,7 @@ def test_review_row_remove(
 def test_review_row_remove_updates_counts(
     served_review_rows: tuple[str, Path], open_preview: OpenPreview
 ) -> None:
-    """削除した後、見出しの件数とトップバーのコメントのボタンの件数を、消した行を数えずに描き直し、消した行は溜めた順の元の場所に残す（正常系）。"""
+    """削除した後、見出しの件数とトップバーのコメントのボタンの件数を、消した行を数えずに描き直し、消した行は新しい順の元の場所に残す（正常系）。"""
     # 準備
     url, _ = served_review_rows
     page = open_preview(url, "#tab=decisions&id=D-1")
@@ -1430,7 +1542,7 @@ def test_review_row_remove_updates_counts(
     assert page.inner_text(f"{COMMENTS_BUTTON} .count") == "2"
     assert page.eval_on_selector_all(
         f"{PANEL_REVIEW} li", "rows => rows.map(r => [r.dataset.comment, r.classList.contains('removed')])"
-    ) == [["C-1", True], ["C-2", False]]
+    ) == [["C-2", False], ["C-1", True]]
 
 
 def test_review_row_remove_updates_mark(
@@ -1721,8 +1833,8 @@ def test_review_row_restore(
     # 検証
     assert page.inner_text(f"{row} .review-body") == "案 A にする"
     assert page.eval_on_selector_all(f"{PANEL_REVIEW} li", "rows => rows.map(r => r.dataset.comment)") == [
-        "C-1",
         "C-2",
+        "C-1",
     ]
     assert page.inner_text(f"{PANEL_REVIEW} h3") == "レビュー中のコメント2"
     restored = read_workspace_yaml(root, "comments.yaml")["items"][0]
@@ -2202,6 +2314,147 @@ def test_body_escape_closes_panel(
     # 検証
     page.wait_for_selector("aside.panel.open", state="detached")
     assert "id=" not in page.evaluate("location.hash")
+
+
+# 本文を送る位置（px）
+BODY_SCROLL_TOP = 900
+
+# 詳細の全画面の本文のスクロール領域
+FULL_BODY = "dialog.full .panel-body"
+
+
+def _scroll_top(page: Page, selector: str) -> int:
+    """スクロールが止まった後の、本文のスクロール領域の位置を返す。"""
+    return page.evaluate(SETTLED_SCROLL_TOP_JS, selector)
+
+
+def test_body_scroll_restored(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """本文を送った位置を項目ごとに残し、別の項目は先頭から開く。前の項目へ戻る・全画面に切り替える・読み込み直すと、その項目で最後に送った位置へ戻す（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"], body="D-2.md"),
+        bodies={"D-2.md": LONG_BODY},
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    # 実行（前提の D-1 へ移る。押す操作で本文を送らないよう、要素の click を呼ぶ）
+    page.eval_on_selector("aside.panel .d-sec:has(h3:text-is('前提')) button.idlink", "b => b.click()")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    other = _scroll_top(page, PANEL_BODY)
+    # 実行（前の項目へ戻る）
+    page.click('aside.panel button[data-act="back"]')
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    back = _scroll_top(page, PANEL_BODY)
+    # 実行（全画面に切り替える）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open]")
+    full = _scroll_top(page, FULL_BODY)
+    # 実行（読み込み直す）
+    page.reload()
+    page.wait_for_selector(f"{FULL_BODY} .md")
+    reloaded = _scroll_top(page, FULL_BODY)
+    # 検証
+    assert other == 0
+    assert back == BODY_SCROLL_TOP
+    assert full == BODY_SCROLL_TOP
+    assert reloaded == BODY_SCROLL_TOP
+
+
+# 本文の末尾に見出しを持つ、縦にあふれる本文
+TAIL_HEADING = "末尾の見出し"
+TAIL_HEADING_BODY = LONG_BODY + f"\n## {TAIL_HEADING}\n\n末尾の段落\n"
+
+# 要素が本文のスクロール領域の中に見えていて、上端からの距離を返す式
+OFFSET_IN_BODY_JS = """([scroller, target]) => {
+    const body = document.querySelector(scroller).getBoundingClientRect();
+    const element = document.querySelector(target).getBoundingClientRect();
+    return element.top - body.top;
+}"""
+
+
+def test_body_scroll_when_heading(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"), make_item("D-2", body="D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-2\":900') === true")
+    page.evaluate("location.hash = '#tab=decisions&view=table&id=D-1'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-1の題'")
+    # 実行
+    page.evaluate(f"location.hash = '#tab=decisions&view=table&id=D-2&h={TAIL_HEADING}'")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === 'D-2の題'")
+    top = _scroll_top(page, PANEL_BODY)
+    offset = page.evaluate(OFFSET_IN_BODY_JS, [PANEL_BODY, f'aside.panel [data-heading="{TAIL_HEADING}"]'])
+    # 検証
+    assert top != BODY_SCROLL_TOP
+    assert 0 <= offset <= page.eval_on_selector(PANEL_BODY, "e => e.clientHeight")
+
+
+def test_body_scroll_when_comment_location(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+) -> None:
+    """位置を残した項目でも、コメントの箇所を示して開くときは残した位置ではなく箇所を出す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(
+        make_item(
+            "D-3",
+            status="要見直し",
+            options=[{"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True}],
+            body="D-3.md",
+        ),
+        bodies={"D-3.md": LONG_BODY},
+        comments=(
+            make_comment(
+                "C-1",
+                target="D-3",
+                body="ここは別の言い方にしたい",
+                loc={"kind": "value", "key": "options[A].pros", "text": "並べやすい"},
+            ),
+        ),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector(f"{PANEL_BODY} .md")
+    page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
+    page.wait_for_function("sessionStorage.getItem('mindmap-body-scroll')?.includes('\"D-3\":900') === true")
+    open_review(page)
+    # 実行
+    page.click(f"{COMMENTS_PANEL} li[data-comment='C-1'] button.row-target")
+    page.wait_for_selector("aside.panel.open .loc-hit")
+    top = _scroll_top(page, PANEL_BODY)
+    offset = page.evaluate(OFFSET_IN_BODY_JS, [PANEL_BODY, "aside.panel .loc-hit"])
+    # 検証
+    assert top != BODY_SCROLL_TOP
+    assert 0 <= offset <= page.eval_on_selector(PANEL_BODY, "e => e.clientHeight")
+
+
+def test_stack_when_left_panel_open(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """幅 1200px で左のパネルを開いている間は、パネルの外で開いた詳細パネルをグレーアウトの下に置いて止める（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, DETAIL_HASH)
+    page.set_viewport_size(WIDE_VIEWPORT)
+    page.wait_for_selector("aside.panel.open")
+    # 実行
+    open_settings(page)
+    page.wait_for_selector(SCRIM_ON)
+    # 検証
+    assert scrim_visible(page) is True
+    assert detail_above_scrim(page) is False
+    assert is_inert(page, "detail") is True
 
 
 @pytest.mark.parametrize(
@@ -2708,8 +2961,9 @@ def test_diff_keys_when_inline_words_skipped(
     assert meta.locator("span.df-word").count() == 0
     assert meta.nth(0).locator("del.df-was").inner_text().endswith("大")
     assert meta.nth(0).locator("ins.df-now").inner_text().endswith("中")
-    assert meta.nth(1).locator("del.df-was").inner_text().endswith("要件、会議")
-    assert meta.nth(1).locator("ins.df-now").inner_text().endswith("要件、運用")
+    # タグの前の値と今の値は、それぞれタグの並びで描く
+    assert meta.nth(1).locator("del.df-was span.tag").all_inner_texts() == ["要件", "会議"]
+    assert meta.nth(1).locator("ins.df-now span.tag").all_inner_texts() == ["要件", "運用"]
 
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
@@ -4523,6 +4777,8 @@ def test_diff_body_side_by_side_when_linked(
     # 準備・実行
     url, _ = write_linked_body_layout_preview()
     seed_side_layout(page, "V-1")
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     page.set_viewport_size(SIDE_VIEWPORT)
     open_preview(url, "#tab=docs&id=A-1")
     open_side_by_side(page, LAYOUT_PANEL)
@@ -4711,7 +4967,7 @@ def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
             title="最初の問い",
             answer="元の答え",
             phase="目的",
-            tags=["画面"],
+            tags=[{"name": "画面"}],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
         make_item("D-2", title="後続の問い", depends_on=["D-1"]),
@@ -4936,8 +5192,8 @@ def test_edit_tags_suggestions(
     """タグの入力は記録で使われているタグを候補に出し、候補に無いタグも入れられて、入れたときに溜める（正常系）。"""
     # 準備
     items = (
-        make_item("D-1", title="最初の問い", tags=["画面"]),
-        make_item("D-2", title="後続の問い", tags=["画面", "ＡＰＩ"]),
+        make_item("D-1", title="最初の問い", tags=[{"name": "画面"}]),
+        make_item("D-2", title="後続の問い", tags=[{"name": "画面"}, {"name": "ＡＰＩ"}]),
     )
     page, root = _open_edit_view(
         write_edit_preview, make_item, valid_settings, open_preview, items=items
@@ -4954,16 +5210,16 @@ def test_edit_tags_suggestions(
     expect(page.locator(EDIT_PENDING_BUTTON)).to_have_attribute(
         "aria-label", "保存待ち（1 件）", timeout=EDIT_SETTLE_MS
     )
-    wait_saved_edit(page, "tags", ["画面", "新しいタグ"])
+    wait_saved_edit(page, "tags", [{"name": "画面"}, {"name": "新しいタグ"}])
     # 検証（候補に無いタグを入れる）
     assert group.locator(".pe-chip").all_inner_texts() == ["画面", "新しいタグ"]
     edit = read_edits_file(root)["items"][0]
     assert (edit["key"], edit["value"], edit["before"]) == (
         "tags",
-        ["画面", "新しいタグ"],
-        ["画面"],
+        [{"name": "画面"}, {"name": "新しいタグ"}],
+        [{"name": "画面"}],
     )
-    assert read_items_file(root, "decisions.yaml")[0]["tags"] == ["画面"]
+    assert read_items_file(root, "decisions.yaml")[0]["tags"] == [{"name": "画面"}]
 
 
 def test_edit_commit_and_revert(
@@ -5210,6 +5466,9 @@ def test_blocked_reason(
     # 実行
     page.click(EDIT_SAVE_BUTTON)
     page.wait_for_selector(f"{EDIT_PENDING_PANEL} .pe-alert", timeout=EDIT_SETTLE_MS)
+    # 保存待ちのパネルの外で開いた詳細パネルはグレーアウトの下になるため、パネルを閉じてから編集の表示にする
+    page.get_by_role("button", name="保存待ちの編集を閉じる").click()
+    page.wait_for_selector(EDIT_PENDING_PANEL, state="detached")
     page.click(EDIT_TOGGLE)
     page.wait_for_selector(EDIT_FORM)
     # 検証
@@ -5973,3 +6232,243 @@ def test_embedded_html_diff_minimap(
     shapes = mark_shapes(page, PANEL_SCOPE)
     # 検証
     assert [shape["kind"] for shape in shapes] == ["df-chg"]
+
+
+# ===== タグの主題 =====
+
+# タグごとに、名前・主題か・title・マーカーの aria-hidden（マーカーが無ければ null）を読む（引数はタグを持つ要素の CSS セレクター）
+TAG_VALUES_JS = """(selector) => [...document.querySelectorAll(`${selector} span.tag`)].map((tag) => ({
+    name: tag.lastChild.textContent,
+    main: tag.classList.contains("is-main"),
+    title: tag.getAttribute("title"),
+    marker: tag.querySelector("svg")?.getAttribute("aria-hidden") ?? null,
+}))"""
+
+# 詳細パネルのキーの一覧の末尾の「タグ」の行
+PANEL_TAG_ROW = "aside.panel .d-meta dd:last-of-type"
+
+# 主題のタグを持つ検討事項（主題を付け外しするだけのまとまりの元）
+MAIN_TAG_DECISION = {
+    "title": "タグの主題を決める問い",
+    "status": "未決定",
+    "options": [{"key": "A", "content": "案 A"}],
+    "tags": [{"name": "データ", "main": True}, {"name": "画面"}],
+}
+
+
+def _serve_main_tag_diff(make_workspace: MakeWorkspace, call_tool: CallTool, valid_settings: dict[str, Any]) -> str:
+    """実際のツールで、D-1 のタグの主題だけを付け替えたまとまり V-2 を持つワークスペースを作って配信を立て、その URL を返す。"""
+    root = make_workspace(settings=valid_settings)
+    workspace = str(root)
+    steps = (
+        call_tool("add", workspace=workspace, kind="decision", item=MAIN_TAG_DECISION),
+        call_tool("commit", workspace=workspace, summary="最初の書き込み"),
+        call_tool(
+            "update",
+            workspace=workspace,
+            id="D-1",
+            item={"tags": [{"name": "データ"}, {"name": "画面", "main": True}]},
+        ),
+        call_tool("commit", workspace=workspace, summary="主題を付け替える"),
+    )
+    assert [step.is_error for step in steps] == [False, False, False, False], [step.text for step in steps]
+    served = call_tool("preview_url", workspace=workspace)
+    assert served.is_error is False, served.text
+    return str(served.data["url"])
+
+
+def test_tags_when_main_tag(
+    write_preview: WritePreview, make_item: MakeItem, open_preview: OpenPreview
+) -> None:
+    """キーの一覧の末尾の「タグ」の行に項目のタグを記録の順のまま並べ、主題のタグは名前の前に二重丸のマーカーを置く。「主題」は読み上げと title だけで伝える（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1", tags=[{"name": "データ"}, {"name": "画面", "main": True}]))
+    # 実行
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector(f"{PANEL_TAG_ROW} span.tag")
+    # 検証
+    assert page.inner_text("aside.panel .d-meta dt:last-of-type") == "タグ"
+    assert page.evaluate(TAG_VALUES_JS, PANEL_TAG_ROW) == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+    assert page.locator(f"{PANEL_TAG_ROW} span.tag.is-main .sr-only").inner_text() == "主題"
+
+
+def test_diff_keys_when_main_tag_changed(
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """主題を付け外ししただけでもタグが変わったとして扱い、前の値と今の値をそれぞれタグの並びで描いて主題のタグをマーカーで見分ける（正常系）。"""
+    # 準備
+    url = _serve_main_tag_diff(make_workspace, call_tool, valid_settings)
+    # 実行
+    _open_diff_panel(page, open_preview, url, "V-2")
+    page.wait_for_selector("aside.panel .d-meta dd.df-key span.tag")
+    # 検証
+    assert page.inner_text("aside.panel .d-meta dt.df-key") == "タグ"
+    assert page.evaluate(TAG_VALUES_JS, "aside.panel .d-meta dd.df-key del.df-was") == [
+        {"name": "データ", "main": True, "title": "主題", "marker": "true"},
+        {"name": "画面", "main": False, "title": None, "marker": None},
+    ]
+    assert page.evaluate(TAG_VALUES_JS, "aside.panel .d-meta dd.df-key ins.df-now") == [
+        {"name": "データ", "main": False, "title": None, "marker": None},
+        {"name": "画面", "main": True, "title": "主題", "marker": "true"},
+    ]
+
+
+def test_edit_tags_main_toggle(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """タグの入力はチップの左端のトグルで主題を付け外しし、主題は複数にできる。並びを `{name, main?}` で溜め、元の並びと主題に戻すと保存待ちから外れる（正常系）。"""
+    # 準備
+    items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}, {"name": "記録の形"}]),)
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items)
+    group = page.get_by_role("group", name="タグ")
+    # 検証（主題のトグル）
+    assert group.get_by_role("button", name="画面 を主題").get_attribute("aria-pressed") == "true"
+    assert group.get_by_role("button", name="記録の形 を主題").get_attribute("aria-pressed") == "false"
+    # 実行（2 つ目も主題にする）
+    group.get_by_role("button", name="記録の形 を主題").click()
+    wait_saved_edit(page, "tags", [{"name": "画面", "main": True}, {"name": "記録の形", "main": True}])
+    # 検証（2 つ目も主題にする）
+    edit = read_edits_file(root)["items"][0]
+    assert (edit["key"], edit["value"], edit["before"]) == (
+        "tags",
+        [{"name": "画面", "main": True}, {"name": "記録の形", "main": True}],
+        [{"name": "画面", "main": True}, {"name": "記録の形"}],
+    )
+    assert read_items_file(root, "decisions.yaml")[0]["tags"] == [{"name": "画面", "main": True}, {"name": "記録の形"}]
+    # 実行（元の主題に戻す）
+    group.get_by_role("button", name="記録の形 を主題").click()
+    # 検証（元の主題に戻す）
+    wait_no_saved_edits(page)
+    # 実行（主題を外す）
+    group.get_by_role("button", name="画面 を主題").click()
+    wait_saved_edit(page, "tags", [{"name": "画面"}, {"name": "記録の形"}])
+    # 検証（主題を外す。主題でないタグは main を持たない）
+    assert read_edits_file(root)["items"][0]["value"] == [{"name": "画面"}, {"name": "記録の形"}]
+
+
+def test_edit_tags_when_added_not_main(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """入力欄から追加したタグは主題でないまま並べて溜める（正常系）。"""
+    # 準備
+    items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}]),)
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items)
+    group = page.get_by_role("group", name="タグ")
+    # 実行
+    page.get_by_label("タグを追加").fill("通知")
+    page.get_by_label("タグを追加").press("Enter")
+    wait_saved_edit(page, "tags", [{"name": "画面", "main": True}, {"name": "通知"}])
+    # 検証
+    assert group.get_by_role("button", name="通知 を主題").get_attribute("aria-pressed") == "false"
+    assert read_edits_file(root)["items"][0]["value"] == [{"name": "画面", "main": True}, {"name": "通知"}]
+
+
+def test_edit_tags_when_remove_pending(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_edit: MakeEdit,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """削除を溜めた項目のタグの入力は、入力欄・外すボタン・主題のトグルを押せない（正常系）。"""
+    # 準備
+    items = (make_item("D-1", title="最初の問い", tags=[{"name": "画面", "main": True}, {"name": "記録の形"}]),)
+    edits = (make_edit("E-1", op="item-remove", key=None, value=None, before=None),)
+    # 実行
+    page, _ = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items, edits=edits)
+    # 検証
+    group = page.get_by_role("group", name="タグ")
+    assert page.get_by_label("タグを追加").is_disabled() is True
+    assert group.locator("button").evaluate_all("buttons => buttons.map(b => b.disabled)") == [True, True, True, True]
+
+
+# 頭の 1 行と番号付きの 7 行の、改行で 8 行のコメントの本文（各行は詳細パネルの幅で折り返さない短さ）
+LIST_COMMENT_BODY = "\n".join(["D-1 の画面で気になった点", *(f"{number}. {number} 行目の気づき" for number in range(1, 8))])
+
+# 詳細パネル・全画面の、レビュー中のコメントの行の本文を畳んでいるかと、本文の下の開閉のボタン・本文の中のリストの見た目を返す
+REVIEW_FOLD_STATE_JS = """({host, id}) => {
+    const row = document.querySelector(`${host} .d-review li[data-comment="${id}"]`);
+    const body = row.querySelector('.review-body');
+    const more = row.querySelector('.review-more-row button.review-more');
+    const item = body.querySelector('ol > li');
+    return {
+        folded: body.classList.contains('folded'),
+        text: more === null || more.hidden ? null : more.textContent.trim(),
+        label: more === null || more.hidden ? null : more.getAttribute('aria-label'),
+        focus: more === null || more.hidden ? null : more.getAttribute('data-focus'),
+        listItem: item === null ? null : [getComputedStyle(item).display, getComputedStyle(item).borderBottomWidth],
+    };
+}"""
+
+
+@pytest.fixture
+def served_long_review(
+    write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment
+) -> tuple[str, Path]:
+    """D-1 への、番号付きのリストを持つ改行で 8 行のコメント C-1 と 1 行の C-2 を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1"),
+        comments=(
+            make_comment("C-1", target="D-1", body=LIST_COMMENT_BODY),
+            make_comment("C-2", target="D-1", body="案 B も見たい"),
+        ),
+    )
+
+
+def test_review_row_body_folded(served_long_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """行の本文を Markdown で描き、5 行を超える本文は 5 行までに畳んで本文の下に「続きを読む」を出す。5 行以下の行には出さない（正常系）。"""
+    # 準備
+    url, _ = served_long_review
+    # 実行
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.wait_for_selector("aside.panel .d-review li[data-comment='C-1'] button.review-more:not([hidden])")
+    # 検証
+    assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "aside.panel", "id": "C-1"}) == {
+        "folded": True,
+        "text": "続きを読む",
+        "label": "D-1 へのコメントの続きを読む",
+        "focus": "detail-more:C-1",
+        "listItem": ["list-item", "0px"],
+    }
+    assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "aside.panel", "id": "C-2"}) == {
+        "folded": False,
+        "text": None,
+        "label": None,
+        "focus": None,
+        "listItem": None,
+    }
+
+
+def test_review_row_more(served_long_review: tuple[str, Path], open_preview: OpenPreview) -> None:
+    """「続きを読む」で全文を開いて「折りたたむ」に変え、詳細の全画面へ切り替えても開いたまま。ハッシュの項目は変えない（正常系）。"""
+    # 準備
+    url, _ = served_long_review
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    more = "aside.panel .d-review li[data-comment='C-1'] button.review-more:not([hidden])"
+    page.wait_for_selector(more)
+    # 実行
+    page.click(more)
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open] .d-review li[data-comment='C-1'] button.review-more:not([hidden])")
+    # 検証
+    assert page.evaluate(REVIEW_FOLD_STATE_JS, {"host": "dialog.full", "id": "C-1"}) == {
+        "folded": False,
+        "text": "折りたたむ",
+        "label": "D-1 へのコメントの本文を折りたたむ",
+        "focus": "detail-more:C-1",
+        "listItem": ["list-item", "0px"],
+    }
+    assert "id=D-1" in page.evaluate("() => location.hash")

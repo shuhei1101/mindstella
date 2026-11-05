@@ -1,0 +1,26 @@
+title: プレビュー / cn
+lead: clsx と tailwind-merge でクラス名を 1 つにする。
+functions:
+- name: cn
+  title: クラス名を合わせる
+  kind: 関数
+  container: frontend/src/shared/lib/cn.ts
+  usecase: 共通
+  summary: clsx と tailwind-merge でクラス名を 1 つにする
+  args:
+  - name: inputs
+    type: ClassValue[]
+    required: true
+    description: クラス名
+  returns:
+    type: string
+    description: 合わせたクラス名
+  unit_tests:
+  - name: test_cn
+    case: 正常
+    summary: 後のクラスで上書きする
+    condition: '`''px-2'', ''px-4''`'
+    mock: なし
+    expected: '`''px-4''`'
+notes:
+  単体テスト: 同じフォルダの `cn.test.ts` に置く（knowledge の規約『フォルダ構成』）

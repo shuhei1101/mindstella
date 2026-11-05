@@ -54,7 +54,7 @@ def test_normal(
 ) -> None:
     """使われているタグから話題のタグを決め、案を持つ決め事・派生の検討事項・未整理・タスク・会話ログを 1 回のまとめての書き込みで積む。新しい話題のタグはそのまま付ける（正常系）。"""
     # 準備（取り込みの前から、タグ `topic:保存` を持つメモ N-1 がある）
-    root = make_workspace(make_item("N-1", tags=[TOPIC_TAG]))
+    root = make_workspace(make_item("N-1", tags=[{"name": TOPIC_TAG}]))
     ws = {"workspace": str(root)}
     # 実行
     # 取り込みの最初に、使われているタグを引く
@@ -74,7 +74,7 @@ def test_normal(
                     "reason": "手で読める",
                     # 決めたこととして足すので、選ばれた案 A を採用する
                     "options": [{**OPTIONS[0], "adopted": True}, OPTIONS[1]],
-                    "tags": [TOPIC_TAG],
+                    "tags": [{"name": TOPIC_TAG, "main": True}],
                     **PLACE,
                 },
             },
@@ -87,7 +87,7 @@ def test_normal(
                     "parent": "$1",
                     # 未決定で足すので、推奨する案 A に推奨の印を付ける
                     "options": [{**OPTIONS[0], "recommended": True}, OPTIONS[1]],
-                    "tags": [TOPIC_TAG],
+                    "tags": [{"name": TOPIC_TAG, "main": True}],
                     **PLACE,
                 },
             },
@@ -97,7 +97,7 @@ def test_normal(
                 "item": {
                     "title": "いつか使うかも",
                     "status": "未整理",
-                    "tags": [TOPIC_TAG, NEW_TOPIC_TAG],
+                    "tags": [{"name": TOPIC_TAG}, {"name": NEW_TOPIC_TAG, "main": True}],
                     **PLACE,
                 },
             },
@@ -109,7 +109,7 @@ def test_normal(
                     "kind": "作業",
                     "status": "未着手",
                     "for": ["$2"],
-                    "tags": [TOPIC_TAG],
+                    "tags": [{"name": TOPIC_TAG, "main": True}],
                     **PLACE,
                 },
             },
@@ -163,8 +163,15 @@ def test_normal(
         "要件",
     ]
     # D-3 がタグ `topic:保存`・`topic:通知` を持ち、config.yaml がタグのキーを持たない
-    assert decisions["D-3"]["tags"] == [TOPIC_TAG, NEW_TOPIC_TAG]
+    assert [tag["name"] for tag in decisions["D-3"]["tags"]] == [TOPIC_TAG, NEW_TOPIC_TAG]
     assert "tags" not in read_yaml(root, "config.yaml")
+    # D-1・D-2・T-1 の `topic:保存` と D-3 の `topic:通知` が主題で、D-3 の `topic:保存` が主題でない
+    assert [decisions["D-1"]["tags"], decisions["D-2"]["tags"], tasks[0]["tags"]] == [
+        [{"name": TOPIC_TAG, "main": True}],
+        [{"name": TOPIC_TAG, "main": True}],
+        [{"name": TOPIC_TAG, "main": True}],
+    ]
+    assert decisions["D-3"]["tags"] == [{"name": TOPIC_TAG}, {"name": NEW_TOPIC_TAG, "main": True}]
     # 取り込みの前のタグの一覧が `topic:保存`（1 件）を返し、取り込んだ後のタグの一覧が `topic:保存`（5 件）と `topic:通知`（1 件）を返す
     assert tags_before == {"tags": [{"name": TOPIC_TAG, "count": 1, "kinds": ["note"]}]}
     assert tags_after == {
@@ -264,7 +271,7 @@ def test_normal_when_off_topic_question(
                 "item": {
                     "title": "他社の例",
                     "content": "他社は DB を使う",
-                    "tags": ["topic:脱線"],
+                    "tags": [{"name": "topic:脱線"}],
                     "body_markdown": "調べたこと: 他社の保存先\n結果: DB を使っている\n",
                 },
             },
@@ -283,14 +290,14 @@ def test_normal_when_off_topic_question(
     # メモ N-1 がタグ `topic:脱線` を持つ
     note = read_yaml(root, "notes.yaml")["items"][0]
     assert note["id"] == "N-1"
-    assert note["tags"] == ["topic:脱線"]
+    assert note["tags"] == [{"name": "topic:脱線"}]
     # メモ N-1 が本文を持ち、.mindstella/docs/ にその Markdown がある
     assert note["body"] == "N-1.md"
     assert "結果: DB を使っている" in (root / RECORD_DIR / "docs" / "N-1.md").read_text(
         encoding="utf-8"
     )
     # タスクが 0 件のままである
-    assert replay("find", **ws, kind="task")["items"] == []
+    assert replay("find", **ws, kind="task", format="json")["items"] == []
 
 
 def test_normal_when_deliverable_doc_created(
@@ -555,7 +562,7 @@ def test_normal_when_variant_tag_reused(
 ) -> None:
     """発言の言い方が違っても、同じ概念の言い方の違いのタグが使われていれば新しいタグを作らず、そのタグを付ける（正常系）。"""
     # 準備（取り込みの前から、タグ `topic:サーバ` を持つメモ N-1 がある）
-    root = make_workspace(make_item("N-1", tags=[VARIANT_TAG]))
+    root = make_workspace(make_item("N-1", tags=[{"name": VARIANT_TAG}]))
     ws = {"workspace": str(root)}
     # 実行
     # 取り込みの最初に、使われているタグを引く
@@ -572,7 +579,7 @@ def test_normal_when_variant_tag_reused(
                     "title": "サーバーの置き場所",
                     "status": "未決定",
                     "options": [{**OPTIONS[0], "recommended": True}, OPTIONS[1]],
-                    "tags": [VARIANT_TAG],
+                    "tags": [{"name": VARIANT_TAG, "main": True}],
                     **PLACE,
                 },
             },
@@ -590,7 +597,7 @@ def test_normal_when_variant_tag_reused(
     # 取り込みの前のタグの一覧が `topic:サーバ`（1 件）だけを返す
     assert [(row["name"], row["count"]) for row in tags_before["tags"]] == [(VARIANT_TAG, 1)]
     # D-1 のタグが `topic:サーバ` だけである
-    assert read_yaml(root, "decisions.yaml")["items"][0]["tags"] == [VARIANT_TAG]
+    assert read_yaml(root, "decisions.yaml")["items"][0]["tags"] == [{"name": VARIANT_TAG, "main": True}]
     # タグの一覧が `topic:サーバ`（2 件）だけを返し、`topic:サーバー` が無い
     assert [(row["name"], row["count"]) for row in tags_after["tags"]] == [(VARIANT_TAG, 2)]
     assert SPOKEN_TAG not in [row["name"] for row in tags_after["tags"]]

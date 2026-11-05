@@ -53,6 +53,8 @@ SCRIPT_FILES = (
     "components/removed-band.js",
     "components/withdrawn-badge.js",
     "components/comment-mark.js",
+    "components/tag-list.js",
+    "components/chips-input.js",
     "components/history-dialog.js",
     "components/table.js",
     "components/filter-drawer.js",

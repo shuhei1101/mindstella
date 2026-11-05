@@ -1,0 +1,31 @@
+title: "starlette"
+kind: "フレームワーク"
+version:
+  current: 1.7.0（mcp 2.3.0 が引き込んだ版）
+  checked_on: '2026-11-02'
+  pinning: 直接の下限を決めない。mcp の依存（`starlette>=0.27`）として入る
+catalogs:
+  - name: API
+    version: 1.7.0
+    entries:
+      - name: starlette.responses.JSONResponse
+        kind: クラス
+        purpose: '`GET /_admin/status` の JSON を返す'
+      - name: starlette.testclient.TestClient
+        kind: クラス
+        purpose: 単体テストで `streamable_http_app()` のアプリへ HTTP を送る
+lead: Python の ASGI のウェブフレームワーク。
+purl: pkg:pypi/starlette
+supplier: Encode
+dependency_scope: 必須
+adoption: 採用
+used_in:
+  - plugins/mindstella/skills/mindmap/scripts/server.py
+upstream: Kludex/starlette
+verification:
+  state: 済
+  date: '2026-11-02'
+  detail: 1.7.0 で、`MCPServer.custom_route` に載せた `GET /_admin/status` の入口が返す `JSONResponse` が、`streamable_http_app` の同じアプリから `server_status` と同じ JSON で返った
+license: BSD-3-Clause（商用利用可）
+official_url: https://www.starlette.io/
+docs_url: https://www.starlette.io/responses/

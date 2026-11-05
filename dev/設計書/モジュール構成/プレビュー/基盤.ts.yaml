@@ -241,6 +241,18 @@ data_models:
       - name: refs
         type: string[]
         description: '`referenced` のとき、消す項目を指している項目の ID'
+  - name: Tag
+    title: タグ
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    summary: 項目の `tags` の 1 件（ER 図『ワークスペース』の `tags`）。項目の型（`Item`）の `tags` は `Tag[]`
+    properties:
+      - name: name
+        type: string
+        description: タグの名前（書いた表記のまま）
+      - name: main
+        type: true | undefined
+        description: その項目の主題のタグだけが `true` を持つ
 constants:
   - name: DEFAULT_VIEW
     title: 画面ごとの既定の表示形式
@@ -907,29 +919,6 @@ functions:
         condition: '`parametrize`: `大` / `中` / `小` / `知らない` / `undefined`（いずれも `labeled` なし）と、`大` で `labeled = true`'
         mock: なし
         expected: '`on` の目盛りが 3 / 2 / 1 本（文字は `大` / `中` / `小`）/ 空の断片 / 空の断片。`labeled = true` は目盛り 3 本で文字が `影響度 大`'
-  - name: tagList
-    title: タグの並び
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
-    usecase: 共通
-    scope: public
-    summary: タグを `span.tag` で並べる
-    args:
-      - name: values
-        type: readonly string[] | undefined
-        required: true
-        passing: positional
-        description: タグ
-    returns:
-      type: Node
-      description: タグごとの `span.tag` を持つ断片
-    unit_tests:
-      - name: test_tag_list
-        case: 正常
-        summary: タグの数だけ並べる
-        condition: '`parametrize`: `["UI", "性能"]` / `undefined`'
-        mock: なし
-        expected: '`span.tag` が 2 つで文字が `UI`・`性能` / 子の無い断片'
   - name: deliverableBadge
     title: 納品物の印
     kind: 関数
@@ -1327,7 +1316,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     usecase: 共通
     scope: public
-    summary: 左から重ねるパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）が覆った本文の部品に `inert` を付け、外す関数を返す
+    summary: ピン止めしたコメントの一覧が覆った本文の部品に `inert` を付け、外す関数を返す
     side_effects: '`main` の中の要素の `inert` 属性を書き換える'
     args:
       - name: panel
@@ -2261,6 +2250,63 @@ functions:
     status: planned
     introduced:
       pr: 348
+  - name: tagNames
+    title: タグの名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    scope: public
+    summary: 項目の `tags` から名前だけを並びの順に取り出す（表の列・絞り込み・ネットワークの条件・使われているタグが使う）
+    args:
+      - name: tags
+        type: readonly (Tag | string)[] | undefined
+        required: true
+        passing: positional
+        description: 項目の `tags`（スレッドのタグのような文字列の並びも受ける）
+    returns:
+      type: string[]
+      description: 名前の並び。文字列はそのまま、`{name}` は `name`。`undefined` は空
+    unit_tests:
+      - name: test_tag_names
+        case: 正常
+        summary: オブジェクトと文字列のタグから名前を取る
+        condition: '`parametrize`: `[{name: データ, main: true}, {name: 画面}]` / `[起票]` / `undefined`'
+        mock: なし
+        expected: '`[データ, 画面]` / `[起票]` / `[]`'
+  - name: inertOutside
+    title: パネルの外を止める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    usecase: 共通
+    scope: public
+    summary: グレーアウトで覆う間、左から重ねるパネル（ピン止めしていないコメントの一覧・表示の設定・保存待ち・絞り込みのドロワー）と詳細パネル（`aside.panel`）を除いた本文の部品に `inert` を付け、外す関数を返す
+    side_effects: '`main` と、その中の要素の `inert` 属性を書き換える'
+    args:
+      - name: panel
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 開いたパネル
+    returns:
+      type: () => void
+      description: 付けた分だけ `inert` を外す関数（パネルを閉じるとき・描き直す前に呼ぶ）
+    process: |-
+      1. `main` からたどる。パネル自身・詳細パネル・既に `inert` の要素には付けない
+      2. パネルか詳細パネルを中に持つ要素は、その子をたどる。それ以外の要素は、まとめて `inert` を付ける（パネルを中に持たない `main` は、`main` 自体に付ける）
+      3. 付けた要素を控え、それだけから `inert` を外す関数を返す
+    unit_tests:
+      - name: test_inert_outside
+        case: 正常
+        summary: パネルと詳細パネルを除いた本文を止め、外すと付けた分だけ戻す
+        condition: '`main` に、パネル P とボタン A を持つ囲み W・ボタン B・始めから `inert` の C・`aside.panel` の詳細パネル E。トップバーのボタン D は `main` の外'
+        mock: なし
+        expected: A・B に `inert` が付き、P・W・E・D には付かない。返った関数を呼ぶと A・B から外れ、C は `inert` のまま
+      - name: test_inert_outside_when_no_panel_inside
+        case: 正常
+        summary: パネルを中に持たない本文は main ごと止める
+        condition: '`main` の外（`body` の直下）に置いたパネル P と、ボタン A を持つ `main`'
+        mock: なし
+        expected: '`main` に `inert` が付き、A にフォーカスを移せない。返った関数を呼ぶと `main` から外れる'
 test_files:
   - tests/unit/preview/test_records.py
   - tests/unit/preview/test_libs.py

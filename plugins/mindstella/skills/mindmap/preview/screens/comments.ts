@@ -36,6 +36,8 @@ namespace MindmapPreview {
   export type CommentsPanelProps = {
     /** パネルの中に出す画面 */
     view: PanelView;
+    /** ピン止めしているか（入口の `Prefs.commentsPinned`） */
+    pinned: boolean;
     /** レビュー中の書き込み（新しいスレッドと返信） */
     items: ReviewItem[];
     /** パネルを開いている間に消した書き込み（元の場所に「元に戻す」を出す） */
@@ -83,6 +85,8 @@ namespace MindmapPreview {
     expanded: Set<string>;
     on: {
       close: () => void;
+      /** ピン止めを切り替える */
+      pin: () => void;
       /** レビュー中の書き込みの画面を開く */
       review: () => void;
       /** 一覧（スレッドの画面から）か、開く前の画面（レビュー中の書き込みの画面から）へ戻る */
@@ -145,12 +149,16 @@ namespace MindmapPreview {
     editError: string | null;
     /** 本文を直せなかったとき、入力欄に残す書き換えていた中身（無ければ元の本文） */
     editBody: string | null;
+    /** 本文を開いているコメントの ID */
+    expanded: Set<string>;
     on: {
       edit: (id: string) => void;
       saveEdit: (id: string, body: string) => void;
       cancelEdit: () => void;
       remove: (id: string) => void;
       restore: (id: string) => void;
+      /** 本文を開いた・畳んだ（コメントの ID と、開いたか） */
+      fold: (id: string, open: boolean) => void;
     };
   };
 
@@ -254,7 +262,7 @@ namespace MindmapPreview {
   }
 
   /** レビュー中の書き込みの読み上げの名前の頭（返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」） */
-  function reviewLabel(item: ReviewItem): string {
+  export function reviewLabel(item: ReviewItem): string {
     // 詳細パネルへ渡す行には `thread` を持たないものもある
     if (item.thread !== null && item.thread !== undefined) return `${item.thread} への返信`;
     return item.target === null ? "項目を指さないコメント" : `${item.target} へのコメント`;
@@ -596,7 +604,25 @@ namespace MindmapPreview {
     return h({ tag: "label", attrs: { class: "legend-all-check", title: "すべて選ぶ" }, children: [checkbox] });
   }
 
-  /** 見出しの帯（見出し・レビュー中の入口・閉じる） */
+  /** ピン止めの切り替えのボタン。押した状態は `aria-pressed` で示し、ピンのアイコンは外している間だけ 45° 傾ける（CSS） */
+  function pinButton(props: CommentsPanelProps): HTMLElement {
+    const label = props.pinned ? "ピン止めを外す（外側を押したら閉じる）" : "ピン止めする（外側を押しても閉じない）";
+    return h({
+      tag: "button",
+      attrs: {
+        class: "icon-btn pin-toggle",
+        type: "button",
+        "aria-pressed": props.pinned ? "true" : "false",
+        "aria-label": label,
+        title: label,
+        "data-focus": "pin",
+        onclick: () => props.on.pin(),
+      },
+      children: [icon("pin")],
+    });
+  }
+
+  /** 見出しの帯（見出し・レビュー中の入口・ピン止め・閉じる） */
   function panelHead(props: CommentsPanelProps): HTMLElement {
     const count = props.items.length;
     return h({
@@ -619,6 +645,7 @@ namespace MindmapPreview {
             },
             children: ["レビュー中", h({ tag: "span", attrs: { class: "count", "aria-hidden": "true" }, children: [count] })],
           }),
+        pinButton(props),
         h({
           tag: "button",
           attrs: { class: "icon-btn", type: "button", "aria-label": "コメントの一覧を閉じる", "data-focus": "close", onclick: props.on.close },
@@ -915,6 +942,7 @@ namespace MindmapPreview {
       editing: props.editing === item.id && props.editingIn !== "detail",
       editBody: props.editBody ?? null,
       editError: props.editError ?? null,
+      open: props.expanded.has(item.id),
       on: {
         openId: (id) => props.on.openId(id),
         changeSet: props.on.changeSet,
@@ -922,6 +950,7 @@ namespace MindmapPreview {
         saveEdit: props.on.saveEdit,
         cancelEdit: props.on.cancelEdit,
         remove: props.on.remove,
+        fold: props.on.fold,
       },
     });
   }
@@ -1014,8 +1043,8 @@ namespace MindmapPreview {
             children: [
               ...threadTimeline(thread).map((entry) =>
                 "post" in entry
-                  ? threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } })
-                  : threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove } }),
+                  ? threadPost({ post: entry.post, titles: props.titleOf, changeSets: props.changeSetOf, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove, fold: on.fold } })
+                  : threadPost({ event: entry.event, on: { openId: (id) => on.openId(id), changeSet: on.changeSet, edit: on.edit, saveEdit: on.saveEdit, cancelEdit: on.cancelEdit, remove: on.remove, fold: on.fold } }),
               ),
               ...replies.map(({ item, gone }) => (gone ? removedReviewRow({ item, focus: "", on: { restore: on.restore } }) : pendingPostItem(item, props))),
             ],

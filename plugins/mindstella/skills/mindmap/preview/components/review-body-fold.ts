@@ -12,8 +12,12 @@ namespace MindmapPreview {
     label: string;
     /** 書き込みの本文 */
     body: string;
+    /** 項目のタイトル（記録に無ければ null）。あるものだけ、本文の中の ID を項目を開くボタンにする */
+    titles?: (id: string) => string | null;
     /** まとまりの説明（記録に無ければ null） */
     changeSets?: (id: string) => string | null;
+    /** 開閉のボタンの `data-focus` の接頭辞 */
+    focus?: string;
     /** 本文を開いているか */
     open?: boolean;
     /** 畳んだときに出す行の数 */
@@ -23,6 +27,8 @@ namespace MindmapPreview {
       toggle: (id: string, open: boolean) => void;
       /** 本文の中のまとまりのリンクを押した（まとまりの ID） */
       changeSet: (id: string) => void;
+      /** 本文の中の項目の ID を押した（`titles` にある ID だけがボタンになる） */
+      openId?: (id: string) => void;
     };
   };
 
@@ -47,15 +53,14 @@ namespace MindmapPreview {
   }
 
   /** 本文を畳み、開閉のボタンを添えて返す */
-  export function reviewBodyFold({ id, label, body, changeSets = () => null, open = false, lines = REVIEW_FOLD_LINES, on }: ReviewBodyFoldProps): ReviewBodyFold {
+  export function reviewBodyFold({ id, label, body, titles = () => null, changeSets = () => null, focus = "", open = false, lines = REVIEW_FOLD_LINES, on }: ReviewBodyFoldProps): ReviewBodyFold {
     const bodyId = `review-body-${id}`;
     const text = postBody({
       body,
-      titles: () => null,
+      titles,
       changeSets,
       className: "review-body",
-      // 項目の ID は文字のまま出すので、押されることは無い
-      on: { openId: () => undefined, changeSet: on.changeSet },
+      on: { openId: on.openId ?? (() => undefined), changeSet: on.changeSet },
     });
     text.id = bodyId;
     text.style.setProperty("--fold-lines", String(lines));
@@ -69,7 +74,7 @@ namespace MindmapPreview {
         // 測るまでは出さない
         hidden: true,
         "aria-controls": bodyId,
-        "data-focus": `more:${id}`,
+        "data-focus": `${focus}more:${id}`,
         onclick: () => {
           opened = !opened;
           text.classList.toggle("folded", !opened);

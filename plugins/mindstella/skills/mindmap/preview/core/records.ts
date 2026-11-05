@@ -113,6 +113,12 @@ namespace MindmapPreview {
     pending: { added: string[]; changed: string[]; removed?: RemovedItem[] };
   };
 
+  /** 項目の `tags` の 1 件。その項目の主題のタグだけが `main` を持つ */
+  export type Tag = {
+    name: string;
+    main?: true;
+  };
+
   /** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
   export type Item = {
     id: string;
@@ -120,7 +126,7 @@ namespace MindmapPreview {
     target?: string;
     category?: string;
     phase?: string;
-    tags?: string[];
+    tags?: Tag[];
     related?: string[];
     links?: { title: string; url: string }[];
     created: string;
@@ -239,6 +245,11 @@ namespace MindmapPreview {
 
   /** 項目が別の項目を指すキー */
   const REFERENCE_KEYS = ["depends_on", "for", "related", "sources"] as const;
+
+  /** 項目の `tags` から名前だけを並びの順に取り出す（文字列のタグはそのまま） */
+  export function tagNames(tags: readonly (Tag | string)[] | undefined): string[] {
+    return (tags ?? []).map((tag) => (typeof tag === "string" ? tag : tag.name));
+  }
 
   /** ID を種類の順 → 連番の順に比べる */
   export function compareIds(a: string, b: string): number {

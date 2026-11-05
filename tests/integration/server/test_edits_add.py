@@ -436,3 +436,54 @@ def test_error_when_item_add_options_duplicated(
     assert "options" in detail
     assert "A" in detail
     assert not _edits_path(root).exists()
+
+
+def test_normal_when_main_tag_edited(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+) -> None:
+    """タグの主題を変えた `tags` の編集を溜め、同じ名前のタグが重なる `tags` は溜めない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1", tags=[{"name": "データ", "main": True}, {"name": "画面"}])
+    )
+    decisions_path = root / RECORD_DIR / "decisions.yaml"
+    decisions_before = decisions_path.read_text(encoding="utf-8")
+    url = serve_preview(root)
+    # 実行
+    first = post_json(
+        url,
+        EDITS_PATH,
+        {
+            "op": "set",
+            "target": "D-1",
+            "key": "tags",
+            "value": [{"name": "データ"}, {"name": "画面", "main": True}],
+        },
+    )
+    saved_first = _read_edits(root)
+    second = post_json(
+        url,
+        EDITS_PATH,
+        {
+            "op": "set",
+            "target": "D-1",
+            "key": "tags",
+            "value": [{"name": "画面"}, {"name": "画面", "main": True}],
+        },
+    )
+    # 検証
+    assert first.status == 201
+    edit = saved_first["items"][0]
+    assert (edit["id"], edit["value"], edit["before"]) == (
+        "E-1",
+        [{"name": "データ"}, {"name": "画面", "main": True}],
+        [{"name": "データ", "main": True}, {"name": "画面"}],
+    )
+    assert second.status == 400
+    detail = second.json()["detail"]
+    assert "tags" in detail
+    assert "画面" in detail
+    assert _read_edits(root) == saved_first
+    assert decisions_path.read_text(encoding="utf-8") == decisions_before

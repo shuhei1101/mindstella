@@ -6,6 +6,10 @@ var MindmapPreview;
     MindmapPreview.NO_VALUE = "（なし）";
     /** 詳細パネルのレビュー中のコメントの行の `data-focus` の接頭辞（コメントの一覧と同時に開いても、描き直した後のフォーカスの戻し先を分ける） */
     MindmapPreview.REVIEW_FOCUS = "detail-";
+    /** 並びの切り替えの読み上げの名前の頭と、表示の設定の「この端末で変えている項目」に出す名前 */
+    MindmapPreview.REVIEW_ORDER_LABEL = "コメントの並び";
+    /** 並びの切り替えに出す今の並びの文言 */
+    MindmapPreview.REVIEW_ORDER_TEXT = { newest: "新しい順", oldest: "古い順" };
     /** 差分に並べるキーから外す、ツールが付けるキーと本文の名前 */
     const UNDIFFED_KEYS = new Set(["id", "created", "updated", "updated_by", "history", "history_dropped_seq", "body"]);
     /** 前後を組み立てられない旨・本文の差分を出せない旨の文言 */
@@ -141,6 +145,10 @@ var MindmapPreview;
             pairs,
             before,
         };
+    }
+    /** タグの値（`{name, main?}` の並び）を、主題のマーカーを付けたタグの並びにする。空なら null */
+    function tagsOf(value) {
+        return Array.isArray(value) && value.length > 0 ? MindmapPreview.tagList(value) : null;
     }
     /** 状態の値（文字）を、印と名前の表示にする。状態を持たなければ null */
     function statusOf(value) {
@@ -305,22 +313,44 @@ var MindmapPreview;
         });
         const tagsChanged = diff?.has("tags") === true;
         if ((item.tags ?? []).length > 0 || tagsChanged) {
-            rows.push(MindmapPreview.h({ tag: "dt", attrs: { class: tagsChanged ? "df-key" : null }, children: ["タグ"] }), MindmapPreview.h({ tag: "dd", attrs: { class: tagsChanged ? "df-key" : null }, children: [tagsChanged ? diff?.show("tags") : MindmapPreview.tagList(item.tags)] }));
+            rows.push(MindmapPreview.h({ tag: "dt", attrs: { class: tagsChanged ? "df-key" : null }, children: ["タグ"] }), MindmapPreview.h({ tag: "dd", attrs: { class: tagsChanged ? "df-key" : null }, children: [tagsChanged ? diff?.show("tags", tagsOf) : MindmapPreview.tagList(item.tags)] }));
         }
         return MindmapPreview.h({ tag: "dl", attrs: { class: "d-meta" }, children: [...rows] });
     }
     /** この項目へのレビュー中のコメントの節（各行の右上の「修正」「削除」で、その場で直す・消す・戻す。チェックとまとめて送るはコメントの一覧で行う） */
-    function reviewSection({ items, edit }) {
-        // 消した行は元の場所（溜めた順）に「元に戻す」と共に残す
-        const rows = [...items.map((item) => ({ item, gone: false })), ...edit.removed.map((item) => ({ item, gone: true }))].sort((a, b) => MindmapPreview.commentNumber(a.item.id) - MindmapPreview.commentNumber(b.item.id));
+    function reviewSection({ items, edit, order, onOrder, titles, changeSets, onOpen, onChangeSet }) {
+        // ID の連番で並べ（新しい順は大きい順）、消した行も同じ並びの中の元の場所に「元に戻す」と共に残す
+        const sign = order === "newest" ? -1 : 1;
+        const rows = [...items.map((item) => ({ item, gone: false })), ...edit.removed.map((item) => ({ item, gone: true }))].sort((a, b) => (MindmapPreview.commentNumber(a.item.id) - MindmapPreview.commentNumber(b.item.id)) * sign);
+        const heading = MindmapPreview.h({
+            tag: "h3",
+            children: ["レビュー中のコメント", MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [items.length] })],
+        });
         return MindmapPreview.h({
             tag: "section",
             attrs: { class: "d-sec d-review" },
             children: [
-                MindmapPreview.h({
-                    tag: "h3",
-                    children: ["レビュー中のコメント", MindmapPreview.h({ tag: "span", attrs: { class: "count" }, children: [items.length] })],
-                }),
+                // 並びが変わるのは 2 行以上のときだけなので、そのときだけ見出しの行の右に切り替えを置く
+                rows.length < 2
+                    ? heading
+                    : MindmapPreview.h({
+                        tag: "div",
+                        attrs: { class: "review-head" },
+                        children: [
+                            heading,
+                            MindmapPreview.h({
+                                tag: "button",
+                                attrs: {
+                                    type: "button",
+                                    class: "btn ghost review-order",
+                                    "data-focus": `${MindmapPreview.REVIEW_FOCUS}review-order`,
+                                    "aria-label": `${MindmapPreview.REVIEW_ORDER_LABEL}: ${MindmapPreview.REVIEW_ORDER_TEXT[order]}`,
+                                    onclick: () => onOrder(order === "newest" ? "oldest" : "newest"),
+                                },
+                                children: [MindmapPreview.icon("updown"), MindmapPreview.REVIEW_ORDER_TEXT[order]],
+                            }),
+                        ],
+                    }),
                 rows.length === 0
                     ? MindmapPreview.emptyNote("レビュー中のコメントはありません。")
                     : MindmapPreview.h({
@@ -332,6 +362,19 @@ var MindmapPreview;
                             const editing = edit.editing === item.id;
                             // 入力欄は修正を始めた場所だけに描く。コメントの一覧で始めた行は、ここでは本文だけにして「修正」「削除」も出さない
                             const editingHere = editing && edit.editingIn === "detail";
+                            // この詳細パネルで書き換えていない行の本文は、Markdown で描いて折り返した後の見た目の行で畳む
+                            const fold = editingHere
+                                ? null
+                                : MindmapPreview.reviewBodyFold({
+                                    id: item.id,
+                                    label: MindmapPreview.reviewLabel(item),
+                                    body: item.body,
+                                    titles,
+                                    changeSets,
+                                    open: edit.expanded.has(item.id),
+                                    focus: MindmapPreview.REVIEW_FOCUS,
+                                    on: { toggle: edit.on.fold, changeSet: onChangeSet, openId: onOpen },
+                                });
                             return MindmapPreview.h({
                                 tag: "li",
                                 attrs: { class: `review-row${editing ? " editing" : ""}`, "data-comment": item.id },
@@ -358,7 +401,9 @@ var MindmapPreview;
                                                     focus: MindmapPreview.REVIEW_FOCUS,
                                                     on: { saveEdit: edit.on.saveEdit, cancelEdit: edit.on.cancelEdit },
                                                 })
-                                                : MindmapPreview.h({ tag: "p", attrs: { class: "review-body" }, children: [item.body] }),
+                                                : fold?.body ?? null,
+                                            // 開閉のボタンだけの行（ボタンを出さない間は CSS で行ごと出さない）
+                                            fold === null ? null : MindmapPreview.h({ tag: "div", attrs: { class: "review-more-row" }, children: [fold.more] }),
                                         ],
                                     }),
                                     // 書き換えている行には「修正」「削除」を出さない（入力欄の「キャンセル」「修正」と並べない）
@@ -1335,7 +1380,15 @@ var MindmapPreview;
             children: [
                 relation(kind === "logs" ? "更新した項目" : "関連", related.related),
                 relation("参照元", related.referencedBy),
-                review === null ? null : reviewSection(review),
+                review === null
+                    ? null
+                    : reviewSection({
+                        ...review,
+                        titles: (target) => index.byId.get(target)?.item.title ?? null,
+                        changeSets: (setId) => index.data.changes.sets.find((set) => set.id === setId)?.summary ?? null,
+                        onOpen: on.open,
+                        onChangeSet: on.changeSet,
+                    }),
             ],
         });
         // 本文の差分を描かなかったとき、キーの値の語の面をここで付ける
@@ -1927,10 +1980,10 @@ var MindmapPreview;
     MindmapPreview.panelResizer = panelResizer;
     /** 詳細パネル（全画面のときは中央のモーダル）を返す。文書に入れた後、全画面は `showModal()` で開く */
     function detailPanel(props) {
-        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", bodyView = MindmapPreview.BODY_VIEW_DEFAULT, edit = null, resizer = null } = props;
+        const { id, index, full, on, comment, highlight = null, diff = null, heading = null, minimap = true, bodyLayout = "inline", reviewOrder = "newest", bodyView = MindmapPreview.BODY_VIEW_DEFAULT, edit = null, resizer = null } = props;
         const editing = edit?.editing === true;
         // 編集の表示の間は、読む表示の代わりに編集の入力を並べる
-        const content = editing && edit !== null ? MindmapPreview.detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit }, view: resolveDiffView({ id, index, diff }), bodyLayout, bodyView });
+        const content = editing && edit !== null ? MindmapPreview.detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit, order: reviewOrder, onOrder: on.order }, view: resolveDiffView({ id, index, diff }), bodyLayout, bodyView });
         if (!editing && edit !== null)
             markEditedKeys({ root: content, marks: edit.marks, settings: index.data.settings });
         // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする

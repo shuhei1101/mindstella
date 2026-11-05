@@ -25,6 +25,7 @@ from body_view_helpers import (
     wait_head_at_top,
 )
 from integration.browser_tab_helpers import LINK_PAGE_TITLE, new_tab_after, opened_tabs
+from integration.preview.preview_body_scroll_helpers import SETTLED_SCROLL_TOP_JS
 from integration.preview.preview_panel_width_helpers import (
     DEFAULT_WIDTH_PX,
     drag_resizer,
@@ -32,8 +33,8 @@ from integration.preview.preview_panel_width_helpers import (
     read_stored_width,
 )
 from playwright.sync_api import Page
-from preview_helpers import OpenPreview, ServePreview
-from workspace_fixtures import ADOPTED_OPTIONS, MakeItem
+from preview_helpers import COMMENTS_PANEL, TAG_VALUES_SCRIPT, OpenPreview, ServePreview, open_thread
+from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeItem, MakeThread, MakeWorkspace, WriteThreads
 
 # 本文に mermaid の図を 1 つ持つ Markdown
 BODY_WITH_DIAGRAM = """# 要件
@@ -69,6 +70,23 @@ DIAGRAM_TIMEOUT_MS = 20_000
 
 # 全画面の外側（後ろの幕）を押す位置
 BACKDROP_POINT = (4, 4)
+
+# 全画面のモーダルの左の外側で、後ろの表に重なる点の横の位置（幅 1920px のモーダルは左端から 160px の所から始まる）
+BEHIND_TABLE_X = 80
+
+# 後ろの幕の色・`--scrim` の色・幕の色の不透明度と、後ろの表の最初の行の高さで外側の点を押したときに当たる要素のタグを返す
+BACKDROP_STATE_SCRIPT = """(x) => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--scrim)';
+    document.body.append(probe);
+    const scrim = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    const color = getComputedStyle(document.querySelector('dialog.full'), '::backdrop').backgroundColor;
+    const channels = color.slice(color.indexOf('(') + 1, -1).split(',');
+    const row = document.querySelector('table.grid tbody tr').getBoundingClientRect();
+    const hit = document.elementFromPoint(x, row.top + row.height / 2);
+    return {color, scrim, alpha: channels.length === 4 ? Number(channels[3]) : 1, hit: hit?.tagName ?? null};
+}"""
 
 # Markdown で書いた値（強調とリストを持つ）
 MARKDOWN_VALUE = "**強調**した文\n\n- 箇条書き"
@@ -237,6 +255,11 @@ def test_normal(
     assert page.locator("dialog[open]").count() == 1
     page.click('dialog.full button[data-act="diagram-close"]')
     page.wait_for_selector("dialog.full .panel-body", state="visible")
+    # 全画面表示の間、モーダルの外側がほかのモーダルと同じ濃さでグレーアウトされ、後ろの画面は透けて見えるが、後ろの画面の部品は押せない
+    backdrop = page.evaluate(BACKDROP_STATE_SCRIPT, BEHIND_TABLE_X)
+    assert backdrop["color"] == backdrop["scrim"]
+    assert 0 < backdrop["alpha"] < 1
+    assert backdrop["hit"] == "DIALOG"
     # 全画面に全てを閉じるボタンが無く、外側を押すと D-3 の詳細パネルに戻る
     assert page.locator('dialog.full button[data-act="close"]').count() == 0
     page.mouse.click(*BACKDROP_POINT)
@@ -1364,3 +1387,153 @@ def test_normal_when_resize_panel(
         str(WIDENED_PANEL_WIDTH_PX),
     )
     assert read_stored_width(page) == str(WIDENED_PANEL_WIDTH_PX)
+
+
+def test_normal_when_main_tag_marked(
+    serve_preview: ServePreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """詳細パネルと全画面のタグで主題のタグだけがマーカーと読み上げ名を持ち、表のタグの列は名前で出す（正常系）。"""
+    # 準備
+    url = serve_preview(make_item("D-1", tags=[{"name": "データ", "main": True}, {"name": "画面"}]))
+    page = open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector('table.grid tbody tr[data-id="D-1"]')
+    # 実行（表で D-1 を押す）
+    table_tags = page.evaluate(TAG_VALUES_SCRIPT, 'table.grid tbody tr[data-id="D-1"]')
+    page.click('table.grid tbody tr[data-id="D-1"] button.row-open')
+    page.wait_for_selector("aside.panel.open .d-meta span.tag")
+    panel_tags = page.evaluate(TAG_VALUES_SCRIPT, "aside.panel .d-meta dd:last-of-type")
+    # 実行（「全画面表示」を押す）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open] .d-meta span.tag")
+    full_tags = page.evaluate(TAG_VALUES_SCRIPT, "dialog.full .d-meta dd:last-of-type")
+    # 検証
+    assert panel_tags == [
+        {"name": "データ", "main": True, "title": "主題", "marker": "true", "spoken": "主題"},
+        {"name": "画面", "main": False, "title": None, "marker": None, "spoken": None},
+    ]
+    assert [(tag["name"], tag["main"]) for tag in full_tags] == [("データ", True), ("画面", False)]
+    assert [(tag["name"], tag["main"]) for tag in table_tags] == [("データ", False), ("画面", False)]
+
+
+# 本文を送った位置を戻すシナリオの、本文の段落の数（詳細パネルの本文のスクロール領域の高さの 3 倍を超える長さにする）
+SCROLL_BODY_PARAGRAPHS = 120
+
+# 本文の上でホイールを回して送る量（px）
+BODY_WHEEL_PX = 900
+
+# 見出し「手順」を末尾に置き、先頭の段落に資料 A-4 の ID を持つ本文と、見出しの行（1 始まり）
+SCROLL_BODY_LINES = [
+    "# 資料の本文",
+    "",
+    "A-4 を参照する。",
+    *[line for number in range(1, SCROLL_BODY_PARAGRAPHS + 1) for line in ("", f"{number} 番目の段落")],
+    "",
+    "## 手順",
+    "",
+    "手順の段落",
+]
+SCROLL_BODY = "\n".join(SCROLL_BODY_LINES) + "\n"
+STEPS_HEADING_LINE = SCROLL_BODY_LINES.index("## 手順") + 1
+
+# 詳細パネルと全画面の本文のスクロール領域
+PANEL_SCROLLER = "aside.panel .panel-body"
+FULL_SCROLLER = "dialog.full .panel-body"
+
+# スレッドの画面の、向けた項目を開くボタン
+THREAD_TARGET = f"{COMMENTS_PANEL} button.row-target[data-focus='target']"
+
+# 要素の上端が本文のスクロール領域の見える範囲に入っているかを返す
+IN_SCROLLER_SCRIPT = """([scroller, target]) => {
+    const box = document.querySelector(scroller).getBoundingClientRect();
+    const top = document.querySelector(target).getBoundingClientRect().top;
+    return top >= box.top - 1 && top <= box.bottom;
+}"""
+
+
+def _settled_top(page: Page, selector: str) -> int:
+    """スクロールが止まった後の、本文のスクロール領域の位置を返す。"""
+    return page.evaluate(SETTLED_SCROLL_TOP_JS, selector)
+
+
+def _wait_title(page: Page, title: str) -> None:
+    """詳細パネルの見出しのタイトルが title になるのを待つ。"""
+    page.wait_for_function(
+        "title => document.querySelector('aside.panel .d-title')?.textContent === title", arg=title
+    )
+
+
+def test_normal_when_body_scroll_restored(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Page,
+) -> None:
+    """本文を送った位置を項目ごとに残し、全画面との切り替え・前の項目へ戻る・読み込み直しでその位置へ戻す。見出しの箇所を示して開くときは見出しを出す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("A-3"), make_item("A-4"), bodies={"A-3.md": SCROLL_BODY, "A-4.md": "A-4 の本文\n"}
+    )
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            target="A-3",
+            loc={"kind": "body", "start": STEPS_HEADING_LINE, "end": STEPS_HEADING_LINE, "text": "手順"},
+            summary="手順の見出しの相談",
+        ),
+    )
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(str(served.data["url"]), "#tab=docs", width=WIDE_SIZE[0], height=WIDE_SIZE[1])
+    # 実行（資料の画面で A-3 を押し、本文を下へ送る）
+    page.click('.doc-card[data-id="A-3"]')
+    page.wait_for_selector(f"{PANEL_SCROLLER} .md")
+    body_box = page.locator(PANEL_SCROLLER).bounding_box()
+    assert body_box is not None
+    page.mouse.move(body_box["x"] + body_box["width"] / 2, body_box["y"] + body_box["height"] / 2)
+    page.mouse.wheel(0, BODY_WHEEL_PX)
+    page.wait_for_function("selector => document.querySelector(selector).scrollTop > 0", arg=PANEL_SCROLLER)
+    scrolled = _settled_top(page, PANEL_SCROLLER)
+    # 実行（「全画面表示」を押し、モーダルの外側を押す）
+    page.click('aside.panel button[data-act="full"]')
+    page.wait_for_selector("dialog.full[open] .panel-body .md")
+    full_top = _settled_top(page, FULL_SCROLLER)
+    page.mouse.click(*BACKDROP_POINT)
+    page.wait_for_selector("dialog.full", state="detached")
+    page.wait_for_selector(f"{PANEL_SCROLLER} .md")
+    restored_top = _settled_top(page, PANEL_SCROLLER)
+    # 実行（本文の A-4 のリンクを押す。押す操作で本文を送らないよう、要素の click を呼ぶ）
+    page.eval_on_selector('aside.panel .md a.idref[data-id="A-4"]', "link => link.click()")
+    _wait_title(page, "A-4の題")
+    other_top = _settled_top(page, PANEL_SCROLLER)
+    # 実行（「前の項目へ戻る」を押す）
+    page.click('aside.panel button[data-act="back"]')
+    _wait_title(page, "A-3の題")
+    back_top = _settled_top(page, PANEL_SCROLLER)
+    # 実行（ページを読み込み直す）
+    page.reload()
+    page.wait_for_selector(f"{PANEL_SCROLLER} .md")
+    reloaded_top = _settled_top(page, PANEL_SCROLLER)
+    # 実行（コメントの一覧で TH-1 を開き、向けた項目 A-3 を押す）
+    open_thread(page, "TH-1")
+    page.click(THREAD_TARGET)
+    page.wait_for_selector("aside.panel.open .md .loc-hit")
+    target_top = _settled_top(page, PANEL_SCROLLER)
+    # 検証
+    assert scrolled > 0
+    # 全画面表示を開くと、モーダルの本文も送った位置で出る
+    assert full_top == scrolled
+    # 全画面のモーダルの外側を押して詳細パネルに戻ったとき、送った位置で出る
+    assert restored_top == scrolled
+    # A-4 へ移ったとき、A-4 の本文は先頭から出る
+    assert other_top == 0
+    # 「前の項目へ戻る」で A-3 に戻ったとき、送った位置で出る
+    assert back_top == scrolled
+    # 同じタブでページを読み込み直した後も、送った位置で出る
+    assert reloaded_top == scrolled
+    # スレッドの向けた項目から開いたときは、送った位置ではなく見出し「手順」の箇所が画面に入る
+    assert target_top != scrolled
+    assert page.evaluate(IN_SCROLLER_SCRIPT, [PANEL_SCROLLER, "aside.panel .md .loc-hit"]) is True

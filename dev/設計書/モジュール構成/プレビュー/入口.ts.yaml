@@ -1,5 +1,5 @@
-title: "プレビュー / 入口"
-lead: 'プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。'
+title: プレビュー / 入口
+lead: プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/preview/
@@ -15,7 +15,7 @@ data_models:
     title: 端末に残す設定
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
-    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方は個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
+    summary: '`localStorage` の 1 つのキーに JSON で残す値。見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びは個人の上書きで、無い（`null`・種類や画面のキーが無い）項目はワークスペースの既定か画面の既定に従う（`resolveDisplay`・`initialFilters`）'
     properties:
       - name: theme
         type: "'light' | 'dark' | null"
@@ -41,6 +41,9 @@ data_models:
       - name: bodyLayout
         type: "'side' | null"
         description: 本文の差分を左右に並べる上書き（インターフェース定義の `body_diff_layout`）。`null` はインライン（ワークスペースの既定は持たない）。「インライン」を押すと `null` にする
+      - name: reviewOrder
+        type: "'oldest' | null"
+        description: 詳細のレビュー中のコメントを古い順に並べる上書き（インターフェース定義の `review_order`）。`null` は新しい順（ワークスペースの既定は持たない）。新しい順に戻すと `null` にする
       - name: opened
         type: unknown
         description: 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`resolveSince` が `isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う。サーバーの配信では読まず書かない
@@ -56,6 +59,9 @@ data_models:
       - name: sectionFold
         type: false | null
         description: セクションの折りたたみをオフにする上書き（`section_fold`）。`null` はオン。オンに戻すと `null` にする
+      - name: commentsPinned
+        type: true | null
+        description: コメントの一覧をピン止めしているか。`null` はピン止めしない。個人の上書きではなく、「既定に戻す」でも消さない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -94,7 +100,7 @@ data_models:
         description: 直前のスレッドの読み取りが断られた・届かなかったときの理由。読めたら `null`
       - name: view
         type: "'list' | 'thread' | 'review'"
-        description: パネルの中に出している画面。パネルを開くたびに `list` に戻す
+        description: パネルの中に出している画面。パネルを閉じても保ち、開き直したときにこの画面へ戻す（『スレッドの画面の操作』）
       - name: reviewFrom
         type: "'list' | 'thread'"
         description: レビュー中の書き込みを開く前の画面（「戻る」の戻り先）
@@ -118,7 +124,13 @@ data_models:
         description: スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（一覧から開いたときは `null`）
       - name: expanded
         type: Set<string>
-        description: レビュー中の書き込みの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする）
+        description: レビュー中の書き込みの画面とスレッドの画面で本文を開いている書き込みの ID（`on.fold` で足し引きする。描き直しと本文の書き換えでは保ち、パネルを閉じると空にする）
+      - name: listScroll
+        type: number
+        description: コメントの一覧を閉じたときのパネルの中（`.comments-body`）のスクロールの位置。開き直したときに戻す（ページを開いたときは 0）
+      - name: detailExpanded
+        type: Set<string>
+        description: 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（`detailPanel` の `comment.edit.on.fold` で足し引きし、`comment.edit.expanded` で渡す。描き直し・本文の書き換え・詳細の全画面との行き来では保ち、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
   - name: DisplayState
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -253,6 +265,12 @@ constants:
     usecase: 項目の詳細を読む
     summary: そのタブで変えた詳細パネルの幅（px の整数の文字列）を残す sessionStorage のキー。種類で分けない。配る書き出しでも同じ
     value: '"mindmap-panel-width"'
+  - name: BODY_SCROLL_KEY
+    title: 本文のスクロールの位置のキー
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目の詳細を読む
+    summary: そのタブで詳細パネル・全画面の本文をスクロールした位置（項目の ID → px の JSON）を残す sessionStorage のキー。配る書き出しでも同じ
+    value: '"mindmap-body-scroll"'
 functions:
   - name: readEmbeddedData
     title: 埋め込みのデータを読む
@@ -300,7 +318,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`tablePin`・`tableHead`・`tableStripes`・`sectionFold` が `null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`false` でない `tablePin`・`tableHead`・`sectionFold`、`true` でない `tableStripes` はその項目だけ既定にする'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`reviewOrder: null`、`tablePin`・`tableHead`・`tableStripes`・`sectionFold`・`commentsPinned` が `null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`oldest` でない `reviewOrder`、`false` でない `tablePin`・`tableHead`・`sectionFold`、`true` でない `tableStripes`・`commentsPinned` はその項目だけ既定にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -330,12 +348,24 @@ functions:
         condition: '`parametrize`: `bodyLayout: side` を残した / `bodyLayout: inline` を残した / `bodyLayout: 1` を残した / `bodyLayout` を持たない前の版の値'
         mock: 保存領域（引数で渡す）
         expected: '`bodyLayout` が `side` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
+      - name: test_load_prefs_when_review_order
+        case: 正常
+        summary: レビュー中のコメントの並びの上書きは oldest だけを読む
+        condition: '`parametrize`: `reviewOrder: oldest` を残した / `reviewOrder: newest` を残した / `reviewOrder: 1` を残した / `reviewOrder` を持たない前の版の値'
+        mock: 保存領域（引数で渡す）
+        expected: '`reviewOrder` が `oldest` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
       - name: test_load_prefs_when_body_view
         case: 正常
         summary: 本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む
         condition: '`parametrize`: `tablePin`・`tableHead`・`sectionFold` が `false`、`tableStripes` が `true` を残した / 4 つとも反対の値（`true`・`false`）を残した / 4 つとも `"no"` を残した / 4 つを持たない前の版の値'
         mock: 保存領域（引数で渡す）
         expected: 残した値のまま / 4 つとも `null` / 4 つとも `null` / 4 つとも `null`（ほかの項目はそのまま読める）
+      - name: test_load_prefs_when_comments_pinned
+        case: 正常
+        summary: コメントの一覧のピン止めは true だけを読む
+        condition: '`parametrize`: `commentsPinned: true` を残した / `commentsPinned: false` を残した / `commentsPinned: "yes"` を残した / `commentsPinned` を持たない前の版の値'
+        mock: 保存領域（引数で渡す）
+        expected: '`commentsPinned` が `true` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
@@ -364,7 +394,7 @@ functions:
         summary: 残した設定を読める
         condition: '`parametrize`: 使える保存領域 / `setItem` が例外を送る保存領域'
         mock: 保存領域（引数で渡す）
-        expected: '真を返し `loadPrefs` で同じ値が読める / 偽を返し例外を送らない'
+        expected: 真を返し `loadPrefs` で同じ値が読める / 偽を返し例外を送らない
   - name: start
     title: 起動
     kind: 関数
@@ -390,7 +420,9 @@ functions:
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
       5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
-         - 絞り込みのドロワー・コメントの一覧・表示の設定のパネルのどれかを開いているときは、描いた後に前の `inertBehind` が返した解除を呼んでから、開いているパネルで `inertBehind` を呼び直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）
+         - 詳細パネル・全画面の本文のスクロール領域をスクロールしたら、開いている項目の位置を残す（`writeBodyScrolls`。`scroll` は伝わらないため `document` でキャプチャフェーズで受ける）。詳細パネルか全画面を開く・項目を移る・全画面と行き来するときは、見出し（`heading`）もコメントの箇所（`highlight`）も示さなければ、描いた次のコマで本文をその項目の位置へ戻す（位置は 3 で `readBodyScrolls` で読む。残っていなければ先頭から）
+         - 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のどれかを開いているときは、描いた後に前の解除を呼んでから、本文の部品を止め直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）。ピン止めしたコメントの一覧（`Prefs.commentsPinned`）は `inertBehind` で覆った範囲だけを止め、グレーアウトを出さない。それ以外は、`body` の直下のグレーアウト（`div.left-scrim`。`aria-hidden`、トップバーとタブの帯の下から。幅 900px 以下では出さない）に `on` を付け、`inertOutside` で止める。詳細パネルは、左のパネルの中（グレーアウトの上に出した詳細パネルの中を含む）の押下で開いたときだけ `body` に `detail-above-scrim` を付けてグレーアウトの上に出し、それ以外は `inert` を付ける。押下の出どころは `click` をキャプチャフェーズで受けて控え、左のパネルか詳細パネルを閉じたら戻す
+         - グレーアウトを押したら、開いている左のパネルを、トップバーのそのパネルのボタンを押したときと同じに閉じ、そのボタンへフォーカスを戻す
          - 詳細パネルを開く・別の項目へ移るときは `StackState.front` を `detail` にする。幅 900px 以下（`NARROW_QUERY`）で詳細パネルと左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定のパネル）を両方開いているときは、`front` の側を前に出す。`left` なら `body` に `left-front` を付け、詳細パネル（`aside.panel`）に `inert` を付ける。`detail` なら `left-front` を外し、開いている左のパネルに `inert` を付ける。それ以外（幅 901px 以上・片方だけ開いている）では `left-front` と、この 2 つに付けた `inert` を外す。幅が 900px をまたいだとき（`NARROW_QUERY` の `change`）もやり直す
       6. コメントの入力のコールバックを次で扱う
          - 「入力」では `forms` の `body` を書き換え、`DRAFT_SAVE_DELAY_MS` 待って書きかけを保つ（`saveDraft`。詳細パネル・一覧を閉じるときと項目を移るときは待たずに保つ。届かないときは何も出さない）
@@ -408,6 +440,7 @@ functions:
          - 「まとめて送る」ではチェックした ID を溜めた順に `send` し、201 なら `removed`・`stale` を空にして、結果を `sent`（`count` は送った件数、`at` は応答の `sent`、`entered` は応答の `entered`）にする（文言は `commentsPanel` が `entered` で出し分ける）。409 なら `stale` を入れて理由を出し、届かない・そのほかは理由を出す。どの場合もレビュー中を読み直す
          - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外は「スレッドの画面の操作」の Esc（`isTyping` の扱い・`view` ごとの戻る / 閉じる）に従う
          - 一覧を開くときは、絞り込みのドロワーと表示の設定のパネルを閉じる（`drawerOpen`・`DisplayState.open` を偽）
+         - 「ピン止めの切り替え」では `Prefs.commentsPinned` を `true` と `null` で入れ替えて残し（`savePrefs`）、パネルを開いたまま描き直して 5 のグレーアウトと止める部品をやり直す
       9. 絞り込みのコールバックを次で扱う（どれも履歴に積まない）
          - トップバーの絞り込みのボタンでは `drawerOpen` を入れ替える。開くときはコメントの一覧と表示の設定のパネルを閉じ、`StackState.front` を `left` にする
          - Esc は、幅 900px 以下で `StackState.front` が `left` ならドロワーだけを閉じ、詳細パネルは閉じない
@@ -467,10 +500,12 @@ functions:
       詳細パネルのレビュー中のコメントの操作: 詳細パネルには、コメントの一覧へ渡すのと同じ書き換えている行（`editing`・`editingIn`・`editError`・`editBody`）と、`CommentState.removed` のうちその項目へのものを `comment.edit` で渡し、`comment.edit.on` には一覧と同じ処理（修正を始める・`saveEdit`・キャンセル・`removeComment`・`restoreComment`）を渡す。書き換えている行は一覧と詳細パネルを合わせて 1 つで、修正を始めると前の書き換えを捨てる。修正を始めた場所（一覧なら `'list'`、詳細パネルなら `'detail'`）を `editingIn` に持ち、入力欄はその場所だけに描かせる。修正を始める・キャンセル・直せなかったときは、詳細パネルと一覧を両方描き直す（`refreshComments`）。詳細パネルの操作の後は、描き直した詳細パネルの中で、修正を始めたら入力欄（`detail-edit:{ID}`）、送るかキャンセルしたらその行の「修正」（`detail-edit-open:{ID}`）、削除したら「元に戻す」（`detail-restore:{ID}`）、戻したら戻した行の「修正」へフォーカスを移し、本文のスクロールの位置を保つ。コメントの一覧を開いていない間に、詳細パネルで別の項目へ移るかパネルを閉じたら、`CommentState.removed` と書き換えている行を捨てる。一覧を開いている間でも、詳細パネルで別の項目へ移るかパネルを閉じたら、`editingIn` が `'detail'` の書き換えを捨てる（`CommentState.removed` は残す）。一覧を閉じたら（表示の設定を開いて一覧を閉じるときも）、`editingIn` が `'list'` の書き換えを捨てる。どちらも、入力欄の無い側に「修正」「削除」の無い行を残さないため。配る書き出しとサーバーにつながらないときは、今と同じく `comment` を `null` で渡す
       差分の時点の引き継ぎ: 画面・項目を移るとき（画面と部品から受けた移る先の `Route` と、全体の検索から開くとき。`go`）は、移る先の `Route.diff` を今の `Route.diff` にしてから `route` に入れて書く（`navigate`）。概要の `tableRoute` のように `Route` を一から作る移る先でも `diff` を落とさない。`Route.diff` を変えるのは 3・10・13・14 だけ
       本文のまとまりのリンク: 詳細パネルの `on.changeSet` では、渡された値を `resolveDiffPoint` で引き、まとまりの ID として引けたときだけ 10 の「時点を選ぶ」と同じに扱う（`Prefs.diffSel` と `Route.diff` をそのまとまりにし、履歴に積まずにハッシュを置き換える。開いている画面・項目・全画面はそのまま）。引けなければ何もしない
-      幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときと幅 901px 以上の重なり順は変えない
+      幅 900px 以下の重なり: 幅 900px 以下で `body.left-front` のとき、`.comments-panel`・`.settings-drawer`・`dialog.drawer.narrow` の `z-index` を `.panel`（35）より上にする（`style.css`）。`body.left-front` が無いときは変えない。幅 901px 以上では、グレーアウト（`.left-scrim`）を本文と詳細パネルの上、左のパネルの下に置き、`body.detail-above-scrim` のときだけ詳細パネルをグレーアウトの上に出す
       書き込みのまとまりのリンク: コメントの一覧に `changeSetOf`（記録の `changes.sets` からまとまりの ID で説明を引く。無ければ `null`）を渡す。コメントの一覧の `on.changeSet` は詳細パネルの `on.changeSet` と同じく扱う（`resolveDiffPoint` で引けたときだけ 10 の「時点を選ぶ」と同じにし、履歴に積まずにハッシュを置き換える）。コメントの一覧（`listOpen`）と、その中の画面・開いているスレッドは変えない
       本文の差分の並べ方: 詳細パネルに `resolveDisplay` の `bodyLayout` を渡す。詳細パネルの `on.layout`（押した並べ方）では、`side` なら `Prefs.bodyLayout` を `side`、`inline` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押した並べ方のボタン（`[data-layout]`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
+      レビュー中のコメントの並び: 詳細パネルに `resolveDisplay` の `reviewOrder` を渡す。詳細パネルの `on.order`（押した後の並び）では、`oldest` なら `Prefs.reviewOrder` を `oldest`、`newest` なら `null` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、並びの切り替えのボタン（`data-focus` が `detail-review-order`）にフォーカスを戻す。履歴に積まず、ハッシュも変えない。表示の設定を開いていれば描き直す（「この端末で変えている項目」を合わせる）
       本文の表とセクションの見せ方: 詳細パネルと表示の設定に `resolveDisplay` の `bodyView` を渡す。表示の設定の `on.bodyView`（`{key, value}`）では、`value` が `BODY_VIEW_DEFAULT` のその項目と同じなら `Prefs` の対応する項目（`pin` → `tablePin`、`head` → `tableHead`、`stripes` → `tableStripes`、`fold` → `sectionFold`）を `null`、違えば `value` にして残し（`savePrefs`。結果を `DisplayState.storageOk` に入れる）、3 の読み分けをやり直して開いている詳細パネル・詳細の全画面と表示の設定だけを描き直す。本文のスクロール領域の `scrollTop` を保ち、押したチェックボックスにフォーカスを戻す。履歴に積まず、ハッシュも変えない
+      グレーアウトの色: 左のパネルのグレーアウト（`.left-scrim`）と詳細の全画面の後ろの幕（`dialog.full::backdrop`）は、ほかのモーダルと同じ `--scrim`（`style.css`）。使わなくなる `--scrim-soft` は `tokens.css` から削除する
   - name: formKey
     title: 入力欄のキー
     kind: 関数
@@ -531,14 +566,14 @@ functions:
         passing: positional
         description: 記録の `settings.display`（配る書き出しは埋め込みの値）
     returns:
-      type: "{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean, bodyLayout: 'inline' | 'side', bodyView: {pin: boolean, head: boolean, stripes: boolean, fold: boolean}}"
-      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」・「表の列の固定」・「表の見出しの固定」・「表のしま模様」・「セクションの折りたたみ」・「本文の差分の並べ方」の順）、差分のミニマップを置くか、本文の差分の並べ方、本文の表とセクションの見せ方
+      type: "{look, kinds: Set<string>, defaultLook, defaultKinds: Set<string>, overrides: string[], minimap: boolean, bodyLayout: 'inline' | 'side', reviewOrder: 'newest' | 'oldest', bodyView: {pin: boolean, head: boolean, stripes: boolean, fold: boolean}}"
+      description: 当てる見た目と種類、ワークスペースの既定（無ければ `deep` と全ての種類）、上書きを持つ項目の名前（「ネットワークの見た目」・「表示する種類」・「ライト / ダーク」・「表の列（{種類の名前}）」・「絞り込み（{画面の名前}）」・「差分のミニマップ」・「表の列の固定」・「表の見出しの固定」・「表のしま模様」・「セクションの折りたたみ」・「本文の差分の並べ方」・「コメントの並び」の順）、差分のミニマップを置くか、本文の差分の並べ方、レビュー中のコメントの並び、本文の表とセクションの見せ方
     process: |-
       1. 既定を決める（`display.network_look` が無ければ `deep`、`display.visible_kinds` が無ければ 7 つの種類全て）
-      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする。`bodyLayout` は `prefs.bodyLayout` が `side` のときだけ `side`、それ以外は `inline` にする。`bodyView` は `BODY_VIEW_DEFAULT` に、`prefs.tablePin`・`prefs.tableHead`・`prefs.sectionFold` が `false` の項目を偽、`prefs.tableStripes` が `true` なら `stripes` を真にして当てる
+      2. `prefs.look`・`prefs.kinds` が `null` でなければその値を、`null` なら既定を当てる。`minimap` は `prefs.minimap` が `false` のときだけ偽にする。`bodyLayout` は `prefs.bodyLayout` が `side` のときだけ `side`、それ以外は `inline` にする。`reviewOrder` は `prefs.reviewOrder` が `oldest` のときだけ `oldest`、それ以外は `newest` にする。`bodyView` は `BODY_VIEW_DEFAULT` に、`prefs.tablePin`・`prefs.tableHead`・`prefs.sectionFold` が `false` の項目を偽、`prefs.tableStripes` が `true` なら `stripes` を真にして当てる
       3. `prefs.look`・`prefs.kinds`・`prefs.theme` が `null` でない項目と、`prefs.columns` の種類ごとに「表の列（{種類の名前}）」を `overrides` に並べる
       4. `prefs.filters` の画面ごとに、条件が画面の既定（`initialFilters(画面, {}, null)`）と違えば「絞り込み（{画面の名前}）」を `overrides` に並べる（記録の表は種類の名前）
-      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を、上書きを持つ `tablePin`・`tableHead`・`tableStripes`・`sectionFold` の `BODY_VIEW_LABELS` の名前をこの順に、`prefs.bodyLayout` が `side` なら `BODY_LAYOUT_LABEL`（「本文の差分の並べ方」）を、この順に `overrides` の末尾に並べる
+      5. `prefs.minimap` が `false` なら `MINIMAP_LABEL`（「差分のミニマップ」）を、上書きを持つ `tablePin`・`tableHead`・`tableStripes`・`sectionFold` の `BODY_VIEW_LABELS` の名前をこの順に、`prefs.bodyLayout` が `side` なら `BODY_LAYOUT_LABEL`（「本文の差分の並べ方」）を、`prefs.reviewOrder` が `oldest` なら `REVIEW_ORDER_LABEL`（「コメントの並び」）を、この順に `overrides` の末尾に並べる
     unit_tests:
       - name: test_resolve_display
         case: 正常
@@ -558,6 +593,12 @@ functions:
         condition: '既定の無い `display`。`parametrize`: `bodyLayout: null` / `bodyLayout: side` / `bodyLayout: side`・`minimap: false`'
         mock: なし
         expected: '`bodyLayout` が `inline` で `overrides` が空 / `bodyLayout` が `side` で `overrides` が「本文の差分の並べ方」 / `overrides` が「差分のミニマップ」・「本文の差分の並べ方」の順'
+      - name: test_resolve_display_when_review_order
+        case: 正常
+        summary: レビュー中のコメントの並びは上書きが oldest のときだけ oldest で、変えている項目の末尾に並ぶ
+        condition: '既定の無い `display`。`parametrize`: `reviewOrder: null` / `reviewOrder: oldest` / `reviewOrder: oldest`・`bodyLayout: side`'
+        mock: なし
+        expected: '`reviewOrder` が `newest` で `overrides` が空 / `reviewOrder` が `oldest` で `overrides` が「コメントの並び」 / `overrides` が「本文の差分の並べ方」・「コメントの並び」の順'
       - name: test_resolve_display_when_body_view
         case: 正常
         summary: 本文の見せ方は上書きのある項目だけ既定と逆にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ
@@ -570,7 +611,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
     scope: public
-    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方を外した `Prefs` を返す（`diffSel` は残す）
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した `Prefs` を返す（`diffSel`・`commentsPinned` は残す）
     args:
       - name: prefs
         type: Prefs
@@ -579,15 +620,15 @@ functions:
         description: 今の端末の設定
     returns:
       type: Prefs
-      description: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout`・`tablePin`・`tableHead`・`tableStripes`・`sectionFold` を `null`、`columns`・`filters` を空にした写し'
-    process: 1. `prefs` を写し、上の 11 項目を外して返す（渡した `prefs` は変えない）
+      description: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout`・`reviewOrder`・`tablePin`・`tableHead`・`tableStripes`・`sectionFold` を `null`、`columns`・`filters` を空にした写し'
+    process: 1. `prefs` を写し、上の 12 項目を外して返す（渡した `prefs` は変えない）
     unit_tests:
       - name: test_clear_overrides
         case: 正常
         summary: 上書きだけを外し、差分の時点は残す
-        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`bodyLayout: side`・`tablePin: false`・`tableHead: false`・`tableStripes: true`・`sectionFold: false`・`diffSel: since` の `Prefs`'
+        condition: '`theme: dark`・`look: dust`・`kinds: [tasks]`・`columns.research`・`filters.tasks`・`minimap: false`・`bodyLayout: side`・`reviewOrder: oldest`・`tablePin: false`・`tableHead: false`・`tableStripes: true`・`sectionFold: false`・`diffSel: since`・`commentsPinned: true` の `Prefs`'
         mock: なし
-        expected: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout`・`tablePin`・`tableHead`・`tableStripes`・`sectionFold` が `null`、`columns`・`filters` が空、`diffSel` が `since`。渡した `Prefs` が変わっていない'
+        expected: '`theme`・`look`・`kinds`・`minimap`・`bodyLayout`・`reviewOrder`・`tablePin`・`tableHead`・`tableStripes`・`sectionFold` が `null`、`columns`・`filters` が空、`diffSel` が `since`、`commentsPinned` が `true`。渡した `Prefs` が変わっていない'
   - name: commentCounts
     title: 項目ごとのコメントの件数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -744,26 +785,73 @@ functions:
         condition: '`parametrize`: 空の `session` に 768 を書く / `setItem` が例外を投げる `session` に 768 を書く'
         mock: 例外を投げる `session`（`Storage` の代わりのオブジェクト）
         expected: '`readPanelWidth` が 768 を返す / 例外が出ない'
+  - name: readBodyScrolls
+    title: 本文のスクロールの位置を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: '`session` の `BODY_SCROLL_KEY` を JSON として読み、0 以上の数の位置だけを項目の ID → 位置で返す。無い・読めないときは空を返す'
+    args:
+      - name: session
+        type: Storage
+        required: true
+        passing: injected
+        description: そのタブの保存領域（`sessionStorage`。使えないときは `openStorage` の代わり）
+    returns:
+      type: Record<string, number>
+      description: 項目の ID → 本文のスクロールの位置（px）
+    unit_tests:
+      - name: test_read_body_scrolls
+        case: 正常
+        summary: 0 以上の数の位置だけを読み、読めなければ空
+        condition: '`parametrize`: `BODY_SCROLL_KEY` が `{"A-3": 820, "A-4": -5, "A-5": "x"}` / 無い / `"abc"` / `[1]`'
+        mock: なし
+        expected: '`{A-3: 820}` / `{}` / `{}` / `{}`'
+  - name: writeBodyScrolls
+    title: 本文のスクロールの位置を残す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 項目の ID → 位置を JSON で `session` の `BODY_SCROLL_KEY` に書く（書けなければ何もしない。開いている間は `start` が持つ値で戻す）
+    side_effects: '`session` の `BODY_SCROLL_KEY` を書く'
+    args:
+      - name: session
+        type: Storage
+        required: true
+        passing: injected
+        description: そのタブの保存領域
+      - name: scrolls
+        type: Record<string, number>
+        required: true
+        passing: keyword
+        description: 項目の ID → 本文のスクロールの位置（px）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_write_body_scrolls
+        case: 正常
+        summary: 書いた位置を読み直せ、書けない保存領域では例外を出さない
+        condition: '`parametrize`: 空の `session` に `{A-3: 820}` を書く / `setItem` が例外を投げる `session` に書く'
+        mock: 例外を投げる `session`（`Storage` の代わりのオブジェクト）
+        expected: '`readBodyScrolls` が `{A-3: 820}` を返す / 例外が出ない'
 test_files:
   - tests/unit/preview/test_app.py
 notes:
-  スレッドの読み直し: '`start` の 2（開いたとき）・13（`changed` を受けたときとつながり直したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。読み直した後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを描き直す（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない
-
+  スレッドの読み直し: |-
+    `start` の 2（開いたとき）・13（`changed` を受けたときとつながり直したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。読み直した後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを描き直す（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない
     読み直したらトップバーの `commentsUnread` を `anyOpenUnseen(threads)` で描き直す（パネルを閉じていても読む）。`view` が `thread` で、開いているスレッドが送ったもの（`openedThread.pending` が偽）で `hasUnseen` が真なら、「既読にする」を行う（開いている間に届いた返信も既読にする）
 
-
     「既読にする」は、「スレッドを開く」と読み直しの両方が使う 1 か所の処理。
-
     - そのスレッドへの要求を送っている間と、そのスレッドへの要求が失敗してから別のスレッドを開くか一覧へ戻るまでの間は、呼ばない（送っているスレッドと失敗したスレッドの ID を控える。失敗の控えは「スレッドを開く」と「戻る」で空にする）
-
     - `threadApi().seen` を呼ぶと同時に、`CommentState.threads` を `withSeen({ threads, id })` に置き換え、`anyOpenUnseen` が変わればトップバーを描き直す。応答は待たない
-
     - 要求を送っている間に読み直した値で置き換えるときは、送っているスレッドを `withSeen` で既読にしてから置き換える（送る前のサーバーの値で写しを未読に戻さない）
-
-    - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）'
+    - 断られた・届かないときは画面に出さず、そのスレッドの ID を送っている控えから失敗の控えへ移してからスレッドを読み直す（写しをサーバーの値に戻す）
   スレッドの画面の操作: |-
     `start` の 5・6・8 に足す。`listOpen` なら `commentsPanel` に `CommentState` の `view`・`threads`・`threadsError`・`filter`・`tag`・`openedThread`（`opened`）・`composing`・`reason`・`expanded` と、新しいスレッドの入力（`formKey(null, null)`）・開いているスレッドの返信の入力（`formKey(null, null, {ID})`。`forms` に無ければ同じ `thread` の `review.drafts` の本文で `idle` で作る）を渡す。項目を指さない入力の `collapsed` は使わない（常に偽）。どの操作も履歴に積まない
-    - パネルを開くときは `view` を `list`、`openedThread` を `null`、`composing` を偽にし、スレッドを読み直す
+    - パネルを開くときは、閉じる前の `view`・`openedThread`・`composing`・`reviewFrom`・`reviewFocus` のまま描き、パネルの中のスクロールの位置を `listScroll` に戻す（ページを開いたときは `list` から始める）。スレッドを読み直し、`view` が `thread` で、開いていた送ったスレッドが読み直したスレッドに無ければ、`view` を `list`、`openedThread` を `null` にする
     - 「状態で絞る」「タグで絞る」（絞っているタグなら外す）「タグを外す」では `filter`・`tag` を書き換えてパネルを描き直す
     - 「スレッドを開く」では一覧のスクロールの位置を控え、`openedThread` を入れて `view` を `thread`、`reason` を閉じて空にする。送ったスレッドで `hasUnseen` が真なら「既読にする」を行う（一覧の行・レビュー中の書き込みのどちらから開いても同じ。「スレッドの読み直し」）。「戻る」（`thread` から）では返信の書きかけを待たずに保ち（`saveDraft`）、`view` を `list` にして控えたスクロールの位置と開いていた行へのフォーカスを戻す
     - 「レビュー中を開く」では返信の書きかけを待たずに保ち、`reviewFrom` に今の `view` を控えて `view` を `review` にする（`thread` から開いたときは `reviewFocus` にそのスレッドの ID）。「戻る」（`review` から）では `reviewFrom` へ戻る。`reviewFrom` が `thread` で、開いていたまだ送っていない新しいスレッドが `review.items` にも `removed` にも無ければ `list` へ戻る
@@ -773,4 +861,4 @@ notes:
     - 「まとめて送る」では、チェックした ID から `isBlockedReply` が真のものを除いて溜めた順に送る。201 の後はレビュー中に続けてスレッドも読み直す（`view` は `review` のまま）
     - 項目を開く（本文の中の ID・スレッドの向けた項目・レビュー中の行の向けた項目）では、パネルを開いたまま詳細パネルを開く。スレッドの向けた項目とレビュー中の行は `highlight` にその箇所を渡す
     - Esc は、幅 901px 以上か `StackState.front` が `detail` で詳細パネルを開いていれば、詳細パネルを閉じる。それ以外で入力欄にフォーカスがあるとき（`isTyping`）は何もしない（入力欄が自分で外れる）。それ以外は `view` が `thread`・`review` なら「戻る」と同じ、`list` ならパネルを閉じる
-    - パネルを閉じるときは、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ）
+    - パネルを閉じるときは、パネルの中のスクロールの位置を `listScroll` に控え、新しいスレッドと返信の書きかけを待たずに保ち、`removed` と `editingIn` が `'list'` の書き換えを捨てる（「詳細パネルのレビュー中のコメントの操作」と同じ）

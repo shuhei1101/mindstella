@@ -52,7 +52,7 @@ def test_graph_conditions(
     """種類・状態・タグの値を取る（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", status="未決定", tags=["a"])],
+        decisions=[make_item("D-1", status="未決定", tags=[{"name": "a", "main": True}])],
         notes=[make_item("N-1")],
     )
     load_preview_scripts()

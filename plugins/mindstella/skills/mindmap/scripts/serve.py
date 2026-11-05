@@ -21,7 +21,7 @@ from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 from builder import PREVIEW_DIR, assemble_template, read_records
-from claude_input import InputTarget, enter_to_claude
+from claude_input import InputTargets, Session
 from comments import (
     ReviewComment,
     add_comment,
@@ -119,6 +119,10 @@ OPENED_PATH = "/api/opened"
 # 配信が画面を返すパス。`/` はここへ送り直し、`PreviewServer.url` はこのパスで終わる
 PAGE_PATH = "/mindstella.html"
 
+# React のプレビュー（SPA）を配るパスの頭と、プレビューのフォルダの中の出力のフォルダの名前
+SPA_PATH = "/spa"
+SPA_DIR = "spa"
+
 # 設定の既定の書き換えと、設定の再読み込みのパス
 CONFIG_DISPLAY_PATH = "/api/config/display"
 CONFIG_RELOAD_PATH = "/api/config/reload"
@@ -127,6 +131,14 @@ CONFIG_RELOAD_PATH = "/api/config/reload"
 JSON_TYPE = "application/json; charset=utf-8"
 HTML_TYPE = "text/html; charset=utf-8"
 PROBLEM_TYPE = "application/problem+json; charset=utf-8"
+
+# SPA の出力のファイルの拡張子ごとの `Content-Type`（表に無い拡張子は `application/octet-stream`）
+SPA_TYPES = {
+    ".html": HTML_TYPE,
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+}
 
 # 書き込む要求が持つべきメディアタイプ
 REQUEST_JSON_TYPE = "application/json"
@@ -182,8 +194,8 @@ class ServeContext:
     preview_dir: Path = PREVIEW_DIR
     # 許可するホスト名（`check_host`・`check_origin` に渡す）
     allowed_hosts: frozenset[str] = frozenset()
-    # Claude Code への入力の送り先（None ならまとめて送った後に入力しない）
-    input_target: InputTarget | None = None
+    # ワークスペースごとの Claude Code への入力の宛先（None ならまとめて送った後に入力しない）
+    input_targets: InputTargets | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -235,14 +247,13 @@ class PreviewRegistry:
         write_lock: threading.Lock,
         *,
         external: ExternalAccess | None = None,
-        input_target: InputTarget | None = None,
     ) -> None:
-        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と Claude Code への入力の送り先（無ければ入力しない）を受け取り、空の台帳を作る。"""
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）を受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
-        # 立てる配信へ渡す送り先（プロセスに 1 つで、入力の鍵を共有する）
-        self._input_target = input_target
+        # ワークスペースごとの Claude Code への入力の宛先（立てる配信へ渡す。配信の前に受けたセッションも持つ）
+        self._input_targets = InputTargets()
         # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
@@ -264,7 +275,7 @@ class PreviewRegistry:
                 settings=settings,
                 port=settings.get("preview", {}).get("port", 0),
                 allowed_hosts=self._external.allowed_hosts,
-                input_target=self._input_target,
+                input_targets=self._input_targets,
             )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
@@ -278,6 +289,16 @@ class PreviewRegistry:
         with self._guard:
             preview = self._servers.get(root.resolve())
         return None if preview is None else preview.url
+
+    def listing(self) -> list[dict[str, Any]]:
+        """立てた配信のワークスペースとポートを、ワークスペースの絶対パスの昇順で返す。"""
+        with self._guard:
+            servers = sorted(self._servers.items())
+        return [{"workspace": str(root), "port": preview.port} for root, preview in servers]
+
+    def remember_session(self, root: Path, session: Session) -> None:
+        """そのワークスペースの Claude Code への入力の宛先を、ツールを呼んだセッションにする。"""
+        self._input_targets.remember(root, session)
 
     def stop_all(self) -> None:
         """立てた配信ごとに終了時のフックを呼んでから全て止め、台帳を空にする。2 回呼んでも 2 回目は何もしない。"""
@@ -316,6 +337,10 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(redirect_response(PAGE_PATH))
         elif path == PAGE_PATH:
             self._reply(index_response(context.preview_dir))
+        elif path == SPA_PATH:
+            self._reply(redirect_response(f"{SPA_PATH}/"))
+        elif path.startswith(f"{SPA_PATH}/"):
+            self._reply(spa_response(context.preview_dir / SPA_DIR, path.removeprefix(SPA_PATH)))
         elif path == "/api/records":
             self._reply(records_response(context))
         elif path == "/api/events":
@@ -513,7 +538,7 @@ def start_preview_server(
     settings: dict[str, Any],
     port: int = 0,
     allowed_hosts: frozenset[str] = frozenset(),
-    input_target: InputTarget | None = None,
+    input_targets: InputTargets | None = None,
 ) -> PreviewServer:
     """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
@@ -531,7 +556,7 @@ def start_preview_server(
         write_lock=write_lock,
         settings=SettingsHolder(settings),
         allowed_hosts=allowed_hosts,
-        input_target=input_target,
+        input_targets=input_targets,
     )
     setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -642,6 +667,20 @@ def problem_response(status: int, detail: str) -> Response:
 def redirect_response(location: str) -> Response:
     """本文を持たない 302 で、location へ送り直す応答を作る。"""
     return Response(status=HTTPStatus.FOUND, content_type=HTML_TYPE, body=b"", location=location)
+
+
+def spa_response(spa_dir: Path, sub_path: str) -> Response:
+    """SPA の出力のファイルを返す。出力に無いパスと出力の外を指すパスは `index.html` を返す。"""
+    base = spa_dir.resolve()
+    target = (base / unquote(sub_path).lstrip("/")).resolve()
+    if not target.is_relative_to(base) or not target.is_file():
+        target = base / "index.html"
+        if not target.is_file():
+            return problem_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR, f"SPA の出力がありません（{spa_dir}）"
+            )
+    content_type = SPA_TYPES.get(target.suffix, "application/octet-stream")
+    return Response(status=HTTPStatus.OK, content_type=content_type, body=target.read_bytes())
 
 
 def index_response(preview_dir: Path) -> Response:
@@ -1027,9 +1066,9 @@ def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
 
 def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
     """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
-    target = context.input_target
-    # 送り先が無い: 入力しない
-    entered = False if target is None else enter_to_claude(target, len(body["items"]))
+    targets = context.input_targets
+    # 宛先の台帳が無い: 入力しない
+    entered = False if targets is None else targets.enter(context.root, len(body["items"]))
     return {**body, "entered": entered}
 
 

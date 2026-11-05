@@ -1,0 +1,10 @@
+summary: '`frontend/src/features/overview/overview/` の React のプレビューのモジュール'
+items:
+- page: components/
+  summary: '`frontend/src/features/overview/overview/components/` の React のプレビューのモジュール'
+- page: overview-screen.tsx.yaml
+  summary: 画面設計『概要.tsx』のトップバーとタイルを描く。記録が読めないときは detail の行を出す
+- page: queries.ts.yaml
+  summary: 生成した queryOptions（記録・レビュー中のコメント・保存待ちの編集・スレッド）をまとめ、ルートの loader で先読みする
+- page: search.ts.yaml
+  summary: 概要のルートの search params。`tab` は `overview` だけを受け、他の値と無い値は既定に落とす
