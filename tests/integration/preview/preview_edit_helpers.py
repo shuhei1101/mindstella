@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import yaml
 from playwright.sync_api import Page
@@ -34,6 +35,7 @@ __all__ = [
     "read_edits_file",
     "read_items_file",
     "start_add",
+    "wait_edits_match",
     "wait_no_saved_edits",
     "wait_saved_edit",
 ]
@@ -69,36 +71,43 @@ def open_pending(page: Page) -> None:
     page.wait_for_selector(PENDING_PANEL)
 
 
-# 保存待ちの編集（/api/edits）に、指したキーの編集が値つきで溜まったかを読む。値はキーの並びによらず比べる。
+# 保存待ちの編集（/api/edits）の items が条件に合ったかを読む判定を組み立てる。{match} には (items, arg) => 真偽 の関数を入れる。
 # wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す。
+# 前の待ちの読み取りが後から届いても今の待ちの結果と取り違えないよう、結果に待ちごとの token を添えて比べる
+EDITS_MATCH_JS = """({{token, arg}}) => {{
+  const match = {match};
+  fetch('/api/edits').then(r => r.json()).then(d => {{ window.editsMatch = {{token, found: match(d.items, arg)}}; }});
+  return window.editsMatch?.token === token && window.editsMatch.found;
+}}"""
+
+# 指したキーの編集が値つきで溜まったか。値はキーの並びによらず比べる。
 # wait_for_function は値が None の引数のキーを渡さないため、無いキーと値が null のキーは同じとして比べる
-SAVED_EDIT_JS = """({op, key, value}) => {
+SAVED_EDIT_MATCH_JS = """(items, {op, key, value}) => {
   const canon = (v) => JSON.stringify(v, (_, x) =>
     x && typeof x === 'object' && !Array.isArray(x)
       ? Object.fromEntries(Object.keys(x).filter(k => x[k] != null).sort().map(k => [k, x[k]])) : x);
-  fetch('/api/edits').then(r => r.json()).then(d => {
-    window.savedEditFound = d.items.some(e => e.key === key && (op === undefined || e.op === op) && canon(e.value) === canon(value ?? null));
-  });
-  return window.savedEditFound === true;
+  return items.some(e => e.key === key && (op === undefined || e.op === op) && canon(e.value) === canon(value ?? null));
 }"""
 
-# 保存待ちの編集（/api/edits）が空になったかを読む。結果の置き方は SAVED_EDIT_JS と同じ
-NO_SAVED_EDITS_JS = """() => {
-  fetch('/api/edits').then(r => r.json()).then(d => { window.savedEditsEmpty = d.items.length === 0; });
-  return window.savedEditsEmpty === true;
-}"""
+# 保存待ちの編集が空になったか
+NO_SAVED_EDITS_MATCH_JS = "(items) => items.length === 0"
+
+
+def wait_edits_match(page: Page, match_js: str, arg: Any = None) -> None:
+    """保存待ちの編集（/api/edits）の items が、(items, arg) => 真偽 の判定 match_js に合うのを待つ。"""
+    page.wait_for_function(
+        EDITS_MATCH_JS.format(match=match_js), arg={"token": uuid4().hex, "arg": arg}, timeout=SETTLE_MS
+    )
 
 
 def wait_saved_edit(page: Page, key: str, value: Any, op: str | None = None) -> None:
     """保存待ちの編集（/api/edits）に、キーの編集が値つきで溜まるのを待つ。"""
-    page.evaluate("() => { window.savedEditFound = false; }")
-    page.wait_for_function(SAVED_EDIT_JS, arg={"op": op, "key": key, "value": value}, timeout=SETTLE_MS)
+    wait_edits_match(page, SAVED_EDIT_MATCH_JS, {"op": op, "key": key, "value": value})
 
 
 def wait_no_saved_edits(page: Page) -> None:
     """保存待ちの編集（/api/edits）が空になるのを待つ。"""
-    page.evaluate("() => { window.savedEditsEmpty = false; }")
-    page.wait_for_function(NO_SAVED_EDITS_JS, timeout=SETTLE_MS)
+    wait_edits_match(page, NO_SAVED_EDITS_MATCH_JS)
 
 
 def read_edits_file(root: Path) -> dict[str, Any]:

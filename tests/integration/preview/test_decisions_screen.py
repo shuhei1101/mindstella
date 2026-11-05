@@ -21,6 +21,7 @@ from preview_edit_helpers import (
     item_marks,
     read_edits_file,
     start_add,
+    wait_edits_match,
 )
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_scrim_helpers import SCRIM_ON, click_scrim, main_inert, scrim_visible
@@ -2408,20 +2409,14 @@ def test_added_item_reopens_input(
     assert page.locator(ADD_TITLE_INPUT).input_value() == "足す問い"
 
 
-# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったかを読む。
-# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
-ADDED_OPTIONS_JS = """(expected) => {
-  fetch('/api/edits').then(r => r.json()).then(d => {
-    window.addedOptionsSaved = d.items.some(e => e.op === 'item-add' && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected));
-  });
-  return window.addedOptionsSaved === true;
-}"""
+# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったか
+ADDED_OPTIONS_MATCH_JS = """(items, expected) => items.some(e => e.op === 'item-add'
+  && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected))"""
 
 
 def _wait_added_options(page: Page, expected: list[dict[str, object]]) -> None:
     """保存待ちの item-add の value.options が expected になるのを待つ。"""
-    page.evaluate("() => { window.addedOptionsSaved = false; }")
-    page.wait_for_function(ADDED_OPTIONS_JS, arg=expected, timeout=SETTLE_MS)
+    wait_edits_match(page, ADDED_OPTIONS_MATCH_JS, expected)
 
 
 def test_add_item_with_options(
@@ -2470,22 +2465,17 @@ def test_add_item_with_options(
     expect(page.get_by_label("案 A の中身")).to_have_count(0)
 
 
-# 保存待ちの item-add の件数と、その value が渡したキーと値を全て持つかを読む。
-# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
-ADDED_VALUE_JS = """(expected) => {
-  fetch('/api/edits').then(r => r.json()).then(d => {
-    const adds = d.items.filter(e => e.op === 'item-add');
-    window.addedValueSaved = adds.length === 1
-      && Object.entries(expected).every(([k, v]) => JSON.stringify(adds[0].value[k]) === JSON.stringify(v));
-  });
-  return window.addedValueSaved === true;
+# 保存待ちの item-add が 1 件で、その value が渡したキーと値を全て持つか
+ADDED_VALUE_MATCH_JS = """(items, expected) => {
+  const adds = items.filter(e => e.op === 'item-add');
+  return adds.length === 1
+    && Object.entries(expected).every(([k, v]) => JSON.stringify(adds[0].value[k]) === JSON.stringify(v));
 }"""
 
 
 def _wait_added_value(page: Page, expected: dict[str, object]) -> None:
     """保存待ちの item-add が 1 件で、その value が expected のキーと値を全て持つのを待つ。"""
-    page.evaluate("() => { window.addedValueSaved = false; }")
-    page.wait_for_function(ADDED_VALUE_JS, arg=expected, timeout=SETTLE_MS)
+    wait_edits_match(page, ADDED_VALUE_MATCH_JS, expected)
 
 
 def _hold_edit_posts(page: Page) -> Callable[[], None]:
