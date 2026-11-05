@@ -69,26 +69,34 @@ def open_pending(page: Page) -> None:
     page.wait_for_selector(PENDING_PANEL)
 
 
-# 保存待ちの編集（/api/edits）に、指したキーの編集が値つきで溜まったかを読む。値はキーの並びによらず比べる
-SAVED_EDIT_JS = """async ({op, key, value}) => {
+# 保存待ちの編集（/api/edits）に、指したキーの編集が値つきで溜まったかを読む。値はキーの並びによらず比べる。
+# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
+SAVED_EDIT_JS = """({op, key, value}) => {
   const canon = (v) => JSON.stringify(v, (_, x) =>
     x && typeof x === 'object' && !Array.isArray(x)
       ? Object.fromEntries(Object.keys(x).sort().map(k => [k, x[k]])) : x);
-  const items = (await (await fetch('/api/edits')).json()).items;
-  return items.some(e => e.key === key && (op === null || e.op === op) && canon(e.value) === canon(value));
+  fetch('/api/edits').then(r => r.json()).then(d => {
+    window.savedEditFound = d.items.some(e => e.key === key && (op === null || e.op === op) && canon(e.value) === canon(value));
+  });
+  return window.savedEditFound === true;
 }"""
 
-# 保存待ちの編集（/api/edits）が空になったかを読む
-NO_SAVED_EDITS_JS = "async () => (await (await fetch('/api/edits')).json()).items.length === 0"
+# 保存待ちの編集（/api/edits）が空になったかを読む。結果の置き方は SAVED_EDIT_JS と同じ
+NO_SAVED_EDITS_JS = """() => {
+  fetch('/api/edits').then(r => r.json()).then(d => { window.savedEditsEmpty = d.items.length === 0; });
+  return window.savedEditsEmpty === true;
+}"""
 
 
 def wait_saved_edit(page: Page, key: str, value: Any, op: str | None = None) -> None:
     """保存待ちの編集（/api/edits）に、キーの編集が値つきで溜まるのを待つ。"""
+    page.evaluate("() => { window.savedEditFound = false; }")
     page.wait_for_function(SAVED_EDIT_JS, arg={"op": op, "key": key, "value": value}, timeout=SETTLE_MS)
 
 
 def wait_no_saved_edits(page: Page) -> None:
     """保存待ちの編集（/api/edits）が空になるのを待つ。"""
+    page.evaluate("() => { window.savedEditsEmpty = false; }")
     page.wait_for_function(NO_SAVED_EDITS_JS, timeout=SETTLE_MS)
 
 

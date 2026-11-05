@@ -23,6 +23,16 @@ DECISIONS_HASH = "#tab=decisions&view=board"
 # 溜めた編集を待つ上限ミリ秒
 EDIT_TIMEOUT_MS = 10_000
 
+# 保存待ちの編集（/api/edits）のゴールの中身に 2 行目が入ったかを読む。
+# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
+GOAL_SUMMARY_SAVED_JS = """() => {
+  fetch('/api/edits').then(r => r.json()).then(d => {
+    window.goalSummarySaved = d.items.some(e => e.key === 'goal' && e.value.summary.includes('2 行目'));
+  });
+  return window.goalSummarySaved === true;
+}"""
+
+
 def _settings(valid_settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
     """フェーズ 3 つ・説明つきの設定を返す。"""
     return {**valid_settings, "description": "元の説明", **overrides}
@@ -254,11 +264,8 @@ def test_goal(
         "() => document.querySelector('.pe-ws [data-key=goal] textarea').value.includes('2 行目')"
     )
     # 溜めた編集にゴールの中身が入るのを待つ
-    page.wait_for_function(
-        "async () => (await (await fetch('/api/edits')).json()).items"
-        ".some(e => e.key === 'goal' && e.value.summary.includes('2 行目'))",
-        timeout=EDIT_TIMEOUT_MS,
-    )
+    page.evaluate("() => { window.goalSummarySaved = false; }")
+    page.wait_for_function(GOAL_SUMMARY_SAVED_JS, timeout=EDIT_TIMEOUT_MS)
     # 検証
     value = _edit_of(root, "goal")["value"]
     assert value["phase"] == "要件"
