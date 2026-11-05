@@ -5,7 +5,7 @@ import { GoalTile } from "@/features/overview/overview/components/goal-tile";
 import { ListTile } from "@/features/overview/overview/components/list-tile";
 import { NextTile } from "@/features/overview/overview/components/next-tile";
 import { ProgressTable } from "@/features/overview/overview/components/progress-table";
-import { overviewQueries } from "@/features/overview/overview/queries";
+import { previewQueries } from "@/shared/hooks/preview-queries";
 import type { Item, Kind, Records, Threads } from "@/shared/api/generated/model";
 import type { IconName } from "@/shared/components/icon";
 import { type TabKey, Topbar, type TopbarCurrent, type TopbarTab } from "@/shared/components/topbar";
@@ -165,7 +165,7 @@ const Tiles = ({ records }: { records: Records }) => {
 };
 
 export const OverviewScreen = () => {
-  const [recordsQuery, commentsQuery, editsQuery, threadsQuery] = overviewQueries();
+  const [recordsQuery, commentsQuery, editsQuery, threadsQuery] = previewQueries();
   const records = useQuery(recordsQuery);
   const comments = useQuery(commentsQuery);
   const edits = useQuery(editsQuery);

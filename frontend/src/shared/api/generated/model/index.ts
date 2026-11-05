@@ -5,11 +5,19 @@
  * OpenAPI spec version: 0.0.0
  */
 
+export * from './blockedEdit';
+export * from './blockedEditReason';
+export * from './blockedProblem';
+export * from './cancelEdit200';
 export * from './categoryProgress';
 export * from './comments';
 export * from './commentsItemsItem';
 export * from './deliverable';
 export * from './derived';
+export * from './editInput';
+export * from './editInputMap';
+export * from './editInputOp';
+export * from './editReply';
 export * from './edits';
 export * from './editsItemsItem';
 export * from './goal';
@@ -18,10 +26,14 @@ export * from './item';
 export * from './itemList';
 export * from './kind';
 export * from './nextCandidate';
+export * from './openedPoint';
+export * from './openedReply';
 export * from './post';
 export * from './problem';
 export * from './progressCell';
 export * from './records';
+export * from './saveReply';
+export * from './saveReplyAddedItem';
 export * from './settings';
 export * from './settingsCategoriesItem';
 export * from './settingsDisplay';

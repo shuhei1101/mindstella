@@ -20,10 +20,16 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BlockedProblem,
+  CancelEdit200,
   Comments,
+  EditInput,
+  EditReply,
   Edits,
+  OpenedReply,
   Problem,
   Records,
+  SaveReply,
   Threads
 } from './model';
 
@@ -381,6 +387,498 @@ export function useGetEdits<TData = Awaited<ReturnType<typeof getEdits>>, TError
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetEditsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type addEditResponse200 = {
+  data: EditReply
+  status: 200
+}
+
+export type addEditResponse201 = {
+  data: EditReply
+  status: 201
+}
+
+export type addEditResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type addEditResponseSuccess = (addEditResponse200 | addEditResponse201) & {
+  headers: Headers;
+};
+export type addEditResponseError = (addEditResponse400) & {
+  headers: Headers;
+};
+
+export type addEditResponse = (addEditResponseSuccess | addEditResponseError)
+
+export const getAddEditUrl = () => {
+
+
+
+
+  return `/api/edits`
+}
+
+/**
+ * @summary 編集 1 件を保存待ちに溜める
+ */
+export const addEdit = async (editInput: EditInput, options?: Parameters<typeof apiClient>[1]): Promise<addEditResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<addEditResponse>(getAddEditUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(editInput)
+  }
+);}
+
+
+
+
+
+export const getAddEditQueryKey = (editInput?: EditInput,) => {
+    return [
+    'POST', `/api/edits`, editInput
+    ] as const;
+    }
+
+
+export const getAddEditQueryOptions = <TData = Awaited<ReturnType<typeof addEdit>>, TError = Problem>(editInput: EditInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addEdit>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAddEditQueryKey(editInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof addEdit>>> = ({ signal }) => addEdit(editInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof addEdit>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AddEditQueryResult = NonNullable<Awaited<ReturnType<typeof addEdit>>>
+export type AddEditQueryError = Problem
+
+
+export function useAddEdit<TData = Awaited<ReturnType<typeof addEdit>>, TError = Problem>(
+ editInput: EditInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof addEdit>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof addEdit>>,
+          TError,
+          Awaited<ReturnType<typeof addEdit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAddEdit<TData = Awaited<ReturnType<typeof addEdit>>, TError = Problem>(
+ editInput: EditInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addEdit>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof addEdit>>,
+          TError,
+          Awaited<ReturnType<typeof addEdit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAddEdit<TData = Awaited<ReturnType<typeof addEdit>>, TError = Problem>(
+ editInput: EditInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addEdit>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 編集 1 件を保存待ちに溜める
+ */
+
+export function useAddEdit<TData = Awaited<ReturnType<typeof addEdit>>, TError = Problem>(
+ editInput: EditInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addEdit>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAddEditQueryOptions(editInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type cancelEditResponse200 = {
+  data: CancelEdit200
+  status: 200
+}
+
+export type cancelEditResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type cancelEditResponseSuccess = (cancelEditResponse200) & {
+  headers: Headers;
+};
+export type cancelEditResponseError = (cancelEditResponse404) & {
+  headers: Headers;
+};
+
+export type cancelEditResponse = (cancelEditResponseSuccess | cancelEditResponseError)
+
+export const getCancelEditUrl = (id: string,) => {
+
+
+
+
+  return `/api/edits/${id}`
+}
+
+/**
+ * @summary 保存待ちの編集 1 件を外す
+ */
+export const cancelEdit = async (id: string, options?: Parameters<typeof apiClient>[1]): Promise<cancelEditResponse> => {
+
+  return apiClient<cancelEditResponse>(getCancelEditUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelEditQueryKey = (id: string,) => {
+    return [
+    'DELETE', `/api/edits/${id}`
+    ] as const;
+    }
+
+
+export const getCancelEditQueryOptions = <TData = Awaited<ReturnType<typeof cancelEdit>>, TError = Problem>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelEdit>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCancelEditQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof cancelEdit>>> = ({ signal }) => cancelEdit(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof cancelEdit>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type CancelEditQueryResult = NonNullable<Awaited<ReturnType<typeof cancelEdit>>>
+export type CancelEditQueryError = Problem
+
+
+export function useCancelEdit<TData = Awaited<ReturnType<typeof cancelEdit>>, TError = Problem>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelEdit>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof cancelEdit>>,
+          TError,
+          Awaited<ReturnType<typeof cancelEdit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCancelEdit<TData = Awaited<ReturnType<typeof cancelEdit>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelEdit>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof cancelEdit>>,
+          TError,
+          Awaited<ReturnType<typeof cancelEdit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useCancelEdit<TData = Awaited<ReturnType<typeof cancelEdit>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelEdit>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 保存待ちの編集 1 件を外す
+ */
+
+export function useCancelEdit<TData = Awaited<ReturnType<typeof cancelEdit>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof cancelEdit>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getCancelEditQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type saveEditsResponse200 = {
+  data: SaveReply
+  status: 200
+}
+
+export type saveEditsResponse409 = {
+  data: BlockedProblem
+  status: 409
+}
+
+export type saveEditsResponseSuccess = (saveEditsResponse200) & {
+  headers: Headers;
+};
+export type saveEditsResponseError = (saveEditsResponse409) & {
+  headers: Headers;
+};
+
+export type saveEditsResponse = (saveEditsResponseSuccess | saveEditsResponseError)
+
+export const getSaveEditsUrl = () => {
+
+
+
+
+  return `/api/edits/save`
+}
+
+/**
+ * @summary 保存待ちの編集をまとめて保存する
+ */
+export const saveEdits = async ( options?: Parameters<typeof apiClient>[1]): Promise<saveEditsResponse> => {
+
+  return apiClient<saveEditsResponse>(getSaveEditsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSaveEditsQueryKey = () => {
+    return [
+    'POST', `/api/edits/save`
+    ] as const;
+    }
+
+
+export const getSaveEditsQueryOptions = <TData = Awaited<ReturnType<typeof saveEdits>>, TError = BlockedProblem>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveEdits>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSaveEditsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof saveEdits>>> = ({ signal }) => saveEdits({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof saveEdits>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SaveEditsQueryResult = NonNullable<Awaited<ReturnType<typeof saveEdits>>>
+export type SaveEditsQueryError = BlockedProblem
+
+
+export function useSaveEdits<TData = Awaited<ReturnType<typeof saveEdits>>, TError = BlockedProblem>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveEdits>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof saveEdits>>,
+          TError,
+          Awaited<ReturnType<typeof saveEdits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSaveEdits<TData = Awaited<ReturnType<typeof saveEdits>>, TError = BlockedProblem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveEdits>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof saveEdits>>,
+          TError,
+          Awaited<ReturnType<typeof saveEdits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSaveEdits<TData = Awaited<ReturnType<typeof saveEdits>>, TError = BlockedProblem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveEdits>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 保存待ちの編集をまとめて保存する
+ */
+
+export function useSaveEdits<TData = Awaited<ReturnType<typeof saveEdits>>, TError = BlockedProblem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveEdits>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSaveEditsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type postOpenedResponse200 = {
+  data: OpenedReply
+  status: 200
+}
+
+export type postOpenedResponseSuccess = (postOpenedResponse200) & {
+  headers: Headers;
+};
+;
+
+export type postOpenedResponse = (postOpenedResponseSuccess)
+
+export const getPostOpenedUrl = () => {
+
+
+
+
+  return `/api/opened`
+}
+
+/**
+ * @summary 前回開いた日時を返し、今の日時に書き換える
+ */
+export const postOpened = async ( options?: Parameters<typeof apiClient>[1]): Promise<postOpenedResponse> => {
+
+  return apiClient<postOpenedResponse>(getPostOpenedUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostOpenedQueryKey = () => {
+    return [
+    'POST', `/api/opened`
+    ] as const;
+    }
+
+
+export const getPostOpenedQueryOptions = <TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostOpenedQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postOpened>>> = ({ signal }) => postOpened({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostOpenedQueryResult = NonNullable<Awaited<ReturnType<typeof postOpened>>>
+export type PostOpenedQueryError = unknown
+
+
+export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postOpened>>,
+          TError,
+          Awaited<ReturnType<typeof postOpened>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postOpened>>,
+          TError,
+          Awaited<ReturnType<typeof postOpened>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 前回開いた日時を返し、今の日時に書き換える
+ */
+
+export function usePostOpened<TData = Awaited<ReturnType<typeof postOpened>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postOpened>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostOpenedQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
