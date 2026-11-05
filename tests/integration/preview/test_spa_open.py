@@ -37,6 +37,16 @@ CONNECTION = 'header [role="status"]'
 # 本文の区画のスクロールの位置を読む
 SCROLL_TOP_SCRIPT = "document.querySelector('main#main').scrollTop"
 
+# 本文の区画をスクロールの範囲の中ほどへ送り、送った後の位置を返す
+SCROLL_TO_MIDDLE_SCRIPT = """() => {
+    const main = document.querySelector('main#main');
+    main.scrollTop = Math.floor((main.scrollHeight - main.clientHeight) / 2);
+    return main.scrollTop;
+}"""
+
+# 本文の区画が縦にスクロールする窓の高さ
+SCROLLABLE_HEIGHT = 360
+
 # 足す検討事項
 NEW_DECISION = {
     "title": "新しい問い",
@@ -95,8 +105,11 @@ def test_normal_when_records_changed(
     assert served.data is not None
     open_spa(page, served.data["url"])
     page.wait_for_selector(f"{DECISIONS_COUNT}:text-is('1')")
+    page.set_viewport_size({"width": 1280, "height": SCROLLABLE_HEIGHT})
+    page.wait_for_function(f"innerHeight === {SCROLLABLE_HEIGHT}")
     opened_url = page.url
-    scroll_top = page.evaluate(SCROLL_TOP_SCRIPT)
+    scroll_top = page.evaluate(SCROLL_TO_MIDDLE_SCRIPT)
+    assert scroll_top > 0
     # 実行
     added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
     started = time.monotonic()
@@ -159,9 +172,9 @@ def test_error_when_server_stopped(
     page: Page,
 ) -> None:
     """書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち上がり直すとつなぎ直す（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
+    # 準備（常駐サーバーがポートを掴んだ後に、配信のポートを選ぶ）
     server = start_server()
+    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     open_spa(page, served.data["url"])

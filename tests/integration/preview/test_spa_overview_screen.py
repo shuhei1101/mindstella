@@ -9,6 +9,7 @@ import pytest
 from playwright.sync_api import Page
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_settings_helpers import open_settings
 from preview_spa_helpers import open_spa, wcag_violations
 from workspace_fixtures import ADOPTED_OPTIONS, MakeEdit, MakeItem
 
@@ -36,6 +37,16 @@ TABBAR = 'nav[aria-label="項目の種類"]'
 
 # 検討事項・タスク・資料を表示しない種類の既定
 KINDS_WITHOUT_DECISIONS_TASKS_DOCS = ["research", "terms", "notes", "logs"]
+
+# 納品物のチェックリストの行ごとに、題名・アイコンがチェック済みか（チェックの線を持つか）・題名に取り消し線があるかを読む
+DELIVERABLE_STATES_JS = """() => [...document.querySelectorAll('#tile-goal div ul li')].map((li) => ({
+    title: li.textContent,
+    checked: li.querySelector('svg path') !== null,
+    struck: getComputedStyle(li.querySelector('button, span')).textDecorationLine === 'line-through',
+}))"""
+
+# 今の画面の表示の設定で、表示する種類を付け外しする（チェックの箱は種類の名前の行に置く）
+LEGACY_KIND_CHECKBOX = "aside.settings-drawer .st-kinds label"
 
 # 納品物を 6 件持つ（5 件を超える）ゴール
 SIX_DELIVERABLES = [{"title": f"納品物 {number}"} for number in range(1, 7)]
@@ -225,13 +236,36 @@ def test_goal_tile(write_sample_preview: WriteSamplePreview, page: Page) -> None
     big = page.inner_text("#tile-goal p.mono").replace(" ", "")
     stages = _texts(page, "#tile-goal > ul li")
     deliverables = _texts(page, "#tile-goal div ul li")
+    states = page.evaluate(DELIVERABLE_STATES_JS)
     page.click("#tile-goal div ul li button")
     # 検証
     assert heading == "ゴールまでの進捗"
     assert big == "1/3"
     assert stages == ["目的1/1", "要件0/2"]
     assert deliverables == ["YAML のスキーマ"]
+    assert states == [{"title": "YAML のスキーマ", "checked": True, "struck": True}]
     assert _legacy_hash(page) == {"tab": "docs", "id": "A-1"}
+
+
+def test_goal_tile_when_deliverable_remaining(
+    write_preview: WritePreview,
+    sample_items: list[dict[str, Any]],
+    sample_settings: dict[str, Any],
+    page: Page,
+) -> None:
+    """ゴールの判定で残っている納品物は、未チェックで取り消し線を付けずに描く（正常系）。"""
+    # 準備
+    deliverables = [{"title": "YAML のスキーマ", "doc": "A-1"}, {"title": "画面の下書き", "doc": "A-2"}]
+    settings = {**sample_settings, "goal": {**sample_settings["goal"], "deliverables": deliverables}}
+    url = write_preview(*sample_items, settings=settings)
+    # 実行
+    open_spa(page, url)
+    states = page.evaluate(DELIVERABLE_STATES_JS)
+    # 検証
+    assert states == [
+        {"title": "YAML のスキーマ", "checked": True, "struck": True},
+        {"title": "画面の下書き", "checked": False, "struck": False},
+    ]
 
 
 def test_goal_tile_when_no_goal(
@@ -420,6 +454,50 @@ def test_hidden_kinds_keep_tiles(
     assert _texts(page, "#tile-progress tbody tr td:last-child") == ["1/2", "0/3"]
     assert page.locator(f'{TABBAR} a[data-tab="decisions"]').count() == 0
 
+
+
+@pytest.mark.parametrize(
+    ("visible_kinds", "toggled", "tabs", "next_show_all"),
+    [
+        pytest.param(
+            None,
+            "検討事項",
+            ["overview", "tasks", "research", "docs", "terms", "notes", "logs", "graph"],
+            0,
+            id="override_hides",
+        ),
+        pytest.param(
+            KINDS_WITHOUT_DECISIONS_TASKS_DOCS,
+            "検討事項",
+            ["overview", "decisions", "research", "terms", "notes", "logs", "graph"],
+            1,
+            id="override_wins_over_default",
+        ),
+    ],
+)
+def test_kinds_override(
+    write_preview: WritePreview,
+    sample_items: list[dict[str, Any]],
+    sample_settings: dict[str, Any],
+    page: Page,
+    visible_kinds: list[str] | None,
+    toggled: str,
+    tabs: list[str],
+    next_show_all: int,
+) -> None:
+    """今の画面の表示の設定で保存した端末の上書きを読み、タブとタイルの「すべて表示」をワークスペースの既定より優先して上書きの種類に従わせる（正常系）。"""
+    # 準備
+    settings = sample_settings if visible_kinds is None else {**sample_settings, "display": {"visible_kinds": visible_kinds}}
+    url = write_preview(*sample_items, settings=settings)
+    page.goto(url)
+    open_settings(page)
+    page.locator(LEGACY_KIND_CHECKBOX, has_text=toggled).locator("input").click()
+    page.wait_for_function("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').kinds !== undefined")
+    # 実行
+    open_spa(page, url)
+    # 検証
+    assert page.eval_on_selector_all(f"{TABBAR} a", "links => links.map(a => a.dataset.tab)") == tabs
+    assert page.locator(f"#tile-next {SHOW_ALL}").count() == next_show_all
 
 def test_region(write_sample_preview: WriteSamplePreview, page: Page) -> None:
     """ページ全体はスクロールせず、タイルは領域の中で縦にスクロールし、帯は見えたまま（正常系）。"""
