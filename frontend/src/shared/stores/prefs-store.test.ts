@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
-import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { readBodyScrolls, readPrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 import { PREFS_KEY } from "@/shared/stores/theme-store";
 
 describe("readPrefs", () => {
@@ -38,5 +38,29 @@ describe("writePrefs", () => {
     writePrefs({ diffSel: "V-1" });
     // 検証
     expect(JSON.parse(localStorage.getItem(PREFS_KEY) as string)).toEqual({ theme: "dark", look: "glow", commentsPinned: true, diffSel: "V-1" });
+  });
+});
+
+describe("readBodyScrolls", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  // 書いた位置を読む（正常系）
+  test("read_body_scrolls", () => {
+    // 実行
+    writeBodyScroll("D-1", 120);
+    writeBodyScroll("T-2", 40);
+    // 検証
+    expect(readBodyScrolls()).toEqual({ "D-1": 120, "T-2": 40 });
+    expect(sessionStorage.getItem("mindmap-body-scroll")).toBe('{"D-1":120,"T-2":40}');
+  });
+
+  // 壊れた値は読まない（異常系）
+  test("read_body_scrolls_when_broken", () => {
+    // 準備
+    sessionStorage.setItem("mindmap-body-scroll", '{"D-1":-1,"T-1":"x","R-1":5}');
+    // 実行・検証
+    expect(readBodyScrolls()).toEqual({ "R-1": 5 });
+    sessionStorage.setItem("mindmap-body-scroll", "not json");
+    expect(readBodyScrolls()).toEqual({});
   });
 });

@@ -62,3 +62,20 @@ def test_settings_screen(page: Page, spa_url: str) -> None:
     """設定の画面を URL で開ける。"""
     open_spa(page, spa_url, "?tab=settings")
     expect(page.get_by_role("heading", name="ワークスペースの設定")).to_be_visible()
+
+
+def test_detail_restores_body_scroll(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """本文を送った項目を開き直すと、その位置へ戻る。"""
+    long_body = "\n\n".join(f"段落 {number}" for number in range(200))
+    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="D-1.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.md": long_body})
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    body = page.locator("aside .panel-body")
+    page.get_by_text("段落 199").wait_for()
+    body.evaluate("(element) => { element.scrollTop = 600; }")
+    page.wait_for_timeout(100)
+    page.goto(page.url.replace("id=D-1", "id=D-2"))
+    page.get_by_role("complementary", name="詳細").wait_for()
+    page.goto(page.url.replace("id=D-2", "id=D-1"))
+    page.get_by_text("段落 199").wait_for()
+    page.wait_for_function("document.querySelector('aside .panel-body').scrollTop === 600")
+

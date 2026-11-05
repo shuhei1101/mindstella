@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -40,6 +40,20 @@ describe("DetailPanel", () => {
     renderRoute("/spa/?tab=decisions&id=D-1&diff=V-2");
     // 検証
     expect(await screen.findByText(/前の行/)).toBeInTheDocument();
+  });
+
+  // 本文のスクロール位置へ戻す（正常系）
+  test("detail_panel_when_body_scroll_saved", async () => {
+    // 準備
+    stubRecords({ decisions: [decision], bodies: { "docs/D-1.md": "本文" } });
+    sessionStorage.setItem("mindmap-body-scroll", '{"D-1":80}');
+    // 実行
+    renderRoute("/spa/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    const body = panel.querySelector<HTMLElement>(".panel-body");
+    // 検証
+    await waitFor(() => expect(body?.scrollTop).toBe(80));
+    sessionStorage.clear();
   });
 
   // 編集の表示（正常系）
