@@ -19,12 +19,12 @@ __all__ = [
 # 本文のスクロール領域に違反が出る axe の規則
 SCROLLABLE_REGION_RULE = "scrollable-region-focusable"
 
-# スクロールが止まった（この間隔で 2 回続けて同じ位置）とみなして位置を返す
+# スクロールが止まった（この間隔で 2 回続けて同じ位置）とみなして位置を返す。
+# 描き直しで要素が差し替わっても今の要素を読むよう、読むたびにセレクタで引き直す
 SETTLED_SCROLL_TOP_JS = """async (selector) => {
-  const element = document.querySelector(selector);
   let last = -1;
-  while (element.scrollTop !== last) {
-    last = element.scrollTop;
+  while (document.querySelector(selector).scrollTop !== last) {
+    last = document.querySelector(selector).scrollTop;
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   return last;

@@ -13,6 +13,7 @@ from edit_helpers import (
     save_pending,
     wait_pending_count,
 )
+from integration.preview.preview_edit_helpers import wait_edits_match
 from playwright.sync_api import Page, expect
 from preview_helpers import OpenPreview, ServeWorkspace, close_drawer, open_drawer, toggle_value
 from workspace_fixtures import MakeItem
@@ -26,14 +27,9 @@ ADD_TITLE_INPUT = f"{ADD_PANEL} [data-first]"
 ADDED_CARD = ".board button.card[data-new-id]"
 ADDED_ROW = "table tr[data-new-id]"
 
-# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったかを読む。
-# wait_for_function は返った Promise を真として扱うため、読みに行った結果を window に置き、次に呼ばれたときに返す
-ADDED_OPTIONS_JS = """(expected) => {
-  fetch('/api/edits').then(r => r.json()).then(d => {
-    window.addedOptionsSaved = d.items.some(e => e.op === 'item-add' && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected));
-  });
-  return window.addedOptionsSaved === true;
-}"""
+# 保存待ちの item-add の value.options が、採用まで含めて渡した並びになったか
+ADDED_OPTIONS_MATCH_JS = """(items, expected) => items.some(e => e.op === 'item-add'
+  && JSON.stringify(e.value.options ?? []) === JSON.stringify(expected))"""
 
 
 def _add_titled(page: Page, title: str) -> None:
@@ -46,8 +42,7 @@ def _add_titled(page: Page, title: str) -> None:
 
 def _wait_added_options(page: Page, expected: list[dict[str, object]]) -> None:
     """保存待ちの item-add の value.options が expected になるのを待つ。"""
-    page.evaluate("() => { window.addedOptionsSaved = false; }")
-    page.wait_for_function(ADDED_OPTIONS_JS, arg=expected, timeout=SETTLE_MS)
+    wait_edits_match(page, ADDED_OPTIONS_MATCH_JS, expected)
 
 
 def test_normal(
