@@ -94,13 +94,11 @@ DETAIL_ON_TOP_JS = """() => {
     return hit !== null && hit.closest('aside.panel') !== null;
 }"""
 
-# 表の D-1 の行と、コメントの一覧の見出しの帯のピン止めのボタン、スレッドの画面の本文
+# 表の D-1 の行と、左のパネルが覆わない D-2 の前提の D-1 のボタン、コメントの一覧の見出しの帯のピン止めのボタン、スレッドの画面の本文
 D1_ROW = 'table.grid tbody tr[data-id="D-1"]'
+D2_PREREQUISITE_LINK = 'table.grid tbody tr[data-id="D-2"] button.idlink'
 PIN_BUTTON = f"{COMMENTS_PANEL} .comments-head button[data-focus='pin']"
 THREAD_BODY = f"{COMMENTS_PANEL} .comments-body.th-body"
-
-# 行の中で、左のパネルに重ならない右寄りの位置を押すときの、行の幅に対する割合
-OUTSIDE_X_RATIO = 0.8
 
 # パネルの高さを超えて縦に送れる書き込みの件数と、書き込みの上でホイールを回す量（px）
 MANY_POSTS = 30
@@ -314,6 +312,7 @@ def test_normal_when_outside_pressed_and_reopened(
         write_threads,
         write_comments,
         make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"]),
         threads=(
             make_thread(
                 "TH-1",
@@ -340,8 +339,8 @@ def test_normal_when_outside_pressed_and_reopened(
     page.mouse.wheel(0, POSTS_WHEEL_PX)
     page.wait_for_function("selector => document.querySelector(selector).scrollTop > 0", arg=THREAD_BODY)
     scrolled = page.evaluate(SETTLED_SCROLL_TOP_JS, THREAD_BODY)
-    # 実行（グレーアウトした表の D-1 の行を押す）
-    press_through_scrim(page, D1_ROW, x_ratio=OUTSIDE_X_RATIO)
+    # 実行（グレーアウトした表の D-2 の前提の D-1 を押す）
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
     page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
     after_press = {
         "detail": page.locator("aside.panel.open").count(),
@@ -355,7 +354,7 @@ def test_normal_when_outside_pressed_and_reopened(
     # 検証
     # パネルを開いている間、パネルとトップバー以外がグレーアウトされ、その中の部品にフォーカスが移らない
     assert covered == {"scrim": True, "row": True, "topbar": False, "panel": False}
-    # グレーアウトした D-1 の行を押すとパネルが閉じ、D-1 の詳細パネルは開かない
+    # グレーアウトした表の D-2 の前提の D-1 を押すとパネルが閉じ、D-1 の詳細パネルは開かない
     assert after_press["detail"] == 0
     assert "id=D-1" not in after_press["hash"]
     assert after_press["scrim"] is False
@@ -384,6 +383,7 @@ def test_normal_when_pinned(
         write_threads,
         write_comments,
         make_item("D-1"),
+        make_item("D-2", depends_on=["D-1"]),
         threads=(make_thread("TH-1", summary="ピン止めの確認"),),
     )
     open_preview(url, "#tab=decisions&view=table")
@@ -394,8 +394,8 @@ def test_normal_when_pinned(
     page.click(PIN_BUTTON)
     page.wait_for_selector(SCRIM_ON, state="detached")
     pinned = {"pressed": page.get_attribute(PIN_BUTTON, "aria-pressed"), "scrim": scrim_shown(page)}
-    # 実行（パネルが覆っていない表の D-1 の行を押す）
-    press_through_scrim(page, D1_ROW, x_ratio=OUTSIDE_X_RATIO)
+    # 実行（パネルが覆っていない表の D-2 の前提の D-1 を押す）
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
     page.wait_for_selector("aside.panel.open")
     with_detail = {
         "panel": page.locator(f"{COMMENTS_PANEL}.open").count(),
@@ -410,12 +410,12 @@ def test_normal_when_pinned(
     page.click(PIN_BUTTON)
     page.wait_for_selector(SCRIM_ON)
     unpinned = {"pressed": page.get_attribute(PIN_BUTTON, "aria-pressed"), "scrim": scrim_shown(page)}
-    press_through_scrim(page, D1_ROW, x_ratio=OUTSIDE_X_RATIO)
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
     page.wait_for_function("!document.querySelector('aside.comments-panel.open')")
     # 検証
     # ピン止めを押すと、ピン止めのボタンが押された状態になり、グレーアウトが外れる
     assert pinned == {"pressed": "true", "scrim": False}
-    # ピン止めの間は、パネルが覆っていない D-1 の行を押すとパネルを開いたまま D-1 の詳細パネルが開く
+    # ピン止めの間は、パネルが覆っていない表の D-2 の前提の D-1 を押すとパネルを開いたまま D-1 の詳細パネルが開く
     assert with_detail["panel"] == 1
     assert "D-1" in with_detail["detail"]
     # 読み込み直した後もピン止めのままで、開いたパネルにグレーアウトが無い

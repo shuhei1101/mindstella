@@ -45,6 +45,9 @@ WIDE_VIEWPORT = {"width": 1280, "height": 800}
 # 行の中で、左のドロワーに重ならない右寄りの位置を押すときの、行の幅に対する割合
 OUTSIDE_X_RATIO = 0.8
 
+# 左のドロワーが覆わない、表の D-2 の前提の D-1 のボタン
+D2_PREREQUISITE_LINK = 'table.grid tbody tr[data-id="D-2"] button.idlink'
+
 
 def _headers(page: Page) -> dict[str, str | None]:
     """表の見出しの aria-sort を、列の key ごとに返す。"""
@@ -121,12 +124,10 @@ def test_normal(
     assert scrim_shown(page) is True
     assert is_inert(page, 'table.grid tbody tr[data-id="R-1"]') is True
     assert is_inert(page, FILTER_BUTTON) is False
-    # 外側の R-1 の行を押すとドロワーが閉じ、R-1 の詳細パネルは開かない
+    # 外側のグレーアウトした所を押すとドロワーが閉じる
     press_through_scrim(page, 'table.grid tbody tr[data-id="R-1"]', x_ratio=OUTSIDE_X_RATIO)
     page.wait_for_selector(DRAWER, state="detached")
     page.wait_for_selector(SCRIM_ON, state="detached")
-    assert page.locator("aside.panel.open").count() == 0
-    assert "id=R-1" not in page.evaluate("location.hash")
     assert viewport is not None
     page.set_viewport_size(viewport)
     assert page.eval_on_selector_all(".chips .chip", "c => c.map(x => x.textContent)") == [
@@ -179,6 +180,29 @@ def test_normal(
         "buttons => buttons.filter(b => b.getAttribute('aria-pressed') === 'true').length",
     )
     assert pressed_after == 0
+
+
+def test_normal_when_outside_pressed(
+    serve_preview: ServePreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+) -> None:
+    """ドロワーの外側のグレーアウトした前提のボタンを押すとドロワーだけが閉じ、詳細パネルは開かない（正常系）。"""
+    # 準備
+    url = serve_preview(make_item("D-1"), make_item("D-2", depends_on=["D-1"]))
+    page = open_preview(url, "#tab=decisions&view=table")
+    page.wait_for_selector(D2_PREREQUISITE_LINK)
+    # 実行（絞り込みのボタンを押す）
+    open_drawer(page)
+    page.wait_for_selector(SCRIM_ON)
+    # 実行（グレーアウトした表の D-2 の前提の D-1 を押す）
+    press_through_scrim(page, D2_PREREQUISITE_LINK)
+    page.wait_for_selector(DRAWER, state="detached")
+    page.wait_for_selector(SCRIM_ON, state="detached")
+    # 検証
+    # グレーアウトした表の D-2 の前提の D-1 を押すとドロワーが閉じ、D-1 の詳細パネルは開かない
+    assert page.locator("aside.panel.open").count() == 0
+    assert "id=D-1" not in page.evaluate("location.hash")
 
 
 def test_normal_when_no_match(
