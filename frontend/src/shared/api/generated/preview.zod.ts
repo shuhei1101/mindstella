@@ -137,6 +137,68 @@ export const GetEditsResponse = zod.looseObject({
 
 
 /**
+ * @summary 編集 1 件を保存待ちに溜める
+ */
+export const AddEditBody = zod.object({
+  "op": zod.enum(['set', 'option-add', 'option-edit', 'option-remove', 'adopt', 'item-add', 'item-remove', 'setting']),
+  "target": zod.string().optional(),
+  "key": zod.string().optional(),
+  "value": zod.unknown().optional(),
+  "map": zod.record(zod.string(), zod.string()).optional()
+})
+
+export const AddEditResponse = zod.object({
+  "id": zod.string().nullable(),
+  "target": zod.string(),
+  "count": zod.int()
+})
+
+
+/**
+ * @summary 保存待ちの編集 1 件を外す
+ */
+export const CancelEditParams = zod.object({
+  "id": zod.string()
+})
+
+export const CancelEditResponse = zod.object({
+  "removed": zod.array(zod.string()),
+  "count": zod.int()
+})
+
+
+/**
+ * @summary 保存待ちの編集をまとめて保存する
+ */
+export const SaveEditsResponse = zod.object({
+  "set": zod.string().nullable(),
+  "at": zod.string(),
+  "added": zod.array(zod.object({
+  "temp": zod.string(),
+  "id": zod.string()
+})),
+  "changed": zod.array(zod.string()),
+  "removed": zod.array(zod.string()),
+  "settings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary 前回開いた日時を返し、今の日時に書き換える
+ */
+export const PostOpenedResponse = zod.object({
+  "previous": zod.union([zod.object({
+  "at": zod.string(),
+  "seq": zod.int()
+}),zod.null()]).optional(),
+  "opened": zod.object({
+  "at": zod.string(),
+  "seq": zod.int()
+})
+})
+
+
+/**
  * @summary スレッドを書き込みと状態の記録ごと返す
  */
 export const GetThreadsResponse = zod.looseObject({

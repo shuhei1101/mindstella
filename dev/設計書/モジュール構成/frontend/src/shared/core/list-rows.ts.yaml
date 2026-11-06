@@ -1,0 +1,12 @@
+title: プレビュー / list-rows
+lead: 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て。
+functions:
+- name: filterRows
+  title: 一覧の行の絞り込み
+  kind: 関数
+  usecase: 項目を表で絞り込む
+  summary: 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

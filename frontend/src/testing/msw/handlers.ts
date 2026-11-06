@@ -59,4 +59,8 @@ export const handlers = [
   http.get("/api/comments", () => HttpResponse.json({ items: [{ id: "C-1" }, { id: "C-2" }], drafts: [] })),
   http.get("/api/edits", () => HttpResponse.json({ items: [] })),
   http.get("/api/threads", () => HttpResponse.json({ threads: [] })),
+  http.post("/api/opened", () => HttpResponse.json({ previous: null, opened: { at: "2026-11-04T02:21:00+00:00", seq: 0 } })),
+  http.post("/api/edits", () => HttpResponse.json({ id: "E-1", target: "D-1", count: 1 }, { status: 201 })),
+  http.delete("/api/edits/:id", ({ params }) => HttpResponse.json({ removed: [params["id"]], count: 0 })),
+  http.post("/api/edits/save", () => HttpResponse.json({ set: "V-1", at: "2026-11-04T02:21:00+00:00", added: [], changed: [], removed: [], settings: [] })),
 ];

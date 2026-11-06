@@ -1,0 +1,447 @@
+// 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）
+export type Location = { kind: "body" | "value"; start?: number; end?: number; key?: string; text: string };
+
+/** 項目の種類（`mindmap-data` のキー） */
+export type Kind = "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs";
+
+/** 項目の種類の並び（ID の頭の文字の順と同じ） */
+export const KIND_KEYS: readonly Kind[] = [
+  "decisions",
+  "tasks",
+  "research",
+  "docs",
+  "terms",
+  "notes",
+  "logs",
+];
+
+/** 種類 → 画面に出す名前 */
+export const KIND_LABEL: Record<Kind, string> = {
+  decisions: "検討事項",
+  tasks: "タスク",
+  research: "調査",
+  docs: "資料",
+  terms: "用語集",
+  notes: "メモ",
+  logs: "会話ログ",
+};
+
+/** ID の頭の文字 → 種類 */
+const KIND_OF_PREFIX: Record<string, Kind> = {
+  D: "decisions",
+  T: "tasks",
+  R: "research",
+  A: "docs",
+  G: "terms",
+  N: "notes",
+  L: "logs",
+};
+
+/** 検討事項の状態の並び（画面で状態を並べるときの順） */
+export const DECISION_STATUSES: readonly string[] = [
+  "要見直し",
+  "未決定",
+  "保留",
+  "未整理",
+  "決定済み",
+  "対象外",
+  "取り下げ",
+];
+
+/** タスクの状態の並び */
+export const TASK_STATUSES: readonly string[] = ["未着手", "進行中", "保留", "完了", "中止"];
+
+/** 資料の状態の並び */
+export const DOC_STATUSES: readonly string[] = ["下書き", "確認中", "完成"];
+
+/** 検討事項の案 */
+export type Option = {
+  key: string;
+  content: string;
+  pros?: string | string[];
+  cons?: string | string[];
+  note?: string;
+  adopted?: boolean;
+  /** AI が推す案の印 */
+  recommended?: boolean;
+  reason?: string;
+};
+
+/** 本文の差分の 1 か所。書き換えた後の本文のある行からの並びを、前の行の並びに置き換える */
+export type BodyDiffHunk = {
+  /** 書き換えた後の本文の 1 始まりの行。`now` が空のときはその行の前に差し込む */
+  line: number;
+  /** その行からの今の行（改行を含まない） */
+  now: string[];
+  /** 置き換える前の行 */
+  before: string[];
+};
+
+/** 項目の変更履歴の 1 回分 */
+export type HistoryEntry = {
+  /** `changes.yaml` の通し番号 */
+  seq: number;
+  /** 書き換えた日時 */
+  at: string;
+  /** その回を書き換えた人。このキーを入れる前に積んだ回は持たない */
+  by?: "ai" | "user";
+  /** 変わったキー → 書き換える前の値。前に無かったキーは null */
+  before: Record<string, unknown>;
+  /** 今の本文を前の本文へ戻す行の置き換え（本文が変わったときだけ） */
+  body_diff?: BodyDiffHunk[];
+};
+
+/** 選んだ時点で消した項目 1 件 */
+export type RemovedItem = {
+  id: string;
+  /** 消した項目の種類（サーバーの種類の名前） */
+  kind: "decision" | "task" | "research" | "doc" | "term" | "note" | "log";
+  /** 消したときのタイトル */
+  title: string;
+};
+
+/** 書き換えのまとまり */
+export type ChangeSet = {
+  id: string;
+  at: string;
+  /** 一言の説明 */
+  summary: string;
+  /** まとめたときの `last_seq` */
+  until_seq: number;
+  added: string[];
+  changed: string[];
+  /** 消した項目。何も消していないまとまりは持たない */
+  removed?: RemovedItem[];
+};
+
+/** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
+export type Changes = {
+  last_seq: number;
+  /** 新しい順 */
+  sets: ChangeSet[];
+  pending: { added: string[]; changed: string[]; removed?: RemovedItem[] };
+};
+
+/** 項目の `tags` の 1 件。その項目の主題のタグだけが `main` を持つ */
+export type Tag = {
+  name: string;
+  main?: true;
+};
+
+/** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
+export type Item = {
+  id: string;
+  title: string;
+  target?: string;
+  category?: string;
+  phase?: string;
+  tags?: Tag[];
+  related?: string[];
+  links?: { title: string; url: string }[];
+  created: string;
+  updated: string;
+  /** 最後に項目を足した・値を変えた人（`ai` か `user`）。このキーを入れる前に書いた項目は持たない */
+  updated_by?: "ai" | "user";
+  status?: string;
+  lead?: string;
+  answer?: string;
+  options?: Option[];
+  weight?: string;
+  parent?: string;
+  depends_on?: string[];
+  reason?: string;
+  body?: string;
+  sources?: string[];
+  kind?: string;
+  for?: string[];
+  result?: string;
+  question?: string;
+  conclusion?: string;
+  confidence?: string;
+  angles?: string[];
+  deliverable?: boolean;
+  /** 取り下げた調査・資料・用語集・メモ・会話ログは真。取り下げた理由は `reason` */
+  withdrawn?: boolean;
+  meaning?: string;
+  /** 用語の別名・資料と調査の本文で一致させる語（エイリアス） */
+  aliases?: string[];
+  /** 資料と調査のタイトルだけでは分からない中身の短い説明 */
+  description?: string;
+  avoid?: string[];
+  content?: string;
+  date?: string;
+  /** 変更履歴（新しい順） */
+  history?: HistoryEntry[];
+  /** 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。一度も消していなければ持たない */
+  history_dropped_seq?: number;
+};
+
+/** 設定（`config.yaml`） */
+export type Settings = {
+  summary: string;
+  /** 話し合いの概要（1 文の短い文）。無い設定もある */
+  description?: string;
+  playbooks: string[];
+  target_label: string;
+  phases: string[];
+  targets: { name: string; summary: string }[];
+  categories: { name: string; target: string; summary: string }[];
+  /** ゴール。ゴールを決めていない話し合いは持たない */
+  goal?: { phase: string; summary: string; deliverables: { title: string; doc?: string }[] };
+  /** 関連する場所（表示名と URL）。無い設定もある */
+  links?: { title: string; url: string }[];
+  /** 項目ごとに変更履歴を何回分持つか */
+  history_limit?: number;
+  /** ワークスペースの表示の既定。個人の上書きが無い項目に使う */
+  display?: DisplayDefaults;
+};
+
+/** ネットワークの見た目の値 */
+export type NetworkLook = "glow" | "starlight" | "constellation" | "deep" | "dust";
+
+/** ワークスペースの表示の既定（`config.yaml` の `display`） */
+export type DisplayDefaults = {
+  /** ネットワークの見た目。無ければ `deep` */
+  network_look?: NetworkLook;
+  /** 表示する種類。無ければ全ての種類 */
+  visible_kinds?: Kind[];
+};
+
+/** フェーズごと・カテゴリーごとの、決着した数と全体の数 */
+export type ProgressCell = { phase: string; settled: number; total: number };
+
+/** build が計算して埋め込んだ、画面に出す値 */
+export type Derived = {
+  next: { id: string; title: string; phase: string | null; weight: string | null; followers: number }[];
+  goal: {
+    has_goal: boolean;
+    /** ゴールが無いときは判定せず `null` */
+    reached: boolean | null;
+    goal_phase: string | null;
+    phases: string[];
+    remaining_decisions: { id: string; title: string; phase: string; status: string }[];
+    remaining_deliverables: { title: string; doc: string | null }[];
+    phase_progress: ProgressCell[];
+  };
+  progress: { category: string; cells: ProgressCell[]; settled: number; total: number }[];
+};
+
+/** 埋め込みのデータ（`mindmap-data` を `JSON.parse` した値） */
+export type MindmapData = Record<Kind, Item[]> & {
+  settings: Settings;
+  bodies: Record<string, string>;
+  /** HTML の本文（`bodies` のうち `.html`）の、開きタグに原文の行の印（`data-line`）を足したもの。HTML の本文が無ければ `{}` */
+  marked_bodies?: Record<string, string>;
+  /** 書き換えのまとまりと、まだまとめていない変更 */
+  changes: Changes;
+  derived: Derived;
+  built_at: string;
+  /** `config.yaml` がスキーマに合わないときの、合わない箇所の行。合うとき・配る書き出しは null */
+  settings_problem?: string[] | null;
+};
+
+/** 記録の索引 */
+export type RecordIndex = {
+  /** 埋め込みのデータそのもの */
+  data: MindmapData;
+  /** ID → 種類と項目 */
+  byId: Map<string, { kind: Kind; item: Item }>;
+  /** ID → その項目を `depends_on`・`for`・`related`・`sources` で指す項目の ID（ID の順） */
+  referencedBy: Map<string, string[]>;
+  /** 着手可能な検討事項の ID（`derived.next` の ID） */
+  readyIds: Set<string>;
+};
+
+/** 項目が別の項目を指すキー */
+const REFERENCE_KEYS = ["depends_on", "for", "related", "sources"] as const;
+
+/** 項目の `tags` から名前だけを並びの順に取り出す（文字列のタグはそのまま） */
+export const tagNames = (tags: readonly (Tag | string)[] | undefined): string[] => {
+  return (tags ?? []).map((tag) => (typeof tag === "string" ? tag : tag.name));
+};
+
+/** ID を種類の順 → 連番の順に比べる */
+export const compareIds = (a: string, b: string): number => {
+  const rank = (id: string) => KIND_KEYS.indexOf(KIND_OF_PREFIX[id.slice(0, 1)] ?? "logs");
+  return rank(a) - rank(b) || Number(a.slice(2)) - Number(b.slice(2));
+};
+
+/** 埋め込みのデータから記録の索引を作る */
+export const buildIndex = (data: MindmapData): RecordIndex => {
+  const byId = new Map<string, { kind: Kind; item: Item }>();
+  for (const kind of KIND_KEYS) {
+    for (const item of data[kind]) byId.set(item.id, { kind, item });
+  }
+  // 各項目が指す先ごとに、指した側の ID を足す（記録に無い ID もそのまま持つ）
+  const referencedBy = new Map<string, string[]>();
+  for (const { item } of byId.values()) {
+    for (const key of REFERENCE_KEYS) {
+      for (const target of item[key] ?? []) {
+        const sources = referencedBy.get(target) ?? [];
+        sources.push(item.id);
+        referencedBy.set(target, sources);
+      }
+    }
+  }
+  for (const sources of referencedBy.values()) sources.sort(compareIds);
+  return {
+    data,
+    byId,
+    referencedBy,
+    readyIds: new Set(data.derived.next.map((candidate) => candidate.id)),
+  };
+};
+
+/** 詳細パネルに出す関係する項目（それぞれ ID の並び） */
+export type RelatedItems = {
+  prerequisites: string[];
+  successors: string[];
+  tasks: string[];
+  logs: string[];
+  related: string[];
+  referencedBy: string[];
+};
+
+/** 前提・後続・関連タスク・経緯・関連・参照している項目を返す */
+export const relatedItems = ({ id, index }: { id: string; index: RecordIndex }): RelatedItems => {
+  const entry = index.byId.get(id);
+  const item = entry?.item;
+  const referrers = index.referencedBy.get(id) ?? [];
+  /** ID の項目が、キーで id を指しているか */
+  const points = (referrer: string, key: "depends_on" | "for" | "related"): boolean =>
+    (index.byId.get(referrer)?.item[key] ?? []).includes(id);
+  const kindOf = (referrer: string): Kind | undefined => index.byId.get(referrer)?.kind;
+
+  const successors = referrers.filter((referrer) => points(referrer, "depends_on"));
+  const tasks = referrers.filter(
+    (referrer) => kindOf(referrer) === "tasks" && points(referrer, "for"),
+  );
+  // 経緯: この項目を更新した会話ログと、この項目が経緯として指す会話ログ
+  const incomingLogs = referrers.filter(
+    (referrer) => kindOf(referrer) === "logs" && points(referrer, "related"),
+  );
+  const logs = [...new Set([...incomingLogs, ...(item?.sources ?? [])])].sort(compareIds);
+  const related = item?.related ?? [];
+  const shown = new Set([...successors, ...tasks, ...logs, ...related]);
+  return {
+    prerequisites: item?.depends_on ?? [],
+    successors,
+    tasks,
+    logs,
+    related,
+    referencedBy: referrers.filter((referrer) => !shown.has(referrer)),
+  };
+};
+
+/** 全体の検索の段（1 は ID かタイトルが言葉と完全に一致、2 はタイトルが語を全て含む、3 はそれ以外） */
+export type SearchTier = 1 | 2 | 3;
+
+/** 全体の検索の 1 件 */
+export type SearchHit = { id: string; kind: Kind; title: string; tier: SearchTier };
+
+/** 全体の検索の段の順 */
+const SEARCH_TIERS: SearchTier[] = [1, 2, 3];
+
+/** 項目の `body` の拡張子から本文の形式を返す（`body` を持たないか、知らない拡張子なら `null`） */
+export const bodyFormatOf = (body: string | undefined): "md" | "html" | null => {
+  if (body === undefined) return null;
+  if (body.endsWith(".html")) return "html";
+  if (body.endsWith(".md")) return "md";
+  return null;
+};
+
+/** 描いた文に出ない中身を持つ要素 */
+const HIDDEN_TEXT_SELECTOR = "style, script, template, title";
+
+/** HTML をスクリプトを動かさずに解析し、`style`・`script`・`template`・`title` の中身とコメントを除いた描いた文を返す */
+export const htmlText = (source: string): string => {
+  const doc = new DOMParser().parseFromString(source, "text/html");
+  for (const hidden of doc.querySelectorAll(HIDDEN_TEXT_SELECTOR)) hidden.remove();
+  return doc.documentElement.textContent ?? "";
+};
+
+/** Markdown の本文の中の言語指定 `html` のコードブロック（フェンスは ``` か ~~~） */
+const HTML_FENCE = /^(```|~~~)html[^\n]*\n([\s\S]*?)^\1[ \t]*$/gm;
+
+/** 検索で当てる本文の文。HTML の本文と Markdown の `html` のコードブロックは、タグではなく描いた文にする */
+const searchableBody = (body: string | undefined, bodies: Record<string, string>): string => {
+  const text = bodies[body ?? ""] ?? "";
+  if (bodyFormatOf(body) === "html") return htmlText(text);
+  return text.replace(HTML_FENCE, (_block, _fence, code: string) => htmlText(code));
+};
+
+/** 項目の ID・タイトル・文字の値・本文を 1 つの文字列にする（小文字） */
+const searchableText = (item: Item, bodies: Record<string, string>): string => {
+  const parts: string[] = [];
+  for (const value of Object.values(item)) {
+    if (typeof value === "string") parts.push(value);
+    else if (Array.isArray(value)) {
+      for (const element of value) if (typeof element === "string") parts.push(element);
+    }
+  }
+  parts.push(searchableBody(item.body, bodies));
+  return parts.join("\n").toLowerCase();
+};
+
+/** 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す（大文字・小文字と前後の空白を区別しない） */
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
+export const searchItems = ({ query, index }: { query: string; index: RecordIndex }): SearchHit[] => {
+  const whole = query.trim().toLowerCase();
+  const terms = whole.split(/\s+/).filter(Boolean);
+  // 言葉が空なら何も探さない
+  if (terms.length === 0) return [];
+  const hits: SearchHit[] = [];
+  for (const kind of KIND_KEYS) {
+    const items = [...index.data[kind]].sort((a, b) => compareIds(a.id, b.id));
+    for (const item of items) {
+      const text = searchableText(item, index.data.bodies);
+      if (terms.every((term) => text.includes(term))) {
+        const title = item.title.trim().toLowerCase();
+        const exact = item.id.toLowerCase() === whole || title === whole;
+        const tier = exact ? 1 : terms.every((term) => title.includes(term)) ? 2 : 3;
+        hits.push({ id: item.id, kind, title: item.title, tier });
+      }
+    }
+  }
+  // 段の順にする（段の中は種類の順・連番の順のまま）
+  return SEARCH_TIERS.flatMap((tier) => hits.filter((hit) => hit.tier === tier));
+};
+
+/** ID の項目のタイトル。記録に無いときは「（記録にありません）」 */
+export const titleOf = (index: RecordIndex, id: string): string => {
+  return index.byId.get(id)?.item.title ?? "（記録にありません）";
+};
+
+/** 項目のキー → 詳細パネルがそのキーに出す見出し（案の中のキーも同じ辞書） */
+const VALUE_HEADINGS: Record<string, string> = {
+  title: "タイトル",
+  status: "状態",
+  lead: "問い",
+  answer: "決定内容",
+  reason: "理由",
+  content: "内容",
+  pros: "メリット",
+  cons: "デメリット",
+  note: "備考",
+  question: "調べたこと",
+  conclusion: "結論",
+  meaning: "意味",
+  result: "結果",
+};
+
+/** 案の中のキー（`options[C].cons`）の形 */
+const OPTION_KEY = /^options\[([^\]]+)\]\.(\w+)$/;
+
+/** 箇所を画面に出す名前にする。本文は行（範囲は「〜」でつなぐ）、値は詳細パネルがそのキーに出す見出し（案の中は「案 {key} の{見出し}」） */
+export const locationLabel = (loc: Location): string => {
+  if (loc.kind === "body") {
+    const start = loc.start ?? 0;
+    const end = loc.end ?? start;
+    return start === end ? `本文 ${start} 行目` : `本文 ${start}〜${end} 行目`;
+  }
+  const key = loc.key ?? "";
+  const option = OPTION_KEY.exec(key);
+  // 案の中の値: 案の記号と見出し
+  if (option !== null) return `案 ${option[1]} の${VALUE_HEADINGS[option[2] ?? ""] ?? option[2]}`;
+  return VALUE_HEADINGS[key] ?? key;
+};

@@ -1,0 +1,4 @@
+summary: '`frontend/src/features/decisions/` の React のプレビューのモジュール'
+items:
+- page: decisions/
+  summary: '`frontend/src/features/decisions/decisions/` の React のプレビューのモジュール'

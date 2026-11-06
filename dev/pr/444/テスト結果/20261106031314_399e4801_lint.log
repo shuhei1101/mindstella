@@ -1,0 +1,252 @@
+$ npx eslint frontend/src
+# 実装が無いことによる型の解決できない違反が残る（単体テスト作成の工程で残してよい違反）。実装の工程で全て解消する
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/features/decisions/decisions/map-layout.test.ts
+  10:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+  13:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+  13:19  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+  15:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+  15:18  error  Unsafe member access .nodes on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  15:44  error  Unsafe member access .label on an `any` value                  @typescript-eslint/no-unsafe-member-access
+  16:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+  16:18  error  Unsafe member access .nodes on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  16:44  error  Unsafe member access .label on an `any` value                  @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/features/detail/detail-panel/components/body-view.test.tsx
+  20:22  error  React Hook "useRecords" is called in function "record" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"  react-hooks/rules-of-hooks
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx
+  13:27  error  '_body' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/adapters/libraries.test.ts
+  14:3   error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  25:11  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  26:11  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  36:18  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/components/item-add-form.test.tsx
+   8:35  error  There is no policy allowing dependencies from elements of type "shared" to elements of type "app"  boundaries/dependencies
+  18:27  error  '_body' is defined but never used                                                                  @typescript-eslint/no-unused-vars
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/body-links.test.ts
+  13:5   error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  23:11  error  Unsafe assignment of an error typed value         @typescript-eslint/no-unsafe-assignment
+  28:5   error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  28:22  error  Unsafe assignment of an error typed value         @typescript-eslint/no-unsafe-assignment
+  28:29  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/diff.test.ts
+   22:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   22:19  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   24:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   24:19  error  Unsafe member access .added on a type that cannot be resolved       @typescript-eslint/no-unsafe-member-access
+   25:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   25:19  error  Unsafe member access .changed on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+   26:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   26:19  error  Unsafe member access .removed on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+   31:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   36:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   40:32  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   46:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   48:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   48:22  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   50:21  error  Unsafe member access .before on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+   51:21  error  Unsafe member access .beforeBody on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   57:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   59:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   59:22  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   61:21  error  Unsafe member access .trimmed on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+   69:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   69:19  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   71:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   71:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   71:19  error  Unsafe member access .filter on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+   71:41  error  Unsafe member access .kind on an `any` value                        @typescript-eslint/no-unsafe-member-access
+   71:61  error  Unsafe member access .flatMap on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+   71:79  error  Unsafe return of a value of type `any`                              @typescript-eslint/no-unsafe-return
+   71:84  error  Unsafe member access .lines on an `any` value                       @typescript-eslint/no-unsafe-member-access
+   72:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   72:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   72:19  error  Unsafe member access .filter on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+   72:41  error  Unsafe member access .kind on an `any` value                        @typescript-eslint/no-unsafe-member-access
+   72:59  error  Unsafe member access .flatMap on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+   72:77  error  Unsafe return of a value of type `any`                              @typescript-eslint/no-unsafe-return
+   72:82  error  Unsafe member access .lines on an `any` value                       @typescript-eslint/no-unsafe-member-access
+   80:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   80:18  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   82:19  error  Unsafe member access [0] on a type that cannot be resolved          @typescript-eslint/no-unsafe-member-access
+   83:19  error  Unsafe member access [1] on a type that cannot be resolved          @typescript-eslint/no-unsafe-member-access
+   84:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   84:18  error  Unsafe member access .at on a type that cannot be resolved          @typescript-eslint/no-unsafe-member-access
+   92:11  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+   92:19  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+   94:19  error  Unsafe member access .added on a type that cannot be resolved       @typescript-eslint/no-unsafe-member-access
+  101:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+  101:12  error  Unsafe call of a type that could not be resolved                    @typescript-eslint/no-unsafe-call
+  101:24  error  Unsafe assignment of an error typed value                           @typescript-eslint/no-unsafe-assignment
+  101:61  error  Unsafe member access .map on a type that cannot be resolved         @typescript-eslint/no-unsafe-member-access
+  101:75  error  Unsafe return of a value of type `any`                              @typescript-eslint/no-unsafe-return
+  101:80  error  Unsafe member access .id on an `any` value                          @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/doc-export.test.ts
+   9:11  error  Unsafe assignment of an error typed value         @typescript-eslint/no-unsafe-assignment
+   9:18  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  20:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/edits.test.ts
+   6:7   error  Unsafe assignment of an error typed value                          @typescript-eslint/no-unsafe-assignment
+  12:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  12:41  error  Unsafe member access .decisions on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  18:11  error  Unsafe assignment of an error typed value                          @typescript-eslint/no-unsafe-assignment
+  18:20  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  20:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  20:19  error  Unsafe member access .tasks on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+  20:39  error  Unsafe return of a value of type `any`                             @typescript-eslint/no-unsafe-return
+  20:44  error  Unsafe member access .id on an `any` value                         @typescript-eslint/no-unsafe-member-access
+  27:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  32:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/filters.test.ts
+   8:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  13:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  18:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  25:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  32:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  39:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/preview-search.test.ts
+    8:7   error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+   17:3   error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+   17:10  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   31:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+   31:20  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   33:19  error  Unsafe member access .tab on a type that cannot be resolved    @typescript-eslint/no-unsafe-member-access
+   34:19  error  Unsafe member access .view on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+   35:19  error  Unsafe member access .f on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+   41:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+   41:20  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   43:19  error  Unsafe member access .tab on a type that cannot be resolved    @typescript-eslint/no-unsafe-member-access
+   44:19  error  Unsafe member access .full on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+   51:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   51:78  error  Unsafe member access .view on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+   57:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+   57:20  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   59:19  error  Unsafe member access .id on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+   60:19  error  Unsafe member access .full on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+   61:19  error  Unsafe member access .h on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+   66:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   66:65  error  Unsafe member access .diff on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+   71:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   71:88  error  Unsafe member access .panel on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   76:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   76:96  error  Unsafe member access .tab on a type that cannot be resolved    @typescript-eslint/no-unsafe-member-access
+   81:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   81:88  error  Unsafe member access .tab on a type that cannot be resolved    @typescript-eslint/no-unsafe-member-access
+   86:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   86:89  error  Unsafe member access .panel on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   91:12  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   91:68  error  Unsafe member access .sort on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+   97:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+   97:20  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+   99:19  error  Unsafe member access .id on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+  100:19  error  Unsafe member access .h on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+  108:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+  108:18  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+  116:11  error  Unsafe assignment of an error typed value                      @typescript-eslint/no-unsafe-assignment
+  116:18  error  Unsafe call of a type that could not be resolved               @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/core/records.test.ts
+   5:7   error  Unsafe assignment of an error typed value                              @typescript-eslint/no-unsafe-assignment
+  23:11  error  Unsafe assignment of an error typed value                              @typescript-eslint/no-unsafe-assignment
+  23:19  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  25:12  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  25:18  error  Unsafe member access .byId on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  25:35  error  Unsafe member access .item on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  26:12  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  26:18  error  Unsafe member access .referencedBy on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  34:11  error  Unsafe assignment of an error typed value                              @typescript-eslint/no-unsafe-assignment
+  34:19  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  36:12  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  36:38  error  Unsafe assignment of an error typed value                              @typescript-eslint/no-unsafe-assignment
+  36:47  error  Unsafe member access .prerequisites on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  37:12  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  37:38  error  Unsafe assignment of an error typed value                              @typescript-eslint/no-unsafe-assignment
+  37:47  error  Unsafe member access .successors on a type that cannot be resolved     @typescript-eslint/no-unsafe-member-access
+  44:12  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+  51:12  error  Unsafe call of a type that could not be resolved                       @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/preview-queries.test.ts
+  11:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  11:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  11:29  error  Unsafe member access .map on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  11:44  error  Unsafe return of a value of type `any`                       @typescript-eslint/no-unsafe-return
+  11:50  error  Unsafe member access .queryKey on an `any` value             @typescript-eslint/no-unsafe-member-access
+  22:11  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-diff-view.test.tsx
+  34:76  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  36:54  error  Unsafe member access .sel on a type that cannot be resolved                          @typescript-eslint/no-unsafe-member-access
+  45:67  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  53:28  error  Unsafe argument of type error typed assigned to a parameter of type `string`         @typescript-eslint/no-unsafe-argument
+  57:67  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-edits.test.tsx
+  14:66   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  17:21   error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+  17:21   error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  26:53   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  28:11   error  Unsafe assignment of an error typed value                                            @typescript-eslint/no-unsafe-assignment
+  28:25   error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  28:25   error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  28:116  error  Unsafe member access .catch on a type that cannot be resolved                        @typescript-eslint/no-unsafe-member-access
+  39:66   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  42:21   error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+  42:21   error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  52:66   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  55:21   error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+  55:21   error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  65:53   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  67:11   error  Unsafe assignment of an error typed value                                            @typescript-eslint/no-unsafe-assignment
+  67:35   error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+  67:35   error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  69:18   error  Unsafe member access .blocked on a type that cannot be resolved                      @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-preview-search.test.tsx
+  11:76   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`                                                                                 @typescript-eslint/no-unsafe-argument
+  14:5    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  14:15   error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  14:15   error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  16:54   error  Unsafe member access .id on a type that cannot be resolved                                                                                                          @typescript-eslint/no-unsafe-member-access
+  23:76   error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`                                                                                 @typescript-eslint/no-unsafe-argument
+  26:5    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  26:15   error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  26:15   error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  28:54   error  Unsafe member access .f on a type that cannot be resolved                                                                                                           @typescript-eslint/no-unsafe-member-access
+  35:130  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`                                                                                 @typescript-eslint/no-unsafe-argument
+  37:5    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  37:15   error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  37:15   error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+  39:54   error  Unsafe member access .tab on a type that cannot be resolved                                                                                                         @typescript-eslint/no-unsafe-member-access
+  41:34   error  Unsafe member access .view on a type that cannot be resolved                                                                                                        @typescript-eslint/no-unsafe-member-access
+  42:34   error  Unsafe member access .sort on a type that cannot be resolved                                                                                                        @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/hooks/use-screen-filters.test.tsx
+  13:101  error  Unsafe return of a value of type error                           @typescript-eslint/no-unsafe-return
+  13:101  error  Unsafe call of a type that could not be resolved                 @typescript-eslint/no-unsafe-call
+  15:27   error  Unsafe member access .filters on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  16:32   error  Unsafe call of a type that could not be resolved                 @typescript-eslint/no-unsafe-call
+  16:44   error  Unsafe member access .filters on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  24:69   error  Unsafe return of a value of type error                           @typescript-eslint/no-unsafe-return
+  24:69   error  Unsafe call of a type that could not be resolved                 @typescript-eslint/no-unsafe-call
+  32:73   error  Unsafe return of a value of type error                           @typescript-eslint/no-unsafe-return
+  32:73   error  Unsafe call of a type that could not be resolved                 @typescript-eslint/no-unsafe-call
+  34:27   error  Unsafe member access .filters on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail/frontend/src/shared/stores/prefs-store.test.ts
+  12:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  28:12  error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+  38:5   error  Unsafe call of a type that could not be resolved  @typescript-eslint/no-unsafe-call
+
+✖ 210 problems (210 errors, 0 warnings)
+
+exit 1

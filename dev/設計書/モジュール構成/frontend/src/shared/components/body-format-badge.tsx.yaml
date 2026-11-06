@@ -1,0 +1,13 @@
+title: プレビュー / body-format-badge
+lead: 部品設計『本文の形式の札.tsx』の props・イベント・状態を持つ。
+components:
+- name: BodyFormatBadge
+  title: 本文の形式の札
+  kind: コンポーネント
+  usecase: 資料を読む
+  summary: 部品設計『本文の形式の札.tsx』の props・イベント・状態を持つ
+  refs:
+  - dev/設計書/部品設計/プレビュー/本文の形式の札.tsx#
+  container: frontend/src/shared/components/body-format-badge.tsx
+notes:
+  単体テスト: 同じフォルダの `body-format-badge.test.tsx` に置く（knowledge の規約『フォルダ構成』）

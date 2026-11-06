@@ -1,4 +1,4 @@
-# React のプレビューが読む、サーバーの配信の API（インターフェース定義『記録の取得』『レビュー中のコメントの読み取り』『保存待ちの編集の読み取り』『スレッドの読み取り』）
+# React のプレビューが読む、サーバーの配信の API（インターフェース定義『記録の取得』『レビュー中のコメントの読み取り』『保存待ちの編集の読み取り』『保存待ちの編集の追加』『保存待ちの編集の取り消し』『保存待ちの編集をまとめて保存』『スレッドの読み取り』『前回開いた日時』）
 openapi: 3.1.0
 info:
   title: mindstella preview
@@ -43,6 +43,90 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Edits"
+    post:
+      operationId: addEdit
+      summary: 編集 1 件を保存待ちに溜める
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditInput"
+      responses:
+        "200":
+          description: 同じキーの編集を書き換えたか、元の値に戻して外した
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditReply"
+        "201":
+          description: 新しく溜めた
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditReply"
+        "400":
+          description: 編集できないキー・合わない値
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/edits/{id}:
+    delete:
+      operationId: cancelEdit
+      summary: 保存待ちの編集 1 件を外す
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 外した編集
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed, count]
+                properties:
+                  removed:
+                    type: array
+                    items: { type: string }
+                  count: { type: integer }
+        "404":
+          description: 編集が無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/edits/save:
+    post:
+      operationId: saveEdits
+      summary: 保存待ちの編集をまとめて保存する
+      responses:
+        "200":
+          description: 全て当てた
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveReply"
+        "409":
+          description: 書き込めない編集がある
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/BlockedProblem"
+  /api/opened:
+    post:
+      operationId: postOpened
+      summary: 前回開いた日時を返し、今の日時に書き換える
+      responses:
+        "200":
+          description: 前回と今の時点
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenedReply"
   /api/threads:
     get:
       operationId: getThreads
@@ -56,6 +140,85 @@ paths:
                 $ref: "#/components/schemas/Threads"
 components:
   schemas:
+    EditInput:
+      type: object
+      required: [op]
+      properties:
+        op:
+          type: string
+          enum: [set, option-add, option-edit, option-remove, adopt, item-add, item-remove, setting]
+        target: { type: string }
+        key: { type: string }
+        value: {}
+        map:
+          type: object
+          additionalProperties: { type: string }
+    EditReply:
+      type: object
+      required: [id, target, count]
+      properties:
+        id: { type: [string, "null"] }
+        target: { type: string }
+        count: { type: integer }
+    BlockedEdit:
+      type: object
+      required: [id, reason, detail, refs]
+      properties:
+        id: { type: string }
+        reason:
+          type: string
+          enum: [changed, missing, referenced, invalid]
+        detail: { type: string }
+        refs:
+          type: array
+          items: { type: string }
+    BlockedProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          required: [blocked]
+          properties:
+            blocked:
+              type: array
+              items: { $ref: "#/components/schemas/BlockedEdit" }
+    SaveReply:
+      type: object
+      required: [set, at, added, changed, removed, settings]
+      properties:
+        set: { type: [string, "null"] }
+        at: { type: string }
+        added:
+          type: array
+          items:
+            type: object
+            required: [temp, id]
+            properties:
+              temp: { type: string }
+              id: { type: string }
+        changed:
+          type: array
+          items: { type: string }
+        removed:
+          type: array
+          items: { type: string }
+        settings:
+          type: array
+          items: { type: string }
+    OpenedPoint:
+      type: object
+      required: [at, seq]
+      properties:
+        at: { type: string }
+        seq: { type: integer }
+    OpenedReply:
+      type: object
+      required: [opened]
+      properties:
+        previous:
+          oneOf:
+            - $ref: "#/components/schemas/OpenedPoint"
+            - type: "null"
+        opened: { $ref: "#/components/schemas/OpenedPoint" }
     Problem:
       type: object
       required: [type, title, status, detail]

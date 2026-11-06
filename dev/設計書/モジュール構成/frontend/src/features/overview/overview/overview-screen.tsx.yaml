@@ -24,9 +24,15 @@ components:
     expected: detail の行が出て、タイルが無い
   - name: test_overview_screen_when_show_all
     case: 正常
-    summary: すべて表示は今の画面へ
+    summary: すべて表示は SPA の一覧へ
     condition: 要見直しの検討事項を返し、要見直しの「すべて表示」を押す
+    mock: MSW・ルーターのメモリの履歴
+    expected: search が `tab=decisions`・`view=table`・`f.status=要見直し` になる
+  - name: test_overview_screen_when_network
+    case: 正常
+    summary: ネットワークは今の画面へ
+    condition: トップバーのネットワークの入口を押す
     mock: MSW・`window.location.assign`
-    expected: '`assign` が今の画面の要見直しの条件のハッシュで呼ばれる'
+    expected: '`assign` が今の画面の `#tab=graph` で呼ばれる'
 notes:
   単体テスト: 同じフォルダの `overview-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,12 @@
+title: プレビュー / edit-session-store
+lead: 開いている追加の入力と、直前の保存で書き込めなかった編集と、保存した件数。
+functions:
+- name: useEditSessionStore
+  title: 開いている追加の入力と、直前の保存で書き込めなかった編集と、保存した件数
+  kind: 関数
+  usecase: 画面で項目を編集して保存する
+  summary: 開いている追加の入力と、直前の保存で書き込めなかった編集と、保存した件数
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

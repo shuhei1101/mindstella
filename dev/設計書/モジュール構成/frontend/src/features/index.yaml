@@ -2,3 +2,19 @@ summary: '`frontend/src/features/` の React のプレビューのモジュー�
 items:
 - page: overview/
   summary: '`frontend/src/features/overview/` の React のプレビューのモジュール'
+- page: decisions/
+  summary: '`frontend/src/features/decisions/` の React のプレビューのモジュール'
+- page: tasks/
+  summary: '`frontend/src/features/tasks/` の React のプレビューのモジュール'
+- page: docs/
+  summary: '`frontend/src/features/docs/` の React のプレビューのモジュール'
+- page: records/
+  summary: '`frontend/src/features/records/` の React のプレビューのモジュール'
+- page: detail/
+  summary: '`frontend/src/features/detail/` の React のプレビューのモジュール'
+- page: history/
+  summary: '`frontend/src/features/history/` の React のプレビューのモジュール'
+- page: edits/
+  summary: '`frontend/src/features/edits/` の React のプレビューのモジュール'
+- page: settings/
+  summary: '`frontend/src/features/settings/` の React のプレビューのモジュール'

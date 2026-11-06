@@ -15,18 +15,21 @@ export class AppError extends Error {
   readonly statusCode: number;
   /** problem+json の `type` の値（problem+json でない本文は空） */
   readonly code: string;
+  /** 応答の本文（`blocked` などの拡張を読む） */
+  readonly body: unknown;
 
-  constructor({ message, statusCode, code }: { message: string; statusCode: number; code: string }) {
+  constructor({ message, statusCode, code, body = null }: { message: string; statusCode: number; code: string; body?: unknown }) {
     super(message);
     this.name = "AppError";
     this.statusCode = statusCode;
     this.code = code;
+    this.body = body;
   }
 
   /** problem+json の本文とステータスから作る。problem+json でない本文はステータスの文言にする */
   static fromResponse(data: unknown, statusCode: number): AppError {
     if (isProblem(data)) {
-      return new AppError({ message: data.detail, statusCode, code: data.type });
+      return new AppError({ message: data.detail, statusCode, code: data.type, body: data });
     }
     return new AppError({ message: `HTTP ${String(statusCode)}`, statusCode, code: "" });
   }

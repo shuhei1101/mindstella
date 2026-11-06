@@ -1,0 +1,44 @@
+title: プレビュー / detail-panel
+lead: 画面設計『詳細パネル.tsx』の要素と操作を描く。
+components:
+- name: DetailPanel
+  title: 詳細パネル
+  kind: 画面
+  usecase: 項目の詳細を読む
+  summary: 画面設計『詳細パネル.tsx』の要素と操作を描く
+  refs:
+  - dev/設計書/画面設計/プレビュー/詳細パネル.tsx#
+  unit_tests:
+  - name: test_detail_panel_when_body_scroll_saved
+    case: 正常
+    summary: 本文のスクロール位置へ戻す
+    condition: 項目の位置が保存領域にある
+    mock: MSW
+    expected: 本文のスクロール領域がその位置に戻る
+  - name: test_detail_panel
+    case: 正常
+    summary: 項目を描く
+    condition: '`id=D-1`'
+    mock: MSW
+    expected: タイトル・案・本文・関係する項目
+  - name: test_detail_panel_when_diff
+    case: 正常
+    summary: 本文の差分
+    condition: '`diff=V-2` で本文を変えた項目'
+    mock: MSW
+    expected: 足した行と消した行
+  - name: test_detail_panel_when_editing
+    case: 正常
+    summary: 編集の表示
+    condition: 「編集する」を押す
+    mock: MSW
+    expected: 入力欄と保存待ちの印
+  - name: test_detail_panel_when_comment_link
+    case: 正常
+    summary: 今の画面でコメントする
+    condition: リンクを押す
+    mock: MSW・`window.location.assign`
+    expected: '`view`・`full`・`diff` を写したハッシュ'
+  container: frontend/src/features/detail/detail-panel/detail-panel.tsx
+notes:
+  単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

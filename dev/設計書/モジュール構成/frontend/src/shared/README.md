@@ -14,5 +14,6 @@
 | [lib](./lib/) | `frontend/src/shared/lib/` の React のプレビューのモジュール |
 | [stores](./stores/) | `frontend/src/shared/stores/` の React のプレビューのモジュール |
 | [styles](./styles/) | `frontend/src/shared/styles/` の React のプレビューのモジュール |
+| [hooks](./hooks/) | `frontend/src/shared/hooks/` の React のプレビューのモジュール |
 
 <!-- /table -->

@@ -1,0 +1,8 @@
+summary: '`frontend/src/features/decisions/decisions/components/` の React のプレビューのモジュール'
+items:
+- page: decision-map.tsx.yaml
+  summary: 対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ
+- page: decision-outline.tsx.yaml
+  summary: 幅 900px 以下のマップ
+- page: decision-board.tsx.yaml
+  summary: 状態ごとの列に検討事項のカードを並べる

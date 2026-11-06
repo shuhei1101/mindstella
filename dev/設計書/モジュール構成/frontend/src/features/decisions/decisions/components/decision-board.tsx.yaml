@@ -1,0 +1,11 @@
+title: プレビュー / decision-board
+lead: 状態ごとの列に検討事項のカードを並べる。
+components:
+- name: DecisionBoard
+  title: 検討事項のボード
+  kind: コンポーネント
+  usecase: 検討事項をマップで辿る
+  summary: 状態ごとの列に検討事項のカードを並べる
+  container: frontend/src/features/decisions/decisions/components/decision-board.tsx
+notes:
+  単体テスト: 同じフォルダの `decision-board.test.tsx` に置く（knowledge の規約『フォルダ構成』）

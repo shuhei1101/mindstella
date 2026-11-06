@@ -1,0 +1,24 @@
+title: プレビュー / body-view
+lead: 本文の形式と差分の表示に応じて描く部品を選ぶ。
+components:
+- name: BodyView
+  title: 本文の表示
+  kind: コンポーネント
+  usecase: 項目の詳細を読む
+  summary: 本文の形式と差分の表示に応じて描く部品を選び、描いた後に `h` の見出しへ送る。本文に無い見出しは本文の頭で開き、URL から `h` を外す
+  container: frontend/src/features/detail/detail-panel/components/body-view.tsx
+  unit_tests:
+  - name: test_body_view_when_heading
+    case: 正常
+    summary: 見出しへ送る
+    condition: '`h=決め方` と見出しを持つ本文'
+    mock: mdmark の `mount`
+    expected: その見出しが本文の区画に入る
+  - name: test_body_view_when_heading_missing
+    case: 正常
+    summary: 本文に無い見出し
+    condition: '`h=無い見出し`'
+    mock: mdmark の `mount`
+    expected: 本文の頭で開き、URL から `h` が外れる
+notes:
+  単体テスト: 同じフォルダの `body-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

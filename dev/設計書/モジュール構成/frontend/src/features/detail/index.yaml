@@ -1,0 +1,8 @@
+summary: '`frontend/src/features/detail/` の React のプレビューのモジュール'
+items:
+- page: detail-panel/
+  summary: '`frontend/src/features/detail/detail-panel/` の React のプレビューのモジュール'
+- page: detail-fullscreen/
+  summary: '`frontend/src/features/detail/detail-fullscreen/` の React のプレビューのモジュール'
+- page: diagram-viewer/
+  summary: '`frontend/src/features/detail/diagram-viewer/` の React のプレビューのモジュール'

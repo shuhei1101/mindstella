@@ -1,0 +1,11 @@
+title: プレビュー / option-list
+lead: 検討事項の案をカードで並べる。
+components:
+- name: OptionList
+  title: 案の一覧
+  kind: コンポーネント
+  usecase: 項目の詳細を読む
+  summary: 検討事項の案をカードで並べる
+  container: frontend/src/features/detail/detail-panel/components/option-list.tsx
+notes:
+  単体テスト: 同じフォルダの `option-list.test.tsx` に置く（knowledge の規約『フォルダ構成』）

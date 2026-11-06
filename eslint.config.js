@@ -39,7 +39,8 @@ export default tseslint.config(
       ...reactHooks.configs["recommended-latest"].rules,
       ...jsxA11y.flatConfigs.recommended.rules,
       ...betterTailwindcss.configs.recommended.rules,
-      "better-tailwindcss/no-unknown-classes": "error",
+      // body.css の規則は mdmark が描いた DOM に当てるので Tailwind の外にある
+      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^md$", "^df-.*", "^panel-.*", "^sbs.*", "^html-frame$", "^term$"] }],
       "better-tailwindcss/no-restricted-classes": ["error", { restrict: [{ pattern: "\\[.*\\]", message: "任意値は使わない" }] }],
       "better-tailwindcss/enforce-consistent-line-wrapping": "off",
       "@typescript-eslint/no-deprecated": "error",
@@ -55,7 +56,7 @@ export default tseslint.config(
           default: "disallow",
           policies: [
             { from: { element: { type: "app" } }, allow: { to: { element: { types: ["app", "routes", "features", "shared"] } } } },
-            { from: { element: { type: "routes" } }, allow: { to: { element: { types: ["routes", "features", "shared"] } } } },
+            { from: { element: { type: "routes" } }, allow: { to: { element: { types: ["app", "routes", "features", "shared"] } } } },
             { from: { element: { type: "features" } }, allow: { to: { element: { types: ["features", "shared"] } } } },
             { from: { element: { type: "shared" } }, allow: { to: { element: { types: ["shared"] } } } },
           ],

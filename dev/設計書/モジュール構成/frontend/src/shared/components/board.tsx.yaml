@@ -1,0 +1,9 @@
+title: プレビュー / board
+lead: 状態ごとの列にカードを並べたボードと項目のカード。
+components:
+- name: Board
+  title: ボード
+  kind: コンポーネント
+  usecase: タスクをボードで見る
+  summary: 状態ごとの列にカードを並べたボードと項目のカード
+  container: frontend/src/shared/components/board.tsx
