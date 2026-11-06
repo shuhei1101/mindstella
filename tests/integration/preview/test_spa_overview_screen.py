@@ -94,6 +94,12 @@ def _legacy_hash(page: Page) -> dict[str, str]:
     return dict(parse_qsl(unquote(urlsplit(page.url).fragment)))
 
 
+def _spa_search(page: Page) -> dict[str, str]:
+    """React の画面へ移るのを待ち、URL の search の引数を返す。"""
+    page.wait_for_url("**/spa/?*tab=*", timeout=NAVIGATE_TIMEOUT_MS)
+    return dict(parse_qsl(urlsplit(page.url).query))
+
+
 def _texts(page: Page, selector: str) -> list[str]:
     """セレクタに当たる要素の文字を上から返す。"""
     return page.eval_on_selector_all(selector, "els => els.map(e => e.textContent)")
@@ -128,15 +134,15 @@ def test_topbar(write_sample_preview: WriteSamplePreview, page: Page) -> None:
     assert page.get_attribute(f'{TABBAR} a[data-tab="overview"]', "aria-current") == "page"
 
 
-def test_topbar_tab_opens_legacy(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """タブを押すと、今の画面のその種類を同じタブで開く（正常系）。"""
+def test_topbar_tab_opens_screen(write_sample_preview: WriteSamplePreview, page: Page) -> None:
+    """タブを押すと、その種類の画面を開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
     # 実行
     page.click(f'{TABBAR} a[data-tab="tasks"]')
     # 検証
-    assert _legacy_hash(page) == {"tab": "tasks"}
+    assert _spa_search(page) == {"tab": "tasks"}
 
 
 def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> None:
@@ -156,7 +162,7 @@ def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> N
 
 
 def test_next_tile(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """次に検討する項目を build が埋め込んだ順に並べ、押すと今の画面の詳細パネルを開く（正常系）。"""
+    """次に検討する項目を build が埋め込んだ順に並べ、押すと詳細パネルを開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
@@ -167,13 +173,12 @@ def test_next_tile(write_sample_preview: WriteSamplePreview, page: Page) -> None
     # 検証
     assert ids == ["D-2", "D-5"]
     assert impact == "影響度 大"
-    assert _legacy_hash(page) == {"tab": "decisions", "id": "D-2"}
-    page.wait_for_selector("aside.panel.open")
-    assert page.inner_text("aside.panel .d-title") == "D-2の題"
+    assert _spa_search(page) == {"tab": "decisions", "id": "D-2"}
+    assert page.get_by_role("complementary", name="詳細").get_by_role("heading", level=2).inner_text() == "D-2の題"
 
 
 def test_next_tile_show_all(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """すべて表示で、今の画面の検討事項の表を 未決定 × 着手可否 = 着手可能 で絞って開く（正常系）。"""
+    """すべて表示で、検討事項の表を 未決定 × 着手可否 = 着手可能 で絞って開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
@@ -182,7 +187,7 @@ def test_next_tile_show_all(write_sample_preview: WriteSamplePreview, page: Page
     page.click(f"#tile-next {SHOW_ALL}")
     # 検証
     assert label == "すべて表示（2 件）"
-    assert _legacy_hash(page) == {
+    assert _spa_search(page) == {
         "tab": "decisions",
         "view": "table",
         "f.status": "未決定",
@@ -227,7 +232,7 @@ def test_next_tile_head_when_narrow(
 
 
 def test_goal_tile(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """ゴールのフェーズまでの決定済みの数・フェーズごとの棒・納品物のチェックリストを出し、納品物を押すと今の画面の詳細パネルを開く（正常系）。"""
+    """ゴールのフェーズまでの決定済みの数・フェーズごとの棒・納品物のチェックリストを出し、納品物を押すと詳細パネルを開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
@@ -244,7 +249,7 @@ def test_goal_tile(write_sample_preview: WriteSamplePreview, page: Page) -> None
     assert stages == ["目的1/1", "要件0/2"]
     assert deliverables == ["YAML のスキーマ"]
     assert states == [{"title": "YAML のスキーマ", "checked": True, "struck": True}]
-    assert _legacy_hash(page) == {"tab": "docs", "id": "A-1"}
+    assert _spa_search(page) == {"tab": "docs", "id": "A-1"}
 
 
 def test_goal_tile_when_deliverable_remaining(
@@ -301,7 +306,7 @@ def test_goal_tile_deliverables_show_all(
     valid_settings: dict[str, Any],
     page: Page,
 ) -> None:
-    """納品物が 5 件を超えたら先頭 5 件を出し、すべて表示で今の画面の資料を納品物で絞ってカードで開く（正常系）。"""
+    """納品物が 5 件を超えたら先頭 5 件を出し、すべて表示で資料を納品物で絞ってカードで開く（正常系）。"""
     # 準備
     settings = {**valid_settings, "goal": {**valid_settings["goal"], "deliverables": SIX_DELIVERABLES}}
     url = write_preview(make_item("D-1"), settings=settings)
@@ -311,7 +316,7 @@ def test_goal_tile_deliverables_show_all(
     page.click("#tile-goal button:text-is('すべて表示（6 件）')")
     # 検証
     assert shown == ["納品物 1", "納品物 2", "納品物 3", "納品物 4", "納品物 5"]
-    assert _legacy_hash(page) == {"tab": "docs", "view": "cards", "f.deliverable": "納品物"}
+    assert _spa_search(page) == {"tab": "docs", "view": "cards", "f.deliverable": "納品物"}
 
 
 def test_description(
@@ -344,7 +349,7 @@ def test_description_when_missing(write_preview: WritePreview, make_item: MakeIt
 
 
 def test_small_tiles(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """要見直し・保留・進行中のタスクの件数と名前を出し、押すと今の画面の詳細パネルを開く（正常系）。"""
+    """要見直し・保留・進行中のタスクの件数と名前を出し、押すと詳細パネルを開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
@@ -361,7 +366,7 @@ def test_small_tiles(write_sample_preview: WriteSamplePreview, page: Page) -> No
     # 検証
     assert counts == {"tile-review": "1", "tile-hold": "1", "tile-running": "1"}
     assert names == {"tile-review": ["D-3"], "tile-hold": ["D-4"], "tile-running": ["T-1"]}
-    assert _legacy_hash(page) == {"tab": "tasks", "id": "T-1"}
+    assert _spa_search(page) == {"tab": "tasks", "id": "T-1"}
 
 
 @pytest.mark.parametrize(
@@ -375,14 +380,14 @@ def test_small_tiles(write_sample_preview: WriteSamplePreview, page: Page) -> No
 def test_small_tiles_show_all(
     write_sample_preview: WriteSamplePreview, page: Page, tile_id: str, expected: dict[str, str]
 ) -> None:
-    """すべて表示で、今の画面の表をタイルの状態で絞って開く（正常系）。"""
+    """すべて表示で、表をタイルの状態で絞って開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
     # 実行
     page.click(f"#{tile_id} {SHOW_ALL}")
     # 検証
-    assert _legacy_hash(page) == expected
+    assert _spa_search(page) == expected
 
 
 def test_small_tiles_when_empty(write_preview: WritePreview, make_item: MakeItem, page: Page) -> None:
@@ -401,7 +406,7 @@ def test_small_tiles_when_empty(write_preview: WritePreview, make_item: MakeItem
 
 
 def test_progress_tile(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """カテゴリー別の進捗をカテゴリー × フェーズで出し、セルを押すと今の画面の表をカテゴリーとフェーズで絞って開く（正常系）。"""
+    """カテゴリー別の進捗をカテゴリー × フェーズで出し、セルを押すと表をカテゴリーとフェーズで絞って開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
@@ -412,7 +417,7 @@ def test_progress_tile(write_sample_preview: WriteSamplePreview, page: Page) -> 
     # 検証
     assert totals == ["1/2", "0/3"]
     assert empty_cells == 2
-    assert _legacy_hash(page) == {
+    assert _spa_search(page) == {
         "tab": "decisions",
         "view": "table",
         "f.category": "画面",
@@ -421,14 +426,14 @@ def test_progress_tile(write_sample_preview: WriteSamplePreview, page: Page) -> 
 
 
 def test_progress_tile_category_link(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """行の見出しを押すと、今の画面の表をカテゴリーだけで絞って開く（正常系）。"""
+    """行の見出しを押すと、表をカテゴリーだけで絞って開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
     # 実行
     page.click("#tile-progress th button:text-is('データ構造')")
     # 検証
-    assert _legacy_hash(page) == {"tab": "decisions", "view": "table", "f.category": "データ構造"}
+    assert _spa_search(page) == {"tab": "decisions", "view": "table", "f.category": "データ構造"}
 
 
 def test_hidden_kinds_keep_tiles(
@@ -531,7 +536,7 @@ def test_fit_smallest(write_sample_preview: WriteSamplePreview, page: Page) -> N
 def test_topbar_pending(
     write_edit_preview: WriteReviewPreview, make_item: MakeItem, make_edit: MakeEdit, page: Page
 ) -> None:
-    """トップバーに保存待ちのボタンを出し、溜めた件数を見せる。押すと今の画面の概要を開く（正常系）。"""
+    """トップバーに保存待ちのボタンを出し、溜めた件数を見せる。押すと概要を開く（正常系）。"""
     # 準備
     url, _ = write_edit_preview(*edit_items(make_item, "D"), edits=edit_edits(make_edit, "D"))
     open_spa(page, url)
@@ -540,7 +545,8 @@ def test_topbar_pending(
     page.click('header button[aria-label^="保存待ち"]')
     # 検証
     assert label == "保存待ち（3 件）"
-    assert _legacy_hash(page) == {"tab": "overview"}
+    page.wait_for_url("**panel=pending*", timeout=NAVIGATE_TIMEOUT_MS)
+    assert page.get_by_role("complementary", name="保存待ちの編集").is_visible()
 
 
 def test_topbar_pending_hidden_when_nothing(write_edit_preview: WriteReviewPreview, make_item: MakeItem, page: Page) -> None:
@@ -554,7 +560,7 @@ def test_topbar_pending_hidden_when_nothing(write_edit_preview: WriteReviewPrevi
 
 
 def test_topbar_comments(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """コメントのボタンを出し、押すと今の画面の概要を開く（パネルは今の画面で開く）（正常系）。"""
+    """コメントのボタンを出し、押すと概要を開く（パネルは今の画面で開く）（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)

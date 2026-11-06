@@ -48,6 +48,9 @@ from workspace_fixtures import (
 # 画面が描き終わるまで待つ上限ミリ秒
 RENDER_TIMEOUT_MS = 15_000
 
+# React の画面のテストの本文
+SPA_BODY = "## 決め方\n\n本文の段落\n\n| ID | 名前 |\n| --- | --- |\n| A-1 | 表の行 |\n"
+
 
 @pytest.fixture
 def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePreview:
@@ -66,6 +69,17 @@ def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePr
         return str(result.data["url"])
 
     return _write
+
+
+@pytest.fixture
+def spa_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
+    """React の画面のテストが開く、検討事項・タスクと本文を持つワークスペースの配信の URL を返す。"""
+    return write_preview(
+        make_item("D-1", title="記録の形", status="未決定", options=[{"key": "A", "content": "案 A"}], body="D-1.md"),
+        make_item("D-2", title="画面の幅", status="保留", depends_on=["D-1"]),
+        make_item("T-1", title="画面を作る", status="進行中"),
+        bodies={"D-1.md": SPA_BODY},
+    )
 
 
 @pytest.fixture
