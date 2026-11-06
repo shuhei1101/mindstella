@@ -91,10 +91,10 @@ flows:
         participant IF as プレビューの画面
 
         ユーザー->>IF: #tab=decisions&id=D-99 で開く
-        IF-->>ユーザー: 検討事項のマップ（詳細パネルなし）
+        IF-->>ユーザー: 検討事項のボード（詳細パネルなし）
       ```
     expected:
-      - タブの帯で検討事項が選ばれ、表示形式はマップ
+      - タブの帯で検討事項が選ばれ、表示形式はボード
       - 詳細パネルが開いていない
       - URL のハッシュに `id` が無い
     test: test_normal_when_item_not_found
@@ -105,14 +105,14 @@ flows:
         description: ブラウザから `file:` 以外への要求を全て失敗させ、要求の数を数える
       - name: exported_html
         description: 検討事項 D-3（本文に見出しと mermaid の図を持つ）を持つワークスペースから `export` で書き出した HTML
-        notes: ハッシュは `tab=decisions&id=D-3`
+        notes: ハッシュは `tab=decisions&view=map&id=D-3`
     flow: |-
       ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as 配る書き出し
 
-        ユーザー->>IF: #tab=decisions&id=D-3 で開く
+        ユーザー->>IF: #tab=decisions&view=map&id=D-3 で開く
         IF->>IF: 中に持つ描画のライブラリと mindmap-data を読む
         IF-->>ユーザー: 検討事項のマップと D-3 の詳細パネル
       ```
@@ -130,7 +130,7 @@ flows:
         description: ブラウザから描画のライブラリの配信元への要求を全て失敗させる。MCP サーバーを立てて `preview_url` が返した URL を開く
       - name: make_workspace
         description: 検討事項 D-3（本文に見出しと mermaid の図を持つ）を持つワークスペース
-        notes: ハッシュは `tab=decisions&id=D-3`
+        notes: ハッシュは `tab=decisions&view=map&id=D-3`
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -138,7 +138,7 @@ flows:
         participant IF as プレビューの画面
         participant CDN as 描画のライブラリの配信元
 
-        ユーザー->>IF: #tab=decisions&id=D-3 で開く
+        ユーザー->>IF: #tab=decisions&view=map&id=D-3 で開く
         IF-->>CDN: 描画のライブラリを読む（届かない）
         IF-->>ユーザー: 読めなかったライブラリの知らせと本文の原文
       ```
@@ -1406,7 +1406,7 @@ request:
   - name: view
     type: "'map' | 'board' | 'cards' | 'table'"
     required: false
-    default: 画面ごとの既定（`decisions` は `map`、`tasks` は `board`、`docs` は `cards`、それ以外は `table`）
+    default: 画面ごとの既定（`decisions` は `board`、`tasks` は `board`、`docs` は `cards`、それ以外は `table`）
     description: 表示形式。既定と違うときだけハッシュに書く
     constraints: その画面が持たない形式のときは既定の形式で開く
     notes: URL のハッシュの引数
