@@ -5,6 +5,7 @@ import { Icon } from "@/shared/components/icon";
 import { BlockedNote } from "@/shared/components/blocked-note";
 import { TagList } from "@/shared/components/tag-list";
 import { Button } from "@/shared/components/ui/button";
+import { AppError } from "@/shared/core/app-error";
 import { SETTINGS_TARGET, type PendingEdit } from "@/shared/core/edits";
 import { toText } from "@/shared/core/format";
 import { KIND_LABEL, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
@@ -83,7 +84,9 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
   const cancel = useCancelEdit();
   const blocked = useEditSessionStore((state) => state.blocked);
   const alert = useRef<HTMLDivElement>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // 直前の保存の失敗（サーバーが断った文か、サーバーに届かなかった）
+  const [failure, setFailure] = useState<{ kind: "refused"; message: string } | { kind: "unreachable" } | null>(null);
   const setSaved = useEditSessionStore((state) => state.setSaved);
   const removals = edits.filter((edit) => edit.op === "item-remove").length;
   const blockedBy = new Map(blocked.map((entry) => [entry.id, entry]));
@@ -92,15 +95,33 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
     const who = describeTarget(edit.target, edits.filter((other) => other.target === edit.target), index);
     return `${who.id ?? who.kind} の${rowText(edit).what}`;
   };
+  // 開いたときに見出しへフォーカスを移す
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
   // 書き込めない編集の知らせを出したら、知らせへフォーカスを移す
   useEffect(() => {
     if (blocked.length > 0) alert.current?.focus();
   }, [blocked]);
   const label = save.isPending ? "保存しています…" : removals > 0 ? `まとめて保存する（${String(removals)} 件を削除）` : "まとめて保存する";
   return (
-    <aside id="pending-panel" aria-label="保存待ちの編集" className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card">
+    <>
+    {/* 幅 901px 以上は後ろをグレーアウトし、押すと閉じる（押した操作は後ろの部品へ届けない） */}
+    <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 hidden bg-foreground/40 lg:block" onClick={onClose} />
+    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
+    <aside
+      id="pending-panel"
+      aria-label="保存待ちの編集"
+      className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          onClose();
+        }
+      }}
+    >
       <div className="flex items-center gap-2 border-b border-border-soft p-2">
-        <h2 className="m-0 text-h2 font-semibold">保存待ち</h2>
+        <h2 ref={heading} tabIndex={-1} className="m-0 text-h2 font-semibold">保存待ち</h2>
         <span className="text-xs text-muted-foreground">{edits.length} 件</span>
         <Button variant="ghost" size="icon" aria-label="保存待ちの編集を閉じる" className="ml-auto" onClick={onClose}>
           <Icon name="x" />
@@ -125,12 +146,21 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
             <p className="m-0">書き込めない編集を取り消してから、もう一度保存してください。</p>
           </div>
         ) : null}
-        {failure === null ? null : (
+        {failure?.kind === "refused" ? (
           <p role="alert" className="flex items-center gap-1 text-small text-destructive">
             <Icon name="alert" className="size-4" />
-            {`保存できませんでした。${failure}`}
+            {`保存できませんでした。${failure.message}`}
           </p>
-        )}
+        ) : null}
+        {failure?.kind === "unreachable" ? (
+          <div role="alert" className="rounded-control border border-destructive p-2 text-small">
+            <p className="m-0 flex items-center gap-1 font-medium">
+              <Icon name="offline" className="size-4" />
+              サーバーにつながらないため、保存できませんでした。
+            </p>
+            <p className="m-0">保存待ちの編集は残っています。サーバーを立ち上げ直してから、もう一度保存してください。</p>
+          </div>
+        ) : null}
         {edits.length === 0 ? <p className="text-small text-muted-foreground">保存待ちの編集はありません。</p> : null}
         {groupEdits(edits).map((group) => {
           const who = describeTarget(group.target, group.edits, index);
@@ -186,14 +216,15 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
         })}
       </div>
       <div className="flex flex-col gap-1 border-t border-border-soft p-2">
-        {edits.length === 0 ? null : <p className="m-0 text-xs text-muted-foreground">{`${String(edits.length)} 件${removals > 0 ? `（うち削除 ${String(removals)} 件）` : ""}をワークスペースへ書き込みます。`}</p>}
+        {edits.length === 0 ? null : <p className="m-0 text-xs text-muted-foreground">{`${String(edits.length)} 件${removals > 0 ? `（うち削除 ${String(removals)} 件）` : ""}をワークスペースに書きます`}</p>}
         <Button
           disabled={save.isPending || edits.length === 0}
           aria-busy={save.isPending || undefined}
           onClick={() => {
             setFailure(null);
             setSaved(null);
-            save.mutate(edits.length, { onError: (error) => { setFailure(error.message); } });
+            // 全て書けたらパネルを閉じる（保存した知らせは外枠が出す）。書き込めない編集があれば開いたまま知らせを出す
+            save.mutate(edits.length, { onSuccess: ({ blocked: refused }) => { if (refused.length === 0) onClose(); }, onError: (error) => { setFailure(error instanceof AppError ? { kind: "refused", message: error.message } : { kind: "unreachable" }); } });
           }}
         >
           <Icon name="save" />
@@ -201,5 +232,6 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
         </Button>
       </div>
     </aside>
+    </>
   );
 };

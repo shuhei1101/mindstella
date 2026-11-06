@@ -13,13 +13,16 @@ export const SideBySideBodyDiff = ({ before, after, lined = true }: SideBySideBo
   const mdmark = useLibrary("mdmark").status;
   const marked = useLibrary("marked").status;
   const jsdiff = useLibrary("jsdiff").status;
+  const mermaid = useLibrary("mermaid").status;
+  // 図を持つ本文は、mermaid を読み終えてから（読めなかったときは知らせを出して）描く
+  const hasDiagram = `${before}\n${after}`.includes("```mermaid");
   const create = useCallback(() => {
-    if (mdmark !== "ready" || marked !== "ready" || jsdiff !== "ready") return { node: null };
+    if (mdmark !== "ready" || marked !== "ready" || jsdiff !== "ready" || (hasDiagram && mermaid === "loading")) return { node: null };
     const view = sideBySideBodyDiff({ before, after, lined, deadline: performance.now() + LINE_DIFF_TIMEOUT_MS });
     if (view === null) return { node: null };
     view.markWords();
     void renderDiagrams(view.root).then(() => { view.decorate(); });
     return { node: view.root };
-  }, [before, after, lined, mdmark, marked, jsdiff]);
+  }, [before, after, lined, mdmark, marked, jsdiff, hasDiagram, mermaid]);
   return <DomHost create={create} />;
 };

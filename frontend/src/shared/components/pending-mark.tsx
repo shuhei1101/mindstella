@@ -9,12 +9,19 @@ const PENDING_MARKS: Record<PendingMarkKind, { label: string; icon: IconName }> 
   blocked: { label: "書き込めない", icon: "alert" },
 };
 
+/** 枠の線の種類と色（書き換え・追加は印の色の破線、削除は文字色の破線、書き込めない編集は失敗の赤の実線） */
+const PENDING_TONE: Record<PendingMarkKind, string> = {
+  pending: "border-dashed border-mark-line text-foreground",
+  remove: "border-dashed border-foreground text-foreground",
+  blocked: "border-destructive text-destructive",
+};
+
 export type PendingMarkProps = { kind: PendingMarkKind; compact?: boolean };
 
 export const PendingMark = ({ kind, compact = false }: PendingMarkProps) => {
   const { label, icon } = PENDING_MARKS[kind];
   return (
-    <span title={compact ? label : undefined} className={cn("inline-flex items-center gap-0.5 rounded-control border px-1 text-xs", kind === "blocked" ? "border-destructive text-destructive" : "border-dashed border-mark-line text-foreground")}>
+    <span title={compact ? label : undefined} className={cn("inline-flex items-center gap-0.5 rounded-control border text-xs", compact ? "h-4.5 w-5 justify-center" : "px-1", PENDING_TONE[kind])}>
       <Icon name={icon} className="size-3" />
       {compact ? <span className="sr-only">{label}</span> : label}
     </span>

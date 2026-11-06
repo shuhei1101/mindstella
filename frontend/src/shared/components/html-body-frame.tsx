@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { DomHost } from "@/shared/components/dom-host";
 import { htmlFrameElement, type HtmlBodyFrameProps } from "@/shared/core/html-frame";
 
-export const HtmlBodyFrame = ({ source, selectable = false, label, marks, on }: HtmlBodyFrameProps) => {
+export const HtmlBodyFrame = ({ source, selectable = true, label, marks, on }: HtmlBodyFrameProps) => {
   const create = useCallback(
     () => ({ node: htmlFrameElement({ source, selectable, ...(label === undefined ? {} : { label }), ...(marks === undefined ? {} : { marks }), ...(on === undefined ? {} : { on }) }) }),
     [source, selectable, label, marks, on],

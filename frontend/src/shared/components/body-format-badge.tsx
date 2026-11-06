@@ -7,7 +7,7 @@ const FORMAT_TITLE = { md: "本文は Markdown", html: "本文は HTML" } as con
 export type BodyFormatBadgeProps = { format: "md" | "html" };
 
 export const BodyFormatBadge = ({ format }: BodyFormatBadgeProps) => (
-  <span title={FORMAT_TITLE[format]} className={cn("rounded-control px-1 font-mono text-xs text-muted-foreground", format === "html" && "bg-muted")}>
+  <span title={FORMAT_TITLE[format]} className={cn("rounded-control border border-border px-1 font-mono text-xs text-muted-foreground", format === "html" && "border-muted-foreground bg-muted text-foreground")}>
     {FORMAT_LABEL[format]}
   </span>
 );

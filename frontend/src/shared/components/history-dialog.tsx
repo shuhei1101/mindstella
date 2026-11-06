@@ -1,4 +1,6 @@
 // 変更履歴のモーダル（部品設計『変更履歴.tsx』）。差分の表示で比べる時点を、日時・説明・変わった項目の数つきで新しい順に並べ、1 つ選ばせる
+import { useRef } from "react";
+
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
@@ -13,14 +15,17 @@ export type HistoryDialogProps = {
   onClose: () => void;
 };
 
-export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDialogProps) => (
+export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDialogProps) => {
+  // 開いたときにフォーカスを置く、今選んでいる時点の行
+  const selectedRow = useRef<HTMLButtonElement>(null);
+  return (
   <Dialog
     open
     onOpenChange={(open) => {
       if (!open) onClose();
     }}
   >
-    <DialogContent>
+    <DialogContent initialFocus={selectedRow}>
       <div className="flex items-center justify-between border-b border-border-soft p-3">
         <DialogTitle className="text-h2 font-medium">変更履歴</DialogTitle>
         <DialogClose render={<Button variant="ghost" size="icon" aria-label="変更履歴を閉じる" />}>
@@ -33,6 +38,7 @@ export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDia
           return (
             <li key={point.sel}>
               <button
+                ref={selected ? selectedRow : undefined}
                 type="button"
                 data-sel={point.sel}
                 aria-current={selected ? "true" : undefined}
@@ -46,10 +52,10 @@ export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDia
                   {selected ? <Icon name="check" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-small font-medium">{point.name}</span>
+                  <span className="block text-small font-medium wrap-break-word">{point.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{point.sub}</span>
                 </span>
-                {point.count === undefined ? null : <span className="font-mono text-xs text-muted-foreground">{point.count} 件</span>}
+                {point.count === undefined ? null : <span className="flex-none font-mono text-xs whitespace-nowrap text-muted-foreground">{point.count} 件</span>}
               </button>
             </li>
           );
@@ -58,3 +64,4 @@ export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDia
     </DialogContent>
   </Dialog>
 );
+};

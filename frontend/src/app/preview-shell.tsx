@@ -1,6 +1,6 @@
 // SPA の外枠（インターフェース定義『SPAを開く』）。`tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネルを重ねる。features の画面を組むのはここだけ
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DecisionsScreen } from "@/features/decisions/decisions/decisions-screen";
 import { DetailFullscreen } from "@/features/detail/detail-fullscreen/detail-fullscreen";
@@ -38,7 +38,7 @@ const isListKind = (tab: string): tab is Kind => (KIND_KEYS as readonly string[]
 const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "notes", "logs"].includes(tab);
 
 /** 保存の通知を出しておくミリ秒 */
-const SAVED_NOTICE_MS = 4000;
+const SAVED_NOTICE_MS = 5000;
 
 const hasUnread = (threads: Threads | undefined): boolean => threads?.threads.some((thread) => thread.status === "open" && thread.posts.some((post) => !post.seen)) ?? false;
 
@@ -55,7 +55,7 @@ const RecordsError = ({ error }: { error: Error }) => (
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
-  const { search, setTab, openItem, setDiff, setPanel, replaceSearch } = usePreviewSearch();
+  const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch } = usePreviewSearch();
   const records = useQuery(recordsQuery());
   const comments = useQuery(commentsQuery());
   const threads = useQuery(threadsQuery());
@@ -82,10 +82,13 @@ export const PreviewShell = () => {
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
+  // 開いたときに確かめ終えたか（開いている間に取り消して保存待ちが 0 件になっても、保存待ちのパネルは開いたまま空の状態を出す）
+  const opened = useRef(false);
   // 記録に合わない値を外す（並べ替えの列は一覧の画面が確かめる）
   useEffect(() => {
     if (index === null) return;
-    const next = normalizeSearch(search, { index, pendingCount, visibleKinds: [...visible], diffActive, sortColumns: search.sort === undefined ? [] : [search.sort.replace(/^-/, "")] });
+    const next = normalizeSearch(search, { index, pendingCount: opened.current ? Math.max(pendingCount, 1) : pendingCount, visibleKinds: [...visible], diffActive, sortColumns: search.sort === undefined ? [] : [search.sort.replace(/^-/, "")] });
+    opened.current = true;
     if (JSON.stringify(next) !== JSON.stringify(search)) replaceSearch(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- search の中身が変わったときだけ確かめる
   }, [index, JSON.stringify(search), pendingCount, diffActive]);
@@ -179,7 +182,8 @@ export const PreviewShell = () => {
           onClose={() => { setPanel(undefined); }}
           onOpen={(target) => {
             const added = edits.find((edit) => edit.op === "item-add" && edit.target === target);
-            if (target === SETTINGS_TARGET) setTab("settings");
+            // 設定の画面は本文の区画を置き換えるので、保存待ちのパネルを閉じて開く（溜めた編集は残る）
+            if (target === SETTINGS_TARGET) openList("settings", {});
             else if (added === undefined) {
               closeAdd();
               openItem(target);

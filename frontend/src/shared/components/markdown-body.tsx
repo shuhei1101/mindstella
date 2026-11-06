@@ -1,27 +1,26 @@
-// Markdown の本文（部品設計『Markdownの本文.tsx』）。mdmark の `mount` を `useEffect` の中で呼び、描いた要素に見せ方を当てる
+// Markdown の本文（部品設計『Markdownの本文.tsx』）。mdmark で描いた本文（表の入れ物・図の入れ物つき）を `useEffect` の中で置き、見せ方を当てる
 import { useEffect, useRef } from "react";
 
 import { useLibrary } from "@/shared/adapters/libraries";
-import { MDMARK_FEATURES } from "@/shared/core/body-links";
+import { renderMarkdown } from "@/shared/core/body-links";
 import { decorateMarkdown, BODY_VIEW_DEFAULT, type BodyView } from "@/shared/core/markdown-decorate";
-
-type Mdmark = { mount: (root: HTMLElement, options: { markdown: string; config: { features: Record<string, boolean> } }) => { destroy?: () => void } | undefined };
 
 export type MarkdownBodyProps = { source: string; display?: BodyView; fold?: boolean; tables?: boolean };
 
 export const MarkdownBody = ({ source, display = BODY_VIEW_DEFAULT, fold = true, tables = true }: MarkdownBodyProps) => {
-  const { status, library } = useLibrary("mdmark");
+  const { status } = useLibrary("mdmark");
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = host.current;
     if (root === null || status !== "ready") return undefined;
-    const mounted = (library as Mdmark).mount(root, { markdown: source, config: { features: MDMARK_FEATURES } });
-    decorateMarkdown({ root, display, fold, tables });
+    // 描いた本文（mdmark が根に付けた見た目の属性ごと）を部品の要素へ置き、見せ方を当てる
+    const rendered = renderMarkdown(source);
+    root.replaceChildren(rendered);
+    decorateMarkdown({ root: rendered, display, fold, tables });
     return () => {
-      mounted?.destroy?.();
       root.replaceChildren();
     };
-  }, [status, library, source, display, fold, tables]);
+  }, [status, source, display, fold, tables]);
   if (status === "failed") {
     return (
       <div>
@@ -30,5 +29,5 @@ export const MarkdownBody = ({ source, display = BODY_VIEW_DEFAULT, fold = true,
       </div>
     );
   }
-  return <div ref={host} className="md" />;
+  return <div ref={host} />;
 };

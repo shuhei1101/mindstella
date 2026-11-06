@@ -5,6 +5,7 @@ import { cn } from "@/shared/lib/cn";
 
 /** アイコンの名前 → SVG の中身 */
 const ICONS = {
+  spin: <path d="M12 3a9 9 0 1 0 9 9"/>,
   map: (
     <>
       <circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12h3l4-5M11.5 12l4 5"/>

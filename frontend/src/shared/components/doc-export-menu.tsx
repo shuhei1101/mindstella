@@ -1,11 +1,12 @@
 // 資料のエクスポートのメニュー（部品設計『資料のエクスポートのメニュー.tsx』）。形式の選択・Markdown の警告・処理中・エラーを中身を替えて出す
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { buildDocHtml, downloadText, mdmarkAssets, stripEmbeddedHtml } from "@/shared/core/doc-export";
 import type { Item, RecordIndex } from "@/shared/core/records";
+import { cn } from "@/shared/lib/cn";
 
 type View = "choose" | "warn" | "busy" | "error";
 
@@ -13,8 +14,8 @@ const TITLES: Record<View, string> = { choose: "エクスポート", busy: "エ�
 
 const Row = ({ icon, name, sub, busy, disabled, focused, onPress }: { icon: IconName; name: string; sub: string; busy: boolean; disabled: boolean; focused: boolean; onPress: () => void }) => (
   // eslint-disable-next-line jsx-a11y/no-autofocus -- 中身を替えたときに選んでいた行へフォーカスを戻す
-  <button type="button" autoFocus={focused} aria-disabled={disabled || undefined} className="flex w-72 cursor-pointer items-start gap-2 rounded-control p-2 text-left hover:bg-accent" onClick={() => { if (!disabled) onPress(); }}>
-    <Icon name={icon} />
+  <button type="button" autoFocus={focused} aria-disabled={disabled || undefined} className={cn("flex w-full max-w-72 cursor-pointer items-start gap-2 rounded-control p-2 text-left hover:bg-accent", disabled && !busy && "opacity-50")} onClick={() => { if (!disabled) onPress(); }}>
+    <Icon name={busy ? "spin" : icon} className={cn(busy && "animate-spin motion-reduce:animate-none")} />
     <span className="flex flex-col">
       <span className="text-small font-medium">{name}</span>
       <span role={busy ? "status" : undefined} className="text-xs text-muted-foreground">
@@ -40,16 +41,17 @@ export type DocExportMenuProps = {
 /** メニューの中身。開閉とエクスポートの処理は `DocExportControl` が持つ */
 export const DocExportMenu = ({ view = "choose", focus = "html", onFormat, onConfirm, onBack, onRetry }: DocExportMenuProps) => {
   const busy = view === "busy";
+  const titleId = useId();
   return (
-    <div role="dialog" aria-label={TITLES[view]} aria-busy={busy || undefined}>
-      <p className="mb-1 text-small font-medium">{TITLES[view]}</p>
+    <div role="dialog" aria-labelledby={titleId} aria-busy={busy || undefined}>
+      <p id={titleId} className="mb-1 text-small font-medium">{TITLES[view]}</p>
       {view === "choose" || busy ? (
-        <div role="group" aria-label="エクスポート">
+        <div role="group" aria-labelledby={titleId}>
           <Row icon="code" name="HTML でエクスポート" sub={busy ? "エクスポートしています…" : "スタイルと用語のツールチップを含む 1 つのファイル"} busy={busy} disabled={busy} focused={busy || focus === "html"} onPress={() => { onFormat("html"); }} />
           <Row icon="doc" name="Markdown でエクスポート" sub="本文の Markdown だけ" busy={false} disabled={busy} focused={!busy && focus === "md"} onPress={() => { onFormat("md"); }} />
         </div>
       ) : (
-        <div className="flex w-72 flex-col gap-2">
+        <div className="flex w-72 max-w-full flex-col gap-2">
           <p role={view === "error" ? "alert" : undefined} className="flex gap-1 text-small">
             <Icon name="alert" />
             {view === "warn" ? "埋め込んだ HTML・チャート・操作できる部品は含まれず、共通のスタイルも外れます。" : "mdmark のスタイルとスクリプトを読み込めませんでした。ネットワークにつながっているか確かめて、再試行してください。"}

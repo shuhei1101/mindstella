@@ -40,7 +40,7 @@ export default tseslint.config(
       ...jsxA11y.flatConfigs.recommended.rules,
       ...betterTailwindcss.configs.recommended.rules,
       // body.css の規則は mdmark が描いた DOM に当てるので Tailwind の外にある
-      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^md$", "^df-.*", "^panel-.*"] }],
+      "better-tailwindcss/no-unknown-classes": ["error", { ignore: ["^md$", "^df-.*", "^panel-.*", "^sbs.*", "^html-frame$", "^term$"] }],
       "better-tailwindcss/no-restricted-classes": ["error", { restrict: [{ pattern: "\\[.*\\]", message: "任意値は使わない" }] }],
       "better-tailwindcss/enforce-consistent-line-wrapping": "off",
       "@typescript-eslint/no-deprecated": "error",

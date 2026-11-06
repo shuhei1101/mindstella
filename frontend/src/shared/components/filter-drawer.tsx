@@ -1,7 +1,7 @@
 // 絞り込みのドロワー（部品設計『絞り込み.tsx』）。列ごとの文字の欄と、条件ごとに値を件数つきのチェックボックスで並べる
 import { useEffect, useRef } from "react";
 
-import { Icon } from "@/shared/components/icon";
+import { Icon, StatusMark } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Input } from "@/shared/components/ui/input";
@@ -53,7 +53,7 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
           onClose();
         }
       }}
-      className={cn("fixed inset-y-0 left-0 z-30 flex w-80 flex-col border-r border-border bg-card", narrow && "w-full")}
+      className={cn("fixed inset-y-0 left-0 z-30 flex w-105 max-w-full flex-col border-r border-border bg-card", narrow && "w-full")}
     >
       <div className="flex items-center gap-2 border-b border-border-soft p-2">
         <p id="drawer-title" className="font-medium">
@@ -109,9 +109,10 @@ export const FilterDrawer = ({ groups, selected, total, shown, narrow = false, t
                   <li key={value}>
                     <label className={cn("flex items-center gap-1 py-0.5 text-small", count === 0 && "text-subtle-foreground")}>
                       <Checkbox value={value} data-key={group.key} checked={chosen.includes(value)} onChange={() => { onToggleValue(group.key, value); }} />
-                      <span className="min-w-0 flex-1 truncate">{value}</span>
-                      {hit !== undefined && hit > 0 ? <span aria-label={`キーワードに一致した項目 ${String(hit)} 件`} className="text-xs text-foreground">{hit}</span> : null}
-                      <span aria-label={`${String(count)} 件`} className="font-mono text-xs text-muted-foreground">{count}</span>
+                      {group.mark === "status" ? <StatusMark status={value} /> : null}
+                      <span className="min-w-0 flex-1 wrap-break-word">{value}</span>
+                      {hit !== undefined && hit > 0 ? <span aria-label={`キーワードに一致した項目 ${String(hit)} 件`} className="flex-none font-mono text-xs text-mark">{hit}</span> : null}
+                      <span aria-label={`${String(count)} 件`} className={cn("flex-none font-mono text-xs", count === 0 ? "text-subtle-foreground" : "text-muted-foreground")}>{count}</span>
                     </label>
                   </li>
                 ))}

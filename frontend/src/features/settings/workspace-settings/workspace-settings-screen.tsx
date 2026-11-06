@@ -1,5 +1,6 @@
 // 設定の画面（画面設計『設定の画面.tsx』）。ワークスペースの設定をキーごとの入力で書き換え、保存待ちに溜める
-import { useId, useState, type ReactNode } from "react";
+import { useRouter } from "@tanstack/react-router";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { HistoryLimitSchema, usageCount } from "@/features/settings/workspace-settings/form";
 import { ChipsInput } from "@/shared/components/chips-input";
@@ -144,7 +145,14 @@ const ChipsField = ({ settingKey, name, values, index, commit }: { settingKey: "
 
 export const WorkspaceSettingsScreen = () => {
   const { setTab } = usePreviewSearch();
+  const router = useRouter();
   const { index, edits } = useRecords();
+  // 開いたとき（記録を読み終えて描いたとき）に見出しへフォーカスを移す
+  const heading = useRef<HTMLHeadingElement>(null);
+  const loaded = index !== null;
+  useEffect(() => {
+    if (loaded) heading.current?.focus();
+  }, [loaded]);
   const add = useAddEdit();
   const [error, setError] = useState<string | null>(null);
   if (index === null) return null;
@@ -174,8 +182,9 @@ export const WorkspaceSettingsScreen = () => {
     <main id="main" className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="m-0 text-next font-semibold">ワークスペースの設定</h1>
-          <Button variant="outline" className="ml-auto" onClick={() => { setTab("overview"); }}>
+          <h1 ref={heading} tabIndex={-1} className="m-0 text-next font-semibold">設定</h1>
+          {/* 開く前の画面に戻る。URL で直に開いたときは概要を開く */}
+          <Button variant="outline" className="ml-auto" onClick={() => { if (router.history.canGoBack()) router.history.back(); else setTab("overview"); }}>
             <Icon name="x" />
             閉じる
           </Button>
