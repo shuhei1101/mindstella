@@ -9,7 +9,6 @@ from typing import Any
 import pytest
 import yaml
 
-import errors
 import store
 import threads
 from errors import (
@@ -17,6 +16,7 @@ from errors import (
     ItemNotFoundError,
     SchemaMismatchError,
     ThreadClosedError,
+    ThreadCloseRejectedError,
     ThreadNotFoundError,
     WriteFailedError,
 )
@@ -959,7 +959,7 @@ def test_set_thread_status_when_close_rejected(
     write_threads(root, make_thread("TH-1", user_post, ai_post))
     before = (root / RECORD_DIR / "threads.yaml").read_bytes()
     # 実行・検証
-    with pytest.raises(errors.ThreadCloseRejectedError, match="TH-1") as exc_info:
+    with pytest.raises(ThreadCloseRejectedError, match="TH-1") as exc_info:
         threads.set_thread_status(
             root, "TH-1", status="closed", reason="話が済んだ", author="ai", now=_fixed_now
         )
