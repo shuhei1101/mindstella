@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { defaultFilters, filtersFromSearch, filtersToSearch, type Filters } from "@/shared/core/filters";
 import type { PreviewTab } from "@/shared/core/preview-search";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
-import { readPrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { readPrefs, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 /** 画面の絞り込みの条件と操作 */
 export type ScreenFilters = {
@@ -15,7 +15,7 @@ export type ScreenFilters = {
 export const useScreenFilters = (tab: PreviewTab): ScreenFilters => {
   const { search, setFilters: writeSearch } = usePreviewSearch();
   const inUrl = Object.keys(search.f).length > 0;
-  const saved = readPrefs().filters?.[tab];
+  const saved = usePrefs().filters?.[tab];
   const filters = inUrl ? filtersFromSearch(search.f) : (saved ?? defaultFilters(tab));
   useEffect(() => {
     if (inUrl) {

@@ -27,7 +27,7 @@ import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
-import { readBodyScrolls, readPrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
+import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い履歴です。";
 
@@ -133,6 +133,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 項目と時点が変わるたびに決め直す
   const deadline = useMemo(() => nextDiffDeadline(), [id, point?.sel]);
   const [display] = useState(bodyDisplayOf);
+  const prefs = usePrefs();
   const entry = index.byId.get(id);
   if (entry === undefined) return null;
   const { kind } = entry;
@@ -227,7 +228,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   return (
     <DiffDeadlineContext.Provider value={deadline}>
       <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
-      <DiffMinimap shown={diff !== null && readPrefs().minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
+      <DiffMinimap shown={diff !== null && prefs.minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor kind={kind} item={entry.item} settings={index.data.settings} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
         ) : (

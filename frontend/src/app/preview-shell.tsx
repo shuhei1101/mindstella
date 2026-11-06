@@ -14,7 +14,7 @@ import { RecordsScreen, type RecordKind } from "@/features/records/records/recor
 import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/workspace-settings-screen";
 import { TasksScreen } from "@/features/tasks/tasks/tasks-screen";
 import type { Threads } from "@/shared/api/generated/model";
-import type { IconName } from "@/shared/components/icon";
+import { Icon, type IconName } from "@/shared/components/icon";
 import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar";
 import { AppError } from "@/shared/core/app-error";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
@@ -36,6 +36,9 @@ const TAB_ICON: Record<TabKey, IconName> = { overview: "home", decisions: "decis
 const isListKind = (tab: string): tab is Kind => (KIND_KEYS as readonly string[]).includes(tab);
 
 const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "notes", "logs"].includes(tab);
+
+/** 保存の通知を出しておくミリ秒 */
+const SAVED_NOTICE_MS = 4000;
 
 const hasUnread = (threads: Threads | undefined): boolean => threads?.threads.some((thread) => thread.status === "open" && thread.posts.some((post) => !post.seen)) ?? false;
 
@@ -65,6 +68,14 @@ export const PreviewShell = () => {
   const openAdded = useEditSessionStore((state) => state.openAdded);
   const closeAdd = useEditSessionStore((state) => state.closeAdd);
   const blocked = useEditSessionStore((state) => state.blocked);
+  const saved = useEditSessionStore((state) => state.saved);
+  const setSaved = useEditSessionStore((state) => state.setSaved);
+  // 保存の通知は少し経ったら消す
+  useEffect(() => {
+    if (saved === null) return undefined;
+    const timer = window.setTimeout(() => { setSaved(null); }, SAVED_NOTICE_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [saved, setSaved]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const data = records.data?.status === 200 ? records.data.data : undefined;
@@ -176,6 +187,12 @@ export const PreviewShell = () => {
           }}
         />
       ) : null}
+      {saved === null ? null : (
+        <p role="status" className="fixed bottom-4 left-1/2 z-40 m-0 flex -translate-x-1/2 items-center gap-1 rounded-control bg-primary px-3 py-2 text-small text-primary-foreground">
+          <Icon name="check" className="size-4" />
+          {`${String(saved)} 件を保存しました。`}
+        </p>
+      )}
       {historyOpen && rawIndex !== null ? (
         <HistoryScreen
           changes={rawIndex.data.changes}

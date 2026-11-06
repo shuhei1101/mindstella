@@ -5,7 +5,7 @@ import { postOpened } from "@/shared/api/generated/preview";
 import { resolveDiffPoint, type DiffPoint, type OpenedPoint } from "@/shared/core/diff";
 import { useRecords } from "@/shared/hooks/use-records";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
-import { readPrefs } from "@/shared/stores/prefs-store";
+import { usePrefs } from "@/shared/stores/prefs-store";
 
 /** そのタブの「前回開いてから」の始まりを残す sessionStorage のキー（今の画面と同じ） */
 export const OPENED_SESSION_KEY = "mindmap-preview-opened";
@@ -63,7 +63,7 @@ export const useDiffView = (): DiffView => {
       alive = false;
     };
   }, [since]);
-  const saved = readPrefs().diffSel ?? null;
+  const saved = usePrefs().diffSel ?? null;
   const sel = search.diff ?? saved;
   const fallback: OpenedPoint = since ?? { at: rawIndex?.data.built_at ?? "", seq: rawIndex?.data.changes.sets[0]?.until_seq ?? 0 };
   const point = rawIndex === null ? null : resolveDiffPoint(rawIndex.data.changes, sel, fallback);

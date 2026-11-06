@@ -85,7 +85,7 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
   const setBlocked = useEditSessionStore((state) => state.setBlocked);
   const alert = useRef<HTMLDivElement>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [saved, setSaved] = useState<number | null>(null);
+  const setSaved = useEditSessionStore((state) => state.setSaved);
   const removals = edits.filter((edit) => edit.op === "item-remove").length;
   const blockedBy = new Map(blocked.map((entry) => [entry.id, entry]));
   const blockedEdits = edits.filter((edit) => blockedBy.has(edit.id));
@@ -130,12 +130,6 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
           <p role="alert" className="flex items-center gap-1 text-small text-destructive">
             <Icon name="alert" className="size-4" />
             {`保存できませんでした。${failure}`}
-          </p>
-        )}
-        {saved === null ? null : (
-          <p role="status" className="flex items-center gap-1 text-small">
-            <Icon name="check" className="size-4" />
-            {`${String(saved)} 件を保存しました。`}
           </p>
         )}
         {edits.length === 0 ? <p className="text-small text-muted-foreground">保存待ちの編集はありません。</p> : null}

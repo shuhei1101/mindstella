@@ -1,4 +1,5 @@
 // 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
+import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 
 import type { Filters } from "@/shared/core/filters";
@@ -45,23 +46,36 @@ export const writeBodyScroll = (id: string, top: number): void => {
   }
 };
 
-/** 保存領域の値の JSON（読めなければ空） */
-const readAll = (): Record<string, unknown> => {
+/** 保存領域の JSON の文字列を読む（読めなければ空） */
+const parsePrefs = (text: string | null): Record<string, unknown> => {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}");
+    const value: unknown = JSON.parse(text ?? "{}");
     return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
   } catch {
     return {};
   }
 };
 
+const readAll = (): Record<string, unknown> => parsePrefs(localStorage.getItem(PREFS_KEY));
+
 /** 保存領域の JSON を読み、読めない項目は持たないものとして扱う */
 export const readPrefs = (): Prefs => readAll();
+
+const listeners = new Set<() => void>();
 
 /** 変えた項目だけを書き、ほかの項目を残す */
 export const writePrefs = (patch: Partial<Prefs>): void => {
   localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readAll(), ...patch }));
+  for (const listener of listeners) listener();
 };
+
+const subscribe = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+/** 描画の中で端末の保存領域を読む。書き換えると描き直す（`readPrefs` の結果は React Compiler が覚えるので描画では使わない） */
+export const usePrefs = (): Prefs => parsePrefs(useSyncExternalStore(subscribe, () => localStorage.getItem(PREFS_KEY)));
 
 type PrefsState = {
   prefs: Prefs;
