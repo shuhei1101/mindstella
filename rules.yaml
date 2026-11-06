@@ -1,0 +1,28 @@
+# mindstella のルール索引（rule-inject の索引の書式）
+# rule: 索引ファイルからの相対パスか絶対パス / paths: 適用するファイルの glob（クォート必須）
+# knowledge の rules.yaml と AI Monitor の rules.global.yaml に掲載している規約はここに掲載しない
+default_on: [write, mcp]
+rules:
+  # このリポジトリだけが持つテンプレート
+  - rule: dev/テンプレート/部品設計.schema.yaml
+    paths:
+      - "**/dev/設計書/部品設計/**/*.yaml"
+    exclude:
+      - "**/index.yaml"
+  # React のプレビュー（frontend/）
+  - rule: /mnt/c/Users/shuhe/repo/knowledge/.claude/worktrees/develop/docs/rule/react-testing-unit.yaml
+    paths:
+      - "**/frontend/src/**/*.test.{ts,tsx}"
+      - "**/frontend/src/testing/{setup-tests.ts,render.tsx}"
+      - "**/vitest.config.ts"
+  - rule: /mnt/c/Users/shuhe/repo/knowledge/.claude/worktrees/develop/docs/rule/react-devtools-storybook.yaml
+    paths:
+      - "**/frontend/src/**/*.stories.tsx"
+      - "**/.storybook-react/*.{ts,tsx}"
+  - rule: /mnt/c/Users/shuhe/repo/knowledge/.claude/worktrees/develop/docs/rule/react-data-api-client.yaml
+    paths:
+      - "**/frontend/src/shared/adapters/api-client.ts"
+      - "**/orval.config.ts"
+  - rule: /mnt/c/Users/shuhe/repo/knowledge/.claude/worktrees/develop/docs/rule/react-data-query-client.yaml
+    paths:
+      - "**/frontend/src/app/query-client.ts"
