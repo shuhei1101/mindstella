@@ -1031,6 +1031,7 @@ flows:
         description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: ハッシュは `tab=decisions&id=D-1`
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -1044,6 +1045,7 @@ flows:
         IF-->>SV: POST /api/edits/save
         SV-->>IF: 200
         IF-->>ユーザー: 保存した旨と、D-1 の新しい答え
+      ```
     expected:
       - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちのバッジがあり、トップバーの件数が 1
       - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、バッジと件数が画面を開き直さずに消える
@@ -1061,6 +1063,7 @@ flows:
         description: 端末の保存領域に本文の見せ方の上書きが無い
         notes: 画面幅は 1280px
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -1073,6 +1076,7 @@ flows:
         IF-->>ユーザー: 区画の上端に見出しの行が残った表
         ユーザー->>IF: 見出し「比較」の開閉の矢印を押す
         IF-->>ユーザー: 表が隠れ、「まとめ」が続く本文
+      ```
     expected:
       - 開いたとき、説明の列は 24em で折り返し、ID の列は折り返さず、表の行は塗り分けられていない
       - 固定のボタンを押すと aria-pressed が true になり、表を右へ送っても ID・状態・名前の列が表の入れ物の左端に見えている
@@ -1090,6 +1094,7 @@ flows:
       - name: 端末の上書き
         description: 端末の保存領域に `table_stripes` が `true`、`section_fold` が `false` の上書きを残しておく
     flow: |-
+      ```mermaid
       sequenceDiagram
         actor ユーザー
         participant IF as プレビューの画面
@@ -1100,6 +1105,7 @@ flows:
         IF-->>ユーザー: 表のしま模様が付き、セクションの折りたたみが外れ、変えている項目に 2 つを並べたパネル
         ユーザー->>IF: 既定に戻す
         IF-->>ユーザー: 塗り分けの無い表と、開閉の矢印を持つ見出しの A-4 の詳細パネル
+      ```
     expected:
       - 開いたとき、A-4 の表の行が 1 行おきに塗り分けられ、見出しに開閉の矢印が無い
       - 表示の設定のパネルで、区画「詳細に表示するもの」の表のしま模様のチェックボックスが付き、セクションの折りたたみのチェックボックスが外れていて、この端末で変えている項目に「表のしま模様」「セクションの折りたたみ」がある

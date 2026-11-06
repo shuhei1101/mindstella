@@ -12,6 +12,7 @@ flows:
         description: '`answer` が空の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース'
         notes: '本文は `{op: set, target: D-1, key: answer, value: ゴールはフェーズごとに 1 つ持つ}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -22,6 +23,7 @@ flows:
         IF->>IF: answer を編集でき、値が文字列と確かめる
         IF->>WS: edits.yaml に足す
         IF-->>クライアント: 201、JSON（id・target・count）
+      ```
     expected:
       - ステータスが 201 で、`id` が `E-1`、`count` が 1
       - '`edits.yaml` の E-1 が `before` に空の `answer`、`base` に D-1 の `updated` を持ち、`seq` が 1'
@@ -36,6 +38,7 @@ flows:
         description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer` を「案 A」）を持つワークスペース
         notes: '本文は `{op: set, target: D-1, key: answer, value: 案 B}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -44,6 +47,7 @@ flows:
         クライアント->>IF: POST {op: set, target: D-1, key: answer, value: 案 B}
         IF->>WS: E-1 の value を書き換える
         IF-->>クライアント: 200
+      ```
     expected:
       - ステータスが 200 で、`id` が `E-1`、`count` が 1
       - '`edits.yaml` の E-1 の `value` が「案 B」で、`created`・`before`・`base` は書き換える前のまま'
@@ -57,6 +61,7 @@ flows:
         description: 状態が `未着手` のタスク T-1 と、保存待ちの編集 E-1（T-1 の `status` を `中止`）を持つワークスペース
         notes: '本文は `{op: set, target: T-1, key: status, value: 未着手}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -66,6 +71,7 @@ flows:
         IF->>IF: 今の T-1 の status と同じ
         IF->>WS: edits.yaml から E-1 を外す
         IF-->>クライアント: 200、id は null
+      ```
     expected:
       - ステータスが 200 で、`id` が `null`、`count` が 0
       - '`edits.yaml` の編集が 0 件'
@@ -79,6 +85,7 @@ flows:
         description: タスク T-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: '1 回目は `{op: item-add, key: tasks, value: {title: 画面を作る, status: 未着手}}`、2 回目は返った `target` で `{op: item-add, target: new-1, key: tasks, value: {title: 画面を作る, status: 進行中}}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -90,6 +97,7 @@ flows:
         クライアント->>IF: POST {op: item-add, target: new-1, value}
         IF->>WS: new-1 の value を書き換える
         IF-->>クライアント: 200
+      ```
     expected:
       - 1 回目が 201 で `target` が `new-1`、2 回目が 200 で `count` が 1 のまま
       - '`edits.yaml` の編集が `new-1` の `item-add` の 1 件だけで、`value` の `status` が `進行中`、`new_seq` が 1'
@@ -104,6 +112,7 @@ flows:
         description: メモ N-1 と、保存待ちの編集 E-1（N-1 の `title`）を持つワークスペース
         notes: '本文は `{op: item-remove, target: N-1}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -112,6 +121,7 @@ flows:
         クライアント->>IF: POST {op: item-remove, target: N-1}
         IF->>WS: 削除の編集を足す（E-1 は残す）
         IF-->>クライアント: 201
+      ```
     expected:
       - ステータスが 201 で、`id` が `E-2`、`count` が 2
       - '`edits.yaml` に E-1 と E-2 があり、`notes.yaml` に N-1 が残っている（消すのは保存のとき）'
@@ -126,6 +136,7 @@ flows:
         description: 題名が「話し合い」のワークスペース
         notes: '本文は `{op: setting, target: settings, key: summary, value: 画面の編集}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -134,6 +145,7 @@ flows:
         クライアント->>IF: POST {op: setting, target: settings, key: summary, value}
         IF->>WS: edits.yaml に足す
         IF-->>クライアント: 201
+      ```
     expected:
       - ステータスが 201
       - '`edits.yaml` の編集が `before` に「話し合い」を持ち、`base` を持たない'
@@ -148,6 +160,7 @@ flows:
         description: 検討事項 D-1 を持つワークスペース
         notes: '`{op: set, target: D-1, key: updated_by, value: user}` と `{op: set, target: D-1, key: title, value: "  "}` を送る'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -156,6 +169,7 @@ flows:
         IF-->>クライアント: 400
         クライアント->>IF: POST {key: title, value: 空白}
         IF-->>クライアント: 400
+      ```
     expected:
       - どちらもステータスが 400 で、`detail` にそれぞれ `updated_by`・`title` がある
       - '`edits.yaml` が無い'
@@ -169,12 +183,14 @@ flows:
         description: 検討事項 D-1 を持つワークスペース
         notes: '`Origin: https://attacker.example` を付ける'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
 
         クライアント->>IF: POST（Origin: attacker.example）
         IF-->>クライアント: 403
+      ```
     expected:
       - ステータスが 403
       - '`edits.yaml` が無い'
@@ -188,12 +204,14 @@ flows:
         description: 検討事項 D-1 だけを持つワークスペース
         notes: '`target` は `D-99`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
 
         クライアント->>IF: POST {op: set, target: D-99}
         IF-->>クライアント: 404
+      ```
     expected:
       - ステータスが 404 で、`detail` に `D-99` がある
       - '`edits.yaml` が無い'
@@ -207,12 +225,14 @@ flows:
         description: メモ N-1 と、保存待ちの編集 E-1（N-1 の削除）を持つワークスペース
         notes: '本文は `{op: set, target: N-1, key: title, value: 画面の形}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
 
         クライアント->>IF: POST {op: set, target: N-1, key: title}
         IF-->>クライアント: 409
+      ```
     expected:
       - ステータスが 409 で、`detail` に削除を溜めていることがある
       - '`edits.yaml` が E-1 だけのまま'
@@ -226,12 +246,14 @@ flows:
         description: 検討事項 D-1 を持つワークスペース
         notes: '`Content-Type: application/x-www-form-urlencoded` で送る'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
 
         クライアント->>IF: POST（application/x-www-form-urlencoded）
         IF-->>クライアント: 415
+      ```
     expected:
       - ステータスが 415
       - '`edits.yaml` が無い'
@@ -245,6 +267,7 @@ flows:
         description: 案 A・B を持ち採用していない検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
         notes: '1 回目は `{op: option-add, target: D-1, key: C, value: ゴールはフェーズごとに 1 つ持つ}`、2 回目は `{op: adopt, target: D-1, key: C, value: C}`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as POST /api/edits
@@ -257,6 +280,7 @@ flows:
         IF->>IF: 案 C は溜めた案の追加にある
         IF->>WS: edits.yaml に足す
         IF-->>クライアント: 201
+      ```
     expected:
       - どちらもステータスが 201 で、2 回目の `count` が 2
       - '`edits.yaml` に案 C の追加（E-1）と、採用する案を C にする切り替え（E-2）がある'
