@@ -1789,13 +1789,21 @@ def test_run_thread_when_nothing_unread(
 def test_run_set_thread_status(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
+    make_post: MakePost,
     make_thread: MakeThread,
     write_threads: WriteThreads,
 ) -> None:
     """書き手を AI にして記録する（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    write_threads(root, make_thread("TH-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", read=True, taken="2026-10-12T01:00:00+00:00"),
+            make_post("TH-1-2", author="ai", seen=True),
+        ),
+    )
     # 実行
     payload = commands.run_set_thread_status(root, "TH-1", "closed", "了解を受けた", now=_thread_now)
     # 検証

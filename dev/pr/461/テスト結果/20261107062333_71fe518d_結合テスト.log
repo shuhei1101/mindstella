@@ -1,0 +1,15 @@
+# 結合テスト（バック）
+# commit: 71fe518d
+# 実行日時: 2026-11-07 06:23:33 JST
+# 補足: この環境に playwright が無いので結合テスト（フロント: tests/integration/preview・storybook・storybook_react）は含めない。mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ
+# 補足: fail の 2 件（依存の確認の依存が欠けた流れ）は、PYTHONPATH が子の仮想環境へ渡り PyYAML・jsonschema が見えるための環境由来。develop（3daea381）の worktree で同じ PYTHONPATH で流しても同じ 2 件が fail する（末尾）
+$ pytest tests/integration --ignore=tests/integration/preview --ignore=tests/integration/storybook --ignore=tests/integration/storybook_react -q
+FAILED tests/integration/server/test_check_env.py::test_error_when_dependency_missing
+FAILED tests/integration/server/test_ensure_server.py::test_error_when_dependency_missing
+2 failed, 419 passed, 2 skipped in 253.19s (0:04:13)
+
+# develop（3daea381）で同じ 2 件
+$ pytest tests/integration/server/test_check_env.py::test_error_when_dependency_missing tests/integration/server/test_ensure_server.py::test_error_when_dependency_missing -q
+FAILED tests/integration/server/test_check_env.py::test_error_when_dependency_missing
+FAILED tests/integration/server/test_ensure_server.py::test_error_when_dependency_missing
+2 failed in 4.98s

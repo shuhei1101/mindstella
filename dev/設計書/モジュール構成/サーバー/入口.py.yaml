@@ -2466,7 +2466,7 @@ functions:
       - name: test_run_set_thread_status
         case: 正常
         summary: 書き手を AI にして記録する
-        condition: オープンの TH-1。`status="closed"`・`reason="了解を受けた"`
+        condition: 取り込み済みの利用者の書き込みと利用者の既読の AI の書き込みを持つオープンの TH-1。`status="closed"`・`reason="了解を受けた"`
         mock: '`now`'
         expected: '`{id: TH-1, status: closed, changed: true}`。`events` の末尾の `author` が `ai`'
   - name: run_update_thread

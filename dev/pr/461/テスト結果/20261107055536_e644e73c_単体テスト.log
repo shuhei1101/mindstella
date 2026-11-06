@@ -1,0 +1,12 @@
+# 単体テスト（Red: 実装前）
+# commit: e644e73c
+# 実行日時: 2026-11-07 05:55:36 JST
+# 補足: この環境に playwright が無いので tests/unit/preview は含めない。mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ
+$ pytest tests/unit/scripts -q
+E       AttributeError: module 'errors' has no attribute 'ThreadCloseRejectedError'. Did you mean: 'ThreadClosedError'?
+E       AttributeError: module 'errors' has no attribute 'ThreadCloseRejectedError'. Did you mean: 'ThreadClosedError'?
+E       AttributeError: module 'errors' has no attribute 'ThreadCloseRejectedError'. Did you mean: 'ThreadClosedError'?
+FAILED tests/unit/scripts/test_threads.py::test_set_thread_status_when_close_rejected[awaiting]
+FAILED tests/unit/scripts/test_threads.py::test_set_thread_status_when_close_rejected[unseen]
+FAILED tests/unit/scripts/test_threads.py::test_set_thread_status_when_close_rejected[both]
+3 failed, 1167 passed, 1 skipped in 35.61s

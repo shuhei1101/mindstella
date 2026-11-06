@@ -16,6 +16,9 @@ from .fixture_types import (
 from .thread_helpers import drop_thread_key, find_thread, threads_path
 from workspace_fixtures import RECORD_DIR
 
+# 取り込んだ日時
+TAKEN_AT = "2026-10-12T00:30:00+00:00"
+
 # 利用者がクローズにした記録
 USER_CLOSED = {
     "kind": "closed",
@@ -36,7 +39,15 @@ def test_normal(
     """AI が理由つきでクローズにし、書き手・理由・日時を残す（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    write_threads(root, make_thread("TH-1", make_post("TH-1-1", body="了解", read=True)))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="案 A にする", read=True, taken=TAKEN_AT),
+            make_post("TH-1-2", author="ai", body="案 A で記録しました", seen=True),
+            make_post("TH-1-3", body="了解", read=True, taken=TAKEN_AT),
+        ),
+    )
     # 実行
     result = call_tool(
         "set_thread_status", workspace=str(root), id="TH-1", status="closed", reason="了解を受けた"
@@ -49,7 +60,7 @@ def test_normal(
     last = thread["events"][-1]
     assert (last["kind"], last["author"], last["reason"]) == ("closed", "ai", "了解を受けた")
     assert last["created"]
-    assert [post["id"] for post in thread["posts"]] == ["TH-1-1"]
+    assert [post["id"] for post in thread["posts"]] == ["TH-1-1", "TH-1-2", "TH-1-3"]
 
 
 def test_normal_when_reopen(
@@ -161,6 +172,7 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
 def test_error_when_write_fails(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
+    make_post: MakePost,
     make_thread: MakeThread,
     write_threads: WriteThreads,
     call_tool: CallTool,
@@ -169,7 +181,7 @@ def test_error_when_write_fails(
     """書き込めないワークスペースでは前の状態を残す（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    write_threads(root, make_thread("TH-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", read=True, taken=TAKEN_AT)))
     before = threads_path(root).read_bytes()
     lock_dirs(root / RECORD_DIR)
     # 実行
@@ -200,3 +212,88 @@ def test_error_when_schema_mismatch(
     assert result.is_error is True
     assert any(line.startswith("threads.yaml: items[0]") for line in result.text.splitlines())
     assert threads_path(root).read_bytes() == before
+
+
+def test_error_when_awaiting_posts(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+) -> None:
+    """取り込んでいない利用者の書き込みがあるスレッドは AI がクローズにできない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", body="了解", read=True)))
+    before = threads_path(root).read_bytes()
+    # 実行
+    result = call_tool(
+        "set_thread_status", workspace=str(root), id="TH-1", status="closed", reason="了解を受けた"
+    )
+    # 検証
+    assert result.is_error is True
+    assert "TH-1-1" in result.text
+    assert "update_thread" in result.text
+    assert threads_path(root).read_bytes() == before
+
+
+def test_error_when_ai_post_unseen(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+) -> None:
+    """利用者が読んでいない AI の書き込みがあるスレッドは、最後が利用者の書き込みでも AI がクローズにできない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="案 A にする", read=True, taken=TAKEN_AT),
+            make_post("TH-1-2", author="ai", body="案 A で記録しました", seen=False),
+            make_post("TH-1-3", body="了解", read=True, taken=TAKEN_AT),
+        ),
+    )
+    before = threads_path(root).read_bytes()
+    # 実行
+    result = call_tool(
+        "set_thread_status", workspace=str(root), id="TH-1", status="closed", reason="了解を受けた"
+    )
+    # 検証
+    assert result.is_error is True
+    assert "TH-1-2" in result.text
+    assert threads_path(root).read_bytes() == before
+
+
+def test_normal_when_reopen_with_unseen(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    call_tool: CallTool,
+) -> None:
+    """オープンに戻すときは取り込み待ちと利用者の既読を確かめない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="これは何？"),
+            make_post("TH-1-2", author="ai", body="答えます", seen=False),
+            status="closed",
+            events=[USER_CLOSED],
+        ),
+    )
+    # 実行
+    result = call_tool(
+        "set_thread_status", workspace=str(root), id="TH-1", status="open", reason="質問に答える"
+    )
+    # 検証
+    assert result.is_error is False
+    assert find_thread(root, "TH-1")["status"] == "open"

@@ -18,6 +18,7 @@ from errors import (
     ItemNotFoundError,
     SchemaMismatchError,
     ThreadClosedError,
+    ThreadCloseRejectedError,
     ThreadNotFoundError,
 )
 from kinds import records_root
@@ -376,7 +377,10 @@ def set_thread_status(
     author: Literal["user", "ai"],
     now: NowFn = now_utc,
 ) -> bool:
-    """スレッドをクローズにするかオープンに戻し、書き手・理由・日時を状態の記録に足す。既にその状態なら書かない。"""
+    """スレッドをクローズにするかオープンに戻し、書き手・理由・日時を状態の記録に足す。既にその状態なら書かない。
+
+    AI がクローズにするときは、取り込み待ちの書き込みと利用者が未読の AI の書き込みが無いことを確かめる。
+    """
     # 状態は open・closed のどちらか
     if status not in EVENT_KINDS:
         raise ArgumentError("status", "open か closed を渡してください")
@@ -386,6 +390,9 @@ def set_thread_status(
     # 既にその状態: 書かずに偽を返す
     if thread.status == status:
         return False
+    # AI のクローズ: 取り込み待ちと利用者の未読が無いスレッドだけ
+    if author == "ai" and status == "closed":
+        _check_ai_close(thread)
 
     event = ThreadEvent(kind=EVENT_KINDS[status], author=author, reason=note, created=now())
     updated = replace(
@@ -547,6 +554,23 @@ def _take_read(thread: Thread, at: str) -> tuple[Thread, list[str]]:
         else:
             posts.append(post)
     return replace(thread, posts=posts), taken
+
+
+def _check_ai_close(thread: Thread) -> None:
+    """取り込み待ちの利用者の書き込みか、利用者が未読の AI の書き込みがあれば、AI のクローズを拒む。"""
+    awaiting = [post.id for post in awaiting_posts(thread)]
+    unseen = [post.id for post in thread.posts if post.author == "ai" and not post.seen]
+    if not awaiting and not unseen:
+        return
+    lines: list[str] = []
+    if awaiting:
+        lines.append(
+            f"取り込み待ち: {'、'.join(awaiting)}: "
+            "update_thread（take: true）で取り込み済みにしてからクローズにしてください"
+        )
+    if unseen:
+        lines.append(f"利用者が未読: {'、'.join(unseen)}: 利用者が読むまでオープンのまま待ってください")
+    raise ThreadCloseRejectedError(f"スレッド {thread.id} はクローズにできません", lines)
 
 
 def _check_text(argument: str, value: Any, max_chars: int) -> str:

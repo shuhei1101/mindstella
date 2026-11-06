@@ -9,7 +9,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 利用者の `了解` で終わるオープンのスレッド TH-1 を持つワークスペース
+        description: 利用者の `了解` で終わるオープンのスレッド TH-1 を持つワークスペース（利用者の書き込みは取り込み済みで、AI の書き込みは利用者の既読）
         notes: '`status` は `closed`、`reason` は `了解を受けた`'
     flow: |-
       ```mermaid
@@ -135,7 +135,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: オープンのスレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        description: オープンのスレッド TH-1（利用者の書き込みは取り込み済み）を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する
     flow: |-
       ```mermaid
@@ -173,6 +173,68 @@ flows:
       - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_schema_mismatch
+  - name: 異常系（取り込み待ちがある・ThreadCloseRejectedError）
+    summary: 取り込んでいない利用者の書き込みがあるスレッドは AI がクローズにできない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 利用者の `了解`（TH-1-1。取り込んでいない）だけを持つオープンのスレッド TH-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed reason
+        IF->>IF: 取り込み待ちの書き込みがある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになり、本文に `TH-1-1` と `update_thread` がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_awaiting_posts
+  - name: 異常系（利用者が未読の AI の書き込みがある・ThreadCloseRejectedError）
+    summary: 利用者が読んでいない AI の書き込みがあるスレッドは、最後が利用者の書き込みでも AI がクローズにできない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 利用者の `案 A にする`（取り込み済み）・AI の返信（TH-1-2。利用者の未読）・利用者の `了解`（取り込み済み）を持つオープンのスレッド TH-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status closed reason
+        IF->>IF: 利用者が未読の AI の書き込みがある
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになり、本文に `TH-1-2` がある
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_ai_post_unseen
+  - name: 正常系（AI の書き込みが未読でもオープンに戻す）
+    summary: オープンに戻すときは取り込み待ちと利用者の既読を確かめない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 利用者の質問（取り込んでいない）と AI の返信（利用者の未読）を持ち、利用者がクローズにしたスレッド TH-1 を持つワークスペース
+        notes: '`status` は `open`、`reason` は `質問に答える`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status workspace id TH-1 status open reason
+        IF-->>クライアント: JSON（status open・changed true）
+      ```
+    expected:
+      - ツールのエラーにならず、TH-1 の `status` が `open`
+    test: test_normal_when_reopen_with_unseen
 lead: AI がスレッドをクローズにするかオープンに戻し、書き手（AI）・任意の理由・日時をスレッドに残す。利用者の書き換えは『画面からのスレッドの状態の書き換え』。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
@@ -232,6 +294,9 @@ exceptions:
   - name: ArgumentError
     condition: '`reason` が上限を超える'
     notes: 'ツールのエラー（`エラー: 引数の誤り: reason: {理由}`）。何も書き込まない'
+  - name: ThreadCloseRejectedError
+    condition: '`status` が `closed` で、取り込んでいない利用者の書き込み（`author: user` で `taken` が無い）か、利用者が未読の AI の書き込み（`author: ai` で `seen` が偽）がある'
+    notes: 'ツールのエラー。何も書き込まない。本文に当たった条件ごとの行（取り込み待ちは書き込みの ID と `update_thread`（`take: true`）で取り込み済みにする案内、未読は書き込みの ID と利用者が読むまで開いたまま待つ案内）。既にクローズのスレッドは確かめず `changed: false` を返す'
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
   - item: 結果の形
@@ -245,6 +310,9 @@ constraints:
     constraint: 状態を変えても利用者の書き込みの `taken` は書かない。クローズにしたスレッドも、取り込んでいない利用者の書き込みがあれば取り込み待ちに残る（取り込み済みにするのは『スレッドの書き換え』）
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からの書き換えと重なっても、後から書いた側が前の状態を読んでから判断する
+  - item: AI のクローズの条件
+    constraint: クローズにできるのは、利用者の書き込みが全て取り込み済みで、AI の書き込みが全て利用者の既読のスレッドだけ。最後の書き込みが AI のものかは確かめない。オープンに戻すときは確かめない。利用者の書き換え（『画面からのスレッドの状態の書き換え』）には当てない
+    notes: '#424。質問にほかの場所で回答済みのスレッドを閉じられるように、最後の書き手は条件にしない'
 refs:
   - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
   - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#

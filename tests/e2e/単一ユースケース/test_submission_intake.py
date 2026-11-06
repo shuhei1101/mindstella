@@ -1,6 +1,6 @@
 """送信の取り込み（`session` が話し合いの最初と、話し合いの途中にサーバーが入力した 1 行を受けたときに、取り込み待ちのスレッドを拾って記録し、返信するか返信せずにクローズにするかを決めて取り込み済みにする）の E2E テスト。
 
-モデルを呼ばず、手順が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`adopt`・`add`（会話ログ）・スレッドへの返信・クローズ・オープンへの戻し・取り込み済みにする・要約の書き直しを、決めた引数で順に再生する。
+モデルを呼ばず、手順が連ねる取り込み待ちのスレッドの一覧・スレッドを読む・`adopt`・`add`（会話ログ）・スレッドへの返信・取り込み済みにする・要約の書き直し・クローズ・オープンへの戻しを、決めた引数で順に再生する。
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from typing import Any
 from conftest import Replay
 from workspace_fixtures import (
     RECORD_DIR,
+    CallTool,
     MakeItem,
     MakePost,
     MakeThread,
@@ -164,7 +165,7 @@ def test_normal_when_location_and_no_target(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """箇所を持つ書き込みと、項目を指さない書き込みを、箇所と項目なしを添えて拾い、1 件目へ返信し、2 件目は返信せずにクローズにする（正常系）。"""
+    """箇所を持つ書き込みと、項目を指さない書き込みを、箇所と項目なしを添えて拾い、1 件目へ返信し、2 件目は返信せずに取り込み済みにしてからクローズにする（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1"), bodies={"A-1.md": BODY})
     write_threads(
@@ -194,7 +195,7 @@ def test_normal_when_location_and_no_target(
         },
     )
     replay("reply", **ws, id="TH-1", body="A-1 の 2 行目を直します", summary="A-1 の 2 行目の言い換え")
-    # 項目を指さない書き込みは、発言と同じく会話ログに残し、返信せずにクローズにして取り込み済みにする
+    # 項目を指さない書き込みは、発言と同じく会話ログに残し、返信せずに取り込み済みにしてからクローズにする
     second = replay("thread", **ws, id="TH-2")
     replay(
         "add",
@@ -206,8 +207,8 @@ def test_normal_when_location_and_no_target(
             "body_markdown": "全体に目を通した",
         },
     )
-    replay("set_thread_status", **ws, id="TH-2", status="closed", reason="受け取った")
     replay("update_thread", **ws, id="TH-2", summary="全体に目を通したという知らせ", take=True)
+    replay("set_thread_status", **ws, id="TH-2", status="closed", reason="受け取った")
     after = replay("threads", **ws, awaiting=True)
     # 検証
     assert len(awaiting) == 2
@@ -376,7 +377,7 @@ def test_normal_when_no_reply_needed(
     replay: Replay,
     read_yaml: Callable[[Path, str], Any],
 ) -> None:
-    """返事の要らない書き込み「了解」は、返信せずにクローズにして取り込み済みにする（正常系）。"""
+    """返事の要らない書き込み「了解」は、返信せずに取り込み済みにしてからクローズにする（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", options=ADOPTED_A, status="決定済み"))
     write_threads(
@@ -405,7 +406,6 @@ def test_normal_when_no_reply_needed(
             "body_markdown": "了解",
         },
     )
-    replay("set_thread_status", **ws, id="TH-1", status="closed", reason="了解を受けた")
     replay(
         "update_thread",
         **ws,
@@ -413,6 +413,7 @@ def test_normal_when_no_reply_needed(
         summary="D-1 の案の相談。案 A で決定し、了解を受けた",
         take=True,
     )
+    replay("set_thread_status", **ws, id="TH-1", status="closed", reason="了解を受けた")
     after = replay("threads", **ws, awaiting=True)
     # 検証
     assert [item["id"] for item in awaiting] == ["TH-1"]
@@ -552,4 +553,97 @@ def test_normal_when_reopen_to_reply(
     last = thread["posts"][-1]
     assert (last["author"], "D-2" in last["body"]) == ("ai", True)
     assert thread["posts"][0]["taken"] is not None
+    assert after == {"items": []}
+
+
+def test_error_when_ai_post_unseen(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """利用者が読んでいない AI の返信があるスレッドは、取り込み済みにしてもクローズを拒まれ、開いたまま残る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=ADOPTED_A, status="決定済み"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="案 A にする", read=True, taken=TAKEN_AT, created=T_0100),
+            make_post(
+                "TH-1-2", author="ai", body="D-1 を案 A で決定にしました", seen=False, created=T_0200
+            ),
+            make_post("TH-1-3", body="了解", created=T_0300),
+            summary="D-1 の案の相談。案 A で決定",
+            target="D-1",
+        ),
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    replay("threads", **ws, awaiting=True)
+    replay("thread", **ws, id="TH-1")
+    replay(
+        "add",
+        **ws,
+        kind="log",
+        item={
+            "title": "画面から届いた返信",
+            "date": "2026-10-04",
+            "related": ["D-1"],
+            "body_markdown": "了解",
+        },
+    )
+    replay(
+        "update_thread",
+        **ws,
+        id="TH-1",
+        summary="D-1 の案の相談。案 A で決定し、了解を受けた",
+        take=True,
+    )
+    closed = call_tool("set_thread_status", **ws, id="TH-1", status="closed", reason="了解を受けた")
+    after = replay("threads", **ws, awaiting=True)
+    # 検証
+    assert closed.is_error is True
+    assert "TH-1-2" in closed.text
+    thread = _thread_of(root, read_yaml, "TH-1")
+    assert (thread["status"], thread["events"]) == ("open", [])
+    assert thread["posts"][2]["taken"] is not None
+    assert after == {"items": []}
+
+
+def test_error_when_closed_before_take(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """取り込み済みにする前のクローズは拒まれ、取り込み済みにした後のクローズは通る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1", body="全体に目を通した", created=T_0100)))
+    ws = {"workspace": str(root)}
+    # 実行（手順から外れて、取り込み済みにする前にクローズにする）
+    replay("threads", **ws, awaiting=True)
+    replay("thread", **ws, id="TH-1")
+    rejected = call_tool("set_thread_status", **ws, id="TH-1", status="closed", reason="受け取った")
+    status_after_rejected = _thread_of(root, read_yaml, "TH-1")["status"]
+    # 実行（取り込み済みにしてからクローズにし直す）
+    replay("update_thread", **ws, id="TH-1", summary="全体に目を通したという知らせ", take=True)
+    replay("set_thread_status", **ws, id="TH-1", status="closed", reason="受け取った")
+    after = replay("threads", **ws, awaiting=True)
+    # 検証
+    assert rejected.is_error is True
+    assert "TH-1-1" in rejected.text
+    assert status_after_rejected == "open"
+    thread = _thread_of(root, read_yaml, "TH-1")
+    closed = thread["events"][-1]
+    assert (thread["status"], closed["author"], closed["reason"]) == ("closed", "ai", "受け取った")
     assert after == {"items": []}
