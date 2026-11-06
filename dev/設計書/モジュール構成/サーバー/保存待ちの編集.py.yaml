@@ -9,6 +9,7 @@ directory: |-
 diagrams:
   - name: 全体
     diagram: |-
+      ```mermaid
       classDiagram
         direction LR
         class 保存待ちの編集
@@ -20,6 +21,7 @@ diagrams:
         保存待ちの編集 --> 入口 : 追加・更新・案をメモリの上で当てる
         保存待ちの編集 --> 設定の更新 : 設定を置き換えて付け替える
         保存待ちの編集 --> 変更履歴 : 削除の記録・まとまりにする
+      ```
 constants:
   - name: EDITS_FILE
     title: 保存待ちの編集のファイル名

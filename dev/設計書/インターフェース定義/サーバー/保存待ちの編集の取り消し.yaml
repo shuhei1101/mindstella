@@ -12,6 +12,7 @@ flows:
         description: 検討事項 D-1 とタスク T-1 と、保存待ちの編集 E-1（D-1 の `answer`）・E-2（T-1 の `status`）を持つワークスペース
         notes: '`id` は `E-2`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as DELETE /api/edits/{id}
@@ -21,6 +22,7 @@ flows:
         IF-->>WS: edits.yaml を読む
         IF->>WS: edits.yaml から E-2 を外す
         IF-->>クライアント: 200、JSON（removed・count）
+      ```
     expected:
       - ステータスが 200 で、`removed` が `["E-2"]`、`count` が 1
       - '`edits.yaml` に E-1 だけが残る'
@@ -35,6 +37,7 @@ flows:
         description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の案 C の追加）・E-2（D-1 の採用する案を C にする）を持つワークスペース
         notes: '`id` は `E-1`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as DELETE /api/edits/{id}
@@ -43,6 +46,7 @@ flows:
         クライアント->>IF: DELETE /api/edits/E-1
         IF->>WS: edits.yaml から E-1 と E-2 を外す
         IF-->>クライアント: 200
+      ```
     expected:
       - ステータスが 200 で、`removed` が `["E-1", "E-2"]`、`count` が 0
       - '`edits.yaml` の編集が 0 件'
@@ -56,12 +60,14 @@ flows:
         description: 保存待ちの編集 E-1 を持つワークスペース
         notes: '`Origin: https://attacker.example` を付ける'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as DELETE /api/edits/{id}
 
         クライアント->>IF: DELETE /api/edits/E-1（Origin: attacker.example）
         IF-->>クライアント: 403
+      ```
     expected:
       - ステータスが 403
       - '`edits.yaml` に E-1 が残る'
@@ -75,12 +81,14 @@ flows:
         description: 保存待ちの編集 E-1 を持つワークスペース
         notes: '`id` は `E-9`'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as DELETE /api/edits/{id}
 
         クライアント->>IF: DELETE /api/edits/E-9
         IF-->>クライアント: 404
+      ```
     expected:
       - ステータスが 404 で、`detail` に `E-9` がある
       - '`edits.yaml` の中身が前と同じ'

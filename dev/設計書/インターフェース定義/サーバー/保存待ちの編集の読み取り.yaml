@@ -11,6 +11,7 @@ flows:
       - name: make_workspace
         description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer`）・E-2（タスクの追加 `new-1`）を持つワークスペース
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as GET /api/edits
@@ -19,6 +20,7 @@ flows:
         クライアント->>IF: GET
         IF-->>WS: edits.yaml を読む
         IF-->>クライアント: 200、JSON（items・count）
+      ```
     expected:
       - ステータスが 200 で、`count` が 2
       - '`items` が E-1（`target: D-1`・`op: set`・`key: answer`）→ E-2（`target: new-1`・`op: item-add`・`key: tasks`）の順'
@@ -32,12 +34,14 @@ flows:
       - name: make_workspace
         description: '`edits.yaml` を持たないワークスペース'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as GET /api/edits
 
         クライアント->>IF: GET
         IF-->>クライアント: 200、JSON（items: []・count: 0）
+      ```
     expected:
       - ステータスが 200 で、`items` が空、`count` が 0
       - '`edits.yaml` が作られていない'
@@ -50,6 +54,7 @@ flows:
       - name: make_workspace
         description: '`op` が `rename` の編集を持つ `edits.yaml` を置いたワークスペース'
     flow: |-
+      ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as GET /api/edits
@@ -58,6 +63,7 @@ flows:
         クライアント->>IF: GET
         IF-->>WS: edits.yaml を読む
         IF-->>クライアント: 422
+      ```
     expected:
       - ステータスが 422 で、`detail` に `edits.yaml` と `op` がある
     test: test_error_when_schema_mismatch
