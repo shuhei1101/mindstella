@@ -367,6 +367,62 @@ def test_lock_gesture_visible(page: Page, spa_preview: str) -> None:
     expect(page.locator("[data-locked-key]")).to_have_count(0)
 
 
+# 鍵の震えが収まるまで待つ時間（ms。震えは約 1 秒）と、震え始めを確かめるまでの時間
+SHAKE_DONE_MS = 1_800
+SHAKE_EARLY_MS = 120
+
+# ロックした節の鍵の style を返す
+_KEY_STYLE_JS = "() => document.querySelector('#decision-map [data-locked-key]').getAttribute('style')"
+
+
+def _lock_d1(page: Page, url: str) -> None:
+    """マップで D-1 の詳細を開いた状態から D-1 を押し直してロックし、震えが収まるまで待つ。"""
+    page.set_viewport_size(WIDE)
+    _map(page, url, "&id=D-1")
+    page.wait_for_timeout(500)
+    page.locator('#decision-map [data-node="D-1"]').click()
+    page.locator("#decision-map [data-locked-key]").wait_for()
+    page.wait_for_timeout(SHAKE_DONE_MS)
+
+
+def test_lock_shake_when_blank_pressed(page: Page, spa_preview: str) -> None:
+    """ロック中に余白を押すと、ロック・詳細を変えず、閉じた鍵を上を軸に約 1 秒震わせ、収まると元の見た目に戻す（正常系）。"""
+    # 準備
+    _lock_d1(page, spa_preview)
+    quiet = page.evaluate(_KEY_STYLE_JS)
+    # 実行
+    page.locator("#decision-map").click(position={"x": 2, "y": 2})
+    page.wait_for_timeout(SHAKE_EARLY_MS)
+    shaking = page.evaluate(_KEY_STYLE_JS)
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    # 検証
+    assert quiet is None
+    assert shaking is not None
+    assert "rotate(" in shaking
+    assert "transform-origin: 50% 0" in shaking
+    assert page.evaluate(_KEY_STYLE_JS) is None
+    expect(page).to_have_url(re.compile("id=D-1"))
+    expect(page.locator('#decision-map [data-node="D-1"] [data-locked-key]')).to_be_visible()
+
+
+def test_lock_shake_when_open_item_pressed(page: Page, spa_preview: str) -> None:
+    """ロック中に詳細を開いている別の節をもう一度押すと、ロック・詳細を変えず、鍵を震わせる（正常系）。"""
+    # 準備
+    _lock_d1(page, spa_preview)
+    page.locator('#decision-map [data-node="D-2"]').click()
+    expect(page).to_have_url(re.compile("id=D-2"))
+    page.wait_for_timeout(SHAKE_DONE_MS)
+    # 実行
+    page.locator('#decision-map [data-node="D-2"]').click()
+    page.wait_for_timeout(SHAKE_EARLY_MS)
+    shaking = page.evaluate(_KEY_STYLE_JS)
+    # 検証
+    assert shaking is not None
+    assert "rotate(" in shaking
+    expect(page).to_have_url(re.compile("id=D-2"))
+    expect(page.locator('#decision-map [data-node="D-1"] [data-locked-key]')).to_be_visible()
+
+
 def test_removed_band_visible(page: Page, write_removed_preview: WriteReviewPreview) -> None:
     """選んだ時点で検討事項を消したときだけ消した項目の帯を出す（正常系）。"""
     # 準備
