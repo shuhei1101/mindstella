@@ -3,25 +3,33 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { MarkdownBody } from "@/shared/components/markdown-body";
 
-const { useLibrary } = vi.hoisted(() => ({ useLibrary: vi.fn() }));
+const { useLibrary, renderMarkdown } = vi.hoisted(() => ({ useLibrary: vi.fn(), renderMarkdown: vi.fn() }));
 vi.mock("@/shared/adapters/libraries", () => ({ useLibrary }));
+vi.mock("@/shared/core/body-links", async (importOriginal) => ({ ...(await importOriginal<object>()), renderMarkdown }));
 
 describe("MarkdownBody", () => {
-  beforeEach(() => useLibrary.mockReset());
+  beforeEach(() => {
+    useLibrary.mockReset();
+    renderMarkdown.mockReset();
+  });
 
-  // mount で描く（正常系）
+  // mdmark で描いた本文を置き、外すと片付ける（正常系）
   test("markdown_body", async () => {
     // 準備
-    const destroy = vi.fn();
-    const mount = vi.fn<(root: HTMLElement, options: { markdown: string }) => { destroy: () => void }>(() => ({ destroy }));
-    useLibrary.mockReturnValue({ status: "ready", library: { mount } });
+    useLibrary.mockReturnValue({ status: "ready", library: {} });
+    renderMarkdown.mockImplementation(() => {
+      const root = document.createElement("div");
+      root.innerHTML = "<h1>見出し</h1>";
+      return root;
+    });
     // 実行
-    const { unmount } = render(<MarkdownBody source="# 見出し" />);
-    await waitFor(() => expect(mount).toHaveBeenCalled());
+    const { container, unmount } = render(<MarkdownBody source="# 見出し" />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "見出し" })).toBeInTheDocument());
+    const host = container.firstElementChild;
     unmount();
     // 検証
-    expect(mount.mock.calls[0]?.[1]).toMatchObject({ markdown: "# 見出し" });
-    expect(destroy).toHaveBeenCalled();
+    expect(renderMarkdown).toHaveBeenCalledWith("# 見出し");
+    expect(host?.childNodes).toHaveLength(0);
   });
 
   // 読めない（異常系）

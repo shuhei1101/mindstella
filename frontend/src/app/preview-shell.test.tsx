@@ -35,7 +35,7 @@ describe("PreviewShell", () => {
     // 実行
     renderRoute("/spa/?tab=settings");
     // 検証
-    expect(await screen.findByRole("heading", { name: "ワークスペースの設定" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "設定", level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole("link", { current: "page" })).not.toBeInTheDocument();
   });
 
