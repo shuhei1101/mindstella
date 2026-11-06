@@ -330,7 +330,7 @@ request:
   default: なし（左のパネルを開かない）
   location: query
   description: 開いている左のパネル。`pending` は保存待ちのパネル
-  constraints: 保存待ちの編集が 0 件のときと、差分の表示中は無いものとして扱い、URL から外す
+  constraints: 差分の表示中と、開いたときに保存待ちの編集が 0 件のときは無いものとして扱い、URL から外す。開いている間に取り消して 0 件になったときは開いたまま空の状態を出す
 - name: 編集の値
   type: Any
   required: false
