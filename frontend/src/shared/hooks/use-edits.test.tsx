@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { AppError } from "@/shared/core/app-error";
 import { useAddEdit, useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { server } from "@/testing/msw/server";
 import { renderPreviewHook } from "@/testing/render";
 
@@ -52,9 +53,23 @@ describe("useSaveEdits", () => {
     const { result, queryClient } = await renderPreviewHook("/", useSaveEdits);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     // 実行
-    await act(() => result.current.mutateAsync());
+    await act(() => result.current.mutateAsync(2));
     // 検証
     await waitFor(() => expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([["/api/records"], ["/api/comments"], ["/api/edits"], ["/api/threads"]]));
+  });
+
+  // 保存した件数と書き込めない編集を、呼んだ部品が外れても残す（正常系）
+  test("use_save_edits_when_unmounted", async () => {
+    // 準備
+    useEditSessionStore.setState({ saved: null, blocked: [{ id: "E-1", reason: "changed", detail: "", refs: [] }] });
+    const { result, unmount } = await renderPreviewHook("/", useSaveEdits);
+    // 実行
+    const saving = result.current.mutateAsync(2);
+    unmount();
+    await saving;
+    // 検証
+    expect(useEditSessionStore.getState().saved).toBe(2);
+    expect(useEditSessionStore.getState().blocked).toEqual([]);
   });
 
   // 書き込めない編集（異常系）
@@ -64,8 +79,9 @@ describe("useSaveEdits", () => {
     server.use(http.post("/api/edits/save", () => HttpResponse.json({ type: "about:blank", title: "Conflict", status: 409, detail: "書き込めません", blocked }, { status: 409, headers: { "Content-Type": "application/problem+json" } })));
     const { result } = await renderPreviewHook("/", useSaveEdits);
     // 実行
-    const reply = await act(() => result.current.mutateAsync());
+    const reply = await act(() => result.current.mutateAsync(1));
     // 検証
     expect(reply.blocked).toEqual(blocked);
+    expect(useEditSessionStore.getState().blocked).toEqual(blocked);
   });
 });

@@ -34,7 +34,7 @@ export const renderPreviewHook = async <T,>(path: string, useHook: () => T) => {
   const history = createMemoryHistory({ initialEntries: [path] });
   const router = createRouter({ routeTree: rootRoute.addChildren([indexRoute]), history, parseSearch: parseSearchString, stringifySearch: stringifySearchString });
   const queryClient = createQueryClient();
-  render(
+  const { unmount } = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
@@ -42,5 +42,5 @@ export const renderPreviewHook = async <T,>(path: string, useHook: () => T) => {
   await waitFor(() => {
     if (result.current === undefined) throw new Error("hook がまだ呼ばれていない");
   });
-  return { result: result as { current: T }, history, router, queryClient };
+  return { result: result as { current: T }, history, router, queryClient, unmount };
 };

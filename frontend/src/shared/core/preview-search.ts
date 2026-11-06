@@ -38,14 +38,20 @@ export type SearchContext = {
   sortColumns: readonly string[];
 };
 
-/** `f.` で始まるキーを `f` に集めて検証する */
-export const parsePreviewSearch = (search: Record<string, unknown>): PreviewSearch => {
+/** `f.` で始まるキーを `f` に集める */
+const collectFilters = (search: Record<string, unknown>): { f: Record<string, string>; rest: Record<string, unknown> } => {
   const f: Record<string, string> = {};
   const rest: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(search)) {
     if (key.startsWith(F_PREFIX)) f[key.slice(F_PREFIX.length)] = String(value);
     else rest[key] = value;
   }
+  return { f, rest };
+};
+
+/** `f.` で始まるキーを `f` に集めて検証する */
+export const parsePreviewSearch = (search: Record<string, unknown>): PreviewSearch => {
+  const { f, rest } = collectFilters(search);
   return PreviewSearchSchema.parse({ ...rest, f: { ...f, ...(rest["f"] as Record<string, string> | undefined) } });
 };
 
@@ -55,8 +61,11 @@ export const flattenSearch = ({ f, ...rest }: PreviewSearch): Record<string, str
   ...Object.fromEntries(Object.entries(f).map(([key, value]) => [`${F_PREFIX}${key}`, value])),
 });
 
-/** URL の search の文字列を読む。値は全て文字列のまま扱う（今の画面のハッシュと同じ値にするため、JSON として読まない） */
-export const parseSearchString = (text: string): Record<string, unknown> => Object.fromEntries(new URLSearchParams(text));
+/** URL の search の文字列を読む。値は全て文字列のまま扱う（今の画面のハッシュと同じ値にするため、JSON として読まない）。`f.{列}` は `f` に集め、`f` の置き換えで外せるようにする */
+export const parseSearchString = (text: string): Record<string, unknown> => {
+  const { f, rest } = collectFilters(Object.fromEntries(new URLSearchParams(text)));
+  return Object.keys(f).length === 0 ? rest : { ...rest, f };
+};
 
 /** search を URL の search の文字列にする。値の無い引数は書かない */
 export const stringifySearchString = (search: Record<string, unknown>): string => {

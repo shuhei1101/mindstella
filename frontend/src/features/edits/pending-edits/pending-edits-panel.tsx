@@ -82,7 +82,6 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
   const save = useSaveEdits();
   const cancel = useCancelEdit();
   const blocked = useEditSessionStore((state) => state.blocked);
-  const setBlocked = useEditSessionStore((state) => state.setBlocked);
   const alert = useRef<HTMLDivElement>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const setSaved = useEditSessionStore((state) => state.setSaved);
@@ -192,16 +191,9 @@ export const PendingEditsPanel = ({ edits, index, onClose, onOpen }: PendingEdit
           disabled={save.isPending || edits.length === 0}
           aria-busy={save.isPending || undefined}
           onClick={() => {
-            const count = edits.length;
             setFailure(null);
             setSaved(null);
-            save.mutate(undefined, {
-              onSuccess: ({ blocked: next }) => {
-                setBlocked(next);
-                if (next.length === 0) setSaved(count);
-              },
-              onError: (error) => { setFailure(error.message); },
-            });
+            save.mutate(edits.length, { onError: (error) => { setFailure(error.message); } });
           }}
         >
           <Icon name="save" />

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { normalizeSearch, parsePreviewSearch, toLegacyHash, type PreviewSearch, type SearchContext } from "@/shared/core/preview-search";
+import { normalizeSearch, parsePreviewSearch, parseSearchString, toLegacyHash, type PreviewSearch, type SearchContext } from "@/shared/core/preview-search";
 import type { MindmapData } from "@/shared/core/records";
 import { buildIndex } from "@/shared/core/records";
 
@@ -42,6 +42,16 @@ describe("parsePreviewSearch", () => {
     // 検証
     expect(parsed.tab).toBeUndefined();
     expect(parsed.full).toBeUndefined();
+  });
+});
+
+describe("parseSearchString", () => {
+  // `f.{列}` を `f` に集める（正常系）
+  test("parse_search_string", () => {
+    // 実行
+    const parsed = parseSearchString("?tab=decisions&f.status=%E4%BF%9D%E7%95%99");
+    // 検証
+    expect(parsed).toEqual({ tab: "decisions", f: { status: "保留" } });
   });
 });
 

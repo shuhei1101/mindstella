@@ -6,6 +6,7 @@ import type { EditInput } from "@/shared/api/generated/model";
 import { AppError } from "@/shared/core/app-error";
 import type { BlockedEdit } from "@/shared/core/edits";
 import { editsQuery, invalidatePreview } from "@/shared/hooks/preview-queries";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 
 /** 編集を溜め、保存待ちの編集を読み直す */
 export const useAddEdit = () => {
@@ -28,11 +29,11 @@ export const useCancelEdit = () => {
 /** まとめて保存した結果。書き込めない編集があれば `blocked` を返す */
 export type SaveOutcome = { blocked: BlockedEdit[] };
 
-/** まとめて保存する。409 の `blocked` は結果として返す */
+/** まとめて保存する。409 の `blocked` は結果として返す。保存でパネルが外れても通知を出すため、結果は mutation の側で store へ書く（引数は保存する編集の件数） */
 export const useSaveEdits = () => {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (): Promise<SaveOutcome> => {
+  return useMutation<SaveOutcome, Error, number>({
+    mutationFn: async () => {
       try {
         await saveEdits();
         await invalidatePreview(queryClient);
@@ -43,6 +44,11 @@ export const useSaveEdits = () => {
         }
         throw error;
       }
+    },
+    onSuccess: ({ blocked }, count) => {
+      const { setBlocked, setSaved } = useEditSessionStore.getState();
+      setBlocked(blocked);
+      if (blocked.length === 0) setSaved(count);
     },
   });
 };
