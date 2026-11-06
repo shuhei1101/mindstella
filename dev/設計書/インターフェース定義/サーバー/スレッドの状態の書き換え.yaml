@@ -135,7 +135,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: オープンのスレッド TH-1 を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
+        description: オープンのスレッド TH-1（利用者の書き込みは取り込み済み）を持ち、ワークスペースのフォルダの書き込みの権限を外したワークスペース
         notes: root で動かすときは skip する
     flow: |-
       ```mermaid
