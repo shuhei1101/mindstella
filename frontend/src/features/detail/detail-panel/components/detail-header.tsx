@@ -5,6 +5,7 @@ import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
 import { Button } from "@/shared/components/ui/button";
 import type { PendingMarkKind } from "@/shared/core/edits";
+import { cn } from "@/shared/lib/cn";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { bodyFormatOf, KIND_LABEL, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
 
@@ -16,12 +17,14 @@ export type DetailHeaderProps = {
   editable: boolean;
   editing: boolean;
   pending: PendingMarkKind | null;
+  /** 本文の先頭のタイトルがスクロール領域の上へ外れているか（外れている間だけ見出しにタイトルを出す） */
+  showTitle: boolean;
   onToggleEdit: () => void;
   onToggleFull: () => void;
   onClose: () => void;
 };
 
-export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
+export const DetailHeader = ({ item, kind, index, full, editable, editing, pending, showTitle, onToggleEdit, onToggleFull, onClose }: DetailHeaderProps) => {
   const { canBack, canForward } = usePreviewSearch();
   const format = bodyFormatOf(item.body);
   const source = kind === "docs" && format === "md" && !editing ? index.data.bodies[item.body ?? ""] : undefined;
@@ -35,7 +38,8 @@ export const DetailHeader = ({ item, kind, index, full, editable, editing, pendi
       </span>
       {kind === "docs" && format !== null ? <BodyFormatBadge format={format} /> : null}
       {pending === null ? null : <PendingMark kind={pending} compact />}
-      <span aria-hidden="true" title={item.title} className="min-w-0 flex-1 truncate text-small">
+      {/* 隠している間も場所は取ったままにし、種類と ID を動かさない */}
+      <span aria-hidden="true" title={item.title} className={cn("min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none", !showTitle && "opacity-0")}>
         {item.title}
       </span>
       {editable ? (

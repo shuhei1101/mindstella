@@ -15,8 +15,8 @@ import { bodyFormatOf, type Item, type RecordIndex } from "@/shared/core/records
 import { sideBySideBodyDiff } from "@/shared/core/side-by-side";
 import { attachTermTips, scrollToHeading } from "@/shared/core/term-tips";
 
-const NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。";
-const NOTE_BODY_TOO_LARGE = "本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。";
+const NOTE_BODY_UNAVAILABLE = "本文の差分を出せません。書き換えの後に、本文のファイルが直接書き換えられています。今の本文を出しています。";
+const NOTE_BODY_TOO_LARGE = "本文の差分を出せません。書き換えが大きく、差分を計算しきれませんでした。今の本文を出しています。";
 
 /** 本文の差分の並べ方 */
 export type BodyLayout = "inline" | "side";
@@ -53,6 +53,8 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
   const canLayout = comparing && before !== null && before !== source && jsdiff === "ready";
   // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
   const create = useCallback(() => {
+    // Markdown の本文は mdmark を読み終えてから描く（読めなかったときは原文と知らせを出す）
+    if (!html && mdmark === "loading") return { node: null };
     const wrapper = h({ tag: "div" });
     const notes: HTMLElement[] = [];
     if (comparing && jsdiff !== "ready") notes.push(libraryNotice({ names: ["jsdiff"], what: "本文と図の差分" }));
@@ -97,7 +99,8 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
         },
         onChangeSet,
       });
-      linkBody({ root: target, index, selfId: id, onOpen, source: text });
+      // 本文の印と ID のリンクは、mdmark の語の照合で付ける
+      if (mdmark === "ready") linkBody({ root: target, index, selfId: id, onOpen, source: text });
       drawHtmlBlocks(target);
     };
     link(root, source);

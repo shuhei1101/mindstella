@@ -67,18 +67,14 @@ describe("DetailPanel", () => {
     expect(await screen.findByRole("textbox", { name: "タイトル" })).toHaveValue("D-1の題");
   });
 
-  // 今の画面でコメントする（正常系）
+  // 今の画面でコメントするのリンク（正常系）
   test("detail_panel_when_comment_link", async () => {
     // 準備
     stubRecords({ decisions: [decision], changes });
-    renderRoute("/spa/?tab=decisions&view=table&id=D-1&diff=V-1");
-    const button = await screen.findByRole("button", { name: "今の画面でコメントする" });
-    const assign = vi.fn();
-    vi.stubGlobal("location", { ...window.location, assign });
     // 実行
-    await userEvent.click(button);
+    renderRoute("/spa/?tab=decisions&view=table&id=D-1&diff=V-1");
+    const link = await screen.findByRole("link", { name: "今の画面でコメントする" });
     // 検証
-    expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1");
-    vi.unstubAllGlobals();
+    expect(link).toHaveAttribute("href", "/mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1");
   });
 });

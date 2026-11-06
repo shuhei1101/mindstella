@@ -1,5 +1,5 @@
 // 詳細パネル（画面設計『詳細パネル.tsx』）。項目 1 件の中身を本文の右に出し、差分の表示の間は前後の差分を出す
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/components/detail-editor";
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
@@ -14,7 +14,6 @@ import { DiffMark } from "@/shared/components/diff-mark";
 import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
-import { Button } from "@/shared/components/ui/button";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
@@ -29,7 +28,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 
-const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い履歴です。";
+const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
 
 /** 差分の表示で開いた項目の内容 */
 type DetailDiff = { point: DiffPoint; kind: "new" | "changed"; versions: VersionPair | null; keys: KeyDiffs | null; shown: Item; body: string | undefined };
@@ -134,6 +133,18 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const deadline = useMemo(() => nextDiffDeadline(), [id, point?.sel]);
   const [display] = useState(bodyDisplayOf);
   const prefs = usePrefs();
+  // 本文の先頭のタイトルが、本文のスクロール領域の上へ外れているか
+  const [titleElement, setTitleElement] = useState<HTMLElement | null>(null);
+  const [titleOut, setTitleOut] = useState(false);
+  useEffect(() => {
+    const scroller = titleElement?.closest(".panel-body") ?? null;
+    if (titleElement === null || scroller === null) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry !== undefined) setTitleOut(!entry.isIntersecting && entry.boundingClientRect.bottom <= (entry.rootBounds?.top ?? 0));
+    }, { root: scroller });
+    observer.observe(titleElement);
+    return () => { observer.disconnect(); };
+  }, [titleElement]);
   const entry = index.byId.get(id);
   if (entry === undefined) return null;
   const { kind } = entry;
@@ -227,7 +238,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
-      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
+      <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
           <DetailEditor kind={kind} item={entry.item} settings={index.data.settings} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
@@ -244,7 +255,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             )}
             {diff?.versions?.trimmed === true ? <p role="note" className="text-small text-muted-foreground">{NOTE_TRIMMED}</p> : null}
             <div data-key="status">{keys?.has("status") === true ? <KeyDiff was={<Status value={keys.left["status"]} />} now={<Status value={keys.right["status"]} />} plain /> : <Status value={item.status} />}</div>
-            <h2 data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
+            <h2 ref={setTitleElement} data-key="title" className="m-0 flex flex-wrap items-center gap-1 text-next font-semibold">
               <KeyValue name="title" value={item.title} keys={keys} />
               {diff?.kind === "new" ? <DiffMark kind="new" labeled /> : null}
               {item.withdrawn === true ? <WithdrawnBadge large /> : null}
@@ -269,9 +280,9 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
             {/* コメントの入力は React へ移すまで今の画面で開く */}
-            <Button variant="outline" className="self-start" onClick={() => { window.location.assign(toLegacyUrl(toLegacyHash(search))); }}>
+            <a href={toLegacyUrl(toLegacyHash(search))} className="self-start rounded-control border border-border px-2.5 py-1 text-small font-medium hover:bg-accent">
               今の画面でコメントする
-            </Button>
+            </a>
           </div>
         )}
       </DiffMinimap>
