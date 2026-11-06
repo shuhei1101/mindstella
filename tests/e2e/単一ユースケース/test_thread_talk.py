@@ -806,7 +806,7 @@ def test_normal_when_ai_close_arrives(
                 "TH-1",
                 make_post("TH-1-1", body="案 A にする", read=True, taken=T_0100, created=T_0100),
                 make_post("TH-1-2", author="ai", body="D-1 を案 A で決定にしました", created=T_0200),
-                make_post("TH-1-3", body="了解", created=T_0300),
+                make_post("TH-1-3", body="了解", read=True, taken=T_0300, created=T_0300),
                 summary="D-1 の案の相談。案 A で決定",
             ),
         ),
