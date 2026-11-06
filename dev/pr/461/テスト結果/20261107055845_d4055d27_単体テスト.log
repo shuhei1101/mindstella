@@ -1,0 +1,6 @@
+# 単体テスト（全件 pass）
+# commit: d4055d27
+# 実行日時: 2026-11-07 05:58:45 JST
+# 補足: この環境に playwright が無いので tests/unit/preview は含めない（今回はフロントを変えていない）。mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ
+$ pytest tests/unit/scripts -q
+1170 passed, 1 skipped in 44.98s
