@@ -139,11 +139,11 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
   useEffect(() => {
     const scroller = titleElement?.closest(".panel-body") ?? null;
     if (titleElement === null || scroller === null) return undefined;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry !== undefined) setTitleOut(!entry.isIntersecting && entry.boundingClientRect.bottom <= (entry.rootBounds?.top ?? 0));
-    }, { root: scroller });
-    observer.observe(titleElement);
-    return () => { observer.disconnect(); };
+    const update = (): void => {
+      setTitleOut(titleElement.getBoundingClientRect().bottom <= scroller.getBoundingClientRect().top);
+    };
+    scroller.addEventListener("scroll", update, { passive: true });
+    return () => { scroller.removeEventListener("scroll", update); };
   }, [titleElement]);
   const entry = index.byId.get(id);
   if (entry === undefined) return null;
