@@ -11,55 +11,56 @@ Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-····Not implemented: Window's scrollTo() method
-·····Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-·····Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-···Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-···Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-···Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-Not implemented: Window's scrollTo() method
-··Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-····Not implemented: Window's scrollTo() method
-·····Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-····Not implemented: Window's scrollTo() method
 Not implemented: Window's scrollTo() method
-·Not implemented: Window's scrollTo() method
-········································································
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
 
  Test Files  49 passed (49)
-      Tests  123 passed (123)
-   Start at  08:39:56
-   Duration  253.70s (environment 55%, import 24%, setup 19%, transform 2%, worker 1%)
+      Tests  125 passed (125)
+   Start at  11:45:06
+   Duration  290.53s (environment 55%, import 24%, setup 19%, transform 1%, worker 1%)
 
-Environment  jsdom was created 49 times · 902.27s total, 55% of tracked time
+Environment  jsdom was created 49 times · 1037.50s total, 55% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
 
+exit 0
