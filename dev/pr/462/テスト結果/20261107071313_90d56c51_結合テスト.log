@@ -1,0 +1,17 @@
+# 結合テスト
+# commit: 90d56c51
+# 実行日時: 2026-11-07 07:13:13 JST
+# 補足: mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ
+$ pytest tests/integration/skill/test_session.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/docs-skill-align-writing-style-with-knowledge
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0, Faker-40.11.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/skill/test_session.py .                                [100%]
+
+============================== 1 passed in 1.84s ===============================
+# exit=0
