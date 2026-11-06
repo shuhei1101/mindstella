@@ -13,10 +13,14 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const New: Story = { args: {"kind": "new"} };
+/** 新規。丸や枠で囲まず太い + だけ */
+export const New: Story = { args: { kind: "new" } };
 
-export const Changed: Story = { args: {"kind": "changed"} };
+/** 変更。丸や枠で囲まず塗った ● だけ。決定済みの状態の印とは色で分かれる */
+export const Changed: Story = { args: { kind: "changed" } };
 
-export const NewLabeled: Story = { args: {"kind": "new", "labeled": true} };
+/** 詳細パネルの題の横の新規の札 */
+export const NewLabeled: Story = { args: { kind: "new", labeled: true } };
 
-export const Removed: Story = { args: {"kind": "removed"} };
+/** 消した。差分の色の赤の太い − だけで、新規・変更と同じ大きさ */
+export const Removed: Story = { args: { kind: "removed" } };

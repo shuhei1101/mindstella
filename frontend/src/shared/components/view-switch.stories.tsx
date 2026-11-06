@@ -14,8 +14,37 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Decisions: Story = { args: {"views": [{"key": "map", "label": "マップ"}, {"key": "board", "label": "ボード"}, {"key": "table", "label": "表"}], "current": "map"} };
+/** 検討事項（マップ・ボード・表）でマップを選んでいる */
+export const Decisions: Story = {
+  args: {
+    views: [
+      { key: "map", label: "マップ" },
+      { key: "board", label: "ボード" },
+      { key: "table", label: "表" },
+    ],
+    current: "map",
+  },
+};
 
-export const Tasks: Story = { args: {"views": [{"key": "board", "label": "ボード"}, {"key": "table", "label": "表"}], "current": "table"} };
+/** タスク（ボード・表）で表を選んでいる。形式の数が違っても 1 つの幅と左端の位置が同じ */
+export const Tasks: Story = {
+  args: {
+    views: [
+      { key: "board", label: "ボード" },
+      { key: "table", label: "表" },
+    ],
+    current: "table",
+  },
+};
 
-export const Docs: Story = { args: {"views": [{"key": "cards", "label": "カード"}, {"key": "board", "label": "ボード"}, {"key": "table", "label": "表"}], "current": "cards"} };
+/** 資料（カード・ボード・表）でカードを選んでいる */
+export const Docs: Story = {
+  args: {
+    views: [
+      { key: "cards", label: "カード" },
+      { key: "board", label: "ボード" },
+      { key: "table", label: "表" },
+    ],
+    current: "cards",
+  },
+};

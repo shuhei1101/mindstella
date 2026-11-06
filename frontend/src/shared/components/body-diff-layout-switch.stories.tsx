@@ -14,8 +14,16 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Inline: Story = { args: {"layout": "inline"} };
+/** 既定。「インライン」を押した状態 */
+export const Inline: Story = { args: { layout: "inline" } };
 
-export const Side: Story = { args: {"layout": "side"} };
+/** 「左右に並べる」を押した状態 */
+export const Side: Story = { args: { layout: "side" } };
 
-export const FocusOnOther: Story = { args: {"layout": "inline"} };
+/** 「インライン」を押したまま、「左右に並べる」にキーボードのフォーカスを置いた。印の色の輪を出す */
+export const FocusOnOther: Story = {
+  args: { layout: "inline" },
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLElement>('[data-layout="side"]')?.focus({ focusVisible: true });
+  },
+};

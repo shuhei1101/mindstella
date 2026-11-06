@@ -1,34 +1,140 @@
-// HTMLの本文の枠のストーリー（部品設計『HTMLの本文の枠.tsx』の状態）
+// HTML の本文の枠のストーリー（部品設計『HTMLの本文の枠.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 
 import { HtmlBodyFrame } from "@/shared/components/html-body-frame";
+import type { HtmlBodyFrameProps } from "@/shared/core/html-frame";
+
+/** 見出し・段落・表・図を持つ本文（行の印つき） */
+const RENDERED = [
+  "<style>table { border-collapse: collapse } td, th { border: 1px solid #999; padding: 4px 8px }</style>",
+  '<h1 data-line="2" data-line-end="2">画面の流れ</h1>',
+  '<p data-line="3" data-line-end="3">一覧から詳細を開く流れです。</p>',
+  '<table data-line="4" data-line-end="5"><tr data-line="4" data-line-end="4"><th data-line="4" data-line-end="4">画面</th><th data-line="4" data-line-end="4">操作</th></tr><tr data-line="5" data-line-end="5"><td data-line="5" data-line-end="5">一覧</td><td data-line="5" data-line-end="5">1 件を選ぶ</td></tr></table>',
+  '<svg data-line="6" data-line-end="6" width="240" height="60" viewBox="0 0 240 60" role="img" aria-label="一覧から詳細へ"><rect x="4" y="12" width="90" height="36" fill="#dbeafe" stroke="#2563eb"/><rect x="146" y="12" width="90" height="36" fill="#dcfce7" stroke="#16a34a"/><path d="M94 30h52" stroke="#444"/></svg>',
+].join("\n");
+
+/** 本文の `<style>` が `*`・`body`・`p` を塗る本文 */
+const STYLE_ISOLATED =
+  '<style>* { margin: 40px !important } body, p { color: rgb(255, 0, 0) !important; background: rgb(0, 0, 255) !important }</style>\n<p data-line="2" data-line-end="2">枠の中の段落</p>';
+
+/** スクリプトを持つ本文 */
+const WITH_SCRIPTS = [
+  '<h1 data-line="1" data-line-end="1">保存のボタンの見本</h1>',
+  '<p data-line="2" data-line-end="2">下のボタンを押しても何も起きません。</p>',
+  '<script>document.body.append("スクリプトが動きました")</script>',
+  '<img data-line="4" data-line-end="4" src="data:," onerror="document.body.append(\'画像のエラーが動きました\')">',
+  '<button data-line="5" data-line-end="5" type="button" onclick="document.body.append(\'ボタンが動きました\')">保存</button>',
+].join("\n");
+
+/** 差分の印を付ける本文 */
+const DIFF_BODY = [
+  '<h1 data-line="1" data-line-end="1">画面の流れ</h1>',
+  '<p data-line="2" data-line-end="2">一つ目の段落</p>',
+  '<p data-line="3" data-line-end="3">変えた二つ目の段落</p>',
+  '<p data-line="4" data-line-end="4">三つ目の段落</p>',
+  '<p data-line="5" data-line-end="5">足した四つ目の段落</p>',
+].join("\n");
+
+/** 本文が `html, body { height: 100% }` と `body { min-height: 100vh }` で、枠の高さを基準にする本文（段落を 12 個持ち、120px より長い） */
+const VIEWPORT_RELATIVE = [
+  "<style>html, body { height: 100% } body { min-height: 100vh }</style>",
+  ...Array.from({ length: 12 }, (_, index) => `<p data-line="${String(index + 2)}" data-line-end="${String(index + 2)}">${String(index + 1)} つ目の段落です。</p>`),
+].join("\n");
+
+/** 外のページへのリンク（`target` なしと `_blank`）・`mailto:`・相対の URL・`javascript:` のリンクを持つ本文 */
+const WITH_LINKS = [
+  '<h1 data-line="1" data-line-end="1">リンクの見本</h1>',
+  '<p data-line="2" data-line-end="2"><a id="link-https" href="https://example.com/">外のページ</a></p>',
+  '<p data-line="3" data-line-end="3"><a id="link-blank" href="https://example.com/blank" target="_blank">別のタブを指す外のページ</a></p>',
+  '<p data-line="4" data-line-end="4"><a id="link-mailto" href="mailto:a@example.com">メール</a></p>',
+  '<p data-line="5" data-line-end="5"><a id="link-relative" href="other.html">相対の URL</a></p>',
+  '<p data-line="6" data-line-end="6"><a id="link-javascript" href="javascript:document.body.append(\'リンクのスクリプトが動きました\')">javascript のリンク</a></p>',
+].join("\n");
+
+/** 先頭に `#usage`・`#none` のリンク、離れた位置に `id="usage"` の見出しを持つ本文 */
+const WITH_ANCHORS = [
+  '<p data-line="1" data-line-end="1"><a id="link-usage" href="#usage">使い方へ</a></p>',
+  '<p data-line="2" data-line-end="2"><a id="link-none" href="#none">無い場所へ</a></p>',
+  '<div data-line="3" data-line-end="3" style="height:600px"></div>',
+  '<h2 id="usage" data-line="4" data-line-end="4">使い方</h2>',
+  '<p data-line="5" data-line-end="5">使い方の本文です。</p>',
+].join("\n");
+
+/** 枠を描き、「選び終えた」を知らせた回数を `data-selects` に出す */
+const CountedFrame = (args: HtmlBodyFrameProps) => {
+  const [selects, setSelects] = useState(0);
+  const [on] = useState(() => ({ select: () => { setSelects((count) => count + 1); } }));
+  return (
+    <div data-selects={selects}>
+      <HtmlBodyFrame {...args} on={on} />
+    </div>
+  );
+};
 
 const meta = {
   title: "Shared/HtmlBodyFrame",
   component: HtmlBodyFrame,
-  args: { source: "<h1>見出し</h1><p>本文の段落</p>", selectable: true, label: "本文（HTML）" },
+  render: (args) => <CountedFrame {...args} />,
+  args: { source: RENDERED },
 } satisfies Meta<typeof HtmlBodyFrame>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Rendered: Story = { args: {} };
+/** 見出し・段落・表・`<svg>` の図を持つ本文。枠の高さが中身に合い、枠の中にスクロールの帯が出ない。地は白で、ダークでも資料の色のまま */
+export const Rendered: Story = {};
 
-export const StyleIsolated: Story = { args: {"source": "<style>*{color:red !important}p{margin:40px !important}</style><p>枠の中</p>"} };
+/** 本文の `<style>` が `*`・`body`・`p` の色と余白を `!important` で塗っても、枠の外の見本の段落・見出しは変わらない */
+export const StyleIsolated: Story = {
+  args: { source: STYLE_ISOLATED },
+  render: (args) => (
+    <div>
+      <h2>枠の外の見出し</h2>
+      <p>枠の外の段落</p>
+      <HtmlBodyFrame {...args} />
+    </div>
+  ),
+};
 
-export const Loading: Story = { args: {} };
+/** 描く前。枠は 120px の高さを取り、描いた後に中身の高さへ伸びる */
+export const Loading: Story = {
+  // 描く前の枠（本文を渡さず、高さを合わせる動きも付けない）。CSS の 120px の高さを見せる
+  render: () => <iframe className="html-frame" sandbox="allow-same-origin" title="本文（HTML）" />,
+};
 
-export const WithScripts: Story = { args: {"source": "<h1>見出し</h1><script>document.title=\"x\"</script><img src=x onerror=\"document.title='x'\"><button onclick=\"document.title='x'\">押す</button>"} };
+/** `<script>`・`onerror` の画像・`onclick` のボタンを持つ本文。見出し・段落は描き、ボタンを押しても何も起きない */
+export const WithScripts: Story = { args: { source: WITH_SCRIPTS } };
 
-export const CodeBlock: Story = { args: {"selectable": false, "label": "html のコードブロック"} };
+/** Markdown の中の `html` のコードブロック。行の印を持たず、枠の中で選んでも「選び終えた」を知らせない */
+export const CodeBlock: Story = { args: { source: "<p>コードブロックの HTML</p>", selectable: false, label: "html のコードブロック" } };
 
-export const DiffMarks: Story = { args: {"marks": {"added": [5], "changed": [3]}, "source": "<p data-line=\"1\" data-line-end=\"1\">一</p>\n<p data-line=\"2\" data-line-end=\"2\">二</p>\n<p data-line=\"3\" data-line-end=\"3\">三</p>\n<p data-line=\"4\" data-line-end=\"4\">四</p>\n<p data-line=\"5\" data-line-end=\"5\">五</p>"} };
+/** 2 つ目の段落を変え、4 つ目の段落を足した本文。変えた段落に破線、足した段落に実線の印を付け、ほかの段落には付けない */
+export const DiffMarks: Story = { args: { source: DIFF_BODY, marks: { added: [5], changed: [3] } } };
 
-export const Narrow: Story = { args: {} };
+/** 本文が `html, body { height: 100% }` と `body { min-height: 100vh }` を持つ。枠の高さが中身に合い、時間を置いても伸び続けず、中身が切れない */
+export const ViewportRelative: Story = { args: { source: VIEWPORT_RELATIVE } };
 
-export const ViewportRelative: Story = { args: {"source": "<style>html,body{height:100%}body{min-height:100vh}</style><p>本文</p>"} };
+/** 外のページへのリンクを押すと、枠の中の本文は残り、リンク先が新しいタブで開く。相対の URL と `javascript:` のリンクは、押しても何も起きない */
+export const Links: Story = { args: { source: WITH_LINKS } };
 
-export const Links: Story = { args: {"source": "<a href=\"https://example.com/\">外</a><a href=\"mailto:a@example.com\">メール</a><a href=\"javascript:void(0)\">実行</a>"} };
+/** 高さを限った縦にスクロールする領域の中の本文。`#usage` のリンクを押すと領域が見出しの位置まで送られ、新しいタブは開かない。`#none` のリンクは、押しても何も起きない */
+export const AnchorLinks: Story = {
+  args: { source: WITH_ANCHORS },
+  render: (args) => (
+    <div id="story-scroller" style={{ height: "240px", overflowY: "auto" }}>
+      <HtmlBodyFrame {...args} />
+    </div>
+  ),
+};
 
-export const AnchorLinks: Story = { args: {"source": "<a href=\"#usage\">使い方</a><a href=\"#none\">無い</a><div style=\"height:1200px\"></div><h2 id=\"usage\">使い方</h2>"} };
+/** 幅 390px。本文の図・表が枠の幅に収まる */
+export const Narrow: Story = {
+  parameters: {
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
