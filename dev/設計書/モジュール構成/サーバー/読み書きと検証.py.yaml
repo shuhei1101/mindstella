@@ -448,6 +448,13 @@ classes:
       - name: blocked
         type: list[BlockedEdit]
         description: 書き込めない編集（モジュール構成『保存待ちの編集』）。溜めた順
+  - name: ThreadCloseRejectedError
+    title: クローズにできない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 送信の取り込み
+    summary: AI が、取り込み待ちの利用者の書き込みか利用者が未読の AI の書き込みのあるスレッドをクローズにしようとした。メッセージは `スレッド {ID} はクローズにできません`、`lines` に当たった条件ごとの書き込みの ID と案内の行（`_check_ai_close`）
+    kind: クラス
+    inherits: MindmapError
 constants:
   - name: KINDS
     title: 種類の一覧

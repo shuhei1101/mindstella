@@ -627,7 +627,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/threads.py
     usecase: スレッドで話す
     scope: public
-    summary: スレッドをクローズにするかオープンに戻し、書き手・理由・日時を状態の記録に足す。既にその状態なら書かない（鍵は呼ぶ側が取る。AI のツールと画面の受け口が書き手を渡す）
+    summary: スレッドをクローズにするかオープンに戻し、書き手・理由・日時を状態の記録に足す。既にその状態なら書かない。AI がクローズにするときは、取り込み待ちの書き込みと利用者が未読の AI の書き込みが無いことを確かめる（鍵は呼ぶ側が取る。AI のツールと画面の受け口が書き手を渡す）
     side_effects: '`threads.yaml` を置き換える（状態が変わるときだけ）'
     args:
       - name: root
@@ -669,7 +669,8 @@ functions:
       1. `status` が `open`・`closed` のどちらかで、`reason` が `None` か文字列で前後の空白を除いて `MAX_SUMMARY_CHARS` 文字以下かを確かめる（空白だけは `None` にする）
       2. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
          - 既にその状態の場合、書かずに偽を返す
-      3. `status` を置き換え、`events` の末尾に `kind`（`closed` へは `closed`、`open` へは `reopened`）・`author`・`reason`・今の日時を足して書く（`_write_threads`）。書き込みの `taken`・`read` は変えない
+      3. `author` が `ai` で `status` が `closed` の場合、クローズにできるかを確かめる（`_check_ai_close`）
+      4. `status` を置き換え、`events` の末尾に `kind`（`closed` へは `closed`、`open` へは `reopened`）・`author`・`reason`・今の日時を足して書く（`_write_threads`）。書き込みの `taken`・`read` は変えない
          - `[INFO]` スレッドの状態を変えた（スレッドの ID・状態・書き手）
     exceptions:
       - name: ArgumentError
@@ -681,13 +682,15 @@ functions:
         condition: '`load_threads` が送るもの'
       - name: WriteFailedError
         condition: '`threads.yaml` を書けない'
+      - name: ThreadCloseRejectedError
+        condition: '`_check_ai_close` が送るもの'
     unit_tests:
       - name: test_set_thread_status
         case: 正常
         summary: クローズにして記録を足し、取り込み待ちは変えない
-        condition: 取り込んでいない利用者の書き込みを持つオープンの TH-1。`status="closed"`・`reason=" 案 A で決着 "`・`author="ai"`。`now` は `2026-10-13T03:00:00+00:00`
+        condition: 取り込んでいない利用者の書き込みを持つオープンの TH-1。`status="closed"`・`reason=" 案 A で決着 "`・`author="user"`。`now` は `2026-10-13T03:00:00+00:00`
         mock: '`now`'
-        expected: '真。`status` が `closed`、`events` の末尾が `{kind: closed, author: ai, reason: 案 A で決着, created: now の値}`。書き込みの `taken` が `None` のまま'
+        expected: '真。`status` が `closed`、`events` の末尾が `{kind: closed, author: user, reason: 案 A で決着, created: now の値}`。書き込みの `taken` が `None` のまま'
       - name: test_set_thread_status_when_reopen
         case: 正常
         summary: オープンに戻す。空白だけの理由は持たない
@@ -707,6 +710,31 @@ functions:
         mock: なし
         expected: '`ArgumentError`（`argument` が `status`）/ `ArgumentError`（`reason`）/ `ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
         exception: 形の誤り・無い ID
+      - name: test_set_thread_status_when_ai_closes
+        case: 正常
+        summary: AI は取り込み済みで利用者が既読のスレッドをクローズにできる。最後の書き込みが利用者でも確かめない
+        condition: 取り込み済みの TH-1-1（利用者）・利用者の既読の TH-1-2（AI）・取り込み済みの TH-1-3（利用者）を持つオープンの TH-1。`status="closed"`・`author="ai"`
+        mock: '`now`'
+        expected: 真。`status` が `closed`、`events` の末尾の `author` が `ai`
+      - name: test_set_thread_status_when_close_rejected
+        case: 異常
+        summary: 取り込み待ちか利用者の未読があれば、AI はクローズにできない
+        condition: '`parametrize`: 取り込んでいない TH-1-1（利用者）を持つオープンの TH-1 / 取り込み済みの TH-1-1（利用者）と利用者の未読の TH-1-2（AI）を持つオープンの TH-1 / 取り込んでいない TH-1-1（利用者）と利用者の未読の TH-1-2（AI）を持つオープンの TH-1。`status="closed"`・`author="ai"`'
+        mock: なし
+        expected: '`ThreadCloseRejectedError`（メッセージに `TH-1`）。`lines` が取り込み待ちの行（`TH-1-1` と `update_thread`）だけ / 未読の行（`TH-1-2`）だけ / 取り込み待ちの行・未読の行の順の 2 行。`threads.yaml` が呼ぶ前と同じ'
+        exception: 取り込み待ち・利用者の未読
+      - name: test_set_thread_status_when_ai_reopens
+        case: 正常
+        summary: AI がオープンに戻すときは取り込み待ちと利用者の未読を確かめない
+        condition: 取り込んでいない TH-1-1（利用者）と利用者の未読の TH-1-2（AI）を持つクローズの TH-1。`status="open"`・`author="ai"`
+        mock: '`now`'
+        expected: 真。`status` が `open`
+      - name: test_set_thread_status_when_already_closed
+        case: 正常
+        summary: 既にクローズのスレッドは、取り込み待ちがあっても確かめずに書かない
+        condition: 取り込んでいない TH-1-1（利用者）を持つクローズの TH-1。`status="closed"`・`author="ai"`
+        mock: '`now`（呼ばれないことを確かめる）'
+        expected: 偽。`threads.yaml` の更新日時が呼ぶ前と同じ
   - name: update_thread
     title: スレッドを書き換える
     kind: 関数
@@ -1089,5 +1117,31 @@ functions:
         mock: なし
         expected: '`ThreadNotFoundError`。`threads.yaml` が呼ぶ前と同じ'
         exception: 無い ID
+  - name: _check_ai_close
+    title: AI のクローズの確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/threads.py
+    usecase: 送信の取り込み
+    scope: internal
+    summary: 取り込み待ちの利用者の書き込みか、利用者が未読の AI の書き込みがあれば、AI のクローズを拒む（単体テストは `set_thread_status` が持つ）
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: クローズにするスレッド
+    returns:
+      type: None
+      description: クローズにできるときは何もしない
+    process: |-
+      1. 取り込み待ちの書き込み（`awaiting_posts`）と、`author` が `ai` で `seen` が偽の書き込みを、書いた順に集める
+         - どちらも無い場合、何もしない
+      2. `ThreadCloseRejectedError` を送る。`lines` は当たった条件ごとに次の順で 1 行ずつ持つ
+         - 取り込み待ち: `取り込み待ち: {書き込みの ID を「、」でつないだもの}: update_thread（take: true）で取り込み済みにしてからクローズにしてください`
+         - 利用者が未読: `利用者が未読: {書き込みの ID を「、」でつないだもの}: 利用者が読むまでオープンのまま待ってください`
+    exceptions:
+      - name: ThreadCloseRejectedError
+        condition: '取り込み待ちの利用者の書き込み（`author: user` で `taken` が無い）か、利用者が未読の AI の書き込み（`author: ai` で `seen` が偽）がある'
+        message: スレッド {ID} はクローズにできません
 test_files:
   - tests/unit/scripts/test_threads.py
