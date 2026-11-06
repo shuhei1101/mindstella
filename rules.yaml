@@ -15,9 +15,6 @@ rules:
       - "**/frontend/src/**/*.test.{ts,tsx}"
       - "**/frontend/src/testing/{setup-tests.ts,render.tsx}"
       - "**/vitest.config.ts"
-  - rule: /mnt/c/Users/shuhe/repo/knowledge/.claude/worktrees/develop/docs/rule/react-devtools-mock.yaml
-    paths:
-      - "**/frontend/src/testing/msw/*.ts"
   - rule: /mnt/c/Users/shuhe/repo/knowledge/.claude/worktrees/develop/docs/rule/react-devtools-storybook.yaml
     paths:
       - "**/frontend/src/**/*.stories.tsx"
