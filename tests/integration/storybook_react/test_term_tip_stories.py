@@ -12,13 +12,11 @@ STATES = ("shared-termtip--term-only", "shared-termtip--few", "shared-termtip--d
 
 
 @pytest.mark.parametrize("state", STATES)
-def test_state_renders(open_story: OpenStory, state: str) -> None:
+def test_state_renders(open_story: OpenStory, page_errors: list[str], state: str) -> None:
     """全ての状態のストーリーをエラーなく描く（正常系）。"""
-    errors: list[str] = []
     page = open_story(state)
-    page.on("pageerror", lambda error: errors.append(error.message))
     assert "sb-show-errordisplay" not in (page.get_attribute("body", "class") or "")
-    assert errors == []
+    assert page_errors == []
 
 
 def test_term_only(open_story: OpenStory) -> None:

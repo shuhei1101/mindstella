@@ -51,7 +51,15 @@ def storybook_react_url() -> Iterator[str]:
 
 
 @pytest.fixture
-def open_story(page: Page, storybook_react_url: str) -> OpenStory:
+def page_errors(page: Page) -> list[str]:
+    """ページを開く前から、ページで起きた例外の文言を集めるリストを返す。"""
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(error.message))
+    return errors
+
+
+@pytest.fixture
+def open_story(page: Page, page_errors: list[str], storybook_react_url: str) -> OpenStory:
     """ストーリーの id（`shared-topbar--overview` の形）を開き、部品が描かれるまで待つ関数を返す。"""
 
     def _open(story_id: str) -> Page:
