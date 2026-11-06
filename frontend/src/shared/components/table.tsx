@@ -95,6 +95,20 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
     const lefts = cells.map((_, position) => cells.slice(0, position).reduce((sum, cell) => sum + cell.getBoundingClientRect().width, 0));
     setPinLefts((current) => (current.join() === lefts.join() ? current : lefts));
   }, [pinIndex, visible.length, shownRows.length]);
+  // 表の枠の見えている幅（該当なしの文言をこの幅にして、横にスクロールしても枠の左に留める）
+  const wrap = useRef<HTMLDivElement>(null);
+  const [wrapWidth, setWrapWidth] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const element = wrap.current;
+    if (element === null) return;
+    const observer = new ResizeObserver(() => {
+      setWrapWidth(element.clientWidth);
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   /** 固定する列のセルの位置と、固定した列の境の影 */
   const pinStyle = (position: number): { className: string | false; style: { left: number } | undefined } =>
     position > pinIndex ? { className: false, style: undefined } : { className: cn("sticky", position === pinIndex && "shadow-pin-edge"), style: { left: pinLefts[position] ?? 0 } };
@@ -127,7 +141,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
           </PopoverContent>
         </Popover>
       </div>
-      <div className="min-h-0 overflow-auto rounded-control border border-border-soft">
+      <div ref={wrap} className="min-h-0 overflow-auto rounded-control border border-border-soft">
         <TableRoot>
           <TableHeader>
             <tr ref={head}>
@@ -173,8 +187,8 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
             ))}
             {table.getRowModel().rows.length === 0 && addedRows.length === 0 ? (
               <tr>
-                <td colSpan={visible.length} className="p-4 text-muted-foreground">
-                  <p data-no-match className="sticky left-4 w-fit">{`該当する${KIND_LABEL[kind as Kind]}はありません。別の条件を試してください。`}</p>
+                <td colSpan={visible.length} className="p-0 text-muted-foreground">
+                  <p data-no-match className="sticky left-0 p-4" style={{ width: wrapWidth }}>{`該当する${KIND_LABEL[kind as Kind]}はありません。別の条件を試してください。`}</p>
                 </td>
               </tr>
             ) : null}
