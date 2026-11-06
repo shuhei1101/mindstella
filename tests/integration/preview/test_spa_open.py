@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -334,8 +335,9 @@ def test_error_when_save_blocked(page: Page, spa_preview: str) -> None:
 
     def _refuse(route: Route) -> None:
         """まとめて保存を 409 で断る。"""
-        body = '{"type":"about:blank","title":"Conflict","status":409,"detail":"x","blocked":[{"id":"%s","reason":"invalid","detail":"書き込めない理由","refs":[]}]}' % edit_id
-        route.fulfill(status=409, content_type="application/problem+json", body=body)
+        blocked = [{"id": edit_id, "reason": "invalid", "detail": "書き込めない理由", "refs": []}]
+        body = {"type": "about:blank", "title": "Conflict", "status": 409, "detail": "x", "blocked": blocked}
+        route.fulfill(status=409, content_type="application/problem+json", body=json.dumps(body))
 
     page.route("**/api/edits/save", _refuse)
     panel.get_by_role("button", name="まとめて保存する").click()

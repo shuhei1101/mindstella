@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import expect
 
 from .storybook_react_fixture_types import OpenStory
 
