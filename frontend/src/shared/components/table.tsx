@@ -8,12 +8,14 @@ import { CommentMark } from "@/shared/components/comment-mark";
 import { FilterChips } from "@/shared/components/filter-chips";
 import { Icon } from "@/shared/components/icon";
 import { PendingMark } from "@/shared/components/pending-mark";
+import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/shared/components/ui/popover";
 import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from "@/shared/components/ui/table";
 import type { PendingMarkKind } from "@/shared/core/edits";
 import type { Filters } from "@/shared/core/filters";
+import { KIND_LABEL, type Kind } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
 /** 表の行 */
@@ -156,12 +158,12 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
             {table.getRowModel().rows.length === 0 && addedRows.length === 0 ? (
               <tr>
                 <td colSpan={visible.length} className="p-4 text-center text-muted-foreground">
-                  条件に合う項目はありません。
+                  {`該当する${KIND_LABEL[kind as Kind]}はありません。別の条件を試してください。`}
                 </td>
               </tr>
             ) : null}
             {table.getRowModel().rows.map(({ original: row }) => (
-              <TableRow key={row.id} data-id={row.id}>
+              <TableRow key={row.id} data-id={row.id} className={cn(row["withdrawn"] === true && "text-muted-foreground")}>
                 {visible.map((column, position) => {
                   const content = column.cell?.(row) ?? cellText(column.get === undefined ? row[column.key] : column.get(row));
                   const kindMark = marks?.[row.id];
@@ -174,6 +176,7 @@ export const Table = ({ kind, columns, rows, sort, filters = {}, pinTo = null, h
                           <button type="button" data-id={row.id} className="cursor-pointer text-left underline-offset-2 hover:underline" onClick={() => { onOpenItem(row.id); }}>
                             {content}
                           </button>
+                          {row["withdrawn"] === true ? <WithdrawnBadge /> : null}
                           {kindMark === undefined ? null : <DiffMark kind={kindMark} />}
                           {count > 0 ? <CommentMark count={count} /> : null}
                           {pendingMark === undefined ? null : <PendingMark kind={pendingMark} />}

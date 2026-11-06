@@ -40,9 +40,9 @@ export const DecisionsScreen = ({ drawerOpen, onCloseDrawer }: DecisionsScreenPr
       columnsOf={decisionColumns}
       drawerOpen={drawerOpen}
       onCloseDrawer={onCloseDrawer}
-      content={({ index, view, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId }) =>
+      content={({ index, view, shown, filters, marks, comments, edit, onOpen, onOpenAdded, selectedId, keyword, onKeyword }) =>
         view === "map" ? (
-          <DecisionMap items={shown} settings={index.data.settings} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onClear={closeItem} />
+          <DecisionMap items={shown} settings={index.data.settings} selectedId={selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} onClear={closeItem} keyword={keyword} onKeyword={onKeyword} />
         ) : (
           <Board
             columns={boardColumns({ items: shown, statuses: DECISION_STATUSES, statusFilter: filters["status"] ?? [] })}

@@ -12,7 +12,7 @@ export type ListColumn<R> = {
 };
 
 /** ドロワーの条件 */
-export type ListGroup = { key: string; label: string; values: { value: string; count: number }[]; mark?: "status" | "kind" };
+export type ListGroup = { key: string; label: string; values: { value: string; count: number; hit?: number }[]; mark?: "status" | "kind" };
 
 const LEADING_CONDITION_KEYS = ["kind", "type", "status", "tags"];
 
@@ -78,7 +78,7 @@ export const nextSort = (sort: string | undefined, key: string): string | undefi
 };
 
 /** ドロワーの条件と、値ごとの件数を組む（件数はその条件以外の条件で絞った行で数える） */
-export const drawerGroups = <R,>({ rows, columns, conditions, filters }: { rows: readonly R[]; columns: readonly ListColumn<R>[]; conditions: readonly ListColumn<R>[]; filters: Filters }): ListGroup[] => {
+export const drawerGroups = <R,>({ rows, columns, conditions, filters, hit }: { rows: readonly R[]; columns: readonly ListColumn<R>[]; conditions: readonly ListColumn<R>[]; filters: Filters; hit?: ((row: R) => boolean) | undefined }): ListGroup[] => {
   const rank = (key: string): number => {
     const position = LEADING_CONDITION_KEYS.indexOf(key);
     return position < 0 ? LEADING_CONDITION_KEYS.length : position;
@@ -92,7 +92,9 @@ export const drawerGroups = <R,>({ rows, columns, conditions, filters }: { rows:
         for (const value of valuesOf(column, row)) counts.set(value, (counts.get(value) ?? 0) + 1);
       }
       if (counts.size === 0) return [];
-      const values = [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => compareValues(column, a.value, b.value));
+      // キーワードに一致した件数は、その条件以外の条件で絞った行で数える
+      const others = hit === undefined ? [] : filterRows({ rows, columns, filters: withoutKey(filters, column.key) }).filter(hit);
+      const values = [...counts].map(([value, count]) => (hit === undefined ? { value, count } : { value, count, hit: others.filter((row) => valuesOf(column, row).includes(value)).length })).sort((a, b) => compareValues(column, a.value, b.value));
       const mark = column.key === "status" ? ({ mark: "status" } as const) : column.key === "type" ? ({ mark: "kind" } as const) : {};
       return [{ key: column.key, label: column.label, values, ...mark }];
     });

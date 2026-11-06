@@ -29,6 +29,8 @@ export type DecisionMapProps = {
   edit?: ScreenEdit | null;
   onOpen: (id: string) => void;
   onClear?: () => void;
+  keyword?: string;
+  onKeyword?: (keyword: string) => void;
 };
 
 const NODE_TONE: Record<Exclude<MapNode["kind"], "item">, string> = {
@@ -37,13 +39,12 @@ const NODE_TONE: Record<Exclude<MapNode["kind"], "item">, string> = {
   phase: "bg-muted text-xs text-muted-foreground",
 };
 
-export const DecisionMap = ({ items, settings, selectedId, marks, comments = {}, edit = null, onOpen, onClear }: DecisionMapProps) => {
+export const DecisionMap = ({ items, settings, selectedId, marks, comments = {}, edit = null, onOpen, onClear, keyword = "", onKeyword }: DecisionMapProps) => {
   const { status, library } = useLibrary("elkjs");
   const wrap = useRef<HTMLDivElement>(null);
   const [laid, setLaid] = useState<MapGraph | null>(null);
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [fitScale, setFitScale] = useState(1);
-  const [keyword, setKeyword] = useState("");
   const [locked, setLocked] = useState<string | null>(null);
   const lastPress = useRef<Press | null>(null);
   const key = items.map((item) => item.id).join(",");
@@ -123,7 +124,7 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <Input type="search" placeholder="タイトルで強調" aria-label="タイトルで強調するキーワード" value={keyword} className="max-w-60" onChange={(event) => { setKeyword(event.target.value); }} />
+      <Input type="search" placeholder="タイトルで強調" aria-label="タイトルで強調するキーワード" value={keyword} className="max-w-60" onChange={(event) => { onKeyword?.(event.target.value); }} />
       {items.length === 0 ? <p className="text-small text-muted-foreground">表示する検討事項はありません。</p> : null}
       {/* 余白の押下は選びを外すだけの補助で、詳細を閉じるボタンがキーボードの手段になる */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
