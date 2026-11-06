@@ -63,6 +63,27 @@ functions:
     mock: なし
     expected: '`tab`・`full` が `undefined`'
   container: frontend/src/shared/core/preview-search.ts
+- name: parseSearchString
+  title: URL の search の文字列の読み取り
+  kind: 関数
+  usecase: SPAを開く
+  summary: ルーターの `parseSearch`。値を文字列のまま読み、`f.{列}` を `f` に集める（`f` の置き換えで条件を外せるようにする）
+  args:
+  - name: text
+    type: string
+    required: true
+    description: URL の search の文字列
+  returns:
+    type: Record<string, unknown>
+    description: 読んだ search
+  unit_tests:
+  - name: test_parse_search_string
+    case: 正常
+    summary: '`f.{列}` を `f` に集める'
+    condition: '`?tab=decisions&f.status=保留`'
+    mock: なし
+    expected: '`{tab: ''decisions'', f: {status: ''保留''}}`'
+  container: frontend/src/shared/core/preview-search.ts
 - name: normalizeSearch
   title: 記録に合わせた search
   kind: 関数

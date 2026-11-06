@@ -83,6 +83,16 @@ functions:
   returns:
     type: void
     description: 無し
+- name: usePrefs
+  title: 端末の保存領域の購読
+  kind: フック
+  usecase: SPAを開く
+  summary: 保存領域の JSON の文字列を `useSyncExternalStore` で購読し、`writePrefs` の書き換えを描画へ反映する
+  args: []
+  returns:
+    type: Prefs
+    description: 保存領域の値
+  container: frontend/src/shared/stores/prefs-store.ts
 stores:
 - name: usePrefsStore
   title: 端末の保存領域

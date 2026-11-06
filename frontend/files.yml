@@ -168,48 +168,6 @@ files:
     type: implements
   - to: dev/設計書/画面設計/プレビュー/概要.tsx.yaml
     type: implements
-- path: src/features/overview/overview/queries.test.ts
-  name: 概要が読む query の単体テスト
-  description: 概要が読む query の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:react
-  - tool:vitest
-  - topic:単体テスト
-  related:
-  - to: frontend/src/features/overview/overview/queries.ts
-    type: tests
-- path: src/features/overview/overview/queries.ts
-  name: 概要が読む query
-  description: 生成した queryOptions を成功の本文で選ぶ。概要の画面が読むデータを変更するときに読む。
-  tags:
-  - tool:tanstack-query
-  - topic:クエリ
-  related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/queries.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
-    type: implements
-- path: src/features/overview/overview/search.test.ts
-  name: 概要のルートの search params の単体テスト
-  description: 概要のルートの search params の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:react
-  - tool:vitest
-  - topic:単体テスト
-  related:
-  - to: frontend/src/features/overview/overview/search.ts
-    type: tests
-- path: src/features/overview/overview/search.ts
-  name: 概要のルートの search params
-  description: 概要のルートの search params の tab を検証し、決めた値以外は既定に落とす。概要の URL の search の受け方を変更するときに読む。
-  tags:
-  - tool:zod
-  - topic:url
-  related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/search.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
-    type: implements
 - path: src/main.tsx
   name: React のプレビューの起動
   description: '起動: QueryClient とルーターを作り、#root に描く。React のプレビューの起動の流れを変更するときに読む。'
@@ -1629,6 +1587,48 @@ files:
 - path: src/testing/msw/fixtures.ts
   name: 画面のテストが使う記録の差し替え
   description: 画面のテストが使う記録の差し替え。
+  tags:
+  - tool:react
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/detail/detail-panel/components/item-add-panel.tsx
+  name: 画面から項目を足すパネル
+  description: 画面から項目を足すパネル。
+  tags:
+  - tool:react
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/features/detail/detail-panel/components/item-add-panel.test.tsx
+  name: 画面から項目を足すパネルの単体テスト
+  description: 画面から項目を足すパネルの単体テスト。
+  tags:
+  - tool:react
+- path: src/shared/components/blocked-note.tsx
+  name: 書き込めない理由と指している項目の注記
+  description: 書き込めない理由と指している項目の注記。
+  tags:
+  - tool:react
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/components/term-tip.stories.tsx
+  name: 本文のマーカーのツールチップのストーリー
+  description: 本文のマーカーのツールチップのストーリー。
+  tags:
+  - tool:react
+- path: src/shared/core/lock.ts
+  name: 起点の項目のロックの判定
+  description: 起点の項目のロックの判定。
+  tags:
+  - tool:react
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+    type: implements
+- path: src/shared/stores/edit-session-store.ts
+  name: 画面の編集の間の状態（足す画面・書き込めない編集・保存の通知）
+  description: 画面の編集の間の状態（足す画面・書き込めない編集・保存の通知）。
   tags:
   - tool:react
   related:

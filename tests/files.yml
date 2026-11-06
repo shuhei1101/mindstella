@@ -2731,11 +2731,223 @@ files:
   - topic:ヘルパー
   - topic:ワークスペース
   - topic:起動
-- path: integration/preview/test_spa_screens.py
-  name: SPA の一覧・詳細・変更履歴・保存待ち・設定の画面を、配信した記録で実ブラウザに開いて確かめる
-  description: SPA の一覧・詳細・変更履歴・保存待ち・設定の画面を、配信した記録で実ブラウザに開いて確かめる。
+- path: integration/preview/test_spa_decisions_screen.py
+  name: 画面設計『検討事項.tsx』の結合テスト
+  description: 画面設計『検討事項.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:playwright
-  related:
-  - to: dev/設計書/インターフェース定義/プレビュー/SPAを開く.yaml
-    type: tests
+  - topic:結合テスト
+- path: integration/preview/test_spa_detail_fullscreen_screen.py
+  name: 画面設計『詳細の全画面.tsx』の結合テスト
+  description: 画面設計『詳細の全画面.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_detail_panel_screen.py
+  name: 画面設計『詳細パネル.tsx』の結合テスト
+  description: 画面設計『詳細パネル.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_diagram_viewer_screen.py
+  name: 画面設計『図の拡大.tsx』の結合テスト
+  description: 画面設計『図の拡大.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_docs_screen.py
+  name: 画面設計『資料.tsx』の結合テスト
+  description: 画面設計『資料.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_history_screen.py
+  name: 画面設計『変更履歴.tsx』の結合テスト
+  description: 画面設計『変更履歴.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_pending_edits_screen.py
+  name: 画面設計『保存待ちのパネル.tsx』の結合テスト
+  description: 画面設計『保存待ちのパネル.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_records_screen.py
+  name: 画面設計『記録の表.tsx』の結合テスト
+  description: 画面設計『記録の表.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_tasks_screen.py
+  name: 画面設計『タスク.tsx』の結合テスト
+  description: 画面設計『タスク.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_workspace_settings_screen.py
+  name: 画面設計『設定の画面.tsx』の結合テスト
+  description: 画面設計『設定の画面.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/storybook_react/test_body_diff_layout_switch_stories.py
+  name: 部品設計『本文の差分の並べ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の差分の並べ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_body_format_badge_stories.py
+  name: 部品設計『本文の形式の札.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の形式の札.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_chips_input_stories.py
+  name: 部品設計『チップの入力.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『チップの入力.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_comment_mark_stories.py
+  name: 部品設計『コメントの印.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『コメントの印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_diff_mark_stories.py
+  name: 部品設計『差分の印.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『差分の印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_diff_minimap_stories.py
+  name: 部品設計『差分のミニマップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『差分のミニマップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_doc_export_menu_stories.py
+  name: 部品設計『資料のエクスポートのメニュー.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『資料のエクスポートのメニュー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_filter_drawer_stories.py
+  name: 部品設計『絞り込み.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『絞り込み.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_history_dialog_stories.py
+  name: 部品設計『変更履歴.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『変更履歴.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_html_body_diff_stories.py
+  name: 部品設計『HTMLの本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『HTMLの本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_html_body_frame_stories.py
+  name: 部品設計『HTMLの本文の枠.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『HTMLの本文の枠.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_markdown_body_stories.py
+  name: 部品設計『Markdownの本文.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『Markdownの本文.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_pending_mark_stories.py
+  name: 部品設計『保存待ちの印.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『保存待ちの印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_removed_band_stories.py
+  name: 部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_side_by_side_body_diff_stories.py
+  name: 部品設計『左右に並べた本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『左右に並べた本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_table_stories.py
+  name: 部品設計『表.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『表.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_tag_list_stories.py
+  name: 部品設計『タグの並び.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『タグの並び.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_term_tip_stories.py
+  name: 部品設計『本文の印のツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の印のツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_view_switch_stories.py
+  name: 部品設計『表示形式の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『表示形式の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_withdrawn_badge_stories.py
+  name: 部品設計『取り下げの札.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『取り下げの札.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト

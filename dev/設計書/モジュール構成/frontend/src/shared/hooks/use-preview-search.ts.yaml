@@ -5,7 +5,7 @@ functions:
   title: search の読み書き
   kind: フック
   usecase: SPAを開く
-  summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setSort`・`setDiff`・`setPanel`（置き換える）を返す'
+  summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setSort`・`setDiff`・`setPanel`（置き換える）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
   returns:
     type: PreviewSearchApi
     description: search と操作
