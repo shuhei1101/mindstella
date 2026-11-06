@@ -1,0 +1,17 @@
+# 負荷を掛けた実行（CPU を使い切る busy loop を 4 本並べて流す）
+$ pytest tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_diagram_viewer_screen.py tests/integration/preview/test_open_preview.py tests/integration/storybook/test_side_by_side_body_diff_stories.py
+E                 - <span class="tt-body">画面に重ねる演出</span> from <div id="term-tip" popover="manual" class="term-tip is-multi">…</div> subtree intercepts pointer events
+E               - retrying click action
+E                 - waiting 100ms
+E               57 × waiting for element to be visible, enabled and stable
+E                  - element is visible, enabled and stable
+E                  - scrolling into view if needed
+E                  - done scrolling
+E                  - <span class="tt-body">画面に重ねる演出</span> from <div id="term-tip" popover="manual" class="term-tip is-multi">…</div> subtree intercepts pointer events
+E                - retrying click action
+E                  - waiting 500ms
+
+../../../../ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: TimeoutError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned[chromium]
+1 failed, 337 passed in 1310.03s (0:21:50)

@@ -1,0 +1,12 @@
+title: プレビュー / lock
+lead: 注目の起点のロックの判定と鍵の震え。
+functions:
+- name: lockTap
+  title: ロックの判定
+  kind: 関数
+  usecase: 検討事項をマップで辿る
+  summary: 注目の起点のロックの判定と鍵の震え
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

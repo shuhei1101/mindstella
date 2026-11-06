@@ -12,9 +12,14 @@ import {
   Kind
 } from './model';
 import type {
+  CancelEdit200,
   Comments,
+  EditReply,
   Edits,
+  OpenedPoint,
+  OpenedReply,
   Records,
+  SaveReply,
   Threads
 } from './model';
 
@@ -24,6 +29,16 @@ export const getGetRecordsResponseMock = (overrideResponse: Partial<Extract<Reco
 export const getGetCommentsResponseMock = (overrideResponse: Partial<Extract<Comments, object>> = {}): Comments => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse})
 
 export const getGetEditsResponseMock = (overrideResponse: Partial<Extract<Edits, object>> = {}): Edits => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse})
+
+export const getAddEditResponseMock = (overrideResponse: Partial<Extract<EditReply, object>> = {}): EditReply => (faker.helpers.arrayElement([{id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), target: faker.string.alpha({length: {min: 10, max: 20}}), count: faker.number.int(), ...overrideResponse}, {id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), target: faker.string.alpha({length: {min: 10, max: 20}}), count: faker.number.int(), ...overrideResponse}]))
+
+export const getCancelEditResponseMock = (overrideResponse: Partial<Extract<CancelEdit200, object>> = {}): CancelEdit200 => ({removed: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), count: faker.number.int(), ...overrideResponse})
+
+export const getSaveEditsResponseMock = (overrideResponse: Partial<Extract<SaveReply, object>> = {}): SaveReply => ({set: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), at: faker.string.alpha({length: {min: 10, max: 20}}), added: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({temp: faker.string.alpha({length: {min: 10, max: 20}}), id: faker.string.alpha({length: {min: 10, max: 20}})})), changed: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), removed: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), settings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getPostOpenedResponseOpenedPointMock = (overrideResponse: Partial<OpenedPoint> = {}): OpenedPoint => ({...{at: faker.string.alpha({length: {min: 10, max: 20}}), seq: faker.number.int()}, ...overrideResponse});
+
+export const getPostOpenedResponseMock = (overrideResponse: Partial<Extract<OpenedReply, object>> = {}): OpenedReply => ({previous: faker.helpers.arrayElement([{...getPostOpenedResponseOpenedPointMock()},null,]), opened: {at: faker.string.alpha({length: {min: 10, max: 20}}), seq: faker.number.int()}, ...overrideResponse})
 
 export const getGetThreadsResponseMock = (overrideResponse: Partial<Extract<Threads, object>> = {}): Threads => ({threads: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','closed'] as const), posts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({seen: faker.datatype.boolean()}))})), ...overrideResponse})
 

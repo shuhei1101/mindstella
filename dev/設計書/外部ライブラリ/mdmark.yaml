@@ -77,6 +77,7 @@ adoption: 採用
 used_in:
   - plugins/mindstella/skills/mindmap/preview/template.html
   - plugins/mindstella/skills/mindmap/scripts/builder.py
+  - frontend/src/shared/adapters/libraries.ts
 upstream: shuhei1101/mdmark
 verification:
   state: 済

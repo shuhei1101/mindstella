@@ -2,7 +2,12 @@
 version: "3"
 name: mindstella
 worktrees: [".claude/worktrees/*"]
-description: 話し合いを記録しながら決めたことを形にしていく Claude Code のスキルの設計書と目次
+description: 話し合いを記録しながら決めたことを形にしていく Claude Code のスキルの設計書・目次・Markdown・コード・テスト
+instructions: |-
+  設計書は `dev/設計書/` の種別ごとの YAML が正本で、書式は `dev/テンプレート/{種別}.schema.yaml` が持つ。目次は `dev/`・`docs/` の各フォルダの `index.yaml`。
+  Markdown・コード・テストは、`docs/`・`dev/設計書/`・`plugins/mindstella/`・`frontend/`・`tests/` の `files.yml` の行が名前・概要文・タグ・関連を持つ。コードの行の `implements` が設計書を、テストの行の `tests` がコードを指す。
+related:
+  types: [references, depends_on, see_also, implements, tests]
 github:
   repository: shuhei1101/mindstella
 documents:
@@ -111,3 +116,37 @@ documents:
     schema: dev/テンプレート/index.schema.yaml
     metadata:
       description: summary
+  - id: files_docs
+    title: 公開ドキュメントの Markdown
+    paths: ["docs/files.yml"]
+    exclude: ["*.yaml", _config.yml, nav.yml, nav.project.yml, README.md, index.md, "*.html", "*.js", "*.css", "*.txt", "*.json"]
+    schema: schemas/files.schema.yaml
+    records: files
+    body_file: path
+  - id: files_design
+    title: 設計書の Markdown
+    paths: ["dev/設計書/files.yml"]
+    exclude: ["*.yaml", README.md]
+    schema: schemas/files.schema.yaml
+    records: files
+    body_file: path
+  - id: files_plugin
+    title: プラグインのスキル・コード
+    paths: ["plugins/mindstella/files.yml"]
+    exclude: ["*.js", "*.ini", LICENSE, "*.txt", index.html, "index-*.css"]
+    schema: schemas/files.schema.yaml
+    records: files
+    body_file: path
+  - id: files_frontend
+    title: React のプレビューのコード
+    paths: ["frontend/files.yml"]
+    exclude: ["*.gen.ts", "*.json"]
+    schema: schemas/files.schema.yaml
+    records: files
+    body_file: path
+  - id: files_tests
+    title: テスト
+    paths: ["tests/files.yml"]
+    schema: schemas/files.schema.yaml
+    records: files
+    body_file: path

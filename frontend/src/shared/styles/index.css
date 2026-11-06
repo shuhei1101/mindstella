@@ -1,6 +1,7 @@
 /* Tailwind を読み、標準のパレットを消して、tokens.css のトークンを割り当てる */
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./body.css";
 
 /* ダーク: data-theme が dark のとき（今の画面と同じく、明示したダークだけに当てる） */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -48,6 +49,8 @@
   --color-mark-line: var(--mark-line);
   --color-on-mark: var(--on-mark);
   --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
+  --color-hit: var(--hit);
   --color-st-done: var(--st-done);
   --color-st-open: var(--st-open);
   --color-st-review: var(--st-review);
@@ -81,7 +84,9 @@
   --text-goal: 4rem;
   --text-goal-sub: 1.625rem;
   --radius-control: var(--radius);
+  --radius-card: var(--radius);
   --radius-kbd: 3px;
+  --shadow-pin-edge: 6px 0 8px -6px color-mix(in oklab, var(--foreground) 22%, transparent);
 }
 
 @layer base {
@@ -125,6 +130,11 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* 名前と値の 2 列の並び */
+@utility grid-cols-meta {
+  grid-template-columns: auto 1fr;
 }
 
 /* 等幅の数字 */

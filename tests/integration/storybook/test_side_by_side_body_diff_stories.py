@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from playwright.sync_api import Page
+from preview_clock_helpers import FREEZE_PERFORMANCE_NOW_JS
 from storybook_fixture_types import OpenStory
 
 # 描き終わるまで待つ上限ミリ秒（図は描画のライブラリを読んでから描く）
@@ -68,9 +69,11 @@ def test_paragraphs(open_story: OpenStory) -> None:
     assert page.locator(f"{AFTER} > .sbs-row:not(.sbs-chg) :is(ins, del)").count() == 0
 
 
-def test_rewritten(open_story: OpenStory) -> None:
+def test_rewritten(page: Page, open_story: OpenStory) -> None:
     """段落の中の語を書き換えた。左の消した段落と右の足した段落が向かい合い、変わった語だけに濃い面を付ける（正常系）。"""
     # 準備・実行
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     page = _open(open_story, "rewritten")
     page.wait_for_selector(f"{AFTER} span.df-word")
     # 検証（向かい合う 1 行）

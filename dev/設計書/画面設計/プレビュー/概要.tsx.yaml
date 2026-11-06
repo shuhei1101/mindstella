@@ -20,7 +20,7 @@ elements:
   - name: readAt
     value: 記録の取得.built_at（最後に読めた記録）
   - name: diffPoint
-    value: 渡さない（差分の表示を React へ移すまで）
+    value: 変更履歴で選んだ時点の名前と日時（SPAを開く.diff。選んでいなければ渡さない）。`tabs[].marked` はその時点で印の付く項目か消した項目を持つ種類
   - name: comments
     value: サーバーの配信では true、配る書き出しでは false
   - name: commentCount
@@ -44,13 +44,13 @@ elements:
 - name: 次に検討する項目
   id: tile-next
   kind: list
-  description: 前提（`depends_on`）が全て決着（決定済み・対象外・取り下げ）した未決定の検討事項を、`build` が `next` と同じ並びで埋め込んだ順に、タイルの枠に収まるだけ並べる（縦に積む幅では上位 3 件）。影響度は目盛りに「影響度 大」のように軸の名前を添えて出す。押すと今の画面の詳細パネル（`/mindstella.html#tab={種類}&id={ID}`）を開く
+  description: 前提（`depends_on`）が全て決着（決定済み・対象外・取り下げ）した未決定の検討事項を、`build` が `next` と同じ並びで埋め込んだ順に、タイルの枠に収まるだけ並べる（縦に積む幅では上位 3 件）。影響度は目盛りに「影響度 大」のように軸の名前を添えて出す。押すと詳細パネル（`?tab={種類}&id={ID}`）を開く
   io: 表示
   source: 記録の取得.derived.next
   visible_when: 常時（0 件のときは「次に検討する項目はありません。」）
 - name: 次に検討する項目のすべて表示
   kind: link
-  description: 検討事項の表を状態 = 未決定 × 着手可否 = 着手可能で絞って開く（今の画面の `/mindstella.html#tab=decisions&view=table&f.status=未決定&f.ready=着手可能`）。タイルの見出しと同じ行に置き、幅 389px 以下で見出しと同じ行に収まらないときは、見出しの下の行へ回す。見出しと「すべて表示（{件数} 件）」は、どちらも途中で折り返さない
+  description: 検討事項の表を状態 = 未決定 × 着手可否 = 着手可能で絞って開く（`?tab=decisions&view=table&f.status=未決定&f.ready=着手可能`）。タイルの見出しと同じ行に置き、幅 389px 以下で見出しと同じ行に収まらないときは、見出しの下の行へ回す。見出しと「すべて表示（{件数} 件）」は、どちらも途中で折り返さない
   label: すべて表示（{件数} 件）
   visible_when: 次に検討する項目が 1 件以上で、表示する種類に検討事項がある
 - name: ゴールまでの進捗
@@ -64,20 +64,20 @@ elements:
 - name: 納品物のチェックリスト
   kind: list
   position: ゴールまでの進捗
-  description: ゴールの納品物。`derived.goal.remaining_deliverables` に無い納品物をチェック済みにする（判定は `goal` と同じ。`doc` の資料の状態が完成）。押すと今の画面のその資料の詳細パネルを開く
+  description: ゴールの納品物。`derived.goal.remaining_deliverables` に無い納品物をチェック済みにする（判定は `goal` と同じ。`doc` の資料の状態が完成）。押すとその資料の詳細パネルを開く
   io: 表示
   source: 記録の取得.settings.goal.deliverables・記録の取得.derived.goal.remaining_deliverables
   visible_when: ゴールがあるとき。納品物が 5 件以下のとき全て、5 件を超えたら先頭 5 件
 - name: 納品物のすべて表示
   kind: link
   position: ゴールまでの進捗
-  description: 資料を納品物で絞ってカードで開く（今の画面の `/mindstella.html#tab=docs&f.deliverable=納品物`）
+  description: 資料を納品物で絞ってカードで開く（`?tab=docs&f.deliverable=納品物`）
   label: すべて表示（{件数} 件）
   visible_when: 納品物が 5 件を超え、表示する種類に資料がある
 - name: 要見直し
   id: tile-review
   kind: list
-  description: 状態が要見直しの検討事項の件数と名前。押すと今の画面の詳細パネル（`/mindstella.html#tab={種類}&id={ID}`）を開く。「すべて表示」で検討事項の表を状態 = 要見直しで絞って開く。表示する種類に検討事項が無いときは「すべて表示」だけを外し、タイルは残す
+  description: 状態が要見直しの検討事項の件数と名前。押すと詳細パネル（`?tab={種類}&id={ID}`）を開く。「すべて表示」で検討事項の表を状態 = 要見直しで絞って開く。表示する種類に検討事項が無いときは「すべて表示」だけを外し、タイルは残す
   io: 表示
   source: 記録の取得.decisions
   visible_when: 常時（0 件のときは「要見直しの検討事項はありません。」）
@@ -127,8 +127,7 @@ elements:
     value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
   description: 次に検討する項目・要見直し・保留・進行中のタスクのタイルの各行で、項目のタイトルの横に文言なしで置く
   io: 表示
-  visible_when: 差分の表示を React へ移すまで出さない
-  status: planned
+  visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
 - name: 画面の領域
   kind: region
   description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。タイルはこの領域の中で縦にスクロールする
@@ -137,19 +136,23 @@ refs:
 - dev/設計書/画面設計/プレビュー/概要#
 - dev/設計書/インターフェース定義/プレビュー/SPAを開く#
 notes:
-  React へ移していない画面への移り方: '行き先が React に無い操作は、今の画面（`/mindstella.html`）を同じタブで開く。移した画面から順に、SPA の中のルートへ移る。
+  React へ移していない画面への移り方: '行き先が React に無い操作は、今の画面（`/mindstella.html`）を同じタブで開く（『SPAを開く』の制約「React に無い画面」）。移した画面へは SPA の中で移る。
 
 
     | 操作 | 開く先 |
 
     | --- | --- |
 
-    | 「すべて表示」・カテゴリー別の進捗のセルと行の見出し | 今の画面の同じ条件のハッシュ（`#tab={種類}&view={表示形式}&f.{列}={値}`） |
+    | 「すべて表示」・カテゴリー別の進捗のセルと行の見出し | SPA の同じ条件の search（`?tab={種類}&view={表示形式}&f.{列}={値}`） |
 
-    | タイルの項目の押下 | 今の画面の詳細パネル（`#tab={種類}&id={ID}`） |
+    | タイルの項目の押下 | SPA の詳細パネル（`?tab={種類}&id={ID}`） |
 
-    | トップバーのタブとネットワークの入口（`onNavigate(key)`） | 今の画面の `#tab={key}` |
+    | トップバーのタブ（`onNavigate(key)`） | SPA の `?tab={key}` |
 
-    | トップバーの検索・コメント・表示の設定・保存待ち・変更履歴（`onOpenSearch`・`onToggleComments`・`onToggleSettings`・`onTogglePending`・`onOpenHistory`） | 今の画面の `#tab=overview`。今の画面のハッシュはパネルを開く引数を持たないため、パネルは利用者が今の画面で開く |
+    | トップバーのネットワークの入口（`onNavigate(''graph'')`） | 今の画面の `#tab=graph` |
+
+    | トップバーの変更履歴・保存待ち（`onOpenHistory`・`onTogglePending`） | SPA の中で開く |
+
+    | トップバーの検索・コメント・表示の設定（`onOpenSearch`・`onToggleComments`・`onToggleSettings`） | 今の画面の `#tab=overview`。今の画面のハッシュはパネルを開く引数を持たないため、パネルは利用者が今の画面で開く |
 
     | トップバーのライト / ダーク（`onThemeChange`） | SPA の中で切り替え、今の画面と同じ端末の保存領域に残す |'

@@ -1,0 +1,87 @@
+import { act, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { describe, expect, test, vi } from "vitest";
+
+import { AppError } from "@/shared/core/app-error";
+import { useAddEdit, useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
+import { useEditSessionStore } from "@/shared/stores/edit-session-store";
+import { server } from "@/testing/msw/server";
+import { renderPreviewHook } from "@/testing/render";
+
+describe("useAddEdit", () => {
+  // 読み直す（正常系）
+  test("use_add_edit", async () => {
+    // 準備
+    const { result, queryClient } = await renderPreviewHook("/", useAddEdit);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    // 実行
+    await act(() => result.current.mutateAsync({ op: "set", target: "D-1", key: "answer", value: "答え" }));
+    // 検証
+    expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(["/api/edits"]);
+  });
+
+  // 400 の detail（異常系）
+  test("use_add_edit_when_error", async () => {
+    // 準備
+    server.use(http.post("/api/edits", () => HttpResponse.json({ type: "about:blank", title: "Bad Request", status: 400, detail: "編集できないキーです" }, { status: 400, headers: { "Content-Type": "application/problem+json" } })));
+    const { result } = await renderPreviewHook("/", useAddEdit);
+    // 実行
+    const error = await result.current.mutateAsync({ op: "set", target: "D-1", key: "updated_by", value: "user" }).catch((reason: unknown) => reason);
+    // 検証
+    expect(error).toBeInstanceOf(AppError);
+    expect((error as AppError).message).toBe("編集できないキーです");
+  });
+});
+
+describe("useCancelEdit", () => {
+  // 読み直す（正常系）
+  test("use_cancel_edit", async () => {
+    // 準備
+    const { result, queryClient } = await renderPreviewHook("/", useCancelEdit);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    // 実行
+    await act(() => result.current.mutateAsync("E-1"));
+    // 検証
+    expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(["/api/edits"]);
+  });
+});
+
+describe("useSaveEdits", () => {
+  // 記録を読み直す（正常系）
+  test("use_save_edits", async () => {
+    // 準備
+    const { result, queryClient } = await renderPreviewHook("/", useSaveEdits);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    // 実行
+    await act(() => result.current.mutateAsync(2));
+    // 検証
+    await waitFor(() => expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([["/api/records"], ["/api/comments"], ["/api/edits"], ["/api/threads"]]));
+  });
+
+  // 保存した件数と書き込めない編集を、呼んだ部品が外れても残す（正常系）
+  test("use_save_edits_when_unmounted", async () => {
+    // 準備
+    useEditSessionStore.setState({ saved: null, blocked: [{ id: "E-1", reason: "changed", detail: "", refs: [] }] });
+    const { result, unmount } = await renderPreviewHook("/", useSaveEdits);
+    // 実行
+    const saving = result.current.mutateAsync(2);
+    unmount();
+    await saving;
+    // 検証
+    expect(useEditSessionStore.getState().saved).toBe(2);
+    expect(useEditSessionStore.getState().blocked).toEqual([]);
+  });
+
+  // 書き込めない編集（異常系）
+  test("use_save_edits_when_blocked", async () => {
+    // 準備
+    const blocked = [{ id: "E-1", reason: "changed", detail: "書き換わった", refs: [] }];
+    server.use(http.post("/api/edits/save", () => HttpResponse.json({ type: "about:blank", title: "Conflict", status: 409, detail: "書き込めません", blocked }, { status: 409, headers: { "Content-Type": "application/problem+json" } })));
+    const { result } = await renderPreviewHook("/", useSaveEdits);
+    // 実行
+    const reply = await act(() => result.current.mutateAsync(1));
+    // 検証
+    expect(reply.blocked).toEqual(blocked);
+    expect(useEditSessionStore.getState().blocked).toEqual(blocked);
+  });
+});

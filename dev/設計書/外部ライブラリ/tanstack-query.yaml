@@ -25,7 +25,7 @@ dependency_scope: 必須
 adoption: 採用
 used_in:
 - frontend/src/app/query-client.ts
-- frontend/src/features/overview/overview/queries.ts
+- frontend/src/shared/hooks/preview-queries.ts
 upstream: TanStack/query
 verification:
   state: 済

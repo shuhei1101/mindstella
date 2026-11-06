@@ -1,0 +1,2953 @@
+# yaml-language-server: $schema=../schemas/files.schema.yaml
+files:
+- path: claude_pane_fixtures.py
+  name: 偽の Claude Code のペインの fixture
+  description: Claude Code の代わりに偽のコマンドを動かす tmux のペインを、専用のサーバーで立てる共通の fixture と関数（結合テストと E2E テストが共有する）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:ヘルパー
+- path: conftest.py
+  name: 結合テストと E2E テストの共通の fixture
+  description: 結合テストと E2E テストの共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:フィクスチャ
+- path: e2e/body_view_helpers.py
+  name: Markdown の本文の表とセクションの見せ方の E2E テストの補助
+  description: Markdown の本文の表とセクションの見せ方（表の列の固定・見出しの固定・しま模様・セクションの折りたたみ）の E2E テストが共有する本文と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:markdown
+  - topic:ヘルパー
+  - topic:本文
+- path: e2e/conftest.py
+  name: E2E テストの共通の fixture
+  description: E2E テストの共通 fixture（ワークスペースと MCP サーバーの起動は tests/workspace_fixtures.py）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:フィクスチャ
+  - topic:ワークスペース
+  - topic:起動
+- path: e2e/diff_minimap_helpers.py
+  name: 差分のミニマップの E2E テストの補助
+  description: 差分のミニマップの E2E テストが共有する値と、ワークスペースの作り方、画面の読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:差分
+- path: e2e/display_settings_helpers.py
+  name: 表示の設定の E2E テストの補助
+  description: 表示の設定の E2E テストが共有する値と、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ヘルパー
+  - topic:設定
+- path: e2e/edit_helpers.py
+  name: 画面で項目を編集・追加・削除して保存する E2E テストの補助
+  description: 画面で項目を編集・追加・削除して保存する E2E テストが共有する値と、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ヘルパー
+  - topic:編集
+- path: e2e/embed_helpers.py
+  name: 埋め込んだ HTML・操作できる部品・資料の書き出しの E2E テストの補助
+  description: 埋め込んだ HTML・操作できる部品・資料の書き出しの E2E テストが共有する値と関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:html
+  - topic:ヘルパー
+  - topic:資料
+- path: e2e/launch_registration_helpers.py
+  name: 起動スクリプトの登録の E2E テストの補助
+  description: 起動スクリプトの登録の E2E テストが共有する、隔離したホームと偽の `claude`・偽の起動スクリプト。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ヘルパー
+  - topic:起動
+- path: e2e/preview_helpers.py
+  name: プレビューの E2E テストの補助
+  description: プレビューの E2E テストが共有する型と、画面を操作する補助。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:プレビュー
+  - topic:ヘルパー
+- path: e2e/readme_helpers.py
+  name: 直下の README.md の E2E テストの補助
+  description: 直下の README.md を確かめる E2E テストの共有の補助（書き方はインターフェース定義『README の書き出し』の制約「README の中身」）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:readme
+  - topic:ヘルパー
+- path: e2e/単一ユースケース/test_changes_since_read.py
+  name: 前回読んだ時点からの変更を読むの E2E テスト
+  description: 前回読んだ時点からの変更を読む（スキルが準備で、前回読んだ後に足された・変わった項目を読む）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+- path: e2e/単一ユースケース/test_comment_select_send.py
+  name: コメントを選んで送るの E2E テスト
+  description: コメントを選んで送る（レビュー中を確かめる画面でレビュー中の書き込みを確かめ、直し・消し・足して、チェックしたものだけをまとめて送る）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:コメント
+- path: e2e/単一ユースケース/test_config_reload.py
+  name: 設定の再読み込みの E2E テスト
+  description: 設定の再読み込み（利用者が config.yaml を手で直した後、配信に読み直させる）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:設定
+- path: e2e/単一ユースケース/test_decision_map_view.py
+  name: 検討事項をマップで辿るの E2E テスト
+  description: 検討事項をマップで辿る（マップ・ドロワーで絞る・枝と依存を辿る・ボードと表への切り替え）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:検討事項
+- path: e2e/単一ユースケース/test_diff_view.py
+  name: 前回からの差分を見るの E2E テスト
+  description: 前回からの差分を見る（変更履歴から書き換えのまとまりを選び、印と詳細パネルで差分を読む）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:履歴
+  - topic:差分
+- path: e2e/単一ユースケース/test_discussion_setup.py
+  name: 話し合いのセットアップのうち、版の比較の E2E テスト
+  description: 話し合いのセットアップ（利用者が依存を確かめ、新しいワークスペースを作るか既存の続きを選ぶ）のうち、版の比較の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ワークスペース
+- path: e2e/単一ユースケース/test_display_settings.py
+  name: 表示の設定を変えるの E2E テスト
+  description: 表示の設定を変える（利用者がネットワークのドロップダウンで見た目を、トップバーの表示の設定のパネルで表示する種類を自分の端末だけで変え、既定に戻す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:トップバー
+  - topic:ネットワーク
+  - topic:設定
+- path: e2e/単一ユースケース/test_doc_export.py
+  name: 資料を書き出すの E2E テスト
+  description: 資料を書き出す（資料 1 件を Markdown か、mindstella が無くても開ける 1 枚の HTML で書き出す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:html
+  - topic:markdown
+  - topic:資料
+- path: e2e/単一ユースケース/test_doc_read_view.py
+  name: 資料を読むの E2E テスト
+  description: 資料を読む（納品物を先頭にしたカードとボードで見て、絞り込み、カードから本文を開く）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:フィルター
+  - topic:本文
+  - topic:資料
+- path: e2e/単一ユースケース/test_goal_check.py
+  name: ゴール判定の E2E テスト
+  description: ゴール判定（ゴールに届いたかを確かめ、確定の後に release/ へ書き出す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ゴール
+- path: e2e/単一ユースケース/test_graph_trace_view.py
+  name: ネットワークを辿るの E2E テスト
+  description: ネットワークを辿る（3D のネットワークで玉を押して詳細を開き、ドロワーで種類・状態・タグを絞り、注目の起点の項目をロックして辿る）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:タグ
+  - topic:ネットワーク
+- path: e2e/単一ユースケース/test_hearing.py
+  name: ヒアリングの E2E テスト
+  description: ヒアリング（前提が揃った未決定を 1 ラウンドにまとめて聞き、答えを記録する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+- path: e2e/単一ユースケース/test_item_add.py
+  name: 画面で項目を足すの E2E テスト
+  description: 画面で項目を足す（種類ごとの画面の「項目を追加」で足す編集を保存待ちに溜め、まとめて保存する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:編集
+- path: e2e/単一ユースケース/test_item_detail_view.py
+  name: 項目の詳細を読むの E2E テスト
+  description: 項目の詳細を読む（案・関係・本文・全画面・図の拡大・関係する項目への移動）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:本文
+- path: e2e/単一ユースケース/test_item_edit_save.py
+  name: 画面で項目を編集して保存するの E2E テスト
+  description: 画面で項目を編集して保存する（詳細パネルと設定の画面で書き換えを保存待ちに溜め、取り消し、まとめて保存する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:編集
+  - topic:設定
+- path: e2e/単一ユースケース/test_item_remove.py
+  name: 画面で項目を消すの E2E テスト
+  description: 画面で項目を消す（詳細パネルの「項目を削除」で消す編集を保存待ちに溜め、まとめて保存する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:編集
+- path: e2e/単一ユースケース/test_item_search_view.py
+  name: 項目を検索するの E2E テスト
+  description: 項目を検索する（全体の検索で ID・タイトル・本文から探し、結果からその項目を開く）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:本文
+  - topic:検索
+- path: e2e/単一ユースケース/test_launch_registration.py
+  name: 起動スクリプトの登録の E2E テスト
+  description: 起動スクリプトの登録（セットアップのスキルで、起動スクリプトを呼ぶ alias と環境変数をシェルの設定に登録する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:設定
+  - topic:起動
+- path: e2e/単一ユースケース/test_launch_script.py
+  name: 起動スクリプトで立ち上げるの E2E テスト
+  description: 起動スクリプトで立ち上げる（依存を確かめ、常駐の MCP サーバーが落ちていれば起動してから、tmux の中で Claude Code を立ち上げる）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:起動
+- path: e2e/単一ユースケース/test_option_adopt.py
+  name: 採用する案の切り替えの E2E テスト
+  description: 採用する案の切り替え（スキルが採用する案を切り替え、影響を洗い出す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+- path: e2e/単一ユースケース/test_option_edit.py
+  name: 検討事項の案の編集の E2E テスト
+  description: 検討事項の案の編集（スキルが案を記号で指して 1 つずつ足す・直す・消す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:検討事項
+  - topic:編集
+- path: e2e/単一ユースケース/test_overview_view.py
+  name: 概要を見るの E2E テスト
+  description: 概要を見る（プレビューの概要のタイルを読み、タイルから条件の一覧を開く）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:プレビュー
+  - topic:概要
+- path: e2e/単一ユースケース/test_plugin_install.py
+  name: プラグインのインストールの E2E テスト
+  description: プラグインのインストール（マーケットプレイスの登録からプラグイン mindstella のインストールまで）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+- path: e2e/単一ユースケース/test_policy_change.py
+  name: 方針転換の E2E テスト
+  description: 方針転換（採用する案を切り替え、影響を要見直しにし、納品物を資料へ格下げする）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:資料
+- path: e2e/単一ユースケース/test_preview_export.py
+  name: プレビューを配るの E2E テスト
+  description: プレビューを配る（記録を見るだけの 1 枚の HTML に書き出し、通信を止めたブラウザで開いて読む）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:html
+  - topic:プレビュー
+- path: e2e/単一ユースケース/test_preview_external_access.py
+  name: プレビューを外から見るの E2E テスト
+  description: プレビューを外から見る（待ち受けのポート・許可するホスト名・起動と終了のフックを設定し、外の入口の内側で開いたプレビューで記録を読み、コメントを送る）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:コメント
+  - topic:フック
+  - topic:プレビュー
+  - topic:設定
+  - topic:起動
+- path: e2e/単一ユースケース/test_preview_open.py
+  name: プレビューを開くの E2E テスト
+  description: プレビューを開く（`session` がサーバーが配るプレビューの URL を示し、記録の書き換えを開いている画面へ反映する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:プレビュー
+- path: e2e/単一ユースケース/test_readme_rewrite.py
+  name: README の書き直しの E2E テスト
+  description: README の書き直し（`session` の準備とプレビューの URL の取得で、直下の README.md をコマンドの一覧に書き直す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:readme
+  - topic:プレビュー
+- path: e2e/単一ユースケース/test_record_add_update.py
+  name: 記録の追加と更新の E2E テスト
+  description: 記録の追加と更新（スキルが検討事項などを足し、後から直す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:検討事項
+- path: e2e/単一ユースケース/test_record_remove_withdraw.py
+  name: 記録の削除と取り下げの E2E テスト
+  description: 記録の削除と取り下げ（スキルが、やめた項目を取り下げ、誤って足した・重複した項目を消す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+- path: e2e/単一ユースケース/test_record_search.py
+  name: 記録の検索の E2E テスト
+  description: 記録の検索（スキルが項目を探し、1 件の中身と参照元・使っている属性名とタグを読む）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:タグ
+  - topic:検索
+- path: e2e/単一ユースケース/test_resident_server.py
+  name: 常駐サーバーの起動と停止の E2E テスト
+  description: 常駐サーバーの起動と停止（Claude Code を立ち上げたときに落ちていた常駐の MCP サーバーが起動し、並行するセッションが 1 つの常駐サーバーを共有する）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:起動
+- path: e2e/単一ユースケース/test_scope_review.py
+  name: 話し合いの範囲の見直しの E2E テスト
+  description: 話し合いの範囲の見直し（範囲が広がったとき、たたき台と対応を確かめて設定を書き換える）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:設定
+- path: e2e/単一ユースケース/test_selection_comment.py
+  name: 選んだ箇所へコメントするの E2E テスト
+  description: 選んだ箇所へコメントする（詳細パネルで本文の文か項目の値を選び、その箇所を指すコメントをレビュー中に溜める）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:コメント
+  - topic:本文
+- path: e2e/単一ユースケース/test_settings_update.py
+  name: 設定の更新の E2E テスト
+  description: 設定の更新（スキルが話し合いの途中で設定を書き換え、フェーズが変わるときは項目のフェーズも付け替える）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:設定
+- path: e2e/単一ユースケース/test_status.py
+  name: 状況の確認の E2E テスト
+  description: 状況の確認（スキルが再開時の状況と次に検討する項目を読む）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+- path: e2e/単一ユースケース/test_submission_intake.py
+  name: 送信の取り込みの E2E テスト
+  description: 送信の取り込み（`session` が話し合いの最初と、話し合いの途中にサーバーが入力した 1 行を受けたときに、取り込み待ちのスレッドを拾って記録し、返信するか返信せずにクローズにするかを決めて取り込み済みにする）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:スレッド
+- path: e2e/単一ユースケース/test_submission_send.py
+  name: 項目へコメントするの E2E テスト
+  description: 項目へコメントする（サーバーが配るプレビューの詳細パネルで、開いている項目へのコメントを書き、送らずにレビュー中として溜める）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:コメント
+  - topic:プレビュー
+- path: e2e/単一ユースケース/test_table_filter_view.py
+  name: 項目を表で絞り込むの E2E テスト
+  description: 項目を表で絞り込む（並べ替え・ドロワーでの絞り込み・ピン留め・表示する列の選択・初期設定に戻す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:フィルター
+  - topic:設定
+- path: e2e/単一ユースケース/test_task_board_view.py
+  name: タスクをボードで見るの E2E テスト
+  description: タスクをボードで見る（状態ごとの列のボードで見て、ドロワーで絞り、カードから詳細を開く）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:タスク
+- path: e2e/単一ユースケース/test_thread_ai_ask.py
+  name: AIがスレッドを立てるの E2E テスト
+  description: AIがスレッドを立てる（`session` が、ワークスペースの外へ書き込む前の確認と、話の流れと関係の無い知らせを、スレッドを立てて利用者に返事を求める）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:スレッド
+  - topic:ワークスペース
+- path: e2e/単一ユースケース/test_thread_talk.py
+  name: スレッドで話すの E2E テスト
+  description: スレッドで話す（スレッドの一覧でスレッドを開き、書き込みを読んで返信をレビューに追加し、まとめて送り、話が済んだら理由つきでクローズにする）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:スレッド
+- path: e2e/単一ユースケース/test_utterance_intake.py
+  name: 発言の取り込みの E2E テスト
+  description: 発言の取り込み（利用者の発言を記録し、派生の検討事項・タスクを積む）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:タスク
+  - topic:検討事項
+- path: e2e/単一ユースケース/test_workspace_check.py
+  name: ワークスペースの点検の E2E テスト
+  description: ワークスペースの点検（スキルが参照切れと YAML と本文のずれを洗い出す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ワークスペース
+  - topic:本文
+  - topic:点検
+- path: e2e/単一ユースケース/test_workspace_create.py
+  name: ワークスペースの作成の E2E テスト
+  description: ワークスペースの作成（スキルが新しいワークスペースを作る）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ワークスペース
+- path: e2e/単一ユースケース/test_workspace_default_change.py
+  name: ワークスペースの既定を変えるの E2E テスト
+  description: ワークスペースの既定を変える（利用者が今の選びを config.yaml の既定として保存し、上書きを持たない他の画面に効かせる）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ワークスペース
+- path: e2e/単一ユースケース/test_workspace_upgrade.py
+  name: ワークスペースの移し替えの E2E テスト
+  description: ワークスペースの移し替え（利用者がプラグインを上げた後、ワークスペースを今の版へ移し替える）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ワークスペース
+  - topic:移行
+- path: e2e/複合ユースケース/test_discussion_to_goal.py
+  name: 話し合いをゴールまで進めるの E2E テスト
+  description: 話し合いをゴールまで進める（セットアップから取り込み・ヒアリング・リサーチ・方針転換を重ね、ゴール判定でリリースするまで）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ゴール
+- path: e2e/複合ユースケース/test_display_prefs_per_person.py
+  name: 表示の好みを人ごとに分けるの E2E テスト
+  description: 表示の好みを人ごとに分ける（同じワークスペースのプレビューを開いた 2 人が、それぞれの端末で表示の設定を変えても互いの表示に影響せず、既定の保存だけが上書きを持たない項目に効く）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:プレビュー
+  - topic:ワークスペース
+  - topic:設定
+- path: e2e/複合ユースケース/test_preview_reread.py
+  name: プレビューで記録を読み返すの E2E テスト
+  description: プレビューで記録を読み返す（変更履歴から時点を選び、概要から項目の詳細を開き、ネットワークで関係を読み、URL に残す）の E2E テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:e2e
+  - topic:ネットワーク
+  - topic:プレビュー
+  - topic:履歴
+  - topic:概要
+- path: external_access_helpers.py
+  name: プレビューを外から見る設定のテストの補助
+  description: プレビューを外から見る設定の結合・E2E テストの共通の部品。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:プレビュー
+  - topic:ヘルパー
+  - topic:設定
+- path: integration/browser_tab_helpers.py
+  name: 新しいタブを開くテストの補助
+  description: リンクを押して開く新しいタブを確かめるテスト（結合・E2E）が共有する、タブの数え方・待ち方、`window.open` の記録、リンク先のページの配信。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/plugin/test_marketplace_registration.py
+  name: .claude-plugin/marketplace.jsonの結合テスト
+  description: マーケットプレイスの登録（.claude-plugin/marketplace.json）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/plugin/test_plugin_loading.py
+  name: プラグインの読み込みの結合テスト
+  description: プラグインの読み込み（plugins/mindstella/ の .claude-plugin/plugin.json・.mcp.json・hooks/・skills/・LICENSE）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/conftest.py
+  name: プレビューの結合テストの共通の fixture
+  description: プレビューの結合テストの共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:フィクスチャ
+  - topic:プレビュー
+  - topic:結合テスト
+- path: integration/preview/preview_a11y_checks.py
+  name: アクセシビリティの規則のテストの補助
+  description: axe-core でアクセシビリティの規則を確かめる関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_added_mark_helpers.py
+  name: 本文の差分の足した印の結合テストの補助
+  description: 本文の差分の足した印（足した色の面と +）の結合テストが共有する、ワークスペースの作り方と線の測り方。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:差分
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_alias_helpers.py
+  name: 資料・調査のエイリアスの本文の印とツールチップの結合テストの補助
+  description: 資料・調査のエイリアスの本文の印とツールチップの結合テストが共通で使う、記録・本文・選び方。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+  - topic:資料
+- path: integration/preview/preview_body_layout_helpers.py
+  name: 本文の差分の並べ方の結合テストの補助
+  description: 本文の差分の並べ方の結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:差分
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_body_link_helpers.py
+  name: 本文のまとまりのリンクの結合テストの補助
+  description: 本文のまとまりのリンクの結合テストが共有する、リンクを持つ本文のワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_body_scroll_helpers.py
+  name: 本文のスクロール領域の結合テストの補助
+  description: 詳細パネルと詳細の全画面の、本文のスクロール領域の結合テストが共有する値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_body_view_helpers.py
+  name: Markdown の本文の見せ方の結合テストの補助
+  description: Markdown の本文の見せ方（表の列の固定・見出しの固定・しま模様・セクションの折りたたみ）の結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:markdown
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_body_wrap_helpers.py
+  name: 本文の長い URL・インラインコード・表の見せ方の結合テストの補助
+  description: 詳細パネルと詳細の全画面の、本文の長い URL・インラインコード・表の見せ方の結合テストが共有する本文と測り方。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_comment_helpers.py
+  name: コメントの画面の結合テストの補助
+  description: コメントの画面の結合テストが共有する値と、選択・記録の読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_drawer_helpers.py
+  name: 絞り込みのドロワーの結合テストの補助
+  description: 絞り込みのドロワーの結合テストが共有する操作と値（トップバーの絞り込みのボタン・件数のバッジ・ドロワー）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:トップバー
+  - topic:フィルター
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_edit_helpers.py
+  name: 編集・保存待ちの画面の結合テストの補助
+  description: 編集・保存待ちの画面の結合テストが共有する値と、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:編集
+- path: integration/preview/preview_embed_helpers.py
+  name: 埋め込んだ HTML・操作できる部品・資料のエクスポートの結合テストの補助
+  description: 埋め込んだ HTML・操作できる部品・資料のエクスポートの結合テストが共有する値と関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:html
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:資料
+- path: integration/preview/preview_fit_helpers.py
+  name: 幅 320px で見切れないことの結合テストの補助
+  description: 幅 320px で、トップバー以外の画面が横にスクロールせず見切れないことを確かめる結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:トップバー
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_fixture_types.py
+  name: プレビューの結合テストの fixture の型と共有の値
+  description: conftest の fixture が返す関数の型と、テストが共有する値（テストの引数の注釈・期待値に使う）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_head_title_helpers.py
+  name: 詳細パネル・詳細の全画面の見出しのタイトルの結合テストの補助
+  description: 詳細パネル・詳細の全画面の見出しのタイトルの結合テストが共有する定数と JS。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_history_helpers.py
+  name: 差分の表示の結合テストの補助
+  description: 差分の表示の結合テストが共有する、変更履歴つきのワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:履歴
+  - topic:差分
+  - topic:結合テスト
+- path: integration/preview/preview_html_body_helpers.py
+  name: HTML の本文の画面の結合テストの補助
+  description: HTML の本文の画面の結合テストが共有する値と、枠の中の選択・測りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:html
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_html_link_helpers.py
+  name: HTML の本文の枠の中のリンクを押す結合テストの補助
+  description: HTML の本文の枠の中のリンクを押す結合テストが共有する、本文の組み立てと枠の中の場所の読み取り。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:html
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_layout_helpers.py
+  name: 画面の領域の結合テストの補助
+  description: 画面の領域（窓の高さに収め、帯の下の領域の中でスクロールする作り）の結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_mark_helpers.py
+  name: コメントの印の結合テストの補助
+  description: コメントの印の結合テストが共有する値と、画面の印を読む関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_markdown_post_helpers.py
+  name: スレッドの書き込みの Markdown の結合テストの補助
+  description: スレッドの書き込みの Markdown の結合テストが共有する、AI の書き込みとレビュー中の返信の本文。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:markdown
+  - topic:スレッド
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/preview/preview_minimap_helpers.py
+  name: 差分のミニマップの結合テストの補助
+  description: 差分のミニマップの結合テストが共有する、ワークスペースの作り方と値、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:差分
+  - topic:結合テスト
+- path: integration/preview/preview_network_helpers.py
+  name: ネットワークの画面の結合テストの補助
+  description: ネットワークの画面の結合テストが共有する値と、キャンバスを外から観測する関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ネットワーク
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_panel_width_helpers.py
+  name: 詳細パネルの幅の区切りの結合テストの補助
+  description: 詳細パネルの幅の区切りの結合テストが共有する、保存領域のキーと値、画面の幅、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_post_link_helpers.py
+  name: 書き込みのまとまりのリンクの結合テストの補助
+  description: 書き込みのまとまりのリンクの結合テストが共有する、スレッドとレビュー中の返信にリンクを持つワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:スレッド
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:結合テスト
+- path: integration/preview/preview_removed_helpers.py
+  name: 消した項目の帯・取り下げの札の結合テストの補助
+  description: 消した項目の帯・取り下げの札の結合テストが共有する、消した項目と取り下げた項目を持つワークスペースの作り方と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:結合テスト
+- path: integration/preview/preview_saved_filter_helpers.py
+  name: サーバーの配信で端末に残した絞り込みの条件の結合テストの補助
+  description: サーバーの配信で端末に残した絞り込みの条件の結合テストが共有する操作と読み取り。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:フィルター
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_scrim_helpers.py
+  name: 左のパネルのグレーアウトの結合テストの補助
+  description: 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のグレーアウトの結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:フィルター
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:設定
+- path: integration/preview/preview_settings_helpers.py
+  name: 表示の設定の画面の結合テストの補助
+  description: 表示の設定の画面の結合テストが共有する値と、操作・読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:設定
+- path: integration/preview/preview_spa_helpers.py
+  name: React のプレビューを開く結合テストの補助
+  description: React のプレビュー（SPA）を開く結合テストの共通の関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:プレビュー
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_stack_helpers.py
+  name: 詳細パネルと左のパネルの重なりの結合テストの補助
+  description: 幅 900px 以下の、詳細パネルと左のパネル（表示の設定・コメントの一覧・絞り込みのドロワー）の重なりの結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:フィルター
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:設定
+- path: integration/preview/preview_style_checks.py
+  name: 計算後のスタイルで見た目を測るテストの補助
+  description: プレビューの見た目（余白・面の色・文字の大きさ・動き）を、計算後のスタイルで測る関数と、テストが共有する値。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:プレビュー
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/preview/preview_word_diff_helpers.py
+  name: 語の面の結合テストの補助
+  description: 語の面（変えた行の中の変わった語の濃い面）の結合テストが共有する、ワークスペースの作り方と色の測り方。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:結合テスト
+- path: integration/preview/test_comments_screen.py
+  name: 画面設計『コメントの一覧』の結合テスト
+  description: 画面設計『コメントの一覧』（スレッドの一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/preview/test_decisions_screen.py
+  name: 画面設計『検討事項』の結合テスト
+  description: マップは項目 ID `decision-map`）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:検討事項
+  - topic:結合テスト
+- path: integration/preview/test_detail_full_screen.py
+  name: 画面設計『詳細の全画面』と『図の拡大』の結合テスト
+  description: 画面設計『詳細の全画面』と『図の拡大』（全画面の中身の切り替え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_detail_panel_screen.py
+  name: 画面設計『詳細パネル』の結合テスト
+  description: 画面設計『詳細パネル』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_diagram_viewer_screen.py
+  name: 画面設計『図の拡大』の結合テスト
+  description: 画面設計『図の拡大』（詳細パネルからのモーダル）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_docs_screen.py
+  name: 画面設計『資料』の結合テスト
+  description: 画面設計『資料』（カード・ボード・表）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+  - topic:資料
+- path: integration/preview/test_graph_screen.py
+  name: 画面設計『ネットワーク』の結合テスト
+  description: 画面設計『ネットワーク』（キャンバスは項目 ID `graph-canvas`）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ネットワーク
+  - topic:結合テスト
+- path: integration/preview/test_history_screen.py
+  name: 画面設計『変更履歴』の結合テスト
+  description: 画面設計『変更履歴』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:履歴
+  - topic:結合テスト
+- path: integration/preview/test_open_preview.py
+  name: プレビューを開くの結合テスト
+  description: プレビューを開く（サーバーが配る URL と、`export` が書き出した配る書き出しを開く）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:プレビュー
+  - topic:結合テスト
+- path: integration/preview/test_overview_screen.py
+  name: 画面設計『概要』の結合テスト
+  description: 画面設計『概要』（タイルの項目 ID で要素を引く）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:概要
+  - topic:結合テスト
+- path: integration/preview/test_pending_panel_screen.py
+  name: 画面設計『保存待ちのパネル』の結合テスト
+  description: 画面設計『保存待ちのパネル』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_records_screen.py
+  name: 画面設計『記録の表』の結合テスト
+  description: 画面設計『記録の表』（調査・用語集・メモ・会話ログ）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_review_screen.py
+  name: 画面設計『レビュー中の書き込み』の結合テスト
+  description: 画面設計『レビュー中の書き込み』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_search_screen.py
+  name: 画面設計『全体の検索』の結合テスト
+  description: 画面設計『全体の検索』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:検索
+  - topic:結合テスト
+- path: integration/preview/test_settings_confirm_screen.py
+  name: 画面設計『既定の保存の確かめ』の結合テスト
+  description: 画面設計『既定の保存の確かめ』（ワークスペースの既定として保存する前のモーダル）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ワークスペース
+  - topic:結合テスト
+- path: integration/preview/test_settings_screen.py
+  name: 画面設計『表示の設定』の結合テスト
+  description: 表示する種類・既定に戻す・既定が変わった知らせ。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ネットワーク
+  - topic:結合テスト
+  - topic:設定
+- path: integration/preview/test_spa_open.py
+  name: インターフェース定義『SPAを開く』の結合テスト
+  description: インターフェース定義『SPAを開く』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/preview/test_spa_overview_screen.py
+  name: 画面設計『概要.tsx』の結合テスト
+  description: タイルの項目 ID で要素を引く）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:プレビュー
+  - topic:概要
+  - topic:結合テスト
+- path: integration/preview/test_tasks_screen.py
+  name: 画面設計『タスク』の結合テスト
+  description: 画面設計『タスク』（ボード・表）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:タスク
+  - topic:結合テスト
+- path: integration/preview/test_thread_screen.py
+  name: 画面設計『スレッド』の結合テスト
+  description: 画面設計『スレッド』（スレッド 1 件の画面）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/preview/test_topbar_screen.py
+  name: 画面設計の「トップバー」の要素の結合テスト
+  description: 全ての画面で共通のトップバーとタブの帯（画面設計の「トップバー」の要素）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:トップバー
+  - topic:結合テスト
+- path: integration/preview/test_workspace_settings_screen.py
+  name: 画面設計『設定の画面』の結合テスト
+  description: 画面設計『設定の画面』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+  - topic:設定
+- path: integration/server/conftest.py
+  name: サーバーの結合テストの共通の fixture
+  description: サーバーの結合テストの共通 fixture（ワークスペースと MCP サーバーの起動は tests/workspace_fixtures.py）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フィクスチャ
+  - topic:ワークスペース
+  - topic:結合テスト
+  - topic:起動
+- path: integration/server/fixture_types.py
+  name: サーバーの結合テストの fixture の型
+  description: 共有の型は tests/workspace_fixtures.py から取る。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/server/history_helpers.py
+  name: 変更履歴を持つワークスペースを作る結合テストの補助
+  description: 変更履歴・書き換えのまとまりを持つワークスペースを、実際のツールを呼んで作る関数（結合テストの共通の関数）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:履歴
+  - topic:結合テスト
+- path: integration/server/http_helpers.py
+  name: 配信への HTTP と Server-Sent Events のクライアント
+  description: 配信への HTTP と Server-Sent Events のクライアント（結合テストの共通の関数）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/server/readme_helpers.py
+  name: 直下の README.md の結合テストの補助
+  description: 直下の README.md の結合テストが使う、期待する中身の組み立てと、見出しごとの切り出し（インターフェース定義『README の書き出し』の制約「README の中身」）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:readme
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/server/test_add.py
+  name: 項目の追加の結合テスト
+  description: add（項目の追加）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_adopt.py
+  name: 採用する案の切り替えの結合テスト
+  description: adopt（採用する案の切り替え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_attrs.py
+  name: 属性名の一覧の結合テスト
+  description: attrs（属性名の一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_batch.py
+  name: まとめての読み書きの結合テスト
+  description: batch（まとめての読み書き）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_changes_since_read.py
+  name: 前回読んだ時点からの変更の結合テスト
+  description: changes_since_read（前回読んだ時点からの変更）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_check.py
+  name: ワークスペースの点検の結合テスト
+  description: check（ワークスペースの点検）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ワークスペース
+  - topic:点検
+  - topic:結合テスト
+- path: integration/server/test_check_env.py
+  name: 依存の確認の結合テスト
+  description: check_env.py（依存の確認）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_clear_release.py
+  name: リリースの片付けの結合テスト
+  description: clear-release（リリースの片付け）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_comment_add.py
+  name: POST /api/commentsの結合テスト
+  description: レビュー中のコメントの追加（POST /api/comments）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:結合テスト
+- path: integration/server/test_comment_delete.py
+  name: DELETE /api/comments/{id}の結合テスト
+  description: レビュー中のコメントの削除（DELETE /api/comments/{id}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:結合テスト
+- path: integration/server/test_comment_update.py
+  name: PATCH /api/comments/{id}の結合テスト
+  description: レビュー中のコメントの書き換え（PATCH /api/comments/{id}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:結合テスト
+- path: integration/server/test_comments_read.py
+  name: GET /api/commentsの結合テスト
+  description: レビュー中のコメントの読み取り（GET /api/comments）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:結合テスト
+- path: integration/server/test_comments_send.py
+  name: POST /api/comments/sendの結合テスト
+  description: コメントをまとめて送る（POST /api/comments/send）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:結合テスト
+- path: integration/server/test_commit.py
+  name: 書き換えのまとまりの結合テスト
+  description: commit（書き換えのまとまり）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_config_display.py
+  name: PUT /api/config/displayの結合テスト
+  description: 設定の既定の書き換え（PUT /api/config/display）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:設定
+- path: integration/server/test_config_reload.py
+  name: POST /api/config/reloadの結合テスト
+  description: 設定の再読み込み（POST /api/config/reload）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:設定
+- path: integration/server/test_draft_save.py
+  name: PUT /api/draftsの結合テスト
+  description: 書きかけの保存（PUT /api/drafts）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_edit_option.py
+  name: 案の書き換えの結合テスト
+  description: edit_option（案の書き換え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_edits_add.py
+  name: POST /api/editsの結合テスト
+  description: 保存待ちの編集の追加（POST /api/edits）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:編集
+- path: integration/server/test_edits_cancel.py
+  name: DELETE /api/edits/{id}の結合テスト
+  description: 保存待ちの編集の取り消し（DELETE /api/edits/{id}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:編集
+- path: integration/server/test_edits_read.py
+  name: GET /api/editsの結合テスト
+  description: 保存待ちの編集の読み取り（GET /api/edits）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:編集
+- path: integration/server/test_edits_save.py
+  name: POST /api/edits/saveの結合テスト
+  description: 保存待ちの編集をまとめて保存（POST /api/edits/save）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:編集
+- path: integration/server/test_ensure_server.py
+  name: 常駐サーバーの起動の確認の結合テスト
+  description: 常駐サーバーの起動の確認（SessionStart のフックと起動スクリプトが呼ぶ ensure_server.py）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フック
+  - topic:結合テスト
+  - topic:起動
+- path: integration/server/test_events.py
+  name: GET /api/eventsの結合テスト
+  description: 書き換えの知らせ（GET /api/events）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_export.py
+  name: 配る書き出しの結合テスト
+  description: export（配る書き出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_find.py
+  name: 項目の検索の結合テスト
+  description: find（項目の検索）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:検索
+  - topic:結合テスト
+- path: integration/server/test_goal.py
+  name: ゴール判定の結合テスト
+  description: goal（ゴール判定）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ゴール
+  - topic:結合テスト
+- path: integration/server/test_impact.py
+  name: 影響の洗い出しの結合テスト
+  description: impact（影響の洗い出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_init.py
+  name: ワークスペースの作成の結合テスト
+  description: init（ワークスペースの作成）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ワークスペース
+  - topic:結合テスト
+- path: integration/server/test_inject_session.py
+  name: PreToolUse のフックの inject_session.pyの結合テスト
+  description: セッションの値の注入（PreToolUse のフックの inject_session.py）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フック
+  - topic:結合テスト
+- path: integration/server/test_launch.py
+  name: 起動スクリプトの結合テスト
+  description: bin/mindstella（起動スクリプト）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:起動
+- path: integration/server/test_mcp_server.py
+  name: 常駐の MCP サーバーの結合テスト
+  description: MCP サーバーの起動（常駐サーバーとして起動したときの、ツールの一覧・結果とエラー・相対パス・終わり方・排他・待ち受けのポート）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:起動
+- path: integration/server/test_migrate.py
+  name: 記録の形式の移行の結合テスト
+  description: migrate（記録の形式の移行）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_new_thread.py
+  name: スレッドを立てるの結合テスト
+  description: new_thread（スレッドを立てる）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_next.py
+  name: 次の候補の結合テスト
+  description: next（次の候補）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_opened.py
+  name: 前回開いた日時の結合テスト
+  description: POST /api/opened（前回開いた日時）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_pending.py
+  name: まだまとめていない変更の結合テスト
+  description: pending（まだまとめていない変更）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_preview_serve.py
+  name: GET /の結合テスト
+  description: プレビューの配信（GET /）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:プレビュー
+  - topic:結合テスト
+- path: integration/server/test_preview_url.py
+  name: プレビューの URLの結合テスト
+  description: preview_url（プレビューの URL）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:プレビュー
+  - topic:結合テスト
+- path: integration/server/test_readme.py
+  name: 直下の README.md の書き出しの結合テスト
+  description: readme（直下の README.md の書き出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:readme
+  - topic:結合テスト
+- path: integration/server/test_records.py
+  name: GET /api/recordsの結合テスト
+  description: 記録の取得（GET /api/records）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_remove.py
+  name: 項目の削除の結合テスト
+  description: remove（項目の削除）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_reply.py
+  name: スレッドへの返信の結合テスト
+  description: reply（スレッドへの返信）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_reset_unread.py
+  name: スレッドを未読へ戻すスクリプトの結合テスト
+  description: reset_unread.py（SessionStart のフックが呼ぶ、スレッドの書き込みを未読へ戻すスクリプト）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:フック
+  - topic:結合テスト
+- path: integration/server/test_server_status.py
+  name: server_status・GET /_admin/statusの結合テスト
+  description: 常駐サーバーの状態（server_status・GET /_admin/status）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_server_stop.py
+  name: server_stopの結合テスト
+  description: 常駐サーバーの停止（server_stop）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_set_thread_status.py
+  name: スレッドの状態の書き換えの結合テスト
+  description: set_thread_status（スレッドの状態の書き換え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_show.py
+  name: 項目の表示の結合テスト
+  description: show（項目の表示）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_spa_serve.py
+  name: React のプレビューの配信の結合テスト
+  description: React のプレビュー（SPA）の配信（GET /spa/{path}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:プレビュー
+  - topic:結合テスト
+- path: integration/server/test_status.py
+  name: 再開時の状況の結合テスト
+  description: status（再開時の状況）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_tags.py
+  name: タグの一覧の結合テスト
+  description: tags（タグの一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:タグ
+  - topic:結合テスト
+- path: integration/server/test_thread.py
+  name: スレッドを読むの結合テスト
+  description: thread（スレッドを読む）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_thread_seen.py
+  name: POST /api/threads/{id}/seenの結合テスト
+  description: 画面からのスレッドの既読（POST /api/threads/{id}/seen）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_thread_status_update.py
+  name: PATCH /api/threads/{id}の結合テスト
+  description: 画面からのスレッドの状態の書き換え（PATCH /api/threads/{id}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_threads.py
+  name: スレッドの一覧の結合テスト
+  description: threads（スレッドの一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_threads_read.py
+  name: GET /api/threadsの結合テスト
+  description: スレッドの読み取り（GET /api/threads）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/test_update.py
+  name: 項目の更新の結合テスト
+  description: update（項目の更新）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_update_settings.py
+  name: 設定の更新の結合テスト
+  description: update_settings（設定の更新）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:設定
+- path: integration/server/test_update_thread.py
+  name: スレッドの書き換えの結合テスト
+  description: update_thread（スレッドの書き換え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/server/thread_helpers.py
+  name: スレッドの結合テストの補助
+  description: スレッドの結合テストの共通の関数（threads.yaml の読み書き）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/skill/conftest.py
+  name: スキルの結合テストの共通の fixture
+  description: スキルの結合テストの共通 fixture（登録のスクリプトを動かす隔離した環境）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フィクスチャ
+  - topic:結合テスト
+- path: integration/skill/register_helpers.py
+  name: 起動スクリプトの登録の結合テストの補助
+  description: 起動スクリプトの登録（register.py）の結合テストが共有する、隔離したホームと偽の `claude`・偽の起動スクリプト。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:起動
+- path: integration/skill/skill_files.py
+  name: スキルのファイルを読む結合テストの補助
+  description: スキルのファイル（SKILL.md と steps/）を読む、スキルの結合テストの共通の関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/skill/test_register.py
+  name: 起動スクリプトの alias と環境変数の登録の結合テスト
+  description: register.py（起動スクリプトの alias と環境変数の登録）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:起動
+- path: integration/skill/test_session.py
+  name: スキル sessionと共通の置き場所のファイルの形の結合テスト
+  description: スキル session（/mindstella:session）と共通の置き場所のファイルの形の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/skill/test_setup.py
+  name: スキル setupのファイルの形の結合テスト
+  description: スキル setup（/mindstella:setup）のファイルの形の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/skill/test_upgrade.py
+  name: スキル upgradeのファイルの形の結合テスト
+  description: スキル upgrade（/mindstella:upgrade）のファイルの形の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+- path: integration/storybook/conftest.py
+  name: Storybook のストーリーの結合テストの共通の fixture
+  description: 部品のストーリー（Storybook）の結合テストの共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:フィクスチャ
+  - topic:結合テスト
+- path: integration/storybook/storybook_fixture_types.py
+  name: Storybook のストーリーの結合テストの fixture の型
+  description: conftest の fixture が返す関数の型（テストの引数の注釈に使う）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/storybook/storybook_frame_helpers.py
+  name: HTML の本文の枠を描く部品のストーリーの結合テストの補助
+  description: HTML の本文の枠を描く部品のストーリーの結合テストが共有する、枠の中を読む関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:html
+  - topic:ストーリー
+  - topic:ヘルパー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_body_diff_layout_switch_stories.py
+  name: 部品設計『本文の差分の並べ方の切り替え』の状態の結合テスト
+  description: 部品設計『本文の差分の並べ方の切り替え』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:差分
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_body_format_badge_stories.py
+  name: 部品設計『本文の形式の札』の状態の結合テスト
+  description: 部品設計『本文の形式の札』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_chips_input_stories.py
+  name: 部品設計『チップの入力』の状態の結合テスト
+  description: 部品設計『チップの入力』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_comment_mark_stories.py
+  name: 部品設計『コメントの印』の状態の結合テスト
+  description: 部品設計『コメントの印』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:コメント
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_diff_mark_stories.py
+  name: 部品設計『差分の印』の状態の結合テスト
+  description: 部品設計『差分の印』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:差分
+  - topic:結合テスト
+- path: integration/storybook/test_diff_minimap_stories.py
+  name: 部品設計『差分のミニマップ』の状態の結合テスト
+  description: 部品設計『差分のミニマップ』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:差分
+  - topic:結合テスト
+- path: integration/storybook/test_doc_export_menu_stories.py
+  name: 部品設計『資料のエクスポートのメニュー』の状態の結合テスト
+  description: 部品設計『資料のエクスポートのメニュー』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+  - topic:資料
+- path: integration/storybook/test_filter_drawer_stories.py
+  name: 部品設計『絞り込み』の状態の結合テスト
+  description: 部品設計『絞り込み』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:フィルター
+  - topic:結合テスト
+- path: integration/storybook/test_history_dialog_stories.py
+  name: 部品設計『変更履歴』の状態の結合テスト
+  description: 部品設計『変更履歴』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:履歴
+  - topic:結合テスト
+- path: integration/storybook/test_html_body_diff_stories.py
+  name: 部品設計『HTMLの本文の差分』の状態の結合テスト
+  description: 部品設計『HTMLの本文の差分』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:html
+  - topic:ストーリー
+  - topic:差分
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_html_body_frame_stories.py
+  name: 部品設計『HTMLの本文の枠』の状態の結合テスト
+  description: 部品設計『HTMLの本文の枠』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:html
+  - topic:ストーリー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_markdown_body_stories.py
+  name: 部品設計『Markdownの本文』の状態の結合テスト
+  description: 部品設計『Markdownの本文』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:markdown
+  - topic:ストーリー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_pending_mark_stories.py
+  name: 部品設計『保存待ちの印』の状態の結合テスト
+  description: 部品設計『保存待ちの印』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_removed_band_stories.py
+  name: 部品設計『消した項目の帯』の状態の結合テスト
+  description: 部品設計『消した項目の帯』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_reply_form_stories.py
+  name: 部品設計『返信の入力』の状態の結合テスト
+  description: 部品設計『返信の入力』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_review_body_fold_stories.py
+  name: 部品設計『本文の折りたたみ』の状態の結合テスト
+  description: 部品設計『本文の折りたたみ』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_selection_comment_stories.py
+  name: 部品設計『選んだ箇所のコメントの入口』の状態の結合テスト
+  description: 部品設計『選んだ箇所のコメントの入口』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:コメント
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_send_form_stories.py
+  name: 部品設計『コメントの入力』の状態の結合テスト
+  description: 部品設計『コメントの入力』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:コメント
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_settings_confirm_stories.py
+  name: 部品設計『既定の保存の確かめ』の状態の結合テスト
+  description: 部品設計『既定の保存の確かめ』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_settings_panel_stories.py
+  name: 部品設計『表示の設定』の状態の結合テスト
+  description: 部品設計『表示の設定』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+  - topic:設定
+- path: integration/storybook/test_side_by_side_body_diff_stories.py
+  name: 部品設計『左右に並べた本文の差分』の状態の結合テスト
+  description: 部品設計『左右に並べた本文の差分』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:差分
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_table_stories.py
+  name: 部品設計『表』の状態の結合テスト
+  description: 部品設計『表』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_tag_list_stories.py
+  name: 部品設計『タグの並び』の状態の結合テスト
+  description: 部品設計『タグの並び』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:タグ
+  - topic:結合テスト
+- path: integration/storybook/test_term_tip_stories.py
+  name: 部品設計『本文の印のツールチップ』の状態の結合テスト
+  description: 部品設計『本文の印のツールチップ』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:本文
+  - topic:結合テスト
+- path: integration/storybook/test_thread_post_stories.py
+  name: 部品設計『スレッドの書き込み』の状態の結合テスト
+  description: 部品設計『スレッドの書き込み』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/storybook/test_thread_row_stories.py
+  name: 部品設計『スレッドの行』の状態の結合テスト
+  description: 部品設計『スレッドの行』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:スレッド
+  - topic:結合テスト
+- path: integration/storybook/test_topbar_stories.py
+  name: 部品設計『トップバー』の状態の結合テスト
+  description: 部品設計『トップバー』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:トップバー
+  - topic:結合テスト
+- path: integration/storybook/test_view_switch_stories.py
+  name: 部品設計『表示形式の切り替え』の状態の結合テスト
+  description: 部品設計『表示形式の切り替え』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook/test_withdrawn_badge_stories.py
+  name: 部品設計『取り下げの札』の状態の結合テスト
+  description: 部品設計『取り下げの札』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/conftest.py
+  name: React の Storybook のストーリーの結合テストの共通の fixture
+  description: React の部品のストーリー（Storybook）の結合テストの共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:フィクスチャ
+  - topic:結合テスト
+- path: integration/storybook_react/storybook_react_fixture_types.py
+  name: React の Storybook のストーリーの結合テストの fixture の型
+  description: conftest の fixture が返す関数の型（テストの引数の注釈に使う）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ヘルパー
+  - topic:結合テスト
+- path: integration/storybook_react/test_topbar_stories.py
+  name: 部品設計『トップバー.tsx』の状態の結合テスト
+  description: 部品設計『トップバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:トップバー
+  - topic:結合テスト
+- path: launch_fixtures.py
+  name: 起動スクリプトを隔離して動かす fixture
+  description: 起動スクリプト（bin/mindstella）を、隔離した環境で動かす共通の fixture と関数（結合テストと E2E テストが共有する）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:ヘルパー
+  - topic:起動
+- path: preview_clock_helpers.py
+  name: ブラウザの時刻を止めるテストの補助
+  description: プレビューのテストが共有する、ブラウザの時刻を止めるスクリプト。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:テスト
+  - topic:プレビュー
+  - topic:ヘルパー
+- path: unit/preview/conftest.py
+  name: プレビューの単体テストの共通の fixture
+  description: プレビューの単体テスト（フロント）の共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:フィクスチャ
+  - topic:プレビュー
+  - topic:単体テスト
+- path: unit/preview/fixture_types.py
+  name: プレビューの単体テストの fixture の型
+  description: 共有の型は tests/workspace_fixtures.py から取る。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:単体テスト
+- path: unit/preview/test_api.py
+  name: サーバーの配信とのやり取りの単体テスト
+  description: core/api.ts（サーバーの配信とのやり取り：記録の取得・レビュー中のコメント・書きかけ・まとめて送る・書き換えの知らせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    type: tests
+- path: unit/preview/test_app.py
+  name: 起動・端末の保存領域・埋め込みのデータの読み込みの単体テスト
+  description: app.ts（起動・端末の保存領域・埋め込みのデータの読み込み）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:起動
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/app.ts
+    type: tests
+- path: unit/preview/test_body_diff_layout_switch.py
+  name: 本文の差分の並べ方の切り替えの単体テスト
+  description: components/body-diff-layout-switch.ts（本文の差分の並べ方の切り替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:差分
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
+    type: tests
+- path: unit/preview/test_chips_input.py
+  name: 値のチップと、値を追加する入力欄。項目のタグは主題のトグルを持つの単体テスト
+  description: 項目のタグは主題のトグルを持つ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
+    type: tests
+- path: unit/preview/test_comment_mark.py
+  name: コメントの印・印の差し替えの単体テスト
+  description: components/comment-mark.ts（コメントの印・印の差し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    type: tests
+- path: unit/preview/test_comments_panel.py
+  name: コメントの一覧の単体テスト
+  description: スレッドの一覧・スレッド・レビュー中の書き込みの 3 つの画面）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:スレッド
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    type: tests
+- path: unit/preview/test_decisions.py
+  name: 検討事項の画面とマップの木の単体テスト
+  description: screens/decisions.ts（検討事項の画面とマップの木）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:検討事項
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    type: tests
+- path: unit/preview/test_detail.py
+  name: 詳細パネルの単体テスト
+  description: screens/detail.ts（詳細パネル）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    type: tests
+- path: unit/preview/test_detail_edit.py
+  name: 詳細パネルの編集の表示・編集できるキーの並び・記録で使われているタグの単体テスト
+  description: screens/detail-edit.ts（詳細パネルの編集の表示・編集できるキーの並び・記録で使われているタグ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  - topic:編集
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    type: tests
+- path: unit/preview/test_diff.py
+  name: 選んだ時点の印・前の版の組み立て・行の差分・図の要素の突き合わせの単体テスト
+  description: core/diff.ts（選んだ時点の印・前の版の組み立て・行の差分・図の要素の突き合わせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:差分
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/diff.ts
+    type: tests
+- path: unit/preview/test_diff_minimap.py
+  name: 差分のミニマップの単体テスト
+  description: components/diff-minimap.ts（差分のミニマップ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:差分
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    type: tests
+- path: unit/preview/test_doc_export.py
+  name: 資料のエクスポートの組み立てとダウンロードの単体テスト
+  description: core/doc-export.ts（資料のエクスポートの組み立てとダウンロード）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:資料
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    type: tests
+- path: unit/preview/test_docs.py
+  name: 資料の画面の単体テスト
+  description: screens/docs.ts（資料の画面）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:資料
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
+    type: tests
+- path: unit/preview/test_dom.py
+  name: 要素の組み立て・アイコン・状態の印・選択中の単体テスト
+  description: core/dom.ts（要素の組み立て・アイコン・状態の印・選択中）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/dom.ts
+    type: tests
+- path: unit/preview/test_edits.py
+  name: 保存待ちの編集を当てた記録・保存待ちの印の種類の単体テスト
+  description: core/edits.ts（保存待ちの編集を当てた記録・保存待ちの印の種類）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:編集
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    type: tests
+- path: unit/preview/test_graph.py
+  name: ネットワークの単体テスト
+  description: graph/graph.ts（ネットワーク）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ネットワーク
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    type: tests
+- path: unit/preview/test_libs.py
+  name: 描画のライブラリの有無と呼び出し・選んだ範囲から箇所を求める処理の単体テスト
+  description: core/libs.ts（描画のライブラリの有無と呼び出し・選んだ範囲から箇所を求める処理）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/libs.ts
+    type: tests
+- path: unit/preview/test_lock.py
+  name: ロックの押下の判定・2 回押しの読み替え・鍵の震えの量の単体テスト
+  description: core/lock.ts（ロックの押下の判定・2 回押しの読み替え・鍵の震えの量）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/lock.ts
+    type: tests
+- path: unit/preview/test_looks.py
+  name: ネットワークの 5 つの見た目の描き方と、一度だけ焼く絵の単体テスト
+  description: graph/looks.ts（ネットワークの 5 つの見た目の描き方と、一度だけ焼く絵）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ネットワーク
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/graph/looks.ts
+    type: tests
+- path: unit/preview/test_markdown_body.py
+  name: Markdown の本文の見せ方の単体テスト
+  description: components/markdown-body.ts（Markdown の本文の見せ方）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:markdown
+  - topic:単体テスト
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    type: tests
+- path: unit/preview/test_overview.py
+  name: 概要の単体テスト
+  description: screens/overview.ts（概要）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:概要
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
+    type: tests
+- path: unit/preview/test_pending_edits.py
+  name: 保存待ちのパネル・編集の行の文言・項目ごとのまとまりの単体テスト
+  description: screens/pending-edits.ts（保存待ちのパネル・編集の行の文言・項目ごとのまとまり）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:編集
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    type: tests
+- path: unit/preview/test_pending_mark.py
+  name: 保存待ちの印の単体テスト
+  description: components/pending-mark.ts（保存待ちの印）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts
+    type: tests
+- path: unit/preview/test_records.py
+  name: 記録の索引・関係する項目・検索・箇所の名前の単体テスト
+  description: core/records.ts（記録の索引・関係する項目・検索・箇所の名前）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:検索
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    type: tests
+- path: unit/preview/test_reply_form.py
+  name: 返信の入力の部品の単体テスト
+  description: components/reply-form.ts（返信の入力の部品）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/reply-form.ts
+    type: tests
+- path: unit/preview/test_review_body_fold.py
+  name: レビュー中の書き込みの本文の折りたたみの単体テスト
+  description: components/review-body-fold.ts（レビュー中の書き込みの本文を、折り返した後の見た目の 5 行までに畳む部品）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    type: tests
+- path: unit/preview/test_router.py
+  name: URL のハッシュの読み書きと履歴の単体テスト
+  description: core/router.ts（URL のハッシュの読み書きと履歴）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    type: tests
+- path: unit/preview/test_selection_comment.py
+  name: 選んだ箇所のコメントの入口の単体テスト
+  description: components/selection-comment.ts（選んだ箇所のコメントの入口）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts
+    type: tests
+- path: unit/preview/test_send_form.py
+  name: コメントの入力の部品と日時の表示の単体テスト
+  description: components/send-form.ts（コメントの入力の部品と日時の表示）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:コメント
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
+    type: tests
+- path: unit/preview/test_settings.py
+  name: 表示の設定のパネルと、既定が変わった知らせの単体テスト
+  description: screens/settings.ts（表示の設定のパネルと、既定が変わった知らせ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:設定
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
+    type: tests
+- path: unit/preview/test_settings_confirm.py
+  name: 既定の保存の確かめの単体テスト
+  description: components/settings-confirm.ts（既定の保存の確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts
+    type: tests
+- path: unit/preview/test_settings_panel.py
+  name: 表示の設定の中身の単体テスト
+  description: components/settings-panel.ts（表示の設定の中身）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:設定
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
+    type: tests
+- path: unit/preview/test_side_by_side_body_diff.py
+  name: 左右に並べた本文の差分の単体テスト
+  description: components/side-by-side-body-diff.ts（左右に並べた本文の差分）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:差分
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts
+    type: tests
+- path: unit/preview/test_table.py
+  name: 表と、並べ替え・絞り込みの計算の単体テスト
+  description: components/table.ts（表と、並べ替え・絞り込みの計算）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:フィルター
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    type: tests
+- path: unit/preview/test_tag_list.py
+  name: 主題のマーカーを持つタグの並びの単体テスト
+  description: components/tag-list.ts（主題のマーカーを持つタグの並び）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
+    type: tests
+- path: unit/preview/test_tasks.py
+  name: タスクの画面とボードの列の単体テスト
+  description: screens/tasks.ts（タスクの画面とボードの列）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:タスク
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
+    type: tests
+- path: unit/preview/test_term_tip.py
+  name: 本文の印のツールチップの単体テスト
+  description: components/term-tip.ts（本文の印のツールチップ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/term-tip.ts
+    type: tests
+- path: unit/preview/test_thread_post.py
+  name: スレッドの書き込みの単体テスト
+  description: components/thread-post.ts（スレッドの書き込み・状態の記録・レビュー中の返信と、Markdown の本文の中の項目の ID・まとまりのリンク）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:markdown
+  - topic:スレッド
+  - topic:単体テスト
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
+    type: tests
+- path: unit/preview/test_thread_row.py
+  name: スレッドの行・状態の札・レビュー中の印・題の決め方の単体テスト
+  description: components/thread-row.ts（スレッドの行・状態の札・レビュー中の印・題の決め方）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:スレッド
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    type: tests
+- path: unit/preview/test_workspace_settings.py
+  name: 設定の画面・設定の値を使っている件数の単体テスト
+  description: screens/workspace-settings.ts（設定の画面・設定の値を使っている件数）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:設定
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
+    type: tests
+- path: unit/preview/thread_data.py
+  name: スレッドの画面向けデータを作る単体テストの補助
+  description: スレッドとレビュー中の書き込みの画面向けデータ（サーバーが返す形）を作る、単体テストの補助。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:スレッド
+  - topic:ヘルパー
+  - topic:単体テスト
+- path: unit/scripts/conftest.py
+  name: サーバーのスクリプトの単体テストの共通の fixture
+  description: scripts の単体テストの共通 fixture（ワークスペースの fixture は tests/workspace_fixtures.py）。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フィクスチャ
+  - topic:ワークスペース
+  - topic:単体テスト
+- path: unit/scripts/export_helpers.py
+  name: 配る書き出しの単体テストの補助
+  description: 配る書き出しの単体テストが共有する、外の読み込みを持つ雛形・取る中身・ライブラリの組み立て。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:単体テスト
+- path: unit/scripts/fixture_types.py
+  name: サーバーのスクリプトの単体テストの fixture の型
+  description: 共有の型は tests/workspace_fixtures.py から取る。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:単体テスト
+- path: unit/scripts/migration_helpers.py
+  name: 移し替えの単体テストの補助
+  description: 移し替えの単体テストが共有する、手順・git・更新日時の補助。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:単体テスト
+  - topic:移行
+- path: unit/scripts/test_answer_to_adopted_option.py
+  name: 決定済みの答えから採用した案を作る変換の単体テスト
+  description: migrations/v0.7.0/scripts/answer_to_adopted_option.py（決定済みの答えから採用した案を作る変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py
+    type: tests
+- path: unit/scripts/test_backup.py
+  name: 写しの取り方と戻し方の単体テスト
+  description: git は一時フォルダの作業ツリーで実際に呼ぶ。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/backup.py
+    type: tests
+- path: unit/scripts/test_builder.py
+  name: プレビューのデータの収集・埋め込み・書き出しの単体テスト
+  description: builder.py（プレビューのデータの収集・埋め込み・書き出し）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:プレビュー
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/builder.py
+    type: tests
+- path: unit/scripts/test_check_env.py
+  name: 依存の確認の単体テスト
+  description: check_env.py（依存の確認）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/check_env.py
+    type: tests
+- path: unit/scripts/test_checker.py
+  name: スキーマ違反・ID の重複・参照切れ・本文のずれの点検の単体テスト
+  description: checker.py（スキーマ違反・ID の重複・参照切れ・本文のずれの点検）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:本文
+  - topic:点検
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/checker.py
+    type: tests
+- path: unit/scripts/test_claude_input.py
+  name: Claude Code のペインへの入力の単体テスト
+  description: claude_input.py（まとめて送った後の Claude Code への入力：送り先・tmux への貼り付け・会話の記録での確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    type: tests
+- path: unit/scripts/test_commands.py
+  name: ツールごとの処理の単体テスト
+  description: commands.py（ツールごとの処理）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/commands.py
+    type: tests
+- path: unit/scripts/test_comments.py
+  name: レビュー中のコメントと書きかけの読み書き・まとめて送るの単体テスト
+  description: comments.py（レビュー中のコメントと書きかけの読み書き・まとめて送る）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/comments.py
+    type: tests
+- path: unit/scripts/test_edits.py
+  name: 保存待ちの編集の読み書き・取り消し・まとめて保存の単体テスト
+  description: edits.py（保存待ちの編集の読み書き・取り消し・まとめて保存）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:編集
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/edits.py
+    type: tests
+- path: unit/scripts/test_ensure_server.py
+  name: 常駐サーバーの起動の確認：状態を読む・起動する・待ち受けるまで待つの単体テスト
+  description: ensure_server.py（常駐サーバーの起動の確認：状態を読む・起動する・待ち受けるまで待つ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:起動
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    type: tests
+- path: unit/scripts/test_field_to_playbooks.py
+  name: 設定の field をプレイブックの配列へ移す変換の単体テスト
+  description: migrations/v0.5.0/scripts/field_to_playbooks.py（設定の field をプレイブックの配列へ移す変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:設定
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py
+    type: tests
+- path: unit/scripts/test_graph.py
+  name: 逆向きの参照・影響・後続の件数・次の候補・再開時の状況の単体テスト
+  description: graph.py（逆向きの参照・影響・後続の件数・次の候補・再開時の状況）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/graph.py
+    type: tests
+- path: unit/scripts/test_history.py
+  name: 変更履歴・書き換えのまとまり・前回開いた日時の単体テスト
+  description: history.py（変更履歴・書き換えのまとまり・前回開いた日時）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:履歴
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/history.py
+    type: tests
+- path: unit/scripts/test_html_body.py
+  name: HTML の本文の行の印と、行の範囲の描いた文の単体テスト
+  description: html_body.py（HTML の本文の行の印と、行の範囲の描いた文）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:html
+  - topic:単体テスト
+  - topic:本文
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/html_body.py
+    type: tests
+- path: unit/scripts/test_inject_session.py
+  name: セッションの値の注入の単体テスト
+  description: inject_session.py（PreToolUse のフックでツールの引数 session にセッションの値を入れる）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フック
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    type: tests
+- path: unit/scripts/test_kinds.py
+  name: 種類の定義の単体テスト
+  description: kinds.py（種類の定義）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    type: tests
+- path: unit/scripts/test_launch.py
+  name: 起動の手助け：プラグインのフォルダ・セッションの名前の単体テスト
+  description: launch.py（起動の手助け：プラグインのフォルダ・セッションの名前）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:起動
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/launch.py
+    type: tests
+- path: unit/scripts/test_locations.py
+  name: コメントが指す箇所の形の確かめ・今の項目に合うかの確かめの単体テスト
+  description: locations.py（コメントが指す箇所の形の確かめ・今の項目に合うかの確かめ）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/locations.py
+    type: tests
+- path: unit/scripts/test_migration_coverage.py
+  name: スキーマの変更と移し替えの手順の対応の点検
+  description: 開発側の点検：ワークスペースの形（スキーマ）を変えた PR（任意のキーを足すだけの変更を除く）が、版を上げて移し替えの手順を足しているか。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:ワークスペース
+  - topic:単体テスト
+  - topic:点検
+  - topic:移行
+- path: unit/scripts/test_migration_ops.py
+  name: 操作ごとの当て方と、手順の 1 行の説明の単体テスト
+  description: migration_ops.py（操作ごとの当て方と、手順の 1 行の説明）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
+    type: tests
+- path: unit/scripts/test_migrator.py
+  name: 手順の読み込みと、並べる・当てる・値を入れる・版を書く処理の単体テスト
+  description: migrator.py（手順の読み込みと、並べる・当てる・値を入れる・版を書く処理）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/migrator.py
+    type: tests
+- path: unit/scripts/test_query.py
+  name: 検索・1 件の表示と参照元・属性名の一覧の単体テスト
+  description: query.py（検索・1 件の表示と参照元・属性名の一覧）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:検索
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/query.py
+    type: tests
+- path: unit/scripts/test_readme.py
+  name: 直下の README.md の組み立て・書くかの判定・書き込みの単体テスト
+  description: readme.py（直下の README.md の組み立て・書くかの判定・書き込み）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:readme
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/readme.py
+    type: tests
+- path: unit/scripts/test_register.py
+  name: 起動スクリプトの alias と環境変数の登録の単体テスト
+  description: register.py（起動スクリプトの alias と環境変数の登録）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:起動
+  related:
+  - to: plugins/mindstella/skills/setup/scripts/register.py
+    type: tests
+- path: unit/scripts/test_remove_tag_vocabulary.py
+  name: 設定からタグの語彙を削除する変換の単体テスト
+  description: migrations/v0.11.0/scripts/remove_tag_vocabulary.py（設定からタグの語彙を削除する変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  - topic:設定
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.11.0/scripts/remove_tag_vocabulary.py
+    type: tests
+- path: unit/scripts/test_reset_unread.py
+  name: スレッドを未読へ戻すスクリプトの単体テスト
+  description: reset_unread.py（SessionStart のフックが呼ぶ、スレッドの書き込みを未読へ戻すスクリプト）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:フック
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/reset_unread.py
+    type: tests
+- path: unit/scripts/test_serve.py
+  name: プレビューの配信の単体テスト
+  description: serve.py（プレビューの配信の台帳・待ち受け・応答・書き換えの知らせ・コメントの受け付け）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:コメント
+  - topic:プレビュー
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/serve.py
+    type: tests
+- path: unit/scripts/test_server.py
+  name: MCP サーバーの組み立て・ツールの登録・結果とエラーの単体テスト
+  description: server.py（MCP サーバーの組み立て・ツールの登録・結果とエラー）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/server.py
+    type: tests
+- path: unit/scripts/test_settings_update.py
+  name: 設定の更新の単体テスト
+  description: settings_update.py（設定の更新の引数の確かめ・設定の置き換え・フェーズの付け替え・まとめた書き込み）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:設定
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/settings_update.py
+    type: tests
+- path: unit/scripts/test_store.py
+  name: 読み込み・検証・採番・書き込みの単体テスト
+  description: store.py（読み込み・検証・採番・書き込み）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/store.py
+    type: tests
+- path: unit/scripts/test_submissions_to_threads.py
+  name: 送信をスレッドにする変換の単体テスト
+  description: migrations/v0.8.0/scripts/submissions_to_threads.py（送信をスレッドにする変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.8.0/scripts/submissions_to_threads.py
+    type: tests
+- path: unit/scripts/test_tag_text.py
+  name: タグの表記の正規化・近いタグの候補の単体テスト
+  description: tag_text.py（タグの表記の正規化・近いタグの候補）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/tag_text.py
+    type: tests
+- path: unit/scripts/test_tags_to_objects.py
+  name: 項目のタグをオブジェクトにする変換の単体テスト
+  description: migrations/v0.12.0/scripts/tags_to_objects.py（項目のタグをオブジェクトにする変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.12.0/scripts/tags_to_objects.py
+    type: tests
+- path: unit/scripts/test_tags_to_vocabulary.py
+  name: 使っているタグを語彙へ登録する変換の単体テスト
+  description: migrations/v0.10.0/scripts/tags_to_vocabulary.py（使っているタグを語彙へ登録する変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:タグ
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.10.0/scripts/tags_to_vocabulary.py
+    type: tests
+- path: unit/scripts/test_threads.py
+  name: スレッドの読み書きの単体テスト
+  description: threads.py（スレッドの読み書き）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:スレッド
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/threads.py
+    type: tests
+- path: unit/scripts/test_versions.py
+  name: 版の解釈・比較・読み書きの単体テスト
+  description: versions.py（版の解釈・比較・読み書き）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/versions.py
+    type: tests
+- path: unit/test_isolated_environment.py
+  name: テストの環境変数の隔離の単体テスト
+  description: tests/conftest.py が手元のフックと許可するホスト名の環境変数を消して走らせることの単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:フック
+  - topic:単体テスト
+- path: workspace_fixtures.py
+  name: ワークスペースと MCP サーバーの起動の fixture
+  description: 単体・結合・E2E のテストが共有する、ワークスペースと MCP サーバーの起動の fixture。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:ヘルパー
+  - topic:ワークスペース
+  - topic:起動
+- path: integration/preview/test_spa_decisions_screen.py
+  name: 画面設計『検討事項.tsx』の結合テスト
+  description: 画面設計『検討事項.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_detail_fullscreen_screen.py
+  name: 画面設計『詳細の全画面.tsx』の結合テスト
+  description: 画面設計『詳細の全画面.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_detail_panel_screen.py
+  name: 画面設計『詳細パネル.tsx』の結合テスト
+  description: 画面設計『詳細パネル.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_diagram_viewer_screen.py
+  name: 画面設計『図の拡大.tsx』の結合テスト
+  description: 画面設計『図の拡大.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_docs_screen.py
+  name: 画面設計『資料.tsx』の結合テスト
+  description: 画面設計『資料.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_history_screen.py
+  name: 画面設計『変更履歴.tsx』の結合テスト
+  description: 画面設計『変更履歴.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_pending_edits_screen.py
+  name: 画面設計『保存待ちのパネル.tsx』の結合テスト
+  description: 画面設計『保存待ちのパネル.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_records_screen.py
+  name: 画面設計『記録の表.tsx』の結合テスト
+  description: 画面設計『記録の表.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_tasks_screen.py
+  name: 画面設計『タスク.tsx』の結合テスト
+  description: 画面設計『タスク.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/preview/test_spa_workspace_settings_screen.py
+  name: 画面設計『設定の画面.tsx』の結合テスト
+  description: 画面設計『設定の画面.tsx』の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - topic:結合テスト
+- path: integration/storybook_react/test_body_diff_layout_switch_stories.py
+  name: 部品設計『本文の差分の並べ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の差分の並べ方の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_body_format_badge_stories.py
+  name: 部品設計『本文の形式の札.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の形式の札.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_chips_input_stories.py
+  name: 部品設計『チップの入力.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『チップの入力.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_comment_mark_stories.py
+  name: 部品設計『コメントの印.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『コメントの印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_diff_mark_stories.py
+  name: 部品設計『差分の印.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『差分の印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_diff_minimap_stories.py
+  name: 部品設計『差分のミニマップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『差分のミニマップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_doc_export_menu_stories.py
+  name: 部品設計『資料のエクスポートのメニュー.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『資料のエクスポートのメニュー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_filter_drawer_stories.py
+  name: 部品設計『絞り込み.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『絞り込み.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_history_dialog_stories.py
+  name: 部品設計『変更履歴.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『変更履歴.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_html_body_diff_stories.py
+  name: 部品設計『HTMLの本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『HTMLの本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_html_body_frame_stories.py
+  name: 部品設計『HTMLの本文の枠.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『HTMLの本文の枠.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_markdown_body_stories.py
+  name: 部品設計『Markdownの本文.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『Markdownの本文.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_pending_mark_stories.py
+  name: 部品設計『保存待ちの印.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『保存待ちの印.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_removed_band_stories.py
+  name: 部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『消した項目の帯.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_side_by_side_body_diff_stories.py
+  name: 部品設計『左右に並べた本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『左右に並べた本文の差分.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_table_stories.py
+  name: 部品設計『表.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『表.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_tag_list_stories.py
+  name: 部品設計『タグの並び.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『タグの並び.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_term_tip_stories.py
+  name: 部品設計『本文の印のツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『本文の印のツールチップ.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_view_switch_stories.py
+  name: 部品設計『表示形式の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『表示形式の切り替え.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト
+- path: integration/storybook_react/test_withdrawn_badge_stories.py
+  name: 部品設計『取り下げの札.tsx』の状態（React の Storybook のストーリー）の結合テスト
+  description: 部品設計『取り下げの札.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - tool:storybook
+  - topic:ストーリー
+  - topic:結合テスト

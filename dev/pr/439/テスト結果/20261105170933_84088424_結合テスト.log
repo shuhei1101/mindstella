@@ -1,0 +1,6 @@
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned  # 1 回目
+1 error in 51.16s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned  # 2 回目
+1 passed in 42.45s
+$ pytest tests/integration/preview/test_detail_panel_screen.py::test_body_alias_tooltip_pinned  # 3 回目
+1 failed in 67.93s (0:01:07)

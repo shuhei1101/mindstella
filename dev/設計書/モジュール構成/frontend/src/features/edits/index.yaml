@@ -1,0 +1,4 @@
+summary: '`frontend/src/features/edits/` の React のプレビューのモジュール'
+items:
+- page: pending-edits/
+  summary: '`frontend/src/features/edits/pending-edits/` の React のプレビューのモジュール'

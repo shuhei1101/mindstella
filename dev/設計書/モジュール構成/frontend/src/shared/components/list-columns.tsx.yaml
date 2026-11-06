@@ -1,0 +1,9 @@
+title: プレビュー / list-columns
+lead: 一覧の表の共通の列。
+components:
+- name: commonColumns
+  title: 共通の列
+  kind: コンポーネント
+  usecase: 項目を表で絞り込む
+  summary: 一覧の表の共通の列
+  container: frontend/src/shared/components/list-columns.tsx

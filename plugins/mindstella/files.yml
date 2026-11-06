@@ -1,0 +1,1754 @@
+# yaml-language-server: $schema=../../schemas/files.schema.yaml
+files:
+- path: .claude-plugin/plugin.json
+  name: プラグインのマニフェスト
+  description: Claude Code がプラグイン mindstella を読み込むときの名前・版・説明を持つ。プラグインの名前・版・スキルの置き場所を変更するときに読む。
+  tags:
+  - tool:claude-code
+  - topic:プラグイン
+  - topic:マニフェスト
+  related:
+  - to: dev/設計書/インターフェース定義/プラグイン/プラグインの読み込み.yaml
+    type: implements
+- path: .mcp.json
+  name: MCP サーバーの接続の設定
+  description: Claude Code が mindstella の常駐の MCP サーバーへ HTTP でつなぐ先を持つ。Claude Code が mindstella の MCP サーバーへつなぐ先を変更するときに読む。
+  tags:
+  - tool:claude-code
+  - tool:mcp
+  - topic:サーバー
+- path: bin/mindstella
+  name: 起動スクリプト
+  description: mindstella の常駐サーバーが落ちていれば起動してから、Claude Code を tmux のセッションの中で立ち上げてつなぐ。起動の手順・tmux のセッションの立て方・依存の確かめ方を変更するときに読む。
+  tags:
+  - tool:bash
+  - tool:tmux
+  - topic:スクリプト
+  - topic:起動
+  related:
+  - to: dev/設計書/インターフェース定義/サーバー/起動スクリプト.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/起動.py.yaml
+    type: implements
+- path: hooks/hooks.json
+  name: フックの登録
+  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。SessionStart・PreToolUse のフックで動かすスクリプトを変更するときに読む。
+  tags:
+  - tool:claude-code
+  - topic:フック
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/セッションの値の注入.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/未読へ戻す.py.yaml
+    type: implements
+- path: skills/mindmap/README.md
+  name: スキルの共通のフォルダの説明
+  description: スキルが共有するスクリプト・プレビュー・スキーマ・進め方ガイドのフォルダの中身を並べる。スキルが共有するスクリプト・プレビュー・スキーマの置き場所を調べるときに読む。
+  tags:
+  - topic:スキル
+  - topic:フォルダ
+- path: skills/mindmap/migrations/no-steps.yaml
+  name: 移し替えの手順の要らないスキーマの一覧
+  description: 今のワークスペースがそのまま読めるスキーマの変更を、移し替えの手順を求めないものとして中身のハッシュつきで並べる。スキーマを変えて移し替えの手順を追加するかを決めるときに読む。
+  tags:
+  - tool:yaml
+  - topic:スキーマ
+  - topic:移行
+- path: skills/mindmap/migrations/v0.10.0/scripts/tags_to_vocabulary.py
+  name: v0.10.0 の移し替えのスクリプト
+  description: 項目とスレッドが使っているタグを、説明なしで設定の語彙（`tags`）へ登録する。v0.10.0 の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.10.0/steps.yaml
+  name: v0.10.0 の移し替えの手順
+  description: ワークスペースを v0.10.0 へ移し替える操作を順に並べる。v0.10.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.11.0/scripts/remove_tag_vocabulary.py
+  name: v0.11.0 の移し替えのスクリプト
+  description: 設定からタグの語彙（`tags`）を削除する。v0.11.0 の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.11.0/steps.yaml
+  name: v0.11.0 の移し替えの手順
+  description: ワークスペースを v0.11.0 へ移し替える操作を順に並べる。v0.11.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.12.0/scripts/tags_to_objects.py
+  name: v0.12.0 の移し替えのスクリプト
+  description: 項目の文字列のタグを `{name}` にし、表記をそろえて重なるタグを外す。v0.12.0 の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.12.0/steps.yaml
+  name: v0.12.0 の移し替えの手順
+  description: ワークスペースを v0.12.0 へ移し替える操作を順に並べる。v0.12.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.3.0/steps.yaml
+  name: v0.3.0 の移し替えの手順
+  description: ワークスペースを v0.3.0 へ移し替える操作を順に並べる。v0.3.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py
+  name: v0.5.0 の移し替えのスクリプト
+  description: 設定（mindmap.yaml）の `field` を、同じ位置の `playbooks` の 1 件の配列へ移す。v0.5.0 の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.5.0/steps.yaml
+  name: v0.5.0 の移し替えの手順
+  description: ワークスペースを v0.5.0 へ移し替える操作を順に並べる。v0.5.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.6.0/steps.yaml
+  name: v0.6.0 の移し替えの手順
+  description: ワークスペースを v0.6.0 へ移し替える操作を順に並べる。v0.6.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py
+  name: v0.7.0 の移し替えのスクリプト
+  description: 決定済みで答えを持ち案を持たない検討事項に、答えから採用した案を 1 つ作る。v0.7.0 の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.7.0/steps.yaml
+  name: v0.7.0 の移し替えの手順
+  description: ワークスペースを v0.7.0 へ移し替える操作を順に並べる。v0.7.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.8.0/scripts/submissions_to_threads.py
+  name: v0.8.0 の移し替えのスクリプト
+  description: 送信（submissions.yaml）の 1 件ごとに、スレッド（threads.yaml）を 1 件作る。v0.8.0 の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/migrations/v0.8.0/steps.yaml
+  name: v0.8.0 の移し替えの手順
+  description: ワークスペースを v0.8.0 へ移し替える操作を順に並べる。v0.8.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/playbooks/システム開発.md
+  name: システム開発の進め方ガイド
+  description: 作るものの目的から、要件・構成・インターフェース・中身までを、前のフェーズで決めたことを土台にして順に決めていく進め方。システム開発のフェーズと観点を変更するときに読む。
+  tags:
+  - topic:フェーズ
+  - topic:進め方ガイド
+- path: skills/mindmap/playbooks/壁打ち.md
+  name: 壁打ちの進め方ガイド
+  description: 考えたいテーマについて、案や見方を出し、整理し、絞り込んで、今の結論を出すまでの進め方。壁打ちのフェーズと観点を変更するときに読む。
+  tags:
+  - topic:フェーズ
+  - topic:進め方ガイド
+- path: skills/mindmap/playbooks/調査.md
+  name: 調査の進め方ガイド
+  description: 調べたい問いを立て、観点を決め、事実を集めて評価し、結論を出すまでの進め方。調査のフェーズと観点を変更するときに読む。
+  tags:
+  - topic:フェーズ
+  - topic:進め方ガイド
+- path: skills/mindmap/playbooks/資料作り.md
+  name: 資料作りの進め方ガイド
+  description: 資料の目的と読み手を決め、構成を組んでから、本文を書いて仕上げるまでの進め方。資料作りのフェーズと観点を変更するときに読む。
+  tags:
+  - topic:フェーズ
+  - topic:進め方ガイド
+- path: skills/mindmap/preview/app.ts
+  name: プレビューの起動
+  description: 記録を読み（配る書き出しは埋め込みから、サーバーの配信は記録の取得から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。プレビューの起動・画面の振り分け・端末の保存領域を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:起動
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/入口.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/body-diff-layout-switch.stories.ts
+  name: 本文の差分の並べ方の切り替えのストーリー
+  description: 部品『本文の差分の並べ方の切り替え』の状態ごとの Storybook のストーリー。本文の差分の並べ方の切り替えの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
+    type: see_also
+- path: skills/mindmap/preview/components/body-diff-layout-switch.ts
+  name: 本文の差分の並べ方の切り替え
+  description: 差分の表示の間、本文の差分の頭に「インライン」「左右に並べる」のボタンの組を置く。本文の差分の並べ方の切り替えの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/本文の差分の並べ方の切り替え.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/body-format-badge.stories.ts
+  name: 本文の形式の札のストーリー
+  description: 部品『本文の形式の札』の状態ごとの Storybook のストーリー。本文の形式の札の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/body-format-badge.ts
+    type: see_also
+- path: skills/mindmap/preview/components/body-format-badge.ts
+  name: 本文の形式の札
+  description: 資料のカード・ボードのカードの種類の右と、表の「形式」の列と、詳細のヘッダーの種類と ID の右に置く。本文の形式の札の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/本文の形式の札.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/chips-input.stories.ts
+  name: チップの入力のストーリー
+  description: 部品『チップの入力』の状態ごとの Storybook のストーリー。チップの入力の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
+    type: see_also
+- path: skills/mindmap/preview/components/chips-input.ts
+  name: チップの入力
+  description: 値のチップと、値を追加する入力欄。チップの入力の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/チップの入力.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/comment-mark.stories.ts
+  name: コメントの印のストーリー
+  description: 部品『コメントの印』の状態ごとの Storybook のストーリー。コメントの印の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    type: see_also
+- path: skills/mindmap/preview/components/comment-mark.ts
+  name: コメントの印
+  description: コメントを書いた項目に、吹き出しの線と件数の小さなピルを出す。コメントの印の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/コメントの印.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/diff-mark.stories.ts
+  name: 差分の印のストーリー
+  description: 部品『差分の印』の状態ごとの Storybook のストーリー。差分の印の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
+    type: see_also
+- path: skills/mindmap/preview/components/diff-mark.ts
+  name: 差分の印
+  description: 差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）、消した項目に消した（太い −）の印を出す。差分の印の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/差分の印.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/diff-minimap.stories.ts
+  name: 差分のミニマップのストーリー
+  description: 部品『差分のミニマップ』の状態ごとの Storybook のストーリー。差分のミニマップの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    type: see_also
+- path: skills/mindmap/preview/components/diff-minimap.ts
+  name: 差分のミニマップ
+  description: 差分の表示の間、詳細の本文のスクロール領域を包み、スクロールバーの外側に変わった箇所の印を並べた縦の帯を置く。差分のミニマップの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/差分のミニマップ.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/doc-export-menu.stories.ts
+  name: 資料のエクスポートのメニューのストーリー
+  description: 部品『資料のエクスポートのメニュー』の状態ごとの Storybook のストーリー。資料のエクスポートのメニューの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/doc-export-menu.ts
+    type: see_also
+- path: skills/mindmap/preview/components/doc-export-menu.ts
+  name: 資料のエクスポートのメニュー
+  description: 詳細パネル・詳細の全画面の見出しの「エクスポート」で開き、形式を選ぶ並び・Markdown の警告・HTML を組み立てている間・組み立てられなかったときを、同じメニューの中身を替えて出す。資料のエクスポートのメニューの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/資料のエクスポートのメニュー.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/filter-drawer.stories.ts
+  name: 絞り込みのドロワーのストーリー
+  description: 部品『絞り込みのドロワー』の状態ごとの Storybook のストーリー。絞り込みのドロワーの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts
+    type: see_also
+- path: skills/mindmap/preview/components/filter-drawer.ts
+  name: 絞り込みのドロワー
+  description: 条件ごとに値を件数つきのチェックボックスで並べ、タブの帯の下から左に重ねる非モーダルのパネルとして開く。絞り込みのドロワーの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/絞り込み.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/history-dialog.stories.ts
+  name: 変更履歴のモーダルのストーリー
+  description: 部品『変更履歴のモーダル』の状態ごとの Storybook のストーリー。変更履歴のモーダルの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts
+    type: see_also
+- path: skills/mindmap/preview/components/history-dialog.ts
+  name: 変更履歴のモーダル
+  description: 差分の表示で比べる時点を、日時・説明・変わった項目の数つきで新しい順に並べ、1 つ選ばせる。変更履歴のモーダルの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/変更履歴.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/html-body-diff.stories.ts
+  name: HTML の本文の差分のストーリー
+  description: 部品『HTML の本文の差分』の状態ごとの Storybook のストーリー。HTML の本文の差分の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/html-body-diff.ts
+    type: see_also
+- path: skills/mindmap/preview/components/html-body-diff.ts
+  name: HTML の本文の差分
+  description: 差分の表示の間、HTML の本文を描いた結果の上で変わった行を含む要素に印を付け、「原文の差分」に切り替えると原文の行の差分を出す。HTML の本文の差分の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/HTMLの本文の差分.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/html-body-frame.stories.ts
+  name: HTML の本文の枠のストーリー
+  description: 部品『HTML の本文の枠』の状態ごとの Storybook のストーリー。HTML の本文の枠の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/html-body-frame.ts
+    type: see_also
+- path: skills/mindmap/preview/components/html-body-frame.ts
+  name: HTML の本文の枠
+  description: HTML の本文と Markdown の中の `html` のコードブロックを、スクリプトを動かさない枠（`sandbox="allow-same-origin"` の iframe の `srcdoc`）に描く。HTML の本文の枠の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/markdown-body.stories.ts
+  name: Markdown の本文の見せ方のストーリー
+  description: 部品『Markdown の本文の見せ方』の状態ごとの Storybook のストーリー。Markdown の本文の見せ方の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    type: see_also
+- path: skills/mindmap/preview/components/markdown-body.ts
+  name: Markdown の本文の見せ方
+  description: 描いた本文に、表の列の幅と折り返し・右端のフェード・コードブロックの言語の札とコピー・GitHub の Alert の囲みを常に当て、表示の設定で切り替える表の列の固定・表の見出しの固定・表のしま模様・セクションの折りたたみを当てる。Markdown の本文の見せ方の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/Markdownの本文.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/pending-mark.stories.ts
+  name: 保存待ちの印のストーリー
+  description: 部品『保存待ちの印』の状態ごとの Storybook のストーリー。保存待ちの印の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts
+    type: see_also
+- path: skills/mindmap/preview/components/pending-mark.ts
+  name: 保存待ちの印
+  description: 保存待ちの編集がある項目・キー・案に、破線の枠と印と文字の札を出す。保存待ちの印の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/保存待ちの印.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/removed-band.stories.ts
+  name: 消した項目の帯のストーリー
+  description: 部品『消した項目の帯』の状態ごとの Storybook のストーリー。消した項目の帯の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/removed-band.ts
+    type: see_also
+- path: skills/mindmap/preview/components/removed-band.ts
+  name: 消した項目の帯
+  description: 差分の表示の間、選んだ時点で消したその種類の項目を、一覧の上に消した印・ID・消したときのタイトルで並べる。消した項目の帯の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/消した項目の帯.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/reply-form.stories.ts
+  name: 返信の入力のストーリー
+  description: 部品『返信の入力』の状態ごとの Storybook のストーリー。返信の入力の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/reply-form.ts
+    type: see_also
+- path: skills/mindmap/preview/components/reply-form.ts
+  name: 返信の入力
+  description: スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン。返信の入力の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/返信の入力.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/review-body-fold.stories.ts
+  name: レビュー中の書き込みの本文の折りたたみのストーリー
+  description: 部品『レビュー中の書き込みの本文の折りたたみ』の状態ごとの Storybook のストーリー。レビュー中の書き込みの本文の折りたたみの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    type: see_also
+- path: skills/mindmap/preview/components/review-body-fold.ts
+  name: レビュー中の書き込みの本文の折りたたみ
+  description: 折り返した後の見た目の行で一定の行数までに本文を畳み、超えるときだけ開閉のボタンを出す。レビュー中の書き込みの本文の折りたたみの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/本文の折りたたみ.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/selection-comment.stories.ts
+  name: 選んだ箇所のコメントの入口のストーリー
+  description: 部品『選んだ箇所のコメントの入口』の状態ごとの Storybook のストーリー。選んだ箇所のコメントの入口の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts
+    type: see_also
+- path: skills/mindmap/preview/components/selection-comment.ts
+  name: 選んだ箇所のコメントの入口
+  description: 本文の文章か項目の値を選び終えたときに、選んだ範囲の近くに出す印だけの丸いボタン。選んだ箇所のコメントの入口の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/send-form.stories.ts
+  name: コメントの入力のストーリー
+  description: 部品『コメントの入力』の状態ごとの Storybook のストーリー。コメントの入力の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
+    type: see_also
+- path: skills/mindmap/preview/components/send-form.ts
+  name: コメントの入力
+  description: 詳細パネルと詳細の全画面の下端と、コメントの一覧の下端に留める、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。コメントの入力の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/コメントの入力.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/settings-confirm.stories.ts
+  name: 既定の保存の確かめのストーリー
+  description: 部品『既定の保存の確かめ』の状態ごとの Storybook のストーリー。既定の保存の確かめの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts
+    type: see_also
+- path: skills/mindmap/preview/components/settings-confirm.ts
+  name: 既定の保存の確かめ
+  description: ワークスペースの既定として保存する前に、今の既定と保存する値を並べるモーダル。既定の保存の確かめの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/既定の保存の確かめ.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/settings-panel.stories.ts
+  name: 表示の設定の中身のストーリー
+  description: 部品『表示の設定の中身』の状態ごとの Storybook のストーリー。表示の設定の中身の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
+    type: see_also
+- path: skills/mindmap/preview/components/settings-panel.ts
+  name: 表示の設定の中身
+  description: 表示する種類と差分のミニマップと本文の表とセクションの見せ方を選び、この端末で変えている項目・既定に戻す・ワークスペースの既定にするを出す。表示の設定の中身の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/表示の設定.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/side-by-side-body-diff.stories.ts
+  name: 左右に並べた本文の差分のストーリー
+  description: 部品『左右に並べた本文の差分』の状態ごとの Storybook のストーリー。左右に並べた本文の差分の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts
+    type: see_also
+- path: skills/mindmap/preview/components/side-by-side-body-diff.ts
+  name: 左右に並べた本文の差分
+  description: Markdown の本文を左に選んだ時点、右に今で描き、変えていない塊を同じ高さで向かい合わせる。左右に並べた本文の差分の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/左右に並べた本文の差分.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/table.stories.ts
+  name: 表のストーリー
+  description: 部品『表』の状態ごとの Storybook のストーリー。表の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    type: see_also
+- path: skills/mindmap/preview/components/table.ts
+  name: 表
+  description: 列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件のチップを並べる。表の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/表.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/tag-list.stories.ts
+  name: タグの並びのストーリー
+  description: 部品『タグの並び』の状態ごとの Storybook のストーリー。タグの並びの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
+    type: see_also
+- path: skills/mindmap/preview/components/tag-list.ts
+  name: タグの並び
+  description: 主題のタグは名前の前に二重丸のマーカーを置く。タグの並びの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/タグの並び.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/term-tip.stories.ts
+  name: 本文の印のツールチップのストーリー
+  description: 部品『本文の印のツールチップ』の状態ごとの Storybook のストーリー。本文の印のツールチップの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/term-tip.ts
+    type: see_also
+- path: skills/mindmap/preview/components/term-tip.ts
+  name: 本文の印のツールチップ
+  description: 本文の印（用語のタイトルと別名・資料と調査のエイリアスに一致した語）に乗せる・フォーカスすると、一致した項目を用語 → 資料 → 調査の順に並べて印の上に出す。本文の印のツールチップの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/本文の印のツールチップ.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/thread-post.stories.ts
+  name: スレッドの書き込みのストーリー
+  description: 部品『スレッドの書き込み』の状態ごとの Storybook のストーリー。スレッドの書き込みの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
+    type: see_also
+- path: skills/mindmap/preview/components/thread-post.ts
+  name: スレッドの書き込み
+  description: スレッドの中に書いた順で並べる 1 件で、利用者と AI の書き込み・クローズとオープンへの戻しの記録・レビュー中の書き込みのどれか 1 つを出す。スレッドの書き込みの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/スレッドの書き込み.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/thread-row.stories.ts
+  name: スレッドの行のストーリー
+  description: 部品『スレッドの行』の状態ごとの Storybook のストーリー。スレッドの行の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    type: see_also
+- path: skills/mindmap/preview/components/thread-row.ts
+  name: スレッドの行
+  description: スレッドの一覧に並べる 1 件で、状態の札・題・向けた項目・最後の書き手と日時・レビュー中の印・タグを出し、押すとそのスレッドを開く。スレッドの行の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/スレッドの行.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/topbar.stories.ts
+  name: トップバーのストーリー
+  description: 部品『トップバー』の状態ごとの Storybook のストーリー。トップバーの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/topbar.ts
+    type: see_also
+- path: skills/mindmap/preview/components/topbar.ts
+  name: トップバー
+  description: 話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。トップバーの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/トップバー.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/view-switch.stories.ts
+  name: 表示形式の切り替えのストーリー
+  description: 部品『表示形式の切り替え』の状態ごとの Storybook のストーリー。表示形式の切り替えの状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/view-switch.ts
+    type: see_also
+- path: skills/mindmap/preview/components/view-switch.ts
+  name: 表示形式の切り替え
+  description: 形式ごとに同じ幅のボタンを並べ、選んでいる形式を押された見た目にする。表示形式の切り替えの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/表示形式の切り替え.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/components/withdrawn-badge.stories.ts
+  name: 取り下げの札のストーリー
+  description: 部品『取り下げの札』の状態ごとの Storybook のストーリー。取り下げの札の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.ts
+    type: see_also
+- path: skills/mindmap/preview/components/withdrawn-badge.ts
+  name: 取り下げの札
+  description: 取り下げた調査・資料・用語集・メモ・会話ログのタイトルの右に、差分の表示によらず置く。取り下げの札の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/部品設計/プレビュー/取り下げの札.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/api.ts
+  name: サーバーの配信とのやり取り
+  description: 記録の取得・レビュー中のコメントと書きかけ・まとめて送る・スレッド・書き換えの知らせの購読。プレビューが呼ぶ配信の API を追加・変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:api
+  - topic:プレビュー
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/diff.ts
+  name: 差分の表示の計算
+  description: 変更履歴で選んだ時点から印を付ける項目を決め、項目の `history` から前の版を組み立て、本文・記法の行と図の要素を比べる。差分の印や前の版の組み立てを変更するときに読む。
+  tags:
+  - tool:jsdiff
+  - tool:typescript
+  - topic:差分
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/差分.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/doc-export.ts
+  name: 資料のエクスポートの組み立て
+  description: mdmark の CSS と JavaScript・用語の索引・本文を 1 枚の HTML にまとめる組み立てと、埋め込んだ HTML を除いた Markdown の組み立てと、ブラウザへのダウンロード。資料を HTML や Markdown で書き出す処理を変更するときに読む。
+  tags:
+  - tool:mdmark
+  - tool:typescript
+  - topic:エクスポート
+  - topic:資料
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/dom.ts
+  name: 画面の要素の組み立て
+  description: 画面が共通で使う要素の組み立てと、アイコン・状態の印。画面が共通で使う要素・アイコン・状態の印を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:dom
+  - topic:アイコン
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/edits.ts
+  name: 保存待ちの編集の表示の値
+  description: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類。保存待ちの編集を当てた表示や印の種類を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:編集
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/globals.d.ts
+  name: 描画のライブラリの型
+  description: npm の同じ版の型を割り当てる。雛形が CDN から読むライブラリの型を追加・変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:型
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/libs.ts
+  name: 描画のライブラリの読み込み
+  description: 読めなかったときは名前を出し、代わりの読み込みはしない。mdmark・marked・elkjs・mermaid・jsdiff の呼び出しを変更するときに読む。
+  tags:
+  - tool:mdmark
+  - tool:mermaid
+  - tool:typescript
+  - topic:ライブラリ
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/lock.ts
+  name: 注目の起点のロック
+  description: 注目の起点を 1 つの項目に留める。ネットワークと検討事項のマップのロックの判定を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:ロック
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/records.ts
+  name: 記録の索引と検索
+  description: 次の候補・ゴールまでの進捗・カテゴリー別の進捗は build が計算した `derived` を使い、画面で計算し直さない。項目の索引・関係する項目・検索の求め方を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:検索
+  - topic:記録
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/core/router.ts
+  name: URL のハッシュと履歴
+  description: 画面・表示形式・開いている項目・全画面・絞り込みを、`URLSearchParams` の形で持つ。URL のハッシュで持つ画面の状態を追加・変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:url
+  - topic:ルーティング
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/graph/graph.ts
+  name: ネットワークの計算と描画
+  description: 全種類の項目を、関連（依存・関連・根拠・進めるタスク）でつないで 3D で描く。ネットワークの玉・線の配置や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:グラフ
+  - topic:ネットワーク
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/graph/looks.ts
+  name: ネットワークの見た目
+  description: 毎コマ graph.ts が計算した玉・線を受け取り、見た目ごとに地・線・流れる光・星の順に描く。ネットワークの 5 つの見た目の描き方を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:テーマ
+  - topic:ネットワーク
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/licenses/README.md
+  name: 配る書き出しのライセンスのフォルダの説明
+  description: ライブラリのライセンスの本文のうち、リポジトリに置くものを入れるフォルダ。配る書き出しに入れるライブラリのライセンスを追加・変更するときに読む。
+  tags:
+  - topic:フォルダ
+  - topic:ライセンス
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ビルド.py.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/comments.ts
+  name: コメントの一覧
+  description: 見ている画面に重ねて左から出すパネルで、スレッドの一覧・スレッド 1 件・レビュー中の書き込みの 3 つの画面を切り替える。コメントの一覧の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/コメントの一覧.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/スレッド.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/レビュー中の書き込み.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/decisions.ts
+  name: 検討事項の画面
+  description: マップ（既定）・ボード・表で見る。検討事項の画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/detail-edit.ts
+  name: 詳細の編集の表示
+  description: キーごとの入力と、検討事項の案の入力、項目の削除。詳細の編集の表示の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/detail.ts
+  name: 詳細パネルと詳細の全画面
+  description: 項目 1 件の中身（案・本文・図・関係する項目）を出す。詳細パネルと詳細の全画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/diagram-viewer.ts
+  name: 図の拡大
+  description: ホイールで拡大・縮小し、背景のドラッグで動かす。図の拡大の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/docs.ts
+  name: 資料の画面
+  description: カード（既定）・ボード・表で見る。資料の画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/overview.ts
+  name: 概要の画面
+  description: 次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。概要の画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/pending-edits.ts
+  name: 保存待ちのパネル
+  description: 保存待ちの編集を項目ごとに並べ、1 件ずつ取り消し、まとめて保存する。保存待ちのパネルの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/保存待ちのパネル.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/records.ts
+  name: 記録の表の画面
+  description: 種類ごとの列を持つ表だけを出す。記録の表の画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/search.ts
+  name: 全体の検索
+  description: ID・タイトル・本文で、全種類の項目を探すモーダル。全体の検索の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/settings.ts
+  name: 表示の設定のパネル
+  description: 見ている画面に重ねて左から出すパネルに表示の設定の中身を入れ、既定が変わったときは画面の下に知らせを出す。表示の設定のパネルの表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/既定の保存の確かめ.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/表示の設定.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/tasks.ts
+  name: タスクの画面
+  description: ボード（既定）と表で見る。タスクの画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/screens/workspace-settings.ts
+  name: 設定の画面
+  description: ワークスペースの設定を、キーごとの入力で書き換える別の画面。設定の画面の表示や操作を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:画面
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml
+    type: implements
+  - to: dev/設計書/画面設計/プレビュー/設定の画面.yaml
+    type: implements
+- path: skills/mindmap/preview/style.css
+  name: プレビューのスタイル
+  description: '開発者ツール × スイス: 無彩色の骨格に、印の 1 色（枝の線と選択）だけを置く。プレビューの画面と部品の見た目を変更するときに読む。'
+  tags:
+  - tool:css
+  - topic:スタイル
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/入口.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/template.html
+  name: プレビューの雛形
+  description: プレビューの HTML の骨組みで、描画のライブラリの読み込みと記録を差し込む場所を持つ。プレビューの HTML の骨組みや読み込むライブラリを変更するときに読む。
+  tags:
+  - tool:html
+  - topic:html
+  - topic:プレビュー
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ビルド.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/プレビュー/入口.ts.yaml
+    type: implements
+- path: skills/mindmap/preview/tokens.css
+  name: プレビューのデザイントークン
+  description: 'プレビューのデザイントークン（デザインスタイル: 開発者ツール × スイス、見本 dev-swiss-cards）。色・余白・文字などのデザイン値を変更するときに読む。'
+  tags:
+  - tool:css
+  - topic:デザイントークン
+  related:
+  - to: dev/設計書/モジュール構成/プレビュー/入口.ts.yaml
+    type: implements
+- path: skills/mindmap/references/HTMLの書き方.md
+  name: 資料の HTML の書き方
+  description: 資料の `body_markdown` に、HTML・図・チャート・操作できる部品を埋め込むときの書き方。資料の本文に HTML・図・チャートを埋め込む書き方を変更するときに読む。
+  tags:
+  - tool:html
+  - tool:mdmark
+  - topic:書き方
+  - topic:資料
+- path: skills/mindmap/references/リサーチの調べ方.md
+  name: リサーチの調べ方
+  description: 検討事項を決める材料を、サブエージェントに調べさせるときの調べ方。サブエージェントへの調べ方の指示を変更するときに読む。
+  tags:
+  - topic:サブエージェント
+  - topic:書き方
+- path: skills/mindmap/references/文章の書き方.md
+  name: スキルが記録に書く文章の書き方
+  description: 文章を足す前に、既存の行を直す・消すことで足りないかを確かめ、足りるなら足さない。記録に書く文章の決まりを変更するときに読む。
+  tags:
+  - topic:文章
+  - topic:書き方
+- path: skills/mindmap/references/質問の書式.md
+  name: 利用者への質問の書式
+  description: 利用者に問いを出すときの書式。利用者に問いを出す書式を変更するときに読む。
+  tags:
+  - topic:書き方
+  - topic:論点
+- path: skills/mindmap/schemas/changes.schema.json
+  name: 変更履歴のスキーマ
+  description: ワークスペースの変更履歴の YAML の形を決める JSON Schema。変更履歴の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/変更履歴.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/comments.schema.json
+  name: レビュー中のコメントのスキーマ
+  description: ワークスペースのレビュー中のコメントの YAML の形を決める JSON Schema。レビュー中のコメントの YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/コメント.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/common.schema.json
+  name: 共通の型のスキーマ
+  description: ワークスペースの共通の型の YAML の形を決める JSON Schema。共通の型の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/decisions.schema.json
+  name: 検討事項のスキーマ
+  description: ワークスペースの検討事項の YAML の形を決める JSON Schema。検討事項の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/docs.schema.json
+  name: 資料のスキーマ
+  description: ワークスペースの資料の YAML の形を決める JSON Schema。資料の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/drafts.schema.json
+  name: 書きかけのスキーマ
+  description: ワークスペースの書きかけの YAML の形を決める JSON Schema。書きかけの YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/コメント.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/edits.schema.json
+  name: 保存待ちの編集のスキーマ
+  description: ワークスペースの保存待ちの編集の YAML の形を決める JSON Schema。保存待ちの編集の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/保存待ちの編集.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/logs.schema.json
+  name: 会話ログのスキーマ
+  description: ワークスペースの会話ログの YAML の形を決める JSON Schema。会話ログの YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/migration-steps.schema.json
+  name: 移し替えの手順のスキーマ
+  description: ワークスペースの移し替えの手順の YAML の形を決める JSON Schema。移し替えの手順の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/notes.schema.json
+  name: メモのスキーマ
+  description: ワークスペースのメモの YAML の形を決める JSON Schema。メモの YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/research.schema.json
+  name: 調査のスキーマ
+  description: ワークスペースの調査の YAML の形を決める JSON Schema。調査の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/settings.schema.json
+  name: 設定のスキーマ
+  description: ワークスペースの設定の YAML の形を決める JSON Schema。設定の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/tasks.schema.json
+  name: タスクのスキーマ
+  description: ワークスペースのタスクの YAML の形を決める JSON Schema。タスクの YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/terms.schema.json
+  name: 用語集のスキーマ
+  description: ワークスペースの用語集の YAML の形を決める JSON Schema。用語集の YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/schemas/threads.schema.json
+  name: スレッドのスキーマ
+  description: ワークスペースのスレッドの YAML の形を決める JSON Schema。スレッドの YAML のキーを追加・変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/スレッド.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+  - to: dev/設計書/ER図/ワークスペース.yaml
+    type: implements
+- path: skills/mindmap/scripts/backup.py
+  name: 移し替える前の写し
+  description: 移し替える前の写しの取り方と戻し方（git のコミットか、フォルダの複製）。写しの取り方と戻し方を変更するときに読む。
+  tags:
+  - tool:git
+  - topic:バックアップ
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/builder.py
+  name: プレビューの記録の組み立てと配る書き出し
+  description: ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に差し込み、配る書き出しを書く。プレビューへ渡す記録の形や配る書き出しを変更するときに読む。
+  tags:
+  - topic:html
+  - topic:ビルド
+  - topic:プレビュー
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ビルド.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/check_env.py
+  name: 依存の確認
+  description: スキル専用の仮想環境の Python の版と、PyYAML・jsonschema・mcp の版を確かめる。スキルの仮想環境で確認する Python とライブラリの版を変更するときに読む。
+  tags:
+  - tool:python
+  - topic:依存
+  - topic:環境
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/起動.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/checker.py
+  name: ワークスペースの点検
+  description: スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。点検で洗い出すずれの種類を変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - topic:スキーマ
+  - topic:点検
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/点検.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/claude_input.py
+  name: Claude Code のペインへの入力
+  description: ツールの呼び出しが運んだセッションの値をワークスペースごとの宛先として持ち、まとめて送った後にそのペインへ 1 行の文字列を貼る。まとめて送った後に Claude Code のペインへ貼る処理を変更するときに読む。
+  tags:
+  - tool:tmux
+  - topic:コメント
+  - topic:セッション
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ClaudeCodeへの入力.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/commands.py
+  name: ツールごとの処理
+  description: ツールごとの処理（引数 → 各機能 → 結果の辞書）。MCP のツールの引数から結果を組み立てる処理を変更するときに読む。
+  tags:
+  - tool:mcp
+  - topic:サーバー
+  - topic:ツール
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ゴール判定.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/入口.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/comments.py
+  name: レビュー中のコメントと書きかけ
+  description: レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。コメントの読み書きとまとめて送る処理を変更するときに読む。
+  tags:
+  - tool:yaml
+  - topic:コメント
+  - topic:スレッド
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/コメント.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/edits.py
+  name: 保存待ちの編集
+  description: プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。画面で溜めた編集の読み書きと保存の当て方を変更するときに読む。
+  tags:
+  - tool:yaml
+  - topic:保存
+  - topic:編集
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/保存待ちの編集.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/ensure_server.py
+  name: 常駐サーバーの起動の確認
+  description: mindstella の常駐サーバーが待ち受けているかを確かめ、落ちていれば仮想環境の Python で起動する。常駐サーバーが落ちていたときの起動の仕方を変更するときに読む。
+  tags:
+  - topic:サーバー
+  - topic:常駐
+  - topic:起動
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/起動.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/errors.py
+  name: ツールのエラーの例外
+  description: ツールのエラーにする例外。ツールが返すエラーの種類を追加・変更するときに読む。
+  tags:
+  - topic:エラー
+  - topic:例外
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/graph.py
+  name: 依存と影響
+  description: 依存をたどって、影響・次の候補・再開時の状況を出す（読むだけで、ファイルを書かない）。影響・次の候補・再開時の状況の求め方を変更するときに読む。
+  tags:
+  - topic:依存
+  - topic:検討事項
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ゴール判定.py.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/依存と影響.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/history.py
+  name: 変更履歴
+  description: 項目の変更履歴の 1 回分・本文の差分・書き換えのまとまり（`changes.yaml`）・前回開いた日時（`.mindstella-opened`）。項目の変更履歴・書き換えのまとまり・前回開いた日時の扱いを変更するときに読む。
+  tags:
+  - topic:履歴
+  - topic:差分
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/変更履歴.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/html_body.py
+  name: HTML の本文の行の印
+  description: 資料の HTML の本文の、開きタグへの原文の行の印（始まりと終わり）と、行の範囲の描いた文。HTML の本文の行の範囲の扱いを変更するときに読む。
+  tags:
+  - topic:html
+  - topic:本文
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/HTMLの本文.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/inject_session.py
+  name: セッションの値の注入
+  description: PreToolUse のフックで、mindstella のツールを呼んだセッションの値をツールの入力の `session` に入れて返す。ツールの入力へ入れるセッションの値を変更するときに読む。
+  tags:
+  - tool:claude-code
+  - topic:セッション
+  - topic:フック
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/セッションの値の注入.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/kinds.py
+  name: 項目の種類の定義
+  description: ワークスペースの項目の種類の定義と状態の分類。ワークスペースの項目の種類や状態の分類を追加・変更するときに読む。
+  tags:
+  - topic:状態
+  - topic:種別
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/launch.py
+  name: 起動の手助け
+  description: 起動スクリプト（`bin/mindstella`）が呼ぶ、プラグインのフォルダ・セッションの名前の手助け。起動スクリプトが使うプラグインのフォルダやセッションの名前の求め方を変更するときに読む。
+  tags:
+  - tool:tmux
+  - topic:セッション
+  - topic:起動
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/起動.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/locations.py
+  name: コメントが指す箇所
+  description: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。コメントが指す箇所の形と照合を変更するときに読む。
+  tags:
+  - topic:コメント
+  - topic:箇所
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/箇所.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/migration_ops.py
+  name: 移し替えの操作
+  description: 移し替えの手順の操作ごとの当て方と、手順の 1 行の説明。移し替えの手順の操作の当て方を追加・変更するときに読む。
+  tags:
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/migrator.py
+  name: ワークスペースの移し替え
+  description: ワークスペースの版とプラグインの版を比べ、版ごとの手順を並べる・写しを取って当てる・値を入れる・版を書き換える。版の比較と移し替えの流れを変更するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/query.py
+  name: 項目の検索と表示
+  description: 項目の検索・1 件の表示と参照元・属性名とタグの一覧（読むだけで、ファイルを書かない）。検索・1 件の表示・属性名とタグの一覧を変更するときに読む。
+  tags:
+  - topic:タグ
+  - topic:検索
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/検索.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/readme.py
+  name: ワークスペースの README の書き出し
+  description: ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL）の組み立てと書き込み。ワークスペースの直下の README.md の中身を変更するときに読む。
+  tags:
+  - topic:readme
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/ワークスペースのREADME.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/reset_unread.py
+  name: スレッドの未読へ戻す
+  description: SessionStart のフックが呼ぶ。会話を始めたときに未読へ戻す範囲を変更するときに読む。
+  tags:
+  - topic:スレッド
+  - topic:フック
+  related:
+  - to: dev/設計書/インターフェース定義/サーバー/未読へ戻す.yaml
+    type: implements
+  - to: dev/設計書/モジュール構成/サーバー/未読へ戻す.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/serve.py
+  name: プレビューの配信
+  description: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。プレビューの配信の待ち受けや返す内容を変更するときに読む。
+  tags:
+  - topic:http
+  - topic:プレビュー
+  - topic:配信
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/配信.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/server.py
+  name: MCP サーバー
+  description: ワークスペースを読み書きするツールを登録し、`127.0.0.1` の HTTP で待ち受ける。MCP のツールの登録や待ち受けを変更するときに読む。
+  tags:
+  - tool:mcp
+  - topic:サーバー
+  - topic:常駐
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/入口.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/settings_update.py
+  name: 設定の更新
+  description: 設定の更新（`update_settings`）の引数の確かめ・設定の置き換え・フェーズ・対象・カテゴリーの付け替え・まとめた書き込み。設定の置き換えとフェーズ・対象・カテゴリーの付け替えを変更するときに読む。
+  tags:
+  - topic:フェーズ
+  - topic:設定
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/設定の更新.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/store.py
+  name: ワークスペースの読み書き
+  description: ワークスペースの YAML と本文の読み込み・検証・採番・書き込み。ワークスペースの YAML の読み込み・検証・採番・書き込みを変更するときに読む。
+  tags:
+  - tool:jsonschema
+  - tool:yaml
+  - topic:スキーマ
+  - topic:ワークスペース
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/tag_text.py
+  name: タグの表記
+  description: タグの表記の正規化・近いタグの候補。タグの正規化や近いタグの候補の出し方を変更するときに読む。
+  tags:
+  - topic:タグ
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/タグの表記.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/threads.py
+  name: スレッドの読み書き
+  description: スレッド（`threads.yaml`）を読み書きする。スレッドの読み書き・既読・状態の扱いを変更するときに読む。
+  tags:
+  - tool:yaml
+  - topic:スレッド
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/スレッド.py.yaml
+    type: implements
+- path: skills/mindmap/scripts/versions.py
+  name: 版の解釈と比較
+  description: 版（`v{メジャー}.{マイナー}.{パッチ}`）の解釈・比較・読み書き。版の書式や比べ方を変更するときに読む。
+  tags:
+  - topic:バージョン
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/移行.py.yaml
+    type: implements
+- path: skills/session/SKILL.md
+  name: スキル session の手順
+  description: セットアップの後に、発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、話し合いをゴールまで進める。話し合いを進めるスキルのステップの選び方と流れを変更するときに読む。
+  tags:
+  - tool:claude-code
+  - topic:スキル
+  - topic:手順
+  related:
+  - to: dev/設計書/インターフェース定義/スキル/話し合いの進行.yaml
+    type: implements
+- path: skills/session/steps/ゴール判定.md
+  name: ゴール判定のステップ
+  description: ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って、`.mindstella/release/` にリリースの資料を書き出す。ゴールに届いたかの確かめ方とリリースの資料の書き出し方を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:リリース
+  - topic:手順
+- path: skills/session/steps/ヒアリング.md
+  name: ヒアリングのステップ
+  description: 前提が揃った未決定の検討事項を選び、1 ラウンドにまとめて利用者に聞き、答えを記録する。未決定の検討事項を利用者に聞く手順を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:手順
+  - topic:検討事項
+- path: skills/session/steps/プレビュー.md
+  name: プレビューのステップ
+  description: サーバーが配るプレビューの URL を示し、利用者が開けるようにする。プレビューの URL の示し方を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:プレビュー
+  - topic:手順
+- path: skills/session/steps/リサーチ.md
+  name: リサーチのステップ
+  description: 調べる必要のある検討事項について、利用者の確認を取ってサブエージェントで調べ、結果を調査に書いて検討事項に繋ぐ。サブエージェントで調べて調査に記録する手順を変更するときに読む。
+  tags:
+  - topic:サブエージェント
+  - topic:スキル
+  - topic:手順
+- path: skills/session/steps/取り込み.md
+  name: 取り込みのステップ
+  description: 利用者の発言を、対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む。利用者の発言を記録して派生の項目を積む手順を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:会話
+  - topic:手順
+- path: skills/session/steps/方針転換.md
+  name: 方針転換のステップ
+  description: 検討事項の採用する案を切り替え、依存をたどって影響を受ける項目を要見直しにし、見直しのタスクを積む。採用する案を切り替えて影響を要見直しにする手順を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:手順
+  - topic:検討事項
+- path: skills/session/steps/範囲の見直し.md
+  name: 範囲の見直しのステップ
+  description: 話し合いの範囲が変わったとき、題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリーを、利用者が確かめてから書き換える。話し合いの設定を書き換える手順を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:手順
+  - topic:設定
+- path: skills/setup/SKILL.md
+  name: スキル setup の手順
+  description: 話し合いを始める・再開するときに、新しいワークスペースを作るか既存のワークスペースの状況を示し、スキル session へ渡す。話し合いを始める・再開するときの手順を変更するときに読む。
+  tags:
+  - tool:claude-code
+  - topic:スキル
+  - topic:セットアップ
+  related:
+  - to: dev/設計書/インターフェース定義/スキル/セットアップ.yaml
+    type: implements
+- path: skills/setup/scripts/register.py
+  name: 起動スクリプトの登録
+  description: 起動スクリプトを呼ぶ alias と環境変数を、ログインシェルの設定に登録・読み返し・外す。alias と環境変数の登録・読み返し・外し方を変更するときに読む。
+  tags:
+  - topic:シェル
+  - topic:スクリプト
+  - topic:環境変数
+  related:
+  - to: dev/設計書/モジュール構成/サーバー/登録.py.yaml
+    type: implements
+- path: skills/setup/steps/新しいワークスペース.md
+  name: 新しいワークスペースのステップ
+  description: 進め方ガイドを選び、軸とゴールを決めて、新しいワークスペースを作る。進め方ガイド・軸・ゴールを決めてワークスペースを作る手順を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:ワークスペース
+  - topic:手順
+- path: skills/setup/steps/既存のワークスペース.md
+  name: 既存のワークスペースのステップ
+  description: 既存のワークスペースの状況を読み、続きを推奨する。既存のワークスペースの状況の示し方を変更するときに読む。
+  tags:
+  - topic:スキル
+  - topic:ワークスペース
+  - topic:手順
+- path: skills/setup/steps/起動スクリプトの登録.md
+  name: 起動スクリプトの登録のステップ
+  description: 起動スクリプトを呼ぶ alias と、起動スクリプトが読む環境変数を、ログインシェルの設定に登録する。alias と環境変数をシェルの設定へ登録する手順を変更するときに読む。
+  tags:
+  - topic:シェル
+  - topic:スキル
+  - topic:手順
+  - topic:環境変数
+- path: skills/upgrade/SKILL.md
+  name: スキル upgrade の手順
+  description: ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替える。ワークスペースを今の版へ移し替える手順を変更するときに読む。
+  tags:
+  - tool:claude-code
+  - topic:スキル
+  - topic:バージョン
+  related:
+  - to: dev/設計書/インターフェース定義/スキル/ワークスペースの移し替え.yaml
+    type: implements

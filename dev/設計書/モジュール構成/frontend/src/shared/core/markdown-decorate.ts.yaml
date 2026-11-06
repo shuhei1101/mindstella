@@ -1,0 +1,12 @@
+title: プレビュー / markdown-decorate
+lead: 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）。
+functions:
+- name: decorateMarkdown
+  title: 本文の見せ方
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し）
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

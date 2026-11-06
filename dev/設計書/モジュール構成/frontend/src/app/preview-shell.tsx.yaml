@@ -1,0 +1,44 @@
+title: プレビュー / preview-shell
+lead: '`tab` の画面と、詳細・変更履歴・保存待ちのパネルを重ねて描く SPA の外枠。features の画面を組むのはここだけ。'
+components:
+- name: PreviewShell
+  title: プレビューの外枠
+  kind: コンポーネント
+  usecase: SPAを開く
+  summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネルを重ねる
+  refs:
+  - dev/設計書/インターフェース定義/プレビュー/SPAを開く#
+  unit_tests:
+  - name: test_preview_shell
+    case: 正常
+    summary: tab の画面を描く
+    condition: '`?tab=tasks` で MSW の記録を返す'
+    mock: MSW
+    expected: タスクの画面が描かれる
+  - name: test_preview_shell_when_item
+    case: 正常
+    summary: id で詳細パネルを重ねる
+    condition: '`?tab=tasks&id=T-1`'
+    mock: MSW
+    expected: タスクの画面と T-1 の詳細パネルが描かれる
+  - name: test_preview_shell_when_full
+    case: 正常
+    summary: full で全画面にする
+    condition: '`?tab=tasks&id=T-1&full=1`'
+    mock: MSW
+    expected: 詳細の全画面が描かれ、詳細パネルは描かれない
+  - name: test_preview_shell_when_settings
+    case: 正常
+    summary: 設定の画面を開く
+    condition: '`?tab=settings`'
+    mock: MSW
+    expected: 設定の画面が描かれ、タブの帯でどのタブも選ばれていない
+  - name: test_preview_shell_when_search_mismatched
+    case: 正常
+    summary: 記録に合わない値を外す
+    condition: '`?tab=tasks&view=map&id=T-99`'
+    mock: MSW
+    expected: URL が `?tab=tasks` に置き換わる
+  container: frontend/src/app/preview-shell.tsx
+notes:
+  単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）

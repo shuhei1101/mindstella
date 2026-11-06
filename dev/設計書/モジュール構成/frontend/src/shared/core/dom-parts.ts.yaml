@@ -1,0 +1,12 @@
+title: プレビュー / dom-parts
+lead: mdmark が描いた本文の中へ足す要素の組み立て。
+functions:
+- name: h
+  title: 要素の組み立て
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: mdmark が描いた本文の中へ足す要素の組み立て
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

@@ -1,0 +1,12 @@
+title: プレビュー / html-frame
+lead: スクリプトを動かさない HTML の本文の枠の組み立て。
+functions:
+- name: htmlFrameElement
+  title: HTML の本文の枠
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: スクリプトを動かさない HTML の本文の枠の組み立て
+  args: []
+  returns:
+    type: unknown
+    description: 処理の結果

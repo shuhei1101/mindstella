@@ -1,0 +1,44 @@
+title: 差分の印
+implementation: frontend/src/shared/components/diff-mark.tsx#DiffMark
+story: Shared/DiffMark
+states:
+- name: New
+  description: 新規。丸や枠で囲まず太い + だけ
+  args:
+  - name: kind
+    value: new
+- name: Changed
+  description: 変更。丸や枠で囲まず塗った ● だけ。決定済みの状態の印とは色で分かれる
+  args:
+  - name: kind
+    value: changed
+- name: NewLabeled
+  description: 詳細パネルの題の横の新規の札
+  args:
+  - name: kind
+    value: new
+  - name: labeled
+    value: 'true'
+- name: Removed
+  description: 消した。差分の色の赤の太い − だけで、新規・変更と同じ大きさ
+  args:
+  - name: kind
+    value: removed
+lead: 差分の表示の間、選んだ時点で足した項目に新規（太い +）、変えた項目に変更（塗った ●）、消した項目に消した（太い −）の印を出す。表・ボード・カード・マップ・概要のタイル・消した項目の帯では記号だけ、詳細パネルの題の横では文言つきの札にする。
+args:
+- name: kind
+  type: 列挙
+  required: true
+  choices: new・changed・removed
+  description: 新規か変更か消したか。色だけでなく形（+ と ● と −）でも分ける。`removed` は部品『消した項目の帯』だけが使う
+- name: labeled
+  type: 真偽値
+  required: false
+  default: 'false'
+  description: 真のとき記号に文言（「新規」「変更」）を付けた札にする。詳細パネルの題の横だけが使う
+accessibility:
+- 記号は `aria-hidden` にし、「新規」「変更」「消した」を読み上げにだけ残す文字と `title` を持つ
+- 色だけに頼らず、新規・変更・消したを記号の形でも分ける
+test_file: tests/integration/storybook_react/test_diff_mark_stories.py
+refs:
+- dev/設計書/部品設計/プレビュー/差分の印.ts#

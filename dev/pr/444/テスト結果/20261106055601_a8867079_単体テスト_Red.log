@@ -1,0 +1,207 @@
+$ npx vitest run frontend/src/shared/stores/prefs-store.test.ts frontend/src/features/detail/detail-panel/detail-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-list-and-detail
+
+···xxNot implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+··Not implemented: Window's scrollTo() method
+xNot implemented: Window's scrollTo() method
+··
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/stores/prefs-store.test.ts > readBodyScrolls > read_body_scrolls
+TypeError: writeBodyScroll is not a function
+ ❯ frontend/src/shared/stores/prefs-store.test.ts:50:5
+     48|   test("read_body_scrolls", () => {
+     49|     // 実行
+     50|     writeBodyScroll("D-1", 120);
+       |     ^
+     51|     writeBodyScroll("T-2", 40);
+     52|     // 検証
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  frontend/src/shared/stores/prefs-store.test.ts > readBodyScrolls > read_body_scrolls_when_broken
+TypeError: readBodyScrolls is not a function
+ ❯ frontend/src/shared/stores/prefs-store.test.ts:62:12
+     60|     sessionStorage.setItem("mindmap-body-scroll", '{"D-1":-1,"T-1":"x"…
+     61|     // 実行・検証
+     62|     expect(readBodyScrolls()).toEqual({ "R-1": 5 });
+       |            ^
+     63|     sessionStorage.setItem("mindmap-body-scroll", "not json");
+     64|     expect(readBodyScrolls()).toEqual({});
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_body_scroll_saved
+AssertionError: expected +0 to be 80 // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-theme[39m=[32m"light"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-dvh flex-col overflow-hidden"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-none items-center gap-2.5"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-5.5 flex-none text-mark"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2.2"[39m
+                [33mviewBox[39m=[32m"0 0 32 32"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"8"[39m
+                  [33mcy[39m=[32m"16"[39m
+                  [33mr[39m=[32m"4"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 16h5M17 16V7h5M17 16v9h5"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"7"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"25"[39m
+                  [33mcy[39m=[32m"25"[39m
+                  [33mr[39m=[32m"2.6"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"font-bold tracking-tight max-xs:hidden"[39m
+              [36m>[39m
+                [0mmindstella[0m
+              [36m</span>[39m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"[39m
+              [33mtitle[39m=[32m"要件出しのスキル mindmap を設計する"[39m
+            [36m>[39m
+              [0m要件出しのスキル mindmap を設計する[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-keyshortcuts[39m=[32m"Control+K Meta+K"[39m
+              [33maria-label[39m=[32m"すべての項目を検索"[39m
+              [33mclass[39m=[32m"flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"7"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m20 20-3.5-3.5"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-lg:hidden"[39m
+              [36m>[39m
+                [0mすべての項目を検索[0m
+              [36m</span>[39m
+              [36m<kbd[39m
+                [33mclass[39m=[32m"ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"[39m
+              [36m>[39m
+                [0mCtrl+K[0m
+              [36m</kbd>[39m
+            [36m</button>[39m
+            [36m<button[39m
+              [33maria-haspopup[39m=[32m"dialog"[39m
+              [33maria-label[39m=[32m"変更履歴"[39m
+              [33mclass[39m=[32m"inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"size-4 flex-none fill-none stroke-current"[39m
+                [33mheight[39m=[32m"16"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"1.75"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"16"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 12a9 9 0 1 0 3-6.7L3 8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M3 3v5h5"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M12 7v5l3 2"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"max-xl:hidden"[39m
+              [36m>[39m
+                [0m変更履歴[0m
+              [36m</span>[39m
+            [36m</button>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex-1 basis-0"[39m
+            [36m/>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-label[39m=[32m"表示の設定"[39m
+              [33mclass[39m=[32m"inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"[39m
+              [33mtabindex[39m=[32m"0"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33maria-hidden[39m=[32m...
+
+- Expected
++ Received
+
+- 80
++ 0
+
+ ❯ frontend/src/features/detail/detail-panel/detail-panel.test.tsx:55:49
+     53|     const body = panel.querySelector<HTMLElement>(".panel-body");
+     54|     // 検証
+     55|     await waitFor(() => expect(body?.scrollTop).toBe(80));
+       |                                                 ^
+     56|     sessionStorage.clear();
+     57|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 7 passed (10)
+   Start at  05:56:04
+   Duration  36.46s (import 39%, environment 38%, setup 11%, transform 9%, tests 3%)
+

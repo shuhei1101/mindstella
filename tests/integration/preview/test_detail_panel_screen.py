@@ -2800,6 +2800,8 @@ def test_diff_body_when_inline_words(
     """変えた行の対は、描いた文字のうち変わった語だけに濃い面を付ける。行の面・記号・取り消し線は残り、変えていない段落と消しただけの段落には付けない（正常系）。"""
     # 準備・実行
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_BODY} span.df-word")
     # 検証（段落: 消した段落・足した段落・消しただけの段落の順）
@@ -2840,6 +2842,8 @@ def test_diff_body_when_inline_words_unpaired(
     """消した行と足した行の行の数が揃わない書き換えは、語の面を付けず、行の面と記号だけで示す（正常系）。"""
     # 準備・実行
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D2_HASH)
     page.wait_for_selector(f"{DIFF_BODY} ins.df-blk")
     # 検証
@@ -2854,6 +2858,8 @@ def test_diff_body_when_inline_words_little_same(
     """行の数が揃っても、同じ部分が少ない（ほとんど書き換えた）対には語の面を付けない（正常系）。"""
     # 準備・実行
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D3_HASH)
     page.wait_for_selector(f"{DIFF_BODY} ins.df-blk")
     # 検証
@@ -2873,6 +2879,8 @@ def test_diff_body_when_inline_words_color(
     """語の面は行の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
     # 準備
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.emulate_media(color_scheme=scheme)
     page.reload()
@@ -2908,6 +2916,8 @@ def test_diff_keys_when_inline_words(
     """背景と案の内容の前の値・今の値は、変わった語だけに濃い面を付ける。値の面・取り消し線・下線・矢印と、読み上げの名前は残る（正常系）。"""
     # 準備・実行
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2944,6 +2954,8 @@ def test_diff_keys_when_inline_words_skipped(
     """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
     # 準備・実行
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 検証
@@ -2978,6 +2990,8 @@ def test_diff_keys_when_inline_words_color(
     """キーの語の面は値の面より濃く（画面の地から離れ）、上に置く文字は面の上で 4.5:1 以上の対比を保つ。ライトとダークの両方で（正常系）。"""
     # 準備
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.emulate_media(color_scheme=scheme)
     page.reload()
@@ -3009,6 +3023,8 @@ def test_diff_keys_when_newlines(
     """背景の前の値・今の値は、書かれた改行の位置で改行して出し、語の面は書き換えた語だけに付く（正常系）。"""
     # 準備
     url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 実行
@@ -3032,6 +3048,8 @@ def test_diff_keys_when_newlines_across_words(
     """書き換えた範囲が改行をまたぐとき、改行の前後の行それぞれで、その範囲の文字に語の面を付ける（正常系）。"""
     # 準備
     url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D2_HASH)
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 実行
@@ -3052,6 +3070,8 @@ def test_diff_keys_when_newlines_long_line(
     """改行を持たない長い 1 行の前の値・今の値は、幅に合わせて折り返し、パネルからはみ出さない（正常系）。"""
     # 準備
     url = serve_key_newline_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2", DIFF_D3_HASH)
     page.wait_for_selector(f"{DIFF_KEY_LEAD} span.df-word")
     # 実行
@@ -3069,6 +3089,8 @@ def test_diff_diagram_raw_when_inline_words(
     """図の Raw の変えた行の対は、変わった語だけに濃い面を付け、ほかの行には付けない（正常系）。"""
     # 準備
     url = serve_word_diff_workspace(make_workspace, call_tool)
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector("aside.panel figure.diagram.df-changed", timeout=DIFF_DIAGRAM_TIMEOUT_MS)
     # 実行
@@ -3539,6 +3561,29 @@ def test_body_alias_tooltip_open_link(
     assert page.inner_text("aside.panel .d-title") == "特殊効果のスキーマ"
 
 
+# 印から外してから、押して残したツールチップが開いたままかを確認するまでのミリ秒（隠す待ち `TIP_HIDE_DELAY_MS` の 150 より長く）
+TIP_KEEP_CHECK_MS = 400
+
+# 候補の要素（`data-ids` が除く値と同じ要素は飛ばす）の矩形の中の点を順に調べ、その点の一番上の要素が候補の中でツールチップの外になる最初の点を返却する（無ければ null）
+UNCOVERED_POINT_SCRIPT = """([selector, excludeIds]) => {
+    const tip = document.getElementById('term-tip');
+    const candidates = [...document.querySelectorAll(selector)];
+    for (const [index, element] of candidates.entries()) {
+        if (excludeIds !== null && element.dataset.ids === excludeIds) continue;
+        const rect = element.getBoundingClientRect();
+        for (const fy of [0.5, 0.25, 0.75]) {
+            for (const fx of [0.5, 0.25, 0.75, 0.1, 0.9]) {
+                const x = rect.left + rect.width * fx;
+                const y = rect.top + rect.height * fy;
+                const top = document.elementFromPoint(x, y);
+                if (top !== null && element.contains(top) && !tip.contains(top)) return {index, x, y};
+            }
+        }
+    }
+    return null;
+}"""
+
+
 def test_body_alias_tooltip_pinned(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
@@ -3546,24 +3591,35 @@ def test_body_alias_tooltip_pinned(
     # 準備
     page = _open_alias_panel(write_preview, open_preview, make_item)
     mixed = f"{PANEL_MARKS} >> nth=0"
-    # 実行（押して、印から外して待つ）
+    # 実行（押して、印から外し、隠す待ちを過ぎるまで待つ）
     page.click(mixed)
+    page.wait_for_selector(TIP_OPEN)
     page.mouse.move(2, 2)
-    page.wait_for_timeout(400)
+    left_at = page.evaluate("performance.now()")
+    page.wait_for_function(
+        "([at, ms]) => performance.now() - at >= ms", arg=[left_at, TIP_KEEP_CHECK_MS]
+    )
     kept = page.evaluate("document.querySelector('#term-tip').matches(':popover-open')")
-    # 実行（ほかの印に乗せても替わらない）
-    page.hover(f"{PANEL_MARKS} >> nth=1")
-    page.wait_for_timeout(300)
+    # 実行（押した印と違う項目に一致した印のうち、ツールチップに覆われていない点へ乗せても替わらない）
+    other = page.evaluate(UNCOVERED_POINT_SCRIPT, [PANEL_MARKS, MIXED_IDS])
+    assert other is not None, "ツールチップに覆われていない印がありません"
+    page.mouse.move(other["x"], other["y"])
+    page.wait_for_function(
+        "([selector, index]) => document.querySelectorAll(selector)[index].matches(':hover')",
+        arg=[PANEL_MARKS, other["index"]],
+    )
     still = page.evaluate(
         "[...document.querySelectorAll('#term-tip a.tt-link')].map((a) => a.dataset.id).join(' ')"
     )
     # 実行（Esc で閉じる）
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
-    # 実行（もう一度押して、外を押して閉じる）
+    # 実行（もう一度押して、詳細パネルの中のツールチップに覆われていない点を押して閉じる）
     page.click(mixed)
     page.wait_for_selector(TIP_OPEN)
-    page.click("aside.panel .panel-kind")
+    outside = page.evaluate(UNCOVERED_POINT_SCRIPT, ["aside.panel .panel-kind", None])
+    assert outside is not None, "ツールチップに覆われていない外の点がありません"
+    page.mouse.click(outside["x"], outside["y"])
     page.wait_for_function("!document.querySelector('#term-tip:popover-open')")
     # 検証
     assert kept is True

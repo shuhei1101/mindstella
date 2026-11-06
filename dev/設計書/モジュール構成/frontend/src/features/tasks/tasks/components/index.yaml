@@ -1,0 +1,4 @@
+summary: '`frontend/src/features/tasks/tasks/components/` の React のプレビューのモジュール'
+items:
+- page: task-board.tsx.yaml
+  summary: 状態ごとの列にタスクのカードを並べる

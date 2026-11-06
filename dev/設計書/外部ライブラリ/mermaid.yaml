@@ -27,6 +27,7 @@ upstream: mermaid-js/mermaid
 used_in:
   - plugins/mindstella/skills/mindmap/preview/template.html
   - plugins/mindstella/skills/mindmap/scripts/builder.py
+  - frontend/src/shared/adapters/libraries.ts
 verification:
   state: 済
   date: '2026-10-06'

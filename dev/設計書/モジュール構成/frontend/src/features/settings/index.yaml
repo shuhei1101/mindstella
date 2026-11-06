@@ -1,0 +1,4 @@
+summary: '`frontend/src/features/settings/` の React のプレビューのモジュール'
+items:
+- page: workspace-settings/
+  summary: '`frontend/src/features/settings/workspace-settings/` の React のプレビューのモジュール'

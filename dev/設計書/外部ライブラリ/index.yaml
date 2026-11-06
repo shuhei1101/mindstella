@@ -48,6 +48,8 @@ items:
   summary: プレビュー（React）のルートと search params の検証
 - page: tanstack-query.yaml
   summary: プレビュー（React）がサーバーの記録を取得し、書き換えで読み直す
+- page: tanstack-table.yaml
+  summary: プレビュー（React）の表の並べ替え・絞り込み・列の表示・ピン留めの状態を持つ
 - page: zustand.yaml
   summary: プレビュー（React）の接続の状態とライト / ダークを持つ
 - page: zod.yaml

@@ -23,6 +23,7 @@ from diff_minimap_helpers import (
     wait_added_paragraph_in_view,
 )
 from playwright.sync_api import Page
+from preview_clock_helpers import FREEZE_PERFORMANCE_NOW_JS
 from preview_helpers import (
     HISTORY_DIALOG,
     HISTORY_REDRAW_TIMEOUT_MS,
@@ -363,6 +364,8 @@ def test_normal(
     replay("commit", workspace=ws, summary=COMMIT_SUMMARY)
     before = snapshot_records(snapshot_tree(root))
     # 実行（開いて、差分の表示に入る前の画面を読む）
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     open_preview(url, "#tab=overview")
     counts_before = page.evaluate(TAB_COUNTS_SCRIPT)
     # 検証（差分の表示に入る前は、どの項目にもタブにも印が無い）
@@ -1526,6 +1529,8 @@ def test_normal_when_embedded_html_changed(
     replay("commit", workspace=ws, summary="段落を書き直す")
     before = snapshot_records(snapshot_tree(root))
     # 実行（変更履歴から書き換えのまとまりを選ぶ）
+    # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
+    page.add_init_script(FREEZE_PERFORMANCE_NOW_JS)
     open_preview(url, "#tab=overview")
     pick_history_point(page, "前回開いてから")
     # 検証（資料のタブに印が付き、A-1 に変更の印が付く）

@@ -1,0 +1,134 @@
+title: プレビュー / prefs-store
+lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）。
+functions:
+- name: readPrefs
+  title: 保存領域の読み取り
+  kind: 関数
+  usecase: SPAを開く
+  summary: 保存領域の JSON を読み、読めない項目は持たないものとして扱う
+  returns:
+    type: Prefs
+    description: 個人の上書き
+  unit_tests:
+  - name: test_read_prefs_when_invalid
+    case: 異常
+    summary: 読めない JSON
+    condition: 壊れた JSON
+    mock: '`localStorage`'
+    expected: 空の上書き
+  - name: test_read_prefs_when_legacy_written
+    case: 正常
+    summary: 今の画面が書いた JSON を読める
+    condition: 今の画面の `Prefs` の形の JSON（`columns`・`filters`・`diffSel`・`minimap`・`bodyLayout`・`tablePin`）
+    mock: '`localStorage`'
+    expected: 全ての項目を同じ値で読める
+  container: frontend/src/shared/stores/prefs-store.ts
+- name: writePrefs
+  title: 保存領域の書き込み
+  kind: 関数
+  usecase: SPAを開く
+  summary: 変えた項目だけを書き、ほかの項目を残す
+  args:
+  - name: patch
+    type: Partial<Prefs>
+    required: true
+    description: 変える項目
+  returns:
+    type: void
+    description: なし
+  unit_tests:
+  - name: test_write_prefs
+    case: 正常
+    summary: 知らない項目を残す
+    condition: '`theme`・`look`・`commentsPinned` を持つ保存領域に `diffSel` を書く'
+    mock: '`localStorage`'
+    expected: 3 つの項目が残り、`diffSel` が書かれる
+  container: frontend/src/shared/stores/prefs-store.ts
+- name: readBodyScrolls
+  title: 本文のスクロール位置の読み取り
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 詳細の本文をスクロールした位置を、項目の ID ごとに sessionStorage のキー `mindmap-body-scroll` から読む
+  args: []
+  returns:
+    type: Record<string, number>
+    description: 項目の ID → 位置。0 以上の数だけ
+  unit_tests:
+  - name: test_read_body_scrolls
+    case: 正常
+    summary: 書いた位置を読む
+    condition: 2 件の項目の位置を書く
+    mock: なし
+    expected: 項目の ID ごとの位置を返す
+  - name: test_read_body_scrolls_when_broken
+    case: 異常
+    summary: 壊れた値は読まない
+    condition: 負の数・文字・読めない JSON
+    mock: なし
+    expected: 0 以上の数だけを返す
+- name: writeBodyScroll
+  title: 本文のスクロール位置の書き込み
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 項目の本文をスクロールした位置を残す。書けない保存領域では何もしない
+  args:
+  - name: id
+    type: string
+    required: true
+    description: 項目の ID
+  - name: top
+    type: number
+    required: true
+    description: スクロールの位置
+  returns:
+    type: void
+    description: 無し
+- name: usePrefs
+  title: 端末の保存領域の購読
+  kind: フック
+  usecase: SPAを開く
+  summary: 保存領域の JSON の文字列を `useSyncExternalStore` で購読し、`writePrefs` の書き換えを描画へ反映する
+  args: []
+  returns:
+    type: Prefs
+    description: 保存領域の値
+  container: frontend/src/shared/stores/prefs-store.ts
+stores:
+- name: usePrefsStore
+  title: 端末の保存領域
+  usecase: SPAを開く
+  summary: 今の画面の `Prefs`（`app.ts`）と同じ `mindmap-preview` のキーと値の形の JSON のうち、移す画面が使う項目だけを読み書きし、知らない項目を消さない
+  state:
+  - name: columns
+    type: Record<string, TablePrefs>
+    description: '種類ごとの表示する列とピン留め。`TablePrefs` は `{hidden: string[]; pinTo: string | null}`'
+  - name: filters
+    type: Record<string, Filters>
+    description: 画面（記録の表は種類）ごとの絞り込みの条件。`Filters` は列 → 選んだ値の配列（`~{列}` は文字の条件）
+  - name: diffSel
+    type: string | null
+    description: 変更履歴で選んだ時点
+  - name: minimap
+    type: false | null
+    description: 差分のミニマップを表示しない上書き
+  - name: bodyLayout
+    type: '''side'' | null'
+    description: 本文の差分を左右に並べる上書き
+  - name: tablePin
+    type: false | null
+    description: 表の列の固定をオフにする上書き
+  - name: tableHead
+    type: false | null
+    description: 表の見出しの固定をオフにする上書き
+  - name: tableStripes
+    type: true | null
+    description: 表のしま模様をオンにする上書き
+  - name: sectionFold
+    type: false | null
+    description: セクションの折りたたみをオフにする上書き
+  - name: kinds
+    type: Kind[] | null
+    description: 表示する種類の上書き（読むだけ）
+  container: frontend/src/shared/stores/prefs-store.ts
+notes:
+  単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
