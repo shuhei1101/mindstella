@@ -24,16 +24,16 @@ export const Filtered: Story = { args: {"filters": {"conf": ["高"]}} };
 
 export const Pinned: Story = { args: {"pinTo": "id"} };
 
-export const LongTitle: Story = { args: {} };
+export const LongTitle: Story = { args: {"rows": [{"id": "D-5", "title": "とても長いタイトルが折り返されて他の列を崩さないことを確かめるための、説明の多い検討事項の題名", "conf": "高"}]} };
 
-export const NoMatch: Story = { args: {"filters": {"conf": ["中"]}, "pinTo": "id"} };
+export const NoMatch: Story = { args: {"filters": {"conf": ["中"]}, "pinTo": "id", "rows": []} };
 
 export const ColumnsPopover: Story = { args: {} };
 
 export const Marked: Story = { args: {"marks": {"D-5": "changed", "D-37": "new"}} };
 
-export const TextFiltered: Story = { args: {"kind": "terms", "filters": {"~title": ["移し"]}} };
+export const TextFiltered: Story = { args: {"kind": "terms", "filters": {"~title": ["移し"]}, "columns": [{"key": "id", "label": "ID"}, {"key": "title", "label": "用語", "fixed": true}, {"key": "meaning", "label": "意味"}], "rows": [{"id": "G-1", "title": "移し替え", "meaning": "版を上げる"}]} };
 
 export const Commented: Story = { args: {"marks": {"D-5": "changed"}, "comments": {"D-5": 1, "D-37": 12}} };
 
-export const Withdrawn: Story = { args: {"marks": {"R-1": "changed"}} };
+export const Withdrawn: Story = { args: {"marks": {"R-1": "changed"}, "rows": [{"id": "R-1", "title": "取り下げた調査", "conf": "高", "withdrawn": true}, {"id": "R-2", "title": "今の調査", "conf": "低"}]} };

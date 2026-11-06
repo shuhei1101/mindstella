@@ -15,17 +15,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Rendered: Story = { args: {} };
 
-export const RawDiff: Story = { args: {} };
+export const RawDiff: Story = { args: {"initial": "raw"} };
 
-export const RemovedOnly: Story = { args: {} };
+export const RemovedOnly: Story = { args: {"before": "<p>残す</p>\n<p>消す</p>\n", "after": "<p>残す</p>\n", "marked": "<p data-line=\"1\" data-line-end=\"1\">残す</p>\n"} };
 
-export const FromMarkdown: Story = { args: {"beforeFormat": "md"} };
+export const FromMarkdown: Story = { args: {"beforeFormat": "md", "before": "# 見出し\n"} };
 
 export const SideRendered: Story = { args: {"layout": "side"} };
 
-export const SideRaw: Story = { args: {"layout": "side"} };
+export const SideRaw: Story = { args: {"layout": "side", "initial": "raw"} };
 
-export const SideFromMarkdown: Story = { args: {"layout": "side", "beforeFormat": "md"} };
+export const SideFromMarkdown: Story = { args: {"layout": "side", "beforeFormat": "md", "before": "# 見出し\n"} };
 
 export const RangeRaw: Story = { args: {"initial": "raw", "heading": "埋め込んだ HTML"} };
 

@@ -15,8 +15,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Paragraphs: Story = { args: {} };
 
-export const Rewritten: Story = { args: {} };
+export const Rewritten: Story = { args: {"before": "変える前の文です。\n", "after": "変えた後の文です。\n"} };
 
-export const TableAndList: Story = { args: {} };
+export const TableAndList: Story = { args: {"before": "- 項目 A\n- 項目 B\n\n| 列 |\n| --- |\n| 1 |\n", "after": "- 項目 A\n- 項目 C\n\n| 列 |\n| --- |\n| 2 |\n"} };
 
-export const Diagram: Story = { args: {} };
+export const Diagram: Story = { args: {"before": "```mermaid\nflowchart LR\n  A-->B\n```\n", "after": "```mermaid\nflowchart LR\n  A-->C\n```\n"} };

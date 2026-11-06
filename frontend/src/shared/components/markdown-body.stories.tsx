@@ -17,7 +17,7 @@ type Story = StoryObj<typeof meta>;
 
 export const ColumnWidths: Story = { args: {} };
 
-export const SmallTable: Story = { args: {} };
+export const SmallTable: Story = { args: {"source": "| A | B |\n| --- | --- |\n| 1 | 2 |\n"} };
 
 export const PinHover: Story = { args: {} };
 
@@ -33,20 +33,20 @@ export const Stripes: Story = { args: {"display": {"pin": true, "head": true, "s
 
 export const StripesInDiff: Story = { args: {"display": {"pin": true, "head": true, "stripes": true, "fold": true}, "fold": false} };
 
-export const Sections: Story = { args: {} };
+export const Sections: Story = { args: {"source": "# 大\n\n## 料金\n\n本文\n\n## 中身なし\n"} };
 
-export const Folded: Story = { args: {} };
+export const Folded: Story = { args: {"source": "# 大\n\n## 料金\n\n本文\n"} };
 
-export const FoldOff: Story = { args: {"display": {"pin": true, "head": true, "stripes": false, "fold": false}} };
+export const FoldOff: Story = { args: {"display": {"pin": true, "head": true, "stripes": false, "fold": false}, "source": "# 大\n\n## 料金\n\n本文\n"} };
 
-export const CodeBlock: Story = { args: {} };
+export const CodeBlock: Story = { args: {"source": "```python\nprint(1)\n```\n\n```\nplain\n```\n"} };
 
-export const CodeCopied: Story = { args: {} };
+export const CodeCopied: Story = { args: {"source": "```python\nprint(1)\n```\n"} };
 
-export const Callouts: Story = { args: {} };
+export const Callouts: Story = { args: {"source": "> [!NOTE]\n> 補足\n\n> [!WARNING]\n> 警告\n"} };
 
 export const Narrow: Story = { args: {} };
 
 export const InThreadPost: Story = { args: {"tables": false, "fold": false} };
 
-export const EmbeddedHtml: Story = { args: {} };
+export const EmbeddedHtml: Story = { args: {"source": "<!-- html -->\n<table><tr><th>A</th></tr></table>\n<!-- /html -->\n"} };
