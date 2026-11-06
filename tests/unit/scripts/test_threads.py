@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 import yaml
 
+import errors
 import store
 import threads
 from errors import (
@@ -808,7 +809,7 @@ def test_set_thread_status(
     write_threads(root, make_thread("TH-1"))
     # 実行
     changed = threads.set_thread_status(
-        root, "TH-1", status="closed", reason=" 案 A で決着 ", author="ai", now=_fixed_now
+        root, "TH-1", status="closed", reason=" 案 A で決着 ", author="user", now=_fixed_now
     )
     # 検証
     assert changed is True
@@ -816,7 +817,7 @@ def test_set_thread_status(
     assert raw["status"] == "closed"
     assert raw["events"][-1] == {
         "kind": "closed",
-        "author": "ai",
+        "author": "user",
         "reason": "案 A で決着",
         "created": FIXED_NOW,
     }
@@ -896,6 +897,126 @@ def test_set_thread_status_when_rejected(
         )
     assert getattr(exc_info.value, "argument", None) == argument
     assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
+def test_set_thread_status_when_ai_closes(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """AI は取り込み済みで利用者が既読のスレッドをクローズにできる。最後の書き込みが利用者でも確かめない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1", read=True, taken=T_0100),
+            make_post("TH-1-2", author="ai", seen=True),
+            make_post("TH-1-3", read=True, taken=T_0200),
+        ),
+    )
+    # 実行
+    changed = threads.set_thread_status(
+        root, "TH-1", status="closed", reason="了解を受けた", author="ai", now=_fixed_now
+    )
+    # 検証
+    assert changed is True
+    raw = _find(_read_threads(root), "TH-1")
+    assert raw["status"] == "closed"
+    assert raw["events"][-1]["author"] == "ai"
+
+
+@pytest.mark.parametrize(
+    ("awaiting", "unseen", "expected_lines"),
+    [
+        pytest.param(True, False, [("TH-1-1", "update_thread")], id="awaiting"),
+        pytest.param(False, True, [("TH-1-2",)], id="unseen"),
+        pytest.param(True, True, [("TH-1-1", "update_thread"), ("TH-1-2",)], id="both"),
+    ],
+)
+def test_set_thread_status_when_close_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    awaiting: bool,
+    unseen: bool,
+    expected_lines: list[tuple[str, ...]],
+) -> None:
+    """取り込み待ちか利用者の未読があれば、AI はクローズにできない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    user_post = (
+        make_post("TH-1-1", read=True)
+        if awaiting
+        else make_post("TH-1-1", read=True, taken=T_0100)
+    )
+    ai_post = make_post("TH-1-2", author="ai", seen=not unseen)
+    write_threads(root, make_thread("TH-1", user_post, ai_post))
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(errors.ThreadCloseRejectedError, match="TH-1") as exc_info:
+        threads.set_thread_status(
+            root, "TH-1", status="closed", reason="話が済んだ", author="ai", now=_fixed_now
+        )
+    lines = exc_info.value.lines
+    assert len(lines) == len(expected_lines)
+    for line, words in zip(lines, expected_lines, strict=True):
+        assert all(word in line for word in words)
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
+
+
+def test_set_thread_status_when_ai_reopens(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """AI がオープンに戻すときは取り込み待ちと利用者の未読を確かめない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(
+        root,
+        make_thread(
+            "TH-1",
+            make_post("TH-1-1"),
+            make_post("TH-1-2", author="ai", seen=False),
+            status="closed",
+        ),
+    )
+    # 実行
+    changed = threads.set_thread_status(
+        root, "TH-1", status="open", reason="質問に答える", author="ai", now=_fixed_now
+    )
+    # 検証
+    assert changed is True
+    assert _find(_read_threads(root), "TH-1")["status"] == "open"
+
+
+def test_set_thread_status_when_already_closed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """既にクローズのスレッドは、取り込み待ちがあっても確かめずに書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1"), status="closed"))
+    mtime_before = _age(root / RECORD_DIR / "threads.yaml")
+    # 実行
+    changed = threads.set_thread_status(
+        root, "TH-1", status="closed", author="ai", now=_unexpected_now
+    )
+    # 検証
+    assert changed is False
+    assert (root / RECORD_DIR / "threads.yaml").stat().st_mtime_ns == mtime_before
 
 
 def test_update_thread(
