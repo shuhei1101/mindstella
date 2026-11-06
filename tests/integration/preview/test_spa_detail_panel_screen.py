@@ -434,12 +434,12 @@ def test_scroll_region_visible(page: Page, spa_preview: str) -> None:
 
 
 def test_heading_link_label(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
-    """見出しのリンクの文言は「#」で、読み上げの名前は「見出し「{見出し}」へのリンク」（正常系）。"""
+    """見出しのリンクは「#」の印で、読み上げの名前は「見出し「{見出し}」へのリンク」（正常系）。"""
     # 準備・実行
     panel = _linked(page, write_preview, make_item)
     link = panel.get_by_role("link", name="見出し「保存先」へのリンク")
     # 検証
-    expect(link).to_have_text("#")
+    expect(link.locator("svg")).to_have_count(1)
 
 
 def test_heading_link_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
@@ -695,6 +695,7 @@ def test_head_title_visible(page: Page, write_preview: WritePreview, make_item: 
     open_spa(page, url, "?tab=docs&id=A-1")
     head = _panel(page).locator("span[aria-hidden=true][title='長い本文の資料']")
     expect(head).to_have_css("opacity", "0")
+    _panel(page).get_by_text("120 番目の段落").wait_for(state="attached")
     # 実行
     _panel(page).get_by_role("region", name="詳細の本文").evaluate("e => { e.scrollTop = e.scrollHeight; }")
     # 検証
