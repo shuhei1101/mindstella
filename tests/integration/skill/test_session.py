@@ -54,6 +54,7 @@ SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
         "goal",
         "migrate",
         "clear_release",
+        "write_release",
         "export",
         "preview_url",
         "readme",
@@ -74,6 +75,12 @@ RECORD_SECTION = "記録の書き方"
 
 # 記録を書き換え終えたら `commit` を呼ぶステップのファイル
 COMMIT_STEP_FILES = ["取り込み.md", "ヒアリング.md", "リサーチ.md", "方針転換.md"]
+
+# 利用者への質問を new_thread で聞くステップのファイル
+THREAD_STEP_FILES = ["ヒアリング.md", "リサーチ.md", "方針転換.md", "範囲の見直し.md", "ゴール判定.md", "プレビュー.md"]
+
+# ターミナルで聞く場面を書いた言い方
+TERMINAL_ASK = "ターミナルで聞"
 
 # スキル session の steps/ のファイル
 SESSION_STEP_FILES = [
@@ -193,5 +200,17 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     assert playbooks_without_single_default() == []
     # スキルの全ての Markdown に特定の開発基盤の名前が無い
     assert texts_with_forbidden_name() == []
+    # steps/ゴール判定.md が clear_release の後に write_release を呼び、Write ツールを指さない
+    assert "`write_release`" in goal_step
+    assert goal_step.index("`clear_release`") < goal_step.index("`write_release`")
+    assert "Write ツールで" not in goal_step
+    # 質問を出すステップが new_thread を呼ぶ
+    for step_file in THREAD_STEP_FILES:
+        step = (SKILLS_DIR / "session" / "steps" / step_file).read_text(encoding="utf-8")
+        assert "`new_thread`" in step, step_file
+    # ターミナルで聞く場面が、new_thread を立てられなかったときだけである
+    terminal_lines = [line for text in texts for line in text.splitlines() if TERMINAL_ASK in line]
+    assert terminal_lines != []
+    assert all("`new_thread`" in line and "立てられなかった" in line for line in terminal_lines)
     # claude plugin validate が終了コード 0（失敗すれば run_claude が例外にする）
     assert validate.returncode == 0

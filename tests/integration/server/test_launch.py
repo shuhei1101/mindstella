@@ -33,6 +33,18 @@ SERVER_SCRIPT = PLUGIN_DIR / "skills" / "mindmap" / "scripts" / "server.py"
 # 古いバージョンの常駐サーバーの代わりが返す状態
 OUTDATED_STATUS = {"name": "mindstella", "version": "0.0.1"}
 
+# 起動時の指示のファイル（`installPath` からの場所）と、Claude Code へ渡すオプション
+STARTUP_PROMPT = Path("skills") / "mindmap" / "references" / "起動時の指示.md"
+APPEND_PROMPT_OPTION = "--append-system-prompt"
+
+
+def _expected_args(plugin_dir: Path) -> str:
+    """偽の claude が 1 行 1 引数で書く、起動時の指示を渡したときの引数の中身を返す。"""
+    # 起動スクリプトは $(cat ...) で読むので、末尾の改行は落ちる
+    prompt = (plugin_dir / STARTUP_PROMPT).read_text(encoding="utf-8").rstrip("\n")
+    return f"{APPEND_PROMPT_OPTION}\n{prompt}\n"
+
+
 # 外から見る設定の環境変数とその値
 ALLOWED_HOSTS_ENV = "MINDSTELLA_ALLOWED_HOSTS"
 ALLOWED_HOST = "preview.example.test"
@@ -60,6 +72,7 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     started = sandbox.wait_started()
     assert len(started) == 1
     assert "--mcp-config" not in started[0].read_text(encoding="utf-8").splitlines()
+    assert started[0].read_text(encoding="utf-8") == _expected_args(PLUGIN_DIR)
     assert started[0].with_suffix(".config").read_text(encoding="utf-8") == str(sandbox.config_dir)
     status = read_server_status(sandbox.port)
     assert status is not None
@@ -87,7 +100,7 @@ def test_normal_when_external_settings(sandbox: LaunchSandbox, ready_venv: Path)
     assert len(started) == 1
     # Claude Code の環境は呼び出し元から受け継いだ分だけで、起動スクリプトは値を足さない
     assert started[0].with_suffix(".hosts").read_text(encoding="utf-8") in ("", ALLOWED_HOST)
-    assert started[0].read_text(encoding="utf-8") == "\n"
+    assert started[0].read_text(encoding="utf-8") == _expected_args(PLUGIN_DIR)
 
 
 def test_normal_when_plugin_upgraded(
@@ -174,6 +187,25 @@ def test_error_when_plugin_not_installed(sandbox: LaunchSandbox, ready_venv: Pat
     assert "mindstella@mindstella" in result.stderr
     assert "インストール" in result.stderr
     assert sandbox.sessions() == []
+
+
+def test_error_when_startup_prompt_missing(
+    sandbox: LaunchSandbox, ready_venv: Path, tmp_path: Path
+) -> None:
+    """インストールした版のフォルダに起動時の指示が無ければ、入れ直すよう示して何も立てない（異常系）。"""
+    # 準備
+    plugin_dir = copy_plugin(tmp_path / "plugin-without-prompt")
+    (plugin_dir / STARTUP_PROMPT).unlink()
+    sandbox.write_claude([{"id": "mindstella@mindstella", "installPath": str(plugin_dir)}])
+    # 実行
+    result = sandbox.launch("家計簿アプリ", venv=ready_venv, script=plugin_dir / "bin" / "mindstella")
+    # 検証
+    assert result.returncode == 1
+    assert str(plugin_dir / STARTUP_PROMPT) in result.stderr
+    assert "入れ直" in result.stderr
+    assert sandbox.sessions() == []
+    assert sandbox.started() == []
+    assert read_server_status(sandbox.port) is None
 
 
 def test_error_when_folder_missing(sandbox: LaunchSandbox, ready_venv: Path) -> None:
