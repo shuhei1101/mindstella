@@ -97,8 +97,8 @@ var MindmapPreview;
     MindmapPreview.HTML_BLOCK_CLASS = "html-block";
     /** 本文の表を包む、表の中だけで横に送る入れ物の class */
     MindmapPreview.TABLE_WRAP_CLASS = "md-table-wrap";
-    /** コードブロックの `pre` を、キーボードのフォーカスで止まり横に送れる要素にする属性 */
-    MindmapPreview.CODE_BLOCK_ATTRS = { tabindex: "0", role: "group", "aria-label": "コードブロック" };
+    /** mdmark が属性を付けないコードブロックの `pre` を、キーボードのフォーカスで止まり横に送れる要素にする属性（mdmark がフェンスのコードブロックに付ける値と同じ） */
+    MindmapPreview.CODE_BLOCK_ATTRS = { tabindex: "0", "aria-label": "コード" };
     /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
     MindmapPreview.HTML_LINE_ATTR = "data-line";
     /** 開きタグの直後の改行を、解析のときに取り除く要素 */
@@ -504,10 +504,10 @@ var MindmapPreview;
         return root;
     }
     MindmapPreview.renderMarkdown = renderMarkdown;
-    /** 埋め込んだ HTML の範囲の外のコードブロックの `pre`（子に `code` を持つもの）を、キーボードのフォーカスで止まり横に送れる要素にする（範囲の中の `pre` は書いた HTML のまま） */
+    /** 埋め込んだ HTML の範囲の外のコードブロックの `pre`（子に `code` を持つもの）のうち、mdmark が `tabindex` を付けていない字下げのコードブロックを、キーボードのフォーカスで止まり横に送れる要素にする（mdmark が付けた「コード: {言語}」は残す。範囲の中の `pre` は書いた HTML のまま） */
     function focusCodeBlocks(root) {
         for (const pre of root.querySelectorAll("pre")) {
-            if (pre.querySelector(":scope > code") === null || pre.closest(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`) !== null)
+            if (pre.hasAttribute("tabindex") || pre.querySelector(":scope > code") === null || pre.closest(`.${MindmapPreview.EMBEDDED_HTML_CLASS}`) !== null)
                 continue;
             for (const [name, value] of Object.entries(MindmapPreview.CODE_BLOCK_ATTRS))
                 pre.setAttribute(name, value);
