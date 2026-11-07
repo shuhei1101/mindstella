@@ -40,7 +40,7 @@ APPEND_PROMPT_OPTION = "--append-system-prompt"
 
 def _expected_args(plugin_dir: Path) -> str:
     """偽の claude が 1 行 1 引数で書く、起動時の指示を渡したときの引数の中身を返す。"""
-    # 起動スクリプトは $(cat ...) で読むので、末尾の改行は落ちる
+    # 起動スクリプトはコマンド置換で読むので、末尾の改行は落ちる
     prompt = (plugin_dir / STARTUP_PROMPT).read_text(encoding="utf-8").rstrip("\n")
     return f"{APPEND_PROMPT_OPTION}\n{prompt}\n"
 
