@@ -102,7 +102,7 @@ echo "[mindstella] セッション: $SESSION" >&2
 # 5. 起動時の指示: インストールした今の版のフォルダから読み、Claude Code へ --append-system-prompt で渡す
 STARTUP_PROMPT_FILE="$PLUGIN_DIR/skills/mindmap/references/起動時の指示.md"
 [ -r "$STARTUP_PROMPT_FILE" ] || fail "起動時の指示がありません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
-STARTUP_PROMPT="$(cat "$STARTUP_PROMPT_FILE")" || fail "起動時の指示を読めません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
+STARTUP_PROMPT="$(<"$STARTUP_PROMPT_FILE")" || fail "起動時の指示を読めません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
 
 # 6. 常駐サーバー: インストールした今の版の起動の確認で、落ちていれば起動する（案内は標準エラーに出る）
 python3 "$PLUGIN_DIR/skills/mindmap/scripts/ensure_server.py" || exit 1
