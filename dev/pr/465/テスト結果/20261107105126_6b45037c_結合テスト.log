@@ -1,0 +1,18 @@
+# 結合テスト（関連するものは全件 pass）
+# commit: 6b45037c
+# 実行日時: 2026-11-07 10:51:26 JST
+# 補足: mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ。この環境に playwright が無いので tests/integration/preview・storybook・storybook_react は回していない（画面を変えていない）
+$ pytest tests/integration/server/test_write_release.py tests/integration/server/test_launch.py tests/integration/server/test_mcp_server.py tests/integration/skill/test_session.py -q
+................................                                         [100%]
+32 passed in 53.71s
+
+# 回帰の確認: tests/integration/server・skill・plugin の全件
+$ pytest tests/integration/server tests/integration/skill tests/integration/plugin -q
+FAILED tests/integration/server/test_check_env.py::test_error_when_dependency_missing
+FAILED tests/integration/server/test_edits_save.py::test_error_when_write_fails
+FAILED tests/integration/server/test_ensure_server.py::test_error_when_dependency_missing
+3 failed, 426 passed, 2 skipped in 234.84s (0:03:54)
+
+# 上の 3 件は base（develop の ec3ac7c6）でも同じ環境で fail する（依存を PYTHONPATH で見せる環境と /mnt/c の権限による。この作業 PR の変更に関係しない）
+$ (develop の worktree) pytest tests/integration/server/test_check_env.py::test_error_when_dependency_missing tests/integration/server/test_edits_save.py::test_error_when_write_fails tests/integration/server/test_ensure_server.py::test_error_when_dependency_missing -q
+3 failed in 3.76s
