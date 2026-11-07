@@ -24,3 +24,5 @@ components:
   container: frontend/src/shared/components/selection-comment.tsx
 notes:
   単体テスト: 同じフォルダの `selection-comment.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+test_files:
+- frontend/src/shared/components/selection-comment.test.tsx

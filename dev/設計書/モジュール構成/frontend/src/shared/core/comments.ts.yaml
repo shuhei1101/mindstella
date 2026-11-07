@@ -241,3 +241,5 @@ functions:
   container: frontend/src/shared/core/comments.ts
 notes:
   単体テスト: 同じフォルダの `comments.test.ts` に置く（knowledge の規約『フォルダ構成』）
+test_files:
+- frontend/src/shared/core/comments.test.ts

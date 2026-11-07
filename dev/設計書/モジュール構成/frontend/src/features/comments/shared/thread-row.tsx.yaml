@@ -24,3 +24,5 @@ components:
   container: frontend/src/features/comments/shared/thread-row.tsx
 notes:
   単体テスト: 同じフォルダの `thread-row.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+test_files:
+- frontend/src/features/comments/shared/thread-row.test.tsx

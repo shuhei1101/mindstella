@@ -30,3 +30,5 @@ components:
   container: frontend/src/features/comments/thread/thread-view.tsx
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+test_files:
+- frontend/src/features/comments/thread/thread-view.test.tsx

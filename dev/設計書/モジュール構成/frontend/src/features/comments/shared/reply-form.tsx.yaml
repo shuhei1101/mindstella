@@ -24,3 +24,5 @@ components:
   container: frontend/src/features/comments/shared/reply-form.tsx
 notes:
   単体テスト: 同じフォルダの `reply-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）
+test_files:
+- frontend/src/features/comments/shared/reply-form.test.tsx
