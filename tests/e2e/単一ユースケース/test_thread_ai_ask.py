@@ -117,3 +117,48 @@ def test_error_when_body_empty(
     assert "body" in result.text
     assert not (root / RECORD_DIR / "threads.yaml").exists()
     assert snapshot_tree(root) == before
+
+
+# 検討事項を向けて聞くスレッドの本文と要約
+DECISION_QUESTION = "## 保存の形\n\n| 案 | 内容 |\n| --- | --- |\n| A | YAML |\n| B | 種類ごとに分ける |\n\n推奨: A"
+DECISION_SUMMARY = "D-1 の保存の形を聞いた。返事待ち"
+
+
+def test_normal_when_targeting_decision(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """決めてほしいことは、検討事項に推奨の印を記録してから、その検討事項を向けたスレッドで聞く（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "YAML"}, {"key": "B", "content": "種類ごとに分ける"}]
+    root = make_workspace(make_item("D-1", options=options))
+    ws = {"workspace": str(root)}
+    # 実行
+    replay("edit_option", **ws, id="D-1", action="update", key="A", option={"recommended": True})
+    created = replay(
+        "new_thread",
+        **ws,
+        body=DECISION_QUESTION,
+        summary=DECISION_SUMMARY,
+        tags=["保存"],
+        target="D-1",
+    )
+    checked = replay("check", **ws)
+    # 検証
+    threads = read_yaml(root, "threads.yaml")["items"]
+    assert [item["id"] for item in threads] == [created["id"]]
+    thread = threads[0]
+    # オープンのスレッドで、向けた項目が D-1、最初の書き込みが案 A・B と推奨 A を持つ
+    assert (thread["status"], thread["target"]) == ("open", "D-1")
+    assert thread["posts"][0]["author"] == "ai"
+    for text in ("| A | YAML |", "| B | 種類ごとに分ける |", "推奨: A"):
+        assert text in thread["posts"][0]["body"]
+    # D-1 の推奨の印が案 A にある
+    decision = read_yaml(root, "decisions.yaml")["items"][0]
+    assert [option.get("recommended") for option in decision["options"]] == [True, None]
+    # 最初の書き込みが利用者の未読である
+    assert thread["posts"][0]["seen"] is False
+    assert checked["ok"] is True
+    assert checked["problems"] == []

@@ -301,6 +301,14 @@ def http_call(
             )
 
 
+def send_user_reply(url: str, thread_id: str, body: str) -> None:
+    """利用者がスレッドへ返信をレビューに追加してまとめて送ったのと同じに、配信の API で返信を送る。"""
+    added = http_call(url, "/api/comments", method="POST", payload={"thread": thread_id, "body": body})
+    assert added.status == 201, added.text
+    sent = http_call(url, "/api/comments/send", method="POST", payload={"ids": [added.json()["id"]]})
+    assert sent.status == 201, sent.text
+
+
 def select_text(page: Page, selector: str, text: str) -> None:
     """要素の中で最初に出てくる文を選ぶ。文が見つからなければ例外にする。"""
     found = page.evaluate(SELECT_TEXT_SCRIPT, [selector, text])

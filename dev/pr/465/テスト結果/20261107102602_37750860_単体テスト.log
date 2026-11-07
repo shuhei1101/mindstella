@@ -1,0 +1,28 @@
+# 単体テスト（Red: 実装前）
+# commit: 37750860
+# 実行日時: 2026-11-07 10:26:02 JST
+# 補足: この環境に playwright が無いので tests/unit/preview は含めない。mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ
+$ pytest tests/unit/scripts -q
+E       AttributeError: module 'commands' has no attribute 'run_write_release'. Did you mean: 'run_clear_release'?
+E       AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E       AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+E           AttributeError: module 'store' has no attribute 'write_release'. Did you mean: 'write_readme'?
+FAILED tests/unit/scripts/test_commands.py::test_run_write_release - Attribut...
+FAILED tests/unit/scripts/test_store.py::test_write_release - AttributeError:...
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_overwrite - ...
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_path_invalid[parent]
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_path_invalid[absolute]
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_path_invalid[extension]
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_path_invalid[empty]
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_path_invalid[symlink-outside]
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_workspace_missing
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_write_fails[replace]
+FAILED tests/unit/scripts/test_store.py::test_write_release_when_write_fails[file-in-the-way]
+11 failed, 1170 passed, 1 skipped in 32.33s

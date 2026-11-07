@@ -1,6 +1,7 @@
 """方針転換（採用する案を切り替え、影響を要見直しにし、納品物を資料へ格下げする）の E2E テスト。
 
 モデルを呼ばず、スキルの手順が連ねるコマンドと設定の更新を決めた引数で順に再生して、ワークスペースの状態を確かめる。
+切り替えの確認への利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する。
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from preview_helpers import send_user_reply
 from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
@@ -43,8 +45,18 @@ def test_normal(
     )
     ws = {"workspace": str(root)}
     # 実行
-    replay("adopt", **ws, id="D-1", key="B")
+    # 影響を受ける項目を引いてから、切り替える D-1 を向けたスレッドで確認を取る
     affected = replay("impact", **ws, id="D-1")["affected"]
+    thread_id = replay(
+        "new_thread",
+        **ws,
+        body="D-1 を案 B に切り替え、D-2・D-3 を要見直しにしてよいですか",
+        summary="D-1 の切り替えの確認。返事待ち",
+        target="D-1",
+    )["id"]
+    send_user_reply(replay("preview_url", **ws)["url"], thread_id, "それでよい")
+    replay("thread", **ws, id=thread_id)
+    replay("adopt", **ws, id="D-1", key="B")
     replay("update", **ws, id="D-2", item={"status": "要見直し", "reason": "保存先が変わった"})
     replay("update", **ws, id="D-3", item={"status": "要見直し", "reason": "保存先が変わった"})
     replay(
@@ -66,7 +78,13 @@ def test_normal(
         kind="log",
         item={"title": "方針転換", "date": "2026-10-02", "related": ["D-1"]},
     )
+    replay("reply", **ws, id=thread_id, body="D-2・D-3 を要見直しにし、T-1・T-2 を積みました", summary="D-1 を案 B に切り替えた")
     # 検証
+    # D-1 を向けた AI のスレッドに、確認・利用者の承認・要見直しにした項目とタスクの ID を含む AI の返信が並ぶ
+    thread = read_yaml(root, "threads.yaml")["items"][0]
+    assert thread["target"] == "D-1"
+    assert [post["author"] for post in thread["posts"]] == ["ai", "user", "ai"]
+    assert all(item_id in thread["posts"][-1]["body"] for item_id in ("D-2", "D-3", "T-1", "T-2"))
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
     tasks = {item["id"]: item for item in read_yaml(root, "tasks.yaml")["items"]}
     assert [item["id"] for item in affected] == ["D-2", "D-3"]
@@ -121,6 +139,7 @@ def test_normal_when_deliverable_no_longer_needed(
         kind="log",
         item={"title": "スコープ変更", "date": "2026-10-02", "related": ["A-1"]},
     )
+    replay("new_thread", **ws, body="A-1 を納品物から外し、資料へ格下げしました", summary="A-1 の格下げを知らせた", target="A-1")
     # 検証
     # A-1 が deliverable: false で、資料として残っている
     doc = read_yaml(root, "docs.yaml")["items"][0]

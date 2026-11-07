@@ -105,6 +105,9 @@ def test_normal(sandbox: LaunchSandbox, ready_venv: Path) -> None:
     assert len(started) == 1
     assert "--mcp-config" not in started[0].read_text(encoding="utf-8").splitlines()
     assert started[0].with_suffix(".config").read_text(encoding="utf-8") == str(sandbox.config_dir)
+    # Claude Code が --append-system-prompt を受け取り、その値が installPath の版のフォルダの起動時の指示の中身である
+    prompt = (PLUGIN_DIR / "skills" / "mindmap" / "references" / "起動時の指示.md").read_text(encoding="utf-8")
+    assert started[0].read_text(encoding="utf-8") == f"--append-system-prompt\n{prompt.rstrip(chr(10))}\n"
 
 
 def test_normal_when_plugin_upgraded(

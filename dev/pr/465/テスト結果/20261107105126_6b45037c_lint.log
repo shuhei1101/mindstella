@@ -1,0 +1,8 @@
+# lint
+# commit: 6b45037c
+# 実行日時: 2026-11-07 10:52:17 JST
+# 補足: node_modules が無いので npm run typecheck・npm run lint は回していない（.ts・frontend/ を変えていない）
+$ ruff check plugins tests
+All checks passed!
+$ bash -n plugins/mindstella/bin/mindstella
+ok

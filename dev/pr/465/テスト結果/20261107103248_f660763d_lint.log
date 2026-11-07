@@ -1,0 +1,8 @@
+# lint
+# commit: f660763d
+# 実行日時: 2026-11-07 10:33:19 JST
+# 補足: この worktree に node_modules が無いので npm run typecheck・npm run lint は回していない。作業 PR は .ts・frontend/ を変えていない
+$ ruff check plugins tests
+All checks passed!
+$ bash -n plugins/mindstella/bin/mindstella
+ok

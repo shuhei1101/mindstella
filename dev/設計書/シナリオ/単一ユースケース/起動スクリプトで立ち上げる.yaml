@@ -33,7 +33,7 @@ scenarios:
         LS->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
         LS->>SV: mindstella の応答が無いので今の版のフォルダのサーバーを起動する
         LS->>TM: セッションを立てる（設定のフォルダを渡す）
-        TM->>CC: 立ち上げる
+        TM->>CC: 立ち上げる（今の版のフォルダの起動時の指示を --append-system-prompt で渡す）
         LS->>TM: セッションへつなぐ
       ```
     expected:
@@ -42,6 +42,7 @@ scenarios:
       - MCP のクライアントで常駐サーバーにつなぐと、mindstella のツールの一覧が返る
       - Claude Code が `--mcp-config` を受け取っていない
       - Claude Code に設定のフォルダの `CLAUDE_CONFIG_DIR` が渡る
+      - Claude Code が `--append-system-prompt` を受け取り、その値が `installPath` の版のフォルダの起動時の指示のファイルの中身である
     test: test_normal
   - name: 正常シナリオ（プラグインを上げた後）
     setup:

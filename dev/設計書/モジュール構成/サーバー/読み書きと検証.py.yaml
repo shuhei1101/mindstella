@@ -306,7 +306,7 @@ classes:
     title: 引数の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・`write_release` の `path` が `release/` の下の `.md`・`.html` を指さない・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
     kind: クラス
     inherits: MindmapError
     properties:
@@ -1496,7 +1496,7 @@ functions:
       2. `root / SETTINGS_FILE` か `root / LEGACY_SETTINGS_FILE` がファイルなら、`lines` に `UPGRADE_HINT`（`{root}` を埋めたもの）を持つ `WorkspaceNotFoundError` を送る
       3. どれも無ければ `WorkspaceNotFoundError` を送る
 
-      `load_workspace`・`clear_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
+      `load_workspace`・`clear_release`・`write_release`・`workspace_lock`（`create` が偽で `require` を渡さないとき）と、入口・配信の確かめがこれを呼ぶ。移し替え（モジュール構成『移行』）だけは前の版の形も通すため呼ばない
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`root` に `.mindstella/config.yaml` が無い'
@@ -1596,7 +1596,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
-    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`clear_release`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』『ゴール判定』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`clear_release`・`write_release`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』『ゴール判定』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
     args:
       - name: root
         type: Path
@@ -1754,6 +1754,88 @@ functions:
         condition: '`parametrize`: `A-1.md` / `A-1.html` / `None` / `A-1.txt`'
         expected: '`markdown` / `html` / `None` / `None`'
         mock: なし
+  - name: write_release
+    title: リリースの書き出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: リリースの書き出し
+    scope: public
+    summary: '`release/` の下の `.md`・`.html` を 1 つ書く（あれば置き換える）'
+    side_effects: '`release/` の下に 1 ファイルを書く（`release/` と途中のフォルダが無ければ作る）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: path
+        type: str
+        required: true
+        passing: positional
+        description: '`release/` からのパス'
+      - name: content
+        type: str
+        required: true
+        passing: positional
+        description: 本文
+    returns:
+      type: tuple[str, int]
+      description: 書いたファイルの `release/` からのパス（区切りは `/`）と、本文の UTF-8 のバイト数
+    process: |-
+      1. ワークスペースを確かめる（`require_workspace`）
+      2. `path` を確かめる。次のどれかなら `ArgumentError("path", 理由)` を送る
+         - 空・絶対パス・部分に `..` を持つ
+         - 拡張子が `.md`・`.html` でない
+      3. `records_root(root) / RELEASE_DIR` と `path` をつないだ置き換え先を作り、`resolve()` した先が `resolve()` した `release/` の下に無ければ `ArgumentError("path", 理由)` を送る（シンボリックリンクで外を指す）
+      4. 置き換え先の親フォルダを作る（`mkdir(parents=True, exist_ok=True)`）
+         - `OSError` が起きた場合、`WriteFailedError` を送る（途中に同じ名前のファイルがある など）
+      5. `_write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - `OSError` が起きた場合、一時ファイルを消してから `WriteFailedError` を送る
+      6. `release/` からのパスと `content.encode("utf-8")` の長さを返す
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: '`root` に `config.yaml` が無い（`require_workspace`）'
+        message: 'ワークスペースがありません: {root}'
+      - name: ArgumentError
+        condition: '`path` が空・絶対パス・`..` を含む・`release/` の外を指す・拡張子が `.md`・`.html` でない'
+        message: '引数の誤り: path: {理由}'
+      - name: WriteFailedError
+        condition: フォルダを作るか書き込む途中で `OSError` が起きた
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_write_release
+        case: 正常
+        summary: release/ の下にフォルダを作って書く
+        condition: '`release/` を持たない作成済みのワークスペースに `path` `図/画面.html`、`content` `<p>あ</p>`'
+        mock: なし
+        expected: 戻り値が `("図/画面.html", 10)`。`.mindstella/release/図/画面.html` の中身が `<p>あ</p>`
+      - name: test_write_release_when_overwrite
+        case: 正常
+        summary: 同じ名前を置き換える
+        condition: '`release/a.md` に `前` がある'
+        mock: なし
+        expected: '`release/a.md` の中身が渡した `後`。`release/` の下のファイルが 1 つ'
+      - name: test_write_release_when_path_invalid
+        case: 異常
+        summary: release/ の外・拡張子違いは書かない
+        condition: '`parametrize`: `../config.yaml` / 絶対パス / `a.txt` / 空 / `release/` の外を指すシンボリックリンク `外/` の下の `b.md`'
+        mock: なし
+        expected: '`ArgumentError`（`argument` が `path`）。ワークスペースのファイルが呼ぶ前と同じ'
+        exception: path が release/ の下の .md・.html でない
+      - name: test_write_release_when_workspace_missing
+        case: 異常
+        summary: config.yaml が無ければ何も書かない
+        condition: '`config.yaml` が無い `tmp_path`'
+        mock: なし
+        expected: '`WorkspaceNotFoundError`。`.mindstella/` が作られていない'
+        exception: config.yaml が無い
+      - name: test_write_release_when_write_fails
+        case: 異常
+        summary: 置き換えに失敗したら一時ファイルを残さない
+        condition: '`parametrize`: `os.replace` を `PermissionError` を送るように差し替える / `release/図` にファイルがあり `path` が `図/a.md`'
+        mock: '`os.replace`（monkeypatch。前者だけ）'
+        expected: '`WriteFailedError`。`release/` に一時ファイルも置き換え先も無い（後者は `release/図` のファイルが呼ぶ前と同じ）'
+        exception: フォルダの作成か置き換えで OSError
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py

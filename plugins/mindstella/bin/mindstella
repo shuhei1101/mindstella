@@ -99,10 +99,15 @@ LAUNCHED="$("$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --folder "$FOLDER" --format 
 echo "[mindstella] プラグイン: $PLUGIN_DIR" >&2
 echo "[mindstella] セッション: $SESSION" >&2
 
-# 5. 常駐サーバー: インストールした今の版の起動の確認で、落ちていれば起動する（案内は標準エラーに出る）
+# 5. 起動時の指示: インストールした今の版のフォルダから読み、Claude Code へ --append-system-prompt で渡す
+STARTUP_PROMPT_FILE="$PLUGIN_DIR/skills/mindmap/references/起動時の指示.md"
+[ -r "$STARTUP_PROMPT_FILE" ] || fail "起動時の指示がありません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
+STARTUP_PROMPT="$(<"$STARTUP_PROMPT_FILE")" || fail "起動時の指示を読めません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
+
+# 6. 常駐サーバー: インストールした今の版の起動の確認で、落ちていれば起動する（案内は標準エラーに出る）
 python3 "$PLUGIN_DIR/skills/mindmap/scripts/ensure_server.py" || exit 1
 
-# 6. セッション: 同じ名前（同じフォルダ）のセッションが既にあれば立てず、そのセッションへつなぐ
+# 7. セッション: 同じ名前（同じフォルダ）のセッションが既にあれば立てず、そのセッションへつなぐ
 if tmux has-session -t "=$SESSION" 2>/dev/null; then
   echo "[mindstella] 既にあるセッションへつなぎます: $SESSION" >&2
 else
@@ -113,10 +118,11 @@ else
     # tmux のサーバーが先に立っていると呼び出し元の環境変数は渡らないので、セッションへ渡す
     ENV_ARGS=(-e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR")
   fi
-  tmux new-session -d -s "$SESSION" -c "$WORK_DIR" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} -- claude
+  # コマンドを引数ごとに分けて渡し、起動時の指示の中身をシェルで解釈させない
+  tmux new-session -d -s "$SESSION" -c "$WORK_DIR" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} -- claude --append-system-prompt "$STARTUP_PROMPT"
 fi
 
-# 7. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければつなぐコマンドを出して終わる
+# 8. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければつなぐコマンドを出して終わる
 if [ -t 1 ]; then
   if [ -n "${TMUX:-}" ]; then
     exec tmux switch-client -t "=$SESSION"

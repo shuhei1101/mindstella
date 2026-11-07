@@ -18,6 +18,7 @@ from typing import IO, Any, Literal
 
 import yaml
 from errors import (
+    ArgumentError,
     ItemNotFoundError,
     SchemaMismatchError,
     WorkspaceExistsError,
@@ -821,6 +822,42 @@ def clear_release(root: Path) -> list[str]:
             raise write_failed(path, error) from error
         removed.append(f"{path.name}/" if is_folder else path.name)
     return removed
+
+
+RELEASE_SUFFIXES = (".md", ".html")
+
+
+def write_release(root: Path, path: str, content: str) -> tuple[str, int]:
+    """`.mindstella/release/` の下の `.md`・`.html` を 1 つ書き、`release/` からのパスとバイト数を返す。"""
+    root = root.resolve()
+    # .mindstella/config.yaml が無いフォルダはワークスペースではない（何も書かない）
+    require_workspace(root)
+
+    relative = Path(path)
+    if not path or relative.is_absolute() or ".." in relative.parts:
+        raise ArgumentError("path", "release/ からの相対パスを渡してください（空・絶対パス・.. は使えません）")
+    if relative.suffix not in RELEASE_SUFFIXES:
+        raise ArgumentError("path", "拡張子は .md か .html にしてください")
+    release_dir = records_root(root) / RELEASE_DIR
+    target = release_dir / relative
+    # シンボリックリンクを解いた先が release/ の下に無ければ書かない
+    if not target.resolve().is_relative_to(release_dir.resolve()):
+        raise ArgumentError("path", "release/ の下を指してください")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise write_failed(target.parent, error) from error
+    try:
+        temp = _write_temp(target, content)
+    except OSError as error:
+        raise write_failed(target, error) from error
+    try:
+        os.replace(temp, target)
+    except OSError as error:
+        # 置き換えられなかった一時ファイルは残さない
+        _remove_files([temp])
+        raise write_failed(target, error) from error
+    return relative.as_posix(), len(content.encode("utf-8"))
 
 
 def read_body(workspace: Workspace, name: str) -> str | None:

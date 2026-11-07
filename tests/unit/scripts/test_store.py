@@ -22,6 +22,7 @@ from jsonschema import Draft202012Validator
 import migrator
 import store
 from errors import (
+    ArgumentError,
     ItemNotFoundError,
     SchemaMismatchError,
     WorkspaceExistsError,
@@ -901,6 +902,97 @@ def test_clear_release_when_remove_fails(
         store.clear_release(root)
     assert (release / "二.md").exists()
     assert not (release / "一.md").exists()
+
+
+def test_write_release(make_workspace: MakeWorkspace) -> None:
+    """release/ が無ければ途中のフォルダごと作って書き、パスとバイト数を返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    shutil.rmtree(root / RECORD_DIR / "release")
+    # 実行
+    written = store.write_release(root, "図/画面.html", "<p>あ</p>")
+    # 検証
+    assert written == ("図/画面.html", 10)
+    target = root / RECORD_DIR / "release" / "図" / "画面.html"
+    assert target.read_text(encoding="utf-8") == "<p>あ</p>"
+
+
+def test_write_release_when_overwrite(make_workspace: MakeWorkspace) -> None:
+    """同じ名前があれば置き換える（正常系）。"""
+    # 準備
+    root = make_workspace()
+    release = root / RECORD_DIR / "release"
+    (release / "a.md").write_text("前", encoding="utf-8")
+    # 実行
+    store.write_release(root, "a.md", "後")
+    # 検証
+    assert (release / "a.md").read_text(encoding="utf-8") == "後"
+    assert [p for p in release.rglob("*") if p.is_file()] == [release / "a.md"]
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["../config.yaml", "ABSOLUTE", "a.txt", "", "外/b.md"],
+    ids=["parent", "absolute", "extension", "empty", "symlink-outside"],
+)
+def test_write_release_when_path_invalid(
+    make_workspace: MakeWorkspace, snapshot_tree: SnapshotTree, tmp_path: Path, path: str
+) -> None:
+    """release/ の下の .md・.html を指さない path は、何も書かずに引数の誤りにする（異常系）。"""
+    # 準備
+    root = make_workspace()
+    release = root / RECORD_DIR / "release"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    if path == "外/b.md":
+        if sys.platform == "win32":
+            pytest.skip("シンボリックリンクを作れない")
+        (release / "外").symlink_to(outside, target_is_directory=True)
+    if path == "ABSOLUTE":
+        path = str(outside / "b.md")
+    before = snapshot_tree(root)
+    # 実行・検証
+    with pytest.raises(ArgumentError) as caught:
+        store.write_release(root, path, "本文")
+    assert caught.value.argument == "path"
+    assert snapshot_tree(root) == before
+    assert list(outside.iterdir()) == []
+
+
+def test_write_release_when_workspace_missing(tmp_path: Path) -> None:
+    """.mindstella/config.yaml が無ければ何も書かない（異常系）。"""
+    # 実行・検証
+    with pytest.raises(WorkspaceNotFoundError, match=re.escape(str(tmp_path))):
+        store.write_release(tmp_path, "a.md", "本文")
+    assert not (tmp_path / RECORD_DIR).exists()
+
+
+@pytest.mark.parametrize("cause", ["replace", "file-in-the-way"])
+def test_write_release_when_write_fails(
+    make_workspace: MakeWorkspace,
+    failing_replace: FailingReplace,
+    monkeypatch: pytest.MonkeyPatch,
+    cause: str,
+) -> None:
+    """置き換えかフォルダの作成に失敗したら、書きかけを残さずに WriteFailedError にする（異常系）。"""
+    # 準備
+    root = make_workspace()
+    release = root / RECORD_DIR / "release"
+    if cause == "replace":
+        path = "a.md"
+        # store モジュールの参照を、a.md への置き換えだけ失敗するものに差し替える
+        monkeypatch.setattr(store.os, "replace", failing_replace("a.md"))
+    else:
+        path = "図/a.md"
+        (release / "図").write_text("ファイル", encoding="utf-8")
+    # 実行・検証
+    with pytest.raises(WriteFailedError):
+        store.write_release(root, path, "本文")
+    assert list(release.rglob("*.tmp")) == []
+    if cause == "replace":
+        assert not (release / "a.md").exists()
+    else:
+        assert (release / "図").read_text(encoding="utf-8") == "ファイル"
 
 
 def test_read_body(make_workspace) -> None:

@@ -34,6 +34,7 @@ from preview_helpers import (
     open_list,
     open_thread,
     select_text_for_pill,
+    send_user_reply,
 )
 from readme_helpers import assert_readme_commands, preview_section
 from workspace_fixtures import (
@@ -118,6 +119,15 @@ SETTINGS: dict[str, Any] = {
 
 # 取り込みで足すタスクの本文
 TASK_BODY = "経緯: 会話で持ち越した\n終わり方: 比べた結果を残す\n"
+
+
+
+def _ask(replay: Replay, ws: dict[str, str], body: str, target: str | None = None) -> str:
+    """AI が利用者へ聞くスレッドを立て、ID を返す（回答の往復は別のシナリオで通すため再生しない）。"""
+    arguments: dict[str, Any] = {"body": body, "summary": f"{body}。返事待ち"}
+    if target is not None:
+        arguments["target"] = target
+    return str(replay("new_thread", **ws, **arguments)["id"])
 
 
 def _to_field_settings(root: Path) -> None:
@@ -212,6 +222,7 @@ def test_normal_when_new_discussion(
     added_decisions = read_yaml(root, "decisions.yaml")["items"]
     # ヒアリング: 前提が揃った未決定を聞いて、選ばれた案を採用し、答えと理由を記録する
     candidates = replay("next", **ws)["candidates"]
+    _ask(replay, ws, "D-2 のファイルの分け方を決めてください", target="D-2")
     replay("adopt", **ws, id="D-2", key="A")
     replay(
         "update", **ws, id="D-2", item={"answer": "種類ごとに分ける", "reason": "探しやすい"}
@@ -226,7 +237,8 @@ def test_normal_when_new_discussion(
         key="B",
         option={"content": "DB に保存する"},
     )
-    # リサーチ: 調査を検討事項に繋ぎ、タスクを完了にする
+    # リサーチ: 起動前の確認を取り、調査を検討事項に繋ぎ、タスクを完了にする
+    _ask(replay, ws, "保存先の候補を 2 体で調べてよいですか", target="T-1")
     replay(
         "add",
         **ws,
@@ -244,6 +256,7 @@ def test_normal_when_new_discussion(
     replay("update", **ws, id="T-1", item={"status": "完了", "result": "比較を調査 R-1 に書いた"})
     replay("add", **ws, kind="log", item=_log("リサーチ", ["R-1", "T-1"], "候補を比べた"))
     # 方針転換: 採用する案を切り替え、影響を要見直しにして見直しのタスクを積む
+    _ask(replay, ws, "D-1 を案 B に切り替え、D-2 を要見直しにしてよいですか", target="D-1")
     replay("adopt", **ws, id="D-1", key="B")
     affected = replay("impact", **ws, id="D-1")["affected"]
     replay("update", **ws, id="D-1", item={"answer": "DB に保存する", "reason": "検索しやすい"})
@@ -291,12 +304,16 @@ def test_normal_when_new_discussion(
     preview_url = replay("preview_url", **ws)["url"]
     # ゴール判定: 届いたかを確かめ、確定の後に release/ へ書き出す
     goal = replay("goal", **ws)
+    _ask(replay, ws, "決まった検討事項と要件定義書で確定してよいですか")
     deliverable = replay("show", **ws, id="A-1")
     replay("clear_release", **ws)
-    (root / RECORD_DIR / "release" / "決定事項.md").write_text(
-        "# 決定事項\n\n- D-1: DB に保存する\n- D-2: テーブルを種類ごとに分ける\n", encoding="utf-8"
+    replay(
+        "write_release",
+        **ws,
+        path="決定事項.md",
+        content="# 決定事項\n\n- D-1: DB に保存する\n- D-2: テーブルを種類ごとに分ける\n",
     )
-    (root / RECORD_DIR / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    replay("write_release", **ws, path="要件定義書.md", content=deliverable["body_markdown"])
     replay(
         "add", **ws, kind="log", item=_log("ゴール判定", ["A-1"], "ゴールに届いたのでリリースした")
     )
@@ -353,6 +370,10 @@ def test_normal_when_new_discussion(
     assert "支出を DB に記録する" in (root / RECORD_DIR / "release" / "要件定義書.md").read_text(
         encoding="utf-8"
     )
+    # ヒアリングで聞いた検討事項を向けた AI のスレッドと、リサーチ・方針転換・ゴール判定の確認の AI のスレッドがある
+    threads = read_yaml(root, "threads.yaml")["items"]
+    assert [thread.get("target") for thread in threads] == ["D-2", "T-1", "D-1", None]
+    assert {thread["posts"][0]["author"] for thread in threads} == {"ai"}
     # check が参照切れと、YAML と Markdown のずれを 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
@@ -598,6 +619,22 @@ def test_normal_when_scope_widened(
     )
     # ゴール判定: ゴールが無いことを示す
     first_goal = replay("goal", **ws)
+    _ask(replay, ws, "ゴールがありません。ゴールを決めますか")
+    # 範囲の見直しのたたき台を資料 A-1 に起こし、A-1 を向けたスレッドで確かめる
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item=_placed(
+            "範囲の見直しのたたき台",
+            "問い",
+            kind="文書",
+            deliverable=False,
+            status="下書き",
+            body_markdown="# たたき台\n\nシステム開発を足し、要件まで決める。",
+        ),
+    )
+    _ask(replay, ws, "A-1 のたたき台で確定してよいですか", target="A-1")
     # 範囲の見直し: システム開発を足し、フェーズの対応を確かめて付け替え、題名・最上位の軸の呼び名・ゴールを書き換える
     replay(
         "update_settings",
@@ -636,22 +673,26 @@ def test_normal_when_scope_widened(
     replay(
         "update_settings",
         **ws,
-        settings={"goal": {**new_goal, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}},
+        settings={"goal": {**new_goal, "deliverables": [{"title": "要件定義書", "doc": "A-2"}]}},
     )
     # 取り込み: ゴールのフェーズまでの検討事項の案を採用して決定済みにし、納品物の資料を完成にする
     replay("adopt", **ws, id="D-1", key="A")
     replay("adopt", **ws, id="D-2", key="A")
     replay("update", **ws, id="D-1", item={"answer": "支出を記録する"})
     replay("update", **ws, id="D-2", item={"answer": "買い物の後に使う"})
-    replay("update", **ws, id="A-1", item={"status": "完成"})
+    replay("update", **ws, id="A-2", item={"status": "完成"})
     # ゴール判定: 届いたかを確かめ、確定の後に release/ へ書き出す
     second_goal = replay("goal", **ws)
-    deliverable = replay("show", **ws, id="A-1")
+    _ask(replay, ws, "決まった検討事項と要件定義書で確定してよいですか")
+    deliverable = replay("show", **ws, id="A-2")
     replay("clear_release", **ws)
-    (root / RECORD_DIR / "release" / "決定事項.md").write_text(
-        "# 決定事項\n\n- D-1: 支出を記録する\n- D-2: 買い物の後に使う\n", encoding="utf-8"
+    replay(
+        "write_release",
+        **ws,
+        path="決定事項.md",
+        content="# 決定事項\n\n- D-1: 支出を記録する\n- D-2: 買い物の後に使う\n",
     )
-    (root / RECORD_DIR / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    replay("write_release", **ws, path="要件定義書.md", content=deliverable["body_markdown"])
     checked = call_tool("check", **ws)
 
     # 検証
@@ -681,12 +722,16 @@ def test_normal_when_scope_widened(
         assert decisions[item_id]["status"] == "決定済み"
         assert [o["key"] for o in decisions[item_id]["options"] if o.get("adopted")] == ["A"]
     # goal.deliverables の納品物が、取り込みで作った資料を doc で指している
-    assert settings["goal"]["deliverables"] == [{"title": "要件定義書", "doc": "A-1"}]
+    assert settings["goal"]["deliverables"] == [{"title": "要件定義書", "doc": "A-2"}]
     # 2 回目の goal の出力が「届いた」である
     assert second_goal["reached"] is True
     # release/ に、確定した検討事項と納品物の資料が書き出されている
     assert "D-2" in (root / RECORD_DIR / "release" / "決定事項.md").read_text(encoding="utf-8")
     assert "支出を記録する" in (root / RECORD_DIR / "release" / "要件定義書.md").read_text(encoding="utf-8")
+    # ゴールを決めるかの質問・たたき台の確認・確定の確認の AI のスレッドがあり、たたき台の確認のスレッドが A-1 を向けている
+    threads = read_yaml(root, "threads.yaml")["items"]
+    assert [thread.get("target") for thread in threads] == [None, "A-1", None]
+    assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is False
     # check が問題を 0 件で返す
     assert checked.is_error is False
     assert checked.data["problems"] == []
@@ -950,3 +995,70 @@ def test_normal_when_ai_asks_in_thread(
     # check が問題を 0 件で返す
     assert checked.data is not None
     assert checked.data["problems"] == []
+
+
+# ヒアリングで D-1 を聞くスレッドの本文と、利用者の返信
+HEARING_QUESTION = "## 保存の形\n\n| 案 | 内容 |\n| --- | --- |\n| A | YAML |\n| B | 種類ごとに分ける |\n\n推奨: A"
+HEARING_REPLY = "B にする。運用の手間が少ないため"
+
+
+def test_normal_when_hearing_answer_received_in_thread(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """ヒアリングの質問を D-1 を向けたスレッドで出し、そのスレッドへの回答を取り込んで D-1 を決める（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "YAML"}, {"key": "B", "content": "種類ごとに分ける"}]
+    root = make_workspace(
+        make_item("D-1", title="保存の形", options=options),
+        raw_files={"mindstella-version.ini": f"{plugin_version()}\n"},
+    )
+    ws = {"workspace": str(root)}
+    # 実行
+    # セットアップが既存のワークスペースの状況を読む
+    replay("status", **ws)
+    # ヒアリング: 前提が揃った D-1 に推奨の印を記録し、D-1 を向けたスレッドで聞く（ターミナルには書かない）
+    candidates = replay("next", **ws)["candidates"]
+    replay("edit_option", **ws, id="D-1", action="update", key="A", option={"recommended": True})
+    thread_id = replay(
+        "new_thread", **ws, body=HEARING_QUESTION, summary="D-1 の保存の形を聞いた。返事待ち", target="D-1"
+    )["id"]
+    # 利用者がそのスレッドへ回答を送る（ブラウザでの返信は AI がスレッドで確かめるシナリオで通す）
+    send_user_reply(replay("preview_url", **ws)["url"], thread_id, HEARING_REPLY)
+    # 送信の取り込み: AI が取り込み待ちのスレッドを読む
+    awaiting = replay("threads", **ws, awaiting=True)["items"]
+    unread = replay("thread", **ws, id=thread_id)["posts"]
+    # ヒアリング: 案 B を採用し、答えと理由を書いて、D-1 の ID を返信する
+    replay("adopt", **ws, id="D-1", key="B")
+    replay("update", **ws, id="D-1", item={"answer": "種類ごとに分ける", "reason": "運用の手間が少ない"})
+    replay("add", **ws, kind="log", item={"title": "ヒアリング", "date": "2026-10-02", "related": ["D-1"]})
+    replay("reply", **ws, id=thread_id, body="D-1 を案 B で決めました", summary="D-1 が案 B に決まった")
+    checked = replay("check", **ws)
+    # 検証
+    assert [candidate["id"] for candidate in candidates] == ["D-1"]
+    assert [item["id"] for item in awaiting] == [thread_id]
+    assert [post["body"] for post in unread] == [HEARING_REPLY]
+    thread = read_yaml(root, "threads.yaml")["items"][0]
+    # D-1 を向けた AI のスレッドに、AI の質問・利用者の返信・D-1 の ID を含む AI の返信が書いた順に並ぶ
+    assert thread["target"] == "D-1"
+    assert [(post["author"], post["body"]) for post in thread["posts"]] == [
+        ("ai", HEARING_QUESTION),
+        ("user", HEARING_REPLY),
+        ("ai", "D-1 を案 B で決めました"),
+    ]
+    # AI の質問の本文が案 A・B と推奨 A を持ち、D-1 の推奨の印が A にある
+    decision = read_yaml(root, "decisions.yaml")["items"][0]
+    assert [option.get("recommended") for option in decision["options"]] == [True, None]
+    # D-1 が案 B を採用して決定済みで、answer と reason がある
+    assert decision["status"] == "決定済み"
+    assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["B"]
+    assert (decision["answer"], decision["reason"]) == ("種類ごとに分ける", "運用の手間が少ない")
+    # 会話ログが 1 件足され、D-1 を related で指している
+    assert [(item["id"], item["related"]) for item in read_yaml(root, "logs.yaml")["items"]] == [
+        ("L-1", ["D-1"])
+    ]
+    # 利用者の返信が AI の既読で、取り込み待ちのスレッドの一覧が 0 件を返す
+    assert replay("threads", **ws, awaiting=True) == {"items": []}
+    assert checked["problems"] == []
