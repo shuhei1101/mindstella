@@ -5,7 +5,7 @@ functions:
   title: ワークスペースの既定にする
   kind: フック
   usecase: ワークスペースの既定を変える
-  summary: '`PUT /api/config/display` へ `network_look`・`visible_kinds` を送り、成功で記録を読み直す。返った `display` を返す'
+  summary: '`PUT /api/config/display` へ `network_look`・`visible_kinds` を送り、成功で記録を読み直す。返った `display` を返す。送る前に値を `expectDisplaySave` で控え、失敗したら `cancelDisplaySave` で外す（読み直した記録で自分の既定を知らせないため）'
   returns:
     type: UseMutationResult
     description: mutation

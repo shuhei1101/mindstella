@@ -1,17 +1,17 @@
 // 表示の設定（画面設計『表示の設定.tsx』）。表示する種類と差分のミニマップと本文の表とセクションの見せ方を、この端末だけの個人の上書きとして変える左のパネル
 import { useState } from "react";
 
-import { SettingsPanel, type SettingsMessage } from "@/features/settings/display-settings/components/settings-panel";
+import { SettingsPanel } from "@/features/settings/display-settings/components/settings-panel";
 import { SettingsConfirmDialog } from "@/features/settings/display-settings/settings-confirm-dialog";
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { displayDefaults, overrideNames, resetPrefs } from "@/shared/core/display";
-import { formatJst } from "@/shared/core/format";
 import type { BodyView } from "@/shared/core/markdown-decorate";
 import { KIND_KEYS, type Kind } from "@/shared/core/records";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
+import { markDisplaySaved, useDisplayMessage } from "@/shared/stores/display-notice-store";
 import { readPrefs, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 
@@ -36,7 +36,7 @@ export const DisplaySettingsPanel = () => {
   const prefs = usePrefs();
   const visible = useVisibleKinds();
   const clearTheme = useThemeStore((state) => state.clearTheme);
-  const [message, setMessage] = useState<SettingsMessage | null>(null);
+  const message = useDisplayMessage();
   const [confirming, setConfirming] = useState(false);
   const defaults = displayDefaults(rawIndex?.data.settings.display);
   const look = prefs.look ?? defaults.look;
@@ -107,7 +107,7 @@ export const DisplaySettingsPanel = () => {
         onOpenChange={setConfirming}
         from={{ look: defaults.look, visibleKinds: defaults.kinds }}
         to={{ look, visibleKinds }}
-        onSaved={(at) => { setMessage({ kind: "ok", text: `ワークスペースの既定にしました（${formatJst(at)}）。` }); }}
+        onSaved={markDisplaySaved}
       />
     </>
   );

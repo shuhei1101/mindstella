@@ -30,6 +30,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
+import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 
@@ -41,6 +42,9 @@ const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "
 
 /** 保存の通知を出しておくミリ秒 */
 const SAVED_NOTICE_MS = 5000;
+
+/** 「ワークスペースの既定が変わりました。」を出しておくミリ秒（今の画面の `NOTICE_MS` と同じ） */
+const DISPLAY_NOTICE_MS = 6000;
 
 const RecordsError = ({ error }: { error: Error }) => (
   <section role="alert" className="m-4 rounded-control bg-card px-6.5 py-6">
@@ -76,9 +80,24 @@ export const PreviewShell = () => {
     const timer = window.setTimeout(() => { setSaved(null); }, SAVED_NOTICE_MS);
     return () => { window.clearTimeout(timer); };
   }, [saved, setSaved]);
+  const data = records.data?.status === 200 ? records.data.data : undefined;
+  // 読み直した記録の表示の既定が前と違えば知らせる（最初に読んだ記録では知らせない）
+  const display = data?.settings.display;
+  const lastDisplay = useRef<{ value: typeof display } | null>(null);
+  useEffect(() => {
+    if (data === undefined) return;
+    if (lastDisplay.current !== null && !sameDisplay(lastDisplay.current.value, display)) displayChanged({ next: display, at: new Date().toISOString() });
+    lastDisplay.current = { value: display };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 既定の中身が変わったときだけ比べる
+  }, [data === undefined, JSON.stringify(display ?? null)]);
+  const noticeAt = useDisplayNoticeAt();
+  useEffect(() => {
+    if (noticeAt === null) return undefined;
+    const timer = window.setTimeout(clearDisplayNotice, DISPLAY_NOTICE_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [noticeAt]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const data = records.data?.status === 200 ? records.data.data : undefined;
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
@@ -203,6 +222,12 @@ export const PreviewShell = () => {
         <p role="status" className="fixed bottom-4 left-1/2 z-40 m-0 flex -translate-x-1/2 items-center gap-1 rounded-control bg-primary px-3 py-2 text-small text-primary-foreground">
           <Icon name="check" className="size-4" />
           {`${String(saved)} 件を保存しました。`}
+        </p>
+      )}
+      {noticeAt === null ? null : (
+        <p role="status" className="fixed bottom-4 left-1/2 z-40 m-0 flex -translate-x-1/2 items-center gap-1 rounded-control bg-primary px-3 py-2 text-small text-primary-foreground">
+          <Icon name="sliders" className="size-4" />
+          ワークスペースの既定が変わりました。
         </p>
       )}
       {historyOpen && rawIndex !== null ? (
