@@ -1188,6 +1188,13 @@ files:
   tags:
   - topic:書き方
   - topic:論点
+- path: skills/mindmap/references/起動時の指示.md
+  name: 起動時の指示
+  description: 起動スクリプトが Claude Code へ --append-system-prompt で渡す、利用者への質問をターミナルに書かずに記録とスレッドで出す決まり。起動時に渡す決まりを変更するときに読む。
+  tags:
+  - topic:起動
+  - topic:スレッド
+  - topic:質問
 - path: skills/mindmap/schemas/changes.schema.json
   name: 変更履歴のスキーマ
   description: ワークスペースの変更履歴の YAML の形を決める JSON Schema。変更履歴の YAML のキーを追加・変更するときに読む。

@@ -2,7 +2,7 @@
 name: session
 description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstella__add, mcp__plugin_mindstella_mindstella__update, mcp__plugin_mindstella_mindstella__remove, mcp__plugin_mindstella_mindstella__update_settings, mcp__plugin_mindstella_mindstella__adopt, mcp__plugin_mindstella_mindstella__edit_option, mcp__plugin_mindstella_mindstella__batch, mcp__plugin_mindstella_mindstella__changes_since_read, mcp__plugin_mindstella_mindstella__commit, mcp__plugin_mindstella_mindstella__pending, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__next, mcp__plugin_mindstella_mindstella__impact, mcp__plugin_mindstella_mindstella__find, mcp__plugin_mindstella_mindstella__show, mcp__plugin_mindstella_mindstella__attrs, mcp__plugin_mindstella_mindstella__tags, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__goal, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__clear_release, mcp__plugin_mindstella_mindstella__export, mcp__plugin_mindstella_mindstella__preview_url, mcp__plugin_mindstella_mindstella__readme, mcp__plugin_mindstella_mindstella__threads, mcp__plugin_mindstella_mindstella__thread, mcp__plugin_mindstella_mindstella__new_thread, mcp__plugin_mindstella_mindstella__reply, mcp__plugin_mindstella_mindstella__set_thread_status, mcp__plugin_mindstella_mindstella__update_thread
+allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstella__add, mcp__plugin_mindstella_mindstella__update, mcp__plugin_mindstella_mindstella__remove, mcp__plugin_mindstella_mindstella__update_settings, mcp__plugin_mindstella_mindstella__adopt, mcp__plugin_mindstella_mindstella__edit_option, mcp__plugin_mindstella_mindstella__batch, mcp__plugin_mindstella_mindstella__changes_since_read, mcp__plugin_mindstella_mindstella__commit, mcp__plugin_mindstella_mindstella__pending, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__next, mcp__plugin_mindstella_mindstella__impact, mcp__plugin_mindstella_mindstella__find, mcp__plugin_mindstella_mindstella__show, mcp__plugin_mindstella_mindstella__attrs, mcp__plugin_mindstella_mindstella__tags, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__goal, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__clear_release, mcp__plugin_mindstella_mindstella__write_release, mcp__plugin_mindstella_mindstella__export, mcp__plugin_mindstella_mindstella__preview_url, mcp__plugin_mindstella_mindstella__readme, mcp__plugin_mindstella_mindstella__threads, mcp__plugin_mindstella_mindstella__thread, mcp__plugin_mindstella_mindstella__new_thread, mcp__plugin_mindstella_mindstella__reply, mcp__plugin_mindstella_mindstella__set_thread_status, mcp__plugin_mindstella_mindstella__update_thread
 ---
 
 # session
@@ -60,7 +60,12 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstel
 - 利用者が未読の AI の書き込みがあるスレッドは、`set_thread_status` がクローズを拒む。拒まれたら、オープンのまま利用者が読むのを待つ
 - `thread` で読んだだけでは取り込み済みにならない
 - 取り込み待ちのスレッドのほかは、既定でオープンのスレッドの未読だけを読む。過去の経緯が要るときだけ `threads` を `status: closed` か `all` で、`thread` を `unread_only: false` で呼ぶ。一覧はキーだけで引き、要約で読むかを決める
-- ワークスペースの外へ書き込む前の確認（Issue の起票 など）と、話の流れと関係の無い知らせは、`new_thread` で本文・要約・タグを渡してスレッドを立て、返事が届くまで外へは書き込まない。今の話の流れの中で答えが要る問い（ヒアリング・方針転換の確認・リサーチを始めてよいか）はターミナルで聞く。立てられなかったときは同じことをターミナルで聞く。タグは記録の話題のタグと同じ付け方にする
+- 利用者は Claude Code のターミナルを見ない。ターミナルに書いたことは届かないものとして扱い、利用者に返事を求める質問と知らせは全て、`new_thread` で本文・要約・タグを渡してスレッドを立てる。返事が届くまでその質問の先の作業をせず、返事に左右されない取り込み・記録を続ける。タグは記録の話題のタグと同じ付け方にする
+  - 既にある検討事項で決めること（ヒアリングの質問・方針転換の確認）は、その検討事項に案と推奨を記録してから、検討事項ごとに `target` にその検討事項を渡して立てる
+  - 長いたたき台（範囲の見直し）は、`deliverable: false` の資料に起こし、`target` にその資料を渡して立てる
+  - それ以外（リサーチを始めてよいか・ゴール判定の確定とゴールを決めるか・記録を消してよいか・書き出す先・ワークスペースの外へ書き込む前の確認 など）は、検討事項を作らずにスレッドだけで聞く
+  - 回答は、届いたスレッドを取り込むときに、待っていたステップへ渡して続きを進め、結果はそのスレッドへ `reply` で返す
+  - ターミナルで聞くのは、`new_thread` でスレッドを立てられなかったときの同じ質問だけ
 
 ## ツール
 
@@ -92,6 +97,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstel
 | `export` | `workspace`・`out` |
 | `goal` | `workspace` |
 | `clear_release` | `workspace` |
+| `write_release` | `workspace`・`path`（`release/` からのパス。`.md` か `.html`）・`content`（本文） |
 | `preview_url` | `workspace`・`diff`（任意。差分を開くまとまりの ID） |
 | `readme` | `workspace` |
 | `threads` | `workspace`・`status`（任意。`open`・`closed`・`all`）・`tag`（任意）・`unread`（任意）・`awaiting`（任意） |
