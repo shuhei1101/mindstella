@@ -997,7 +997,7 @@ var MindmapPreview;
         for (const block of root.querySelectorAll(`.${MindmapPreview.HTML_BLOCK_CLASS}`)) {
             const source = block.getAttribute(MindmapPreview.DIAGRAM_SOURCE_ATTR) ?? "";
             if (block.closest(".df-blk") !== null) {
-                block.replaceWith(MindmapPreview.h({ tag: "pre", attrs: { class: "html-block-src" }, children: [source] }));
+                block.replaceWith(MindmapPreview.h({ tag: "pre", attrs: { class: "html-block-src", ...MindmapPreview.CODE_BLOCK_ATTRS }, children: [source] }));
             }
             else {
                 const frame = MindmapPreview.htmlBodyFrame({ source, selectable: false, label: "html のコードブロック" });

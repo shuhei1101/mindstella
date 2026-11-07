@@ -1,0 +1,134 @@
+$ python3 -m pytest tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/storybook/test_markdown_body_stories.py tests/integration/storybook_react/test_markdown_body_stories.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-code-block-no-wrap
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 468 items
+
+tests/integration/preview/test_detail_panel_screen.py .................. [  3%]
+........................................................................ [ 19%]
+........................................................................ [ 34%]
+..............................................................           [ 47%]
+tests/integration/preview/test_detail_full_screen.py ................... [ 51%]
+.....................................                                    [ 59%]
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [ 62%]
+......................................................................   [ 77%]
+tests/integration/storybook/test_markdown_body_stories.py ............F. [ 80%]
+....                                                                     [ 81%]
+tests/integration/storybook_react/test_markdown_body_stories.py ........ [ 83%]
+....F......                                                              [ 85%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 89%]
+...                                                                      [ 90%]
+tests/integration/preview/test_detail_full_screen.py ....                [ 91%]
+tests/integration/preview/test_spa_detail_panel_screen.py ..             [ 91%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 91%]
+tests/integration/preview/test_detail_panel_screen.py .........          [ 93%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 93%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 94%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 94%]
+tests/integration/preview/test_detail_panel_screen.py .....              [ 95%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 95%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 95%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 95%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [ 96%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 96%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 96%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 97%]
+tests/integration/storybook_react/test_markdown_body_stories.py .        [ 97%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 97%]
+tests/integration/storybook_react/test_markdown_body_stories.py ........ [ 99%]
+....                                                                     [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_code_block[chromium] ___________________________
+
+open_story = <function open_story.<locals>._open at 0x7ab6f2c2d260>
+
+    def test_code_block(open_story: OpenStory) -> None:
+        """言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横に送れる。言語の札とコピーのボタンは横に送っても同じ位置に残る（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "code-block")
+        blocks = page.locator(".md .md-code")
+        button = blocks.nth(0).locator("button.code-copy")
+        hidden = button.evaluate("e => getComputedStyle(e).opacity")
+        blocks.nth(0).hover()
+        shown = button.evaluate("e => getComputedStyle(e).opacity")
+        # 検証（札は言語を書いたものだけ。札とボタンは `pre` の外）
+        assert blocks.count() == 2
+        assert blocks.nth(0).locator(".code-lang").inner_text() == "bash"
+        assert blocks.nth(1).locator(".code-lang").count() == 0
+        assert page.locator(".md .md-code > pre .code-copy, .md .md-code > pre .code-lang").count() == 0
+        assert button.get_attribute("aria-label") == "コードをコピー"
+        # 検証（ホバーで出る）
+        assert (hidden, shown) == ("0", "1")
+        # 検証（長い行は折り返さず、フォーカスできるコードブロックの中で横に送る。札とボタンは送っても動かない）
+        pre = page.locator(".md .md-code > pre").nth(0)
+        before = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
+        pre.evaluate("e => { e.scrollLeft = e.scrollWidth; }")
+        after = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
+>       assert pre.evaluate("e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0")
+E       AssertionError: assert False
+E        +  where False = evaluate('e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0')
+E        +    where evaluate = <Locator frame=<Frame name= url='http://127.0.0.1:57284/iframe.html?id=preview-markdownbody--code-block&viewMode=story'> selector='.md .md-code > pre >> nth=0'>.evaluate
+
+tests/integration/storybook/test_markdown_body_stories.py:284: AssertionError
+__________________________ test_code_block[chromium] ___________________________
+
+open_story = <function open_story.<locals>._open at 0x7ab6f22b7ec0>
+
+    def test_code_block(open_story: OpenStory) -> None:
+        """言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横に送れる。言語の札とコピーのボタンは横に送っても同じ位置に残る（正常系）。"""
+        # 準備・実行
+        page = _open(open_story, "code-block")
+        blocks = page.locator(".md .md-code")
+        button = blocks.nth(0).locator("button.code-copy")
+        hidden = button.evaluate("e => getComputedStyle(e).opacity")
+        blocks.nth(0).hover()
+        shown = button.evaluate("e => getComputedStyle(e).opacity")
+        # 検証（札は言語を書いたものだけ。札とボタンは `pre` の外）
+        assert blocks.count() == 2
+        assert blocks.nth(0).locator(".code-lang").inner_text() == "bash"
+        assert blocks.nth(1).locator(".code-lang").count() == 0
+        assert page.locator(".md .md-code > pre .code-copy, .md .md-code > pre .code-lang").count() == 0
+        assert button.get_attribute("aria-label") == "コードをコピー"
+        # 検証（ホバーで出る）
+        assert (hidden, shown) == ("0", "1")
+        # 検証（長い行は折り返さず、フォーカスできるコードブロックの中で横に送る。札とボタンは送っても動かない）
+        pre = page.locator(".md .md-code > pre").nth(0)
+        before = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
+        pre.evaluate("e => { e.scrollLeft = e.scrollWidth; }")
+        after = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
+>       assert pre.evaluate("e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0")
+E       AssertionError: assert False
+E        +  where False = evaluate('e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0')
+E        +    where evaluate = <Locator frame=<Frame name= url='http://127.0.0.1:57418/iframe.html?id=shared-markdownbody--code-block&viewMode=story'> selector='.md .md-code > pre >> nth=0'>.evaluate
+
+tests/integration/storybook_react/test_markdown_body_stories.py:311: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/storybook/test_markdown_body_stories.py::test_code_block[chromium]
+FAILED tests/integration/storybook_react/test_markdown_body_stories.py::test_code_block[chromium]
+================== 2 failed, 466 passed in 1034.93s (0:17:14) ==================
+pytest exit 1
+
+# Storybook の test_code_block の 2 件は、ストーリーの長い行が部品の幅に収まっていたため fail した。ストーリーの長い行を伸ばし（e3ceb49c）、Storybook を作り直して 2 ファイルを流し直す
+$ npx storybook build -o storybook-static && npm run build-storybook-react
+sb exit 0
+sbr exit 0
+$ python3 -m pytest tests/integration/storybook/test_markdown_body_stories.py tests/integration/storybook_react/test_markdown_body_stories.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-code-block-no-wrap
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 54 items
+
+tests/integration/storybook/test_markdown_body_stories.py .............. [ 25%]
+....                                                                     [ 33%]
+tests/integration/storybook_react/test_markdown_body_stories.py ........ [ 48%]
+............................                                             [100%]
+
+======================== 54 passed in 90.75s (0:01:30) =========================
+pytest exit 0

@@ -1,0 +1,15 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+lint exit 0
+
+# c4cac0d9（単体テストの入力の修正）の後に、直したファイルを個別に検査
+$ ruff check tests/unit/preview/test_libs.py
+All checks passed!

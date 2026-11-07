@@ -1,0 +1,4 @@
+$ ruff check tests/integration
+All checks passed!
+$ npx eslint frontend/src/shared/components/markdown-body.stories.tsx
+eslint exit 0

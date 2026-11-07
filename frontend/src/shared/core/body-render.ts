@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
 // 本文の差分の描画（今の画面の `screens/detail.ts` の本文の差分と同じ振る舞い）。mdmark が描いた React の外の DOM に手を入れる
 import { getLibrary } from "@/shared/adapters/libraries";
-import { DIAGRAM_SOURCE_ATTR, embeddedHtmlRanges, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown, TABLE_WRAP_CLASS } from "@/shared/core/body-links";
+import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, embeddedHtmlRanges, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown, TABLE_WRAP_CLASS } from "@/shared/core/body-links";
 import { childMarks, COLORED_DIAGRAM_TYPES, diffDiagram, diffDiagramFromSource, diffInline, diffLineParts, LINE_DIFF_TIMEOUT_MS, pairedParts, pairEmbeddedHtml, placeRemovedBlocks, type DiagramDiff, type InlineDiff, type InlinePart, type JsDiff, type LinePart, type RemovedBlock } from "@/shared/core/diff";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import { htmlBodyDiff } from "@/shared/core/html-body-diff";
@@ -679,7 +679,7 @@ export const drawHtmlBlocks = (root: HTMLElement): void => {
   for (const block of root.querySelectorAll<HTMLElement>(`.${HTML_BLOCK_CLASS}`)) {
     const source = block.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
     if (block.closest(".df-blk") !== null) {
-      block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src" }, children: [source] }));
+      block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src", ...CODE_BLOCK_ATTRS }, children: [source] }));
     } else {
       const frame = htmlFrameElement({ source, selectable: false, label: "html のコードブロック" });
       frame.classList.add(HTML_BLOCK_CLASS);

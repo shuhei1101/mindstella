@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 from playwright.sync_api import Locator, Page, expect
+from preview_a11y_checks import axe_rule_results
 from preview_body_link_helpers import build_body_link_workspace
+from preview_body_scroll_helpers import LONG_LINES_BODY, SCROLLABLE_REGION_RULE
 from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
@@ -198,6 +200,27 @@ def test_options_visible(page: Page, spa_preview: str) -> None:
     open_spa(page, spa_preview, "?tab=tasks&id=T-1")
     # 検証
     expect(_panel(page).get_by_role("heading", name="案", exact=True)).to_have_count(0)
+
+
+def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """本文のコードブロックは、長い行を折り返さずコードブロックの中だけで横に送り、フォーカスで止まって矢印で送れ、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備
+    url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
+    open_spa(page, url, "?tab=docs&id=A-1")
+    code = _panel(page).locator(".md pre[tabindex='0']").first
+    expect(code).to_be_visible()
+    white_space = code.evaluate("e => getComputedStyle(e).whiteSpace")
+    label = code.get_attribute("aria-label")
+    # 実行
+    code.focus()
+    page.keyboard.press("ArrowRight")
+    # 検証
+    expect(code).to_be_focused()
+    page.wait_for_function("() => document.activeElement.scrollLeft > 0")
+    assert white_space == "pre"
+    assert label == "コード: text"
+    assert code.evaluate("e => e.scrollWidth > e.clientWidth")
+    assert axe_rule_results(page, ".md pre[tabindex='0']", SCROLLABLE_REGION_RULE)["violations"] == []
 
 
 def test_body_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:

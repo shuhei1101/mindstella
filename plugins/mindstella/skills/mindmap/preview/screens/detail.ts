@@ -1181,7 +1181,7 @@ namespace MindmapPreview {
     for (const block of root.querySelectorAll<HTMLElement>(`.${HTML_BLOCK_CLASS}`)) {
       const source = block.getAttribute(DIAGRAM_SOURCE_ATTR) ?? "";
       if (block.closest(".df-blk") !== null) {
-        block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src" }, children: [source] }));
+        block.replaceWith(h({ tag: "pre", attrs: { class: "html-block-src", ...CODE_BLOCK_ATTRS }, children: [source] }));
       } else {
         const frame = htmlBodyFrame({ source, selectable: false, label: "html のコードブロック" });
         frame.classList.add(HTML_BLOCK_CLASS);

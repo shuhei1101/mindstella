@@ -1535,6 +1535,29 @@ def test_render_value_when_line_break_in_paragraph(
     assert result["secondText"] == "3 行目"
 
 
+def test_render_value_when_code_block(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """値のコードブロックの pre をフォーカスできる要素にする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const element = MindmapPreview.renderValue(source);
+            return [...element.querySelectorAll("pre")].map((pre) => ({
+                tabindex: pre.getAttribute("tabindex"),
+                role: pre.getAttribute("role"),
+                label: pre.getAttribute("aria-label"),
+            }));
+        }""",
+        '値の段落\n\n```json\n{"mcpServers": {"mindstella": {"type": "http"}}}\n```',
+    )
+    # 検証
+    assert result == [{"tabindex": "0", "role": None, "label": "コード: json"}]
+
+
 def test_render_value_when_library_missing(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
@@ -1731,6 +1754,74 @@ def test_render_markdown_when_table(
     )
     # 検証
     assert result == expected
+
+
+# 範囲の外のコードブロック 3 つ（言語指定あり・なし・字下げ）・mermaid のコードブロック・範囲の中の pre を持つ本文（左の数字は行）
+CODE_BLOCK_SOURCE = "\n".join(
+    [
+        "```json",  # 1
+        '{"mcpServers": {"mindstella": {"type": "http", "url": "http://127.0.0.1:8765/mcp"}}}',  # 2
+        "```",  # 3
+        "",  # 4
+        "```",  # 5
+        "plugins/mindstella/skills/mindmap/preview/",  # 6
+        "```",  # 7
+        "",  # 8
+        "    字下げのコード",  # 9
+        "",  # 10
+        "```mermaid",  # 11
+        "flowchart LR",  # 12
+        "  A --> B",  # 13
+        "```",  # 14
+        "",  # 15
+        "<!-- html -->",  # 16
+        "```html",  # 17
+        "<pre><code>範囲の中のコード</code></pre>",  # 18
+        "```",  # 19
+        "<!-- /html -->",  # 20
+    ]
+)
+
+
+def test_render_markdown_when_code_block(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """mdmark がフェンスのコードブロックに付けた属性を残し、字下げのコードブロックの pre にだけ付ける。図の入れ物の pre と範囲の中の pre には付けない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            const attributes = (pre) => ({
+                tabindex: pre.getAttribute("tabindex"),
+                role: pre.getAttribute("role"),
+                label: pre.getAttribute("aria-label"),
+            });
+            const outside = [...root.querySelectorAll("pre")].filter(
+                (pre) => pre.closest(".mdmark-html") === null && !pre.classList.contains("dg-raw")
+            );
+            return {
+                outside: outside.map(attributes),
+                lineStarts: outside.map((pre) => pre.getAttribute("data-line-start")),
+                diagramRaw: [...root.querySelectorAll("pre.dg-raw")].map((pre) => pre.getAttribute("tabindex")),
+                inRange: [...root.querySelectorAll(".mdmark-html pre")].map((pre) => pre.getAttribute("tabindex")),
+            };
+        }""",
+        CODE_BLOCK_SOURCE,
+    )
+    # 検証
+    assert result == {
+        "outside": [
+            {"tabindex": "0", "role": None, "label": "コード: json"},
+            {"tabindex": "0", "role": None, "label": "コード"},
+            {"tabindex": "0", "role": None, "label": "コード"},
+        ],
+        "lineStarts": ["2", "6", "9"],
+        "diagramRaw": [None],
+        "inRange": [None],
+    }
 
 
 # 選んだ箇所を求める HTML の本文の原文（左の数字は行。サーバーの行の印を足す前）

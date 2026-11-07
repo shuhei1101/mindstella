@@ -884,7 +884,7 @@ def test_body_change_set_link(
 def test_code_block_and_diagram_raw_when_long_line(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """全画面でも、本文のコードブロックと図の Raw は、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    """全画面でも、本文のコードブロックは長い行を折り返さずコードブロックの中だけで横に送り、図の Raw は折り返して横にあふれず、どちらも axe の `scrollable-region-focusable` に当たらない（正常系）。"""
     # 準備
     url = write_preview(make_item("A-1"), bodies={"A-1.md": LONG_LINES_BODY})
     page = open_preview(url, "#tab=docs&id=A-1&full=1")
@@ -892,9 +892,15 @@ def test_code_block_and_diagram_raw_when_long_line(
     # 実行
     page.click('dialog.full button[data-act="diagram-raw"]')
     # 検証
-    for selector in ("dialog.full .md:not(.md-value) pre:not(.dg-raw)", "dialog.full pre.dg-raw"):
-        assert page.is_visible(selector)
-        assert not overflows_horizontally(page, selector)
+    code = "dialog.full .md:not(.md-value) pre:not(.dg-raw)"
+    raw = "dialog.full pre.dg-raw"
+    assert page.is_visible(code)
+    assert page.is_visible(raw)
+    assert overflows_horizontally(page, code)
+    assert page.get_attribute(code, "tabindex") == "0"
+    assert not overflows_horizontally(page, raw)
+    assert not overflows_horizontally(page, FULL_BODY)
+    for selector in (code, raw):
         assert axe_rule_results(page, selector, SCROLLABLE_REGION_RULE)["violations"] == []
 
 

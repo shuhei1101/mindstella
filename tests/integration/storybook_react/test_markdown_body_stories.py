@@ -287,7 +287,7 @@ def test_fold_off(open_story: OpenStory) -> None:
 
 
 def test_code_block(open_story: OpenStory) -> None:
-    """言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返す（正常系）。"""
+    """言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横に送れる。言語の札とコピーのボタンは横に送っても同じ位置に残る（正常系）。"""
     # 準備・実行
     page = _open(open_story, "code-block")
     blocks = page.locator(".md .md-code")
@@ -303,8 +303,24 @@ def test_code_block(open_story: OpenStory) -> None:
     assert button.get_attribute("aria-label") == "コードをコピー"
     # 検証（ホバーで出る）
     assert (hidden, shown) == ("0", "1")
-    # 検証（長い行は折り返し、横に送らない）
-    assert page.eval_on_selector(".md .md-code > pre", "e => e.scrollWidth <= e.clientWidth")
+    # 検証（長い行は折り返さず、フォーカスできるコードブロックの中で横に送る。札とボタンは送っても動かない）
+    pre = page.locator(".md .md-code > pre").nth(0)
+    before = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
+    pre.evaluate("e => { e.scrollLeft = e.scrollWidth; }")
+    after = blocks.nth(0).evaluate(LABEL_AND_BUTTON_POSITIONS_JS)
+    assert pre.evaluate("e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0")
+    assert (pre.get_attribute("tabindex"), pre.get_attribute("aria-label")) == ("0", "コード: bash")
+    assert before == after
+
+
+# 言語の札とコピーのボタンの位置（コードブロックの枠からの距離）を読む
+LABEL_AND_BUTTON_POSITIONS_JS = """(block) => {
+    const box = block.getBoundingClientRect();
+    return [".code-lang", "button.code-copy"].map((selector) => {
+        const rect = block.querySelector(selector).getBoundingClientRect();
+        return [rect.left - box.left, rect.top - box.top];
+    });
+}"""
 
 
 def test_code_copied(open_story: OpenStory) -> None:
