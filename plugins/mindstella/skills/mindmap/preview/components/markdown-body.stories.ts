@@ -54,7 +54,7 @@ const CODE_SOURCE = [
   "",
   "```bash",
   "echo hello",
-  "ls -la /very/long/path/that/keeps/going/and/going/until/the/line/has/to/wrap/inside/the/block",
+  "ls -la /very/long/path/that/keeps/going/and/going/until/the/line/is/wider/than/the/block/so/it/scrolls/sideways/inside/the/block/instead/of/wrapping/onto/the/next/line/and/breaking/the/layout",
   "```",
   "",
   "言語を書かないコードブロック。",
