@@ -56,14 +56,14 @@ describe("useMarkThreadSeen", () => {
       }),
     );
     const { result, queryClient } = await renderPreviewHook("/", useMarkThreadSeen);
-    await queryClient.fetchQuery(threadsQuery());
+    await queryClient.query(threadsQuery());
     // 実行
     act(() => {
       result.current.mutate("TH-1");
     });
     // 検証
     await waitFor(() => {
-      const data = queryClient.getQueryData(threadsQuery().queryKey) as { data: typeof unseenThreads } | undefined;
+      const data = queryClient.getQueryData<{ data: typeof unseenThreads }>(threadsQuery().queryKey);
       expect(data?.data.threads[0]?.posts[0]?.seen).toBe(true);
     });
   });
@@ -76,14 +76,14 @@ describe("useMarkThreadSeen", () => {
       http.post("/api/threads/:id/seen", () => HttpResponse.json({ type: "about:blank", title: "Internal Server Error", status: 500, detail: "書けません" }, { status: 500, headers: { "Content-Type": "application/problem+json" } })),
     );
     const { result, queryClient } = await renderPreviewHook("/", useMarkThreadSeen);
-    await queryClient.fetchQuery(threadsQuery());
+    await queryClient.query(threadsQuery());
     // 実行
     await act(async () => {
       await result.current.mutateAsync("TH-1").catch(() => undefined);
     });
     // 検証
     await waitFor(() => {
-      const data = queryClient.getQueryData(threadsQuery().queryKey) as { data: typeof unseenThreads } | undefined;
+      const data = queryClient.getQueryData<{ data: typeof unseenThreads }>(threadsQuery().queryKey);
       expect(data?.data.threads[0]?.posts[0]?.seen).toBe(false);
     });
   });
