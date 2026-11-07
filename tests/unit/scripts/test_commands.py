@@ -1470,6 +1470,18 @@ def test_run_clear_release(make_workspace: MakeWorkspace) -> None:
     assert payload == {"removed": ["古い資料.md"]}
 
 
+def test_run_write_release(make_workspace: MakeWorkspace) -> None:
+    """release/ の下に書き、パスとバイト数を返す（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行
+    payload = commands.run_write_release(root, "要件定義書.md", "# 要件")
+    # 検証
+    assert payload == {"path": "要件定義書.md", "bytes": 8}
+    target = root / RECORD_DIR / "release" / "要件定義書.md"
+    assert target.read_text(encoding="utf-8") == "# 要件"
+
+
 def _patch_export_offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """配る書き出しを、通信せず小さな雛形と取る中身を差し込んだものに差し替える。"""
     # 差し替える前の本物を控える
