@@ -58,3 +58,9 @@ items:
   summary: 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態）
 - page: blocked-note.tsx.yaml
   summary: 書き込めない理由の表示
+- page: review-body-fold.tsx.yaml
+  summary: 部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ
+- page: selection-comment.tsx.yaml
+  summary: 部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ
+- page: send-form.tsx.yaml
+  summary: 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ

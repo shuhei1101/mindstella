@@ -20,3 +20,5 @@ items:
   summary: 詳細パネルの幅をドラッグとキーで変える
 - page: item-add-panel.tsx.yaml
   summary: 項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える
+- page: detail-comments.tsx.yaml
+  summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く

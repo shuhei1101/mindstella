@@ -1,0 +1,32 @@
+title: プレビュー / comments-panel
+lead: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag` で絞る。
+components:
+- name: CommentsPanel
+  title: コメントの一覧
+  kind: 画面
+  usecase: スレッドで話す
+  summary: 画面設計『コメントの一覧.tsx』の要素と操作を描く。search の `thread`・`review` でスレッド・レビュー中の書き込みの画面に切り替え、`tstatus`・`ttag` で絞る
+  refs:
+  - dev/設計書/画面設計/プレビュー/コメントの一覧.tsx#
+  unit_tests:
+  - name: test_comments_panel
+    case: 正常
+    summary: スレッドを並べる
+    condition: オープン 2 件とクローズ 1 件
+    mock: MSW
+    expected: オープンの 2 行
+  - name: test_comments_panel_when_new_thread
+    case: 正常
+    summary: 新しいスレッドを溜める
+    condition: 新しいスレッドの入力に書いて溜める
+    mock: MSW
+    expected: '`POST /api/comments` が `target` 無しで呼ばれ、一覧の先頭に足される'
+  - name: test_comments_panel_when_threads_failed
+    case: 異常
+    summary: スレッドが読めない
+    condition: '`GET /api/threads` が 500'
+    mock: MSW
+    expected: 読めない理由の `role="alert"`
+  container: frontend/src/features/comments/comments-panel/comments-panel.tsx
+notes:
+  単体テスト: 同じフォルダの `comments-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

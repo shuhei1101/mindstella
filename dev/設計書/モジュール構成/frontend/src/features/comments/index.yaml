@@ -1,0 +1,10 @@
+summary: '`frontend/src/features/comments/` の React のプレビューのモジュール'
+items:
+- page: comments-panel/
+  summary: '`frontend/src/features/comments/comments-panel/` の React のプレビューのモジュール'
+- page: review/
+  summary: '`frontend/src/features/comments/review/` の React のプレビューのモジュール'
+- page: shared/
+  summary: '`frontend/src/features/comments/shared/` の React のプレビューのモジュール'
+- page: thread/
+  summary: '`frontend/src/features/comments/thread/` の React のプレビューのモジュール'

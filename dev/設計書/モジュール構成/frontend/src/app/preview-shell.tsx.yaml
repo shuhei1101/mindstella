@@ -1,11 +1,11 @@
 title: プレビュー / preview-shell
-lead: '`tab` の画面と、詳細・変更履歴・保存待ちのパネルを重ねて描く SPA の外枠。features の画面を組むのはここだけ。'
+lead: '`tab` の画面と、詳細・変更履歴・保存待ちのパネル・コメントの一覧・表示の設定を重ねて描く SPA の外枠。features の画面を組むのはここだけ。'
 components:
 - name: PreviewShell
   title: プレビューの外枠
   kind: コンポーネント
   usecase: SPAを開く
-  summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネルを重ねる
+  summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。ネットワークと全体の検索だけ今の画面を開く
   refs:
   - dev/設計書/インターフェース定義/プレビュー/SPAを開く#
   unit_tests:
@@ -39,6 +39,18 @@ components:
     condition: '`?tab=tasks&view=map&id=T-99`'
     mock: MSW
     expected: URL が `?tab=tasks` に置き換わる
+  - name: test_preview_shell_when_comments
+    case: 正常
+    summary: コメントの一覧を開く
+    condition: トップバーのコメントのボタンを押す
+    mock: MSW
+    expected: コメントの一覧が描かれ、URL に `panel=comments`
+  - name: test_preview_shell_when_display
+    case: 正常
+    summary: 表示の設定を開く
+    condition: '`?panel=display`'
+    mock: MSW
+    expected: 表示の設定のパネルが描かれる
   container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）

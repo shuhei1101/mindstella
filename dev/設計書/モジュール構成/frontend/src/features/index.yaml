@@ -18,3 +18,5 @@ items:
   summary: '`frontend/src/features/edits/` の React のプレビューのモジュール'
 - page: settings/
   summary: '`frontend/src/features/settings/` の React のプレビューのモジュール'
+- page: comments/
+  summary: '`frontend/src/features/comments/` の React のプレビューのモジュール'

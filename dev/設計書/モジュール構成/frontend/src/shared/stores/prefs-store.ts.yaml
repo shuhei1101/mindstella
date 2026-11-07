@@ -1,5 +1,5 @@
 title: プレビュー / prefs-store
-lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）。
+lead: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）。
 functions:
 - name: readPrefs
   title: 保存領域の読み取り
@@ -128,7 +128,16 @@ stores:
     description: セクションの折りたたみをオフにする上書き
   - name: kinds
     type: Kind[] | null
-    description: 表示する種類の上書き（読むだけ）
+    description: 表示する種類の上書き
+  - name: look
+    type: NetworkLook | null
+    description: ネットワークの見た目の上書き（今の画面のネットワークで選ぶ。表示の設定は読むだけ）
+  - name: commentsPinned
+    type: true | null
+    description: コメントの一覧のピン止め
+  - name: reviewOrder
+    type: '''oldest'' | null'
+    description: レビュー中のコメントを古い順に並べる上書き
   container: frontend/src/shared/stores/prefs-store.ts
 notes:
   単体テスト: 同じフォルダの `prefs-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

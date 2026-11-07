@@ -5,6 +5,6 @@ items:
 - page: theme-store.ts.yaml
   summary: 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す
 - page: prefs-store.ts.yaml
-  summary: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）
+  summary: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」）
 - page: edit-session-store.ts.yaml
   summary: 開いている追加の入力と、直前の保存で書き込めなかった編集
