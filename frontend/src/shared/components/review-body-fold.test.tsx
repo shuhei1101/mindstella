@@ -6,7 +6,9 @@ import { ReviewBodyFold } from "@/shared/components/review-body-fold";
 /** 描いた本文の高さを、行の高さ × 行数として返す */
 const stubHeight = (lines: number) => {
   vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(lines * 20);
-  vi.spyOn(window, "getComputedStyle").mockReturnValue({ lineHeight: "20px" } as CSSStyleDeclaration);
+  const original = window.getComputedStyle.bind(window);
+  // 行の高さだけを差し替え、ほかの値は元の計算を返す（Testing Library が名前の計算に使う）
+  vi.spyOn(window, "getComputedStyle").mockImplementation((element) => new Proxy(original(element), { get: (target, key) => (key === "lineHeight" ? "20px" : (Reflect.get(target, key) as unknown)) }));
 };
 
 afterEach(() => {
