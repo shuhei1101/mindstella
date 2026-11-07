@@ -19,7 +19,8 @@ describe("DetailComments", () => {
   // 箇所を添えて溜める（正常系）
   test("detail_comments", async () => {
     // 準備
-    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": "一行目\n\n二行目\n\n三行目" } });
+    // テストの mdmark は本文をそのまま入れるため、mdmark が付ける行の印を本文に書いておく
+    stubRecords({ docs: [doc], bodies: { "docs/A-1.md": '<p data-line-start="1">一行目</p><p data-line-start="3">二行目</p><p data-line-start="5">三行目</p>' } });
     server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })));
     const bodies: unknown[] = [];
     server.use(
