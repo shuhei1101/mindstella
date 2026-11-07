@@ -5,7 +5,9 @@
  * OpenAPI spec version: 0.0.0
  */
 import type { Kind } from './kind';
+import type { NetworkLook } from './networkLook';
 
 export type SettingsDisplay = {
+  network_look?: NetworkLook;
   visible_kinds?: Kind[];
 };

@@ -1,4 +1,4 @@
-# React のプレビューが読む、サーバーの配信の API（インターフェース定義『記録の取得』『レビュー中のコメントの読み取り』『保存待ちの編集の読み取り』『保存待ちの編集の追加』『保存待ちの編集の取り消し』『保存待ちの編集をまとめて保存』『スレッドの読み取り』『前回開いた日時』）
+# React のプレビューが読む、サーバーの配信の API（インターフェース定義『記録の取得』『レビュー中のコメントの読み取り』『レビュー中のコメントの追加』『レビュー中のコメントの書き換え』『レビュー中のコメントの削除』『書きかけの保存』『コメントをまとめて送る』『保存待ちの編集の読み取り』『保存待ちの編集の追加』『保存待ちの編集の取り消し』『保存待ちの編集をまとめて保存』『スレッドの読み取り』『画面からのスレッドの状態の書き換え』『画面からのスレッドの既読』『設定の既定の書き換え』『前回開いた日時』）
 openapi: 3.1.0
 info:
   title: mindstella preview
@@ -32,6 +32,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Comments"
+    post:
+      operationId: addComment
+      summary: コメントか返信 1 件をレビュー中に溜める（元に戻すときは id と created を渡す）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: 溜めた
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentReply"
+        "400":
+          description: 本文が空・長すぎる・箇所が合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: 向けた項目かスレッドが無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: 同じ id のコメントがある
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /api/edits:
     get:
       operationId: getEdits
@@ -138,8 +172,353 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Threads"
+  /api/comments/{id}:
+    patch:
+      operationId: updateComment
+      summary: レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentPatch"
+      responses:
+        "200":
+          description: 書き換えた
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentPatchReply"
+        "400":
+          description: 本文が空・長すぎる
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: コメントが無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      operationId: removeComment
+      summary: レビュー中のコメント 1 件を消し、元に戻すための中身を返す
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 消したコメント
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemovedComment"
+        "404":
+          description: コメントが無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/comments/send:
+    post:
+      operationId: sendComments
+      summary: チェックしたレビュー中の書き込みをスレッドへ移す
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendInput"
+      responses:
+        "201":
+          description: 送った
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendReply"
+        "400":
+          description: ids が空
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: コメントが無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: 箇所が合わない書き込みがある
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/StaleProblem"
+  /api/drafts:
+    put:
+      operationId: saveDraft
+      summary: コメントの入力欄の書きかけを向けた先ごとに保つ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftInput"
+      responses:
+        "204":
+          description: 保った
+        "400":
+          description: 合わない値
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/threads/{id}:
+    patch:
+      operationId: setThreadStatus
+      summary: 利用者がスレッドをクローズにするかオープンに戻す
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ThreadStatusInput"
+      responses:
+        "200":
+          description: 書き換えた後の状態
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThreadStatusReply"
+        "400":
+          description: 合わない値
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: スレッドが無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/threads/{id}/seen:
+    post:
+      operationId: markThreadSeen
+      summary: 利用者が開いたスレッドの未読の書き込みを既読にする
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 既読にした書き込み
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeenReply"
+        "404":
+          description: スレッドが無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/config/display:
+    put:
+      operationId: putConfigDisplay
+      summary: 見た目の既定と表示する種類の既定を config.yaml に書く
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisplayInput"
+      responses:
+        "200":
+          description: 書いた後の display
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisplayReply"
+        "400":
+          description: 合わない値
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: config.yaml に書けない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   schemas:
+    NetworkLook:
+      type: string
+      enum: [glow, starlight, constellation, deep, dust]
+    Loc:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [body, value] }
+        start: { type: integer }
+        end: { type: integer }
+        key: { type: string }
+        text: { type: string }
+    CommentInput:
+      type: object
+      required: [body]
+      properties:
+        target: { type: [string, "null"] }
+        loc:
+          oneOf:
+            - $ref: "#/components/schemas/Loc"
+            - type: "null"
+        body: { type: string }
+        thread: { type: [string, "null"] }
+        id: { type: string }
+        created: { type: string }
+    CommentReply:
+      type: object
+      required: [id, created, count]
+      properties:
+        id: { type: string }
+        created: { type: string }
+        count: { type: integer }
+    CommentPatch:
+      type: object
+      properties:
+        body: { type: string }
+        loc: { type: "null" }
+    CommentPatchReply:
+      type: object
+      required: [id, body]
+      properties:
+        id: { type: string }
+        body: { type: string }
+        loc:
+          oneOf:
+            - $ref: "#/components/schemas/Loc"
+            - type: "null"
+    RemovedComment:
+      type: object
+      required: [id, body, created, count]
+      properties:
+        id: { type: string }
+        target: { type: [string, "null"] }
+        loc:
+          oneOf:
+            - $ref: "#/components/schemas/Loc"
+            - type: "null"
+        thread: { type: [string, "null"] }
+        body: { type: string }
+        created: { type: string }
+        count: { type: integer }
+    SendInput:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items: { type: string }
+    SendReply:
+      type: object
+      required: [sent, items, entered]
+      properties:
+        sent: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [comment, thread, post]
+            properties:
+              comment: { type: string }
+              thread: { type: string }
+              post: { type: string }
+        entered: { type: boolean }
+      additionalProperties: true
+    StaleComment:
+      type: object
+      required: [id, reason]
+      properties:
+        id: { type: string }
+        reason: { type: string }
+    StaleProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          required: [stale]
+          properties:
+            stale:
+              type: array
+              items: { $ref: "#/components/schemas/StaleComment" }
+    DraftInput:
+      type: object
+      required: [body]
+      properties:
+        target: { type: [string, "null"] }
+        loc:
+          oneOf:
+            - $ref: "#/components/schemas/Loc"
+            - type: "null"
+        thread: { type: [string, "null"] }
+        body: { type: string }
+    ThreadStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [open, closed] }
+        reason: { type: [string, "null"] }
+    ThreadStatusReply:
+      type: object
+      required: [id, status, changed]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [open, closed] }
+        changed: { type: boolean }
+    SeenReply:
+      type: object
+      required: [id, seen]
+      properties:
+        id: { type: string }
+        seen:
+          type: array
+          items: { type: string }
+    DisplayInput:
+      type: object
+      required: [network_look, visible_kinds]
+      properties:
+        network_look: { $ref: "#/components/schemas/NetworkLook" }
+        visible_kinds:
+          type: array
+          items: { $ref: "#/components/schemas/Kind" }
+    DisplayReply:
+      type: object
+      required: [display]
+      properties:
+        display:
+          type: object
+          required: [network_look, visible_kinds]
+          properties:
+            network_look: { $ref: "#/components/schemas/NetworkLook" }
+            visible_kinds:
+              type: array
+              items: { $ref: "#/components/schemas/Kind" }
     EditInput:
       type: object
       required: [op]
@@ -278,6 +657,7 @@ components:
         display:
           type: object
           properties:
+            network_look: { $ref: "#/components/schemas/NetworkLook" }
             visible_kinds:
               type: array
               items: { $ref: "#/components/schemas/Kind" }
