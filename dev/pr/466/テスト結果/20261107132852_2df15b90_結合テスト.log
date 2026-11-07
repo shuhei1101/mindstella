@@ -1,0 +1,11 @@
+$ pytest tests/integration/server/test_comments_send.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-server-claude-input-confirm-timeout
+configfile: pytest.ini
+plugins: anyio-4.15.1, base-url-2.1.0, playwright-0.9.0
+collected 16 items
+
+tests/integration/server/test_comments_send.py ................          [100%]
+
+============================= 16 passed in 32.76s ==============================
