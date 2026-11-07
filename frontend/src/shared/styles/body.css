@@ -64,7 +64,9 @@
 .md :is(th, td):first-child { border-left: 1px solid var(--border-soft); }
 .md thead th { border-top: 1px solid var(--border-soft); }
 .md th { background: var(--muted); }
-.md pre { background: var(--muted); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.md pre { background: var(--muted); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; }
+.md pre:focus-visible { outline-offset: -2px; }
+.md pre.md-raw { white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-stack-mono); font-size: .92em; }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
 /* 本文の表の枠: 右端のフェードの基準。枠は送らないので、フェードの位置が動かない */

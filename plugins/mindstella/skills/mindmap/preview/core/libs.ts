@@ -102,6 +102,9 @@ namespace MindmapPreview {
   /** 本文の表を包む、表の中だけで横に送る入れ物の class */
   export const TABLE_WRAP_CLASS = "md-table-wrap";
 
+  /** コードブロックの `pre` を、キーボードのフォーカスで止まり横に送れる要素にする属性 */
+  export const CODE_BLOCK_ATTRS: Readonly<Record<string, string>> = { tabindex: "0", role: "group", "aria-label": "コードブロック" };
+
   /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
   export const HTML_LINE_ATTR = "data-line";
 
@@ -415,6 +418,7 @@ namespace MindmapPreview {
     // mdmark は描くときに無害化する（記録は利用者のもの）。行の印は付けず、mermaid のコードブロックも図にしない
     mountMarkdown({ root, markdown: withHardBreaks(source) });
     for (const element of root.querySelectorAll(`[${SOURCE_LINE_ATTR}]`)) element.removeAttribute(SOURCE_LINE_ATTR);
+    focusCodeBlocks(root);
     return root;
   }
 
@@ -501,7 +505,16 @@ namespace MindmapPreview {
       table.replaceWith(wrap);
       wrap.append(table);
     }
+    focusCodeBlocks(root);
     return root;
+  }
+
+  /** 埋め込んだ HTML の範囲の外のコードブロックの `pre`（子に `code` を持つもの）を、キーボードのフォーカスで止まり横に送れる要素にする（範囲の中の `pre` は書いた HTML のまま） */
+  function focusCodeBlocks(root: HTMLElement): void {
+    for (const pre of root.querySelectorAll("pre")) {
+      if (pre.querySelector(":scope > code") === null || pre.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
+      for (const [name, value] of Object.entries(CODE_BLOCK_ATTRS)) pre.setAttribute(name, value);
+    }
   }
 
   /** 見出しの文言から、見出しを指す名前を作る（前後の空白を除き、間の空白の並びを `-` 1 つにする。同じ名前の 2 つ目から `-1`・`-2` を続ける）。`seen` は同じ本文でこれまでに作った名前 → 出た回数で、呼ぶたびに書き換える */

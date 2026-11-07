@@ -68,6 +68,9 @@ export const HTML_BLOCK_CLASS = "html-block";
 /** 本文の表を包む、表の中だけで横に送る入れ物の class */
 export const TABLE_WRAP_CLASS = "md-table-wrap";
 
+/** コードブロックの `pre` を、キーボードのフォーカスで止まり横に送れる要素にする属性 */
+export const CODE_BLOCK_ATTRS: Readonly<Record<string, string>> = { tabindex: "0", role: "group", "aria-label": "コードブロック" };
+
 /** HTML の本文の開きタグが持つ、中身が始まる元の HTML の行（1 始まり）の属性。サーバーが足す */
 export const HTML_LINE_ATTR = "data-line";
 
@@ -384,6 +387,14 @@ export const renderValue = (source: string): HTMLElement => {
   return root;
 };
 
+/** 埋め込んだ HTML の範囲の外のコードブロックの `pre`（子に `code` を持つもの）を、キーボードのフォーカスで止まり横に送れる要素にする（範囲の中の `pre` は書いた HTML のまま） */
+const focusCodeBlocks = (root: HTMLElement): void => {
+  for (const pre of root.querySelectorAll("pre")) {
+    if (pre.querySelector(":scope > code") === null || pre.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
+    for (const [name, value] of Object.entries(CODE_BLOCK_ATTRS)) pre.setAttribute(name, value);
+  }
+};
+
 /** 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む */
 export const renderMarkdown = (source: string): HTMLElement => {
   const root = h({ tag: "div", attrs: { class: "md" } });
@@ -467,6 +478,7 @@ export const renderMarkdown = (source: string): HTMLElement => {
     table.replaceWith(wrap);
     wrap.append(table);
   }
+  focusCodeBlocks(root);
   return root;
 };
 

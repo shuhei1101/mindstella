@@ -225,7 +225,7 @@ export const Folded: Story = {
 /** 表示の設定でセクションの折りたたみをオフにした。見出しに開閉を置かない */
 export const FoldOff: Story = { args: { source: SECTIONS_SOURCE, display: { ...MindmapPreview.BODY_VIEW_DEFAULT, fold: false } } };
 
-/** 言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返す */
+/** 言語を書いたコードブロックは左上に言語の札を出し、ホバーで右上にコピーのボタンを出す。言語を書かないコードブロックには札を出さない。長い行は折り返さず、コードブロックの中だけで横に送れる。言語の札とコピーのボタンは横に送っても同じ位置に残る */
 export const CodeBlock: Story = { args: { source: CODE_SOURCE } };
 
 /** コピーのボタンを押した直後。ボタンがチェックのマーカーに変わり、クリップボードには札とボタンを含まないコードだけが入る */

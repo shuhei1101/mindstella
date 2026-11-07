@@ -318,7 +318,7 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 .md .md-table-wrap > table { margin: 0; display: table; overflow: visible; max-width: none; }
 /* 包む要素のフォーカスの枠: 送る区画の内側に描く */
 .md .md-table-wrap:focus-visible { outline-offset: -2px; }
-/* 本文の長い URL とコード（コードブロックの中を含む）: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない） */
+/* 本文の長い URL とインラインコード: どの幅でも本文の幅で折り返す（項目の ID のリンクは折り返さない。コードブロックの中は `white-space: pre` で折り返さない） */
 .md a:not(.idref), .md code { overflow-wrap: anywhere; }
 /* 本文の表のセル: 右と下の罫 */
 .md th, .md td { border: 0; border-right: 1px solid var(--border-soft); border-bottom: 1px solid var(--border-soft); padding: 4px 8px; text-align: left; vertical-align: top; }
@@ -327,7 +327,11 @@ button.n-item.off { color: var(--text-3); border-style: dashed; }
 /* 本文の表の見出しの行: 上の罫 */
 .md thead th { border-top: 1px solid var(--border-soft); }
 .md th { background: var(--surface-2); }
-.md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* コードブロック: 長い行は折り返さず、枠の中だけで横に送る（フォーカスの枠は送る区画の内側に描く） */
+.md pre { background: var(--surface-2); padding: 10px 12px; border-radius: var(--radius); overflow: auto; font-size: 12px; }
+.md pre:focus-visible { outline-offset: -2px; }
+/* ライブラリが読めないときの本文の原文: 長い行を折り返して本文の幅に収める */
+.md pre.md-raw { white-space: pre-wrap; overflow-wrap: anywhere; }
 .md code { font-family: var(--font-mono); font-size: .92em; }
 .md-error { color: var(--st-review); font-size: var(--fs-small); }
 
