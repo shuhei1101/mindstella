@@ -71,7 +71,7 @@ constraints:
   - item: ファイルの形
     constraint: '`skills/session/SKILL.md` と `skills/session/steps/`（`取り込み.md`・`ヒアリング.md`・`リサーチ.md`・`方針転換.md`・`範囲の見直し.md`・`プレビュー.md`・`ゴール判定.md`）。SKILL.md は入力・ステップの表・記録の書き方・ツールと引数の一覧だけを持ち、各ステップは `steps/` を指す'
   - item: 共通の置き場所
-    constraint: '`skills/mindmap/`（SKILL.md を持たない）に `references/`（質問の書式・文章の書き方・リサーチの調べ方・起動時の指示）・`playbooks/`（システム開発・調査・資料作り・壁打ち）・`scripts/`・`schemas/`・`preview/`・`README.md` を置き、setup と session の両方が読む'
+    constraint: '`skills/mindmap/`（SKILL.md を持たない）に `references/`（質問の書式・文章の書き方・リサーチの調べ方・起動時の指示）・`playbooks/`（システム開発・調査・資料作り・壁打ち）・`scripts/`・`schemas/`・`preview/`・`README.md` を置き、setup と session の両方が読む。起動時の指示はスキルでなく起動スクリプトが読む'
   - item: front matter の name
     constraint: '`session`'
   - item: front matter の description
