@@ -67,7 +67,7 @@ export const PendingChangeSetLink: Story = { args: { pending: {"id": "C-44", "th
 export const ChangeSetLinkLong: Story = { args: { post: {"id": "TH-2-1", "author": "ai", "body": "A-11 の段落を [設定のパネルの画面の流れのうち、既定として保存するまでの段落と確かめのダイアログの説明](#diff=V-5) のとおりに直しました。", "created": "2026-10-12T04:02:00+00:00"}, titles: lookup({"A-11": "設定のパネルの画面の流れ（モック）"}), changeSets: lookup({"V-5": "A-11 の段落を直す"}) } };
 
 /** AI の書き込みの Markdown。見出しは `h2`、表は `table`、`python` のコードは言語の札とコピーのボタンを持つ `pre`、`mermaid` は図、`> [!NOTE]` は「補足」の囲みで描かれ、記法の文字は出ない。段落の中の D-1 は項目を開くボタン。生の HTML の `onerror` は取り除かれて動かない */
-export const MarkdownPost: Story = { args: { post: {"id": "TH-1-1", "author": "ai", "body": "## 比べた結果\n\nD-1 は案 A が合う。\n\n| 案 | 結果 |\n| --- | --- |\n| A | 成立 |\n\n```python\nprint(\"ok\")\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n> [!NOTE]\n> 案 B は試していない。\n\n<img src=\"x\" onerror=\"window.injected = true\">", "created": "2026-10-12T01:24:00+00:00"}, titles: lookup({"D-1": "描画のライブラリ"}) } };
+export const MarkdownPost: Story = { args: { post: {"id": "TH-1-1", "author": "ai", "body": "## 比べた結果\n\nD-1 は案 A が合う。\n\n| 案 | 結果 |\n| --- | --- |\n| A | 成立 |\n\n```python\nprint(\"ok\")\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n> [!NOTE]\n> 案 B は試していない。\n\n<img src=\"x\" alt=\"無害化の確認の画像\" onerror=\"window.injected = true\">", "created": "2026-10-12T01:24:00+00:00"}, titles: lookup({"D-1": "描画のライブラリ"}) } };
 
 /** レビュー中の返信の Markdown。破線の枠の中で「起票してよい」を太字（`strong`）で描き、`**` は出ない */
 export const PendingMarkdown: Story = { args: { pending: {"id": "C-45", "thread": "TH-1", "target": null, "body": "**起票してよい**", "created": "2026-10-12T05:30:00+00:00", "loc": null} } };

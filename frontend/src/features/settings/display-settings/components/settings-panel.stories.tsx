@@ -9,6 +9,15 @@ const meta = {
   title: "Settings/SettingsPanel",
   component: SettingsPanel,
   args: { look: "deep", defaultLook: "deep", visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 2, logs: 4 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { pin: true, head: true, stripes: false, fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn(), onWorkspace: fn() },
+  // パネルの中と同じ見出しの順にするため、パネルの見出し「表示の設定」（h2）の下に置く
+  decorators: [
+    (Story) => (
+      <section>
+        <h2 className="m-0 text-body font-medium">表示の設定</h2>
+        <Story />
+      </section>
+    ),
+  ],
 } satisfies Meta<typeof SettingsPanel>;
 
 export default meta;

@@ -9,6 +9,14 @@ const meta = {
   title: "Comments/ThreadRow",
   component: ThreadRow,
   args: { onOpen: fn(), onTag: fn() },
+  // 行は `<li>` なので、コメントの一覧と同じく `<ul>` で包む
+  decorators: [
+    (Story) => (
+      <ul className="m-0 list-none p-0">
+        <Story />
+      </ul>
+    ),
+  ],
 } satisfies Meta<typeof ThreadRow>;
 
 export default meta;
