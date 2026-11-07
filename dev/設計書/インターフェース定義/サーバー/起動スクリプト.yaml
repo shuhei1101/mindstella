@@ -37,7 +37,7 @@ flows:
         IF->>ES: installPath の ensure_server.py
         ES-->>IF: 終了コード 0
         IF->>TM: new-session -d -s mindstella-家計簿アプリ-{ハッシュ} -c 家計簿アプリ -e CLAUDE_CONFIG_DIR
-        TM->>CC: claude
+        TM->>CC: claude --append-system-prompt {起動時の指示の中身}
         IF-->>クライアント: つなぐコマンド、終了コード 0
       ```
     expected:
@@ -48,6 +48,7 @@ flows:
       - 偽の `claude` の環境変数 `CLAUDE_CONFIG_DIR` が渡した設定のフォルダ
       - '`MINDSTELLA_PORT` の `GET /_admin/status` の `plugin_root` が `installPath` で、MCP のクライアントで `/mcp` につなぐとツールの一覧が返る'
       - 標準出力に `tmux attach-session -t =mindstella-家計簿アプリ-{ハッシュ}` がある
+      - 偽の `claude` が受け取った引数に `--append-system-prompt` があり、続く値が `installPath` の `skills/mindmap/references/起動時の指示.md` の中身と同じ
     test: test_normal
   - name: 正常系（プラグインを上げた後）
     summary: 古い版のフォルダのスクリプトを叩いても、新しい版の常駐サーバーを起動する
@@ -367,6 +368,36 @@ flows:
       - 新しいセッションの偽の `claude` の環境変数 `CLAUDE_CONFIG_DIR` が `claude-sub1`
       - 先にあったセッションのプロセスが立ち上げ直されていない
     test: test_normal_when_another_account
+  - name: 異常系（起動時の指示が無い・StartupPromptMissingError）
+    summary: インストールした版のフォルダに起動時の指示が無ければ、入れ直すよう示して何も立てない
+    setup:
+      - name: Mock
+        description: 正常系と同じ偽の `claude`
+      - name: 仮想環境
+        description: 正常系と同じ
+      - name: プラグインのフォルダ
+        description: '`skills/mindmap/references/起動時の指示.md` を消したテストのプラグインのフォルダを `installPath` に返す'
+      - name: tmux
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as bin/mindstella
+        participant CC as claude（偽）
+
+        クライアント->>IF: mindstella {フォルダ}
+        IF->>CC: plugin list --json
+        CC-->>IF: installPath
+        IF->>IF: installPath の起動時の指示が無い
+        IF-->>クライアント: エラー、終了コード 1
+      ```
+    expected:
+      - 終了コードが 1
+      - 標準エラーに、無いファイルのパスとプラグインを入れ直す案内がある
+      - tmux にセッションが無く、偽の `claude` が立ち上がっていない
+      - 常駐サーバーが起動していない
+    test: test_error_when_startup_prompt_missing
 lead: 依存を確かめ、mindstella の常駐サーバーが落ちていれば起動してから、tmux のセッションの中で Claude Code を立ち上げ、そのセッションへつなぐ。
 idempotent: false
 side_effects: 常駐サーバーが落ちていれば起動し（『常駐サーバーの起動の確認』）、tmux のセッションを 1 つ立てる。ワークスペースのフォルダが無ければ作る。ワークスペースの中は書かない
@@ -447,10 +478,13 @@ exceptions:
   - name: ServerStartError
     condition: 『常駐サーバーの起動の確認』が終了コード 1 を返した（ポートが使われている・起動を待つ上限を超えた）
     notes: 終了コード 1。『常駐サーバーの起動の確認』の標準エラーをそのまま出す。tmux のセッションを立てない
+  - name: StartupPromptMissingError
+    condition: '`installPath` の `skills/mindmap/references/起動時の指示.md` が無いか読めない'
+    notes: 終了コード 1。無いファイルのパスと、プラグインを入れ直すよう標準エラーに出す。常駐サーバーも tmux も立てない
 error_format: '標準エラーに `[mindstella] エラー: {内容}` の行を出し、そろえるコマンドがあれば次の行に出す。'
 constraints:
   - item: 確かめる順
-    constraint: 引数 → 依存（『依存の確認』をシステムの `python3` で起動）→ `tmux` → `claude` → プラグインのフォルダ → 常駐サーバー（『常駐サーバーの起動の確認』を `installPath` の `ensure_server.py` で起動）。どれかで止まったら、それより後は何もしない
+    constraint: 引数 → 依存（『依存の確認』をシステムの `python3` で起動）→ `tmux` → `claude` → プラグインのフォルダ → 起動時の指示 → 常駐サーバー（『常駐サーバーの起動の確認』を `installPath` の `ensure_server.py` で起動）。どれかで止まったら、それより後は何もしない
   - item: 使う版
     constraint: 叩いたスクリプトの版ではなく、`claude plugin list --json` の `installPath` が指すインストールした今の版の常駐サーバーを起動する。既に別のバージョンの常駐サーバーが待ち受けていれば、起動し直さずに差と手順を標準エラーに出し、Claude Code は立ち上げる
   - item: 同じ名前のセッション
@@ -469,6 +503,9 @@ constraints:
   - item: 常駐サーバーへ渡す環境変数
     constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` を、常駐サーバーを起動するときに呼び出し元の環境のまま渡す。Claude Code の環境へは足さない。常駐サーバーが既に待ち受けているときは、新しい値は効かない（`server_stop` で止めてから叩き直すと効く）'
     notes: テストは常駐サーバーを起動する全てのフローで、空きポートを `MINDSTELLA_PORT` で渡す（利用者の端末の 8784 に触れない）
+  - item: 起動時の指示
+    constraint: '`installPath` の `skills/mindmap/references/起動時の指示.md` の中身を、`claude` の `--append-system-prompt` の値に渡す。tmux の `new-session` にはコマンドを引数ごとに分けて渡し、中身をシェルで解釈させない。同じ名前のセッションにつなぐときは渡さない（Claude Code を立ち上げ直さない）'
+    notes: 中身は、利用者がターミナルを確認しない前提と、質問・確認・知らせを検討事項・資料・スレッドで出すことと、setup・upgrade のスキルの中の質問はターミナルで聞く例外。session の SKILL.md の `## スレッドの返し方` と同じ決まりで、クリア・コンパクトの後も効く（#205）
 refs:
   - dev/設計書/インターフェース定義/サーバー/依存の確認#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#

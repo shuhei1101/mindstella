@@ -48,11 +48,14 @@ flows:
       - '`steps/取り込み.md` が `body_html` を指す'
       - '`steps/ゴール判定.md` が `body_format` を指し、`playbooks/資料作り.md` の `## リリースの形` が `.html` を指す'
       - 本文が `reply`・`set_thread_status`・`update_thread`・`new_thread` を呼び、`submissions`・`take_submission` を指さない
+      - '`steps/ゴール判定.md` が `clear_release` の後に `write_release` を呼び、Write ツールを指さない'
+      - '`steps/ヒアリング.md`・`リサーチ.md`・`方針転換.md`・`範囲の見直し.md`・`ゴール判定.md`・`プレビュー.md` が `new_thread` を呼ぶ'
+      - SKILL.md と `steps/` の本文で、ターミナルで聞く場面が `new_thread` を立てられなかったときだけである
     test: test_normal
 lead: 作成済みのワークスペースで、取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定のステップを回すスキルの入口と、そのファイルの形。
 callers:
   - dev/設計書/シナリオ/複合ユースケース/話し合いをゴールまで進める#
-side_effects: サーバーの MCP の書き込むツールでワークスペースの YAML を書き換える。取り込んだスレッドに返信するかクローズにし、利用者の書き込みを取り込み済みにして要約を書き直す。ワークスペースの外へ書き込む前の確認と話の流れと関係の無い知らせは、スレッドを立てる。リリースの資料（`.mindstella/release/`）はスキルが Markdown（本文を HTML で持つ納品物は HTML）で書き、そのとき利用者に書き込みの確認が出る。リリースの資料を書く前に `clear_release` で `.mindstella/release/` の中身を消す。リサーチではサブエージェントが Web を調べる。配る書き出しを頼まれたときは `export` で、利用者が示したパスへ HTML を書き出す
+side_effects: サーバーの MCP の書き込むツールでワークスペースの YAML を書き換える。取り込んだスレッドに返信するかクローズにし、利用者の書き込みを取り込み済みにして要約を書き直す。利用者に返事を求める質問と知らせは、ターミナルに書かずにスレッドを立てる。リリースの資料（`.mindstella/release/`）は `write_release` で Markdown（本文を HTML で持つ納品物は HTML）を書き、Claude Code の書き込みの確認は出ない。リリースの資料を書く前に `clear_release` で `.mindstella/release/` の中身を消す。リサーチではサブエージェントが Web を調べる。配る書き出しを頼まれたときは `export` で、利用者が示したパスへ HTML を書き出す
 request:
   - name: $ARGUMENTS
     type: str
@@ -68,25 +71,25 @@ constraints:
   - item: ファイルの形
     constraint: '`skills/session/SKILL.md` と `skills/session/steps/`（`取り込み.md`・`ヒアリング.md`・`リサーチ.md`・`方針転換.md`・`範囲の見直し.md`・`プレビュー.md`・`ゴール判定.md`）。SKILL.md は入力・ステップの表・記録の書き方・ツールと引数の一覧だけを持ち、各ステップは `steps/` を指す'
   - item: 共通の置き場所
-    constraint: '`skills/mindmap/`（SKILL.md を持たない）に `references/`（質問の書式・文章の書き方・リサーチの調べ方）・`playbooks/`（システム開発・調査・資料作り・壁打ち）・`scripts/`・`schemas/`・`preview/`・`README.md` を置き、setup と session の両方が読む'
+    constraint: '`skills/mindmap/`（SKILL.md を持たない）に `references/`（質問の書式・文章の書き方・リサーチの調べ方・起動時の指示）・`playbooks/`（システム開発・調査・資料作り・壁打ち）・`scripts/`・`schemas/`・`preview/`・`README.md` を置き、setup と session の両方が読む'
   - item: front matter の name
     constraint: '`session`'
   - item: front matter の description
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`。`mcp__plugin_mindstella_mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
-    notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown`（資料の HTML の本文は `body_html`）で、`config.yaml` は `update_settings` で書く。`release/` の書き出しは、数が少ないため利用者の確認に回す（パスで絞れない Write・Edit を話し合いの間ずっと許さない）
+    constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`write_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`。`mcp__plugin_mindstella_mindstella__` を頭に付けて並べる）。Write・Edit・Bash は許していない'
+    notes: Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は `add`・`update` の `body_markdown`（資料の HTML の本文は `body_html`）で、`config.yaml` は `update_settings` で書く。`release/` の書き出しは `write_release` で行い、パスで絞れない Write・Edit を許さない（書き込みの確認をターミナルに出さない）
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
   - item: リサーチの確認
-    constraint: サブエージェントの起動前に「何を・どの観点で・何体で」を示して確認を取る。利用者が自分から頼んだときだけ省く
+    constraint: サブエージェントの起動前に「何を・どの観点で・何体で」を、調査のタスクを `target` に渡した `new_thread` で示して確認を取る。利用者が自分から頼んだときだけ省く
   - item: スキルの中の名前
     constraint: 特定の開発基盤の名前を出さない（アーキテクチャ図の制約）
   - item: 進め方ガイド
     constraint: '`playbooks/{分野}.md` は、`## 最上位の軸の呼び名`・`## カテゴリーの分け方`・`## フェーズと観点`・`## 必ず調べるもの`・`## ゴールの候補`・`## リリースの形` の節をこの並びで持つ。`## ゴールの候補` は `（既定）` を付けた行を 1 つだけ持つ。準備では `config.yaml` の `playbooks` に並んだガイドをすべて読む'
     notes: 資料作り・壁打ちの値は補足の `進め方ガイドの分野`
   - item: 配る書き出し
-    constraint: 利用者が記録を人に渡したいと言ったときだけ、プレビューのステップで書き出す先のパスを利用者に聞き、`export` を `workspace`・`out` で呼ぶ。書き出す先にワークスペースの `.mindstella/` の中を指さない。書き出したら `path` の絶対パスと、ネットにつながらなくても開けて書き込む操作が無いことを示す
+    constraint: 利用者が記録を人に渡したいと言ったときだけ、プレビューのステップで書き出す先のパスを `new_thread` で聞き、`export` を `workspace`・`out` で呼ぶ。書き出す先にワークスペースの `.mindstella/` の中を指さない。書き出したら `path` の絶対パスと、ネットにつながらなくても開けて書き込む操作が無いことを、そのスレッドへの `reply` で示す
     notes: '`release/` は `clear_release` が中身を消す。インターフェース定義『配る書き出し』（サーバー）'
   - item: 版の比較
     constraint: '準備のステップで `.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を読んだ後に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる'
@@ -104,7 +107,7 @@ constraints:
     constraint: プレビューのステップで `preview_url` を呼び、返った `url` を示す。開く画面と項目が決まっていれば URL のハッシュ（インターフェース定義『プレビューを開く』）を付けて示す。ブラウザは開かない
     notes: インターフェース定義『プレビューの URL』
   - item: 範囲の見直し
-    constraint: 範囲が広がった・利用者が題名・話し合いの概要・ゴール・プレイブック・最上位の軸の呼び名・対象・カテゴリーを変えたいと言った・話の中身と呼び名が合わなくなった・ゴール判定でゴールが無く利用者が決めると言ったときに回す。書き換えのたたき台を示し、フェーズ・対象・カテゴリーが変わるときは新しい設定に無い古い名前ごとの対応の表も示して、利用者が確定してから `update_settings`（`settings`・`phase_map`・`target_map`・`category_map`）を呼ぶ。終えたら会話ログを足す
+    constraint: '範囲が広がった・利用者が題名・話し合いの概要・ゴール・プレイブック・最上位の軸の呼び名・対象・カテゴリーを変えたいと言った・話の中身と呼び名が合わなくなった・ゴール判定でゴールが無く利用者が決めると言ったときに回す。書き換えのたたき台（フェーズ・対象・カテゴリーが変わるときは新しい設定に無い古い名前ごとの対応の表も）を `deliverable: false` の資料に起こし、その資料を `target` に渡した `new_thread` で利用者の確定を取ってから `update_settings`（`settings`・`phase_map`・`target_map`・`category_map`）を呼ぶ。終えたら会話ログを足す'
     notes: 単一ユースケース『話し合いの範囲の見直し』、インターフェース定義『設定の更新』（サーバー）
   - item: 書き換えのまとまり
     constraint: 取り込み・ヒアリング・リサーチ・方針転換の各ステップで記録を書き換え終えたら、そのステップで何をしたかを一言の説明にして `commit` を呼ぶ。書き換えが無いステップでは呼ばない。範囲の見直しは `update_settings` のフェーズ・対象・カテゴリーの付け替えを変更履歴の対象にしないと決めたため、`commit` を呼ぶステップに入れない。準備のステップで `pending` が空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する
@@ -141,7 +144,7 @@ constraints:
     constraint: 準備のステップで版の比較が `same` のとき、`changes_since_read` より前に `readme` を呼ぶ。`written` が偽（利用者が書いた README）でも利用者には示さずに続ける。`readme` がツールのエラーを返しても、エラーの本文を利用者に短く示して準備を続ける（`changes_since_read` へ進む）
     notes: 単一ユースケース『README の書き直し』、インターフェース定義『README の書き出し』（サーバー）
   - item: やめる・消す
-    constraint: '利用者がやめると言った項目は消さずに取り下げる。検討事項は `update` で状態を `対象外` か `取り下げ`、タスクは `中止` にし、調査・資料・用語集・メモ・会話ログは `update` で `withdrawn: true` を書く。どの種類も `reason` を書く。誤って足した・重複した項目だけを `remove` で消す。消す前に、消す項目と消すと戻せないことを利用者に示して確かめ、許しを得てから呼ぶ。ほかの項目が指しているときは、指している側の参照を先に `update` で付け替えるか外してから消す'
+    constraint: '利用者がやめると言った項目は消さずに取り下げる。検討事項は `update` で状態を `対象外` か `取り下げ`、タスクは `中止` にし、調査・資料・用語集・メモ・会話ログは `update` で `withdrawn: true` を書く。どの種類も `reason` を書く。誤って足した・重複した項目だけを `remove` で消す。消す前に、消す項目と消すと戻せないことを、消す項目を `target` に渡した `new_thread` で示して確かめ、許しを得てから呼ぶ。ほかの項目が指しているときは、指している側の参照を先に `update` で付け替えるか外してから消す'
     notes: 単一ユースケース『発言の取り込み』『記録の削除と取り下げ』、インターフェース定義『項目の削除』
   - item: 資料の本文の形式
     constraint: 取り込みのステップは、資料の主な中身がモック・図のような見た目のあるものなら本文を HTML で `body_html` に、文章が主なら Markdown で `body_markdown` に書く。資料以外の種類の本文は Markdown だけ。ゴール判定で納品物を書き出すときは、`show` の `body_format` が `html` の資料を `{納品物のタイトル}.html` に `body_html` のまま書き、それ以外は今までどおり Markdown で書く
@@ -150,8 +153,8 @@ constraints:
     constraint: 資料・調査を `add` で足すとき、本文や会話でその項目をタイトル以外の名前（略称・英語名・旧名を含む）で呼んでいれば、その名前を `aliases` に書く。複数の項目や用語に当てはまる一般語（「設定」「手順」など）と、1〜2 文字の語・ほかの語の一部としてよく出る語は `aliases` に書かない。タイトルだけでは中身が分からないときは、`description` に 1 文で「何について書いてあるか」と「どんなときに読むか」を書く。呼び名が増えた・変わったときは `update` で直す。タグ（`tags`）には入れない
     notes: プレビューは本文の語が `aliases` に一致すると、用語と同じツールチップにその資料・調査を出す。単一ユースケース『発言の取り込み』『リサーチ』
   - item: スレッドで聞く場面
-    constraint: ワークスペースの外へ書き込む前の確認（Issue の起票 など）と、話の流れと関係の無い知らせは、`new_thread` で本文・要約・タグを渡してスレッドを立て、返事が届くまで外へは書き込まない。今の話の流れの中で答えが要る問い（ヒアリング・方針転換の確認・リサーチを始めてよいか）はターミナルで聞く。立てられなかったときは同じことをターミナルで聞く。タグは記録の話題のタグと同じ付け方にする
-    notes: 単一ユースケース『AIがスレッドを立てる』
+    constraint: 利用者は Claude Code のターミナルを確認しない前提にし、利用者に返事を求める全ての質問と知らせは、`new_thread` で本文・要約・タグを渡してスレッドを立て、返事が届くまでその質問の先の作業をしない。既にある検討事項で決めること（ヒアリングの質問・方針転換の確認）は、その検討事項に案と推奨を記録してから、検討事項ごとに `target` にその検討事項を渡して立てる。長いたたき台（範囲の見直し）は資料に起こしてその資料を `target` に渡す。それ以外（リサーチを始めてよいか・ゴール判定の確定とゴールを決めるか・記録を消してよいか・書き出す先・ワークスペースの外へ書き込む前の確認）は、検討事項を作らずにスレッドだけで聞く。回答は送信の取り込みで読み、待っていたステップの続きを進めて、結果はそのスレッドへの `reply` で返す。ターミナルで聞くのは、`new_thread` で立てられなかったときの同じ質問だけ。SKILL.md の `## スレッドの返し方` に置き、各ステップはその節を指す。タグは記録の話題のタグと同じ付け方にする
+    notes: 単一ユースケース『AIがスレッドを立てる』『ヒアリング』『ゴール判定』。起動時の指示（インターフェース定義『起動スクリプト』）にも同じ決まりを入れる（#205）
   - item: スレッドを読む範囲
     constraint: '取り込み待ちのスレッドのほかは、既定でオープンのスレッドの未読だけを読み、過去の経緯が要るときだけ `threads` を `status: closed` か `all` で、`thread` を `unread_only: false` で呼ぶ。一覧はキーだけで引き、要約で読むかを決める'
   - item: 直したまとまりのリンク
@@ -160,11 +163,15 @@ constraints:
     constraint: ゴール判定の完了したタスクと、リサーチの既に調べた調査のように、条件に合う項目を全て読む場面では、`find` の `next_cursor` が `null` になるまで `cursor` で続きをたどる
   - item: find の返す量
     constraint: '`find` は既定の `view: brief` の Markdown で読み、対象・属性・本文が要るときだけ `view` か `include` で広げる。結果をスクリプトとして取り出すときは `format: json` を渡す'
+  - item: リリースの資料の書き出し
+    constraint: ゴール判定で確定を受けた後、`clear_release` で `.mindstella/release/` の中身を消してから、ファイルごとに `write_release`（`workspace`・`path`（`release/` からのパス）・`content`）で書く。Write ツールを使わない
+    notes: 単一ユースケース『ゴール判定』、インターフェース定義『リリースの書き出し』（サーバー）
 refs:
   - dev/設計書/外部ライブラリ/claude-code#
   - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
   - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
   - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+  - dev/設計書/インターフェース定義/サーバー/リリースの書き出し#
 notes:
   確かめないもの: スキルをモデルが読んで動かす振る舞いは、費用が掛かり結果が揺れるためテストしない。サブエージェントの起動と許可が及ぶことは PoC（#22）で確かめた
   進め方ガイドの分野: |-

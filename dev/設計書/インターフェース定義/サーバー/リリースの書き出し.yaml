@@ -1,0 +1,167 @@
+title: "リリースの書き出し"
+entry:
+  kind: mcp_tool
+  value: '`write_release`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__write_release`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: release/ の下に渡した名前で本文を書き、書いたパスを返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 空の `release/` を持つワークスペース
+      - name: 書くもの
+        description: '`path` は `要件定義書.md`、`content` は 2 行の Markdown'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as write_release（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: write_release workspace path content
+        IF-->>WS: config.yaml があるか確かめる
+        IF->>IF: path が release/ の下を指すか確かめる
+        IF->>WS: release/要件定義書.md を書く
+        IF-->>クライアント: JSON（path・bytes）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`path` が `要件定義書.md`、`bytes` が書いた本文の UTF-8 のバイト数'
+      - '`.mindstella/release/要件定義書.md` の中身が渡した `content` と同じ'
+      - '`release/` の外のファイルの中身が、呼ぶ前と同じ'
+    test: test_normal
+  - name: 正常系（フォルダを含む名前と上書き）
+    summary: release/ の下のフォルダを作って書き、同じ名前でもう一度呼ぶと上書きする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '`release/` を持たないワークスペース'
+      - name: 書くもの
+        description: '`path` は `図/画面のモック.html`。一度目の `content` は `<p>前</p>`、二度目は `<p>後</p>`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as write_release（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: write_release（図/画面のモック.html、前）
+        IF->>WS: release/ と release/図/ を作って書く
+        クライアント->>IF: write_release（同じ path、後）
+        IF->>WS: 同じファイルを書き換える
+        IF-->>クライアント: JSON（path・bytes）
+      ```
+    expected:
+      - 2 回ともツールのエラーにならない
+      - '`.mindstella/release/図/画面のモック.html` の中身が `<p>後</p>`'
+      - '`release/` の下のファイルが 1 つだけ'
+    test: test_normal_when_nested_and_overwrite
+  - name: 異常系（release/ の外を指す・引数の誤り）
+    summary: 絶対パス・`..` を含むパス・拡張子が `.md`・`.html` でない名前・空の名前は、何も書かずにエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 空の `release/` を持つワークスペース
+      - name: 誤った path
+        description: '`../config.yaml`・ワークスペースの外の絶対パス・`資料.txt`・空の文字列を 1 つずつ渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as write_release（MCP のツール）
+
+        クライアント->>IF: write_release workspace ../config.yaml content
+        IF->>IF: path が release/ の下を指さない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - どの path でもツールのエラーになる
+      - 'エラーの本文が `エラー: 引数の誤り: path: ` で始まる'
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じ
+    test: test_error_when_path_outside_release
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すと何も書かずにエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as write_release（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: write_release workspace path content
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+      - フォルダに `.mindstella/` が作られていない
+    test: test_error_when_workspace_not_found
+lead: ゴール判定で確定したリリースの資料を、`release/` の下へ 1 ファイルずつ書き出す。
+idempotent: true
+side_effects: '`release/` の下に 1 ファイルを書く（同じ名前があれば書き換え、`release/` と途中のフォルダが無ければ作る）。`release/` の外は読み書きしない'
+callers:
+  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: path
+    type: str
+    required: true
+    location: argument
+    description: '`release/` からの書き出すファイルのパス'
+    constraints: 空でない相対パス。`..` の部分を持たず、シンボリックリンクを解いても `release/` の下を指し、拡張子が `.md` か `.html`
+    example: 要件定義書.md
+  - name: content
+    type: str
+    required: true
+    location: argument
+    description: 書き出す本文（Markdown か HTML）。UTF-8 で書く
+response:
+  - name: path
+    type: str
+    description: 書いたファイルの `release/` からのパス（区切りは `/`）
+  - name: bytes
+    type: int
+    description: 書いた本文の UTF-8 のバイト数
+exceptions:
+  - name: なし（正常終了）
+    condition: 書けた（同じ名前を書き換えたときを含む）
+    notes: 結果を返す
+  - name: 引数の誤り
+    condition: '`path` が空・絶対パス・`..` を含む・`release/` の外を指す・拡張子が `.md`・`.html` でない'
+    notes: 'ツールのエラー。本文は `エラー: 引数の誤り: path: {理由}`。何も書かない'
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。何も書かない
+  - name: WriteFailedError
+    condition: ファイルか途中のフォルダを書けない（権限が無い・同じ名前のフォルダがある）
+    notes: ツールのエラー。書きかけのファイルを残さない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 書く範囲
+    constraint: '`{ワークスペースのフォルダ}/.mindstella/release/` の下だけ。前の版の `handoff/` と記録のファイルは書かない。記録ではないため、書き換えの知らせ（『書き換えの知らせ』）を出さず、変更履歴にも積まない'
+  - item: 書き方
+    constraint: 同じフォルダの一時ファイルに書いてから置き換え、書きかけのファイルを残さない
+refs:
+  - dev/設計書/インターフェース定義/サーバー/リリースの片付け#
+  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+notes:
+  サーバーに置く理由: '`session` は Write ツールを許さず、Write で書くと Claude Code が書き込みの確認をターミナルに出す。ターミナルを確認しない利用者のところでリリースが止まらないよう、`release/` だけを書くツールをサーバーに置く（#205）'
+test_file: tests/integration/server/test_write_release.py
