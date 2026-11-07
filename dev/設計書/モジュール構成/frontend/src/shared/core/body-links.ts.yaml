@@ -55,5 +55,26 @@ functions:
     mock: なし
     expected: D-1 のリンクを押すと `onOpen('D-1')`
   container: frontend/src/shared/core/body-links.ts
+- name: renderMarkdown
+  title: 本文を描く
+  kind: 関数
+  usecase: 項目の詳細を読む
+  summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 7 のコードブロックの `pre` のフォーカスの属性を含む）
+  args:
+  - name: source
+    type: string
+    required: true
+    description: 本文の Markdown
+  returns:
+    type: HTMLElement
+    description: 描いた本文（class `mdmark`）。mdmark が読めないときは、`libraryNotice` と原文の `pre` を持つ要素
+  unit_tests:
+  - name: test_render_markdown_when_code_block
+    case: 正常
+    summary: コードブロックの pre をフォーカスできる要素にする
+    condition: mdmark の `mount` を、言語指定 `json` のコードブロック・言語指定の無いコードブロック・mermaid のコードブロック・`.mdmark-html` の中の `pre` を描く代わりのものにする
+    mock: 描画のライブラリ（`@/shared/adapters/libraries`）
+    expected: 範囲の外の 2 つのコードブロックの `pre` が `tabindex="0"`・`role="group"`・`aria-label="コードブロック"` を持つ。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない
+  container: frontend/src/shared/core/body-links.ts
 notes:
   単体テスト: 同じフォルダの `body-links.test.ts` に置く（knowledge の規約『フォルダ構成』）
