@@ -25,8 +25,11 @@ logger = logging.getLogger(__name__)
 # `{count}` に件数を入れて貼る 1 行。`[mindstella]` は `session` が利用者の発言と見分ける印
 INPUT_TEMPLATE = "[mindstella] ユーザーからのコメントが {count} 件届きました。読み直してください。"
 
-# 貼り始めてから tmux の 3 つのコマンドと届いたかの確かめを打ち切るまでの秒数
-INPUT_DEADLINE_SEC = 0.5
+# 貼り付けの鍵を取ってから、生きているかの確かめと tmux の 3 つのコマンドを打ち切るまでの秒数
+PASTE_DEADLINE_SEC = 0.5
+
+# tmux の 3 つのコマンドを終えてから、届いたかの確かめを打ち切るまでの秒数
+CONFIRM_DEADLINE_SEC = 5.0
 
 # `Enter` の後、書き足された行を読み直す間隔（秒）
 DELIVERY_POLL_SEC = 0.05
@@ -90,12 +93,14 @@ class InputTargets:
     """ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ台帳。"""
 
     def __init__(self) -> None:
-        """空の台帳と、台帳の鍵・入力の鍵を作る。"""
+        """空の台帳と、台帳の鍵・ペインごとの入力の鍵・貼り付けの鍵を作る。"""
         # ワークスペース → 宛先（最後のセッションが tmux の外なら None）
         self._targets: dict[Path, InputTarget | None] = {}
         self._guard = threading.Lock()
-        # プロセスの中の 1 本の入力の鍵（同時に送られた 2 回の入力と確かめを重ねない）
-        self._input_lock = threading.Lock()
+        # (ソケット, ペイン) → ペインごとの入力の鍵（同じペインへ同時に送られた 2 回の入力と確かめを重ねない）
+        self._pane_locks: dict[tuple[str, str], threading.Lock] = {}
+        # プロセスの中の 1 本の貼り付けの鍵（名前の付いたバッファを共有するため、貼り付けを重ねない）
+        self._paste_lock = threading.Lock()
 
     def remember(self, root: Path, session: Session) -> None:
         """そのワークスペースの宛先を、渡したセッションの宛先にする（tmux の外なら宛先を外す）。"""
@@ -110,7 +115,13 @@ class InputTargets:
 
     def enter(self, root: Path, count: int) -> bool:
         """そのワークスペースの宛先へ、届いた件数の 1 行を入力し、会話の記録に入ったかを返す。"""
-        return enter_to_claude(self.target_of(root), count, lock=self._input_lock)
+        target = self.target_of(root)
+        # 宛先が無い: ペインの鍵を作らない
+        if target is None:
+            return enter_to_claude(None, count, pane_lock=None, paste_lock=self._paste_lock)
+        with self._guard:
+            pane_lock = self._pane_locks.setdefault((target.socket, target.pane), threading.Lock())
+        return enter_to_claude(target, count, pane_lock=pane_lock, paste_lock=self._paste_lock)
 
 
 def parse_session(raw: Mapping[str, Any] | None) -> Session | None:
@@ -351,7 +362,8 @@ def enter_to_claude(
     target: InputTarget | None,
     count: int,
     *,
-    lock: threading.Lock,
+    pane_lock: threading.Lock | None,
+    paste_lock: threading.Lock,
     run: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
@@ -359,37 +371,42 @@ def enter_to_claude(
 ) -> bool:
     """宛先が生きていれば届いた件数の 1 行をペインへ貼り、上限までに会話の記録に入ったかを返す。入力できなかった理由は記録する。"""
     # 宛先が無い（セッションを受けていないか tmux の外）: ps・tmux を呼ばない
-    if target is None:
+    if target is None or pane_lock is None:
         logger.info("宛先のセッションが無いか tmux の外のため、Claude Code へ入力しません")
         return False
-    # 同時に送られた入力と確かめを重ねない
-    with lock:
+    # 同じペインへ同時に送られた入力と確かめを重ねない
+    with pane_lock:
         text = input_text(count)
         sizes = snapshot_sizes(transcript_dirs(target))
-        deadline = clock() + INPUT_DEADLINE_SEC
-        ended = is_session_alive(
-            target, deadline=deadline, run=run, clock=clock, proc_dir=proc_dir
-        )
-        # 宛先のセッションが終わった: 別のプロセスへ貼らない
-        if ended is not None:
-            logger.warning("宛先のセッションが終わったため、Claude Code へ入力しません（%s）", ended)
-            return False
-        reason = paste_to_pane(target, text, deadline=deadline, run=run, clock=clock)
+        # 名前の付いたバッファを共有するため、生きているかの確かめと貼り付けだけを貼り付けの鍵の中で行う
+        with paste_lock:
+            deadline = clock() + PASTE_DEADLINE_SEC
+            ended = is_session_alive(
+                target, deadline=deadline, run=run, clock=clock, proc_dir=proc_dir
+            )
+            # 宛先のセッションが終わった: 別のプロセスへ貼らない
+            if ended is not None:
+                logger.warning(
+                    "宛先のセッションが終わったため、Claude Code へ入力しません（%s）", ended
+                )
+                return False
+            reason = paste_to_pane(target, text, deadline=deadline, run=run, clock=clock)
         # 貼れなかった: 会話の記録は読み直さない
         if reason is not None:
             logger.warning("Claude Code へ入力できません（%s）", reason)
             return False
-        # 上限まで、書き足された行を読み直す（新しい会話のフォルダが貼った後に作られても拾うため、毎回引き直す）
+        # 貼り終えてから上限まで、書き足された行を読み直す（新しい会話のフォルダが貼った後に作られても拾うため、毎回引き直す）
         # 待った秒の合計も上限を越えないよう、待った秒を誤差なく足し合わせて残りを出す
+        confirm_deadline = clock() + CONFIRM_DEADLINE_SEC
         waited: list[float] = []
         while True:
             if find_delivery(transcript_dirs(target), sizes, cwd=target.cwd, text=text):
                 return True
-            remaining = min(deadline - clock(), INPUT_DEADLINE_SEC - math.fsum(waited))
+            remaining = min(confirm_deadline - clock(), CONFIRM_DEADLINE_SEC - math.fsum(waited))
             if remaining <= 0:
                 break
             wait = min(DELIVERY_POLL_SEC, remaining)
             sleep(wait)
             waited.append(wait)
-        logger.warning("Claude Code の会話の記録に入力が入りません（%s 秒）", INPUT_DEADLINE_SEC)
+        logger.warning("Claude Code の会話の記録に入力が入りません（%s 秒）", CONFIRM_DEADLINE_SEC)
         return False

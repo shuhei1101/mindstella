@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -21,7 +22,7 @@ from .fixture_types import (
     WriteComments,
     WriteThreads,
 )
-from .http_helpers import http_request, post_json
+from .http_helpers import HttpResult, http_request, post_json
 from .thread_helpers import read_threads, threads_path
 from workspace_fixtures import RECORD_DIR, StartServer
 
@@ -31,9 +32,9 @@ SEND_PATH = "/api/comments/send"
 # 資料 A-1 の本文
 A_BODY = "1 行目\n言い換えたい文\n3 行目"
 
-# 入力が入ったと確かめて返るまでの上限秒数（確かめの上限 0.5 秒）と、入らないと分かって返るまでの上限秒数
+# 入力が入ったと確かめて返るまでの上限秒数と、入らないと分かって返るまでの上限秒数（貼り付けの上限 0.5 秒と確かめの上限 5 秒の和に余裕を足す）
 ENTERED_RESPONSE_SEC = 0.5
-NOT_ENTERED_RESPONSE_SEC = 1.0
+NOT_ENTERED_RESPONSE_SEC = 6.0
 
 # 偽のコマンドが書き足した行を待つ上限秒数と、確かめる間隔
 TRANSCRIPT_WAIT_SEC = 5
@@ -482,6 +483,59 @@ def test_normal_when_two_sessions(
     assert f'"cwd": "{first_root.resolve()}"' in first_pane.lines()[0]
     assert len(second_pane.lines()) == 1
     assert f'"cwd": "{second_root.resolve()}"' in second_pane.lines()[0]
+
+
+def test_normal_when_other_pane_not_entered(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+) -> None:
+    """一方のペインへの入力が届かずに確かめを待つ間も、別のペインへの送信は待たずに入力して返る（正常系）。"""
+    # 準備
+    first_root = make_workspace(make_item("D-1"), name="a")
+    second_root = make_workspace(make_item("D-1"), name="b")
+    write_comments(first_root, make_comment("C-1", body="案 A にする"))
+    write_comments(second_root, make_comment("C-1", body="案 B にする"))
+    first_pane = start_claude_pane(mode="silent", cwd=first_root)
+    second_pane = start_claude_pane(mode="user", cwd=second_root)
+    server = start_server()
+    first = server.call("preview_url", workspace=str(first_root), session=first_pane.session)
+    second = server.call("preview_url", workspace=str(second_root), session=second_pane.session)
+    assert first.data is not None
+    assert second.data is not None
+    first_results: list[HttpResult] = []
+    returned: list[str] = []
+
+    def _send_first() -> None:
+        """A へ送り、応答と返った順を控える。"""
+        first_results.append(post_json(str(first.data["url"]), SEND_PATH, {"ids": ["C-1"]}))
+        returned.append("a")
+
+    first_started = time.monotonic()
+    sender = threading.Thread(target=_send_first)
+    sender.start()
+    # A の入力が P1 に貼られるまで待つ
+    deadline = time.monotonic() + TRANSCRIPT_WAIT_SEC
+    while "ユーザーからのコメント" not in first_pane.capture() and time.monotonic() < deadline:
+        time.sleep(POLL_INTERVAL_SEC)
+    assert "ユーザーからのコメント" in first_pane.capture()
+    second_started = time.monotonic()
+    # 実行
+    second_result = post_json(str(second.data["url"]), SEND_PATH, {"ids": ["C-1"]})
+    second_elapsed = time.monotonic() - second_started
+    returned.append("b")
+    sender.join(timeout=NOT_ENTERED_RESPONSE_SEC + TRANSCRIPT_WAIT_SEC)
+    first_elapsed = time.monotonic() - first_started
+    # 検証
+    assert (second_result.status, second_result.json()["entered"]) == (201, True)
+    assert second_elapsed <= ENTERED_RESPONSE_SEC
+    assert len(first_results) == 1
+    assert (first_results[0].status, first_results[0].json()["entered"]) == (201, False)
+    assert first_elapsed <= NOT_ENTERED_RESPONSE_SEC
+    assert returned == ["b", "a"]
 
 
 def test_normal_when_session_ended(
