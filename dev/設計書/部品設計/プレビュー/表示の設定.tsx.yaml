@@ -122,7 +122,7 @@ args:
 - name: defaultKinds
   type: 配列
   required: true
-  description: ワークスペースの既定の表示する種類（`config.yaml` の `display.visible_kinds`。無ければ全ての種類）。`look`・`visible_kinds` と比べて「ワークスペースの既定にする」を出すかを決める
+  description: ワークスペースの既定の表示する種類（`config.yaml` の `display.visible_kinds`。無ければ全ての種類）。`look`・`visibleKinds` と比べて「ワークスペースの既定にする」を出すかを決める
 - name: counts
   type: オブジェクト
   required: true
@@ -135,7 +135,7 @@ args:
   type: 真偽値
   required: false
   default: 'true'
-  description: 「ワークスペースの既定にする」を置くか。配る書き出しでは false。true で `look`・`visible_kinds` が既定と同じときは、ボタンの代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（差分のミニマップだけを変えていても同じ）
+  description: 「ワークスペースの既定にする」を置くか。配る書き出しでは false。true で `look`・`visibleKinds` が既定と同じときは、ボタンの代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す（差分のミニマップだけを変えていても同じ）
 - name: message
   type: オブジェクト
   required: false
