@@ -2,394 +2,671 @@ title: SPAを開く
 entry:
   kind: screen
   value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みの件数と、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドの利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みと書きかけ、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドと利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・消す）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）'
 flows:
-- name: 正常系
-  summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
-  setup:
-  - name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 検討事項 D-1・D-2 とタスク T-1、利用者の未読の書き込みを持つオープンのスレッド 1 件と、レビュー中のコメント 2 件を持つワークスペース
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>SV: GET /api/events につなぐ\n  IF-->>ユーザー: トップバーと概要\n```"
-  expected:
-  - トップバーに話し合いの題名があり、タブの帯で概要が選ばれている
-  - 概要のタイルが記録の値で描かれている
-  - トップバーのコメントのボタンに件数 2 と未読の点がある
-  - URL が `/spa/`（search params が付かない）
-  - ブラウザのコンソールにエラーが出ていない
-  test: test_normal
-- name: 正常系（書き換えの知らせ）
-  summary: ツールで記録を書き換えると、開き直さずに概要を描き直す
-  setup:
-  - name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 検討事項 D-1 を持つワークスペース
-    notes: 開いた後に MCP の `add` で検討事項を 1 件追加する
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 描き直した概要\n```"
-  expected:
-  - 追加してから 2 秒以内に、タブの帯の検討事項の件数が 1 増える
-  - URL とスクロールの位置が変わらない
-  test: test_normal_when_records_changed
-- name: 正常系（search params が正しくない）
-  summary: '`tab` が決めた値でなければ概要を開き、URL から外す'
-  setup:
-  - name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 検討事項 D-1 を持つワークスペース
-    notes: '`/spa/?tab=unknown` で開く'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=unknown を開く\n  IF-->>ユーザー: 概要\n```"
-  expected:
-  - タブの帯で概要が選ばれている
-  - URL の search params に `tab` が無い
-  test: test_normal_when_search_invalid
-- name: 正常系（一覧の画面を開く）
-  summary: '`tab` と `view` が指す一覧の画面と表示形式を開く'
-  setup:
-  - &id001
-    name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 検討事項 D-1（決定済み）・D-2（要見直し）と、タスク T-1 を持つワークスペース
-    notes: '`/spa/?tab=decisions&view=table` で開き、続けてタブの帯でタスクへ移る'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&view=table を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項の表\n  ユーザー->>IF: タブの帯でタスクを押す\n  IF-->>ユーザー: タスクのボード\n```"
-  expected:
-  - タブの帯で検討事項が選ばれ、表示形式の切り替えで表が選ばれている
-  - 表に D-1・D-2 の行がある
-  - タスクへ移った後、タスクのボードに T-1 があり、URL の search params が `tab=tasks` だけ
-  - ブラウザで戻ると検討事項の表に戻る
-  - ブラウザのコンソールにエラーが出ていない
-  test: test_normal_when_list_screen
-- name: 正常系（項目を指す）
-  summary: '`id` が指す項目の詳細パネルを開き、`full` で全画面に切り替える'
-  setup:
-  - *id001
-  - name: make_workspace
-    description: 本文に見出し「決め方」を持つ検討事項 D-1 と、タスク T-1 を持つワークスペース
-    notes: '`/spa/?tab=decisions&id=D-1&h=決め方` で開き、全画面のボタンを押す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のボードと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
-  expected:
-  - 詳細パネルに D-1 のタイトルと、mdmark で描いた本文がある
-  - 本文の見出し「決め方」が詳細パネルの本文の区画に入っている
-  - 全画面のボタンを押した後、URL に `full=1` があり、履歴の数が変わらない
-  - 詳細の本文の T-1 へのリンクを押すと、詳細が T-1 に移り、ブラウザで戻ると D-1 に戻る
-  test: test_normal_when_item
-- name: 正常系（search params の値が記録・画面に合わない）
-  summary: 画面が持たない表示形式・記録に無い項目・本文に無い見出しを外して開く
-  setup:
-  - *id001
-  - name: make_workspace
-    description: タスク T-1 を持つワークスペース
-    notes: '`/spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown` で開く'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown を開く\n  IF-->>ユーザー: タスクのボード\n```"
-  expected:
-  - タスクがボードで開き、詳細パネルが開いていない
-  - URL の search params が `tab=tasks` だけ
-  test: test_normal_when_search_mismatched
-- name: 正常系（絞り込みの条件がある）
-  summary: '`f.{列}` と `sort` で絞って並べた表を、条件のチップ付きで開く'
-  setup:
-  - *id001
-  - name: make_workspace
-    description: 検討事項 D-1（決定済み）・D-2（要見直し）・D-3（要見直し）を持つワークスペース
-    notes: '`/spa/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して読み込み直す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 読み込み直す\n  IF-->>ユーザー: 全ての行の表\n```"
-  expected:
-  - 開いたとき、表の行が D-3・D-2 の順で、D-1 の行が無く、表の上に状態「要見直し」のチップがある
-  - チップを外した後、URL に `f.status` が無く、履歴の数が変わらない
-  - 読み込み直した後も、表に D-1・D-2・D-3 の行がある（外した条件を端末に残している）
-  test: test_normal_when_filter
-- name: 正常系（時点を指す）
-  summary: '`diff` が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに `diff` を置き換える'
-  setup:
-  - *id001
-  - name: make_workspace
-    description: まとまり V-1（D-1 を足した）と V-2（D-1 の本文を変え、D-2 を足し、D-3 を消した）を持つワークスペース
-    notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分の印と消した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
-  expected:
-  - 表の D-1 の行に変更の印、D-2 の行に新規の印があり、表の上の消した項目の帯に D-3 がある
-  - 詳細パネルの本文に、足した行と消した行の差分の色分けがある
-  - V-1 を選んだ後、URL の `diff` が `V-1` になり、履歴の数が変わらない
-  - 読み込み直すと、`diff=V-1` の差分の表示で開く
-  test: test_normal_when_diff
-- name: 正常系（記録に無い時点を指す）
-  summary: 記録に無いまとまりを指す `diff` では差分を出さずに開き、`diff` を外す
-  setup:
-  - *id001
-  - name: make_workspace
-    description: まとまり V-1 を持つワークスペース
-    notes: '`/spa/?tab=decisions&diff=V-99` で開く'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分の印の無い検討事項\n```"
-  expected:
-  - 差分の印と消した項目の帯が無い
-  - URL の search params に `diff` が無い
-  test: test_normal_when_diff_missing
-- name: 正常系（前回開いてから）
-  summary: 「前回開いてから」を選ぶと、`POST /api/opened` が返した前回の時点より後の変更に印を付ける
-  setup:
-  - *id001
-  - name: make_workspace
-    description: まとまり V-1 を持ち、前回開いた日時の通し番号が V-1 の `until_seq` のワークスペース
-    notes: 開いた後に MCP の `add` で D-2 を足し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規の印\n```"
-  expected:
-  - D-2 に新規の印があり、D-1 に印が無い
-  - URL の `diff` が `since`
-  - 同じタブで読み込み直しても `POST /api/opened` が呼ばれない
-  test: test_normal_when_since
-- name: 正常系（書き換えで項目と表示を保つ）
-  summary: 詳細と絞り込みを開いたまま書き換えると、URL と詳細を保って描き直し、開いていた項目が消えたら詳細を閉じる
-  setup:
-  - *id001
-  - name: make_workspace
-    description: 検討事項 D-1・D-2 を持つワークスペース
-    notes: '`/spa/?tab=decisions&view=table&id=D-1&f.status=未決定` で開き、MCP の `update` で D-1 のタイトルを変え、続けて `remove` で D-1 を消す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 詳細と絞り込みを付けて開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 新しいタイトルの詳細\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 詳細を閉じた表\n```"
-  expected:
-  - タイトルを変えた後 2 秒以内に、詳細パネルと表の D-1 が新しいタイトルになり、URL が変わらない
-  - D-1 を消した後、詳細パネルが閉じ、URL に `id` が無く、`f.status` が残っている
-  test: test_normal_when_records_changed_with_item
-- name: 正常系（React に無い画面を開く）
-  summary: ネットワークの入口は、今の画面を同じタブで開く
-  setup:
-  - *id001
-  - name: make_workspace
-    description: 検討事項 D-1 と、D-1 を追加したまとまり V-1 を持つワークスペース
-    notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、タブの帯の右端のネットワークの入口を押す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: ネットワークの入口を押す\n  IF->>OLD: /mindstella.html#tab=graph&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 を選んだネットワーク\n```"
-  expected:
-  - 同じタブで `/mindstella.html` が開き、ハッシュが `tab=graph&id=D-1&diff=V-1`
-  - 今の画面のネットワークで D-1 が選ばれている
-  test: test_normal_when_legacy_screen
-- name: 正常系（編集を溜めて保存する）
-  summary: 詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する
-  setup:
-  - &id002
-    name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
-    notes: '`/spa/?tab=decisions&id=D-1` で開く'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、答えを書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 答えとカードに保存待ちの印、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい答え\n```"
-  expected:
-  - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちの印があり、トップバーの件数が 1
-  - 保存待ちのパネルを開いた後、URL に `panel=pending` があり、履歴の数が変わらない
-  - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、印と件数が開き直さずに消え、URL から `panel` が外れる
-  - 「編集する」・入力欄・トップバーの件数・取り消す・まとめて保存するに Tab キーで届く
-  test: test_normal_when_edits_saved
-- name: 正常系（一覧の画面から項目を足して消す）
-  summary: 一覧の画面の追加の入力で足す項目を溜め、詳細で消す項目を溜め、保存待ちのパネルで 1 件ずつ取り消す
-  setup:
-  - *id002
-  - name: make_workspace
-    description: タスク T-1 と、どの項目からも指されていないメモ N-1 を持ち、`edits.yaml` を持たないワークスペース
-    notes: '`/spa/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を足し、続けて `/spa/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて足す\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 足す項目だけの保存待ち\n```"
-  expected:
-  - 足した後、タスクのボードに「画面を作る」の ID の無いカードが保存待ちの印つきであり、`tasks.yaml` は T-1 だけ
-  - 削除を溜めた後、表の N-1 の行に「保存で削除」の印がある
-  - 取り消した後、保存待ちのパネルに「画面を作る」の 1 件だけがあり、トップバーの件数が 1
-  test: test_normal_when_item_added_and_removed
-- name: 正常系（設定の画面で書き換える）
-  summary: '`tab=settings` の設定の画面で題名を書き換えて保存待ちに溜める'
-  setup:
-  - *id002
-  - name: make_workspace
-    description: 題名が「話し合い」のワークスペース
-    notes: '`/spa/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちの印、トップバーに件数 1\n```"
-  expected:
-  - 設定の画面に今の題名「話し合い」が出ている
-  - 書き換えた後、題名の欄に保存待ちの印があり、`config.yaml` の題名が「話し合い」のまま
-  - タブの帯でどのタブも選ばれていない
-  test: test_normal_when_settings
-- name: 異常系（記録が読めない・422）
-  summary: 記録がスキーマに合わず読めないとき、読めなかった箇所を画面に出す
-  setup:
-  - name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 検討事項 D-1 を持ち、`decisions.yaml` の D-1 の `status` を決めた値以外に書き換えたワークスペース
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 422（detail に合わない箇所の行）\n  IF-->>ユーザー: 読めなかった箇所の表示\n```"
-  expected:
-  - 本文の区画に、記録を読めなかったことと `detail` の行が出る
-  - タイルが描かれていない
-  - ブラウザのコンソールに未処理の例外が出ていない
-  test: test_error_when_records_invalid
-- name: 異常系（サーバーが止まった）
-  summary: 書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち上がり直すとつなぎ直す
-  setup:
-  - name: Mock
-    description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
-  - name: make_workspace
-    description: 検討事項 D-1 を持つワークスペース
-    notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、立ち上げ直して同じワークスペースで `preview_url` を呼ぶ'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの知らせが切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ直す\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を消す\n```"
-  expected:
-  - 止めた後、トップバーに接続が切れたことの表示が出る
-  - 止めた後も、前に読んだ記録の概要のタイルが残っている
-  - 立ち上げ直した後、表示が消えて概要が描かれている
-  test: test_error_when_server_stopped
-- name: 異常系（描画のライブラリが読めない）
-  summary: 描画のライブラリの配信元に届かないと、使う箇所にライブラリの名前を出し、表は使える
-  setup:
-  - *id001
-  - name: make_workspace
-    description: 本文に Mermaid の図を持つ検討事項 D-1 を持つワークスペース
-    notes: 描画のライブラリの配信元へのリクエストをブラウザで止めてから `/spa/?tab=decisions&view=table&id=D-1` で開く
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 開く\n  IF--xIF: 描画のライブラリが読めない\n  IF-->>ユーザー: 表と、原文の本文と、読めなかったライブラリの名前\n```"
-  expected:
-  - 表に D-1 の行がある
-  - 詳細パネルの本文に Markdown の原文と、読めなかった mdmark の名前がある
-  - ブラウザのコンソールに未処理の例外が出ていない
-  test: test_error_when_library_unavailable
-- name: 異常系（書き込めない編集がある・409）
-  summary: 保存の 409 では、書き込めない編集の行に理由を出し、保存待ちの編集を残す
-  setup:
-  - *id002
-  - name: make_workspace
-    description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer`）を持つワークスペース
-    notes: '`/spa/?tab=decisions&panel=pending` で開き、MCP の `update` で D-1 の `title` を書き換えてから、まとめて保存するを押す'
-  flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: まとめて保存するを押す\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 409、blocked は E-1（changed）\n  IF-->>ユーザー: E-1 の行に書き込めない理由\n```"
-  expected:
-  - 保存待ちのパネルの E-1 の行に、溜めた後に書き換わった旨の理由がある
-  - トップバーの件数が 1 のままで、`edits.yaml` に E-1 が残っている
-  - ブラウザのコンソールに未処理の例外が出ていない
-  test: test_error_when_save_blocked
+  - name: 正常系
+    summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1・D-2 とタスク T-1、利用者の未読の書き込みを持つオープンのスレッド 1 件と、レビュー中のコメント 2 件を持つワークスペース
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>SV: GET /api/events につなぐ\n  IF-->>ユーザー: トップバーと概要\n```"
+    expected:
+      - トップバーに話し合いの題名があり、タブの帯で概要が選ばれている
+      - 概要のタイルが記録の値で描かれている
+      - トップバーのコメントのボタンに件数 2 と未読の点がある
+      - URL が `/spa/`（search params が付かない）
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal
+  - name: 正常系（書き換えの知らせ）
+    summary: ツールで記録を書き換えると、開き直さずに概要を描き直す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: 開いた後に MCP の `add` で検討事項を 1 件追加する
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 描き直した概要\n```"
+    expected:
+      - 追加してから 2 秒以内に、タブの帯の検討事項の件数が 1 増える
+      - URL とスクロールの位置が変わらない
+    test: test_normal_when_records_changed
+  - name: 正常系（search params が正しくない）
+    summary: '`tab` が決めた値でなければ概要を開き、URL から外す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`/spa/?tab=unknown` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=unknown を開く\n  IF-->>ユーザー: 概要\n```"
+    expected:
+      - タブの帯で概要が選ばれている
+      - URL の search params に `tab` が無い
+    test: test_normal_when_search_invalid
+  - name: 正常系（一覧の画面を開く）
+    summary: '`tab` と `view` が指す一覧の画面と表示形式を開く'
+    setup:
+      - &id001
+        name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1（決定済み）・D-2（要見直し）と、タスク T-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&view=table` で開き、続けてタブの帯でタスクへ移る'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&view=table を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項の表\n  ユーザー->>IF: タブの帯でタスクを押す\n  IF-->>ユーザー: タスクのボード\n```"
+    expected:
+      - タブの帯で検討事項が選ばれ、表示形式の切り替えで表が選ばれている
+      - 表に D-1・D-2 の行がある
+      - タスクへ移った後、タスクのボードに T-1 があり、URL の search params が `tab=tasks` だけ
+      - ブラウザで戻ると検討事項の表に戻る
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_list_screen
+  - name: 正常系（項目を指す）
+    summary: '`id` が指す項目の詳細パネルを開き、`full` で全画面に切り替える'
+    setup:
+      - *id001
+      - name: make_workspace
+        description: 本文に見出し「決め方」を持つ検討事項 D-1 と、タスク T-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&id=D-1&h=決め方` で開き、全画面のボタンを押す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions&id=D-1&h=決め方 を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 記録\n  IF-->>ユーザー: 検討事項のボードと D-1 の詳細パネル\n  ユーザー->>IF: 全画面のボタンを押す\n  IF-->>ユーザー: D-1 の詳細の全画面\n```"
+    expected:
+      - 詳細パネルに D-1 のタイトルと、mdmark で描いた本文がある
+      - 本文の見出し「決め方」が詳細パネルの本文の区画に入っている
+      - 全画面のボタンを押した後、URL に `full=1` があり、履歴の数が変わらない
+      - 詳細の本文の T-1 へのリンクを押すと、詳細が T-1 に移り、ブラウザで戻ると D-1 に戻る
+    test: test_normal_when_item
+  - name: 正常系（search params の値が記録・画面に合わない）
+    summary: 画面が持たない表示形式・記録に無い項目・本文に無い見出しを外して開く
+    setup:
+      - *id001
+      - name: make_workspace
+        description: タスク T-1 を持つワークスペース
+        notes: '`/spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=tasks&view=map&id=T-99&h=無い見出し&sort=unknown を開く\n  IF-->>ユーザー: タスクのボード\n```"
+    expected:
+      - タスクがボードで開き、詳細パネルが開いていない
+      - URL の search params が `tab=tasks` だけ
+    test: test_normal_when_search_mismatched
+  - name: 正常系（絞り込みの条件がある）
+    summary: '`f.{列}` と `sort` で絞って並べた表を、条件のチップ付きで開く'
+    setup:
+      - *id001
+      - name: make_workspace
+        description: 検討事項 D-1（決定済み）・D-2（要見直し）・D-3（要見直し）を持つワークスペース
+        notes: '`/spa/?tab=decisions&view=table&f.status=要見直し&sort=-id` で開き、チップを外して読み込み直す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: f.status=要見直し&sort=-id を付けて開く\n  IF-->>ユーザー: D-3・D-2 の順の表と条件のチップ\n  ユーザー->>IF: チップを外す\n  IF-->>ユーザー: 全ての行の表\n  ユーザー->>IF: 読み込み直す\n  IF-->>ユーザー: 全ての行の表\n```"
+    expected:
+      - 開いたとき、表の行が D-3・D-2 の順で、D-1 の行が無く、表の上に状態「要見直し」のチップがある
+      - チップを外した後、URL に `f.status` が無く、履歴の数が変わらない
+      - 読み込み直した後も、表に D-1・D-2・D-3 の行がある（外した条件を端末に残している）
+    test: test_normal_when_filter
+  - name: 正常系（時点を指す）
+    summary: '`diff` が指すまとまりの差分の表示で開き、時点を選び直すと履歴に積まずに `diff` を置き換える'
+    setup:
+      - *id001
+      - name: make_workspace
+        description: まとまり V-1（D-1 を足した）と V-2（D-1 の本文を変え、D-2 を足し、D-3 を消した）を持つワークスペース
+        notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-2` で開き、トップバーの変更履歴で V-1 を選ぶ'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: diff=V-2 を付けて開く\n  IF-->>SV: POST /api/opened\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 差分の印と消した項目の帯の付いた表と、本文の差分の詳細\n  ユーザー->>IF: 変更履歴で V-1 を選ぶ\n  IF-->>ユーザー: V-1 からの差分の表示\n```"
+    expected:
+      - 表の D-1 の行に変更の印、D-2 の行に新規の印があり、表の上の消した項目の帯に D-3 がある
+      - 詳細パネルの本文に、足した行と消した行の差分の色分けがある
+      - V-1 を選んだ後、URL の `diff` が `V-1` になり、履歴の数が変わらない
+      - 読み込み直すと、`diff=V-1` の差分の表示で開く
+    test: test_normal_when_diff
+  - name: 正常系（記録に無い時点を指す）
+    summary: 記録に無いまとまりを指す `diff` では差分を出さずに開き、`diff` を外す
+    setup:
+      - *id001
+      - name: make_workspace
+        description: まとまり V-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&diff=V-99` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: /spa/?tab=decisions&diff=V-99 を開く\n  IF-->>ユーザー: 差分の印の無い検討事項\n```"
+    expected:
+      - 差分の印と消した項目の帯が無い
+      - URL の search params に `diff` が無い
+    test: test_normal_when_diff_missing
+  - name: 正常系（前回開いてから）
+    summary: 「前回開いてから」を選ぶと、`POST /api/opened` が返した前回の時点より後の変更に印を付ける
+    setup:
+      - *id001
+      - name: make_workspace
+        description: まとまり V-1 を持ち、前回開いた日時の通し番号が V-1 の `until_seq` のワークスペース
+        notes: 開いた後に MCP の `add` で D-2 を足し、`commit` でまとまり V-2 にしてから、変更履歴で「前回開いてから」を選ぶ
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=decisions を開く\n  IF-->>SV: POST /api/opened\n  SV-->>IF: previous\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  ユーザー->>IF: 変更履歴で「前回開いてから」を選ぶ\n  IF-->>ユーザー: D-2 に新規の印\n```"
+    expected:
+      - D-2 に新規の印があり、D-1 に印が無い
+      - URL の `diff` が `since`
+      - 同じタブで読み込み直しても `POST /api/opened` が呼ばれない
+    test: test_normal_when_since
+  - name: 正常系（書き換えで項目と表示を保つ）
+    summary: 詳細と絞り込みを開いたまま書き換えると、URL と詳細を保って描き直し、開いていた項目が消えたら詳細を閉じる
+    setup:
+      - *id001
+      - name: make_workspace
+        description: 検討事項 D-1・D-2 を持つワークスペース
+        notes: '`/spa/?tab=decisions&view=table&id=D-1&f.status=未決定` で開き、MCP の `update` で D-1 のタイトルを変え、続けて `remove` で D-1 を消す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 詳細と絞り込みを付けて開く\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 新しいタイトルの詳細\n  SV-->>IF: changed の知らせ\n  IF-->>SV: GET /api/records\n  IF-->>ユーザー: 詳細を閉じた表\n```"
+    expected:
+      - タイトルを変えた後 2 秒以内に、詳細パネルと表の D-1 が新しいタイトルになり、URL が変わらない
+      - D-1 を消した後、詳細パネルが閉じ、URL に `id` が無く、`f.status` が残っている
+    test: test_normal_when_records_changed_with_item
+  - name: 正常系（React に無い画面を開く）
+    summary: ネットワークの入口は、今の画面を同じタブで開く
+    setup:
+      - *id001
+      - name: make_workspace
+        description: 検討事項 D-1 と、D-1 を追加したまとまり V-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、タブの帯の右端のネットワークの入口を押す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: ネットワークの入口を押す\n  IF->>OLD: /mindstella.html#tab=graph&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 を選んだネットワーク\n```"
+    expected:
+      - 同じタブで `/mindstella.html` が開き、ハッシュが `tab=graph&id=D-1&diff=V-1`
+      - 今の画面のネットワークで D-1 が選ばれている
+    test: test_normal_when_legacy_screen
+  - name: 正常系（編集を溜めて保存する）
+    summary: 詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する
+    setup:
+      - &id002
+        name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 未決定の検討事項 D-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '`/spa/?tab=decisions&id=D-1` で開く'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 「編集する」を押し、答えを書いて入力欄を離れる\n  IF->>SV: POST /api/edits {op: set, target: D-1, key: answer, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 答えとカードに保存待ちの印、トップバーに件数 1\n  ユーザー->>IF: トップバーの保存待ちのボタンを押し、まとめて保存する\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 200\n  IF-->>ユーザー: 保存した旨と、D-1 の新しい答え\n```"
+    expected:
+      - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちの印があり、トップバーの件数が 1
+      - 保存待ちのパネルを開いた後、URL に `panel=pending` があり、履歴の数が変わらない
+      - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、印と件数が開き直さずに消え、URL から `panel` が外れる
+      - 「編集する」・入力欄・トップバーの件数・取り消す・まとめて保存するに Tab キーで届く
+    test: test_normal_when_edits_saved
+  - name: 正常系（一覧の画面から項目を足して消す）
+    summary: 一覧の画面の追加の入力で足す項目を溜め、詳細で消す項目を溜め、保存待ちのパネルで 1 件ずつ取り消す
+    setup:
+      - *id002
+      - name: make_workspace
+        description: タスク T-1 と、どの項目からも指されていないメモ N-1 を持ち、`edits.yaml` を持たないワークスペース
+        notes: '`/spa/?tab=tasks` で開き、追加の入力でタスク「画面を作る」を足し、続けて `/spa/?tab=notes&id=N-1` で N-1 の削除を溜め、保存待ちのパネルで N-1 の削除を取り消す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 追加の入力にタイトルを書いて足す\n  IF->>SV: POST /api/edits {op: item-add, key: tasks, value}\n  SV-->>IF: 201、target は new-1\n  IF-->>ユーザー: ボードに ID の無い保存待ちのカード\n  ユーザー->>IF: N-1 の詳細で削除を押す\n  IF->>SV: POST /api/edits {op: item-remove, target: N-1}\n  SV-->>IF: 201\n  ユーザー->>IF: 保存待ちのパネルで N-1 の削除を取り消す\n  IF->>SV: DELETE /api/edits/E-2\n  SV-->>IF: 200\n  IF-->>ユーザー: 足す項目だけの保存待ち\n```"
+    expected:
+      - 足した後、タスクのボードに「画面を作る」の ID の無いカードが保存待ちの印つきであり、`tasks.yaml` は T-1 だけ
+      - 削除を溜めた後、表の N-1 の行に「保存で削除」の印がある
+      - 取り消した後、保存待ちのパネルに「画面を作る」の 1 件だけがあり、トップバーの件数が 1
+    test: test_normal_when_item_added_and_removed
+  - name: 正常系（設定の画面で書き換える）
+    summary: '`tab=settings` の設定の画面で題名を書き換えて保存待ちに溜める'
+    setup:
+      - *id002
+      - name: make_workspace
+        description: 題名が「話し合い」のワークスペース
+        notes: '`/spa/?tab=settings` で開き、題名を「画面の編集」に書き換えて入力欄を離れる'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/?tab=settings を開く\n  IF-->>ユーザー: 設定の画面\n  ユーザー->>IF: 題名を書き換えて入力欄を離れる\n  IF->>SV: POST /api/edits {op: setting, target: settings, key: summary, value}\n  SV-->>IF: 201\n  IF-->>ユーザー: 題名に保存待ちの印、トップバーに件数 1\n```"
+    expected:
+      - 設定の画面に今の題名「話し合い」が出ている
+      - 書き換えた後、題名の欄に保存待ちの印があり、`config.yaml` の題名が「話し合い」のまま
+      - タブの帯でどのタブも選ばれていない
+    test: test_normal_when_settings
+  - name: 異常系（記録が読めない・422）
+    summary: 記録がスキーマに合わず読めないとき、読めなかった箇所を画面に出す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`decisions.yaml` の D-1 の `status` を決めた値以外に書き換えたワークスペース
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  IF-->>SV: GET /api/records\n  SV-->>IF: 422（detail に合わない箇所の行）\n  IF-->>ユーザー: 読めなかった箇所の表示\n```"
+    expected:
+      - 本文の区画に、記録を読めなかったことと `detail` の行が出る
+      - タイルが描かれていない
+      - ブラウザのコンソールに未処理の例外が出ていない
+    test: test_error_when_records_invalid
+  - name: 異常系（サーバーが止まった）
+    summary: 書き換えの知らせが切れたら、トップバーに接続が切れたことを出し、立ち上がり直すとつなぎ直す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`config.yaml` の `preview.port` に、テストの中で空きポートを 1 つ取って閉じた番号を書く。開いた後に `server_stop` で常駐サーバーを止め、立ち上げ直して同じワークスペースで `preview_url` を呼ぶ'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: /spa/ を開く\n  SV--xIF: 書き換えの知らせが切れる\n  IF-->>ユーザー: 接続が切れた表示\n  IF-->>SV: つなぎ直す\n  SV-->>IF: 記録\n  IF-->>ユーザー: 接続が切れた表示を消す\n```"
+    expected:
+      - 止めた後、トップバーに接続が切れたことの表示が出る
+      - 止めた後も、前に読んだ記録の概要のタイルが残っている
+      - 立ち上げ直した後、表示が消えて概要が描かれている
+    test: test_error_when_server_stopped
+  - name: 異常系（描画のライブラリが読めない）
+    summary: 描画のライブラリの配信元に届かないと、使う箇所にライブラリの名前を出し、表は使える
+    setup:
+      - *id001
+      - name: make_workspace
+        description: 本文に Mermaid の図を持つ検討事項 D-1 を持つワークスペース
+        notes: 描画のライブラリの配信元へのリクエストをブラウザで止めてから `/spa/?tab=decisions&view=table&id=D-1` で開く
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: 開く\n  IF--xIF: 描画のライブラリが読めない\n  IF-->>ユーザー: 表と、原文の本文と、読めなかったライブラリの名前\n```"
+    expected:
+      - 表に D-1 の行がある
+      - 詳細パネルの本文に Markdown の原文と、読めなかった mdmark の名前がある
+      - ブラウザのコンソールに未処理の例外が出ていない
+    test: test_error_when_library_unavailable
+  - name: 異常系（書き込めない編集がある・409）
+    summary: 保存の 409 では、書き込めない編集の行に理由を出し、保存待ちの編集を残す
+    setup:
+      - *id002
+      - name: make_workspace
+        description: 検討事項 D-1 と、保存待ちの編集 E-1（D-1 の `answer`）を持つワークスペース
+        notes: '`/spa/?tab=decisions&panel=pending` で開き、MCP の `update` で D-1 の `title` を書き換えてから、まとめて保存するを押す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant SV as サーバーの配信\n\n  ユーザー->>IF: まとめて保存するを押す\n  IF->>SV: POST /api/edits/save\n  SV-->>IF: 409、blocked は E-1（changed）\n  IF-->>ユーザー: E-1 の行に書き込めない理由\n```"
+    expected:
+      - 保存待ちのパネルの E-1 の行に、溜めた後に書き換わった旨の理由がある
+      - トップバーの件数が 1 のままで、`edits.yaml` に E-1 が残っている
+      - ブラウザのコンソールに未処理の例外が出ていない
+    test: test_error_when_save_blocked
+  - name: 正常系（コメントを溜めて送る）
+    summary: 詳細の本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧のレビュー中の書き込みからまとめて送る
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 本文が 3 行の資料 A-1 を持ち、`comments.yaml` を持たないワークスペース
+        notes: '`/spa/?tab=docs&id=A-1` で開き、本文の 2 行目の文を選んで入口からコメントを溜め、トップバーのコメントのボタン・「レビュー中」の順に押してまとめて送る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: 本文の 2 行目の文を選び、入口からコメントを書いて溜める
+        IF->>SV: POST /api/comments {target: A-1, loc: 本文の 2 行目, body}
+        SV-->>IF: 201
+        ユーザー->>IF: コメントのボタン・「レビュー中」を押す
+        IF-->>ユーザー: チェックした C-1 の行
+        ユーザー->>IF: まとめて送る
+        IF->>SV: POST /api/comments/send {ids: [C-1]}
+        SV-->>IF: 201
+        IF-->>ユーザー: 送った結果
+      ```
+    expected:
+      - 溜めた後、詳細パネルのレビュー中のコメントに本文の 2 行目の箇所を持つ 1 件があり、トップバーのコメントのボタンの件数が 1
+      - コメントのボタンを押した後、URL に `panel=comments` があり、「レビュー中」を押した後に `review=1` が加わり、どちらも履歴の数が変わらない
+      - 送った後、取り込み待ちのスレッドの一覧（`threads` を `awaiting` で）が A-1 の本文の 2 行目の箇所を持つ 1 件を返し、コメントのボタンの件数が 0
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_comment_sent
+  - name: 正常系（スレッドで返信してクローズにする）
+    summary: '`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を添えてクローズにする'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 利用者の未読の AI の書き込みを持つオープンのスレッド TH-1 を持つワークスペース
+        notes: '`/spa/?panel=comments&thread=TH-1` で開き、返信を溜めてから、理由「決まった」を添えてクローズにし、一覧へ戻る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: panel=comments&thread=TH-1 を開く
+        IF->>SV: POST /api/threads/TH-1/seen
+        ユーザー->>IF: 返信を書いて溜める
+        IF->>SV: POST /api/comments {thread: TH-1, body}
+        SV-->>IF: 201
+        ユーザー->>IF: 理由を添えてクローズにする
+        IF->>SV: PATCH /api/threads/TH-1 {status: closed, reason}
+        SV-->>IF: 200
+        IF-->>ユーザー: クローズの知らせ
+      ```
+    expected:
+      - '開いた後、`threads.yaml` の TH-1 の全ての書き込みが `seen: true` で、トップバーのコメントのボタンに未読の点が無い'
+      - 返信を溜めた後、書き込みの並びの末尾にレビュー中の返信があり、`comments.yaml` に `thread` が TH-1 の 1 件がある
+      - クローズにした後、`threads.yaml` の TH-1 の `status` が `closed` で状態の記録に理由「決まった」があり、返信の入力の代わりにクローズの知らせがある
+      - 一覧へ戻った後、URL に `thread` が無く、履歴の数が変わらない
+    test: test_normal_when_thread_replied_and_closed
+  - name: 正常系（書きかけを戻す）
+    summary: コメントの入力欄の書きかけをサーバーに保ち、読み込み直すと同じ入力欄に戻す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`comments.yaml` を持たないワークスペース
+        notes: '`/spa/?tab=decisions&id=D-1` で開き、詳細パネルのコメントの入力欄に書いて入力を止めてから、読み込み直す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: コメントの入力欄に書いて入力を止める
+        IF->>SV: PUT /api/drafts {target: D-1, body}
+        ユーザー->>IF: 読み込み直す
+        IF-->>SV: GET /api/comments
+        SV-->>IF: 書きかけ
+        IF-->>ユーザー: 書きかけを戻した入力欄
+      ```
+    expected:
+      - 入力を止めた後、`comments.yaml` の書きかけに D-1 へ向けた本文がある
+      - 読み込み直した後、D-1 のコメントの入力欄に書いた本文がある
+    test: test_normal_when_comment_draft_restored
+  - name: 正常系（表示の設定を変えて既定にする）
+    summary: 表示の設定のパネルで表示する種類を個人の上書きとして変え、既定の保存の確かめを経てワークスペースの既定にする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 とメモ N-1 を持ち、`config.yaml` に `display` を持たないワークスペース
+        notes: '`/spa/?tab=notes&panel=display` で開き、表示する種類からメモを外し、「ワークスペースの既定にする」から確かめのモーダルで保存し、続けて「設定を編集する」を押す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: 表示する種類からメモを外す
+        IF-->>ユーザー: メモのタブが無い概要
+        ユーザー->>IF: ワークスペースの既定にする
+        IF-->>ユーザー: 今の既定と保存する値の確かめ
+        ユーザー->>IF: 保存する
+        IF->>SV: PUT /api/config/display {network_look, visible_kinds}
+        SV-->>IF: 200
+        IF-->>ユーザー: 既定にした旨
+      ```
+    expected:
+      - メモを外した後、タブの帯にメモが無く、概要が開いて URL に `tab` が無く、履歴の数が変わらない
+      - メモを外した後、端末の保存領域の個人の上書きの `visible_kinds` にメモが無く、`config.yaml` が変わっていない
+      - 確かめのモーダルに、今の既定と保存する値が並ぶ
+      - 保存した後、`config.yaml` の `display.visible_kinds` にメモが無く、パネルに既定にした旨がある
+      - 「設定を編集する」を押した後、パネルが閉じて設定の画面が開き、URL が `tab=settings`
+    test: test_normal_when_display_settings
+  - name: 正常系（コメントの search params が記録に合わない）
+    summary: 無いスレッド・無いタグを指す値と、コメントの一覧を開いていないときのコメントの値を外して開く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: タグ「画面」を持つオープンのスレッド TH-1 と検討事項 D-1 を持つワークスペース
+        notes: '`/spa/?panel=comments&thread=TH-99&ttag=無いタグ` で開き、続けて `/spa/?tab=decisions&thread=TH-1&review=1` で開く'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: panel=comments&thread=TH-99&ttag=無いタグ を開く
+        IF-->>ユーザー: スレッドの一覧
+        ユーザー->>IF: tab=decisions&thread=TH-1&review=1 を開く
+        IF-->>ユーザー: コメントの一覧を開いていない検討事項
+      ```
+    expected:
+      - 1 つ目は、コメントの一覧にタグで絞っていないスレッドの一覧が出て、URL の search params が `panel=comments` だけ
+      - 2 つ目は、コメントの一覧が開いておらず、URL の search params が `tab=decisions` だけ
+    test: test_normal_when_comment_search_mismatched
+  - name: 異常系（コメントの本文が空）
+    summary: 空白だけの本文は溜めずに理由を出す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持ち、`comments.yaml` を持たないワークスペース
+        notes: '`/spa/?tab=decisions&id=D-1` で開き、コメントの入力欄に空白だけを書いて溜める'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+
+        ユーザー->>IF: 空白だけを書いて溜める
+        IF-->>ユーザー: 本文を書く旨の理由
+      ```
+    expected:
+      - 入力欄の下に本文を書く旨の理由が出る
+      - '`POST /api/comments` が送られておらず、トップバーのコメントのボタンの件数が 0'
+    test: test_error_when_comment_body_empty
+  - name: 異常系（コメントを溜められない・サーバーが止まった）
+    summary: サーバーが止まった後に溜めると、本文を残して届かなかった理由を出す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&id=D-1` で開き、`server_stop` で常駐サーバーを止めてから、コメントの入力欄に書いて溜める'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: コメントを書いて溜める
+        IF--xSV: POST /api/comments（届かない）
+        IF-->>ユーザー: 本文を残した入力欄と届かなかった理由
+      ```
+    expected:
+      - 入力欄に書いた本文が残り、サーバーが止まっている旨の理由が出る
+      - 溜めるのボタンが押せる状態に戻る
+      - ブラウザのコンソールに未処理の例外が出ていない
+    test: test_error_when_comment_server_unreachable
+  - name: 異常系（箇所が合わない書き込みがある・409）
+    summary: まとめて送るの 409 では、箇所が合わない書き込みの行に理由を出し、どれも送らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` が返した URL のオリジンの `/spa/` を実際のブラウザで開く）
+      - name: make_workspace
+        description: 本文が 3 行の資料 A-1 と、A-1 の本文の 3 行目を指すレビュー中のコメント C-1 を持つワークスペース
+        notes: '`/spa/?panel=comments&review=1` で開き、MCP の `update` で A-1 の本文を 1 行にしてから、まとめて送るを押す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor ユーザー
+        participant IF as React のプレビュー
+        participant SV as サーバーの配信
+
+        ユーザー->>IF: まとめて送る
+        IF->>SV: POST /api/comments/send {ids: [C-1]}
+        SV-->>IF: 409、stale は C-1
+        IF-->>ユーザー: C-1 の行に箇所が合わない理由
+      ```
+    expected:
+      - C-1 の行に箇所が合わない理由と、箇所を外すボタンがある
+      - '`comments.yaml` に C-1 が残り、`threads.yaml` のスレッドが増えていない'
+      - ブラウザのコンソールに未処理の例外が出ていない
+    test: test_error_when_comment_send_stale
 lead: 利用者がサーバーの配信の `/spa/` をブラウザで開くと、React のプレビューが記録をサーバーから読み、URL の search params が指す画面を開く。書き換えの知らせを受けると記録を読み直して描き直す。
 callers:
-- dev/設計書/シナリオ/単一ユースケース/プレビューを開く#
+  - dev/設計書/シナリオ/単一ユースケース/プレビューを開く#
 request:
-- name: tab
-  type: '''overview'' | ''decisions'' | ''tasks'' | ''research'' | ''docs'' | ''terms'' | ''notes'' | ''logs'' | ''settings'''
-  required: false
-  default: なし（概要を開く）
-  location: query
-  description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す。`settings` は設定の画面で、タブの帯には出さない
-  constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す。差分の表示中の `settings` も無いものとして扱う
-- name: view
-  type: '''map'' | ''board'' | ''cards'' | ''table'''
-  required: false
-  default: なし（画面ごとの既定。`decisions` と `tasks` は `board`、`docs` は `cards`、それ以外は `table`）
-  location: query
-  description: 表示形式。既定と違うときだけ書く
-  constraints: その画面が持たない形式は無いものとして扱い、URL から外す
-- name: id
-  type: str
-  required: false
-  default: なし（詳細パネルを開かない）
-  location: query
-  description: 詳細パネルで開く項目の ID
-  constraints: '`D-`・`T-`・`R-`・`A-`・`G-`・`N-`・`L-` に数字。記録に無い ID は無いものとして扱い、URL から外す'
-  example: D-3
-- name: full
-  type: '''1'''
-  required: false
-  default: なし（詳細パネルで開く）
-  location: query
-  description: 詳細を全画面で開く
-  constraints: '`id` があるときだけ効く。`id` が無いときは URL から外す'
-- name: h
-  type: str
-  required: false
-  default: なし（本文の頭で開く）
-  location: query
-  description: 詳細の本文の、開いたときに画面に入れる見出し
-  constraints: 形は『プレビューを開く』のハッシュの引数 `h` と同じ。`id` があるときだけ効く。本文に無い見出しと、本文が HTML の資料のときは本文の頭で開き、URL から外す
-  example: 決め方
-- name: diff
-  type: '''since'' | ''pending'' | str'
-  required: false
-  default: なし（端末の保存領域に残した時点。残していなければ差分を出さない）
-  location: query
-  description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
-  constraints: 端末の保存領域に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID と、まだまとめていない変更が空の `pending` は差分を出さず、URL から外す。URL に無く、保存領域の時点で差分を出せたときは、その時点を URL に書く
-  example: V-2
-- name: f.{列}
-  type: str
-  required: false
-  default: なし（その画面の保存した条件、無ければ画面の既定の条件で絞る）
-  location: query
-  description: 開いている画面を、その列の値で絞る。どの表示形式でも絞り込みのドロワーの条件として効く。概要の「すべて表示」・表のセル・絞り込みのドロワーとチップが書く
-  constraints: 形は『プレビューを開く』のハッシュの引数 `f.{列}` と同じ（複数の値は `|`、`~{列}` は文字の条件）。絞り込みを変えるたびに書き直す
-  example: f.status=要見直し
-- name: sort
-  type: str
-  required: false
-  default: なし（画面ごとの既定の並び）
-  location: query
-  description: 表を並べる列。降順は列の前に `-` を付ける
-  constraints: 表に無い列は無いものとして扱い、URL から外す。表の見出しで並べ替えるたびに書き直す
-  example: -updated
-- name: panel
-  type: '''pending'''
-  required: false
-  default: なし（左のパネルを開かない）
-  location: query
-  description: 開いている左のパネル。`pending` は保存待ちのパネル
-  constraints: 差分の表示中と、開いたときに保存待ちの編集が 0 件のときは無いものとして扱い、URL から外す。開いている間に取り消して 0 件になったときは開いたまま空の状態を出す
-- name: 編集の値
-  type: Any
-  required: false
-  default: なし（溜めない）
-  location: body
-  description: 詳細の編集の入力欄・一覧の画面の追加の入力・設定の画面で書いた値。キーと一緒に『保存待ちの編集の追加』へ送る
-  constraints: 『保存待ちの編集の追加』の request `value` と同じ。`title` は前後の空白を除いて 1 文字以上
+  - name: tab
+    type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'settings'"
+    required: false
+    default: なし（概要を開く）
+    location: query
+    description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す。`settings` は設定の画面で、タブの帯には出さない
+    constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す。差分の表示中の `settings` も無いものとして扱う
+  - name: view
+    type: "'map' | 'board' | 'cards' | 'table'"
+    required: false
+    default: なし（画面ごとの既定。`decisions` と `tasks` は `board`、`docs` は `cards`、それ以外は `table`）
+    location: query
+    description: 表示形式。既定と違うときだけ書く
+    constraints: その画面が持たない形式は無いものとして扱い、URL から外す
+  - name: id
+    type: str
+    required: false
+    default: なし（詳細パネルを開かない）
+    location: query
+    description: 詳細パネルで開く項目の ID
+    constraints: '`D-`・`T-`・`R-`・`A-`・`G-`・`N-`・`L-` に数字。記録に無い ID は無いものとして扱い、URL から外す'
+    example: D-3
+  - name: full
+    type: "'1'"
+    required: false
+    default: なし（詳細パネルで開く）
+    location: query
+    description: 詳細を全画面で開く
+    constraints: '`id` があるときだけ効く。`id` が無いときは URL から外す'
+  - name: h
+    type: str
+    required: false
+    default: なし（本文の頭で開く）
+    location: query
+    description: 詳細の本文の、開いたときに画面に入れる見出し
+    constraints: 形は『プレビューを開く』のハッシュの引数 `h` と同じ。`id` があるときだけ効く。本文に無い見出しと、本文が HTML の資料のときは本文の頭で開き、URL から外す
+    example: 決め方
+  - name: diff
+    type: "'since' | 'pending' | str"
+    required: false
+    default: なし（端末の保存領域に残した時点。残していなければ差分を出さない）
+    location: query
+    description: 差分の表示で比べる時点。`since` は「前回開いてから」、`pending` は「まだまとめていない変更」、それ以外はまとまりの ID（`V-{番号}`）
+    constraints: 端末の保存領域に残した時点より先に読み、差分を出せた時点を保存領域にも残す。記録に無いまとまりの ID と、まだまとめていない変更が空の `pending` は差分を出さず、URL から外す。URL に無く、保存領域の時点で差分を出せたときは、その時点を URL に書く
+    example: V-2
+  - name: f.{列}
+    type: str
+    required: false
+    default: なし（その画面の保存した条件、無ければ画面の既定の条件で絞る）
+    location: query
+    description: 開いている画面を、その列の値で絞る。どの表示形式でも絞り込みのドロワーの条件として効く。概要の「すべて表示」・表のセル・絞り込みのドロワーとチップが書く
+    constraints: 形は『プレビューを開く』のハッシュの引数 `f.{列}` と同じ（複数の値は `|`、`~{列}` は文字の条件）。絞り込みを変えるたびに書き直す
+    example: f.status=要見直し
+  - name: sort
+    type: str
+    required: false
+    default: なし（画面ごとの既定の並び）
+    location: query
+    description: 表を並べる列。降順は列の前に `-` を付ける
+    constraints: 表に無い列は無いものとして扱い、URL から外す。表の見出しで並べ替えるたびに書き直す
+    example: -updated
+  - name: panel
+    type: "'pending' | 'comments' | 'display'"
+    required: false
+    default: なし（左のパネルを開かない）
+    location: query
+    description: 開いている左のパネル。`pending` は保存待ちのパネル、`comments` はコメントの一覧、`display` は表示の設定
+    constraints: '`pending` は、差分の表示中と、開いたときに保存待ちの編集が 0 件のときは無いものとして扱い、URL から外す。開いている間に取り消して 0 件になったときは開いたまま空の状態を出す'
+  - name: thread
+    type: str
+    required: false
+    default: なし（スレッドの一覧を出す）
+    location: query
+    description: コメントの一覧のパネルの中で開いているスレッド。`TH-{番号}` は送ったスレッド、`C-{番号}` はまだ送っていない新しいスレッド（最初の書き込みのコメントの ID）
+    constraints: '`panel` が `comments` のときだけ効く。それ以外のときと、スレッドにもレビュー中の新しいスレッドにも無い ID は無いものとして扱い、URL から外す'
+    example: TH-3
+  - name: review
+    type: "'1'"
+    required: false
+    default: なし（スレッドの一覧か `thread` のスレッドを出す）
+    location: query
+    description: コメントの一覧のパネルの中で、レビュー中の書き込みの画面を開く。戻ると `thread` のスレッドか、無ければスレッドの一覧を出す
+    constraints: '`panel` が `comments` のときだけ効く。それ以外のときは URL から外す'
+  - name: tstatus
+    type: "'closed' | 'all'"
+    required: false
+    default: なし（オープンのスレッドに絞る）
+    location: query
+    description: スレッドの一覧を状態で絞る
+    constraints: '`panel` が `comments` のときだけ効く。それ以外のときは URL から外す'
+  - name: ttag
+    type: str
+    required: false
+    default: なし（タグで絞らない）
+    location: query
+    description: スレッドの一覧を絞るタグ。1 つだけ
+    constraints: '`panel` が `comments` のときだけ効く。それ以外のときと、どのスレッドにも無いタグは無いものとして扱い、URL から外す'
+    example: 画面
+  - name: 編集の値
+    type: Any
+    required: false
+    default: なし（溜めない）
+    location: body
+    description: 詳細の編集の入力欄・一覧の画面の追加の入力・設定の画面で書いた値。キーと一緒に『保存待ちの編集の追加』へ送る
+    constraints: 『保存待ちの編集の追加』の request `value` と同じ。`title` は前後の空白を除いて 1 文字以上
+  - name: コメントの本文
+    type: str
+    required: false
+    default: なし（溜めない）
+    location: body
+    description: 詳細パネル・詳細の全画面・コメントの一覧の入力欄と、スレッドの返信の入力に書いて溜める本文。開いている項目の ID（一覧の入力欄は無し）・添えた箇所・返信先のスレッドと一緒に『レビュー中のコメントの追加』へ送る
+    constraints: 前後の空白を除いて 1 文字以上、10000 文字以下
+    example: 案 A にする
+  - name: 選んだ範囲
+    type: Range
+    required: false
+    default: なし（入口を出さない）
+    location: body
+    description: 詳細パネル・詳細の全画面で、本文の文か項目の値を選んだ範囲。本文は元の Markdown か HTML の行の範囲に、値はキーのパスに対応づけて箇所にする
+    constraints: 『プレビューを開く』の request「選んだ範囲」と同じ
 constraints:
-- item: 通信
-  constraint: サーバーの配信（同じオリジンの `/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送らない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
-- item: 描画のライブラリ
-  constraint: mdmark・mermaid・elkjs・marked・jsdiff は、今の画面と同じ配信元と版から、`integrity` で中身を確かめて読む。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
-- item: 本文の無害化
-  constraint: 『プレビューを開く』の制約「本文の無害化」と同じ
-- item: 画面への反映の時間
-  constraint: 書き換えの知らせを受けてから 2 秒以内に描き直す
-  decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
-- item: 描き直し
-  constraint: '`changed` を受けたら `GET /api/records`・`GET /api/comments`・`GET /api/edits`・`GET /api/threads` を読み直す。開いている画面・URL の search params・表の列の表示・本文のスクロールの位置・編集の入力欄の書きかけを保ったまま描き直し、履歴に積まない。開いていた項目が記録から消えたら詳細を閉じ、URL から `id`・`full`・`h` を外す。読み直しが 422 なら前に読んだ記録で描き続ける'
-- item: 接続の状態
-  constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ直しは `EventSource` に任せる
-- item: URL の状態
-  constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
-- item: 履歴
-  constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直し・保存待ちのパネルの開閉は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
-- item: 画面の移動と項目
-  constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップのときは、`id` の項目を選んだ項目として示す
-- item: 保存した絞り込みの条件
-  constraint: 画面ごとの絞り込みの条件を、今の画面と同じ端末の保存領域のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
-- item: 端末の保存領域
-  constraint: ライト / ダーク・表ごとの表示する列とピン留め・変更履歴で選んだ時点・差分のミニマップ・本文の差分の並べ方・本文の表とセクションの見せ方・画面ごとの絞り込みの条件は、今の画面と同じ `localStorage` のキーと値の形で読み書きし、知らない項目を消さない。詳細パネルの幅は今の画面と同じ `sessionStorage` のキーに持つ。詳細パネル・詳細の全画面の本文のスクロール位置は、今の画面と同じ `sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送るときは戻さない
-- item: 「前回開いてから」の範囲
-  constraint: 『プレビューを開く』の制約「「前回開いてから」の範囲」のサーバーの配信の決め方と同じ。`sessionStorage` のキーも今の画面と同じにし、同じタブで今の画面と SPA を行き来しても `POST /api/opened` を呼び直さない
-- item: 前の版の組み立て
-  constraint: 『プレビューを開く』の制約「前の版の組み立て」と同じ
-- item: 差分の表示と書き換え
-  constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さない。画面・項目を移っても `diff` を保つ。書き換えの知らせで読み直したときは同じ時点の差分の表示のまま描き直し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
-- item: 編集の読み書き
-  constraint: 『プレビューを開く』の制約「編集の読み書き」のサーバーの配信の振る舞いと同じ（入力欄を離れたときに `POST /api/edits`、取り消しは `DELETE /api/edits/{id}`、保存は `POST /api/edits/save`。保存の 409 は `blocked` を行ごとの書き込めない理由として出し、届かないときは保存待ちの編集を残す。差分の表示中は編集の操作・保存待ちの印・件数を出さず、保存待ちのパネルを閉じる）。送っている間はそのボタンを押せなくし、二重に送らない
-- item: 設定の画面の入口
-  constraint: 設定の画面は `tab=settings` で開く。入口の「設定を編集する」を持つ表示の設定のパネルは今の画面にあるため、React の側の入口は子 4（#369）で表示の設定を移すときに置く
-- item: React に無い画面
-  constraint: ネットワーク・全体の検索・コメントの一覧・表示の設定と、詳細のコメントの入力は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す。ネットワークの入口だけは、`tab` を `graph` にして `view` を写さない（今の画面のネットワークは表示形式を持たず、`id` の項目を選んで開く）
+  - item: 通信
+    constraint: サーバーの配信（同じオリジンの `/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送らない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
+  - item: 描画のライブラリ
+    constraint: mdmark・mermaid・elkjs・marked・jsdiff は、今の画面と同じ配信元と版から、`integrity` で中身を確かめて読む。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
+  - item: 本文の無害化
+    constraint: 『プレビューを開く』の制約「本文の無害化」と同じ
+  - item: 画面への反映の時間
+    constraint: 書き換えの知らせを受けてから 2 秒以内に描き直す
+    decided_by: dev/設計書/非機能要件/非機能要件#requirements[画面への反映の時間]
+  - item: 描き直し
+    constraint: '`changed` を受けたら `GET /api/records`・`GET /api/comments`・`GET /api/edits`・`GET /api/threads` を読み直す。開いている画面・URL の search params・表の列の表示・本文のスクロールの位置・編集とコメントの入力欄の書きかけ・レビュー中の書き込みのチェックを保ったまま描き直し、履歴に積まない。開いていた項目が記録から消えたら詳細を閉じ、URL から `id`・`full`・`h` を外す。開いていたスレッドが無くなったら（まだ送っていない新しいスレッドを送ったか消したときを含む）スレッドの一覧を出し、URL から `thread` を外す。読み直しが 422 なら前に読んだ記録で描き続ける'
+  - item: 接続の状態
+    constraint: 書き換えの知らせが切れている間は、前に読んだ記録で描き続け、トップバーに接続が切れたことを出す。つなぎ直しは `EventSource` に任せる
+  - item: URL の状態
+    constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
+  - item: 履歴
+    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直し・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込みは積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
+  - item: 画面の移動と項目
+    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップのときは、`id` の項目を選んだ項目として示す
+  - item: 保存した絞り込みの条件
+    constraint: 画面ごとの絞り込みの条件を、今の画面と同じ端末の保存領域のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
+  - item: 端末の保存領域
+    constraint: ライト / ダーク・表ごとの表示する列とピン留め・変更履歴で選んだ時点・差分のミニマップ・本文の差分の並べ方・本文の表とセクションの見せ方・画面ごとの絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びは、今の画面と同じ `localStorage` のキーと値の形で読み書きし、知らない項目を消さない。詳細パネルの幅は今の画面と同じ `sessionStorage` のキーに持つ。詳細パネル・詳細の全画面の本文のスクロール位置は、今の画面と同じ `sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送るときは戻さない
+  - item: 「前回開いてから」の範囲
+    constraint: 『プレビューを開く』の制約「「前回開いてから」の範囲」のサーバーの配信の決め方と同じ。`sessionStorage` のキーも今の画面と同じにし、同じタブで今の画面と SPA を行き来しても `POST /api/opened` を呼び直さない
+  - item: 前の版の組み立て
+    constraint: 『プレビューを開く』の制約「前の版の組み立て」と同じ
+  - item: 差分の表示と書き換え
+    constraint: 差分の表示に入る・抜ける・時点を選び直すだけでは記録を読み直さない。画面・項目を移っても `diff` を保つ。書き換えの知らせで読み直したときは同じ時点の差分の表示のまま描き直し、選んだまとまりが記録から消えたか、`pending` を選んでいてまだまとめていない変更が空になったら、差分の表示をやめて URL から `diff` を外す
+  - item: 編集の読み書き
+    constraint: 『プレビューを開く』の制約「編集の読み書き」のサーバーの配信の振る舞いと同じ（入力欄を離れたときに `POST /api/edits`、取り消しは `DELETE /api/edits/{id}`、保存は `POST /api/edits/save`。保存の 409 は `blocked` を行ごとの書き込めない理由として出し、届かないときは保存待ちの編集を残す。差分の表示中は編集の操作・保存待ちの印・件数を出さず、保存待ちのパネルを閉じる）。送っている間はそのボタンを押せなくし、二重に送らない
+  - item: コメントの読み書き
+    constraint: 『プレビューを開く』の制約「コメントの読み書き」と同じ（溜める・直す・消す・元に戻す・まとめて送る・書きかけの保存の送り先と、送れなかったときに本文を残して理由を出す振る舞い）
+  - item: 選んだ箇所の対応づけ
+    constraint: 『プレビューを開く』の制約「選んだ箇所の対応づけ」と同じ。箇所の値は今の画面と同じ（『レビュー中のコメントの追加』の request `loc`）
+  - item: レビュー中のコメントの並び
+    constraint: 『プレビューを開く』の制約「レビュー中のコメントの並び」と同じ
+  - item: スレッドの読み書き
+    constraint: 『プレビューを開く』の制約「スレッドの読み書き」と同じ（開いたスレッドの利用者の既読、返信、クローズとオープンへの戻し）
+  - item: 書き込みのまとまりのリンク
+    constraint: 『プレビューを開く』の制約「書き込みのまとまりのリンク」と同じ。押したときは `panel`・`thread`・`review` を保ったまま `diff` を置き換える
+  - item: 表示の設定
+    constraint: 表示する種類・差分のミニマップ・本文の表とセクションの見せ方の個人の上書きは、選んだときに端末の保存領域に書いてその場で画面に当て、サーバーへは送らない。開いている画面の種類を外したときは概要へ移り、URL を置き換える。ワークスペースの既定は、既定の保存の確かめで「保存する」を押したときに `PUT /api/config/display` で書く（`network_look` は今の画面のネットワークで選んだ上書きを送る）。書き換えの知らせで読み直した記録の既定が変わったときは、上書きを持たない項目に新しい既定を当てる
+  - item: 設定の画面の入口
+    constraint: 設定の画面は `tab=settings` で開く。入口は表示の設定のパネルの「設定を編集する」で、押すとパネルを閉じて設定の画面へ移り、履歴に積む
+  - item: React に無い画面
+    constraint: ネットワーク・全体の検索は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す。ネットワークの入口だけは、`tab` を `graph` にして `view` を写さない（今の画面のネットワークは表示形式を持たず、`id` の項目を選んで開く）
 refs:
-- dev/設計書/インターフェース定義/サーバー/SPAの配信#
-- dev/設計書/インターフェース定義/サーバー/記録の取得#
-- dev/設計書/インターフェース定義/サーバー/書き換えの知らせ#
-- dev/設計書/インターフェース定義/サーバー/前回開いた日時#
-- dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの読み取り#
-- dev/設計書/インターフェース定義/サーバー/保存待ちの編集の読み取り#
-- dev/設計書/インターフェース定義/サーバー/スレッドの読み取り#
-- dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
-- dev/設計書/外部ライブラリ/mdmark#
-- dev/設計書/外部ライブラリ/mermaid#
-- dev/設計書/外部ライブラリ/elkjs#
-- dev/設計書/外部ライブラリ/marked#
-- dev/設計書/外部ライブラリ/jsdiff#
-- dev/設計書/外部API/GoogleFonts#
-- dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
-- dev/設計書/インターフェース定義/サーバー/保存待ちの編集の取り消し#
-- dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
+  - dev/設計書/インターフェース定義/サーバー/SPAの配信#
+  - dev/設計書/インターフェース定義/サーバー/記録の取得#
+  - dev/設計書/インターフェース定義/サーバー/書き換えの知らせ#
+  - dev/設計書/インターフェース定義/サーバー/前回開いた日時#
+  - dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの読み取り#
+  - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の読み取り#
+  - dev/設計書/インターフェース定義/サーバー/スレッドの読み取り#
+  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - dev/設計書/外部ライブラリ/mdmark#
+  - dev/設計書/外部ライブラリ/mermaid#
+  - dev/設計書/外部ライブラリ/elkjs#
+  - dev/設計書/外部ライブラリ/marked#
+  - dev/設計書/外部ライブラリ/jsdiff#
+  - dev/設計書/外部API/GoogleFonts#
+  - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+  - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の取り消し#
+  - dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
+  - dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+  - dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの書き換え#
+  - dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの削除#
+  - dev/設計書/インターフェース定義/サーバー/書きかけの保存#
+  - dev/設計書/インターフェース定義/サーバー/コメントをまとめて送る#
+  - dev/設計書/インターフェース定義/サーバー/画面からのスレッドの状態の書き換え#
+  - dev/設計書/インターフェース定義/サーバー/画面からのスレッドの既読#
+  - dev/設計書/インターフェース定義/サーバー/設定の既定の書き換え#
 test_file: tests/integration/preview/test_spa_open.py
