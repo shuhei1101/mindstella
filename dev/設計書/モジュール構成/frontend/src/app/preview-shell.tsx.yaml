@@ -54,5 +54,3 @@ components:
   container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/app/preview-shell.test.tsx

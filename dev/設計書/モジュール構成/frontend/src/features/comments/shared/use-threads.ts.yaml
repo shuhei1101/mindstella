@@ -47,5 +47,3 @@ functions:
   container: frontend/src/features/comments/shared/use-threads.ts
 notes:
   単体テスト: 同じフォルダの `use-threads.test.ts` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/features/comments/shared/use-threads.test.tsx

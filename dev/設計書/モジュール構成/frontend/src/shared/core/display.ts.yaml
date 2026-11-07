@@ -112,5 +112,3 @@ functions:
   container: frontend/src/shared/core/display.ts
 notes:
   単体テスト: 同じフォルダの `display.test.ts` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/shared/core/display.test.ts

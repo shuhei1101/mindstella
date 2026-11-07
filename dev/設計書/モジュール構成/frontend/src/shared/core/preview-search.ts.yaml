@@ -221,5 +221,3 @@ functions:
   container: frontend/src/shared/core/preview-search.ts
 notes:
   単体テスト: 同じフォルダの `preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/shared/core/preview-search.test.ts

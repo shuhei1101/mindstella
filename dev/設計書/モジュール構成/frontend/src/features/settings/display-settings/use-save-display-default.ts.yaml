@@ -25,5 +25,3 @@ functions:
   container: frontend/src/features/settings/display-settings/use-save-display-default.ts
 notes:
   単体テスト: 同じフォルダの `use-save-display-default.test.ts` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/features/settings/display-settings/use-save-display-default.test.tsx

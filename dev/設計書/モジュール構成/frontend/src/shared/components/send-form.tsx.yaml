@@ -24,5 +24,3 @@ components:
   container: frontend/src/shared/components/send-form.tsx
 notes:
   単体テスト: 同じフォルダの `send-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/shared/components/send-form.test.tsx

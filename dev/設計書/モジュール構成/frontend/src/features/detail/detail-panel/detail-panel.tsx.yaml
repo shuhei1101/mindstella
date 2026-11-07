@@ -42,5 +42,3 @@ components:
   container: frontend/src/features/detail/detail-panel/detail-panel.tsx
 notes:
   単体テスト: 同じフォルダの `detail-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/features/detail/detail-panel/detail-panel.test.tsx

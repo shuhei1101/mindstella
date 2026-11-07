@@ -24,5 +24,3 @@ components:
   container: frontend/src/features/settings/display-settings/settings-confirm-dialog.tsx
 notes:
   単体テスト: 同じフォルダの `settings-confirm-dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）
-test_files:
-- frontend/src/features/settings/display-settings/settings-confirm-dialog.test.tsx
