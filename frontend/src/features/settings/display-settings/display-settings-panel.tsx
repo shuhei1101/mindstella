@@ -50,6 +50,7 @@ export const DisplaySettingsPanel = () => {
   return (
     <>
       <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40" onClick={close} />
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
       <aside
         role="dialog"
         aria-modal="true"
@@ -83,7 +84,7 @@ export const DisplaySettingsPanel = () => {
             bodyView={bodyView}
             onKindsChange={(kinds) => { writePrefs({ kinds }); }}
             onReset={() => {
-              writePrefs(resetPrefs(readPrefs() as Record<string, unknown>));
+              writePrefs(resetPrefs(readPrefs()));
               clearTheme();
             }}
             onSaveDefault={() => { setConfirming(true); }}

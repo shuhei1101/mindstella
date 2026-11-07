@@ -1,5 +1,5 @@
 // 返信の入力（部品設計『返信の入力.tsx』）。スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン
-import { useId, type FormEvent, type KeyboardEvent } from "react";
+import { useId, type SyntheticEvent, type KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
@@ -57,7 +57,7 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, o
     if (saving || body.trim() === "") return;
     onSubmit(thread, body);
   };
-  const handleSubmit = (event: FormEvent): void => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>): void => {
     event.preventDefault();
     trySave();
   };

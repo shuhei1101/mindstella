@@ -153,6 +153,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
             </p>
           )}
           <ul className="m-0 grid min-h-0 flex-1 list-none content-start gap-2 overflow-y-auto p-3">
+            {/* eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ */}
             {rows.map((item) => {
               const label = reviewLabel(item);
               if (item.gone === true) {

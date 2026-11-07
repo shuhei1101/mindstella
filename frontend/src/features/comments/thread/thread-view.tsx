@@ -1,5 +1,5 @@
 // スレッド（画面設計『スレッド.tsx』）。書き込みと状態の変更を書いた順に並べ、下端で返信を溜め、上端でクローズとオープンへの戻しをする
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { ReplyForm, type ReplyStatus } from "@/features/comments/shared/reply-form";
 import { ThreadPost } from "@/features/comments/shared/thread-post";
@@ -25,6 +25,7 @@ export type ThreadViewProps = {
 /** 失敗の理由（届かなければ null） */
 const detailOf = (error: unknown): string | null => (error instanceof AppError ? error.message : null);
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: ThreadViewProps) => {
   const { threads, items, drafts, titles, changeSets } = data;
   const thread = threads.find((one) => one.id === id) ?? null;
@@ -45,6 +46,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   }, [thread, markSeen]);
   const draft = drafts.find((one) => one.thread === id && one.target === null)?.body ?? "";
   const [reply, setReply] = useState<{ body: string; status: ReplyStatus; count: number | null; detail: string | null }>({ body: draft, status: "idle", count: null, detail: null });
+  const reasonId = useId();
   const [reason, setReason] = useState<{ open: boolean; body: string; detail: string | null; failed: boolean }>({ open: false, body: "", detail: null, failed: false });
   const [editing, setEditing] = useState<{ id: string; error: string | null } | null>(null);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
@@ -138,9 +140,9 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
       </div>
       {reason.open && thread !== null ? (
         <div className="grid gap-1.5 border-b border-border px-3 py-2">
-          <label className="grid gap-1 text-small">
+          <label htmlFor={reasonId} className="grid gap-1 text-small">
             理由（任意）
-            <Input autoFocus value={reason.body} onChange={(event) => { setReason((current) => ({ ...current, body: event.target.value })); }} onKeyDown={(event) => {
+            <Input id={reasonId} ref={(element) => { element?.focus(); }} value={reason.body} onChange={(event) => { setReason((current) => ({ ...current, body: event.target.value })); }} onKeyDown={(event) => {
               if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
                 event.preventDefault();
                 submitStatus();

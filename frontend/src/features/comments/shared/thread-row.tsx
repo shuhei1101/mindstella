@@ -15,6 +15,7 @@ export type ThreadRowProps = {
   onTag: (tag: string) => void;
 };
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const ThreadRow = ({ thread = null, pending = null, hasPendingReply = false, activeTag = null, onOpen, onTag }: ThreadRowProps) => {
   const last = thread?.posts.at(-1) ?? null;
   const sent = thread !== null && last !== null;

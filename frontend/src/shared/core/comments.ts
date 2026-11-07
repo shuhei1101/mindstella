@@ -90,8 +90,8 @@ export const isBlockedReply = ({ item, threads }: { item: ReviewItem; threads: r
 /** 書き込みと状態の記録を日時の順の 1 本の並びにする（同じ日時は書き込みを先にし、それぞれの中の並びを保つ） */
 export const threadTimeline = (thread: Thread): TimelineEntry[] => {
   const entries = [
-    ...thread.posts.map((post) => ({ entry: { post } as TimelineEntry, at: post.created, rank: 0 })),
-    ...thread.events.map((event) => ({ entry: { event } as TimelineEntry, at: event.created, rank: 1 })),
+    ...thread.posts.map((post) => ({ entry: { post }, at: post.created, rank: 0 })),
+    ...thread.events.map((event) => ({ entry: { event }, at: event.created, rank: 1 })),
   ];
   return entries.sort((a, b) => byTime(a.at, b.at) || a.rank - b.rank).map(({ entry }) => entry);
 };

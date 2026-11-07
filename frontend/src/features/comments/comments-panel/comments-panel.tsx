@@ -153,6 +153,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   return (
     <>
       {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40" onClick={close} />}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
       <aside
         role="dialog"
         aria-modal={!pinned}

@@ -53,7 +53,7 @@ export const SelectionComment = ({ anchor, area, onOpen, onClose }: SelectionCom
       onKeyDown={handleKeyDown}
     >
       <Icon name="comment" />
-      <span aria-hidden="true" className={`pointer-events-none absolute ${fitsAbove ? "bottom-full mb-1" : "top-full mt-1"} ${tipEnd ? "right-0" : "left-0"} hidden whitespace-nowrap rounded-control bg-popover px-2 py-1 text-small text-popover-foreground shadow-md group-hover:block group-focus-visible:block`}>
+      <span aria-hidden="true" className={`pointer-events-none absolute ${fitsAbove ? "bottom-full mb-1" : "top-full mt-1"} ${tipEnd ? "right-0" : "left-0"} hidden rounded-control bg-popover px-2 py-1 text-small whitespace-nowrap text-popover-foreground shadow-md group-hover:block group-focus-visible:block`}>
         {BUTTON_NAME}
       </span>
     </button>

@@ -53,7 +53,7 @@ export const SettingsConfirm = ({ from, to, busy, error, onSave, onCancel }: Set
         </div>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" autoFocus disabled={busy} onClick={onCancel}>
+        <Button ref={(element: HTMLButtonElement | null) => { element?.focus(); }} variant="ghost" disabled={busy} onClick={onCancel}>
           取り消す
         </Button>
         <Button disabled={busy} onClick={onSave}>

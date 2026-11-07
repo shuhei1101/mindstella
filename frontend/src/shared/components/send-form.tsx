@@ -1,5 +1,5 @@
 // コメントの入力。詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン
-import { useEffect, useId, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type FocusEvent, type SyntheticEvent, type KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
@@ -120,7 +120,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
     }
     onSubmit(target, loc, body);
   };
-  const handleSubmit = (event: FormEvent): void => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>): void => {
     event.preventDefault();
     trySave();
   };
