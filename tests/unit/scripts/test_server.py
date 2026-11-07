@@ -49,6 +49,7 @@ EXPECTED_TOOL_NAMES = (
     "goal",
     "migrate",
     "clear_release",
+    "write_release",
     "export",
     "preview_url",
     "readme",
