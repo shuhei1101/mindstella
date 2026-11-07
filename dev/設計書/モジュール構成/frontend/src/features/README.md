@@ -17,5 +17,6 @@
 | [history](./history/) | `frontend/src/features/history/` の React のプレビューのモジュール |
 | [edits](./edits/) | `frontend/src/features/edits/` の React のプレビューのモジュール |
 | [settings](./settings/) | `frontend/src/features/settings/` の React のプレビューのモジュール |
+| [comments](./comments/) | `frontend/src/features/comments/` の React のプレビューのモジュール |
 
 <!-- /table -->

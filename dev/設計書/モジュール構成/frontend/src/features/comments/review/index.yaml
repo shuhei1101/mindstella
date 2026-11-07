@@ -1,0 +1,4 @@
+summary: '`frontend/src/features/comments/review/` の React のプレビューのモジュール'
+items:
+- page: review-view.tsx.yaml
+  summary: 画面設計『レビュー中の書き込み.tsx』の要素と操作を描く。チェックの状態は画面が持つ

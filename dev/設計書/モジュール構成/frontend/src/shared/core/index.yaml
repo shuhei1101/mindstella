@@ -40,3 +40,7 @@ items:
   summary: mdmark が描いた本文の中へ足す要素の組み立て
 - page: lock.ts.yaml
   summary: 注目の起点のロックの判定と鍵の震え
+- page: comments.ts.yaml
+  summary: コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）
+- page: display.ts.yaml
+  summary: 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）

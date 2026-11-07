@@ -16,3 +16,5 @@ items:
   summary: 一覧の画面の編集の入口を組む
 - page: use-visible-kinds.ts.yaml
   summary: 表示する種類を返す
+- page: use-comments.ts.yaml
+  summary: レビュー中の書き込みを溜める・書き換える・消す・まとめて送る mutation と、書きかけの保存

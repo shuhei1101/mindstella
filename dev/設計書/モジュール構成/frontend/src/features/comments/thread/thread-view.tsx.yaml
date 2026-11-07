@@ -1,0 +1,26 @@
+title: プレビュー / thread-view
+lead: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。
+components:
+- name: ThreadView
+  title: スレッド
+  kind: 画面
+  usecase: スレッドで話す
+  summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする
+  refs:
+  - dev/設計書/画面設計/プレビュー/スレッド.tsx#
+  unit_tests:
+  - name: test_thread_view
+    case: 正常
+    summary: 既読にする
+    condition: 未読の TH-1 を開く
+    mock: MSW
+    expected: '`POST /api/threads/TH-1/seen` が 1 回呼ばれる'
+  - name: test_thread_view_when_close
+    case: 正常
+    summary: クローズにする
+    condition: 理由を書いて確定
+    mock: MSW
+    expected: '`PATCH /api/threads/TH-1` が `status: closed` と理由で呼ばれる'
+  container: frontend/src/features/comments/thread/thread-view.tsx
+notes:
+  単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

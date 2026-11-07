@@ -28,5 +28,7 @@
 | [format.ts](./format.ts.yaml) | 日時と値の文字の組み立て |
 | [dom-parts.ts](./dom-parts.ts.yaml) | mdmark が描いた本文の中へ足す要素の組み立て |
 | [lock.ts](./lock.ts.yaml) | 注目の起点のロックの判定と鍵の震え |
+| [comments.ts](./comments.ts.yaml) | コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い） |
+| [display.ts](./display.ts.yaml) | 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い） |
 
 <!-- /table -->

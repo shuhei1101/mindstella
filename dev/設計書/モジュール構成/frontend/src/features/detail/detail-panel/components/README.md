@@ -18,5 +18,6 @@
 | [diagram-block.tsx](./diagram-block.tsx.yaml) | 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く |
 | [detail-resizer.tsx](./detail-resizer.tsx.yaml) | 詳細パネルの幅をドラッグとキーで変える |
 | [item-add-panel.tsx](./item-add-panel.tsx.yaml) | 項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える |
+| [detail-comments.tsx](./detail-comments.tsx.yaml) | 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く |
 
 <!-- /table -->

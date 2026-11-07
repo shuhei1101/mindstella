@@ -37,5 +37,8 @@
 | [list-columns.tsx](./list-columns.tsx.yaml) | 一覧の表の共通の列 |
 | [list-screen.tsx](./list-screen.tsx.yaml) | 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態） |
 | [blocked-note.tsx](./blocked-note.tsx.yaml) | 書き込めない理由の表示 |
+| [review-body-fold.tsx](./review-body-fold.tsx.yaml) | 部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ |
+| [selection-comment.tsx](./selection-comment.tsx.yaml) | 部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ |
+| [send-form.tsx](./send-form.tsx.yaml) | 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ |
 
 <!-- /table -->
