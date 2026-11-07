@@ -8,7 +8,13 @@ const stubHeight = (lines: number) => {
   vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(lines * 20);
   const original = window.getComputedStyle.bind(window);
   // 行の高さだけを差し替え、ほかの値は元の計算を返す（Testing Library が名前の計算に使う）
-  vi.spyOn(window, "getComputedStyle").mockImplementation((element) => new Proxy(original(element), { get: (target, key) => (key === "lineHeight" ? "20px" : (Reflect.get(target, key) as unknown)) }));
+  vi.spyOn(window, "getComputedStyle").mockImplementation((element) => new Proxy(original(element), {
+      get: (target, key) => {
+        if (key === "lineHeight") return "20px";
+        const value: unknown = Reflect.get(target, key);
+        return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+      },
+    }));
 };
 
 afterEach(() => {
