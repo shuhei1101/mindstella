@@ -1,0 +1,8 @@
+# 単体テスト（全件 pass）
+# commit: f660763d
+# 実行日時: 2026-11-07 10:32:48 JST
+# 補足: この環境に playwright が無いので tests/unit/preview は含めない（今の画面の .ts を変えていない）。mcp は ~/.mindmap/venv の site-packages を PYTHONPATH に足して読んだ
+$ pytest tests/unit/scripts -q
+........................................................................ [ 97%]
+..............................                                           [100%]
+1181 passed, 1 skipped in 31.23s
