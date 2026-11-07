@@ -19,6 +19,8 @@ const context = (patch: Partial<SearchContext> = {}): SearchContext => ({
   visibleKinds: ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"],
   diffActive: false,
   sortColumns: ["id", "title"],
+  threadIds: ["TH-1", "C-1"],
+  threadTags: ["画面"],
   ...patch,
 });
 
@@ -79,6 +81,25 @@ describe("normalizeSearch", () => {
   // 保存待ちが 0 件（正常系）
   test("normalize_search_when_no_pending", () => {
     expect(normalizeSearch(search({ panel: "pending" }), context({ pendingCount: 0 })).panel).toBeUndefined();
+  });
+
+  // 無いスレッド（正常系）
+  test("normalize_search_when_thread_missing", () => {
+    expect(normalizeSearch(search({ panel: "comments", thread: "TH-99" }), context())).toEqual(search({ panel: "comments" }));
+  });
+
+  // コメントの一覧を開いていない（正常系）
+  test("normalize_search_when_comments_closed", () => {
+    // 実行
+    const result = normalizeSearch(search({ tab: "decisions", thread: "TH-1", review: "1" }), context());
+    // 検証
+    expect(result.thread).toBeUndefined();
+    expect(result.review).toBeUndefined();
+  });
+
+  // 無いタグ（正常系）
+  test("normalize_search_when_tag_missing", () => {
+    expect(normalizeSearch(search({ panel: "comments", ttag: "無いタグ" }), context()).ttag).toBeUndefined();
   });
 
   // 表示しない種類（正常系）

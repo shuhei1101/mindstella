@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 
@@ -67,14 +67,15 @@ describe("DetailPanel", () => {
     expect(await screen.findByRole("textbox", { name: "タイトル" })).toHaveValue("D-1の題");
   });
 
-  // 今の画面でコメントするのリンク（正常系）
-  test("detail_panel_when_comment_link", async () => {
+  // 下端にコメント（正常系）
+  test("detail_panel_when_comments", async () => {
     // 準備
     stubRecords({ decisions: [decision], changes });
     // 実行
-    renderRoute("/spa/?tab=decisions&view=table&id=D-1&diff=V-1");
-    const link = await screen.findByRole("link", { name: "今の画面でコメントする" });
+    renderRoute("/spa/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
     // 検証
-    expect(link).toHaveAttribute("href", "/mindstella.html#tab=decisions&view=table&id=D-1&diff=V-1");
+    expect(await within(panel).findByRole("textbox", { name: /D-1 へのコメント/ })).toBeInTheDocument();
+    expect(within(panel).queryByRole("link", { name: "今の画面でコメントする" })).not.toBeInTheDocument();
   });
 });

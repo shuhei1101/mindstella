@@ -41,4 +41,29 @@ describe("usePreviewSearch", () => {
     expect(result.current.search.view).toBeUndefined();
     expect(result.current.search.sort).toBeUndefined();
   });
+  // コメントの一覧の中の移動は置き換える（正常系）
+  test("use_preview_search_when_set_comments", async () => {
+    // 準備
+    const { result, history } = await renderPreviewHook("/?panel=comments", usePreviewSearch);
+    const before = history.length;
+    // 実行
+    act(() => result.current.setComments({ thread: "TH-1" }));
+    // 検証
+    await waitFor(() => expect(result.current.search.thread).toBe("TH-1"));
+    expect(history.length).toBe(before);
+  });
+
+  // コメントの一覧を閉じる（正常系）
+  test("use_preview_search_when_close_comments", async () => {
+    // 準備
+    const { result } = await renderPreviewHook("/?panel=comments&thread=TH-1&review=1&tstatus=all&ttag=%E7%94%BB%E9%9D%A2", usePreviewSearch);
+    // 実行
+    act(() => result.current.setPanel(undefined));
+    // 検証
+    await waitFor(() => expect(result.current.search.panel).toBeUndefined());
+    expect(result.current.search).not.toHaveProperty("thread");
+    expect(result.current.search.review).toBeUndefined();
+    expect(result.current.search.tstatus).toBeUndefined();
+    expect(result.current.search.ttag).toBeUndefined();
+  });
 });
