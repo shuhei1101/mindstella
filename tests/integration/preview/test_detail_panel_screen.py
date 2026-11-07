@@ -3889,6 +3889,13 @@ def test_detail_description_aliases(
     assert research == ["question", "説明", "結論", "エイリアス", "調査の観点"]
 
 
+# コードブロックの折り返しと、フォーカスの属性を読む
+CODE_BLOCK_ATTRIBUTES_JS = (
+    "e => ({ whiteSpace: getComputedStyle(e).whiteSpace, tabindex: e.getAttribute('tabindex'),"
+    " role: e.getAttribute('role'), label: e.getAttribute('aria-label') })"
+)
+
+
 def _open_long_lines(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> Page:
@@ -3903,12 +3910,19 @@ def _open_long_lines(
 def test_code_block_when_long_line(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """本文のコードブロックは、長い行を折り返して横にあふれず、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
-    # 準備・実行
+    """本文のコードブロックは、長い行を折り返さずコードブロックの中だけで横に送り、フォーカスで止まって矢印で送れ、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
+    # 準備
     page = _open_long_lines(write_preview, open_preview, make_item)
     code = "aside.panel .md:not(.md-value) pre:not(.dg-raw)"
+    attributes = page.eval_on_selector(code, CODE_BLOCK_ATTRIBUTES_JS)
+    # 実行
+    page.focus(code)
+    page.keyboard.press("ArrowRight")
+    page.wait_for_function("(s) => document.querySelector(s).scrollLeft > 0", arg=code)
     # 検証
-    assert not overflows_horizontally(page, code)
+    assert attributes == {"whiteSpace": "pre", "tabindex": "0", "role": None, "label": "コード: text"}
+    assert overflows_horizontally(page, code)
+    assert not overflows_horizontally(page, "aside.panel .panel-body")
     assert axe_rule_results(page, code, SCROLLABLE_REGION_RULE)["violations"] == []
 
 
