@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import subprocess
 import threading
 import time
@@ -305,6 +306,40 @@ def test_enter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # 検証
     assert result is False
     assert run.commands == []
+
+
+def test_enter_when_pane_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """同じペインには同じ入力の鍵、別のペインには別の入力の鍵を渡し、貼り付けの鍵は 1 本（正常系）。"""
+    # 準備
+    passed: list[tuple[threading.Lock | None, threading.Lock]] = []
+
+    def _enter_to_claude(
+        target: claude_input.InputTarget | None,
+        count: int,
+        *,
+        pane_lock: threading.Lock | None,
+        paste_lock: threading.Lock,
+    ) -> bool:
+        """渡された鍵を控えて偽を返す。"""
+        passed.append((pane_lock, paste_lock))
+        return False
+
+    monkeypatch.setattr(claude_input, "enter_to_claude", _enter_to_claude)
+    targets = claude_input.InputTargets()
+    roots = [Path("/work/a"), Path("/work/b"), Path("/work/c")]
+    targets.remember(roots[0], _tmux_session("%3"))
+    targets.remember(roots[1], _tmux_session("%3"))
+    targets.remember(roots[2], _tmux_session("%5"))
+    # 実行
+    for root in roots:
+        targets.enter(root, 1)
+    # 検証
+    (lock_a, paste_a), (lock_b, paste_b), (lock_c, paste_c) = passed
+    assert lock_a is not None
+    assert lock_a is lock_b
+    assert lock_c is not None
+    assert lock_c is not lock_a
+    assert paste_a is paste_b is paste_c
 
 
 def test_parse_session() -> None:
@@ -728,7 +763,8 @@ def test_enter_to_claude(tmp_path: Path) -> None:
     result = claude_input.enter_to_claude(
         _target(tmp_path),
         2,
-        lock=threading.Lock(),
+        pane_lock=threading.Lock(),
+        paste_lock=threading.Lock(),
         run=run,
         clock=fake.clock,
         sleep=fake.sleep,
@@ -748,7 +784,8 @@ def test_enter_to_claude_when_outside_tmux() -> None:
     result = claude_input.enter_to_claude(
         None,
         2,
-        lock=threading.Lock(),
+        pane_lock=None,
+        paste_lock=threading.Lock(),
         run=run,
         clock=fake.clock,
         sleep=fake.sleep,
@@ -771,7 +808,8 @@ def test_enter_to_claude_when_session_ended(
     result = claude_input.enter_to_claude(
         _target(tmp_path),
         2,
-        lock=threading.Lock(),
+        pane_lock=threading.Lock(),
+        paste_lock=threading.Lock(),
         run=run,
         clock=fake.clock,
         sleep=fake.sleep,
@@ -796,7 +834,8 @@ def test_enter_to_claude_when_paste_failed(
     result = claude_input.enter_to_claude(
         _target(tmp_path),
         2,
-        lock=threading.Lock(),
+        pane_lock=threading.Lock(),
+        paste_lock=threading.Lock(),
         run=run,
         clock=fake.clock,
         sleep=fake.sleep,
@@ -816,12 +855,51 @@ def test_enter_to_claude_when_not_delivered(
     # 準備
     run = _Runner()
     fake = _FakeTime()
+    paste_lock = threading.Lock()
+    held_while_sleeping: list[bool] = []
+
+    def _sleep(seconds: float) -> None:
+        """待つたびに貼り付けの鍵を持っているかを控え、時刻を進める。"""
+        held_while_sleeping.append(paste_lock.locked())
+        fake.sleep(seconds)
+
     caplog.set_level(logging.WARNING)
     # 実行
     result = claude_input.enter_to_claude(
         _target(tmp_path),
         2,
-        lock=threading.Lock(),
+        pane_lock=threading.Lock(),
+        paste_lock=paste_lock,
+        run=run,
+        clock=fake.clock,
+        sleep=_sleep,
+        proc_dir=NO_PROC_DIR,
+    )
+    # 検証
+    assert result is False
+    assert sum(fake.sleeps) <= claude_input.CONFIRM_DEADLINE_SEC
+    assert "WARNING" in caplog.text
+    assert held_while_sleeping
+    assert not any(held_while_sleeping)
+
+
+def test_enter_to_claude_when_paste_slow(tmp_path: Path) -> None:
+    """確かめの上限は貼り終えてから数える（正常系）。"""
+    # 準備
+    fake = _FakeTime()
+
+    def _on_call(command: list[str]) -> None:
+        """tmux の 3 つのコマンドを受けるたびに時刻を 0.1 秒進める。"""
+        if command[0] == "tmux" and command[3] in ("load-buffer", "paste-buffer", "send-keys"):
+            fake.now += 0.1
+
+    run = _Runner(on_call=_on_call)
+    # 実行
+    result = claude_input.enter_to_claude(
+        _target(tmp_path),
+        2,
+        pane_lock=threading.Lock(),
+        paste_lock=threading.Lock(),
         run=run,
         clock=fake.clock,
         sleep=fake.sleep,
@@ -829,8 +907,7 @@ def test_enter_to_claude_when_not_delivered(
     )
     # 検証
     assert result is False
-    assert sum(fake.sleeps) <= claude_input.INPUT_DEADLINE_SEC
-    assert "WARNING" in caplog.text
+    assert math.isclose(math.fsum(fake.sleeps), claude_input.CONFIRM_DEADLINE_SEC)
 
 
 def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
@@ -838,6 +915,7 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
     # 準備（ペインで直に Claude Code を動かした宛先にして、1 回の入力の呼び出しを 5 つにする）
     target = _target(tmp_path)
     lock = threading.Lock()
+    paste_lock = threading.Lock()
     fake = _FakeTime()
     owners: list[int] = []
     first_call_started = threading.Event()
@@ -859,7 +937,8 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
         claude_input.enter_to_claude(
             target,
             2,
-            lock=lock,
+            pane_lock=lock,
+            paste_lock=paste_lock,
             run=run,
             clock=fake.clock,
             sleep=fake.sleep,
@@ -873,7 +952,8 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
         claude_input.enter_to_claude(
             target,
             2,
-            lock=lock,
+            pane_lock=lock,
+            paste_lock=paste_lock,
             run=run,
             clock=fake.clock,
             sleep=fake.sleep,
