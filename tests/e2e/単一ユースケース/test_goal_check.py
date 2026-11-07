@@ -1,6 +1,7 @@
 """ゴール判定（ゴールに届いたかを確かめ、確定の後に release/ へ書き出す）の E2E テスト。
 
-モデルを呼ばず、スキルの手順が連ねるコマンドと release/ への書き出しを決めた引数で順に再生して、ワークスペースの状態を確かめる。
+モデルを呼ばず、スキルの手順が連ねるコマンドを決めた引数で順に再生して、ワークスペースの状態を確かめる。
+利用者の確定は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する。
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from preview_helpers import send_user_reply
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
@@ -17,6 +19,14 @@ if TYPE_CHECKING:
 
 # システム開発の進め方ガイドのフェーズ
 PHASES = ["目的", "要件", "構成", "インターフェース", "コンテンツ"]
+
+
+def _ask_and_confirm(replay: Replay, ws: dict[str, str], body: str) -> str:
+    """確定を求めるスレッドを立て、利用者の確定を配信の API で送り、AI が読んだスレッドの ID を返す。"""
+    thread_id = replay("new_thread", **ws, body=body, summary="確定を求めた。返事待ち")["id"]
+    send_user_reply(replay("preview_url", **ws)["url"], thread_id, "確定する")
+    replay("thread", **ws, id=thread_id)
+    return thread_id
 
 
 def _goal_settings(valid_settings: dict[str, Any]) -> dict[str, Any]:
@@ -65,20 +75,25 @@ def test_normal_when_reached(
     ws = {"workspace": str(root)}
     # 実行
     goal = replay("goal", **ws)
+    # 決まった検討事項と納品物をスレッドで示して確定を求め、利用者の確定を読む
+    thread_id = _ask_and_confirm(replay, ws, "決まった検討事項と納品物 A-1 で確定してよいですか")
     deliverable = replay("show", **ws, id="A-1")
-    # 利用者の確定の後に、スキルが release/ を片付けてから Markdown を書く
+    # 利用者の確定の後に、スキルが release/ を片付けてから write_release で Markdown を書く
     replay("clear_release", **ws)
-    (root / RECORD_DIR / "release" / "決定事項.md").write_text(
-        "# 決定事項\n\n- D-1: 記録する\n- D-2: YAML に残す\n- D-4: コマンドで書く\n",
-        encoding="utf-8",
+    replay(
+        "write_release",
+        **ws,
+        path="決定事項.md",
+        content="# 決定事項\n\n- D-1: 記録する\n- D-2: YAML に残す\n- D-4: コマンドで書く\n",
     )
-    (root / RECORD_DIR / "release" / "要件定義書.md").write_text(deliverable["body_markdown"], encoding="utf-8")
+    replay("write_release", **ws, path="要件定義書.md", content=deliverable["body_markdown"])
     replay(
         "add",
         **ws,
         kind="log",
         item={"title": "リリース", "date": "2026-10-02", "related": ["A-1"]},
     )
+    replay("reply", **ws, id=thread_id, body="決定事項.md・要件定義書.md を書き出しました", summary="確定してリリースした")
     # 検証
     # goal の出力が「届いた」で、残りの検討事項と納品物が 0 件である（ゴールより後ろの D-9 を含まない）
     assert goal["reached"] is True
@@ -93,6 +108,11 @@ def test_normal_when_reached(
     assert not (root / "release").exists()
     # 会話ログが 1 件足されている
     assert [item["id"] for item in read_yaml(root, "logs.yaml")["items"]] == ["L-1"]
+    # 確定を求める AI のスレッドに、確定の要求・利用者の確定・書き出したファイルを示す AI の返信が並ぶ
+    posts = read_yaml(root, "threads.yaml")["items"][0]["posts"]
+    assert [post["author"] for post in posts] == ["ai", "user", "ai"]
+    assert posts[1]["body"] == "確定する"
+    assert "要件定義書.md" in posts[2]["body"]
 
 
 def test_normal_when_not_reached(
@@ -100,6 +120,7 @@ def test_normal_when_not_reached(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """ゴールに届いていなければ、残りを示して release/ には何も書かない（正常系）。"""
     # 準備
@@ -112,7 +133,11 @@ def test_normal_when_not_reached(
     ws = {"workspace": str(root)}
     # 実行
     goal = replay("goal", **ws)
+    replay("new_thread", **ws, body="残っている D-1・A-1 を決めるとゴールに届きます", summary="ゴールの残りを知らせた")
     # 検証
+    # 残っている D-1・A-1 を知らせる AI のスレッドがある
+    threads = read_yaml(root, "threads.yaml")["items"]
+    assert [post["author"] for post in threads[0]["posts"]] == ["ai"]
     # goal の出力が「届いていない」で、残りに D-1 と A-1 がある
     assert goal["reached"] is False
     assert [decision["id"] for decision in goal["remaining_decisions"]] == ["D-1"]
@@ -126,6 +151,7 @@ def test_normal_when_no_goal(
     make_item: MakeItem,
     valid_settings: dict[str, Any],
     replay: Replay,
+    read_yaml: Callable[[Path, str], Any],
 ) -> None:
     """ゴールが無ければ、判定せずに全フェーズの決着していない検討事項を示し、release/ には何も書かない（正常系）。"""
     # 準備
@@ -138,7 +164,11 @@ def test_normal_when_no_goal(
     ws = {"workspace": str(root)}
     # 実行
     goal = replay("goal", **ws)
+    replay("new_thread", **ws, body="ゴールがありません。D-1 が決着していません。ゴールを決めますか", summary="ゴールを決めるかを聞いた。返事待ち")
     # 検証
+    # ゴールを決めるかを尋ねる AI のスレッドがある
+    threads = read_yaml(root, "threads.yaml")["items"]
+    assert "ゴールを決めますか" in threads[0]["posts"][0]["body"]
     # goal の出力が、ゴールが無いことを示し、届いたとも届いていないとも返さない
     assert goal["has_goal"] is False
     assert goal["reached"] is None
@@ -184,6 +214,7 @@ def test_normal_when_task_output_doc_missing(
     )
     replay("update", **ws, id="T-1", item={"related": ["A-2"]})
     after = replay("goal", **ws)
+    replay("new_thread", **ws, body="資料 A-2 を足しました。決まった検討事項と納品物で確定してよいですか", summary="確定を求めた。返事待ち")
     # 検証
     # goal の出力が「届いた」で、完了したタスクは T-1 だけである
     assert reached["reached"] is True
@@ -235,13 +266,17 @@ def test_normal_when_html_deliverable(
     release = root / RECORD_DIR / "release"
     # 実行
     goal = replay("goal", **ws)
+    _ask_and_confirm(replay, ws, "決まった検討事項と納品物 A-1・A-2 で確定してよいですか")
     markdown_deliverable = replay("show", **ws, id="A-1")
     html_deliverable = replay("show", **ws, id="A-2")
-    # 利用者の確定の後に、スキルが release/ を片付けてから、納品物を本文の形式のまま書く
+    # 利用者の確定の後に、スキルが release/ を片付けてから、納品物を本文の形式のまま write_release で書く
     replay("clear_release", **ws)
-    (release / "要件定義書.md").write_text(markdown_deliverable["body_markdown"], encoding="utf-8")
-    (release / f"{HTML_DELIVERABLE_TITLE}.html").write_text(
-        html_deliverable["body_html"], encoding="utf-8"
+    replay("write_release", **ws, path="要件定義書.md", content=markdown_deliverable["body_markdown"])
+    replay(
+        "write_release",
+        **ws,
+        path=f"{HTML_DELIVERABLE_TITLE}.html",
+        content=html_deliverable["body_html"],
     )
     replay(
         "add",

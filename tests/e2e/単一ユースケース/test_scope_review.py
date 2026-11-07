@@ -1,6 +1,7 @@
 """話し合いの範囲の見直し（範囲が広がったとき、たたき台と対応を確かめて設定を書き換える）の E2E テスト。
 
 モデルを呼ばず、スキルの手順が連ねる設定の更新と会話ログの追加を決めた引数で順に再生して、ワークスペースの状態を確かめる。
+たたき台の確認への利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する。
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from preview_helpers import send_user_reply
 from workspace_fixtures import RECORD_DIR, MakeItem, MakeWorkspace
 
 if TYPE_CHECKING:
@@ -76,6 +78,25 @@ def test_normal(
     )
     ws = {"workspace": str(root)}
     # 実行
+    # たたき台と対応の表を資料 A-1 に起こし、A-1 を向けたスレッドで確定を求める
+    replay(
+        "add",
+        **ws,
+        kind="doc",
+        item={
+            "title": "範囲の見直しのたたき台",
+            "kind": "文書",
+            "deliverable": False,
+            "status": "下書き",
+            "target": "話題",
+            "body_markdown": "# たたき台\n\n| 古いフェーズ | 新しいフェーズ |\n| --- | --- |\n| 問い | 目的 |\n",
+        },
+    )
+    thread_id = replay(
+        "new_thread", **ws, body="A-1 のたたき台で確定してよいですか", summary="たたき台の確認。返事待ち", target="A-1"
+    )["id"]
+    send_user_reply(replay("preview_url", **ws)["url"], thread_id, "確定する")
+    replay("thread", **ws, id=thread_id)
     # 利用者がたたき台と対応の表を確定した後に、設定を書き換える
     replay(
         "update_settings",
@@ -111,7 +132,7 @@ def test_normal(
     replay(
         "update_settings",
         **ws,
-        settings={"goal": {**goal, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}},
+        settings={"goal": {**goal, "deliverables": [{"title": "要件定義書", "doc": "A-2"}]}},
     )
     replay(
         "add",
@@ -124,6 +145,7 @@ def test_normal(
             "body_markdown": "システム開発を足し、要件まで決めることにした",
         },
     )
+    replay("reply", **ws, id=thread_id, body="設定を書き換え、D-1・D-2 を付け替え、A-2 を作りました", summary="範囲を書き換えた")
     checked = replay("check", **ws)
     # 検証
     # playbooks が壁打ちとシステム開発の 2 件で、summary・target_label・phases が確定した値である
@@ -134,11 +156,12 @@ def test_normal(
     assert updated["phases"] == NEW_PHASES
     assert updated["targets"] == NEW_TARGETS
     assert updated["categories"] == NEW_CATEGORIES
-    # goal が確定したたたき台の値で、納品物 要件定義書 の doc が A-1 である
-    assert updated["goal"] == {**NEW_GOAL, "deliverables": [{"title": "要件定義書", "doc": "A-1"}]}
-    # 資料 A-1 が deliverable: true を持ち、.mindstella/docs/ の本文が概要・背景・構成の見出しを持つ
-    assert read_yaml(root, "docs.yaml")["items"][0]["deliverable"] is True
-    body = (root / RECORD_DIR / "docs" / "A-1.md").read_text(encoding="utf-8")
+    # goal が確定したたたき台の値で、納品物 要件定義書 の doc が A-2 である
+    assert updated["goal"] == {**NEW_GOAL, "deliverables": [{"title": "要件定義書", "doc": "A-2"}]}
+    # 資料 A-2 が deliverable: true を持ち、.mindstella/docs/ の本文が概要・背景・構成の見出しを持つ
+    docs = {item["id"]: item for item in read_yaml(root, "docs.yaml")["items"]}
+    assert docs["A-2"]["deliverable"] is True
+    body = (root / RECORD_DIR / "docs" / "A-2.md").read_text(encoding="utf-8")
     assert [heading in body for heading in ("## 概要", "## 背景", "## 構成")] == [True] * 3
     # D-1 の phase が目的、D-2 の phase が発散である
     decisions = {item["id"]: item for item in read_yaml(root, "decisions.yaml")["items"]}
@@ -151,6 +174,11 @@ def test_normal(
         ("本体", "論点"),
         ("本体", "論点"),
     ]
+    # たたき台の資料 A-1 が deliverable: false で、A-1 を向けた AI のスレッドに確認・確定・返信が並ぶ
+    assert docs["A-1"]["deliverable"] is False
+    thread = read_yaml(root, "threads.yaml")["items"][0]
+    assert thread["target"] == "A-1"
+    assert [post["author"] for post in thread["posts"]] == ["ai", "user", "ai"]
     # 会話ログが 1 件足されている
     assert [item["id"] for item in read_yaml(root, "logs.yaml")["items"]] == ["L-1"]
     # check が問題を 0 件で返す
