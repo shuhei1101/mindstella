@@ -547,7 +547,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包む
+    summary: 本文の Markdown を mdmark で描いた要素にする（mdmark が描くときに無害化する）。ブロックに元の行の印を付け、mermaid のコードブロックは図の入れ物に、`html` のコードブロックは HTML の本文の枠の入れ物に置き換え、表は横に送れる要素で包み、コードブロックはフォーカスできる要素にする
     args:
       - name: source
         type: string
@@ -569,6 +569,7 @@ functions:
       4. `.mdmark-html` の外の `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
       5. `.mdmark-html` の外の `language-html` のコードブロックを、原文を `data-source` に持ち `pre` の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に `pre` ごと置き換える（描くのは使う側が部品『HTMLの本文の枠』で、`selectable` は偽）
       6. `.mdmark-html` の外の表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む（範囲の中の表は書いた HTML のまま包まない）。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文とスレッドの書き込みも同じ）
+      7. `.mdmark-html` の外の、処理 4・5 で置き換えずに残ったコードブロックの `pre`（子に `code` を持つ `pre`）に、`tabindex="0"`・`role="group"`・`aria-label="コードブロック"` を付ける（部品設計『Markdownの本文』。範囲の中の `pre` は書いた HTML のまま付けない）
     unit_tests:
       - name: test_render_markdown
         case: 正常
@@ -606,6 +607,12 @@ functions:
         condition: 段落（1 行目）・`<!-- html -->` の範囲（3〜9 行目。段落・`<mdmark-chart>`・`<mdmark-param>`・`<script>window.__x=1</script>`・`onclick` を持つボタン）・段落（11 行目）・言語指定 `html` のコードブロックを持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`.mdmark-html` が 1 つで `data-html-open` が 3、`data-html-close` が 9。範囲の中に `data-line-start` を持つ要素が無く、`script` と `onclick` が無く `window.__x` が未定義。前後の段落の `data-line-start` が 1 と 11。範囲の外の `html` のコードブロックだけが `.html-block` になる。今の値をコピーするボタンの文字が `MDMARK_PARAM_COPY_LABEL`'
+      - name: test_render_markdown_when_code_block
+        case: 正常
+        summary: コードブロックの pre をフォーカスできる要素にする
+        condition: 言語指定 `json` のコードブロック・言語指定の無いコードブロック・mermaid のコードブロックと、`<!-- html -->` の範囲の中の `<pre><code>` を持つ本文
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 範囲の外の 2 つのコードブロックの `pre` が `tabindex="0"`・`role="group"`・`aria-label="コードブロック"` を持ち、`data-line-start` は付けないときと同じ。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない
   - name: renderDiagrams
     title: 図を描く
     kind: 関数
@@ -1653,6 +1660,7 @@ functions:
       1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、渡した文字列を文字として持つ `span.md-value-raw` を返す（知らせは出さない。本文の `renderMarkdown` が出す）
       2. 段落の中の改行を強制改行にした Markdown（`withHardBreaks`）を、`mdmark.mount` に `config.features` の `MDMARK_FEATURES` を渡して描き、`br` の直後の改行の文字（`renderMarkdown` の処理 2 と同じ理由）と `data-source-line` を外す（`data-line-start` は付けず、mermaid のコードブロックも図にしない）
+      3. `.mdmark-html` の外のコードブロックの `pre` に、`renderMarkdown` の処理 7 と同じ属性を付ける
     unit_tests:
       - name: test_render_value
         case: 正常
@@ -1672,6 +1680,12 @@ functions:
         condition: mdmark の配信元を止める。`**強調**\n2 行目` を渡す
         mock: 描画のライブラリの配信元（`page.route` で 404）
         expected: 戻り値が `span.md-value-raw` で、文字が `**強調**\n2 行目`、子の要素を持たない
+      - name: test_render_value_when_code_block
+        case: 正常
+        summary: 値のコードブロックの pre をフォーカスできる要素にする
+        condition: 段落と言語指定 `json` のコードブロックを持つ値を渡す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.md-value` の中の `pre` が `tabindex="0"`・`role="group"`・`aria-label="コードブロック"` を持つ'
   - name: isTyping
     title: 文字の入力欄か
     container: plugins/mindstella/skills/mindmap/preview/core/lock.ts
