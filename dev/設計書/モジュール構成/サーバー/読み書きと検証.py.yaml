@@ -1788,6 +1788,7 @@ functions:
          - 拡張子が `.md`・`.html` でない
       3. `records_root(root) / RELEASE_DIR` と `path` をつないだ置き換え先を作り、`resolve()` した先が `resolve()` した `release/` の下に無ければ `ArgumentError("path", 理由)` を送る（シンボリックリンクで外を指す）
       4. 置き換え先の親フォルダを作る（`mkdir(parents=True, exist_ok=True)`）
+         - `OSError` が起きた場合、`WriteFailedError` を送る（途中に同じ名前のファイルがある など）
       5. `_write_temp` で一時ファイルに書き、`os.replace` で置き換える
          - `OSError` が起きた場合、一時ファイルを消してから `WriteFailedError` を送る
       6. `release/` からのパスと `content.encode("utf-8")` の長さを返す
@@ -1831,10 +1832,10 @@ functions:
       - name: test_write_release_when_write_fails
         case: 異常
         summary: 置き換えに失敗したら一時ファイルを残さない
-        condition: '`os.replace` を `PermissionError` を送るように差し替える'
-        mock: '`os.replace`（monkeypatch）'
-        expected: '`WriteFailedError`。`release/` に一時ファイルも置き換え先も無い'
-        exception: 置き換えで OSError
+        condition: '`parametrize`: `os.replace` を `PermissionError` を送るように差し替える / `release/図` にファイルがあり `path` が `図/a.md`'
+        mock: '`os.replace`（monkeypatch。前者だけ）'
+        expected: '`WriteFailedError`。`release/` に一時ファイルも置き換え先も無い（後者は `release/図` のファイルが呼ぶ前と同じ）'
+        exception: フォルダの作成か置き換えで OSError
 test_files:
   - tests/unit/scripts/test_kinds.py
   - tests/unit/scripts/test_store.py
