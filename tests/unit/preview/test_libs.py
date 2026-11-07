@@ -1555,7 +1555,7 @@ def test_render_value_when_code_block(
         '値の段落\n\n```json\n{"mcpServers": {"mindstella": {"type": "http"}}}\n```',
     )
     # 検証
-    assert result == [CODE_BLOCK_ATTRIBUTES]
+    assert result == [{"tabindex": "0", "role": None, "label": "コード: json"}]
 
 
 def test_render_value_when_library_missing(
@@ -1756,10 +1756,7 @@ def test_render_markdown_when_table(
     assert result == expected
 
 
-# コードブロックの pre に付ける、フォーカスの属性
-CODE_BLOCK_ATTRIBUTES = {"tabindex": "0", "role": "group", "label": "コードブロック"}
-
-# 範囲の外のコードブロック 2 つ（言語指定あり・なし）・mermaid のコードブロック・範囲の中の pre を持つ本文（左の数字は行）
+# 範囲の外のコードブロック 3 つ（言語指定あり・なし・字下げ）・mermaid のコードブロック・範囲の中の pre を持つ本文（左の数字は行）
 CODE_BLOCK_SOURCE = "\n".join(
     [
         "```json",  # 1
@@ -1770,16 +1767,18 @@ CODE_BLOCK_SOURCE = "\n".join(
         "plugins/mindstella/skills/mindmap/preview/",  # 6
         "```",  # 7
         "",  # 8
-        "```mermaid",  # 9
-        "flowchart LR",  # 10
-        "  A --> B",  # 11
-        "```",  # 12
-        "",  # 13
-        "<!-- html -->",  # 14
-        "```html",  # 15
-        "<pre><code>範囲の中のコード</code></pre>",  # 16
-        "```",  # 17
-        "<!-- /html -->",  # 18
+        "    字下げのコード",  # 9
+        "",  # 10
+        "```mermaid",  # 11
+        "flowchart LR",  # 12
+        "  A --> B",  # 13
+        "```",  # 14
+        "",  # 15
+        "<!-- html -->",  # 16
+        "```html",  # 17
+        "<pre><code>範囲の中のコード</code></pre>",  # 18
+        "```",  # 19
+        "<!-- /html -->",  # 20
     ]
 )
 
@@ -1787,7 +1786,7 @@ CODE_BLOCK_SOURCE = "\n".join(
 def test_render_markdown_when_code_block(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:
-    """コードブロックの pre をフォーカスできる要素にし、図の入れ物の pre と範囲の中の pre には付けない（正常系）。"""
+    """mdmark がフェンスのコードブロックに付けた属性を残し、字下げのコードブロックの pre にだけ付ける。図の入れ物の pre と範囲の中の pre には付けない（正常系）。"""
     # 準備
     load_preview_scripts()
     load_mdmark()
@@ -1814,8 +1813,12 @@ def test_render_markdown_when_code_block(
     )
     # 検証
     assert result == {
-        "outside": [CODE_BLOCK_ATTRIBUTES, CODE_BLOCK_ATTRIBUTES],
-        "lineStarts": ["2", "6"],
+        "outside": [
+            {"tabindex": "0", "role": None, "label": "コード: json"},
+            {"tabindex": "0", "role": None, "label": "コード"},
+            {"tabindex": "0", "role": None, "label": "コード"},
+        ],
+        "lineStarts": ["2", "6", "9"],
         "diagramRaw": [None],
         "inRange": [None],
     }
