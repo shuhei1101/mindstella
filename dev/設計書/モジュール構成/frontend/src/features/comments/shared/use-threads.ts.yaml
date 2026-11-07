@@ -27,7 +27,7 @@ functions:
   title: スレッドの既読
   kind: フック
   usecase: スレッドで話す
-  summary: '`POST /api/threads/{id}/seen` を呼ぶ。応答を待たずに `withSeen` でスレッドの query の値を書き換える（楽観更新の許可リストの既読の状態）'
+  summary: '`POST /api/threads/{id}/seen` を呼ぶ。応答を待たずに `withSeen` でスレッドの query の値を書き換える（楽観更新の許可リストの既読の状態）。失敗しても画面には出さず、スレッドの query を読み直してサーバーの値に戻す。呼び直さない判定は `ThreadView` が持ち、開いている間に呼んだスレッドの ID を覚えて、同じスレッドを開いている間は読み直しの後も呼び直さず、次に開いたときに呼び直す'
   returns:
     type: UseMutationResult
     description: mutation
@@ -38,6 +38,12 @@ functions:
     condition: 未読の TH-1
     mock: MSW
     expected: 応答の前にスレッドの query の TH-1 が既読
+  - name: test_use_mark_thread_seen_when_error
+    case: 異常
+    summary: 失敗したら読み直す
+    condition: '500'
+    mock: MSW
+    expected: スレッドの query が読み直され、TH-1 が未読に戻る。エラーを画面に出さない
   container: frontend/src/features/comments/shared/use-threads.ts
 notes:
   単体テスト: 同じフォルダの `use-threads.test.ts` に置く（knowledge の規約『フォルダ構成』）

@@ -72,7 +72,7 @@ functions:
   title: 既定に戻した上書き
   kind: 関数
   usecase: 表示の設定を変える
-  summary: 見た目・表示する種類・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並びを外す。`diffSel`・`commentsPinned` と知らない項目は残す
+  summary: 見た目・表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並びを外す。`diffSel`・`commentsPinned` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
   args:
   - name: prefs
     type: Record<string, unknown>
@@ -85,9 +85,9 @@ functions:
   - name: test_reset_prefs
     case: 正常
     summary: 残す項目
-    condition: '`look`・`diffSel`・`commentsPinned`・知らない項目'
+    condition: '`look`・`theme`・`diffSel`・`commentsPinned`・知らない項目'
     mock: なし
-    expected: '`diffSel`・`commentsPinned`・知らない項目だけが残る'
+    expected: '`diffSel`・`commentsPinned`・知らない項目だけが残り、`theme` が残らない'
   container: frontend/src/shared/core/display.ts
 - name: displayDefaults
   title: ワークスペースの既定

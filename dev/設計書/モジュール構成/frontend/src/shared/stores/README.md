@@ -8,5 +8,5 @@
 | --- | --- |
 | [connection-store.ts](./connection-store.ts.yaml) | 書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」） |
 | [theme-store.ts](./theme-store.ts.yaml) | 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す |
-| [prefs-store.ts](./prefs-store.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
+| [prefs-store.ts](./prefs-store.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
 | [edit-session-store.ts](./edit-session-store.ts.yaml) | 開いている追加の入力と、直前の保存で書き込めなかった編集 |

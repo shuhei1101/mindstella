@@ -15,6 +15,12 @@ components:
     condition: 未読の TH-1 を開く
     mock: MSW
     expected: '`POST /api/threads/TH-1/seen` が 1 回呼ばれる'
+  - name: test_thread_view_when_seen_failed
+    case: 異常
+    summary: 失敗した後に呼び直さない
+    condition: '`POST /api/threads/TH-1/seen` が 500 で、読み直した TH-1 が未読のまま'
+    mock: MSW
+    expected: 開いている間は `POST /api/threads/TH-1/seen` が 1 回だけで、一覧へ戻って開き直すと 2 回目が呼ばれる
   - name: test_thread_view_when_close
     case: 正常
     summary: クローズにする

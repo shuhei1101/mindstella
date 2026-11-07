@@ -81,7 +81,7 @@ functions:
   title: 書きかけの保存
   kind: フック
   usecase: 項目へコメントする
-  summary: 入力が止まって 1 秒経ったときと、入力欄を離れたときに `PUT /api/drafts` を呼ぶ関数を返す。向けた先ごとに待ちを分ける
+  summary: 入力が止まって 500ms 経ったとき（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ）と、入力欄を離れたときに `PUT /api/drafts` を呼ぶ関数を返す。向けた先ごとに待ちを分ける。溜めたときは、その向けた先の予約した保存を取り消す（サーバーが溜めた向けた先の書きかけを消すため）
   returns:
     type: '(draft: DraftInput) => void'
     description: 保存を予約する関数
@@ -89,7 +89,7 @@ functions:
   - name: test_use_save_draft
     case: 正常
     summary: 止まってから送る
-    condition: 1 秒の間に 3 回入力する
+    condition: 500ms の間に 3 回入力する
     mock: MSW と偽の時計
     expected: '`PUT /api/drafts` が 1 回'
   container: frontend/src/shared/hooks/use-comments.ts
