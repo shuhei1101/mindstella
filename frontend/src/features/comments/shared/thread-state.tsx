@@ -18,7 +18,7 @@ export const STATE_LABELS = {
 
 /** 状態の札（色に加えて印と文字で区別する） */
 export const ThreadState = ({ status }: { status: ThreadStateKind }) => (
-  <span data-state={status} className={cn("inline-flex items-center gap-1 rounded-control border px-1.5 text-small", status === "pending" ? "border-dashed border-border" : "border-border")}>
+  <span data-state={status} className={cn("inline-flex shrink-0 items-center gap-1 rounded-control border px-1.5 text-small whitespace-nowrap", status === "pending" ? "border-dashed border-border" : "border-border")}>
     <Icon name={STATE_LABELS[status].icon} />
     {STATE_LABELS[status].label}
   </span>
@@ -26,7 +26,7 @@ export const ThreadState = ({ status }: { status: ThreadStateKind }) => (
 
 /** レビュー中の印 */
 export const PendingMark = () => (
-  <span className="inline-flex items-center gap-1 rounded-control border border-dashed border-border px-1.5 text-small">
+  <span className="inline-flex shrink-0 items-center gap-1 rounded-control border border-dashed border-border px-1.5 text-small whitespace-nowrap">
     <Icon name="edit" />
     レビュー中
   </span>
@@ -34,7 +34,7 @@ export const PendingMark = () => (
 
 /** 未読の札 */
 export const UnseenMark = () => (
-  <span className="inline-flex items-center gap-1 rounded-control bg-primary px-1.5 text-small text-primary-foreground">
+  <span className="inline-flex shrink-0 items-center gap-1 rounded-control bg-primary px-1.5 text-small whitespace-nowrap text-primary-foreground">
     <span aria-hidden="true" className="size-1.5 rounded-full bg-primary-foreground" />
     未読
   </span>
