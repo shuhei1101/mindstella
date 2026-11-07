@@ -1,0 +1,57 @@
+# レビューの指摘の対応（6681d55f）で変えたファイルに関係する単体テスト。他のファイルは 9ae01129 の時点のログ（20261108072747_c132142f_単体テスト.log）から変えていない
+# 端末の負荷で vitest のワーカーの起動が上限を超えるため、1 ファイルずつ（--pool=forks --maxWorkers=1）流した
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/stores/display-notice-store.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:51:06
+   Duration  35.60s (environment 62%, setup 35%, import 1%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/display-settings-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:51:44
+   Duration  52.14s (environment 42%, import 34%, setup 13%, transform 10%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/use-save-display-default.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:52:36
+   Duration  54.34s (environment 41%, import 35%, setup 15%, transform 9%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/settings-confirm-dialog.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:53:31
+   Duration  53.44s (environment 50%, import 31%, setup 10%, transform 8%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/app/preview-shell.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  07:54:25
+   Duration  54.54s (environment 33%, import 32%, setup 26%, transform 8%, tests 1%)
+
