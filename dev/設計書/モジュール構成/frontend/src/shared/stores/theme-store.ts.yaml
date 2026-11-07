@@ -38,5 +38,12 @@ stores:
       condition: '`PREFS_KEY` に `{theme: ''light'', columns: {...}}` を置いて dark を渡す'
       mock: なし（jsdom の localStorage）
       expected: '`PREFS_KEY` が `{theme: ''dark'', columns: {...}}`、`dataset.theme` が dark'
+  - name: clearTheme
+    title: テーマの上書きを外す
+    kind: メソッド
+    summary: '`PREFS_KEY` の `theme` を null にして残りを残し、端末の既定（`prefers-color-scheme`）のテーマを当てる（表示の設定の既定に戻す）'
+    returns:
+      type: void
+      description: '-'
 notes:
   単体テスト: 同じフォルダの `theme-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

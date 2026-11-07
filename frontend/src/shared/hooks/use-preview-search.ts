@@ -39,7 +39,10 @@ export type PreviewSearchApi = {
   setFilters: (f: Record<string, string>) => void;
   setSort: (sort: string | undefined) => void;
   setDiff: (diff: string | undefined) => void;
+  /** 左のパネルを開閉する（置き換える）。コメントの一覧でないときは `thread`・`review`・`tstatus`・`ttag` を外す */
   setPanel: (panel: PreviewSearch["panel"]) => void;
+  /** コメントの一覧の中の画面と絞り込みを移る（置き換える） */
+  setComments: (patch: Pick<Patch, "thread" | "review" | "tstatus" | "ttag">) => void;
   /** 別の画面の項目か一覧を開く（履歴に積む） */
   openList: (tab: PreviewTab, patch: Patch) => void;
   /** 記録に合わない値を外した search へ置き換える */
@@ -92,7 +95,10 @@ export const usePreviewSearch = (): PreviewSearchApi => {
       apply({ diff }, true);
     },
     setPanel: (panel) => {
-      apply({ panel }, true);
+      apply(panel === "comments" ? { panel } : { panel, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined }, true);
+    },
+    setComments: (patch) => {
+      apply(patch, true);
     },
     openList: (tab, patch) => {
       const next = patch.id === undefined ? EMPTY_TRAIL : { items: [patch.id], position: 0 };

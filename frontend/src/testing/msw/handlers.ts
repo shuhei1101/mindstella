@@ -63,4 +63,12 @@ export const handlers = [
   http.post("/api/edits", () => HttpResponse.json({ id: "E-1", target: "D-1", count: 1 }, { status: 201 })),
   http.delete("/api/edits/:id", ({ params }) => HttpResponse.json({ removed: [params["id"]], count: 0 })),
   http.post("/api/edits/save", () => HttpResponse.json({ set: "V-1", at: "2026-11-04T02:21:00+00:00", added: [], changed: [], removed: [], settings: [] })),
+  http.post("/api/comments", () => HttpResponse.json({ id: "C-3", created: "2026-11-04T02:21:00+00:00", count: 3 }, { status: 201 })),
+  http.patch("/api/comments/:id", async ({ params, request }) => HttpResponse.json({ id: params["id"], body: "", loc: null, ...((await request.json()) as object) })),
+  http.delete("/api/comments/:id", ({ params }) => HttpResponse.json({ id: params["id"], target: null, loc: null, thread: null, body: "", created: "2026-11-04T02:21:00+00:00", count: 1 })),
+  http.post("/api/comments/send", () => HttpResponse.json({ sent: "2026-11-04T02:21:00+00:00", items: [], entered: true }, { status: 201 })),
+  http.put("/api/drafts", () => new HttpResponse(null, { status: 204 })),
+  http.patch("/api/threads/:id", async ({ params, request }) => HttpResponse.json({ id: params["id"], status: ((await request.json()) as { status: string }).status, changed: true })),
+  http.post("/api/threads/:id/seen", ({ params }) => HttpResponse.json({ id: params["id"], seen: [] })),
+  http.put("/api/config/display", async ({ request }) => HttpResponse.json({ display: await request.json() })),
 ];

@@ -5,6 +5,7 @@ import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/co
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView, type BodyLayout } from "@/features/detail/detail-panel/components/body-view";
+import { DetailComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
 import { OptionList } from "@/features/detail/detail-panel/components/option-list";
 import { RelatedList } from "@/features/detail/detail-panel/components/related-list";
@@ -17,9 +18,7 @@ import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
-import { toLegacyUrl } from "@/shared/core/legacy-url";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
-import { toLegacyHash } from "@/shared/core/preview-search";
 import { relatedItems, tagNames, type Item, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
@@ -279,10 +278,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             ) : null}
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
-            {/* コメントの入力は React へ移すまで今の画面で開く */}
-            <a href={toLegacyUrl(toLegacyHash(search))} className="self-start rounded-control border border-border px-2.5 py-1 text-small font-medium hover:bg-accent">
-              今の画面でコメントする
-            </a>
+            <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
           </div>
         )}
       </DiffMinimap>

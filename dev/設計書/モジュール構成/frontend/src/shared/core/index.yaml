@@ -44,3 +44,5 @@ items:
   summary: コメントの一覧・スレッド・レビュー中の書き込みの計算（今の画面の `screens/comments.ts`・`components/thread-row.ts` の DOM に触らない関数と同じ振る舞い）
 - page: display.ts.yaml
   summary: 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）
+- page: post-links.ts.yaml
+  summary: 書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける

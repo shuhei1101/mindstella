@@ -83,8 +83,8 @@ functions:
   usecase: 項目へコメントする
   summary: 入力が止まって 500ms 経ったとき（今の画面の `DRAFT_SAVE_DELAY_MS` と同じ）と、入力欄を離れたときに `PUT /api/drafts` を呼ぶ関数を返す。向けた先ごとに待ちを分ける。溜めたときは、その向けた先の予約した保存を取り消す（サーバーが溜めた向けた先の書きかけを消すため）
   returns:
-    type: '(draft: DraftInput) => void'
-    description: 保存を予約する関数
+    type: '(draft: DraftInput, now?: boolean) => void'
+    description: 保存を予約する関数（`now` が真なら待たずに送る。入力欄を離れたとき）
   unit_tests:
   - name: test_use_save_draft
     case: 正常

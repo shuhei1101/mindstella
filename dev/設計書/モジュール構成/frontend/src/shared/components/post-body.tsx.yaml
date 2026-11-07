@@ -1,0 +1,12 @@
+title: プレビュー / post-body
+lead: 書き込みの本文を Markdown として描く。
+components:
+- name: PostBody
+  title: 書き込みの本文
+  kind: コンポーネント
+  usecase: スレッドで話す
+  summary: 段落の中の改行を強制改行にして mdmark で描き、項目の ID をその項目を開くボタン、記録にあるまとまりを指すリンクをまとまりのリンクにする。mdmark を読めないときは本文を文字のまま改行を保って出す
+  refs:
+  - dev/設計書/部品設計/プレビュー/スレッドの書き込み.tsx#
+  - dev/設計書/モジュール構成/frontend/src/shared/core/post-links.ts#
+  container: frontend/src/shared/components/post-body.tsx
