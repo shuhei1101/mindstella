@@ -84,6 +84,7 @@ from store import (
     save_batch,
     save_change,
     write_failed,
+    write_release,
     write_temp,
 )
 from tag_text import compact_tags
@@ -825,6 +826,12 @@ def run_migrate(
 def run_clear_release(root: Path) -> dict[str, Any]:
     """`release/` の中身を消し、消したものを返す。"""
     return {"removed": clear_release(root)}
+
+
+def run_write_release(root: Path, path: str, content: str) -> dict[str, Any]:
+    """write-release の処理。`release/` の下に 1 ファイルを書き、書いたパスとバイト数を返す。"""
+    written, size = write_release(root, path, content)
+    return {"path": written, "bytes": size}
 
 
 def run_export(root: Path, out: Path, now: NowFn = now_utc) -> dict[str, Any]:

@@ -76,6 +76,7 @@ TOOL_NAMES = (
     "goal",
     "migrate",
     "clear_release",
+    "write_release",
     "export",
     "preview_url",
     "readme",
@@ -625,6 +626,20 @@ def build_server(
     @server.tool(name="clear_release", description=".mindstella/release/ の中身を消す")
     def clear_release(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
         return write(workspace, session, commands.run_clear_release)
+
+    @server.tool(
+        name="write_release",
+        description="ゴール判定で確定したリリースの資料を .mindstella/release/ の下へ 1 ファイルずつ書き出す",
+    )
+    def write_release(
+        workspace: WorkspaceArg,
+        path: Annotated[
+            str, Field(description="release/ からの書き出すファイルのパス（.md か .html。.. は使えない）")
+        ],
+        content: Annotated[str, Field(description="書き出す本文（Markdown か HTML）")],
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return write(workspace, session, lambda root: commands.run_write_release(root, path, content))
 
     @server.tool(name="export", description="見るだけの 1 枚の HTML（配る書き出し）を書き出す")
     def export(
