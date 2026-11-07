@@ -24,13 +24,11 @@ components:
 constants:
 - name: AUTHOR_LABELS
   title: 書き手の呼び名
-  kind: 定数
   usecase: スレッドで話す
   summary: 書き手（user・ai）→ 画面に出す呼び名
   container: frontend/src/features/comments/shared/thread-state.tsx
 - name: STATE_LABELS
   title: 状態の札の文言
-  kind: 定数
   usecase: スレッドで話す
   summary: 状態の札の種類 → 印と文言
   container: frontend/src/features/comments/shared/thread-state.tsx
