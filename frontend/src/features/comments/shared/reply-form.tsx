@@ -75,20 +75,20 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, o
     }
   };
   return (
-    <form noValidate data-part="reply" className="@container grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
+    <form noValidate data-part="reply" className="grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
       <label htmlFor={fieldId} className="text-small text-muted-foreground">
         返信
       </label>
-      <Textarea id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={saving} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content resize-y field-send" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
-      <div className="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end">
-        <p id={messageId} role="status" className={cn("m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden", status === "failed" && "text-foreground")}>
-          <ReplyResult status={status} count={count} detail={detail} />
-        </p>
-        <Button type="submit" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving || body.trim() === ""}>
+      {/* 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行。結果は行の下に幅いっぱいで出す */}
+      <div className="flex items-end gap-2">
+        <Textarea id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={saving} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
+        <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving || body.trim() === ""}>
           <Icon name="comment" />
-          レビューに追加
         </Button>
       </div>
+      <p id={messageId} role="status" className={cn("m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden", status === "failed" && "text-foreground")}>
+        <ReplyResult status={status} count={count} detail={detail} />
+      </p>
     </form>
   );
 };

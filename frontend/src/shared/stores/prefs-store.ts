@@ -1,4 +1,4 @@
-// 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
+// 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並び・詳細のコメントの入力の開閉を、今の画面と同じ `localStorage` のキーで読み書きする（インターフェース定義『SPAを開く』の制約「端末の保存領域」）
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 
@@ -25,6 +25,7 @@ export type Prefs = {
   look?: NetworkLook | null;
   commentsPinned?: true | null;
   reviewOrder?: "oldest" | null;
+  commentFormClosed?: true | null;
 };
 
 /** 詳細の本文をスクロールした位置を残す sessionStorage のキー（今の画面と同じ） */

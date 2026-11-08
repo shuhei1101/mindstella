@@ -15,12 +15,14 @@ namespace MindmapPreview {
     status?: SendStatus;
     /** 溜めた後のレビュー中のコメントの件数。`saved` のとき出す */
     count?: number | null;
-    /** サーバーが返した溜められなかった理由。`failed` で null なら、サーバーに届かなかったとして立ち上げ直しの案内と「本文を写す」を出す */
+    /** サーバーが返した溜められなかった理由。`failed` で null なら、サーバーに届かなかったとして立ち上げ直しの案内と本文のコピーのボタンを出す */
     detail?: string | null;
     /** 畳んだ形（`target` が null のときだけ使う） */
     collapsed?: boolean;
     /** `target` が null のときの入力欄の読み上げの名前（コメントの一覧の新しいスレッドの入力は「新しいスレッド」） */
     label?: string;
+    /** 開いているか（`target` があるときだけ使う）。偽なら見出しの行だけを出す */
+    open?: boolean;
     on: {
       /** 入力欄の中身が変わったとき */
       input: (body: string) => void;
@@ -28,12 +30,14 @@ namespace MindmapPreview {
       save: (body: string) => void;
       /** 添えた箇所の × を押したとき */
       unquote: () => void;
-      /** 「本文を写す」を押したとき */
+      /** 本文のコピーのボタンを押したとき */
       copy: (body: string) => void;
       /** 入力欄に入ったとき */
       focus: () => void;
       /** 部品の外へ出たとき */
       blur: () => void;
+      /** 開閉のボタンを押したとき（押した後の開閉） */
+      toggle?: (open: boolean) => void;
     };
   };
 
@@ -79,7 +83,7 @@ namespace MindmapPreview {
       if (detail !== null && detail !== undefined) {
         return [icon("alert"), h({ tag: "span", children: [`レビューに追加できませんでした。${detail}`] })];
       }
-      // サーバーに届かなかった: 立ち上げ直すと URL が変わり、書きかけは引き継がれないので、本文を写す手段を添える
+      // サーバーに届かなかった: 立ち上げ直すと URL が変わり、書きかけは引き継がれないので、本文をコピーする手段を添える
       return [
         icon("alert"),
         h({
@@ -94,8 +98,8 @@ namespace MindmapPreview {
             }),
             h({
               tag: "button",
-              attrs: { class: "btn ghost send-copy", type: "button", onclick: onCopy },
-              children: [icon("copy"), "本文を写す"],
+              attrs: { class: "icon-btn send-copy", type: "button", "aria-label": "本文をコピー", title: "本文をコピー", onclick: onCopy },
+              children: [icon("copy")],
             }),
           ],
         }),
@@ -137,12 +141,14 @@ namespace MindmapPreview {
     detail = null,
     collapsed = false,
     label = NO_TARGET_LABEL,
+    open = true,
     on,
   }: SendFormProps): HTMLFormElement {
     sendFormSequence += 1;
     const fieldId = `send-${sendFormSequence}`;
     const messageId = `${fieldId}-msg`;
     const locId = `${fieldId}-loc`;
+    const bodyId = `${fieldId}-body`;
     /** 畳むのは、項目を指さない入力だけ */
     const folded = collapsed && target === null;
 
@@ -210,37 +216,72 @@ namespace MindmapPreview {
           if (next === null || !form.contains(next)) on.blur();
         },
       },
-      children: [
-        target === null
-          ? null
-          : h({
-            tag: "label",
-            attrs: { class: "send-label", for: fieldId },
-            children: [h({ tag: "span", attrs: { class: "mono" }, children: [target] }), " へのコメント"],
-          }),
-        target !== null && loc !== null ? locationChip({ loc, id: locId, onUnquote: on.unquote }) : null,
-        textarea,
-        folded
-          ? null
-          : h({
-            tag: "div",
-            attrs: { class: "send-row" },
-            children: [
-              message,
-              h({
-                tag: "button",
-                attrs: {
-                  class: "btn primary",
-                  type: "submit",
-                  title: "レビューに追加（Ctrl+Enter）",
-                  disabled: status === "saving",
-                },
-                children: [icon("comment"), "レビューに追加"],
-              }),
-            ],
-          }),
-      ],
+      children: target === null ? [textareaLine(), folded ? null : message] : [head(), formBody()],
     });
     return form;
+
+    /** 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行 */
+    function textareaLine(): HTMLElement | HTMLTextAreaElement {
+      if (folded) return textarea;
+      return h({
+        tag: "div",
+        attrs: { class: "send-line" },
+        children: [
+          textarea,
+          h({
+            tag: "button",
+            attrs: {
+              class: "icon-btn send-submit",
+              type: "submit",
+              "aria-label": "レビューに追加",
+              title: "レビューに追加（Ctrl+Enter）",
+              disabled: status === "saving",
+            },
+            children: [icon("comment")],
+          }),
+        ],
+      });
+    }
+
+    /** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
+    function head(): HTMLElement {
+      const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
+      return h({
+        tag: "div",
+        attrs: { class: "send-head" },
+        children: [
+          h({
+            tag: open ? "label" : "span",
+            attrs: { class: "send-label", for: open ? fieldId : null },
+            children: [h({ tag: "span", attrs: { class: "mono" }, children: [target ?? ""] }), " へのコメント"],
+          }),
+          !open && body.trim() !== ""
+            ? h({ tag: "span", attrs: { class: "send-draft" }, children: [icon("edit"), "書きかけ"] })
+            : null,
+          h({
+            tag: "button",
+            attrs: {
+              class: "icon-btn send-toggle",
+              type: "button",
+              "aria-expanded": open ? "true" : "false",
+              "aria-controls": bodyId,
+              "aria-label": toggleLabel,
+              title: toggleLabel,
+              onclick: () => on.toggle?.(!open),
+            },
+            children: [icon("chev")],
+          }),
+        ],
+      });
+    }
+
+    /** 開閉する範囲（添えた箇所・入力欄の行・結果） */
+    function formBody(): HTMLElement {
+      return h({
+        tag: "div",
+        attrs: { class: "send-body", id: bodyId, hidden: !open },
+        children: [loc !== null ? locationChip({ loc, id: locId, onUnquote: on.unquote }) : null, textareaLine(), message],
+      });
+    }
   }
 }

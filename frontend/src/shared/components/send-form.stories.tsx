@@ -41,10 +41,10 @@ export const Saved: Story = { args: { target: "D-022", status: "saved", count: 3
 /** 本文が空で溜めようとした。入力欄の枠の全体と印を要見直しの赤（`--st-review`）、「コメントを入れてから追加してください。」を本文の文字色で出す。ボタンは押せるまま */
 export const Empty: Story = { args: { target: "D-022", status: "empty" } };
 
-/** サーバーに届かなかった。本文を残し、「レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。」と「本文を写す」を出す */
+/** サーバーに届かなかった。本文を残し、「レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。」と、コピーのアイコンだけのボタン（読み上げの名前とツールチップは「本文をコピー」）を出す */
 export const FailedUnreachable: Story = { args: { target: "D-022", body: "案 A にする", status: "failed" } };
 
-/** サーバーが溜めなかった理由を返した。本文を残し、「レビューに追加できませんでした。{理由}」を出す（「本文を写す」は出さない） */
+/** サーバーが溜めなかった理由を返した。本文を残し、「レビューに追加できませんでした。{理由}」を出す（本文のコピーのボタンは出さない） */
 export const FailedDetail: Story = { args: { target: "A-005", body: "ここは言い換える", status: "failed", detail: "選んだ文が本文の 3 行目にありません" } };
 
 /** 長文。8 行を超えたら入力欄の中を送る */
@@ -53,7 +53,7 @@ export const Long: Story = { args: { target: "D-022", body: "案 A にする。\
 /** 項目を指さないコメント（コメントの一覧の新しいスレッドの入力）。見出しを出さず、入力欄と「レビューに追加」だけにする。名前「項目を指さないコメント」は読み上げにだけ持つ */
 export const NoTarget: Story = { args: {  } };
 
-/** 幅 390px。左右の余白をパネルの本文に揃える。入力の幅が 360px 以下では、ボタンを右に置いたまま、結果を下の行に幅いっぱいで出す。条件は画面の幅ではなく部品の幅（コンテナクエリ）で持つ */
+/** 幅 390px。左右の余白をパネルの本文に揃える。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す */
 export const Narrow: Story = { args: { target: "A-005", loc: {"kind": "body", "start": 3, "end": 3, "text": "受け取る人へ渡す形"}, body: "案 A にする", status: "failed" } };
 
 /** 項目を指さないコメントを畳んだ形。読み上げのラベルと 1 行の入力欄だけを出す */
@@ -61,3 +61,9 @@ export const NoTargetCollapsed: Story = { args: { collapsed: true } };
 
 /** 項目を指さないコメントを狭い幅で広げた形。入力欄と「レビューに追加」を出す */
 export const NoTargetExpanded: Story = { args: { collapsed: false, body: "全体に目を通した" } };
+
+/** 閉じた。「{ID} へのコメント」の 1 行と、右端の ^ の開閉のボタン（コメントの入力を開く）だけを出す。入力欄・添えた箇所・結果・「レビューに追加」は出さない */
+export const Closed: Story = { args: { target: "D-022", open: false } };
+
+/** 書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す */
+export const ClosedWithDraft: Story = { args: { target: "D-022", body: "案 A にする", open: false } };
