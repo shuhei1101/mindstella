@@ -40,10 +40,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-08T15:52:57.664054+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: dev/mock/components/send-form・reply-form
     updated_by: planner
-    updated_at: '2026-11-08T16:44:58.012026+00:00'
+    updated_at: '2026-11-08T17:04:57.294862+00:00'
   - process: インターフェース定義設計
     status: skipped
     reason: サーバーの API と画面の開き方を変えない
