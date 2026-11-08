@@ -27,8 +27,10 @@
     .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
     /* 状態の説明 */
     .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
-    /* 部品を置く台: 詳細パネルの幅。ツールチップが台の上に出るよう上を空ける */
-    .stage { width: var(--panel-w); max-width: 100%; padding-top: 56px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--bg); }
+    /* 部品を置く台: 詳細パネルの幅 */
+    .stage { width: var(--panel-w); max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--bg); }
+    /* ツールチップを出したままの台: ツールチップが台の上に収まるよう上を空ける */
+    .stage:has(.send-tip) { padding-top: 56px; }
     /* 狭い幅の見本 */
     .stage.narrow { width: 390px; }
     /* 最も狭い幅の見本 */
@@ -133,12 +135,12 @@
     </section>
     <section class="cat-sec">
       <h2>狭い幅の録音中（390px）</h2>
-      <p>2 つの文字のボタンを入力欄の右に並べる。</p>
+      <p>入力の幅が 360px 以下になるため、2 つのボタンを入力欄の下の行へ移して右端に置く。</p>
       <div class="stage narrow"><form class="send send-footer" novalidate onsubmit="return false"><div class="send-head"><label class="send-label" for="vi-18"><span class="mono">D-022</span> へのコメント</label><button class="icon-btn send-toggle" type="button" aria-expanded="true" aria-controls="vi-18-body" aria-label="コメントの入力を閉じる" title="コメントの入力を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="vi-18-body"><div class="send-line is-recording"><textarea id="vi-18" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-18-msg"></textarea><div class="send-rec-actions"><button class="btn" type="button">キャンセル</button><button class="btn primary" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>文字起こし</button></div></div><p class="send-msg recording" id="vi-18-msg" role="status"><span class="rec-dot" aria-hidden="true"></span><span>録音中 <span class="rec-time" aria-hidden="true">0:12</span></span></p></div></form></div>
     </section>
     <section class="cat-sec">
       <h2>最も狭い幅の録音中（320px）</h2>
-      <p>入力の幅が 360px 以下では、2 つのボタンを入力欄の下の行へ移して右端に置き、入力欄の幅を保つ。</p>
+      <p>390px と同じく、2 つのボタンを入力欄の下の行へ移し、入力欄の幅を保つ。</p>
       <div class="stage narrowest"><form class="send send-footer" novalidate onsubmit="return false"><div class="send-head"><label class="send-label" for="vi-19"><span class="mono">D-022</span> へのコメント</label><button class="icon-btn send-toggle" type="button" aria-expanded="true" aria-controls="vi-19-body" aria-label="コメントの入力を閉じる" title="コメントの入力を閉じる"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="vi-19-body"><div class="send-line is-recording"><textarea id="vi-19" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-19-msg"></textarea><div class="send-rec-actions"><button class="btn" type="button">キャンセル</button><button class="btn primary" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>文字起こし</button></div></div><p class="send-msg recording" id="vi-19-msg" role="status"><span class="rec-dot" aria-hidden="true"></span><span>録音中 <span class="rec-time" aria-hidden="true">0:12</span></span></p></div></form></div>
     </section>
     <h2 class="cat-group">返信の入力</h2>
