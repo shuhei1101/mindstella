@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from preview_a11y_checks import axe_rule_results
 from preview_body_link_helpers import build_body_link_workspace
 from preview_body_scroll_helpers import LONG_LINES_BODY, SCROLLABLE_REGION_RULE
@@ -22,6 +23,10 @@ SCROLLED_TOP = 600
 
 # 本文の高さの変化でブラウザが補正する位置のずれ（px）
 SCROLL_TOLERANCE = 10
+
+# 矢印でコードブロックを送り直す回数と、1 回ごとに待つ時間（ms）
+ARROW_SCROLL_ATTEMPTS = 5
+ARROW_SCROLL_WAIT_MS = 2000
 
 
 def test_draws_body_with_mdmark(page: Page, spa_preview: str) -> None:
@@ -191,6 +196,19 @@ def test_options_visible(page: Page, spa_preview: str) -> None:
     expect(_panel(page).get_by_role("heading", name="案", exact=True)).to_have_count(0)
 
 
+def _scroll_by_arrow(page: Page, code: Locator) -> None:
+    """コードブロックへフォーカスを移して矢印で送り、フォーカスしたまま横に送れたかを待つ。読み込みで本文が描き直されて送った位置が消えたときは送り直す。"""
+    for _ in range(ARROW_SCROLL_ATTEMPTS):
+        code.focus()
+        page.keyboard.press("ArrowRight")
+        try:
+            page.wait_for_function("() => document.activeElement.matches(\".md pre[tabindex='0']\") && document.activeElement.scrollLeft > 0", timeout=ARROW_SCROLL_WAIT_MS)
+        except PlaywrightTimeoutError:
+            continue
+        return
+    raise AssertionError("矢印でコードブロックを横に送れませんでした")
+
+
 def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文のコードブロックは、長い行を折り返さずコードブロックの中だけで横に送り、フォーカスで止まって矢印で送れ、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
     # 準備
@@ -199,15 +217,10 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
     code = _panel(page).locator(".md pre[tabindex='0']").first
     expect(code).to_be_visible()
     label = code.get_attribute("aria-label")
-    # 実行
-    code.focus()
-    page.keyboard.press("ArrowRight")
-    # 検証
-    expect(code).to_be_focused()
-    page.wait_for_function("() => document.activeElement.scrollLeft > 0")
+    # 実行・検証
+    _scroll_by_arrow(page, code)
     expect(code).to_have_css("white-space", "pre")
     assert label == "コード: text"
-    assert code.evaluate("e => e.scrollWidth > e.clientWidth")
     assert axe_rule_results(page, ".md pre[tabindex='0']", SCROLLABLE_REGION_RULE)["violations"] == []
 
 
