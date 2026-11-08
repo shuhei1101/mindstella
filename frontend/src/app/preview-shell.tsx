@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
+import { CommentsPanel } from "@/features/comments/comments-panel/comments-panel";
 import { DecisionsScreen } from "@/features/decisions/decisions/decisions-screen";
 import { DetailFullscreen } from "@/features/detail/detail-fullscreen/detail-fullscreen";
 import { DetailPanel } from "@/features/detail/detail-panel/detail-panel";
@@ -11,12 +12,13 @@ import { HistoryScreen } from "@/features/history/history/history-dialog";
 import { ItemAddPanel } from "@/features/detail/detail-panel/components/item-add-panel";
 import { OverviewScreen } from "@/features/overview/overview/overview-screen";
 import { RecordsScreen, type RecordKind } from "@/features/records/records/records-screen";
+import { DisplaySettingsPanel } from "@/features/settings/display-settings/display-settings-panel";
 import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/workspace-settings-screen";
 import { TasksScreen } from "@/features/tasks/tasks/tasks-screen";
-import type { Threads } from "@/shared/api/generated/model";
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar";
 import { AppError } from "@/shared/core/app-error";
+import { anyOpenUnseen, type ReviewItem, type Thread } from "@/shared/core/comments";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
 import { toLegacyUrl } from "@/shared/core/legacy-url";
 import { normalizeSearch, toLegacyHash } from "@/shared/core/preview-search";
@@ -28,6 +30,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
+import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 
@@ -40,7 +43,8 @@ const isRecordKind = (tab: string): tab is RecordKind => ["research", "terms", "
 /** 保存の通知を出しておくミリ秒 */
 const SAVED_NOTICE_MS = 5000;
 
-const hasUnread = (threads: Threads | undefined): boolean => threads?.threads.some((thread) => thread.status === "open" && thread.posts.some((post) => !post.seen)) ?? false;
+/** 「ワークスペースの既定が変わりました。」を出しておくミリ秒（今の画面の `NOTICE_MS` と同じ） */
+const DISPLAY_NOTICE_MS = 6000;
 
 const RecordsError = ({ error }: { error: Error }) => (
   <section role="alert" className="m-4 rounded-control bg-card px-6.5 py-6">
@@ -76,22 +80,41 @@ export const PreviewShell = () => {
     const timer = window.setTimeout(() => { setSaved(null); }, SAVED_NOTICE_MS);
     return () => { window.clearTimeout(timer); };
   }, [saved, setSaved]);
+  const data = records.data?.status === 200 ? records.data.data : undefined;
+  // 読み直した記録の表示の既定が前と違えば知らせる（最初に読んだ記録では知らせない）
+  const display = data?.settings.display;
+  const lastDisplay = useRef<{ value: typeof display } | null>(null);
+  useEffect(() => {
+    if (data === undefined) return;
+    if (lastDisplay.current !== null && !sameDisplay(lastDisplay.current.value, display)) displayChanged({ next: display, at: new Date().toISOString() });
+    lastDisplay.current = { value: display };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 既定の中身が変わったときだけ比べる
+  }, [data === undefined, JSON.stringify(display ?? null)]);
+  const noticeAt = useDisplayNoticeAt();
+  useEffect(() => {
+    if (noticeAt === null) return undefined;
+    const timer = window.setTimeout(clearDisplayNotice, DISPLAY_NOTICE_MS);
+    return () => { window.clearTimeout(timer); };
+  }, [noticeAt]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const data = records.data?.status === 200 ? records.data.data : undefined;
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
   // 開いたときに確かめ終えたか（開いている間に取り消して保存待ちが 0 件になっても、保存待ちのパネルは開いたまま空の状態を出す）
   const opened = useRef(false);
+  const threadList = threads.data?.status === 200 ? (threads.data.data.threads as unknown as Thread[]) : null;
+  const reviewItems = comments.data?.status === 200 ? ((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []) : null;
+  // スレッドとレビュー中の書き込みを読む前は、`thread`・`ttag` を外さない
+  const threadContext = threadList === null || reviewItems === null ? {} : { threadIds: [...threadList.map((thread) => thread.id), ...reviewItems.filter((item) => item.thread === null).map((item) => item.id)], threadTags: [...new Set(threadList.flatMap((thread) => thread.tags))] };
   // 記録に合わない値を外す（並べ替えの列は一覧の画面が確かめる）
   useEffect(() => {
     if (index === null) return;
-    const next = normalizeSearch(search, { index, pendingCount: opened.current ? Math.max(pendingCount, 1) : pendingCount, visibleKinds: [...visible], diffActive, sortColumns: search.sort === undefined ? [] : [search.sort.replace(/^-/, "")] });
+    const next = normalizeSearch(search, { index, pendingCount: opened.current ? Math.max(pendingCount, 1) : pendingCount, visibleKinds: [...visible], diffActive, sortColumns: search.sort === undefined ? [] : [search.sort.replace(/^-/, "")], ...threadContext });
     opened.current = true;
     if (JSON.stringify(next) !== JSON.stringify(search)) replaceSearch(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- search の中身が変わったときだけ確かめる
-  }, [index, JSON.stringify(search), pendingCount, diffActive]);
+  }, [index, JSON.stringify(search), pendingCount, diffActive, JSON.stringify(threadContext), [...visible].join(",")]);
   const tabs: TopbarTab[] = [
     { key: "overview", label: "概要", icon: TAB_ICON.overview },
     ...KIND_KEYS.filter((kind) => visible.has(kind)).map((kind) => ({ key: kind, label: KIND_LABEL[kind], icon: TAB_ICON[kind], ...(data === undefined ? {} : { count: data[kind].length }) })),
@@ -102,7 +125,7 @@ export const PreviewShell = () => {
   const openLegacy = (hash: Record<string, string>): void => {
     window.location.assign(toLegacyUrl(hash));
   };
-  // React に無い画面（検索・コメント・表示の設定・ネットワーク）は今の画面を開く
+  // React に無い画面（検索・ネットワーク）は今の画面を開く
   const toLegacy = (): void => {
     openLegacy(toLegacyHash(search, tab));
   };
@@ -138,7 +161,9 @@ export const PreviewShell = () => {
         diffPoint={point === null ? null : { name: point.name, sub: point.sub }}
         comments
         commentCount={comments.data?.status === 200 ? comments.data.data.items.length : 0}
-        commentsUnread={hasUnread(threads.data?.status === 200 ? threads.data.data : undefined)}
+        commentsOpen={search.panel === "comments"}
+        commentsUnread={threadList !== null && anyOpenUnseen(threadList)}
+        settingsOpen={search.panel === "display"}
         filter={listTab}
         filterCount={Object.keys(search.f).length}
         filterOpen={drawerOpen}
@@ -157,8 +182,8 @@ export const PreviewShell = () => {
           writePrefs({ diffSel: null });
           setDiff(undefined);
         }}
-        onToggleComments={toLegacy}
-        onToggleSettings={toLegacy}
+        onToggleComments={() => { setPanel(search.panel === "comments" ? undefined : "comments"); }}
+        onToggleSettings={() => { setPanel(search.panel === "display" ? undefined : "display"); }}
         onToggleFilter={() => { setDrawerOpen(!drawerOpen); }}
         onTogglePending={() => { setPanel(search.panel === "pending" ? undefined : "pending"); }}
       />
@@ -191,10 +216,18 @@ export const PreviewShell = () => {
           }}
         />
       ) : null}
+      {search.panel === "comments" ? <CommentsPanel onOpenItem={openItem} onOpenChangeSet={setDiff} /> : null}
+      {search.panel === "display" ? <DisplaySettingsPanel /> : null}
       {saved === null ? null : (
         <p role="status" className="fixed bottom-4 left-1/2 z-40 m-0 flex -translate-x-1/2 items-center gap-1 rounded-control bg-primary px-3 py-2 text-small text-primary-foreground">
           <Icon name="check" className="size-4" />
           {`${String(saved)} 件を保存しました。`}
+        </p>
+      )}
+      {noticeAt === null ? null : (
+        <p role="status" className="fixed bottom-4 left-1/2 z-40 m-0 flex -translate-x-1/2 items-center gap-1 rounded-control bg-primary px-3 py-2 text-small text-primary-foreground">
+          <Icon name="sliders" className="size-4" />
+          ワークスペースの既定が変わりました。
         </p>
       )}
       {historyOpen && rawIndex !== null ? (

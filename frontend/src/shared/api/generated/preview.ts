@@ -22,14 +22,28 @@ import type {
 import type {
   BlockedProblem,
   CancelEdit200,
+  CommentInput,
+  CommentPatch,
+  CommentPatchReply,
+  CommentReply,
   Comments,
+  DisplayInput,
+  DisplayReply,
+  DraftInput,
   EditInput,
   EditReply,
   Edits,
   OpenedReply,
   Problem,
   Records,
+  RemovedComment,
   SaveReply,
+  SeenReply,
+  SendInput,
+  SendReply,
+  StaleProblem,
+  ThreadStatusInput,
+  ThreadStatusReply,
   Threads
 } from './model';
 
@@ -274,6 +288,150 @@ export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCommentsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type addCommentResponse201 = {
+  data: CommentReply
+  status: 201
+}
+
+export type addCommentResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type addCommentResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type addCommentResponse409 = {
+  data: Problem
+  status: 409
+}
+
+export type addCommentResponseSuccess = (addCommentResponse201) & {
+  headers: Headers;
+};
+export type addCommentResponseError = (addCommentResponse400 | addCommentResponse404 | addCommentResponse409) & {
+  headers: Headers;
+};
+
+export type addCommentResponse = (addCommentResponseSuccess | addCommentResponseError)
+
+export const getAddCommentUrl = () => {
+
+
+
+
+  return `/api/comments`
+}
+
+/**
+ * @summary コメントか返信 1 件をレビュー中に溜める（元に戻すときは id と created を渡す）
+ */
+export const addComment = async (commentInput: CommentInput, options?: Parameters<typeof apiClient>[1]): Promise<addCommentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<addCommentResponse>(getAddCommentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(commentInput)
+  }
+);}
+
+
+
+
+
+export const getAddCommentQueryKey = (commentInput?: CommentInput,) => {
+    return [
+    'POST', `/api/comments`, commentInput
+    ] as const;
+    }
+
+
+export const getAddCommentQueryOptions = <TData = Awaited<ReturnType<typeof addComment>>, TError = Problem>(commentInput: CommentInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAddCommentQueryKey(commentInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof addComment>>> = ({ signal }) => addComment(commentInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof addComment>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AddCommentQueryResult = NonNullable<Awaited<ReturnType<typeof addComment>>>
+export type AddCommentQueryError = Problem
+
+
+export function useAddComment<TData = Awaited<ReturnType<typeof addComment>>, TError = Problem>(
+ commentInput: CommentInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof addComment>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof addComment>>,
+          TError,
+          Awaited<ReturnType<typeof addComment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAddComment<TData = Awaited<ReturnType<typeof addComment>>, TError = Problem>(
+ commentInput: CommentInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addComment>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof addComment>>,
+          TError,
+          Awaited<ReturnType<typeof addComment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAddComment<TData = Awaited<ReturnType<typeof addComment>>, TError = Problem>(
+ commentInput: CommentInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary コメントか返信 1 件をレビュー中に溜める（元に戻すときは id と created を渡す）
+ */
+
+export function useAddComment<TData = Awaited<ReturnType<typeof addComment>>, TError = Problem>(
+ commentInput: CommentInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof addComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAddCommentQueryOptions(commentInput,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -992,6 +1150,955 @@ export function useGetThreads<TData = Awaited<ReturnType<typeof getThreads>>, TE
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetThreadsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type updateCommentResponse200 = {
+  data: CommentPatchReply
+  status: 200
+}
+
+export type updateCommentResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type updateCommentResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type updateCommentResponseSuccess = (updateCommentResponse200) & {
+  headers: Headers;
+};
+export type updateCommentResponseError = (updateCommentResponse400 | updateCommentResponse404) & {
+  headers: Headers;
+};
+
+export type updateCommentResponse = (updateCommentResponseSuccess | updateCommentResponseError)
+
+export const getUpdateCommentUrl = (id: string,) => {
+
+
+
+
+  return `/api/comments/${id}`
+}
+
+/**
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+ */
+export const updateComment = async (id: string,
+    commentPatch: CommentPatch, options?: Parameters<typeof apiClient>[1]): Promise<updateCommentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<updateCommentResponse>(getUpdateCommentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(commentPatch)
+  }
+);}
+
+
+
+
+
+export const getUpdateCommentQueryKey = (id: string,
+    commentPatch?: CommentPatch,) => {
+    return [
+    'PATCH', `/api/comments/${id}`, commentPatch
+    ] as const;
+    }
+
+
+export const getUpdateCommentQueryOptions = <TData = Awaited<ReturnType<typeof updateComment>>, TError = Problem>(id: string,
+    commentPatch: CommentPatch, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getUpdateCommentQueryKey(id,commentPatch);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof updateComment>>> = ({ signal }) => updateComment(id,commentPatch, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof updateComment>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type UpdateCommentQueryResult = NonNullable<Awaited<ReturnType<typeof updateComment>>>
+export type UpdateCommentQueryError = Problem
+
+
+export function useUpdateComment<TData = Awaited<ReturnType<typeof updateComment>>, TError = Problem>(
+ id: string,
+    commentPatch: CommentPatch, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateComment>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof updateComment>>,
+          TError,
+          Awaited<ReturnType<typeof updateComment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUpdateComment<TData = Awaited<ReturnType<typeof updateComment>>, TError = Problem>(
+ id: string,
+    commentPatch: CommentPatch, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateComment>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof updateComment>>,
+          TError,
+          Awaited<ReturnType<typeof updateComment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useUpdateComment<TData = Awaited<ReturnType<typeof updateComment>>, TError = Problem>(
+ id: string,
+    commentPatch: CommentPatch, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+ */
+
+export function useUpdateComment<TData = Awaited<ReturnType<typeof updateComment>>, TError = Problem>(
+ id: string,
+    commentPatch: CommentPatch, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof updateComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getUpdateCommentQueryOptions(id,commentPatch,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type removeCommentResponse200 = {
+  data: RemovedComment
+  status: 200
+}
+
+export type removeCommentResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type removeCommentResponseSuccess = (removeCommentResponse200) & {
+  headers: Headers;
+};
+export type removeCommentResponseError = (removeCommentResponse404) & {
+  headers: Headers;
+};
+
+export type removeCommentResponse = (removeCommentResponseSuccess | removeCommentResponseError)
+
+export const getRemoveCommentUrl = (id: string,) => {
+
+
+
+
+  return `/api/comments/${id}`
+}
+
+/**
+ * @summary レビュー中のコメント 1 件を消し、元に戻すための中身を返す
+ */
+export const removeComment = async (id: string, options?: Parameters<typeof apiClient>[1]): Promise<removeCommentResponse> => {
+
+  return apiClient<removeCommentResponse>(getRemoveCommentUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveCommentQueryKey = (id: string,) => {
+    return [
+    'DELETE', `/api/comments/${id}`
+    ] as const;
+    }
+
+
+export const getRemoveCommentQueryOptions = <TData = Awaited<ReturnType<typeof removeComment>>, TError = Problem>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof removeComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRemoveCommentQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof removeComment>>> = ({ signal }) => removeComment(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof removeComment>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RemoveCommentQueryResult = NonNullable<Awaited<ReturnType<typeof removeComment>>>
+export type RemoveCommentQueryError = Problem
+
+
+export function useRemoveComment<TData = Awaited<ReturnType<typeof removeComment>>, TError = Problem>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof removeComment>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof removeComment>>,
+          TError,
+          Awaited<ReturnType<typeof removeComment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRemoveComment<TData = Awaited<ReturnType<typeof removeComment>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof removeComment>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof removeComment>>,
+          TError,
+          Awaited<ReturnType<typeof removeComment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRemoveComment<TData = Awaited<ReturnType<typeof removeComment>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof removeComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary レビュー中のコメント 1 件を消し、元に戻すための中身を返す
+ */
+
+export function useRemoveComment<TData = Awaited<ReturnType<typeof removeComment>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof removeComment>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRemoveCommentQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type sendCommentsResponse201 = {
+  data: SendReply
+  status: 201
+}
+
+export type sendCommentsResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type sendCommentsResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type sendCommentsResponse409 = {
+  data: StaleProblem
+  status: 409
+}
+
+export type sendCommentsResponseSuccess = (sendCommentsResponse201) & {
+  headers: Headers;
+};
+export type sendCommentsResponseError = (sendCommentsResponse400 | sendCommentsResponse404 | sendCommentsResponse409) & {
+  headers: Headers;
+};
+
+export type sendCommentsResponse = (sendCommentsResponseSuccess | sendCommentsResponseError)
+
+export const getSendCommentsUrl = () => {
+
+
+
+
+  return `/api/comments/send`
+}
+
+/**
+ * @summary チェックしたレビュー中の書き込みをスレッドへ移す
+ */
+export const sendComments = async (sendInput: SendInput, options?: Parameters<typeof apiClient>[1]): Promise<sendCommentsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<sendCommentsResponse>(getSendCommentsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sendInput)
+  }
+);}
+
+
+
+
+
+export const getSendCommentsQueryKey = (sendInput?: SendInput,) => {
+    return [
+    'POST', `/api/comments/send`, sendInput
+    ] as const;
+    }
+
+
+export const getSendCommentsQueryOptions = <TData = Awaited<ReturnType<typeof sendComments>>, TError = Problem | StaleProblem>(sendInput: SendInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendComments>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSendCommentsQueryKey(sendInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sendComments>>> = ({ signal }) => sendComments(sendInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sendComments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SendCommentsQueryResult = NonNullable<Awaited<ReturnType<typeof sendComments>>>
+export type SendCommentsQueryError = Problem | StaleProblem
+
+
+export function useSendComments<TData = Awaited<ReturnType<typeof sendComments>>, TError = Problem | StaleProblem>(
+ sendInput: SendInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendComments>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sendComments>>,
+          TError,
+          Awaited<ReturnType<typeof sendComments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSendComments<TData = Awaited<ReturnType<typeof sendComments>>, TError = Problem | StaleProblem>(
+ sendInput: SendInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendComments>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sendComments>>,
+          TError,
+          Awaited<ReturnType<typeof sendComments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSendComments<TData = Awaited<ReturnType<typeof sendComments>>, TError = Problem | StaleProblem>(
+ sendInput: SendInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendComments>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary チェックしたレビュー中の書き込みをスレッドへ移す
+ */
+
+export function useSendComments<TData = Awaited<ReturnType<typeof sendComments>>, TError = Problem | StaleProblem>(
+ sendInput: SendInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendComments>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSendCommentsQueryOptions(sendInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type saveDraftResponse204 = {
+  data: void
+  status: 204
+}
+
+export type saveDraftResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type saveDraftResponseSuccess = (saveDraftResponse204) & {
+  headers: Headers;
+};
+export type saveDraftResponseError = (saveDraftResponse400) & {
+  headers: Headers;
+};
+
+export type saveDraftResponse = (saveDraftResponseSuccess | saveDraftResponseError)
+
+export const getSaveDraftUrl = () => {
+
+
+
+
+  return `/api/drafts`
+}
+
+/**
+ * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
+ */
+export const saveDraft = async (draftInput: DraftInput, options?: Parameters<typeof apiClient>[1]): Promise<saveDraftResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<saveDraftResponse>(getSaveDraftUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(draftInput)
+  }
+);}
+
+
+
+
+
+export const getSaveDraftQueryKey = (draftInput?: DraftInput,) => {
+    return [
+    'PUT', `/api/drafts`, draftInput
+    ] as const;
+    }
+
+
+export const getSaveDraftQueryOptions = <TData = Awaited<ReturnType<typeof saveDraft>>, TError = Problem>(draftInput: DraftInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveDraft>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSaveDraftQueryKey(draftInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof saveDraft>>> = ({ signal }) => saveDraft(draftInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof saveDraft>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SaveDraftQueryResult = NonNullable<Awaited<ReturnType<typeof saveDraft>>>
+export type SaveDraftQueryError = Problem
+
+
+export function useSaveDraft<TData = Awaited<ReturnType<typeof saveDraft>>, TError = Problem>(
+ draftInput: DraftInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveDraft>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof saveDraft>>,
+          TError,
+          Awaited<ReturnType<typeof saveDraft>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSaveDraft<TData = Awaited<ReturnType<typeof saveDraft>>, TError = Problem>(
+ draftInput: DraftInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveDraft>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof saveDraft>>,
+          TError,
+          Awaited<ReturnType<typeof saveDraft>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSaveDraft<TData = Awaited<ReturnType<typeof saveDraft>>, TError = Problem>(
+ draftInput: DraftInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveDraft>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
+ */
+
+export function useSaveDraft<TData = Awaited<ReturnType<typeof saveDraft>>, TError = Problem>(
+ draftInput: DraftInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof saveDraft>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSaveDraftQueryOptions(draftInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type setThreadStatusResponse200 = {
+  data: ThreadStatusReply
+  status: 200
+}
+
+export type setThreadStatusResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type setThreadStatusResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type setThreadStatusResponseSuccess = (setThreadStatusResponse200) & {
+  headers: Headers;
+};
+export type setThreadStatusResponseError = (setThreadStatusResponse400 | setThreadStatusResponse404) & {
+  headers: Headers;
+};
+
+export type setThreadStatusResponse = (setThreadStatusResponseSuccess | setThreadStatusResponseError)
+
+export const getSetThreadStatusUrl = (id: string,) => {
+
+
+
+
+  return `/api/threads/${id}`
+}
+
+/**
+ * @summary 利用者がスレッドをクローズにするかオープンに戻す
+ */
+export const setThreadStatus = async (id: string,
+    threadStatusInput: ThreadStatusInput, options?: Parameters<typeof apiClient>[1]): Promise<setThreadStatusResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<setThreadStatusResponse>(getSetThreadStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(threadStatusInput)
+  }
+);}
+
+
+
+
+
+export const getSetThreadStatusQueryKey = (id: string,
+    threadStatusInput?: ThreadStatusInput,) => {
+    return [
+    'PATCH', `/api/threads/${id}`, threadStatusInput
+    ] as const;
+    }
+
+
+export const getSetThreadStatusQueryOptions = <TData = Awaited<ReturnType<typeof setThreadStatus>>, TError = Problem>(id: string,
+    threadStatusInput: ThreadStatusInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setThreadStatus>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSetThreadStatusQueryKey(id,threadStatusInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof setThreadStatus>>> = ({ signal }) => setThreadStatus(id,threadStatusInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof setThreadStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SetThreadStatusQueryResult = NonNullable<Awaited<ReturnType<typeof setThreadStatus>>>
+export type SetThreadStatusQueryError = Problem
+
+
+export function useSetThreadStatus<TData = Awaited<ReturnType<typeof setThreadStatus>>, TError = Problem>(
+ id: string,
+    threadStatusInput: ThreadStatusInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof setThreadStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setThreadStatus>>,
+          TError,
+          Awaited<ReturnType<typeof setThreadStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetThreadStatus<TData = Awaited<ReturnType<typeof setThreadStatus>>, TError = Problem>(
+ id: string,
+    threadStatusInput: ThreadStatusInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setThreadStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setThreadStatus>>,
+          TError,
+          Awaited<ReturnType<typeof setThreadStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetThreadStatus<TData = Awaited<ReturnType<typeof setThreadStatus>>, TError = Problem>(
+ id: string,
+    threadStatusInput: ThreadStatusInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setThreadStatus>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 利用者がスレッドをクローズにするかオープンに戻す
+ */
+
+export function useSetThreadStatus<TData = Awaited<ReturnType<typeof setThreadStatus>>, TError = Problem>(
+ id: string,
+    threadStatusInput: ThreadStatusInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setThreadStatus>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSetThreadStatusQueryOptions(id,threadStatusInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type markThreadSeenResponse200 = {
+  data: SeenReply
+  status: 200
+}
+
+export type markThreadSeenResponse404 = {
+  data: Problem
+  status: 404
+}
+
+export type markThreadSeenResponseSuccess = (markThreadSeenResponse200) & {
+  headers: Headers;
+};
+export type markThreadSeenResponseError = (markThreadSeenResponse404) & {
+  headers: Headers;
+};
+
+export type markThreadSeenResponse = (markThreadSeenResponseSuccess | markThreadSeenResponseError)
+
+export const getMarkThreadSeenUrl = (id: string,) => {
+
+
+
+
+  return `/api/threads/${id}/seen`
+}
+
+/**
+ * @summary 利用者が開いたスレッドの未読の書き込みを既読にする
+ */
+export const markThreadSeen = async (id: string, options?: Parameters<typeof apiClient>[1]): Promise<markThreadSeenResponse> => {
+
+  return apiClient<markThreadSeenResponse>(getMarkThreadSeenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkThreadSeenQueryKey = (id: string,) => {
+    return [
+    'POST', `/api/threads/${id}/seen`
+    ] as const;
+    }
+
+
+export const getMarkThreadSeenQueryOptions = <TData = Awaited<ReturnType<typeof markThreadSeen>>, TError = Problem>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof markThreadSeen>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMarkThreadSeenQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof markThreadSeen>>> = ({ signal }) => markThreadSeen(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof markThreadSeen>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type MarkThreadSeenQueryResult = NonNullable<Awaited<ReturnType<typeof markThreadSeen>>>
+export type MarkThreadSeenQueryError = Problem
+
+
+export function useMarkThreadSeen<TData = Awaited<ReturnType<typeof markThreadSeen>>, TError = Problem>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof markThreadSeen>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof markThreadSeen>>,
+          TError,
+          Awaited<ReturnType<typeof markThreadSeen>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMarkThreadSeen<TData = Awaited<ReturnType<typeof markThreadSeen>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof markThreadSeen>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof markThreadSeen>>,
+          TError,
+          Awaited<ReturnType<typeof markThreadSeen>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMarkThreadSeen<TData = Awaited<ReturnType<typeof markThreadSeen>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof markThreadSeen>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 利用者が開いたスレッドの未読の書き込みを既読にする
+ */
+
+export function useMarkThreadSeen<TData = Awaited<ReturnType<typeof markThreadSeen>>, TError = Problem>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof markThreadSeen>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getMarkThreadSeenQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type putConfigDisplayResponse200 = {
+  data: DisplayReply
+  status: 200
+}
+
+export type putConfigDisplayResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type putConfigDisplayResponse403 = {
+  data: Problem
+  status: 403
+}
+
+export type putConfigDisplayResponseSuccess = (putConfigDisplayResponse200) & {
+  headers: Headers;
+};
+export type putConfigDisplayResponseError = (putConfigDisplayResponse400 | putConfigDisplayResponse403) & {
+  headers: Headers;
+};
+
+export type putConfigDisplayResponse = (putConfigDisplayResponseSuccess | putConfigDisplayResponseError)
+
+export const getPutConfigDisplayUrl = () => {
+
+
+
+
+  return `/api/config/display`
+}
+
+/**
+ * @summary 見た目の既定と表示する種類の既定を config.yaml に書く
+ */
+export const putConfigDisplay = async (displayInput: DisplayInput, options?: Parameters<typeof apiClient>[1]): Promise<putConfigDisplayResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<putConfigDisplayResponse>(getPutConfigDisplayUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(displayInput)
+  }
+);}
+
+
+
+
+
+export const getPutConfigDisplayQueryKey = (displayInput?: DisplayInput,) => {
+    return [
+    'PUT', `/api/config/display`, displayInput
+    ] as const;
+    }
+
+
+export const getPutConfigDisplayQueryOptions = <TData = Awaited<ReturnType<typeof putConfigDisplay>>, TError = Problem>(displayInput: DisplayInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putConfigDisplay>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPutConfigDisplayQueryKey(displayInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof putConfigDisplay>>> = ({ signal }) => putConfigDisplay(displayInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof putConfigDisplay>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PutConfigDisplayQueryResult = NonNullable<Awaited<ReturnType<typeof putConfigDisplay>>>
+export type PutConfigDisplayQueryError = Problem
+
+
+export function usePutConfigDisplay<TData = Awaited<ReturnType<typeof putConfigDisplay>>, TError = Problem>(
+ displayInput: DisplayInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof putConfigDisplay>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof putConfigDisplay>>,
+          TError,
+          Awaited<ReturnType<typeof putConfigDisplay>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePutConfigDisplay<TData = Awaited<ReturnType<typeof putConfigDisplay>>, TError = Problem>(
+ displayInput: DisplayInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putConfigDisplay>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof putConfigDisplay>>,
+          TError,
+          Awaited<ReturnType<typeof putConfigDisplay>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePutConfigDisplay<TData = Awaited<ReturnType<typeof putConfigDisplay>>, TError = Problem>(
+ displayInput: DisplayInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putConfigDisplay>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 見た目の既定と表示する種類の既定を config.yaml に書く
+ */
+
+export function usePutConfigDisplay<TData = Awaited<ReturnType<typeof putConfigDisplay>>, TError = Problem>(
+ displayInput: DisplayInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof putConfigDisplay>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPutConfigDisplayQueryOptions(displayInput,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -2,3 +2,5 @@ summary: '`frontend/src/features/settings/` の React のプレビューのモ�
 items:
 - page: workspace-settings/
   summary: '`frontend/src/features/settings/workspace-settings/` の React のプレビューのモジュール'
+- page: display-settings/
+  summary: '`frontend/src/features/settings/display-settings/` の React のプレビューのモジュール'

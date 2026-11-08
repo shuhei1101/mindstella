@@ -10,6 +10,8 @@
   --color-*: initial;
   /* 本文の幅の上限 */
   --container-content: 82.5rem;
+  /* 入力の幅がこの幅未満（360px 以下）のとき、結果をボタンの下の行に出す */
+  --container-send-narrow: 361px;
   /* 画面幅の区切り（今の画面の区切りと同じ。max-* はその幅未満） */
   --breakpoint-*: initial;
   --breakpoint-2xs: 361px;
@@ -152,4 +154,16 @@
 /* フェーズごとの棒の行: フェーズ・棒・数 */
 @utility grid-cols-stage {
   grid-template-columns: 8.5em 1fr 3.2em;
+}
+
+/* コメントと返信の入力欄の高さ（1 行から 8 行。超えたら入力欄の中を送る。今の画面の `.send textarea` と同じ） */
+@utility field-send {
+  min-block-size: calc(1lh + 16px);
+  max-block-size: calc(8lh + 16px);
+}
+
+/* レビュー中の書き込みの書き換えの入力欄の高さ（2 行から 10 行。今の画面の `.row-edit textarea` と同じ） */
+@utility field-edit {
+  min-block-size: calc(2lh + 16px);
+  max-block-size: calc(10lh + 16px);
 }

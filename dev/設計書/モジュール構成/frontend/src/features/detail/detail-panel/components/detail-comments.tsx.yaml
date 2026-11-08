@@ -1,0 +1,27 @@
+title: プレビュー / detail-comments
+lead: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。
+components:
+- name: DetailComments
+  title: 詳細のコメント
+  kind: コンポーネント
+  usecase: 項目へコメントする
+  summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く
+  refs:
+  - dev/設計書/画面設計/プレビュー/詳細パネル.tsx#
+  - dev/設計書/画面設計/プレビュー/詳細の全画面.tsx#
+  unit_tests:
+  - name: test_detail_comments
+    case: 正常
+    summary: 箇所を添えて溜める
+    condition: 本文の 2 行目を選んで入口を押し、書いて溜める
+    mock: MSW と mdmark の差し替え
+    expected: '`POST /api/comments` が `loc` の 2 行目で呼ばれる'
+  - name: test_detail_comments_when_order
+    case: 正常
+    summary: 並びを切り替える
+    condition: 2 件で並びのボタンを押す
+    mock: MSW
+    expected: 古い順に並び、保存領域の `reviewOrder` が `oldest`
+  container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
+notes:
+  単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）

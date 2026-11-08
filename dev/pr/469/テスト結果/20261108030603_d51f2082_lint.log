@@ -1,0 +1,137 @@
+# 単体テスト作成の工程。違反は全て実装がまだ無いこと（モジュールを解決できない・型が無い）によるもの。型検査と ESLint の出力は末尾 80 行
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck; npm run lint
+All checks passed!
+--- typecheck
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+frontend/src/features/comments/shared/reply-form.test.tsx(5,27): error TS2307: Cannot find module '@/features/comments/shared/reply-form' or its corresponding type declarations.
+frontend/src/features/comments/shared/thread-post.test.tsx(4,28): error TS2307: Cannot find module '@/features/comments/shared/thread-post' or its corresponding type declarations.
+frontend/src/features/comments/shared/thread-row.test.tsx(5,27): error TS2307: Cannot find module '@/features/comments/shared/thread-row' or its corresponding type declarations.
+frontend/src/features/comments/shared/thread-row.test.tsx(6,29): error TS2307: Cannot find module '@/shared/core/comments' or its corresponding type declarations.
+frontend/src/features/comments/shared/use-threads.test.tsx(5,55): error TS2307: Cannot find module '@/features/comments/shared/use-threads' or its corresponding type declarations.
+frontend/src/features/comments/shared/use-threads.test.tsx(25,21): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/features/comments/shared/use-threads.test.tsx(40,25): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/features/comments/shared/use-threads.test.tsx(62,7): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/features/comments/shared/use-threads.test.tsx(82,13): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/features/settings/display-settings/components/settings-confirm.test.tsx(5,33): error TS2307: Cannot find module '@/features/settings/display-settings/components/settings-confirm' or its corresponding type declarations.
+frontend/src/features/settings/display-settings/components/settings-panel.test.tsx(5,31): error TS2307: Cannot find module '@/features/settings/display-settings/components/settings-panel' or its corresponding type declarations.
+frontend/src/features/settings/display-settings/use-save-display-default.test.tsx(5,39): error TS2307: Cannot find module '@/features/settings/display-settings/use-save-display-default' or its corresponding type declarations.
+frontend/src/features/settings/display-settings/use-save-display-default.test.tsx(20,35): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/features/settings/display-settings/use-save-display-default.test.tsx(36,25): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/components/review-body-fold.test.tsx(4,32): error TS2307: Cannot find module '@/shared/components/review-body-fold' or its corresponding type declarations.
+frontend/src/shared/components/review-body-fold.test.tsx(19,9): error TS7006: Parameter 'content' implicitly has an 'any' type.
+frontend/src/shared/components/review-body-fold.test.tsx(19,18): error TS7006: Parameter 'toggle' implicitly has an 'any' type.
+frontend/src/shared/components/selection-comment.test.tsx(5,34): error TS2307: Cannot find module '@/shared/components/selection-comment' or its corresponding type declarations.
+frontend/src/shared/components/send-form.test.tsx(5,26): error TS2307: Cannot find module '@/shared/components/send-form' or its corresponding type declarations.
+frontend/src/shared/core/comments.test.ts(16,8): error TS2307: Cannot find module '@/shared/core/comments' or its corresponding type declarations.
+frontend/src/shared/core/comments.test.ts(48,24): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+frontend/src/shared/core/comments.test.ts(87,24): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+frontend/src/shared/core/comments.test.ts(113,24): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+frontend/src/shared/core/comments.test.ts(113,53): error TS7006: Parameter 'one' implicitly has an 'any' type.
+frontend/src/shared/core/display.test.ts(3,82): error TS2307: Cannot find module '@/shared/core/display' or its corresponding type declarations.
+frontend/src/shared/core/preview-search.test.ts(22,3): error TS2353: Object literal may only specify known properties, and 'threadIds' does not exist in type 'SearchContext'.
+frontend/src/shared/core/preview-search.test.ts(88,37): error TS2322: Type '"comments"' is not assignable to type '"pending"'.
+frontend/src/shared/core/preview-search.test.ts(88,105): error TS2322: Type '"comments"' is not assignable to type '"pending"'.
+frontend/src/shared/core/preview-search.test.ts(94,63): error TS2353: Object literal may only specify known properties, and 'thread' does not exist in type 'Partial<{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }>'.
+frontend/src/shared/core/preview-search.test.ts(96,19): error TS2339: Property 'thread' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'.
+frontend/src/shared/core/preview-search.test.ts(97,19): error TS2551: Property 'review' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'. Did you mean 'view'?
+frontend/src/shared/core/preview-search.test.ts(102,37): error TS2322: Type '"comments"' is not assignable to type '"pending"'.
+frontend/src/shared/core/preview-search.test.ts(102,84): error TS2339: Property 'ttag' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'.
+frontend/src/shared/hooks/use-comments.test.tsx(6,98): error TS2307: Cannot find module '@/shared/hooks/use-comments' or its corresponding type declarations.
+frontend/src/shared/hooks/use-comments.test.tsx(24,21): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(35,25): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(55,21): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(68,37): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(82,21): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(101,25): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(124,7): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(125,7): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-comments.test.tsx(126,7): error TS18046: 'result.current' is of type 'unknown'.
+frontend/src/shared/hooks/use-preview-search.test.tsx(50,30): error TS2339: Property 'setComments' does not exist on type 'PreviewSearchApi'.
+frontend/src/shared/hooks/use-preview-search.test.tsx(52,54): error TS2339: Property 'thread' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'.
+frontend/src/shared/hooks/use-preview-search.test.tsx(65,34): error TS2551: Property 'review' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'. Did you mean 'view'?
+frontend/src/shared/hooks/use-preview-search.test.tsx(66,34): error TS2339: Property 'tstatus' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'.
+frontend/src/shared/hooks/use-preview-search.test.tsx(67,34): error TS2339: Property 'ttag' does not exist on type '{ f: Record<string, string>; tab?: "decisions" | "tasks" | "research" | "docs" | "terms" | "notes" | "logs" | "settings" | "overview" | undefined; view?: "map" | "table" | "board" | "cards" | undefined; ... 5 more ...; panel?: "pending" | undefined; }'.
+--- lint
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings/frontend/src/shared/core/comments.test.ts
+   25:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   32:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   46:11  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+   46:20  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   48:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   48:19  error  Unsafe member access .map on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   48:34  error  Unsafe return of a value of type `any`                       @typescript-eslint/no-unsafe-return
+   48:40  error  Unsafe member access .id on an `any` value                   @typescript-eslint/no-unsafe-member-access
+   58:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   65:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   72:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   72:29  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+   80:11  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+   85:11  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+   85:20  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   87:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+   87:19  error  Unsafe member access .map on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+   87:35  error  Unsafe return of a value of type `any`                       @typescript-eslint/no-unsafe-return
+   87:59  error  Unsafe member access .post on an `any` value                 @typescript-eslint/no-unsafe-member-access
+   94:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  101:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  111:11  error  Unsafe assignment of an error typed value                    @typescript-eslint/no-unsafe-assignment
+  111:20  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  113:12  error  Unsafe call of a type that could not be resolved             @typescript-eslint/no-unsafe-call
+  113:19  error  Unsafe member access .map on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  113:34  error  Unsafe return of a value of type `any`                       @typescript-eslint/no-unsafe-return
+  113:34  error  Unsafe call of an `any` typed value                          @typescript-eslint/no-unsafe-call
+  113:40  error  Unsafe member access .posts on an `any` value                @typescript-eslint/no-unsafe-member-access
+  113:61  error  Unsafe return of a value of type `any`                       @typescript-eslint/no-unsafe-return
+  113:65  error  Unsafe member access .seen on an `any` value                 @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings/frontend/src/shared/core/display.test.ts
+   9:12  error  Unsafe call of a type that could not be resolved                           @typescript-eslint/no-unsafe-call
+  19:12  error  Unsafe call of a type that could not be resolved                           @typescript-eslint/no-unsafe-call
+  29:12  error  Unsafe call of a type that could not be resolved                           @typescript-eslint/no-unsafe-call
+  39:11  error  Unsafe assignment of an error typed value                                  @typescript-eslint/no-unsafe-assignment
+  39:20  error  Unsafe call of a type that could not be resolved                           @typescript-eslint/no-unsafe-call
+  41:19  error  Unsafe member access ["diffSel"] on a type that cannot be resolved         @typescript-eslint/no-unsafe-member-access
+  42:19  error  Unsafe member access ["commentsPinned"] on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  43:19  error  Unsafe member access ["unknownKey"] on a type that cannot be resolved      @typescript-eslint/no-unsafe-member-access
+  44:19  error  Unsafe member access ["look"] on a type that cannot be resolved            @typescript-eslint/no-unsafe-member-access
+  45:19  error  Unsafe member access ["theme"] on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  46:19  error  Unsafe member access ["kinds"] on a type that cannot be resolved           @typescript-eslint/no-unsafe-member-access
+  53:12  error  Unsafe call of a type that could not be resolved                           @typescript-eslint/no-unsafe-call
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings/frontend/src/shared/hooks/use-comments.test.tsx
+   21:66  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+   24:21  error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+   24:21  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+   33:53  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+   35:11  error  Unsafe assignment of an error typed value                                            @typescript-eslint/no-unsafe-assignment
+   35:25  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+   35:25  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+   35:94  error  Unsafe member access .catch on a type that cannot be resolved                        @typescript-eslint/no-unsafe-member-access
+   53:53  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+   55:21  error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+   55:21  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+   66:53  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+   68:11  error  Unsafe assignment of an error typed value                                            @typescript-eslint/no-unsafe-assignment
+   68:37  error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+   68:37  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+   79:66  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+   82:21  error  Unsafe return of a value of type error                                               @typescript-eslint/no-unsafe-return
+   82:21  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+   98:66  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+  101:11  error  Unsafe assignment of an error typed value                                            @typescript-eslint/no-unsafe-assignment
+  101:25  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  101:25  error  Unsafe call of a type that could not be resolved                                     @typescript-eslint/no-unsafe-call
+  101:61  error  Unsafe member access .catch on a type that cannot be resolved                        @typescript-eslint/no-unsafe-member-access
+  121:53  error  Unsafe argument of type error typed assigned to a parameter of type `() => unknown`  @typescript-eslint/no-unsafe-argument
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings/frontend/src/shared/hooks/use-preview-search.test.tsx
+  50:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  50:15  error  Unsafe return of a value of type error                                                                                                                              @typescript-eslint/no-unsafe-return
+  50:15  error  Unsafe call of a type that could not be resolved                                                                                                                    @typescript-eslint/no-unsafe-call
+
+✖ 98 problems (98 errors, 0 warnings)
+

@@ -17,6 +17,7 @@ const ICONS = {
     </>
   ),
   back: <path d="m15 6-6 6 6 6" />,
+  hash: <path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16" />,
   star: <path d="m12 3 2.7 5.8 6.3.8-4.6 4.3 1.2 6.2-5.6-3.1-5.6 3.1 1.2-6.2L3 9.6l6.3-.8z" />,
   code: <path d="m8 7-5 5 5 5M16 7l5 5-5 5" />,
   graph: <><circle cx="6" cy="6" r="2" /><circle cx="18" cy="8" r="2" /><circle cx="10" cy="18" r="2" /><path d="M8 6.5 16 7.5M7 8l2.5 8M16.5 9.5 11.5 16.5" /></>,

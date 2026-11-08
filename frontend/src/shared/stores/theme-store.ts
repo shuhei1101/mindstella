@@ -34,6 +34,8 @@ type ThemeState = {
   theme: Theme;
   /** テーマを書き換え、保存領域の `theme` だけを書き換えて残す */
   setTheme: (theme: Theme) => void;
+  /** 保存領域の `theme` を外し、OS の設定のテーマに戻す */
+  clearTheme: () => void;
 };
 
 export const useThemeStore = create<ThemeState>()((set) => {
@@ -43,6 +45,12 @@ export const useThemeStore = create<ThemeState>()((set) => {
     theme,
     setTheme: (next) => {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readPrefs(), theme: next }));
+      applyTheme(next);
+      set({ theme: next });
+    },
+    clearTheme: () => {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readPrefs(), theme: null }));
+      const next = initialTheme();
       applyTheme(next);
       set({ theme: next });
     },

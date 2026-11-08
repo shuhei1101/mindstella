@@ -5,6 +5,7 @@ import { DetailEditor, type EditChange } from "@/features/detail/detail-panel/co
 import { DetailHeader } from "@/features/detail/detail-panel/components/detail-header";
 import { DetailResizer, PANEL_WIDTH } from "@/features/detail/detail-panel/components/detail-resizer";
 import { BodyView, type BodyLayout } from "@/features/detail/detail-panel/components/body-view";
+import { DetailComments } from "@/features/detail/detail-panel/components/detail-comments";
 import { DiffDeadlineContext, KeyDiff, keyDiffs, nextDiffDeadline, valueText, type KeyDiffs } from "@/features/detail/detail-panel/components/key-diff";
 import { OptionList } from "@/features/detail/detail-panel/components/option-list";
 import { RelatedList } from "@/features/detail/detail-panel/components/related-list";
@@ -15,17 +16,19 @@ import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
+import { LINE_ATTR, VALUE_KEY_ATTR } from "@/shared/core/body-links";
+import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
-import { toLegacyUrl } from "@/shared/core/legacy-url";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
-import { toLegacyHash } from "@/shared/core/preview-search";
 import { relatedItems, tagNames, type Item, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
+import { applyHighlight } from "@/shared/core/term-tips";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
+import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
@@ -145,6 +148,27 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     scroller.addEventListener("scroll", update, { passive: true });
     return () => { scroller.removeEventListener("scroll", update); };
   }, [titleElement]);
+  // コメントの一覧から開いたとき、描いた本文の中の書き込みの箇所を示す（描き終えるのを本文の要素の変化で待ち、本文を描き直したら示し直す）
+  const loc = useLocationHighlight(id);
+  useEffect(() => {
+    const root = titleElement?.closest(".panel-body") ?? null;
+    if (loc === null || root === null) return undefined;
+    const ready = loc.kind === "value" ? `[${VALUE_KEY_ATTR}]` : `[data-body-view] .md [${LINE_ATTR}], [data-body-view] iframe[${HTML_BODY_ATTR}]`;
+    let shown: Element | null = null;
+    const observer = new MutationObserver(() => { apply(); });
+    const apply = (): void => {
+      const drawn = root.querySelector(ready);
+      if (drawn === null || drawn === shown) return;
+      shown = drawn;
+      applyHighlight({ root, loc });
+    };
+    observer.observe(root, { childList: true, subtree: true });
+    apply();
+    return () => {
+      observer.disconnect();
+      for (const element of root.querySelectorAll(".loc-hit")) element.classList.remove("loc-hit");
+    };
+  }, [titleElement, loc]);
   const entry = index.byId.get(id);
   if (entry === undefined) return null;
   const { kind } = entry;
@@ -279,10 +303,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
             ) : null}
             {relation(kind === "logs" ? "更新した項目" : "関連", related.related)}
             {relation("参照元", related.referencedBy)}
-            {/* コメントの入力は React へ移すまで今の画面で開く */}
-            <a href={toLegacyUrl(toLegacyHash(search))} className="self-start rounded-control border border-border px-2.5 py-1 text-small font-medium hover:bg-accent">
-              今の画面でコメントする
-            </a>
+            <DetailComments id={id} titles={(target) => index.byId.get(target)?.item.title ?? null} changeSets={(set) => index.data.changes.sets.find((one) => one.id === set)?.summary ?? null} onOpenItem={openItem} onOpenChangeSet={setDiff} />
           </div>
         )}
       </DiffMinimap>

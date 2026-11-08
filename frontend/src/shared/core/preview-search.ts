@@ -20,7 +20,11 @@ export const PreviewSearchSchema = z.object({
   h: z.string().optional().catch(undefined),
   diff: z.string().optional().catch(undefined),
   sort: z.string().optional().catch(undefined),
-  panel: z.enum(["pending"]).optional().catch(undefined),
+  panel: z.enum(["pending", "comments", "display"]).optional().catch(undefined),
+  thread: z.string().regex(/^(TH|C)-\d+$/).optional().catch(undefined),
+  review: z.enum(["1"]).optional().catch(undefined),
+  tstatus: z.enum(["closed", "all"]).optional().catch(undefined),
+  ttag: z.string().optional().catch(undefined),
   f: z.record(z.string(), z.string()).catch({}),
 });
 
@@ -36,6 +40,10 @@ export type SearchContext = {
   visibleKinds: readonly Kind[];
   diffActive: boolean;
   sortColumns: readonly string[];
+  /** スレッドとまだ送っていない新しいスレッドの ID（スレッドを読む前は undefined にして `thread` を外さない） */
+  threadIds?: readonly string[];
+  /** スレッドのタグ（スレッドを読む前は undefined にして `ttag` を外さない） */
+  threadTags?: readonly string[];
 };
 
 /** `f.` で始まるキーを `f` に集める */
@@ -85,7 +93,7 @@ const diffExists = (diff: string, index: RecordIndex): boolean => {
 /** 記録・画面に合わない値を外す */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const normalizeSearch = (search: PreviewSearch, context: SearchContext): PreviewSearch => {
-  const { index, pendingCount, visibleKinds, diffActive, sortColumns } = context;
+  const { index, pendingCount, visibleKinds, diffActive, sortColumns, threadIds, threadTags } = context;
   const next: PreviewSearch = { ...search };
   const hidden = next.tab !== undefined && next.tab !== "overview" && next.tab !== "settings" && !visibleKinds.includes(next.tab);
   if (hidden || (next.tab === "settings" && diffActive)) delete next.tab;
@@ -100,7 +108,16 @@ export const normalizeSearch = (search: PreviewSearch, context: SearchContext): 
   }
   if (next.diff !== undefined && !diffExists(next.diff, index)) delete next.diff;
   if (next.sort !== undefined && !sortColumns.includes(next.sort.replace(/^-/, ""))) delete next.sort;
-  if (next.panel !== undefined && (pendingCount === 0 || diffActive)) delete next.panel;
+  if (next.panel === "pending" && (pendingCount === 0 || diffActive)) delete next.panel;
+  if (next.panel === "comments") {
+    if (next.thread !== undefined && threadIds !== undefined && !threadIds.includes(next.thread)) delete next.thread;
+    if (next.ttag !== undefined && threadTags !== undefined && !threadTags.includes(next.ttag)) delete next.ttag;
+  } else {
+    delete next.thread;
+    delete next.review;
+    delete next.tstatus;
+    delete next.ttag;
+  }
   return next;
 };
 

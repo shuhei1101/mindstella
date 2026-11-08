@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 
 import { renderRoute } from "@/testing/render";
@@ -45,5 +46,23 @@ describe("PreviewShell", () => {
     renderRoute("/spa/?tab=tasks&view=map&id=T-99");
     // 検証
     await waitFor(() => expect(window.location.search).toBe("?tab=tasks"));
+  });
+  // コメントの一覧を開く（正常系）
+  test("preview_shell_when_comments", async () => {
+    // 準備
+    renderRoute("/spa/?tab=tasks");
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: /コメント/ }));
+    // 検証
+    expect(await screen.findByRole("dialog", { name: "コメント" })).toBeInTheDocument();
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("panel")).toBe("comments"));
+  });
+
+  // 表示の設定を開く（正常系）
+  test("preview_shell_when_display", async () => {
+    // 実行
+    renderRoute("/spa/?panel=display");
+    // 検証
+    expect(await screen.findByRole("dialog", { name: "表示の設定" })).toBeInTheDocument();
   });
 });

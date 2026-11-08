@@ -1,0 +1,114 @@
+title: プレビュー / display-notice-store
+lead: 表示の設定の知らせ（ワークスペースの既定が変わった知らせと、表示の設定のパネルの `message`）。パネルを開いていなくても知らせ、自分が既定にした直後は知らせない。
+functions:
+- name: sameDisplay
+  title: 既定の値の比較
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 見た目と表示する種類が、並びまで同じか（今の画面の `sameDisplay` と同じ）
+  args:
+  - name: a
+    type: SettingsDisplay | null | undefined
+    required: true
+    description: 比べる既定
+  - name: b
+    type: SettingsDisplay | null | undefined
+    required: true
+    description: 比べる既定
+  returns:
+    type: boolean
+    description: 同じなら真
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: useDisplayMessage
+  title: パネルの message
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 表示の設定のパネルの `message` を返す
+  args: []
+  returns:
+    type: DisplayMessage | null
+    description: '`kind`（ok・info）と文'
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: useDisplayNoticeAt
+  title: 画面の下の知らせ
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 画面の下に出している「ワークスペースの既定が変わりました。」を出した日時を返す
+  args: []
+  returns:
+    type: string | null
+    description: 出していなければ null
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: expectDisplaySave
+  title: 保存する値の控え
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 既定にする前に、保存しようとしている値を控える（`useSaveDisplayDefault` の `onMutate`）
+  args:
+  - name: display
+    type: SettingsDisplay
+    required: true
+    description: 送る値
+  returns: &id001
+    type: void
+    description: '-'
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: cancelDisplaySave
+  title: 控えの取り消し
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 既定にできなかったとき、控えた値を外す（`useSaveDisplayDefault` の `onError`）
+  args: []
+  returns: *id001
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: markDisplaySaved
+  title: 保存した旨
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 既定にできたとき、パネルの `message` を「ワークスペースの既定にしました（{日時}）。」にする
+  args:
+  - name: at
+    type: string
+    required: true
+    description: 保存した日時（UTC の ISO 8601）
+  returns: *id001
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: displayChanged
+  title: 既定が変わった知らせ
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 読み直した記録の既定が前と違うときに外枠が呼ぶ。控えた値と同じなら控えを外すだけにし、違えば画面の下の知らせと、パネルの `message`「ワークスペースの既定が変わりました（{日時}）。」を出す
+  args:
+  - name: next
+    type: SettingsDisplay | undefined
+    required: true
+    description: 読み直した記録の `settings.display`
+  - name: at
+    type: string
+    required: true
+    description: 知らせた日時
+  returns: *id001
+  unit_tests:
+  - name: test_display_changed
+    case: 正常
+    summary: 他の人が既定を変えた
+    condition: 控えが無いまま新しい既定を渡す
+    mock: なし
+    expected: 知らせの日時が渡した日時で、`message` が info の「ワークスペースの既定が変わりました（…）。」
+  - name: test_display_changed_when_own_save
+    case: 正常
+    summary: 自分が既定にした値が届いた
+    condition: 同じ値を控えてから渡す
+    mock: なし
+    expected: 知らせを出さず、`message` は「ワークスペースの既定にしました（…）。」のまま
+  container: frontend/src/shared/stores/display-notice-store.ts
+- name: clearDisplayNotice
+  title: 知らせを消す
+  kind: 関数
+  usecase: ワークスペースの既定を変える
+  summary: 画面の下の知らせを消す（外枠が 6 秒後に呼ぶ）
+  args: []
+  returns: *id001
+  container: frontend/src/shared/stores/display-notice-store.ts
+notes:
+  単体テスト: 同じフォルダの `display-notice-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

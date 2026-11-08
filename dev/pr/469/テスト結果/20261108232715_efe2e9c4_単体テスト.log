@@ -1,0 +1,242 @@
+# 結合テスト作成の工程で修正した実装（e74ed0ee・ab88e88f・6073c652）に関係する単体テスト。1 ファイルずつ（--pool=forks --maxWorkers=1）流した
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/app/preview-shell.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:27:20
+   Duration  60.60s (environment 43%, import 34%, setup 12%, transform 10%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/comments-panel/comments-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  23:28:23
+   Duration  42.26s (environment 43%, import 34%, transform 11%, setup 11%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/review/review-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:29:09
+   Duration  58.10s (environment 48%, import 30%, setup 14%, transform 7%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/reply-form.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:30:10
+   Duration  27.03s (environment 66%, setup 19%, import 12%, transform 2%, tests 1%, worker 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/thread-post.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:30:39
+   Duration  22.82s (environment 70%, setup 20%, import 6%, transform 4%, tests 1%, worker 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/thread-row.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:31:04
+   Duration  24.49s (environment 69%, setup 19%, import 10%, transform 2%, tests 1%, worker 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/thread/thread-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  23:31:34
+   Duration  37.45s (environment 38%, import 37%, setup 13%, transform 9%, tests 2%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/components/body-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:32:14
+   Duration  43.67s (import 41%, environment 37%, setup 12%, transform 9%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:33:00
+   Duration  43.30s (environment 39%, import 37%, transform 12%, setup 11%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/detail-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  23:33:48
+   Duration  87.51s (import 51%, environment 24%, setup 12%, transform 11%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/components/settings-confirm.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:35:20
+   Duration  47.74s (environment 80%, setup 13%, import 6%, transform 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/components/settings-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:36:09
+   Duration  23.22s (environment 64%, setup 21%, import 12%, transform 2%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/display-settings-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:36:35
+   Duration  40.76s (environment 41%, import 37%, setup 13%, transform 8%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/review-body-fold.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:37:18
+   Duration  24.51s (environment 71%, setup 22%, import 3%, transform 3%, worker 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/selection-comment.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:37:45
+   Duration  26.28s (environment 58%, setup 22%, import 16%, transform 2%, worker 1%, tests 1%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/send-form.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:38:15
+   Duration  40.39s (environment 56%, import 21%, setup 20%, transform 2%)
+
+exit=0
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/use-comments.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  23:38:58
+   Duration  42.17s (environment 43%, import 33%, setup 14%, transform 8%, tests 1%)
+
+exit=0

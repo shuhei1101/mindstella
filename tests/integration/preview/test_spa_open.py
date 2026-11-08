@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 from playwright.sync_api import Page, Route, expect
 from preview_fixture_types import WritePreview, WriteReviewPreview
 from preview_spa_helpers import SPA_ROOT_PATH, open_spa, watch_console
 from workspace_fixtures import (
+    RECORD_DIR,
     CallTool,
     MakeComment,
     MakeItem,
@@ -344,3 +348,261 @@ def test_error_when_save_blocked(page: Page, spa_preview: str) -> None:
     expect(panel.get_by_role("alert")).to_contain_text("何も保存していません")
     expect(row).to_be_visible()
 
+
+
+# ─── コメントと表示の設定 ───
+
+# 本文が 3 行の資料の本文
+THREE_LINE_BODY = "一行目の文\n二行目の文\n三行目の文\n"
+
+# 本文の中の文字を選び、選び終えたことを知らせる（文字を持つ本文のテキストの中の範囲）
+SELECT_TEXT_JS = """(text) => {
+  const walker = document.createTreeWalker(document.querySelector('.md'), NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node !== null && !node.textContent.includes(text)) node = walker.nextNode();
+  const start = node.textContent.indexOf(text);
+  const range = document.createRange();
+  range.setStart(node, start);
+  range.setEnd(node, start + text.length);
+  const selection = getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  node.parentElement.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+}"""
+
+# トップバーのコメントのボタン（読み上げの名前に件数を持つ）
+COMMENTS_BUTTON = 'header button[aria-label^="コメント（"]'
+
+# 端末の保存領域のキー
+PREFS_KEY = "mindmap-preview"
+
+
+def _history_length(page: Page) -> int:
+    """ブラウザの履歴の数を返す。"""
+    return int(page.evaluate("history.length"))
+
+
+def _workspace_yaml(root: Path, name: str) -> Any:
+    """ワークスペースの記録のフォルダの YAML を返す（無ければ None）。"""
+    path = root / RECORD_DIR / name
+    return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def test_normal_when_comment_sent(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, call_tool: CallTool) -> None:
+    """詳細の本文の文を選んで箇所を添えたコメントを溜め、コメントの一覧のレビュー中の書き込みからまとめて送る（正常系）。"""
+    # 準備
+    url, root = write_review_preview(make_item("A-1", title="手引き"), bodies={"A-1.md": THREE_LINE_BODY})
+    errors = watch_console(page)
+    open_spa(page, url, "?tab=docs&id=A-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    expect(panel.locator(".md")).to_contain_text("二行目の文")
+    # 実行（本文の 2 行目の文を選び、入口からコメントを溜める）
+    page.evaluate(SELECT_TEXT_JS, "二行目の文")
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    field = panel.get_by_role("textbox", name="A-1 へのコメント")
+    field.fill("ここを言い換える")
+    field.press("Control+Enter")
+    # 検証
+    expect(panel.locator("li[data-comment]")).to_have_count(1)
+    expect(panel.locator("li[data-comment]")).to_contain_text("本文 2 行目")
+    expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 1 件）")
+    # 実行（コメントのボタン・「レビュー中」を押す）
+    before = _history_length(page)
+    page.locator(COMMENTS_BUTTON).click()
+    page.wait_for_url("**panel=comments**")
+    page.get_by_role("dialog", name="コメント").get_by_role("button", name="レビュー中の書き込みを確かめる（1 件）").click()
+    page.wait_for_url("**review=1**")
+    # 検証
+    assert _history_length(page) == before
+    # 実行（まとめて送る）
+    page.get_by_role("dialog", name="コメント").get_by_role("button", name="まとめて送る（1 件）").click()
+    # 検証
+    expect(page.get_by_role("dialog", name="コメント").get_by_role("status").filter(has_text="1 件を送り")).to_be_visible()
+    expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 0 件）")
+    awaiting = call_tool("threads", workspace=str(root), awaiting=True)
+    assert awaiting.data is not None
+    assert [(item["target"], item["head"]) for item in awaiting.data["items"]] == [("A-1", "ここを言い換える")]
+    threads = _workspace_yaml(root, "threads.yaml")["items"]
+    assert threads[0]["loc"]["start"] == 2
+    assert errors.messages == []
+    assert errors.exceptions == []
+
+
+def test_normal_when_thread_replied_and_closed(
+    page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_post: MakePost, make_thread: MakeThread
+) -> None:
+    """`thread` が指すスレッドを開いて既読にし、返信を溜め、理由を添えてクローズにする（正常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("D-1"),
+        threads=(make_thread("TH-1", make_post("TH-1-1", body="質問"), make_post("TH-1-2", author="ai", body="答え", seen=False), summary="相談"),),
+    )
+    # 実行（開く。既読にする要求の応答を待つ）
+    with page.expect_response(lambda response: response.url.endswith("/api/threads/TH-1/seen") and response.request.method == "POST"):
+        open_spa(page, url, "?panel=comments&thread=TH-1")
+    panel = page.get_by_role("dialog", name="コメント")
+    # 検証
+    expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 0 件）", timeout=UPDATE_TIMEOUT_MS)
+    assert [post["seen"] for post in _workspace_yaml(root, "threads.yaml")["items"][0]["posts"]] == [True, True]
+    # 実行（返信を溜める）
+    reply = panel.get_by_role("textbox", name="返信")
+    reply.fill("了解")
+    reply.press("Control+Enter")
+    # 検証
+    expect(panel.locator("ol > li > article").last).to_contain_text("了解")
+    assert [item["thread"] for item in _workspace_yaml(root, "comments.yaml")["items"]] == ["TH-1"]
+    # 実行（理由を添えてクローズにする）
+    panel.get_by_role("button", name="クローズにする").click()
+    panel.get_by_role("textbox", name="理由（任意）").fill("決まった")
+    panel.get_by_role("button", name="クローズにする").click()
+    # 検証
+    expect(panel).to_contain_text("クローズにしたスレッドです。")
+    thread = _workspace_yaml(root, "threads.yaml")["items"][0]
+    assert thread["status"] == "closed"
+    assert thread["events"][-1]["reason"] == "決まった"
+    # 実行（一覧へ戻る）
+    before = _history_length(page)
+    panel.get_by_role("button", name="一覧へ戻る").click()
+    # 検証
+    expect(panel.get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
+    assert "thread=" not in page.url
+    assert _history_length(page) == before
+
+
+def test_normal_when_comment_draft_restored(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """コメントの入力欄の書きかけをサーバーに保ち、読み込み直すと同じ入力欄に戻す（正常系）。"""
+    # 準備
+    url, root = write_review_preview(make_item("D-1"))
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    field = page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")
+    # 実行（書いて入力を止め、書きかけの保存を待つ）
+    with page.expect_response(lambda response: response.url.endswith("/api/drafts") and response.request.method == "PUT"):
+        field.fill("書きかけの文")
+    # 検証
+    assert [(draft["target"], draft["body"]) for draft in _workspace_yaml(root, "drafts.yaml")["items"]] == [("D-1", "書きかけの文")]
+    # 実行（読み込み直す）
+    page.reload()
+    # 検証
+    expect(page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")).to_have_value("書きかけの文")
+
+
+def test_normal_when_display_settings(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """表示の設定のパネルで表示する種類を個人の上書きとして変え、既定の保存の確かめを経てワークスペースの既定にする（正常系）。"""
+    # 準備
+    url, root = write_review_preview(make_item("D-1"), make_item("N-1"))
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    open_spa(page, url, "?tab=notes&panel=display")
+    panel = page.get_by_role("dialog", name="表示の設定")
+    before = _history_length(page)
+    # 実行（メモを外す）
+    panel.get_by_role("checkbox", name="メモ").click()
+    # 検証
+    expect(page.get_by_role("navigation", name="項目の種類").get_by_role("link", name="メモ")).to_have_count(0)
+    page.wait_for_function("() => !location.search.includes('tab=')")
+    assert _history_length(page) == before
+    prefs = json.loads(page.evaluate(f"localStorage.getItem('{PREFS_KEY}')"))
+    assert "notes" not in prefs["kinds"]
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+    # 実行（ワークスペースの既定にする）
+    panel.get_by_role("button", name="ワークスペースの既定にする").click()
+    dialog = page.get_by_role("dialog", name="ワークスペースの既定を書き換えますか")
+    # 検証
+    expect(dialog).to_contain_text("すべて表示")
+    expect(dialog).to_contain_text("メモを表示しない")
+    # 実行（保存する）
+    dialog.get_by_role("button", name="保存する").click()
+    # 検証
+    expect(panel.locator("[data-part=message]")).to_contain_text("ワークスペースの既定にしました（")
+    assert "notes" not in _workspace_yaml(root, "config.yaml")["display"]["visible_kinds"]
+    # 実行（設定を編集する）
+    panel.get_by_role("button", name="設定を編集する").click()
+    # 検証
+    page.wait_for_url("**tab=settings**")
+    expect(panel).to_have_count(0)
+
+
+def test_normal_when_comment_search_mismatched(
+    page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_thread: MakeThread
+) -> None:
+    """無いスレッド・無いタグを指す値と、コメントの一覧を開いていないときのコメントの値を外して開く（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), threads=(make_thread("TH-1", tags=["画面"]),))
+    # 実行
+    open_spa(page, url, "?panel=comments&thread=TH-99&ttag=無いタグ")
+    # 検証
+    expect(page.get_by_role("dialog", name="コメント").get_by_role("group", name="スレッドの状態で絞る")).to_be_visible()
+    page.wait_for_function("() => location.search === '?panel=comments'")
+    # 実行
+    open_spa(page, url, "?tab=decisions&thread=TH-1&review=1")
+    # 検証
+    page.wait_for_function("() => location.search === '?tab=decisions'")
+    expect(page.get_by_role("dialog", name="コメント")).to_have_count(0)
+
+
+def test_error_when_comment_body_empty(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem) -> None:
+    """空白だけの本文は溜めずに理由を出す（異常系）。"""
+    # 準備
+    url, root = write_review_preview(make_item("D-1"))
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    posted: list[str] = []
+    page.on("request", lambda request: posted.append(request.url) if request.method == "POST" and request.url.endswith("/api/comments") else None)
+    # 実行
+    field = panel.get_by_role("textbox", name="D-1 へのコメント")
+    field.fill("   ")
+    field.press("Control+Enter")
+    # 検証
+    expect(panel.locator("form[data-id='D-1'] [role=status]")).to_have_text("コメントを入れてから追加してください。")
+    assert posted == []
+    expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 0 件）")
+    assert _workspace_yaml(root, "comments.yaml") is None
+
+
+def test_error_when_comment_server_unreachable(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any], start_server: StartServer, page: Page
+) -> None:
+    """サーバーが止まった後に溜めると、本文を残して届かなかった理由を出す（異常系）。"""
+    # 準備（常駐サーバーがポートを掴んだ後に、配信のポートを選ぶ）
+    server = start_server()
+    root = make_workspace(make_item("D-1"), settings={**valid_settings, "preview": {"port": free_port()}})
+    served = server.call("preview_url", workspace=str(root))
+    assert served.data is not None
+    errors = watch_console(page)
+    open_spa(page, served.data["url"], "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    field = panel.get_by_role("textbox", name="D-1 へのコメント")
+    # 実行（server_stop で常駐サーバーを止めてから溜める）
+    server.call("server_stop")
+    server.wait_exit()
+    field.fill("止まった後のコメント")
+    panel.get_by_role("button", name="レビューに追加").click()
+    # 検証
+    expect(panel.locator("form[data-id='D-1'] [role=status]")).to_contain_text("サーバーが止まっています。")
+    expect(field).to_have_value("止まった後のコメント")
+    expect(panel.get_by_role("button", name="レビューに追加")).to_be_enabled()
+    assert errors.exceptions == []
+
+
+def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment, call_tool: CallTool) -> None:
+    """まとめて送るの 409 では、箇所が合わない書き込みの行に理由を出し、どれも送らない（異常系）。"""
+    # 準備
+    url, root = write_review_preview(
+        make_item("A-1", title="手引き"),
+        comments=(make_comment("C-1", target="A-1", loc={"kind": "body", "start": 3, "end": 3, "text": "三行目の文"}, body="言い換える"),),
+        bodies={"A-1.md": THREE_LINE_BODY},
+    )
+    errors = watch_console(page)
+    open_spa(page, url, "?panel=comments&review=1")
+    panel = page.get_by_role("dialog", name="コメント")
+    expect(panel.locator("li[data-comment='C-1']")).to_be_visible()
+    # 実行（A-1 の本文を 1 行にしてから、まとめて送る）
+    updated = call_tool("update", workspace=str(root), id="A-1", item={"body_markdown": "一行だけ\n"})
+    assert updated.is_error is False, updated.text
+    panel.get_by_role("button", name="まとめて送る（1 件）").click()
+    # 検証
+    row = panel.locator("li[data-comment='C-1']")
+    expect(row.get_by_role("alert")).to_be_visible()
+    expect(row.get_by_role("button", name="箇所を外す")).to_be_visible()
+    assert [item["id"] for item in _workspace_yaml(root, "comments.yaml")["items"]] == ["C-1"]
+    assert (_workspace_yaml(root, "threads.yaml") or {"items": []})["items"] == []
+    assert errors.exceptions == []

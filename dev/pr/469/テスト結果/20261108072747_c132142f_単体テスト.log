@@ -1,0 +1,768 @@
+# 単体テスト（テスト実行方法の単体テスト（フロント）: pytest tests/unit/preview && npx vitest run）
+# 端末の負荷（load 25〜30）で vitest のワーカーの起動が 60 秒の上限を超えるため、vitest は 1 ファイルずつ（--pool=forks --maxWorkers=1）流し、ワーカーが起動しなかったときだけ同じファイルを流し直した。
+# 対象の commit: c132142f
+
+$ pytest tests/unit/preview -q
+........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+........................................................................ [ 42%]
+........................................................................ [ 50%]
+........................................................................ [ 59%]
+........................................................................ [ 67%]
+........................................................................ [ 76%]
+........................................................................ [ 84%]
+........................................................................ [ 93%]
+........................................................                 [100%]
+848 passed in 1174.04s (0:19:34)
+
+## vitest の各ファイルの出力
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/app/app.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:11:00
+   Duration  78.97s (environment 36%, import 35%, setup 19%, transform 10%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/app/preview-shell.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  05:12:22
+   Duration  118.28s (environment 43%, import 35%, setup 14%, transform 7%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/app/query-client.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:14:21
+   Duration  60.34s (environment 73%, setup 22%, import 3%, worker 1%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/app/router.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:15:23
+   Duration  76.64s (environment 49%, import 33%, setup 10%, transform 8%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/comments-panel/comments-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  07:10:12
+   Duration  91.50s (environment 40%, import 38%, setup 12%, transform 9%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/review/review-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:12:41
+   Duration  102.22s (environment 48%, import 35%, setup 8%, transform 7%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/reply-form.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:02:05
+   Duration  46.23s (environment 62%, import 17%, setup 17%, transform 3%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/thread-post.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  05:25:26
+   Duration  63.94s (environment 75%, setup 18%, import 4%, transform 3%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/thread-row.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:14:25
+   Duration  55.87s (environment 79%, setup 15%, import 5%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/use-threads.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  07:15:50
+   Duration  63.80s (environment 55%, import 24%, transform 11%, setup 9%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/thread/thread-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  07:04:41
+   Duration  71.43s (import 43%, environment 39%, setup 10%, transform 7%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/decisions/decisions/components/decision-map.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:31:13
+   Duration  69.00s (environment 77%, setup 18%, import 3%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/decisions/decisions/decisions-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  05:32:29
+   Duration  94.18s (import 39%, environment 38%, transform 12%, setup 10%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/decisions/decisions/map-layout.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  05:34:13
+   Duration  70.70s (environment 75%, setup 23%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  05:35:29
+   Duration  134.90s (environment 41%, import 32%, setup 15%, transform 11%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/components/body-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  05:38:49
+   Duration  116.73s (environment 47%, import 31%, setup 11%, transform 10%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  05:45:13
+   Duration  76.56s (environment 50%, import 30%, setup 14%, transform 5%, tests 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/components/item-add-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  05:46:34
+   Duration  91.09s (environment 62%, setup 18%, import 17%, transform 2%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/detail-panel/detail-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  05:49:14
+   Duration  129.81s (environment 39%, import 38%, setup 13%, transform 9%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/detail/diagram-viewer/diagram-viewer.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:02:55
+   Duration  48.98s (environment 65%, import 18%, setup 14%, transform 2%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/docs/docs/docs-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:03:46
+   Duration  54.52s (environment 44%, import 36%, setup 10%, transform 9%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/edits/pending-edits/pending-edits-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:02:47
+   Duration  148.34s (import 42%, environment 38%, setup 10%, transform 10%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/history/history/history-dialog.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:37:34
+   Duration  46.13s (environment 41%, import 37%, setup 12%, transform 9%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/overview/overview/overview-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  06:11:28
+   Duration  141.05s (import 46%, environment 33%, setup 12%, transform 9%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/records/records/records-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:15:05
+   Duration  124.01s (import 42%, environment 39%, transform 11%, setup 8%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/components/settings-confirm.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:06:52
+   Duration  76.02s (environment 62%, setup 19%, import 16%, transform 2%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/components/settings-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:20:50
+   Duration  41.77s (environment 52%, setup 26%, import 19%, transform 3%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/display-settings-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:08:10
+   Duration  122.53s (import 42%, environment 37%, setup 11%, transform 9%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/settings-confirm-dialog.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:16:54
+   Duration  65.32s (import 38%, environment 36%, setup 14%, transform 11%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/display-settings/use-save-display-default.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:24:51
+   Duration  67.69s (import 42%, environment 35%, setup 13%, transform 10%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:26:00
+   Duration  76.42s (import 41%, environment 35%, setup 14%, transform 10%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/tasks/tasks/tasks-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:27:18
+   Duration  61.54s (environment 39%, import 38%, setup 12%, transform 10%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/adapters/api-client.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:28:24
+   Duration  46.56s (environment 83%, setup 15%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/adapters/events-client.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:29:11
+   Duration  42.43s (environment 74%, setup 19%, import 3%, worker 2%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/adapters/libraries.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:29:56
+   Duration  39.47s (environment 77%, setup 21%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/chips-input.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:30:38
+   Duration  59.05s (environment 79%, setup 13%, import 6%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/diff-minimap.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:31:39
+   Duration  44.73s (environment 75%, setup 22%, import 1%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/filter-drawer.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:32:25
+   Duration  65.93s (environment 61%, setup 28%, import 8%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/history-dialog.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  07:38:21
+   Duration  33.27s (environment 64%, import 20%, setup 14%, transform 1%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/html-body-frame.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:35:52
+   Duration  55.94s (environment 82%, setup 15%, transform 1%, worker 1%, import 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/markdown-body.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:36:52
+   Duration  30.60s (environment 70%, setup 26%, import 2%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/review-body-fold.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:37:25
+   Duration  57.56s (environment 69%, setup 24%, import 4%, transform 3%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/selection-comment.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:15:21
+   Duration  26.99s (environment 68%, setup 20%, import 10%, transform 1%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/send-form.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  07:05:57
+   Duration  52.92s (environment 70%, setup 17%, import 11%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/table.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  06:40:14
+   Duration  74.77s (environment 57%, import 23%, setup 17%, transform 2%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/topbar.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  06:41:28
+   Duration  73.31s (environment 72%, setup 18%, import 9%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/components/view-switch.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:42:49
+   Duration  49.49s (environment 79%, setup 13%, import 7%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/app-error.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:43:39
+   Duration  39.52s (environment 84%, setup 15%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/body-links.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  06:44:20
+   Duration  25.76s (environment 77%, setup 20%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/comments.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  07:11:45
+   Duration  54.44s (environment 80%, setup 18%, worker 1%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/diff.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  06:45:26
+   Duration  27.81s (environment 76%, setup 20%, import 2%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/display.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  06:45:55
+   Duration  24.97s (environment 79%, setup 19%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/doc-export.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:46:22
+   Duration  28.07s (environment 70%, setup 28%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/edits.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  06:46:54
+   Duration  25.75s (environment 74%, setup 21%, worker 3%, transform 2%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/filters.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  06:47:21
+   Duration  45.23s (environment 76%, setup 23%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/legacy-url.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:48:09
+   Duration  34.28s (environment 82%, setup 17%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/preview-search.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  06:48:45
+   Duration  34.40s (environment 76%, setup 19%, import 4%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/core/records.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  06:49:22
+   Duration  28.44s (environment 76%, setup 22%, transform 2%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/preview-queries.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  06:49:52
+   Duration  31.48s (environment 73%, setup 20%, import 4%, transform 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/use-comments.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  06:50:24
+   Duration  41.09s (environment 43%, import 33%, setup 13%, transform 9%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/use-diff-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  06:51:05
+   Duration  68.32s (import 50%, environment 26%, transform 15%, setup 8%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/use-edits.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  06:52:14
+   Duration  78.21s (environment 56%, import 28%, transform 9%, setup 7%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/use-preview-search.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  06:53:32
+   Duration  79.81s (environment 43%, import 32%, setup 14%, transform 10%, tests 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/hooks/use-screen-filters.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  06:54:52
+   Duration  90.78s (import 40%, environment 38%, setup 11%, transform 11%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/lib/cn.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:56:29
+   Duration  57.36s (environment 75%, setup 23%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/stores/connection-store.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:57:33
+   Duration  64.79s (environment 81%, setup 18%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/stores/prefs-store.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  06:58:40
+   Duration  57.47s (environment 77%, setup 21%, transform 1%, worker 1%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/shared/stores/theme-store.test.ts
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:59:39
+   Duration  50.48s (environment 67%, setup 30%, transform 1%, worker 1%)
+

@@ -19,25 +19,42 @@ import type {
 } from 'msw';
 
 import {
-  Kind
+  Kind,
+  NetworkLook
 } from './model';
 import type {
   CancelEdit200,
+  CommentInput,
+  CommentPatch,
+  CommentPatchReply,
+  CommentReply,
   Comments,
+  DisplayInput,
+  DisplayReply,
+  DraftInput,
   EditInput,
   EditReply,
   Edits,
+  Loc,
   OpenedPoint,
   OpenedReply,
   Records,
+  RemovedComment,
   SaveReply,
+  SeenReply,
+  SendInput,
+  SendReply,
+  ThreadStatusInput,
+  ThreadStatusReply,
   Threads
 } from './model';
 
 
-export const getGetRecordsResponseMock = (overrideResponse: Partial<Extract<Records, object>> = {}): Records => ({settings: {summary: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), target_label: faker.string.alpha({length: {min: 10, max: 20}}), phases: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), targets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}})})), categories: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.string.alpha({length: {min: 10, max: 20}})})), goal: faker.helpers.arrayElement([{deliverables: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({title: faker.string.alpha({length: {min: 10, max: 20}}), doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}))}, undefined]), display: faker.helpers.arrayElement([{visible_kinds: faker.helpers.arrayElement([faker.helpers.arrayElements(Object.values(Kind)), undefined])}, undefined])}, decisions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), tasks: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), research: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), docs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), terms: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), notes: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), logs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), derived: {next: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), weight: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), followers: faker.number.int()})), goal: {has_goal: faker.datatype.boolean(), remaining_deliverables: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({title: faker.string.alpha({length: {min: 10, max: 20}}), doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})), phase_progress: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({phase: faker.string.alpha({length: {min: 10, max: 20}}), settled: faker.number.int(), total: faker.number.int()}))}, progress: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({category: faker.string.alpha({length: {min: 10, max: 20}}), cells: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({phase: faker.string.alpha({length: {min: 10, max: 20}}), settled: faker.number.int(), total: faker.number.int()})), settled: faker.number.int(), total: faker.number.int()}))}, built_at: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getGetRecordsResponseMock = (overrideResponse: Partial<Extract<Records, object>> = {}): Records => ({settings: {summary: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), target_label: faker.string.alpha({length: {min: 10, max: 20}}), phases: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), targets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}})})), categories: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.string.alpha({length: {min: 10, max: 20}})})), goal: faker.helpers.arrayElement([{deliverables: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({title: faker.string.alpha({length: {min: 10, max: 20}}), doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}))}, undefined]), display: faker.helpers.arrayElement([{network_look: faker.helpers.arrayElement([faker.helpers.arrayElement(Object.values(NetworkLook)), undefined]), visible_kinds: faker.helpers.arrayElement([faker.helpers.arrayElements(Object.values(Kind)), undefined])}, undefined])}, decisions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), tasks: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), research: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), docs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), terms: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), notes: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), logs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), category: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), derived: {next: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), phase: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), weight: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), followers: faker.number.int()})), goal: {has_goal: faker.datatype.boolean(), remaining_deliverables: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({title: faker.string.alpha({length: {min: 10, max: 20}}), doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})), phase_progress: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({phase: faker.string.alpha({length: {min: 10, max: 20}}), settled: faker.number.int(), total: faker.number.int()}))}, progress: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({category: faker.string.alpha({length: {min: 10, max: 20}}), cells: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({phase: faker.string.alpha({length: {min: 10, max: 20}}), settled: faker.number.int(), total: faker.number.int()})), settled: faker.number.int(), total: faker.number.int()}))}, built_at: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getGetCommentsResponseMock = (overrideResponse: Partial<Extract<Comments, object>> = {}): Comments => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse})
+
+export const getAddCommentResponseMock = (overrideResponse: Partial<Extract<CommentReply, object>> = {}): CommentReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), created: faker.string.alpha({length: {min: 10, max: 20}}), count: faker.number.int(), ...overrideResponse})
 
 export const getGetEditsResponseMock = (overrideResponse: Partial<Extract<Edits, object>> = {}): Edits => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}})})), ...overrideResponse})
 
@@ -52,6 +69,22 @@ export const getPostOpenedResponseOpenedPointMock = (overrideResponse: Partial<O
 export const getPostOpenedResponseMock = (overrideResponse: Partial<Extract<OpenedReply, object>> = {}): OpenedReply => ({previous: faker.helpers.arrayElement([{...getPostOpenedResponseOpenedPointMock()},null,]), opened: {at: faker.string.alpha({length: {min: 10, max: 20}}), seq: faker.number.int()}, ...overrideResponse})
 
 export const getGetThreadsResponseMock = (overrideResponse: Partial<Extract<Threads, object>> = {}): Threads => ({threads: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','closed'] as const), posts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({seen: faker.datatype.boolean()}))})), ...overrideResponse})
+
+export const getUpdateCommentResponseLocMock = (overrideResponse: Partial<Loc> = {}): Loc => ({...{kind: faker.helpers.arrayElement(['body','value'] as const), start: faker.helpers.arrayElement([faker.number.int(), undefined]), end: faker.helpers.arrayElement([faker.number.int(), undefined]), key: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), text: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, ...overrideResponse});
+
+export const getUpdateCommentResponseMock = (overrideResponse: Partial<Extract<CommentPatchReply, object>> = {}): CommentPatchReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 20}}), loc: faker.helpers.arrayElement([{...getUpdateCommentResponseLocMock()},null,]), ...overrideResponse})
+
+export const getRemoveCommentResponseLocMock = (overrideResponse: Partial<Loc> = {}): Loc => ({...{kind: faker.helpers.arrayElement(['body','value'] as const), start: faker.helpers.arrayElement([faker.number.int(), undefined]), end: faker.helpers.arrayElement([faker.number.int(), undefined]), key: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), text: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, ...overrideResponse});
+
+export const getRemoveCommentResponseMock = (overrideResponse: Partial<Extract<RemovedComment, object>> = {}): RemovedComment => ({id: faker.string.alpha({length: {min: 10, max: 20}}), target: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), loc: faker.helpers.arrayElement([{...getRemoveCommentResponseLocMock()},null,]), thread: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), body: faker.string.alpha({length: {min: 10, max: 20}}), created: faker.string.alpha({length: {min: 10, max: 20}}), count: faker.number.int(), ...overrideResponse})
+
+export const getSendCommentsResponseMock = (overrideResponse: Partial<Extract<SendReply, object>> = {}): SendReply => ({sent: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({comment: faker.string.alpha({length: {min: 10, max: 20}}), thread: faker.string.alpha({length: {min: 10, max: 20}}), post: faker.string.alpha({length: {min: 10, max: 20}})})), entered: faker.datatype.boolean(), ...overrideResponse})
+
+export const getSetThreadStatusResponseMock = (overrideResponse: Partial<Extract<ThreadStatusReply, object>> = {}): ThreadStatusReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','closed'] as const), changed: faker.datatype.boolean(), ...overrideResponse})
+
+export const getMarkThreadSeenResponseMock = (overrideResponse: Partial<Extract<SeenReply, object>> = {}): SeenReply => ({id: faker.string.alpha({length: {min: 10, max: 20}}), seen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getPutConfigDisplayResponseMock = (overrideResponse: Partial<Extract<DisplayReply, object>> = {}): DisplayReply => ({display: {network_look: faker.helpers.arrayElement(Object.values(NetworkLook)), visible_kinds: faker.helpers.arrayElements(Object.values(Kind))}, ...overrideResponse})
 
 
 export const getGetRecordsMockHandler = (overrideResponse?: Records | ((info: Parameters<HttpResponseResolver>[0]) => Promise<Records> | Records), options?: RequestHandlerOptions) => {
@@ -74,6 +107,18 @@ export const getGetCommentsMockHandler = (overrideResponse?: Comments | ((info: 
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getGetCommentsResponseMock(),
       { status: 200
+      })
+  }, options)
+}
+
+export const getAddCommentMockHandler = (overrideResponse?: CommentReply | ((info: Parameters<HttpResponseResolver<PathParams, CommentInput>>[0]) => Promise<CommentReply> | CommentReply), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, CommentInput>('*/api/comments', async (info: Parameters<HttpResponseResolver<PathParams, CommentInput>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAddCommentResponseMock(),
+      { status: 201
       })
   }, options)
 }
@@ -149,13 +194,103 @@ export const getGetThreadsMockHandler = (overrideResponse?: Threads | ((info: Pa
       })
   }, options)
 }
+
+export const getUpdateCommentMockHandler = (overrideResponse?: CommentPatchReply | ((info: Parameters<HttpResponseResolver<{ id: string }, CommentPatch>>[0]) => Promise<CommentPatchReply> | CommentPatchReply), options?: RequestHandlerOptions) => {
+  return http.patch<{ id: string }, CommentPatch>('*/api/comments/:id', async (info: Parameters<HttpResponseResolver<{ id: string }, CommentPatch>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getUpdateCommentResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getRemoveCommentMockHandler = (overrideResponse?: RemovedComment | ((info: Parameters<HttpResponseResolver<{ id: string }>>[0]) => Promise<RemovedComment> | RemovedComment), options?: RequestHandlerOptions) => {
+  return http.delete<{ id: string }>('*/api/comments/:id', async (info: Parameters<HttpResponseResolver<{ id: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRemoveCommentResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getSendCommentsMockHandler = (overrideResponse?: SendReply | ((info: Parameters<HttpResponseResolver<PathParams, SendInput>>[0]) => Promise<SendReply> | SendReply), options?: RequestHandlerOptions) => {
+  return http.post<PathParams, SendInput>('*/api/comments/send', async (info: Parameters<HttpResponseResolver<PathParams, SendInput>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSendCommentsResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getSaveDraftMockHandler = (overrideResponse?: void | ((info: Parameters<HttpResponseResolver<PathParams, DraftInput>>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.put<PathParams, DraftInput>('*/api/drafts', async (info: Parameters<HttpResponseResolver<PathParams, DraftInput>>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getSetThreadStatusMockHandler = (overrideResponse?: ThreadStatusReply | ((info: Parameters<HttpResponseResolver<{ id: string }, ThreadStatusInput>>[0]) => Promise<ThreadStatusReply> | ThreadStatusReply), options?: RequestHandlerOptions) => {
+  return http.patch<{ id: string }, ThreadStatusInput>('*/api/threads/:id', async (info: Parameters<HttpResponseResolver<{ id: string }, ThreadStatusInput>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSetThreadStatusResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getMarkThreadSeenMockHandler = (overrideResponse?: SeenReply | ((info: Parameters<HttpResponseResolver<{ id: string }>>[0]) => Promise<SeenReply> | SeenReply), options?: RequestHandlerOptions) => {
+  return http.post<{ id: string }>('*/api/threads/:id/seen', async (info: Parameters<HttpResponseResolver<{ id: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getMarkThreadSeenResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getPutConfigDisplayMockHandler = (overrideResponse?: DisplayReply | ((info: Parameters<HttpResponseResolver<PathParams, DisplayInput>>[0]) => Promise<DisplayReply> | DisplayReply), options?: RequestHandlerOptions) => {
+  return http.put<PathParams, DisplayInput>('*/api/config/display', async (info: Parameters<HttpResponseResolver<PathParams, DisplayInput>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPutConfigDisplayResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getMindstellaPreviewMock = () => [
   getGetRecordsMockHandler(),
   getGetCommentsMockHandler(),
+  getAddCommentMockHandler(),
   getGetEditsMockHandler(),
   getAddEditMockHandler(),
   getCancelEditMockHandler(),
   getSaveEditsMockHandler(),
   getPostOpenedMockHandler(),
-  getGetThreadsMockHandler()
+  getGetThreadsMockHandler(),
+  getUpdateCommentMockHandler(),
+  getRemoveCommentMockHandler(),
+  getSendCommentsMockHandler(),
+  getSaveDraftMockHandler(),
+  getSetThreadStatusMockHandler(),
+  getMarkThreadSeenMockHandler(),
+  getPutConfigDisplayMockHandler()
 ]

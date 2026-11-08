@@ -29,6 +29,7 @@ export const GetRecordsResponse = zod.looseObject({
 }))
 }).optional(),
   "display": zod.object({
+  "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']).optional(),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs'])).optional()
 }).optional()
 }),
@@ -127,6 +128,31 @@ export const GetCommentsResponse = zod.looseObject({
 
 
 /**
+ * @summary コメントか返信 1 件をレビュー中に溜める（元に戻すときは id と created を渡す）
+ */
+export const AddCommentBody = zod.object({
+  "target": zod.string().nullish(),
+  "loc": zod.union([zod.object({
+  "kind": zod.enum(['body', 'value']),
+  "start": zod.int().optional(),
+  "end": zod.int().optional(),
+  "key": zod.string().optional(),
+  "text": zod.string().optional()
+}),zod.null()]).optional(),
+  "body": zod.string(),
+  "thread": zod.string().nullish(),
+  "id": zod.string().optional(),
+  "created": zod.string().optional()
+})
+
+export const AddCommentResponse = zod.object({
+  "id": zod.string(),
+  "created": zod.string(),
+  "count": zod.int()
+})
+
+
+/**
  * @summary 保存待ちの編集を返す
  */
 export const GetEditsResponse = zod.looseObject({
@@ -209,4 +235,138 @@ export const GetThreadsResponse = zod.looseObject({
   "seen": zod.boolean()
 }))
 }))
+})
+
+
+/**
+ * @summary レビュー中のコメント 1 件の本文を書き換えるか、箇所を外す
+ */
+export const UpdateCommentParams = zod.object({
+  "id": zod.string()
+})
+
+export const UpdateCommentBody = zod.object({
+  "body": zod.string().optional(),
+  "loc": zod.null().optional()
+})
+
+export const UpdateCommentResponse = zod.object({
+  "id": zod.string(),
+  "body": zod.string(),
+  "loc": zod.union([zod.object({
+  "kind": zod.enum(['body', 'value']),
+  "start": zod.int().optional(),
+  "end": zod.int().optional(),
+  "key": zod.string().optional(),
+  "text": zod.string().optional()
+}),zod.null()]).optional()
+})
+
+
+/**
+ * @summary レビュー中のコメント 1 件を消し、元に戻すための中身を返す
+ */
+export const RemoveCommentParams = zod.object({
+  "id": zod.string()
+})
+
+export const RemoveCommentResponse = zod.object({
+  "id": zod.string(),
+  "target": zod.string().nullish(),
+  "loc": zod.union([zod.object({
+  "kind": zod.enum(['body', 'value']),
+  "start": zod.int().optional(),
+  "end": zod.int().optional(),
+  "key": zod.string().optional(),
+  "text": zod.string().optional()
+}),zod.null()]).optional(),
+  "thread": zod.string().nullish(),
+  "body": zod.string(),
+  "created": zod.string(),
+  "count": zod.int()
+})
+
+
+/**
+ * @summary チェックしたレビュー中の書き込みをスレッドへ移す
+ */
+export const SendCommentsBody = zod.object({
+  "ids": zod.array(zod.string())
+})
+
+export const SendCommentsResponse = zod.looseObject({
+  "sent": zod.string(),
+  "items": zod.array(zod.object({
+  "comment": zod.string(),
+  "thread": zod.string(),
+  "post": zod.string()
+})),
+  "entered": zod.boolean()
+})
+
+
+/**
+ * @summary コメントの入力欄の書きかけを向けた先ごとに保つ
+ */
+export const SaveDraftBody = zod.object({
+  "target": zod.string().nullish(),
+  "loc": zod.union([zod.object({
+  "kind": zod.enum(['body', 'value']),
+  "start": zod.int().optional(),
+  "end": zod.int().optional(),
+  "key": zod.string().optional(),
+  "text": zod.string().optional()
+}),zod.null()]).optional(),
+  "thread": zod.string().nullish(),
+  "body": zod.string()
+})
+
+export const SaveDraftResponse = zod.void()
+
+
+/**
+ * @summary 利用者がスレッドをクローズにするかオープンに戻す
+ */
+export const SetThreadStatusParams = zod.object({
+  "id": zod.string()
+})
+
+export const SetThreadStatusBody = zod.object({
+  "status": zod.enum(['open', 'closed']),
+  "reason": zod.string().nullish()
+})
+
+export const SetThreadStatusResponse = zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['open', 'closed']),
+  "changed": zod.boolean()
+})
+
+
+/**
+ * @summary 利用者が開いたスレッドの未読の書き込みを既読にする
+ */
+export const MarkThreadSeenParams = zod.object({
+  "id": zod.string()
+})
+
+export const MarkThreadSeenResponse = zod.object({
+  "id": zod.string(),
+  "seen": zod.array(zod.string())
+})
+
+
+/**
+ * @summary 見た目の既定と表示する種類の既定を config.yaml に書く
+ */
+export const PutConfigDisplayBody = zod.object({
+  "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']),
+  "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']))
+})
+
+export const PutConfigDisplayResponse = zod.object({
+  "display": zod.object({
+  "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']),
+  "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']))
+})
 })

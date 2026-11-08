@@ -6,7 +6,9 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 from playwright.sync_api import Locator, Page, expect
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from preview_a11y_checks import axe_rule_results
 from preview_body_link_helpers import build_body_link_workspace
 from preview_body_scroll_helpers import LONG_LINES_BODY, SCROLLABLE_REGION_RULE
@@ -14,13 +16,17 @@ from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_spa_helpers import open_spa
-from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeEdit, MakeItem, MakeWorkspace
+from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
 
 # 送る本文のスクロールの位置（px）
 SCROLLED_TOP = 600
 
 # 本文の高さの変化でブラウザが補正する位置のずれ（px）
 SCROLL_TOLERANCE = 10
+
+# 矢印でコードブロックを送り直す回数と、1 回ごとに待つ時間（ms）
+ARROW_SCROLL_ATTEMPTS = 5
+ARROW_SCROLL_WAIT_MS = 2000
 
 
 def test_draws_body_with_mdmark(page: Page, spa_preview: str) -> None:
@@ -119,18 +125,6 @@ LINKED_BODY = (
 # HTML の本文
 HTML_BODY = "<style>p { color: rgb(51, 51, 51); }</style>\n\n<h1>画面のモック</h1>\n<p>言い換えたい文</p>\n"
 
-# 子 4（#369）でコメントを移すまで出さない要素（読み上げの名前・文言）
-COMMENT_ELEMENTS = [
-    pytest.param("レビュー中のコメント", id="review_comments"),
-    pytest.param("新しい順", id="review_order"),
-    pytest.param("選んだ箇所にコメント", id="selection_entry"),
-    pytest.param("コメントを修正", id="row_edit"),
-    pytest.param("コメントを削除", id="row_remove"),
-    pytest.param("元に戻す", id="row_restore"),
-    pytest.param("続きを読む", id="row_more"),
-]
-
-
 def _panel(page: Page) -> Locator:
     """詳細パネルを返す。"""
     return page.get_by_role("complementary", name="詳細")
@@ -202,6 +196,19 @@ def test_options_visible(page: Page, spa_preview: str) -> None:
     expect(_panel(page).get_by_role("heading", name="案", exact=True)).to_have_count(0)
 
 
+def _scroll_by_arrow(page: Page, code: Locator) -> None:
+    """コードブロックへフォーカスを移して矢印で送り、フォーカスしたまま横に送れたかを待つ。読み込みで本文が描き直されて送った位置が消えたときは送り直す。"""
+    for _ in range(ARROW_SCROLL_ATTEMPTS):
+        code.focus()
+        page.keyboard.press("ArrowRight")
+        try:
+            page.wait_for_function("() => document.activeElement.matches(\".md pre[tabindex='0']\") && document.activeElement.scrollLeft > 0", timeout=ARROW_SCROLL_WAIT_MS)
+        except PlaywrightTimeoutError:
+            continue
+        return
+    raise AssertionError("矢印でコードブロックを横に送れませんでした")
+
+
 def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文のコードブロックは、長い行を折り返さずコードブロックの中だけで横に送り、フォーカスで止まって矢印で送れ、axe の `scrollable-region-focusable` に当たらない（正常系）。"""
     # 準備
@@ -209,17 +216,11 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
     open_spa(page, url, "?tab=docs&id=A-1")
     code = _panel(page).locator(".md pre[tabindex='0']").first
     expect(code).to_be_visible()
-    white_space = code.evaluate("e => getComputedStyle(e).whiteSpace")
     label = code.get_attribute("aria-label")
-    # 実行
-    code.focus()
-    page.keyboard.press("ArrowRight")
-    # 検証
-    expect(code).to_be_focused()
-    page.wait_for_function("() => document.activeElement.scrollLeft > 0")
-    assert white_space == "pre"
+    # 実行・検証
+    _scroll_by_arrow(page, code)
+    expect(code).to_have_css("white-space", "pre")
     assert label == "コード: text"
-    assert code.evaluate("e => e.scrollWidth > e.clientWidth")
     assert axe_rule_results(page, ".md pre[tabindex='0']", SCROLLABLE_REGION_RULE)["violations"] == []
 
 
@@ -268,12 +269,193 @@ def test_related_visible(page: Page, write_sample_preview: WriteSamplePreview) -
     expect(_panel(page).get_by_role("heading", name="後続の項目", exact=True)).to_be_visible()
 
 
-def test_comment_input_visible(page: Page, spa_preview: str) -> None:
-    """サーバーの配信で開いたときは、「今の画面でコメントする」のリンクを出す（正常系）。"""
-    # 準備・実行
-    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+# 詳細のコメントのテストの本文（3 行目と 5 行目の段落）
+COMMENT_BODY = "## 見出し\n\n一つ目の段落\n\n二つ目の段落\n"
+
+# 本文の中の文字が一致する段落を選び、選び終えたことを知らせる
+SELECT_PARAGRAPH_JS = """(text) => {
+  const block = [...document.querySelectorAll('.md [data-line-start]')].find((element) => element.textContent === text);
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  const selection = getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  block.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+}"""
+
+# 5 行を超えるコメントの本文
+LONG_COMMENT = "\n\n".join(f"{index} 行目のコメント" for index in range(1, 9))
+
+
+@pytest.fixture
+def comment_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
+    """D-1 へのレビュー中のコメント C-1（5 行目の箇所つき）・C-2・C-3（長い本文）を持つワークスペースの配信の URL とフォルダを返す。"""
+    return write_review_preview(
+        make_item("D-1", title="記録の形", status="未決定", body="D-1.md"),
+        make_item("D-2", title="画面の幅", status="保留"),
+        comments=(
+            make_comment("C-1", target="D-1", loc={"kind": "body", "start": 5, "end": 5, "text": "二つ目の段落"}, body="ここを直す"),
+            make_comment("C-2", target="D-1", body="D-2 と合わせたい"),
+            make_comment("C-3", target="D-1", body=LONG_COMMENT),
+        ),
+        bodies={"D-1.md": COMMENT_BODY},
+    )
+
+
+def _comments(page: Page) -> Locator:
+    """詳細パネルのレビュー中のコメントの行を上から返す。"""
+    return _panel(page).locator("li[data-comment]")
+
+
+def test_comment_input(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """コメントの入力で溜めると入力欄を空にし、レビュー中のコメントとコメントのボタンの件数を描き直す（正常系）。"""
+    # 準備
+    url, root = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    field = _panel(page).get_by_role("textbox", name="D-1 へのコメント")
+    # 実行
+    field.fill("全体を見直したい")
+    field.press("Control+Enter")
     # 検証
-    expect(_panel(page).get_by_role("link", name="今の画面でコメントする")).to_have_attribute("href", re.compile(r"/mindstella\.html#tab=decisions&id=D-1"))
+    expect(field).to_have_value("")
+    expect(_comments(page)).to_have_count(4)
+    expect(page.get_by_role("button", name=re.compile("レビュー中 4 件"))).to_be_visible()
+    items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert items[-1]["body"] == "全体を見直したい"
+    assert items[-1]["target"] == "D-1"
+
+
+def test_review_comments(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """その項目へのレビュー中のコメントを既定は新しい順に並べ、箇所と本文を出す（正常系）。"""
+    # 準備・実行
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 検証
+    expect(_panel(page).get_by_role("heading", name="レビュー中のコメント")).to_be_visible()
+    assert _comments(page).evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-3", "C-2", "C-1"]
+    expect(_comments(page).last).to_contain_text("本文 5 行目")
+    expect(_comments(page).last).to_contain_text("ここを直す")
+
+
+def test_review_comments_when_none(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """レビュー中のコメントが無い項目では、「レビュー中のコメントはありません。」を出す（正常系）。"""
+    # 準備・実行
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-2")
+    # 検証
+    expect(_panel(page)).to_contain_text("レビュー中のコメントはありません。")
+
+
+def test_review_order(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """並びの切り替えで古い順にして個人の上書きに残し、押したボタンのフォーカスを保つ（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 実行
+    _panel(page).get_by_role("button", name="コメントの並び: 新しい順").click()
+    # 検証
+    toggle = _panel(page).get_by_role("button", name="コメントの並び: 古い順")
+    expect(toggle).to_be_focused()
+    assert _comments(page).evaluate_all("rows => rows.map(r => r.dataset.comment)") == ["C-1", "C-2", "C-3"]
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').reviewOrder") == "oldest"
+
+
+def test_selection_comment(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """本文の文を選ぶと入口を出し、押すとコメントの入力に箇所を添えて入力欄へフォーカスを移す（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    expect(_panel(page).get_by_role("heading", name="レビュー中のコメント")).to_be_visible()
+    expect(_panel(page).locator(".md [data-line-start='5']")).to_have_text("二つ目の段落")
+    # 実行（本文の段落を選び終える）
+    page.evaluate(SELECT_PARAGRAPH_JS, "二つ目の段落")
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証
+    expect(_panel(page).get_by_role("textbox", name="D-1 へのコメント")).to_be_focused()
+    expect(_panel(page).locator("form[data-id='D-1']")).to_contain_text("本文 5 行目")
+
+
+def test_location_highlight(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """レビュー中の書き込みの行から箇所を持つ書き込みの項目を開くと、その箇所に印の色の地を付けて示す（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=overview&panel=comments&review=1")
+    # 実行
+    page.get_by_role("dialog", name="コメント").locator("li[data-comment='C-1']").get_by_role("button", name="D-1 記録の形").click()
+    # 検証
+    expect(_panel(page).locator(".loc-hit")).to_have_text("二つ目の段落")
+
+
+def test_row_edit(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """行の修正で本文を入力欄に切り替え、Ctrl+Enter で書き換えて本文に戻し、「行の修正」へフォーカスを戻す（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 実行
+    _comments(page).filter(has_text="D-2 と合わせたい").get_by_role("button", name="D-1 へのコメントを修正").click()
+    field = _panel(page).get_by_role("textbox", name="D-1 へのコメントの本文")
+    # 検証
+    expect(field).to_be_focused()
+    expect(field).to_have_attribute("aria-keyshortcuts", "Control+Enter")
+    # 実行
+    field.fill("D-2 と揃えたい")
+    field.press("Control+Enter")
+    # 検証
+    row = _panel(page).locator("li[data-comment='C-2']")
+    expect(row).to_contain_text("D-2 と揃えたい")
+    expect(row.get_by_role("button", name="D-1 へのコメントを修正")).to_be_focused()
+
+
+def test_row_edit_when_empty(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """空白だけの本文は送らず、入れてから直すよう `role="alert"` で出す（異常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    _panel(page).locator("li[data-comment='C-2']").get_by_role("button", name="D-1 へのコメントを修正").click()
+    # 実行
+    _panel(page).get_by_role("textbox", name="D-1 へのコメントの本文").fill("  ")
+    _panel(page).locator("li[data-comment='C-2']").get_by_role("button", name="修正", exact=True).click()
+    # 検証
+    expect(_panel(page).get_by_role("alert")).to_have_text("コメントを入れてから直してください。")
+
+
+def test_row_remove_and_undo(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """行の削除で行を「コメントを削除しました。」と「元に戻す」に置き換えてフォーカスを移し、「元に戻す」で戻す（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 実行
+    _panel(page).locator("li[data-comment='C-2']").get_by_role("button", name="D-1 へのコメントを削除").click()
+    # 検証
+    undo = _panel(page).get_by_role("button", name="元に戻す")
+    expect(undo).to_be_focused()
+    expect(_panel(page).get_by_role("status").filter(has_text="コメントを削除しました。")).to_be_visible()
+    # 実行
+    undo.click()
+    # 検証
+    row = _panel(page).locator("li[data-comment='C-2']")
+    expect(row).to_be_visible()
+    expect(row.get_by_role("button", name="D-1 へのコメントを修正")).to_be_focused()
+
+
+def test_row_body(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """行の本文を Markdown で描き、記録にある項目の ID はその項目を開くボタンにする（正常系）。"""
+    # 準備・実行
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 検証
+    expect(_panel(page).locator("li[data-comment='C-2'] button.idlink")).to_have_text("D-2")
+
+
+def test_row_more(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """5 行を超える行の本文は畳んで「続きを読む」を出し、押すと開く（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 実行
+    _panel(page).get_by_role("button", name="D-1 へのコメントの続きを読む").click()
+    # 検証
+    expect(_panel(page).get_by_role("button", name="D-1 へのコメントの本文を折りたたむ")).to_have_text("折りたたむ")
 
 
 def test_diff_point_visible(page: Page, write_history_preview: WriteReviewPreview) -> None:
@@ -423,27 +605,6 @@ def test_library_note_visible(page: Page, write_history_preview: WriteReviewPrev
     panel.locator(".md ins.df-blk").first.wait_for()
     # 検証
     expect(panel.get_by_text("読み込めなかったライブラリ: jsdiff")).to_have_count(0)
-
-
-@pytest.mark.parametrize("name", COMMENT_ELEMENTS)
-def test_comment_elements_hidden(page: Page, served_review_rows: tuple[str, Path], name: str) -> None:
-    """レビュー中のコメントと、その並び・行の操作・選んだ箇所の入口・示す箇所は、子 4（#369）で移すまで出さない（正常系）。"""
-    # 準備・実行
-    url, _ = served_review_rows
-    open_spa(page, url, "?tab=decisions&id=D-1")
-    # 検証
-    expect(_panel(page).get_by_text(name)).to_have_count(0)
-    expect(_panel(page).get_by_role("button", name=name)).to_have_count(0)
-    expect(_panel(page)).not_to_contain_text("案 A にする")
-
-
-def test_comment_location_hidden(page: Page, write_commented_preview: WriteReviewPreview) -> None:
-    """箇所を指すコメントがあっても、示す箇所を出さない（子 4（#369）で移すまで）（正常系）。"""
-    # 準備・実行
-    url, _ = write_commented_preview()
-    open_spa(page, url, "?tab=decisions&id=D-3")
-    # 検証
-    expect(_panel(page).locator("mark, .loc-hl")).to_have_count(0)
 
 
 def test_scroll_region_visible(page: Page, spa_preview: str) -> None:
