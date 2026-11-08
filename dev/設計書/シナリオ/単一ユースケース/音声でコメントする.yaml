@@ -16,8 +16,7 @@ priority: 中
 scenarios:
 - name: 正常シナリオ
   setup:
-  - &id001
-    name: Mock
+  - name: Mock
     description: voice-paste の代わりに、`POST /web/transcriptions` で音声と用語集のプリセットを受けて 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイク（音声のファイルを流す）を許した実際のブラウザで開く。描画のライブラリは CDN から読む
   - name: make_workspace
     description: 作成を済ませ、`config.yaml` が文字起こし後の挙動を持たず（既定の `send`）、用語集のプリセットに `開発` を選んだワークスペース
@@ -42,6 +41,9 @@ scenarios:
       SV->>VP: 音声と用語集のプリセットを渡して文字起こしを依頼する
       SV->>VP: 終わるまで状態を待つ
       VP-->>SV: 「案 A にする」
+      SV-->>P: 文字起こしの結果
+      P->>P: 入力欄のカーソルの位置に「案 A にする」を挿入する
+      P->>SV: 入力欄の全文「案 A にする」をその 1 件として送る
       SV->>WS: D-1 への「案 A にする」を、オープンのスレッドの最初の書き込みにする
       SV-->>P: 送った結果
       P-->>U: 送ったことを出し、元のボタンに戻す
@@ -55,7 +57,8 @@ scenarios:
   test: test_normal
 - name: 正常シナリオ（打ちかけの文字に続けて送信する）
   setup:
-  - *id001
+  - name: Mock
+    description: voice-paste の代わりに、`POST /web/transcriptions` で音声と用語集のプリセットを受けて 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイク（音声のファイルを流す）を許した実際のブラウザで開く。描画のライブラリは CDN から読む
   - name: make_workspace
     description: 作成を済ませ、文字起こし後の挙動が既定の `send` のワークスペース
   - name: 記録
@@ -107,9 +110,12 @@ scenarios:
       participant VP as voice-paste（偽のサーバー）
       participant WS as ワークスペース
       U->>P: 返信の入力のマイクのボタンを押し、話してから「文字起こし」を押す
-      P->>SV: 録音した音声を TH-1 への返信として送る
+      P->>SV: 録音した音声を送る
       SV->>VP: 文字起こしを依頼し、終わるまで待つ
       VP-->>SV: 「案 A にする」
+      SV-->>P: 文字起こしの結果
+      P->>P: 返信の入力欄のカーソルの位置に「案 A にする」を挿入する
+      P->>SV: 入力欄の全文「案 A にする」を TH-1 への返信 1 件として送る
       SV->>WS: TH-1 の末尾に「案 A にする」を足す
       SV-->>P: 送った結果
       P-->>U: TH-1 の末尾に「案 A にする」を出す
