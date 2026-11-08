@@ -1,0 +1,56 @@
+/* 476: コメント・返信の入力のマイクのボタンと、録音中・文字起こし中の並び */
+
+/* マイクのボタン: 「レビューに追加」と同じ大きさの、枠だけのアイコンのボタン */
+.send-mic { flex: none; width: calc(1lh + 18px); height: calc(1lh + 18px); line-height: 1.5; border-color: var(--border); color: var(--text); }
+/* マイクのボタンのホバー: 面だけを変える */
+.send-mic:hover { background: var(--hover); }
+/* 押せないマイクのボタン: フォーカスは受けたまま、面を沈めて押せないことを示す */
+.send-mic[aria-disabled="true"], .send-mic[aria-disabled="true"]:hover { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
+/* タッチが主な端末: タップ領域を 44px にする */
+@media (pointer: coarse) { .send-mic { width: 44px; height: 44px; } }
+
+/* 押せない理由のツールチップ: ボタンの上に出す（モックでは見本の状態だけ出したままにする） */
+.send-tip-wrap { position: relative; flex: none; display: inline-flex; }
+/* ツールチップの本体: 重ねる面に補足の文字で、ボタンの右端に揃える */
+.send-tip { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 2; width: max-content; max-width: 260px; padding: 6px 8px; background: var(--text); color: var(--bg); border-radius: var(--radius); font-size: var(--fs-xs); line-height: 1.5; box-shadow: var(--shadow-pop); }
+
+/* 録音中の 2 つのボタン: 「レビューに追加」とマイクの位置に、文字のボタンを並べる */
+.send-rec-actions { flex: none; display: flex; align-items: flex-end; gap: 6px; }
+/* 録音中の文字のボタン: 1 行の入力欄と同じ高さにする */
+.send-rec-actions .btn { height: calc(1lh + 18px); line-height: 1.5; white-space: nowrap; }
+/* 押せない文字起こし中のボタン: 面を沈め、処理中のカーソルにする */
+.send-rec-actions .btn:disabled { background: var(--surface-2); border-color: var(--border); color: var(--text-3); cursor: progress; }
+/* タッチが主な端末: タップ領域を 44px にする */
+@media (pointer: coarse) { .send-rec-actions .btn { height: 44px; } }
+
+/* 録音中の表示: 結果の行に、失敗の色の丸と経過の時間を出す（案 A） */
+.send-msg.recording { color: var(--text); }
+/* 録音中の丸: 色だけでなく「録音中」の文言でも伝える */
+.rec-dot { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--st-review); animation: rec-blink 1.2s ease-in-out infinite; }
+/* 録音中の丸の点滅 */
+@keyframes rec-blink { 50% { opacity: .35; } }
+/* 動きを減らす設定では点滅させない */
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+/* 経過の時間: 桁を揃える */
+.rec-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* 案 B: 録音中の表示を 2 つのボタンの左に並べる */
+.rec-inline { display: inline-flex; align-items: center; gap: 6px; height: calc(1lh + 18px); padding: 0 4px; font-size: var(--fs-small); color: var(--text); white-space: nowrap; }
+/* 案 B の丸: 行の中央に合わせる */
+.rec-inline .rec-dot { margin-top: 0; }
+
+/* 最も狭い幅: 録音中の 2 つのボタンを入力欄の下の行へ移し、右端に寄せる */
+@container (max-width: 360px) { .send-line.is-recording { flex-wrap: wrap; } .send-line.is-recording textarea { flex-basis: 100%; } .send-line.is-recording .send-rec-actions { margin-left: auto; } }
+/* コンテナの問い合わせの起点: 入力の幅で判定する */
+.send, .reply { container-type: inline-size; }
+
+/* 設定の画面の文字起こし後の挙動: 選択肢を縦に並べたラジオ */
+.pe-radios { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; border: 0; }
+/* ラジオの 1 行: 丸と名前を並べ、行全体を押せる大きさにする */
+.pe-radio { display: flex; align-items: center; gap: 8px; min-height: var(--target-min); font-size: var(--fs-body); }
+/* ラジオの丸: 印の色にする */
+.pe-radio input { flex: none; margin: 0; accent-color: var(--accent); }
+/* 保存待ちのラジオのまとまり: 入力欄と同じ破線の枠で囲む */
+.pe-field.is-pending .pe-radios { padding: 6px 10px; border: 1px dashed var(--accent); border-radius: var(--radius); }
+/* 候補を読めないセレクト: 面を沈めて押せないことを示す */
+.pe-field select.input:disabled { background: var(--surface-2); color: var(--text-2); cursor: not-allowed; }

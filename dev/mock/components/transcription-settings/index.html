@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>文字起こしの設定 | mindstella 部品のモック</title>
+  <!-- 文字: デザイン方針の Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークンと今のプレビューのスタイルに、この PR の設定の入力を重ねる -->
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../refs/476/assets/style.css">
+  <style>
+    /* カタログの本文: 画面の高さに縛らず、縦に流す */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文の幅と余白 */
+    main.content { display: block; max-width: var(--content-max); margin: 0 auto; padding: 28px var(--page-pad) 64px; overflow: visible; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台: 設定の画面の本文の幅 */
+    .stage { width: 640px; max-width: 100%; padding: 12px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--bg); }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; }
+  </style>
+</head>
+<body>
+  <main class="content">
+    <!-- パンくず -->
+    <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / transcription-settings</nav>
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">文字起こしの設定</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">設定の画面に足す「音声入力」のまとまり（文字起こし後の挙動と用語集のプリセット。PR #476）。</p>
+    <section class="cat-sec">
+      <h2>既定（設定を持たない）</h2>
+      <p>設定の画面の「変更履歴」のまとまりの後に「音声入力」のまとまりを足す。挙動の既定は「送信する」、プリセットの既定は「voice-paste の既定」（プリセットを渡さない）。</p>
+      <div class="stage"><form class="pe-form pe-ws-form" novalidate onsubmit="return false" aria-label="ワークスペースの設定"><fieldset class="pe-ws-group"><legend>音声入力</legend><div class="pe-field" data-key="transcription.action"><div class="pe-label-row"><span class="pe-label" id="ts-1-action-label">文字起こし後の挙動</span></div><div class="pe-radios" role="radiogroup" aria-labelledby="ts-1-action-label"><label class="pe-radio"><input type="radio" name="ts-1-action" value="send" checked>送信する</label><label class="pe-radio"><input type="radio" name="ts-1-action" value="insert">入力欄へ挿入する</label></div><p class="pe-hint">「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。</p></div><div class="pe-field" data-key="transcription.preset"><div class="pe-label-row"><label for="ts-1-preset" id="ts-1-preset-label">用語集のプリセット</label></div><select id="ts-1-preset" class="input" aria-describedby="ts-1-preset-hint"><option value="" selected>voice-paste の既定</option><option value="一般">一般</option><option value="開発">開発</option></select><p class="pe-hint" id="ts-1-preset-hint">文字起こしの補正に使用する用語集です。候補は voice-paste から取得します。</p></div></fieldset></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>書き換えた（保存待ち）</h2>
+      <p>挙動とプリセットを変えると、ほかの設定と同じく保存待ちに溜め、名前の右に保存待ちの印、入力を破線の枠にする。</p>
+      <div class="stage"><form class="pe-form pe-ws-form" novalidate onsubmit="return false" aria-label="ワークスペースの設定"><fieldset class="pe-ws-group"><legend>音声入力</legend><div class="pe-field is-pending" data-key="transcription.action"><div class="pe-label-row"><span class="pe-label" id="ts-2-action-label">文字起こし後の挙動</span><span class="pm pm-pending pm-compact" title="保存待ち"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg><span class="sr-only">保存待ち</span></span></div><div class="pe-radios" role="radiogroup" aria-labelledby="ts-2-action-label"><label class="pe-radio"><input type="radio" name="ts-2-action" value="send">送信する</label><label class="pe-radio"><input type="radio" name="ts-2-action" value="insert" checked>入力欄へ挿入する</label></div><p class="pe-hint">「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。</p></div><div class="pe-field is-pending" data-key="transcription.preset"><div class="pe-label-row"><label for="ts-2-preset" id="ts-2-preset-label">用語集のプリセット</label><span class="pm pm-pending pm-compact" title="保存待ち"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg><span class="sr-only">保存待ち</span></span></div><select id="ts-2-preset" class="input" aria-describedby="ts-2-preset-hint"><option value="">voice-paste の既定</option><option value="一般">一般</option><option value="開発" selected>開発</option></select><p class="pe-hint" id="ts-2-preset-hint">文字起こしの補正に使用する用語集です。候補は voice-paste から取得します。</p></div></fieldset></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>候補を読めない（voice-paste が起動していない）</h2>
+      <p>プリセットのセレクトを今の値のまま押せなくし、すぐ下に理由を出す。挙動は書き換えられる。</p>
+      <div class="stage"><form class="pe-form pe-ws-form" novalidate onsubmit="return false" aria-label="ワークスペースの設定"><fieldset class="pe-ws-group"><legend>音声入力</legend><div class="pe-field" data-key="transcription.action"><div class="pe-label-row"><span class="pe-label" id="ts-3-action-label">文字起こし後の挙動</span></div><div class="pe-radios" role="radiogroup" aria-labelledby="ts-3-action-label"><label class="pe-radio"><input type="radio" name="ts-3-action" value="send" checked>送信する</label><label class="pe-radio"><input type="radio" name="ts-3-action" value="insert">入力欄へ挿入する</label></div><p class="pe-hint">「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。</p></div><div class="pe-field" data-key="transcription.preset"><div class="pe-label-row"><label for="ts-3-preset" id="ts-3-preset-label">用語集のプリセット</label></div><select id="ts-3-preset" class="input" aria-describedby="ts-3-preset-hint" disabled><option value="開発" selected>開発</option></select><p class="pe-hint" id="ts-3-preset-hint"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg>voice-paste が起動していないため、候補を取得できません。voice-paste を起動してから設定の画面を開き直してください。</p></div></fieldset></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>狭い幅（390px）</h2>
+      <p>まとまりの中の並びは同じ。</p>
+      <div class="stage narrow"><form class="pe-form pe-ws-form" novalidate onsubmit="return false" aria-label="ワークスペースの設定"><fieldset class="pe-ws-group"><legend>音声入力</legend><div class="pe-field" data-key="transcription.action"><div class="pe-label-row"><span class="pe-label" id="ts-4-action-label">文字起こし後の挙動</span></div><div class="pe-radios" role="radiogroup" aria-labelledby="ts-4-action-label"><label class="pe-radio"><input type="radio" name="ts-4-action" value="send">送信する</label><label class="pe-radio"><input type="radio" name="ts-4-action" value="insert" checked>入力欄へ挿入する</label></div><p class="pe-hint">「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。</p></div><div class="pe-field" data-key="transcription.preset"><div class="pe-label-row"><label for="ts-4-preset" id="ts-4-preset-label">用語集のプリセット</label></div><select id="ts-4-preset" class="input" aria-describedby="ts-4-preset-hint"><option value="">voice-paste の既定</option><option value="一般">一般</option><option value="開発" selected>開発</option></select><p class="pe-hint" id="ts-4-preset-hint">文字起こしの補正に使用する用語集です。候補は voice-paste から取得します。</p></div></fieldset></form></div>
+    </section>
+  </main>
+</body>
+</html>
