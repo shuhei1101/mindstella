@@ -1,0 +1,21 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+exit 0
+
+$ npx lefthook@2.2.2 validate
+All good
+$ npx lefthook@2.2.2 dump
+pre-commit:
+  jobs:
+    - name: spa-build
+      run: npm run --silent build && test -z "$(git ls-files --others --exclude-standard -- plugins/mindstella/skills/mindmap/preview/spa)" && git diff --exit-code -- plugins/mindstella/skills/mindmap/preview/spa
+      glob:
+        - '{frontend/**/*,vite.config.ts,package.json,package-lock.json}'
