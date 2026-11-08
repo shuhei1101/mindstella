@@ -33,7 +33,7 @@ confirmations:
     decision: この端末に覚え、項目を移っても・開き直しても同じ開閉で出す（推奨案 A）
     decided_by: thumbs_up
     approver: shuhei1101
-    commit:
+    commit: 5f3b031e0c48397ba4c9748544c5069c98b4cfb4
     thread: https://github.com/shuhei1101/mindstella/pull/473#discussion_r4507005794
   - topic: 閉じた入力に書きかけが残っていることを示すか
     decision: 書きかけがあるときだけ、「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す（推奨案 B）
