@@ -1,0 +1,87 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が揃っているため対象外
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: lefthook のジョブを除外するだけで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 開発の仕組みの変更で、業務フローは変わらない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 利用者の操作は変わらない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: 外部インターフェースは変わらない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えない（判定フローチャート『画面設計要否』）
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: クラス・関数の構成は変わらない。React.yaml の lefthook.yml の行はドキュメント修正で直す
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: ドキュメント修正
+    status: todo
+    note: 外部ライブラリ『lefthook』と目次・README、アーキテクチャ図、テスト実行方法、モジュール構成『プレビュー/React』の lefthook の記述
+  - process: 単体テスト作成
+    status: skipped
+    reason: Git フックの設定の変更で、単体テストの対象になるコードが無い
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: 実装
+    status: todo
+    note: lefthook.yml の pre-commit から lint・typecheck のジョブを除外し、spa-build だけを残す
+  - process: 結合テスト作成
+    status: skipped
+    reason: 製品の動作を変えない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
+  - process: E2E テスト作成
+    status: skipped
+    reason: 製品の動作を変えない
+    updated_by: planner
+    updated_at: '2026-11-08T15:09:23.001385+00:00'
