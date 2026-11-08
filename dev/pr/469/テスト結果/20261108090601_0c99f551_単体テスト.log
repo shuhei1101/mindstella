@@ -1,0 +1,34 @@
+# 状態の札の修正（0c99f551）に関係する単体テスト。1 ファイルずつ（--pool=forks --maxWorkers=1）流した
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/shared/thread-row.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  08:42:51
+   Duration  35.06s (environment 63%, import 19%, setup 15%, transform 2%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/thread/thread-view.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  08:43:28
+   Duration  48.07s (environment 47%, import 33%, setup 10%, transform 7%, tests 2%)
+
+
+$ npx vitest run --pool=forks --maxWorkers=1 frontend/src/features/comments/comments-panel/comments-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-comments-and-display-settings
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  08:44:16
+   Duration  66.45s (import 46%, environment 33%, transform 13%, setup 7%, tests 1%)
+
