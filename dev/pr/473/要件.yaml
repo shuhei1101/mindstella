@@ -33,3 +33,6 @@ scope_out:
   - item: コメント・返信の入力へのマイクのボタンの追加
     reason: 要望に含まれない。同じ入力欄の右にボタンが並ぶため、配置はこの PR の並びに合わせる
     plan: '#402'
+  - item: Storybook の今の画面のストーリーで出る `Cannot use 'import.meta' outside a module` のエラー（`.storybook/main.js` の `componentScripts()` が `preview/spa/` のバンドルを module でない script として読み込む）
+    reason: Storybook の設定の不具合で、今回の要望に含まれない（reviewer の対象外の逸脱の報告）
+    plan: '#474'
