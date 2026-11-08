@@ -35,7 +35,7 @@ docs:
     status: todo
   - page: docs/リファレンス/動作環境.md
     new: false
-    change: 音声入力に要る条件（voice-paste がブラウザの機能を組み込んで起動していること、マイクを使える HTTPS か localhost のページで開くこと）を任意の条件として追加する
+    change: 音声入力に要る条件（文字起こしのサービス（voice-paste）が音声を受け付ける状態で起動していること、マイクを使える HTTPS か localhost のページで開くこと、常駐サーバーを WSL で動かし voice-paste を Windows で動かすときは WSL のネットワークを mirrored にすること）を任意の条件として追加する
     status: todo
   - page: docs/リファレンス/コマンド.md
     new: false
