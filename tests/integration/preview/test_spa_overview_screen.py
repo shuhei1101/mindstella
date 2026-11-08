@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from preview_edit_helpers import edit_edits, edit_items
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_settings_helpers import open_settings
@@ -560,7 +560,7 @@ def test_topbar_pending_hidden_when_nothing(write_edit_preview: WriteReviewPrevi
 
 
 def test_topbar_comments(write_sample_preview: WriteSamplePreview, page: Page) -> None:
-    """コメントのボタンを出し、押すと概要を開く（パネルは今の画面で開く）（正常系）。"""
+    """コメントのボタンを出し、押すと SPA の中でコメントの一覧を開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     open_spa(page, url)
@@ -569,7 +569,8 @@ def test_topbar_comments(write_sample_preview: WriteSamplePreview, page: Page) -
     page.click('header button[aria-label^="コメント"]')
     # 検証
     assert label == "コメント（レビュー中 0 件）"
-    assert _legacy_hash(page) == {"tab": "overview"}
+    page.wait_for_url("**panel=comments**")
+    expect(page.get_by_role("dialog", name="コメント")).to_be_visible()
 
 
 def test_diff_marks_not_shown(write_sample_preview: WriteSamplePreview, page: Page) -> None:
