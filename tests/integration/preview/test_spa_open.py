@@ -437,8 +437,9 @@ def test_normal_when_thread_replied_and_closed(
         make_item("D-1"),
         threads=(make_thread("TH-1", make_post("TH-1-1", body="質問"), make_post("TH-1-2", author="ai", body="答え", seen=False), summary="相談"),),
     )
-    # 実行（開く）
-    open_spa(page, url, "?panel=comments&thread=TH-1")
+    # 実行（開く。既読にする要求の応答を待つ）
+    with page.expect_response(lambda response: response.url.endswith("/api/threads/TH-1/seen") and response.request.method == "POST"):
+        open_spa(page, url, "?panel=comments&thread=TH-1")
     panel = page.get_by_role("dialog", name="コメント")
     # 検証
     expect(page.locator(COMMENTS_BUTTON)).to_have_attribute("aria-label", "コメント（レビュー中 0 件）", timeout=UPDATE_TIMEOUT_MS)

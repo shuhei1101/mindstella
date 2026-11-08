@@ -14,8 +14,8 @@ NARROW_POST_RATIO = 0.9
 
 POST = "#storybook-root > article"
 
-# 本文が mdmark で描き終わったか（本文を持たない記録の行は待たない）
-BODY_RENDERED_JS = "() => !document.querySelector('#storybook-root [data-part=body]') || document.querySelector('#storybook-root [data-part=body] .md') !== null"
+# 本文が mdmark で描き終わり、mermaid を読み終えた後の描き直しも済んだか（本文を持たない記録の行は待たない）
+BODY_RENDERED_JS = "() => !document.querySelector('#storybook-root [data-part=body]') || (document.querySelector('#storybook-root [data-part=body] .md') !== null && window.mermaid !== undefined)"
 
 
 @pytest.fixture
