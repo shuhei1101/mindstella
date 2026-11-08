@@ -198,7 +198,6 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
     open_spa(page, url, "?tab=docs&id=A-1")
     code = _panel(page).locator(".md pre[tabindex='0']").first
     expect(code).to_be_visible()
-    white_space = code.evaluate("e => getComputedStyle(e).whiteSpace")
     label = code.get_attribute("aria-label")
     # 実行
     code.focus()
@@ -206,7 +205,7 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
     # 検証
     expect(code).to_be_focused()
     page.wait_for_function("() => document.activeElement.scrollLeft > 0")
-    assert white_space == "pre"
+    expect(code).to_have_css("white-space", "pre")
     assert label == "コード: text"
     assert code.evaluate("e => e.scrollWidth > e.clientWidth")
     assert axe_rule_results(page, ".md pre[tabindex='0']", SCROLLABLE_REGION_RULE)["violations"] == []
