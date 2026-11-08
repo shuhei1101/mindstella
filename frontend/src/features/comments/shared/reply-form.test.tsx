@@ -15,6 +15,9 @@ describe("ReplyForm", () => {
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
     // 検証
     expect(onSubmit).toHaveBeenCalledWith("TH-1", "案 A にする");
+    const submit = screen.getByRole("button", { name: "レビューに追加" });
+    expect(submit).toHaveTextContent(/^$/);
+    expect(submit).toHaveAttribute("title", "レビューに追加（Ctrl+Enter）");
   });
 
   // 溜めている（正常系）

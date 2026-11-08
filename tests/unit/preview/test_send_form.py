@@ -14,24 +14,38 @@ OBSERVE_SCRIPT = """(props) => {
     const noop = () => {};
     const form = MindmapPreview.sendForm({
         ...props,
-        on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop},
+        on: {input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop, toggle: noop},
     });
     document.body.append(form);
     const textarea = form.querySelector("textarea");
     const submit = form.querySelector('button[type="submit"]');
     const status = form.querySelector('[role="status"]');
-    const buttonLabels = [...form.querySelectorAll("button")].map(
-        (button) => button.textContent.trim()
+    const buttonNames = [...form.querySelectorAll("button")].map(
+        (button) => button.getAttribute("aria-label") ?? button.textContent.trim()
     );
     return {
         submitDisabled: submit.disabled,
         readOnly: textarea.readOnly,
         invalid: textarea.getAttribute("aria-invalid"),
-        hasCopy: buttonLabels.includes("本文を写す"),
+        hasCopy: buttonNames.includes("本文をコピー"),
         describedByStatus: status !== null && textarea.getAttribute("aria-describedby") === status.id,
         statusText: status === null ? "" : status.textContent,
+        submitButton: {
+            text: submit.textContent.trim(),
+            label: submit.getAttribute("aria-label"),
+            title: submit.getAttribute("title"),
+            sameRowAsTextarea: submit.parentElement === textarea.parentElement,
+        },
     };
 }"""
+
+# アイコンだけの「レビューに追加」のボタンの属性（状態によらず同じ）
+EXPECTED_SUBMIT_BUTTON = {
+    "text": "",
+    "label": "レビューに追加",
+    "title": "レビューに追加（Ctrl+Enter）",
+    "sameRowAsTextarea": True,
+}
 
 
 @pytest.mark.parametrize(
@@ -118,8 +132,10 @@ def test_send_form(
     observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
     # 検証
     status_text = observed.pop("statusText")
+    submit_button = observed.pop("submitButton")
     assert observed == expected
     assert expected_text in status_text
+    assert submit_button == EXPECTED_SUBMIT_BUTTON
 
 
 # 添えた箇所と項目を指さない形を見て返す JavaScript（部品を作って文書に置き、× を押して on.unquote の回数も数える）
@@ -129,7 +145,7 @@ LOCATION_SCRIPT = """(props) => {
     const form = MindmapPreview.sendForm({
         ...props,
         on: {
-            input: noop, save: noop, copy: noop, focus: noop, blur: noop,
+            input: noop, save: noop, copy: noop, focus: noop, blur: noop, toggle: noop,
             unquote: () => {
                 unquoteCalls += 1;
             },
@@ -138,9 +154,7 @@ LOCATION_SCRIPT = """(props) => {
     document.body.append(form);
     const textarea = form.querySelector("textarea");
     const buttons = [...form.querySelectorAll("button")];
-    const unquote = buttons.find(
-        (button) => /×|外/.test(button.textContent + (button.getAttribute("aria-label") ?? ""))
-    );
+    const unquote = buttons.find((button) => button.getAttribute("aria-label") === "箇所を外す");
     if (unquote !== undefined) unquote.click();
     return {
         text: form.textContent,
@@ -148,7 +162,7 @@ LOCATION_SCRIPT = """(props) => {
             (label) => label.offsetParent !== null && label.textContent.trim() !== ""
         ),
         ariaLabel: textarea.getAttribute("aria-label"),
-        hasSubmit: buttons.some((button) => button.textContent.trim() === "レビューに追加"),
+        hasSubmit: buttons.some((button) => button.getAttribute("aria-label") === "レビューに追加"),
         rows: textarea.rows,
         unquoteCalls,
     };
@@ -232,7 +246,7 @@ def test_send_form_when_ctrl_enter(
             const form = MindmapPreview.sendForm({
                 target: "D-1", body: "案 A にする", status,
                 on: {
-                    input: noop, unquote: noop, copy: noop, focus: noop, blur: noop,
+                    input: noop, unquote: noop, copy: noop, focus: noop, blur: noop, toggle: noop,
                     save: (body) => saved.push(body),
                 },
             });
@@ -248,6 +262,105 @@ def test_send_form_when_ctrl_enter(
     )
     # 検証
     assert saved == expected_saved
+
+
+# 開閉のボタンと閉じた形を見て返す JavaScript（部品を作って文書に置き、開閉のボタンを押して on.toggle に渡った値を集める）
+OPEN_SCRIPT = """(props) => {
+    const noop = () => {};
+    const toggled = [];
+    const form = MindmapPreview.sendForm({
+        ...props,
+        on: {
+            input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop,
+            toggle: (open) => toggled.push(open),
+        },
+    });
+    document.body.append(form);
+    const toggle = form.querySelector("button[aria-expanded]");
+    const body = form.querySelector(".send-body");
+    if (toggle !== null) toggle.click();
+    return {
+        hasToggle: toggle !== null,
+        expanded: toggle === null ? null : toggle.getAttribute("aria-expanded"),
+        label: toggle === null ? null : toggle.getAttribute("aria-label"),
+        controlsBody: toggle !== null && body !== null && toggle.getAttribute("aria-controls") === body.id,
+        bodyHidden: body === null ? null : body.hidden,
+        hasDraftMark: form.querySelector(".send-head")?.textContent.includes("書きかけ") ?? false,
+        toggled,
+    };
+}"""
+
+
+@pytest.mark.parametrize(
+    ("props", "expected"),
+    [
+        pytest.param(
+            {"target": "D-022", "open": True},
+            {
+                "hasToggle": True,
+                "expanded": "true",
+                "label": "コメントの入力を閉じる",
+                "controlsBody": True,
+                "bodyHidden": False,
+                "hasDraftMark": False,
+                "toggled": [False],
+            },
+            id="open",
+        ),
+        pytest.param(
+            {"target": "D-022", "open": False},
+            {
+                "hasToggle": True,
+                "expanded": "false",
+                "label": "コメントの入力を開く",
+                "controlsBody": True,
+                "bodyHidden": True,
+                "hasDraftMark": False,
+                "toggled": [True],
+            },
+            id="closed",
+        ),
+        pytest.param(
+            {"target": "D-022", "open": False, "body": "案 A にする"},
+            {
+                "hasToggle": True,
+                "expanded": "false",
+                "label": "コメントの入力を開く",
+                "controlsBody": True,
+                "bodyHidden": True,
+                "hasDraftMark": True,
+                "toggled": [True],
+            },
+            id="closed_with_draft",
+        ),
+        pytest.param(
+            {"target": None},
+            {
+                "hasToggle": False,
+                "expanded": None,
+                "label": None,
+                "controlsBody": False,
+                "bodyHidden": None,
+                "hasDraftMark": False,
+                "toggled": [],
+            },
+            id="no_target",
+        ),
+    ],
+)
+def test_send_form_when_open(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    props: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """開閉のボタンと閉じた形（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(OPEN_SCRIPT, props)
+    # 検証
+    assert observed == expected
 
 
 @pytest.mark.parametrize(
