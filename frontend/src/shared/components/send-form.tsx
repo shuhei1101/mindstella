@@ -138,7 +138,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   };
 
   return (
-    <form noValidate data-id={target ?? undefined} className={cn("grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
+    <form noValidate data-id={target ?? undefined} className={cn("@container grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
       {target === null ? null : (
         <label htmlFor={fieldId} className="text-small text-muted-foreground">
           <span className="font-mono">{target}</span> へのコメント
@@ -174,8 +174,8 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
         onKeyDown={handleKeyDown}
       />
       {folded ? null : (
-        <div className="flex items-start gap-2">
-          <p id={messageId} role="status" className="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground">
+        <div className="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end">
+          <p id={messageId} role="status" className="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden">
             <ResultMessage status={shown} count={count} detail={detail} showSpinner={showSpinner} onCopy={() => onCopyBody?.(body)} />
           </p>
           <Button type="submit" title="レビューに追加（Ctrl+Enter）" disabled={status === "saving"}>

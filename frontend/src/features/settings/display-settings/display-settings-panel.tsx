@@ -51,7 +51,7 @@ export const DisplaySettingsPanel = () => {
     <>
       <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40" onClick={close} />
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
-      <aside
+      <section
         role="dialog"
         aria-modal="true"
         aria-label="表示の設定"
@@ -101,7 +101,7 @@ export const DisplaySettingsPanel = () => {
             }}
           />
         </div>
-      </aside>
+      </section>
       <SettingsConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

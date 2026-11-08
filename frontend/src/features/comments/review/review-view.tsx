@@ -237,12 +237,12 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                         <>
                           {content}
                           <div className="flex flex-wrap items-center gap-1">
+                            {toggleButton}
                             {item.thread === null ? (
                               <Button variant="ghost" onClick={() => { onOpenThread(item.id); }}>
                                 スレッドを開く
                               </Button>
                             ) : null}
-                            {toggleButton}
                           </div>
                         </>
                       )}

@@ -15,6 +15,14 @@ const meta = {
   title: "Shared/ReviewBodyFold",
   component: ReviewBodyFold,
   args: { id: "C-51", label: "項目を指さないコメント", body: "", open: false, onToggle: fn(), onOpenItem: fn(), onOpenChangeSet: fn(), children: (content, toggle) => <>{content}{toggle}</> },
+  // コメントの一覧のパネルと同じ幅に置く（見た目の行の数がパネルの幅で決まる）
+  decorators: [
+    (Story) => (
+      <div className="w-96 max-w-full">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof ReviewBodyFold>;
 
 export default meta;

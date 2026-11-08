@@ -74,13 +74,13 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, o
     }
   };
   return (
-    <form noValidate className="grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
+    <form noValidate className="@container grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
       <label htmlFor={fieldId} className="text-small text-muted-foreground">
         返信
       </label>
       <Textarea id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={saving} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content max-h-48 resize-none" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
-      <div className="flex items-start gap-2">
-        <p id={messageId} role="status" className="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground">
+      <div className="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end">
+        <p id={messageId} role="status" className="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden">
           <ReplyResult status={status} count={count} detail={detail} />
         </p>
         <Button type="submit" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving || body.trim() === ""}>

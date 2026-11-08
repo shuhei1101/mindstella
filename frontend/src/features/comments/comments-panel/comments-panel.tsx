@@ -154,7 +154,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
     <>
       {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40" onClick={close} />}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
-      <aside
+      <section
         role="dialog"
         aria-modal={!pinned}
         aria-label="コメント"
@@ -169,7 +169,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
       >
         {header}
         {body}
-      </aside>
+      </section>
     </>
   );
 };
