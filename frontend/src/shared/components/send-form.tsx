@@ -97,12 +97,66 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
   return null;
 };
 
+/** 入力欄の形ごとのクラス（畳んだ形は 1 行のまま伸ばさない） */
+const FIELD_CLASS = {
+  folded: "field-sizing-fixed h-8 resize-none overflow-hidden py-1",
+  open: "field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11",
+} as const;
+
+/** 入力欄の `aria-describedby`（畳んだ形は結果を出さないので指さない。添えた箇所があれば箇所も指す） */
+const describedByOf = (folded: boolean, locId: string | null, messageId: string): string | undefined => {
+  if (folded) return undefined;
+  return locId === null ? messageId : `${locId} ${messageId}`;
+};
+
+/** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
+const FormHead = ({ target, fieldId, bodyId, open, hasDraft, onToggleOpen }: { target: string; fieldId: string; bodyId: string; open: boolean; hasDraft: boolean; onToggleOpen?: (open: boolean) => void }) => {
+  const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
+  const name = (
+    <>
+      <span className="font-mono">{target}</span> へのコメント
+    </>
+  );
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {open ? (
+        <label htmlFor={fieldId} className="min-w-0 truncate text-small text-muted-foreground">
+          {name}
+        </label>
+      ) : (
+        <span className="min-w-0 truncate text-small text-muted-foreground">{name}</span>
+      )}
+      {!open && hasDraft ? (
+        <span className="flex shrink-0 items-center gap-1 text-small text-muted-foreground">
+          <Icon name="edit" />
+          書きかけ
+        </span>
+      ) : null}
+      <Button variant="ghost" size="icon" className="ml-auto size-6 shrink-0" aria-expanded={open} aria-controls={bodyId} aria-label={toggleLabel} title={toggleLabel} onClick={() => onToggleOpen?.(!open)}>
+        <Icon name="chev" className={open ? "rotate-90" : "-rotate-90"} />
+      </Button>
+    </div>
+  );
+};
+
+/** 添えた箇所（名前・選んだ文・外す ×） */
+const LocationChip = ({ loc, id, onClearLoc }: { loc: Location; id: string; onClearLoc?: () => void }) => (
+  <div id={id} className="grid gap-1 rounded-control bg-muted p-2">
+    <div className="flex items-center gap-1">
+      <span className="flex-1 text-small font-medium">{locationLabel(loc)}</span>
+      <Button variant="ghost" size="icon" aria-label="箇所を外す" title="箇所を外す" onClick={onClearLoc}>
+        <Icon name="x" />
+      </Button>
+    </div>
+    <blockquote className="m-0 line-clamp-3 text-small text-muted-foreground">{loc.text}</blockquote>
+  </div>
+);
+
 export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen }: SendFormProps) => {
   const fieldId = useId();
   const messageId = `${fieldId}-msg`;
   const locId = `${fieldId}-loc`;
   const bodyId = `${fieldId}-body`;
-  const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
   const folded = collapsed && target === null;
   // 空白だけで溜めようとしたか（次に書き換えるまで出す）
   const [empty, setEmpty] = useState(false);
@@ -145,6 +199,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
     if (next === null || !event.currentTarget.contains(next)) onBlur?.(body);
   };
 
+  const fieldClass = folded ? FIELD_CLASS.folded : FIELD_CLASS.open;
   // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行。結果は行の下に幅いっぱいで出す
   const field = (
     <Textarea
@@ -152,9 +207,9 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
       name="body"
       rows={1}
       value={body}
-      className={cn("aria-invalid:border-st-review", folded ? "field-sizing-fixed h-8 resize-none overflow-hidden py-1" : "field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11")}
+      className={cn("aria-invalid:border-st-review", fieldClass)}
       aria-label={target === null ? label : undefined}
-      aria-describedby={folded ? undefined : target !== null && loc !== null ? `${locId} ${messageId}` : messageId}
+      aria-describedby={describedByOf(folded, target !== null && loc !== null ? locId : null, messageId)}
       aria-keyshortcuts="Control+Enter"
       aria-invalid={shown === "empty" ? true : undefined}
       readOnly={status === "saving"}
@@ -191,38 +246,9 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
         </>
       ) : (
         <>
-          <div className="flex min-w-0 items-center gap-2">
-            {open ? (
-              <label htmlFor={fieldId} className="min-w-0 truncate text-small text-muted-foreground">
-                <span className="font-mono">{target}</span> へのコメント
-              </label>
-            ) : (
-              <span className="min-w-0 truncate text-small text-muted-foreground">
-                <span className="font-mono">{target}</span> へのコメント
-              </span>
-            )}
-            {!open && body.trim() !== "" ? (
-              <span className="flex shrink-0 items-center gap-1 text-small text-muted-foreground">
-                <Icon name="edit" />
-                書きかけ
-              </span>
-            ) : null}
-            <Button variant="ghost" size="icon" className="ml-auto size-6 shrink-0" aria-expanded={open} aria-controls={bodyId} aria-label={toggleLabel} title={toggleLabel} onClick={() => onToggleOpen?.(!open)}>
-              <Icon name="chev" className={open ? "rotate-90" : "-rotate-90"} />
-            </Button>
-          </div>
+          <FormHead target={target} fieldId={fieldId} bodyId={bodyId} open={open} hasDraft={body.trim() !== ""} onToggleOpen={onToggleOpen} />
           <div id={bodyId} hidden={!open} className="contents">
-            {loc !== null ? (
-              <div id={locId} className="grid gap-1 rounded-control bg-muted p-2">
-                <div className="flex items-center gap-1">
-                  <span className="flex-1 text-small font-medium">{locationLabel(loc)}</span>
-                  <Button variant="ghost" size="icon" aria-label="箇所を外す" title="箇所を外す" onClick={onClearLoc}>
-                    <Icon name="x" />
-                  </Button>
-                </div>
-                <blockquote className="m-0 line-clamp-3 text-small text-muted-foreground">{loc.text}</blockquote>
-              </div>
-            ) : null}
+            {loc !== null ? <LocationChip loc={loc} id={locId} onClearLoc={onClearLoc} /> : null}
             {line}
             {message}
           </div>
