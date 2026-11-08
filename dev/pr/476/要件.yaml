@@ -1,0 +1,43 @@
+use_cases:
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/設定の更新.yaml
+    impact: changed
+    detail: 文字起こし後の挙動（送信する・入力欄へ挿入する）と用語集のプリセットを設定で選べるようにする
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/項目へコメントする.yaml
+    impact: run_only
+    detail: コメントの入力にマイクのボタンが加わるため、キーボードでのコメントが今までどおり溜まるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/スレッドで話す.yaml
+    impact: run_only
+    detail: 返信の入力にマイクのボタンが加わるため、キーボードでの返信が今までどおり溜まるかを確かめる
+    depends_on: []
+docs:
+  - page: docs/使い方/プレビューを見る.md
+    new: false
+    change: コメント・返信の入力のマイクのボタンで録音し、文字起こして送信・挿入する操作と、マイクのボタンを押せないときの理由を追加する
+    status: todo
+  - page: docs/リファレンス/ワークスペースの書式.md
+    new: false
+    change: config.yaml に文字起こし後の挙動（send / insert）と用語集のプリセットのキーを追加する
+    status: todo
+  - page: docs/リファレンス/動作環境.md
+    new: false
+    change: 音声入力に要る条件（voice-paste がブラウザの機能を組み込んで起動していること、マイクを使える HTTPS か localhost のページで開くこと）を任意の条件として追加する
+    status: todo
+  - page: docs/リファレンス/コマンド.md
+    new: false
+    change: update_settings が書き換える設定のキーに、文字起こしの設定を追加する。voice-paste の接続先を環境変数で持つ場合は、起動スクリプトの環境変数にも追加する
+    status: todo
+scope_out:
+  - item: voice-paste 側の変更（/web/ の下で Origin の無い POST を受け付ける）
+    reason: 別のリポジトリの変更で、shuhei1101/voice-paste#256 で解消済み
+    plan: none
+  - item: レビュー中のコメント・返信の書き換えの入力へのマイクのボタン
+    reason: Issue の対象は新しいコメント・返信の入力で、書き換えの入力は含まれないと判断した。含めるかは単一ユースケース設計のレビューで確定する
+    plan: none
+  - item: 配る書き出し（export）の HTML での音声入力
+    reason: サーバーが無く文字起こしを依頼できないため、マイクのボタンを押せなくするだけにする
+    plan: none
