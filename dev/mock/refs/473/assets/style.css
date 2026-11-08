@@ -25,3 +25,8 @@
 .send > .send-msg { min-height: 0; padding-top: 0; }
 /* 結果が無い結果の行: 行を出さない */
 .send > .send-msg:empty { display: none; }
+
+/* 本文のコピー: 理由の下に置くアイコンだけのボタン。左端を理由の文の頭に合わせる */
+.send-copy-icon { width: var(--target-min); height: var(--target-min); margin-left: -4px; }
+/* 本文のコピーのアイコン: 結果の行の印と同じ大きさにし、文字の色にする */
+.send-msg .send-copy-icon svg.icon { width: 14px; height: 14px; margin-top: 0; color: currentColor; }

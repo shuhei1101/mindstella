@@ -40,8 +40,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-08T15:52:57.664054+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: dev/mock/components/send-form・reply-form
+    updated_by: planner
+    updated_at: '2026-11-08T16:22:45.999435+00:00'
   - process: インターフェース定義設計
     status: skipped
     reason: サーバーの API と画面の開き方を変えない
@@ -65,7 +67,7 @@ tasks:
     status: todo
   - process: 結合テスト作成
     status: todo
-    note: tests/integration/storybook・storybook_react の send-form・reply-form のストーリーのテスト
+    note: tests/integration/storybook・storybook_react の send-form・reply-form のストーリーのテストと、tests/integration/preview/test_detail_panel_screen.py の「本文を写す」の期待値
   - process: E2E テスト作成
     status: skipped
     reason: E2E は読み上げの名前「レビューに追加」でボタンを押しており、名前を変えないため変更しない

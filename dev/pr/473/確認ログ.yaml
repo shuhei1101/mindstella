@@ -1,0 +1,19 @@
+confirmations:
+  - topic: コメント・返信の入力のモックへの合意
+    decision: モックのとおりにする（推奨案 A）。返信で、「本文を写す」をコピーのアイコンだけのボタンにする（再度の確認は不要）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 0ce000f832303be908c1a00f4d289c1e8a98778e
+    thread: https://github.com/shuhei1101/mindstella/pull/473#discussion_r4506881092
+  - topic: 入力欄が複数行に伸びたときのボタンの縦の位置
+    decision: 入力欄の下端に合わせる（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 0ce000f832303be908c1a00f4d289c1e8a98778e
+    thread: https://github.com/shuhei1101/mindstella/pull/473#discussion_r4506882068
+  - topic: 「レビューに追加」のボタンのアイコン
+    decision: 今と同じ吹き出し（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 0ce000f832303be908c1a00f4d289c1e8a98778e
+    thread: https://github.com/shuhei1101/mindstella/pull/473#discussion_r4506882500
