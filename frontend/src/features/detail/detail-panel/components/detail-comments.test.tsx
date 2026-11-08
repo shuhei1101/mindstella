@@ -93,7 +93,7 @@ describe("DetailComments", () => {
     // 検証
     const stored = (): unknown => (JSON.parse(localStorage.getItem("mindmap-preview") ?? "{}") as Record<string, unknown>)["commentFormClosed"];
     expect(stored()).toBe(true);
-    await within(panel).findByText(/A-2/);
+    await within(panel).findByRole("heading", { name: "A-2の題" });
     expect(within(panel).queryByRole("textbox", { name: /A-2 へのコメント/ })).toBeNull();
     expect(within(panel).getByRole("button", { name: "コメントの入力を開く" })).toBeInTheDocument();
     // 実行（閉じたまま A-1 の本文を選んで入口を押す）
