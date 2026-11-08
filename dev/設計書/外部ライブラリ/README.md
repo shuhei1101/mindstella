@@ -38,7 +38,7 @@
 | [orval](./orval.yaml) | OpenAPI から API の呼び出し・query・Zod・MSW を生成する（開発用） |
 | [msw](./msw.yaml) | 単体テストとストーリーで API の応答を差し替える（開発用） |
 | [eslint](./eslint.yaml) | プレビュー（React）のソースを規則で検査する（開発用） |
-| [lefthook](./lefthook.yaml) | commit の前に lint と型検査を流す（開発用） |
+| [lefthook](./lefthook.yaml) | commit の前に、ビルドの出力がソースと合うかを確認する（開発用） |
 | [vitest](./vitest.yaml) | プレビュー（React）の単体テストを流す（開発用） |
 
 <!-- /table -->

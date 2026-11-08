@@ -61,6 +61,6 @@ items:
 - page: eslint.yaml
   summary: プレビュー（React）のソースを規則で検査する（開発用）
 - page: lefthook.yaml
-  summary: commit の前に lint と型検査を流す（開発用）
+  summary: commit の前に、ビルドの出力がソースと合うかを確認する（開発用）
 - page: vitest.yaml
   summary: プレビュー（React）の単体テストを流す（開発用）

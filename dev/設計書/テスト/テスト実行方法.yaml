@@ -107,7 +107,7 @@ layers:
   - name: 外部疎通テスト
     run_all: 未確定
   - name: lint
-    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）で今の画面の `.ts`・ストーリーの `.ts` と React の側（`frontend/tsconfig.json`）を、ESLint（`npm run lint`。`eslint.config.js`）で React の側の `frontend/src/` を検査する。formatter と import の並びの検査は含めない。commit の前に lefthook（`lefthook.yml`）が、React の側の変更ファイルに ESLint と型検査を流し、`frontend/` かビルドの設定を変えたときは `npm run build` の後に `preview/spa/` に未 commit の差分があれば止める
+    description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）で今の画面の `.ts`・ストーリーの `.ts` と React の側（`frontend/tsconfig.json`）を、ESLint（`npm run lint`。`eslint.config.js`）で React の側の `frontend/src/` を検査する。formatter と import の並びの検査は含めない。commit の前に lefthook（`lefthook.yml`）が、`frontend/` かビルドの設定を変えたときは `npm run build` の後に `preview/spa/` に未 commit の差分があれば止める
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` で固定した版の ruff（外部ライブラリ『ruff』）
       - Node 20.19 以上で `npm ci` を済ませてある（postinstall が lefthook のフックを共有の `.git/hooks/` に入れる）
