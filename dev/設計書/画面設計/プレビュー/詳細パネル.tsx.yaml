@@ -74,13 +74,21 @@ elements:
       - name: body
         value: レビュー中のコメントの読み取り.drafts のうち、同じ target と loc の書きかけ（入力中は画面が持ち、項目の移動・描き直し・パネルと全画面の行き来をまたいで保つ）
       - name: status
-        value: レビュー中のコメントの追加（POST /api/comments）の結果
+        value: レビュー中のコメントの追加（POST /api/comments）の結果。音声入力では、書き込みをすぐ送るの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
       - name: count
         value: レビュー中のコメントの追加.count
       - name: detail
         value: レビュー中のコメントの追加のエラーの detail（届かなかったときはなし）
       - name: open
         value: 端末の保存領域に覚えたコメントの入力の開閉（覚えていなければ開く）
+      - name: voice
+        value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面が持つ）から決める。使えないときは disabled
+      - name: voiceReason
+        value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」）
+      - name: elapsed
+        value: 録音を始めてからの秒数（画面が 1 秒ごとに進める）
+      - name: entered
+        value: 書き込みをすぐ送る（POST /api/comments/send-now）の entered
     position: 下端
     description: 開いている項目へのコメントをレビュー中に溜める。パネルの下端に留め、本文と線で区切る。書きかけは入力が止まったときとパネルを閉じるときに『書きかけの保存』へ送る。溜めたら入力欄と添えた箇所を空にし、コメントのボタンの件数とレビュー中のコメントを描き直す。開閉のボタンで閉じた・開いたことは端末の保存領域に覚え、項目を移っても・パネルと全画面を行き来しても・開き直しても同じ開閉で出す。閉じている間に選んだ箇所のコメントの入口を押したときは、開いて覚えてから入力欄へフォーカスを移す
     io: 入力

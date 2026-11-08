@@ -138,6 +138,129 @@ states:
         value: 案 A にする
       - name: open
         value: 'false'
+  - name: Recording
+    description: 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない）
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: recording
+      - name: elapsed
+        value: '12'
+  - name: Transcribing
+    description: 文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: transcribing
+      - name: body
+        value: '確認: '
+  - name: RecordingWithDraft
+    description: '打ちかけがある録音中。入力欄の「確認: 」とカーソルの位置を残し、文字起こしの結果はカーソルの位置へ挿入する'
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: recording
+      - name: elapsed
+        value: '12'
+      - name: body
+        value: '確認: '
+  - name: Sent
+    description: 送信した。入力欄を空にし、元のボタンに戻して「送信し、Claude Code へ入力しました。」
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: sent
+      - name: entered
+        value: 'true'
+  - name: SentNotEntered
+    description: 送信したが Claude Code へ入力しなかった。「送信しました。Claude Code へは入力していません。」
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: sent
+      - name: entered
+        value: 'false'
+  - name: Inserted
+    description: 入力欄へ挿入した。カーソルは挿入した文字の後ろで、「文字起こしの結果を挿入しました。」
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: inserted
+      - name: body
+        value: '確認: 案 A にする'
+  - name: VoiceDisabled
+    description: 文字起こしのサービスが起動していない。マイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。「レビューに追加」は押せるまま
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: disabled
+      - name: voiceReason
+        value: 文字起こしのサービスが起動していないため、音声で入力できません。
+  - name: VoiceUnsupported
+    description: 文字起こしのサービスが音声の受け付けに対応していない。押せない理由のツールチップ
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: disabled
+      - name: voiceReason
+        value: 文字起こしのサービスが音声の受け付けに対応していないため、音声で入力できません。
+  - name: VoiceNoMicrophone
+    description: ブラウザがマイクを使えない（HTTPS でない経路から外の端末で開いた）。押せない理由のツールチップ
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: disabled
+      - name: voiceReason
+        value: このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。
+  - name: VoiceFailed
+    description: 文字起こしに失敗した。入力欄の中身を残し、元のボタンに戻して理由を結果の行に出す
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: voice-failed
+      - name: detail
+        value: 文字起こしできませんでした。もう一度お試しください。
+      - name: body
+        value: 案 B も見たい
+  - name: VoiceDenied
+    description: マイクの許可を拒否した。録音を始めず、許可が要ることを結果の行に出す
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: voice-failed
+      - name: detail
+        value: マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。
+  - name: RecordingNarrow
+    description: 最も狭い幅（320px）の録音中。2 つのボタンはマイクと「レビューに追加」と同じ大きさで、入力欄の右に並んだまま収まる
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: recording
+      - name: elapsed
+        value: '12'
+  - name: VoiceSendFailed
+    description: 文字起こしはできたが送信できなかった。挿入した全文を入力欄に残す
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: voice-failed
+      - name: detail
+        value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
+      - name: body
+        value: '確認: 案 A にする'
 lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook_react/test_send_form_stories.py
 args:
@@ -161,8 +284,8 @@ args:
     type: 列挙
     required: false
     default: idle
-    choices: idle・saving・saved・empty・failed
-    description: 溜める状態。idle は結果を出さない。saving はボタンを押せなくし入力欄を書き換えられなくする。empty・failed は入力欄の中身を残す
+    choices: idle・saving・saved・empty・failed・sent・inserted・voice-failed
+    description: 溜める状態。idle は結果を出さない。saving はボタンを押せなくし入力欄を書き換えられなくする。sent は送信した結果、inserted は入力欄へ挿入した結果、voice-failed は音声入力の失敗の理由（`detail`）を出す。empty・failed は入力欄の中身を残す
   - name: count
     type: 整数
     required: false
@@ -193,6 +316,30 @@ args:
     default: 'true'
     enabled_when: '`target` があるとき'
     description: 開いているか。「{ID} へのコメント」の行の右端に開閉のボタンを置き、開いている間は v（コメントの入力を閉じる）、閉じている間は ^（コメントの入力を開く）を出す。閉じている間は見出しの行だけを出し、入力欄・添えた箇所・結果・「レビューに追加」を出さない。`body` が空白だけでなければ、見出しの右に鉛筆の印と「書きかけ」を出す
+  - name: voice
+    type: 列挙
+    required: false
+    default: idle
+    choices: idle・disabled・recording・transcribing
+    description: 音声入力の状態。idle は「レビューに追加」の左にマイクのアイコンだけのボタンを置く。disabled はマイクのボタンを押せない見た目にし、フォーカスは受けたまま `voiceReason` をツールチップに出す。recording はマイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」のアイコンだけのボタンに切り替え、結果の行に失敗の色の丸と `elapsed` を出す。transcribing は 2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出し、入力欄を書き換えられなくする
+  - name: voiceReason
+    type: 文字列
+    required: false
+    enabled_when: '`voice` が `disabled` のとき'
+    description: マイクのボタンを押せない理由（『文字起こしの可否』の `detail`、ブラウザがマイクを使えないときは使う側が持つ文）。ツールチップと読み上げの説明に出す
+  - name: elapsed
+    type: 整数
+    required: false
+    default: '0'
+    choices: 0 以上
+    enabled_when: '`voice` が `recording` のとき'
+    description: 録音を始めてからの秒数。`m:ss` で出す（経過の時間は読み上げない）
+  - name: entered
+    type: 真偽値
+    required: false
+    default: 'false'
+    enabled_when: '`status` が `sent` のとき'
+    description: 送信した書き込みを Claude Code へ入力したか（『書き込みをすぐ送る』の `entered`）。true は「送信し、Claude Code へ入力しました。」、false は「送信しました。Claude Code へは入力していません。」
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない
@@ -222,6 +369,22 @@ events:
     when: 開閉のボタンを押したとき
     value: '`onToggleOpen(open)`（押した後の開閉）'
     description: 使う側が開閉を端末の保存領域に覚え、`open` を書き換えて描き直す。描き直した後のフォーカスは開閉のボタンに置く
+  - name: 録音を始める
+    when: マイクのボタンを押したとき（`voice` が `idle`）
+    value: '`onVoiceStart()`'
+    description: 使う側が `getUserMedia` と `MediaRecorder` で録り始め、`voice` を `recording` にして `elapsed` を進める。許可が得られなければ `status` を `voice-failed`（マイクの許可が要る旨）にして `voice` を `idle` のままにする
+  - name: 録音をキャンセル
+    when: × のボタンを押したとき（`voice` が `recording`）
+    value: '`onVoiceCancel()`'
+    description: 使う側が録音を捨ててマイクを解放し、`voice` を `idle` に戻す。入力欄の中身は変えない
+  - name: 文字起こし
+    when: ✓ のボタンを押したとき（`voice` が `recording`）
+    value: '`onVoiceDone(target, loc, body)`（target・loc・body（入力欄の中身そのまま））'
+    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。返った文字を入力欄のカーソルの位置へ挿入し、設定の挙動が `send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら `inserted` にする。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）
+  - name: 押せないマイクを押す
+    when: '`voice` が `disabled` のマイクのボタンを押したとき'
+    value: '`onVoiceBlocked()`'
+    description: 使う側が `status` を `voice-failed`（`voiceReason` と同じ文）にし、サービスが理由のときは `GET /api/transcription` を読み直して、使えるようになっていれば `voice` を `idle` に戻す
 accessibility:
   - 「レビューに追加」はアイコンだけのボタンにし、読み上げの名前（`aria-label`）「レビューに追加」とツールチップ（`title`）「レビューに追加（Ctrl+Enter）」を持つ。本文のコピーのボタンは `aria-label`・`title` に「本文をコピー」を持つ
   - 入力欄にラベル「{ID} へのコメント」を常に見せ、入力欄の中の例示文をラベルの代わりにしない。`target` が無いときは `aria-label`「項目を指さないコメント」
@@ -232,5 +395,10 @@ accessibility:
   - '「レビューに追加」は 1 行の入力欄と同じ高さの正方形にし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 開閉のボタンは `aria-label`・`title` に、開いている間は「コメントの入力を閉じる」、閉じている間は「コメントの入力を開く」を持ち、`aria-expanded` で開閉を、`aria-controls` で開閉する範囲を指す
   - 書きかけの印は「書きかけ」を文字で出し、鉛筆のアイコンは読み上げから外す
+  - マイクのボタンはアイコンだけのボタンにし、`aria-label`・`title` に「音声で入力」を持つ。押せないときは `aria-disabled="true"` でフォーカスを受けたまま、ツールチップに理由を出して `aria-describedby` から指す
+  - 録音中の × と ✓ はアイコンだけのボタンにし、`aria-label`・`title` にそれぞれ「キャンセル」（ツールチップは「キャンセル（録音を破棄）」）と「文字起こし」を持つ。文字起こし中は ✓ を「文字起こし中」にして押せなくする
+  - 録音を始めた・終えたことは結果の行（`role="status"`）の読み上げだけの「録音中」で伝え、経過の時間は読み上げない
+  - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
+  - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
 refs:
   - dev/設計書/部品設計/プレビュー/コメントの入力.ts#
