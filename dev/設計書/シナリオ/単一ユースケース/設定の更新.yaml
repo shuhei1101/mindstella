@@ -239,7 +239,57 @@ scenarios:
       - エラーの本文に、D-2 とカテゴリー `設定` がある
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_unmapped_category
-lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数・表示の既定）を書き換え、フェーズ・対象・カテゴリーが変わるときは古い名前から新しい名前への対応で項目のフェーズ・対象・カテゴリーも付け替える単一ユースケース。
+  - name: 正常シナリオ（文字起こしの設定を書き換える）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が文字起こしの設定を持たないワークスペース
+      - name: 書き換える設定
+        description: 文字起こし後の挙動を `insert` にし、用語集のプリセットを `開発` にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 文字起こし後の挙動と用語集のプリセットを渡す
+        SV->>WS: config.yaml を読む
+        SV->>SV: 渡したキーを置き換え、スキーマと突き合わせる
+        SV->>WS: config.yaml を書く
+        SV-->>CC: 書き換えた後の設定
+      ```
+    expected:
+      - '`config.yaml` の文字起こし後の挙動が `insert` で、用語集のプリセットが `開発` である'
+      - '`summary`・`playbooks`・`phases`・`goal`・`display` が呼ぶ前と同じである'
+      - ワークスペースの全ての YAML がスキーマに合う
+    test: test_normal_when_transcription_settings_changed
+  - name: 異常シナリオ（文字起こし後の挙動の値が合わない）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 書き換える設定
+        description: 文字起こし後の挙動を `send`・`insert` のどちらでもない値にして渡す
+        notes: '`paste`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+
+        CC->>SV: 文字起こし後の挙動を paste にして渡す
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>CC: 合わない箇所を示すエラー
+      ```
+    expected:
+      - 設定を書き換えるツールがエラーを返す
+      - エラーの本文に、合わない文字起こし後の挙動のキーがある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_error_when_transcription_action_invalid
+lead: スキルが、話し合いの途中でワークスペースの設定（題名・話し合いの概要・プレイブック・フェーズ・最上位の軸の呼び名・ゴール・対象・カテゴリー・関連する場所・保持する回数・表示の既定・文字起こしの設定）を書き換え、フェーズ・対象・カテゴリーが変わるときは古い名前から新しい名前への対応で項目のフェーズ・対象・カテゴリーも付け替える単一ユースケース。
 issue: 44
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:
