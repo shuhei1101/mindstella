@@ -20,9 +20,10 @@ def test_opens_and_returns(page: Page, spa_preview: str) -> None:
 
 
 def test_comment_input_visible(page: Page, spa_preview: str) -> None:
-    """サーバーの配信で開いたときは、全画面の中にも「今の画面でコメントする」のリンクを出す（正常系）。"""
+    """サーバーの配信で開いたときは、全画面の下端にも詳細パネルと同じコメントの入力を出す（正常系）。"""
     # 準備・実行
     open_spa(page, spa_preview, "?tab=decisions&id=D-1&full=1")
     # 検証
     dialog = page.get_by_role("dialog", name="記録の形")
-    expect(dialog.get_by_role("link", name="今の画面でコメントする")).to_have_attribute("href", re.compile(r"/mindstella\.html#tab=decisions&id=D-1"))
+    expect(dialog.get_by_role("textbox", name="D-1 へのコメント")).to_be_visible()
+    expect(dialog.get_by_role("button", name="レビューに追加")).to_be_visible()

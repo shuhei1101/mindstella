@@ -485,3 +485,50 @@ def open_preview(page: Page) -> OpenPreview:
         return page
 
     return _open
+
+
+@pytest.fixture
+def spa_comments_preview(
+    write_review_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    make_post: MakePost,
+    make_thread: MakeThread,
+) -> tuple[str, Path]:
+    """React のコメントの画面のテストが開く、スレッドとレビュー中の書き込みを持つワークスペースの配信の URL とフォルダを返す。
+
+    スレッドは TH-1（オープン・D-1・タグ 画面・AI の返信が利用者の未読）・TH-2（オープン・最後が利用者・タグ 調査）・
+    TH-5（クローズ・タグ 画面）。レビュー中の書き込みは C-41（D-2 への新しいスレッド）・C-43（TH-1 への返信）。
+    """
+    return write_review_preview(
+        make_item("D-1", title="最初の問い"),
+        make_item("D-2", title="二つ目の問い"),
+        threads=(
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, body="案 A にする", created="2026-10-12T00:30:00+00:00"),
+                make_post("TH-1-2", author="ai", body="D-1 は案 A で進めます", created="2026-10-12T01:00:00+00:00", seen=False),
+                summary="D-1 の案の相談",
+                tags=["画面"],
+                target="D-1",
+            ),
+            make_thread(
+                "TH-2",
+                make_post("TH-2-1", body="二つ目の質問", created="2026-10-12T02:00:00+00:00"),
+                summary="二つ目の要約",
+                tags=["調査"],
+            ),
+            make_thread(
+                "TH-5",
+                make_post("TH-5-1", body="閉じた質問", created="2026-10-12T03:00:00+00:00"),
+                status="closed",
+                summary="閉じた話",
+                tags=["画面"],
+                events=[{"kind": "closed", "author": "user", "reason": None, "created": "2026-10-12T03:10:00+00:00"}],
+            ),
+        ),
+        comments=(
+            make_comment("C-41", target="D-2", body="写しは git で取る", created="2026-10-12T04:00:00+00:00"),
+            free_comment(make_comment("C-43", body="了解", thread="TH-1", created="2026-10-12T04:10:00+00:00")),
+        ),
+    )
