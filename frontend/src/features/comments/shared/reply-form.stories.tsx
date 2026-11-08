@@ -36,5 +36,5 @@ export const FailedDetail: Story = { args: { thread: "TH-5", body: "version は�
 /** 長文。入力欄は 8 行まで広がり、それより長いと中でスクロールする */
 export const Long: Story = { args: { thread: "TH-2", body: "1 行目\n2 行目\n3 行目\n4 行目\n5 行目\n6 行目\n7 行目\n8 行目\n9 行目\n10 行目\n11 行目\n12 行目" } };
 
-/** 幅 390px。入力の幅が 360px 以下では、ボタンを右に置いたまま、結果を下の行に幅いっぱいで出す。条件は部品の幅（コンテナクエリ）で持つ */
+/** 幅 390px。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す */
 export const Narrow: Story = { args: { thread: "TH-2", body: "起票してよい", status: "failed" } };

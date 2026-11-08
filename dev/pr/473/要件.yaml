@@ -1,0 +1,38 @@
+use_cases:
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/項目へコメントする.yaml
+    impact: run_only
+    detail: 詳細のコメントの入力のボタンの見た目と配置が変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/選んだ箇所へコメントする.yaml
+    impact: run_only
+    detail: 箇所を添えたコメントの入力のボタンの見た目と配置が変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る.yaml
+    impact: run_only
+    detail: 新しいスレッドの入力のボタンの見た目と配置が変わる。シナリオの記述は変わらない
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/スレッドで話す.yaml
+    impact: run_only
+    detail: 返信の入力のボタンの見た目と配置が変わる。シナリオの記述は変わらない
+    depends_on: []
+docs:
+  - page: docs/使い方/プレビューを見る.md
+    new: false
+    change: 「レビューに追加」を押す案内を、入力欄の右のアイコンのボタンとして案内する。「本文を写す」の案内を、コピーのアイコンのボタン（本文をコピー）として案内する。詳細のコメントの入力の開閉のボタン（端末に覚える・書きかけの印）を案内する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-08T17:21:09.653136+00:00'
+scope_out:
+  - item: 本文の文字列を選んだときのボタンをアイコンだけにする
+    reason: 対象の部品（選んだ箇所のコメントの入口）が違う。この PR はアイコンのボタンの見た目を既存の決まりに合わせるだけ
+    plan: '#245'
+  - item: コメント・返信の入力へのマイクのボタンの追加
+    reason: 要望に含まれない。同じ入力欄の右にボタンが並ぶため、配置はこの PR の並びに合わせる
+    plan: '#402'
+  - item: Storybook の今の画面のストーリーで出る `Cannot use 'import.meta' outside a module` のエラー（`.storybook/main.js` の `componentScripts()` が `preview/spa/` のバンドルを module でない script として読み込む）
+    reason: Storybook の設定の不具合で、今回の要望に含まれない（reviewer の対象外の逸脱の報告）
+    plan: '#474'

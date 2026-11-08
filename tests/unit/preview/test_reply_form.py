@@ -26,8 +26,22 @@ OBSERVE_SCRIPT = """(props) => {
         describedByStatus: status !== null && textarea.getAttribute("aria-describedby") === status.id,
         rows: textarea.rows,
         statusText: status === null ? "" : status.textContent,
+        submitButton: {
+            text: submit.textContent.trim(),
+            label: submit.getAttribute("aria-label"),
+            title: submit.getAttribute("title"),
+            sameRowAsTextarea: submit.parentElement === textarea.parentElement,
+        },
     };
 }"""
+
+# アイコンだけの「レビューに追加」のボタンの属性（状態によらず同じ）
+EXPECTED_SUBMIT_BUTTON = {
+    "text": "",
+    "label": "レビューに追加",
+    "title": "レビューに追加（Ctrl+Enter）",
+    "sameRowAsTextarea": True,
+}
 
 # 返信を溜められない状態の入力欄（空・溜めている間）の期待値
 BLOCKED = {"labelVisible": True, "describedByStatus": True}
@@ -90,6 +104,7 @@ def test_reply_form(
     assert expected.items() <= observed.items()
     assert observed["rows"] == 1
     assert expected_text in observed["statusText"]
+    assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
 
 
 # キーを押して、溜める操作の引数と、外へ伝わったキーを集める JavaScript

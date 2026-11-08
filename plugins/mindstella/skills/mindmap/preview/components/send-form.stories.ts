@@ -8,7 +8,7 @@ const meta = {
   render: (args) => MindmapPreview.sendForm(args),
   args: {
     target: "D-022",
-    on: { input: fn(), save: fn(), unquote: fn(), copy: fn(), focus: fn(), blur: fn() },
+    on: { input: fn(), save: fn(), unquote: fn(), copy: fn(), focus: fn(), blur: fn(), toggle: fn() },
   },
 } satisfies Meta<MindmapPreview.SendFormProps>;
 
@@ -16,7 +16,7 @@ export default meta;
 
 type Story = StoryObj<MindmapPreview.SendFormProps>;
 
-/** 入力欄が空。本文と線で区切って下端に置き、ラベルで向ける項目の ID を示す */
+/** 入力欄が空。本文と線で区切って下端に置き、ラベルで向ける項目の ID を示す。「レビューに追加」は入力欄の右のアイコンだけのボタン */
 export const Idle: Story = {};
 
 /** 入力中。入力欄に印の色の輪 */
@@ -53,10 +53,10 @@ export const Saved: Story = { args: { status: "saved", count: 3 } };
 /** 本文が空で溜めようとした。入力欄の枠と印を要見直しの赤にし、入れてから追加するよう出す。ボタンは押せるまま */
 export const Empty: Story = { args: { status: "empty" } };
 
-/** サーバーに届かなかった。本文を残し、立ち上げ直して新しい URL で開くよう出して「本文を写す」を添える */
+/** サーバーに届かなかった。本文を残し、立ち上げ直して新しい URL で開くよう出して本文のコピーのボタンを添える */
 export const FailedUnreachable: Story = { args: { body: "案 A にする", status: "failed" } };
 
-/** サーバーが溜めなかった理由を返した。本文を残し、理由を出す（「本文を写す」は出さない） */
+/** サーバーが溜めなかった理由を返した。本文を残し、理由を出す（本文のコピーのボタンは出さない） */
 export const FailedDetail: Story = {
   args: {
     target: "A-005",
@@ -86,7 +86,7 @@ export const Long: Story = {
 /** 項目を指さないコメント（コメントの一覧の下端）。見出しを出さず、入力欄と「レビューに追加」だけにする */
 export const NoTarget: Story = { args: { target: null } };
 
-/** 幅 390px。入力の幅が 360px 以下では、結果を下の行に幅いっぱいで出す */
+/** 幅 390px。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す */
 export const Narrow: Story = {
   args: {
     target: "A-005",
@@ -123,3 +123,9 @@ export const NoTargetExpanded: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 閉じた。「{ID} へのコメント」の 1 行と、右端の ^ の開閉のボタンだけを出す */
+export const Closed: Story = { args: { open: false } };
+
+/** 書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す */
+export const ClosedWithDraft: Story = { args: { open: false, body: "案 A にする" } };

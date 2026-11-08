@@ -46,7 +46,7 @@ export const Long: Story = {
   args: { body: Array.from({ length: 12 }, (_, index) => `${index + 1} 行目`).join("\n") },
 };
 
-/** 幅 390px。入力の幅が 360px 以下では、ボタンを右に置いたまま、結果を下の行に幅いっぱいで出す */
+/** 幅 390px。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す */
 export const Narrow: Story = {
   args: { body: "起票してよい", status: "failed" },
   parameters: {

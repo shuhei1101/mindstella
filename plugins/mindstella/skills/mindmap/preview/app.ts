@@ -207,6 +207,8 @@ namespace MindmapPreview {
     sectionFold: false | null;
     /** コメントの一覧をピン止めしているか。null はピン止めしない。個人の上書きではなく、「既定に戻す」でも消さない */
     commentsPinned: true | null;
+    /** 詳細パネル・詳細の全画面の下端のコメントの入力を閉じているか。null は開く。個人の上書きではなく、「既定に戻す」でも消さない */
+    commentFormClosed: true | null;
     /** 配る書き出しだけが持つ、前回開いた時点（`OpenedPoint`）。`isOpenedPoint` で確かめてから読み、通し番号を持たない前の版の値（日時の文字列）は無いものとして扱う */
     opened?: unknown;
   };
@@ -267,6 +269,7 @@ namespace MindmapPreview {
       tableStripes: null,
       sectionFold: null,
       commentsPinned: null,
+      commentFormClosed: null,
     };
   }
 
@@ -296,6 +299,8 @@ namespace MindmapPreview {
       if (parsed.sectionFold !== false) parsed.sectionFold = null;
       // コメントの一覧のピン止めは true だけを読む（ピン止めしないは値を持たない）
       if (parsed.commentsPinned !== true) parsed.commentsPinned = null;
+      // コメントの入力の開閉は true だけを読む（開くは値を持たない）
+      if (parsed.commentFormClosed !== true) parsed.commentFormClosed = null;
       return parsed;
     } catch {
       return defaultPrefs();
@@ -397,7 +402,7 @@ namespace MindmapPreview {
     };
   }
 
-  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した設定を返す（`diffSel`・`commentsPinned` は残し、渡した設定は変えない） */
+  /** 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した設定を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残し、渡した設定は変えない） */
   export function clearOverrides(prefs: Prefs): Prefs {
     return {
       ...prefs,
@@ -1709,6 +1714,7 @@ namespace MindmapPreview {
         count: state.count,
         detail: state.detail,
         collapsed: false,
+        open: target === null || prefs.commentFormClosed !== true,
         ...(target === null ? { label: "新しいスレッド" } : {}),
         on: {
           input: (body) => {
@@ -1725,6 +1731,14 @@ namespace MindmapPreview {
           copy: (body) => void navigator.clipboard?.writeText(body),
           focus: () => undefined,
           blur: () => undefined,
+          // 開閉を端末に残し、下端の入力を描き直して開閉のボタンへフォーカスを戻す（書きかけはそのまま残す）
+          toggle: (open) => {
+            prefs.commentFormClosed = open ? null : true;
+            display.storageOk = persist();
+            if (target === null) return;
+            redrawForm({ target, focus: false });
+            document.querySelector<HTMLButtonElement>(`${route.full ? "dialog.full" : "aside.panel"} form.send .send-toggle`)?.focus();
+          },
         },
       };
     };
@@ -2294,6 +2308,11 @@ namespace MindmapPreview {
         on: {
           press: () => {
             closePill();
+            // 閉じていれば開いて残してから、箇所を添えた入力欄へ移る
+            if (prefs.commentFormClosed === true) {
+              prefs.commentFormClosed = null;
+              display.storageOk = persist();
+            }
             comment.pendingLoc.set(id, loc);
             redrawForm({ target: id, focus: true });
           },

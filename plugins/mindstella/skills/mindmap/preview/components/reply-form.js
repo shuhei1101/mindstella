@@ -68,13 +68,14 @@ var MindmapPreview;
         const submit = MindmapPreview.h({
             tag: "button",
             attrs: {
-                class: "btn primary",
+                class: "icon-btn send-submit",
                 type: "submit",
+                "aria-label": "レビューに追加",
                 title: "レビューに追加（Ctrl+Enter）",
                 "data-focus": "reply-send",
                 disabled: saving || body.trim() === "",
             },
-            children: [MindmapPreview.icon("comment"), "レビューに追加"],
+            children: [MindmapPreview.icon("comment")],
         });
         return MindmapPreview.h({
             tag: "form",
@@ -88,15 +89,9 @@ var MindmapPreview;
             },
             children: [
                 MindmapPreview.h({ tag: "label", attrs: { class: "send-label", for: fieldId }, children: ["返信"] }),
-                textarea,
-                MindmapPreview.h({
-                    tag: "div",
-                    attrs: { class: "send-row" },
-                    children: [
-                        MindmapPreview.h({ tag: "p", attrs: { class: status === "idle" ? "send-msg" : `send-msg ${status}`, id: messageId, role: "status" }, children: replyResult({ status, count, detail }) }),
-                        submit,
-                    ],
-                }),
+                // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行
+                MindmapPreview.h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, submit] }),
+                MindmapPreview.h({ tag: "p", attrs: { class: status === "idle" ? "send-msg" : `send-msg ${status}`, id: messageId, role: "status" }, children: replyResult({ status, count, detail }) }),
             ],
         });
     }

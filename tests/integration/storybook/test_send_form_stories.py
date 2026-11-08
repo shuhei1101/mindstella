@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from playwright.sync_api import Page
 import pytest
 from storybook_fixture_types import OpenStory
 
@@ -66,6 +67,26 @@ REVIEW_COLOR_SCRIPT = """(() => {
 })()"""
 
 
+# 入力欄と「レビューに追加」の位置（同じ行で、ボタンは入力欄の右・下端を合わせる）を読む
+LINE_GEOMETRY_SCRIPT = """() => {
+  const field = document.querySelector('textarea').getBoundingClientRect();
+  const button = document.querySelector('button[aria-label="レビューに追加"]').getBoundingClientRect();
+  return { fieldRight: field.right, fieldBottom: field.bottom, buttonLeft: button.left, buttonBottom: button.bottom };
+}"""
+
+# 位置を比べるときに許す誤差（ピクセル。小数の丸め）
+POSITION_TOLERANCE_PX = 1
+
+
+def assert_submit_beside_field(page: Page) -> None:
+    """「レビューに追加」が文字を持たず、入力欄の右の同じ行で下端を合わせて置かれている。"""
+    button = page.get_by_role("button", name="レビューに追加")
+    assert button.inner_text().strip() == ""
+    assert button.get_attribute("title") == "レビューに追加（Ctrl+Enter）"
+    geometry = page.evaluate(LINE_GEOMETRY_SCRIPT)
+    assert geometry["buttonLeft"] >= geometry["fieldRight"] - POSITION_TOLERANCE_PX
+    assert abs(geometry["buttonBottom"] - geometry["fieldBottom"]) <= POSITION_TOLERANCE_PX
+
 def test_idle(open_story: OpenStory) -> None:
     """入力欄が空。本文と線で区切って下端に置き、ラベル「{ID} へのコメント」を常に見せる（正常系）。"""
     # 準備・実行
@@ -80,6 +101,13 @@ def test_idle(open_story: OpenStory) -> None:
         ".send-msg", "id"
     )
     assert page.get_by_role("button", name="レビューに追加").is_enabled()
+    assert_submit_beside_field(page)
+    toggle = page.get_by_role("button", name="コメントの入力を閉じる")
+    assert toggle.get_attribute("aria-expanded") == "true"
+    assert (
+        page.get_attribute(f"#{toggle.get_attribute('aria-controls')}", "id")
+        == toggle.get_attribute("aria-controls")
+    )
     assert (
         page.eval_on_selector("form.send-footer", "e => getComputedStyle(e).borderTopWidth")
         == "1px"
@@ -185,7 +213,7 @@ def test_empty(open_story: OpenStory) -> None:
 
 
 def test_failed_unreachable(open_story: OpenStory) -> None:
-    """サーバーに届かなかった。本文を残し、立ち上げ直して新しい URL で開くよう出して、本文を写すボタンを添える（正常系）。"""
+    """サーバーに届かなかった。本文を残し、立ち上げ直して新しい URL で開くよう出して、本文のコピーのボタンを添える（正常系）。"""
     # 準備・実行
     page = open_story("preview-sendform--failed-unreachable")
     # 検証
@@ -194,12 +222,15 @@ def test_failed_unreachable(open_story: OpenStory) -> None:
     assert "レビューに追加できませんでした。サーバーが止まっています。" in message
     assert "起動スクリプトで立ち上げ直し" in message
     assert "示された新しい URL で開いてから追加してください。" in message
-    assert page.get_by_role("button", name="本文を写す").count() == 1
+    copy = page.get_by_role("button", name="本文をコピー")
+    assert copy.count() == 1
+    assert copy.inner_text().strip() == ""
+    assert copy.get_attribute("title") == "本文をコピー"
     assert page.locator(".send-msg svg.icon").count() >= 1
 
 
 def test_failed_detail(open_story: OpenStory) -> None:
-    """サーバーが溜めなかった理由を返した。本文を残し、理由を出す。本文を写すボタンは出さない（正常系）。"""
+    """サーバーが溜めなかった理由を返した。本文を残し、理由を出す。本文のコピーのボタンは出さない（正常系）。"""
     # 準備・実行
     page = open_story("preview-sendform--failed-detail")
     # 検証
@@ -208,11 +239,11 @@ def test_failed_detail(open_story: OpenStory) -> None:
         page.inner_text(".send-msg")
         == "レビューに追加できませんでした。選んだ文が本文の 3 行目にありません"
     )
-    assert page.get_by_role("button", name="本文を写す").count() == 0
+    assert page.get_by_role("button", name="本文をコピー").count() == 0
 
 
 def test_long(open_story: OpenStory) -> None:
-    """長文。8 行を超えたら、入力欄の中を送る（正常系）。"""
+    """長文。8 行を超えたら、入力欄の中を送る。「レビューに追加」は入力欄の下端に合わせる（正常系）。"""
     # 準備・実行
     page = open_story("preview-sendform--long")
     # 検証
@@ -221,6 +252,7 @@ def test_long(open_story: OpenStory) -> None:
     # 入力欄の高さは 8 行分と上下の余白までで止まる
     assert sizes["lineHeight"] * MAX_ROWS <= sizes["height"]
     assert sizes["height"] <= sizes["lineHeight"] * MAX_ROWS + TEXTAREA_PADDING_PX
+    assert_submit_beside_field(page)
 
 
 def test_no_target(open_story: OpenStory) -> None:
@@ -235,7 +267,7 @@ def test_no_target(open_story: OpenStory) -> None:
 
 
 def test_narrow(open_story: OpenStory) -> None:
-    """幅 390px。入力の幅が 360px 以下ではボタンを右に置いたまま、結果を下の行に幅いっぱいで出す（正常系）。"""
+    """幅 390px。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す（正常系）。"""
     # 準備
     page = open_story("preview-sendform--narrow")
     page.set_viewport_size(NARROW_SIZE)
@@ -248,7 +280,8 @@ def test_narrow(open_story: OpenStory) -> None:
     assert button is not None
     assert message is not None
     assert form["width"] <= 390
-    # ボタンは右端、結果はボタンの下の行で幅いっぱい
+    # ボタンは入力欄の右の同じ行で右端、結果は入力欄の下の行で幅いっぱい
+    assert_submit_beside_field(page)
     assert button["x"] + button["width"] >= form["x"] + form["width"] - 16 - 1
     assert message["y"] >= button["y"] + button["height"] - 1
     assert message["width"] >= form["width"] - 2 * 16 - 2
@@ -283,3 +316,31 @@ def test_no_target_expanded(open_story: OpenStory) -> None:
     assert page.get_attribute("textarea", "rows") == "1"
     assert page.get_by_role("button", name="レビューに追加").is_visible()
     assert page.locator("form.send-footer.collapsed").count() == 0
+
+
+def test_closed(open_story: OpenStory) -> None:
+    """閉じた。「{ID} へのコメント」の 1 行と、右端の ^ の開閉のボタンだけを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--closed")
+    # 検証
+    toggle = page.get_by_role("button", name="コメントの入力を開く")
+    assert toggle.get_attribute("aria-expanded") == "false"
+    assert toggle.get_attribute("title") == "コメントの入力を開く"
+    assert "D-022 へのコメント" in page.inner_text("form")
+    assert "書きかけ" not in page.inner_text("form")
+    assert not page.locator("textarea").is_visible()
+    assert not page.locator('button[aria-label="レビューに追加"]').is_visible()
+    body = page.locator(f"#{toggle.get_attribute('aria-controls')}")
+    assert body.count() == 1
+    assert not body.is_visible()
+
+
+def test_closed_with_draft(open_story: OpenStory) -> None:
+    """書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--closed-with-draft")
+    # 検証
+    assert "書きかけ" in page.inner_text("form")
+    toggle = page.get_by_role("button", name="コメントの入力を開く")
+    assert toggle.get_attribute("aria-expanded") == "false"
+    assert not page.locator("textarea").is_visible()

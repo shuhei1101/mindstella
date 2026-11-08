@@ -1,0 +1,16 @@
+$ pytest tests/integration/storybook/test_send_form_stories.py tests/integration/storybook/test_reply_form_stories.py tests/integration/storybook_react/test_send_form_stories.py tests/integration/storybook_react/test_reply_form_stories.py -q -p no:cacheprovider
+................................................                         [100%]
+48 passed in 52.13s
+exit=0
+
+$ pytest tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_detail_full_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_spa_detail_fullscreen_screen.py tests/integration/preview/test_comments_screen.py tests/integration/preview/test_spa_comments_screen.py tests/integration/preview/test_thread_screen.py tests/integration/preview/test_spa_thread_screen.py -q -p no:cacheprovider
+........................................................................ [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+........................................................................ [ 55%]
+........................................................................ [ 69%]
+........................................................................ [ 83%]
+........................................................................ [ 97%]
+..............                                                           [100%]
+518 passed in 1111.53s (0:18:31)
+exit=0

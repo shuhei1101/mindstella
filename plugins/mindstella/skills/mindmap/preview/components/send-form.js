@@ -35,7 +35,7 @@ var MindmapPreview;
             if (detail !== null && detail !== undefined) {
                 return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [`レビューに追加できませんでした。${detail}`] })];
             }
-            // サーバーに届かなかった: 立ち上げ直すと URL が変わり、書きかけは引き継がれないので、本文を写す手段を添える
+            // サーバーに届かなかった: 立ち上げ直すと URL が変わり、書きかけは引き継がれないので、本文をコピーする手段を添える
             return [
                 MindmapPreview.icon("alert"),
                 MindmapPreview.h({
@@ -50,8 +50,8 @@ var MindmapPreview;
                         }),
                         MindmapPreview.h({
                             tag: "button",
-                            attrs: { class: "btn ghost send-copy", type: "button", onclick: onCopy },
-                            children: [MindmapPreview.icon("copy"), "本文を写す"],
+                            attrs: { class: "icon-btn send-copy", type: "button", "aria-label": "本文をコピー", title: "本文をコピー", onclick: onCopy },
+                            children: [MindmapPreview.icon("copy")],
                         }),
                     ],
                 }),
@@ -82,11 +82,12 @@ var MindmapPreview;
         });
     }
     /** 項目へのコメントをレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, on, }) {
+    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, on, }) {
         sendFormSequence += 1;
         const fieldId = `send-${sendFormSequence}`;
         const messageId = `${fieldId}-msg`;
         const locId = `${fieldId}-loc`;
+        const bodyId = `${fieldId}-body`;
         /** 畳むのは、項目を指さない入力だけ */
         const folded = collapsed && target === null;
         /** 溜めている間は溜めない。それ以外は入力欄の中身そのままを渡す */
@@ -149,38 +150,73 @@ var MindmapPreview;
                         on.blur();
                 },
             },
-            children: [
-                target === null
-                    ? null
-                    : MindmapPreview.h({
-                        tag: "label",
-                        attrs: { class: "send-label", for: fieldId },
-                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target] }), " へのコメント"],
-                    }),
-                target !== null && loc !== null ? locationChip({ loc, id: locId, onUnquote: on.unquote }) : null,
-                textarea,
-                folded
-                    ? null
-                    : MindmapPreview.h({
-                        tag: "div",
-                        attrs: { class: "send-row" },
-                        children: [
-                            message,
-                            MindmapPreview.h({
-                                tag: "button",
-                                attrs: {
-                                    class: "btn primary",
-                                    type: "submit",
-                                    title: "レビューに追加（Ctrl+Enter）",
-                                    disabled: status === "saving",
-                                },
-                                children: [MindmapPreview.icon("comment"), "レビューに追加"],
-                            }),
-                        ],
-                    }),
-            ],
+            children: target === null ? [textareaLine(), folded ? null : message] : [head(), formBody()],
         });
         return form;
+        /** 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行 */
+        function textareaLine() {
+            if (folded)
+                return textarea;
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "send-line" },
+                children: [
+                    textarea,
+                    MindmapPreview.h({
+                        tag: "button",
+                        attrs: {
+                            class: "icon-btn send-submit",
+                            type: "submit",
+                            "aria-label": "レビューに追加",
+                            title: "レビューに追加（Ctrl+Enter）",
+                            disabled: status === "saving",
+                            // 溜めている間は処理中のカーソルにする
+                            "data-saving": status === "saving" ? "" : null,
+                        },
+                        children: [MindmapPreview.icon("comment")],
+                    }),
+                ],
+            });
+        }
+        /** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
+        function head() {
+            const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "send-head" },
+                children: [
+                    MindmapPreview.h({
+                        tag: open ? "label" : "span",
+                        attrs: { class: "send-label", for: open ? fieldId : null },
+                        children: [MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [target ?? ""] }), " へのコメント"],
+                    }),
+                    !open && body.trim() !== ""
+                        ? MindmapPreview.h({ tag: "span", attrs: { class: "send-draft" }, children: [MindmapPreview.icon("edit"), "書きかけ"] })
+                        : null,
+                    MindmapPreview.h({
+                        tag: "button",
+                        attrs: {
+                            class: "icon-btn send-toggle",
+                            type: "button",
+                            "aria-expanded": open ? "true" : "false",
+                            "aria-controls": bodyId,
+                            "aria-label": toggleLabel,
+                            title: toggleLabel,
+                            onclick: () => on.toggle?.(!open),
+                        },
+                        children: [MindmapPreview.icon("chev")],
+                    }),
+                ],
+            });
+        }
+        /** 開閉する範囲（添えた箇所・入力欄の行・結果） */
+        function formBody() {
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "send-body", id: bodyId, hidden: !open },
+                children: [loc !== null ? locationChip({ loc, id: locId, onUnquote: on.unquote }) : null, textareaLine(), message],
+            });
+        }
     }
     MindmapPreview.sendForm = sendForm;
 })(MindmapPreview || (MindmapPreview = {}));

@@ -26,6 +26,7 @@ DEFAULT_PREFS = {
     "tableStripes": None,
     "sectionFold": None,
     "commentsPinned": None,
+    "commentFormClosed": None,
 }
 
 # 表示する種類の全て（ワークスペースの既定も上書きも無いときに表示する種類）
@@ -385,6 +386,36 @@ def test_load_prefs_when_comments_pinned(
     assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
 
 
+
+@pytest.mark.parametrize(
+    ("stored", "expected_closed"),
+    [
+        pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+        pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+        pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+        pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+    ],
+)
+def test_load_prefs_when_comment_form_closed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    stored: str,
+    expected_closed: bool | None,
+) -> None:
+    """コメントの入力の開閉は true だけを読む（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    prefs = preview_page.evaluate(
+        """(stored) => {
+            const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+            return MindmapPreview.loadPrefs(storage);
+        }""",
+        stored,
+    )
+    # 検証（ほかの項目はそのまま読める）
+    assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+
 # 保存する設定
 SAVED_PREFS = {
     "theme": "dark",
@@ -401,6 +432,7 @@ SAVED_PREFS = {
     "tableStripes": None,
     "sectionFold": None,
     "commentsPinned": None,
+    "commentFormClosed": None,
 }
 
 
@@ -804,6 +836,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "tableStripes": True,
         "sectionFold": False,
         "commentsPinned": True,
+        "commentFormClosed": True,
     }
     # 実行
     result = preview_page.evaluate(
@@ -825,6 +858,7 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "tableStripes": None,
         "sectionFold": None,
         "commentsPinned": True,
+        "commentFormClosed": True,
     }
     assert result["original"] == prefs
 

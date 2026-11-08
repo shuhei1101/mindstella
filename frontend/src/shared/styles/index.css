@@ -10,8 +10,6 @@
   --color-*: initial;
   /* 本文の幅の上限 */
   --container-content: 82.5rem;
-  /* 入力の幅がこの幅未満（360px 以下）のとき、結果をボタンの下の行に出す */
-  --container-send-narrow: 361px;
   /* 画面幅の区切り（今の画面の区切りと同じ。max-* はその幅未満） */
   --breakpoint-*: initial;
   --breakpoint-2xs: 361px;
@@ -160,6 +158,13 @@
 @utility field-send {
   min-block-size: calc(1lh + 16px);
   max-block-size: calc(8lh + 16px);
+}
+
+/* コメントと返信の「レビューに追加」のボタン: 1 行の入力欄と同じ高さの正方形（今の画面の `.send-submit` と同じ） */
+@utility size-send {
+  inline-size: calc(1lh + 18px);
+  block-size: calc(1lh + 18px);
+  line-height: 1.5;
 }
 
 /* レビュー中の書き込みの書き換えの入力欄の高さ（2 行から 10 行。今の画面の `.row-edit textarea` と同じ） */

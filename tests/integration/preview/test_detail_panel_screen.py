@@ -1118,8 +1118,46 @@ def test_comment_input_when_server_refuses(
         == "レビューに追加できませんでした。項目 D-1 がワークスペースにありません"
     )
     assert page.input_value(DETAIL_TEXTAREA) == "案 A にする"
-    assert page.get_by_role("button", name="本文を写す").count() == 0
+    assert page.get_by_role("button", name="本文をコピー").count() == 0
     assert not (root / RECORD_DIR / "comments.yaml").exists()
+
+
+# 端末の保存領域に残したコメントの入力の開閉を読む
+COMMENT_FORM_CLOSED_JS = "JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').commentFormClosed ?? null"
+
+
+def test_comment_input_when_toggle_open(
+    write_review_preview: WriteReviewPreview,
+    open_preview: OpenPreview,
+    make_item: MakeItem,
+) -> None:
+    """開閉のボタンで閉じると端末に残し、項目を移っても開き直しても閉じた形で出す。開くと残した値を消す。書きかけは閉じても残る（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("D-1"), make_item("D-2"))
+    page = open_preview(url, "#tab=decisions&id=D-1")
+    page.fill(DETAIL_TEXTAREA, "閉じる前の書きかけ")
+    # 実行（閉じる）
+    page.get_by_role("button", name="コメントの入力を閉じる").click()
+    # 検証
+    toggle = page.get_by_role("button", name="コメントの入力を開く")
+    expect(toggle).to_be_focused()
+    assert toggle.get_attribute("aria-expanded") == "false"
+    assert not page.locator(DETAIL_TEXTAREA).is_visible()
+    expect(page.locator("aside.panel form.send")).to_contain_text("書きかけ")
+    assert page.evaluate(COMMENT_FORM_CLOSED_JS) is True
+    # 実行（別の項目へ移る・開き直す）
+    page.evaluate("location.hash = '#tab=decisions&id=D-2'")
+    page.wait_for_selector("aside.panel form.send[data-id='D-2']")
+    assert page.get_by_role("button", name="コメントの入力を開く").get_attribute("aria-expanded") == "false"
+    page.reload()
+    page.wait_for_selector("aside.panel form.send[data-id='D-2']")
+    assert not page.locator(DETAIL_TEXTAREA).is_visible()
+    # 実行（開く）
+    page.get_by_role("button", name="コメントの入力を開く").click()
+    # 検証
+    expect(page.locator(DETAIL_TEXTAREA)).to_be_visible()
+    expect(page.get_by_role("button", name="コメントの入力を閉じる")).to_be_focused()
+    assert page.evaluate(COMMENT_FORM_CLOSED_JS) is None
 
 
 def test_comment_input_draft(
@@ -2048,6 +2086,25 @@ def test_selection_entry_when_body(
     assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
     assert page.evaluate("document.activeElement.matches('form.send textarea')") is True
     assert page.evaluate("history.length") == history_length
+
+
+def test_selection_entry_when_comment_input_closed(
+    write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
+) -> None:
+    """コメントの入力を閉じている間に入口を押すと、開いて端末に残してから、箇所を添えた入力欄へフォーカスを移す（正常系）。"""
+    # 準備
+    url, _ = write_review_preview(make_item("A-1"), bodies={"A-1.md": THREE_LINE_BODY})
+    page = open_preview(url, "#tab=docs&id=A-1")
+    page.wait_for_selector("aside.panel .md:not(.md-value)")
+    page.get_by_role("button", name="コメントの入力を閉じる").click()
+    # 実行
+    select_text_for_pill(page, "aside.panel .md:not(.md-value)", "言い換えたい文")
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証
+    assert page.get_by_role("button", name="コメントの入力を閉じる").get_attribute("aria-expanded") == "true"
+    assert page.inner_text("aside.panel .send-loc-name") == "本文 2 行目"
+    assert page.evaluate("document.activeElement.matches('form.send textarea')") is True
+    assert page.evaluate(COMMENT_FORM_CLOSED_JS) is None
 
 
 def test_selection_entry_when_value(

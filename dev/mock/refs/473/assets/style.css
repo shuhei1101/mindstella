@@ -1,0 +1,58 @@
+/* 473: コメント・返信の入力の「レビューに追加」を、入力欄の右のアイコンだけのボタンにする */
+
+/* 入力欄とボタンの行: 入力欄を残りの幅いっぱいに広げ、ボタンを入力欄の下端に合わせる（案 A） */
+.send-line { display: flex; align-items: flex-end; gap: 8px; }
+/* 入力欄: ボタンの幅を除いた残りの幅いっぱいに広げる */
+.send-line textarea { flex: 1; min-width: 0; }
+/* 案 B: ボタンを入力欄の上端に合わせる */
+.send-line.top { align-items: flex-start; }
+
+/* 溜めるボタン: 1 行の入力欄と同じ高さの正方形にし、塗りの主な操作の色にする */
+.send-submit { flex: none; width: calc(1lh + 18px); height: calc(1lh + 18px); line-height: 1.5; background: var(--text); color: var(--bg); border-color: var(--text); }
+/* 溜めるボタンのホバー: 塗りのまま少し薄くする */
+.send-submit:hover { background: var(--text); color: var(--bg); opacity: .85; }
+/* 押せない溜めるボタン: 面を沈めて押せないことを示す */
+.send-submit:disabled, .send-submit:disabled:hover { background: var(--surface-2); border-color: var(--border); color: var(--text-3); opacity: 1; cursor: default; }
+/* 溜めている間の溜めるボタン: 処理中のカーソルにする */
+.send-submit[data-saving]:disabled { cursor: progress; }
+/* タッチが主な端末: 主な操作のタップ領域を 44px にし、1 行の入力欄も同じ高さにする */
+@media (pointer: coarse) {
+  .send-submit { width: 44px; height: 44px; }
+  .send-line textarea { min-block-size: 44px; }
+}
+
+/* 結果の行: 入力欄の下に幅いっぱいで出し、結果が無い間は高さを取らない */
+.send > .send-msg, .send-body > .send-msg { min-height: 0; padding-top: 0; }
+/* 結果が無い結果の行: 行を出さない */
+.send > .send-msg:empty, .send-body > .send-msg:empty { display: none; }
+
+/* 本文のコピー: 理由の下に置くアイコンだけのボタン。左端を理由の文の頭に合わせる */
+.send-copy-icon { width: var(--target-min); height: var(--target-min); margin-left: -4px; }
+/* 本文のコピーのアイコン: 結果の行の印と同じ大きさにし、文字の色にする */
+.send-msg .send-copy-icon svg.icon { width: 14px; height: 14px; margin-top: 0; color: currentColor; }
+
+/* 見出しの行: 「{ID} へのコメント」を左に、開閉のボタンを右端に置く */
+.send-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* 見出しの文字: 残りの幅に収め、はみ出す分は省く */
+.send-head .send-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 開閉のボタン: 押す部品の最小の大きさにする */
+.send-toggle { flex: none; width: var(--target-min); height: var(--target-min); }
+/* 開閉のボタンのアイコン: 開いている間は v（下向き） */
+.send-toggle svg.icon { transform: rotate(90deg); }
+/* 閉じている間は ^（上向き） */
+.send-toggle[aria-expanded="false"] svg.icon { transform: rotate(-90deg); }
+/* 閉じた入力: 見出しの行だけにし、上下の余白を詰める */
+.send.is-closed { padding-block: 8px; }
+/* 開閉する範囲: 中の要素を入力の並びにそのまま並べる */
+.send-body { display: contents; }
+/* 閉じた範囲: 出さない */
+.send-body[hidden] { display: none; }
+
+/* 閉じた入力の書きかけの印: 見出しの文字の右に、補足の文字色で小さく出す */
+.send-draft { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-small); color: var(--text-2); }
+/* 書きかけの印のアイコン: 文字と同じ大きさにする */
+.send-draft svg.icon { width: 14px; height: 14px; }
+/* 書きかけの印がある見出しの行: 見出しの文字は印の手前で省く */
+.send-head:has(.send-draft) .send-label { flex: 0 1 auto; }
+/* 書きかけの印の後ろを空けて、開閉のボタンを右端に寄せる */
+.send-head .send-draft + .send-toggle { margin-left: auto; }

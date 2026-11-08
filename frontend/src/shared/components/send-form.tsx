@@ -26,12 +26,16 @@ export type SendFormProps = {
   collapsed?: boolean;
   /** `target` が null のときの入力欄の読み上げの名前 */
   label?: string;
+  /** 開いているか（`target` があるときだけ使う）。偽なら見出しの行だけを出す */
+  open?: boolean;
   onSubmit: (target: string | null, loc: Location | null, body: string) => void;
   onInput: (body: string) => void;
   onClearLoc?: () => void;
   onCopyBody?: (body: string) => void;
   onFocus?: () => void;
   onBlur?: (body: string) => void;
+  /** 開閉のボタンを押したとき（押した後の開閉） */
+  onToggleOpen?: (open: boolean) => void;
 };
 
 /** 溜めている印と文言を出すまでの待ち（ミリ秒）。すぐ終わる処理では点滅させない */
@@ -83,9 +87,8 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
         <Icon name="alert" className="text-st-review" />
         <span className="grid gap-1">
           <span>レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。</span>
-          <Button variant="ghost" className="justify-self-start" onClick={onCopy}>
+          <Button variant="ghost" size="icon" className="-ml-1 size-6 justify-self-start" aria-label="本文をコピー" title="本文をコピー" onClick={onCopy}>
             <Icon name="copy" />
-            本文を写す
           </Button>
         </span>
       </>
@@ -94,10 +97,66 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
   return null;
 };
 
-export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur }: SendFormProps) => {
+/** 入力欄の形ごとのクラス（畳んだ形は 1 行のまま伸ばさない） */
+const FIELD_CLASS = {
+  folded: "field-sizing-fixed h-8 resize-none overflow-hidden py-1",
+  open: "field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11",
+} as const;
+
+/** 入力欄の `aria-describedby`（畳んだ形は結果を出さないので指さない。添えた箇所があれば箇所も指す） */
+const describedByOf = (folded: boolean, locId: string | null, messageId: string): string | undefined => {
+  if (folded) return undefined;
+  return locId === null ? messageId : `${locId} ${messageId}`;
+};
+
+/** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
+const FormHead = ({ target, fieldId, bodyId, open, hasDraft, onToggleOpen }: { target: string; fieldId: string; bodyId: string; open: boolean; hasDraft: boolean; onToggleOpen?: (open: boolean) => void }) => {
+  const toggleLabel = open ? "コメントの入力を閉じる" : "コメントの入力を開く";
+  const name = (
+    <>
+      <span className="font-mono">{target}</span> へのコメント
+    </>
+  );
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {open ? (
+        <label htmlFor={fieldId} className="min-w-0 truncate text-small text-muted-foreground">
+          {name}
+        </label>
+      ) : (
+        <span className="min-w-0 truncate text-small text-muted-foreground">{name}</span>
+      )}
+      {!open && hasDraft ? (
+        <span className="flex shrink-0 items-center gap-1 text-small text-muted-foreground">
+          <Icon name="edit" />
+          書きかけ
+        </span>
+      ) : null}
+      <Button variant="ghost" size="icon" className="ml-auto size-6 shrink-0" aria-expanded={open} aria-controls={bodyId} aria-label={toggleLabel} title={toggleLabel} onClick={() => onToggleOpen?.(!open)}>
+        <Icon name="chev" className={open ? "rotate-90" : "-rotate-90"} />
+      </Button>
+    </div>
+  );
+};
+
+/** 添えた箇所（名前・選んだ文・外す ×） */
+const LocationChip = ({ loc, id, onClearLoc }: { loc: Location; id: string; onClearLoc?: () => void }) => (
+  <div id={id} className="grid gap-1 rounded-control bg-muted p-2">
+    <div className="flex items-center gap-1">
+      <span className="flex-1 text-small font-medium">{locationLabel(loc)}</span>
+      <Button variant="ghost" size="icon" aria-label="箇所を外す" title="箇所を外す" onClick={onClearLoc}>
+        <Icon name="x" />
+      </Button>
+    </div>
+    <blockquote className="m-0 line-clamp-3 text-small text-muted-foreground">{loc.text}</blockquote>
+  </div>
+);
+
+export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen }: SendFormProps) => {
   const fieldId = useId();
   const messageId = `${fieldId}-msg`;
   const locId = `${fieldId}-loc`;
+  const bodyId = `${fieldId}-body`;
   const folded = collapsed && target === null;
   // 空白だけで溜めようとしたか（次に書き換えるまで出す）
   const [empty, setEmpty] = useState(false);
@@ -140,52 +199,60 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
     if (next === null || !event.currentTarget.contains(next)) onBlur?.(body);
   };
 
+  const fieldClass = folded ? FIELD_CLASS.folded : FIELD_CLASS.open;
+  // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行。結果は行の下に幅いっぱいで出す
+  const field = (
+    <Textarea
+      id={fieldId}
+      name="body"
+      rows={1}
+      value={body}
+      className={cn("aria-invalid:border-st-review", fieldClass)}
+      aria-label={target === null ? label : undefined}
+      aria-describedby={describedByOf(folded, target !== null && loc !== null ? locId : null, messageId)}
+      aria-keyshortcuts="Control+Enter"
+      aria-invalid={shown === "empty" ? true : undefined}
+      readOnly={status === "saving"}
+      onChange={(event) => {
+        setEmpty(false);
+        onInput(event.target.value);
+      }}
+      onFocus={onFocus}
+      onKeyDown={handleKeyDown}
+    />
+  );
+  const line = folded ? (
+    field
+  ) : (
+    <div className="flex items-end gap-2">
+      {field}
+      <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
+        <Icon name="comment" />
+      </Button>
+    </div>
+  );
+  const message = folded ? null : (
+    <p id={messageId} role="status" className={cn("m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden", RESULT_TONE[shown])}>
+      <ResultMessage status={shown} count={count} detail={detail} showSpinner={showSpinner} onCopy={() => onCopyBody?.(body)} />
+    </p>
+  );
+
   return (
-    <form noValidate data-id={target ?? undefined} data-collapsed={folded ? "" : undefined} className={cn("@container grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
-      {target === null ? null : (
-        <label htmlFor={fieldId} className="text-small text-muted-foreground">
-          <span className="font-mono">{target}</span> へのコメント
-        </label>
-      )}
-      {target !== null && loc !== null ? (
-        <div id={locId} className="grid gap-1 rounded-control bg-muted p-2">
-          <div className="flex items-center gap-1">
-            <span className="flex-1 text-small font-medium">{locationLabel(loc)}</span>
-            <Button variant="ghost" size="icon" aria-label="箇所を外す" title="箇所を外す" onClick={onClearLoc}>
-              <Icon name="x" />
-            </Button>
+    <form noValidate data-id={target ?? undefined} data-collapsed={folded ? "" : undefined} className={cn("grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2", !open && target !== null && "py-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
+      {target === null ? (
+        <>
+          {line}
+          {message}
+        </>
+      ) : (
+        <>
+          <FormHead target={target} fieldId={fieldId} bodyId={bodyId} open={open} hasDraft={body.trim() !== ""} onToggleOpen={onToggleOpen} />
+          <div id={bodyId} hidden={!open} className="contents">
+            {loc !== null ? <LocationChip loc={loc} id={locId} onClearLoc={onClearLoc} /> : null}
+            {line}
+            {message}
           </div>
-          <blockquote className="m-0 line-clamp-3 text-small text-muted-foreground">{loc.text}</blockquote>
-        </div>
-      ) : null}
-      <Textarea
-        id={fieldId}
-        name="body"
-        rows={1}
-        value={body}
-        className={cn("aria-invalid:border-st-review", folded ? "field-sizing-fixed h-8 resize-none overflow-hidden py-1" : "field-sizing-content resize-y field-send")}
-        aria-label={target === null ? label : undefined}
-        aria-describedby={folded ? undefined : target !== null && loc !== null ? `${locId} ${messageId}` : messageId}
-        aria-keyshortcuts="Control+Enter"
-        aria-invalid={shown === "empty" ? true : undefined}
-        readOnly={status === "saving"}
-        onChange={(event) => {
-          setEmpty(false);
-          onInput(event.target.value);
-        }}
-        onFocus={onFocus}
-        onKeyDown={handleKeyDown}
-      />
-      {folded ? null : (
-        <div className="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end">
-          <p id={messageId} role="status" className={cn("m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden", RESULT_TONE[shown])}>
-            <ResultMessage status={shown} count={count} detail={detail} showSpinner={showSpinner} onCopy={() => onCopyBody?.(body)} />
-          </p>
-          <Button type="submit" title="レビューに追加（Ctrl+Enter）" disabled={status === "saving"}>
-            <Icon name="comment" />
-            レビューに追加
-          </Button>
-        </div>
+        </>
       )}
     </form>
   );

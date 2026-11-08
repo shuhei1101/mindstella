@@ -50,7 +50,7 @@ export const overrideNames = ({ prefs, theme }: { prefs: Prefs; theme: Theme | n
   ];
 };
 
-/** 既定に戻した保存領域の値（`diffSel`・`commentsPinned` と知らない項目は残し、渡した値は変えない） */
+/** 既定に戻した保存領域の値（`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残し、渡した値は変えない） */
 export const resetPrefs = (prefs: Record<string, unknown>): Record<string, unknown> => ({
   ...prefs,
   theme: null,

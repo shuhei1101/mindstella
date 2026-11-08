@@ -44,7 +44,9 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
   const body = comments.data?.status === 200 ? (comments.data.data as { items?: ReviewItem[]; drafts?: Draft[] }) : undefined;
   const items = (body?.items ?? NO_ITEMS).filter((item) => item.target === id && item.thread === null);
   const host = useRef<HTMLDivElement>(null);
-  const order = usePrefs().reviewOrder === "oldest" ? "oldest" : "newest";
+  const prefs = usePrefs();
+  const order = prefs.reviewOrder === "oldest" ? "oldest" : "newest";
+  const formOpen = prefs.commentFormClosed !== true;
   const add = useAddComment();
   const update = useUpdateComment();
   const remove = useRemoveComment();
@@ -184,6 +186,8 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         status={form.status}
         count={form.count}
         detail={form.detail}
+        open={formOpen}
+        onToggleOpen={(next) => { writePrefs({ commentFormClosed: next ? null : true }); }}
         onInput={(next) => {
           setForm({ body: next, status: "idle", count: null, detail: null });
           saveDraft({ target: id, loc, thread: null, body: next });
@@ -211,6 +215,8 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
           area={entry.area}
           onOpen={() => {
             focusAfter(() => {
+              // 閉じていれば開いて残してから、箇所を添えた入力欄へ移る
+              if (!formOpen) writePrefs({ commentFormClosed: null });
               setLoc(entry.loc);
               setEntry(null);
             }, "textarea[name=body]");

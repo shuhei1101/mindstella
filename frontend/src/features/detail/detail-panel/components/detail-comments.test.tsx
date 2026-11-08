@@ -70,4 +70,43 @@ describe("DetailComments", () => {
     expect(bodiesInOrder).toEqual(["古い", "新しい"]);
     expect((JSON.parse(localStorage.getItem("mindmap-preview") ?? "{}") as Record<string, unknown>)["reviewOrder"]).toBe("oldest");
   });
+
+  // 開閉を覚え、入口で開く（正常系）
+  test("detail_comments_when_toggle_open", async () => {
+    // 準備
+    const other = { id: "A-2", title: "A-2の題", status: "下書き", body: "docs/A-2.md" };
+    stubRecords({
+      docs: [doc, other],
+      bodies: { "docs/A-1.md": '<p data-line-start="1">一行目</p><p data-line-start="3">二行目</p>', "docs/A-2.md": "本文" },
+    });
+    server.use(http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })));
+    renderRoute("/spa/?tab=docs&id=A-1");
+    // 履歴を進めて別の項目を開く（ルーターは popstate で URL を読み直す）
+    const open = (id: string): void => {
+      window.history.pushState(null, "", `/spa/?tab=docs&id=${id}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    };
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行（閉じてから別の項目へ移る）
+    await userEvent.click(await within(panel).findByRole("button", { name: "コメントの入力を閉じる" }));
+    open("A-2");
+    // 検証
+    const stored = (): unknown => (JSON.parse(localStorage.getItem("mindmap-preview") ?? "{}") as Record<string, unknown>)["commentFormClosed"];
+    expect(stored()).toBe(true);
+    await within(panel).findByRole("heading", { name: "A-2の題" });
+    expect(within(panel).queryByRole("textbox", { name: /A-2 へのコメント/ })).toBeNull();
+    expect(within(panel).getByRole("button", { name: "コメントの入力を開く" })).toBeInTheDocument();
+    // 実行（閉じたまま A-1 の本文を選んで入口を押す）
+    open("A-1");
+    const line = await within(panel).findByText("二行目");
+    const range = document.createRange();
+    range.selectNodeContents(line);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+    line.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    await userEvent.click(await screen.findByRole("button", { name: "選んだ箇所にコメント" }));
+    // 検証
+    await waitFor(() => expect(stored() ?? null).toBeNull());
+    expect(within(panel).getByRole("textbox", { name: /A-1 へのコメント/ })).toHaveFocus();
+  });
 });
