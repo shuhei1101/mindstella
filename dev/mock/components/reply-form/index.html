@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../refs/473/assets/style.css">
+  <!-- この PR のマイクのボタンと録音中・文字起こし中の並び（PR #476） -->
+  <link rel="stylesheet" href="../../refs/476/assets/style.css">
   <style>
     /* カタログの本文: 画面の高さに縛らず、縦に流す */
     body { display: block; height: auto; overflow: auto; }
@@ -126,6 +128,31 @@
       <h2>最も狭い幅（320px）</h2>
       <p>入力欄はボタンの幅を除いた残りに広がる。</p>
       <div class="stage narrowest"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-9">返信</label><div class="send-line"><textarea id="rf-9" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-9-msg" maxlength="10000"></textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg saved" id="rf-9-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>レビューに追加しました（レビュー中 3 件）。</span></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>音声: 通常（マイクのボタンを置く）</h2>
+      <p>コメントの入力と同じ並び。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-19">返信</label><div class="send-line"><textarea id="vi-19" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-19-msg"></textarea><button class="icon-btn send-mic" type="button" aria-label="音声で入力" title="音声で入力"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg></button><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="vi-19-msg" role="status"></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>音声: 録音中</h2>
+      <p>コメントの入力と同じく、文字の「キャンセル」と「文字起こし」に切り替える。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-20">返信</label><div class="send-line is-recording"><textarea id="vi-20" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-20-msg"></textarea><div class="send-rec-actions"><button class="btn" type="button">キャンセル</button><button class="btn primary" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>文字起こし</button></div></div><p class="send-msg recording" id="vi-20-msg" role="status"><span class="rec-dot" aria-hidden="true"></span><span>録音中 <span class="rec-time" aria-hidden="true">0:12</span></span></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>音声: 送信した</h2>
+      <p>返信をその 1 件だけ送信し、スレッドの末尾に足す。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-21">返信</label><div class="send-line"><textarea id="vi-21" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-21-msg"></textarea><button class="icon-btn send-mic" type="button" aria-label="音声で入力" title="音声で入力"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg></button><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg sent" id="vi-21-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>送信し、Claude Code へ入力しました。</span></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>音声: 押せない（voice-paste が起動していない）</h2>
+      <p>コメントの入力と同じ理由のツールチップ。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-22">返信</label><div class="send-line"><textarea id="vi-22" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-22-msg">了解</textarea><span class="send-tip-wrap"><button class="icon-btn send-mic" type="button" aria-label="音声で入力" aria-disabled="true" aria-describedby="tip-21" title="voice-paste が起動していないため、音声で入力できません。"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg></button><span class="send-tip" role="tooltip" id="tip-21">voice-paste が起動していないため、音声で入力できません。</span></span><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="vi-22-msg" role="status"></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>音声: 最も狭い幅の録音中（320px）</h2>
+      <p>コメントの入力と同じく、2 つのボタンを入力欄の下の行へ移す。</p>
+      <div class="stage narrowest"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="vi-23">返信</label><div class="send-line is-recording"><textarea id="vi-23" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="vi-23-msg"></textarea><div class="send-rec-actions"><button class="btn" type="button">キャンセル</button><button class="btn primary" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>文字起こし</button></div></div><p class="send-msg recording" id="vi-23-msg" role="status"><span class="rec-dot" aria-hidden="true"></span><span>録音中 <span class="rec-time" aria-hidden="true">0:12</span></span></p></form></div>
     </section>
   </main>
 </body>

@@ -26,18 +26,9 @@
 /* 録音中の表示: 結果の行に、失敗の色の丸と経過の時間を出す（案 A） */
 .send-msg.recording { color: var(--text); }
 /* 録音中の丸: 色だけでなく「録音中」の文言でも伝える */
-.rec-dot { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--st-review); animation: rec-blink 1.2s ease-in-out infinite; }
-/* 録音中の丸の点滅 */
-@keyframes rec-blink { 50% { opacity: .35; } }
-/* 動きを減らす設定では点滅させない */
-@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+.rec-dot { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--st-review); }
 /* 経過の時間: 桁を揃える */
 .rec-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-
-/* 案 B: 録音中の表示を 2 つのボタンの左に並べる */
-.rec-inline { display: inline-flex; align-items: center; gap: 6px; height: calc(1lh + 18px); padding: 0 4px; font-size: var(--fs-small); color: var(--text); white-space: nowrap; }
-/* 案 B の丸: 行の中央に合わせる */
-.rec-inline .rec-dot { margin-top: 0; }
 
 /* 最も狭い幅: 録音中の 2 つのボタンを入力欄の下の行へ移し、右端に寄せる */
 @container (max-width: 360px) { .send-line.is-recording { flex-wrap: wrap; } .send-line.is-recording textarea { flex-basis: 100%; } .send-line.is-recording .send-rec-actions { margin-left: auto; } }
@@ -54,3 +45,6 @@
 .pe-field.is-pending .pe-radios { padding: 6px 10px; border: 1px dashed var(--accent); border-radius: var(--radius); }
 /* 候補を読めないセレクト: 面を沈めて押せないことを示す */
 .pe-field select.input:disabled { background: var(--surface-2); color: var(--text-2); cursor: not-allowed; }
+
+/* モックの見本: ツールチップを出したままの台は、ツールチップが台の上に収まるよう上を空け、はみ出しを切らない */
+.stage:has(.send-tip) { padding-top: 56px; overflow: visible; }
