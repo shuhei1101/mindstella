@@ -226,7 +226,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   ) : (
     <div className="flex items-end gap-2">
       {field}
-      <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled={status === "saving"}>
+      <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
         <Icon name="comment" />
       </Button>
     </div>

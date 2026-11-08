@@ -170,6 +170,8 @@ var MindmapPreview;
                             "aria-label": "レビューに追加",
                             title: "レビューに追加（Ctrl+Enter）",
                             disabled: status === "saving",
+                            // 溜めている間は処理中のカーソルにする
+                            "data-saving": status === "saving" ? "" : null,
                         },
                         children: [MindmapPreview.icon("comment")],
                     }),

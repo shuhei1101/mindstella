@@ -882,6 +882,8 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .send-submit:hover { background: var(--text); color: var(--bg); opacity: .85; }
 /* 押せない送るボタン: 面を沈めて押せないことを示す */
 .send-submit:disabled, .send-submit:disabled:hover { background: var(--surface-2); border-color: var(--border); color: var(--text-3); opacity: 1; cursor: default; }
+/* 溜めている間の送るボタン: 処理中のカーソルにする */
+.send-submit[data-saving]:disabled { cursor: progress; }
 /* タッチが主な端末: 送るボタンのタップ領域を 44px にし、1 行の入力欄も同じ高さにする */
 @media (pointer: coarse) { .send-submit { width: 44px; height: 44px; } .send-line textarea { min-block-size: 44px; } }
 /* 送っている間の回る印 */
