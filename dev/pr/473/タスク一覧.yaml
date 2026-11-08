@@ -71,7 +71,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-08T17:39:58.789109+00:00'
   - process: 実装
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-08T19:26:29.712427+00:00'
   - process: 結合テスト作成
     status: todo
     note: tests/integration/storybook・storybook_react の send-form・reply-form のストーリーのテスト（Closed・ClosedWithDraft を追加）と、tests/integration/preview の詳細パネル・詳細の全画面の画面のテスト（「本文を写す」の期待値と、開閉を覚える・入口で開く）
