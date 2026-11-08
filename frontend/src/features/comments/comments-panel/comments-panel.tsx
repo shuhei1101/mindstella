@@ -1,5 +1,5 @@
 // コメントの一覧（画面設計『コメントの一覧.tsx』）。スレッドを状態とタグで絞って並べ、新しいスレッドを立てる左のパネル。パネルの中をスレッド・レビュー中の書き込みの画面と切り替える
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ReviewView } from "@/features/comments/review/review-view";
 import { ThreadRow } from "@/features/comments/shared/thread-row";
@@ -36,9 +36,27 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const saveDraft = useSaveDraft();
   const freeDraft = data.drafts.find((draft) => draft.target === null && draft.thread === null)?.body ?? "";
   const [composing, setComposing] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const composer = useRef<HTMLDivElement>(null);
+  // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+  // 新しいスレッドの入力を出したら、入力欄へフォーカスを移す
+  useEffect(() => {
+    if (composing) composer.current?.querySelector("textarea")?.focus();
+  }, [composing]);
   const [free, setFree] = useState<{ body: string; status: SendStatus; count: number | null; detail: string | null }>({ body: freeDraft, status: "idle", count: null, detail: null });
   const close = (): void => {
     setPanel(undefined);
+  };
+  // スレッドの一覧へ戻り、描き直した一覧の開いていた行へフォーカスを戻す
+  const backToList = (): void => {
+    const from = search.thread;
+    setComments({ thread: undefined });
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-focus="thread:${from ?? ""}"], [data-focus="thread:new:${from ?? ""}"]`)?.focus();
+    });
   };
   const counts = threadCounts({ threads: data.threads, tag });
   const rows = visibleThreads({ threads: data.threads, filter, tag });
@@ -46,7 +64,9 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const repliesOf = new Set(data.items.map((item) => item.thread).filter((thread): thread is string => thread !== null));
   const header = (
     <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-      <h2 className="m-0 flex-1 text-body font-medium">コメント</h2>
+      <h2 ref={heading} tabIndex={-1} className="m-0 flex-1 text-body font-medium focus-visible:outline-none">
+        コメント
+      </h2>
       {search.review === undefined ? (
         <Button variant="outline" aria-label={`レビュー中の書き込みを確かめる（${String(data.items.length)} 件）`} onClick={() => { setComments({ review: "1" }); }}>
           レビュー中
@@ -66,7 +86,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
       return <ReviewView data={data} highlight={search.thread ?? null} onBack={() => { setComments({ review: undefined }); }} onOpenThread={(id) => { setComments({ review: undefined, thread: id }); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />;
     }
     if (search.thread !== undefined) {
-      return <ThreadView key={search.thread} id={search.thread} data={data} onBack={() => { setComments({ thread: undefined }); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />;
+      return <ThreadView key={search.thread} id={search.thread} data={data} onBack={backToList} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />;
     }
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -108,7 +128,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
           </p>
         ) : null}
         {composing ? (
-          <div className="grid border-t border-border">
+          <div ref={composer} className="grid border-t border-border">
             <div className="flex items-center px-3 pt-2">
               <h3 className="m-0 flex-1 text-small font-medium">新しいスレッド</h3>
               <Button variant="ghost" size="icon" aria-label="新しいスレッドの入力を閉じる" onClick={() => { setComposing(false); }}>
@@ -152,18 +172,18 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   })();
   return (
     <>
-      {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40" onClick={close} />}
+      {pinned ? null : <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
       <section
         role="dialog"
         aria-modal={!pinned}
         aria-label="コメント"
-        className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card"
+        className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.stopPropagation();
           if (search.review !== undefined) setComments({ review: undefined });
-          else if (search.thread !== undefined) setComments({ thread: undefined });
+          else if (search.thread !== undefined) backToList();
           else close();
         }}
       >

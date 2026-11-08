@@ -1,5 +1,5 @@
 // 表示の設定（画面設計『表示の設定.tsx』）。表示する種類と差分のミニマップと本文の表とセクションの見せ方を、この端末だけの個人の上書きとして変える左のパネル
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { SettingsPanel } from "@/features/settings/display-settings/components/settings-panel";
 import { SettingsConfirmDialog } from "@/features/settings/display-settings/settings-confirm-dialog";
@@ -38,6 +38,11 @@ export const DisplaySettingsPanel = () => {
   const clearTheme = useThemeStore((state) => state.clearTheme);
   const message = useDisplayMessage();
   const [confirming, setConfirming] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
   const defaults = displayDefaults(rawIndex?.data.settings.display);
   const look = prefs.look ?? defaults.look;
   const visibleKinds = KIND_KEYS.filter((kind) => visible.has(kind));
@@ -49,13 +54,13 @@ export const DisplaySettingsPanel = () => {
   };
   return (
     <>
-      <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40" onClick={close} />
+      <div data-scrim aria-hidden="true" className="fixed inset-0 z-20 bg-foreground/40 max-lg:hidden" onClick={close} />
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- パネルが Esc を受ける */}
       <section
         role="dialog"
         aria-modal="true"
         aria-label="表示の設定"
-        className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card"
+        className="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
         onKeyDown={(event) => {
           if (event.key === "Escape" && !confirming) {
             event.stopPropagation();
@@ -64,7 +69,9 @@ export const DisplaySettingsPanel = () => {
         }}
       >
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <h2 className="m-0 flex-1 text-body font-medium">表示の設定</h2>
+          <h2 ref={heading} tabIndex={-1} className="m-0 flex-1 text-body font-medium focus-visible:outline-none">
+            表示の設定
+          </h2>
           <Button variant="ghost" size="icon" aria-label="表示の設定を閉じる" onClick={close}>
             <Icon name="x" />
           </Button>

@@ -14,6 +14,7 @@ import { formatJst } from "@/shared/core/format";
 import { locationLabel } from "@/shared/core/records";
 import { useAddComment, useRemoveComment, useSendComments, useUpdateComment } from "@/shared/hooks/use-comments";
 import { cn } from "@/shared/lib/cn";
+import { showLocation } from "@/shared/stores/location-highlight-store";
 
 export type ReviewViewProps = {
   data: CommentData;
@@ -26,9 +27,17 @@ export type ReviewViewProps = {
 };
 
 /** まとめて送った結果 */
-type SendOutcome = { kind: "sending" } | { kind: "sent"; count: number; at: string; entered: boolean } | { kind: "stale"; count: number } | { kind: "failed"; detail: string | null };
+type SendOutcome = { kind: "none" } | { kind: "sending" } | { kind: "sent"; count: number; at: string; entered: boolean } | { kind: "stale"; count: number } | { kind: "failed"; detail: string | null };
 
 const OutcomeText = ({ outcome }: { outcome: SendOutcome }) => {
+  if (outcome.kind === "none") {
+    return (
+      <>
+        <Icon name="alert" className="text-st-review" />
+        <span>送る書き込みにチェックを付けてください。</span>
+      </>
+    );
+  }
   if (outcome.kind === "sending") {
     return (
       <>
@@ -94,7 +103,12 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
   };
   const sendChecked = (): void => {
     const ids = checked.map((item) => item.id);
-    if (ids.length === 0 || send.isPending) return;
+    if (send.isPending) return;
+    // チェックが 0 件: 送らずにチェックを付けるよう出す
+    if (ids.length === 0) {
+      setOutcome({ kind: "none" });
+      return;
+    }
     setOutcome({ kind: "sending" });
     send.mutate(ids, {
       onSuccess: (reply) => {
@@ -123,10 +137,18 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
         <h2 className="m-0 flex-1 text-body font-medium">{`レビュー中の書き込み（${String(items.length)}）`}</h2>
       </div>
       {items.length === 0 && removed.length === 0 ? (
-        <p className="m-0 flex items-center gap-1 p-3 text-small text-muted-foreground">
-          <Icon name="comment" />
-          レビュー中の書き込みはありません。
-        </p>
+        <>
+          {/* まとめて送った直後は、送った結果を残す */}
+          {outcome === null ? null : (
+            <p role="status" className="m-0 flex items-start gap-1 px-3 py-2 text-small">
+              <OutcomeText outcome={outcome} />
+            </p>
+          )}
+          <p className="m-0 flex items-center gap-1 p-3 text-small text-muted-foreground">
+            <Icon name="comment" />
+            レビュー中の書き込みはありません。
+          </p>
+        </>
       ) : (
         <>
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -142,7 +164,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               }}
             />
             <span className="flex-1 text-small">{`${String(checked.length)} / ${String(sendable.length)} 件`}</span>
-            <Button disabled={checked.length === 0 || send.isPending} onClick={sendChecked}>
+            <Button disabled={send.isPending} onClick={sendChecked}>
               <Icon name="comment" />
               {`まとめて送る（${String(checked.length)} 件）`}
             </Button>
@@ -178,10 +200,10 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
               const staleReason = stale[item.id];
               const replyTo = item.thread === null ? null : (threads.find((one) => one.id === item.thread) ?? null);
               return (
-                <li key={item.id} data-comment={item.id} className={cn("grid gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-destructive", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
+                <li key={item.id} data-comment={item.id} data-highlight={highlight !== null && (item.thread === highlight || item.id === highlight) ? "" : undefined} className={cn("grid gap-1 rounded-card border p-2", staleReason === undefined ? "border-border" : "border-st-review", highlight !== null && (item.thread === highlight || item.id === highlight) && "bg-accent")}>
                   <div className="flex items-center gap-2 text-small">
                     <Checkbox aria-label={item.thread === null ? `${item.target ?? "項目を指さない"}${item.target === null ? "コメントを送る" : " へのコメントを送る"}` : `${item.thread} への返信を送る`} checked={!blocked && !unchecked.has(item.id)} disabled={blocked} onChange={() => { toggle(item.id); }} />
-                    <span className="rounded-control border border-border px-1.5">{item.thread === null ? "新しいスレッド" : "返信"}</span>
+                    <span data-part="kind" className="rounded-control border border-border px-1.5">{item.thread === null ? "新しいスレッド" : "返信"}</span>
                     {replyTo === null ? null : (
                       <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" onClick={() => { onOpenThread(replyTo.id); }}>
                         <ThreadState status={replyTo.status} />
@@ -189,7 +211,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       </button>
                     )}
                     {item.thread === null && item.target !== null ? (
-                      <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" disabled={titles(item.target) === null} onClick={() => { onOpenItem(item.target ?? ""); }}>
+                      <button type="button" className="flex min-w-0 cursor-pointer items-center gap-1" disabled={titles(item.target) === null} onClick={() => { showLocation({ target: item.target ?? "", loc: item.loc }); onOpenItem(item.target ?? ""); }}>
                         <span className="font-mono">{item.target}</span>
                         <span className="truncate">{titles(item.target) ?? ""}</span>
                       </button>
@@ -215,7 +237,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                     )}
                   </div>
                   {item.loc === null ? null : (
-                    <div className="grid gap-0.5 text-small">
+                    <div data-part="loc" className="grid gap-0.5 text-small">
                       <span className="font-medium">{locationLabel(item.loc)}</span>
                       <blockquote className="m-0 line-clamp-3 text-muted-foreground">{item.loc.text}</blockquote>
                     </div>
@@ -232,7 +254,7 @@ export const ReviewView = ({ data, highlight, onBack, onOpenThread, onOpenItem, 
                       }}
                     />
                   ) : (
-                    <ReviewBodyFold id={item.id} label={label} body={item.body} titles={titles} changeSets={changeSets} open={opened[item.id] ?? false} onToggle={(id, open) => { setOpened((current) => ({ ...current, [id]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
+                    <ReviewBodyFold id={item.id} label={label} body={item.body} changeSets={changeSets} open={opened[item.id] ?? false} onToggle={(id, open) => { setOpened((current) => ({ ...current, [id]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
                       {(content, toggleButton) => (
                         <>
                           {content}

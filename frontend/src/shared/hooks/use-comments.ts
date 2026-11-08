@@ -15,6 +15,11 @@ const draftKey = ({ target, loc, thread }: Pick<DraftInput, "target" | "loc" | "
 /** 向けた先ごとの、予約した書きかけの保存 */
 const draftTimers = new Map<string, number>();
 
+/** 書きかけを送る。保てなかったときは画面に出さない（今の画面と同じ。入力欄の中身は残り、次の入力か溜めたときに送り直す） */
+const sendDraft = (draft: DraftInput): void => {
+  saveDraft(draft).catch(() => undefined);
+};
+
 /** 予約した書きかけの保存を取り消す */
 const cancelDraft = (key: string): void => {
   window.clearTimeout(draftTimers.get(key));
@@ -68,14 +73,14 @@ export const useSaveDraft = () =>
     const key = draftKey(draft);
     cancelDraft(key);
     if (now) {
-      void saveDraft(draft);
+      sendDraft(draft);
       return;
     }
     draftTimers.set(
       key,
       window.setTimeout(() => {
         draftTimers.delete(key);
-        void saveDraft(draft);
+        sendDraft(draft);
       }, DRAFT_SAVE_DELAY_MS),
     );
   }, []);

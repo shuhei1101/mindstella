@@ -114,7 +114,7 @@ export const PreviewShell = () => {
     opened.current = true;
     if (JSON.stringify(next) !== JSON.stringify(search)) replaceSearch(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- search の中身が変わったときだけ確かめる
-  }, [index, JSON.stringify(search), pendingCount, diffActive, JSON.stringify(threadContext)]);
+  }, [index, JSON.stringify(search), pendingCount, diffActive, JSON.stringify(threadContext), [...visible].join(",")]);
   const tabs: TopbarTab[] = [
     { key: "overview", label: "概要", icon: TAB_ICON.overview },
     ...KIND_KEYS.filter((kind) => visible.has(kind)).map((kind) => ({ key: kind, label: KIND_LABEL[kind], icon: TAB_ICON[kind], ...(data === undefined ? {} : { count: data[kind].length }) })),

@@ -10,3 +10,5 @@ items:
   summary: 開いている追加の入力と、直前の保存で書き込めなかった編集
 - page: display-notice-store.ts.yaml
   summary: 表示の設定の知らせ（ワークスペースの既定が変わった知らせと、表示の設定のパネルの `message`）
+- page: location-highlight-store.ts.yaml
+  summary: コメントの一覧（レビュー中の書き込みの行・スレッドの向けた項目）から開いた項目の中で示す箇所

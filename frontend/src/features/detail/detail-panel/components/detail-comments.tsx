@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/shared/components/icon";
+import { ReviewEditForm } from "@/features/comments/shared/review-edit-form";
 import { ReviewBodyFold } from "@/shared/components/review-body-fold";
 import { SelectionComment } from "@/shared/components/selection-comment";
 import { SendForm, type SendStatus } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
-import { Textarea } from "@/shared/components/ui/textarea";
 import { AppError } from "@/shared/core/app-error";
 import { selectionLocation } from "@/shared/core/body-links";
 import { commentNumber, reviewLabel, type Draft, type ReviewItem } from "@/shared/core/comments";
@@ -80,19 +80,34 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
       }
       setEntry({ anchor: rectsOf(range), area: { viewport: { width: window.innerWidth, height: window.innerHeight }, scroller: scroller.getBoundingClientRect() }, loc: location });
     };
-    document.addEventListener("pointerup", sync);
-    document.addEventListener("keyup", sync);
+    // 入口を押した操作（click）を先に通すため、離した後の確かめは次の順番に回す
+    const later = (): void => {
+      window.setTimeout(sync, 0);
+    };
+    document.addEventListener("pointerup", later);
+    document.addEventListener("keyup", later);
     return () => {
-      document.removeEventListener("pointerup", sync);
-      document.removeEventListener("keyup", sync);
+      document.removeEventListener("pointerup", later);
+      document.removeEventListener("keyup", later);
     };
   }, []);
 
+  // 描き直した後に、その行の要素へフォーカスを移す（行の修正・入力欄・元に戻す）
+  const focusLater = (selector: string): void => {
+    requestAnimationFrame(() => {
+      host.current?.querySelector<HTMLElement>(selector)?.focus();
+    });
+  };
   const shown = [...items, ...removed.map((item) => ({ ...item, gone: true as const }))].sort((a, b) => (order === "newest" ? commentNumber(b.id) - commentNumber(a.id) : commentNumber(a.id) - commentNumber(b.id)));
   const text = form.body ?? draft;
   return (
     <div ref={host} className="sticky bottom-0 grid gap-2 bg-card">
-      {shown.length === 0 ? null : (
+      {shown.length === 0 ? (
+        <section className="grid gap-2 border-t border-border pt-2">
+          <h3 className="m-0 text-small font-medium">レビュー中のコメント</h3>
+          <p className="m-0 text-small text-muted-foreground">レビュー中のコメントはありません。</p>
+        </section>
+      ) : (
         <section className="grid gap-2 border-t border-border pt-2">
           <div className="flex items-center gap-2">
             <h3 className="m-0 flex-1 text-small font-medium">レビュー中のコメント</h3>
@@ -110,7 +125,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                 return (
                   <li key={item.id} className="flex items-center gap-2 text-small">
                     <span role="status" className="flex-1">コメントを削除しました。</span>
-                    <Button variant="ghost" onClick={() => { add.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); } }); }}>
+                    <Button variant="ghost" data-focus={`undo:${item.id}`} onClick={() => { add.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); focusLater(`[data-focus="edit:${item.id}"]`); } }); }}>
                       <Icon name="undo" />
                       元に戻す
                     </Button>
@@ -123,34 +138,30 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                     <span className="flex-1">{item.loc === null ? "" : locationLabel(item.loc)}</span>
                     {editing?.id === item.id ? null : (
                       <>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" onClick={() => { setEditing({ id: item.id, body: item.body, error: null }); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { setEditing({ id: item.id, body: item.body, error: null }); focusLater(`[data-comment="${item.id}"] textarea`); }}>
                           <Icon name="edit" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" onClick={() => { remove.mutate(item.id, { onSuccess: () => { setRemoved((current) => [...current, item]); } }); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" onClick={() => { remove.mutate(item.id, { onSuccess: () => { setRemoved((current) => [...current, item]); focusLater(`[data-focus="undo:${item.id}"]`); } }); }}>
                           <Icon name="trash" />
                         </Button>
                       </>
                     )}
                   </div>
                   {editing?.id === item.id ? (
-                    <div className="grid gap-1">
-                      <Textarea aria-label={`${label}の本文`} value={editing.body} className="field-sizing-content resize-y field-edit" onChange={(event) => { setEditing({ ...editing, body: event.target.value }); }} />
-                      {editing.error === null ? null : <p role="alert" className="m-0 text-small text-destructive">{editing.error}</p>}
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" onClick={() => { setEditing(null); }}>キャンセル</Button>
-                        <Button
-                          onClick={() => {
-                            if (editing.body.trim() === "") {
-                              setEditing({ ...editing, error: "コメントを入れてから直してください。" });
-                              return;
-                            }
-                            update.mutate({ id: item.id, body: editing.body }, { onSuccess: () => { setEditing(null); }, onError: (error) => { setEditing({ ...editing, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
-                          }}
-                        >
-                          修正
-                        </Button>
-                      </div>
-                    </div>
+                    <ReviewEditForm
+                      id={item.id}
+                      label={label}
+                      body={item.body}
+                      error={editing.error}
+                      saving={update.isPending}
+                      onCancel={() => {
+                        setEditing(null);
+                        focusLater(`[data-focus="edit:${item.id}"]`);
+                      }}
+                      onSubmit={(target, body) => {
+                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); focusLater(`[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
+                      }}
+                    />
                   ) : (
                     <ReviewBodyFold id={item.id} label={label} body={item.body} titles={titles} changeSets={changeSets} focus="detail-" open={opened[item.id] ?? false} onToggle={(target, open) => { setOpened((current) => ({ ...current, [target]: open })); }} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet}>
                       {(content, toggle) => (
@@ -202,7 +213,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
           onOpen={() => {
             setLoc(entry.loc);
             setEntry(null);
-            host.current?.querySelector<HTMLTextAreaElement>("textarea[name=body]")?.focus();
+            focusLater("textarea[name=body]");
           }}
           onClose={() => { setEntry(null); }}
         />

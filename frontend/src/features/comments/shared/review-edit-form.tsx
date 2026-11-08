@@ -27,6 +27,13 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
     onSubmit(id, value);
   };
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    // Esc は書き換えを捨てる（使う側の「戻る」へ伝えない）
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onCancel(id);
+      return;
+    }
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
       event.preventDefault();
       trySave();

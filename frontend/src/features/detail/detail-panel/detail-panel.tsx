@@ -16,15 +16,19 @@ import { DiffMinimap } from "@/shared/components/diff-minimap";
 import { Icon, StatusMark } from "@/shared/components/icon";
 import { TagList } from "@/shared/components/tag-list";
 import { WithdrawnBadge } from "@/shared/components/withdrawn-badge";
+import { LINE_ATTR, VALUE_KEY_ATTR } from "@/shared/core/body-links";
+import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
 import { relatedItems, tagNames, type Item, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
+import { applyHighlight } from "@/shared/core/term-tips";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
+import { useLocationHighlight } from "@/shared/stores/location-highlight-store";
 import { readBodyScrolls, readPrefs, usePrefs, writeBodyScroll, writePrefs } from "@/shared/stores/prefs-store";
 
 const NOTE_TRIMMED = "このまとまりの前後を組み立てられません。保持する回数を超えた古い変更履歴は消えています。今の内容を出しています。";
@@ -144,6 +148,25 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     scroller.addEventListener("scroll", update, { passive: true });
     return () => { scroller.removeEventListener("scroll", update); };
   }, [titleElement]);
+  // コメントの一覧から開いたとき、描いた本文の中の書き込みの箇所を示す（描き終えるのを本文の要素の変化で待つ）
+  const loc = useLocationHighlight(id);
+  useEffect(() => {
+    const root = titleElement?.closest(".panel-body") ?? null;
+    if (loc === null || root === null) return undefined;
+    const ready = loc.kind === "value" ? `[${VALUE_KEY_ATTR}]` : `.md [${LINE_ATTR}], iframe[${HTML_BODY_ATTR}]`;
+    const observer = new MutationObserver(() => { apply(); });
+    const apply = (): void => {
+      if (root.querySelector(ready) === null) return;
+      observer.disconnect();
+      applyHighlight({ root, loc });
+    };
+    observer.observe(root, { childList: true, subtree: true });
+    apply();
+    return () => {
+      observer.disconnect();
+      for (const element of root.querySelectorAll(".loc-hit")) element.classList.remove("loc-hit");
+    };
+  }, [titleElement, loc]);
   const entry = index.byId.get(id);
   if (entry === undefined) return null;
   const { kind } = entry;
