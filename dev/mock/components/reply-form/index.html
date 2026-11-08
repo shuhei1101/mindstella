@@ -10,84 +10,118 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-  <!-- トークン・今のプレビューのスタイル・この PR で足すスタイル・カタログの見た目 -->
+  <!-- トークンと、今のプレビューのスタイルに、この PR の入力欄の右のボタンの分を重ねる -->
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
   <link rel="stylesheet" href="../../../../plugins/mindstella/skills/mindmap/preview/style.css">
-  <link rel="stylesheet" href="../../refs/235/assets/style.css">
-  <link rel="stylesheet" href="../../refs/235/assets/catalog.css">
-  <!-- 画面のモックと同じスクリプト（記録の埋め込み先が無いので起動しない）と、見本の引数 -->
-  <script src="../../refs/235/assets/app.js"></script>
-  <script src="../../refs/235/assets/catalog.js"></script>
+  <link rel="stylesheet" href="../../refs/473/assets/style.css">
+  <style>
+    /* カタログの本文: 画面の高さに縛らず、縦に流す */
+    body { display: block; height: auto; overflow: auto; }
+    /* カタログの本文の幅と余白 */
+    main.content { display: block; max-width: var(--content-max); margin: 0 auto; padding: 28px var(--page-pad) 64px; overflow: visible; }
+    /* カタログの節: 状態ごとの案を縦に並べる */
+    .cat-sec { margin-top: 32px; }
+    /* カタログの節の見出し */
+    .cat-sec > h2 { margin: 0 0 4px; font-size: 1rem; }
+    /* 状態の説明 */
+    .cat-sec > p { margin: 0 0 12px; color: var(--text-2); font-size: var(--fs-small); }
+    /* 部品を置く台: 詳細パネルの幅 */
+    .stage { width: var(--panel-w); max-width: 100%; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--bg); overflow: hidden; }
+    /* 狭い幅の見本 */
+    .stage.narrow { width: 390px; }
+    /* 最も狭い幅の見本 */
+    .stage.narrowest { width: 320px; }
+    /* 台の中の入力: 下端の線を台の枠に任せる */
+    .stage .send.send-footer { border-top: 0; }
+    /* 状態を見せるための見本のクラス: ホバー */
+    .send-submit.is-hover { opacity: .85; }
+    /* 状態を見せるための見本のクラス: キーボードのフォーカス */
+    .is-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+  </style>
 </head>
 <body>
-  <main class="catalog">
+  <main class="content">
     <!-- パンくず -->
     <nav class="crumbs" aria-label="パンくず"><a href="../index.md">components</a> / reply-form</nav>
-    <h1>返信の入力</h1>
-
-    <!-- 空 -->
+    <h1 style="margin: 0; font-size: var(--fs-h1); letter-spacing: -.02em;">返信の入力</h1>
+    <p style="margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-small);">スレッドの下端に留める、返信をレビュー中に溜める入力。「レビューに追加」は入力欄の右のアイコンだけのボタンにし、結果は入力欄の下に出す（PR #473）。</p>
     <section class="cat-sec">
       <h2>空</h2>
-      <p>入力が空の間は「レビューに追加」を押せない（入力欄が空であることが押せない理由）。</p>
-      <div class="stage" id="s-empty"></div>
+      <p>入力が空の間は「レビューに追加」を押せない（面を沈める）。結果が無い間は入力欄の下に行を取らない。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-1">返信</label><div class="send-line"><textarea id="rf-1" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-1-msg" maxlength="10000"></textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-1-msg" role="status"></p></form></div>
     </section>
-
-    <!-- 入力中 -->
     <section class="cat-sec">
       <h2>入力中</h2>
-      <p>Ctrl+Enter でも溜める（変換の確定の Enter では溜めない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
-      <div class="stage" id="s-typing"></div>
+      <p>入力欄に印の色の輪。ボタンを押せる。Ctrl+Enter でも溜める（変換の確定の Enter では溜めない）。Esc は入力から外れるだけで、一覧へは戻らない。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-2">返信</label><div class="send-line"><textarea id="rf-2" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-2-msg" maxlength="10000" class="is-focus">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-2-msg" role="status"></p></form></div>
     </section>
-
-    <!-- 溜めている -->
+    <section class="cat-sec">
+      <h2>溜めるボタンのフォーカス</h2>
+      <p>Tab で入力欄の次に届き、印の色の輪とツールチップを出す。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-3">返信</label><div class="send-line"><textarea id="rf-3" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-3-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit is-focus" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-3-msg" role="status"></p></form></div>
+    </section>
     <section class="cat-sec">
       <h2>溜めている</h2>
-      <p>入力欄を読み取りだけにし、「レビューに追加」を押せなくする。</p>
-      <div class="stage" id="s-saving"></div>
+      <p>入力欄を読み取りだけにし、ボタンを押せなくする。入力欄の下に回る印と「レビューに追加しています」。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-4">返信</label><div class="send-line"><textarea id="rf-4" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-4-msg" maxlength="10000" readonly>起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled data-saving><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg saving" id="rf-4-msg" role="status"><span class="spinner" aria-hidden="true"></span><span>レビューに追加しています</span></p></form></div>
     </section>
-
-    <!-- レビューに追加した -->
     <section class="cat-sec">
       <h2>レビューに追加した</h2>
-      <p>入力欄を空にし、レビュー中の件数を出す。溜めた返信は書き込みの末尾に出る。</p>
-      <div class="stage" id="s-saved"></div>
+      <p>入力欄を空にし、入力欄の下にレビュー中の件数を出す。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-5">返信</label><div class="send-line"><textarea id="rf-5" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-5-msg" maxlength="10000"></textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg saved" id="rf-5-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>レビューに追加しました（レビュー中 3 件）。</span></p></form></div>
     </section>
-
-    <!-- レビューに追加できなかった -->
     <section class="cat-sec">
-      <h2>レビューに追加できなかった</h2>
-      <p>入力を残し、理由と直し方を出す（自動で消さない）。</p>
-      <div class="stage" id="s-failed"></div>
+      <h2>レビューに追加できなかった（サーバーにつながらない）</h2>
+      <p>入力を残し、入力欄の下に理由と直し方を出す（自動で消さない）。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-6">返信</label><div class="send-line"><textarea id="rf-6" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-6-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-6-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。</span></p></form></div>
     </section>
-
-    <!-- 長文 -->
     <section class="cat-sec">
-      <h2>長文</h2>
-      <p>入力欄は 8 行まで広がり、それより長いと中でスクロールする。</p>
-      <div class="stage" id="s-long"></div>
+      <h2>レビューに追加できなかった（サーバーが理由を返した）</h2>
+      <p>入力を残し、入力欄の下に理由を出す。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-6d">返信</label><div class="send-line"><textarea id="rf-6d" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-6d-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-6d-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。スレッド TH-5 はクローズです</span></p></form></div>
     </section>
-
-    <!-- 狭い幅（390px） -->
+    <section class="cat-sec">
+      <h2>長文（ボタンの縦の位置: 案 A・推奨）</h2>
+      <p>入力欄は 8 行まで広がり、それより長いと中でスクロールする。ボタンは入力欄の下端に合わせる。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-7">返信</label><div class="send-line"><textarea id="rf-7" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-7-msg" maxlength="10000">1 行目: 版ごとに当てる操作を確かめる
+2 行目: 版ごとに当てる操作を確かめる
+3 行目: 版ごとに当てる操作を確かめる
+4 行目: 版ごとに当てる操作を確かめる
+5 行目: 版ごとに当てる操作を確かめる
+6 行目: 版ごとに当てる操作を確かめる
+7 行目: 版ごとに当てる操作を確かめる
+8 行目: 版ごとに当てる操作を確かめる
+9 行目: 版ごとに当てる操作を確かめる
+10 行目: 版ごとに当てる操作を確かめる
+11 行目: 版ごとに当てる操作を確かめる
+12 行目: 版ごとに当てる操作を確かめる</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-7-msg" role="status"></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>長文（ボタンの縦の位置: 案 B）</h2>
+      <p>ボタンを入力欄の上端に合わせた案。</p>
+      <div class="stage"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-7b">返信</label><div class="send-line top"><textarea id="rf-7b" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-7b-msg" maxlength="10000">1 行目: 版ごとに当てる操作を確かめる
+2 行目: 版ごとに当てる操作を確かめる
+3 行目: 版ごとに当てる操作を確かめる
+4 行目: 版ごとに当てる操作を確かめる
+5 行目: 版ごとに当てる操作を確かめる
+6 行目: 版ごとに当てる操作を確かめる
+7 行目: 版ごとに当てる操作を確かめる
+8 行目: 版ごとに当てる操作を確かめる
+9 行目: 版ごとに当てる操作を確かめる
+10 行目: 版ごとに当てる操作を確かめる
+11 行目: 版ごとに当てる操作を確かめる
+12 行目: 版ごとに当てる操作を確かめる</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg" id="rf-7b-msg" role="status"></p></form></div>
+    </section>
     <section class="cat-sec">
       <h2>狭い幅（390px）</h2>
-      <p></p>
-      <div class="stage narrow" id="s-narrow"></div>
+      <p>部品の幅によらず入力欄とボタンを 1 行に並べ、結果は入力欄の下に幅いっぱいで出す。</p>
+      <div class="stage narrow"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-8">返信</label><div class="send-line"><textarea id="rf-8" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-8-msg" maxlength="10000">起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい</textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg failed" id="rf-8-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></svg><span>レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。</span></p></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>最も狭い幅（320px）</h2>
+      <p>入力欄はボタンの幅を除いた残りに広がる。</p>
+      <div class="stage narrowest"><form class="send send-footer reply" novalidate onsubmit="return false"><label class="send-label" for="rf-9">返信</label><div class="send-line"><textarea id="rf-9" name="body" rows="1" aria-keyshortcuts="Control+Enter" aria-describedby="rf-9-msg" maxlength="10000"></textarea><button class="icon-btn send-submit" type="submit" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4Z"/><path d="M8 9h8M8 12.5h5"/></svg></button></div><p class="send-msg saved" id="rf-9-msg" role="status"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>レビューに追加しました（レビュー中 3 件）。</span></p></form></div>
     </section>
   </main>
-
-  <!-- 台ごとの見本: app.js の部品へ状態ごとの引数を渡して置く -->
-  <script>
-    const T = Catalog.THREADS;
-    const form = (reply) => Catalog.pane(MindmapPreview.h({ tag: "div", attrs: { class: "comments-free" }, children: [MindmapPreview.replyForm(T.asking, Catalog.propsOf({ talk: { reply } }).talk)] }));
-    const text = "起票してよい。題は「版の範囲から当てる手順を返すコマンド」に縮めてほしい";
-    const long = Array.from({ length: 12 }, (_, i) => `${i + 1} 行目: 版ごとに当てる操作を確かめる`).join("\n");
-    Catalog.place("s-empty", form({}));
-    Catalog.place("s-typing", form({ body: text }));
-    Catalog.place("s-saving", form({ body: text, status: "saving" }));
-    Catalog.place("s-saved", form({ status: "saved", count: 3 }));
-    Catalog.place("s-failed", form({ body: text, status: "failed" }));
-    Catalog.place("s-long", form({ body: long }));
-    Catalog.place("s-narrow", form({ body: text }));
-  </script>
 </body>
 </html>

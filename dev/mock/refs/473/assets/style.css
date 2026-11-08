@@ -1,0 +1,27 @@
+/* 473: コメント・返信の入力の「レビューに追加」を、入力欄の右のアイコンだけのボタンにする */
+
+/* 入力欄とボタンの行: 入力欄を残りの幅いっぱいに広げ、ボタンを入力欄の下端に合わせる（案 A） */
+.send-line { display: flex; align-items: flex-end; gap: 8px; }
+/* 入力欄: ボタンの幅を除いた残りの幅いっぱいに広げる */
+.send-line textarea { flex: 1; min-width: 0; }
+/* 案 B: ボタンを入力欄の上端に合わせる */
+.send-line.top { align-items: flex-start; }
+
+/* 溜めるボタン: 1 行の入力欄と同じ高さの正方形にし、塗りの主な操作の色にする */
+.send-submit { flex: none; width: calc(1lh + 18px); height: calc(1lh + 18px); line-height: 1.5; background: var(--text); color: var(--bg); border-color: var(--text); }
+/* 溜めるボタンのホバー: 塗りのまま少し薄くする */
+.send-submit:hover { background: var(--text); color: var(--bg); opacity: .85; }
+/* 押せない溜めるボタン: 面を沈めて押せないことを示す */
+.send-submit:disabled, .send-submit:disabled:hover { background: var(--surface-2); border-color: var(--border); color: var(--text-3); opacity: 1; cursor: default; }
+/* 溜めている間の溜めるボタン: 処理中のカーソルにする */
+.send-submit[data-saving]:disabled { cursor: progress; }
+/* タッチが主な端末: 主な操作のタップ領域を 44px にし、1 行の入力欄も同じ高さにする */
+@media (pointer: coarse) {
+  .send-submit { width: 44px; height: 44px; }
+  .send-line textarea { min-block-size: 44px; }
+}
+
+/* 結果の行: 入力欄の下に幅いっぱいで出し、結果が無い間は高さを取らない */
+.send > .send-msg { min-height: 0; padding-top: 0; }
+/* 結果が無い結果の行: 行を出さない */
+.send > .send-msg:empty { display: none; }
