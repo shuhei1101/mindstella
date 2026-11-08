@@ -106,3 +106,38 @@ settings:
       - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
     introduced:
       pr: 155
+  - key: MINDSTELLA_TRANSCRIBER
+    title: 文字起こしのサービス
+    file: 環境変数
+    type: str
+    required: false
+    default: voice-paste
+    description: 『音声の文字起こし』『文字起こしの可否』が使う文字起こしのインターフェースの実装。今は `voice-paste` だけ
+    missing: '`voice-paste` を使う'
+    env_var: MINDSTELLA_TRANSCRIBER
+    reload: restart
+    allowed: '`voice-paste`（違えば常駐サーバーが起動時に InvalidTranscriberError で終わる）'
+    reason: 配信の処理を文字起こしのサービスに直接依存させず、別のサービスへ切り替えられるようにするため（PR #476 の確認ログ）。端末に 1 つのサービスを選ぶ値で、ワークスペースの `config.yaml` には置かない
+    status: planned
+    visibility: user
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
+      - dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
+  - key: MINDSTELLA_TRANSCRIBER_URL
+    title: 文字起こしのサービスの URL
+    file: 環境変数
+    type: str
+    required: false
+    default: http://127.0.0.1:47823
+    description: 文字起こしのサービスの待ち受けの URL（スキームとホストとポート）。既定は voice-paste の既定の待ち受け
+    missing: '`http://127.0.0.1:47823` へつなぐ'
+    env_var: MINDSTELLA_TRANSCRIBER_URL
+    reload: restart
+    allowed: '`http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`（違えば常駐サーバーが起動時に InvalidTranscriberError で終わる）'
+    reason: サービスの待ち受けのポートは端末ごとに変えられるため。voice-paste は Host が `127.0.0.1`・`localhost` の Origin の無い要求だけを受けるため、ほかのホストを受けない
+    status: planned
+    visibility: user
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
+      - dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
+      - dev/設計書/外部API/voice-paste#

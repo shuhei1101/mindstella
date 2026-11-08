@@ -2,7 +2,7 @@ title: SPAを開く
 entry:
   kind: screen
   value: サーバーの配信の `/spa/`（画面は『SPAの配信』が返し、ソースは `frontend/`）
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みと書きかけ、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドと利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・消す）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET /api/comments`（レビュー中の書き込みと書きかけ、項目ごとのコメントの印）・`GET /api/edits`（保存待ちの編集の件数と、項目ごとの保存待ちの印）・`GET /api/threads`（スレッドと利用者の未読）・`POST /api/opened`（前回開いた日時）・`POST /api/edits`・`DELETE /api/edits/{id}`・`POST /api/edits/save`（保存待ちの編集を溜める・取り消す・まとめて保存する）・`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込みを溜める・書き換える・消す）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）・`GET /api/transcription`（文字起こしの可否と設定）・`POST /api/transcriptions`（音声の文字起こし）・`POST /api/comments/send-now`（入力欄の全文 1 件をすぐ送る）'
 flows:
   - name: 正常系
     summary: '`/spa/` を開くと、記録を読んでトップバーと概要を描く'
@@ -643,6 +643,8 @@ constraints:
     constraint: 設定の画面は `tab=settings` で開く。入口は表示の設定のパネルの「設定を編集する」で、押すとパネルを閉じて設定の画面へ移り、履歴に積む
   - item: React に無い画面
     constraint: ネットワーク・全体の検索は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す。ネットワークの入口だけは、`tab` を `graph` にして `view` を写さない（今の画面のネットワークは表示形式を持たず、`id` の項目を選んで開く）
+  - item: 音声の入力
+    constraint: '開いたときに `GET /api/transcription` を読み、コメントの入力・返信の入力のマイクのボタンを置く。応答を待たずに入力を描き、`available` が `false` か、ブラウザが `navigator.mediaDevices.getUserMedia` を持たないときは、マイクのボタンを押せない見た目にしてフォーカスは受けたまま（`aria-disabled`）、理由（`detail`、マイクを使えないときは画面が持つ文）をツールチップと押したときの結果の行に出す。押すと `getUserMedia({audio: true})` と `MediaRecorder` で録り、マイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」に切り替える。キャンセルは録音を捨ててマイクを解放する。✓ は録音を止め、`POST /api/transcriptions` へ録った形の `Content-Type` で送り、返った文字を入力欄のカーソルの位置へ挿入する。`action` が `send` なら挿入した全文を `POST /api/comments/send-now`（コメントの入力は `target`・`loc`、返信の入力は `thread`）へ送り、送れたら入力欄を空にする。`insert` なら送らない。失敗（許可の拒否・503・502・504・413・届かない）は、入力欄の文字を残して理由を結果の行に出し、503 のときはマイクのボタンを押せなくする'
 refs:
   - dev/設計書/インターフェース定義/サーバー/SPAの配信#
   - dev/設計書/インターフェース定義/サーバー/記録の取得#

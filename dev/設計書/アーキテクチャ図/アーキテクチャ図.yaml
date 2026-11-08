@@ -43,6 +43,9 @@ overview:
     - id: TMX
       label: tmux
       kind: external
+    - id: TR
+      label: 文字起こしのサービス（voice-paste）
+      kind: external
   edges:
     - from: U
       to: BIN
@@ -92,6 +95,9 @@ overview:
     - from: BR
       to: GF
       label: HTTPS
+    - from: SRV
+      to: TR
+      label: 音声の文字起こし（HTTP・127.0.0.1）
   subgraphs:
     - id: SYS
       label: mindstella
@@ -165,6 +171,13 @@ external_systems:
     detail: dev/設計書/外部ライブラリ/tmux#
     notes:
       事前確認: 要。起動スクリプトが、`PATH` に `tmux` があることを確かめ、無ければ Claude Code を立てずに止まる。
+  - name: 文字起こしのサービス（voice-paste）
+    purpose: コメント・返信の入力で録音した音声を文字に起こす。サーバーは文字起こしのインターフェース（抽象）経由で呼び、画面とサーバーのほかの処理はサービスに直接依存しない
+    direction: 双方向
+    protocol: HTTP（`MINDSTELLA_TRANSCRIBER_URL`。既定は `http://127.0.0.1:47823`。Origin を付けない）
+    detail: dev/設計書/外部API/voice-paste#
+    notes:
+      事前確認: 要。画面が開いたときと設定の画面を開いたときに、サーバーが『文字起こしの可否』で用語集のプリセットの一覧を尋ね、届かない・音声を受け付ける口が無いときはマイクのボタンを押せなくして理由を出す。サービスが無くても、マイクのボタンのほかの操作は変わらない。voice-paste は Windows で動くため、WSL の常駐サーバーから `127.0.0.1` で届くには WSL のネットワークを mirrored にする（届かないときは `stopped` と同じに扱う）
 lead: mindstella のサブシステムと、Claude Code・tmux・ブラウザ・CDN との境界。
 constraints: |-
   - プラグインは、常駐サーバーへの接続をルートの `.mcp.json` に `type: http` で書き、`hooks/hooks.json` に SessionStart（未読へ戻す・常駐サーバーの起動の確認）と PreToolUse（セッションの値の注入）のフックを持つ。`plugin.json` には MCP サーバーを書かない

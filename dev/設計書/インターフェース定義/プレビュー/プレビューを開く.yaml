@@ -2,7 +2,7 @@ title: "プレビューを開く"
 entry:
   kind: screen
   value: サーバーの配信の URL（`preview_url` が返す `http://127.0.0.1:{ポート}/mindstella.html`。画面は『プレビューの配信』が返し、雛形は `plugins/mindstella/skills/mindmap/preview/`）。`export` が書き出した配る書き出しも同じ画面を開く
-  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込み）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`GET /api/threads`（スレッド）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）・`GET`/`POST /api/edits`・`DELETE /api/edits/{id}`（保存待ちの編集）・`POST /api/edits/save`（まとめて保存）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
+  api: '`GET /api/records`（記録）・`GET /api/events`（書き換えの知らせ）・`GET`/`POST /api/comments`・`PATCH`/`DELETE /api/comments/{id}`（レビュー中の書き込み）・`PUT /api/drafts`（書きかけ）・`POST /api/comments/send`（まとめて送る）・`GET /api/threads`（スレッド）・`PATCH /api/threads/{id}`（クローズとオープンへの戻し）・`POST /api/threads/{id}/seen`（利用者の既読）・`PUT /api/config/display`（ワークスペースの既定の書き換え）・`GET`/`POST /api/edits`・`DELETE /api/edits/{id}`（保存待ちの編集）・`POST /api/edits/save`（まとめて保存）・`GET /api/transcription`（文字起こしの可否と設定）・`POST /api/transcriptions`（音声の文字起こし）・`POST /api/comments/send-now`（入力欄の全文 1 件をすぐ送る）。配る書き出しは呼ばず、記録を `mindmap-data` の要素から読む'
 flows:
   - name: 正常系
     summary: ハッシュが指す画面・表示形式・項目を開く
@@ -1615,6 +1615,8 @@ constraints:
   - item: 資料のエクスポート
     constraint: 入口は、本文が Markdown の資料の詳細パネル・詳細の全画面にだけ置き、配る書き出しにも置く。「HTML でエクスポート」は、描画のライブラリの配信元から採用バージョンの mdmark の CSS と JavaScript を `integrity` で確かめて読み（配る書き出しは中に持つ CSS と JavaScript を使う）、記録の用語・資料・調査の索引と資料の本文と合わせて 1 枚の HTML を組み立てる。ほかの項目へのリンクは移らなくてよい。「Markdown でエクスポート」は、警告の「エクスポート」を押してから、本文の Markdown から埋め込んだ HTML の範囲を除いた Markdown を組み立てる。どちらも `Blob` を `download` を持つ `a` 要素でダウンロードさせ、サーバーの API を呼ばず、記録・URL のハッシュ・履歴を変えない。メニューの開閉と警告への切り替えも履歴に積まない。mdmark を読めないときはダウンロードせず、メニューの中に理由を出し、「再試行」で読み直す
     notes: '警告の置き方と文言は、モック作成でユーザーが推奨案を選んだ（PR ドキュメントの確認ログ）。配る書き出しに入口を置くのは、モジュール構成設計で推奨案 A に決めた（PR ドキュメントの計画書『プレビュー』）'
+  - item: 音声の入力
+    constraint: '開いたときに `GET /api/transcription` を読み、コメントの入力・返信の入力のマイクのボタンを置く。応答を待たずに入力を描き、`available` が `false` か、ブラウザが `navigator.mediaDevices.getUserMedia` を持たないときは、マイクのボタンを押せない見た目にしてフォーカスは受けたまま（`aria-disabled`）、理由（`detail`、マイクを使えないときは画面が持つ文）をツールチップと押したときの結果の行に出す。押すと `getUserMedia({audio: true})` と `MediaRecorder` で録り、マイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」に切り替える。キャンセルは録音を捨ててマイクを解放する。✓ は録音を止め、`POST /api/transcriptions` へ録った形の `Content-Type` で送り、返った文字を入力欄のカーソルの位置へ挿入する。`action` が `send` なら挿入した全文を `POST /api/comments/send-now`（コメントの入力は `target`・`loc`、返信の入力は `thread`）へ送り、送れたら入力欄を空にする。`insert` なら送らない。失敗（許可の拒否・503・502・504・413・届かない）は、入力欄の文字を残して理由を結果の行に出し、503 のときはマイクのボタンを押せなくする'
 refs:
   - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
   - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
