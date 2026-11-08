@@ -19,6 +19,11 @@ use_cases:
     impact: new
     detail: コメント・返信の入力のマイクのボタンで録音し、文字起こしの結果をその書き込みだけで Claude Code へ送信するか入力欄へ挿入する。文字起こしを使えないときはマイクのボタンを押せず理由が出る
     depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する.yaml
+    impact: changed
+    detail: 設定の画面で、文字起こし後の挙動と用語集のプリセットを書き換えて保存する。voice-paste が止まっていてプリセットの候補を読めないときは、プリセットの入力だけを押せなくする
+    depends_on: []
 docs:
   - page: docs/使い方/プレビューを見る.md
     new: false
