@@ -10,9 +10,6 @@ catalogs:
   - name: 使うもの
     version: 2.2.2
     entries:
-      - name: pre-commit
-        kind: 設定
-        purpose: frontend/src の .ts・.tsx を commit するときに npm run lint と npm run typecheck を流す
       - name: postinstall（lefthook install）
         kind: コマンド
         purpose: npm ci の後に .git/hooks/ へフックを入れる
