@@ -14,6 +14,11 @@ use_cases:
     impact: run_only
     detail: 返信の入力にマイクのボタンが加わるため、キーボードでの返信が今までどおり溜まるかを確かめる
     depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/音声でコメントする.yaml
+    impact: new
+    detail: コメント・返信の入力のマイクのボタンで録音し、文字起こしの結果をその書き込みだけで Claude Code へ送信するか入力欄へ挿入する。文字起こしを使えないときはマイクのボタンを押せず理由が出る
+    depends_on: []
 docs:
   - page: docs/使い方/プレビューを見る.md
     new: false
@@ -36,8 +41,5 @@ scope_out:
     reason: 別のリポジトリの変更で、shuhei1101/voice-paste#256 で解消済み
     plan: none
   - item: レビュー中のコメント・返信の書き換えの入力へのマイクのボタン
-    reason: Issue の対象は新しいコメント・返信の入力で、書き換えの入力は含まれないと判断した。含めるかは単一ユースケース設計のレビューで確定する
-    plan: none
-  - item: 配る書き出し（export）の HTML での音声入力
-    reason: サーバーが無く文字起こしを依頼できないため、マイクのボタンを押せなくするだけにする
+    reason: Issue の対象は新しいコメント・返信の入力で、書き換えの入力は含まれない。単一ユースケース『音声でコメントする』の補足にも置かないと記載した
     plan: none
