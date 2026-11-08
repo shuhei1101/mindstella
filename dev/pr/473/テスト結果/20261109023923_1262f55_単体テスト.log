@@ -1,0 +1,3708 @@
+# 単体テスト（Red）。テストコードの commit 1262f55a、実装は未着手
+
+$ ~/.cache/mindstella/venv-dev/bin/python -m pytest tests/unit/preview/test_send_form.py tests/unit/preview/test_reply_form.py tests/unit/preview/test_app.py -q -p no:cacheprovider
+F..F.F....FFFFFF...................FF.F.F.FFFFFFF................F.FF.FF [ 64%]
+FFFFF...........F.F.FFFFFFF.....FF.F.FFF                                 [100%]
+=================================== FAILURES ===================================
+_______________________ test_send_form[chromium-saving] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc887ff100>
+props = {'target': 'D-1', 'body': '案 A にする', 'status': 'saving'}
+expected = {'submitDisabled': True, 'readOnly': True, 'invalid': None, 'hasCopy': False, ...}
+expected_text = ''
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "saving"},
+                {
+                    "submitDisabled": True,
+                    "readOnly": True,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "saved", "count": 3},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "empty"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": "true",
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "コメントを入れてから追加してください。",
+                id="empty",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "failed"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": True,
+                    "describedByStatus": True,
+                },
+                "起動スクリプトで立ち上げ直し",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {
+                    "target": "A-5",
+                    "body": "ここは言い換える",
+                    "status": "failed",
+                    "detail": "選んだ文が本文の 3 行目にありません",
+                },
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加できませんでした。選んだ文が本文の 3 行目にありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_send_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        status_text = observed.pop("statusText")
+        submit_button = observed.pop("submitButton")
+        assert observed == expected
+        assert expected_text in status_text
+>       assert submit_button == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_send_form.py:138: AssertionError
+___________________ test_send_form_when_open[chromium-open] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc883b0220>
+props = {'target': 'D-022', 'open': True}
+expected = {'hasToggle': True, 'expanded': 'true', 'label': 'コメントの入力を閉じる', 'controlsBody': True, ...}
+
+    @pytest.mark.parametrize(
+        ("props", "expected"),
+        [
+            pytest.param(
+                {"target": "D-022", "open": True},
+                {
+                    "hasToggle": True,
+                    "expanded": "true",
+                    "label": "コメントの入力を閉じる",
+                    "controlsBody": True,
+                    "bodyHidden": False,
+                    "hasDraftMark": False,
+                    "toggled": [False],
+                },
+                id="open",
+            ),
+            pytest.param(
+                {"target": "D-022", "open": False},
+                {
+                    "hasToggle": True,
+                    "expanded": "false",
+                    "label": "コメントの入力を開く",
+                    "controlsBody": True,
+                    "bodyHidden": True,
+                    "hasDraftMark": False,
+                    "toggled": [True],
+                },
+                id="closed",
+            ),
+            pytest.param(
+                {"target": "D-022", "open": False, "body": "案 A にする"},
+                {
+                    "hasToggle": True,
+                    "expanded": "false",
+                    "label": "コメントの入力を開く",
+                    "controlsBody": True,
+                    "bodyHidden": True,
+                    "hasDraftMark": True,
+                    "toggled": [True],
+                },
+                id="closed_with_draft",
+            ),
+            pytest.param(
+                {"target": None},
+                {
+                    "hasToggle": False,
+                    "expanded": None,
+                    "label": None,
+                    "controlsBody": False,
+                    "bodyHidden": None,
+                    "hasDraftMark": False,
+                    "toggled": [],
+                },
+                id="no_target",
+            ),
+        ],
+    )
+    def test_send_form_when_open(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """開閉のボタンと閉じた形（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OPEN_SCRIPT, props)
+        # 検証
+>       assert observed == expected
+E       AssertionError: assert {'hasToggle':...': False, ...} == {'hasToggle':...y': True, ...}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'hasToggle': False} != {'hasToggle': True}
+E         {'label': None} != {'label': 'コメントの入力を閉じる'}
+E         {'bodyHidden': None} != {'bodyHidden': False}
+E         {'controlsBody': False} != {'controlsBody': True}...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/unit/preview/test_send_form.py:363: AssertionError
+_______________________ test_reply_form[chromium-empty] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc883b2a20>
+props = {'thread': 'TH-2', 'body': ''}
+expected = {'labelVisible': True, 'describedByStatus': True, 'submitDisabled': True, 'readOnly': False}
+expected_text = ''
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"thread": "TH-2", "body": ""},
+                {**BLOCKED, "submitDisabled": True, "readOnly": False},
+                "",
+                id="empty",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい"},
+                {**BLOCKED, "submitDisabled": False, "readOnly": False},
+                "",
+                id="typing",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "saving"},
+                {**BLOCKED, "submitDisabled": True, "readOnly": True},
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "", "status": "saved", "count": 3},
+                BLOCKED,
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
+                BLOCKED,
+                "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": "スレッドがありません"},
+                BLOCKED,
+                "レビューに追加できませんでした。スレッドがありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_reply_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        assert expected.items() <= observed.items()
+        assert observed["rows"] == 1
+        assert expected_text in observed["statusText"]
+>       assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_reply_form.py:107: AssertionError
+________________________ test_load_prefs[chromium-dark] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc883b2840>
+stored = '{"theme": "dark", "columns": {}}'
+expected = {'theme': 'dark', 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+_________________ test_load_prefs_when_minimap[chromium-false] _________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ac3d80>
+stored = '{"theme": "dark", "minimap": false}', expected_minimap = False
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:251: AssertionError
+_______________ test_load_prefs_when_body_layout[chromium-side] ________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ac3a60>
+stored = '{"theme": "dark", "bodyLayout": "side"}'
+expected_body_layout = 'side'
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:281: AssertionError
+______________ test_load_prefs_when_review_order[chromium-oldest] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab42c0>
+stored = '{"theme": "dark", "reviewOrder": "oldest"}'
+expected_review_order = 'oldest'
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:311: AssertionError
+________ test_load_prefs_when_body_view[chromium-differs_from_default] _________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879296c0>
+stored = '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true, "sectionFold": false}'
+expected_overrides = {'tablePin': False, 'tableHead': False, 'tableStripes': True, 'sectionFold': False}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:356: AssertionError
+_____________ test_load_prefs_when_comments_pinned[chromium-true] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87974680>
+stored = '{"theme": "dark", "commentsPinned": true}', expected_pinned = True
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:386: AssertionError
+________________________ test_send_form[chromium-saved] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879287c0>
+props = {'target': 'D-1', 'body': '', 'status': 'saved', 'count': 3}
+expected = {'submitDisabled': False, 'readOnly': False, 'invalid': None, 'hasCopy': False, ...}
+expected_text = 'レビューに追加しました（レビュー中 3 件）。'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "saving"},
+                {
+                    "submitDisabled": True,
+                    "readOnly": True,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "saved", "count": 3},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "empty"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": "true",
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "コメントを入れてから追加してください。",
+                id="empty",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "failed"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": True,
+                    "describedByStatus": True,
+                },
+                "起動スクリプトで立ち上げ直し",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {
+                    "target": "A-5",
+                    "body": "ここは言い換える",
+                    "status": "failed",
+                    "detail": "選んだ文が本文の 3 行目にありません",
+                },
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加できませんでした。選んだ文が本文の 3 行目にありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_send_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        status_text = observed.pop("statusText")
+        submit_button = observed.pop("submitButton")
+        assert observed == expected
+        assert expected_text in status_text
+>       assert submit_button == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_send_form.py:138: AssertionError
+________ test_send_form_when_location_and_no_target[chromium-no_target] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab4ea0>
+props = {'target': None}
+expected = {'labelVisible': False, 'ariaLabel': '項目を指さないコメント', 'hasSubmit': True, 'rows': 1}
+expected_texts = [], expected_unquote_calls = 0
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_texts", "expected_unquote_calls"),
+        [
+            pytest.param(
+                {
+                    "target": "A-005",
+                    "loc": {"kind": "body", "start": 3, "end": 3, "text": "受け取る人へ渡す形"},
+                },
+                {"labelVisible": True, "rows": 1},
+                ["本文 3 行目", "受け取る人へ渡す形"],
+                1,
+                id="location",
+            ),
+            pytest.param(
+                {"target": None},
+                {
+                    "labelVisible": False,
+                    "ariaLabel": "項目を指さないコメント",
+                    "hasSubmit": True,
+                    "rows": 1,
+                },
+                [],
+                0,
+                id="no_target",
+            ),
+            pytest.param(
+                {"target": None, "collapsed": True},
+                {"labelVisible": False, "hasSubmit": False, "rows": 1},
+                [],
+                0,
+                id="no_target_collapsed",
+            ),
+        ],
+    )
+    def test_send_form_when_location_and_no_target(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_texts: list[str],
+        expected_unquote_calls: int,
+    ) -> None:
+        """添えた箇所と項目を指さない形（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(LOCATION_SCRIPT, props)
+        # 検証
+>       assert expected.items() <= observed.items()
+E       AssertionError: assert dict_items([('labelVisible', False), ('ariaLabel', '項目を指さないコメント'), ('hasSubmit', True), ('rows', 1)]) <= dict_items([('text', 'レビューに追加'), ('labelVisible', False), ('ariaLabel', '項目を指さないコメント'), ('hasSubmit', False), ('rows', 1), ('unquoteCalls', 0)])
+E        +  where dict_items([('labelVisible', False), ('ariaLabel', '項目を指さないコメント'), ('hasSubmit', True), ('rows', 1)]) = <built-in method items of dict object at 0x78dc88714ac0>()
+E        +    where <built-in method items of dict object at 0x78dc88714ac0> = {'labelVisible': False, 'ariaLabel': '項目を指さないコメント', 'hasSubmit': True, 'rows': 1}.items
+E        +  and   dict_items([('text', 'レビューに追加'), ('labelVisible', False), ('ariaLabel', '項目を指さないコメント'), ('hasSubmit', False), ('rows', 1), ('unquoteCalls', 0)]) = <built-in method items of dict object at 0x78dc883eb940>()
+E        +    where <built-in method items of dict object at 0x78dc883eb940> = {'text': 'レビューに追加', 'labelVisible': False, 'ariaLabel': '項目を指さないコメント', 'hasSubmit': False, ...}.items
+
+tests/unit/preview/test_send_form.py:220: AssertionError
+__________________ test_send_form_when_open[chromium-closed] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87958180>
+props = {'target': 'D-022', 'open': False}
+expected = {'hasToggle': True, 'expanded': 'false', 'label': 'コメントの入力を開く', 'controlsBody': True, ...}
+
+    @pytest.mark.parametrize(
+        ("props", "expected"),
+        [
+            pytest.param(
+                {"target": "D-022", "open": True},
+                {
+                    "hasToggle": True,
+                    "expanded": "true",
+                    "label": "コメントの入力を閉じる",
+                    "controlsBody": True,
+                    "bodyHidden": False,
+                    "hasDraftMark": False,
+                    "toggled": [False],
+                },
+                id="open",
+            ),
+            pytest.param(
+                {"target": "D-022", "open": False},
+                {
+                    "hasToggle": True,
+                    "expanded": "false",
+                    "label": "コメントの入力を開く",
+                    "controlsBody": True,
+                    "bodyHidden": True,
+                    "hasDraftMark": False,
+                    "toggled": [True],
+                },
+                id="closed",
+            ),
+            pytest.param(
+                {"target": "D-022", "open": False, "body": "案 A にする"},
+                {
+                    "hasToggle": True,
+                    "expanded": "false",
+                    "label": "コメントの入力を開く",
+                    "controlsBody": True,
+                    "bodyHidden": True,
+                    "hasDraftMark": True,
+                    "toggled": [True],
+                },
+                id="closed_with_draft",
+            ),
+            pytest.param(
+                {"target": None},
+                {
+                    "hasToggle": False,
+                    "expanded": None,
+                    "label": None,
+                    "controlsBody": False,
+                    "bodyHidden": None,
+                    "hasDraftMark": False,
+                    "toggled": [],
+                },
+                id="no_target",
+            ),
+        ],
+    )
+    def test_send_form_when_open(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """開閉のボタンと閉じた形（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OPEN_SCRIPT, props)
+        # 検証
+>       assert observed == expected
+E       AssertionError: assert {'hasToggle':...': False, ...} == {'hasToggle':...y': True, ...}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'hasToggle': False} != {'hasToggle': True}
+E         {'label': None} != {'label': 'コメントの入力を開く'}
+E         {'bodyHidden': None} != {'bodyHidden': True}
+E         {'controlsBody': False} != {'controlsBody': True}...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/unit/preview/test_send_form.py:363: AssertionError
+_______________________ test_reply_form[chromium-typing] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc88349f80>
+props = {'thread': 'TH-2', 'body': '起票してよい'}
+expected = {'labelVisible': True, 'describedByStatus': True, 'submitDisabled': False, 'readOnly': False}
+expected_text = ''
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"thread": "TH-2", "body": ""},
+                {**BLOCKED, "submitDisabled": True, "readOnly": False},
+                "",
+                id="empty",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい"},
+                {**BLOCKED, "submitDisabled": False, "readOnly": False},
+                "",
+                id="typing",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "saving"},
+                {**BLOCKED, "submitDisabled": True, "readOnly": True},
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "", "status": "saved", "count": 3},
+                BLOCKED,
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
+                BLOCKED,
+                "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": "スレッドがありません"},
+                BLOCKED,
+                "レビューに追加できませんでした。スレッドがありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_reply_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        assert expected.items() <= observed.items()
+        assert observed["rows"] == 1
+        assert expected_text in observed["statusText"]
+>       assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_reply_form.py:107: AssertionError
+____________________ test_load_prefs[chromium-broken_json] _____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc88362160>
+stored = '{'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+_________________ test_load_prefs_when_minimap[chromium-true] __________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc887ffc40>
+stored = '{"theme": "dark", "minimap": true}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:251: AssertionError
+______________ test_load_prefs_when_body_layout[chromium-inline] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879585e0>
+stored = '{"theme": "dark", "bodyLayout": "inline"}'
+expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:281: AssertionError
+______________ test_load_prefs_when_review_order[chromium-newest] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87a52c00>
+stored = '{"theme": "dark", "reviewOrder": "newest"}'
+expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:311: AssertionError
+___________ test_load_prefs_when_body_view[chromium-same_as_default] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87abeb60>
+stored = '{"theme": "dark", "tablePin": true, "tableHead": true, "tableStripes": false, "sectionFold": true}'
+expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:356: AssertionError
+_____________ test_load_prefs_when_comments_pinned[chromium-false] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87a52ac0>
+stored = '{"theme": "dark", "commentsPinned": false}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:386: AssertionError
+___________ test_load_prefs_when_comment_form_closed[chromium-false] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87a523e0>
+stored = '{"theme": "dark", "commentFormClosed": false}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Differing items:
+E         {'commentFormClosed': False} != {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:417: AssertionError
+________________________ test_send_form[chromium-empty] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87925da0>
+props = {'target': 'D-1', 'body': '', 'status': 'empty'}
+expected = {'submitDisabled': False, 'readOnly': False, 'invalid': 'true', 'hasCopy': False, ...}
+expected_text = 'コメントを入れてから追加してください。'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "saving"},
+                {
+                    "submitDisabled": True,
+                    "readOnly": True,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "saved", "count": 3},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "empty"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": "true",
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "コメントを入れてから追加してください。",
+                id="empty",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "failed"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": True,
+                    "describedByStatus": True,
+                },
+                "起動スクリプトで立ち上げ直し",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {
+                    "target": "A-5",
+                    "body": "ここは言い換える",
+                    "status": "failed",
+                    "detail": "選んだ文が本文の 3 行目にありません",
+                },
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加できませんでした。選んだ文が本文の 3 行目にありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_send_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        status_text = observed.pop("statusText")
+        submit_button = observed.pop("submitButton")
+        assert observed == expected
+        assert expected_text in status_text
+>       assert submit_button == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_send_form.py:138: AssertionError
+_____________ test_send_form_when_open[chromium-closed_with_draft] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc8797fec0>
+props = {'target': 'D-022', 'open': False, 'body': '案 A にする'}
+expected = {'hasToggle': True, 'expanded': 'false', 'label': 'コメントの入力を開く', 'controlsBody': True, ...}
+
+    @pytest.mark.parametrize(
+        ("props", "expected"),
+        [
+            pytest.param(
+                {"target": "D-022", "open": True},
+                {
+                    "hasToggle": True,
+                    "expanded": "true",
+                    "label": "コメントの入力を閉じる",
+                    "controlsBody": True,
+                    "bodyHidden": False,
+                    "hasDraftMark": False,
+                    "toggled": [False],
+                },
+                id="open",
+            ),
+            pytest.param(
+                {"target": "D-022", "open": False},
+                {
+                    "hasToggle": True,
+                    "expanded": "false",
+                    "label": "コメントの入力を開く",
+                    "controlsBody": True,
+                    "bodyHidden": True,
+                    "hasDraftMark": False,
+                    "toggled": [True],
+                },
+                id="closed",
+            ),
+            pytest.param(
+                {"target": "D-022", "open": False, "body": "案 A にする"},
+                {
+                    "hasToggle": True,
+                    "expanded": "false",
+                    "label": "コメントの入力を開く",
+                    "controlsBody": True,
+                    "bodyHidden": True,
+                    "hasDraftMark": True,
+                    "toggled": [True],
+                },
+                id="closed_with_draft",
+            ),
+            pytest.param(
+                {"target": None},
+                {
+                    "hasToggle": False,
+                    "expanded": None,
+                    "label": None,
+                    "controlsBody": False,
+                    "bodyHidden": None,
+                    "hasDraftMark": False,
+                    "toggled": [],
+                },
+                id="no_target",
+            ),
+        ],
+    )
+    def test_send_form_when_open(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+    ) -> None:
+        """開閉のボタンと閉じた形（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OPEN_SCRIPT, props)
+        # 検証
+>       assert observed == expected
+E       AssertionError: assert {'hasToggle':...': False, ...} == {'hasToggle':...y': True, ...}
+E         
+E         Differing items:
+E         {'hasToggle': False} != {'hasToggle': True}
+E         {'label': None} != {'label': 'コメントの入力を開く'}
+E         {'hasDraftMark': False} != {'hasDraftMark': True}
+E         {'bodyHidden': None} != {'bodyHidden': True}
+E         {'controlsBody': False} != {'controlsBody': True}...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/unit/preview/test_send_form.py:363: AssertionError
+_______________________ test_reply_form[chromium-saving] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879e59e0>
+props = {'thread': 'TH-2', 'body': '起票してよい', 'status': 'saving'}
+expected = {'labelVisible': True, 'describedByStatus': True, 'submitDisabled': True, 'readOnly': True}
+expected_text = ''
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"thread": "TH-2", "body": ""},
+                {**BLOCKED, "submitDisabled": True, "readOnly": False},
+                "",
+                id="empty",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい"},
+                {**BLOCKED, "submitDisabled": False, "readOnly": False},
+                "",
+                id="typing",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "saving"},
+                {**BLOCKED, "submitDisabled": True, "readOnly": True},
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "", "status": "saved", "count": 3},
+                BLOCKED,
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
+                BLOCKED,
+                "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": "スレッドがありません"},
+                BLOCKED,
+                "レビューに追加できませんでした。スレッドがありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_reply_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        assert expected.items() <= observed.items()
+        assert observed["rows"] == 1
+        assert expected_text in observed["statusText"]
+>       assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_reply_form.py:107: AssertionError
+___________________ test_load_prefs[chromium-storage_throws] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87752520>
+stored = None
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+______________ test_load_prefs_when_minimap[chromium-not_boolean] ______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87a5b060>
+stored = '{"theme": "dark", "minimap": "no"}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:251: AssertionError
+____________ test_load_prefs_when_body_layout[chromium-not_string] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc878528e0>
+stored = '{"theme": "dark", "bodyLayout": 1}', expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:281: AssertionError
+____________ test_load_prefs_when_review_order[chromium-not_string] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87752020>
+stored = '{"theme": "dark", "reviewOrder": 1}', expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:311: AssertionError
+_____________ test_load_prefs_when_body_view[chromium-not_boolean] _____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879dc040>
+stored = '{"theme": "dark", "tablePin": "no", "tableHead": "no", "tableStripes": "no", "sectionFold": "no"}'
+expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:356: AssertionError
+__________ test_load_prefs_when_comments_pinned[chromium-not_boolean] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879740e0>
+stored = '{"theme": "dark", "commentsPinned": "yes"}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:386: AssertionError
+________ test_load_prefs_when_comment_form_closed[chromium-not_boolean] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87853ba0>
+stored = '{"theme": "dark", "commentFormClosed": "yes"}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Differing items:
+E         {'commentFormClosed': 'yes'} != {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:417: AssertionError
+_________________ test_send_form[chromium-failed_unreachable] __________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc8795a700>
+props = {'target': 'D-1', 'body': '案 A にする', 'status': 'failed'}
+expected = {'submitDisabled': False, 'readOnly': False, 'invalid': None, 'hasCopy': True, ...}
+expected_text = '起動スクリプトで立ち上げ直し'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "saving"},
+                {
+                    "submitDisabled": True,
+                    "readOnly": True,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "saved", "count": 3},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "empty"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": "true",
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "コメントを入れてから追加してください。",
+                id="empty",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "failed"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": True,
+                    "describedByStatus": True,
+                },
+                "起動スクリプトで立ち上げ直し",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {
+                    "target": "A-5",
+                    "body": "ここは言い換える",
+                    "status": "failed",
+                    "detail": "選んだ文が本文の 3 行目にありません",
+                },
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加できませんでした。選んだ文が本文の 3 行目にありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_send_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        status_text = observed.pop("statusText")
+        submit_button = observed.pop("submitButton")
+>       assert observed == expected
+E       AssertionError: assert {'submitDisab...': False, ...} == {'submitDisab...y': True, ...}
+E         
+E         Omitting 4 identical items, use -vv to show
+E         Differing items:
+E         {'hasCopy': False} != {'hasCopy': True}
+E         Use -v to get more diff
+
+tests/unit/preview/test_send_form.py:136: AssertionError
+_______________________ test_reply_form[chromium-saved] ________________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc88349e40>
+props = {'thread': 'TH-2', 'body': '', 'status': 'saved', 'count': 3}
+expected = {'labelVisible': True, 'describedByStatus': True}
+expected_text = 'レビューに追加しました（レビュー中 3 件）。'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"thread": "TH-2", "body": ""},
+                {**BLOCKED, "submitDisabled": True, "readOnly": False},
+                "",
+                id="empty",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい"},
+                {**BLOCKED, "submitDisabled": False, "readOnly": False},
+                "",
+                id="typing",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "saving"},
+                {**BLOCKED, "submitDisabled": True, "readOnly": True},
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "", "status": "saved", "count": 3},
+                BLOCKED,
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
+                BLOCKED,
+                "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": "スレッドがありません"},
+                BLOCKED,
+                "レビューに追加できませんでした。スレッドがありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_reply_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        assert expected.items() <= observed.items()
+        assert observed["rows"] == 1
+        assert expected_text in observed["statusText"]
+>       assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_reply_form.py:107: AssertionError
+_______________ test_load_prefs[chromium-unknown_look_and_kinds] _______________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab4ae0>
+stored = '{"look": "rainbow", "kinds": ["decisions", "graph"]}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+___________ test_load_prefs_when_minimap[chromium-previous_version] ____________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab6340>
+stored = '{"theme": "dark", "columns": {}}', expected_minimap = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_minimap"),
+        [
+            pytest.param('{"theme": "dark", "minimap": false}', False, id="false"),
+            pytest.param('{"theme": "dark", "minimap": true}', None, id="true"),
+            pytest.param('{"theme": "dark", "minimap": "no"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_minimap(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_minimap: bool | None,
+    ) -> None:
+        """差分のミニマップの上書きは false だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "minimap": expected_minimap}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:251: AssertionError
+_________ test_load_prefs_when_body_layout[chromium-previous_version] __________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc8795a520>
+stored = '{"theme": "dark", "columns": {}}', expected_body_layout = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_body_layout"),
+        [
+            pytest.param('{"theme": "dark", "bodyLayout": "side"}', "side", id="side"),
+            pytest.param('{"theme": "dark", "bodyLayout": "inline"}', None, id="inline"),
+            pytest.param('{"theme": "dark", "bodyLayout": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_layout(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_body_layout: str | None,
+    ) -> None:
+        """本文の差分の並べ方の上書きは side だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "bodyLayout": expected_body_layout}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:281: AssertionError
+_________ test_load_prefs_when_review_order[chromium-previous_version] _________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87745ee0>
+stored = '{"theme": "dark", "columns": {}}', expected_review_order = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_review_order"),
+        [
+            pytest.param('{"theme": "dark", "reviewOrder": "oldest"}', "oldest", id="oldest"),
+            pytest.param('{"theme": "dark", "reviewOrder": "newest"}', None, id="newest"),
+            pytest.param('{"theme": "dark", "reviewOrder": 1}', None, id="not_string"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_review_order(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_review_order: str | None,
+    ) -> None:
+        """レビュー中のコメントの並びの上書きは oldest だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "reviewOrder": expected_review_order}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:311: AssertionError
+__________ test_load_prefs_when_body_view[chromium-previous_version] ___________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc879587c0>
+stored = '{"theme": "dark", "columns": {}}', expected_overrides = {}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_overrides"),
+        [
+            pytest.param(
+                '{"theme": "dark", "tablePin": false, "tableHead": false,'
+                ' "tableStripes": true, "sectionFold": false}',
+                {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
+                id="differs_from_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": true, "tableHead": true,'
+                ' "tableStripes": false, "sectionFold": true}',
+                {},
+                id="same_as_default",
+            ),
+            pytest.param(
+                '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
+                ' "tableStripes": "no", "sectionFold": "no"}',
+                {},
+                id="not_boolean",
+            ),
+            pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_body_view(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_overrides: dict[str, bool],
+    ) -> None:
+        """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", **expected_overrides}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:356: AssertionError
+_______ test_load_prefs_when_comments_pinned[chromium-previous_version] ________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87924fe0>
+stored = '{"theme": "dark", "columns": {}}', expected_pinned = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_pinned"),
+        [
+            pytest.param('{"theme": "dark", "commentsPinned": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentsPinned": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentsPinned": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comments_pinned(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_pinned: bool | None,
+    ) -> None:
+        """コメントの一覧のピン止めは true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentsPinned": expected_pinned}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:386: AssertionError
+_____ test_load_prefs_when_comment_form_closed[chromium-previous_version] ______
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc878b2d40>
+stored = '{"theme": "dark", "columns": {}}', expected_closed = None
+
+    @pytest.mark.parametrize(
+        ("stored", "expected_closed"),
+        [
+            pytest.param('{"theme": "dark", "commentFormClosed": true}', True, id="true"),
+            pytest.param('{"theme": "dark", "commentFormClosed": false}', None, id="false"),
+            pytest.param('{"theme": "dark", "commentFormClosed": "yes"}', None, id="not_boolean"),
+            pytest.param('{"theme": "dark", "columns": {}}', None, id="previous_version"),
+        ],
+    )
+    def test_load_prefs_when_comment_form_closed(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str,
+        expected_closed: bool | None,
+    ) -> None:
+        """コメントの入力の開閉は true だけを読む（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                const storage = {getItem: (key) => (key === "mindmap-preview" ? stored : null)};
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証（ほかの項目はそのまま読める）
+>       assert prefs == {**DEFAULT_PREFS, "theme": "dark", "commentFormClosed": expected_closed}
+E       AssertionError: assert {'theme': 'da...s': None, ...} == {'theme': 'da...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:417: AssertionError
+____________________ test_send_form[chromium-failed_detail] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab72e0>
+props = {'target': 'A-5', 'body': 'ここは言い換える', 'status': 'failed', 'detail': '選んだ文が本文の 3 行目にありません'}
+expected = {'submitDisabled': False, 'readOnly': False, 'invalid': None, 'hasCopy': False, ...}
+expected_text = 'レビューに追加できませんでした。選んだ文が本文の 3 行目にありません'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "saving"},
+                {
+                    "submitDisabled": True,
+                    "readOnly": True,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "saved", "count": 3},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "", "status": "empty"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": "true",
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "コメントを入れてから追加してください。",
+                id="empty",
+            ),
+            pytest.param(
+                {"target": "D-1", "body": "案 A にする", "status": "failed"},
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": True,
+                    "describedByStatus": True,
+                },
+                "起動スクリプトで立ち上げ直し",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {
+                    "target": "A-5",
+                    "body": "ここは言い換える",
+                    "status": "failed",
+                    "detail": "選んだ文が本文の 3 行目にありません",
+                },
+                {
+                    "submitDisabled": False,
+                    "readOnly": False,
+                    "invalid": None,
+                    "hasCopy": False,
+                    "describedByStatus": True,
+                },
+                "レビューに追加できませんでした。選んだ文が本文の 3 行目にありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_send_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        status_text = observed.pop("statusText")
+        submit_button = observed.pop("submitButton")
+        assert observed == expected
+        assert expected_text in status_text
+>       assert submit_button == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_send_form.py:138: AssertionError
+_________________ test_reply_form[chromium-failed_unreachable] _________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87a6b9c0>
+props = {'thread': 'TH-2', 'body': '起票してよい', 'status': 'failed', 'detail': None}
+expected = {'labelVisible': True, 'describedByStatus': True}
+expected_text = 'レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"thread": "TH-2", "body": ""},
+                {**BLOCKED, "submitDisabled": True, "readOnly": False},
+                "",
+                id="empty",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい"},
+                {**BLOCKED, "submitDisabled": False, "readOnly": False},
+                "",
+                id="typing",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "saving"},
+                {**BLOCKED, "submitDisabled": True, "readOnly": True},
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "", "status": "saved", "count": 3},
+                BLOCKED,
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
+                BLOCKED,
+                "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": "スレッドがありません"},
+                BLOCKED,
+                "レビューに追加できませんでした。スレッドがありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_reply_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        assert expected.items() <= observed.items()
+        assert observed["rows"] == 1
+        assert expected_text in observed["statusText"]
+>       assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_reply_form.py:107: AssertionError
+___________________ test_load_prefs[chromium-look_and_kinds] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab56c0>
+stored = '{"look": "dust", "kinds": ["tasks"]}'
+expected = {'theme': None, 'columns': {}, 'look': 'dust', 'kinds': ['tasks'], ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...'tasks'], ...} == {'theme': Non...'tasks'], ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+___________________ test_reply_form[chromium-failed_detail] ____________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc884f7ce0>
+props = {'thread': 'TH-2', 'body': '起票してよい', 'status': 'failed', 'detail': 'スレッドがありません'}
+expected = {'labelVisible': True, 'describedByStatus': True}
+expected_text = 'レビューに追加できませんでした。スレッドがありません'
+
+    @pytest.mark.parametrize(
+        ("props", "expected", "expected_text"),
+        [
+            pytest.param(
+                {"thread": "TH-2", "body": ""},
+                {**BLOCKED, "submitDisabled": True, "readOnly": False},
+                "",
+                id="empty",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい"},
+                {**BLOCKED, "submitDisabled": False, "readOnly": False},
+                "",
+                id="typing",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "saving"},
+                {**BLOCKED, "submitDisabled": True, "readOnly": True},
+                "",
+                id="saving",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "", "status": "saved", "count": 3},
+                BLOCKED,
+                "レビューに追加しました（レビュー中 3 件）。",
+                id="saved",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": None},
+                BLOCKED,
+                "レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。",
+                id="failed_unreachable",
+            ),
+            pytest.param(
+                {"thread": "TH-2", "body": "起票してよい", "status": "failed", "detail": "スレッドがありません"},
+                BLOCKED,
+                "レビューに追加できませんでした。スレッドがありません",
+                id="failed_detail",
+            ),
+        ],
+    )
+    def test_reply_form(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        props: dict[str, Any],
+        expected: dict[str, Any],
+        expected_text: str,
+    ) -> None:
+        """状態ごとの入力欄と結果（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+        observed = preview_page.evaluate(OBSERVE_SCRIPT, props)
+        # 検証
+        assert expected.items() <= observed.items()
+        assert observed["rows"] == 1
+        assert expected_text in observed["statusText"]
+>       assert observed["submitButton"] == EXPECTED_SUBMIT_BUTTON
+E       AssertionError: assert {'text': 'レビュ...tarea': False} == {'text': '', ...xtarea': True}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'text': 'レビューに追加'} != {'text': ''}
+E         {'sameRowAsTextarea': False} != {'sameRowAsTextarea': True}
+E         {'label': None} != {'label': 'レビューに追加'}
+E         Use -v to get more diff
+
+tests/unit/preview/test_reply_form.py:107: AssertionError
+______________________ test_load_prefs[chromium-filters] _______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87a3fc40>
+stored = '{"filters": {"tasks": {"status": ["未着手"]}}}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+__________________ test_load_prefs[chromium-invalid_filters] ___________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x78dc87ab31a0>
+stored = '{"filters": [1]}'
+expected = {'theme': None, 'columns': {}, 'look': None, 'kinds': None, ...}
+
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            pytest.param(
+                '{"theme": "dark", "columns": {}}', {**DEFAULT_PREFS, "theme": "dark"}, id="dark"
+            ),
+            pytest.param("{", DEFAULT_PREFS, id="broken_json"),
+            pytest.param(None, DEFAULT_PREFS, id="storage_throws"),
+            pytest.param(
+                '{"look": "rainbow", "kinds": ["decisions", "graph"]}',
+                DEFAULT_PREFS,
+                id="unknown_look_and_kinds",
+            ),
+            pytest.param(
+                '{"look": "dust", "kinds": ["tasks"]}',
+                {**DEFAULT_PREFS, "look": "dust", "kinds": ["tasks"]},
+                id="look_and_kinds",
+            ),
+            pytest.param(
+                '{"filters": {"tasks": {"status": ["未着手"]}}}',
+                {**DEFAULT_PREFS, "filters": {"tasks": {"status": ["未着手"]}}},
+                id="filters",
+            ),
+            pytest.param('{"filters": [1]}', DEFAULT_PREFS, id="invalid_filters"),
+        ],
+    )
+    def test_load_prefs(
+        preview_page: Page,
+        load_preview_scripts: LoadPreviewScripts,
+        stored: str | None,
+        expected: dict[str, Any],
+    ) -> None:
+        """残した設定を読み、読めなければ既定（正常系）。"""
+        # 準備
+        load_preview_scripts(include_app=True)
+        # 実行
+        prefs = preview_page.evaluate(
+            """(stored) => {
+                // stored が null のときは、getItem が例外を送る保存領域にする
+                const storage = {
+                    getItem: (key) => {
+                        if (stored === null) throw new Error("保存領域が使えません");
+                        return key === "mindmap-preview" ? stored : null;
+                    },
+                };
+                return MindmapPreview.loadPrefs(storage);
+            }""",
+            stored,
+        )
+        # 検証
+>       assert prefs == expected
+E       AssertionError: assert {'theme': Non...s': None, ...} == {'theme': Non...s': None, ...}
+E         
+E         Omitting 14 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'commentFormClosed': None}
+E         Use -v to get more diff
+
+tests/unit/preview/test_app.py:221: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_send_form.py::test_send_form[chromium-saving]
+FAILED tests/unit/preview/test_send_form.py::test_send_form_when_open[chromium-open]
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form[chromium-empty]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-dark] - Asser...
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-side]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-oldest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-differs_from_default]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-true]
+FAILED tests/unit/preview/test_send_form.py::test_send_form[chromium-saved]
+FAILED tests/unit/preview/test_send_form.py::test_send_form_when_location_and_no_target[chromium-no_target]
+FAILED tests/unit/preview/test_send_form.py::test_send_form_when_open[chromium-closed]
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form[chromium-typing]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-broken_json]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-true]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-inline]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-newest]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-same_as_default]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-false]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-false]
+FAILED tests/unit/preview/test_send_form.py::test_send_form[chromium-empty]
+FAILED tests/unit/preview/test_send_form.py::test_send_form_when_open[chromium-closed_with_draft]
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form[chromium-saving]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-storage_throws]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-not_string]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-not_boolean]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-not_boolean]
+FAILED tests/unit/preview/test_send_form.py::test_send_form[chromium-failed_unreachable]
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form[chromium-saved]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-unknown_look_and_kinds]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_minimap[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_layout[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_review_order[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_body_view[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comments_pinned[chromium-previous_version]
+FAILED tests/unit/preview/test_app.py::test_load_prefs_when_comment_form_closed[chromium-previous_version]
+FAILED tests/unit/preview/test_send_form.py::test_send_form[chromium-failed_detail]
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form[chromium-failed_unreachable]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-look_and_kinds]
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form[chromium-failed_detail]
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-filters] - As...
+FAILED tests/unit/preview/test_app.py::test_load_prefs[chromium-invalid_filters]
+45 failed, 67 passed in 126.91s (0:02:06)
+exit=1
+
+$ npx vitest run frontend/src/shared/components/send-form.test.tsx frontend/src/features/comments/shared/reply-form.test.tsx frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/design-preview-review-add-icon-button
+
+ ❯ frontend/src/shared/components/send-form.test.tsx (3 tests | 2 failed) 184ms
+   ❯ SendForm (3)
+     × send_form 134ms
+     × send_form_when_closed 18ms
+ ❯ frontend/src/features/comments/shared/reply-form.test.tsx (2 tests | 1 failed) 144ms
+   ❯ ReplyForm (2)
+     × reply_form 128ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx (3 tests | 1 failed) 1590ms
+   ❯ DetailComments (3)
+     × detail_comments_when_toggle_open 1047ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/components/send-form.test.tsx > SendForm > send_form
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  /^$/
+Received:
+  レビューに追加
+ ❯ frontend/src/shared/components/send-form.test.tsx:18:20
+     16|     expect(onSubmit).toHaveBeenCalledWith("D-1", null, "案 A にする");
+     17|     const submit = screen.getByRole("button", { name: "レビューに追加" });
+     18|     expect(submit).toHaveTextContent(/^$/);
+       |                    ^
+     19|     expect(submit).toHaveAttribute("title", "レビューに追加（Ctrl+Enter）");
+     20|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  frontend/src/shared/components/send-form.test.tsx > SendForm > send_form_when_closed
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "コメントの入力を開く"
+
+Here are the accessible roles:
+
+  textbox:
+
+  Name "D-1 へのコメント":
+  <textarea
+    aria-describedby="_r_2_-msg"
+    aria-keyshortcuts="Control+Enter"
+    class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content resize-y field-send"
+    id="_r_2_"
+    name="body"
+    rows="1"
+  />
+
+  --------------------------------------------------
+  status:
+
+  Name "":
+  <p
+    class="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden"
+    id="_r_2_-msg"
+    role="status"
+  />
+
+  --------------------------------------------------
+  button:
+
+  Name "レビューに追加":
+  <button
+    class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-2.5"
+    tabindex="0"
+    title="レビューに追加（Ctrl+Enter）"
+    type="submit"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <form
+      class="@container grid gap-1.5 border-t border-border p-3"
+      data-id="D-1"
+      novalidate=""
+    >
+      <label
+        class="text-small text-muted-foreground"
+        for="_r_2_"
+      >
+        <span
+          class="font-mono"
+        >
+          D-1
+        </span>
+         へのコメント
+      </label>
+      <textarea
+        aria-describedby="_r_2_-msg"
+        aria-keyshortcuts="Control+Enter"
+        class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content resize-y field-send"
+        id="_r_2_"
+        name="body"
+        rows="1"
+      >
+        案 A にする
+      </textarea>
+      <div
+        class="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end"
+      >
+        <p
+          class="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden"
+          id="_r_2_-msg"
+          role="status"
+        />
+        <button
+          class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-2.5"
+          tabindex="0"
+          title="レビューに追加（Ctrl+Enter）"
+          type="submit"
+        >
+          <svg
+            aria-hidden="true"
+            class="size-4 flex-none fill-none stroke-current"
+            height="16"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="16"
+          >
+            <path
+              d="M4 5h16v11H10l-5 4v-4H4Z"
+            />
+            <path
+              d="M8 9h8M8 12.5h5"
+            />
+          </svg>
+          レビューに追加
+        </button>
+      </div>
+    </form>
+  </div>
+</body>
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ frontend/src/shared/components/send-form.test.tsx:38:27
+     36|     const onToggleOpen = vi.fn();
+     37|     render(<SendForm target="D-1" loc={null} body="案 A にする" status="id…
+     38|     const toggle = screen.getByRole("button", { name: "コメントの入力を開く" });
+       |                           ^
+     39|     // 実行
+     40|     await userEvent.click(toggle);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  frontend/src/features/comments/shared/reply-form.test.tsx > ReplyForm > reply_form
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  /^$/
+Received:
+  レビューに追加
+ ❯ frontend/src/features/comments/shared/reply-form.test.tsx:19:20
+     17|     expect(onSubmit).toHaveBeenCalledWith("TH-1", "案 A にする");
+     18|     const submit = screen.getByRole("button", { name: "レビューに追加" });
+     19|     expect(submit).toHaveTextContent(/^$/);
+       |                    ^
+     20|     expect(submit).toHaveAttribute("title", "レビューに追加（Ctrl+Enter）");
+     21|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_toggle_open
+TestingLibraryElementError: Unable to find role="button" and name "コメントの入力を閉じる"
+
+Ignored nodes: comments, script, style
+<aside
+  aria-label="詳細"
+  class="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!"
+  style="width: 640px;"
+>
+  <div
+    aria-label="詳細パネルの幅"
+    aria-orientation="vertical"
+    aria-valuemax="864"
+    aria-valuemin="480"
+    aria-valuenow="640"
+    class="absolute inset-y-0 left-0 w-1 cursor-col-resize hover:bg-mark-line max-lg:hidden"
+    role="separator"
+    tabindex="0"
+  />
+  <div
+    class="flex items-center gap-1 border-b border-border-soft p-2"
+  >
+    <span
+      class="text-xs text-muted-foreground"
+    >
+      <span
+        class="max-sm:hidden"
+      >
+        資料
+         
+      </span>
+      <span
+        class="font-mono"
+      >
+        A-1
+      </span>
+    </span>
+    <span
+      class="rounded-control border border-border px-1 font-mono text-xs text-muted-foreground"
+      title="本文は Markdown"
+    >
+      MD
+    </span>
+    <span
+      aria-hidden="true"
+      class="min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"
+      title="A-1の題"
+    >
+      A-1の題
+    </span>
+    <button
+      aria-pressed="false"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"
+      tabindex="0"
+      title="編集する"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="m4 20 1-4L16 5l3 3L8 19Z"
+        />
+        <path
+          d="m14 7 3 3"
+        />
+      </svg>
+      <span>
+        編集する
+      </span>
+    </button>
+    <button
+      aria-expanded="false"
+      aria-haspopup="dialog"
+      aria-label="エクスポート"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      data-base-ui-click-trigger=""
+      id="base-ui-_r_7_"
+      tabindex="0"
+      title="エクスポート"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="M12 4v11M7 10l5 5 5-5"
+        />
+        <path
+          d="M5 20h14"
+        />
+      </svg>
+    </button>
+    <button
+      aria-label="前の項目へ戻る"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      data-disabled=""
+      disabled=""
+      tabindex="0"
+      title="前の項目へ戻る"
+      type="button"
+    >
+      ←
+    </button>
+    <button
+      aria-label="次の項目へ進む"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      data-disabled=""
+      disabled=""
+      tabindex="0"
+      title="次の項目へ進む"
+      type="button"
+    >
+      →
+    </button>
+    <button
+      aria-label="全画面表示"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      tabindex="0"
+      title="全画面表示"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+        />
+      </svg>
+    </button>
+    <button
+      aria-label="詳細を閉じる"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      tabindex="0"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="M18 6 6 18M6 6l12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <div
+    class="panel-scroll"
+  >
+    <div
+      aria-label="詳細の本文"
+      class="panel-body"
+      role="region"
+      tabindex="0"
+    >
+      <div
+        class="flex flex-col gap-3 p-3"
+      >
+        <div
+          data-key="status"
+        >
+          <span
+            class="inline-flex items-center gap-1 text-small"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-2.5 flex-none overflow-visible"
+              viewBox="0 0 10 10"
+            >
+              <circle
+                cx="5"
+                cy="5"
+                fill="none"
+                r="3.8"
+                stroke="var(--st-off)"
+                stroke-dasharray="2 1.6"
+                stroke-width="1.6"
+              />
+            </svg>
+            下書き
+          </span>
+        </div>
+        <h2
+          class="m-0 flex flex-wrap items-center gap-1 text-next font-semibold"
+          data-key="title"
+        >
+          A-1の題
+        </h2>
+        <dl
+          class="grid grid-cols-meta gap-x-2 text-small"
+        />
+        <section
+          class="flex flex-col gap-1"
+          data-body-view="true"
+        >
+          <h3
+            class="m-0 text-h2 font-semibold"
+          >
+            本文
+          </h3>
+          <div>
+            <div>
+              <div
+                class="md"
+              >
+                <p
+                  data-line-start="1"
+                >
+                  一行目
+                </p>
+                <p
+                  data-line-start="3"
+                >
+                  二行目
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div
+          class="sticky bottom-0 grid gap-2 bg-card"
+        >
+          <section
+            class="grid gap-2 border-t border-border pt-2"
+          >
+            <h3
+              class="m-0 text-small font-medium"
+            >
+              レビュー中のコメント
+            </h3>
+            <p
+              class="m-0 text-small text-muted-foreground"
+            >
+              レビュー中のコメントはありません。
+            </p>
+          </section>
+          <form
+            class="@container grid gap-1.5 border-t border-border p-3"
+            data-id="A-1"
+            novalidate=""
+          >
+            <label
+              class="text-small text-muted-foreground"
+              for="_r_8_"
+            >
+              <span
+                class="font-mono"
+              >
+                A-1
+              </span>
+               へのコメント
+            </label>
+            <textarea
+              aria-describedby="_r_8_-msg"
+              aria-keyshortcuts="Control+Enter"
+              class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content resize-y field-send"
+              id="_r_8_"
+              name="body"
+              rows="1"
+            />
+            <div
+              class="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end"
+            >
+              <p
+                class="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden"
+                id="_r_8_-msg"
+                role="status"
+              />
+              <button
+                class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-2.5"
+                tabindex="0"
+                title="レビューに追加（Ctrl+Enter）"
+                type="submit"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M4 5h16v11H10l-5 4v-4H4Z"
+                  />
+                  <path
+                    d="M8 9h8M8 12.5h5"
+                  />
+                </svg>
+                レビューに追加
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+Ignored nodes: comments, script, style
+<aside
+  aria-label="詳細"
+  class="relative flex min-h-0 flex-none flex-col border-l border-border bg-card max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:w-full!"
+  style="width: 640px;"
+>
+  <div
+    aria-label="詳細パネルの幅"
+    aria-orientation="vertical"
+    aria-valuemax="864"
+    aria-valuemin="480"
+    aria-valuenow="640"
+    class="absolute inset-y-0 left-0 w-1 cursor-col-resize hover:bg-mark-line max-lg:hidden"
+    role="separator"
+    tabindex="0"
+  />
+  <div
+    class="flex items-center gap-1 border-b border-border-soft p-2"
+  >
+    <span
+      class="text-xs text-muted-foreground"
+    >
+      <span
+        class="max-sm:hidden"
+      >
+        資料
+         
+      </span>
+      <span
+        class="font-mono"
+      >
+        A-1
+      </span>
+    </span>
+    <span
+      class="rounded-control border border-border px-1 font-mono text-xs text-muted-foreground"
+      title="本文は Markdown"
+    >
+      MD
+    </span>
+    <span
+      aria-hidden="true"
+      class="min-w-0 flex-1 truncate text-small transition-opacity duration-150 motion-reduce:transition-none opacity-0"
+      title="A-1の題"
+    >
+      A-1の題
+    </span>
+    <button
+      aria-pressed="false"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 border border-border bg-transparent hover:bg-accent h-8 px-2.5"
+      tabindex="0"
+      title="編集する"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="m4 20 1-4L16 5l3 3L8 19Z"
+        />
+        <path
+          d="m14 7 3 3"
+        />
+      </svg>
+      <span>
+        編集する
+      </span>
+    </button>
+    <button
+      aria-expanded="false"
+      aria-haspopup="dialog"
+      aria-label="エクスポート"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      data-base-ui-click-trigger=""
+      id="base-ui-_r_7_"
+      tabindex="0"
+      title="エクスポート"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="M12 4v11M7 10l5 5 5-5"
+        />
+        <path
+          d="M5 20h14"
+        />
+      </svg>
+    </button>
+    <button
+      aria-label="前の項目へ戻る"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      data-disabled=""
+      disabled=""
+      tabindex="0"
+      title="前の項目へ戻る"
+      type="button"
+    >
+      ←
+    </button>
+    <button
+      aria-label="次の項目へ進む"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      data-disabled=""
+      disabled=""
+      tabindex="0"
+      title="次の項目へ進む"
+      type="button"
+    >
+      →
+    </button>
+    <button
+      aria-label="全画面表示"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      tabindex="0"
+      title="全画面表示"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+        />
+      </svg>
+    </button>
+    <button
+      aria-label="詳細を閉じる"
+      class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground size-8"
+      tabindex="0"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        class="size-4 flex-none fill-none stroke-current"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <path
+          d="M18 6 6 18M6 6l12 12"
+        />
+      </svg>
+    </button>
+  </div>
+  <div
+    class="panel-scroll"
+  >
+    <div
+      aria-label="詳細の本文"
+      class="panel-body"
+      role="region"
+      tabindex="0"
+    >
+      <div
+        class="flex flex-col gap-3 p-3"
+      >
+        <div
+          data-key="status"
+        >
+          <span
+            class="inline-flex items-center gap-1 text-small"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-2.5 flex-none overflow-visible"
+              viewBox="0 0 10 10"
+            >
+              <circle
+                cx="5"
+                cy="5"
+                fill="none"
+                r="3.8"
+                stroke="var(--st-off)"
+                stroke-dasharray="2 1.6"
+                stroke-width="1.6"
+              />
+            </svg>
+            下書き
+          </span>
+        </div>
+        <h2
+          class="m-0 flex flex-wrap items-center gap-1 text-next font-semibold"
+          data-key="title"
+        >
+          A-1の題
+        </h2>
+        <dl
+          class="grid grid-cols-meta gap-x-2 text-small"
+        />
+        <section
+          class="flex flex-col gap-1"
+          data-body-view="true"
+        >
+          <h3
+            class="m-0 text-h2 font-semibold"
+          >
+            本文
+          </h3>
+          <div>
+            <div>
+              <div
+                class="md"
+              >
+                <p
+                  data-line-start="1"
+                >
+                  一行目
+                </p>
+                <p
+                  data-line-start="3"
+                >
+                  二行目
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div
+          class="sticky bottom-0 grid gap-2 bg-card"
+        >
+          <section
+            class="grid gap-2 border-t border-border pt-2"
+          >
+            <h3
+              class="m-0 text-small font-medium"
+            >
+              レビュー中のコメント
+            </h3>
+            <p
+              class="m-0 text-small text-muted-foreground"
+            >
+              レビュー中のコメントはありません。
+            </p>
+          </section>
+          <form
+            class="@container grid gap-1.5 border-t border-border p-3"
+            data-id="A-1"
+            novalidate=""
+          >
+            <label
+              class="text-small text-muted-foreground"
+              for="_r_8_"
+            >
+              <span
+                class="font-mono"
+              >
+                A-1
+              </span>
+               へのコメント
+            </label>
+            <textarea
+              aria-describedby="_r_8_-msg"
+              aria-keyshortcuts="Control+Enter"
+              class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content resize-y field-send"
+              id="_r_8_"
+              name="body"
+              rows="1"
+            />
+            <div
+              class="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end"
+            >
+              <p
+                class="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden"
+                id="_r_8_-msg"
+                role="status"
+              />
+              <button
+                class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-2.5"
+                tabindex="0"
+                title="レビューに追加（Ctrl+Enter）"
+                type="submit"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="M4 5h16v11H10l-5 4v-4H4Z"
+                  />
+                  <path
+                    d="M8 9h8M8 12.5h5"
+                  />
+                </svg>
+                レビューに追加
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx:91:47
+     89|     const panel = await screen.findByRole("complementary", { name: /詳細…
+     90|     // 実行（閉じてから別の項目へ移る）
+     91|     await userEvent.click(await within(panel).findByRole("button", { n…
+       |                                               ^
+     92|     open("A-2");
+     93|     // 検証
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  4 failed | 4 passed (8)
+   Start at  02:35:36
+   Duration  41.98s (environment 42%, import 24%, transform 21%, setup 11%, tests 2%)
+
+exit=1
