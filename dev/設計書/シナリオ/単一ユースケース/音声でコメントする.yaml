@@ -9,14 +9,15 @@ trigger: 利用者がプレビューで項目やスレッドを読み、話し�
 preconditions:
 - ワークスペースに記録があり、サーバーがプレビューを配っている
 - 同じ端末で voice-paste がブラウザの機能を組み込んで起動している
-success_guarantee: '`send` では、文字起こしの結果がその 1 件だけのスレッドの書き込みになり、レビュー中の他の書き込みはそのまま残る。`insert` では、結果が入力欄のカーソルの位置に入り、何も送らない。'
+success_guarantee: '`send` では、文字起こしの結果を入力欄のカーソルの位置へ挿入した全文が、その 1 件だけのスレッドの書き込みになり、レビュー中の他の書き込みはそのまま残る。`insert` では、結果が入力欄のカーソルの位置に入り、何も送らない。'
 minimal_guarantee: キャンセル・文字起こしの失敗・マイクを使えないときは、入力欄の文字・レビュー中の書き込み・スレッドを変えず、理由を画面に出す。
 frequency: プレビューを読むたびに数回
 priority: 中
 scenarios:
 - name: 正常シナリオ
   setup:
-  - name: Mock
+  - &id001
+    name: Mock
     description: voice-paste の代わりに、`POST /web/transcriptions` で音声と用語集のプリセットを受けて 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイク（音声のファイルを流す）を許した実際のブラウザで開く。描画のライブラリは CDN から読む
   - name: make_workspace
     description: 作成を済ませ、`config.yaml` が文字起こし後の挙動を持たず（既定の `send`）、用語集のプリセットに `開発` を選んだワークスペース
@@ -52,6 +53,39 @@ scenarios:
   - 入力の近くに送ったことと、Claude Code へ入力しなかったことが出る（MCP のクライアントがペインを引数に入れないため）
   - 入力欄が空で、「レビューに追加」とマイクのボタンが元の位置に戻る
   test: test_normal
+- name: 正常シナリオ（打ちかけの文字に続けて送信する）
+  setup:
+  - *id001
+  - name: make_workspace
+    description: 作成を済ませ、文字起こし後の挙動が既定の `send` のワークスペース
+  - name: 記録
+    description: 未決定の検討事項 D-1
+  - name: 開いている画面
+    description: 'D-1 の詳細パネルで、コメントの入力に「確認: 」と入れ、カーソルを末尾に置いている'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      actor U as 利用者
+      participant P as プレビュー（ブラウザ）
+      participant SV as サーバー
+      participant VP as voice-paste（偽のサーバー）
+      participant WS as ワークスペース
+      U->>P: マイクのボタンを押し、話してから「文字起こし」を押す
+      P->>SV: 録音した音声を送る
+      SV->>VP: 文字起こしを依頼し、終わるまで待つ
+      VP-->>SV: 「案 A にする」
+      SV-->>P: 文字起こしの結果
+      P->>P: 入力欄のカーソルの位置に「案 A にする」を挿入する
+      P->>SV: 入力欄の全文「確認: 案 A にする」をその 1 件として送る
+      SV->>WS: D-1 への「確認: 案 A にする」を、オープンのスレッドの最初の書き込みにする
+      SV-->>P: 送った結果
+      P-->>U: 送ったことを出し、元のボタンに戻す
+    ```
+  expected:
+  - 'オープンのスレッドが 1 件増え、最初の書き込みが D-1 への利用者の「確認: 案 A にする」である'
+  - 入力欄が空で、「レビューに追加」とマイクのボタンが元の位置に戻る
+  - レビュー中の書き込みが 0 件のままである
+  test: test_normal_when_sent_after_typed_text
 - name: 正常シナリオ（返信を送信する）
   setup:
   - name: Mock
@@ -83,13 +117,15 @@ scenarios:
   expected:
   - TH-1 の末尾に利用者の「案 A にする」が足され、AI の未読で、TH-1 が取り込み待ちである
   - レビュー中の書き込みが TH-1 への返信「了解」の 1 件のまま残る
+  - 返信の入力の近くに送ったことと、Claude Code へ入力しなかったことが出る（MCP のクライアントがペインを引数に入れないため）
+  - 返信の入力欄が空で、「レビューに追加」とマイクのボタンが元の位置に戻る
   test: test_normal_when_reply_sent
 - name: 正常シナリオ（入力欄へ挿入する）
   setup:
   - name: Mock
     description: voice-paste の代わりに、`POST /web/transcriptions` で音声と用語集のプリセットを受けて 202 と `job_id` を返し、`GET /web/transcriptions/{job_id}` で `done` と固定の文字「案 A にする」を返す偽のサーバーを 127.0.0.1 で立てる。MCP サーバーをその偽のサーバーへ向けて立て、サーバーが配るプレビューを、偽のマイク（音声のファイルを流す）を許した実際のブラウザで開く。描画のライブラリは CDN から読む
   - name: make_workspace
-    description: 作成を済ませ、文字起こし後の挙動が既定の `send` のワークスペース
+    description: 作成を済ませ、`config.yaml` の文字起こし後の挙動が `insert` のワークスペース
   - name: 記録
     description: 未決定の検討事項 D-1
   flow: |-
@@ -99,10 +135,6 @@ scenarios:
       participant P as プレビュー（ブラウザ）
       participant SV as サーバー
       participant VP as voice-paste（偽のサーバー）
-      participant WS as ワークスペース
-      U->>P: 設定の画面で、文字起こし後の挙動を「入力欄へ挿入する」にして保存する
-      P->>SV: 設定の編集を保存する
-      SV->>WS: config.yaml を書く
       U->>P: D-1 の詳細パネルのコメントの入力に「確認: 」と入れ、カーソルを末尾に置く
       U->>P: マイクのボタンを押し、話してから「文字起こし」を押す
       P->>SV: 録音した音声を送る
@@ -112,7 +144,6 @@ scenarios:
       P-->>U: 入力欄のカーソルの位置に「案 A にする」を挿入する
     ```
   expected:
-  - '`config.yaml` の文字起こし後の挙動が `insert` である'
   - '入力欄が「確認: 案 A にする」で、カーソルが挿入した文字の後ろにある'
   - スレッドとレビュー中の書き込みが 0 件のままである
   test: test_normal_when_inserted
