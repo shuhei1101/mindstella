@@ -62,6 +62,9 @@ data_models:
       - name: commentsPinned
         type: true | null
         description: コメントの一覧をピン止めしているか。`null` はピン止めしない。個人の上書きではなく、「既定に戻す」でも消さない
+      - name: commentFormClosed
+        type: true | null
+        description: 詳細パネル・詳細の全画面の下端のコメントの入力を閉じているか。`null` は開く。個人の上書きではなく、「既定に戻す」でも消さない
   - name: CommentState
     title: コメントの画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -318,7 +321,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 共通
     scope: public
-    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`reviewOrder: null`、`tablePin`・`tableHead`・`tableStripes`・`sectionFold`・`commentsPinned` が `null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`oldest` でない `reviewOrder`、`false` でない `tablePin`・`tableHead`・`sectionFold`、`true` でない `tableStripes`・`commentsPinned` はその項目だけ既定にする'
+    summary: '`localStorage` から `Prefs` を読む。読めないときは既定（`theme: null`、`columns: {}`、`look: null`、`kinds: null`、`diffSel: null`、`filters: {}`、`minimap: null`、`bodyLayout: null`、`reviewOrder: null`、`tablePin`・`tableHead`・`tableStripes`・`sectionFold`・`commentsPinned`・`commentFormClosed` が `null`）を返し、選べない値の `look`・`kinds`、画面ごとの条件が値の配列の対応でない `filters`、`false` でない `minimap`、`side` でない `bodyLayout`、`oldest` でない `reviewOrder`、`false` でない `tablePin`・`tableHead`・`sectionFold`、`true` でない `tableStripes`・`commentsPinned`・`commentFormClosed` はその項目だけ既定にする'
     description: 保存領域が使えない環境（例外を送る）では、開いている間だけ設定を保つ（インターフェース定義『プレビューを開く』の端末の保存領域）。
     args:
       - name: storage
@@ -366,6 +369,12 @@ functions:
         condition: '`parametrize`: `commentsPinned: true` を残した / `commentsPinned: false` を残した / `commentsPinned: "yes"` を残した / `commentsPinned` を持たない前の版の値'
         mock: 保存領域（引数で渡す）
         expected: '`commentsPinned` が `true` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
+      - name: test_load_prefs_when_comment_form_closed
+        case: 正常
+        summary: コメントの入力の開閉は true だけを読む
+        condition: '`parametrize`: `commentFormClosed: true` を残した / `commentFormClosed: false` を残した / `commentFormClosed: "yes"` を残した / `commentFormClosed` を持たない前の版の値'
+        mock: 保存領域（引数で渡す）
+        expected: '`commentFormClosed` が `true` / `null` / `null` / `null`（ほかの項目はそのまま読める）'
   - name: savePrefs
     title: 端末の設定を残す
     kind: 関数
@@ -418,7 +427,7 @@ functions:
          - 「前回開いてから」の始まりを決める（`resolveSince`。読んだ記録の先頭のまとまりの `until_seq` を渡す）
          - 選んだ時点を引く（`resolveDiffPoint`。ハッシュの `diff`（`parseHash` の `Route.diff`）があればそれ、無ければ `Prefs.diffSel` と、始まり）。引けたら `Prefs.diffSel` と `Route.diff` をその時点にし、引けなければどちらも `null` にして残す（`savePrefs`）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
-      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る。`open` は `Prefs.commentFormClosed` が `true` なら偽）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
          - 詳細パネル・全画面の本文のスクロール領域をスクロールしたら、開いている項目の位置を残す（`writeBodyScrolls`。`scroll` は伝わらないため `document` でキャプチャフェーズで受ける）。詳細パネルか全画面を開く・項目を移る・全画面と行き来するときは、見出し（`heading`）もコメントの箇所（`highlight`）も示さなければ、描いた次のコマで本文をその項目の位置へ戻す（位置は 3 で `readBodyScrolls` で読む。残っていなければ先頭から）
          - 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のどれかを開いているときは、描いた後に前の解除を呼んでから、本文の部品を止め直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）。ピン止めしたコメントの一覧（`Prefs.commentsPinned`）は `inertBehind` で覆った範囲だけを止め、グレーアウトを出さない。それ以外は、`body` の直下のグレーアウト（`div.left-scrim`。`aria-hidden`、トップバーとタブの帯の下から。幅 900px 以下では出さない）に `on` を付け、`inertOutside` で止める。詳細パネルは、左のパネルの中（グレーアウトの上に出した詳細パネルの中を含む）の押下で開いたときだけ `body` に `detail-above-scrim` を付けてグレーアウトの上に出し、それ以外は `inert` を付ける。押下の出どころは `click` をキャプチャフェーズで受けて控え、左のパネルか詳細パネルを閉じたら戻す
@@ -429,10 +438,11 @@ functions:
          - 「溜める」では、本文が空白だけなら `empty` にして入力欄へフォーカスを戻す。そうでなければ `saving` にして送り（`add`）、溜めたら入力欄と添えた箇所を空にして `saved`（`count`）、レビュー中を読み直して溜めた ID を `checked` に足し、トップバー・詳細の一番下・一覧を描き直す。断られた・届かないなら本文を残して `failed`
          - 「箇所を外す」では `pendingLoc` から外し、書きかけは箇所を持たない向けた先へ移す
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
+         - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を描き直して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
          - 項目を指さない入力は、幅 720px 以下でフォーカスが無く本文が空なら `collapsed`
       7. 選んだ箇所の入口を次で扱う
          - `pointerup` と、ポインターを押していない間の `selectionchange` で、全画面を開いている間は全画面の中、それ以外は詳細パネルの中の選択から箇所を求め（`selectionLocation`）、あれば入口を出し、無ければ閉じる（図の拡大を開いている間は出さない）
-         - 「押す」では入口を閉じ、`pendingLoc` に入れて下端の入力（全画面を開いている間は全画面の下端の入力）を描き直し、その入力欄へフォーカスを移す。「閉じる」では入口を閉じて本文へフォーカスを戻す
+         - 「押す」では入口を閉じ、`Prefs.commentFormClosed` が `true` なら `null` にして残し（`savePrefs`）、`pendingLoc` に入れて下端の入力（全画面を開いている間は全画面の下端の入力）を描き直し、その入力欄へフォーカスを移す。「閉じる」では入口を閉じて本文へフォーカスを戻す
       8. コメントの一覧のコールバックを次で扱う（どれも履歴に積まない）
          - トップバーのコメントのボタンで一覧を開くときは、表示の設定を閉じる（`DisplayState.open` を偽）。`StackState.front` を `left` にする
          - 「行の項目を開く」では一覧を開いたまま詳細パネルを開き、`highlight` にその箇所を渡す
@@ -611,7 +621,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 表示の設定を変える
     scope: public
-    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した `Prefs` を返す（`diffSel`・`commentsPinned` は残す）
+    summary: 「既定に戻す」で、見た目・表示する種類・ライト / ダーク・表の列・絞り込みの条件・差分のミニマップ・本文の表とセクションの見せ方・本文の差分の並べ方・レビュー中のコメントの並びを外した `Prefs` を返す（`diffSel`・`commentsPinned`・`commentFormClosed` は残す）
     args:
       - name: prefs
         type: Prefs

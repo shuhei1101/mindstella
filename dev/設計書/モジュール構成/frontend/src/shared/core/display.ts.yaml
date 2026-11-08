@@ -1,114 +1,114 @@
 title: プレビュー / display
 lead: 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）。
 functions:
-- name: lookLabel
-  title: 見た目の名前
-  kind: 関数
-  usecase: 表示の設定を変える
-  summary: ネットワークの見た目の識別子から画面に出す名前を返す
-  args:
-  - name: look
-    type: NetworkLook
-    required: true
-    description: 見た目
-  returns:
-    type: string
-    description: 名前
-  unit_tests:
-  - name: test_look_label
-    case: 正常
-    summary: 名前を返す
-    condition: '`deep`'
-    mock: なし
-    expected: 今の画面と同じ名前
-  container: frontend/src/shared/core/display.ts
-- name: kindsText
-  title: 表示する種類の文
-  kind: 関数
-  usecase: ワークスペースの既定を変える
-  summary: 「すべて表示」か「{外した種類}を表示しない」
-  args:
-  - name: kinds
-    type: ReadonlySet<Kind>
-    required: true
-    description: 表示する種類
-  returns:
-    type: string
-    description: 文
-  unit_tests:
-  - name: test_kinds_text
-    case: 正常
-    summary: 外した種類
-    condition: メモと会話ログを外す
-    mock: なし
-    expected: 「メモ・会話ログを表示しない」
-  container: frontend/src/shared/core/display.ts
-- name: overrideNames
-  title: この端末で変えている項目
-  kind: 関数
-  usecase: 表示の設定を変える
-  summary: 個人の上書きから、表示の設定の部品の `overrides` に渡す名前の並びを返す
-  args:
-  - name: prefs
-    type: Prefs
-    required: true
-    description: 個人の上書き
-  - name: theme
-    type: Theme | null
-    required: true
-    description: ライト / ダークの上書き
-  returns:
-    type: string[]
-    description: 項目の名前
-  unit_tests:
-  - name: test_override_names
-    case: 正常
-    summary: 変えている項目
-    condition: '`kinds`・`minimap: false`・`reviewOrder: ''oldest''`'
-    mock: なし
-    expected: 「表示する種類」「差分のミニマップ」「コメントの並び」
-  container: frontend/src/shared/core/display.ts
-- name: resetPrefs
-  title: 既定に戻した上書き
-  kind: 関数
-  usecase: 表示の設定を変える
-  summary: 見た目・表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並びを外す。`diffSel`・`commentsPinned` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
-  args:
-  - name: prefs
-    type: Record<string, unknown>
-    required: true
-    description: 保存領域の JSON の値
-  returns:
-    type: Record<string, unknown>
-    description: 外した値
-  unit_tests:
-  - name: test_reset_prefs
-    case: 正常
-    summary: 残す項目
-    condition: '`look`・`theme`・`diffSel`・`commentsPinned`・知らない項目'
-    mock: なし
-    expected: '`diffSel`・`commentsPinned`・知らない項目だけが残り、`theme` が残らない'
-  container: frontend/src/shared/core/display.ts
-- name: displayDefaults
-  title: ワークスペースの既定
-  kind: 関数
-  usecase: ワークスペースの既定を変える
-  summary: 記録の `settings.display` から既定の見た目（無ければ `deep`）と表示する種類（無ければ全ての種類）を返す
-  args:
-  - name: display
-    type: SettingsDisplay | undefined
-    required: true
-    description: 記録の `settings.display`
-  returns:
-    type: '{ look: NetworkLook; kinds: Kind[] }'
-    description: 既定
-  unit_tests:
-  - name: test_display_defaults_when_missing
-    case: 正常
-    summary: 既定が無い
-    condition: '`undefined`'
-    mock: なし
-    expected: '`deep` と全ての種類'
-  container: frontend/src/shared/core/display.ts
+  - name: lookLabel
+    title: 見た目の名前
+    kind: 関数
+    usecase: 表示の設定を変える
+    summary: ネットワークの見た目の識別子から画面に出す名前を返す
+    args:
+      - name: look
+        type: NetworkLook
+        required: true
+        description: 見た目
+    returns:
+      type: string
+      description: 名前
+    unit_tests:
+      - name: test_look_label
+        case: 正常
+        summary: 名前を返す
+        condition: '`deep`'
+        mock: なし
+        expected: 今の画面と同じ名前
+    container: frontend/src/shared/core/display.ts
+  - name: kindsText
+    title: 表示する種類の文
+    kind: 関数
+    usecase: ワークスペースの既定を変える
+    summary: 「すべて表示」か「{外した種類}を表示しない」
+    args:
+      - name: kinds
+        type: ReadonlySet<Kind>
+        required: true
+        description: 表示する種類
+    returns:
+      type: string
+      description: 文
+    unit_tests:
+      - name: test_kinds_text
+        case: 正常
+        summary: 外した種類
+        condition: メモと会話ログを外す
+        mock: なし
+        expected: 「メモ・会話ログを表示しない」
+    container: frontend/src/shared/core/display.ts
+  - name: overrideNames
+    title: この端末で変えている項目
+    kind: 関数
+    usecase: 表示の設定を変える
+    summary: 個人の上書きから、表示の設定の部品の `overrides` に渡す名前の並びを返す
+    args:
+      - name: prefs
+        type: Prefs
+        required: true
+        description: 個人の上書き
+      - name: theme
+        type: Theme | null
+        required: true
+        description: ライト / ダークの上書き
+    returns:
+      type: string[]
+      description: 項目の名前
+    unit_tests:
+      - name: test_override_names
+        case: 正常
+        summary: 変えている項目
+        condition: '`kinds`・`minimap: false`・`reviewOrder: ''oldest''`'
+        mock: なし
+        expected: 「表示する種類」「差分のミニマップ」「コメントの並び」
+    container: frontend/src/shared/core/display.ts
+  - name: resetPrefs
+    title: 既定に戻した上書き
+    kind: 関数
+    usecase: 表示の設定を変える
+    summary: 見た目・表示する種類・ライト / ダーク（`theme`）・表の列・絞り込みの条件・差分のミニマップ・本文の見せ方・本文の差分の並べ方・コメントの並びを外す。`diffSel`・`commentsPinned`・`commentFormClosed` と知らない項目は残す。使う側は書いた後に `useThemeStore` の状態も外した値（既定のライト / ダーク）に合わせて描き直す
+    args:
+      - name: prefs
+        type: Record<string, unknown>
+        required: true
+        description: 保存領域の JSON の値
+    returns:
+      type: Record<string, unknown>
+      description: 外した値
+    unit_tests:
+      - name: test_reset_prefs
+        case: 正常
+        summary: 残す項目
+        condition: '`look`・`theme`・`diffSel`・`commentsPinned`・知らない項目'
+        mock: なし
+        expected: '`diffSel`・`commentsPinned`・知らない項目だけが残り、`theme` が残らない'
+    container: frontend/src/shared/core/display.ts
+  - name: displayDefaults
+    title: ワークスペースの既定
+    kind: 関数
+    usecase: ワークスペースの既定を変える
+    summary: 記録の `settings.display` から既定の見た目（無ければ `deep`）と表示する種類（無ければ全ての種類）を返す
+    args:
+      - name: display
+        type: SettingsDisplay | undefined
+        required: true
+        description: 記録の `settings.display`
+    returns:
+      type: '{ look: NetworkLook; kinds: Kind[] }'
+      description: 既定
+    unit_tests:
+      - name: test_display_defaults_when_missing
+        case: 正常
+        summary: 既定が無い
+        condition: '`undefined`'
+        mock: なし
+        expected: '`deep` と全ての種類'
+    container: frontend/src/shared/core/display.ts
 notes:
   単体テスト: 同じフォルダの `display.test.ts` に置く（knowledge の規約『フォルダ構成』）
