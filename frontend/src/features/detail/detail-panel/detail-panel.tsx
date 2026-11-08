@@ -148,16 +148,18 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     scroller.addEventListener("scroll", update, { passive: true });
     return () => { scroller.removeEventListener("scroll", update); };
   }, [titleElement]);
-  // コメントの一覧から開いたとき、描いた本文の中の書き込みの箇所を示す（描き終えるのを本文の要素の変化で待つ）
+  // コメントの一覧から開いたとき、描いた本文の中の書き込みの箇所を示す（描き終えるのを本文の要素の変化で待ち、本文を描き直したら示し直す）
   const loc = useLocationHighlight(id);
   useEffect(() => {
     const root = titleElement?.closest(".panel-body") ?? null;
     if (loc === null || root === null) return undefined;
-    const ready = loc.kind === "value" ? `[${VALUE_KEY_ATTR}]` : `.md [${LINE_ATTR}], iframe[${HTML_BODY_ATTR}]`;
+    const ready = loc.kind === "value" ? `[${VALUE_KEY_ATTR}]` : `[data-body-view] .md [${LINE_ATTR}], [data-body-view] iframe[${HTML_BODY_ATTR}]`;
+    let shown: Element | null = null;
     const observer = new MutationObserver(() => { apply(); });
     const apply = (): void => {
-      if (root.querySelector(ready) === null) return;
-      observer.disconnect();
+      const drawn = root.querySelector(ready);
+      if (drawn === null || drawn === shown) return;
+      shown = drawn;
       applyHighlight({ root, loc });
     };
     observer.observe(root, { childList: true, subtree: true });

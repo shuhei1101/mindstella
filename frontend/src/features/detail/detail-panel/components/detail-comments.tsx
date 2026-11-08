@@ -1,6 +1,7 @@
 // 詳細のコメント。詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）と、本文の選択から出す選んだ箇所のコメントの入口を描く
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { Icon } from "@/shared/components/icon";
 import { ReviewEditForm } from "@/features/comments/shared/review-edit-form";
@@ -92,11 +93,10 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
     };
   }, []);
 
-  // 描き直した後に、その行の要素へフォーカスを移す（行の修正・入力欄・元に戻す）
-  const focusLater = (selector: string): void => {
-    requestAnimationFrame(() => {
-      host.current?.querySelector<HTMLElement>(selector)?.focus();
-    });
+  // 書き換えを描き終えてから、その行の要素へフォーカスを移す（行の修正・入力欄・元に戻す）
+  const focusAfter = (update: () => void, selector: string): void => {
+    flushSync(update);
+    host.current?.querySelector<HTMLElement>(selector)?.focus();
   };
   const shown = [...items, ...removed.map((item) => ({ ...item, gone: true as const }))].sort((a, b) => (order === "newest" ? commentNumber(b.id) - commentNumber(a.id) : commentNumber(a.id) - commentNumber(b.id)));
   const text = form.body ?? draft;
@@ -125,7 +125,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                 return (
                   <li key={item.id} className="flex items-center gap-2 text-small">
                     <span role="status" className="flex-1">コメントを削除しました。</span>
-                    <Button variant="ghost" data-focus={`undo:${item.id}`} onClick={() => { add.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, body: item.body }, { onSuccess: () => { setRemoved((current) => current.filter((one) => one.id !== item.id)); focusLater(`[data-focus="edit:${item.id}"]`); } }); }}>
+                    <Button variant="ghost" data-focus={`undo:${item.id}`} onClick={() => { add.mutate({ id: item.id, created: item.created, target: item.target, loc: item.loc, body: item.body }, { onSuccess: () => { focusAfter(() => { setRemoved((current) => current.filter((one) => one.id !== item.id)); }, `[data-focus="edit:${item.id}"]`); } }); }}>
                       <Icon name="undo" />
                       元に戻す
                     </Button>
@@ -138,10 +138,10 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                     <span className="flex-1">{item.loc === null ? "" : locationLabel(item.loc)}</span>
                     {editing?.id === item.id ? null : (
                       <>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { setEditing({ id: item.id, body: item.body, error: null }); focusLater(`[data-comment="${item.id}"] textarea`); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を修正`} title="修正" data-focus={`edit:${item.id}`} onClick={() => { focusAfter(() => { setEditing({ id: item.id, body: item.body, error: null }); }, `[data-comment="${item.id}"] textarea`); }}>
                           <Icon name="edit" />
                         </Button>
-                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" onClick={() => { remove.mutate(item.id, { onSuccess: () => { setRemoved((current) => [...current, item]); focusLater(`[data-focus="undo:${item.id}"]`); } }); }}>
+                        <Button variant="ghost" size="icon" aria-label={`${label}を削除`} title="削除" onClick={() => { remove.mutate(item.id, { onSuccess: () => { focusAfter(() => { setRemoved((current) => [...current, item]); }, `[data-focus="undo:${item.id}"]`); } }); }}>
                           <Icon name="trash" />
                         </Button>
                       </>
@@ -155,11 +155,10 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                       error={editing.error}
                       saving={update.isPending}
                       onCancel={() => {
-                        setEditing(null);
-                        focusLater(`[data-focus="edit:${item.id}"]`);
+                        focusAfter(() => { setEditing(null); }, `[data-focus="edit:${item.id}"]`);
                       }}
                       onSubmit={(target, body) => {
-                        update.mutate({ id: target, body }, { onSuccess: () => { setEditing(null); focusLater(`[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
+                        update.mutate({ id: target, body }, { onSuccess: () => { focusAfter(() => { setEditing(null); }, `[data-focus="edit:${target}"]`); }, onError: (error) => { setEditing({ id: target, body, error: error instanceof AppError ? error.message : "サーバーが止まっています。立ち上げ直してから直してください。" }); } });
                       }}
                     />
                   ) : (
@@ -211,9 +210,10 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
           anchor={entry.anchor}
           area={entry.area}
           onOpen={() => {
-            setLoc(entry.loc);
-            setEntry(null);
-            focusLater("textarea[name=body]");
+            focusAfter(() => {
+              setLoc(entry.loc);
+              setEntry(null);
+            }, "textarea[name=body]");
           }}
           onClose={() => { setEntry(null); }}
         />

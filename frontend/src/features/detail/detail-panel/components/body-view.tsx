@@ -158,7 +158,7 @@ export const BodyView = ({ label, item, id, index, source, versions, layout, dis
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mdmark, jsdiff, marked, mermaid, html, source, current, comparing, before, layout, display, index, id, item.body, deadline]);
   return (
-    <section className="flex flex-col gap-1">
+    <section data-body-view className="flex flex-col gap-1">
       <h3 className="m-0 text-h2 font-semibold">{label}</h3>
       {canLayout ? <BodyDiffLayoutSwitch layout={layout} onChange={onLayout} /> : null}
       <DomHost create={create} />
