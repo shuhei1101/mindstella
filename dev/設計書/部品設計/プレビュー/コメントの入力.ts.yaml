@@ -375,11 +375,11 @@ events:
   - name: 録音をキャンセル
     when: × のボタンを押したとき（`voice` が `recording`）
     value: なし
-    description: 使う側が録音を捨ててマイクを解放し、`voice` を `idle` に戻す。入力欄の中身は変えない
+    description: 使う側が録音を捨ててマイクを解放し、`voice` を `idle` に戻す。入力欄の中身は変えない。録音中に入力が無くなるか向けた先が変わるとき（パネル・全画面・一覧・スレッドを閉じる・入力を畳む・別の項目やタブへ移る）も、使う側が同じく録音を捨ててマイクを解放する。書き換えの知らせでの描き直しでは録音を止めない
   - name: 文字起こし
     when: ✓ のボタンを押したとき（`voice` が `recording`）
     value: target・loc・body（入力欄の中身そのまま）
-    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。返った文字を入力欄のカーソルの位置へ挿入し、設定の挙動が `send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら `inserted` にする。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）
+    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。返った文字を入力欄のカーソルの位置へ挿入し、設定の挙動が `send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら `inserted` にする。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。文字起こし中に入力が無くなったときと、返った時点の向けた先が押したときと違うときは、返った文字を捨てる（挿入も送信もしない）
   - name: 押せないマイクを押す
     when: '`voice` が `disabled` のマイクのボタンを押したとき'
     value: なし
