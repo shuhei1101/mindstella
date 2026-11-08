@@ -47,3 +47,12 @@
 .send-body { display: contents; }
 /* 閉じた範囲: 出さない */
 .send-body[hidden] { display: none; }
+
+/* 閉じた入力の書きかけの印: 見出しの文字の右に、補足の文字色で小さく出す */
+.send-draft { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-small); color: var(--text-2); }
+/* 書きかけの印のアイコン: 文字と同じ大きさにする */
+.send-draft svg.icon { width: 14px; height: 14px; }
+/* 書きかけの印がある見出しの行: 見出しの文字は印の手前で省く */
+.send-head:has(.send-draft) .send-label { flex: 0 1 auto; }
+/* 書きかけの印の後ろを空けて、開閉のボタンを右端に寄せる */
+.send-head .send-draft + .send-toggle { margin-left: auto; }

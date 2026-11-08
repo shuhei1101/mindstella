@@ -135,8 +135,13 @@ ID の等幅は残す。
     </section>
     <section class="cat-sec">
       <h2>閉じた</h2>
-      <p>右上の ^ で開く。閉じている間は「{ID} へのコメント」の 1 行だけを出し、入力欄・添えた箇所・結果・「レビューに追加」を出さない。書きかけは閉じても残る。</p>
+      <p>右上の ^ で開く。閉じている間は「{ID} へのコメント」の 1 行だけを出し、入力欄・添えた箇所・結果・「レビューに追加」を出さない。</p>
       <div class="stage"><form class="send send-footer is-closed" novalidate onsubmit="return false"><div class="send-head"><span class="send-label"><span class="mono">D-022</span> へのコメント</span><button class="icon-btn send-toggle" type="button" aria-expanded="false" aria-controls="sf-c1-body" aria-label="コメントの入力を開く" title="コメントの入力を開く"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="sf-c1-body" hidden></div></form></div>
+    </section>
+    <section class="cat-sec">
+      <h2>閉じた（書きかけあり）</h2>
+      <p>書きかけは閉じても残る。書きかけがあるときだけ、「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す。</p>
+      <div class="stage"><form class="send send-footer is-closed" novalidate onsubmit="return false"><div class="send-head"><span class="send-label"><span class="mono">D-022</span> へのコメント</span><span class="send-draft"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>書きかけ</span><button class="icon-btn send-toggle" type="button" aria-expanded="false" aria-controls="sf-c5-body" aria-label="コメントの入力を開く" title="コメントの入力を開く"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="sf-c5-body" hidden></div></form></div>
     </section>
     <section class="cat-sec">
       <h2>開閉のボタンのホバー・フォーカス</h2>
@@ -165,8 +170,8 @@ ID の等幅は残す。
     </section>
     <section class="cat-sec">
       <h2>閉じた（最も狭い幅 320px）</h2>
-      <p>閉じても開閉のボタンの幅は保つ。</p>
-      <div class="stage narrowest"><form class="send send-footer is-closed" novalidate onsubmit="return false"><div class="send-head"><span class="send-label"><span class="mono">D-022</span> へのコメント</span><button class="icon-btn send-toggle" type="button" aria-expanded="false" aria-controls="sf-c4-body" aria-label="コメントの入力を開く" title="コメントの入力を開く"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="sf-c4-body" hidden></div></form></div>
+      <p>閉じても開閉のボタンの幅は保つ。書きかけの印があるときも 1 行に収める。</p>
+      <div class="stage narrowest"><form class="send send-footer is-closed" novalidate onsubmit="return false"><div class="send-head"><span class="send-label"><span class="mono">D-022</span> へのコメント</span><button class="icon-btn send-toggle" type="button" aria-expanded="false" aria-controls="sf-c4-body" aria-label="コメントの入力を開く" title="コメントの入力を開く"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="sf-c4-body" hidden></div></form><form class="send send-footer is-closed" novalidate onsubmit="return false"><div class="send-head"><span class="send-label"><span class="mono">D-022</span> へのコメント</span><span class="send-draft"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 1-4L16 5l3 3L8 19Z"/><path d="m14 7 3 3"/></svg>書きかけ</span><button class="icon-btn send-toggle" type="button" aria-expanded="false" aria-controls="sf-c6-body" aria-label="コメントの入力を開く" title="コメントの入力を開く"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div><div class="send-body" id="sf-c6-body" hidden></div></form></div>
     </section>
   </main>
 </body>
