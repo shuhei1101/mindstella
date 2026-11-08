@@ -933,7 +933,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/send-form.ts
     usecase: 項目へコメントする
     kind: コンポーネント
-    summary: 部品設計『コメントの入力』の引数を受け、入力・溜める・箇所を外す・本文を写す・入力欄に入る・出るをコールバックで知らせる。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
+    summary: 部品設計『コメントの入力』の引数を受け、入力・溜める・箇所を外す・本文をコピー・入力欄に入る・出るをコールバックで知らせる。入力欄と「レビューに追加」（アイコンだけのボタン）を 1 行（`.send-line`）に並べ、結果は入力欄の下に出す
     props:
       - name: target
         type: string | null
@@ -963,7 +963,7 @@ components:
         type: string | null
         required: false
         default: 'null'
-        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち上げ直しの案内と「本文を写す」を出す
+        description: サーバーが返した理由。`failed` で `null` なら届かなかったとして立ち上げ直しの案内と本文のコピーのボタン（アイコンだけ。`aria-label`・`title`「本文をコピー」）を出す
       - name: collapsed
         type: boolean
         required: false
@@ -972,7 +972,7 @@ components:
       - name: on
         type: '{input, save, unquote, copy, focus, blur}'
         required: true
-        description: 入力欄の中身が変わった・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。`saving` の間は呼ばない）・箇所の ×・「本文を写す」・入力欄に入った・部品の外へ出た
+        description: 入力欄の中身が変わった・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。`saving` の間は呼ばない）・箇所の ×・本文のコピーのボタン・入力欄に入った・部品の外へ出た
       - name: label
         type: string
         required: false
@@ -984,7 +984,7 @@ components:
         summary: 状態ごとの入力欄と結果
         condition: '`parametrize`: `saving` / `saved`（`count: 3`）/ `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: '`saving` はボタンが `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 入力欄が `aria-invalid="true"` / 「本文を写す」がある / 「レビューに追加できませんでした。{理由}」で「本文を写す」が無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指す'
+        expected: '`saving` はボタンが `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 入力欄が `aria-invalid="true"` / 本文のコピーのボタン（`aria-label`「本文をコピー」）がある / 「レビューに追加できませんでした。{理由}」で本文のコピーのボタンが無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある'
       - name: test_send_form_when_location_and_no_target
         case: 正常
         summary: 添えた箇所と項目を指さない形
@@ -1570,7 +1570,7 @@ components:
     container: plugins/mindstella/skills/mindmap/preview/components/reply-form.ts
     usecase: スレッドで話す
     kind: コンポーネント
-    summary: 部品設計『返信の入力』の引数を受け、入力と溜めるをコールバックで知らせる。入力欄が空白だけの間と `saving` の間は「レビューに追加」を `disabled` にする。入力欄の Esc は `preventDefault` と `stopPropagation` をしてからフォーカスを外す。入力の幅が 360px 以下では結果を下の行へ回す（コンテナクエリ。`style.css`）
+    summary: 部品設計『返信の入力』の引数を受け、入力と溜めるをコールバックで知らせる。入力欄が空白だけの間と `saving` の間は「レビューに追加」を `disabled` にする。入力欄の Esc は `preventDefault` と `stopPropagation` をしてからフォーカスを外す。入力欄と「レビューに追加」（アイコンだけのボタン）を 1 行（`.send-line`）に並べ、結果は入力欄の下に出す
     props:
       - name: thread
         type: string
@@ -1606,7 +1606,7 @@ components:
         summary: 状態ごとの入力欄と結果
         condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
-        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指す
+        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
       - name: test_reply_form_when_keys
         case: 正常
         summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない
