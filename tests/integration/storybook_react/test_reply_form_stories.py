@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from playwright.sync_api import Page
 from .storybook_react_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -27,6 +28,26 @@ SEND = "button[data-focus='reply-send']"
 MESSAGE = "form [role=status]"
 
 
+# 入力欄と「レビューに追加」の位置（同じ行で、ボタンは入力欄の右・下端を合わせる）を読む
+LINE_GEOMETRY_SCRIPT = """() => {
+  const field = document.querySelector('textarea').getBoundingClientRect();
+  const button = document.querySelector('button[aria-label="レビューに追加"]').getBoundingClientRect();
+  return { fieldRight: field.right, fieldBottom: field.bottom, buttonLeft: button.left, buttonBottom: button.bottom };
+}"""
+
+# 位置を比べるときに許す誤差（ピクセル。小数の丸め）
+POSITION_TOLERANCE_PX = 1
+
+
+def assert_submit_beside_field(page: Page) -> None:
+    """「レビューに追加」が文字を持たず、入力欄の右の同じ行で下端を合わせて置かれている。"""
+    button = page.get_by_role("button", name="レビューに追加")
+    assert button.inner_text().strip() == ""
+    assert button.get_attribute("title") == "レビューに追加（Ctrl+Enter）"
+    geometry = page.evaluate(LINE_GEOMETRY_SCRIPT)
+    assert geometry["buttonLeft"] >= geometry["fieldRight"] - POSITION_TOLERANCE_PX
+    assert abs(geometry["buttonBottom"] - geometry["fieldBottom"]) <= POSITION_TOLERANCE_PX
+
 def test_empty(open_story: OpenStory) -> None:
     """入力欄が空。ラベル「返信」を常に見せ、「レビューに追加」を押せなくする（正常系）。"""
     # 準備・実行
@@ -45,7 +66,10 @@ def test_empty(open_story: OpenStory) -> None:
     assert page.get_attribute(MESSAGE, "role") == "status"
     assert page.inner_text(MESSAGE) == ""
     assert page.get_attribute(SEND, "title") == "レビューに追加（Ctrl+Enter）"
+    assert page.get_attribute(SEND, "aria-label") == "レビューに追加"
+    assert page.inner_text(SEND).strip() == ""
     assert page.is_disabled(SEND)
+    assert_submit_beside_field(page)
 
 
 def test_typing(open_story: OpenStory) -> None:
@@ -103,7 +127,7 @@ def test_failed_detail(open_story: OpenStory) -> None:
 
 
 def test_long(open_story: OpenStory) -> None:
-    """長文。入力欄は 8 行まで広がり、それより長いと中でスクロールする（正常系）。"""
+    """長文。入力欄は 8 行まで広がり、それより長いと中でスクロールする。「レビューに追加」は入力欄の下端に合わせる（正常系）。"""
     # 準備・実行
     page = open_story("comments-replyform--long")
     # 検証
@@ -111,10 +135,11 @@ def test_long(open_story: OpenStory) -> None:
     assert sizes["lineHeight"] * MAX_ROWS <= sizes["height"]
     assert sizes["height"] <= sizes["lineHeight"] * MAX_ROWS + TEXTAREA_PADDING_PX
     assert sizes["scrollHeight"] > sizes["height"]
+    assert_submit_beside_field(page)
 
 
 def test_narrow(open_story: OpenStory) -> None:
-    """幅 390px。入力の幅が 360px 以下ではボタンを右に置いたまま、結果を下の行に幅いっぱいで出す（正常系）。"""
+    """幅 390px。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す（正常系）。"""
     # 準備
     page = open_story("comments-replyform--narrow")
     page.set_viewport_size(NARROW_SIZE)
@@ -127,6 +152,8 @@ def test_narrow(open_story: OpenStory) -> None:
     assert button is not None
     assert message is not None
     assert form["width"] <= 390
+    assert_submit_beside_field(page)
     assert button["x"] + button["width"] >= form["x"] + form["width"] - 16 - 1
     assert message["y"] >= button["y"] + button["height"] - 1
+    assert message["width"] >= form["width"] - 2 * 16 - 2
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")

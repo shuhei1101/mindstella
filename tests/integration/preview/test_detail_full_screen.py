@@ -327,6 +327,23 @@ def test_comment_input(
     assert page.input_value("aside.panel form.send textarea") == "書きかけ"
 
 
+def test_comment_input_when_closed(
+    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
+) -> None:
+    """詳細パネルで閉じたコメントの入力は、全画面でも閉じた形で出す（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    page = open_preview(url, "#tab=decisions&view=table&id=D-2")
+    page.click('aside.panel form.send button[aria-label="コメントの入力を閉じる"]')
+    # 実行
+    _open_full(page)
+    # 検証
+    toggle = page.locator("dialog.full form.send .send-toggle")
+    assert toggle.get_attribute("aria-expanded") == "false"
+    assert toggle.get_attribute("aria-label") == "コメントの入力を開く"
+    assert not page.locator("dialog.full form.send textarea").is_visible()
+
+
 def test_comment_input_keeps_location(
     write_review_preview: WriteReviewPreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:

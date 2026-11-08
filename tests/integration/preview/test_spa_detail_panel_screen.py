@@ -325,6 +325,28 @@ def test_comment_input(page: Page, comment_preview: tuple[str, Path]) -> None:
     assert items[-1]["target"] == "D-1"
 
 
+def test_comment_input_when_toggle_open(page: Page, comment_preview: tuple[str, Path]) -> None:
+    """開閉のボタンで閉じると端末に残し、項目を移っても開き直しても閉じた形で出す。入口を押すと開いて箇所を添えた入力欄へ移る（正常系）。"""
+    # 準備
+    url, _ = comment_preview
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 実行（閉じて別の項目へ移り、開き直す）
+    _panel(page).get_by_role("button", name="コメントの入力を閉じる").click()
+    open_spa(page, url, "?tab=decisions&id=D-2")
+    # 検証
+    expect(_panel(page).get_by_role("button", name="コメントの入力を開く")).to_have_attribute("aria-expanded", "false")
+    expect(_panel(page).get_by_role("textbox", name="D-2 へのコメント")).to_have_count(0)
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').commentFormClosed") is True
+    # 実行（D-1 の本文を選んで入口を押す）
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    expect(_panel(page).locator(".md [data-line-start='5']")).to_have_text("二つ目の段落")
+    page.evaluate(SELECT_PARAGRAPH_JS, "二つ目の段落")
+    page.get_by_role("button", name="選んだ箇所にコメント").click()
+    # 検証
+    expect(_panel(page).get_by_role("textbox", name="D-1 へのコメント")).to_be_focused()
+    assert page.evaluate("JSON.parse(localStorage.getItem('mindmap-preview') ?? '{}').commentFormClosed ?? null") is None
+
+
 def test_review_comments(page: Page, comment_preview: tuple[str, Path]) -> None:
     """その項目へのレビュー中のコメントを既定は新しい順に並べ、箇所と本文を出す（正常系）。"""
     # 準備・実行
