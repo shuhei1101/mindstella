@@ -35,13 +35,13 @@ const noop = (): void => undefined;
 const EventItem = ({ event }: { event: ThreadEvent }) => {
   const closed = event.kind === "closed";
   return (
-    <article data-event={event.kind} className="grid gap-0.5 px-1 text-small text-muted-foreground">
-      <div className="flex items-center gap-1">
+    <article data-event={event.kind} data-author={event.author} className="grid gap-0.5 px-1 text-small text-muted-foreground">
+      <div data-part="event-line" className="flex items-center gap-1">
         <Icon name={closed ? "check" : "undo"} />
         <span>{`${event.author === "ai" ? "AI が" : "あなたが"}${closed ? "クローズにしました" : "オープンに戻しました"}`}</span>
         <time dateTime={event.created}>{formatJst(event.created)}</time>
       </div>
-      {event.reason === null ? null : <p className="m-0 pl-5">{event.reason}</p>}
+      {event.reason === null ? null : <p data-part="reason" className="m-0 pl-5">{event.reason}</p>}
     </article>
   );
 };
@@ -68,9 +68,9 @@ export const ThreadPost = ({
   if (pending !== null) {
     const label = reviewLabel(pending);
     return (
-      <article data-author="user" data-comment={pending.id} className="ml-8 grid gap-1 rounded-card border border-dashed border-border bg-card p-2">
+      <article data-author="user" data-comment={pending.id} className="ml-8 grid gap-1 rounded-card border border-dashed border-border bg-card p-2 max-md:ml-4">
         <div className="flex items-center gap-2 text-small">
-          <span className="font-medium">{AUTHOR_LABELS.user}</span>
+          <span data-part="author" className="font-medium">{AUTHOR_LABELS.user}</span>
           <PendingMark />
           <span className="flex-1" />
           {editing ? null : (
@@ -91,7 +91,11 @@ export const ThreadPost = ({
             {(content, toggle) => (
               <>
                 {content}
-                {toggle === null ? null : <div className="flex">{toggle}</div>}
+                {toggle === null ? null : (
+                  <div data-part="more-row" className="flex">
+                    {toggle}
+                  </div>
+                )}
               </>
             )}
           </ReviewBodyFold>
@@ -101,9 +105,9 @@ export const ThreadPost = ({
   }
   if (post === null) throw new Error("ThreadPost には post・event・pending のどれか 1 つを渡す");
   return (
-    <article data-author={post.author} className={cn("grid gap-1 rounded-card p-2", post.author === "user" ? "ml-8 border border-border bg-card" : "mr-8 bg-muted")}>
+    <article data-author={post.author} className={cn("grid gap-1 rounded-card p-2", post.author === "user" ? "ml-8 border border-border bg-card max-md:ml-4" : "mr-8 bg-muted max-md:mr-4")}>
       <div className="flex items-center gap-2 text-small">
-        <span className="font-medium">{AUTHOR_LABELS[post.author]}</span>
+        <span data-part="author" className="font-medium">{AUTHOR_LABELS[post.author]}</span>
         <time dateTime={post.created} className="text-muted-foreground">
           {formatJst(post.created)}
         </time>

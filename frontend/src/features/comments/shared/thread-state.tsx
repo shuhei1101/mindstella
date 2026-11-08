@@ -16,26 +16,29 @@ export const STATE_LABELS = {
   pending: { icon: "edit", label: "レビュー中" },
 } as const satisfies Record<ThreadStateKind, { icon: IconName; label: string }>;
 
+/** 状態の札の色（オープンは状態の色、クローズは薄い文字、レビュー中は本文の色の破線） */
+const STATE_TONE = { open: "text-st-open", closed: "text-muted-foreground", pending: "border-dashed text-foreground" } as const satisfies Record<ThreadStateKind, string>;
+
 /** 状態の札（色に加えて印と文字で区別する） */
 export const ThreadState = ({ status }: { status: ThreadStateKind }) => (
-  <span data-state={status} className={cn("inline-flex shrink-0 items-center gap-1 rounded-control border px-1.5 text-small whitespace-nowrap", status === "pending" ? "border-dashed border-border" : "border-border")}>
-    <Icon name={STATE_LABELS[status].icon} />
+  <span data-state={status} className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-kbd border border-current px-1.5 text-xs leading-none font-medium whitespace-nowrap", STATE_TONE[status])}>
+    <Icon name={STATE_LABELS[status].icon} className="size-2.75" />
     {STATE_LABELS[status].label}
   </span>
 );
 
 /** レビュー中の印 */
 export const PendingMark = () => (
-  <span className="inline-flex shrink-0 items-center gap-1 rounded-control border border-dashed border-border px-1.5 text-small whitespace-nowrap">
-    <Icon name="edit" />
+  <span data-part="pending" className="inline-flex shrink-0 items-center gap-0.75 rounded-kbd border border-dashed border-muted-foreground px-1.5 text-xs font-medium whitespace-nowrap text-foreground">
+    <Icon name="edit" className="size-2.75" />
     レビュー中
   </span>
 );
 
 /** 未読の札 */
 export const UnseenMark = () => (
-  <span className="inline-flex shrink-0 items-center gap-1 rounded-control bg-primary px-1.5 text-small whitespace-nowrap text-primary-foreground">
-    <span aria-hidden="true" className="size-1.5 rounded-full bg-primary-foreground" />
+  <span data-part="unread" className="inline-flex h-4.5 shrink-0 items-center gap-1 rounded-kbd bg-primary px-1.5 text-xs leading-none font-semibold whitespace-nowrap text-primary-foreground">
+    <span aria-hidden="true" data-part="dot" className="size-1.5 rounded-full bg-current" />
     未読
   </span>
 );

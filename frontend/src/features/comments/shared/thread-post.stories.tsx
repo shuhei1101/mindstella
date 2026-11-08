@@ -1,5 +1,6 @@
 // スレッドの書き込みのストーリー（部品設計『スレッドの書き込み.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState, type ComponentProps } from "react";
 import { fn } from "storybook/test";
 
 import { ThreadPost } from "@/features/comments/shared/thread-post";
@@ -11,9 +12,25 @@ const lookup =
   (id: string): string | null =>
     names[id] ?? null;
 
+/** レビュー中の返信の開閉を押した結果を自分の状態に持つ台 */
+const PostStage = (props: ComponentProps<typeof ThreadPost>) => {
+  const [open, setOpen] = useState(props.open ?? false);
+  return (
+    <ThreadPost
+      {...props}
+      open={open}
+      onToggle={(id, next) => {
+        props.onToggle?.(id, next);
+        setOpen(next);
+      }}
+    />
+  );
+};
+
 const meta = {
   title: "Comments/ThreadPost",
   component: ThreadPost,
+  render: (args) => <PostStage {...args} />,
   args: { onOpenItem: fn(), onEditStart: fn(), onEditSubmit: fn(), onEditCancel: fn(), onRemove: fn(), onOpenChangeSet: fn(), onToggle: fn() },
 } satisfies Meta<typeof ThreadPost>;
 

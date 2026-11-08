@@ -281,6 +281,10 @@ text.df-t-chg { font-weight: 700 !important; }
 .md a.term:hover, .md a.term:focus-visible { text-decoration-color: var(--mark); background: var(--mark-weak); border-radius: 2px; }
 .md a.idref { white-space: nowrap; overflow-wrap: normal; font-family: var(--font-stack-mono); font-size: .92em; color: var(--mark); text-decoration: underline; text-decoration-color: var(--mark-line); text-underline-offset: 3px; }
 .md a.idref:hover { text-decoration-color: var(--mark); }
+/* 書き込みの本文の中の項目の ID を開くボタンと、まとまりのリンク（今の画面の `.idlink`・`a.setlink` と同じ） */
+.idlink { display: inline-flex; align-items: center; justify-content: center; min-inline-size: var(--target-min); min-block-size: var(--target-min); margin: 0 2px; padding: 0 4px; border: 1px solid var(--border-soft); border-radius: 3px; background: var(--card); color: var(--foreground); font-family: var(--font-stack-mono); font-size: 11.5px; line-height: 1; vertical-align: middle; cursor: pointer; }
+.idlink:hover { border-color: var(--mark); color: var(--mark); }
+.md a.setlink { color: var(--mark); text-decoration: underline; cursor: pointer; }
 .md code a.idref { font-size: inherit; }
 .term-tip { position: fixed; inset: auto; margin: 0; max-width: min(360px, calc(100vw - 16px)); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground); box-shadow: var(--shadow-pop); font-size: var(--fs-small); line-height: 1.55; }
 .term-tip .tt-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-weight: 700; }

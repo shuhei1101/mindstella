@@ -2,8 +2,8 @@
 import { useEffect, useRef } from "react";
 
 import { useLibrary } from "@/shared/adapters/libraries";
-import { renderMarkdown, withHardBreaks } from "@/shared/core/body-links";
-import { withoutLineMarks } from "@/shared/core/body-render";
+import { renderDiagrams, renderMarkdown, withHardBreaks } from "@/shared/core/body-links";
+import { drawHtmlBlocks, withoutLineMarks } from "@/shared/core/body-render";
 import { decorateMarkdown } from "@/shared/core/markdown-decorate";
 import { buttonizeItemIds, linkChangeSets, type LookupTitle } from "@/shared/core/post-links";
 import { cn } from "@/shared/lib/cn";
@@ -22,6 +22,8 @@ const noTitle: LookupTitle = () => null;
 
 export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, className, onOpenItem, onOpenChangeSet }: PostBodyProps) => {
   const { status } = useLibrary("mdmark");
+  // 図は mermaid を読み終えてから描く（読み終えたら本文を描き直す）
+  const diagrams = useLibrary("mermaid").status;
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = host.current;
@@ -29,20 +31,23 @@ export const PostBody = ({ body, titles = noTitle, changeSets = noTitle, id, cla
     // 描いた本文を部品の要素へ置き、ボタンとリンクを付ける
     const rendered = withoutLineMarks(renderMarkdown(withHardBreaks(body)));
     root.replaceChildren(rendered);
+    // 図は描き終えるのを待たずに出し、`html` のコードブロックは枠に置き換える
+    if (diagrams !== "loading") void renderDiagrams(rendered);
+    drawHtmlBlocks(rendered);
     decorateMarkdown({ root: rendered, fold: false, tables: false });
     linkChangeSets({ root: rendered, changeSets, onChangeSet: (set) => onOpenChangeSet?.(set) });
     buttonizeItemIds({ root: rendered, titles, onOpen: (item) => onOpenItem?.(item) });
     return () => {
       root.replaceChildren();
     };
-  }, [status, body, titles, changeSets, onOpenItem, onOpenChangeSet]);
+  }, [status, diagrams, body, titles, changeSets, onOpenItem, onOpenChangeSet]);
   // 読めない・読み込み中は文字のまま改行を保って出す
   if (status !== "ready") {
     return (
-      <p id={id} className={cn("m-0 whitespace-pre-wrap", className)}>
+      <p id={id} data-part="body" className={cn("m-0 whitespace-pre-wrap", className)}>
         {body}
       </p>
     );
   }
-  return <div id={id} ref={host} className={className} />;
+  return <div id={id} ref={host} data-part="body" className={className} />;
 };

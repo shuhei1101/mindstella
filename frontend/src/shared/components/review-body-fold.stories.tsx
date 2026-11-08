@@ -1,5 +1,6 @@
 // 本文の折りたたみのストーリー（部品設計『本文の折りたたみ.tsx』の状態）
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState, type ComponentProps } from "react";
 import { fn } from "storybook/test";
 
 import { ReviewBodyFold } from "@/shared/components/review-body-fold";
@@ -11,9 +12,25 @@ const lookup =
   (id: string): string | null =>
     names[id] ?? null;
 
+/** 開閉のボタンを押した結果を自分の状態に持つ台 */
+const FoldStage = (props: ComponentProps<typeof ReviewBodyFold>) => {
+  const [open, setOpen] = useState(props.open);
+  return (
+    <ReviewBodyFold
+      {...props}
+      open={open}
+      onToggle={(id, next) => {
+        props.onToggle(id, next);
+        setOpen(next);
+      }}
+    />
+  );
+};
+
 const meta = {
   title: "Shared/ReviewBodyFold",
   component: ReviewBodyFold,
+  render: (args) => <FoldStage {...args} />,
   args: { id: "C-51", label: "項目を指さないコメント", body: "", open: false, onToggle: fn(), onOpenItem: fn(), onOpenChangeSet: fn(), children: (content, toggle) => <>{content}{toggle}</> },
   // コメントの一覧のパネルと同じ幅に置く（見た目の行の数がパネルの幅で決まる）
   decorators: [

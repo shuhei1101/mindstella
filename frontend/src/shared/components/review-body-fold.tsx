@@ -5,7 +5,6 @@ import { Icon } from "@/shared/components/icon";
 import { PostBody } from "@/shared/components/post-body";
 import { Button } from "@/shared/components/ui/button";
 import type { LookupTitle } from "@/shared/core/post-links";
-import { cn } from "@/shared/lib/cn";
 
 /** 畳んだときに出す、折り返した後の見た目の行の数 */
 export const REVIEW_FOLD_LINES = 5;
@@ -50,13 +49,13 @@ export const ReviewBodyFold = ({ id, label, body, changeSets, open, lines = REVI
   }, [body, lines]);
   const folded = exceeds && !open;
   const content = (
-    <div ref={box} id={bodyId} className="overflow-hidden" style={folded ? { maxHeight: `calc(${String(lines)} * 1lh)` } : undefined}>
+    <div ref={box} id={bodyId} data-folded={folded ? "" : undefined} className="overflow-hidden" style={folded ? { maxHeight: `calc(${String(lines)} * 1lh)` } : undefined}>
       <PostBody body={body} titles={titles} changeSets={changeSets} onOpenItem={onOpenItem} onOpenChangeSet={onOpenChangeSet} />
     </div>
   );
   const toggle = exceeds ? (
-    <Button variant="ghost" aria-expanded={open} aria-controls={bodyId} aria-label={open ? `${label}の本文を折りたたむ` : `${label}の続きを読む`} data-focus={`${focus}more:${id}`} onClick={() => onToggle(id, !open)}>
-      <Icon name="chev" className={cn(open && "rotate-180")} />
+    <Button variant="ghost" aria-expanded={open} aria-controls={bodyId} data-part="more" aria-label={open ? `${label}の本文を折りたたむ` : `${label}の続きを読む`} data-focus={`${focus}more:${id}`} onClick={() => onToggle(id, !open)}>
+      <Icon name="chev" className={open ? "-rotate-90" : "rotate-90"} />
       <span>{open ? "折りたたむ" : "続きを読む"}</span>
     </Button>
   ) : null;

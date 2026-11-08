@@ -2,6 +2,7 @@
 import type { KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
+import { cn } from "@/shared/lib/cn";
 
 export type SelectionCommentProps = {
   /** 選んだ範囲の最初と最後の矩形（`Range.getClientRects()`） */
@@ -43,7 +44,7 @@ export const SelectionComment = ({ anchor, area, onOpen, onClose }: SelectionCom
       aria-label={BUTTON_NAME}
       data-side={fitsAbove ? "above" : "below"}
       data-tip={tipEnd ? "end" : "start"}
-      className="group fixed z-50 grid size-8 cursor-pointer place-items-center rounded-full border border-border bg-card text-foreground shadow-md hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+      data-part="pill" className="group fixed z-50 grid size-8 cursor-pointer place-items-center rounded-full border border-border bg-card text-foreground shadow-md hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
       style={{ left: `${String(left)}px`, top: `${String(top)}px` }}
       // 押したときに選択が外れないよう、ポインターを押した既定の動き（選択の解除）を止める
       onPointerDown={(event) => {
@@ -53,8 +54,11 @@ export const SelectionComment = ({ anchor, area, onOpen, onClose }: SelectionCom
       onKeyDown={handleKeyDown}
     >
       <Icon name="comment" />
-      <span aria-hidden="true" className={`pointer-events-none absolute ${fitsAbove ? "bottom-full mb-1" : "top-full mt-1"} ${tipEnd ? "right-0" : "left-0"} hidden rounded-control bg-popover px-2 py-1 text-small whitespace-nowrap text-popover-foreground shadow-md group-hover:block group-focus-visible:block`}>
-        {BUTTON_NAME}
+      {/* ツールチップ。入口との間の空きも外側の要素に含め、ポインターを入口からツールチップへ動かしても入口のホバーを保つ */}
+      <span aria-hidden="true" className={cn("absolute hidden group-hover:block group-focus-visible:block", fitsAbove ? "bottom-full pb-1" : "top-full pt-1", tipEnd ? "right-0" : "left-0")}>
+        <span data-part="tip" className="block rounded-control bg-popover px-2 py-1 text-small whitespace-nowrap text-popover-foreground shadow-md">
+          {BUTTON_NAME}
+        </span>
       </span>
     </button>
   );

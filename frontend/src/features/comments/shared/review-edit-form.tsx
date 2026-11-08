@@ -34,14 +34,22 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
   };
   const message = empty ? "コメントを入れてから直してください。" : error;
   return (
-    <div className="grid gap-1.5">
-      <Textarea aria-label={`${label}の本文`} value={value} readOnly={saving} className="field-sizing-content max-h-48 resize-none" onKeyDown={handleKeyDown} onChange={(event) => {
+    <form
+      noValidate
+      data-part="edit"
+      className="grid gap-1.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        trySave();
+      }}
+    >
+      <Textarea aria-label={`${label}の本文`} aria-keyshortcuts="Control+Enter" value={value} readOnly={saving} className="field-sizing-content resize-y field-edit" onKeyDown={handleKeyDown} onChange={(event) => {
         setEmpty(false);
         setValue(event.target.value);
       }} />
       {message === null ? null : (
-        <p role="alert" className="m-0 flex items-start gap-1 text-small text-destructive">
-          <Icon name="alert" />
+        <p role="alert" data-part="message" className="m-0 flex items-start gap-1 text-small">
+          <Icon name="alert" className="text-st-review" />
           <span>{message}</span>
         </p>
       )}
@@ -49,10 +57,10 @@ export const ReviewEditForm = ({ id, label, body, error = null, saving = false, 
         <Button variant="ghost" disabled={saving} onClick={() => onCancel(id)}>
           キャンセル
         </Button>
-        <Button disabled={saving} onClick={trySave}>
+        <Button type="submit" title="修正（Ctrl+Enter）" disabled={saving}>
           修正
         </Button>
       </div>
-    </div>
+    </form>
   );
 };

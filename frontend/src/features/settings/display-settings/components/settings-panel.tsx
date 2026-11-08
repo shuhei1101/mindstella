@@ -41,7 +41,7 @@ const BODY_VIEW_KEYS = ["pin", "head", "stripes", "fold"] as const satisfies rea
 const sameKinds = (a: readonly Kind[], b: readonly Kind[]): boolean => a.length === b.length && a.every((kind) => b.includes(kind));
 
 const AlwaysRow = ({ icon, label }: { icon: IconName; label: string }) => (
-  <li className="flex items-center gap-2 text-muted-foreground">
+  <li data-part="always" className="flex min-h-10 items-center gap-2 text-muted-foreground">
     <Icon name="check" />
     <Icon name={icon} />
     <span className="flex-1">{label}</span>
@@ -58,33 +58,33 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
     onKindsChange(KIND_KEYS.filter((one) => (one === kind ? !visibleKinds.includes(one) : visibleKinds.includes(one))));
   };
   return (
-    <div className="grid gap-4">
+    <div data-part="wrap" className="grid gap-4">
       {storageAvailable ? null : (
-        <p role="alert" className="m-0 flex items-start gap-1 text-small">
+        <p role="alert" data-part="note" className="m-0 flex items-start gap-1 text-small">
           <Icon name="alert" />
           <span>この端末に保存できません。選んだ表示は、このページを開いている間だけ当たります。</span>
         </p>
       )}
-      <fieldset className="m-0 grid gap-1 border-0 p-0">
+      <fieldset data-part="kinds" className="m-0 grid gap-1 border-0 p-0">
         <legend className="mb-1 font-medium">表示する種類</legend>
         <ul className="m-0 grid list-none gap-1 p-0">
-          <li>
-            <label className="flex items-center gap-2">
+          <li data-part="all">
+            <label className="flex min-h-10 items-center gap-2">
               <Checkbox checked={allShown} ref={(element) => {
                 if (element !== null) element.indeterminate = shown.length > 0 && !allShown;
               }} onChange={() => onKindsChange(allShown ? [] : [...KIND_KEYS])} />
               <span className="flex-1">すべて</span>
-              <span className="font-mono text-small">{`${String(shown.length)}/${String(KIND_KEYS.length)}`}</span>
+              <span data-part="count" className="font-mono text-small">{`${String(shown.length)}/${String(KIND_KEYS.length)}`}</span>
             </label>
           </li>
           <AlwaysRow icon="home" label="概要" />
           {KIND_KEYS.map((kind) => (
-            <li key={kind}>
-              <label className="flex items-center gap-2">
+            <li key={kind} data-part="kind">
+              <label className="flex min-h-10 items-center gap-2">
                 <Checkbox value={kind} checked={visibleKinds.includes(kind)} onChange={() => toggleKind(kind)} />
                 <Icon name={KIND_ICON[kind]} />
-                <span className="flex-1">{KIND_LABEL[kind]}</span>
-                <span className="font-mono text-small">{counts[kind] ?? ""}</span>
+                <span data-part="label" className="flex-1">{KIND_LABEL[kind]}</span>
+                <span data-part="count" className="font-mono text-small">{counts[kind] ?? ""}</span>
               </label>
             </li>
           ))}
@@ -95,14 +95,14 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
         <legend className="mb-1 font-medium">詳細に表示するもの</legend>
         <ul className="m-0 grid list-none gap-1 p-0">
           <li>
-            <label className="flex items-center gap-2">
+            <label className="flex min-h-10 items-center gap-2">
               <Checkbox checked={minimap} onChange={() => onMinimapChange(!minimap)} />
               <span>{MINIMAP_LABEL}</span>
             </label>
           </li>
           {BODY_VIEW_KEYS.map((key) => (
             <li key={key}>
-              <label className="flex items-center gap-2">
+              <label className="flex min-h-10 items-center gap-2">
                 <Checkbox checked={bodyView[key]} onChange={() => onBodyViewChange(key, !bodyView[key])} />
                 <span>{BODY_VIEW_LABELS[key]}</span>
               </label>
@@ -115,8 +115,8 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
           <p className="m-0 text-small text-muted-foreground">ワークスペースの既定のまま表示しています。</p>
         ) : (
           <>
-            <p className="m-0 grid gap-0.5 text-small">
-              <span className="font-medium">この端末で変えている項目</span>
+            <p data-part="over" className="m-0 grid gap-0.5 text-small">
+              <span data-part="over-heading" className="font-medium">この端末で変えている項目</span>
               <span>{overrides.join("・")}</span>
             </p>
             <Button variant="outline" className="justify-self-start" onClick={onReset}>
@@ -127,7 +127,7 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
         )}
       </div>
       {canSave ? (
-        <div className="grid gap-2 border-t border-border pt-3">
+        <div data-part="save" className="grid gap-2 border-t border-border pt-3">
           {differs ? (
             <Button variant="outline" className="justify-self-start" aria-haspopup="dialog" onClick={onSaveDefault}>
               <Icon name="save" />
@@ -138,7 +138,7 @@ export const SettingsPanel = (props: SettingsPanelProps) => {
           )}
         </div>
       ) : null}
-      <p role="status" className="m-0 flex items-start gap-1 text-small">
+      <p role="status" data-part="message" data-kind={message?.kind} className="m-0 flex items-start gap-1 text-small">
         {message === null ? null : (
           <>
             <Icon name={message.kind === "ok" ? "check" : "sliders"} />

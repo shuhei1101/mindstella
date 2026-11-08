@@ -4,6 +4,7 @@ import { useId, type SyntheticEvent, type KeyboardEvent } from "react";
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { cn } from "@/shared/lib/cn";
 
 /** 返信を溜める状態。idle は結果を出さない */
 export type ReplyStatus = "idle" | "saving" | "saved" | "failed";
@@ -33,7 +34,7 @@ const ReplyResult = ({ status, count, detail }: { status: ReplyStatus; count: nu
   if (status === "saved") {
     return (
       <>
-        <Icon name="check" />
+        <Icon name="check" className="text-mark" />
         <span>{`レビューに追加しました（レビュー中 ${String(count ?? 0)} 件）。`}</span>
       </>
     );
@@ -41,8 +42,8 @@ const ReplyResult = ({ status, count, detail }: { status: ReplyStatus; count: nu
   if (status === "failed") {
     return (
       <>
-        <Icon name="alert" />
-        <span>{`レビューに追加できませんでした。${detail ?? "サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。"}`}</span>
+        <Icon name="alert" className="text-st-review" />
+        <span>{`レビューに追加できませんでした。${detail ?? "サーバーが止まっています。立ち上げ直してから追加してください。"}`}</span>
       </>
     );
   }
@@ -74,13 +75,13 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, o
     }
   };
   return (
-    <form noValidate className="@container grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
+    <form noValidate data-part="reply" className="@container grid gap-1.5 border-t border-border p-3" onSubmit={handleSubmit}>
       <label htmlFor={fieldId} className="text-small text-muted-foreground">
         返信
       </label>
-      <Textarea id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={saving} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content max-h-48 resize-none" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
+      <Textarea id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={saving} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content resize-y field-send" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
       <div className="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end">
-        <p id={messageId} role="status" className="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden">
+        <p id={messageId} role="status" className={cn("m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden", status === "failed" && "text-foreground")}>
           <ReplyResult status={status} count={count} detail={detail} />
         </p>
         <Button type="submit" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving || body.trim() === ""}>

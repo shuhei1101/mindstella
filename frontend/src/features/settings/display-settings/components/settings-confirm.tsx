@@ -19,7 +19,7 @@ export type SettingsConfirmProps = {
 
 /** 確かめの 1 行。変える項目は今の既定と保存する値を、変えない項目は今の値と「変えない」を出す */
 const ConfirmRow = ({ label, from, to }: { label: string; from: string; to: string }) => (
-  <div className="grid gap-0.5">
+  <div data-part="row" className="grid gap-0.5">
     <dt className="text-small text-muted-foreground">{label}</dt>
     <dd className="m-0 flex flex-wrap items-center gap-1">
       {from === to ? (
@@ -29,9 +29,15 @@ const ConfirmRow = ({ label, from, to }: { label: string; from: string; to: stri
         </>
       ) : (
         <>
-          <span>{from}</span>
+          <span>
+            <span className="sr-only">今の既定 </span>
+            {from}
+          </span>
           <Icon name="arrow" />
-          <span className="font-medium">{to}</span>
+          <span className="font-medium">
+            <span className="sr-only">保存する値 </span>
+            {to}
+          </span>
         </>
       )}
     </dd>
@@ -47,12 +53,12 @@ export const SettingsConfirm = ({ from, to, busy, error, onSave, onCancel }: Set
         <ConfirmRow label="表示する種類" from={kindsText(new Set(from.visibleKinds))} to={kindsText(new Set(to.visibleKinds))} />
       </dl>
       {error === null ? null : (
-        <div role="alert" className="flex items-start gap-1 text-small text-destructive">
-          <Icon name="alert" />
+        <div role="alert" data-part="error" className="flex items-start gap-1 text-small">
+          <Icon name="alert" className="text-st-review" />
           <span>{error}</span>
         </div>
       )}
-      <div className="flex justify-end gap-2">
+      <div data-part="actions" className="flex justify-end gap-2">
         <Button ref={(element: HTMLButtonElement | null) => { element?.focus(); }} variant="ghost" disabled={busy} onClick={onCancel}>
           取り消す
         </Button>

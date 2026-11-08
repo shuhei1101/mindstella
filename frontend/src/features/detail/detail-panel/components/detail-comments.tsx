@@ -134,7 +134,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
                   </div>
                   {editing?.id === item.id ? (
                     <div className="grid gap-1">
-                      <Textarea aria-label={`${label}の本文`} value={editing.body} className="field-sizing-content max-h-48 resize-none" onChange={(event) => { setEditing({ ...editing, body: event.target.value }); }} />
+                      <Textarea aria-label={`${label}の本文`} value={editing.body} className="field-sizing-content resize-y field-edit" onChange={(event) => { setEditing({ ...editing, body: event.target.value }); }} />
                       {editing.error === null ? null : <p role="alert" className="m-0 text-small text-destructive">{editing.error}</p>}
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" onClick={() => { setEditing(null); }}>キャンセル</Button>

@@ -37,6 +37,9 @@ export type SendFormProps = {
 /** 溜めている印と文言を出すまでの待ち（ミリ秒）。すぐ終わる処理では点滅させない */
 const SENDING_NOTICE_DELAY_MS = 1000;
 
+/** 結果の行の文字の色（空・失敗は文言を本文の色で読ませる。印の色は `ResultMessage` が付ける） */
+const RESULT_TONE = { idle: "", saving: "", saved: "", empty: "text-foreground", failed: "text-foreground" } as const satisfies Record<SendStatus, string>;
+
 /** 項目を指さないコメントの入力欄の読み上げの名前 */
 const NO_TARGET_LABEL = "項目を指さないコメント";
 
@@ -53,7 +56,7 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
   if (status === "saved") {
     return (
       <>
-        <Icon name="check" />
+        <Icon name="check" className="text-mark" />
         <span>{`レビューに追加しました（レビュー中 ${String(count ?? 0)} 件）。`}</span>
       </>
     );
@@ -61,7 +64,7 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
   if (status === "empty") {
     return (
       <>
-        <Icon name="alert" />
+        <Icon name="alert" className="text-st-review" />
         <span>コメントを入れてから追加してください。</span>
       </>
     );
@@ -70,14 +73,14 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
     if (detail !== null) {
       return (
         <>
-          <Icon name="alert" />
+          <Icon name="alert" className="text-st-review" />
           <span>{`レビューに追加できませんでした。${detail}`}</span>
         </>
       );
     }
     return (
       <>
-        <Icon name="alert" />
+        <Icon name="alert" className="text-st-review" />
         <span className="grid gap-1">
           <span>レビューに追加できませんでした。サーバーが止まっています。起動スクリプトで立ち上げ直し、示された新しい URL で開いてから追加してください。</span>
           <Button variant="ghost" className="justify-self-start" onClick={onCopy}>
@@ -138,7 +141,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   };
 
   return (
-    <form noValidate data-id={target ?? undefined} className={cn("@container grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
+    <form noValidate data-id={target ?? undefined} data-collapsed={folded ? "" : undefined} className={cn("@container grid gap-1.5 border-t border-border p-3", folded && "gap-0 p-2")} onSubmit={handleSubmit} onBlur={handleBlur}>
       {target === null ? null : (
         <label htmlFor={fieldId} className="text-small text-muted-foreground">
           <span className="font-mono">{target}</span> へのコメント
@@ -160,7 +163,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
         name="body"
         rows={1}
         value={body}
-        className={cn("field-sizing-content max-h-48 resize-none", folded && "max-h-9")}
+        className={cn("aria-invalid:border-st-review", folded ? "field-sizing-fixed h-8 resize-none overflow-hidden py-1" : "field-sizing-content resize-y field-send")}
         aria-label={target === null ? label : undefined}
         aria-describedby={folded ? undefined : target !== null && loc !== null ? `${locId} ${messageId}` : messageId}
         aria-keyshortcuts="Control+Enter"
@@ -175,7 +178,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
       />
       {folded ? null : (
         <div className="flex items-start gap-2 @max-send-narrow:flex-wrap @max-send-narrow:justify-end">
-          <p id={messageId} role="status" className="m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden">
+          <p id={messageId} role="status" className={cn("m-0 flex flex-1 items-start gap-1 text-small text-muted-foreground @max-send-narrow:order-2 @max-send-narrow:basis-full @max-send-narrow:empty:hidden", RESULT_TONE[shown])}>
             <ResultMessage status={shown} count={count} detail={detail} showSpinner={showSpinner} onCopy={() => onCopyBody?.(body)} />
           </p>
           <Button type="submit" title="レビューに追加（Ctrl+Enter）" disabled={status === "saving"}>

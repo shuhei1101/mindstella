@@ -19,7 +19,12 @@ type Story = StoryObj<typeof meta>;
 export const Idle: Story = { args: { target: "D-022" } };
 
 /** 入力中。入力欄に印の色の輪 */
-export const Typing: Story = { args: { target: "D-022", body: "案 A にする" } };
+export const Typing: Story = {
+  args: { target: "D-022", body: "案 A にする" },
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector("textarea")?.focus({ focusVisible: true });
+  },
+};
 
 /** 本文の箇所を添えた。入力欄の上に「本文 3 行目」と選んだ文を出し、× で外せる */
 export const WithBodyLocation: Story = { args: { target: "A-005", loc: {"kind": "body", "start": 3, "end": 3, "text": "受け取る人へ渡す形"} } };
