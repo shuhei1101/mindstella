@@ -122,6 +122,22 @@ states:
         value: 全体に目を通した
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
+  - name: Closed
+    description: 閉じた。「{ID} へのコメント」の 1 行と、右端の ^ の開閉のボタン（コメントの入力を開く）だけを出す。入力欄・添えた箇所・結果・「レビューに追加」は出さない
+    args:
+      - name: target
+        value: D-022
+      - name: open
+        value: 'false'
+  - name: ClosedWithDraft
+    description: 書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す
+    args:
+      - name: target
+        value: D-022
+      - name: body
+        value: 案 A にする
+      - name: open
+        value: 'false'
 lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook_react/test_send_form_stories.py
 args:
@@ -171,6 +187,12 @@ args:
     enabled_when: '`target` が無いとき'
     description: 入力欄の読み上げの名前（`aria-label`）。使う側が見出しを出すときは、その見出しと同じ文言を渡す
     status: implemented
+  - name: open
+    type: 真偽値
+    required: false
+    default: 'true'
+    enabled_when: '`target` があるとき'
+    description: 開いているか。「{ID} へのコメント」の行の右端に開閉のボタンを置き、開いている間は v（コメントの入力を閉じる）、閉じている間は ^（コメントの入力を開く）を出す。閉じている間は見出しの行だけを出し、入力欄・添えた箇所・結果・「レビューに追加」を出さない。`body` が空白だけでなければ、見出しの右に鉛筆の印と「書きかけ」を出す
 events:
   - name: 溜める
     when: 「レビューに追加」を押したときと、入力欄で Ctrl+Enter（macOS は Cmd+Enter）を押したとき。`status` が `saving` の間は発火しない
@@ -196,13 +218,19 @@ events:
     when: フォーカスが部品の外へ出たとき
     value: '`onBlur(body)`（body）'
     description: 使う側が、畳む幅で入力欄が空白だけなら `collapsed` を true に戻す
+  - name: 開閉
+    when: 開閉のボタンを押したとき
+    value: '`onToggleOpen(open)`（押した後の開閉）'
+    description: 使う側が開閉を端末の保存領域に覚え、`open` を書き換えて描き直す。描き直した後のフォーカスは開閉のボタンに置く
 accessibility:
   - 「レビューに追加」はアイコンだけのボタンにし、読み上げの名前（`aria-label`）「レビューに追加」とツールチップ（`title`）「レビューに追加（Ctrl+Enter）」を持つ。本文のコピーのボタンは `aria-label`・`title` に「本文をコピー」を持つ
   - 入力欄にラベル「{ID} へのコメント」を常に見せ、入力欄の中の例示文をラベルの代わりにしない。`target` が無いときは `aria-label`「項目を指さないコメント」
   - 添えた箇所は入力欄の `aria-describedby` から指し、× のボタンに読み上げの名前「箇所を外す」を付ける
   - 結果の文言は `role="status"` で読み上げに伝え、入力欄の `aria-describedby` から指す。本文が空のときは入力欄に `aria-invalid="true"`
-  - 入力欄・箇所を外す・レビューに追加・本文をコピーに Tab で届き、印の色の輪でフォーカスを見せる
+  - 開閉のボタン・入力欄・箇所を外す・レビューに追加・本文をコピーに Tab で届き、印の色の輪でフォーカスを見せる
   - 失敗と本文が空は、赤の色だけでなく印のアイコンと文言でも伝える
   - '「レビューに追加」は 1 行の入力欄と同じ高さの正方形にし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
+  - 開閉のボタンは `aria-label`・`title` に、開いている間は「コメントの入力を閉じる」、閉じている間は「コメントの入力を開く」を持ち、`aria-expanded` で開閉を、`aria-controls` で開閉する範囲を指す
+  - 書きかけの印は「書きかけ」を文字で出し、鉛筆のアイコンは読み上げから外す
 refs:
   - dev/設計書/部品設計/プレビュー/コメントの入力.ts#
