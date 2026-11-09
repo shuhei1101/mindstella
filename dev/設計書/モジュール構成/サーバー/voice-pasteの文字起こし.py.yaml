@@ -19,9 +19,9 @@ classes:
         type: str
         description: 待ち受けの URL（末尾の `/` を除いたもの。`load_transcriber` が確かめる）
       - name: opener
-        type: Callable[[urllib.request.Request, float], http.client.HTTPResponse]
+        type: Callable[..., http.client.HTTPResponse]
         default: プロキシを使わない `urllib.request.build_opener(urllib.request.ProxyHandler({})).open`
-        description: 要求を送る関数（単体テストで差し替える）。環境変数のプロキシを通さない
+        description: 要求を送る関数（単体テストで差し替える）。`opener(要求, timeout=秒数)` で呼ぶ（`OpenerDirector.open` の 2 番目の位置引数は `data` のため、待ちの上限はキーワードで渡す）。環境変数のプロキシを通さない
       - name: sleep
         type: Callable[[float], None]
         default: time.sleep
@@ -203,7 +203,7 @@ classes:
           type: tuple[int, Any]
           description: ステータスと、本文の JSON（読めなければ `None`）
         process: |-
-          1. `Origin` を付けない `urllib.request.Request` を作り、`opener(要求, REQUEST_TIMEOUT_SEC)` で送る
+          1. `Origin` を付けない `urllib.request.Request` を作り、`opener(要求, timeout=REQUEST_TIMEOUT_SEC)` で送る
              - `HTTPError` の場合、そのステータスと本文で続ける
           2. 本文を UTF-8 の JSON として読み、ステータスと組にして返す
              - `URLError`・`TimeoutError`・`ConnectionError` はそのまま上げる（呼ぶ側が種類に分ける）
@@ -214,6 +214,12 @@ classes:
             condition: '`opener` が 400・`{"detail": "x"}` の `HTTPError` を送る'
             mock: '`opener`'
             expected: '`(400, {"detail": "x"})`'
+          - name: test_request
+            case: 正常
+            summary: 待ちの上限をキーワードで渡し、本文を置き換えない
+            condition: '`body=b"abc"` の POST。`opener` が受けた位置引数とキーワード引数を控えて 200・`{}` を返す'
+            mock: '`opener`'
+            expected: '`opener` の位置引数が要求 1 つだけで、`timeout=66.0`。要求の `data` が `b"abc"`'
       - name: _multipart
         title: 依頼の本文の組み立て
         kind: メソッド

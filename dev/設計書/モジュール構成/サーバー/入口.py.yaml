@@ -953,7 +953,7 @@ functions:
            - `[ERROR]` MINDSTELLA_PORT の値が誤り（値。1〜65535 の整数を渡す案内）
          - `PortInUseError` を捕まえた場合、1 を返す
            - `[ERROR]` ポートが使われている（ポート。`MINDSTELLA_PORT` で別のポートを渡す案内）
-      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こし』）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）を渡した配信の台帳（`PreviewRegistry`）を作る
          - `InvalidTranscriberError` を捕まえた場合、取ったソケットを閉じて 1 を返す
            - `[ERROR]` 文字起こしの環境変数の値が誤り（環境変数の名前と値。設定『サーバー』の許す値の案内）
       4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る
