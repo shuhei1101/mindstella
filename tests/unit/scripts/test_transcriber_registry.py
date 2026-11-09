@@ -10,7 +10,7 @@ from voice_paste import VoicePasteTranscriber
 
 
 @pytest.mark.parametrize(
-    ("environ", "base_url"),
+    ("environ", "expected_url"),
     [
         pytest.param({}, "http://127.0.0.1:47823", id="default"),
         pytest.param(
@@ -23,7 +23,7 @@ from voice_paste import VoicePasteTranscriber
         ),
     ],
 )
-def test_load_transcriber(environ: dict[str, str], base_url: str) -> None:
+def test_load_transcriber(environ: dict[str, str], expected_url: str) -> None:
     """既定と渡した値で voice-paste の実装を作る（正常系）。"""
     # 準備
     source = environ
@@ -31,7 +31,7 @@ def test_load_transcriber(environ: dict[str, str], base_url: str) -> None:
     result = transcriber_registry.load_transcriber(source)
     # 検証
     assert isinstance(result, VoicePasteTranscriber)
-    assert result.base_url == base_url
+    assert result.base_url == expected_url
 
 
 @pytest.mark.parametrize(
