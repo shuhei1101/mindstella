@@ -2614,7 +2614,7 @@ functions:
         summary: 挿入してから挙動で分ける
         condition: '入力欄 `確認: `・カーソル 4、`transcribe` が `案 A にする` を返す偽の API。`parametrize`: `action: insert` / `action: send` で `sendNow` が `entered: true`'
         mock: 偽の API・偽の録音
-        expected: '`{kind: inserted, body: 確認: 案 A にする, caret: 10}` で `sendNow` を呼ばない / `{kind: sent, body: "", entered: true}` で `sendNow` が `{target, loc, body: 確認: 案 A にする}` で 1 回'
+        expected: '`{kind: inserted, body: 確認: 案 A にする, caret: 11}` で `sendNow` を呼ばない / `{kind: sent, body: "", entered: true}` で `sendNow` が `{target, loc, body: 確認: 案 A にする}` で 1 回'
       - name: test_finish_voice_when_failed
         case: 異常
         summary: 文字起こしと送信の失敗
