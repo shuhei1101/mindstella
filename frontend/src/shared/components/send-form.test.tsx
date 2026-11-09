@@ -45,4 +45,49 @@ describe("SendForm", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(onToggleOpen).toHaveBeenCalledWith(true);
   });
+
+  // 音声入力の状態ごとのボタンと結果の行（正常系）
+  test("send_form_when_voice", () => {
+    // 準備と実行
+    const { rerender } = render(<SendForm target="D-1" loc={null} body="" status="idle" voice="idle" onSubmit={vi.fn()} onInput={vi.fn()} />);
+    const mic = screen.getByRole("button", { name: "音声で入力" });
+    // 検証
+    expect(mic.compareDocumentPosition(screen.getByRole("button", { name: "レビューに追加" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    rerender(<SendForm target="D-1" loc={null} body="" status="idle" voice="disabled" voiceReason="理由の文" onSubmit={vi.fn()} onInput={vi.fn()} />);
+    const disabledMic = screen.getByRole("button", { name: "音声で入力" });
+    expect(disabledMic).toHaveAttribute("aria-disabled", "true");
+    expect(disabledMic).toHaveAccessibleDescription("理由の文");
+    rerender(<SendForm target="D-1" loc={null} body="" status="idle" voice="recording" elapsed={72} onSubmit={vi.fn()} onInput={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "キャンセル" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "文字起こし" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "レビューに追加" })).toBeNull();
+    expect(screen.getByText("1:12")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("録音中");
+    rerender(<SendForm target="D-1" loc={null} body="確認: " status="idle" voice="transcribing" onSubmit={vi.fn()} onInput={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "キャンセル" })).toBeDisabled();
+    expect(screen.getByRole("textbox")).toHaveAttribute("readonly");
+  });
+
+  // 音声入力のイベント（正常系）
+  test("send_form_when_voice_events", async () => {
+    // 準備
+    const onVoiceStart = vi.fn();
+    const onVoiceCancel = vi.fn();
+    const onVoiceDone = vi.fn();
+    const onVoiceBlocked = vi.fn();
+    const handlers = { onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked, onSubmit: vi.fn(), onInput: vi.fn() };
+    const { rerender } = render(<SendForm target="D-1" loc={null} body="" status="idle" voice="idle" {...handlers} />);
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: "音声で入力" }));
+    rerender(<SendForm target="D-1" loc={null} body="確認: " status="idle" voice="recording" {...handlers} />);
+    await userEvent.click(screen.getByRole("button", { name: "キャンセル" }));
+    await userEvent.click(screen.getByRole("button", { name: "文字起こし" }));
+    rerender(<SendForm target="D-1" loc={null} body="" status="idle" voice="disabled" voiceReason="理由" {...handlers} />);
+    await userEvent.click(screen.getByRole("button", { name: "音声で入力" }));
+    // 検証
+    expect(onVoiceStart).toHaveBeenCalledTimes(1);
+    expect(onVoiceCancel).toHaveBeenCalledTimes(1);
+    expect(onVoiceDone).toHaveBeenCalledWith("D-1", null, "確認: ");
+    expect(onVoiceBlocked).toHaveBeenCalledTimes(1);
+  });
 });

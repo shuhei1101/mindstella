@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
@@ -108,5 +109,33 @@ describe("DetailComments", () => {
     // 検証
     await waitFor(() => expect(stored() ?? null).toBeNull());
     expect(within(panel).getByRole("textbox", { name: /A-1 へのコメント/ })).toHaveFocus();
+  });
+
+  // 音声で項目へのコメントを送る（正常系）
+  test("detail_comments_when_voice", async () => {
+    // 準備
+    installFakeMedia();
+    stubRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", category: "記録", phase: "目的" }] });
+    const sent: unknown[] = [];
+    server.use(
+      http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })),
+      http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "send", preset: null })),
+      http.post("/api/transcriptions", () => HttpResponse.json({ text: "案 A にする" })),
+      http.post("/api/comments/send-now", async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-1", entered: true }, { status: 201 });
+      }),
+    );
+    renderRoute("/spa/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    // 実行
+    await userEvent.click(await within(panel).findByRole("button", { name: "音声で入力" }));
+    await userEvent.click(await within(panel).findByRole("button", { name: "文字起こし" }));
+    // 検証
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ target: "D-1", body: "案 A にする" });
+    expect(await within(panel).findByText("送信し、Claude Code へ入力しました。")).toBeInTheDocument();
+    expect(within(panel).getByRole("textbox", { name: /D-1 へのコメント/ })).toHaveValue("");
+    removeFakeMedia();
   });
 });

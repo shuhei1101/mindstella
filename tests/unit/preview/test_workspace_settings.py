@@ -11,7 +11,7 @@ from playwright.sync_api import Page
 from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
 
 # 設定の画面を作って文書に置く JavaScript。呼ばれた操作は window.calls に溜める
-MOUNT_SCRIPT = """({data}) => {
+MOUNT_SCRIPT = """({data, transcription}) => {
     window.calls = [];
     const index = MindmapPreview.buildIndex(data);
     const screen = MindmapPreview.workspaceSettings({
@@ -19,6 +19,7 @@ MOUNT_SCRIPT = """({data}) => {
         index,
         marks: {},
         errors: {},
+        transcription: transcription ?? null,
         on: {
             change: (input) => window.calls.push(["change", input]),
             close: () => window.calls.push(["close"]),
@@ -50,7 +51,7 @@ def test_workspace_settings(
         "() => window.calls.map(([name, input]) => [name, input.key, input.value])"
     )
     # 検証
-    assert legends == ["話し合い", "進め方", "関連", "変更履歴"]
+    assert legends == ["話し合い", "進め方", "関連", "変更履歴", "音声入力"]
     assert calls == [["change", "summary", "画面の編集"], ["change", "history_limit", 3]]
 
 
@@ -123,3 +124,78 @@ def test_usage_count(
     )
     # 検証
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("transcription", "settings_preset", "select_preset", "expected_calls", "expected_options", "disabled", "hint"),
+    [
+        pytest.param(
+            {"available": True, "reason": None, "detail": None, "presets": ["一般", "開発"], "action": "send", "preset": None},
+            None,
+            "開発",
+            [
+                ["change", "transcription", {"action": "insert", "preset": None}],
+                ["change", "transcription", {"action": "insert", "preset": "開発"}],
+            ],
+            ["サービスの既定", "一般", "開発"],
+            False,
+            "文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。",
+            id="available",
+        ),
+        pytest.param(
+            {"available": False, "reason": "unsupported", "detail": "x", "presets": [], "action": "send", "preset": "開発"},
+            "開発",
+            None,
+            [["change", "transcription", {"action": "insert", "preset": "開発"}]],
+            ["開発"],
+            True,
+            "文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。",
+            id="unsupported",
+        ),
+    ],
+)
+def test_workspace_settings_when_transcription(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    transcription: dict[str, Any],
+    settings_preset: str | None,
+    select_preset: str | None,
+    expected_calls: list[list[Any]],
+    expected_options: list[str],
+    disabled: bool,
+    hint: str,
+) -> None:
+    """音声入力のまとまりで挙動とプリセットを溜め、使えないときはプリセットを押せなくする（正常系）。"""
+    # 準備
+    data = make_data(settings={**make_data()["settings"], "transcription": {"preset": settings_preset}})
+    load_preview_scripts()
+    legends = preview_page.evaluate(MOUNT_SCRIPT, {"data": data, "transcription": transcription})
+    # 実行
+    preview_page.get_by_label("入力欄へ挿入する", exact=True).check()
+    preset = preview_page.get_by_label("用語集のプリセット", exact=True)
+    observed = preview_page.evaluate(
+        """({select}) => {
+            const node = [...document.querySelectorAll("select")].find(
+                (candidate) => candidate.labels?.[0]?.textContent.trim() === "用語集のプリセット"
+            );
+            if (select !== null) {
+                node.value = select;
+                node.dispatchEvent(new Event("change", {bubbles: true}));
+            }
+            return {
+                options: [...node.options].map((option) => option.textContent.trim()),
+                disabled: node.disabled,
+                hint: document.getElementById(node.getAttribute("aria-describedby")).textContent.trim(),
+                calls: window.calls.map(([name, input]) => [name, input.key, input.value]),
+            };
+        }""",
+        {"select": select_preset},
+    )
+    # 検証
+    assert legends[-1] == "音声入力"
+    assert preset.count() == 1
+    assert observed["calls"] == expected_calls
+    assert observed["options"] == expected_options
+    assert observed["disabled"] is disabled
+    assert observed["hint"] == hint

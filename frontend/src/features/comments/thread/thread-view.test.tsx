@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, test } from "vitest";
 
+import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
@@ -84,5 +85,36 @@ describe("ThreadView", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "クローズにする" }).at(-1) as HTMLElement);
     // 検証
     await waitFor(() => expect(bodies).toEqual([{ status: "closed", reason: "決まった" }]));
+  });
+
+  // 音声で返信を送る（正常系）
+  test("thread_view_when_voice", async () => {
+    // 準備
+    installFakeMedia();
+    const sent: unknown[] = [];
+    let threadReads = 0;
+    server.use(
+      http.get("/api/threads", () => {
+        threadReads += 1;
+        return HttpResponse.json(unseen);
+      }),
+      http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
+      http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "send", preset: null })),
+      http.post("/api/transcriptions", () => HttpResponse.json({ text: "x" })),
+      http.post("/api/comments/send-now", async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({ sent: "2026-11-09T00:00:00+00:00", thread: "TH-1", post: "TH-1-2", entered: true }, { status: 201 });
+      }),
+    );
+    renderRoute("/spa/?panel=comments&thread=TH-1");
+    await screen.findByText("どちらにしますか");
+    const readsBefore = threadReads;
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
+    await userEvent.click(await screen.findByRole("button", { name: "文字起こし" }));
+    // 検証
+    await waitFor(() => expect(sent).toEqual([{ thread: "TH-1", body: "x" }]));
+    await waitFor(() => expect(threadReads).toBeGreaterThan(readsBefore));
+    removeFakeMedia();
   });
 });
