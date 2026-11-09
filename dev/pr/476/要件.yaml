@@ -28,19 +28,27 @@ docs:
   - page: docs/使い方/プレビューを見る.md
     new: false
     change: コメント・返信の入力のマイクのボタンで録音し、文字起こして送信・挿入する操作と、マイクのボタンを押せないときの理由を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
   - page: docs/リファレンス/ワークスペースの書式.md
     new: false
     change: config.yaml に文字起こし後の挙動（send / insert）と用語集のプリセットのキーを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
   - page: docs/リファレンス/動作環境.md
     new: false
     change: 音声入力に要る条件（文字起こしのサービス（voice-paste）が音声を受け付ける状態で起動していること、マイクを使える HTTPS か localhost のページで開くこと、常駐サーバーを WSL で動かし voice-paste を Windows で動かすときは WSL のネットワークを mirrored にすること）を任意の条件として追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
   - page: docs/リファレンス/コマンド.md
     new: false
     change: update_settings が書き換える設定のキーに、文字起こしの設定を追加する。voice-paste の接続先を環境変数で持つ場合は、起動スクリプトの環境変数にも追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
 scope_out:
   - item: voice-paste 側の変更（/web/ の下で Origin の無い POST を受け付ける）
     reason: 別のリポジトリの変更で、shuhei1101/voice-paste#256 で解消済み
