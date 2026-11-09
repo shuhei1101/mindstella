@@ -77,7 +77,7 @@ constants:
     container: plugins/mindstella/skills/setup/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: '`--env`・`--unset-env` で受けるキー（設定『サーバー』の環境変数。`shell.sh` にはこの順で書く）'
-    value: ("MINDSTELLA_VENV", "MINDSTELLA_PORT", "MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK")
+    value: ("MINDSTELLA_VENV", "MINDSTELLA_PORT", "MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK", "MINDSTELLA_TRANSCRIBER", "MINDSTELLA_TRANSCRIBER_URL")
   - name: ALIAS_NAME
     title: alias の名前
     container: plugins/mindstella/skills/setup/scripts/register.py
