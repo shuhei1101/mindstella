@@ -135,7 +135,7 @@ def test_start_recording_when_rejected(
 @pytest.mark.parametrize(
     ("arguments", "expected"),
     [
-        pytest.param(["確認: ", 4, 4, "案 A"], {"value": "確認: 案 A", "caret": 6}, id="caret"),
+        pytest.param(["確認: ", 4, 4, "案 A"], {"value": "確認: 案 A", "caret": 7}, id="caret"),
         pytest.param(["ab", 0, 0, "x"], {"value": "xab", "caret": 1}, id="head"),
         pytest.param(["abc", 1, 2, "x"], {"value": "axc", "caret": 2}, id="selection"),
         pytest.param(["ab", 9, 9, "x"], {"value": "abx", "caret": 3}, id="beyond"),
@@ -182,7 +182,7 @@ def test_format_elapsed(
     [
         pytest.param(
             "insert",
-            {"kind": "inserted", "body": "確認: 案 A にする", "caret": 10},
+            {"kind": "inserted", "body": "確認: 案 A にする", "caret": 11},
             [],
             id="insert",
         ),

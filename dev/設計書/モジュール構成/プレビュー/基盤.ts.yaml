@@ -2546,7 +2546,7 @@ functions:
         summary: カーソルの位置と選んだ範囲
         condition: '`parametrize`: `("確認: ", 4, 4, "案 A")` / `("ab", 0, 0, "x")` / `("abc", 1, 2, "x")` / `("ab", 9, 9, "x")`'
         mock: なし
-        expected: '`確認: 案 A`・6 / `xab`・1 / `axc`・2 / `abx`・3（範囲を超える位置は末尾にそろえる）'
+        expected: '`確認: 案 A`・7 / `xab`・1 / `axc`・2 / `abx`・3（範囲を超える位置は末尾にそろえる）'
   - name: formatElapsed
     title: 経過の時間の文字
     kind: 関数

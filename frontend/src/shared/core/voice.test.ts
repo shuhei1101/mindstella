@@ -50,7 +50,7 @@ describe("insertAtCursor", () => {
   // カーソルの位置と選んだ範囲（正常系）
   test("insert_at_cursor", () => {
     // 実行・検証
-    expect(insertAtCursor("確認: ", 4, 4, "案 A")).toEqual({ value: "確認: 案 A", caret: 6 });
+    expect(insertAtCursor("確認: ", 4, 4, "案 A")).toEqual({ value: "確認: 案 A", caret: 7 });
     expect(insertAtCursor("abc", 1, 2, "x")).toEqual({ value: "axc", caret: 2 });
     expect(insertAtCursor("ab", 9, 9, "x")).toEqual({ value: "abx", caret: 3 });
   });
