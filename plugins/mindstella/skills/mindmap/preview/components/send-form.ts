@@ -2,10 +2,40 @@
 
 namespace MindmapPreview {
   /** 溜める状態。idle は結果を出さない */
-  export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed";
+  export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "sent" | "inserted" | "voice-failed";
+
+  /** 音声入力の状態 */
+  export type VoicePhase = "idle" | "disabled" | "recording" | "transcribing";
+
+  /** ✓ を押したときの入力欄の中身とカーソルの位置 */
+  export type VoiceDoneInput = { body: string; start: number; end: number };
+
+  /** 音声入力のボタンの引数（コメントの入力と返信の入力で共通） */
+  export type VoiceProps = {
+    /** 音声入力の状態 */
+    voice?: VoicePhase;
+    /** マイクのボタンを押せない理由（`voice` が `disabled` のとき） */
+    voiceReason?: string | null;
+    /** 録音を始めてからの秒数（`voice` が `recording` のとき） */
+    elapsed?: number;
+    /** `status` が `sent` のとき、Claude Code へ入力したか */
+    entered?: boolean;
+  };
+
+  /** 音声入力のボタンのコールバック */
+  export type VoiceHandlers = {
+    /** マイクのボタン（`idle`） */
+    voiceStart?: () => void;
+    /** 録音中の × */
+    voiceCancel?: () => void;
+    /** 録音中の ✓（入力欄の中身とカーソルの位置） */
+    voiceDone?: (input: VoiceDoneInput) => void;
+    /** 押せないマイクのボタン */
+    voiceBlocked?: () => void;
+  };
 
   /** コメントの入力の引数 */
-  export type SendFormProps = {
+  export type SendFormProps = VoiceProps & {
     /** コメントを向ける項目の ID。ラベル「{ID} へのコメント」に等幅で出す。null は項目を指さないコメント（ラベルを見せず `aria-label` に持つ） */
     target: string | null;
     /** 添えた箇所。入力欄の上に箇所の名前と選んだ文（3 行まで）と × を出す */
@@ -23,7 +53,7 @@ namespace MindmapPreview {
     label?: string;
     /** 開いているか（`target` があるときだけ使う）。偽なら見出しの行だけを出す */
     open?: boolean;
-    on: {
+    on: VoiceHandlers & {
       /** 入力欄の中身が変わったとき */
       input: (body: string) => void;
       /** 「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter）。`saving` の間は呼ばない */
@@ -108,6 +138,130 @@ namespace MindmapPreview {
     return [];
   }
 
+  /** 音声入力の結果（送信した・挿入した・失敗した）の中身。音声入力の結果でなければ null */
+  export function voiceResultContent(status: string | undefined, detail: string | null | undefined, entered = false): Child[] | null {
+    if (status === "sent") {
+      return [icon("check"), h({ tag: "span", children: [entered ? "送信し、Claude Code へ入力しました。" : "送信しました。Claude Code へは入力していません。"] })];
+    }
+    if (status === "inserted") {
+      return [icon("check"), h({ tag: "span", children: ["文字起こしの結果を挿入しました。"] })];
+    }
+    if (status === "voice-failed") {
+      return [icon("alert"), h({ tag: "span", children: [detail ?? VOICE_TEXT.failed] })];
+    }
+    return null;
+  }
+
+  /** 録音中・文字起こし中の結果の行の中身。どちらでもなければ null */
+  export function voiceProgressContent(voice: VoicePhase, elapsed: number): Child[] | null {
+    if (voice === "recording") {
+      // 録音中: 丸と経過の時間は見た目だけにし、読み上げは「録音中」だけにする
+      return [
+        h({ tag: "span", attrs: { class: "rec-dot", "aria-hidden": "true" } }),
+        h({ tag: "span", attrs: { class: "sr-only" }, children: ["録音中"] }),
+        h({ tag: "span", attrs: { class: "rec-time", "aria-hidden": "true" }, children: [formatElapsed(elapsed)] }),
+      ];
+    }
+    if (voice === "transcribing") {
+      return [
+        h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }),
+        h({ tag: "span", attrs: { class: "sr-only" }, children: ["文字起こししています。"] }),
+      ];
+    }
+    return null;
+  }
+
+  /** 結果の行のクラスの状態（録音中・文字起こし中は音声の状態を優先する） */
+  export function messageState(voice: VoicePhase, status: string): string {
+    if (voice === "recording") return "recording";
+    if (voice === "transcribing") return "saving";
+    return status;
+  }
+
+  /** 音声入力のボタンを入れる連番（ツールチップの ID が重ならないように） */
+  let voiceSequence = 0;
+
+  /**
+   * 入力欄の右に並べる音声入力のボタン。
+   * idle・disabled はマイクのボタンと submit を、recording・transcribing は × と ✓ を返す。
+   */
+  export function voiceButtons({
+    voice,
+    voiceReason,
+    textarea,
+    submit,
+    on,
+  }: {
+    voice: VoicePhase;
+    voiceReason: string | null;
+    textarea: HTMLTextAreaElement;
+    submit: HTMLElement;
+    on: VoiceHandlers;
+  }): Child[] {
+    if (voice === "recording" || voice === "transcribing") {
+      const busy = voice === "transcribing";
+      return [
+        h({
+          tag: "div",
+          attrs: { class: "send-rec-actions" },
+          children: [
+            h({
+              tag: "button",
+              attrs: {
+                class: "icon-btn send-rec-cancel",
+                type: "button",
+                "aria-label": "キャンセル",
+                title: "キャンセル（録音を破棄）",
+                disabled: busy,
+                onclick: () => on.voiceCancel?.(),
+              },
+              children: [icon("x")],
+            }),
+            h({
+              tag: "button",
+              attrs: {
+                class: "icon-btn send-rec-done",
+                type: "button",
+                "aria-label": busy ? "文字起こし中" : "文字起こし",
+                title: busy ? "文字起こし中" : "文字起こし",
+                disabled: busy,
+                "data-saving": busy ? "" : null,
+                onclick: () =>
+                  on.voiceDone?.({ body: textarea.value, start: textarea.selectionStart, end: textarea.selectionEnd }),
+              },
+              children: [busy ? h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }) : icon("check")],
+            }),
+          ],
+        }),
+      ];
+    }
+    const blocked = voice === "disabled";
+    voiceSequence += 1;
+    const tipId = `voice-tip-${voiceSequence}`;
+    const mic = h({
+      tag: "button",
+      attrs: {
+        class: "icon-btn send-mic",
+        type: "button",
+        "aria-label": "音声で入力",
+        title: blocked ? (voiceReason ?? "") : "音声で入力",
+        // 押せないときもフォーカスを受けたまま、理由をツールチップで指す
+        "aria-disabled": blocked ? "true" : null,
+        "aria-describedby": blocked ? tipId : null,
+        onclick: () => (blocked ? on.voiceBlocked?.() : on.voiceStart?.()),
+      },
+      children: [icon("mic")],
+    });
+    const micPart = blocked
+      ? h({
+          tag: "span",
+          attrs: { class: "send-tip-wrap" },
+          children: [mic, h({ tag: "span", attrs: { class: "send-tip", role: "tooltip", id: tipId }, children: [voiceReason ?? ""] })],
+        })
+      : mic;
+    return [micPart, submit];
+  }
+
   /** 添えた箇所（名前・選んだ文・外す ×）の要素 */
   function locationChip({ loc, id, onUnquote }: { loc: Location; id: string; onUnquote: () => void }): HTMLElement {
     return h({
@@ -142,6 +296,10 @@ namespace MindmapPreview {
     collapsed = false,
     label = NO_TARGET_LABEL,
     open = true,
+    voice = "idle",
+    voiceReason = null,
+    elapsed = 0,
+    entered = false,
     on,
   }: SendFormProps): HTMLFormElement {
     sendFormSequence += 1;
@@ -167,8 +325,8 @@ namespace MindmapPreview {
         "aria-label": target === null ? label : null,
         "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
         "aria-keyshortcuts": "Control+Enter",
-        // 溜めている間は書き換えられない
-        readonly: status === "saving",
+        // 溜めている間と文字起こし中は書き換えられない
+        readonly: status === "saving" || voice === "transcribing",
         // 本文が空で溜めようとした: 入力の誤りとして示す
         "aria-invalid": status === "empty" ? "true" : null,
         oninput: () => on.input(textarea.value),
@@ -185,10 +343,14 @@ namespace MindmapPreview {
       children: [body],
     });
 
+    const shownState = messageState(voice, status);
     const message = h({
       tag: "p",
-      attrs: { class: status === "idle" ? "send-msg" : `send-msg ${status}`, id: messageId, role: "status" },
-      children: resultContent({ status, count, detail, onCopy: () => on.copy(textarea.value) }),
+      attrs: { class: shownState === "idle" ? "send-msg" : `send-msg ${shownState}`, id: messageId, role: "status" },
+      children:
+        voiceProgressContent(voice, elapsed) ??
+        voiceResultContent(status, detail, entered) ??
+        resultContent({ status, count, detail, onCopy: () => on.copy(textarea.value) }),
     });
     // 溜めている印と文言は、待ちの後に入れる
     if (status === "saving") {
@@ -223,25 +385,23 @@ namespace MindmapPreview {
     /** 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行 */
     function textareaLine(): HTMLElement | HTMLTextAreaElement {
       if (folded) return textarea;
+      const submit = h({
+        tag: "button",
+        attrs: {
+          class: "icon-btn send-submit",
+          type: "submit",
+          "aria-label": "レビューに追加",
+          title: "レビューに追加（Ctrl+Enter）",
+          disabled: status === "saving",
+          // 溜めている間は処理中のカーソルにする
+          "data-saving": status === "saving" ? "" : null,
+        },
+        children: [icon("comment")],
+      });
       return h({
         tag: "div",
         attrs: { class: "send-line" },
-        children: [
-          textarea,
-          h({
-            tag: "button",
-            attrs: {
-              class: "icon-btn send-submit",
-              type: "submit",
-              "aria-label": "レビューに追加",
-              title: "レビューに追加（Ctrl+Enter）",
-              disabled: status === "saving",
-              // 溜めている間は処理中のカーソルにする
-              "data-saving": status === "saving" ? "" : null,
-            },
-            children: [icon("comment")],
-          }),
-        ],
+        children: [textarea, ...voiceButtons({ voice, voiceReason, textarea, submit, on })],
       });
     }
 

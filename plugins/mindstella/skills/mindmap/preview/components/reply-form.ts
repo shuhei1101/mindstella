@@ -2,10 +2,10 @@
 
 namespace MindmapPreview {
   /** 返信を溜める状態。idle は結果を出さない */
-  export type ReplyStatus = "idle" | "saving" | "saved" | "failed";
+  export type ReplyStatus = "idle" | "saving" | "saved" | "failed" | "sent" | "inserted" | "voice-failed";
 
   /** 返信の入力の引数 */
-  export type ReplyFormProps = {
+  export type ReplyFormProps = VoiceProps & {
     /** 返信先のスレッドの ID */
     thread: string;
     /** 入力欄の中身 */
@@ -15,7 +15,7 @@ namespace MindmapPreview {
     count?: number | null;
     /** サーバーが返した溜められなかった理由。`failed` で null なら、サーバーに届かなかったとして立ち上げ直しの案内を出す */
     detail?: string | null;
-    on: {
+    on: VoiceHandlers & {
       /** 入力欄の中身が変わったとき */
       input: (body: string) => void;
       /** 「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter）。スレッドの ID と入力欄の中身 */
@@ -27,7 +27,9 @@ namespace MindmapPreview {
   let replyFormSequence = 0;
 
   /** 結果の要素の中身（状態ごとの印と文言） */
-  function replyResult({ status, count, detail }: Pick<ReplyFormProps, "status" | "count" | "detail">): Child[] {
+  function replyResult({ status, count, detail, entered }: Pick<ReplyFormProps, "status" | "count" | "detail" | "entered">): Child[] {
+    const voiceResult = voiceResultContent(status, detail, entered);
+    if (voiceResult !== null) return voiceResult;
     if (status === "saving") {
       return [h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), h({ tag: "span", children: ["レビューに追加しています"] })];
     }
@@ -45,7 +47,18 @@ namespace MindmapPreview {
   }
 
   /** 返信をレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-  export function replyForm({ thread, body = "", status = "idle", count = null, detail = null, on }: ReplyFormProps): HTMLFormElement {
+  export function replyForm({
+    thread,
+    body = "",
+    status = "idle",
+    count = null,
+    detail = null,
+    voice = "idle",
+    voiceReason = null,
+    elapsed = 0,
+    entered = false,
+    on,
+  }: ReplyFormProps): HTMLFormElement {
     replyFormSequence += 1;
     const fieldId = `reply-${replyFormSequence}`;
     const messageId = `${fieldId}-msg`;
@@ -66,8 +79,8 @@ namespace MindmapPreview {
         maxlength: COMMENT_BODY_MAX_LENGTH,
         "aria-keyshortcuts": "Control+Enter",
         "aria-describedby": messageId,
-        // 溜めている間は書き換えられない
-        readonly: saving,
+        // 溜めている間と文字起こし中は書き換えられない
+        readonly: saving || voice === "transcribing",
         oninput: () => {
           on.input(textarea.value);
           // 入力に合わせて、ボタンを押せるかを合わせる
@@ -117,8 +130,12 @@ namespace MindmapPreview {
       children: [
         h({ tag: "label", attrs: { class: "send-label", for: fieldId }, children: ["返信"] }),
         // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行
-        h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, submit] }),
-        h({ tag: "p", attrs: { class: status === "idle" ? "send-msg" : `send-msg ${status}`, id: messageId, role: "status" }, children: replyResult({ status, count, detail }) }),
+        h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, ...voiceButtons({ voice, voiceReason, textarea, submit, on })] }),
+        h({
+          tag: "p",
+          attrs: { class: messageState(voice, status) === "idle" ? "send-msg" : `send-msg ${messageState(voice, status)}`, id: messageId, role: "status" },
+          children: voiceProgressContent(voice, elapsed) ?? replyResult({ status, count, detail, entered }),
+        }),
       ],
     });
   }

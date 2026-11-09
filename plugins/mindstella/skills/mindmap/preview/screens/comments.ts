@@ -27,7 +27,14 @@ namespace MindmapPreview {
   export type OpenedThread = { id: string; pending: boolean };
 
   /** 返信の入力の状態 */
-  export type ReplyState = { body: string; status: ReplyStatus; count: number | null; detail: string | null };
+  export type ReplyState = VoiceProps & {
+    body: string;
+    status: ReplyStatus;
+    count: number | null;
+    detail: string | null;
+    /** 音声入力のボタンのコールバック */
+    voiceOn?: VoiceHandlers;
+  };
 
   /** 理由の入力の状態（`failed` で `detail` が null なら届かなかった） */
   export type ReasonState = { open: boolean; body: string; status: "idle" | "saving" | "failed"; detail: string | null };
@@ -1056,7 +1063,7 @@ namespace MindmapPreview {
         attrs: { class: "comments-free" },
         children: [
           open
-            ? replyForm({ thread: thread.id, ...props.reply, on: { input: on.replyInput, save: on.reply } })
+            ? replyForm({ thread: thread.id, ...props.reply, on: { ...props.reply.voiceOn, input: on.replyInput, save: on.reply } })
             : h({ tag: "p", attrs: { class: "th-closed-note" }, children: [icon("check"), "クローズにしたスレッドです。"] }),
         ],
       }),

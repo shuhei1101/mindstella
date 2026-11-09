@@ -827,7 +827,7 @@ var MindmapPreview;
                 attrs: { class: "comments-free" },
                 children: [
                     open
-                        ? MindmapPreview.replyForm({ thread: thread.id, ...props.reply, on: { input: on.replyInput, save: on.reply } })
+                        ? MindmapPreview.replyForm({ thread: thread.id, ...props.reply, on: { ...props.reply.voiceOn, input: on.replyInput, save: on.reply } })
                         : MindmapPreview.h({ tag: "p", attrs: { class: "th-closed-note" }, children: [MindmapPreview.icon("check"), "クローズにしたスレッドです。"] }),
                 ],
             }),

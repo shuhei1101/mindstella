@@ -59,6 +59,118 @@ var MindmapPreview;
         }
         return [];
     }
+    /** 音声入力の結果（送信した・挿入した・失敗した）の中身。音声入力の結果でなければ null */
+    function voiceResultContent(status, detail, entered = false) {
+        if (status === "sent") {
+            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [entered ? "送信し、Claude Code へ入力しました。" : "送信しました。Claude Code へは入力していません。"] })];
+        }
+        if (status === "inserted") {
+            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: ["文字起こしの結果を挿入しました。"] })];
+        }
+        if (status === "voice-failed") {
+            return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [detail ?? MindmapPreview.VOICE_TEXT.failed] })];
+        }
+        return null;
+    }
+    MindmapPreview.voiceResultContent = voiceResultContent;
+    /** 録音中・文字起こし中の結果の行の中身。どちらでもなければ null */
+    function voiceProgressContent(voice, elapsed) {
+        if (voice === "recording") {
+            // 録音中: 丸と経過の時間は見た目だけにし、読み上げは「録音中」だけにする
+            return [
+                MindmapPreview.h({ tag: "span", attrs: { class: "rec-dot", "aria-hidden": "true" } }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["録音中"] }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "rec-time", "aria-hidden": "true" }, children: [MindmapPreview.formatElapsed(elapsed)] }),
+            ];
+        }
+        if (voice === "transcribing") {
+            return [
+                MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "sr-only" }, children: ["文字起こししています。"] }),
+            ];
+        }
+        return null;
+    }
+    MindmapPreview.voiceProgressContent = voiceProgressContent;
+    /** 結果の行のクラスの状態（録音中・文字起こし中は音声の状態を優先する） */
+    function messageState(voice, status) {
+        if (voice === "recording")
+            return "recording";
+        if (voice === "transcribing")
+            return "saving";
+        return status;
+    }
+    MindmapPreview.messageState = messageState;
+    /** 音声入力のボタンを入れる連番（ツールチップの ID が重ならないように） */
+    let voiceSequence = 0;
+    /**
+     * 入力欄の右に並べる音声入力のボタン。
+     * idle・disabled はマイクのボタンと submit を、recording・transcribing は × と ✓ を返す。
+     */
+    function voiceButtons({ voice, voiceReason, textarea, submit, on, }) {
+        if (voice === "recording" || voice === "transcribing") {
+            const busy = voice === "transcribing";
+            return [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "send-rec-actions" },
+                    children: [
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: {
+                                class: "icon-btn send-rec-cancel",
+                                type: "button",
+                                "aria-label": "キャンセル",
+                                title: "キャンセル（録音を破棄）",
+                                disabled: busy,
+                                onclick: () => on.voiceCancel?.(),
+                            },
+                            children: [MindmapPreview.icon("x")],
+                        }),
+                        MindmapPreview.h({
+                            tag: "button",
+                            attrs: {
+                                class: "icon-btn send-rec-done",
+                                type: "button",
+                                "aria-label": busy ? "文字起こし中" : "文字起こし",
+                                title: busy ? "文字起こし中" : "文字起こし",
+                                disabled: busy,
+                                "data-saving": busy ? "" : null,
+                                onclick: () => on.voiceDone?.({ body: textarea.value, start: textarea.selectionStart, end: textarea.selectionEnd }),
+                            },
+                            children: [busy ? MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }) : MindmapPreview.icon("check")],
+                        }),
+                    ],
+                }),
+            ];
+        }
+        const blocked = voice === "disabled";
+        voiceSequence += 1;
+        const tipId = `voice-tip-${voiceSequence}`;
+        const mic = MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: "icon-btn send-mic",
+                type: "button",
+                "aria-label": "音声で入力",
+                title: blocked ? (voiceReason ?? "") : "音声で入力",
+                // 押せないときもフォーカスを受けたまま、理由をツールチップで指す
+                "aria-disabled": blocked ? "true" : null,
+                "aria-describedby": blocked ? tipId : null,
+                onclick: () => (blocked ? on.voiceBlocked?.() : on.voiceStart?.()),
+            },
+            children: [MindmapPreview.icon("mic")],
+        });
+        const micPart = blocked
+            ? MindmapPreview.h({
+                tag: "span",
+                attrs: { class: "send-tip-wrap" },
+                children: [mic, MindmapPreview.h({ tag: "span", attrs: { class: "send-tip", role: "tooltip", id: tipId }, children: [voiceReason ?? ""] })],
+            })
+            : mic;
+        return [micPart, submit];
+    }
+    MindmapPreview.voiceButtons = voiceButtons;
     /** 添えた箇所（名前・選んだ文・外す ×）の要素 */
     function locationChip({ loc, id, onUnquote }) {
         return MindmapPreview.h({
@@ -82,7 +194,7 @@ var MindmapPreview;
         });
     }
     /** 項目へのコメントをレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, on, }) {
+    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, entered = false, on, }) {
         sendFormSequence += 1;
         const fieldId = `send-${sendFormSequence}`;
         const messageId = `${fieldId}-msg`;
@@ -105,8 +217,8 @@ var MindmapPreview;
                 "aria-label": target === null ? label : null,
                 "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
                 "aria-keyshortcuts": "Control+Enter",
-                // 溜めている間は書き換えられない
-                readonly: status === "saving",
+                // 溜めている間と文字起こし中は書き換えられない
+                readonly: status === "saving" || voice === "transcribing",
                 // 本文が空で溜めようとした: 入力の誤りとして示す
                 "aria-invalid": status === "empty" ? "true" : null,
                 oninput: () => on.input(textarea.value),
@@ -122,10 +234,13 @@ var MindmapPreview;
             },
             children: [body],
         });
+        const shownState = messageState(voice, status);
         const message = MindmapPreview.h({
             tag: "p",
-            attrs: { class: status === "idle" ? "send-msg" : `send-msg ${status}`, id: messageId, role: "status" },
-            children: resultContent({ status, count, detail, onCopy: () => on.copy(textarea.value) }),
+            attrs: { class: shownState === "idle" ? "send-msg" : `send-msg ${shownState}`, id: messageId, role: "status" },
+            children: voiceProgressContent(voice, elapsed) ??
+                voiceResultContent(status, detail, entered) ??
+                resultContent({ status, count, detail, onCopy: () => on.copy(textarea.value) }),
         });
         // 溜めている印と文言は、待ちの後に入れる
         if (status === "saving") {
@@ -157,25 +272,23 @@ var MindmapPreview;
         function textareaLine() {
             if (folded)
                 return textarea;
+            const submit = MindmapPreview.h({
+                tag: "button",
+                attrs: {
+                    class: "icon-btn send-submit",
+                    type: "submit",
+                    "aria-label": "レビューに追加",
+                    title: "レビューに追加（Ctrl+Enter）",
+                    disabled: status === "saving",
+                    // 溜めている間は処理中のカーソルにする
+                    "data-saving": status === "saving" ? "" : null,
+                },
+                children: [MindmapPreview.icon("comment")],
+            });
             return MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "send-line" },
-                children: [
-                    textarea,
-                    MindmapPreview.h({
-                        tag: "button",
-                        attrs: {
-                            class: "icon-btn send-submit",
-                            type: "submit",
-                            "aria-label": "レビューに追加",
-                            title: "レビューに追加（Ctrl+Enter）",
-                            disabled: status === "saving",
-                            // 溜めている間は処理中のカーソルにする
-                            "data-saving": status === "saving" ? "" : null,
-                        },
-                        children: [MindmapPreview.icon("comment")],
-                    }),
-                ],
+                children: [textarea, ...voiceButtons({ voice, voiceReason, textarea, submit, on })],
             });
         }
         /** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */
