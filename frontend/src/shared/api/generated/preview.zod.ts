@@ -31,6 +31,10 @@ export const GetRecordsResponse = zod.looseObject({
   "display": zod.object({
   "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']).optional(),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs'])).optional()
+}).optional(),
+  "transcription": zod.object({
+  "action": zod.enum(['send', 'insert']).optional(),
+  "preset": zod.string().nullish()
 }).optional()
 }),
   "decisions": zod.array(zod.looseObject({
@@ -369,4 +373,49 @@ export const PutConfigDisplayResponse = zod.object({
   "network_look": zod.enum(['glow', 'starlight', 'constellation', 'deep', 'dust']),
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs']))
 })
+})
+
+
+/**
+ * @summary 文字起こしを使えるかと理由・用語集のプリセットの候補・ワークスペースの文字起こしの設定
+ */
+export const GetTranscriptionResponse = zod.object({
+  "available": zod.boolean(),
+  "reason": zod.union([zod.literal('stopped'),zod.literal('unsupported'),zod.literal(null)]).nullable(),
+  "detail": zod.string().nullable(),
+  "presets": zod.array(zod.string()),
+  "action": zod.enum(['send', 'insert']),
+  "preset": zod.string().nullable()
+})
+
+
+/**
+ * @summary 録音した音声を文字起こしし、起こした文字を返す
+ */
+export const PostTranscriptionResponse = zod.object({
+  "text": zod.string()
+})
+
+
+/**
+ * @summary 書き込み 1 件をレビュー中に溜めずにすぐスレッドへ送る
+ */
+export const SendNowBody = zod.object({
+  "target": zod.string().nullish(),
+  "loc": zod.union([zod.object({
+  "kind": zod.enum(['body', 'value']),
+  "start": zod.int().optional(),
+  "end": zod.int().optional(),
+  "key": zod.string().optional(),
+  "text": zod.string().optional()
+}),zod.null()]).optional(),
+  "thread": zod.string().nullish(),
+  "body": zod.string()
+})
+
+export const SendNowResponse = zod.object({
+  "sent": zod.string(),
+  "thread": zod.string(),
+  "post": zod.string(),
+  "entered": zod.boolean()
 })

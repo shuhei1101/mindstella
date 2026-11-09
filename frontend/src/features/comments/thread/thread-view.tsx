@@ -12,6 +12,7 @@ import { Input } from "@/shared/components/ui/input";
 import { AppError } from "@/shared/core/app-error";
 import { commentNumber, hasUnseen, threadTimeline, threadTitle, type ReviewItem } from "@/shared/core/comments";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
+import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { showLocation } from "@/shared/stores/location-highlight-store";
 
 export type ThreadViewProps = {
@@ -47,6 +48,19 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   }, [thread, markSeen]);
   const draft = drafts.find((one) => one.thread === id && one.target === null)?.body ?? "";
   const [reply, setReply] = useState<{ body: string; status: ReplyStatus; count: number | null; detail: string | null }>({ body: draft, status: "idle", count: null, detail: null });
+  // 音声入力（録音・文字起こし・すぐ送る）。開くスレッドが変わったら録音を捨てる
+  const voice = useVoiceInput({
+    destination: { thread: id },
+    body: reply.body,
+    onBodyChange: (next) => {
+      setReply({ body: next, status: "idle", count: null, detail: null });
+      saveDraft({ target: null, loc: null, thread: id, body: next }, true);
+    },
+    getSelection: () => {
+      const field = document.querySelector<HTMLTextAreaElement>('form[data-part="reply"] textarea');
+      return { start: field?.selectionStart ?? reply.body.length, end: field?.selectionEnd ?? reply.body.length };
+    },
+  });
   const reasonId = useId();
   const [reason, setReason] = useState<{ open: boolean; body: string; detail: string | null; failed: boolean }>({ open: false, body: "", detail: null, failed: false });
   const [editing, setEditing] = useState<{ id: string; error: string | null } | null>(null);
@@ -257,10 +271,19 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
         <ReplyForm
           thread={thread.id}
           body={reply.body}
-          status={reply.status}
+          status={voice.status === "idle" ? reply.status : voice.status}
           count={reply.count}
-          detail={reply.detail}
+          detail={voice.status === "idle" ? reply.detail : voice.detail}
+          voice={voice.voice}
+          voiceReason={voice.voiceReason}
+          elapsed={voice.elapsed}
+          entered={voice.entered}
+          onVoiceStart={() => void voice.onVoiceStart()}
+          onVoiceCancel={voice.onVoiceCancel}
+          onVoiceDone={() => void voice.onVoiceDone()}
+          onVoiceBlocked={voice.onVoiceBlocked}
           onInput={(body) => {
+            voice.clearResult();
             setReply({ body, status: "idle", count: null, detail: null });
             saveDraft({ target: null, loc: null, thread: thread.id, body });
           }}

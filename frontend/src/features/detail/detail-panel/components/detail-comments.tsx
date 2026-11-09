@@ -15,6 +15,7 @@ import { commentNumber, reviewLabel, type Draft, type ReviewItem } from "@/share
 import { locationLabel, type Location } from "@/shared/core/records";
 import { commentsQuery } from "@/shared/hooks/preview-queries";
 import { useAddComment, useRemoveComment, useSaveDraft, useUpdateComment } from "@/shared/hooks/use-comments";
+import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 
 export type DetailCommentsProps = {
@@ -102,6 +103,20 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
   };
   const shown = [...items, ...removed.map((item) => ({ ...item, gone: true as const }))].sort((a, b) => (order === "newest" ? commentNumber(b.id) - commentNumber(a.id) : commentNumber(a.id) - commentNumber(b.id)));
   const text = form.body ?? draft;
+  // 音声入力（録音・文字起こし・すぐ送る）。向けた先が変わったら録音を捨てる
+  const voice = useVoiceInput({
+    destination: { target: id, loc },
+    body: text,
+    onBodyChange: (next) => {
+      if (next === "") setLoc(null);
+      setForm({ body: next, status: "idle", count: null, detail: null });
+      saveDraft({ target: id, loc, thread: null, body: next }, true);
+    },
+    getSelection: () => {
+      const field = document.querySelector<HTMLTextAreaElement>(`form[data-id="${CSS.escape(id)}"] textarea`);
+      return { start: field?.selectionStart ?? text.length, end: field?.selectionEnd ?? text.length };
+    },
+  });
   return (
     <div ref={host} className="sticky bottom-0 grid gap-2 bg-card">
       {shown.length === 0 ? (
@@ -183,12 +198,21 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         target={id}
         loc={loc}
         body={text}
-        status={form.status}
+        status={voice.status === "idle" ? form.status : voice.status}
         count={form.count}
-        detail={form.detail}
+        detail={voice.status === "idle" ? form.detail : voice.detail}
+        voice={voice.voice}
+        voiceReason={voice.voiceReason}
+        elapsed={voice.elapsed}
+        entered={voice.entered}
+        onVoiceStart={() => void voice.onVoiceStart()}
+        onVoiceCancel={voice.onVoiceCancel}
+        onVoiceDone={() => void voice.onVoiceDone()}
+        onVoiceBlocked={voice.onVoiceBlocked}
         open={formOpen}
         onToggleOpen={(next) => { writePrefs({ commentFormClosed: next ? null : true }); }}
         onInput={(next) => {
+          voice.clearResult();
           setForm({ body: next, status: "idle", count: null, detail: null });
           saveDraft({ target: id, loc, thread: null, body: next });
         }}

@@ -76,7 +76,7 @@ describe("useVoiceInput", () => {
     // 準備
     server.use(
       http.get("/api/transcription", () => HttpResponse.json(AVAILABLE)),
-      http.post("/api/transcriptions", () => HttpResponse.json({ detail: "対応していません", reason: "unsupported" }, { status: 503 })),
+      http.post("/api/transcriptions", () => HttpResponse.json({ type: "about:blank", title: "Service Unavailable", status: 503, detail: "対応していません", reason: "unsupported" }, { status: 503 })),
     );
     const noMicrophone = await renderVoice("");
     // 実行・検証

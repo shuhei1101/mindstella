@@ -15,8 +15,24 @@ import type { RecordIndex } from "@/shared/core/records";
 import { useAddEdit } from "@/shared/hooks/use-edits";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
+import { useTranscriptionStatus } from "@/shared/hooks/use-voice-input";
 
 const NO_BLOCKED: ReadonlySet<string> = new Set();
+
+/** 文字起こし後の挙動の選択肢 */
+const TRANSCRIPTION_ACTIONS = [
+  { value: "send", label: "送信する" },
+  { value: "insert", label: "入力欄へ挿入する" },
+] as const;
+
+/** 用語集のプリセットの「サービスの既定」（プリセットを指定しない） */
+const SERVICE_DEFAULT_PRESET = "サービスの既定";
+
+/** 用語集のプリセットの候補を読めないときの、理由ごとの文 */
+const PRESET_UNAVAILABLE_TEXT = {
+  stopped: "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。",
+  unsupported: "文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。",
+} as const;
 
 type ColumnDef = { key: string; title: string; type: "text" | "url" };
 
@@ -155,6 +171,13 @@ export const WorkspaceSettingsScreen = () => {
   }, [loaded]);
   const add = useAddEdit();
   const [error, setError] = useState<string | null>(null);
+  // 開いたときに文字起こしの可否を読み直す（用語集のプリセットの候補）
+  const transcription = useTranscriptionStatus();
+  const { refetch } = transcription;
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+  const actionLabel = useId();
   if (index === null) return null;
   const { settings } = index.data;
   const commit: Commit = (key, value, map) => {
@@ -262,6 +285,69 @@ export const WorkspaceSettingsScreen = () => {
               </>,
               "pe-ws-history_limit",
             )}
+          </fieldset>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="font-medium">音声入力</legend>
+            {(() => {
+              const current = ((settings as unknown as Record<string, unknown>).transcription ?? {}) as { action?: string; preset?: string | null };
+              const action = current.action === "insert" ? "insert" : "send";
+              const preset = typeof current.preset === "string" ? current.preset : null;
+              const status = transcription.data ?? null;
+              const usable = status !== null && status.available;
+              const names = usable ? (preset !== null && !status.presets.includes(preset) ? [...status.presets, preset] : status.presets) : [];
+              const unavailable = status !== null && !status.available && status.reason !== null ? PRESET_UNAVAILABLE_TEXT[status.reason] : null;
+              return (
+                <>
+                  {field(
+                    "transcription",
+                    "文字起こし後の挙動",
+                    <>
+                      <div role="radiogroup" aria-labelledby={actionLabel} className="flex flex-col gap-1.5">
+                        <span id={actionLabel} className="sr-only">
+                          文字起こし後の挙動
+                        </span>
+                        {TRANSCRIPTION_ACTIONS.map((choice) => (
+                          <label key={choice.value} className="flex min-h-9 items-center gap-2 text-body">
+                            <input type="radio" name="pe-ws-transcription-action" value={choice.value} defaultChecked={choice.value === action} className="accent-primary" onChange={(event) => { if (event.target.checked) commit("transcription", { action: choice.value, preset }); }} />
+                            {choice.label}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="m-0 text-xs text-muted-foreground">「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。</p>
+                    </>,
+                  )}
+                  {field(
+                    "transcription.preset",
+                    "用語集のプリセット",
+                    <>
+                      <Select id="pe-ws-transcription-preset" value={preset ?? ""} disabled={!usable} aria-describedby="pe-ws-transcription-preset-hint" onChange={(event) => { commit("transcription", { action, preset: event.target.value === "" ? null : event.target.value }); }}>
+                        {usable ? (
+                          <>
+                            <option value="">{SERVICE_DEFAULT_PRESET}</option>
+                            {names.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </>
+                        ) : (
+                          <option value={preset ?? ""}>{preset ?? SERVICE_DEFAULT_PRESET}</option>
+                        )}
+                      </Select>
+                      <p id="pe-ws-transcription-preset-hint" className="m-0 flex items-center gap-1 text-xs text-muted-foreground">
+                        {unavailable === null ? "文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。" : (
+                          <>
+                            <Icon name="alert" className="size-4" />
+                            {unavailable}
+                          </>
+                        )}
+                      </p>
+                    </>,
+                    "pe-ws-transcription-preset",
+                  )}
+                </>
+              );
+            })()}
           </fieldset>
           {error === null ? null : (
             <p role="alert" className="flex items-center gap-1 text-small text-destructive">

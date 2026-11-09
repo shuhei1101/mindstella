@@ -40,11 +40,16 @@ import type {
   SaveReply,
   SeenReply,
   SendInput,
+  SendNowInput,
+  SendNowReply,
   SendReply,
   StaleProblem,
   ThreadStatusInput,
   ThreadStatusReply,
-  Threads
+  Threads,
+  TranscriptionReply,
+  TranscriptionStatus,
+  UnavailableProblem
 } from './model';
 
 import { apiClient } from '../../adapters/api-client';
@@ -2099,6 +2104,419 @@ export function usePutConfigDisplay<TData = Awaited<ReturnType<typeof putConfigD
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getPutConfigDisplayQueryOptions(displayInput,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getTranscriptionResponse200 = {
+  data: TranscriptionStatus
+  status: 200
+}
+
+export type getTranscriptionResponse403 = {
+  data: Problem
+  status: 403
+}
+
+export type getTranscriptionResponse422 = {
+  data: Problem
+  status: 422
+}
+
+export type getTranscriptionResponseSuccess = (getTranscriptionResponse200) & {
+  headers: Headers;
+};
+export type getTranscriptionResponseError = (getTranscriptionResponse403 | getTranscriptionResponse422) & {
+  headers: Headers;
+};
+
+export type getTranscriptionResponse = (getTranscriptionResponseSuccess | getTranscriptionResponseError)
+
+export const getGetTranscriptionUrl = () => {
+
+
+
+
+  return `/api/transcription`
+}
+
+/**
+ * @summary 文字起こしを使えるかと理由・用語集のプリセットの候補・ワークスペースの文字起こしの設定
+ */
+export const getTranscription = async ( options?: Parameters<typeof apiClient>[1]): Promise<getTranscriptionResponse> => {
+
+  return apiClient<getTranscriptionResponse>(getGetTranscriptionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTranscriptionQueryKey = () => {
+    return [
+    `/api/transcription`
+    ] as const;
+    }
+
+
+export const getGetTranscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getTranscription>>, TError = Problem>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTranscription>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTranscriptionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTranscription>>> = ({ signal }) => getTranscription({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTranscription>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTranscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getTranscription>>>
+export type GetTranscriptionQueryError = Problem
+
+
+export function useGetTranscription<TData = Awaited<ReturnType<typeof getTranscription>>, TError = Problem>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTranscription>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTranscription>>,
+          TError,
+          Awaited<ReturnType<typeof getTranscription>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTranscription<TData = Awaited<ReturnType<typeof getTranscription>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTranscription>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTranscription>>,
+          TError,
+          Awaited<ReturnType<typeof getTranscription>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTranscription<TData = Awaited<ReturnType<typeof getTranscription>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTranscription>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 文字起こしを使えるかと理由・用語集のプリセットの候補・ワークスペースの文字起こしの設定
+ */
+
+export function useGetTranscription<TData = Awaited<ReturnType<typeof getTranscription>>, TError = Problem>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTranscription>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTranscriptionQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type postTranscriptionResponse200 = {
+  data: TranscriptionReply
+  status: 200
+}
+
+export type postTranscriptionResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type postTranscriptionResponse502 = {
+  data: Problem
+  status: 502
+}
+
+export type postTranscriptionResponse503 = {
+  data: UnavailableProblem
+  status: 503
+}
+
+export type postTranscriptionResponse504 = {
+  data: Problem
+  status: 504
+}
+
+export type postTranscriptionResponseSuccess = (postTranscriptionResponse200) & {
+  headers: Headers;
+};
+export type postTranscriptionResponseError = (postTranscriptionResponse400 | postTranscriptionResponse502 | postTranscriptionResponse503 | postTranscriptionResponse504) & {
+  headers: Headers;
+};
+
+export type postTranscriptionResponse = (postTranscriptionResponseSuccess | postTranscriptionResponseError)
+
+export const getPostTranscriptionUrl = () => {
+
+
+
+
+  return `/api/transcriptions`
+}
+
+/**
+ * @summary 録音した音声を文字起こしし、起こした文字を返す
+ */
+export const postTranscription = async (postTranscriptionBody: Blob, options?: Parameters<typeof apiClient>[1]): Promise<postTranscriptionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<postTranscriptionResponse>(getPostTranscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'audio/*', ...getHeaders(options?.headers) },
+    body: postTranscriptionBody
+  }
+);}
+
+
+
+
+
+export const getPostTranscriptionQueryKey = (postTranscriptionBody?: Blob,) => {
+    return [
+    'POST', `/api/transcriptions`, postTranscriptionBody
+    ] as const;
+    }
+
+
+export const getPostTranscriptionQueryOptions = <TData = Awaited<ReturnType<typeof postTranscription>>, TError = Problem | UnavailableProblem>(postTranscriptionBody: Blob, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postTranscription>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostTranscriptionQueryKey(postTranscriptionBody);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postTranscription>>> = ({ signal }) => postTranscription(postTranscriptionBody, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postTranscription>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostTranscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof postTranscription>>>
+export type PostTranscriptionQueryError = Problem | UnavailableProblem
+
+
+export function usePostTranscription<TData = Awaited<ReturnType<typeof postTranscription>>, TError = Problem | UnavailableProblem>(
+ postTranscriptionBody: Blob, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postTranscription>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postTranscription>>,
+          TError,
+          Awaited<ReturnType<typeof postTranscription>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostTranscription<TData = Awaited<ReturnType<typeof postTranscription>>, TError = Problem | UnavailableProblem>(
+ postTranscriptionBody: Blob, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postTranscription>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postTranscription>>,
+          TError,
+          Awaited<ReturnType<typeof postTranscription>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostTranscription<TData = Awaited<ReturnType<typeof postTranscription>>, TError = Problem | UnavailableProblem>(
+ postTranscriptionBody: Blob, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postTranscription>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 録音した音声を文字起こしし、起こした文字を返す
+ */
+
+export function usePostTranscription<TData = Awaited<ReturnType<typeof postTranscription>>, TError = Problem | UnavailableProblem>(
+ postTranscriptionBody: Blob, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postTranscription>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostTranscriptionQueryOptions(postTranscriptionBody,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type sendNowResponse201 = {
+  data: SendNowReply
+  status: 201
+}
+
+export type sendNowResponse400 = {
+  data: Problem
+  status: 400
+}
+
+export type sendNowResponse409 = {
+  data: Problem
+  status: 409
+}
+
+export type sendNowResponseSuccess = (sendNowResponse201) & {
+  headers: Headers;
+};
+export type sendNowResponseError = (sendNowResponse400 | sendNowResponse409) & {
+  headers: Headers;
+};
+
+export type sendNowResponse = (sendNowResponseSuccess | sendNowResponseError)
+
+export const getSendNowUrl = () => {
+
+
+
+
+  return `/api/comments/send-now`
+}
+
+/**
+ * @summary 書き込み 1 件をレビュー中に溜めずにすぐスレッドへ送る
+ */
+export const sendNow = async (sendNowInput: SendNowInput, options?: Parameters<typeof apiClient>[1]): Promise<sendNowResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiClient<sendNowResponse>(getSendNowUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sendNowInput)
+  }
+);}
+
+
+
+
+
+export const getSendNowQueryKey = (sendNowInput?: SendNowInput,) => {
+    return [
+    'POST', `/api/comments/send-now`, sendNowInput
+    ] as const;
+    }
+
+
+export const getSendNowQueryOptions = <TData = Awaited<ReturnType<typeof sendNow>>, TError = Problem>(sendNowInput: SendNowInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendNow>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSendNowQueryKey(sendNowInput);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sendNow>>> = ({ signal }) => sendNow(sendNowInput, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sendNow>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SendNowQueryResult = NonNullable<Awaited<ReturnType<typeof sendNow>>>
+export type SendNowQueryError = Problem
+
+
+export function useSendNow<TData = Awaited<ReturnType<typeof sendNow>>, TError = Problem>(
+ sendNowInput: SendNowInput, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendNow>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sendNow>>,
+          TError,
+          Awaited<ReturnType<typeof sendNow>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSendNow<TData = Awaited<ReturnType<typeof sendNow>>, TError = Problem>(
+ sendNowInput: SendNowInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendNow>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sendNow>>,
+          TError,
+          Awaited<ReturnType<typeof sendNow>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSendNow<TData = Awaited<ReturnType<typeof sendNow>>, TError = Problem>(
+ sendNowInput: SendNowInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendNow>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 書き込み 1 件をレビュー中に溜めずにすぐスレッドへ送る
+ */
+
+export function useSendNow<TData = Awaited<ReturnType<typeof sendNow>>, TError = Problem>(
+ sendNowInput: SendNowInput, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sendNow>>, TError, TData>>, request?: SecondParameter<typeof apiClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSendNowQueryOptions(sendNowInput,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
