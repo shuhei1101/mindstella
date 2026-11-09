@@ -29,6 +29,7 @@ from comments import (
     list_review,
     save_draft,
     send_comments,
+    send_now,
     update_comment,
 )
 from edits import add_edit, delete_edit, list_edits, save_edits
@@ -65,6 +66,17 @@ from store import (
     require_workspace,
     workspace_lock,
 )
+from transcriber import (
+    FAILED_DETAIL,
+    UNAVAILABLE_DETAILS,
+    Transcriber,
+    TranscriberStoppedError,
+    TranscriberUnsupportedError,
+    TranscriptionFailedError,
+    TranscriptionTimeoutError,
+    UnavailableReason,
+    check_availability,
+)
 from threads import (
     THREADS_FILE,
     SentPost,
@@ -95,6 +107,27 @@ KEEPALIVE_SEC = 15
 
 # 書き込む要求の本文を読む上限（バイト）。`Content-Length` がこれを超えたら読まずに 400 にする
 MAX_REQUEST_BYTES = 131072
+
+# POST /api/transcriptions の本文を読む上限（非機能要件「録音の大きさの上限」）
+MAX_AUDIO_BYTES = 80_000_000
+
+# Content-Length を持たない音声の本文を、上限まで数えながら読む 1 回のバイト数
+AUDIO_READ_CHUNK = 65536
+
+# 受ける音声の Content-Type の頭
+AUDIO_TYPE_PREFIX = "audio/"
+
+# GET で文字起こしの可否を返すパス
+TRANSCRIPTION_PATH = "/api/transcription"
+
+# POST で音声を受けて文字起こしするパス
+TRANSCRIPTIONS_PATH = "/api/transcriptions"
+
+# POST で書き込み 1 件をすぐスレッドへ送るパス
+SEND_NOW_PATH = "/api/comments/send-now"
+
+# config.yaml に transcription.action が無いときの文字起こし後の挙動
+DEFAULT_TRANSCRIPTION_ACTION = "send"
 
 # レビュー中のコメント・まとめて送る・書きかけのパス
 COMMENTS_PATH = "/api/comments"
@@ -196,6 +229,8 @@ class ServeContext:
     allowed_hosts: frozenset[str] = frozenset()
     # ワークスペースごとの Claude Code への入力の宛先（None ならまとめて送った後に入力しない）
     input_targets: InputTargets | None = None
+    # 文字起こしのインターフェース（None なら文字起こしの可否は stopped）
+    transcriber: Transcriber | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -247,13 +282,16 @@ class PreviewRegistry:
         write_lock: threading.Lock,
         *,
         external: ExternalAccess | None = None,
+        transcriber: Transcriber | None = None,
     ) -> None:
-        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）を受け取り、空の台帳を作る。"""
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と文字起こしを受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
         # ワークスペースごとの Claude Code への入力の宛先（立てる配信へ渡す。配信の前に受けたセッションも持つ）
         self._input_targets = InputTargets()
+        # 文字起こしのインターフェース（立てる配信へ渡す）
+        self._transcriber = transcriber
         # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
         self._guard = threading.RLock()
 
@@ -276,6 +314,7 @@ class PreviewRegistry:
                 port=settings.get("preview", {}).get("port", 0),
                 allowed_hosts=self._external.allowed_hosts,
                 input_targets=self._input_targets,
+                transcriber=self._transcriber,
             )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
@@ -323,7 +362,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
 
     def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける。"""
+        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
         if not check_host(
@@ -351,6 +390,8 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(threads_response(context.root))
         elif path == EDITS_PATH:
             self._reply(edits_response(context.root))
+        elif path == TRANSCRIPTION_PATH:
+            self._reply(transcription_response(context, origin=self.headers.get("Origin")))
         else:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -385,6 +426,15 @@ class PreviewHandler(BaseHTTPRequestHandler):
                 HTTPStatus.CREATED,
                 after=lambda body: _entered_body(self.context, body),
             )
+        elif path == SEND_NOW_PATH:
+            # まとめて送るのと同じく、鍵を外した後に Claude Code へ入力する（件数は 1）
+            self._write(
+                lambda root, data: _sent_now_body(*send_now(root, data)),
+                HTTPStatus.CREATED,
+                after=lambda body: _entered_body(self.context, body),
+            )
+        elif path == TRANSCRIPTIONS_PATH:
+            self._transcribe()
         elif path is not None:
             self._reply(problem_response(HTTPStatus.NOT_FOUND, f"パスがありません: {path}"))
 
@@ -479,6 +529,45 @@ class PreviewHandler(BaseHTTPRequestHandler):
             )
         )
 
+    def _transcribe(self) -> None:
+        """音声の本文を上限まで読み、文字起こしの受け付けへ渡して応答を書く。"""
+        body = self._read_audio()
+        # 上限を超える: 読むのをやめて断る
+        if body is None:
+            self._reply(
+                problem_response(
+                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                    f"録音が大きすぎます（{MAX_AUDIO_BYTES} バイトまで）",
+                )
+            )
+            return
+        self._reply(
+            transcribe_response(
+                self.context,
+                content_type=self.headers.get("Content-Type"),
+                origin=self.headers.get("Origin"),
+                body=body,
+            )
+        )
+
+    def _read_audio(self) -> bytes | None:
+        """音声の本文を読む。Content-Length があれば先に上限と比べ、無ければ数えながら読む。上限を超えたら None。"""
+        length = self._content_length()
+        if length is not None:
+            # 長さが分かる: 読む前に上限と比べる
+            if length > MAX_AUDIO_BYTES:
+                return None
+            return self.rfile.read(length)
+        # 長さが無い: 接続が閉じるまで、上限を超えないかを数えながら読む
+        chunks: list[bytes] = []
+        total = 0
+        while chunk := self.rfile.read1(AUDIO_READ_CHUNK):
+            total += len(chunk)
+            if total > MAX_AUDIO_BYTES:
+                return None
+            chunks.append(chunk)
+        return b"".join(chunks)
+
     def _content_length(self) -> int | None:
         """`Content-Length` を整数で返す（無い・整数でない・負のときは None）。"""
         text = self.headers.get("Content-Length")
@@ -539,6 +628,7 @@ def start_preview_server(
     port: int = 0,
     allowed_hosts: frozenset[str] = frozenset(),
     input_targets: InputTargets | None = None,
+    transcriber: Transcriber | None = None,
 ) -> PreviewServer:
     """`LISTEN_HOST` の port（0 なら空きポート）で待ち受け、デーモンのスレッドで動かし始める。settings は立てる前に検査に通った設定。"""
     try:
@@ -557,6 +647,7 @@ def start_preview_server(
         settings=SettingsHolder(settings),
         allowed_hosts=allowed_hosts,
         input_targets=input_targets,
+        transcriber=transcriber,
     )
     setattr(httpd, "context", context)  # noqa: B010
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -1068,8 +1159,15 @@ def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]
     """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
     targets = context.input_targets
     # 宛先の台帳が無い: 入力しない
-    entered = False if targets is None else targets.enter(context.root, len(body["items"]))
+    # まとめて送るは送った件数、すぐ送るは 1 件
+    count = len(body["items"]) if "items" in body else 1
+    entered = False if targets is None else targets.enter(context.root, count)
     return {**body, "entered": entered}
+
+
+def _sent_now_body(sent: str, post: SentPost) -> dict[str, Any]:
+    """すぐ送った応答の本文を作る。"""
+    return {"sent": sent, "thread": post.thread, "post": post.post}
 
 
 def _updated_body(comment: ReviewComment) -> dict[str, Any]:
@@ -1090,7 +1188,7 @@ def _comment_id_of(path: str | None) -> str | None:
     """`/api/comments/{id}` のパスからコメントの ID を取り出す（送る口の `send` は ID でない）。"""
     prefix = f"{COMMENTS_PATH}/"
     # 別のパス
-    if path is None or not path.startswith(prefix) or path == SEND_PATH:
+    if path is None or not path.startswith(prefix) or path in (SEND_PATH, SEND_NOW_PATH):
         return None
     return unquote(path.removeprefix(prefix))
 
@@ -1123,3 +1221,92 @@ def _seen_thread_id_of(path: str | None) -> str | None:
         return None
     thread_id = unquote(path.removeprefix(prefix).removesuffix(SEEN_SUFFIX))
     return thread_id if thread_id and "/" not in thread_id else None
+
+
+def transcription_response(context: ServeContext, *, origin: str | None) -> Response:
+    """文字起こしを使えるかと理由・プリセットの候補・ワークスペースの文字起こしの設定を返す。"""
+    # 別のサイトからの読み取り
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    settings_or_error = _transcription_settings(context.root)
+    if isinstance(settings_or_error, Response):
+        return settings_or_error
+    availability = check_availability(context.transcriber)
+    payload = {
+        "available": availability.available,
+        "reason": availability.reason,
+        "detail": availability.detail,
+        "presets": availability.presets,
+        "action": settings_or_error.get("action", DEFAULT_TRANSCRIPTION_ACTION),
+        "preset": settings_or_error.get("preset"),
+    }
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def transcribe_response(
+    context: ServeContext, *, content_type: str | None, origin: str | None, body: bytes
+) -> Response:
+    """受けた音声を文字起こしのインターフェースへ渡し、起こした文字を返す（ワークスペースを書き換えないので鍵を取らない）。"""
+    media_type = (content_type or "").split(";")[0].strip().lower()
+    # 音声でない（別のサイトのフォームから送れる形を受けない）
+    if not media_type.startswith(AUDIO_TYPE_PREFIX):
+        return problem_response(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "録音した音声で送ってください")
+    # 別のサイトからの送信
+    if not check_origin(origin, context.port, allowed_hosts=context.allowed_hosts):
+        return problem_response(HTTPStatus.FORBIDDEN, "送り元が合いません")
+    if not body:
+        return problem_response(HTTPStatus.BAD_REQUEST, "録音が空です")
+    settings_or_error = _transcription_settings(context.root)
+    if isinstance(settings_or_error, Response):
+        return settings_or_error
+    # 配信が文字起こしを持たない: 届かないと同じに扱う
+    if context.transcriber is None:
+        return _unavailable_response("stopped")
+    try:
+        text = context.transcriber.transcribe(
+            body, content_type or media_type, preset=settings_or_error.get("preset")
+        )
+    except TranscriberStoppedError as error:
+        logger.warning("文字起こしできなかった: %s %s", type(error).__name__, error)
+        return _unavailable_response("stopped")
+    except TranscriberUnsupportedError as error:
+        logger.warning("文字起こしできなかった: %s %s", type(error).__name__, error)
+        return _unavailable_response("unsupported")
+    except TranscriptionFailedError as error:
+        logger.warning("文字起こしできなかった: %s %s", type(error).__name__, error)
+        return problem_response(HTTPStatus.BAD_GATEWAY, FAILED_DETAIL)
+    except TranscriptionTimeoutError as error:
+        logger.warning("文字起こしできなかった: %s %s", type(error).__name__, error)
+        return problem_response(HTTPStatus.GATEWAY_TIMEOUT, FAILED_DETAIL)
+    return Response(
+        status=HTTPStatus.OK,
+        content_type=JSON_TYPE,
+        body=json.dumps({"text": text}, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def _transcription_settings(root: Path) -> dict[str, Any] | Response:
+    """config.yaml を検査して transcription を返す。読めない・スキーマに合わなければ 422 の応答を返す。"""
+    try:
+        settings, problems = check_settings(root)
+    except WorkspaceNotFoundError as error:
+        return problem_response(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
+    if problems:
+        return error_response(build_mismatch_error(problems))
+    transcription = settings.get("transcription")
+    return transcription if isinstance(transcription, dict) else {}
+
+
+def _unavailable_response(reason: UnavailableReason) -> Response:
+    """使えない理由を本文の reason に足した 503 の応答を作る。"""
+    problem = json.loads(problem_response(HTTPStatus.SERVICE_UNAVAILABLE, UNAVAILABLE_DETAILS[reason]).body)
+    problem["reason"] = reason
+    return Response(
+        status=HTTPStatus.SERVICE_UNAVAILABLE,
+        content_type=PROBLEM_TYPE,
+        body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
+    )

@@ -32,6 +32,7 @@ from query import DEFAULT_LIMIT, MAX_LIMIT, SearchFilter, parse_attr, render_fin
 from serve import LISTEN_HOST, PreviewRegistry, load_external_access
 from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
+from transcriber_registry import InvalidTranscriberError, load_transcriber
 from versions import PLUGIN_VERSION_FILE, read_plugin_version
 
 # `find` の `include`・`exclude` に渡せる名前
@@ -161,8 +162,18 @@ def main(
         logger.error("常駐サーバーを待ち受けられません: %s", error)  # noqa: TRY400
         return 1
 
+    # 文字起こしの実装を環境変数で選ぶ（誤っていれば待ち受けずに止まる）
+    try:
+        transcriber = load_transcriber(source)
+    except InvalidTranscriberError as error:
+        listening.close()
+        logger.error("常駐サーバーを待ち受けられません: %s（設定『サーバー』の許す値を渡してください）", error)  # noqa: TRY400
+        return 1
+
     write_lock = threading.Lock()
-    previews = PreviewRegistry(write_lock, external=load_external_access(source))
+    previews = PreviewRegistry(
+        write_lock, external=load_external_access(source), transcriber=transcriber
+    )
     started_at = datetime.now(UTC).isoformat(timespec="seconds")
     plugin_root = PLUGIN_VERSION_FILE.parent
     version = str(read_plugin_version())

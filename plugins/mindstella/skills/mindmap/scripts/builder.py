@@ -47,6 +47,7 @@ SCRIPT_FILES = (
     "core/api.js",
     "core/edits.js",
     "core/lock.js",
+    "core/voice.js",
     "components/view-switch.js",
     "components/topbar.js",
     "components/diff-mark.js",
