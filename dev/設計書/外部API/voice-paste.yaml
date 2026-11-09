@@ -45,6 +45,7 @@ used_in:
 - plugins/mindstella/skills/mindmap/scripts/voice_paste.py
 verification:
   state: 未確認
+  detail: 2026-11-09 に確かめようとしたが、voice-paste が Windows で起動しておらず（WSL と Windows のどちらからも `127.0.0.1:47823` に接続できない）、動かせなかった。起動は利用者の操作が要る
 base_urls:
 - env: 全て
   url: http://127.0.0.1:47823
