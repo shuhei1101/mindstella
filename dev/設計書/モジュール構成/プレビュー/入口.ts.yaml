@@ -134,6 +134,33 @@ data_models:
       - name: detailExpanded
         type: Set<string>
         description: 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（`detailPanel` の `comment.edit.on.fold` で足し引きし、`comment.edit.expanded` で渡す。描き直し・本文の書き換え・詳細の全画面との行き来では保ち、詳細パネルで別の項目へ移るかパネルを閉じると空にする）
+      - name: voice
+        type: VoiceState
+        description: コメント・返信の入力の音声入力の状態
+  - name: VoiceState
+    title: 音声入力の状態
+    container: plugins/mindstella/skills/mindmap/preview/app.ts
+    usecase: 音声でコメントする
+    summary: 開いている間だけ持つ録音の状態。録音は同時に 1 つで、録っている入力（`key`）にだけ `recording`・`transcribing` を渡し、ほかの入力のマイクは `idle` のまま描く。書き換えの知らせでの描き直しでは保つ
+    properties:
+      - name: availability
+        type: TranscriptionStatus | null
+        description: 最後に読んだ文字起こしの可否（読めない・まだ読んでいないときは `null` で、マイクは押せるまま描く）
+      - name: key
+        type: string | null
+        description: 録っている入力の `formKey`（録っていなければ `null`）
+      - name: phase
+        type: "'idle' | 'recording' | 'transcribing'"
+        description: 録音の段階
+      - name: recording
+        type: Recording | null
+        description: 録音中の 1 回分
+      - name: elapsed
+        type: number
+        description: 録音を始めてからの秒数（1 秒ごとに進めて、録っている入力だけを描き直す）
+      - name: ticket
+        type: number
+        description: 録音を始めるたびに 1 進める番号。文字起こしの結果が返ったとき、押したときの番号と違えば結果を捨てる
   - name: DisplayState
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -421,7 +448,7 @@ functions:
          - 読めない場合、本文にそのメッセージを出して終える
          - データがある場合、配る書き出しとしてそれを記録にし、コメントのボタン・一覧・入力・選んだ箇所の入口と接続の状態を出さない（以降の 2・6・7・8 をしない）。表示の設定は出し、「ワークスペースの既定にする」を出さない（`can_save: false`）
          - `null` の場合、サーバーの配信として 2 へ進む
-      2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）
+      2. 記録とレビュー中を読む（`fetchRecords`、`commentApi().read`。読んだコメントは全て `checked` に入れる）。待たずに文字起こしの可否を読み（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて入力を描き直す
          - 記録が届かない・読めない場合、接続の状態だけを出したトップバーと、読めなかった理由を本文に出し、書き換えの知らせのつなぎ直しを待つ（13 へ）
       3. 索引を作る（`buildIndex`）。端末の設定を読み（`loadPrefs`）、表示を読み分けて（`resolveDisplay`。記録の `settings.display`）テーマを当てる。ページの題（`document.title`）を `{設定の summary} | mindstella` にする
          - 「前回開いてから」の始まりを決める（`resolveSince`。読んだ記録の先頭のまとまりの `until_seq` を渡す）
@@ -439,6 +466,12 @@ functions:
          - 「箇所を外す」では `pendingLoc` から外し、書きかけは箇所を持たない向けた先へ移す
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
          - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を描き直して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
+         - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、それ以外は `idle`
+         - 「録音を始める」では、別の入力で録っていれば何もしない。`startRecording` で始め、`key`・`recording`・`phase: recording`・`elapsed: 0` にして `ticket` を進め、1 秒ごとに `elapsed` を進める。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
+         - 「録音をキャンセル」では `recording.cancel()` し、`key`・`recording` を `null`・`phase: idle` にして入力欄の中身を変えない
+         - 「文字起こし」では `phase: transcribing` にし、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `send`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違うか録っていた入力が無くなっていれば結果を捨てる。そうでなければ `phase: idle` に戻し、`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを消し（`saveDraft` を空で）、スレッドを読み直す。`inserted` は中身を書き換えてカーソルを置き `status: inserted`、`failed` は中身を書き換えて `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
+         - 「押せないマイクを押す」では `status` を `voice-failed`（`voiceReason` と同じ文）にし、`micSupported()` が真なら文字起こしの可否を読み直して `availability` に入れる（使えるようになっていれば `idle` で描き直す。録音は始めない）
+         - 録っている入力が無くなる・向けた先が変わるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、`recording` があれば `cancel()` し、`key`・`recording` を `null`・`phase: idle` にして `ticket` を進める（文字起こし中の結果を捨てる）。書き換えの知らせでの描き直しでは止めない
          - 項目を指さない入力は、幅 720px 以下でフォーカスが無く本文が空なら `collapsed`
       7. 選んだ箇所の入口を次で扱う
          - `pointerup` と、ポインターを押していない間の `selectionchange` で、全画面を開いている間は全画面の中、それ以外は詳細パネルの中の選択から箇所を求め（`selectionLocation`）、あれば入口を出し、無ければ閉じる（図の拡大を開いている間は出さない）
@@ -494,6 +527,7 @@ functions:
          - 保存待ちのパネルの「開く」では、項目は詳細パネルを編集の表示で開き、`settings` は設定の画面を開く（幅 900px 以下ではパネルを閉じ、詳細パネルを閉じたら開き直す）。「取り消す」では `editApi().remove` して外した ID を `blocked` からも外し、読み直して描き直す
          - 「まとめて保存する」では `status` を `saving` にして `editApi().save` を呼ぶ。200 なら `blocked` を空にしてパネルを閉じ、`editing` を `null`、`toast` を「{送った件数} 件を保存しました。」にして記録と保存待ちの編集を読み直す。409 なら `blocked` に結果を入れてパネルを開いたまま書き込めない編集の知らせへフォーカスを移す。届かないときは `offline` にする。どの場合も `idle` に戻してから描き直す（`offline` は次に保存するまで残す）
          - 表示の設定の「設定を編集する」では表示の設定を閉じ、`workspaceOpen` を真にする（幅 900px 以下では保存待ちのパネルも閉じる）。設定の画面の「閉じる」では偽にして開く前の画面を描く
+         - 設定の画面を開くたびに文字起こしの可否を読み直し（`voiceApi().status`）、返ったら `VoiceState.availability` に入れて `workspaceSettings` の `transcription` に渡して描き直す（読めなければ `null`）
          - 保存待ちの編集の読み取り（`editApi().read`。2・13 と、溜めた・取り消した・保存した後）は送った順に `EditState.editsReadSeq` で番号を振る。届いた読み取りの番号が `editsAppliedSeq` より小さければ結果を `edits` に当てずに捨て、当てたら `editsAppliedSeq` をその番号にする
          - 編集の表示・設定の画面の `on.change` では、`editApi().add` を送る前に値を `EditState.sentEdits` に `settledSeq` を `null` にして入れる（`option-add` は入れず、`optionDrafts` の書きかけを溜められるまで残す）。溜められた（`add` が返った）ら、そのキーの値が入れた値のままのときだけ `settledSeq` をその時点の `editsReadSeq` + 1 にする。断られた・届かないときは外さず、理由と一緒に入力欄に残す。`sentEdits` から外すのは次の 3 つだけ: 保存待ちの編集の読み取りを `edits` に当てたら、当てた `edits` に同じキーで同じ値（JSON にして比べる）の編集があるキーと、当てた読み取りの番号が `settledSeq` 以上のキー（その読み取りがサーバーの今の保存待ちを表すため、`edits` にそのキーの編集が無い・ほかの端末の値で載っているも含めて値によらず）を外す／「取り消す」で外した編集と同じキーを外す／「まとめて保存する」が 200 なら全て外す
          - 編集の表示の `on.draft` では、`EditState.optionDrafts` のその項目の分の記号の中身を書き換える（無ければ足す）。足したときだけ描き直し、その案の中身の入力欄へフォーカスを移す（打つたびには描き直さない）。その記号の `option-add` を溜められたら（足す項目では、その記号の案を加えた `value.options` の `item-add` を溜められたら）書きかけから外す。`editing` を変えたとき（追加の入力で仮の ID が振られたときを除く）・差分の表示に移ったとき・保存できたときは `optionDrafts` を空にする。詳細パネルの `form` に、その項目の書きかけを `optionDrafts` で渡す

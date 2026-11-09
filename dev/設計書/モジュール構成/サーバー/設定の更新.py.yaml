@@ -51,13 +51,13 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: '`update_settings` の `settings` に渡せるキー'
-    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit", "display")
+    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit", "display", "transcription")
   - name: REMOVABLE_KEYS
     title: null で消せる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: 値が `null` のときに消してよい任意のキー
-    value: ("description", "goal", "links", "history_limit", "display")
+    value: ("description", "goal", "links", "history_limit", "display", "transcription")
 functions:
   - name: validate_settings_input
     title: 設定の更新の引数の確かめ

@@ -42,7 +42,7 @@ endpoints:
     condition: ジョブが無い（voice-paste を再起動した・終わったジョブを持つ件数を超えた）か、Linux で動いている
 lead: 録音を文字に起こし、用語集で補正して返す、同じ端末で動く音声入力のサービス（shuhei1101/voice-paste の常駐アプリ）。mindstella の常駐サーバーが、文字起こしのインターフェースの実装の 1 つとして呼ぶ。
 used_in:
-- plugins/mindstella/skills/mindmap/scripts/transcriber.py
+- plugins/mindstella/skills/mindmap/scripts/voice_paste.py
 verification:
   state: 未確認
 base_urls:

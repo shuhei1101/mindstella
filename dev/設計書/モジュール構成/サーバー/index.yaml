@@ -47,3 +47,7 @@ items:
     summary: タグの表記の正規化・近いタグの候補
   - page: 保存待ちの編集.py.yaml
     summary: 保存待ちの編集の読み書き・取り消し・まとめて保存
+  - page: 文字起こし.py.yaml
+    summary: 配信が依存する文字起こしのインターフェース・失敗の種類・環境変数で選ぶ実装の引き当て・使えるかの確かめ
+  - page: voice-pasteの文字起こし.py.yaml
+    summary: 文字起こしのインターフェースの voice-paste の実装（プリセットの一覧・音声の依頼・終わるまでの待ち）

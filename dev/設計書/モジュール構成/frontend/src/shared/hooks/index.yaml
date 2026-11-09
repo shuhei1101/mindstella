@@ -18,3 +18,5 @@ items:
   summary: 表示する種類を返す
 - page: use-comments.ts.yaml
   summary: レビュー中の書き込みを溜める・書き換える・消す・まとめて送る mutation と、書きかけの保存
+- page: use-voice-input.ts.yaml
+  summary: 文字起こしの可否の query と、コメント・返信の入力の録音・文字起こし・すぐ送るの props

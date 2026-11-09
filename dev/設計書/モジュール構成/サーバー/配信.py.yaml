@@ -1,9 +1,9 @@
 title: サーバー / 配信
-lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込みを受け付ける。まとめて送った後は Claude Code へ入力する。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と読み書きと検証に依存する。
+lead: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送るを受け付ける。まとめて送った後とすぐ送った後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・コメントの受け付け・最後に検査に通った設定と再読み込み
+    serve.py   配信の台帳・待ち受け・要求の振り分け・画面と記録・書き換えの知らせ・コメントの受け付け・最後に検査に通った設定と再読み込み・文字起こしの受け付け
   ```
 diagrams:
   - name: 全体
@@ -20,6 +20,7 @@ diagrams:
         class Claude Codeへの入力
         class 外から見る設定
         class フックの呼び出し
+        class 文字起こしのインターフェース
         配信の台帳 --> 配信 : ワークスペースごとに 1 つ
         配信の台帳 --> 外から見る設定
         配信の台帳 --> フックの呼び出し : 立てたとき・止めるとき
@@ -27,7 +28,8 @@ diagrams:
         要求の受け口 --> ビルド : 雛形・記録
         要求の受け口 --> コメント : /api/comments・/api/drafts
         要求の受け口 --> スレッド : /api/threads
-        要求の受け口 --> Claude Codeへの入力 : まとめて送った後
+        要求の受け口 --> Claude Codeへの入力 : まとめて送った後・すぐ送った後
+        要求の受け口 --> 文字起こしのインターフェース : /api/transcription・/api/transcriptions
       ```
 constants:
   - name: LISTEN_HOST
@@ -54,6 +56,36 @@ constants:
     usecase: 共通
     summary: 書き込む要求の本文を読む上限。`Content-Length` がこれを超えたら読まずに 400（非機能要件の「送信の本文の長さ」の根拠）
     value: '131072'
+  - name: MAX_AUDIO_BYTES
+    title: 音声の本文の上限
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    summary: '`POST /api/transcriptions` の本文を読む上限（非機能要件「録音の大きさの上限」）。超えたら 413'
+    value: '80000000'
+  - name: AUDIO_READ_CHUNK
+    title: 音声を読む単位
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    summary: '`Content-Length` を持たない音声の本文を、上限まで数えながら読む 1 回のバイト数'
+    value: '65536'
+  - name: TRANSCRIPTION_PATH
+    title: 文字起こしの可否のパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    summary: GET で文字起こしの可否を返す（インターフェース定義『文字起こしの可否』）
+    value: '"/api/transcription"'
+  - name: TRANSCRIPTIONS_PATH
+    title: 音声の文字起こしのパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    summary: POST で音声を受けて文字起こしする（インターフェース定義『音声の文字起こし』）
+    value: '"/api/transcriptions"'
+  - name: SEND_NOW_PATH
+    title: すぐ送るのパス
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    summary: POST で書き込み 1 件をすぐスレッドへ送る（インターフェース定義『書き込みをすぐ送る』）
+    value: '"/api/comments/send-now"'
   - name: PAGE_PATH
     title: 画面のパス
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -128,7 +160,7 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ。文字起こしのインターフェースもキーワード引数 `transcriber` で受け取る（既定は `None`）
     kind: クラス
     properties:
       - name: _servers
@@ -151,6 +183,10 @@ classes:
         type: InputTargets
         access: 内部 (_)
         description: ワークスペースごとの Claude Code への入力の宛先（`InputTargets()`。立てる配信へ渡す。配信の前に受けたセッションも持つ）
+      - name: _transcriber
+        type: Transcriber | None
+        access: 内部 (_)
+        description: 文字起こしのインターフェース（モジュール構成『文字起こし』。立てる配信へ渡す）
     methods:
       - name: start
         title: 配信を立てる
@@ -169,7 +205,7 @@ classes:
           1. `_guard` を取り、`_servers` にあればその URL と `False` を返す（検査しない・フックを呼ばない）
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
              - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
-          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
+          3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` と `_transcriber` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
              - `[INFO]` 配信を立てた（ワークスペース、URL）
           4. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
           5. URL と `True` を返す
@@ -340,7 +376,7 @@ classes:
       - name: do_GET
         title: GET の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads` を処理の関数へ振り分ける'
+        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける'
         returns:
           type: None
           description: '-'
@@ -356,11 +392,12 @@ classes:
              - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
              - `/api/threads` の場合、スレッドを返す（`threads_response`）
              - `/api/edits` の場合、保存待ちの編集を返す（`edits_response`）
+             - `/api/transcription` の場合、文字起こしの可否を返す（`transcription_response`）
              - それ以外は 404 を返す
       - name: do_POST
         title: POST の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/api/comments` と `/api/comments/send` を受け付けの関数へ、`/api/opened` を前回開いた日時の関数へ、`/api/config/reload` を設定の再読み込みの関数へ渡す'
+        summary: '`Host` を確かめ、`/api/comments` と `/api/comments/send` と `/api/comments/send-now` を受け付けの関数へ、`/api/opened` を前回開いた日時の関数へ、`/api/config/reload` を設定の再読み込みの関数へ、`/api/transcriptions` を文字起こしの関数へ渡す'
         returns:
           type: None
           description: '-'
@@ -372,6 +409,8 @@ classes:
              - `/api/edits/save` の場合、本文を読まずに保存待ちの編集をまとめて保存する（`edits_save_response`）
              - `/api/edits` の場合、`add_edit` を受け付けの処理にする（`handle` は `add_edit` の本文と、新しく溜めたら 201・書き換えたか外したら 200 を組にして返す）
              - `/api/threads/{id}/seen`（`id` は `/` を含まない）の場合、本文を読まずにそのスレッドを利用者の既読にする（`seen_response`）
+             - `/api/transcriptions` の場合、`Content-Length` があれば `MAX_AUDIO_BYTES` と比べ、超えれば読まずに 413 を返す。無ければ `AUDIO_READ_CHUNK` ずつ読みながら数え、`MAX_AUDIO_BYTES` を超えた時点で読むのをやめて 413 を返す。読んだ本文で文字起こしする（`transcribe_response`。3・4 は通らない）
+             - `/api/comments/send-now` の場合、`send_now` を受け付けの処理にし、`/api/comments/send` と同じく `entered` を足す処理を `after` にする（件数は 1）。応答の本文は `{sent, thread, post, entered}`
              - `/api/comments` なら `add_comment`、`/api/comments/send` なら `send_comments` を受け付けの処理にする。それ以外は 404 を返す
              - `/api/comments/send` は、`context.input_targets` があれば `context.input_targets.enter(context.root, len(items))` の結果、無ければ偽を `entered` として本文に足す処理を `after` にする（書き換えの鍵を外してから入力する。`items` には二重に送らないで既にあった書き込みも含める）。応答の本文は `{sent, items: [{comment, thread, post}], entered}`
           3. `Content-Length` が無いか `MAX_REQUEST_BYTES` を超えれば、本文を読まずに 400 を返す
@@ -394,7 +433,7 @@ classes:
         process: |-
           1. `Host` が合わなければ 403 を返す
           2. パスで分ける
-             - `/api/comments/{id}`（`id` は `/` を含まず `send` でない）なら `update_comment` を `id` で受け付けの処理にする
+             - `/api/comments/{id}`（`id` は `/` を含まず `send`・`send-now` でない）なら `update_comment` を `id` で受け付けの処理にする
              - `/api/threads/{id}`（`id` は `/` を含まない）なら `patch_thread_status` を `id` で受け付けの処理にする
              - それ以外は 404 を返す
           3. `do_POST` と同じく本文の大きさを確かめて読み、受け付ける（`write_response`。成功は 200）
@@ -529,6 +568,10 @@ data_models:
         type: InputTargets | None
         default: None
         description: ワークスペースごとの Claude Code への入力の宛先（モジュール構成『ClaudeCodeへの入力』）。`None` ならまとめて送った後に入力しない
+      - name: transcriber
+        type: Transcriber | None
+        default: None
+        description: 文字起こしのインターフェース（モジュール構成『文字起こし』）。`None` なら文字起こしの可否は `stopped`
   - name: Response
     title: 応答
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
@@ -607,13 +650,19 @@ functions:
         default: None
         passing: keyword
         description: ワークスペースごとの Claude Code への入力の宛先（`ServeContext` に持たせる）
+      - name: transcriber
+        type: Transcriber | None
+        required: false
+        default: None
+        passing: keyword
+        description: 文字起こしのインターフェース（`ServeContext` に持たせる）
     returns:
       type: PreviewServer
       description: 立てた配信
     process: |-
       1. `ThreadingHTTPServer((LISTEN_HOST, port), PreviewHandler)` を作り、`daemon_threads` を真にする
          - `OSError` が起きた場合、`ServeFailedError` を送る
-      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_targets` で `ServeContext` を作り、待ち受けの `context` に持たせる
+      2. 割り当てられたポート・`SettingsHolder(settings)`・`allowed_hosts`・`input_targets`・`transcriber` で `ServeContext` を作り、待ち受けの `context` に持たせる
       3. `serve_forever` をデーモンのスレッドで動かし、`http://127.0.0.1:{ポート}{PAGE_PATH}` とポートを持つ `PreviewServer` を返す
     exceptions:
       - name: ServeFailedError
@@ -1628,5 +1677,124 @@ functions:
         condition: 空の一時フォルダで `/`
         mock: なし（一時ディレクトリ）
         expected: 500 の問題の応答
+  - name: transcription_response
+    title: 文字起こしの可否の応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    scope: public
+    summary: 文字起こしを使えるかと理由・プリセットの候補・ワークスペースの文字起こしの設定を返す（インターフェース定義『文字起こしの可否』）
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+    returns:
+      type: Response
+      description: 200 と `{available, reason, detail, presets, action, preset}`、問題の応答
+    process: |-
+      1. `Origin` が合わなければ 403 を返す（`check_origin`）
+      2. `config.yaml` を読んで検査する（`check_settings`）
+         - 問題がある場合、問題の行を改行でつないだ `detail` の 422 を返す
+         - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
+      3. 文字起こしのインターフェースに尋ねる（`check_availability(context.transcriber)`。鍵を取らない）
+      4. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で、3 の値と `transcription.action`（無ければ `send`）・`transcription.preset`（無ければ `null`）を返す
+    unit_tests:
+      - name: test_transcription_response
+        case: 正常
+        summary: 使えるときは候補と設定を返す
+        condition: '`transcription: {action: insert, preset: 開発}` のワークスペース。`presets()` が `["一般", "開発"]` を返す偽の実装を `context.transcriber` に入れる'
+        mock: 偽の実装
+        expected: '200 で `{available: true, reason: null, detail: null, presets: [一般, 開発], action: insert, preset: 開発}`、`Cache-Control: no-store`'
+      - name: test_transcription_response_when_unavailable
+        case: 正常
+        summary: 使えないときも 200 で理由を返し、設定が無ければ既定
+        condition: '`transcription` を持たないワークスペース。`presets()` が `TranscriberStoppedError` を送る偽の実装'
+        mock: 偽の実装
+        expected: '200 で `available: false`・`reason: stopped`・`presets: []`・`action: send`・`preset: null`。本文に `voice-paste` を含まない'
+      - name: test_transcription_response_when_rejected
+        case: 異常
+        summary: 送り元の違いと崩れた設定
+        condition: '`parametrize`: `origin="https://attacker.example"` / `transcription.action` が `paste` の `config.yaml`'
+        mock: 偽の実装
+        expected: '403 / 422（`detail` に `config.yaml: transcription.action`）'
+        exception: 送り元の違い・スキーマに合わない
+  - name: transcribe_response
+    title: 音声の文字起こしの受け付け
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/serve.py
+    usecase: 音声でコメントする
+    scope: public
+    summary: 受けた音声を文字起こしのインターフェースへ渡し、起こした文字を返す（インターフェース定義『音声の文字起こし』）。ワークスペースを書き換えないため、書き換えの鍵を取らない
+    args:
+      - name: context
+        type: ServeContext
+        required: true
+        passing: positional
+        description: 配信の文脈
+      - name: content_type
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Content-Type`'
+      - name: origin
+        type: str | None
+        required: true
+        passing: keyword
+        description: '`Origin`'
+      - name: body
+        type: bytes
+        required: true
+        passing: keyword
+        description: 読んだ音声（`MAX_AUDIO_BYTES` 以下。上限の確かめは `PreviewHandler.do_POST`）
+    returns:
+      type: Response
+      description: 200 と `{text}`、問題の応答
+    process: |-
+      1. `Content-Type` の `;` より前（小文字）が `audio/` で始まらなければ 415 を返す
+      2. `Origin` が合わなければ 403 を返す（`check_origin`）
+      3. 本文が空なら 400 を返す
+      4. `config.yaml` の `transcription.preset` を読む（`check_settings`。問題があれば 422）
+      5. `context.transcriber` が `None` なら、`reason: stopped` の 503 を返す
+      6. `context.transcriber.transcribe(本文, Content-Type, preset=プリセット)` を呼ぶ（再試行しない）
+         - `TranscriberStoppedError` の場合、`reason: stopped` と `UNAVAILABLE_DETAILS["stopped"]` の 503 を返す
+         - `TranscriberUnsupportedError` の場合、`reason: unsupported` と `UNAVAILABLE_DETAILS["unsupported"]` の 503 を返す
+         - `TranscriptionFailedError` の場合、`FAILED_DETAIL` の 502 を返す
+         - `TranscriptionTimeoutError` の場合、`FAILED_DETAIL` の 504 を返す
+         - どれも `[WARNING]` 文字起こしできなかった（例外の種類・メッセージ。音声は記録しない）
+      7. 200・`application/json; charset=utf-8` で `{text}` を返す
+    unit_tests:
+      - name: test_transcribe_response
+        case: 正常
+        summary: 音声とプリセットを渡して起こした文字を返す
+        condition: '`transcription.preset: 開発` のワークスペース。`Content-Type: audio/webm;codecs=opus`・本文 `b"abc"`。`transcribe` が受けた引数を控えて `案 A にする` を返す偽の実装'
+        mock: 偽の実装
+        expected: '200 で `{text: 案 A にする}`。偽の実装が `(b"abc", "audio/webm;codecs=opus", preset="開発")` で 1 回呼ばれ、ワークスペースのファイルの更新日時が呼ぶ前と同じ'
+      - name: test_transcribe_response_when_no_preset
+        case: 正常
+        summary: プリセットが無ければ None を渡す
+        condition: '`transcription` を持たないワークスペース'
+        mock: 偽の実装
+        expected: '偽の実装が `preset=None` で呼ばれる'
+      - name: test_transcribe_response_when_transcriber_failed
+        case: 異常
+        summary: 文字起こしの失敗の種類をステータスに分ける
+        condition: '`parametrize`: `transcribe` が `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriptionFailedError("busy")` / `TranscriptionTimeoutError` を送る / `context.transcriber` が `None`'
+        mock: 偽の実装
+        expected: '503・`reason: stopped` / 503・`reason: unsupported` / 502（`detail` が `FAILED_DETAIL` で `busy` を含まない）/ 504 / 503・`reason: stopped`'
+        exception: 文字起こしの失敗
+      - name: test_transcribe_response_when_rejected
+        case: 異常
+        summary: 形の違う要求は文字起こしへ渡さない
+        condition: '`parametrize`: `Content-Type: application/json` / `origin="https://attacker.example"` / 空の本文'
+        mock: 偽の実装
+        expected: 415 / 403 / 400。どれも偽の実装が呼ばれない
+        exception: 形の違う要求
 test_files:
   - tests/unit/scripts/test_serve.py
