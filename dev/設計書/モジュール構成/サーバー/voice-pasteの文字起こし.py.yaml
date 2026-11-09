@@ -303,3 +303,5 @@ constants:
         value: mp3
       - key: audio/wav
         value: wav
+test_files:
+  - tests/unit/scripts/test_voice_paste.py

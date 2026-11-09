@@ -114,3 +114,5 @@ functions:
         mock: なし
         expected: '`InvalidTranscriberError` で、`key` が誤っていた環境変数の名前、`value` がその値'
         exception: InvalidTranscriberError
+test_files:
+  - tests/unit/scripts/test_transcriber_registry.py
