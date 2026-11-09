@@ -32,9 +32,9 @@ export const installFakeMedia = (failure?: string): FakeMedia => {
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
     value: {
-      getUserMedia: async () => {
-        if (failure !== undefined) throw new DOMException("x", failure);
-        return { getTracks: () => [track] };
+      getUserMedia: () => {
+        if (failure !== undefined) return Promise.reject(new DOMException("x", failure));
+        return Promise.resolve({ getTracks: () => [track] });
       },
     },
   });
