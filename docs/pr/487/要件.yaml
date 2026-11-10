@@ -80,10 +80,178 @@ docs:
     updated_at: '2026-11-10T18:22:08.686808+00:00'
   - page: docs/リファレンス/コマンド.md
     new: false
-    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）。docs/ の他の 6 ページと dev/設計書/デザイン方針.md も同じ'
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
     status: done
     updated_by: planner
     updated_at: '2026-11-10T18:22:12.473870+00:00'
+  - page: dev/設計書/デザイン方針.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: docs/はじめに/コアコンセプト/話し合いの進め方.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: docs/はじめに/変更履歴.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: docs/リファレンス/スキル.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: docs/リファレンス/ワークスペースの書式.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: docs/リファレンス/動作環境.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: docs/使い方/プレビューを見る.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/components/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/decisions/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/detail-full/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/detail-panel/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/docs/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/graph/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/overview/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/records/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/search/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/settings-panel/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/pages/tasks/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/126/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/21/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/325/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/52/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/63/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/79/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/89/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/refs/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
+  - page: dev/mock/styles/index.md
+    new: false
+    change: '6 行以上の表を <!-- table: data --> で包む（規約『ドキュメント管理』の表の種類）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T18:33:41.373760+00:00'
 scope_out:
   - item: v0.3.0 より後の配布物（図を mdmark の部品にする Schema・シーケンス図のデータ化）への追従
     reason: 追従するバージョンの範囲が v0.2.0..v0.3.0 で、後のバージョンは別の Issue がこの Issue を依存に持つ
@@ -97,3 +265,6 @@ scope_out:
   - item: v0.3.0 の設計書の検証・publish と dev-docs.yaml の目次の paths（docs/**/index.yaml）が、docs/pr/{PR 番号}/反映作業/index.yaml を目次として扱い、items・summary が無い誤りを出す（publish は README.md も生成する）
     reason: PR ドキュメントを docs/pr/ に置く今の構成と v0.3.0 の検証器の前提（dev/pr/）の食い違いで、文書を docs/ の種類のフォルダへ移す作業で dev-docs.yaml の paths と検証器のバージョンが変わる
     plan: '#413'
+  - item: docs/リファレンス/スキル.md のタイトル直下の 1 行が、同階層 index.yaml の行の summary と一致していない
+    reason: 規約『ドキュメント管理』の「タイトル直下に、同階層 index.yaml の行の summary と同じ 1 行を置く」から外れている。v0.2.0 からある決まりで、今回の要望（v0.3.0 への追従）に含まれない
+    plan: '#488'
