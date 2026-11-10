@@ -7,6 +7,7 @@ MCP サーバーが `preview_url` で配る URL を開き、ハッシュで画�
 from __future__ import annotations
 
 from pathlib import Path
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
@@ -27,11 +28,13 @@ from preview_fixture_types import (
     BODY_WITH_DIAGRAM,
     MAIN_SELECTOR,
     OpenPreview,
+    StartVoicePreview,
     WritePreview,
     WriteReviewPreview,
     WriteSamplePreview,
 )
 from preview_removed_helpers import build_removed_workspace
+from integration.server.transcriber_helpers import FakeMode, FakeTranscriber, bind_closed_port
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -39,6 +42,7 @@ from workspace_fixtures import (
     MakePost,
     MakeThread,
     MakeWorkspace,
+    StartServer,
     WriteComments,
     WriteDrafts,
     WriteEdits,
@@ -532,3 +536,58 @@ def spa_comments_preview(
             free_comment(make_comment("C-43", body="了解", thread="TH-1", created="2026-10-12T04:10:00+00:00")),
         ),
     )
+
+
+# 文字起こしのサービスの URL を渡す環境変数
+TRANSCRIBER_URL_ENV = "MINDSTELLA_TRANSCRIBER_URL"
+
+
+@pytest.fixture
+def start_fake_transcriber() -> Iterator[Callable[[FakeMode], FakeTranscriber]]:
+    """偽の文字起こしのサービスを起動する関数を返し、テストの後で全て止める。"""
+    started: list[FakeTranscriber] = []
+
+    def _start(mode: FakeMode) -> FakeTranscriber:
+        """振る舞いの種類で偽のサーバーを空きポートに起動する。"""
+        fake = FakeTranscriber(mode=mode)
+        fake.start()
+        started.append(fake)
+        return fake
+
+    yield _start
+    for fake in started:
+        fake.stop()
+
+
+@pytest.fixture
+def start_voice_preview(
+    make_workspace: MakeWorkspace,
+    write_threads: WriteThreads,
+    start_server: StartServer,
+) -> StartVoicePreview:
+    """文字起こしのサービスの URL を環境変数に入れて常駐サーバーを起動し、ワークスペースを配信する関数を返す。"""
+
+    def _start(
+        transcriber_url: str,
+        *items: dict[str, Any],
+        threads: tuple[dict[str, Any], ...] = (),
+        settings: dict[str, Any] | None = None,
+    ) -> tuple[str, Path]:
+        """項目・スレッド・設定を書いたワークスペースを配信し、配信の URL とフォルダを返す。"""
+        root = make_workspace(*items, settings=settings)
+        if threads:
+            write_threads(root, *threads)
+        server = start_server(extra_env={TRANSCRIBER_URL_ENV: transcriber_url})
+        result = server.call("preview_url", workspace=str(root))
+        assert result.is_error is False, result.text
+        assert result.data is not None
+        return str(result.data["url"]), root
+
+    return _start
+
+@pytest.fixture
+def unreachable_transcriber_url() -> Iterator[str]:
+    """誰も待ち受けない文字起こしのサービスの URL を返し、テストの間はそのポートを押さえておく。"""
+    held = bind_closed_port()
+    yield f"http://127.0.0.1:{held.getsockname()[1]}"
+    held.close()

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from preview_edit_helpers import wait_edits_match
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import wait_transcription_status
+
 from typing import Any
 
 import pytest
@@ -147,3 +151,75 @@ def test_move_target_visible(page: Page, write_preview: WritePreview, make_item:
     # 検証
     expect(page.get_by_text("付け替え先を選ぶと保存待ちに入ります。")).to_have_count(0)
     expect(page.locator("[data-key=phases] [title=保存待ち]")).to_have_count(1)
+
+
+# 保存待ちの編集に、文字起こしの設定の編集が溜まったか（arg は action と preset）
+TRANSCRIPTION_EDIT_MATCH_JS = (
+    "(items, arg) => items.some(e => e.key === 'transcription'"
+    " && e.value.action === arg.action && e.value.preset === arg.preset)"
+)
+
+# 用語集のプリセットの下のヒント
+PRESET_HINT = "#pe-ws-transcription-preset-hint"
+
+
+def _open_voice_settings(
+    page: Page, start_voice_preview: _StartVoicePreview, transcriber_url: str, settings: dict[str, Any]
+) -> None:
+    """文字起こしのサービスの URL を渡して配信し、文字起こしの可否を取得し終えた設定の画面を開く。"""
+    url, _ = start_voice_preview(transcriber_url, settings=settings)
+    with wait_transcription_status(page):
+        open_spa(page, url, "?tab=settings")
+
+
+def test_transcription(
+    page: Page,
+    start_voice_preview: _StartVoicePreview,
+    start_fake_transcriber: Any,
+    valid_settings: dict[str, Any],
+) -> None:
+    """文字起こし後の挙動と用語集のプリセットを選ぶと、もう一方の値を保った transcription を 1 件溜める。候補は文字起こしの可否の presets（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    _open_voice_settings(
+        page, start_voice_preview, fake.url, {**valid_settings, "transcription": {"action": "insert", "preset": "開発"}}
+    )
+    preset = page.get_by_label("用語集のプリセット", exact=True)
+    # 検証（今の値と候補）
+    expect(page.get_by_role("group", name="音声入力")).to_be_visible()
+    expect(page.get_by_role("radio", name="入力欄へ挿入する")).to_be_checked()
+    expect(preset).to_have_value("開発")
+    assert preset.locator("option").all_inner_texts() == ["サービスの既定", "一般", "開発"]
+    expect(page.locator(PRESET_HINT)).to_have_text("文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。")
+    # 実行（文字起こし後の挙動）
+    page.get_by_role("radio", name="送信する").check()
+    # 検証
+    wait_edits_match(page, TRANSCRIPTION_EDIT_MATCH_JS, {"action": "send", "preset": "開発"})
+    # 実行（用語集のプリセット）
+    preset.select_option("一般")
+    # 検証
+    wait_edits_match(page, TRANSCRIPTION_EDIT_MATCH_JS, {"action": "send", "preset": "一般"})
+
+
+def test_transcription_when_service_stopped(
+    page: Page,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+    valid_settings: dict[str, Any],
+) -> None:
+    """文字起こしのサービスが使えないときは、用語集のプリセットを今の値だけにして押せなくし、理由の文を出す。文字起こし後の挙動は書き換えられるまま（正常系）。"""
+    # 準備・実行
+    _open_voice_settings(
+        page,
+        start_voice_preview,
+        unreachable_transcriber_url,
+        {**valid_settings, "transcription": {"action": "send", "preset": "開発"}},
+    )
+    # 検証
+    preset = page.get_by_label("用語集のプリセット", exact=True)
+    expect(preset).to_be_disabled()
+    assert preset.locator("option").all_inner_texts() == ["開発"]
+    expect(page.locator(PRESET_HINT)).to_have_text(
+        "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。"
+    )
+    expect(page.get_by_role("radio", name="入力欄へ挿入する")).to_be_enabled()

@@ -11,8 +11,17 @@ from pathlib import Path
 
 import pytest
 
-from .fixture_types import CallTool, FindOldPython, LockDirs
+from .fixture_types import (
+    CallTool,
+    FindOldPython,
+    LockDirs,
+    McpServer,
+    StartFakeTranscriber,
+    StartServer,
+    StartVoiceServer,
+)
 from .http_helpers import EventStream
+from .transcriber_helpers import FakeMode, FakeTranscriber, bind_closed_port, override_sitecustomize
 
 # 下限より古い Python を探す候補（下限は 3.12）
 OLD_PYTHON_NAMES = ("python3.8", "python3.9", "python3.10", "python3.11")
@@ -84,3 +93,51 @@ def open_events() -> Iterator[Callable[[str], EventStream]]:
     yield _open
     for stream in opened:
         stream.close()
+
+
+# 文字起こしのサービスの URL を渡す環境変数
+TRANSCRIBER_URL_ENV = "MINDSTELLA_TRANSCRIBER_URL"
+
+
+@pytest.fixture
+def start_fake_transcriber() -> Iterator[StartFakeTranscriber]:
+    """偽の文字起こしのサービスを立てる関数を返し、テストの後で全て止める。"""
+    started: list[FakeTranscriber] = []
+
+    def _start(mode: FakeMode) -> FakeTranscriber:
+        """振る舞いの種類で偽のサーバーを空きポートに立てる。"""
+        fake = FakeTranscriber(mode=mode)
+        fake.start()
+        started.append(fake)
+        return fake
+
+    yield _start
+    for fake in started:
+        fake.stop()
+
+
+@pytest.fixture
+def start_voice_server(start_server: StartServer, tmp_path: Path) -> StartVoiceServer:
+    """文字起こしのサービスの URL を環境変数に入れて常駐サーバーを立てる関数を返す。"""
+
+    def _start(transcriber_url: str, overrides: dict[str, dict[str, object]] | None = None) -> McpServer:
+        """overrides（モジュール名 → 定数名 → 値）があれば、読み込んだ後に差し替える sitecustomize を通して立てる。"""
+        extra_env = {TRANSCRIBER_URL_ENV: transcriber_url}
+        # 上限を差し替える: sitecustomize を置いたフォルダを PYTHONPATH に入れる
+        if overrides:
+            hook_dir = tmp_path / "transcriber-overrides"
+            hook_dir.mkdir(exist_ok=True)
+            (hook_dir / "sitecustomize.py").write_text(override_sitecustomize(overrides), encoding="utf-8")
+            extra_env["PYTHONPATH"] = os.pathsep.join(
+                path for path in (str(hook_dir), os.environ.get("PYTHONPATH", "")) if path
+            )
+        return start_server(extra_env=extra_env)
+
+    return _start
+
+@pytest.fixture
+def unreachable_transcriber_url() -> Iterator[str]:
+    """誰も待ち受けない文字起こしのサービスの URL を返し、テストの間はそのポートを押さえておく。"""
+    held = bind_closed_port()
+    yield f"http://127.0.0.1:{held.getsockname()[1]}"
+    held.close()

@@ -13,6 +13,7 @@ __all__ = [
     "ID_BUTTON_SIZE_JS",
     "MAIN_SELECTOR",
     "OpenPreview",
+    "StartVoicePreview",
     "WritePreview",
     "WriteReviewPreview",
     "WriteSamplePreview",
@@ -22,6 +23,8 @@ type WritePreview = Callable[..., str]
 type WriteReviewPreview = Callable[..., tuple[str, Path]]
 type WriteSamplePreview = Callable[[], str]
 type OpenPreview = Callable[..., Page]
+# 文字起こしのサービスの URL を渡して常駐サーバーを起動し、ワークスペースの配信の URL とフォルダを返す
+type StartVoicePreview = Callable[..., tuple[str, Path]]
 
 # 本文に見出しと mermaid の図を持つ本文
 BODY_WITH_DIAGRAM = """# 要件

@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+    assert_mic_ready,
+    wait_transcription_status,
+)
+from workspace_fixtures import MakeItem as _MakeItem
+
 import json
 import re
 from collections.abc import Callable
@@ -6599,3 +6607,35 @@ def test_review_row_more(served_long_review: tuple[str, Path], open_preview: Ope
         "listItem": ["list-item", "0px"],
     }
     assert "id=D-1" in page.evaluate("() => location.hash")
+
+
+def test_voice_input(
+    page: Page,
+    make_item: _MakeItem,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """コメントの入力の音声入力の状態を、文字起こしの可否で決める。使えるときはマイクのボタンを押せる（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, _ = start_voice_preview(fake.url, make_item("D-1"))
+    # 実行
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table&id=D-1")
+    # 検証
+    assert_mic_ready(page.locator("aside.panel form.send"))
+
+
+def test_voice_input_when_service_stopped(
+    page: Page,
+    make_item: _MakeItem,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """文字起こしのサービスが起動していないときは、マイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
+    # 実行
+    page.goto(f"{url}#tab=decisions&view=table&id=D-1")
+    # 検証
+    assert_mic_blocked_after_click(page.locator("aside.panel form.send"), ".send-msg")

@@ -462,3 +462,36 @@ def test_normal_when_display(
     assert after["display"] == display
     assert {key: value for key, value in after.items() if key != "display"} == before
     assert before == valid_settings
+
+
+def test_normal_when_transcription(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
+    """文字起こし後の挙動と用語集のプリセットを書き換える（正常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行
+    result = call_tool(
+        "update_settings",
+        workspace=str(root),
+        settings={"transcription": {"action": "insert", "preset": "開発"}},
+    )
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["changed"] == ["transcription"]
+    after = _read_yaml(root, "config.yaml")
+    assert (after["transcription"]["action"], after["transcription"]["preset"]) == ("insert", "開発")
+
+
+def test_error_when_transcription_action_invalid(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """send・insert のどちらでもない挙動を渡すと、何も書かない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), settings={"transcription": {"action": "paste"}})
+    # 検証
+    assert result.is_error is True
+    assert any(line.startswith("config.yaml: transcription.action") for line in result.text.splitlines())
+    assert snapshot_tree(root) == before

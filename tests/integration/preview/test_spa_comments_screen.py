@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+)
+from workspace_fixtures import MakeItem as _MakeItem
+
 import json
 from pathlib import Path
 
@@ -231,3 +237,20 @@ def test_scrim(page: Page, spa_comments_preview: tuple[str, Path]) -> None:
     box = _panel(page).bounding_box()
     assert box is not None
     assert box["width"] == NARROW_SIZE["width"]
+
+
+def test_voice_input_when_service_stopped(
+    page: Page,
+    make_item: _MakeItem,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """新しいスレッドの入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
+    open_spa(page, url, "?tab=decisions&panel=comments")
+    # 実行
+    _panel(page).get_by_role("button", name="新しいスレッド").click()
+    # 検証
+    field = page.get_by_role("textbox", name="新しいスレッド")
+    assert_mic_blocked_after_click(_panel(page).locator("form").filter(has=field), "[role=status]")

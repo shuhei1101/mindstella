@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+)
+from workspace_fixtures import MakeItem as _MakeItem
+
 from pathlib import Path
 
 import pytest
@@ -1497,3 +1503,18 @@ def test_tags_and_tag_input_in_full(
     assert group.get_by_role("button", name="データ を主題").get_attribute("aria-pressed") == "true"
     edit = read_edits_file(root)["items"][0]
     assert (edit["key"], edit["value"]) == ("tags", [{"name": "データ", "main": True}, {"name": "画面", "main": True}])
+
+
+def test_voice_input_when_service_stopped(
+    page: Page,
+    make_item: _MakeItem,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """文字起こしのサービスが起動していないときは、マイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
+    # 実行
+    page.goto(f"{url}#tab=decisions&view=table&id=D-1&full=1")
+    # 検証
+    assert_mic_blocked_after_click(page.locator("dialog.full form.send"), ".send-msg")

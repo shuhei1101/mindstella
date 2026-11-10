@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+)
+from workspace_fixtures import MakeItem as _MakeItem, MakePost as _MakePost, MakeThread as _MakeThread
+
 from pathlib import Path
 
 import pytest
@@ -946,3 +952,30 @@ def test_pending_post_more(served_long_thread: tuple[str, Path], open_preview: O
     assert page.inner_text(_post_more("C-1")) == "折りたたむ"
     assert page.get_attribute(_post_more("C-1"), "aria-expanded") == "true"
     assert page.evaluate("() => location.hash") == hash_before
+
+
+def test_voice_input_when_service_stopped(
+    open_preview: OpenPreview,
+    make_item: _MakeItem,
+    make_post: _MakePost,
+    make_thread: _MakeThread,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """返信の入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(
+        unreachable_transcriber_url,
+        make_item("D-1"),
+        threads=(make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="どちらにしますか", read=True),
+            make_post("TH-1-2", author="ai", body="案 A と案 B があります"),
+            target="D-1",
+        ),),
+    )
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    open_thread(page, "TH-1")
+    # 検証
+    assert_mic_blocked_after_click(page.locator(REPLY_FORM), ".send-msg")
