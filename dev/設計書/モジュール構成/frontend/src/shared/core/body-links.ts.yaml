@@ -74,7 +74,7 @@ functions:
     summary: コードブロックの pre をフォーカスできる要素にする
     condition: mdmark の `mount` を、mdmark と同じ属性を持つ言語指定 `json` のコードブロックと言語指定の無いコードブロック・属性を持たない字下げのコードブロック・mermaid のコードブロック・`.mdmark-html` の中の `pre` を描く代わりのものにする
     mock: 描画のライブラリ（`@/shared/adapters/libraries`）
-    expected: 範囲の外の 3 つのコードブロックの `pre` が `tabindex="0"` を持ち、`aria-label` は順に `コード: json`・`コード`・`コード`。`role` は持たない。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない
+    expected: '範囲の外の 3 つのコードブロックの `pre` が `tabindex="0"` を持ち、`aria-label` は順に `コード: json`・`コード`・`コード`。`role` は持たない。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない'
   container: frontend/src/shared/core/body-links.ts
 notes:
   単体テスト: 同じフォルダの `body-links.test.ts` に置く（knowledge の規約『フォルダ構成』）
