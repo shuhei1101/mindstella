@@ -24,6 +24,7 @@ import server
 import store
 from errors import ArgumentError, SchemaMismatchError, WorkspaceNotFoundError
 from fixture_types import MakeItem, MakeWorkspace
+from voice_paste import VoicePasteTranscriber
 
 # build_server が登録するツールの名前（インターフェース定義『MCP サーバーの起動』）
 EXPECTED_TOOL_NAMES = (
@@ -255,6 +256,39 @@ def test_main_when_external_access_set(monkeypatch: pytest.MonkeyPatch, free_por
     # 検証
     previews = spy.build_kwargs["previews"]
     assert previews._external.allowed_hosts == frozenset({"preview.example.test"})
+
+
+def test_main_when_transcriber_set(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:
+    """環境変数で選んだ文字起こしを台帳へ渡す（正常系）。"""
+    # 準備
+    _spy_stop_all(monkeypatch)
+    spy = _MainSpy(_FakeHttpServer())
+    environ = {
+        "MINDSTELLA_PORT": str(free_port),
+        "MINDSTELLA_TRANSCRIBER_URL": "http://127.0.0.1:50000",
+    }
+    # 実行
+    server.main(build=spy.build, make_server=spy.make_server, environ=environ)
+    # 検証
+    previews = spy.build_kwargs["previews"]
+    assert isinstance(previews._transcriber, VoicePasteTranscriber)
+    assert previews._transcriber.base_url == "http://127.0.0.1:50000"
+
+
+def test_main_when_transcriber_invalid(caplog: pytest.LogCaptureFixture, free_port: int) -> None:
+    """文字起こしの環境変数の値が誤りなら待ち受けずに 1（異常系）。"""
+    # 準備
+    spy = _MainSpy(_FakeHttpServer())
+    caplog.set_level(logging.ERROR)
+    environ = {"MINDSTELLA_PORT": str(free_port), "MINDSTELLA_TRANSCRIBER": "whisper"}
+    # 実行
+    result = server.main(build=spy.build, make_server=spy.make_server, environ=environ)
+    # 検証
+    assert result == 1
+    assert "MINDSTELLA_TRANSCRIBER" in caplog.text
+    assert "whisper" in caplog.text
+    assert spy.build_calls == 0
+    assert spy.make_server_calls == 0
 
 
 def test_main_when_stop_requested(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:

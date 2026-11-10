@@ -545,8 +545,10 @@ def test_normal_when_sent(
     assert page.inner_text("aside.panel .send-quote") == "言い換えたい文"
     assert page.evaluate("document.activeElement.matches('form.send textarea')") is True
     page.fill(SEND_TEXTAREA, "ここは言い換える")
-    # 入力欄から Tab キーで「レビューに追加」に届く（箇所を外すの × を経て、追加のボタンへ）
+    # 入力欄から Tab キーで「音声で入力」を経て「レビューに追加」に届く
     page.focus(SEND_TEXTAREA)
+    page.keyboard.press("Tab")
+    assert page.evaluate("document.activeElement.getAttribute('aria-label')") == "音声で入力"
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement.matches('form.send button[type=submit]')") is True
     page.keyboard.press("Enter")

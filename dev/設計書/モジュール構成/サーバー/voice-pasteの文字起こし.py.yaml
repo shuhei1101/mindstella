@@ -1,0 +1,307 @@
+title: "サーバー / voice-pasteの文字起こし"
+lead: 文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送り、文字起こしだけに依存する。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    voice_paste.py   voice-paste の実装（プリセットの一覧・音声の依頼・終わるまでの待ち・multipart の組み立て）
+  ```
+classes:
+  - name: VoicePasteTranscriber
+    title: voice-pasteの文字起こし
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    role: アダプター
+    summary: 文字起こしのインターフェースを、外部 API『voice-paste』の 3 つのエンドポイントで満たす。`@dataclass(frozen=True, slots=True, kw_only=True)`（`VoicePasteTranscriber(base_url=...)`）
+    kind: クラス
+    inherits: Transcriber
+    properties:
+      - name: base_url
+        type: str
+        description: 待ち受けの URL（末尾の `/` を除いたもの。`load_transcriber` が確かめる）
+      - name: opener
+        type: Callable[..., http.client.HTTPResponse]
+        default: プロキシを使わない `urllib.request.build_opener(urllib.request.ProxyHandler({})).open`
+        description: 要求を送る関数（単体テストで差し替える）。`opener(要求, timeout=秒数)` で呼ぶ（`OpenerDirector.open` の 2 番目の位置引数は `data` のため、待ちの上限はキーワードで渡す）。環境変数のプロキシを通さない
+      - name: sleep
+        type: Callable[[float], None]
+        default: time.sleep
+        description: 状態を取りに行く前に待つ関数
+      - name: clock
+        type: Callable[[], float]
+        default: time.monotonic
+        description: 待ちの上限を数える時計
+    methods:
+      - name: presets
+        title: プリセットの一覧
+        kind: メソッド
+        summary: '`GET /web/glossary-presets` を読み、`presets` を返す'
+        returns:
+          type: list[str]
+          description: プリセットの名前（返った並び）
+        process: |-
+          1. `GET {base_url}{PRESETS_PATH}` を送る（`_request`）
+             - 届かない場合、`TranscriberStoppedError` を送る
+          2. ステータスで分ける
+             - 404 の場合、`TranscriberUnsupportedError` を送る（Linux で動いている）
+             - 200 以外の場合、`TranscriberStoppedError` を送る
+               - `[WARNING]` 文字起こしのサービスがプリセットの一覧に {ステータス} を返した
+          3. 本文の `presets` が文字列の配列でなければ `TranscriberStoppedError` を送る
+             - `[WARNING]` 文字起こしのサービスのプリセットの一覧の形が違う
+          4. `presets` を返す
+        exceptions:
+          - name: TranscriberStoppedError
+            condition: 届かない・404 以外の 200 でないステータス・本文の形が違う
+            message: '{理由}'
+          - name: TranscriberUnsupportedError
+            condition: '404'
+            message: '/web/glossary-presets が 404 です'
+        unit_tests:
+          - name: test_presets
+            case: 正常
+            summary: 一覧を返す
+            condition: '`opener` が 200・`{"presets": ["一般", "開発"], "active": "一般"}` を返す'
+            mock: '`opener`'
+            expected: '`["一般", "開発"]`。要求は `GET http://127.0.0.1:47823/web/glossary-presets` で、`Origin` を持たない'
+          - name: test_presets_when_unavailable
+            case: 異常
+            summary: 届かない・エンドポイントが無い・崩れた応答を分ける
+            condition: '`parametrize`: `opener` が `URLError(ConnectionRefusedError())` / `TimeoutError` を送る / 404 / 500 / 200・`{"presets": "一般"}` を返す'
+            mock: '`opener`'
+            expected: '`TranscriberStoppedError` / `TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriberStoppedError` / `TranscriberStoppedError`'
+            exception: TranscriberStoppedError・TranscriberUnsupportedError
+      - name: transcribe
+        title: 文字起こし
+        kind: メソッド
+        summary: 音声を `POST /web/transcriptions` で 1 回依頼し、`GET /web/transcriptions/{job_id}` を取りに行って終わるまで待つ
+        args:
+          - name: audio
+            type: bytes
+            required: true
+            passing: positional
+            description: 録音した音声
+          - name: content_type
+            type: str
+            required: true
+            passing: positional
+            description: 音声の `Content-Type`
+          - name: preset
+            type: str | None
+            required: true
+            passing: keyword
+            description: 用語集のプリセット（`None` なら `glossary_preset` を付けない）
+        returns:
+          type: str
+          description: '`done` の `text`（無いか文字列でなければ空文字）'
+        process: |-
+          1. 音声とプリセットを multipart にし（`_multipart`）、`POST {base_url}{JOBS_PATH}` を送る（`_request`。再試行しない）
+             - 届かない場合、`TranscriberStoppedError` を送る
+          2. ステータスで分ける
+             - 404 の場合、`TranscriberUnsupportedError` を送る
+             - 202 以外の場合、`TranscriptionFailedError` を送る（本文の `detail` があればメッセージに入れる）
+             - 202 で本文の `job_id` が文字列でない場合、`TranscriptionFailedError` を送る
+          3. 最後に進んだ時刻（`clock()`）と、最後の `state`・`progress` を控え、終わるまで繰り返す
+             - `sleep(POLL_INTERVAL_SEC)` の後、`GET {base_url}{JOBS_PATH}/{job_id}` を送る
+               - 1 回の要求が `REQUEST_TIMEOUT_SEC` を超えた場合、待ちを続ける
+               - 接続を断られた場合、`TranscriberStoppedError` を送る
+               - 404 の場合、`TranscriptionFailedError` を送る（ジョブが無い）
+               - 200 以外の場合、待ちを続ける
+                 - `[WARNING]` 文字起こしのサービスがジョブの状態に {ステータス} を返した
+             - `state` が `done` なら `text` を返す
+             - `state` が `failed` なら `TranscriptionFailedError` を送る（`error` をメッセージに入れる）
+             - `state`・`progress` が控えと違えば、控えと最後に進んだ時刻を書き換える
+             - 最後に進んだ時刻から `WAIT_LIMIT_SEC` を超えたら、`TranscriptionTimeoutError` を送る
+          4. どの失敗も、送る前に `[WARNING]` 文字起こしに失敗した（理由）を記録する。音声の中身は記録しない
+        exceptions:
+          - name: TranscriberStoppedError
+            condition: 依頼が届かない・待つ間に接続を断られた
+          - name: TranscriberUnsupportedError
+            condition: 依頼が 404
+          - name: TranscriptionFailedError
+            condition: 依頼が 202 でない・`job_id` が無い・ジョブが 404・`failed`
+          - name: TranscriptionTimeoutError
+            condition: '`state`・`progress` が `WAIT_LIMIT_SEC` の間変わらない'
+        unit_tests:
+          - name: test_transcribe
+            case: 正常
+            summary: 依頼して終わるまで待ち、起こした文字を返す
+            condition: '`preset="開発"`・`audio/webm;codecs=opus` の音声。`opener` が 202・`{"job_id": "j1"}`、続けて `running`・`progress: 0.5`、`done`・`text: 案 A にする` を返す。`sleep` は呼ばれた秒数を控える'
+            mock: '`opener`・`sleep`'
+            expected: '`案 A にする`。依頼の本文の `audio` のファイル名が `audio.webm`・中身が渡した音声、`glossary_preset` が `開発`、`Origin` を持たない。`sleep` が 1.0 で 2 回'
+          - name: test_transcribe_when_no_preset
+            case: 正常
+            summary: プリセットが無ければ付けない
+            condition: '`preset=None`。`opener` が 202、続けて `done`・`text: ""` を返す'
+            mock: '`opener`・`sleep`'
+            expected: 空文字。依頼の本文が `glossary_preset` の部分を持たない
+          - name: test_transcribe_when_poll_timed_out
+            case: 正常
+            summary: 待つ間の 1 回の打ち切りでは待ちを続ける
+            condition: '`opener` が 202、続けて `TimeoutError`、`done`・`text: x` を返す'
+            mock: '`opener`・`sleep`'
+            expected: '`x`'
+          - name: test_transcribe_when_rejected
+            case: 異常
+            summary: 依頼の失敗を種類に分ける
+            condition: '`parametrize`: 依頼で `URLError(ConnectionRefusedError())` / 404 / 503・`{"detail": "busy"}` / 202 で `job_id` が無い / 状態が 404 / 状態が `failed`・`error: decode` / 待つ間に `URLError(ConnectionRefusedError())`'
+            mock: '`opener`・`sleep`'
+            expected: '`TranscriberStoppedError` / `TranscriberUnsupportedError` / `TranscriptionFailedError`（メッセージに `busy`）/ `TranscriptionFailedError` / `TranscriptionFailedError` / `TranscriptionFailedError`（メッセージに `decode`）/ `TranscriberStoppedError`'
+            exception: TranscriberStoppedError・TranscriberUnsupportedError・TranscriptionFailedError
+          - name: test_transcribe_when_stalled
+            case: 異常
+            summary: 進まないまま待ちの上限を超えたら打ち切る
+            condition: '`opener` が 202 の後、ずっと `running`・`progress: 0.2` を返す。`clock` が呼ぶたびに 61 秒進む'
+            mock: '`opener`・`sleep`・`clock`'
+            expected: '`TranscriptionTimeoutError`'
+            exception: TranscriptionTimeoutError
+          - name: test_transcribe_when_progressing
+            case: 正常
+            summary: 進んでいる間は上限を超えても待つ
+            condition: '`clock` が呼ぶたびに 61 秒進み、`progress` が 0.1・0.2・0.3 と進んだ後に `done`'
+            mock: '`opener`・`sleep`・`clock`'
+            expected: '`done` の `text` を返す'
+        connectivity_tests:
+          - name: test_ext_transcribe_when_preset_default
+            api: POST /web/transcriptions・GET /web/transcriptions/{job_id}
+            summary: Windows で動く voice-paste に短い音声を依頼し、終わるまで待つ
+            checks: 1 秒の無音の `audio/webm` を `preset=None` で依頼し、文字列が返る（空文字を含む）
+            cost: なし（端末の中の常駐アプリ）
+            notes: 環境変数 `MINDSTELLA_TRANSCRIBER_URL` で voice-paste に届くときだけ流し、届かなければ飛ばす
+          - name: test_ext_transcribe_when_preset_listed
+            api: GET /web/glossary-presets・POST /web/transcriptions
+            summary: 一覧の最初のプリセットを付けて依頼する
+            checks: '`presets()` の最初の名前を `preset` に渡し、400 にならずに文字列が返る'
+            cost: なし（端末の中の常駐アプリ）
+            notes: 同上
+      - name: _request
+        title: 要求を送る
+        kind: メソッド
+        summary: 1 回の要求を `REQUEST_TIMEOUT_SEC` で送り、ステータスと本文の JSON を返す
+        args:
+          - name: method
+            type: Literal['GET', 'POST']
+            required: true
+            passing: positional
+            description: メソッド
+          - name: path
+            type: str
+            required: true
+            passing: positional
+            description: '`base_url` からのパス'
+          - name: body
+            type: bytes | None
+            required: false
+            default: None
+            passing: keyword
+            description: 本文
+          - name: content_type
+            type: str | None
+            required: false
+            default: None
+            passing: keyword
+            description: 本文の `Content-Type`
+        returns:
+          type: tuple[int, Any]
+          description: ステータスと、本文の JSON（読めなければ `None`）
+        process: |-
+          1. `Origin` を付けない `urllib.request.Request` を作り、`opener(要求, timeout=REQUEST_TIMEOUT_SEC)` で送る
+             - `HTTPError` の場合、そのステータスと本文で続ける
+          2. 本文を UTF-8 の JSON として読み、ステータスと組にして返す
+             - `URLError`・`TimeoutError`・`ConnectionError` はそのまま上げる（呼ぶ側が種類に分ける）
+        unit_tests:
+          - name: test_request_when_http_error
+            case: 正常
+            summary: 4xx・5xx もステータスと本文で返す
+            condition: '`opener` が 400・`{"detail": "x"}` の `HTTPError` を送る'
+            mock: '`opener`'
+            expected: '`(400, {"detail": "x"})`'
+          - name: test_request
+            case: 正常
+            summary: 待ちの上限をキーワードで渡し、本文を置き換えない
+            condition: '`body=b"abc"` の POST。`opener` が受けた位置引数とキーワード引数を控えて 200・`{}` を返す'
+            mock: '`opener`'
+            expected: '`opener` の位置引数が要求 1 つだけで、`timeout=66.0`。要求の `data` が `b"abc"`'
+      - name: _multipart
+        title: 依頼の本文の組み立て
+        kind: メソッド
+        summary: '`audio` と任意の `glossary_preset` を持つ `multipart/form-data` の本文と `Content-Type` を作る'
+        args:
+          - name: audio
+            type: bytes
+            required: true
+            passing: positional
+            description: 音声
+          - name: content_type
+            type: str
+            required: true
+            passing: positional
+            description: 音声の `Content-Type`
+          - name: preset
+            type: str | None
+            required: true
+            passing: keyword
+            description: プリセット
+        returns:
+          type: tuple[bytes, str]
+          description: 本文と、境界を持つ `Content-Type`
+        process: |-
+          1. 境界を `uuid4().hex` で作る
+          2. `audio` の部分を、`filename="audio.{拡張子}"`（`AUDIO_EXTENSIONS` を `;` より前の小文字で引く。無ければ `bin`）と渡した `Content-Type` で書く
+          3. `preset` があれば `glossary_preset` の部分を UTF-8 で書く
+        unit_tests:
+          - name: test_multipart
+            case: 正常
+            summary: 拡張子とプリセットの部分
+            condition: '`parametrize`: `audio/webm;codecs=opus`・`preset="開発"` / `audio/x-unknown`・`preset=None`'
+            mock: なし
+            expected: '`filename="audio.webm"` と `glossary_preset` の部分に `開発` / `filename="audio.bin"` で `glossary_preset` を持たない'
+    refs:
+      - dev/設計書/外部API/voice-paste#
+constants:
+  - name: PRESETS_PATH
+    title: プリセットの一覧のパス
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    summary: 外部 API『voice-paste』の `GET /web/glossary-presets`
+    value: '"/web/glossary-presets"'
+  - name: JOBS_PATH
+    title: 文字起こしのジョブのパス
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    summary: 外部 API『voice-paste』の `POST /web/transcriptions` と、`/{job_id}` を足した `GET`
+    value: '"/web/transcriptions"'
+  - name: REQUEST_TIMEOUT_SEC
+    title: 1 回の要求の上限
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    summary: 非機能要件「文字起こしのサービスの応答の上限」
+    value: '66.0'
+  - name: WAIT_LIMIT_SEC
+    title: 進まない間の待ちの上限
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    summary: 非機能要件「文字起こしの待ちの上限」
+    value: '120.0'
+  - name: POLL_INTERVAL_SEC
+    title: 状態を取りに行く間隔
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    summary: 非機能要件「文字起こしの状態を取りに行く間隔」
+    value: '1.0'
+  - name: AUDIO_EXTENSIONS
+    title: 音声の拡張子
+    container: plugins/mindstella/skills/mindmap/scripts/voice_paste.py
+    usecase: 音声でコメントする
+    summary: '`Content-Type` の `;` より前（小文字）→ `audio` のファイル名の拡張子'
+    entries:
+      - key: audio/webm
+        value: webm
+      - key: audio/ogg
+        value: ogg
+      - key: audio/mp4
+        value: m4a
+      - key: audio/mpeg
+        value: mp3
+      - key: audio/wav
+        value: wav
+test_files:
+  - tests/unit/scripts/test_voice_paste.py

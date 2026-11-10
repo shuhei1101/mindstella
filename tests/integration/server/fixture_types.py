@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from .transcriber_helpers import FakeMode, FakeTranscriber
+
 from workspace_fixtures import (
     CallTool,
     MakeComment,
@@ -43,7 +45,9 @@ __all__ = [
     "MakeWorkspace",
     "McpServer",
     "SnapshotTree",
+    "StartFakeTranscriber",
     "StartServer",
+    "StartVoiceServer",
     "ToolResult",
     "WriteComments",
     "WriteDrafts",
@@ -54,3 +58,7 @@ __all__ = [
 
 type LockDirs = Callable[..., None]
 type FindOldPython = Callable[[], str]
+# 偽の文字起こしのサービスを振る舞いの種類で立てる
+type StartFakeTranscriber = Callable[[FakeMode], FakeTranscriber]
+# 文字起こしのサービスの URL（と差し替える定数）を渡して常駐サーバーを立てる
+type StartVoiceServer = Callable[..., McpServer]

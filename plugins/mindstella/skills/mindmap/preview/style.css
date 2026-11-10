@@ -2611,3 +2611,57 @@ body:has(.pe-ws) #main { display: none; }
 .html-marked [data-df="chg"] { outline: 2px dashed var(--df-chg); outline-offset: 2px; background-color: var(--df-chg-bg); }
 /* 範囲の差分の名前 */
 .html-diff-heading { color: var(--text-3); font-size: var(--fs-xs); font-weight: 600; }
+
+/* コメント・返信の入力のマイクのボタンと、録音中・文字起こし中の並び */
+/* マイクのボタン: 「レビューに追加」と同じ大きさの、枠だけのアイコンのボタン */
+.send-mic { flex: none; width: calc(1lh + 18px); height: calc(1lh + 18px); line-height: 1.5; border-color: var(--border); color: var(--text); }
+/* マイクのボタンのホバー: 面だけを変える */
+.send-mic:hover { background: var(--hover); }
+/* 押せないマイクのボタン: フォーカスは受けたまま、面を沈めて押せないことを示す */
+.send-mic[aria-disabled="true"], .send-mic[aria-disabled="true"]:hover { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
+/* タッチが主な端末: タップ領域を 44px にする */
+@media (pointer: coarse) { .send-mic { width: 44px; height: 44px; } }
+
+/* 押せない理由のツールチップ: ボタンの上に出す（ホバーとフォーカスの間だけ見せる） */
+.send-tip-wrap { position: relative; flex: none; display: inline-flex; }
+.send-tip-wrap:not(:hover):not(:focus-within) .send-tip { display: none; }
+/* ツールチップの本体: 重ねる面に補足の文字で、ボタンの右端に揃える */
+.send-tip { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 2; width: max-content; max-width: 260px; padding: 6px 8px; background: var(--text); color: var(--bg); border-radius: var(--radius); font-size: var(--fs-xs); line-height: 1.5; box-shadow: var(--shadow-pop); }
+
+/* 録音中の 2 つのボタン: マイクと「レビューに追加」の位置に、同じ大きさのアイコンだけのボタンを並べる */
+.send-rec-actions { flex: none; display: flex; align-items: flex-end; gap: 8px; }
+/* 録音中の 2 つのボタンの大きさ: 1 行の入力欄と同じ高さの正方形にする */
+.send-rec-actions .icon-btn { width: calc(1lh + 18px); height: calc(1lh + 18px); line-height: 1.5; }
+/* キャンセル（×）: 枠だけのボタン */
+.send-rec-cancel { border-color: var(--border); color: var(--text); }
+/* キャンセルのホバー: 面だけを変える */
+.send-rec-cancel:hover { background: var(--hover); }
+/* 文字起こし（✓）: 主な操作として文字色で塗る */
+.send-rec-done { background: var(--text); color: var(--bg); border-color: var(--text); }
+/* 文字起こしのホバー: 塗りのまま少し薄くする */
+.send-rec-done:hover { background: var(--text); color: var(--bg); opacity: .85; }
+/* 押せない録音中のボタン: 面を沈め、処理中のカーソルにする */
+.send-rec-actions .icon-btn:disabled { background: var(--surface-2); border-color: var(--border); color: var(--text-3); opacity: 1; cursor: progress; }
+/* 文字起こし中の回る印: ボタンの中央に置く */
+.send-rec-done .spinner { margin-top: 0; }
+/* タッチが主な端末: タップ領域を 44px にする */
+@media (pointer: coarse) { .send-rec-actions .icon-btn { width: 44px; height: 44px; } }
+
+/* 録音中の表示: 結果の行に、失敗の色の丸と経過の時間だけを出す */
+.send-msg.recording { color: var(--text); }
+/* 録音中の丸: 経過の時間が進むことでも録音中と分かる。読み上げには「録音中」を持つ */
+.rec-dot { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--st-review); }
+/* 経過の時間: 桁を揃える */
+.rec-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+
+/* 設定の画面の文字起こし後の挙動: 選択肢を縦に並べたラジオ */
+.pe-radios { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; border: 0; }
+/* ラジオの 1 行: 丸と名前を並べ、行全体を押せる大きさにする */
+.pe-radio { display: flex; align-items: center; gap: 8px; min-height: var(--target-min); font-size: var(--fs-body); }
+/* ラジオの丸: 印の色にする */
+.pe-radio input { flex: none; margin: 0; accent-color: var(--accent); }
+/* 保存待ちのラジオのまとまり: 入力欄と同じ破線の枠で囲む */
+.pe-field.is-pending .pe-radios { padding: 6px 10px; border: 1px dashed var(--accent); border-radius: var(--radius); }
+/* 候補を読めないセレクト: 面を沈めて押せないことを示す */
+.pe-field select.input:disabled { background: var(--surface-2); color: var(--text-2); cursor: not-allowed; }

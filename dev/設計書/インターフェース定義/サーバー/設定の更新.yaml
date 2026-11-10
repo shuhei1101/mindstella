@@ -331,6 +331,55 @@ flows:
       - 'エラーの本文に `D-2: category: 設定` の行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_unmapped_category
+  - name: 正常系（文字起こしの設定を書き換える）
+    summary: 文字起こし後の挙動と用語集のプリセットを書き換える
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` が `transcription` を持たないワークスペース
+        notes: '`settings` は `{"transcription": {"action": "insert", "preset": "開発"}}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace settings.transcription
+        IF-->>WS: config.yaml を読む
+        IF->>IF: transcription を置き換え、スキーマと突き合わせる
+        IF->>WS: config.yaml を書く
+        IF-->>クライアント: JSON（changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`config.yaml` の `transcription.action` が `insert`、`transcription.preset` が `開発`'
+      - '`changed` が `transcription` だけ'
+    test: test_normal_when_transcription
+  - name: 異常系（文字起こし後の挙動の値が合わない・SchemaMismatchError）
+    summary: '`send`・`insert` のどちらでもない挙動を渡すと、何も書かない'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`settings` は `{"transcription": {"action": "paste"}}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+
+        クライアント->>IF: update_settings workspace（action が paste）
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `config.yaml: transcription.action` で始まる行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_transcription_action_invalid
 lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
 side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
@@ -347,7 +396,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display` だけ。1 つ以上のキーを持つ
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`・`transcription` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ
     example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
   - name: phase_map
     type: dict[str, str]
@@ -431,7 +480,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 書き換えられるキー
-    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`）。`display`（見た目の既定・表示する種類の既定）は丸ごと置き換える'
+    constraint: '`settings` の制約に並べたキー（`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`・`transcription`）。`display`（見た目の既定・表示する種類の既定）と `transcription`（文字起こし後の挙動・用語集のプリセット）は丸ごと置き換える'
   - item: フェーズの付け替え
     constraint: 新しい `phases` に無いフェーズを持つ全ての種類の項目と `goal.phase`（`settings.goal` を渡したときは渡した値）を `phase_map` で付け替える。付け替えた項目だけ `updated` を変える。`phase` を持たない項目は触らない
   - item: 検証の範囲

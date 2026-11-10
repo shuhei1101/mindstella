@@ -185,6 +185,8 @@ namespace MindmapPreview {
     history_limit?: number;
     /** ワークスペースの表示の既定。個人の上書きが無い項目に使う */
     display?: DisplayDefaults;
+    /** コメント・返信の入力の音声入力の設定。無い設定もある */
+    transcription?: { action?: "send" | "insert"; preset?: string | null };
   };
 
   /** ネットワークの見た目の値 */

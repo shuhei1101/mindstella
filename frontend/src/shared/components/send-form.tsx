@@ -1,16 +1,34 @@
 // コメントの入力。詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン
-import { useEffect, useId, useState, type FocusEvent, type SyntheticEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type FocusEvent, type ReactNode, type SyntheticEvent, type KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { locationLabel, type Location } from "@/shared/core/records";
+import { formatElapsed } from "@/shared/core/voice";
 import { cn } from "@/shared/lib/cn";
 
 /** 溜める状態。idle は結果を出さない */
-export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed";
+export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "sent" | "inserted" | "voice-failed";
 
-export type SendFormProps = {
+/** 音声入力の状態（部品設計の `voice`） */
+export type VoicePhase = "idle" | "disabled" | "recording" | "transcribing";
+
+/** 音声入力の props（コメントの入力と返信の入力で共通） */
+export type VoiceProps = {
+  voice?: VoicePhase;
+  /** マイクのボタンを押せない理由（`voice` が `disabled` のとき） */
+  voiceReason?: string | null;
+  /** 録音を始めてからの秒数（`voice` が `recording` のとき） */
+  elapsed?: number;
+  /** `status` が `sent` のとき、Claude Code へ入力したか */
+  entered?: boolean;
+  onVoiceStart?: () => void;
+  onVoiceCancel?: () => void;
+  onVoiceBlocked?: () => void;
+};
+
+export type SendFormProps = VoiceProps & {
   /** コメントを向ける項目の ID。null は項目を指さないコメント */
   target: string | null;
   /** 添えた箇所 */
@@ -36,16 +54,104 @@ export type SendFormProps = {
   onBlur?: (body: string) => void;
   /** 開閉のボタンを押したとき（押した後の開閉） */
   onToggleOpen?: (open: boolean) => void;
+  /** 録音中の ✓（入力欄の中身そのまま） */
+  onVoiceDone?: (target: string | null, loc: Location | null, body: string) => void;
 };
 
 /** 溜めている印と文言を出すまでの待ち（ミリ秒）。すぐ終わる処理では点滅させない */
 const SENDING_NOTICE_DELAY_MS = 1000;
 
 /** 結果の行の文字の色（空・失敗は文言を本文の色で読ませる。印の色は `ResultMessage` が付ける） */
-const RESULT_TONE = { idle: "", saving: "", saved: "", empty: "text-foreground", failed: "text-foreground" } as const satisfies Record<SendStatus, string>;
+const RESULT_TONE = { idle: "", saving: "", saved: "", empty: "text-foreground", failed: "text-foreground", sent: "", inserted: "", "voice-failed": "text-foreground" } as const satisfies Record<SendStatus, string>;
 
 /** 項目を指さないコメントの入力欄の読み上げの名前 */
 const NO_TARGET_LABEL = "項目を指さないコメント";
+
+/** 音声入力の結果（送信した・挿入した・失敗した）。音声入力の結果でなければ null */
+export const VoiceResult = ({ status, detail, entered }: { status: string; detail: string | null; entered: boolean }) => {
+  if (status === "sent") {
+    return (
+      <>
+        <Icon name="check" className="text-mark" />
+        <span>{entered ? "送信し、Claude Code へ入力しました。" : "送信しました。Claude Code へは入力していません。"}</span>
+      </>
+    );
+  }
+  if (status === "inserted") {
+    return (
+      <>
+        <Icon name="check" className="text-mark" />
+        <span>文字起こしの結果を挿入しました。</span>
+      </>
+    );
+  }
+  if (status === "voice-failed") {
+    return (
+      <>
+        <Icon name="alert" className="text-st-review" />
+        <span>{detail ?? "文字起こしできませんでした。もう一度お試しください。"}</span>
+      </>
+    );
+  }
+  return null;
+};
+
+/** 録音中・文字起こし中の結果の行。どちらでもなければ null */
+export const VoiceProgress = ({ voice, elapsed }: { voice: VoicePhase; elapsed: number }) => {
+  if (voice === "recording") {
+    // 丸と経過の時間は見た目だけにし、読み上げは「録音中」だけにする
+    return (
+      <>
+        <span aria-hidden="true" className="mt-1 size-2.5 shrink-0 rounded-full bg-st-review" />
+        <span className="sr-only">録音中</span>
+        <span aria-hidden="true" className="font-mono text-foreground tabular-nums">
+          {formatElapsed(elapsed)}
+        </span>
+      </>
+    );
+  }
+  if (voice === "transcribing") {
+    return (
+      <>
+        <Icon name="spin" className="animate-spin" />
+        <span className="sr-only">文字起こししています。</span>
+      </>
+    );
+  }
+  return null;
+};
+
+/** 入力欄の右に並べる音声入力のボタン（idle・disabled はマイクと submit、recording・transcribing は × と ✓） */
+export const VoiceButtons = ({ voice, voiceReason, submit, onStart, onCancel, onDone, onBlocked }: { voice: VoicePhase; voiceReason: string | null; submit: ReactNode; onStart?: () => void; onCancel?: () => void; onDone: () => void; onBlocked?: () => void }) => {
+  const tipId = useId();
+  if (voice === "recording" || voice === "transcribing") {
+    const busy = voice === "transcribing";
+    return (
+      <div className="flex shrink-0 items-end gap-2">
+        <Button type="button" variant="outline" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11" aria-label="キャンセル" title="キャンセル（録音を破棄）" disabled={busy} onClick={onCancel}>
+          <Icon name="x" />
+        </Button>
+        <Button type="button" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label={busy ? "文字起こし中" : "文字起こし"} title={busy ? "文字起こし中" : "文字起こし"} aria-busy={busy} disabled={busy} onClick={onDone}>
+          <Icon name={busy ? "spin" : "check"} className={busy ? "animate-spin" : undefined} />
+        </Button>
+      </div>
+    );
+  }
+  const blocked = voice === "disabled";
+  return (
+    <>
+      <Button type="button" variant="outline" size="icon" className={cn("shrink-0 size-send pointer-coarse:size-11", blocked && "cursor-not-allowed bg-muted text-muted-foreground")} aria-label="音声で入力" title={blocked ? (voiceReason ?? undefined) : "音声で入力"} aria-disabled={blocked ? true : undefined} aria-describedby={blocked ? tipId : undefined} onClick={blocked ? onBlocked : onStart}>
+        <Icon name="mic" />
+      </Button>
+      {blocked ? (
+        <span id={tipId} className="sr-only">
+          {voiceReason}
+        </span>
+      ) : null}
+      {submit}
+    </>
+  );
+};
 
 /** 結果の印と文言 */
 const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status: SendStatus; count: number | null; detail: string | null; showSpinner: boolean; onCopy: () => void }) => {
@@ -95,6 +201,13 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
     );
   }
   return null;
+};
+
+/** 結果の行の中身（録音中・文字起こし中、音声入力の結果、溜めた結果の順に選ぶ） */
+const FormMessage = ({ voice, elapsed, status, count, detail, entered, showSpinner, onCopy }: { voice: VoicePhase; elapsed: number; status: SendStatus; count: number | null; detail: string | null; entered: boolean; showSpinner: boolean; onCopy: () => void }) => {
+  if (voice === "recording" || voice === "transcribing") return <VoiceProgress voice={voice} elapsed={elapsed} />;
+  if (status === "sent" || status === "inserted" || status === "voice-failed") return <VoiceResult status={status} detail={detail} entered={entered} />;
+  return <ResultMessage status={status} count={count} detail={detail} showSpinner={showSpinner} onCopy={onCopy} />;
 };
 
 /** 入力欄の形ごとのクラス（畳んだ形は 1 行のまま伸ばさない） */
@@ -152,7 +265,7 @@ const LocationChip = ({ loc, id, onClearLoc }: { loc: Location; id: string; onCl
   </div>
 );
 
-export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen }: SendFormProps) => {
+export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, entered = false, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked }: SendFormProps) => {
   const fieldId = useId();
   const messageId = `${fieldId}-msg`;
   const locId = `${fieldId}-loc`;
@@ -212,7 +325,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
       aria-describedby={describedByOf(folded, target !== null && loc !== null ? locId : null, messageId)}
       aria-keyshortcuts="Control+Enter"
       aria-invalid={shown === "empty" ? true : undefined}
-      readOnly={status === "saving"}
+      readOnly={status === "saving" || voice === "transcribing"}
       onChange={(event) => {
         setEmpty(false);
         onInput(event.target.value);
@@ -226,14 +339,24 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   ) : (
     <div className="flex items-end gap-2">
       {field}
-      <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
-        <Icon name="comment" />
-      </Button>
+      <VoiceButtons
+        voice={voice}
+        voiceReason={voiceReason}
+        onStart={onVoiceStart}
+        onCancel={onVoiceCancel}
+        onBlocked={onVoiceBlocked}
+        onDone={() => onVoiceDone?.(target, loc, body)}
+        submit={
+          <Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" aria-busy={status === "saving"} disabled={status === "saving"}>
+            <Icon name="comment" />
+          </Button>
+        }
+      />
     </div>
   );
   const message = folded ? null : (
     <p id={messageId} role="status" className={cn("m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden", RESULT_TONE[shown])}>
-      <ResultMessage status={shown} count={count} detail={detail} showSpinner={showSpinner} onCopy={() => onCopyBody?.(body)} />
+      <FormMessage voice={voice} elapsed={elapsed} status={shown} count={count} detail={detail} entered={entered} showSpinner={showSpinner} onCopy={() => onCopyBody?.(body)} />
     </p>
   );
 

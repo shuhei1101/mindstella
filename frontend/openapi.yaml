@@ -366,6 +366,100 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /api/transcription:
+    get:
+      operationId: getTranscription
+      summary: 文字起こしを使えるかと理由・用語集のプリセットの候補・ワークスペースの文字起こしの設定
+      responses:
+        "200":
+          description: 可否（使えないときも 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionStatus"
+        "403":
+          description: 送り元が合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: config.yaml がスキーマに合わない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/transcriptions:
+    post:
+      operationId: postTranscription
+      summary: 録音した音声を文字起こしし、起こした文字を返す
+      requestBody:
+        required: true
+        content:
+          audio/*:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: 起こした文字
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionReply"
+        "400":
+          description: 本文が空
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: 文字起こしに失敗した
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "503":
+          description: 文字起こしのサービスが使えない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/UnavailableProblem"
+        "504":
+          description: 文字起こしが終わらない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api/comments/send-now:
+    post:
+      operationId: sendNow
+      summary: 書き込み 1 件をレビュー中に溜めずにすぐスレッドへ送る
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNowInput"
+      responses:
+        "201":
+          description: 送った
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendNowReply"
+        "400":
+          description: 合わない値
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: 向けた先が無いか送れない
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   schemas:
     NetworkLook:
@@ -598,6 +692,51 @@ components:
             - $ref: "#/components/schemas/OpenedPoint"
             - type: "null"
         opened: { $ref: "#/components/schemas/OpenedPoint" }
+    TranscriptionStatus:
+      type: object
+      required: [available, reason, detail, presets, action, preset]
+      properties:
+        available: { type: boolean }
+        reason: { type: [string, "null"], enum: [stopped, unsupported, null] }
+        detail: { type: [string, "null"] }
+        presets:
+          type: array
+          items: { type: string }
+        action: { type: string, enum: [send, insert] }
+        preset: { type: [string, "null"] }
+    TranscriptionReply:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string }
+    UnavailableProblem:
+      type: object
+      required: [type, title, status, detail, reason]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        reason: { type: string, enum: [stopped, unsupported] }
+    SendNowInput:
+      type: object
+      required: [body]
+      properties:
+        target: { type: [string, "null"] }
+        loc:
+          oneOf:
+            - $ref: "#/components/schemas/Loc"
+            - type: "null"
+        thread: { type: [string, "null"] }
+        body: { type: string }
+    SendNowReply:
+      type: object
+      required: [sent, thread, post, entered]
+      properties:
+        sent: { type: string }
+        thread: { type: string }
+        post: { type: string }
+        entered: { type: boolean }
     Problem:
       type: object
       required: [type, title, status, detail]
@@ -661,6 +800,11 @@ components:
             visible_kinds:
               type: array
               items: { $ref: "#/components/schemas/Kind" }
+        transcription:
+          type: object
+          properties:
+            action: { type: string, enum: [send, insert] }
+            preset: { type: [string, "null"] }
       additionalProperties: true
     Kind:
       type: string

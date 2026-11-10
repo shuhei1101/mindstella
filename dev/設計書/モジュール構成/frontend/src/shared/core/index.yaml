@@ -46,3 +46,5 @@ items:
   summary: 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）
 - page: post-links.ts.yaml
   summary: 書き込みの描いた本文に、項目の ID のボタンとまとまりのリンクを付ける
+- page: voice.ts.yaml
+  summary: コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）

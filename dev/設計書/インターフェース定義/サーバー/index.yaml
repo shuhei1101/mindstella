@@ -181,3 +181,12 @@ items:
   - page: 保存待ちの編集をまとめて保存.yaml
     summary: 'POST /api/edits/save: 保存待ちの編集を 1 回で当て、利用者の書き換えのまとまりにする'
     group: 編集
+  - page: 文字起こしの可否.yaml
+    summary: 'GET /api/transcription: 文字起こしを使えるかと理由、用語集のプリセットの候補、ワークスペースの文字起こしの設定を返す'
+    group: 音声入力
+  - page: 音声の文字起こし.yaml
+    summary: 'POST /api/transcriptions: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す'
+    group: 音声入力
+  - page: 書き込みをすぐ送る.yaml
+    summary: 'POST /api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送って Claude Code へ入力する'
+    group: 音声入力

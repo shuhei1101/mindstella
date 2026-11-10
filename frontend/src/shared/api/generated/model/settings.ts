@@ -8,6 +8,7 @@ import type { SettingsCategoriesItem } from './settingsCategoriesItem';
 import type { SettingsDisplay } from './settingsDisplay';
 import type { SettingsGoal } from './settingsGoal';
 import type { SettingsTargetsItem } from './settingsTargetsItem';
+import type { SettingsTranscription } from './settingsTranscription';
 
 export interface Settings {
   summary: string;
@@ -18,5 +19,6 @@ export interface Settings {
   categories: SettingsCategoriesItem[];
   goal?: SettingsGoal;
   display?: SettingsDisplay;
+  transcription?: SettingsTranscription;
   [key: string]: unknown;
  }

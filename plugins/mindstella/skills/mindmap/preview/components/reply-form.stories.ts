@@ -8,7 +8,7 @@ const meta = {
   render: (args) => MindmapPreview.replyForm(args),
   args: {
     thread: "TH-2",
-    on: { input: fn(), save: fn() },
+    on: { input: fn(), save: fn(), voiceStart: fn(), voiceCancel: fn(), voiceDone: fn(), voiceBlocked: fn() },
   },
 } satisfies Meta<MindmapPreview.ReplyFormProps>;
 
@@ -56,3 +56,30 @@ export const Narrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない） */
+export const Recording: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12 } };
+
+/** 文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ */
+export const Transcribing: Story = { args: { thread: "TH-1", voice: "transcribing", body: "確認: " } };
+
+/** 送信した。入力欄を空にし、元のボタンに戻して「送信し、Claude Code へ入力しました。」 */
+export const Sent: Story = { args: { thread: "TH-1", status: "sent", entered: true } };
+
+/** 送信したが Claude Code へ入力しなかった。「送信しました。Claude Code へは入力していません。」 */
+export const SentNotEntered: Story = { args: { thread: "TH-1", status: "sent", entered: false } };
+
+/** 文字起こしのサービスが起動していない。マイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。「レビューに追加」は押せるまま */
+export const VoiceDisabled: Story = { args: { thread: "TH-1", voice: "disabled", voiceReason: "文字起こしのサービスが起動していないため、音声で入力できません。" } };
+
+/** 文字起こしに失敗した。入力欄の中身を残し、元のボタンに戻して理由を結果の行に出す */
+export const VoiceFailed: Story = { args: { thread: "TH-1", status: "voice-failed", detail: "文字起こしできませんでした。もう一度お試しください。", body: "案 B も見たい" } };
+
+/** 最も狭い幅（320px）の録音中。2 つのボタンはマイクと「レビューに追加」と同じ大きさで、入力欄の右に並んだまま収まる */
+export const RecordingNarrow: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12 },
+  parameters: {
+    viewport: {
+      options: { narrowest: { name: "幅 320px", styles: { width: "320px", height: "640px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrowest", isRotated: false } } };

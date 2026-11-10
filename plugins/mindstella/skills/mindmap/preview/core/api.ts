@@ -13,6 +13,9 @@ namespace MindmapPreview {
     threads: "api/threads",
     edits: "api/edits",
     editsSave: "api/edits/save",
+    transcription: "api/transcription",
+    transcriptions: "api/transcriptions",
+    commentsSendNow: "api/comments/send-now",
   } as const;
 
   /** 記録の取得の結果。読めなかったときは、届かなかったか、サーバーが 422 を返したかを分ける */
@@ -30,7 +33,25 @@ namespace MindmapPreview {
         stale: { id: string; reason: string }[];
         /** 409 のときの書き込めない編集（まとめて保存だけが持つ。それ以外はキーを持たない） */
         blocked?: BlockedEdit[];
+        /** 音声の文字起こしの 503 のときの使えない理由（それ以外はキーを持たない） */
+        reason?: TranscriptionStatus["reason"];
       };
+
+  /** 『文字起こしの可否』の本文 */
+  export type TranscriptionStatus = {
+    /** 音声を受け付けられるか */
+    available: boolean;
+    /** 使えない理由。使えるときは null */
+    reason: "stopped" | "unsupported" | null;
+    /** 使えない理由の文。使えるときは null */
+    detail: string | null;
+    /** 用語集のプリセットの候補 */
+    presets: string[];
+    /** 文字起こし後の挙動 */
+    action: "send" | "insert";
+    /** ワークスペースの用語集のプリセット */
+    preset: string | null;
+  };
 
   /** 『保存待ちの編集の読み取り』の `items[]` の 1 件 */
   export type PendingEdit = {
@@ -327,5 +348,49 @@ namespace MindmapPreview {
     source.addEventListener("error", () => report(false));
     source.addEventListener("changed", () => onChanged());
     return () => source.close();
+  }
+
+  /** すぐ送った応答の本文 */
+  export type SentNow = { sent: string; thread: string; post: string; entered: boolean };
+
+  /** 文字起こしの可否・音声の文字起こし・すぐ送るの 3 つの呼び出しを束ねて返す */
+  export function voiceApi(fetchFn: FetchFn = window.fetch.bind(window)) {
+    return {
+      status: () => callApi<TranscriptionStatus>("GET", API_PATHS.transcription, null, fetchFn),
+      transcribe: (audio: Blob) => postAudio(audio, fetchFn),
+      sendNow: (input: object) => callApi<SentNow>("POST", API_PATHS.commentsSendNow, input, fetchFn),
+    };
+  }
+
+  /** 録音した音声をそのまま本文にして送り、`callApi` と同じ形の結果にする（503 は本文の `reason` を足す） */
+  async function postAudio(audio: Blob, fetchFn: FetchFn): Promise<ApiResult<{ text: string }>> {
+    let response: Response;
+    try {
+      response = await fetchFn(API_PATHS.transcriptions, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": audio.type },
+        body: audio,
+      });
+    } catch {
+      return { ok: false, status: null, detail: null, stale: [] };
+    }
+    if (response.ok) return { ok: true, data: (await response.json()) as { text: string } };
+    let detail: string | null = null;
+    let reason: TranscriptionStatus["reason"] = null;
+    try {
+      const problem = (await response.json()) as { detail?: unknown; reason?: unknown };
+      detail = typeof problem.detail === "string" ? problem.detail : null;
+      reason = problem.reason === "stopped" || problem.reason === "unsupported" ? problem.reason : null;
+    } catch {
+      // 本文が JSON でない
+    }
+    return {
+      ok: false,
+      status: response.status,
+      detail: detail ?? (response.statusText || String(response.status)),
+      stale: [],
+      ...(reason !== null ? { reason } : {}),
+    };
   }
 }

@@ -1106,7 +1106,7 @@ def test_update_thread_when_rejected(
     assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before
 
 
-def _input(comment: str, **overrides: Any) -> threads.UserPostInput:
+def _input(comment: str | None, **overrides: Any) -> threads.UserPostInput:
     """足す利用者の書き込みを作る（新しいスレッドの最初の書き込みで項目 D-1 を指すのが既定）。"""
     values: dict[str, Any] = {
         "comment": comment,
@@ -1168,6 +1168,27 @@ def test_append_user_posts(
     # 足した書き込みはどれも利用者の既読
     added = [_find(raw, thread_id)["posts"][-1] for thread_id in ("TH-4", "TH-5", "TH-6", "TH-1")]
     assert [post["seen"] for post in added] == [True, True, True, True]
+
+
+def test_append_user_posts_when_no_comment(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+) -> None:
+    """レビュー中を経ない書き込みは比べずに足し、comment を書かない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1", make_post("TH-1-1")))
+    # 実行
+    _, sent = threads.append_user_posts(
+        root, [_input(None, thread="TH-1", target=None, body="案 A にする")], now=_fixed_now
+    )
+    # 検証
+    assert [(item.comment, item.thread, item.post) for item in sent] == [(None, "TH-1", "TH-1-2")]
+    saved = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))
+    assert "comment" not in saved["items"][0]["posts"][1]
 
 
 def test_append_user_posts_when_first(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:

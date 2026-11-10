@@ -380,6 +380,33 @@ def send_comments(
     return sent, sent_posts
 
 
+def send_now(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[str, SentPost]:
+    """書き込み 1 件の向けた先と本文を確かめ、レビュー中に溜めずにスレッドへ足す（鍵は呼ぶ側が取る）。"""
+    # 本文と向けた先の形（溜めるときと同じ確かめ）
+    body = _validate_body(data.get("body"))
+    target, loc, thread = _parse_destination(data)
+    # 今送れる向けた先か（まとめて送るときと同じ理由）
+    workspace = load_workspace(root)
+    reason = _destination_reason(workspace, load_threads(root), target, loc, thread)
+    if reason is not None:
+        raise CommentConflictError(reason)
+    sent, posts = append_user_posts(
+        root,
+        [
+            UserPostInput(
+                comment=None,
+                thread=thread,
+                target=target,
+                loc=None if loc is None else location_to_dict(loc),
+                body=body,
+            )
+        ],
+        now=now,
+    )
+    logger.info("書き込みをすぐ送った: %s", posts[0].thread)
+    return sent, posts[0]
+
+
 def _parse_comment_input(
     data: dict[str, Any],
 ) -> tuple[str | None, Location | None, str | None, str, str | None, str | None]:
@@ -436,22 +463,33 @@ def _validate_body(value: Any) -> str:
 
 def _stale_reason(workspace: Workspace, threads: list[Thread], comment: ReviewComment) -> str | None:
     """向けた項目が消えた・箇所が今の項目に合わない・返信先が無いかクローズのときの理由を返す（送れれば None）。"""
+    return _destination_reason(workspace, threads, comment.target, comment.loc, comment.thread)
+
+
+def _destination_reason(
+    workspace: Workspace,
+    threads: list[Thread],
+    target: str | None,
+    loc: Location | None,
+    thread: str | None,
+) -> str | None:
+    """向けた先（項目と箇所か、返信先のスレッド）へ今送れないときの理由を返す（送れれば None）。"""
     # 返信: 返信先のスレッドが無いかクローズ
-    if comment.thread is not None:
-        found = _find_thread(threads, comment.thread)
+    if thread is not None:
+        found = _find_thread(threads, thread)
         if found is None:
-            return f"スレッド {comment.thread} がありません"
+            return f"スレッド {thread} がありません"
         return _closed_reason(found)
     # 項目に紐づかないコメントは確かめるものが無い
-    if comment.target is None:
+    if target is None:
         return None
     try:
-        item = find_item(workspace, comment.target).item
+        item = find_item(workspace, target).item
     except ItemNotFoundError:
-        return f"{comment.target} がありません"
-    if comment.loc is None:
+        return f"{target} がありません"
+    if loc is None:
         return None
-    return check_location(workspace, item, comment.loc)
+    return check_location(workspace, item, loc)
 
 
 def _find_thread(threads: list[Thread], thread_id: str) -> Thread | None:

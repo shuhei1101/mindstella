@@ -28,6 +28,12 @@ components:
         condition: 開閉のボタンで閉じてから別の項目に移る / 閉じたまま本文の 2 行目を選んで入口を押す
         mock: MSW と mdmark の差し替え
         expected: 保存領域の `commentFormClosed` が `true` で、移った項目でも入力欄が無く見出しの行だけ / `commentFormClosed` が `null` になり、入力欄にフォーカスがある
+      - name: test_detail_comments_when_voice
+        case: 正常
+        summary: 音声で項目へのコメントを送る
+        condition: 'D-1 の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: 案 A にする}` で、挙動が `send`'
+        mock: MSW と `vi.stubGlobal`
+        expected: '`POST /api/comments/send-now` が `{target: D-1, body: 案 A にする}` で 1 回呼ばれ、入力欄が空で「送信し、Claude Code へ入力しました。」'
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）

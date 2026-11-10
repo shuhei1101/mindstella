@@ -1,0 +1,135 @@
+title: 文字起こしの可否
+entry:
+  kind: endpoint
+  value: GET /api/transcription
+flows:
+- name: 正常系
+  summary: 文字起こしのサービスに届き、使えることと用語集のプリセットの候補を返す
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: '`config.yaml` の `transcription` が `{action: insert, preset: 開発}` のワークスペース'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  participant WS as ワークスペース\n  \n  クライアント->>IF: GET\n  IF-->>WS: config.yaml の transcription を読む\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: presets\n  IF-->>クライアント: 200、JSON（available・reason・presets・action・preset）\n```"
+  expected:
+  - ステータスが 200 で、`available` が `true`、`reason` が `null`
+  - '`presets` が `["一般", "開発"]`'
+  - '`action` が `insert`、`preset` が `開発`'
+  test: test_normal
+- name: 正常系（設定を持たない）
+  summary: '`config.yaml` が `transcription` を持たないときは既定の挙動を返す'
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: '`config.yaml` が `transcription` を持たないワークスペース'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  \n  クライアント->>IF: GET\n  IF-->>クライアント: 200、action=send・preset=null\n```"
+  expected:
+  - ステータスが 200 で、`action` が `send`、`preset` が `null`
+  test: test_normal_when_not_configured
+- name: 正常系（サービスが起動していない）
+  summary: サービスに届かないときは、使えない理由を 200 で返す
+  setup:
+  - name: Mock
+    description: 偽のサーバーを立てず、`MINDSTELLA_TRANSCRIBER_URL` に誰も待ち受けていないポートの URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送る
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（止まっている）\n  \n  クライアント->>IF: GET\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR--xIF: つながらない\n  IF-->>クライアント: 200、available=false・reason=stopped・presets=[]\n```"
+  expected:
+  - ステータスが 200 で、`available` が `false`、`reason` が `stopped`、`presets` が空
+  - '`detail` が「文字起こしのサービスが起動していないため、音声で入力できません。」で、`voice-paste` を含まない'
+  test: test_normal_when_service_stopped
+- name: 正常系（サービスが音声の受け付けに対応していない）
+  summary: サービスには届くが音声を受け付ける口が無いときは、理由を 200 で返す
+  setup:
+  - name: Mock
+    description: '`/web/` の下の全てに 404 を返す偽のサーバーを立て、`MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: GET\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: 音声を受け付ける口が無い\n  IF-->>クライアント: 200、available=false・reason=unsupported\n```"
+  expected:
+  - ステータスが 200 で、`available` が `false`、`reason` が `unsupported`、`presets` が空
+  - '`detail` が「文字起こしのサービスが音声の受け付けに対応していないため、音声で入力できません。」'
+  test: test_normal_when_service_unsupported
+lead: コメント・返信の入力のマイクのボタンと設定の画面が開いたときに読む、文字起こしを使えるかと使えない理由、用語集のプリセットの候補、ワークスペースの文字起こしの設定を返す。
+idempotent: true
+side_effects: なし（文字起こしのサービスに用語集のプリセットの一覧を 1 回尋ね、`config.yaml` を読むだけ）
+callers:
+- dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+- dev/設計書/インターフェース定義/プレビュー/SPAを開く#
+request:
+- name: Host
+  type: str
+  required: true
+  location: header
+  description: ブラウザが付ける接続先
+  constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）
+- name: Origin
+  type: str
+  required: false
+  default: なし（確かめない）
+  location: header
+  description: ブラウザが付ける送り元
+  constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
+response:
+- name: available
+  type: bool
+  description: 文字起こしのサービスに届き、音声を受け付けられるか
+- name: reason
+  type: Literal['stopped', 'unsupported'] | None
+  description: 使えない理由。`stopped` はサービスに届かない（起動していない）、`unsupported` は届くが音声を受け付ける口が無い。使えるときは `null`
+- name: detail
+  type: str | None
+  description: 使えない理由を画面に出す文。使えるときは `null`
+  notes: サービスの名前を含めない。ブラウザがマイクを使えないときの文は画面が持つ（サーバーは知らない）
+- name: presets
+  type: list[str]
+  description: 用語集のプリセットの名前の候補。サービスが返した並びのまま
+  notes: 使えないときは空。設定の画面のセレクトの候補になる
+- name: action
+  type: Literal['send', 'insert']
+  description: '`config.yaml` の `transcription.action`。無ければ `send`'
+- name: preset
+  type: str | None
+  description: '`config.yaml` の `transcription.preset`。無ければ `null`（サービスの既定）'
+response_example: |-
+  ```json
+  {
+    "available": false,
+    "reason": "stopped",
+    "detail": "文字起こしのサービスが起動していないため、音声で入力できません。",
+    "presets": [],
+    "action": "send",
+    "preset": "開発"
+  }
+  ```
+status_codes:
+- code: '200'
+  condition: 可否を返した（使えないときも 200）
+- code: '403'
+  condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+- code: '422'
+  condition: '`config.yaml` がスキーマに合わないか YAML として読めない'
+  notes: '`detail` は『記録の取得』の 422 と同じ形'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語で、画面にそのまま出せる文にする。文字起こしのサービスの名前（voice-paste）を含めない
+constraints:
+- item: 文字起こしのサービスへの依存
+  constraint: 配信の処理は文字起こしのインターフェース（抽象）だけに依存し、どのサービスかは環境変数 `MINDSTELLA_TRANSCRIBER` で選ぶ（今は `voice-paste` だけ）。応答の本文・`detail`・ログの利用者向けの文言にサービスの名前を出さない
+  notes: 'ユーザーが決めた（PR #476 の確認ログ「設定の画面の「音声入力」のまとまり」）。別のサービスへ切り替えても、この操作の要求と応答は変わらない'
+- item: 使えるかの確かめ
+  constraint: '呼ばれるたびに文字起こしのインターフェースへ用語集のプリセットの一覧を 1 回尋ねて、使えるかを確かめる。届かない（接続を断られた・応答の上限を超えた）ときは `stopped`、音声を受け付ける口が無いときは `unsupported`、一覧が返れば `available: true`。結果を持ち越さない'
+  notes: サービスの応答をどれに読み替えるか（voice-paste のエンドポイントとステータス）は、モジュール構成のサービスの実装と外部 API の設計書が持つ
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[文字起こしのサービスの応答の上限]
+- item: 画面が待たないこと
+  constraint: 画面はこの応答を待たずに入力を描く。応答が返るまでマイクのボタンは押せるまま置き、押したときの『音声の文字起こし』が使えない理由を返したら、結果の行に出す。押せないマイクのボタンを押したときも読み直し、使えるようになっていれば押せる状態に戻す（録音は利用者がもう一度押して始める）
+  notes: サービスが止まっているときは接続をすぐ断られるため、普段は画面を開いてすぐ返る
+- item: 送り元の確かめ
+  constraint: '`Host` と `Origin` は『プレビューの配信』と同じ'
+- item: 待ち受け
+  constraint: '`127.0.0.1` だけ'
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+- dev/設計書/外部API/voice-paste#
+- dev/設計書/ER図/ワークスペース#
+- dev/設計書/シナリオ/単一ユースケース/音声でコメントする#
+test_file: tests/integration/server/test_transcription_status.py

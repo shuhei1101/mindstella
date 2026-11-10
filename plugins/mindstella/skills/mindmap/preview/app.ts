@@ -41,6 +41,24 @@ namespace MindmapPreview {
     count: number | null;
     /** サーバーが返した溜められなかった理由 */
     detail: string | null;
+    /** `status` が `sent` のとき、Claude Code へ入力したか */
+    entered?: boolean;
+  };
+
+  /** 録音の状態（開いている間だけ持つ。録音は同時に 1 つ。書き換えの知らせでの描き直しでは保つ） */
+  export type VoiceState = {
+    /** 最後に読んだ文字起こしの可否（読めない・まだ読んでいなければ null で、マイクは押せるまま描く） */
+    availability: TranscriptionStatus | null;
+    /** 録っている入力の `formKey`（録っていなければ null） */
+    key: string | null;
+    /** 録音の段階 */
+    phase: "idle" | "recording" | "transcribing";
+    /** 録音中の 1 回分 */
+    recording: Recording | null;
+    /** 録音を始めてからの秒数 */
+    elapsed: number;
+    /** 録音を始めるたびに 1 進める番号。文字起こしの結果が返ったとき、押したときの番号と違えば結果を捨てる */
+    ticket: number;
   };
 
   /** コメントの画面の状態（開いている間だけ持つ。描き直し・項目の移動・詳細パネルと全画面の行き来でも保つ） */
@@ -89,6 +107,8 @@ namespace MindmapPreview {
     expanded: Set<string>;
     /** 詳細パネルと詳細の全画面のレビュー中のコメントで本文を開いているコメントの ID（描き直し・本文の書き換え・全画面との行き来では保ち、別の項目へ移るかパネルを閉じると空にする） */
     detailExpanded: Set<string>;
+    /** コメント・返信の入力の音声入力の状態 */
+    voice: VoiceState;
   };
 
   /** 表示の設定の画面の状態（開いている間だけ持つ。描き直し・書き換えの知らせでも保つ） */
@@ -1278,6 +1298,7 @@ namespace MindmapPreview {
       renderDetail();
       renderPending();
       renderWorkspace();
+      checkVoice();
       if (route.tab === "graph") selectGraphItem(route.id);
       // 作り直した本文にも、開いているパネルの下の部品を止める
       scheduleInert();
@@ -1507,8 +1528,12 @@ namespace MindmapPreview {
       reviewFocus: null,
       expanded: new Set(),
       detailExpanded: new Set(),
+      voice: { availability: null, key: null, phase: "idle", recording: null, elapsed: 0, ticket: 0 },
     };
     const threadsApi = threadApi();
+    const voiceCalls = voiceApi();
+    /** 録音の経過の時間を進めるタイマー */
+    let voiceTimer: number | undefined;
     /** 一覧のスクロールの位置（スレッドを開くときに控え、一覧へ戻るときに戻す） */
     let listScroll = 0;
     /** まとめて送った結果・本文を直している行・直せなかった理由・項目を指さない入力にフォーカスがあるか */
@@ -1621,6 +1646,159 @@ namespace MindmapPreview {
       return state;
     };
 
+    // ===== 音声入力 =====
+    /** 入力に渡す音声入力の状態と押せない理由 */
+    const voiceOf = (key: string): Required<Pick<VoiceProps, "voice" | "voiceReason" | "elapsed">> => {
+      const { voice } = comment;
+      if (!micSupported()) return { voice: "disabled", voiceReason: VOICE_TEXT.noMicrophone, elapsed: 0 };
+      if (voice.availability !== null && !voice.availability.available) {
+        return { voice: "disabled", voiceReason: voice.availability.detail, elapsed: 0 };
+      }
+      if (voice.key === key && voice.phase !== "idle") return { voice: voice.phase, voiceReason: null, elapsed: voice.elapsed };
+      return { voice: "idle", voiceReason: null, elapsed: 0 };
+    };
+
+    /** 録音をやめ、マイクを解放して、文字起こし中の結果を捨てる */
+    const abandonVoice = (): void => {
+      const { voice } = comment;
+      if (voice.key === null) return;
+      voice.recording?.cancel();
+      window.clearInterval(voiceTimer);
+      Object.assign(voice, { key: null, phase: "idle", recording: null, elapsed: 0, ticket: voice.ticket + 1 });
+    };
+
+    /** 今の画面に出ている入力の `formKey`（詳細の下端・新しいスレッド・開いているスレッドの返信） */
+    const shownFormKeys = (): Set<string> => {
+      const keys = new Set<string>();
+      const detailForm = document.querySelector<HTMLElement>("aside.panel form.send .send-body, dialog.full form.send .send-body");
+      if (route.id !== null && detailForm !== null && !detailForm.hidden) keys.add(formKey(route.id, comment.pendingLoc.get(route.id) ?? null));
+      if (document.querySelector(".comments-panel .talk-new form.send") !== null) keys.add(formKey(null, null));
+      const opened = comment.openedThread;
+      if (opened !== null && !opened.pending && document.querySelector(".comments-panel form.reply") !== null) {
+        keys.add(formKey(null, null, opened.id));
+      }
+      return keys;
+    };
+
+    /** 録っている入力が無くなった・向けた先が変わったら録音を捨てる（書き換えの知らせでの描き直しでは入力が残るので止めない） */
+    const checkVoice = (): void => {
+      const { key } = comment.voice;
+      if (key !== null && !shownFormKeys().has(key)) abandonVoice();
+    };
+
+    /** 入力の向けた先 */
+    const destinationOf = (state: FormState): { target: string | null; loc: Location | null } | { thread: string } =>
+      state.thread !== null ? { thread: state.thread } : { target: state.target, loc: state.loc };
+
+    /** 入力を今の状態で描き直す（詳細の下端は入力だけ、コメントの一覧の入力はパネルごと） */
+    const redrawVoiceForm = (state: FormState, focus: boolean): void => {
+      if (state.thread !== null || state.target === null) renderComments();
+      else redrawForm({ target: state.target, focus });
+    };
+
+    /** 文字起こしの可否を読み直す。返ったら入力と、設定の画面の音声入力のまとまりを描き直す */
+    const refreshAvailability = async (): Promise<void> => {
+      const result = await voiceCalls.status();
+      comment.voice.availability = result.ok ? result.data : null;
+      if (route.id !== null) redrawForm({ target: route.id, focus: false });
+      if (comment.listOpen) renderComments();
+      renderWorkspaceTranscription();
+    };
+
+    /** 入力のマイク・×・✓ のコールバック */
+    const voiceHandlers = (state: FormState): VoiceHandlers => {
+      const key = formKey(state.target, state.loc, state.thread);
+      return {
+        voiceStart: () => {
+          // 別の入力で録っている間は始めない
+          if (comment.voice.key !== null) return;
+          const ticket = comment.voice.ticket + 1;
+          comment.voice.ticket = ticket;
+          startRecording()
+            .then((recording) => {
+              // 待つ間に入力が無くなった: 始めた録音を捨てる
+              if (comment.voice.ticket !== ticket) {
+                recording.cancel();
+                return;
+              }
+              Object.assign(comment.voice, { key, phase: "recording", recording, elapsed: 0 });
+              Object.assign(state, { status: "idle", detail: null });
+              window.clearInterval(voiceTimer);
+              // 1 秒ごとに経過の時間を進め、録っている入力の時間だけを書き換える
+              voiceTimer = window.setInterval(() => {
+                comment.voice.elapsed += 1;
+                const time = document.querySelector(".send-msg.recording .rec-time");
+                if (time !== null) time.textContent = formatElapsed(comment.voice.elapsed);
+                checkVoice();
+              }, 1000);
+              redrawVoiceForm(state, false);
+            })
+            .catch((failure: unknown) => {
+              if (comment.voice.ticket !== ticket) return;
+              Object.assign(state, {
+                status: "voice-failed",
+                detail: failure === "denied" ? VOICE_TEXT.denied : VOICE_TEXT.noMicrophone,
+              });
+              redrawVoiceForm(state, false);
+            });
+        },
+        voiceCancel: () => {
+          if (comment.voice.key !== key) return;
+          abandonVoice();
+          redrawVoiceForm(state, true);
+        },
+        voiceDone: (input) => {
+          const { voice } = comment;
+          const recording = voice.recording;
+          if (voice.key !== key || recording === null) return;
+          const ticket = voice.ticket;
+          window.clearInterval(voiceTimer);
+          voice.phase = "transcribing";
+          state.body = input.body;
+          redrawVoiceForm(state, false);
+          const action = data.settings.transcription?.action === "insert" ? "insert" : "send";
+          void finishVoice(recording, { ...input, action, destination: destinationOf(state) }, voiceCalls).then(async (outcome) => {
+            // 返る前に入力が無くなった・別の録音を始めた: 結果を捨てる
+            if (comment.voice.ticket !== ticket) return;
+            Object.assign(comment.voice, { key: null, phase: "idle", recording: null, elapsed: 0 });
+            if (outcome.kind === "unavailable") {
+              const known = comment.voice.availability;
+              comment.voice.availability = {
+                available: false,
+                reason: outcome.reason,
+                detail: outcome.detail,
+                presets: [],
+                action: known?.action ?? "send",
+                preset: known?.preset ?? null,
+              };
+            }
+            const statusOf = { sent: "sent", inserted: "inserted", failed: "voice-failed", unavailable: "voice-failed" } as const;
+            Object.assign(state, { body: outcome.body, status: statusOf[outcome.kind], detail: outcome.detail, entered: outcome.entered });
+            if (outcome.kind === "sent") {
+              // 送った: 書きかけを消し、箇所を添えた入力は箇所を外す
+              saveDraftNow(state);
+              if (state.loc !== null && state.target !== null) comment.pendingLoc.delete(state.target);
+              await loadThreads();
+            } else {
+              scheduleDraft(state);
+            }
+            redrawVoiceForm(state, true);
+            // 挿入した: カーソルを挿入した文字の後ろへ置く
+            if (outcome.caret !== null) {
+              const field = document.querySelector<HTMLTextAreaElement>("form.send textarea:focus, .comments-panel form.reply textarea");
+              field?.setSelectionRange(outcome.caret, outcome.caret);
+            }
+          });
+        },
+        voiceBlocked: () => {
+          Object.assign(state, { status: "voice-failed", detail: voiceOf(key).voiceReason });
+          redrawVoiceForm(state, false);
+          // マイクを使えるページなら、サービスが使えるようになったかを読み直す（録音は始めない）
+          if (micSupported()) void refreshAvailability();
+        },
+      };
+    };
+
     /** 書きかけをすぐ保つ（空なら消える）。届かないときは何も出さない */
     const saveDraftNow = (state: FormState): void => {
       const key = formKey(state.target, state.loc, state.thread);
@@ -1679,6 +1857,7 @@ namespace MindmapPreview {
       if (current === null || route.id !== target) return;
       const next = sendForm(formProps(target));
       current.replaceWith(next);
+      checkVoice();
       if (!focus) return;
       const field = next.querySelector("textarea");
       field?.focus();
@@ -1713,15 +1892,18 @@ namespace MindmapPreview {
         status: state.status,
         count: state.count,
         detail: state.detail,
+        ...voiceOf(formKey(target, loc)),
+        entered: state.entered ?? false,
         collapsed: false,
         open: target === null || prefs.commentFormClosed !== true,
         ...(target === null ? { label: "新しいスレッド" } : {}),
         on: {
+          ...voiceHandlers(state),
           input: (body) => {
             state.body = body;
             scheduleDraft(state);
-            // 溜めた・本文が空の結果は、入力を始めたら消す（溜められなかった結果は次に溜めるまで残す）
-            if (state.status === "saved" || state.status === "empty") {
+            // 溜めた・本文が空・音声入力の結果は、入力を始めたら消す（溜められなかった結果は次に溜めるまで残す）
+            if (state.status === "saved" || state.status === "empty" || state.status === "sent" || state.status === "inserted") {
               state.status = "idle";
               clearSendResult();
             }
@@ -1734,6 +1916,8 @@ namespace MindmapPreview {
           // 開閉を端末に残し、下端の入力を描き直して開閉のボタンへフォーカスを戻す（書きかけはそのまま残す）
           toggle: (open) => {
             prefs.commentFormClosed = open ? null : true;
+            // 入力を畳む: 録っていれば録音を捨てる
+            if (!open && comment.voice.key === formKey(target, loc)) abandonVoice();
             display.storageOk = persist();
             if (target === null) return;
             redrawForm({ target, focus: false });
@@ -1793,8 +1977,17 @@ namespace MindmapPreview {
       const opened = comment.openedThread;
       // スレッドを開いていない・まだ送っていない新しいスレッド: 返信の入力は出さない
       if (opened === null || opened.pending) return { body: "", status: "idle", count: null, detail: null };
-      const { body, status, count, detail } = formStateOf(null, null, opened.id);
-      return { body, status: status === "empty" ? "idle" : status, count, detail };
+      const state = formStateOf(null, null, opened.id);
+      const { body, status, count, detail } = state;
+      return {
+        body,
+        status: status === "empty" ? "idle" : status,
+        count,
+        detail,
+        ...voiceOf(formKey(null, null, opened.id)),
+        entered: state.entered ?? false,
+        voiceOn: voiceHandlers(state),
+      };
     };
 
     /** 描き直す前に、打っている途中の理由を状態に写す（理由は確定のときにだけ入力部品が知らせるため） */
@@ -1811,6 +2004,7 @@ namespace MindmapPreview {
         if (current !== null) comment.listScroll = current.querySelector<HTMLElement>(".comments-body")?.scrollTop ?? 0;
         current?.remove();
         scheduleInert();
+        checkVoice();
         return;
       }
       captureTyped();
@@ -1844,6 +2038,7 @@ namespace MindmapPreview {
         panel?.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`)?.focus();
       }
       scheduleInert();
+      checkVoice();
     };
 
     /** トップバーの件数・詳細パネルのレビュー中のコメント・一覧を、入力中の欄とスクロールの位置を保って描き直す */
@@ -3337,6 +3532,7 @@ namespace MindmapPreview {
         index,
         marks,
         errors: formErrors(SETTINGS_TARGET),
+        transcription: comment.voice.availability,
         on: {
           change: (input) =>
             void submitEdit({
@@ -3362,6 +3558,17 @@ namespace MindmapPreview {
       else current.replaceWith(next);
     };
 
+    /** 開いている設定の画面の音声入力のまとまりだけを作り直した欄に差し替える（ほかの欄の入力の途中を残す） */
+    const renderWorkspaceTranscription = (): void => {
+      const current = document.querySelector<HTMLElement>(".pe-ws");
+      if (current === null) return;
+      const next = workspaceSettings(workspaceProps());
+      for (const key of ["transcription.action", "transcription.preset"]) {
+        const fresh = next.querySelector(`[data-key='${key}']`);
+        if (fresh !== null) current.querySelector(`[data-key='${key}']`)?.replaceWith(fresh);
+      }
+    };
+
     /** 表示の設定のパネルの「設定を編集する」。表示の設定は閉じ、設定の画面を開く（幅 900px 以下では保存待ちのパネルも閉じる） */
     const openWorkspace = (): void => {
       display.open = false;
@@ -3371,6 +3578,8 @@ namespace MindmapPreview {
       editState.editing = null;
       redrawKeepingState();
       document.querySelector<HTMLElement>(".pe-ws h1")?.focus();
+      // 用語集のプリセットの候補を読み直す
+      void refreshAvailability();
     };
 
     /** 設定の画面を閉じ、開く前の画面へ戻る（溜めた編集は保存待ちに残る） */
@@ -3613,6 +3822,8 @@ namespace MindmapPreview {
       await loadThreads();
       await loadEdits();
       syncEditView();
+      // 文字起こしの可否は待たずに読み、返ったら入力を描き直す
+      void refreshAvailability();
     }
     // 記録に無い項目を指すハッシュは、項目の無いハッシュに置き換える
     const requested = new URLSearchParams(location.hash.replace(/^#/, "")).get("id");

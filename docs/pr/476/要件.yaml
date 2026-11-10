@@ -1,0 +1,67 @@
+use_cases:
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/設定の更新.yaml
+    impact: changed
+    detail: 文字起こし後の挙動（送信する・入力欄へ挿入する）と用語集のプリセットを設定で選べるようにする
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/項目へコメントする.yaml
+    impact: run_only
+    detail: コメントの入力にマイクのボタンが加わるため、キーボードでのコメントが今までどおり溜まるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/スレッドで話す.yaml
+    impact: run_only
+    detail: 返信の入力にマイクのボタンが加わるため、キーボードでの返信が今までどおり溜まるかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/音声でコメントする.yaml
+    impact: new
+    detail: コメント・返信の入力のマイクのボタンで録音し、文字起こしの結果をその書き込みだけで Claude Code へ送信するか入力欄へ挿入する。文字起こしを使えないときはマイクのボタンを押せず理由が出る
+    depends_on: []
+  - kind: single
+    scenario: dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する.yaml
+    impact: changed
+    detail: 設定の画面で、文字起こし後の挙動と用語集のプリセットを書き換えて保存する。voice-paste が止まっていてプリセットの候補を読めないときは、プリセットの入力だけを押せなくする
+    depends_on: []
+docs:
+  - page: docs/使い方/プレビューを見る.md
+    new: false
+    change: コメント・返信の入力のマイクのボタンで録音し、文字起こして送信・挿入する操作と、マイクのボタンを押せないときの理由を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
+  - page: docs/リファレンス/ワークスペースの書式.md
+    new: false
+    change: config.yaml に文字起こし後の挙動（send / insert）と用語集のプリセットのキーを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
+  - page: docs/リファレンス/動作環境.md
+    new: false
+    change: 音声入力に要る条件（文字起こしのサービス（voice-paste）が音声を受け付ける状態で起動していること、マイクを使える HTTPS か localhost のページで開くこと、常駐サーバーを WSL で動かし voice-paste を Windows で動かすときは WSL のネットワークを mirrored にすること）を任意の条件として追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
+  - page: docs/リファレンス/コマンド.md
+    new: false
+    change: update_settings が書き換える設定のキーに、文字起こしの設定を追加する。voice-paste の接続先を環境変数で持つ場合は、起動スクリプトの環境変数にも追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-09T00:25:04.170821+00:00'
+scope_out:
+  - item: voice-paste 側の変更（/web/ の下で Origin の無い POST を受け付ける）
+    reason: 別のリポジトリの変更で、shuhei1101/voice-paste#256 で解消済み
+    plan: none
+  - item: レビュー中のコメント・返信の書き換えの入力へのマイクのボタン
+    reason: Issue の対象は新しいコメント・返信の入力で、書き換えの入力は含まれない。単一ユースケース『音声でコメントする』の補足にも置かないと記載した
+    plan: none
+  - item: モジュール構成『ビルド.py』の `SCRIPT_FILES` の値に `core/doc-export.js` が無い
+    reason: 設計書と実装が一致していない対象外の箇所で、今回の要望（音声入力）に含まれない
+    plan: "#478"
+  - item: 部品設計『Markdownの本文.ts』『Markdownの本文.tsx』が YAML として読めない
+    reason: 設計書の検査を通らない対象外の箇所で、今回の要望（音声入力）に含まれない
+    plan: "#471"
+  - item: 今の画面の Storybook の全てのストーリーで、コンソールに `Cannot use 'import.meta' outside a module` が出る
+    reason: この PR で変えていないストーリーでも出る対象外の不具合で、今回の要望（音声入力）に含まれない
+    plan: "#480"

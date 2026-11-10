@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+)
+from workspace_fixtures import MakeItem as _MakeItem, MakePost as _MakePost, MakeThread as _MakeThread
+
 from pathlib import Path
 
 from playwright.sync_api import Locator, Page, expect
@@ -222,3 +228,30 @@ def test_more(
     more.click()
     # 検証
     expect(_panel(page).get_by_role("button", name="TH-1 への返信の本文を折りたたむ")).to_have_text("折りたたむ")
+
+
+def test_voice_input_when_service_stopped(
+    page: Page,
+    make_item: _MakeItem,
+    make_post: _MakePost,
+    make_thread: _MakeThread,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """返信の入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(
+        unreachable_transcriber_url,
+        make_item("D-1"),
+        threads=(make_thread(
+            "TH-1",
+            make_post("TH-1-1", body="どちらにしますか", read=True),
+            make_post("TH-1-2", author="ai", body="案 A と案 B があります"),
+            target="D-1",
+        ),),
+    )
+    # 実行
+    open_spa(page, url, "?tab=decisions&panel=comments&thread=TH-1")
+    # 検証
+    field = page.get_by_role("textbox", name="返信")
+    assert_mic_blocked_after_click(_panel(page).locator("form").filter(has=field), "[role=status]")

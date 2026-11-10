@@ -90,7 +90,7 @@ elements:
   - name: body
     value: レビュー中のコメントの読み取り.drafts のうち target も thread も持たない書きかけ
   - name: status
-    value: レビュー中のコメントの追加（POST /api/comments）の結果
+    value: レビュー中のコメントの追加（POST /api/comments）の結果。音声入力では、書き込みをすぐ送るの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
   - name: count
     value: レビュー中のコメントの追加.count
   - name: detail
@@ -99,6 +99,14 @@ elements:
     value: 'false'
   - name: label
     value: 新しいスレッド
+  - name: voice
+    value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面が持つ）から決める。使えないときは disabled
+  - name: voiceReason
+    value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」）
+  - name: elapsed
+    value: 録音を始めてからの秒数（画面が 1 秒ごとに進める）
+  - name: entered
+    value: 書き込みをすぐ送る（POST /api/comments/send-now）の entered
   position: 下端
   description: 見出し「新しいスレッド」の下に、項目を指さない新しいスレッドの最初の書き込みを溜める入力を出す（`target` を渡さない）。溜めたら入力欄を空にし、まだ送っていない新しいスレッドとして一覧の先頭に足し、コメントのボタンと「レビュー中」の入口の件数を描き直す（この画面に留まる）
   io: 入力

@@ -36,16 +36,16 @@ def http_request(
     *,
     method: str = "GET",
     headers: dict[str, str] | None = None,
-    body: str | None = None,
+    body: str | bytes | None = None,
 ) -> HttpResult:
-    """配信の URL にパスを足して 1 回つなぐ。Host を headers で渡すと、その値を付けてつなぐ。"""
+    """配信の URL にパスを足して 1 回つなぐ。Host を headers で渡すと、その値を付けてつなぐ。body の bytes はそのまま送る。"""
     parts = urlsplit(base_url)
     connection = http.client.HTTPConnection(parts.hostname, parts.port, timeout=HTTP_TIMEOUT_SEC)
     try:
         connection.request(
             method,
             path,
-            body=body.encode("utf-8") if body is not None else None,
+            body=body.encode("utf-8") if isinstance(body, str) else body,
             headers=headers or {},
         )
         response = connection.getresponse()

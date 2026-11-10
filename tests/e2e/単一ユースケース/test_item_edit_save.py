@@ -32,6 +32,7 @@ from preview_helpers import (
     pick_history_point,
     scrim_shown,
 )
+from voice_helpers import TRANSCRIPTION_PATH, VOICE_TIMEOUT_MS, ServeVoiceWorkspace, StartFakeTranscriber, open_with_status
 from workspace_fixtures import RECORD_DIR, CallTool, MakeEdit, MakeItem, MakeWorkspace, StartServer, WriteEdits
 
 # 溜めた編集の取り消しに使う、項目を指す見出しの文字
@@ -65,6 +66,16 @@ def _open_settings_screen(page: Page) -> None:
     """表示の設定のパネルの「設定を編集する」で設定の画面を開く。"""
     page.click(SETTINGS_BUTTON)
     page.get_by_role("button", name="設定を編集する").click()
+    page.wait_for_selector(SETTINGS_SCREEN)
+
+
+def _open_settings_with_status(page: Page) -> None:
+    """設定の画面を開き、用語集のプリセットの候補（文字起こしの可否）を読み終えるまで待つ。"""
+    page.click(SETTINGS_BUTTON)
+    with page.expect_response(
+        lambda response: response.url.split("?")[0].endswith(TRANSCRIPTION_PATH), timeout=VOICE_TIMEOUT_MS
+    ):
+        page.get_by_role("button", name="設定を編集する").click()
     page.wait_for_selector(SETTINGS_SCREEN)
 
 
@@ -380,3 +391,68 @@ def test_normal_when_main_tag_switched(
     ]
     assert read_edits(root) == []
     assert page.locator(PENDING_BUTTON).count() == 0
+
+
+def test_normal_when_transcription_settings(
+    page: Page,
+    make_item: MakeItem,
+    start_fake_transcriber: StartFakeTranscriber,
+    serve_voice_workspace: ServeVoiceWorkspace,
+) -> None:
+    """設定の画面で文字起こし後の挙動と用語集のプリセットを選んで溜め、まとめて保存すると config.yaml に書く（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = serve_voice_workspace(fake.url, make_item("D-1"))
+    open_with_status(page, f"{url}#tab=decisions&view=board")
+    # 実行
+    _open_settings_with_status(page)
+    # 検証（文字起こし後の挙動が既定の「送信する」で、候補が「一般」「開発」）
+    preset = page.get_by_label("用語集のプリセット", exact=True)
+    expect(page.get_by_role("radio", name="送信する")).to_be_checked()
+    assert preset.locator("option").all_inner_texts() == ["サービスの既定", "一般", "開発"]
+    # 実行
+    page.get_by_role("radio", name="入力欄へ挿入する").check()
+    wait_saved_edit(page, "transcription", {"action": "insert"})
+    preset.select_option("開発")
+    wait_saved_edit(page, "transcription", {"action": "insert", "preset": "開発"})
+    open_pending(page)
+    save_pending(page)
+    # 検証
+    config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    assert config["transcription"] == {"action": "insert", "preset": "開発"}
+    assert read_edits(root) == []
+
+
+def test_error_when_presets_unavailable(
+    page: Page,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    unreachable_transcriber_url: str,
+    serve_voice_workspace: ServeVoiceWorkspace,
+) -> None:
+    """用語集のプリセットの候補を読めないときは、今の値のまま押せなくして理由を出し、文字起こし後の挙動は保存できる（異常系）。"""
+    # 準備
+    url, root = serve_voice_workspace(
+        unreachable_transcriber_url,
+        make_item("D-1"),
+        settings={**valid_settings, "transcription": {"preset": "開発"}},
+    )
+    open_with_status(page, f"{url}#tab=decisions&view=board")
+    # 実行
+    _open_settings_with_status(page)
+    # 検証（用語集のプリセットが「開発」のまま押せず、理由が出る）
+    preset = page.get_by_label("用語集のプリセット", exact=True)
+    expect(preset).to_be_disabled()
+    expect(preset).to_have_value("開発")
+    expect(page.locator(f"{SETTINGS_SCREEN} .pe-field[data-key='transcription.preset'] .pe-hint")).to_have_text(
+        "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。"
+    )
+    expect(page.locator(SETTINGS_SCREEN)).not_to_contain_text("voice-paste")
+    # 実行
+    page.get_by_role("radio", name="入力欄へ挿入する").check()
+    wait_saved_edit(page, "transcription", {"action": "insert", "preset": "開発"})
+    open_pending(page)
+    save_pending(page)
+    # 検証
+    config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    assert config["transcription"] == {"action": "insert", "preset": "開発"}

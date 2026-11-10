@@ -672,3 +672,97 @@ def test_is_opened_point(
     result = preview_page.evaluate("(value) => MindmapPreview.isOpenedPoint(value)", value)
     # 検証
     assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("name", "expected_method", "expected_path", "expected_body", "expected_type"),
+    [
+        pytest.param("status", "GET", "api/transcription", None, None, id="status"),
+        pytest.param("transcribe", "POST", "api/transcriptions", "abc", "audio/webm", id="transcribe"),
+        pytest.param(
+            "sendNow",
+            "POST",
+            "api/comments/send-now",
+            '{"thread":"TH-1","body":"x"}',
+            "application/json",
+            id="send_now",
+        ),
+    ],
+)
+def test_voice_api(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    name: str,
+    expected_method: str,
+    expected_path: str,
+    expected_body: str | None,
+    expected_type: str | None,
+) -> None:
+    """各呼び出しのメソッドとパスと本文（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    call = preview_page.evaluate(
+        """async (name) => {
+            const calls = [];
+            const fetchFn = async (url, init) => {
+                const body = init?.body;
+                calls.push({
+                    url: String(url),
+                    method: init?.method ?? "GET",
+                    body: body instanceof Blob ? await body.text() : body ?? null,
+                    type: new Headers(init?.headers ?? {}).get("Content-Type"),
+                });
+                return new Response("{}", {status: 200});
+            };
+            const api = MindmapPreview.voiceApi(fetchFn);
+            const args = {
+                status: [],
+                transcribe: [new Blob(["abc"], {type: "audio/webm"})],
+                sendNow: [{thread: "TH-1", body: "x"}],
+            }[name];
+            await api[name](...args);
+            return calls[0];
+        }""",
+        name,
+    )
+    # 検証
+    assert call["url"].endswith(expected_path)
+    assert (call["method"], call["body"], call["type"]) == (expected_method, expected_body, expected_type)
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected"),
+    [
+        pytest.param(
+            "unsupported",
+            {"ok": False, "status": 503, "reason": "unsupported"},
+            id="unsupported",
+        ),
+        pytest.param("unreachable", {"ok": False, "status": None, "detail": None}, id="unreachable"),
+    ],
+)
+def test_voice_api_when_unavailable(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, failure: str, expected: dict[str, Any]
+) -> None:
+    """503 の理由と届かないを分ける（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """async (failure) => {
+            const fetchFn = async () => {
+                if (failure === "unreachable") {
+                    throw new TypeError("Failed to fetch");
+                }
+                return new Response(JSON.stringify({detail: "対応していません", reason: "unsupported"}), {
+                    status: 503,
+                    headers: {"Content-Type": "application/problem+json"},
+                });
+            };
+            return MindmapPreview.voiceApi(fetchFn).transcribe(new Blob(["abc"], {type: "audio/webm"}));
+        }""",
+        failure,
+    )
+    # 検証
+    assert {key: result[key] for key in expected} == expected

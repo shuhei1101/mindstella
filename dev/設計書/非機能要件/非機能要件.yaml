@@ -256,4 +256,63 @@ requirements:
     status: implemented
     introduced:
       pr: 235
+  - name: 録音の大きさの上限
+    english_name: recording_size_limit
+    category: 性能
+    external_constraint: voice-paste の `POST /web/transcriptions` の本文の上限 100,000,000 バイト
+    source_kind: 外部 API の制限
+    source: dev/設計書/外部API/voice-paste#
+    value: '80000000'
+    unit: バイト（『音声の文字起こし』が受ける本文の大きさ）
+    rationale: 文字起こしのサービスの本文の上限から、規約『資源の値の決め方』の安全率 20% を引いた。サーバーは受けた音声に multipart の区切りとヘッダーを足して渡すため、その分も安全率に収まる。ブラウザの `MediaRecorder` の opus（約 32 kbps）なら約 5 時間分で、コメントの音声には十分に大きい
+    measurement: 80,000,000 バイトと 80,000,001 バイトの本文を送り、前者がサービスへ渡り、後者が 413 になることを確かめる
+    overflow: サーバーは 413 を返してサービスへ渡さない。画面は文字起こしできなかった旨を出し、入力欄の文字は残す
+    breakdown:
+      - part: 外部の上限
+        value: 100,000,000 バイト
+        notes: voice-paste の `web_body_limit`
+      - part: 安全率
+        value: 20%
+        notes: 規約『資源の値の決め方』の既定
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
+  - name: 文字起こしのサービスの応答の上限
+    english_name: transcriber_response_timeout
+    category: 性能
+    external_constraint: voice-paste の `/web/` の下の要求の応答時間 66 秒
+    source_kind: 外部 API の制限
+    source: dev/設計書/外部API/voice-paste#
+    value: '66'
+    unit: 秒（サーバーから文字起こしのサービスへの 1 回の要求の、接続から応答の本文を読み終えるまで）
+    rationale: 実測が無いため、規約『資源の値の決め方』のとおり公開仕様（voice-paste の非機能要件「ブラウザの要求の応答時間」）の値を使う。voice-paste の受け付けは一時のファイルに書いてキューに積むだけで、同じ端末の `127.0.0.1` からは本文のアップロードがほぼかからない。サービスが止まっているときは接続をすぐ断られるため、画面がこの上限まで待つことは普段は無い
+    measurement: release ブランチで、voice-paste に 1 分の音声を 100 回送り、依頼・状態の読み取り・プリセットの一覧のそれぞれの応答時間の p99.9 を測る。p99.9 の 1.5 倍が上限を下回ったら、その値へ見直す
+    overflow: '`音声の文字起こし` の依頼は 503（`stopped`）、状態の読み取りは次の間隔で読み直し、`文字起こしの可否` は `stopped` を返す'
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
+      - dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
+  - name: 文字起こしの待ちの上限
+    english_name: transcription_stall_timeout
+    category: 性能
+    external_constraint: 制限なし
+    source_kind: 制限なし
+    value: '120'
+    unit: 秒（文字起こしのジョブの状態と進み具合が変わらないまま、待つのを諦めるまで）
+    rationale: サーバーが自分の依頼の完了を待つだけの待ちで、役目はサービスの止まりの検知。サービスは進み具合（`progress`）を返すため、規約『資源の値の決め方』のとおり無出力の時間で止まったことを見る。実測が無いため、待ちの列で前のジョブを待つ間（`queued` で進まない）も含めて、1 件ずつ文字に起こすサービスで前に 1 分前後の音声が積まれていても打ち切らない値を仮に置き、測る作業を残す。進みを返さないエンジン（`reports_progress` が false）では `running` の間も進まないため、状態が変わらない時間で見る
+    measurement: release ブランチで、voice-paste に 1 分の音声を続けて 2 件送り、2 件目の状態と進み具合が変わらない最長の時間を測る。その 1.5 倍が上限を超えたら上限を見直す
+    overflow: 打ち切って 504 を返す。画面は文字起こしできなかった旨を出し、入力欄の文字は残す。サービスのジョブは取り消さない（取り消す API が無い）
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
+  - name: 文字起こしの状態を取りに行く間隔
+    english_name: transcription_poll_interval
+    category: 性能
+    external_constraint: voice-paste の状態の読み取りの間隔の制限なし
+    source_kind: 外部 API の制限
+    source: dev/設計書/外部API/voice-paste#
+    value: '1'
+    unit: 秒（サーバーが文字起こしのジョブの状態を続けて読む間隔）
+    rationale: 文字起こしのサービスは取りに来る間隔を制限しない。利用者は「文字起こし」を押して結果を待つため、終わってから結果が出るまでの遅れを 1 秒以内にする。同じ端末の `127.0.0.1` への GET で、1 秒ごとならサービスの負荷にならない
+    measurement: 偽のサーバーで `done` を返し始めてから、『音声の文字起こし』が 200 を返すまでの時間が 1 秒と応答の時間の和以下であることを確かめる
+    overflow: 間隔は固定で、超えることは無い
+    refs:
+      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
 lead: mindstella が外部の制約から逆算して決める値。

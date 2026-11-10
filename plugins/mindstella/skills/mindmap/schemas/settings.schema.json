@@ -205,6 +205,29 @@
         }
       }
     },
+    "transcription": {
+      "type": "object",
+      "description": "コメント・返信の入力の音声入力の設定。どの文字起こしのサービスを使うかは持たない（常駐サーバーの環境変数 `MINDSTELLA_TRANSCRIBER`）。`update_settings` と、プレビューの設定の画面が書く",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "文字起こし後の挙動。`send` は入力欄へ挿入した全文をその 1 件だけで Claude Code へ送信し、`insert` はカーソルの位置に挿入して送信しない。無ければ `send`",
+          "enum": [
+            "send",
+            "insert"
+          ]
+        },
+        "preset": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "文字起こしのサービスへ渡す用語集のプリセットの名前。無いか `null` ならサービスの既定",
+          "minLength": 1
+        }
+      }
+    },
     "preview": {
       "type": "object",
       "description": "プレビューの配信。配信を立てるときだけ読み、設定の再読み込みでは待ち受けを変えない",

@@ -14,6 +14,8 @@ namespace MindmapPreview {
     marks: Record<string, PendingMarkKind>;
     /** 設定のキー → 溜められなかった理由 */
     errors: Record<string, string>;
+    /** 開いたときに読んだ文字起こしの可否（読めない・まだ読んでいなければ null） */
+    transcription?: TranscriptionStatus | null;
     on: {
       /** 設定のキーを溜める */
       change: (input: { key: string; value: unknown; map?: Record<string, string> }) => void;
@@ -56,7 +58,23 @@ namespace MindmapPreview {
     { title: "進め方", keys: ["phases", "target_label", "targets", "categories"] },
     { title: "関連", keys: ["links"] },
     { title: "変更履歴", keys: ["history_limit"] },
+    { title: "音声入力", keys: ["transcription"] },
   ];
+
+  /** 文字起こし後の挙動の選択肢 */
+  const TRANSCRIPTION_ACTIONS = [
+    { value: "send", label: "送信する" },
+    { value: "insert", label: "入力欄へ挿入する" },
+  ] as const;
+
+  /** 用語集のプリセットの「サービスの既定」（プリセットを指定しない） */
+  const SERVICE_DEFAULT_PRESET = "サービスの既定";
+
+  /** 用語集のプリセットの候補を読めないときの、理由ごとの文 */
+  const PRESET_UNAVAILABLE_TEXT = {
+    stopped: "文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。",
+    unsupported: "文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。",
+  } as const;
 
   /** 設定のキーの入力欄の名前 */
   const SETTING_NAMES: Record<string, string> = {
@@ -106,7 +124,10 @@ namespace MindmapPreview {
         h({
           tag: "fieldset",
           attrs: { class: "pe-ws-group" },
-          children: [h({ tag: "legend", children: [group.title] }), ...group.keys.map((key) => settingField({ props, key }))],
+          children: [
+            h({ tag: "legend", children: [group.title] }),
+            ...group.keys.flatMap((key) => (key === "transcription" ? transcriptionFields(props) : [settingField({ props, key })])),
+          ],
         }),
       ),
     });
@@ -210,6 +231,108 @@ namespace MindmapPreview {
       wrap.append(h({ tag: "p", attrs: { class: "pe-hint", role: "alert" }, children: [icon("alert"), failure] }));
     }
     return wrap;
+  }
+
+  /** 音声入力のまとまり（文字起こし後の挙動のラジオと、用語集のプリセットのセレクト）。どちらも `transcription` を 1 件溜める */
+  function transcriptionFields(props: WorkspaceSettingsProps): HTMLElement[] {
+    const { marks, errors, on } = props;
+    const record = props.settings as unknown as Record<string, unknown>;
+    const current = (typeof record.transcription === "object" && record.transcription !== null ? record.transcription : {}) as {
+      action?: string;
+      preset?: string | null;
+    };
+    // 描き直す前に続けて選んでも、もう一方の値は最後に選んだものを保つ
+    let action: string = current.action === "insert" ? "insert" : "send";
+    let preset: string | null = typeof current.preset === "string" ? current.preset : null;
+    const mark = marks.transcription;
+    const fieldClass = `pe-field${mark === "pending" ? " is-pending" : ""}${mark === "blocked" ? " is-blocked" : ""}`;
+    const markNode = (): HTMLElement | null => (mark === undefined ? null : pendingEditMark({ kind: mark, compact: true }));
+    /** もう一方の値を保ったオブジェクトで溜める */
+    const commit = (next: { action: string; preset: string | null }): void => on.change({ key: "transcription", value: next });
+
+    // 文字起こし後の挙動
+    const actionId = "pe-ws-transcription-action";
+    const actionField = h({
+      tag: "div",
+      attrs: { class: fieldClass, "data-key": "transcription.action" },
+      children: [
+        h({
+          tag: "div",
+          attrs: { class: "pe-label-row" },
+          children: [h({ tag: "span", attrs: { class: "pe-label", id: `${actionId}-label` }, children: ["文字起こし後の挙動"] }), markNode()],
+        }),
+        h({
+          tag: "div",
+          attrs: { class: "pe-radios", role: "radiogroup", "aria-labelledby": `${actionId}-label` },
+          children: TRANSCRIPTION_ACTIONS.map((choice) => {
+            const radio = h({
+              tag: "input",
+              attrs: { type: "radio", name: actionId, value: choice.value, checked: choice.value === action },
+            });
+            radio.addEventListener("change", () => {
+              if (!radio.checked) return;
+              action = choice.value;
+              commit({ action, preset });
+            });
+            return h({ tag: "label", attrs: { class: "pe-radio" }, children: [radio, choice.label] });
+          }),
+        }),
+        h({
+          tag: "p",
+          attrs: { class: "pe-hint" },
+          children: ["「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。"],
+        }),
+      ],
+    });
+
+    // 用語集のプリセット
+    const presetId = "pe-ws-transcription-preset";
+    const status = props.transcription ?? null;
+    const usable = status !== null && status.available;
+    const select = h({
+      tag: "select",
+      attrs: { id: presetId, class: "input", "aria-describedby": `${presetId}-hint`, disabled: !usable },
+    }) as HTMLSelectElement;
+    if (usable) {
+      // 候補は「サービスの既定」と、サービスが返した並び（今の値が候補に無ければ末尾に足す）
+      const names = preset !== null && !status.presets.includes(preset) ? [...status.presets, preset] : status.presets;
+      select.append(h({ tag: "option", attrs: { value: "" }, children: [SERVICE_DEFAULT_PRESET] }));
+      for (const name of names) select.append(h({ tag: "option", attrs: { value: name }, children: [name] }));
+    } else {
+      // 使えない: 今の値だけを並べて押せなくする
+      select.append(h({ tag: "option", attrs: { value: preset ?? "" }, children: [preset ?? SERVICE_DEFAULT_PRESET] }));
+    }
+    select.value = preset ?? "";
+    select.addEventListener("change", () => {
+      preset = select.value === "" ? null : select.value;
+      commit({ action, preset });
+    });
+    const unavailableText = status !== null && !status.available && status.reason !== null ? PRESET_UNAVAILABLE_TEXT[status.reason] : null;
+    const presetField = h({
+      tag: "div",
+      attrs: { class: fieldClass, "data-key": "transcription.preset" },
+      children: [
+        h({
+          tag: "div",
+          attrs: { class: "pe-label-row" },
+          children: [h({ tag: "label", attrs: { for: presetId, id: `${presetId}-label` }, children: ["用語集のプリセット"] }), markNode()],
+        }),
+        select,
+        h({
+          tag: "p",
+          attrs: { class: "pe-hint", id: `${presetId}-hint` },
+          children:
+            unavailableText === null
+              ? ["文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。"]
+              : [icon("alert"), unavailableText],
+        }),
+      ],
+    });
+    const failure = errors.transcription;
+    if (failure !== undefined) {
+      presetField.append(h({ tag: "p", attrs: { class: "pe-hint", role: "alert" }, children: [icon("alert"), failure] }));
+    }
+    return [actionField, presetField];
   }
 
   /** 使われている値を外したときの付け替え先の選択（選ぶまで溜めない） */

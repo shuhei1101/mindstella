@@ -27,6 +27,12 @@ components:
     condition: 理由を書いて確定
     mock: MSW
     expected: '`PATCH /api/threads/TH-1` が `status: closed` と理由で呼ばれる'
+  - name: test_thread_view_when_voice
+    case: 正常
+    summary: 音声で返信を送る
+    condition: 'オープンの TH-1 の返信の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: x}` で、挙動が `send`'
+    mock: MSW と `vi.stubGlobal`
+    expected: '`POST /api/comments/send-now` が `{thread: TH-1, body: x}` で 1 回呼ばれ、スレッドが読み直される'
   container: frontend/src/features/comments/thread/thread-view.tsx
 notes:
   単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

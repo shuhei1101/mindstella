@@ -11,6 +11,7 @@ import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { pendingThreads, threadCounts, visibleThreads, type ThreadFilter } from "@/shared/core/comments";
 import { useAddComment, useSaveDraft } from "@/shared/hooks/use-comments";
+import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { cn } from "@/shared/lib/cn";
 import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
@@ -26,14 +27,66 @@ export type CommentsPanelProps = {
   onOpenChangeSet: (id: string) => void;
 };
 
+type FreeState = { body: string; status: SendStatus; count: number | null; detail: string | null };
+
+/** 新しいスレッドの入力。閉じると外れるので、録っていれば録音を捨てる */
+const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void }) => {
+  const add = useAddComment();
+  const saveDraft = useSaveDraft();
+  const voice = useVoiceInput({
+    destination: { target: null, loc: null },
+    body: free.body,
+    onBodyChange: (next) => {
+      setFree({ body: next, status: "idle", count: null, detail: null });
+      saveDraft({ target: null, loc: null, thread: null, body: next }, true);
+    },
+    getSelection: () => {
+      const field = document.querySelector<HTMLTextAreaElement>('form[data-collapsed] textarea, form:not([data-id]) textarea[aria-label="新しいスレッド"]');
+      return { start: field?.selectionStart ?? free.body.length, end: field?.selectionEnd ?? free.body.length };
+    },
+  });
+  return (
+            <SendForm
+              target={null}
+              loc={null}
+              label="新しいスレッド"
+              body={free.body}
+              status={voice.status === "idle" ? free.status : voice.status}
+              count={free.count}
+              detail={voice.status === "idle" ? free.detail : voice.detail}
+              voice={voice.voice}
+              voiceReason={voice.voiceReason}
+              elapsed={voice.elapsed}
+              entered={voice.entered}
+              onVoiceStart={() => void voice.onVoiceStart()}
+              onVoiceCancel={voice.onVoiceCancel}
+              onVoiceDone={() => void voice.onVoiceDone()}
+              onVoiceBlocked={voice.onVoiceBlocked}
+              onInput={(next) => {
+                voice.clearResult();
+                setFree({ body: next, status: "idle", count: null, detail: null });
+                saveDraft({ target: null, loc: null, thread: null, body: next });
+              }}
+              onSubmit={(_target, _loc, text) => {
+                setFree((current) => ({ ...current, status: "saving" }));
+                add.mutate(
+                  { body: text },
+                  {
+                    onSuccess: (result) => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); },
+                    onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
+                  },
+                );
+              }}
+            />
+  );
+};
+
 export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProps) => {
   const { search, setPanel, setComments } = usePreviewSearch();
   const data = useCommentData();
   const pinned = usePrefs().commentsPinned === true;
   const filter: ThreadFilter = search.tstatus ?? "open";
   const tag = search.ttag ?? null;
-  const add = useAddComment();
-  const saveDraft = useSaveDraft();
   const freeDraft = data.drafts.find((draft) => draft.target === null && draft.thread === null)?.body ?? "";
   const [composing, setComposing] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -135,29 +188,7 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
                 <Icon name="x" />
               </Button>
             </div>
-            <SendForm
-              target={null}
-              loc={null}
-              label="新しいスレッド"
-              body={free.body}
-              status={free.status}
-              count={free.count}
-              detail={free.detail}
-              onInput={(next) => {
-                setFree({ body: next, status: "idle", count: null, detail: null });
-                saveDraft({ target: null, loc: null, thread: null, body: next });
-              }}
-              onSubmit={(_target, _loc, text) => {
-                setFree((current) => ({ ...current, status: "saving" }));
-                add.mutate(
-                  { body: text },
-                  {
-                    onSuccess: (result) => { setFree({ body: "", status: "saved", count: (result as { count?: number }).count ?? null, detail: null }); },
-                    onError: (error) => { setFree((current) => ({ ...current, status: "failed", detail: error instanceof AppError ? error.message : null })); },
-                  },
-                );
-              }}
-            />
+            <NewThreadForm free={free} setFree={setFree} />
           </div>
         ) : (
           <div className="border-t border-border p-3">

@@ -1,0 +1,19 @@
+confirmations:
+  - topic: コメント・返信の入力のマイクのボタンと録音中・文字起こし中の並び
+    decision: 録音中のボタンは文字を出さず、× の「キャンセル」と ✓ の「文字起こし」のアイコンだけにする。録音中の表示も丸と経過の時間だけにする（別案 B）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/476#discussion_r4508057193
+  - topic: 文字起こしの結果と、マイクのボタンを押せない理由の文言
+    decision: 提示した文言で進める（推奨案 A）。ただし別のスレッドの回答に従い、voice-paste の名前は「文字起こしのサービス」に置き換える
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/476#discussion_r4508058239
+  - topic: 設定の画面の「音声入力」のまとまり
+    decision: 提示した形で進めるが、画面に voice-paste の名前を出さず「文字起こしのサービス」と呼ぶ。文字起こしは抽象に依存させ、別のサービスに切り替えられるようにする（別案 B）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/476#discussion_r4508058969

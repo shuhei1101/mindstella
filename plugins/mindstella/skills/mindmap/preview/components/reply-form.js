@@ -5,7 +5,10 @@ var MindmapPreview;
     /** 入力欄の ID に付ける連番（同じ文書に複数置いても ID が重ならないように） */
     let replyFormSequence = 0;
     /** 結果の要素の中身（状態ごとの印と文言） */
-    function replyResult({ status, count, detail }) {
+    function replyResult({ status, count, detail, entered }) {
+        const voiceResult = MindmapPreview.voiceResultContent(status, detail, entered);
+        if (voiceResult !== null)
+            return voiceResult;
         if (status === "saving") {
             return [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", children: ["レビューに追加しています"] })];
         }
@@ -21,7 +24,7 @@ var MindmapPreview;
         return [];
     }
     /** 返信をレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-    function replyForm({ thread, body = "", status = "idle", count = null, detail = null, on }) {
+    function replyForm({ thread, body = "", status = "idle", count = null, detail = null, voice = "idle", voiceReason = null, elapsed = 0, entered = false, on, }) {
         replyFormSequence += 1;
         const fieldId = `reply-${replyFormSequence}`;
         const messageId = `${fieldId}-msg`;
@@ -41,8 +44,8 @@ var MindmapPreview;
                 maxlength: MindmapPreview.COMMENT_BODY_MAX_LENGTH,
                 "aria-keyshortcuts": "Control+Enter",
                 "aria-describedby": messageId,
-                // 溜めている間は書き換えられない
-                readonly: saving,
+                // 溜めている間と文字起こし中は書き換えられない
+                readonly: saving || voice === "transcribing",
                 oninput: () => {
                     on.input(textarea.value);
                     // 入力に合わせて、ボタンを押せるかを合わせる
@@ -90,8 +93,12 @@ var MindmapPreview;
             children: [
                 MindmapPreview.h({ tag: "label", attrs: { class: "send-label", for: fieldId }, children: ["返信"] }),
                 // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行
-                MindmapPreview.h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, submit] }),
-                MindmapPreview.h({ tag: "p", attrs: { class: status === "idle" ? "send-msg" : `send-msg ${status}`, id: messageId, role: "status" }, children: replyResult({ status, count, detail }) }),
+                MindmapPreview.h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, ...MindmapPreview.voiceButtons({ voice, voiceReason, textarea, submit, on })] }),
+                MindmapPreview.h({
+                    tag: "p",
+                    attrs: { class: MindmapPreview.messageState(voice, status) === "idle" ? "send-msg" : `send-msg ${MindmapPreview.messageState(voice, status)}`, id: messageId, role: "status" },
+                    children: MindmapPreview.voiceProgressContent(voice, elapsed) ?? replyResult({ status, count, detail, entered }),
+                }),
             ],
         });
     }

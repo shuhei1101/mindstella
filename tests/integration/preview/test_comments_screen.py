@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+)
+from workspace_fixtures import MakeItem as _MakeItem
+
 from pathlib import Path
 
 import pytest
@@ -880,3 +886,21 @@ def test_fit_smallest(served_review_rows: tuple[str, Path], open_preview: OpenPr
         (COMMENTS_PANEL, f"{COMMENTS_PANEL} button[aria-label='コメントの一覧を閉じる']"),
         scope=COMMENTS_PANEL,
     )
+
+
+def test_voice_input_when_service_stopped(
+    open_preview: OpenPreview,
+    make_item: _MakeItem,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """新しいスレッドの入力で、文字起こしのサービスが起動していないときはマイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    open_list(page)
+    # 実行
+    page.click(COMPOSE_BUTTON)
+    page.wait_for_selector(COMPOSE_TEXTAREA)
+    # 検証
+    assert_mic_blocked_after_click(page.locator(f"{COMMENTS_PANEL} .talk-new form.send"), ".send-msg")

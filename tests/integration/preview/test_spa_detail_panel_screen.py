@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+from preview_fixture_types import StartVoicePreview as _StartVoicePreview
+from preview_voice_helpers import (
+    assert_mic_blocked_after_click,
+    assert_mic_ready,
+    wait_transcription_status,
+)
+from workspace_fixtures import MakeItem as _MakeItem
+from collections.abc import Callable
+from typing import Any
+
 import re
 from pathlib import Path
 
@@ -1222,3 +1232,35 @@ def test_tags_input_visible(page: Page, write_preview: WritePreview, make_item: 
     _panel(page).get_by_role("button", name="編集する").click()
     # 検証
     expect(page.get_by_role("combobox", name="タグを追加")).to_be_visible()
+
+
+def test_voice_input(
+    page: Page,
+    make_item: _MakeItem,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """コメントの入力の音声入力の状態を、文字起こしの可否で決める。使えるときはマイクのボタンを押せる（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, _ = start_voice_preview(fake.url, make_item("D-1"))
+    # 実行
+    with wait_transcription_status(page):
+        open_spa(page, url, "?tab=decisions&id=D-1")
+    # 検証
+    assert_mic_ready(page.locator("form[data-id='D-1']"))
+
+
+def test_voice_input_when_service_stopped(
+    page: Page,
+    make_item: _MakeItem,
+    start_voice_preview: _StartVoicePreview,
+    unreachable_transcriber_url: str,
+) -> None:
+    """文字起こしのサービスが起動していないときは、マイクのボタンを押せなくし、押すと理由を結果の行に出す（正常系）。"""
+    # 準備
+    url, _ = start_voice_preview(unreachable_transcriber_url, make_item("D-1"))
+    # 実行
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    # 検証
+    assert_mic_blocked_after_click(page.locator("form[data-id='D-1']"), "[role=status]")

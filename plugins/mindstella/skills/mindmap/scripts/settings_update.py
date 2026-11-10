@@ -48,10 +48,11 @@ EDITABLE_KEYS = (
     "links",
     "history_limit",
     "display",
+    "transcription",
 )
 
 # 値が `null` のときに消してよい任意のキー
-REMOVABLE_KEYS = ("description", "goal", "links", "history_limit", "display")
+REMOVABLE_KEYS = ("description", "goal", "links", "history_limit", "display", "transcription")
 
 # 表示の既定の書き換えの本文に必須のキー
 DISPLAY_KEYS = ("network_look", "visible_kinds")

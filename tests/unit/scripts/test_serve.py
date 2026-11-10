@@ -23,6 +23,12 @@ import builder
 import commands
 import errors
 import serve
+from transcriber import (
+    TranscriberStoppedError,
+    TranscriberUnsupportedError,
+    TranscriptionFailedError,
+    TranscriptionTimeoutError,
+)
 from errors import (
     CommentConflictError,
     CommentInvalidError,
@@ -1792,3 +1798,233 @@ def test_reload_response(
     assert context.settings.current()["display"]["network_look"] == expected_held
     assert context.settings.revision() == expected_revision
     assert (root / RECORD_DIR / "config.yaml").read_bytes() == before
+
+
+class _FakeTranscriber:
+    """presets と transcribe の結果を決め、受けた引数を控える偽の文字起こし。"""
+
+    def __init__(
+        self,
+        *,
+        presets: list[str] | None = None,
+        presets_error: Exception | None = None,
+        text: str = "",
+        transcribe_error: Exception | None = None,
+    ) -> None:
+        self._presets = presets or []
+        self._presets_error = presets_error
+        self._text = text
+        self._transcribe_error = transcribe_error
+        self.transcribe_calls: list[tuple[bytes, str, str | None]] = []
+
+    def presets(self) -> list[str]:
+        """決めた例外があれば送り、無ければ決めた一覧を返す。"""
+        if self._presets_error is not None:
+            raise self._presets_error
+        return self._presets
+
+    def transcribe(self, audio: bytes, content_type: str, *, preset: str | None) -> str:
+        """受けた引数を控え、決めた例外があれば送り、無ければ決めた文字を返す。"""
+        self.transcribe_calls.append((audio, content_type, preset))
+        if self._transcribe_error is not None:
+            raise self._transcribe_error
+        return self._text
+
+
+def _voice_context(root: Path, fake: _FakeTranscriber | None) -> serve.ServeContext:
+    """偽の文字起こしを持つ、待ち受けない配信の文脈を作る。"""
+    return serve.ServeContext(
+        root=root,
+        port=PORT,
+        write_lock=threading.Lock(),
+        settings=serve.SettingsHolder({}),
+        transcriber=fake,
+    )
+
+
+def _with_transcription(settings: dict[str, Any], **transcription: Any) -> dict[str, Any]:
+    """設定に transcription を足した写しを返す。"""
+    return {**settings, "transcription": transcription}
+
+
+def test_transcription_response(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """使えるときは候補と設定を返す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"), settings=_with_transcription(valid_settings, action="insert", preset="開発")
+    )
+    fake = _FakeTranscriber(presets=["一般", "開発"])
+    registry = serve.PreviewRegistry(threading.Lock(), transcriber=fake)
+    url, _started = registry.start(root)
+    # 実行
+    response = serve.transcription_response(_voice_context(root, fake), origin=None)
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{_port_of(url)}/api/transcription", timeout=HTTP_TIMEOUT_SEC
+        ) as over_http:
+            cache_control = over_http.headers["Cache-Control"]
+    finally:
+        registry.stop_all()
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == {
+        "available": True,
+        "reason": None,
+        "detail": None,
+        "presets": ["一般", "開発"],
+        "action": "insert",
+        "preset": "開発",
+    }
+    assert cache_control == "no-store"
+
+
+def test_transcription_response_when_unavailable(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """使えないときも 200 で理由を返し、設定が無ければ既定（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    fake = _FakeTranscriber(presets_error=TranscriberStoppedError("refused"))
+    # 実行
+    response = serve.transcription_response(_voice_context(root, fake), origin=None)
+    # 検証
+    assert response.status == 200
+    payload = json.loads(response.body)
+    assert (payload["available"], payload["reason"], payload["presets"]) == (False, "stopped", [])
+    assert (payload["action"], payload["preset"]) == ("send", None)
+    assert b"voice-paste" not in response.body
+
+
+@pytest.mark.parametrize(
+    ("origin", "action", "status"),
+    [
+        pytest.param("https://attacker.example", "send", 403, id="origin"),
+        pytest.param(None, "paste", 422, id="invalid-settings"),
+    ],
+)
+def test_transcription_response_when_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    origin: str | None,
+    action: str,
+    status: int,
+) -> None:
+    """送り元の違いと崩れた設定（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), settings=_with_transcription(valid_settings, action=action))
+    fake = _FakeTranscriber(presets=["一般"])
+    # 実行
+    response = serve.transcription_response(_voice_context(root, fake), origin=origin)
+    # 検証
+    assert response.status == status
+
+
+def test_transcribe_response(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """音声とプリセットを渡して起こした文字を返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), settings=_with_transcription(valid_settings, preset="開発"))
+    fake = _FakeTranscriber(text="案 A にする")
+    records = root / RECORD_DIR
+    mtimes_before = {path.name: path.stat().st_mtime_ns for path in records.iterdir() if path.is_file()}
+    # 実行
+    response = serve.transcribe_response(
+        _voice_context(root, fake),
+        content_type="audio/webm;codecs=opus",
+        origin=None,
+        body=b"abc",
+    )
+    # 検証
+    assert response.status == 200
+    assert json.loads(response.body) == {"text": "案 A にする"}
+    assert fake.transcribe_calls == [(b"abc", "audio/webm;codecs=opus", "開発")]
+    mtimes_after = {path.name: path.stat().st_mtime_ns for path in records.iterdir() if path.is_file()}
+    assert mtimes_after == mtimes_before
+
+
+def test_transcribe_response_when_no_preset(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """プリセットが無ければ None を渡す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    fake = _FakeTranscriber(text="x")
+    # 実行
+    serve.transcribe_response(
+        _voice_context(root, fake), content_type="audio/webm", origin=None, body=b"abc"
+    )
+    # 検証
+    assert fake.transcribe_calls == [(b"abc", "audio/webm", None)]
+
+
+@pytest.mark.parametrize(
+    ("fake", "status", "reason"),
+    [
+        pytest.param(
+            _FakeTranscriber(transcribe_error=TranscriberStoppedError("refused")), 503, "stopped", id="stopped"
+        ),
+        pytest.param(
+            _FakeTranscriber(transcribe_error=TranscriberUnsupportedError("404")),
+            503,
+            "unsupported",
+            id="unsupported",
+        ),
+        pytest.param(
+            _FakeTranscriber(transcribe_error=TranscriptionFailedError("busy")), 502, None, id="failed"
+        ),
+        pytest.param(
+            _FakeTranscriber(transcribe_error=TranscriptionTimeoutError("stalled")), 504, None, id="timeout"
+        ),
+        pytest.param(None, 503, "stopped", id="none"),
+    ],
+)
+def test_transcribe_response_when_transcriber_failed(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    fake: _FakeTranscriber | None,
+    status: int,
+    reason: str | None,
+) -> None:
+    """文字起こしの失敗の種類をステータスに分ける（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行
+    response = serve.transcribe_response(
+        _voice_context(root, fake), content_type="audio/webm", origin=None, body=b"abc"
+    )
+    # 検証
+    payload = json.loads(response.body)
+    assert response.status == status
+    assert payload.get("reason") == reason
+    assert "busy" not in payload["detail"]
+
+
+@pytest.mark.parametrize(
+    ("content_type", "origin", "body", "status"),
+    [
+        pytest.param("application/json", None, b"abc", 415, id="content-type"),
+        pytest.param("audio/webm", "https://attacker.example", b"abc", 403, id="origin"),
+        pytest.param("audio/webm", None, b"", 400, id="empty"),
+    ],
+)
+def test_transcribe_response_when_rejected(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    content_type: str,
+    origin: str | None,
+    body: bytes,
+    status: int,
+) -> None:
+    """形の違う要求は文字起こしへ渡さない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    fake = _FakeTranscriber(text="x")
+    # 実行
+    response = serve.transcribe_response(
+        _voice_context(root, fake), content_type=content_type, origin=origin, body=body
+    )
+    # 検証
+    assert response.status == status
+    assert fake.transcribe_calls == []

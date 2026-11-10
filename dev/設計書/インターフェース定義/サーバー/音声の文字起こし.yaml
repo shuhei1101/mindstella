@@ -1,0 +1,192 @@
+title: 音声の文字起こし
+entry:
+  kind: endpoint
+  value: POST /api/transcriptions
+flows:
+- name: 正常系
+  summary: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: '`config.yaml` の `transcription.preset` が `開発` のワークスペース'
+  - name: 音声
+    description: テストの中で書き出した短い webm/opus
+    notes: '`Content-Type: audio/webm`'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声（audio/webm）\n  IF->>IF: 大きさと形を確かめ、config.yaml の preset を読む\n  IF->>TR: 音声と用語集のプリセットを渡して文字起こしを依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200、JSON（text）\n```"
+  expected:
+  - ステータスが 200 で、`text` が「案 A にする」
+  - 偽のサーバーが受けた依頼の音声が送った音声と同じで、用語集のプリセットが `開発`
+  - ワークスペースのどのファイルも書き換えていない
+  test: test_normal
+- name: 正常系（プリセットを持たない）
+  summary: '`transcription.preset` が無いときは、プリセットを付けずに依頼する'
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: '`config.yaml` が `transcription` を持たないワークスペース'
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 音声だけを渡して依頼し、結果が出るまで待つ\n  TR-->>IF: 起こした文字\n  IF-->>クライアント: 200\n```"
+  expected:
+  - ステータスが 200
+  - 偽のサーバーが受けた依頼が用語集のプリセットを持たない
+  test: test_normal_when_no_preset
+- name: 異常系（サービスが起動していない・503）
+  summary: サービスに届かないときは、依頼せずに使えない理由を返す
+  setup:
+  - name: Mock
+    description: 偽のサーバーを立てず、`MINDSTELLA_TRANSCRIBER_URL` に誰も待ち受けていないポートの URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送る
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（止まっている）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR--xIF: つながらない\n  IF-->>クライアント: 503（reason=stopped）\n```"
+  expected:
+  - ステータスが 503 で、`reason` が `stopped`、`detail` が「文字起こしのサービスが起動していないため、音声で入力できません。」
+  test: test_error_when_service_stopped
+- name: 異常系（サービスが音声の受け付けに対応していない・503）
+  summary: サービスに音声を受け付ける口が無いときは、使えない理由を返す
+  setup:
+  - name: Mock
+    description: '`/web/` の下の全てに 404 を返す偽のサーバーを立て、`MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて常駐サーバーを立てる。`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼する\n  TR-->>IF: 音声を受け付ける口が無い\n  IF-->>クライアント: 503（reason=unsupported）\n```"
+  expected:
+  - ステータスが 503 で、`reason` が `unsupported`
+  test: test_error_when_service_unsupported
+- name: 異常系（文字起こしに失敗した・502）
+  summary: サービスが文字起こしの失敗を返したときは、失敗を返す
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `failed` と理由「文字起こしワーカー無応答」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼し、結果が出るまで待つ\n  TR-->>IF: 失敗した\n  IF-->>クライアント: 502\n```"
+  expected:
+  - ステータスが 502 で、`detail` が「文字起こしできませんでした。もう一度お試しください。」
+  - サービスが返した失敗の理由は標準エラーにだけ記録し、応答に含めない
+  test: test_error_when_transcription_failed
+- name: 異常系（終わらない・504）
+  summary: 待ちの上限を超えても終わらないときは、打ち切って返す
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で いつまでも `running` と同じ `progress` を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る。文字起こしの待ちの上限を 1 秒に差し替える'
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  \n  クライアント->>IF: POST 音声\n  IF->>TR: 依頼し、結果が出るまで待つ\n  TR-->>IF: 待ちの上限まで進まない\n  IF-->>クライアント: 504\n```"
+  expected:
+  - ステータスが 504 で、`detail` が「文字起こしできませんでした。もう一度お試しください。」
+  test: test_error_when_transcription_timeout
+- name: 異常系（音声が空か大きすぎる・400・413）
+  summary: 空の本文と上限を超える本文を、依頼せずに断る
+  setup:
+  - name: Mock
+    description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る。録音の大きさの上限を 1,000 バイトに差し替える'
+  - name: make_workspace
+    description: 作成を済ませたワークスペース
+  - name: 要求
+    description: 本文が空の要求と、本文が 1,001 バイトの要求の 2 通り
+  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/transcriptions\n  \n  クライアント->>IF: POST 空・上限を超える音声\n  IF-->>クライアント: 400・413\n```"
+  expected:
+  - 空の本文は 400、上限を超える本文は 413 で、偽のサーバーが依頼を受けていない
+  test: test_error_when_audio_empty_or_too_large
+lead: コメント・返信の入力で録音した音声を受け、文字起こしのサービスへ渡して終わるまで待ち、起こした文字を返す。ワークスペースは書き換えない（起こした文字の扱いは画面が設定の挙動で決める）。
+idempotent: false
+side_effects: 文字起こしのサービスに文字起こしのジョブを 1 件積む。ワークスペースのファイルは書き換えない。受けた音声はメモリにだけ持ち、ファイルにもログにも書かない
+callers:
+- dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+- dev/設計書/インターフェース定義/プレビュー/SPAを開く#
+request:
+- name: Host
+  type: str
+  required: true
+  location: header
+  description: ブラウザが付ける接続先
+  constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）
+- name: Content-Type
+  type: str
+  required: true
+  location: header
+  description: 録音した音声の形
+  constraints: '`audio/` で始まる（ブラウザの `MediaRecorder` が録った形。例 `audio/webm;codecs=opus`）'
+  example: audio/webm;codecs=opus
+- name: Origin
+  type: str
+  required: false
+  default: なし（確かめない）
+  location: header
+  description: ブラウザが付ける送り元
+  constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
+- name: Content-Length
+  type: int
+  required: false
+  default: なし（読みながら数えて上限で断る）
+  location: header
+  description: 本文の大きさ。付いていれば本文を読む前に上限と比べる
+- name: （本文）
+  type: bytes
+  required: true
+  location: body
+  description: 録音した音声そのもの
+  constraints: 1 バイト以上、録音の大きさの上限以下
+  format: binary
+response:
+- name: text
+  type: str
+  description: 起こした文字（サービスが用語集で補正した文）
+  notes: 話し声が無ければ空文字。画面は空文字のとき送信も挿入もせず、結果の行に文字起こしできなかった旨を出す
+response_example: |-
+  ```json
+  {
+    "text": "案 A にする"
+  }
+  ```
+status_codes:
+- code: '200'
+  condition: 文字を起こした
+- code: '400'
+  condition: 本文が空
+- code: '403'
+  condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+- code: '413'
+  condition: 本文が録音の大きさの上限を超える
+  notes: 読みながら数え、超えた時点で読むのをやめる
+- code: '415'
+  condition: '`Content-Type` が `audio/` で始まらない'
+- code: '502'
+  condition: サービスが文字起こしの失敗を返したか、依頼を受け付けなかった（口が無い・届かない以外）
+  notes: サービスの理由は標準エラーにだけ記録する
+- code: '503'
+  condition: 'サービスに届かない（`reason: stopped`）か、音声を受け付ける口が無い（`reason: unsupported`）'
+  notes: 本文に `reason` を足す。画面はマイクのボタンを押せなくする
+- code: '504'
+  condition: 文字起こしの待ちの上限までに終わらない
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語で、画面にそのまま出せる文にする。文字起こしのサービスの名前（voice-paste）を含めない。503 だけ `reason` を足す
+constraints:
+- item: 文字起こしのサービスへの依存
+  constraint: 配信の処理は文字起こしのインターフェース（抽象）だけに依存し、どのサービスかは環境変数 `MINDSTELLA_TRANSCRIBER` で選ぶ（今は `voice-paste` だけ）。応答の本文・`detail`・ログの利用者向けの文言にサービスの名前を出さない
+  notes: 'ユーザーが決めた（PR #476 の確認ログ「設定の画面の「音声入力」のまとまり」）。別のサービスへ切り替えても、この操作の要求と応答は変わらない'
+- item: サービスへの依頼
+  constraint: 文字起こしのインターフェースへ、音声と用語集のプリセット（`config.yaml` の `transcription.preset`。無ければ渡さない）を 1 回だけ渡す。冪等でないため再試行しない
+  notes: サービスごとの渡し方（voice-paste のエンドポイント・項目・ヘッダー）は、モジュール構成のサービスの実装と外部 API の設計書が持つ
+- item: 終わるまでの待ち
+  constraint: 結果が出るまで待つ。起こした文字が出たら 200、失敗が出たら 502。文字起こしが進まないまま文字起こしの待ちの上限を超えたら打ち切って 504
+  notes: 結果の待ち方（状態を取りに行く間隔・進み具合の見方）はサービスの実装が持つ。voice-paste の実装の間隔は非機能要件「文字起こしの状態を取りに行く間隔」
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[文字起こしの待ちの上限]
+- item: 1 回の要求の待ち
+  constraint: サービスへの 1 回の要求は、文字起こしのサービスの応答の上限で打ち切る。依頼が打ち切られたときは 503（`stopped`）。結果を待つ間の要求が打ち切られたときは待ちを続け、終わるまでの待ちに数える
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[文字起こしのサービスの応答の上限]
+- item: 録音の大きさ
+  constraint: 本文は録音の大きさの上限まで読む
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[録音の大きさの上限]
+- item: 同時の依頼
+  constraint: 制限しない。ワークスペースのロックを取らない（ワークスペースを書き換えないため）
+  notes: 待ちの上限はサービス側が持ち、超えたら 502 で返る
+- item: 送り元の確かめ
+  constraint: '`Host` と `Origin` は『プレビューの配信』と同じ。`Content-Type` を `audio/` に限る（別のサイトのページがフォームで送れる形を受けない）'
+- item: 待ち受け
+  constraint: '`127.0.0.1` だけ'
+  decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+refs:
+- dev/設計書/外部API/voice-paste#
+- dev/設計書/シナリオ/単一ユースケース/音声でコメントする#
+test_file: tests/integration/server/test_transcriptions.py

@@ -344,3 +344,192 @@ def test_closed_with_draft(open_story: OpenStory) -> None:
     toggle = page.get_by_role("button", name="コメントの入力を開く")
     assert toggle.get_attribute("aria-expanded") == "false"
     assert not page.locator("textarea").is_visible()
+
+
+# 音声入力の結果の行（録音中・文字起こし中・送信・挿入・失敗）を読む場所
+VOICE_MESSAGE = ".send-msg"
+
+# 最も狭い幅（Storybook の画面幅を 320px にしたときの幅と高さ）
+NARROWEST_WIDTH = 320
+NARROWEST_HEIGHT = 640
+
+# 録音中の 2 つのボタンの位置と大きさを読む
+RECORDING_GEOMETRY_SCRIPT = """() => {
+  const field = document.querySelector('textarea').getBoundingClientRect();
+  const cancel = document.querySelector('button[aria-label="キャンセル"]').getBoundingClientRect();
+  const done = document.querySelector('button[aria-label="文字起こし"]').getBoundingClientRect();
+  return {
+    fieldRight: field.right, fieldBottom: field.bottom,
+    cancelLeft: cancel.left, cancelRight: cancel.right, cancelBottom: cancel.bottom, cancelWidth: cancel.width, cancelHeight: cancel.height,
+    doneLeft: done.left, doneRight: done.right, doneWidth: done.width, doneHeight: done.height,
+  };
+}"""
+
+
+def assert_recording_buttons(page: Page) -> None:
+    """マイクと「レビューに追加」の位置に、アイコンだけの × の「キャンセル」と ✓ の「文字起こし」を置いている。"""
+    cancel = page.get_by_role("button", name="キャンセル")
+    done = page.get_by_role("button", name="文字起こし", exact=True)
+    assert cancel.get_attribute("title") == "キャンセル（録音を破棄）"
+    assert done.get_attribute("title") == "文字起こし"
+    assert cancel.inner_text().strip() == ""
+    assert done.inner_text().strip() == ""
+    assert cancel.is_enabled()
+    assert done.is_enabled()
+    assert page.get_by_role("button", name="音声で入力").count() == 0
+    assert page.get_by_role("button", name="レビューに追加").count() == 0
+    geometry = page.evaluate(RECORDING_GEOMETRY_SCRIPT)
+    assert geometry["cancelLeft"] >= geometry["fieldRight"] - POSITION_TOLERANCE_PX
+    assert geometry["doneLeft"] >= geometry["cancelRight"] - POSITION_TOLERANCE_PX
+    assert abs(geometry["cancelBottom"] - geometry["fieldBottom"]) <= POSITION_TOLERANCE_PX
+    assert (geometry["cancelWidth"], geometry["cancelHeight"]) == (geometry["doneWidth"], geometry["doneHeight"])
+
+
+def assert_mic_blocked(page: Page, reason: str) -> None:
+    """マイクのボタンを押せない見た目にし、フォーカスは受けたまま理由をツールチップと読み上げの説明に出す。「レビューに追加」は押せるまま。"""
+    mic = page.get_by_role("button", name="音声で入力")
+    assert mic.get_attribute("aria-disabled") == "true"
+    assert mic.get_attribute("disabled") is None
+    assert mic.get_attribute("title") == reason
+    assert page.text_content(f"#{mic.get_attribute('aria-describedby')}") == reason
+    mic.focus()
+    assert page.evaluate("document.activeElement.getAttribute('aria-label')") == "音声で入力"
+    assert page.get_by_role("button", name="レビューに追加").is_enabled()
+
+
+def assert_mic_ready(page: Page) -> None:
+    """元のボタン（マイクと「レビューに追加」）に戻っている。"""
+    mic = page.get_by_role("button", name="音声で入力")
+    assert mic.get_attribute("aria-disabled") is None
+    assert mic.get_attribute("title") == "音声で入力"
+    assert page.get_by_role("button", name="レビューに追加").is_enabled()
+
+
+def test_recording(open_story: OpenStory) -> None:
+    """録音中。マイクと「レビューに追加」の位置に × の「キャンセル」と ✓ の「文字起こし」を置き、結果の行に失敗の色の丸と経過の時間だけを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--recording")
+    # 検証
+    assert_recording_buttons(page)
+    assert "0:12" in page.inner_text(VOICE_MESSAGE)
+    assert "録音中" in (page.text_content(VOICE_MESSAGE) or "")
+    assert page.input_value("textarea") == ""
+
+
+def test_transcribing(open_story: OpenStory) -> None:
+    """文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--transcribing")
+    # 検証
+    assert page.get_by_role("button", name="キャンセル").is_disabled()
+    busy = page.get_by_role("button", name="文字起こし中")
+    assert busy.is_disabled()
+    assert page.get_attribute("textarea", "readonly") is not None
+    assert page.input_value("textarea") == "確認: "
+    assert "文字起こししています。" in (page.text_content(VOICE_MESSAGE) or "")
+
+
+def test_recording_with_draft(open_story: OpenStory) -> None:
+    """打ちかけがある録音中。入力欄の「確認: 」とカーソルの位置を残す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--recording-with-draft")
+    # 検証
+    assert_recording_buttons(page)
+    assert page.input_value("textarea") == "確認: "
+
+
+def test_sent(open_story: OpenStory) -> None:
+    """送信した。入力欄を空にし、元のボタンに戻して「送信し、Claude Code へ入力しました。」（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--sent")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "送信し、Claude Code へ入力しました。"
+    assert page.input_value("textarea") == ""
+    assert_mic_ready(page)
+
+
+def test_sent_not_entered(open_story: OpenStory) -> None:
+    """送信したが Claude Code へ入力しなかった。「送信しました。Claude Code へは入力していません。」（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--sent-not-entered")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "送信しました。Claude Code へは入力していません。"
+
+
+def test_inserted(open_story: OpenStory) -> None:
+    """入力欄へ挿入した。「文字起こしの結果を挿入しました。」（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--inserted")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "文字起こしの結果を挿入しました。"
+    assert page.input_value("textarea") == "確認: 案 A にする"
+    assert_mic_ready(page)
+
+
+def test_voice_disabled(open_story: OpenStory) -> None:
+    """文字起こしのサービスが起動していない。マイクのボタンを押せない見た目にし、理由のツールチップを出す。「レビューに追加」は押せるまま（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--voice-disabled")
+    # 検証
+    assert_mic_blocked(page, "文字起こしのサービスが起動していないため、音声で入力できません。")
+
+
+def test_voice_unsupported(open_story: OpenStory) -> None:
+    """文字起こしのサービスが音声の受け付けに対応していない。押せない理由のツールチップ（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--voice-unsupported")
+    # 検証
+    assert_mic_blocked(page, "文字起こしのサービスが音声の受け付けに対応していないため、音声で入力できません。")
+
+
+def test_voice_no_microphone(open_story: OpenStory) -> None:
+    """ブラウザがマイクを使えない。押せない理由のツールチップ（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--voice-no-microphone")
+    # 検証
+    assert_mic_blocked(page, "このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。")
+
+
+def test_voice_failed(open_story: OpenStory) -> None:
+    """文字起こしに失敗した。入力欄の中身を残し、元のボタンに戻して理由を結果の行に出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--voice-failed")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "文字起こしできませんでした。もう一度お試しください。"
+    assert page.input_value("textarea") == "案 B も見たい"
+    assert_mic_ready(page)
+
+
+def test_voice_denied(open_story: OpenStory) -> None:
+    """マイクの許可を拒否した。録音を始めず、許可が要ることを結果の行に出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--voice-denied")
+    # 検証
+    assert (
+        page.inner_text(VOICE_MESSAGE).strip()
+        == "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。"
+    )
+    assert_mic_ready(page)
+
+
+def test_voice_send_failed(open_story: OpenStory) -> None:
+    """文字起こしはできたが送信できなかった。挿入した全文を入力欄に残す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--voice-send-failed")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "送信できませんでした。文字起こしの結果は入力欄に残しています。"
+    assert page.input_value("textarea") == "確認: 案 A にする"
+
+
+def test_recording_narrow(open_story: OpenStory) -> None:
+    """最も狭い幅（320px）の録音中。2 つのボタンは同じ大きさで、入力欄の右に並んだまま収まる（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-sendform--recording-narrow")
+    page.set_viewport_size({"width": NARROWEST_WIDTH, "height": NARROWEST_HEIGHT})
+    page.wait_for_function(f"innerWidth === {NARROWEST_WIDTH}")
+    # 検証
+    assert_recording_buttons(page)
+    form = page.locator("form").bounding_box()
+    assert form is not None
+    assert form["width"] <= NARROWEST_WIDTH
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")

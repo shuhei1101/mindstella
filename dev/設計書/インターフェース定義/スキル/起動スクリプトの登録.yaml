@@ -181,7 +181,7 @@ request:
     default: なし（環境変数を変えない）
     location: argument
     description: '`set` で登録する環境変数。`KEY=VALUE` を繰り返し渡せる。渡したキーだけを書き換え、登録済みのほかのキーは残す'
-    constraints: キーは `MINDSTELLA_VENV`・`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` のどれか。値は改行を含まない
+    constraints: キーは `MINDSTELLA_VENV`・`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_TRANSCRIBER`・`MINDSTELLA_TRANSCRIBER_URL` のどれか。値は改行を含まない
     example: MINDSTELLA_ALLOWED_HOSTS=preview.example.com
   - name: --unset-env
     type: str

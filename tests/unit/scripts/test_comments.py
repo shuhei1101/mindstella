@@ -907,3 +907,110 @@ def test_parse_comment_input_when_boundary() -> None:
     result = comments._parse_comment_input({"body": body})
     # 検証
     assert len(result[3]) == MAX_BODY_CHARS
+
+
+def test_send_now(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+) -> None:
+    """新しいスレッドを立てて最初の書き込みにし、レビュー中の書き込みは残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(root, make_comment("C-1"))
+    # 実行
+    sent, post = comments.send_now(root, {"target": "D-1", "body": " 案 A にする "}, now=_fixed_now)
+    # 検証
+    assert sent == FIXED_NOW
+    assert (post.comment, post.thread, post.post) == (None, "TH-1", "TH-1-1")
+    saved = _read_threads(root)
+    assert (saved[0]["id"], saved[0]["status"], saved[0]["target"]) == ("TH-1", "open", "D-1")
+    first = saved[0]["posts"][0]
+    assert (first["author"], first["body"], first["read"], first["seen"], first["taken"]) == (
+        "user",
+        "案 A にする",
+        False,
+        True,
+        None,
+    )
+    assert "comment" not in first
+    assert [item["id"] for item in _read_comments(root)["items"]] == ["C-1"]
+
+
+def test_send_now_when_reply(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_drafts: WriteDrafts,
+    write_threads: WriteThreads,
+) -> None:
+    """オープンのスレッドの末尾に足す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    write_drafts(root, _reply_draft("TH-1"))
+    # 実行
+    _sent, post = comments.send_now(root, {"thread": "TH-1", "body": "x"}, now=_fixed_now)
+    # 検証
+    assert (post.comment, post.thread, post.post) == (None, "TH-1", "TH-1-2")
+    assert [draft["thread"] for draft in _read_drafts(root)] == ["TH-1"]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param({"body": "  "}, id="blank"),
+        pytest.param({"target": "D-1", "thread": "TH-1", "body": "x"}, id="target-and-thread"),
+        pytest.param(
+            {"loc": {"kind": "body", "start": 1, "end": 1, "text": "x"}, "body": "x"},
+            id="loc-only",
+        ),
+    ],
+)
+def test_send_now_when_invalid(
+    make_workspace: MakeWorkspace, make_item: MakeItem, data: dict[str, Any]
+) -> None:
+    """形の誤りは何も書かない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    # 実行・検証
+    with pytest.raises(CommentInvalidError):
+        comments.send_now(root, data, now=_unexpected_now)
+    assert not (root / RECORD_DIR / "threads.yaml").exists()
+
+
+@pytest.mark.parametrize(
+    ("data", "message"),
+    [
+        pytest.param({"target": "D-9", "body": "x"}, "D-9", id="missing-item"),
+        pytest.param({"thread": "TH-1", "body": "x"}, "クローズ", id="closed-thread"),
+        pytest.param({"thread": "TH-9", "body": "x"}, "TH-9", id="missing-thread"),
+        pytest.param(
+            {
+                "target": "A-1",
+                "loc": {"kind": "body", "start": 5, "end": 5, "text": "x"},
+                "body": "x",
+            },
+            "3 行",
+            id="loc-out-of-range",
+        ),
+    ],
+)
+def test_send_now_when_conflict(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    data: dict[str, Any],
+    message: str,
+) -> None:
+    """向けた先が無いか送れない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("A-1"), bodies={"A-1.md": A_BODY})
+    write_threads(root, make_thread("TH-1", status="closed"))
+    before = (root / RECORD_DIR / "threads.yaml").read_bytes()
+    # 実行・検証
+    with pytest.raises(CommentConflictError, match=message):
+        comments.send_now(root, data, now=_unexpected_now)
+    assert (root / RECORD_DIR / "threads.yaml").read_bytes() == before

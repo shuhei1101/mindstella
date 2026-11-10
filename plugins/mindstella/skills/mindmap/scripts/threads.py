@@ -110,7 +110,8 @@ class Thread:
 class UserPostInput:
     """まとめて送るレビュー中のコメント 1 件を、スレッドへ足す形にしたもの。"""
 
-    comment: str
+    # レビュー中のコメントの ID（すぐ送る書き込みはレビュー中を経ないため None）
+    comment: str | None
     # 返信先のスレッドの ID（新しいスレッドの最初の書き込みは None）
     thread: str | None
     # 新しいスレッドの向けた項目の ID
@@ -124,7 +125,8 @@ class UserPostInput:
 class SentPost:
     """まとめて送るの `items[]` の 1 行。"""
 
-    comment: str
+    # 送ったレビュー中のコメントの ID（すぐ送った書き込みは None）
+    comment: str | None
     thread: str
     post: str
 
@@ -454,7 +456,8 @@ def append_user_posts(
     added = False
     result: list[SentPost] = []
     for item in posts:
-        existing = sent_already.get(item.comment)
+        # レビュー中を経ない書き込みは二重に送ったかを比べない
+        existing = None if item.comment is None else sent_already.get(item.comment)
         # 既に送っている: 足さずにその書き込みを返す
         if existing is not None:
             logger.warning("既に送っていたコメント: %s %s", item.comment, existing[1])

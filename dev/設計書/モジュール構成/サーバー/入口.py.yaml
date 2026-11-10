@@ -953,7 +953,9 @@ functions:
            - `[ERROR]` MINDSTELLA_PORT の値が誤り（値。1〜65535 の整数を渡す案内）
          - `PortInUseError` を捕まえた場合、1 を返す
            - `[ERROR]` ポートが使われている（ポート。`MINDSTELLA_PORT` で別のポートを渡す案内）
-      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）を渡した配信の台帳（`PreviewRegistry`）を作る
+      3. プロセスの中の書き換えの鍵（`threading.Lock()`）と、外から見る設定（`load_external_access(environ)`）と、文字起こしのインターフェース（`load_transcriber(environ)`。モジュール構成『文字起こしの引き当て』）を渡した配信の台帳（`PreviewRegistry`）を作る
+         - `InvalidTranscriberError` を捕まえた場合、取ったソケットを閉じて 1 を返す
+           - `[ERROR]` 文字起こしの環境変数の値が誤り（環境変数の名前と値。設定『サーバー』の許す値の案内）
       4. 起動した日時（UTC）・プラグインのフォルダ（`PLUGIN_VERSION_FILE.parent`）・プラグインのバージョン（`str(read_plugin_version())`）を控え、それらと台帳から状態を作る関数（`build_status`）を作る
       5. サーバーを組み立て（`build`。`status` に 4 の関数、`request_stop` に HTTP のサーバーの `should_exit` を真にする関数を渡す）、`streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)` のアプリを `make_server` に渡す
       6. 2 のソケットで動かす（`run(sockets=[ソケット])`）。SIGTERM・SIGINT の受け口は uvicorn が置き、受けると `should_exit` を真にする。uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、動かす前に SIGTERM の受け口を `SystemExit(0)` を投げる関数にし、7 の後で元に戻す
@@ -1000,6 +1002,19 @@ functions:
         mock: '`build`・`make_server`（呼ばれないことを確かめる）'
         expected: 1 を返し、`ERROR` の記録にそのポートと `MINDSTELLA_PORT` がある。`build`・`make_server` が呼ばれない
         exception: PortInUseError
+      - name: test_main_when_transcriber_invalid
+        case: 異常
+        summary: 文字起こしの環境変数の値が誤りなら待ち受けずに 1
+        condition: '`environ` に `MINDSTELLA_PORT` の空きポートと `"MINDSTELLA_TRANSCRIBER": "whisper"`'
+        mock: '`build`・`make_server`（呼ばれないことを確かめる）'
+        expected: 1 を返し、`ERROR` の記録に `MINDSTELLA_TRANSCRIBER` と `whisper` がある。`build`・`make_server` が呼ばれない
+        exception: InvalidTranscriberError
+      - name: test_main_when_transcriber_set
+        case: 正常
+        summary: 環境変数で選んだ文字起こしを台帳へ渡す
+        condition: '`environ` に `MINDSTELLA_PORT` の空きポートと `"MINDSTELLA_TRANSCRIBER_URL": "http://127.0.0.1:50000"`。`test_main` と同じ差し替え'
+        mock: '`build`・`make_server`'
+        expected: 控えた `previews` の文字起こしが `VoicePasteTranscriber` で、URL が `http://127.0.0.1:50000`
   - name: read_port
     title: 待ち受けのポートの読み込み
     kind: 関数

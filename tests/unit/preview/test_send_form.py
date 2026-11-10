@@ -380,3 +380,184 @@ def test_format_jst(
     formatted = preview_page.evaluate("(iso) => MindmapPreview.formatJst(iso)", iso)
     # 検証
     assert formatted == expected
+
+
+# 音声入力の状態を見て返す JavaScript（マイク・×・✓ と結果の行の属性を集める）
+VOICE_OBSERVE_SCRIPT = """(props) => {
+    const noop = () => {};
+    const on = {
+        input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop, toggle: noop,
+        voiceStart: noop, voiceCancel: noop, voiceDone: noop, voiceBlocked: noop,
+    };
+    const form = (props.thread ? MindmapPreview.replyForm : MindmapPreview.sendForm)({...props, on});
+    document.body.append(form);
+    const byLabel = (label) => form.querySelector(`button[aria-label="${label}"]`);
+    const describe = (button) => {
+        if (button === null) {
+            return null;
+        }
+        const describedBy = button.getAttribute("aria-describedby");
+        return {
+            text: button.textContent.trim(),
+            disabled: button.disabled,
+            ariaDisabled: button.getAttribute("aria-disabled"),
+            title: button.getAttribute("title"),
+            description: describedBy === null ? null : document.getElementById(describedBy)?.textContent.trim(),
+        };
+    };
+    const mic = byLabel("音声で入力");
+    const submit = form.querySelector('button[type="submit"]');
+    const status = form.querySelector('[role="status"]');
+    const hidden = status === null ? [] : [...status.querySelectorAll('[aria-hidden="true"]')];
+    return {
+        mic: describe(mic),
+        micBeforeSubmit: mic !== null && submit !== null
+            && Boolean(mic.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING),
+        submit: submit !== null,
+        cancel: describe(byLabel("キャンセル")),
+        done: describe(byLabel("文字起こし") ?? byLabel("文字起こし中")),
+        readOnly: form.querySelector("textarea").readOnly,
+        statusText: status === null ? "" : status.textContent,
+        hiddenText: hidden.map((node) => node.textContent.trim()).join(""),
+        spokenText: status === null ? "" : [...status.childNodes]
+            .filter((node) => !(node instanceof Element && node.getAttribute("aria-hidden") === "true"))
+            .map((node) => node.textContent.trim()).join(""),
+        cancelDisabled: byLabel("キャンセル")?.disabled ?? null,
+        doneDisabled: (byLabel("文字起こし") ?? byLabel("文字起こし中"))?.disabled ?? null,
+    };
+}"""
+
+# 音声入力のボタンを押して、呼ばれたコールバックを返す JavaScript
+VOICE_EVENTS_SCRIPT = """({props, press, caret}) => {
+    const calls = [];
+    const noop = () => {};
+    const on = {
+        input: noop, save: noop, unquote: noop, copy: noop, focus: noop, blur: noop, toggle: noop,
+        voiceStart: () => calls.push(["voiceStart"]),
+        voiceCancel: () => calls.push(["voiceCancel"]),
+        voiceDone: (input) => calls.push(["voiceDone", input]),
+        voiceBlocked: () => calls.push(["voiceBlocked"]),
+    };
+    const form = MindmapPreview.sendForm({...props, on});
+    document.body.append(form);
+    const textarea = form.querySelector("textarea");
+    if (caret !== null) {
+        textarea.setSelectionRange(caret, caret);
+    }
+    form.querySelector(`button[aria-label="${press}"]`).click();
+    return calls;
+}"""
+
+
+@pytest.mark.parametrize(
+    ("props", "expected"),
+    [
+        pytest.param(
+            {"target": "D-1", "voice": "idle"},
+            {
+                "mic": {"text": "", "disabled": False, "ariaDisabled": None, "title": "音声で入力", "description": None},
+                "micBeforeSubmit": True,
+                "submit": True,
+                "cancel": None,
+                "done": None,
+                "readOnly": False,
+            },
+            id="idle",
+        ),
+        pytest.param(
+            {"target": "D-1", "voice": "disabled", "voiceReason": "文字起こしのサービスが起動していないため、音声で入力できません。"},
+            {
+                "mic": {
+                    "text": "",
+                    "disabled": False,
+                    "ariaDisabled": "true",
+                    "title": "文字起こしのサービスが起動していないため、音声で入力できません。",
+                    "description": "文字起こしのサービスが起動していないため、音声で入力できません。",
+                },
+                "submit": True,
+                "cancel": None,
+                "done": None,
+            },
+            id="disabled",
+        ),
+        pytest.param(
+            {"target": "D-1", "voice": "recording", "elapsed": 72},
+            {
+                "mic": None,
+                "submit": False,
+                "cancel": {"text": "", "disabled": False, "ariaDisabled": None, "title": "キャンセル（録音を破棄）", "description": None},
+                "done": {"text": "", "disabled": False, "ariaDisabled": None, "title": "文字起こし", "description": None},
+                "readOnly": False,
+                "hiddenText": "1:12",
+                "spokenText": "録音中",
+            },
+            id="recording",
+        ),
+        pytest.param(
+            {"target": "D-1", "voice": "transcribing", "body": "確認: "},
+            {"mic": None, "submit": False, "readOnly": True, "cancelDisabled": True, "doneDisabled": True},
+            id="transcribing",
+        ),
+        pytest.param(
+            {"target": "D-1", "status": "sent", "entered": False},
+            {"statusText": "送信しました。Claude Code へは入力していません。"},
+            id="sent",
+        ),
+        pytest.param(
+            {"target": "D-1", "status": "inserted", "body": "確認: 案 A にする"},
+            {"statusText": "文字起こしの結果を挿入しました。"},
+            id="inserted",
+        ),
+    ],
+)
+def test_send_form_when_voice(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    props: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """音声入力の状態ごとのボタンと結果の行（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(VOICE_OBSERVE_SCRIPT, props)
+    # 検証
+    assert {key: observed[key] for key in expected} == expected
+
+
+@pytest.mark.parametrize(
+    ("props", "press", "caret", "expected"),
+    [
+        pytest.param({"target": "D-1", "voice": "idle"}, "音声で入力", None, [["voiceStart"]], id="start"),
+        pytest.param({"target": "D-1", "voice": "recording"}, "キャンセル", None, [["voiceCancel"]], id="cancel"),
+        pytest.param(
+            {"target": "D-1", "voice": "recording", "body": "確認: "},
+            "文字起こし",
+            4,
+            [["voiceDone", {"body": "確認: ", "start": 4, "end": 4}]],
+            id="done",
+        ),
+        pytest.param(
+            {"target": "D-1", "voice": "disabled", "voiceReason": "理由"},
+            "音声で入力",
+            None,
+            [["voiceBlocked"]],
+            id="blocked",
+        ),
+    ],
+)
+def test_send_form_when_voice_events(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    props: dict[str, Any],
+    press: str,
+    caret: int | None,
+    expected: list[list[Any]],
+) -> None:
+    """音声入力のボタンのコールバック（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    calls = preview_page.evaluate(VOICE_EVENTS_SCRIPT, {"props": props, "press": press, "caret": caret})
+    # 検証
+    assert calls == expected

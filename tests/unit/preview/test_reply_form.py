@@ -200,3 +200,69 @@ def test_reply_form_when_keys(
     assert observed["saved"] == expected_saved
     assert observed["parentKeydowns"] <= max_parent_keydowns
     assert observed["focused"] is expected_focused
+
+
+@pytest.mark.parametrize(
+    ("props", "press", "expected_calls", "expected_text"),
+    [
+        pytest.param(
+            {"thread": "TH-2", "body": "起票してよい", "voice": "recording", "elapsed": 5},
+            "文字起こし",
+            [["voiceDone", {"body": "起票してよい", "start": 6, "end": 6}]],
+            "0:05",
+            id="done",
+        ),
+        pytest.param(
+            {"thread": "TH-2", "voice": "disabled", "voiceReason": "理由"},
+            "音声で入力",
+            [["voiceBlocked"]],
+            "",
+            id="blocked",
+        ),
+        pytest.param(
+            {"thread": "TH-2", "status": "sent", "entered": True},
+            None,
+            [],
+            "送信し、Claude Code へ入力しました。",
+            id="sent",
+        ),
+    ],
+)
+def test_reply_form_when_voice(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    props: dict[str, Any],
+    press: str | None,
+    expected_calls: list[list[Any]],
+    expected_text: str,
+) -> None:
+    """音声入力の状態とコールバック（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    observed = preview_page.evaluate(
+        """({props, press}) => {
+            const calls = [];
+            const noop = () => {};
+            const form = MindmapPreview.replyForm({
+                ...props,
+                on: {
+                    input: noop,
+                    save: noop,
+                    voiceStart: () => calls.push(["voiceStart"]),
+                    voiceCancel: () => calls.push(["voiceCancel"]),
+                    voiceDone: (input) => calls.push(["voiceDone", input]),
+                    voiceBlocked: () => calls.push(["voiceBlocked"]),
+                },
+            });
+            document.body.append(form);
+            const textarea = form.querySelector("textarea");
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            form.querySelector(`button[aria-label="${press}"]`)?.click();
+            return {calls, statusText: form.querySelector('[role="status"]')?.textContent ?? ""};
+        }""",
+        {"props": props, "press": press},
+    )
+    # 検証
+    assert observed["calls"] == expected_calls
+    assert expected_text in observed["statusText"]

@@ -1,0 +1,183 @@
+$ pytest tests/unit
+
+==================================== ERRORS ====================================
+______________ ERROR collecting tests/unit/scripts/test_serve.py _______________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input/tests/unit/scripts/test_serve.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_serve.py:26: in <module>
+    from transcriber import (
+E   ModuleNotFoundError: No module named 'transcriber'
+______________ ERROR collecting tests/unit/scripts/test_server.py ______________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input/tests/unit/scripts/test_server.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_server.py:27: in <module>
+    from voice_paste import VoicePasteTranscriber
+E   ModuleNotFoundError: No module named 'voice_paste'
+___________ ERROR collecting tests/unit/scripts/test_transcriber.py ____________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input/tests/unit/scripts/test_transcriber.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_transcriber.py:7: in <module>
+    import transcriber
+E   ModuleNotFoundError: No module named 'transcriber'
+_______ ERROR collecting tests/unit/scripts/test_transcriber_registry.py _______
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input/tests/unit/scripts/test_transcriber_registry.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_transcriber_registry.py:7: in <module>
+    import transcriber_registry
+E   ModuleNotFoundError: No module named 'transcriber_registry'
+___________ ERROR collecting tests/unit/scripts/test_voice_paste.py ____________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input/tests/unit/scripts/test_voice_paste.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_voice_paste.py:14: in <module>
+    from transcriber import (
+E   ModuleNotFoundError: No module named 'transcriber'
+=========================== short test summary info ============================
+ERROR tests/unit/scripts/test_serve.py
+ERROR tests/unit/scripts/test_server.py
+ERROR tests/unit/scripts/test_transcriber.py
+ERROR tests/unit/scripts/test_transcriber_registry.py
+ERROR tests/unit/scripts/test_voice_paste.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 5 errors during collection !!!!!!!!!!!!!!!!!!!!
+5 errors in 31.83s
+
+$ npx vitest run
+              </label>
+              <button
+                aria-controls="_r_f_-body"
+                aria-expanded="true"
+                aria-label="コメントの入力を閉じる"
+                class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-50 bg-transparent hover:bg-accent hover:text-accent-foreground ml-auto size-6 shrink-0"
+                tabindex="0"
+                title="コメントの入力を閉じる"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="size-4 flex-none fill-none stroke-current rotate-90"
+                  height="16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.75"
+                  viewBox="0 0 24 24"
+                  width="16"
+                >
+                  <path
+                    d="m9 6 6 6-6 6"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div
+              class="contents"
+              id="_r_f_-body"
+            >
+              <div
+                class="flex items-end gap-2"
+              >
+                <textarea
+                  aria-describedby="_r_f_-msg"
+                  aria-keyshortcuts="Control+Enter"
+                  class="w-full rounded-control border border-input bg-card p-2 text-small placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-st-review field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11"
+                  id="_r_f_"
+                  name="body"
+                  rows="1"
+                />
+                <button
+                  aria-busy="false"
+                  aria-label="レビューに追加"
+                  class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small font-medium whitespace-nowrap disabled:cursor-default bg-primary text-primary-foreground hover:bg-primary/90 size-8 size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11"
+                  tabindex="0"
+                  title="レビューに追加（Ctrl+Enter）"
+                  type="submit"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="size-4 flex-none fill-none stroke-current"
+                    height="16"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="16"
+                  >
+                    <path
+                      d="M4 5h16v11H10l-5 4v-4H4Z"
+                    />
+                    <path
+                      d="M8 9h8M8 12.5h5"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <p
+                class="m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden"
+                id="_r_f_-msg"
+                role="status"
+              />
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx:132:47
+    130|     const panel = await screen.findByRole("complementary", { name: /詳細…
+    131|     // 実行
+    132|     await userEvent.click(await within(panel).findByRole("button", { n…
+       |                                               ^
+    133|     await userEvent.click(await within(panel).findByRole("button", { n…
+    134|     // 検証
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-pool]: Failed to start forks worker for test files /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input/frontend/src/shared/stores/connection-store.test.ts.
+ ❯ node_modules/vitest/dist/chunks/index.Di8au7q4.js:5932:94
+ ❯ Pool.schedule node_modules/vitest/dist/chunks/index.Di8au7q4.js:5932:5
+
+Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ ❯ Timeout.<anonymous> node_modules/vitest/dist/chunks/index.Di8au7q4.js:5429:58
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  7 failed | 63 passed (70)
+      Tests  6 failed | 195 passed (201)
+     Errors  1 error
+   Start at  10:10:10
+   Duration  698.54s (environment 53%, import 25%, setup 20%, transform 1%, worker 1%)
+
+Environment  jsdom was created 70 times · 2309.22s total, 53% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

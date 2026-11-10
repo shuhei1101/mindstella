@@ -950,10 +950,10 @@ components:
         default: "''"
         description: 入力欄の中身
       - name: status
-        type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed'"
+        type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed' | 'sent' | 'inserted' | 'voice-failed'"
         required: false
         default: "'idle'"
-        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）
+        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）。`sent` は送信した結果（`entered`）、`inserted` は「文字起こしの結果を挿入しました。」、`voice-failed` は `detail` を出す
       - name: count
         type: number | null
         required: false
@@ -969,10 +969,30 @@ components:
         required: false
         default: 'false'
         description: 畳んだ形（`target` が `null` のときだけ使う）
+      - name: voice
+        type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
+        required: false
+        default: "'idle'"
+        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする
+      - name: voiceReason
+        type: string | null
+        required: false
+        default: 'null'
+        description: マイクのボタンを押せない理由（`voice` が `disabled` のとき）
+      - name: elapsed
+        type: number
+        required: false
+        default: '0'
+        description: 録音を始めてからの秒数（`voice` が `recording` のとき）
+      - name: entered
+        type: boolean
+        required: false
+        default: 'false'
+        description: '`status` が `sent` のとき、Claude Code へ入力したか（「送信し、Claude Code へ入力しました。」か「送信しました。Claude Code へは入力していません。」）'
       - name: on
-        type: '{input, save, unquote, copy, focus, blur, toggle}'
+        type: '{input, save, unquote, copy, focus, blur, toggle, voiceStart, voiceCancel, voiceDone, voiceBlocked}'
         required: true
-        description: 入力欄の中身が変わった・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。`saving` の間は呼ばない）・箇所の ×・本文のコピーのボタン・入力欄に入った・部品の外へ出た・開閉のボタン（押した後の開閉）
+        description: 入力欄の中身が変わった・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。`saving` の間は呼ばない）・箇所の ×・本文のコピーのボタン・入力欄に入った・部品の外へ出た・開閉のボタン（押した後の開閉）・マイクのボタン（`idle`）・×・✓（入力欄の中身と `selectionStart`・`selectionEnd`）・押せないマイクのボタン
       - name: label
         type: string
         required: false
@@ -990,6 +1010,18 @@ components:
         condition: '`parametrize`: `saving` / `saved`（`count: 3`）/ `empty` / `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
         expected: '`saving` はボタンが `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 入力欄が `aria-invalid="true"` / 本文のコピーのボタン（`aria-label`「本文をコピー」）がある / 「レビューに追加できませんでした。{理由}」で本文のコピーのボタンが無い。どれも結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある'
+      - name: test_send_form_when_voice
+        case: 正常
+        summary: 音声入力の状態ごとのボタンと結果の行
+        condition: '`parametrize`: `voice: idle` / `voice: disabled`・`voiceReason` あり / `voice: recording`・`elapsed: 72` / `voice: transcribing` / `status: sent`・`entered: false` / `status: inserted`'
+        mock: なし（DOM を作って見る）
+        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクのボタンが `aria-disabled="true"` で `disabled` でなく、`title` と `aria-describedby` の先が理由 / × と ✓ のボタンがあり「レビューに追加」が無く、結果の行に `1:12`（`aria-hidden`）と読み上げの「録音中」 / × と ✓ が `disabled` で入力欄が `readonly` / 「送信しました。Claude Code へは入力していません。」/ 「文字起こしの結果を挿入しました。」。どの状態のボタンも文字を持たない
+      - name: test_send_form_when_voice_events
+        case: 正常
+        summary: 音声入力のボタンのコールバック
+        condition: '`parametrize`: `idle` でマイクを押す / `recording` で × / `recording` で入力欄の「確認: 」の後ろにカーソルを置いて ✓ / `disabled` でマイクを押す'
+        mock: '`on.voiceStart`・`on.voiceCancel`・`on.voiceDone`・`on.voiceBlocked`'
+        expected: '`voiceStart` が 1 回 / `voiceCancel` が 1 回 / `voiceDone` が `{body: "確認: ", start: 4, end: 4}` で 1 回 / `voiceBlocked` が 1 回で `voiceStart` は呼ばれない'
       - name: test_send_form_when_location_and_no_target
         case: 正常
         summary: 添えた箇所と項目を指さない形
@@ -1593,10 +1625,10 @@ components:
         default: "''"
         description: 入力欄の中身（`maxlength` 10000。1 行から 8 行まで伸びる）
       - name: status
-        type: "'idle' | 'saving' | 'saved' | 'failed'"
+        type: "'idle' | 'saving' | 'saved' | 'failed' | 'sent' | 'inserted' | 'voice-failed'"
         required: false
         default: "'idle'"
-        description: 溜める状態
+        description: 溜める状態。`sent`・`inserted`・`voice-failed` は `sendForm` と同じ
       - name: count
         type: number | null
         required: false
@@ -1607,10 +1639,30 @@ components:
         required: false
         default: 'null'
         description: サーバーが返した理由。`failed` で `null` なら立ち上げ直しの案内を出す
+      - name: voice
+        type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
+        required: false
+        default: "'idle'"
+        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする
+      - name: voiceReason
+        type: string | null
+        required: false
+        default: 'null'
+        description: マイクのボタンを押せない理由（`voice` が `disabled` のとき）
+      - name: elapsed
+        type: number
+        required: false
+        default: '0'
+        description: 録音を始めてからの秒数（`voice` が `recording` のとき）
+      - name: entered
+        type: boolean
+        required: false
+        default: 'false'
+        description: '`status` が `sent` のとき、Claude Code へ入力したか（「送信し、Claude Code へ入力しました。」か「送信しました。Claude Code へは入力していません。」）'
       - name: on
-        type: '{input, save}'
+        type: '{input, save, voiceStart, voiceCancel, voiceDone, voiceBlocked}'
         required: true
-        description: 入力欄の中身が変わった（中身）・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。スレッドの ID と中身）
+        description: 入力欄の中身が変わった（中身）・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。スレッドの ID と中身）・マイクのボタン・×・✓（入力欄の中身と `selectionStart`・`selectionEnd`）・押せないマイクのボタン
     unit_tests:
       - name: test_reply_form
         case: 正常
@@ -1618,6 +1670,12 @@ components:
         condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
         mock: なし（DOM を作って見る）
         expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
+      - name: test_reply_form_when_voice
+        case: 正常
+        summary: 音声入力の状態とコールバック
+        condition: '`parametrize`: `voice: recording`・`elapsed: 5` で ✓ / `voice: disabled` でマイクを押す / `status: sent`・`entered: true`'
+        mock: '`on.voiceDone`・`on.voiceBlocked`'
+        expected: '結果の行に `0:05` があり、`voiceDone` が入力欄の中身とカーソルの位置で 1 回 / `voiceBlocked` が 1 回 / 「送信し、Claude Code へ入力しました。」'
       - name: test_reply_form_when_keys
         case: 正常
         summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない
@@ -2137,6 +2195,11 @@ components:
         type: Record<string, string>
         required: true
         description: 設定のキー → 溜められなかった理由（入力を残してキーの下に出す）
+      - name: transcription
+        type: TranscriptionStatus | null
+        required: false
+        default: 'null'
+        description: 開いたときに読んだ文字起こしの可否（`voiceApi().status`。読めなかったら `null`）。まとまり「音声入力」の「用語集のプリセット」の候補（`presets`）と、使えないときの理由（`reason` ごとの文）に使う
       - name: on
         type: '{change, close}'
         required: true
@@ -2148,6 +2211,12 @@ components:
         condition: 題名 話し合い。題名を「画面の編集」にして入力欄を離れる。保持する回数を 3 にして離れる
         mock: '`on.change`'
         expected: '`fieldset` の見出しが「話し合い」「進め方」「関連」「変更履歴」の順。`on.change` が `{key: summary, value: 画面の編集}`・`{key: history_limit, value: 3}` で 1 回ずつ'
+      - name: test_workspace_settings_when_transcription
+        case: 正常
+        summary: 音声入力のまとまりで挙動とプリセットを溜め、使えないときはプリセットを押せなくする
+        condition: '`parametrize`: `transcription` が `{available: true, presets: [一般, 開発]}` で「入力欄へ挿入する」を選び、プリセットに 開発 を選ぶ / `{available: false, reason: unsupported, presets: []}` で設定の `transcription.preset` が 開発'
+        mock: '`on.change`'
+        expected: '`fieldset` の見出し「音声入力」が「変更履歴」の後。`on.change` が `{key: transcription, value: {action: insert, preset: null}}`・`{key: transcription, value: {action: insert, preset: 開発}}` / プリセットのセレクトが `disabled` で 開発 だけを持ち、下に「文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。」'
       - name: test_workspace_settings_when_used_value_removed
         case: 正常
         summary: 使われている値を外すと付け替え先を選ぶまで溜めない

@@ -137,8 +137,8 @@ data_models:
     summary: まとめて送るレビュー中のコメント 1 件を、スレッドへ足す形にしたもの（コメントのモジュールが作る）。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: comment
-        type: str
-        description: レビュー中のコメントの ID
+        type: str | None
+        description: レビュー中のコメントの ID。すぐ送る書き込み（レビュー中を経ない）は `None`
       - name: thread
         type: str | None
         description: 返信先のスレッドの ID。新しいスレッドの最初の書き込みは `None`
@@ -159,8 +159,8 @@ data_models:
     summary: 『コメントをまとめて送る』の `items[]` の 1 行。`@dataclass(frozen=True, slots=True, kw_only=True)`
     properties:
       - name: comment
-        type: str
-        description: 送ったレビュー中のコメントの ID
+        type: str | None
+        description: 送ったレビュー中のコメントの ID。すぐ送った書き込みは `None`
       - name: thread
         type: str
         description: 書き込みを足したスレッドの ID
@@ -845,9 +845,9 @@ functions:
       description: 送った日時と、`posts` と同じ並びの足したか既にあった書き込み
     process: |-
       1. スレッドを読む（`load_threads`）
-      2. 書き込みごとに、同じ `comment` を持つ書き込みが既にあればそのスレッドと書き込みの ID を使う
+      2. 書き込みごとに、同じ `comment` を持つ書き込みが既にあればそのスレッドと書き込みの ID を使う（`comment` が `None` の書き込みは比べない）
          - `[WARNING]` 既に送っていたコメント（コメントの ID・書き込みの ID）
-      3. 無ければ足す。足す書き込みは `author: user`・`body`・`created`（この呼び出しで 1 つの日時）・`read: False`・`seen: True`・`taken: None`・`comment`
+      3. 無ければ足す。足す書き込みは `author: user`・`body`・`created`（この呼び出しで 1 つの日時）・`read: False`・`seen: True`・`taken: None`・`comment`（`None` ならキーを書かない）
          - `thread` が `None` の場合、`TH-{連番の最大 + 1 から順}`・`status: open`・`tags: []`・`summary: None`・`target`・`loc`・`events: []` のスレッドを末尾に足し、その最初の書き込みにする
          - `thread` がある場合、そのスレッドの末尾に `{ID}-{書き込みの件数 + 1}` で足す（無ければ `ThreadNotFoundError`）
       4. 足したものがあれば書く（`_write_threads`）
@@ -865,6 +865,12 @@ functions:
         condition: '書き込み 2 件の TH-1・TH-3 を持つワークスペース。C-1（D-1）・C-2（A-1 の本文の 2 行目）・C-3（項目を指さない）・C-4（`thread: TH-1`）。`now` は `2026-10-13T03:00:00+00:00`'
         mock: '`now`'
         expected: '`(now の値, [C-1 → TH-4・TH-4-1, C-2 → TH-5・TH-5-1, C-3 → TH-6・TH-6-1, C-4 → TH-1・TH-1-3])`。TH-4 が `open`・`tags: []`・`summary: None`・`target: D-1`、TH-5 が `loc` を持ち、TH-6 が `target`・`loc` のキーを持たない。足した書き込みはどれも `author: user`・`read: False`・`seen: True`・`taken: None`・`comment` が元のコメントの ID'
+      - name: test_append_user_posts_when_no_comment
+        case: 正常
+        summary: レビュー中を経ない書き込みは比べずに足し、comment を書かない
+        condition: '`comment` を持たない書き込み TH-1-1 を持つワークスペース。`comment=None`・`thread=TH-1` の 1 件'
+        mock: '`now`'
+        expected: '`[None → TH-1・TH-1-2]`。TH-1-2 が `comment` のキーを持たない'
       - name: test_append_user_posts_when_first
         case: 正常
         summary: ファイルが無ければ作って TH-1

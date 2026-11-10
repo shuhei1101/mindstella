@@ -14,6 +14,9 @@ var MindmapPreview;
         threads: "api/threads",
         edits: "api/edits",
         editsSave: "api/edits/save",
+        transcription: "api/transcription",
+        transcriptions: "api/transcriptions",
+        commentsSendNow: "api/comments/send-now",
     };
     /** 応答の本文から、日本語の理由（`detail`）を取り出す。読めなければ null */
     async function detailOf(response) {
@@ -155,4 +158,47 @@ var MindmapPreview;
         return () => source.close();
     }
     MindmapPreview.subscribeEvents = subscribeEvents;
+    /** 文字起こしの可否・音声の文字起こし・すぐ送るの 3 つの呼び出しを束ねて返す */
+    function voiceApi(fetchFn = window.fetch.bind(window)) {
+        return {
+            status: () => callApi("GET", MindmapPreview.API_PATHS.transcription, null, fetchFn),
+            transcribe: (audio) => postAudio(audio, fetchFn),
+            sendNow: (input) => callApi("POST", MindmapPreview.API_PATHS.commentsSendNow, input, fetchFn),
+        };
+    }
+    MindmapPreview.voiceApi = voiceApi;
+    /** 録音した音声をそのまま本文にして送り、`callApi` と同じ形の結果にする（503 は本文の `reason` を足す） */
+    async function postAudio(audio, fetchFn) {
+        let response;
+        try {
+            response = await fetchFn(MindmapPreview.API_PATHS.transcriptions, {
+                method: "POST",
+                cache: "no-store",
+                headers: { "Content-Type": audio.type },
+                body: audio,
+            });
+        }
+        catch {
+            return { ok: false, status: null, detail: null, stale: [] };
+        }
+        if (response.ok)
+            return { ok: true, data: (await response.json()) };
+        let detail = null;
+        let reason = null;
+        try {
+            const problem = (await response.json());
+            detail = typeof problem.detail === "string" ? problem.detail : null;
+            reason = problem.reason === "stopped" || problem.reason === "unsupported" ? problem.reason : null;
+        }
+        catch {
+            // 本文が JSON でない
+        }
+        return {
+            ok: false,
+            status: response.status,
+            detail: detail ?? (response.statusText || String(response.status)),
+            stale: [],
+            ...(reason !== null ? { reason } : {}),
+        };
+    }
 })(MindmapPreview || (MindmapPreview = {}));

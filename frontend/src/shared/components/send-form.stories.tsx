@@ -8,7 +8,7 @@ import { SendForm } from "@/shared/components/send-form";
 const meta = {
   title: "Shared/SendForm",
   component: SendForm,
-  args: { target: null, loc: null, body: "", status: "idle", onSubmit: fn(), onInput: fn(), onClearLoc: fn(), onCopyBody: fn() },
+  args: { target: null, loc: null, body: "", status: "idle", onSubmit: fn(), onInput: fn(), onVoiceStart: fn(), onVoiceCancel: fn(), onVoiceDone: fn(), onVoiceBlocked: fn(), onClearLoc: fn(), onCopyBody: fn() },
 } satisfies Meta<typeof SendForm>;
 
 export default meta;
@@ -67,3 +67,42 @@ export const Closed: Story = { args: { target: "D-022", open: false } };
 
 /** 書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す */
 export const ClosedWithDraft: Story = { args: { target: "D-022", body: "案 A にする", open: false } };
+
+/** 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない） */
+export const Recording: Story = { args: { target: "D-022", voice: "recording", elapsed: 12 } };
+
+/** 文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ */
+export const Transcribing: Story = { args: { target: "D-022", voice: "transcribing", body: "確認: " } };
+
+/** 打ちかけがある録音中。入力欄の「確認: 」とカーソルの位置を残し、文字起こしの結果はカーソルの位置へ挿入する */
+export const RecordingWithDraft: Story = { args: { target: "D-022", voice: "recording", elapsed: 12, body: "確認: " } };
+
+/** 送信した。入力欄を空にし、元のボタンに戻して「送信し、Claude Code へ入力しました。」 */
+export const Sent: Story = { args: { target: "D-022", status: "sent", entered: true } };
+
+/** 送信したが Claude Code へ入力しなかった。「送信しました。Claude Code へは入力していません。」 */
+export const SentNotEntered: Story = { args: { target: "D-022", status: "sent", entered: false } };
+
+/** 入力欄へ挿入した。カーソルは挿入した文字の後ろで、「文字起こしの結果を挿入しました。」 */
+export const Inserted: Story = { args: { target: "D-022", status: "inserted", body: "確認: 案 A にする" } };
+
+/** 文字起こしのサービスが起動していない。マイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。「レビューに追加」は押せるまま */
+export const VoiceDisabled: Story = { args: { target: "D-022", voice: "disabled", voiceReason: "文字起こしのサービスが起動していないため、音声で入力できません。" } };
+
+/** 文字起こしのサービスが音声の受け付けに対応していない。押せない理由のツールチップ */
+export const VoiceUnsupported: Story = { args: { target: "D-022", voice: "disabled", voiceReason: "文字起こしのサービスが音声の受け付けに対応していないため、音声で入力できません。" } };
+
+/** ブラウザがマイクを使えない（HTTPS でない経路から外の端末で開いた）。押せない理由のツールチップ */
+export const VoiceNoMicrophone: Story = { args: { target: "D-022", voice: "disabled", voiceReason: "このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。" } };
+
+/** 文字起こしに失敗した。入力欄の中身を残し、元のボタンに戻して理由を結果の行に出す */
+export const VoiceFailed: Story = { args: { target: "D-022", status: "voice-failed", detail: "文字起こしできませんでした。もう一度お試しください。", body: "案 B も見たい" } };
+
+/** マイクの許可を拒否した。録音を始めず、許可が要ることを結果の行に出す */
+export const VoiceDenied: Story = { args: { target: "D-022", status: "voice-failed", detail: "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。" } };
+
+/** 最も狭い幅（320px）の録音中。2 つのボタンはマイクと「レビューに追加」と同じ大きさで、入力欄の右に並んだまま収まる */
+export const RecordingNarrow: Story = { args: { target: "D-022", voice: "recording", elapsed: 12 } };
+
+/** 文字起こしはできたが送信できなかった。挿入した全文を入力欄に残す */
+export const VoiceSendFailed: Story = { args: { target: "D-022", status: "voice-failed", detail: "送信できませんでした。文字起こしの結果は入力欄に残しています。", body: "確認: 案 A にする" } };

@@ -17,5 +17,6 @@
 | [use-screen-edit.ts](./use-screen-edit.ts.yaml) | 一覧の画面の編集の入口を組む |
 | [use-visible-kinds.ts](./use-visible-kinds.ts.yaml) | 表示する種類を返す |
 | [use-comments.ts](./use-comments.ts.yaml) | レビュー中の書き込みを溜める・書き換える・消す・まとめて送る mutation と、書きかけの保存 |
+| [use-voice-input.ts](./use-voice-input.ts.yaml) | 文字起こしの可否の query と、コメント・返信の入力の録音・文字起こし・すぐ送るの props |
 
 <!-- /table -->
