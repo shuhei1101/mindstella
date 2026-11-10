@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-10T17:41:42.979595+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: body-links.ts.yaml・Markdownの本文.ts.yaml・Markdownの本文.tsx.yaml の値を引用符で囲む
+    updated_by: planner
+    updated_at: '2026-11-10T17:46:48.302571+00:00'
   - process: 単体テスト作成
     status: skipped
     reason: コードを変えない
