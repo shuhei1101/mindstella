@@ -1,6 +1,0 @@
-summary: 採用済みの外部 API のリファレンス
-items:
-  - page: GoogleFonts.yaml
-    summary: プレビューの文字（Inter・Noto Sans JP・JetBrains Mono）を配る
-  - page: voice-paste.yaml
-    summary: 録音を文字に起こす、同じ端末の音声入力のサービス（文字起こしのインターフェースの実装の 1 つ）

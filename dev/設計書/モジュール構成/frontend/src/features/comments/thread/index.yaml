@@ -1,4 +1,0 @@
-summary: '`frontend/src/features/comments/thread/` の React のプレビューのモジュール'
-items:
-- page: thread-view.tsx.yaml
-  summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする

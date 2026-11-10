@@ -1,4 +1,0 @@
-summary: scripts の設計書
-items:
-  - page: field_to_playbooks.py.yaml
-    summary: サーバー / 移行 / field_to_playbooks.py

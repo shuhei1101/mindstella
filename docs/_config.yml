@@ -92,3 +92,19 @@ exclude:
   - node_modules
   # 公開ドキュメントの索引の起点（トップは index.md が持つ。include の **/README.md に当たらない直下だけを外す）
   - README.md
+  - architecture/
+  - component/
+  - config/
+  - design-policy.md
+  - er/
+  - external-api/
+  - interface/
+  - library/
+  - module/
+  - nonfunctional/
+  - scenario/
+  - screen/
+  - test-procedure/
+  - pr/
+  - mock/
+  - generated/

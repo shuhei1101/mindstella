@@ -1,6 +1,0 @@
-summary: '`frontend/src/features/settings/workspace-settings/` の React のプレビューのモジュール'
-items:
-- page: workspace-settings-screen.tsx.yaml
-  summary: 画面設計『設定の画面.tsx』の要素と操作を描く
-- page: form.ts.yaml
-  summary: 設定の画面の入力の Zod スキーマ

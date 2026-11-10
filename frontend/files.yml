@@ -8,7 +8,7 @@ files:
   - tool:vite
   - topic:spa
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: openapi.yaml
   name: React のプレビューが読む配信の API の定義
@@ -18,7 +18,7 @@ files:
   - tool:orval
   - topic:api
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/app/app.test.tsx
   name: React のプレビューのアプリの組み立ての単体テスト
@@ -38,9 +38,7 @@ files:
   - tool:tanstack-query
   - topic:アプリ
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/app/app.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-1
     type: implements
 - path: src/app/query-client.test.ts
   name: React のプレビューの QueryClient の単体テスト
@@ -59,9 +57,7 @@ files:
   - tool:tanstack-query
   - topic:クエリ
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/app/query-client.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-3
     type: implements
 - path: src/app/router.test.tsx
   name: React のプレビューのルーターの単体テスト
@@ -80,9 +76,7 @@ files:
   - tool:tanstack-router
   - topic:ルーティング
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/app/router.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-4
     type: implements
 - path: src/features/overview/overview/components/goal-tile.tsx
   name: ゴールまでの進捗のタイル
@@ -92,9 +86,7 @@ files:
   - topic:概要
   - topic:画面
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/goal-tile.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-39
     type: implements
 - path: src/features/overview/overview/components/list-tile.tsx
   name: 件数と名前のタイル
@@ -104,9 +96,7 @@ files:
   - topic:概要
   - topic:画面
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/list-tile.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-40
     type: implements
 - path: src/features/overview/overview/components/next-tile.tsx
   name: 次に検討する項目のタイル
@@ -116,9 +106,7 @@ files:
   - topic:概要
   - topic:画面
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/next-tile.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-41
     type: implements
 - path: src/features/overview/overview/components/progress-table.tsx
   name: カテゴリー別の進捗のタイル
@@ -128,9 +116,7 @@ files:
   - topic:概要
   - topic:画面
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/components/progress-table.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-42
     type: implements
 - path: src/features/overview/overview/overview-screen.stories.tsx
   name: React の概要の画面のストーリー
@@ -140,7 +126,7 @@ files:
   - tool:storybook
   - topic:ストーリー
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
   - to: frontend/src/features/overview/overview/overview-screen.tsx
     type: see_also
@@ -162,11 +148,9 @@ files:
   - topic:概要
   - topic:画面
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/features/overview/overview/overview-screen.tsx.yaml
+  - to: MOD-489-43
     type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
-    type: implements
-  - to: dev/設計書/画面設計/プレビュー/概要.tsx.yaml
+  - to: SCR-489-22
     type: implements
 - path: src/main.tsx
   name: React のプレビューの起動
@@ -175,7 +159,7 @@ files:
   - tool:react
   - topic:起動
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/routes/__root.tsx
   name: ルートの外枠
@@ -185,9 +169,7 @@ files:
   - topic:エラー
   - topic:ルート
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/routes/__root.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-54
     type: implements
 - path: src/routes/index.tsx
   name: 概要のルート
@@ -197,7 +179,7 @@ files:
   - topic:url
   - topic:ルート
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-55
     type: implements
 - path: src/shared/adapters/api-client.test.ts
   name: 配信の API の呼び出しの単体テスト
@@ -217,9 +199,7 @@ files:
   - topic:api
   - topic:エラー
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/adapters/api-client.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-56
     type: implements
 - path: src/shared/adapters/events-client.test.ts
   name: 書き換えの知らせへの接続の単体テスト
@@ -238,9 +218,7 @@ files:
   - tool:tanstack-query
   - topic:sse
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/adapters/events-client.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-57
     type: implements
 - path: src/shared/components/icon.tsx
   name: React のアイコンと状態の印
@@ -250,9 +228,7 @@ files:
   - tool:svg
   - topic:アイコン
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/components/icon.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-74
     type: implements
 - path: src/shared/components/topbar.stories.tsx
   name: React のトップバーのストーリー
@@ -262,7 +238,7 @@ files:
   - tool:storybook
   - topic:ストーリー
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
   - to: frontend/src/shared/components/topbar.tsx
     type: see_also
@@ -284,11 +260,9 @@ files:
   - topic:トップバー
   - topic:部品
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/components/topbar.tsx.yaml
+  - to: MOD-489-88
     type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
-    type: implements
-  - to: dev/設計書/部品設計/プレビュー/トップバー.tsx.yaml
+  - to: CMP-489-20
     type: implements
 - path: src/shared/components/ui/button.tsx
   name: ボタンの部品
@@ -298,9 +272,7 @@ files:
   - tool:shadcn-ui
   - topic:ボタン
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/components/ui/button.tsx.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-89
     type: implements
 - path: src/shared/core/app-error.test.ts
   name: 配信の応答のエラーの単体テスト
@@ -318,9 +290,7 @@ files:
   tags:
   - topic:エラー
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/core/app-error.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-101
     type: implements
 - path: src/shared/core/legacy-url.test.ts
   name: 今の画面の URL の単体テスト
@@ -338,9 +308,7 @@ files:
   tags:
   - topic:url
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/core/legacy-url.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-114
     type: implements
 - path: src/shared/lib/cn.test.ts
   name: クラス名の結合の単体テスト
@@ -359,9 +327,7 @@ files:
   - tool:tailwind-css
   - topic:スタイル
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/lib/cn.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-135
     type: implements
 - path: src/shared/stores/connection-store.test.ts
   name: 接続の状態のストアの単体テスト
@@ -380,9 +346,7 @@ files:
   - tool:zustand
   - topic:sse
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/stores/connection-store.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-136
     type: implements
 - path: src/shared/stores/theme-store.test.ts
   name: ライト / ダークのストアの単体テスト
@@ -402,9 +366,7 @@ files:
   - topic:ダークモード
   - topic:テーマ
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/stores/theme-store.ts.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-141
     type: implements
 - path: src/shared/styles/index.css
   name: React のプレビューのスタイル
@@ -414,9 +376,7 @@ files:
   - tool:tailwind-css
   - topic:スタイル
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/styles/index.css.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-142
     type: implements
 - path: src/shared/styles/tokens.css
   name: React のプレビューのデザイントークン
@@ -426,9 +386,7 @@ files:
   - tool:tailwind-css
   - topic:デザイントークン
   related:
-  - to: dev/設計書/モジュール構成/frontend/src/shared/styles/tokens.css.yaml
-    type: implements
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-143
     type: implements
 - path: src/testing/fake-event-source.ts
   name: テスト用の EventSource
@@ -470,7 +428,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/app/preview-shell.tsx
   name: SPA の外枠
@@ -478,7 +436,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-2
     type: implements
 - path: src/features/decisions/decisions/components/decision-map.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -486,7 +444,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/decisions/decisions/components/decision-map.tsx
   name: 検討事項のマップ
@@ -494,7 +452,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-16
     type: implements
 - path: src/features/decisions/decisions/components/decision-outline.tsx
   name: 狭い幅で使う、字下げした縦の一覧
@@ -502,7 +460,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-17
     type: implements
 - path: src/features/decisions/decisions/decisions-screen.test.tsx
   name: import { screen } from @testing-library/react;
@@ -510,7 +468,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/decisions/decisions/decisions-screen.tsx
   name: 検討事項の画面
@@ -518,7 +476,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-18
     type: implements
 - path: src/features/decisions/decisions/map-layout.test.ts
   name: import { describe, expect, test } from vitest;
@@ -526,7 +484,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/decisions/decisions/map-layout.ts
   name: 検討事項のマップの木の組み立てと配置
@@ -534,7 +492,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-19
     type: implements
 - path: src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx
   name: import { screen } from @testing-library/react;
@@ -542,7 +500,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/detail/detail-fullscreen/detail-fullscreen.tsx
   name: 詳細の全画面
@@ -550,7 +508,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-20
     type: implements
 - path: src/features/detail/detail-panel/components/body-view.test.tsx
   name: import { screen, waitFor } from @testing-library/react;
@@ -558,7 +516,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/detail/detail-panel/components/body-view.tsx
   name: 本文の節
@@ -566,7 +524,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-21
     type: implements
 - path: src/features/detail/detail-panel/components/detail-editor.tsx
   name: 詳細の編集の表示
@@ -574,7 +532,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-23
     type: implements
 - path: src/features/detail/detail-panel/components/detail-header.tsx
   name: 詳細の見出し
@@ -582,7 +540,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-24
     type: implements
 - path: src/features/detail/detail-panel/components/detail-resizer.tsx
   name: 詳細パネルの左端に置く幅の区切り
@@ -590,7 +548,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-25
     type: implements
 - path: src/features/detail/detail-panel/components/key-diff.tsx
   name: 変わったキーの前の値と今の値を並べる
@@ -598,7 +556,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-28
     type: implements
 - path: src/features/detail/detail-panel/components/option-list.tsx
   name: 検討事項の案のカード
@@ -606,7 +564,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-29
     type: implements
 - path: src/features/detail/detail-panel/components/related-list.tsx
   name: 関係する項目の節
@@ -614,7 +572,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-30
     type: implements
 - path: src/features/detail/detail-panel/components/value-text.tsx
   name: Markdown で描く値
@@ -622,7 +580,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-31
     type: implements
 - path: src/features/detail/detail-panel/detail-panel.test.tsx
   name: import { screen } from @testing-library/react;
@@ -630,7 +588,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/detail/detail-panel/detail-panel.tsx
   name: 詳細パネル
@@ -638,7 +596,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-32
     type: implements
 - path: src/features/detail/diagram-viewer/diagram-viewer.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -646,7 +604,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/detail/diagram-viewer/diagram-viewer.tsx
   name: 図の拡大
@@ -654,7 +612,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-33
     type: implements
 - path: src/features/docs/docs/components/doc-cards.tsx
   name: 資料のカード
@@ -662,7 +620,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-35
     type: implements
 - path: src/features/docs/docs/docs-screen.test.tsx
   name: import { screen } from @testing-library/react;
@@ -670,7 +628,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/docs/docs/docs-screen.tsx
   name: 資料の画面
@@ -678,7 +636,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-36
     type: implements
 - path: src/features/edits/pending-edits/pending-edits-panel.test.tsx
   name: import { screen, waitFor } from @testing-library/react;
@@ -686,7 +644,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/edits/pending-edits/pending-edits-panel.tsx
   name: 保存待ちのパネル
@@ -694,7 +652,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-37
     type: implements
 - path: src/features/history/history/history-dialog.test.tsx
   name: import { screen, waitFor } from @testing-library/react;
@@ -702,7 +660,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/history/history/history-dialog.tsx
   name: 変更履歴
@@ -710,7 +668,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-38
     type: implements
 - path: src/features/records/records/records-screen.test.tsx
   name: import { screen } from @testing-library/react;
@@ -718,7 +676,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/records/records/records-screen.tsx
   name: 調査・用語集・メモ・会話ログの画面
@@ -726,7 +684,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-44
     type: implements
 - path: src/features/settings/workspace-settings/form.ts
   name: 設定の画面の入力の検証
@@ -734,7 +692,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-50
     type: implements
 - path: src/features/settings/workspace-settings/workspace-settings-screen.test.tsx
   name: import { screen, waitFor } from @testing-library/react;
@@ -742,7 +700,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/settings/workspace-settings/workspace-settings-screen.tsx
   name: 設定の画面
@@ -750,7 +708,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-51
     type: implements
 - path: src/features/tasks/tasks/tasks-screen.test.tsx
   name: import { screen, within } from @testing-library/react;
@@ -758,7 +716,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/features/tasks/tasks/tasks-screen.tsx
   name: タスクの画面
@@ -766,7 +724,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-53
     type: implements
 - path: src/shared/adapters/libraries.test.ts
   name: import { afterEach, describe, expect, test, vi } from vites
@@ -774,7 +732,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/adapters/libraries.ts
   name: 描画のライブラリ
@@ -782,7 +740,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-58
     type: implements
 - path: src/shared/components/board.tsx
   name: 状態ごとの列にカードを並べたボードと、項目のカード
@@ -790,7 +748,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-60
     type: implements
 - path: src/shared/components/body-diff-layout-switch.stories.tsx
   name: 本文の差分の並べ方の切り替えのストーリー
@@ -798,7 +756,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/body-diff-layout-switch.tsx
   name: 本文の差分の並べ方の切り替え
@@ -806,7 +764,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-61
     type: implements
 - path: src/shared/components/body-format-badge.stories.tsx
   name: 本文の形式の札のストーリー
@@ -814,7 +772,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/body-format-badge.tsx
   name: 本文の形式の札
@@ -822,7 +780,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-62
     type: implements
 - path: src/shared/components/chips-input.stories.tsx
   name: チップの入力のストーリー
@@ -830,7 +788,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/chips-input.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -838,7 +796,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/chips-input.tsx
   name: チップの入力
@@ -846,7 +804,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-63
     type: implements
 - path: src/shared/components/comment-mark.stories.tsx
   name: コメントの印のストーリー
@@ -854,7 +812,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/comment-mark.tsx
   name: コメントの印
@@ -862,7 +820,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-64
     type: implements
 - path: src/shared/components/diff-mark.stories.tsx
   name: 差分の印のストーリー
@@ -870,7 +828,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/diff-mark.tsx
   name: 差分の印
@@ -878,7 +836,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-65
     type: implements
 - path: src/shared/components/diff-minimap.stories.tsx
   name: 差分のミニマップのストーリー
@@ -886,7 +844,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/diff-minimap.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -894,7 +852,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/diff-minimap.tsx
   name: 差分のミニマップ
@@ -902,7 +860,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-66
     type: implements
 - path: src/shared/components/doc-export-menu.stories.tsx
   name: 資料のエクスポートのメニューのストーリー
@@ -910,7 +868,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/doc-export-menu.tsx
   name: 資料のエクスポートのメニュー
@@ -918,7 +876,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-67
     type: implements
 - path: src/shared/components/dom-host.tsx
   name: React の外で組み立てた要素を置く入れ物
@@ -926,7 +884,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-68
     type: implements
 - path: src/shared/components/filter-chips.tsx
   name: 絞り込みの条件のチップ
@@ -934,7 +892,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-69
     type: implements
 - path: src/shared/components/filter-drawer.stories.tsx
   name: 絞り込みのストーリー
@@ -942,7 +900,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/filter-drawer.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -950,7 +908,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/filter-drawer.tsx
   name: 絞り込みのドロワー
@@ -958,7 +916,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-70
     type: implements
 - path: src/shared/components/history-dialog.stories.tsx
   name: 変更履歴のストーリー
@@ -966,7 +924,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/history-dialog.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -974,7 +932,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/history-dialog.tsx
   name: 変更履歴のモーダル
@@ -982,7 +940,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-71
     type: implements
 - path: src/shared/components/html-body-diff.stories.tsx
   name: HTMLの本文の差分のストーリー
@@ -990,7 +948,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/html-body-diff.tsx
   name: HTML の本文の差分
@@ -998,7 +956,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-72
     type: implements
 - path: src/shared/components/html-body-frame.stories.tsx
   name: HTMLの本文の枠のストーリー
@@ -1006,7 +964,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/html-body-frame.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -1014,7 +972,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/html-body-frame.tsx
   name: HTML の本文の枠
@@ -1022,7 +980,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-73
     type: implements
 - path: src/shared/components/list-columns.tsx
   name: 一覧の表の共通の列
@@ -1030,7 +988,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-75
     type: implements
 - path: src/shared/components/list-screen.tsx
   name: 一覧の画面の枠
@@ -1038,7 +996,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-76
     type: implements
 - path: src/shared/components/markdown-body.stories.tsx
   name: Markdownの本文のストーリー
@@ -1046,7 +1004,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/markdown-body.test.tsx
   name: import { render, screen, waitFor } from @testing-library/re
@@ -1054,7 +1012,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/markdown-body.tsx
   name: Markdown の本文
@@ -1062,7 +1020,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-77
     type: implements
 - path: src/shared/components/pending-mark.stories.tsx
   name: 保存待ちの印のストーリー
@@ -1070,7 +1028,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/pending-mark.tsx
   name: 保存待ちの印
@@ -1078,7 +1036,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-78
     type: implements
 - path: src/shared/components/removed-band.stories.tsx
   name: 消した項目の帯のストーリー
@@ -1086,7 +1044,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/removed-band.tsx
   name: 消した項目の帯
@@ -1094,7 +1052,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-80
     type: implements
 - path: src/shared/components/side-by-side-body-diff.stories.tsx
   name: 左右に並べた本文の差分のストーリー
@@ -1102,7 +1060,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/side-by-side-body-diff.tsx
   name: 左右に並べた本文の差分
@@ -1110,7 +1068,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-84
     type: implements
 - path: src/shared/components/table.stories.tsx
   name: 表のストーリー
@@ -1118,7 +1076,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/table.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -1126,7 +1084,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/table.tsx
   name: 項目の一覧の表
@@ -1134,7 +1092,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-85
     type: implements
 - path: src/shared/components/tag-list.stories.tsx
   name: タグの並びのストーリー
@@ -1142,7 +1100,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/tag-list.tsx
   name: タグの並び
@@ -1150,7 +1108,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-86
     type: implements
 - path: src/shared/components/term-tip.tsx
   name: 本文の印のツールチップ
@@ -1158,7 +1116,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-87
     type: implements
 - path: src/shared/components/ui/checkbox.tsx
   name: shadcn/ui の Checkbox
@@ -1166,7 +1124,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-90
     type: implements
 - path: src/shared/components/ui/dialog.tsx
   name: shadcn/ui の Dialog
@@ -1174,7 +1132,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-91
     type: implements
 - path: src/shared/components/ui/input.tsx
   name: shadcn/ui の Input
@@ -1182,7 +1140,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-92
     type: implements
 - path: src/shared/components/ui/popover.tsx
   name: shadcn/ui の Popover
@@ -1190,7 +1148,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-93
     type: implements
 - path: src/shared/components/ui/select.tsx
   name: shadcn/ui の Select の代わりに、ブラウザの select をトークンの色で描く
@@ -1198,7 +1156,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-94
     type: implements
 - path: src/shared/components/ui/table.tsx
   name: shadcn/ui の Table
@@ -1206,7 +1164,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-96
     type: implements
 - path: src/shared/components/ui/textarea.tsx
   name: shadcn/ui の Textarea
@@ -1214,7 +1172,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-97
     type: implements
 - path: src/shared/components/view-switch.stories.tsx
   name: 表示形式の切り替えのストーリー
@@ -1222,7 +1180,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/view-switch.test.tsx
   name: import { render, screen } from @testing-library/react;
@@ -1230,7 +1188,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/components/view-switch.tsx
   name: 表示形式の切り替え
@@ -1238,7 +1196,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-99
     type: implements
 - path: src/shared/components/withdrawn-badge.stories.tsx
   name: 取り下げの札のストーリー
@@ -1246,7 +1204,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/shared/components/withdrawn-badge.tsx
   name: 取り下げの札
@@ -1254,7 +1212,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-100
     type: implements
 - path: src/shared/core/body-links.test.ts
   name: import { describe, expect, test, vi } from vitest;
@@ -1262,7 +1220,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/body-links.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'
@@ -1270,7 +1228,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-102
     type: implements
 - path: src/shared/core/body-render.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'
@@ -1278,7 +1236,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-103
     type: implements
 - path: src/shared/core/diff.test.ts
   name: import * as jsdiff from diff;
@@ -1286,7 +1244,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/diff.ts
   name: 差分の表示の計算
@@ -1294,7 +1252,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-105
     type: implements
 - path: src/shared/core/doc-export.test.ts
   name: import { describe, expect, test } from vitest;
@@ -1302,7 +1260,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/doc-export.ts
   name: 資料のエクスポート
@@ -1310,7 +1268,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-107
     type: implements
 - path: src/shared/core/dom-parts.ts
   name: mdmark が描いた本文の中へ足す要素の組み立て
@@ -1318,7 +1276,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-108
     type: implements
 - path: src/shared/core/edits.test.ts
   name: import { describe, expect, test } from vitest;
@@ -1326,7 +1284,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/edits.ts
   name: 保存待ちの編集を記録に当てた表示の値と、項目・キー・案の保存待ちの印の種類
@@ -1334,7 +1292,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-109
     type: implements
 - path: src/shared/core/filters.test.ts
   name: import { describe, expect, test } from vitest;
@@ -1342,7 +1300,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/filters.ts
   name: 画面ごとの絞り込みの条件
@@ -1350,7 +1308,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-110
     type: implements
 - path: src/shared/core/format.ts
   name: 画面に出す値の整形
@@ -1358,7 +1316,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-111
     type: implements
 - path: src/shared/core/html-body-diff.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'
@@ -1366,7 +1324,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-112
     type: implements
 - path: src/shared/core/html-frame.ts
   name: HTML の本文の枠
@@ -1374,7 +1332,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-113
     type: implements
 - path: src/shared/core/list-rows.ts
   name: 一覧の行の絞り込み・並べ替え・ドロワーの条件の組み立て
@@ -1382,7 +1340,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-115
     type: implements
 - path: src/shared/core/markdown-decorate.ts
   name: 描いた Markdown の本文の見せ方
@@ -1390,7 +1348,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-117
     type: implements
 - path: src/shared/core/minimap.ts
   name: 差分のミニマップの計算と操作
@@ -1398,7 +1356,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-118
     type: implements
 - path: src/shared/core/preview-search.test.ts
   name: import { describe, expect, test } from vitest;
@@ -1406,7 +1364,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/preview-search.ts
   name: SPA の search params
@@ -1414,7 +1372,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-120
     type: implements
 - path: src/shared/core/records.test.ts
   name: import { describe, expect, test } from vitest;
@@ -1422,7 +1380,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/core/records.ts
   name: 記録の型・索引・関係する項目
@@ -1430,7 +1388,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-121
     type: implements
 - path: src/shared/core/side-by-side.ts
   name: 左右に並べた本文の差分
@@ -1438,7 +1396,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-122
     type: implements
 - path: src/shared/core/term-tips.ts
   name: '* eslint-disable @typescript-eslint/no-non-null-assertion --'
@@ -1446,7 +1404,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-123
     type: implements
 - path: src/shared/hooks/preview-queries.test.ts
   name: import { QueryClient } from @tanstack/react-query;
@@ -1454,7 +1412,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/hooks/preview-queries.ts
   name: SPA が読む query
@@ -1462,7 +1420,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-125
     type: implements
 - path: src/shared/hooks/use-diff-view.test.tsx
   name: import { waitFor } from @testing-library/react;
@@ -1470,7 +1428,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/hooks/use-diff-view.ts
   name: 差分の表示の時点と、項目ごとの印を返す
@@ -1478,7 +1436,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-127
     type: implements
 - path: src/shared/hooks/use-edits.test.tsx
   name: import { act, waitFor } from @testing-library/react;
@@ -1486,7 +1444,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/hooks/use-edits.ts
   name: 保存待ちの編集を溜める・取り消す・まとめて保存する mutation
@@ -1494,7 +1452,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-128
     type: implements
 - path: src/shared/hooks/use-preview-search.test.tsx
   name: import { act, waitFor } from @testing-library/react;
@@ -1502,7 +1460,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/hooks/use-preview-search.ts
   name: search の読み書き
@@ -1510,7 +1468,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-129
     type: implements
 - path: src/shared/hooks/use-records.ts
   name: 記録に保存待ちの編集を重ねた索引を読む
@@ -1518,7 +1476,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-130
     type: implements
 - path: src/shared/hooks/use-screen-edit.ts
   name: 一覧の画面の編集の入口
@@ -1526,7 +1484,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-131
     type: implements
 - path: src/shared/hooks/use-screen-filters.test.tsx
   name: import { waitFor } from @testing-library/react;
@@ -1534,7 +1492,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/hooks/use-screen-filters.ts
   name: 画面の絞り込みの条件を URL と端末の保存領域で持つ
@@ -1542,7 +1500,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-132
     type: implements
 - path: src/shared/hooks/use-visible-kinds.ts
   name: 表示する種類
@@ -1550,7 +1508,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-133
     type: implements
 - path: src/shared/stores/prefs-store.test.ts
   name: import { describe, expect, test } from vitest;
@@ -1558,7 +1516,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: tests
 - path: src/shared/stores/prefs-store.ts
   name: 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件を、今の画面と同じ `localSt
@@ -1566,7 +1524,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-140
     type: implements
 - path: src/shared/styles/body.css
   name: '* mdmark が描いた本文と差分の DOM に当てるスタイル'
@@ -1574,7 +1532,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/testing/libraries.ts
   name: 描画のライブラリの差し替え
@@ -1582,7 +1540,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/testing/msw/fixtures.ts
   name: 画面のテストが使う記録の差し替え
@@ -1590,7 +1548,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-170
     type: implements
 - path: src/features/detail/detail-panel/components/item-add-panel.tsx
   name: 画面から項目を足すパネル
@@ -1598,7 +1556,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-27
     type: implements
 - path: src/features/detail/detail-panel/components/item-add-panel.test.tsx
   name: 画面から項目を足すパネルの単体テスト
@@ -1611,7 +1569,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-59
     type: implements
 - path: src/shared/components/term-tip.stories.tsx
   name: 本文のマーカーのツールチップのストーリー
@@ -1624,7 +1582,7 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-116
     type: implements
 - path: src/shared/stores/edit-session-store.ts
   name: 画面の編集の間の状態（足す画面・書き込めない編集・保存の通知）
@@ -1632,5 +1590,5 @@ files:
   tags:
   - tool:react
   related:
-  - to: dev/設計書/モジュール構成/プレビュー/React.yaml
+  - to: MOD-489-138
     type: implements

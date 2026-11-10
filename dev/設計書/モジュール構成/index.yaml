@@ -1,8 +1,0 @@
-summary: クラス / 関数 / 関数型 インデックス（単体テストの元）
-items:
-  - page: frontend/
-    summary: React のプレビューのファイルごとのモジュール（束ねる設計書はプレビュー/React）
-  - page: plugins/
-    summary: plugins の設計書
-  - page: 分類/
-    summary: 分類 の設計書

@@ -1,4 +1,0 @@
-summary: scripts の設計書
-items:
-  - page: tags_to_vocabulary.py.yaml
-    summary: サーバー / 移行 / tags_to_vocabulary.py
