@@ -1,0 +1,1 @@
+# dev/ を廃止して文書を docs/ 1 つにまとめ、公開分を mdmark で描く Pages の Actions の配信に切り替える
