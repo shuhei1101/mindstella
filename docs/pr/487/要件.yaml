@@ -1,0 +1,64 @@
+use_cases: []
+docs:
+  - page: docs/_theme/_layouts/default.html
+    new: true
+    change: import-site --version v0.3.0 で docs/_theme/ を取り込み、docs/_layouts・_includes・assets・_data/nav.yml の旧来の共通部品を置き換える（nav.project.yml は残す）
+    status: todo
+  - page: ai-monitor-theme.yaml
+    new: true
+    change: 取り込んだ共通部品のバージョンの控え（v0.3.0）
+    status: todo
+  - page: docs/_config.yml
+    new: false
+    change: layouts_dir・includes_dir・data_dir・collections.theme を追加し、default レイアウトのコメントを _theme/_layouts/default.html にする
+    status: todo
+  - page: dev/テンプレート/共通.schema.yaml
+    new: false
+    change: v0.3.0 の内容に合わせる（ref の pattern と説明・例）
+    status: todo
+  - page: dev/テンプレート/シナリオ.schema.yaml
+    new: false
+    change: v0.3.0 の内容に合わせる
+    status: todo
+  - page: dev/テンプレート/テスト実行方法.schema.yaml
+    new: false
+    change: v0.3.0 の内容に合わせる（lint 層）
+    status: todo
+  - page: dev/テンプレート/画面設計.schema.yaml
+    new: false
+    change: v0.3.0 の内容に合わせる
+    status: todo
+  - page: dev/テンプレート/非機能要件.schema.yaml
+    new: false
+    change: v0.3.0 の内容に合わせる（確認の記録）
+    status: todo
+  - page: dev/テンプレート/index.schema.yaml
+    new: false
+    change: v0.3.0 の内容に合わせる
+    status: todo
+  - page: dev/テンプレート/開発コマンド.schema.yaml
+    new: true
+    change: v0.3.0 の Schema を複製する
+    status: todo
+  - page: dev/テンプレート/index.yaml
+    new: false
+    change: 追加した Schema の行を追加し、README.md を生成し直す
+    status: todo
+  - page: rules.yaml
+    new: false
+    change: rules.global.yaml で増えた行のうち、このリポジトリだけのパスに適用する行を追加する
+    status: todo
+  - page: ai-monitor-version.ini
+    new: false
+    change: v0.2.0 を v0.3.0 にする
+    status: todo
+scope_out:
+  - item: v0.3.0 より後の配布物（図を mdmark の部品にする Schema・シーケンス図のデータ化）への追従
+    reason: 追従するバージョンの範囲が v0.2.0..v0.3.0 で、後のバージョンは別の Issue がこの Issue を依存に持つ
+    plan: '#408'
+  - item: dev/ を廃止して文書を docs/ の種類のフォルダへ移し、Pages を mdmark で描く配信に切り替える
+    reason: 配布元の v0.3.0 より後の変更で、別の Issue がこの Issue を依存に持つ
+    plan: '#413'
+  - item: 既存の文書を表し方の優先順位（図 → 表 → 箇条書き → 文）に移行する
+    reason: knowledge の規約への追従で、AI Monitor v0.3.0 の配布物の変更ではない
+    plan: '#407'

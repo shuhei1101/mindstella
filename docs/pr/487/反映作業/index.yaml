@@ -1,0 +1,28 @@
+プラグインの取り直し:
+  説明: MCP update_plugins で、AI Monitor がマーケットプレースとして持つプラグインを v0.3.0 以降の内容へ取り直す
+  タグ: [プラグイン]
+  実行者: planner
+  時期: マージの前
+  回数: 1 回限り
+  可逆: true
+  疎通確認: null
+  実行: null
+  確認: null
+  切り戻し: null
+  失敗時: 1 回呼び直し、2 回続けて失敗したら起点 Issue でユーザーへ返却する
+  確認方法: Claude Code のプラグインのキャッシュにある ai-monitor プラグインのバージョンが、AI Monitor の v0.3.0 の plugins/ai-monitor のバージョン以上になっている
+  状態: 未
+設定の見直し:
+  説明: モニターの端末の settings.yaml を v0.3.0 の settings.yaml.example と突き合わせ、配布元で増えたキーと、mindstella のプロジェクトの agents[].mcp_tools に増えた MCP のツールを追加する
+  タグ: [設定]
+  実行者: planner
+  時期: マージの前
+  回数: 1 回限り
+  可逆: true
+  疎通確認: null
+  実行: null
+  確認: null
+  切り戻し: null
+  失敗時: 1 回やり直し、2 回続けて失敗したら起点 Issue でユーザーへ返却する
+  確認方法: v0.3.0 の settings.yaml.example にある必須のキーが、モニターの端末の settings.yaml に全て存在し、モニターの起動のログに設定の読み込みの誤りが出ていない
+  状態: 未
