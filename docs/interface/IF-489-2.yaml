@@ -248,8 +248,8 @@ constraints:
 
       ## ドキュメント
 
-      - [プレビューを見る](https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html)
-      - [起動スクリプトで立ち上げる](https://shuhei1101.github.io/mindstella/使い方/セットアップ手順/起動スクリプトで立ち上げる.html)
+      - [プレビューを見る](https://shuhei1101.github.io/mindstella/guide/プレビューを見る.html)
+      - [起動スクリプトで立ち上げる](https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html)
       ~~~
   - item: 埋める値
     constraint: プラグインのフォルダは、動いている `server.py`（`{プラグインのフォルダ}/skills/mindmap/scripts/server.py`）から 3 つ上のフォルダ。セッションの名前は『起動スクリプト』のレスポンス「tmux のセッション」と同じ規則（`mindstella-{フォルダ名}-{ハッシュ}`。フォルダ名の `.`・`:` を `-` に置き換え、ハッシュはシンボリックリンクを解いた絶対パスの SHA-256 の 16 進の先頭 6 桁）。ワークスペースの絶対パスもシンボリックリンクを解いたもの。URL はこのプロセスがワークスペースを配っている配信の URL（『プレビューの URL』の `url`）
