@@ -1,0 +1,12 @@
+id: MOD-489-28
+title: プレビュー / key-diff
+lead: 差分の表示の間、キーの前後の値を並べる。
+components:
+  - name: KeyDiff
+    title: キーの差分
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 差分の表示の間、キーの前後の値を並べる
+    container: frontend/src/features/detail/detail-panel/components/key-diff.tsx
+notes:
+  単体テスト: 同じフォルダの `key-diff.test.tsx` に置く（knowledge の規約『フォルダ構成』）

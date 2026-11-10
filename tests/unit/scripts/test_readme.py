@@ -85,9 +85,9 @@ def test_render_readme(tmp_path: Path) -> None:
         ["/mindstella:setup", absolute],
         ["/mindstella:upgrade", absolute],
     ]
-    assert "(https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html)" in text
+    assert "(https://shuhei1101.github.io/mindstella/guide/プレビューを見る.html)" in text
     assert (
-        "(https://shuhei1101.github.io/mindstella/使い方/セットアップ手順/起動スクリプトで立ち上げる.html)"
+        "(https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html)"
         in text
     )
 

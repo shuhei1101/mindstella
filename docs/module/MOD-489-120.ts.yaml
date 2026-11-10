@@ -1,0 +1,224 @@
+id: MOD-489-120
+title: プレビュー / preview-search
+lead: SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理、今の画面へ写すハッシュ。
+data_models:
+  - name: PreviewSearchSchema
+    title: プレビューの search
+    usecase: SPAを開く
+    role: Zod スキーマ
+    summary: '`tab`・`view`・`id`・`full`・`h`・`diff`・`sort`・`panel`・`thread`・`review`・`tstatus`・`ttag` と `f.{列}`。合わない値は既定に落とす'
+    properties:
+      - name: tab
+        type: PreviewTab | undefined
+        description: 開く画面
+      - name: view
+        type: '''map'' | ''board'' | ''cards'' | ''table'' | undefined'
+        description: 表示形式
+      - name: id
+        type: string | undefined
+        description: 開いている項目
+      - name: full
+        type: '''1'' | undefined'
+        description: 全画面
+      - name: h
+        type: string | undefined
+        description: 見出し
+      - name: diff
+        type: string | undefined
+        description: 差分の時点
+      - name: sort
+        type: string | undefined
+        description: 並べる列
+      - name: panel
+        type: '''pending'' | ''comments'' | ''display'' | undefined'
+        description: 左のパネル（保存待ち・コメントの一覧・表示の設定）
+      - name: thread
+        type: string | undefined
+        description: コメントの一覧で開いているスレッド（`TH-{番号}` か、まだ送っていない新しいスレッドの `C-{番号}`）
+      - name: review
+        type: '''1'' | undefined'
+        description: レビュー中の書き込みの画面
+      - name: tstatus
+        type: '''closed'' | ''all'' | undefined'
+        description: スレッドの状態の絞り込み
+      - name: ttag
+        type: string | undefined
+        description: スレッドを絞るタグ
+      - name: f
+        type: Record<string, string>
+        description: '`f.{列}` の引数'
+    container: frontend/src/shared/core/preview-search.ts
+functions:
+  - name: parsePreviewSearch
+    title: search の検証
+    kind: 関数
+    usecase: SPAを開く
+    summary: ルートの `validateSearch`。`f.` で始まるキーを `f` に集めて `PreviewSearchSchema` で parse する
+    args:
+      - name: search
+        type: Record<string, unknown>
+        required: true
+        description: URL の search params
+    returns:
+      type: PreviewSearch
+      description: 検証した search
+    unit_tests:
+      - name: test_parse_preview_search
+        case: 正常
+        summary: 決めた値を受ける
+        condition: '`{tab: ''decisions'', view: ''table'', ''f.status'': ''要見直し''}`'
+        mock: なし
+        expected: '`tab`・`view` と `f.status` が入る'
+      - name: test_parse_preview_search_when_unknown
+        case: 正常
+        summary: 決めた値以外は落とす
+        condition: '`{tab: ''unknown'', full: ''true''}`'
+        mock: なし
+        expected: '`tab`・`full` が `undefined`'
+    container: frontend/src/shared/core/preview-search.ts
+  - name: parseSearchString
+    title: URL の search の文字列の読み取り
+    kind: 関数
+    usecase: SPAを開く
+    summary: ルーターの `parseSearch`。値を文字列のまま読み、`f.{列}` を `f` に集める（`f` の置き換えで条件を外せるようにする）
+    args:
+      - name: text
+        type: string
+        required: true
+        description: URL の search の文字列
+    returns:
+      type: Record<string, unknown>
+      description: 読んだ search
+    unit_tests:
+      - name: test_parse_search_string
+        case: 正常
+        summary: '`f.{列}` を `f` に集める'
+        condition: '`?tab=decisions&f.status=保留`'
+        mock: なし
+        expected: '`{tab: ''decisions'', f: {status: ''保留''}}`'
+    container: frontend/src/shared/core/preview-search.ts
+  - name: normalizeSearch
+    title: 記録に合わせた search
+    kind: 関数
+    usecase: SPAを開く
+    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`、スレッドにもまだ送っていない新しいスレッドにも無い `thread`、どのスレッドにも無い `ttag` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
+    args:
+      - name: search
+        type: PreviewSearch
+        required: true
+        description: 検証した search
+      - name: context
+        type: SearchContext
+        required: true
+        description: 判定に要る値。`index`（記録の索引）・`pendingCount`（保存待ちの編集の件数）・`visibleKinds`（表示する種類）・`diffActive`（差分の表示中か）・`sortColumns`（開く画面の表の並べられる列）・`threadIds`（スレッドとまだ送っていない新しいスレッドの ID）・`threadTags`（スレッドのタグ）
+    returns:
+      type: PreviewSearch
+      description: 外した後の search
+    unit_tests:
+      - name: test_normalize_search_when_view_mismatched
+        case: 正常
+        summary: 画面が持たない形式
+        condition: '`{tab: ''tasks'', view: ''map''}`'
+        mock: なし
+        expected: '`view` が無い'
+      - name: test_normalize_search_when_item_missing
+        case: 正常
+        summary: 記録に無い項目
+        condition: '`{id: ''T-99'', full: ''1'', h: ''決め方''}`'
+        mock: なし
+        expected: '`id`・`full`・`h` が無い'
+      - name: test_normalize_search_when_diff_missing
+        case: 正常
+        summary: 記録に無い時点
+        condition: '`{diff: ''V-99''}`'
+        mock: なし
+        expected: '`diff` が無い'
+      - name: test_normalize_search_when_no_pending
+        case: 正常
+        summary: 保存待ちが 0 件
+        condition: '`{panel: ''pending''}` と 0 件'
+        mock: なし
+        expected: '`panel` が無い'
+      - name: test_normalize_search_when_kind_hidden
+        case: 正常
+        summary: 表示しない種類
+        condition: '`{tab: ''notes''}` と `visibleKinds` に notes が無い'
+        mock: なし
+        expected: '`tab` が無い'
+      - name: test_normalize_search_when_settings_in_diff
+        case: 正常
+        summary: 差分の表示中の設定の画面
+        condition: '`{tab: ''settings''}` と `diffActive: true`'
+        mock: なし
+        expected: '`tab` が無い'
+      - name: test_normalize_search_when_panel_in_diff
+        case: 正常
+        summary: 差分の表示中の保存待ちのパネル
+        condition: '`{panel: ''pending''}` と `diffActive: true`'
+        mock: なし
+        expected: '`panel` が無い'
+      - name: test_normalize_search_when_sort_unknown
+        case: 正常
+        summary: 表に無い列
+        condition: '`{sort: ''unknown''}`'
+        mock: なし
+        expected: '`sort` が無い'
+      - name: test_normalize_search_when_html_body
+        case: 正常
+        summary: 本文が HTML の資料
+        condition: '`{id: ''A-1'', h: ''決め方''}` と本文が `.html` の A-1'
+        mock: なし
+        expected: '`h` が無い'
+      - name: test_normalize_search_when_thread_missing
+        case: 正常
+        summary: 無いスレッド
+        condition: '`{panel: ''comments'', thread: ''TH-99''}`'
+        mock: なし
+        expected: '`panel` だけが残る'
+      - name: test_normalize_search_when_comments_closed
+        case: 正常
+        summary: コメントの一覧を開いていない
+        condition: '`{tab: ''decisions'', thread: ''TH-1'', review: ''1''}`'
+        mock: なし
+        expected: '`thread`・`review` が無い'
+      - name: test_normalize_search_when_tag_missing
+        case: 正常
+        summary: 無いタグ
+        condition: '`{panel: ''comments'', ttag: ''無いタグ''}`'
+        mock: なし
+        expected: '`ttag` が無い'
+    container: frontend/src/shared/core/preview-search.ts
+  - name: toLegacyHash
+    title: 今の画面へ写すハッシュ
+    kind: 関数
+    usecase: SPAを開く
+    summary: 制約「React に無い画面」のとおり `tab`・`view`・`id`・`full`・`diff` を写す。`graph` は `view` を写さない
+    args:
+      - name: search
+        type: PreviewSearch
+        required: true
+        description: 今の search
+      - name: tab
+        type: string
+        required: false
+        description: 開く今の画面の `tab`
+        default: search の `tab`
+    returns:
+      type: Record<string, string>
+      description: '`toLegacyUrl` へ渡す引数'
+    unit_tests:
+      - name: test_to_legacy_hash
+        case: 正常
+        summary: 同じ名前で写す
+        condition: '`{tab: ''decisions'', view: ''table'', id: ''D-1'', diff: ''V-1''}`'
+        mock: なし
+        expected: 同じキーと値
+      - name: test_to_legacy_hash_when_graph
+        case: 正常
+        summary: ネットワークは view を写さない
+        condition: '`tab` に `graph`'
+        mock: なし
+        expected: '`tab=graph` で `view` が無い'
+    container: frontend/src/shared/core/preview-search.ts
+notes:
+  単体テスト: 同じフォルダの `preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）

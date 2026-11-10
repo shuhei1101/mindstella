@@ -1,0 +1,12 @@
+id: MOD-489-97
+title: プレビュー / textarea
+lead: shadcn/ui の Textarea。
+components:
+  - name: Textarea
+    title: shadcn/ui の Textarea
+    kind: コンポーネント
+    usecase: 共通
+    summary: shadcn/ui の Textarea
+    container: frontend/src/shared/components/ui/textarea.tsx
+notes:
+  単体テスト: 同じフォルダの `textarea.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,9 @@
+id: MOD-489-148
+title: "サーバー / ゴール判定"
+lead: ゴールのフェーズまでの検討事項とゴールの納品物から、ゴールに届いたかを判定する `goal` の処理。判定は依存と影響（`graph.py`）、出力の形はツールの処理（`commands.py`）に置く。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    graph.py      ゴールの判定（judge_goal・GoalReport）を足す
+    commands.py   goal の処理（run_goal）を足す
+  ```

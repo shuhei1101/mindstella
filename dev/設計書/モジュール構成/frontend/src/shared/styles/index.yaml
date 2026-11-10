@@ -1,6 +1,0 @@
-summary: '`frontend/src/shared/styles/` の React のプレビューのモジュール'
-items:
-- page: index.css.yaml
-  summary: 'Tailwind を読み、`--color-*: initial` で標準のパレットを消し、`@theme inline` でトークンを割り当てる'
-- page: tokens.css.yaml
-  summary: デザイン方針のトークンを :root の 3 ティア（プリミティブ・セマンティック・派生）で持つ。値は採用した見本（`dev/mock/styles/shadcn-swiss-cards/`）から写す

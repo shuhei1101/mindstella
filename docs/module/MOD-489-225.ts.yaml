@@ -1,0 +1,45 @@
+id: MOD-489-225
+title: プレビュー / 画面と部品 / records.ts
+components:
+  - name: recordsScreen
+    title: 記録の表
+    container: plugins/mindstella/skills/mindmap/preview/screens/records.ts
+    usecase: 項目を表で絞り込む
+    kind: 画面
+    summary: 画面設計『記録の表』を描く。調査・用語集・メモ・会話ログの列の定義を種類ごとに持ち（会話ログもタグの列を持つ）、`filters` と共に `table` に渡す。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: route
+        type: Route
+        required: true
+        description: 種類（`tab`）と絞り込み
+      - name: on
+        type: '{open, filter, closeDrawer}'
+        required: true
+        description: 項目を開く・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの種類の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。表へ `comments` で渡す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消したその種類の項目（入口が `removedOf` で引く）。空でなければ表の上に `removedBand` を置く。`filters` で絞らない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: 表の上の帯の「列の表示」の左に「項目を追加」を置き（押すと開いているタブの種類で `onAdd`）、表の行に `marks`、表の先頭の行に `adds` を出す。そのほかは `decisionsScreen` の `edit` と同じ

@@ -1,0 +1,34 @@
+id: MOD-489-205
+title: プレビュー / 画面と部品 / body-diff-layout-switch.ts
+test_files:
+  - tests/unit/preview/test_body_diff_layout_switch.py
+constants:
+  - name: BODY_LAYOUT_LABEL
+    title: 本文の差分の並べ方の呼び名
+    container: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
+    usecase: 表示の設定を変える
+    summary: 切り替えの読み上げの名前と、表示の設定の「この端末で変えている項目」に出す名前。`resolveDisplay` もこの名前を並べる
+    value: '"本文の差分の並べ方"'
+components:
+  - name: bodyDiffLayoutSwitch
+    title: 本文の差分の並べ方の切り替え
+    container: plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts
+    usecase: 前回からの差分を見る
+    summary: 部品設計『本文の差分の並べ方の切り替え』。`div.segment.sbs-switch`（`role="group"`、読み上げの名前 `BODY_LAYOUT_LABEL`）に「インライン」「左右に並べる」の 2 つのボタン（`data-layout` に `inline`・`side`、`aria-pressed`）を並べて返す。押していない方を押したときだけ `on.change` を呼ぶ
+    kind: コンポーネント
+    props:
+      - name: layout
+        type: "'inline' | 'side'"
+        required: true
+        description: 選んでいる並べ方
+      - name: on
+        type: '{change}'
+        required: true
+        description: 並べ方を切り替える（押した方の並べ方）
+    unit_tests:
+      - name: test_body_diff_layout_switch
+        case: 正常
+        summary: 選んでいる方を押した状態で出し、押していない方を押したときだけ知らせる
+        condition: '`parametrize`: `layout: inline` で「左右に並べる」を押す / `layout: inline` で「インライン」を押す / `layout: side` で「インライン」を押す'
+        mock: なし（DOM を作って見る。`on.change` を数える関数にする）
+        expected: 「インライン」が `aria-pressed="true"` で `on.change` が `side` で 1 回 / 呼ばれない / 「左右に並べる」が `aria-pressed="true"` で `on.change` が `inline` で 1 回。組の読み上げの名前は「本文の差分の並べ方」

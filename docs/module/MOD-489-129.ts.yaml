@@ -1,0 +1,46 @@
+id: MOD-489-129
+title: プレビュー / use-preview-search
+lead: search の読み書き。履歴に積むかを制約「履歴」のとおりに分ける。
+functions:
+  - name: usePreviewSearch
+    title: search の読み書き
+    kind: フック
+    usecase: SPAを開く
+    summary: '`getRouteApi` の search と、`openItem`（積む）・`closeItem`・`setView`・`setFilters`・`setSort`・`setDiff`・`setPanel`・`setComments`（コメントの一覧の `thread`・`review`・`tstatus`・`ttag`）（置き換える）を返す。見てきた項目の履歴は `history.state.trail` に残し、`canBack`・`canForward` を返す'
+    returns:
+      type: PreviewSearchApi
+      description: search と操作
+    unit_tests:
+      - name: test_use_preview_search_when_open_item
+        case: 正常
+        summary: 項目の移動は積む
+        condition: '`openItem(''D-1'')`'
+        mock: ルーターのメモリの履歴
+        expected: 履歴が 1 増え `id=D-1`
+      - name: test_use_preview_search_when_set_filters
+        case: 正常
+        summary: 絞り込みは置き換える
+        condition: '`setFilters({status: ''保留''})`'
+        mock: ルーターのメモリの履歴
+        expected: 履歴の数が同じで `f.status=保留`
+      - name: test_use_preview_search_when_change_tab
+        case: 正常
+        summary: 画面の移動
+        condition: '`setTab(''tasks'')`'
+        mock: ルーターのメモリの履歴
+        expected: '`id`・`diff` が残り、`view`・`f.{列}`・`sort` が外れる'
+      - name: test_use_preview_search_when_set_comments
+        case: 正常
+        summary: コメントの一覧の中の移動は置き換える
+        condition: '`setComments({thread: ''TH-1''})`'
+        mock: ルーターのメモリの履歴
+        expected: 履歴の数が同じで `thread=TH-1`
+      - name: test_use_preview_search_when_close_comments
+        case: 正常
+        summary: コメントの一覧を閉じる
+        condition: '`setPanel(undefined)`'
+        mock: ルーターのメモリの履歴
+        expected: '`panel`・`thread`・`review`・`tstatus`・`ttag` が外れる'
+    container: frontend/src/shared/hooks/use-preview-search.ts
+notes:
+  単体テスト: 同じフォルダの `use-preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）

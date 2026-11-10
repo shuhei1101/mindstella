@@ -1,0 +1,13 @@
+id: MOD-489-79
+title: プレビュー / post-body
+lead: 書き込みの本文を Markdown として描く。
+components:
+  - name: PostBody
+    title: 書き込みの本文
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: 段落の中の改行を強制改行にして mdmark で描き、項目の ID をその項目を開くボタン、記録にあるまとまりを指すリンクをまとまりのリンクにする。mdmark を読めないときは本文を文字のまま改行を保って出す
+    refs:
+      - CMP-489-12#
+      - MOD-489-119#
+    container: frontend/src/shared/components/post-body.tsx

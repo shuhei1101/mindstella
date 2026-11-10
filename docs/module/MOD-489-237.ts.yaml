@@ -1,0 +1,79 @@
+id: MOD-489-237
+title: プレビュー / 画面と部品 / reply-form.ts
+test_files:
+  - tests/unit/preview/test_reply_form.py
+components:
+  - name: replyForm
+    title: 返信の入力
+    container: plugins/mindstella/skills/mindmap/preview/components/reply-form.ts
+    usecase: スレッドで話す
+    kind: コンポーネント
+    summary: 部品設計『返信の入力』の引数を受け、入力と溜めるをコールバックで知らせる。入力欄が空白だけの間と `saving` の間は「レビューに追加」を `disabled` にする。入力欄の Esc は `preventDefault` と `stopPropagation` をしてからフォーカスを外す。入力欄と「レビューに追加」（アイコンだけのボタン）を 1 行（`.send-line`）に並べ、結果は入力欄の下に出す
+    props:
+      - name: thread
+        type: string
+        required: true
+        description: 返信先のスレッドの ID
+      - name: body
+        type: string
+        required: false
+        default: "''"
+        description: 入力欄の中身（`maxlength` 10000。1 行から 8 行まで伸びる）
+      - name: status
+        type: "'idle' | 'saving' | 'saved' | 'failed' | 'sent' | 'inserted' | 'voice-failed'"
+        required: false
+        default: "'idle'"
+        description: 溜める状態。`sent`・`inserted`・`voice-failed` は `sendForm` と同じ
+      - name: count
+        type: number | null
+        required: false
+        default: 'null'
+        description: 溜めた後の件数。`saved` のときに出す
+      - name: detail
+        type: string | null
+        required: false
+        default: 'null'
+        description: サーバーが返した理由。`failed` で `null` なら立ち上げ直しの案内を出す
+      - name: voice
+        type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
+        required: false
+        default: "'idle'"
+        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする
+      - name: voiceReason
+        type: string | null
+        required: false
+        default: 'null'
+        description: マイクのボタンを押せない理由（`voice` が `disabled` のとき）
+      - name: elapsed
+        type: number
+        required: false
+        default: '0'
+        description: 録音を始めてからの秒数（`voice` が `recording` のとき）
+      - name: entered
+        type: boolean
+        required: false
+        default: 'false'
+        description: '`status` が `sent` のとき、Claude Code へ入力したか（「送信し、Claude Code へ入力しました。」か「送信しました。Claude Code へは入力していません。」）'
+      - name: on
+        type: '{input, save, voiceStart, voiceCancel, voiceDone, voiceBlocked}'
+        required: true
+        description: 入力欄の中身が変わった（中身）・「レビューに追加」か Ctrl+Enter（macOS は Cmd+Enter。スレッドの ID と中身）・マイクのボタン・×・✓（入力欄の中身と `selectionStart`・`selectionEnd`）・押せないマイクのボタン
+    unit_tests:
+      - name: test_reply_form
+        case: 正常
+        summary: 状態ごとの入力欄と結果
+        condition: '`parametrize`: 空 / `body` あり / `saving` / `saved`（`count: 3`）/ `failed` で `detail` が `null` / `failed` で `detail` あり'
+        mock: なし（DOM を作って見る）
+        expected: ボタンが `disabled` / 押せる / `disabled` で入力欄が `readonly` / 「レビューに追加しました（レビュー中 3 件）。」/ 「レビューに追加できませんでした。サーバーが止まっています。立ち上げ直してから追加してください。」/ 「レビューに追加できませんでした。{理由}」。どれもラベル「返信」が見え、入力欄が 1 行で、結果の要素が `role="status"` で入力欄の `aria-describedby` が指し、「レビューに追加」のボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持ち、入力欄と同じ行にある
+      - name: test_reply_form_when_voice
+        case: 正常
+        summary: 音声入力の状態とコールバック
+        condition: '`parametrize`: `voice: recording`・`elapsed: 5` で ✓ / `voice: disabled` でマイクを押す / `status: sent`・`entered: true`'
+        mock: '`on.voiceDone`・`on.voiceBlocked`'
+        expected: '結果の行に `0:05` があり、`voiceDone` が入力欄の中身とカーソルの位置で 1 回 / `voiceBlocked` が 1 回 / 「送信し、Claude Code へ入力しました。」'
+      - name: test_reply_form_when_keys
+        case: 正常
+        summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない
+        condition: '`parametrize`: `body` ありで Ctrl+Enter / 空で Ctrl+Enter / `saving` で Ctrl+Enter / `isComposing` の Ctrl+Enter / Esc'
+        mock: '`on.save`、親要素の `keydown` のリスナー'
+        expected: '`on.save` がスレッドの ID と中身で 1 回 / 呼ばれない / 呼ばれない / 呼ばれない / 入力欄からフォーカスが外れ、親のリスナーが呼ばれない'

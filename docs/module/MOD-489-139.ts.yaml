@@ -1,0 +1,36 @@
+id: MOD-489-139
+title: プレビュー / location-highlight-store
+lead: コメントの一覧（レビュー中の書き込みの行・スレッドの向けた項目）から開いた項目の中で示す箇所。
+functions:
+  - name: useLocationHighlight
+    title: 示す箇所
+    kind: 関数
+    usecase: コメントを選んで送る
+    summary: 開いている項目の中で示す箇所を返す（別の項目の箇所は返さない）。詳細パネル・詳細の全画面が、本文を描き終えた後に `applyHighlight` で印の色の地を付ける
+    args:
+      - name: id
+        type: string
+        required: true
+        description: 開いている項目の ID
+    returns:
+      type: Location | null
+      description: 示す箇所
+    container: frontend/src/shared/stores/location-highlight-store.ts
+  - name: showLocation
+    title: 示す箇所の控え
+    kind: 関数
+    usecase: コメントを選んで送る
+    summary: 項目を開く前に、その項目の中で示す箇所を控える（箇所を持たない書き込みは控えを外す）
+    args:
+      - name: target
+        type: string
+        required: true
+        description: 開く項目の ID
+      - name: loc
+        type: Location | null
+        required: true
+        description: 書き込みの箇所
+    returns:
+      type: void
+      description: '-'
+    container: frontend/src/shared/stores/location-highlight-store.ts

@@ -1,0 +1,85 @@
+id: MOD-489-208
+title: プレビュー / 画面と部品 / review-body-fold.ts
+test_files:
+  - tests/unit/preview/test_review_body_fold.py
+constants:
+  - name: REVIEW_FOLD_LINES
+    title: 本文を畳む行の数
+    container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    usecase: コメントを選んで送る
+    summary: 畳んだときに出す、折り返した後の見た目の行の数
+    value: '5'
+components:
+  - name: reviewBodyFold
+    title: 本文の折りたたみ
+    container: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts
+    usecase: コメントを選んで送る
+    kind: コンポーネント
+    summary: "部品設計『本文の折りたたみ』の引数を受け、本文の要素と開閉のボタンを `{body, more}` で返す。本文は `postBody`（クラス `review-body`、`titles`・`changeSets`・`on.openId`・`on.changeSet` をそのまま渡す）で描き、`id` を `review-body-{ID}`、畳んでいる間はクラス `folded` と `--fold-lines` で高さを行の高さ × `lines` に限り、はみ出しを隠す（本文は Markdown のブロックを持つ）。開閉のボタン（`btn ghost review-more`、`aria-controls` は本文の `id`、`data-focus` は `{focus}more:{ID}`）は `hidden` で作り、`ResizeObserver` で本文の `scrollHeight` が行の高さ × `lines` を超えるときだけ出す。押すと描き直さずに本文の `folded`・ボタンの印・文言・`aria-expanded`・読み上げの名前を切り替えて `on.toggle(id, open)` を呼び、折りたたんだときは行（`li`）を `scrollIntoView({block: 'nearest'})` で寄せる"
+    props:
+      - name: id
+        type: string
+        required: true
+        description: レビュー中の書き込みの ID
+      - name: label
+        type: string
+        required: true
+        description: 行の読み上げの名前の頭（`reviewLabel` の値）
+      - name: body
+        type: string
+        required: true
+        description: 書き込みの本文
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: まとまりの説明（記録に無ければ `null`）。部品設計の `change_sets` の対応を関数で受ける
+      - name: open
+        type: boolean
+        required: false
+        default: 'false'
+        description: 本文を開いているか
+      - name: lines
+        type: number
+        required: false
+        default: REVIEW_FOLD_LINES
+        description: 畳んだときに出す行の数
+      - name: on
+        type: '{toggle, changeSet, openId?}'
+        required: true
+        description: 開閉した（`id`・開くか）・まとまりのリンクを押した・本文の中の項目の ID を押した（`openId`。省くと何もしない関数を `postBody` へ渡す。`titles` を渡さなければ ID は文字のまま出るため押されない）
+      - name: titles
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: 項目のタイトル（記録に無ければ `null`）。部品設計の `titles` の対応を関数で受け、`postBody` へそのまま渡す
+      - name: focus
+        type: string
+        required: false
+        default: "''"
+        description: 開閉のボタンの `data-focus` の接頭辞
+    unit_tests:
+      - name: test_review_body_fold
+        case: 正常
+        summary: 5 行を超える本文だけを畳み、開閉のボタンを出す
+        condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 2 行の本文 / 改行で 8 行の本文（各行は折り返さない短さ）/ 改行の無い、折り返して 8 行になる本文'
+        mock: なし（ブラウザで DOM を作って見る）
+        expected: 開閉のボタンが `hidden` で、本文が全て見える / 本文が `folded` で高さが行の高さ × 5、ボタンが「続きを読む」で `aria-expanded="false"`・`aria-controls` が本文の `id` / 同じく畳まれ、ボタンを出す
+      - name: test_review_body_fold_when_toggle
+        case: 正常
+        summary: 開閉で本文とボタンを切り替え、使う側に知らせる
+        condition: 改行で 8 行の本文、`label` は「項目を指さないコメント」。ボタンを 2 回押す
+        mock: '`on.toggle`'
+        expected: 1 回目で本文が `folded` を外し、ボタンが「折りたたむ」・`aria-expanded="true"`・読み上げの名前「項目を指さないコメントの本文を折りたたむ」で `on.toggle` が `(id, true)`。2 回目で元に戻り、読み上げの名前が「項目を指さないコメントの続きを読む」で `on.toggle` が `(id, false)`
+      - name: test_review_body_fold_when_open
+        case: 正常
+        summary: 開いた状態で描く
+        condition: '改行で 8 行の本文を `open: true` で描く'
+        mock: なし
+        expected: 本文が `folded` を持たず 8 行が見え、ボタンが「折りたたむ」で `aria-expanded="true"`
+      - name: test_review_body_fold_when_titles_and_focus
+        case: 正常
+        summary: 記録にある項目の ID のリンクと、開閉のボタンの接頭辞
+        condition: 本文「T-14 は今週中に。D-99 は重なる」、`titles` は T-14 だけ、`focus` は `detail-`。T-14 を押す
+        mock: '`on.openId`'
+        expected: T-14 がボタン（`title` がタイトル）で D-99 は文字のまま。開閉のボタンの `data-focus` が `detail-more:{ID}`。押すと `on.openId` が `T-14` で 1 回

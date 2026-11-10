@@ -1,0 +1,53 @@
+id: MOD-489-187
+title: サーバー / 移行 / tags_to_objects.py
+test_files:
+  - tests/unit/scripts/test_tags_to_objects.py
+functions:
+  - name: tags_to_objects.migrate
+    title: 項目のタグをオブジェクトにする移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.12.0/scripts/tags_to_objects.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.12.0 の `call`（`tags_to_objects`）が呼ぶ変換（関数名は `migrate`）。項目の `tags` の文字列の要素を `{name}` にし、表記をそろえて同じ名前のタグは最初の 1 件だけを残す
+    side_effects: '`.mindstella/` の種類ごとの YAML を書き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。種類の順。変えなければ空）
+    process: |-
+      1. `.mindstella/` の種類ごとの YAML（`KINDS` のファイル）を、あるものだけ `yaml.safe_load` で読む。一番上が辞書でないか `items` が並びでなければ `{ファイル} の形が崩れています` の `ValueError` を送る
+      2. 各項目の `tags` が並びなら、要素を頭から見て、文字列は `{name: {文字列}}` にし、名前を NFKC と小文字にそろえて前の要素と同じなら外す（辞書の要素はそのまま。名前を取れない要素はそのまま残す）
+         - 並びが変わらない項目は触らない。`updated`・`history` は変えない
+      3. 変わった項目があるファイルだけ、キーの並びを保って読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを削除して送り直す
+      4. 変えたファイルの相対パスを返す（`threads.yaml` は読まない）
+    exceptions:
+      - name: ValueError
+        condition: 種類ごとの YAML の形が崩れている
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_tags_to_objects
+        case: 正常
+        summary: 文字列のタグを name のオブジェクトにし、表記をそろえて重なるタグは最初だけ残す
+        condition: 'D-1: `[API, 画面, ａｐｉ]`・`updated: T0`／T-1: `[{name: 通知, main: true}]`／N-1: タグ無し／`threads.yaml` の TH-1: `[起票]`'
+        mock: なし
+        expected: '戻り値が `[.mindstella/decisions.yaml]`。D-1 の `tags` が `[{name: API}, {name: 画面}]` で `updated` が `T0` のまま。T-1・N-1・TH-1 が呼ぶ前と同じ'
+      - name: test_tags_to_objects_when_applied
+        case: 正常
+        summary: もう一度当てても変えない
+        condition: 同じワークスペースに 2 回呼ぶ
+        mock: なし
+        expected: 2 回目の戻り値が空で、ファイルが 1 回目の後と同じ
+      - name: test_tags_to_objects_when_broken
+        case: 異常
+        summary: 形が崩れていれば移さない
+        condition: 一番上が配列の `decisions.yaml`
+        mock: なし
+        expected: '`ValueError`。どのファイルも呼ぶ前と同じ'

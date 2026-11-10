@@ -4,8 +4,8 @@ name: mindstella
 worktrees: [".claude/worktrees/*"]
 description: 話し合いを記録しながら決めたことを形にしていく Claude Code のスキルの設計書・目次・Markdown・コード・テスト
 instructions: |-
-  設計書は `dev/設計書/` の種別ごとの YAML が正本で、書式は `dev/テンプレート/{種別}.schema.yaml` が持つ。目次は `dev/`・`docs/` の各フォルダの `index.yaml`。
-  Markdown・コード・テストは、`docs/`・`dev/設計書/`・`plugins/mindstella/`・`frontend/`・`tests/` の `files.yml` の行が名前・概要文・タグ・関連を持つ。コードの行の `implements` が設計書を、テストの行の `tests` がコードを指す。
+  設計書は `docs/` の種別ごとの YAML が正本で、書式は `schemas/{種別}.schema.yaml` が持つ。他の設計書の項目は `{ID}#{項目のパス}` で指す。目次は `docs/` の各フォルダの `index.yaml`。
+  Markdown・コード・テストは、`docs/guide/`・`docs/_root/`・`plugins/mindstella/`・`frontend/`・`tests/` の `files.yml` の行が名前・概要文・タグ・関連を持つ。コードの行の `implements` が設計書を、テストの行の `tests` がコードを指す。各文書の公開範囲は `visibility`（`public` / `internal`）で、YAML の文書はキー、Markdown は `files.yml` の行が持つ。
 related:
   types: [references, depends_on, see_also, implements, tests]
 github:
@@ -13,123 +13,135 @@ github:
 documents:
   - id: architecture
     title: アーキテクチャ図
-    paths: ["dev/設計書/アーキテクチャ図/*.yaml"]
+    paths: ["docs/architecture/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/アーキテクチャ図.schema.yaml
+    schema: schemas/architecture.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: nonfunctional
     title: 非機能要件
-    paths: ["dev/設計書/非機能要件/*.yaml"]
+    paths: ["docs/nonfunctional/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/非機能要件.schema.yaml
+    schema: schemas/nonfunctional.schema.yaml
     metadata:
       name: title
+      visibility: visibility
   - id: scenario
     title: シナリオ
-    paths: ["dev/設計書/シナリオ/**/*.yaml"]
+    paths: ["docs/scenario/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/シナリオ.schema.yaml
+    schema: schemas/scenario.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: interface
     title: インターフェース定義
-    paths: ["dev/設計書/インターフェース定義/**/*.yaml"]
+    paths: ["docs/interface/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/インターフェース定義.schema.yaml
+    schema: schemas/interface.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: module
     title: モジュール構成
-    paths: ["dev/設計書/モジュール構成/**/*.yaml"]
+    paths: ["docs/module/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/モジュール構成.schema.yaml
+    schema: schemas/module.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: screen
     title: 画面設計
-    paths: ["dev/設計書/画面設計/**/*.yaml"]
+    paths: ["docs/screen/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/画面設計.schema.yaml
+    schema: schemas/screen.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: component
     title: 部品設計
-    paths: ["dev/設計書/部品設計/**/*.yaml"]
+    paths: ["docs/component/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/部品設計.schema.yaml
+    schema: schemas/component.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: er
     title: ER 図
-    paths: ["dev/設計書/ER図/*.yaml"]
+    paths: ["docs/er/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/ER図.schema.yaml
+    schema: schemas/er.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: config
     title: 設定
-    paths: ["dev/設計書/設定/*.yaml"]
+    paths: ["docs/config/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/設定.schema.yaml
+    schema: schemas/config.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: api
     title: 外部API
-    paths: ["dev/設計書/外部API/*.yaml"]
+    paths: ["docs/external-api/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/外部API.schema.yaml
+    schema: schemas/external-api.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: library
     title: 外部ライブラリ
-    paths: ["dev/設計書/外部ライブラリ/*.yaml"]
+    paths: ["docs/library/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/外部ライブラリ.schema.yaml
+    schema: schemas/library.schema.yaml
     metadata:
       name: title
       description: lead
+      visibility: visibility
   - id: test_procedure
     title: テスト実行方法
-    paths: ["dev/設計書/テスト/*.yaml"]
+    paths: ["docs/test-procedure/*.yaml"]
     exclude: [index.yaml]
-    schema: dev/テンプレート/テスト実行方法.schema.yaml
+    schema: schemas/test-procedure.schema.yaml
     metadata:
       name: title
+      visibility: visibility
   - id: index
     title: 目次
-    paths:
-      - dev/index.yaml
-      - dev/コーディング規約/index.yaml
-      - dev/テンプレート/index.yaml
-      - "dev/設計書/**/index.yaml"
-      - "docs/**/index.yaml"
-    schema: dev/テンプレート/index.schema.yaml
+    paths: ["docs/**/index.yaml"]
+    schema: schemas/index.schema.yaml
     metadata:
       description: summary
-  - id: files_docs
+  - id: files_guide
     title: 公開ドキュメントの Markdown
-    paths: ["docs/files.yml"]
-    exclude: ["*.yaml", _config.yml, nav.yml, nav.project.yml, README.md, index.md, "*.html", "*.js", "*.css", "*.txt", "*.json"]
+    paths: ["docs/guide/files.yml"]
+    exclude: ["*.yaml", "*.yml", README.md, はじめに.md, 使い方.md, リファレンス.md]
     schema: schemas/files.schema.yaml
     records: files
     body_file: path
-  - id: files_design
-    title: 設計書の Markdown
-    paths: ["dev/設計書/files.yml"]
-    exclude: ["*.yaml", README.md]
+    metadata:
+      visibility: visibility
+      category: category
+  - id: files_root
+    title: docs の直下の Markdown
+    paths: ["docs/_root/files.yml"]
+    exclude: ["*.yaml", "*.yml", README.md]
     schema: schemas/files.schema.yaml
     records: files
     body_file: path
+    metadata:
+      visibility: visibility
   - id: files_plugin
     title: プラグインのスキル・コード
     paths: ["plugins/mindstella/files.yml"]

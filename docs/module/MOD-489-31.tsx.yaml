@@ -1,0 +1,12 @@
+id: MOD-489-31
+title: プレビュー / value-text
+lead: 文字列の値を mdmark で描く。
+components:
+  - name: ValueText
+    title: 文字列の値
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 文字列の値を mdmark で描く
+    container: frontend/src/features/detail/detail-panel/components/value-text.tsx
+notes:
+  単体テスト: 同じフォルダの `value-text.test.tsx` に置く（knowledge の規約『フォルダ構成』）

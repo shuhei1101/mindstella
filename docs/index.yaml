@@ -1,9 +1,33 @@
 title: mindstella
-summary: mindstella の公開ドキュメント全体の目次
+summary: mindstella のドキュメント全体の目次
 items:
-  - page: はじめに/
-    summary: 概要・コアコンセプト・変更履歴
-  - page: 使い方/
-    summary: インストールと日々の操作
-  - page: リファレンス/
-    summary: スキル・コマンド・ワークスペースの書式
+  - page: scenario/
+    summary: "単一 / 複合ユースケースの業務フロー設計（E2E テストの元）"
+  - page: interface/
+    summary: "サブシステムの外部インターフェースと処理フロー（サブシステム結合テストの元）"
+  - page: module/
+    summary: "クラス / 関数 / 関数型 インデックス（単体テストの元）"
+  - page: component/
+    summary: "画面の要素が使う部品の引数・イベント・状態（Storybook のストーリー）"
+  - page: screen/
+    summary: "1 画面ごとの要素の仕様（結合テストの元）"
+  - page: config/
+    summary: "設定と環境変数のキー定義"
+  - page: er/
+    summary: "データストアの定義"
+  - page: architecture/
+    summary: "システム全体構成（サブシステムと外部システムとの境界）"
+  - page: nonfunctional/
+    summary: "外部の制約から逆算したアプリ側の決定値（非機能要件テストの元）"
+  - page: external-api/
+    summary: "採用済みの外部 API のリファレンス"
+  - page: library/
+    summary: "採用済みの外部ライブラリ / 外部ツールのリファレンス"
+  - page: test-procedure/
+    summary: "プロジェクト固有のテスト起動コマンドと前提条件"
+  - page: design-policy.md
+    summary: "mindstella の画面全体に通すデザインの方向性"
+  - page: guide/
+    summary: "mindstella の使い方（はじめに・使い方・リファレンス）"
+  - page: index.md
+    summary: "Pages のトップページ"

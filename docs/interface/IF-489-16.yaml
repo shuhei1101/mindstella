@@ -1,0 +1,114 @@
+id: IF-489-16
+title: "タグの一覧"
+entry:
+  kind: mcp_tool
+  value: '`tags`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__tags`）。結果とエラーの返し方は『MCP サーバーの起動』'
+flows:
+  - name: 正常系
+    summary: 項目とスレッドが使うタグを、表記の違いをまとめて件数の多い順に返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        notes: '-'
+      - name: make_workspace
+        description: 次の項目とスレッドを持つワークスペース
+        notes: 'D-1: タグ `API`／D-2: タグ `画面`／T-1: タグ `ａｐｉ`／N-1: タグ無し／TH-1: タグ `api`・`画面`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as tags（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: tags workspace
+        IF-->>WS: 全ての YAML と threads.yaml を読む
+        IF->>IF: タグを NFKC と小文字にそろえて数える
+        IF-->>クライアント: JSON（tags）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`tags` が `api`（`count: 3`・`kinds: [decision, task, thread]`）・`画面`（`count: 2`・`kinds: [decision, thread]`）の 2 件を、この順に並べる'
+      - D-1・T-1・TH-1 の `tags` が、書いたときの表記（`API`・`ａｐｉ`・`api`）のままである
+    test: test_normal
+  - name: 正常系（タグが無い）
+    summary: どの項目もスレッドもタグを持たなければ空の一覧を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: タグを持たない検討事項 D-1 だけを持ち、スレッドを持たないワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as tags（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: tags workspace
+        IF-->>WS: 全ての YAML を読む
+        IF-->>クライアント: JSON（tags: []）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`tags` が空の配列'
+    test: test_normal_when_no_tags
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すとエラーで終わる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as tags（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: tags workspace
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
+lead: 項目とスレッドに付いているタグを、正規化した表記ごとに件数と種類を添えて返す。取り込みで同じ概念の言い方・活用の違いのタグを使い回すためと、`find` のタグの条件を決めるために先に引く。
+idempotent: true
+side_effects: なし（読むだけ）
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+response:
+  - name: tags[].name
+    type: str
+    description: 使われているタグを正規化した表記。件数の多い順、同じ件数は名前の順
+  - name: tags[].count
+    type: int
+    description: そのタグを持つ項目とスレッドの数
+  - name: tags[].kinds
+    type: list[str]
+    description: そのタグを持つ項目の種類（`decision` など。スレッドは `thread`）。種類の定義の順で、`thread` は最後。重なりなし
+exceptions:
+  - name: なし（正常終了）
+    condition: 一覧を作れた（使われているタグが無いときも含む）
+    notes: 結果を返す。使われているタグが無ければ `tags` は空の配列
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
+  - item: エラーの返し方
+    constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
+  - item: 数える範囲
+    constraint: 全ての種類の項目の `tags[].name`（主題かどうかによらない）と `threads.yaml` のスレッドの `tags` を、NFKC と小文字にそろえた表記でまとめて数える。1 つの項目かスレッドが同じタグを 2 回持っても 1 件と数える
+  - item: ツールの説明
+    constraint: MCP のツールの説明に、使われているタグと件数を返すことと、タグを付ける前や `find` でタグを渡す前に呼び、同じ概念の言い方・活用の違いのタグがあれば使い回すことを書く
+test_file: tests/integration/server/test_tags.py

@@ -1,0 +1,58 @@
+id: MOD-489-183
+title: サーバー / 移行 / answer_to_adopted_option.py
+test_files:
+  - tests/unit/scripts/test_answer_to_adopted_option.py
+functions:
+  - name: answer_to_adopted_option.migrate
+    title: 決定済みの答えから採用した案を作る移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.7.0 の `call`（`answer_to_adopted_option`）が呼ぶ変換（関数名は `migrate`）。`決定済み` で `answer` を持ち案を持たない検討事項に、答えから採用した案を 1 つ作る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `.mindstella/decisions.yaml` が無い場合、何も書かず空を返す
+      2. `yaml.safe_load` で読む。一番上が辞書でないか `items` が配列でない場合、何も書かず空を返す（形の崩れは点検の `schema` が拾う）。`items` の辞書の要素を順に見る
+      3. `status` が `決定済み` で、`answer` が空でない文字列で、`options` が無いか空の配列の要素に、`options: [{key: A, content: {answer}, adopted: true}]` を置く。検討事項が空でない `reason` を持てば、案に `reason` も入れる
+         - それ以外の要素と、要素のほかのキー（`updated`・`history` を含む）は変えない
+      4. 1 件も変えなかった場合、何も書かず空を返す
+      5. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
+      6. `[.mindstella/decisions.yaml]` を返す
+    exceptions:
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_answer_to_adopted_option
+        case: 正常
+        summary: 決定済みで答えを持ち案を持たない検討事項にだけ採用した案を作る
+        condition: '`answer`・`reason` を持ち案を持たない決定済みの D-1、`answer` を持ち `options: []` の決定済みの D-2（`reason` なし）、案を持たない未決定の D-3、案 A（採用）を持つ決定済みの D-4、`answer` を持たない決定済みの D-5'
+        mock: なし
+        expected: '戻り値が `[.mindstella/decisions.yaml]`。D-1 の `options` が `key: A`・`content` が `answer`・`reason` が `reason`・`adopted: true` の 1 件、D-2 の案は `reason` を持たない。D-3・D-4・D-5 と、D-1・D-2 のほかのキーが呼ぶ前と同じ。`.tmp` のファイルが無い'
+      - name: test_answer_to_adopted_option_when_applied_twice
+        case: 正常
+        summary: もう一度当てても何も書かない
+        condition: 1 回当てた後のワークスペース
+        mock: なし
+        expected: 戻り値が空、中身と更新日時が呼ぶ前と同じ
+      - name: test_answer_to_adopted_option_when_no_file
+        case: 正常
+        summary: decisions.yaml が無ければ何も書かない
+        condition: '`.mindstella/decisions.yaml` を持たないフォルダ'
+        mock: なし
+        expected: 戻り値が空で、ファイルが作られていない
+      - name: test_answer_to_adopted_option_when_shape_broken
+        case: 正常
+        summary: 形の崩れた decisions.yaml は何も書かない
+        condition: '`parametrize`: `decisions.yaml` の一番上が配列 / `items` が文字列'
+        mock: なし
+        expected: 戻り値が空、中身と更新日時が呼ぶ前と同じ

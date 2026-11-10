@@ -1,0 +1,52 @@
+id: LIB-489-22
+title: tailwindcss
+kind: ライブラリ
+version:
+  current: 4.3.4
+  latest: 4.3.4
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 4.3.4 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 4.3.4
+    entries:
+      - name: '@theme inline'
+        kind: 設定
+        purpose: tokens.css のトークンを色・文字の大きさ・角丸のクラスへ割り当てる
+      - name: '--color-*: initial'
+        kind: 設定
+        purpose: 標準のパレットのクラスを消す
+      - name: --breakpoint-*
+        kind: 設定
+        purpose: 今の画面と同じ幅の区切り（361・390・481・721・901・1101・1441px）
+      - name: '@utility'
+        kind: 設定
+        purpose: 差分の札の幅など、決まった値の小さなクラス
+      - name: clsx + tailwind-merge（extendTailwindMerge）
+        kind: 関数
+        purpose: cn でクラスを合わせる。足した文字の大きさ・角丸を色のクラスと取り違えないよう教える
+      - name: class-variance-authority
+        kind: 関数
+        purpose: Button の variants
+lead: クラス名から CSS を組み立てるユーティリティ優先の CSS フレームワーク。
+purl: pkg:npm/tailwindcss
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+  - frontend/src/shared/styles/index.css
+upstream: tailwindlabs/tailwindcss
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: vite build で使ったクラスだけの CSS が出ること、ESLint の better-tailwindcss が任意値と知らないクラスを検出することを確かめた
+license: MIT（class-variance-authority は Apache-2.0）
+official_url: https://tailwindcss.com/
+docs_url: https://tailwindcss.com/docs/theme
+install: '```bash
+
+  npm install --save-exact clsx@2.1.1 tailwind-merge@3.7.0 class-variance-authority@0.7.1
+
+  npm install --save-dev --save-exact tailwindcss@4.3.4 @tailwindcss/vite@4.3.4
+
+  ```'

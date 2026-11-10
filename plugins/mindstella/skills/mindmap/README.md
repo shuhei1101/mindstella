@@ -15,7 +15,7 @@ Claude Code と話し合いながら、検討事項・そこから派生する�
 - ワークスペースへの書き込みは、全て MCP のツールを通す。書き込む前にスキーマと突き合わせ、合わなければ何も書き換えない
 - MCP のツールは、1 つの常駐サーバー（`127.0.0.1:8784`。`MINDSTELLA_PORT` で変えられる）がプラグインの `.mcp.json` で全ての Claude Code に載せる。常駐サーバーがプレビューも配り、項目や選んだ箇所へのコメントをレビュー中に溜めて、コメントの一覧から選んで送れる
 
-詳しくは [話し合いの進め方](https://shuhei1101.github.io/mindstella/はじめに/コアコンセプト/話し合いの進め方.html) を読む。
+詳しくは [話し合いの進め方](https://shuhei1101.github.io/mindstella/guide/コアコンセプト-話し合いの進め方.html) を読む。
 
 ## ユースケース（分野）
 
@@ -72,4 +72,4 @@ tmux の外で立ち上げた Claude Code にも MCP のツールは載るが、
 ワークスペースの版がプラグインより古ければ、`/mindstella:setup`・`/mindstella:session` は `/mindstella:upgrade` を案内して止まる。
 MCP のツールが載っていない会話では、スキルは何も書き込まずに、常駐サーバーを起動して `/mcp` でつなぎ直す手順を案内して止まる。
 
-操作の手順は [話し合い](https://shuhei1101.github.io/mindstella/使い方/話し合い/)、スキルと MCP のツールの一覧は [スキル](https://shuhei1101.github.io/mindstella/リファレンス/スキル.html)・[コマンド](https://shuhei1101.github.io/mindstella/リファレンス/コマンド.html) にある。
+操作の手順は [話し合い](https://shuhei1101.github.io/mindstella/使い方/)、スキルと MCP のツールの一覧は [スキル](https://shuhei1101.github.io/mindstella/guide/スキル.html)・[コマンド](https://shuhei1101.github.io/mindstella/guide/コマンド.html) にある。

@@ -1,9 +1,0 @@
-title: プレビュー / filter-chips
-lead: 絞り込みの条件のチップ。
-components:
-- name: FilterChips
-  title: 条件のチップ
-  kind: コンポーネント
-  usecase: 項目を表で絞り込む
-  summary: 絞り込みの条件のチップ
-  container: frontend/src/shared/components/filter-chips.tsx

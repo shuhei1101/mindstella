@@ -1,0 +1,144 @@
+id: MOD-489-221
+title: プレビュー / 画面と部品 / detail-edit.ts
+test_files:
+  - tests/unit/preview/test_detail_edit.py
+functions:
+  - name: editableKeys
+    title: 編集できるキーの並び
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 種類ごとに編集の表示へ並べるキーと入力の種類を、読む表示と同じ順で返す
+    args:
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: 項目の種類
+    returns:
+      type: "{key: string, input: 'text' | 'textarea' | 'select' | 'tags' | 'refs' | 'check' | 'body' | 'options'}[]"
+      description: キーと入力の種類（`id`・`created`・`updated` は含めず、編集の表示の頭に読むだけで並べる）
+    unit_tests:
+      - name: test_editable_keys
+        case: 正常
+        summary: 検討事項は案を含み、記録の種類は取り下げを含む
+        condition: '`parametrize`: `decisions` / `notes`'
+        mock: なし
+        expected: '`status`・`title`・…・`options`・`answer`・`reason`・`body` を含み `id` を含まない / `title`・`content`・`withdrawn`・`reason` を含む'
+  - name: usedTags
+    title: 記録で使われているタグ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 項目のタグの名前（`tagNames`。主題かどうかによらない）とスレッドのタグを、サーバーの `normalize_tag` と同じく NFKC と小文字にそろえ、重なりを除いて件数の多い順（同じ件数は名前の順）に並べる
+    args:
+      - name: args
+        type: '{index: RecordIndex, threads: Thread[]}'
+        required: true
+        passing: positional
+        description: 編集を当てた記録の索引とスレッド
+    returns:
+      type: string[]
+      description: そろえた表記のタグ
+    unit_tests:
+      - name: test_used_tags
+        case: 正常
+        summary: 表記をそろえて重なりを除き、件数の多い順に並べる
+        condition: 'D-1: `[{name: API, main: true}]`・T-1: `[{name: ａｐｉ}, {name: 画面}]`・N-1: `[{name: 保存}]`・TH-1: `[画面]`'
+        mock: なし
+        expected: '`[api, 画面, 保存]`'
+components:
+  - name: detailEditForm
+    title: 編集の表示
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    kind: 画面
+    summary: '画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。タグは `chipsInput`（`mainToggle: true`、`suggestions` は `usedTags`）で描き、`onChange` の並びを `{op: set, key: tags, value}` で溜める。参照は `chipsInput`（`mainToggle: false`）で描く。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ'
+    props:
+      - name: kind
+        type: Kind
+        required: true
+        description: 項目の種類
+      - name: item
+        type: object
+        required: true
+        description: 保存待ちの編集を当てた項目（`applyEdits`）
+      - name: settings
+        type: object
+        required: true
+        description: 編集を当てた設定（フェーズ・対象・カテゴリーの選択肢）
+      - name: marks
+        type: Record<string, 'pending' | 'remove' | 'blocked'>
+        required: true
+        description: キーか案の記号 → 印の種類（入力欄の枠と名前の後ろの印）
+      - name: removing
+        type: boolean
+        required: true
+        description: その項目の削除を溜めているか
+      - name: removedOptions
+        type: string[]
+        required: true
+        description: 削除を溜めた案の記号（中身に取り消し線を引く）
+      - name: blocked
+        type: Record<string, BlockedEdit>
+        required: true
+        description: キーか案の記号 → 直前の保存で書き込めなかった編集
+      - name: referrers
+        type: string[]
+        required: true
+        description: その項目を指している項目の ID（「項目を削除」の下の警告）
+      - name: errors
+        type: Record<string, string>
+        required: true
+        description: キー → 溜められなかった理由（入力を残してキーの下に出す）
+      - name: optionDrafts
+        type: '{key: string, content: string}[]'
+        required: true
+        description: まだ溜めていない書きかけの案（`EditState.optionDrafts`）。案の後ろに並べて描く
+      - name: on
+        type: '{change, remove, cancelRemove, draft}'
+        required: true
+        description: キー・案を溜める（`{op, key, value}`）・削除を溜める・削除を取り消す・書きかけの案を置く・書き換える（`{key, content}`）
+      - name: usedTags
+        type: string[]
+        required: true
+        description: 記録で使われているタグ（`usedTags`）。タグのチップの候補に出し、候補に無いタグも入れられる
+    unit_tests:
+      - name: test_detail_edit_form
+        case: 正常
+        summary: 離れたときにキー・案を溜める
+        condition: "案 A・B の検討事項 D-1。`answer` を書いて離れる。案 B の「採用」を選ぶ。`optionDrafts: [{key: C, content: ''}]` の案 C の中身を書いて離れる"
+        mock: '`on.change`'
+        expected: '`on.change` が `{op: set, key: answer}`・`{op: adopt, key: B, value: B}`・`{op: option-add, key: C}` の順で 1 回ずつ'
+      - name: test_detail_edit_form_when_removing_or_referenced
+        case: 異常
+        summary: 削除を溜めた項目は読むだけにし、指されている項目は警告を出す
+        condition: '`parametrize`: `removing: true` で描く / `referrers: [D-2]` で描く'
+        mock: '`on.change`'
+        expected: '`on.change` が呼ばれない。入力が読むだけで「削除を溜めています。削除を取り消すと編集できます。」と「削除を取り消す」 / 「D-2 が指しているため、保存のときに削除できません。指している項目から外すと削除できます。」'
+      - name: test_detail_edit_form_when_title_blank
+        case: 異常
+        summary: 空のタイトルは溜めない
+        condition: タイトルを空白だけにして離れる
+        mock: '`on.change`'
+        expected: '`on.change` が呼ばれず、「タイトルを書いてください。」と `aria-invalid="true"`'
+      - name: test_detail_edit_form_when_option_drafts
+        case: 正常
+        summary: 書きかけの案を状態から描き、置く・打つたびに知らせる
+        condition: '案 A・B の検討事項 D-1、`optionDrafts: [{key: C, content: 下書き}]`。案 C の入力に「下書き」が出ているか見る。「案を追加」を押す。案 C に「下書き 2」と打つ'
+        mock: '`on.draft`・`on.change`'
+        expected: "案 C の入力が「下書き」。`on.draft` が `{key: D, content: ''}`・`{key: C, content: 下書き 2}` の順で 1 回ずつ呼ばれ、`on.change` は呼ばれない"
+      - name: test_detail_edit_form_when_adding_adopted_option
+        case: 正常
+        summary: 追加の入力では、採用している案の削除ボタンを出さない
+        condition: '`item` が仮の ID `new-1` で案 A・B（B が採用）の検討事項'
+        mock: '`on.change`'
+        expected: 「案 A を削除」はあり、「案 B を削除」と「項目を削除」が無い
+      - name: test_detail_edit_form_when_main_tag
+        case: 正常
+        summary: タグの主題のトグルで、主題を付けたタグの並びを溜める
+        condition: '`tags: [{name: 画面}, {name: データ}]` の検討事項 D-1。タグ `データ` の主題のトグルを押す'
+        mock: '`on.change`'
+        expected: '`on.change` が `{op: set, key: tags, value: [{name: 画面}, {name: データ, main: true}]}` で 1 回'

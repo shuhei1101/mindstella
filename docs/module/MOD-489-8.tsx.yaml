@@ -1,0 +1,12 @@
+id: MOD-489-8
+title: プレビュー / review-edit-form
+lead: レビュー中の書き込みの本文をその場で書き換える入力欄と「キャンセル」「修正」。
+components:
+  - name: ReviewEditForm
+    title: レビュー中の書き込みの修正
+    kind: コンポーネント
+    usecase: コメントを選んで送る
+    summary: レビュー中の書き込みの本文をその場で書き換える入力欄と「キャンセル」「修正」（スレッドの書き込みとレビュー中の書き込みの画面と詳細のコメントが使う）
+    refs:
+      - CMP-489-12#
+    container: frontend/src/features/comments/shared/review-edit-form.tsx

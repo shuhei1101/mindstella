@@ -1,0 +1,12 @@
+id: MOD-489-52
+title: プレビュー / task-board
+lead: 状態ごとの列にタスクのカードを並べる。
+components:
+  - name: TaskBoard
+    title: タスクのボード
+    kind: コンポーネント
+    usecase: タスクをボードで見る
+    summary: 状態ごとの列にタスクのカードを並べる
+    container: frontend/src/features/tasks/tasks/components/task-board.tsx
+notes:
+  単体テスト: 同じフォルダの `task-board.test.tsx` に置く（knowledge の規約『フォルダ構成』）

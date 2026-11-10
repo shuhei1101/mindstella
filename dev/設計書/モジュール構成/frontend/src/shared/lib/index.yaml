@@ -1,4 +1,0 @@
-summary: '`frontend/src/shared/lib/` の React のプレビューのモジュール'
-items:
-- page: cn.ts.yaml
-  summary: clsx と tailwind-merge でクラス名を 1 つにする

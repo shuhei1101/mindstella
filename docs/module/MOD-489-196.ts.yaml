@@ -1,0 +1,574 @@
+id: MOD-489-196
+title: プレビュー / 基盤 / api.ts
+test_files:
+  - tests/unit/preview/test_api.py
+data_models:
+  - name: FetchResult
+    title: 記録の取得の結果
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    summary: "`fetchRecords` の結果（`{ok: true, data} | {ok: false, reason: 'unreachable' | 'invalid', detail}`）"
+    properties:
+      - name: ok
+        type: boolean
+        description: 記録を読めたか
+      - name: data
+        type: object
+        description: '`ok` のとき、インターフェース定義『記録の取得』のレスポンス'
+      - name: reason
+        type: "'unreachable' | 'invalid'"
+        description: 読めなかったとき、届かなかったかサーバーが 422 を返したか
+      - name: detail
+        type: string | null
+        description: 422 の `detail`
+  - name: ApiResult
+    title: 配信の結果
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: コメントを選んで送る
+    summary: 'コメント・書きかけの API を呼んだ結果（`{ok: true, data} | {ok: false, status, detail, stale}`。届かなければ `status`・`detail` は `null`）'
+    properties:
+      - name: ok
+        type: boolean
+        description: 2xx が返ったか
+      - name: data
+        type: T | null
+        description: '`ok` のときの本文（204 は `null`）'
+      - name: status
+        type: number | null
+        description: 断られたときのステータスコード。届かなかったときは `null`
+      - name: detail
+        type: string | null
+        description: 断られたときの `detail`。届かなかったときは `null`
+      - name: stale
+        type: '{id, reason}[]'
+        description: 409 のときの送れない書き込み（箇所が合わない・向けた項目が消えた・返信先がクローズか無い。それ以外は空）
+      - name: blocked
+        type: BlockedEdit[]
+        description: 409 のときの書き込めない編集（まとめて保存だけ。それ以外は空）
+  - name: Location
+    title: 箇所
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 選んだ箇所へコメントする
+    summary: コメント・書きかけが持つ `loc`（ER 図『ワークスペース』）
+    properties:
+      - name: kind
+        type: "'body' | 'value'"
+        description: 箇所の種類
+      - name: start
+        type: number
+        description: '`body` のときの始めの行（無ければ持たない）'
+      - name: end
+        type: number
+        description: '`body` のときの終わりの行'
+      - name: key
+        type: string
+        description: '`value` のときのキーのパス'
+      - name: text
+        type: string
+        description: 選んだ文
+  - name: ReviewState
+    title: レビュー中
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: コメントを選んで送る
+    summary: 『レビュー中のコメントの読み取り』の本文
+    properties:
+      - name: items
+        type: '{id, target, target_title, loc, thread, body, created}[]'
+        description: レビュー中のコメント（溜めた順）。`thread` を持つものはスレッドへの返信、持たないものは新しいスレッドの最初の書き込み
+      - name: drafts
+        type: '{target, loc, thread, body}[]'
+        description: 書きかけ
+  - name: Thread
+    title: スレッド
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: スレッドで話す
+    summary: 『スレッドの読み取り』の `threads[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: スレッドの ID
+      - name: status
+        type: "'open' | 'closed'"
+        description: 状態
+      - name: tags
+        type: string[]
+        description: タグ
+      - name: summary
+        type: string | null
+        description: 要約
+      - name: target
+        type: string | null
+        description: 向けた項目の ID
+      - name: target_title
+        type: string | null
+        description: その項目のタイトル。項目が消えていれば `null`
+      - name: loc
+        type: Location | null
+        description: 最初の書き込みに添えた箇所
+      - name: posts
+        type: "{id, author: 'user' | 'ai', body, created, seen: boolean}[]"
+        description: 書いた順の書き込み。`seen` は利用者の既読
+      - name: events
+        type: "{kind: 'closed' | 'reopened', author: 'user' | 'ai', reason: string | null, created}[]"
+        description: 書いた順の状態の記録
+  - name: OpenedPoint
+    title: 前回開いた時点
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    summary: 「前回開いてから」の範囲の始まり（インターフェース定義『前回開いた日時』の `previous`・`opened` の形）
+    properties:
+      - name: at
+        type: string
+        description: 開いた日時（UTC のタイムゾーン付き ISO 8601）。`{日時} より後` の表示にだけ使う
+      - name: seq
+        type: number
+        description: 開いた時点の先頭のまとまりの `until_seq`（無ければ 0）。`until_seq` がこれより大きいまとまりが範囲に入る
+  - name: OpenedReply
+    title: 前回開いた日時の応答
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    summary: '`postOpened` の結果（`{previous, opened}`）'
+    properties:
+      - name: previous
+        type: OpenedPoint | null
+        description: 前回開いた時点。無いときは `null`
+      - name: opened
+        type: OpenedPoint
+        description: サーバーが書き込んだ今の時点
+  - name: PendingEdit
+    title: 保存待ちの編集
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    summary: 『保存待ちの編集の読み取り』の `items[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: '`E-{連番}`'
+      - name: target
+        type: string
+        description: 項目の ID・足す項目の仮の ID（`new-{連番}`）・`settings`
+      - name: op
+        type: "'set' | 'option-add' | 'option-edit' | 'option-remove' | 'adopt' | 'item-add' | 'item-remove' | 'setting'"
+        description: 編集の種類
+      - name: key
+        type: string | null
+        description: 項目のキー・案の記号・種類・設定のキー
+      - name: value
+        type: unknown
+        description: 編集した後の値
+      - name: before
+        type: unknown
+        description: 溜めたときの元の値
+      - name: created
+        type: string
+        description: 最初に溜めた日時
+  - name: BlockedEdit
+    title: 書き込めない編集
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    summary: まとめて保存の 409 の `blocked[]` の 1 件
+    properties:
+      - name: id
+        type: string
+        description: 編集の ID
+      - name: reason
+        type: "'changed' | 'missing' | 'referenced' | 'invalid'"
+        description: 書き込めない理由
+      - name: detail
+        type: string
+        description: 日本語の理由
+      - name: refs
+        type: string[]
+        description: '`referenced` のとき、消す項目を指している項目の ID'
+  - name: TranscriptionStatus
+    title: 文字起こしの可否
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 音声でコメントする
+    summary: '`GET /api/transcription` の本文（インターフェース定義『文字起こしの可否』）'
+    properties:
+      - name: available
+        type: boolean
+        description: 音声を受け付けられるか
+      - name: reason
+        type: "'stopped' | 'unsupported' | null"
+        description: 使えない理由
+      - name: detail
+        type: string | null
+        description: 使えない理由の文
+      - name: presets
+        type: string[]
+        description: 用語集のプリセットの候補
+      - name: action
+        type: "'send' | 'insert'"
+        description: 文字起こし後の挙動
+      - name: preset
+        type: string | null
+        description: ワークスペースの用語集のプリセット
+constants:
+  - name: API_PATHS
+    title: 配信のパス
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    summary: 画面が開いた URL からの相対パス
+    entries:
+      - key: records
+        value: '"api/records"'
+      - key: events
+        value: '"api/events"'
+      - key: comments
+        value: '"api/comments"'
+      - key: commentsSend
+        value: '"api/comments/send"'
+      - key: drafts
+        value: '"api/drafts"'
+      - key: opened
+        value: '"api/opened"'
+      - key: configDisplay
+        value: '"api/config/display"'
+      - key: threads
+        value: '"api/threads"'
+      - key: edits
+        value: '"api/edits"'
+      - key: editsSave
+        value: '"api/edits/save"'
+      - key: transcription
+        value: '"api/transcription"'
+      - key: transcriptions
+        value: '"api/transcriptions"'
+      - key: commentsSendNow
+        value: '"api/comments/send-now"'
+functions:
+  - name: fetchRecords
+    title: 記録の取得
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    scope: public
+    is_async: true
+    summary: '`GET /api/records` を読んで結果にする'
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<FetchResult>
+      description: 記録か、読めなかった理由
+    process: |-
+      1. `cache: 'no-store'` で `API_PATHS.records` を読む
+         - 例外を送った場合（届かない）、`{ok: false, reason: 'unreachable', detail: null}` を返す
+         - 200 でない場合、本文の `detail` を持った `{ok: false, reason: 'invalid'}` を返す
+      2. 本文の JSON を `data` にして返す
+    unit_tests:
+      - name: test_fetch_records
+        case: 正常
+        summary: 200 の本文を返す
+        condition: '`fetchFn` が 200・`{"decisions": []}` を返す'
+        mock: '`fetchFn`'
+        expected: "`{ok: true, data: {decisions: []}}`。`fetchFn` に `cache: 'no-store'`"
+      - name: test_fetch_records_when_failed
+        case: 正常
+        summary: 届かない・422 を分ける
+        condition: '`parametrize`: `fetchFn` が `TypeError` を送る / 422・`{"detail": "理由"}` を返す'
+        mock: '`fetchFn`'
+        expected: "`{ok: false, reason: 'unreachable', detail: null}` / `{ok: false, reason: 'invalid', detail: '理由'}`"
+  - name: subscribeEvents
+    title: 書き換えの知らせの購読
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: プレビューを開く
+    scope: public
+    summary: '`GET /api/events` に `EventSource` でつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる'
+    args:
+      - name: onChanged
+        type: () => void
+        required: true
+        passing: keyword
+        description: '`changed` を受けたとき'
+      - name: onConnection
+        type: '(connected: boolean) => void'
+        required: true
+        passing: keyword
+        description: つながった（`open`）・切れた（`error`）とき
+      - name: EventSourceCtor
+        type: typeof EventSource
+        required: false
+        default: window.EventSource
+        passing: injected
+        description: '`EventSource` のコンストラクタ'
+    returns:
+      type: () => void
+      description: つながりを閉じる関数
+    process: |-
+      1. `API_PATHS.events` へ `EventSource` を開く
+      2. `changed` で `onChanged`、`open` で `onConnection(true)`、`error` で `onConnection(false)` を呼ぶ（同じ状態が続くときは呼ばない）
+    unit_tests:
+      - name: test_subscribe_events
+        case: 正常
+        summary: changed と接続の変化だけを知らせる
+        condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
+        mock: '`EventSourceCtor`'
+        expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
+  - name: postOpened
+    title: 前回開いた日時を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    is_async: true
+    summary: '`POST /api/opened` を呼び、前回開いた時点とサーバーが書き込んだ今の時点を返す'
+    args:
+      - name: fetchFn
+        type: FetchFn
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 配信への問い合わせ
+    returns:
+      type: Promise<OpenedReply | null>
+      description: 届かない・200 でない（422・500）・読めない・`opened` が `OpenedPoint` の形でないときは `null`
+    process: |-
+      1. `fetchFn(API_PATHS.opened, {method: "POST"})` を呼ぶ
+      2. 200 なら JSON を読み、`opened` が `isOpenedPoint` でなければ `null` を返す。`previous` は `isOpenedPoint` ならそのまま、それ以外は `null` にして `{previous, opened}` を返す
+      3. 200 以外と例外は `null` を返す
+    unit_tests:
+      - name: test_post_opened
+        case: 正常
+        summary: 前回と今の時点を返し、失敗は null
+        condition: '`parametrize`: 200 で `{previous: {at: "2026-10-04T13:05:00+00:00", seq: 3}, opened: {at: "2026-10-05T09:00:00+00:00", seq: 5}}` / 200 で `previous: null` / 200 で前の版の形（`previous`・`opened` が日時の文字列）/ 422 / 500 / 届かない'
+        mock: '`page.route`'
+        expected: 同じ `{previous, opened}` / `previous` が `null` で `opened` はそのまま / `null` / `null` / `null` / `null`
+  - name: callApi
+    title: 配信の呼び出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 共通
+    scope: public
+    is_async: true
+    summary: コメント・書きかけの API を 1 回呼び、`ApiResult` にする
+    args:
+      - name: method
+        type: "'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'"
+        required: true
+        passing: positional
+        description: メソッド
+      - name: path
+        type: string
+        required: true
+        passing: positional
+        description: 画面が開いた URL からの相対パス（`API_PATHS` の値。`/{id}` は `encodeURIComponent` で足す）
+      - name: body
+        type: object | null
+        required: false
+        default: 'null'
+        passing: positional
+        description: 送る本文。`null` なら送らず `Content-Type` も付けない
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<ApiResult>
+      description: 結果
+    process: |-
+      1. `body` があれば `Content-Type: application/json` で JSON にして送る
+         - 例外を送った場合（届かない）、`{ok: false, status: null, detail: null, stale: []}` を返す
+      2. 2xx なら本文の JSON（204 は `null`）を `data` に、それ以外は本文の `detail`（読めなければステータスの文言）と `stale`・`blocked`（無ければ空）を返す
+    unit_tests:
+      - name: test_call_api
+        case: 正常
+        summary: 成功の本文を返し、本文を JSON で送る
+        condition: '`parametrize`: `POST api/comments` に `{target: D-1, body: x}` で 201・`{"id": "C-1", "count": 1}` / `PUT api/drafts` で 204 / `DELETE api/comments/C-1` で 200'
+        mock: '`fetchFn`'
+        expected: '`{ok: true, data: {id: C-1, count: 1}}` で渡った本文が JSON・`Content-Type` が `application/json` / `{ok: true, data: null}` / `DELETE` に `Content-Type` が無い'
+      - name: test_call_api_when_failed
+        case: 正常
+        summary: 断られた・届かないを分ける
+        condition: '`parametrize`: 409・`{"detail": "…", "stale": [{"id": "C-2", "reason": "…"}]}` / 500・本文が JSON でない / `fetchFn` が `TypeError` を送る'
+        mock: '`fetchFn`'
+        expected: "`{ok: false, status: 409, stale: [C-2]}` / `{ok: false, status: 500, detail: 'Internal Server Error'}` / `{ok: false, status: null, detail: null}`"
+  - name: commentApi
+    title: コメントの API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: コメントを選んで送る
+    scope: public
+    summary: コメント・書きかけの 6 つの呼び出しを `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, add, update, remove, saveDraft, send}'
+      description: '`read()` は `GET api/comments`、`add(input)` は `POST api/comments`（`input` は `{target, loc, body}` か、返信の `{thread, body}`。元に戻すときは `id`・`created` を足す）、`update(id, patch)` は `PATCH api/comments/{id}`、`remove(id)` は `DELETE api/comments/{id}`、`saveDraft(draft)` は `PUT api/drafts`（`{target, loc, body}` か `{thread, body}`）、`send(ids)` は `POST api/comments/send` を呼ぶ。`send` の成功の本文は `{sent, items: {comment, thread, post}[], entered}`'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す
+    unit_tests:
+      - name: test_comment_api
+        case: 正常
+        summary: 各呼び出しのメソッドとパス
+        condition: "`parametrize`: `read()` / `add({body: x})` / `update('C-1', {loc: null})` / `remove('C-1')` / `saveDraft({target: D-1, body: x})` / `send(['C-1'])`"
+        mock: '`fetchFn`'
+        expected: '`GET api/comments` / `POST api/comments` / `PATCH api/comments/C-1`（本文 `{"loc":null}`）/ `DELETE api/comments/C-1` / `PUT api/drafts` / `POST api/comments/send`（本文 `{"ids":["C-1"]}`）'
+      - name: test_comment_api_when_thread
+        case: 正常
+        summary: 返信と返信の書きかけは thread を本文に持つ
+        condition: "`parametrize`: `add({thread: 'TH-1', body: x})` / `saveDraft({thread: 'TH-1', body: x})`"
+        mock: '`fetchFn`'
+        expected: '`POST api/comments`（本文 `{"thread":"TH-1","body":"x"}`）/ `PUT api/drafts`（同じ本文）'
+  - name: putDisplay
+    title: ワークスペースの既定を保存する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: ワークスペースの既定を変える
+    scope: public
+    is_async: true
+    summary: '`PUT /api/config/display` に見た目と表示する種類を送り、`ApiResult` にする'
+    args:
+      - name: display
+        type: '{network_look: string, visible_kinds: string[]}'
+        required: true
+        passing: positional
+        description: 保存する値
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: Promise<ApiResult>
+      description: 200 なら `data` が `{display}`。断られた・届かないときは `callApi` と同じ形
+    process: 1. `callApi('PUT', API_PATHS.configDisplay, display, fetchFn)` を返す
+    unit_tests:
+      - name: test_put_display
+        case: 正常
+        summary: PUT api/config/display に JSON で送る
+        condition: '`{network_look: glow, visible_kinds: [decisions]}`。`parametrize`: `fetchFn` が 200・`{display: 同じ値}` / 500・`{detail: 書き込めませんでした}` を返す'
+        mock: '`fetchFn`'
+        expected: '`PUT api/config/display` に本文が JSON。`{ok: true, data: {display}}` / `{ok: false, status: 500, detail: 書き込めませんでした}`'
+  - name: threadApi
+    title: スレッドの API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドの読み取り・状態の書き換え・利用者の既読を `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, setStatus, seen}'
+      description: '`read()` は `GET api/threads`（成功の本文は `{threads: Thread[]}`）、`setStatus(id, status, reason)` は `PATCH api/threads/{id}`（本文 `{status, reason}`。`reason` が空白だけなら `null` を送る。成功の本文は `{id, status, changed}`）、`seen(id)` は `POST api/threads/{id}/seen`（本文を送らない。成功の本文は `{id, seen}`）を呼ぶ。どれも `ApiResult` を返す'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
+    unit_tests:
+      - name: test_thread_api
+        case: 正常
+        summary: 各呼び出しのメソッド・パス・本文
+        condition: "`parametrize`: `read()` / `setStatus('TH-1', 'closed', ' 案 A で決着 ')` / `setStatus('TH-1', 'open', '  ')` / `seen('TH-1')`"
+        mock: '`fetchFn`'
+        expected: '`GET api/threads` / `PATCH api/threads/TH-1`（本文 `{"status":"closed","reason":"案 A で決着"}`）/ `PATCH api/threads/TH-1`（本文 `{"status":"open","reason":null}`）/ `POST api/threads/TH-1/seen`（本文なし）'
+      - name: test_thread_api_when_rejected
+        case: 異常
+        summary: 断られた・届かないときの結果
+        condition: '`parametrize`: `fetchFn` が 404（`detail` あり）を返す / `fetchFn` が例外を送る'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 404, detail}` / `{ok: false, status: null, detail: null}`'
+        exception: 断られた・届かない
+  - name: isOpenedPoint
+    title: 前回開いた時点として読めるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 前回からの差分を見る
+    scope: public
+    summary: 値が `OpenedPoint` の形（文字列の `at` と 0 以上の整数の `seq`）かを確かめる。サーバーの応答・`sessionStorage`・`Prefs.opened` の値を読むときに使う
+    args:
+      - name: value
+        type: unknown
+        required: true
+        passing: positional
+        description: 確かめる値
+    returns:
+      type: value is OpenedPoint
+      description: 読めれば真。日時だけの文字列（前の版の形）は偽
+    process: 1. オブジェクトで、`at` が文字列、`seq` が 0 以上の整数（`Number.isInteger`）なら真、それ以外は偽を返す
+    unit_tests:
+      - name: test_is_opened_point
+        case: 正常
+        summary: 時点の形だけを読めるとする
+        condition: '`parametrize`: `{at: "2026-10-04T13:05:00+00:00", seq: 3}` / `{at: "...", seq: 0}` / 日時の文字列 / `{at: "..."}` / `{at: "...", seq: -1}` / `{at: "...", seq: 1.5}` / `null`'
+        mock: なし
+        expected: 真 / 真 / 偽 / 偽 / 偽 / 偽 / 偽
+  - name: editApi
+    title: 保存待ちの編集の API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちの編集の読み取り・追加・取り消し・まとめて保存を `callApi` に当てた関数の束を返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{read, add, remove, save}'
+      description: '`read()` は `GET api/edits`（成功の本文は `{items: PendingEdit[], count}`）、`add(input)` は `POST api/edits`（`input` は `{op, target?, key?, value?, map?}`。成功の本文は `{id, target, count}`）、`remove(id)` は `DELETE api/edits/{id}`（成功の本文は `{removed, count}`）、`save()` は `POST api/edits/save`（本文を送らない。成功の本文は `{set, at, added, changed, removed, settings}`）を呼ぶ。どれも `ApiResult` を返す'
+    process: 1. それぞれのメソッド・パス・本文で `callApi` を呼ぶ関数を束ねて返す（`id` は `encodeURIComponent` でパスに入れる）
+    unit_tests:
+      - name: test_edit_api
+        case: 正常
+        summary: 各呼び出しのメソッド・パス・本文
+        condition: "`parametrize`: `read()` / `add({op: 'set', target: 'D-1', key: 'answer', value: 'a'})` / `remove('E-1')` / `save()`"
+        mock: '`fetchFn`'
+        expected: '`GET api/edits` / `POST api/edits`（本文 `{"op":"set","target":"D-1","key":"answer","value":"a"}`）/ `DELETE api/edits/E-1` / `POST api/edits/save`（本文なし）'
+      - name: test_edit_api_when_blocked
+        case: 異常
+        summary: 書き込めない編集を結果に持つ
+        condition: '`save()` に 409・`{"detail": "…", "blocked": [{"id": "E-1", "reason": "changed", "detail": "…", "refs": []}]}` を返す'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 409, blocked: [E-1]}`'
+  - name: voiceApi
+    title: 音声入力の API
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/api.ts
+    usecase: 音声でコメントする
+    scope: public
+    summary: 文字起こしの可否・音声の文字起こし・すぐ送るの 3 つの呼び出しを返す
+    args:
+      - name: fetchFn
+        type: typeof fetch
+        required: false
+        default: window.fetch
+        passing: injected
+        description: 要求を送る関数
+    returns:
+      type: '{status, transcribe, sendNow}'
+      description: '`status()` は `GET api/transcription`（`ApiResult<TranscriptionStatus>`）、`transcribe(blob)` は `POST api/transcriptions` に `Blob` をそのまま本文にし `Content-Type` を `blob.type` にして送る（`ApiResult<{text}>`。503 の本文の `reason` を `detail` と一緒に `data` でなく `reason` に返す）、`sendNow(input)` は `POST api/comments/send-now`（`input` は `{target, loc, body}` か `{thread, body}`。`ApiResult<{sent, thread, post, entered}>`）'
+    process: |-
+      1. `status`・`sendNow` は `callApi` を呼ぶ
+      2. `transcribe` は `fetchFn` を直接呼び、結果を `callApi` と同じ形にする（届かなければ `status`・`detail` が `null`）。503 なら本文の `reason` を足す
+    unit_tests:
+      - name: test_voice_api
+        case: 正常
+        summary: 各呼び出しのメソッドとパスと本文
+        condition: '`parametrize`: `status()` / `transcribe(new Blob([abc], {type: audio/webm}))` / `sendNow({thread: TH-1, body: x})`'
+        mock: '`fetchFn`'
+        expected: '`GET api/transcription` / `POST api/transcriptions` で本文がその `Blob`・`Content-Type` が `audio/webm` / `POST api/comments/send-now`（本文 `{"thread":"TH-1","body":"x"}`）'
+      - name: test_voice_api_when_unavailable
+        case: 正常
+        summary: 503 の理由と届かないを分ける
+        condition: '`parametrize`: `transcribe` に 503・`{"detail": "…", "reason": "unsupported"}` / `fetchFn` が `TypeError` を送る'
+        mock: '`fetchFn`'
+        expected: '`{ok: false, status: 503, reason: unsupported}` / `{ok: false, status: null, detail: null}`'

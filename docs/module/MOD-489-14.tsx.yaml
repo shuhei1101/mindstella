@@ -1,0 +1,39 @@
+id: MOD-489-14
+title: プレビュー / thread-view
+lead: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする。
+components:
+  - name: ThreadView
+    title: スレッド
+    kind: 画面
+    usecase: スレッドで話す
+    summary: 画面設計『スレッド.tsx』の要素と操作を描く。開いたら未読のスレッドを既読にする
+    refs:
+      - SCR-489-4#
+    unit_tests:
+      - name: test_thread_view
+        case: 正常
+        summary: 既読にする
+        condition: 未読の TH-1 を開く
+        mock: MSW
+        expected: '`POST /api/threads/TH-1/seen` が 1 回呼ばれる'
+      - name: test_thread_view_when_seen_failed
+        case: 異常
+        summary: 失敗した後に呼び直さない
+        condition: '`POST /api/threads/TH-1/seen` が 500 で、読み直した TH-1 が未読のまま'
+        mock: MSW
+        expected: 開いている間は `POST /api/threads/TH-1/seen` が 1 回だけで、一覧へ戻って開き直すと 2 回目が呼ばれる
+      - name: test_thread_view_when_close
+        case: 正常
+        summary: クローズにする
+        condition: 理由を書いて確定
+        mock: MSW
+        expected: '`PATCH /api/threads/TH-1` が `status: closed` と理由で呼ばれる'
+      - name: test_thread_view_when_voice
+        case: 正常
+        summary: 音声で返信を送る
+        condition: 'オープンの TH-1 の返信の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: x}` で、挙動が `send`'
+        mock: MSW と `vi.stubGlobal`
+        expected: '`POST /api/comments/send-now` が `{thread: TH-1, body: x}` で 1 回呼ばれ、スレッドが読み直される'
+    container: frontend/src/features/comments/thread/thread-view.tsx
+notes:
+  単体テスト: 同じフォルダの `thread-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,137 @@
+id: MOD-489-203
+title: プレビュー / 画面と部品 / diff-minimap.ts
+test_files:
+  - tests/unit/preview/test_diff_minimap.py
+constants:
+  - name: MINIMAP_MARK_MIN_PX
+    title: ミニマップの印の最小の長さ
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印の帯の向きの最小の長さ（px）。押せる的を保つ（部品設計『差分のミニマップ』の印の置き方）
+    value: '12'
+  - name: MINIMAP_MARK_FLOOR_PX
+    title: ミニマップの印の最小の長さの下限
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印が帯に収まらないほど多いときに縮める、最小の長さの下限（px）
+    value: '4'
+  - name: MINIMAP_MARK_GAP_PX
+    title: ミニマップの印の間
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 重なる印をずらすときに空ける間（px）
+    value: '2'
+  - name: MINIMAP_JUMP_RATIO
+    title: ミニマップで飛んだ先の位置
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印を押したとき、その箇所の上端を置く本文のスクロール領域の高さに対する割合（上に前の文脈を少し残す）
+    value: '0.25'
+  - name: MINIMAP_HIT_MS
+    title: ミニマップで飛んだ箇所を示す長さ
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    summary: 印を押して飛んだ箇所に枠（`df-map-hit`）を付けておくミリ秒
+    value: '1600'
+functions:
+  - name: minimapTargets
+    title: ミニマップの印の集め方
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    kind: 関数
+    scope: public
+    summary: 本文のスクロール領域の中の差分の印を、文書の順にミニマップの印にまとめて返す
+    args:
+      - name: body
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 本文のスクロール領域
+    process: |-
+      1. 本文の中のキーの差分の行（`.df-kv`）・本文の足した / 消した塊（`.md ins.df-blk`・`.md del.df-blk`）・箇条書きの足した項目（`.md li.df-li-add`）・表の行（`.md tr.df-add`・`.md tr.df-del`）・図の差分の枠（`.diagram.df-changed`・`.diagram.df-frame`）・Raw の行（`.df-raw .df-line.df-add`・`.df-raw .df-line.df-del`）・埋め込んだ HTML の範囲の差分（`.html-diff-range`）を文書の順に拾う。範囲の差分の中の Raw の行は拾わない。矩形を持たない要素（畳んだ Raw の行や、本文の幅が足りなくて隠した左右の本文など）と、Raw を出している図の枠（中の `.df-raw` が矩形を持つ図。変わった図は Raw を畳んでいても `.df-raw` を持つので、持っているかではなく見えているかで分ける）は飛ばす
+      2. 種類を決める。図の枠と範囲の差分は `chg`、キーの差分の行は前の値（`del.df-was`）が「（なし）」（前に無かったキー）なら `add`、それ以外は `chg`、`del` か `.df-del` は `del`、それ以外は `add`
+      3. 直前の印の最後の要素のすぐ後ろの兄弟で、直前が `del` の塊で今が `add` の塊なら直前を `chg` にして伸ばし、同じ種類なら直前を伸ばす（範囲の差分は伸ばさない）。それ以外は新しい印にする
+      4. 本文の中の HTML の本文の枠（`iframe.html-frame`）ごとに、枠の中の `[data-df]` を 1 つずつ印にする（`data-df="add"` は `add`、それ以外は `chg`。`frame` にその枠を入れる）。矩形を持たない枠（左右に並べるときに持つインラインの枠や並べた枠のうち隠した方、「原文の差分」に切り替えて隠した描いた結果の枠）は飛ばす
+      5. 左右に並べた本文（`.sbs`）が見えているときは、印を本文の中の高さの順に並べ直し、同じ `div.sbs-row` の対（左右の同じ行）にある `del` と `add` を `chg` 1 つにまとめる
+    returns:
+      type: "{kind: 'add' | 'del' | 'chg', first: Element, last: Element, frame: HTMLIFrameElement | null}[]"
+      description: 印の並び。`first`・`last` は印が指す範囲の先頭と末尾の要素
+    unit_tests:
+      - name: test_minimap_targets
+        summary: 続く同じ種類をまとめ、消した塊の直後の足した塊を変わったにする
+        case: 正常
+        condition: '`parametrize`: 消した塊のすぐ後ろに足した塊 / 足した塊が 2 つ続き、間を空けて消した行 / 前の値が「（なし）」のキーの行と値が変わったキーの行 / Raw を畳んだ変わった図（`figure.diagram.df-changed` の中に、隠した `.df-raw` とその足した行） / Raw を出した変わった図（同じ図で `.df-raw` に足した行と消した行を出している） / HTML の本文の枠の中の `data-df="add"` と `data-df="chg"` / HTML の本文の枠が 2 つあり、どちらの中にも `data-df="add"` と `data-df="chg"` を持ち、片方は `display: none` / 範囲の差分（`.html-diff-range`）が 2 つ続き、どちらの中にも `.df-raw` の足した行と消した行'
+        expected: '`chg` 1 つ（`first` が消した塊、`last` が足した塊） / `add`（2 つをまとめた 1 つ）と `del` / `add` と `chg` / `chg` 1 つ（`first` が図の枠。隠した Raw の行は並べない） / `add` と `del`（Raw の行。図の枠は並べない） / `add` と `chg`（`frame` がその枠） / `add` と `chg` の 2 つだけ（`frame` が見えている方の枠） / `chg` 2 つ（`first` がそれぞれの範囲の差分。中の Raw の行は並べない）'
+        mock: なし（DOM を作って見る）
+      - name: test_minimap_targets_when_side_by_side
+        case: 正常
+        summary: 左右に並べた本文は高さの順に並べ、向かい合う消した塊と足した塊を変わったにする
+        condition: '`.sbs` の 3 行。変えた行（左に `del.df-blk`、右に `ins.df-blk`）・変えていない行・変えた行（左は `sbs-gap`、右に `ins.df-blk`）'
+        mock: なし（DOM を作って見る）
+        expected: '`chg`（`first` が左の消した塊）・`add` の順'
+  - name: minimapLayout
+    title: ミニマップの印の置き方
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    kind: 関数
+    scope: public
+    summary: 印が指す範囲の本文の中の位置と高さから、帯の中の印の始まりと長さを決める
+    args:
+      - name: extents
+        type: '{top: number, size: number}[]'
+        required: true
+        passing: keyword
+        description: 印ごとの、本文の中身の上端からの位置と高さ（px。文書の順）
+      - name: total
+        type: number
+        required: true
+        passing: keyword
+        description: 本文の全体の高さ（`scrollHeight`）
+      - name: length
+        type: number
+        required: true
+        passing: keyword
+        description: 帯の高さ（px）
+    process: |-
+      1. 最小の長さを `max(MINIMAP_MARK_FLOOR_PX, min(MINIMAP_MARK_MIN_PX, floor(length / 印の数) - MINIMAP_MARK_GAP_PX))` にする
+      2. 前から順に、長さを `max(最小, size / total × length)`、始まりを `max(top / total × length, 直前の終わり + MINIMAP_MARK_GAP_PX)` にする
+      3. 後ろから順に、帯の終わり（次の印の始まりから `MINIMAP_MARK_GAP_PX` 手前）を出た印を前へ詰め、始まりを 0 未満にしない
+    returns:
+      type: '{start: number, size: number}[]'
+      description: 印ごとの帯の中の始まりと長さ（px。`extents` と同じ順）
+    unit_tests:
+      - name: test_minimap_layout
+        summary: 割合で置き、最小の長さと重なりを直す
+        case: 正常
+        condition: '`length` 400、`total` 4000。`parametrize`: `[{top: 2000, size: 400}]` / `[{top: 0, size: 10}, {top: 20, size: 10}]` / 末尾に近い `[{top: 3990, size: 10}]` / 同じ高さの 100 件'
+        expected: '`[{start: 200, size: 40}]` / `[{start: 0, size: 12}, {start: 14, size: 12}]`（重なりを 2px 空けてずらす） / `[{start: 388, size: 12}]`（帯の終わりを出ない） / 全て `size` が 4、始まりが 0 以上で帯の終わりを出ない'
+        mock: なし
+components:
+  - name: diffMinimapFrame
+    title: 差分のミニマップ
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『差分のミニマップ』。本文のスクロール領域（`.panel-body`）を `div.panel-scroll` で包んで返し、`shown` が真ならその右に帯（`div.df-map`、`role="toolbar"`）を並べる。印は `minimapTargets` で集め `minimapLayout` で置き、印が無ければ帯を隠して枠に `has-map` を付けない。本文とその子の高さ（`ResizeObserver`）・中身（`MutationObserver`）・HTML の本文の枠の `load` が変わったら、次のコマで 1 回だけ置き直す。本文の `scroll` では見えている範囲の面だけを動かす。印の `click` はその箇所の上端を高さの `MINIMAP_JUMP_RATIO` の位置まで送り（`prefers-reduced-motion` でなければ `smooth`）、枠の外の箇所に `df-map-hit` を `MINIMAP_HIT_MS` の間付ける。帯の `click`（印の上でもドラッグの直後でもなく、面を出しているとき）は押した位置へ面の中央を合わせる。`pointerdown` / `pointermove` / `pointerup` / `pointercancel` でマウスの左ボタンのドラッグを受け、`PRESS_SLOP_PX` より動いたところで `setPointerCapture` して帯に `is-dragging`、`body` に `df-map-dragging` を付ける。`pointermove` で左ボタンを押していなければドラッグを終える。上下の矢印・Home / End で印の間を移り、移った印だけ `tabindex="0"` にする。どの操作も URL のハッシュと履歴を変えない
+    props:
+      - name: body
+        required: true
+        type: HTMLElement
+        description: 本文のスクロール領域（`detailPanel` が作る `.panel-body`）
+      - name: shown
+        required: true
+        type: boolean
+        description: 帯を置くか（`detailPanel` が `diff !== null && minimap` を渡す）。偽なら本文だけを包んだ枠を返す
+    unit_tests:
+      - name: test_diff_minimap_frame
+        summary: 印のある本文で帯と印を出し、出さないときは本文だけを包む
+        case: 正常
+        condition: '`parametrize`: 足した塊と消した行を持つ本文で `shown: true` / 同じ本文で `shown: false` / 差分の印の無い本文で `shown: true`'
+        expected: 枠の子が本文と帯で、帯に印のボタンが 2 つ（読み上げの名前「足した箇所（1 / 2）」「消した箇所（2 / 2）」、先頭だけ `tabindex="0"`）/ 枠の子が本文だけ / 帯が `hidden` で枠に `has-map` が無い
+        mock: なし（DOM を作って見る）
+      - name: test_diff_minimap_frame_when_keys
+        summary: 矢印・Home / End で印の間を移り、ハッシュを変えない
+        case: 正常
+        condition: 印が 3 つの帯。先頭の印にフォーカスして `ArrowDown`・`End`・`Home`・`ArrowUp` を送る
+        expected: フォーカスが 2 つ目 → 3 つ目 → 1 つ目 → 1 つ目（先頭より前へは移らない）。`tabindex="0"` はフォーカスのある印だけ。`location.hash` が変わらない
+        mock: なし（DOM を作って見る）

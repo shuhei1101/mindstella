@@ -1,0 +1,106 @@
+id: MOD-489-110
+title: プレビュー / filters
+lead: 画面ごとの絞り込みの条件を行に当てる計算。
+functions:
+  - name: matchesFilters
+    title: 絞り込みの判定
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 今の画面の `Filters` の条件に行が合うかを返す（条件の中はどれか、条件の間は全て。`~{列}` は文字の条件）
+    args:
+      - name: row
+        type: Record<string, unknown>
+        required: true
+        description: 行
+      - name: filters
+        type: Filters
+        required: true
+        description: 条件
+    returns:
+      type: boolean
+      description: 合うか
+    unit_tests:
+      - name: test_matches_filters
+        case: 正常
+        summary: 値の条件
+        condition: '`{status: [''要見直し'', ''保留'']}` と状態が保留の行'
+        mock: なし
+        expected: 'true'
+      - name: test_matches_filters_when_text
+        case: 正常
+        summary: 文字の条件は大文字・小文字を区別しない
+        condition: '`{''~title'': [''abc'']}` と `ABCD` の行'
+        mock: なし
+        expected: 'true'
+      - name: test_matches_filters_when_not_match
+        case: 正常
+        summary: 合わない
+        condition: '`{status: [''保留'']}` と状態が完了の行'
+        mock: なし
+        expected: 'false'
+    container: frontend/src/shared/core/filters.ts
+  - name: defaultFilters
+    title: 画面の既定の条件
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 検討事項は状態の 4 値、ほかは空を返す
+    args:
+      - name: tab
+        type: PreviewTab
+        required: true
+        description: 画面
+    returns:
+      type: Filters
+      description: 条件
+    unit_tests:
+      - name: test_default_filters
+        case: 正常
+        summary: 検討事項の既定
+        condition: '`decisions`'
+        mock: なし
+        expected: '`status` に 要見直し・未決定・未整理・保留'
+    container: frontend/src/shared/core/filters.ts
+  - name: filtersFromSearch
+    title: URL の条件の読み取り
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: search の `f` の値を `|` で分けて `Filters` にする。`~{列}` は分けない
+    args:
+      - name: f
+        type: Record<string, string>
+        required: true
+        description: search の `f`
+    returns:
+      type: Filters
+      description: 条件
+    unit_tests:
+      - name: test_filters_from_search
+        case: 正常
+        summary: 値を分ける
+        condition: '`{status: ''保留|完了'', ''~title'': ''a|b''}`'
+        mock: なし
+        expected: '`{status: [''保留'', ''完了''], ''~title'': [''a|b'']}`'
+    container: frontend/src/shared/core/filters.ts
+  - name: filtersToSearch
+    title: URL の条件の書き込み
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: '`Filters` を search の `f` の値にする'
+    args:
+      - name: filters
+        type: Filters
+        required: true
+        description: 条件
+    returns:
+      type: Record<string, string>
+      description: search の `f`
+    unit_tests:
+      - name: test_filters_to_search
+        case: 正常
+        summary: 値をつなぐ
+        condition: '`{status: [''保留'', ''完了'']}`'
+        mock: なし
+        expected: '`{status: ''保留|完了''}`'
+    container: frontend/src/shared/core/filters.ts
+notes:
+  単体テスト: 同じフォルダの `filters.test.ts` に置く（knowledge の規約『フォルダ構成』）

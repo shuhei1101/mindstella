@@ -1,0 +1,371 @@
+id: MOD-489-209
+title: プレビュー / 画面と部品 / table.ts
+test_files:
+  - tests/unit/preview/test_table.py
+functions:
+  - name: filterRows
+    title: 行の絞り込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 列ごとの条件に合う行を返す（列の中はどれかに当たればよく、列の間は全てに当たる）。`~{列}` のキーは文字の条件で、その列の値のどれかが文字を含む行に当てる（大文字・小文字を区別しない）。知らない列の条件は無視する
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: 行
+      - name: columns
+        type: '{key, get}[]'
+        required: true
+        passing: keyword
+        description: 条件の定義（表の列か、ネットワークの `graphConditions`）
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 絞り込み
+    returns:
+      type: object[]
+      description: 合う行（元の順）。値が配列の列は、要素のどれかが条件にあれば合う
+    unit_tests:
+      - name: test_filter_rows
+        case: 正常
+        summary: 列の中はどれか、列の間は全て
+        condition: '`parametrize`: 状態 = 要見直し・保留 / 状態 = 未決定 かつ 着手可否 = 着手可能 / タグ（配列）= a / 条件なし'
+        mock: なし
+        expected: それぞれの条件に合う行だけが元の順で残る
+      - name: test_filter_rows_text
+        case: 正常
+        summary: 文字の条件は含む一致で、値の条件と重ねられる
+        condition: '`parametrize`: `{"~title": ["シナリオ"]}` / `{"~id": ["g-1"]}`（G-1・G-12・G-2 の行） / `{"~title": ["移し"], "tags": ["a"]}` / `{"~nope": ["x"]}`'
+        mock: なし
+        expected: タイトルに「シナリオ」を含む行 / G-1・G-12 / 両方に合う行 / 全ての行
+  - name: sortRows
+    title: 行の並べ替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 列の値で行を並べ替える（元の配列は変えない）
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: 行
+      - name: columns
+        type: Column[]
+        required: true
+        passing: keyword
+        description: 列の定義（`order` を持つ列はその並びの順）
+      - name: sort
+        type: '{key, dir} | null'
+        required: true
+        passing: keyword
+        description: 並べ替え。`null` なら元の順
+    returns:
+      type: object[]
+      description: 並べ替えた行。数値は数の順、文字は `localeCompare(…, "ja")`、同じ値は元の順
+    unit_tests:
+      - name: test_sort_rows
+        case: 正常
+        summary: 昇順・降順・解除
+        condition: '`parametrize`: タイトルで asc / 状態（`order` あり）で desc / `null`'
+        mock: なし
+        expected: あいうえお順 / `order` の逆順 / 元の順で、渡した配列が変わらない
+  - name: filterCounts
+    title: 絞り込みの値ごとの件数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 絞り込みのドロワーに出す、条件の値ごとの件数を返す（その条件以外の条件で絞った行で数える）
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: 行
+      - name: columns
+        type: Column[]
+        required: true
+        passing: keyword
+        description: 列の定義
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 絞り込み
+      - name: key
+        type: string
+        required: true
+        passing: keyword
+        description: 数える列
+    returns:
+      type: '{value, count}[]'
+      description: 値ごとの件数（`order` を持つ列はその順、それ以外は値の順）
+    unit_tests:
+      - name: test_filter_counts
+        case: 正常
+        summary: ほかの列の条件だけを当てて数える
+        condition: 状態とカテゴリーの列。状態 = 未決定、カテゴリー = A で絞っているときの状態の列
+        mock: なし
+        expected: カテゴリー A の行の状態ごとの件数（状態の条件は当てない）
+  - name: drawerGroups
+    title: ドロワーの条件
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 絞り込みのドロワーに並べる条件と、条件ごとの値・件数を組む
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: 画面の全ての行
+      - name: columns
+        type: '{key, label, get, filterable?, order?}[]'
+        required: true
+        passing: keyword
+        description: 条件の定義（`filterable` が真の表の列か、`graphConditions`）
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 絞り込み
+      - name: hit
+        type: (row) => boolean
+        required: false
+        passing: keyword
+        description: キーワードに一致した行か（検討事項のマップだけが渡す）
+    returns:
+      type: FilterGroup[]
+      description: 条件の並び。キーが `kind`・`type`・`status`・`tags` の条件をこの順で先に置き、残りは元の順。値を 1 つも持たない条件は含めない。`FilterGroup` は部品設計『絞り込み』の `groups[]`（`key`・`label`・`values`・`mark`）
+    process: |-
+      1. 条件ごとに、全ての行が持つ値を集め（配列の値は要素ごと）、`order` を持つ条件はその順、ほかは値の順に並べる
+      2. 値ごとの `count` は `filterCounts`（少ない値は 0）、`hit` を渡されたときはその条件以外の条件で絞った行のうちキーワードに一致した件数も数える
+      3. `status` の条件に `mark: status`、`type` の条件に `mark: kind` を付ける
+    unit_tests:
+      - name: test_drawer_groups
+        case: 正常
+        summary: 種類・状態・タグを先に並べ、件数はその条件以外で絞って数える
+        condition: 列の順が 対象・タグ・状態・種類。T-1（作業・未着手・タグ a）・T-2（調査・完了・タグ a・b）。種類 = 作業で絞っている
+        mock: なし
+        expected: 並びが 種類・状態・タグ・対象。種類は 作業 1・調査 1、状態は 未着手 1・完了 0、タグは a 1・b 0。状態の `mark` が status
+      - name: test_drawer_groups_when_no_values
+        case: 正常
+        summary: 値を持たない条件は含めない
+        condition: どの行もタグを持たない
+        mock: なし
+        expected: タグの条件が無い
+      - name: test_drawer_groups_when_hit
+        case: 正常
+        summary: キーワードに一致した件数を添える
+        condition: 状態の条件は `order`（未決定・保留）を持つ。D-1（未決定・一致）・D-2（未決定）・D-3（保留）。`hit` は D-1 だけ真
+        mock: なし
+        expected: '状態の未決定が `count: 2`・`hit: 1`、保留が `hit: 0`'
+  - name: activeConditionCount
+    title: 絞っている条件の数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 値を 1 つ以上選んでいる条件の数を返す（絞り込みのボタンのバッジ）
+    args:
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: positional
+        description: 絞り込み
+    returns:
+      type: number
+      description: 空でない値の配列を持つキーの数
+    unit_tests:
+      - name: test_active_condition_count
+        case: 正常
+        summary: 値を選んだ条件だけを数える
+        condition: '`parametrize`: `{}` / `{status: [未決定, 保留], tags: [a]}` / `{status: []}`'
+        mock: なし
+        expected: 0 / 2 / 0
+  - name: initialFilters
+    title: 開いたときの絞り込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 画面を開いたときの絞り込みを返す。URL のハッシュの `f.{列}` があればそれだけ、無ければ端末に残した条件、それも無ければ画面の既定
+    args:
+      - name: tab
+        type: Route['tab']
+        required: true
+        passing: positional
+        description: 画面
+      - name: fromHash
+        type: Record<string, string[]>
+        required: true
+        passing: positional
+        description: ハッシュの絞り込み（`Route.filters`）
+      - name: saved
+        type: Record<string, string[]> | null
+        required: true
+        passing: positional
+        description: 端末に残したその画面の条件（`Prefs.filters` の分を `pruneFilters` にかけた値）。配る書き出しと、残した条件の無い画面は `null`
+    returns:
+      type: Record<string, string[]>
+      description: '絞り込み。検討事項の既定は `{status: [要見直し, 未決定, 未整理, 保留]}`、ほかの画面は `{}`'
+    unit_tests:
+      - name: test_initial_filters
+        case: 正常
+        summary: ハッシュ → 残した条件 → 画面の既定の順に使う
+        condition: '`parametrize`: decisions・`{}`・`null` / decisions・`{phase: [要件]}`・`{status: [保留]}` / tasks・`{}`・`null` / decisions・`{}`・`{}` / tasks・`{}`・`{status: [未着手]}`'
+        mock: なし
+        expected: '状態 4 つ / `{phase: [要件]}`（状態の既定も残した条件も含まない） / `{}` / `{}`（全て外して残した条件は既定に戻さない） / `{status: [未着手]}`'
+  - name: textColumns
+    title: 文字で絞れる列
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 表の列のうち、絞り込みのドロワーに文字の欄を出す列を返す
+    args:
+      - name: columns
+        type: Column[]
+        required: true
+        passing: positional
+        description: その画面の表の列
+    returns:
+      type: Column[]
+      description: '`filterable` が偽で、数の列（`num`）でない列。列の順のまま'
+    unit_tests:
+      - name: test_text_columns
+        case: 正常
+        summary: 値を選ぶ列と数の列を除く
+        condition: '`parametrize`: 用語集の列 / 検討事項の列'
+        mock: なし
+        expected: '`id`・`title`・`meaning`・`aliases`・`avoid`（`tags` を除く） / `id`・`title`・前提の列（状態・カテゴリーなど `filterable` の列を除く）'
+  - name: pruneFilters
+    title: 残した条件の刈り込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    scope: public
+    summary: 端末に残した条件から、今の記録のどの行にも無い値を外す。文字の条件（`~{列}`）はそのまま残し、知らない列の条件は外す
+    args:
+      - name: rows
+        type: object[]
+        required: true
+        passing: keyword
+        description: その画面の今の行
+      - name: columns
+        type: '{key, get}[]'
+        required: true
+        passing: keyword
+        description: 条件の定義（`filterRows` と同じ。表の列か、ネットワークの `graphConditions`）
+      - name: saved
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 残した条件
+    returns:
+      type: Record<string, string[]>
+      description: 今の記録にある値だけの条件。値が 1 つも残らない列はキーごと外す（渡した `saved` は変えない）
+    process: |-
+      1. `saved` のキーごとに見る。`~` で始まるキーはそのまま写す
+      2. `columns` に無いキーは外す
+      3. それ以外は、`rows` のその列の値（`get`。配列は要素ごと）に現れる値だけを残し、残らなければキーごと外す
+    unit_tests:
+      - name: test_prune_filters
+        case: 正常
+        summary: 記録に無い値だけを外す
+        condition: '状態が未着手・完了、タグが `[a]` の行。`parametrize`: `{status: [未着手, 保留]}` / `{tags: [b]}` / `{"~title": ["x"], nope: [y]}` / `{}`'
+        mock: なし
+        expected: '`{status: [未着手]}` / `{}` / `{"~title": ["x"]}` / `{}`。渡した `saved` が変わっていない'
+components:
+  - name: table
+    title: 表
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    kind: コンポーネント
+    summary: 部品設計『表』の引数を受け、並べ替え・チップでの条件の解除・ピン留め・列の表示・初期設定に戻す・詳細を開くをコールバックで知らせる。表の上の条件のチップの行は `filterChips` で描く。列の見出しに絞り込みのボタンとポップオーバーを置かない。行の絞り込みと並べ替えは `filterRows`・`sortRows`。タグの列は値を `tagNames` の名前にし（絞り込み・並べ替えは名前で、主題かどうかによらない）、セルは `tagNames` の名前を `tagList` に渡す（主題のマーカーを出さない）
+    description: 描き直す前に表の入れ物の `scrollLeft`・`scrollTop` を控え、描いた後に戻す。
+    props:
+      - name: kind
+        type: string
+        required: true
+        description: 項目の種類
+      - name: columns
+        type: Column[]
+        required: true
+        description: 列の定義（`key`・`label`・`filterable`・`fixed`・`hidden`・値を取る `get`・セルを描く `cell`）
+      - name: rows
+        type: object[]
+        required: true
+        description: 行にする項目。`withdrawn` が真の行は、差分の表示によらずタイトルの右、`diffMark` より前に `withdrawnBadge` を置き、行の文字を薄くする（部品設計『表』の `rows`）
+      - name: sort
+        type: '{key, dir} | null'
+        required: false
+        default: 'null'
+        description: 並べ替え
+      - name: filters
+        type: Record<string, string[]>
+        required: false
+        default: '{}'
+        description: 絞り込み（画面が絞り込みのドロワーと共有する条件）
+      - name: pinTo
+        type: string | null
+        required: false
+        default: 'null'
+        description: この列まで固定
+      - name: hiddenColumns
+        type: string[]
+        required: false
+        description: 隠している列
+      - name: on
+        type: '{sort, filter, pin, columns, reset, open}'
+        required: true
+        description: 部品設計のイベントごとのコールバック
+      - name: marks
+        type: Record<string, 'new' | 'changed'>
+        required: false
+        default: '{}'
+        description: 項目の ID → 差分の印。当たる行のタイトルの右に `diffMark` を置く（部品設計『表』の `marks`）
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: '{}'
+        description: 項目の ID → レビュー中のコメントの件数。行のタイトルの右、`diffMark` の後ろに `data-comment-target` の場所を置き、件数のある行に `commentMark` を入れる（部品設計『表』の `comments`）
+    unit_tests:
+      - name: test_table_when_withdrawn
+        case: 正常
+        summary: 取り下げた行だけに札を差分の印より前に置き、文字を薄くする
+        condition: '`withdrawn: true` の R-1 と、`withdrawn` を持たない R-2 の行。`marks` が `{"R-1": "changed"}`'
+        mock: なし（DOM を作って見る）
+        expected: R-1 の行のタイトルの右に取り下げの札、その後ろに変更の印が並び、行が薄い文字の class を持つ。R-2 の行は札も薄い文字の class も持たない
+      - name: test_table_when_main_tag
+        case: 正常
+        summary: タグの列は主題の有無によらず名前で出す
+        condition: '`tags` が `[{name: 画面}, {name: データ, main: true}]` の A-1 の行を、タグの列を持つ表で描く'
+        mock: なし（DOM を作って見る）
+        expected: タグの列のセルの `span.tag` が `画面`・`データ` で、どれも二重丸のマーカーと読み上げの「主題」を持たない
+  - name: filterChips
+    title: 条件のチップの行
+    container: plugins/mindstella/skills/mindmap/preview/components/table.ts
+    usecase: 項目を表で絞り込む
+    kind: コンポーネント
+    summary: '選んでいる値を 1 つずつ `{列}: {値}` のチップに、文字の条件（`~{列}`）を `{列}に「{文字}」を含む` のチップ（英数字で終わる列名の後は空白を挟む）にし、× と「すべて解除」で条件の解除を知らせる行を返す。表と、表以外の表示形式（マップ・ボード・カード・ネットワーク）のツールバーの下で同じものを使う。条件が無いときは中身の無い行を返す'
+    props:
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みのドロワーと共有する条件
+      - name: labels
+        type: Record<string, string>
+        required: true
+        description: 条件の `key` → チップに出す列の名前
+      - name: onFilter
+        type: '(filters: Record<string, string[]>) => void'
+        required: true
+        description: 解除した後の新しい条件を知らせる（部品設計『表』の `絞り込み` のイベント）。× は押した値を外し、値が残らない条件は `key` ごと消す。「すべて解除」は `{}`。組み立ては `filterChips` が持ち、`table` も同じものを使う

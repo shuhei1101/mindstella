@@ -1,0 +1,37 @@
+id: MOD-489-228
+title: プレビュー / 画面と部品 / selection-comment.ts
+test_files:
+  - tests/unit/preview/test_selection_comment.py
+components:
+  - name: selectionComment
+    title: 選んだ箇所のコメントの入口
+    container: plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts
+    usecase: 選んだ箇所へコメントする
+    kind: コンポーネント
+    summary: 部品設計『選んだ箇所のコメントの入口』の印だけの丸。選んだ範囲の始まりの上に出し（画面の端か本文のスクロール領域の上端に収まらなければ終わりの下、左右は画面の端から 8px の内側）、名前のツールチップを子の要素に持つ。押す・Esc をコールバックで知らせる。押したときに選択が外れないよう `pointerdown` の既定の動きを止める
+    props:
+      - name: anchor
+        type: '{first: DOMRect, last: DOMRect}'
+        required: true
+        description: 選んだ範囲の最初と最後の矩形（`Range.getClientRects()`）
+      - name: area
+        type: '{viewport: {width: number, height: number}, scroller: DOMRect}'
+        required: true
+        description: 画面の大きさと、本文のスクロール領域の矩形
+      - name: on
+        type: '{press, close}'
+        required: true
+        description: 押した（Enter・Space を含む）・Esc
+    unit_tests:
+      - name: test_selection_comment_position
+        case: 正常
+        summary: 始まりの上に出し、上に収まらなければ終わりの下、端は内側に収める
+        condition: '`parametrize`: 画面の中ほど / 最初の矩形が本文のスクロール領域の上端の近く / 右端に寄った幅 390px'
+        mock: なし
+        expected: 最初の矩形の上（`data-side` が `above`） / 最後の矩形の下（`data-side` が `below`） / 右端から 8px の内側で、ツールチップを入口の右端に揃える（`data-tip` が `end`）。どれも幅と高さ 32px
+      - name: test_selection_comment_keys
+        case: 正常
+        summary: Enter で押し、Esc で閉じる
+        condition: 入口にフォーカスして Enter、Esc
+        mock: '`on.press`・`on.close`'
+        expected: それぞれ 1 回呼ばれる。読み上げの名前が「選んだ箇所にコメント」で、名前のツールチップは読み上げから外している（`aria-hidden`）

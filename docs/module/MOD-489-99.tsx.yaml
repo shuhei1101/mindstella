@@ -1,0 +1,21 @@
+id: MOD-489-99
+title: プレビュー / view-switch
+lead: 部品設計『表示形式の切り替え.tsx』の props・イベント・状態を持つ。
+components:
+  - name: ViewSwitch
+    title: 表示形式の切り替え
+    kind: コンポーネント
+    usecase: 項目を表で絞り込む
+    summary: 部品設計『表示形式の切り替え.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-52#
+    unit_tests:
+      - name: test_view_switch
+        case: 正常
+        summary: 形式を切り替える
+        condition: 選んでいない形式を押す
+        mock: なし
+        expected: '`onChange` が key で呼ばれる'
+    container: frontend/src/shared/components/view-switch.tsx
+notes:
+  単体テスト: 同じフォルダの `view-switch.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,492 @@
+id: MOD-489-206
+title: プレビュー / 画面と部品 / detail.ts
+test_files:
+  - tests/unit/preview/test_detail.py
+constants:
+  - name: REVIEW_ORDER_LABEL
+    title: レビュー中のコメントの並びの呼び名
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目へコメントする
+    summary: 並びの切り替えの読み上げの名前の頭と、表示の設定の「この端末で変えている項目」に出す名前（確認ログの決定）。`resolveDisplay` もこの名前を並べる
+    value: '"コメントの並び"'
+  - name: REVIEW_ORDER_TEXT
+    title: レビュー中のコメントの並びの文言
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目へコメントする
+    summary: 並びの切り替えに出す今の並びの文言（確認ログの決定）
+    value: '{newest: "新しい順", oldest: "古い順"}'
+  - name: PANEL_WIDTH
+    title: 詳細パネルの幅の決まり
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    summary: 詳細パネルの既定の幅・ドラッグで変えられる下限・上限を決める残す幅・矢印キー 1 回の刻み（px）と、幅を変えられる表示の幅の下限・本文を寄せる表示の幅の下限（px。`style.css` の境目と同じ値）
+    value: '{default: 640, min: 480, keepBody: 400, keepLeft: 160, step: 16, resizableFrom: 901, sideFrom: 1100}'
+functions:
+  - name: panelWidthMax
+    title: 詳細パネルの幅の上限
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 表示の幅と、本文を寄せるかから、詳細パネルの幅の上限を返す。本文を寄せる幅（`PANEL_WIDTH.sideFrom` 以上、マップは `PANEL_WIDTH.resizableFrom` 以上）では表示の幅 − `keepBody`、それ以外は表示の幅 − `keepLeft`
+    args:
+      - name: viewport
+        type: number
+        required: true
+        passing: keyword
+        description: 表示の幅（px）
+      - name: mapView
+        type: boolean
+        required: true
+        passing: keyword
+        description: 検討事項のマップを出しているか
+    returns:
+      type: number
+      description: 上限（px）
+    unit_tests:
+      - name: test_panel_width_max
+        case: 正常
+        summary: 本文を寄せる幅は本文に残す幅、重ねる幅は左に残す幅で上限を決める
+        condition: '`parametrize`: 1280・マップ以外 / 1100・マップ以外 / 1099・マップ以外 / 1000・マップ以外 / 1000・マップ / 901・マップ'
+        mock: なし
+        expected: 880 / 700 / 939 / 840 / 600 / 501
+  - name: clampPanelWidth
+    title: 詳細パネルの幅を収める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 幅を `PANEL_WIDTH.min` 以上・`max` 以下に収め、整数に丸めて返す
+    args:
+      - name: width
+        type: number
+        required: true
+        passing: keyword
+        description: 収める前の幅（px）
+      - name: max
+        type: number
+        required: true
+        passing: keyword
+        description: '`panelWidthMax` の上限（px）'
+    returns:
+      type: number
+      description: 収めた幅（px）
+    unit_tests:
+      - name: test_clamp_panel_width
+        case: 正常
+        summary: 下限と上限の間に収める
+        condition: '`max` 880。`parametrize`: `width` 640 / 300 / 1000 / 700.6'
+        mock: なし
+        expected: 640 / 480 / 880 / 701
+components:
+  - name: detailPanel
+    title: 詳細パネル
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    kind: 画面
+    summary: "画面設計『詳細パネル』『詳細の全画面』を描く。本文は `renderMarkdown`・`renderDiagrams`（見出しを段下げするときは `data-line-start` を引き継ぐ）で描いた後、`linkHeadings`（`on.heading`）と `linkBody`（`on.open`）を当てる。続けて Markdown の本文に `decorateMarkdown`（`display` は `bodyView`、`fold` は本文の差分（インライン・左右に並べるの左右の列）を描くときだけ偽）を当て、本文のスクロール領域に `bindTableHeads` を付ける（描き直すたびに前の受け取りを外す）。`heading` や本文の見出しのリンクで見出しへ移るときは、先に `revealHeading` で畳んだ入れ物を開く。本文の見出しは、本文の見出しのうち最も上の段を h4（節の見出し「本文」の h3 の次）にする差を本文ごとに 1 つ求めて全ての見出しに足し、段の差を保って並べる（見出しの無い本文は何もしない）。差分の表示の間は、今の本文と差し込む消した行のかたまりの見出しを合わせた最も上の段から差を 1 つ求め、今の本文と消した部分の両方に使う。h6 を超える段は h6 の要素にして `aria-level` で段を伝え、見た目は `data-md-level` で元の段のまま保つ。本文の印（`a.term`）に乗せる・フォーカスすると、印の `data-ids` の項目（`index.byId` で引く）を `termTip` に渡し、使い回す 1 つのツールチップ（`popover=\"manual\"`）を詳細パネル（全画面ではモーダル）の中に置いて出す。印から外れて 150 ミリ秒たつと隠し（その間にツールチップへ乗せれば隠さない。押して残したときは隠さない）、Esc でも隠す（中にフォーカスがあれば印へ戻し、全画面を閉じない）。用語 2 件以上か、資料・調査にも一致した印は、押すとツールチップを残し（`pinned`。外を押すと隠す）、Tab で中の最初のリンクへ移す。中のリンクの `termTip` の「項目へ移る」で `on.open` を呼ぶ。`heading` があれば、描いた後にその見出しを本文のスクロール領域の中で画面に入れる。関係する項目は `relatedItems`。案・タイトルなどの値を描いた要素にキーのパスを `data-key` で持たせる。検討事項は 背景（`lead`）→ 案 → 採用した案と理由（`answer`・`reason` のどちらかがあるときだけの節）→ 本文 → 関係する項目の順に描く。文字列の値（検討事項の `lead`・`answer`・`reason`・案の `content`・`pros`・`cons`・`note`・`reason`、タスクの `reason`、調査の `question`・`conclusion`、調査・資料の `description`、用語の `meaning`、メモの `content`）は `renderValue` で描く（差分の表示の間で変わった値は、前の値と今の値を文字で並べる）。値の見出しは、値ごとに本文と同じ決め方で最も上の段を置く場所の直上の見出しの次の段にし、段の差を保って並べる（h3 の節の中の値（案の値・採用した案と理由の `answer`・`reason`・説明の `description`・取り下げた理由の `reason`）は h4、節に入らず題（`h2.d-title`）の後に並ぶ値（検討事項の `lead`・調査の `question`・メモの `content`・タスクの `reason`・調査の `conclusion`・用語の `meaning`）は h3。見出しの無い値と、`renderValue` が文字のままの要素（`span.md-value-raw`）で返した値は何もしない）。案の `pros`・`cons` が文字列の配列のときは「、」でつないだ 1 つの文字列にしてから描く（空の配列は値なしとして扱う）。案のカードは、`adopted` が真の案に「採用」、偽の案に「不採用」を出し、どちらでもない案には何も出さない。どの案も採用でないときだけ、`recommended` が真の案の見出しの右に星のアイコン（`icon(\"star\")`）と「推奨」のバッジを出す。`full` が真なら中央のモーダル（窓から 32px 内側、幅 720px 以下は 8px、幅の上限 1600px、本文は幅いっぱい、モーダルの中のスクロールを後ろへ伝えない `overscroll-behavior: contain`）で出し、図の拡大は中身を切り替える。全画面表示のボタンは、`full` の間は縮小のアイコンと読み上げ名「元の大きさに戻す」にし、色は変えず `aria-pressed` を持たない。`comment` があれば下端に `sendForm` を留め、関係する項目の後にその項目へのレビュー中のコメントを並べ、見出しと下端の間だけをスクロールする。レビュー中のコメントの行は、`comment.reviews` と `comment.edit.removed` を合わせて ID の連番で、`reviewOrder` が `newest` なら大きい順、`oldest` なら小さい順に並べ、行が 2 件以上のときだけ見出し「レビュー中のコメント」の行の右に並びの切り替えを置き（`button.btn.ghost.review-order`。文字は `REVIEW_ORDER_TEXT` の今の並びと上下の矢印のアイコン、読み上げの名前は「{`REVIEW_ORDER_LABEL`}: {今の並び}」、`data-focus` は `detail-review-order`。押すと `on.order` を入れ替えた後の並びで呼ぶ）、行の右上に `reviewRowActions`、`comment.edit.editing` の行の本文に、`comment.edit.editingIn` が `'detail'` なら `reviewEditForm`、`'list'` なら本文だけを描いて「修正」「削除」も出さず、消した行に `removedReviewRow` を描く（`focus` の接頭辞は `detail-`。見出しの件数は消した行を数えない）。スクロールする本文の領域（`.panel-body`）は `tabindex=\"0\"`・`role=\"region\"`・`aria-label=\"詳細の本文\"` を持ち、キーボードで届く。`highlight` があればその箇所の要素までスクロールして印の色の地で示す。取り下げた項目（`withdrawn` が真の調査・資料・用語集・メモ・会話ログ）は、差分の表示によらずタイトルの右（納品物の印・新規の札の後）に `withdrawnBadge`（`large`）を置いてタイトルの文字を薄くし、タイトルの下のキーの一覧の後に見出し「取り下げた理由」の節で `reason` を `renderValue` で描く（`reason` を持たない項目と検討事項・タスクには節を置かない）。`withdrawn`・`reason` はキーの一覧に値で並べない。資料・調査は、`description` を見出し「説明」の節（資料はキーの一覧の後、調査は `question` の後・`conclusion` の前）に、`aliases` を見出し「エイリアス」の節で `tagList` に並べる（資料は説明の後・本文の前、調査は `conclusion` の後・`angles` の前）。値を持たない節は置かず、`description`・`aliases` はキーの一覧に値で並べない。見出しは、種類と ID（`.panel-kind`。種類の名前は `.panel-kind-label`）と資料の形式の札の右に見出しのタイトル（`.panel-title`。`title` に全文を持ち、`aria-hidden=\"true\"`）を置く。本文のスクロール領域（`.panel-body`）を root にした `IntersectionObserver` で本文の先頭のタイトル（`h2.d-title`）を見張り、領域の上へ出ている間だけ `.panel-title` に `is-shown` を付ける（スクロールのたびに位置を測らない）。描き直すたび（項目の移動・差分の表示・全画面との行き来）に前の見張りを外して付け直す。隠している間も場所を取ったまま（`visibility: hidden`・`opacity: 0`）にし、出し入れは 0.15 秒の `opacity`（`prefers-reduced-motion: reduce` では切り替えるだけ）、タイトルは 1 行で省略記号を付けて切る。幅 480px 以下で `is-shown` の間は `.panel-kind-label` を見た目から外す（読み上げには残す）。`linkBody` には描いた本文の原文を `source` で渡す。本文が Markdown（`bodyFormatOf` が `md`）の資料は、編集の表示の間を除き（配る書き出しでも）、見出しの全画面表示のボタンの左に「エクスポート」（`aria-haspopup=\"dialog\"`・`aria-expanded`）を置き、押すと `docExportMenu` を入口の下に開く（開いているときにもう一度押すと閉じる）。「HTML
+      でエクスポート」では `view` を `busy` にして `mdmarkAssets` を待ち、取れたら `buildDocHtml` で組み立てて `downloadText` で `{ID}.html` を保存させ、メニューを閉じる（取れなければ `error` にし、「再試行」でやり直す。組み立てている間に閉じたら保存させない）。「Markdown でエクスポート」では `view` を `warn` にし、「エクスポート」で `stripEmbeddedHtml` した本文を `{ID}.md` で保存させて閉じる。閉じたら入口の `aria-expanded` を `false` に戻してフォーカスを入口へ戻す。差分の表示の間、Markdown の本文は `pairEmbeddedHtml` で変わった埋め込んだ HTML の範囲の対を取り、対ごとに今の本文の `order` 番目の `.mdmark-html` を `htmlBodyDiff`（`before`・`after` は範囲の原文、`initial` は `raw`、`heading` は「埋め込んだ HTML」）に置き換える。`beforeView` は前の範囲を `renderMarkdown` で描いたもの、`afterView` は今の `.mdmark-html` で、前後の `.mdmark-html` の直下の子の `outerHTML` を `childMarks` に渡し、`'added'` の子に足したマーカー、`'changed'` の子に変わったマーカーを付ける（`null` ならマーカーを付けない）。範囲の中には本文の行の差分のマーカーを付けない"
+    props:
+      - name: id
+        type: string
+        required: true
+        description: 項目の ID
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: full
+        type: boolean
+        required: true
+        description: 全画面か
+      - name: on
+        type: '{open, close, full, back, forward, diagram, heading, changeSet, layout, order}'
+        required: true
+        description: 項目へ移る（関係する項目・本文の用語の印・項目の ID のリンク。履歴に積む）・閉じる・全画面の切り替え・戻る進む・図を拡大する・本文の見出しへ移る（見出しの名前。使う側がハッシュの `h` を履歴に積まずに置き換える）・本文のまとまりのリンクを押した（`linkHeadings` の `onChangeSet` が知らせた `diff` の値。使う側が記録にあるまとまりか確かめて時点を切り替える）・本文の差分の並べ方を切り替える（`bodyDiffLayoutSwitch` が知らせた並べ方。使う側が個人の上書きに残して描き直す）・レビュー中のコメントの並びを切り替える（入れ替えた後の並び `'newest' | 'oldest'`。使う側が個人の上書きに残して描き直す）
+      - name: comment
+        type: "{form: SendFormProps, reviews: ReviewState['items'], edit: ReviewEditProps} | null"
+        required: true
+        description: "下端に置くコメントの入力の引数と、その項目へのレビュー中のコメントと、行の修正・削除・元に戻すの引数。`edit` は `{removed: ReviewState['items'], editing: string | null, editingIn: 'list' | 'detail', editError: string | null, editBody: string | null, expanded: Set<string>, on: {edit, saveEdit, cancelEdit, remove, restore, fold}}`（`expanded` は本文を開いている行の ID、`on.fold` は本文を開く／畳む（書き込みの ID・開くか））。書き換えていない行の本文は `reviewBodyFold`（`label` は `reviewLabel`（「{向けた項目の ID} へのコメント」）、`titles` は記録の項目のタイトル、`changeSets` は記録のまとまりの説明、`open` は `expanded` にあるか、`focus` は `REVIEW_FOCUS`、`on.toggle` は `edit.on.fold`、`on.openId` は `on.open`、`on.changeSet` は `on.changeSet`）で描き、本文の下に開閉のボタンだけの行（`review-more-row`）を置く（`removed` はその項目への消したコメントだけ。`editingIn` は修正を始めた場所。`on` は `commentsPanel` の同じ名前のコールバックと同じ形）。配る書き出しでは `null`（どれも置かず、選んだ箇所の入口も出さない）"
+      - name: highlight
+        type: Location | null
+        required: false
+        default: 'null'
+        description: コメントの一覧から開いたときに示す箇所。本文は `start` の行を含む `data-line-start` のブロック、値は `data-key` が `key` の要素。見つからなければ示さず、項目の先頭を出す
+      - name: diff
+        type: DiffPoint | null
+        required: false
+        default: 'null'
+        description: '選んだ時点。あり、項目がその時点で足されたか変わったとき、前後の版を組み立て（`buildVersions`）、画面設計『詳細パネル』の選んだ時点・新規の札・キー・本文（`diffLineParts`）・図（`diffDiagramFromSource` / `diffDiagram`）・Raw の差分と、組み立てられない旨を描く。キーの差分は、ツールが付けるキー（`id`・`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`）と `body` を除いて並べる。`withdrawn` は選んだ時点で変わったときだけキーの一覧の「取り下げ」の行に前後を並べ、真の値を `withdrawnBadge` で出す。調査・資料・用語集・メモ・会話ログの `reason` の前後は「取り下げた理由」の節に並べる。題と、文字列の値の描画が描く値（背景・採用した案と理由・取り下げた理由・説明などの節の値と、案の内容・メリット・デメリット・備考・理由）の前後は、語の面の対として並べる。前の値と今の値がどちらも空でない文字のときだけ、並べた `del.df-was` と `ins.df-now` の対を描いた後に語の面を付ける対として控える。キーの一覧（`d-meta`）・タグなどの一覧の節（配列のキー）・状態・案の採用の状態（面を塗らない差分）は控えない。控えた対は、本文の語の面を付ける前に、対の前の値と今の値の文字を `diffInline` で比べ、`removed` の範囲を `span.df-word.df-del`、`added` の範囲を `span.df-word.df-add` で囲む（読み上げの `span.sr-only` は文字に含めず、囲まない）。`deadline` は本文の差分のもの（本文の行の差分を打ち切ったときも、行の差分を呼ぶ直前に決めたもの）を使い、本文の行の差分を呼ばないとき（本文が変わっていない・本文を持たない・jsdiff を読めていない）は、控えた対を比べる直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足したものにする。`null` が返った対は囲まない。本文の差分は、今の本文を `renderMarkdown` で描き（`data-line-start` は今の本文の行のまま）、足した部分の印を今の本文の要素に付ける。消した行のかたまりは `placeRemovedBlocks` のものごとに別に `renderMarkdown` し（`tableHeader` があれば頭に付けて描き、表の本体の行だけを取り出す）、`data-line-start` を外して `beforeLine` の行を持つ今のブロック（表の中はその行）の前へ、`null` なら本文の最後へ差し込む（今のブロックが足した塊の囲み・箇条書き・表の中にあるときは、その外側の前へ差し込む。表は包む入れ物 `.md-table-wrap` ごと外側にし、消した塊を入れ物の中に入れない）。`highlight` は差分の表示の間も今の本文の `data-line-start` から引く。後の版の本文が今の本文と違うとき（古いまとまりを選び、その後に本文を直した）は、描いた本文の `data-line-start` を全て外し、`highlight` は項目の先頭を示す。本文・図・Raw の差分を描く前に jsdiff を読めたか確かめ（`missingLibraries(["Diff"])`）、読めていなければ本文の頭に `libraryNotice({names: ["jsdiff"], what: "本文と図の差分"})` を出し、本文・図・Raw は今の版を差分なしで描き、図の拡大へは `diff` を `null` で渡す。本文の差分を打ち切ったら「本文の差分を計算しきれない旨」、図を打ち切ったらその図だけ枠に色を付け、図の Raw の差分を打ち切ったらその図の Raw は今の記法を差分なしで出す。図の差分は、今の版の図を `renderDiagrams` で描き（直前の呼び出しで描いた同じ記法の図は描き直さずに写す）、flowchart の図は `diffDiagramFromSource` で前後の記法を解析して突き合わせ、前の版の図を描かない。`diffDiagramFromSource` が `null` を返した図（flowchart でない・解析できない）だけ、前の版の図を `renderDiagramSvg` で描いて `diffDiagram` で突き合わせる。変えた行は、`pairedParts` の対ごとに、消した部分のかたまりから描いたブロック（段落・見出し・箇条書きの項目・表の行）と、足した部分の行を持つ今のブロックを前から順に並べ、両方の数が同じときだけ 1 つずつ対にする。対の 2 つのブロックの文字のうち、行の印（`signMarks` が入れる `span.df-sign` と読み上げの `span.sr-only`。表の行は 1 つ目のセルの頭に入る）を除いた文字を `diffInline` で比べ、`removed` の範囲を `span.df-word.df-del`、`added` の範囲を `span.df-word.df-add` で囲む。囲むのは `linkHeadings`・`linkBody` を当てた後で、行の印の外の文字の節だけを分けて囲み、リンク・用語の印などの要素は分けない。`diffInline` の `deadline` は、本文の行の差分（`diffLineParts`）を呼ぶ直前の時刻に `LINE_DIFF_TIMEOUT_MS` を足したもので、`null` が返った対は囲まない。図の Raw の差分も、その図の記法の `pairedParts` の対の行ごとに `diffInline`（`deadline` はその記法の行の差分を呼ぶ直前の時刻から）で比べ、行の印の外の文字だけを同じく囲む。'
+      - name: heading
+        type: string | null
+        required: false
+        description: 開いたときに本文の中で画面に入れる見出しの名前（`Route.heading`）。本文に無ければ本文の頭で開き、`on.heading` を `null` で呼んでハッシュから `h` を外させる
+      - name: minimap
+        required: false
+        default: 'true'
+        type: boolean
+        description: '差分のミニマップを置くか（`resolveDisplay` の `minimap`）。本文のスクロール領域は常に `diffMinimapFrame({ body, shown: diff !== null && minimap })` で包み、包んだ枠を見出しと下端の間に置く。`style.css` の `.panel > .panel-body` に当てていた伸び縮み（`flex: 1; min-height: 0`）は `.panel-scroll` に移し、`.panel-body` は枠の中で帯を除いた幅いっぱいにする（`dialog.full` も同じ）。図の拡大に切り替えている間は帯を出さない'
+      - name: bodyLayout
+        type: "'inline' | 'side'"
+        required: false
+        default: "'inline'"
+        description: 本文の差分の並べ方（`resolveDisplay` の `bodyLayout`）。`diff` があり本文の差分を描けたとき（前後を組み立てられない・出せない・計算しきれない・ライブラリを読めない旨を出していない）だけ、本文の差分の頭に `bodyDiffLayoutSwitch` を置く（HTML の本文では `htmlBodyDiff` の `layoutSwitch` に渡し、`layout` にもこの値を渡す）。Markdown の本文で `side` のときは `sideBySideBodyDiff` で描いた左右の本文と、今までどおり描いたインラインの本文（`div.sbs-fallback`）の両方を置き、`style.css` の `@container detail-body (width < 560px)`（`.panel-body` を入れ物にする）で、本文の幅が足りないときは切り替えと左右の本文を隠してインラインの方を出す。HTML の本文の左右の表示も同じ入れ物で切り替える。`sideBySideBodyDiff` が `null` を返したら「本文の差分を計算しきれない旨」を出し、切り替えを置かない
+      - name: reviewOrder
+        type: "'newest' | 'oldest'"
+        required: false
+        default: "'newest'"
+        description: レビュー中のコメントの並び（`resolveDisplay` の `reviewOrder`）
+      - name: edit
+        type: '{editing, marks, form, onToggle} | null'
+        required: false
+        default: 'null'
+        description: 編集の入口。配る書き出し・差分の表示中は `null`（「編集する」を出さない）。見出しの前後の移動の左に「編集する」（`aria-pressed`。`editing` の間は「編集を終える」）を置き、押すと `onToggle`。種類と ID の右とキー・案の見出しの後ろに `marks` の `pendingEditMark`（`compact`）を置く。`editing` の間は本文のスクロール領域に `detailEditForm`（`form` を渡す）を描き、下端の `sendForm` を隠す
+      - name: bodyView
+        type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
+        required: false
+        default: BODY_VIEW_DEFAULT
+        description: 表示の設定の本文の表とセクションの見せ方（`resolveDisplay` の `bodyView`）。`decorateMarkdown` の `display` に渡す
+      - name: resizer
+        type: HTMLElement | null
+        required: false
+        default: 'null'
+        description: パネルの内側の左端に置く `panelResizer` の要素（全画面では `null`。幅 900px 以下では CSS が隠す）。全ての種類の詳細パネルを同じ `--panel-w` の幅で開く
+    unit_tests:
+      - name: test_detail_panel_when_diff_highlight
+        case: 正常
+        summary: 差分の表示の間も、消した部分の後ろの箇所を今の行のブロックで示す
+        condition: 前の版の 2、3 行目の段落を消した D-1 を `diff` つきで開き、`highlight` に今の本文の 3 行目（消した部分の後ろの段落）を渡す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 示されたブロックの `data-line-start` が 3 で文字が今の 3 行目。消した部分の要素は `data-line-start` を持たない
+      - name: test_detail_panel_when_old_set_after_body_edit
+        case: 正常
+        summary: 古いまとまりを選び、その後に本文を直した項目では、本文の行の印を外す
+        condition: V-1 で本文を直し、V-2 で本文の頭に段落を足して行をずらした D-1 を、V-1 を選んだ `diff` と今の本文の 3 行目の `highlight` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 本文のどの要素も `data-line-start` を持たず、`highlight` は項目の先頭を示す
+      - name: test_detail_panel_when_diff_editor_only
+        case: 正常
+        summary: 編集した人だけが変わったキーは差分に出さない
+        condition: 選んだ時点の後に `answer` と `updated_by`（`user` → `ai`）が変わった D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 差分の印が `answer` にだけ付き、`updated_by` の前後はどこにも出ない
+      - name: test_detail_panel_when_diff_reuses_current_diagram
+        case: 正常
+        summary: 開いたまま時点を選ぶと、flowchart の図は今の版を描き直さず、前の版も描かずに差分の印を付ける
+        condition: 本文に flowchart の図を 1 つ持ち、選んだ時点の後に図のノードの文字を 1 つ変えた D-1 を `diff` なしで開いて描き終えた後、同じ D-1 を `diff` つきで開き直す。`mermaid.render` を数える包みを `page.evaluate` で被せる
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 開き直してからの `mermaid.render` の呼び出しは 0 回。今の版の図の SVG に変わったノードの印（`df-n-chg`）が付く
+      - name: test_detail_panel_when_diff_renders_before_sequence
+        case: 正常
+        summary: flowchart でない図は、前の版の図だけを描いて突き合わせる
+        condition: 本文に sequenceDiagram の図を 1 つ持ち、選んだ時点の後にメッセージの文字を 1 つ変えた D-1 を `diff` なしで開いて描き終えた後、同じ D-1 を `diff` つきで開き直す。`mermaid.render` を数える包みを `page.evaluate` で被せる
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 開き直してからの `mermaid.render` の呼び出しは 1 回で、渡した記法は前の版の図。変えたメッセージに変えた印（`df-t-chg`）が付く
+      - name: test_detail_panel_when_heading
+        case: 正常
+        summary: 指した見出しを画面に入れて開く
+        condition: '`parametrize`: 本文に見出し「決め方」を 2 つ持つ A-1 を `heading` が `決め方-1` で開く / `heading` が `無い` で開く / 同じ A-1 の本文を選んだ時点から変えた `diff` つきで、本文の幅が 480px のパネルに、`bodyLayout` が `side`・`heading` が `決め方-1` で開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 2 つ目の「決め方」が本文のスクロール領域の中で画面に入る / 本文の頭で開き `on.heading` が `null` で呼ばれる / インラインの本文の 2 つ目の「決め方」が本文のスクロール領域の中で画面に入り、`on.heading` が `null` で呼ばれない
+      - name: test_detail_panel_when_decision_order
+        case: 正常
+        summary: 検討事項を 背景 → 案 → 採用した案と理由 → 本文 の順に描く
+        condition: '`lead`・案 A（採用）・B（`adopted: false`）・C（`adopted` なし）・`answer`・`reason`・本文を持つ決定済みの D-1 を開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`data-key` が `lead` の要素、案の節、見出し「採用した案と理由」の節（`answer`・`reason`）、本文の節がこの順に並ぶ。案 A に「採用」、B に「不採用」が出て、C にはどちらも出ない'
+      - name: test_detail_panel_when_recommended
+        case: 正常
+        summary: 採用した案が無いときだけ、推奨の案に推奨のバッジを出す
+        condition: '`parametrize`: 案 A・B（B に `recommended: true`）を持つ未決定の D-1 / 案 A（採用）・B（`recommended: true`）を持つ決定済みの D-2 / `recommended` を持つ案が無い未決定の D-3'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 案 B のカードの見出しに「推奨」のバッジが 1 つだけ出て「採用した案と理由」の節が無い / バッジが出ず案 A に「採用」が出る / バッジが出ない
+      - name: test_detail_panel_when_markdown_values
+        case: 正常
+        summary: 文字列の値を Markdown で描き、キーのパスを保つ
+        condition: '`parametrize`: `lead`・`answer`・`reason`・案 A の `pros` に `**強調**` を持つ D-1 / `reason` の T-1 / `question`・`conclusion` の R-1 / `meaning` の G-1 / `content` に `**強調** <img src=x onerror="window.__x=1">` を持つ N-1'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: どの値も `data-key` がそのキーのパス（案は `options[A].pros`）の要素の中に `strong` を持ち、`**` の文字が出ない。N-1 で `window.__x` が未定義
+      - name: test_detail_panel_when_option_list_values
+        case: 正常
+        summary: 案のメリット・デメリットが文字列の配列でも、つないで描く
+        condition: 案 A の `pros` が `["速い", "**安い**"]`、`cons` が `[]` の未決定の D-1 を開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`data-key` が `options[A].pros` の要素の文字が `速い、安い` で `strong` を 1 つ持つ。`options[A].cons` の要素が無い'
+      - name: test_detail_panel_when_review_rows
+        case: 正常
+        summary: レビュー中のコメントの行に修正・削除を置き、書き換えている行と消した行を元の場所に描く
+        condition: 'D-1 への C-1・C-3 を `reviews`、C-2 を `edit.removed`、`edit.editing` を C-3、`reviewOrder: oldest` で開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 行が C-1・C-2・C-3 の順で、C-1 に読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタン。C-2 は「コメントを削除しました。」と「元に戻す」。C-3 は入力欄と「キャンセル」「修正」で、修正・削除のボタンが無い。見出しの件数が 2。どのボタンの `data-focus` も `detail-` で始まる
+      - name: test_detail_panel_when_review_order
+        case: 正常
+        summary: レビュー中のコメントを既定は新しい順に並べ、2 件以上のときだけ並びの切り替えを置く
+        condition: '`parametrize`: D-1 への C-1・C-3 を `reviews`、C-2 を `edit.removed` で `reviewOrder` を渡さずに開く / 同じ行で `reviewOrder: oldest` / C-1 だけを `reviews` で開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '行が C-3・C-2・C-1 の順で、切り替えの文字が「新しい順」、読み上げの名前が「コメントの並び: 新しい順」 / 行が C-1・C-2・C-3 の順で、切り替えの文字が「古い順」 / 切り替えが無い'
+      - name: test_detail_panel_when_review_order_changed
+        case: 正常
+        summary: 並びの切り替えを押すと on.order を入れ替えた後の並びで呼ぶ
+        condition: D-1 への C-1・C-2 を `reviews` で開き、並びの切り替えを押す
+        mock: 描画のライブラリの配信元（`page.route`）・`on.order` を数える関数
+        expected: '`on.order` が `oldest` で 1 回呼ばれ、`location.hash` が変わらない'
+      - name: test_detail_panel_when_review_escape_in_full
+        case: 正常
+        summary: 全画面で書き換えの入力欄の Esc は、書き換えだけを捨てて全画面を閉じない
+        condition: '`full: true`、`edit.editing` を C-1 で開き、入力欄で Esc を押す'
+        mock: '`on.full`・`edit.on.cancelEdit`'
+        expected: '`edit.on.cancelEdit` が 1 回呼ばれ、`on.full` が呼ばれず、`dialog` が開いたまま'
+      - name: test_detail_panel_when_review_editing_in_list
+        case: 正常
+        summary: コメントの一覧で書き換えている行は、詳細パネルでは本文だけで描く
+        condition: D-1 への C-1 を `reviews`、`edit.editing` を C-1、`edit.editingIn` を `'list'` で開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: C-1 の行に入力欄・「キャンセル」「修正」が無く、本文が出て、読み上げの名前「D-1 へのコメントを修正」「D-1 へのコメントを削除」のボタンが無い
+      - name: test_detail_panel_when_withdrawn
+        case: 正常
+        summary: 取り下げた項目の題に札を置き、理由を節に出す
+        condition: '`parametrize`: `withdrawn: true`・`reason`「別の調査で足りた」の R-1 を `diff` なしで開く / 同じ R-1 を、選んだ時点で `withdrawn`・`reason` を足した `diff` つきで開く / `withdrawn` を持たない R-2 を開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 題の右に取り下げの札があり、見出し「取り下げた理由」の節に理由が出て、キーの一覧に「取り下げ」の行が無い / 加えてキーの一覧の「取り下げ」の行に今の値の取り下げの札が足した印で出て、「取り下げた理由」の節に足した印の理由が出る / 札も節も無い
+      - name: test_detail_panel_when_diff_inline_words
+        case: 正常
+        summary: 書き換えた段落の変わった語だけを囲み、消しただけの段落は囲まない
+        condition: 段落 3 つのうち 1 つ目を `要件は来週までに決める。` → `要件は今週までに決める。` に書き換え、3 つ目を消した D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した 1 つ目の段落の `span.df-word.df-del` が `来週` だけ、今の 1 つ目の段落の `span.df-word.df-add` が `今週` だけ。消した 3 つ目の段落と 2 つ目の段落は `span.df-word` を持たない。行の印（`ins.df-blk`・`del.df-blk`）は今までどおり
+      - name: test_detail_panel_when_diff_lines_unpaired
+        case: 正常
+        summary: 行の数が揃わない書き換えは語の面を付けない
+        condition: 1 つ目の段落を消し、続く 2 つ目の段落の語を 1 つ書き換えた D-1 を `diff` つきで開く（消した行 3 行・足した行 1 行）
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 本文に `span.df-word` が無く、行の印は今までどおり
+      - name: test_detail_panel_when_diff_inline_words_keep_links
+        case: 正常
+        summary: 語の面を付けても、本文の用語の印と項目の ID のリンクは分けない
+        condition: 用語集に「要件」を持ち、`要件は D-2 と来週までに決める。` → `要件は D-2 と今週までに決める。` に書き換えた D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 今の段落の用語の印「要件」と D-2 のリンクが 1 つずつの要素のままで、`span.df-word.df-add` が `今週` だけ
+      - name: test_detail_panel_when_diff_raw_inline_words
+        case: 正常
+        summary: 図の Raw の変えた行の対に、変わった語だけの面を付ける
+        condition: 本文の flowchart のノードのラベルを `A[仕様を決める]` → `A[設計を決める]` に変えた D-1 を `diff` つきで開き、図の Raw を押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した行の `span.df-word.df-del` が `仕様` だけ、足した行の `span.df-word.df-add` が `設計` だけ。そのほかの行は `span.df-word` を持たない
+      - name: test_detail_panel_when_diff_inline_words_in_table_row
+        case: 正常
+        summary: 表の行の対では、行の印を除いて比べ、書き換えたセルの語だけを囲む
+        condition: 本文の表の本体の行を `| D-1 | 来週 |` → `| D-1 | 今週 |` に書き換えた D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した行の `span.df-word.df-del` が `来週` だけ、今の行の `span.df-word.df-add` が `今週` だけ。1 つ目のセルの `span.df-sign` と `span.sr-only` は `span.df-word` の中にも外側にも囲まれない
+      - name: test_detail_panel_when_description_aliases
+        case: 正常
+        summary: 資料・調査の説明とエイリアスを決めた位置の節に出す
+        condition: '`parametrize`: `description`・`aliases` を持つ資料 A-1 / `question`・`description`・`conclusion`・`aliases`・`angles` を持つ調査 R-1 / どちらも持たない資料 A-2'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: A-1 は見出し「説明」の節（`data-key` が `description`）→「エイリアス」の節（タグ）→ 本文の順 / R-1 は問い → 説明 → 結論 → エイリアス → 調査の観点の順 / 「説明」「エイリアス」の節が無い。どれもキーの一覧に `description`・`aliases` の行が無い
+      - name: test_detail_panel_when_alias_tip
+        case: 正常
+        summary: 資料・調査にも一致した印は押すとツールチップを残し、中のリンクで移る
+        condition: 用語 G-1「特殊効果」と、エイリアス「特殊効果」を持つ資料 A-2・調査 R-1、本文に「特殊効果」を持つ A-1 を開き、印に乗せてから押し、ツールチップの中の A-2 のリンクを押す。続けて用語だけに一致した印「保存先」（G-2）を押す
+        mock: '`on.open`。描画のライブラリの配信元（`page.route`）'
+        expected: 印を押してもツールチップが開いたままで `on.open` が呼ばれない。A-2 のリンクで `on.open` が A-2 で 1 回呼ばれ、ツールチップが閉じる。「保存先」を押すと `on.open` が G-2 で呼ばれる
+      - name: test_detail_panel_when_alias_tip_escape_in_full
+        case: 正常
+        summary: 全画面でツールチップの中にフォーカスがあるときの Esc は、ツールチップだけを閉じて印へ戻す
+        condition: '`full: true` で A-1 を開き、資料にも一致した印から Tab で中のリンクへ移り、Esc を押す'
+        mock: '`on.full`'
+        expected: ツールチップが閉じ、フォーカスが印にあり、`on.full` が呼ばれず `dialog` が開いたまま
+      - name: test_detail_panel_when_head_title_on_scroll
+        case: 正常
+        summary: 本文の先頭のタイトルが本文のスクロール領域の上へ出ている間だけ、見出しのタイトルを出す
+        condition: 本文がパネルの高さの 3 倍以上あり、タイトルが見出しの帯に収まらない長さの資料 A-1 を開き、本文の頭 → 本文のスクロール領域を下端まで送る → 頭へ戻す の順に見出しのタイトルを読む。本文の頭と下端で、見出しのボタン（`.panel-head .icon-btn`）の幅も測る
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.panel-title` は A-1 のタイトルの文字と同じ `title` を持ち、`aria-hidden` が `true`。本文の頭では `is-shown` が無く `visibility` が `hidden`、送った後は `is-shown` があり、頭へ戻すと `is-shown` が外れる。本文の頭でも下端でも、見出しのボタンの幅はどれも `--control-h`（32px）のまま縮まない'
+      - name: test_detail_panel_when_head_title_rerender
+        case: 正常
+        summary: 描き直した後も、今の項目の本文の先頭のタイトルだけを見張る
+        condition: 本文の長い A-1 を開いて本文を送り、見出しのタイトルが出た後に、本文の短い A-2 を開き直す。続けて A-2 の本文の頭のまま A-1 を開き直す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: A-2 を開き直した直後の `.panel-title` は A-2 のタイトルで `is-shown` が無い。A-1 を開き直した直後も `is-shown` が無い（前の見張りが残っていない）
+      - name: test_detail_panel_when_head_title_full
+        case: 正常
+        summary: 全画面でも、本文を送ったときだけ見出しのタイトルを出す
+        condition: '`full: true` で本文の長い A-1 を開き、モーダルの本文のスクロール領域を下端まで送る'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 送る前は `.panel-title` に `is-shown` が無く、送った後は `dialog` の中の `.panel-title` に `is-shown` がある。送る前も送った後も、見出しのボタン（`.panel-head .icon-btn`）の幅はどれも `--control-h`（32px）のまま
+      - name: test_detail_panel_when_term_aliases_tip
+        case: 正常
+        summary: 用語 2 件以上に一致した印は押すとツールチップを残し、中のリンクで移る
+        condition: 用語 G-1「移し替え」と、別名「移し替え」を持つ用語 G-2、本文に「移し替え」を持つ A-1 を開き、印に乗せてから押し、ツールチップの中の G-2 のリンクを押す
+        mock: '`on.open`。描画のライブラリの配信元（`page.route`）'
+        expected: ツールチップが見出し「用語 2」の下に G-1・G-2 を並べ、印を押しても開いたままで `on.open` が呼ばれない。G-2 のリンクで `on.open` が G-2 で 1 回呼ばれ、ツールチップが閉じる
+      - name: test_detail_panel_when_diff_key_words
+        case: 正常
+        summary: 題と文字列の値のキーの差分で、変わった語だけを囲む
+        condition: 題を `要件を来週までに決める` → `要件を今週までに決める`、`lead` を `要件は来週までに決める。` → `要件は今週までに決める。`、案 A の `content` を `毎週の会議で決める` → `毎月の会議で決める`、状態を `未決定` → `要見直し` にし、本文を変えない D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '題・`data-key` が `lead` の要素・案 A の内容のそれぞれで、`del.df-was` の `span.df-word.df-del` が `来週`（案 A は `毎週`）だけ、`ins.df-now` の `span.df-word.df-add` が `今週`（案 A は `毎月`）だけ。`span.sr-only` の「前の値: 」「今の値: 」は `span.df-word` の外。状態の `span.df-kv.df-plain` は `span.df-word` を持たない'
+      - name: test_detail_panel_when_diff_key_words_skipped
+        case: 正常
+        summary: 語の面の対でないキーと、比べられない値には語の面を付けない
+        condition: '`parametrize`: 選んだ時点で `lead` を足した D-1 / `lead` を同じ語を持たない文に書き換えた D-1 / `tags` を `[{name: 要件}, {name: 会議}]` → `[{name: 要件}, {name: 運用}]`、`date` を `2026-10-01` → `2026-10-08` にした D-1 / `lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、jsdiff を読めない D-1 を、いずれも `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`。jsdiff を読めないケースは jsdiff の要求を失敗させる）
+        expected: どのケースも `span.df-kv` の中に `span.df-word` が無く、前の値・今の値（前に無かったキーは今の値だけ）は今までどおり `del.df-was`・`ins.df-now` で並ぶ
+      - name: test_detail_panel_when_diff_key_words_body_too_large
+        case: 正常
+        summary: 本文の行の差分を打ち切ったときは、キーの値の語の差分にも時間を足し直さない
+        condition: '`lead` を `要件は来週までに決める。` → `要件は今週までに決める。` にし、本文の行の差分が打ち切られる D-1 を `diff` つきで開く（`Diff.diffLines` が `undefined` を返し、その間に `performance.now()` が `LINE_DIFF_TIMEOUT_MS` より進むよう包む）'
+        mock: 描画のライブラリの配信元（`page.route`）・`Diff.diffLines` と `performance.now()` を包む
+        expected: 本文の頭に「本文の差分を計算しきれない旨」が出て、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` は今までどおり並び、`span.df-word` を持たない
+      - name: test_detail_panel_when_change_set_link
+        case: 正常
+        summary: 本文のまとまりのリンクで `on.changeSet` を呼ぶ
+        condition: '`parametrize`: 本文に `[V-1 へ](#diff=V-1)` を持つ D-1 を `diff` が `null` で開く / 同じ D-1 を、D-1 が変わった時点の `diff` で開く（差分の本文）。どちらも「V-1 へ」を押す'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: どちらも `on.changeSet` が `V-1` で 1 回呼ばれ、`on.heading` は呼ばれない
+      - name: test_detail_panel_when_diff_minimap
+        summary: 差分の表示の間だけ本文の右に帯を並べ、表示しない上書きでは並べない
+        case: 正常
+        condition: '本文の段落を 1 つ消し 1 つ足した資料。`parametrize`: `diff` あり・`minimap: true` / `diff` あり・`minimap: false` / `diff` が `null`'
+        expected: '`.panel-scroll` の中に `.panel-body` と印を 2 つ持つ `.df-map` が並ぶ / `.panel-scroll` の中は `.panel-body` だけ / `.panel-scroll` の中は `.panel-body` だけ。どれも `.panel-body` が「詳細の本文」の読み上げの名前を保つ'
+        mock: なし（DOM を作って見る）
+      - name: test_detail_panel_when_body_side_by_side
+        case: 正常
+        summary: 並べ方が side のとき、切り替えと左右の本文を置き、本文の幅が足りなければインラインを出す
+        condition: '本文の 1 つ目の段落を消し末尾に段落を足した資料を `diff` つきで開く。`parametrize`: `bodyLayout: inline`・幅 760px のパネル / `bodyLayout: side`・幅 760px のパネル / `bodyLayout: side`・幅 480px のパネル / `bodyLayout: side` で本文が変わっていない資料'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 切り替えがあり「インライン」が `aria-pressed="true"`、インラインの本文だけが見える / 切り替えの「左右に並べる」が `aria-pressed="true"`、`.sbs` が見え `.sbs-fallback` が見えない / 切り替えと `.sbs` が見えず `.sbs-fallback` が見える / 切り替えが無く、本文は印なし
+      - name: test_detail_panel_when_body_layout_changed
+        case: 正常
+        summary: 並べ方のボタンを押すと on.layout を呼ぶ
+        condition: '本文を変えた資料を `diff` つき・`bodyLayout: inline` で開き、「左右に並べる」を押す'
+        mock: 描画のライブラリの配信元（`page.route`）・`on.layout` を数える関数
+        expected: '`on.layout` が `side` で 1 回呼ばれ、`location.hash` が変わらない'
+      - name: test_detail_panel_when_body_heading_levels
+        case: 正常
+        summary: 本文の見出しの最も上の段を h4 にし、段の差を保って並べる
+        condition: '`parametrize`: 本文が `## 決め方`・`### 理由` を持つ A-1 を開く / 本文が `# 要件`・`## 決め方` を持つ A-2 を開く / 本文が `##`・`###`・`####`・`#####`・`######` の見出しを順に持つ A-3 を開く / 前の版の本文が `# 要件`・`## 決め方`、今の本文が `## 決め方` だけの A-4 を、その時点の `diff` つきで開く / 前の版の本文が段落だけ、今の本文が `## 決め方` と段落の A-5 を、その時点の `diff` つきで開く（「決め方」が足した囲みの中に入る）'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: A-1 は「決め方」が `h4`、「理由」が `h5` / A-2 は「要件」が `h4`、「決め方」が `h5` / A-3 は `##` が `h4`、`###` が `h5`、`####` 以降が `h6` で、`####` は `aria-level` を持たず、`#####` が `aria-level` 7、`######` が 8 / A-4 は消した「要件」が `h4`、今の「決め方」が `h5` / A-5 は足した囲み（`ins.df-blk`）の中の「決め方」が `h4` で、上の余白（`margin-top`）が 4px でなく `data-md-level="2"` の余白（.83em）のまま。どれも見出しの `data-md-level` は元の段のまま
+      - name: test_detail_panel_when_diff_removed_before_table
+        case: 正常
+        summary: 表の直前で消した塊を、表を包む入れ物の外（表の前）へ差し込む
+        condition: 前の版の段落（表の直前）を消し、表は変えていない D-1 を `diff` つきで開く
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 消した塊（`del.df-blk`）の親が `.md-table-wrap` ではなく、塊の直後の兄弟が表の入れ物を包む枠 `.md-table-frame`。枠の子は `.md-table-wrap` だけ、入れ物の子は `table` だけ
+      - name: test_detail_panel_when_value_heading_levels
+        case: 正常
+        summary: 文字列の値の見出しの最も上の段を、置く場所の直上の見出しの次の段にし、段の差を保って並べる
+        condition: '`parametrize`: `lead` が `## 背景`・`### 経緯` を持つ D-1 を開く / 案 A の `content` が `# 案`・`## 中身` を持つ D-2 を開く / `reason` が `# 手順` を持つタスク T-1 を開く / `lead` が見出しを持たず `**強調**` だけの D-3 を開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: D-1 は `data-key` が `lead` の要素の中で「背景」が `h3`、「経緯」が `h4` / D-2 は `data-key` が `options[A].content` の要素の中で「案」が `h4`、「中身」が `h5` / T-1 は `data-key` が `reason` の要素の中で「手順」が `h3` / D-3 は `lead` の要素が見出しを持たず `strong` を持つ。どれも見出しの `data-md-level` は元の段のまま
+      - name: test_detail_panel_when_diff_key_newlines
+        case: 正常
+        summary: キーの差分の前の値と今の値で、改行を改行として出し、改行をまたぐ語の面を行ごとに付ける
+        condition: '`parametrize`: `lead` を `要件を決める。\n期限は来週。` → `要件を決める。\n期限は今週。` にした D-1 / `lead` を `予定は来週の会議で決める` → `予定は今週\n明日の会議で決める` にした D-1（変わった範囲が改行をまたぐ）を、いずれも `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '1 つ目のケースで、`data-key` が `lead` の要素の `del.df-was`・`ins.df-now` の計算後の `white-space` が改行を残す値（`pre-wrap` か `pre-line`）で、どちらも `getClientRects()` の箱の `top` が 2 種類ある。`span.df-word.df-del` は `来週` だけ、`span.df-word.df-add` は `今週` だけ。2 つ目のケースで、`ins.df-now` の `span.df-word.df-add` の文字をつなげると `今週\n明日` になり、その `getClientRects()` のうち幅を持つ箱が、改行の前の行と後の行の両方（`top` が 2 種類）にある。どちらのケースも `span.sr-only` の「前の値: 」「今の値: 」は `span.df-word` の外'
+      - name: test_detail_panel_when_body_view
+        case: 正常
+        summary: 本文に見せ方を当て、本文の差分には開閉を置かず、畳んだ見出しへ移るときは開く
+        condition: 'h2「比較」の下に表を持つ資料。`parametrize`: `bodyView` が `BODY_VIEW_DEFAULT` / `bodyView` の `stripes` が真 / 本文を変えた時点の `diff` / 「比較」を畳んだ後に `heading` を「比較」の下の h3 にして描き直す'
+        mock: なし（DOM を作って見る）
+        expected: 「比較」に開閉の矢印があり、表が `md-table-frame` に入り `md-head-stick` を持つ / 表が `md-stripes` を持つ / 開閉の矢印が無く、表は `md-table-frame` に入る / h3 を包む入れ物が開き、h3 が本文のスクロール領域の中で画面に入る
+      - name: test_detail_panel_when_export_entry
+        case: 正常
+        summary: 本文が Markdown の資料にだけエクスポートの入口を置く
+        condition: '`parametrize`: 本文が Markdown の資料 A-1 / 本文が HTML の資料 A-2 / 検討事項 D-1 / A-1 を編集の表示で開く / A-1 を配る書き出し（`comment` と `edit` が `null`）で開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 「エクスポート」が全画面表示のボタンの左にある / 無い / 無い / 無い / ある
+      - name: test_detail_panel_when_export_html
+        case: 正常
+        summary: HTML でエクスポートすると 1 枚の HTML を保存させ、メニューを閉じて入口へフォーカスを戻す
+        condition: A-1 を開き、「エクスポート」→「HTML でエクスポート」を押す
+        mock: 描画のライブラリの配信元（`page.route`）・`page.expect_download`
+        expected: '`A-1.html` が保存され、中に `#doc-mdmark` と A-1 のタイトルを持つ。メニューが閉じ、入口の `aria-expanded` が `false` でフォーカスが入口にある'
+      - name: test_detail_panel_when_export_markdown
+        case: 正常
+        summary: Markdown でエクスポートすると警告を挙げ、埋め込んだ HTML を除いた本文を保存させる
+        condition: '`<!-- html -->` の範囲を持つ A-1 を開き、「エクスポート」→「Markdown でエクスポート」を押し、警告で「戻る」、もう一度「Markdown でエクスポート」→「エクスポート」を押す'
+        mock: 描画のライブラリの配信元（`page.route`）・`page.expect_download`
+        expected: 1 回目の押下では何も保存されず警告が出て、「戻る」でフォーカスが「Markdown でエクスポート」にある。「エクスポート」で `A-1.md` が保存され、中身が `stripEmbeddedHtml` の結果と同じ
+      - name: test_detail_panel_when_export_retry
+        case: 異常
+        summary: mdmark の中身を取れないときはエラーを出し、再試行でやり直す
+        condition: 最初の mdmark の CSS の要求だけを失敗させて A-1 の「HTML でエクスポート」を押し、「再試行」を押す
+        mock: 描画のライブラリの配信元（`page.route`。1 回目だけ 404）・`page.expect_download`
+        expected: メニューがエラーの文を `role="alert"` で出し、保存されない。「再試行」で `A-1.html` が保存されメニューが閉じる
+      - name: test_detail_panel_when_embedded_html_diff
+        case: 正常
+        summary: 変わった埋め込んだ HTML の範囲だけを HTML の本文の差分に置き換える
+        condition: 範囲 2 つを持ち、2 つ目の範囲の 1 つ目の段落を書き換えて末尾に段落を足した A-1 を `diff` つきで開き、「描いた結果（変更後）」を押す
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: 1 つ目の範囲はそのまま描かれ、2 つ目の範囲の場所に「埋め込んだ HTML」の差分が「原文の差分」を選んだ状態で出る。変更後では書き換えた段落に変わったマーカー、足した段落に足したマーカーが付き、範囲の中に本文の行の差分のマーカー（`ins.df-blk`）が無い
+      - name: test_detail_panel_when_main_tag
+        case: 正常
+        summary: タグの行は主題のマーカーを付けて描き、差分の表示でも前後をタグの並びで描く
+        condition: '`parametrize`: `tags` が `[{name: 画面}, {name: データ, main: true}]` の D-1 を開く / 選んだ時点で `tags` を `[{name: データ}]` → `[{name: データ, main: true}]` にした D-1 を `diff` つきで開く'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: タグの行の `span.tag` が `画面`・`データ` の順（記録の順）で `データ` だけが主題のマーカーを持ち、画面に「主題」の文字が出ない / `del.df-was` の `span.tag` `データ` がマーカーを持たず、`ins.df-now` の `span.tag` `データ` がマーカーを持つ
+      - name: test_detail_panel_when_review_folded
+        case: 正常
+        summary: レビュー中のコメントの長い本文を Markdown で描いて畳む
+        condition: 'D-1 へのコメント C-63（「頭の 1 行 + `1.`〜`7.` の番号付きのリスト」の 8 行）と C-65（1 行）。`parametrize`: `expanded` が空 / `expanded` に C-63'
+        mock: '`comment.edit.on.fold`'
+        expected: C-63 の本文が `ol` を持ち（リストの行に行の並びの罫線が無い）、`folded` で本文の下に `data-focus` が `detail-more:C-63` の「続きを読む」。C-65 には開閉のボタンが無い。押すと `on.fold` が `(C-63, true)` / C-63 が `folded` を持たず「折りたたむ」
+  - name: panelResizer
+    title: 幅の区切り
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail.ts
+    usecase: 項目の詳細を読む
+    summary: 画面設計『詳細パネル』の要素「幅の区切り」を描き（`role="separator"`・`aria-orientation="vertical"`・`aria-label="詳細パネルの幅"`・`tabindex="0"`）、`panelWidthMax`・`clampPanelWidth` で収めた幅を `document.documentElement` の `--panel-w` と `aria-valuemin` / `aria-valuemax` / `aria-valuenow` に当てる。ポインターを押すとフォーカスを移して `setPointerCapture` し、動かすたびに押した位置からの差で持っている幅を変え（左へ動かすと広げる）、`requestAnimationFrame` で予約した 1 回で当てる（予約済みなら予約し直さない）。終わりは、押したときに `document` へ付けた `lostpointercapture` のリスナーで、押したときの `pointerId` に絞って受ける（離した・中断したときは区切りから泡立って届き、区切りが文書から外れたときは `document` に直接届く）。終わりではリスナーを外し、予約を取り消して、区切りが文書に残っていれば最後の幅を当て、押したときから幅が変わっていれば `onChange` を 1 回呼ぶ。ドラッグ中の幅はモジュールの変数に持ち、ドラッグ中に作られた区切り（記録の書き換えで詳細パネルを描き直したとき）は、`stored` の代わりにその幅から始める。←・→ は `PANEL_WIDTH.step` ずつ、Home は下限、End は上限にし、押すたびに当てて `onChange` を呼ぶ。描いたときと窓の幅が変わるたびに、最後に変えた幅（変えていなければ `stored`、それも無ければ `PANEL_WIDTH.default`）を今の上限に収めて当て直す（収めても `onChange` は呼ばない）。窓の幅の受け取りは、区切りが文書から外れたら外す。下限・上限で止まっている間は、その向きだけのカーソル（`w-resize` / `e-resize`）にする
+    props:
+      - name: stored
+        type: number | null
+        required: true
+        description: そのタブで変えた幅（入口の `readPanelWidth`）
+      - name: mapView
+        type: () => boolean
+        required: true
+        description: 今、検討事項のマップを出しているか
+      - name: onChange
+        type: '(width: number) => void'
+        required: true
+        description: ドラッグを終えたときとキーで変えたときに、変えた幅を知らせる（入口が `writePanelWidth` で残す）
+    unit_tests:
+      - name: test_panel_resizer
+        case: 正常
+        summary: 残した幅を上限に収めて当て、ドラッグで幅を変えて知らせる
+        condition: '表示の幅 1280、マップ以外。`parametrize`: `stored` が `null` / 768 / 1000'
+        mock: '`onChange`（受けた幅を並べる関数）'
+        expected: '`--panel-w` と `aria-valuenow` が 640 / 768 / 880、`aria-valuemin` が 480、`aria-valuemax` が 880 で、どれも `onChange` を呼ばない。続けて 100px 左へ動かすと、次のフレームで幅が 740 / 868 / 880（上限で止まる）になり、離すまで `onChange` を呼ばない。離すと `onChange` がその幅で 1 回だけ呼ばれる'
+      - name: test_panel_resizer_keys
+        case: 正常
+        summary: 矢印キーで刻み、Home・End で下限・上限にする
+        condition: 表示の幅 1280、`stored` 640。区切りにフォーカスして ← / → / Home / End を順に押す
+        mock: '`onChange`'
+        expected: 幅が 656 / 640 / 480 / 880 になり、`onChange` がその順で 4 回呼ばれる
+      - name: test_panel_resizer_when_window_resized
+        case: 正常
+        summary: 窓の幅が変わると残した幅を収め直し、広げ直すと残した幅に戻す
+        condition: 表示の幅 1280、`stored` 880 で描き、1000 に狭めてから 1280 に戻す
+        mock: '`onChange`'
+        expected: 狭めた後は幅と `aria-valuemax`・`aria-valuenow` が 840、戻した後は幅が 880。`onChange` は呼ばれない
+      - name: test_panel_resizer_when_moved_within_frame
+        case: 正常
+        summary: 1 フレームの間の動きをまとめて 1 回当て、離すと最後の位置の幅を当てる
+        condition: 表示の幅 1280、`stored` 640。押してから、次のフレームまでに押した位置から 20px・40px・60px 左の位置へ順に動かし、次のフレームを待ってから、80px 左の位置へ動かしてすぐに離す
+        mock: '`onChange`'
+        expected: 次のフレームまでは `--panel-w` が 640 のまま。次のフレームで 700 になる。離すとフレームを待たずに 720 になり、`onChange` が 720 で 1 回だけ呼ばれる
+      - name: test_panel_resizer_when_released_without_moving
+        case: 正常
+        summary: 幅を変えずに離すと知らせない
+        condition: 表示の幅 1280、`stored` 640。押して動かさずに離す
+        mock: '`onChange`'
+        expected: 幅が 640 のままで、`onChange` を呼ばない
+      - name: test_panel_resizer_when_removed_while_dragging
+        case: 正常
+        summary: ドラッグ中に区切りが文書から外れると、最後の幅を知らせ、作り直した区切りはその幅から始める
+        condition: 表示の幅 1280、`stored` 640。押して 100px 左の位置へ動かし、次のフレームの前に区切りを文書から外して、`stored` 640 の区切りを新しく描く。続けてフレームを進める
+        mock: '`onChange`'
+        expected: '`onChange` が 740 で 1 回だけ呼ばれる。新しい区切りの `aria-valuenow` と `--panel-w` が 740 で、フレームを進めても外した区切りが `--panel-w` を書き換えない'

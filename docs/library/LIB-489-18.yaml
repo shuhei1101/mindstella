@@ -1,0 +1,43 @@
+id: LIB-489-18
+title: react
+kind: ライブラリ
+version:
+  current: 19.3.1
+  latest: 19.3.1
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 19.3.1 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 19.3.1
+    entries:
+      - name: createRoot
+        kind: 関数
+        purpose: '#root に描く（react-dom/client）'
+      - name: StrictMode
+        kind: 部品
+        purpose: 開発時に副作用の二重実行で誤りを見つける
+      - name: useRef / useEffect
+        kind: フック
+        purpose: 次に検討する項目のタイルの枠の大きさを ResizeObserver で受ける
+lead: UI を部品の木として描き、状態の変化に合わせて差分だけを DOM へ当てるライブラリ。
+purl: pkg:npm/react
+dependency_scope: 必須
+adoption: 採用
+used_in:
+  - frontend/src/main.tsx
+upstream: facebook/react
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: vite build で frontend/ を束ね、Storybook（react-vite）でトップバーの 47 の状態と概要の画面がコンソールのエラー無く描かれること、Vitest + Testing Library の 22 件が通ることを確かめた
+license: MIT
+official_url: https://react.dev/
+docs_url: https://react.dev/reference/react
+install: '```bash
+
+  npm install --save-exact react@19.3.1 react-dom@19.3.1
+
+  npm install --save-dev --save-exact @types/react@19.3.0 @types/react-dom@19.3.0
+
+  ```'

@@ -1,0 +1,661 @@
+# AI Monitor f135cff63 の dev/テンプレート/変換/v0.4.0.py で、dev/ の置き場所のまま設計書を変換する
+$ cd /tmp/ai-monitor-f135cff63 && PYTHONPATH=src uv run python -m ai_monitor.design_docs convert --root /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-docs-merge-dev-into-docs --from v0.3.0 --to v0.4.0 --number 489
+
+## 1 回目（9b8f80a0。変換は拒否され、何も書き換えていない）
+{"changed": [], "problems": [{"file": "dev/設計書/モジュール構成/frontend/src/shared/core/body-render.ts.yaml", "item_path": "functions[renderBodyDiff]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/dom-parts.ts.yaml", "item_path": "functions[h]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/format.ts.yaml", "item_path": "functions[formatJst]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/html-body-diff.ts.yaml", "item_path": "functions[htmlBodyDiff]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/html-frame.ts.yaml", "item_path": "functions[htmlFrameElement]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/list-rows.ts.yaml", "item_path": "functions[filterRows]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/lock.ts.yaml", "item_path": "functions[lockTap]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/markdown-decorate.ts.yaml", "item_path": "functions[decorateMarkdown]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/minimap.ts.yaml", "item_path": "functions[attachMinimap]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/side-by-side.ts.yaml", "item_path": "functions[sideBySideBodyDiff]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/core/term-tips.ts.yaml", "item_path": "functions[attachTermTips]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/hooks/use-records.ts.yaml", "item_path": "functions[useRecords]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/hooks/use-screen-edit.ts.yaml", "item_path": "functions[useScreenEdit]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/hooks/use-visible-kinds.ts.yaml", "item_path": "functions[useVisibleKinds]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/stores/edit-session-store.ts.yaml", "item_path": "functions[useEditSessionStore]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/stores/prefs-store.ts.yaml", "item_path": "functions[readBodyScrolls]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/frontend/src/shared/stores/prefs-store.ts.yaml", "item_path": "functions[writeBodyScroll]", "kind": "instance", "reason": "container がありません", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/ゴール判定.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_graph.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/ゴール判定.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_commands.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/入口.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_server.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/入口.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_commands.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_versions.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_migrator.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_migration_ops.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_backup.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_migration_coverage.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_field_to_playbooks.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_answer_to_adopted_option.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_submissions_to_threads.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_tags_to_vocabulary.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_remove_tag_vocabulary.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/移行.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_tags_to_objects.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_kinds.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_store.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/起動.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_check_env.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/起動.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_launch.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/サーバー/起動.py.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/scripts/test_ensure_server.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_records.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_libs.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_router.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_dom.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_api.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_lock.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_voice.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_edits.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_doc_export.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_table.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_tasks.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_docs.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_decisions.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_graph.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_send_form.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_selection_comment.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_comments_panel.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_detail.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_overview.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_settings_panel.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_settings_confirm.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_settings.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_comment_mark.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_looks.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_term_tip.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_reply_form.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_thread_row.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_thread_post.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_diff_minimap.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_body_diff_layout_switch.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_side_by_side_body_diff.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_pending_mark.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_pending_edits.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_workspace_settings.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_detail_edit.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_markdown_body.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_review_body_fold.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_tag_list.py", "description": null, "constraints": null, "allowed_items": []}, {"file": "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml", "item_path": "test_files", "kind": "instance", "reason": "テストファイルの振り分け先がありません: tests/unit/preview/test_chips_input.py", "description": null, "constraints": null, "allowed_items": []}], "existing_problems": [], "created": [], "deleted": []}
+
+## container を書いた後（98602505）に、テストファイルの振り分け先（docstring の 1 行目が指す物理ファイル）を渡して流した 2 回目
+振り分け先: 
+{
+ "tests/unit/scripts/test_graph.py": "plugins/mindstella/skills/mindmap/scripts/graph.py",
+ "tests/unit/scripts/test_commands.py": "plugins/mindstella/skills/mindmap/scripts/commands.py",
+ "tests/unit/scripts/test_server.py": "plugins/mindstella/skills/mindmap/scripts/server.py",
+ "tests/unit/scripts/test_versions.py": "plugins/mindstella/skills/mindmap/scripts/versions.py",
+ "tests/unit/scripts/test_migrator.py": "plugins/mindstella/skills/mindmap/scripts/migrator.py",
+ "tests/unit/scripts/test_migration_ops.py": "plugins/mindstella/skills/mindmap/scripts/migration_ops.py",
+ "tests/unit/scripts/test_backup.py": "plugins/mindstella/skills/mindmap/scripts/backup.py",
+ "tests/unit/scripts/test_migration_coverage.py": "plugins/mindstella/skills/mindmap/scripts/migrator.py",
+ "tests/unit/scripts/test_field_to_playbooks.py": "plugins/mindstella/skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py",
+ "tests/unit/scripts/test_answer_to_adopted_option.py": "plugins/mindstella/skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py",
+ "tests/unit/scripts/test_submissions_to_threads.py": "plugins/mindstella/skills/mindmap/migrations/v0.8.0/scripts/submissions_to_threads.py",
+ "tests/unit/scripts/test_tags_to_vocabulary.py": "plugins/mindstella/skills/mindmap/migrations/v0.10.0/scripts/tags_to_vocabulary.py",
+ "tests/unit/scripts/test_remove_tag_vocabulary.py": "plugins/mindstella/skills/mindmap/migrations/v0.11.0/scripts/remove_tag_vocabulary.py",
+ "tests/unit/scripts/test_tags_to_objects.py": "plugins/mindstella/skills/mindmap/migrations/v0.12.0/scripts/tags_to_objects.py",
+ "tests/unit/scripts/test_kinds.py": "plugins/mindstella/skills/mindmap/scripts/kinds.py",
+ "tests/unit/scripts/test_store.py": "plugins/mindstella/skills/mindmap/scripts/store.py",
+ "tests/unit/scripts/test_check_env.py": "plugins/mindstella/skills/mindmap/scripts/check_env.py",
+ "tests/unit/scripts/test_launch.py": "plugins/mindstella/skills/mindmap/scripts/launch.py",
+ "tests/unit/scripts/test_ensure_server.py": "plugins/mindstella/skills/mindmap/scripts/ensure_server.py",
+ "tests/unit/preview/test_records.py": "plugins/mindstella/skills/mindmap/preview/core/records.ts",
+ "tests/unit/preview/test_libs.py": "plugins/mindstella/skills/mindmap/preview/core/libs.ts",
+ "tests/unit/preview/test_router.py": "plugins/mindstella/skills/mindmap/preview/core/router.ts",
+ "tests/unit/preview/test_dom.py": "plugins/mindstella/skills/mindmap/preview/core/dom.ts",
+ "tests/unit/preview/test_api.py": "plugins/mindstella/skills/mindmap/preview/core/api.ts",
+ "tests/unit/preview/test_lock.py": "plugins/mindstella/skills/mindmap/preview/core/lock.ts",
+ "tests/unit/preview/test_voice.py": "plugins/mindstella/skills/mindmap/preview/core/voice.ts",
+ "tests/unit/preview/test_edits.py": "plugins/mindstella/skills/mindmap/preview/core/edits.ts",
+ "tests/unit/preview/test_doc_export.py": "plugins/mindstella/skills/mindmap/preview/core/doc-export.ts",
+ "tests/unit/preview/test_table.py": "plugins/mindstella/skills/mindmap/preview/components/table.ts",
+ "tests/unit/preview/test_tasks.py": "plugins/mindstella/skills/mindmap/preview/screens/tasks.ts",
+ "tests/unit/preview/test_docs.py": "plugins/mindstella/skills/mindmap/preview/screens/docs.ts",
+ "tests/unit/preview/test_decisions.py": "plugins/mindstella/skills/mindmap/preview/screens/decisions.ts",
+ "tests/unit/preview/test_graph.py": "plugins/mindstella/skills/mindmap/preview/graph/graph.ts",
+ "tests/unit/preview/test_send_form.py": "plugins/mindstella/skills/mindmap/preview/components/send-form.ts",
+ "tests/unit/preview/test_selection_comment.py": "plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts",
+ "tests/unit/preview/test_comments_panel.py": "plugins/mindstella/skills/mindmap/preview/screens/comments.ts",
+ "tests/unit/preview/test_detail.py": "plugins/mindstella/skills/mindmap/preview/screens/detail.ts",
+ "tests/unit/preview/test_overview.py": "plugins/mindstella/skills/mindmap/preview/screens/overview.ts",
+ "tests/unit/preview/test_settings_panel.py": "plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts",
+ "tests/unit/preview/test_settings_confirm.py": "plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts",
+ "tests/unit/preview/test_settings.py": "plugins/mindstella/skills/mindmap/preview/screens/settings.ts",
+ "tests/unit/preview/test_comment_mark.py": "plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts",
+ "tests/unit/preview/test_looks.py": "plugins/mindstella/skills/mindmap/preview/graph/looks.ts",
+ "tests/unit/preview/test_term_tip.py": "plugins/mindstella/skills/mindmap/preview/components/term-tip.ts",
+ "tests/unit/preview/test_reply_form.py": "plugins/mindstella/skills/mindmap/preview/components/reply-form.ts",
+ "tests/unit/preview/test_thread_row.py": "plugins/mindstella/skills/mindmap/preview/components/thread-row.ts",
+ "tests/unit/preview/test_thread_post.py": "plugins/mindstella/skills/mindmap/preview/components/thread-post.ts",
+ "tests/unit/preview/test_diff_minimap.py": "plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts",
+ "tests/unit/preview/test_body_diff_layout_switch.py": "plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts",
+ "tests/unit/preview/test_side_by_side_body_diff.py": "plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts",
+ "tests/unit/preview/test_pending_mark.py": "plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts",
+ "tests/unit/preview/test_pending_edits.py": "plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts",
+ "tests/unit/preview/test_workspace_settings.py": "plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts",
+ "tests/unit/preview/test_detail_edit.py": "plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts",
+ "tests/unit/preview/test_markdown_body.py": "plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts",
+ "tests/unit/preview/test_review_body_fold.py": "plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts",
+ "tests/unit/preview/test_tag_list.py": "plugins/mindstella/skills/mindmap/preview/components/tag-list.ts",
+ "tests/unit/preview/test_chips_input.py": "plugins/mindstella/skills/mindmap/preview/components/chips-input.ts"
+}
+{
+ "problems": [],
+ "existing_problems": [
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#0].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#0].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#10].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#10].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#11].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#11].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#12].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#12].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#13].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#13].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#14].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#14].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#15].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#15].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#16].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#16].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#1].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#1].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#2].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#2].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#3].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#3].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#4].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#4].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#5].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#5].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#6].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#6].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#7].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#7].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#8].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#8].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#9].from_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ元の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "dev/設計書/ER図/ワークスペース.yaml",
+   "item_path": "er.relations[#9].to_column",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "関連が結ぶ先の実体の列の名前。",
+   "constraints": {
+    "type": "string"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "docs/pr/487/反映作業/index.yaml",
+   "item_path": "items",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "フォルダの直下のページとサブフォルダ。深い階層はサブフォルダの `index.yaml` が持つ。\n並びがサイドバーの並びになる（利用頻度・重要度の高い順。同じ種類を連続させる）。",
+   "constraints": {
+    "type": "array"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "docs/pr/487/反映作業/index.yaml",
+   "item_path": "summary",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "フォルダの 1 行の説明。親の `index.yaml` のこのフォルダの行の `summary` と同じ文言にする。",
+   "constraints": {
+    "type": "string",
+    "minLength": 1,
+    "pattern": "^[^\\n]+$"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "docs/pr/487/反映作業/index.yaml",
+   "item_path": "プラグインの取り直し",
+   "kind": "instance",
+   "reason": "Schema に無い項目",
+   "description": null,
+   "constraints": null,
+   "allowed_items": [
+    "title",
+    "summary",
+    "docs_index",
+    "columns",
+    "items"
+   ]
+  },
+  {
+   "file": "docs/pr/489/反映作業/index.yaml",
+   "item_path": "Pages の配信元の切り替え",
+   "kind": "instance",
+   "reason": "Schema に無い項目",
+   "description": null,
+   "constraints": null,
+   "allowed_items": [
+    "title",
+    "summary",
+    "docs_index",
+    "columns",
+    "items"
+   ]
+  },
+  {
+   "file": "docs/pr/489/反映作業/index.yaml",
+   "item_path": "items",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "フォルダの直下のページとサブフォルダ。深い階層はサブフォルダの `index.yaml` が持つ。\n並びがサイドバーの並びになる（利用頻度・重要度の高い順。同じ種類を連続させる）。",
+   "constraints": {
+    "type": "array"
+   },
+   "allowed_items": []
+  },
+  {
+   "file": "docs/pr/489/反映作業/index.yaml",
+   "item_path": "summary",
+   "kind": "instance",
+   "reason": "必須の項目が無い",
+   "description": "フォルダの 1 行の説明。親の `index.yaml` のこのフォルダの行の `summary` と同じ文言にする。",
+   "constraints": {
+    "type": "string",
+    "minLength": 1,
+    "pattern": "^[^\\n]+$"
+   },
+   "allowed_items": []
+  }
+ ],
+ "changed": 397,
+ "created": [
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/migrations/v0.10.0/scripts/tags_to_vocabulary.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/migrations/v0.11.0/scripts/remove_tag_vocabulary.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/migrations/v0.12.0/scripts/tags_to_objects.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/migrations/v0.7.0/scripts/answer_to_adopted_option.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/migrations/v0.8.0/scripts/submissions_to_threads.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/app.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/body-diff-layout-switch.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/chips-input.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/doc-export-menu.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/removed-band.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/reply-form.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/send-form.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/side-by-side-body-diff.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/table.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/tag-list.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/term-tip.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/thread-post.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/thread-row.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/topbar.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/view-switch.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/api.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/diff.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/doc-export.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/dom.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/edits.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/libs.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/lock.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/records.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/router.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/core/voice.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/graph/graph.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/graph/looks.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/comments.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/decisions.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/detail.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/diagram-viewer.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/docs.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/overview.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/records.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/search.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/settings.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/tasks.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/backup.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/builder.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/check_env.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/checker.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/claude_input.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/commands.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/comments.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/edits.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/ensure_server.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/errors.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/graph.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/history.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/html_body.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/inject_session.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/kinds.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/launch.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/locations.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/migration_ops.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/migrator.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/query.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/readme.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/reset_unread.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/serve.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/server.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/settings_update.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/store.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/tag_text.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/threads.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/transcriber.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/versions.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/mindmap/scripts/voice_paste.py.yaml",
+  "dev/設計書/モジュール構成/plugins/mindstella/skills/setup/scripts/register.py.yaml",
+  "dev/設計書/モジュール構成/分類/サーバー/ゴール判定.yaml",
+  "dev/設計書/モジュール構成/分類/サーバー/依存と影響.yaml",
+  "dev/設計書/モジュール構成/分類/サーバー/入口.yaml",
+  "dev/設計書/モジュール構成/分類/サーバー/移行.yaml",
+  "dev/設計書/モジュール構成/分類/サーバー/読み書きと検証.yaml",
+  "dev/設計書/モジュール構成/分類/サーバー/起動.yaml",
+  "dev/設計書/モジュール構成/分類/プレビュー/React.yaml",
+  "dev/設計書/モジュール構成/分類/プレビュー/基盤.yaml",
+  "dev/設計書/モジュール構成/分類/プレビュー/画面と部品.yaml"
+ ],
+ "deleted": [
+  "dev/設計書/モジュール構成/サーバー/ClaudeCodeへの入力.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/HTMLの本文.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/voice-pasteの文字起こし.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/コメント.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/ゴール判定.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/スレッド.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/セッションの値の注入.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/タグの表記.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/ビルド.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/ワークスペースのREADME.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/依存と影響.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/保存待ちの編集.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/入口.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/変更履歴.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/文字起こし.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/文字起こしの引き当て.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/未読へ戻す.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/検索.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/点検.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/登録.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/移行.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/箇所.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/設定の更新.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/読み書きと検証.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/起動.py.yaml",
+  "dev/設計書/モジュール構成/サーバー/配信.py.yaml",
+  "dev/設計書/モジュール構成/プレビュー/React.yaml",
+  "dev/設計書/モジュール構成/プレビュー/入口.ts.yaml",
+  "dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml",
+  "dev/設計書/モジュール構成/プレビュー/差分.ts.yaml",
+  "dev/設計書/モジュール構成/プレビュー/画面と部品.ts.yaml"
+ ]
+}

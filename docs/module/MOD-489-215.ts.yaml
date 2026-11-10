@@ -1,0 +1,72 @@
+id: MOD-489-215
+title: プレビュー / 画面と部品 / comment-mark.ts
+test_files:
+  - tests/unit/preview/test_comment_mark.py
+functions:
+  - name: refreshCommentMarks
+    title: コメントの印の差し替え
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: コメントを選んで送る
+    kind: 関数
+    scope: public
+    summary: 本文の画面の中の印を置く場所（`data-comment-target` を持つ要素。カード・節点・字下げの一覧の行・表の行が描くときに項目の ID を入れて置く）ごとに、`counts` の件数で `commentMark` を入れ替える。件数が無い場所は空にする。画面を描き直さないので、スクロールの位置・マップの拡大と位置は動かない
+    args:
+      - name: root
+        type: ParentNode
+        required: true
+        passing: keyword
+        description: 本文の画面の要素
+      - name: counts
+        type: Record<string, number>
+        required: true
+        passing: keyword
+        description: 項目の ID → 件数（入口の `commentCounts`）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_refresh_comment_marks
+        case: 正常
+        summary: 件数のある場所に印を入れ、無くなった場所を空にする
+        condition: 'D-1（印 2 件）・D-2（印なし）・T-1（印 1 件）の場所を持つ要素に `counts` `{"D-1": 1, "D-2": 3}` を渡す'
+        mock: なし
+        expected: D-1 の印が 1、D-2 に 3 の印が入り、T-1 の場所が空になる。場所の外の要素とスクロールの位置は変わらない
+      - name: test_comment_mark_label
+        case: 正常
+        summary: 99 を超えると画面は「99+」、読み上げは実数
+        condition: '`parametrize`: `count` 1 / 99 / 100 / 128'
+        mock: なし
+        expected: 画面の数字が 1 / 99 / 99+ / 99+、読み上げの文字と `title` が「コメント 1 件」/「コメント 99 件」/「コメント 100 件」/「コメント 128 件」
+  - name: commentPlace
+    title: コメントの印を置く場所
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: 項目へコメントする
+    kind: 関数
+    scope: public
+    summary: 項目の印を置く場所（`data-comment-target` に項目の ID を持ち、自分では箱を作らない `span`）を返す。件数が 1 以上なら `commentMark` を入れ、無ければ空で返す。ボード・カード・マップの節点・字下げの一覧・表が `comments` を受けたときに置き、`refreshCommentMarks` が中身を差し替える
+    args:
+      - name: id
+        type: string
+        required: true
+        passing: keyword
+        description: 項目の ID
+      - name: count
+        type: number | undefined
+        required: true
+        passing: keyword
+        description: その項目の件数（`comments[id]`。無ければ `undefined`）
+    returns:
+      type: HTMLElement
+      description: 印を置く場所
+components:
+  - name: commentMark
+    title: コメントの印
+    container: plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 部品設計『コメントの印』の引数を受け、吹き出しの線と件数（99 を超えると「99+」）、読み上げにだけ残す「コメント {実数} 件」と `title` を持つ `span` を返す。ボード・カード・マップの節点・字下げの一覧・表・ネットワークの名前の横が使う
+    props:
+      - name: count
+        type: number
+        required: true
+        description: レビュー中のコメントの件数（1 以上）

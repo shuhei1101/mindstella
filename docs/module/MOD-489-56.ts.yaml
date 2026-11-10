@@ -1,0 +1,41 @@
+id: MOD-489-56
+title: プレビュー / api-client
+lead: orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる。
+functions:
+  - name: apiClient
+    title: API の呼び出し
+    kind: 関数
+    container: frontend/src/shared/adapters/api-client.ts
+    usecase: 共通
+    is_async: true
+    summary: orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
+    args:
+      - name: url
+        type: string
+        required: true
+        description: 生成した関数が組んだ URL
+      - name: options
+        type: RequestInit
+        required: false
+        description: fetch の option
+    returns:
+      type: Promise<{data, status, headers}>
+      description: orval が期待する応答
+    exceptions:
+      - name: AppError
+        condition: ステータスが 2xx でない
+    unit_tests:
+      - name: test_api_client
+        case: 正常
+        summary: 成功の本文を返す
+        condition: MSW で 200 と JSON
+        mock: MSW
+        expected: '`data` が本文、`status` が 200'
+      - name: test_api_client_when_error
+        case: 異常
+        summary: 失敗を AppError にする
+        condition: MSW で 422 と problem+json
+        mock: MSW
+        expected: '`AppError`（`statusCode` 422）を投げる'
+notes:
+  単体テスト: 同じフォルダの `api-client.test.ts` に置く（knowledge の規約『フォルダ構成』）

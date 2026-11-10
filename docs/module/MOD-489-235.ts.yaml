@@ -1,0 +1,15 @@
+id: MOD-489-235
+title: プレビュー / 画面と部品 / withdrawn-badge.ts
+components:
+  - name: withdrawnBadge
+    title: 取り下げの札
+    container: plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.ts
+    usecase: 項目の詳細を読む
+    kind: コンポーネント
+    summary: 部品設計『取り下げの札』の引数を受け、検討事項の状態「取り下げ」と同じ × の印（`statusMark("取り下げ")`。`aria-hidden`）と文言「取り下げ」に枠を付けた札を返す。表の行・資料のカードとボードのカード・詳細パネルの題が使う
+    props:
+      - name: large
+        type: boolean
+        required: false
+        default: 'false'
+        description: 詳細パネルの題の大きさにするか

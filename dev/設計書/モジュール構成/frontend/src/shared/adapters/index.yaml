@@ -1,8 +1,0 @@
-summary: '`frontend/src/shared/adapters/` の React のプレビューのモジュール'
-items:
-- page: api-client.ts.yaml
-  summary: orval の mutator。fetch で呼び、成功は本文と status を返し、失敗は AppError を投げる
-- page: events-client.ts.yaml
-  summary: インターフェース定義『書き換えの知らせ』
-- page: libraries.ts.yaml
-  summary: 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」）

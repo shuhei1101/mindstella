@@ -1,0 +1,12 @@
+id: MOD-489-92
+title: プレビュー / input
+lead: shadcn/ui の Input。
+components:
+  - name: Input
+    title: shadcn/ui の Input
+    kind: コンポーネント
+    usecase: 共通
+    summary: shadcn/ui の Input
+    container: frontend/src/shared/components/ui/input.tsx
+notes:
+  単体テスト: 同じフォルダの `input.test.tsx` に置く（knowledge の規約『フォルダ構成』）

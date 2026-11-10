@@ -1,0 +1,166 @@
+id: MOD-489-195
+title: プレビュー / 基盤 / router.ts
+test_files:
+  - tests/unit/preview/test_router.py
+data_models:
+  - name: Route
+    title: 画面の場所
+    container: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    usecase: 共通
+    summary: URL のハッシュが指す画面・表示形式・項目・絞り込み・差分の時点（インターフェース定義『プレビューを開く』のリクエスト）
+    properties:
+      - name: tab
+        type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'graph'"
+        description: 画面
+      - name: view
+        type: "'map' | 'board' | 'cards' | 'table'"
+        description: 表示形式
+      - name: id
+        type: string | null
+        description: 開いている項目
+      - name: full
+        type: boolean
+        description: 詳細を全画面で開いているか
+      - name: filters
+        type: Record<string, string[]>
+        description: 開いたときの `f.{列}`。どの表示形式でも、入口が絞り込みのドロワーの条件として受ける（`initialFilters`。書き戻さない）
+      - name: heading
+        type: string | null
+        description: 開いたときに詳細の本文で画面に入れる見出し（ハッシュの `h`。`headingSlug` の形）。`id` が無いときは `null`
+      - name: diff
+        type: string | null
+        description: 差分の表示で比べる時点（ハッシュの `diff`。`since`・`pending`・まとまりの ID）。記録にあるかは確かめず、入口が `resolveDiffPoint` で引く。無いときは `null`
+constants:
+  - name: DEFAULT_VIEW
+    title: 画面ごとの既定の表示形式
+    container: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    usecase: 共通
+    summary: '`tab` → 既定の `view`'
+    entries:
+      - key: decisions
+        value: board
+      - key: tasks
+        value: board
+      - key: docs
+        value: cards
+      - key: そのほか
+        value: table
+  - name: VIEWS_OF
+    title: 画面が持つ表示形式
+    container: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    usecase: 共通
+    summary: '`tab` → 切り替えられる `view` の並び'
+    entries:
+      - key: decisions
+        value: '["board", "map", "table"]'
+      - key: tasks
+        value: '["board", "table"]'
+      - key: docs
+        value: '["cards", "board", "table"]'
+      - key: そのほか
+        value: '["table"]'
+functions:
+  - name: parseHash
+    title: ハッシュを読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    usecase: 共通
+    scope: public
+    summary: URL のハッシュを `Route` にする
+    args:
+      - name: hash
+        type: string
+        required: true
+        passing: keyword
+        description: '`location.hash`'
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引（`id` が記録にあるかを見る）
+    returns:
+      type: Route
+      description: 画面の場所
+    process: |-
+      1. `#` の後ろを `URLSearchParams` で読む
+      2. `tab` が画面の値でなければ `overview`、`view` が `VIEWS_OF` に無ければ `DEFAULT_VIEW`
+      3. `id` が記録に無ければ `null`。`full` は `id` があり `1` のときだけ真。`heading` は `id` があるときの `h`（空なら `null`）
+      4. `f.` で始まるキーを `filters` に入れる。`f.~{列}` は文字の条件で、値を分けず 1 つの配列にする。それ以外は値を `|` で分ける
+      5. `diff` は値をそのまま入れる（空か無ければ `null`）
+    unit_tests:
+      - name: test_parse_hash
+        case: 正常
+        summary: 既定と誤った値を扱う
+        condition: '`parametrize`: 空 / `#tab=decisions&view=table&id=D-1&f.status=要見直し|保留` / `#tab=nope&view=cards` / `#tab=decisions&id=D-99&full=1` / `#tab=tasks&view=map` / `#tab=docs&view=board` / `#tab=docs&id=A-1&h=決め方-1` / `#tab=docs&h=決め方` / `#tab=terms&f.~title=a|b`'
+        mock: なし
+        expected: 'overview・table・null / decisions・table・D-1・`{status: [要見直し, 保留]}` / overview・table / decisions・board・null・full 偽 / tasks・board / docs・board / docs・A-1・`heading` が `決め方-1` / `id` が `null` で `heading` も `null` / `{"~title": ["a|b"]}`'
+      - name: test_parse_hash_diff
+        case: 正常
+        summary: 差分の時点を読む
+        condition: '`parametrize`: `#tab=decisions&diff=V-2` / `#diff=pending` / `#tab=decisions&diff=` / `#tab=decisions`'
+        mock: なし
+        expected: decisions・`diff` が `V-2` / overview・`diff` が `pending` / `diff` が `null` / `diff` が `null`
+  - name: toHash
+    title: ハッシュを作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    usecase: 共通
+    scope: public
+    summary: '`Route` を URL のハッシュにする（既定の値と `filters` は書かない）'
+    args:
+      - name: route
+        type: Route
+        required: true
+        passing: positional
+        description: 画面の場所
+    returns:
+      type: string
+      description: '`#tab=...&view=...&id=...&full=1&h=...&diff=...` の形（`h` は `heading` があるときだけ、`diff` は `diff` があるときだけ）。全て既定なら空文字'
+    unit_tests:
+      - name: test_to_hash
+        case: 正常
+        summary: 既定の値を書かない
+        condition: '`parametrize`: 概要の既定 / 検討事項の表で D-1 を全画面、`filters` あり / 検討事項のボード / 検討事項のマップ'
+        mock: なし
+        expected: 空 / `#tab=decisions&view=table&id=D-1&full=1`（`f.` を含まない） / `#tab=decisions`（既定の `board` は書かない） / `#tab=decisions&view=map`
+      - name: test_to_hash_heading
+        case: 正常
+        summary: 見出しを `h` に書く
+        condition: 資料のカードで A-1 を開き、`heading` が `決め方-1`
+        mock: なし
+        expected: '`#tab=docs&id=A-1&h=決め方-1`（`URLSearchParams` で読み戻すと同じ値）'
+      - name: test_to_hash_diff
+        case: 正常
+        summary: 差分の時点を diff に書く
+        condition: '`parametrize`: 概要の既定で `diff` が `V-2` / 検討事項の表で D-1 を開き `diff` が `since` / 概要の既定で `diff` が `null`'
+        mock: なし
+        expected: '`#diff=V-2` / `#tab=decisions&view=table&id=D-1&diff=since` / 空（`URLSearchParams` で読み戻すと同じ値）'
+  - name: navigate
+    title: 画面を移る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/router.ts
+    usecase: 共通
+    scope: public
+    summary: ハッシュを書き換え、履歴に積むか置き換える
+    side_effects: '`history.pushState` か `history.replaceState`'
+    args:
+      - name: route
+        type: Route
+        required: true
+        passing: keyword
+        description: 移る先
+      - name: push
+        type: boolean
+        required: true
+        passing: keyword
+        description: 履歴に積むか（画面の移動・項目の移動・幅 900px 以下で詳細パネルを開くときは真。表示形式の切り替え・詳細パネルの開閉・重ねる画面の開閉は偽）
+    returns:
+      type: void
+      description: '-'
+    unit_tests:
+      - name: test_navigate
+        case: 正常
+        summary: 積むか置き換えるかで履歴の長さが変わる
+        condition: '`parametrize`: `push` 真 / 偽'
+        mock: なし
+        expected: '`history.length` が 1 増える / 変わらず、`location.hash` が `toHash` の値'

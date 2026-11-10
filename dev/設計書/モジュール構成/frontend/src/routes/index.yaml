@@ -1,6 +1,0 @@
-summary: '`frontend/src/routes/` の React のプレビューのモジュール'
-items:
-- page: __root.tsx.yaml
-  summary: 子のルートを描く外枠。描画中のエラーは ErrorBoundary で受ける
-- page: index.tsx.yaml
-  summary: SPA のルート（`/`）。search の検証と先読みをして `PreviewShell` を描く
