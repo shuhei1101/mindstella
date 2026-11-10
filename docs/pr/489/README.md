@@ -1,8 +1,8 @@
-# dev/ を廃止して文書を docs/ 1 つにまとめ、公開分を mdmark で描く Pages の Actions の配信に切り替える
+# dev/ を廃止して文書を docs/ 1 つにまとめる
 
 ## 概要
 
-開発ドキュメント（`dev/`）と公開ドキュメント（`docs/`）を `docs/` 1 つにまとめ、公開分（`visibility: public`）だけを mdmark で描いて GitHub Actions で Pages へ配信する。
+開発ドキュメント（`dev/`）と公開ドキュメント（`docs/`）を `docs/` 1 つにまとめ、Pages には公開分（`visibility: public`）だけを出す。
 エージェントが、AI Monitor と同じく `docs/` だけを前提に文書を参照・記載できるようになる。
 
 ## 背景
@@ -17,7 +17,7 @@ AI Monitor は [shuhei1101/ai-monitor#3307](https://github.com/shuhei1101/ai-mon
 | ファイル | 中身 |
 | --- | --- |
 | [要件](./要件.md) | 移す先と修正する設定・参照の整理 |
-| [反映作業](./反映作業/index.yaml) | Pages の配信元の切り替え |
+| [確認ログ](./確認ログ.yaml) | ユーザーへの確認事項の決着 |
 
 ## テスト結果
 

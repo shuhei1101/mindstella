@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 公開ドキュメントの配信方式と URL
+    decision: この PR は従来の配信（Jekyll）のまま docs/guide/ へ移し、README のリンクを /guide/{ページ}.html に合わせる。mdmark と Actions への切り替えは別の Issue に分ける（推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/489#discussion_r4530019467

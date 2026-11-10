@@ -48,7 +48,7 @@ tasks:
     status: todo
     updated_by: planner
     updated_at: '2026-11-10T19:58:46.558275+00:00'
-    note: README の書き出し（IF-489-2）の公開ドキュメントのリンクを、移した後の URL にする（要件.md の未確定で URL が決まる）
+    note: README の書き出し（IF-489-2）の公開ドキュメントのリンクを /guide/{ページ}.html にする
   - process: 部品設計
     status: skipped
     reason: 画面の部品を変えない
@@ -74,7 +74,7 @@ tasks:
     note: tests/unit/scripts/test_readme.py の公開ドキュメントの URL の期待値
   - process: 実装
     status: todo
-    note: Pages を公開分だけ mdmark で描いて配信する `.github/workflows/` のワークフローを作る
+    note: readme.py が書き出す README の公開ドキュメントのリンクを /guide/{ページ}.html にする
   - process: 結合テスト作成
     status: todo
     updated_by: planner
