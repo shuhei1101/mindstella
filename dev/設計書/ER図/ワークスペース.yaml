@@ -1,88 +1,228 @@
+id: ER-489-1
 title: "ER 図: ワークスペース"
 lead: 1 つの話し合いのフォルダ（ワークスペース）が持つ YAML の形。正本は `plugins/mindstella/skills/mindmap/schemas/` の JSON Schema で、書き込む前に突き合わせる。ファイルとフォルダ（`docs/`・`release/` を含む）は全てワークスペースの直下の記録のフォルダ `.mindstella/` に置き、表の物理名は `.mindstella/` からのパス。画面はサーバーの配信で開き、ワークスペースには置かない。直下には `.mindstella/` のほかに、このフォルダの起動・接続のコマンドとプレビューの URL を一覧にした `README.md` をサーバーが書く（記録ではなく、1 行目の自動で書いた印を確かめるほかにどのツールも読まない）。
 er:
   entities:
     - name: 設定
+      columns:
+        - type: array
+          name: targets・categories・phases
+        - type: object
+          name: settings
     - name: 検討事項
+      columns:
+        - type: string
+          name: target・category・phase
+        - type: string
+          name: id
+          key: PK
+        - type: array
+          name: depends_on・parent
+          key: FK
+          comment: '参照: 検討事項.id'
+        - type: array
+          name: sources
+          key: FK
+          comment: '参照: 会話ログ.id'
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: タスク
+      columns:
+        - type: array
+          name: for
+          key: FK
+          comment: '参照: 検討事項.id'
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: 調査
+      columns:
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: 資料
+      columns:
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: 用語集
+      columns:
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: メモ
+      columns:
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: 会話ログ
+      columns:
+        - type: string
+          name: id
+          key: PK
+        - type: string
+          name: body
+          key: FK
+          comment: '参照: 本文.ファイル名'
     - name: 本文
+      columns:
+        - type: string
+          name: ファイル名
+          key: PK
     - name: 送信
+      columns:
+        - type: string
+          name: target
+          key: FK
+          comment: '参照: 検討事項.id'
+        - type: string
+          name: body
     - name: レビュー中のコメント
+      columns:
+        - type: string
+          name: target
+          key: FK
+          comment: '参照: 検討事項.id'
+        - type: string
+          name: body
     - name: 書きかけ
+      columns:
+        - type: string
+          name: target
+          key: FK
+          comment: '参照: 検討事項.id'
     - name: 保存待ちの編集
+      columns:
+        - type: string
+          name: target
+          key: FK
+          comment: '参照: 検討事項.id'
   relations:
     - from: 設定
       to: 検討事項
-      cardinality: '||--o{'
+      from_column: targets・categories・phases
+      to_column: target・category・phase
+      from_cardinality: '1'
+      to_cardinality: 0..n
       label: 対象・カテゴリー・フェーズで振り分ける
     - from: 検討事項
       to: 検討事項
-      cardinality: '}o--o{'
+      from_column: id
+      to_column: depends_on・parent
+      from_cardinality: 0..n
+      to_cardinality: 0..n
       label: depends_on・parent
     - from: 検討事項
       to: タスク
-      cardinality: '||--o{'
+      from_column: id
+      to_column: for
+      from_cardinality: '1'
+      to_cardinality: 0..n
       label: for で進められる
     - from: 会話ログ
       to: 検討事項
-      cardinality: '}o--o{'
+      from_column: id
+      to_column: sources
+      from_cardinality: 0..n
+      to_cardinality: 0..n
       label: sources
     - from: 検討事項
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: 調査
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: 資料
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: 会話ログ
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: 送信
       to: 検討事項
-      cardinality: '}o--o|'
+      from_column: target
+      to_column: id
+      from_cardinality: 0..n
+      to_cardinality: 0..1
       label: target（どの種類の項目も指す。無ければ項目に紐づかない）
     - from: レビュー中のコメント
       to: 検討事項
-      cardinality: '}o--o|'
+      from_column: target
+      to_column: id
+      from_cardinality: 0..n
+      to_cardinality: 0..1
       label: target（送信と同じ）
     - from: 書きかけ
       to: 検討事項
-      cardinality: '}o--o|'
+      from_column: target
+      to_column: id
+      from_cardinality: 0..n
+      to_cardinality: 0..1
       label: target（送信と同じ）
     - from: レビュー中のコメント
       to: 送信
-      cardinality: '||--o|'
+      from_column: body
+      to_column: body
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: まとめて送ると移る
     - from: タスク
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: 用語集
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: メモ
       to: 本文
-      cardinality: '||--o|'
+      from_column: body
+      to_column: ファイル名
+      from_cardinality: '1'
+      to_cardinality: 0..1
       label: body
     - from: 保存待ちの編集
       to: 検討事項
-      cardinality: '}o--o|'
+      from_column: target
+      to_column: id
+      from_cardinality: 0..n
+      to_cardinality: 0..1
       label: target（どの種類の項目も指す。足す項目は仮の ID）
     - from: 保存待ちの編集
       to: 設定
-      cardinality: '}o--o|'
+      from_column: target
+      to_column: settings
+      from_cardinality: 0..n
+      to_cardinality: 0..1
       label: target が settings
 tables:
   - name: config.yaml
@@ -955,8 +1095,8 @@ tables:
         description: '`setting` で `key` が `phases`・`targets`・`categories` のとき、項目が使っている値を新しい設定に無くすときの古い値 → 新しい値の対応。形と意味は『設定の更新』の `phase_map`・`target_map`・`category_map` と同じ。対応の要らない編集は持たない'
         example: '{"問い": "目的"}'
     refs:
-      - dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
-      - dev/設計書/インターフェース定義/サーバー/保存待ちの編集をまとめて保存#
+      - IF-489-30#
+      - IF-489-31#
     status: planned
     introduced:
       pr: 325
