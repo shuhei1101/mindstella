@@ -70,13 +70,15 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-10T22:48:34.917528+00:00'
   - process: 単体テスト作成
-    status: todo
+    status: done
     updated_by: planner
-    updated_at: '2026-11-10T19:58:46.558275+00:00'
+    updated_at: '2026-11-10T23:31:56.179369+00:00'
     note: tests/unit/scripts/test_readme.py の公開ドキュメントの URL の期待値
   - process: 実装
-    status: todo
+    status: done
     note: readme.py が書き出す README の公開ドキュメントのリンクを /guide/{ページ}.html にする
+    updated_by: planner
+    updated_at: '2026-11-10T23:31:56.179369+00:00'
   - process: 結合テスト作成
     status: todo
     updated_by: planner
