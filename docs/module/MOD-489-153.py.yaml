@@ -58,7 +58,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
     usecase: README の書き直し
     summary: ドキュメントの節に並べる題名と URL
-    value: (("プレビューを見る", "https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html"), ("起動スクリプトで立ち上げる", "https://shuhei1101.github.io/mindstella/使い方/セットアップ手順/起動スクリプトで立ち上げる.html"))
+    value: (("プレビューを見る", "https://shuhei1101.github.io/mindstella/guide/プレビューを見る.html"), ("起動スクリプトで立ち上げる", "https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html"))
 functions:
   - name: render_readme
     title: README の組み立て
