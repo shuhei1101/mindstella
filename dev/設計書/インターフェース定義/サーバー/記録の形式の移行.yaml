@@ -1,3 +1,4 @@
+id: IF-489-52
 title: "記録の形式の移行"
 entry:
   kind: mcp_tool
@@ -556,9 +557,9 @@ idempotent: false
 side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 callers:
-  - dev/設計書/インターフェース定義/スキル/セットアップ#
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
-  - dev/設計書/インターフェース定義/スキル/ワークスペースの移し替え#
+  - IF-489-64#
+  - IF-489-66#
+  - IF-489-65#
 request:
   - name: workspace
     type: str
@@ -717,6 +718,6 @@ constraints:
     constraint: '`call`（`tags_to_objects`）の 1 手順。`.mindstella/` の種類ごとの YAML の項目が持つ `tags` の文字列の要素を `{name: {文字列}}` に置き換える（並びと表記は変えず、どのタグも `main` を持たない）。NFKC と小文字にそろえて同じ名前のタグは、最初の 1 件だけを残す。既にオブジェクトの要素と `threads.yaml` のスレッドの `tags` は変えない。書き換えた項目の `updated`・`history` は変えない。破壊的な操作'
     notes: 版の番号は計画の次の Sprint の版。Sprint の版が変わったら合わせる
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[docs.yaml]
-  - dev/設計書/ER図/ワークスペース#tables[mindstella-version.ini]
+  - ER-489-1#tables[docs.yaml]
+  - ER-489-1#tables[mindstella-version.ini]
 test_file: tests/integration/server/test_migrate.py

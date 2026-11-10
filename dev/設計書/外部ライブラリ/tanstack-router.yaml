@@ -1,3 +1,4 @@
+id: LIB-489-24
 title: '@tanstack/react-router'
 kind: ライブラリ
 version:
@@ -7,28 +8,28 @@ version:
   source: package.json
   pinning: 1.170.46 に固定する（`^` を付けない）
 catalogs:
-- name: 使うもの
-  version: 1.170.46
-  entries:
-  - name: 'createRouter（basepath: /spa）'
-    kind: 関数
-    purpose: 生成したルートのツリーでルーターを作る
-  - name: createFileRoute / validateSearch
-    kind: 関数
-    purpose: 概要のルートの search を Zod で検証する
-  - name: redirect（beforeLoad）
-    kind: 関数
-    purpose: 決めた値以外の search を URL から外して開き直す
-  - name: '@tanstack/router-plugin/vite'
-    kind: プラグイン
-    purpose: routes/ から route-tree.gen.ts を生成する
+  - name: 使うもの
+    version: 1.170.46
+    entries:
+      - name: 'createRouter（basepath: /spa）'
+        kind: 関数
+        purpose: 生成したルートのツリーでルーターを作る
+      - name: createFileRoute / validateSearch
+        kind: 関数
+        purpose: 概要のルートの search を Zod で検証する
+      - name: redirect（beforeLoad）
+        kind: 関数
+        purpose: 決めた値以外の search を URL から外して開き直す
+      - name: '@tanstack/router-plugin/vite'
+        kind: プラグイン
+        purpose: routes/ から route-tree.gen.ts を生成する
 lead: 型の付いたルートと search params の検証を持つ React のルーター。
 purl: pkg:npm/@tanstack/react-router
 dependency_scope: 必須
 adoption: 採用
 used_in:
-- frontend/src/app/router.tsx
-- frontend/src/routes/
+  - frontend/src/app/router.tsx
+  - frontend/src/routes/
 upstream: TanStack/router
 verification:
   state: 済
@@ -45,5 +46,5 @@ install: '```bash
 
   ```'
 limitations:
-- item: 生成物
-  content: route-tree.gen.ts は vite build（dev）のときに生成する。Vitest はプラグインを通さないため、生成物を commit して読む
+  - item: 生成物
+    content: route-tree.gen.ts は vite build（dev）のときに生成する。Vitest はプラグインを通さないため、生成物を commit して読む

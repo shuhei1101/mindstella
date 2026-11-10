@@ -1,0 +1,119 @@
+id: MOD-489-159
+title: サーバー / 文字起こしの引き当て / transcriber_registry.py
+lead: 環境変数で文字起こしの実装を選び、URL を確かめて作る。常駐サーバーの起動の入口だけが import し、文字起こし（抽象）と実装のモジュールに依存する。実装は抽象だけに依存するので、import は一方向になる（入口 → 引き当て → 実装 → 抽象）。
+test_files:
+  - tests/unit/scripts/test_transcriber_registry.py
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    transcriber_registry.py   実装の一覧・環境変数の読み込みと URL の確かめ・実装の引き当て
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class 文字起こしの実装の引き当て
+        class 文字起こしのインターフェース
+        class voice_pasteの文字起こし
+        文字起こしの実装の引き当て --> 文字起こしのインターフェース
+        文字起こしの実装の引き当て --> voice_pasteの文字起こし
+        voice_pasteの文字起こし ..|> 文字起こしのインターフェース
+      ```
+classes:
+  - name: InvalidTranscriberError
+    title: 文字起こしの設定の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`MINDSTELLA_TRANSCRIBER` が実装の一覧に無いか、`MINDSTELLA_TRANSCRIBER_URL` が許す形でない（設定『サーバー』）。常駐サーバーの起動の入口が受けて、待ち受けずに終える'
+    kind: クラス
+    inherits: ValueError
+    properties:
+      - name: key
+        type: str
+        description: 誤っていた環境変数の名前
+      - name: value
+        type: str
+        description: 誤っていた値
+constants:
+  - name: TRANSCRIBER_ENV
+    title: 文字起こしのサービスの環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 音声でコメントする
+    summary: 実装を選ぶ環境変数の名前（設定『サーバー』）
+    value: '"MINDSTELLA_TRANSCRIBER"'
+  - name: TRANSCRIBER_URL_ENV
+    title: 文字起こしのサービスの URL の環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 音声でコメントする
+    summary: サービスの待ち受けの URL を読む環境変数の名前（設定『サーバー』）
+    value: '"MINDSTELLA_TRANSCRIBER_URL"'
+  - name: DEFAULT_TRANSCRIBER
+    title: 既定の文字起こしのサービス
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 音声でコメントする
+    summary: '`MINDSTELLA_TRANSCRIBER` が無いか空のときの実装の名前'
+    value: '"voice-paste"'
+  - name: DEFAULT_TRANSCRIBER_URL
+    title: 既定の文字起こしのサービスの URL
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 音声でコメントする
+    summary: '`MINDSTELLA_TRANSCRIBER_URL` が無いか空のときの URL'
+    value: '"http://127.0.0.1:47823"'
+  - name: TRANSCRIBER_FACTORIES
+    title: 実装の一覧
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 音声でコメントする
+    summary: '`MINDSTELLA_TRANSCRIBER` の値 → URL を受けて実装を作る関数。別のサービスを足すときは、実装のモジュールとこの行を足す'
+    entries:
+      - key: voice-paste
+        value: VoicePasteTranscriber
+        description: モジュール構成『voice-pasteの文字起こし』
+  - name: URL_PATTERN
+    title: 許す URL の形
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 音声でコメントする
+    summary: '`MINDSTELLA_TRANSCRIBER_URL` に許す形（`http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`。末尾の `/` は許す）'
+    value: re.compile(r"\Ahttp://(?:127\.0\.0\.1|localhost):(\d{1,5})/?\Z")
+functions:
+  - name: load_transcriber
+    title: 文字起こしの実装の引き当て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber_registry.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: 環境変数で選んだ実装を、環境変数の URL で作って返す（戻り値の型は文字起こしの `Transcriber`）
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: 環境変数
+    returns:
+      type: Transcriber
+      description: 選んだ実装
+    process: |-
+      1. `TRANSCRIBER_ENV` の値を読む（前後の空白を除く。無いか空なら `DEFAULT_TRANSCRIBER`）
+         - `TRANSCRIBER_FACTORIES` に無い場合、`InvalidTranscriberError` を送る
+      2. `TRANSCRIBER_URL_ENV` の値を読む（前後の空白を除く。無いか空なら `DEFAULT_TRANSCRIBER_URL`）
+         - `URL_PATTERN` に合わないか、ポートが 1〜65535 でない場合、`InvalidTranscriberError` を送る
+      3. 末尾の `/` を外した URL で、`TRANSCRIBER_FACTORIES` の関数を呼んで返す
+    exceptions:
+      - name: InvalidTranscriberError
+        condition: 実装の一覧に無い名前か、許す形でない URL
+        message: '{環境変数の名前} の値が誤りです: {値}'
+    unit_tests:
+      - name: test_load_transcriber
+        case: 正常
+        summary: 既定と渡した値で voice-paste の実装を作る
+        condition: '`parametrize`: `{}` / `{"MINDSTELLA_TRANSCRIBER": " voice-paste ", "MINDSTELLA_TRANSCRIBER_URL": "http://localhost:50000/"}`'
+        mock: なし
+        expected: '`VoicePasteTranscriber` で、URL が `http://127.0.0.1:47823` / `http://localhost:50000`'
+      - name: test_load_transcriber_when_invalid
+        case: 異常
+        summary: 無い実装と許さない URL は起動させない
+        condition: '`parametrize`: `MINDSTELLA_TRANSCRIBER` が `whisper` / URL が `https://127.0.0.1:47823` / `http://192.168.0.2:47823` / `http://127.0.0.1:0`'
+        mock: なし
+        expected: '`InvalidTranscriberError` で、`key` が誤っていた環境変数の名前、`value` がその値'
+        exception: InvalidTranscriberError

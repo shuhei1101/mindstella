@@ -1,0 +1,28 @@
+id: MOD-489-240
+title: プレビュー / 画面と部品 / pending-mark.ts
+test_files:
+  - tests/unit/preview/test_pending_mark.py
+components:
+  - name: pendingEditMark
+    title: 保存待ちの印
+    container: plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts
+    usecase: 画面で項目を編集して保存する
+    kind: コンポーネント
+    summary: 部品設計『保存待ちの印』の引数を受け、種類ごとの印と文字（「保存待ち」「保存で削除」「書き込めない」。`compact` のときは印だけで文字を読み上げと `title` に残す）を持つ `span` を返す。差分の印（+ ● −）と形で見分けられるように、破線の枠（書き込めない編集は失敗の赤の実線）にする
+    props:
+      - name: kind
+        type: "'pending' | 'remove' | 'blocked'"
+        required: true
+        description: 印の種類
+      - name: compact
+        type: boolean
+        required: false
+        default: 'false'
+        description: 印だけにするか
+    unit_tests:
+      - name: test_pending_mark
+        case: 正常
+        summary: 種類ごとの文字と、印だけのときの読み上げ
+        condition: '`parametrize`: `pending` / `remove` / `blocked` / `pending`・`compact`'
+        mock: なし
+        expected: 文字が「保存待ち」 / 「保存で削除」 / 「書き込めない」 / 見える文字が無く、読み上げの文字と `title` が「保存待ち」

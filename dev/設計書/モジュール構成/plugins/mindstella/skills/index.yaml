@@ -1,0 +1,6 @@
+summary: skills の設計書
+items:
+  - page: mindmap/
+    summary: mindmap の設計書
+  - page: setup/
+    summary: setup の設計書

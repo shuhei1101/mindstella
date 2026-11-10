@@ -1,3 +1,4 @@
+id: IF-489-37
 title: "常駐サーバーの状態"
 entry:
   kind: mcp_tool
@@ -88,9 +89,9 @@ constraints:
   - item: 並び
     constraint: '`previews` はワークスペースの絶対パスの昇順'
 refs:
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+  - IF-489-1#
+  - IF-489-17#
 callers:
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
-  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - IF-489-38#
+  - IF-489-56#
 test_file: tests/integration/server/test_server_status.py

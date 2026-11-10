@@ -1,3 +1,4 @@
+id: IF-489-1
 title: "MCP サーバーの起動"
 entry:
   kind: operation
@@ -318,13 +319,13 @@ constraints:
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
 refs:
-  - dev/設計書/外部ライブラリ/mcp#
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの状態#
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの停止#
+  - LIB-489-12#
+  - IF-489-37#
+  - IF-489-36#
 notes:
   1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、止めたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
   systemd を使わない理由: 動作環境の macOS に systemd が無いため、『常駐サーバーの起動の確認』と起動スクリプトが、落ちていたときに起動する（dev-docs と同じ形）。規約の `sdk-transport-06` が主にする systemd --user から外れる（要件.md の「常駐サーバーの起動と管理の仕方」）
 callers:
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
-  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - IF-489-38#
+  - IF-489-56#
 test_file: tests/integration/server/test_mcp_server.py

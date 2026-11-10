@@ -1,3 +1,4 @@
+id: IF-489-59
 title: "項目の削除"
 entry:
   kind: mcp_tool
@@ -270,7 +271,7 @@ idempotent: false
 side_effects: その項目の種類の YAML から項目を消し、本文を持っていれば `body` が指す `.mindstella/docs/{ID}.md` か `.mindstella/docs/{ID}.html` を消す。`changes.yaml` の `last_seq` を 1 進め、`pending.removed` に消した項目を足し、`pending.added`・`pending.changed` からその ID を除く。YAML・`changes.yaml` の一時ファイルを書き終えてから、YAML → `changes.yaml` の順に `os.replace` で置き換え、最後に本文を消す
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str

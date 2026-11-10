@@ -1,52 +1,53 @@
+id: MOD-489-101
 title: プレビュー / app-error
 lead: 失敗した応答から作るエラー。`detail` を画面に出す。
 classes:
-- name: AppError
-  title: アプリのエラー
-  kind: クラス
-  container: frontend/src/shared/core/app-error.ts
-  usecase: 共通
-  inherits: Error
-  summary: 失敗した応答から作るエラー。`detail` を画面に出す
-  properties:
-  - name: statusCode
-    type: number
-    description: HTTP のステータス
-  - name: code
-    type: string
-    description: '`type` の値（problem+json）'
-  - name: message
-    type: string
-    description: '`detail` の値'
-  methods:
-  - name: fromResponse
-    title: 応答からの復元
-    kind: メソッド
-    summary: problem+json の本文とステータスから作る
-    args:
-    - name: data
-      type: unknown
-      required: true
-      description: 応答の本文
-    - name: statusCode
-      type: number
-      required: true
-      description: HTTP のステータス
-    returns:
-      type: AppError
-      description: 復元したエラー
-    unit_tests:
-    - name: test_from_response
-      case: 正常
-      summary: problem+json から作る
-      condition: '`{type, title, status: 422, detail: ''...''}` と 422'
-      mock: なし
-      expected: '`statusCode` 422・`message` が detail'
-    - name: test_from_response_when_not_problem
-      case: 正常
-      summary: problem+json でない本文
-      condition: '`null` と 500'
-      mock: なし
-      expected: '`statusCode` 500・`message` が HTTP のステータスの文言'
+  - name: AppError
+    title: アプリのエラー
+    kind: クラス
+    container: frontend/src/shared/core/app-error.ts
+    usecase: 共通
+    inherits: Error
+    summary: 失敗した応答から作るエラー。`detail` を画面に出す
+    properties:
+      - name: statusCode
+        type: number
+        description: HTTP のステータス
+      - name: code
+        type: string
+        description: '`type` の値（problem+json）'
+      - name: message
+        type: string
+        description: '`detail` の値'
+    methods:
+      - name: fromResponse
+        title: 応答からの復元
+        kind: メソッド
+        summary: problem+json の本文とステータスから作る
+        args:
+          - name: data
+            type: unknown
+            required: true
+            description: 応答の本文
+          - name: statusCode
+            type: number
+            required: true
+            description: HTTP のステータス
+        returns:
+          type: AppError
+          description: 復元したエラー
+        unit_tests:
+          - name: test_from_response
+            case: 正常
+            summary: problem+json から作る
+            condition: '`{type, title, status: 422, detail: ''...''}` と 422'
+            mock: なし
+            expected: '`statusCode` 422・`message` が detail'
+          - name: test_from_response_when_not_problem
+            case: 正常
+            summary: problem+json でない本文
+            condition: '`null` と 500'
+            mock: なし
+            expected: '`statusCode` 500・`message` が HTTP のステータスの文言'
 notes:
   単体テスト: 同じフォルダの `app-error.test.ts` に置く（knowledge の規約『フォルダ構成』）

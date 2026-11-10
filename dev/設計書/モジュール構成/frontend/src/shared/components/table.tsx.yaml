@@ -1,32 +1,33 @@
+id: MOD-489-85
 title: プレビュー / table
 lead: 部品設計『表.tsx』の props・イベント・状態を持つ。
 components:
-- name: Table
-  title: 表
-  kind: コンポーネント
-  usecase: 項目を表で絞り込む
-  summary: 部品設計『表.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/表.tsx#
-  unit_tests:
-  - name: test_table_when_sort
-    case: 正常
-    summary: 見出しで並べ替える
-    condition: 見出しを押す
-    mock: なし
-    expected: '`onSort` が key で呼ばれる'
-  - name: test_table_when_hidden_column
-    case: 正常
-    summary: 列を隠す
-    condition: '`hiddenColumns` に列'
-    mock: なし
-    expected: その列が描かれない
-  - name: test_table_when_pin
-    case: 正常
-    summary: 列をピン留めする
-    condition: ピン留めを押す
-    mock: なし
-    expected: '`onPin` が key で呼ばれる'
-  container: frontend/src/shared/components/table.tsx
+  - name: Table
+    title: 表
+    kind: コンポーネント
+    usecase: 項目を表で絞り込む
+    summary: 部品設計『表.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-48#
+    unit_tests:
+      - name: test_table_when_sort
+        case: 正常
+        summary: 見出しで並べ替える
+        condition: 見出しを押す
+        mock: なし
+        expected: '`onSort` が key で呼ばれる'
+      - name: test_table_when_hidden_column
+        case: 正常
+        summary: 列を隠す
+        condition: '`hiddenColumns` に列'
+        mock: なし
+        expected: その列が描かれない
+      - name: test_table_when_pin
+        case: 正常
+        summary: 列をピン留めする
+        condition: ピン留めを押す
+        mock: なし
+        expected: '`onPin` が key で呼ばれる'
+    container: frontend/src/shared/components/table.tsx
 notes:
   単体テスト: 同じフォルダの `table.test.tsx` に置く（knowledge の規約『フォルダ構成』）

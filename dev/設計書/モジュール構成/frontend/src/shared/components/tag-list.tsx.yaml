@@ -1,13 +1,14 @@
+id: MOD-489-86
 title: プレビュー / tag-list
 lead: 部品設計『タグの並び.tsx』の props・イベント・状態を持つ。
 components:
-- name: TagList
-  title: タグの並び
-  kind: コンポーネント
-  usecase: 項目の詳細を読む
-  summary: 部品設計『タグの並び.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/タグの並び.tsx#
-  container: frontend/src/shared/components/tag-list.tsx
+  - name: TagList
+    title: タグの並び
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 部品設計『タグの並び.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-16#
+    container: frontend/src/shared/components/tag-list.tsx
 notes:
   単体テスト: 同じフォルダの `tag-list.test.tsx` に置く（knowledge の規約『フォルダ構成』）

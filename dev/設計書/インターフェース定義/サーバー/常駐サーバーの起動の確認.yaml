@@ -1,3 +1,4 @@
+id: IF-489-38
 title: "常駐サーバーの起動の確認"
 entry:
   kind: trigger
@@ -206,11 +207,11 @@ constraints:
   - item: つなぎ直す案内
     constraint: 起動したときは、Claude Code が会話の始まりに常駐サーバーへつなげず mindstella のツールを持たないことがあるため、`/mcp` で mindstella につなぎ直す案内を出す
 refs:
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの状態#
-  - dev/設計書/インターフェース定義/サーバー/依存の確認#
-  - dev/設計書/外部ライブラリ/claude-code#
+  - IF-489-1#
+  - IF-489-37#
+  - IF-489-27#
+  - LIB-489-4#
 callers:
-  - dev/設計書/シナリオ/単一ユースケース/常駐サーバーの起動と停止#
-  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - SC-489-20#
+  - IF-489-56#
 test_file: tests/integration/server/test_ensure_server.py

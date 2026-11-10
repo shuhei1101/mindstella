@@ -1,3 +1,4 @@
+id: CMP-489-23
 title: "取り下げの札"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/withdrawn-badge.ts#MindmapPreview.withdrawnBadge"
 story: "Preview/WithdrawnBadge"

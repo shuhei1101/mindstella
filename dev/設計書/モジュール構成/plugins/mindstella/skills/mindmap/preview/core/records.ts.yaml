@@ -1,0 +1,233 @@
+id: MOD-489-194
+title: プレビュー / 基盤 / records.ts
+test_files:
+  - tests/unit/preview/test_records.py
+data_models:
+  - name: RecordIndex
+    title: 記録の索引
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    summary: 埋め込みのデータを ID で引けるようにし、参照の逆向きを持つ
+    properties:
+      - name: data
+        type: object
+        description: 埋め込みのデータ（`settings`・7 種類・`bodies`・`derived`・`built_at`）そのもの。次の候補・ゴールまでの進捗・カテゴリー別の進捗は `derived` をそのまま使い、画面で計算し直さない
+      - name: byId
+        type: Map<string, {kind, item}>
+        description: ID → 種類と項目
+      - name: referencedBy
+        type: Map<string, string[]>
+        description: ID → その項目を `depends_on`・`for`・`related`・`sources` で指す項目の ID（ID の順）
+      - name: readyIds
+        type: Set<string>
+        description: 着手可能な検討事項の ID（`data.derived.next` の ID）。表の「着手可否」の列は、ここにある未決定を「着手可能」、ほかの未決定を「前提待ち」、未決定以外を「なし」にする
+  - name: Tag
+    title: タグ
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    summary: 項目の `tags` の 1 件（ER 図『ワークスペース』の `tags`）。項目の型（`Item`）の `tags` は `Tag[]`
+    properties:
+      - name: name
+        type: string
+        description: タグの名前（書いた表記のまま）
+      - name: main
+        type: true | undefined
+        description: その項目の主題のタグだけが `true` を持つ
+functions:
+  - name: buildIndex
+    title: 記録の索引を作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    scope: public
+    summary: 埋め込みのデータから `RecordIndex` を作る
+    args:
+      - name: data
+        type: object
+        required: true
+        passing: positional
+        description: '`mindmap-data` を `JSON.parse` した値'
+    returns:
+      type: RecordIndex
+      description: 索引
+    process: |-
+      1. 7 種類の項目を ID で `byId` に入れる
+      2. 各項目の `depends_on`・`for`・`related`・`sources` が指す ID ごとに、指した側の ID を `referencedBy` に足す（記録に無い ID もそのまま持つ）
+      3. `derived.next` の ID を `readyIds` に入れる
+    unit_tests:
+      - name: test_build_index
+        case: 正常
+        summary: ID で引け、参照元を逆に引ける
+        condition: 'D-1・D-2（`depends_on: [D-1]`）・T-1（`for: [D-1]`）を持ち、`derived.next` が D-1 だけのデータ'
+        mock: なし
+        expected: '`byId.get("T-1").kind` が `tasks`。`referencedBy.get("D-1")` が `["D-2", "T-1"]`。`readyIds` が D-1 だけ'
+  - name: relatedItems
+    title: 関係する項目
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 項目の詳細を読む
+    scope: public
+    summary: 詳細パネルに出す前提・後続・関連タスク・経緯・関連・参照している項目を返す
+    args:
+      - name: id
+        type: string
+        required: true
+        passing: keyword
+        description: 項目の ID
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+    returns:
+      type: '{prerequisites, successors, tasks, logs, related, referencedBy}'
+      description: それぞれ ID の並び。前提は `depends_on`、後続はその逆向き、関連タスクは `for` で指すタスク、経緯は `related` で指す会話ログ、参照している項目はそれ以外の `referencedBy`
+    unit_tests:
+      - name: test_related_items
+        case: 正常
+        summary: 関係の種類ごとに分ける
+        condition: 'D-2（`depends_on: [D-1]`）・T-1（`for: [D-1]`）・L-1（`related: [D-1]`）・N-1（`related: [D-1]`）と D-1（`depends_on: [D-0]`）'
+        mock: なし
+        expected: D-1 の `prerequisites` が D-0、`successors` が D-2、`tasks` が T-1、`logs` が L-1、`referencedBy` が N-1
+  - name: searchItems
+    title: 全体の検索
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 項目を検索する
+    scope: public
+    summary: 空白で区切った語を全て含む項目を、段（完全に一致 → タイトルに一致 → ほかの所に一致）の順に返す
+    args:
+      - name: query
+        type: string
+        required: true
+        passing: keyword
+        description: 検索の言葉
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+    returns:
+      type: '{id, kind, title, tier}[]'
+      description: ID・タイトル・項目の文字の値・本文（`bodies`）のどこかに語が全てある項目。本文が HTML のものと、Markdown の本文の言語指定 `html` のコードブロックは、描いた文（`htmlText`）で当てる。大文字・小文字を区別しない。`tier` は段で、`1` は ID かタイトルが言葉と完全に一致（大文字・小文字と前後の空白を区別しない）、`2` はタイトルが語を全て含む、`3` はそれ以外。`tier` の順 → 種類の順 → 連番の順。言葉が空なら空
+    unit_tests:
+      - name: test_search_items
+        case: 正常
+        summary: 全ての語を含む項目を返す
+        condition: '`parametrize`: `"d-1"` / 本文にだけある語 / 2 語のうち 1 語だけ含む項目 / 空白だけ'
+        mock: なし
+        expected: D-1 / その項目 / 返らない / 空
+      - name: test_search_items_tier_order
+        case: 正常
+        summary: 段の順に並べる
+        condition: '`parametrize`: 用語 G-1「シナリオの依頼」・検討事項 D-1「シナリオの依頼の受け方」・本文にだけ「シナリオの依頼」を含む資料 A-1 に「シナリオの依頼 」（末尾に空白） / `"g-1"` / 決定内容にだけ「保存先」を含む検討事項 D-1・タイトルに「保存先」を含む資料 A-2 に「保存先」 / 2 語「シナリオ 受け方」'
+        mock: なし
+        expected: G-1（`tier` 1）→ D-1（2）→ A-1（3） / G-1 が先頭で `tier` 1、G-12 などは 1 でない / A-2（2）→ D-1（3）で種類の順より段が先 / D-1 が `tier` 2（語がタイトルに全てある）
+      - name: test_search_items_when_html
+        case: 正常
+        summary: HTML の本文と html のコードブロックを描いた文で当てる
+        condition: '本文 `<p class="flow" data-step="1">画面の流れ</p>` の資料 A-1（`A-1.html`）と、同じ中身を言語指定 `html` のコードブロックに持つ資料 A-2（`A-2.md`）。`parametrize`: `画面の流れ` / `data-step` / `flow`'
+        expected: A-1・A-2 / 返らない / 返らない
+        mock: なし
+  - name: locationLabel
+    title: 箇所の名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 選んだ箇所へコメントする
+    scope: public
+    summary: 箇所を画面に出す名前にする
+    args:
+      - name: loc
+        type: Location
+        required: true
+        passing: positional
+        description: 箇所
+    returns:
+      type: string
+      description: 本文は `本文 {start} 行目`（`start` と `end` が違えば `本文 {start}〜{end} 行目`）、値は詳細パネルがそのキーに出す見出し（案の中は `案 {key} の{見出し}`）
+    process: 1. `kind` で分け、値はキーの最後の段の見出し（詳細パネルと同じ辞書。無ければキーそのまま）を使う
+    unit_tests:
+      - name: test_location_label
+        case: 正常
+        summary: 箇所の名前
+        condition: '`parametrize`: `{kind: body, start: 3, end: 3}` / `{kind: body, start: 2, end: 4}` / `{kind: value, key: options[C].cons}` / `{kind: value, key: unknown_key}`'
+        mock: なし
+        expected: '`本文 3 行目` / `本文 2〜4 行目` / `案 C のデメリット` / `unknown_key`'
+  - name: bodyFormatOf
+    title: 本文の形式
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 資料を読む
+    kind: 関数
+    scope: public
+    summary: 項目の `body` の拡張子から本文の形式を返す（形式の札・表の形式の列・詳細の描き分けが使う）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: body
+        type: string | undefined
+        required: true
+        passing: positional
+        description: 項目の `body`
+    returns:
+      type: "'md' | 'html' | null"
+      description: '`.html` で終われば `html`、`.md` で終われば `md`、それ以外と `undefined` は `null`'
+    unit_tests:
+      - name: test_body_format_of
+        case: 正常
+        summary: 拡張子から形式を決める
+        condition: '`parametrize`: `A-1.md` / `A-1.html` / `undefined`'
+        expected: '`md` / `html` / `null`'
+        mock: なし
+  - name: htmlText
+    title: HTML の描いた文
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 項目を検索する
+    kind: 関数
+    scope: public
+    summary: HTML をスクリプトを動かさずに解析し、描いた文だけを返す（全体の検索が当てる文）
+    status: implemented
+    introduced:
+      pr: 214
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: HTML の本文か `html` のコードブロックの原文
+    returns:
+      type: string
+      description: '`style`・`script`・`template`・`title` の中身とコメントを除いた文書の文'
+    process: |-
+      1. `DOMParser` で `text/html` として解析する（スクリプトは動かない）
+      2. `style`・`script`・`template`・`title` を取り除き、文書の `textContent` を返す
+    unit_tests:
+      - name: test_html_text
+        case: 正常
+        summary: タグ・属性・隠れた中身を外した文を返す
+        condition: '`<style>p{}</style><!-- メモ --><p class="flow" data-step="1">画面の流れ</p><script>x()</script>`'
+        expected: '`画面の流れ` を含み、`flow`・`data-step`・`p{}`・`メモ`・`x()` を含まない'
+        mock: なし
+  - name: tagNames
+    title: タグの名前
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    scope: public
+    summary: 項目の `tags` から名前だけを並びの順に取り出す（表の列・絞り込み・ネットワークの条件・使われているタグが使う）
+    args:
+      - name: tags
+        type: readonly (Tag | string)[] | undefined
+        required: true
+        passing: positional
+        description: 項目の `tags`（スレッドのタグのような文字列の並びも受ける）
+    returns:
+      type: string[]
+      description: 名前の並び。文字列はそのまま、`{name}` は `name`。`undefined` は空
+    unit_tests:
+      - name: test_tag_names
+        case: 正常
+        summary: オブジェクトと文字列のタグから名前を取る
+        condition: '`parametrize`: `[{name: データ, main: true}, {name: 画面}]` / `[起票]` / `undefined`'
+        mock: なし
+        expected: '`[データ, 画面]` / `[起票]` / `[]`'

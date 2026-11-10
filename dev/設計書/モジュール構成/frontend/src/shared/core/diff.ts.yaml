@@ -1,193 +1,194 @@
+id: MOD-489-105
 title: プレビュー / diff
 lead: 差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い。DOM に触らない）。行の比較は jsdiff、塊の分割は marked の `marked.lexer` を、呼ぶ側が読み込んで渡す。
 functions:
-- name: resolveDiffPoint
-  title: 時点の解決
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: '`since`・`pending`・まとまりの ID から印を付ける項目と消した項目を決める'
-  args:
-  - name: changes
-    type: Changes
-    required: true
-    description: 記録の変更履歴
-  - name: sel
-    type: string | null
-    required: true
-    description: 選んだ時点
-  - name: since
-    type: OpenedPoint
-    required: true
-    description: 前回開いた時点
-  returns:
-    type: DiffPoint | null
-    description: 時点。記録に無ければ null
-  unit_tests:
-  - name: test_resolve_diff_point
-    case: 正常
-    summary: まとまりを解決する
-    condition: V-2 を持つ変更履歴と `V-2`
-    mock: なし
-    expected: V-2 の足した・変えた・消した項目
-  - name: test_resolve_diff_point_when_missing
-    case: 正常
-    summary: 記録に無い
-    condition: '`V-99`'
-    mock: なし
-    expected: 'null'
-  - name: test_resolve_diff_point_when_pending_empty
-    case: 正常
-    summary: 空の pending
-    condition: '`pending` と空の変更'
-    mock: なし
-    expected: 'null'
-  container: frontend/src/shared/core/diff.ts
-- name: buildVersions
-  title: 前の版の組み立て
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: 項目の `history` を当てて前の版を作る（制約「前の版の組み立て」）
-  args:
-  - name: item
-    type: Item
-    required: true
-    description: 項目
-  - name: body
-    type: string
-    required: true
-    description: 今の本文
-  - name: point
-    type: DiffPoint
-    required: true
-    description: 時点
-  returns:
-    type: VersionPair
-    description: 前後の値と本文
-  unit_tests:
-  - name: test_build_versions
-    case: 正常
-    summary: キーと本文を戻す
-    condition: '`history` にキーと `body_diff` を持つ項目'
-    mock: なし
-    expected: 前の値と前の本文
-  - name: test_build_versions_when_dropped
-    case: 正常
-    summary: 保持の回数を超えた
-    condition: '`history_dropped_seq` が範囲の始まりより大きい'
-    mock: なし
-    expected: 前の版を作れない印が立つ
-  container: frontend/src/shared/core/diff.ts
-- name: diffLineParts
-  title: 行の差分
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: 前後の本文を行ごとに比べ、計算の打ち切りで null を返す
-  args:
-  - name: before
-    type: string
-    required: true
-    description: 前
-  - name: after
-    type: string
-    required: true
-    description: 後
-  - name: jsdiff
-    type: JsDiff
-    required: true
-    description: 読み込んだ jsdiff
-  returns:
-    type: LinePart[] | null
-    description: 塊の並び
-  unit_tests:
-  - name: test_diff_line_parts
-    case: 正常
-    summary: 足した行と消した行
-    condition: 1 行を置き換えた本文
-    mock: jsdiff の実物
-    expected: 消した塊と足した塊
-  container: frontend/src/shared/core/diff.ts
-- name: sideBySideRows
-  title: 左右に並べる行
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: 変えていない塊を同じ高さで向かい合わせる行を作る
-  args:
-  - name: before
-    type: string
-    required: true
-    description: 前
-  - name: after
-    type: string
-    required: true
-    description: 後
-  - name: lexer
-    type: MarkedLexer
-    required: true
-    description: marked の lexer
-  returns:
-    type: SideRow[] | null
-    description: 行
-  unit_tests:
-  - name: test_side_by_side_rows
-    case: 正常
-    summary: 変えていない塊を揃える
-    condition: 中ほどの段落を変えた本文
-    mock: marked の実物
-    expected: 変えていない塊が同じ行
-  container: frontend/src/shared/core/diff.ts
-- name: htmlChangedLines
-  title: HTML の変わった行
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: HTML の本文の足した行と変えた行を返す
-  args:
-  - name: before
-    type: string
-    required: true
-    description: 前
-  - name: after
-    type: string
-    required: true
-    description: 後
-  - name: jsdiff
-    type: JsDiff
-    required: true
-    description: 読み込んだ jsdiff
-  returns:
-    type: HtmlChangedLines | null
-    description: 行の番号
-  unit_tests:
-  - name: test_html_changed_lines
-    case: 正常
-    summary: 足した行を返す
-    condition: 1 行足した HTML
-    mock: jsdiff の実物
-    expected: '`added` にその行'
-  container: frontend/src/shared/core/diff.ts
-- name: removedOf
-  title: 消した項目
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: 時点でその種類の消した項目を返す
-  args:
-  - name: point
-    type: DiffPoint | null
-    required: true
-    description: 時点
-  - name: kind
-    type: Kind
-    required: true
-    description: 種類
-  returns:
-    type: RemovedItem[]
-    description: 消した項目
-  unit_tests:
-  - name: test_removed_of
-    case: 正常
-    summary: 種類で絞る
-    condition: D-3 と T-1 を消した時点と `decisions`
-    mock: なし
-    expected: D-3 だけ
-  container: frontend/src/shared/core/diff.ts
+  - name: resolveDiffPoint
+    title: 時点の解決
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: '`since`・`pending`・まとまりの ID から印を付ける項目と消した項目を決める'
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        description: 記録の変更履歴
+      - name: sel
+        type: string | null
+        required: true
+        description: 選んだ時点
+      - name: since
+        type: OpenedPoint
+        required: true
+        description: 前回開いた時点
+    returns:
+      type: DiffPoint | null
+      description: 時点。記録に無ければ null
+    unit_tests:
+      - name: test_resolve_diff_point
+        case: 正常
+        summary: まとまりを解決する
+        condition: V-2 を持つ変更履歴と `V-2`
+        mock: なし
+        expected: V-2 の足した・変えた・消した項目
+      - name: test_resolve_diff_point_when_missing
+        case: 正常
+        summary: 記録に無い
+        condition: '`V-99`'
+        mock: なし
+        expected: 'null'
+      - name: test_resolve_diff_point_when_pending_empty
+        case: 正常
+        summary: 空の pending
+        condition: '`pending` と空の変更'
+        mock: なし
+        expected: 'null'
+    container: frontend/src/shared/core/diff.ts
+  - name: buildVersions
+    title: 前の版の組み立て
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 項目の `history` を当てて前の版を作る（制約「前の版の組み立て」）
+    args:
+      - name: item
+        type: Item
+        required: true
+        description: 項目
+      - name: body
+        type: string
+        required: true
+        description: 今の本文
+      - name: point
+        type: DiffPoint
+        required: true
+        description: 時点
+    returns:
+      type: VersionPair
+      description: 前後の値と本文
+    unit_tests:
+      - name: test_build_versions
+        case: 正常
+        summary: キーと本文を戻す
+        condition: '`history` にキーと `body_diff` を持つ項目'
+        mock: なし
+        expected: 前の値と前の本文
+      - name: test_build_versions_when_dropped
+        case: 正常
+        summary: 保持の回数を超えた
+        condition: '`history_dropped_seq` が範囲の始まりより大きい'
+        mock: なし
+        expected: 前の版を作れない印が立つ
+    container: frontend/src/shared/core/diff.ts
+  - name: diffLineParts
+    title: 行の差分
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 前後の本文を行ごとに比べ、計算の打ち切りで null を返す
+    args:
+      - name: before
+        type: string
+        required: true
+        description: 前
+      - name: after
+        type: string
+        required: true
+        description: 後
+      - name: jsdiff
+        type: JsDiff
+        required: true
+        description: 読み込んだ jsdiff
+    returns:
+      type: LinePart[] | null
+      description: 塊の並び
+    unit_tests:
+      - name: test_diff_line_parts
+        case: 正常
+        summary: 足した行と消した行
+        condition: 1 行を置き換えた本文
+        mock: jsdiff の実物
+        expected: 消した塊と足した塊
+    container: frontend/src/shared/core/diff.ts
+  - name: sideBySideRows
+    title: 左右に並べる行
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 変えていない塊を同じ高さで向かい合わせる行を作る
+    args:
+      - name: before
+        type: string
+        required: true
+        description: 前
+      - name: after
+        type: string
+        required: true
+        description: 後
+      - name: lexer
+        type: MarkedLexer
+        required: true
+        description: marked の lexer
+    returns:
+      type: SideRow[] | null
+      description: 行
+    unit_tests:
+      - name: test_side_by_side_rows
+        case: 正常
+        summary: 変えていない塊を揃える
+        condition: 中ほどの段落を変えた本文
+        mock: marked の実物
+        expected: 変えていない塊が同じ行
+    container: frontend/src/shared/core/diff.ts
+  - name: htmlChangedLines
+    title: HTML の変わった行
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: HTML の本文の足した行と変えた行を返す
+    args:
+      - name: before
+        type: string
+        required: true
+        description: 前
+      - name: after
+        type: string
+        required: true
+        description: 後
+      - name: jsdiff
+        type: JsDiff
+        required: true
+        description: 読み込んだ jsdiff
+    returns:
+      type: HtmlChangedLines | null
+      description: 行の番号
+    unit_tests:
+      - name: test_html_changed_lines
+        case: 正常
+        summary: 足した行を返す
+        condition: 1 行足した HTML
+        mock: jsdiff の実物
+        expected: '`added` にその行'
+    container: frontend/src/shared/core/diff.ts
+  - name: removedOf
+    title: 消した項目
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 時点でその種類の消した項目を返す
+    args:
+      - name: point
+        type: DiffPoint | null
+        required: true
+        description: 時点
+      - name: kind
+        type: Kind
+        required: true
+        description: 種類
+    returns:
+      type: RemovedItem[]
+      description: 消した項目
+    unit_tests:
+      - name: test_removed_of
+        case: 正常
+        summary: 種類で絞る
+        condition: D-3 と T-1 を消した時点と `decisions`
+        mock: なし
+        expected: D-3 だけ
+    container: frontend/src/shared/core/diff.ts
 notes:
   単体テスト: 同じフォルダの `diff.test.ts` に置く（knowledge の規約『フォルダ構成』）

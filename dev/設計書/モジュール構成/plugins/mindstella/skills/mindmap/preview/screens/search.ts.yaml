@@ -1,0 +1,18 @@
+id: MOD-489-226
+title: プレビュー / 画面と部品 / search.ts
+components:
+  - name: searchDialog
+    title: 全体の検索
+    container: plugins/mindstella/skills/mindmap/preview/screens/search.ts
+    usecase: 項目を検索する
+    kind: 画面
+    summary: 画面設計『全体の検索』を `dialog` 要素で描く。結果は `searchItems` で、`tier` ごとに見出し「完全に一致」「タイトルに一致」「ほかの所に一致」の下に並べ、結果ごとに種類の札を添える。当たった項目の無い段の見出しは出さない。ID は折り返さない
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: on
+        type: '{open, close}'
+        required: true
+        description: 結果の項目を開く・閉じる

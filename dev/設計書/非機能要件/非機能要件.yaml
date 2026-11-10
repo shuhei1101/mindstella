@@ -1,6 +1,8 @@
+id: NFR-489-1
 title: "非機能要件"
 requirements:
-  - name: Claude Code の版
+  - id: NFR-1
+    name: Claude Code の版
     english_name: claude_code_version
     category: 動作環境
     external_constraint: スキルを持つプラグインは 2.0.20 から読み込める。シェルの `claude plugin` のサブコマンドが入った版は CHANGELOG から引けない
@@ -8,7 +10,8 @@ requirements:
     value: 2.1.287 以上
     rationale: 動かして確かめた版。設計どおりのマニフェストで `claude plugin validate`・`marketplace add`・`install`・`list`・`uninstall`・`marketplace remove` が通ることを確かめた（https://github.com/shuhei1101/mindmap/pull/9#discussion_r4160895275）。これより古い版は確かめていない
     source: https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#2020
-  - name: OS
+  - id: NFR-2
+    name: OS
     english_name: os
     category: 動作環境
     external_constraint: Claude Code が動く OS（macOS・Linux・Windows）
@@ -18,16 +21,18 @@ requirements:
     source: https://github.com/shuhei1101/mindmap/pull/12
     measurement: '実機での確認: macOS・Windows の端末で `check-env`・`init`・`add`・`build` を流す'
     overflow: Windows で、ほかのプロセスが開いている YAML を `os.replace` で置き換えようとすると失敗する。そのとき書き込みのコマンドはエラーで終わり、元のファイルは変わらない
-  - name: Python の版
+  - id: NFR-3
+    name: Python の版
     english_name: python_version
     category: 動作環境
     external_constraint: PyYAML 5.1 以上・jsonschema 4.18.0 以上が動く版
     source_kind: 外部ライブラリの制限
     value: 3.12 以上
     rationale: コーディング規約が 3.12 の書き方（PEP 695）を前提にし、既存のテスト（`tests/conftest.py`）も 3.12 の構文を使う。ライブラリが求める版より新しい側で揃える
-    source: dev/設計書/外部ライブラリ/jsonschema#
+    source: LIB-489-9#
     overflow: '仮想環境の Python が古ければ、依存の確認（`check_env.py`）が `python_ok: false` と作り直すコマンドを終了コード 1 で返し、起動スクリプトは Claude Code を立てずに止まる。仮想環境を作るシステムの `python3` も古ければ、`base_python_ok: false` で `install` を `null` にし、利用者が 3.12 以上を入れる。版の判定より前に読まれる `check_env.py` は Python 3.8 で読める構文で書き、それより古い `python3` では構文エラーで終わる'
-  - name: ブラウザ
+  - id: NFR-4
+    name: ブラウザ
     english_name: browser
     category: 動作環境
     external_constraint: 制限なし
@@ -35,7 +40,8 @@ requirements:
     value: Chrome と Edge の最新版（PC）。スマートフォンは閲覧できれば足りる
     rationale: 'コーディング規約『対応ブラウザ』の既定（PC は Chrome と Edge、スマートフォンは閲覧できれば足りる）に従う。使う描画のライブラリ（marked・elkjs・mermaid）は jsDelivr の配布物を file:// で開いた Chromium で動かして確かめ、mdmark は import map の `integrity` を含めて Chromium 151 で確かめた（PR #342 の PoC）。性能は Chrome 154 で測った。Edge・Firefox・Safari の実機では確かめていない'
     measurement: '実機での確認: Chrome と Edge で `preview.html` を file:// で開き、概要から詳細パネルとネットワークまでの操作を最後まで済ませる'
-  - name: 画面サイズ
+  - id: NFR-5
+    name: 画面サイズ
     english_name: screen_size
     category: 動作環境
     external_constraint: 制限なし
@@ -43,7 +49,8 @@ requirements:
     value: 幅 320px 以上
     rationale: PC の画面に加えて、スマートフォンの縦向きで最も狭い端末（iPhone SE の幅 320px）で閲覧できるようにする。幅 900px 以下は狭い幅の作り（マップは字下げした縦の一覧、詳細パネルは本文に重なる）、幅 1100px 以上（マップは 901px 以上）は詳細パネルの分だけ本文を寄せる。性能は 1280×800 と 1920×1080 で測った
     measurement: ブラウザの表示幅を 320px・390px・900px・901px・1100px・1280px・1920px にして全ての画面を開き、操作が最後まで済むことを見る
-  - name: 入力方式
+  - id: NFR-6
+    name: 入力方式
     english_name: input_method
     category: 動作環境
     external_constraint: 制限なし
@@ -51,14 +58,16 @@ requirements:
     value: マウスとキーボード（PC）。スマートフォンは閲覧できれば足りる
     rationale: ネットワークの回転・拡大・玉への寄せ（カーソルを乗せる）と、マップ・図の移動（背景のドラッグ）はマウスの操作を前提にする。押せるものはボタンかリンクにし、全ての操作にキーボードで届く。タッチでの回転・拡大は対象にしない
     measurement: '実機での確認: PC で、マウスで全ての操作を済ませ、続けてキーボードだけで項目を開く・閉じる・切り替える操作を済ませる'
-  - name: 通信
+  - id: NFR-7
+    name: 通信
     english_name: network
     category: 動作環境
     external_constraint: 制限なし
     source_kind: 制限なし
     value: 'サーバーが配るプレビューを開くブラウザは、配信（`127.0.0.1`）と jsDelivr（描画のライブラリ）・Google Fonts（文字）へ HTTPS で届くこと。配る書き出しを開くのは通信しない。サーバーは `export` が書き出すときだけ jsDelivr へ HTTPS で届くこと（1 回の要求で接続と 1 回の読み取りをそれぞれ 30 秒まで待ち、取れなければ何も書かずにエラーで終える）。それ以外のツールと配信は外へ通信しない'
     rationale: サーバーの仕事はワークスペースのファイルの読み書きと端末の中への配信で、`export` だけが書き出すときに配布ファイルとライセンスの本文を jsDelivr から取る（ユーザーの決定。リポジトリには同梱しない）。サーバーが配るプレビューの描画のライブラリは jsDelivr から、文字は Google Fonts から読むと決めている（アーキテクチャ図の制約）。届かないときは、読めなかったライブラリの名前を画面に出す（インターフェース定義『プレビューを開く』の異常系）。配る書き出しは描画のライブラリを中に持つため、開くときに通信せず、読めなかったライブラリの知らせは出ない（インターフェース定義『配る書き出し』）。資料の HTML の本文が外の画像・CSS を指すときだけは、描くときにブラウザがその URL を読みに行き、読めなければそのまま描く（本文は記録の持ち主が書いたもので、サーバーは中身を書き換えない）
-  - name: 常駐サーバーの待ち受けのポート
+  - id: NFR-8
+    name: 常駐サーバーの待ち受けのポート
     english_name: server_port
     category: 動作環境
     external_constraint: 制限なし
@@ -68,7 +77,8 @@ requirements:
     rationale: '並行する複数の Claude Code のセッションが、プラグインの `.mcp.json` に書いた 1 つの URL で常駐サーバーへつなぐため、ポートを固定する。上書きは、ほかのプロセスが 8784 を使っている端末のため（『設定: サーバー』の `MINDSTELLA_PORT`）'
     measurement: '`MINDSTELLA_PORT` を渡さずに常駐サーバーを起動し、`127.0.0.1:8784` の `GET /_admin/status` が `name` に `mindstella` を返すことと、`MINDSTELLA_PORT` に別のポートを渡すとそのポートで返すことを確かめる'
     overflow: ポートが使われていれば、常駐サーバーは使われているポートと `MINDSTELLA_PORT` で別のポートを渡す案内を出して終了コード 1 で終わる。SessionStart のフックは会話の始まりを止めない（インターフェース定義『常駐サーバーの起動の確認』）
-  - name: 常駐サーバーの共有
+  - id: NFR-9
+    name: 常駐サーバーの共有
     english_name: server_sharing
     category: 動作環境
     external_constraint: 制限なし
@@ -77,7 +87,8 @@ requirements:
     value: 端末に常駐サーバーは 1 つ。並行する複数の Claude Code のセッションが共有し、それぞれが `workspace` で指した複数のワークスペースを扱う。セッションを閉じても常駐サーバーとプレビューの配信は止まらない
     rationale: セッションごとにサーバーのプロセスを立てず、knowledge の規約『MCP サーバー作成ルール』の HTTP の常駐に合わせる（#338）。相対パスの基準と、ペインへの入力の宛先は、PreToolUse のフックがツールの引数 `session` に入れたセッションの値で決め、サーバーのプロセスの作業フォルダと環境変数を使わない（インターフェース定義『MCP サーバーの起動』）
     measurement: 2 つの MCP のクライアントが別々の作業フォルダを `session` で渡して同じ相対パスの `status` を呼び、それぞれの作業フォルダのワークスペースの状況が返ることと、常駐サーバーのプロセスが 1 つのままであることを確かめる
-  - name: ネットワークで扱う項目の数
+  - id: NFR-10
+    name: ネットワークで扱う項目の数
     english_name: graph_item_count
     category: 性能
     external_constraint: 制限なし
@@ -88,7 +99,8 @@ requirements:
     rationale: ユーザーが推奨案で決めた。1000 件は PoC で測った最大の件数で、1000 件まで全 60 条件（拡大・縮小・回転・押下）で、落ちたコマ・1 コマの処理時間・長いタスクの基準を満たした（https://github.com/shuhei1101/mindmap/pull/23）
     measurement: 'PoC と同じ条件で測る: 項目 1000 件・表示の幅 1280×800 と 1920×1080・画素の倍率 1 と 2・操作は拡大・縮小・回転・押下の各 5 秒'
     overflow: 1000 件を超えても件数で切らず全て描く。そのときの 1 コマの時間とメモリは確かめていない
-  - name: ネットワークの落ちたコマの割合
+  - id: NFR-11
+    name: ネットワークの落ちたコマの割合
     english_name: graph_dropped_frames
     category: 性能
     external_constraint: 画面の 1 コマの間隔（60Hz で約 16.7ms）
@@ -98,7 +110,8 @@ requirements:
     unit: '%以下（25ms を超えたコマの割合）'
     rationale: 1000 件の PoC の成功条件。採用した描き方（文字を一度だけ画像に描き、毎コマは画像を置く）で最大 0.9%。測った端末は Windows・Chrome 154・Ryzen 7 9800X3D・RTX 5070・画面 143Hz で、それより低い性能の端末は確かめていない。143Hz の画面では 25ms は 3 コマ分に当たるため、間隔の中央値の 1.5 倍を超えたコマも数えた。そちらは最大 1.6%（600 件の押下）で、1% をわずかに超える条件が 600 件以上に数件ある
     measurement: PoC と同じ条件で、操作中の各コマの間隔を測り、25ms を超えたコマの割合を求める
-  - name: ネットワークの 1 コマの処理時間
+  - id: NFR-12
+    name: ネットワークの 1 コマの処理時間
     english_name: graph_frame_time
     category: 性能
     external_constraint: 画面の 1 コマの間隔（60Hz で約 16.7ms）
@@ -108,7 +121,8 @@ requirements:
     unit: ms（1 コマの処理時間の p95 の上限）
     rationale: 1000 件の PoC の成功条件（JavaScript の側の処理時間）。採用した描き方で最大 5.0ms、長いタスクは 0 回だった。測った端末は Windows・Chrome 154・Ryzen 7 9800X3D・RTX 5070・画面 143Hz で、それより低い性能の端末は確かめていない
     measurement: PoC と同じ条件で、1 コマの JavaScript の処理時間を測り、p95 を求める。同じ条件で長いタスクが 0 回であることも見る
-  - name: ネットワークで使うメモリ
+  - id: NFR-13
+    name: ネットワークで使うメモリ
     english_name: graph_memory
     category: 性能
     external_constraint: 制限なし
@@ -127,16 +141,18 @@ requirements:
       - part: アプリの決定値
         value: 2GB
         notes: 合計 1,754MB を切りよく丸める
-  - name: tmux の版
+  - id: NFR-14
+    name: tmux の版
     english_name: tmux_version
     category: 動作環境
     external_constraint: 未確定
     source_kind: 実行基盤の制限
-    source: dev/設計書/外部ライブラリ/tmux#
+    source: LIB-489-26#
     value: 3.4 以上
     rationale: PoC（https://github.com/shuhei1101/mindstella/pull/73）で動かして確かめた版。起動スクリプトは `new-session -e` で Claude Code の設定のフォルダを渡すため、これを持たない版では動かない。3.4 より古い版は確かめていない
     overflow: 起動スクリプトは版を確かめない。`new-session` が引数の誤りで終われば、tmux の標準エラーをそのまま出して終了コード 1 で終わる
-  - name: 待ち受けの範囲
+  - id: NFR-15
+    name: 待ち受けの範囲
     english_name: listen_scope
     category: セキュリティ
     external_constraint: 制限なし
@@ -145,7 +161,8 @@ requirements:
     value: '`127.0.0.1` だけ。常駐サーバーの MCP（`/mcp`）と `GET /_admin/status` は `MINDSTELLA_PORT`（無ければ 8784）。配信のポートは OS が選んだ空きポートか、`config.yaml` の `preview.port` で固定したポート'
     rationale: '#67 の要件で、待ち受けるのは端末の中だけにすると決めている。配信は記録を読ませ、送信でワークスペースへ書くため、端末の外からつながせない。同じ端末の別のサイトからの読み書きは、`Host`・`Origin`・`Content-Type` の確かめで防ぐ（インターフェース定義『プレビューの配信』『コメントをまとめて送る』）。端末の外から見るときも待ち受けは変えず、トンネル・リバースプロキシが `127.0.0.1` へ転送する。外から開く画面の認証は外の入口に任せ、配信は利用者が明示したホスト名（`MINDSTELLA_ALLOWED_HOSTS`）だけを `Host`・`Origin` で受ける（#138）'
     measurement: 常駐サーバーを起動して配信を立てた後に、常駐サーバーと配信の待ち受けのソケットのアドレスが `127.0.0.1` であることと、端末の別のアドレス（LAN の IP）からつながらないことを確かめる
-  - name: 画面への反映の時間
+  - id: NFR-16
+    name: 画面への反映の時間
     english_name: preview_reflect_time
     category: 性能
     external_constraint: 制限なし
@@ -176,7 +193,8 @@ requirements:
         condition: 検討事項を 1 件持つワークスペース。`add` で 1 件ずつ 10 回足す
         measurement: '`add` を呼ぶ直前から、検討事項の表に足した行が出るまでを計測の側の単調な時計で測る'
         expected: 10 回の最大が 1 秒以下
-  - name: 送信の本文の長さ
+  - id: NFR-17
+    name: 送信の本文の長さ
     english_name: submission_body_length
     category: 性能
     external_constraint: 制限なし
@@ -186,7 +204,8 @@ requirements:
     rationale: コメントとスレッドの書き込みは項目への数行の答えを想定し、長い資料は話し合いの中で渡す。上限が無いと 1 件の書き込みで `threads.yaml` と会話ログが際限なく太る。リクエストの本文の上限 128KiB に、本文と選んだ文の 2 万文字（UTF-8 で最大 4 バイトとして 80KB）とキーが収まる。AI が MCP のツールで書く返信・スレッドの最初の書き込みも同じ上限にする
     measurement: 10000 文字と 10001 文字の本文・選んだ文をそれぞれ溜め、前者が 201、後者が 400 になることを確かめる
     overflow: サーバーは 400 を返して何も書かない。画面は溜められなかった理由（`detail`）を入力の近くに出し、本文を残す
-  - name: 差分の表示の切り替えの時間
+  - id: NFR-18
+    name: 差分の表示の切り替えの時間
     english_name: diff_toggle_time
     category: 性能
     external_constraint: 制限なし
@@ -197,7 +216,8 @@ requirements:
     rationale: 操作への応答と感じる 200 ミリ秒を上限にする。PoC（#83）で、今の版の図を使い回して前の版だけを描く形が、ノード 50・本文 1000 行で 117〜160ms（2 回とも満たした最大の規模）。ノード 100・本文 5000 行は 198〜284ms で境目をまたぐため、規模を決定値の条件に含める
     measurement: MCP サーバーを立ててプレビューを実際のブラウザで開き、詳細パネルを開いたまま変更履歴でまとまりを選んでから、本文と図に差分の印が出るまでを 5 回測り、中央値を求める
     overflow: 超えても差分は遅れて出るだけで、今の内容は読める
-  - name: ClaudeCodeへの貼り付けの上限
+  - id: NFR-19
+    name: ClaudeCodeへの貼り付けの上限
     english_name: claude_code_paste_timeout
     category: 性能
     external_constraint: 制限なし
@@ -218,8 +238,9 @@ requirements:
         value: 0.5 秒
         notes: 0.065 秒を、打ち切って入力欄に文字列を残さないよう大きく切り上げた
     refs:
-      - dev/設計書/インターフェース定義/サーバー/コメントをまとめて送る#
-  - name: ClaudeCodeへの入力を確かめる上限
+      - IF-489-6#
+  - id: NFR-20
+    name: ClaudeCodeへの入力を確かめる上限
     english_name: claude_code_input_confirm_timeout
     category: 性能
     external_constraint: 制限なし
@@ -240,8 +261,9 @@ requirements:
         value: 5 秒
         notes: 4.49 秒を切り上げた
     refs:
-      - dev/設計書/インターフェース定義/サーバー/コメントをまとめて送る#
-  - name: スレッドの要約と理由の長さ
+      - IF-489-6#
+  - id: NFR-21
+    name: スレッドの要約と理由の長さ
     english_name: thread_summary_length
     category: 性能
     external_constraint: 制限なし
@@ -252,16 +274,17 @@ requirements:
     measurement: 400 文字と 401 文字の要約・理由をそれぞれ渡し、前者が書かれ、後者が引数の誤り（MCP のツール）か 400（状態の書き換え）になることを確かめる
     overflow: MCP のツールは引数の誤りのエラー、状態の書き換えは 400 を返して何も書かない。画面は理由の入力の近くに理由（`detail`）を出し、入力を残す
     refs:
-      - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
+      - ER-489-1#tables[threads.yaml]
     status: implemented
     introduced:
       pr: 235
-  - name: 録音の大きさの上限
+  - id: NFR-22
+    name: 録音の大きさの上限
     english_name: recording_size_limit
     category: 性能
     external_constraint: voice-paste の `POST /web/transcriptions` の本文の上限 100,000,000 バイト
     source_kind: 外部 API の制限
-    source: dev/設計書/外部API/voice-paste#
+    source: API-489-2#
     value: '80000000'
     unit: バイト（『音声の文字起こし』が受ける本文の大きさ）
     rationale: 文字起こしのサービスの本文の上限から、規約『資源の値の決め方』の安全率 20% を引いた。サーバーは受けた音声に multipart の区切りとヘッダーを足して渡すため、その分も安全率に収まる。ブラウザの `MediaRecorder` の opus（約 32 kbps）なら約 5 時間分で、コメントの音声には十分に大きい
@@ -275,22 +298,24 @@ requirements:
         value: 20%
         notes: 規約『資源の値の決め方』の既定
     refs:
-      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
-  - name: 文字起こしのサービスの応答の上限
+      - IF-489-58#
+  - id: NFR-23
+    name: 文字起こしのサービスの応答の上限
     english_name: transcriber_response_timeout
     category: 性能
     external_constraint: voice-paste の `/web/` の下の要求の応答時間 66 秒
     source_kind: 外部 API の制限
-    source: dev/設計書/外部API/voice-paste#
+    source: API-489-2#
     value: '66'
     unit: 秒（サーバーから文字起こしのサービスへの 1 回の要求の、接続から応答の本文を読み終えるまで）
     rationale: 実測が無いため、規約『資源の値の決め方』のとおり公開仕様（voice-paste の非機能要件「ブラウザの要求の応答時間」）の値を使う。voice-paste の受け付けは一時のファイルに書いてキューに積むだけで、同じ端末の `127.0.0.1` からは本文のアップロードがほぼかからない。サービスが止まっているときは接続をすぐ断られるため、画面がこの上限まで待つことは普段は無い
     measurement: release ブランチで、voice-paste に 1 分の音声を 100 回送り、依頼・状態の読み取り・プリセットの一覧のそれぞれの応答時間の p99.9 を測る。p99.9 の 1.5 倍が上限を下回ったら、その値へ見直す
     overflow: '`音声の文字起こし` の依頼は 503（`stopped`）、状態の読み取りは次の間隔で読み直し、`文字起こしの可否` は `stopped` を返す'
     refs:
-      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
-      - dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
-  - name: 文字起こしの待ちの上限
+      - IF-489-58#
+      - IF-489-41#
+  - id: NFR-24
+    name: 文字起こしの待ちの上限
     english_name: transcription_stall_timeout
     category: 性能
     external_constraint: 制限なし
@@ -301,18 +326,19 @@ requirements:
     measurement: release ブランチで、voice-paste に 1 分の音声を続けて 2 件送り、2 件目の状態と進み具合が変わらない最長の時間を測る。その 1.5 倍が上限を超えたら上限を見直す
     overflow: 打ち切って 504 を返す。画面は文字起こしできなかった旨を出し、入力欄の文字は残す。サービスのジョブは取り消さない（取り消す API が無い）
     refs:
-      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
-  - name: 文字起こしの状態を取りに行く間隔
+      - IF-489-58#
+  - id: NFR-25
+    name: 文字起こしの状態を取りに行く間隔
     english_name: transcription_poll_interval
     category: 性能
     external_constraint: voice-paste の状態の読み取りの間隔の制限なし
     source_kind: 外部 API の制限
-    source: dev/設計書/外部API/voice-paste#
+    source: API-489-2#
     value: '1'
     unit: 秒（サーバーが文字起こしのジョブの状態を続けて読む間隔）
     rationale: 文字起こしのサービスは取りに来る間隔を制限しない。利用者は「文字起こし」を押して結果を待つため、終わってから結果が出るまでの遅れを 1 秒以内にする。同じ端末の `127.0.0.1` への GET で、1 秒ごとならサービスの負荷にならない
     measurement: 偽のサーバーで `done` を返し始めてから、『音声の文字起こし』が 200 を返すまでの時間が 1 秒と応答の時間の和以下であることを確かめる
     overflow: 間隔は固定で、超えることは無い
     refs:
-      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
+      - IF-489-58#
 lead: mindstella が外部の制約から逆算して決める値。

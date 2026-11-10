@@ -1,3 +1,4 @@
+id: CMP-489-41
 title: 本文の折りたたみ
 implementation: plugins/mindstella/skills/mindmap/preview/components/review-body-fold.ts#MindmapPreview.reviewBodyFold
 story: Preview/ReviewBodyFold

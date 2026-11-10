@@ -1,3 +1,4 @@
+id: CMP-489-25
 title: "変更履歴"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts#MindmapPreview.historyDialog"
 story: "Preview/HistoryDialog"

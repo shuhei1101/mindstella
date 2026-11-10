@@ -1,11 +1,12 @@
+id: MOD-489-96
 title: プレビュー / table
 lead: shadcn/ui の Table。
 components:
-- name: Table
-  title: shadcn/ui の Table
-  kind: コンポーネント
-  usecase: 共通
-  summary: shadcn/ui の Table
-  container: frontend/src/shared/components/ui/table.tsx
+  - name: Table
+    title: shadcn/ui の Table
+    kind: コンポーネント
+    usecase: 共通
+    summary: shadcn/ui の Table
+    container: frontend/src/shared/components/ui/table.tsx
 notes:
   単体テスト: 同じフォルダの `table.test.tsx` に置く（knowledge の規約『フォルダ構成』）

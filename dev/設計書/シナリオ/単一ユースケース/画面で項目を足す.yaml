@@ -1,3 +1,4 @@
+id: SC-489-29
 title: "画面で項目を足す"
 scenarios:
   - name: 正常シナリオ

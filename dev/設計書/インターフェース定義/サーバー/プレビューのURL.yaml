@@ -1,3 +1,4 @@
+id: IF-489-17
 title: "プレビューの URL"
 entry:
   kind: mcp_tool
@@ -315,7 +316,7 @@ lead: ワークスペースのプレビューを配る URL を返す。このプ
 idempotent: true
 side_effects: 初めて呼んだワークスペースについて、このプロセスの中に配信（『プレビューの配信』『記録の取得』『書き換えの知らせ』・『設定の既定の書き換え』・『設定の再読み込み』と、レビュー中のコメント・書きかけ・まとめて送るの受け付け）を立てる。配信を立てたときは、直下の `README.md` を『README の書き出し』と同じ判定・書き方で書き直す。`.mindstella/` には書かない
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -366,7 +367,7 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ。ポートは、`config.yaml` の `preview.port` があればそのポート、無ければ OS に選ばせる（ポート 0 で待ち受ける）'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 配信の数
     constraint: 1 つのプロセスの中で、ワークスペース（絶対パス）ごとに 1 つ。同じワークスペースで呼び直すと同じ URL を返す。別のプロセスが同じワークスペースを配っていても、このプロセスは別のポートで配る
   - item: 配信を止める時
@@ -377,9 +378,9 @@ constraints:
     constraint: 配信を立てた呼び出し（`started` が真）だけ、配信を立てた後に『README の書き出し』の制約「README の中身」「埋める値」「書くかの判定」「書き方」で直下の `README.md` を書き直す。書けなくても配信は止めず、標準エラーに記録して URL を返す
   - item: 起動時のフック
     constraint: '配信を立てた呼び出し（`started` が真）だけ、配信を立てた直後に `MINDSTELLA_PREVIEW_START_HOOK` のコマンドを、末尾にポートとワークスペースのフォルダの名前を引数で足して呼ぶ（『設定: サーバー』）。コマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない。立てられない（コマンドが見つからない・引数を分けられない）ときは標準エラーに記録し、配信は止めずに URL を返す'
-    decided_by: dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#constraints[終わり方]
+    decided_by: IF-489-1#constraints[終わり方]
   - item: まとまりを指す URL
     constraint: '`diff` は呼び出しのたびに（既に配っているワークスペースでも）`changes.yaml` を読んで `sets` にあるかを確かめる。あれば、配信の URL の末尾に `#diff={ID}` を付けて返す。まだ配っていなければ、配信を立てる前に確かめる。直下の `README.md` にはハッシュを付けない配信の URL を書く'
 refs:
-  - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
+  - IF-489-18#
 test_file: tests/integration/server/test_preview_url.py

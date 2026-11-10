@@ -1,3 +1,4 @@
+id: IF-489-54
 title: "設定の既定の書き換え"
 entry:
   kind: endpoint
@@ -101,7 +102,7 @@ side_effects: '`config.yaml` の `display` だけを書き換え、書き換え�
 permissions: 配信の画面からの要求だけ（`Host` と `Origin` を確かめる）。役割での絞り込みは持たない（#25 が入れる）
 exclusivity: ほかの書き込むエンドポイントと同じく、書き換えの鍵（プロセスの中の鍵と `.mindstella.lock`）を取ってから読み書きする
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -168,6 +169,6 @@ constraints:
   - item: 配る書き出し
     constraint: 配る書き出しの画面はこのエンドポイントを呼ばない（ボタンを出さない）
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[config.yaml]
-  - dev/設計書/インターフェース定義/サーバー/書き換えの知らせ#
+  - ER-489-1#tables[config.yaml]
+  - IF-489-44#
 test_file: tests/integration/server/test_config_display.py

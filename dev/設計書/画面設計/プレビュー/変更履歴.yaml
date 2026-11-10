@@ -1,8 +1,9 @@
+id: SCR-489-15
 title: "変更履歴"
 elements:
   - name: 時点の一覧
     kind: list
-    component: dev/設計書/部品設計/プレビュー/変更履歴.ts#
+    component: CMP-489-25#
     args:
       - name: points
         value: 「差分を出さない（今の内容）」・「まだまとめていない変更」（記録の取得.changes.pending の added・changed・removed のどれかが空でないとき）・「前回開いてから」・記録の取得.changes.sets の並び

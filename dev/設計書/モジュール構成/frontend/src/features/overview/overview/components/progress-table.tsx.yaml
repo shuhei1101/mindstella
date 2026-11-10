@@ -1,11 +1,12 @@
+id: MOD-489-42
 title: プレビュー / progress-table
 lead: '`derived.progress` の表。'
 components:
-- name: ProgressTable
-  title: カテゴリー別の進捗のタイル
-  kind: コンポーネント
-  container: frontend/src/features/overview/overview/components/progress-table.tsx
-  usecase: 概要を見る
-  summary: '`derived.progress` の表'
+  - name: ProgressTable
+    title: カテゴリー別の進捗のタイル
+    kind: コンポーネント
+    container: frontend/src/features/overview/overview/components/progress-table.tsx
+    usecase: 概要を見る
+    summary: '`derived.progress` の表'
 notes:
   単体テスト: 同じフォルダの `progress-table.test.tsx` に置く（knowledge の規約『フォルダ構成』）

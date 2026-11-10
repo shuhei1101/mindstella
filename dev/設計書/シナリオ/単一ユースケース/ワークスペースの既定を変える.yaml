@@ -1,3 +1,4 @@
+id: SC-489-15
 title: "ワークスペースの既定を変える"
 scenarios:
   - name: 正常シナリオ

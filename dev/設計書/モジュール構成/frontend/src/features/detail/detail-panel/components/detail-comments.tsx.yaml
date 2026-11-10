@@ -1,3 +1,4 @@
+id: MOD-489-22
 title: プレビュー / detail-comments
 lead: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。
 components:
@@ -7,8 +8,8 @@ components:
     usecase: 項目へコメントする
     summary: 詳細パネル・詳細の全画面の下端のコメントの入力と、レビュー中のコメントの一覧（並びの切り替え・修正・削除・元に戻す・続きを読む）、本文の選択から出す選んだ箇所のコメントの入口を描く。コメントの入力の `open` は `usePrefsStore` の `commentFormClosed` から渡し、`onToggleOpen` で書き換える。閉じている間に選んだ箇所の入口を押したら `commentFormClosed` を `null` にしてから入力欄へフォーカスを移す
     refs:
-      - dev/設計書/画面設計/プレビュー/詳細パネル.tsx#
-      - dev/設計書/画面設計/プレビュー/詳細の全画面.tsx#
+      - SCR-489-32#
+      - SCR-489-30#
     unit_tests:
       - name: test_detail_comments
         case: 正常

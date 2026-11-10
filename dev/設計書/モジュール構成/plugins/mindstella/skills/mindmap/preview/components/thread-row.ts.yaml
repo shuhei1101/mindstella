@@ -1,0 +1,165 @@
+id: MOD-489-217
+title: プレビュー / 画面と部品 / thread-row.ts
+test_files:
+  - tests/unit/preview/test_thread_row.py
+functions:
+  - name: threadTitle
+    title: スレッドの題
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: 行と見出しに出す題（要約。まだ無ければ最初の書き込みの 1 行目）を返す
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: スレッド
+    returns:
+      type: string
+      description: 題
+    unit_tests:
+      - name: test_thread_title
+        case: 正常
+        summary: 要約があれば要約、無ければ最初の書き込みの 1 行目
+        condition: '`parametrize`: 要約あり / `summary: null` で最初の書き込みが 2 行'
+        mock: なし
+        expected: 要約 / 1 行目だけ
+  - name: hasUnseen
+    title: 利用者の未読があるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドが `seen` が偽の書き込みを 1 件以上持つかを返す（`seen` が無い書き込みは未読にしない）
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: スレッド
+    returns:
+      type: boolean
+      description: 未読があれば真
+    unit_tests:
+      - name: test_has_unseen
+        case: 正常
+        summary: seen が偽の書き込みを持つときだけ真
+        condition: '`parametrize`: 書き込みの `seen` が `[true, false]` / `[true, true]` / `seen` を持たない書き込みだけ'
+        mock: なし
+        expected: '`true` / `false` / `false`'
+  - name: anyOpenUnseen
+    title: オープンの未読があるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: トップバーの `commentsUnread` に渡す値。オープンのスレッドのうち `hasUnseen` が真のものがあるかを返す
+    args:
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: positional
+        description: 最後に読めたスレッド
+    returns:
+      type: boolean
+      description: オープンのスレッドに未読があれば真
+    unit_tests:
+      - name: test_any_open_unseen
+        case: 正常
+        summary: クローズの未読は数えない
+        condition: '`parametrize`: 未読を持つオープンの TH-2 と既読の TH-1 / 未読を持つのがクローズの TH-6 だけ / 空'
+        mock: なし
+        expected: '`true` / `false` / `false`'
+  - name: withSeen
+    title: 既読にした写し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: 指したスレッドの `seen` が偽の書き込みを既読にした新しい並びを返す（渡した並びは書き換えない。ほかのスレッドと書き込みのほかのキーはそのまま）
+    args:
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: keyword
+        description: 画面が持つスレッドの写し
+      - name: id
+        type: string
+        required: true
+        passing: keyword
+        description: 既読にするスレッドの ID
+    returns:
+      type: Thread[]
+      description: 'そのスレッドの書き込みを全て `seen: true` にした並び。ID が無ければ同じ中身の並び'
+    unit_tests:
+      - name: test_with_seen
+        case: 正常
+        summary: 指したスレッドだけを既読にし、渡した並びは変えない
+        condition: 'AI の返信が `seen: false` のオープンの TH-1 と TH-2 で `TH-1`'
+        mock: なし
+        expected: '返り値の TH-1 の全ての書き込みが `seen: true` で `anyOpenUnseen` は TH-2 の分で真。TH-2 と、渡した並びの TH-1 は `seen: false` のまま'
+      - name: test_with_seen_when_not_found
+        case: 正常
+        summary: 無い ID は何も既読にしない
+        condition: TH-1 だけの並びで `TH-9`
+        mock: なし
+        expected: 返り値が渡した並びと同じ中身
+components:
+  - name: threadRow
+    title: スレッドの行
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
+    usecase: スレッドで話す
+    kind: コンポーネント
+    summary: 部品設計『スレッドの行』の引数を受け、行を開くボタンとタグのボタンを持つ `li` を返す。題は `threadTitle`、日時は `formatJst`。状態の札（`threadState`）とレビュー中の印（`pendingMark`）もこのファイルが持ち、スレッドの画面とレビュー中の書き込みの行が使う。`data-focus` は行が `thread:{ID}`（まだ送っていないものは `thread:new:{コメントの ID}`）、タグが `tag:{ID}:{タグ}`。`hasUnseen` が真のスレッドは 2 行目の先頭に塗りつぶしの「● 未読」の札を出し、行を開くボタンの読み上げの名前の状態の次に「未読」を読む
+    props:
+      - name: thread
+        type: Thread | null
+        required: false
+        default: 'null'
+        description: 送ったスレッド。`pending` とどちらか片方
+      - name: pending
+        type: ReviewItem | null
+        required: false
+        default: 'null'
+        description: まだ送っていない新しいスレッドの最初の書き込み（状態の札を「レビュー中」にし、タグを出さない）
+      - name: hasPendingReply
+        type: boolean
+        required: false
+        default: 'false'
+        description: レビュー中の返信を持つか（2 行目の末尾にレビュー中の印）
+      - name: activeTag
+        type: string | null
+        required: false
+        default: 'null'
+        description: 一覧を絞っているタグ（同じタグの札を `aria-pressed="true"` にする）
+      - name: on
+        type: '{open, tag}'
+        required: true
+        description: '行を押した（スレッドの ID。まだ送っていないものはコメントの ID と `pending: true`）・タグを押した（タグ）'
+    unit_tests:
+      - name: test_thread_row
+        case: 正常
+        summary: 状態・題・向けた項目・最後の書き手・タグを描く
+        condition: '`parametrize`: AI が返信したオープンの TH-1（D-12・タグ `画面`）/ 要約が無く最後が利用者の TH-3 / クローズの TH-5 / 項目を指さない TH-4 / `hasPendingReply: true`'
+        mock: なし（DOM を作って見る）
+        expected: 「オープン」と要約・`D-12`・「AI」・`time[datetime]`・タグのボタン / 題が最初の書き込みの 1 行目で書き手が「あなた」/ 「クローズ」/ ID が無い / 「レビュー中」の印がある
+      - name: test_thread_row_when_pending
+        case: 正常
+        summary: まだ送っていない新しいスレッドはレビュー中の札でタグを持たない
+        condition: '`pending` に C-41（D-5）'
+        mock: '`on.open`'
+        expected: '「レビュー中」の札・`D-5`・「あなた」、タグが無い。行を押すと `on.open` が `C-41` と `pending: true` で 1 回'
+      - name: test_thread_row_when_tag
+        case: 正常
+        summary: タグは行と別のボタンで、絞っているタグを押した状態にする
+        condition: "タグ `調査`・`画面` の TH-4、`activeTag: '画面'`。タグ `画面` を押す"
+        mock: '`on.open`・`on.tag`'
+        expected: '`画面` のボタンが `aria-pressed="true"`、`調査` が `false`。`on.tag` が `画面` で 1 回呼ばれ、`on.open` は呼ばれない'
+      - name: test_thread_row_when_unread
+        case: 正常
+        summary: 利用者の未読を持つ行に未読の札を出す
+        condition: '`parametrize`: AI の返信が `seen: false` のオープンの TH-2 / 同じ書き込みでクローズの TH-6 / 全て `seen: true` の TH-1'
+        mock: なし（DOM を作って見る）
+        expected: 2 行目の先頭に「未読」の札があり、行を開くボタンの読み上げの名前が状態の次に「未読」を含む / 「クローズ」と「未読」の札がある / 「未読」の札が無い

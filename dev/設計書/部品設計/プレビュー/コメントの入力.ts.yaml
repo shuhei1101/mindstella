@@ -1,3 +1,4 @@
+id: CMP-489-7
 title: "コメントの入力"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/send-form.ts#MindmapPreview.sendForm"
 story: "Preview/SendForm"

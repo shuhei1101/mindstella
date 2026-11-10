@@ -1,3 +1,4 @@
+id: SC-489-32
 title: "記録の削除と取り下げ"
 scenarios:
   - name: 正常シナリオ

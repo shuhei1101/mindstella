@@ -1,3 +1,4 @@
+id: IF-489-53
 title: "設定の再読み込み"
 entry:
   kind: endpoint
@@ -57,7 +58,7 @@ idempotent: true
 side_effects: ワークスペースには書かない。検査に通れば、配信が持つ最後に検査に通った設定を差し替え、書き換えの知らせを送る
 permissions: '`Host` と `Origin` を確かめる（`Origin` が無い HTTP のクライアントからの要求は通す）'
 callers:
-  - dev/設計書/シナリオ/単一ユースケース/設定の再読み込み#
+  - SC-489-35#
 request:
   - name: Host
     type: str
@@ -96,6 +97,6 @@ constraints:
   - item: 本文
     constraint: 要求の本文は読まない（空でよい）
 refs:
-  - dev/設計書/インターフェース定義/サーバー/記録の取得#
-  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
+  - IF-489-51#
+  - IF-489-17#
 test_file: tests/integration/server/test_config_reload.py

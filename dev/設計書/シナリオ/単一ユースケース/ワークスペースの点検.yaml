@@ -1,3 +1,4 @@
+id: SC-489-16
 title: "ワークスペースの点検"
 scenarios:
   - name: 正常シナリオ（問題が無い）

@@ -1,3 +1,4 @@
+id: CMP-489-21
 title: "保存待ちの印"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/pending-mark.ts#MindmapPreview.pendingEditMark"
 story: "Preview/PendingMark"
@@ -63,8 +64,8 @@ accessibility:
   - 色だけに頼らず、枠の線の種類（破線・実線）と印の形（重ねた紙・ゴミ箱・警告）で 3 種類を見分ける
   - 置いたカード・行・節がホバー・フォーカス・選んでいる状態になっても、印の色は変えない
 refs:
-  - dev/設計書/部品設計/プレビュー/差分の印.ts#
-  - dev/設計書/部品設計/プレビュー/コメントの印.ts#
+  - CMP-489-31#
+  - CMP-489-9#
 status: planned
 introduced:
   pr: 325

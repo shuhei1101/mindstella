@@ -1,26 +1,27 @@
+id: MOD-489-6
 title: プレビュー / review-view
 lead: 画面設計『レビュー中の書き込み.tsx』の要素と操作を描く。チェックの状態は画面が持つ。
 components:
-- name: ReviewView
-  title: レビュー中の書き込み
-  kind: 画面
-  usecase: コメントを選んで送る
-  summary: 画面設計『レビュー中の書き込み.tsx』の要素と操作を描く。チェックの状態は画面が持つ
-  refs:
-  - dev/設計書/画面設計/プレビュー/レビュー中の書き込み.tsx#
-  unit_tests:
-  - name: test_review_view
-    case: 正常
-    summary: まとめて送る
-    condition: 2 件をチェックしたまま送る
-    mock: MSW
-    expected: '`POST /api/comments/send` が 2 件の ID で呼ばれる'
-  - name: test_review_view_when_stale
-    case: 異常
-    summary: 箇所が合わない
-    condition: 409 と `stale`
-    mock: MSW
-    expected: 行に理由と「箇所を外す」
-  container: frontend/src/features/comments/review/review-view.tsx
+  - name: ReviewView
+    title: レビュー中の書き込み
+    kind: 画面
+    usecase: コメントを選んで送る
+    summary: 画面設計『レビュー中の書き込み.tsx』の要素と操作を描く。チェックの状態は画面が持つ
+    refs:
+      - SCR-489-9#
+    unit_tests:
+      - name: test_review_view
+        case: 正常
+        summary: まとめて送る
+        condition: 2 件をチェックしたまま送る
+        mock: MSW
+        expected: '`POST /api/comments/send` が 2 件の ID で呼ばれる'
+      - name: test_review_view_when_stale
+        case: 異常
+        summary: 箇所が合わない
+        condition: 409 と `stale`
+        mock: MSW
+        expected: 行に理由と「箇所を外す」
+    container: frontend/src/features/comments/review/review-view.tsx
 notes:
   単体テスト: 同じフォルダの `review-view.test.tsx` に置く（knowledge の規約『フォルダ構成』）

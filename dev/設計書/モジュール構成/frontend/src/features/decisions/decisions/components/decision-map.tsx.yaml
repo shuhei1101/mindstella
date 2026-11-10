@@ -1,18 +1,19 @@
+id: MOD-489-16
 title: プレビュー / decision-map
 lead: 対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ。
 components:
-- name: DecisionMap
-  title: 検討事項のマップ
-  kind: コンポーネント
-  usecase: 検討事項をマップで辿る
-  summary: 対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ
-  unit_tests:
-  - name: test_decision_map_when_library_failed
-    case: 異常
-    summary: elkjs が読めない
-    condition: elkjs が読めない
-    mock: '`useLibrary`'
-    expected: ライブラリの名前を出す
-  container: frontend/src/features/decisions/decisions/components/decision-map.tsx
+  - name: DecisionMap
+    title: 検討事項のマップ
+    kind: コンポーネント
+    usecase: 検討事項をマップで辿る
+    summary: 対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ
+    unit_tests:
+      - name: test_decision_map_when_library_failed
+        case: 異常
+        summary: elkjs が読めない
+        condition: elkjs が読めない
+        mock: '`useLibrary`'
+        expected: ライブラリの名前を出す
+    container: frontend/src/features/decisions/decisions/components/decision-map.tsx
 notes:
   単体テスト: 同じフォルダの `decision-map.test.tsx` に置く（knowledge の規約『フォルダ構成』）

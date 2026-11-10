@@ -1,34 +1,35 @@
+id: MOD-489-11
 title: プレビュー / thread-state
 lead: スレッドの状態の札・レビュー中の印・未読の札。
 components:
-- name: ThreadState
-  title: 状態の札
-  kind: コンポーネント
-  usecase: スレッドで話す
-  summary: スレッドの状態（オープン・クローズ・レビュー中）を色に加えて印と文字で出す
-  refs:
-  - dev/設計書/部品設計/プレビュー/スレッドの行.tsx#
-  container: frontend/src/features/comments/shared/thread-state.tsx
-- name: PendingMark
-  title: レビュー中の印
-  kind: コンポーネント
-  usecase: スレッドで話す
-  summary: レビュー中の返信を持つスレッドに出す印
-  container: frontend/src/features/comments/shared/thread-state.tsx
-- name: UnseenMark
-  title: 未読の札
-  kind: コンポーネント
-  usecase: スレッドで話す
-  summary: 利用者の未読の書き込みを持つスレッドに出す札
-  container: frontend/src/features/comments/shared/thread-state.tsx
+  - name: ThreadState
+    title: 状態の札
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: スレッドの状態（オープン・クローズ・レビュー中）を色に加えて印と文字で出す
+    refs:
+      - CMP-489-14#
+    container: frontend/src/features/comments/shared/thread-state.tsx
+  - name: PendingMark
+    title: レビュー中の印
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: レビュー中の返信を持つスレッドに出す印
+    container: frontend/src/features/comments/shared/thread-state.tsx
+  - name: UnseenMark
+    title: 未読の札
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: 利用者の未読の書き込みを持つスレッドに出す札
+    container: frontend/src/features/comments/shared/thread-state.tsx
 constants:
-- name: AUTHOR_LABELS
-  title: 書き手の呼び名
-  usecase: スレッドで話す
-  summary: 書き手（user・ai）→ 画面に出す呼び名
-  container: frontend/src/features/comments/shared/thread-state.tsx
-- name: STATE_LABELS
-  title: 状態の札の文言
-  usecase: スレッドで話す
-  summary: 状態の札の種類 → 印と文言
-  container: frontend/src/features/comments/shared/thread-state.tsx
+  - name: AUTHOR_LABELS
+    title: 書き手の呼び名
+    usecase: スレッドで話す
+    summary: 書き手（user・ai）→ 画面に出す呼び名
+    container: frontend/src/features/comments/shared/thread-state.tsx
+  - name: STATE_LABELS
+    title: 状態の札の文言
+    usecase: スレッドで話す
+    summary: 状態の札の種類 → 印と文言
+    container: frontend/src/features/comments/shared/thread-state.tsx

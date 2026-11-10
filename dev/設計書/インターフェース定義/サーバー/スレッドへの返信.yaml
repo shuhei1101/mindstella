@@ -1,3 +1,4 @@
+id: IF-489-12
 title: "スレッドへの返信"
 entry:
   kind: mcp_tool
@@ -181,7 +182,7 @@ lead: オープンのスレッドの末尾に AI の返信を足し、同じ呼�
 idempotent: false
 side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件足し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -259,13 +260,13 @@ constraints:
     constraint: 'AI が既読にした（`read: true`）利用者の書き込みだけ。読んだ後に送られた未読の書き込みは取り込み待ちに残す'
   - item: 本文と要約の上限
     constraint: 本文 10000 文字・要約 400 文字
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+    decided_by: NFR-489-1#requirements[スレッドの要約と理由の長さ]
     notes: 本文は『非機能要件』の送信の本文の長さ
   - item: クローズのスレッド
     constraint: 返信しない。AI は返信が要るとき、『スレッドの状態の書き換え』で理由つきでオープンに戻してから呼ぶ（要件『オープン・クローズ』）
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送る・クローズと重なっても、どちらの書き換えも失わない
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-43#
 test_file: tests/integration/server/test_reply.py

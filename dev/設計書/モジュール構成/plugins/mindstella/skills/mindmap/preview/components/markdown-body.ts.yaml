@@ -1,0 +1,227 @@
+id: MOD-489-207
+title: プレビュー / 画面と部品 / markdown-body.ts
+test_files:
+  - tests/unit/preview/test_markdown_body.py
+constants:
+  - name: BODY_VIEW_LABELS
+    title: 本文の見せ方の呼び名
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 表示の設定を変える
+    summary: 表示の設定のチェックボックスと「この端末で変えている項目」に出す名前。`resolveDisplay` もこの名前を並べる
+    value: '{pin: "表の列の固定", head: "表の見出しの固定", stripes: "表のしま模様", fold: "セクションの折りたたみ"}'
+  - name: BODY_VIEW_DEFAULT
+    title: 本文の見せ方の既定
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 表示の設定を変える
+    summary: 個人の上書きが無いときの本文の見せ方（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
+    value: '{pin: true, head: true, stripes: false, fold: true}'
+  - name: COLUMN_BOUNDS
+    title: 列の幅を分ける境目
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 全角を 1、半角を 0.5 と数えたセルの最大の文字数が `shortMax` 以下の列は短い列、`longMin` 以上の列は長文の列。モック作成でユーザーが選んだ値
+    value: '{shortMax: 8, longMin: 25}'
+  - name: MEDIUM_MIN_EM_MAX
+    title: 中くらいの列の最小の幅の上限
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 中くらいの列の最小の幅（em）の上限
+    value: '14'
+  - name: MEDIUM_MIN_EM_SLACK
+    title: 中くらいの列の最小の幅に足す余り
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 中くらいの列の最小の幅を文字数の半分にこの値（em）を足した幅にする（文節の区切りでだけ折り返す分の余り）
+    value: '2'
+  - name: LONG_COLUMN_EM
+    title: 長文の列の幅
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 長文の列を折り返す幅（em）
+    value: '24'
+  - name: FOLD_LEVELS
+    title: 開閉を置く見出しの階層の数
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: 本文で使っている見出しの階層のうち、上からこの数の階層にだけ開閉を置く
+    value: '2'
+  - name: CODE_COPIED_MS
+    title: コピーした印を出しておく時間
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: コードブロックのコピーのボタンを押した後、チェックの印を出しておくミリ秒（図のコピーと同じ）
+    value: '1400'
+  - name: CALLOUT_KINDS
+    title: Alert の種類
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: mdmark が描いた Alert の囲みの種類（クラス `markdown-alert-{種類}`）→ 見出しの頭に置くアイコン
+    value: '{note: "note", tip: "star", important: "flag", warning: "alert", caution: "alert"}'
+functions:
+  - name: textWidth
+    title: 文字の幅を数える
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 前後の空白を除いた文字列を、符号位置が U+00FF 以下の文字を 0.5、それ以外を 1 として数える
+    args:
+      - name: text
+        type: string
+        required: true
+        passing: positional
+        description: セルの文字
+    returns:
+      type: number
+      description: 文字の幅
+    unit_tests:
+      - name: test_text_width
+        case: 正常
+        summary: 全角を 1、半角を 0.5 と数える
+        condition: '`parametrize`: `名前` / `ID-12` / ` 比較 abc ` / 空文字 / 絵文字 1 つ'
+        mock: なし
+        expected: 2 / 2.5 / 4 / 0 / 1
+  - name: columnSize
+    title: 列の幅の決め方
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 列のセルの最大の文字の幅から、列の種類と最小の幅を決める
+    args:
+      - name: maxWidth
+        type: number
+        required: true
+        passing: positional
+        description: 列の見出しと本体のセルの `textWidth` の最大
+    returns:
+      type: "{kind: 'short' | 'medium' | 'long', minEm: number | null}"
+      description: 列の種類と最小の幅（em。中くらいの列だけ持ち、ほかは `null`）
+    process: |-
+      1. `maxWidth` が `COLUMN_BOUNDS.shortMax` 以下なら `short`（折り返さない）
+      2. `COLUMN_BOUNDS.longMin` 以上なら `long`（`LONG_COLUMN_EM` で折り返す）
+      3. それ以外は `medium` で、`minEm` を `min(ceil(maxWidth / 2) + MEDIUM_MIN_EM_SLACK, MEDIUM_MIN_EM_MAX)` にする（文節の区切りでだけ折り返す。折り返す行の数は約束しない）
+    unit_tests:
+      - name: test_column_size
+        case: 正常
+        summary: 境目の前後で列の種類を分け、中くらいの列の最小の幅に上限を掛ける
+        condition: '`parametrize`: 8 / 8.5 / 12 / 24.5 / 25'
+        mock: なし
+        expected: '`short` / `medium`・`minEm` 7 / `medium`・`minEm` 8 / `medium`・`minEm` 14 / `long`'
+  - name: revealHeading
+    title: 畳んだ見出しを開く
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 本文の中の見出しへ移る前に、その見出しを包む畳んだ入れ物を全て開く（開閉の矢印の `aria-expanded` も合わせる）
+    side_effects: '`root` の中の `div.md-section-body` の `hidden` と開閉の矢印を書き換える'
+    args:
+      - name: root
+        type: HTMLElement
+        required: true
+        passing: keyword
+        description: '`decorateMarkdown` を当てた本文の要素'
+      - name: slug
+        type: string
+        required: true
+        passing: keyword
+        description: 移る先の見出しの `id`（ハッシュの `h`・本文のリンク）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_reveal_heading
+        case: 正常
+        summary: 畳んだ入れ物の中の見出しへ移るときは外側まで開く
+        condition: 'h2「候補」とその下の h3「料金」をどちらも畳んだ本文。`parametrize`: `slug` が「料金」の下の h4 / 畳んだ入れ物の外の見出し / 存在しない `slug`'
+        mock: なし（DOM を作って見る）
+        expected: 両方の入れ物の `hidden` が外れ、矢印が `aria-expanded="true"` / どちらも畳んだまま / どちらも畳んだままで例外を送らない
+  - name: bindTableHeads
+    title: 表の見出しの行を区画の上端に残す
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    kind: 関数
+    scope: public
+    summary: 本文のスクロール領域の `scroll`（`requestAnimationFrame` で 1 フレームに 1 回）ごとに、`md-head-stick` を持つ表の上端が領域の上端より上にある分だけ、見出しのセルに `--head-offset`（px。表の下端から見出しの行の高さを引いた位置を越えない）を入れ、`translateY` で下げる。ずらしている間は表に `md-head-stuck` を付け、見出しの行の下の境に影を付ける。表の入れ物が横に送るため CSS の sticky では区画の上端に残せない。描き直すたびに前の見張りを外す関数を返す
+    side_effects: '`scroller` に `scroll` の受け取りを付け、見出しのセルの `--head-offset` を書き換える'
+    args:
+      - name: scroller
+        type: HTMLElement
+        required: true
+        passing: positional
+        description: 本文のスクロール領域（`.panel-body`）
+    returns:
+      type: () => void
+      description: 受け取りを外す関数
+    unit_tests:
+      - name: test_bind_table_heads
+        case: 正常
+        summary: 領域を送ると見出しの行を上端に残し、表の下端を越えない
+        condition: '高さ 300px の領域に、20 行の表を前後の段落と一緒に置く。`parametrize`: 表の上端まで送らない / 表の中ほどまで送る / 表を過ぎるまで送る / 表が `md-head-stick` を持たない'
+        mock: なし（ブラウザで配置を測る）
+        expected: '`--head-offset` が 0 / 見出しの行の上端が領域の上端と等しく `md-head-stuck` を持つ / 見出しの行が表の下端より下に出ない / `--head-offset` を持たない。返した関数を呼ぶと送っても変わらない'
+components:
+  - name: decorateMarkdown
+    title: Markdownの本文
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts
+    usecase: 項目の詳細を読む
+    summary: '部品設計『Markdownの本文』。`renderMarkdown` で描いた本文の要素に、次の順で見せ方を当てる（戻り値は無く、`root` の中を書き換える。(1)〜(4) は `tables` が真のときだけ当てる）。(1) 表ごとに、列の見出しと本体のセルの `textWidth` の最大を `columnSize` にかけ、列のセルに `data-col-size`（`short`・`medium`・`long`）と中くらいの列の `--md-col-min`（em）を付ける。`div.md-table-wrap` を送らない枠 `div.md-table-frame` で包み、右へまだ送れる間だけ枠に `data-fade` を付ける（入れ物の `scroll` と `ResizeObserver` で見直す）。(2) `display.pin` が真なら、最後の列を除く見出しのセルに固定のボタン（`button.md-pin`、`aria-pressed`、読み上げの名前「{列名}まで固定」）を置き、押した列までのセルに `position: sticky` の左の位置と、固定した列の右端の影を付ける（もう一度押すと外す。画面の幅 720px 以下は `style.css` でボタンを隠し固定を外す）。(3) `display.head` が真なら表に `md-head-stick` を付ける（ずらしは `bindTableHeads` が入れる）。(4) `display.stripes` が真なら表に `md-stripes` を付ける（差分の印の行は差分の面のまま）。(5) `fold` と `display.fold` がどちらも真なら、本文で使っている見出しの階層のうち上から `FOLD_LEVELS` の階層の見出しごとに、次の同じか上の階層の見出しまでを `div.md-section-body` で包み（中身の無い見出しは包まず開閉も置かない）、見出しの頭に開閉の矢印（`button.md-fold`、24px、`aria-expanded`・`aria-controls`、読み上げの名前「{見出し}を開閉」）を置く。開いた状態で描き、畳むと入れ物を `hidden="until-found"` にする（`beforematch` で開く）。見出しの文言はボタンに入れず、選んだ箇所の対応づけに使う `data-line-start` を変えない。(6) コードブロック（図と `html` のコードブロックを除く）を `div.md-code` で包み、`pre` の外に言語を書いたものだけ言語の札と、コピーのボタン（読み上げの名前「コードをコピー」）を置く。押すと `code` の文字だけをクリップボードに入れ、`CODE_COPIED_MS` の間チェックの印に変えて `role="status"` で伝える。(7) mdmark が描いた Alert の囲み（`div.markdown-alert`）ごとに、見出し（`p.markdown-alert-title`）の頭に、囲みのクラス `markdown-alert-{種類}` の種類のアイコン（`CALLOUT_KINDS`）を置く。(1)〜(7) は、埋め込んだ HTML の範囲（`.mdmark-html`）の中の要素には当てない。同じ `root` に 2 回当てても包み・ボタンを重ねない'
+    props:
+      - name: root
+        type: HTMLElement
+        required: true
+        description: '`renderMarkdown` で描いた本文の要素（class `mdmark`）'
+      - name: display
+        type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
+        required: false
+        default: BODY_VIEW_DEFAULT
+        description: 表示の設定の本文の見せ方
+      - name: fold
+        type: boolean
+        required: false
+        default: 'true'
+        description: 開閉を置ける本文か（本文の差分では偽）
+      - name: tables
+        type: boolean
+        required: false
+        default: 'true'
+        description: 表の見せ方（(1)〜(4)）を当てるか（スレッドの書き込みでは偽）
+    unit_tests:
+      - name: test_decorate_markdown_when_table
+        case: 正常
+        summary: 列の文字数で幅の印を付け、表を送らない枠で包む
+        condition: ID（3 文字）・名前（12 文字）・説明（30 文字）の 3 列の表を持つ本文。幅 400px の親に置く
+        mock: なし（DOM を作って見る）
+        expected: 列のセルが `data-col-size` で `short`・`medium`・`long`、名前の列の `--md-col-min` が `8em`。`div.md-table-wrap` が `div.md-table-frame` に入り、枠に `data-fade` がある。表の行の `data-line-start` が変わらない
+      - name: test_decorate_markdown_when_pin
+        case: 正常
+        summary: 固定のボタンで押した列までを固定し、もう一度押すと外す
+        condition: '4 列の表。`parametrize`: `display.pin` が真で 2 列目のボタンを押す / 同じボタンを 2 回押す / `display.pin` が偽'
+        mock: なし（DOM を作って見る）
+        expected: ボタンは 3 つ（最後の列に無い）、2 列目のボタンが `aria-pressed="true"` で 1・2 列目のセルが固定の印を持つ / どのセルも固定の印を持たず、ボタンが `aria-pressed="false"` / ボタンが無い
+      - name: test_decorate_markdown_when_stripes_and_head
+        case: 正常
+        summary: しま模様と見出しの固定を設定のとおりに付ける
+        condition: '`parametrize`: `BODY_VIEW_DEFAULT` / `stripes` が真で `head` が偽'
+        mock: なし（DOM を作って見る）
+        expected: 表が `md-head-stick` を持ち `md-stripes` を持たない / `md-stripes` を持ち `md-head-stick` を持たない
+      - name: test_decorate_markdown_when_fold
+        case: 正常
+        summary: 上位 2 つの階層の見出しにだけ開閉を置き、畳むと次の同じか上の階層の見出しまでを隠す
+        condition: 'h2「候補」（下に h3「料金」と h4「内訳」）・h2「まとめ」・中身の無い h2「付録」を持つ本文。`parametrize`: 「料金」の矢印を押す / `fold` が偽 / `display.fold` が偽'
+        mock: なし（DOM を作って見る）
+        expected: 矢印は「候補」「料金」「まとめ」の 3 つで「内訳」「付録」には無い。押すと「料金」の矢印が `aria-expanded="false"` で「内訳」を含む入れ物が `hidden="until-found"`、「まとめ」は見えている / 矢印が無い / 矢印が無い
+      - name: test_decorate_markdown_when_code_and_callout
+        case: 正常
+        summary: コードブロックに札とコピーを、Alert の囲みの見出しにアイコンを付ける
+        condition: 言語 `bash` のコードブロック・言語の無いコードブロック・mdmark が描いた `[!WARNING]` の囲み（`div.markdown-alert.markdown-alert-warning` と見出し「警告」）・印の無い引用を持つ本文。`bash` のコピーを押し、同じ本文に 2 回当てる
+        mock: '`navigator.clipboard.writeText`'
+        expected: '`bash` だけ言語の札「bash」を持ち、どちらもコピーのボタンを `pre` の外に持つ。クリップボードにはコードの文字だけが入る。`[!WARNING]` の囲みの見出しの頭に警告のアイコンが 1 つだけあり、札とコピーのボタンも 1 つずつ。印の無い引用は変わらない'
+      - name: test_decorate_markdown_when_tables_off
+        case: 正常
+        summary: '`tables` が偽なら表の見せ方を当てず、コードと Alert は当てる'
+        condition: 3 列の表・言語 `bash` のコードブロック・`[!NOTE]` の囲みを持つ本文に、`tables`・`fold` を偽、`display` を `BODY_VIEW_DEFAULT` にして当てる
+        mock: なし（DOM を作って見る）
+        expected: 表のセルが `data-col-size` を持たず、`div.md-table-frame`・`button.md-pin`・`md-head-stick` が無い。コードブロックは言語の札とコピーのボタンを持ち、囲みの見出しは補足のアイコンを持つ

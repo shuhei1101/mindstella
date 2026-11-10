@@ -1,3 +1,4 @@
+id: IF-489-24
 title: "レビュー中のコメントの追加"
 entry:
   kind: endpoint
@@ -330,7 +331,7 @@ lead: 詳細パネル・詳細の全画面・コメントの一覧の入力か�
 idempotent: false
 side_effects: '`comments.yaml` に 1 件足し（無ければ作る）、同じ向けた先（`target` と `loc`）の書きかけを `drafts.yaml` から消す。どちらも一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -481,7 +482,7 @@ constraints:
     constraint: 溜めたら、同じ向けた先（`target` と `loc` の組か、`thread`）の書きかけを `drafts.yaml` から消す（元に戻すときは消さない）
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
   - item: 件数の上限
     constraint: 設けない（溜めるのは利用者 1 人が 1 回の読み返しで書く分で、まとめて送ると減る）
   - item: 送り元の確かめ
@@ -490,10 +491,10 @@ constraints:
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。コメントの ID は重ならない
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
-  - dev/設計書/シナリオ/単一ユースケース/選んだ箇所へコメントする#
-  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+  - ER-489-1#
+  - SC-489-47#
+  - SC-489-44#
+  - SC-489-3#
 test_file: tests/integration/server/test_comment_add.py

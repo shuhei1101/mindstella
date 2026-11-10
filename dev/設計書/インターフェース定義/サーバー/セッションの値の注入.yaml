@@ -1,3 +1,4 @@
+id: IF-489-15
 title: "セッションの値の注入"
 entry:
   kind: trigger
@@ -142,8 +143,8 @@ constraints:
     constraint: '`ps` をたどるのは 32 段まで'
     notes: Claude Code の下のフックのプロセスの深さは数段で、たどり続けて止まらないことを防ぐ上限
 refs:
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-  - dev/設計書/外部ライブラリ/claude-code#
+  - IF-489-1#
+  - LIB-489-4#
 callers:
-  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+  - SC-489-3#
 test_file: tests/integration/server/test_inject_session.py

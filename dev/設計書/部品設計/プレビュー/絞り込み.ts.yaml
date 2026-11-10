@@ -1,3 +1,4 @@
+id: CMP-489-45
 title: "絞り込み"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/filter-drawer.ts#MindmapPreview.filterDrawer"
 story: "Preview/FilterDrawer"
@@ -114,7 +115,7 @@ accessibility:
   - 閉じたら絞り込みのボタンへフォーカスを戻す（コメントの一覧に切り替えて閉じたときはコメントの一覧に残す）
   - 文字の欄は「文字を含む」の `fieldset` と `legend` で組み、各欄に列の名前の `label` を付ける。初めて開くときは先頭の文字の欄へフォーカスを移す
 refs:
-  - dev/設計書/部品設計/プレビュー/トップバー.ts#
-  - dev/設計書/部品設計/プレビュー/表.ts#
+  - CMP-489-19#
+  - CMP-489-47#
 status: implemented
 test_file: tests/integration/storybook/test_filter_drawer_stories.py

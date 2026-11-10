@@ -1,46 +1,47 @@
+id: MOD-489-57
 title: プレビュー / events-client
 lead: インターフェース定義『書き換えの知らせ』。
 constants:
-- name: EVENTS_URL
-  title: 書き換えの知らせのパス
-  container: frontend/src/shared/adapters/events-client.ts
-  usecase: SPAを開く
-  summary: インターフェース定義『書き換えの知らせ』
-  value: '"/api/events"'
+  - name: EVENTS_URL
+    title: 書き換えの知らせのパス
+    container: frontend/src/shared/adapters/events-client.ts
+    usecase: SPAを開く
+    summary: インターフェース定義『書き換えの知らせ』
+    value: '"/api/events"'
 functions:
-- name: connectEvents
-  title: 書き換えの知らせへの接続
-  kind: 関数
-  container: frontend/src/shared/adapters/events-client.ts
-  usecase: SPAを開く
-  summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` で記録の query を読み直し、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
-  args:
-  - name: queryClient
-    type: QueryClient
-    required: true
-    description: 読み直す query を持つ QueryClient
-  returns:
-    type: () => void
-    description: 接続を閉じる関数
-  process: '1. EventSource を `EVENTS_URL` で作る
+  - name: connectEvents
+    title: 書き換えの知らせへの接続
+    kind: 関数
+    container: frontend/src/shared/adapters/events-client.ts
+    usecase: SPAを開く
+    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` で記録の query を読み直し、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
+    args:
+      - name: queryClient
+        type: QueryClient
+        required: true
+        description: 読み直す query を持つ QueryClient
+    returns:
+      type: () => void
+      description: 接続を閉じる関数
+    process: '1. EventSource を `EVENTS_URL` で作る
 
-    2. `open` で接続の状態を online にし、記録の query を読み直す（切れている間の書き換えを拾う）
+      2. `open` で接続の状態を online にし、記録の query を読み直す（切れている間の書き換えを拾う）
 
-    3. `changed` で記録・レビュー中のコメント・保存待ちの編集・スレッドの query を読み直す
+      3. `changed` で記録・レビュー中のコメント・保存待ちの編集・スレッドの query を読み直す
 
-    4. `error` で接続の状態を offline にする（前の記録の query は残す）'
-  unit_tests:
-  - name: test_connect_events_when_changed
-    case: 正常
-    summary: changed で読み直す
-    condition: 偽物の EventSource から `changed` を送る
-    mock: EventSource（偽物）
-    expected: 記録の query が invalidate される
-  - name: test_connect_events_when_error
-    case: 正常
-    summary: 切れたら offline
-    condition: 偽物の EventSource から `error` を送り、続けて `open` を送る
-    mock: EventSource（偽物）
-    expected: '`error` の後に offline、`open` の後に online'
+      4. `error` で接続の状態を offline にする（前の記録の query は残す）'
+    unit_tests:
+      - name: test_connect_events_when_changed
+        case: 正常
+        summary: changed で読み直す
+        condition: 偽物の EventSource から `changed` を送る
+        mock: EventSource（偽物）
+        expected: 記録の query が invalidate される
+      - name: test_connect_events_when_error
+        case: 正常
+        summary: 切れたら offline
+        condition: 偽物の EventSource から `error` を送り、続けて `open` を送る
+        mock: EventSource（偽物）
+        expected: '`error` の後に offline、`open` の後に online'
 notes:
   単体テスト: 同じフォルダの `events-client.test.ts` に置く（knowledge の規約『フォルダ構成』）

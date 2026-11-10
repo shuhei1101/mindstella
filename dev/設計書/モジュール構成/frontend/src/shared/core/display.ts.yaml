@@ -1,3 +1,4 @@
+id: MOD-489-106
 title: プレビュー / display
 lead: 表示の設定の計算（今の画面の `components/settings-panel.ts`・`settings-confirm.ts` の DOM に触らない関数と、`app.ts` の既定に戻すと同じ振る舞い）。
 functions:

@@ -1,13 +1,14 @@
+id: MOD-489-72
 title: プレビュー / html-body-diff
 lead: 部品設計『HTMLの本文の差分.tsx』の props・イベント・状態を持つ。
 components:
-- name: HtmlBodyDiff
-  title: HTML の本文の差分
-  kind: コンポーネント
-  usecase: 前回からの差分を見る
-  summary: 部品設計『HTMLの本文の差分.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/HTMLの本文の差分.tsx#
-  container: frontend/src/shared/components/html-body-diff.tsx
+  - name: HtmlBodyDiff
+    title: HTML の本文の差分
+    kind: コンポーネント
+    usecase: 前回からの差分を見る
+    summary: 部品設計『HTMLの本文の差分.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-2#
+    container: frontend/src/shared/components/html-body-diff.tsx
 notes:
   単体テスト: 同じフォルダの `html-body-diff.test.tsx` に置く（knowledge の規約『フォルダ構成』）

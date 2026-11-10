@@ -1,3 +1,4 @@
+id: IF-489-14
 title: "スレッドを読む"
 entry:
   kind: mcp_tool
@@ -142,7 +143,7 @@ lead: スレッド 1 件の書き込みと状態の記録を返し、返した�
 idempotent: false
 side_effects: '`threads.yaml` の返した書き込みの `read` を `true` にする（未読を返したときだけ書く）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -244,6 +245,6 @@ constraints:
   - item: 同時の呼び出し
     constraint: 既読を書くときは、書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。未読が無いときはロックを取らない
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-43#
 test_file: tests/integration/server/test_thread.py

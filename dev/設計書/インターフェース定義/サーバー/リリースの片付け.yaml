@@ -1,3 +1,4 @@
+id: IF-489-20
 title: "リリースの片付け"
 entry:
   kind: mcp_tool
@@ -106,7 +107,7 @@ lead: ゴール判定でリリースの資料を書き出す前に、`release/` 
 idempotent: true
 side_effects: '`release/` の中のファイルとフォルダを消す（`release/` が無ければ作る）。`release/` の外は読み書きしない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str

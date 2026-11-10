@@ -1,3 +1,4 @@
+id: SCR-489-29
 title: 詳細の全画面
 elements:
   - name: 元の大きさに戻す
@@ -15,7 +16,7 @@ elements:
     source: 詳細パネルと同じ
   - name: コメントの入力
     kind: form
-    component: dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+    component: CMP-489-7#
     args:
       - name: target
         value: プレビューを開く.id

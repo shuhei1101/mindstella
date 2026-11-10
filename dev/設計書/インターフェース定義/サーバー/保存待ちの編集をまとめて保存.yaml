@@ -1,3 +1,4 @@
+id: IF-489-31
 title: "保存待ちの編集をまとめて保存"
 entry:
   kind: endpoint
@@ -219,7 +220,7 @@ lead: 保存待ちのパネルの「まとめて保存する」で、`edits.yaml
 idempotent: false
 side_effects: 項目の YAML・本文・`config.yaml`・`changes.yaml` を書き換え、`edits.yaml` の編集を空にする。どれも一時ファイルから `os.replace` で置き換え、`edits.yaml` を最後に書く
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -298,13 +299,13 @@ constraints:
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスの MCP のツールと重なっても、どちらの書き換えも失わず、ID も重ならない
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/インターフェース定義/サーバー/まとめての読み書き#
-  - dev/設計書/インターフェース定義/サーバー/書き換えのまとまり#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を足す#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を消す#
-  - dev/設計書/シナリオ/単一ユースケース/前回読んだ時点からの変更を読む#
+  - ER-489-1#
+  - IF-489-5#
+  - IF-489-43#
+  - SC-489-28#
+  - SC-489-29#
+  - SC-489-27#
+  - SC-489-19#
 test_file: tests/integration/server/test_edits_save.py

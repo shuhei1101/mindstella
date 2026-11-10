@@ -1,26 +1,27 @@
+id: MOD-489-10
 title: プレビュー / thread-row
 lead: 部品設計『スレッドの行.tsx』の props・イベント・状態を持つ。
 components:
-- name: ThreadRow
-  title: スレッドの行
-  kind: コンポーネント
-  usecase: スレッドで話す
-  summary: 部品設計『スレッドの行.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/スレッドの行.tsx#
-  unit_tests:
-  - name: test_thread_row
-    case: 正常
-    summary: 開く
-    condition: 行を押す
-    mock: なし
-    expected: '`onOpen` がスレッドの ID で呼ばれる'
-  - name: test_thread_row_when_unread
-    case: 正常
-    summary: 未読
-    condition: 未読の書き込みを持つ
-    mock: なし
-    expected: 未読の札がある
-  container: frontend/src/features/comments/shared/thread-row.tsx
+  - name: ThreadRow
+    title: スレッドの行
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: 部品設計『スレッドの行.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-14#
+    unit_tests:
+      - name: test_thread_row
+        case: 正常
+        summary: 開く
+        condition: 行を押す
+        mock: なし
+        expected: '`onOpen` がスレッドの ID で呼ばれる'
+      - name: test_thread_row_when_unread
+        case: 正常
+        summary: 未読
+        condition: 未読の書き込みを持つ
+        mock: なし
+        expected: 未読の札がある
+    container: frontend/src/features/comments/shared/thread-row.tsx
 notes:
   単体テスト: 同じフォルダの `thread-row.test.tsx` に置く（knowledge の規約『フォルダ構成』）

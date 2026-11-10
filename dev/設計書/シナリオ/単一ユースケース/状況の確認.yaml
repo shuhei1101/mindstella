@@ -1,3 +1,4 @@
+id: SC-489-26
 title: "状況の確認"
 scenarios:
   - name: 正常シナリオ（再開時の状況）

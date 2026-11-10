@@ -1,3 +1,4 @@
+id: IF-489-51
 title: "記録の取得"
 entry:
   kind: endpoint
@@ -178,7 +179,7 @@ lead: 配信しているワークスペースの全ての YAML と本文を、�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -242,6 +243,6 @@ constraints:
     constraint: Python の標準ライブラリ `html.parser.HTMLParser` で原文を読み、開きタグ（空要素を含む）のタグ名の直後に ` data-line="{始まりの行}" data-line-end="{終わりの行}"` を足す。始まりの行はその開きタグが閉じた原文の行（中身が始まる行、1 始まり）。終わりの行はその要素の閉じタグが始まる原文の行で、空要素は始まりの行と同じ。閉じタグを省いた要素は、その要素を含む要素のうち閉じタグを持つ最も内側のものの閉じタグが始まる行（無ければ原文の最後の行）。文書の外枠と描いた文を持たない要素（`html`・`head`・`body`・`meta`・`link`・`base`・`style`・`script`・`template`・`title`）には足さない。印の他は原文を変えず、行の並びも保つ
     notes: PoC（#215）で、コメントの中のタグ・`<style>` / `<script>` の中の `<` `>`・属性値の `>`・複数行の開きタグ・閉じタグを省いた `<p>` / `<li>` を含む 12 ケースで確かめた
 refs:
-  - dev/設計書/インターフェース定義/サーバー/次の候補#
-  - dev/設計書/インターフェース定義/サーバー/ゴール判定#
+  - IF-489-48#
+  - IF-489-7#
 test_file: tests/integration/server/test_records.py

@@ -1,3 +1,4 @@
+id: LIB-489-32
 title: zustand
 kind: ライブラリ
 version:
@@ -7,18 +8,18 @@ version:
   source: package.json
   pinning: 5.0.16 に固定する（`^` を付けない）
 catalogs:
-- name: 使うもの
-  version: 5.0.16
-  entries:
-  - name: create
-    kind: 関数
-    purpose: 接続の状態とライト / ダークのストア
+  - name: 使うもの
+    version: 5.0.16
+    entries:
+      - name: create
+        kind: 関数
+        purpose: 接続の状態とライト / ダークのストア
 lead: フックで読む小さなクライアントの状態のストア。
 purl: pkg:npm/zustand
 dependency_scope: 必須
 adoption: 採用
 used_in:
-- frontend/src/shared/stores/
+  - frontend/src/shared/stores/
 upstream: pmndrs/zustand
 verification:
   state: 済

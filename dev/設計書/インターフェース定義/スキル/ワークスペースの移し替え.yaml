@@ -1,3 +1,4 @@
+id: IF-489-65
 title: "ワークスペースの移し替え"
 entry:
   kind: operation
@@ -35,7 +36,7 @@ flows:
     test: test_normal
 lead: ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替えるスキルの入口と、そのファイルの形。
 callers:
-  - dev/設計書/シナリオ/単一ユースケース/ワークスペースの移し替え#
+  - SC-489-17#
 side_effects: サーバーの MCP のツール `migrate` で写しを取って手順を当て、値を入れ、版のファイルを書き換える。案と状態の合わない検討事項は、利用者が確かめた後に `batch` で直す。スキルが自分でファイルを書くことはない
 request:
   - name: $ARGUMENTS
@@ -71,7 +72,7 @@ constraints:
     constraint: 最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py`（『常駐サーバーの起動の確認』）を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直す手順を案内して止まる。依存は『常駐サーバーの起動の確認』が確かめるため、スキルは確かめない
     notes: インターフェース定義『常駐サーバーの起動の確認』
 refs:
-  - dev/設計書/インターフェース定義/サーバー/記録の形式の移行#
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
+  - IF-489-52#
+  - IF-489-1#
+  - IF-489-38#
 test_file: tests/integration/skill/test_upgrade.py

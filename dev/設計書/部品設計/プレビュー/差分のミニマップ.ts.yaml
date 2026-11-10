@@ -1,3 +1,4 @@
+id: CMP-489-29
 title: "差分のミニマップ"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/diff-minimap.ts#MindmapPreview.diffMinimapFrame"
 story: "Preview/DiffMinimap"
@@ -64,8 +65,8 @@ accessibility:
   - '印の箇所へ送るとき、`prefers-reduced-motion: reduce` ではなめらかに送らず、すぐにその位置にする'
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
 refs:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
-  - dev/設計書/部品設計/プレビュー/差分の印.ts#
+  - IF-489-71#
+  - CMP-489-31#
 status: implemented
 notes:
   印の集め方: 本文のスクロール領域の中の差分の印を文書の順に集める。見えていない印（畳んだ Raw の行など）と、Raw を出している図の枠は並べない（Raw を畳んだ図は枠を「変わった」にし、Raw を出した図は Raw の行を並べる）。すぐ後ろに続く同じ種類の塊・行は 1 つにまとめ、消した塊のすぐ後ろの足した塊は「変わった」1 つにする。キーの差分は、前に無かったキーを「足した」、値が変わったキーを「変わった」にする。図の差分の枠は「変わった」。HTML の本文の枠の中の印は、足した行を「足した」、変えた行を「変わった」にする

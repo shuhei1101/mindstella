@@ -1,0 +1,165 @@
+id: MOD-489-212
+title: プレビュー / 画面と部品 / decisions.ts
+test_files:
+  - tests/unit/preview/test_decisions.py
+functions:
+  - name: buildDecisionTree
+    title: 検討事項の木
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    usecase: 検討事項をマップで辿る
+    scope: public
+    summary: 対象 → カテゴリー → フェーズ → 検討事項の木を、渡した検討事項だけで組んで返す（ELK に渡す節と枝の形）
+    args:
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+      - name: decisions
+        type: object[]
+        required: true
+        passing: keyword
+        description: 絞り込みの条件に合う検討事項（`filterRows` の結果）
+    returns:
+      type: '{children, edges}'
+      description: ELK のグラフ。検討事項が 1 つも残らない枝（カテゴリー・フェーズ）は含めない。対象・カテゴリー・フェーズの節の ID は項目の ID と重ならない形（`target:{名前}` など）
+    unit_tests:
+      - name: test_build_decision_tree
+        case: 正常
+        summary: 渡した検討事項を持たない枝を落とす
+        condition: カテゴリー A に D-1、カテゴリー B に D-2 を持つ索引。`decisions` は D-1 だけ
+        mock: なし
+        expected: 節に D-1 とその対象・カテゴリー A・フェーズがあり、D-2 とカテゴリー B が無い
+  - name: wheelZoom
+    title: ホイールでの倍率
+    container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    usecase: 検討事項をマップで辿る
+    kind: 関数
+    scope: public
+    summary: ホイール 1 回で変えた後のマップの倍率と、マウスの下の点を残す枠のスクロールの位置を返す。`deltaY` が負なら 1.12 倍、正なら 1 / 1.12 倍にし、`min(ZOOM_MIN, scale)`〜`ZOOM_MAX`（`ZOOM_MIN` は 0.4、`ZOOM_MAX` は 1.5）に収める（全体を表示の倍率が 0.4 を下回っているときに縮小の向きへ回しても、倍率を変えない）。スクロールの位置は `(scroll + point) × 新しい倍率 / 今の倍率 − point`（送れる端への収めは、当てたときにブラウザが行う）。`deltaY` が 0 の件（横にだけ回した）では呼ばれず、倍率を変えずに枠の横スクロールに任せる
+    args:
+      - name: scale
+        type: number
+        required: true
+        passing: keyword
+        description: 今当たっている倍率（「全体を表示」のときはそのときの倍率）
+      - name: deltaY
+        type: number
+        required: true
+        passing: keyword
+        description: '`wheel` の `deltaY`。符号だけを見る'
+      - name: point
+        type: '{x: number, y: number}'
+        required: true
+        passing: keyword
+        description: マウスの位置（枠の左上からの px）
+      - name: scroll
+        type: '{left: number, top: number}'
+        required: true
+        passing: keyword
+        description: 枠の今のスクロールの位置
+    returns:
+      type: '{scale: number, scroll: {left: number, top: number}}'
+      description: 新しい倍率と、枠に当てるスクロールの位置。倍率が範囲の端で変わらないときは、渡したスクロールの位置のまま
+    unit_tests:
+      - name: test_wheel_zoom
+        case: 正常
+        summary: 奥へ回すと拡大し、手前へ回すと縮小し、範囲の端で止める
+        condition: '`parametrize`: `scale` 1・`deltaY` -100 / `scale` 1・`deltaY` 100 / `scale` 1.45・`deltaY` -1 / `scale` 0.42・`deltaY` 1 / `scale` 1.5・`deltaY` -1 / `scale` 0.3・`deltaY` 1（どれも `point` (0, 0)・`scroll` (0, 0)）'
+        mock: なし
+        expected: 1.12 / 約 0.893（1÷1.12） / 1.5 / 0.4 / 1.5 / 0.3
+      - name: test_wheel_zoom_keeps_point
+        case: 正常
+        summary: マウスの下の点を残すスクロールの位置を返す
+        condition: '`parametrize`: `scale` 1・`deltaY` -1・`point` (200, 100)・`scroll` (300, 50) / `scale` 1.5・`deltaY` -1・`point` (200, 100)・`scroll` (300, 50)'
+        mock: なし
+        expected: '`scale` 1.12・`scroll` (360, 68) / `scale` 1.5・`scroll` (300, 50)（端で倍率が変わらず位置もそのまま）'
+  - name: shownDecisionIds
+    title: マップが描く検討事項
+    container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    usecase: 検討事項をマップで辿る
+    kind: 関数
+    scope: public
+    summary: 検討事項の列の条件と `filters` で `filterRows` を通る検討事項の ID を返す。入口が、ロックした節を描いているか（効いているロック）の判定に使う。単体テストは持たず、画面設計『検討事項』の結合テストが確かめる
+    args:
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        passing: keyword
+        description: 検討事項の絞り込みの条件
+    returns:
+      type: Set<string>
+      description: 描く検討事項の ID
+components:
+  - name: decisionsScreen
+    title: 検討事項
+    container: plugins/mindstella/skills/mindmap/preview/screens/decisions.ts
+    usecase: 検討事項をマップで辿る
+    kind: 画面
+    summary: '画面設計『検討事項』を描く。検討事項を `filters` で絞り（`filterRows`）、ボード・マップ・表に同じ結果を渡す。表示形式の切り替えは `VIEWS_OF` の並び（ボード・マップ・表）で出す。マップは絞った検討事項で作った `buildDecisionTree` の木を `ELK.layout` で配置して SVG にし、幅 900px 以下では字下げの一覧にする。状態の帯は出さない。elkjs が読めないときは `libraryNotice`。条件に合う検討事項が 1 件も無いときは、マップの枠と字下げの一覧に空の旨を出す。ボードは `boardColumns` に状態の条件を渡し、外した列に「状態の条件で外しています。」を出す。マップ・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描き、マップではキーワードに一致した件数を値ごとに添える。マップの枠には `enableDragScroll` を `onPress` つきで付ける（押したときの扱いは下のロック）。選んだ項目が変わってその節があるときだけ節を中央へ送り、それ以外（選びを外したときを含む）は描き直す前のスクロールの位置（`mapState.scroll`）へ戻す。マップの枠には `wheel` を `passive: false` で付け、既定の動作を止めて `wheelZoom` の倍率とスクロールの位置を当てる（倍率が `fit` のときは当たっている倍率を起点にし、当てた後は数値にして「全体を表示」の `aria-pressed` を外す）。`applyZoom` は、倍率が数値のとき `sizer` の幅・高さの右と下の余白を、枠の `clientWidth` / `clientHeight` にする（`fit` のときは今の 240px / 160px）。木が枠より小さくても、拡大で `wheelZoom` が返した位置まで送れるようにするため。マップの中間の層の節は、描く要素の class（`n-category` / `n-phase`）にスタイルを当て、カテゴリーは面（`--surface`）と線（`--border`）と太字、フェーズは地（`--bg`）と薄い線（`--border-soft`）と小さい文字にする（今の `style.css` の `.n-cat` / `.n-stage` は描く要素に当たっていない）。ボードの列は最も長い列の高さまで伸ばし（`align-items: stretch`）、列の見出しを `position: sticky` でボードの上に留める（タスク・資料のボードも同じ）。マップの項目の節点の大きさは、コメントの印の有無によらず 268×48 にする。マップの検討事項の節を押したら、`resolvePress` で 2 回押しを読み替えた項目で `on.lock` を呼び、マップの余白を押したら `null` で呼ぶ（`blank` のときは入口が詳細パネルの「閉じる」と同じ処理をする）。`shake` が返ったら `shakeKeyElement` で節の鍵を震わせる。節の 1 行目の右端に鍵の場所を置き、閉じた鍵は `lockedId` の節に、開いた鍵はロックしていないときに `route.id` の節へカーソルを乗せている間だけ出す（CSS の `:hover`）。ロック中は `lockedId` の節を中央へ送る起点にし、`route.id` の節は強調の外でも薄くしない。幅 900px 以下（字下げの一覧）では `on.lock` を呼ばず、鍵を出さない'
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: route
+        type: Route
+        required: true
+        description: 表示形式と絞り込み
+      - name: on
+        type: '{open, view, clear, filter, closeDrawer, lock}'
+        required: true
+        description: 項目を開く・表示形式を切り替える・選びを外す（入口が詳細パネルの「閉じる」と同じ処理を渡す）・条件を変える（新しい `filters`。ドロワーと表のチップから）・ドロワーを閉じる・マップの節か余白を押した（押した項目の ID か `null`。入口が `lockTap` で判定し、`LockAction` を返す）
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの画面の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカード・マップの節点の 2 行目の右端、字下げの一覧の行のタイトルと差分の印の右に `data-comment-target` の場所を置き、表へは `comments` で渡す
+      - name: lockedId
+        type: string | null
+        required: true
+        description: 効いているロック（入口の `LockState.map` の検討事項を描いていればその ID、絞り込みで描いていなければ `null`）。マップの節に閉じた鍵を出す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消した検討事項（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、マップの枠（幅 900px 以下は字下げの一覧）・ボード・表の上に `removedBand` を置く。`filters` で絞らず、マップの木（`buildDecisionTree`）にも入れない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: 編集の入口。配る書き出し・差分の表示中は `null`。表示形式の切り替えの帯の右端に「項目を追加」（幅 480px 以下は印だけ。押すと `onAdd`）を置き、ボードのカード・表の行のタイトルの後ろとマップの節（`compact`）に `marks` の `pendingEditMark` を置く。`adds`（足す項目。`id` は仮の ID）はボードの状態の列の先頭と表の先頭の行に破線の枠で出し、ID の場所に「ID は保存で決まる」（表は「—」）を置く（マップには出さない）。押すと `on.open` に仮の ID を渡す
+    state:
+      - name: keyword
+        type: string
+        initial: 空
+        description: マップのキーワード
+      - name: zoom
+        type: number
+        initial: 全体が収まる倍率
+        description: マップの倍率。縮小・拡大のボタンとホイール（`wheelZoom`）で 0.4〜1.5 の数値にし、「全体を表示」で全体が収まる倍率に戻す
+      - name: lastPress
+        type: '{time, x, y, id} | null'
+        initial: 'null'
+        description: マップで前に押した時刻・位置・項目（`resolvePress` に渡す）
+    unit_tests:
+      - name: test_decisions_screen_when_removed
+        case: 正常
+        summary: 消した検討事項を、表示形式と絞り込みによらず一覧の上の帯に出す
+        condition: '`removed` に D-53。`parametrize`: マップ（幅 1280px）/ ボード / 表 / ボードで `filters` が `{"status": ["決定済み"]}`'
+        mock: なし（DOM を作って見る）
+        expected: どれも一覧（マップの枠・ボード・表）の前に「消した項目」の帯が 1 つあり D-53 を持つ。マップの節にもボードの列にも D-53 が無い

@@ -1,3 +1,4 @@
+id: MOD-489-83
 title: プレビュー / send-form
 lead: 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ。
 components:
@@ -7,7 +8,7 @@ components:
     usecase: 項目へコメントする
     summary: 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ
     refs:
-      - dev/設計書/部品設計/プレビュー/コメントの入力.tsx#
+      - CMP-489-8#
     unit_tests:
       - name: test_send_form
         case: 正常

@@ -1,3 +1,4 @@
+id: IF-489-50
 title: "画面からのスレッドの状態の書き換え"
 entry:
   kind: endpoint
@@ -177,7 +178,7 @@ lead: 利用者が画面でスレッドをクローズにするかオープン�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -259,15 +260,15 @@ constraints:
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
   - item: 理由の上限
     constraint: 400 文字
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+    decided_by: NFR-489-1#requirements[スレッドの要約と理由の長さ]
   - item: 取り込み待ち
     constraint: クローズにしても利用者の書き込みの `taken` は書かない。返信を送ってからクローズにしても、その返信は取り込み待ちに残り AI に届く（要件『コメントをスレッドにする』）
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-5#
 test_file: tests/integration/server/test_thread_status_update.py

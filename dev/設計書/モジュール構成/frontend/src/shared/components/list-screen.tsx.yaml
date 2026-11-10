@@ -1,9 +1,10 @@
+id: MOD-489-76
 title: プレビュー / list-screen
 lead: 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態）。
 components:
-- name: ListScreen
-  title: 一覧の画面の枠
-  kind: コンポーネント
-  usecase: 項目を表で絞り込む
-  summary: 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態）
-  container: frontend/src/shared/components/list-screen.tsx
+  - name: ListScreen
+    title: 一覧の画面の枠
+    kind: コンポーネント
+    usecase: 項目を表で絞り込む
+    summary: 一覧の画面の枠（表示形式の切り替え・項目の追加・消した項目の帯・絞り込みのドロワーと表の状態）
+    container: frontend/src/shared/components/list-screen.tsx

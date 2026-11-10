@@ -1,3 +1,4 @@
+id: IF-489-22
 title: "レビュー中のコメントの書き換え"
 entry:
   kind: endpoint
@@ -116,7 +117,7 @@ lead: コメントの一覧の行の中で、レビュー中のコメント 1 �
 idempotent: true
 side_effects: '`comments.yaml` のそのコメントの `body` を書き換えるか `loc` を消す。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -195,12 +196,12 @@ constraints:
     constraint: '`body` と `loc` だけ。`id`・`target`・`created` は変えない。並びも変えない'
   - item: 本文の上限
     constraint: 『レビュー中のコメントの追加』と同じ
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
   - item: 送り元の確かめ
     constraint: 『コメントをまとめて送る』と同じ
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+  - ER-489-1#
+  - SC-489-3#
 test_file: tests/integration/server/test_comment_update.py

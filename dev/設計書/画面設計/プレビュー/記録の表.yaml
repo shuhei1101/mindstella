@@ -1,8 +1,9 @@
+id: SCR-489-25
 title: "記録の表"
 elements:
   - name: トップバー
     kind: nav
-    component: dev/設計書/部品設計/プレビュー/トップバー.ts#
+    component: CMP-489-19#
     args:
       - name: title
         value: プレビューを開く.mindmap-data.settings.summary
@@ -46,7 +47,7 @@ elements:
     visible_when: 常時
   - name: 表
     kind: table
-    component: dev/設計書/部品設計/プレビュー/表.ts#
+    component: CMP-489-47#
     args:
       - name: kind
         value: プレビューを開く.tab
@@ -64,7 +65,7 @@ elements:
     visible_when: 常時
   - name: 絞り込みのドロワー
     kind: dialog
-    component: dev/設計書/部品設計/プレビュー/絞り込み.ts#
+    component: CMP-489-45#
     description: 画面設計『検討事項』の絞り込みのドロワーと同じ出し方で、表の条件を選ぶ。値の条件より上に、文字で絞れる列（値を選ぶ条件にしない、数でない列）の「文字を含む」の欄を並べる（部品設計『絞り込み』の `texts`）。用語集では ID・用語・意味・別名・使わない表記の欄になる。条件は種類（調査・用語集・メモ・会話ログ）ごとに持ち、別の種類へ移っても持ち越さない
     io: 入力
     visible_when: トップバーの絞り込みのボタンを押したとき
@@ -86,7 +87,7 @@ elements:
     visible_when: 常時
   - name: 消した項目の帯
     kind: list
-    component: dev/設計書/部品設計/プレビュー/消した項目の帯.ts#
+    component: CMP-489-43#
     args:
       - name: items
         value: 選んだ時点で消した項目（記録の取得.changes の removed）のうち、種類がこの画面の種類（research・term・note・log）のものの id・title を ID の順に並べたもの。合わせた範囲で足して消した項目も含む
@@ -102,13 +103,13 @@ elements:
     description: 開いているタブの種類（調査・用語集・メモ・会話ログ）の項目を追加する入力を、詳細パネルと同じ置き方で開く（開いていた詳細パネルは閉じる）。タイトルを書いて入力欄を離れたときに `item-add` を 1 件溜め、残りのキーは、返った仮の ID で同じ `item-add` の `value` を書き換えて溜める（1 件のまま）。幅 480px 以下は「＋」の印だけにし、文字を読み上げに残す
     label: 項目を追加
     visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
-    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#elements[編集の表示]
+    action_ref: SCR-489-31#elements[編集の表示]
     status: planned
     introduced:
       pr: 325
   - name: 一覧の保存待ちの印
     kind: label
-    component: dev/設計書/部品設計/プレビュー/保存待ちの印.ts#
+    component: CMP-489-21#
     args:
       - name: kind
         value: その項目の削除を溜めていれば remove、直前の保存で書き込めなかった編集を持てば blocked、それ以外は pending
@@ -129,7 +130,7 @@ elements:
     io: 表示
     visible_when: 開いているタブの種類の `item-add` が保存待ちにあり、差分の表示をしていない
     source: 保存待ちの編集の読み取り.items（op が item-add で key が開いているタブの種類）
-    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#elements[編集の表示]
+    action_ref: SCR-489-31#elements[編集の表示]
     status: planned
     introduced:
       pr: 325

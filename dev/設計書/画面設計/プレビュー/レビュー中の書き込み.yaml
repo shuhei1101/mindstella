@@ -1,3 +1,4 @@
+id: SCR-489-8
 title: "レビュー中の書き込み"
 elements:
   - name: 戻る
@@ -5,7 +6,7 @@ elements:
     position: 見出し
     description: 開く前の画面（スレッドの一覧かスレッド）へ戻る（履歴に積まない）。開く前に見ていたまだ送っていない新しいスレッドが、送るか消すかで無くなっていたら一覧へ戻る。入力欄にフォーカスが無いときの Esc も同じ。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる
     label: 戻る
-    action_ref: dev/設計書/画面設計/プレビュー/コメントの一覧#
+    action_ref: SCR-489-1#
   - name: 画面の見出し
     kind: heading
     position: 見出し
@@ -32,7 +33,7 @@ elements:
     label: まとめて送る（{件数} 件）
     visible_when: レビュー中の書き込みが 1 件以上
     enabled_when: チェックした書き込みが 1 件以上で、送っていない
-    action_ref: dev/設計書/インターフェース定義/サーバー/コメントをまとめて送る#
+    action_ref: IF-489-6#
   - name: 送った結果
     kind: label
     position: 送る帯の直下
@@ -65,7 +66,7 @@ elements:
     io: 表示
     visible_when: 項目を指す新しいスレッドの行
     source: items[].target・items[].target_title
-    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#
+    action_ref: SCR-489-31#
   - name: 返信先のスレッド
     kind: button
     position: 書き込みの行 > 頭
@@ -73,14 +74,14 @@ elements:
     io: 表示
     visible_when: 返信の行
     source: スレッドの読み取り.threads[]（items[].thread の ID のもの）
-    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+    action_ref: SCR-489-3#
   - name: スレッドを開く
     kind: button
     position: 書き込みの行 > 本文の下
     description: まだ送っていない新しいスレッドの画面を開く。「続きを読む」を出す行ではその後ろに並べる
     label: スレッドを開く
     visible_when: 新しいスレッドの行
-    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+    action_ref: SCR-489-3#
   - name: 行の箇所
     kind: label
     position: 書き込みの行
@@ -94,7 +95,7 @@ elements:
     description: 書き込みの本文。スレッドの書き込みと同じく、改行を保って mdmark で Markdown として描く。折り返した後の見た目の行で 5 行を超える本文は、行の高さの 5 行分までを出してはみ出しを隠す（5 行以下の本文はそのまま）。開閉は行ごとに画面が覚え、描き直しと本文の書き換えをまたいで保つ（パネルを閉じるまで）。項目の ID は文字のまま出す。記録にあるまとまりを指す `[文言](#diff=...)` は、スレッドの書き込みと同じ見た目の、`文言` だけのまとまりのリンクにする（描くものと文字のまま残すものはインターフェース定義『プレビューを開く』の制約『書き込みのまとまりのリンク』）。押すと、変更履歴でそのまとまりを選んだときと同じく差分の表示に切り替え、この画面は開いたままにする
     io: 表示
     source: items[].body・記録の取得.changes.sets のまとまりの ID と説明
-    component: dev/設計書/部品設計/プレビュー/本文の折りたたみ.ts#
+    component: CMP-489-41#
     args:
       - name: id
         value: レビュー中のコメントの読み取り.items[].id
@@ -118,27 +119,27 @@ elements:
     io: 入力
     visible_when: 修正を押した行
     max_length: 10000
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの書き換え#
+    action_ref: IF-489-22#
   - name: 削除
     kind: button
     position: 書き込みの行 > 操作
     description: '`DELETE /api/comments/{id}` で消し、行を「コメントを削除しました。」と「元に戻す」に置き換える。確認のモーダルは挟まない。読み上げの名前は「修正」と同じ言い方で「…を削除」、`title` は「削除」'
     label: （ごみ箱の印）
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの削除#
+    action_ref: IF-489-21#
   - name: 元に戻す
     kind: button
     position: 書き込みの行（削除した行）
     description: 削除で返った中身を『レビュー中のコメントの追加』へ同じ `id` と `created` で送り、元の場所に戻す。パネルを閉じるか、まとめて送るまで出す
     label: 元に戻す
     visible_when: パネルを開いている間に削除した行
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+    action_ref: IF-489-24#
   - name: 送れない理由
     kind: label
     position: 書き込みの行
     description: 印のアイコンと「クローズのスレッドへの返信は送れません。オープンに戻すと送れます。」に、そのスレッドを開く「スレッドを開く」を添える（スレッドの画面の「オープンに戻す」へ移る入口）
     io: 表示
     visible_when: 返信先のスレッドがクローズ
-    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+    action_ref: SCR-489-3#
   - name: 箇所が合わない理由
     kind: label
     position: 書き込みの行
@@ -152,7 +153,7 @@ elements:
     description: '`PATCH /api/comments/{id}` へ `loc: null` を送り、項目への書き込みにする。200 なら理由と行の箇所を消す'
     label: 箇所を外す
     visible_when: 箇所が合わない理由を出していて、書き込みが箇所を持ち、向けた項目が記録にある
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの書き換え#
+    action_ref: IF-489-22#
   - name: 空の状態
     kind: label
     position: 一覧

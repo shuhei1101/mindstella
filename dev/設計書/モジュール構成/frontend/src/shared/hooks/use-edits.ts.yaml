@@ -1,76 +1,77 @@
+id: MOD-489-128
 title: プレビュー / use-edits
 lead: 保存待ちの編集を溜める・取り消す・まとめて保存する mutation。
 functions:
-- name: useAddEdit
-  title: 編集を溜める
-  kind: フック
-  usecase: 画面で項目を編集して保存する
-  summary: '`POST /api/edits` を呼び、成功で読み直す'
-  returns:
-    type: UseMutationResult
-    description: mutation
-  unit_tests:
-  - name: test_use_add_edit
-    case: 正常
-    summary: 読み直す
-    condition: '201'
-    mock: MSW
-    expected: 編集の query が読み直される
-  - name: test_use_add_edit_when_error
-    case: 異常
-    summary: 400 の detail
-    condition: '400'
-    mock: MSW
-    expected: '`AppError` の `detail`'
-  container: frontend/src/shared/hooks/use-edits.ts
-- name: useCancelEdit
-  title: 編集を取り消す
-  kind: フック
-  usecase: 画面で項目を編集して保存する
-  summary: '`DELETE /api/edits/{id}` を呼び、成功で読み直す'
-  returns:
-    type: UseMutationResult
-    description: mutation
-  unit_tests:
-  - name: test_use_cancel_edit
-    case: 正常
-    summary: 読み直す
-    condition: '200'
-    mock: MSW
-    expected: 編集の query が読み直される
-  container: frontend/src/shared/hooks/use-edits.ts
-- name: useSaveEdits
-  title: まとめて保存する
-  kind: フック
-  usecase: 画面で項目を編集して保存する
-  summary: '`POST /api/edits/save` を呼ぶ。409 の `blocked` を返す。結果は mutation の側で `useEditSessionStore` へ書く（保存でパネルが外れても通知を出すため）'
-  args:
-  - name: count
-    type: number
-    required: true
-    description: '`mutate` へ渡す、保存する編集の件数'
-  returns:
-    type: UseMutationResult
-    description: mutation
-  unit_tests:
-  - name: test_use_save_edits
-    case: 正常
-    summary: 記録を読み直す
-    condition: '200'
-    mock: MSW
-    expected: 4 つの query が読み直される
-  - name: test_use_save_edits_when_unmounted
-    case: 正常
-    summary: 呼んだ部品が外れても結果を残す
-    condition: 保存の途中で部品が外れる
-    mock: MSW
-    expected: '`saved` が保存した件数になり、`blocked` が空になる'
-  - name: test_use_save_edits_when_blocked
-    case: 異常
-    summary: 書き込めない編集
-    condition: 409 と `blocked`
-    mock: MSW
-    expected: '`blocked` が返って store に入り、編集は残る'
-  container: frontend/src/shared/hooks/use-edits.ts
+  - name: useAddEdit
+    title: 編集を溜める
+    kind: フック
+    usecase: 画面で項目を編集して保存する
+    summary: '`POST /api/edits` を呼び、成功で読み直す'
+    returns:
+      type: UseMutationResult
+      description: mutation
+    unit_tests:
+      - name: test_use_add_edit
+        case: 正常
+        summary: 読み直す
+        condition: '201'
+        mock: MSW
+        expected: 編集の query が読み直される
+      - name: test_use_add_edit_when_error
+        case: 異常
+        summary: 400 の detail
+        condition: '400'
+        mock: MSW
+        expected: '`AppError` の `detail`'
+    container: frontend/src/shared/hooks/use-edits.ts
+  - name: useCancelEdit
+    title: 編集を取り消す
+    kind: フック
+    usecase: 画面で項目を編集して保存する
+    summary: '`DELETE /api/edits/{id}` を呼び、成功で読み直す'
+    returns:
+      type: UseMutationResult
+      description: mutation
+    unit_tests:
+      - name: test_use_cancel_edit
+        case: 正常
+        summary: 読み直す
+        condition: '200'
+        mock: MSW
+        expected: 編集の query が読み直される
+    container: frontend/src/shared/hooks/use-edits.ts
+  - name: useSaveEdits
+    title: まとめて保存する
+    kind: フック
+    usecase: 画面で項目を編集して保存する
+    summary: '`POST /api/edits/save` を呼ぶ。409 の `blocked` を返す。結果は mutation の側で `useEditSessionStore` へ書く（保存でパネルが外れても通知を出すため）'
+    args:
+      - name: count
+        type: number
+        required: true
+        description: '`mutate` へ渡す、保存する編集の件数'
+    returns:
+      type: UseMutationResult
+      description: mutation
+    unit_tests:
+      - name: test_use_save_edits
+        case: 正常
+        summary: 記録を読み直す
+        condition: '200'
+        mock: MSW
+        expected: 4 つの query が読み直される
+      - name: test_use_save_edits_when_unmounted
+        case: 正常
+        summary: 呼んだ部品が外れても結果を残す
+        condition: 保存の途中で部品が外れる
+        mock: MSW
+        expected: '`saved` が保存した件数になり、`blocked` が空になる'
+      - name: test_use_save_edits_when_blocked
+        case: 異常
+        summary: 書き込めない編集
+        condition: 409 と `blocked`
+        mock: MSW
+        expected: '`blocked` が返って store に入り、編集は残る'
+    container: frontend/src/shared/hooks/use-edits.ts
 notes:
   単体テスト: 同じフォルダの `use-edits.test.ts` に置く（knowledge の規約『フォルダ構成』）

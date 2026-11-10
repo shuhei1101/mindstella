@@ -1,8 +1,9 @@
+id: SCR-489-17
 title: "既定の保存の確かめ"
 elements:
   - name: 確かめの中身
     kind: dialog
-    component: dev/設計書/部品設計/プレビュー/既定の保存の確かめ.ts#
+    component: CMP-489-33#
     args:
       - name: from
         value: 記録の取得.settings.display（無いキーは組み込みの既定。見た目は deep、表示する種類は全て）

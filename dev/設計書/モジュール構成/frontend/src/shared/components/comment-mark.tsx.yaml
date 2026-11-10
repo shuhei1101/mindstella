@@ -1,13 +1,14 @@
+id: MOD-489-64
 title: プレビュー / comment-mark
 lead: 部品設計『コメントの印.tsx』の props・イベント・状態を持つ。
 components:
-- name: CommentMark
-  title: コメントの印
-  kind: コンポーネント
-  usecase: 項目を表で絞り込む
-  summary: 部品設計『コメントの印.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/コメントの印.tsx#
-  container: frontend/src/shared/components/comment-mark.tsx
+  - name: CommentMark
+    title: コメントの印
+    kind: コンポーネント
+    usecase: 項目を表で絞り込む
+    summary: 部品設計『コメントの印.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-10#
+    container: frontend/src/shared/components/comment-mark.tsx
 notes:
   単体テスト: 同じフォルダの `comment-mark.test.tsx` に置く（knowledge の規約『フォルダ構成』）

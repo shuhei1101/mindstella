@@ -1,3 +1,4 @@
+id: IF-489-68
 title: "プラグインの読み込み"
 entry:
   kind: operation
@@ -34,7 +35,7 @@ flows:
     test: test_normal
 lead: Claude Code がプラグイン mindstella をインストールして読み込むときの、プラグインのマニフェストとフォルダの形。
 callers:
-  - dev/設計書/外部ライブラリ/claude-code#
+  - LIB-489-4#
 request:
   - name: name
     type: '"mindstella"'

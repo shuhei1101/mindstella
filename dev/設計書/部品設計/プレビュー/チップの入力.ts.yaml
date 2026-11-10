@@ -1,3 +1,4 @@
+id: CMP-489-17
 title: "チップの入力"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/chips-input.ts#MindmapPreview.chipsInput"
 story: "Preview/ChipsInput"
@@ -76,7 +77,7 @@ events:
     value: '`onChange(values, removed)`。`values` は新しい並び（`mainToggle` が真のときは `{name, main?}` の並びで、主題でないタグは `main` を持たない）、`removed` は外した値の名前（外したときだけ。それ以外は `null`）'
     description: 使う側は新しい並びを保存待ちの編集として溜める
 uses:
-  - component: dev/設計書/部品設計/プレビュー/タグの並び.ts#
+  - component: CMP-489-15#
     how: 主題のチップに、タグの並びと同じ二重丸のマーカーと枠の濃さを当てる
 accessibility:
   - 主題のトグルは `button` で、読み上げ名「{タグ} を主題」と押した状態（`aria-pressed`）を読み上げる。`title` は主題のとき「主題を外す」、それ以外は「主題にする」

@@ -1,3 +1,4 @@
+id: IF-489-67
 title: "起動スクリプトの登録"
 entry:
   kind: operation
@@ -168,7 +169,7 @@ lead: 起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{アカウ
 idempotent: true
 side_effects: '`set`・`add-account`・`remove-account` は `{XDG_CONFIG_HOME か ~/.config}/mindstella/` の `registration.json` と `shell.sh` を書き、ログインシェルの設定ファイルに `shell.sh` を読み込む印つきの範囲が無ければ末尾に足す。`remove` はその 2 つのファイルと印つきの範囲を消す。`show` は何も書かない。ワークスペースは書かない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/セットアップ#
+  - IF-489-64#
 request:
   - name: '{サブコマンド}'
     type: Literal['show', 'set', 'add-account', 'remove-account', 'remove']
@@ -291,7 +292,7 @@ constraints:
   - item: 終了コード
     constraint: 0 正常 / 1 実行時のエラー / 2 引数の誤り
 refs:
-  - dev/設計書/シナリオ/単一ユースケース/起動スクリプトの登録#
-  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
-  - dev/設計書/外部ライブラリ/claude-code#
+  - SC-489-42#
+  - IF-489-56#
+  - LIB-489-4#
 test_file: tests/integration/skill/test_register.py

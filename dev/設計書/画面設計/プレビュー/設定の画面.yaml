@@ -1,3 +1,4 @@
+id: SCR-489-27
 title: "設定の画面"
 elements:
   - name: 画面の見出し
@@ -24,7 +25,7 @@ elements:
     io: 入力
     source: 記録の取得.settings
     target: 保存待ちの編集の追加（target が settings、op が setting、key が設定のキー）
-    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    action_ref: IF-489-30#
     status: planned
     introduced:
       pr: 325
@@ -130,7 +131,7 @@ elements:
     options: サービスの既定（null。既定）・文字起こしの可否.presets
     source: 記録の取得.settings.transcription.preset（無ければサービスの既定）
     target: 保存待ちの編集の追加.value（key が transcription）
-    action_ref: dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
+    action_ref: IF-489-41#
     status: planned
 screen: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
 mock: dev/mock/pages/workspace-settings/325/standard/index.html

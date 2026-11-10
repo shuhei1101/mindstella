@@ -1,11 +1,12 @@
+id: MOD-489-25
 title: プレビュー / detail-resizer
 lead: 詳細パネルの幅をドラッグとキーで変える。
 components:
-- name: DetailResizer
-  title: 幅の区切り
-  kind: コンポーネント
-  usecase: 項目の詳細を読む
-  summary: 詳細パネルの幅をドラッグとキーで変える
-  container: frontend/src/features/detail/detail-panel/components/detail-resizer.tsx
+  - name: DetailResizer
+    title: 幅の区切り
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 詳細パネルの幅をドラッグとキーで変える
+    container: frontend/src/features/detail/detail-panel/components/detail-resizer.tsx
 notes:
   単体テスト: 同じフォルダの `detail-resizer.test.tsx` に置く（knowledge の規約『フォルダ構成』）

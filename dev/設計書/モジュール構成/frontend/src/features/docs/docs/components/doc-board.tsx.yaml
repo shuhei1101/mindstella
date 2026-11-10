@@ -1,11 +1,12 @@
+id: MOD-489-34
 title: プレビュー / doc-board
 lead: 状態ごとの列に資料のカードを並べる。
 components:
-- name: DocBoard
-  title: 資料のボード
-  kind: コンポーネント
-  usecase: 資料を読む
-  summary: 状態ごとの列に資料のカードを並べる
-  container: frontend/src/features/docs/docs/components/doc-board.tsx
+  - name: DocBoard
+    title: 資料のボード
+    kind: コンポーネント
+    usecase: 資料を読む
+    summary: 状態ごとの列に資料のカードを並べる
+    container: frontend/src/features/docs/docs/components/doc-board.tsx
 notes:
   単体テスト: 同じフォルダの `doc-board.test.tsx` に置く（knowledge の規約『フォルダ構成』）

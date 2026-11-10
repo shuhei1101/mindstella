@@ -1,0 +1,178 @@
+id: MOD-489-201
+title: プレビュー / 基盤 / doc-export.ts
+test_files:
+  - tests/unit/preview/test_doc_export.py
+constants:
+  - name: MDMARK_EXPORT_FEATURES
+    title: エクスポートした HTML の mdmark で止める機能
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 項目の詳細を読む
+    summary: エクスポートした 1 枚の HTML の `mdmark.mount` に渡す機能のオフ。用語と資料・調査のエイリアスのツールチップ（`glossary`・`backlinks`。mdmark は `backlinks` がオンのときだけ文書の別名を照合する）は mdmark が描き、通信するコードの色付けと、ファイルの外を指す機能を止める
+    value: '{comments: false, print: false, views: false, syntax: false}'
+    status: planned
+    introduced:
+      pr: 348
+  - name: MDMARK_CSS_EMBEDDED_ID
+    title: 配る書き出しの mdmark の CSS の要素の id
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 項目の詳細を読む
+    summary: 配る書き出しが mdmark の CSS を中身に持つ `<style>` の id（モジュール構成『ビルド』の `MDMARK_CSS_OPEN`）
+    value: "'mindmap-mdmark-css'"
+    status: planned
+    introduced:
+      pr: 348
+functions:
+  - name: mdmarkAssets
+    title: mdmark の中身の取得
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 1 枚の HTML に入れる mdmark の CSS と JavaScript の中身を取る
+    kind: 関数
+    scope: public
+    is_async: true
+    args: []
+    returns:
+      type: 'Promise<{ok: true, css: string, js: string} | {ok: false, reason: string}>'
+      description: 取れたら CSS と JavaScript の中身、取れなければ理由
+    process: |-
+      1. 配る書き出しは、`#mindmap-mdmark`（`MDMARK_EMBEDDED_ID`）の文字と `#mindmap-mdmark-css`（`MDMARK_CSS_EMBEDDED_ID`）の文字を返す
+      2. サーバーの配信は、mdmark の CSS の `link` の `href` と import map の JavaScript の URL を、それぞれの `integrity` を付けた `fetch` で取る
+      3. 要素が無い・取れない・`integrity` が合わないときは `{ok: false, reason}` を返す（拒否しない）
+    unit_tests:
+      - name: test_mdmark_assets
+        case: 正常
+        summary: 配る書き出しとサーバーの配信のどちらでも中身を返す
+        condition: '`parametrize`: `#mindmap-mdmark` と `#mindmap-mdmark-css` を持つ画面 / `link` と import map を持つ画面'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: どちらも `ok` が真で、`css` と `js` が配った中身と同じ
+      - name: test_mdmark_assets_when_unavailable
+        case: 異常
+        summary: 取れないときは理由を返す
+        condition: '`parametrize`: 配信元が 404 / 配信元の中身を書き換えて `integrity` を合わなくする'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`ok` が偽で `reason` が空でない'
+    status: planned
+    introduced:
+      pr: 348
+  - name: buildDocHtml
+    title: 資料の 1 枚の HTML の組み立て
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 資料 1 件の本文を、mdmark の CSS と JavaScript を中に持ち、ネットにつながらなくても開ける 1 枚の HTML にする
+    kind: 関数
+    scope: public
+    args:
+      - name: item
+        type: Item
+        required: true
+        passing: keyword
+        description: エクスポートする資料
+      - name: source
+        type: string
+        required: true
+        passing: keyword
+        description: 資料の本文の Markdown
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 記録の索引（ツールチップの用語・資料・調査を引く）
+      - name: assets
+        type: '{css: string, js: string}'
+        required: true
+        passing: keyword
+        description: '`mdmarkAssets` が返した中身'
+    returns:
+      type: string
+      description: 1 枚の HTML
+    process: |-
+      1. mdmark の `mount` に渡す索引を作る。用語集の用語（タイトル・別名・本文）と、`item` 自身と取り下げたものを除いた資料・調査（タイトル・エイリアス・説明（`description`））を入れる。`related` は入れない（mdmark が本文の末尾に被参照の一覧を置かない）
+      2. 本文・索引・タイトルを 1 つの JSON にし、`<` を `\u003c` に置き換えて `<script type="application/json">` に入れる
+      3. `assets.js` を `<script type="text/plain" id="doc-mdmark">` に入れ（`</script` を含むときは組み立てずに投げる）、`assets.css` を `<style>` に入れる
+      4. タイトルは `&`・`<`・`>`・`"` を文字参照にして `<title>` と見出しに入れる
+      5. 起動のスクリプトは `#doc-mdmark` の文字を Blob の URL にして `import()` し、`mount` を `MDMARK_EXPORT_FEATURES` と索引で呼び、`relabelParamCopy` と同じ置き換えを当てる
+    unit_tests:
+      - name: test_build_doc_html
+        case: 正常
+        summary: ネットにつながらない画面で本文と部品とツールチップが動く
+        condition: 用語 G-1・資料 A-2・取り下げた資料 A-3 と、`<!-- html -->` の範囲に `<mdmark-param>` を持つ資料 A-1 を組み立て、外への通信を全て止めた画面で開く
+        mock: '`page.route` で全ての外への通信を落とす'
+        expected: 本文が描け、部品の値を動かせ、G-1 と A-2 にはツールチップが出て、A-1 自身と A-3 には出ない。コピーのボタンの文字が「今の値をコピー」
+      - name: test_build_doc_html_when_title_has_markup
+        case: 正常
+        summary: タイトルと本文の `<` で HTML が崩れない
+        condition: タイトル `<b>&"x"</b>`、本文に `</script>` を含む資料
+        mock: なし
+        expected: '`<title>` の文字が元のタイトルと同じで、本文に `</script>` が文字として出る'
+    status: planned
+    introduced:
+      pr: 348
+  - name: stripEmbeddedHtml
+    title: 埋め込んだ HTML を除いた Markdown
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 本文から `<!-- html -->` 〜 `<!-- /html -->` の範囲を印の行ごと除く
+    kind: 関数
+    scope: public
+    args:
+      - name: source
+        type: string
+        required: true
+        passing: positional
+        description: 本文の Markdown
+    returns:
+      type: string
+      description: 範囲を除いた Markdown
+    process: |-
+      1. `embeddedHtmlRanges` の範囲ごとに `open` の行から `close` の行までを除く
+      2. 除いた後に空行が 3 つ以上続くところは 2 つにまとめる
+    unit_tests:
+      - name: test_strip_embedded_html
+        case: 正常
+        summary: 範囲だけを除き、フェンスの中と閉じていない印は残す
+        condition: '`parametrize`: 範囲 2 つを持つ本文 / フェンスの中に `<!-- html -->` を持つ本文 / 閉じていない `<!-- html -->` を持つ本文'
+        mock: なし
+        expected: 範囲の行が無くなる / 本文のまま / 本文のまま
+    status: planned
+    introduced:
+      pr: 348
+  - name: downloadText
+    title: 文字のダウンロード
+    container: plugins/mindstella/skills/mindmap/preview/core/doc-export.ts
+    usecase: 資料のエクスポート
+    summary: 文字をファイルとして端末に保存させる
+    kind: 関数
+    scope: public
+    side_effects: ブラウザのダウンロードを始める
+    args:
+      - name: name
+        type: string
+        required: true
+        passing: keyword
+        description: ファイル名
+      - name: text
+        type: string
+        required: true
+        passing: keyword
+        description: 中身
+      - name: type
+        type: "'text/html' | 'text/markdown'"
+        required: true
+        passing: keyword
+        description: MIME タイプ（`;charset=utf-8` を付けて Blob に渡す）
+    returns:
+      type: void
+      description: '-'
+    process: |-
+      1. `text` を Blob にして URL を作る
+      2. `download` に `name` を持つ `a` を作って押し、URL を解放する
+    unit_tests:
+      - name: test_download_text
+        case: 正常
+        summary: 名前と中身のとおりに保存される
+        condition: "`{name: 'A-1.md', text: '# 見出し', type: 'text/markdown'}`"
+        mock: なし（`page.expect_download`）
+        expected: 保存されたファイルの名前が `A-1.md` で、中身が UTF-8 の `# 見出し`
+    status: planned
+    introduced:
+      pr: 348

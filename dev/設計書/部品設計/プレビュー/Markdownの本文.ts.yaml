@@ -1,3 +1,4 @@
+id: CMP-489-5
 title: "Markdownの本文"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/markdown-body.ts#MindmapPreview.decorateMarkdown"
 story: "Preview/MarkdownBody"
@@ -94,9 +95,9 @@ accessibility:
   - Alert の種類は色だけでなく見出しの文言でも示す
   - 'コードブロックの `pre` は `tabindex="0"` と読み上げの名前「コード: {言語}」（言語を書かないものは「コード」）を持ち、キーボードで横に送れる（フェンスのコードブロックは mdmark が付け、mdmark が付けない字下げのコードブロックには描画の関数が「コード」で付ける）'
 refs:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
-  - dev/設計書/部品設計/プレビュー/表示の設定.ts#
-  - dev/設計書/外部ライブラリ/mdmark#
+  - IF-489-71#
+  - CMP-489-49#
+  - LIB-489-13#
 notes:
   モック: '`dev/mock/components/markdown-body/`'
   当て方: 列の幅・固定・見出しの固定・開閉の境目の値と振る舞いは、インターフェース定義『プレビューを開く』の制約「本文の表とセクションの見せ方」のとおりにする。列を固定した状態と畳んだ状態は残さず、描き直すと初めの状態に戻る

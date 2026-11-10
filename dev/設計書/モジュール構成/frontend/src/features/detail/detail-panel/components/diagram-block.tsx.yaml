@@ -1,11 +1,12 @@
+id: MOD-489-26
 title: プレビュー / diagram-block
 lead: 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く。
 components:
-- name: DiagramBlock
-  title: 本文の図
-  kind: コンポーネント
-  usecase: 項目の詳細を読む
-  summary: 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く
-  container: frontend/src/features/detail/detail-panel/components/diagram-block.tsx
+  - name: DiagramBlock
+    title: 本文の図
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 本文の図に拡大表示・Raw・コピーを置き、図の差分を描く
+    container: frontend/src/features/detail/detail-panel/components/diagram-block.tsx
 notes:
   単体テスト: 同じフォルダの `diagram-block.test.tsx` に置く（knowledge の規約『フォルダ構成』）

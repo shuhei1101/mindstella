@@ -1,3 +1,4 @@
+id: SCR-489-1
 title: "コメントの一覧"
 elements:
   - name: パネルの見出し
@@ -13,7 +14,7 @@ elements:
     label: レビュー中（{件数}）
     visible_when: レビュー中の書き込みの画面を開いていない
     source: レビュー中のコメントの読み取り.items の件数
-    action_ref: dev/設計書/画面設計/プレビュー/レビュー中の書き込み#
+    action_ref: SCR-489-8#
   - name: 一覧を閉じる
     kind: button
     position: 見出しの帯 > 右端
@@ -33,7 +34,7 @@ elements:
     visible_when: タグで絞っている
   - name: スレッドの行
     kind: list
-    component: dev/設計書/部品設計/プレビュー/スレッドの行.ts#
+    component: CMP-489-13#
     args:
       - name: thread
         value: スレッドの読み取り.threads[] の 1 件
@@ -47,7 +48,7 @@ elements:
     description: 状態とタグで絞ったスレッドを最後の書き込みの新しい順に並べる。状態の絞り込みがクローズでなく、タグで絞っていないときは、まだ送っていない新しいスレッドを溜めた順に先頭へ並べる。行を押すとパネルの中をそのスレッドの画面に切り替える（履歴に積まない）。書き換えの知らせが届いたらスレッドを読み直して描き直す（スクロールの位置と絞り込みは保つ）。クローズにしたスレッドは、絞り込みがオープンなら一覧へ戻ったときに外れる。`seen` が `false` の書き込みを持つスレッドの行には未読の札が出る（クローズの行でも出る）
     io: 表示
     source: スレッドの読み取り.threads
-    action_ref: dev/設計書/画面設計/プレビュー/スレッド#
+    action_ref: SCR-489-3#
   - name: 空の状態
     kind: label
     position: 一覧
@@ -74,7 +75,7 @@ elements:
     visible_when: 新しいスレッドの入力を出している
   - name: 新しいスレッドの入力
     kind: form
-    component: dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+    component: CMP-489-7#
     args:
       - name: body
         value: レビュー中のコメントの読み取り.drafts のうち target も thread も持たない書きかけ
@@ -101,7 +102,7 @@ elements:
     io: 入力
     visible_when: 「新しいスレッド」を押した後
     target: レビュー中のコメントの追加.body
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+    action_ref: IF-489-24#
   - name: ピン止め
     kind: button
     position: 見出しの帯 > 一覧を閉じるの左

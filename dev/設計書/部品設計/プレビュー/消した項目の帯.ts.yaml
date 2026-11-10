@@ -1,3 +1,4 @@
+id: CMP-489-43
 title: "消した項目の帯"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/removed-band.ts#MindmapPreview.removedBand"
 story: "Preview/RemovedBand"
@@ -37,7 +38,7 @@ args:
     description: 消したときのタイトル。途中で切らずに折り返す
     status: implemented
 uses:
-  - component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+  - component: CMP-489-31#
     how: 各項目の頭に `kind` を `removed` にして置く
 accessibility:
   - 帯は `section` にし、「この時点で消した項目」を読み上げ名にする

@@ -1,3 +1,4 @@
+id: IF-489-36
 title: "常駐サーバーの停止"
 entry:
   kind: mcp_tool
@@ -62,7 +63,7 @@ constraints:
     constraint: 起動し直すツールは持たない。止めた後は、次に Claude Code を立ち上げたときの『常駐サーバーの起動の確認』か起動スクリプトが、そのときにインストールされているバージョンのプラグインで起動する
     notes: 常駐サーバーが自分を起動し直すと、止めたときのバージョンのフォルダの `server.py` を起動してしまい、上げたプラグインに替わらない
 refs:
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - IF-489-1#
 callers:
-  - dev/設計書/シナリオ/単一ユースケース/常駐サーバーの起動と停止#
+  - SC-489-20#
 test_file: tests/integration/server/test_server_stop.py

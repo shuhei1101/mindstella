@@ -1,3 +1,4 @@
+id: CMP-489-35
 title: "本文の印のツールチップ"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/term-tip.ts#MindmapPreview.termTip"
 story: "Preview/TermTip"

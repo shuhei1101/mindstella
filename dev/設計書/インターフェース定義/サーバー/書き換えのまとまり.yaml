@@ -1,3 +1,4 @@
+id: IF-489-43
 title: "書き換えのまとまり"
 entry:
   kind: mcp_tool
@@ -178,7 +179,7 @@ lead: まだまとめていない書き換え（最後のまとまりより後�
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -249,6 +250,6 @@ constraints:
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。一時ファイルに書いてから `os.replace` で置き換える'
 exclusivity: ワークスペースを書き換えるツールと同じ鍵とロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/インターフェース定義/サーバー/まだまとめていない変更#
+  - ER-489-1#
+  - IF-489-4#
 test_file: tests/integration/server/test_commit.py

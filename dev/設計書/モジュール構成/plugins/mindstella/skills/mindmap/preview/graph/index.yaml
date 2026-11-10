@@ -1,0 +1,6 @@
+summary: graph の設計書
+items:
+  - page: graph.ts.yaml
+    summary: プレビュー / 画面と部品 / graph.ts
+  - page: looks.ts.yaml
+    summary: プレビュー / 画面と部品 / looks.ts

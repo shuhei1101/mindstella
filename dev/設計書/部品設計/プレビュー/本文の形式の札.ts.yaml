@@ -1,3 +1,4 @@
+id: CMP-489-39
 title: "本文の形式の札"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/body-format-badge.ts#MindmapPreview.bodyFormatBadge"
 story: "Preview/BodyFormatBadge"

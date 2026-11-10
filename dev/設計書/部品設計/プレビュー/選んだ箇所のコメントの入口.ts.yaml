@@ -1,3 +1,4 @@
+id: CMP-489-57
 title: "選んだ箇所のコメントの入口"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/selection-comment.ts#MindmapPreview.selectionComment"
 story: "Preview/SelectionComment"

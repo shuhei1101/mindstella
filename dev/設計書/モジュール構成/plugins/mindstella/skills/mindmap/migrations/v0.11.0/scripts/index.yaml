@@ -1,0 +1,4 @@
+summary: scripts の設計書
+items:
+  - page: remove_tag_vocabulary.py.yaml
+    summary: サーバー / 移行 / remove_tag_vocabulary.py

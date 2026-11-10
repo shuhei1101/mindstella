@@ -1,3 +1,4 @@
+id: CMP-489-33
 title: "既定の保存の確かめ"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts#MindmapPreview.settingsConfirm"
 story: "Preview/SettingsSaveConfirm"

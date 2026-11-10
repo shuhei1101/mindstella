@@ -1,13 +1,14 @@
+id: MOD-489-78
 title: プレビュー / pending-mark
 lead: 部品設計『保存待ちの印.tsx』の props・イベント・状態を持つ。
 components:
-- name: PendingMark
-  title: 保存待ちの印
-  kind: コンポーネント
-  usecase: 画面で項目を編集して保存する
-  summary: 部品設計『保存待ちの印.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/保存待ちの印.tsx#
-  container: frontend/src/shared/components/pending-mark.tsx
+  - name: PendingMark
+    title: 保存待ちの印
+    kind: コンポーネント
+    usecase: 画面で項目を編集して保存する
+    summary: 部品設計『保存待ちの印.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-22#
+    container: frontend/src/shared/components/pending-mark.tsx
 notes:
   単体テスト: 同じフォルダの `pending-mark.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,3 +1,4 @@
+id: CMP-489-8
 title: コメントの入力
 implementation: frontend/src/shared/components/send-form.tsx#SendForm
 story: Shared/SendForm
@@ -401,4 +402,4 @@ accessibility:
   - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
 refs:
-  - dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+  - CMP-489-7#

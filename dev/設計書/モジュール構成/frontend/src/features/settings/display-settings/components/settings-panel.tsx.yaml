@@ -1,26 +1,27 @@
+id: MOD-489-46
 title: プレビュー / settings-panel
 lead: 部品設計『表示の設定.tsx』の props・イベント・状態を持つ。
 components:
-- name: SettingsPanel
-  title: 表示の設定
-  kind: コンポーネント
-  usecase: 表示の設定を変える
-  summary: 部品設計『表示の設定.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/表示の設定.tsx#
-  unit_tests:
-  - name: test_settings_panel
-    case: 正常
-    summary: 種類を外す
-    condition: メモのチェックを外す
-    mock: なし
-    expected: '`onKindsChange` がメモの無い並びで呼ばれる'
-  - name: test_settings_panel_when_same_as_default
-    case: 正常
-    summary: 既定と同じ
-    condition: 見た目と種類が既定と同じ
-    mock: なし
-    expected: 「ワークスペースの既定にする」の代わりに同じ旨の文
-  container: frontend/src/features/settings/display-settings/components/settings-panel.tsx
+  - name: SettingsPanel
+    title: 表示の設定
+    kind: コンポーネント
+    usecase: 表示の設定を変える
+    summary: 部品設計『表示の設定.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-50#
+    unit_tests:
+      - name: test_settings_panel
+        case: 正常
+        summary: 種類を外す
+        condition: メモのチェックを外す
+        mock: なし
+        expected: '`onKindsChange` がメモの無い並びで呼ばれる'
+      - name: test_settings_panel_when_same_as_default
+        case: 正常
+        summary: 既定と同じ
+        condition: 見た目と種類が既定と同じ
+        mock: なし
+        expected: 「ワークスペースの既定にする」の代わりに同じ旨の文
+    container: frontend/src/features/settings/display-settings/components/settings-panel.tsx
 notes:
   単体テスト: 同じフォルダの `settings-panel.test.tsx` に置く（knowledge の規約『フォルダ構成』）

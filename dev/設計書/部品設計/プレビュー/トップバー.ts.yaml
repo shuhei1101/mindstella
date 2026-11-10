@@ -1,3 +1,4 @@
+id: CMP-489-19
 title: トップバー
 lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・保存待ちのボタン・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
 implementation: plugins/mindstella/skills/mindmap/preview/components/topbar.ts#MindmapPreview.topbar

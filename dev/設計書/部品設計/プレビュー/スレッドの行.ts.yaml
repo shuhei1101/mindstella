@@ -1,3 +1,4 @@
+id: CMP-489-13
 title: "スレッドの行"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/thread-row.ts#MindmapPreview.threadRow"
 story: "Preview/ThreadRow"
@@ -116,5 +117,5 @@ accessibility:
   - タグの札は行を開くボタンと別のボタンにし、`aria-pressed` と読み上げの名前「タグ「{タグ}」で絞る」を持つ
   - 行を開くボタンとタグの札のそれぞれに Tab で届き、フォーカスは枠の全体に印の色の輪で出す
 refs:
-  - dev/設計書/画面設計/プレビュー/コメントの一覧#
+  - SCR-489-1#
 test_file: tests/integration/storybook/test_thread_row_stories.py

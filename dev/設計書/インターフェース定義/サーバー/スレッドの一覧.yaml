@@ -1,3 +1,4 @@
+id: IF-489-8
 title: "スレッドの一覧"
 entry:
   kind: mcp_tool
@@ -141,7 +142,7 @@ lead: スレッドを状態・タグ・未読・取り込み待ちで絞り、�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -248,6 +249,6 @@ constraints:
   - item: 同時の呼び出し
     constraint: 読むだけでロックを取らない（『MCP サーバーの起動』の同時の呼び出し）
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-43#
 test_file: tests/integration/server/test_threads.py

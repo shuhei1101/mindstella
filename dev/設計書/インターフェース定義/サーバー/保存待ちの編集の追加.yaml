@@ -1,3 +1,4 @@
+id: IF-489-30
 title: "保存待ちの編集の追加"
 entry:
   kind: endpoint
@@ -368,7 +369,7 @@ lead: 詳細パネル・詳細の全画面・設定の画面・種類ごとの�
 idempotent: false
 side_effects: '`edits.yaml` に編集を 1 件足すか書き換えるか外し（無ければ作る）、一時ファイルから `os.replace` で置き換える。項目の YAML・本文・`config.yaml`・`changes.yaml` は書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -492,7 +493,7 @@ constraints:
     constraint: 溜めるときは、キー 1 つの値をその種類のスキーマのそのキーの型で確かめる。`item-add` の `options` は、スキーマの型に加えて、記号が重ならないかを確かめる。`tags`（`set` の値と `item-add` の `value` の `tags`）は、スキーマの型（`{name, main?}` の並び）に加えて、NFKC と小文字にそろえた名前が重ならないかを確かめる。`map` は渡せる `op`・`key` と値の型だけを確かめる。参照のキーの指す先・項目全体のスキーマ・`map` の対応の過不足は、保存のときに確かめる（『保存待ちの編集をまとめて保存』）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
   - item: 件数の上限
     constraint: 設けない（溜めるのは利用者 1 人が話し合いの合間に直す分で、保存すると 0 件に戻る）
   - item: 送り元の確かめ
@@ -501,10 +502,10 @@ constraints:
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。編集の ID と仮の ID は重ならない
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を足す#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を消す#
+  - ER-489-1#
+  - SC-489-28#
+  - SC-489-29#
+  - SC-489-27#
 test_file: tests/integration/server/test_edits_add.py

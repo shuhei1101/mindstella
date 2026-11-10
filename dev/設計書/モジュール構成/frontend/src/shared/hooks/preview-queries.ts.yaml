@@ -1,42 +1,43 @@
+id: MOD-489-125
 title: プレビュー / preview-queries
 lead: SPA が読む query（記録・レビュー中のコメント・保存待ちの編集・スレッド）と invalidate。
 functions:
-- name: previewQueries
-  title: 先読みする query
-  kind: 関数
-  usecase: SPAを開く
-  summary: ルートの loader で先読みする query を返す
-  returns:
-    type: readonly QueryOptions[]
-    description: 4 つの query
-  unit_tests:
-  - name: test_preview_queries
-    case: 正常
-    summary: 4 つを返す
-    condition: なし
-    mock: なし
-    expected: 記録・コメント・編集・スレッドの queryKey
-  container: frontend/src/shared/hooks/preview-queries.ts
-- name: invalidatePreview
-  title: 読み直し
-  kind: 関数
-  usecase: SPAを開く
-  summary: 書き換えの知らせと編集の後に 4 つの query を読み直す
-  args:
-  - name: queryClient
-    type: QueryClient
-    required: true
-    description: QueryClient
-  returns:
-    type: Promise<void>
-    description: なし
-  unit_tests:
-  - name: test_invalidate_preview
-    case: 正常
-    summary: 4 つを読み直す
-    condition: なし
-    mock: '`invalidateQueries`'
-    expected: 4 つの queryKey で呼ばれる
-  container: frontend/src/shared/hooks/preview-queries.ts
+  - name: previewQueries
+    title: 先読みする query
+    kind: 関数
+    usecase: SPAを開く
+    summary: ルートの loader で先読みする query を返す
+    returns:
+      type: readonly QueryOptions[]
+      description: 4 つの query
+    unit_tests:
+      - name: test_preview_queries
+        case: 正常
+        summary: 4 つを返す
+        condition: なし
+        mock: なし
+        expected: 記録・コメント・編集・スレッドの queryKey
+    container: frontend/src/shared/hooks/preview-queries.ts
+  - name: invalidatePreview
+    title: 読み直し
+    kind: 関数
+    usecase: SPAを開く
+    summary: 書き換えの知らせと編集の後に 4 つの query を読み直す
+    args:
+      - name: queryClient
+        type: QueryClient
+        required: true
+        description: QueryClient
+    returns:
+      type: Promise<void>
+      description: なし
+    unit_tests:
+      - name: test_invalidate_preview
+        case: 正常
+        summary: 4 つを読み直す
+        condition: なし
+        mock: '`invalidateQueries`'
+        expected: 4 つの queryKey で呼ばれる
+    container: frontend/src/shared/hooks/preview-queries.ts
 notes:
   単体テスト: 同じフォルダの `preview-queries.test.ts` に置く（knowledge の規約『フォルダ構成』）

@@ -1,3 +1,4 @@
+id: IF-489-28
 title: "保存待ちの編集の取り消し"
 entry:
   kind: endpoint
@@ -97,7 +98,7 @@ lead: 保存待ちのパネルの「取り消す」で、保存待ちの編集 1
 idempotent: false
 side_effects: '`edits.yaml` から編集を外し、一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -152,8 +153,8 @@ constraints:
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/画面で項目を編集して保存する#
+  - ER-489-1#
+  - SC-489-28#
 test_file: tests/integration/server/test_edits_cancel.py

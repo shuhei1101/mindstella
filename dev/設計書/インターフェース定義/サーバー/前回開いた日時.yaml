@@ -1,3 +1,4 @@
+id: IF-489-34
 title: "前回開いた日時"
 entry:
   kind: endpoint
@@ -113,7 +114,7 @@ lead: プレビューのタブが開いたときに 1 度呼び、そのワー�
 idempotent: false
 side_effects: ワークスペースの `.mindstella-opened` を今の日時と通し番号で書き換える（無ければ作る）。記録（種類ごとの YAML・本文・`changes.yaml`）は書き換えない
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -174,6 +175,6 @@ constraints:
   - item: 前の版の形
     constraint: 1 行目の日時だけを持つ `.mindstella-opened`（前の版の形）は、`previous` を `null` にして返し、今の形で書き換える。移し替え（`migrate`）の手順は足さない
 refs:
-  - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
-  - dev/設計書/ER図/ワークスペース#
+  - IF-489-18#
+  - ER-489-1#
 test_file: tests/integration/server/test_opened.py

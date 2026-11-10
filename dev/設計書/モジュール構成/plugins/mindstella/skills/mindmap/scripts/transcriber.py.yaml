@@ -1,0 +1,203 @@
+id: MOD-489-158
+title: サーバー / 文字起こし / transcriber.py
+lead: 配信が音声を文字に起こすときに依存する文字起こしのインターフェースと、使えるかの確かめ・失敗の種類を持つ。サービスごとの呼び方は実装のモジュール、環境変数で実装を選ぶ処理は引き当てのモジュールが持ち、配信はこのモジュールだけを import する。どのモジュールも import しない。
+test_files:
+  - tests/unit/scripts/test_transcriber.py
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    transcriber.py   文字起こしのインターフェース・失敗の種類・使えるかの確かめ
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class 文字起こしのインターフェース
+        class 使えるかの確かめ
+        class 使えるか
+        class voice_pasteの文字起こし
+        使えるかの確かめ --> 文字起こしのインターフェース
+        使えるかの確かめ --> 使えるか
+        voice_pasteの文字起こし ..|> 文字起こしのインターフェース
+      ```
+data_models:
+  - name: Availability
+    title: 使えるか
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    role: DTO
+    summary: インターフェース定義『文字起こしの可否』の `available`・`reason`・`detail`・`presets`。`@dataclass(frozen=True, slots=True, kw_only=True)`
+    properties:
+      - name: available
+        type: bool
+        description: 音声を受け付けられるか
+      - name: reason
+        type: UnavailableReason | None
+        description: 使えない理由。使えるときは `None`
+      - name: detail
+        type: str | None
+        description: 使えない理由を画面に出す文（`UNAVAILABLE_DETAILS`）。使えるときは `None`
+      - name: presets
+        type: list[str]
+        description: 用語集のプリセットの名前の候補（サービスが返した並びのまま）。使えないときは空
+enums:
+  - name: UnavailableReason
+    title: 使えない理由
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: '`Literal` の型エイリアス。インターフェース定義『文字起こしの可否』の `reason`'
+    values:
+      - value: stopped
+        title: 届かない
+        description: サービスが起動していない（接続を断られた・応答の上限を超えた）
+      - value: unsupported
+        title: 音声の受け付けに対応していない
+        description: サービスには届くが、音声を受け付けるエンドポイントが無い
+classes:
+  - name: Transcriber
+    title: 文字起こしのインターフェース
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    role: インターフェース
+    summary: 配信が依存する文字起こしの契約（`typing.Protocol`）。サービスの名前・エンドポイント・待ち方を持たない
+    kind: インタフェース
+    methods:
+      - name: presets
+        title: プリセットの一覧
+        kind: メソッド
+        summary: 用語集のプリセットの名前の一覧を返す。使えるかの確かめも兼ねる
+        returns:
+          type: list[str]
+          description: プリセットの名前（サービスが返した並び）
+        exceptions:
+          - name: TranscriberStoppedError
+            condition: サービスに届かない
+          - name: TranscriberUnsupportedError
+            condition: サービスに音声を受け付けるエンドポイントが無い
+      - name: transcribe
+        title: 文字起こし
+        kind: メソッド
+        summary: 音声とプリセットを 1 回だけ渡し、終わるまで待って起こした文字を返す
+        args:
+          - name: audio
+            type: bytes
+            required: true
+            passing: positional
+            description: 録音した音声
+          - name: content_type
+            type: str
+            required: true
+            passing: positional
+            description: 音声の `Content-Type`（`audio/` で始まる）
+          - name: preset
+            type: str | None
+            required: true
+            passing: keyword
+            description: 用語集のプリセット。`None` ならサービスの既定
+        returns:
+          type: str
+          description: 起こした文字（話し声が無ければ空文字）
+        exceptions:
+          - name: TranscriberStoppedError
+            condition: サービスに届かない
+          - name: TranscriberUnsupportedError
+            condition: サービスに音声を受け付けるエンドポイントが無い
+          - name: TranscriptionFailedError
+            condition: サービスが失敗を返したか、依頼を受け付けなかった
+          - name: TranscriptionTimeoutError
+            condition: 文字起こしの待ちの上限までに終わらない
+    implementations:
+      - target: dev/設計書/モジュール構成/サーバー/voice-pasteの文字起こし#classes[VoicePasteTranscriber]
+        notes: '`MINDSTELLA_TRANSCRIBER` が `voice-paste`（既定）のとき'
+  - name: TranscriberError
+    title: 文字起こしの失敗
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: 文字起こしのインターフェースが送る例外の基底。メッセージはサービスの理由（標準エラーにだけ記録し、応答に出さない）
+    kind: クラス
+    inherits: Exception
+  - name: TranscriberStoppedError
+    title: サービスに届かない
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: 接続を断られたか、文字起こしのサービスの応答の上限を超えた（`reason` は `stopped`）
+    kind: クラス
+    inherits: TranscriberError
+  - name: TranscriberUnsupportedError
+    title: 音声の受け付けに対応していない
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: サービスには届くが、音声を受け付けるエンドポイントが無い（`reason` は `unsupported`）
+    kind: クラス
+    inherits: TranscriberError
+  - name: TranscriptionFailedError
+    title: 文字起こしに失敗した
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: サービスが文字起こしの失敗を返したか、依頼を受け付けなかった（配信は 502 にする）
+    kind: クラス
+    inherits: TranscriberError
+  - name: TranscriptionTimeoutError
+    title: 文字起こしが終わらない
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: 文字起こしの待ちの上限までに終わらない（配信は 504 にする）
+    kind: クラス
+    inherits: TranscriberError
+constants:
+  - name: UNAVAILABLE_DETAILS
+    title: 使えない理由の文
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: 使えない理由 → 画面に出す文（インターフェース定義『文字起こしの可否』『音声の文字起こし』の `detail`。サービスの名前を含めない）
+    entries:
+      - key: stopped
+        value: 文字起こしのサービスが起動していないため、音声で入力できません。
+      - key: unsupported
+        value: 文字起こしのサービスが音声の受け付けに対応していないため、音声で入力できません。
+  - name: FAILED_DETAIL
+    title: 失敗の文
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    summary: 文字起こしに失敗した・終わらないときに画面に出す文（インターフェース定義『音声の文字起こし』の 502・504 の `detail`）
+    value: 文字起こしできませんでした。もう一度お試しください。
+functions:
+  - name: check_availability
+    title: 使えるかの確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/transcriber.py
+    usecase: 音声でコメントする
+    scope: public
+    summary: 文字起こしのインターフェースへプリセットの一覧を 1 回尋ね、使えるかと候補を返す（結果を持ち越さない）
+    args:
+      - name: transcriber
+        type: Transcriber | None
+        required: true
+        passing: positional
+        description: 文字起こしのインターフェース。`None`（配信が文字起こしを持たない）は届かないと同じに扱う
+    returns:
+      type: Availability
+      description: 使えるか・理由・文・候補
+    process: |-
+      1. `transcriber` が `None` なら、`stopped` の `Availability` を返す
+      2. `transcriber.presets()` を呼ぶ
+         - `TranscriberStoppedError` の場合、`stopped` と `UNAVAILABLE_DETAILS["stopped"]` の `Availability` を返す
+           - `[WARNING]` 文字起こしのサービスに届かない（例外のメッセージ）
+         - `TranscriberUnsupportedError` の場合、`unsupported` と `UNAVAILABLE_DETAILS["unsupported"]` の `Availability` を返す
+           - `[WARNING]` 文字起こしのサービスが音声を受け付けない（例外のメッセージ）
+      3. `available: true`・`reason: None`・`detail: None` と返った一覧で返す
+    unit_tests:
+      - name: test_check_availability
+        case: 正常
+        summary: 一覧が返れば使える
+        condition: '`presets()` が `["一般", "開発"]` を返す偽の実装'
+        mock: 偽の実装
+        expected: '`Availability(available=True, reason=None, detail=None, presets=["一般", "開発"])`'
+      - name: test_check_availability_when_unavailable
+        case: 正常
+        summary: 届かない・対応していない・持たないは理由つきで使えない
+        condition: '`parametrize`: `presets()` が `TranscriberStoppedError` / `TranscriberUnsupportedError` を送る偽の実装 / `None`'
+        mock: 偽の実装
+        expected: '`available` が偽で `presets` が空。`reason` が `stopped` / `unsupported` / `stopped`、`detail` が `UNAVAILABLE_DETAILS` のその理由の文'

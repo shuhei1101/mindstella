@@ -1,3 +1,4 @@
+id: CMP-489-53
 title: "資料のエクスポートのメニュー"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/doc-export-menu.ts#MindmapPreview.docExportMenu"
 story: "Preview/DocExportMenu"
@@ -76,8 +77,8 @@ accessibility:
   - 組み立てられなかった文は `role="alert"` で伝える
   - 警告とエラーは色だけでなくアイコンと文で示す
 refs:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
-  - dev/設計書/シナリオ/単一ユースケース/資料を書き出す#
+  - IF-489-71#
+  - SC-489-39#
 status: planned
 introduced:
   pr: 348

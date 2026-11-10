@@ -1,13 +1,14 @@
+id: MOD-489-67
 title: プレビュー / doc-export-menu
 lead: 部品設計『資料のエクスポートのメニュー.tsx』の props・イベント・状態を持つ。
 components:
-- name: DocExportMenu
-  title: 資料のエクスポートのメニュー
-  kind: コンポーネント
-  usecase: 資料を読む
-  summary: 部品設計『資料のエクスポートのメニュー.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/資料のエクスポートのメニュー.tsx#
-  container: frontend/src/shared/components/doc-export-menu.tsx
+  - name: DocExportMenu
+    title: 資料のエクスポートのメニュー
+    kind: コンポーネント
+    usecase: 資料を読む
+    summary: 部品設計『資料のエクスポートのメニュー.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-54#
+    container: frontend/src/shared/components/doc-export-menu.tsx
 notes:
   単体テスト: 同じフォルダの `doc-export-menu.test.tsx` に置く（knowledge の規約『フォルダ構成』）

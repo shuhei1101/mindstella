@@ -1,3 +1,4 @@
+id: SC-489-27
 title: "画面で項目を消す"
 scenarios:
   - name: 正常シナリオ

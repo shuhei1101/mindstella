@@ -1,8 +1,9 @@
+id: MOD-489-143
 title: プレビュー / tokens
 lead: デザイン方針のトークンを :root の 3 ティア（プリミティブ・セマンティック・派生）で持つ。値は採用した見本（`dev/mock/styles/shadcn-swiss-cards/`）から写す。
 styles:
-- name: tokens
-  title: トークン
-  container: frontend/src/shared/styles/tokens.css
-  usecase: 共通
-  summary: デザイン方針のトークンを :root の 3 ティア（プリミティブ・セマンティック・派生）で持つ。値は採用した見本（`dev/mock/styles/shadcn-swiss-cards/`）から写す
+  - name: tokens
+    title: トークン
+    container: frontend/src/shared/styles/tokens.css
+    usecase: 共通
+    summary: デザイン方針のトークンを :root の 3 ティア（プリミティブ・セマンティック・派生）で持つ。値は採用した見本（`dev/mock/styles/shadcn-swiss-cards/`）から写す

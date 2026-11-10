@@ -1,3 +1,4 @@
+id: SC-489-17
 title: "ワークスペースの移し替え"
 scenarios:
   - name: 正常シナリオ

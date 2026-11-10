@@ -1,3 +1,4 @@
+id: CMP-489-15
 title: "タグの並び"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/tag-list.ts#MindmapPreview.tagList"
 story: "Preview/TagList"

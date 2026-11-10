@@ -1,10 +1,10 @@
+id: ARCH-489-1
 title: アーキテクチャ図
 overview:
   direction: LR
   nodes:
     - id: U
       label: 利用者
-      shape: stadium
       kind: actor
     - id: GH
       label: GitHub
@@ -20,7 +20,6 @@ overview:
       kind: system
     - id: WS
       label: ワークスペース（YAML）
-      shape: cylinder
       kind: store
     - id: PRV
       label: プレビュー（HTML）
@@ -98,16 +97,15 @@ overview:
     - from: SRV
       to: TR
       label: 音声の文字起こし（HTTP・127.0.0.1）
-  subgraphs:
-    - id: SYS
-      label: mindstella
-      nodes:
-        - PLG
-        - SKL
-        - BIN
-        - SRV
-        - WS
-        - PRV
+  frame:
+    label: mindstella
+    nodes:
+      - PLG
+      - SKL
+      - BIN
+      - SRV
+      - WS
+      - PRV
 repository:
   style: モノレポ
   repositories:
@@ -145,7 +143,7 @@ external_systems:
     protocol: プラグインのマニフェスト（JSON）/ スキル（Markdown）/ フック（標準入出力の JSON）/ MCP（Streamable HTTP の JSON-RPC）
     notes:
       事前確認: 要。起動スクリプトが、`PATH` に `claude` があることと、`claude plugin list --json` に mindstella があることを確かめ、無ければ Claude Code を立てずに止まる。常駐サーバーは、SessionStart のフックと起動スクリプトが `GET /_admin/status` で待ち受けているかを確かめ、落ちていれば起動する。
-    detail: dev/設計書/外部ライブラリ/claude-code#
+    detail: LIB-489-4#
   - name: jsDelivr
     purpose: プレビューの描画のライブラリ（mdmark・marked・elkjs・mermaid）と差分の計算のライブラリ（jsdiff）の取得。サーバーが配るプレビューは開いたブラウザが読み、配る書き出し（`export`）は書き出すときに取って中に持つ
     direction: 受信のみ
@@ -153,29 +151,29 @@ external_systems:
     notes:
       事前確認: 要。サーバーが配るプレビューは、開いた時点で、描画のライブラリが読み込めたかを確かめる。読み込めなかったときは、読み込めなかったライブラリの名前を画面に出す。`export` は、書き出すときに `https://cdn.jsdelivr.net/npm/{package}@{version}/{path}`（mdmark は `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{version}/dist/{path}`）から配布ファイルとライセンスの本文を取る。1 回の要求で接続と 1 回の読み取りをそれぞれ 30 秒まで待ち、取れなければ何も書かずにエラーで終える。配る書き出しを開くときは通信しない。
     refs:
-      - dev/設計書/外部ライブラリ/mdmark#
-      - dev/設計書/外部ライブラリ/marked#
-      - dev/設計書/外部ライブラリ/elkjs#
-      - dev/設計書/外部ライブラリ/mermaid#
+      - LIB-489-13#
+      - LIB-489-11#
+      - LIB-489-5#
+      - LIB-489-14#
   - name: Google Fonts
     purpose: プレビューの文字（Inter・Noto Sans JP・JetBrains Mono）の取得
     direction: 受信のみ
     protocol: HTTPS
-    detail: dev/設計書/外部API/GoogleFonts#
+    detail: API-489-1#
     notes:
       事前確認: 不要。読めないときは端末の文字で描き、画面の操作は変わらない。配る書き出しは文字を読まず、常に端末の文字で描く。
   - name: tmux
     purpose: 起動スクリプトが立てるセッションの中で、Claude Code を動かす。サーバーは、まとめて送られた送信を、そのワークスペースを指してツールを呼んだセッションのペインへ入力する
     direction: 送信のみ
     protocol: tmux のコマンド（起動スクリプトは `new-session`・`has-session`・`attach-session`、サーバーはフックから受けたソケットを `-S` で指して `display-message`・`load-buffer`・`paste-buffer`・`send-keys`）
-    detail: dev/設計書/外部ライブラリ/tmux#
+    detail: LIB-489-26#
     notes:
       事前確認: 要。起動スクリプトが、`PATH` に `tmux` があることを確かめ、無ければ Claude Code を立てずに止まる。
   - name: 文字起こしのサービス（voice-paste）
     purpose: コメント・返信の入力で録音した音声を文字に起こす。サーバーは文字起こしのインターフェース（抽象）経由で呼び、画面とサーバーのほかの処理はサービスに直接依存しない
     direction: 双方向
     protocol: HTTP（`MINDSTELLA_TRANSCRIBER_URL`。既定は `http://127.0.0.1:47823`。Origin を付けない）
-    detail: dev/設計書/外部API/voice-paste#
+    detail: API-489-2#
     notes:
       事前確認: 要。画面が開いたときと設定の画面を開いたときに、サーバーが『文字起こしの可否』で用語集のプリセットの一覧を尋ね、届かない・音声を受け付ける口が無いときはマイクのボタンを押せなくして理由を出す。サービスが無くても、マイクのボタンのほかの操作は変わらない。voice-paste は Windows で動くため、WSL の常駐サーバーから `127.0.0.1` で届くには WSL のネットワークを mirrored にする（届かないときは `stopped` と同じに扱う）
 lead: mindstella のサブシステムと、Claude Code・tmux・ブラウザ・CDN との境界。

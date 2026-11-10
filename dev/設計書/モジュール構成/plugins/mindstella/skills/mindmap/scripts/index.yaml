@@ -1,0 +1,66 @@
+summary: scripts の設計書
+items:
+  - page: backup.py.yaml
+    summary: サーバー / 移行 / backup.py
+  - page: builder.py.yaml
+    summary: ワークスペースの記録を 1 つの JSON にまとめ、プレビューの雛形に CSS と JavaScript を差し込む。配信はその雛形と記録をその場で返し、配る書き出しは同じ雛形に jsDelivr から取った描画のライブラリとライセンスの表示と記録を入れて書き出す。読み書きと検証と、依存と影響・ゴール判定（画面に出す値の計算）に依存する。
+  - page: check_env.py.yaml
+    summary: サーバー / 起動 / check_env.py
+  - page: checker.py.yaml
+    summary: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
+  - page: claude_input.py.yaml
+    summary: ツールの呼び出しが運んだセッションの値を読み、ワークスペースごとに宛先を持つ。まとめて送った後に、そのワークスペースを指して最後にツールを呼んだセッションが生きているかを確かめてからペインへ 1 行の文字列を貼り、Claude Code の会話の記録に入ったかを確かめる。tmux と ps を子プロセスで呼び、会話の記録（jsonl）を読む。
+  - page: commands.py.yaml
+    summary: サーバー / ゴール判定 / commands.py
+  - page: comments.py.yaml
+    summary: レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ足す。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。
+  - page: edits.py.yaml
+    summary: プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。読み書きと検証・入口（項目の追加と更新）・設定の更新・変更履歴に依存し、鍵は呼ぶ側（配信）が取る。例外はモジュール構成『読み書きと検証』の `EditInvalidError`・`EditNotFoundError`・`EditConflictError`・`EditsBlockedError`。単体テストは `tests/unit/scripts/test_edits.py` に置く。
+  - page: ensure_server.py.yaml
+    summary: サーバー / 起動 / ensure_server.py
+  - page: errors.py.yaml
+    summary: サーバー / 読み書きと検証 / errors.py
+  - page: graph.py.yaml
+    summary: サーバー / ゴール判定 / graph.py
+  - page: history.py.yaml
+    summary: 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』にだけ依存し、書き込みは `save_change`・`save_batch` に任せる。
+  - page: html_body.py.yaml
+    summary: 資料の HTML の本文の開きタグに原文の行の印を足す処理と、原文の行の範囲の描いた文を取り出す処理。どちらも Python の標準ライブラリ `html.parser.HTMLParser` で原文を読む。
+  - page: inject_session.py.yaml
+    summary: Claude Code の `PreToolUse` のフックが呼ぶスクリプト。mindstella のツールを呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの入力の `session` に入れて返す。
+  - page: kinds.py.yaml
+    summary: サーバー / 読み書きと検証 / kinds.py
+  - page: launch.py.yaml
+    summary: サーバー / 起動 / launch.py
+  - page: locations.py.yaml
+    summary: コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。
+  - page: migration_ops.py.yaml
+    summary: サーバー / 移行 / migration_ops.py
+  - page: migrator.py.yaml
+    summary: サーバー / 移行 / migrator.py
+  - page: query.py.yaml
+    summary: 条件で項目を探してページに分け、返す量を選んで JSON か Markdown にし、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証・タグの表記だけに依存し、ファイルを書かない。
+  - page: readme.py.yaml
+    summary: ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL の一覧）を組み立てて書く。`init`・`readme`・`preview_url` の 3 つのツールが同じ関数で書く。
+  - page: reset_unread.py.yaml
+    summary: Claude Code の `SessionStart` のフックが呼ぶスクリプト。作業フォルダとその直下のワークスペースを探し、ロックを取ってスレッドの書き込みを未読に戻す。スレッドと読み書きと検証に依存する。単体テストは `tests/unit/scripts/test_reset_unread.py` に置く。
+  - page: serve.py.yaml
+    summary: ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送るを受け付ける。まとめて送った後とすぐ送った後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。
+  - page: server.py.yaml
+    summary: サーバー / 入口 / server.py
+  - page: settings_update.py.yaml
+    summary: '`update_settings` の引数を確かめ、設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` を付け替えて、設定と種類ごとの YAML をまとめて書く。読み書きと検証だけに依存する。'
+  - page: store.py.yaml
+    summary: サーバー / 読み書きと検証 / store.py
+  - page: tag_text.py.yaml
+    summary: タグを NFKC と小文字にそろえた表記にし、使われているタグのうち字面の近いものを並べる。検索から使う。
+  - page: threads.py.yaml
+    summary: スレッド（`threads.yaml`）を読み書きする。まとめて送られた利用者の書き込みを足し、AI の一覧・既読・返信・状態と要約の書き換え・取り込み済みを担い、画面へ返す形を作る。読み書きと検証だけに依存し、鍵は呼ぶ側（入口・コメント・配信・未読へ戻す）が取る。単体テストは `tests/unit/scripts/test_threads.py` に置く。
+  - page: transcriber.py.yaml
+    summary: 配信が音声を文字に起こすときに依存する文字起こしのインターフェースと、使えるかの確かめ・失敗の種類を持つ。サービスごとの呼び方は実装のモジュール、環境変数で実装を選ぶ処理は引き当てのモジュールが持ち、配信はこのモジュールだけを import する。どのモジュールも import しない。
+  - page: transcriber_registry.py.yaml
+    summary: 環境変数で文字起こしの実装を選び、URL を確かめて作る。常駐サーバーの起動の入口だけが import し、文字起こし（抽象）と実装のモジュールに依存する。実装は抽象だけに依存するので、import は一方向になる（入口 → 引き当て → 実装 → 抽象）。
+  - page: versions.py.yaml
+    summary: サーバー / 移行 / versions.py
+  - page: voice_paste.py.yaml
+    summary: 文字起こしのインターフェースの voice-paste の実装。プリセットの一覧を読み、音声を `multipart/form-data` で依頼し、ジョブの状態を取りに行って終わるまで待つ。HTTP は標準ライブラリの `urllib.request` で送り、文字起こしだけに依存する。

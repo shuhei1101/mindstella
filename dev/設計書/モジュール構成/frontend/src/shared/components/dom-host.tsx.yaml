@@ -1,9 +1,10 @@
+id: MOD-489-68
 title: プレビュー / dom-host
 lead: React の外で組み立てた要素を置く入れ物。
 components:
-- name: DomHost
-  title: DOM の入れ物
-  kind: コンポーネント
-  usecase: 項目の詳細を読む
-  summary: React の外で組み立てた要素を置く入れ物
-  container: frontend/src/shared/components/dom-host.tsx
+  - name: DomHost
+    title: DOM の入れ物
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: React の外で組み立てた要素を置く入れ物
+    container: frontend/src/shared/components/dom-host.tsx

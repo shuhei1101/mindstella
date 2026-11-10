@@ -1,0 +1,93 @@
+id: MOD-489-223
+title: プレビュー / 画面と部品 / topbar.ts
+components:
+  - name: topbar
+    title: トップバー
+    container: plugins/mindstella/skills/mindmap/preview/components/topbar.ts
+    usecase: 共通
+    kind: コンポーネント
+    summary: 部品設計『トップバー』の引数を受け、画面を移る・検索を開く・テーマの切り替えをコールバックで知らせる。検索の入口は `aria-keyshortcuts="Control+K Meta+K"` を持ち、右端の `kbd` にキーの案内（`navigator.platform` が Mac・iPhone・iPad なら `⌘K`、それ以外は `Ctrl+K`）を出す
+    props:
+      - name: title
+        type: string
+        required: true
+        description: 題名
+      - name: tabs
+        type: '{key, label, icon, count?, marked?}[]'
+        required: true
+        description: タブ
+      - name: current
+        type: string
+        required: true
+        description: 開いている画面
+      - name: theme
+        type: "'light' | 'dark'"
+        required: true
+        description: 今のテーマ。切り替えのボタンはトップバーの右端に置く
+      - name: onNavigate
+        type: '(key: string) => void'
+        required: true
+        description: 画面を移る
+      - name: onSearch
+        type: () => void
+        required: true
+        description: 検索を開く
+      - name: onTheme
+        type: (theme) => void
+        required: true
+        description: テーマの切り替え
+      - name: connection
+        type: "'online' | 'offline'"
+        required: false
+        default: "'online'"
+        description: サーバーにつながっているか。`offline` のとき接続の状態を出す
+      - name: readAt
+        type: string | null
+        required: false
+        default: 'null'
+        description: 描いている記録を読んだ日時（`built_at`）。接続の状態に JST で添える（`formatJst`）
+      - name: diffPoint
+        type: '{name, sub} | null'
+        required: false
+        default: 'null'
+        description: 選んだ時点。あるとき「変更履歴」の右に札と × を出す（部品設計『トップバー』の `diffPoint`）。`tabs[].marked` でタブに点を重ね、読み上げに「新規・変更・消した項目があります」を残す
+      - name: onHistory
+        type: () => void
+        required: false
+        default: なし（「変更履歴」を出さない）
+        description: 変更履歴を開く
+      - name: onDiffOff
+        type: () => void
+        required: false
+        default: なし
+        description: 札の × で差分の表示をやめる
+      - name: comments
+        type: boolean
+        required: false
+        default: 'false'
+        description: コメントのボタンを置くか（配る書き出しでは false。置かないときは検索の入口も今の位置のまま）。置くときはテーマの切り替えの左。件数は `commentCount`（99 を超えたら `99+` にして `.count` に `data-wide` を付ける、読み上げの名前には実際の件数）、一覧を開いているかは `commentsOpen`、押したときは `onComments`
+      - name: settingsOpen
+        type: boolean
+        required: false
+        default: 'false'
+        description: 表示の設定のパネルを開いているか（部品設計『トップバー』の `settings_open`）
+      - name: onSettings
+        type: () => void
+        required: false
+        default: なし（表示の設定のボタンを出さない）
+        description: 表示の設定のボタンを押したとき。絞り込みのボタンがあればその左、無ければコメントのボタンの左に置く。配る書き出しでも渡す。`tabs` には使う側が表示する種類だけを渡す
+      - name: filter
+        type: boolean
+        required: false
+        default: 'false'
+        description: 絞り込みのボタンを置くか（概要では false）。置くときはコメントのボタンの左（無ければテーマの切り替えの左）。値を 1 つ以上選んでいる条件の数は `filterCount`（0 ならバッジを出さない、10 以上なら `.fbadge` に `data-wide` を付ける）、ドロワーを開いているかは `filterOpen`、押したときは `onFilter`
+      - name: commentsUnread
+        type: boolean
+        required: false
+        default: 'false'
+        description: オープンのスレッドに利用者の未読があるか（部品設計『トップバー』の `comments_unread`）。`comments` が真のときだけ効き、吹き出しの印の右上に点を重ねて読み上げの名前を「コメント（未読あり・レビュー中 {件数} 件）」にする（点は `aria-hidden`）
+      - name: pending
+        type: boolean
+        required: false
+        default: 'false'
+        description: 保存待ちのボタンを置くか（部品設計『トップバー』の `pending`。配る書き出しと差分の表示中は false）。置くときはコメントのボタンの左。件数は `pendingCount`（0 ならボタンを出さない）、パネルを開いているかは `pendingOpen`、書き込めない編集があるかは `pendingBlocked`、押したときは `onPending`

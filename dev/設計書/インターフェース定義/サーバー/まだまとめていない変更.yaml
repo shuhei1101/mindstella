@@ -1,3 +1,4 @@
+id: IF-489-4
 title: "まだまとめていない変更"
 entry:
   kind: mcp_tool
@@ -122,7 +123,7 @@ lead: 最後のまとまりより後に足した項目と、変えた項目・�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -181,6 +182,6 @@ constraints:
   - item: 件数
     constraint: 制限なし（`commit` で空になる）
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/インターフェース定義/サーバー/書き換えのまとまり#
+  - ER-489-1#
+  - IF-489-43#
 test_file: tests/integration/server/test_pending.py

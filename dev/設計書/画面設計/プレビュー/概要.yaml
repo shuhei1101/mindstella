@@ -1,8 +1,9 @@
+id: SCR-489-21
 title: "概要"
 elements:
   - name: トップバー
     kind: nav
-    component: dev/設計書/部品設計/プレビュー/トップバー.ts#
+    component: CMP-489-19#
     args:
       - name: title
         value: プレビューを開く.mindmap-data.settings.summary
@@ -118,7 +119,7 @@ elements:
     source: プレビューを開く.mindmap-data.settings.description
   - name: タイルの項目の差分の印
     kind: label
-    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    component: CMP-489-31#
     args:
       - name: kind
         value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）

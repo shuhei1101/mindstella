@@ -1,0 +1,23 @@
+id: MOD-489-227
+title: プレビュー / 画面と部品 / diagram-viewer.ts
+components:
+  - name: diagramViewer
+    title: 図の拡大
+    container: plugins/mindstella/skills/mindmap/preview/screens/diagram-viewer.ts
+    usecase: 項目の詳細を読む
+    kind: 画面
+    summary: 画面設計『図の拡大』を描く。ホイールで倍率、背景のドラッグで位置を変え、文字の上のドラッグは選択に任せる
+    props:
+      - name: svg
+        type: SVGElement
+        required: true
+        description: 描いた図
+      - name: on
+        type: '{close}'
+        required: true
+        description: 閉じる
+      - name: diff
+        type: '{beforeSource: string} | null'
+        required: false
+        default: 'null'
+        description: 差分の表示の間、その図の前の版の記法。あるとき詳細パネルと同じ色と「消したもの」を窓の下端に出し、Raw で記法の行の差分（`diffLineParts`）を出す。`diffLineParts` が `null` のときは Raw に今の記法を差分なしで出す。Raw の変えた行の対には、詳細パネルの図の Raw の差分と同じく語の面（`span.df-word`）を付ける

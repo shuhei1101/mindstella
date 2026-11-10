@@ -1,3 +1,4 @@
+id: CMP-489-47
 title: 表
 lead: 項目の一覧の表。列の見出しで並べ替え・ピン留めでき、表の上に絞り込みの条件（値と列の文字）のチップを並べる。絞り込みの条件は部品『絞り込み』で選び、表は受け取った条件で行を絞る。チップの行の右端の「列の表示」のボタンから、列の付け外しと初期設定に戻すのポップオーバーを開く。
 implementation: plugins/mindstella/skills/mindmap/preview/components/table.ts#MindmapPreview.table

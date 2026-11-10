@@ -1,3 +1,4 @@
+id: SCR-489-3
 title: スレッド
 elements:
   - name: 一覧へ戻る
@@ -5,7 +6,7 @@ elements:
     position: 見出し > 上の行
     description: スレッドの一覧へ戻る（履歴に積まない）。一覧のスクロールと絞り込みを保ち、開いていた行へフォーカスを戻す。入力欄にフォーカスが無いときの Esc も同じ。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる
     label: 一覧へ戻る
-    action_ref: dev/設計書/画面設計/プレビュー/コメントの一覧#
+    action_ref: SCR-489-1#
   - name: 状態を変える
     kind: button
     position: 見出し > 上の行 > 右端
@@ -24,7 +25,7 @@ elements:
     required: false
     max_length: 400
     target: 画面からのスレッドの状態の書き換え.reason
-    action_ref: dev/設計書/インターフェース定義/サーバー/画面からのスレッドの状態の書き換え#
+    action_ref: IF-489-50#
   - name: 状態を変えられなかった理由
     kind: label
     position: 見出し > 理由の入力の下
@@ -44,7 +45,7 @@ elements:
     io: 表示
     visible_when: スレッドが項目に向いている
     source: スレッドの読み取り.threads[].target・threads[].target_title・threads[].loc
-    action_ref: dev/設計書/画面設計/プレビュー/詳細パネル#
+    action_ref: SCR-489-31#
   - name: タグ
     kind: label
     position: 見出し > 題の下
@@ -54,7 +55,7 @@ elements:
     source: スレッドの読み取り.threads[].tags
   - name: 書き込みの並び
     kind: list
-    component: dev/設計書/部品設計/プレビュー/スレッドの書き込み.ts#
+    component: CMP-489-11#
     args:
       - name: post
         value: スレッドの読み取り.threads[].posts[] の 1 件
@@ -77,17 +78,17 @@ elements:
     io: 表示
     source: スレッドの読み取り.threads[]（開いた ID のもの）
     action: この画面を出すたびに（一覧の行・レビュー中の書き込みのどちらから開いても、開いている間に書き換えの知らせで描き直しても）、`seen` が `false` の書き込みがあればそのスレッドを利用者の既読にする。呼ぶと同時に画面が持つスレッドの写しのその書き込みを既読にしてトップバーの印を描き直し（応答より先に一覧へ戻っても、その行に未読の札を出さない）、応答を待たずに並びを出す。失敗しても画面には出さず、スレッドを読み直して写しをサーバーの値に戻す。失敗して読み直した後も開いたままなら同じスレッドへ呼び直さず、次に開いたときに呼び直す。まだ送っていない新しいスレッドでは呼ばない
-    action_ref: dev/設計書/インターフェース定義/サーバー/画面からのスレッドの既読#
+    action_ref: IF-489-49#
   - name: 消した書き込み
     kind: button
     position: 書き込みの並び > 消した行
     description: 消したレビュー中の書き込みの元の場所に、「コメントを削除しました。」（`role="status"`）と「元に戻す」を出す。「元に戻す」はレビュー中の書き込みの「元に戻す」と同じ
     label: 元に戻す
     visible_when: パネルを開いている間に消した、このスレッドのレビュー中の書き込み
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+    action_ref: IF-489-24#
   - name: 返信の入力
     kind: form
-    component: dev/設計書/部品設計/プレビュー/返信の入力.ts#
+    component: CMP-489-55#
     args:
       - name: thread
         value: 開いたスレッドの ID
@@ -112,7 +113,7 @@ elements:
     io: 入力
     visible_when: オープンのスレッド
     target: レビュー中のコメントの追加.thread・body
-    action_ref: dev/設計書/インターフェース定義/サーバー/レビュー中のコメントの追加#
+    action_ref: IF-489-24#
   - name: クローズの知らせ
     kind: label
     position: 下端

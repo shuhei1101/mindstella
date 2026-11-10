@@ -1,3 +1,4 @@
+id: SCR-489-31
 title: 詳細パネル
 elements:
   - name: 戻る・進む
@@ -29,7 +30,7 @@ elements:
     visible_when: 検討事項で案を持つ
   - name: 本文
     kind: article
-    component: dev/設計書/部品設計/プレビュー/Markdownの本文.ts#
+    component: CMP-489-5#
     args:
       - name: root
         value: 本文を mdmark の `mount` で描いた要素
@@ -64,7 +65,7 @@ elements:
     visible_when: その種類の項目が 1 件以上
   - name: コメントの入力
     kind: form
-    component: dev/設計書/部品設計/プレビュー/コメントの入力.ts#
+    component: CMP-489-7#
     args:
       - name: target
         value: プレビューを開く.id
@@ -101,7 +102,7 @@ elements:
     visible_when: 差分の表示の間で、開いた項目がその時点で足されたか変わったとき
   - name: 新規の札
     kind: label
-    component: dev/設計書/部品設計/プレビュー/差分の印.ts#
+    component: CMP-489-31#
     args:
       - name: kind
         value: new
@@ -171,11 +172,11 @@ elements:
     label: 新しい順 / 古い順
     io: 入力
     visible_when: サーバーの配信で開いたとき、レビュー中のコメントの行（消した行を含む）が 2 件以上のとき
-    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[レビュー中のコメントの並び]
+    action_ref: IF-489-71#constraints[レビュー中のコメントの並び]
     status: implemented
   - name: 選んだ箇所のコメントの入口
     kind: button
-    component: dev/設計書/部品設計/プレビュー/選んだ箇所のコメントの入口.ts#
+    component: CMP-489-57#
     args:
       - name: anchor
         value: 選んだ範囲の端の矩形
@@ -219,7 +220,7 @@ elements:
     io: 表示
     visible_when: 本文の印に乗せる・フォーカスしている間と、用語 2 件以上か、資料・調査にも一致した印を押して残した間
     source: プレビューを開く.mindmap-data（terms[].meaning・docs[].description・research[].description）
-    component: dev/設計書/部品設計/プレビュー/本文の印のツールチップ.ts#
+    component: CMP-489-35#
     args:
       - name: entries
         value: 印の語に一致した項目（プレビューを開く.mindmap-data の terms・docs・research から。開いている項目自身と取り下げた資料・調査を除く）
@@ -267,7 +268,7 @@ elements:
     status: implemented
   - name: 取り下げの札
     kind: label
-    component: dev/設計書/部品設計/プレビュー/取り下げの札.ts#
+    component: CMP-489-23#
     args:
       - name: large
         value: 'true'
@@ -317,7 +318,7 @@ elements:
     status: implemented
   - name: 形式の札
     kind: label
-    component: dev/設計書/部品設計/プレビュー/本文の形式の札.ts#
+    component: CMP-489-39#
     args:
       - name: format
         value: 資料の `body` が `.html` で終われば `html`、それ以外は `md`
@@ -331,7 +332,7 @@ elements:
       pr: 214
   - name: HTML の本文
     kind: iframe
-    component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
+    component: CMP-489-3#
     args:
       - name: source
         value: 記録の取得.marked_bodies[{項目の body}]
@@ -350,7 +351,7 @@ elements:
     action: 本文の中の `http:`・`https:`・`mailto:` のリンクを押すと、枠の中では移らず、リンク先を新しいタブで開く（`mailto:` はメールのアプリへ渡る）。`#` で始まるリンクは、本文のスクロール領域をその `id` の要素まで送る（URL のハッシュは変えず、履歴に積まない）。ほかのリンクは押しても移らない（『プレビューを開く』の制約「HTML の本文の中のリンク」）
   - name: html のコードブロック
     kind: iframe
-    component: dev/設計書/部品設計/プレビュー/HTMLの本文の枠.ts#
+    component: CMP-489-3#
     args:
       - name: source
         value: コードブロックの中身（フェンスの行を除く）
@@ -369,7 +370,7 @@ elements:
     action: 枠の中のリンクを押したときの動きは、要素「HTML の本文」と同じ
   - name: HTML の本文の差分
     kind: label
-    component: dev/設計書/部品設計/プレビュー/HTMLの本文の差分.ts#
+    component: CMP-489-1#
     args:
       - name: before
         value: history の body_diff で組み立てた選んだ時点の本文
@@ -431,10 +432,10 @@ elements:
     visible_when: 本文に `#diff=` のリンクがあるとき
     action: 押すと、`diff` が記録にあるまとまりの ID のときだけ、開いている画面・項目のままそのまとまりの差分の表示に切り替え、URL のハッシュの `diff` を書き換える（履歴に積まない）。記録に無いまとまり・`since`・`pending` を指すときは何もしない。`diff` 以外の引数は読まない
     refs:
-      - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文のまとまりのリンク]
+      - IF-489-71#constraints[本文のまとまりのリンク]
   - name: 差分のミニマップ
     kind: toolbar
-    component: dev/設計書/部品設計/プレビュー/差分のミニマップ.ts#
+    component: CMP-489-29#
     args:
       - name: shown
         value: 差分の表示の間（プレビューを開く.変更履歴で選んだ時点がある）で、プレビューを開く.個人の上書き.diff_minimap が偽でないとき true
@@ -450,7 +451,7 @@ elements:
     status: implemented
   - name: 本文の差分の並べ方の切り替え
     kind: button
-    component: dev/設計書/部品設計/プレビュー/本文の差分の並べ方の切り替え.ts#
+    component: CMP-489-37#
     args:
       - name: layout
         value: プレビューを開く.個人の上書き.body_diff_layout が side のとき side、それ以外は inline
@@ -458,11 +459,11 @@ elements:
     description: 本文の差分を、インラインと左右に並べる表示で切り替える（『プレビューを開く』の制約「本文の差分の並べ方」）。「左右に並べる」を押すと個人の上書きに side を残し、「インライン」を押すと上書きを外して、その場で描き直す。本文を送った位置と押したボタンのフォーカスを保ち、履歴に積まず URL のハッシュも変えない
     io: 入力
     visible_when: 差分の表示の間で、本文が選んだ時点で変わっていて本文の差分を描けたとき（前後を組み立てられない・本文の差分を出せない・計算しきれない・差分のライブラリを読めない旨を出しているときは出さない）で、本文のスクロール領域の幅（パディング・差分のミニマップを除く）が 560px 以上のとき
-    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[本文の差分の並べ方]
+    action_ref: IF-489-71#constraints[本文の差分の並べ方]
     status: implemented
   - name: 左右に並べた本文の差分
     kind: label
-    component: dev/設計書/部品設計/プレビュー/左右に並べた本文の差分.ts#
+    component: CMP-489-27#
     args:
       - name: before
         value: history の body_diff で組み立てた選んだ時点の本文
@@ -487,7 +488,7 @@ elements:
       pr: 325
   - name: 見出しの保存待ちの印
     kind: label
-    component: dev/設計書/部品設計/プレビュー/保存待ちの印.ts#
+    component: CMP-489-21#
     args:
       - name: kind
         value: その項目の削除を溜めていれば remove、直前の保存で書き込めなかった編集を持てば blocked、それ以外は pending
@@ -503,7 +504,7 @@ elements:
       pr: 325
   - name: キー・案の保存待ちの印
     kind: label
-    component: dev/設計書/部品設計/プレビュー/保存待ちの印.ts#
+    component: CMP-489-21#
     args:
       - name: kind
         value: そのキー・案の編集が直前の保存で書き込めなかったら blocked、それ以外は pending
@@ -524,7 +525,7 @@ elements:
     io: 入力
     visible_when: 「編集する」を押した間、または種類ごとの画面の「項目を追加」で開いた追加の入力
     target: 保存待ちの編集の追加.op・target・key・value
-    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    action_ref: IF-489-30#
     status: planned
     introduced:
       pr: 325
@@ -549,7 +550,7 @@ elements:
     io: 入力
     visible_when: 検討事項の編集の表示
     target: 保存待ちの編集の追加（op が option-add・option-edit・option-remove・adopt。追加の入力では op が item-add の value.options）
-    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    action_ref: IF-489-30#
     status: planned
     introduced:
       pr: 325
@@ -560,7 +561,7 @@ elements:
     label: 項目を削除（溜めた後は「削除を取り消す」）
     visible_when: 編集の表示（追加の入力では出さない）
     target: 保存待ちの編集の追加（op が item-remove）
-    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    action_ref: IF-489-30#
     status: planned
     introduced:
       pr: 325
@@ -589,7 +590,7 @@ elements:
     initial_value: そのタブの `sessionStorage` に残した幅。無ければ既定の 640。上限を超えるときは上限に収めて出し、残した値は書き換えない。開いたまま窓の幅が変わったときも、残した幅を今の上限に収め直し（`aria-valuemax` / `aria-valuenow` も合わせる）、窓を広げ直すと残した幅に戻す
     source: プレビューを開く.詳細パネル
     action: 左へドラッグで広げ、右へドラッグで狭める。フォーカス中は ← で広げ、→ で狭め、Home で下限、End で上限にする。変えるたびに詳細パネルの幅と、本文を寄せる幅では本文・マップ・パンくずの帯の右の寄せを合わせる（ドラッグ中は 1 フレームに 1 回）。変えた幅は、ドラッグを終えたとき（離した・中断した）とキーで変えたときにそのタブの `sessionStorage` に残し、ドラッグ中は残さない。種類で分けず、別の項目・読み込み直しでもその幅で開く。ダブルクリックで既定に戻す操作は持たない
-    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#constraints[端末の保存領域]
+    action_ref: IF-489-71#constraints[端末の保存領域]
     status: planned
     introduced:
       pr: 340
@@ -604,7 +605,7 @@ elements:
       pr: 348
   - name: エクスポートのメニュー
     kind: dialog
-    component: dev/設計書/部品設計/プレビュー/資料のエクスポートのメニュー.ts#
+    component: CMP-489-53#
     args:
       - name: view
         value: 開いた時点は choose。イベントごとに部品設計のとおり替える
@@ -614,7 +615,7 @@ elements:
     description: 開いている資料を書き出す形式を選ぶ（『プレビューを開く』の制約「資料のエクスポート」）。「HTML でエクスポート」はメニューを開いたまま 1 枚の HTML を組み立てて `{資料の ID}.html` をダウンロードさせ、組み立てたら閉じる。「Markdown でエクスポート」は同じメニューに警告を出し、「エクスポート」で埋め込んだ HTML の範囲を除いた `{資料の ID}.md` をダウンロードさせて閉じる。Esc とメニューの外を押すとメニューだけを閉じ（詳細パネルは閉じない）、「エクスポート」へフォーカスを戻す。開閉と中身の切り替えは履歴に積まず、画面は移らない。別の項目へ移るかパネルを閉じるとメニューも閉じる
     visible_when: 「エクスポート」で開いた間
     action: 組み立てたファイルを `Blob` と `download` を持つ `a` 要素でダウンロードさせる（サーバーの API を呼ばない）
-    action_ref: dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+    action_ref: IF-489-71#
     status: planned
     introduced:
       pr: 348
@@ -654,7 +655,7 @@ elements:
       pr: 348
   - name: 埋め込んだ HTML の差分
     kind: section
-    component: dev/設計書/部品設計/プレビュー/HTMLの本文の差分.ts#
+    component: CMP-489-1#
     args:
       - name: before
         value: history の body_diff で組み立てた選んだ時点の本文の n 番目の範囲の中の HTML
@@ -679,7 +680,7 @@ elements:
       pr: 348
   - name: タグ
     kind: list
-    component: dev/設計書/部品設計/プレビュー/タグの並び.ts#
+    component: CMP-489-15#
     args:
       - name: values
         value: プレビューを開く.mindmap-data（{種類}[].tags）
@@ -693,7 +694,7 @@ elements:
       pr: 385
   - name: タグの入力
     kind: input
-    component: dev/設計書/部品設計/プレビュー/チップの入力.ts#
+    component: CMP-489-17#
     args:
       - name: controlId
         value: 項目の ID とキー `tags` から作る入力欄の ID
@@ -716,7 +717,7 @@ elements:
     io: 入力
     visible_when: 編集の表示の間
     target: 保存待ちの編集の追加.value（key が tags。item-add は value.tags）
-    action_ref: dev/設計書/インターフェース定義/サーバー/保存待ちの編集の追加#
+    action_ref: IF-489-30#
     status: planned
     introduced:
       pr: 385
@@ -727,7 +728,7 @@ elements:
     io: 表示
     source: レビュー中のコメントの読み取り.items[].body・記録の取得.changes.sets のまとまりの ID と説明
     visible_when: サーバーの配信で開いたとき、この詳細パネルで書き換えていない行
-    component: dev/設計書/部品設計/プレビュー/本文の折りたたみ.ts#
+    component: CMP-489-41#
     args:
       - name: id
         value: レビュー中のコメントの読み取り.items[].id

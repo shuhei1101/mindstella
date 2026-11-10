@@ -1,3 +1,4 @@
+id: IF-489-26
 title: "ワークスペースの点検"
 entry:
   kind: mcp_tool
@@ -287,5 +288,5 @@ constraints:
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
 refs:
-  - dev/設計書/ER図/ワークスペース#
+  - ER-489-1#
 test_file: tests/integration/server/test_check.py

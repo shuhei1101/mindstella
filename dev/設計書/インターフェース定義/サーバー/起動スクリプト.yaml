@@ -1,3 +1,4 @@
+id: IF-489-56
 title: "起動スクリプト"
 entry:
   kind: operation
@@ -402,7 +403,7 @@ lead: 依存を確かめ、mindstella の常駐サーバーが落ちていれば
 idempotent: false
 side_effects: 常駐サーバーが落ちていれば起動し（『常駐サーバーの起動の確認』）、tmux のセッションを 1 つ立てる。ワークスペースのフォルダが無ければ作る。ワークスペースの中は書かない
 callers:
-  - dev/設計書/シナリオ/単一ユースケース/起動スクリプトで立ち上げる#
+  - SC-489-41#
 request:
   - name: '{ワークスペースのフォルダ}'
     type: str
@@ -507,11 +508,11 @@ constraints:
     constraint: '`installPath` の `skills/mindmap/references/起動時の指示.md` の中身を、`claude` の `--append-system-prompt` の値に渡す。tmux の `new-session` にはコマンドを引数ごとに分けて渡し、中身をシェルで解釈させない。同じ名前のセッションにつなぐときは渡さない（Claude Code を立ち上げ直さない）'
     notes: 中身は、利用者がターミナルを確認しない前提と、質問・確認・知らせを検討事項・資料・スレッドで出すことと、setup・upgrade のスキルの中の質問はターミナルで聞く例外。session の SKILL.md の `## スレッドの返し方` と同じ決まりで、クリア・コンパクトの後も効く（#205）
 refs:
-  - dev/設計書/インターフェース定義/サーバー/依存の確認#
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-  - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
-  - dev/設計書/外部ライブラリ/tmux#
-  - dev/設計書/外部ライブラリ/claude-code#
+  - IF-489-27#
+  - IF-489-1#
+  - IF-489-38#
+  - LIB-489-26#
+  - LIB-489-4#
 notes:
   置き場所: プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）か、インターフェース定義『起動スクリプトの登録』で登録した `mindstella`・`mindstella-{名前}` から叩く
 test_file: tests/integration/server/test_launch.py

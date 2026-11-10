@@ -1,3 +1,4 @@
+id: IF-489-2
 title: "README の書き出し"
 entry:
   kind: mcp_tool
@@ -151,7 +152,7 @@ lead: ワークスペースの直下の `README.md` を、このフォルダの�
 idempotent: true
 side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いた印のとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -260,7 +261,7 @@ constraints:
     constraint: 『ワークスペースの作成』（`init`）と『プレビューの URL』（配信を立てたとき）も、この制約の中身・判定・書き方で直下の `README.md` を書く
 exclusivity: README の書き込みは、`readme`・`preview_url` のどちらからでもワークスペースの排他ロックを取らない（`init` は作成のロックの中で書く）。一時ファイルから `os.replace` で置き換えるため、同時に書かれても壊れたファイルにならず、後から置き換えた方の中身が残る
 refs:
-  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
-  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
-  - dev/設計書/シナリオ/単一ユースケース/READMEの書き直し#
+  - IF-489-56#
+  - IF-489-17#
+  - SC-489-2#
 test_file: tests/integration/server/test_readme.py

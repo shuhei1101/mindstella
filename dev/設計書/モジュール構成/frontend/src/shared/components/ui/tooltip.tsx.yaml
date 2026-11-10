@@ -1,11 +1,12 @@
+id: MOD-489-98
 title: プレビュー / tooltip
 lead: shadcn/ui の Tooltip（Base UI 版）。
 components:
-- name: Tooltip
-  title: shadcn/ui の Tooltip（Base UI 版）
-  kind: コンポーネント
-  usecase: 共通
-  summary: shadcn/ui の Tooltip（Base UI 版）
-  container: frontend/src/shared/components/ui/tooltip.tsx
+  - name: Tooltip
+    title: shadcn/ui の Tooltip（Base UI 版）
+    kind: コンポーネント
+    usecase: 共通
+    summary: shadcn/ui の Tooltip（Base UI 版）
+    container: frontend/src/shared/components/ui/tooltip.tsx
 notes:
   単体テスト: 同じフォルダの `tooltip.test.tsx` に置く（knowledge の規約『フォルダ構成』）

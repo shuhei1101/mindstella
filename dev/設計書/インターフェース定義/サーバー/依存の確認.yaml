@@ -1,3 +1,4 @@
+id: IF-489-27
 title: "依存の確認"
 entry:
   kind: operation
@@ -211,5 +212,5 @@ constraints:
   - item: 通信と書き込み
     constraint: しない（そろえるコマンドを返すだけで、仮想環境を作らずライブラリも入れない。流すかは利用者が決める）
 callers:
-  - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+  - IF-489-56#
 test_file: tests/integration/server/test_check_env.py

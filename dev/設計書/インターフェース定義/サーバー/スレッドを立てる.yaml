@@ -1,3 +1,4 @@
+id: IF-489-13
 title: "スレッドを立てる"
 entry:
   kind: mcp_tool
@@ -140,7 +141,7 @@ lead: AI から利用者へ返事を求めるスレッドを立てる。最初�
 idempotent: false
 side_effects: '`threads.yaml` にオープンのスレッドを 1 件足す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -213,7 +214,7 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 本文と要約の上限
     constraint: 本文 10000 文字・要約 400 文字
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
     notes: 要約は『非機能要件』のスレッドの要約と理由の長さ
   - item: 書く中身
     constraint: '`id`（`TH-{連番}`。連番の最大 + 1）・`status: open`・`tags`・`summary`・`target`（あれば）・`posts`（`author: ai`・`read: true` の 1 件）・`events: []`。ER 図『ワークスペース』の `threads.yaml`'
@@ -224,6 +225,6 @@ constraints:
   - item: タグ
     constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）。重なりと空の文字列は今までどおり ArgumentError
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/AIがスレッドを立てる#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-1#
 test_file: tests/integration/server/test_new_thread.py

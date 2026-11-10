@@ -1,3 +1,4 @@
+id: IF-489-23
 title: "レビュー中のコメントの読み取り"
 entry:
   kind: endpoint
@@ -73,7 +74,7 @@ lead: レビュー中のコメントと書きかけを、その場で読んで�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -135,7 +136,7 @@ constraints:
   - item: 読みかけ
     constraint: 書き換えは一時ファイルから `os.replace` で置き換えるため、書きかけを読まない
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
-  - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
+  - ER-489-1#
+  - SC-489-3#
+  - SC-489-47#
 test_file: tests/integration/server/test_comments_read.py

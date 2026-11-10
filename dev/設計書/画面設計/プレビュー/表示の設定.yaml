@@ -1,3 +1,4 @@
+id: SCR-489-23
 title: "表示の設定"
 elements:
   - name: パネルの見出し
@@ -12,7 +13,7 @@ elements:
     description: パネルを閉じ、重ねていた画面に戻る（履歴に積まない）。Esc とトップバーの表示の設定のボタンでも閉じる。幅 901px 以上で詳細パネルを開いているときの Esc は詳細パネルを先に閉じる。幅 900px 以下の Esc は前に出ている側から閉じる。グレーアウトした所を押しても閉じる。読み上げの名前は「表示の設定を閉じる」
   - name: 表示の設定の中身
     kind: form
-    component: dev/設計書/部品設計/プレビュー/表示の設定.ts#
+    component: CMP-489-49#
     args:
       - name: look
         value: 個人の上書きの見た目（プレビューを開く.個人の上書き.network_look）。無ければ default_look
@@ -53,7 +54,7 @@ elements:
     description: パネルを閉じて『設定の画面』を開く
     label: 設定を編集する
     visible_when: サーバーの配信で、差分の表示をしていないとき（配る書き出しでは出さない）
-    action_ref: dev/設計書/画面設計/プレビュー/設定の画面#
+    action_ref: SCR-489-27#
     status: planned
     introduced:
       pr: 325

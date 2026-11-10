@@ -1,3 +1,4 @@
+id: SC-489-46
 title: "項目の詳細を読む"
 scenarios:
   - name: 正常シナリオ

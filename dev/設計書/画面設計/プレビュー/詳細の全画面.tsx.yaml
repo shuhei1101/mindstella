@@ -1,3 +1,4 @@
+id: SCR-489-30
 title: 詳細の全画面
 screen: frontend/src/features/detail/detail-fullscreen/detail-fullscreen.tsx
 elements:
@@ -16,7 +17,7 @@ elements:
     source: 詳細パネルと同じ
   - name: コメントの入力
     kind: form
-    component: dev/設計書/部品設計/プレビュー/コメントの入力.tsx#
+    component: CMP-489-8#
     args:
       - name: target
         value: SPAを開く.id
@@ -55,5 +56,5 @@ notes:
   主題のタグのモック: 'タグの主題のマーカーと、タグの入力の主題のトグルの見本は `dev/mock/pages/detail-full/385/a-ring/index.html`（採用した案 A。確認ログ: dev/pr/385/確認ログ.md）'
 test_file: tests/integration/preview/test_spa_detail_fullscreen_screen.py
 refs:
-  - dev/設計書/画面設計/プレビュー/詳細の全画面#
-  - dev/設計書/インターフェース定義/プレビュー/SPAを開く#
+  - SCR-489-29#
+  - IF-489-70#

@@ -1,0 +1,14 @@
+id: MOD-489-234
+title: プレビュー / 画面と部品 / removed-band.ts
+components:
+  - name: removedBand
+    title: 消した項目の帯
+    container: plugins/mindstella/skills/mindmap/preview/components/removed-band.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『消した項目の帯』の引数を受け、見出し「消した項目」と件数の下に、`diffMark`（`removed`）・ID・タイトルを `ul` の `li` で並べた `section` を返す。項目はボタン・リンクにしない。`items` が空なら `null` を返す
+    props:
+      - name: items
+        type: RemovedItem[]
+        required: true
+        description: 消した項目（`removedOf` の戻り値）。渡した並びで出す

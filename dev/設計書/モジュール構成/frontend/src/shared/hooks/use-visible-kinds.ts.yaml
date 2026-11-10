@@ -1,13 +1,14 @@
+id: MOD-489-133
 title: プレビュー / use-visible-kinds
 lead: 表示する種類を返す。
 functions:
-- name: useVisibleKinds
-  title: 表示する種類
-  kind: 関数
-  usecase: 表示の設定を変える
-  summary: 表示する種類を返す
-  args: []
-  returns:
-    type: unknown
-    description: 処理の結果
-  container: frontend/src/shared/hooks/use-visible-kinds.ts
+  - name: useVisibleKinds
+    title: 表示する種類
+    kind: 関数
+    usecase: 表示の設定を変える
+    summary: 表示する種類を返す
+    args: []
+    returns:
+      type: unknown
+      description: 処理の結果
+    container: frontend/src/shared/hooks/use-visible-kinds.ts

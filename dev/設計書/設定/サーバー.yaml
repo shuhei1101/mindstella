@@ -1,3 +1,4 @@
+id: CFG-489-1
 title: "設定: サーバー"
 lead: 起動スクリプトと常駐の MCP サーバーが読む環境変数。設定のファイルは持たない。
 settings:
@@ -13,9 +14,9 @@ settings:
     status: implemented
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
-      - dev/設計書/インターフェース定義/サーバー/依存の確認#
-      - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
+      - IF-489-56#
+      - IF-489-27#
+      - IF-489-38#
   - key: MINDSTELLA_PORT
     title: 常駐サーバーのポート
     file: 環境変数
@@ -31,9 +32,9 @@ settings:
     status: planned
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-      - dev/設計書/インターフェース定義/サーバー/常駐サーバーの起動の確認#
-      - dev/設計書/インターフェース定義/プラグイン/プラグインの読み込み#
+      - IF-489-1#
+      - IF-489-38#
+      - IF-489-68#
     introduced:
       pr: 392
   - key: CLAUDE_CONFIG_DIR
@@ -48,7 +49,7 @@ settings:
     status: implemented
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+      - IF-489-56#
   - key: MINDSTELLA_ALLOWED_HOSTS
     title: 許可するホスト名
     file: 環境変数
@@ -64,8 +65,8 @@ settings:
     status: implemented
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/プレビューの配信#
-      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+      - IF-489-18#
+      - IF-489-56#
     introduced:
       pr: 155
   - key: MINDSTELLA_PREVIEW_START_HOOK
@@ -83,8 +84,8 @@ settings:
     status: implemented
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
-      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+      - IF-489-17#
+      - IF-489-56#
     introduced:
       pr: 155
   - key: MINDSTELLA_PREVIEW_STOP_HOOK
@@ -102,8 +103,8 @@ settings:
     status: implemented
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
-      - dev/設計書/インターフェース定義/サーバー/起動スクリプト#
+      - IF-489-1#
+      - IF-489-56#
     introduced:
       pr: 155
   - key: MINDSTELLA_TRANSCRIBER
@@ -121,8 +122,8 @@ settings:
     status: planned
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
-      - dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
+      - IF-489-58#
+      - IF-489-41#
   - key: MINDSTELLA_TRANSCRIBER_URL
     title: 文字起こしのサービスの URL
     file: 環境変数
@@ -138,6 +139,6 @@ settings:
     status: planned
     visibility: user
     refs:
-      - dev/設計書/インターフェース定義/サーバー/音声の文字起こし#
-      - dev/設計書/インターフェース定義/サーバー/文字起こしの可否#
-      - dev/設計書/外部API/voice-paste#
+      - IF-489-58#
+      - IF-489-41#
+      - API-489-2#

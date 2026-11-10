@@ -1,3 +1,4 @@
+id: IF-489-49
 title: "画面からのスレッドの既読"
 entry:
   kind: endpoint
@@ -158,7 +159,7 @@ lead: 利用者が画面でスレッドを開いたときに、そのスレッ�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `posts[].seen` が `false` の書き込みを `true` にする（未読が無ければ書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -223,8 +224,8 @@ constraints:
     constraint: 書いたら『書き換えの知らせ』が `threads.yaml` の書き換えとして知らせる（この受け口は知らせを自分で送らない）
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-5#
 test_file: tests/integration/server/test_thread_seen.py

@@ -1,3 +1,4 @@
+id: IF-489-46
 title: "未読へ戻す"
 entry:
   kind: trigger
@@ -106,6 +107,6 @@ constraints:
   - item: 標準出力
     constraint: 何も書かない。`SessionStart` のフックの標準出力は会話の文脈に入る（外部ライブラリ『claude-code』の動作確認）。理由は標準エラーだけに書く
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/外部ライブラリ/claude-code#
+  - ER-489-1#tables[threads.yaml]
+  - LIB-489-4#
 test_file: tests/integration/server/test_reset_unread.py

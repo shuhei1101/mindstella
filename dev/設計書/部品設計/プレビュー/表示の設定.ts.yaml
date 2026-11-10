@@ -1,3 +1,4 @@
+id: CMP-489-49
 title: "表示の設定"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts#MindmapPreview.settingsPanel"
 story: "Preview/SettingsPanel"

@@ -1,3 +1,4 @@
+id: IF-489-6
 title: "コメントをまとめて送る"
 entry:
   kind: endpoint
@@ -428,7 +429,7 @@ lead: コメントの一覧でチェックしたレビュー中の書き込み�
 idempotent: false
 side_effects: '`threads.yaml` に新しいスレッドと返信の書き込みを足し（無ければ作る）、`comments.yaml` からその書き込みを消す。どちらも一時ファイルから `os.replace` で置き換え、`threads.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送り先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -517,14 +518,14 @@ constraints:
     constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。向けた項目が無くなったコメントも 409 の `stale` に載せる（箇所を持たないときも）。返信は向けたスレッドがオープンであることを確かめ、クローズか無いスレッドへの返信を `stale` に載せる（画面はチェックできない行にするが、送る前にクローズにされたときに備える）
   - item: 本文の上限
     constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400。ID だけを送るため、送れる件数は溜める件数の規模（ER 図の `comments.yaml`）より大きい
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
   - item: 送り元の確かめ
     constraint: '`Host` は『プレビューの配信』と同じ。`Content-Type` を `application/json` に限り、`Origin` が付いていれば『プレビューの配信』の制約「送り元の確かめ」で確かめる（別のサイトのページからの書き込みを防ぐ）'
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・確かめ・書く。別のプロセスのスレッドのツールやコメントの書き換えと重なっても、どちらの書き換えも失わず、スレッドと書き込みの ID も重ならない
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 二重に送らない
     constraint: 同じ `comment` を持つ書き込みが既にあるコメントは足さず、そのスレッドと書き込みの ID を `items[]` に返してレビュー中から外す（`threads.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
   - item: 送り先
@@ -543,16 +544,16 @@ constraints:
     notes: 'ブラケットペーストにしないと本文の改行で途中確定する。貼ってから `Enter` までの待ちは 0ms で確定することを PoC で確かめた。打ちかけとつながる・選択の表示で失われるのは利用者が tmux で気づいて直す（PR #201 の確認ログ）'
   - item: 届いたかの確かめ
     constraint: '貼る前に、会話の記録のフォルダの各 jsonl の大きさを控える。会話の記録のフォルダは `{session.claude_config_dir}/projects` の下で、`session.cwd` の絶対パスを UTF-16 の単位で英数字以外を `-` にした名前が 200 文字以下ならその名前のフォルダ、超えるなら名前の先頭 200 文字に `-` を続けた文字列で始まるフォルダの全てにする（Claude Code が末尾に足すパスのハッシュは作らない）。`Enter` の後、50ms ごとに控えより後ろへ書き足された行を読み、次のどちらかがあれば `entered: true` にする。① `type` が `user` で、`cwd` が `session.cwd` と一致し、本文に入力した文字列が入った行（入力を待っていたとき。打ちかけとつながったときも含む）。② `type` が `queue-operation`・`operation` が `enqueue` の行（Claude Code が処理中で、入力が待ち行列に入ったとき。この行は本文も `cwd` も持たない）。上限までにどちらも無ければ `entered: false` にする。会話の ID（`CLAUDE_CODE_SESSION_ID`）は `/clear`・`/resume` で変わるため使わない'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
+    decided_by: NFR-489-1#requirements[ClaudeCodeへの入力を確かめる上限]
     notes: Claude Code 2.1.296 で確かめた（2026-10-10）。入力を待っているときは貼ってから約 0.13 秒で user の行が書かれ、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる。長く続いた会話では、送ってから user の行まで最大 1.668 秒、`enqueue` の行まで最大 2.996 秒かかった（2026-10-20〜11-06 の利用者の送信 284 回）。選択の表示で失われたときはどちらも書かれない。新しい会話は最初の user の行まで jsonl を作らないため、控えに無いファイルは大きさ 0 から読む。同じ作業フォルダで別の Claude Code を並べて動かしていると、別の会話に入ったものも届いたと数える
   - item: 貼り付けの上限
     constraint: '生きているかの確かめと tmux の 3 つのコマンドを合わせて、貼り始めてから 0.5 秒で打ち切る。各 tmux のコマンドの待ちは、その時点の残り時間を超えない。tmux が終了コード 0 以外を返したか時間内に終わらないときは、残りのコマンドを呼ばずに `entered: false` にする。どの場合も理由を標準エラーに記録する'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの貼り付けの上限]
+    decided_by: NFR-489-1#requirements[ClaudeCodeへの貼り付けの上限]
   - item: 入力の上限
     constraint: '届いたかの確かめは、tmux の 3 つのコマンドを終えてから 5 秒で打ち切る。待った秒の合計もこの上限を超えない。届かないときの応答は、ペインごとの入力の鍵と貼り付けの鍵を取るまでの待ちに加えて、貼り付けの上限とこの上限の和（5.5 秒）までに返る。打ち切ったときは理由を標準エラーに記録する'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[ClaudeCodeへの入力を確かめる上限]
+    decided_by: NFR-489-1#requirements[ClaudeCodeへの入力を確かめる上限]
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+  - ER-489-1#
+  - SC-489-3#
 test_file: tests/integration/server/test_comments_send.py
 notes: {}

@@ -1,3 +1,4 @@
+id: SC-489-49
 title: "項目を表で絞り込む"
 scenarios:
   - name: 正常シナリオ

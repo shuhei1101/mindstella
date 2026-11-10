@@ -1,11 +1,12 @@
+id: MOD-489-17
 title: プレビュー / decision-outline
 lead: 幅 900px 以下のマップ。木を字下げした縦の一覧で出す。
 components:
-- name: DecisionOutline
-  title: 字下げの一覧
-  kind: コンポーネント
-  usecase: 検討事項をマップで辿る
-  summary: 幅 900px 以下のマップ。木を字下げした縦の一覧で出す
-  container: frontend/src/features/decisions/decisions/components/decision-outline.tsx
+  - name: DecisionOutline
+    title: 字下げの一覧
+    kind: コンポーネント
+    usecase: 検討事項をマップで辿る
+    summary: 幅 900px 以下のマップ。木を字下げした縦の一覧で出す
+    container: frontend/src/features/decisions/decisions/components/decision-outline.tsx
 notes:
   単体テスト: 同じフォルダの `decision-outline.test.tsx` に置く（knowledge の規約『フォルダ構成』）

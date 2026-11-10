@@ -1,26 +1,27 @@
+id: MOD-489-77
 title: プレビュー / markdown-body
 lead: 部品設計『Markdownの本文.tsx』の props・イベント・状態を持つ。
 components:
-- name: MarkdownBody
-  title: Markdown の本文
-  kind: コンポーネント
-  usecase: 項目の詳細を読む
-  summary: 部品設計『Markdownの本文.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/Markdownの本文.tsx#
-  unit_tests:
-  - name: test_markdown_body
-    case: 正常
-    summary: mount で描く
-    condition: 本文を渡す
-    mock: mdmark の `mount`
-    expected: '`mount` が本文で呼ばれ、外すと片付ける'
-  - name: test_markdown_body_when_library_failed
-    case: 異常
-    summary: 読めない
-    condition: mdmark が読めない
-    mock: '`useLibrary`'
-    expected: 原文とライブラリの名前を出す
-  container: frontend/src/shared/components/markdown-body.tsx
+  - name: MarkdownBody
+    title: Markdown の本文
+    kind: コンポーネント
+    usecase: 項目の詳細を読む
+    summary: 部品設計『Markdownの本文.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-6#
+    unit_tests:
+      - name: test_markdown_body
+        case: 正常
+        summary: mount で描く
+        condition: 本文を渡す
+        mock: mdmark の `mount`
+        expected: '`mount` が本文で呼ばれ、外すと片付ける'
+      - name: test_markdown_body_when_library_failed
+        case: 異常
+        summary: 読めない
+        condition: mdmark が読めない
+        mock: '`useLibrary`'
+        expected: 原文とライブラリの名前を出す
+    container: frontend/src/shared/components/markdown-body.tsx
 notes:
   単体テスト: 同じフォルダの `markdown-body.test.tsx` に置く（knowledge の規約『フォルダ構成』）

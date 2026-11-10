@@ -1,26 +1,27 @@
+id: MOD-489-45
 title: プレビュー / settings-confirm
 lead: 部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ。
 components:
-- name: SettingsConfirm
-  title: 既定の保存の確かめ
-  kind: コンポーネント
-  usecase: ワークスペースの既定を変える
-  summary: 部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ
-  refs:
-  - dev/設計書/部品設計/プレビュー/既定の保存の確かめ.tsx#
-  unit_tests:
-  - name: test_settings_confirm
-    case: 正常
-    summary: 保存する
-    condition: 「保存する」を押す
-    mock: なし
-    expected: '`onSave` が呼ばれる'
-  - name: test_settings_confirm_when_busy
-    case: 正常
-    summary: 保存の途中
-    condition: '`busy`'
-    mock: なし
-    expected: 2 つのボタンを押せず、Esc で閉じない
-  container: frontend/src/features/settings/display-settings/components/settings-confirm.tsx
+  - name: SettingsConfirm
+    title: 既定の保存の確かめ
+    kind: コンポーネント
+    usecase: ワークスペースの既定を変える
+    summary: 部品設計『既定の保存の確かめ.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-34#
+    unit_tests:
+      - name: test_settings_confirm
+        case: 正常
+        summary: 保存する
+        condition: 「保存する」を押す
+        mock: なし
+        expected: '`onSave` が呼ばれる'
+      - name: test_settings_confirm_when_busy
+        case: 正常
+        summary: 保存の途中
+        condition: '`busy`'
+        mock: なし
+        expected: 2 つのボタンを押せず、Esc で閉じない
+    container: frontend/src/features/settings/display-settings/components/settings-confirm.tsx
 notes:
   単体テスト: 同じフォルダの `settings-confirm.test.tsx` に置く（knowledge の規約『フォルダ構成』）

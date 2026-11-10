@@ -1,3 +1,4 @@
+id: CMP-489-11
 title: スレッドの書き込み
 implementation: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts#MindmapPreview.threadPost
 story: Preview/ThreadPost
@@ -229,7 +230,7 @@ accessibility:
   - 本文の中のまとまりのリンクは `href` を `#diff={まとまりの ID}` にした `a` 要素にし、読み上げの名前を `文言`、`title` をそのまとまりの説明にする。Tab で本文の並びの順に止まり、Enter で押せる
 test_file: tests/integration/storybook/test_thread_post_stories.py
 uses:
-  - component: dev/設計書/部品設計/プレビュー/Markdownの本文.ts#
+  - component: CMP-489-5#
     how: mdmark で描いた書き込みの本文に `tables`・`fold` を false にして当てる
-  - component: dev/設計書/部品設計/プレビュー/本文の折りたたみ.ts#
+  - component: CMP-489-41#
     how: '`pending` の書き換えていない本文を描いて畳み、開閉のボタンを本文の下の行に置く'

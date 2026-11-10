@@ -1,0 +1,182 @@
+id: MOD-489-188
+title: サーバー / 読み書きと検証 / kinds.py
+test_files:
+  - tests/unit/scripts/test_kinds.py
+data_models:
+  - name: KindSpec
+    title: 種類の定義
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    role: DTO
+    summary: 1 種類のファイル・ID の頭の文字・スキーマ・状態の有無（本文はどの種類も持てる）
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
+    properties:
+      - name: kind
+        type: Kind
+        description: 種類（`decision` など）
+      - name: file
+        type: str
+        description: ワークスペースの中の YAML のファイル名
+        example: decisions.yaml
+      - name: prefix
+        type: str
+        description: ID の頭の文字
+        example: D
+      - name: schema
+        type: str
+        description: '`schemas/` のスキーマのファイル名'
+        example: decisions.schema.json
+      - name: settled_statuses
+        type: frozenset[str]
+        description: 決着とみなす状態。状態を持たない種類は空
+enums:
+  - name: Kind
+    title: 種類
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: ワークスペースの項目の種類（`Literal` の型エイリアス）
+    values:
+      - value: decision
+        title: 検討事項
+        description: decisions.yaml・D
+      - value: task
+        title: タスク
+        description: tasks.yaml・T
+      - value: research
+        title: 調査
+        description: research.yaml・R
+      - value: doc
+        title: 資料
+        description: docs.yaml・A
+      - value: term
+        title: 用語集
+        description: terms.yaml・G
+      - value: note
+        title: メモ
+        description: notes.yaml・N
+      - value: log
+        title: 会話ログ
+        description: logs.yaml・L
+constants:
+  - name: KINDS
+    title: 種類の一覧
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: 種類 → 種類の定義。並びは D・T・R・A・G・N・L の順で、一覧を出す並びにも使う
+    entries:
+      - key: decision
+        value: decisions.yaml / D / decisions.schema.json
+        description: '決着: 決定済み・対象外・取り下げ'
+      - key: task
+        value: tasks.yaml / T / tasks.schema.json
+        description: '決着: 完了・中止'
+      - key: research
+        value: research.yaml / R / research.schema.json
+        description: 状態なし
+      - key: doc
+        value: docs.yaml / A / docs.schema.json
+        description: 状態なし
+      - key: term
+        value: terms.yaml / G / terms.schema.json
+        description: 状態なし
+      - key: note
+        value: notes.yaml / N / notes.schema.json
+        description: 状態なし
+      - key: log
+        value: logs.yaml / L / logs.schema.json
+        description: 状態なし
+  - name: SETTINGS_FILE
+    title: 設定のファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: ワークスペースの設定のファイル名（`records_root(root)` の下）
+    value: '"config.yaml"'
+  - name: BODY_DIR
+    title: 本文のフォルダ名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: 本文の Markdown を置くフォルダ名（`records_root(root)` の下）
+    value: '"docs"'
+  - name: RELEASE_DIR
+    title: リリースのフォルダ名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: ワークスペースの作成
+    summary: ゴール判定で書き出す資料のフォルダ名（`records_root(root)` の下）
+    value: '"release"'
+  - name: LEGACY_SETTINGS_FILE
+    title: 前の版の設定のファイル名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 記録の形式の移行
+    summary: v0.6.0 より前の版の設定のファイル名。直下にあってもワークスペースとしては扱わず、見つけたら移し替えを案内する（`require_workspace`）・作らない（`create_workspace`）・移し替えだけが見分ける（モジュール構成『移行』）
+    value: '"mindmap.yaml"'
+  - name: RECORD_DIR
+    title: 記録のフォルダ名
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: ワークスペースの直下に置く、設定・種類ごとの YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名（ER 図『ワークスペース』）
+    value: '".mindstella"'
+  - name: EDITOR
+    title: 編集した人
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
+    value: '"ai"'
+functions:
+  - name: kind_of_id
+    title: ID の種類
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    scope: public
+    summary: ID の頭の文字から種類を引く
+    args:
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: 項目の ID
+    returns:
+      type: Kind | None
+      description: 種類。`{頭の文字}-{正の整数}` の形でないか、頭の文字がどの種類にも当たらなければ `None`
+    process: |-
+      1. `{英大文字}-{数字}` の形かを確かめる
+         - 形が合わない場合、`None` を返す
+      2. 頭の文字が `prefix` に一致する種類を `KINDS` から引いて返す（無ければ `None`）
+    unit_tests:
+      - name: test_kind_of_id_when_known_prefix
+        case: 正常
+        summary: 頭の文字から種類を引く
+        condition: '`D-12`・`L-1`'
+        mock: なし
+        expected: '`decision`・`log`'
+      - name: test_kind_of_id_when_unknown
+        case: 正常
+        summary: 形が合わない・頭の文字が無い ID は None
+        condition: '`X-1`・`D-`・`D-0x`・`d-1`'
+        mock: なし
+        expected: どれも `None`
+  - name: records_root
+    title: 記録のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
+    usecase: 共通
+    scope: public
+    summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`clear_release`・`write_release`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』『ゴール判定』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: Path
+      description: '`root / RECORD_DIR`'
+    process: 1. `root / RECORD_DIR` を返す（フォルダは作らない）
+    unit_tests:
+      - name: test_records_root
+        case: 正常
+        summary: 直下の .mindstella を返す
+        condition: '`tmp_path`'
+        mock: なし
+        expected: '`tmp_path / ".mindstella"`。フォルダは作られていない'

@@ -1,3 +1,4 @@
+id: IF-489-42
 title: "書きかけの保存"
 entry:
   kind: endpoint
@@ -124,7 +125,7 @@ lead: コメントの入力欄の書きかけを、向けた先（項目と箇�
 idempotent: true
 side_effects: '`drafts.yaml` のその向けた先の 1 件を書き換えるか消す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -205,12 +206,12 @@ constraints:
     constraint: '`target` と `loc`（`kind`・`start`・`end`・`key`・`text` の全て）が同じものか、`thread` が同じものを同じ向けた先として上書きする。スレッドの返信の書きかけはクローズのスレッドへも保つ（戻したときに入力欄へ戻す）'
   - item: 本文の上限
     constraint: '`body` と `loc.text` は 10000 文字。リクエストの本文は 128KiB まで読み、超えたら読まずに 400'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
   - item: 送り元の確かめ
     constraint: 『コメントをまとめて送る』と同じ
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/項目へコメントする#
+  - ER-489-1#
+  - SC-489-47#
 test_file: tests/integration/server/test_draft_save.py

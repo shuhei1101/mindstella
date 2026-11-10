@@ -1,3 +1,4 @@
+id: CMP-489-56
 title: 返信の入力
 implementation: frontend/src/features/comments/shared/reply-form.tsx#ReplyForm
 story: Comments/ReplyForm
@@ -225,6 +226,6 @@ accessibility:
   - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
 refs:
-  - dev/設計書/部品設計/プレビュー/コメントの入力.tsx#
-  - dev/設計書/部品設計/プレビュー/返信の入力.ts#
+  - CMP-489-8#
+  - CMP-489-55#
 test_file: tests/integration/storybook_react/test_reply_form_stories.py

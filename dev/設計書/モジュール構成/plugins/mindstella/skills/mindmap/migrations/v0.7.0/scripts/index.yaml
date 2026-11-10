@@ -1,0 +1,4 @@
+summary: scripts の設計書
+items:
+  - page: answer_to_adopted_option.py.yaml
+    summary: サーバー / 移行 / answer_to_adopted_option.py

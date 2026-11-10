@@ -1,3 +1,4 @@
+id: IF-489-19
 title: "リリースの書き出し"
 entry:
   kind: mcp_tool
@@ -109,7 +110,7 @@ lead: ゴール判定で確定したリリースの資料を、`release/` の下
 idempotent: true
 side_effects: '`release/` の下に 1 ファイルを書く（同じ名前があれば書き換え、`release/` と途中のフォルダが無ければ作る）。`release/` の外は読み書きしない'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -160,8 +161,8 @@ constraints:
   - item: 書き方
     constraint: 同じフォルダの一時ファイルに書いてから置き換え、書きかけのファイルを残さない
 refs:
-  - dev/設計書/インターフェース定義/サーバー/リリースの片付け#
-  - dev/設計書/インターフェース定義/サーバー/MCPサーバーの起動#
+  - IF-489-20#
+  - IF-489-1#
 notes:
   サーバーに置く理由: '`session` は Write ツールを許さず、Write で書くと Claude Code が書き込みの確認をターミナルに出す。ターミナルを確認しない利用者のところでリリースが止まらないよう、`release/` だけを書くツールをサーバーに置く（#205）'
 test_file: tests/integration/server/test_write_release.py

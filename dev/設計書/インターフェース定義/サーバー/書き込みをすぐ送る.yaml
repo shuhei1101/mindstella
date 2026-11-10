@@ -1,124 +1,125 @@
+id: IF-489-45
 title: 書き込みをすぐ送る
 entry:
   kind: endpoint
   value: POST /api/comments/send-now
 flows:
-- name: 正常系
-  summary: 項目へのコメント 1 件を溜めずにオープンのスレッドの最初の書き込みにし、レビュー中の書き込みは残す
-  setup:
-  - name: Mock
-    description: なし（常駐サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る。`preview_url` の `session` に `tmux`・`tmux_pane` を入れない）
-  - name: make_workspace
-    description: 検討事項 D-1 と、D-1 へのレビュー中のコメント C-1（「案 B も見たい」）を持ち、`threads.yaml` を持たないワークスペース
-    notes: '本文は `{"target": "D-1", "body": "案 A にする"}`'
-  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF-->>WS: 項目・スレッドを読む\n  IF->>IF: 向けた項目を確かめる\n  IF->>WS: threads.yaml にスレッドを 1 件足す\n  IF-->>クライアント: 201、JSON（sent・thread・post・entered）\n```"
-  expected:
-  - ステータスが 201 で、`thread` が TH-1、`post` が TH-1-1、`entered` が `false`（tmux の外のため）
-  - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で、最初の書き込みが `author: user`・`body: 案 A にする`・`read: false`・`taken: null`・`seen: true` で、`comment` のキーを持たない'
-  - '`comments.yaml` に C-1 が残る'
-  test: test_normal
-- name: 正常系（返信）
-  summary: オープンのスレッドへの返信 1 件を、そのスレッドの末尾に足す
-  setup:
-  - name: Mock
-    description: なし（常駐サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
-  - name: make_workspace
-    description: AI の返信で終わるオープンのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペース
-    notes: '本文は `{"thread": "TH-1", "body": "案 A にする"}`'
-  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {thread: TH-1, body}\n  IF->>WS: TH-1 の末尾に書き込みを足す\n  IF-->>クライアント: 201\n```"
-  expected:
-  - ステータスが 201 で、`thread` が TH-1
-  - TH-1 の末尾に利用者の「案 A にする」が足され、`comments.yaml` に C-1 が残る
-  test: test_normal_when_reply
-- name: 正常系（Claude Code へ入力する）
-  summary: 送った後、Claude Code のペインへ届いた件数を入力する
-  setup:
-  - name: Mock
-    description: 『コメントをまとめて送る』の `正常系（Claude Code へ入力する）` と同じ偽のコマンドと tmux
-  - name: make_workspace
-    description: 検討事項 D-1 を持つワークスペース
-  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant TM as tmux\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF->>TM: 「ユーザーからのコメントが 1 件届きました」を貼って確定する\n  IF-->>クライアント: 201、entered=true\n```"
-  expected:
-  - 会話の記録に `[mindstella] ユーザーからのコメントが 1 件届きました。読み直してください。` が 1 件だけ入る
-  - '`entered` が `true`'
-  test: test_normal_when_entered_to_claude_code
-- name: 異常系（本文が空・400）
-  summary: 前後の空白を除いて空の本文は受けない
-  setup:
-  - name: Mock
-    description: なし（常駐サーバーを立てて HTTP のクライアントで送る）
-  - name: make_workspace
-    description: 検討事項 D-1 を持つワークスペース
-    notes: '本文は `{"target": "D-1", "body": "  "}`'
-  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  \n  クライアント->>IF: POST 空の本文\n  IF-->>クライアント: 400\n```"
-  expected:
-  - ステータスが 400 で、`threads.yaml` を作っていない
-  test: test_error_when_body_empty
-- name: 異常系（向けた先が無い・409）
-  summary: 無い項目への書き込みと、クローズか無いスレッドへの返信は送らない
-  setup:
-  - name: Mock
-    description: なし（常駐サーバーを立てて HTTP のクライアントで送る）
-  - name: make_workspace
-    description: クローズのスレッド TH-1 を持ち、項目 D-9 を持たないワークスペース
-    notes: '本文は `{"target": "D-9", "body": "案 A にする"}` と `{"thread": "TH-1", "body": "了解"}` の 2 通り'
-  flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  \n  クライアント->>IF: POST 無い項目・クローズのスレッド\n  IF-->>クライアント: 409\n```"
-  expected:
-  - どちらもステータスが 409 で、`threads.yaml` の中身が送る前と同じ
-  test: test_error_when_target_stale
+  - name: 正常系
+    summary: 項目へのコメント 1 件を溜めずにオープンのスレッドの最初の書き込みにし、レビュー中の書き込みは残す
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る。`preview_url` の `session` に `tmux`・`tmux_pane` を入れない）
+      - name: make_workspace
+        description: 検討事項 D-1 と、D-1 へのレビュー中のコメント C-1（「案 B も見たい」）を持ち、`threads.yaml` を持たないワークスペース
+        notes: '本文は `{"target": "D-1", "body": "案 A にする"}`'
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF-->>WS: 項目・スレッドを読む\n  IF->>IF: 向けた項目を確かめる\n  IF->>WS: threads.yaml にスレッドを 1 件足す\n  IF-->>クライアント: 201、JSON（sent・thread・post・entered）\n```"
+    expected:
+      - ステータスが 201 で、`thread` が TH-1、`post` が TH-1-1、`entered` が `false`（tmux の外のため）
+      - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で、最初の書き込みが `author: user`・`body: 案 A にする`・`read: false`・`taken: null`・`seen: true` で、`comment` のキーを持たない'
+      - '`comments.yaml` に C-1 が残る'
+    test: test_normal
+  - name: 正常系（返信）
+    summary: オープンのスレッドへの返信 1 件を、そのスレッドの末尾に足す
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントで送る）
+      - name: make_workspace
+        description: AI の返信で終わるオープンのスレッド TH-1 と、TH-1 へのレビュー中の返信 C-1 を持つワークスペース
+        notes: '本文は `{"thread": "TH-1", "body": "案 A にする"}`'
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {thread: TH-1, body}\n  IF->>WS: TH-1 の末尾に書き込みを足す\n  IF-->>クライアント: 201\n```"
+    expected:
+      - ステータスが 201 で、`thread` が TH-1
+      - TH-1 の末尾に利用者の「案 A にする」が足され、`comments.yaml` に C-1 が残る
+    test: test_normal_when_reply
+  - name: 正常系（Claude Code へ入力する）
+    summary: 送った後、Claude Code のペインへ届いた件数を入力する
+    setup:
+      - name: Mock
+        description: 『コメントをまとめて送る』の `正常系（Claude Code へ入力する）` と同じ偽のコマンドと tmux
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant TM as tmux\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF->>TM: 「ユーザーからのコメントが 1 件届きました」を貼って確定する\n  IF-->>クライアント: 201、entered=true\n```"
+    expected:
+      - 会話の記録に `[mindstella] ユーザーからのコメントが 1 件届きました。読み直してください。` が 1 件だけ入る
+      - '`entered` が `true`'
+    test: test_normal_when_entered_to_claude_code
+  - name: 異常系（本文が空・400）
+    summary: 前後の空白を除いて空の本文は受けない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てて HTTP のクライアントで送る）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: '本文は `{"target": "D-1", "body": "  "}`'
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  \n  クライアント->>IF: POST 空の本文\n  IF-->>クライアント: 400\n```"
+    expected:
+      - ステータスが 400 で、`threads.yaml` を作っていない
+    test: test_error_when_body_empty
+  - name: 異常系（向けた先が無い・409）
+    summary: 無い項目への書き込みと、クローズか無いスレッドへの返信は送らない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てて HTTP のクライアントで送る）
+      - name: make_workspace
+        description: クローズのスレッド TH-1 を持ち、項目 D-9 を持たないワークスペース
+        notes: '本文は `{"target": "D-9", "body": "案 A にする"}` と `{"thread": "TH-1", "body": "了解"}` の 2 通り'
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  \n  クライアント->>IF: POST 無い項目・クローズのスレッド\n  IF-->>クライアント: 409\n```"
+    expected:
+      - どちらもステータスが 409 で、`threads.yaml` の中身が送る前と同じ
+    test: test_error_when_target_stale
 lead: 文字起こし後の挙動が `send` のときに、コメント・返信の入力の全文 1 件を、レビュー中に溜めずにすぐスレッドへ送る。新しいスレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に足し、『コメントをまとめて送る』と同じく Claude Code へ入力する。レビュー中の書き込みは触らない。
 idempotent: false
 side_effects: '`threads.yaml` に新しいスレッドか返信の書き込みを 1 件足す（無ければ作る。一時ファイルから `os.replace` で置き換える）。`comments.yaml` とほかのファイルは書き換えない。書き終えた後、送り先のペインがあれば『コメントをまとめて送る』と同じやり方で Claude Code のペインへ文字列を入力する'
 callers:
-- dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
-- dev/設計書/インターフェース定義/プレビュー/SPAを開く#
+  - IF-489-71#
+  - IF-489-70#
 request:
-- name: Host
-  type: str
-  required: true
-  location: header
-  description: ブラウザが付ける接続先
-  constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）
-- name: Content-Type
-  type: str
-  required: true
-  location: header
-  description: 本文の形
-  constraints: '`application/json`'
-- name: Origin
-  type: str
-  required: false
-  default: なし（確かめない）
-  location: header
-  description: ブラウザが付ける送り元
-  constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
-- name: body
-  type: str
-  required: true
-  location: body
-  description: 送る書き込みの本文（入力欄の全文）
-  constraints: 前後の空白を除いて 1 文字以上、送信の本文の長さ（非機能要件）以下
-- name: target
-  type: str | None
-  required: false
-  default: なし（項目を指さない）
-  location: body
-  description: 新しいスレッドを向ける項目の ID
-  constraints: '`thread` と一緒に渡せない'
-- name: loc
-  type: object | None
-  required: false
-  default: なし
-  location: body
-  description: 選んだ箇所。形は『レビュー中のコメントの追加』の `loc` と同じ
-  constraints: '`target` を渡したときだけ'
-- name: thread
-  type: str | None
-  required: false
-  default: なし（新しいスレッド）
-  location: body
-  description: 返信を足すオープンのスレッドの ID
-  constraints: '`target`・`loc` と一緒に渡せない'
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」に合うもの（`127.0.0.1:{ポート}`・`localhost:{ポート}`・許可するホスト名）
+  - name: Content-Type
+    type: str
+    required: true
+    location: header
+    description: 本文の形
+    constraints: '`application/json`'
+  - name: Origin
+    type: str
+    required: false
+    default: なし（確かめない）
+    location: header
+    description: ブラウザが付ける送り元
+    constraints: 付いていれば『プレビューの配信』の制約「送り元の確かめ」に合うもの（`http://127.0.0.1:{ポート}`・`http://localhost:{ポート}`・許可するホスト名の `https` / `http`）
+  - name: body
+    type: str
+    required: true
+    location: body
+    description: 送る書き込みの本文（入力欄の全文）
+    constraints: 前後の空白を除いて 1 文字以上、送信の本文の長さ（非機能要件）以下
+  - name: target
+    type: str | None
+    required: false
+    default: なし（項目を指さない）
+    location: body
+    description: 新しいスレッドを向ける項目の ID
+    constraints: '`thread` と一緒に渡せない'
+  - name: loc
+    type: object | None
+    required: false
+    default: なし
+    location: body
+    description: 選んだ箇所。形は『レビュー中のコメントの追加』の `loc` と同じ
+    constraints: '`target` を渡したときだけ'
+  - name: thread
+    type: str | None
+    required: false
+    default: なし（新しいスレッド）
+    location: body
+    description: 返信を足すオープンのスレッドの ID
+    constraints: '`target`・`loc` と一緒に渡せない'
 request_example: |-
   ```json
   {
@@ -127,63 +128,63 @@ request_example: |-
   }
   ```
 response:
-- name: sent
-  type: str
-  description: 送った日時（UTC のタイムゾーン付き ISO 8601）。足した書き込みの `created` と同じ
-- name: thread
-  type: str
-  description: 書き込みを足したスレッドの ID
-  example: TH-3
-- name: post
-  type: str
-  description: 足した書き込みの ID
-  example: TH-3-1
-- name: entered
-  type: bool
-  description: 『コメントをまとめて送る』の `entered` と同じ
+  - name: sent
+    type: str
+    description: 送った日時（UTC のタイムゾーン付き ISO 8601）。足した書き込みの `created` と同じ
+  - name: thread
+    type: str
+    description: 書き込みを足したスレッドの ID
+    example: TH-3
+  - name: post
+    type: str
+    description: 足した書き込みの ID
+    example: TH-3-1
+  - name: entered
+    type: bool
+    description: 『コメントをまとめて送る』の `entered` と同じ
 status_codes:
-- code: '201'
-  condition: 送った
-- code: '400'
-  condition: 本文が JSON のオブジェクトでない・`body` が空か長すぎる・`target` と `thread` を一緒に渡した・リクエストの本文が 128KiB を超える
-  notes: 何も書かない
-- code: '403'
-  condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
-  notes: 何も書かない
-- code: '409'
-  condition: '`target` の項目が無い・`loc` が今の項目に合わない・`thread` がクローズか無い'
-  notes: 何も書かない
-- code: '415'
-  condition: '`Content-Type` が `application/json` でない'
-  notes: 何も書かない
-- code: '422'
-  condition: ワークスペースの YAML がスキーマに合わないか YAML として読めない
-  notes: 何も書かない
-- code: '500'
-  condition: '`threads.yaml` を書けない'
-  notes: '`detail` に書けなかったパスと理由'
+  - code: '201'
+    condition: 送った
+  - code: '400'
+    condition: 本文が JSON のオブジェクトでない・`body` が空か長すぎる・`target` と `thread` を一緒に渡した・リクエストの本文が 128KiB を超える
+    notes: 何も書かない
+  - code: '403'
+    condition: '`Origin` が『プレビューの配信』の制約「送り元の確かめ」に合わない'
+    notes: 何も書かない
+  - code: '409'
+    condition: '`target` の項目が無い・`loc` が今の項目に合わない・`thread` がクローズか無い'
+    notes: 何も書かない
+  - code: '415'
+    condition: '`Content-Type` が `application/json` でない'
+    notes: 何も書かない
+  - code: '422'
+    condition: ワークスペースの YAML がスキーマに合わないか YAML として読めない
+    notes: 何も書かない
+  - code: '500'
+    condition: '`threads.yaml` を書けない'
+    notes: '`detail` に書けなかったパスと理由'
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
-- item: 書く中身
-  constraint: 『コメントをまとめて送る』の「書く中身」と同じ。ただし足す書き込みは `comment` のキーを持たない（レビュー中のコメントを経ないため）
-- item: 箇所の確かめ
-  constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。返信は向けたスレッドがオープンであることを確かめる
-- item: レビュー中の書き込み
-  constraint: '`comments.yaml` を読まず、書き換えない（溜めた書き込みは残る。単一ユースケース『音声でコメントする』の成功時に保証すること）'
-- item: Claude Code への入力
-  constraint: 『コメントをまとめて送る』の「送り先」から「入力の上限」までと同じ。入力する文字列の件数は 1
-- item: 本文の上限
-  constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
-  decided_by: dev/設計書/非機能要件/非機能要件#requirements[送信の本文の長さ]
-- item: 送り元の確かめ
-  constraint: 『コメントをまとめて送る』と同じ
-- item: 同時の書き込み
-  constraint: 『コメントをまとめて送る』と同じく、書き換えの鍵とワークスペースのロックを取ってから読み・確かめ・書く
-- item: 待ち受け
-  constraint: '`127.0.0.1` だけ'
-  decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+  - item: 書く中身
+    constraint: 『コメントをまとめて送る』の「書く中身」と同じ。ただし足す書き込みは `comment` のキーを持たない（レビュー中のコメントを経ないため）
+  - item: 箇所の確かめ
+    constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。返信は向けたスレッドがオープンであることを確かめる
+  - item: レビュー中の書き込み
+    constraint: '`comments.yaml` を読まず、書き換えない（溜めた書き込みは残る。単一ユースケース『音声でコメントする』の成功時に保証すること）'
+  - item: Claude Code への入力
+    constraint: 『コメントをまとめて送る』の「送り先」から「入力の上限」までと同じ。入力する文字列の件数は 1
+  - item: 本文の上限
+    constraint: リクエストの本文は 128KiB まで読み、超えたら読まずに 400
+    decided_by: NFR-489-1#requirements[送信の本文の長さ]
+  - item: 送り元の確かめ
+    constraint: 『コメントをまとめて送る』と同じ
+  - item: 同時の書き込み
+    constraint: 『コメントをまとめて送る』と同じく、書き換えの鍵とワークスペースのロックを取ってから読み・確かめ・書く
+  - item: 待ち受け
+    constraint: '`127.0.0.1` だけ'
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
 refs:
-- dev/設計書/インターフェース定義/サーバー/コメントをまとめて送る#
-- dev/設計書/ER図/ワークスペース#
-- dev/設計書/シナリオ/単一ユースケース/音声でコメントする#
+  - IF-489-6#
+  - ER-489-1#
+  - SC-489-45#
 test_file: tests/integration/server/test_comments_send_now.py

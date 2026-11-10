@@ -1,3 +1,4 @@
+id: IF-489-9
 title: "スレッドの書き換え"
 entry:
   kind: mcp_tool
@@ -156,7 +157,7 @@ lead: スレッドの要約とタグを書き換え、AI が読んだ利用者�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `summary`・`tags` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -226,12 +227,12 @@ constraints:
     constraint: 『スレッドへの返信』と同じく、AI が既読にした利用者の書き込みだけ。クローズのスレッドも書き換える
   - item: 要約の上限
     constraint: 400 文字
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+    decided_by: NFR-489-1#requirements[スレッドの要約と理由の長さ]
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
   - item: タグ
     constraint: 『スレッドを立てる』と同じ
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-43#
 test_file: tests/integration/server/test_update_thread.py

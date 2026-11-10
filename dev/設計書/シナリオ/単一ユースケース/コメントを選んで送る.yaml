@@ -1,3 +1,4 @@
+id: SC-489-3
 title: "コメントを選んで送る"
 scenarios:
   - name: 正常シナリオ

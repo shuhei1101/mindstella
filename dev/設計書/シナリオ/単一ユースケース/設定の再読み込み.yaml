@@ -1,3 +1,4 @@
+id: SC-489-35
 title: "設定の再読み込み"
 scenarios:
   - name: 正常シナリオ

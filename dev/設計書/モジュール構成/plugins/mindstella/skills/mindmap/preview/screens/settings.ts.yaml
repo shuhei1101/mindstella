@@ -1,0 +1,39 @@
+id: MOD-489-232
+title: プレビュー / 画面と部品 / settings.ts
+test_files:
+  - tests/unit/preview/test_settings.py
+components:
+  - name: settingsDrawer
+    title: 表示の設定のパネル
+    kind: 画面
+    container: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
+    usecase: 表示の設定を変える
+    summary: 画面設計『表示の設定』を、コメントの一覧と同じ左から出すパネル（見出しの帯と ×。幅 900px 以下は画面の幅いっぱい）に `settingsPanel` を入れて描く。画面の下の知らせ（`settingsNotice`）もここに置く
+    props:
+      - name: panel
+        type: SettingsPanelProps
+        required: true
+        description: '`settingsPanel` の引数（`on.close` を見出しの × にもつなぐ）'
+      - name: onWorkspace
+        type: (() => void) | null
+        required: false
+        default: 'null'
+        description: パネルの下端に見出し「ワークスペースの設定」と「題名・フェーズ・ゴール・対象・カテゴリー」、「設定を編集する」を置き、押すと呼ぶ。`null`（配る書き出し・差分の表示中）なら置かない
+    unit_tests:
+      - name: test_settings_drawer
+        case: 正常
+        summary: 見出しと閉じるボタンを持つ左のパネルに中身を入れる
+        condition: 上書きを持たない引数。× を押す
+        mock: '`panel.on.close`'
+        expected: 見出し「表示の設定」と読み上げの名前「表示の設定を閉じる」の × があり、× で `on.close` が 1 回呼ばれる
+  - name: settingsNotice
+    title: 既定が変わった知らせ
+    kind: 画面
+    container: plugins/mindstella/skills/mindmap/preview/screens/settings.ts
+    usecase: ワークスペースの既定を変える
+    summary: 画面の下に「ワークスペースの既定が変わりました。」を `role="status"` で出し、`NOTICE_MS` 経ったら自分を消す。続けて呼ばれたら前の知らせを消して出し直す
+    props:
+      - name: durationMs
+        type: number
+        required: true
+        description: 出しておく長さ（`NOTICE_MS`）

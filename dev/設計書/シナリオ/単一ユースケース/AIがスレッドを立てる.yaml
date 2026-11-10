@@ -1,3 +1,4 @@
+id: SC-489-1
 title: "AIがスレッドを立てる"
 scenarios:
   - name: 正常シナリオ

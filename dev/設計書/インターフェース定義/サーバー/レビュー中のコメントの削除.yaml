@@ -1,3 +1,4 @@
+id: IF-489-21
 title: "レビュー中のコメントの削除"
 entry:
   kind: endpoint
@@ -71,7 +72,7 @@ lead: コメントの一覧から、レビュー中のコメント 1 件を消�
 idempotent: false
 side_effects: '`comments.yaml` からそのコメントを消す（`seq` は変えない）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -135,6 +136,6 @@ constraints:
   - item: 同時の書き込み
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
-  - dev/設計書/ER図/ワークスペース#
-  - dev/設計書/シナリオ/単一ユースケース/コメントを選んで送る#
+  - ER-489-1#
+  - SC-489-3#
 test_file: tests/integration/server/test_comment_delete.py

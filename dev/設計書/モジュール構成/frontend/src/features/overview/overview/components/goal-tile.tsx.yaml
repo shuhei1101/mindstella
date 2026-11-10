@@ -1,11 +1,12 @@
+id: MOD-489-39
 title: プレビュー / goal-tile
 lead: '`derived.goal` の数・棒・納品物。ゴールが無いときはフェーズ別の進捗。'
 components:
-- name: GoalTile
-  title: ゴールまでの進捗のタイル
-  kind: コンポーネント
-  container: frontend/src/features/overview/overview/components/goal-tile.tsx
-  usecase: 概要を見る
-  summary: '`derived.goal` の数・棒・納品物。ゴールが無いときはフェーズ別の進捗'
+  - name: GoalTile
+    title: ゴールまでの進捗のタイル
+    kind: コンポーネント
+    container: frontend/src/features/overview/overview/components/goal-tile.tsx
+    usecase: 概要を見る
+    summary: '`derived.goal` の数・棒・納品物。ゴールが無いときはフェーズ別の進捗'
 notes:
   単体テスト: 同じフォルダの `goal-tile.test.tsx` に置く（knowledge の規約『フォルダ構成』）

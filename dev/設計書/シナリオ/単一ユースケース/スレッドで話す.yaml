@@ -1,3 +1,4 @@
+id: SC-489-5
 title: スレッドで話す
 scenarios:
   - name: 正常シナリオ

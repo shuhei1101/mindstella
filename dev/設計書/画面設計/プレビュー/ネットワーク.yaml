@@ -1,8 +1,9 @@
+id: SCR-489-7
 title: "ネットワーク"
 elements:
   - name: トップバー
     kind: nav
-    component: dev/設計書/部品設計/プレビュー/トップバー.ts#
+    component: CMP-489-19#
     args:
       - name: title
         value: プレビューを開く.mindmap-data.settings.summary
@@ -97,7 +98,7 @@ elements:
     visible_when: 絞り込みの条件に合う項目が 1 件も無いとき
   - name: 絞り込みのドロワー
     kind: dialog
-    component: dev/設計書/部品設計/プレビュー/絞り込み.ts#
+    component: CMP-489-45#
     position: タブの帯の下から左に重ねる
     description: 画面設計『検討事項』の絞り込みのドロワーと同じ出し方で、描く玉を選ぶ。条件を変えると玉と線を作り直す
     io: 入力
@@ -120,7 +121,7 @@ elements:
     visible_when: 常時
   - name: 名前の横のコメントの印
     kind: label
-    component: dev/設計書/部品設計/プレビュー/コメントの印.ts#
+    component: CMP-489-9#
     args:
       - name: count
         value: その項目を指すレビュー中のコメントの件数（レビュー中のコメントの読み取り.items[].target で数える）

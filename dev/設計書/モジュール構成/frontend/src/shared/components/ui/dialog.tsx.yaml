@@ -1,11 +1,12 @@
+id: MOD-489-91
 title: プレビュー / dialog
 lead: shadcn/ui の Dialog（Base UI 版）。
 components:
-- name: Dialog
-  title: shadcn/ui の Dialog（Base UI 版）
-  kind: コンポーネント
-  usecase: 共通
-  summary: shadcn/ui の Dialog（Base UI 版）
-  container: frontend/src/shared/components/ui/dialog.tsx
+  - name: Dialog
+    title: shadcn/ui の Dialog（Base UI 版）
+    kind: コンポーネント
+    usecase: 共通
+    summary: shadcn/ui の Dialog（Base UI 版）
+    container: frontend/src/shared/components/ui/dialog.tsx
 notes:
   単体テスト: 同じフォルダの `dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,8 +1,9 @@
+id: MOD-489-142
 title: プレビュー / index
 lead: 'Tailwind を読み、`--color-*: initial` で標準のパレットを消し、`@theme inline` でトークンを割り当てる。'
 styles:
-- name: index
-  title: Tailwind の割り当て
-  container: frontend/src/shared/styles/index.css
-  usecase: 共通
-  summary: 'Tailwind を読み、`--color-*: initial` で標準のパレットを消し、`@theme inline` でトークンを割り当てる'
+  - name: index
+    title: Tailwind の割り当て
+    container: frontend/src/shared/styles/index.css
+    usecase: 共通
+    summary: 'Tailwind を読み、`--color-*: initial` で標準のパレットを消し、`@theme inline` でトークンを割り当てる'

@@ -1,38 +1,39 @@
+id: MOD-489-132
 title: プレビュー / use-screen-filters
 lead: 画面の絞り込みの条件を URL と端末の保存領域で持つ（制約「保存した絞り込みの条件」）。
 functions:
-- name: useScreenFilters
-  title: 画面の絞り込みの条件
-  kind: フック
-  usecase: 項目を表で絞り込む
-  summary: URL の `f.{列}`、保存した条件、既定の条件の順に当て、変えたら URL と保存領域に書く
-  args:
-  - name: tab
-    type: PreviewTab
-    required: true
-    description: 画面
-  returns:
-    type: ScreenFilters
-    description: 条件と操作
-  unit_tests:
-  - name: test_use_screen_filters
-    case: 正常
-    summary: URL の条件で開いて保存を書き換える
-    condition: URL に `f.status=保留`
-    mock: ルーターのメモリの履歴
-    expected: 条件が保留で、保存した条件も保留
-  - name: test_use_screen_filters_when_saved
-    case: 正常
-    summary: 保存した条件を URL に書く
-    condition: URL に無く保存に `status=保留`
-    mock: ルーターのメモリの履歴
-    expected: URL に `f.status=保留`
-  - name: test_use_screen_filters_when_default
-    case: 正常
-    summary: 既定の条件
-    condition: どちらも無い検討事項
-    mock: ルーターのメモリの履歴
-    expected: 状態の 4 値
-  container: frontend/src/shared/hooks/use-screen-filters.ts
+  - name: useScreenFilters
+    title: 画面の絞り込みの条件
+    kind: フック
+    usecase: 項目を表で絞り込む
+    summary: URL の `f.{列}`、保存した条件、既定の条件の順に当て、変えたら URL と保存領域に書く
+    args:
+      - name: tab
+        type: PreviewTab
+        required: true
+        description: 画面
+    returns:
+      type: ScreenFilters
+      description: 条件と操作
+    unit_tests:
+      - name: test_use_screen_filters
+        case: 正常
+        summary: URL の条件で開いて保存を書き換える
+        condition: URL に `f.status=保留`
+        mock: ルーターのメモリの履歴
+        expected: 条件が保留で、保存した条件も保留
+      - name: test_use_screen_filters_when_saved
+        case: 正常
+        summary: 保存した条件を URL に書く
+        condition: URL に無く保存に `status=保留`
+        mock: ルーターのメモリの履歴
+        expected: URL に `f.status=保留`
+      - name: test_use_screen_filters_when_default
+        case: 正常
+        summary: 既定の条件
+        condition: どちらも無い検討事項
+        mock: ルーターのメモリの履歴
+        expected: 状態の 4 値
+    container: frontend/src/shared/hooks/use-screen-filters.ts
 notes:
   単体テスト: 同じフォルダの `use-screen-filters.test.ts` に置く（knowledge の規約『フォルダ構成』）

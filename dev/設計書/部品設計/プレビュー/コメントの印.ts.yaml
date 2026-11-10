@@ -1,3 +1,4 @@
+id: CMP-489-9
 title: "コメントの印"
 implementation: "plugins/mindstella/skills/mindmap/preview/components/comment-mark.ts#MindmapPreview.commentMark"
 story: "Preview/CommentMark"

@@ -1,0 +1,80 @@
+id: MOD-489-220
+title: プレビュー / 画面と部品 / workspace-settings.ts
+test_files:
+  - tests/unit/preview/test_workspace_settings.py
+functions:
+  - name: usageCount
+    title: 設定の値を使っている件数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: フェーズ・対象・カテゴリーの 1 つの値を持つ項目の件数を返す
+    args:
+      - name: args
+        type: "{index: RecordIndex, key: 'phases' | 'targets' | 'categories', value: string}"
+        required: true
+        passing: positional
+        description: 記録の索引・設定のキー・値
+    returns:
+      type: number
+      description: 件数（`phases` は `phase`、`targets` は項目とカテゴリーの `target`、`categories` は `category` を数える）
+    unit_tests:
+      - name: test_usage_count
+        case: 正常
+        summary: キーごとに使っている件数を数える
+        condition: 'D-1・D-2（フェーズ 問い）・T-1（カテゴリー 画面）。`parametrize`: `phases` の 問い / `categories` の 画面 / `phases` の 発散'
+        mock: なし
+        expected: 2 / 1 / 0
+components:
+  - name: workspaceSettings
+    title: 設定の画面
+    container: plugins/mindstella/skills/mindmap/preview/screens/workspace-settings.ts
+    usecase: 画面で項目を編集して保存する
+    kind: 画面
+    summary: 画面設計『設定の画面』を描く。入力は保存待ちの編集を当てた設定（`applyEdits`）で描き、溜めたキーの名前の右に `pendingEditMark`（`compact`）を置く。使われている値を外したときは `usageCount` で件数を数えて「付け替え先」を出し、選ぶまでは `on.change` を呼ばない。対象・カテゴリーの行の名前を書き換えたときは古い名前 → 新しい名前を `map` に付ける
+    props:
+      - name: settings
+        type: object
+        required: true
+        description: 保存待ちの編集を当てた設定
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 編集を当てた記録の索引（使われている値の件数を数える）
+      - name: marks
+        type: Record<string, 'pending' | 'blocked'>
+        required: true
+        description: 設定のキー → 印の種類（`pendingMarkOf` の `target` を `settings` にした値）
+      - name: errors
+        type: Record<string, string>
+        required: true
+        description: 設定のキー → 溜められなかった理由（入力を残してキーの下に出す）
+      - name: transcription
+        type: TranscriptionStatus | null
+        required: false
+        default: 'null'
+        description: 開いたときに読んだ文字起こしの可否（`voiceApi().status`。読めなかったら `null`）。まとまり「音声入力」の「用語集のプリセット」の候補（`presets`）と、使えないときの理由（`reason` ごとの文）に使う
+      - name: on
+        type: '{change, close}'
+        required: true
+        description: 設定のキーを溜める（`{key, value, map}`）・画面を閉じる
+    unit_tests:
+      - name: test_workspace_settings
+        case: 正常
+        summary: まとまりごとに並べ、離れたときにキーを溜める
+        condition: 題名 話し合い。題名を「画面の編集」にして入力欄を離れる。保持する回数を 3 にして離れる
+        mock: '`on.change`'
+        expected: '`fieldset` の見出しが「話し合い」「進め方」「関連」「変更履歴」の順。`on.change` が `{key: summary, value: 画面の編集}`・`{key: history_limit, value: 3}` で 1 回ずつ'
+      - name: test_workspace_settings_when_transcription
+        case: 正常
+        summary: 音声入力のまとまりで挙動とプリセットを溜め、使えないときはプリセットを押せなくする
+        condition: '`parametrize`: `transcription` が `{available: true, presets: [一般, 開発]}` で「入力欄へ挿入する」を選び、プリセットに 開発 を選ぶ / `{available: false, reason: unsupported, presets: []}` で設定の `transcription.preset` が 開発'
+        mock: '`on.change`'
+        expected: '`fieldset` の見出し「音声入力」が「変更履歴」の後。`on.change` が `{key: transcription, value: {action: insert, preset: null}}`・`{key: transcription, value: {action: insert, preset: 開発}}` / プリセットのセレクトが `disabled` で 開発 だけを持ち、下に「文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。」'
+      - name: test_workspace_settings_when_used_value_removed
+        case: 正常
+        summary: 使われている値を外すと付け替え先を選ぶまで溜めない
+        condition: フェーズ 問い・発散、問い を持つ D-1・D-2。問い のチップの × を押し、付け替え先に 発散 を選ぶ
+        mock: '`on.change`'
+        expected: '「問い を使っている 2 件の付け替え先」と「付け替え先を選ぶと保存待ちに入ります。」が出て、選ぶ前は `on.change` が呼ばれない。選んだ後に `{key: phases, value: [発散], map: {問い: 発散}}` で 1 回'

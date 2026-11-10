@@ -1,0 +1,78 @@
+id: MOD-489-211
+title: プレビュー / 画面と部品 / docs.ts
+test_files:
+  - tests/unit/preview/test_docs.py
+functions:
+  - name: orderDocs
+    title: 資料の並び
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
+    usecase: 資料を読む
+    scope: public
+    summary: 納品物を先頭に、それぞれ連番の順に並べた資料を返す
+    args:
+      - name: docs
+        type: object[]
+        required: true
+        passing: positional
+        description: 資料
+    returns:
+      type: object[]
+      description: 並べた資料
+    unit_tests:
+      - name: test_order_docs
+        case: 正常
+        summary: 納品物が先
+        condition: A-1（納品物でない）・A-3（納品物）・A-2（納品物）
+        mock: なし
+        expected: A-2・A-3・A-1
+components:
+  - name: docsScreen
+    title: 資料
+    container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
+    usecase: 資料を読む
+    kind: 画面
+    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。`withdrawn` が真の資料のカードとボードのカードは、差分の表示によらずタイトルの右、差分の印より前に `withdrawnBadge` を置き、カードの文字を薄くする。ツールバーに絞り込みのボタンとポップオーバーを置かない。カード・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: route
+        type: Route
+        required: true
+        description: 表示形式と絞り込み
+      - name: on
+        type: '{open, view, filter, closeDrawer}'
+        required: true
+        description: 項目を開く・表示形式を切り替える・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの画面の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。資料のカードとボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消した資料（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、カード・ボード・表の上に `removedBand` を置く。`filters` で絞らない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: '`decisionsScreen` の `edit` と同じ。`adds` はカードの一覧の先頭にも出す'
+    unit_tests:
+      - name: test_docs_screen_when_withdrawn
+        case: 正常
+        summary: 取り下げた資料のカードに、差分の表示によらず札を置く
+        condition: '`withdrawn: true` の A-9 と `withdrawn` を持たない A-1。`parametrize`: カード / ボード。どちらも `marks` を渡さない'
+        mock: なし（DOM を作って見る）
+        expected: A-9 のカードのタイトルの右に取り下げの札があり、カードが薄い文字の class を持つ。A-1 のカードはどちらも持たない

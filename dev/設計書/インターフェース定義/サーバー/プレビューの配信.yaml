@@ -1,3 +1,4 @@
+id: IF-489-18
 title: プレビューの配信
 entry:
   kind: endpoint
@@ -112,7 +113,7 @@ lead: '`preview_url` が立てた配信が、プレビューの画面（雛形�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -142,7 +143,7 @@ error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`titl
 constraints:
   - item: 待ち受け
     constraint: '`127.0.0.1` だけ（『プレビューの URL』）'
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[待ち受けの範囲]
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 接続先の確かめ
     constraint: '全てのパスで `Host` を確かめ、合わなければ 403 を返す（別のサイトがこの端末の名前を名乗って配信を読む DNS の付け替えを防ぐ）。受けるのは `127.0.0.1:{ポート}`・`localhost:{ポート}` と、ポートを外したホスト名の部分が許可するホスト名（『設定: サーバー』の `MINDSTELLA_ALLOWED_HOSTS`）のどれかと同じもの。比べるときは大文字と小文字を区別しない。許可するホスト名は入口のポートを問わない（トンネル・リバースプロキシが転送したものしか `127.0.0.1` に届かないため）'
   - item: 差し込みの安全
@@ -154,6 +155,6 @@ constraints:
   - item: 送り元の確かめ
     constraint: 書き込むエンドポイントは、`Origin` が付いていれば確かめ、合わなければ 403 を返す（別のサイトのページからの書き込みを防ぐ）。受けるのは `http://127.0.0.1:{ポート}`・`http://localhost:{ポート}` と、スキームが `https` か `http` で、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの。`Origin` が無い要求（HTTP のクライアントからの要求）は通す
 refs:
-  - dev/設計書/インターフェース定義/サーバー/プレビューのURL#
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-17#
+  - IF-489-71#
 test_file: tests/integration/server/test_preview_serve.py

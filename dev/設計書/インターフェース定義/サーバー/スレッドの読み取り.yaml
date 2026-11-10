@@ -1,3 +1,4 @@
+id: IF-489-11
 title: "スレッドの読み取り"
 entry:
   kind: endpoint
@@ -71,7 +72,7 @@ lead: スレッドを全て、書き込みと状態の記録ごとその場で�
 idempotent: true
 side_effects: なし（読むだけ）
 callers:
-  - dev/設計書/インターフェース定義/プレビュー/プレビューを開く#
+  - IF-489-71#
 request:
   - name: Host
     type: str
@@ -146,6 +147,6 @@ constraints:
   - item: 件数
     constraint: 制限なし（クローズも含めて全て返し、絞り込みは画面が持つ。ER 図の `threads.yaml` の規模 ~1000 件）
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/スレッドで話す#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-5#
 test_file: tests/integration/server/test_threads_read.py

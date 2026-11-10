@@ -1,13 +1,14 @@
+id: MOD-489-122
 title: プレビュー / side-by-side
 lead: 左右に並べた本文の差分の組み立て。
 functions:
-- name: sideBySideBodyDiff
-  title: 左右に並べた本文の差分
-  kind: 関数
-  usecase: 前回からの差分を見る
-  summary: 左右に並べた本文の差分の組み立て
-  args: []
-  returns:
-    type: unknown
-    description: 処理の結果
-  container: frontend/src/shared/core/side-by-side.ts
+  - name: sideBySideBodyDiff
+    title: 左右に並べた本文の差分
+    kind: 関数
+    usecase: 前回からの差分を見る
+    summary: 左右に並べた本文の差分の組み立て
+    args: []
+    returns:
+      type: unknown
+      description: 処理の結果
+    container: frontend/src/shared/core/side-by-side.ts

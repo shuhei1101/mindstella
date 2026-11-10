@@ -1,3 +1,4 @@
+id: LIB-489-23
 title: '@tanstack/react-query'
 kind: ライブラリ
 version:
@@ -7,25 +8,25 @@ version:
   source: package.json
   pinning: 5.105.3 に固定する（`^` を付けない）
 catalogs:
-- name: 使うもの
-  version: 5.105.3
-  entries:
-  - name: QueryClient（staleTime 60 秒・refetchOnWindowFocus false・retry false）
-    kind: クラス
-    purpose: アプリで 1 つ
-  - name: queryClient.query(options)
-    kind: メソッド
-    purpose: ルートの loader で先読みする（prefetchQuery は非推奨）
-  - name: invalidateQueries
-    kind: メソッド
-    purpose: 書き換えの知らせで記録の query を読み直す
+  - name: 使うもの
+    version: 5.105.3
+    entries:
+      - name: QueryClient（staleTime 60 秒・refetchOnWindowFocus false・retry false）
+        kind: クラス
+        purpose: アプリで 1 つ
+      - name: queryClient.query(options)
+        kind: メソッド
+        purpose: ルートの loader で先読みする（prefetchQuery は非推奨）
+      - name: invalidateQueries
+        kind: メソッド
+        purpose: 書き換えの知らせで記録の query を読み直す
 lead: サーバーのデータの取得・キャッシュ・再取得を持つ React のライブラリ。
 purl: pkg:npm/@tanstack/react-query
 dependency_scope: 必須
 adoption: 採用
 used_in:
-- frontend/src/app/query-client.ts
-- frontend/src/shared/hooks/preview-queries.ts
+  - frontend/src/app/query-client.ts
+  - frontend/src/shared/hooks/preview-queries.ts
 upstream: TanStack/query
 verification:
   state: 済

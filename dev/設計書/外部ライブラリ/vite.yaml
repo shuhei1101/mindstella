@@ -1,3 +1,4 @@
+id: LIB-489-29
 title: vite
 kind: CLI
 version:
@@ -7,24 +8,24 @@ version:
   source: package.json
   pinning: 8.3.2 に固定する（`^` を付けない）
 catalogs:
-- name: 使うもの
-  version: 8.3.2
-  entries:
-  - name: vite build
-    kind: コマンド
-    purpose: frontend/ を root にして plugins/mindstella/skills/mindmap/preview/spa/ へ書き出す（base は /spa/）
-  - name: '@vitejs/plugin-react'
-    kind: プラグイン
-    purpose: JSX の変換と、reactCompilerPreset で React Compiler の設定を返す
-  - name: '@rolldown/plugin-babel'
-    kind: プラグイン
-    purpose: React Compiler（babel-plugin-react-compiler）を Babel で当てる
+  - name: 使うもの
+    version: 8.3.2
+    entries:
+      - name: vite build
+        kind: コマンド
+        purpose: frontend/ を root にして plugins/mindstella/skills/mindmap/preview/spa/ へ書き出す（base は /spa/）
+      - name: '@vitejs/plugin-react'
+        kind: プラグイン
+        purpose: JSX の変換と、reactCompilerPreset で React Compiler の設定を返す
+      - name: '@rolldown/plugin-babel'
+        kind: プラグイン
+        purpose: React Compiler（babel-plugin-react-compiler）を Babel で当てる
 lead: ES Modules を使う開発サーバーとビルドの道具。ビルドは Rolldown で束ねる。
 purl: pkg:npm/vite
 dependency_scope: 開発のみ
 adoption: 採用
 used_in:
-- vite.config.ts
+  - vite.config.ts
 upstream: vitejs/vite
 verification:
   state: 済
@@ -39,5 +40,5 @@ install: '```bash
 
   ```'
 limitations:
-- item: Node のバージョン
-  content: Node 20.19 以上（22 系なら 22.12 以上）が要る（engines）
+  - item: Node のバージョン
+    content: Node 20.19 以上（22 系なら 22.12 以上）が要る（engines）

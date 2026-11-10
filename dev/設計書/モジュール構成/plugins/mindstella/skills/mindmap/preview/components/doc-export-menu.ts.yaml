@@ -1,0 +1,27 @@
+id: MOD-489-241
+title: プレビュー / 画面と部品 / doc-export-menu.ts
+components:
+  - name: docExportMenu
+    title: 資料のエクスポートのメニュー
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/doc-export-menu.ts
+    usecase: 資料のエクスポート
+    summary: 部品設計『資料のエクスポートのメニュー』の引数を受け、`popover="auto"` のメニューの中身を返す。開閉とエクスポートの処理は `detailPanel` が持つ
+    props:
+      - name: view
+        type: "'choose' | 'warn' | 'busy' | 'error'"
+        required: false
+        default: "'choose'"
+        description: メニューの中身
+      - name: focus
+        type: "'html' | 'md'"
+        required: false
+        default: "'html'"
+        description: '`choose` でフォーカスを置く行'
+      - name: on
+        type: '{format, confirm, back, retry, close}'
+        required: true
+        description: 形式を選んだ（`'html' | 'md'`）・警告でエクスポートした・戻る・再試行・閉じる
+    status: planned
+    introduced:
+      pr: 348

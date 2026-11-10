@@ -1,97 +1,98 @@
+id: MOD-489-121
 title: プレビュー / records
 lead: 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）。
 functions:
-- name: buildIndex
-  title: 記録の索引
-  kind: 関数
-  usecase: 項目の詳細を読む
-  summary: 記録から ID → 項目の索引と逆向きの関係を作る
-  args:
-  - name: data
-    type: MindmapData
-    required: true
-    description: 記録の取得の応答
-  returns:
-    type: RecordIndex
-    description: 索引
-  unit_tests:
-  - name: test_build_index
-    case: 正常
-    summary: 項目と逆向きを引ける
-    condition: D-1 を D-2 の `depends_on` が指す記録
-    mock: なし
-    expected: D-1 の参照元に D-2
-  container: frontend/src/shared/core/records.ts
-- name: relatedItems
-  title: 関係する項目
-  kind: 関数
-  usecase: 項目の詳細を読む
-  summary: 前提・後続・関連タスク・経緯・関連・参照元を返す
-  args:
-  - name: id
-    type: string
-    required: true
-    description: 項目の ID
-  - name: index
-    type: RecordIndex
-    required: true
-    description: 索引
-  returns:
-    type: RelatedItems
-    description: 種類ごとの項目
-  unit_tests:
-  - name: test_related_items
-    case: 正常
-    summary: 前提と後続を返す
-    condition: D-1 → D-2 の依存
-    mock: なし
-    expected: D-2 の前提に D-1、D-1 の後続に D-2
-  container: frontend/src/shared/core/records.ts
-- name: compareIds
-  title: ID の比較
-  kind: 関数
-  usecase: 項目を表で絞り込む
-  summary: 接頭辞の後の数で比べる
-  args:
-  - name: a
-    type: string
-    required: true
-    description: ID
-  - name: b
-    type: string
-    required: true
-    description: ID
-  returns:
-    type: number
-    description: 比較の結果
-  unit_tests:
-  - name: test_compare_ids
-    case: 正常
-    summary: 数で比べる
-    condition: '`D-2` と `D-10`'
-    mock: なし
-    expected: '`D-2` が先'
-  container: frontend/src/shared/core/records.ts
-- name: bodyFormatOf
-  title: 本文の形式
-  kind: 関数
-  usecase: 資料を読む
-  summary: 本文のパスの拡張子から `md`・`html` を返す
-  args:
-  - name: body
-    type: string | undefined
-    required: true
-    description: 本文のパス
-  returns:
-    type: '''md'' | ''html'' | null'
-    description: 形式
-  unit_tests:
-  - name: test_body_format_of
-    case: 正常
-    summary: 拡張子で分ける
-    condition: '`A-1.html`'
-    mock: なし
-    expected: '`html`'
-  container: frontend/src/shared/core/records.ts
+  - name: buildIndex
+    title: 記録の索引
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: 記録から ID → 項目の索引と逆向きの関係を作る
+    args:
+      - name: data
+        type: MindmapData
+        required: true
+        description: 記録の取得の応答
+    returns:
+      type: RecordIndex
+      description: 索引
+    unit_tests:
+      - name: test_build_index
+        case: 正常
+        summary: 項目と逆向きを引ける
+        condition: D-1 を D-2 の `depends_on` が指す記録
+        mock: なし
+        expected: D-1 の参照元に D-2
+    container: frontend/src/shared/core/records.ts
+  - name: relatedItems
+    title: 関係する項目
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: 前提・後続・関連タスク・経緯・関連・参照元を返す
+    args:
+      - name: id
+        type: string
+        required: true
+        description: 項目の ID
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+    returns:
+      type: RelatedItems
+      description: 種類ごとの項目
+    unit_tests:
+      - name: test_related_items
+        case: 正常
+        summary: 前提と後続を返す
+        condition: D-1 → D-2 の依存
+        mock: なし
+        expected: D-2 の前提に D-1、D-1 の後続に D-2
+    container: frontend/src/shared/core/records.ts
+  - name: compareIds
+    title: ID の比較
+    kind: 関数
+    usecase: 項目を表で絞り込む
+    summary: 接頭辞の後の数で比べる
+    args:
+      - name: a
+        type: string
+        required: true
+        description: ID
+      - name: b
+        type: string
+        required: true
+        description: ID
+    returns:
+      type: number
+      description: 比較の結果
+    unit_tests:
+      - name: test_compare_ids
+        case: 正常
+        summary: 数で比べる
+        condition: '`D-2` と `D-10`'
+        mock: なし
+        expected: '`D-2` が先'
+    container: frontend/src/shared/core/records.ts
+  - name: bodyFormatOf
+    title: 本文の形式
+    kind: 関数
+    usecase: 資料を読む
+    summary: 本文のパスの拡張子から `md`・`html` を返す
+    args:
+      - name: body
+        type: string | undefined
+        required: true
+        description: 本文のパス
+    returns:
+      type: '''md'' | ''html'' | null'
+      description: 形式
+    unit_tests:
+      - name: test_body_format_of
+        case: 正常
+        summary: 拡張子で分ける
+        condition: '`A-1.html`'
+        mock: なし
+        expected: '`html`'
+    container: frontend/src/shared/core/records.ts
 notes:
   単体テスト: 同じフォルダの `records.test.ts` に置く（knowledge の規約『フォルダ構成』）

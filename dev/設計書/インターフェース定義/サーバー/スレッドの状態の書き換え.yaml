@@ -1,3 +1,4 @@
+id: IF-489-10
 title: "スレッドの状態の書き換え"
 entry:
   kind: mcp_tool
@@ -239,7 +240,7 @@ lead: AI がスレッドをクローズにするかオープンに戻し、書�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - dev/設計書/インターフェース定義/スキル/話し合いの進行#
+  - IF-489-66#
 request:
   - name: workspace
     type: str
@@ -305,7 +306,7 @@ constraints:
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 理由の上限
     constraint: 400 文字
-    decided_by: dev/設計書/非機能要件/非機能要件#requirements[スレッドの要約と理由の長さ]
+    decided_by: NFR-489-1#requirements[スレッドの要約と理由の長さ]
   - item: 取り込み待ち
     constraint: 状態を変えても利用者の書き込みの `taken` は書かない。クローズにしたスレッドも、取り込んでいない利用者の書き込みがあれば取り込み待ちに残る（取り込み済みにするのは『スレッドの書き換え』）
   - item: 同時の呼び出し
@@ -314,6 +315,6 @@ constraints:
     constraint: クローズにできるのは、利用者の書き込みが全て取り込み済みで、AI の書き込みが全て利用者の既読のスレッドだけ。最後の書き込みが AI のものかは確かめない。オープンに戻すときは確かめない。利用者の書き換え（『画面からのスレッドの状態の書き換え』）には当てない
     notes: '#424。質問にほかの場所で回答済みのスレッドを閉じられるように、最後の書き手は条件にしない'
 refs:
-  - dev/設計書/ER図/ワークスペース#tables[threads.yaml]
-  - dev/設計書/シナリオ/単一ユースケース/送信の取り込み#
+  - ER-489-1#tables[threads.yaml]
+  - SC-489-43#
 test_file: tests/integration/server/test_set_thread_status.py

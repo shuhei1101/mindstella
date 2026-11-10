@@ -1,6 +1,8 @@
+id: TP-489-1
 title: "テスト実行方法"
 layers:
-  - name: 単体テスト（バック）
+  - id: TL-1
+    name: 単体テスト（バック）
     run_all: |-
       ```bash
       pytest tests/unit
@@ -18,7 +20,8 @@ layers:
         ```bash
         pytest {テストファイルパス}
         ```
-  - name: 単体テスト（フロント）
+  - id: TL-2
+    name: 単体テスト（フロント）
     description: 今の画面（`plugins/mindstella/skills/mindmap/preview/`）は、pytest-playwright で、部品・画面の `.ts` から tsc が生成した `.js` を `page.add_script_tag` で読み、`page.evaluate` で関数を引数付きで呼んで、返った DOM と計算した値を本物のブラウザ（Chromium）で確かめる。描画のライブラリは `page.route` で差し替える。React の側（`frontend/src/`）は、Vitest（jsdom）と Testing Library で、テストファイルを対象と同じフォルダに置いて確かめる。API は MSW のハンドラ（`frontend/src/testing/msw/`）で、`EventSource` は偽物（`frontend/src/testing/fake-event-source.ts`）で差し替え、画面はルーターごと描く（`frontend/src/testing/render.tsx`）
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` の開発用の依存（pytest・pytest-playwright・playwright ほか）
@@ -37,7 +40,8 @@ layers:
         pytest {テストファイルパス}
         npx vitest run {React の側のテストファイルパス}
         ```
-  - name: 結合テスト（バック）
+  - id: TL-3
+    name: 結合テスト（バック）
     run_all: |-
       ```bash
       pytest tests/integration
@@ -59,7 +63,8 @@ layers:
         ```bash
         pytest {テストファイルパス}
         ```
-  - name: 結合テスト（フロント）
+  - id: TL-4
+    name: 結合テスト（フロント）
     description: pytest-playwright で 2 つを確かめる。インターフェース定義『プレビューを開く』と画面設計は、`make_workspace` で作ったワークスペースを MCP サーバー（`preview_url`）が配る URL を URL のハッシュ付きで開く。配る書き出しは `export` で書き出した HTML を file:// で開き、描画のライブラリの配信元を失敗させるときは `page.route` で要求を abort する。部品設計の状態は、`storybook build` の出力を一時の HTTP サーバーで配る fixture から `iframe.html?id={story}--{state}` を開いて確かめる。React のプレビュー（SPA）は、同じ配信の `/spa/` を開き（`tests/integration/preview/test_spa_*.py`）、React の部品は `npm run build-storybook-react` の出力を配る fixture から開く（`tests/integration/storybook_react/`）
     prerequisites:
       - 単体テスト（フロント）の前提
@@ -84,7 +89,8 @@ layers:
         4. 要素は画面設計の項目 ID（`#tile-next`・`#decision-map`・`#graph-canvas` ほか）で引く。項目 ID を持たない要素は、画面設計の名前に当たる見出し・ボタンの読み上げ名で引く。
         5. 幅の違いを確かめるときは、開いた後に `set_viewport_size` で幅を変える。
         6. ツールの書き換えへの追従と、サーバーが止まったときの接続の状態は、同じワークスペースを開いたまま `call_tool` の `add` を呼ぶ、または常駐サーバーを止めて（`server_stop`）確かめる。
-  - name: E2E テスト
+  - id: TL-5
+    name: E2E テスト
     run_all: |-
       ```bash
       pytest tests/e2e
@@ -104,9 +110,11 @@ layers:
         ```bash
         pytest {シナリオのテストファイルパス}
         ```
-  - name: 外部疎通テスト
+  - id: TL-6
+    name: 外部疎通テスト
     run_all: 未確定
-  - name: lint
+  - id: TL-7
+    name: lint
     description: ruff の check（リポジトリの直下の `ruff.toml`）で Python の `plugins/` と `tests/` を、tsc の型検査（`npm run typecheck`）で今の画面の `.ts`・ストーリーの `.ts` と React の側（`frontend/tsconfig.json`）を、ESLint（`npm run lint`。`eslint.config.js`）で React の側の `frontend/src/` を検査する。formatter と import の並びの検査は含めない。commit の前に lefthook（`lefthook.yml`）が、`frontend/` かビルドの設定を変えたときは `npm run build` の後に `preview/spa/` に未 commit の差分があれば止める
     prerequisites:
       - Python 3.12 以上と、`requirements-dev.txt` で固定した版の ruff（外部ライブラリ『ruff』）
