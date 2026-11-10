@@ -2,59 +2,87 @@ docs:
   - page: dev-docs.yaml
     new: false
     change: 文書の paths・schema・instructions を docs/・schemas/ へ移し、visibility と category をメタデータに対応づける
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: rules.yaml
     new: false
     change: 部品設計の Schema の行を schemas/component.schema.yaml と docs/component/ へ移す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: docs/index.yaml
     new: false
     change: dev/index.yaml の行と合わせ、種類のフォルダ（scenario・interface・module・guide など）を指す目次にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: docs/files.yml
     new: false
-    change: 公開ドキュメントを docs/guide/ へ移したパスと category・visibility にする
-    status: todo
+    change: 公開ドキュメントの行を docs/guide/files.yml へ移し、移したパスと category・visibility にする（docs/files.yml は削除する）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: frontend/files.yml
     new: false
-    change: 関連の to を移した後の設計書のパスにする
-    status: todo
+    change: 関連の to を設計書の ID にする（v0.4.0 の変換で分けた設計書は、コードの行の物理ファイルの設計書を優先する）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: plugins/mindstella/files.yml
     new: false
-    change: 関連の to を移した後の設計書のパスにする
-    status: todo
+    change: 関連の to を設計書の ID にする（v0.4.0 の変換で分けた設計書は、コードの行の物理ファイルの設計書を優先する）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: docs/_config.yml
     new: false
     change: exclude に internal の種類のフォルダと pr/・mock/・generated/ を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: CLAUDE.md
     new: false
     change: '## ドキュメント の dev/ の参照を docs/ にする'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: .gitignore
     new: false
     change: dev/generated/ を docs/generated/ にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: eslint.config.js
     new: false
     change: ignores の dev/** を docs/mock/** にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: frontend/src/shared/styles/tokens.css
     new: false
     change: コメントの見本のパスを docs/mock/styles/ にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: docs/リファレンス/コマンド.md
     new: false
     change: docs/guide/ へ移し、開発ドキュメントへのリンクを移した後のパスにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: docs/リファレンス/動作環境.md
     new: false
     change: docs/guide/ へ移し、非機能要件へのリンクを移した後のパスにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: docs/使い方/セットアップ手順/プレビューを外から見る.md
     new: false
     change: docs/guide/ へ移し、開発ドキュメントへのリンクを移した後のパスにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:20.389158+00:00'
   - page: ai-monitor-version.ini
     new: false
     change: 更新先は要件.md の未確定（推奨は v0.3.0 のまま残す）
@@ -62,6 +90,28 @@ docs:
   - page: .github/workflows/pages.yml
     new: true
     change: 'master への push で visibility: public の文書だけを mdmark の build で HTML にし、YAML が無いことを確認して Pages へ配信する'
+    status: todo
+  - page: docs/_root/files.yml
+    new: true
+    change: docs の直下の Markdown（index.md・design-policy.md）の行を持つ（dev/設計書/files.yml の行を移す）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:28.309507+00:00'
+  - page: docs/guide/index.yaml
+    new: true
+    change: はじめに・使い方・リファレンスの目次の行を 1 つにまとめる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:28.309507+00:00'
+  - page: docs/er/ER-489-1.yaml
+    new: true
+    change: v0.4.0 の Schema が求める関連の元と先の列を書き、実体に関連が結ぶ列を持たせる（移す前は dev/設計書/ER図/ワークスペース.yaml）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T19:58:28.309507+00:00'
+  - page: plugins/mindstella/skills/mindmap/README.md
+    new: false
+    change: 公開ドキュメントへのリンクを移した後の URL にする（要件.md の未確定）
     status: todo
 scope_out:
   - item: 移した文書の本文を mdmark の書き方と表し方の優先順位に合わせる

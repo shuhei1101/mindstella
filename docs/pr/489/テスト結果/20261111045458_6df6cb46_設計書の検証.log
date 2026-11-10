@@ -1,0 +1,6 @@
+# AI Monitor develop af7258c2d で、移した後の設計書を検証する
+$ cd /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop && PYTHONPATH=src uv run python -m ai_monitor.design_docs validate --root /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-docs-merge-dev-into-docs
+exit=0
+
+$ PYTHONPATH=src uv run python -m ai_monitor.design_docs publish --root /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/chore-docs-merge-dev-into-docs --check
+exit=0
