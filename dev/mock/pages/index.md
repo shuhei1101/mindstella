@@ -2,6 +2,8 @@
 
 プレビューの画面のモック。
 
+<!-- table: data -->
+
 | 画面 | 中身 | 現役の案 |
 | --- | --- | --- |
 | [overview](./overview/index.md) | 概要 | [21 / standard](./overview/21/standard/index.html) |
@@ -22,3 +24,5 @@
 | [workspace-settings](./workspace-settings/index.md) | 設定の画面 | - |
 | [search](./search/index.md) | 全体の検索 | [216 / a-by-tier](./search/216/a-by-tier/index.html) |
 | [diagram-viewer](./diagram-viewer/index.md) | 図の拡大 | [21 / standard](./diagram-viewer/21/standard/index.html) |
+
+<!-- /table -->

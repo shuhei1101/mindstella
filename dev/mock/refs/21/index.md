@@ -3,6 +3,8 @@
 プレビューの画面（概要・検討事項・タスク・資料・つながり・詳細パネル）を見本に沿って作る（[PR #21](https://github.com/shuhei1101/mindmap/pull/21)）。
 画面は共通のスクリプト・スタイル・見本のデータ（`assets/`）を読み、値はデザイン方針のトークン（`plugins/mindstella/skills/mindmap/preview/tokens.css`）を使う。
 
+<!-- table: data -->
+
 | 画面 | 中身 |
 | --- | --- |
 | [overview](../../pages/overview/21/standard/index.html) | 概要 |
@@ -15,6 +17,8 @@
 | [detail-full](../../pages/detail-full/21/standard/index.html) | 詳細の全画面 |
 | [search](../../pages/search/21/standard/index.html) | 全体の検索 |
 | [diagram-viewer](../../pages/diagram-viewer/21/standard/index.html) | 図の拡大 |
+
+<!-- /table -->
 
 | 部品 | 中身 |
 | --- | --- |

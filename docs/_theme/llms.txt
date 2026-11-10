@@ -1,6 +1,7 @@
 ---
-layout: null
+layout: none
 sitemap: false
+excerpt_separator: ""
 ---
 {%- comment -%}
   全 README の `## 目次` 見出しの直後の表から「パス / 概要」を 1 行 1 ページで並べる。

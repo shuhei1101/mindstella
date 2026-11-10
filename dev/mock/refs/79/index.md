@@ -5,6 +5,8 @@
 画面は変更履歴から「前回開いてから」を選んだ状態で開く（データの前回開いた日時は 10/04 13:05）。
 モック専用の操作列で、状態（端末で初めて開く・保持する回数が 0 ほか）、シナリオの場面（前回開いてから・古いまとまりを選ぶ・まだまとめていない変更・前後を組み立てられない古いまとまり）、開いたまま届く書き換え（D-022）、抜ける操作の案（A 札と外すボタン・B 押し直し）を切り替える。
 
+<!-- table: data -->
+
 | 画面 | 中身 |
 | --- | --- |
 | [overview](../../pages/overview/79/standard/index.html) | 概要のタイルの項目に新規・変更の印 |
@@ -15,6 +17,8 @@
 | [detail-panel](../../pages/detail-panel/79/standard/index.html) | D-005 の差分（キー・本文・表の行・flowchart・Raw）。D-019 は本文の前の版を組み立てられない。A-003 は sequenceDiagram、A-005 は gantt。古いまとまり「フェーズの切り方を決める」の D-005 は前後を組み立てられない |
 | [detail-full](../../pages/detail-full/79/standard/index.html) | 詳細の全画面の D-005 の差分 |
 | [diagram-viewer](../../pages/diagram-viewer/79/standard/index.html) | 図の拡大の D-005 の図の色・凡例・消したもの・Raw の差分 |
+
+<!-- /table -->
 
 | 部品 | 中身 |
 | --- | --- |

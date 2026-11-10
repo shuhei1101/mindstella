@@ -3,6 +3,8 @@
 プレビューの画面とスキルの文言を 1 語ずつ点検して直す（[PR #52](https://github.com/shuhei1101/mindmap/pull/52)）。
 画面は 21 の共通のスクリプト・スタイル・見本のデータに 40 の資料のボードを合わせ、点検で直した語を当てたもの（`assets/`）を読む。
 
+<!-- table: data -->
+
 | 画面 | 中身 |
 | --- | --- |
 | [overview](../../pages/overview/52/standard/index.html) | 見出し「ゴールまでの進捗」「カテゴリー別の進捗」、要見直し・保留・進行中のタスクの空の表示、次に検討する項目の「影響度 大」 |
@@ -15,6 +17,8 @@
 | [detail-full](../../pages/detail-full/52/standard/index.html) | 全画面表示のボタン（押されている） |
 | [search](../../pages/search/52/standard/index.html) | 入力欄の名前「検索キーワード」と、入力前の案内「ID・タイトル・本文で、すべての項目を検索します。」 |
 | [diagram-viewer](../../pages/diagram-viewer/52/standard/index.html) | 図の「拡大表示」のボタン |
+
+<!-- /table -->
 
 | 部品 | 中身 |
 | --- | --- |
