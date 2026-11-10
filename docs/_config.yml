@@ -43,8 +43,21 @@ plugins:
   - jekyll-relative-links
   - jekyll-github-metadata
 
+# 共通の部品（レイアウト・include・データ・アセット）は _theme/ にまとめる
+# 取り込みのコマンド（python -m ai_monitor.distribution import-site）が _theme/ をまとめて置き換える
+layouts_dir: _theme/_layouts
+includes_dir: _theme/_includes
+data_dir: _theme/_data
+
+# _theme/ をコレクションにして、アセット・search.json・llms.txt を今までと同じ URL（/assets/... など）で出力する
+# _layouts / _includes / _data の中は出力されない
+collections:
+  theme:
+    output: true
+    permalink: /:path:output_ext
+
 # 全ページのデフォルト layout を default にする
-# 個別 MD に front matter を書かなくても _layouts/default.html が適用される
+# 個別 MD に front matter を書かなくても _theme/_layouts/default.html が適用される
 defaults:
   - scope:
       path: ""

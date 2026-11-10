@@ -1,6 +1,7 @@
 ---
-layout: null
+layout: none
 sitemap: false
+excerpt_separator: ""
 ---
 [
 {%- comment -%}
