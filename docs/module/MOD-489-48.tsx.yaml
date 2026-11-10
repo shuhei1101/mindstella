@@ -1,0 +1,27 @@
+id: MOD-489-48
+title: プレビュー / settings-confirm-dialog
+lead: 画面設計『既定の保存の確かめ.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確かめ』を置き、`open`・`onOpenChange` は親が持つ。
+components:
+  - name: SettingsConfirmDialog
+    title: 既定の保存の確かめ
+    kind: 画面
+    usecase: ワークスペースの既定を変える
+    summary: 画面設計『既定の保存の確かめ.tsx』の要素と操作を描く。shadcn/ui の Dialog に部品『既定の保存の確かめ』を置き、`open`・`onOpenChange` は親が持つ
+    refs:
+      - SCR-489-18#
+    unit_tests:
+      - name: test_settings_confirm_dialog
+        case: 正常
+        summary: 保存する
+        condition: 「保存する」
+        mock: MSW
+        expected: '`PUT /api/config/display` が呼ばれ、閉じる'
+      - name: test_settings_confirm_dialog_when_error
+        case: 異常
+        summary: 書けない
+        condition: '403'
+        mock: MSW
+        expected: 理由が出て開いたまま
+    container: frontend/src/features/settings/display-settings/settings-confirm-dialog.tsx
+notes:
+  単体テスト: 同じフォルダの `settings-confirm-dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）

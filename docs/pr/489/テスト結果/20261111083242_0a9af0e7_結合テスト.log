@@ -1,0 +1,5 @@
+# 結合テスト（README の書き出しに関係するもの）
+
+$ ~/.cache/mindstella/venv-dev/bin/python -m pytest tests/integration/server/test_readme.py tests/integration/server/test_init.py tests/integration/server/test_preview_url.py -q -p no:cacheprovider
+..........................                                               [100%]
+26 passed in 21.07s

@@ -1,0 +1,10 @@
+id: MOD-489-27
+title: プレビュー / item-add-panel
+lead: 項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える。
+components:
+  - name: ItemAddPanel
+    title: 項目の追加の入力
+    kind: コンポーネント
+    usecase: 画面で項目を足す
+    summary: 項目の追加の入力。タイトルを離れたときに `item-add` を溜め、残りのキーは返った仮の ID で書き換える
+    container: frontend/src/features/detail/detail-panel/components/item-add-panel.tsx

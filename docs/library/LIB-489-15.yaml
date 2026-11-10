@@ -1,0 +1,45 @@
+id: LIB-489-15
+title: msw
+kind: ライブラリ
+version:
+  current: 3.0.3
+  latest: 3.0.3
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 3.0.3 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 3.0.3
+    entries:
+      - name: setupServer（msw/node）
+        kind: 関数
+        purpose: Vitest の要求を handler で返す
+      - name: setupWorker（msw/browser）
+        kind: 関数
+        purpose: Storybook の要求を handler で返す（.storybook-react/public/mockServiceWorker.js）
+      - name: onUnhandledFrame
+        kind: 設定
+        purpose: handler の無い要求の扱い（Vitest は error、Storybook は bypass）
+lead: Service Worker（ブラウザ）と要求の横取り（Node）で、API の応答を差し替える。
+purl: pkg:npm/msw
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+  - frontend/src/testing/msw/
+  - .storybook-react/preview.tsx
+upstream: mswjs/msw
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: Vitest と Storybook の概要の画面が、同じ handler（testing/msw/handlers.ts）の記録で描かれることを確かめた
+license: MIT（開発用だけで配る物に入らない）
+official_url: https://mswjs.io/
+docs_url: https://mswjs.io/docs/api/setup-server
+install: '```bash
+
+  npm install --save-dev --save-exact msw@3.0.3
+
+  ```'
+limitations:
+  - item: 3.0 の名前
+    content: 2 系の onUnhandledRequest は onUnhandledFrame になった

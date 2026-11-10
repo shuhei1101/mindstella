@@ -1,0 +1,21 @@
+id: MOD-489-73
+title: プレビュー / html-body-frame
+lead: 部品設計『HTMLの本文の枠.tsx』の props・イベント・状態を持つ。
+components:
+  - name: HtmlBodyFrame
+    title: HTML の本文の枠
+    kind: コンポーネント
+    usecase: 資料を読む
+    summary: 部品設計『HTMLの本文の枠.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-4#
+    unit_tests:
+      - name: test_html_body_frame
+        case: 正常
+        summary: スクリプトを動かさない枠
+        condition: HTML の本文
+        mock: なし
+        expected: iframe の `sandbox` が `allow-same-origin` だけ
+    container: frontend/src/shared/components/html-body-frame.tsx
+notes:
+  単体テスト: 同じフォルダの `html-body-frame.test.tsx` に置く（knowledge の規約『フォルダ構成』）

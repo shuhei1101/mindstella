@@ -1,0 +1,144 @@
+id: CFG-489-1
+title: "設定: サーバー"
+lead: 起動スクリプトと常駐の MCP サーバーが読む環境変数。設定のファイルは持たない。
+settings:
+  - key: MINDSTELLA_VENV
+    title: 仮想環境のフォルダ
+    file: 環境変数
+    type: str
+    required: false
+    default: ~/.mindmap/venv
+    description: 常駐サーバーを動かす仮想環境のフォルダ。『常駐サーバーの起動の確認』と起動スクリプトが依存の確認に使い、その Python で常駐サーバーを起動する
+    env_var: MINDSTELLA_VENV
+    reload: restart
+    status: implemented
+    visibility: user
+    refs:
+      - IF-489-56#
+      - IF-489-27#
+      - IF-489-38#
+  - key: MINDSTELLA_PORT
+    title: 常駐サーバーのポート
+    file: 環境変数
+    type: int
+    required: false
+    default: '8784'
+    description: 常駐サーバーが `127.0.0.1` で待ち受けるポート。常駐サーバーが起動時に読み、プラグインの `.mcp.json` の `url` と『常駐サーバーの起動の確認』も同じ値を使う
+    missing: 8784 で待ち受ける
+    env_var: MINDSTELLA_PORT
+    reload: restart
+    allowed: 1〜65535 の整数（違えば常駐サーバーが InvalidPortError で終わる）
+    reason: 端末で別のサービスが 8784 を使っているときに変えるため。Claude Code と常駐サーバーが同じ値を読む必要があり、ワークスペースの `config.yaml` には置かない
+    status: planned
+    visibility: user
+    refs:
+      - IF-489-1#
+      - IF-489-38#
+      - IF-489-68#
+    introduced:
+      pr: 392
+  - key: CLAUDE_CONFIG_DIR
+    title: Claude Code の設定のフォルダ
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（Claude Code の既定の設定のフォルダ）
+    description: あれば起動スクリプトが tmux のセッションへ `new-session -e` で渡し、`claude plugin list --json` もそのフォルダで引く
+    env_var: CLAUDE_CONFIG_DIR
+    reload: restart
+    status: implemented
+    visibility: user
+    refs:
+      - IF-489-56#
+  - key: MINDSTELLA_ALLOWED_HOSTS
+    title: 許可するホスト名
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（`127.0.0.1` と `localhost` だけを受ける）
+    description: プレビューの配信が `Host` と `Origin` で受ける外のホスト名。トンネル・リバースプロキシの内側で、端末の外から開くときに設定する。常駐サーバーを起動した環境から読む
+    missing: 外のホスト名を受けない（今と同じ動き）
+    env_var: MINDSTELLA_ALLOWED_HOSTS
+    reload: restart
+    allowed: ホスト名をカンマで区切ったもの（例 `preview.example.com,notes.example.com`）。前後の空白は外し、大文字と小文字を区別しない。スキーム・ポート・`/` を含む要素と空の要素は使わず、常駐サーバーが起動するときに標準エラーへ記録する
+    reason: 待ち受けは `127.0.0.1` のままで、外から開く画面の認証は外の入口に任せる。端末ごとに決まる値のため、ワークスペースの `config.yaml` には置かない
+    status: implemented
+    visibility: user
+    refs:
+      - IF-489-18#
+      - IF-489-56#
+    introduced:
+      pr: 155
+  - key: MINDSTELLA_PREVIEW_START_HOOK
+    title: 配信を立てたときのフック
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（何も呼ばない）
+    description: プレビューの配信を立てた直後に呼ぶコマンド。末尾に配信のポートとワークスペースの名前（フォルダの名前）を引数で足して呼ぶ（例 `pub add` なら `pub add 47800 家計簿`）。外の入口へポートを登録するのに使う。常駐サーバーを起動した環境から読む
+    missing: 呼ばない
+    env_var: MINDSTELLA_PREVIEW_START_HOOK
+    reload: restart
+    allowed: シェルの書き方で区切ったコマンドと引数（`shlex.split` で分け、シェルを通さずに呼ぶ）
+    reason: コマンドを動かす値のため、ワークスペースと一緒に他の端末へ渡る `config.yaml` には置かない
+    status: implemented
+    visibility: user
+    refs:
+      - IF-489-17#
+      - IF-489-56#
+    introduced:
+      pr: 155
+  - key: MINDSTELLA_PREVIEW_STOP_HOOK
+    title: 配信を止めるときのフック
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（何も呼ばない）
+    description: 常駐サーバーが終わるときに、立てた配信ごとに呼ぶコマンド。末尾に起動時と同じポートとワークスペースの名前を引数で足して呼ぶ（例 `pub rm` なら `pub rm 47800 家計簿`）。外の入口からポートの登録を消すのに使う。常駐サーバーを起動した環境から読む
+    missing: 呼ばない
+    env_var: MINDSTELLA_PREVIEW_STOP_HOOK
+    reload: restart
+    allowed: '`MINDSTELLA_PREVIEW_START_HOOK` と同じ'
+    reason: '`MINDSTELLA_PREVIEW_START_HOOK` と同じ'
+    status: implemented
+    visibility: user
+    refs:
+      - IF-489-1#
+      - IF-489-56#
+    introduced:
+      pr: 155
+  - key: MINDSTELLA_TRANSCRIBER
+    title: 文字起こしのサービス
+    file: 環境変数
+    type: str
+    required: false
+    default: voice-paste
+    description: 『音声の文字起こし』『文字起こしの可否』が使う文字起こしのインターフェースの実装。今は `voice-paste` だけ
+    missing: '`voice-paste` を使う'
+    env_var: MINDSTELLA_TRANSCRIBER
+    reload: restart
+    allowed: '`voice-paste`（違えば常駐サーバーが起動時に InvalidTranscriberError で終わる）'
+    reason: 配信の処理を文字起こしのサービスに直接依存させず、別のサービスへ切り替えられるようにするため（PR #476 の確認ログ）。端末に 1 つのサービスを選ぶ値で、ワークスペースの `config.yaml` には置かない
+    status: planned
+    visibility: user
+    refs:
+      - IF-489-58#
+      - IF-489-41#
+  - key: MINDSTELLA_TRANSCRIBER_URL
+    title: 文字起こしのサービスの URL
+    file: 環境変数
+    type: str
+    required: false
+    default: http://127.0.0.1:47823
+    description: 文字起こしのサービスの待ち受けの URL（スキームとホストとポート）。既定は voice-paste の既定の待ち受け
+    missing: '`http://127.0.0.1:47823` へつなぐ'
+    env_var: MINDSTELLA_TRANSCRIBER_URL
+    reload: restart
+    allowed: '`http://127.0.0.1:{ポート}` か `http://localhost:{ポート}`（違えば常駐サーバーが起動時に InvalidTranscriberError で終わる）'
+    reason: サービスの待ち受けのポートは端末ごとに変えられるため。voice-paste は Host が `127.0.0.1`・`localhost` の Origin の無い要求だけを受けるため、ほかのホストを受けない
+    status: planned
+    visibility: user
+    refs:
+      - IF-489-58#
+      - IF-489-41#
+      - API-489-2#

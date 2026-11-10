@@ -1,0 +1,8 @@
+id: MOD-489-154
+title: "サーバー / 依存と影響"
+lead: 検討事項とタスクの依存をたどり、影響・次の候補・再開時の状況を出す。読み書きと検証だけに依存し、ファイルを書かない。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    graph.py   逆向きの参照・影響・後続の件数・次の候補・再開時の状況
+  ```

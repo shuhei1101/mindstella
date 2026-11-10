@@ -1,0 +1,27 @@
+id: MOD-489-81
+title: プレビュー / review-body-fold
+lead: 部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ。
+components:
+  - name: ReviewBodyFold
+    title: 本文の折りたたみ
+    kind: コンポーネント
+    usecase: 項目へコメントする
+    summary: 部品設計『本文の折りたたみ.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-42#
+    unit_tests:
+      - name: test_review_body_fold
+        case: 正常
+        summary: 長い本文を畳む
+        condition: 6 行の本文
+        mock: ResizeObserver の差し替え
+        expected: '`toggle` が渡り、`aria-expanded` が false'
+      - name: test_review_body_fold_when_short
+        case: 正常
+        summary: 短い本文
+        condition: 2 行の本文
+        mock: ResizeObserver の差し替え
+        expected: '`toggle` が `null`'
+    container: frontend/src/shared/components/review-body-fold.tsx
+notes:
+  単体テスト: 同じフォルダの `review-body-fold.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,246 @@
+id: SC-489-12
+title: "プレビューを開く"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する。示された URL を実際のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        U->>CC: 記録を見たい
+        CC->>SV: プレビューの URL
+        SV->>SV: 配信を立て、直下の README.md のプレビューの節を URL にして書き直す
+        SV-->>CC: 127.0.0.1 の URL
+        CC-->>U: URL を示し、ブラウザで開くよう案内する
+        U->>P: URL を開く
+        P->>SV: 記録を読む
+        SV-->>P: ワークスペースの記録
+        P-->>U: 概要
+      ```
+    expected:
+      - URL が `127.0.0.1` の `/mindstella.html` を指す
+      - 開いた画面に D-1 がある
+      - ワークスペースに `preview.html` が無い
+      - 直下の `README.md` のプレビューの節が、示した URL である
+    test: test_normal
+  - name: 正常シナリオ（Claude Code を閉じた後も開ける）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐の MCP サーバーを立て、MCP のクライアントでプレビューの URL を取得した後、クライアントの接続を閉じる。別の MCP のクライアントでつなぎ直す。示された URL を実際のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as 常駐サーバー
+        participant P as プレビュー（ブラウザ）
+
+        CC->>SV: プレビューの URL
+        SV-->>CC: 127.0.0.1 の URL
+        U->>CC: Claude Code を閉じる
+        U->>P: URL を開く
+        P-->>U: 概要
+        U->>CC: Claude Code を立ち上げ直して記録を見たい
+        CC->>SV: プレビューの URL
+        SV-->>CC: 同じ URL
+      ```
+    expected:
+      - クライアントの接続を閉じた後に開いた画面に D-1 がある
+      - つなぎ直した後に取得した URL が、閉じる前と同じである
+    test: test_normal_when_session_closed
+  - name: 正常シナリオ（記録を書き換える）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、`add` を MCP のクライアントで呼ぶ。プレビューは実際のブラウザで開いておく
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 開いている画面
+        description: 検討事項の表
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant P as プレビュー（ブラウザ）
+
+        CC->>SV: add（検討事項 D-2）
+        SV->>WS: decisions.yaml に書く
+        SV->>SV: 書き換えを見つける
+        SV-->>P: 書き換えを知らせる
+        P->>SV: 記録を読み直す
+        P-->>P: 開いている画面を描き直す
+      ```
+    expected:
+      - 再読み込みの操作をせずに、検討事項の表に D-2 が出る
+      - 描き直した後も、開いていた画面と URL のハッシュが変わらない
+    test: test_normal_when_rewritten
+  - name: 異常シナリオ（設定がスキーマに合わない）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する
+      - name: 設定を手で崩したワークスペース
+        description: '`config.yaml` の見た目の既定を、選べる値に無い `rainbow` にしたワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 記録を見たい
+        CC->>SV: プレビューの URL
+        SV->>WS: config.yaml を読む
+        SV->>SV: スキーマと突き合わせて合わない
+        SV-->>CC: 違う箇所（キーと理由）を示すエラー
+        CC-->>U: 違う箇所を示し、config.yaml を直すよう案内する
+      ```
+    expected:
+      - プレビューの URL の取得がエラーを返し、本文に見た目の既定のキーと、選べる値が `glow`・`starlight`・`constellation`・`deep`・`dust` である理由がある
+      - 配信の待ち受けが立っていない
+      - '`config.yaml` の中身が、呼ぶ前と同じである'
+    test: test_error_when_config_invalid
+  - name: 正常シナリオ（HTML の本文を書き換える）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、プレビューは実際のブラウザで開いておく
+      - name: 作成済みのワークスペース
+        description: 本文を HTML で持ち、段落「一覧の画面」を持つ資料 A-1
+      - name: 開いている画面
+        description: 資料のタブと A-1 の詳細パネル
+      - name: 書き換え
+        description: '`.mindstella/docs/` の A-1 の HTML の本文のファイルを、段落「絞り込みの画面」を持つ中身に書き換える'
+        notes: docs.yaml は書き換えない（本文のファイルだけが変わる）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WS as ワークスペース
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        WS-->>SV: A-1 の HTML の本文のファイルが変わる
+        SV->>SV: 書き換えを見つける
+        SV-->>P: 書き換えを知らせる
+        P->>SV: 記録を読み直す
+        P-->>P: 開いている画面を描き直す
+      ```
+    expected:
+      - 再読み込みの操作をせずに、A-1 の詳細パネルの本文が書き換えた後の HTML（「絞り込みの画面」）で描かれ、「一覧の画面」が消える
+      - 描き直した後も、開いていた画面と URL のハッシュが変わらない
+    test: test_normal_when_html_body_rewritten
+  - name: 正常シナリオ（直したまとまりを指すリンク）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・プレビューの URL の取得を再生する。示されたリンクを端末の保存領域が空のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        U->>CC: D-1 を直してほしい
+        CC->>SV: D-1 を書き換え、書き換えをまとめる
+        SV-->>CC: まとまり V-2
+        CC->>SV: プレビューの URL
+        SV-->>CC: 127.0.0.1 の URL
+        CC-->>U: D-1 を直したことと、V-2 を指すリンクを示す
+        U->>P: リンクを開く
+        P->>SV: 記録を読む
+        SV-->>P: ワークスペースの記録
+        P-->>U: V-2 の差分の表示
+      ```
+    expected:
+      - 示したリンクが `127.0.0.1` の `/mindstella.html` を指し、ハッシュが V-2 を持つ
+      - リンクを開くと、トップバーに V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かない
+    test: test_normal_when_link_to_change_set
+  - name: 正常シナリオ（記録の本文に直したまとまりを書く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・会話ログの追加を再生する。配信を止めて別のポートで立て直し、端末の保存領域が空のブラウザで開く。立て直す間、前のポートをテストが `127.0.0.1` で待ち受けて塞いでおく
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ。`preview.port` を持たない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        U->>CC: D-1 を直してほしい
+        CC->>SV: D-1 を書き換え、書き換えをまとめる
+        SV-->>CC: まとまり V-2
+        CC->>SV: V-2 を指すリンクを本文に書いた会話ログを足し、書き換えをまとめる
+        SV-->>CC: まとまり V-3
+        Note over SV: 配信を別のポートで立て直す
+        U->>P: 立て直した配信で会話ログの詳細パネルを開く
+        U->>P: 本文の V-2 を指すリンクを押す
+        P-->>U: V-2 の差分の表示
+      ```
+    expected:
+      - 足した会話ログの本文のリンクの先が `#diff=V-2` で、ホストとポートを含まない
+      - 立て直した配信のポートが、立て直す前と違う
+      - リンクを押すと、トップバーに V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かず、会話ログの詳細パネルが開いたまま
+    test: test_normal_when_body_link_written_to_record
+  - name: 正常シナリオ（スレッドに直したまとまりを書く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・スレッドへの返信を再生する。配信を止めて別のポートで立て直し、端末の保存領域が空のブラウザで開く。立て直す間、前のポートをテストが `127.0.0.1` で待ち受けて塞いでおく
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ。`preview.port` を持たない
+      - name: スレッド
+        description: D-1 へのオープンのスレッド 1 件
+        notes: 書き込みは利用者の `D-1 を直してほしい` だけで、取り込み待ち
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        CC->>SV: 取り込み待ちのスレッドを読む
+        SV-->>CC: D-1 へのスレッド（D-1 を直してほしい）
+        CC->>SV: D-1 を書き換え、書き換えをまとめる
+        SV-->>CC: まとまり V-2
+        CC->>SV: V-2 を指すリンクを本文に書いた返信をスレッドに足す
+        Note over SV: 配信を別のポートで立て直す
+        U->>P: 立て直した配信でコメントの一覧から D-1 へのスレッドを開く
+        U->>P: AI の返信の V-2 を指すリンクを押す
+        P-->>U: V-2 の差分の表示
+      ```
+    expected:
+      - 足した返信の本文が `(#diff=V-2)` で終わるリンクを持ち、ホストとポートを含まない
+      - 立て直した配信のポートが、立て直す前と違う
+      - リンクを押すと、トップバーに V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かず、D-1 へのスレッドの画面が開いたまま
+    test: test_normal_when_thread_link_written
+lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。記録を直したときは、そのまとまりの差分を開くリンクを示す。'
+issue: 4
+primary_actor: 利用者
+trigger: 利用者が記録を見たいと言う
+preconditions:
+  - ワークスペースが作成済みである
+  - mindstella の MCP のツールが使える
+success_guarantee: '応答にサーバーが配るプレビューの URL があり、開くと今の記録が出る。Claude Code を閉じても、常駐サーバーが止まるまで配信は続く。ワークスペースの YAML を書き換えると、開いている画面が再読み込みの操作なしで描き直される。記録を直したときは、応答にそのまとまりの差分を開くリンクがあり、開くとそのまとまりの差分の表示で開く。記録の本文とワークスペースの中のスレッドに直したまとまりを書くときは、ホストとポートを含まないリンクで書き、配信のポートが変わっても押すとそのまとまりの差分の表示に切り替わる。'
+frequency: 話し合いの中で数回
+priority: 中
+notes:
+  E2E の範囲: 書き換えから画面への反映までの時間は非機能要件のテストが確かめる。URL の示し方はモデルの応答で、確かめない
+  開き方: スキルはブラウザを起動するコマンドを持たず、URL を示して利用者が開く。OS ごとの起動コマンドを `allowed-tools` に足さずに済み、Claude Code が動く端末とブラウザの端末が違うとき（WSL・リモート）にも崩れない
+  対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
+test_file: tests/e2e/単一ユースケース/test_preview_open.py

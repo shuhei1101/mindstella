@@ -1,0 +1,183 @@
+id: MOD-489-181
+title: サーバー / 移行 / migration_ops.py
+test_files:
+  - tests/unit/scripts/test_migration_ops.py
+classes:
+  - name: StepError
+    title: 手順の失敗
+    kind: クラス
+    container: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
+    usecase: 記録の形式の移行
+    summary: 1 つの手順が失敗した理由。`apply_migration` が写しから戻して版と番号を添えた `StepFailedError` にする（入口までは出ない）
+    inherits: Exception
+constants:
+  - name: DESTRUCTIVE_OPS
+    title: 破壊的な操作
+    container: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
+    usecase: 記録の形式の移行
+    summary: 利用者に当ててよいかを確かめる操作
+    value: frozenset({"rename_file", "move_dir", "delete"})
+functions:
+  - name: apply_step
+    title: 手順を 1 つ当てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 操作ごとに手順を当て、変えたファイルを返す
+    side_effects: 手順が変えるファイル・フォルダを書く・動かす・消す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: step
+        type: MigrationStep
+        required: true
+        passing: positional
+        description: 当てる手順
+    returns:
+      type: list[str]
+      description: 変えたファイル・フォルダ（ワークスペースからの相対パス）。何も変えなければ空
+    process: |-
+      1. `op` で分ける。パスはどの版の手順も `root`（ワークスペースの直下）からの相対。対象が無い・既にあるときの振る舞いはインターフェース定義『記録の形式の移行』の制約「対象が無い・既にあるとき」のとおり
+         - `rename_file`・`move_dir`: `from` が無ければ飛ばす。`to` があれば `StepError`。`to` の親のフォルダが無ければ作り（`parents=True`）、動かす
+         - `delete`: `path` が無ければ飛ばす。あればファイルかフォルダを消す
+         - `rename_key`・`set_default`・`map_values`: `file` が無ければ飛ばす（後の版で名前を改めたファイル・記録のフォルダへ移したファイルを指す前の版の手順を、今の形のワークスペースに当てたとき）。あれば読む（読めなければ `StepError`。`{file} を読めません: {理由}`）。`each_item` なら `items[]` の各項目に、そうでなければ最上位の辞書に当てる。キーの位置を保ったまま書き換える
+         - `call`: `{folder}/scripts/{script}.py` を読み込んで `migrate(root)` を呼び、返した相対パスの並びを変えたものにする（例外は `StepError`）
+      2. YAML の操作は、中身が変わったときだけ一時ファイルに書いてから置き換える（`dump_yaml`・`write_temp`・`os.replace`。`OSError` は `StepError`）
+    exceptions:
+      - name: StepError
+        condition: 手順が対象を読めない・書けない、動かす先が既にある、`rename_key` の `from` と `to` が同じ項目にある、`call` が例外を送った
+        message: 理由（`migrator` が版と番号を添えて `StepFailedError` にする）
+    unit_tests:
+      - name: test_apply_step_when_rename_key
+        case: 正常
+        summary: キーの名前を位置を保って変える
+        condition: '`docs.yaml` の A-1（`id`・`done`・`updated` の順）に `rename_key`（`done` → `status`）'
+        mock: なし
+        expected: A-1 のキーが `id`・`status`・`updated` の順で値が同じ。戻り値が `["docs.yaml"]`
+      - name: test_apply_step_when_rename_key_missing
+        case: 正常
+        summary: from が無い項目は飛ばし、ファイルを書かない
+        condition: '`status` だけを持つ A-1 に `rename_key`（`done` → `status`）'
+        mock: なし
+        expected: 戻り値が空。`docs.yaml` の更新日時が呼ぶ前と同じ
+      - name: test_apply_step_when_rename_key_conflict
+        case: 異常
+        summary: from と to の両方を持つ項目は送る
+        condition: '`done` と `status` の両方を持つ A-1 に `rename_key`（`done` → `status`）'
+        mock: なし
+        expected: '`StepError`（メッセージに `A-1` か `items[0]` と `status`）'
+        exception: to が既にある
+      - name: test_apply_step_when_map_values
+        case: 正常
+        summary: map にある値だけを置き換える
+        condition: '`status` が `true`・`false`・`確認中` の 3 項目に `map_values`（`true` → `完成`、`false` → `下書き`）'
+        mock: なし
+        expected: '`完成`・`下書き`・`確認中`'
+      - name: test_apply_step_when_set_default_ask
+        case: 正常
+        summary: ask は何も書かない
+        condition: '`summary` を持たない `mindmap.yaml` に `set_default`（`summary`・`ask`）'
+        mock: なし
+        expected: 戻り値が空。`mindmap.yaml` が呼ぶ前と同じ
+      - name: test_apply_step_when_set_default_value
+        case: 正常
+        summary: キーが無い項目にだけ既定の値を足す
+        condition: '`tags` を持つ項目と持たない項目に `set_default`（`tags`・`value: []`）'
+        mock: なし
+        expected: '持たない項目だけが `tags: []` を持ち、持つ項目の値が同じ'
+      - name: test_apply_step_when_rename_file
+        case: 正常
+        summary: ファイルを動かし、動かす先があれば送る
+        condition: '`parametrize`: `a.yaml` だけがある / `a.yaml` と `b.yaml` がある、に `rename_file`（`a.yaml` → `b.yaml`）'
+        mock: なし
+        expected: 前者は `b.yaml` に動き戻り値が `["a.yaml", "b.yaml"]`。後者は `StepError` で両方が残る
+      - name: test_apply_step_when_delete_missing
+        case: 正常
+        summary: 消す対象が無ければ飛ばす
+        condition: '`old/` が無いワークスペースに `delete`（`old/`）'
+        mock: なし
+        expected: 戻り値が空
+      - name: test_apply_step_when_call
+        case: 正常
+        summary: 変換のスクリプトの migrate を呼ぶ
+        condition: '`scripts/convert.py` に、`notes.yaml` を書いて `["notes.yaml"]` を返す `migrate(root)` を置いた版のフォルダと、`call`（`convert`）'
+        mock: なし
+        expected: 戻り値が `["notes.yaml"]`
+      - name: test_apply_step_when_unreadable
+        case: 異常
+        summary: YAML として読めなければ送る
+        condition: '`docs.yaml` が `items: [` のワークスペースに `rename_key`'
+        mock: なし
+        expected: '`StepError`（メッセージが `docs.yaml を読めません` で始まる）'
+        exception: 読めない
+      - name: test_apply_step_when_file_missing
+        case: 正常
+        summary: 対象のファイルが無ければ飛ばし、ファイルを作らない
+        condition: '`mindmap.yaml` が無いワークスペースに `parametrize`: `set_default`（`file: mindmap.yaml`・`summary`・`ask`）/ `rename_key`（`file: mindmap.yaml`・`field` → `playbooks`）/ `map_values`（`file: mindmap.yaml`）'
+        mock: なし
+        expected: どれも戻り値が空で `mindmap.yaml` が作られていない
+      - name: test_apply_step_when_rename_file_into_record_dir
+        case: 正常
+        summary: 動かす先の親のフォルダが無ければ作って動かす
+        condition: '`parametrize`: 直下の `decisions.yaml` を `rename_file` で `.mindstella/decisions.yaml` へ / 直下の `docs/` を `move_dir` で `.mindstella/docs` へ（どちらも `.mindstella/` はまだ無い）'
+        mock: なし
+        expected: 移した先に同じ中身があり、直下に元が無い。戻り値が動かしたパス
+  - name: describe_step
+    title: 手順の 1 行の説明
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 出力の `steps[].summary` にする 1 行を作る
+    args:
+      - name: step
+        type: MigrationStep
+        required: true
+        passing: positional
+        description: 説明する手順
+    returns:
+      type: str
+      description: 手順の中身の 1 行
+    process: 1. `op` ごとの決まった形に引数を埋めて返す（例 `rename_key` は `{file} の {items[]. か空}{from} を {to} に名前を変える`、`set_default` の `ask` は `{file} の {key} を利用者に聞く（{ask}）`）
+    unit_tests:
+      - name: test_describe_step
+        case: 正常
+        summary: 操作ごとの 1 行を作る
+        condition: '`parametrize`: v0.3.0 の 3 つの手順'
+        mock: なし
+        expected: '`docs.yaml の items[].done を status に名前を変える` / `docs.yaml の items[].status の値を置き換える（true → 完成、false → 下書き）` / `mindmap.yaml の summary を利用者に聞く（話し合いの題名）`'
+  - name: list_needed_values
+    title: 値が要るキーの洗い出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/migration_ops.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`set_default` の `ask` で、今のワークスペースにキーが無いものを返す'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: step
+        type: MigrationStep
+        required: true
+        passing: positional
+        description: 手順
+    returns:
+      type: list[NeededValue]
+      description: 値が要るキー（`ask` でない手順と、キーを持つときは空）
+    process: |-
+      1. `set_default` で `ask` を持つ手順だけを見る
+      2. `file` を読み（読めなければ空を返す。読めないことは手順を当てるときに `StepError` になる）、`key` を持たない項目があれば `NeededValue(file, key, ask)` を 1 つ返す
+    unit_tests:
+      - name: test_list_needed_values
+        case: 正常
+        summary: キーが無ければ返し、あれば返さない
+        condition: '`parametrize`: `summary` を持たない / 持つ `mindmap.yaml` と、v0.3.0 の `set_default`'
+        mock: なし
+        expected: 前者は `mindmap.yaml`・`summary`・`話し合いの題名` の 1 件、後者は空

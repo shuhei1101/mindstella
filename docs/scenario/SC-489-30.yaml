@@ -1,0 +1,322 @@
+id: SC-489-30
+title: "発言の取り込み"
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるタグの一覧・まとめての書き込み・`commit` を、決めた引数で順に再生する
+        notes: '-'
+      - name: 作成済みのワークスペース
+        description: プレイブックがシステム開発で、検討事項を持たず、タグ `topic:保存` を持つメモ N-1 だけを持つワークスペース
+        notes: '-'
+      - name: 再生する書き込み
+        description: 決め事を持つ検討事項 D-1（決定済み。案 A・B を持ち、A を採用）、D-1 を `parent` に持つ派生の検討事項 D-2（未決定。案 A・B を持ち、A に推奨の印）、問いの形にならない D-3（未整理。案を持たない）、D-2 を進めるタスク T-1、会話ログ L-1 を、1 回のまとめての書き込みで渡す
+        notes: どの項目も `target`・`category`・`phase` を持つ。D-2 の `parent` と T-1 の `for` は、同じ呼び出しで先に足す項目を指す。D-1・D-2・T-1 は使われているタグ `topic:保存` を主題として、D-3 は `topic:保存` と、同じ概念のタグが使われていない新しい話題のタグ `topic:通知` を持ち、中心に扱う `topic:通知` だけを主題にする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（決め事を含む）
+        CC->>SV: タグの一覧を出す
+        SV-->>CC: 使われているタグと件数
+        CC->>CC: 対象・カテゴリー・フェーズに振り分け、付ける条件から話題のタグを決め（単語まで分けて facet つきで名付け、同じ概念の言い方・活用の違いの使われているタグがあれば使い回し、無ければ新しいタグを付ける）、その項目が中心に扱う話題のタグを主題にし、並べた進め方ガイドの観点と照らし、未整理を除く検討事項ごとに案と推奨を書く
+        CC->>SV: まとめての書き込み（案を持つ検討事項・派生の検討事項・未整理・タスク・会話ログ）
+        SV->>WS: スキーマと突き合わせて書く
+        SV-->>CC: 足した項目
+        CC->>SV: commit（取り込んだ内容の一言の説明）
+        SV->>WS: まとまりを書く
+        CC-->>U: 記録した項目と、積んだ問いを短く示す
+      ```
+    expected:
+      - D-1 が決定済みで `answer` を持つ
+      - 'D-1 が案を持ち、A だけが `adopted: true` である'
+      - 'D-2 が `parent: D-1` と案を持ち、未決定で、案 A だけが推奨の印を持つ'
+      - D-3 が未整理で、案を持たない
+      - 'T-1 が `for: [D-2]` を持つ'
+      - 会話ログ L-1 がある
+      - 足した全ての項目が `target`・`category`・`phase` を持つ
+      - D-3 がタグ `topic:保存`・`topic:通知` を持ち、`config.yaml` がタグのキー（`tags`）を持たない
+      - D-1・D-2・T-1 の `topic:保存` と D-3 の `topic:通知` が主題で、D-3 の `topic:保存` が主題でない
+      - 取り込みの前のタグの一覧が `topic:保存`（1 件）を返し、取り込んだ後のタグの一覧が `topic:保存`（5 件）と `topic:通知`（1 件）を返す
+      - 足した D-1・D-2・D-3・T-1・L-1 が 1 つのまとまりに属し、そのまとまりが説明を持つ。`pending` が空を返す
+      - 点検が問題を 0 件で返す
+    test: test_normal
+  - name: 正常シナリオ（保留・解除・中止）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込みを、決めた引数で再生する
+      - name: 作成済みのワークスペース
+        description: 未決定の D-1・保留の D-2（どちらも案 A・B を持つ）・未着手のタスク T-1 を持つ
+      - name: 再生する書き込み
+        description: D-1 を保留に、D-2 を未決定に戻し、T-1 を中止にする。それぞれ `reason` を持たせ、会話ログと一緒に 1 回のまとめての書き込みで渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（後回し・再開・やめる）
+        CC->>SV: まとめての書き込み（D-1 を保留、D-2 を未決定、T-1 を中止、会話ログを足す）
+        SV->>WS: 書く
+        CC-->>U: 変えた状態を短く示す
+      ```
+    expected:
+      - D-1 が保留で `reason` を持つ
+      - D-2 が未決定である
+      - T-1 が中止で `reason` を持つ
+      - 会話ログが 1 件足されている
+    notes:
+      E2E: 持たない。状態と `reason` を直すのは `update` だけで、既存の『記録の追加と更新』の『正常シナリオ』が確かめる
+  - name: 正常シナリオ（図や文書を資料に残す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込み（本文は `body_markdown`）を、決めた引数で再生する
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 再生する書き込み
+        description: '会話で出した Mermaid の図を本文にした資料 A-1（`kind`: 図、`related: [D-1]`、エイリアス・説明を持つ）と会話ログを、1 回のまとめての書き込みで渡す'
+        notes: 'A-1 はタイトル `画面遷移図`、`aliases: [画面遷移, 遷移図]`、`description: ログインから設定までの画面の移り方`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言
+        CC-->>U: 図を出す
+        CC->>SV: まとめての書き込み（資料 A-1、本文は body_markdown・会話ログ）
+        SV->>WS: docs.yaml と docs/ の本文と logs.yaml を書く
+      ```
+    expected:
+      - '資料 A-1 が `kind: 図` と `related: [D-1]` を持つ'
+      - 資料 A-1 が渡したエイリアス（`画面遷移`・`遷移図`）と説明を持つ
+      - '`.mindstella/docs/` に A-1 の本文の Markdown がある'
+      - '`check` が YAML と Markdown のずれを 0 件で返す'
+    test: test_normal_when_diagram_kept_as_doc
+  - name: 正常シナリオ（脱線した質問）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込みを、決めた引数で再生する
+      - name: 作成済みのワークスペース
+        description: タスクを持たない
+      - name: 再生する書き込み
+        description: 言葉の意味を尋ねた質問は用語集 G-1、それ以外の脱線はメモ N-1（タグ `topic:脱線`。調べた経緯を `body_markdown` で本文にする）。どちらも会話ログと一緒に 1 回のまとめての書き込みで渡す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+
+        U->>CC: 「○○って何？」
+        CC-->>U: 答える
+        CC->>SV: まとめての書き込み（用語集 G-1 かメモ N-1・会話ログ）
+      ```
+    expected:
+      - 用語集 G-1 が `meaning` を持つ
+      - メモ N-1 がタグ `topic:脱線` を持つ
+      - メモ N-1 が本文を持ち、`.mindstella/docs/` にその Markdown がある
+      - タスクが 0 件のままである
+    test: test_normal_when_off_topic_question
+  - name: 正常シナリオ（納品物の資料を作る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる `add`（本文は `body_markdown`）・設定の更新を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: ゴールの納品物に `要件定義書`（`doc` 無し）を持つ
+      - name: 再生する書き込み
+        description: '概要・背景・構成の見出しを先に置いた本文を `body_markdown` で渡した納品物の資料 A-1（タイトル `要件定義書`、`deliverable: true`、`status: 下書き`）を足し、設定の更新で同じタイトルの納品物の `doc` から A-1 を指す'
+        notes: 同じタイトルの納品物があるので、行は足さない。構成は納品物の最終的な見出しの並び
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言
+        CC->>CC: ゴールの納品物に資料の無い要件定義書があると気付く
+        CC->>SV: add（資料 A-1、deliverable: true、本文は概要・背景・構成を先に置いた body_markdown）
+        SV->>WS: docs.yaml と docs/ の本文を書く
+        CC->>SV: 設定の更新（同じタイトルの納品物の doc から A-1 を指す）
+        CC->>SV: add（会話ログ）
+      ```
+    expected:
+      - '`goal.deliverables` が「要件定義書」の 1 件だけで、その `doc` が A-1 である'
+      - '資料 A-1 が `deliverable: true` を持つ'
+      - '`.mindstella/docs/` の A-1 の本文が、概要・背景・構成の見出しを持つ'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_deliverable_doc_created
+  - name: 正常シナリオ（タスクの成果を資料にする）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込みを、決めた引数で再生する
+      - name: 作成済みのワークスペース
+        description: ゴールの納品物に `要件定義書` を持ち、検討事項 D-1 と、D-1 を進める進行中の作業のタスク T-1 を持つ
+      - name: 再生する書き込み
+        description: 'T-1 で作った画面の一覧を本文にした資料 A-1（`deliverable: false`）を足し、T-1 を `related: [A-1]`・完了・`result` を持つように更新し、会話ログを足す。この 3 つを 1 回のまとめての書き込みで渡す'
+        notes: 成果の資料はゴールの納品物に当たらないので、納品物にしない。T-1 の `related` は、同じ呼び出しで先に足す A-1 を指す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（画面の一覧ができた）
+        CC->>CC: T-1 の成果と資料が 1 対 1 で揃っているかを確かめる
+        CC->>SV: まとめての書き込み（資料 A-1 を足す・T-1 を related: A-1・完了にする・会話ログを足す）
+        SV->>WS: docs.yaml・docs/ の本文・tasks.yaml・logs.yaml を書く
+        CC-->>U: 完了にしたタスクと、成果の資料を示す
+      ```
+    expected:
+      - T-1 が完了で、`related` に A-1 を持つ
+      - '資料 A-1 が `deliverable: false` を持ち、`.mindstella/docs/` に本文がある'
+      - '`goal.deliverables` が呼ぶ前と同じである'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_task_output_kept_as_doc
+  - name: 正常シナリオ（誤って足した項目を消す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる書き込みと消すツール・`commit` を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: '検討事項 D-1・D-2 を持ち、D-2 は D-1 と同じ問いを重ねて足した重複。タスク T-1 が `for: [D-2]` で D-2 を指す'
+      - name: 再生する書き込み
+        description: T-1 の `for` を D-1 に付け替え、会話ログと一緒に 1 回のまとめての書き込みで渡してから、D-2 を消して `commit` する
+        notes: 消す前に、利用者へ消す項目を示して確かめる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（D-2 は D-1 と同じ。消してよい）
+        CC-->>U: 消す項目 D-2 と、消すと戻せないことを示して確かめる
+        U->>CC: 消してよい
+        CC->>SV: まとめての書き込み（T-1 の for を D-1 に付け替える・会話ログを足す）
+        SV->>WS: 書く
+        CC->>SV: D-2 を消す
+        SV->>WS: decisions.yaml から D-2 を消す
+        CC->>SV: commit（重複した D-2 を消す）
+        CC-->>U: 消した項目と付け替えた参照を短く示す
+      ```
+    expected:
+      - '`.mindstella/decisions.yaml` に D-2 が無く、D-1 が残る'
+      - 'T-1 が `for: [D-1]` を持つ'
+      - 会話ログが 1 件足されている
+      - 増えたまとまりが、変えた項目に T-1、消した項目に D-2 を持つ
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_mistaken_item_removed
+  - name: 正常シナリオ（やめたメモを取り下げる）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる取り下げるツールと書き込み・`commit` を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: メモ N-1 を持つ
+      - name: 再生する書き込み
+        description: N-1 を理由つきで取り下げ、会話ログを足して `commit` する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（N-1 の話はもうやめる）
+        CC->>SV: N-1 を取り下げる（理由を添える）
+        SV->>WS: N-1 に取り下げの印と理由を書く
+        CC->>SV: 会話ログを足す
+        CC->>SV: commit（N-1 を取り下げる）
+        CC-->>U: 取り下げた項目を短く示す
+      ```
+    expected:
+      - '`.mindstella/notes.yaml` に N-1 が残り、取り下げの印と理由を持つ'
+      - 会話ログが 1 件足されている
+      - 増えたまとまりが、変えた項目に N-1 を持ち、消した項目を持たない
+    test: test_normal_when_note_withdrawn
+  - name: 正常シナリオ（見た目のある資料を HTML で残す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるまとめての書き込み（本文は HTML）を、決めた引数で再生する
+      - name: 作成済みのワークスペース
+        description: 検討事項 D-1 を持つ
+      - name: 再生する書き込み
+        description: '会話で求められた画面のモックを HTML の本文にした資料 A-1（`kind`: モック、`related: [D-1]`）と会話ログを、1 回のまとめての書き込みで渡す'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 画面のモックを作ってほしいという発言
+        CC->>SV: まとめての書き込み（資料 A-1、本文は HTML・会話ログ）
+        SV->>WS: docs.yaml と docs/ の HTML の本文と logs.yaml を書く
+        CC-->>U: プレビューで開く場所を示す
+      ```
+    expected:
+      - '資料 A-1 が `kind: モック` と `related: [D-1]` を持ち、本文が HTML の形式である'
+      - '`.mindstella/docs/` に A-1 の本文の HTML がある'
+      - '`check` が YAML と本文のずれを 0 件で返す'
+    test: test_normal_when_visual_doc_kept_as_html
+  - name: 正常シナリオ（言い方の違うタグを使い回す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねるタグの一覧・まとめての書き込み・`commit` を、決めた引数で順に再生する
+      - name: 作成済みのワークスペース
+        description: 検討事項を持たず、タグ `topic:サーバ` を持つメモ N-1 だけを持つ
+      - name: 再生する書き込み
+        description: サーバーの置き場所を主題にした検討事項 D-1 と会話ログを、1 回のまとめての書き込みで渡してから `commit` する
+        notes: 発言では「サーバー」と呼んでいるが、使われているタグ `topic:サーバ` と同じ概念の言い方の違いなので、D-1 には `topic:サーバー` を作らず `topic:サーバ` を付ける
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        U->>CC: 発言（サーバーの置き場所の話）
+        CC->>SV: タグの一覧を出す
+        SV-->>CC: 使われているタグ `topic:サーバ`（1 件）
+        CC->>CC: 「サーバー」が使われているタグ `topic:サーバ` と同じ概念の言い方の違いだと決める
+        CC->>SV: まとめての書き込み（D-1 はタグ `topic:サーバ` を持つ・会話ログ）
+        SV->>WS: 書く
+        CC->>SV: commit
+      ```
+    expected:
+      - D-1 のタグが `topic:サーバ` だけである
+      - タグの一覧が `topic:サーバ`（2 件）だけを返し、`topic:サーバー` が無い
+      - 点検が問題を 0 件で返す
+    test: test_normal_when_variant_tag_reused
+lead: 話し合いを進めるスキル `session` が、利用者の発言を対象・カテゴリー・フェーズに振り分けて記録し、進め方ガイドの観点と照らして派生の検討事項・未整理・タスクを積む単一ユースケース。
+issue: 4
+primary_actor: 利用者
+stakeholders:
+  - name: 利用者
+    interest: 抽象と具体を行き来する発言をそのまま話しても、決め事とそこから派生する問いが記録に残る。脱線した質問がタスクに紛れない
+trigger: '`session` で話し合っている間に、利用者が発言する'
+preconditions:
+  - ワークスペースが作成済みである
+  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
+success_guarantee: 発言ごとに会話ログが 1 件足され、記録した項目は対象・カテゴリー・フェーズを持つ。
+minimal_guarantee: スキーマに合わない書き込みは MCP のツールが拒み、ワークスペースは書き込みの前のまま残る。
+frequency: 利用者の発言のたび
+priority: 高
+notes:
+  E2E の範囲: モデルを呼ばず、手順が連ねる書き込みを再生してワークスペースの状態を確かめる。E2E を持つのは、既存のシナリオに無い組み合わせ（`parent` と未整理と `for` を持つ書き込みの組・`docs/` の本文を持つ資料・タスクを積まない脱線の記録・タスクの成果の資料を `related` で指す完了）を持つシナリオだけ。発言をどう振り分けるか・どの案や言葉を書くかというモデルの判断は確かめない
+test_file: tests/e2e/単一ユースケース/test_utterance_intake.py

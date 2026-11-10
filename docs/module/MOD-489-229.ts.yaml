@@ -1,0 +1,19 @@
+id: MOD-489-229
+title: プレビュー / 画面と部品 / diff-mark.ts
+components:
+  - name: diffMark
+    title: 差分の印
+    container: plugins/mindstella/skills/mindmap/preview/components/diff-mark.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『差分の印』の引数を受け、新規（+）・変更（●）・消した（−）の印を返す。表・ボード・カード・マップ・概要のタイル・詳細パネルが新規と変更を、`removedBand` が消したを使う
+    props:
+      - name: kind
+        type: "'new' | 'changed' | 'removed'"
+        required: true
+        description: 新規か変更か消したか
+      - name: labeled
+        type: boolean
+        required: false
+        default: 'false'
+        description: 文言つきの札にするか

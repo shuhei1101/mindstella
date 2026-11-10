@@ -1,0 +1,87 @@
+id: MOD-489-210
+title: プレビュー / 画面と部品 / tasks.ts
+test_files:
+  - tests/unit/preview/test_tasks.py
+functions:
+  - name: boardColumns
+    title: ボードの列
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
+    usecase: タスクをボードで見る
+    scope: public
+    summary: 状態の並びの順に、状態ごとの項目を返す（検討事項・資料のボードも使う）
+    args:
+      - name: items
+        type: object[]
+        required: true
+        passing: keyword
+        description: 項目
+      - name: statuses
+        type: string[]
+        required: true
+        passing: keyword
+        description: 列にする状態の並び（スキーマの列挙の順。タスクは完了・中止も含む）
+      - name: statusFilter
+        type: string[]
+        required: false
+        passing: keyword
+        description: 状態の条件で選んだ値（空なら状態で絞っていない）
+    returns:
+      type: '{status, items, excluded}[]'
+      description: 状態ごとの項目（項目が 0 件の列も返す。列の中は連番の順）。`excluded` は状態の条件で外した列（`statusFilter` が空でなく、その状態を含まない）か
+    unit_tests:
+      - name: test_board_columns
+        case: 正常
+        summary: 状態の並びの順に分ける
+        condition: 未着手の T-2・T-1、完了の T-3
+        mock: なし
+        expected: 未着手の列が T-1・T-2、進行中・保留・中止が空、完了が T-3
+      - name: test_board_columns_when_status_filter
+        case: 正常
+        summary: 状態の条件から外した列を示す
+        condition: 未着手の T-1。状態の条件は 未着手・進行中
+        mock: なし
+        expected: 未着手・進行中の列は `excluded` が偽、保留・完了・中止は真。条件が空のときは全て偽
+components:
+  - name: tasksScreen
+    title: タスク
+    container: plugins/mindstella/skills/mindmap/preview/screens/tasks.ts
+    usecase: タスクをボードで見る
+    kind: 画面
+    summary: 画面設計『タスク』を描く。タスクを `filters` で絞り（`filterRows`）、ボードと表に同じ結果を渡す。ボードの列は `boardColumns`（状態の条件を渡し、外した列に「状態の条件で外しています。」を出す）。ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: route
+        type: Route
+        required: true
+        description: 表示形式と絞り込み
+      - name: on
+        type: '{open, view, filter, closeDrawer}'
+        required: true
+        description: 項目を開く・表示形式を切り替える・条件を変える（新しい `filters`）・ドロワーを閉じる
+      - name: filters
+        type: Record<string, string[]>
+        required: true
+        description: 絞り込みの条件（入口の `FilterState` のこの画面の分）
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか
+      - name: comments
+        type: Record<string, number>
+        required: false
+        default: なし（印を出さない）
+        description: 項目の ID → レビュー中のコメントの件数（入口の `commentCounts`）。ボードのカードのメタ情報の並びの右端に `data-comment-target` の場所を置き、表へは `comments` で渡す
+      - name: removed
+        type: RemovedItem[]
+        required: false
+        default: '[]'
+        description: 選んだ時点で消したタスク（入口が `removedOf` で引く）。空でなければ、ツールバー・`filterChips` の下、ボード・表の上に `removedBand` を置く。`filters` で絞らない
+      - name: edit
+        type: "{marks: Record<string, 'pending' | 'remove' | 'blocked'>, adds: object[], onAdd} | null"
+        required: false
+        default: 'null'
+        description: '`decisionsScreen` の `edit` と同じ（マップは無い）'

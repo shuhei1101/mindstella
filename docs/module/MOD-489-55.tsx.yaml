@@ -1,0 +1,12 @@
+id: MOD-489-55
+title: プレビュー / index
+lead: SPA のルート（`/`）。`parsePreviewSearch` で search を検証し、`previewQueries` を先読みして `PreviewShell` を描く。
+components:
+  - name: Route
+    title: SPA のルート
+    kind: 画面
+    usecase: SPAを開く
+    summary: '`validateSearch` に `parsePreviewSearch`、loader に `previewQueries` の先読み、component に `PreviewShell` を使う'
+    container: frontend/src/routes/index.tsx
+    refs:
+      - IF-489-70#

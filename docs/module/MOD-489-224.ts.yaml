@@ -1,0 +1,31 @@
+id: MOD-489-224
+title: プレビュー / 画面と部品 / overview.ts
+test_files:
+  - tests/unit/preview/test_overview.py
+components:
+  - name: overviewScreen
+    title: 概要
+    container: plugins/mindstella/skills/mindmap/preview/screens/overview.ts
+    usecase: 概要を見る
+    kind: 画面
+    summary: 画面設計『概要』のタイルを描く。次の候補・ゴールまでの進捗・カテゴリー別の進捗は埋め込みのデータの `derived` をそのまま並べる（画面で計算しない）。題名の上には `settings.description` があるときだけその 1 行を出す。`derived.goal.has_goal` が偽のときは、ゴールまでの進捗のタイルの見出しを「フェーズ別の進捗」にして「ゴールは決まっていません」と `phase_progress` だけを出し、納品物は出さない（`settings.goal` を読まない）
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: on
+        type: '{open, navigate}'
+        required: true
+        description: 項目を開く・絞った表へ移る（`Route`）
+      - name: visibleKinds
+        type: Set<string>
+        required: true
+        description: 表示する種類（`resolveDisplay`）。表示しない種類へ移る「すべて表示」を出さず、検討事項を表示しないときはカテゴリー別の進捗のセルと行の見出しを押せなくする（タイルと中の項目は残す。画面設計『概要』）
+    unit_tests:
+      - name: test_overview_screen_when_kinds_hidden
+        case: 正常
+        summary: 表示しない種類へのリンクだけを外し、タイルは残す
+        condition: '要見直しの D-1・進行中の T-1・納品物 6 件を持つ索引。`parametrize`: `visibleKinds` が 7 種類 / 検討事項・タスク・資料を除く 4 種類'
+        mock: なし（DOM を作って見る）
+        expected: どちらも要見直し・進行中のタスク・納品物のタイルと D-1・T-1 の行がある。前者は「すべて表示」と押せるカテゴリー別の進捗のセルがあり、後者は「すべて表示」が無くセルが押せない（数と棒はある）

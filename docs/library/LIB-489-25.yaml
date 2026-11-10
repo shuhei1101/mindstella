@@ -1,0 +1,34 @@
+id: LIB-489-25
+title: '@tanstack/react-table'
+kind: ライブラリ
+version:
+  current: 9.3.1
+  latest: 9.3.1
+  checked_on: '2026-11-06'
+  source: package.json
+  pinning: 9.3.1 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 9.3.1
+    entries:
+      - name: useReactTable 相当の表の hook
+        kind: フック
+        purpose: 列と行から表の状態を組む。v9 の正確な API 名は実装で確かめて記録する
+lead: 表の並べ替え・絞り込み・列の表示・ピン留めの状態を持つヘッドレスの React のライブラリ。
+purl: pkg:npm/@tanstack/react-table
+dependency_scope: 必須
+adoption: 採用
+used_in:
+  - frontend/src/shared/components/table.tsx
+upstream: TanStack/table
+verification:
+  state: 済
+  detail: '`tests/integration/preview/test_spa_screens.py` の実ブラウザのテストで、React Compiler を通した表の描画と並べ替えを確かめた'
+license: MIT
+official_url: https://tanstack.com/table
+docs_url: https://tanstack.com/table/latest
+install: '```bash
+
+  npm install --save-exact @tanstack/react-table@9.3.1
+
+  ```'

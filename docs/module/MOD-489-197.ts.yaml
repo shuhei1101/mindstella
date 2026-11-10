@@ -1,0 +1,243 @@
+id: MOD-489-197
+title: プレビュー / 基盤 / voice.ts
+test_files:
+  - tests/unit/preview/test_voice.py
+data_models:
+  - name: Recording
+    title: 録音
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    summary: '`startRecording` が返す、録音中の 1 回分。`stop` と `cancel` のどちらかを 1 回だけ呼ぶ'
+    properties:
+      - name: stop
+        type: () => Promise<Blob>
+        description: 録音を止め、マイクのトラックを全て止めて、録った音声（`MediaRecorder` の `mimeType` の `Blob`）を返す
+      - name: cancel
+        type: () => void
+        description: 録音を止めて捨て、マイクのトラックを全て止める
+  - name: VoiceOutcome
+    title: 文字起こしの結果
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    summary: '`finishVoice` の結果。入口がこれを入力の状態に写す'
+    properties:
+      - name: kind
+        type: "'sent' | 'inserted' | 'failed' | 'unavailable'"
+        description: '`sent` は送信した、`inserted` は挿入した、`failed` は入力欄を残して失敗、`unavailable` はサービスが使えない（マイクを押せなくする）'
+      - name: body
+        type: string
+        description: 入力欄に置く中身（`sent` は空。`failed` で文字起こしの前に失敗したときは元の中身）
+      - name: caret
+        type: number | null
+        description: 置くカーソルの位置（挿入した文字の後ろ。`sent` と元の中身のままのときは `null`）
+      - name: entered
+        type: boolean
+        description: '`sent` のとき、Claude Code へ入力したか'
+      - name: detail
+        type: string | null
+        description: '`failed`・`unavailable` の理由の文'
+      - name: reason
+        type: "'stopped' | 'unsupported' | null"
+        description: '`unavailable` の理由'
+constants:
+  - name: VOICE_MIME_TYPES
+    title: 録音の形の候補
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    summary: '`MediaRecorder.isTypeSupported` が真の最初の形で録る（どれも偽ならブラウザの既定）'
+    value: "['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']"
+  - name: VOICE_TEXT
+    title: 画面が持つ音声入力の文
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    summary: サーバーが返さない理由の文（部品設計『コメントの入力』の状態の文）
+    entries:
+      - key: noMicrophone
+        value: このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。
+      - key: denied
+        value: マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。
+      - key: failed
+        value: 文字起こしできませんでした。もう一度お試しください。
+        description: 届かない・空の文字・`detail` の無い失敗
+      - key: sendFailed
+        value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
+functions:
+  - name: micSupported
+    title: マイクを使えるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    summary: ブラウザが `navigator.mediaDevices.getUserMedia` と `MediaRecorder` を持つかを返す（HTTPS でも localhost でもない経路では持たない）
+    args:
+      - name: win
+        type: Window
+        required: false
+        default: window
+        passing: injected
+        description: 見る窓
+    returns:
+      type: boolean
+      description: 両方を持てば真
+    unit_tests:
+      - name: test_mic_supported
+        case: 正常
+        summary: 両方があるときだけ真
+        condition: '`parametrize`: 両方ある / `mediaDevices` が無い / `MediaRecorder` が無い'
+        mock: 偽の窓
+        expected: 真 / 偽 / 偽
+  - name: startRecording
+    title: 録音を始める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    is_async: true
+    summary: マイクの許可を得て録音を始め、`Recording` を返す。許可が得られなければ理由で断る
+    args:
+      - name: win
+        type: Window
+        required: false
+        default: window
+        passing: injected
+        description: '`navigator.mediaDevices` と `MediaRecorder` を持つ窓'
+    returns:
+      type: Promise<Recording>
+      description: 録音中の 1 回分
+    process: |-
+      1. `getUserMedia({audio: true})` を呼ぶ
+         - `NotAllowedError`・`SecurityError` の場合、`'denied'` で断る
+         - それ以外の失敗の場合、`'no-microphone'` で断る
+      2. `VOICE_MIME_TYPES` のうち `isTypeSupported` が真の最初の形（無ければ指定しない）で `MediaRecorder` を作り、`start()` する
+      3. `stop` は `dataavailable` の塊を集め、`stop` の後に 1 つの `Blob` にして返す。`cancel` は塊を捨てる。どちらもストリームの全てのトラックを `stop()` する
+    unit_tests:
+      - name: test_start_recording
+        case: 正常
+        summary: 録って止めると音声を返し、トラックを止める
+        condition: 偽の `getUserMedia`・`MediaRecorder`（`audio/webm;codecs=opus` に対応）。始めて `stop()`
+        mock: 偽の窓
+        expected: '`Blob` の型が `audio/webm;codecs=opus` で塊をつないだ中身。トラックの `stop` が呼ばれている'
+      - name: test_start_recording_when_cancelled
+        case: 正常
+        summary: キャンセルは捨ててトラックを止める
+        condition: 始めて `cancel()`
+        mock: 偽の窓
+        expected: トラックの `stop` が呼ばれ、塊を返さない
+      - name: test_start_recording_when_rejected
+        case: 異常
+        summary: 許可の拒否と、それ以外を分ける
+        condition: '`parametrize`: `getUserMedia` が `NotAllowedError` / `NotFoundError` で断る'
+        mock: 偽の窓
+        expected: '`denied` / `no-microphone` で断る'
+  - name: insertAtCursor
+    title: カーソルの位置への挿入
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    summary: 入力欄の中身の選んだ範囲を文字で置き換え、置き換えた後の中身と、挿入した文字の後ろの位置を返す
+    args:
+      - name: value
+        type: string
+        required: true
+        passing: positional
+        description: 入力欄の中身
+      - name: start
+        type: number
+        required: true
+        passing: positional
+        description: '`selectionStart`'
+      - name: end
+        type: number
+        required: true
+        passing: positional
+        description: '`selectionEnd`'
+      - name: text
+        type: string
+        required: true
+        passing: positional
+        description: 挿入する文字
+    returns:
+      type: '{value: string, caret: number}'
+      description: 置き換えた中身と位置
+    unit_tests:
+      - name: test_insert_at_cursor
+        case: 正常
+        summary: カーソルの位置と選んだ範囲
+        condition: '`parametrize`: `("確認: ", 4, 4, "案 A")` / `("ab", 0, 0, "x")` / `("abc", 1, 2, "x")` / `("ab", 9, 9, "x")`'
+        mock: なし
+        expected: '`確認: 案 A`・7 / `xab`・1 / `axc`・2 / `abx`・3（範囲を超える位置は末尾にそろえる）'
+  - name: formatElapsed
+    title: 経過の時間の文字
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    summary: 秒数を `m:ss` にする
+    args:
+      - name: seconds
+        type: number
+        required: true
+        passing: positional
+        description: 録音を始めてからの秒数
+    returns:
+      type: string
+      description: '`m:ss`（分は桁を揃えない）'
+    unit_tests:
+      - name: test_format_elapsed
+        case: 正常
+        summary: 分と秒
+        condition: '`parametrize`: 0 / 12 / 72 / 3600'
+        mock: なし
+        expected: '`0:00` / `0:12` / `1:12` / `60:00`'
+  - name: finishVoice
+    title: 文字起こしを終える
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    is_async: true
+    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `send` なら全文をすぐ送る
+    args:
+      - name: recording
+        type: Recording
+        required: true
+        passing: positional
+        description: 止める録音
+      - name: input
+        type: '{body: string, start: number, end: number, action: ''send'' | ''insert'', destination: {target, loc} | {thread}}'
+        required: true
+        passing: positional
+        description: ✓ を押したときの入力欄の中身とカーソルの位置、設定の挙動、向けた先
+      - name: api
+        type: ReturnType<typeof voiceApi>
+        required: false
+        default: voiceApi()
+        passing: injected
+        description: 音声入力の API
+    returns:
+      type: Promise<VoiceOutcome>
+      description: 結果
+    process: |-
+      1. `recording.stop()` で音声を受け取り、`api.transcribe` に送る
+         - 503 の場合、`unavailable`（`reason` と `detail`）を返す
+         - 断られた（`detail` があればそれ、無ければ `VOICE_TEXT.failed`）・届かない（`VOICE_TEXT.failed`）場合、元の中身のまま `failed` を返す
+         - `text` が前後の空白を除いて空の場合、元の中身のまま `VOICE_TEXT.failed` の `failed` を返す
+      2. `insertAtCursor` で挿入する
+      3. `action` が `insert` なら、挿入した中身と位置の `inserted` を返す
+      4. `api.sendNow` に向けた先と挿入した全文を送る
+         - 送れた場合、空の中身と応答の `entered` の `sent` を返す
+         - 送れなかった場合、挿入した中身と位置と `VOICE_TEXT.sendFailed` の `failed` を返す
+    unit_tests:
+      - name: test_finish_voice
+        case: 正常
+        summary: 挿入してから挙動で分ける
+        condition: '入力欄 `確認: `・カーソル 4、`transcribe` が `案 A にする` を返す偽の API。`parametrize`: `action: insert` / `action: send` で `sendNow` が `entered: true`'
+        mock: 偽の API・偽の録音
+        expected: '`{kind: inserted, body: 確認: 案 A にする, caret: 11}` で `sendNow` を呼ばない / `{kind: sent, body: "", entered: true}` で `sendNow` が `{target, loc, body: 確認: 案 A にする}` で 1 回'
+      - name: test_finish_voice_when_failed
+        case: 異常
+        summary: 文字起こしと送信の失敗
+        condition: '`parametrize`: `transcribe` が 503・`reason: stopped` / 502・`detail` あり / 届かない / `text` が空 / `send` で `sendNow` が 409'
+        mock: 偽の API・偽の録音
+        expected: '`unavailable`・`stopped` / `failed`・その `detail`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.failed`・元の中身 / `failed`・`VOICE_TEXT.sendFailed`・挿入した中身'

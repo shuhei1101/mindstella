@@ -1,0 +1,14 @@
+id: MOD-489-130
+title: プレビュー / use-records
+lead: 記録に保存待ちの編集を重ねた索引を読む。
+functions:
+  - name: useRecords
+    title: 記録の索引の読み取り
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: 記録に保存待ちの編集を重ねた索引を読む
+    args: []
+    returns:
+      type: unknown
+      description: 処理の結果
+    container: frontend/src/shared/hooks/use-records.ts

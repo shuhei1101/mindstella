@@ -1,0 +1,24 @@
+id: MOD-489-242
+title: プレビュー / 画面と部品 / tag-list.ts
+test_files:
+  - tests/unit/preview/test_tag_list.py
+components:
+  - name: tagList
+    title: タグの並び
+    container: plugins/mindstella/skills/mindmap/preview/components/tag-list.ts
+    usecase: 共通
+    kind: コンポーネント
+    summary: 部品設計『タグの並び』の引数を受け、タグごとの `span.tag` を並べた断片を返す。主題のタグ（`main` が `true`）は名前の前に二重丸のマーカー（`aria-hidden`）を置き、名前の前に読み上げだけの「主題」の文字（読み上げは「主題 画面」）を、`title` に「主題」を持たせる。並びは記録の順のまま（主題を先頭へ寄せない）。文字列の要素は主題でないタグとして出す。資料のカード・詳細パネル・保存待ちのパネル・スレッドが使う（表のタグの列は `tagNames` の名前を渡すため、マーカーを持たない）
+    props:
+      - name: values
+        type: readonly (Tag | string)[] | undefined
+        required: false
+        default: '[]'
+        description: 項目の `tags`（`{name, main?}` の並び）か、名前の文字列の並び
+    unit_tests:
+      - name: test_tag_list
+        case: 正常
+        summary: 主題のタグにマーカーを付け、記録の順のまま並べる
+        condition: '`parametrize`: `[{name: 画面}, {name: データ, main: true}]` / `[UI, 性能]` / `undefined`'
+        mock: なし（DOM を作って見る）
+        expected: '`span.tag` が `画面`・`データ` の順で、`データ` だけが二重丸のマーカーと読み上げだけの「主題」の文字と `title`「主題」を持つ / `span.tag` が `UI`・`性能` でどれもマーカーを持たない / 子の無い断片'

@@ -1,0 +1,392 @@
+id: MOD-489-162
+title: サーバー / 点検 / checker.py
+lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
+test_files:
+  - tests/unit/scripts/test_checker.py
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ
+  ```
+constants:
+  - name: REF_RULES
+    title: 参照の正しい種類
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    summary: （参照する側の種類, キー）→ 指してよい種類。表に無い組はそのキーを持たない
+    entries:
+      - key: (decision, depends_on)
+        value: decision
+      - key: (decision, parent)
+        value: decision
+      - key: (decision, sources)
+        value: log
+      - key: (task, depends_on)
+        value: task
+      - key: (task, for)
+        value: decision
+      - key: (全ての種類, related)
+        value: 全ての種類
+      - key: (設定, goal.deliverables[].doc)
+        value: doc
+functions:
+  - name: check_workspace
+    title: ワークスペースの点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: public
+    summary: 全ての問題をファイル名の順、同じファイルの中は項目の並びの順に返す
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（無ければ空）
+    process: |-
+      1. スキーマ違反と、案と状態の決まりに合わない検討事項を拾う（ワークスペースの検証。`validate_workspace`）
+      2. ID の重複を拾う（`_check_duplicate_ids`）
+      3. 参照切れを拾う（`_check_refs`）
+      4. 本文のずれを拾う（`_check_bodies`）
+      5. スレッドのスキーマ違反と参照切れを拾う（`_check_threads`）
+      6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
+      7. 設定に無いフェーズを拾う（`_check_phases`）
+      8. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
+      9. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      10. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜8. の関数は記録のフォルダからの相対パスで拾う）
+    unit_tests:
+      - name: test_check_workspace
+        case: 正常
+        summary: 整ったワークスペースは問題 0 件
+        condition: 'D-1（本文 `docs/D-1.md` あり）・D-2 `depends_on: [D-1]`'
+        mock: なし
+        expected: 空の並び
+      - name: test_check_workspace_when_problems
+        case: 正常
+        summary: 4 種類の問題をまとめて返す
+        condition: 'D-1 `depends_on: [D-9]`・D-2 `status: 完了`・R-1 `body: R-1.md`（ファイル無し）・`docs/X-1.md`（どこからも指されない）'
+        mock: なし
+        expected: '`broken_ref`（D-1・`depends_on`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.md` → `.mindstella/research.yaml` の順'
+      - name: test_check_workspace_when_decision_state
+        case: 正常
+        summary: 案と状態の合わない検討事項を拾い、必須でない状態は拾わない
+        condition: 案を持たない未決定の D-1 と、案を持たない未整理の D-2 を持つワークスペース
+        mock: なし
+        expected: '`kind: decision_state` の問題が D-1 の 1 件だけで、`file` が `.mindstella/decisions.yaml`'
+  - name: _check_duplicate_ids
+    title: ID の重複の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 同じ ID を 2 つ目以降に持つ項目を `duplicate_id` にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び
+    process: '1. 全ての種類の項目を順に見て、既に出た ID を持つ項目を `duplicate_id`（`key: items[n].id`）にする'
+    unit_tests:
+      - name: test_check_duplicate_ids
+        case: 正常
+        summary: 2 つ目の項目だけを問題にする
+        condition: '`decisions.yaml` に D-1 が 2 つ'
+        mock: なし
+        expected: '`items[1].id` の 1 件'
+  - name: _check_refs
+    title: 参照切れの点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 存在しない ID と、`REF_RULES` に合わない種類の ID を指す参照を `broken_ref` にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（`detail` に指した ID と理由）
+    process: |-
+      1. 全ての項目と設定の `goal.deliverables[].doc` について、`REF_RULES` のキーの値の ID を見る（設定が `goal` を持たなければ設定は見ない）
+         - 種類が合わない場合、`broken_ref`（`指してはいけない種類: {ID}`）
+         - その種類に ID が無い場合、`broken_ref`（`存在しない ID: {ID}`）
+    unit_tests:
+      - name: test_check_refs_when_missing
+        case: 正常
+        summary: 存在しない ID を指す参照
+        condition: 'D-1 `depends_on: [D-9]`・T-1 `for: [D-8]`・設定の `goal.deliverables[0].doc: A-9`'
+        mock: なし
+        expected: 3 件の `broken_ref`（`detail` に `D-9`・`D-8`・`A-9`）
+      - name: test_check_refs_when_wrong_kind
+        case: 正常
+        summary: 決めた種類でない ID を指す参照
+        condition: 'D-1 `parent: T-1`（T-1 はある）'
+        mock: なし
+        expected: '`broken_ref`（D-1・`parent`・`detail` に `T-1`）'
+      - name: test_check_refs_when_related_any_kind
+        case: 正常
+        summary: related は種類を問わない
+        condition: 'D-1 `related: [T-1, G-1]`（どちらもある）'
+        mock: なし
+        expected: 空の並び
+      - name: test_check_refs_when_no_goal
+        case: 正常
+        summary: ゴールを持たない設定は納品物の参照を見ない
+        condition: '`goal` を持たない設定と D-1 `depends_on: [D-9]`'
+        mock: なし
+        expected: '`broken_ref`（D-1・`depends_on`・`detail` に `D-9`）の 1 件だけ'
+  - name: _check_bodies
+    title: 本文のずれの点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 指す本文が無い項目と、どこからも指されない `docs/*.md`・`docs/*.html` を拾う
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び
+    process: |-
+      1. `body` を持つ項目ごとに、`docs/{body}` が無ければ `missing_body`（その項目の YAML・`key: items[n].body`）
+      2. `docs/` の `*.md` と `*.html` のうち、どの項目の `body` にも無いものを `orphan_body`（`file: docs/{名前}`・`id`・`key` は `None`）
+    unit_tests:
+      - name: test_check_bodies
+        case: 正常
+        summary: 本文が無い項目と指されない本文を拾う
+        condition: 'R-1 `body: R-1.md`（ファイル無し）・D-1 `body: D-1.md`（ファイルあり）・`docs/X-1.md`'
+        mock: なし
+        expected: '`missing_body`（R-1）と `orphan_body`（`docs/X-1.md`）の 2 件'
+      - name: test_check_bodies_when_html
+        case: 正常
+        summary: HTML の本文も本文のずれの対象にする
+        condition: 'A-1 `body: A-1.html`（ファイル無し）・A-2 `body: A-2.html`（ファイルあり）・`docs/A-9.html`'
+        expected: '`missing_body`（A-1）と `orphan_body`（`docs/A-9.html`）の 2 件だけ'
+        mock: なし
+  - name: _check_threads
+    title: スレッドの点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: '`threads.yaml` のスキーマ違反を `schema`、無い項目への `target` を `broken_ref` にする'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（ファイルが無ければ空）
+    process: |-
+      1. スレッドを読む（スレッドの読み込み。`load_threads`）
+         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` は `threads.yaml`、`id` は `null`）にし、読める範囲のスレッドの向けた項目（`raw_thread_targets`）を 2 と同じく確かめた問題を後ろに足して返す
+      2. `target` を持つスレッドの（ID・`target`・取り込み待ちか）を、向けた項目の点検（`_check_thread_targets`）にかける
+    unit_tests:
+      - name: test_check_threads
+        case: 正常
+        summary: 無い項目へのスレッドを拾い、項目に紐づかないスレッドは拾わない
+        condition: D-1 と、TH-1（D-8）・TH-2（D-1）・TH-3（`target` を持たない）
+        mock: なし
+        expected: '`broken_ref`（`threads.yaml`・TH-1・`target`・`detail` に `D-8`）の 1 件だけ'
+      - name: test_check_threads_when_invalid
+        case: 正常
+        summary: 崩れたスレッドのファイルは schema にする
+        condition: TH-1 から `posts` を消した `threads.yaml`
+        mock: なし
+        expected: '`schema`（`file` が `threads.yaml`）の問題が 1 件以上'
+      - name: test_check_threads_when_missing
+        case: 正常
+        summary: スレッドのファイルが無ければ問題 0 件
+        condition: '`threads.yaml` が無いワークスペース'
+        mock: なし
+        expected: 空の並び
+      - name: test_check_threads_when_target_removed
+        case: 正常
+        summary: 取り込み待ちでないスレッドが消した項目を指しても拾わず、取り込み待ちは拾う
+        condition: '`changes.yaml` の `pending.removed` に N-1 の記録（N-1 は無い）。`parametrize`: 取り込み済みだけの TH-1（N-1）/ 取り込んでいない利用者の書き込みを持つクローズの TH-1（N-1）'
+        mock: なし
+        expected: 空の並び / `broken_ref`（TH-1・`target`）の 1 件
+      - name: test_check_threads_when_invalid_and_target_missing
+        case: 正常
+        summary: スキーマに合わないファイルでも、読める範囲のスレッドの無い項目への参照切れを拾う
+        condition: スキーマに合わない `threads.yaml` に、無い項目を指すスレッドを持たせる
+        mock: なし
+        expected: '`schema` の問題と、そのスレッドの `broken_ref` が両方ある'
+  - name: _check_phases
+    title: フェーズの点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（`detail` にそのフェーズの名前）
+    process: |-
+      1. 設定が `goal` を持ち、`goal.phase` が `phases` に無い場合、`unknown_phase`（`file: config.yaml`・`id: None`・`key: goal.phase`）にする
+      2. 種類の順（`KINDS`）に項目を見て、`phase` を持ち `phases` に無い項目を `unknown_phase`（その種類の YAML・`key: items[n].phase`）にする
+    unit_tests:
+      - name: test_check_phases
+        case: 正常
+        summary: 設定の phases に無い項目の phase と goal.phase を拾う
+        condition: '`phases` 目的・要件、`goal.phase` 結論。D-1（発散）・D-2（要件）・T-1（`phase` 無し）'
+        mock: なし
+        expected: '`unknown_phase`（`config.yaml`・`goal.phase`・`detail` が `結論`）と `unknown_phase`（`decisions.yaml`・D-1・`items[0].phase`・`detail` が `発散`）の 2 件'
+      - name: test_check_phases_when_no_goal
+        case: 正常
+        summary: ゴールを持たない設定は goal.phase を見ない
+        condition: '`phases` 目的・要件で `goal` を持たない設定と D-1（目的）'
+        mock: なし
+        expected: 空の並び
+  - name: _check_comments
+    title: レビュー中の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: '`comments.yaml`・`drafts.yaml` のスキーマ違反を `schema` にする（向けた項目は確かめない）'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び（ファイルが無ければ空）
+    process: |-
+      1. レビュー中のコメントと書きかけをそれぞれ読む（`load_comments`、`load_drafts`）
+         - `SchemaMismatchError` の場合、`lines` ごとに `schema`（`file` はそのファイル名、`id` は `null`）にする
+    unit_tests:
+      - name: test_check_comments
+        case: 正常
+        summary: 崩れたファイルだけを schema にする
+        condition: '`parametrize`: C-1 から `body` を消した `comments.yaml` / `items: [` の `drafts.yaml` / 消えた D-9 への整った C-1 / どちらも無い'
+        mock: なし
+        expected: '`schema`（`file` が `comments.yaml`）が 1 件以上 / `schema`（`file` が `drafts.yaml`）が 1 件以上 / 空 / 空'
+  - name: _check_history
+    title: 変更履歴の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: '`changes.yaml` のスキーマ違反・参照切れと、今の本文に当たらない変更履歴を拾う'
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+    returns:
+      type: list[Problem]
+      description: 問題の並び
+    process: |-
+      1. `changes.yaml` を読む（`load_changes`）
+         - `SchemaMismatchError` の場合、`lines` を `schema`（`file: changes.yaml`）の問題にして、参照切れは確かめない
+      2. `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed` の ID が無く、消した項目の記録（`removed_items`）にも無ければ `broken_ref`（`file: changes.yaml`、`key` は `sets[0].added` の形）にする
+      3. 本文を持ち `history` を持つ項目ごとに、今の本文へ `history` を新しいものから順に当てる（`apply_body_diff`）
+         - `None` を返した要素で止め、`stale_history`（`key: history[{位置}].body_diff`、`detail` にその回より前の本文の差分を出せないこと）にする
+    unit_tests:
+      - name: test_check_history_when_body_rewritten
+        case: 正常
+        summary: 手で書き換えた本文に当たらない変更履歴を拾う
+        condition: D-1 の本文を `run_update` で直した後、`docs/D-1.md` の全ての行を書き換える
+        mock: なし
+        expected: '`stale_history`（D-1・`history[0].body_diff`）が 1 件'
+      - name: test_check_history_when_broken_ref
+        case: 正常
+        summary: まとまりが指す無い ID を拾う
+        condition: '`sets[0].changed` に D-9（無い）を持つ `changes.yaml`'
+        mock: なし
+        expected: '`broken_ref`（`changes.yaml`・`sets[0].changed`・`D-9`）'
+      - name: test_check_history_when_item_removed
+        case: 正常
+        summary: 消した項目の ID を参照切れにしない
+        condition: '`sets[1].added` に N-1、`sets[0].removed` に N-1 の記録を持ち、N-1 が無いワークスペース'
+        mock: なし
+        expected: 問題が 0 件
+  - name: find_referrers
+    title: 指している記録を探す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: 記録の削除と取り下げ
+    scope: public
+    summary: 1 項目を指している記録を、エラーの行の形で返す（読むだけ）
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: item_id
+        type: str
+        required: true
+        passing: positional
+        description: 消す項目の ID
+    returns:
+      type: list[str]
+      description: '`{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行（指している記録が無ければ空）'
+    process: |-
+      1. 種類の順に、`REF_RULES` のキーで `item_id` を指すほかの項目を拾う（`{種類のファイル}: {指している項目の ID}: {キー}`）
+      2. 設定の納品物の `doc` が指していれば拾う（`config.yaml: goal.deliverables[{番号}].doc: doc`）
+      3. レビュー中のコメント・書きかけの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、書きかけは `drafts.yaml: items[{番号}]: target`）
+      4. 取り込み待ちのスレッド（`awaiting_posts` が 1 件以上。オープンでもクローズでも）の `target` が指していれば拾う（`load_threads`。`threads.yaml: {スレッドの ID}: target`）
+    unit_tests:
+      - name: test_find_referrers
+        case: 正常
+        summary: 項目・納品物・コメントが指すのを拾う
+        condition: D-1 を D-2 の `depends_on` と T-1 の `for` が指し、A-1 を納品物の `doc` とコメント C-1 が指す。D-1 と A-1 でそれぞれ呼ぶ
+        mock: なし
+        expected: 'D-1 は `decisions.yaml: D-2: depends_on` と `tasks.yaml: T-1: for`、A-1 は `config.yaml: goal.deliverables[0].doc: doc` と `comments.yaml: C-1: target`'
+      - name: test_find_referrers_with_threads
+        case: 正常
+        summary: 取り込み待ちのスレッドだけを拾う
+        condition: N-1 を、取り込み済みだけの TH-1・取り込んでいない利用者の書き込みを持つクローズの TH-2・AI の書き込みだけのオープンの TH-3 が指す
+        mock: なし
+        expected: '`threads.yaml: TH-2: target` の 1 行だけ'
+  - name: _check_thread_targets
+    title: スレッドの向けた項目の点検
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/checker.py
+    usecase: ワークスペースの点検
+    scope: internal
+    summary: 向けた項目が無いスレッドを `broken_ref` にする
+    args:
+      - name: workspace
+        type: Workspace
+        required: true
+        passing: positional
+        description: ワークスペース
+      - name: targets
+        type: list[tuple[str, str, bool]]
+        required: true
+        passing: positional
+        description: スレッドの（ID・向けた項目・取り込み待ちか）の並び
+    returns:
+      type: list[Problem]
+      description: 問題の並び
+    process: |-
+      1. 並びの 1 件ごとに、向けた項目が無ければ `broken_ref`（`file` は `threads.yaml`、`id` はスレッドの ID、`key` は `target`、`detail` は `存在しない ID: {target}`）にする
+         - 取り込み待ちでなく、向けた項目が消した項目の記録（`load_changes` の `removed_items`）にあるものは拾わない

@@ -1,0 +1,16 @@
+id: MOD-489-12
+title: プレビュー / use-comment-data
+lead: コメントの一覧・スレッド・レビュー中の書き込みの画面が読む値。
+functions:
+  - name: useCommentData
+    title: コメントの画面が読む値
+    kind: 関数
+    usecase: スレッドで話す
+    summary: レビュー中の書き込み・書きかけ・スレッド・項目のタイトル・まとまりの説明を、記録・レビュー中のコメント・スレッドの query から組む
+    args: []
+    returns:
+      type: CommentData
+      description: items・drafts・threads・threadsLoaded・threadsError・titles・changeSets
+    refs:
+      - MOD-489-125#
+    container: frontend/src/features/comments/shared/use-comment-data.ts

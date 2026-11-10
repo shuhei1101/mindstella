@@ -1,0 +1,27 @@
+id: MOD-489-9
+title: プレビュー / thread-post
+lead: 部品設計『スレッドの書き込み.tsx』の props・イベント・状態を持つ。
+components:
+  - name: ThreadPost
+    title: スレッドの書き込み
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: 部品設計『スレッドの書き込み.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-12#
+    unit_tests:
+      - name: test_thread_post
+        case: 正常
+        summary: AI の書き込み
+        condition: AI の `post`
+        mock: mdmark の差し替え
+        expected: 左に寄せた本文
+      - name: test_thread_post_when_pending_editing
+        case: 正常
+        summary: 書き換え
+        condition: '`pending` と `editing`'
+        mock: なし
+        expected: 入力欄と「キャンセル」「修正」
+    container: frontend/src/features/comments/shared/thread-post.tsx
+notes:
+  単体テスト: 同じフォルダの `thread-post.test.tsx` に置く（knowledge の規約『フォルダ構成』）

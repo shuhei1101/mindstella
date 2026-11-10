@@ -1,0 +1,66 @@
+id: MOD-489-202
+title: プレビュー / 基盤 / edits.ts
+test_files:
+  - tests/unit/preview/test_edits.py
+functions:
+  - name: applyEdits
+    title: 保存待ちの編集を当てた記録
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 記録の写しに保存待ちの編集を溜めた順に当て、画面に出す値を返す（元の記録は変えない）。一覧・詳細・設定の画面はこの値で描く
+    args:
+      - name: data
+        type: object
+        required: true
+        passing: positional
+        description: 記録（`RecordIndex.data`）
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+    returns:
+      type: object
+      description: 当てた後の記録の写し
+    process: |-
+      1. `set` はその項目の `key` を `value` にする（`body` は `bodies` のその項目の本文を置き換える）
+      2. `option-add` は案を末尾に足し、`option-edit` はその案の中身を置き換える。`option-remove` は案を残したまま（画面が取り消し線で示す）
+      3. `adopt` は `value` の案の `adopted` を真、ほかを偽にする（`null` なら全て偽）
+      4. `item-add` はその種類の並びの末尾に、`id` を仮の ID にした項目を足す。`item-remove` は項目を残したまま（画面が印で示す）
+      5. `setting` は `settings` の `key` を `value` にする（付け替えの対応は保存まで当てない）
+    unit_tests:
+      - name: test_apply_edits
+        case: 正常
+        summary: 編集の種類ごとに当て、元の記録を変えない
+        condition: D-1（案 A・B、A を採用）・T-1・題名 話し合い。編集は D-1 の `answer`・案 C の追加・採用を C・T-1 の削除・タスクの追加 `new-1`・題名を「画面の編集」
+        mock: なし
+        expected: D-1 の `answer` が編集の値で案が A・B・C、C だけが `adopted`。T-1 が残り、`new-1` のタスクが末尾にある。題名が「画面の編集」。渡した `data` は呼ぶ前と同じ
+  - name: pendingMarkOf
+    title: 保存待ちの印の種類
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 項目（`key` を渡せばそのキーか案）に付ける『保存待ちの印』の `kind` を返す
+    args:
+      - name: args
+        type: '{edits: PendingEdit[], blocked: Set<string>, target: string, key?: string}'
+        required: true
+        passing: positional
+        description: 保存待ちの編集、直前の保存で書き込めなかった編集の ID、項目の ID（仮の ID）、キーか案の記号
+    returns:
+      type: "'pending' | 'remove' | 'blocked' | null"
+      description: 印の種類。当たる編集が無ければ `null`
+    process: |-
+      1. `target`（と `key`）に当たる編集を集める（案は `option-*`・`adopt` の `key`・`value`、キーは `set` の `key`。`key` が無ければその項目への編集全て）
+         - 無い場合、`null` を返す
+      2. どれかが `blocked` にあれば `blocked`、`key` を渡さずその項目の `item-remove` があれば `remove`、それ以外は `pending` を返す
+    unit_tests:
+      - name: test_pending_mark_of
+        case: 正常
+        summary: 書き込めない・削除・保存待ちの順に決める
+        condition: 'E-1（D-1 の `answer`）・E-2（N-1 の削除）・E-3（D-1 の案 C の追加）。`parametrize`: D-1 / D-1 の `answer` / D-1 の C / N-1 / T-1 / `blocked` に E-1 を入れて D-1'
+        mock: なし
+        expected: '`pending` / `pending` / `pending` / `remove` / `null` / `blocked`'

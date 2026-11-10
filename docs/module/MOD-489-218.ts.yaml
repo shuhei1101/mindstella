@@ -1,0 +1,543 @@
+id: MOD-489-218
+title: プレビュー / 画面と部品 / comments.ts
+test_files:
+  - tests/unit/preview/test_comments_panel.py
+functions:
+  - name: visibleThreads
+    title: 一覧に出すスレッド
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドを状態とタグで絞り、最後の書き込みの新しい順に並べる
+    args:
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: positional
+        description: スレッド
+      - name: filter
+        type: "'open' | 'closed' | 'all'"
+        required: true
+        passing: positional
+        description: 状態の絞り込み
+      - name: tag
+        type: string | null
+        required: true
+        passing: positional
+        description: 絞るタグ
+    returns:
+      type: Thread[]
+      description: 絞って並べたスレッド（渡した配列は変えない）
+    unit_tests:
+      - name: test_visible_threads
+        case: 正常
+        summary: 状態とタグで絞り、新しい順に並べる
+        condition: 'オープンの TH-1（01:00・タグ `画面`）・TH-2（02:00）とクローズの TH-5（03:00・タグ `画面`）。`parametrize`: `open`・`null` / `all`・`null` / `all`・`画面` / `closed`・`起票`'
+        mock: なし
+        expected: '`[TH-2, TH-1]` / `[TH-5, TH-2, TH-1]` / `[TH-5, TH-1]` / `[]`'
+  - name: threadCounts
+    title: 状態ごとの件数
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: タグで絞ったスレッドの、状態の絞り込みに出す件数を返す
+    args:
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: positional
+        description: スレッド
+      - name: tag
+        type: string | null
+        required: true
+        passing: positional
+        description: 絞るタグ
+    returns:
+      type: '{open: number, closed: number, all: number}'
+      description: 状態ごとの件数
+    unit_tests:
+      - name: test_thread_counts
+        case: 正常
+        summary: タグで絞った件数を数える
+        condition: 'オープン 2 件（1 件がタグ `画面`）とクローズ 1 件（タグ `画面`）。`parametrize`: `null` / `画面`'
+        mock: なし
+        expected: '`{open: 2, closed: 1, all: 3}` / `{open: 1, closed: 1, all: 2}`'
+  - name: pendingThreads
+    title: まだ送っていない新しいスレッド
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: レビュー中の書き込みのうち、一覧の先頭に出す新しいスレッドの最初の書き込みを返す
+    args:
+      - name: items
+        type: ReviewState['items']
+        required: true
+        passing: positional
+        description: レビュー中の書き込み
+      - name: filter
+        type: "'open' | 'closed' | 'all'"
+        required: true
+        passing: positional
+        description: 状態の絞り込み
+      - name: tag
+        type: string | null
+        required: true
+        passing: positional
+        description: 絞るタグ
+    returns:
+      type: ReviewState['items']
+      description: '`thread` を持たない書き込み（溜めた順）。`filter` が `closed` か、`tag` が `null` でなければ空'
+    unit_tests:
+      - name: test_pending_threads
+        case: 正常
+        summary: 返信を除き、クローズの絞り込みとタグの絞り込みでは出さない
+        condition: 'C-41（新しいスレッド）・C-42（新しいスレッド）・C-43（返信）。`parametrize`: `open`・`null` / `all`・`null` / `closed`・`null` / `open`・`画面`'
+        mock: なし
+        expected: '`[C-41, C-42]` / `[C-41, C-42]` / `[]` / `[]`'
+  - name: isBlockedReply
+    title: 送れない返信か
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中の書き込みが、クローズのスレッドへの返信かを返す（入口もまとめて送る ID から除くのに使う）
+    args:
+      - name: item
+        type: ReviewState['items'][number]
+        required: true
+        passing: positional
+        description: レビュー中の書き込み
+      - name: threads
+        type: Thread[]
+        required: true
+        passing: positional
+        description: スレッド
+    returns:
+      type: boolean
+      description: '`thread` を持ち、そのスレッドが `closed` なら真（スレッドが見つからなければ偽。サーバーが 409 で返す）'
+    unit_tests:
+      - name: test_is_blocked_reply
+        case: 正常
+        summary: クローズのスレッドへの返信だけ真
+        condition: '`parametrize`: クローズの TH-5 への返信 / オープンの TH-1 への返信 / 新しいスレッド / 無い TH-9 への返信'
+        mock: なし
+        expected: 真 / 偽 / 偽 / 偽
+  - name: threadTimeline
+    title: 書き込みと記録の並び
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    scope: public
+    summary: スレッドの書き込みと状態の記録を、日時の順の 1 本の並びにする
+    args:
+      - name: thread
+        type: Thread
+        required: true
+        passing: positional
+        description: スレッド
+    returns:
+      type: ({post} | {event})[]
+      description: '`created` の古い順。同じ日時は書き込みを先にし、それぞれの中の並びを保つ'
+    unit_tests:
+      - name: test_thread_timeline
+        case: 正常
+        summary: 日時の順に混ぜ、同じ日時は書き込みを先にする
+        condition: 書き込み 00:10・00:30 と記録 00:20・00:30
+        mock: なし
+        expected: 書き込み（00:10）・記録（00:20）・書き込み（00:30）・記録（00:30）
+  - name: reviewLabel
+    title: レビュー中の書き込みの読み上げの名前の頭
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    scope: public
+    summary: レビュー中の書き込みの行の読み上げの名前の頭を返す。返信は「{スレッドの ID} への返信」、新しいスレッドは「{向けた項目の ID} へのコメント」、項目を指さないものは「項目を指さないコメント」（`thread` を持たない詳細パネルの行は新しいスレッドと同じ扱い）。`commentsPanel`・`threadPost`・`detailPanel`・`reviewRowActions` が使う
+    args:
+      - name: item
+        type: ReviewItem
+        required: true
+        passing: positional
+        description: レビュー中の書き込み
+    returns:
+      type: string
+      description: 読み上げの名前の頭
+    unit_tests:
+      - name: test_review_label
+        case: 正常
+        summary: 返信・項目へのコメント・項目を指さないコメントの頭
+        condition: '`parametrize`: `thread: TH-1` / `thread: null`・`target: D-1` / `thread` を持たず `target: D-1` / `thread: null`・`target: null`'
+        mock: なし
+        expected: 「TH-1 への返信」/「D-1 へのコメント」/「D-1 へのコメント」/「項目を指さないコメント」
+components:
+  - name: commentsPanel
+    title: コメントの一覧
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    kind: 画面
+    summary: 左から出すパネル（`aside`。読み上げの名前「コメントの一覧」）を描く。見出しの帯（「コメント」・レビュー中の入口・ピン止め・閉じる）の下に、`view` で画面設計『コメントの一覧』（`threadListView`）・『スレッド』（`threadView`）・『レビュー中の書き込み』（`reviewView`）のどれかを入れる。レビュー中の入口は `view` が `review` のとき出さず、0 件のときは件数の塗りを外す（`data-focus` は `review`）。操作はコールバックで入口に知らせ、描き直しても操作していた部品にフォーカスを戻す。ピン止めは `pinned` を `aria-pressed` で示すアイコンのボタン（`data-focus` は `pin`。読み上げの名前と `title` は画面設計『コメントの一覧』の要素「ピン止め」）で、押すと `on.pin` を知らせる。開いている間のグレーアウトと本文の部品を止めるのは入口（`start` の 5）
+    props:
+      - name: view
+        type: "'list' | 'thread' | 'review'"
+        required: true
+        description: パネルの中に出す画面
+      - name: items
+        type: ReviewState['items']
+        required: true
+        description: レビュー中の書き込み（新しいスレッドと返信）
+      - name: removed
+        type: ReviewState['items']
+        required: true
+        description: パネルを開いている間に消した書き込み（元の場所に「元に戻す」を出す）
+      - name: threads
+        type: Thread[]
+        required: true
+        description: 最後に読めたスレッド
+      - name: threadsError
+        type: '{detail: string | null} | null'
+        required: true
+        description: スレッドを読めなかったときの理由（届かなければ `detail` が `null`）。読めていれば `null`
+      - name: filter
+        type: "'open' | 'closed' | 'all'"
+        required: true
+        description: 状態の絞り込み
+      - name: tag
+        type: string | null
+        required: true
+        description: 絞っているタグ
+      - name: opened
+        type: '{id: string, pending: boolean} | null'
+        required: true
+        description: 開いているスレッド（`pending` が真なら `id` はまだ送っていない新しいスレッドのコメントの ID）
+      - name: composing
+        type: boolean
+        required: true
+        description: 新しいスレッドの入力を出しているか
+      - name: free
+        type: SendFormProps
+        required: true
+        description: "新しいスレッドの入力の引数（`target: null`・`label: '新しいスレッド'`・`collapsed: false`）"
+      - name: reply
+        type: '{body, status, count, detail}'
+        required: true
+        description: 開いているスレッドの返信の入力の引数
+      - name: reason
+        type: "{open: boolean, body: string, status: 'idle' | 'saving' | 'failed', detail: string | null}"
+        required: true
+        description: 理由の入力の状態（`failed` で `detail` が `null` なら届かなかった）
+      - name: checked
+        type: Set<string>
+        required: true
+        description: チェックした書き込みの ID
+      - name: editing
+        type: string | null
+        required: true
+        description: 本文を書き換えている書き込みの ID（詳細パネルと共に 1 つ）。入力欄は `editingIn` が `'list'` で、その書き込みを出している画面にだけ描く
+      - name: editingIn
+        type: "'list' | 'detail'"
+        required: false
+        default: "'list'"
+        description: "`editing` の修正を始めた場所（パネルの中なら `'list'`、詳細パネルなら `'detail'`）"
+      - name: editError
+        type: string | null
+        required: false
+        default: 'null'
+        description: 本文を直せなかった理由
+      - name: editBody
+        type: string | null
+        required: false
+        default: 'null'
+        description: 本文を直せなかったとき、入力欄に残す書き換えていた中身
+      - name: stale
+        type: Map<string, string>
+        required: true
+        description: 送れなかった書き込みの ID → 理由
+      - name: result
+        type: "{kind: 'sending' | 'sent' | 'failed' | 'stale', count?, at?, detail?, entered?} | null"
+        required: true
+        description: まとめて送った結果（文言は画面設計『レビュー中の書き込み』の「送った結果」）
+      - name: selected
+        type: string | null
+        required: true
+        description: 行から開いて詳細パネルに出している書き込みの ID
+      - name: reviewFocus
+        type: string | null
+        required: true
+        description: スレッドの画面からレビュー中の書き込みを開いたときの、そのスレッドの ID（そのスレッドの書き込みの行を示す）
+      - name: titleOf
+        type: '(id: string) => string | null'
+        required: true
+        description: 項目のタイトル（記録から消えていれば `null`）
+      - name: on
+        type: '{close, pin, review, back, filter, tag, clearTag, compose, openThread, openId, changeSet, reply, replyInput, reasonOpen, reasonInput, setStatus, check, checkAll, send, open, edit, saveEdit, cancelEdit, remove, restore, unloc, fold}'
+        required: true
+        description: 閉じる・ピン止めの切り替え・レビュー中を開く・戻る・状態で絞る・タグで絞る・タグを外す・新しいスレッドの入力を出す／畳む・スレッドを開く・項目を開く・まとまりのリンクを押した（まとまりの ID）・返信を溜める・返信の入力・理由の入力を出す／閉じる・理由の入力・状態を変える・チェック・すべて選ぶ・まとめて送る・行の項目を開く・修正・書き換えを送る・キャンセル・削除・元に戻す・箇所を外す・本文を開く／畳む（書き込みの ID・開くか）
+      - name: changeSetOf
+        type: '(id: string) => string | null'
+        required: true
+        description: まとまりの説明（記録の `changes.sets` に無ければ `null`）
+      - name: expanded
+        type: Set<string>
+        required: true
+        description: 本文を開いているレビュー中の書き込みの ID（レビュー中の書き込みの画面とスレッドの画面で同じものを使う）
+      - name: pinned
+        type: boolean
+        required: true
+        description: ピン止めしているか（入口の `Prefs.commentsPinned`）
+    unit_tests:
+      - name: test_comments_panel
+        case: 正常
+        summary: 見出しの帯と、view ごとの中身
+        condition: 'レビュー中 3 件。`parametrize`: `view` が `list` / `thread`（TH-1 を開く）/ `review`'
+        mock: '`on.review`・`on.close`'
+        expected: どれも見出し「コメント」と読み上げの名前「コメントの一覧を閉じる」のボタンを持つ。`list`・`thread` は読み上げの名前「レビュー中の書き込みを確かめる（3 件）」の入口があり（押すと `on.review` が 1 回）、`review` は入口が無い。中身が順にスレッドの一覧・スレッド・レビュー中の書き込み
+      - name: test_comments_panel_when_no_pending
+        case: 正常
+        summary: レビュー中が 0 件でも入口を出す
+        condition: '`items` が空で `view` が `list`'
+        mock: なし
+        expected: 入口があり、クラス `zero` を持ち、読み上げの名前が「レビュー中の書き込みを確かめる（0 件）」
+      - name: test_comments_panel_when_pin
+        case: 正常
+        summary: ピン止めのボタンは押した状態と読み上げの名前を切り替える
+        condition: '`parametrize`: `pinned` が偽 / 真'
+        mock: '`on.pin`'
+        expected: 「コメントの一覧を閉じる」の左にピン止めのボタンがあり、`aria-pressed` が `false`、読み上げの名前が「ピン止めする（外側を押しても閉じない）」 / `aria-pressed` が `true`、読み上げの名前が「ピン止めを外す（外側を押したら閉じる）」。どちらも押すと `on.pin` が 1 回
+  - name: reviewRowActions
+    title: 行の修正と削除
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: レビュー中のコメントの行の右上に置く、鉛筆の印の「修正」とごみ箱の印の「削除」のアイコンのボタン（`icon-btn`）を返す。読み上げの名前は「{向けた項目の ID} へのコメントを修正 / 削除」（項目を指さないコメントは「項目を指さないコメントを修正 / 削除」、スレッドへの返信は「{スレッドの ID} への返信を修正 / 削除」）、`title` は「修正」「削除」。`data-focus` は `{focus}edit-open:{ID}` と `{focus}remove:{ID}`。コメントの一覧（レビュー中の書き込み・スレッド）と詳細パネルが使う
+    props:
+      - name: item
+        type: ReviewItem
+        required: true
+        description: 行のコメント
+      - name: focus
+        type: string
+        required: true
+        description: '`data-focus` の接頭辞（コメントの一覧は空、詳細パネルは `detail-`）。一覧と詳細パネルを同時に開いていても、描き直した後のフォーカスの戻し先を分ける'
+      - name: on
+        type: '{edit, remove}'
+        required: true
+        description: 修正（コメントの ID）・削除（コメントの ID）
+    unit_tests:
+      - name: test_review_row_actions
+        case: 正常
+        summary: 読み上げの名前と `title` と `data-focus` を付けて、押すと ID を知らせる
+        condition: '`parametrize`: D-1 へのコメント C-1 を `focus: "detail-"` で / 項目を指さないコメント C-2 を `focus: ""` で描き、2 つのボタンを押す'
+        mock: '`on.edit`・`on.remove`'
+        expected: 読み上げの名前が「D-1 へのコメントを修正」「D-1 へのコメントを削除」、`data-focus` が `detail-edit-open:C-1`・`detail-remove:C-1` / 「項目を指さないコメントを修正」「項目を指さないコメントを削除」、`data-focus` が `edit-open:C-2`・`remove:C-2`。どちらも `title` が「修正」「削除」で、`on.edit`・`on.remove` がその ID で 1 回ずつ
+  - name: reviewEditForm
+    title: 本文の書き換え
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 行の本文をその場で書き換える入力欄（`maxlength` 10000）と「キャンセル」「修正」の `form` を返す。「修正」で中身が空白だけなら送らず「コメントを入れてから直してください。」を出して入力欄を `aria-invalid="true"` にし、それ以外は `on.saveEdit` を呼ぶ。理由は `role="alert"` と印のアイコンで出す。入力欄の Ctrl+Enter（macOS は Cmd+Enter。`isComposing` の間は除く）は `preventDefault` して `form.requestSubmit()` を呼び、「修正」と同じ処理を通す。入力欄は `aria-keyshortcuts="Control+Enter"`、「修正」は `title`「修正（Ctrl+Enter）」を持つ。入力欄の Esc は `preventDefault` と `stopPropagation` をしてから `on.cancelEdit` を呼ぶ（詳細の全画面の `dialog` の `cancel` を起こさない）。入力欄の `data-focus` は `{focus}edit:{ID}`。描いた後に入力欄へフォーカスを移すのは使う側。コメントの一覧と詳細パネルが使う
+    props:
+      - name: item
+        type: ReviewItem
+        required: true
+        description: 書き換えるコメント
+      - name: body
+        type: string | null
+        required: true
+        description: 入力欄に入れる中身（直せなかったときの書き換えていた中身。`null` なら元の本文）
+      - name: error
+        type: string | null
+        required: true
+        description: 直せなかった理由（`null` なら出さない）
+      - name: focus
+        type: string
+        required: true
+        description: '`data-focus` の接頭辞（`reviewRowActions` と同じ）'
+      - name: on
+        type: '{saveEdit, cancelEdit}'
+        required: true
+        description: 書き換えを送る（コメントの ID と中身）・書き換えを捨てる
+    unit_tests:
+      - name: test_review_edit_form
+        case: 正常
+        summary: 文言と、送る・捨てる
+        condition: '`parametrize`: 中身を「案 A に決める」にして「修正」を押す / 「キャンセル」を押す / 入力欄で Esc を押す'
+        mock: '`on.saveEdit`・`on.cancelEdit`'
+        expected: ボタンが「キャンセル」「修正」の順。`on.saveEdit` が C-1 と「案 A に決める」で 1 回 / `on.cancelEdit` が 1 回 / `on.cancelEdit` が 1 回で Esc の `keydown` の `defaultPrevented` が真
+      - name: test_review_edit_form_when_blank_or_error
+        case: 異常
+        summary: 空白だけは送らず、直せなかった理由と中身を出す
+        condition: '`parametrize`: 中身を空白だけにして「修正」を押す / `body: "案 A に決める"`・`error: "サーバーが止まっています。立ち上げ直してから直してください。"` で描く'
+        mock: '`on.saveEdit`'
+        expected: '`on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出て入力欄が `aria-invalid="true"` / 入力欄の中身が「案 A に決める」で、理由が `role="alert"` の要素に出る'
+      - name: test_review_edit_form_ctrl_enter
+        case: 正常
+        summary: Ctrl+Enter で「修正」と同じ処理を通し、変換中は通さない
+        condition: '`parametrize`: 中身を「案 A に決める」にして Ctrl+Enter / Cmd+Enter（`metaKey`）/ 空白だけで Ctrl+Enter / `isComposing` の Ctrl+Enter'
+        mock: '`on.saveEdit`'
+        expected: 入力欄が `aria-keyshortcuts="Control+Enter"`、「修正」の `title` が「修正（Ctrl+Enter）」。`on.saveEdit` が C-1 と「案 A に決める」で 1 回で `keydown` の `defaultPrevented` が真 / 同じ / `on.saveEdit` が呼ばれず「コメントを入れてから直してください。」が `role="alert"` の要素に出る / `on.saveEdit` が呼ばれない
+  - name: removedReviewRow
+    title: 消した行
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: 項目へコメントする
+    kind: コンポーネント
+    summary: 消したコメントの元の場所に置く点線の枠の行（`li.row.removed`）を返す。「コメントを削除しました。」（`role="status"`）と、戻す印の「元に戻す」のボタン（`data-focus` は `{focus}restore:{ID}`）を持つ。コメントの一覧と詳細パネルが使う
+    props:
+      - name: item
+        type: ReviewItem
+        required: true
+        description: 消したコメント
+      - name: focus
+        type: string
+        required: true
+        description: '`data-focus` の接頭辞（`reviewRowActions` と同じ）'
+      - name: on
+        type: '{restore}'
+        required: true
+        description: 元に戻す（コメントの ID）
+    unit_tests:
+      - name: test_removed_review_row
+        case: 正常
+        summary: 消した旨と元に戻すを出し、押すと ID を知らせる
+        condition: 'C-2 を `focus: "detail-"` で描き、「元に戻す」を押す'
+        mock: '`on.restore`'
+        expected: 「コメントを削除しました。」が `role="status"` の要素に出て、「元に戻す」の `data-focus` が `detail-restore:C-2`。`on.restore` が C-2 で 1 回
+  - name: threadListView
+    title: スレッドの一覧
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    kind: 画面
+    summary: 画面設計『コメントの一覧』の見出しの帯より下を描く。状態の絞り込み（件数は `threadCounts`）・タグの絞り込みのチップ・行（`pendingThreads` の後に `visibleThreads`。どちらも `threadRow`）・空の状態・読めない理由・下端の「新しいスレッド」か新しいスレッドの入力（見出し・×・`sendForm`）を持つ。`data-focus` は絞り込みが `filter:{値}`、タグを外すが `clear-tag`、入口が `compose`、× が `compose-close`
+    props:
+      - name: props
+        type: CommentsPanelProps
+        required: true
+        description: '`commentsPanel` の引数（`items`・`threads`・`threadsError`・`filter`・`tag`・`composing`・`free`・`on` を使う）'
+    unit_tests:
+      - name: test_thread_list_view
+        case: 正常
+        summary: 絞り込みの件数と、まだ送っていない新しいスレッドを先頭にした行
+        condition: オープンの TH-1（01:00）・TH-2（02:00）とクローズの TH-5、レビュー中に C-41（新しいスレッド）・C-43（TH-1 への返信）。`filter` は `open`
+        mock: '`on.filter`・`on.openThread`'
+        expected: 絞り込みが「オープン 2」「クローズ 1」「すべて 3」でオープンが `aria-pressed="true"`。行が C-41（レビュー中の札）・TH-2・TH-1（レビュー中の印）の順。「クローズ」を押すと `on.filter` が `closed` で 1 回、TH-2 の行を押すと `on.openThread` が 1 回
+      - name: test_thread_list_view_when_tag
+        case: 正常
+        summary: タグで絞るとチップと件数を出し、まだ送っていない新しいスレッドを出さない
+        condition: タグ `画面` の TH-1 とタグ `起票` の TH-2、レビュー中に C-41。`tag` は `画面`
+        mock: '`on.clearTag`'
+        expected: チップ「画面」と「1 / 2 件」、行が TH-1 だけ。×（読み上げの名前「タグ「画面」の絞り込みを外す」）を押すと `on.clearTag` が 1 回
+      - name: test_thread_list_view_when_empty_or_failed
+        case: 正常
+        summary: 0 件の文言と、読めない理由
+        condition: '`parametrize`: スレッドが無い / `filter: closed`・`tag: 起票` で該当が無い / `threadsError: {detail: null}` / `threadsError: {detail: 理由}`'
+        mock: なし
+        expected: 「オープンのスレッドはありません。」/ 「タグ「起票」のクローズのスレッドはありません。」/ `role="alert"` で「スレッドを読めませんでした。サーバーが止まっています。立ち上げ直してから開いてください。」/ 「スレッドを読めませんでした。{理由}」
+      - name: test_thread_list_view_when_composing
+        case: 正常
+        summary: 新しいスレッドの入口と入力を切り替える
+        condition: '`parametrize`: `composing` が偽 / 真'
+        mock: '`on.compose`'
+        expected: 「新しいスレッド」のボタン（押すと `on.compose` が真で 1 回）/ 見出し「新しいスレッド」と入力欄（`aria-label` が「新しいスレッド」）、× を押すと `on.compose` が偽で 1 回
+  - name: threadView
+    title: スレッド
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: スレッドで話す
+    kind: 画面
+    summary: 画面設計『スレッド』を描く。見出し（一覧へ戻る・状態を変える・理由の入力・状態を変えられなかった理由・状態の札と題・向けた項目・タグ）、書き込みの並び（`threadTimeline` の後にレビュー中の返信と消した返信をコメントの連番の順。`threadPost`・`removedReviewRow`。レビュー中の書き込みには `open` を `expanded` にあるかで、`on.fold` を `commentsPanel` の `on.fold` で渡す）、下端（オープンは `replyForm`、クローズは「クローズにしたスレッドです。」）を持つ。`opened.pending` が真のときは、そのレビュー中の書き込み（消していれば消した行）から組み立て、状態の札を「レビュー中」にして「状態を変える」と返信の入力を出さず、下端に「まだ送っていないスレッドです。」を出す。理由の入力欄は `maxlength` 400 で、Ctrl+Enter で確定、Esc で閉じる（`stopPropagation`）。`data-focus` は戻るが `back`、状態を変えるが `status`、理由が `reason`・`reason-cancel`・`reason-ok`、向けた項目が `target`
+    props:
+      - name: props
+        type: CommentsPanelProps
+        required: true
+        description: '`commentsPanel` の引数（`opened`・`threads`・`items`・`removed`・`reply`・`reason`・`editing` ほかと `titleOf`・`on` を使う）'
+    unit_tests:
+      - name: test_thread_view
+        case: 正常
+        summary: 書き込みと状態の記録を日時の順に並べ、レビュー中の返信を末尾に出す
+        condition: '書き込み 00:10・00:12・00:30 と記録 00:20（クローズ）・00:29（オープンへの戻し）を持つオープンの TH-4、レビュー中に C-43（`thread: TH-4`）、消した C-45（`thread: TH-4`）'
+        mock: なし
+        expected: 並びが 書き込み・書き込み・クローズの記録・オープンへの戻しの記録・書き込み・C-43（レビュー中の印）・C-45 の「元に戻す」の順。見出しに「クローズにする」、下端にラベル「返信」の入力
+      - name: test_thread_view_when_closed_or_pending
+        case: 正常
+        summary: クローズと、まだ送っていない新しいスレッドは返信の入力を出さない
+        condition: '`parametrize`: クローズの TH-5 / `opened: {id: C-41, pending: true}`'
+        mock: なし
+        expected: 「オープンに戻す」と「クローズにしたスレッドです。」で返信の入力が無い / 状態の札が「レビュー中」で「状態を変える」も返信の入力も無く、「まだ送っていないスレッドです。」と最初の書き込み（「D-5 へのコメントを修正」「D-5 へのコメントを削除」）がある
+      - name: test_thread_view_when_reason
+        case: 正常
+        summary: 理由の入力と、変えられなかった理由
+        condition: 'オープンの TH-1。`parametrize`: `reason.open` が真 / `status: saving` / `status: failed`・`detail: null` / `status: failed`・`detail: 理由`'
+        mock: '`on.setStatus`・`on.reasonOpen`'
+        expected: ラベル「理由（任意）」の入力欄（`maxlength` 400）と「キャンセル」「クローズにする」があり見出しの「クローズにする」が無い。確定で `on.setStatus` が `closed` と入力欄の中身で 1 回、Esc で `on.reasonOpen` が偽で 1 回 / 入力欄が `readonly` で確定が `disabled` / `role="alert"` で「クローズにできませんでした。サーバーが止まっています。立ち上げ直してから押してください。」/ 「クローズにできませんでした。{理由}」。後の 2 つは理由の入力が開いたまま
+      - name: test_thread_view_when_target
+        case: 正常
+        summary: 向けた項目とタグ
+        condition: '`parametrize`: D-12 へ向けたタグ `画面` の TH-1 / 消えた D-99 へ向けた TH-6 / 項目もタグも持たないスレッド'
+        mock: '`on.openId`'
+        expected: '`D-12` とタイトルのボタン（押すと `on.openId` が 1 回）と押せないタグ / 押せない `D-99` だけ / 向けた項目とタグの行が無い'
+      - name: test_thread_view_when_change_set_link
+        case: 正常
+        summary: 書き込みのまとまりのリンクを使う側へ知らせる
+        condition: TH-1 を開き、AI の書き込みが `[D-1 を直した](#diff=V-1)`。`changeSetOf` は V-1 を引く
+        mock: '`on.changeSet`'
+        expected: リンクを押すと `on.changeSet` が `V-1` で 1 回、`on.back` は呼ばれない
+  - name: reviewView
+    title: レビュー中の書き込み
+    container: plugins/mindstella/skills/mindmap/preview/screens/comments.ts
+    usecase: コメントを選んで送る
+    kind: 画面
+    summary: 画面設計『レビュー中の書き込み』を描く。見出し（戻る・題と件数）・送る帯・行・削除した行の「元に戻す」・送れない理由・箇所が合わない理由・空の状態を持つ。行の頭は「新しいスレッド」と向けた項目（項目を指さないものは札だけ）か、「返信」と返信先のスレッド（状態の札と `threadTitle`）。行の本文は `reviewBodyFold`（`changeSets` は `changeSetOf`、`open` は `expanded` にあるか、`on.toggle` は `on.fold`）で描き、書き換えている行は畳まない。開閉のボタンは、新しいスレッドの行は「スレッドを開く」と同じ行（`row-thread-open`）の先、返信の行はボタンだけの行に置き、ボタンを出さない返信の行はその行ごと出さない。クローズのスレッドへの返信（`isBlockedReply`）はチェックを `disabled` にして送れる件数から除き、送れない理由と「スレッドを開く」を出す。行の「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm`、消した行は `removedReviewRow` で描く（`focus` の接頭辞は空）。「すべて選ぶ」は、文字を添えない三状態のチェックの箱（部品の中の `selectAllBox`）
+    props:
+      - name: props
+        type: CommentsPanelProps
+        required: true
+        description: '`commentsPanel` の引数（`items`・`removed`・`threads`・`checked`・`editing` ほか・`stale`・`result`・`selected`・`reviewFocus`・`titleOf`・`on` を使う）'
+    unit_tests:
+      - name: test_review_view
+        case: 正常
+        summary: 送る帯と、新しいスレッド・返信の行を描く
+        condition: C-1（D-1 への新しいスレッド）・C-2（消えた D-9、箇所が合わない）・C-3（項目を指さない新しいスレッド）・C-5（オープンの TH-1 への返信）、C-1・C-3 をチェック、削除した C-4
+        mock: '`on.openThread`'
+        expected: 見出し「レビュー中の書き込み」と件数 4、「2 / 4 件」と「まとめて送る（2 件）」、すべて選ぶが `indeterminate`。C-2 の行に理由（`role="alert"`）があり「箇所を外す」が無い。C-3 の行の頭が「新しいスレッド」の札だけで（`.row-target` が無い）、「スレッドを開く」がある。C-5 の頭が「返信」と TH-1 の状態の札・題で、押すと `on.openThread` が 1 回。C-4 の場所に「元に戻す」
+      - name: test_review_view_when_blocked
+        case: 正常
+        summary: クローズのスレッドへの返信は選べず、送る件数に入らない
+        condition: C-1（新しいスレッド）・C-44（クローズの TH-5 への返信）、どちらも `checked` にある
+        mock: '`on.openThread`'
+        expected: C-44 のチェックが `disabled` で外れている。「1 / 1 件」と「まとめて送る（1 件）」。C-44 の行に「クローズのスレッドへの返信は送れません。オープンに戻すと送れます。」と「スレッドを開く」（押すと `on.openThread` が TH-5 で 1 回）
+      - name: test_review_view_when_empty
+        case: 正常
+        summary: 0 件は空の状態だけ
+        condition: '`items`・`removed` が空'
+        mock: なし
+        expected: 「レビュー中の書き込みはありません。」があり、送る帯が無い
+      - name: test_review_view_when_send_disabled
+        case: 正常
+        summary: チェック 0 件と送っている間は送れない
+        condition: '`parametrize`: チェックが 0 件 / `result.kind` が `sending`'
+        mock: '`on.send`'
+        expected: まとめて送るが `disabled` で、押しても `on.send` が呼ばれない。前者は「送る書き込みにチェックを付けてください。」
+      - name: test_review_view_when_editing_in_detail
+        case: 正常
+        summary: 詳細パネルで書き換えている行は、本文だけで描く
+        condition: C-1（D-1）を `editing`、`editingIn` を `'detail'` で描く
+        mock: なし
+        expected: C-1 の行に入力欄・「キャンセル」「修正」が無く、本文が出て、「修正」「削除」のボタンが無い
+      - name: test_review_view_when_sent
+        case: 正常
+        summary: 送れた結果を Claude Code へ入力したかで出し分ける
+        condition: "C-1 をチェックし、`result` を `{kind: 'sent', count: 2, at: '2026-10-10T03:04:00+00:00', entered}` で描く。`parametrize`: `entered` が `true` / `false`"
+        mock: なし
+        expected: 送った結果（`role="status"`）が、前者は確かめの印と「2 件を送り、Claude Code に入力しました（12:04）。」、後者は注意の印と「2 件を送りましたが、Claude Code には入力できませんでした（12:04）。送った内容は保存されていて、次に話し合いを始めたときに取り込まれます。」
+      - name: test_review_view_when_change_set_link
+        case: 正常
+        summary: 行の本文のまとまりのリンクと、文字のままの項目の ID
+        condition: レビュー中に本文 `[A-14 の書き直し](#diff=V-6) で消した行は戻して。T-14 にも関わる` の返信 1 件。`titleOf` は T-14、`changeSetOf` は V-6 を引く
+        mock: '`on.changeSet`・`on.openId`'
+        expected: 行の `p.review-body` に `a.setlink` が 1 つで、T-14 は文字のまま（`button` が無い）。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openThread` は呼ばれない
+      - name: test_review_view_when_folded
+        case: 正常
+        summary: 長い本文を畳み、開閉のボタンを行の種類ごとの場所に置く
+        condition: 'C-51（項目を指さない新しいスレッド、改行で 8 行）・C-52（TH-1 への返信、改行で 8 行）・C-53（TH-1 への 2 行の返信）。`parametrize`: `expanded` が空 / C-51 を `expanded` に入れ `editing` も C-51'
+        mock: '`on.fold`'
+        expected: C-51 の「続きを読む」が `row-thread-open` の中で「スレッドを開く」の前にあり、押すと `on.fold` が `('C-51', true)` で 1 回。C-52 の行には「続きを読む」だけの行がある。C-53 は開閉のボタンもその行も見えない / C-51 は入力欄を出し、本文も開閉のボタンも無い

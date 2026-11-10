@@ -1,0 +1,21 @@
+id: MOD-489-71
+title: プレビュー / history-dialog
+lead: 部品設計『変更履歴.tsx』の props・イベント・状態を持つ。
+components:
+  - name: HistoryDialog
+    title: 変更履歴のモーダル
+    kind: コンポーネント
+    usecase: 前回からの差分を見る
+    summary: 部品設計『変更履歴.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-26#
+    unit_tests:
+      - name: test_history_dialog
+        case: 正常
+        summary: 時点を選ぶ
+        condition: 行を押す
+        mock: なし
+        expected: '`onSelect` が sel で呼ばれる'
+    container: frontend/src/shared/components/history-dialog.tsx
+notes:
+  単体テスト: 同じフォルダの `history-dialog.test.tsx` に置く（knowledge の規約『フォルダ構成』）

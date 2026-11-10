@@ -1,0 +1,37 @@
+id: LIB-489-3
+title: '@base-ui/react'
+kind: ライブラリ
+version:
+  current: 1.9.0
+  latest: 1.9.0
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 1.9.0 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 1.9.0
+    entries:
+      - name: Button
+        kind: 部品
+        purpose: shadcn/ui の Button（ui/button.tsx）の土台。className に文字列だけを渡す
+lead: 見た目を持たない、アクセシビリティを備えた React の部品の集まり。shadcn/ui の Base UI 版の土台。
+purl: pkg:npm/@base-ui/react
+dependency_scope: 必須
+adoption: 採用
+used_in:
+  - frontend/src/shared/components/ui/button.tsx
+upstream: mui/base-ui
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: トップバーの表示の設定・絞り込み・保存待ち・コメントのボタンが button 要素で描かれ、Testing Library の getByRole('button') で引けることを確かめた
+license: MIT
+official_url: https://base-ui.com/
+docs_url: https://base-ui.com/react/components/button
+install: '```bash
+
+  npm install --save-exact @base-ui/react@1.9.0
+
+  ```'
+notes:
+  shadcn/ui: shadcn/ui はパッケージではなく、部品のソースを frontend/src/shared/components/ui/ へ写して持つ。Base UI 版の Button を写し、variants（default・secondary・ghost・outline・destructive）で見た目を持つ

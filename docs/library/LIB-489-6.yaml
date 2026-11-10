@@ -1,0 +1,72 @@
+id: LIB-489-6
+title: eslint
+kind: CLI
+version:
+  current: 9.39.5
+  latest: 9.39.5
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 9.39.5 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 9.39.5
+    entries:
+      - name: npm run lint
+        kind: コマンド
+        purpose: frontend/src だけに当てる
+      - name: typescript-eslint（recommendedTypeChecked・projectService）
+        kind: プラグイン
+        purpose: 型情報つきの検査。no-deprecated を error
+      - name: eslint-plugin-better-tailwindcss
+        kind: プラグイン
+        purpose: 任意値・知らないクラスを禁止し、クラスの並びを揃える
+      - name: eslint-plugin-boundaries
+        kind: プラグイン
+        purpose: app → routes → features → shared の向きだけを許す
+      - name: eslint-plugin-react-hooks（recommended-latest）
+        kind: プラグイン
+        purpose: フックの規則と React Compiler の検査
+      - name: eslint-plugin-jsx-a11y
+        kind: プラグイン
+        purpose: アクセシビリティの検査
+      - name: eslint-plugin-sonarjs（cognitive-complexity 15）
+        kind: プラグイン
+        purpose: 関数の認知的複雑度
+      - name: eslint-plugin-import（no-default-export）
+        kind: プラグイン
+        purpose: 名前付き export だけを許す。*.stories.tsx は対象から除く
+      - name: コアの規則（func-style・no-restricted-syntax）
+        kind: 規則
+        purpose: const のアロー関数だけを許し、enum を禁止する
+      - name: typescript-eslint の規則（consistent-type-definitions・no-non-null-assertion）
+        kind: 規則
+        purpose: 型は type で書き、非 null の断定を禁止する
+      - name: eslint-config-prettier
+        kind: 設定
+        purpose: Prettier と競合する規則を無効にする（設定の最後に置く）
+lead: JavaScript と TypeScript のソースを規則で検査する linter。
+purl: pkg:npm/eslint
+dependency_scope: 開発のみ
+adoption: 採用
+used_in:
+  - eslint.config.js
+upstream: eslint/eslint
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: npx eslint が frontend/src の違反（非推奨の prefetchQuery・複雑度 62 の関数・クラスの並び）を検出し、直した後に終了コード 0 になることを確かめた。2026-11-05 に、enum・interface・function 宣言・非 null の断定・default export を含むファイルが 5 件の error になることを確かめた
+license: MIT（eslint-plugin-sonarjs は LGPL-3.0-only、eslint-import-resolver-typescript は ISC、eslint-plugin-import・eslint-config-prettier は MIT。どれも開発用だけで配る物に入らない）
+official_url: https://eslint.org/
+docs_url: https://eslint.org/docs/latest/use/configure/
+install: '```bash
+
+  npm install --save-dev --save-exact eslint@9.39.5 @eslint/js@9.39.5 typescript-eslint@8.72.1 eslint-plugin-better-tailwindcss@4.10.0 eslint-plugin-boundaries@7.4.1 eslint-plugin-jsx-a11y@6.10.2 eslint-plugin-react-hooks@7.1.1 eslint-plugin-sonarjs@4.2.2 eslint-import-resolver-typescript@4.4.5 eslint-plugin-import@2.32.0 eslint-config-prettier@10.1.8
+
+  ```'
+limitations:
+  - item: ESLint 10
+    content: eslint-plugin-jsx-a11y 6.10.2 の peer が ^9 までのため 9.39.5 に固定する（サポート終了の警告が出る）
+  - item: eslint-plugin-sonarjs のライセンス
+    content: LGPL-3.0-only。開発用だけで、配る物に入らない
+  - item: 実行時間
+    content: /mnt/c の上の worktree では約 60 秒かかる

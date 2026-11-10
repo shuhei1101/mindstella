@@ -1,0 +1,98 @@
+id: MOD-489-219
+title: プレビュー / 画面と部品 / pending-edits.ts
+test_files:
+  - tests/unit/preview/test_pending_edits.py
+functions:
+  - name: editRowText
+    title: 編集の行の文言
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 保存待ちのパネルの 1 件の「何を」と「前 → 後」を返す
+    args:
+      - name: edit
+        type: PendingEdit
+        required: true
+        passing: positional
+        description: 編集
+    returns:
+      type: '{what: string, before: string | Tag[] | null, after: string | Tag[] | null}'
+      description: '`what` はキーの呼び名・「案 {記号}」・「案 {記号} を追加」・「案 {記号} を削除」・「採用する案」・「項目を追加」・「項目を削除」・設定のキーの呼び名。本文・削除は `before`・`after` を `null`、追加は `before` を `null`。`tags` の `set` は `before`・`after` を `{name, main?}` の並びのまま返し（行は `tagList` で描く）、それ以外の配列は「、」でつなぐ'
+    unit_tests:
+      - name: test_edit_row_text
+        case: 正常
+        summary: 編集の種類ごとの文言
+        condition: '`parametrize`: `set`（`status` を 未着手 → 中止）/ `set`（`body`）/ `option-add`（C）/ `adopt`（A → C）/ `item-remove` / `setting`（`tags`）'
+        mock: なし
+        expected: '`{what: 状態, before: 未着手, after: 中止}` / `{what: 本文, before: null, after: null}` / `{what: 案 C を追加, before: null, after: 中身}` / `{what: 採用する案, before: A, after: C}` / `{what: 項目を削除, before: null, after: null}` / `{what: タグの語彙, ...}`'
+      - name: test_edit_row_text_when_tags
+        case: 正常
+        summary: タグの編集は前後をタグの並びのまま返す
+        condition: '`set`（`tags` を `[{name: 画面}]` → `[{name: 画面, main: true}, {name: データ}]`）'
+        mock: なし
+        expected: '`{what: タグ, before: [{name: 画面}], after: [{name: 画面, main: true}, {name: データ}]}`'
+  - name: groupEdits
+    title: 編集の項目ごとのまとまり
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 編集を `target` ごとに、最初に溜めた順にまとめる
+    args:
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        passing: positional
+        description: 保存待ちの編集
+    returns:
+      type: '{target: string, edits: PendingEdit[]}[]'
+      description: まとまりの並び
+    unit_tests:
+      - name: test_group_edits
+        case: 正常
+        summary: 最初に溜めた順にまとめる
+        condition: E-1（D-1）・E-2（T-1）・E-3（D-1）
+        mock: なし
+        expected: '`[{D-1, [E-1, E-3]}, {T-1, [E-2]}]`'
+components:
+  - name: pendingEditsPanel
+    title: 保存待ちのパネル
+    container: plugins/mindstella/skills/mindmap/preview/screens/pending-edits.ts
+    usecase: 画面で項目を編集して保存する
+    kind: 画面
+    summary: 画面設計『保存待ちのパネル』を、コメントの一覧と同じ左から出すパネル（幅 900px 以下は画面の幅いっぱい）に描く。編集を項目ごとにまとめ（`groupEdits`）、行の文言は `editRowText`。保存した知らせ（`role="status"`）もここに置き、使う側が 5 秒で消す
+    props:
+      - name: edits
+        type: PendingEdit[]
+        required: true
+        description: 保存待ちの編集
+      - name: blocked
+        type: BlockedEdit[]
+        required: true
+        description: 直前の保存で書き込めなかった編集（無ければ空）
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 編集を当てる前の記録の索引（項目の種類・タイトルを引く）
+      - name: status
+        type: "'idle' | 'saving' | 'offline'"
+        required: true
+        description: 保存の状態（`offline` は直前の保存が届かなかった）
+      - name: on
+        type: '{close, open, undo, save}'
+        required: true
+        description: パネルを閉じる・まとまりの項目を開く（項目の ID・仮の ID・`settings`）・1 件を取り消す（編集の ID）・まとめて保存する
+    unit_tests:
+      - name: test_pending_edits_panel
+        case: 正常
+        summary: 項目ごとのまとまりと件数、削除の件数を出し、操作を知らせる
+        condition: E-1（D-1 の `answer`）・E-2（N-1 の削除）・E-3（題名）。E-1 の取り消すと「まとめて保存する」を押す
+        mock: '`on.undo`・`on.save`'
+        expected: 見出しが「保存待ち」「3 件」、まとまりが D-1・N-1・設定の 3 つ、合計が「3 件（うち削除 1 件）をワークスペースに書きます」、ボタンが「まとめて保存する（1 件を削除）」。`on.undo` が E-1 で 1 回、`on.save` が 1 回
+      - name: test_pending_edits_panel_when_empty_or_blocked
+        case: 異常
+        summary: 空・書き込めない・届かない・送信中の表示
+        condition: '`parametrize`: 編集 0 件 / `blocked` に E-1（`changed`）/ `status: offline` / `status: saving`'
+        mock: なし
+        expected: 「保存待ちの編集はありません。」で保存のボタンが押せない / 「1 件の編集を書き込めないため、何も保存していません。」が `role="alert"` で E-1 の行に理由 / 「サーバーにつながらないため、保存できませんでした。」/ ボタンが「保存しています…」で `aria-busy` が真

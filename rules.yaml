@@ -4,9 +4,9 @@
 default_on: [write, mcp]
 rules:
   # このリポジトリだけが持つテンプレート
-  - rule: dev/テンプレート/部品設計.schema.yaml
+  - rule: schemas/component.schema.yaml
     paths:
-      - "**/dev/設計書/部品設計/**/*.yaml"
+      - "**/docs/component/*.yaml"
     exclude:
       - "**/index.yaml"
   # React のプレビュー（frontend/）

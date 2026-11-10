@@ -1,9 +1,0 @@
-title: プレビュー / blocked-note
-lead: 書き込めない理由の表示。
-components:
-- name: BlockedNote
-  title: 書き込めない理由
-  kind: コンポーネント
-  usecase: 画面で項目を編集して保存する
-  summary: 書き込めない理由の表示
-  container: frontend/src/shared/components/blocked-note.tsx

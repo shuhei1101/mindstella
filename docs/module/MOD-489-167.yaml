@@ -1,0 +1,37 @@
+id: MOD-489-167
+title: "サーバー / 読み書きと検証"
+lead: ワークスペースの YAML と本文を読み書きし、JSON Schema と突き合わせる。ほかの全てのモジュールがここに依存し、ここはほかに依存しない。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    schemas/
+      common.schema.json       共通のキー（$defs）
+      settings.schema.json     config.yaml
+      decisions.schema.json    ほか 6 種類も同じ名前の付け方（tasks / research / docs / terms / notes / logs）
+      threads.schema.json      threads.yaml（『スレッド』が使う）
+      comments.schema.json     comments.yaml（『コメント』が使う）
+      drafts.schema.json       drafts.yaml（『コメント』が使う）
+    scripts/
+      kinds.py                 種類の定義と状態の分類（定数）
+      errors.py                ツールのエラーにする例外
+      store.py                 読み込み・検証・採番・書き込み・書き換えの鍵
+  ```
+diagrams:
+  - name: 全体
+    diagram: |-
+      ```mermaid
+      classDiagram
+        direction LR
+        class ワークスペース
+        class 種類の定義
+        class 問題
+        class 書き込みの変更
+        class 本文の書き込み
+        class 項目の場所
+        ワークスペース --> 問題 : 読めなかったファイル
+        書き込みの変更 --> 本文の書き込み
+        項目の場所 --> 種類の定義
+      ```
+notes:
+  HTML の本文のスキーマ: '`docs.schema.json` の `body` の `pattern` を `^[^/\\]+\.(md|html)$` にし、ほかの 6 種類の `body` は `.md` のままにする。`common.schema.json` の `history[].before` の説明は、`body` を前に本文が無かった回と資料の本文の形式を替えた回だけ入れると直す（ER 図『ワークスペース』）'
+  タグのスキーマ: '`settings.schema.json` から `tags` を外す（`tags` を持つ `config.yaml` はスキーマに合わなくなり、`is_legacy_problem` が前の版の形式として扱う）。`common.schema.json` と `threads.schema.json` の `tags` の説明は、自由な文字列で、`tags` のツールが正規化した表記で数えると直す（ER 図『ワークスペース』）'

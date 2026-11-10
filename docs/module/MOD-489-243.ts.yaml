@@ -1,0 +1,68 @@
+id: MOD-489-243
+title: プレビュー / 画面と部品 / chips-input.ts
+test_files:
+  - tests/unit/preview/test_chips_input.py
+components:
+  - name: chipsInput
+    title: チップの入力
+    container: plugins/mindstella/skills/mindmap/preview/components/chips-input.ts
+    usecase: 画面で項目を編集して保存する
+    kind: コンポーネント
+    summary: 部品設計『チップの入力』の引数を受け、値のチップの並びと、候補（`datalist`）つきの入力欄を返す。Enter か入力欄を離れたときに、空白でなく並びに無い値をチップにして追加し、チップの × で外し、`onChange` を呼ぶ。`mainToggle` が真のときは値を `{name, main?}` で持ち、チップの名前の前に主題のトグル（`button`・`aria-pressed`・読み上げ名「{タグ} を主題」・`title` は主題のとき「主題を外す」、それ以外は「主題にする」・押せる範囲は縦横 24px）を置き、押すたびにそのタグの `main` を付け外しして `onChange` を呼ぶ（主題でないタグは `main` を持たない並びを渡す）。押した後も同じタグのトグルにフォーカスを残す。入力欄から追加したタグは主題でないまま並べる。`disabled` の間は入力欄・× ・トグルを押せなくする。編集の表示（項目のタグ・参照）と設定の画面が使う
+    props:
+      - name: controlId
+        type: string
+        required: true
+        description: 入力欄の `id`
+      - name: name
+        type: string
+        required: true
+        description: キーの表示名
+      - name: hint
+        type: string
+        required: true
+        description: 入力欄のプレースホルダ
+      - name: values
+        type: readonly (Tag | string)[]
+        required: true
+        description: 今の値の並び（`mainToggle` が真のときは `Tag[]`）
+      - name: suggestions
+        type: string[] | null
+        required: true
+        description: 入力欄の候補。出さないときは `null`
+      - name: monospace
+        type: boolean
+        required: true
+        description: チップを等幅の文字で出すか
+      - name: mainToggle
+        type: boolean
+        required: false
+        default: 'false'
+        description: 主題のトグルを置くか（項目のタグだけ真）
+      - name: disabled
+        type: boolean
+        required: true
+        description: 操作を止めるか
+      - name: onChange
+        type: '(values: (Tag | string)[], removed: string | null) => void'
+        required: true
+        description: 値を追加した・外した・主題を付け外ししたときに呼ぶ
+    unit_tests:
+      - name: test_chips_input
+        case: 正常
+        summary: 値を追加し・外し、並びに有るものは追加しない
+        condition: '`values: [UI]`・`mainToggle: false`。入力欄に `性能` を入れて Enter、`UI` を入れて Enter、`UI` の × を押す'
+        mock: '`onChange`'
+        expected: '`onChange` が `([UI, 性能], null)`・`([性能], UI)` の順で 2 回'
+      - name: test_chips_input_when_main_toggle
+        case: 正常
+        summary: 主題のトグルで main を付け外しし、追加したタグは主題でない
+        condition: '`values: [{name: 画面}, {name: データ, main: true}]`・`mainToggle: true`。`画面` のトグルを押す、`データ` のトグルを押す、入力欄に `保存` を入れて Enter'
+        mock: '`onChange`'
+        expected: '`データ` のトグルが `aria-pressed="true"`・読み上げ名「データ を主題」・`title`「主題を外す」で、`画面` のトグルが `aria-pressed="false"`・`title`「主題にする」。押した後のフォーカスが押したタグのトグルにある。`onChange` が `([{name: 画面, main: true}, {name: データ, main: true}], null)`・`([{name: 画面, main: true}, {name: データ}], null)`・`([{name: 画面, main: true}, {name: データ}, {name: 保存}], null)` の順で 3 回'
+      - name: test_chips_input_when_disabled
+        case: 異常
+        summary: disabled の間は操作できない
+        condition: '`mainToggle: true`・`disabled: true`。トグルと × を押す'
+        mock: '`onChange`'
+        expected: 入力欄・× ・トグルが `disabled` で、`onChange` が呼ばれない

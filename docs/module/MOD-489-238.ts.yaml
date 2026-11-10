@@ -1,0 +1,138 @@
+id: MOD-489-238
+title: プレビュー / 画面と部品 / thread-post.ts
+test_files:
+  - tests/unit/preview/test_thread_post.py
+components:
+  - name: threadPost
+    title: スレッドの書き込み
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
+    usecase: スレッドで話す
+    kind: コンポーネント
+    summary: 部品設計『スレッドの書き込み』の引数を受け、書き込み・状態の記録・レビュー中の書き込みのどれか 1 つの `li` を返す。本文は `postBody`（クラス `post-body`）で描く。レビュー中の書き込みの書き換えていない本文は `reviewBodyFold`（`label` は `reviewLabel`、`titles`・`changeSets` はそのまま、`open` は `open`、`on.toggle` は `on.fold`、`on.openId`・`on.changeSet` はそのまま）で描き、本文にクラス `post-body` を足して、本文の下に開閉のボタンだけの行（`review-more-row`。ボタンが `hidden` の間は行ごと出さない）を置く。レビュー中の書き込みの「修正」「削除」は `reviewRowActions`、書き換えは `reviewEditForm` で描く（`focus` の接頭辞は空）
+    props:
+      - name: post
+        type: Thread['posts'][number] | null
+        required: false
+        default: 'null'
+        description: 書き込み。`post`・`event`・`pending` のどれか 1 つ
+      - name: event
+        type: Thread['events'][number] | null
+        required: false
+        default: 'null'
+        description: 状態の記録
+      - name: pending
+        type: ReviewItem | null
+        required: false
+        default: 'null'
+        description: レビュー中の書き込み
+      - name: titles
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: 項目のタイトル（記録に無ければ `null`）。部品設計の `titles` の対応を関数で受ける
+      - name: editing
+        type: boolean
+        required: false
+        default: 'false'
+        description: レビュー中の書き込みを書き換えているか
+      - name: editBody
+        type: string | null
+        required: false
+        default: 'null'
+        description: 直せなかったときに入力欄に残す中身
+      - name: editError
+        type: string | null
+        required: false
+        default: 'null'
+        description: 直せなかった理由
+      - name: on
+        type: '{openId, changeSet, edit, saveEdit, cancelEdit, remove, fold}'
+        required: true
+        description: 本文の中の項目の ID を押した・まとまりのリンクを押した・修正を始める・書き換えを送る・キャンセル・削除・レビュー中の書き込みの本文を開く／畳む（書き込みの ID・開くか）
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: false
+        default: () => null
+        description: まとまりの説明（記録に無ければ `null`）。部品設計の `change_sets` の対応を関数で受ける
+      - name: open
+        type: boolean
+        required: false
+        default: 'false'
+        description: レビュー中の書き込みの本文を開いているか。`reviewBodyFold` の `open` へ渡す
+    unit_tests:
+      - name: test_thread_post
+        case: 正常
+        summary: 書き手ごとの書き込みと、記録にある ID のリンク
+        condition: '`parametrize`: 利用者の書き込み / `D-12`・`D-99` を含む 2 行の AI の書き込み（`titles` は D-12 だけ）'
+        mock: '`on.openId`'
+        expected: '`li.post.user` で頭が「あなた」と `time` / `li.post.ai` で頭が「AI」、`D-12` がボタン（`title` がタイトル）で `D-99` は文字のまま、改行が保たれる。`D-12` を押すと `on.openId` が 1 回'
+      - name: test_thread_post_when_event
+        case: 正常
+        summary: 状態の記録の書き手・日時・理由
+        condition: '`parametrize`: 利用者の `closed`（理由あり）/ 利用者の `reopened`（理由なし）/ AI の `closed` / AI の `reopened`'
+        mock: なし
+        expected: 「あなたがクローズにしました」と理由の行 / 「あなたがオープンに戻しました」で理由の行が無い / 「AI がクローズにしました」/ 「AI がオープンに戻しました」。どれも `time[datetime]` を持つ
+      - name: test_thread_post_when_pending
+        case: 正常
+        summary: レビュー中の書き込みの印・修正・削除と、書き換えている形
+        condition: '`pending` に C-43（`thread: TH-1`）。`parametrize`: 既定 / `editing: true` / `editing: true`・`editError` あり'
+        mock: '`on.edit`・`on.remove`'
+        expected: 「レビュー中」の印と、読み上げの名前「TH-1 への返信を修正」「TH-1 への返信を削除」のボタン（押すとそれぞれ 1 回）/ 入力欄と「キャンセル」「修正」がありアイコンのボタンが無い / 理由が `role="alert"` で出る
+      - name: test_thread_post_when_change_set_link
+        case: 正常
+        summary: 書き込みとレビュー中の書き込みのまとまりのリンク
+        condition: '`changeSets` は V-6 だけ。`parametrize`: 本文に `[A-14 の書き直し](#diff=V-6)` を持つ AI の `post` / 同じ本文の `pending`'
+        mock: '`on.changeSet`'
+        expected: どちらも `.post-body` の中に `a.setlink` が 1 つで、押すと `on.changeSet` が `V-6` で 1 回
+      - name: test_thread_post_when_pending_folded
+        case: 正常
+        summary: レビュー中の書き込みだけを畳み、開閉を知らせる
+        condition: '幅 320px の入れ物に描く。`parametrize`: 改行で 8 行の `pending`（C-61、`thread: TH-1`）/ 同じ本文の `pending` を `open: true` / 同じ本文の `pending` を `editing: true` / 同じ本文の AI の `post`。最初の場合だけ「続きを読む」を押す'
+        mock: '`on.fold`'
+        expected: 本文が `folded` で本文の下の `review-more-row` に「続きを読む」（読み上げの名前「TH-1 への返信の続きを読む」）。押すと `on.fold` が `(C-61, true)` で 1 回 / `folded` を持たず「折りたたむ」/ 入力欄だけで開閉のボタンが無い / 8 行が全て見え、開閉のボタンが無い
+  - name: postBody
+    title: 書き込みの本文
+    container: plugins/mindstella/skills/mindmap/preview/components/thread-post.ts
+    usecase: スレッドで話す
+    kind: コンポーネント
+    summary: 書き込みの本文を、段落の中の改行を強制改行にして（`withHardBreaks`）`renderMarkdown` で描き、クラス `className` を付けた要素を返す。図は `renderDiagrams` で（描き終えるのを待たずに返す）、`html` のコードブロックの入れ物は部品『HTMLの本文の枠』（`htmlBodyFrame`、`selectable` は偽）で描き、`decorateMarkdown`（`tables`・`fold` は偽）を当てる。続けて本文の中の `a` のうち `href` が `#` で始まるものは、`#` の後ろを `URLSearchParams` で読んだ `diff` の値を `changeSets` で引き（`diff` 以外の引数は見ない）、`null` でなければまとまりのリンク（クラス `setlink`。`href` は `#diff={まとまりの ID}`、`title` にまとまりの説明、`data-focus` は `post-set:{ID}`）にし、`null` なら `a` を中の文字に置き換える。`#` で始まらないリンクは mdmark が描いたまま残す。まとまりのリンクを押すと既定の動作を止めて `on.changeSet` にまとまりの ID を渡す。その後、`pre`・`code`・`a`・図の入れ物・HTML の本文の枠の外の文字のうち `\b[A-Z]{1,2}-\d+\b` に合い `titles` が `null` でないものを、項目の ID のボタン（`button.idlink`。`title` にタイトル、`data-focus` は `post-id:{ID}`）にする（記録に無い ID とスレッドの ID `TH-1` は文字のまま）。リンクの見た目は詳細の本文のまとまりのリンクと同じにする（`style.css`）。mdmark が読めないときは、本文を文字のまま改行を保って持つ要素を返す（知らせは出さず、項目の ID とまとまりのリンクも作らない）
+    props:
+      - name: body
+        type: string
+        required: true
+        description: 本文
+      - name: titles
+        type: '(id: string) => string | null'
+        required: true
+        description: 項目のタイトル。レビュー中を確かめる画面の行は `() => null` を渡して項目の ID を文字のまま出す
+      - name: changeSets
+        type: '(id: string) => string | null'
+        required: true
+        description: まとまりの説明
+      - name: className
+        type: "'post-body' | 'review-body'"
+        required: true
+        description: 本文の要素のクラス
+      - name: on
+        type: '{openId, changeSet}'
+        required: true
+        description: 項目の ID を押した・まとまりのリンクを押した
+    unit_tests:
+      - name: test_post_body
+        case: 正常
+        summary: 項目の ID のボタンとまとまりのリンクを描き分ける
+        condition: '本文 `[A-14 の書き直し](#tab=docs&diff=V-6) と D-12。[古い](#diff=V-99)。[外](https://example.com)`。`titles` は A-14・D-12、`changeSets` は V-6 だけ。`parametrize`: `titles` をそのまま / `() => null`'
+        mock: '`on.openId`・`on.changeSet`'
+        expected: '`a.setlink` が 1 つで、文字が「A-14 の書き直し」、`href` が `#diff=V-6`、`title` が V-6 の説明で、中に `button` が無い。`[古い](#diff=V-99)` は `a` を持たず「古い」だけが出る。`[外](https://example.com)` は `href` がその URL の `a` のまま。`titles` をそのまま渡したときは D-12 が `button.idlink`、`() => null` のときは D-12 も文字。リンクを押すと `on.changeSet` が `V-6` で 1 回、`on.openId` は呼ばれず、`location.hash` は変わらない'
+      - name: test_post_body_when_markdown
+        case: 正常
+        summary: 本文を Markdown として描き、段落の中の改行を保ち、コードの中の ID はボタンにしない
+        condition: 見出し `## 結果`、改行 1 つで 2 行にした段落「D-1 は A。」「2 行目」、セルに D-1 を持つ 1 列の表、インラインコードの D-1 だけの段落、`> [!NOTE]` の引用を持つ本文。`titles` は D-1 だけ。mdmark は `page.route` で返し `loadMdmark` で読む
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.post-body` が class `mdmark` を持ち、`h2`・`br` を持つ `p`・`.md-table-wrap` の中の `table`・補足のアイコンを持つ `div.markdown-alert` がある。段落と表のセルの D-1 は `button.idlink`、インラインコードの D-1 は文字のまま。表のセルは `data-col-size` を持たない'
+      - name: test_post_body_when_library_missing
+        case: 正常
+        summary: mdmark が読めなければ文字のまま改行を保つ
+        condition: mdmark を読まない。本文 `**D-1**\n2 行目`、`titles` は D-1 だけ
+        mock: なし
+        expected: '`.post-body` の文字が `**D-1**\n2 行目` で改行が保たれ、`role="alert"`・`button`・`strong` を持たない'

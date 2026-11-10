@@ -1,0 +1,237 @@
+id: MOD-489-190
+title: サーバー / 読み書きと検証 / errors.py
+classes:
+  - name: MindmapError
+    title: ツールのエラー
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: 入口（`call_tool`）が捕まえてツールのエラーにする例外の親。配信は子の種類でステータスコードを決める
+    kind: クラス
+    inherits: Exception
+    properties:
+      - name: lines
+        type: list[str]
+        description: '`エラー: {内容}` の後に続けて本文に出す行'
+  - name: WorkspaceNotFoundError
+    title: ワークスペースが無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: '`config.yaml` が無いフォルダを指した。メッセージにフォルダのパス。`mindmap.yaml`（前の版の設定ファイル）だけがあるフォルダでは、`lines` に `UPGRADE_HINT` を持つ（`require_workspace`）'
+    kind: クラス
+    inherits: MindmapError
+  - name: WorkspaceExistsError
+    title: ワークスペースが既にある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: ワークスペースの作成
+    summary: '`config.yaml` か `mindmap.yaml`（前の版の設定ファイル）が既にあるフォルダに作ろうとした。メッセージにフォルダのパス'
+    kind: クラス
+    inherits: MindmapError
+  - name: SchemaMismatchError
+    title: スキーマに合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: '書き込もうとした・書き出そうとした・読もうとしたワークスペースがスキーマに合わない。`lines` は問題ごとの `{ファイル名}: {キーのパス}: {理由}`。`legacy`（既定 `False`）は、問題に前の版の形式のものがあるか（ワークスペースを検証して送る側が `is_legacy_problem` で決める。`save_change`・`export_preview`・`read_records` が当たる）'
+    kind: クラス
+    inherits: MindmapError
+  - name: ItemNotFoundError
+    title: ID が無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: 渡した ID の項目が無い。メッセージに ID
+    kind: クラス
+    inherits: MindmapError
+  - name: OptionNotFoundError
+    title: 案が無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: '検討事項が渡した記号の案を持たない。メッセージは送る側が決める（採用する案の切り替えの `switch_adopted` は渡した記号と持っている記号の一覧、案の書き換えの `apply_option_edit` は `{ID} の案 {記号}: その記号の案がありません`）'
+    kind: クラス
+    inherits: MindmapError
+  - name: WriteFailedError
+    title: 書き込みに失敗した
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: ファイルの書き込み・置き換えで `OSError` が起きた。後始末をした後に送る。メッセージに置き換え先のパスと `OSError` の理由（`raise ... from` で元の例外をつなぐ）
+    kind: クラス
+    inherits: MindmapError
+  - name: DownloadFailedError
+    title: 取れなかった
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 配る書き出し
+    summary: 配る書き出しで jsDelivr から配布ファイルかライセンスの本文を取れないか、配布ファイルが雛形の `integrity` と合わない。メッセージに URL と理由（`raise ... from` で元の例外をつなぐ）
+    kind: クラス
+    inherits: MindmapError
+  - name: WorkspaceNewerError
+    title: ワークスペースの版が新しい
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の形式の移行
+    summary: ワークスペースの版がプラグインの版より新しいのに手順を当てる・版を書く。メッセージに 2 つの版とプラグインの更新の案内
+    kind: クラス
+    inherits: MindmapError
+  - name: StepFailedError
+    title: 手順が失敗した
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の形式の移行
+    summary: '移し替えの手順が失敗し、写しから戻した。メッセージは `{版} の手順 {番号}（{操作}）: {理由}`'
+    kind: クラス
+    inherits: MindmapError
+  - name: StepsInvalidError
+    title: 手順の形が違う
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の形式の移行
+    summary: プラグインの `steps.yaml` が読めないか、手順の形のスキーマに合わない。`lines` は合わない箇所
+    kind: クラス
+    inherits: MindmapError
+  - name: ArgumentError
+    title: 引数の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 共通
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・`write_release` の `path` が `release/` の下の `.md`・`.html` を指さない・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: argument
+        type: str
+        description: 誤った引数の名前
+  - name: ServeFailedError
+    title: 配信を立てられない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: プレビューを開く
+    summary: プレビューの配信の待ち受けを立てられない（`OSError`）。メッセージに理由（`raise ... from` で元の例外をつなぐ）
+    kind: クラス
+    inherits: MindmapError
+  - name: UnmappedPhaseError
+    title: 対応の無いフェーズ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 設定の更新
+    summary: '新しい `phases` に対応の無いフェーズを持つ項目か `goal.phase` が残る。メッセージは `新しいフェーズに対応の無いフェーズが残ります`、`lines` に残るものごとの `{ID か goal}: {フェーズ}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: unmapped
+        type: list[tuple[str, str]]
+        description: 残るもの（ID か `goal`、フェーズ）
+  - name: CommentInvalidError
+    title: コメントの中身の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 項目へコメントする
+    summary: 'コメント・書きかけ・まとめて送るの要求のキーが無い・型が違う、本文が空白だけか上限を超える、箇所の形が崩れている。配信は 400 にする。メッセージは `{キーのパス}: {理由}`'
+    kind: クラス
+    inherits: MindmapError
+  - name: CommentNotFoundError
+    title: コメントが無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: コメントを選んで送る
+    summary: 渡した ID のコメントがレビュー中に無い。配信は 404 にする。メッセージに無い ID（複数なら、でつなぐ）
+    kind: クラス
+    inherits: MindmapError
+  - name: CommentConflictError
+    title: コメントが今の記録に合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: コメントを選んで送る
+    summary: 箇所が今の項目に合わない、向けた項目が消えた、返信先のスレッドがクローズか無い、または元に戻す ID が使えない。配信は 409 にする。メッセージは合わない理由。`stale` にコメントごとの `(ID, 理由)` を持つ（まとめて送るときだけ。それ以外は空）
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: stale
+        type: list[tuple[str, str]]
+        description: 合わないコメントの ID と理由。溜めた順
+  - name: OptionExistsError
+    title: 同じ記号の案がある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '足そうとした記号の案を検討事項が既に持つ。メッセージは `{ID} の案 {記号}: 同じ記号の案が既にあります`'
+    kind: クラス
+    inherits: MindmapError
+  - name: AdoptedOptionError
+    title: 採用している案
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '採用している案を消そうとした。メッセージは `{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください`'
+    kind: クラス
+    inherits: MindmapError
+  - name: UnmappedTargetError
+    title: 対応の無い対象・カテゴリー
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 設定の更新
+    summary: '新しい `targets`・`categories` に対応の無い対象・カテゴリーを持つ項目かカテゴリーが残る。メッセージは `新しい設定に対応の無い対象・カテゴリーが残ります`、`lines` に残るものごとの `{ID か categories[{名前}]}: {target か category}: {名前}`'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: unmapped
+        type: list[tuple[str, str, str]]
+        description: 残るもの（ID か `categories[{名前}]`、キー、名前）
+  - name: SettingsInvalidError
+    title: 表示の既定の中身の誤り
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: ワークスペースの既定を変える
+    summary: '既定の書き換えの要求の本文に `network_look`・`visible_kinds` が無い・値が合わない。配信は 400 にする。メッセージは `{キー}: {理由}`（選べる値を含む）'
+    kind: クラス
+    inherits: MindmapError
+  - name: LastOptionError
+    title: 最後の案
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 検討事項の案の編集
+    summary: '案を必須にする状態の検討事項の最後の案を消そうとした。メッセージは `{ID} の案 {記号}: 状態 {状態} の検討事項は案を 1 つ以上持ちます。先に add で別の案を足してください`'
+    kind: クラス
+    inherits: MindmapError
+  - name: ItemReferencedError
+    title: ほかの記録が指している
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 記録の削除と取り下げ
+    summary: '消そうとした項目をほかの記録が指している。メッセージは `{ID} はほかの記録が指しているため消せません`、`lines` に指している記録ごとの `{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行'
+    kind: クラス
+    inherits: MindmapError
+  - name: ThreadNotFoundError
+    title: スレッドが無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: スレッドで話す
+    summary: '渡した ID のスレッドが無い。配信は 404 にする。メッセージは `スレッドがありません: {ID}`'
+    kind: クラス
+    inherits: MindmapError
+  - name: ThreadClosedError
+    title: スレッドがクローズ
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: スレッドで話す
+    summary: クローズのスレッドへ AI が返信しようとした。メッセージは `スレッド {ID} はクローズです。set_thread_status でオープンに戻してから返信してください`（画面からのクローズのスレッドへの返信は `CommentConflictError`）
+    kind: クラス
+    inherits: MindmapError
+  - name: EditInvalidError
+    title: 編集の形が合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 保存待ちの編集の追加の本文の形・キー・値の型が合わない、または保存待ちが空で保存した。配信は 400 にする。メッセージは合わないキーと理由
+    kind: クラス
+    inherits: MindmapError
+  - name: EditNotFoundError
+    title: 編集・向け先が無い
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 取り消す編集、または編集する項目・仮の ID・案が無い。配信は 404 にする。メッセージは無い ID か記号
+    kind: クラス
+    inherits: MindmapError
+  - name: EditConflictError
+    title: 編集が溜めた編集と合わない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 足す案の記号が既にある、または削除を溜めた項目へ削除以外の編集を溜めようとした。配信は 409 にする。メッセージは理由
+    kind: クラス
+    inherits: MindmapError
+  - name: EditsBlockedError
+    title: 書き込めない編集がある
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 画面で項目を編集して保存する
+    summary: 'まとめて保存で、書き込めない編集が 1 件以上ある。配信は 409 にし、本文に `blocked: [{id, reason, detail, refs}]` を足す。メッセージは「{n} 件の編集を書き込めないため、何も保存していません。」'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: blocked
+        type: list[BlockedEdit]
+        description: 書き込めない編集（モジュール構成『保存待ちの編集』）。溜めた順
+  - name: ThreadCloseRejectedError
+    title: クローズにできない
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 送信の取り込み
+    summary: AI が、取り込み待ちの利用者の書き込みか利用者が未読の AI の書き込みのあるスレッドをクローズにしようとした。メッセージは `スレッド {ID} はクローズにできません`、`lines` に当たった条件ごとの書き込みの ID と案内の行（`_check_ai_close`）
+    kind: クラス
+    inherits: MindmapError

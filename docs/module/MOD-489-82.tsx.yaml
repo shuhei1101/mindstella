@@ -1,0 +1,27 @@
+id: MOD-489-82
+title: プレビュー / selection-comment
+lead: 部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ。
+components:
+  - name: SelectionComment
+    title: 選んだ箇所のコメントの入口
+    kind: コンポーネント
+    usecase: 項目へコメントする
+    summary: 部品設計『選んだ箇所のコメントの入口.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-58#
+    unit_tests:
+      - name: test_selection_comment
+        case: 正常
+        summary: 押す
+        condition: 入口を押す
+        mock: なし
+        expected: '`onOpen` が呼ばれる'
+      - name: test_selection_comment_when_below
+        case: 正常
+        summary: 上に収まらない
+        condition: 選んだ範囲がスクロール領域の上端
+        mock: なし
+        expected: 入口が終わりの下に出る
+    container: frontend/src/shared/components/selection-comment.tsx
+notes:
+  単体テスト: 同じフォルダの `selection-comment.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,12 @@
+id: MOD-489-89
+title: プレビュー / button
+lead: shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ。
+components:
+  - name: Button
+    title: ボタン
+    kind: コンポーネント
+    container: frontend/src/shared/components/ui/button.tsx
+    usecase: 共通
+    summary: shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ
+notes:
+  単体テスト: 同じフォルダの `button.test.tsx` に置く（knowledge の規約『フォルダ構成』）

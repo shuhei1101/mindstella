@@ -1,0 +1,220 @@
+id: MOD-489-178
+title: サーバー / 移行 / versions.py
+test_files:
+  - tests/unit/scripts/test_versions.py
+data_models:
+  - name: Version
+    title: 版
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    role: 値オブジェクト
+    summary: '`v{メジャー}.{マイナー}.{パッチ}` の 3 つの整数'
+    description: '`@dataclass(frozen=True, slots=True, order=True)`。並びの比較は `major` → `minor` → `patch` の順。`str()` は `v{major}.{minor}.{patch}`。'
+    properties:
+      - name: major
+        type: int
+        description: メジャー
+      - name: minor
+        type: int
+        description: マイナー
+      - name: patch
+        type: int
+        description: パッチ
+constants:
+  - name: PLUGIN_VERSION_FILE
+    title: プラグインの版のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    summary: '`plugins/mindstella/version.ini`（このファイルの 4 つ上のフォルダの `version.ini`）'
+    value: Path(__file__).resolve().parents[3] / "version.ini"
+  - name: VERSION_PATTERN
+    title: 版の形
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    summary: 版の文字列全体に当てる正規表現
+    value: re.compile(r"v(\d+)\.(\d+)\.(\d+)")
+functions:
+  - name: parse_release_version
+    title: 版の解釈
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`v{メジャー}.{マイナー}.{パッチ}` の文字列を版にする'
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: 版の文字列（前後の空白は落とす）
+    returns:
+      type: Version
+      description: 解釈した版
+    process: |-
+      1. 前後の空白を落とし、`VERSION_PATTERN` に全体が当たるかを見る（`fullmatch`）
+         - 当たらない場合、`ValueError` を送る
+      2. 3 つの整数で `Version` を作って返す
+    exceptions:
+      - name: ValueError
+        condition: 版の形でない
+        message: '版の形が違います: {text}（v{メジャー}.{マイナー}.{パッチ} で書いてください）'
+    unit_tests:
+      - name: test_parse_release_version
+        case: 正常
+        summary: 版を解釈し、整数で比べる
+        condition: '`" v0.10.2\n"` と `v0.9.9`'
+        mock: なし
+        expected: '`Version(0, 10, 2)`。`v0.9.9` より大きく、`str()` が `v0.10.2`'
+      - name: test_parse_release_version_when_invalid
+        case: 異常
+        summary: 版の形でなければ送る
+        condition: '`parametrize`: `0.3.0` / `v0.3` / `v0.3.0-rc1` / 空文字'
+        mock: なし
+        expected: '`ValueError`（`match` に `v{メジャー}`）'
+        exception: 版の形でない
+  - name: compare_versions
+    title: 版の比較
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: ワークスペースの版をプラグインの版と比べる
+    args:
+      - name: workspace
+        type: Version | None
+        required: true
+        passing: positional
+        description: ワークスペースの版（版を記録する前の形式は `None`）
+      - name: plugin
+        type: Version
+        required: true
+        passing: positional
+        description: プラグインの版
+    returns:
+      type: Literal['older', 'same', 'newer']
+      description: 比べた結果
+    process: 1. `workspace` が `None` か `plugin` より小さければ `older`、等しければ `same`、大きければ `newer` を返す
+    unit_tests:
+      - name: test_compare_versions
+        case: 正常
+        summary: 古い・同じ・新しいを返す
+        condition: '`parametrize`: `(None, v0.3.0)` / `(v0.2.0, v0.3.0)` / `(v0.3.0, v0.3.0)` / `(v0.10.0, v0.3.0)`'
+        mock: なし
+        expected: '`older` / `older` / `same` / `newer`'
+  - name: read_workspace_version
+    title: ワークスペースの版の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`.mindstella/mindstella-version.ini`（無ければ直下の `mindstella-version.ini`）の 1 行目を版にする。どちらも無ければ `None`'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: Version | None
+      description: ワークスペースの版。版のファイルが無ければ `None`
+    process: |-
+      1. `records_root(root) / VERSION_FILE` があればそれを、無ければ `root / VERSION_FILE`（v0.6.0 より前の置き場所）を読む対象にする。どちらも無ければ `None` を返す
+      2. 1 行目を読み、版にする（`parse_release_version`）
+         - `ValueError` の場合、`SchemaMismatchError`（`lines` に `mindstella-version.ini: 1 行目: {理由}`）を送る
+    exceptions:
+      - name: SchemaMismatchError
+        condition: 版のファイルの 1 行目が版の形でない
+    unit_tests:
+      - name: test_read_workspace_version
+        case: 正常
+        summary: 1 行目の版を読む
+        condition: 1 行目が `v0.3.0`、2 行目に別の文字を書いた版のファイル
+        mock: なし
+        expected: '`Version(0, 3, 0)`'
+      - name: test_read_workspace_version_when_missing
+        case: 正常
+        summary: 版のファイルが無ければ None
+        condition: 版のファイルを持たない `tmp_path`
+        mock: なし
+        expected: '`None`'
+      - name: test_read_workspace_version_when_invalid
+        case: 異常
+        summary: 版の形でなければ送る
+        condition: 1 行目が `0.3` の版のファイル
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` が `mindstella-version.ini: ` で始まる 1 行）'
+        exception: 版の形でない
+      - name: test_read_workspace_version_when_at_top
+        case: 正常
+        summary: 記録のフォルダに無ければ直下の版のファイルを読む
+        condition: '`parametrize`: 直下だけに `v0.5.0` / `.mindstella/` に `v0.6.0`、直下に `v0.5.0`'
+        mock: なし
+        expected: 前者は `v0.5.0`、後者は `v0.6.0`
+  - name: read_plugin_version
+    title: プラグインの版の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: プラグインの版のファイルの 1 行目を版にする
+    args:
+      - name: path
+        type: Path
+        required: false
+        default: PLUGIN_VERSION_FILE
+        passing: keyword
+        description: プラグインの版のファイル
+    returns:
+      type: Version
+      description: プラグインの版
+    process: 1. `path` の 1 行目を読み、版にする（`parse_release_version`）
+    unit_tests:
+      - name: test_read_plugin_version
+        case: 正常
+        summary: プラグインの版を読む
+        condition: '`v0.3.0` と書いた一時ファイルを `path` に渡す'
+        mock: なし
+        expected: '`Version(0, 3, 0)`'
+  - name: write_workspace_version
+    title: ワークスペースの版の書き込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/versions.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`mindstella-version.ini` に版を 1 行で書く'
+    side_effects: '`mindstella-version.ini` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: version
+        type: Version
+        required: true
+        passing: positional
+        description: 書く版
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `str(version)` と改行を一時ファイルに書き（`write_temp`）、`os.replace` で `records_root(root) / VERSION_FILE` に置き換える
+         - `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
+    exceptions:
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_write_workspace_version
+        case: 正常
+        summary: 版を 1 行で書く
+        condition: '`Version(0, 3, 0)`'
+        mock: なし
+        expected: '`mindstella-version.ini` の中身が `v0.3.0\n`'
+      - name: test_write_workspace_version_when_write_fails
+        case: 異常
+        summary: 置き換えられなければ送る
+        condition: '`os.replace` を `OSError` を送る関数に差し替える'
+        mock: '`os.replace`（`versions` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`mindstella-version.ini` と `.tmp` のファイルが無い'
+        exception: 置き換えで OSError

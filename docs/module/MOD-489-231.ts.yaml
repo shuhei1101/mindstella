@@ -1,0 +1,41 @@
+id: MOD-489-231
+title: プレビュー / 画面と部品 / settings-confirm.ts
+test_files:
+  - tests/unit/preview/test_settings_confirm.py
+components:
+  - name: settingsConfirm
+    title: 既定の保存の確かめ
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/settings-confirm.ts
+    usecase: ワークスペースの既定を変える
+    summary: 部品設計『既定の保存の確かめ』の引数を受け、`dialog` を `showModal()` で開く。最初のフォーカスは取り消す。`busy` の間は 2 つのボタンを押せなくし、Esc（`cancel` のイベント）を止める。表示する種類は「すべて表示」か「{外した種類}を表示しない」で書く
+    props:
+      - name: from
+        type: '{look: string, kinds: Set<string>}'
+        required: true
+        description: 今の既定
+      - name: to
+        type: '{look: string, kinds: Set<string>}'
+        required: true
+        description: 保存する値
+      - name: busy
+        type: boolean
+        required: false
+        default: 'false'
+        description: 保存している途中か
+      - name: error
+        type: string | null
+        required: false
+        default: 'null'
+        description: 保存できなかった理由（`role="alert"`）
+      - name: on
+        type: '{save, cancel}'
+        required: true
+        description: 保存する・取り消す（Esc を含む）
+    unit_tests:
+      - name: test_settings_confirm
+        case: 正常
+        summary: 変える項目と変えない項目、保存している間と失敗を描き分ける
+        condition: '`parametrize`: `from` が `deep`・7 種類、`to` が `glow`・7 種類 / 同じで `busy: true` / 同じで `error` あり'
+        mock: '`on.cancel`'
+        expected: 見た目の行に「深宇宙」と「グロウ」、種類の行に「すべて表示」と「変えない」。フォーカスが取り消す / 2 つのボタンが `disabled` で「保存しています」。Esc で `on.cancel` が呼ばれない / `role="alert"` の理由があり、「保存する」が押せる

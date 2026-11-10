@@ -1,0 +1,21 @@
+id: MOD-489-36
+title: プレビュー / docs-screen
+lead: 画面設計『資料.tsx』の要素と操作を描く。
+components:
+  - name: DocsScreen
+    title: 資料の画面
+    kind: 画面
+    usecase: 資料を読む
+    summary: 画面設計『資料.tsx』の要素と操作を描く
+    refs:
+      - SCR-489-34#
+    unit_tests:
+      - name: test_docs_screen
+        case: 正常
+        summary: 既定はカード
+        condition: '`?tab=docs`'
+        mock: MSW
+        expected: 納品物が先頭のカード
+    container: frontend/src/features/docs/docs/docs-screen.tsx
+notes:
+  単体テスト: 同じフォルダの `docs-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,14 @@
+id: MOD-489-84
+title: プレビュー / side-by-side-body-diff
+lead: 部品設計『左右に並べた本文の差分.tsx』の props・イベント・状態を持つ。
+components:
+  - name: SideBySideBodyDiff
+    title: 左右に並べた本文の差分
+    kind: コンポーネント
+    usecase: 前回からの差分を見る
+    summary: 部品設計『左右に並べた本文の差分.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-28#
+    container: frontend/src/shared/components/side-by-side-body-diff.tsx
+notes:
+  単体テスト: 同じフォルダの `side-by-side-body-diff.test.tsx` に置く（knowledge の規約『フォルダ構成』）

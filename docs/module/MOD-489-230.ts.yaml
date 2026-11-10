@@ -1,0 +1,26 @@
+id: MOD-489-230
+title: プレビュー / 画面と部品 / history-dialog.ts
+components:
+  - name: historyDialog
+    title: 変更履歴
+    container: plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts
+    usecase: 前回からの差分を見る
+    kind: コンポーネント
+    summary: 部品設計『変更履歴』の引数を受け、`dialog` を `showModal()` で開く。行を押すと選んだ `sel` を知らせて閉じる。閉じたら「変更履歴」のボタンにフォーカスを戻す。並べる時点は入口が記録の `changes` と「前回開いてから」の始まりから作る（画面設計『変更履歴』の時点の一覧）
+    props:
+      - name: points
+        type: '{sel, name, sub, count?}[]'
+        required: true
+        description: 並べる時点。`count` はその時点の `DiffPoint` の `added`・`changed`・`removed` の件数の和
+      - name: current
+        type: string
+        required: true
+        description: 今選んでいる時点の `sel`（差分を出さないときは空文字列）
+      - name: onPick
+        type: '(sel: string) => void'
+        required: true
+        description: 時点を選ぶ（空文字列は差分の表示をやめる）
+      - name: onClose
+        type: () => void
+        required: true
+        description: 閉じる

@@ -1,0 +1,35 @@
+id: LIB-489-31
+title: zod
+kind: ライブラリ
+version:
+  current: 4.6.7
+  latest: 4.6.7
+  checked_on: '2026-11-04'
+  source: package.json
+  pinning: 4.6.7 に固定する（`^` を付けない）
+catalogs:
+  - name: 使うもの
+    version: 4.6.7
+    entries:
+      - name: z.object / z.enum / .catch
+        kind: 関数
+        purpose: 概要の search の検証（決めた値以外は undefined）
+lead: TypeScript の型を導けるスキーマで、実行時に値を検証するライブラリ。
+purl: pkg:npm/zod
+dependency_scope: 必須
+adoption: 採用
+used_in:
+  - frontend/src/shared/core/preview-search.ts
+upstream: colinhacks/zod
+verification:
+  state: 済
+  date: '2026-11-04'
+  detail: Vitest で parseOverviewSearch が overview を受け、決めた値以外を undefined に落とすことを確かめた
+license: MIT
+official_url: https://zod.dev/
+docs_url: https://zod.dev/api
+install: '```bash
+
+  npm install --save-exact zod@4.6.7
+
+  ```'

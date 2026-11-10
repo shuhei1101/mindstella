@@ -10,7 +10,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["frontend/src/shared/api/generated/**", "frontend/src/route-tree.gen.ts", "plugins/**", "tests/**", "dev/**", "node_modules/**", "storybook-static/**", "storybook-react-static/**", ".storybook/**", ".storybook-react/public/**"] },
+  { ignores: ["frontend/src/shared/api/generated/**", "frontend/src/route-tree.gen.ts", "plugins/**", "tests/**", "docs/mock/**", "node_modules/**", "storybook-static/**", "storybook-react-static/**", ".storybook/**", ".storybook-react/public/**"] },
   {
     files: ["frontend/src/**/*.{ts,tsx}"],
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],

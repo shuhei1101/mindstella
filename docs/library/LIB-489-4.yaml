@@ -1,0 +1,132 @@
+id: LIB-489-4
+title: "claude-code"
+kind: "CLI"
+version:
+  current: 2.1.287
+  latest: 2.1.287
+  checked_on: '2026-10-02'
+  source: npm の @anthropic-ai/claude-code
+catalogs:
+  - name: コマンド
+    version: 2.1.287
+    entries:
+      - name: claude plugin marketplace add
+        kind: コマンド
+        purpose: このリポジトリをマーケットプレイスとして登録する
+      - name: claude plugin marketplace list
+        kind: コマンド
+        purpose: 登録済みのマーケットプレイスを確かめる
+      - name: claude plugin install
+        kind: コマンド
+        purpose: プラグイン mindstella をインストールする
+      - name: claude plugin list
+        kind: コマンド
+        purpose: インストール済みのプラグインと有効かを確かめる
+      - name: claude plugin details
+        kind: コマンド
+        purpose: プラグインが持つ部品（hooks の有無）を確かめる
+      - name: claude plugin validate
+        kind: コマンド
+        purpose: マーケットプレイスとプラグインのマニフェストを検証する
+      - name: claude -p
+        kind: コマンド
+        purpose: 非対話でスキルを動かし、`--output-format stream-json` で読み込みと許可を確かめる（PoC だけで使う。テストはモデルを呼ばない）
+      - name: claude plugin list --json
+        kind: コマンド
+        purpose: 起動スクリプトと、登録のスクリプトが書く alias `mindstella`・`mindstella-{名前}` が `mindstella@mindstella` の `installPath`（インストールした今の版のフォルダ）を引き、そのフォルダの `ensure_server.py` で常駐サーバーを確かめる
+      - name: claude mcp list
+        kind: コマンド
+        purpose: プラグインの `.mcp.json` の常駐サーバーへの接続が `plugin:mindstella:mindstella` として載ることを確かめる（テスト）
+        status: implemented
+        introduced:
+          pr: 392
+      - name: /mcp
+        kind: スラッシュコマンド
+        purpose: 会話の始まりに常駐サーバーへつなげなかったときに、利用者が mindstella へつなぎ直す（『常駐サーバーの起動の確認』とスキルが案内する）
+        status: implemented
+        introduced:
+          pr: 392
+  - name: ファイル
+    version: 2.1.287
+    entries:
+      - name: .claude-plugin/marketplace.json
+        kind: ファイル
+        purpose: マーケットプレイスの名前・持ち主・載せるプラグインを Claude Code に伝える
+      - name: .claude-plugin/plugin.json
+        kind: ファイル
+        purpose: プラグインの名前・版・説明を Claude Code に伝える
+      - name: skills/{スキル名}/
+        kind: フォルダ
+        purpose: プラグインが同梱するスキルを置く
+      - name: '{設定のフォルダ}/projects/{作業フォルダ}/{会話の ID}.jsonl'
+        kind: ファイル
+        purpose: '会話の記録。1 行 1 件の JSON で、利用者の入力は `type: user`（`cwd` と `message.content` を持つ）、処理中に待ち行列へ入った入力は `type: queue-operation`・`operation: enqueue`（本文も `cwd` も持たない）の行になる'
+        description: '`{設定のフォルダ}` は `CLAUDE_CONFIG_DIR`、無ければ `~/.claude`。`{作業フォルダ}` は Claude Code を立てたフォルダの絶対パスを UTF-16 の単位で英数字以外を `-` にした名前（日本語の名前のフォルダは同じ名前へ寄り得る。サロゲートペアの文字は `--` になる）。名前が 200 文字を超えると、先頭 200 文字に `-{パスのハッシュ}` を足した名前になる（ハッシュは Claude Code の内部の関数で作り、外からは作れない）。会話の ID は `/clear`・`/resume` で変わり、新しい会話は最初の user の行までファイルを作らない。入力を待っているときは確定から約 0.13 秒で user の行が、処理中は約 0.12 秒で `enqueue` の行が書かれ、user の行は処理の後に書かれる（2.1.296 で確かめた。公開された形ではなく、版で変わり得る）。長く続いた会話では、送ってから user の行まで最大 1.668 秒、`enqueue` の行まで最大 2.996 秒かかった（2026-10-20〜11-06 の利用者の送信 284 回）'
+      - name: hooks/hooks.json
+        kind: ファイル
+        purpose: プラグインのフック。`SessionStart` で会話を始めるたびにスレッドを AI の未読に戻すスクリプトと、常駐サーバーが落ちていれば起動するスクリプトを呼ぶ。`PreToolUse` で mindstella のツールを呼ぶたびに、呼んだセッションの値をツールの引数 `session` に入れる
+        description: '`{"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "..."}]}]}}` の形。`matcher` を持たなければ `startup`・`resume`・`clear`・`compact` の全てで流れる。コマンドの標準入力に `session_id`・`cwd`・`source` などの JSON が渡り、標準出力は会話の文脈に入る。失敗しても会話は始まる。フックは Claude Code の環境変数（`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`）を受け継ぎ、`bash` を挟んで Claude Code の子孫のプロセスとして動く'
+        refs:
+          - IF-489-46#
+          - IF-489-38#
+          - IF-489-15#
+        status: implemented
+        introduced:
+          pr: 235
+      - name: PreToolUse の updatedInput
+        kind: フックの出力
+        purpose: '`matcher` が `mcp__plugin_mindstella_mindstella__.*` の PreToolUse のフックが、ツールの入力を書き換えて渡す'
+        description: '標準入力に `cwd`・`tool_name`・`tool_input` などの JSON が渡る。標準出力に `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": {...}}}` を書くと、ツールは `updatedInput` を入力として呼ばれる。`permissionDecision` を出さなければ許可の判断は変えない'
+        refs:
+          - IF-489-15#
+        status: implemented
+        introduced:
+          pr: 392
+      - name: .mcp.json
+        kind: ファイル
+        purpose: 'プラグインのルートに置き、常駐サーバーへの接続を `"type": "http"` と `"url"` で書く'
+        description: '`{"mcpServers": {"mindstella": {"type": "http", "url": "http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp"}}}` の形。`url` の `${VAR:-既定}` は Claude Code の環境変数で展開される。プラグインの MCP サーバーのツールは `mcp__plugin_{プラグイン名}_{サーバー名}__{ツール}`（`mcp__plugin_mindstella_mindstella__{ツール}`）の名前になり、`claude mcp list` には `plugin:{プラグイン名}:{サーバー名}` で出る。`type: http` は起動せずにつなぐだけで、待ち受けていなければつながらない状態になる'
+        refs:
+          - IF-489-68#
+        status: implemented
+        introduced:
+          pr: 392
+  - name: スキル
+    version: 2.1.287
+    entries:
+      - name: SKILL.md
+        kind: ファイル
+        purpose: '`skills/{スキル名}/SKILL.md` を持つフォルダだけがスキルになる。プラグインのスキルは `/{プラグイン名}:{スキル名}` で呼ぶ'
+      - name: name
+        kind: front matter
+        purpose: スキル名。スラッシュコマンドの `:` の後ろになる
+      - name: description
+        kind: front matter
+        purpose: いつ使うかの説明。Claude Code がスキルを選ぶ手掛かり
+      - name: allowed-tools
+        kind: front matter
+        purpose: 'スキルの実行中に確認なしで使えるツール。許可はスキルが起動したサブエージェントにも及ぶ。Bash の規則の中の `${CLAUDE_PLUGIN_ROOT}` と `~` は展開され、書いた形のまま起動したコマンドにだけ当たる（PoC #22）'
+      - name: ${CLAUDE_PLUGIN_ROOT}
+        kind: 置換
+        purpose: SKILL.md の本文で、取り込まれたプラグインのフォルダの絶対パスに展開される
+      - name: ${CLAUDE_SKILL_DIR}
+        kind: 置換
+        purpose: SKILL.md の本文で、そのスキルのフォルダの絶対パスに展開される
+      - name: $ARGUMENTS
+        kind: 置換
+        purpose: スラッシュコマンドに渡した引数。ワークスペースのフォルダを受け取る
+      - name: Agent
+        kind: ツール
+        purpose: スキルの手順からサブエージェント（general-purpose）を起動し、リサーチを任せる
+lead: Anthropic のコーディングエージェントの CLI。プラグインとマーケットプレイスの仕組みを持ち、プラグインが同梱するスキルを読み込む。
+purl: pkg:npm/%40anthropic-ai/claude-code
+supplier: Anthropic
+dependency_scope: 必須
+adoption: 採用
+upstream: anthropics/claude-code
+verification:
+  state: 済
+  date: '2026-10-13'
+  detail: PoC（https://github.com/shuhei1101/mindmap/pull/22）で、2.1.287 の `claude -p --plugin-dir` を既定の許可モードで動かし、プラグインの 2 つのスキルの呼び名・`${CLAUDE_PLUGIN_ROOT}` の展開・`allowed-tools` の許可とサブエージェントへの及び方を確かめた（作業ツリーとインストールした形の両方）。2026-10-13 に 2.1.296 で、`hooks/hooks.json` に `matcher` なしの `SessionStart` を 1 つ持つ最小のプラグインを `claude -p --plugin-dir` で読み込み、新しい会話・`--resume`・`--resume` での `/compact`・`/clear` を流した。フックは `source` が `startup`・`resume`・`compact`・`clear` の全てで流れ（`/compact`・`/clear` はその前に `resume` も流れる）、標準入力の JSON に作業フォルダの `cwd` が入り、コマンドの `${CLAUDE_PLUGIN_ROOT}` はプラグインのフォルダへ展開された。フックが終了コード 1 で終えても会話は始まり応答した。フックが標準出力に書いた文は会話の文脈に入り（モデルがその文を答えた）、書かなければ入らなかった。2026-11-02 に 2.1.316 で、PR #392 の作業ツリーのプラグインを `claude -p --plugin-dir` で読み込み、`MINDSTELLA_PORT` に空きポートを渡して常駐サーバーを先に立てて確かめた。`.mcp.json` の `url` の `${MINDSTELLA_PORT:-8784}` は Claude Code の環境変数で展開され、stream-json の `init` に `plugin:mindstella:mindstella` が `connected` で載り、ツールは `mcp__plugin_mindstella_mindstella__{ツール}` の名前になった。PreToolUse の `updatedInput` で `session` を入れた `status` の呼び出しは、相対パスの `talk` を会話の作業フォルダから読んだ（`session` が無ければ引数の誤りになる）。`--plugin-dir` は `claude mcp list` に効かないため、一時の `CLAUDE_CONFIG_DIR` で作業ツリーをマーケットプレイスとして登録・インストールし、`claude mcp list` に `plugin:mindstella:mindstella: http://127.0.0.1:{ポート}/mcp (HTTP) - ✔ Connected` と出ることを確かめた（`MINDSTELLA_PORT` を消すと 8784 の URL になる）。同じ設定のフォルダの会話の SessionStart のフックが 8784 で常駐サーバーを起動した。`/mcp` は stream-json の `slash_commands` に載り、`-p` では接続の数を返す（つなぎ直しの画面は対話でだけ開く）
+license: 独自の利用規約（npm のライセンス欄は `SEE LICENSE IN README.md`）。このプラグインは同梱せず、利用者が入れたものを使う
+docs_url: https://code.claude.com/docs/en/plugins/marketplace-reference

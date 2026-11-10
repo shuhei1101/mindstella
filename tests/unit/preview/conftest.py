@@ -40,7 +40,16 @@ PREVIEW_DIR = REPO_ROOT / "plugins" / "mindstella" / "skills" / "mindmap" / "pre
 STYLE_FILES = ("tokens.css", "style.css")
 
 # 描画のライブラリの外部ライブラリの設計書を置くフォルダ
-LIBRARY_DESIGN_DIR = REPO_ROOT / "dev" / "設計書" / "外部ライブラリ"
+LIBRARY_DESIGN_DIR = REPO_ROOT / "docs" / "library"
+
+# 描画のライブラリの名前 → 外部ライブラリの設計書の ID
+LIBRARY_DESIGN_IDS = {
+    "mdmark": "LIB-489-13",
+    "mermaid": "LIB-489-14",
+    "elkjs": "LIB-489-5",
+    "marked": "LIB-489-11",
+    "jsdiff": "LIB-489-8",
+}
 
 # テストのページを開く、仮のオリジン（history.pushState が使える http(s) の URL）
 PAGE_URL = "https://preview.test/index.html"
@@ -87,7 +96,7 @@ def _read_mdmark_dist() -> MdmarkDist:
     # 読み込み済みならそのまま返す
     if _mdmark_dists:
         return _mdmark_dists[0]
-    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{MDMARK_DESIGN}.yaml").read_text(encoding="utf-8"))
+    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{LIBRARY_DESIGN_IDS[MDMARK_DESIGN]}.yaml").read_text(encoding="utf-8"))
     url = design["version"]["source"]
     # 版の固定の仕方に書いてある最初の integrity が JavaScript の値（CSS の値はその後ろ）
     expected = re.search(r"sha384-[A-Za-z0-9+/=]+", design["version"]["pinning"])
@@ -115,7 +124,7 @@ def _read_mdmark_css_dist() -> MdmarkDist:
     # 読み込み済みならそのまま返す
     if _mdmark_css_dists:
         return _mdmark_css_dists[0]
-    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{MDMARK_DESIGN}.yaml").read_text(encoding="utf-8"))
+    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{LIBRARY_DESIGN_IDS[MDMARK_DESIGN]}.yaml").read_text(encoding="utf-8"))
     url = design["version"]["source"].replace(MDMARK_JS_FILE, MDMARK_CSS_FILE)
     # 版の固定の仕方に書いてある 2 つ目の integrity が CSS の値（最初は JavaScript の値）
     integrities = re.findall(r"sha384-[A-Za-z0-9+/=]+", design["version"]["pinning"])
@@ -142,7 +151,7 @@ def _read_library(name: str) -> LoadedLibrary:
     # 読み込み済みならそのまま返す
     if name in _loaded_libraries:
         return _loaded_libraries[name]
-    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{name}.yaml").read_text(encoding="utf-8"))
+    design = yaml.safe_load((LIBRARY_DESIGN_DIR / f"{LIBRARY_DESIGN_IDS[name]}.yaml").read_text(encoding="utf-8"))
     url = design["version"]["source"]
     expected = re.search(r"sha384-[A-Za-z0-9+/=]+", design["version"]["pinning"])
     assert expected is not None, f"{name} の設計書に integrity がありません"

@@ -1,0 +1,56 @@
+id: MOD-489-107
+title: プレビュー / doc-export
+lead: 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い）。
+functions:
+  - name: buildDocHtml
+    title: 資料の 1 枚の HTML
+    kind: 関数
+    usecase: 資料を読む
+    summary: 本文と mdmark の CSS・JavaScript を 1 枚の HTML にする
+    args:
+      - name: title
+        type: string
+        required: true
+        description: 題
+      - name: source
+        type: string
+        required: true
+        description: 本文
+      - name: assets
+        type: MdmarkAssets
+        required: true
+        description: mdmark の中身
+    returns:
+      type: string
+      description: HTML
+    unit_tests:
+      - name: test_build_doc_html
+        case: 正常
+        summary: 本文と中身を持つ
+        condition: 本文とダミーの CSS・JavaScript
+        mock: なし
+        expected: HTML に本文と両方が入る
+    container: frontend/src/shared/core/doc-export.ts
+  - name: stripEmbeddedHtml
+    title: 埋め込んだ HTML を除く
+    kind: 関数
+    usecase: 資料を読む
+    summary: '`<!-- html -->` の範囲を除いた Markdown を返す'
+    args:
+      - name: source
+        type: string
+        required: true
+        description: 本文
+    returns:
+      type: string
+      description: 除いた本文
+    unit_tests:
+      - name: test_strip_embedded_html
+        case: 正常
+        summary: 範囲を除く
+        condition: 範囲を持つ本文
+        mock: なし
+        expected: 範囲が無い
+    container: frontend/src/shared/core/doc-export.ts
+notes:
+  単体テスト: 同じフォルダの `doc-export.test.ts` に置く（knowledge の規約『フォルダ構成』）

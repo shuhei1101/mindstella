@@ -1,0 +1,96 @@
+id: MOD-489-204
+title: プレビュー / 画面と部品 / settings-panel.ts
+test_files:
+  - tests/unit/preview/test_settings_panel.py
+constants:
+  - name: MINIMAP_LABEL
+    title: 差分のミニマップの呼び名
+    container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
+    usecase: 表示の設定を変える
+    summary: 表示の設定の切り替えと「この端末で変えている項目」に出す名前（確認ログの決定）。`resolveDisplay` もこの名前を並べる
+    value: '"差分のミニマップ"'
+components:
+  - name: settingsPanel
+    title: 表示の設定
+    kind: コンポーネント
+    container: plugins/mindstella/skills/mindmap/preview/components/settings-panel.ts
+    usecase: 表示の設定を変える
+    summary: 部品設計『表示の設定』の引数を受け、表示する種類を変える・差分のミニマップを切り替える・本文の見せ方を切り替える・既定に戻す・ワークスペースの既定にする・閉じるをコールバックで知らせる。見た目は選ばせず、`look`・`defaultLook` は「ワークスペースの既定にする」を出すかの比較にだけ使う（`minimap` は比べに含めない）。「すべて」は `toggleAllBox` と同じく途中の印を持つ。表示する種類の下に `fieldset`（凡例「詳細に表示するもの」）を置き、`MINIMAP_LABEL` のチェックボックスと、`BODY_VIEW_LABELS` の `pin`・`head`・`stripes`・`fold` のチェックボックスをこの順に 1 行ずつ出す（`bodyView` は比べに含めない）。描き直しても操作していた部品にフォーカスを戻す
+    props:
+      - name: look
+        type: string
+        required: true
+        description: 当てているネットワークの見た目（パネルには出さず、`defaultLook` と比べる）
+      - name: defaultLook
+        type: string
+        required: true
+        description: ワークスペースの既定の見た目（パネルには出さず、`look` と比べる）
+      - name: kinds
+        type: Set<string>
+        required: true
+        description: 当てている表示する種類
+      - name: defaultKinds
+        type: Set<string>
+        required: true
+        description: ワークスペースの既定の表示する種類
+      - name: counts
+        type: Record<string, number>
+        required: true
+        description: 種類 → 件数
+      - name: overrides
+        type: string[]
+        required: true
+        description: この端末で変えている項目の名前
+      - name: canSave
+        type: boolean
+        required: true
+        description: 「ワークスペースの既定にする」を置くか（配る書き出しは偽）
+      - name: message
+        type: "{kind: 'ok' | 'info', text: string} | null"
+        required: false
+        default: 'null'
+        description: 下端に残す知らせ（`role="status"`）
+      - name: storageOk
+        type: boolean
+        required: false
+        default: 'true'
+        description: 偽のとき先頭に「この端末に保存できません。…」（`role="alert"`）
+      - name: on
+        type: '{kinds, minimap, bodyView, reset, save, close}'
+        required: true
+        description: 表示する種類を変える（変えた後の並び）・差分のミニマップを切り替える（切り替えた後の表示する・しない）・本文の見せ方を切り替える（`{key, value}`。`key` は `pin`・`head`・`stripes`・`fold`、`value` は切り替えた後の真偽値）・既定に戻す・ワークスペースの既定にする・閉じる
+      - name: minimap
+        required: false
+        default: 'true'
+        type: boolean
+        description: 差分のミニマップを表示しているか（チェックボックスの状態）
+      - name: bodyView
+        type: '{pin: boolean, head: boolean, stripes: boolean, fold: boolean}'
+        required: false
+        default: BODY_VIEW_DEFAULT
+        description: 当てている本文の表とセクションの見せ方（チェックボックスの状態）
+    unit_tests:
+      - name: test_settings_panel
+        case: 正常
+        summary: 上書きの有無と既定との違いで、既定に戻すと保存のボタンを出し分ける
+        condition: '`parametrize`: `overrides` が空で既定と同じ / `look: dust`・`defaultLook: starlight`・`overrides` 2 件 / 同じで `canSave: false` / `look`・`kinds` が既定と同じで `overrides` が「ライト / ダーク」'
+        mock: なし（DOM を作って見る）
+        expected: 「ワークスペースの既定のまま表示しています。」と「見た目と表示する種類は、ワークスペースの既定と同じです。」でボタンが無い / 「既定に戻す」と「ワークスペースの既定にする」があり、見た目のラジオボタンが無い / 「既定に戻す」だけがある / 「既定に戻す」があり、保存のボタンの代わりに「見た目と表示する種類は、…同じです。」
+      - name: test_settings_panel_when_kinds_changed
+        case: 正常
+        summary: 種類のチェックと「すべて」で変えた後の並びを知らせる
+        condition: 用語集と会話ログを除く 5 種類。タスクのチェックを外し、次に「すべて」を押す
+        mock: '`on.kinds`'
+        expected: 「すべて」が `indeterminate` で `5/7`。`on.kinds` がタスクを除いた 4 種類、続けて 7 種類で呼ばれる。概要とネットワークの行はチェックボックスを持たない
+      - name: test_settings_panel_when_minimap
+        summary: 差分のミニマップのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない
+        case: 正常
+        condition: '`look`・`kinds` が既定と同じ。`parametrize`: `minimap: true`・`overrides` が空 / `minimap: false`・`overrides` が「差分のミニマップ」。どちらもチェックボックスを押す'
+        expected: 凡例「詳細に表示するもの」の中に「差分のミニマップ」のチェックボックスがあり、付いている・`on.minimap` が `false` で呼ばれる / 外れている・「既定に戻す」がある・「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」・`on.minimap` が `true` で呼ばれる
+        mock: '`on.minimap`'
+      - name: test_settings_panel_when_body_view
+        case: 正常
+        summary: 本文の見せ方の 4 つのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない
+        condition: '`look`・`kinds` が既定と同じ。`parametrize`: `bodyView` が `BODY_VIEW_DEFAULT`・`overrides` が空で「表のしま模様」を押す / `bodyView` の `stripes` が真で `fold` が偽・`overrides` が「表のしま模様」「セクションの折りたたみ」で「セクションの折りたたみ」を押す'
+        mock: '`on.bodyView`'
+        expected: '凡例「詳細に表示するもの」の中に「差分のミニマップ」「表の列の固定」「表の見出しの固定」「表のしま模様」「セクションの折りたたみ」の順にチェックボックスがあり、しま模様だけが外れている・`on.bodyView` が `{key: stripes, value: true}` で呼ばれる / しま模様が付き折りたたみが外れている・「既定に戻す」がある・「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」・`on.bodyView` が `{key: fold, value: true}` で呼ばれる'

@@ -1,0 +1,61 @@
+id: MOD-489-182
+title: サーバー / 移行 / field_to_playbooks.py
+test_files:
+  - tests/unit/scripts/test_field_to_playbooks.py
+functions:
+  - name: migrate
+    title: 分野のプレイブックの配列への移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: v0.5.0 の `call`（`field_to_playbooks`）が呼ぶ変換。`mindmap.yaml` の `field` を同じ位置の `playbooks` の 1 件の配列へ移す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `mindmap.yaml` が無い場合、何も書かず空を返す（既に `config.yaml` に改めた今の形のワークスペース）
+      2. `mindmap.yaml` を `yaml.safe_load` で読む
+      3. 設定が `field` を持たない場合、何も書かず空を返す
+      4. `field` と `playbooks` を両方持つ場合、`ValueError`（`field と playbooks を両方持ちます`）を送る（`call` が手順の失敗にする）
+      5. キーの並びを保ったまま、`field` の位置に `playbooks: [{field の値}]` を置いた新しい辞書を作る（`target_label` など他のキーは変えない）
+      6. 読み書きと検証の `dump_yaml` と `write_temp` で一時ファイルに書き、`os.replace` で置き換える
+         - 置き換えで `OSError` が起きた場合、一時ファイルを消して送り直す
+      7. `[mindmap.yaml]` を返す
+    exceptions:
+      - name: ValueError
+        condition: '`field` と `playbooks` を両方持つ'
+        message: field と playbooks を両方持ちます
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_migrate
+        case: 正常
+        summary: field を同じ位置の playbooks の 1 件の配列へ移す
+        condition: '`summary`・`field: システム開発`・`target_label: システム`・`phases` の順の `mindmap.yaml`'
+        mock: なし
+        expected: 戻り値が `[mindmap.yaml]`、キーが `summary`・`playbooks`・`target_label`・`phases` の順で `playbooks` が `[システム開発]`、`target_label` が `システム` のまま、`.tmp` のファイルが無い
+      - name: test_migrate_when_no_field
+        case: 正常
+        summary: field を持たない設定は何も書かない
+        condition: '`playbooks` を持ち `field` を持たない `mindmap.yaml`'
+        mock: なし
+        expected: 戻り値が空、中身と更新日時が呼ぶ前と同じ
+      - name: test_migrate_when_both
+        case: 異常
+        summary: field と playbooks を両方持つ設定は送り、何も書かない
+        condition: '`field` と `playbooks` を両方持つ `mindmap.yaml`'
+        mock: なし
+        expected: '`ValueError`、中身が呼ぶ前と同じ'
+      - name: test_migrate_when_settings_renamed
+        case: 正常
+        summary: mindmap.yaml が無ければ何も書かない
+        condition: '`config.yaml` だけを持つワークスペース'
+        mock: なし
+        expected: 戻り値が空。`config.yaml` の中身と更新日時が呼ぶ前と同じで、`mindmap.yaml` が作られていない

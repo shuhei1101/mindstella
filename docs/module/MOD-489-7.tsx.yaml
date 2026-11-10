@@ -1,0 +1,33 @@
+id: MOD-489-7
+title: プレビュー / reply-form
+lead: 部品設計『返信の入力.tsx』の props・イベント・状態を持つ。
+components:
+  - name: ReplyForm
+    title: 返信の入力
+    kind: コンポーネント
+    usecase: スレッドで話す
+    summary: 部品設計『返信の入力.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-489-56#
+    unit_tests:
+      - name: test_reply_form
+        case: 正常
+        summary: 溜める
+        condition: 本文を書いて Ctrl+Enter
+        mock: なし
+        expected: '`onSubmit` が thread・body で呼ばれる。ボタンは文字を持たず、`aria-label`「レビューに追加」と `title`「レビューに追加（Ctrl+Enter）」を持つ'
+      - name: test_reply_form_when_saving
+        case: 正常
+        summary: 溜めている
+        condition: '`status` が saving'
+        mock: なし
+        expected: 入力欄が読み取りだけでボタンを押せない
+      - name: test_reply_form_when_voice
+        case: 正常
+        summary: 音声入力の状態とイベント
+        condition: '`voice` が recording で ✓ / disabled でマイク'
+        mock: なし
+        expected: '`onVoiceDone` が thread・body で呼ばれ、結果の行に経過の時間 / `onVoiceBlocked` が呼ばれる'
+    container: frontend/src/features/comments/shared/reply-form.tsx
+notes:
+  単体テスト: 同じフォルダの `reply-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）
