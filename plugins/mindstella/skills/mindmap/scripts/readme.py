@@ -30,10 +30,10 @@ PREVIEW_HINT = "`/mindstella:session` でプレビューを頼むと URL が表�
 
 # ドキュメントの節に並べる題名と URL
 DOC_LINKS = (
-    ("プレビューを見る", "https://shuhei1101.github.io/mindstella/使い方/プレビューを見る.html"),
+    ("プレビューを見る", "https://shuhei1101.github.io/mindstella/guide/プレビューを見る.html"),
     (
         "起動スクリプトで立ち上げる",
-        "https://shuhei1101.github.io/mindstella/使い方/セットアップ手順/起動スクリプトで立ち上げる.html",
+        "https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html",
     ),
 )
 
