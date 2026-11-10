@@ -11,7 +11,7 @@
   切り戻し: null
   失敗時: 1 回呼び直し、2 回続けて失敗したら起点 Issue でユーザーへ返却する
   確認方法: 全ての Claude Code の設定の installed_plugins.json にある ai-monitor@ai-monitor の gitCommitSha が、AI Monitor の v0.3.0 のタグの親を全て祖先に持つ
-  状態: 未
+  状態: 済
 設定の見直し:
   説明: モニターの端末の settings.yaml を、稼働中のモニターと同じ AI Monitor の develop のコードで読み、v0.3.0 で増えたキーが既定値の設定で補われて誤りなく読み込めることを確認する。読み込めなければ、誤りが指すキーを settings.yaml に追加する（v0.3.0 の settings.yaml.example は agents[].mcp_tools を持たないため、ツールの割り当ては見直さない）
   タグ: [設定]
@@ -25,4 +25,4 @@
   切り戻し: null
   失敗時: 1 回やり直し、2 回続けて失敗したら起点 Issue でユーザーへ返却する
   確認方法: AI Monitor の develop の worktree で ai_monitor.shared.settings の Settings() を .venv/bin/python3 で呼ぶと、誤りなく読み込めて監視対象のプロジェクトの件数が返る
-  状態: 未
+  状態: 済
