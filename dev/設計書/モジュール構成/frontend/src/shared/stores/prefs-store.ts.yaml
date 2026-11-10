@@ -66,6 +66,7 @@ functions:
         condition: 負の数・文字・読めない JSON
         mock: なし
         expected: 0 以上の数だけを返す
+    container: frontend/src/shared/stores/prefs-store.ts
   - name: writeBodyScroll
     title: 本文のスクロール位置の書き込み
     kind: 関数
@@ -83,6 +84,7 @@ functions:
     returns:
       type: void
       description: 無し
+    container: frontend/src/shared/stores/prefs-store.ts
   - name: usePrefs
     title: 端末の保存領域の購読
     kind: フック

@@ -10,3 +10,4 @@ functions:
   returns:
     type: unknown
     description: 処理の結果
+  container: frontend/src/shared/core/markdown-decorate.ts
