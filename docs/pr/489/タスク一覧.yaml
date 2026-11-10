@@ -65,8 +65,10 @@ tasks:
     updated_at: '2026-11-10T22:43:15.977192+00:00'
     note: readme.py の公開ドキュメントのリンクの定数（MOD-489-153）を移した後の URL にする
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: v0.4.0 の変換を dev/ の置き場所のまま掛けた後、文書を docs/ の種類のフォルダへ移し、dev-docs.yaml・rules.yaml・files.yml・CLAUDE.md・.gitignore・eslint.config.js・docs/_config.yml・ai-monitor-version.ini を直す（要件.md の `## 要望`）
+    updated_by: planner
+    updated_at: '2026-11-10T22:48:34.917528+00:00'
   - process: 単体テスト作成
     status: todo
     updated_by: planner
