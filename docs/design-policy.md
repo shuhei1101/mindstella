@@ -11,10 +11,10 @@ mindstella の画面全体に通すデザインの方向性。
 | スタイル | 開発者ツール × スイス | 規約『デザインスタイル』の組み合わせ |
 | 分類 | 業務系 × 表現系 | - |
 | 明暗 | 両方 | 既定は端末の設定に従い、トップバーのボタンで切り替える |
-| 見本（画面全体） | [docs/mock/styles/shadcn-swiss-cards/](../mock/styles/shadcn-swiss-cards/index.html) | 今の画面の見本は [docs/mock/styles/dev-swiss-cards/](../mock/styles/dev-swiss-cards/index.html) |
+| 見本（画面全体） | [docs/mock/styles/shadcn-swiss-cards/](./mock/styles/shadcn-swiss-cards/index.html) | 今の画面の見本は [docs/mock/styles/dev-swiss-cards/](./mock/styles/dev-swiss-cards/index.html) |
 | 見本（部品） | なし | Storybook は部品設計で置く |
-| 値の置き場所 | [docs/mock/styles/shadcn-swiss-cards/style.css](../mock/styles/shadcn-swiss-cards/style.css) の `===== トークン =====` | React の側の `shared/styles/` へ移す置き場所はモジュール構成設計で決める。今の画面は React へ切り替えるまで `plugins/mindstella/skills/mindmap/preview/tokens.css` の今の名前のまま |
-| 選んだ理由 | ジャンルは開発者ツール（業務・SaaS）。利用者は Claude Code で話し合いを記録した本人で、表と数値を長く読み返す。無彩色の骨格に印の 1 色だけを置き、見出しと本文の大きさの差で先に読むところを示す | ユーザーと見本で決めた（[確認ログ](../pr/21/確認ログ.md)）。React へ移すときも同じ見た目のまま、トークンを shadcn/ui の名前で持つ（[確認ログ](../pr/429/確認ログ.md)） |
+| 値の置き場所 | [docs/mock/styles/shadcn-swiss-cards/style.css](./mock/styles/shadcn-swiss-cards/style.css) の `===== トークン =====` | React の側の `shared/styles/` へ移す置き場所はモジュール構成設計で決める。今の画面は React へ切り替えるまで `plugins/mindstella/skills/mindmap/preview/tokens.css` の今の名前のまま |
+| 選んだ理由 | ジャンルは開発者ツール（業務・SaaS）。利用者は Claude Code で話し合いを記録した本人で、表と数値を長く読み返す。無彩色の骨格に印の 1 色だけを置き、見出しと本文の大きさの差で先に読むところを示す | ユーザーと見本で決めた（[確認ログ](./pr/21/確認ログ.md)）。React へ移すときも同じ見た目のまま、トークンを shadcn/ui の名前で持つ（[確認ログ](./pr/429/確認ログ.md)） |
 
 <!-- /table -->
 
@@ -73,7 +73,7 @@ mindstella の画面全体に通すデザインの方向性。
 | 見出し | サンセリフの太字（Inter・Noto Sans JP） | 題名は本文の 2.4 倍（`--fs-h1`）、大きな数字は 3.1 倍（`--fs-big`） |
 | 本文 | サンセリフ（Inter・Noto Sans JP） | 14px（`--fs-body`）。補足は 13px・12px の 2 段まで。本文の Markdown も同じ書体・大きさに揃える |
 | ID・数値 | 等幅（JetBrains Mono） | 桁を揃える。表の数値の列は右揃え。本文のコードも等幅 |
-| 読み込み | Google Fonts から読む | 端末によらず字形を揃える（[確認ログ](../pr/21/確認ログ.md)） |
+| 読み込み | Google Fonts から読む | 端末によらず字形を揃える（[確認ログ](./pr/21/確認ログ.md)） |
 
 ## 形状と奥行き
 
