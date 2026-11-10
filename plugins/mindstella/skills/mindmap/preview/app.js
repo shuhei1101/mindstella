@@ -1427,7 +1427,7 @@ var MindmapPreview;
             else
                 redrawForm({ target: state.target, focus });
         };
-        /** 文字起こしの可否を読み直す。返ったら入力と設定の画面を描き直す */
+        /** 文字起こしの可否を読み直す。返ったら入力と、設定の画面の音声入力のまとまりを描き直す */
         const refreshAvailability = async () => {
             const result = await voiceCalls.status();
             comment.voice.availability = result.ok ? result.data : null;
@@ -1435,7 +1435,7 @@ var MindmapPreview;
                 redrawForm({ target: route.id, focus: false });
             if (comment.listOpen)
                 renderComments();
-            renderWorkspace();
+            renderWorkspaceTranscription();
         };
         /** 入力のマイク・×・✓ のコールバック */
         const voiceHandlers = (state) => {
@@ -3262,6 +3262,18 @@ var MindmapPreview;
                 main.after(next);
             else
                 current.replaceWith(next);
+        };
+        /** 開いている設定の画面の音声入力のまとまりだけを作り直した欄に差し替える（ほかの欄の入力の途中を残す） */
+        const renderWorkspaceTranscription = () => {
+            const current = document.querySelector(".pe-ws");
+            if (current === null)
+                return;
+            const next = MindmapPreview.workspaceSettings(workspaceProps());
+            for (const key of ["transcription.action", "transcription.preset"]) {
+                const fresh = next.querySelector(`[data-key='${key}']`);
+                if (fresh !== null)
+                    current.querySelector(`[data-key='${key}']`)?.replaceWith(fresh);
+            }
         };
         /** 表示の設定のパネルの「設定を編集する」。表示の設定は閉じ、設定の画面を開く（幅 900px 以下では保存待ちのパネルも閉じる） */
         const openWorkspace = () => {
