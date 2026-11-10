@@ -1,0 +1,18 @@
+use_cases: []
+docs:
+  - page: dev/設計書/モジュール構成/frontend/src/shared/core/body-links.ts.yaml
+    new: false
+    change: '`test_render_markdown_when_code_block` の `expected` の値を引用符で囲み、YAML として解析できるようにする'
+    status: todo
+  - page: dev/設計書/部品設計/プレビュー/Markdownの本文.ts.yaml
+    new: false
+    change: '`accessibility` の最後の項目（コードブロックの `pre`）を引用符で囲み、YAML として解析できるようにする'
+    status: todo
+  - page: dev/設計書/部品設計/プレビュー/Markdownの本文.tsx.yaml
+    new: false
+    change: '`accessibility` の最後の項目（コードブロックの `pre`）を引用符で囲み、YAML として解析できるようにする'
+    status: todo
+scope_out:
+  - item: '`dev/設計書/モジュール構成/プレビュー/基盤.ts.yaml` の修正'
+    reason: '#476（commit fcdb3052）で直り、develop で YAML として解析できる'
+    plan: none
