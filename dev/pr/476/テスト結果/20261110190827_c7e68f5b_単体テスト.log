@@ -1,0 +1,38 @@
+# pytest tests/unit は db8b697a で全件実行した。c7e68f5b の実装の変更は voice_paste.py だけのため、その単体テストを c7e68f5b で実行し直した
+
+$ pytest tests/unit
+tests/unit/test_isolated_environment.py ...                              [100%]
+
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========== 2142 passed, 1 skipped, 5 warnings in 1613.96s (0:26:53) ===========
+exit=0
+
+$ pytest tests/unit/scripts/test_voice_paste.py
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 22 passed, 5 warnings in 0.73s ========================
+exit=0
+
+$ npx vitest run
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-preview-comment-voice-input
+
+
+ Test Files  71 passed (71)
+      Tests  211 passed (211)
+   Start at  19:02:22
+   Duration  349.96s (environment 53%, import 25%, setup 19%, transform 1%, tests 1%, worker 1%)
+
+Environment  jsdom was created 71 times · 1218.53s total, 53% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit=0
