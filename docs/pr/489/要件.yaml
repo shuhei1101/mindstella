@@ -109,8 +109,10 @@ docs:
     updated_at: '2026-11-10T19:58:28.309507+00:00'
   - page: plugins/mindstella/skills/mindmap/README.md
     new: false
-    change: 公開ドキュメントへのリンクを移した後の URL にする（要件.md の未確定）
-    status: todo
+    change: 公開ドキュメントへのリンクを docs/guide/ へ移した後の URL（/guide/{ページ}.html、「話し合い」は分類のトップページ /使い方/）にする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-10T22:43:18.837176+00:00'
 scope_out:
   - item: 移した文書の本文を mdmark の書き方と表し方の優先順位に合わせる
     reason: '#407 の子の Issue が受け持つ（この PR はファイルを移して参照を修正するだけ）'
