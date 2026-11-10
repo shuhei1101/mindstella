@@ -14,7 +14,7 @@ flows:
   flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as POST /api/comments/send-now\n  participant WS as ワークスペース\n  \n  クライアント->>IF: POST {target: D-1, body}\n  IF-->>WS: 項目・スレッドを読む\n  IF->>IF: 向けた項目を確かめる\n  IF->>WS: threads.yaml にスレッドを 1 件足す\n  IF-->>クライアント: 201、JSON（sent・thread・post・entered）\n```"
   expected:
   - ステータスが 201 で、`thread` が TH-1、`post` が TH-1-1、`entered` が `false`（tmux の外のため）
-  - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で、最初の書き込みが `author: user`・`body: 案 A にする`・`read: false`・`taken: null`・`comment: null`・`seen: true`'
+  - '`threads.yaml` の TH-1 が `status: open`・`target: D-1` で、最初の書き込みが `author: user`・`body: 案 A にする`・`read: false`・`taken: null`・`seen: true` で、`comment` のキーを持たない'
   - '`comments.yaml` に C-1 が残る'
   test: test_normal
 - name: 正常系（返信）
@@ -165,7 +165,7 @@ status_codes:
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
 - item: 書く中身
-  constraint: 『コメントをまとめて送る』の「書く中身」と同じ。ただし足す書き込みの `comment` は `null`（レビュー中のコメントを経ないため）
+  constraint: 『コメントをまとめて送る』の「書く中身」と同じ。ただし足す書き込みは `comment` のキーを持たない（レビュー中のコメントを経ないため）
 - item: 箇所の確かめ
   constraint: 『レビュー中のコメントの追加』の「箇所の確かめ」と同じ。返信は向けたスレッドがオープンであることを確かめる
 - item: レビュー中の書き込み
