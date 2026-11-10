@@ -398,3 +398,50 @@ def test_error_when_unmapped_category(
     assert "D-2: category: 設定" in result.text.splitlines()
     # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_transcription_settings_changed(
+    make_workspace: MakeWorkspace,
+    replay: Replay,
+    call_tool: CallTool,
+    read_yaml: Callable[[Path, str], Any],
+) -> None:
+    """文字起こし後の挙動と用語集のプリセットを書き換え、ほかの設定は変えない（正常系）。"""
+    # 準備
+    root = make_workspace()
+    ws = {"workspace": str(root)}
+    before = read_yaml(root, "config.yaml")
+    # 実行
+    replay("update_settings", **ws, settings={"transcription": {"action": "insert", "preset": "開発"}})
+    checked = call_tool("check", **ws)
+    # 検証
+    settings = read_yaml(root, "config.yaml")
+    # config.yaml の文字起こし後の挙動が insert で、用語集のプリセットが 開発 である
+    assert settings["transcription"] == {"action": "insert", "preset": "開発"}
+    # summary・playbooks・phases・goal・display が呼ぶ前と同じである
+    assert (
+        settings["summary"],
+        settings["playbooks"],
+        settings["phases"],
+        settings["goal"],
+        settings.get("display"),
+    ) == (before["summary"], before["playbooks"], before["phases"], before["goal"], before.get("display"))
+    # ワークスペースの全ての YAML がスキーマに合う
+    assert checked.data["problems"] == []
+
+
+def test_error_when_transcription_action_invalid(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """文字起こし後の挙動を send・insert のどちらでもない値にして渡すと、何も書かずにエラーになる（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), settings={"transcription": {"action": "paste"}})
+    # 検証
+    # 設定を書き換えるツールがエラーを返し、本文に合わない文字起こし後の挙動のキーがある
+    assert result.is_error is True
+    assert "transcription" in result.text
+    # ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    assert snapshot_tree(root) == before
