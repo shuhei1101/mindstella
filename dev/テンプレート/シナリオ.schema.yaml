@@ -80,7 +80,7 @@ properties:
   reading:
     $ref: 共通.schema.yaml#/$defs/markdown
     title: 読み替え
-    description: 1 ファイルで複数のレイヤー・エージェントを代表するときの読み替えの表。
+    description: 1 ファイルで複数のレイヤー・役割を代表するときの読み替えの表。
     x-heading: 読み替え
   scenarios:
     type: array
