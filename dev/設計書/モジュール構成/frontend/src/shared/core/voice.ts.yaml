@@ -21,6 +21,18 @@ constants:
   - key: sendFailed
     value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
   container: frontend/src/shared/core/voice.ts
+classes:
+- name: RecordingError
+  title: 録音を始められなかったエラー
+  kind: クラス
+  container: frontend/src/shared/core/voice.ts
+  usecase: 音声でコメントする
+  inherits: Error
+  summary: '`startRecording` が録音を始められなかったときに投げる'
+  properties:
+  - name: reason
+    type: '"denied" | "no-microphone"'
+    description: 許可の拒否は `denied`、それ以外は `no-microphone`
 functions:
 - name: micSupported
   title: マイクを使えるか
@@ -42,7 +54,7 @@ functions:
   title: 録音を始める
   kind: 関数
   usecase: 音声でコメントする
-  summary: マイクの許可を得て録音を始め、`stop`（音声の `Blob` を返す）・`cancel` を持つ録音を返す。どちらもマイクのトラックを全て止める。許可の拒否は `denied`、それ以外は `no-microphone` で断る
+  summary: マイクの許可を得て録音を始め、`stop`（音声の `Blob` を返す）・`cancel` を持つ録音を返す。どちらもマイクのトラックを全て止める。許可の拒否は `reason` が `denied`、それ以外は `no-microphone` の `RecordingError` で断る
   returns:
     type: Promise<Recording>
     description: 録音中の 1 回分
@@ -58,7 +70,7 @@ functions:
     summary: 許可の拒否とそれ以外
     condition: '`getUserMedia` が `NotAllowedError` / `NotFoundError` で断る'
     mock: '`vi.stubGlobal`'
-    expected: '`denied` / `no-microphone` で断る'
+    expected: '`reason` が `denied` / `no-microphone` の `RecordingError` で断る'
   container: frontend/src/shared/core/voice.ts
 - name: insertAtCursor
   title: カーソルの位置への挿入

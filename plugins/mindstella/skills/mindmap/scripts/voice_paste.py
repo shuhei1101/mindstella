@@ -14,6 +14,7 @@ import urllib.request
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from http import HTTPStatus
 from http.client import HTTPResponse
 from typing import Any, Literal
 
@@ -84,9 +85,9 @@ class VoicePasteTranscriber:
         except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
             raise TranscriberStoppedError(f"{PRESETS_PATH} に届かない: {error}") from error
         # Linux で動いている: /web/ の下が無い
-        if status == 404:
+        if status == HTTPStatus.NOT_FOUND:
             raise TranscriberUnsupportedError(f"{PRESETS_PATH} が 404 です")
-        if status != 200:
+        if status != HTTPStatus.OK:
             logger.warning("文字起こしのサービスがプリセットの一覧に %s を返した", status)
             raise TranscriberStoppedError(f"{PRESETS_PATH} が {status} を返した")
         presets = payload.get("presets") if isinstance(payload, dict) else None
@@ -110,11 +111,11 @@ class VoicePasteTranscriber:
             logger.warning("文字起こしに失敗した: 依頼が届かない（%s）", error)
             raise TranscriberStoppedError(f"{JOBS_PATH} に届かない: {error}") from error
         # 音声を受け付けるエンドポイントが無い
-        if status == 404:
+        if status == HTTPStatus.NOT_FOUND:
             logger.warning("文字起こしに失敗した: %s が 404", JOBS_PATH)
             raise TranscriberUnsupportedError(f"{JOBS_PATH} が 404 です")
         # 依頼を受け付けなかった（上限・音声として読めない・ジョブの待ちが一杯など）
-        if status != 202:
+        if status != HTTPStatus.ACCEPTED:
             detail = payload.get("detail") if isinstance(payload, dict) else None
             logger.warning("文字起こしに失敗した: 依頼が %s（%s）", status, detail)
             raise TranscriptionFailedError(f"依頼が {status} でした: {detail}")
@@ -144,12 +145,12 @@ class VoicePasteTranscriber:
                     logger.warning("文字起こしに失敗した: 待つ間に接続を断られた（%s）", error)
                     raise TranscriberStoppedError(f"{path} に届かない: {error}") from error
             # ジョブが無い（再起動した・終わったジョブを持つ件数を超えた）
-            if status == 404:
+            if status == HTTPStatus.NOT_FOUND:
                 logger.warning("文字起こしに失敗した: ジョブ %s が無い", job_id)
                 raise TranscriptionFailedError(f"ジョブ {job_id} がありません")
-            if status is not None and status != 200:
+            if status is not None and status != HTTPStatus.OK:
                 logger.warning("文字起こしのサービスがジョブの状態に %s を返した", status)
-            if status == 200 and isinstance(payload, dict):
+            if status == HTTPStatus.OK and isinstance(payload, dict):
                 state = payload.get("state")
                 if state == "done":
                     text = payload.get("text")

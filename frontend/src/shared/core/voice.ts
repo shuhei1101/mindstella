@@ -22,20 +22,31 @@ export type Recording = {
 /** 録音を始められなかった理由（許可の拒否 / それ以外） */
 export type RecordingFailure = "denied" | "no-microphone";
 
+/** 録音を始められなかったときに投げるエラー */
+export class RecordingError extends Error {
+  readonly reason: RecordingFailure;
+
+  constructor(reason: RecordingFailure) {
+    super(reason);
+    this.name = "RecordingError";
+    this.reason = reason;
+  }
+}
+
 /** navigator.mediaDevices.getUserMedia と MediaRecorder を持つかを返す */
 export const micSupported = (): boolean =>
   typeof (navigator.mediaDevices as MediaDevices | undefined)?.getUserMedia === "function" && typeof (globalThis as { MediaRecorder?: unknown }).MediaRecorder === "function";
 
-/** マイクの許可を得て録音を始め、録音を返す。許可の拒否は `denied`、それ以外は `no-microphone` で断る */
+/** マイクの許可を得て録音を始め、録音を返す。許可の拒否は `reason` が `denied`、それ以外は `no-microphone` の `RecordingError` で断る */
 export const startRecording = async (): Promise<Recording> => {
-  if (!micSupported()) throw "no-microphone" satisfies RecordingFailure;
+  if (!micSupported()) throw new RecordingError("no-microphone");
   let stream: MediaStream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (error) {
     // 許可を拒否した: 許可が要る旨を出す。それ以外（マイクが無いなど）は使えない旨を出す
     const name = error instanceof DOMException ? error.name : "";
-    throw (name === "NotAllowedError" || name === "SecurityError" ? "denied" : "no-microphone") satisfies RecordingFailure;
+    throw new RecordingError(name === "NotAllowedError" || name === "SecurityError" ? "denied" : "no-microphone");
   }
   const mimeType = VOICE_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
   const recorder = new MediaRecorder(stream, mimeType === undefined ? undefined : { mimeType });

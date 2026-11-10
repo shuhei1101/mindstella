@@ -40,9 +40,9 @@ describe("startRecording", () => {
     installFakeMedia("NotAllowedError");
     const denied = startRecording();
     // 実行・検証
-    await expect(denied).rejects.toBe("denied");
+    await expect(denied).rejects.toMatchObject({ name: "RecordingError", reason: "denied" });
     installFakeMedia("NotFoundError");
-    await expect(startRecording()).rejects.toBe("no-microphone");
+    await expect(startRecording()).rejects.toMatchObject({ name: "RecordingError", reason: "no-microphone" });
   });
 });
 

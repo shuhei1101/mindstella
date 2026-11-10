@@ -2,11 +2,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getGetTranscriptionQueryOptions, getTranscription, postTranscription, sendNow } from "@/shared/api/generated/preview";
+import { getGetTranscriptionQueryOptions, getRecords, postTranscription, sendNow } from "@/shared/api/generated/preview";
 import type { TranscriptionStatus } from "@/shared/api/generated/model";
 import { AppError } from "@/shared/core/app-error";
 import type { Location } from "@/shared/core/records";
-import { insertAtCursor, micSupported, startRecording, VOICE_TEXT, type Recording } from "@/shared/core/voice";
+import { insertAtCursor, micSupported, RecordingError, startRecording, VOICE_TEXT, type Recording } from "@/shared/core/voice";
 import { recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 
 /** 音声入力の状態（部品設計の `voice`） */
@@ -39,11 +39,25 @@ export const useTranscriptionStatus = () =>
   useQuery({
     ...getGetTranscriptionQueryOptions(),
     staleTime: Number.POSITIVE_INFINITY,
-    select: (response) => (response.status === 200 ? (response.data as TranscriptionStatus) : null),
+    select: (response) => (response.status === 200 ? response.data : null),
   });
 
 /** 向けた先を比べる文字列 */
 const destinationKey = (destination: VoiceDestination): string => JSON.stringify(destination);
+
+/** 503 の応答から、使えない旨の可否を組む（知っている可否の挿入か送信とプリセットは残す） */
+const unavailableStatus = (error: AppError, known: TranscriptionStatus | null): TranscriptionStatus => ({
+  presets: [],
+  action: known?.action ?? "send",
+  preset: known?.preset ?? null,
+  available: false,
+  reason: (error.body as { reason?: "stopped" | "unsupported" } | null)?.reason ?? "stopped",
+  detail: error.message,
+});
+
+/** 記録の設定の、文字起こしの結果の扱い */
+const transcriptionAction = (records: Awaited<ReturnType<typeof getRecords>> | undefined): string | undefined =>
+  records?.status === 200 ? (records.data as { settings?: { transcription?: { action?: string } } }).settings?.transcription?.action : undefined;
 
 export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }: VoiceInputOptions) => {
   const queryClient = useQueryClient();
@@ -56,8 +70,6 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
   const recording = useRef<Recording | null>(null);
   // 録音を始めるたびに進める番号。結果が返ったとき、押したときの番号と違えば捨てる
   const ticket = useRef(0);
-  const latest = useRef({ body, destination, onBodyChange, getSelection });
-  latest.current = { body, destination, onBodyChange, getSelection };
 
   /** 録音を捨ててマイクを解放し、文字起こし中の結果も捨てる */
   const abandon = useCallback(() => {
@@ -114,7 +126,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
     } catch (failure) {
       if (activeOwner === owner.current) activeOwner = null;
       if (ticket.current !== mine) return;
-      setResult({ status: "voice-failed", detail: failure === "denied" ? VOICE_TEXT.denied : VOICE_TEXT.noMicrophone, entered: false });
+      setResult({ status: "voice-failed", detail: failure instanceof RecordingError && failure.reason === "denied" ? VOICE_TEXT.denied : VOICE_TEXT.noMicrophone, entered: false });
     }
   }, []);
 
@@ -122,19 +134,38 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
     abandon();
   }, [abandon]);
 
+  /** 録音の 1 回分を終えて結果を出す */
+  const finish = useCallback((next: { status: VoiceStatus; detail: string | null; entered: boolean }): void => {
+    recording.current = null;
+    if (activeOwner === owner.current) activeOwner = null;
+    setPhase("idle");
+    setResult(next);
+  }, []);
+
+  /** 文字起こしの結果を入れた中身をすぐ送る。送れなければ中身を入力欄に残す */
+  const deliver = useCallback(
+    async (value: string, mine: number): Promise<void> => {
+      try {
+        const sent = await sendNow({ ...destination, body: value });
+        if (ticket.current !== mine) return;
+        onBodyChange("");
+        finish({ status: "sent", detail: null, entered: (sent.data as { entered?: boolean }).entered === true });
+        await queryClient.invalidateQueries({ queryKey: threadsQuery().queryKey });
+      } catch {
+        if (ticket.current !== mine) return;
+        onBodyChange(value);
+        finish({ status: "voice-failed", detail: VOICE_TEXT.sendFailed, entered: false });
+      }
+    },
+    [destination, finish, onBodyChange, queryClient],
+  );
+
   const onVoiceDone = useCallback(async (): Promise<void> => {
     const current = recording.current;
     if (current === null) return;
     const mine = ticket.current;
     setPhase("transcribing");
-    const { body: before, destination: target, onBodyChange: write, getSelection: selection } = latest.current;
-    const { start, end } = selection();
-    const finish = (next: { status: VoiceStatus; detail: string | null; entered: boolean }): void => {
-      recording.current = null;
-      if (activeOwner === owner.current) activeOwner = null;
-      setPhase("idle");
-      setResult(next);
-    };
+    const { start, end } = getSelection();
     const audio = await current.stop();
     let text: string;
     try {
@@ -144,19 +175,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
       if (ticket.current !== mine) return;
       // サービスが使えない: 可否を書き換えてマイクのボタンを押せなくする
       if (error instanceof AppError && error.statusCode === 503) {
-        const reason = (error.body as { reason?: "stopped" | "unsupported" } | null)?.reason ?? "stopped";
-        const known = status.data ?? null;
-        const unavailable: TranscriptionStatus = {
-          presets: [],
-          action: known?.action ?? "send",
-          preset: known?.preset ?? null,
-          available: false,
-          reason,
-          detail: error.message,
-        };
-        queryClient.setQueryData(transcriptionKey(), { status: 200, data: unavailable, headers: new Headers() } as Awaited<ReturnType<typeof getTranscription>>);
-        finish({ status: "voice-failed", detail: error.message, entered: false });
-        return;
+        queryClient.setQueryData(transcriptionKey(), { status: 200, data: unavailableStatus(error, status.data ?? null), headers: new Headers() });
       }
       finish({ status: "voice-failed", detail: error instanceof AppError ? error.message : VOICE_TEXT.failed, entered: false });
       return;
@@ -167,25 +186,14 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
       finish({ status: "voice-failed", detail: VOICE_TEXT.failed, entered: false });
       return;
     }
-    const inserted = insertAtCursor(before, start, end, text);
-    const settings = records.data?.status === 200 ? (records.data.data as { settings?: { transcription?: { action?: string } } }).settings : undefined;
-    if (settings?.transcription?.action === "insert") {
-      write(inserted.value);
+    const inserted = insertAtCursor(body, start, end, text);
+    if (transcriptionAction(records.data) === "insert") {
+      onBodyChange(inserted.value);
       finish({ status: "inserted", detail: null, entered: false });
       return;
     }
-    try {
-      const sent = await sendNow({ ...target, body: inserted.value });
-      if (ticket.current !== mine) return;
-      write("");
-      finish({ status: "sent", detail: null, entered: (sent.data as { entered?: boolean }).entered === true });
-      await queryClient.invalidateQueries({ queryKey: threadsQuery().queryKey });
-    } catch {
-      if (ticket.current !== mine) return;
-      write(inserted.value);
-      finish({ status: "voice-failed", detail: VOICE_TEXT.sendFailed, entered: false });
-    }
-  }, [queryClient, records.data, status.data]);
+    await deliver(inserted.value, mine);
+  }, [body, deliver, finish, getSelection, onBodyChange, queryClient, records.data, status.data]);
 
   const onVoiceBlocked = useCallback(() => {
     setResult({ status: "voice-failed", detail: blockedReason, entered: false });
