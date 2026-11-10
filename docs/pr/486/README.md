@@ -1,0 +1,1 @@
+# YAML として読めない設計書（body-links.ts・Markdownの本文.ts / .tsx）の値を引用符で囲み、検査を通す
