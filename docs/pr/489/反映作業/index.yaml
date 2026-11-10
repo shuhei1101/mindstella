@@ -1,0 +1,14 @@
+Pages の配信元の切り替え:
+  説明: リポジトリの GitHub Pages の配信元を、develop の /docs を配信する従来の方式（build_type が legacy）から GitHub Actions（build_type が workflow）へ切り替え、master でワークフローを手動で 1 回起動して公開分を配信する。従来の方式へは build_type を legacy・source を develop の /docs に戻せば切り戻せる
+  タグ: [Pages, リポジトリの設定]
+  実行者: tester
+  時期: master へ入った後
+  回数: 1 回限り
+  可逆: true
+  疎通確認: null
+  実行: null
+  確認: null
+  切り戻し: null
+  失敗時: 1 回やり直し、2 回続けて失敗したら起点 Issue でユーザーへ返却する
+  確認方法: GitHub の API の repos/shuhei1101/mindstella/pages の build_type が workflow で、https://shuhei1101.github.io/mindstella/ が公開ドキュメントを返し、開発ドキュメント（設計書の YAML・docs/pr/・docs/mock/）の URL が 404 を返す
+  状態: "-"

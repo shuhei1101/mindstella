@@ -1,0 +1,87 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 棚卸しの依頼ではない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではない（構成は ai-monitor#3307 の置き場所の規則に合わせる）
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 未検証の技術機構に依存しない（変換は配布元のスクリプト、Pages の書き出しは mdmark の build と knowledge#137 の前例）
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: プラグインの利用者の操作の流れを変えない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を新設・変更しない（公開ドキュメントの見た目は mdmark が描く）
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を新設・変更しない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: プラグインの利用者の操作の流れを変えない（シナリオはファイルを移して ID へ変換するだけ）
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を新設・変更しない（dev/mock/ は docs/mock/ へ移すだけ）
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: サブシステムのインターフェースを変えない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: プラグインのコードを変えない。Pages のワークフローは mdmark の build を呼ぶだけで、このリポジトリにスクリプトを足さない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: ドキュメント修正
+    status: todo
+    note: v0.4.0 の変換を dev/ の置き場所のまま掛けた後、文書を docs/ の種類のフォルダへ移し、dev-docs.yaml・rules.yaml・files.yml・CLAUDE.md・.gitignore・eslint.config.js・docs/_config.yml・ai-monitor-version.ini を直す（要件.md の `## 要望`）
+  - process: 単体テスト作成
+    status: skipped
+    reason: プラグインのコードを変えない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: 実装
+    status: todo
+    note: Pages を公開分だけ mdmark で描いて配信する `.github/workflows/` のワークフローを作る
+  - process: 結合テスト作成
+    status: skipped
+    reason: プラグインのコードを変えない（ワークフローの確認は手元で mdmark の build を流して成果物を確かめる）
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
+  - process: E2E テスト作成
+    status: skipped
+    reason: プラグインの利用者の操作を変えない
+    updated_by: planner
+    updated_at: '2026-11-10T19:14:08.907891+00:00'
