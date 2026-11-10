@@ -80,9 +80,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-10T23:31:56.179369+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
     updated_by: planner
-    updated_at: '2026-11-10T19:58:46.558275+00:00'
+    updated_at: '2026-11-10T23:33:21.755423+00:00'
     note: tests/integration/server/readme_helpers.py の公開ドキュメントの URL の期待値
   - process: E2E テスト作成
     status: skipped
