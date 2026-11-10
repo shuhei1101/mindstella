@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from playwright.sync_api import Page, expect
-from preview_helpers import DETAIL_FORM, DETAIL_MESSAGE, DETAIL_TEXTAREA, REPLY_FORM, REPLY_MESSAGE, open_thread
+from preview_helpers import DETAIL_FORM, DETAIL_MESSAGE, DETAIL_TEXTAREA, REPLY_FORM, REPLY_MESSAGE, REPLY_TEXTAREA, open_thread
 from voice_helpers import (
     DENIED_MIC_SCRIPT,
     DENIED_REASON,
@@ -228,6 +228,9 @@ def test_error_when_transcriber_stopped(
     # 実行
     open_with_status(page, f"{url}{BOARD_D1_HASH}")
     open_thread(page, "TH-1")
+    # 「レビューに追加」を押せるはずの状態にする（返信の入力は本文が空のとき押せない）
+    page.fill(DETAIL_TEXTAREA, "案 B も見たい")
+    page.fill(REPLY_TEXTAREA, "了解")
     # 検証
     expect_mic_blocked(page.locator(DETAIL_FORM), STOPPED_REASON)
     expect_mic_blocked(page.locator(REPLY_FORM), STOPPED_REASON)
@@ -254,6 +257,9 @@ def test_error_when_web_disabled(
     # 実行
     open_with_status(page, f"{url}{BOARD_D1_HASH}")
     open_thread(page, "TH-1")
+    # 「レビューに追加」を押せるはずの状態にする（返信の入力は本文が空のとき押せない）
+    page.fill(DETAIL_TEXTAREA, "案 B も見たい")
+    page.fill(REPLY_TEXTAREA, "了解")
     # 検証
     expect_mic_blocked(page.locator(DETAIL_FORM), UNSUPPORTED_REASON)
     expect_mic_blocked(page.locator(REPLY_FORM), UNSUPPORTED_REASON)
