@@ -62,3 +62,6 @@ scope_out:
   - item: 部品設計『Markdownの本文.ts』『Markdownの本文.tsx』が YAML として読めない
     reason: 設計書の検査を通らない対象外の箇所で、今回の要望（音声入力）に含まれない
     plan: "#471"
+  - item: 今の画面の Storybook の全てのストーリーで、コンソールに `Cannot use 'import.meta' outside a module` が出る
+    reason: この PR で変えていないストーリーでも出る対象外の不具合で、今回の要望（音声入力）に含まれない
+    plan: "#480"
