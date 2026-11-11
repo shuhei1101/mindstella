@@ -35,7 +35,7 @@ scope_out:
     plan: none
   - item: NFR-26『記録の更新とスレッドの操作の時間』を自動で確かめる非機能要件テスト（`tests/nfr/test_record_operation_time.py`）
     reason: プロジェクトに非機能要件テストの層（`tests/nfr/` とテスト実行方法の節）が無く、NFR-15 の `tests/nfr/test_preview_reflect_time.py` も無い。この PR では NFR-26 の `measurement` のとおり手で測り、計画書の `## 実装` に記録した
-    plan: to_file
+    plan: '#494'
   - item: プレビューの結合テスト 4 件（`test_body_scroll_restored`・`test_body_scroll_when_heading`・`test_voice_input_when_service_stopped`・`test_reason_input`）の fail と不安定さ
     reason: この PR の変更を含まない develop（76e71791）でも fail するか、再実行で結果が変わる。画面のスクロール・フォーカスの待ちの不具合で、要望に含まれない
     plan: '#493'
