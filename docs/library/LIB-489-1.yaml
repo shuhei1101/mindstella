@@ -29,8 +29,10 @@ adoption: 採用
 upstream: yaml/pyyaml
 verification:
   state: 済
-  date: '2026-10-02'
-  detail: PoC（https://github.com/shuhei1101/mindmap/pull/12）で 6.0.3 を動かした。`safe_dump(allow_unicode=True, sort_keys=False)` で日本語がそのまま残り、キーの並びも読んだときのままだった。行のコメント・行末のコメントは書き戻しで消える
+  date: '2026-11-11'
+  detail: |-
+    PoC（https://github.com/shuhei1101/mindmap/pull/12）で 6.0.3 を動かした。`safe_dump(allow_unicode=True, sort_keys=False)` で日本語がそのまま残り、キーの並びも読んだときのままだった。行のコメント・行末のコメントは書き戻しで消える。
+    2026-11-11 に、スキル専用の仮想環境の 6.0.3 で `CSafeLoader`・`CSafeDumper` を、資料 136 件・検討事項 392 件・スレッド 787 件のワークスペースの YAML 6 ファイルで動かした。読み込んだ値は `SafeLoader` と同じで、`CSafeDumper` の出力は読み込み直すと同じ値になった。`!!python/object/apply` のタグは `CSafeLoader` でも読み込まずに `yaml.YAMLError` になった（https://github.com/shuhei1101/mindstella/pull/492）
 license: MIT（商用利用可）
 official_url: https://pyyaml.org/
 install: |-

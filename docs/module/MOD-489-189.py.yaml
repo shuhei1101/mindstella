@@ -208,7 +208,7 @@ constants:
     title: 無い種類のファイルの要約
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
-    summary: 無い種類のファイルを `digests` に入れるときの要約。中身は常に `{"items": []}` なので 1 つに決め、検証の結果の記録を使用できるようにする
+    summary: '無い種類のファイルを `digests` に入れるときの要約。中身は常に `{"items": []}` なので 1 つに決め、検証の結果の記録を使用できるようにする'
     value: '"(無い)"'
   - name: _VALIDATION_CACHE
     title: 検証の結果の記録
