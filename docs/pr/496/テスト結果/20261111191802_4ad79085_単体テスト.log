@@ -1,0 +1,18 @@
+$ npx vitest run frontend/src/features/comments/thread/thread-view.test.tsx   # Red（4ad79085。実装の修正の前）
+[MSW] Error: intercepted a request without a matching request handler:
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx (5 tests | 1 failed) 2345ms
+     × thread_view_when_close_focus 1174ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close_focus
+Error: expect(element).toHaveFocus()
+Expected element with focus:
+Received element with focus:
+ ❯ frontend/src/features/comments/thread/thread-view.test.tsx:115:63
+    113|     // 検証
+    114|     await waitFor(() => {
+    115|       expect(screen.getByRole("button", { name: "オープンに戻す" })).toHaveFo…
+    116|     });
+    117|     vi.unstubAllGlobals();
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
