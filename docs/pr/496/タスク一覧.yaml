@@ -75,8 +75,10 @@ tasks:
     updated_at: '2026-11-11T10:20:01.350419+00:00'
     note: thread-view.tsx の理由を確定した後のフォーカスの戻しが、描き直しより先に requestAnimationFrame が走ると失われる（test_reason_input の原因）。理由を確定した後に「オープンに戻す」へフォーカスが戻る単体テストを追加する
   - process: 実装
-    status: todo
+    status: done
     note: thread-view.tsx の理由を確定した後のフォーカスの戻しを、描き直した後の状態のボタンへ当てるよう修正する。本文のスクロールの 2 件（Web フォントの読み込みの遅れ）と「音声で入力」（パネルのすべり込みの途中のクリック）はテストの側の原因で、結合テスト作成で修正する
+    updated_by: planner
+    updated_at: '2026-11-11T10:58:47.176695+00:00'
   - process: 結合テスト作成
     status: todo
     note: test_detail_panel_screen.py の 3 件と test_spa_thread_screen.py の test_reason_input の待ち方を直し、4 件の繰り返し実行と tests/integration/preview の全件実行で pass を確かめる
