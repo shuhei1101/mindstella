@@ -1,0 +1,27 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: none
+    detail: 本文を送った位置の残し方と、見出しを示して開くときの出し方の結合テストを直す。画面の側を直したら run_only にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: none
+    detail: 文字起こしのサービスが起動していないときのマイクのボタンの結合テストを直す。画面の側を直したら run_only にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: none
+    detail: 理由を書いてクローズした後の「オープンに戻す」へのフォーカスの結合テストを直す。画面の側を直したら run_only にする
+    depends_on: []
+scope_out:
+  - item: tests/integration/preview のこの 4 件以外の、実行のたびに結果が変わるテスト
+    reason: Issue が挙げた 4 件に限る。全件実行で別のテストが fail したら、その場で起票する
+    plan: none
+  - item: スクロールの位置の戻し方の設計の変更
+    reason: 画面の仕様を変える別の要望
+    plan: '#452'
+  - item: comments-panel.tsx の「一覧へ戻る」で開いていた行へフォーカスを戻す処理（backToList）の、描き直しより先に次のコマが来るとフォーカスが失われる不具合
+    reason: thread-view.tsx と同じ型の箇所だが、Issue が挙げた 4 件のテストの対象でなく、この PR がマージされなくても同じ内容で成り立つ
+    plan: '#497'
+docs: []

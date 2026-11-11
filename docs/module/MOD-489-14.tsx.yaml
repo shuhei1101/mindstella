@@ -28,6 +28,12 @@ components:
         condition: 理由を書いて確定
         mock: MSW
         expected: '`PATCH /api/threads/TH-1` が `status: closed` と理由で呼ばれる'
+      - name: test_thread_view_when_close_focus
+        case: 正常
+        summary: クローズにした後、「オープンに戻す」へフォーカスを戻す
+        condition: 理由を入力して確定し、描き直しより先に次のコマが来る
+        mock: MSW と `vi.stubGlobal`
+        expected: 描き直した「オープンに戻す」にフォーカスがある
       - name: test_thread_view_when_voice
         case: 正常
         summary: 音声で返信を送る
