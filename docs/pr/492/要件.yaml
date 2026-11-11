@@ -1,0 +1,41 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: run_only
+    detail: 記録の追加と更新の結果は変わらないが、記録の読み込み・検査・書き込みの経路を変えるため回帰を確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: run_only
+    detail: AI がスレッドを読んで既読にし、クローズにする流れは変わらないが、スレッドの読み込み・書き込みの経路を変えるため回帰を確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: run_only
+    detail: 利用者がスレッドで話し、クローズにする流れは変わらないが、スレッドの読み込み・書き込みの経路を変えるため回帰を確かめる
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 話し合いをゴールまで進める流れは変わらないが、途中の記録の更新とスレッドの操作の経路を変えるため回帰を確かめる
+    depends_on: []
+docs:
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: 記録が数百件のワークスペースでの、項目 1 件の更新とスレッド 1 件の読み取り・クローズの時間の上限と、測る条件を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-11T00:15:28.839431+00:00'
+scope_out:
+  - item: 記録の書き込みの project-index への移管
+    reason: 常駐サーバーとセッションへの作り直しで扱う
+    plan: '#481'
+  - item: プレビューの操作の間の再計算・描き直しの重さ
+    reason: サーバーの記録の読み書きでなく、画面の動作の重さで、要望に含まれない
+    plan: none
+  - item: NFR-26『記録の更新とスレッドの操作の時間』を自動で確かめる非機能要件テスト（`tests/nfr/test_record_operation_time.py`）
+    reason: プロジェクトに非機能要件テストの層（`tests/nfr/` とテスト実行方法の節）が無く、NFR-15 の `tests/nfr/test_preview_reflect_time.py` も無い。この PR では NFR-26 の `measurement` のとおり手で測り、計画書の `## 実装` に記録した
+    plan: '#494'
+  - item: プレビューの結合テスト 4 件（`test_body_scroll_restored`・`test_body_scroll_when_heading`・`test_voice_input_when_service_stopped`・`test_reason_input`）の fail と不安定さ
+    reason: この PR の変更を含まない develop（76e71791）でも fail するか、再実行で結果が変わる。画面のスクロール・フォーカスの待ちの不具合で、要望に含まれない
+    plan: '#493'

@@ -23,6 +23,7 @@ from store import (
     Workspace,
     find_item,
     format_path,
+    load_yaml_text,
     read_body,
     remove_files,
     write_failed,
@@ -181,7 +182,7 @@ def load_changes(root: Path) -> Changes:
     if not path.is_file():
         return {"last_seq": 0, "sets": [], "pending": {"added": [], "changed": []}}
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = load_yaml_text(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as error:
         # YAML として読めない: 全体の問題として送る
         reason = " ".join(str(error).split())

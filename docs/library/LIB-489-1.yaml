@@ -16,6 +16,12 @@ catalogs:
       - name: yaml.safe_dump
         kind: 関数
         purpose: ワークスペースの YAML を書き戻す（`allow_unicode=True`・`sort_keys=False`）
+      - name: yaml.CSafeLoader
+        kind: クラス
+        purpose: libyaml の C 実装で、`safe_load` と同じ safe の範囲で読み込む（`yaml.load(text, Loader=yaml.CSafeLoader)`）。PyYAML が libyaml を持たずに入ったときは無い
+      - name: yaml.CSafeDumper
+        kind: クラス
+        purpose: libyaml の C 実装で、`safe_dump` と同じ safe の範囲で書き出す（`yaml.dump(data, Dumper=yaml.CSafeDumper, ...)`）。PyYAML が libyaml を持たずに入ったときは無い
 lead: Python の YAML の読み書きのライブラリ。
 purl: pkg:pypi/PyYAML
 dependency_scope: 必須
@@ -23,8 +29,10 @@ adoption: 採用
 upstream: yaml/pyyaml
 verification:
   state: 済
-  date: '2026-10-02'
-  detail: PoC（https://github.com/shuhei1101/mindmap/pull/12）で 6.0.3 を動かした。`safe_dump(allow_unicode=True, sort_keys=False)` で日本語がそのまま残り、キーの並びも読んだときのままだった。行のコメント・行末のコメントは書き戻しで消える
+  date: '2026-11-11'
+  detail: |-
+    PoC（https://github.com/shuhei1101/mindmap/pull/12）で 6.0.3 を動かした。`safe_dump(allow_unicode=True, sort_keys=False)` で日本語がそのまま残り、キーの並びも読んだときのままだった。行のコメント・行末のコメントは書き戻しで消える。
+    2026-11-11 に、スキル専用の仮想環境の 6.0.3 で `CSafeLoader`・`CSafeDumper` を、資料 136 件・検討事項 392 件・スレッド 787 件のワークスペースの YAML 6 ファイルで動かした。読み込んだ値は `SafeLoader` と同じで、`CSafeDumper` の出力は読み込み直すと同じ値になった。`!!python/object/apply` のタグは `CSafeLoader` でも読み込まずに `yaml.YAMLError` になった（https://github.com/shuhei1101/mindstella/pull/492）
 license: MIT（商用利用可）
 official_url: https://pyyaml.org/
 install: |-
@@ -38,3 +46,10 @@ limitations:
     content: '`safe_load` はコメントを捨てるため、書き戻すと行のコメント・行末のコメントは消える'
   - item: 字下げ
     content: '`safe_dump` は配列の要素を親のキーと同じ字下げで書くため、手で書いた字下げは書き戻しで揃い直る'
+  - item: C 実装の速さと折り返し
+    content: |-
+      資料 136 件・検討事項 392 件・スレッド 787 件のワークスペースの YAML（1.2〜1.6MB）で、C 実装は読み込みが Python の実装の約 1/5〜1/8（`docs.yaml` で 0.68 秒が 0.09 秒）、書き出しが約 1/5（`docs.yaml` で 0.47 秒が 0.08 秒）だった。
+      読み込んだ値は 2 つの実装で同じだった。
+      書き出しは、長い文字列を折り返す位置だけが異なり（`threads.yaml` の 41,865 行のうち 155 行）、どちらの出力も読み込み直すと同じ値になる。
+      YAML として読めないときの `str(error)` は、2 つの実装で文言が異なる。どちらも位置（`line`・`column`）を含み、C 実装はその行の抜き出しを含まない（閉じ忘れの `[`・タブの字下げ・`a: : b`・ずれた字下げの 4 通りで比べ、4 通りとも異なった。例: `mapping values are not allowed here` が `mapping values are not allowed in this context` になる）。
+      WSL2 の Ubuntu 24.04 のスキル専用の仮想環境（`~/.mindmap/venv`）に入った 6.0.3 は libyaml を持っていた（`yaml.__with_libyaml__` が真）。macOS・Windows は確かめていない

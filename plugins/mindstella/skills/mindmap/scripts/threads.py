@@ -21,7 +21,7 @@ from errors import (
     ThreadCloseRejectedError,
     ThreadNotFoundError,
 )
-from kinds import records_root
+from kinds import kind_of_id, records_root
 from store import (
     SCHEMA_DIR,
     THREADS_FILE,
@@ -31,7 +31,9 @@ from store import (
     dump_yaml,
     find_item,
     format_path,
+    load_yaml_text,
     now_utc,
+    read_kind_items,
     remove_files,
     write_failed,
     write_temp,
@@ -138,7 +140,7 @@ def load_threads(root: Path) -> list[Thread]:
     if not path.is_file():
         return []
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = load_yaml_text(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as error:
         # YAML として読めない: 全体の問題として送る
         reason = " ".join(str(error).split())
@@ -166,7 +168,7 @@ def raw_thread_targets(root: Path) -> list[tuple[str, str, bool]]:
     """スキーマに合わない `threads.yaml` から、項目を指すスレッドの（ID・向けた項目・取り込み待ちか）を読める範囲で拾う。"""
     path = records_root(root) / THREADS_FILE
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = load_yaml_text(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError):
         # 読めない: 拾えるものが無い
         return []
@@ -244,10 +246,10 @@ def list_threads(
 
 
 def view_thread(
-    workspace: Workspace, thread_id: str, *, unread_only: bool = True
+    root: Path, thread_id: str, *, unread_only: bool = True
 ) -> tuple[dict[str, Any], list[str]]:
-    """スレッド 1 件を読む形にし、返した書き込みのうち未読の ID を添える。"""
-    thread = _find_thread(load_threads(workspace.root), thread_id)
+    """スレッド 1 件を読む形にし、返した書き込みのうち未読の ID を添える。ワークスペース全体は読み込まない。"""
+    thread = _find_thread(load_threads(root), thread_id)
     shown = [post for post in thread.posts if not (unread_only and post.read)]
     view = {
         "id": thread.id,
@@ -255,7 +257,7 @@ def view_thread(
         "tags": thread.tags,
         "summary": thread.summary,
         "target": thread.target,
-        "target_title": _title_of(workspace, thread.target),
+        "target_title": _title_in(root, thread.target),
         "loc": thread.loc,
         "posts": [
             {
@@ -649,6 +651,23 @@ def _title_of(workspace: Workspace, item_id: str | None) -> str | None:
     except ItemNotFoundError:
         # 向けた項目が消えている: タイトルは持たない
         return None
+
+
+def _title_in(root: Path, item_id: str | None) -> str | None:
+    """項目のタイトルを、その ID の種類の YAML だけから返す（項目に紐づかないか、項目が無ければ None）。"""
+    # 項目に紐づかない
+    if item_id is None:
+        return None
+    kind = kind_of_id(item_id)
+    # ID の形が種類に当たらない: タイトルは持たない
+    if kind is None:
+        return None
+    for item in read_kind_items(root, kind):
+        if item.get("id") == item_id:
+            title = item.get("title")
+            return title if isinstance(title, str) else None
+    # 向けた項目が消えている: タイトルは持たない
+    return None
 
 
 def _user_post(post_id: str, item: UserPostInput, created: str) -> Post:

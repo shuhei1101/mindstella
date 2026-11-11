@@ -470,9 +470,8 @@ def test_view_thread(
             events=[{"kind": "closed", "author": "ai", "reason": None, "created": T_0200}],
         ),
     )
-    workspace = store.load_workspace(root)
     # 実行
-    view, unread_ids = threads.view_thread(workspace, "TH-1", **kwargs)
+    view, unread_ids = threads.view_thread(root, "TH-1", **kwargs)
     # 検証
     assert [post["id"] for post in view["posts"]] == expected_post_ids
     assert unread_ids == ["TH-1-3"]
@@ -490,10 +489,36 @@ def test_view_thread_when_not_found(
     # 準備
     root = make_workspace(make_item("D-1"))
     write_threads(root, make_thread("TH-1"))
-    workspace = store.load_workspace(root)
     # 実行・検証
     with pytest.raises(ThreadNotFoundError, match="TH-9"):
-        threads.view_thread(workspace, "TH-9")
+        threads.view_thread(root, "TH-9")
+
+
+@pytest.mark.parametrize(
+    ("item_id", "raw_files", "expected_title"),
+    [
+        pytest.param("D-1", {}, "問い", id="found"),
+        pytest.param("D-2", {}, None, id="missing"),
+        pytest.param("D-1", {"docs.yaml": "items: [unclosed"}, "問い", id="other_kind_broken"),
+    ],
+)
+def test_view_thread_when_target(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    item_id: str,
+    raw_files: dict[str, str],
+    expected_title: str | None,
+) -> None:
+    """向けた項目のタイトルを、その種類の YAML だけから引く（正常系）。"""
+    # 準備
+    root = make_workspace(make_item(item_id, title="問い"), raw_files=raw_files)
+    write_threads(root, make_thread("TH-1", target="D-1"))
+    # 実行
+    view, _ = threads.view_thread(root, "TH-1")
+    # 検証
+    assert view["target_title"] == expected_title
 
 
 def test_mark_read(

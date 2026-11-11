@@ -97,6 +97,9 @@ def test_load_workspace(make_workspace, make_item) -> None:
         "log": [],
     }
     assert workspace.load_problems == []
+    assert workspace.digests["decisions.yaml"] != store.MISSING_DIGEST
+    assert workspace.digests["config.yaml"] != store.MISSING_DIGEST
+    assert workspace.digests["tasks.yaml"] == store.MISSING_DIGEST
 
 
 def test_load_workspace_when_yaml_broken(make_workspace) -> None:
@@ -185,6 +188,99 @@ def test_validate_workspace_when_common_key_invalid(make_workspace, make_item) -
     assert len(problems) == 1
     assert problems[0].file == "tasks.yaml"
     assert problems[0].key == "items[0].tags"
+
+
+@pytest.mark.parametrize(
+    ("unchanged", "title", "expected_calls"),
+    [
+        pytest.param(["decisions.yaml"], "D-1の題", 0, id="unchanged"),
+        pytest.param([], "D-1の題", 1, id="not_given"),
+        pytest.param(["decisions.yaml"], "書き換えた題", 1, id="rewritten"),
+    ],
+)
+def test_validate_workspace_when_unchanged(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+    unchanged: list[str],
+    title: str,
+    expected_calls: int,
+) -> None:
+    """差し替えていないファイルは前回の検証の結果を使用する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", status="完了"))
+    loaded = store.load_workspace(root)
+    store.validate_workspace(loaded, unchanged=list(loaded.raw))
+    write_yaml(
+        root / RECORD_DIR / "decisions.yaml",
+        {"items": [make_item("D-1", status="完了", title=title)]},
+    )
+    workspace = store.load_workspace(root)
+    calls: list[str] = []
+    real_file_problems = store._file_problems
+
+    def _recording(file_name: str, value: Any) -> list[store.Problem]:
+        """呼ばれたファイル名を記録してから本物に任せる。"""
+        calls.append(file_name)
+        return real_file_problems(file_name, value)
+
+    monkeypatch.setattr(store, "_file_problems", _recording)
+    # 実行
+    problems = store.validate_workspace(workspace, unchanged=unchanged)
+    # 検証
+    assert ("decisions.yaml", "items[0].status") in [(p.file, p.key) for p in problems]
+    assert calls.count("decisions.yaml") == expected_calls
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        pytest.param(
+            "items:\n  - id: D-1\n    title: 問い\n",
+            {"items": [{"id": "D-1", "title": "問い"}]},
+            id="nested",
+        ),
+        pytest.param("", None, id="empty"),
+    ],
+)
+def test_load_yaml_text(text: str, expected: Any) -> None:
+    """日本語・入れ子の値を safe の範囲で読み込む（正常系）。"""
+    # 実行
+    value = store.load_yaml_text(text)
+    # 検証
+    assert value == expected
+
+
+def test_load_yaml_text_when_unsafe_tag() -> None:
+    """コードを動かすタグは読み込まない（異常系）。"""
+    # 実行・検証
+    with pytest.raises(yaml.YAMLError, match="python/object/apply"):
+        store.load_yaml_text("!!python/object/apply:os.system [echo]")
+
+
+@pytest.mark.parametrize(
+    ("with_item", "raw_files", "expected_ids"),
+    [
+        pytest.param(True, {}, ["D-1"], id="present"),
+        pytest.param(False, {}, [], id="missing"),
+        pytest.param(False, {"decisions.yaml": BROKEN_YAML}, [], id="broken"),
+    ],
+)
+def test_read_kind_items(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    with_item: bool,
+    raw_files: dict[str, str],
+    expected_ids: list[str],
+) -> None:
+    """1 種類だけを読み込む（正常系）。"""
+    # 準備
+    items = [make_item("D-1")][: int(with_item)]
+    root = make_workspace(*items, raw_files=raw_files)
+    # 実行
+    result = store.read_kind_items(root, "decision")
+    # 検証
+    assert [item["id"] for item in result] == expected_ids
 
 
 def test_validate_workspace_when_load_problem(make_workspace) -> None:
@@ -544,6 +640,52 @@ def test_save_batch(make_workspace, make_item) -> None:
     assert (records / "docs" / "D-1.md").read_text(encoding="utf-8") == "## 経緯\n"
     assert yaml.safe_load((records / "changes.yaml").read_text(encoding="utf-8")) == changes
     assert list(root.rglob("*.tmp")) == []
+
+
+def test_save_batch_when_other_kind_unchanged(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    workspace = store.load_workspace(root)
+    store.validate_workspace(workspace, unchanged=list(workspace.raw))
+    calls: list[str] = []
+    real_file_problems = store._file_problems
+
+    def _recording(file_name: str, value: Any) -> list[store.Problem]:
+        """呼ばれたファイル名を記録してから本物に任せる。"""
+        calls.append(file_name)
+        return real_file_problems(file_name, value)
+
+    monkeypatch.setattr(store, "_file_problems", _recording)
+    change = store.BatchChange(items={"task": [make_item("T-1")]})
+    # 実行
+    store.save_batch(workspace, change)
+    reloaded = store.load_workspace(root)
+    problems = store.validate_workspace(reloaded, unchanged=list(reloaded.raw))
+    # 検証
+    assert problems == []
+    assert calls == ["tasks.yaml"]
+
+
+def test_save_batch_when_previous_batch_rejected(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """スキーマに合わずに止まった書き込みの後も、差し替えなかったファイルを誤った記録で止めない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    workspace = store.load_workspace(root)
+    store.validate_workspace(workspace, unchanged=list(workspace.raw))
+    rejected = store.BatchChange(items={"decision": [make_item("D-1", status="完了")]})
+    with pytest.raises(SchemaMismatchError, match="スキーマに合いません"):
+        store.save_batch(workspace, rejected)
+    change = store.BatchChange(items={"task": [make_item("T-1")]})
+    # 実行
+    store.save_batch(store.load_workspace(root), change)
+    # 検証
+    tasks = yaml.safe_load((root / RECORD_DIR / "tasks.yaml").read_text(encoding="utf-8"))
+    assert tasks == {"items": [make_item("T-1")]}
 
 
 def test_save_batch_when_schema_mismatch(make_workspace, make_item, snapshot_tree) -> None:

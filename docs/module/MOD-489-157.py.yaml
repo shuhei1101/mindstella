@@ -211,7 +211,7 @@ functions:
       description: '無ければ `{last_seq: 0, sets: [], pending: {added: [], changed: []}}`'
     process: |-
       1. `records_root(root) / CHANGES_FILE` が無ければ空の記録を返す
-      2. `yaml.safe_load` で読み、`CHANGES_SCHEMA` と突き合わせる
+      2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`CHANGES_SCHEMA` と突き合わせる
          - YAML として読めないか合わない場合、`changes.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
     exceptions:
       - name: SchemaMismatchError

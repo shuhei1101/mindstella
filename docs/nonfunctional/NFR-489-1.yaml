@@ -341,4 +341,19 @@ requirements:
     overflow: 間隔は固定で、超えることは無い
     refs:
       - IF-489-58#
+  - id: NFR-26
+    name: 記録の更新とスレッドの操作の時間
+    english_name: record_operation_time
+    category: 性能
+    external_constraint: 制限なし
+    source_kind: ユーザー要望
+    source: https://github.com/shuhei1101/mindstella/issues/485
+    value: '1'
+    unit: 秒以下（記録が数百件のワークスペースでの、項目 1 件の `update`・スレッド 1 件の `thread`・`update_thread`・`set_thread_status` の 1 回の時間）
+    rationale: |-
+      利用者が、記録が数百件のワークスペースで 1 件の操作を 1 秒程度で終えることを求めた。
+      資料 136 件・検討事項 392 件・用語 162 件・スレッド 787 件の実例のコピーで、修正する前は `update` 2.9〜3.3 秒・`thread` 4.3〜4.9 秒・`set_thread_status` 1.4〜1.5 秒かかり（Linux の領域で 2 回、`/mnt/c` で 1 回測った幅）、時間の大半は Python の実装の YAML の読み込みと書き出しだった。
+      記録のフォルダを Windows のドライブ（`/mnt/c`）に置いても、Linux の領域と比べた差は 0.1 秒以内だった
+    measurement: 実例と同じ件数（資料 136 件・検討事項 392 件・用語 162 件・スレッド 787 件で、項目ごとに変更履歴を 3 回分持つ）のワークスペースを作り、常駐サーバーのプロセスの中で 1 回の `update`・`thread`・`update_thread`・`set_thread_status` を呼んだ時間を測る。読み込みと検証を 1 回済ませた後の時間とする
+    overflow: 時間で打ち切らず、最後まで読み書きする。PyYAML が libyaml を持たない環境では、Python の実装で読み書きするため上限を超える
 lead: mindstella が外部の制約から逆算して決める値。

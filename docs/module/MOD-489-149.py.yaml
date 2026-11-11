@@ -189,7 +189,7 @@ functions:
       description: ファイルの並びの順のスレッド。ファイルが無ければ空
     process: |-
       1. ファイルが無ければ空を返す
-      2. `yaml.safe_load` で読み、`THREADS_SCHEMA` と突き合わせる
+      2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`THREADS_SCHEMA` と突き合わせる
          - 読めないか合わない場合、合わない箇所ごとの `threads.yaml: {キーのパス}: {理由}` を持った `SchemaMismatchError` を送る
       3. `items` の要素を `Thread`（`posts` は `Post`、`events` は `ThreadEvent`）にして返す
     exceptions:
@@ -362,11 +362,11 @@ functions:
     scope: public
     summary: スレッド 1 件を『スレッドを読む』の結果の形にし、返した書き込みのうち未読の ID を添える（読むだけ。既読は `mark_read` が書く）
     args:
-      - name: workspace
-        type: Workspace
+      - name: root
+        type: Path
         required: true
         passing: positional
-        description: ワークスペース（項目のタイトルを引く）
+        description: ワークスペースのフォルダ（ワークスペースであることは呼ぶ側が確認する）
       - name: thread_id
         type: str
         required: true
@@ -383,8 +383,9 @@ functions:
       description: '`{id, status, tags, summary, target, target_title, loc, posts, events}` と、返した書き込みのうち未読の ID'
     process: |-
       1. スレッドを読み、ID で引く（無ければ `ThreadNotFoundError`）
-      2. `posts` を、`unread_only` が真なら `read` が偽のものだけ、偽なら全て、書いた順に `{id, author, body, created, read, taken}` にする（`read` は読む前の値。AI の書き込みの `taken` は `None`）
-      3. `events` は全ての記録を書いた順に `{kind, author, reason, created}` にする
+      2. `target` があれば、その ID の種類の YAML だけを読み込み、同じ ID の項目の `title` を `target_title` にする（`kind_of_id`、`read_kind_items`）。種類が決まらないか項目が無ければ `None`
+      3. `posts` を、`unread_only` が真なら `read` が偽のものだけ、偽なら全て、書いた順に `{id, author, body, created, read, taken}` にする（`read` は読む前の値。AI の書き込みの `taken` は `None`）
+      4. `events` は全ての記録を書いた順に `{kind, author, reason, created}` にする
     exceptions:
       - name: ThreadNotFoundError
         condition: その ID のスレッドが無い
@@ -392,6 +393,12 @@ functions:
       - name: SchemaMismatchError
         condition: '`load_threads` が送るもの'
     unit_tests:
+      - name: test_view_thread_when_target
+        case: 正常
+        summary: 向けた項目のタイトルを、その種類の YAML だけから引く
+        condition: '`target` が D-1 の TH-1。`parametrize`: タイトル `問い` の D-1 を持つ `decisions.yaml` / D-1 を持たない `decisions.yaml` / YAML として読み込めない `docs.yaml` を並べ、タイトル `問い` の D-1 を持つ `decisions.yaml`'
+        mock: なし
+        expected: '`target_title` が `問い` / `None` / `問い`'
       - name: test_view_thread
         case: 正常
         summary: 未読だけか全部かを選ぶ
@@ -1056,7 +1063,7 @@ functions:
       type: list[tuple[str, str, bool]]
       description: スレッドの（ID・向けた項目・取り込み待ちか）の並び
     process: |-
-      1. `threads.yaml` を `yaml.safe_load` で読む。読めないか、`items` が配列でなければ空を返す
+      1. `threads.yaml` を読み込む（`load_yaml_text`）。読めないか、`items` が配列でなければ空を返す
       2. `id` と `target` が文字列の要素だけを、`posts` に取り込んでいない利用者の書き込み（`author` が `user` で `taken` が無い）を持つかを添えて並べる
     unit_tests:
       - name: test_raw_thread_targets

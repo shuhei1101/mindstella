@@ -893,7 +893,8 @@ def run_thread(
     lock: Callable[[], AbstractContextManager[None]],
 ) -> dict[str, Any]:
     """スレッド 1 件を返し、返した未読の書き込みを既読にする。未読が無ければ鍵を取らない。"""
-    view, unread_ids = view_thread(load_workspace(root), thread_id, unread_only=unread_only)
+    require_workspace(root)
+    view, unread_ids = view_thread(root, thread_id, unread_only=unread_only)
     # 未読を返した: 鍵の中で既読にする
     if unread_ids:
         with lock():
