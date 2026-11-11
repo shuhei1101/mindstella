@@ -1,0 +1,33 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: run_only
+    detail: 記録の追加と更新の結果は変わらないが、記録の読み込み・検査・書き込みの経路を変えるため回帰を確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: run_only
+    detail: AI がスレッドを読んで既読にし、クローズにする流れは変わらないが、スレッドの読み込み・書き込みの経路を変えるため回帰を確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: run_only
+    detail: 利用者がスレッドで話し、クローズにする流れは変わらないが、スレッドの読み込み・書き込みの経路を変えるため回帰を確かめる
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 話し合いをゴールまで進める流れは変わらないが、途中の記録の更新とスレッドの操作の経路を変えるため回帰を確かめる
+    depends_on: []
+docs:
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: 記録が数百件のワークスペースでの、項目 1 件の更新とスレッド 1 件の読み取り・クローズの時間の上限と、測る条件を追加する
+    status: todo
+scope_out:
+  - item: 記録の書き込みの project-index への移管
+    reason: 常駐サーバーとセッションへの作り直しで扱う
+    plan: '#481'
+  - item: プレビューの操作の間の再計算・描き直しの重さ
+    reason: サーバーの記録の読み書きでなく、画面の動作の重さで、要望に含まれない
+    plan: none

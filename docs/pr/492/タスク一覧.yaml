@@ -1,0 +1,78 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue でないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: YAML の解析の替え方と読み込み・検査の範囲の絞り方は既存の技術で、原因の計測はモジュール構成設計で行うため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 利用者の流れは変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 操作の振る舞いと結果は変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: MCP のツールの入力・出力・エラーは変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
+  - process: モジュール構成設計
+    status: todo
+    note: store.py・threads.py・history.py・commands.py と読み書きと検証の構成。原因の計測を含める
+  - process: ドキュメント修正
+    status: todo
+    note: 非機能要件に操作の時間の決定値を追加する
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
+  - process: E2E テスト作成
+    status: skipped
+    reason: シナリオを変えず、既存の E2E を実行のみで回すため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T00:01:42.465171+00:00'
