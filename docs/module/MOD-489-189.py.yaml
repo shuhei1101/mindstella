@@ -313,7 +313,7 @@ functions:
     process: |-
       1. `raw` のファイルごとに、そのファイルの問題を求める
          - `unchanged` に名前があり、`_VALIDATION_CACHE` の `(root, ファイル名)` の要約が `digests` のそのファイルの要約と同じ場合、記録した問題を使用する
-         - それ以外の場合、そのファイルの問題を求め（ファイルの検証。`_file_problems`）、`digests` にそのファイルがあれば `_VALIDATION_CACHE` の `(root, ファイル名)` を `(要約, 問題)` に置き換える
+         - それ以外の場合、そのファイルの問題を求める（ファイルの検証。`_file_problems`）。`unchanged` に名前があり `digests` にそのファイルがあれば、`_VALIDATION_CACHE` の `(root, ファイル名)` を `(要約, 問題)` に置き換える（`raw` を差し替えたファイルは、要約が差し替える前の中身のものなので記録しない）
       2. `load_problems` と合わせて並べて返す
     unit_tests:
       - name: test_validate_workspace
@@ -367,7 +367,7 @@ functions:
       - name: test_validate_workspace_when_unchanged
         case: 正常
         summary: 差し替えていないファイルは前回の検証の結果を使用する
-        condition: '`status: 完了` の D-1 を持つワークスペースを読み込んで 1 回検証した後、`_file_problems` を呼ばれた回数を数える関数に差し替える。`parametrize`: `unchanged=["decisions.yaml"]` / `unchanged` を渡さない / `unchanged=["decisions.yaml"]` で、1 回目の後に `decisions.yaml` を書き換えて読み込み直す'
+        condition: '`status: 完了` の D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、`_file_problems` を呼ばれた回数を数える関数に差し替える。`parametrize`: `unchanged=["decisions.yaml"]` / `unchanged` を渡さない / `unchanged=["decisions.yaml"]` で、1 回目の後に `decisions.yaml` を書き換えて読み込み直す'
         mock: '`_file_problems`（`store` モジュールの参照を monkeypatch）'
         expected: 'どれも `decisions.yaml: items[0].status` の問題を含む。`decisions.yaml` で `_file_problems` を呼んだ回数が 0 / 1 / 1'
   - name: _file_problems
@@ -1208,9 +1208,15 @@ functions:
       - name: test_save_batch_when_other_kind_unchanged
         case: 正常
         summary: 差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する
-        condition: D-1 を持つワークスペースを読み込んで 1 回検証した後、`_file_problems` を呼ばれたファイル名を記録する関数に差し替え、T-1 を足したタスクの並びを書き込む。続けて読み込み直して `validate_workspace` を `unchanged` に全てのファイルを渡して呼ぶ
+        condition: D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、`_file_problems` を呼ばれたファイル名を記録する関数に差し替え、T-1 を足したタスクの並びを書き込む。続けて読み込み直して `validate_workspace` を `unchanged` に全てのファイルを渡して呼ぶ
         mock: '`_file_problems`（`store` モジュールの参照を monkeypatch）'
         expected: '`_file_problems` を呼んだのが書き込みの検証の `tasks.yaml` だけで、読み込み直した後の検証では呼ばない'
+      - name: test_save_batch_when_previous_batch_rejected
+        case: 正常
+        summary: スキーマに合わずに止まった書き込みの後も、差し替えなかったファイルを誤った記録で止めない
+        condition: 'D-1 を持つワークスペースを読み込んで `unchanged` に全てのファイルを渡して 1 回検証した後、D-1 を `status: 完了` にした検討事項の並びを書き込んで `SchemaMismatchError` で止まる。続けて読み込み直し、T-1 を足したタスクの並びを書き込む'
+        mock: なし
+        expected: 2 回目の書き込みが例外にならず、`tasks.yaml` に T-1 がある
       - name: test_save_batch_with_settings_and_edits
         case: 正常
         summary: 設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す
