@@ -33,3 +33,6 @@ scope_out:
   - item: プレビューの操作の間の再計算・描き直しの重さ
     reason: サーバーの記録の読み書きでなく、画面の動作の重さで、要望に含まれない
     plan: none
+  - item: NFR-26『記録の更新とスレッドの操作の時間』を自動で確かめる非機能要件テスト（`tests/nfr/test_record_operation_time.py`）
+    reason: プロジェクトに非機能要件テストの層（`tests/nfr/` とテスト実行方法の節）が無く、NFR-15 の `tests/nfr/test_preview_reflect_time.py` も無い。この PR では NFR-26 の `measurement` のとおり手で測り、計画書の `## 実装` に記録した
+    plan: to_file

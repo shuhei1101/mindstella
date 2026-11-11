@@ -78,7 +78,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-11T01:24:16.615346+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: skipped
+    reason: インターフェース定義を変えないため、結合テストは追加・変更しない。既存の tests/integration/server を回帰の確認として全て実行し、pass した（計画書の `## テスト結果`）
+    updated_by: planner
+    updated_at: '2026-11-11T02:20:31.789196+00:00'
   - process: E2E テスト作成
     status: skipped
     reason: シナリオを変えず、既存の E2E を実行のみで回すため対象外
