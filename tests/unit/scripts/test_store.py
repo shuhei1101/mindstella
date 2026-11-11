@@ -209,7 +209,8 @@ def test_validate_workspace_when_unchanged(
     """差し替えていないファイルは前回の検証の結果を使用する（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1", status="完了"))
-    store.validate_workspace(store.load_workspace(root))
+    loaded = store.load_workspace(root)
+    store.validate_workspace(loaded, unchanged=list(loaded.raw))
     write_yaml(
         root / RECORD_DIR / "decisions.yaml",
         {"items": [make_item("D-1", status="完了", title=title)]},
@@ -648,7 +649,7 @@ def test_save_batch_when_other_kind_unchanged(
     # 準備
     root = make_workspace(make_item("D-1"))
     workspace = store.load_workspace(root)
-    store.validate_workspace(workspace)
+    store.validate_workspace(workspace, unchanged=list(workspace.raw))
     calls: list[str] = []
     real_file_problems = store._file_problems
 
@@ -666,6 +667,25 @@ def test_save_batch_when_other_kind_unchanged(
     # 検証
     assert problems == []
     assert calls == ["tasks.yaml"]
+
+
+def test_save_batch_when_previous_batch_rejected(
+    make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """スキーマに合わずに止まった書き込みの後も、差し替えなかったファイルを誤った記録で止めない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    workspace = store.load_workspace(root)
+    store.validate_workspace(workspace, unchanged=list(workspace.raw))
+    rejected = store.BatchChange(items={"decision": [make_item("D-1", status="完了")]})
+    with pytest.raises(SchemaMismatchError, match="スキーマに合いません"):
+        store.save_batch(workspace, rejected)
+    change = store.BatchChange(items={"task": [make_item("T-1")]})
+    # 実行
+    store.save_batch(store.load_workspace(root), change)
+    # 検証
+    tasks = yaml.safe_load((root / RECORD_DIR / "tasks.yaml").read_text(encoding="utf-8"))
+    assert tasks == {"items": [make_item("T-1")]}
 
 
 def test_save_batch_when_schema_mismatch(make_workspace, make_item, snapshot_tree) -> None:
