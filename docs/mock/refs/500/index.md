@@ -6,5 +6,5 @@
 | 部品 | 中身 |
 | --- | --- |
 | [send-form](../../components/send-form/index.html) | コメントの入力の「音声:」の節（録音中・打ちかけがある録音中・狭い幅の録音中を波形に替え、波形の案 B を足した。挿入した（既定）と、送信した（「送信する」を選んだとき）の見出し） |
-| [reply-form](../../components/reply-form/index.html) | 返信の入力の「音声:」の節（録音中・最も狭い幅の録音中を波形に替えた） |
+| [reply-form](../../components/reply-form/index.html) | 返信の入力の「音声:」の節（録音中・最も狭い幅の録音中を波形に替え、挿入した（既定）を足した） |
 | [transcription-settings](../../components/transcription-settings/index.html) | 文字起こしの設定（既定を「入力欄へ挿入する」にした） |
