@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-11T00:15:31.589784+00:00'
   - process: ドキュメント修正
-    status: todo
-    note: 非機能要件に操作の時間の決定値を追加する
+    status: done
+    note: 非機能要件はモジュール構成設計の段で反映した
+    updated_by: planner
+    updated_at: '2026-11-11T00:30:20.248949+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装

@@ -431,9 +431,15 @@ functions:
       - name: test_load_yaml_text
         case: 正常
         summary: 日本語・入れ子の値を safe の範囲で読み込む
-        condition: '`parametrize`: `items:\n  - id: D-1\n    title: 問い\n` / 空の文字列 / `!!python/object/apply:os.system [echo]`'
+        condition: '`parametrize`: `items:\n  - id: D-1\n    title: 問い\n` / 空の文字列'
         mock: なし
-        expected: '`{"items": [{"id": "D-1", "title": "問い"}]}` / `None` / `yaml.YAMLError`（コードを動かすタグを読み込まない）'
+        expected: '`{"items": [{"id": "D-1", "title": "問い"}]}` / `None`'
+      - name: test_load_yaml_text_when_unsafe_tag
+        case: 異常
+        summary: コードを動かすタグは読み込まない
+        condition: '`!!python/object/apply:os.system [echo]`'
+        mock: なし
+        expected: '`yaml.YAMLError`（メッセージに `python/object/apply`）'
   - name: read_kind_items
     title: 1 種類の項目の読み込み
     kind: 関数
