@@ -372,8 +372,8 @@ def _cached_file_problems(workspace: Workspace, file_name: str, *, reuse: bool) 
     if reuse and digest is not None and cached is not None and cached[0] == digest:
         return list(cached[1])
     problems = _file_problems(file_name, workspace.raw[file_name])
-    # 読み込んだ中身の要約があるファイルだけ、次に使える結果として記録する
-    if digest is not None:
+    # 差し替えていないファイルだけ記録する（差し替えたファイルの要約は差し替える前の中身のもの）
+    if reuse and digest is not None:
         _VALIDATION_CACHE[key] = (digest, tuple(problems))
     return problems
 
@@ -642,8 +642,9 @@ def save_change(workspace: Workspace, change: Change) -> None:
     temps: list[Path] = []
     body_temp: Path | None = None
     changes_temp: Path | None = None
+    yaml_text = dump_yaml({"items": change.items})
     try:
-        yaml_temp = write_temp(yaml_path, dump_yaml({"items": change.items}))
+        yaml_temp = write_temp(yaml_path, yaml_text)
         temps.append(yaml_temp)
         if change.body and body_path:
             body_path.parent.mkdir(exist_ok=True)
@@ -682,7 +683,7 @@ def save_change(workspace: Workspace, change: Change) -> None:
         _remove_files(temps)
         raise write_failed(changes_path, error) from error
     # 書き込んだ中身は検証を済ませたので、次の読み込みで検証し直さないよう記録する
-    _remember_valid(workspace.root, [(yaml_path, dump_yaml({"items": change.items}))])
+    _remember_valid(workspace.root, [(yaml_path, yaml_text)])
 
 
 def save_batch(workspace: Workspace, change: BatchChange) -> None:
