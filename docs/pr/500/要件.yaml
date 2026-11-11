@@ -1,0 +1,47 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: 文字起こしの結果は入力欄のカーソルの位置へ挿入するだけにし、利用者が送信のボタンを押したときにレビュー中へ入れる。録音中は入力欄へのキーボード入力を止め、入力欄の場所に音声の波形を表示する。既定の挙動を insert にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: following
+    detail: 文字起こし後の挙動の値（send を残すか）の決定に追随する
+    depends_on:
+      - docs/scenario/SC-489-45.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: following
+    detail: 設定の画面で選ぶ文字起こし後の挙動の候補と既定を、挙動の値の決定に合わせる
+    depends_on:
+      - docs/scenario/SC-489-45.yaml
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 音声入力の節を、文字起こしの結果を入力欄へ挿入して送信のボタンでレビュー中へ入れる流れと、録音中の波形の表示・キーボード入力の停止に書き換える
+    status: todo
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
+    status: todo
+  - page: docs/er/ER-489-1.yaml
+    new: false
+    change: config.yaml の transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
+    status: todo
+  - page: docs/mock/components/send-form/index.html
+    new: false
+    change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
+    status: todo
+  - page: docs/mock/components/reply-form/index.html
+    new: false
+    change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
+    status: todo
+  - page: docs/mock/components/transcription-settings/index.html
+    new: false
+    change: 文字起こし後の挙動の候補と既定を、挙動の値の決定に合わせる
+    status: todo
+scope_out:
+  - item: 常駐サーバーが参照する文字起こしの URL（MINDSTELLA_TRANSCRIBER_URL）の既定と voice-paste の待ち受けのポートの食い違い（必読の D-424）
+    reason: Issue のやりたいことに含まれず、音声入力の後の挙動とは別の事象。今回の作業 PR がマージされなくても同じ内容で成り立つ
+    plan: '#501'
