@@ -1,0 +1,87 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue でないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 既存の画面とテストの待ち方の修正で、未検証の技術に依存しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 利用者の流れは変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面の見た目を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面と遷移を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 操作の振る舞いと結果は変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面の見た目を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: インターフェースを変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 部品の仕様を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 4 件のテストが確かめる画面の振る舞いは画面設計のとおりで、仕様を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: モジュールの構成と責務を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: ドキュメント修正
+    status: skipped
+    reason: 更新するドキュメントが無いため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 単体テスト作成
+    status: skipped
+    reason: 原因が画面の側にあり画面のコードを直すと分かったときだけ todo に戻す
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
+  - process: 実装
+    status: todo
+    note: 4 件の fail の原因を、テストの待ち方か画面の側かに切り分ける。画面の側なら detail.ts・thread-view.tsx を直す
+  - process: 結合テスト作成
+    status: todo
+    note: test_detail_panel_screen.py の 3 件と test_spa_thread_screen.py の test_reason_input の待ち方を直し、4 件の繰り返し実行と tests/integration/preview の全件実行で pass を確かめる
+  - process: E2E テスト作成
+    status: skipped
+    reason: シナリオを変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-11T09:42:02.139125+00:00'
