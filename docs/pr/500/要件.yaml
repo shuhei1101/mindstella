@@ -6,14 +6,13 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-36.yaml
-    impact: following
-    detail: 文字起こし後の挙動の値（send を残すか）の決定に追随する
-    depends_on:
-      - docs/scenario/SC-489-45.yaml
+    impact: none
+    detail: send を設定で選べるまま残すため、文字起こし後の挙動を書き換える流れと値の検証は変わらない
+    depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-28.yaml
     impact: following
-    detail: 設定の画面で選ぶ文字起こし後の挙動の候補と既定を、挙動の値の決定に合わせる
+    detail: 設定の画面を開いたときの文字起こし後の挙動の既定を「入力欄へ挿入する」にし、利用者が「送信する」へ書き換える流れにする
     depends_on:
       - docs/scenario/SC-489-45.yaml
 docs:
