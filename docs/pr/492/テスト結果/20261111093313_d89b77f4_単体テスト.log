@@ -1,0 +1,682 @@
+$ pytest tests/unit/scripts
+........................................................................ [  5%]
+........................................................................ [ 11%]
+........................................................................ [ 17%]
+........................................................................ [ 22%]
+........................................................................ [ 28%]
+........................................................................ [ 34%]
+........................................................................ [ 40%]
+........................................................................ [ 45%]
+........................................................................ [ 51%]
+........................................................................ [ 57%]
+................s....................................................... [ 63%]
+........................................................................ [ 68%]
+........................................................................ [ 74%]
+......................................F.......FFFFFFFFF................. [ 80%]
+.................F...................................................... [ 86%]
+........................................................................ [ 91%]
+FFFFFF.................................................................. [ 97%]
+...............................                                          [100%]
+=================================== FAILURES ===================================
+_____________________________ test_load_workspace ______________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb39eca0>
+make_item = <function make_item.<locals>._make at 0x753fbb39eac0>
+
+    def test_load_workspace(make_workspace, make_item) -> None:
+        """設定と種類ごとの項目を読む（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        # 実行
+        workspace = store.load_workspace(root)
+        # 検証
+        assert workspace.items == {
+            "decision": [make_item("D-1")],
+            "task": [],
+            "research": [],
+            "doc": [],
+            "term": [],
+            "note": [],
+            "log": [],
+        }
+        assert workspace.load_problems == []
+>       assert set(workspace.digests) == {"config.yaml", "decisions.yaml"}
+                   ^^^^^^^^^^^^^^^^^
+E       AttributeError: 'Workspace' object has no attribute 'digests'
+
+tests/unit/scripts/test_store.py:100: AttributeError
+______________ test_validate_workspace_when_unchanged[unchanged] _______________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb469440>
+make_item = <function make_item.<locals>._make at 0x753fbb46ac00>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x753fbb4155b0>
+unchanged = ['decisions.yaml'], title = 'D-1の題', expected_calls = 0
+
+    @pytest.mark.parametrize(
+        ("unchanged", "title", "expected_calls"),
+        [
+            pytest.param(["decisions.yaml"], "D-1の題", 0, id="unchanged"),
+            pytest.param([], "D-1の題", 1, id="not_given"),
+            pytest.param(["decisions.yaml"], "書き換えた題", 1, id="rewritten"),
+        ],
+    )
+    def test_validate_workspace_when_unchanged(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+        unchanged: list[str],
+        title: str,
+        expected_calls: int,
+    ) -> None:
+        """差し替えていないファイルは前回の検証の結果を使用する（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", status="完了"))
+        store.validate_workspace(store.load_workspace(root))
+        write_yaml(
+            root / RECORD_DIR / "decisions.yaml",
+            {"items": [make_item("D-1", status="完了", title=title)]},
+        )
+        workspace = store.load_workspace(root)
+        calls: list[str] = []
+>       real_file_problems = store._file_problems
+                             ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute '_file_problems'
+
+tests/unit/scripts/test_store.py:217: AttributeError
+______________ test_validate_workspace_when_unchanged[not_given] _______________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb469300>
+make_item = <function make_item.<locals>._make at 0x753fbb4691c0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x753fbb43abd0>
+unchanged = [], title = 'D-1の題', expected_calls = 1
+
+    @pytest.mark.parametrize(
+        ("unchanged", "title", "expected_calls"),
+        [
+            pytest.param(["decisions.yaml"], "D-1の題", 0, id="unchanged"),
+            pytest.param([], "D-1の題", 1, id="not_given"),
+            pytest.param(["decisions.yaml"], "書き換えた題", 1, id="rewritten"),
+        ],
+    )
+    def test_validate_workspace_when_unchanged(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+        unchanged: list[str],
+        title: str,
+        expected_calls: int,
+    ) -> None:
+        """差し替えていないファイルは前回の検証の結果を使用する（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", status="完了"))
+        store.validate_workspace(store.load_workspace(root))
+        write_yaml(
+            root / RECORD_DIR / "decisions.yaml",
+            {"items": [make_item("D-1", status="完了", title=title)]},
+        )
+        workspace = store.load_workspace(root)
+        calls: list[str] = []
+>       real_file_problems = store._file_problems
+                             ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute '_file_problems'
+
+tests/unit/scripts/test_store.py:217: AttributeError
+______________ test_validate_workspace_when_unchanged[rewritten] _______________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb46b060>
+make_item = <function make_item.<locals>._make at 0x753fbb46b2e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x753fbb4165a0>
+unchanged = ['decisions.yaml'], title = '書き換えた題', expected_calls = 1
+
+    @pytest.mark.parametrize(
+        ("unchanged", "title", "expected_calls"),
+        [
+            pytest.param(["decisions.yaml"], "D-1の題", 0, id="unchanged"),
+            pytest.param([], "D-1の題", 1, id="not_given"),
+            pytest.param(["decisions.yaml"], "書き換えた題", 1, id="rewritten"),
+        ],
+    )
+    def test_validate_workspace_when_unchanged(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        monkeypatch: pytest.MonkeyPatch,
+        unchanged: list[str],
+        title: str,
+        expected_calls: int,
+    ) -> None:
+        """差し替えていないファイルは前回の検証の結果を使用する（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1", status="完了"))
+        store.validate_workspace(store.load_workspace(root))
+        write_yaml(
+            root / RECORD_DIR / "decisions.yaml",
+            {"items": [make_item("D-1", status="完了", title=title)]},
+        )
+        workspace = store.load_workspace(root)
+        calls: list[str] = []
+>       real_file_problems = store._file_problems
+                             ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute '_file_problems'
+
+tests/unit/scripts/test_store.py:217: AttributeError
+_________________________ test_load_yaml_text[nested] __________________________
+
+text = 'items:\n  - id: D-1\n    title: 問い\n'
+expected = {'items': [{'id': 'D-1', 'title': '問い'}]}
+
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            pytest.param(
+                "items:\n  - id: D-1\n    title: 問い\n",
+                {"items": [{"id": "D-1", "title": "問い"}]},
+                id="nested",
+            ),
+            pytest.param("", None, id="empty"),
+        ],
+    )
+    def test_load_yaml_text(text: str, expected: Any) -> None:
+        """日本語・入れ子の値を safe の範囲で読み込む（正常系）。"""
+        # 実行
+>       value = store.load_yaml_text(text)
+                ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'load_yaml_text'
+
+tests/unit/scripts/test_store.py:246: AttributeError
+__________________________ test_load_yaml_text[empty] __________________________
+
+text = '', expected = None
+
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            pytest.param(
+                "items:\n  - id: D-1\n    title: 問い\n",
+                {"items": [{"id": "D-1", "title": "問い"}]},
+                id="nested",
+            ),
+            pytest.param("", None, id="empty"),
+        ],
+    )
+    def test_load_yaml_text(text: str, expected: Any) -> None:
+        """日本語・入れ子の値を safe の範囲で読み込む（正常系）。"""
+        # 実行
+>       value = store.load_yaml_text(text)
+                ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'load_yaml_text'
+
+tests/unit/scripts/test_store.py:246: AttributeError
+_____________________ test_load_yaml_text_when_unsafe_tag ______________________
+
+    def test_load_yaml_text_when_unsafe_tag() -> None:
+        """コードを動かすタグは読み込まない（異常系）。"""
+        # 実行・検証
+        with pytest.raises(yaml.YAMLError, match="python/object/apply"):
+>           store.load_yaml_text("!!python/object/apply:os.system [echo]")
+            ^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'store' has no attribute 'load_yaml_text'
+
+tests/unit/scripts/test_store.py:255: AttributeError
+________________________ test_read_kind_items[present] _________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb469440>
+make_item = <function make_item.<locals>._make at 0x753fbb4693a0>
+with_item = True, raw_files = {}, expected_ids = ['D-1']
+
+    @pytest.mark.parametrize(
+        ("with_item", "raw_files", "expected_ids"),
+        [
+            pytest.param(True, {}, ["D-1"], id="present"),
+            pytest.param(False, {}, [], id="missing"),
+            pytest.param(False, {"decisions.yaml": BROKEN_YAML}, [], id="broken"),
+        ],
+    )
+    def test_read_kind_items(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        with_item: bool,
+        raw_files: dict[str, str],
+        expected_ids: list[str],
+    ) -> None:
+        """1 種類だけを読み込む（正常系）。"""
+        # 準備
+        items = [make_item("D-1")][: int(with_item)]
+        root = make_workspace(*items, raw_files=raw_files)
+        # 実行
+>       result = store.read_kind_items(root, "decision")
+                 ^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'read_kind_items'
+
+tests/unit/scripts/test_store.py:278: AttributeError
+________________________ test_read_kind_items[missing] _________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb46a340>
+make_item = <function make_item.<locals>._make at 0x753fbb46a160>
+with_item = False, raw_files = {}, expected_ids = []
+
+    @pytest.mark.parametrize(
+        ("with_item", "raw_files", "expected_ids"),
+        [
+            pytest.param(True, {}, ["D-1"], id="present"),
+            pytest.param(False, {}, [], id="missing"),
+            pytest.param(False, {"decisions.yaml": BROKEN_YAML}, [], id="broken"),
+        ],
+    )
+    def test_read_kind_items(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        with_item: bool,
+        raw_files: dict[str, str],
+        expected_ids: list[str],
+    ) -> None:
+        """1 種類だけを読み込む（正常系）。"""
+        # 準備
+        items = [make_item("D-1")][: int(with_item)]
+        root = make_workspace(*items, raw_files=raw_files)
+        # 実行
+>       result = store.read_kind_items(root, "decision")
+                 ^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'read_kind_items'
+
+tests/unit/scripts/test_store.py:278: AttributeError
+_________________________ test_read_kind_items[broken] _________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb46bc40>
+make_item = <function make_item.<locals>._make at 0x753fbb46b2e0>
+with_item = False, raw_files = {'decisions.yaml': 'items: [unclosed'}
+expected_ids = []
+
+    @pytest.mark.parametrize(
+        ("with_item", "raw_files", "expected_ids"),
+        [
+            pytest.param(True, {}, ["D-1"], id="present"),
+            pytest.param(False, {}, [], id="missing"),
+            pytest.param(False, {"decisions.yaml": BROKEN_YAML}, [], id="broken"),
+        ],
+    )
+    def test_read_kind_items(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        with_item: bool,
+        raw_files: dict[str, str],
+        expected_ids: list[str],
+    ) -> None:
+        """1 種類だけを読み込む（正常系）。"""
+        # 準備
+        items = [make_item("D-1")][: int(with_item)]
+        root = make_workspace(*items, raw_files=raw_files)
+        # 実行
+>       result = store.read_kind_items(root, "decision")
+                 ^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'read_kind_items'
+
+tests/unit/scripts/test_store.py:278: AttributeError
+__________________ test_save_batch_when_other_kind_unchanged ___________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb46b100>
+make_item = <function make_item.<locals>._make at 0x753fbb4696c0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x753fbb42ba10>
+
+    def test_save_batch_when_other_kind_unchanged(
+        make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        workspace = store.load_workspace(root)
+        store.validate_workspace(workspace)
+        calls: list[str] = []
+>       real_file_problems = store._file_problems
+                             ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute '_file_problems'
+
+tests/unit/scripts/test_store.py:651: AttributeError
+________________________ test_view_thread[unread_only] _________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb0949a0>
+make_item = <function make_item.<locals>._make at 0x753fbb096520>
+make_post = <function make_post.<locals>._make at 0x753fbb094680>
+make_thread = <function make_thread.<locals>._make at 0x753fbb096840>
+write_threads = <function write_threads.<locals>._write at 0x753fbb0958a0>
+kwargs = {}, expected_post_ids = ['TH-1-3']
+
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_post_ids"),
+        [
+            pytest.param({}, ["TH-1-3"], id="unread_only"),
+            pytest.param({"unread_only": False}, ["TH-1-1", "TH-1-2", "TH-1-3"], id="all"),
+        ],
+    )
+    def test_view_thread(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_post: MakePost,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+        kwargs: dict[str, Any],
+        expected_post_ids: list[str],
+    ) -> None:
+        """未読だけか全部かを選ぶ（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        write_threads(
+            root,
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, taken=T_0100),
+                make_post("TH-1-2", author="ai"),
+                make_post("TH-1-3", read=False),
+                events=[{"kind": "closed", "author": "ai", "reason": None, "created": T_0200}],
+            ),
+        )
+        # 実行
+>       view, unread_ids = threads.view_thread(root, "TH-1", **kwargs)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_threads.py:474: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/threads.py:250: in view_thread
+    thread = _find_thread(load_threads(workspace.root), thread_id)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+plugins/mindstella/skills/mindmap/scripts/threads.py:136: in load_threads
+    path = records_root(root) / THREADS_FILE
+           ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/'
+
+    def records_root(root: Path) -> Path:
+        """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
+>       return root / RECORD_DIR
+               ^^^^^^^^^^^^^^^^^
+E       TypeError: unsupported operand type(s) for /: 'str' and 'str'
+
+plugins/mindstella/skills/mindmap/scripts/kinds.py:128: TypeError
+____________________________ test_view_thread[all] _____________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb096d40>
+make_item = <function make_item.<locals>._make at 0x753fbb095940>
+make_post = <function make_post.<locals>._make at 0x753fbb097920>
+make_thread = <function make_thread.<locals>._make at 0x753fbb097ba0>
+write_threads = <function write_threads.<locals>._write at 0x753fbb097f60>
+kwargs = {'unread_only': False}
+expected_post_ids = ['TH-1-1', 'TH-1-2', 'TH-1-3']
+
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_post_ids"),
+        [
+            pytest.param({}, ["TH-1-3"], id="unread_only"),
+            pytest.param({"unread_only": False}, ["TH-1-1", "TH-1-2", "TH-1-3"], id="all"),
+        ],
+    )
+    def test_view_thread(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_post: MakePost,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+        kwargs: dict[str, Any],
+        expected_post_ids: list[str],
+    ) -> None:
+        """未読だけか全部かを選ぶ（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        write_threads(
+            root,
+            make_thread(
+                "TH-1",
+                make_post("TH-1-1", read=True, taken=T_0100),
+                make_post("TH-1-2", author="ai"),
+                make_post("TH-1-3", read=False),
+                events=[{"kind": "closed", "author": "ai", "reason": None, "created": T_0200}],
+            ),
+        )
+        # 実行
+>       view, unread_ids = threads.view_thread(root, "TH-1", **kwargs)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_threads.py:474: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/threads.py:250: in view_thread
+    thread = _find_thread(load_threads(workspace.root), thread_id)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+plugins/mindstella/skills/mindmap/scripts/threads.py:136: in load_threads
+    path = records_root(root) / THREADS_FILE
+           ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/'
+
+    def records_root(root: Path) -> Path:
+        """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
+>       return root / RECORD_DIR
+               ^^^^^^^^^^^^^^^^^
+E       TypeError: unsupported operand type(s) for /: 'str' and 'str'
+
+plugins/mindstella/skills/mindmap/scripts/kinds.py:128: TypeError
+_______________________ test_view_thread_when_not_found ________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb097a60>
+make_item = <function make_item.<locals>._make at 0x753fbb0976a0>
+make_thread = <function make_thread.<locals>._make at 0x753fbb151e40>
+write_threads = <function write_threads.<locals>._write at 0x753fbb151f80>
+
+    def test_view_thread_when_not_found(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+    ) -> None:
+        """無い ID は読まない（異常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        write_threads(root, make_thread("TH-1"))
+        # 実行・検証
+        with pytest.raises(ThreadNotFoundError, match="TH-9"):
+>           threads.view_thread(root, "TH-9")
+
+tests/unit/scripts/test_threads.py:494: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/threads.py:250: in view_thread
+    thread = _find_thread(load_threads(workspace.root), thread_id)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+plugins/mindstella/skills/mindmap/scripts/threads.py:136: in load_threads
+    path = records_root(root) / THREADS_FILE
+           ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/'
+
+    def records_root(root: Path) -> Path:
+        """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
+>       return root / RECORD_DIR
+               ^^^^^^^^^^^^^^^^^
+E       TypeError: unsupported operand type(s) for /: 'str' and 'str'
+
+plugins/mindstella/skills/mindmap/scripts/kinds.py:128: TypeError
+_____________________ test_view_thread_when_target[found] ______________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb095760>
+make_item = <function make_item.<locals>._make at 0x753fbb153920>
+make_thread = <function make_thread.<locals>._make at 0x753fbb151440>
+write_threads = <function write_threads.<locals>._write at 0x753fbb1520c0>
+item_id = 'D-1', raw_files = {}, expected_title = '問い'
+
+    @pytest.mark.parametrize(
+        ("item_id", "raw_files", "expected_title"),
+        [
+            pytest.param("D-1", {}, "問い", id="found"),
+            pytest.param("D-2", {}, None, id="missing"),
+            pytest.param("D-1", {"docs.yaml": "items: [unclosed"}, "問い", id="other_kind_broken"),
+        ],
+    )
+    def test_view_thread_when_target(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+        item_id: str,
+        raw_files: dict[str, str],
+        expected_title: str | None,
+    ) -> None:
+        """向けた項目のタイトルを、その種類の YAML だけから引く（正常系）。"""
+        # 準備
+        root = make_workspace(make_item(item_id, title="問い"), raw_files=raw_files)
+        write_threads(root, make_thread("TH-1", target="D-1"))
+        # 実行
+>       view, _ = threads.view_thread(root, "TH-1")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_threads.py:519: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/threads.py:250: in view_thread
+    thread = _find_thread(load_threads(workspace.root), thread_id)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+plugins/mindstella/skills/mindmap/scripts/threads.py:136: in load_threads
+    path = records_root(root) / THREADS_FILE
+           ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/'
+
+    def records_root(root: Path) -> Path:
+        """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
+>       return root / RECORD_DIR
+               ^^^^^^^^^^^^^^^^^
+E       TypeError: unsupported operand type(s) for /: 'str' and 'str'
+
+plugins/mindstella/skills/mindmap/scripts/kinds.py:128: TypeError
+____________________ test_view_thread_when_target[missing] _____________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb153100>
+make_item = <function make_item.<locals>._make at 0x753fbb0a8ea0>
+make_thread = <function make_thread.<locals>._make at 0x753fbb0a9620>
+write_threads = <function write_threads.<locals>._write at 0x753fbb0a9760>
+item_id = 'D-2', raw_files = {}, expected_title = None
+
+    @pytest.mark.parametrize(
+        ("item_id", "raw_files", "expected_title"),
+        [
+            pytest.param("D-1", {}, "問い", id="found"),
+            pytest.param("D-2", {}, None, id="missing"),
+            pytest.param("D-1", {"docs.yaml": "items: [unclosed"}, "問い", id="other_kind_broken"),
+        ],
+    )
+    def test_view_thread_when_target(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+        item_id: str,
+        raw_files: dict[str, str],
+        expected_title: str | None,
+    ) -> None:
+        """向けた項目のタイトルを、その種類の YAML だけから引く（正常系）。"""
+        # 準備
+        root = make_workspace(make_item(item_id, title="問い"), raw_files=raw_files)
+        write_threads(root, make_thread("TH-1", target="D-1"))
+        # 実行
+>       view, _ = threads.view_thread(root, "TH-1")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_threads.py:519: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/threads.py:250: in view_thread
+    thread = _find_thread(load_threads(workspace.root), thread_id)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+plugins/mindstella/skills/mindmap/scripts/threads.py:136: in load_threads
+    path = records_root(root) / THREADS_FILE
+           ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/'
+
+    def records_root(root: Path) -> Path:
+        """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
+>       return root / RECORD_DIR
+               ^^^^^^^^^^^^^^^^^
+E       TypeError: unsupported operand type(s) for /: 'str' and 'str'
+
+plugins/mindstella/skills/mindmap/scripts/kinds.py:128: TypeError
+_______________ test_view_thread_when_target[other_kind_broken] ________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x753fbb151f80>
+make_item = <function make_item.<locals>._make at 0x753fbb151e40>
+make_thread = <function make_thread.<locals>._make at 0x753fbb096b60>
+write_threads = <function write_threads.<locals>._write at 0x753fbb095760>
+item_id = 'D-1', raw_files = {'docs.yaml': 'items: [unclosed'}
+expected_title = '問い'
+
+    @pytest.mark.parametrize(
+        ("item_id", "raw_files", "expected_title"),
+        [
+            pytest.param("D-1", {}, "問い", id="found"),
+            pytest.param("D-2", {}, None, id="missing"),
+            pytest.param("D-1", {"docs.yaml": "items: [unclosed"}, "問い", id="other_kind_broken"),
+        ],
+    )
+    def test_view_thread_when_target(
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        make_thread: MakeThread,
+        write_threads: WriteThreads,
+        item_id: str,
+        raw_files: dict[str, str],
+        expected_title: str | None,
+    ) -> None:
+        """向けた項目のタイトルを、その種類の YAML だけから引く（正常系）。"""
+        # 準備
+        root = make_workspace(make_item(item_id, title="問い"), raw_files=raw_files)
+        write_threads(root, make_thread("TH-1", target="D-1"))
+        # 実行
+>       view, _ = threads.view_thread(root, "TH-1")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_threads.py:519: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/threads.py:250: in view_thread
+    thread = _find_thread(load_threads(workspace.root), thread_id)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+plugins/mindstella/skills/mindmap/scripts/threads.py:136: in load_threads
+    path = records_root(root) / THREADS_FILE
+           ^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = '/'
+
+    def records_root(root: Path) -> Path:
+        """ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す。フォルダは作らない。"""
+>       return root / RECORD_DIR
+               ^^^^^^^^^^^^^^^^^
+E       TypeError: unsupported operand type(s) for /: 'str' and 'str'
+
+plugins/mindstella/skills/mindmap/scripts/kinds.py:128: TypeError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /mnt/c/Users/shuhe/repo/ai-monitor/.claude/worktrees/develop/.venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_store.py::test_load_workspace - AttributeError...
+FAILED tests/unit/scripts/test_store.py::test_validate_workspace_when_unchanged[unchanged]
+FAILED tests/unit/scripts/test_store.py::test_validate_workspace_when_unchanged[not_given]
+FAILED tests/unit/scripts/test_store.py::test_validate_workspace_when_unchanged[rewritten]
+FAILED tests/unit/scripts/test_store.py::test_load_yaml_text[nested] - Attrib...
+FAILED tests/unit/scripts/test_store.py::test_load_yaml_text[empty] - Attribu...
+FAILED tests/unit/scripts/test_store.py::test_load_yaml_text_when_unsafe_tag
+FAILED tests/unit/scripts/test_store.py::test_read_kind_items[present] - Attr...
+FAILED tests/unit/scripts/test_store.py::test_read_kind_items[missing] - Attr...
+FAILED tests/unit/scripts/test_store.py::test_read_kind_items[broken] - Attri...
+FAILED tests/unit/scripts/test_store.py::test_save_batch_when_other_kind_unchanged
+FAILED tests/unit/scripts/test_threads.py::test_view_thread[unread_only] - Ty...
+FAILED tests/unit/scripts/test_threads.py::test_view_thread[all] - TypeError:...
+FAILED tests/unit/scripts/test_threads.py::test_view_thread_when_not_found - ...
+FAILED tests/unit/scripts/test_threads.py::test_view_thread_when_target[found]
+FAILED tests/unit/scripts/test_threads.py::test_view_thread_when_target[missing]
+FAILED tests/unit/scripts/test_threads.py::test_view_thread_when_target[other_kind_broken]
+17 failed, 1237 passed, 1 skipped, 5 warnings in 55.68s
