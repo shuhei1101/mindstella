@@ -97,7 +97,9 @@ def test_load_workspace(make_workspace, make_item) -> None:
         "log": [],
     }
     assert workspace.load_problems == []
-    assert set(workspace.digests) == {"config.yaml", "decisions.yaml"}
+    assert workspace.digests["decisions.yaml"] != store.MISSING_DIGEST
+    assert workspace.digests["config.yaml"] != store.MISSING_DIGEST
+    assert workspace.digests["tasks.yaml"] == store.MISSING_DIGEST
 
 
 def test_load_workspace_when_yaml_broken(make_workspace) -> None:
