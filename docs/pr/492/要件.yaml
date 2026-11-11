@@ -23,7 +23,9 @@ docs:
   - page: docs/nonfunctional/NFR-489-1.yaml
     new: false
     change: 記録が数百件のワークスペースでの、項目 1 件の更新とスレッド 1 件の読み取り・クローズの時間の上限と、測る条件を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-11T00:15:28.839431+00:00'
 scope_out:
   - item: 記録の書き込みの project-index への移管
     reason: 常駐サーバーとセッションへの作り直しで扱う

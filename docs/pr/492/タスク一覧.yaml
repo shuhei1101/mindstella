@@ -60,8 +60,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-11T00:01:42.465171+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
     note: store.py・threads.py・history.py・commands.py と読み書きと検証の構成。原因の計測を含める
+    updated_by: planner
+    updated_at: '2026-11-11T00:15:31.589784+00:00'
   - process: ドキュメント修正
     status: todo
     note: 非機能要件に操作の時間の決定値を追加する
