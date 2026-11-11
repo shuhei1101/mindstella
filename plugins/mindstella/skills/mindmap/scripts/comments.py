@@ -33,6 +33,7 @@ from store import (
     find_item,
     format_path,
     load_workspace,
+    load_yaml_text,
     now_utc,
     remove_files,
     write_failed,
@@ -530,7 +531,7 @@ def read_validated(path: Path, schema_name: str) -> Any | None:
     if not path.is_file():
         return None
     try:
-        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = load_yaml_text(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as error:
         # YAML として読めない: 全体の問題として送る
         reason = " ".join(str(error).split())

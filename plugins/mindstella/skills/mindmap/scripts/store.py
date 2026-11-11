@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import re
 import shutil
 import tempfile
 import threading
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -83,6 +84,18 @@ THREADS_FILE = "threads.yaml"
 # 保存待ちの編集を持つファイルの名前（`records_root` の下。無ければ 0 件）
 EDITS_FILE = "edits.yaml"
 
+# YAML の読み込みに使用するローダー（libyaml の C 実装があればそれ、無ければ Python の実装）
+YAML_LOADER: Any = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+# YAML の書き出しに使用するダンパー（libyaml の C 実装があればそれ、無ければ Python の実装）
+YAML_DUMPER: Any = getattr(yaml, "CSafeDumper", yaml.SafeDumper)
+
+# 無い種類のファイルの要約（中身は常に `{"items": []}` なので、要約を 1 つに決める）
+MISSING_DIGEST = "(無い)"
+
+# (ワークスペースのフォルダ, ファイル名) → (バイト列の要約, そのファイルの問題)。常駐サーバーのプロセスの間だけ持つ
+_VALIDATION_CACHE: dict[tuple[str, str], tuple[str, tuple[Problem, ...]]] = {}
+
 # 案（`options`）を持たなくてよい検討事項の状態
 OPTIONS_OPTIONAL_STATUSES = frozenset({"未整理", "対象外", "取り下げ"})
 
@@ -134,6 +147,8 @@ class Workspace:
     items: dict[Kind, list[dict[str, Any]]]
     # YAML として読めなかったファイル
     load_problems: list[Problem]
+    # ファイル名 → 読み込んだバイト列の要約。読み込んで raw に入れたファイルだけを持つ
+    digests: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -196,15 +211,17 @@ def load_workspace(root: Path) -> Workspace:
 
     records = records_root(root)
     raw: dict[str, Any] = {}
+    digests: dict[str, str] = {}
     load_problems: list[Problem] = []
     for file_name in [SETTINGS_FILE, *(spec.file for spec in KINDS.values())]:
         path = records / file_name
         # 種類のファイルが無い: 項目が 0 件のものとして扱う
         if not path.is_file():
             raw[file_name] = {"items": []}
+            digests[file_name] = MISSING_DIGEST
             continue
         try:
-            raw[file_name] = _read_yaml(path)
+            raw[file_name], digests[file_name] = _read_yaml(path)
         except yaml.YAMLError as error:
             # YAML として読めない: 問題に記録し、raw には入れない
             load_problems.append(
@@ -224,6 +241,7 @@ def load_workspace(root: Path) -> Workspace:
         settings=settings if isinstance(settings, dict) else {},
         items={kind: _extract_items(raw.get(spec.file)) for kind, spec in KINDS.items()},
         load_problems=load_problems,
+        digests=digests,
     )
 
 
@@ -247,7 +265,7 @@ def check_settings(root: Path) -> tuple[dict[str, Any], list[Problem]]:
     root = root.resolve()
     require_workspace(root)
     try:
-        value = _read_yaml(records_root(root) / SETTINGS_FILE)
+        value, _ = _read_yaml(records_root(root) / SETTINGS_FILE)
     except yaml.YAMLError as error:
         # YAML として読めない: 空の設定と、全体の問題 1 件を返す
         problem = Problem(
@@ -326,55 +344,78 @@ def workspace_lock(
             raise
 
 
-def validate_workspace(workspace: Workspace) -> list[Problem]:
-    """設定と 7 種類をスキーマと突き合わせ、合わない箇所を問題の並びにする。"""
-    validators = load_validators()
-    # ファイル名の順・同じファイルの中はキーのパスの順に並べるための (ファイル名, パスの順, 問題)
-    entries: list[tuple[str, tuple[tuple[int, Any], ...], Problem]] = [
-        (problem.file, (), problem) for problem in workspace.load_problems
-    ]
-    schema_by_file = {SETTINGS_FILE: SETTINGS_SCHEMA}
-    schema_by_file.update({spec.file: spec.schema for spec in KINDS.values()})
-    for file_name, schema_name in schema_by_file.items():
+def validate_workspace(workspace: Workspace, *, unchanged: Collection[str] = ()) -> list[Problem]:
+    """設定と 7 種類をスキーマと突き合わせ、合わない箇所を問題の並びにする。
+
+    `unchanged` のファイルは、読み込んだ中身の要約が同じ前回の検証の結果を使用する。
+    """
+    # ファイル名の順に並べるための、ファイル名 → そのファイルの問題（キーのパスの順）
+    by_file: dict[str, list[Problem]] = {}
+    for problem in workspace.load_problems:
+        by_file.setdefault(problem.file, []).append(problem)
+    for file_name in [SETTINGS_FILE, *(spec.file for spec in KINDS.values())]:
         # 読めなかったファイルは load_problems が持っているので突き合わせない
         if file_name not in workspace.raw:
             continue
-        value = workspace.raw[file_name]
-        for error in validators[schema_name].iter_errors(value):
-            path = list(error.absolute_path)
-            problem = Problem(
-                kind="schema",
-                file=file_name,
-                id=_item_id_at(value, path),
-                key=_format_path(path),
-                detail=error.message,
-            )
-            entries.append((file_name, _path_order(path), problem))
-    # 同じ名前のタグの重なりは、スキーマでは見られないのでここで足す
-    for spec in KINDS.values():
-        if spec.file not in workspace.raw:
-            continue
-        for index, item in enumerate(_extract_items(workspace.raw[spec.file])):
+        by_file.setdefault(file_name, []).extend(
+            _cached_file_problems(workspace, file_name, reuse=file_name in unchanged)
+        )
+    return [problem for file_name in sorted(by_file) for problem in by_file[file_name]]
+
+
+def _cached_file_problems(workspace: Workspace, file_name: str, *, reuse: bool) -> list[Problem]:
+    """1 つのファイルの問題を、使えるなら前回の結果から、使えなければ検証して返し、結果を記録する。"""
+    key = (str(workspace.root), file_name)
+    digest = workspace.digests.get(file_name)
+    cached = _VALIDATION_CACHE.get(key)
+    # 差し替えていないファイルで、前回と同じ中身: 前回の結果を使用する
+    if reuse and digest is not None and cached is not None and cached[0] == digest:
+        return list(cached[1])
+    problems = _file_problems(file_name, workspace.raw[file_name])
+    # 読み込んだ中身の要約があるファイルだけ、次に使える結果として記録する
+    if digest is not None:
+        _VALIDATION_CACHE[key] = (digest, tuple(problems))
+    return problems
+
+
+def _file_problems(file_name: str, value: Any) -> list[Problem]:
+    """1 つのファイルの値を、スキーマと、タグの重なりと、検討事項の案と状態の決まりと突き合わせる。"""
+    schema_by_file = {SETTINGS_FILE: SETTINGS_SCHEMA}
+    schema_by_file.update({spec.file: spec.schema for spec in KINDS.values()})
+    # キーのパスの順に並べるための (パスの順, 問題)
+    entries: list[tuple[tuple[tuple[int, Any], ...], Problem]] = []
+    for error in load_validators()[schema_by_file[file_name]].iter_errors(value):
+        path = list(error.absolute_path)
+        problem = Problem(
+            kind="schema",
+            file=file_name,
+            id=_item_id_at(value, path),
+            key=_format_path(path),
+            detail=error.message,
+        )
+        entries.append((_path_order(path), problem))
+    # 同じ名前のタグの重なりは、スキーマでは見られないのでここで足す（種類の YAML だけ）
+    if file_name != SETTINGS_FILE:
+        for index, item in enumerate(_extract_items(value)):
             tags = item.get("tags")
             if not isinstance(tags, list):
                 continue
             for tag_index in duplicate_tag_indexes(tags):
-                path: list[str | int] = ["items", index, "tags", tag_index]
+                tag_path: list[str | int] = ["items", index, "tags", tag_index]
                 problem = Problem(
                     kind="schema",
-                    file=spec.file,
+                    file=file_name,
                     id=item.get("id") if isinstance(item.get("id"), str) else None,
-                    key=_format_path(path),
+                    key=_format_path(tag_path),
                     detail=DUPLICATE_TAG_DETAIL,
                 )
-                entries.append((spec.file, _path_order(path), problem))
+                entries.append((_path_order(tag_path), problem))
     # 検討事項の案と状態の決まりは、スキーマでは見られないのでここで足す
-    decisions_file = KINDS["decision"].file
-    if decisions_file in workspace.raw:
-        for index, name, problem in _decision_rule_hits(workspace.raw[decisions_file]):
-            entries.append((decisions_file, _path_order(["items", index, name]), problem))
-    entries.sort(key=lambda entry: (entry[0], entry[1]))
-    return [problem for _, _, problem in entries]
+    if file_name == KINDS["decision"].file:
+        for index, name, problem in _decision_rule_hits(value):
+            entries.append((_path_order(["items", index, name]), problem))
+    entries.sort(key=lambda entry: entry[0])
+    return [problem for _, problem in entries]
 
 
 def check_decision_rules(decisions: Any) -> list[Problem]:
@@ -584,7 +625,7 @@ def save_change(workspace: Workspace, change: Change) -> None:
     # 変更を当てた後のワークスペース全体を検証する
     changed_raw = {**workspace.raw, spec.file: {"items": change.items}}
     changed = replace(workspace, raw=changed_raw)
-    problems = validate_workspace(changed)
+    problems = validate_workspace(changed, unchanged=[f for f in workspace.raw if f != spec.file])
     if problems:
         written_ids = _written_ids(workspace.items[change.kind], change.items)
         raise build_mismatch_error(problems, changed, written_ids=written_ids)
@@ -640,6 +681,8 @@ def save_change(workspace: Workspace, change: Change) -> None:
             _restore_body(body_path, previous_body)
         _remove_files(temps)
         raise write_failed(changes_path, error) from error
+    # 書き込んだ中身は検証を済ませたので、次の読み込みで検証し直さないよう記録する
+    _remember_valid(workspace.root, [(yaml_path, dump_yaml({"items": change.items}))])
 
 
 def save_batch(workspace: Workspace, change: BatchChange) -> None:
@@ -660,7 +703,12 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
     if change.settings is not None:
         changed_raw[SETTINGS_FILE] = change.settings
     changed = replace(workspace, raw=changed_raw)
-    problems = validate_workspace(changed)
+    replaced_files = {KINDS[kind].file for kind in kinds}
+    if change.settings is not None:
+        replaced_files.add(SETTINGS_FILE)
+    problems = validate_workspace(
+        changed, unchanged=[f for f in workspace.raw if f not in replaced_files]
+    )
     if problems:
         written_ids = frozenset().union(
             *(_written_ids(workspace.items[kind], change.items[kind]) for kind in kinds)
@@ -729,6 +777,16 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
                 done.write_bytes(removed_previous[done])
             raise write_failed(path, error) from error
         removed_done.append(path)
+    # 書き込んだ種類の YAML と設定は検証を済ませたので、次の読み込みで検証し直さないよう記録する
+    _remember_valid(
+        workspace.root, [(path, text) for path, text in targets if path.name in replaced_files]
+    )
+
+
+def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
+    """検証を済ませて書き込んだファイルを、中身の要約と問題 0 件で記録する。"""
+    for path, text in written:
+        _VALIDATION_CACHE[(str(root), path.name)] = (_digest(text.encode("utf-8")), ())
 
 
 def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> list[str]:
@@ -895,12 +953,38 @@ def as_ids(value: Any) -> list[str]:
 
 def dump_yaml(data: Any) -> str:
     """日本語をそのままにし、キーの並びを保って YAML の文字列にする。"""
-    return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    return yaml.dump(data, Dumper=YAML_DUMPER, allow_unicode=True, sort_keys=False)
 
 
-def _read_yaml(path: Path) -> Any:
-    """1 ファイルを `yaml.safe_load` で読む（空のファイルは None）。"""
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+def load_yaml_text(text: str) -> Any:
+    """ワークスペースの YAML の文字列を `YAML_LOADER` で読み込む（空の文字列は None）。"""
+    # YAML_LOADER は CSafeLoader か SafeLoader（コードを動かすタグを読み込まない）
+    return yaml.load(text, Loader=YAML_LOADER)  # noqa: S506
+
+
+def read_kind_items(root: Path, kind: Kind) -> list[dict[str, Any]]:
+    """1 種類の YAML だけを読み込み、`items` を返す（無いか読み込めなければ空）。"""
+    path = records_root(root) / KINDS[kind].file
+    # ファイルが無い: 項目 0 件
+    if not path.is_file():
+        return []
+    try:
+        value, _ = _read_yaml(path)
+    except yaml.YAMLError:
+        # YAML として読めない: 項目 0 件として扱う（問題は点検が拾う）
+        return []
+    return _extract_items(value)
+
+
+def _digest(data: bytes) -> str:
+    """ファイルの中身が同じかを比べる要約を作る。"""
+    return hashlib.blake2b(data, digest_size=16).hexdigest()
+
+
+def _read_yaml(path: Path) -> tuple[Any, str]:
+    """1 ファイルを読み込み、値（空のファイルは None）とバイト列の要約を返す。"""
+    data = path.read_bytes()
+    return load_yaml_text(data.decode("utf-8")), _digest(data)
 
 
 def _extract_items(value: Any) -> list[dict[str, Any]]:
