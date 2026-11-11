@@ -96,6 +96,7 @@ from preview_body_scroll_helpers import (
     NEW_DECISION,
     SCROLLABLE_REGION_RULE,
     SETTLED_SCROLL_TOP_JS,
+    block_web_fonts,
     overflows_horizontally,
 )
 from preview_comment_helpers import (
@@ -2394,10 +2395,11 @@ def _scroll_top(page: Page, selector: str) -> int:
 
 
 def test_body_scroll_restored(
-    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    page: Page, write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
     """本文を送った位置を項目ごとに残し、別の項目は先頭から開く。前の項目へ戻る・全画面に切り替える・読み込み直すと、その項目で最後に送った位置へ戻す（正常系）。"""
     # 準備
+    block_web_fonts(page)
     url = write_preview(
         make_item("D-1"),
         make_item("D-2", depends_on=["D-1"], body="D-2.md"),
@@ -2443,10 +2445,11 @@ OFFSET_IN_BODY_JS = """([scroller, target]) => {
 
 
 def test_body_scroll_when_heading(
-    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
+    page: Page, write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
     """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
     # 準備
+    block_web_fonts(page)
     url = write_preview(make_item("D-1"), make_item("D-2", body="D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
@@ -2465,6 +2468,7 @@ def test_body_scroll_when_heading(
 
 
 def test_body_scroll_when_comment_location(
+    page: Page,
     write_review_preview: WriteReviewPreview,
     open_preview: OpenPreview,
     make_item: MakeItem,
@@ -2472,6 +2476,7 @@ def test_body_scroll_when_comment_location(
 ) -> None:
     """位置を残した項目でも、コメントの箇所を示して開くときは残した位置ではなく箇所を出す（正常系）。"""
     # 準備
+    block_web_fonts(page)
     url, _ = write_review_preview(
         make_item(
             "D-3",

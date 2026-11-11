@@ -16,6 +16,15 @@ TRANSCRIPTION_PATH = "/api/transcription"
 # 文字起こしの可否を取得して描き直すまで待つ上限ミリ秒
 STATUS_TIMEOUT_MS = 10_000
 
+# 要素とその祖先で動いているアニメーション（パネルのすべり込みの transition）が終わるまで待つ
+SETTLE_ANIMATIONS_JS = """async (element) => {
+  const running = document.getAnimations().filter((animation) => {
+    const target = animation.effect?.target;
+    return target instanceof Element && target.contains(element);
+  });
+  await Promise.all(running.map((animation) => animation.finished));
+}"""
+
 
 @contextmanager
 def wait_transcription_status(page: Page) -> Iterator[None]:
@@ -32,6 +41,9 @@ def assert_mic_blocked_after_click(form: Locator, message: str) -> None:
     expect(mic).to_have_attribute("aria-disabled", "true", timeout=STATUS_TIMEOUT_MS)
     expect(mic).to_have_attribute("title", STOPPED_REASON)
     expect(form.get_by_role("button", name="レビューに追加")).to_be_visible()
+    # 操作の待ちを省いて押すため、パネルのすべり込みが済んでボタンが画面に収まるまで先に待つ
+    expect(mic).to_be_in_viewport(ratio=1)
+    form.evaluate(SETTLE_ANIMATIONS_JS)
     # aria-disabled のボタンは押せる（フォーカスを受けたまま）。Playwright の操作の待ちを省いて押す
     mic.click(force=True)
     expect(form.locator(message)).to_have_text(STOPPED_REASON, timeout=STATUS_TIMEOUT_MS)

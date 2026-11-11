@@ -13,8 +13,12 @@ __all__ = [
     "SCROLLABLE_REGION_RULE",
     "SETTLED_SCROLL_TOP_JS",
     "TALL_DIAGRAM_BODY",
+    "block_web_fonts",
     "overflows_horizontally",
 ]
+
+# 画面が読む Web フォントの配信元（CSS とフォントのファイル）
+WEB_FONTS_URL_PATTERNS = ("https://fonts.googleapis.com/**", "https://fonts.gstatic.com/**")
 
 # 本文のスクロール領域に違反が出る axe の規則
 SCROLLABLE_REGION_RULE = "scrollable-region-focusable"
@@ -87,3 +91,13 @@ def overflows_horizontally(page: Page, selector: str) -> bool:
     """`selector` の要素が横にあふれている（中身が枠より広い）か。"""
     overflowing: bool = page.eval_on_selector(selector, "e => e.scrollWidth > e.clientWidth")
     return overflowing
+
+
+def block_web_fonts(page: Page) -> None:
+    """Web フォントを読ませず、代わりのフォントで描かせる。
+
+    スクロールの位置を決めた後に Web フォントが届くと本文の高さが変わり、
+    ブラウザのスクロールの位置の補正で位置がずれるため、位置を数で比べるテストの前に呼ぶ。
+    """
+    for pattern in WEB_FONTS_URL_PATTERNS:
+        page.route(pattern, lambda route: route.abort())

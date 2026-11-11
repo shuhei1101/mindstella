@@ -21,4 +21,7 @@ scope_out:
   - item: スクロールの位置の戻し方の設計の変更
     reason: 画面の仕様を変える別の要望
     plan: '#452'
+  - item: comments-panel.tsx の「一覧へ戻る」で開いていた行へフォーカスを戻す処理（backToList）の、描き直しより先に次のコマが来るとフォーカスが失われる不具合
+    reason: thread-view.tsx と同じ型の箇所だが、Issue が挙げた 4 件のテストの対象でなく、この PR がマージされなくても同じ内容で成り立つ
+    plan: '#497'
 docs: []
