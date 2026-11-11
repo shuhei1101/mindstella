@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { server } from "@/testing/msw/server";
@@ -22,6 +22,10 @@ const unseen = {
     },
   ],
 };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("ThreadView", () => {
   // 既読にする（正常系）
@@ -114,7 +118,6 @@ describe("ThreadView", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "オープンに戻す" })).toHaveFocus();
     });
-    vi.unstubAllGlobals();
   });
 
   // 音声で返信を送る（正常系）
