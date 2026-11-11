@@ -1,8 +1,8 @@
 /* 500: 録音中に入力欄の場所へ出す、入力している音声の波形 */
 
-/* 波形の枠: 1 行の入力欄と同じ大きさ・枠・角丸で、入力欄の場所に置く */
-.send-wave { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 2px; block-size: calc(1lh + 18px); line-height: 1.5; padding: 0 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-/* 波形の棒（案 A）: 音量（--lv は 0〜1）に合わせて伸ばし、録音中の丸と同じ色にする */
+/* 波形の枠: 1 行の入力欄と同じ大きさ・枠・角丸で、入力欄の場所に置く。棒の本数で幅を広げない */
+.send-wave { flex: 1 1 0; min-width: 0; inline-size: 0; display: flex; align-items: center; justify-content: flex-end; gap: 2px; block-size: calc(1lh + 18px); line-height: 1.5; padding: 0 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+/* 波形の棒（案 A）: 音量（--lv は 0〜1）に合わせて伸ばし、録音中の丸と同じ色にする。新しい音量を右端に足し、枠からはみ出した古い棒は左で切る */
 .send-wave i { flex: 0 1 3px; min-inline-size: 2px; block-size: max(2px, calc(var(--lv) * 100%)); max-block-size: calc(1lh + 2px); background: var(--st-review); border-radius: 1px; }
 /* 波形の線（案 B）: 枠いっぱいに線を描く */
 .send-wave svg { inline-size: 100%; block-size: calc(1lh + 2px); stroke: var(--st-review); fill: none; stroke-width: 1.5; }
