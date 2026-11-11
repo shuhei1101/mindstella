@@ -80,8 +80,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-11T10:58:47.176695+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
     note: test_detail_panel_screen.py の 3 件と test_spa_thread_screen.py の test_reason_input の待ち方を直し、4 件の繰り返し実行と tests/integration/preview の全件実行で pass を確かめる
+    updated_by: planner
+    updated_at: '2026-11-11T14:01:20.210929+00:00'
   - process: E2E テスト作成
     status: skipped
     reason: シナリオを変えないため対象外
