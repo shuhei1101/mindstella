@@ -26,6 +26,10 @@ data_models:
       - name: load_problems
         type: list[Problem]
         description: 'YAML として読めなかったファイル（`kind: schema`・`key: (全体)`）'
+      - name: digests
+        type: dict[str, str]
+        default: '{}'
+        description: ファイル名 → 読み込んだバイト列の要約（`_digest`）。読み込んで `raw` に入れたファイルだけを持つ（無い種類・読み込めないファイルは持たない）。検証の結果の記録（`_VALIDATION_CACHE`）を検索する鍵に使用する
   - name: Problem
     title: 問題
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -186,6 +190,27 @@ constants:
     usecase: 記録の形式の移行
     summary: 記録のフォルダが無く直下に前の版の設定ファイル（`config.yaml` か `mindmap.yaml`）があるフォルダの WorkspaceNotFoundError・WorkspaceExistsError に続ける 1 行（`{root}` はフォルダの絶対パス）
     value: '"ヒント: 前の版の形の記録があります。/mindstella:upgrade {root} で今の版へ移し替えてください"'
+  - name: YAML_LOADER
+    title: YAML の読み込みに使用するローダー
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    summary: libyaml の C 実装を持つ PyYAML では `yaml.CSafeLoader`、持たない PyYAML では `yaml.SafeLoader`
+    value: getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+    description: どちらも safe の範囲（コードを動かすタグを読み込まない）で、読み込んだ値は同じになる。外部ライブラリ『PyYAML』
+  - name: YAML_DUMPER
+    title: YAML の書き出しに使用するダンパー
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    summary: libyaml の C 実装を持つ PyYAML では `yaml.CSafeDumper`、持たない PyYAML では `yaml.SafeDumper`
+    value: getattr(yaml, "CSafeDumper", yaml.SafeDumper)
+    description: 書き出した YAML を読み込み直すと同じ値になる。長い文字列の折り返しの位置だけが 2 つで異なる（外部ライブラリ『PyYAML』）
+  - name: _VALIDATION_CACHE
+    title: 検証の結果の記録
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    summary: '`(ワークスペースのフォルダ, ファイル名)` → `(バイト列の要約, そのファイルの問題)`。常駐サーバーのプロセスの間だけ持ち、ファイルごとに最後の 1 件だけを残す'
+    value: '{}'
+    description: '`validate_workspace` が書き、`unchanged` のファイルで要約が同じなら検証の代わりに使用する。書き込む関数は書き込んだ中身の要約で置き換える。スキーマはプロセスの間に変わらない（プラグインの更新は常駐サーバーを立ち上げ直す）ため、要約が同じなら問題も同じになる'
   - name: OPTIONS_OPTIONAL_STATUSES
     title: 案を持たなくてよい状態
     container: plugins/mindstella/skills/mindmap/scripts/store.py
@@ -211,9 +236,9 @@ functions:
       description: 読み込んだワークスペース
     process: |-
       1. `root` を絶対パスにし、ワークスペースを確かめる（`require_workspace`）
-      2. `records_root(root)` の下の設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に入れる（読む。`_read_yaml`）
-         - 種類のファイルが無い場合、`{"items": []}` を入れる
-         - YAML として読めない場合（設定も含む）、`kind: schema`・`key: (全体)` の問題を `load_problems` に足し、`raw` には入れない
+      2. `records_root(root)` の下の設定と `KINDS` の順の種類ごとの YAML を読み、読んだ値をそのまま `raw` に、バイト列の要約を `digests` に入れる（読む。`_read_yaml`）
+         - 種類のファイルが無い場合、`{"items": []}` を入れる（`digests` には入れない）
+         - YAML として読めない場合（設定も含む）、`kind: schema`・`key: (全体)` の問題を `load_problems` に足し、`raw` にも `digests` にも入れない
       3. `settings` は設定の値が辞書のときだけその値、それ以外は空にする
       4. `items` は、値が辞書で `items` が配列のときだけその要素のうち辞書のものを取り出し、それ以外は空にする（形の誤りは検証が `raw` から拾う）
       5. `Workspace` を返す（`root` は直下のフォルダのまま）
@@ -231,7 +256,7 @@ functions:
         summary: 設定と種類ごとの項目を読む
         condition: 設定と、D-1 を持つ `decisions.yaml` を置く。ほかの種類のファイルは置かない
         mock: なし
-        expected: '`items["decision"]` が D-1 の 1 件、ほかの種類が空、`load_problems` が空'
+        expected: '`items["decision"]` が D-1 の 1 件、ほかの種類が空、`load_problems` が空。`digests` のキーが `config.yaml` と `decisions.yaml` だけ'
       - name: test_load_workspace_when_yaml_broken
         case: 正常
         summary: 読めない YAML を問題に記録して続ける
@@ -270,17 +295,20 @@ functions:
         required: true
         passing: positional
         description: 検証するワークスペース
+      - name: unchanged
+        type: Collection[str]
+        required: false
+        default: ()
+        passing: keyword
+        description: 読み込んだときから `raw` の値を差し替えていないファイルの名前。このファイルは、`digests` の要約が同じ前回の検証の結果を使用し、スキーマと突き合わせない。書き込む関数（`save_change`・`save_batch`）だけが渡す
     returns:
       type: list[Problem]
       description: '`load_problems` とスキーマ違反（`kind: schema`）と案と状態の決まりに合わない検討事項（`kind: decision_state`）。ファイル名の順、同じファイルの中はキーのパスの順'
     process: |-
-      1. スキーマの検証器を作る（検証器の用意。`load_validators`）
-      2. `raw` の値をそのまま、ファイルに対応するスキーマと突き合わせ、`iter_errors` のエラーごとに問題を作る（一番上の形の誤りもここで拾う）
-         - キーのパスは `absolute_path` を `items[0].status` の形にする（`_format_path`。一番上は `(全体)`）
-         - パスが `items[{n}]` を含み、その要素が `id` を持つ場合、その `id` を問題の `id` に入れる
-      3. `raw` に `decisions.yaml` があれば、`check_decision_rules` の問題を足す（キーのパスの順に並べる）
-         - 種類ごとの YAML の `items` の各要素の `tags` が並びなら、`duplicate_tag_indexes` が返す位置ごとに `kind: schema`・キーのパス `items[{i}].tags[{j}]`・`detail` `同じタグが既にある` の問題を追加する（`id` はその要素の `id`）
-      4. `load_problems` と合わせて並べて返す
+      1. `raw` のファイルごとに、そのファイルの問題を求める
+         - `unchanged` に名前があり、`_VALIDATION_CACHE` の `(root, ファイル名)` の要約が `digests` のそのファイルの要約と同じ場合、記録した問題を使用する
+         - それ以外の場合、そのファイルの問題を求め（ファイルの検証。`_file_problems`）、`digests` にそのファイルがあれば `_VALIDATION_CACHE` の `(root, ファイル名)` を `(要約, 問題)` に置き換える
+      2. `load_problems` と合わせて並べて返す
     unit_tests:
       - name: test_validate_workspace
         case: 正常
@@ -330,6 +358,114 @@ functions:
         condition: 'D-1 の `tags` が `[{name: API}, {name: ａｐｉ, main: true}]`'
         mock: なし
         expected: '`file: decisions.yaml`・`key: items[0].tags[1]`・`id: D-1`・`kind: schema`・`detail` が `同じタグが既にある` の 1 件'
+      - name: test_validate_workspace_when_unchanged
+        case: 正常
+        summary: 差し替えていないファイルは前回の検証の結果を使用する
+        condition: '`status: 完了` の D-1 を持つワークスペースを読み込んで 1 回検証した後、`_file_problems` を呼ばれた回数を数える関数に差し替える。`parametrize`: `unchanged=["decisions.yaml"]` / `unchanged` を渡さない / `unchanged=["decisions.yaml"]` で、1 回目の後に `decisions.yaml` を書き換えて読み込み直す'
+        mock: なし
+        expected: 'どれも `decisions.yaml: items[0].status` の問題を含む。`decisions.yaml` で `_file_problems` を呼んだ回数が 0 / 1 / 1'
+  - name: _file_problems
+    title: ファイルの検証
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: internal
+    summary: 1 つのファイルの値を、スキーマと、タグの重なりと、検討事項の案と状態の決まりと突き合わせる
+    args:
+      - name: file_name
+        type: str
+        required: true
+        passing: positional
+        description: '`raw` のファイル名（設定か 7 種類のどれか）'
+      - name: value
+        type: Any
+        required: true
+        passing: positional
+        description: '`raw` のそのファイルの値'
+    returns:
+      type: list[Problem]
+      description: そのファイルの問題。キーのパスの順
+    process: |-
+      1. 値をそのまま、ファイルに対応するスキーマと突き合わせ、`iter_errors` のエラーごとに問題を作る（一番上の形の誤りもここで拾う。検証器は `load_validators`）
+         - キーのパスは `absolute_path` を `items[0].status` の形にする（`_format_path`。一番上は `(全体)`）
+         - パスが `items[{n}]` を含み、その要素が `id` を持つ場合、その `id` を問題の `id` に入れる
+      2. 種類の YAML なら、`items` の各要素の `tags` が並びのとき、`duplicate_tag_indexes` が返す位置ごとに `kind: schema`・キーのパス `items[{i}].tags[{j}]`・`detail` `同じタグが既にある` の問題を追加する（`id` はその要素の `id`）
+      3. `decisions.yaml` なら、`check_decision_rules` の問題を追加する
+      4. キーのパスの順に並べて返す
+  - name: _digest
+    title: バイト列の要約
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: internal
+    summary: ファイルの中身が同じかを比べる要約を作る
+    args:
+      - name: data
+        type: bytes
+        required: true
+        passing: positional
+        description: ファイルのバイト列
+    returns:
+      type: str
+      description: '`hashlib.blake2b(data, digest_size=16)` の 16 進'
+    process: 1. `hashlib.blake2b(data, digest_size=16).hexdigest()` を返す
+  - name: load_yaml_text
+    title: YAML の文字列の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: public
+    summary: ワークスペースの YAML の文字列を `YAML_LOADER` で読み込む
+    description: ワークスペースの記録の YAML を読み込む全ての関数（`_read_yaml`、モジュール構成『スレッド』の `load_threads`・`raw_thread_targets`、モジュール構成『変更履歴』の `load_changes`）が使用する
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: YAML の文字列
+    returns:
+      type: Any
+      description: 読み込んだ値（空の文字列は `None`）
+    process: 1. `yaml.load(text, Loader=YAML_LOADER)` を返す（`yaml.YAMLError` はそのまま伝える）
+    unit_tests:
+      - name: test_load_yaml_text
+        case: 正常
+        summary: 日本語・入れ子の値を safe の範囲で読み込む
+        condition: '`parametrize`: `items:\n  - id: D-1\n    title: 問い\n` / 空の文字列 / `!!python/object/apply:os.system [echo]`'
+        mock: なし
+        expected: '`{"items": [{"id": "D-1", "title": "問い"}]}` / `None` / `yaml.YAMLError`（コードを動かすタグを読み込まない）'
+  - name: read_kind_items
+    title: 1 種類の項目の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    scope: public
+    summary: 1 種類の YAML だけを読み込み、`items` を返す。ワークスペース全体を要さない読み取り（スレッドの向けた項目のタイトル）が使用する
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: 読み込む種類
+    returns:
+      type: list[dict[str, Any]]
+      description: その種類の `items`（`load_workspace` の `items` と同じ取り出し方）。ファイルが無いか YAML として読み込めなければ空
+    process: |-
+      1. `records_root(root) / KINDS[kind].file` が無ければ空を返す
+      2. 読み込み（`_read_yaml`）、`_extract_items` で取り出して返す
+         - `yaml.YAMLError` の場合、空を返す
+    unit_tests:
+      - name: test_read_kind_items
+        case: 正常
+        summary: 1 種類だけを読み込む
+        condition: '`parametrize`: D-1 を持つ `decisions.yaml` / `decisions.yaml` が無い / `decisions.yaml` が YAML として読み込めない'
+        mock: なし
+        expected: '`[D-1]` / `[]` / `[]`'
   - name: load_validators
     title: 検証器の用意
     kind: 関数
@@ -489,7 +625,7 @@ functions:
       1. 変更する種類のファイルが、書き戻しても中身を失わない形かを確かめる
          - そのファイルが `load_problems` にある（YAML として読めない）か、`raw` のそのファイルの値が `{"items": items のその種類}` と等しくない（一番上が辞書でない・`items` の横にキーがある・`items` が配列でない・辞書でない要素があるなど、`_extract_items` が落とすものがある）場合、変更を当てる前のワークスペースのそのファイルの問題（`validate_workspace` のうち `file` がそのファイルのもの）を持った `SchemaMismatchError` を送る（何も書かない）
          - 項目の中の値だけが合わない問題はここでは止めない（変更で直せるため。残っていれば 2. で止まる）
-      2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`）
+      2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`。`unchanged` は差し替えたファイルを除く `raw` のファイル）
          - 問題がある場合、書き換える項目の ID（`_written_ids`）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
       3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
@@ -497,6 +633,7 @@ functions:
          - 本文の置き換えで `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
          - YAML の置き換えで `OSError` が起きた場合、本文を控えに戻し（控えが `None` なら本文を消し）、残った一時ファイルを消して `WriteFailedError` を送る
          - `changes.yaml` の置き換えで `OSError` が起きた場合、YAML を控えに戻し、本文も YAML のときと同じく戻し、残った一時ファイルを消して `WriteFailedError` を送る
+      5. 書き込んだ種類の YAML の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
     exceptions:
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または変更を当てた後のワークスペースに問題がある
@@ -711,7 +848,7 @@ functions:
     returns:
       type: str
       description: YAML の文字列
-    process: 1. `yaml.safe_dump(data, allow_unicode=True, sort_keys=False)` を返す
+    process: 1. `yaml.dump(data, Dumper=YAML_DUMPER, allow_unicode=True, sort_keys=False)` を返す
     unit_tests:
       - name: test_dump_yaml
         case: 正常
@@ -725,7 +862,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: internal
-    summary: 1 ファイルを `yaml.safe_load` で読む
+    summary: 1 ファイルを読み込み、値とバイト列の要約を返す
     args:
       - name: path
         type: Path
@@ -733,9 +870,9 @@ functions:
         passing: positional
         description: 読むファイル
     returns:
-      type: Any
-      description: 読んだ値（空のファイルは `None`）
-    process: 1. UTF-8 で読み、`yaml.safe_load` の結果を返す（`yaml.YAMLError` はそのまま伝える）
+      type: tuple[Any, str]
+      description: 読んだ値（空のファイルは `None`）と、バイト列の要約（`_digest`）
+    process: 1. バイト列で読み、要約を求め、UTF-8 で文字列にして読み込んだ値（`load_yaml_text`）と要約を返す（`yaml.YAMLError` はそのまま伝える）
   - name: _format_path
     title: キーのパスの文字列化
     kind: 関数
@@ -1005,12 +1142,13 @@ functions:
         description: 書き込む変更
     process: |-
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
-      2. `raw` の `items` の種類のファイル（`settings` があれば `config.yaml` も）を全て差し替えたワークスペースを作り、検証する（`validate_workspace`）
+      2. `raw` の `items` の種類のファイル（`settings` があれば `config.yaml` も）を全て差し替えたワークスペースを作り、検証する（`validate_workspace`。`unchanged` は差し替えたファイルを除く `raw` のファイル）
          - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
       3. 書く全てのファイル（本文・種類の YAML・`config.yaml`・`threads.yaml`・`changes.yaml`・`edits.yaml`。`None` のものは書かない）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
       4. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
          - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
+      5. 書き込んだ種類の YAML と `config.yaml` の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
     exceptions:
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
@@ -1055,6 +1193,12 @@ functions:
         condition: N-2 を除いたメモの並びと `removed_bodies` に `N-2.md`。本文を消す関数を `OSError` を送る関数に差し替える
         mock: 本文を消す関数（`store` モジュールの参照を monkeypatch）
         expected: '`WriteFailedError`（メッセージに `N-2.md`）。`notes.yaml`・`changes.yaml`・`docs/N-2.md` が呼ぶ前と同じ'
+      - name: test_save_batch_when_other_kind_unchanged
+        case: 正常
+        summary: 差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する
+        condition: D-1 を持つワークスペースを読み込んで 1 回検証した後、`_file_problems` を呼ばれたファイル名を記録する関数に差し替え、T-1 を足したタスクの並びを書き込む。続けて読み込み直して `validate_workspace` を `unchanged` に全てのファイルを渡して呼ぶ
+        mock: なし
+        expected: '`_file_problems` を呼んだのが書き込みの検証の `tasks.yaml` だけで、読み込み直した後の検証では呼ばない'
       - name: test_save_batch_with_settings_and_edits
         case: 正常
         summary: 設定・スレッド・保存待ちの編集も一緒に書き、途中で失敗すれば全て戻す

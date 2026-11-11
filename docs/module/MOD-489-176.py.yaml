@@ -1739,7 +1739,7 @@ functions:
       type: dict[str, Any]
       description: '`{id, status, tags, summary, target, target_title, loc, posts, events}`'
     process: |-
-      1. ワークスペースを読み、読む形と未読の ID を作る（`load_workspace`、`view_thread`）
+      1. ワークスペースを確かめ、読む形と未読の ID を作る（`require_workspace`、`view_thread`）。ワークスペース全体は読み込まない
       2. 未読の ID があれば、`lock()` の中で既読にする（`mark_read`）
       3. 1 の読む形を返す（`posts[].read` は読む前の値のまま）
     exceptions:
