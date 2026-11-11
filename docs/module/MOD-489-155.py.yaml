@@ -183,7 +183,7 @@ functions:
       description: 'ファイルが無ければ `seq: 0`・`new_seq: 0`・空の `items`'
     process: |-
       1. ファイルが無ければ空を返す
-      2. `yaml.safe_load` で読み、`EDITS_SCHEMA` と突き合わせる
+      2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`EDITS_SCHEMA` と突き合わせる
          - 読めないか合わない場合、`edits.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
       3. `items` を連番の小さい順の `PendingEdit` にして返す
     exceptions:

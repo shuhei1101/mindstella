@@ -165,7 +165,7 @@ functions:
       description: 'ファイルが無ければ `seq: 0`・空の `items`'
     process: |-
       1. ファイルが無ければ空を返す
-      2. `yaml.safe_load` で読み、`COMMENTS_SCHEMA` と突き合わせる
+      2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`COMMENTS_SCHEMA` と突き合わせる
          - 読めないか合わない場合、`comments.yaml: {キーのパス}: {理由}` の行を持った `SchemaMismatchError` を送る
       3. `items` を連番の小さい順の `ReviewComment` にして返す（`loc` は `parse_location`）
     exceptions:
@@ -209,7 +209,7 @@ functions:
       description: ファイルの並びの順。無ければ空
     process: |-
       1. ファイルが無ければ空を返す
-      2. `yaml.safe_load` で読み、`DRAFTS_SCHEMA` と突き合わせる
+      2. 読み込み（モジュール構成『読み書きと検証』の `load_yaml_text`）、`DRAFTS_SCHEMA` と突き合わせる
          - 読めないか合わない場合、`drafts.yaml: {キーのパス}: {理由}` の `SchemaMismatchError` を送る
       3. `items` を `Draft` にして返す
     exceptions:

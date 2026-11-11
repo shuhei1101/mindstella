@@ -49,4 +49,5 @@ limitations:
       資料 136 件・検討事項 392 件・スレッド 787 件のワークスペースの YAML（1.2〜1.6MB）で、C 実装は読み込みが Python の実装の約 1/5〜1/8（`docs.yaml` で 0.68 秒が 0.09 秒）、書き出しが約 1/5（`docs.yaml` で 0.47 秒が 0.08 秒）だった。
       読み込んだ値は 2 つの実装で同じだった。
       書き出しは、長い文字列を折り返す位置だけが異なり（`threads.yaml` の 41,865 行のうち 155 行）、どちらの出力も読み込み直すと同じ値になる。
+      YAML として読めないときの `str(error)` は、2 つの実装で文言が異なる。どちらも位置（`line`・`column`）を含み、C 実装はその行の抜き出しを含まない（閉じ忘れの `[`・タブの字下げ・`a: : b`・ずれた字下げの 4 通りで比べ、4 通りとも異なった。例: `mapping values are not allowed here` が `mapping values are not allowed in this context` になる）。
       WSL2 の Ubuntu 24.04 のスキル専用の仮想環境（`~/.mindmap/venv`）に入った 6.0.3 は libyaml を持っていた（`yaml.__with_libyaml__` が真）。macOS・Windows は確かめていない

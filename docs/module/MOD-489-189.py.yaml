@@ -362,7 +362,7 @@ functions:
         case: 正常
         summary: 差し替えていないファイルは前回の検証の結果を使用する
         condition: '`status: 完了` の D-1 を持つワークスペースを読み込んで 1 回検証した後、`_file_problems` を呼ばれた回数を数える関数に差し替える。`parametrize`: `unchanged=["decisions.yaml"]` / `unchanged` を渡さない / `unchanged=["decisions.yaml"]` で、1 回目の後に `decisions.yaml` を書き換えて読み込み直す'
-        mock: なし
+        mock: '`_file_problems`（`store` モジュールの参照を monkeypatch）'
         expected: 'どれも `decisions.yaml: items[0].status` の問題を含む。`decisions.yaml` で `_file_problems` を呼んだ回数が 0 / 1 / 1'
   - name: _file_problems
     title: ファイルの検証
@@ -416,7 +416,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ワークスペースの YAML の文字列を `YAML_LOADER` で読み込む
-    description: ワークスペースの記録の YAML を読み込む全ての関数（`_read_yaml`、モジュール構成『スレッド』の `load_threads`・`raw_thread_targets`、モジュール構成『変更履歴』の `load_changes`）が使用する
+    description: ワークスペースの記録の YAML を読み込む全ての関数（`_read_yaml`、モジュール構成『スレッド』の `load_threads`・`raw_thread_targets`、モジュール構成『変更履歴』の `load_changes`、モジュール構成『コメント』の `load_comments`・`load_drafts`、モジュール構成『保存待ちの編集』の `load_edits`）が使用する。前の版の形式を移し替える関数（モジュール構成『移行』）は使用しない
     args:
       - name: text
         type: str
@@ -1197,7 +1197,7 @@ functions:
         case: 正常
         summary: 差し替えない種類は検証し直さず、書き込んだ種類の結果を記録する
         condition: D-1 を持つワークスペースを読み込んで 1 回検証した後、`_file_problems` を呼ばれたファイル名を記録する関数に差し替え、T-1 を足したタスクの並びを書き込む。続けて読み込み直して `validate_workspace` を `unchanged` に全てのファイルを渡して呼ぶ
-        mock: なし
+        mock: '`_file_problems`（`store` モジュールの参照を monkeypatch）'
         expected: '`_file_problems` を呼んだのが書き込みの検証の `tasks.yaml` だけで、読み込み直した後の検証では呼ばない'
       - name: test_save_batch_with_settings_and_edits
         case: 正常
