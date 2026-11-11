@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { server } from "@/testing/msw/server";
@@ -85,6 +85,36 @@ describe("ThreadView", () => {
     await userEvent.click(screen.getAllByRole("button", { name: "クローズにする" }).at(-1) as HTMLElement);
     // 検証
     await waitFor(() => expect(bodies).toEqual([{ status: "closed", reason: "決まった" }]));
+  });
+
+  // クローズにした後、描き直した「オープンに戻す」へフォーカスを戻す（正常系）
+  test("thread_view_when_close_focus", async () => {
+    // 準備（描き直しより先に次のコマが来る順にする）
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      queueMicrotask(() => {
+        callback(0);
+      });
+      return 0;
+    });
+    let status = "open";
+    server.use(
+      http.get("/api/threads", () => HttpResponse.json({ threads: [{ ...unseen.threads[0], status }] })),
+      http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
+      http.patch("/api/threads/:id", () => {
+        status = "closed";
+        return HttpResponse.json({ id: "TH-1", status: "closed", changed: true });
+      }),
+    );
+    renderRoute("/spa/?panel=comments&thread=TH-1");
+    await userEvent.click(await screen.findByRole("button", { name: "クローズにする" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "理由（任意）" }), "決まった");
+    // 実行
+    await userEvent.click(screen.getAllByRole("button", { name: "クローズにする" }).at(-1) as HTMLElement);
+    // 検証
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "オープンに戻す" })).toHaveFocus();
+    });
+    vi.unstubAllGlobals();
   });
 
   // 音声で返信を送る（正常系）
