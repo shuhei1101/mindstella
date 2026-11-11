@@ -70,9 +70,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-11T09:42:02.139125+00:00'
   - process: 単体テスト作成
-    status: todo
+    status: done
     updated_by: planner
-    updated_at: '2026-11-11T10:09:03.327379+00:00'
+    updated_at: '2026-11-11T10:20:01.350419+00:00'
     note: thread-view.tsx の理由を確定した後のフォーカスの戻しが、描き直しより先に requestAnimationFrame が走ると失われる（test_reason_input の原因）。理由を確定した後に「オープンに戻す」へフォーカスが戻る単体テストを追加する
   - process: 実装
     status: todo

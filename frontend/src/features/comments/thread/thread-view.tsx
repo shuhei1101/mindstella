@@ -66,7 +66,8 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   const [editing, setEditing] = useState<{ id: string; error: string | null } | null>(null);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [removed, setRemoved] = useState<ReviewItem[]>([]);
-  const statusButton = useRef<HTMLButtonElement>(null);
+  // 理由の入力を閉じた後、次に描いた「状態を変える」へフォーカスを戻すか
+  const focusStatusButton = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）
   useEffect(() => {
@@ -74,10 +75,13 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   }, []);
   // 理由の入力を閉じ、描き直した「状態を変える」へフォーカスを戻す
   const closeReason = (): void => {
+    focusStatusButton.current = true;
     setReason({ open: false, body: "", detail: null, failed: false });
-    requestAnimationFrame(() => {
-      statusButton.current?.focus();
-    });
+  };
+  const statusButtonRef = (element: HTMLButtonElement | null): void => {
+    if (element === null || !focusStatusButton.current) return;
+    focusStatusButton.current = false;
+    element.focus();
   };
 
   const closed = thread?.status === "closed";
@@ -161,7 +165,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
         </Button>
         <span className="flex-1" />
         {thread === null || reason.open ? null : (
-          <Button ref={statusButton} variant="outline" onClick={() => { setReason({ open: true, body: "", detail: null, failed: false }); }}>
+          <Button ref={statusButtonRef} variant="outline" onClick={() => { setReason({ open: true, body: "", detail: null, failed: false }); }}>
             <Icon name={closed ? "undo" : "check"} />
             {actionLabel}
           </Button>
