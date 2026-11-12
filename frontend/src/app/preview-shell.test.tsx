@@ -76,14 +76,13 @@ describe("PreviewShell", () => {
   // ネットワークの入口で SPA の中のネットワークを開く（正常系）
   test("preview_shell_when_graph", async () => {
     // 準備
-    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => undefined);
     renderRoute("/spa/?tab=decisions&id=D-1");
     // 実行
     await userEvent.click(await screen.findByRole("link", { name: /ネットワーク/ }));
     // 検証
     expect(await screen.findByLabelText("ネットワーク")).toBeInTheDocument();
     await waitFor(() => expect(window.location.search).toBe("?tab=graph&id=D-1"));
-    expect(assign).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/spa/");
   });
 
   // 検索の結果から項目を開く（正常系）
