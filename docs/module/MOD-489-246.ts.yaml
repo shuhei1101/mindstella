@@ -43,7 +43,7 @@ functions:
       - 毎コマ、玉と線の画面の位置・大きさ・濃さを求めて `LookFrame` にまとめ、`drawLook` で描かせてから、名前（玉ごとに一度だけ画像にした文字。色は `lookLabelColor`）・状態の印・鍵を重ねる。`reducedMotion` には毎コマ `matchMedia("(prefers-reduced-motion: reduce)")` の結果を入れ、真のときは操作が止まった後の自動の回転もしない
       - 名前の横のコメントの印は重ねる層の要素として置き、名前が 8px 未満の玉と、名前と印が描く枠に収まらない玉には置かない
       - ドラッグで回す・ホイールでマウスの位置へ寄る・背景のダブルクリックで戻る・離すと慣性で止まる、カーソルを乗せた玉につながる玉を距離の 1 割ほど寄せる
-      - 押した位置の玉（無ければ `null`）を `onPress` へ渡す。2 回押しは `resolvePress` で読み替える
+      - 押した位置の玉（無ければ `null`）を `onPress` へ渡す。幅 901px 以上では 2 回押しを `resolvePress` で読み替える
     args:
       - name: canvas
         type: HTMLCanvasElement

@@ -292,24 +292,6 @@ files:
   related:
   - to: MOD-489-101
     type: implements
-- path: src/shared/core/legacy-url.test.ts
-  name: 今の画面の URL の単体テスト
-  description: 今の画面の URL の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:react
-  - tool:vitest
-  - topic:単体テスト
-  related:
-  - to: frontend/src/shared/core/legacy-url.ts
-    type: tests
-- path: src/shared/core/legacy-url.ts
-  name: 今の画面の URL
-  description: React に無い画面を開くときの、今の画面の URL（インターフェース定義『プレビューの配信』）。React に無い画面を開くときの URL の求め方を変更するときに読む。
-  tags:
-  - topic:url
-  related:
-  - to: MOD-489-114
-    type: implements
 - path: src/shared/lib/cn.test.ts
   name: クラス名の結合の単体テスト
   description: クラス名の結合の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
@@ -1591,4 +1573,193 @@ files:
   - tool:react
   related:
   - to: MOD-489-138
+    type: implements
+- path: src/features/graph/graph/graph-screen.tsx
+  name: ネットワークの画面
+  description: 画面設計『ネットワーク.tsx』の要素と操作を描く。ネットワークの画面の条件・見た目・ロックを変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-244
+    type: implements
+- path: src/features/graph/graph/graph-screen.test.tsx
+  name: ネットワークの画面の単体テスト
+  description: ネットワークの画面の単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/graph-screen.tsx
+    type: tests
+- path: src/features/graph/graph/graph-screen.stories.tsx
+  name: ネットワークの画面のストーリー
+  description: ネットワークの画面の状態ごとのストーリー。ストーリーを追加・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  related:
+  - to: MOD-489-244
+    type: implements
+- path: src/features/graph/graph/components/graph-canvas.tsx
+  name: 3D のキャンバス
+  description: キャンバスと重ねる層を描き、毎コマの描画を GraphRenderer に任せる。描画との同期を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-245
+    type: implements
+- path: src/features/graph/graph/components/graph-canvas.test.tsx
+  name: 3D のキャンバスの単体テスト
+  description: 3D のキャンバスの単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/components/graph-canvas.tsx
+    type: tests
+- path: src/features/graph/graph/components/look-select.tsx
+  name: 見た目のドロップダウン
+  description: ネットワークの見た目のドロップダウン。選択肢や既定の添え方を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-250
+    type: implements
+- path: src/features/graph/graph/components/look-select.test.tsx
+  name: 見た目のドロップダウンの単体テスト
+  description: 見た目のドロップダウンの単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/components/look-select.tsx
+    type: tests
+- path: src/features/graph/graph/graph-renderer.ts
+  name: ネットワークの描画
+  description: 視点・操作・毎コマの描画。玉・線の配置や操作を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-246
+    type: implements
+- path: src/features/graph/graph/graph-renderer.test.ts
+  name: ネットワークの描画の単体テスト
+  description: ネットワークの描画の単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/graph-renderer.ts
+    type: tests
+- path: src/features/graph/graph/graph-model.ts
+  name: ネットワークの玉と線と条件
+  description: ネットワークの玉と線、描く項目、絞る条件を求める。線の種類や条件を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-247
+    type: implements
+- path: src/features/graph/graph/graph-model.test.ts
+  name: ネットワークの玉と線と条件の単体テスト
+  description: ネットワークの玉と線と条件の単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/graph-model.ts
+    type: tests
+- path: src/features/graph/graph/looks.ts
+  name: ネットワークの見た目
+  description: 5 つの見た目の描き方。見た目の描き方を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-248
+    type: implements
+- path: src/features/graph/graph/looks.test.ts
+  name: ネットワークの見た目の単体テスト
+  description: ネットワークの見た目の単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/looks.ts
+    type: tests
+- path: src/features/graph/graph/store.ts
+  name: ネットワークのロック
+  description: ロックをページの間だけ画面の外に持つ。ロックの持ち方を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-249
+    type: implements
+- path: src/features/graph/graph/store.test.tsx
+  name: ネットワークのロックの単体テスト
+  description: ネットワークのロックの単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/graph/graph/store.ts
+    type: tests
+- path: src/features/search/search/search-dialog.tsx
+  name: 全体の検索
+  description: 画面設計『全体の検索.tsx』の要素と操作を描く。検索の表示や操作を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-251
+    type: implements
+- path: src/features/search/search/search-dialog.test.tsx
+  name: 全体の検索の単体テスト
+  description: 全体の検索の単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/search/search/search-dialog.tsx
+    type: tests
+- path: src/features/search/search/search-dialog.stories.tsx
+  name: 全体の検索のストーリー
+  description: 全体の検索の状態ごとのストーリー。ストーリーを追加・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:storybook
+  related:
+  - to: MOD-489-251
+    type: implements
+- path: src/features/search/search/use-search-shortcut.ts
+  name: 全体の検索を開くキー
+  description: Ctrl+K（macOS は Cmd+K）で全体の検索を開く。キーの受け方を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-252
+    type: implements
+- path: src/features/search/search/use-search-shortcut.test.tsx
+  name: 全体の検索を開くキーの単体テスト
+  description: 全体の検索を開くキーの単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/search/search/use-search-shortcut.ts
+    type: tests
+- path: src/testing/fake-canvas.ts
+  name: 記録する 2D の文脈
+  description: jsdom で描かないキャンバスの代わりに、2D の文脈の呼び出しを記録する。キャンバスのテストの準備を変更するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  related:
+  - to: MOD-489-170
     type: implements
