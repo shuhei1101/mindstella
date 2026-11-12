@@ -69,9 +69,13 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T06:45:19.439284+00:00'
   - process: 単体テスト作成
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T07:45:24.159304+00:00'
   - process: 実装
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T07:45:24.159304+00:00'
   - process: 結合テスト作成
     status: skipped
     reason: 既存の test_transcription が挙動とプリセットを続けて選ぶ手順を検証するため、実行のみ
