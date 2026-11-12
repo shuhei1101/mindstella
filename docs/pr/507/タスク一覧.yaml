@@ -62,7 +62,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T12:46:17.692246+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: テスト実行方法（TP-489-1）は変更なし
+    updated_by: planner
+    updated_at: '2026-11-12T13:04:27.477246+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
