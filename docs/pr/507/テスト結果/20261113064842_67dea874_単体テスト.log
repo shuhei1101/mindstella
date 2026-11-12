@@ -1,0 +1,18 @@
+# 単体テスト（フロント）の React の側の全件実行（テスト実行方法 TL-2）。レビューの指摘の修正は React の側だけを変えたため、pytest tests/unit/preview は 20261113060146_282660a2_単体テスト.log の結果のまま
+
+$ npx vitest run
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  79 passed (79)
+      Tests  264 passed (264)
+   Start at  06:34:46
+   Duration  562.40s (environment 52%, import 26%, setup 19%, transform 1%, tests 1%, worker 1%)
+
+Environment  jsdom was created 79 times · 1942.13s total, 52% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+vitest_exit=0
