@@ -59,7 +59,7 @@ describe("SendForm", () => {
     expect(disabledMic).toHaveAccessibleDescription("理由の文");
     rerender(<SendForm target="D-1" loc={null} body="" status="idle" voice="recording" elapsed={72} levels={[0.2, 0.8]} onSubmit={vi.fn()} onInput={vi.fn()} />);
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(container.querySelectorAll('.send-wave[aria-hidden="true"] i')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-part="voice-wave"][aria-hidden="true"] i')).toHaveLength(2);
     expect(screen.getByRole("button", { name: "文字起こし" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "キャンセル" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "文字起こし" })).toBeEnabled();
@@ -99,14 +99,14 @@ describe("SendForm", () => {
     // 準備
     const props = { target: "D-1", loc: null, body: "確認: でよい", status: "idle" as const, onSubmit: vi.fn(), onInput: vi.fn() };
     const { rerender } = render(<SendForm {...props} voice="idle" />);
-    const textbox = screen.getByRole("textbox") as HTMLTextAreaElement;
+    const textbox = screen.getByRole<HTMLTextAreaElement>("textbox");
     await userEvent.click(textbox);
     textbox.setSelectionRange(4, 4);
     // 実行
     rerender(<SendForm {...props} voice="recording" levels={[0.5]} />);
     rerender(<SendForm {...props} voice="idle" />);
     // 検証
-    const restored = screen.getByRole("textbox") as HTMLTextAreaElement;
+    const restored = screen.getByRole<HTMLTextAreaElement>("textbox");
     expect(restored).toHaveFocus();
     expect([restored.selectionStart, restored.selectionEnd]).toEqual([4, 4]);
   });

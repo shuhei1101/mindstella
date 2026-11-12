@@ -109,7 +109,7 @@ describe("useVoiceInput", () => {
     const { result } = await renderVoice("");
     // 実行
     await act(() => result.current.onVoiceStart());
-    await act(() => {
+    act(() => {
       vi.advanceTimersByTime(WAVE_SAMPLE_MS * 2);
     });
     const recorded = result.current.levels;

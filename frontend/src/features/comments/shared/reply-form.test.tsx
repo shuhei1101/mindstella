@@ -36,7 +36,7 @@ describe("ReplyForm", () => {
     const onVoiceBlocked = vi.fn();
     const { rerender, container } = render(<ReplyForm thread="TH-1" body="案 A" status="idle" voice="recording" elapsed={5} levels={[0.5]} onVoiceDone={onVoiceDone} onVoiceBlocked={onVoiceBlocked} onSubmit={vi.fn()} onInput={vi.fn()} />);
     const hidden = screen.queryByRole("textbox");
-    const bars = container.querySelectorAll('.send-wave[aria-hidden="true"] i').length;
+    const bars = container.querySelectorAll('[data-part="voice-wave"][aria-hidden="true"] i').length;
     // 実行
     await userEvent.click(screen.getByRole("button", { name: "文字起こし" }));
     const elapsed = screen.getByText("0:05");
@@ -54,7 +54,7 @@ describe("ReplyForm", () => {
     // 準備
     const props = { thread: "TH-1", body: "確認: でよい", status: "idle" as const, onSubmit: vi.fn(), onInput: vi.fn() };
     const { rerender } = render(<ReplyForm {...props} voice="idle" />);
-    const textbox = screen.getByRole("textbox") as HTMLTextAreaElement;
+    const textbox = screen.getByRole<HTMLTextAreaElement>("textbox");
     await userEvent.click(textbox);
     textbox.setSelectionRange(4, 4);
     // 実行
@@ -62,7 +62,7 @@ describe("ReplyForm", () => {
     const doneFocused = screen.getByRole("button", { name: "文字起こし" }) === document.activeElement;
     rerender(<ReplyForm {...props} voice="idle" />);
     // 検証
-    const restored = screen.getByRole("textbox") as HTMLTextAreaElement;
+    const restored = screen.getByRole<HTMLTextAreaElement>("textbox");
     expect(doneFocused).toBe(true);
     expect(restored).toHaveFocus();
     expect([restored.selectionStart, restored.selectionEnd]).toEqual([4, 4]);
