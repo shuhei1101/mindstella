@@ -27,7 +27,9 @@ docs:
   - page: docs/er/ER-489-1.yaml
     new: false
     change: config.yaml の transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:24:05.047633+00:00'
   - page: docs/mock/components/send-form/index.html
     new: false
     change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
