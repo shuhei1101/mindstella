@@ -120,7 +120,7 @@ const readColors = (): GraphColors => {
 }
 
 /** 玉を球面上に黄金角の螺旋で散らして置き、線の数から半径を決める */
-function placeBalls(index: RecordIndex, graph: { nodes: GraphNode[]; links: GraphLink[] }): Ball[] {
+const placeBalls = (index: RecordIndex, graph: { nodes: GraphNode[]; links: GraphLink[] }): Ball[] => {
   const balls: Ball[] = graph.nodes.map((node, position, all) => {
     const t = (position + 0.5) / all.length;
     const phi = Math.acos(1 - 2 * t);
@@ -152,10 +152,11 @@ function placeBalls(index: RecordIndex, graph: { nodes: GraphNode[]; links: Grap
   }
   for (const ball of balls) ball.radius = 4 + Math.sqrt(ball.degree) * 2.2;
   return balls;
-}
+};
 
 /** 互いに離れ、線でつながったものは引き合い、中心へ寄る力を、玉が落ち着くまで繰り返して位置を整える */
-function settle(balls: Ball[], links: { s: Ball; t: Ball; type: LinkType }[]): void {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ描き方を 1 か所で読めるように保つ
+const settle = (balls: Ball[], links: { s: Ball; t: Ball; type: LinkType }[]): void => {
   // 玉が多いほど繰り返しを減らす（総当たりの計算が増えるため）
   const steps = Math.max(40, Math.min(260, Math.floor(120000 / Math.max(1, balls.length))));
   const velocity = new Map(balls.map((ball) => [ball.id, { x: 0, y: 0, z: 0 }]));
@@ -212,12 +213,12 @@ function settle(balls: Ball[], links: { s: Ball; t: Ball; type: LinkType }[]): v
   }
   // 整えた位置を、注目が外れたときに戻る位置として覚える
   for (const ball of balls) ball.home = { x: ball.x, y: ball.y, z: ball.z };
-}
+};
 
 /** 画面の外へ出る前に描き続ける余白を足した、画面の中か */
-function onScreen(x: number, y: number, width: number, height: number, margin: number): boolean {
+const onScreen = (x: number, y: number, width: number, height: number, margin: number): boolean => {
   return x > -margin && y > -margin && x < width + margin && y < height + margin;
-}
+};
 
 /** 名前の横の印を出す、名前の文字の大きさの下限（px。これより小さい名前の玉には出さない） */
 const COMMENT_MARK_MIN_FONT = 8;
@@ -245,7 +246,7 @@ const LOCK_PATH_DATA = "M7 11V7a5 5 0 0 1 10 0v4";
 const UNLOCK_PATH_DATA = "M7 11V7a5 5 0 0 1 9.9-1";
 
 /** 鍵のマーク（24 の枠の線画）を、中心と一辺を指定してキャンバスに描く。振れは鍵の上端を軸にする */
-function drawKeyIcon({
+const drawKeyIcon = ({
   context,
   x,
   y,
@@ -263,7 +264,7 @@ function drawKeyIcon({
   color: string;
   alpha: number;
   swing: number;
-}): void {
+}): void => {
   context.save();
   context.setLineDash([]);
   context.globalAlpha = alpha;
@@ -280,7 +281,7 @@ function drawKeyIcon({
   context.stroke();
   context.stroke(new Path2D(closed ? LOCK_PATH_DATA : UNLOCK_PATH_DATA));
   context.restore();
-}
+};
 
 /** 状態の印（一覧と同じ SVG）と資料の成果物の箱を、今の配色で絵にして取っておく（テーマごと） */
 const statusImages = new Map<string, HTMLImageElement>();
@@ -704,6 +705,7 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
     return views;
   };
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ描き方を 1 か所で読めるように保つ
   const frame = (now: number): void => {
     if (destroyed) return;
     handle = requestAnimationFrame(frame);

@@ -117,14 +117,14 @@ export const LABEL_LIFT: Partial<Record<NetworkLook, number>> = { constellation:
 // ───── 小さな道具 ─────
 
 /** 文字列から 0〜1 の決まった値を作る（玉ごとのまたたきの位相に使う） */
-export function hashUnit(text: string): number {
+export const hashUnit = (text: string): number => {
   let hash = 2166136261;
   for (const char of text) hash = Math.imul(hash ^ (char.codePointAt(0) ?? 0), 16777619);
   return ((hash >>> 0) % 10000) / 10000;
-}
+};
 
 /** 種を決めた乱数を返す（空の星の配置を毎回同じにする） */
-function seeded(seed: number): () => number {
+const seeded = (seed: number): () => number => {
   let a = seed;
   return () => {
     a = (a + 0x6d2b79f5) | 0;
@@ -132,40 +132,40 @@ function seeded(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
+};
 
 /** `#rrggbb` を `[r, g, b]` にする */
-function rgb(hex: string): [number, number, number] {
+const rgb = (hex: string): [number, number, number] => {
   const [r, g, b] = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
   return [r ?? 0, g ?? 0, b ?? 0];
-}
+};
 
 /** `#rrggbb` に透明度を付けた色を返す */
-function rgba(hex: string, alpha: number): string {
+const rgba = (hex: string, alpha: number): string => {
   const [r, g, b] = rgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
-}
+};
 
 /** `[r, g, b]` を `#rrggbb` にする */
-function toHex(channels: number[]): string {
+const toHex = (channels: number[]): string => {
   return `#${channels.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`;
-}
+};
 
 /** 色を白へ寄せる（星の芯の色に使う） */
-function whiten(hex: string, ratio: number): string {
+const whiten = (hex: string, ratio: number): string => {
   return toHex(rgb(hex).map((value) => value + (255 - value) * ratio));
-}
+};
 
 /** 両端の星の色（`#rrggbb`）の、成分ごとの平均を四捨五入した色を返す */
-export function midColor({ from, to }: { from: string; to: string }): string {
+export const midColor = ({ from, to }: { from: string; to: string }): string => {
   const a = rgb(from);
   const b = rgb(to);
   return toHex(a.map((value, position) => (value + (b[position] ?? 0)) / 2));
-}
+};
 
 /** 中心が明るく外へ薄れる光の玉の絵を、色と減衰ごとに一度だけ作って返す */
 const glowCache = new Map<string, HTMLCanvasElement>();
-export function bakeGlow({ color, falloff }: { color: string; falloff: number }): HTMLCanvasElement {
+export const bakeGlow = ({ color, falloff }: { color: string; falloff: number }): HTMLCanvasElement => {
   const key = `${color}|${falloff}`;
   const cached = glowCache.get(key);
   if (cached !== undefined) return cached;
@@ -184,11 +184,11 @@ export function bakeGlow({ color, falloff }: { color: string; falloff: number })
   context.fillRect(0, 0, SPRITE, SPRITE);
   glowCache.set(key, image);
   return image;
-}
+};
 
 /** 十字の光の筋の絵を、色ごとに一度だけ作って返す（毎コマはグラデーションを作らず置くだけにする） */
 const rayCache = new Map<string, HTMLCanvasElement>();
-export function bakeRay(color: string): HTMLCanvasElement {
+export const bakeRay = (color: string): HTMLCanvasElement => {
   const cached = rayCache.get(color);
   if (cached !== undefined) return cached;
   const image = document.createElement("canvas");
@@ -208,31 +208,31 @@ export function bakeRay(color: string): HTMLCanvasElement {
   }
   rayCache.set(color, image);
   return image;
-}
+};
 
 /** 焼いた絵を、中心と半径を指定して置く */
-function blit({ context, image, x, y, radius }: { context: CanvasRenderingContext2D; image: HTMLCanvasElement; x: number; y: number; radius: number }): void {
+const blit = ({ context, image, x, y, radius }: { context: CanvasRenderingContext2D; image: HTMLCanvasElement; x: number; y: number; radius: number }): void => {
   context.drawImage(image, x - radius, y - radius, radius * 2, radius * 2);
-}
+};
 
 /** 2 点を結ぶ線を引く（`dash` は線の種類の見分け） */
-function line({ context, from, to, dash }: { context: CanvasRenderingContext2D; from: LookPoint; to: LookPoint; dash: number[] }): void {
+const line = ({ context, from, to, dash }: { context: CanvasRenderingContext2D; from: LookPoint; to: LookPoint; dash: number[] }): void => {
   context.setLineDash(dash);
   context.beginPath();
   context.moveTo(from.x, from.y);
   context.lineTo(to.x, to.y);
   context.stroke();
-}
+};
 
 /** 塗りの円を描く */
-function circle({ context, x, y, radius }: { context: CanvasRenderingContext2D; x: number; y: number; radius: number }): void {
+const circle = ({ context, x, y, radius }: { context: CanvasRenderingContext2D; x: number; y: number; radius: number }): void => {
   context.beginPath();
   context.arc(x, y, radius, 0, TAU);
   context.fill();
-}
+};
 
 /** 4 方向へとがった星の形（アストロイド）を塗る */
-function star4({ context, x, y, radius }: { context: CanvasRenderingContext2D; x: number; y: number; radius: number }): void {
+const star4 = ({ context, x, y, radius }: { context: CanvasRenderingContext2D; x: number; y: number; radius: number }): void => {
   context.beginPath();
   context.moveTo(x, y - radius);
   context.quadraticCurveTo(x, y, x + radius, y);
@@ -240,27 +240,27 @@ function star4({ context, x, y, radius }: { context: CanvasRenderingContext2D; x
   context.quadraticCurveTo(x, y, x - radius, y);
   context.quadraticCurveTo(x, y, x, y - radius);
   context.fill();
-}
+};
 
 /** 明るい星の光条（十字の光の筋）を、焼いた絵を長さに合わせて置いて描く */
-function spikes({ context, x, y, length, color, alpha }: { context: CanvasRenderingContext2D; x: number; y: number; length: number; color: string; alpha: number }): void {
+const spikes = ({ context, x, y, length, color, alpha }: { context: CanvasRenderingContext2D; x: number; y: number; length: number; color: string; alpha: number }): void => {
   context.globalAlpha = alpha;
   blit({ context, image: bakeRay(color), x, y, radius: length });
-}
+};
 
 /** 注目している線の上を流れる玉の位置（0〜1）を、1 本に 2 つずつ返す。動きを減らす設定では流さない */
-function flows({ frame, position }: { frame: LookFrame; position: number }): number[] {
+const flows = ({ frame, position }: { frame: LookFrame; position: number }): number[] => {
   if (frame.reducedMotion) return [];
   return [0, 0.5].map((offset) => (frame.now / FLOW_PERIOD + offset + (position % 7) * 0.13) % 1);
-}
+};
 
 /** 線の位置 t の画面座標を返す */
-function at({ link, t }: { link: LookLink; t: number }): { x: number; y: number } {
+const at = ({ link, t }: { link: LookLink; t: number }): { x: number; y: number } => {
   return { x: link.from.x + (link.to.x - link.from.x) * t, y: link.from.y + (link.to.y - link.from.y) * t };
-}
+};
 
 /** 選んだ玉・カーソルを乗せた玉に輪を付ける */
-function ring({ frame, star, gap = 4 }: { frame: LookFrame; star: LookStar; gap?: number }): void {
+const ring = ({ frame, star, gap = 4 }: { frame: LookFrame; star: LookStar; gap?: number }): void => {
   if (!star.selected && !star.hover) return;
   const { context } = frame;
   context.setLineDash([]);
@@ -270,16 +270,16 @@ function ring({ frame, star, gap = 4 }: { frame: LookFrame; star: LookStar; gap?
   context.beginPath();
   context.arc(star.x, star.y, star.radius + gap, 0, TAU);
   context.stroke();
-}
+};
 
 /** 星のまたたき（ゆっくり明るさが揺れる）。動きを減らす設定では揺れの中ほどの明るさで止める */
-function twinkle({ frame, star, amplitude }: { frame: LookFrame; star: LookStar; amplitude: number }): number {
+const twinkle = ({ frame, star, amplitude }: { frame: LookFrame; star: LookStar; amplitude: number }): number => {
   if (frame.reducedMotion) return 1 - amplitude;
   return 1 - amplitude + amplitude * Math.sin(frame.now / TWINKLE_PERIOD + star.seed * TAU);
-}
+};
 
 /** 選んだ玉から、ゆっくり広がって消える輪を描く。動きを減らす設定では描かない */
-function pulse({ frame, star, color }: { frame: LookFrame; star: LookStar; color: string }): void {
+const pulse = ({ frame, star, color }: { frame: LookFrame; star: LookStar; color: string }): void => {
   if (frame.reducedMotion) return;
   const phase = (frame.now % PULSE_PERIOD) / PULSE_PERIOD;
   const { context } = frame;
@@ -290,18 +290,18 @@ function pulse({ frame, star, color }: { frame: LookFrame; star: LookStar; color
   context.beginPath();
   context.arc(star.x, star.y, star.radius * (1.4 + phase * 5), 0, TAU);
   context.stroke();
-}
+};
 
 /** 両端の星の色の中間の単色で線を 1 本引く（線ごとのグラデーションは作らない） */
-function midLine({ context, link, alpha }: { context: CanvasRenderingContext2D; link: LookLink; alpha: number }): void {
+const midLine = ({ context, link, alpha }: { context: CanvasRenderingContext2D; link: LookLink; alpha: number }): void => {
   context.strokeStyle = rgba(midColor({ from: link.fromColor, to: link.toColor }), alpha);
   line({ context, from: link.from, to: link.to, dash: LINK_DASH[link.type] });
-}
+};
 
 /** 玉が見える深さか（手前すぎない） */
-function visible(depth: number): boolean {
+const visible = (depth: number): boolean => {
   return depth > NEAR_CLIP;
-}
+};
 
 // ───── 深宇宙の空: 遠い星・天の川・星雲を一度だけ作る ─────
 
@@ -312,16 +312,16 @@ export type DeepSky = {
 };
 
 /** 球面の一様な向きを返す */
-function randomDirection(random: () => number): Vec3 {
+const randomDirection = (random: () => number): Vec3 => {
   const u = random() * 2 - 1;
   const theta = random() * TAU;
   const s = Math.sqrt(1 - u * u);
   return { x: s * Math.cos(theta), y: u, z: s * Math.sin(theta) };
-}
+};
 
 /** 深宇宙の空の素材（星の向き・明るさ・色、天の川の帯、星雲の絵）を、種を決めた乱数で一度だけ作って返す（2 回目からは同じもの） */
 let skyCache: DeepSky | null = null;
-export function deepSky(): DeepSky {
+export const deepSky = (): DeepSky => {
   if (skyCache !== null) return skyCache;
   const random = seeded(20261002);
   const tints = ["#ffffff", "#cfe0ff", "#fff1d6", "#ffd9c2", "#d9f2ff"];
@@ -384,17 +384,17 @@ export function deepSky(): DeepSky {
   });
   skyCache = { stars, nebulae };
   return skyCache;
-}
+};
 
 /** 無限に遠い向きを画面へ写す（回転だけ。手前側に無ければ null） */
-function projectDirection({ frame, direction }: { frame: LookFrame; direction: Vec3 }): { x: number; y: number; z: number } | null {
+const projectDirection = ({ frame, direction }: { frame: LookFrame; direction: Vec3 }): { x: number; y: number; z: number } | null => {
   const q = frame.rotate(direction);
   return q.z <= 0.02 ? null : { x: frame.width / 2 + (q.x / q.z) * FOCAL, y: frame.height / 2 + (q.y / q.z) * FOCAL, z: q.z };
-}
+};
 
 /** 近くの塵: 群れの周りに浮かび、寄ると視差で動く。単位球の中に 260 個を一度だけ置く */
 let dustCache: Vec3[] | null = null;
-function dustCloud(): Vec3[] {
+const dustCloud = (): Vec3[] => {
   if (dustCache !== null) return dustCache;
   const random = seeded(7);
   dustCache = Array.from({ length: 260 }, () => {
@@ -403,19 +403,19 @@ function dustCloud(): Vec3[] {
     return { x: direction.x * radius, y: direction.y * radius, z: direction.z * radius };
   });
   return dustCache;
-}
+};
 
 /** 見た目と、ライト / ダークの組ごとの、名前の文字の色を返す。`deep` の夜は星空になじむ青白、`dust` は無彩色、ほかは `fallback`（`tokens.css` の名前の色） */
-export function lookLabelColor({ look, dark, fallback }: { look: NetworkLook; dark: boolean; fallback: string }): string {
+export const lookLabelColor = ({ look, dark, fallback }: { look: NetworkLook; dark: boolean; fallback: string }): string => {
   if (look === "deep") return dark ? "#dfe6ff" : fallback;
   if (look === "dust") return dark ? "#c9ced6" : "#2a2f36";
   return fallback;
-}
+};
 
 // ───── 見た目ごとの描き方 ─────
 
 /** `glow`: 今の円に、やわらかい光のにじみを足す。夜は光を足し合わせて明るく重ねる */
-function drawGlow(frame: LookFrame): void {
+const drawGlow = (frame: LookFrame): void => {
   const { context, colors, dark } = frame;
   context.lineWidth = 0.6;
   context.strokeStyle = colors.line;
@@ -451,10 +451,11 @@ function drawGlow(frame: LookFrame): void {
     }
     ring({ frame, star });
   }
-}
+};
 
 /** `starlight`: 夜は白い芯と色のにじみと光条、昼は 4 方向にとがった星形 */
-function drawStarlight(frame: LookFrame): void {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ描き方を 1 か所で読めるように保つ
+const drawStarlight = (frame: LookFrame): void => {
   const { context, colors, dark } = frame;
   context.lineWidth = 0.7;
   if (dark) context.globalCompositeOperation = "lighter";
@@ -506,10 +507,11 @@ function drawStarlight(frame: LookFrame): void {
     ring({ frame, star, gap: dark ? 5 : 6 });
   }
   context.globalCompositeOperation = "source-over";
-}
+};
 
 /** `constellation`: 天球の経線・緯線が回転に合わせて回る星図。線は星の手前で切り、選ぶと照準の輪 */
-function drawConstellation(frame: LookFrame): void {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ描き方を 1 か所で読めるように保つ
+const drawConstellation = (frame: LookFrame): void => {
   const { context, colors, dark } = frame;
   const sphereRadius = frame.spread * 2.1;
   const grid = dark ? "170,195,255" : "35,55,105";
@@ -632,10 +634,11 @@ function drawConstellation(frame: LookFrame): void {
       context.setLineDash([]);
     }
   }
-}
+};
 
 /** `deep`: 回転に合わせて動く星空・天の川・星雲の地に、光のにじむ星。選ぶと彗星が線を流れ、輪が広がる。昼は夜明けの空 */
-function drawDeep(frame: LookFrame): void {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ描き方を 1 か所で読めるように保つ
+const drawDeep = (frame: LookFrame): void => {
   const { context, dark, width, height } = frame;
   const sky = deepSky();
   // 地: 夜は深い紺から黒へ、昼は淡い青から生成りへ
@@ -746,10 +749,11 @@ function drawDeep(frame: LookFrame): void {
     ring({ frame, star, gap: dark ? 6 : 4 });
     if (star.selected) pulse({ frame, star, color: dark ? whiten(star.color, 0.4) : star.color });
   }
-}
+};
 
 /** `dust`: 色を抜いた細かな点と髪の毛ほどの線だけ。注目の起点とつながる星にだけ種類の色を灯す */
-function drawDust(frame: LookFrame): void {
+// eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ描き方を 1 か所で読めるように保つ
+const drawDust = (frame: LookFrame): void => {
   const { context, dark, width, height } = frame;
   const ink = dark ? "#dfe3ea" : "#24282e";
   const ground = context.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) * 0.7);
@@ -789,10 +793,10 @@ function drawDust(frame: LookFrame): void {
     circle({ context, x: star.x, y: star.y, radius: star.radius });
     ring({ frame, star, gap: 3 });
   }
-}
+};
 
 /** 1 コマ分の玉と線を、`look` の見た目で地・線・注目の線を流れる光・星の順に描く（名前・状態の印・鍵・コメントの印は描かない） */
-export function drawLook({ look, frame }: { look: NetworkLook; frame: LookFrame }): void {
+export const drawLook = ({ look, frame }: { look: NetworkLook; frame: LookFrame }): void => {
   frame.context.globalCompositeOperation = "source-over";
   switch (look) {
     case "glow":
@@ -813,4 +817,4 @@ export function drawLook({ look, frame }: { look: NetworkLook; frame: LookFrame 
   }
   frame.context.globalCompositeOperation = "source-over";
   frame.context.setLineDash([]);
-}
+};

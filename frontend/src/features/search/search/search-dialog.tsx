@@ -27,6 +27,8 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
   // 開く前にフォーカスがあった要素を覚え、閉じたら戻す
   useEffect(() => {
     returnTo.current = document.activeElement;
+    // 開いたら検索の言葉にフォーカスを置く（画面設計の autofocus）
+    input.current?.focus();
     return () => {
       if (returnTo.current instanceof HTMLElement && returnTo.current.isConnected) returnTo.current.focus();
     };
@@ -61,10 +63,8 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
         <DialogTitle className="sr-only">すべての項目を検索</DialogTitle>
         <div className="flex items-center gap-2">
           <Icon name="search" className="text-muted-foreground" />
-          {/* eslint-disable-next-line jsx-a11y/no-autofocus -- 画面設計『全体の検索.tsx』の autofocus */}
           <input
             ref={input}
-            autoFocus
             type="text"
             aria-label="検索キーワード"
             placeholder="ID・タイトル・本文で検索"
@@ -96,10 +96,14 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
                     key={hit.id}
                     id={optionId(hit)}
                     role="option"
+                    tabIndex={-1}
                     aria-selected={hit === selected}
                     className={cn("flex cursor-pointer gap-3 rounded-control px-2 py-1.5", hit === selected ? "bg-row-selected" : "hover:bg-row-hover")}
                     onClick={() => {
                       onOpen(hit.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") onOpen(hit.id);
                     }}
                   >
                     <span className="flex-none font-mono text-small whitespace-nowrap">{hit.id}</span>
