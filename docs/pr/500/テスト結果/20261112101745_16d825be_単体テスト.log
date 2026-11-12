@@ -1,0 +1,108 @@
+$ /tmp/venv492/bin/python -m pytest tests/unit -q -p no:cacheprovider && npx vitest run   # Red（ceda612d のテストコード。実装の前。pytest・pytest-playwright・PyYAML・jsonschema・mcp を requirements-dev.txt の版で入れた仮想環境）
+E       AssertionError: assert {'hidden': Fa... 'bars': None} == {'hidden': True, 'bars': 1}
+E         Differing items:
+E         {'bars': None} != {'bars': 1}
+E         {'hidden': False} != {'hidden': True}
+E         Use -v to get more diff
+E       KeyError: 'stopped'
+E       KeyError: 'stopped'
+E       assert {'error': "Ty...diaDevices')"} == {'error': 'denied'}
+E         Differing items:
+E         {'error': "TypeError: Cannot read properties of undefined (reading 'mediaDevices')"} != {'error': 'denied'}
+E         Use -v to get more diff
+E       KeyError: 'levels'
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.pushLevel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:4:43)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+E       assert {'error': "Ty...diaDevices')"} == {'error': 'no-microphone'}
+E         Differing items:
+E         {'error': "TypeError: Cannot read properties of undefined (reading 'mediaDevices')"} != {'error': 'no-microphone'}
+E         Use -v to get more diff
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.pushLevel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:4:43)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+E       AssertionError: assert {'mic': None,...し', ...}, ...} == {'mic': None,...し', ...}, ...}
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'readOnly': False} != {'readOnly': True}
+E         {'wave': None} != {'wave': {'ariaHidden': 'true', 'levels': ['0.2', '0.8']}}
+E         {'textareaHidden': False} != {'textareaHidden': True}
+E         Use -v to get more diff
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.pushLevel is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:4:43)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+E       AssertionError: assert ('send', None) == ('insert', None)
+E         At index 0 diff: 'send' != 'insert'
+E         Use -v to get more diff
+FAILED tests/unit/preview/test_reply_form.py::test_reply_form_when_voice[chromium-done]
+FAILED tests/unit/preview/test_voice.py::test_start_recording[chromium] - Key...
+FAILED tests/unit/preview/test_voice.py::test_start_recording_when_cancelled[chromium]
+FAILED tests/unit/preview/test_voice.py::test_start_recording_when_rejected[chromium-denied]
+FAILED tests/unit/preview/test_voice.py::test_start_recording_levels[chromium]
+FAILED tests/unit/preview/test_voice.py::test_push_level[chromium-empty] - pl...
+FAILED tests/unit/preview/test_voice.py::test_start_recording_when_rejected[chromium-no_microphone]
+FAILED tests/unit/preview/test_voice.py::test_push_level[chromium-clamped] - ...
+FAILED tests/unit/preview/test_send_form.py::test_send_form_when_voice[chromium-recording]
+FAILED tests/unit/preview/test_voice.py::test_push_level[chromium-full] - pla...
+FAILED tests/unit/scripts/test_serve.py::test_transcription_response_when_unavailable
+11 failed, 2149 passed, 1 skipped, 5 warnings in 1167.98s (0:19:27)
+pytest_exit=1
+ ❯ frontend/src/shared/components/send-form.test.tsx (6 tests | 1 failed) 358ms
+ ❯ frontend/src/shared/hooks/use-voice-input.test.ts (5 tests | 3 failed) 6471ms
+ ❯ frontend/src/shared/core/voice.test.ts (7 tests | 2 failed) 19ms
+ ❯ frontend/src/features/comments/shared/reply-form.test.tsx (4 tests | 2 failed) 243ms
+ Test Files  4 failed | 67 passed (71)
+      Tests  8 failed | 209 passed (217)
+
+--- vitest ---
+E       AssertionError: assert {'hidden': Fa... 'bars': None} == {'hidden': True, 'bars': 1}
+tests/unit/preview/test_reply_form.py:278: AssertionError
+E         {'error': "TypeError: Cannot read properties of undefined (reading 'mediaDevices')"} != {'error': 'denied'}
+tests/unit/preview/test_voice.py:163: AssertionError
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.pushLevel is not a function
+E         {'error': "TypeError: Cannot read properties of undefined (reading 'mediaDevices')"} != {'error': 'no-microphone'}
+tests/unit/preview/test_voice.py:163: AssertionError
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.pushLevel is not a function
+E       AssertionError: assert {'mic': None,...し', ...}, ...} == {'mic': None,...し', ...}, ...}
+tests/unit/preview/test_send_form.py:537: AssertionError
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.pushLevel is not a function
+E       AssertionError: assert ('send', None) == ('insert', None)
+tests/unit/scripts/test_serve.py:1896: AssertionError
+     × send_form_when_voice 31ms
+     × use_voice_input 1174ms
+     × use_voice_input_levels 89ms
+     × use_voice_input_when_destination_changed 5002ms
+     × start_recording_levels 7ms
+     × push_level 1ms
+     × reply_form_when_voice 42ms
+     × reply_form_when_recording_ended 30ms
+ FAIL  frontend/src/shared/hooks/use-voice-input.test.ts [ frontend/src/shared/hooks/use-voice-input.test.ts ]
+ FAIL  frontend/src/shared/components/send-form.test.tsx > SendForm > send_form_when_voice
+AssertionError: expected <textarea …(6)></textarea> to be null
+ FAIL  frontend/src/shared/core/voice.test.ts > startRecording の音量 > start_recording_levels
+AssertionError: expected [] to deeply equal [ 0.5, 0.5 ]
+ FAIL  frontend/src/shared/core/voice.test.ts > pushLevel > push_level
+TypeError: pushLevel is not a function
+ FAIL  frontend/src/shared/hooks/use-voice-input.test.ts > useVoiceInput > use_voice_input
+AssertionError: expected "vi.fn()" to be called with arguments: [ '確認: 案 A にする' ]
+ FAIL  frontend/src/shared/hooks/use-voice-input.test.ts > useVoiceInput > use_voice_input_levels
+AssertionError: expected undefined to deeply equal [ 0.25, 0.75 ]
+ FAIL  frontend/src/shared/hooks/use-voice-input.test.ts > useVoiceInput > use_voice_input_when_destination_changed
+ FAIL  frontend/src/features/comments/shared/reply-form.test.tsx > ReplyForm > reply_form_when_voice
+AssertionError: expected [ <textarea …(7)></textarea>, +0 ] to deeply equal [ null, 1 ]
+ FAIL  frontend/src/features/comments/shared/reply-form.test.tsx > ReplyForm > reply_form_when_recording_ended
+AssertionError: expected false to be true // Object.is equality
+ Test Files  4 failed | 67 passed (71)
+      Tests  8 failed | 209 passed (217)
+vitest_exit=1
+
+$ npx vitest run frontend/src/shared/hooks/use-voice-input.test.ts   # 16d825be（偽の時計を残さないようにテストを直した後）。use_voice_input_when_destination_changed の時間切れは、前のテストが偽の時計を残したためで解消した
+     × use_voice_input 1135ms
+     × use_voice_input_levels 84ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected "vi.fn()" to be called with arguments: [ '確認: 案 A にする' ]
+AssertionError: expected undefined to deeply equal [ 0.25, 0.75 ]
+      Tests  2 failed | 3 passed (5)
