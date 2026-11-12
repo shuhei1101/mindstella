@@ -31,15 +31,21 @@ docs:
   - page: docs/mock/components/send-form/index.html
     new: false
     change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:05:26.508077+00:00'
   - page: docs/mock/components/reply-form/index.html
     new: false
     change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:05:26.508077+00:00'
   - page: docs/mock/components/transcription-settings/index.html
     new: false
     change: 文字起こし後の挙動の候補と既定を、挙動の値の決定に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:05:26.508077+00:00'
 scope_out:
   - item: 常駐サーバーが参照する文字起こしの URL（MINDSTELLA_TRANSCRIBER_URL）の既定と voice-paste の待ち受けのポートの食い違い（必読の D-424）
     reason: Issue のやりたいことに含まれず、音声入力の後の挙動とは別の事象。今回の作業 PR がマージされなくても同じ内容で成り立つ
