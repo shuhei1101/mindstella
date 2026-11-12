@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T03:44:38.721082+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: docs/module/MOD-489-5.tsx.yaml に、一覧へ戻った後に開いていた行へフォーカスを戻す単体テストのケース（描き直しより先に次のコマが来る条件）を追加する
+    updated_by: planner
+    updated_at: '2026-11-12T03:48:29.225976+00:00'
   - process: 単体テスト作成
     status: todo
     note: comments-panel.test.tsx に、スレッドから一覧へ戻った後、描き直しより先に次のコマが来ても開いていた行にフォーカスがある単体テストを追加する

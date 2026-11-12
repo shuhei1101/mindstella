@@ -8,5 +8,7 @@ docs:
   - page: docs/module/MOD-489-5.tsx.yaml
     new: false
     change: CommentsPanel の unit_tests に、一覧へ戻った後に開いていた行へフォーカスを戻すケース（描き直しより先に次のコマが来る条件）を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T03:48:26.821805+00:00'
 scope_out: []
