@@ -175,6 +175,12 @@ functions:
         condition: '`HOME` は空の `tmp_path`。`parametrize`: `show` と `TMUX` が空でない / `show` と `TMUX` が無い / `set --env MINDSTELLA_PORT=9000`'
         mock: なし
         expected: '0 を返し、標準出力の JSON の `in_tmux` が `true` / `false` / キーが無い（3 つ目は `env` が `{"MINDSTELLA_PORT": "9000"}`）'
+      - name: test_main_when_transcriber_env
+        case: 正常
+        summary: 文字起こしの 2 つのキーを登録できる
+        condition: '`HOME` は空の `tmp_path`。`set --env MINDSTELLA_TRANSCRIBER=voice-paste --env MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900`'
+        mock: なし
+        expected: '0 を返し、標準出力の JSON の `env` が `{"MINDSTELLA_TRANSCRIBER": "voice-paste", "MINDSTELLA_TRANSCRIBER_URL": "http://127.0.0.1:47900"}`。`shell.sh` に 2 つの `export` の行がこの順にある'
       - name: test_main_when_invalid_args
         case: 異常
         summary: 引数の誤りは何も書かず 2

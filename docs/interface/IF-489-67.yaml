@@ -74,6 +74,29 @@ flows:
       - '`env` が `MINDSTELLA_ALLOWED_HOSTS=b.example.com`・`MINDSTELLA_VENV=~/venvs/mindstella`'
       - '`~/.bashrc` の印で囲んだ範囲が 1 つだけで、`~/.bashrc` の中身が登録し直す前と同じ'
     test: test_normal_when_set_again
+  - name: 正常系（文字起こしの接続先を登録する）
+    summary: 文字起こしのサービスと接続先の環境変数を登録し、新しく開いた bash に入れる
+    setup:
+      - name: Mock
+        description: なし
+      - name: 登録済みのホーム
+        description: 正常系（登録する）を済ませたホームのフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as register.py
+        participant FS as ホームのフォルダ
+
+        クライアント->>IF: set --env MINDSTELLA_TRANSCRIBER=voice-paste --env MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900
+        IF->>FS: registration.json と shell.sh を書き直す
+        IF-->>クライアント: 登録の JSON、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0
+      - '`env` が `MINDSTELLA_ALLOWED_HOSTS=preview.example.com`・`MINDSTELLA_TRANSCRIBER=voice-paste`・`MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900`'
+      - '`bash -ic` で `echo $MINDSTELLA_TRANSCRIBER` が `voice-paste`、`echo $MINDSTELLA_TRANSCRIBER_URL` が `http://127.0.0.1:47900`'
+    test: test_normal_when_transcriber_set
   - name: 正常系（アカウントを足す）
     summary: '`mindstella-{名前}` がそのアカウントの `installPath` で起動スクリプトを叩く'
     setup:

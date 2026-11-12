@@ -1,0 +1,50 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-42.yaml
+    impact: run_only
+    detail: 登録できる環境変数に文字起こしのサービスと接続先が加わる。シナリオの流れは変わらないが、登録の振る舞いを壊しうる
+    depends_on: []
+docs:
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: 「設定したい環境変数を答える」の表に MINDSTELLA_TRANSCRIBER・MINDSTELLA_TRANSCRIBER_URL の行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:52:23.418403+00:00'
+  - page: docs/guide/スキル.md
+    new: false
+    change: 起動スクリプトの登録の行の「設定したい環境変数」の列挙に文字起こしの 2 つを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:52:23.418403+00:00'
+  - page: plugins/mindstella/skills/setup/steps/起動スクリプトの登録.md
+    new: false
+    change: 「登録できる環境変数は」の列挙に文字起こしの 2 つを追加する。列挙から漏れている MINDSTELLA_PORT も同じ文に追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:52:23.418403+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 「渡せる環境変数は」の列挙に MINDSTELLA_TRANSCRIBER・MINDSTELLA_TRANSCRIBER_URL を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:52:23.418403+00:00'
+  - page: docs/interface/IF-489-56.yaml
+    new: false
+    change: 制約の「呼び出し元の環境のまま渡す」環境変数の列挙に文字起こしの 2 つを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:47:54.623562+00:00'
+  - page: plugins/mindstella/bin/mindstella
+    new: false
+    change: 冒頭のコメントの環境変数の列挙に文字起こしの 2 つを追加する（処理は環境をそのまま受け継ぐため変えない）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:52:23.418403+00:00'
+scope_out:
+  - item: 文字起こしの既定の URL（http://127.0.0.1:47823）の変更
+    reason: 'voice-paste の既定のポートと一致しており、変えると既定の設定の voice-paste とつながらなくなる（Issue #501 の扱いの判断）'
+    plan: none
+  - item: 登録のスクリプトでの MINDSTELLA_TRANSCRIBER・MINDSTELLA_TRANSCRIBER_URL の値の形式の検証
+    reason: ほかのキーと同じく値の形式は参照する側（常駐サーバーの起動）が確認し、登録のスクリプトは改行だけを確認する
+    plan: none
