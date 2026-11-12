@@ -1,0 +1,34 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/.venv/lib/python3.14/site-packages/playwright/driver/package/lib/coreBundle.js
+   6086:11  warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-globals')
+  73372:5   warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-syntax')
+  75262:5   warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-syntax')
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/.venv/lib/python3.14/site-packages/playwright/driver/package/lib/utilsBundle.js
+   4562:7   warning  Unused eslint-disable directive (no problems were reported from 'camelcase')
+   4564:7   warning  Unused eslint-disable directive (no problems were reported from 'camelcase')
+  17624:25  error    Definition for rule '@typescript-eslint/prefer-nullish-coalescing' was not found  @typescript-eslint/prefer-nullish-coalescing
+  17647:11  error    Definition for rule '@typescript-eslint/prefer-nullish-coalescing' was not found  @typescript-eslint/prefer-nullish-coalescing
+  34422:9   error    Definition for rule '@typescript-eslint/unbound-method' was not found             @typescript-eslint/unbound-method
+  41164:9   error    Definition for rule '@typescript-eslint/unbound-method' was not found             @typescript-eslint/unbound-method
+  46203:3   error    Definition for rule '@typescript-eslint/no-unused-vars' was not found             @typescript-eslint/no-unused-vars
+  46207:3   error    Definition for rule '@typescript-eslint/no-unused-vars' was not found             @typescript-eslint/no-unused-vars
+
+✖ 11 problems (6 errors, 5 warnings)
+  0 errors and 5 warnings potentially fixable with the `--fix` option.
+
+lint_exit=1
+
+# 上の ESLint の違反は全て worktree の未追跡の .venv（.git/info/exclude で除外、作業 PR の変更ファイル外）にあるため、.venv を外して流し直した結果:
+$ npx eslint --ignore-pattern '.venv/**'
+eslint_exit=0
