@@ -153,3 +153,23 @@ tests/integration/preview/test_topbar_screen.py .                        [ 99%]
 tests/integration/preview/test_spa_decisions_screen.py ..                [100%]
 
 ====================== 1428 passed in 2714.53s (0:45:14) =======================
+
+$ cat /tmp/raf503/raf_microtask.py   # 差し替えの中身
+"""結合テストのページで requestAnimationFrame をマイクロタスクで走らせる差し替え（Issue #497 の再現条件）。"""
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _raf_microtask(page):
+    page.add_init_script("window.requestAnimationFrame = (callback) => { queueMicrotask(() => callback(0)); return 0; };")
+
+$ cd .claude/worktrees/develop && PYTHONPATH=/tmp/raf503 /tmp/venv492/bin/python -m pytest -p raf_microtask "tests/integration/preview/test_spa_thread_screen.py::test_back"   # 修正前の develop（c6101ee9。backToList は requestAnimationFrame で行を探す）
+c6101ee9 AI Monitor v0.3.0 の配布物へ追従する (#487)
+collected 1 item
+>       expect(_panel(page).locator("[data-focus='thread:TH-2']")).to_be_focused()
+E       AssertionError: Locator expected to be focused
+E         - Expect "to_be_focused" get_by_role("dialog", name="コメント").locator("[data-focus='thread:TH-2']") with timeout 5000ms
+tests/integration/preview/test_spa_thread_screen.py:46: AssertionError
+FAILED tests/integration/preview/test_spa_thread_screen.py::test_back[chromium]
+============================== 1 failed in 10.19s ==============================
