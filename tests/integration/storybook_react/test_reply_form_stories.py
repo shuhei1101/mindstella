@@ -166,13 +166,18 @@ VOICE_MESSAGE = "form [role=status]"
 NARROWEST_WIDTH = 320
 NARROWEST_HEIGHT = 640
 
-# 録音中の 2 つのボタンの位置と大きさを読む
+# 録音中の波形（入力欄の場所）と 2 つのボタンの位置と大きさ、入力欄を隠しているかを読む
 RECORDING_GEOMETRY_SCRIPT = """() => {
-  const field = document.querySelector('textarea').getBoundingClientRect();
+  const textarea = document.querySelector('textarea');
+  const wave = document.querySelector('.send-wave, [data-part="voice-wave"]');
+  const field = (wave ?? textarea).getBoundingClientRect();
   const cancel = document.querySelector('button[aria-label="キャンセル"]').getBoundingClientRect();
   const done = document.querySelector('button[aria-label="文字起こし"]').getBoundingClientRect();
   return {
-    fieldRight: field.right, fieldBottom: field.bottom,
+    fieldRight: field.right, fieldBottom: field.bottom, fieldHeight: field.height,
+    textareaHidden: textarea.hidden && textarea.getBoundingClientRect().height === 0,
+    waveHidden: wave === null ? null : wave.getAttribute('aria-hidden'),
+    bars: wave === null ? 0 : wave.querySelectorAll('i').length,
     cancelLeft: cancel.left, cancelRight: cancel.right, cancelBottom: cancel.bottom, cancelWidth: cancel.width, cancelHeight: cancel.height,
     doneLeft: done.left, doneRight: done.right, doneWidth: done.width, doneHeight: done.height,
   };
@@ -196,6 +201,9 @@ def assert_recording_buttons(page: Page) -> None:
     assert geometry["doneLeft"] >= geometry["cancelRight"] - POSITION_TOLERANCE_PX
     assert abs(geometry["cancelBottom"] - geometry["fieldBottom"]) <= POSITION_TOLERANCE_PX
     assert (geometry["cancelWidth"], geometry["cancelHeight"]) == (geometry["doneWidth"], geometry["doneHeight"])
+    # 入力欄を隠し、同じ場所・同じ高さに読み上げない波形を出す
+    assert (geometry["textareaHidden"], geometry["waveHidden"], geometry["bars"]) == (True, "true", 10)
+    assert abs(geometry["fieldHeight"] - geometry["cancelHeight"]) <= POSITION_TOLERANCE_PX
 
 
 def assert_mic_blocked(page: Page, reason: str) -> None:
@@ -258,6 +266,18 @@ def test_sent_not_entered(open_story: OpenStory) -> None:
     page = open_story("comments-replyform--sent-not-entered")
     # 検証
     assert page.inner_text(VOICE_MESSAGE).strip() == "送信しました。Claude Code へは入力していません。"
+
+
+
+def test_inserted(open_story: OpenStory) -> None:
+    """入力欄へ挿入した（既定）。「文字起こしの結果を挿入しました。」で、入力欄に戻している（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-replyform--inserted")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "文字起こしの結果を挿入しました。"
+    assert page.input_value("textarea") == "案 A にする"
+    assert page.get_by_role("textbox").is_visible()
+    assert_mic_ready(page)
 
 
 def test_voice_disabled(open_story: OpenStory) -> None:

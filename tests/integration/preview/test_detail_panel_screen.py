@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import (
+    FAKE_MIC_SCRIPT,
+    FIELD_STATE_JS,
+    VOICE_TIMEOUT_MS,
     assert_mic_blocked_after_click,
     assert_mic_ready,
+    assert_recording_wave,
+    put_caret,
+    start_recording,
     wait_transcription_status,
 )
 from workspace_fixtures import MakeItem as _MakeItem
@@ -6630,6 +6636,41 @@ def test_voice_input(
     # 検証
     assert_mic_ready(page.locator("aside.panel form.send"))
 
+
+def test_voice_input_recording(
+    page: Page,
+    make_item: _MakeItem,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """録音中は入力欄を波形に替えてキーボードの入力を受け付けず、✓ で文字起こしの結果を録音前のカーソルの位置へ挿入して送信しない。フォーカスは ✓ から入力欄の挿入した文字の後ろへ戻る（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        page.goto(f"{url}#tab=decisions&view=table&id=D-1")
+    form = page.locator("aside.panel form.send")
+    field = form.locator("textarea")
+    put_caret(field, "確認: でよい", 4)
+    # 実行（録音を始めて、キーボードで打つ）
+    start_recording(form)
+    page.keyboard.type("x")
+    # 検証（録音中）
+    assert_recording_wave(form)
+    assert field.input_value() == "確認: でよい"
+    # 実行（文字起こし）
+    form.get_by_role("button", name="文字起こし", exact=True).click()
+    # 検証（挿入して送信しない）
+    expect(form.locator(".send-msg")).to_have_text("文字起こしの結果を挿入しました。", timeout=VOICE_TIMEOUT_MS)
+    state = field.evaluate(FIELD_STATE_JS)
+    assert {key: state[key] for key in ("value", "start", "end", "focused")} == {
+        "value": "確認: 案 A にするでよい",
+        "start": 11,
+        "end": 11,
+        "focused": True,
+    }
+    assert not (root / ".mindstella" / "threads.yaml").exists()
 
 def test_voice_input_when_service_stopped(
     page: Page,
