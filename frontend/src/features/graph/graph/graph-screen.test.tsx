@@ -110,6 +110,23 @@ describe("GraphScreen", () => {
     await waitFor(() => expect(lock.current).toBeNull());
   });
 
+  // ピン止めしたコメントの一覧を開いたままでも L キーでロックする（正常系）
+  test("graph_screen_when_lock_key_pinned_panel", async () => {
+    // 準備
+    const lock = watchLock();
+    renderRoute("/spa/?tab=graph&id=D-1");
+    await screen.findByLabelText("ネットワーク");
+    const panel = document.createElement("section");
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "false");
+    document.body.append(panel);
+    // 実行
+    await userEvent.keyboard("l");
+    // 検証
+    await waitFor(() => expect(lock.current).toBe("D-1"));
+    panel.remove();
+  });
+
   // 入力欄では L キーを受けない（正常系）
   test("graph_screen_when_lock_key_typing", async () => {
     // 準備

@@ -31,15 +31,19 @@ describe("createGraphRenderer", () => {
   test("create_graph_renderer_when_destroyed", () => {
     // 準備
     const { frames, cancel, canvas, overlay } = setup();
-    const renderer = createGraphRenderer({ canvas, overlay, onPress: vi.fn() });
+    const onPress = vi.fn();
+    const renderer = createGraphRenderer({ canvas, overlay, onPress });
     const before = frames.length;
     // 実行
     renderer.destroy();
     for (const frame of frames.splice(0)) frame(16);
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { clientX: 5, clientY: 5, button: 0, bubbles: true }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { clientX: 5, clientY: 5, button: 0, bubbles: true }));
     // 検証
     expect(before).toBeGreaterThan(0);
     expect(cancel).toHaveBeenCalled();
     expect(frames).toHaveLength(0);
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   // 余白を押すと null を渡す（正常系）
