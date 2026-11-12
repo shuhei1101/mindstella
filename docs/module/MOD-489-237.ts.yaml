@@ -38,7 +38,7 @@ components:
         type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
         required: false
         default: "'idle'"
-        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べ。描き直すたびに要素を作り直すため、フォーカスと選んだ範囲は使う側（入口）が置く
+        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べる。描き直すたびに要素を作り直すため、フォーカスと選んだ範囲は使う側（入口）が置く
       - name: voiceReason
         type: string | null
         required: false
