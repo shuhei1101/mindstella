@@ -37,9 +37,9 @@ components:
     state:
       - name: transcriptionChoice
         title: 最後に選んだ文字起こしの設定
-        type: '{ base: unknown; action?: "send" | "insert"; preset?: string | null } | null'
+        type: '{ base: string; action?: "send" | "insert"; preset?: string | null } | null'
         initial: 'null'
-        description: 保存待ちの編集を再取得する前に続けて選んだ文字起こし後の挙動と用語集のプリセットと、選んだときの記録の `settings.transcription`（`base`）。選んだときに溜める `transcription` のもう一方の値はここから取り、ここに無い値は記録の `settings.transcription` から取る。描くときに記録の `settings.transcription` が `base` と違えば `null` に戻す
+        description: 保存待ちの編集を再取得する前に続けて選んだ文字起こし後の挙動と用語集のプリセットと、選んだときの記録の `settings.transcription` の JSON の文字列（`base`）。選んだときに溜める `transcription` のもう一方の値はここから取り、ここに無い値は記録の `settings.transcription` から取る。描くときに記録の `settings.transcription` の JSON の文字列が `base` と一致しなければ `null` に戻す
         notes: '`useState`（記録の値が `base` と違えば、描くときに `null` へ戻す）'
     container: frontend/src/features/settings/workspace-settings/workspace-settings-screen.tsx
 notes:
