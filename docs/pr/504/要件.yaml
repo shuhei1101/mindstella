@@ -1,0 +1,23 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: run_only
+    detail: 設定の画面で文字起こし後の挙動と用語集のプリセットを続けて選んだときに溜まる値を直す。シナリオの記述は変わらない
+    depends_on: []
+docs:
+  - page: docs/screen/SCR-489-28.tsx.yaml
+    new: false
+    change: 文字起こし後の挙動・用語集のプリセットの説明を、もう一方の値はこの画面で最後に選んだもの（選んでいなければ記録の値）を保つ旨に改める
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T06:33:01.403169+00:00'
+  - page: docs/screen/SCR-489-27.yaml
+    new: false
+    change: 今の画面の画面設計の同じ説明を、実装の振る舞い（最後に選んだ値を保つ）に揃える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T06:33:01.403169+00:00'
+scope_out:
+  - item: 今の画面（screens/workspace-settings.ts）の修正
+    reason: transcriptionFields が最後に選んだ値を既に保っている
+    plan: none

@@ -1,0 +1,83 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリの不具合の修正のため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書があるため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 今の画面で同じ振る舞いを実装済みで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: ユースケースの流れが変わらない
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面の見た目が変わらない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の見た目が変わらない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: シナリオの記述が変わらない
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面の見た目が変わらない（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: インターフェースが変わらない
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 部品が変わらない
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: UI 項目と操作が変わらない（判定フローチャート『画面設計要否』）。挙動・プリセットの説明の文言はドキュメント修正で改める
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T06:33:04.968260+00:00'
+  - process: ドキュメント修正
+    status: done
+    note: 画面設計『設定の画面.tsx』『設定の画面』の挙動・プリセットの説明
+    updated_by: planner
+    updated_at: '2026-11-12T06:45:19.439284+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T07:45:24.159304+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T07:45:24.159304+00:00'
+  - process: 結合テスト作成
+    status: skipped
+    reason: 既存の test_transcription が挙動とプリセットを続けて選ぶ手順を検証するため、実行のみ
+    updated_by: planner
+    updated_at: '2026-11-12T06:27:06.800883+00:00'

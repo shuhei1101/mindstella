@@ -1,0 +1,10 @@
+$ /tmp/venv492/bin/python -m pytest tests/unit -q -p no:cacheprovider && npx vitest run   # pytest・pytest-playwright・PyYAML・jsonschema・mcp を requirements-dev.txt の版で入れた仮想環境
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2160 passed, 1 skipped, 5 warnings in 1187.40s (0:19:47)
+ Test Files  71 passed (71)
+      Tests  221 passed (221)
+   Start at  16:36:47
+   Duration  524.19s (environment 54%, import 24%, setup 20%, transform 1%, worker 1%, tests 1%)
+exit=0
