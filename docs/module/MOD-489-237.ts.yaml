@@ -38,7 +38,7 @@ components:
         type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
         required: false
         default: "'idle'"
-        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする
+        description: 音声入力の状態（部品設計の `voice`。ボタンと結果の行は `sendForm` と同じ）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べ、✓ のボタンへフォーカスを移す。`recording` から別の状態へ描き直すときは、入力欄を戻してフォーカスを入力欄へ移し、録音前の選んだ範囲（`selectionStart`・`selectionEnd`）に戻す（`transcribing` を経て挿入したときは使う側が置いたカーソルの位置）
       - name: voiceReason
         type: string | null
         required: false
@@ -49,6 +49,11 @@ components:
         required: false
         default: '0'
         description: 録音を始めてからの秒数（`voice` が `recording` のとき）
+      - name: levels
+        type: readonly number[]
+        required: false
+        default: '[]'
+        description: 録音中の音量の並び（`voice` が `recording` のとき。部品設計の `levels`）
       - name: entered
         type: boolean
         required: false
@@ -68,9 +73,9 @@ components:
       - name: test_reply_form_when_voice
         case: 正常
         summary: 音声入力の状態とコールバック
-        condition: '`parametrize`: `voice: recording`・`elapsed: 5` で ✓ / `voice: disabled` でマイクを押す / `status: sent`・`entered: true`'
+        condition: '`parametrize`: `voice: recording`・`elapsed: 5`・`levels: [0.5]` で ✓ / `voice: disabled` でマイクを押す / `status: sent`・`entered: true`'
         mock: '`on.voiceDone`・`on.voiceBlocked`'
-        expected: '結果の行に `0:05` があり、`voiceDone` が入力欄の中身とカーソルの位置で 1 回 / `voiceBlocked` が 1 回 / 「送信し、Claude Code へ入力しました。」'
+        expected: '入力欄が `hidden` で `.send-wave` に `<i>` が 1 つあり、結果の行に `0:05` があり、`voiceDone` が入力欄の中身とカーソルの位置で 1 回 / `voiceBlocked` が 1 回 / 「送信し、Claude Code へ入力しました。」'
       - name: test_reply_form_when_keys
         case: 正常
         summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない

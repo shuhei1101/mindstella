@@ -161,6 +161,9 @@ data_models:
       - name: elapsed
         type: number
         description: 録音を始めてからの秒数（1 秒ごとに進めて、録っている入力だけを描き直す）
+      - name: levels
+        type: number[]
+        description: 録音中の音量の並び（`startRecording` の `onLevel` で `pushLevel` し、録っている入力の波形だけを描き直す。録音を終えたら空にする）
       - name: ticket
         type: number
         description: 録音を始めるたびに 1 進める番号。文字起こしの結果が返ったとき、押したときの番号と違えば結果を捨てる
@@ -470,9 +473,9 @@ functions:
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
          - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を描き直して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
          - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、それ以外は `idle`
-         - 「録音を始める」では、別の入力で録っていれば何もしない。`startRecording` で始め、`key`・`recording`・`phase: recording`・`elapsed: 0` にして `ticket` を進め、1 秒ごとに `elapsed` を進める。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
+         - 「録音を始める」では、別の入力で録っていれば何もしない。`startRecording` で始め（`onLevel` で `levels` に `pushLevel` して録っている入力の波形を描き直す）、`key`・`recording`・`phase: recording`・`elapsed: 0`・`levels: []` にして `ticket` を進め、1 秒ごとに `elapsed` を進める。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
          - 「録音をキャンセル」では `recording.cancel()` し、`key`・`recording` を `null`・`phase: idle` にして入力欄の中身を変えない
-         - 「文字起こし」では `phase: transcribing` にし、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `send`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違うか録っていた入力が無くなっていれば結果を捨てる。そうでなければ `phase: idle` に戻し、`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを消し（`saveDraft` を空で）、スレッドを読み直す。`inserted` は中身を書き換えてカーソルを置き `status: inserted`、`failed` は中身を書き換えて `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
+         - 「文字起こし」では `phase: transcribing` にし、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `insert`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違うか録っていた入力が無くなっていれば結果を捨てる。そうでなければ `phase: idle` に戻し、`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを消し（`saveDraft` を空で）、スレッドを読み直す。`inserted` は中身を書き換えてカーソルを置き `status: inserted`、`failed` は中身を書き換えて `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
          - 「押せないマイクを押す」では `status` を `voice-failed`（`voiceReason` と同じ文）にし、`micSupported()` が真なら文字起こしの可否を読み直して `availability` に入れる（使えるようになっていれば `idle` で描き直す。録音は始めない）
          - 録っている入力が無くなる・向けた先が変わるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、`recording` があれば `cancel()` し、`key`・`recording` を `null`・`phase: idle` にして `ticket` を進める（文字起こし中の結果を捨てる）。書き換えの知らせでの描き直しでは止めない
          - 項目を指さない入力は、幅 720px 以下でフォーカスが無く本文が空なら `collapsed`

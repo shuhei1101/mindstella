@@ -73,7 +73,7 @@ components:
         type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
         required: false
         default: "'idle'"
-        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする
+        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べ、✓ のボタンへフォーカスを移す。`recording` から別の状態へ描き直すときは、入力欄を戻してフォーカスを入力欄へ移し、録音前の選んだ範囲（`selectionStart`・`selectionEnd`）に戻す（`transcribing` を経て挿入したときは使う側が置いたカーソルの位置）
       - name: voiceReason
         type: string | null
         required: false
@@ -84,6 +84,11 @@ components:
         required: false
         default: '0'
         description: 録音を始めてからの秒数（`voice` が `recording` のとき）
+      - name: levels
+        type: readonly number[]
+        required: false
+        default: '[]'
+        description: 録音中の音量の並び（`voice` が `recording` のとき。部品設計の `levels`）
       - name: entered
         type: boolean
         required: false
@@ -113,9 +118,9 @@ components:
       - name: test_send_form_when_voice
         case: 正常
         summary: 音声入力の状態ごとのボタンと結果の行
-        condition: '`parametrize`: `voice: idle` / `voice: disabled`・`voiceReason` あり / `voice: recording`・`elapsed: 72` / `voice: transcribing` / `status: sent`・`entered: false` / `status: inserted`'
+        condition: '`parametrize`: `voice: idle` / `voice: disabled`・`voiceReason` あり / `voice: recording`・`elapsed: 72`・`levels: [0.2, 0.8]` / `voice: transcribing` / `status: sent`・`entered: false` / `status: inserted`'
         mock: なし（DOM を作って見る）
-        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクのボタンが `aria-disabled="true"` で `disabled` でなく、`title` と `aria-describedby` の先が理由 / × と ✓ のボタンがあり「レビューに追加」が無く、結果の行に `1:12`（`aria-hidden`）と読み上げの「録音中」 / × と ✓ が `disabled` で入力欄が `readonly` / 「送信しました。Claude Code へは入力していません。」/ 「文字起こしの結果を挿入しました。」。どの状態のボタンも文字を持たない
+        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクのボタンが `aria-disabled="true"` で `disabled` でなく、`title` と `aria-describedby` の先が理由 / × と ✓ のボタンがあり「レビューに追加」が無く、結果の行に `1:12`（`aria-hidden`）と読み上げの「録音中」、入力欄が `hidden` で、`aria-hidden` の `.send-wave` に `--lv` が `0.2`・`0.8` の `<i>` が 2 つ / × と ✓ が `disabled` で入力欄が `readonly` / 「送信しました。Claude Code へは入力していません。」/ 「文字起こしの結果を挿入しました。」。どの状態のボタンも文字を持たない
       - name: test_send_form_when_voice_events
         case: 正常
         summary: 音声入力のボタンのコールバック

@@ -31,15 +31,21 @@ components:
       - name: test_send_form_when_voice
         case: 正常
         summary: 音声入力の状態ごとのボタンと結果の行
-        condition: '`voice` が idle / disabled（`voiceReason` あり）/ recording（`elapsed: 72`）/ transcribing'
+        condition: '`voice` が idle / disabled（`voiceReason` あり）/ recording（`elapsed: 72`・`levels: [0.2, 0.8]`）/ transcribing'
         mock: なし
-        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクが `aria-disabled="true"` で理由を `aria-describedby` で指す / × と ✓ があり「レビューに追加」が無く、結果の行に `1:12` と読み上げの「録音中」 / × と ✓ が押せず入力欄が読み取りだけ
+        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクが `aria-disabled="true"` で理由を `aria-describedby` で指す / × と ✓ があり「レビューに追加」が無く、結果の行に `1:12` と読み上げの「録音中」、入力欄が隠れて、読み上げない波形に棒が 2 本あり、✓ にフォーカスがある / × と ✓ が押せず入力欄が読み取りだけ
       - name: test_send_form_when_voice_events
         case: 正常
         summary: 音声入力のイベント
         condition: idle でマイク / recording で × / recording で ✓ / disabled でマイク
         mock: なし
         expected: '`onVoiceStart` / `onVoiceCancel` / `onVoiceDone` が target・loc・body / `onVoiceBlocked` が呼ばれる'
+      - name: test_send_form_when_recording_ended
+        case: 正常
+        summary: 録音を終えたら入力欄へフォーカスを戻す
+        condition: '入力欄 `確認: でよい`・カーソル 4 で recording にし、idle へ描き直す'
+        mock: なし
+        expected: 入力欄が見え、フォーカスが入力欄にあり、カーソルが 4
     container: frontend/src/shared/components/send-form.tsx
 notes:
   単体テスト: 同じフォルダの `send-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）

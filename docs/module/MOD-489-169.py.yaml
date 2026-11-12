@@ -1707,20 +1707,20 @@ functions:
          - 問題がある場合、問題の行を改行でつないだ `detail` の 422 を返す
          - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
       3. 文字起こしのインターフェースに尋ねる（`check_availability(context.transcriber)`。鍵を取らない）
-      4. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で、3 の値と `transcription.action`（無ければ `send`）・`transcription.preset`（無ければ `null`）を返す
+      4. 200・`application/json; charset=utf-8`・`Cache-Control: no-store` で、3 の値と `transcription.action`（無ければ `insert`。`DEFAULT_TRANSCRIPTION_ACTION`）・`transcription.preset`（無ければ `null`）を返す
     unit_tests:
       - name: test_transcription_response
         case: 正常
         summary: 使えるときは候補と設定を返す
-        condition: '`transcription: {action: insert, preset: 開発}` のワークスペース。`presets()` が `["一般", "開発"]` を返す偽の実装を `context.transcriber` に入れる'
+        condition: '`transcription: {action: send, preset: 開発}` のワークスペース。`presets()` が `["一般", "開発"]` を返す偽の実装を `context.transcriber` に入れる'
         mock: 偽の実装
-        expected: '200 で `{available: true, reason: null, detail: null, presets: [一般, 開発], action: insert, preset: 開発}`、`Cache-Control: no-store`'
+        expected: '200 で `{available: true, reason: null, detail: null, presets: [一般, 開発], action: send, preset: 開発}`、`Cache-Control: no-store`'
       - name: test_transcription_response_when_unavailable
         case: 正常
         summary: 使えないときも 200 で理由を返し、設定が無ければ既定
         condition: '`transcription` を持たないワークスペース。`presets()` が `TranscriberStoppedError` を送る偽の実装'
         mock: 偽の実装
-        expected: '200 で `available: false`・`reason: stopped`・`presets: []`・`action: send`・`preset: null`。本文に `voice-paste` を含まない'
+        expected: '200 で `available: false`・`reason: stopped`・`presets: []`・`action: insert`・`preset: null`。本文に `voice-paste` を含まない'
       - name: test_transcription_response_when_rejected
         case: 異常
         summary: 送り元の違いと崩れた設定

@@ -61,6 +61,18 @@ constants:
         description: 届かない・空の文字・`detail` の無い失敗
       - key: sendFailed
         value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
+  - name: WAVE_SAMPLE_MS
+    title: 音量を取る間隔
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    summary: 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。`AnalyserNode` の `fftSize` 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上にし、重ねて見ない。1 秒に 20 本で、話し始めてから 1 秒以内に棒の長さで声を拾えているかが分かる
+    value: '50'
+  - name: WAVE_LEVELS_MAX
+    title: 持つ音量の数の上限
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    summary: 波形に持つ音量の数の上限（古いものから捨てる）。入力欄の最も広い詳細の全画面の幅の上限 1600px を、縦の棒の最も狭い間隔（棒 2px + すき間 2px）の 4px で割った数で、どの幅でも枠を埋める
+    value: '400'
 functions:
   - name: micSupported
     title: マイクを使えるか
@@ -95,12 +107,17 @@ functions:
     is_async: true
     summary: マイクの許可を得て録音を始め、`Recording` を返す。許可が得られなければ理由で断る
     args:
+      - name: onLevel
+        type: '(level: number) => void'
+        required: true
+        passing: positional
+        description: 録音中に `WAVE_SAMPLE_MS` ごとに 0〜1 の音量で呼ぶ（波形の棒 1 本）
       - name: win
         type: Window
         required: false
         default: window
         passing: injected
-        description: '`navigator.mediaDevices` と `MediaRecorder` を持つ窓'
+        description: '`navigator.mediaDevices`・`MediaRecorder`・`AudioContext` を持つ窓'
     returns:
       type: Promise<Recording>
       description: 録音中の 1 回分
@@ -109,7 +126,8 @@ functions:
          - `NotAllowedError`・`SecurityError` の場合、`'denied'` で断る
          - それ以外の失敗の場合、`'no-microphone'` で断る
       2. `VOICE_MIME_TYPES` のうち `isTypeSupported` が真の最初の形（無ければ指定しない）で `MediaRecorder` を作り、`start()` する
-      3. `stop` は `dataavailable` の塊を集め、`stop` の後に 1 つの `Blob` にして返す。`cancel` は塊を捨てる。どちらもストリームの全てのトラックを `stop()` する
+      3. `AudioContext` の `createMediaStreamSource` で同じストリームを `AnalyserNode`（`fftSize` 2048）へつなぎ、`WAVE_SAMPLE_MS` ごとに `getByteTimeDomainData` の値の 128 からの差の最大を 128 で割った 0〜1 の音量で `onLevel` を呼ぶ
+      4. `stop` は `dataavailable` の塊を集め、`stop` の後に 1 つの `Blob` にして返す。`cancel` は塊を捨てる。どちらも音量を取るのをやめて `AudioContext` を `close()` し、ストリームの全てのトラックを `stop()` する
     unit_tests:
       - name: test_start_recording
         case: 正常
@@ -123,6 +141,12 @@ functions:
         condition: 始めて `cancel()`
         mock: 偽の窓
         expected: トラックの `stop` が呼ばれ、塊を返さない
+      - name: test_start_recording_levels
+        case: 正常
+        summary: 間隔ごとに音量を知らせ、止めたら知らせない
+        condition: 偽の `AudioContext`（`getByteTimeDomainData` が 128 と 192 を持つ値を返す）と偽の時計。始めて `WAVE_SAMPLE_MS` を 2 回進め、`stop()` してからもう 1 回進める
+        mock: 偽の窓と偽の時計
+        expected: '`onLevel` が `0.5` で 2 回だけ呼ばれ、`AudioContext` の `close` が呼ばれている'
       - name: test_start_recording_when_rejected
         case: 異常
         summary: 許可の拒否と、それ以外を分ける
@@ -190,6 +214,34 @@ functions:
         condition: '`parametrize`: 0 / 12 / 72 / 3600'
         mock: なし
         expected: '`0:00` / `0:12` / `1:12` / `60:00`'
+  - name: pushLevel
+    title: 音量を足す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    summary: 音量の並びの末尾に 1 つ足し、`WAVE_LEVELS_MAX` を超えた古いものを先頭から捨てた新しい並びを返す（元の並びは変えない）
+    args:
+      - name: levels
+        type: readonly number[]
+        required: true
+        passing: positional
+        description: 今の音量の並び（古い順）
+      - name: level
+        type: number
+        required: true
+        passing: positional
+        description: 足す音量（0〜1。範囲の外は 0 か 1 にそろえる）
+    returns:
+      type: number[]
+      description: 足した後の並び
+    unit_tests:
+      - name: test_push_level
+        case: 正常
+        summary: 末尾に足し、上限を超えた古いものを捨てる
+        condition: '`parametrize`: `([], 0.5)` / `([0.1, 0.2], 1.4)` / 長さ `WAVE_LEVELS_MAX` の並びに `0.3`'
+        mock: なし
+        expected: '`[0.5]` / `[0.1, 0.2, 1]` / 長さ `WAVE_LEVELS_MAX` で、先頭の 1 つが消え末尾が `0.3`。元の並びは変わらない'
   - name: finishVoice
     title: 文字起こしを終える
     kind: 関数
@@ -197,7 +249,7 @@ functions:
     usecase: 音声でコメントする
     scope: public
     is_async: true
-    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `send` なら全文をすぐ送る
+    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `send` なら全文をすぐ送る（`insert` なら送らない）
     args:
       - name: recording
         type: Recording
