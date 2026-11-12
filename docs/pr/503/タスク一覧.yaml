@@ -1,0 +1,78 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が既にあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue でないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 既存の画面のフォーカスの当て方の修正で、未検証の技術に依存しないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 利用者の流れは変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面の見た目を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面と遷移を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 操作の振る舞いと結果は変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面の見た目を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: インターフェースを変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 部品の仕様を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 一覧へ戻ったときに開いていた行へフォーカスを戻す振る舞いは画面設計『スレッド.tsx』のとおりで、仕様を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: モジュールの構成と責務を変えないため対象外。単体テストのケースの追加はドキュメント修正で行う
+    updated_by: planner
+    updated_at: '2026-11-12T03:44:38.721082+00:00'
+  - process: ドキュメント修正
+    status: todo
+    note: docs/module/MOD-489-5.tsx.yaml に、一覧へ戻った後に開いていた行へフォーカスを戻す単体テストのケース（描き直しより先に次のコマが来る条件）を追加する
+  - process: 単体テスト作成
+    status: todo
+    note: comments-panel.test.tsx に、スレッドから一覧へ戻った後、描き直しより先に次のコマが来ても開いていた行にフォーカスがある単体テストを追加する
+  - process: 実装
+    status: todo
+    note: comments-panel.tsx の backToList のフォーカスの戻しを、描き直した行へ当てる形に修正し、SPA のバンドルを作り直す
+  - process: 結合テスト作成
+    status: todo
+    note: test_spa_thread_screen.py::test_back を変えずに、requestAnimationFrame をマイクロタスクで走らせる差し替えの下と通常の実行で pass を確かめ、tests/integration/preview を全件実行する
