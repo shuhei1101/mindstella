@@ -28,12 +28,18 @@ components:
         condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で、「送信する」を選んだ直後（記録を再取得する前）にプリセットの「一般」を選ぶ'
         mock: MSW
         expected: '2 回目の `POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: 一般}}` で呼ばれる'
+      - name: test_workspace_settings_screen_when_transcription_choice_outdated
+        case: 正常
+        summary: 保存待ちの編集が変わった後の選択
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で「送信する」を選び、保存待ちの `transcription` を取り消して記録の `settings.transcription` が `{action: insert}` に戻った後に、プリセットの「一般」を選ぶ'
+        mock: MSW
+        expected: '最後の `POST /api/edits` が `{op: setting, key: transcription, value: {action: insert, preset: 一般}}` で呼ばれる'
     state:
       - name: transcriptionChoice
         title: 最後に選んだ文字起こしの設定
-        type: '{ action?: "send" | "insert"; preset?: string | null }'
-        initial: '{}'
-        description: この画面で最後に選んだ文字起こし後の挙動と用語集のプリセット。選んだときに溜める `transcription` のもう一方の値はここから取り、まだ選んでいない値は記録の `settings.transcription` から取る
+        type: '{ base: unknown; action?: "send" | "insert"; preset?: string | null } | null'
+        initial: 'null'
+        description: 保存待ちの編集を再取得する前に続けて選んだ文字起こし後の挙動と用語集のプリセットと、選んだときの記録の `settings.transcription`（`base`）。選んだときに溜める `transcription` のもう一方の値はここから取り、ここに無い値は記録の `settings.transcription` から取る。描くときに記録の `settings.transcription` が `base` と違えば `null` に戻す
         notes: '`useRef`（描き直しで作り直さない）'
     container: frontend/src/features/settings/workspace-settings/workspace-settings-screen.tsx
 notes:
