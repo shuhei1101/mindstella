@@ -153,18 +153,34 @@ flows:
       - タイトルを変えた後 2 秒以内に、詳細パネルと表の D-1 が新しいタイトルになり、URL が変わらない
       - D-1 を消した後、詳細パネルが閉じ、URL に `id` が無く、`f.status` が残っている
     test: test_normal_when_records_changed_with_item
-  - name: 正常系（React に無い画面を開く）
-    summary: ネットワークの入口は、今の画面を同じタブで開く
+  - name: 正常系（ネットワークを開く）
+    summary: タブの帯の右端のネットワークの入口で、`id` の項目を選んだネットワークを開き、`f.{列}` で描く玉を絞る
     setup:
       - *id001
       - name: make_workspace
-        description: 検討事項 D-1 と、D-1 を追加したまとまり V-1 を持つワークスペース
-        notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、タブの帯の右端のネットワークの入口を押す'
-    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n  participant OLD as 今の画面\n\n  ユーザー->>IF: ネットワークの入口を押す\n  IF->>OLD: /mindstella.html#tab=graph&id=D-1&diff=V-1\n  OLD-->>ユーザー: D-1 を選んだネットワーク\n```"
+        description: 検討事項 D-1（決定済み）・D-2（要見直し）と、D-1 を追加したまとまり V-1 を持つワークスペース
+        notes: '`/spa/?tab=decisions&view=table&id=D-1&diff=V-1` で開き、タブの帯の右端のネットワークの入口を押し、続けて絞り込みのドロワーで状態「要見直し」を選ぶ'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: ネットワークの入口を押す\n  IF-->>ユーザー: D-1 を選んだネットワークと D-1 の詳細パネル\n  ユーザー->>IF: 絞り込みのドロワーで状態「要見直し」を選ぶ\n  IF-->>ユーザー: D-2 だけを描いたネットワーク\n```"
     expected:
-      - 同じタブで `/mindstella.html` が開き、ハッシュが `tab=graph&id=D-1&diff=V-1`
-      - 今の画面のネットワークで D-1 が選ばれている
-    test: test_normal_when_legacy_screen
+      - 入口を押した後、同じページのまま URL の search params が `tab=graph&id=D-1&diff=V-1` で（`view` が無い）、履歴が 1 つ増え、タブの帯でネットワークが選ばれている
+      - ネットワークが D-1 を選んだ項目として示し、詳細パネルに D-1 がある
+      - 状態を選んだ後、URL に `f.status=要見直し` があり、履歴の数が変わらず、条件のチップに状態「要見直し」がある
+      - ブラウザのコンソールにエラーが出ていない
+    test: test_normal_when_graph
+  - name: 正常系（全体の検索で項目を開く）
+    summary: '`Ctrl+K` で全体の検索を開き、検索の言葉にヒットした項目を選んで、その項目のタブと詳細パネルを開く'
+    setup:
+      - *id001
+      - name: make_workspace
+        description: タイトル「画面の分け方」の検討事項 D-1 と、タスク T-1 を持つワークスペース
+        notes: '`/spa/?tab=tasks` で開き、`Ctrl+K` を押して「画面」と入力し、結果の D-1 を押す'
+    flow: "```mermaid\nsequenceDiagram\n  actor ユーザー\n  participant IF as React のプレビュー\n\n  ユーザー->>IF: Ctrl+K を押す\n  IF-->>ユーザー: 全体の検索\n  ユーザー->>IF: 「画面」と入力する\n  IF-->>ユーザー: D-1 を含む検索の結果\n  ユーザー->>IF: D-1 を押す\n  IF-->>ユーザー: 検討事項と D-1 の詳細パネル\n```"
+    expected:
+      - '`Ctrl+K` を押した後、URL に `search=1` があり、履歴の数が変わらず、検索の言葉にフォーカスがある'
+      - 「画面」と入力した後、URL に `q=画面` があり、履歴の数が変わらず、検索の結果に D-1 がある
+      - D-1 を押した後、全体の検索が閉じ、URL の search params が `tab=decisions&id=D-1` で（`search`・`q` が無い）、履歴が 1 つ増える
+      - ブラウザで戻ると、タスクの画面に戻る
+    test: test_normal_when_search
   - name: 正常系（編集を溜めて保存する）
     summary: 詳細パネルで答えを書いて保存待ちに溜め、保存待ちのパネルからまとめて保存する
     setup:
@@ -477,25 +493,25 @@ callers:
   - SC-489-12#
 request:
   - name: tab
-    type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'settings'"
+    type: "'overview' | 'decisions' | 'tasks' | 'research' | 'docs' | 'terms' | 'notes' | 'logs' | 'graph' | 'settings'"
     required: false
     default: なし（概要を開く）
     location: query
-    description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す。`settings` は設定の画面で、タブの帯には出さない
-    constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す。差分の表示中の `settings` も無いものとして扱う
+    description: 開く画面。React へ移した画面だけを持ち、移すたびに値を足す。`graph` はネットワークで、タブの帯の右端の入口から開く。`settings` は設定の画面で、タブの帯には出さない
+    constraints: 決めた値以外と、表示しない種類（個人の上書きかワークスペースの既定）を指す値は無いものとして扱い、URL から外す（`graph` は表示する種類によらず開ける）。差分の表示中の `settings` も無いものとして扱う
   - name: view
     type: "'map' | 'board' | 'cards' | 'table'"
     required: false
     default: なし（画面ごとの既定。`decisions` と `tasks` は `board`、`docs` は `cards`、それ以外は `table`）
     location: query
     description: 表示形式。既定と違うときだけ書く
-    constraints: その画面が持たない形式は無いものとして扱い、URL から外す
+    constraints: その画面が持たない形式は無いものとして扱い、URL から外す（`graph` は表示形式を持たない）
   - name: id
     type: str
     required: false
     default: なし（詳細パネルを開かない）
     location: query
-    description: 詳細パネルで開く項目の ID
+    description: 詳細パネルで開く項目の ID。ネットワークでは、この項目を選んだ項目として示す
     constraints: '`D-`・`T-`・`R-`・`A-`・`G-`・`N-`・`L-` に数字。記録に無い ID は無いものとして扱い、URL から外す'
     example: D-3
   - name: full
@@ -526,7 +542,7 @@ request:
     required: false
     default: なし（その画面の保存した条件、無ければ画面の既定の条件で絞る）
     location: query
-    description: 開いている画面を、その列の値で絞る。どの表示形式でも絞り込みのドロワーの条件として効く。概要の「すべて表示」・表のセル・絞り込みのドロワーとチップが書く
+    description: 開いている画面を、その列の値で絞る。どの表示形式とネットワークでも絞り込みのドロワーの条件として効く。概要の「すべて表示」・表のセル・絞り込みのドロワーとチップが書く
     constraints: 形は『プレビューを開く』のハッシュの引数 `f.{列}` と同じ（複数の値は `|`、`~{列}` は文字の条件）。絞り込みを変えるたびに書き直す
     example: f.status=要見直し
   - name: sort
@@ -574,6 +590,21 @@ request:
     description: スレッドの一覧を絞るタグ。1 つだけ
     constraints: '`panel` が `comments` のときだけ効く。それ以外のときと、どのスレッドにも無いタグは無いものとして扱い、URL から外す'
     example: 画面
+  - name: search
+    type: "'1'"
+    required: false
+    default: なし（全体の検索を開かない）
+    location: query
+    description: 全体の検索のモーダルを開く。トップバーの検索の入口と `Ctrl+K`（macOS は `Cmd+K`）が書き、閉じると外す
+    constraints: 開いている画面と詳細パネルの上に重ねて開き、ほかの search params を変えない
+  - name: q
+    type: str
+    required: false
+    default: なし（検索の言葉が空）
+    location: query
+    description: 全体の検索の言葉
+    constraints: '`search` があるときだけ効く。`search` が無いときと、前後の空白を除いて空のときは URL から外す。入力に合わせて書き直す'
+    example: 画面
   - name: 編集の値
     type: Any
     required: false
@@ -613,13 +644,13 @@ constraints:
   - item: URL の状態
     constraint: 画面で見ているものに影響する状態（リクエストの表の全て）は URL の search params に持ち、TanStack Router の `validateSearch` と Zod で検証する。既定の値は書かない
   - item: 履歴
-    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直し・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込みは積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
+    constraint: 画面の移動と、詳細の中の項目の移動（本文の用語・項目の ID のリンクと、全体の検索の結果から項目を開くことを含む）は履歴に積む。表示形式の切り替え・詳細パネルの開閉・全画面の開閉・本文の見出しへの移動・絞り込みと並べ替え・差分の時点の選び直し・左のパネルの開閉・コメントの一覧の中のスレッドとレビュー中の書き込みの画面の行き来・スレッドの絞り込み・全体の検索の開閉と検索の言葉の入力は積まずに URL を置き換える。幅 900px 以下の詳細パネルだけは開くときに積む
   - item: 画面の移動と項目
-    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップのときは、`id` の項目を選んだ項目として示す
+    constraint: タブの帯で画面を移るときは `id`・`diff` を残し、`view`・`f.{列}`・`sort` を外す。移った先が検討事項のマップかネットワークのときは、`id` の項目を選んだ項目として示す。全体の検索の結果から項目を開くときは、その項目の種類の画面へ移り、`id` をその項目にして `search`・`q` を外す
   - item: 保存した絞り込みの条件
     constraint: 画面ごとの絞り込みの条件を、今の画面と同じ端末の保存領域のキーに、条件を変えるたびに書く。URL に `f.{列}` が無い画面を開くときは保存した条件を当てて URL に書き、`f.{列}` があれば URL の条件で開いて保存した条件を書き換える。保存した値が今の記録に無ければ、その値を外して描く
   - item: 端末の保存領域
-    constraint: ライト / ダーク・表ごとの表示する列とピン留め・変更履歴で選んだ時点・差分のミニマップ・本文の差分の並べ方・本文の表とセクションの見せ方・画面ごとの絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並びは、今の画面と同じ `localStorage` のキーと値の形で読み書きし、知らない項目を消さない。詳細パネルの幅は今の画面と同じ `sessionStorage` のキーに持つ。詳細パネル・詳細の全画面の本文のスクロール位置は、今の画面と同じ `sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送るときは戻さない
+    constraint: ライト / ダーク・表ごとの表示する列とピン留め・変更履歴で選んだ時点・差分のミニマップ・本文の差分の並べ方・本文の表とセクションの見せ方・画面ごとの絞り込みの条件・表示する種類・コメントの一覧のピン止め・レビュー中のコメントの並び・ネットワークの見た目は、今の画面と同じ `localStorage` のキーと値の形で読み書きし、知らない項目を消さない。詳細パネルの幅は今の画面と同じ `sessionStorage` のキーに持つ。詳細パネル・詳細の全画面の本文のスクロール位置は、今の画面と同じ `sessionStorage` のキー（`mindmap-body-scroll`）に項目の ID ごとに持ち、項目を開いたときにその位置へ戻す。`h` の見出しへ送るときは戻さない
   - item: 「前回開いてから」の範囲
     constraint: 『プレビューを開く』の制約「「前回開いてから」の範囲」のサーバーの配信の決め方と同じ。`sessionStorage` のキーも今の画面と同じにし、同じタブで今の画面と SPA を行き来しても `POST /api/opened` を呼び直さない
   - item: 前の版の組み立て
@@ -642,8 +673,8 @@ constraints:
     constraint: 表示する種類・差分のミニマップ・本文の表とセクションの見せ方の個人の上書きは、選んだときに端末の保存領域に書いてその場で画面に当て、サーバーへは送らない。開いている画面の種類を外したときは概要へ移り、URL を置き換える。ワークスペースの既定は、既定の保存の確かめで「保存する」を押したときに `PUT /api/config/display` で書く（`network_look` は個人の上書きの見た目を送り、上書きが無ければ記録の既定（`settings.display.network_look`。無ければ `deep`）を送る）。書き換えの知らせで読み直した記録の既定が変わったときは、上書きを持たない項目に新しい既定を当てる
   - item: 設定の画面の入口
     constraint: 設定の画面は `tab=settings` で開く。入口は表示の設定のパネルの「設定を編集する」で、押すとパネルを閉じて設定の画面へ移り、履歴に積む
-  - item: React に無い画面
-    constraint: ネットワーク・全体の検索は、今の画面（『プレビューを開く』）を同じタブで開く。開く URL のハッシュには、今の search params の `tab`・`view`・`id`・`full`・`diff` を同じ名前で写す。ネットワークの入口だけは、`tab` を `graph` にして `view` を写さない（今の画面のネットワークは表示形式を持たず、`id` の項目を選んで開く）
+  - item: ネットワークのロック
+    constraint: 注目の起点のロックは、ページを開いている間だけ画面の中に持ち、URL にも端末の保存領域にも書かない。タブを行き来しても残し、検討事項のマップのロックとは別々に持つ
   - item: 音声の入力
     constraint: '開いたときに `GET /api/transcription` を読み、コメントの入力・返信の入力のマイクのボタンを置く。応答を待たずに入力を描き、`available` が `false` か、ブラウザが `navigator.mediaDevices.getUserMedia` を持たないときは、マイクのボタンを押せない見た目にしてフォーカスは受けたまま（`aria-disabled`）、理由（`detail`、マイクを使えないときは画面が持つ文）をツールチップと押したときの結果の行に出す。サービスが使えないために押せないマイクのボタンを押したときは `GET /api/transcription` を読み直し、使えるようになっていれば押せる状態に戻す（録音は利用者がもう一度押して始める）。押すと `getUserMedia({audio: true})` と `MediaRecorder` で録り、マイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」に切り替える。録音中は、入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所に、`AnalyserNode` で取ったマイクの音量を縦の棒で描く波形（読み上げない）を出す。録音を終えたら（キャンセル・✓・失敗）波形を消して入力欄に戻す。キャンセルは録音を捨ててマイクを解放する。✓ は録音を止め、`POST /api/transcriptions` へ録った形の `Content-Type` で送り、返った文字を入力欄のカーソルの位置へ挿入する。`action`（無ければ `insert`）が `send` なら挿入した全文を `POST /api/comments/send-now`（コメントの入力は `target`・`loc`、返信の入力は `thread`）へ送り、送れたら入力欄を空にする。`insert` なら送らず、利用者が「レビューに追加」を押すとキーボードで入力した書き込みと同じくレビュー中に溜める。失敗（許可の拒否・503・502・504・413・届かない）は、入力欄の文字を残して理由を結果の行に出し、503 のときはマイクのボタンを押せなくする'
 refs:
