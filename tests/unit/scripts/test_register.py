@@ -115,6 +115,36 @@ def test_main_when_show(
     assert report["env"] == expected_env
 
 
+def test_main_when_transcriber_env(
+    register: ModuleType,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """文字起こしの 2 つのキーを登録できる（正常系）。"""
+    # 準備
+    argv = [
+        "set",
+        "--env",
+        "MINDSTELLA_TRANSCRIBER=voice-paste",
+        "--env",
+        "MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900",
+    ]
+    # 実行
+    code, report = _run_main(register, argv, tmp_path, capsys)
+    # 検証
+    assert code == 0
+    assert report is not None
+    assert report["env"] == {
+        "MINDSTELLA_TRANSCRIBER": "voice-paste",
+        "MINDSTELLA_TRANSCRIBER_URL": "http://127.0.0.1:47900",
+    }
+    shell_text = (tmp_path / ".config" / "mindstella" / "shell.sh").read_text(encoding="utf-8")
+    assert (
+        "export MINDSTELLA_TRANSCRIBER='voice-paste'\n"
+        "export MINDSTELLA_TRANSCRIBER_URL='http://127.0.0.1:47900'\n"
+    ) in shell_text
+
+
 @pytest.mark.parametrize(
     "argv",
     [
