@@ -1,0 +1,5 @@
+$ /tmp/venv492/bin/python -m pytest tests/unit -q -p no:cacheprovider   # 599212f0（app.ts のフォーカスの修正の後。React の側は変えていないため vitest は ffec7ca4 のログのまま）
+=============================== warnings summary ===============================
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2160 passed, 1 skipped, 5 warnings in 1081.62s (0:18:01)
+pytest_exit=0
