@@ -17,7 +17,7 @@ afterEach(() => {
 const stubCanvasContext = () => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
     return createRecordingContext(this).context;
-  } as unknown as HTMLCanvasElement["getContext"]);
+  });
 };
 
 const makeStar = (id: string, kind: LookStar["kind"], x: number, y: number, extra: Partial<LookStar> = {}): LookStar => ({

@@ -19,7 +19,7 @@ const setup = () => {
   vi.stubGlobal("cancelAnimationFrame", cancel);
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
     return createRecordingContext(this).context;
-  } as unknown as HTMLCanvasElement["getContext"]);
+  });
   const canvas = document.createElement("canvas");
   const overlay = document.createElement("div");
   document.body.append(canvas, overlay);

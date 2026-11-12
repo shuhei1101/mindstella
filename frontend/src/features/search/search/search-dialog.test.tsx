@@ -61,7 +61,7 @@ describe("SearchDialog", () => {
   test("search_dialog_when_shortcut", () => {
     // 準備
     render(<SearchDialog {...props({ query: "画面" })} />);
-    const input = screen.getByRole("textbox", { name: "検索キーワード" }) as HTMLInputElement;
+    const input = screen.getByRole<HTMLInputElement>("textbox", { name: "検索キーワード" });
     input.setSelectionRange(input.value.length, input.value.length);
     // 実行
     const event = new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true });
