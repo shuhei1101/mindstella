@@ -28,6 +28,12 @@ components:
         condition: スレッドを開いた状態から「一覧へ戻る」を押し、描き直しより先に次のコマが来る
         mock: MSW と `vi.stubGlobal`
         expected: 描き直した一覧の開いていたスレッドの行にフォーカスがある
+      - name: test_comments_panel_when_back_without_row
+        case: 正常
+        summary: 戻す先の行が一覧に無いとき、フォーカスを移さない
+        condition: 絞り込みがオープンのまま、クローズにしたスレッドから「一覧へ戻る」を押し、その後「クローズ」の絞り込みのボタンを押す
+        mock: MSW
+        expected: 「クローズ」の絞り込みのボタンにフォーカスがあり、描かれたスレッドの行へ移らない
       - name: test_comments_panel_when_threads_failed
         case: 異常
         summary: スレッドが読めない
