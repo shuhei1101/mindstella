@@ -22,6 +22,12 @@ components:
         condition: 新しいスレッドの入力に書いて溜める
         mock: MSW
         expected: '`POST /api/comments` が `target` 無しで呼ばれ、一覧の先頭に足される'
+      - name: test_comments_panel_when_back_focus
+        case: 正常
+        summary: スレッドから一覧へ戻った後、開いていた行へフォーカスを戻す
+        condition: スレッドを開いた状態から「一覧へ戻る」を押し、描き直しより先に次のコマが来る
+        mock: MSW と `vi.stubGlobal`
+        expected: 描き直した一覧の開いていたスレッドの行にフォーカスがある
       - name: test_comments_panel_when_threads_failed
         case: 異常
         summary: スレッドが読めない
