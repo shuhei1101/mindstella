@@ -9,4 +9,10 @@ scope_out:
     reason: origin/develop にこのパスの画像が無い（dev/ は docs/ へ移っている）
     plan: none
 use_cases: []
-docs: []
+docs:
+  - page: docs/pr
+    new: false
+    change: 各 PR フォルダの スクリーンショット/ の画像を git rm で削除する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T10:58:55.838398+00:00'

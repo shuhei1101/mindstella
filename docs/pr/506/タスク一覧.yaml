@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T10:43:01.733043+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: docs/pr/*/スクリーンショット/ の画像を git rm で削除する
+    updated_by: planner
+    updated_at: '2026-11-12T10:59:02.950460+00:00'
   - process: 単体テスト作成
     status: skipped
     reason: コードを変えないため対象外
