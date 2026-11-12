@@ -1,4 +1,4 @@
-// SPA の外枠（インターフェース定義『SPAを開く』）。`tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネルを重ねる。features の画面を組むのはここだけ
+// SPA の外枠（インターフェース定義『SPAを開く』）。`tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネル、`search` の全体の検索を重ねる。features の画面を組むのはここだけ
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
@@ -7,11 +7,14 @@ import { DecisionsScreen } from "@/features/decisions/decisions/decisions-screen
 import { DetailFullscreen } from "@/features/detail/detail-fullscreen/detail-fullscreen";
 import { DetailPanel } from "@/features/detail/detail-panel/detail-panel";
 import { DocsScreen } from "@/features/docs/docs/docs-screen";
+import { GraphScreen } from "@/features/graph/graph/graph-screen";
 import { PendingEditsPanel } from "@/features/edits/pending-edits/pending-edits-panel";
 import { HistoryScreen } from "@/features/history/history/history-dialog";
 import { ItemAddPanel } from "@/features/detail/detail-panel/components/item-add-panel";
 import { OverviewScreen } from "@/features/overview/overview/overview-screen";
 import { RecordsScreen, type RecordKind } from "@/features/records/records/records-screen";
+import { SearchDialog } from "@/features/search/search/search-dialog";
+import { useSearchShortcut } from "@/features/search/search/use-search-shortcut";
 import { DisplaySettingsPanel } from "@/features/settings/display-settings/display-settings-panel";
 import { WorkspaceSettingsScreen } from "@/features/settings/workspace-settings/workspace-settings-screen";
 import { TasksScreen } from "@/features/tasks/tasks/tasks-screen";
@@ -20,8 +23,7 @@ import { Topbar, type TabKey, type TopbarTab } from "@/shared/components/topbar"
 import { AppError } from "@/shared/core/app-error";
 import { anyOpenUnseen, type ReviewItem, type Thread } from "@/shared/core/comments";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
-import { toLegacyUrl } from "@/shared/core/legacy-url";
-import { normalizeSearch, toLegacyHash } from "@/shared/core/preview-search";
+import { normalizeSearch } from "@/shared/core/preview-search";
 import { KIND_KEYS, KIND_LABEL, type Kind } from "@/shared/core/records";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
@@ -59,7 +61,7 @@ const RecordsError = ({ error }: { error: Error }) => (
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
-  const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch } = usePreviewSearch();
+  const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch, setSearch, openFromSearch } = usePreviewSearch();
   const records = useQuery(recordsQuery());
   const comments = useQuery(commentsQuery());
   const threads = useQuery(threadsQuery());
@@ -121,14 +123,8 @@ export const PreviewShell = () => {
   ];
   const tab = search.tab ?? "overview";
   const listTab = tab !== "overview" && tab !== "settings";
+  useSearchShortcut({ open: search.search !== undefined, onOpen: () => { setSearch({ search: "1" }); } });
   const reachable = !(records.error !== null && !(records.error instanceof AppError));
-  const openLegacy = (hash: Record<string, string>): void => {
-    window.location.assign(toLegacyUrl(hash));
-  };
-  // React に無い画面（検索・ネットワーク）は今の画面を開く
-  const toLegacy = (): void => {
-    openLegacy(toLegacyHash(search, tab));
-  };
   const closeDrawer = (): void => {
     setDrawerOpen(false);
   };
@@ -136,6 +132,14 @@ export const PreviewShell = () => {
     if (data === undefined) return null;
     if (tab === "overview") return <OverviewScreen />;
     if (tab === "settings") return <WorkspaceSettingsScreen />;
+    if (tab === "graph") {
+      return (
+        <main id="main" className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <h1 className="sr-only">ネットワーク</h1>
+          <GraphScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />
+        </main>
+      );
+    }
     const list = (() => {
       if (tab === "decisions") return <DecisionsScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;
       if (tab === "tasks") return <TasksScreen drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />;
@@ -171,11 +175,8 @@ export const PreviewShell = () => {
         pendingCount={pendingCount}
         pendingOpen={search.panel === "pending"}
         pendingBlocked={blocked.length > 0}
-        onNavigate={(key) => {
-          if (key === "graph" || key === "settings") openLegacy({ tab: key });
-          else setTab(key);
-        }}
-        onOpenSearch={toLegacy}
+        onNavigate={setTab}
+        onOpenSearch={() => { setSearch({ search: "1" }); }}
         onThemeChange={setTheme}
         onOpenHistory={() => { setHistoryOpen(true); }}
         onClearDiff={() => {
@@ -218,6 +219,19 @@ export const PreviewShell = () => {
       ) : null}
       {search.panel === "comments" ? <CommentsPanel onOpenItem={openItem} onOpenChangeSet={setDiff} /> : null}
       {search.panel === "display" ? <DisplaySettingsPanel /> : null}
+      {index !== null && search.search !== undefined ? (
+        <SearchDialog
+          index={index}
+          query={search.q ?? ""}
+          onQueryChange={(q) => { setSearch({ q: q === "" ? undefined : q }); }}
+          onOpen={(id) => {
+            const kind = index.byId.get(id)?.kind;
+            if (kind === undefined) return;
+            openFromSearch(visible.has(kind) ? kind : undefined, id);
+          }}
+          onClose={() => { setSearch({ search: undefined, q: undefined }); }}
+        />
+      ) : null}
       {saved === null ? null : (
         <p role="status" className="fixed bottom-4 left-1/2 z-40 m-0 flex -translate-x-1/2 items-center gap-1 rounded-control bg-primary px-3 py-2 text-small text-primary-foreground">
           <Icon name="check" className="size-4" />
