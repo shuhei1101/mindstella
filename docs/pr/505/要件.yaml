@@ -24,7 +24,9 @@ docs:
   - page: docs/interface/IF-489-56.yaml
     new: false
     change: 制約の「呼び出し元の環境のまま渡す」環境変数の列挙に文字起こしの 2 つを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T08:47:54.623562+00:00'
   - page: plugins/mindstella/bin/mindstella
     new: false
     change: 冒頭のコメントの環境変数の列挙に文字起こしの 2 つを追加する（処理は環境をそのまま受け継ぐため変えない）
