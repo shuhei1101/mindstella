@@ -21,8 +21,8 @@ import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 /** ロックの判定をする幅か（幅 900px 以下では詳細が全面に出るので、ロックしない） */
 const isWide = (): boolean => typeof window.matchMedia === "function" && window.matchMedia(LOCK_QUERY).matches;
 
-/** 重ねる面（ダイアログ・ポップオーバー・開いている一覧）を開いているか */
-const overlayOpen = (): boolean => document.querySelector('[role="dialog"], dialog[open], [role="listbox"]') !== null || document.querySelector(":popover-open") !== null;
+/** 重ねる面（ダイアログ・ポップオーバー・開いている一覧）を開いているか。ピン止めしたコメントの一覧（`aria-modal="false"`）は横に並ぶ面なので除く */
+const overlayOpen = (): boolean => document.querySelector('[role="dialog"]:not([aria-modal="false"]), dialog[open], [role="listbox"]') !== null || document.querySelector(":popover-open") !== null;
 
 export type GraphScreenProps = { drawerOpen: boolean; onCloseDrawer: () => void };
 

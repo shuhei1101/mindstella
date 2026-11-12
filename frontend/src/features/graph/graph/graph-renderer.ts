@@ -519,6 +519,9 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
   };
 
   // ===== 操作 =====
+  /** キャンバスに登録したリスナーを `destroy` でまとめて解除する */
+  const listeners = new AbortController();
+  const { signal } = listeners;
   let drag: { x: number; y: number; time: number } | null = null;
   let moved = 0;
   canvas.addEventListener("pointerdown", (event) => {
@@ -527,7 +530,7 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
     canvas.setPointerCapture?.(event.pointerId);
     lastInput = performance.now();
     camera.yawSpeed = camera.pitchSpeed = 0;
-  });
+  }, { signal });
   canvas.addEventListener("pointermove", (event) => {
     const rect = canvas.getBoundingClientRect();
     if (drag !== null) {
@@ -551,13 +554,13 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
       if (anchorOf(current) === null) focus = id;
     }
     canvas.style.cursor = id === null ? "grab" : "pointer";
-  });
+  }, { signal });
   canvas.addEventListener("pointerleave", () => {
     if (drag === null && hover !== null) {
       hover = null;
       if (anchorOf(current) === null) focus = null;
     }
-  });
+  }, { signal });
   canvas.addEventListener("pointerup", (event) => {
     const rect = canvas.getBoundingClientRect();
     // ほとんど動かさずに離した: 玉か余白を押した
@@ -577,7 +580,7 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
     // 止めてから離したときは滑らせない
     if (drag !== null && performance.now() - drag.time > 80) camera.yawSpeed = camera.pitchSpeed = 0;
     drag = null;
-  });
+  }, { signal });
   // ホイール: マウスのある位置へ向かって寄る・離れる（距離も中心も目標へなめらかに寄せる）
   canvas.addEventListener(
     "wheel",
@@ -611,14 +614,14 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
       }
       if (next >= camera.fit * 0.95 && anchorOf(current) === null) camera.centerTarget = { x: 0, y: 0, z: 0 };
     },
-    { passive: false },
+    { passive: false, signal },
   );
   // 背景のダブルクリックで、全体を見る位置へ戻す
   canvas.addEventListener("dblclick", () => {
     if (anchorOf(current) !== null) return;
     camera.centerTarget = { x: 0, y: 0, z: 0 };
     camera.distanceTarget = camera.fit;
-  });
+  }, { signal });
 
   // ===== 毎コマの描き =====
   const resize = (): void => {
@@ -963,6 +966,7 @@ export const createGraphRenderer = ({ canvas, overlay, onPress }: { canvas: HTML
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(handle);
+      listeners.abort();
       observer.disconnect();
       document.fonts?.removeEventListener("loadingdone", clearLabels);
       for (const slot of markSlots.values()) slot.element.remove();
