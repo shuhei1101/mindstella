@@ -1,0 +1,71 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が揃っており、棚卸しは要らない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 登録できるキーを追加するだけで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 複合ユースケースの流れは変わらない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 単一ユースケース『起動スクリプトの登録』は登録できるキーを列挙しておらず、流れも変わらない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: インターフェース定義設計
+    status: todo
+    note: IF-489-67 に、文字起こしの 2 つのキーを登録して新しい bash に入るケースを追加する
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-12T08:26:36.295546+00:00'
+  - process: モジュール構成設計
+    status: todo
+    note: MOD-489-163 に、文字起こしの 2 つのキーを受ける単体テストのケースを追加する
+  - process: ドキュメント修正
+    status: todo
+    note: 手順『起動スクリプトを登録する』・docs/guide/スキル.md・スキルの手順『起動スクリプトの登録』の環境変数の列挙
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
