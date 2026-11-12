@@ -17,6 +17,18 @@ docs:
     new: false
     change: 「登録できる環境変数は」の列挙に文字起こしの 2 つを追加する。列挙から漏れている MINDSTELLA_PORT も同じ文に追加する
     status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 「渡せる環境変数は」の列挙に MINDSTELLA_TRANSCRIBER・MINDSTELLA_TRANSCRIBER_URL を追加する
+    status: todo
+  - page: docs/interface/IF-489-56.yaml
+    new: false
+    change: 制約の「呼び出し元の環境のまま渡す」環境変数の列挙に文字起こしの 2 つを追加する
+    status: todo
+  - page: plugins/mindstella/bin/mindstella
+    new: false
+    change: 冒頭のコメントの環境変数の列挙に文字起こしの 2 つを追加する（処理は環境をそのまま受け継ぐため変えない）
+    status: todo
 scope_out:
   - item: 文字起こしの既定の URL（http://127.0.0.1:47823）の変更
     reason: 'voice-paste の既定のポートと一致しており、変えると既定の設定の voice-paste とつながらなくなる（Issue #501 の扱いの判断）'
