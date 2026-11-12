@@ -47,4 +47,4 @@ functions:
         mock: なし
         expected: '`locked` が D-1'
 notes:
-  単体テスト: 同じフォルダの `store.test.ts` に置く
+  単体テスト: 同じフォルダの `store.test.tsx` に置く
