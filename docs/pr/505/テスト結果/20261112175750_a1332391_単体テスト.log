@@ -1,0 +1,43 @@
+$ python3 -m pytest tests/unit/scripts/test_register.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-setup-register-transcriber-env
+configfile: pytest.ini
+plugins: anyio-4.14.1, asyncio-1.4.0, base-url-2.1.0, playwright-0.9.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 47 items
+
+tests/unit/scripts/test_register.py ...F...............................s [ 76%]
+...........                                                              [100%]
+
+=================================== FAILURES ===================================
+________________________ test_main_when_transcriber_env ________________________
+
+register = <module 'register' from '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-setup-register-transcriber-env/plugins/mindstella/skills/setup/scripts/register.py'>
+tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-7655/test_main_when_transcriber_env0')
+capsys = <_pytest.capture.CaptureFixture object at 0x7004b5f5c5c0>
+
+    def test_main_when_transcriber_env(
+        register: ModuleType,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """文字起こしの 2 つのキーを登録できる（正常系）。"""
+        # 準備
+        argv = [
+            "set",
+            "--env",
+            "MINDSTELLA_TRANSCRIBER=voice-paste",
+            "--env",
+            "MINDSTELLA_TRANSCRIBER_URL=http://127.0.0.1:47900",
+        ]
+        # 実行
+        code, report = _run_main(register, argv, tmp_path, capsys)
+        # 検証
+>       assert code == 0
+E       assert 2 == 0
+
+tests/unit/scripts/test_register.py:135: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_register.py::test_main_when_transcriber_env - ...
+=================== 1 failed, 45 passed, 1 skipped in 15.74s ===================
