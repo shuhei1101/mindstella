@@ -123,16 +123,19 @@ export const VoiceProgress = ({ voice, elapsed }: { voice: VoicePhase; elapsed: 
   return null;
 };
 
-/** 録音中に入力欄の場所へ出す波形。音量 1 つが縦の棒 1 本で、読み上げない */
-export const VoiceWave = ({ levels }: { levels: readonly number[] }) => (
-  <div className="send-wave wave-send" aria-hidden="true">
-    {levels.map((level, index) => (
-      // 棒は音量の並びの位置で見分ける（古い棒が左で捨てられ、並びが詰まる）
-      // eslint-disable-next-line react/no-array-index-key
-      <i key={index} className="wave-bar" style={{ "--lv": level } as CSSProperties} />
-    ))}
-  </div>
-);
+/** 録音中に入力欄の場所へ出す波形。音量 1 つが縦の棒 1 本で、読み上げない。録音中でなければ何も出さない */
+export const VoiceWave = ({ voice, levels }: { voice: VoicePhase; levels: readonly number[] }) =>
+  voice === "recording" ? (
+    <div data-part="voice-wave" className="wave-send" aria-hidden="true">
+      {levels.map((level, index) => (
+        // 棒は音量の並びの位置で見分ける（古い棒が左で捨てられ、並びが詰まる）
+        <i key={index} className="wave-bar" style={{ "--lv": level } as CSSProperties} />
+      ))}
+    </div>
+  ) : null;
+
+/** 入力欄を書き換えられないか（溜めている間・録音中・文字起こし中） */
+export const fieldLocked = (saving: boolean, voice: VoicePhase): boolean => saving || voice === "recording" || voice === "transcribing";
 
 /** 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す（入力欄は隠すだけで外さないため、選んだ範囲が残る） */
 export const useVoiceFocus = (voice: VoicePhase, field: RefObject<HTMLTextAreaElement | null>, done: RefObject<HTMLButtonElement | null>): void => {
@@ -353,7 +356,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
       aria-describedby={describedByOf(folded, target !== null && loc !== null ? locId : null, messageId)}
       aria-keyshortcuts="Control+Enter"
       aria-invalid={shown === "empty" ? true : undefined}
-      readOnly={status === "saving" || voice === "recording" || voice === "transcribing"}
+      readOnly={fieldLocked(status === "saving", voice)}
       // 録音中は波形と入れ替えて隠す（外さないので中身と選んだ範囲が残る）
       hidden={voice === "recording"}
       onChange={(event) => {
@@ -369,7 +372,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   ) : (
     <div className="flex items-end gap-2">
       {field}
-      {voice === "recording" ? <VoiceWave levels={levels} /> : null}
+      <VoiceWave voice={voice} levels={levels} />
       <VoiceButtons
         doneRef={doneRef}
         voice={voice}

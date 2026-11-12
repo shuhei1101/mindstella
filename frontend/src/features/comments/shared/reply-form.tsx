@@ -2,7 +2,7 @@
 import { useId, useRef, type SyntheticEvent, type KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
-import { useVoiceFocus, VoiceButtons, VoiceProgress, VoiceResult, VoiceWave, type VoiceProps } from "@/shared/components/send-form";
+import { fieldLocked, useVoiceFocus, VoiceButtons, VoiceProgress, VoiceResult, VoiceWave, type VoiceProps } from "@/shared/components/send-form";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/cn";
@@ -87,8 +87,8 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, v
       </label>
       {/* 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行。結果は行の下に幅いっぱいで出す */}
       <div className="flex items-end gap-2">
-        <Textarea ref={fieldRef} id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={saving || voice === "recording" || voice === "transcribing"} hidden={voice === "recording"} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
-        {voice === "recording" ? <VoiceWave levels={levels} /> : null}
+        <Textarea ref={fieldRef} id={fieldId} name="body" rows={1} maxLength={COMMENT_BODY_MAX_LENGTH} value={body} readOnly={fieldLocked(saving, voice)} hidden={voice === "recording"} aria-keyshortcuts="Control+Enter" aria-describedby={messageId} className="field-sizing-content min-w-0 flex-1 resize-y field-send pointer-coarse:min-h-11" onChange={(event) => onInput(event.target.value)} onKeyDown={handleKeyDown} />
+        <VoiceWave voice={voice} levels={levels} />
         <VoiceButtons doneRef={doneRef} voice={voice} voiceReason={voiceReason} onStart={onVoiceStart} onCancel={onVoiceCancel} onBlocked={onVoiceBlocked} onDone={() => onVoiceDone?.(thread, body)} submit={<Button type="submit" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11" aria-label="レビューに追加" title="レビューに追加（Ctrl+Enter）" data-focus="reply-send" disabled={saving || body.trim() === ""}>
           <Icon name="comment" />
         </Button>} />
