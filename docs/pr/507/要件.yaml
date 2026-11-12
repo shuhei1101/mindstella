@@ -1,0 +1,37 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-7.yaml
+    impact: none
+    detail: 今の画面を配信し続け、React の画面への切り替えは子 6（#371）で行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-48.yaml
+    impact: none
+    detail: 同上
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: none
+    detail: 同上
+    depends_on: []
+docs:
+  - page: docs/test-procedure/TP-489-1.yaml
+    new: false
+    change: 追加する結合テスト・ストーリーのテストのコマンドと前提が今の記述に収まらないときに追加する
+    status: todo
+scope_out:
+  - item: 配る書き出しの React での作成、今の画面と雛形・今の Storybook の設定とストーリーの削除、シナリオと公開ドキュメントの更新
+    reason: 親の分割の子 6
+    plan: '#371'
+  - item: 全体の検索からタグ・状態などの絞り込みをオンにする
+    reason: '親 #365 に依存する機能の追加（この PR は今の検索の要素と操作を再現する）'
+    plan: '#143'
+  - item: 詳細からネットワークへ移ったときにその項目をロックした状態で開く
+    reason: 同上（この PR は今のロックの規則を再現する）
+    plan: '#145'
+  - item: ネットワークと検討事項のマップのロックをダブルクリックで付け外しする
+    reason: 同上
+    plan: '#146'
+  - item: 本文の文字列を選んだときの入口に、選んだ語で全体の検索を開くボタンを追加する
+    reason: 同上（この PR は今の検索の要素と操作を再現する）
+    plan: '#245'
