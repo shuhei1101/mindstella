@@ -39,8 +39,8 @@ export const Long: Story = { args: { thread: "TH-2", body: "1 行目\n2 行目\n
 /** 幅 390px。部品の幅によらず入力欄と「レビューに追加」を 1 行に並べ、結果は入力欄の下に幅いっぱいで出す */
 export const Narrow: Story = { args: { thread: "TH-2", body: "起票してよい", status: "failed" } };
 
-/** 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない） */
-export const Recording: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12 } };
+/** 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない）。入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所・同じ大きさに `levels` の縦の棒の波形を出す（新しい音量を右端に足し、枠からはみ出した古い棒は左で切る） */
+export const Recording: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65] } };
 
 /** 文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ */
 export const Transcribing: Story = { args: { thread: "TH-1", voice: "transcribing", body: "確認: " } };
@@ -51,6 +51,9 @@ export const Sent: Story = { args: { thread: "TH-1", status: "sent", entered: tr
 /** 送信したが Claude Code へ入力しなかった。「送信しました。Claude Code へは入力していません。」 */
 export const SentNotEntered: Story = { args: { thread: "TH-1", status: "sent", entered: false } };
 
+/** 入力欄へ挿入した（既定）。カーソルは挿入した文字の後ろで、「文字起こしの結果を挿入しました。」。「レビューに追加」で返信をレビュー中に溜める */
+export const Inserted: Story = { args: { thread: "TH-1", status: "inserted", body: "案 A にする" } };
+
 /** 文字起こしのサービスが起動していない。マイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。「レビューに追加」は押せるまま */
 export const VoiceDisabled: Story = { args: { thread: "TH-1", voice: "disabled", voiceReason: "文字起こしのサービスが起動していないため、音声で入力できません。" } };
 
@@ -58,4 +61,4 @@ export const VoiceDisabled: Story = { args: { thread: "TH-1", voice: "disabled",
 export const VoiceFailed: Story = { args: { thread: "TH-1", status: "voice-failed", detail: "文字起こしできませんでした。もう一度お試しください。", body: "案 B も見たい" } };
 
 /** 最も狭い幅（320px）の録音中。2 つのボタンはマイクと「レビューに追加」と同じ大きさで、入力欄の右に並んだまま収まる */
-export const RecordingNarrow: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12 } };
+export const RecordingNarrow: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65] } };
