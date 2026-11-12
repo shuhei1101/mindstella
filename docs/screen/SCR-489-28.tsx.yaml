@@ -119,8 +119,8 @@ elements:
     description: コメント・返信の入力で文字起こしした後の挙動を選ぶ。選んだときに `transcription` の `setting` を 1 件溜める（値は今の `preset` を保ったオブジェクト）。下にヒント「「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。」を出す
     label: 文字起こし後の挙動
     io: 入力
-    options: 送信する（send。既定）・入力欄へ挿入する（insert）
-    source: 記録の取得.settings.transcription.action（無ければ send）
+    options: 送信する（send）・入力欄へ挿入する（insert。既定）
+    source: 記録の取得.settings.transcription.action（無ければ insert）
     target: 保存待ちの編集の追加.value（key が transcription）
     status: planned
   - name: 用語集のプリセット
