@@ -1,0 +1,42 @@
+id: SCR-489-36
+title: 全体の検索
+screen: frontend/src/features/search/search/search-dialog.tsx
+elements:
+  - name: 検索の言葉
+    kind: input
+    description: 空白で区切った語を全て含む項目を検索する（大文字・小文字を区別しない）。読み上げの名前は「検索キーワード」。空のときは結果の場所に「ID・タイトル・本文で、すべての項目を検索します。」。開いている間に `Ctrl+K`（macOS は `Cmd+K`）を押すと、言葉を選び直す。入力のたびに URL の `q` を置き換える（履歴に積まない）
+    io: 入力
+    type: 文字列
+    placeholder: ID・タイトル・本文で検索
+    autofocus: true
+    initial_value: URL の search params の `q`。無ければ空
+    target: SPAを開く.q
+    status: planned
+  - name: 検索の結果
+    kind: list
+    description: 画面設計『全体の検索』の検索の結果と同じ。当たった項目の種類・ID・タイトルを、1 の段「完全に一致」・2 の段「タイトルに一致」・3 の段「ほかの所に一致」に分け、段は 1 → 2 → 3 の順、段の中は種類の順 → 連番の順に並べ、項目を 2 つの段に重ねて出さない。当たった項目の無い段の見出しは出さない。結果ごとに種類の札を添え、段の見出しは画面の見出し（`h1`）の 1 段下の見出し（`h2`）にし、ID は折り返さない。HTML の本文と、Markdown の本文の中の言語指定 `html` のコードブロックは、タグとコメントを外し `style`・`script`・`template`・`title` の中身を除いた描いた文で当てる（タグ・属性の名前や値では当てない）
+    io: 表示
+    source: SPAを開く.記録の取得（7 種類の項目と本文）
+    visible_when: 検索の言葉が空でない（当たらないときは「該当する項目はありません。別の条件を試してください。」）
+    action: 押すか、上下の矢印で選んで Enter で、その項目の種類の画面と詳細パネルを開き、検索を閉じる（search params と履歴は『SPAを開く』の制約「画面の移動と項目」「履歴」のとおり）
+    status: planned
+  - name: 閉じる
+    kind: button
+    description: 検索を閉じ、URL から `search`・`q` を外す（履歴に積まない）。Esc と外側の押下でも閉じる。閉じたら、開く前にフォーカスがあった要素（トップバーの検索の入口など）へフォーカスを戻す。幅 389px 以下では検索の言葉の入力欄を縮め、閉じるボタンを入力欄と同じ行の窓の中に置き、検索の中を横に送らせない
+    status: planned
+  - name: 開くキー操作
+    kind: shortcut
+    position: SPA の全ての画面
+    description: '`Ctrl+K`（macOS は `Cmd+K`）で全体の検索を開き、URL に `search=1` を書く（履歴に積まない）。ブラウザの既定の動きは止める。トップバーの検索の入口を押しても同じく開く'
+    io: 入力
+    visible_when: 全体の検索を開いていないとき
+    status: planned
+lead: React のプレビューの全体の検索。今の全体の検索と同じ要素と操作を持つモーダルで、開いているかと検索の言葉を URL の search params の `search`・`q` に持つ（インターフェース定義『SPAを開く』）。
+mock: docs/mock/pages/search/216/a-by-tier/index.html
+test_file: tests/integration/preview/test_spa_search_screen.py
+notes:
+  HTML の本文のモック: HTML の本文を描いた文で当てる見本は `docs/mock/pages/search/214/standard/index.html`
+  幅 320px のモック: 幅 389px 以下で入力欄を縮める見本は `docs/mock/pages/search/289/a-shrink-input/index.html`
+refs:
+  - SCR-489-12#
+  - IF-489-70#
