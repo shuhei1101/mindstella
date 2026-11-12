@@ -1,0 +1,61 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: 文字起こしの結果は入力欄のカーソルの位置へ挿入するだけにし、利用者が送信のボタンを押したときにレビュー中へ入れる。録音中は入力欄へのキーボード入力を止め、入力欄の場所に音声の波形を表示する。既定の挙動を insert にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: none
+    detail: send を設定で選べるまま残すため、文字起こし後の挙動を書き換える流れと値の検証は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: following
+    detail: 設定の画面を開いたときの文字起こし後の挙動の既定を「入力欄へ挿入する」にし、利用者が「送信する」へ書き換える流れにする
+    depends_on:
+      - docs/scenario/SC-489-45.yaml
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 音声入力の節を、文字起こしの結果を入力欄へ挿入して送信のボタンでレビュー中へ入れる流れと、録音中の波形の表示・キーボード入力の停止に書き換える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:29:07.074155+00:00'
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:29:07.074155+00:00'
+  - page: docs/er/ER-489-1.yaml
+    new: false
+    change: config.yaml の transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:24:05.047633+00:00'
+  - page: docs/mock/components/send-form/index.html
+    new: false
+    change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:05:26.508077+00:00'
+  - page: docs/mock/components/reply-form/index.html
+    new: false
+    change: 録音中の入力欄の場所に波形を表示する状態を足し、すぐ送る状態を挙動の値の決定に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:05:26.508077+00:00'
+  - page: docs/mock/components/transcription-settings/index.html
+    new: false
+    change: 文字起こし後の挙動の候補と既定を、挙動の値の決定に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:05:26.508077+00:00'
+scope_out:
+  - item: 常駐サーバーが参照する文字起こしの URL（MINDSTELLA_TRANSCRIBER_URL）の既定と voice-paste の待ち受けのポートの食い違い（必読の D-424）
+    reason: Issue のやりたいことに含まれず、音声入力の後の挙動とは別の事象。今回の作業 PR がマージされなくても同じ内容で成り立つ
+    plan: '#501'
+  - item: React の設定の画面で、文字起こし後の挙動を選んだ直後に用語集のプリセットを選ぶと、選んだ挙動が保存された記録の値で上書きされる
+    reason: 結合テストで見つけた既存の振る舞いで、既定を insert にする変更とは別の事象。今回の作業 PR がマージされなくても同じ内容で成り立つ
+    plan: '#502'

@@ -22,6 +22,18 @@ constants:
       - key: sendFailed
         value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
     container: frontend/src/shared/core/voice.ts
+  - name: WAVE_SAMPLE_MS
+    title: 音量を取る間隔
+    container: frontend/src/shared/core/voice.ts
+    usecase: 音声でコメントする
+    summary: 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。`AnalyserNode` の `fftSize` 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上にし、重ねて見ない。1 秒に 20 本で、話し始めてから 1 秒以内に棒の長さで声を拾えているかが分かる
+    value: '50'
+  - name: WAVE_LEVELS_MAX
+    title: 持つ音量の数の上限
+    container: frontend/src/shared/core/voice.ts
+    usecase: 音声でコメントする
+    summary: 波形に持つ音量の数の上限（古いものから捨てる）。入力欄の最も広い詳細の全画面の幅の上限 1600px を、縦の棒の最も狭い間隔（棒 2px + すき間 2px）の 4px で割った数で、どの幅でも枠を埋める
+    value: '400'
 classes:
   - name: RecordingError
     title: 録音を始められなかったエラー
@@ -55,7 +67,7 @@ functions:
     title: 録音を始める
     kind: 関数
     usecase: 音声でコメントする
-    summary: マイクの許可を得て録音を始め、`stop`（音声の `Blob` を返す）・`cancel` を持つ録音を返す。どちらもマイクのトラックを全て止める。許可の拒否は `reason` が `denied`、それ以外は `no-microphone` の `RecordingError` で断る
+    summary: マイクの許可を得て録音を始め、`stop`（音声の `Blob` を返す）・`cancel` を持つ録音を返す。録音中は `AudioContext` の `AnalyserNode`（`fftSize` 2048）で `WAVE_SAMPLE_MS` ごとに 0〜1 の音量を取って引数 `onLevel` を呼ぶ（今の画面の `startRecording` と同じ求め方）。`stop`・`cancel` はどちらも音量を取るのをやめて `AudioContext` を閉じ、マイクのトラックを全て止める。許可の拒否は `reason` が `denied`、それ以外は `no-microphone` の `RecordingError` で断る
     returns:
       type: Promise<Recording>
       description: 録音中の 1 回分
@@ -72,6 +84,12 @@ functions:
         condition: '`getUserMedia` が `NotAllowedError` / `NotFoundError` で断る'
         mock: '`vi.stubGlobal`'
         expected: '`reason` が `denied` / `no-microphone` の `RecordingError` で断る'
+      - name: test_start_recording_levels
+        case: 正常
+        summary: 間隔ごとに音量を知らせ、止めたら知らせない
+        condition: 偽の `AudioContext`（`getByteTimeDomainData` が 128 と 192 を持つ値を返す）と `vi.useFakeTimers`。始めて `WAVE_SAMPLE_MS` を 2 回進め、`stop()` してからもう 1 回進める
+        mock: '`vi.stubGlobal` と偽の時計'
+        expected: '`onLevel` が `0.5` で 2 回だけ呼ばれ、`AudioContext` の `close` が呼ばれている'
     container: frontend/src/shared/core/voice.ts
   - name: insertAtCursor
     title: カーソルの位置への挿入
@@ -89,6 +107,34 @@ functions:
         mock: なし
         expected: '`確認: 案 A`・7 / `axc`・2 / `abx`・3'
     container: frontend/src/shared/core/voice.ts
+  - name: pushLevel
+    title: 音量を足す
+    kind: 関数
+    container: frontend/src/shared/core/voice.ts
+    usecase: 音声でコメントする
+    scope: public
+    summary: 音量の並びの末尾に 1 つ足し、`WAVE_LEVELS_MAX` を超えた古いものを先頭から捨てた新しい並びを返す（元の並びは変えない）
+    args:
+      - name: levels
+        type: readonly number[]
+        required: true
+        passing: positional
+        description: 今の音量の並び（古い順）
+      - name: level
+        type: number
+        required: true
+        passing: positional
+        description: 足す音量（0〜1。範囲の外は 0 か 1 にそろえる）
+    returns:
+      type: number[]
+      description: 足した後の並び
+    unit_tests:
+      - name: test_push_level
+        case: 正常
+        summary: 末尾に足し、上限を超えた古いものを捨てる
+        condition: '`parametrize`: `([], 0.5)` / `([0.1, 0.2], 1.4)` / 長さ `WAVE_LEVELS_MAX` の並びに `0.3`'
+        mock: なし
+        expected: '`[0.5]` / `[0.1, 0.2, 1]` / 長さ `WAVE_LEVELS_MAX` で、先頭の 1 つが消え末尾が `0.3`。元の並びは変わらない'
   - name: formatElapsed
     title: 経過の時間の文字
     kind: 関数

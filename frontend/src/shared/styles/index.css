@@ -167,6 +167,37 @@
   line-height: 1.5;
 }
 
+/* 録音中に入力欄の場所へ出す波形: 1 行の入力欄と同じ大きさ・枠・角丸。棒の本数で幅を広げず、新しい棒を右端に足して古い棒を左で切る（今の画面の `.send-wave` と同じ） */
+@utility wave-send {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  inline-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  block-size: calc(1lh + 18px);
+  line-height: 1.5;
+  padding: 0 10px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  @media (pointer: coarse) {
+    block-size: 44px;
+  }
+}
+
+/* 波形の棒: 音量（--lv は 0〜1）に合わせて伸ばし、録音中の丸と同じ色にする（今の画面の `.send-wave i` と同じ） */
+@utility wave-bar {
+  flex: 0 1 3px;
+  min-inline-size: 2px;
+  block-size: max(2px, calc(var(--lv) * 100%));
+  max-block-size: calc(1lh + 2px);
+  background: var(--st-review);
+  border-radius: 1px;
+}
+
 /* レビュー中の書き込みの書き換えの入力欄の高さ（2 行から 10 行。今の画面の `.row-edit textarea` と同じ） */
 @utility field-edit {
   min-block-size: calc(2lh + 16px);

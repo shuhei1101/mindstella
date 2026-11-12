@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 録音中に入力欄の場所へ出す波形の見た目
+    decision: 縦の棒を並べ、新しい音量を右端に追加する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/500#discussion_r4539826282

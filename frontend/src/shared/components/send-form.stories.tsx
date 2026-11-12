@@ -68,14 +68,14 @@ export const Closed: Story = { args: { target: "D-022", open: false } };
 /** 書きかけを残して閉じた。「{ID} へのコメント」の右に鉛筆の印と「書きかけ」を出す */
 export const ClosedWithDraft: Story = { args: { target: "D-022", body: "案 A にする", open: false } };
 
-/** 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない） */
-export const Recording: Story = { args: { target: "D-022", voice: "recording", elapsed: 12 } };
+/** 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない）。入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所・同じ大きさに `levels` の縦の棒の波形を出す（新しい音量を右端に足し、枠からはみ出した古い棒は左で切る） */
+export const Recording: Story = { args: { target: "D-022", voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65] } };
 
 /** 文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ */
 export const Transcribing: Story = { args: { target: "D-022", voice: "transcribing", body: "確認: " } };
 
-/** 打ちかけがある録音中。入力欄の「確認: 」とカーソルの位置を残し、文字起こしの結果はカーソルの位置へ挿入する */
-export const RecordingWithDraft: Story = { args: { target: "D-022", voice: "recording", elapsed: 12, body: "確認: " } };
+/** 打ちかけがある録音中。入力欄の「確認: 」とカーソルの位置を残したまま波形に替え、録音を終えたら入力欄に戻して、文字起こしの結果をカーソルの位置へ挿入する */
+export const RecordingWithDraft: Story = { args: { target: "D-022", voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65], body: "確認: " } };
 
 /** 送信した。入力欄を空にし、元のボタンに戻して「送信し、Claude Code へ入力しました。」 */
 export const Sent: Story = { args: { target: "D-022", status: "sent", entered: true } };
@@ -102,7 +102,7 @@ export const VoiceFailed: Story = { args: { target: "D-022", status: "voice-fail
 export const VoiceDenied: Story = { args: { target: "D-022", status: "voice-failed", detail: "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。" } };
 
 /** 最も狭い幅（320px）の録音中。2 つのボタンはマイクと「レビューに追加」と同じ大きさで、入力欄の右に並んだまま収まる */
-export const RecordingNarrow: Story = { args: { target: "D-022", voice: "recording", elapsed: 12 } };
+export const RecordingNarrow: Story = { args: { target: "D-022", voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65] } };
 
 /** 文字起こしはできたが送信できなかった。挿入した全文を入力欄に残す */
 export const VoiceSendFailed: Story = { args: { target: "D-022", status: "voice-failed", detail: "送信できませんでした。文字起こしの結果は入力欄に残しています。", body: "確認: 案 A にする" } };

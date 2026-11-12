@@ -22,22 +22,23 @@ functions:
     title: 音声入力
     kind: フック
     usecase: 音声でコメントする
-    summary: 向けた先（`{target, loc}` か `{thread}`）と入力欄の中身の書き換えを受け、`voice`・`voiceReason`・`elapsed` と `onVoiceStart`・`onVoiceCancel`・`onVoiceDone`・`onVoiceBlocked` を返す。録音は同時に 1 つで、ほかの入力が録っている間はマイクを押しても何もしない
+    summary: 向けた先（`{target, loc}` か `{thread}`）と入力欄の中身の書き換えを受け、`voice`・`voiceReason`・`elapsed`・`levels` と `onVoiceStart`・`onVoiceCancel`・`onVoiceDone`・`onVoiceBlocked` を返す。録音は同時に 1 つで、ほかの入力が録っている間はマイクを押しても何もしない
     description: |-
       - `voice` は、`micSupported()` が偽なら `disabled`（`VOICE_TEXT.noMicrophone`）、可否の `available` が偽なら `disabled`（`detail`）、それ以外は録音の段階
-      - `onVoiceDone` は、録音を止めて `POST /api/transcriptions` へ送り、返った文字を `insertAtCursor` で挿入する。記録の `settings.transcription.action`（無ければ `send`）が `insert` なら中身を書き換えて `inserted`、`send` なら `POST /api/comments/send-now` へ全文を送り、送れたら中身を空にしてスレッドを読み直し `sent`（`entered`）、送れなければ挿入した中身を残して `VOICE_TEXT.sendFailed`
+      - `onVoiceStart` は `startRecording` の `onLevel` で `pushLevel` した並びを `levels` に持つ。録音を終えたら（キャンセル・✓・失敗・向けた先の変更）`levels` を空にする
+      - `onVoiceDone` は、録音を止めて `POST /api/transcriptions` へ送り、返った文字を `insertAtCursor` で挿入する。記録の `settings.transcription.action`（無ければ `insert`）が `insert` なら中身を書き換えて `inserted`、`send` なら `POST /api/comments/send-now` へ全文を送り、送れたら中身を空にしてスレッドを読み直し `sent`（`entered`）、送れなければ挿入した中身を残して `VOICE_TEXT.sendFailed`
       - 503 は可否の query のデータを返った `reason`・`detail` に書き換え、`voice` を `disabled` にする
       - 向けた先が変わったときと、使う部品が外れたとき（unmount）は録音を `cancel` し、文字起こし中の結果を捨てる。書き換えの知らせでの描き直しでは止めない
     returns:
-      type: '{voice, voiceReason, elapsed, status, detail, entered, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked}'
+      type: '{voice, voiceReason, elapsed, levels, status, detail, entered, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked}'
       description: 部品設計『コメントの入力.tsx』『返信の入力.tsx』の音声入力の props
     unit_tests:
       - name: test_use_voice_input
         case: 正常
         summary: 録音して挙動で分ける
-        condition: '偽の録音。`POST /api/transcriptions` が `{text: 案 A にする}`。`settings.transcription.action` が `insert` / 無い（`send`）'
+        condition: '偽の録音。`POST /api/transcriptions` が `{text: 案 A にする}`。`settings.transcription.action` が `insert` / 無い（`insert`）/ `send`'
         mock: MSW と `vi.stubGlobal`
-        expected: '中身が `確認: 案 A にする` で `status` が `inserted`、`send-now` は呼ばれない / `send-now` が全文で 1 回呼ばれ、中身が空で `status` が `sent`'
+        expected: '中身が `確認: 案 A にする` で `status` が `inserted`、`send-now` は呼ばれない / 同じく `inserted` で `send-now` は呼ばれない / `send-now` が全文で 1 回呼ばれ、中身が空で `status` が `sent`'
       - name: test_use_voice_input_when_unavailable
         case: 異常
         summary: 押せない理由と 503
@@ -50,6 +51,12 @@ functions:
         condition: 録音中に向けた先を D-1 から D-2 に変える / 文字起こし中に unmount する
         mock: MSW と `vi.stubGlobal`
         expected: 録音の `cancel` が呼ばれ `voice` が `idle` / 返った文字を挿入も送信もしない
+      - name: test_use_voice_input_levels
+        case: 正常
+        summary: 録音中の音量を `levels` に持ち、終えたら空にする
+        condition: 偽の録音が `onLevel` を `0.25`・`0.75` で呼んだ後に × を押す
+        mock: MSW と `vi.stubGlobal`
+        expected: 録音中の `levels` が `[0.25, 0.75]`、× の後は `[]`
     container: frontend/src/shared/hooks/use-voice-input.ts
 notes:
   単体テスト: 同じフォルダの `use-voice-input.test.ts` に置く（knowledge の規約『フォルダ構成』）

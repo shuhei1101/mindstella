@@ -101,6 +101,17 @@ var MindmapPreview;
         return status;
     }
     MindmapPreview.messageState = messageState;
+    /** 録音中に入力欄の場所へ出す波形。音量 1 つが縦の棒 1 本で、読み上げない。録音中でなければ null */
+    function voiceWave(voice, levels) {
+        if (voice !== "recording")
+            return null;
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "send-wave", "aria-hidden": "true" },
+            children: levels.map((level) => MindmapPreview.h({ tag: "i", attrs: { style: `--lv: ${level}` } })),
+        });
+    }
+    MindmapPreview.voiceWave = voiceWave;
     /** 音声入力のボタンを入れる連番（ツールチップの ID が重ならないように） */
     let voiceSequence = 0;
     /**
@@ -194,7 +205,7 @@ var MindmapPreview;
         });
     }
     /** 項目へのコメントをレビュー中に溜める入力欄と「レビューに追加」のボタン、結果を返す */
-    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, entered = false, on, }) {
+    function sendForm({ target, loc = null, body = "", status = "idle", count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, levels = [], entered = false, on, }) {
         sendFormSequence += 1;
         const fieldId = `send-${sendFormSequence}`;
         const messageId = `${fieldId}-msg`;
@@ -217,8 +228,10 @@ var MindmapPreview;
                 "aria-label": target === null ? label : null,
                 "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
                 "aria-keyshortcuts": "Control+Enter",
-                // 溜めている間と文字起こし中は書き換えられない
-                readonly: status === "saving" || voice === "transcribing",
+                // 溜めている間・録音中・文字起こし中は書き換えられない
+                readonly: status === "saving" || voice === "recording" || voice === "transcribing",
+                // 録音中は波形と入れ替えて隠す（中身と選んだ範囲は残す）
+                hidden: voice === "recording",
                 // 本文が空で溜めようとした: 入力の誤りとして示す
                 "aria-invalid": status === "empty" ? "true" : null,
                 oninput: () => on.input(textarea.value),
@@ -288,7 +301,7 @@ var MindmapPreview;
             return MindmapPreview.h({
                 tag: "div",
                 attrs: { class: "send-line" },
-                children: [textarea, ...voiceButtons({ voice, voiceReason, textarea, submit, on })],
+                children: [textarea, voiceWave(voice, levels), ...voiceButtons({ voice, voiceReason, textarea, submit, on })],
             });
         }
         /** 見出しの行（「{ID} へのコメント」・書きかけの印・開閉のボタン） */

@@ -31,7 +31,7 @@ def test_normal(
     # 準備
     root = make_workspace(
         make_item("D-1"),
-        settings={**valid_settings, "transcription": {"action": "insert", "preset": "開発"}},
+        settings={**valid_settings, "transcription": {"action": "send", "preset": "開発"}},
     )
     fake = start_fake_transcriber("done")
     # 実行
@@ -41,7 +41,7 @@ def test_normal(
     body = result.json()
     assert (body["available"], body["reason"]) == (True, None)
     assert body["presets"] == ["一般", "開発"]
-    assert (body["action"], body["preset"]) == ("insert", "開発")
+    assert (body["action"], body["preset"]) == ("send", "開発")
 
 
 def test_normal_when_not_configured(
@@ -58,7 +58,7 @@ def test_normal_when_not_configured(
     result = _get_status(start_voice_server, fake.url, root)
     # 検証
     assert result.status == 200
-    assert (result.json()["action"], result.json()["preset"]) == ("send", None)
+    assert (result.json()["action"], result.json()["preset"]) == ("insert", None)
 
 
 def test_normal_when_service_stopped(

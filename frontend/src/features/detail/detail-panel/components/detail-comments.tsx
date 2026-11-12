@@ -204,6 +204,7 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
         voice={voice.voice}
         voiceReason={voice.voiceReason}
         elapsed={voice.elapsed}
+        levels={voice.levels}
         entered={voice.entered}
         onVoiceStart={() => void voice.onVoiceStart()}
         onVoiceCancel={voice.onVoiceCancel}

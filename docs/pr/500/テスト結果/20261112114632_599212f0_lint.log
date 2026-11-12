@@ -1,0 +1,13 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+ruff_exit=0
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+typecheck_exit=0
+
+> lint
+> eslint
+
+lint_exit=0

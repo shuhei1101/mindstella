@@ -38,6 +38,8 @@ elements:
         value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」）
       - name: elapsed
         value: 録音を始めてからの秒数（画面が 1 秒ごとに進める）
+      - name: levels
+        value: 録音中のマイクの音量（画面が AnalyserNode で一定の間隔ごとに取って足す）
       - name: entered
         value: 書き込みをすぐ送る（POST /api/comments/send-now）の entered
     position: 詳細の中身 > 下端

@@ -19,9 +19,9 @@ components:
       - name: test_workspace_settings_screen_when_transcription
         case: 正常
         summary: 音声入力のまとまり
-        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で「入力欄へ挿入する」を選ぶ / `{available: false, reason: stopped}`'
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で既定の「入力欄へ挿入する」から「送信する」を選ぶ / `{available: false, reason: stopped}`'
         mock: MSW
-        expected: '`POST /api/edits` が `{op: setting, key: transcription, value: {action: insert, preset: null}}` で呼ばれる / プリセットのセレクトが押せず「文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。」'
+        expected: '`POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: null}}` で呼ばれる / プリセットのセレクトが押せず「文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。」'
     container: frontend/src/features/settings/workspace-settings/workspace-settings-screen.tsx
 notes:
   単体テスト: 同じフォルダの `workspace-settings-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）

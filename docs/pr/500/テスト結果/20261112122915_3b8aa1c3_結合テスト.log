@@ -1,0 +1,7 @@
+$ python -m pytest tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_comments_screen.py -k voice   # 3b8aa1c3（レビューの任意の指摘の反映の後）
+.....                                                                    [100%]
+5 passed, 297 deselected in 27.39s
+$ npm run typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+typecheck_exit=0

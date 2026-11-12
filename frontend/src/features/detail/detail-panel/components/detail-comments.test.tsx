@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { stubRecords } from "@/testing/msw/fixtures";
+import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
@@ -115,7 +116,10 @@ describe("DetailComments", () => {
   test("detail_comments_when_voice", async () => {
     // 準備
     installFakeMedia();
-    stubRecords({ decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", category: "記録", phase: "目的" }] });
+    stubRecords({
+      decisions: [{ id: "D-1", title: "D-1の題", status: "未決定", category: "記録", phase: "目的" }],
+      settings: { ...RECORDS.settings, transcription: { action: "send" } },
+    });
     const sent: unknown[] = [];
     server.use(
       http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })),

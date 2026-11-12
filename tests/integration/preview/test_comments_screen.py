@@ -4,15 +4,22 @@ from __future__ import annotations
 
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import (
+    FAKE_MIC_SCRIPT,
+    FIELD_STATE_JS,
     assert_mic_blocked_after_click,
+    assert_recording_wave,
+    put_caret,
+    start_recording,
+    wait_transcription_status,
 )
 from workspace_fixtures import MakeItem as _MakeItem
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_comment_helpers import (
     COMMENTS_BUTTON,
@@ -904,3 +911,38 @@ def test_voice_input_when_service_stopped(
     page.wait_for_selector(COMPOSE_TEXTAREA)
     # 検証
     assert_mic_blocked_after_click(page.locator(f"{COMMENTS_PANEL} .talk-new form.send"), ".send-msg")
+
+
+def test_voice_input_focus_when_cancelled(
+    page: Page,
+    open_preview: OpenPreview,
+    make_item: _MakeItem,
+    start_fake_transcriber: Any,
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """詳細パネルを開いたまま新しいスレッドの入力で録音してキャンセルすると、詳細パネルではなく新しいスレッドの入力欄へフォーカスと録音前の範囲を戻す（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, _ = start_voice_preview(fake.url, make_item("D-1"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        open_preview(url, "#tab=decisions&view=table&id=D-1")
+    page.wait_for_selector("aside.panel form.send textarea")
+    open_list(page)
+    page.click(COMPOSE_BUTTON)
+    page.wait_for_selector(COMPOSE_TEXTAREA)
+    form = page.locator(f"{COMMENTS_PANEL} .talk-new form.send")
+    put_caret(form.locator("textarea"), "確認: でよい", 4)
+    # 実行
+    start_recording(form)
+    assert_recording_wave(form)
+    form.get_by_role("button", name="キャンセル").click()
+    # 検証
+    expect(form.get_by_role("button", name="音声で入力")).to_be_visible()
+    state = page.locator(COMPOSE_TEXTAREA).evaluate(FIELD_STATE_JS)
+    assert {key: state[key] for key in ("value", "start", "end", "focused")} == {
+        "value": "確認: でよい",
+        "start": 4,
+        "end": 4,
+        "focused": True,
+    }

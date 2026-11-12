@@ -32,8 +32,8 @@ describe("WorkspaceSettingsScreen", () => {
     );
     const { unmount } = renderRoute("/spa/?tab=settings");
     // 実行
-    await userEvent.click(await screen.findByRole("radio", { name: "入力欄へ挿入する" }));
-    await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "insert", preset: null } }));
+    await userEvent.click(await screen.findByRole("radio", { name: "送信する" }));
+    await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "send", preset: null } }));
     unmount();
     server.use(http.get("/api/transcription", () => HttpResponse.json({ available: false, reason: "stopped", detail: "x", presets: [], action: "send", preset: null })));
     renderRoute("/spa/?tab=settings");

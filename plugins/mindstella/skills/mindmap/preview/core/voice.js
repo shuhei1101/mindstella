@@ -11,13 +11,49 @@ var MindmapPreview;
         failed: "文字起こしできませんでした。もう一度お試しください。",
         sendFailed: "送信できませんでした。文字起こしの結果は入力欄に残しています。",
     };
+    /** 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。fftSize 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上 */
+    MindmapPreview.WAVE_SAMPLE_MS = 50;
+    /** 波形に持つ音量の数の上限。詳細の全画面の幅の上限 1600px ÷ 棒の最も狭い間隔 4px */
+    MindmapPreview.WAVE_LEVELS_MAX = 400;
+    /** 波形の時間軸の値（128 が無音）の 128 からの差の最大を 0〜1 の音量にする */
+    function levelOf(values) {
+        let peak = 0;
+        for (const value of values)
+            peak = Math.max(peak, Math.abs(value - 128));
+        return Math.min(peak / 128, 1);
+    }
+    /** マイクの音量を WAVE_SAMPLE_MS ごとに取って知らせ始め、止める関数を返す（AudioContext が無ければ何もしない） */
+    function watchLevels(stream, onLevel, win) {
+        const Context = win.AudioContext;
+        if (Context === undefined)
+            return () => { };
+        const context = new Context();
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 2048;
+        context.createMediaStreamSource(stream).connect(analyser);
+        const values = new Uint8Array(analyser.fftSize);
+        const timer = win.setInterval(() => {
+            analyser.getByteTimeDomainData(values);
+            onLevel(levelOf(values));
+        }, MindmapPreview.WAVE_SAMPLE_MS);
+        return () => {
+            win.clearInterval(timer);
+            void context.close();
+        };
+    }
+    /** 音量の並びの末尾に 1 つ足し、WAVE_LEVELS_MAX を超えた古いものを先頭から捨てた新しい並びを返す */
+    function pushLevel(levels, level) {
+        const next = [...levels, Math.min(Math.max(level, 0), 1)];
+        return next.length > MindmapPreview.WAVE_LEVELS_MAX ? next.slice(next.length - MindmapPreview.WAVE_LEVELS_MAX) : next;
+    }
+    MindmapPreview.pushLevel = pushLevel;
     /** ブラウザが getUserMedia と MediaRecorder を持つかを返す（HTTPS でも localhost でもない経路では持たない） */
     function micSupported(win = window) {
         return typeof win.navigator.mediaDevices?.getUserMedia === "function" && typeof win.MediaRecorder === "function";
     }
     MindmapPreview.micSupported = micSupported;
     /** マイクの許可を得て録音を始め、録音を返す。許可が得られなければ理由で断る */
-    async function startRecording(win = window) {
+    async function startRecording(onLevel, win = window) {
         const getUserMedia = win.navigator.mediaDevices?.getUserMedia;
         const Recorder = win.MediaRecorder;
         if (getUserMedia === undefined || Recorder === undefined)
@@ -39,7 +75,9 @@ var MindmapPreview;
             if (keep)
                 chunks.push(event.data);
         });
+        const stopLevels = watchLevels(stream, onLevel, win);
         const release = () => {
+            stopLevels();
             for (const track of stream.getTracks())
                 track.stop();
         };

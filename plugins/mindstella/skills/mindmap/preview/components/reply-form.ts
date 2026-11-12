@@ -56,6 +56,7 @@ namespace MindmapPreview {
     voice = "idle",
     voiceReason = null,
     elapsed = 0,
+    levels = [],
     entered = false,
     on,
   }: ReplyFormProps): HTMLFormElement {
@@ -79,8 +80,10 @@ namespace MindmapPreview {
         maxlength: COMMENT_BODY_MAX_LENGTH,
         "aria-keyshortcuts": "Control+Enter",
         "aria-describedby": messageId,
-        // 溜めている間と文字起こし中は書き換えられない
-        readonly: saving || voice === "transcribing",
+        // 溜めている間・録音中・文字起こし中は書き換えられない
+        readonly: saving || voice === "recording" || voice === "transcribing",
+        // 録音中は波形と入れ替えて隠す（中身と選んだ範囲は残す）
+        hidden: voice === "recording",
         oninput: () => {
           on.input(textarea.value);
           // 入力に合わせて、ボタンを押せるかを合わせる
@@ -130,7 +133,7 @@ namespace MindmapPreview {
       children: [
         h({ tag: "label", attrs: { class: "send-label", for: fieldId }, children: ["返信"] }),
         // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行
-        h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, ...voiceButtons({ voice, voiceReason, textarea, submit, on })] }),
+        h({ tag: "div", attrs: { class: "send-line" }, children: [textarea, voiceWave(voice, levels), ...voiceButtons({ voice, voiceReason, textarea, submit, on })] }),
         h({
           tag: "p",
           attrs: { class: messageState(voice, status) === "idle" ? "send-msg" : `send-msg ${messageState(voice, status)}`, id: messageId, role: "status" },

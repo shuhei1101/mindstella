@@ -57,6 +57,7 @@ const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: Fre
               voice={voice.voice}
               voiceReason={voice.voiceReason}
               elapsed={voice.elapsed}
+              levels={voice.levels}
               entered={voice.entered}
               onVoiceStart={() => void voice.onVoiceStart()}
               onVoiceCancel={voice.onVoiceCancel}

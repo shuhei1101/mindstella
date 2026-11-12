@@ -1,5 +1,5 @@
 // コメントの入力。詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン
-import { useEffect, useId, useState, type FocusEvent, type ReactNode, type SyntheticEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type FocusEvent, type ReactNode, type RefObject, type SyntheticEvent, type KeyboardEvent } from "react";
 
 import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
@@ -21,6 +21,8 @@ export type VoiceProps = {
   voiceReason?: string | null;
   /** 録音を始めてからの秒数（`voice` が `recording` のとき） */
   elapsed?: number;
+  /** 録音中の音量の並び（古い順。0〜1。`voice` が `recording` のとき） */
+  levels?: readonly number[];
   /** `status` が `sent` のとき、Claude Code へ入力したか */
   entered?: boolean;
   onVoiceStart?: () => void;
@@ -121,8 +123,33 @@ export const VoiceProgress = ({ voice, elapsed }: { voice: VoicePhase; elapsed: 
   return null;
 };
 
+/** 録音中に入力欄の場所へ出す波形。音量 1 つが縦の棒 1 本で、読み上げない。録音中でなければ何も出さない */
+export const VoiceWave = ({ voice, levels }: { voice: VoicePhase; levels: readonly number[] }) =>
+  voice === "recording" ? (
+    <div data-part="voice-wave" className="wave-send text-small" aria-hidden="true">
+      {levels.map((level, index) => (
+        // 棒は音量の並びの位置で見分ける（古い棒が左で捨てられ、並びが詰まる）
+        <i key={index} className="wave-bar" style={{ "--lv": level } as CSSProperties} />
+      ))}
+    </div>
+  ) : null;
+
+/** 入力欄を書き換えられないか（溜めている間・録音中・文字起こし中） */
+export const fieldLocked = (saving: boolean, voice: VoicePhase): boolean => saving || voice === "recording" || voice === "transcribing";
+
+/** 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す（入力欄は隠すだけで外さないため、選んだ範囲が残る） */
+export const useVoiceFocus = (voice: VoicePhase, field: RefObject<HTMLTextAreaElement | null>, done: RefObject<HTMLButtonElement | null>): void => {
+  const previous = useRef(voice);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = voice;
+    if (voice === "recording" && before !== "recording") done.current?.focus();
+    if (voice === "idle" && (before === "recording" || before === "transcribing")) field.current?.focus();
+  }, [voice, field, done]);
+};
+
 /** 入力欄の右に並べる音声入力のボタン（idle・disabled はマイクと submit、recording・transcribing は × と ✓） */
-export const VoiceButtons = ({ voice, voiceReason, submit, onStart, onCancel, onDone, onBlocked }: { voice: VoicePhase; voiceReason: string | null; submit: ReactNode; onStart?: () => void; onCancel?: () => void; onDone: () => void; onBlocked?: () => void }) => {
+export const VoiceButtons = ({ voice, voiceReason, submit, doneRef, onStart, onCancel, onDone, onBlocked }: { voice: VoicePhase; voiceReason: string | null; submit: ReactNode; doneRef?: RefObject<HTMLButtonElement | null>; onStart?: () => void; onCancel?: () => void; onDone: () => void; onBlocked?: () => void }) => {
   const tipId = useId();
   if (voice === "recording" || voice === "transcribing") {
     const busy = voice === "transcribing";
@@ -131,7 +158,7 @@ export const VoiceButtons = ({ voice, voiceReason, submit, onStart, onCancel, on
         <Button type="button" variant="outline" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 pointer-coarse:size-11" aria-label="キャンセル" title="キャンセル（録音を破棄）" disabled={busy} onClick={onCancel}>
           <Icon name="x" />
         </Button>
-        <Button type="button" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" aria-label={busy ? "文字起こし中" : "文字起こし"} title={busy ? "文字起こし中" : "文字起こし"} aria-busy={busy} disabled={busy} onClick={onDone}>
+        <Button type="button" size="icon" className="size-send disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-busy:disabled:cursor-progress pointer-coarse:size-11" ref={doneRef} aria-label={busy ? "文字起こし中" : "文字起こし"} title={busy ? "文字起こし中" : "文字起こし"} aria-busy={busy} disabled={busy} onClick={onDone}>
           <Icon name={busy ? "spin" : "check"} className={busy ? "animate-spin" : undefined} />
         </Button>
       </div>
@@ -265,12 +292,15 @@ const LocationChip = ({ loc, id, onClearLoc }: { loc: Location; id: string; onCl
   </div>
 );
 
-export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, entered = false, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked }: SendFormProps) => {
+export const SendForm = ({ target, loc, body, status, count = null, detail = null, collapsed = false, label = NO_TARGET_LABEL, open = true, voice = "idle", voiceReason = null, elapsed = 0, levels = [], entered = false, onSubmit, onInput, onClearLoc, onCopyBody, onFocus, onBlur, onToggleOpen, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked }: SendFormProps) => {
   const fieldId = useId();
   const messageId = `${fieldId}-msg`;
   const locId = `${fieldId}-loc`;
   const bodyId = `${fieldId}-body`;
   const folded = collapsed && target === null;
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const doneRef = useRef<HTMLButtonElement>(null);
+  useVoiceFocus(voice, fieldRef, doneRef);
   // 空白だけで溜めようとしたか（次に書き換えるまで出す）
   const [empty, setEmpty] = useState(false);
   // 溜めている印は待ちの後に出す
@@ -316,6 +346,7 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   // 入力欄と、その右の「レビューに追加」（アイコンだけのボタン）の行。結果は行の下に幅いっぱいで出す
   const field = (
     <Textarea
+      ref={fieldRef}
       id={fieldId}
       name="body"
       rows={1}
@@ -325,7 +356,9 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
       aria-describedby={describedByOf(folded, target !== null && loc !== null ? locId : null, messageId)}
       aria-keyshortcuts="Control+Enter"
       aria-invalid={shown === "empty" ? true : undefined}
-      readOnly={status === "saving" || voice === "transcribing"}
+      readOnly={fieldLocked(status === "saving", voice)}
+      // 録音中は波形と入れ替えて隠す（外さないので中身と選んだ範囲が残る）
+      hidden={voice === "recording"}
       onChange={(event) => {
         setEmpty(false);
         onInput(event.target.value);
@@ -339,7 +372,9 @@ export const SendForm = ({ target, loc, body, status, count = null, detail = nul
   ) : (
     <div className="flex items-end gap-2">
       {field}
+      <VoiceWave voice={voice} levels={levels} />
       <VoiceButtons
+        doneRef={doneRef}
         voice={voice}
         voiceReason={voiceReason}
         onStart={onVoiceStart}

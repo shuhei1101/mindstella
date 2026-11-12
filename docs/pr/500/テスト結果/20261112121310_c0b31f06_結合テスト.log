@@ -1,0 +1,4 @@
+$ npm run build-storybook && npm run build-storybook-react && python -m pytest tests/integration/server/test_transcription_status.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_spa_detail_panel_screen.py tests/integration/preview/test_comments_screen.py tests/integration/preview/test_workspace_settings_screen.py tests/integration/preview/test_spa_workspace_settings_screen.py tests/integration/storybook/test_send_form_stories.py tests/integration/storybook/test_reply_form_stories.py tests/integration/storybook_react/test_send_form_stories.py tests/integration/storybook_react/test_reply_form_stories.py -k "voice or transcription or recording or inserted or test_normal"   # c0b31f06。pytest・pytest-playwright・PyYAML・jsonschema・mcp を requirements-dev.txt の版で入れた仮想環境
+..............................................                           [100%]
+46 passed, 475 deselected in 84.87s (0:01:24)
+exit=0

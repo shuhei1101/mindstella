@@ -3,7 +3,7 @@ import { useState } from "react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { VOICE_TEXT } from "@/shared/core/voice";
+import { VOICE_TEXT, WAVE_SAMPLE_MS } from "@/shared/core/voice";
 import { useTranscriptionStatus, useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { RECORDS } from "@/testing/msw/handlers";
@@ -15,6 +15,7 @@ const AVAILABLE = { available: true, reason: null, detail: null, presets: [], ac
 
 afterEach(() => {
   removeFakeMedia();
+  vi.useRealTimers();
 });
 
 /** D-1 へ向けた音声入力の hook を、中身の書き換えを控えて描く */
@@ -63,6 +64,14 @@ describe("useVoiceInput", () => {
     expect(sent).toEqual([]);
     inserting.unmount();
     stubRecords({});
+    const defaulted = await renderVoice("確認: ");
+    await act(() => defaulted.result.current.onVoiceStart());
+    await act(() => defaulted.result.current.onVoiceDone());
+    await waitFor(() => expect(defaulted.onBodyChange).toHaveBeenCalledWith("確認: 案 A にする"));
+    expect(defaulted.result.current.status).toBe("inserted");
+    expect(sent).toEqual([]);
+    defaulted.unmount();
+    stubRecords({ settings: { ...RECORDS.settings, transcription: { action: "send" } } });
     const sending = await renderVoice("確認: ");
     await act(() => sending.result.current.onVoiceStart());
     await act(() => sending.result.current.onVoiceDone());
@@ -89,6 +98,25 @@ describe("useVoiceInput", () => {
     await act(() => unsupported.result.current.onVoiceDone());
     await waitFor(() => expect(unsupported.result.current.voice).toBe("disabled"));
     expect(unsupported.result.current.voiceReason).toBe("対応していません");
+  });
+
+  // 録音中の音量を levels に持ち、終えたら空にする（正常系）
+  test("use_voice_input_levels", async () => {
+    // 準備
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    installFakeMedia(undefined, [160, 224]);
+    server.use(http.get("/api/transcription", () => HttpResponse.json(AVAILABLE)));
+    const { result } = await renderVoice("");
+    // 実行
+    await act(() => result.current.onVoiceStart());
+    act(() => {
+      vi.advanceTimersByTime(WAVE_SAMPLE_MS * 2);
+    });
+    const recorded = result.current.levels;
+    act(() => result.current.onVoiceCancel());
+    // 検証
+    expect(recorded).toEqual([0.25, 0.75]);
+    expect(result.current.levels).toEqual([]);
   });
 
   // 向けた先が変わったら録音を捨てる（正常系）

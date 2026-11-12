@@ -70,7 +70,7 @@ states:
       - name: status
         value: failed
   - name: Recording
-    description: 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない）
+    description: 録音中。マイクと「レビューに追加」の位置に × の「キャンセル」（枠だけ）と ✓ の「文字起こし」（塗り）を置き、結果の行に失敗の色の丸と経過の時間だけを出す（丸は点滅させない）。入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所・同じ大きさに `levels` の縦の棒の波形を出す（新しい音量を右端に足し、枠からはみ出した古い棒は左で切る）
     args:
       - name: thread
         value: TH-1
@@ -78,6 +78,8 @@ states:
         value: recording
       - name: elapsed
         value: '12'
+      - name: levels
+        value: '[0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65]'
   - name: Transcribing
     description: 文字起こし中。2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出す。入力欄は読み取りだけ
     args:
@@ -105,6 +107,15 @@ states:
         value: sent
       - name: entered
         value: 'false'
+  - name: Inserted
+    description: 入力欄へ挿入した（既定）。カーソルは挿入した文字の後ろで、「文字起こしの結果を挿入しました。」。「レビューに追加」で返信をレビュー中に溜める
+    args:
+      - name: thread
+        value: TH-1
+      - name: status
+        value: inserted
+      - name: body
+        value: 案 A にする
   - name: VoiceDisabled
     description: 文字起こしのサービスが起動していない。マイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。「レビューに追加」は押せるまま
     args:
@@ -134,6 +145,8 @@ states:
         value: recording
       - name: elapsed
         value: '12'
+      - name: levels
+        value: '[0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65]'
 lead: スレッドの下端に留める、返信をレビュー中に溜める入力欄と「レビューに追加」のボタン。箇所を添えず、入力が空の間はボタンを押せない。
 args:
   - name: thread
@@ -169,7 +182,7 @@ args:
     required: false
     default: idle
     choices: idle・disabled・recording・transcribing
-    description: 音声入力の状態。idle は「レビューに追加」の左にマイクのアイコンだけのボタンを置く。disabled はマイクのボタンを押せない見た目にし、フォーカスは受けたまま `voiceReason` をツールチップに出す。recording はマイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」のアイコンだけのボタンに切り替え、結果の行に失敗の色の丸と `elapsed` を出す。transcribing は 2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出し、入力欄を書き換えられなくする
+    description: 音声入力の状態。idle は「レビューに追加」の左にマイクのアイコンだけのボタンを置く。disabled はマイクのボタンを押せない見た目にし、フォーカスは受けたまま `voiceReason` をツールチップに出す。recording はマイクと「レビューに追加」の位置を × の「キャンセル」と ✓ の「文字起こし」のアイコンだけのボタンに切り替え、結果の行に失敗の色の丸と `elapsed` を出し、入力欄の中身とカーソルの位置を残したまま入力欄を隠してキーボードの入力を受け付けず、同じ場所・同じ大きさに `levels` の縦の棒の波形を出す（新しい音量を右端に足し、枠からはみ出した古い棒は左で切る）。transcribing は 2 つのボタンを押せなくし、✓ の位置と結果の行に回る印だけを出し、入力欄を書き換えられなくする
   - name: voiceReason
     type: 文字列
     required: false
@@ -182,6 +195,13 @@ args:
     choices: 0 以上
     enabled_when: '`voice` が `recording` のとき'
     description: 録音を始めてからの秒数。`m:ss` で出す（経過の時間は読み上げない）
+  - name: levels
+    type: 配列
+    required: false
+    default: '[]'
+    choices: 0〜1 の数の並び（古い順）
+    enabled_when: '`voice` が `recording` のとき'
+    description: 録音中の音量の並び。使う側がマイクの音量を一定の間隔で取って足す。1 つが波形の縦の棒 1 本で、0 は最も短い棒、1 は入力欄の高さいっぱいの棒
   - name: entered
     type: 真偽値
     required: false
@@ -208,7 +228,7 @@ events:
   - name: 文字起こし
     when: ✓ のボタンを押したとき（`voice` が `recording`）
     value: '`onVoiceDone(thread, body)`（thread・body（入力欄の中身そのまま））'
-    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。返った文字を入力欄のカーソルの位置へ挿入し、設定の挙動が `send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら `inserted` にする。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。文字起こし中に入力が無くなったときと、返った時点の向けた先が押したときと違うときは、返った文字を捨てる（挿入も送信もしない）
+    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `insert`）が `send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら送らずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。文字起こし中に入力が無くなったときと、返った時点の向けた先が押したときと違うときは、返った文字を捨てる（挿入も送信もしない）
   - name: 押せないマイクを押す
     when: '`voice` が `disabled` のマイクのボタンを押したとき'
     value: '`onVoiceBlocked()`'
@@ -223,6 +243,7 @@ accessibility:
   - マイクのボタンはアイコンだけのボタンにし、`aria-label`・`title` に「音声で入力」を持つ。押せないときは `aria-disabled="true"` でフォーカスを受けたまま、ツールチップに理由を出して `aria-describedby` から指す
   - 録音中の × と ✓ はアイコンだけのボタンにし、`aria-label`・`title` にそれぞれ「キャンセル」（ツールチップは「キャンセル（録音を破棄）」）と「文字起こし」を持つ。文字起こし中は ✓ を「文字起こし中」にして押せなくする
   - 録音を始めた・終えたことは結果の行（`role="status"`）の読み上げだけの「録音中」で伝え、経過の時間は読み上げない
+  - 録音中の波形は読み上げから外す（`aria-hidden`）。録音を始めたらフォーカスを ✓ の「文字起こし」へ移し、録音を終えたら入力欄へ戻してカーソルを録音前の位置に置く
   - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
 refs:

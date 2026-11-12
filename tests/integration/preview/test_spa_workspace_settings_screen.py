@@ -178,11 +178,11 @@ def test_transcription(
     start_fake_transcriber: Any,
     valid_settings: dict[str, Any],
 ) -> None:
-    """文字起こし後の挙動と用語集のプリセットを選ぶと、もう一方の値を保った transcription を 1 件溜める。候補は文字起こしの可否の presets（正常系）。"""
+    """文字起こし後の挙動と用語集のプリセットを選ぶと、もう一方の値を保った transcription を 1 件溜める。挙動を持たない設定では既定の「入力欄へ挿入する」を選んでいる。候補は文字起こしの可否の presets（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     _open_voice_settings(
-        page, start_voice_preview, fake.url, {**valid_settings, "transcription": {"action": "insert", "preset": "開発"}}
+        page, start_voice_preview, fake.url, {**valid_settings, "transcription": {"preset": "開発"}}
     )
     preset = page.get_by_label("用語集のプリセット", exact=True)
     # 検証（今の値と候補）
