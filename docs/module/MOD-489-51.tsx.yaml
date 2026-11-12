@@ -40,7 +40,7 @@ components:
         type: '{ base: unknown; action?: "send" | "insert"; preset?: string | null } | null'
         initial: 'null'
         description: 保存待ちの編集を再取得する前に続けて選んだ文字起こし後の挙動と用語集のプリセットと、選んだときの記録の `settings.transcription`（`base`）。選んだときに溜める `transcription` のもう一方の値はここから取り、ここに無い値は記録の `settings.transcription` から取る。描くときに記録の `settings.transcription` が `base` と違えば `null` に戻す
-        notes: '`useRef`（描き直しで作り直さない）'
+        notes: '`useState`（記録の値が `base` と違えば、描くときに `null` へ戻す）'
     container: frontend/src/features/settings/workspace-settings/workspace-settings-screen.tsx
 notes:
   単体テスト: 同じフォルダの `workspace-settings-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
