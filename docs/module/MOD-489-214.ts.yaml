@@ -127,6 +127,12 @@ components:
         condition: '`parametrize`: `idle` でマイクを押す / `recording` で × / `recording` で入力欄の「確認: 」の後ろにカーソルを置いて ✓ / `disabled` でマイクを押す'
         mock: '`on.voiceStart`・`on.voiceCancel`・`on.voiceDone`・`on.voiceBlocked`'
         expected: '`voiceStart` が 1 回 / `voiceCancel` が 1 回 / `voiceDone` が `{body: "確認: ", start: 4, end: 4}` で 1 回 / `voiceBlocked` が 1 回で `voiceStart` は呼ばれない'
+      - name: test_send_form_when_recording_focus
+        case: 正常
+        summary: 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す
+        condition: '入力欄 `確認: でよい`・カーソル 4 で `voice: recording` に描き直し、続けて `voice: idle` に描き直す'
+        mock: なし（DOM を作って見る）
+        expected: 録音中は ✓ にフォーカスがあり、`idle` の後は入力欄が見えてフォーカスが入力欄にあり、`selectionStart`・`selectionEnd` が 4
       - name: test_send_form_when_location_and_no_target
         case: 正常
         summary: 添えた箇所と項目を指さない形

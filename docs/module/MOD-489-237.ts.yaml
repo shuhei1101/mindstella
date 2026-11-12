@@ -76,6 +76,12 @@ components:
         condition: '`parametrize`: `voice: recording`・`elapsed: 5`・`levels: [0.5]` で ✓ / `voice: disabled` でマイクを押す / `status: sent`・`entered: true`'
         mock: '`on.voiceDone`・`on.voiceBlocked`'
         expected: '入力欄が `hidden` で `.send-wave` に `<i>` が 1 つあり、結果の行に `0:05` があり、`voiceDone` が入力欄の中身とカーソルの位置で 1 回 / `voiceBlocked` が 1 回 / 「送信し、Claude Code へ入力しました。」'
+      - name: test_reply_form_when_recording_focus
+        case: 正常
+        summary: 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す
+        condition: '入力欄 `確認: でよい`・カーソル 4 で `voice: recording` に描き直し、続けて `voice: idle` に描き直す'
+        mock: なし（DOM を作って見る）
+        expected: 録音中は ✓ にフォーカスがあり、`idle` の後は入力欄が見えてフォーカスが入力欄にあり、`selectionStart`・`selectionEnd` が 4
       - name: test_reply_form_when_keys
         case: 正常
         summary: Ctrl+Enter で溜め、空・溜めている間・変換中は溜めず、Esc は外へ伝えない

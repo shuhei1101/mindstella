@@ -28,6 +28,12 @@ components:
         condition: '`voice` が recording（`levels: [0.5]`）で ✓ / disabled でマイク'
         mock: なし
         expected: '入力欄が隠れて読み上げない波形に棒が 1 本あり、`onVoiceDone` が thread・body で呼ばれ、結果の行に経過の時間 / `onVoiceBlocked` が呼ばれる'
+      - name: test_reply_form_when_recording_ended
+        case: 正常
+        summary: 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す
+        condition: '入力欄 `確認: でよい`・カーソル 4 で `voice: recording` に描き直し、続けて `voice: idle` に描き直す'
+        mock: なし
+        expected: 録音中は ✓ にフォーカスがあり、`idle` の後は入力欄が見えてフォーカスが入力欄にあり、`selectionStart`・`selectionEnd` が 4
     container: frontend/src/features/comments/shared/reply-form.tsx
 notes:
   単体テスト: 同じフォルダの `reply-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）
