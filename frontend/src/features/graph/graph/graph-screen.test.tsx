@@ -72,8 +72,7 @@ describe("GraphScreen", () => {
     await screen.findByLabelText("ネットワーク");
     const before = requests.filter((path) => path === "/api/records").length;
     // 実行
-    await userEvent.click(screen.getByRole("combobox", { name: "ネットワークの見た目" }));
-    await userEvent.click(await screen.findByRole("option", { name: "星図" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "ネットワークの見た目" }), "星図");
     // 検証
     expect(readPrefs().look).toBe("constellation");
     expect(requests.filter((path) => path === "/api/records")).toHaveLength(before);
