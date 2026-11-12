@@ -22,6 +22,19 @@ components:
         condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で既定の「入力欄へ挿入する」から「送信する」を選ぶ / `{available: false, reason: stopped}`'
         mock: MSW
         expected: '`POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: null}}` で呼ばれる / プリセットのセレクトが押せず「文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。」'
+      - name: test_workspace_settings_screen_when_transcription_chosen_in_a_row
+        case: 正常
+        summary: 挙動とプリセットを続けて選ぶ
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で、「送信する」を選んだ直後（記録を再取得する前）にプリセットの「一般」を選ぶ'
+        mock: MSW
+        expected: '2 回目の `POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: 一般}}` で呼ばれる'
+    state:
+      - name: transcriptionChoice
+        title: 最後に選んだ文字起こしの設定
+        type: '{ action?: "send" | "insert"; preset?: string | null }'
+        initial: '{}'
+        description: この画面で最後に選んだ文字起こし後の挙動と用語集のプリセット。選んだときに溜める `transcription` のもう一方の値はここから取り、まだ選んでいない値は記録の `settings.transcription` から取る
+        notes: '`useRef`（描き直しで作り直さない）'
     container: frontend/src/features/settings/workspace-settings/workspace-settings-screen.tsx
 notes:
   単体テスト: 同じフォルダの `workspace-settings-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）
