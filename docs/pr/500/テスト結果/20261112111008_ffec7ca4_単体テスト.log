@@ -1,0 +1,9 @@
+$ /tmp/venv492/bin/python -m pytest tests/unit -q -p no:cacheprovider && npx vitest run   # pytest・pytest-playwright・PyYAML・jsonschema・mcp を requirements-dev.txt の版で入れた仮想環境。ffec7ca4 で実行（今の画面の .js は f0d860a1 から変わっていない）
+=============================== warnings summary ===============================
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2160 passed, 1 skipped, 5 warnings in 1427.09s (0:23:47)
+pytest_exit=0
+ Test Files  71 passed (71)
+      Tests  217 passed (217)
+   Duration  546.45s (environment 53%, import 27%, setup 18%, transform 1%, worker 1%)
+vitest_exit=0
