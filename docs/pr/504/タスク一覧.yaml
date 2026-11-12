@@ -64,8 +64,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T06:33:04.968260+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: 画面設計『設定の画面.tsx』『設定の画面』の挙動・プリセットの説明
+    updated_by: planner
+    updated_at: '2026-11-12T06:45:19.439284+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
