@@ -24,9 +24,9 @@ flows:
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
       - name: make_workspace
         description: '`config.yaml` が `transcription` を持たないワークスペース'
-    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  \n  クライアント->>IF: GET\n  IF-->>クライアント: 200、action=send・preset=null\n```"
+    flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  \n  クライアント->>IF: GET\n  IF-->>クライアント: 200、action=insert・preset=null\n```"
     expected:
-      - ステータスが 200 で、`action` が `send`、`preset` が `null`
+      - ステータスが 200 で、`action` が `insert`、`preset` が `null`
     test: test_normal_when_not_configured
   - name: 正常系（サービスが起動していない）
     summary: サービスに届かないときは、使えない理由を 200 で返す
@@ -89,7 +89,7 @@ response:
     notes: 使えないときは空。設定の画面のセレクトの候補になる
   - name: action
     type: Literal['send', 'insert']
-    description: '`config.yaml` の `transcription.action`。無ければ `send`'
+    description: '`config.yaml` の `transcription.action`。無ければ `insert`'
   - name: preset
     type: str | None
     description: '`config.yaml` の `transcription.preset`。無ければ `null`（サービスの既定）'
