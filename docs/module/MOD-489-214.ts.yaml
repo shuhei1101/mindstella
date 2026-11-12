@@ -73,7 +73,7 @@ components:
         type: "'idle' | 'disabled' | 'recording' | 'transcribing'"
         required: false
         default: "'idle'"
-        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べ、✓ のボタンへフォーカスを移す。`recording` から別の状態へ描き直すときは、入力欄を戻してフォーカスを入力欄へ移し、録音前の選んだ範囲（`selectionStart`・`selectionEnd`）に戻す（`transcribing` を経て挿入したときは使う側が置いたカーソルの位置）
+        description: 音声入力の状態（部品設計の `voice`）。`idle`・`disabled` は「レビューに追加」の左にマイクのボタン（`aria-label`「音声で入力」、`title` は `idle` なら「音声で入力」、`disabled` なら `voiceReason`。`disabled` は `aria-disabled="true"` で `disabled` にせず、`aria-describedby` で理由を指す）を置く。`recording` はマイクと「レビューに追加」を × の「キャンセル」・✓ の「文字起こし」のボタン（`aria-label`・`title` を持つ）に替え、結果の行に `rec-dot` と `formatElapsed(elapsed)`（`aria-hidden`）と、読み上げにだけ「録音中」を出す。`transcribing` は 2 つのボタンを `disabled` にし、✓ と結果の行に回る印を出し、入力欄を `readonly` にする。`recording` は入力欄に `hidden` と `readonly` を付けて中身と選んだ範囲を残し、同じ場所に `aria-hidden` の `.send-wave` を置いて `levels` の 1 つごとに `--lv` を持つ `<i>` を並べ。描き直すたびに要素を作り直すため、フォーカスと選んだ範囲は使う側（入口）が置く
       - name: voiceReason
         type: string | null
         required: false
@@ -127,12 +127,6 @@ components:
         condition: '`parametrize`: `idle` でマイクを押す / `recording` で × / `recording` で入力欄の「確認: 」の後ろにカーソルを置いて ✓ / `disabled` でマイクを押す'
         mock: '`on.voiceStart`・`on.voiceCancel`・`on.voiceDone`・`on.voiceBlocked`'
         expected: '`voiceStart` が 1 回 / `voiceCancel` が 1 回 / `voiceDone` が `{body: "確認: ", start: 4, end: 4}` で 1 回 / `voiceBlocked` が 1 回で `voiceStart` は呼ばれない'
-      - name: test_send_form_when_recording_focus
-        case: 正常
-        summary: 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す
-        condition: '入力欄 `確認: でよい`・カーソル 4 で `voice: recording` に描き直し、続けて `voice: idle` に描き直す'
-        mock: なし（DOM を作って見る）
-        expected: 録音中は ✓ にフォーカスがあり、`idle` の後は入力欄が見えてフォーカスが入力欄にあり、`selectionStart`・`selectionEnd` が 4
       - name: test_send_form_when_location_and_no_target
         case: 正常
         summary: 添えた箇所と項目を指さない形
