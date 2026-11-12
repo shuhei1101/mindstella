@@ -34,6 +34,12 @@ const PRESET_UNAVAILABLE_TEXT = {
   unsupported: "文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。",
 } as const;
 
+/** 文字起こし後の挙動の値 */
+type TranscriptionAction = (typeof TRANSCRIPTION_ACTIONS)[number]["value"];
+
+/** 保存待ちの編集を再取得する前に続けて選んだ文字起こしの設定と、選んだときの記録の `settings.transcription`（JSON の文字列） */
+type TranscriptionChoice = { base: string; action?: TranscriptionAction; preset?: string | null };
+
 type ColumnDef = { key: string; title: string; type: "text" | "url" };
 
 const TABLES: Record<"targets" | "categories" | "links", { label: string; columns: ColumnDef[] }> = {
@@ -178,6 +184,7 @@ export const WorkspaceSettingsScreen = () => {
     void refetch();
   }, [refetch]);
   const actionLabel = useId();
+  const [transcriptionChoice, setTranscriptionChoice] = useState<TranscriptionChoice | null>(null);
   if (index === null) return null;
   const { settings } = index.data;
   const commit: Commit = (key, value, map) => {
@@ -290,8 +297,18 @@ export const WorkspaceSettingsScreen = () => {
             <legend className="font-medium">音声入力</legend>
             {(() => {
               const current = ((settings as unknown as Record<string, unknown>).transcription ?? {}) as { action?: string; preset?: string | null };
-              const action = current.action === "send" ? "send" : "insert";
+              const action: TranscriptionAction = current.action === "send" ? "send" : "insert";
               const preset = typeof current.preset === "string" ? current.preset : null;
+              // 記録の値が選んだときと変わっていれば、続けて選んだ値を捨てて記録の値を使う
+              const base = JSON.stringify(current);
+              if (transcriptionChoice !== null && transcriptionChoice.base !== base) setTranscriptionChoice(null);
+              const chosen = transcriptionChoice?.base === base ? transcriptionChoice : null;
+              /** もう一方の値を、続けて選んだ値（無ければ記録の値）で保って溜める */
+              const choose = (next: { action: TranscriptionAction } | { preset: string | null }) => {
+                const value = { action: chosen?.action ?? action, preset: chosen?.preset === undefined ? preset : chosen.preset, ...next };
+                setTranscriptionChoice({ base, ...value });
+                commit("transcription", value);
+              };
               const status = transcription.data ?? null;
               const usable = status !== null && status.available;
               const names = usable ? (preset !== null && !status.presets.includes(preset) ? [...status.presets, preset] : status.presets) : [];
@@ -308,7 +325,7 @@ export const WorkspaceSettingsScreen = () => {
                         </span>
                         {TRANSCRIPTION_ACTIONS.map((choice) => (
                           <label key={choice.value} className="flex min-h-9 items-center gap-2 text-body">
-                            <input type="radio" name="pe-ws-transcription-action" value={choice.value} defaultChecked={choice.value === action} className="accent-primary" onChange={(event) => { if (event.target.checked) commit("transcription", { action: choice.value, preset }); }} />
+                            <input type="radio" name="pe-ws-transcription-action" value={choice.value} defaultChecked={choice.value === action} className="accent-primary" onChange={(event) => { if (event.target.checked) choose({ action: choice.value }); }} />
                             {choice.label}
                           </label>
                         ))}
@@ -320,7 +337,7 @@ export const WorkspaceSettingsScreen = () => {
                     "transcription.preset",
                     "用語集のプリセット",
                     <>
-                      <Select id="pe-ws-transcription-preset" value={preset ?? ""} disabled={!usable} aria-describedby="pe-ws-transcription-preset-hint" onChange={(event) => { commit("transcription", { action, preset: event.target.value === "" ? null : event.target.value }); }}>
+                      <Select id="pe-ws-transcription-preset" value={preset ?? ""} disabled={!usable} aria-describedby="pe-ws-transcription-preset-hint" onChange={(event) => { choose({ preset: event.target.value === "" ? null : event.target.value }); }}>
                         {usable ? (
                           <>
                             <option value="">{SERVICE_DEFAULT_PRESET}</option>
