@@ -19,11 +19,15 @@ docs:
   - page: docs/guide/プレビューを見る.md
     new: false
     change: 音声入力の節を、文字起こしの結果を入力欄へ挿入して送信のボタンでレビュー中へ入れる流れと、録音中の波形の表示・キーボード入力の停止に書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:29:07.074155+00:00'
   - page: docs/guide/ワークスペースの書式.md
     new: false
     change: transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T00:29:07.074155+00:00'
   - page: docs/er/ER-489-1.yaml
     new: false
     change: config.yaml の transcription.action の既定を insert にし、値の候補を挙動の値の決定に合わせる
