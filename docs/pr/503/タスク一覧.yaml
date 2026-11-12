@@ -70,11 +70,15 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T03:48:29.225976+00:00'
   - process: 単体テスト作成
-    status: todo
+    status: done
     note: comments-panel.test.tsx に、スレッドから一覧へ戻った後、描き直しより先に次のコマが来ても開いていた行にフォーカスがある単体テストを追加する
+    updated_by: planner
+    updated_at: '2026-11-12T04:37:30.436863+00:00'
   - process: 実装
-    status: todo
+    status: done
     note: comments-panel.tsx の backToList のフォーカスの戻しを、描き直した行へ当てる形に修正し、SPA のバンドルを作り直す
+    updated_by: planner
+    updated_at: '2026-11-12T04:37:30.436863+00:00'
   - process: 結合テスト作成
     status: todo
     note: test_spa_thread_screen.py::test_back を変えずに、requestAnimationFrame をマイクロタスクで走らせる差し替えの下と通常の実行で pass を確かめ、tests/integration/preview を全件実行する
