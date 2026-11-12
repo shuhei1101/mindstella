@@ -18,6 +18,8 @@ namespace MindmapPreview {
     voiceReason?: string | null;
     /** 録音を始めてからの秒数（`voice` が `recording` のとき） */
     elapsed?: number;
+    /** 録音中の音量の並び（古い順。0〜1。`voice` が `recording` のとき） */
+    levels?: readonly number[];
     /** `status` が `sent` のとき、Claude Code へ入力したか */
     entered?: boolean;
   };
@@ -178,6 +180,16 @@ namespace MindmapPreview {
     return status;
   }
 
+  /** 録音中に入力欄の場所へ出す波形。音量 1 つが縦の棒 1 本で、読み上げない。録音中でなければ null */
+  export function voiceWave(voice: VoicePhase, levels: readonly number[]): HTMLElement | null {
+    if (voice !== "recording") return null;
+    return h({
+      tag: "div",
+      attrs: { class: "send-wave", "aria-hidden": "true" },
+      children: levels.map((level) => h({ tag: "i", attrs: { style: `--lv: ${level}` } })),
+    });
+  }
+
   /** 音声入力のボタンを入れる連番（ツールチップの ID が重ならないように） */
   let voiceSequence = 0;
 
@@ -299,6 +311,7 @@ namespace MindmapPreview {
     voice = "idle",
     voiceReason = null,
     elapsed = 0,
+    levels = [],
     entered = false,
     on,
   }: SendFormProps): HTMLFormElement {
@@ -325,8 +338,10 @@ namespace MindmapPreview {
         "aria-label": target === null ? label : null,
         "aria-describedby": folded ? null : target !== null && loc !== null ? `${locId} ${messageId}` : messageId,
         "aria-keyshortcuts": "Control+Enter",
-        // 溜めている間と文字起こし中は書き換えられない
-        readonly: status === "saving" || voice === "transcribing",
+        // 溜めている間・録音中・文字起こし中は書き換えられない
+        readonly: status === "saving" || voice === "recording" || voice === "transcribing",
+        // 録音中は波形と入れ替えて隠す（中身と選んだ範囲は残す）
+        hidden: voice === "recording",
         // 本文が空で溜めようとした: 入力の誤りとして示す
         "aria-invalid": status === "empty" ? "true" : null,
         oninput: () => on.input(textarea.value),
@@ -401,7 +416,7 @@ namespace MindmapPreview {
       return h({
         tag: "div",
         attrs: { class: "send-line" },
-        children: [textarea, ...voiceButtons({ voice, voiceReason, textarea, submit, on })],
+        children: [textarea, voiceWave(voice, levels), ...voiceButtons({ voice, voiceReason, textarea, submit, on })],
       });
     }
 

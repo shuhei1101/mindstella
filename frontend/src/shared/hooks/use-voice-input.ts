@@ -6,7 +6,7 @@ import { getGetTranscriptionQueryOptions, getRecords, postTranscription, sendNow
 import type { TranscriptionStatus } from "@/shared/api/generated/model";
 import { AppError } from "@/shared/core/app-error";
 import type { Location } from "@/shared/core/records";
-import { insertAtCursor, micSupported, RecordingError, startRecording, VOICE_TEXT, type Recording } from "@/shared/core/voice";
+import { insertAtCursor, micSupported, pushLevel, RecordingError, startRecording, VOICE_TEXT, type Recording } from "@/shared/core/voice";
 import { recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 
 /** 音声入力の状態（部品設計の `voice`） */
@@ -48,7 +48,7 @@ const destinationKey = (destination: VoiceDestination): string => JSON.stringify
 /** 503 の応答から、使えない旨の可否を組む（知っている可否の挿入か送信とプリセットは残す） */
 const unavailableStatus = (error: AppError, known: TranscriptionStatus | null): TranscriptionStatus => ({
   presets: [],
-  action: known?.action ?? "send",
+  action: known?.action ?? "insert",
   preset: known?.preset ?? null,
   available: false,
   reason: (error.body as { reason?: "stopped" | "unsupported" } | null)?.reason ?? "stopped",
@@ -65,6 +65,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
   const records = useQuery(recordsQuery());
   const [phase, setPhase] = useState<"idle" | "recording" | "transcribing">("idle");
   const [elapsed, setElapsed] = useState(0);
+  const [levels, setLevels] = useState<number[]>([]);
   const [result, setResult] = useState<{ status: VoiceStatus; detail: string | null; entered: boolean }>({ status: "idle", detail: null, entered: false });
   const owner = useRef(Symbol("voice"));
   const recording = useRef<Recording | null>(null);
@@ -79,6 +80,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
     if (activeOwner === owner.current) activeOwner = null;
     setPhase("idle");
     setElapsed(0);
+    setLevels([]);
   }, []);
 
   // 向けた先が変わったら録音を捨てる（書き換えの知らせでの描き直しでは向けた先が変わらないので止めない）
@@ -113,7 +115,9 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
     const mine = ticket.current + 1;
     ticket.current = mine;
     try {
-      const started = await startRecording();
+      const started = await startRecording((level) => {
+        if (ticket.current === mine) setLevels((current) => pushLevel(current, level));
+      });
       // 待つ間に向けた先が変わった・外れた: 始めた録音を捨てる
       if (ticket.current !== mine) {
         started.cancel();
@@ -122,6 +126,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
       recording.current = started;
       setResult({ status: "idle", detail: null, entered: false });
       setElapsed(0);
+      setLevels([]);
       setPhase("recording");
     } catch (failure) {
       if (activeOwner === owner.current) activeOwner = null;
@@ -139,6 +144,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
     recording.current = null;
     if (activeOwner === owner.current) activeOwner = null;
     setPhase("idle");
+    setLevels([]);
     setResult(next);
   }, []);
 
@@ -187,7 +193,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
       return;
     }
     const inserted = insertAtCursor(body, start, end, text);
-    if (transcriptionAction(records.data) === "insert") {
+    if (transcriptionAction(records.data) !== "send") {
       onBodyChange(inserted.value);
       finish({ status: "inserted", detail: null, entered: false });
       return;
@@ -210,6 +216,7 @@ export const useVoiceInput = ({ destination, body, onBodyChange, getSelection }:
     voice,
     voiceReason: blockedReason,
     elapsed,
+    levels,
     status: result.status,
     detail: result.detail,
     entered: result.entered,

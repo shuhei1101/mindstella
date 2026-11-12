@@ -281,6 +281,7 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
           voice={voice.voice}
           voiceReason={voice.voiceReason}
           elapsed={voice.elapsed}
+          levels={voice.levels}
           entered={voice.entered}
           onVoiceStart={() => void voice.onVoiceStart()}
           onVoiceCancel={voice.onVoiceCancel}

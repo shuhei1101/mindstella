@@ -212,7 +212,7 @@
       "properties": {
         "action": {
           "type": "string",
-          "description": "文字起こし後の挙動。`send` は入力欄へ挿入した全文をその 1 件だけで Claude Code へ送信し、`insert` はカーソルの位置に挿入して送信しない。無ければ `send`",
+          "description": "文字起こし後の挙動。`send` は入力欄へ挿入した全文をその 1 件だけで Claude Code へ送信し、`insert` はカーソルの位置に挿入して送信しない。無ければ `insert`",
           "enum": [
             "send",
             "insert"

@@ -1260,7 +1260,7 @@ var MindmapPreview;
             reviewFocus: null,
             expanded: new Set(),
             detailExpanded: new Set(),
-            voice: { availability: null, key: null, phase: "idle", recording: null, elapsed: 0, ticket: 0 },
+            voice: { availability: null, key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, ticket: 0 },
         };
         const threadsApi = MindmapPreview.threadApi();
         const voiceCalls = MindmapPreview.voiceApi();
@@ -1381,13 +1381,36 @@ var MindmapPreview;
         const voiceOf = (key) => {
             const { voice } = comment;
             if (!MindmapPreview.micSupported())
-                return { voice: "disabled", voiceReason: MindmapPreview.VOICE_TEXT.noMicrophone, elapsed: 0 };
+                return { voice: "disabled", voiceReason: MindmapPreview.VOICE_TEXT.noMicrophone, elapsed: 0, levels: [] };
             if (voice.availability !== null && !voice.availability.available) {
-                return { voice: "disabled", voiceReason: voice.availability.detail, elapsed: 0 };
+                return { voice: "disabled", voiceReason: voice.availability.detail, elapsed: 0, levels: [] };
             }
-            if (voice.key === key && voice.phase !== "idle")
-                return { voice: voice.phase, voiceReason: null, elapsed: voice.elapsed };
-            return { voice: "idle", voiceReason: null, elapsed: 0 };
+            if (voice.key === key && voice.phase !== "idle") {
+                return { voice: voice.phase, voiceReason: null, elapsed: voice.elapsed, levels: voice.levels };
+            }
+            return { voice: "idle", voiceReason: null, elapsed: 0, levels: [] };
+        };
+        /** 録っている入力の波形へ音量を 1 つ足す（入力を描き直さず、波形の棒だけを足して古い棒を捨てる） */
+        const addVoiceLevel = (level) => {
+            const { voice } = comment;
+            voice.levels = MindmapPreview.pushLevel(voice.levels, level);
+            const wave = document.querySelector(".send-wave");
+            if (wave === null)
+                return;
+            wave.append(MindmapPreview.h({ tag: "i", attrs: { style: `--lv: ${voice.levels.at(-1)}` } }));
+            while (wave.childElementCount > voice.levels.length)
+                wave.firstElementChild?.remove();
+        };
+        /** 描き直した後の、録っている（録っていた）入力の入力欄 */
+        const voiceField = () => document.querySelector("form.send textarea:focus, .comments-panel form.reply textarea");
+        /** 描き直した入力欄へフォーカスを移し、範囲を選ぶ */
+        const focusVoiceField = (range) => {
+            const field = voiceField() ?? document.querySelector("form.send textarea:not([hidden])");
+            if (field === null)
+                return;
+            field.focus();
+            if (range !== null)
+                field.setSelectionRange(range.start, range.end);
         };
         /** 録音をやめ、マイクを解放して、文字起こし中の結果を捨てる */
         const abandonVoice = () => {
@@ -1396,7 +1419,7 @@ var MindmapPreview;
                 return;
             voice.recording?.cancel();
             window.clearInterval(voiceTimer);
-            Object.assign(voice, { key: null, phase: "idle", recording: null, elapsed: 0, ticket: voice.ticket + 1 });
+            Object.assign(voice, { key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, ticket: voice.ticket + 1 });
         };
         /** 今の画面に出ている入力の `formKey`（詳細の下端・新しいスレッド・開いているスレッドの返信） */
         const shownFormKeys = () => {
@@ -1447,14 +1470,20 @@ var MindmapPreview;
                         return;
                     const ticket = comment.voice.ticket + 1;
                     comment.voice.ticket = ticket;
-                    MindmapPreview.startRecording()
+                    // 押したときの入力欄の選んだ範囲を、録音を終えて入力欄に戻すときのために持つ
+                    const field = document.activeElement?.closest("form")?.querySelector("textarea") ?? null;
+                    comment.voice.selection = field === null ? null : { start: field.selectionStart, end: field.selectionEnd };
+                    MindmapPreview.startRecording((level) => {
+                        if (comment.voice.ticket === ticket && comment.voice.phase === "recording")
+                            addVoiceLevel(level);
+                    })
                         .then((recording) => {
                         // 待つ間に入力が無くなった: 始めた録音を捨てる
                         if (comment.voice.ticket !== ticket) {
                             recording.cancel();
                             return;
                         }
-                        Object.assign(comment.voice, { key, phase: "recording", recording, elapsed: 0 });
+                        Object.assign(comment.voice, { key, phase: "recording", recording, elapsed: 0, levels: [] });
                         Object.assign(state, { status: "idle", detail: null });
                         window.clearInterval(voiceTimer);
                         // 1 秒ごとに経過の時間を進め、録っている入力の時間だけを書き換える
@@ -1466,6 +1495,8 @@ var MindmapPreview;
                             checkVoice();
                         }, 1000);
                         redrawVoiceForm(state, false);
+                        // 入力欄を波形に替えたため、録音中に押す ✓ へフォーカスを移す
+                        document.querySelector(".send-rec-done")?.focus();
                     })
                         .catch((failure) => {
                         if (comment.voice.ticket !== ticket)
@@ -1480,8 +1511,10 @@ var MindmapPreview;
                 voiceCancel: () => {
                     if (comment.voice.key !== key)
                         return;
+                    const selection = comment.voice.selection;
                     abandonVoice();
                     redrawVoiceForm(state, true);
+                    focusVoiceField(selection);
                 },
                 voiceDone: (input) => {
                     const { voice } = comment;
@@ -1493,12 +1526,13 @@ var MindmapPreview;
                     voice.phase = "transcribing";
                     state.body = input.body;
                     redrawVoiceForm(state, false);
-                    const action = data.settings.transcription?.action === "insert" ? "insert" : "send";
+                    const selection = voice.selection;
+                    const action = data.settings.transcription?.action === "send" ? "send" : "insert";
                     void MindmapPreview.finishVoice(recording, { ...input, action, destination: destinationOf(state) }, voiceCalls).then(async (outcome) => {
                         // 返る前に入力が無くなった・別の録音を始めた: 結果を捨てる
                         if (comment.voice.ticket !== ticket)
                             return;
-                        Object.assign(comment.voice, { key: null, phase: "idle", recording: null, elapsed: 0 });
+                        Object.assign(comment.voice, { key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null });
                         if (outcome.kind === "unavailable") {
                             const known = comment.voice.availability;
                             comment.voice.availability = {
@@ -1506,7 +1540,7 @@ var MindmapPreview;
                                 reason: outcome.reason,
                                 detail: outcome.detail,
                                 presets: [],
-                                action: known?.action ?? "send",
+                                action: known?.action ?? "insert",
                                 preset: known?.preset ?? null,
                             };
                         }
@@ -1523,11 +1557,11 @@ var MindmapPreview;
                             scheduleDraft(state);
                         }
                         redrawVoiceForm(state, true);
-                        // 挿入した: カーソルを挿入した文字の後ろへ置く
-                        if (outcome.caret !== null) {
-                            const field = document.querySelector("form.send textarea:focus, .comments-panel form.reply textarea");
-                            field?.setSelectionRange(outcome.caret, outcome.caret);
-                        }
+                        // 挿入した: カーソルを挿入した文字の後ろへ置く。中身が元のままの失敗: 押したときの範囲へ戻す
+                        if (outcome.caret !== null)
+                            focusVoiceField({ start: outcome.caret, end: outcome.caret });
+                        else if (outcome.kind !== "sent" && outcome.body === input.body)
+                            focusVoiceField(selection);
                     });
                 },
                 voiceBlocked: () => {
