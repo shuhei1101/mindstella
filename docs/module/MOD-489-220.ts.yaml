@@ -69,9 +69,9 @@ components:
       - name: test_workspace_settings_when_transcription
         case: 正常
         summary: 音声入力のまとまりで挙動とプリセットを溜め、使えないときはプリセットを押せなくする
-        condition: '`parametrize`: `transcription` が `{available: true, presets: [一般, 開発]}` で「入力欄へ挿入する」を選び、プリセットに 開発 を選ぶ / `{available: false, reason: unsupported, presets: []}` で設定の `transcription.preset` が 開発'
+        condition: '`parametrize`: `transcription` が `{available: true, presets: [一般, 開発]}` で既定の「入力欄へ挿入する」から「送信する」を選び、プリセットに 開発 を選ぶ / `{available: false, reason: unsupported, presets: []}` で設定の `transcription.preset` が 開発'
         mock: '`on.change`'
-        expected: '`fieldset` の見出し「音声入力」が「変更履歴」の後。`on.change` が `{key: transcription, value: {action: insert, preset: null}}`・`{key: transcription, value: {action: insert, preset: 開発}}` / プリセットのセレクトが `disabled` で 開発 だけを持ち、下に「文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。」'
+        expected: '`fieldset` の見出し「音声入力」が「変更履歴」の後。`on.change` が `{key: transcription, value: {action: send, preset: null}}`・`{key: transcription, value: {action: send, preset: 開発}}` / プリセットのセレクトが `disabled` で 開発 だけを持ち、下に「文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。」'
       - name: test_workspace_settings_when_used_value_removed
         case: 正常
         summary: 使われている値を外すと付け替え先を選ぶまで溜めない
