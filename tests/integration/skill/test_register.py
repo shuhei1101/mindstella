@@ -28,6 +28,8 @@ pytestmark = pytest.mark.skipif(
 # 登録する環境変数
 ALLOWED_HOSTS = "MINDSTELLA_ALLOWED_HOSTS"
 VENV = "MINDSTELLA_VENV"
+TRANSCRIBER = "MINDSTELLA_TRANSCRIBER"
+TRANSCRIBER_URL = "MINDSTELLA_TRANSCRIBER_URL"
 
 
 @pytest.fixture
@@ -103,6 +105,28 @@ def test_normal_when_set_again(stubbed: RegisterSandbox) -> None:
     rc_after = stubbed.bashrc.read_text(encoding="utf-8")
     assert rc_after.splitlines().count(MARK_BEGIN) == 1
     assert rc_after == rc_before
+
+
+def test_normal_when_transcriber_set(registered: RegisterSandbox) -> None:
+    """文字起こしのサービスと接続先の環境変数を登録し、新しく開いた bash に入れる（正常系）。"""
+    # 実行
+    result = registered.run(
+        "set",
+        "--env",
+        f"{TRANSCRIBER}=voice-paste",
+        "--env",
+        f"{TRANSCRIBER_URL}=http://127.0.0.1:47900",
+    )
+    # 検証
+    assert result.returncode == 0, result.stderr
+    assert read_report(result)["env"] == {
+        ALLOWED_HOSTS: "preview.example.com",
+        TRANSCRIBER: "voice-paste",
+        TRANSCRIBER_URL: "http://127.0.0.1:47900",
+    }
+    # 新しいシェルに 2 つの環境変数が入る
+    assert "[voice-paste]" in registered.bash(f"echo [${TRANSCRIBER}]").stdout
+    assert "[http://127.0.0.1:47900]" in registered.bash(f"echo [${TRANSCRIBER_URL}]").stdout
 
 
 def test_normal_when_account_added(registered: RegisterSandbox) -> None:
