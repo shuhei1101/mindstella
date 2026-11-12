@@ -1,0 +1,12 @@
+scope_out:
+  - item: Git の履歴からの画像の削除（履歴の書き換え）
+    reason: 起点 Issue が履歴を書き換えないと決めている
+    plan: none
+  - item: master に入っている画像の削除
+    reason: develop への削除の commit が release で master へ入る
+    plan: none
+  - item: 本文が挙げる dev/pr/*/スクリーンショット/・tmp/screenshots/ の画像
+    reason: origin/develop にこのパスの画像が無い（dev/ は docs/ へ移っている）
+    plan: none
+use_cases: []
+docs: []
