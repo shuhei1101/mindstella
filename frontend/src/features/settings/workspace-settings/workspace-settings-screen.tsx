@@ -290,7 +290,7 @@ export const WorkspaceSettingsScreen = () => {
             <legend className="font-medium">音声入力</legend>
             {(() => {
               const current = ((settings as unknown as Record<string, unknown>).transcription ?? {}) as { action?: string; preset?: string | null };
-              const action = current.action === "insert" ? "insert" : "send";
+              const action = current.action === "send" ? "send" : "insert";
               const preset = typeof current.preset === "string" ? current.preset : null;
               const status = transcription.data ?? null;
               const usable = status !== null && status.available;

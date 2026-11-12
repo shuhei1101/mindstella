@@ -203,7 +203,7 @@ var MindmapPreview;
         const record = props.settings;
         const current = (typeof record.transcription === "object" && record.transcription !== null ? record.transcription : {});
         // 描き直す前に続けて選んでも、もう一方の値は最後に選んだものを保つ
-        let action = current.action === "insert" ? "insert" : "send";
+        let action = current.action === "send" ? "send" : "insert";
         let preset = typeof current.preset === "string" ? current.preset : null;
         const mark = marks.transcription;
         const fieldClass = `pe-field${mark === "pending" ? " is-pending" : ""}${mark === "blocked" ? " is-blocked" : ""}`;

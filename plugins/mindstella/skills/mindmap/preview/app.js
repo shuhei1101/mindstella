@@ -1534,7 +1534,9 @@ var MindmapPreview;
                     redrawVoiceForm(state, false);
                     const selection = voice.selection;
                     const action = data.settings.transcription?.action === "send" ? "send" : "insert";
-                    void MindmapPreview.finishVoice(recording, { ...input, action, destination: destinationOf(state) }, voiceCalls).then(async (outcome) => {
+                    // 入力欄は録音中に作り直されて選んだ範囲を失うため、押したときの範囲に挿入する
+                    const range = selection ?? { start: input.start, end: input.end };
+                    void MindmapPreview.finishVoice(recording, { ...input, ...range, action, destination: destinationOf(state) }, voiceCalls).then(async (outcome) => {
                         // 返る前に入力が無くなった・別の録音を始めた: 結果を捨てる
                         if (comment.voice.ticket !== ticket)
                             return;

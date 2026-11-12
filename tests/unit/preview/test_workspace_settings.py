@@ -134,8 +134,8 @@ def test_usage_count(
             None,
             "開発",
             [
-                ["change", "transcription", {"action": "insert", "preset": None}],
-                ["change", "transcription", {"action": "insert", "preset": "開発"}],
+                ["change", "transcription", {"action": "send", "preset": None}],
+                ["change", "transcription", {"action": "send", "preset": "開発"}],
             ],
             ["サービスの既定", "一般", "開発"],
             False,
@@ -146,7 +146,7 @@ def test_usage_count(
             {"available": False, "reason": "unsupported", "detail": "x", "presets": [], "action": "send", "preset": "開発"},
             "開発",
             None,
-            [["change", "transcription", {"action": "insert", "preset": "開発"}]],
+            [["change", "transcription", {"action": "send", "preset": "開発"}]],
             ["開発"],
             True,
             "文字起こしのサービスが音声の受け付けに対応していないため、候補を取得できません。",
@@ -172,7 +172,7 @@ def test_workspace_settings_when_transcription(
     load_preview_scripts()
     legends = preview_page.evaluate(MOUNT_SCRIPT, {"data": data, "transcription": transcription})
     # 実行
-    preview_page.get_by_label("入力欄へ挿入する", exact=True).check()
+    preview_page.get_by_label("送信する", exact=True).check()
     preset = preview_page.get_by_label("用語集のプリセット", exact=True)
     observed = preview_page.evaluate(
         """({select}) => {

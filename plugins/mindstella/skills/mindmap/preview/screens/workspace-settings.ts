@@ -242,7 +242,7 @@ namespace MindmapPreview {
       preset?: string | null;
     };
     // 描き直す前に続けて選んでも、もう一方の値は最後に選んだものを保つ
-    let action: string = current.action === "insert" ? "insert" : "send";
+    let action: string = current.action === "send" ? "send" : "insert";
     let preset: string | null = typeof current.preset === "string" ? current.preset : null;
     const mark = marks.transcription;
     const fieldClass = `pe-field${mark === "pending" ? " is-pending" : ""}${mark === "blocked" ? " is-blocked" : ""}`;
