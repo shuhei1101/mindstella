@@ -1,0 +1,175 @@
+$ PYTHONPATH=/tmp/raf503 /tmp/venv492/bin/python -m pytest -p raf_microtask "tests/integration/preview/test_spa_thread_screen.py::test_back"   # requestAnimationFrame をマイクロタスクで走らせる差し替え（/tmp/raf503/raf_microtask.py の autouse の fixture が page.add_init_script で入れる）
+collected 1 item
+
+tests/integration/preview/test_spa_thread_screen.py .                    [100%]
+
+============================== 1 passed in 5.14s ===============================
+
+$ for i in $(seq 1 10); do /tmp/venv492/bin/python -m pytest "tests/integration/preview/test_spa_thread_screen.py::test_back" -q; done
+1 passed in 7.17s
+1 passed in 5.80s
+1 passed in 6.39s
+1 passed in 5.98s
+1 passed in 5.51s
+1 passed in 6.45s
+1 passed in 5.93s
+1 passed in 6.73s
+1 passed in 6.32s
+1 passed in 5.45s
+
+$ /tmp/venv492/bin/python -m pytest tests/integration/preview
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-focus-back-to-list
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1428 items
+
+tests/integration/preview/test_comments_screen.py ...................... [  1%]
+............                                                             [  2%]
+tests/integration/preview/test_decisions_screen.py ..................... [  3%]
+........................................................................ [  8%]
+                                                                         [  8%]
+tests/integration/preview/test_detail_full_screen.py ................... [ 10%]
+.......................................                                  [ 12%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 14%]
+........................................................................ [ 19%]
+........................................................................ [ 24%]
+...................................................................      [ 28%]
+tests/integration/preview/test_diagram_viewer_screen.py ................ [ 30%]
+                                                                         [ 30%]
+tests/integration/preview/test_docs_screen.py .......................... [ 31%]
+.........................                                                [ 33%]
+tests/integration/preview/test_graph_screen.py ......................... [ 35%]
+..................                                                       [ 36%]
+tests/integration/preview/test_history_screen.py .........               [ 37%]
+tests/integration/preview/test_open_preview.py ......................... [ 39%]
+..............................                                           [ 41%]
+tests/integration/preview/test_overview_screen.py ...................... [ 42%]
+.                                                                        [ 42%]
+tests/integration/preview/test_pending_panel_screen.py ................. [ 43%]
+                                                                         [ 43%]
+tests/integration/preview/test_records_screen.py ....................... [ 45%]
+......                                                                   [ 46%]
+tests/integration/preview/test_review_screen.py ........................ [ 47%]
+.............................                                            [ 49%]
+tests/integration/preview/test_search_screen.py ..............           [ 50%]
+tests/integration/preview/test_settings_confirm_screen.py ........       [ 51%]
+tests/integration/preview/test_settings_screen.py ...................... [ 52%]
+........                                                                 [ 53%]
+tests/integration/preview/test_spa_comments_screen.py ..............     [ 54%]
+tests/integration/preview/test_spa_decisions_screen.py ................. [ 55%]
+....................                                                     [ 56%]
+tests/integration/preview/test_spa_detail_fullscreen_screen.py ...       [ 57%]
+tests/integration/preview/test_spa_detail_panel_screen.py .............. [ 58%]
+........................................................................ [ 63%]
+..........                                                               [ 63%]
+tests/integration/preview/test_spa_diagram_viewer_screen.py ............ [ 64%]
+.                                                                        [ 64%]
+tests/integration/preview/test_spa_display_settings_screen.py .......... [ 65%]
+                                                                         [ 65%]
+tests/integration/preview/test_spa_docs_screen.py .....................  [ 66%]
+tests/integration/preview/test_spa_history_screen.py ...                 [ 67%]
+tests/integration/preview/test_spa_open.py ...........................   [ 69%]
+tests/integration/preview/test_spa_overview_screen.py .................. [ 70%]
+..........                                                               [ 71%]
+tests/integration/preview/test_spa_pending_edits_screen.py ............. [ 71%]
+....                                                                     [ 72%]
+tests/integration/preview/test_spa_records_screen.py ...........         [ 72%]
+tests/integration/preview/test_spa_review_screen.py .................... [ 74%]
+...                                                                      [ 74%]
+tests/integration/preview/test_spa_settings_confirm_screen.py ....       [ 74%]
+tests/integration/preview/test_spa_tasks_screen.py ..................    [ 76%]
+tests/integration/preview/test_spa_thread_screen.py ...............      [ 77%]
+tests/integration/preview/test_spa_workspace_settings_screen.py ........ [ 77%]
+......                                                                   [ 78%]
+tests/integration/preview/test_tasks_screen.py ......................... [ 79%]
+...............                                                          [ 80%]
+tests/integration/preview/test_thread_screen.py ........................ [ 82%]
+...........                                                              [ 83%]
+tests/integration/preview/test_topbar_screen.py ..................       [ 84%]
+tests/integration/preview/test_workspace_settings_screen.py ............ [ 85%]
+                                                                         [ 85%]
+tests/integration/preview/test_comments_screen.py ..                     [ 85%]
+tests/integration/preview/test_decisions_screen.py ..........            [ 86%]
+tests/integration/preview/test_detail_full_screen.py ....                [ 86%]
+tests/integration/preview/test_detail_panel_screen.py .................. [ 87%]
+...                                                                      [ 88%]
+tests/integration/preview/test_diagram_viewer_screen.py .                [ 88%]
+tests/integration/preview/test_docs_screen.py ............               [ 89%]
+tests/integration/preview/test_graph_screen.py ....                      [ 89%]
+tests/integration/preview/test_overview_screen.py .                      [ 89%]
+tests/integration/preview/test_records_screen.py .......                 [ 89%]
+tests/integration/preview/test_review_screen.py ..                       [ 89%]
+tests/integration/preview/test_settings_screen.py .                      [ 90%]
+tests/integration/preview/test_spa_decisions_screen.py .....             [ 90%]
+tests/integration/preview/test_spa_detail_panel_screen.py .              [ 90%]
+tests/integration/preview/test_spa_docs_screen.py .....                  [ 90%]
+tests/integration/preview/test_spa_overview_screen.py ....               [ 91%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 91%]
+tests/integration/preview/test_spa_workspace_settings_screen.py .        [ 91%]
+tests/integration/preview/test_tasks_screen.py ........                  [ 92%]
+tests/integration/preview/test_thread_screen.py .                        [ 92%]
+tests/integration/preview/test_topbar_screen.py .....                    [ 92%]
+tests/integration/preview/test_decisions_screen.py ........              [ 93%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 93%]
+tests/integration/preview/test_detail_panel_screen.py .........          [ 93%]
+tests/integration/preview/test_diagram_viewer_screen.py .                [ 93%]
+tests/integration/preview/test_docs_screen.py ......                     [ 94%]
+tests/integration/preview/test_graph_screen.py ...                       [ 94%]
+tests/integration/preview/test_overview_screen.py .                      [ 94%]
+tests/integration/preview/test_records_screen.py ......                  [ 94%]
+tests/integration/preview/test_settings_screen.py .                      [ 95%]
+tests/integration/preview/test_spa_decisions_screen.py ..                [ 95%]
+tests/integration/preview/test_spa_docs_screen.py .                      [ 95%]
+tests/integration/preview/test_spa_overview_screen.py ..                 [ 95%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 95%]
+tests/integration/preview/test_spa_workspace_settings_screen.py .        [ 95%]
+tests/integration/preview/test_tasks_screen.py ..                        [ 95%]
+tests/integration/preview/test_topbar_screen.py .....                    [ 96%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 96%]
+tests/integration/preview/test_detail_full_screen.py .                   [ 96%]
+tests/integration/preview/test_detail_panel_screen.py .....              [ 96%]
+tests/integration/preview/test_docs_screen.py .                          [ 96%]
+tests/integration/preview/test_graph_screen.py ...                       [ 97%]
+tests/integration/preview/test_records_screen.py .....                   [ 97%]
+tests/integration/preview/test_settings_screen.py .                      [ 97%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 97%]
+tests/integration/preview/test_spa_records_screen.py .....               [ 97%]
+tests/integration/preview/test_tasks_screen.py .                         [ 98%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 98%]
+tests/integration/preview/test_decisions_screen.py ..                    [ 98%]
+tests/integration/preview/test_detail_panel_screen.py ..                 [ 98%]
+tests/integration/preview/test_graph_screen.py ...                       [ 98%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 98%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 99%]
+tests/integration/preview/test_decisions_screen.py .                     [ 99%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 99%]
+tests/integration/preview/test_topbar_screen.py ....                     [ 99%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 99%]
+tests/integration/preview/test_topbar_screen.py .                        [ 99%]
+tests/integration/preview/test_spa_decisions_screen.py .                 [ 99%]
+tests/integration/preview/test_topbar_screen.py .                        [ 99%]
+tests/integration/preview/test_spa_decisions_screen.py ..                [100%]
+
+====================== 1428 passed in 2714.53s (0:45:14) =======================
+
+$ cat /tmp/raf503/raf_microtask.py   # 差し替えの中身
+"""結合テストのページで requestAnimationFrame をマイクロタスクで走らせる差し替え（Issue #497 の再現条件）。"""
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _raf_microtask(page):
+    page.add_init_script("window.requestAnimationFrame = (callback) => { queueMicrotask(() => callback(0)); return 0; };")
+
+$ cd .claude/worktrees/develop && PYTHONPATH=/tmp/raf503 /tmp/venv492/bin/python -m pytest -p raf_microtask "tests/integration/preview/test_spa_thread_screen.py::test_back"   # 修正前の develop（c6101ee9。backToList は requestAnimationFrame で行を探す）
+c6101ee9 AI Monitor v0.3.0 の配布物へ追従する (#487)
+collected 1 item
+>       expect(_panel(page).locator("[data-focus='thread:TH-2']")).to_be_focused()
+E       AssertionError: Locator expected to be focused
+E         - Expect "to_be_focused" get_by_role("dialog", name="コメント").locator("[data-focus='thread:TH-2']") with timeout 5000ms
+tests/integration/preview/test_spa_thread_screen.py:46: AssertionError
+FAILED tests/integration/preview/test_spa_thread_screen.py::test_back[chromium]
+============================== 1 failed in 10.19s ==============================

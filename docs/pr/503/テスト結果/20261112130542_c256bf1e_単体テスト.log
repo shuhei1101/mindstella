@@ -1,0 +1,316 @@
+$ npx vitest run frontend/src/features/comments/comments-panel/comments-panel.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-focus-back-to-list
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx (5 tests | 1 failed) 1635ms
+   ❯ CommentsPanel (5)
+     × comments_panel_when_back_focus 1087ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_back_focus
+Error: expect(element).toHaveFocus()
+
+Expected element with focus:
+  <button
+  class="grid w-full cursor-pointer gap-1 px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-ring"
+  data-focus="thread:TH-2"
+  type="button"
+>
+  <span
+    class="flex min-w-0 items-start gap-2"
+    data-part="line1"
+  >
+    <span
+      class="inline-flex h-5 shrink-0 items-center gap-1 rounded-kbd border border-current px-1.5 text-xs leading-none font-medium whitespace-nowrap text-st-open"
+      data-state="open"
+    >
+      <svg
+        aria-hidden="true"
+        class="flex-none fill-none stroke-current size-2.75"
+        height="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.75"
+        viewBox="0 0 24 24"
+        width="16"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="5"
+        />
+      </svg>
+      オープン
+    </span>
+    <span
+      class="line-clamp-2 min-w-0 wrap-anywhere font-semibold"
+      data-part="title"
+    >
+      二つ目
+    </span>
+  </span>
+  <span
+    class="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground tabular-nums"
+    data-part="line2"
+  >
+    <span
+      class="font-semibold"
+      data-part="author"
+    >
+      AI
+    </span>
+    <time
+      class="flex-none"
+      datetime="2026-11-01T00:00:00+00:00"
+    >
+      11/01 09:00
+    </time>
+  </span>
+</button>
+Received element with focus:
+  <body>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span … />
+          <span … />
+          <span … />
+          <button … />
+          <button … />
+          <span … />
+          <button … />
+          <button … />
+          <button … />
+        </header>
+        <nav
+          aria-label="項目の種類"
+          class="relative z-25 no-scrollbar flex gap-1 overflow-x-auto border-b border-border bg-card px-5"
+        >
+          <a … />
+          <a … />
+          <a … />
+          <a … />
+          <a … />
+          <a … />
+          <a … />
+          <a … />
+          <span … />
+          <a … />
+        </nav>
+      </div>
+      <div
+        class="flex min-h-0 flex-1"
+      >
+        <main
+          class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-7 pb-16 max-md:px-4"
+          id="main"
+        >
+          <div … />
+        </main>
+      </div>
+      <div
+        aria-hidden="true"
+        class="fixed inset-0 z-20 bg-foreground/40 max-lg:hidden"
+        data-scrim="true"
+      />
+      <section
+        aria-label="コメント"
+        aria-modal="true"
+        class="fixed inset-y-0 left-0 z-30 flex w-96 max-w-full flex-col border-r border-border bg-card max-lg:w-full"
+        role="dialog"
+      >
+        <div
+          class="flex items-center gap-2 border-b border-border px-3 py-2"
+        >
+          <h2 … />
+          <button … />
+          <button … />
+          <button … />
+        </div>
+        <div
+          class="flex min-h-0 flex-1 flex-col"
+        >
+          <div … />
+          <ul … />
+          <div … />
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<html
+  data-theme="light"
+>
+  <head>
+    <link
+      crossorigin="anonymous"
+      href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.8.0/dist/index.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div>
+      <div
+        class="flex h-dvh flex-col"
+      >
+        <div>
+          <header
+            class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+          >
+            <span
+              class="flex min-w-0 flex-none items-center gap-2.5"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-5.5 flex-none text-mark"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.2"
+                viewBox="0 0 32 32"
+              >
+                <circle
+                  cx="8"
+                  cy="16"
+                  r="4"
+                />
+                <path
+                  d="M12 16h5M17 16V7h5M17 16v9h5"
+                />
+                <circle
+                  cx="25"
+                  cy="7"
+                  r="2.6"
+                />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="2.6"
+                />
+              </svg>
+              <span
+                class="font-bold tracking-tight max-xs:hidden"
+              >
+                mindstella
+              </span>
+            </span>
+            <span
+              class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+              title="要件出しのスキル mindmap を設計する"
+            >
+              要件出しのスキル mindmap を設計する
+            </span>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-keyshortcuts="Control+K Meta+K"
+              aria-label="すべての項目を検索"
+              class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+                <path
+                  d="m20 20-3.5-3.5"
+                />
+              </svg>
+              <span
+                class="max-lg:hidden"
+              >
+                すべての項目を検索
+              </span>
+              <kbd
+                class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+              >
+                Ctrl+K
+              </kbd>
+            </button>
+            <button
+              aria-haspopup="dialog"
+              aria-label="変更履歴"
+              class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-current"
+                height="16"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7L3 8"
+                />
+                <path
+                  d="M3 3v5h5"
+                />
+                <path
+                  d="M12 7v5l3 2"
+                />
+              </svg>
+              <span
+                class="max-xl:hidden"
+              >
+                変更履歴
+              </span>
+            </button>
+            <span
+              class="flex-1 basis-0"
+            />
+            <button
+              aria-expanded="false"
+              aria-label="表示の設定"
+              class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:...
+ ❯ frontend/src/features/comments/comments-panel/comments-panel.test.tsx:79:65
+     77|     // 検証
+     78|     await waitFor(() => {
+     79|       expect(panel.querySelector('[data-focus="thread:TH-2"]')).toHave…
+       |                                                                 ^
+     80|     });
+     81|   });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  13:04:13
+   Duration  40.01s (environment 40%, import 35%, setup 11%, transform 9%, tests 4%)
+

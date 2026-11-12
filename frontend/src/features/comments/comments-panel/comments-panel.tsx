@@ -104,14 +104,20 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const close = (): void => {
     setPanel(undefined);
   };
+  // 一覧へ戻った後、次に描いた一覧でフォーカスを戻すスレッドの ID
+  const focusRow = useRef<string | null>(null);
   // スレッドの一覧へ戻り、描き直した一覧の開いていた行へフォーカスを戻す
   const backToList = (): void => {
-    const from = search.thread;
+    focusRow.current = search.thread ?? null;
     setComments({ thread: undefined });
-    requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(`[data-focus="thread:${from ?? ""}"], [data-focus="thread:new:${from ?? ""}"]`)?.focus();
-    });
   };
+  // 一覧を描いた後に 1 回だけ、開いていた行へフォーカスを移す（行が無ければ移さない）
+  useEffect(() => {
+    const from = focusRow.current;
+    if (from === null || search.thread !== undefined || search.review !== undefined) return;
+    focusRow.current = null;
+    document.querySelector<HTMLElement>(`[data-focus="thread:${from}"], [data-focus="thread:new:${from}"]`)?.focus();
+  }, [search.thread, search.review]);
   const counts = threadCounts({ threads: data.threads, tag });
   const rows = visibleThreads({ threads: data.threads, filter, tag });
   const pending = pendingThreads({ items: data.items, filter, tag });
