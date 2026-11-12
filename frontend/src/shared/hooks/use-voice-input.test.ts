@@ -15,6 +15,7 @@ const AVAILABLE = { available: true, reason: null, detail: null, presets: [], ac
 
 afterEach(() => {
   removeFakeMedia();
+  vi.useRealTimers();
 });
 
 /** D-1 へ向けた音声入力の hook を、中身の書き換えを控えて描く */
@@ -116,7 +117,6 @@ describe("useVoiceInput", () => {
     // 検証
     expect(recorded).toEqual([0.25, 0.75]);
     expect(result.current.levels).toEqual([]);
-    vi.useRealTimers();
   });
 
   // 向けた先が変わったら録音を捨てる（正常系）
