@@ -450,6 +450,16 @@ request:
     default: なし（常駐サーバーへ渡さない）
     description: '環境変数。配信を止めるときのフック（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
     status: implemented
+  - name: MINDSTELLA_TRANSCRIBER
+    type: str
+    required: false
+    default: なし（常駐サーバーへ渡さない）
+    description: '環境変数。コメント・返信の入力の音声入力が使う文字起こしのサービス（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
+  - name: MINDSTELLA_TRANSCRIBER_URL
+    type: str
+    required: false
+    default: なし（常駐サーバーへ渡さない）
+    description: '環境変数。文字起こしのサービスの待ち受けの URL（『設定: サーバー』）。常駐サーバーを起動するときに、呼び出し元の環境のまま渡す'
 response:
   - name: tmux のセッション
     type: tmux のセッション
@@ -502,7 +512,7 @@ constraints:
     constraint: tmux の `-t` には頭に `=` を付けた名前（`-t =mindstella-{フォルダ名}-{ハッシュ}`）を渡し、完全に一致するセッションだけを指す
     notes: '`=` が無いと tmux は名前の前方一致でも当て、別のワークスペースのセッションを指す（tmux 3.4 で確かめた）'
   - item: 常駐サーバーへ渡す環境変数
-    constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` を、常駐サーバーを起動するときに呼び出し元の環境のまま渡す。Claude Code の環境へは足さない。常駐サーバーが既に待ち受けているときは、新しい値は効かない（`server_stop` で止めてから叩き直すと効く）'
+    constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`MINDSTELLA_TRANSCRIBER`・`MINDSTELLA_TRANSCRIBER_URL` を、常駐サーバーを起動するときに呼び出し元の環境のまま渡す。Claude Code の環境へは足さない。常駐サーバーが既に待ち受けているときは、新しい値は効かない（`server_stop` で止めてから叩き直すと効く）'
     notes: テストは常駐サーバーを起動する全てのフローで、空きポートを `MINDSTELLA_PORT` で渡す（利用者の端末の 8784 に触れない）
   - item: 起動時の指示
     constraint: '`installPath` の `skills/mindmap/references/起動時の指示.md` の中身を、`claude` の `--append-system-prompt` の値に渡す。tmux の `new-session` にはコマンドを引数ごとに分けて渡し、中身をシェルで解釈させない。同じ名前のセッションにつなぐときは渡さない（Claude Code を立ち上げ直さない）'
