@@ -1,0 +1,50 @@
+$ npx vitest run frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-transcription-keep-last-choice
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx (4 tests | 1 failed) 830ms
+   ❯ WorkspaceSettingsScreen (4)
+     × workspace_settings_screen_when_transcription_chosen_in_a_row 127ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_transcription_chosen_in_a_row
+AssertionError: expected last "vi.fn()" call to have been called with [ { op: 'setting', …(3) } ]
+
+- Expected
++ Received
+
+@@ -2,10 +2,10 @@
+    {
+      "key": "transcription",
+      "op": "setting",
+      "target": "settings",
+      "value": {
+-       "action": "send",
++       "action": "insert",
+        "preset": "一般",
+      },
+    },
+  ]
+
+ ❯ frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx:62:20
+     60|     // 検証
+     61|     await waitFor(() => expect(posted).toHaveBeenCalledTimes(2));
+     62|     expect(posted).toHaveBeenLastCalledWith({ op: "setting", target: "…
+       |                    ^
+     63|   });
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  15:55:22
+   Duration  43.68s (import 41%, environment 38%, setup 11%, transform 8%, tests 2%)
+
