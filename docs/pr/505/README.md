@@ -1,0 +1,1 @@
+# 起動スクリプトの登録で文字起こしの環境変数（MINDSTELLA_TRANSCRIBER・MINDSTELLA_TRANSCRIBER_URL）を登録できるようにする
