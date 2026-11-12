@@ -1,0 +1,7 @@
+confirmations:
+  - topic: docs/pr/*/ストーリー/・docs/pr/*/画面/ の撮影画像もこの PR で削除するか
+    decision: この PR で 717 件も削除し、要望と完了条件を docs/pr/ の下の画像が 0 件に書き直す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/506#discussion_r4549642034
