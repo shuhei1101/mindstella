@@ -417,6 +417,14 @@ VOICE_OBSERVE_SCRIPT = """(props) => {
         cancel: describe(byLabel("キャンセル")),
         done: describe(byLabel("文字起こし") ?? byLabel("文字起こし中")),
         readOnly: form.querySelector("textarea").readOnly,
+        textareaHidden: form.querySelector("textarea").hidden,
+        wave: (() => {
+            const wave = form.querySelector(".send-wave");
+            return wave === null ? null : {
+                ariaHidden: wave.getAttribute("aria-hidden"),
+                levels: [...wave.querySelectorAll("i")].map((bar) => bar.style.getPropertyValue("--lv")),
+            };
+        })(),
         statusText: status === null ? "" : status.textContent,
         hiddenText: hidden.map((node) => node.textContent.trim()).join(""),
         spokenText: status === null ? "" : [...status.childNodes]
@@ -461,6 +469,8 @@ VOICE_EVENTS_SCRIPT = """({props, press, caret}) => {
                 "cancel": None,
                 "done": None,
                 "readOnly": False,
+                "textareaHidden": False,
+                "wave": None,
             },
             id="idle",
         ),
@@ -481,13 +491,15 @@ VOICE_EVENTS_SCRIPT = """({props, press, caret}) => {
             id="disabled",
         ),
         pytest.param(
-            {"target": "D-1", "voice": "recording", "elapsed": 72},
+            {"target": "D-1", "voice": "recording", "elapsed": 72, "levels": [0.2, 0.8]},
             {
                 "mic": None,
                 "submit": False,
                 "cancel": {"text": "", "disabled": False, "ariaDisabled": None, "title": "キャンセル（録音を破棄）", "description": None},
                 "done": {"text": "", "disabled": False, "ariaDisabled": None, "title": "文字起こし", "description": None},
-                "readOnly": False,
+                "readOnly": True,
+                "textareaHidden": True,
+                "wave": {"ariaHidden": "true", "levels": ["0.2", "0.8"]},
                 "hiddenText": "1:12",
                 "spokenText": "録音中",
             },

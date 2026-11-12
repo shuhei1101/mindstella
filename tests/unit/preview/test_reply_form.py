@@ -203,13 +203,14 @@ def test_reply_form_when_keys(
 
 
 @pytest.mark.parametrize(
-    ("props", "press", "expected_calls", "expected_text"),
+    ("props", "press", "expected_calls", "expected_text", "expected_wave"),
     [
         pytest.param(
-            {"thread": "TH-2", "body": "起票してよい", "voice": "recording", "elapsed": 5},
+            {"thread": "TH-2", "body": "起票してよい", "voice": "recording", "elapsed": 5, "levels": [0.5]},
             "文字起こし",
             [["voiceDone", {"body": "起票してよい", "start": 6, "end": 6}]],
             "0:05",
+            {"hidden": True, "bars": 1},
             id="done",
         ),
         pytest.param(
@@ -217,6 +218,7 @@ def test_reply_form_when_keys(
             "音声で入力",
             [["voiceBlocked"]],
             "",
+            {"hidden": False, "bars": None},
             id="blocked",
         ),
         pytest.param(
@@ -224,6 +226,7 @@ def test_reply_form_when_keys(
             None,
             [],
             "送信し、Claude Code へ入力しました。",
+            {"hidden": False, "bars": None},
             id="sent",
         ),
     ],
@@ -235,6 +238,7 @@ def test_reply_form_when_voice(
     press: str | None,
     expected_calls: list[list[Any]],
     expected_text: str,
+    expected_wave: dict[str, Any],
 ) -> None:
     """音声入力の状態とコールバック（正常系）。"""
     # 準備
@@ -259,10 +263,16 @@ def test_reply_form_when_voice(
             const textarea = form.querySelector("textarea");
             textarea.setSelectionRange(textarea.value.length, textarea.value.length);
             form.querySelector(`button[aria-label="${press}"]`)?.click();
-            return {calls, statusText: form.querySelector('[role="status"]')?.textContent ?? ""};
+            const wave = form.querySelector('.send-wave[aria-hidden="true"]');
+            return {
+                calls,
+                statusText: form.querySelector('[role="status"]')?.textContent ?? "",
+                wave: {hidden: textarea.hidden, bars: wave === null ? null : wave.querySelectorAll("i").length},
+            };
         }""",
         {"props": props, "press": press},
     )
     # 検証
     assert observed["calls"] == expected_calls
     assert expected_text in observed["statusText"]
+    assert observed["wave"] == expected_wave

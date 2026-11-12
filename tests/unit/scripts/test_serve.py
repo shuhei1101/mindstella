@@ -1853,7 +1853,7 @@ def test_transcription_response(
     """使えるときは候補と設定を返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1"), settings=_with_transcription(valid_settings, action="insert", preset="開発")
+        make_item("D-1"), settings=_with_transcription(valid_settings, action="send", preset="開発")
     )
     fake = _FakeTranscriber(presets=["一般", "開発"])
     registry = serve.PreviewRegistry(threading.Lock(), transcriber=fake)
@@ -1874,7 +1874,7 @@ def test_transcription_response(
         "reason": None,
         "detail": None,
         "presets": ["一般", "開発"],
-        "action": "insert",
+        "action": "send",
         "preset": "開発",
     }
     assert cache_control == "no-store"
@@ -1893,7 +1893,7 @@ def test_transcription_response_when_unavailable(
     assert response.status == 200
     payload = json.loads(response.body)
     assert (payload["available"], payload["reason"], payload["presets"]) == (False, "stopped", [])
-    assert (payload["action"], payload["preset"]) == ("send", None)
+    assert (payload["action"], payload["preset"]) == ("insert", None)
     assert b"voice-paste" not in response.body
 
 

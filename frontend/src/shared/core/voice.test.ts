@@ -1,10 +1,19 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { formatElapsed, insertAtCursor, micSupported, startRecording } from "@/shared/core/voice";
+import {
+  formatElapsed,
+  insertAtCursor,
+  micSupported,
+  pushLevel,
+  startRecording,
+  WAVE_LEVELS_MAX,
+  WAVE_SAMPLE_MS,
+} from "@/shared/core/voice";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 
 afterEach(() => {
   removeFakeMedia();
+  vi.useRealTimers();
 });
 
 describe("micSupported", () => {
@@ -27,7 +36,7 @@ describe("startRecording", () => {
     // 準備
     const media = installFakeMedia();
     // 実行
-    const recording = await startRecording();
+    const recording = await startRecording(() => {});
     const blob = await recording.stop();
     // 検証
     expect(blob.type).toBe("audio/webm;codecs=opus");
@@ -38,11 +47,47 @@ describe("startRecording", () => {
   test("start_recording_when_rejected", async () => {
     // 準備
     installFakeMedia("NotAllowedError");
-    const denied = startRecording();
+    const denied = startRecording(() => {});
     // 実行・検証
     await expect(denied).rejects.toMatchObject({ name: "RecordingError", reason: "denied" });
     installFakeMedia("NotFoundError");
-    await expect(startRecording()).rejects.toMatchObject({ name: "RecordingError", reason: "no-microphone" });
+    await expect(startRecording(() => {})).rejects.toMatchObject({ name: "RecordingError", reason: "no-microphone" });
+  });
+});
+
+describe("startRecording の音量", () => {
+  // 間隔ごとに音量を知らせ、止めたら知らせない（正常系）
+  test("start_recording_levels", async () => {
+    // 準備
+    vi.useFakeTimers();
+    const media = installFakeMedia(undefined, [192]);
+    const levels: number[] = [];
+    // 実行
+    const recording = await startRecording((level) => levels.push(level));
+    vi.advanceTimersByTime(WAVE_SAMPLE_MS * 2);
+    await recording.stop();
+    vi.advanceTimersByTime(WAVE_SAMPLE_MS);
+    // 検証
+    expect(levels).toEqual([0.5, 0.5]);
+    expect(media.closedContexts()).toBe(1);
+  });
+});
+
+describe("pushLevel", () => {
+  // 末尾に足し、上限を超えた古いものを捨てる（正常系）
+  test("push_level", () => {
+    // 準備
+    const full = Array.from({ length: WAVE_LEVELS_MAX }, (_, index) => index / 1000);
+    const original = [0.1, 0.2];
+    // 実行
+    const pushedFull = pushLevel(full, 0.3);
+    // 検証
+    expect(pushLevel([], 0.5)).toEqual([0.5]);
+    expect(pushLevel(original, 1.4)).toEqual([0.1, 0.2, 1]);
+    expect(original).toEqual([0.1, 0.2]);
+    expect(pushedFull).toHaveLength(WAVE_LEVELS_MAX);
+    expect([pushedFull[0], pushedFull.at(-1)]).toEqual([0.001, 0.3]);
+    expect(full).toHaveLength(WAVE_LEVELS_MAX);
   });
 });
 

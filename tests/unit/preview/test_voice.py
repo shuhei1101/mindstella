@@ -9,10 +9,25 @@ from playwright.sync_api import Page
 
 from .fixture_types import LoadPreviewScripts
 
-# 偽の getUserMedia・MediaRecorder を持つ窓を作り、録音を始めて止めるかキャンセルする JavaScript
-RECORDING_SCRIPT = """async ({action, failure}) => {
+# 偽の getUserMedia・MediaRecorder・AudioContext と時計を持つ窓を作り、録音を始めて止めるかキャンセルする JavaScript
+RECORDING_SCRIPT = """async ({action, failure, ticks}) => {
     const stopped = [];
+    const levels = [];
+    const timers = new Map();
+    let nextTimer = 1;
+    let closed = false;
     const track = {stop: () => stopped.push(true)};
+    // 128 を無音とし、192 を 1 つ持つ値（音量 0.5）を返す
+    class FakeAudioContext {
+        createMediaStreamSource() { return {connect: () => {}}; }
+        createAnalyser() {
+            return {
+                fftSize: 2048,
+                getByteTimeDomainData: (values) => { values.fill(128); values[0] = 192; },
+            };
+        }
+        close() { closed = true; return Promise.resolve(); }
+    }
     class FakeRecorder {
         static isTypeSupported(type) { return type === "audio/webm;codecs=opus"; }
         constructor(stream, options) { this.mimeType = options?.mimeType ?? ""; this.listeners = {}; }
@@ -30,15 +45,28 @@ RECORDING_SCRIPT = """async ({action, failure}) => {
             return {getTracks: () => [track]};
         }}},
         MediaRecorder: FakeRecorder,
+        AudioContext: FakeAudioContext,
+        setInterval: (callback) => { const id = nextTimer++; timers.set(id, callback); return id; },
+        clearInterval: (id) => { timers.delete(id); },
     };
+    // 偽の時計を 1 間隔ぶん進める
+    const tick = () => { for (const callback of [...timers.values()]) { callback(); } };
     try {
-        const recording = await MindmapPreview.startRecording(win);
+        const recording = await MindmapPreview.startRecording((level) => levels.push(level), win);
+        for (let i = 0; i < ticks; i += 1) { tick(); }
         if (action === "cancel") {
             recording.cancel();
-            return {stopped: stopped.length, blob: null};
+            tick();
+            return {stopped: stopped.length, blob: null, levels, closed};
         }
         const blob = await recording.stop();
-        return {stopped: stopped.length, blob: {type: blob.type, text: await blob.text()}};
+        tick();
+        return {
+            stopped: stopped.length,
+            blob: {type: blob.type, text: await blob.text()},
+            levels,
+            closed,
+        };
     } catch (error) {
         return {error: String(error)};
     }
@@ -96,9 +124,12 @@ def test_start_recording(preview_page: Page, load_preview_scripts: LoadPreviewSc
     # 準備
     load_preview_scripts()
     # 実行
-    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "stop", "failure": None})
+    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "stop", "failure": None, "ticks": 0})
     # 検証
-    assert result == {"stopped": 1, "blob": {"type": "audio/webm;codecs=opus", "text": "abcd"}}
+    assert {key: result[key] for key in ("stopped", "blob")} == {
+        "stopped": 1,
+        "blob": {"type": "audio/webm;codecs=opus", "text": "abcd"},
+    }
 
 
 def test_start_recording_when_cancelled(
@@ -108,9 +139,9 @@ def test_start_recording_when_cancelled(
     # 準備
     load_preview_scripts()
     # 実行
-    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "cancel", "failure": None})
+    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "cancel", "failure": None, "ticks": 0})
     # 検証
-    assert result == {"stopped": 1, "blob": None}
+    assert {key: result[key] for key in ("stopped", "blob")} == {"stopped": 1, "blob": None}
 
 
 @pytest.mark.parametrize(
@@ -127,9 +158,57 @@ def test_start_recording_when_rejected(
     # 準備
     load_preview_scripts()
     # 実行
-    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "stop", "failure": failure})
+    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "stop", "failure": failure, "ticks": 0})
     # 検証
     assert result == {"error": expected}
+
+
+def test_start_recording_levels(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """間隔ごとに音量を知らせ、止めたら知らせない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(RECORDING_SCRIPT, {"action": "stop", "failure": None, "ticks": 2})
+    # 検証
+    assert result["levels"] == [0.5, 0.5]
+    assert result["closed"] is True
+
+
+@pytest.mark.parametrize(
+    ("levels", "level", "expected"),
+    [
+        pytest.param([], 0.5, {"length": 1, "first": 0.5, "last": 0.5}, id="empty"),
+        pytest.param([0.1, 0.2], 1.4, {"length": 3, "first": 0.1, "last": 1}, id="clamped"),
+        pytest.param(None, 0.3, {"length": 400, "first": 0.001, "last": 0.3}, id="full"),
+    ],
+)
+def test_push_level(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    levels: list[float] | None,
+    level: float,
+    expected: dict[str, float],
+) -> None:
+    """末尾に足し、上限を超えた古いものを捨てる（正常系）。"""
+    # 準備（None は長さ WAVE_LEVELS_MAX の並び）
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """([levels, level]) => {
+            const source = levels ?? Array.from({length: MindmapPreview.WAVE_LEVELS_MAX}, (_, i) => i / 1000);
+            const original = JSON.stringify(source);
+            const pushed = MindmapPreview.pushLevel(source, level);
+            return {
+                length: pushed.length,
+                first: pushed[0],
+                last: pushed.at(-1),
+                unchanged: JSON.stringify(source) === original,
+            };
+        }""",
+        [levels, level],
+    )
+    # 検証
+    assert result == {**expected, "unchanged": True}
 
 
 @pytest.mark.parametrize(

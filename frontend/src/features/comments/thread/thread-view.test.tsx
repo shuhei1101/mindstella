@@ -4,6 +4,8 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
+import { stubRecords } from "@/testing/msw/fixtures";
+import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
@@ -124,6 +126,7 @@ describe("ThreadView", () => {
   test("thread_view_when_voice", async () => {
     // 準備
     installFakeMedia();
+    stubRecords({ settings: { ...RECORDS.settings, transcription: { action: "send" } } });
     const sent: unknown[] = [];
     let threadReads = 0;
     server.use(

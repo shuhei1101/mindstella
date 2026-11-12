@@ -49,7 +49,7 @@ describe("SendForm", () => {
   // 音声入力の状態ごとのボタンと結果の行（正常系）
   test("send_form_when_voice", () => {
     // 準備と実行
-    const { rerender } = render(<SendForm target="D-1" loc={null} body="" status="idle" voice="idle" onSubmit={vi.fn()} onInput={vi.fn()} />);
+    const { rerender, container } = render(<SendForm target="D-1" loc={null} body="" status="idle" voice="idle" onSubmit={vi.fn()} onInput={vi.fn()} />);
     const mic = screen.getByRole("button", { name: "音声で入力" });
     // 検証
     expect(mic.compareDocumentPosition(screen.getByRole("button", { name: "レビューに追加" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -57,7 +57,10 @@ describe("SendForm", () => {
     const disabledMic = screen.getByRole("button", { name: "音声で入力" });
     expect(disabledMic).toHaveAttribute("aria-disabled", "true");
     expect(disabledMic).toHaveAccessibleDescription("理由の文");
-    rerender(<SendForm target="D-1" loc={null} body="" status="idle" voice="recording" elapsed={72} onSubmit={vi.fn()} onInput={vi.fn()} />);
+    rerender(<SendForm target="D-1" loc={null} body="" status="idle" voice="recording" elapsed={72} levels={[0.2, 0.8]} onSubmit={vi.fn()} onInput={vi.fn()} />);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(container.querySelectorAll('.send-wave[aria-hidden="true"] i')).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "文字起こし" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "キャンセル" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "文字起こし" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "レビューに追加" })).toBeNull();
@@ -89,5 +92,22 @@ describe("SendForm", () => {
     expect(onVoiceCancel).toHaveBeenCalledTimes(1);
     expect(onVoiceDone).toHaveBeenCalledWith("D-1", null, "確認: ");
     expect(onVoiceBlocked).toHaveBeenCalledTimes(1);
+  });
+
+  // 録音を終えたら入力欄へフォーカスを戻す（正常系）
+  test("send_form_when_recording_ended", async () => {
+    // 準備
+    const props = { target: "D-1", loc: null, body: "確認: でよい", status: "idle" as const, onSubmit: vi.fn(), onInput: vi.fn() };
+    const { rerender } = render(<SendForm {...props} voice="idle" />);
+    const textbox = screen.getByRole("textbox") as HTMLTextAreaElement;
+    await userEvent.click(textbox);
+    textbox.setSelectionRange(4, 4);
+    // 実行
+    rerender(<SendForm {...props} voice="recording" levels={[0.5]} />);
+    rerender(<SendForm {...props} voice="idle" />);
+    // 検証
+    const restored = screen.getByRole("textbox") as HTMLTextAreaElement;
+    expect(restored).toHaveFocus();
+    expect([restored.selectionStart, restored.selectionEnd]).toEqual([4, 4]);
   });
 });
