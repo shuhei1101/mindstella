@@ -126,7 +126,7 @@ export const VoiceProgress = ({ voice, elapsed }: { voice: VoicePhase; elapsed: 
 /** 録音中に入力欄の場所へ出す波形。音量 1 つが縦の棒 1 本で、読み上げない。録音中でなければ何も出さない */
 export const VoiceWave = ({ voice, levels }: { voice: VoicePhase; levels: readonly number[] }) =>
   voice === "recording" ? (
-    <div data-part="voice-wave" className="wave-send" aria-hidden="true">
+    <div data-part="voice-wave" className="wave-send text-small" aria-hidden="true">
       {levels.map((level, index) => (
         // 棒は音量の並びの位置で見分ける（古い棒が左で捨てられ、並びが詰まる）
         <i key={index} className="wave-bar" style={{ "--lv": level } as CSSProperties} />
