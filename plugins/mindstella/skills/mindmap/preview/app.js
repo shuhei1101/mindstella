@@ -1477,7 +1477,7 @@ var MindmapPreview;
                     const ticket = comment.voice.ticket + 1;
                     comment.voice.ticket = ticket;
                     // 押したときの入力欄の選んだ範囲を、録音を終えて入力欄に戻すときのために持つ
-                    const field = document.activeElement?.closest("form")?.querySelector("textarea") ?? null;
+                    const field = voiceField(state);
                     comment.voice.selection = field === null ? null : { start: field.selectionStart, end: field.selectionEnd };
                     MindmapPreview.startRecording((level) => {
                         if (comment.voice.ticket === ticket && comment.voice.phase === "recording")
