@@ -10,8 +10,8 @@ data_models:
     summary: 描画を差し替える関数の組
     properties:
       - name: setGraph
-        type: '(graph: {nodes, links}) => void'
-        description: 玉と線を作り直す（視点は全体が収まる向きと距離に戻す）
+        type: '(input: {graph: {nodes, links}, index: RecordIndex}) => void'
+        description: 玉と線を作り直す。玉ごとの名前（項目のタイトル）・状態の印（`status`）・資料の成果物の印は `index` から引いて玉に付ける。記録か条件が変わったときに呼び、視点は全体が収まる向きと距離に戻す
       - name: setLook
         type: '(look: NetworkLook) => void'
         description: 次のコマからその見た目で描く。玉・線・視点・選んだ項目・ロックは変えない

@@ -10,7 +10,7 @@ components:
     summary: キャンバスと重ねる層の要素を描き、マウント時に `createGraphRenderer` で描画を始め、props が変わったら対応する差し替えを呼ぶ
     description: |-
       - 描画は React の外の `GraphRenderer` が `requestAnimationFrame` で回し、React は描き直さない（knowledge の規約『useEffect』の外のシステムとの同期）
-      - `graph` が変わったときだけ `setGraph`、`look`・`theme` は `setLook`・`setTheme`、`focus`（ロックか詳細の項目）は `setFocus`、`comments` は `setComments` で差し替え、作り直さない
+      - `graph` か `index` が変わったときだけ `setGraph({graph, index})`、`look` は `setLook`、ライト / ダークは `useThemeStore` から読んで `setTheme`、`focus`（ロックか詳細の項目）は `setFocus`、`comments` は `setComments` で差し替え、作り直さない
       - `shakeSignal` が増えたら `shake` を呼ぶ
       - アンマウントで `destroy` を呼び、`requestAnimationFrame` とリスナーを外す
       - キャンバスは `id="graph-canvas"`・`role="img"` で、読み上げの説明に「L キーで、詳細を開いている項目をロック・解除」を添える
@@ -65,5 +65,17 @@ components:
         condition: '`look` を `deep` から `dust` に変えて描き直す'
         mock: '`createGraphRenderer`（`vi.mock`）'
         expected: '`setLook("dust")` が呼ばれ、`setGraph` は最初の 1 回だけ'
+      - name: test_graph_canvas_when_theme_changed
+        case: 正常
+        summary: ライト / ダークの変更は作り直さない
+        condition: '`useThemeStore` をライトからダークに変える'
+        mock: '`createGraphRenderer`（`vi.mock`）'
+        expected: '`setTheme("dark")` が呼ばれ、`setGraph` は最初の 1 回だけ'
+      - name: test_graph_canvas_when_index_changed
+        case: 正常
+        summary: 記録が変わると作り直す
+        condition: 同じ `graph` のまま、D-1 のタイトルを変えた `index` で描き直す
+        mock: '`createGraphRenderer`（`vi.mock`）'
+        expected: '`setGraph` が新しい `index` で 2 回目に呼ばれる'
 notes:
   単体テスト: 同じフォルダの `graph-canvas.test.tsx` に置く。キャンバスに描いた中身は jsdom で読めないため、描画の中身は `looks.ts` の単体テストと結合テストが確かめる

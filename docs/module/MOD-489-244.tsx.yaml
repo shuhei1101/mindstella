@@ -14,7 +14,7 @@ components:
       - 見た目は `usePrefs().look`、無ければ `settings.display.network_look`、それも無ければ `deep` を当て、ドロップダウンで選んだ値を `writePrefs({look})` で残す
       - ロックは `useGraphLock` から読み、玉か余白を押したら `lockTap`（押した項目・詳細を開いている項目・ロック）の結果で、ロックを書き換えて `openItem` で `id` を書き換えるか、`blank` で `id` を外すか、`shake` でキャンバスの鍵を震わせる。幅 900px 以下では `lockTap` を通さず押した項目を開く
       - 効いているロックは、ロックした項目が `shownGraphIds` に入っているときだけその ID にする（絞り込みで描かれていない間はロックを保ったまま効かせない）
-      - `L` キーは `window` の `keydown` を `useEffect` で受け、修飾キー付き・`isTyping`・変換中（`isComposing`）・重ねる面（開いている `role="dialog"`）のときと幅 900px 以下を除いて、詳細を開いている項目を押したのと同じ `lockTap` にする。詳細を開いていないときは何もしない
+      - `L` キーは `window` の `keydown` を `useEffect` で受け、修飾キー付き・`isTyping`・変換中（`isComposing`）・重ねる面（開いている `role="dialog"`・ポップオーバー（`:popover-open` と、見た目のドロップダウンの一覧を含む開いている `role="listbox"`））のときと幅 900px 以下を除いて、詳細を開いている項目を押したのと同じ `lockTap` にする。詳細を開いていないときは何もしない
     props:
       - name: drawerOpen
         type: boolean

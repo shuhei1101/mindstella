@@ -109,7 +109,7 @@
 | [プレビュー / send-form](./MOD-489-83.tsx.yaml) | 部品設計『コメントの入力.tsx』の props・イベント・状態を持つ |
 | [プレビュー / post-body](./MOD-489-79.tsx.yaml) | 書き込みの本文を Markdown として描く |
 | [プレビュー / app-error](./MOD-489-101.ts.yaml) | 失敗した応答から作るエラー。`detail` を画面に出す |
-| [プレビュー / preview-search](./MOD-489-120.ts.yaml) | SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理、今の画面へ写すハッシュ |
+| [プレビュー / preview-search](./MOD-489-120.ts.yaml) | SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理 |
 | [プレビュー / records](./MOD-489-121.ts.yaml) | 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い） |
 | [プレビュー / filters](./MOD-489-110.ts.yaml) | 画面ごとの絞り込みの条件を行に当てる計算 |
 | [プレビュー / diff](./MOD-489-105.ts.yaml) | 差分の表示の計算（今の画面の `core/diff.ts` と同じ振る舞い |

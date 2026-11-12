@@ -12,6 +12,7 @@ components:
       - 検索の言葉は search の `q` で、入力のたびに `replace: true` で書き換える
       - 結果を押すか、上下の矢印で選んで Enter で `onOpen(id)` を呼ぶ
       - 閉じる・Esc・外側の押下で `onClose` を呼び、開く前にフォーカスがあった要素へ戻す
+      - 開いている間の `Ctrl+K`・`Cmd+K` は既定の動きを止め、検索の言葉の文字を全て選び直す（`select()`）
     props:
       - name: index
         type: RecordIndex
@@ -66,5 +67,11 @@ components:
         condition: '`query` が「無い言葉」'
         mock: なし
         expected: 「該当する項目はありません。別の条件を試してください。」が出る
+      - name: test_search_dialog_when_shortcut
+        case: 正常
+        summary: 開いている間の Ctrl+K で言葉を選び直す
+        condition: '`query` が「画面」で、`Ctrl+K` を押す'
+        mock: なし
+        expected: 入力欄の文字が全て選ばれ、イベントの `defaultPrevented` が真
 notes:
   単体テスト: 同じフォルダの `search-dialog.test.tsx` に置く
