@@ -65,8 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-12T08:47:50.162971+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: 手順『起動スクリプトを登録する』・docs/guide/スキル.md・スキルの手順『起動スクリプトの登録』の環境変数の列挙
+    updated_by: planner
+    updated_at: '2026-11-12T08:52:26.127114+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
