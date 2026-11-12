@@ -10,12 +10,12 @@ flows:
       - name: Mock
         description: '文字起こしのサービスの代わりに、`GET /web/glossary-presets` で `{"presets": ["一般", "開発"], "active": "一般"}` を返し、`POST /web/transcriptions` で 202 と `job_id`、`GET /web/transcriptions/{job_id}` で 1 回目は `running`、2 回目に `done` と「案 A にする」を返す偽のサーバーを 127.0.0.1 の空きポートで立てる。常駐サーバーを環境変数 `MINDSTELLA_TRANSCRIBER_URL` にその URL を入れて立て、`preview_url` を呼び、返った URL へ HTTP のクライアントで送る'
       - name: make_workspace
-        description: '`config.yaml` の `transcription` が `{action: insert, preset: 開発}` のワークスペース'
+        description: '`config.yaml` の `transcription` が `{action: send, preset: 開発}` のワークスペース'
     flow: "```mermaid\nsequenceDiagram\n  participant クライアント\n  participant IF as GET /api/transcription\n  participant TR as 文字起こしのサービス（偽のサーバー）\n  participant WS as ワークスペース\n  \n  クライアント->>IF: GET\n  IF-->>WS: config.yaml の transcription を読む\n  IF->>TR: 用語集のプリセットの一覧を読む\n  TR-->>IF: presets\n  IF-->>クライアント: 200、JSON（available・reason・presets・action・preset）\n```"
     expected:
       - ステータスが 200 で、`available` が `true`、`reason` が `null`
       - '`presets` が `["一般", "開発"]`'
-      - '`action` が `insert`、`preset` が `開発`'
+      - '`action` が `send`、`preset` が `開発`'
     test: test_normal
   - name: 正常系（設定を持たない）
     summary: '`config.yaml` が `transcription` を持たないときは既定の挙動を返す'
