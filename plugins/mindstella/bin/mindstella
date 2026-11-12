@@ -6,7 +6,8 @@
 #   MINDSTELLA_VENV    常駐サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
 #   MINDSTELLA_PORT    常駐サーバーの待ち受けのポート（既定は 8784）
 #   CLAUDE_CONFIG_DIR  あれば、Claude Code の設定のフォルダ（アカウント）として tmux のセッションへ渡し、セッションの名前にも使う
-#   MINDSTELLA_ALLOWED_HOSTS / MINDSTELLA_PREVIEW_START_HOOK / MINDSTELLA_PREVIEW_STOP_HOOK
+#   MINDSTELLA_ALLOWED_HOSTS / MINDSTELLA_PREVIEW_START_HOOK / MINDSTELLA_PREVIEW_STOP_HOOK /
+#   MINDSTELLA_TRANSCRIBER / MINDSTELLA_TRANSCRIBER_URL
 #                      あれば、常駐サーバーを起動するときにそのまま渡す
 # 終了コード: 0 正常 / 1 実行時のエラー / 2 引数の誤り
 set -euo pipefail
