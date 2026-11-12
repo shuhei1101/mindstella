@@ -23,16 +23,19 @@ export type SearchDialogProps = {
 export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: SearchDialogProps) => {
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  const returnTo = useRef<Element | null>(null);
   // 開く前にフォーカスがあった要素を覚え、閉じたら戻す
-  useEffect(() => {
-    returnTo.current = document.activeElement;
-    // 開いたら検索の言葉にフォーカスを置く（画面設計の autofocus）
-    input.current?.focus();
-    return () => {
-      if (returnTo.current instanceof HTMLElement && returnTo.current.isConnected) returnTo.current.focus();
-    };
-  }, []);
+  const [returnTo] = useState(() => document.activeElement);
+  useEffect(
+    () => () => {
+      if (returnTo instanceof HTMLElement && returnTo.isConnected) returnTo.focus();
+    },
+    [returnTo],
+  );
+  // 検索の言葉は、ポータルの中に付いた時点でフォーカスを置く（画面設計の autofocus）
+  const attachInput = (node: HTMLInputElement | null): void => {
+    input.current = node;
+    node?.focus();
+  };
   const hits = searchItems({ query, index });
   const selected = hits[Math.min(active, hits.length - 1)];
   const optionId = (hit: SearchHit): string => `search-hit-${hit.id}`;
@@ -64,7 +67,7 @@ export const SearchDialog = ({ index, query, onQueryChange, onOpen, onClose }: S
         <div className="flex items-center gap-2">
           <Icon name="search" className="text-muted-foreground" />
           <input
-            ref={input}
+            ref={attachInput}
             type="text"
             aria-label="検索キーワード"
             placeholder="ID・タイトル・本文で検索"
