@@ -54,9 +54,9 @@ functions:
       - name: test_use_voice_input_levels
         case: 正常
         summary: 録音中の音量を `levels` に持ち、終えたら空にする
-        condition: 偽の録音が `onLevel` を `0.2`・`0.8` で呼んだ後に × を押す
+        condition: 偽の録音が `onLevel` を `0.25`・`0.75` で呼んだ後に × を押す
         mock: MSW と `vi.stubGlobal`
-        expected: 録音中の `levels` が `[0.2, 0.8]`、× の後は `[]`
+        expected: 録音中の `levels` が `[0.25, 0.75]`、× の後は `[]`
     container: frontend/src/shared/hooks/use-voice-input.ts
 notes:
   単体テスト: 同じフォルダの `use-voice-input.test.ts` に置く（knowledge の規約『フォルダ構成』）
