@@ -17,8 +17,10 @@ use_cases:
 docs:
   - page: docs/test-procedure/TP-489-1.yaml
     new: false
-    change: 追加する結合テスト・ストーリーのテストのコマンドと前提が今の記述に収まらないときに追加する
-    status: todo
+    change: 変更なし（追加する vitest の単体テストは `npx vitest run`、SPA の結合テスト `tests/integration/preview/test_spa_*` は `pytest tests/integration/preview` の今の全件実行と前提に収まる）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-12T13:03:49.302799+00:00'
 scope_out:
   - item: 配る書き出しの React での作成、今の画面と雛形・今の Storybook の設定とストーリーの削除、シナリオと公開ドキュメントの更新
     reason: 親の分割の子 6
