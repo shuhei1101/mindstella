@@ -1401,11 +1401,17 @@ var MindmapPreview;
             while (wave.childElementCount > voice.levels.length)
                 wave.firstElementChild?.remove();
         };
-        /** 描き直した後の、録っている（録っていた）入力の入力欄 */
-        const voiceField = () => document.querySelector("form.send textarea:focus, .comments-panel form.reply textarea");
-        /** 描き直した入力欄へフォーカスを移し、範囲を選ぶ */
-        const focusVoiceField = (range) => {
-            const field = voiceField() ?? document.querySelector("form.send textarea:not([hidden])");
+        /** 描き直した後の、録っていた入力の入力欄（返信・新しいスレッド・項目の詳細の全画面か詳細パネルの下端を、向けた先で選ぶ） */
+        const voiceField = (state) => {
+            if (state.thread !== null)
+                return document.querySelector(".comments-panel form.reply textarea");
+            if (state.target === null)
+                return document.querySelector(".comments-panel .talk-new form.send textarea");
+            return document.querySelector(route.full ? "dialog.full form.send textarea" : "aside.panel form.send textarea");
+        };
+        /** 描き直した、録っていた入力の入力欄へフォーカスを移し、範囲を選ぶ */
+        const focusVoiceField = (state, range) => {
+            const field = voiceField(state);
             if (field === null)
                 return;
             field.focus();
@@ -1514,7 +1520,7 @@ var MindmapPreview;
                     const selection = comment.voice.selection;
                     abandonVoice();
                     redrawVoiceForm(state, true);
-                    focusVoiceField(selection);
+                    focusVoiceField(state, selection);
                 },
                 voiceDone: (input) => {
                     const { voice } = comment;
@@ -1559,9 +1565,9 @@ var MindmapPreview;
                         redrawVoiceForm(state, true);
                         // 挿入した: カーソルを挿入した文字の後ろへ置く。中身が元のままの失敗: 押したときの範囲へ戻す
                         if (outcome.caret !== null)
-                            focusVoiceField({ start: outcome.caret, end: outcome.caret });
+                            focusVoiceField(state, { start: outcome.caret, end: outcome.caret });
                         else if (outcome.kind !== "sent" && outcome.body === input.body)
-                            focusVoiceField(selection);
+                            focusVoiceField(state, selection);
                     });
                 },
                 voiceBlocked: () => {
