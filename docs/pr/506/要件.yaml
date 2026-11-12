@@ -8,14 +8,11 @@ scope_out:
   - item: 本文が挙げる dev/pr/*/スクリーンショット/・tmp/screenshots/ の画像
     reason: origin/develop にこのパスの画像が無い（dev/ は docs/ へ移っている）
     plan: none
-  - item: docs/pr/*/ストーリー/（556 件・約 12MB）と docs/pr/*/画面/（161 件・約 11MB）の作業 PR の撮影画像
-    reason: 本文が挙げたパスより削除の対象を広げる要件の変更のため、ユーザーの確認で確定する。今の判断は、起点 Issue の目的（作業 PR の撮影画像で重くなったリポジトリを軽くする）に当たるため、この PR で削除して要望へ移す
-    plan: to_file
 use_cases: []
 docs:
   - page: docs/pr
     new: false
-    change: 各 PR フォルダの スクリーンショット/ の画像を git rm で削除する
+    change: 各 PR フォルダの スクリーンショット/・ストーリー/・画面/ の撮影画像を git rm で削除する
     status: done
     updated_by: planner
     updated_at: '2026-11-12T10:58:55.838398+00:00'
