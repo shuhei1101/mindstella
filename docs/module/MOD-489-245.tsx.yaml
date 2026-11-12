@@ -1,0 +1,69 @@
+id: MOD-489-245
+title: プレビュー / graph-canvas
+lead: 3D のキャンバスと、名前・状態の印・鍵・コメントの印を重ねる層を描き、毎コマの描画を `GraphRenderer` に任せる。
+components:
+  - name: GraphCanvas
+    title: 3D のキャンバス
+    kind: コンポーネント
+    container: frontend/src/features/graph/graph/components/graph-canvas.tsx
+    usecase: ネットワークを辿る
+    summary: キャンバスと重ねる層の要素を描き、マウント時に `createGraphRenderer` で描画を始め、props が変わったら対応する差し替えを呼ぶ
+    description: |-
+      - 描画は React の外の `GraphRenderer` が `requestAnimationFrame` で回し、React は描き直さない（knowledge の規約『useEffect』の外のシステムとの同期）
+      - `graph` が変わったときだけ `setGraph`、`look`・`theme` は `setLook`・`setTheme`、`focus`（ロックか詳細の項目）は `setFocus`、`comments` は `setComments` で差し替え、作り直さない
+      - `shakeSignal` が増えたら `shake` を呼ぶ
+      - アンマウントで `destroy` を呼び、`requestAnimationFrame` とリスナーを外す
+      - キャンバスは `id="graph-canvas"`・`role="img"` で、読み上げの説明に「L キーで、詳細を開いている項目をロック・解除」を添える
+    props:
+      - name: graph
+        type: '{nodes: GraphNode[], links: GraphLink[]}'
+        required: true
+        description: 描く玉と線（`buildGraph`）
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 名前・状態の印に使う索引
+      - name: look
+        type: NetworkLook
+        required: true
+        description: 当てる見た目
+      - name: selectedId
+        type: string | null
+        required: true
+        description: 詳細を開いている項目
+      - name: lockedId
+        type: string | null
+        required: true
+        description: 効いているロック
+      - name: comments
+        type: Record<string, number>
+        required: true
+        description: 項目の ID → レビュー中のコメントの件数
+      - name: shakeSignal
+        type: number
+        required: true
+        description: 増えるたびに閉じた鍵を震わせる
+      - name: onPress
+        type: '(id: string | null) => void'
+        required: true
+        description: 玉（項目の ID）か余白（`null`）を押した。2 回押しの読み替えは `resolvePress` で済ませてから呼ぶ
+    state:
+      - name: renderer
+        type: GraphRenderer | null
+        initial: 'null'
+        description: マウントで作った描画（`useRef`）
+    unit_tests:
+      - name: test_graph_canvas
+        case: 正常
+        summary: マウントで描画を始め、アンマウントで止める
+        condition: '`createGraphRenderer` を差し替えて描画し、外す'
+        mock: '`createGraphRenderer`（`vi.mock`）'
+        expected: '`createGraphRenderer` が 1 回、`destroy` が 1 回呼ばれる'
+      - name: test_graph_canvas_when_look_changed
+        case: 正常
+        summary: 見た目の変更は作り直さない
+        condition: '`look` を `deep` から `dust` に変えて描き直す'
+        mock: '`createGraphRenderer`（`vi.mock`）'
+        expected: '`setLook("dust")` が呼ばれ、`setGraph` は最初の 1 回だけ'
+notes:
+  単体テスト: 同じフォルダの `graph-canvas.test.tsx` に置く。キャンバスに描いた中身は jsdom で読めないため、描画の中身は `looks.ts` の単体テストと結合テストが確かめる

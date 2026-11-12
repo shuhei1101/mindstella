@@ -1,0 +1,150 @@
+id: MOD-489-248
+title: プレビュー / looks
+lead: ネットワークの 5 つの見た目の描き方（今の画面の `looks.ts` と同じ振る舞い）。
+functions:
+  - name: drawLook
+    title: 見た目ごとの描き方
+    kind: 関数
+    container: frontend/src/features/graph/graph/looks.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 1 コマ分の玉と線を、`look` の見た目で地・線・注目の線を流れる光・星の順に描く（名前・状態の印・鍵・コメントの印は描かない）
+    description: 今の画面のモジュール構成『画面と部品 / looks.ts』の `drawLook` の描き方を、値を変えずに移す
+    args:
+      - name: look
+        type: NetworkLook
+        required: true
+        passing: keyword
+        description: 当てる見た目
+      - name: frame
+        type: LookFrame
+        required: true
+        passing: keyword
+        description: 1 コマ分の描く材料（今の画面の `LookFrame` と同じ形）
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_draw_look_when_reduced_motion
+        case: 正常
+        summary: 動きを減らす設定では、時刻が進んでも同じ描画の命令を出す
+        condition: '5 つの見た目（`test.each`）。注目の起点とつながる線を 1 本持つ同じ `frame` を、`reducedMotion: true` で `now` を 0・950・1,800ms に変えて 3 回描く。比べに `reducedMotion: false` で同じく 3 回描く'
+        mock: キャンバスの 2D の文脈（呼び出しを記録する差し替え）
+        expected: '`reducedMotion: true` の 3 回は記録した命令と引数が全て同じ。`reducedMotion: false` の 3 回は、どの見た目でも 1 回以上が違う'
+  - name: lookLabelColor
+    title: 見た目ごとの名前の色
+    kind: 関数
+    container: frontend/src/features/graph/graph/looks.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 名前の文字の色を返す。`deep` の夜は `#dfe6ff`、`dust` は夜 `#c9ced6`・昼 `#2a2f36`、ほかは `fallback`
+    args:
+      - name: look
+        type: NetworkLook
+        required: true
+        passing: keyword
+        description: 当てている見た目
+      - name: dark
+        type: boolean
+        required: true
+        passing: keyword
+        description: ダークか
+      - name: fallback
+        type: string
+        required: true
+        passing: keyword
+        description: '`tokens.css` の名前の色'
+    returns:
+      type: string
+      description: 文字の色
+    unit_tests:
+      - name: test_look_label_color
+        case: 正常
+        summary: 見た目とライト / ダークで名前の色を読み分ける
+        condition: '`test.each`: `deep`・ダーク / `deep`・ライト / `dust`・ダーク / `dust`・ライト / `glow`・ダーク（`fallback` は `#111111`）'
+        mock: なし
+        expected: '`#dfe6ff` / `#111111` / `#c9ced6` / `#2a2f36` / `#111111`'
+  - name: midColor
+    title: 線の色
+    kind: 関数
+    container: frontend/src/features/graph/graph/looks.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 両端の星の色（`#rrggbb`）の、成分ごとの平均を四捨五入した色を返す
+    args:
+      - name: from
+        type: string
+        required: true
+        passing: keyword
+        description: 始まりの星の色
+      - name: to
+        type: string
+        required: true
+        passing: keyword
+        description: 終わりの星の色
+    returns:
+      type: string
+      description: '`#rrggbb`'
+    unit_tests:
+      - name: test_mid_color
+        case: 正常
+        summary: 成分ごとの平均を四捨五入する
+        condition: '`test.each`: `#000000`・`#ffffff` / `#ff0000`・`#0000ff` / `#123456`・`#123456`'
+        mock: なし
+        expected: '`#808080` / `#800080` / `#123456`'
+  - name: bakeGlow
+    title: 光の玉の絵
+    kind: 関数
+    container: frontend/src/features/graph/graph/looks.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 中心が明るく外へ薄れる光の玉を一辺 128px のキャンバスに描いて返す。色と減衰ごとに一度だけ作る
+    args:
+      - name: color
+        type: string
+        required: true
+        passing: keyword
+        description: '`#rrggbb`'
+      - name: falloff
+        type: number
+        required: true
+        passing: keyword
+        description: 外へ薄れる速さ
+    returns:
+      type: HTMLCanvasElement
+      description: 光の玉の絵
+    unit_tests:
+      - name: test_bake_glow
+        case: 正常
+        summary: 色と減衰ごとに一度だけ作る
+        condition: '`#2dd4bf`・2 を 2 回、`#2dd4bf`・1.4 を 1 回'
+        mock: '`document.createElement` を数える'
+        expected: 1 回目と 2 回目が同じキャンバス（一辺 128）で、作ったのは 2 枚
+  - name: bakeRay
+    title: 光条の絵
+    kind: 関数
+    container: frontend/src/features/graph/graph/looks.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 十字の光の筋を一辺 128px のキャンバスに描いて返す。色ごとに一度だけ作る
+    args:
+      - name: color
+        type: string
+        required: true
+        passing: positional
+        description: '`#rrggbb`'
+    returns:
+      type: HTMLCanvasElement
+      description: 光条の絵
+  - name: deepSky
+    title: 深宇宙の空
+    kind: 関数
+    container: frontend/src/features/graph/graph/looks.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 深宇宙の空の素材を、種を決めた乱数で一度だけ作って返す（今の画面の `deepSky` と同じ数と形）
+    returns:
+      type: '{stars, nebulae}'
+      description: 星の向き・明るさ・色と、星雲の絵と貼る向き
+notes:
+  単体テスト: 同じフォルダの `looks.test.ts` に置く。今の画面の `tests/unit/preview/test_looks.py` は画素を比べるが、jsdom はキャンバスに描かないため、2D の文脈の呼び出しの記録で比べる

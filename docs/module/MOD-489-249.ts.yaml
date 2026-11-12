@@ -1,0 +1,50 @@
+id: MOD-489-249
+title: プレビュー / graph-store
+lead: ネットワークのロックを、画面を離れても残るようにページの間だけ持つ。
+stores:
+  - name: useGraphLockStore
+    title: ネットワークのロック
+    container: frontend/src/features/graph/graph/store.ts
+    usecase: ネットワークを辿る
+    role: Zustand
+    summary: ロックした項目を持つ。永続化しない（『SPAを開く』の制約「ネットワークのロック」）
+    description: ネットワークの画面はタブを移ると外れるため、画面の state ではなく画面の store に持つ（knowledge の判定フローチャート『React の状態の置き場所』の ※3）。store は公開せず、`useGraphLock` だけを export する
+    state:
+      - name: locked
+        type: string | null
+        initial: 'null'
+        description: ロックした項目の ID
+    actions:
+      - name: setLocked
+        title: ロックの書き換え
+        kind: 関数
+        summary: ロックした項目を書き換える
+        args:
+          - name: id
+            type: string | null
+            required: true
+            passing: positional
+            description: ロックする項目（外すときは `null`）
+        returns:
+          type: void
+          description: なし
+functions:
+  - name: useGraphLock
+    title: ネットワークのロックの読み書き
+    kind: フック
+    container: frontend/src/features/graph/graph/store.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: '`[locked, setLocked]` を返す'
+    returns:
+      type: '[string | null, (id: string | null) => void]'
+      description: ロックした項目と書き換え
+    unit_tests:
+      - name: test_use_graph_lock
+        case: 正常
+        summary: 画面を外しても残る
+        condition: '`setLocked("D-1")` の後に、フックを使う部品を外してもう一度描く'
+        mock: なし
+        expected: '`locked` が D-1'
+notes:
+  単体テスト: 同じフォルダの `store.test.ts` に置く
