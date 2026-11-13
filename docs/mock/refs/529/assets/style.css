@@ -22,6 +22,10 @@
 .voice-note { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px var(--page-pad); border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: var(--fs-small); }
 .voice-note > .icon { flex: none; color: var(--st-review); }
 .voice-note .vn-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* 入力欄を開く: 帯の中の文字のボタン。理由の右に置く */
+.voice-note .vn-open { flex: none; height: var(--target-min); padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.voice-note .vn-open:hover { background: var(--hover); }
+.voice-note .vn-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .voice-note .vn-close { flex: none; display: inline-grid; place-items: center; width: var(--target-min); height: var(--target-min); border: 0; border-radius: var(--radius); background: transparent; color: var(--text-2); cursor: pointer; }
 .voice-note .vn-close:hover { background: var(--hover); color: var(--text); }
 .voice-note .vn-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
