@@ -273,7 +273,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 書き換える設定
-        description: 文字起こし後の挙動を `send`・`insert` のどちらでもない値にして渡す
+        description: 文字起こし後の挙動を `review`・`send`・`insert` のどれでもない値にして渡す
         notes: '`paste`'
     flow: |-
       ```mermaid
