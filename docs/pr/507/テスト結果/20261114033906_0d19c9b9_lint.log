@@ -1,0 +1,7 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npx eslint --ignore-pattern ".venv/**" && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+exit=0
