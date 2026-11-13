@@ -43,6 +43,8 @@
     .send-submit.is-hover { opacity: .85; }
     /* 状態を見せるための見本のクラス: キーボードのフォーカス */
     .is-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+    /* 状態を見せるための見本のクラス: フォーカスした押せないマイクのボタンのツールチップを出したままにする */
+    .stage .send-tip-wrap:has(.is-focus) .send-tip { display: block; }
   </style>
 </head>
 <body>

@@ -44,7 +44,7 @@
         el.className = "voice-btn";
         el.setAttribute("aria-label", "音声入力中（D-022 へのコメント）。録音中の入力欄へ移動");
         el.title = "音声入力中: D-022 へのコメント。押すと録音中の入力欄へ移動します";
-        el.innerHTML = '<span class="vb-dot" aria-hidden="true"></span><span class="label">音声入力中</span><span class="vb-time" aria-hidden="true">0:12</span>';
+        el.innerHTML = mic.replace('class="icon"', 'class="icon vb-mic"') + '<span class="label">音声入力中</span><span class="vb-time" aria-hidden="true">0:12</span>';
       } else if (state === "transcribing") {
         el = document.createElement("button");
         el.type = "button";
