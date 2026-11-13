@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import parse_qsl, unquote, urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -23,10 +23,7 @@ TILE_IDS = (
     "tile-progress",
 )
 
-# 今の画面のパス
-LEGACY_PAGE_PATH = "/mindstella.html"
-
-# 今の画面へ移るのを待つ上限ミリ秒
+# React の画面へ移るのを待つ上限ミリ秒
 NAVIGATE_TIMEOUT_MS = 15_000
 
 # タイルの見出しの右の「すべて表示」（項目の行は data-id を持つ）
@@ -88,12 +85,6 @@ REGION_JS = """() => {
 }"""
 
 
-def _legacy_hash(page: Page) -> dict[str, str]:
-    """今の画面へ移るのを待ち、URL のハッシュの引数を返す。"""
-    page.wait_for_url(f"**{LEGACY_PAGE_PATH}#*", timeout=NAVIGATE_TIMEOUT_MS)
-    return dict(parse_qsl(unquote(urlsplit(page.url).fragment)))
-
-
 def _spa_search(page: Page) -> dict[str, str]:
     """React の画面へ移るのを待ち、URL の search の引数を返す。"""
     page.wait_for_url("**/spa/?*tab=*", timeout=NAVIGATE_TIMEOUT_MS)
@@ -143,6 +134,30 @@ def test_topbar_tab_opens_screen(write_sample_preview: WriteSamplePreview, page:
     page.click(f'{TABBAR} a[data-tab="tasks"]')
     # 検証
     assert _spa_search(page) == {"tab": "tasks"}
+
+
+def test_topbar_network_opens_graph(write_sample_preview: WriteSamplePreview, page: Page) -> None:
+    """タブの帯の右端のネットワークの入口を押すと、SPA の中のネットワークを開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_spa(page, url)
+    # 実行
+    page.click(f'{TABBAR} a[data-tab="graph"]')
+    # 検証
+    assert _spa_search(page) == {"tab": "graph"}
+    assert urlsplit(page.url).path == "/spa/"
+
+
+def test_topbar_search_opens_dialog(write_sample_preview: WriteSamplePreview, page: Page) -> None:
+    """トップバーの検索の入口を押すと、SPA の中で全体の検索を開く（正常系）。"""
+    # 準備
+    url = write_sample_preview()
+    open_spa(page, url)
+    # 実行
+    page.get_by_role("button", name="すべての項目を検索").click()
+    # 検証
+    expect(page.get_by_role("dialog", name="すべての項目を検索")).to_be_visible()
+    assert page.evaluate("location.pathname + location.search") == "/spa/?search=1"
 
 
 def test_topbar_theme(write_sample_preview: WriteSamplePreview, page: Page) -> None:
