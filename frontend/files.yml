@@ -476,6 +476,24 @@ files:
   related:
   - to: MOD-489-19
     type: implements
+- path: src/features/decisions/decisions/store.ts
+  name: 検討事項のマップのロック
+  description: ロックをページの間だけ画面の外に持つ。ロックの持ち方を変更するときに読む。
+  tags:
+  - tool:react
+  related:
+  - to: MOD-489-253
+    type: implements
+- path: src/features/decisions/decisions/store.test.tsx
+  name: 検討事項のマップのロックの単体テスト
+  description: 検討事項のマップのロックの単体テストの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/features/decisions/decisions/store.ts
+    type: tests
 - path: src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx
   name: import { screen } from @testing-library/react;
   description: import { screen } from @testing-library/react;。
