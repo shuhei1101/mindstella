@@ -27,6 +27,8 @@ scenarios:
         description: D-1 への「案 B も見たい」の 1 件
       - name: 開いている画面
         description: 検討事項のボードで、D-1 の詳細パネルを開いている
+      - name: 画面の消灯の抑止
+        description: ページを読み込む前に、`navigator.wakeLock.request` を、呼ばれた回数と、返した `WakeLockSentinel` の `release` の呼び出しを記録する偽に差し替える
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -55,10 +57,10 @@ scenarios:
       ```
     expected:
       - 録音中は、入力欄の場所に波形が出て、キーボードで打った文字が入力欄に入らない
-      - 録音中は、トップバーに音声入力中の表示が出て、画面の消灯の抑止を取得している
+      - 録音中は、トップバーに音声入力中の表示が出て、偽の `navigator.wakeLock.request` が `screen` で 1 回呼ばれ、`release` はまだ呼ばれていない
       - 文字起こしの後、レビュー中の書き込みが「案 B も見たい」と「案 A にする」の 2 件になり、スレッドは 0 件のままで、Claude Code へ何も送っていない
       - 偽のサーバーが受けた依頼の用語集のプリセットが `開発` である
-      - 入力欄が空で、「レビューに追加」とマイクのボタンが元の位置に戻り、トップバーの音声入力中の表示が消え、画面の消灯の抑止を解いている
+      - 入力欄が空で、「レビューに追加」とマイクのボタンが元の位置に戻り、トップバーの音声入力中の表示が消え、偽の `release` が 1 回呼ばれている
     test: test_normal
   - name: 正常シナリオ（打ちかけの文字に続けて送信する）
     setup:
@@ -169,6 +171,8 @@ scenarios:
         description: 未決定の検討事項 D-1
       - name: 開いている画面
         description: D-1 の詳細パネルで、コメントの入力に「案 B も見たい」と入れている
+      - name: 画面の消灯の抑止
+        description: ページを読み込む前に、`navigator.wakeLock.request` を、呼ばれた回数と、返した `WakeLockSentinel` の `release` の呼び出しを記録する偽に差し替える
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -182,7 +186,7 @@ scenarios:
       - 入力欄が「案 B も見たい」のままである
       - 偽のサーバーが文字起こしの依頼を 1 件も受けていない
       - スレッドとレビュー中の書き込みが 0 件のままで、「レビューに追加」とマイクのボタンが元の位置に戻る
-      - トップバーの音声入力中の表示が消え、画面の消灯の抑止を解いている
+      - トップバーの音声入力中の表示が消え、偽の `navigator.wakeLock.request` が 1 回、`release` が 1 回呼ばれている
     test: test_normal_when_cancelled
   - name: 正常シナリオ（録音中にほかの項目へ移って戻る）
     setup:
@@ -219,6 +223,7 @@ scenarios:
     expected:
       - D-2 と TH-1 を開いている間も録音が続き、トップバーに音声入力中の表示が出ている
       - 録音中は、D-2 のコメントの入力と TH-1 の返信の入力のマイクのボタンが押せず、D-2 の入力欄にはキーボードで「D-2 も確認」を打てる
+      - D-2 のマイクのボタンにフォーカスすると、ほかの入力欄で音声入力中である旨が出る
       - トップバーの表示を押すと、D-1 の詳細パネルが開き、D-1 のコメントの入力にフォーカスがある
       - 文字起こしの後、レビュー中の書き込みが D-1 への「案 A にする」の 1 件で、D-2 の入力欄は「D-2 も確認」のままである
       - 録音を終えた後、D-2 のコメントの入力と TH-1 の返信の入力のマイクのボタンが押せる
@@ -408,8 +413,12 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 未決定の検討事項 D-1・D-2
+      - name: 画面の消灯の抑止
+        description: ページを読み込む前に、`navigator.wakeLock.request` を、呼ばれた回数と、返した `WakeLockSentinel` の `release` の呼び出しを記録する偽に差し替える
       - name: 開いている画面
         description: D-1 の詳細パネルで、コメントの入力のマイクのボタンを押して録音中にし、D-2 を開いている
+      - name: 記録の書き換え
+        description: 録音中に、テストが MCP の削除で D-1 を記録から消す。サーバーが `GET /api/events` で記録が変わったことを知らせる
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -417,14 +426,14 @@ scenarios:
         participant P as プレビュー（ブラウザ）
         participant SV as サーバー
         participant WS as ワークスペース
-        WS->>WS: D-1 が記録から消える
+        SV->>WS: テストの MCP の削除で D-1 を記録から消す
         SV-->>P: 記録が変わったことを知らせる
         P->>P: 録音を捨て、マイクと画面の消灯の抑止を解放する
         P-->>U: トップバーの音声入力中の表示を消し、録音を捨てたことを出す
       ```
     expected:
       - トップバーの音声入力中の表示が消え、D-2 のコメントの入力のマイクのボタンが押せる
-      - 録音を捨てたことが画面に出る
+      - 録音を捨てたことが画面に出て、偽の `release` が 1 回呼ばれている
       - 偽のサーバーが文字起こしの依頼を 1 件も受けておらず、レビュー中の書き込みが 0 件のままである
     test: test_error_when_target_removed_while_recording
 notes:
