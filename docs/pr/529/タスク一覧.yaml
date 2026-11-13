@@ -30,7 +30,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-13T22:12:59.016447+00:00'
   - process: 画面一覧・画面遷移
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-13T22:44:07.105589+00:00'
   - process: 単一ユースケース設計
     status: todo
   - process: モック作成

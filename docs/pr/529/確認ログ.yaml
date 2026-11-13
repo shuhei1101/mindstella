@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 画面一覧・画面遷移（トップバーの音声入力中の表示から録音中の入力欄へ戻る・録音中の移動・マイクのボタンの排他・設定の選択肢）
+    decision: この画面一覧・画面遷移で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 65fa36ce
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569381424
