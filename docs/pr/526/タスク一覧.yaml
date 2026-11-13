@@ -1,0 +1,74 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が揃っているため対象外
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではない
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: ネットワークのロックで使っている Zustand の store と同じ仕組みで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 業務フローは変わらない
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: モック要否の Q1 が NO（画面の要素・配置・文言・色は変わらず、ロックを持つ場所だけが変わる）
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: モック要否の Q1 が NO
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 単一ユースケース『検討事項をマップで辿る』の流れと期待値は変わらない（画面設計の定めに実装を合わせる修正）
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: モック作成
+    status: skipped
+    reason: モック要否の Q1 が NO
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: SPA の API・URL の状態は変わらない
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 共通の部品は変わらない
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面設計『検討事項.tsx』が既に「タブを行き来しても残す」と定めており、UI 項目と操作は変わらない（画面設計要否の Q2 が NO）
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: skipped
+    reason: 設計書のほかに更新が要るページが無い
+    updated_by: planner
+    updated_at: '2026-11-13T20:33:07.898662+00:00'
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
