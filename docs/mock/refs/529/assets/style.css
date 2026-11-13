@@ -1,0 +1,32 @@
+/* PR #529: トップバーの音声入力中の表示・ほかの入力欄で音声入力中のマイクのボタン */
+
+/* 音声入力中の表示: コメントのボタンと同じ高さと枠のボタン。押すと録音中の入力欄へ戻る */
+.voice-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--target-min); height: var(--control-h); padding: 0 10px; border: 1px solid var(--red-300); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+/* ホバー: ほかのボタンと同じ面 */
+.voice-btn:hover { background: var(--topbar-hover); }
+/* キーボードのフォーカス: ほかのボタンと同じ輪 */
+.voice-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+/* 録音中の丸: 失敗の色。ゆっくり明滅して録音中であることを伝える */
+.voice-btn .vb-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--red-300); animation: vb-pulse 1.6s ease-in-out infinite; }
+@keyframes vb-pulse { 50% { opacity: .35; } }
+/* 経過の時間: 等幅にして桁で幅を揺らさない */
+.voice-btn .vb-time { font-family: var(--font-mono); font-size: 11px; color: var(--topbar-fg-2); font-variant-numeric: tabular-nums; }
+/* 文字起こし中: 丸の代わりに回る印を出し、枠を落ち着いた色にする */
+.voice-btn.transcribing { border-color: var(--topbar-line); }
+.voice-btn .spinner { width: 12px; height: 12px; margin: 0; border-color: var(--topbar-line); border-top-color: var(--topbar-fg); }
+/* 動きを減らす設定: 明滅を止める */
+@media (prefers-reduced-motion: reduce) { .voice-btn .vb-dot { animation: none; } }
+/* 幅 1100px 以下: ほかのボタンと同じく文字を隠し、丸と経過の時間だけにする */
+@media (max-width: 1100px) { .voice-btn .label { display: none; } .voice-btn { padding: 0 8px; } }
+/* 幅 480px 以下: 経過の時間も隠し、丸だけのボタンにする（名前は読み上げとツールチップに持つ） */
+@media (max-width: 480px) { .voice-btn .vb-time { display: none; } .voice-btn { gap: 0; padding: 0 2px; } }
+
+/* 録音を破棄した知らせ: 音声入力中の表示の位置に出し、× で閉じる */
+.voice-note { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 4px 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); color: var(--topbar-fg); font-size: var(--fs-small); white-space: nowrap; }
+.voice-note .icon { color: var(--red-300); }
+.voice-note .vn-close { display: inline-grid; place-items: center; width: var(--target-min); height: var(--target-min); border: 0; border-radius: var(--radius); background: transparent; color: var(--topbar-fg-2); cursor: pointer; }
+.voice-note .vn-close:hover { background: var(--topbar-hover); color: var(--topbar-fg); }
+.voice-note .vn-close:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
+
+/* 案 B: 話し合いの題名の右に置く。題名を隠す幅でも同じ位置（ブランドの右）に残す */
+.topbar .voice-btn.place-b, .topbar .voice-note.place-b { margin-left: 8px; }
