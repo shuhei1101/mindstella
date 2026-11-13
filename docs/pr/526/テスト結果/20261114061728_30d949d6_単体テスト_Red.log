@@ -1,0 +1,45 @@
+# 単体テスト（フロント）の全件実行（テスト実行方法 TL-2）。30d949d6 で実行。fail は実装の無い store.ts の import の解決だけ
+
+$ pytest tests/unit/preview
+tests/unit/preview/test_lock.py .                                        [ 97%]
+tests/unit/preview/test_router.py .                                      [ 97%]
+tests/unit/preview/test_diff.py .                                        [ 97%]
+tests/unit/preview/test_libs.py ...                                      [ 97%]
+tests/unit/preview/test_router.py .                                      [ 97%]
+tests/unit/preview/test_libs.py .....................                    [100%]
+
+======================= 902 passed in 1124.60s (0:18:44) =======================
+
+$ npx vitest run
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/features/decisions/decisions/store.test.tsx [ frontend/src/features/decisions/decisions/store.test.tsx ]
+Error: Failed to resolve import "@/features/decisions/decisions/store" from "frontend/src/features/decisions/decisions/store.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-keep-decision-map-lock/frontend/src/features/decisions/decisions/store.test.tsx:4:35
+  1  |  import { act, render, renderHook } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { useDecisionMapLock } from "@/features/decisions/decisions/store";
+     |                                      ^
+  4  |  import { useGraphLock } from "@/features/graph/graph/store";
+  5  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-keep-decision-map-lock/frontend/src...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 79 passed (80)
+      Tests  264 passed (264)
+   Start at  05:48:38
+   Duration  558.17s (environment 52%, import 25%, setup 19%, transform 3%, worker 1%, tests 1%)
+
+Environment  jsdom was created 80 times · 1889.09s total, 52% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
