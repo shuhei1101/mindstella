@@ -342,12 +342,13 @@ def test_normal_when_search(make_workspace: MakeWorkspace, call_tool: CallTool, 
     # 実行（ブラウザで戻る）
     page.go_back()
     page.wait_for_url("**/spa/?tab=tasks*")
+    back = page.evaluate("decodeURIComponent(location.search)")
     # 検証
     assert opened == ("?tab=tasks&diff=V-1&search=1", before)
     assert typed == ("?tab=tasks&diff=V-1&search=1&q=画面", before)
     assert "D-1" in hits
     assert chosen == ("?tab=decisions&id=D-1&diff=V-1", before + 1)
-    expect(page.get_by_role("dialog", name="すべての項目を検索")).to_be_hidden()
+    assert back == "?tab=tasks&diff=V-1&search=1&q=画面"
     assert page.get_attribute(CURRENT_TAB, "data-tab") == "tasks"
 
 
