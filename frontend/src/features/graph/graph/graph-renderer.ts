@@ -115,7 +115,7 @@ const readColors = (): GraphColors => {
     label: read("--g-label"),
     line: read("--g-line"),
     dot: read("--g-dot"),
-    ring: read("--accent"),
+    ring: read("--mark"),
   };
 }
 
