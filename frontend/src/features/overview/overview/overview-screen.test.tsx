@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 
 import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
@@ -55,13 +55,11 @@ describe("OverviewScreen", () => {
   // ネットワークは今の画面へ（正常系）
   test("overview_screen_when_network", async () => {
     // 準備
-    const assign = vi.fn();
-    vi.stubGlobal("location", { ...window.location, assign });
     renderRoute("/spa/");
     // 実行
     await userEvent.click(await screen.findByRole("link", { name: /ネットワーク/ }));
     // 検証
-    expect(assign).toHaveBeenCalledWith("/mindstella.html#tab=graph");
-    vi.unstubAllGlobals();
+    await waitFor(() => expect(window.location.search).toBe("?tab=graph"));
+    expect(window.location.pathname).toBe("/spa/");
   });
 });

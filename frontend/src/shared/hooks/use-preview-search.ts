@@ -47,6 +47,10 @@ export type PreviewSearchApi = {
   openList: (tab: PreviewTab, patch: Patch) => void;
   /** 記録に合わない値を外した search へ置き換える */
   replaceSearch: (search: PreviewSearch) => void;
+  /** 全体の検索を開閉し、検索の言葉を書き換える（置き換える） */
+  setSearch: (patch: Pick<Patch, "search" | "q">) => void;
+  /** 全体の検索の結果の項目を、その種類の画面（`undefined` は概要）で開く。画面が今と違えば履歴に積み、同じなら置き換える。`diff` と左のパネルを残し、ほかの値を外す */
+  openFromSearch: (tab: PreviewTab | undefined, id: string) => void;
 };
 
 export const usePreviewSearch = (): PreviewSearchApi => {
@@ -106,6 +110,15 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     },
     replaceSearch: (next) => {
       void navigate({ search: next, replace: true, state: keepTrail });
+    },
+    setSearch: (patch) => {
+      apply(patch, true);
+    },
+    openFromSearch: (tab, id) => {
+      const { diff, panel, thread, review, tstatus, ttag } = search;
+      const next: PreviewSearch = { f: {}, tab, id, diff, panel, thread, review, tstatus, ttag };
+      const same = (tab ?? "overview") === (search.tab ?? "overview");
+      void navigate({ search: next, replace: same, state: (previous) => ({ ...previous, trail: { items: [id], position: 0 } }) });
     },
   };
 };

@@ -1,0 +1,40 @@
+id: MOD-489-252
+title: プレビュー / use-search-shortcut
+lead: '`Ctrl+K`（macOS は `Cmd+K`）で全体の検索を開く。'
+functions:
+  - name: useSearchShortcut
+    title: 全体の検索を開くキー
+    kind: フック
+    container: frontend/src/features/search/search/use-search-shortcut.ts
+    usecase: 項目を検索する
+    scope: public
+    summary: '`window` の `keydown` で `Ctrl+K`・`Cmd+K` を受け、ブラウザの既定の動きを止めて `onOpen` を呼ぶ。開いている間は受けない（開いている間の `Ctrl+K` は `SearchDialog` が既定の動きを止めて検索の言葉を選び直す）'
+    args:
+      - name: open
+        type: boolean
+        required: true
+        passing: keyword
+        description: 全体の検索を開いているか
+      - name: onOpen
+        type: () => void
+        required: true
+        passing: keyword
+        description: 開く
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_use_search_shortcut
+        case: 正常
+        summary: Ctrl+K で開く
+        condition: '`open: false` で `Ctrl+K` を押す'
+        mock: なし
+        expected: '`onOpen` が 1 回呼ばれ、既定の動きが止まる'
+      - name: test_use_search_shortcut_when_open
+        case: 正常
+        summary: 開いている間は受けない
+        condition: '`open: true` で `Ctrl+K` を押す'
+        mock: なし
+        expected: '`onOpen` が呼ばれない'
+notes:
+  単体テスト: 同じフォルダの `use-search-shortcut.test.tsx` に置く

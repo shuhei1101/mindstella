@@ -1,0 +1,79 @@
+id: MOD-489-247
+title: プレビュー / graph-model
+lead: ネットワークの玉と線、描く項目、絞る条件を求める。
+functions:
+  - name: buildGraph
+    title: ネットワークの玉と線
+    kind: 関数
+    container: frontend/src/features/graph/graph/graph-model.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: 渡した ID の項目を玉に、その間の関連（依存・関連・根拠・進めるタスク）を線にして返す（今の画面の `buildGraph` と同じ振る舞い）
+    args:
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+      - name: shownIds
+        type: Set<string>
+        required: true
+        passing: keyword
+        description: 絞り込みの条件に合う項目の ID
+    returns:
+      type: '{nodes: GraphNode[], links: GraphLink[]}'
+      description: '`links[].type` は `depends`・`related`・`source`・`for`。両端のどちらかが渡していない項目か記録に無い線は含めない'
+    unit_tests:
+      - name: test_build_graph
+        case: 正常
+        summary: 線の種類を分け、渡していない項目の線を落とす
+        condition: 'D-2（`depends_on: [D-1]`、`sources: [R-1]`）・T-1（`for: [D-1]`）・N-1（`related: [D-1]`）。`shownIds` から N-1 を外す'
+        mock: なし
+        expected: 線が `depends`（D-2→D-1）・`source`（D-2→R-1）・`for`（T-1→D-1）の 3 本で、N-1 とその線が無い
+  - name: graphConditions
+    title: ネットワークの条件
+    kind: 関数
+    container: frontend/src/features/graph/graph/graph-model.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: ネットワークで絞る条件（種類・状態・タグ）の定義を返す
+    returns:
+      type: '{key, label, get, order?}[]'
+      description: '`type`（検討事項・タスク・調査・資料・用語集・メモ・会話ログの順）・`status`（検討事項・タスク・資料の状態の順。状態を持たない項目は値無し）・`tags`（`tagNames` の名前）'
+    unit_tests:
+      - name: test_graph_conditions
+        case: 正常
+        summary: 種類・状態・タグの値を取る
+        condition: '未決定・タグ `[{name: a, main: true}]` の D-1 と、タグの無い N-1'
+        mock: なし
+        expected: D-1 は `検討事項`・`未決定`・`[a]`、N-1 は `メモ`・状態無し・`[]`
+  - name: shownGraphIds
+    title: ネットワークが描く項目
+    kind: 関数
+    container: frontend/src/features/graph/graph/graph-model.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: '`graphConditions` の条件と `filters` を `matchesFilters` で通る項目の ID を返す'
+    args:
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: keyword
+        description: 索引
+      - name: filters
+        type: Filters
+        required: true
+        passing: keyword
+        description: ネットワークの絞り込みの条件
+    returns:
+      type: Set<string>
+      description: 描く項目の ID
+    unit_tests:
+      - name: test_shown_graph_ids_when_status_filtered
+        case: 正常
+        summary: 状態を持たない項目は状態の条件で外れる
+        condition: '`{status: [未決定]}` で、未決定の D-1 と状態の無い N-1'
+        mock: なし
+        expected: D-1 だけ
+notes:
+  単体テスト: 同じフォルダの `graph-model.test.ts` に置く

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { normalizeSearch, parsePreviewSearch, parseSearchString, toLegacyHash, type PreviewSearch, type SearchContext } from "@/shared/core/preview-search";
+import { normalizeSearch, parsePreviewSearch, parseSearchString, type PreviewSearch, type SearchContext } from "@/shared/core/preview-search";
 import type { MindmapData } from "@/shared/core/records";
 import { buildIndex } from "@/shared/core/records";
 
@@ -130,22 +130,27 @@ describe("normalizeSearch", () => {
     expect(result.id).toBe("A-1");
     expect(result.h).toBeUndefined();
   });
-});
 
-describe("toLegacyHash", () => {
-  // 同じ名前で写す（正常系）
-  test("to_legacy_hash", () => {
+  // ネットワークは表示する種類によらず開き、表示形式を持たない（正常系）
+  test("normalize_search_when_graph", () => {
     // 実行
-    const hash = toLegacyHash(search({ tab: "decisions", view: "table", id: "D-1", diff: "V-1" }));
+    const result = normalizeSearch(search({ tab: "graph", view: "table" }), context({ visibleKinds: ["decisions"] }));
     // 検証
-    expect(hash).toEqual({ tab: "decisions", view: "table", id: "D-1", diff: "V-1" });
+    expect(result.tab).toBe("graph");
+    expect(result.view).toBeUndefined();
   });
 
-  // ネットワークは view を写さない（正常系）
-  test("to_legacy_hash_when_graph", () => {
+  // 検索を開いていない言葉（正常系）
+  test("normalize_search_when_query_without_search", () => {
+    expect(normalizeSearch(search({ q: "画面" }), context()).q).toBeUndefined();
+  });
+
+  // 空白だけの言葉（正常系）
+  test("normalize_search_when_query_blank", () => {
     // 実行
-    const hash = toLegacyHash(search({ tab: "decisions", view: "table", id: "D-1" }), "graph");
+    const result = normalizeSearch(search({ search: "1", q: " " }), context());
     // 検証
-    expect(hash).toEqual({ tab: "graph", id: "D-1" });
+    expect(result.search).toBe("1");
+    expect(result.q).toBeUndefined();
   });
 });

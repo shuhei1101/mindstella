@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -262,11 +263,93 @@ def test_normal_when_records_changed_with_item(make_workspace: MakeWorkspace, ma
     expect(panel.get_by_role("heading", name="書き換えた題")).to_be_visible()
 
 
-def test_normal_when_legacy_screen(page: Page, spa_preview: str) -> None:
-    """React に無いネットワークは今の画面を開く（正常系）。"""
-    open_spa(page, spa_preview, "?tab=tasks")
+def _served_with_commit(make_workspace: MakeWorkspace, call_tool: CallTool, *items: tuple[str, dict[str, Any]]) -> str:
+    """実際のツールで項目を足して `commit`（V-1）したワークスペースの配信の URL を返す。"""
+    root = make_workspace()
+    for kind, item in items:
+        added = call_tool("add", workspace=str(root), kind=kind, item=item)
+        assert added.is_error is False, added.text
+    committed = call_tool("commit", workspace=str(root), summary="最初の書き込み")
+    assert committed.is_error is False, committed.text
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    return str(served.data["url"])
+
+
+def _history_length(page: Page) -> int:
+    """ブラウザの履歴の数を返す。"""
+    length: int = page.evaluate("history.length")
+    return length
+
+
+def test_normal_when_graph(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
+    """タブの帯の右端のネットワークの入口で、`id` の項目を選んだネットワークを開き、`f.{列}` で描く玉を絞る（正常系）。"""
+    # 準備
+    decision = {"category": "データ構造", "phase": "要件", "target": "mindmap"}
+    url = _served_with_commit(
+        make_workspace,
+        call_tool,
+        ("decision", {**decision, "title": "記録の形", "status": "決定済み", "answer": "種類ごとに分ける", "options": [{"key": "A", "content": "種類ごとに分ける", "adopted": True}]}),
+        ("decision", {**decision, "title": "画面の幅", "status": "要見直し", "options": [{"key": "A", "content": "案 A"}]}),
+    )
+    console = watch_console(page)
+    open_spa(page, url, "?tab=decisions&view=table&id=D-1&diff=V-1")
+    before = _history_length(page)
+    # 実行（ネットワークの入口を押す）
     page.get_by_role("link", name="ネットワーク").click()
-    page.wait_for_url("**/mindstella.html#tab=graph")
+    page.wait_for_url("**/spa/?tab=graph*")
+    opened = (page.evaluate("location.pathname + location.search"), _history_length(page))
+    # 実行（絞り込みのドロワーで状態「要見直し」を選ぶ）
+    page.get_by_role("button", name="絞り込み").click()
+    page.get_by_role("dialog", name="絞り込み").get_by_role("checkbox", name=re.compile("^要見直し")).click()
+    page.wait_for_url(re.compile("f.status="))
+    # 検証
+    assert opened == (f"{SPA_ROOT_PATH}?tab=graph&id=D-1&diff=V-1", before + 1)
+    assert page.get_attribute(CURRENT_TAB, "data-tab") == "graph"
+    expect(page.get_by_role("complementary", name="詳細")).to_contain_text("記録の形")
+    assert page.evaluate("decodeURIComponent(location.search)") == "?tab=graph&id=D-1&diff=V-1&f.status=要見直し"
+    assert _history_length(page) == before + 1
+    expect(page.get_by_role("button", name="状態: 要見直し の条件を解除")).to_be_visible()
+    assert console.messages == []
+    assert console.exceptions == []
+
+
+def test_normal_when_search(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
+    """`Ctrl+K` で全体の検索を開き、検索の言葉にヒットした項目を選んで、その項目のタブと詳細パネルを開く（正常系）。"""
+    # 準備
+    url = _served_with_commit(
+        make_workspace,
+        call_tool,
+        ("decision", {"title": "画面の分け方", "status": "未決定", "category": "データ構造", "phase": "要件", "target": "mindmap", "options": [{"key": "A", "content": "案 A"}]}),
+        ("task", {"title": "決める", "kind": "作業", "status": "未着手"}),
+    )
+    open_spa(page, url, "?tab=tasks&diff=V-1")
+    before = _history_length(page)
+    # 実行（Ctrl+K を押す）
+    page.keyboard.press("Control+k")
+    search_box = page.get_by_role("textbox", name="検索キーワード")
+    expect(search_box).to_be_focused()
+    opened = (page.evaluate("location.search"), _history_length(page))
+    # 実行（「画面」と入力する）
+    search_box.fill("画面")
+    page.wait_for_url(re.compile("q="))
+    typed = (page.evaluate("decodeURIComponent(location.search)"), _history_length(page))
+    hits = page.get_by_role("listbox", name="検索の結果").inner_text()
+    # 実行（D-1 を押す）
+    page.get_by_role("option").filter(has_text="D-1").click()
+    page.wait_for_url("**/spa/?tab=decisions*")
+    chosen = (page.evaluate("location.search"), _history_length(page))
+    # 実行（ブラウザで戻る）
+    page.go_back()
+    page.wait_for_url("**/spa/?tab=tasks*")
+    back = page.evaluate("decodeURIComponent(location.search)")
+    # 検証
+    assert opened == ("?tab=tasks&diff=V-1&search=1", before)
+    assert typed == ("?tab=tasks&diff=V-1&search=1&q=画面", before)
+    assert "D-1" in hits
+    assert chosen == ("?tab=decisions&id=D-1&diff=V-1", before + 1)
+    assert back == "?tab=tasks&diff=V-1&search=1&q=画面"
+    assert page.get_attribute(CURRENT_TAB, "data-tab") == "tasks"
 
 
 def test_normal_when_edits_saved(page: Page, spa_preview: str) -> None:

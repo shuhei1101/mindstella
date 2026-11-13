@@ -1,8 +1,15 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
+import { stubRecords } from "@/testing/msw/fixtures";
+import { RECORDS } from "@/testing/msw/handlers";
 import { renderRoute } from "@/testing/render";
+
+// キャンバスは jsdom で描けないため、ネットワークの描画を差し替える
+vi.mock("@/features/graph/graph/components/graph-canvas", () => ({
+  GraphCanvas: () => <canvas id="graph-canvas" aria-label="ネットワーク" />,
+}));
 
 describe("PreviewShell", () => {
   // tab の画面を描く（正常系）
@@ -64,5 +71,55 @@ describe("PreviewShell", () => {
     renderRoute("/spa/?panel=display");
     // 検証
     expect(await screen.findByRole("dialog", { name: "表示の設定" })).toBeInTheDocument();
+  });
+
+  // ネットワークの入口で SPA の中のネットワークを開く（正常系）
+  test("preview_shell_when_graph", async () => {
+    // 準備
+    renderRoute("/spa/?tab=decisions&id=D-1");
+    // 実行
+    await userEvent.click(await screen.findByRole("link", { name: /ネットワーク/ }));
+    // 検証
+    expect(await screen.findByLabelText("ネットワーク")).toBeInTheDocument();
+    await waitFor(() => expect(window.location.search).toBe("?tab=graph&id=D-1"));
+    expect(window.location.pathname).toBe("/spa/");
+  });
+
+  // 検索の結果から項目を開く（正常系）
+  test("preview_shell_when_search", async () => {
+    // 準備
+    stubRecords({ changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "", until_seq: 1, added: ["D-1"], changed: [], removed: [] }], pending: { added: [], changed: [] } } });
+    renderRoute("/spa/?tab=tasks&search=1&q=D-1%E3%81%AE%E9%A1%8C&diff=V-1");
+    const before = window.history.length;
+    // 実行
+    await userEvent.click(await screen.findByRole("option", { name: /D-1の題/ }));
+    // 検証
+    await waitFor(() => expect(window.location.search).toBe("?tab=decisions&id=D-1&diff=V-1"));
+    expect(screen.queryByRole("dialog", { name: /検索/ })).not.toBeInTheDocument();
+    expect(window.history.length).toBe(before + 1);
+  });
+
+  // 同じ画面の項目は履歴に積まずに詳細パネルを開く（正常系）
+  test("preview_shell_when_search_same_tab", async () => {
+    // 準備
+    renderRoute("/spa/?tab=decisions&view=table&search=1&q=D-1%E3%81%AE%E9%A1%8C");
+    const before = window.history.length;
+    // 実行
+    await userEvent.click(await screen.findByRole("option", { name: /D-1の題/ }));
+    // 検証
+    await waitFor(() => expect(window.location.search).toBe("?tab=decisions&id=D-1"));
+    expect(window.history.length).toBe(before);
+  });
+
+  // 表示しない種類の項目は概要で開く（正常系）
+  test("preview_shell_when_search_hidden_kind", async () => {
+    // 準備
+    stubRecords({ settings: { ...RECORDS.settings, display: { visible_kinds: ["decisions", "tasks"] } }, notes: [{ id: "N-1", title: "N-1のメモ" }] });
+    renderRoute("/spa/?tab=tasks&search=1&q=N-1%E3%81%AE%E3%83%A1%E3%83%A2");
+    // 実行
+    await userEvent.click(await screen.findByRole("option", { name: /N-1のメモ/ }));
+    // 検証
+    await waitFor(() => expect(window.location.search).toBe("?id=N-1"));
+    expect(await screen.findByRole("complementary", { name: /詳細/ })).toBeInTheDocument();
   });
 });

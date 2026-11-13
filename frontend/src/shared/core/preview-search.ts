@@ -1,4 +1,4 @@
-// SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理、今の画面へ写すハッシュ
+// SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理
 import { z } from "zod";
 
 import { bodyFormatOf, type Kind, type RecordIndex } from "@/shared/core/records";
@@ -8,12 +8,13 @@ const VIEWS_OF_TAB: Record<string, readonly string[]> = {
   decisions: ["board", "map", "table"],
   tasks: ["board", "table"],
   docs: ["cards", "board", "table"],
+  graph: [],
 };
 
 const F_PREFIX = "f.";
 
 export const PreviewSearchSchema = z.object({
-  tab: z.enum(["overview", "decisions", "tasks", "research", "docs", "terms", "notes", "logs", "settings"]).optional().catch(undefined),
+  tab: z.enum(["overview", "decisions", "tasks", "research", "docs", "terms", "notes", "logs", "graph", "settings"]).optional().catch(undefined),
   view: z.enum(["map", "board", "cards", "table"]).optional().catch(undefined),
   id: z.string().regex(/^[DTRAGNL]-\d+$/).optional().catch(undefined),
   full: z.enum(["1"]).optional().catch(undefined),
@@ -25,6 +26,8 @@ export const PreviewSearchSchema = z.object({
   review: z.enum(["1"]).optional().catch(undefined),
   tstatus: z.enum(["closed", "all"]).optional().catch(undefined),
   ttag: z.string().optional().catch(undefined),
+  search: z.enum(["1"]).optional().catch(undefined),
+  q: z.string().optional().catch(undefined),
   f: z.record(z.string(), z.string()).catch({}),
 });
 
@@ -95,7 +98,7 @@ const diffExists = (diff: string, index: RecordIndex): boolean => {
 export const normalizeSearch = (search: PreviewSearch, context: SearchContext): PreviewSearch => {
   const { index, pendingCount, visibleKinds, diffActive, sortColumns, threadIds, threadTags } = context;
   const next: PreviewSearch = { ...search };
-  const hidden = next.tab !== undefined && next.tab !== "overview" && next.tab !== "settings" && !visibleKinds.includes(next.tab);
+  const hidden = next.tab !== undefined && next.tab !== "overview" && next.tab !== "settings" && next.tab !== "graph" && !visibleKinds.includes(next.tab);
   if (hidden || (next.tab === "settings" && diffActive)) delete next.tab;
   if (next.view !== undefined && !(VIEWS_OF_TAB[next.tab ?? ""] ?? ["table"]).includes(next.view)) delete next.view;
   const entry = next.id === undefined ? undefined : index.byId.get(next.id);
@@ -118,11 +121,6 @@ export const normalizeSearch = (search: PreviewSearch, context: SearchContext): 
     delete next.tstatus;
     delete next.ttag;
   }
+  if (next.search === undefined || next.q?.trim() === "") delete next.q;
   return next;
-};
-
-/** 今の画面のハッシュの引数にする。ネットワークは `view` を写さない */
-export const toLegacyHash = (search: PreviewSearch, tab: string | undefined = search.tab): Record<string, string> => {
-  const hash: Record<string, string | undefined> = { tab, view: tab === "graph" ? undefined : search.view, id: search.id, full: search.full, diff: search.diff };
-  return Object.fromEntries(Object.entries(hash).filter((entry): entry is [string, string] => entry[1] !== undefined));
 };

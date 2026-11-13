@@ -1,16 +1,16 @@
 id: MOD-489-120
 title: プレビュー / preview-search
-lead: SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理、今の画面へ写すハッシュ。
+lead: SPA の search params（インターフェース定義『SPAを開く』の request）の Zod スキーマと、記録に合わない値を外す処理。
 data_models:
   - name: PreviewSearchSchema
     title: プレビューの search
     usecase: SPAを開く
     role: Zod スキーマ
-    summary: '`tab`・`view`・`id`・`full`・`h`・`diff`・`sort`・`panel`・`thread`・`review`・`tstatus`・`ttag` と `f.{列}`。合わない値は既定に落とす'
+    summary: '`tab`・`view`・`id`・`full`・`h`・`diff`・`sort`・`panel`・`thread`・`review`・`tstatus`・`ttag`・`search`・`q` と `f.{列}`。合わない値は既定に落とす'
     properties:
       - name: tab
         type: PreviewTab | undefined
-        description: 開く画面
+        description: 開く画面（`graph` はネットワーク）
       - name: view
         type: '''map'' | ''board'' | ''cards'' | ''table'' | undefined'
         description: 表示形式
@@ -44,6 +44,12 @@ data_models:
       - name: ttag
         type: string | undefined
         description: スレッドを絞るタグ
+      - name: search
+        type: '''1'' | undefined'
+        description: 全体の検索を開いているか
+      - name: q
+        type: string | undefined
+        description: 全体の検索の言葉
       - name: f
         type: Record<string, string>
         description: '`f.{列}` の引数'
@@ -101,7 +107,7 @@ functions:
     title: 記録に合わせた search
     kind: 関数
     usecase: SPAを開く
-    summary: 表示しない種類の `tab`、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`、スレッドにもまだ送っていない新しいスレッドにも無い `thread`、どのスレッドにも無い `ttag` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
+    summary: 表示しない種類の `tab`（`graph` は外さない）、差分の表示中の `settings`・`panel=pending`、画面が持たない `view`、記録に無い `id`・`diff`、`id` の無い `full`・`h`、本文が HTML の資料の `h`、表に無い `sort`、0 件の `panel=pending` を外す。`panel` が `comments` でないときの `thread`・`review`・`tstatus`・`ttag`、スレッドにもまだ送っていない新しいスレッドにも無い `thread`、どのスレッドにも無い `ttag` を外す。`search` が無いときと前後の空白を除いて空のときの `q` を外す。本文に無い見出しは本文を描いた後に決まるため、部品『BodyView』が外す
     args:
       - name: search
         type: PreviewSearch
@@ -187,38 +193,24 @@ functions:
         condition: '`{panel: ''comments'', ttag: ''無いタグ''}`'
         mock: なし
         expected: '`ttag` が無い'
-    container: frontend/src/shared/core/preview-search.ts
-  - name: toLegacyHash
-    title: 今の画面へ写すハッシュ
-    kind: 関数
-    usecase: SPAを開く
-    summary: 制約「React に無い画面」のとおり `tab`・`view`・`id`・`full`・`diff` を写す。`graph` は `view` を写さない
-    args:
-      - name: search
-        type: PreviewSearch
-        required: true
-        description: 今の search
-      - name: tab
-        type: string
-        required: false
-        description: 開く今の画面の `tab`
-        default: search の `tab`
-    returns:
-      type: Record<string, string>
-      description: '`toLegacyUrl` へ渡す引数'
-    unit_tests:
-      - name: test_to_legacy_hash
+      - name: test_normalize_search_when_graph
         case: 正常
-        summary: 同じ名前で写す
-        condition: '`{tab: ''decisions'', view: ''table'', id: ''D-1'', diff: ''V-1''}`'
+        summary: ネットワークは表示する種類によらず開き、表示形式を持たない
+        condition: '`{tab: ''graph'', view: ''table''}` と `visibleKinds` が decisions だけ'
         mock: なし
-        expected: 同じキーと値
-      - name: test_to_legacy_hash_when_graph
+        expected: '`tab` が `graph` で `view` が無い'
+      - name: test_normalize_search_when_query_without_search
         case: 正常
-        summary: ネットワークは view を写さない
-        condition: '`tab` に `graph`'
+        summary: 検索を開いていない言葉
+        condition: '`{q: ''画面''}`'
         mock: なし
-        expected: '`tab=graph` で `view` が無い'
+        expected: '`q` が無い'
+      - name: test_normalize_search_when_query_blank
+        case: 正常
+        summary: 空白だけの言葉
+        condition: '`{search: ''1'', q: '' ''}`'
+        mock: なし
+        expected: '`search` だけが残る'
     container: frontend/src/shared/core/preview-search.ts
 notes:
   単体テスト: 同じフォルダの `preview-search.test.ts` に置く（knowledge の規約『フォルダ構成』）

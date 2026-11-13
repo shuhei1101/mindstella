@@ -1,0 +1,68 @@
+id: MOD-489-244
+title: プレビュー / graph-screen
+lead: 画面設計『ネットワーク.tsx』の要素と操作を描く。
+components:
+  - name: GraphScreen
+    title: ネットワークの画面
+    kind: 画面
+    container: frontend/src/features/graph/graph/graph-screen.tsx
+    usecase: ネットワークを辿る
+    summary: search の `id`・`f.{列}` と記録から、条件のチップ・3D のキャンバス・見た目のドロップダウン・条件に合う項目が無い旨・絞り込みのドロワーを組む
+    description: |-
+      - 描く項目は `shownGraphIds`、玉と線は `buildGraph` で、記録と条件が変わったときだけ作る
+      - 絞り込みの条件は `useScreenFilters("graph")` で読み書きし、条件のチップと絞り込みのドロワー（`FilterDrawer`）の条件は `graphConditions` から組む
+      - 見た目は `usePrefs().look`、無ければ `settings.display.network_look`、それも無ければ `deep` を当て、ドロップダウンで選んだ値を `writePrefs({look})` で残す
+      - ロックは `useGraphLock` から読み、玉か余白を押したら `lockTap`（押した項目・詳細を開いている項目・ロック）の結果で、ロックを書き換えて `openItem` で `id` を書き換えるか、`blank` で `id` を外すか、`shake` でキャンバスの鍵を震わせる。幅 900px 以下では `lockTap` を通さず押した項目を開く
+      - 効いているロックは、ロックした項目が `shownGraphIds` に入っているときだけその ID にする（絞り込みで描かれていない間はロックを保ったまま効かせない）
+      - `L` キーは `window` の `keydown` を `useEffect` で受け、修飾キー付き・`isTyping`・変換中（`isComposing`）・重ねる面（開いている `role="dialog"`・ポップオーバー（`:popover-open` と、見た目のドロップダウンの一覧を含む開いている `role="listbox"`））のときと幅 900px 以下を除いて、詳細を開いている項目を押したのと同じ `lockTap` にする。詳細を開いていないときは何もしない
+    props:
+      - name: drawerOpen
+        type: boolean
+        required: true
+        description: 絞り込みのドロワーを開いているか（外枠が持つ）
+      - name: onCloseDrawer
+        type: () => void
+        required: true
+        description: ドロワーを閉じる
+    refs:
+      - SCR-489-35#
+      - IF-489-70#
+    unit_tests:
+      - name: test_graph_screen
+        case: 正常
+        summary: キャンバスと見た目のドロップダウンを描く
+        condition: '`?tab=graph` で D-1・T-1 の記録を返す'
+        mock: MSW
+        expected: '`graph-canvas` のキャンバスと、「ネットワークの見た目」のドロップダウンで既定の `deep` が選ばれている'
+      - name: test_graph_screen_when_filtered_empty
+        case: 正常
+        summary: 条件に合う項目が無い
+        condition: '`?tab=graph&f.tags=無いタグ`'
+        mock: MSW
+        expected: 「表示する項目はありません。」が出る
+      - name: test_graph_screen_when_look_selected
+        case: 正常
+        summary: 見た目を選ぶと端末に残す
+        condition: ドロップダウンで「星図」を選ぶ
+        mock: MSW
+        expected: '`readPrefs().look` が `constellation` で、記録の取得を呼び直していない'
+      - name: test_graph_screen_when_lock_tapped
+        case: 正常
+        summary: 詳細を開いている項目を押すとロックする
+        condition: '`?tab=graph&id=D-1` で D-1 の玉を押す'
+        mock: MSW
+        expected: '`useGraphLock` の値が D-1 で、URL の `id` が D-1 のまま'
+      - name: test_graph_screen_when_lock_key
+        case: 正常
+        summary: L キーでロックを外す
+        condition: '`?tab=graph&id=D-1` で D-1 をロックした後に `L` を押す'
+        mock: MSW
+        expected: '`useGraphLock` の値が `null`'
+      - name: test_graph_screen_when_lock_key_typing
+        case: 正常
+        summary: 入力欄では L キーを受けない
+        condition: 絞り込みのドロワーの文字の欄にフォーカスして `L` を押す
+        mock: MSW
+        expected: '`useGraphLock` の値が変わらない'
+notes:
+  単体テスト: 同じフォルダの `graph-screen.test.tsx` に置く（knowledge の規約『フォルダ構成』）。玉の位置はキャンバスの外から決まらないため、玉を押すテストは `GraphCanvas` の `onPress` を直接呼ぶ

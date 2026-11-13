@@ -1,0 +1,80 @@
+id: MOD-489-246
+title: プレビュー / graph-renderer
+lead: 今の画面の `graph.ts` の視点・操作・毎コマの描画を、React に依存しない描画として移す。
+data_models:
+  - name: GraphRenderer
+    title: ネットワークの描画
+    container: frontend/src/features/graph/graph/graph-renderer.ts
+    usecase: ネットワークを辿る
+    role: 外のシステムとのつなぎ目
+    summary: 描画を差し替える関数の組
+    properties:
+      - name: setGraph
+        type: '(input: {graph: {nodes, links}, index: RecordIndex}) => void'
+        description: 玉と線を作り直す。玉ごとの名前（項目のタイトル）・状態の印（`status`）・資料の成果物の印は `index` から引いて玉に付ける。記録か条件が変わったときに呼び、視点は全体が収まる向きと距離に戻す
+      - name: setLook
+        type: '(look: NetworkLook) => void'
+        description: 次のコマからその見た目で描く。玉・線・視点・選んだ項目・ロックは変えない
+      - name: setTheme
+        type: "(theme: 'light' | 'dark') => void"
+        description: 次のコマからそのライト / ダークで描く
+      - name: setFocus
+        type: '(focus: {selectedId, lockedId}) => void'
+        description: 注目の起点（ロック、無ければ詳細の項目）へ寄り、つながる玉を強調する
+      - name: setComments
+        type: '(counts: Record<string, number>) => void'
+        description: 名前の横のコメントの印の件数を差し替える
+      - name: shake
+        type: () => void
+        description: 閉じた鍵の震えを今から始める（`shakeAt` の量を毎コマ当てる）
+      - name: destroy
+        type: () => void
+        description: '`requestAnimationFrame` とリスナーを外す'
+functions:
+  - name: createGraphRenderer
+    title: ネットワークの描画の開始
+    kind: 関数
+    container: frontend/src/features/graph/graph/graph-renderer.ts
+    usecase: ネットワークを辿る
+    scope: public
+    summary: キャンバスと重ねる層を受け取り、視点を全体が収まる向きと距離にして毎コマの描画を始める
+    description: |-
+      今の画面のモジュール構成『画面と部品 / graph.ts』の `graphScreen` の描画と操作を、同じ値で移す。
+      - 毎コマ、玉と線の画面の位置・大きさ・濃さを求めて `LookFrame` にまとめ、`drawLook` で描かせてから、名前（玉ごとに一度だけ画像にした文字。色は `lookLabelColor`）・状態の印・鍵を重ねる。`reducedMotion` には毎コマ `matchMedia("(prefers-reduced-motion: reduce)")` の結果を入れ、真のときは操作が止まった後の自動の回転もしない
+      - 名前の横のコメントの印は重ねる層の要素として置き、名前が 8px 未満の玉と、名前と印が描く枠に収まらない玉には置かない
+      - ドラッグで回す・ホイールでマウスの位置へ寄る・背景のダブルクリックで戻る・離すと慣性で止まる、カーソルを乗せた玉につながる玉を距離の 1 割ほど寄せる
+      - 押した位置の玉（無ければ `null`）を `onPress` へ渡す。幅 901px 以上では 2 回押しを `resolvePress` で読み替える
+    args:
+      - name: canvas
+        type: HTMLCanvasElement
+        required: true
+        passing: keyword
+        description: 描くキャンバス
+      - name: overlay
+        type: HTMLElement
+        required: true
+        passing: keyword
+        description: コメントの印を重ねる層
+      - name: onPress
+        type: '(id: string | null) => void'
+        required: true
+        passing: keyword
+        description: 玉か余白を押した
+    returns:
+      type: GraphRenderer
+      description: 描画を差し替える関数の組
+    unit_tests:
+      - name: test_create_graph_renderer_when_destroyed
+        case: 正常
+        summary: 止めた後はコマを描かない
+        condition: '`requestAnimationFrame` を差し替えて作り、`destroy` を呼ぶ'
+        mock: '`requestAnimationFrame`・`cancelAnimationFrame`（`vi.stubGlobal`）'
+        expected: '`cancelAnimationFrame` が呼ばれ、その後のコマの関数が登録されない'
+      - name: test_create_graph_renderer_when_pressed
+        case: 正常
+        summary: 余白を押すと null を渡す
+        condition: 玉の無い位置で `pointerdown`・`pointerup`
+        mock: '`requestAnimationFrame`（`vi.stubGlobal`）'
+        expected: '`onPress(null)` が 1 回呼ばれる'
+notes:
+  単体テスト: 同じフォルダの `graph-renderer.test.ts` に置く。視点の動きと描いた見た目は結合テスト（画面設計『ネットワーク.tsx』）が確かめる

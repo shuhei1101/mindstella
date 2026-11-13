@@ -55,6 +55,21 @@
   --radius: 4px;
   --control-h: 32px;
   --target-min: 24px;
+  /* 項目の種類の色（ネットワークの玉。今の画面の tokens.css と同じ値） */
+  --kind-dec-light: #3f8f7c;
+  --kind-dec-dark: #7ee0c3;
+  --kind-task-light: #5b7fc9;
+  --kind-task-dark: #8fb4ff;
+  --kind-res-light: #c08a3e;
+  --kind-res-dark: #f5c37a;
+  --kind-doc-light: #8a6fc4;
+  --kind-doc-dark: #c9b2ff;
+  --kind-term-light: #5f6873;
+  --kind-term-dark: #b6bfcc;
+  --kind-note-light: #a48466;
+  --kind-note-dark: #c7a98d;
+  --kind-log-light: #b9bec5;
+  --kind-log-dark: #6f7782;
 }
 
 /* ===== セマンティック: ライト（明暗の既定は端末の設定に従う） ===== */
@@ -98,6 +113,17 @@
   /* トップバーの上の失敗と未読の点（明暗どちらでも暗い帯の上で読める色） */
   --topbar-danger: var(--red-300);
   --topbar-unread: var(--teal-400);
+  /* ネットワークの玉・名前・線・流れる点 */
+  --k-dec: var(--kind-dec-light);
+  --k-task: var(--kind-task-light);
+  --k-res: var(--kind-res-light);
+  --k-doc: var(--kind-doc-light);
+  --k-term: var(--kind-term-light);
+  --k-note: var(--kind-note-light);
+  --k-log: var(--kind-log-light);
+  --g-label: #2a2f36;
+  --g-line: rgba(30, 60, 55, .3);
+  --g-dot: #2f8a74;
 }
 
 /* ===== セマンティック: ダーク ===== */
@@ -138,6 +164,16 @@
     --topbar-fg-2: var(--zinc-400);
     --topbar-line: var(--ink-400);
     --topbar-hover: var(--ink-250);
+    --k-dec: var(--kind-dec-dark);
+    --k-task: var(--kind-task-dark);
+    --k-res: var(--kind-res-dark);
+    --k-doc: var(--kind-doc-dark);
+    --k-term: var(--kind-term-dark);
+    --k-note: var(--kind-note-dark);
+    --k-log: var(--kind-log-dark);
+    --g-label: #e3e6ea;
+    --g-line: rgba(190, 230, 220, .3);
+    --g-dot: #a0f0d7;
   }
 }
 
@@ -179,6 +215,16 @@
   --topbar-fg-2: var(--zinc-400);
   --topbar-line: var(--ink-400);
   --topbar-hover: var(--ink-250);
+  --k-dec: var(--kind-dec-dark);
+  --k-task: var(--kind-task-dark);
+  --k-res: var(--kind-res-dark);
+  --k-doc: var(--kind-doc-dark);
+  --k-term: var(--kind-term-dark);
+  --k-note: var(--kind-note-dark);
+  --k-log: var(--kind-log-dark);
+  --g-label: #e3e6ea;
+  --g-line: rgba(190, 230, 220, .3);
+  --g-dot: #a0f0d7;
 }
 
 /* ライトに固定したとき */

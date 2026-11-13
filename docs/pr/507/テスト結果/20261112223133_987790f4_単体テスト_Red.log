@@ -1,0 +1,1527 @@
+$ npx vitest run frontend/src/features/graph frontend/src/features/search frontend/src/shared/core/preview-search.test.ts frontend/src/app/preview-shell.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search
+
+ ❯ frontend/src/features/graph/graph/graph-screen.test.tsx (0 test)
+ ❯ frontend/src/features/graph/graph/graph-renderer.test.ts (0 test)
+ ❯ frontend/src/features/graph/graph/looks.test.ts (0 test)
+ ❯ frontend/src/features/graph/graph/graph-model.test.ts (0 test)
+ ❯ frontend/src/shared/core/preview-search.test.ts (18 tests | 3 failed) 19ms
+   ❯ normalizeSearch (15)
+     × normalize_search_when_graph 3ms
+     × normalize_search_when_query_without_search 1ms
+     × normalize_search_when_query_blank 0ms
+ ❯ frontend/src/features/graph/graph/store.test.tsx (0 test)
+ ❯ frontend/src/features/search/search/use-search-shortcut.test.tsx (0 test)
+ ❯ frontend/src/features/search/search/search-dialog.test.tsx (0 test)
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/features/graph/graph/components/graph-canvas.test.tsx (0 test)
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: navigation to another Document
+Not implemented: Window's scrollTo() method
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_graph
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+ ❯ frontend/src/app/preview-shell.test.tsx (11 tests | 4 failed) 4956ms
+   ❯ PreviewShell (11)
+     × preview_shell_when_graph 1090ms
+     × preview_shell_when_search 1009ms
+     × preview_shell_when_search_same_tab 1013ms
+     × preview_shell_when_search_hidden_kind 1007ms
+ ❯ frontend/src/features/graph/graph/components/look-select.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/features/graph/graph/graph-model.test.ts [ frontend/src/features/graph/graph/graph-model.test.ts ]
+Error: Failed to resolve import "@/features/graph/graph/graph-model" from "frontend/src/features/graph/graph/graph-model.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/graph-model.test.ts:3:59
+  1  |  import { describe, expect, test } from "vitest";
+  2  |  import { buildGraph, graphConditions, shownGraphIds } from "@/features/graph/graph/graph-model";
+     |                                                              ^
+  3  |  import { buildIndex } from "@/shared/core/records";
+  4  |  /** 種類ごとの項目を持つ記録を作る（持たない種類は空） */
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  frontend/src/features/graph/graph/graph-renderer.test.ts [ frontend/src/features/graph/graph/graph-renderer.test.ts ]
+Error: Failed to resolve import "@/features/graph/graph/graph-renderer" from "frontend/src/features/graph/graph/graph-renderer.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/graph-renderer.test.ts:3:36
+  1  |  import { afterEach, describe, expect, test, vi } from "vitest";
+  2  |  import { createGraphRenderer } from "@/features/graph/graph/graph-renderer";
+     |                                       ^
+  3  |  import { createRecordingContext } from "@/testing/fake-canvas";
+  4  |  afterEach(() => {
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  frontend/src/features/graph/graph/graph-screen.test.tsx [ frontend/src/features/graph/graph/graph-screen.test.tsx ]
+Error: Failed to resolve import "@/features/graph/graph/store" from "frontend/src/features/graph/graph/graph-screen.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/graph-screen.test.tsx:6:0
+  12 |  const __vi_import_0__ = await import("@testing-library/react");
+  13 |  const __vi_import_1__ = await import("@testing-library/user-event");
+  14 |  const __vi_import_2__ = await import("@/features/graph/graph/store");
+     |                                       ^
+  15 |  const __vi_import_3__ = await import("@/shared/stores/prefs-store");
+  16 |  const __vi_import_4__ = await import("@/testing/msw/server");
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  frontend/src/features/graph/graph/looks.test.ts [ frontend/src/features/graph/graph/looks.test.ts ]
+Error: Failed to resolve import "@/features/graph/graph/looks" from "frontend/src/features/graph/graph/looks.test.ts". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/looks.test.ts:3:103
+  1  |  import { afterEach, describe, expect, test, vi } from "vitest";
+  2  |  import { bakeGlow, drawLook, lookLabelColor, midColor } from "@/features/graph/graph/looks";
+     |                                                                ^
+  3  |  import { createRecordingContext } from "@/testing/fake-canvas";
+  4  |  const LOOKS = [
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  frontend/src/features/graph/graph/store.test.tsx [ frontend/src/features/graph/graph/store.test.tsx ]
+Error: Failed to resolve import "@/features/graph/graph/store" from "frontend/src/features/graph/graph/store.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/store.test.tsx:4:29
+  1  |  import { act, render } from "@testing-library/react";
+  2  |  import { describe, expect, test } from "vitest";
+  3  |  import { useGraphLock } from "@/features/graph/graph/store";
+     |                                ^
+  4  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/...
+  5  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  frontend/src/features/search/search/search-dialog.test.tsx [ frontend/src/features/search/search/search-dialog.test.tsx ]
+Error: Failed to resolve import "@/features/search/search/search-dialog" from "frontend/src/features/search/search/search-dialog.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/search/search/search-dialog.test.tsx:5:29
+  2  |  import userEvent from "@testing-library/user-event";
+  3  |  import { describe, expect, test, vi } from "vitest";
+  4  |  import { SearchDialog } from "@/features/search/search/search-dialog";
+     |                                ^
+  5  |  import { buildIndex } from "@/shared/core/records";
+  6  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/...
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  frontend/src/features/search/search/use-search-shortcut.test.tsx [ frontend/src/features/search/search/use-search-shortcut.test.tsx ]
+Error: Failed to resolve import "@/features/search/search/use-search-shortcut" from "frontend/src/features/search/search/use-search-shortcut.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/search/search/use-search-shortcut.test.tsx:4:34
+  1  |  import { fireEvent, render } from "@testing-library/react";
+  2  |  import { describe, expect, test, vi } from "vitest";
+  3  |  import { useSearchShortcut } from "@/features/search/search/use-search-shortcut";
+     |                                     ^
+  4  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/...
+  5  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  frontend/src/features/graph/graph/components/graph-canvas.test.tsx [ frontend/src/features/graph/graph/components/graph-canvas.test.tsx ]
+Error: Failed to resolve import "@/features/graph/graph/components/graph-canvas" from "frontend/src/features/graph/graph/components/graph-canvas.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/components/graph-canvas.test.tsx:4:0
+  1  |  vi.mock("@/features/graph/graph/graph-renderer", () => ({ createGraphRenderer: vi.fn() }));
+  2  |  const __vi_import_0__ = await import("@testing-library/react");
+  3  |  const __vi_import_1__ = await import("@/features/graph/graph/components/graph-canvas");
+     |                                       ^
+  4  |  const __vi_import_2__ = await import("@/features/graph/graph/graph-renderer");
+  5  |  const __vi_import_3__ = await import("@/shared/core/records");
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  frontend/src/features/graph/graph/components/look-select.test.tsx [ frontend/src/features/graph/graph/components/look-select.test.tsx ]
+Error: Failed to resolve import "@/features/graph/graph/components/look-select" from "frontend/src/features/graph/graph/components/look-select.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/src/features/graph/graph/components/look-select.test.tsx:6:27
+  3  |  import { render } from "@testing-library/react";
+  4  |  import { describe, expect, test, vi } from "vitest";
+  5  |  import { LookSelect } from "@/features/graph/graph/components/look-select";
+     |                              ^
+  6  |  var _jsxFileName = "/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/refactor-preview-react-network-search/frontend/...
+  7  |  import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26423:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26493:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26459:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19988:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_graph
+TestingLibraryElementError: Unable to find a label with the text of: ネットワーク
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="false"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBo...
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="false"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBo...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/app/preview-shell.test.tsx:83:25
+     81|     await userEvent.click(await screen.findByRole("link", { name: /ネット…
+     82|     // 検証
+     83|     expect(await screen.findByLabelText("ネットワーク")).toBeInTheDocument();
+       |                         ^
+     84|     await waitFor(() => expect(window.location.search).toBe("?tab=grap…
+     85|     expect(window.location.pathname).toBe("/spa/");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search
+TestingLibraryElementError: Unable to find role="option" and name `/D-1の題/`
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-xl:gap-2 max-sm:gap-2 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5 max-xs:hidden"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xl:hidden max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0 max-xl:hidden"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:flex-none max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="inline-flex h-8 chip-width items-center gap-0.5 rounded-control bg-topbar-fg pr-0.5 pl-2.5 text-small font-semibold text-topbar-bg max-xl:chip-width-narrow"
+          >
+            <span
+              class="truncate"
+              title="（11/01 09:00）"
+            >
+              <span
+                class="sr-only"
+              >
+                差分の時点: 
+              </span>
+            </span>
+            <button
+              aria-label="差分の表示をやめる"
+              class="grid size-7 flex-none cursor-pointer place-items-center rounded-control hover:bg-topbar-chip-hover"
+              title="差分の表示をやめる"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-curr...
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-xl:gap-2 max-sm:gap-2 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5 max-xs:hidden"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xl:hidden max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0 max-xl:hidden"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:flex-none max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="inline-flex h-8 chip-width items-center gap-0.5 rounded-control bg-topbar-fg pr-0.5 pl-2.5 text-small font-semibold text-topbar-bg max-xl:chip-width-narrow"
+          >
+            <span
+              class="truncate"
+              title="（11/01 09:00）"
+            >
+              <span
+                class="sr-only"
+              >
+                差分の時点: 
+              </span>
+            </span>
+            <button
+              aria-label="差分の表示をやめる"
+              class="grid size-7 flex-none cursor-pointer place-items-center rounded-control hover:bg-topbar-chip-hover"
+              title="差分の表示をやめる"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="size-4 flex-none fill-none stroke-curr...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/app/preview-shell.test.tsx:95:40
+     93|     const before = window.history.length;
+     94|     // 実行
+     95|     await userEvent.click(await screen.findByRole("option", { name: /D…
+       |                                        ^
+     96|     // 検証
+     97|     await waitFor(() => expect(window.location.search).toBe("?tab=deci…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search_same_tab
+TestingLibraryElementError: Unable to find role="option" and name `/D-1の題/`
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="false"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBo...
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="false"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBo...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/app/preview-shell.test.tsx:108:40
+    106|     const before = window.history.length;
+    107|     // 実行
+    108|     await userEvent.click(await screen.findByRole("option", { name: /D…
+       |                                        ^
+    109|     // 検証
+    110|     await waitFor(() => expect(window.location.search).toBe("?tab=deci…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/16]⎯
+
+ FAIL  frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search_hidden_kind
+TestingLibraryElementError: Unable to find role="option" and name `/N-1のメモ/`
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="false"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBo...
+
+Ignored nodes: comments, script, style
+<body
+  style=""
+>
+  <div>
+    <div
+      class="flex h-dvh flex-col"
+    >
+      <div>
+        <header
+          class="relative z-30 flex h-13 items-center gap-4 bg-topbar-bg px-5 text-topbar-fg sm:max-lg:gap-2 max-sm:gap-0.75 max-sm:px-2.5 max-xs:gap-px max-xs:px-2"
+        >
+          <span
+            class="flex min-w-0 flex-none items-center gap-2.5"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-5.5 flex-none text-mark"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.2"
+              viewBox="0 0 32 32"
+            >
+              <circle
+                cx="8"
+                cy="16"
+                r="4"
+              />
+              <path
+                d="M12 16h5M17 16V7h5M17 16v9h5"
+              />
+              <circle
+                cx="25"
+                cy="7"
+                r="2.6"
+              />
+              <circle
+                cx="25"
+                cy="25"
+                r="2.6"
+              />
+            </svg>
+            <span
+              class="font-bold tracking-tight max-xs:hidden"
+            >
+              mindstella
+            </span>
+          </span>
+          <span
+            class="min-w-0 shrink grow-0 basis-auto truncate text-small text-topbar-fg-2 max-lg:hidden"
+            title="要件出しのスキル mindmap を設計する"
+          >
+            要件出しのスキル mindmap を設計する
+          </span>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-keyshortcuts="Control+K Meta+K"
+            aria-label="すべての項目を検索"
+            class="flex h-8 min-w-65 cursor-pointer items-center gap-2 rounded-control border border-topbar-line bg-transparent px-2.5 text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-lg:w-8 max-lg:min-w-0 max-lg:justify-center max-lg:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+            <span
+              class="max-lg:hidden"
+            >
+              すべての項目を検索
+            </span>
+            <kbd
+              class="ml-auto rounded-kbd border border-topbar-line px-1.25 font-mono text-count whitespace-nowrap max-lg:hidden"
+            >
+              Ctrl+K
+            </kbd>
+          </button>
+          <button
+            aria-haspopup="dialog"
+            aria-label="変更履歴"
+            class="inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-control border border-topbar-line bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg-2 hover:bg-topbar-hover hover:text-topbar-fg max-xl:w-8 max-xl:justify-center max-xl:p-0 max-xs:w-7 max-xs:flex-none"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M3 12a9 9 0 1 0 3-6.7L3 8"
+              />
+              <path
+                d="M3 3v5h5"
+              />
+              <path
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span
+              class="max-xl:hidden"
+            >
+              変更履歴
+            </span>
+          </button>
+          <span
+            class="flex-1 basis-0"
+          />
+          <button
+            aria-expanded="false"
+            aria-label="表示の設定"
+            class="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-control text-small whitespace-nowrap disabled:cursor-default disabled:opacity-50 h-8 min-w-6 flex-none border border-topbar-line bg-transparent px-2.5 font-normal text-topbar-fg hover:bg-topbar-hover hover:text-topbar-fg focus-visible:outline-mark-line max-xl:px-2 max-sm:gap-1 max-sm:px-1.5 max-xs:gap-0.5 max-xs:px-0.5"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4 flex-none fill-none stroke-current"
+              height="16"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBo...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ frontend/src/app/preview-shell.test.tsx:120:40
+    118|     renderRoute("/spa/?tab=tasks&search=1&q=N-1%E3%81%AE%E3%83%A1%E3%8…
+    119|     // 実行
+    120|     await userEvent.click(await screen.findByRole("option", { name: /N…
+       |                                        ^
+    121|     // 検証
+    122|     await waitFor(() => expect(window.location.search).toBe("?id=N-1")…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/16]⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_graph
+AssertionError: expected undefined to be 'graph' // Object.is equality
+
+- Expected:
+"graph"
+
++ Received:
+undefined
+
+ ❯ frontend/src/shared/core/preview-search.test.ts:139:24
+    137|     const result = normalizeSearch(search({ tab: "graph", view: "table…
+    138|     // 検証
+    139|     expect(result.tab).toBe("graph");
+       |                        ^
+    140|     expect(result.view).toBeUndefined();
+    141|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/16]⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_query_without_search
+AssertionError: expected '画面' to be undefined
+
+- Expected:
+undefined
+
++ Received:
+"画面"
+
+ ❯ frontend/src/shared/core/preview-search.test.ts:145:63
+    143|   // 検索を開いていない言葉（正常系）
+    144|   test("normalize_search_when_query_without_search", () => {
+    145|     expect(normalizeSearch(search({ q: "画面" }), context()).q).toBeUnde…
+       |                                                               ^
+    146|   });
+    147|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/16]⎯
+
+ FAIL  frontend/src/shared/core/preview-search.test.ts > normalizeSearch > normalize_search_when_query_blank
+AssertionError: expected ' ' to be undefined
+
+- Expected:
+undefined
+
++ Received:
+" "
+
+ ❯ frontend/src/shared/core/preview-search.test.ts:154:22
+    152|     // 検証
+    153|     expect(result.search).toBe("1");
+    154|     expect(result.q).toBeUndefined();
+       |                      ^
+    155|   });
+    156| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/16]⎯
+
+
+ Test Files  11 failed (11)
+      Tests  7 failed | 22 passed (29)
+   Start at  22:30:03
+   Duration  91.37s (environment 62%, setup 22%, import 11%, transform 3%, tests 1%, worker 1%)
+
+Environment  jsdom was created 11 times · 261.07s total, 62% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

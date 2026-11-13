@@ -1,0 +1,32 @@
+id: MOD-489-250
+title: プレビュー / look-select
+lead: ネットワークの見た目のドロップダウン。
+components:
+  - name: LookSelect
+    title: 見た目のドロップダウン
+    kind: コンポーネント
+    container: frontend/src/features/graph/graph/components/look-select.tsx
+    usecase: ネットワークを辿る
+    summary: shadcn/ui の Select で 5 つの見た目を `NETWORK_LOOKS` の順に並べ、既定の見た目に「（既定）」を添える。読み上げの名前は「ネットワークの見た目」
+    props:
+      - name: value
+        type: NetworkLook
+        required: true
+        description: 選んでいる見た目
+      - name: defaultLook
+        type: NetworkLook
+        required: true
+        description: ワークスペースの既定の見た目
+      - name: onChange
+        type: '(look: NetworkLook) => void'
+        required: true
+        description: 見た目を選んだ
+    unit_tests:
+      - name: test_look_select
+        case: 正常
+        summary: 既定に「（既定）」を添える
+        condition: '`defaultLook: "deep"` で開く'
+        mock: なし
+        expected: 選択肢がグロウ・星の光・星図・深宇宙（既定）・星屑の順
+notes:
+  単体テスト: 同じフォルダの `look-select.test.tsx` に置く

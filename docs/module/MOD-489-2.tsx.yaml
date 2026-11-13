@@ -6,7 +6,7 @@ components:
     title: プレビューの外枠
     kind: コンポーネント
     usecase: SPAを開く
-    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。ネットワークと全体の検索だけ今の画面を開く。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
+    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
     refs:
       - IF-489-70#
     unit_tests:
@@ -52,6 +52,30 @@ components:
         condition: '`?panel=display`'
         mock: MSW
         expected: 表示の設定のパネルが描かれる
+      - name: test_preview_shell_when_graph
+        case: 正常
+        summary: ネットワークの入口で SPA の中のネットワークを開く
+        condition: '`?tab=decisions&id=D-1` でタブの帯の右端のネットワークの入口を押す'
+        mock: MSW
+        expected: ネットワークの画面が描かれ、URL が `?tab=graph&id=D-1` で、`window.location.assign` が呼ばれない
+      - name: test_preview_shell_when_search
+        case: 正常
+        summary: 検索の結果から項目を開く
+        condition: '`?tab=tasks&search=1&q=画面&diff=V-1` で、結果の検討事項 D-1 を押す'
+        mock: MSW
+        expected: 全体の検索が閉じ、URL が `?tab=decisions&id=D-1&diff=V-1` になり、履歴が 1 つ増える
+      - name: test_preview_shell_when_search_same_tab
+        case: 正常
+        summary: 同じ画面の項目は履歴に積まずに詳細パネルを開く
+        condition: '`?tab=decisions&view=table&search=1&q=画面` で、結果の D-1 を押す'
+        mock: MSW
+        expected: URL が `?tab=decisions&id=D-1` に置き換わり（`view` が無い）、履歴の数が変わらない
+      - name: test_preview_shell_when_search_hidden_kind
+        case: 正常
+        summary: 表示しない種類の項目は概要で開く
+        condition: 表示する種類にメモが無く、`?tab=tasks&search=1&q=メモ` で結果の N-1 を押す
+        mock: MSW
+        expected: URL が `?id=N-1` で、概要と N-1 の詳細パネルが描かれる
     container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）

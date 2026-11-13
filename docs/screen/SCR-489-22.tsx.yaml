@@ -137,7 +137,7 @@ refs:
   - SCR-489-21#
   - IF-489-70#
 notes:
-  React へ移していない画面への移り方: '行き先が React に無い操作は、今の画面（`/mindstella.html`）を同じタブで開く（『SPAを開く』の制約「React に無い画面」）。移した画面へは SPA の中で移る。
+  画面への移り方: '概要からの操作は、全て SPA の中で移る。
 
 
     | 操作 | 開く先 |
@@ -150,10 +150,10 @@ notes:
 
     | トップバーのタブ（`onNavigate(key)`） | SPA の `?tab={key}` |
 
-    | トップバーのネットワークの入口（`onNavigate(''graph'')`） | 今の画面の `#tab=graph` |
+    | トップバーのネットワークの入口（`onNavigate(''graph'')`） | SPA の `?tab=graph` |
 
     | トップバーの変更履歴・保存待ち・コメント・表示の設定（`onOpenHistory`・`onTogglePending`・`onToggleComments`・`onToggleSettings`） | SPA の中で開く |
 
-    | トップバーの検索（`onOpenSearch`） | 今の画面の `#tab=overview`。今の画面のハッシュはパネルを開く引数を持たないため、パネルは利用者が今の画面で開く |
+    | トップバーの検索（`onOpenSearch`） | SPA の全体の検索（`?search=1`） |
 
     | トップバーのライト / ダーク（`onThemeChange`） | SPA の中で切り替え、今の画面と同じ端末の保存領域に残す |'

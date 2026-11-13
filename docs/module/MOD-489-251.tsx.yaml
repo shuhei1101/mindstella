@@ -1,0 +1,77 @@
+id: MOD-489-251
+title: プレビュー / search-dialog
+lead: 画面設計『全体の検索.tsx』の要素と操作を描く。
+components:
+  - name: SearchDialog
+    title: 全体の検索
+    kind: 画面
+    container: frontend/src/features/search/search/search-dialog.tsx
+    usecase: 項目を検索する
+    summary: shadcn/ui の Dialog で、検索の言葉と、`searchItems` の結果を段ごとの見出しの下に並べる
+    description: |-
+      - 検索の言葉は search の `q` で、入力のたびに `replace: true` で書き換える
+      - 結果を押すか、上下の矢印で選んで Enter で `onOpen(id)` を呼ぶ
+      - 閉じる・Esc・外側の押下で `onClose` を呼び、開く前にフォーカスがあった要素へ戻す
+      - 開いている間の `Ctrl+K`・`Cmd+K` は既定の動きを止め、検索の言葉の文字を全て選び直す（`select()`）
+    props:
+      - name: index
+        type: RecordIndex
+        required: true
+        description: 索引
+      - name: query
+        type: string
+        required: true
+        description: 検索の言葉（search の `q`。無ければ空）
+      - name: onQueryChange
+        type: '(query: string) => void'
+        required: true
+        description: 検索の言葉を書き換える
+      - name: onOpen
+        type: '(id: string) => void'
+        required: true
+        description: 結果の項目を開く
+      - name: onClose
+        type: () => void
+        required: true
+        description: 閉じる
+    state:
+      - name: active
+        type: number
+        initial: '0'
+        description: 上下の矢印で選んでいる結果の位置
+        notes: useState
+    refs:
+      - SCR-489-36#
+    unit_tests:
+      - name: test_search_dialog
+        case: 正常
+        summary: 空のときの案内
+        condition: '`query` が空'
+        mock: なし
+        expected: 「ID・タイトル・本文で、すべての項目を検索します。」が出る
+      - name: test_search_dialog_when_tiers
+        case: 正常
+        summary: 段ごとの見出しで並べる
+        condition: '`query` が「画面」で、タイトルが「画面」の D-1・タイトルに「画面の分け方」の D-2・本文にだけ「画面」の T-1'
+        mock: なし
+        expected: 「完全に一致」に D-1、「タイトルに一致」に D-2、「ほかの所に一致」に T-1
+      - name: test_search_dialog_when_enter
+        case: 正常
+        summary: 矢印と Enter で開く
+        condition: 結果が 2 件で、下の矢印・Enter を押す
+        mock: なし
+        expected: '`onOpen` に 2 件目の ID が渡る'
+      - name: test_search_dialog_when_no_hit
+        case: 正常
+        summary: 当たらない
+        condition: '`query` が「無い言葉」'
+        mock: なし
+        expected: 「該当する項目はありません。別の条件を試してください。」が出る
+      - name: test_search_dialog_when_shortcut
+        case: 正常
+        summary: 開いている間の Ctrl+K で言葉を選び直す
+        condition: '`query` が「画面」で、`Ctrl+K` を押す'
+        mock: なし
+        expected: 入力欄の文字が全て選ばれ、イベントの `defaultPrevented` が真
+notes:
+  単体テスト: 同じフォルダの `search-dialog.test.tsx` に置く
