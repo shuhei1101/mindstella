@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { DecisionOutline } from "@/features/decisions/decisions/components/decision-outline";
 import { buildMapGraph, dependencyPath, layoutMap, wheelZoom, ZOOM, type Elk, type MapGraph, type MapNode } from "@/features/decisions/decisions/map-layout";
+import { useDecisionMapLock } from "@/features/decisions/decisions/store";
 import { useLibrary } from "@/shared/adapters/libraries";
 import { CommentMark } from "@/shared/components/comment-mark";
 import { DiffMark, type DiffMarks } from "@/shared/components/diff-mark";
@@ -45,7 +46,7 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
   const [laid, setLaid] = useState<MapGraph | null>(null);
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [fitScale, setFitScale] = useState(1);
-  const [locked, setLocked] = useState<string | null>(null);
+  const [locked, setLocked] = useDecisionMapLock();
   const lastPress = useRef<Press | null>(null);
   const key = items.map((item) => item.id).join(",");
   useEffect(() => {

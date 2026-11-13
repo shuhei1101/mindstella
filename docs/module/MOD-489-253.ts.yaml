@@ -1,0 +1,56 @@
+id: MOD-489-253
+title: プレビュー / decisions-store
+lead: 検討事項のマップのロックを、タブを移っても残るようにページの間だけ持つ。
+stores:
+  - name: useDecisionMapLockStore
+    title: 検討事項のマップのロック
+    container: frontend/src/features/decisions/decisions/store.ts
+    usecase: 検討事項をマップで辿る
+    role: Zustand
+    summary: ロックした節を持つ。永続化しない（画面設計『検討事項.tsx』の「節のロックの操作」）
+    description: 検討事項のマップはタブを移ると外れるため、画面の state ではなく画面の store に持つ（knowledge の判定フローチャート『React の状態の置き場所』の ※3）。ネットワークのロック（モジュール構成『プレビュー / graph-store』）とは別の store にする。store は公開せず、`useDecisionMapLock` だけを export する
+    state:
+      - name: locked
+        type: string | null
+        initial: 'null'
+        description: ロックした節の項目の ID
+    actions:
+      - name: setLocked
+        title: ロックの書き換え
+        kind: 関数
+        summary: ロックした節を書き換える
+        args:
+          - name: id
+            type: string | null
+            required: true
+            passing: positional
+            description: ロックする節の項目（外すときは `null`）
+        returns:
+          type: void
+          description: なし
+functions:
+  - name: useDecisionMapLock
+    title: 検討事項のマップのロックの読み書き
+    kind: フック
+    container: frontend/src/features/decisions/decisions/store.ts
+    usecase: 検討事項をマップで辿る
+    scope: public
+    summary: '`[locked, setLocked]` を返す'
+    returns:
+      type: '[string | null, (id: string | null) => void]'
+      description: ロックした節と書き換え
+    unit_tests:
+      - name: test_use_decision_map_lock
+        case: 正常
+        summary: 画面を外しても残る
+        condition: '`setLocked("D-1")` の後に、フックを使う部品を外してもう一度描く'
+        mock: なし
+        expected: '`locked` が D-1'
+      - name: test_use_decision_map_lock_apart_from_graph
+        case: 正常
+        summary: ネットワークのロックと別に持つ
+        condition: '`useDecisionMapLock` の `setLocked("D-1")` の後に `useGraphLock` を読む'
+        mock: なし
+        expected: '`useGraphLock` の `locked` が `null`'
+notes:
+  単体テスト: 同じフォルダの `store.test.tsx` に置く

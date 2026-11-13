@@ -7,6 +7,7 @@ components:
     kind: コンポーネント
     usecase: 検討事項をマップで辿る
     summary: 対象 → カテゴリー → フェーズ → 検討事項の木を描き、節のロックと拡大・縮小を持つ
+    description: ロックは `useDecisionMapLock` から読み、節か余白を押したら `lockTap` の結果でロックを書き換える（タブを移ってマップが外れても、ページを開いている間は残す）
     unit_tests:
       - name: test_decision_map_when_library_failed
         case: 異常

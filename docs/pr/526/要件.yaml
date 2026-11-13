@@ -1,0 +1,11 @@
+scope_out:
+  - item: ネットワークと検討事項のマップのロックをダブルクリックで付け外しする
+    reason: ロックの付け外しの操作を変える別の要望で、この PR はロックを持つ場所だけを変える
+    plan: '#146'
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-24.yaml
+    impact: none
+    detail: 'React の画面への切り替えは #371 で行い、E2E が確かめる今の画面のロックは変わらない'
+    depends_on: []
+docs: []

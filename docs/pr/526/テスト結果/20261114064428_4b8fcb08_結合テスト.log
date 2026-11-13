@@ -1,0 +1,14 @@
+# 結合テスト（フロント）のうち、画面設計『検討事項.tsx』の test_file を実行（テスト実行方法の個別実行）。4b8fcb08 で実行
+
+$ pytest tests/integration/preview/test_spa_decisions_screen.py
+============================= test session starts ==============================
+platform linux -- Python 3.14.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-keep-decision-map-lock
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 52 items
+
+tests/integration/preview/test_spa_decisions_screen.py ................. [ 32%]
+...................................                                      [100%]
+
+======================== 52 passed in 121.11s (0:02:01) ========================

@@ -496,6 +496,8 @@ items:
     summary: "画面設計『全体の検索.tsx』の要素と操作を描く"
   - page: MOD-489-252.ts.yaml
     summary: "Ctrl+K（macOS は Cmd+K）で全体の検索を開く"
+  - page: MOD-489-253.ts.yaml
+    summary: "検討事項のマップのロックを、タブを移っても残るようにページの間だけ持つ"
   - page: MOD-489-170.yaml
     summary: "React のプレビューのファイルの並び・つながり・置き場所の決まり。各ファイルの設計書は `モジュール構成/frontend/` の下に置く。"
   - page: MOD-489-172.yaml
