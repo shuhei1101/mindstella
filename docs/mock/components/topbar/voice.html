@@ -53,11 +53,11 @@
         el.title = "文字起こし中: D-022 へのコメント。押すと入力欄へ移動します";
         el.innerHTML = '<span class="spinner" aria-hidden="true"></span><span class="label">文字起こし中</span>';
       } else if (state === "discarded") {
-        el = document.createElement("span");
-        el.className = "voice-note";
-        el.setAttribute("role", "status");
-        el.title = "D-022 が削除されたため、録音を破棄しました";
-        el.innerHTML = '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg><span>録音を破棄しました</span><span class="sr-only">（D-022 が削除されたため）</span><button class="vn-close" type="button" aria-label="閉じる" title="閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>';
+        const note = document.createElement("div");
+        note.className = "voice-note";
+        note.setAttribute("role", "status");
+        note.innerHTML = '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19Z"></path><path d="M12 10v4M12 17v.5"></path></svg><span class="vn-text">D-022 が削除されたため、録音を破棄しました。</span><button class="vn-close" type="button" aria-label="閉じる" title="閉じる"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>';
+        document.querySelector(".topbar").after(note);
       }
       if (el !== null) {
         if (place === "b") {
