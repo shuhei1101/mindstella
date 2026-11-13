@@ -38,7 +38,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-13T22:47:36.811254+00:00'
   - process: モック作成
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-13T23:39:23.713131+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: 部品設計

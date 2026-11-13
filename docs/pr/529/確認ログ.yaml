@@ -5,3 +5,21 @@ confirmations:
     approver: shuhei1101
     commit: 65fa36ce
     thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569381424
+  - topic: モックと画面の文言（既定のレビュー中への追加・追加できなかったとき・ほかの入力欄で音声入力中・トップバーの表示・録音を破棄した帯・設定の選択肢の並び）
+    decision: このモックと文言で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569828547
+  - topic: トップバーの音声入力中の表示の位置
+    decision: コメントのボタンの左隣（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569829571
+  - topic: 詳細の全画面で始めた録音へ戻るときに開く画面
+    decision: 録音を始めた詳細の全画面を開き直す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569830526
