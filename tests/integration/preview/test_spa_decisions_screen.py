@@ -62,6 +62,23 @@ def test_map_lock(page: Page, spa_preview: str) -> None:
     expect(page).to_have_url(re.compile("id=D-1"))
 
 
+def test_map_lock_after_tab_switch(page: Page, spa_preview: str) -> None:
+    """節をロックし、タブの帯でタスクへ移ってから検討事項のマップへ戻っても、閉じた鍵が同じ節に残る（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=decisions&view=map&id=D-1")
+    page.locator('[data-node="D-1"]').wait_for()
+    page.wait_for_timeout(500)
+    page.locator('[data-node="D-1"]').click()
+    expect(page.locator('[data-node="D-1"] [data-locked-key]')).to_be_visible()
+    # 実行
+    page.get_by_role("link", name="タスク").click()
+    expect(page.locator("#decision-map")).to_have_count(0)
+    page.get_by_role("link", name="検討事項").click()
+    page.get_by_role("group", name="表示形式").get_by_role("button", name="マップ").click()
+    # 検証
+    expect(page.locator('[data-node="D-1"] [data-locked-key]')).to_be_visible()
+
+
 @pytest.mark.parametrize("search", ["?tab=decisions&view=table", "?tab=decisions", "?tab=tasks", "?tab=docs", "?tab=research"])
 @pytest.mark.parametrize("viewport", [{"width": 1280, "height": 800}, {"width": 390, "height": 844}])
 def test_list_screens_pass_axe_rules(page: Page, spa_preview: str, search: str, viewport: ViewportSize) -> None:
