@@ -1,0 +1,27 @@
+# 単体テスト（フロント）の全件実行（テスト実行方法 TL-2）。vitest は ddb93dc4 で実行。pytest tests/unit/preview は 30d949d6 で実行（ddb93dc4 は React の側と SPA のビルドの出力だけを変え、今の画面は変えていない）
+
+$ pytest tests/unit/preview
+tests/unit/preview/test_lock.py .                                        [ 97%]
+tests/unit/preview/test_router.py .                                      [ 97%]
+tests/unit/preview/test_diff.py .                                        [ 97%]
+tests/unit/preview/test_libs.py ...                                      [ 97%]
+tests/unit/preview/test_router.py .                                      [ 97%]
+tests/unit/preview/test_libs.py .....................                    [100%]
+
+======================= 902 passed in 1124.60s (0:18:44) =======================
+
+$ npx vitest run
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/fix-preview-keep-decision-map-lock
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  80 passed (80)
+      Tests  266 passed (266)
+   Start at  06:22:04
+   Duration  526.73s (environment 55%, import 24%, setup 19%, transform 2%, tests 1%, worker 1%)
+
+Environment  jsdom was created 80 times · 1907.37s total, 55% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
