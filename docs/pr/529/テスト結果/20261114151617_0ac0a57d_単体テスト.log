@@ -1,0 +1,17 @@
+# 単体テストの全件実行。0ac0a57d で実行
+
+$ python3 -m pytest tests/unit -q -p no:cacheprovider
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2167 passed, 1 skipped, 5 warnings in 3383.25s (0:56:23)
+
+$ npx vitest run
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+Error: [vitest-pool]: Failed to start forks worker for test files /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-voice-input-review-default-background-recording-wake-lock/frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx.
+ Test Files  80 passed (80)
+      Tests  279 passed (279)
+     Errors  1 error
+# 上の 1 error は負荷で workspace-settings-screen.test.tsx の worker の起動が時間切れになったもの。同じファイルを個別に流し直した結果:
+$ npx vitest run frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
