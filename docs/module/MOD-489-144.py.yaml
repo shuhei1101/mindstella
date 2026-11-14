@@ -87,7 +87,7 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: コメントを選んで送る
     role: 長期保持のランタイム状態
-    summary: ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ。プロセスに 1 つだけ作り、配信の台帳が持つ
+    summary: ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ。プロセスに 1 つだけ作り、配信の台帳が持つ。宛先を引くときは、先に状態のフォルダの MindStella のセッション（`mindstella_session_target`）を見る
     kind: クラス
     properties:
       - name: _targets
@@ -683,3 +683,31 @@ functions:
         condition: '`proc_dir` は無いフォルダ。2 つのスレッドから同じ送り先と同じ `pane_lock`・`paste_lock` で呼ぶ。`run` は生きている宛先の値を返し、呼ばれている間に他方の `run` が始まっていないかを控える'
         mock: '`run`・`clock`・`sleep`'
         expected: 一方の 3 つのコマンドの間に他方のコマンドが入らない
+  - name: mindstella_session_target
+    title: MindStella のセッションの宛先
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 状態のフォルダにこのワークスペースの `session.json` があれば、`status` が `running` で `close_pending` が偽のときだけ、その `pane`・`pid`・`pid_started_at` から `InputTarget` を返す。記録があって条件に合わなければ `BLOCKED`、記録が無ければ `None`（最後にツールを呼んだセッションを宛先にする）
+    args:
+      - name: state_root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス（設定の `id` を読む）
+    returns:
+      type: InputTarget | Literal["blocked"] | None
+      description: 宛先
+    unit_tests:
+      - name: test_mindstella_session_target
+        case: 正常
+        summary: 状態で宛先を決める
+        condition: '`session.json` が `running`・`close_pending: false` / `close_pending: true` / `stopped` / 無い'
+        mock: なし
+        expected: '`InputTarget`（`pane`・`pid`）/ `BLOCKED` / `BLOCKED` / `None`'

@@ -1,0 +1,268 @@
+id: MOD-531-2
+title: サーバー / 常駐サーバーの状態 / project_index.py
+test_files:
+- tests/unit/scripts/test_project_index.py
+classes:
+- name: ProjectIndexError
+  title: project-index の呼び出しの失敗
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  summary: 'project-index へつながらない・想定していないステータスを返した。ワークスペースの管理が 502（`stage: source`）にする'
+  kind: クラス
+  inherits: Exception
+  properties:
+  - name: status
+    type: int | None
+    description: 返したステータス。つながらないときは `None`
+  - name: detail
+    type: str
+    description: 理由
+constants:
+- name: DEFAULT_PORT
+  title: project-index の既定のポート
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  summary: '`PROJECT_INDEX_PORT` が無いときのポート（API-531-1 の接続先）'
+  value: '8786'
+- name: REQUEST_TIMEOUT_SEC
+  title: 1 回の呼び出しの上限
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  summary: project-index への 1 回の HTTP を打ち切る秒数。project-index は配信元を読み直してから返すので、読み直しの時間を見込む
+  value: '10.0'
+functions:
+- name: get_settings
+  title: 端末の設定を読む
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`GET /settings/sources` の応答（`settingsPath`・`sources[]`・`version`）を返す'
+  args:
+  - name: port
+    type: int
+    required: true
+    passing: positional
+    description: project-index のポート
+  returns:
+    type: dict
+    description: 応答の JSON
+  exceptions:
+  - name: ProjectIndexError
+    condition: つながらない・200 でない
+  unit_tests:
+  - name: test_get_settings
+    case: 正常
+    summary: 応答をそのまま返す
+    condition: テストが空きポートで立てた HTTP のサーバーが JSON を返す
+    mock: なし
+    expected: 同じ辞書
+- name: add_source
+  title: 配信元の行を足す
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`POST /settings/sources` に `{source: row}` を送る。201 なら `added`、409 で `result: exists` なら `same` を見て `exists_same`・`exists_different` を返す'
+  args:
+  - name: port
+    type: int
+    required: true
+    passing: positional
+    description: project-index のポート
+  - name: row
+    type: dict
+    required: true
+    passing: positional
+    description: 配信元の行（`id`・`config`・`scope`・`outside_read`）
+  returns:
+    type: Literal['added', 'exists_same', 'exists_different']
+    description: 追加の結果
+  exceptions:
+  - name: ProjectIndexError
+    condition: 201・409 のほか、またはつながらない
+  unit_tests:
+  - name: test_add_source
+    case: 正常
+    summary: 201・409 の same で結果を分ける
+    condition: '`parametrize`: 201 / 409 `{result: exists, same: true}` / 409 `{result: exists, same: false}`'
+    mock: テストの HTTP のサーバー
+    expected: '`added` / `exists_same` / `exists_different`。送った本文が `{source: row}`'
+  - name: test_add_source_error
+    case: 異常
+    summary: 422・500 とつながらないときは ProjectIndexError
+    condition: 422 / 500 / 待ち受けていないポート
+    mock: テストの HTTP のサーバー
+    expected: '`ProjectIndexError`'
+- name: patch_source
+  title: 配信元の行を変える
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: MindStella のセッションを止めてワークスペースをクローズにする
+  scope: public
+  summary: '`get_settings` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source` を送る。409（版が古い）なら 1 回だけ引き直して送り直す'
+  args:
+  - name: port
+    type: int
+    required: true
+    passing: positional
+    description: project-index のポート
+  - name: source_id
+    type: str
+    required: true
+    passing: positional
+    description: 行の ID
+  - name: changes
+    type: dict
+    required: true
+    passing: positional
+    description: 変えるキー（`outside_read` など）
+  returns:
+    type: None
+    description: なし
+  exceptions:
+  - name: ProjectIndexError
+    condition: 200 のほか、または 409 が 2 回
+  unit_tests:
+  - name: test_patch_source
+    case: 正常
+    summary: 版を付けて送り、409 なら 1 回だけ引き直す
+    condition: 1 回目の PATCH が 409、2 回目が 200
+    mock: テストの HTTP のサーバー
+    expected: GET が 2 回、PATCH が 2 回で、2 回目の `expectedVersion` が引き直した版
+  - name: test_patch_source_conflict_twice
+    case: 異常
+    summary: 2 回続けて 409 なら ProjectIndexError
+    condition: PATCH が 2 回とも 409
+    mock: テストの HTTP のサーバー
+    expected: '`ProjectIndexError`（`status` が 409）'
+- name: find_doc_path
+  title: 文書の ID からパスを引く
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`GET /sources/{source}/docs` の一覧から `id` の文書のパスを返す。無ければ `None`'
+  args:
+  - name: port
+    type: int
+    required: true
+    passing: positional
+    description: project-index のポート
+  - name: source
+    type: str
+    required: true
+    passing: positional
+    description: 配信元の ID
+  - name: doc_id
+    type: str
+    required: true
+    passing: positional
+    description: 文書の ID
+  returns:
+    type: str | None
+    description: 文書のパス
+  exceptions:
+  - name: ProjectIndexError
+    condition: 404（配信元が無い）のときは `status` 404
+  unit_tests:
+  - name: test_find_doc_path
+    case: 正常
+    summary: 一覧から ID でパスを引く
+    condition: '一覧に `{id: flow-1, path: docs/flow.yaml}` がある / 無い'
+    mock: テストの HTTP のサーバー
+    expected: '`docs/flow.yaml` / `None`'
+- name: doc_exists
+  title: 文書を読めるか
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`GET /sources/{source}/docs/{path}?id=` が 200 なら真、404 なら偽'
+  args:
+  - name: port
+    type: int
+    required: true
+    passing: positional
+    description: project-index のポート
+  - name: source
+    type: str
+    required: true
+    passing: positional
+    description: 配信元の ID
+  - name: path
+    type: str
+    required: true
+    passing: positional
+    description: 文書のパス
+  - name: doc_id
+    type: str
+    required: true
+    passing: positional
+    description: 文書の ID
+  returns:
+    type: bool
+    description: 読めるか
+  exceptions:
+  - name: ProjectIndexError
+    condition: 200・404 のほか
+  unit_tests:
+  - name: test_doc_exists
+    case: 正常
+    summary: 200 は真、404 は偽
+    condition: 200 / 404
+    mock: テストの HTTP のサーバー
+    expected: '`True` / `False`'
+- name: scope_includes
+  title: 作業範囲に当たるか
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`scope.read` の並び（パスか `/**` の付いた glob）に、フォルダが当たるかを返す。`/**` の無いパスはそのフォルダだけに当たる'
+  args:
+  - name: patterns
+    type: list[str]
+    required: true
+    passing: positional
+    description: '`scope.read`'
+  - name: folder
+    type: Path
+    required: true
+    passing: positional
+    description: 確かめるフォルダ（シンボリックリンクを解いた絶対パス）
+  returns:
+    type: bool
+    description: 当たるか
+  unit_tests:
+  - name: test_scope_includes
+    case: 正常
+    summary: glob とそのフォルダだけの当たり方
+    condition: '`parametrize`: `[/a/**]` と `/a/b` / `[/a]` と `/a` / `[/a]` と `/a/b` / `[]` と `/a`'
+    mock: なし
+    expected: '`True` / `True` / `False` / `False`'
+- name: read_allowed_dirs
+  title: 許可するフォルダを読む
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/project_index.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: グローバルの設定のファイル（`settingsPath`）の最上位の `mindstella.allowed_dirs` を返す。キーが無いか空なら空の並び
+  args:
+  - name: settings_path
+    type: Path
+    required: true
+    passing: positional
+    description: グローバルの設定のファイル
+  returns:
+    type: list[Path]
+    description: シンボリックリンクを解いた絶対パスの並び
+  unit_tests:
+  - name: test_read_allowed_dirs
+    case: 正常
+    summary: キーがあれば並び、無ければ空
+    condition: '`mindstella: {allowed_dirs: [/a]}` / キー無し / ファイル無し'
+    mock: なし
+    expected: '`[/a]` / `[]` / `[]`'
+notes:
+  HTTP: 標準ライブラリの `urllib.request` で送る。`Origin` を付けない（project-index はサーバーの側からの呼び出しとして受ける）

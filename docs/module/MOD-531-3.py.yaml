@@ -1,0 +1,263 @@
+id: MOD-531-3
+title: サーバー / ワークスペースの管理 / workspaces.py
+test_files:
+- tests/unit/scripts/test_workspaces.py
+classes:
+- name: WorkspaceLocks
+  title: 依頼の順番の鍵
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  summary: ワークスペースごと・フォルダごとの `threading.Lock` を持つ。ワークスペースの管理とセッションの管理が 1 つを共有する
+  kind: クラス
+  methods:
+  - name: for_workspace
+    title: ワークスペースの鍵
+    kind: メソッド
+    summary: ワークスペースの ID の鍵を返す（無ければ作る）
+  - name: for_folder
+    title: フォルダの鍵
+    kind: メソッド
+    summary: フォルダの鍵を返す
+constants:
+- name: DEFAULT_PLAYBOOK
+  title: 既定のプレイブック
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  summary: 記録の無いフォルダの `config.yaml` の `playbooks`（IF-531-1 の既定の設定）
+  value: '"壁打ち"'
+- name: DEFAULT_PHASES
+  title: 既定のフェーズ
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  summary: プレイブック『壁打ち』のフェーズ
+  value: '["問い", "発散", "整理", "絞り込み", "結論"]'
+- name: DEFAULT_TARGET_LABEL
+  title: 既定の最上位の軸の呼び名
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  summary: '`target_label` の既定'
+  value: '"対象"'
+- name: RESERVED_MCP_NAMES
+  title: 使えない MCP の名前
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  summary: ユーザー配下のプラグインの MCP と重なる名前
+  value: '{"mindstella", "project-index"}'
+functions:
+- name: workspace_id_for
+  title: ワークスペースの ID を作る
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`mindstella-{フォルダ名}-{ハッシュ}` を返す（フォルダ名の `.`・`:` は `-`。ハッシュはシンボリックリンクを解いた絶対パスの SHA-256 の先頭 6 桁）'
+  args:
+  - name: folder
+    type: Path
+    required: true
+    passing: positional
+    description: フォルダ
+  returns:
+    type: str
+    description: ワークスペースの ID
+  unit_tests:
+  - name: test_workspace_id_for
+    case: 正常
+    summary: 同じフォルダは同じ ID、別の場所の同じ名前は別の ID
+    condition: '`/a/家計簿.app` / 同じパスへのシンボリックリンク / `/b/家計簿.app`'
+    mock: なし
+    expected: '`mindstella-家計簿-app-{6 桁}` / 同じ値 / 違う値'
+- name: validate_options
+  title: 起動の指定を確かめる
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: '`mcp_config` の形（`mcpServers` のオブジェクト）と予約の名前、`plugin_dirs` の各フォルダの `.claude-plugin/plugin.json` を確かめる'
+  args:
+  - name: mcp_config
+    type: dict | None
+    required: true
+    passing: positional
+    description: 追加の MCP の定義
+  - name: plugin_dirs
+    type: list[str]
+    required: true
+    passing: positional
+    description: プラグインのフォルダ
+  returns:
+    type: LaunchOptions
+    description: 確かめた指定
+  exceptions:
+  - name: ApiError
+    condition: '422'
+  unit_tests:
+  - name: test_validate_options
+    case: 正常
+    summary: 形が合えば LaunchOptions
+    condition: '`{mcpServers: {aituber: {...}}}` と `plugin.json` を持つフォルダ'
+    mock: なし
+    expected: 同じ値の `LaunchOptions`
+  - name: test_validate_options_error
+    case: 異常
+    summary: 読めない指定は ApiError 422
+    condition: '`mcpServers` に `mindstella` / `mcpServers` が無い / `plugin.json` が無い / 壊れた `plugin.json`'
+    mock: なし
+    expected: '`ApiError`（422、`stage` が `mcp_config` か `plugin_dirs`）'
+- name: check_flow
+  title: 進め方の文書を確かめる
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: IF-531-1 の「進め方の文書の確かめ方」の 3 段で確かめる
+  args:
+  - name: pi_port
+    type: int
+    required: true
+    passing: positional
+    description: project-index のポート
+  - name: flow
+    type: dict
+    required: true
+    passing: positional
+    description: '`{source, doc}`'
+  - name: folder
+    type: Path
+    required: true
+    passing: positional
+    description: ワークスペースのフォルダ
+  returns:
+    type: None
+    description: なし
+  exceptions:
+  - name: ApiError
+    condition: '422'
+  unit_tests:
+  - name: test_check_flow
+    case: 正常
+    summary: 3 段とも通れば例外なし
+    condition: '`scope.read` がフォルダに当たり、一覧に ID があり、文書が 200'
+    mock: '`project_index` の関数'
+    expected: 例外なし
+  - name: test_check_flow_error
+    case: 異常
+    summary: どこかで止まれば ApiError 422
+    condition: '`scope.read` に当たらない / 一覧に無い / 文書が 404'
+    mock: '`project_index` の関数'
+    expected: '`ApiError`（422、`stage: flow`、`detail` に `scope`・`missing`）'
+- name: create_workspace
+  title: ワークスペースを作る
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: 外部のアプリから起動する
+  scope: public
+  summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
+  description: 記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名・`DEFAULT_*`）を渡して書く。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く
+  side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
+  args:
+  - name: request
+    type: dict
+    required: true
+    passing: positional
+    description: 本文（`folder`・`flow`・`mcp_config`・`plugin_dirs`）
+  - name: ctx
+    type: ServerContext
+    required: true
+    passing: positional
+    description: 状態のフォルダ・project-index のポート・鍵・配信
+  returns:
+    type: tuple[int, dict]
+    description: ステータス（201 か 200）と応答（`id`・`url`・`result`・`launch_options_recorded`）
+  exceptions:
+  - name: ApiError
+    condition: 400・403・409・422・502
+  unit_tests:
+  - name: test_create_workspace
+    case: 正常
+    summary: 記録の無いフォルダに作る
+    condition: 許可するフォルダの下のまだ無いフォルダ
+    mock: '`project_index.add_source`・`check_flow`・配信の URL'
+    expected: '`(201, {result: created, launch_options_recorded: true})`、`config.yaml` に `id`・`flow`、`launch.json`・`ids` がある'
+  - name: test_create_workspace_opened
+    case: 正常
+    summary: 記録がありlaunch.json が無ければ今回の指定を記録して opened
+    condition: 記録あり・`launch.json` 無し・配信元の行無し
+    mock: 同上
+    expected: '`(200, {result: opened, launch_options_recorded: true})`、`config.yaml` は変わらない'
+  - name: test_create_workspace_already_open
+    case: 正常
+    summary: 既に開いていれば何も変えない
+    condition: 記録・`launch.json`・`ids` あり、`add_source` が `exists_same`
+    mock: 同上
+    expected: '`(200, {result: already_open, launch_options_recorded: false})`、`launch.json` は変わらない'
+  - name: test_create_workspace_reopened
+    case: 正常
+    summary: クローズ済みなら outside_read を戻す
+    condition: '配信元の行が `outsideRead: false`'
+    mock: 同上・`patch_source`
+    expected: '`(200, {result: reopened})`、`patch_source` が `{outside_read: true}` で呼ばれ、`close_pending` が偽'
+  - name: test_create_workspace_rollback
+    case: 異常
+    summary: 配信元の登録に失敗したら作った記録を消す
+    condition: '`add_source` が `ProjectIndexError`'
+    mock: 同上
+    expected: '`ApiError`（502、`stage: source`）、`.mindstella/`・`launch.json` が無く、`ids` に無い'
+  - name: test_create_workspace_folder_not_allowed
+    case: 異常
+    summary: 許可するフォルダの外は 403
+    condition: '`allowed_dirs` が別のフォルダ / キーが無い'
+    mock: '`project_index.get_settings`'
+    expected: '`ApiError`（403、`stage: folder`）、何も書かれていない'
+  - name: test_create_workspace_unmigrated
+    case: 異常
+    summary: 移す前の形は 409
+    condition: 直下に `mindmap.yaml`
+    mock: 同上
+    expected: '`ApiError`（409）'
+- name: close_workspace
+  title: ワークスペースをクローズにする
+  kind: 関数
+  container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+  usecase: MindStella のセッションを止めてワークスペースをクローズにする
+  scope: public
+  summary: 'MindStella のセッションがあれば断り、無ければ配信元の行を `outside_read: false` にして `close_pending` を真にする'
+  side_effects: project-index の行を変え、`session.json` の `close_pending` を書く
+  args:
+  - name: workspace_id
+    type: str
+    required: true
+    passing: positional
+    description: ワークスペースの ID
+  - name: ctx
+    type: ServerContext
+    required: true
+    passing: positional
+    description: 状態のフォルダ・project-index のポート・鍵
+  returns:
+    type: dict
+    description: '`{id, closed: true}`'
+  exceptions:
+  - name: ApiError
+    condition: 404・409・502
+  unit_tests:
+  - name: test_close_workspace
+    case: 正常
+    summary: セッションが無ければ outside_read を偽にする
+    condition: '`session.json` が `stopped`'
+    mock: '`project_index.patch_source`・`sessions.is_alive`'
+    expected: '`patch_source` が `{outside_read: false}` で呼ばれ、`close_pending` が真、`launch.json` が残る'
+  - name: test_close_workspace_session_running
+    case: 異常
+    summary: セッションがあれば 409
+    condition: '`session.json` が `running` で生きている'
+    mock: '`sessions.is_alive` が真'
+    expected: '`ApiError`（409、`stage: session`）、`patch_source` が呼ばれない'
+  - name: test_close_workspace_unknown
+    case: 異常
+    summary: ID の一覧に無ければ 404
+    condition: '`ids` が空'
+    mock: なし
+    expected: '`ApiError`（404）'
+notes:
+  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewManager`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`

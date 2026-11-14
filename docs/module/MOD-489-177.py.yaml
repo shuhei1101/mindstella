@@ -36,8 +36,8 @@ constants:
     title: ツールの名前
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
-    summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）
-    value: ("init", "add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "write_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
+    summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を足す
+    value: ("add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "write_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -81,7 +81,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える
+    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに足す
     description: 末尾で `sys.exit(main())`。
     side_effects: '`127.0.0.1` の `MINDSTELLA_PORT` で待ち受け、記録を標準エラーに書く'
     args:
@@ -335,7 +335,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る'
+    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
     args:
       - name: previews
         type: PreviewRegistry
@@ -409,6 +409,12 @@ functions:
         condition: 'D-1 を持つワークスペース `ws` を `tmp_path` に置き、`session` の `cwd` を `tmp_path` にする。`parametrize`: `call_tool("find", {"workspace": "ws", "session": ...})` / `call_tool("find", {"workspace": "ws", "format": "json", "session": ...})`'
         mock: なし
         expected: 本文が `全 1 件・合計` で始まり `structured_content` が `None` / `structured_content` の `items[0].id` が `D-1`
+      - name: test_build_server_api_tools
+        case: 正常
+        summary: MindStella の API と同じ操作のツールがあり、init が無い
+        condition: '`build_server` の結果のツールの一覧'
+        mock: なし
+        expected: '`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` があり、`init` が無い'
   - name: call_tool
     title: ツールの呼び出し
     kind: 関数
@@ -627,3 +633,31 @@ functions:
         condition: '`全 2 件・合計 300 文字`'
         mock: なし
         expected: 本文がその文字で、`structured_content` が `None`、`is_error` が偽
+data_models:
+  - name: ServerContext
+    title: 入口が渡す値
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 外部のアプリから起動する
+    summary: ワークスペースの管理・セッションの管理・MindStella の API に渡す値。`main` が 1 つ作る
+    properties:
+      - name: port
+        type: int
+        description: 待ち受けのポート
+      - name: pi_port
+        type: int
+        description: project-index のポート（`PROJECT_INDEX_PORT`、無ければ 8786）
+      - name: state_root
+        type: Path
+        description: 状態のフォルダ（`state.state_root`）
+      - name: locks
+        type: WorkspaceLocks
+        description: 依頼の順番の鍵
+      - name: previews
+        type: PreviewManager
+        description: プレビューの配信
+      - name: plugin_root
+        type: Path
+        description: プラグインのフォルダ
+      - name: tmux
+        type: TmuxRunner
+        description: tmux のコマンドを呼ぶもの

@@ -7,7 +7,7 @@ classes:
     title: 待ち受けのポートが使われている
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 起動した常駐サーバーが待ち受ける前に終わり、そのポートに別のプロセスがつながる。`main` が案内を出す
+    summary: ポートはつながるが `GET /_admin/status` が mindstella の応答を返さない（別のプロセスがポートを使っている）。起動せずに `main` が案内を出す
     kind: クラス
     inherits: Exception
     properties:
@@ -18,13 +18,10 @@ classes:
     title: 常駐サーバーが起動直後に終わった
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 起動した常駐サーバーが待ち受ける前に終わり、ポートは空いている（依存の読み込みの失敗・ポートの値の誤りなど）。`main` が記録の末尾を出す
+    summary: 起動した常駐サーバーが待ち受ける前に終わった（`systemctl --user is-active` が `failed`・`activating`）。`main` が `server.log` の書き足された分を出す
     kind: クラス
     inherits: Exception
     properties:
-      - name: returncode
-        type: int
-        description: 常駐サーバーの終了コード
       - name: log_tail
         type: list[str]
         description: 起動してから `server.log` に書き足された行の末尾（`LOG_TAIL_LINES` 行まで）
@@ -33,6 +30,13 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     summary: 起動した常駐サーバーが、終わらないまま `START_TIMEOUT_SEC` 秒以内に `GET /_admin/status` へ応答しない。`main` が `server.log` を見る案内を出す（プロセスは止めない）
+    kind: クラス
+    inherits: Exception
+  - name: SystemdUnavailableError
+    title: systemd --user が使えない
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`systemctl --user show-environment` が終了コード 0 でない。起動せずに `main` が systemd --user が要ることを示す'
     kind: クラス
     inherits: Exception
 constants:
@@ -78,18 +82,42 @@ constants:
     usecase: 常駐サーバーの起動と停止
     summary: 常駐サーバーが起動直後に終わったときに示す、`server.log` の末尾の行数
     value: '20'
-  - name: SERVER_FILE
-    title: 常駐サーバーのファイル
-    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
-    usecase: 常駐サーバーの起動と停止
-    summary: 起動する常駐サーバーの入口（このファイルと同じフォルダの `server.py`）
-    value: Path(__file__).resolve().parent / "server.py"
   - name: PLUGIN_ROOT
     title: プラグインのフォルダ
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     summary: このファイルの 3 つ上のフォルダ（`version.ini` を持つ）
     value: Path(__file__).resolve().parents[3]
+  - name: UNIT_NAME
+    title: ユニットの名前
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: 常駐サーバーの systemd --user のユニット
+    value: '"mindstella.service"'
+  - name: UNIT_RESTART_SEC
+    title: 起動し直すまでの秒数
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: ユニットの `RestartSec`。起動を待つ上限（10 秒）の間の起動し直しが 1 回までになる値
+    value: '5'
+  - name: UNIT_START_LIMIT
+    title: 起動し直しの上限
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: ユニットの `StartLimitIntervalSec`・`StartLimitBurst`
+    value: (60, 3)
+  - name: PASS_ENV_PREFIXES
+    title: ユニットに渡す環境変数
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: 呼び出し元の環境からユニットの `Environment=` に書く環境変数の名前（頭が一致するもの）
+    value: ("MINDSTELLA_", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
+  - name: PORT_IN_USE
+    title: ポートが使われている
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: '`fetch_status` が、つながるが mindstella の応答でないときに返す印'
+    value: '"port_in_use"'
 functions:
   - name: main
     title: 常駐サーバーの起動の確認の入口
@@ -97,16 +125,16 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 常駐サーバーが同じバージョンで待ち受けていれば何もせず、違うバージョンなら差と手順を示し、落ちていれば依存を確かめて起動し、待ち受けるまで待つ
-    description: 末尾で `sys.exit(main())`。SessionStart のフックは `--hook` を付け、起動スクリプトは付けずに呼ぶ。
-    side_effects: 常駐サーバーを起動する（`start_server`）。案内を標準出力か標準エラーに書く
+    summary: 常駐サーバーが同じバージョンと同じプラグインのフォルダで待ち受けていれば何もせず、違えば違いと再起動の手順を示し、ポートが別のプロセスに使われていれば起動せずに示し、落ちていれば systemd --user のユニットを書いて起動し、待ち受けるまで待つ。`--restart` では待ち受けていてもユニットを書き直して起動し直す
+    description: 末尾で `sys.exit(main())`。SessionStart のフックは `--hook` を付け、起動のコマンドは付けずに呼ぶ。`mindstella server restart` は `--restart` を付ける
+    side_effects: ユニットのファイルを書き、`systemctl --user` を呼ぶ。案内を標準出力か標準エラーに書く
     args:
       - name: argv
         type: list[str] | None
         required: false
         default: None
         passing: positional
-        description: 引数（`None` なら `sys.argv[1:]`。`--hook` だけを受ける）
+        description: 引数（`None` なら `sys.argv[1:]`。`--hook`・`--restart` を受ける）
       - name: environ
         type: Mapping[str, str]
         required: false
@@ -137,12 +165,12 @@ functions:
         default: fetch_status
         passing: injected
         description: 常駐サーバーの状態を読む関数
-      - name: start
-        type: Callable[..., subprocess.Popen]
+      - name: systemctl
+        type: Callable[[list[str]], int]
         required: false
-        default: start_server
+        default: run_systemctl
         passing: injected
-        description: 常駐サーバーを起動する関数
+        description: '`systemctl --user` を呼ぶ関数'
       - name: log_file
         type: Path
         required: false
@@ -183,9 +211,9 @@ functions:
       - name: test_main
         case: 正常
         summary: 落ちていれば起動し、つなぎ直す案内を出す
-        condition: '`["--hook"]`。`fetch` は 1 回目 `None`、2 回目以降 `{name: mindstella, version: 今の版}` を返す。`start` は終わらない偽のプロセスを返す。`run_check_env` はそろっている結果を返す'
-        mock: '`fetch`・`start`・`run_check_env`・`time.sleep`'
-        expected: 0 を返し、`start` が 1 回呼ばれ、`stdout` に `ポート 8784` と `/mcp` がある。`stderr` が空
+        condition: '`["--hook"]`。`fetch` は 1 回目つながらない、2 回目以降 `{name: mindstella, version: 今の版, plugin_root: このフォルダ}` を返す。`systemctl` は 0 を返す。`run_check_env` はそろっている結果を返す'
+        mock: '`fetch`・`systemctl`・`run_check_env`・`time.sleep`・ユニットのフォルダ（`XDG_CONFIG_HOME`）'
+        expected: 0 を返し、ユニットのファイルが書かれ、`systemctl` が `show-environment`・`daemon-reload`・`start mindstella.service` の順で呼ばれ、`stdout` に `ポート 8784` と `/mcp` がある
       - name: test_main_when_running
         case: 正常
         summary: 同じバージョンが待ち受けていれば何もしない
@@ -194,10 +222,10 @@ functions:
         expected: 0 を返し、`start` が呼ばれず、`stdout` が空
       - name: test_main_when_outdated
         case: 正常
-        summary: バージョンが違えば起動し直さずに差と手順を示す
-        condition: '`fetch` が `{name: mindstella, version: v0.0.1}` を返す。`parametrize`: `["--hook"]` / `[]`'
+        summary: バージョンかプラグインのフォルダが違えば、再起動せずに違いと手順を示す
+        condition: '`fetch` が `parametrize`: 違う `version` / 同じ `version` で `plugin_root` の末尾のフォルダ名が違う'
         mock: '`fetch`・`start`'
-        expected: どちらも 0 を返し、`start` が呼ばれない。前者は `stdout`、後者は `stderr` に `v0.0.1` と今の版と `server_stop` がある
+        expected: 0 を返し、`systemctl` が `start`・`restart` を受けず、`stdout` に違う値と `mindstella server restart` がある
       - name: test_main_when_port_invalid
         case: 異常
         summary: ポートの値が誤りなら確かめずに案内する
@@ -210,25 +238,43 @@ functions:
         condition: '`fetch` が `None` を返し、`run_check_env` が mcp の足りない `DependencyMissingError(report)` を送る。`parametrize`: `["--hook"]` / `[]`'
         mock: '`fetch`・`start`・`run_check_env`'
         expected: 前者は 0、後者は 1 を返し、案内に `mcp` と `report` の `install` がある。`start` が呼ばれない
-      - name: test_main_when_start_failed
-        case: 異常
-        summary: 起動できなければ理由ごとに案内する
-        condition: '`["--hook"]`。`fetch` が `None` を返し、`wait_until_ready` を差し替える。`parametrize`: `PortInUseError(8784)` / `ServerExitedError(1, ["ImportError: x"])` / `ServerStartTimeoutError()` を送る'
-        mock: '`fetch`・`start`・`run_check_env`・`wait_until_ready`'
-        expected: 'どれも 0 を返し、`stdout` に `MINDSTELLA_PORT` / `ImportError: x` と `server.log` のパス / `server.log` のパスがある'
       - name: test_main_when_old_syntax
         case: 正常
         summary: Python 3.8 の構文で読め、型注釈を実行時に評価しない
         condition: '`ensure_server.py` を `ast.parse(..., feature_version=(3, 8))` で読み、先頭の文を見る'
         mock: なし
         expected: '`SyntaxError` にならず、docstring の次の文が `from __future__ import annotations`'
+      - name: test_main_when_port_in_use
+        case: 異常
+        summary: ポートがつながるのに mindstella の応答が無ければ起動しない
+        condition: '`fetch` が `PORT_IN_USE` を返す'
+        mock: '`fetch`・`systemctl`'
+        expected: 0 を返し（`--hook`）、`systemctl` が `start` を受けず、`stdout` にポートと `MINDSTELLA_PORT`
+      - name: test_main_when_systemd_unavailable
+        case: 異常
+        summary: systemd --user が使えなければ起動しない
+        condition: '`systemctl` の `show-environment` が 1'
+        mock: '`fetch`・`systemctl`'
+        expected: '`--hook` で 0、無しで 1。ユニットのファイルが書かれず、出力に systemd --user が要ることの案内'
+      - name: test_main_when_restart
+        case: 正常
+        summary: --restart はユニットを書き直して起動し直す
+        condition: '`["--restart"]`、`fetch` は待ち受けている状態を返す'
+        mock: '`fetch`・`systemctl`'
+        expected: ユニットの `ExecStart` がこのフォルダの `server.py` で、`systemctl` が `daemon-reload`・`restart mindstella.service` の順で呼ばれる
+      - name: test_main_when_start_failed
+        case: 異常
+        summary: 起動した後に終われば記録の末尾を示す
+        condition: '`wait_until_ready` が `ServerExitedError`'
+        mock: '`wait_until_ready`'
+        expected: 1 を返し（`--hook` 無し）、`stderr` に記録の末尾
   - name: fetch_status
     title: 常駐サーバーの状態を読む
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: '`http://127.0.0.1:{port}/_admin/status` を読み、mindstella の状態なら返す'
+    summary: '`http://127.0.0.1:{port}/_admin/status` を読み、mindstella の状態なら返す。つながらないときは `None`、つながるのに mindstella の応答でないときは `PORT_IN_USE`'
     args:
       - name: port
         type: int
@@ -242,7 +288,7 @@ functions:
         passing: injected
         description: HTTP を開くもの（環境変数のプロキシを通さない）
     returns:
-      type: dict | None
+      type: dict | Literal["port_in_use"] | None
       description: 200 で JSON のオブジェクトの `name` が `SERVER_NAME` ならその辞書。それ以外は `None`
     process: |-
       1. `opener.open(URL, timeout=STATUS_TIMEOUT_SEC)` で GET を送る
@@ -254,7 +300,7 @@ functions:
         summary: mindstella の状態だけを返す
         condition: 'テストが空きポートで HTTP のサーバーを立てる。`parametrize`: `{"name": "mindstella", "version": "v1.0.0"}` を返す / 404 を返す / `{"name": "other"}` を返す / `x` を返す / 待ち受けていないポート'
         mock: なし
-        expected: その辞書 / `None` / `None` / `None` / `None`
+        expected: その辞書 / `PORT_IN_USE` / `PORT_IN_USE` / `PORT_IN_USE` / `None`
   - name: read_installed_version
     title: プラグインのバージョン
     kind: 関数
@@ -278,57 +324,131 @@ functions:
         condition: '`tmp_path / "version.ini"` に `v0.12.0\n`'
         mock: なし
         expected: '`v0.12.0`'
-  - name: start_server
-    title: 常駐サーバーを起動する
+  - name: is_outdated
+    title: 古いコードか
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 仮想環境の Python で `server.py` を新しいセッションで起動し、標準出力と標準エラーを記録のファイルへ書き足す
-    side_effects: 子プロセスを起動する。記録のファイルのフォルダが無ければ作る
+    summary: 状態の `version` とプラグインのバージョン、`plugin_root` の末尾のフォルダ名とこのスクリプトのプラグインのフォルダの末尾のフォルダ名を比べ、違う値の組を返す。同じなら `None`
+    args:
+      - name: status
+        type: dict
+        required: true
+        passing: positional
+        description: '`GET /_admin/status` の応答'
+      - name: plugin_root
+        type: Path
+        required: true
+        passing: positional
+        description: このスクリプトのプラグインのフォルダ
+    returns:
+      type: list[tuple[str, str, str]] | None
+      description: 違う値の組（項目・常駐サーバーの値・インストール済みの値）
+    unit_tests:
+      - name: test_is_outdated
+        case: 正常
+        summary: バージョンかフォルダ名が違えば組を返す
+        condition: '`parametrize`: 同じ / `version` が違う / `plugin_root` が別のプロファイルの同じ名前のフォルダ / 末尾が `0fd2` と `c938`'
+        mock: なし
+        expected: '`None` / `version` の組 / `None` / `plugin` の組'
+  - name: unit_text
+    title: ユニットの中身
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`mindstella.service` の中身（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`）を返す'
     args:
       - name: python_path
         type: str
         required: true
         passing: positional
-        description: 仮想環境の Python（依存の確認の `python_path`）
+        description: 仮想環境の Python
+      - name: plugin_root
+        type: Path
+        required: true
+        passing: positional
+        description: このスクリプトのプラグインのフォルダ
       - name: environ
         type: Mapping[str, str]
         required: true
-        passing: keyword
-        description: 常駐サーバーへそのまま渡す環境変数
+        passing: positional
+        description: '`PASS_ENV_PREFIXES` の環境変数を読む'
       - name: log_file
         type: Path
         required: true
-        passing: keyword
-        description: 書き足す記録のファイル
-      - name: popen
-        type: Callable[..., subprocess.Popen]
-        required: false
-        default: subprocess.Popen
-        passing: injected
-        description: 子プロセスを起動する関数
+        passing: positional
+        description: '`server.log`'
     returns:
-      type: subprocess.Popen
-      description: 起動したプロセス（待たない）
-    process: |-
-      1. `log_file` の親のフォルダを作り（`parents=True, exist_ok=True`）、`log_file` を追記で開く
-      2. `[python_path, str(SERVER_FILE)]` を、標準入力 `DEVNULL`・標準出力をそのファイル・標準エラーを標準出力へ、`env=dict(environ)`・`cwd=Path.home()`・`start_new_session=True` で起動する（シェルを通さない）
-      3. 親の側のファイルを閉じ、プロセスを返す
+      type: str
+      description: ユニットの中身
     unit_tests:
-      - name: test_start_server
+      - name: test_unit_text
         case: 正常
-        summary: 新しいセッションで、記録へつないで起動する
-        condition: '`log_file` は `tmp_path / "logs" / "server.log"`（フォルダが無い）'
-        mock: '`popen`（受け取った引数を記録する）'
-        expected: '`popen` の第 1 引数が `[python_path, ...server.py]`、`start_new_session` が真、`stdin` が `DEVNULL`、`stderr` が `STDOUT`。`tmp_path / "logs"` がある'
+        summary: キーと Environment=
+        condition: '`MINDSTELLA_PORT=9000`・`PROJECT_INDEX_PORT=8786`・`HOME=/h` の環境'
+        mock: なし
+        expected: '`ExecStart` が仮想環境の Python とこのフォルダの `server.py`、`MINDSTELLA_PORT`・`PROJECT_INDEX_PORT` の `Environment=` があり `HOME` が無い、`StandardOutput=append:{log}`'
+  - name: write_unit
+    title: ユニットを書く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service` に書く。中身が同じなら書かずに偽を返す'
+    side_effects: ユニットのファイルを書く
+    args:
+      - name: text
+        type: str
+        required: true
+        passing: positional
+        description: ユニットの中身
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: '`XDG_CONFIG_HOME` を読む'
+    returns:
+      type: bool
+      description: 書いたか
+    unit_tests:
+      - name: test_write_unit
+        case: 正常
+        summary: 同じ中身なら書かない
+        condition: 1 回目に書き、同じ中身でもう 1 回呼ぶ
+        mock: '`XDG_CONFIG_HOME` を一時フォルダ'
+        expected: 1 回目は真、2 回目は偽でファイルの更新時刻が変わらない
+  - name: run_systemctl
+    title: systemctl を呼ぶ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`systemctl --user {引数}` を子プロセスで呼び、終了コードを返す'
+    args:
+      - name: args
+        type: list[str]
+        required: true
+        passing: positional
+        description: '`--user` の後の引数'
+    returns:
+      type: int
+      description: 終了コード
+    unit_tests:
+      - name: test_run_systemctl
+        case: 正常
+        summary: --user を付けて呼ぶ
+        condition: '`["daemon-reload"]`'
+        mock: '`subprocess.run`'
+        expected: '`["systemctl", "--user", "daemon-reload"]` で呼ばれ、その終了コードを返す'
   - name: wait_until_ready
     title: 待ち受けるまで待つ
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 起動した常駐サーバーが `GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、終わったか上限を過ぎたら理由の例外を送る
+    summary: '`GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、`systemctl --user is-active mindstella.service` が `failed`・`activating` なら ServerExitedError、上限を過ぎたら ServerStartTimeoutError を送る'
     args:
       - name: process
         type: subprocess.Popen

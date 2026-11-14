@@ -17,18 +17,6 @@ constants:
     usecase: 起動スクリプトで立ち上げる
     summary: '`claude plugin list --json` の要素の `id` で引く値'
     value: '"mindstella@mindstella"'
-  - name: SESSION_PREFIX
-    title: セッションの名前の頭
-    container: plugins/mindstella/skills/mindmap/scripts/launch.py
-    usecase: 起動スクリプトで立ち上げる
-    summary: tmux のセッションの名前の頭
-    value: '"mindstella-"'
-  - name: PATH_HASH_DIGITS
-    title: パスのハッシュの桁数
-    container: plugins/mindstella/skills/mindmap/scripts/launch.py
-    usecase: 起動スクリプトで立ち上げる
-    summary: セッションの名前に付ける、絶対パスの SHA-256 の 16 進の先頭の桁数（インターフェース定義『起動のコマンド』）
-    value: '6'
 functions:
   - name: find_plugin_dir
     title: プラグインのフォルダの引き当て
@@ -67,59 +55,13 @@ functions:
         mock: なし
         expected: '`PluginNotInstalledError`'
         exception: PLUGIN_ID の要素が無い
-  - name: session_name
-    title: セッションの名前
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/launch.py
-    usecase: 起動スクリプトで立ち上げる
-    scope: public
-    summary: ワークスペースのフォルダと Claude Code の設定のフォルダ（アカウント）から tmux のセッションの名前を作る
-    args:
-      - name: folder
-        type: Path
-        required: true
-        passing: positional
-        description: ワークスペースのフォルダ
-      - name: config_dir
-        type: Path | None
-        required: false
-        default: None
-        passing: keyword
-        description: Claude Code の設定のフォルダ（`CLAUDE_CONFIG_DIR`）。`None` ならフォルダだけで名前を作る
-    returns:
-      type: str
-      description: '`{SESSION_PREFIX}{フォルダ名}-{ハッシュ}`'
-    process: |-
-      1. フォルダを `resolve()` してシンボリックリンクを解いた絶対パスにする
-      2. `config_dir` があれば、`resolve()` した絶対パスを改行を挟んで 1 の後ろにつなぐ
-      3. その文字列を UTF-8 で SHA-256 にかけ、 16 進の先頭 `PATH_HASH_DIGITS` 桁を取る
-      4. フォルダ名の `.`・`:` を `-` に置き換え、`SESSION_PREFIX` とハッシュをつなぐ
-    unit_tests:
-      - name: test_session_name
-        case: 正常
-        summary: フォルダ名とパスのハッシュをつなぐ
-        condition: '`tmp_path / "家計簿.v2:アプリ"`'
-        mock: なし
-        expected: '`mindstella-家計簿-v2-アプリ-` に続けて、その絶対パスの SHA-256 の先頭 6 桁'
-      - name: test_session_name_when_same_name_elsewhere
-        case: 正常
-        summary: 同じ名前でも場所が違えば別の名前
-        condition: '`tmp_path / "仕事" / "家計簿アプリ"` と `tmp_path / "個人" / "家計簿アプリ"`'
-        mock: なし
-        expected: 2 つの名前が違う。同じフォルダを相対パスで渡しても同じ名前
-      - name: test_session_name_when_config_dir
-        case: 正常
-        summary: 同じフォルダでも設定のフォルダが違えば別の名前
-        condition: '`tmp_path / "家計簿アプリ"` を `config_dir` 無し・`tmp_path / ".claude-sub1"`・`tmp_path / ".claude-sub2"` で渡す'
-        mock: なし
-        expected: 3 つの名前が違い、どれも `mindstella-家計簿アプリ-` で始まる。`config_dir` 無しの名前は `test_session_name` と同じ作り方。`.claude-sub1` のハッシュは絶対パスと設定のフォルダの絶対パスを改行でつないだ文字列の SHA-256 の先頭 6 桁
   - name: run_launch
     title: 起動の手助けの入口
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 起動スクリプトで立ち上げる
     scope: public
-    summary: 標準入力のプラグインの一覧から、プラグインのフォルダ・セッションの名前を作って標準出力に出す
+    summary: '`--find-plugin`: 標準入力のプラグインの一覧から、インストールした今の版のフォルダを標準出力に出す。`--start`: `run_start` を呼ぶ。`--server-status`: `run_server_status` を呼ぶ'
     description: 末尾で `sys.exit(run_launch())`。起動スクリプトが `{python_path} launch.py --folder {フォルダ}` で起動し、`claude plugin list --json` の出力を標準入力へ渡す。
     side_effects: 標準出力・標準エラーに書く
     args:
@@ -145,19 +87,20 @@ functions:
       type: int
       description: 終了コード（0 正常 / 1 プラグインが無い・一覧を読めない / 2 引数の誤りは argparse が終える）
     process: |-
-      1. 引数を解釈し、標準入力を JSON の配列として読む
+      1. 引数を解釈する（`--find-plugin`・`--start`・`--server-status` のどれか 1 つ）
+         - `--start`・`--server-status` の場合、`run_start`・`run_server_status` を呼んで、その終了コードを返す
+      2. `--find-plugin`: 標準入力を JSON の配列として読む
          - 読めないか配列でない場合、標準エラーに `[mindstella] エラー: claude plugin list --json の出力を読めません` を出して 1 を返す
-      2. プラグインのフォルダを引く（`find_plugin_dir`）
+      3. プラグインのフォルダを引く（`find_plugin_dir`）
          - `PluginNotInstalledError` を捕まえた場合、標準エラーに `[mindstella] エラー: {メッセージ}` とインストールの手順を案内する行を出して 1 を返す
-      3. セッションの名前を作る（`session_name`。`environ` の `CLAUDE_CONFIG_DIR` が空でなければ `config_dir` に渡す）
-      4. 標準出力に、プラグインのフォルダ・セッションの名前を 1 行ずつこの順で出し、 0 を返す（起動スクリプトが `read` で 1 行ずつ受ける）
+      4. 標準出力にプラグインのフォルダを 1 行で出し、0 を返す（起動のコマンドが `read` で受ける）
     unit_tests:
       - name: test_run_launch
         case: 正常
-        summary: 2 つの値を 1 行ずつ出す
-        condition: '`--folder {tmp_path}/家計簿アプリ`、標準入力は mindstella の `installPath` を持つ配列'
+        summary: --find-plugin でプラグインのフォルダを 1 行出す
+        condition: '`--find-plugin`、標準入力は mindstella の `installPath` を持つ配列'
         mock: なし
-        expected: 0 を返し、標準出力の 2 行が `installPath`・`mindstella-家計簿アプリ-{6 桁}`
+        expected: 0 を返し、標準出力の 1 行が `installPath`
       - name: test_run_launch_when_plugin_missing
         case: 正常
         summary: プラグインが無ければ案内して 1
@@ -170,9 +113,133 @@ functions:
         condition: '`parametrize`: 標準入力が `{` / `{}`'
         mock: なし
         expected: '1 を返し、標準エラーが `[mindstella] エラー: ` で始まる'
-      - name: test_run_launch_when_config_dir
+  - name: api_request
+    title: MindStella の API を呼ぶ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 端末から起動する
+    scope: public
+    summary: '`http://127.0.0.1:{port}{path}` へ JSON を送り、ステータスと JSON の本文を返す（`Host` は `127.0.0.1:{port}`）'
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+      - name: method
+        type: str
+        required: true
+        passing: positional
+        description: HTTP のメソッド
+      - name: path
+        type: str
+        required: true
+        passing: positional
+        description: パス
+      - name: body
+        type: dict | None
+        required: true
+        passing: positional
+        description: 本文
+      - name: timeout
+        type: float
+        required: true
+        passing: positional
+        description: 打ち切る秒数
+    returns:
+      type: tuple[int, dict]
+      description: ステータスと本文
+    exceptions:
+      - name: OSError
+        condition: つながらない・打ち切った
+    unit_tests:
+      - name: test_api_request
         case: 正常
-        summary: CLAUDE_CONFIG_DIR があればセッションの名前に入れる
-        condition: '`test_run_launch` と同じ引数と標準入力。`parametrize`: `environ={"CLAUDE_CONFIG_DIR": "{tmp_path}/.claude-sub1"}` / `environ={"CLAUDE_CONFIG_DIR": ""}`'
+        summary: 本文と Host を送り、4xx も本文を返す
+        condition: テストが空きポートで HTTP のサーバーを立てる。201 / 409 の problem+json
         mock: なし
-        expected: 0 を返し、2 行目が `session_name(フォルダ, config_dir=そのフォルダ)` / `session_name(フォルダ)` と同じ
+        expected: '`(201, {...})` / `(409, {stage: exists, ...})`。送った `Host` が `127.0.0.1:{port}`'
+  - name: run_start
+    title: ワークスペースと MindStella のセッションを作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 端末から起動する
+    scope: public
+    summary: 起動のコマンドの引数（フォルダ・`--flow`・`--mcp-config`・`--plugin-dir`）で『ワークスペースの作成』と『MindStella のセッションの作成』を呼び、画面の URL とつなぐペインを 1 行に 1 つ出す。409（`exists`）は起動中のペインを出す
+    args:
+      - name: argv
+        type: list[str]
+        required: true
+        passing: positional
+        description: 引数
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: '`MINDSTELLA_PORT`・`CLAUDE_CONFIG_DIR` を読む'
+      - name: stdout
+        type: TextIO
+        required: true
+        passing: positional
+        description: 出力先
+      - name: stderr
+        type: TextIO
+        required: true
+        passing: positional
+        description: エラーの出力先
+      - name: request
+        type: Callable[..., tuple[int, dict]]
+        required: false
+        default: api_request
+        passing: injected
+        description: API を呼ぶ関数
+    returns:
+      type: int
+      description: 0 正常 / 1 API のエラー / 2 引数の誤り
+    unit_tests:
+      - name: test_run_start
+        case: 正常
+        summary: 2 つの API を順に呼び、URL とペインを出す
+        condition: '`[/w/家計簿, --flow aituber#flow-1, --mcp-config m.json, --plugin-dir p]`、`CLAUDE_CONFIG_DIR=/c`'
+        mock: '`request`'
+        expected: '0 を返し、1 回目が `POST /workspaces`（`flow: {source: aituber, doc: flow-1}`・`mcp_config` がファイルの中身・`plugin_dirs` が絶対パス）、2 回目が `POST /workspaces/{id}/sessions`（`claude_config_dir: /c`）、`stdout` が `url`・`pane` の 2 行'
+      - name: test_run_start_exists
+        case: 正常
+        summary: 既にある MindStella のセッションのペインを出す
+        condition: '2 回目が 409 `{stage: exists, pane: w:0.0}`'
+        mock: '`request`'
+        expected: 0 を返し、`stdout` のペインが `w:0.0`、`stderr` に既にあった旨
+      - name: test_run_start_error
+        case: 異常
+        summary: 作成の失敗は detail を出して 1
+        condition: 1 回目が 403 / 2 回目が 503
+        mock: '`request`'
+        expected: 1 を返し、`stderr` に `detail`（2 回目は画面の URL も）
+  - name: run_server_status
+    title: 常駐サーバーの状態を出す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/launch.py
+    usecase: 常駐サーバーの起動と停止
+    scope: public
+    summary: '`GET /_admin/status` を読んで、ポート・バージョン・`plugin_root`・配信を出す'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: '`MINDSTELLA_PORT` を読む'
+      - name: stdout
+        type: TextIO
+        required: true
+        passing: positional
+        description: 出力先
+    returns:
+      type: int
+      description: 0 待ち受けている / 1 待ち受けていない
+    unit_tests:
+      - name: test_run_server_status
+        case: 正常
+        summary: 状態を出す
+        condition: '`request` が状態を返す / つながらない'
+        mock: '`request`'
+        expected: 0 で状態の行 / 1
