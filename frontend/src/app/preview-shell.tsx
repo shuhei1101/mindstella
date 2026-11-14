@@ -155,14 +155,12 @@ export const PreviewShell = () => {
   const opened = useRef(false);
   const threadList = threads.data?.status === 200 ? (threads.data.data.threads as unknown as Thread[]) : null;
   const reviewItems = comments.data?.status === 200 ? ((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []) : null;
-  const voiceExists = useMemo(
-    () =>
-      index === null || threadList === null || reviewItems === null
-        ? null
-        : (destination: VoiceDestination): boolean =>
-            "thread" in destination ? threadList.some((thread) => thread.id === destination.thread) || reviewItems.some((item) => item.id === destination.thread) : destination.target === null || index.byId.has(destination.target),
-    [index, threadList, reviewItems],
-  );
+  // 録っている入力の向けた先があるか（記録・スレッド・レビュー中を読み直したら作り直す）
+  const voiceExists = useMemo(() => {
+    if (index === null || threads.data?.status !== 200 || comments.data?.status !== 200) return null;
+    const threadIds = new Set([...(threads.data.data.threads as unknown as Thread[]).map((thread) => thread.id), ...((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []).map((item) => item.id)]);
+    return (destination: VoiceDestination): boolean => ("thread" in destination ? threadIds.has(destination.thread) : destination.target === null || index.byId.has(destination.target));
+  }, [index, threads.data, comments.data]);
   const voiceTopbar = useVoiceTopbar({ exists: voiceExists, openVoiceInput });
   // スレッドとレビュー中の書き込みを読む前は、`thread`・`ttag` を外さない
   const threadContext = threadList === null || reviewItems === null ? {} : { threadIds: [...threadList.map((thread) => thread.id), ...reviewItems.filter((item) => item.thread === null).map((item) => item.id)], threadTags: [...new Set(threadList.flatMap((thread) => thread.tags))] };
