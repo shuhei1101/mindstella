@@ -65,7 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-14T19:31:26.374225+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: 公開ドキュメント 12 ページとプラグインの README を修正。`docs/guide/コマンド.md` は出力の形が実装で定まるため、実装の工程で修正する
+    updated_by: planner
+    updated_at: '2026-11-14T19:48:13.924407+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
