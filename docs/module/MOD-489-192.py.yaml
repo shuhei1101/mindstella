@@ -92,8 +92,14 @@ constants:
     title: ユニットに渡す環境変数
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 呼び出し元の環境からユニットの `Environment=` に書く環境変数の名前（頭が一致するもの）
-    value: ("MINDSTELLA_", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
+    summary: 呼び出し元の環境からユニットの `Environment=` に書く環境変数の名前の頭
+    value: ("MINDSTELLA_",)
+  - name: PASS_ENV_NAMES
+    title: ユニットに渡す環境変数の名前
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 常駐サーバーの起動と停止
+    summary: 呼び出し元の環境からユニットの `Environment=` に書く環境変数の名前（`PATH` は常駐サーバーが `claude-balancer`・`claude`・`tmux` を探すため）
+    value: ("PATH", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
   - name: PORT_IN_USE
     title: ポートが使われている
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
@@ -371,7 +377,7 @@ functions:
         summary: キーと Environment=
         condition: '`MINDSTELLA_PORT=9000`・`PROJECT_INDEX_PORT=8786`・`HOME=/h` の環境'
         mock: なし
-        expected: '`ExecStart` が仮想環境の Python とこのフォルダの `server.py`、`MINDSTELLA_PORT`・`PROJECT_INDEX_PORT` の `Environment=` があり `HOME` が無い、`StandardOutput=append:{log}`'
+        expected: '`ExecStart` が仮想環境の Python とこのフォルダの `server.py`、`MINDSTELLA_PORT`・`PROJECT_INDEX_PORT`・`PATH` の `Environment=` があり `HOME` が無い、`StandardOutput=append:{log}`'
   - name: write_unit
     title: ユニットを書く
     kind: 関数

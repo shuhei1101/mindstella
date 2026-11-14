@@ -169,7 +169,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
-    description: 記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名・`DEFAULT_*`）を渡して書く。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときに、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）
+    description: 記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名・`DEFAULT_*`）を渡して書く。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）
     side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
     args:
       - name: request
@@ -218,7 +218,13 @@ functions:
         summary: 配信元の登録に失敗したら作った記録を消す
         condition: '`add_source` が `ProjectIndexError`'
         mock: 同上
-        expected: '`ApiError`（502、`stage: source`）、`.mindstella/`・`launch.json` が無く、`ids` に無い'
+        expected: '`ApiError`（502、`stage: source`）、`.mindstella/`・直下の `README.md`・`launch.json` が無く、`ids` に無い'
+      - name: test_create_workspace_rollback_keeps_user_readme
+        case: 異常
+        summary: 利用者の README は巻き戻しで消さない
+        condition: 作成の前から直下に利用者の `README.md`、`add_source` が `ProjectIndexError`
+        mock: '`project_index.add_source`'
+        expected: '`README.md` が元の中身のまま'
       - name: test_create_workspace_folder_not_allowed
         case: 異常
         summary: 許可するフォルダの外は 403

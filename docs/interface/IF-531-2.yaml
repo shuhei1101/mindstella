@@ -59,7 +59,7 @@ constraints:
   - item: あるとみなす状態
     constraint: 状態の `status` が `running`・`stopping`・`restarting` で、tmux のペインと Claude Code のプロセスがあるもの。状態が `running` でもペインかプロセスが無ければ落ちたもの（`crashed`）として状態に記録し、無いとみなす
   - item: 起動のコマンド
-    constraint: コマンドを付けずに tmux の `new-session -d -s {ワークスペースの ID} -c {フォルダ}` でペインを作り、`set-option -t ={ワークスペースの ID} remain-on-exit on` を立ててから、`respawn-pane -k -t ={ワークスペースの ID} -c {フォルダ} -e {環境変数}... {コマンド}` でコマンドを動かす（ペインのコマンドがすぐに終わっても、ペインを残して終わり方を読むため）。コマンドは `claude-balancer exec --client mindstella -- claude {引数}`。`PATH` に `claude-balancer` が無ければ `claude {引数}` を、`claude_config_dir` があれば `CLAUDE_CONFIG_DIR` に入れて動かす。tmux のサーバーは利用者の既定のソケット
+    constraint: コマンドを付けずに tmux の `new-session -d -s {ワークスペースの ID} -c {フォルダ}` でペインを作り、`set-option -t ={ワークスペースの ID} remain-on-exit on` を立ててから、`respawn-pane -k -t ={ワークスペースの ID} -c {フォルダ} -e {環境変数}... {コマンド}` でコマンドを動かす（ペインのコマンドがすぐに終わっても、ペインを残して終わり方を読むため）。準備ができたら `set-option -t ={ワークスペースの ID} remain-on-exit off` に戻し、以降はペインのコマンドが終わればセッションごと閉じる。ペインを作る前に、MindStella のセッションが無いとみなしたのに `has-session -t ={ワークスペースの ID}` が 0 を返せば、`kill-session` で残ったセッションを閉じる。コマンドは `claude-balancer exec --client mindstella -- claude {引数}`。`PATH` に `claude-balancer` が無ければ `claude {引数}` を、`claude_config_dir` があれば `CLAUDE_CONFIG_DIR` に入れて動かす。tmux のサーバーは利用者の既定のソケット
     notes: '`new-session -d` はセッションを立てた時点で返るので、ペインの中の `claude-balancer exec` の終了コードは tmux から読む。claude-balancer の `exec` は、借りられない・クライアントが無い・バックエンドへつながらないときに子プロセスを起動せず 125 で終わる（LIB-531-1）'
   - item: Claude Code の引数
     constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`、プラグインの `skills/mindmap/references/起動時の指示.md` の中身を `--append-system-prompt`。引数ごとに分けて渡し、シェルで解釈させない'

@@ -231,6 +231,9 @@ def create_session(
                 session=session_id, status="running", pane=pane, started_at=now_utc()
             ),
         )
+        # 生きていないのに同じ名前の tmux のセッションが残っている: 閉じてから作る
+        if ctx.tmux.run(["has-session", "-t", f"={workspace_id}"])[0] == 0:
+            ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
         try:
             _launch(ctx.tmux, workspace_id, folder, env, command)
             _wait_ready(ctx, workspace_id)
@@ -428,7 +431,9 @@ def _wait_ready(ctx: Any, workspace_id: str) -> None:
     while True:
         current = state.read_session(ctx.state_root, workspace_id)
         # 登録が入った: 準備ができた
+        # 登録が入った: 準備ができたので、以降はペインのコマンドが終わればセッションごと閉じる
         if current is not None and current.claude_session_id:
+            ctx.tmux.run(["set-option", "-t", f"={workspace_id}", "remain-on-exit", "off"])
             return
         _code, out = ctx.tmux.run(
             ["display-message", "-p", "-t", f"={workspace_id}", "#{pane_dead} #{pane_dead_status}"]

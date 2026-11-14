@@ -18,6 +18,7 @@ import sessions
 import state
 from errors import ApiError
 from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
+from readme import README_FILE
 from project_index import ProjectIndexError
 from state import LaunchOptions
 from store import UPGRADE_HINT
@@ -178,6 +179,7 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
             if not exists:
                 if flow is not None:
                     check_flow(ctx.pi_port, flow, folder)
+                readme_existed = (folder / README_FILE).exists()
                 commands.run_init(folder, _default_settings(workspace_id, folder, flow))
             recorded = state.read_launch(ctx.state_root, workspace_id) is None
             if recorded:
@@ -188,7 +190,12 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
                 )
             except ProjectIndexError as error:
                 remaining = _rollback(
-                    ctx, workspace_id, folder, created=not exists, recorded=recorded
+                    ctx,
+                    workspace_id,
+                    folder,
+                    created=not exists,
+                    recorded=recorded,
+                    readme_written=not exists and not readme_existed,
                 )
                 logger.error(  # noqa: TRY400
                     "mindstella.workspace.create_failed",
@@ -362,12 +369,21 @@ def _source_row(workspace_id: str, folder: Path) -> dict[str, Any]:
 
 
 def _rollback(
-    ctx: Any, workspace_id: str, folder: Path, *, created: bool, recorded: bool
+    ctx: Any,
+    workspace_id: str,
+    folder: Path,
+    *,
+    created: bool,
+    recorded: bool,
+    readme_written: bool,
 ) -> list[str]:
-    """この依頼で作った記録と状態の記録を消し、消せなかったパスを返す。"""
+    """この依頼で作った記録・直下の README・状態の記録を消し、消せなかったパスを返す。"""
     targets: list[Path] = []
     if created:
         targets.append(records_root(folder))
+    # 作成の前に README が無かった: この依頼で書いた README も消す
+    if readme_written:
+        targets.append(folder / README_FILE)
     if recorded:
         targets.append(state.workspace_dir(ctx.state_root, workspace_id) / state.LAUNCH_FILE)
     remaining: list[str] = []

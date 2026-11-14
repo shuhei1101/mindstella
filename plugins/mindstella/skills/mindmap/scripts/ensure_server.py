@@ -63,7 +63,10 @@ UNIT_RESTART_SEC = 5
 UNIT_START_LIMIT = (60, 3)
 
 # ユニットの Environment= に書く、呼び出し元の環境変数の名前の頭
-PASS_ENV_PREFIXES = ("MINDSTELLA_", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
+PASS_ENV_PREFIXES = ("MINDSTELLA_",)
+
+# ユニットの Environment= に書く、呼び出し元の環境変数の名前（PATH は常駐サーバーが claude-balancer・claude・tmux を探すため）
+PASS_ENV_NAMES = ("PATH", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
 
 # ポートはつながるが mindstella の応答でないときの fetch_status の値
 PORT_IN_USE = "port_in_use"
@@ -319,7 +322,7 @@ def unit_text(
     passed = sorted(
         (name, value)
         for name, value in environ.items()
-        if name.startswith(PASS_ENV_PREFIXES) and value
+        if (name.startswith(PASS_ENV_PREFIXES) or name in PASS_ENV_NAMES) and value
     )
     lines = [
         "[Unit]",

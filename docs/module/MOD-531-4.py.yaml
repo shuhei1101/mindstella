@@ -207,7 +207,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-2 の順で、ペインを作り `remain-on-exit` を立ててからコマンドを動かし、SessionStart の登録かペインの終わりを待つ
+    summary: IF-531-2 の順で、残ったセッションを閉じてペインを作り、`remain-on-exit` を立ててからコマンドを動かし、SessionStart の登録かペインの終わりを待つ
     description: ワークスペースごとの鍵を、クローズ済みかの確かめから状態を書くまで持つ（準備を待つ間も）。`session.json` の読み書きは `state.update_session` の鍵を使う
     side_effects: tmux のセッションを作り、`session.json` を書く。失敗のときはペインを閉じて `session.json` を消す
     args:
@@ -238,7 +238,13 @@ functions:
         summary: 登録が入れば 201 と最初の入力
         condition: '`TmuxRunner` の偽。0.5 秒後に `session.json` の `claude_session_id` を入れる'
         mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
-        expected: '`(201, ...)`。tmux の呼び出しが `new-session` → `set-option remain-on-exit on` → `respawn-pane -k ... -e MINDSTELLA_SESSION=...` → 最初の入力の貼り付けの順'
+        expected: '`(201, ...)`。tmux の呼び出しが `has-session` → `new-session` → `set-option remain-on-exit on` → `respawn-pane -k ... -e MINDSTELLA_SESSION=...` → 登録の後の `set-option remain-on-exit off` → 最初の入力の貼り付けの順'
+      - name: test_create_session_stale
+        case: 正常
+        summary: 止まった・落ちた後に残った tmux のセッションを閉じてから作る
+        condition: '`parametrize`: `session.json` が `stopped` / `crashed`、`has-session` が 0'
+        mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
+        expected: '`(201, ...)`。tmux の呼び出しが `has-session` → `kill-session` → `new-session` の順'
       - name: test_create_session_exists
         case: 異常
         summary: 生きている MindStella のセッションがあれば 409
