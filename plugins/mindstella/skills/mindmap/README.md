@@ -28,7 +28,7 @@ Claude Code と話し合いながら、検討事項・そこから派生する�
 
 ## 依存とインストール
 
-Claude Code 2.1.287 以上と、Python 3.12 以上（`venv` を含む）と、tmux が要る。
+Claude Code 2.1.287 以上と、Python 3.12 以上（`venv` を含む）と、tmux と、systemd --user が要る。
 マーケットプレイスを登録して、プラグインをインストールする。
 
 ```bash
@@ -41,9 +41,9 @@ claude plugin install mindstella@mindstella
 
 ## 使い方
 
-Claude Code の会話を始めると、SessionStart のフックが常駐サーバーを起動する（待ち受けていれば何もしない）。
-プレビューから送ったコメントを Claude Code へ入力させたいときは、起動スクリプトで tmux のセッションの中に Claude Code を立ち上げる。
-起動スクリプトは、依存を確かめ、常駐サーバーが落ちていれば起動してから、tmux のセッションの中で Claude Code を起動して、そのセッションへつなぐ。
+Claude Code の会話を始めると、SessionStart のフックが常駐サーバーを systemd --user のユニットとして起動する（待ち受けていれば何もしない。古いコードで動いていれば再起動の手順を出す）。
+プレビューから送ったコメントを Claude Code へ入力させたいときは、起動スクリプトで MindStella のセッションを作る。
+起動スクリプトは、依存を確かめ、常駐サーバーが落ちていれば起動してから、MindStella の API でワークスペースと MindStella のセッション（tmux のペインの中の Claude Code）を作り、そのペインへつなぐ。
 
 ```bash
 {プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}
