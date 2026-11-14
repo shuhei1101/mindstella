@@ -61,6 +61,32 @@ NO_MIC_REASON = "このページではマイクを使用できません。HTTPS 
 DENIED_REASON = "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。"
 SENT_TEXT = "送信しました。Claude Code へは入力していません。"
 
+# 既定の挙動（review）でレビュー中に溜めたときの結果の行の文
+REVIEWED_TEXT = "文字起こしの結果をレビュー中に追加しました。"
+
+# 偽の画面の消灯の抑止: navigator.wakeLock.request を、求めた種類と release の呼び出しを window.__wakeLock に記録する偽に差し替える
+FAKE_WAKE_LOCK_SCRIPT = """
+(() => {
+  const log = { requested: [], released: 0 };
+  window.__wakeLock = log;
+  Object.defineProperty(navigator, 'wakeLock', {
+    configurable: true,
+    value: {
+      request: async (type) => {
+        log.requested.push(type);
+        return { released: false, release: async () => { log.released += 1; } };
+      },
+    },
+  });
+})();
+"""
+
+# 画面の消灯の抑止を持たないページにする
+NO_WAKE_LOCK_SCRIPT = "Object.defineProperty(navigator, 'wakeLock', { value: undefined, configurable: true });"
+
+# 偽の画面の消灯の抑止の記録を読む
+WAKE_LOCK_LOG_JS = "() => window.__wakeLock"
+
 
 def open_with_status(page: Page, url: str) -> None:
     """URL を開き、文字起こしの可否を読み終えて描き直すまで待つ。"""
