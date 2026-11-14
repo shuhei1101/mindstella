@@ -268,6 +268,35 @@ states:
         value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
       - name: body
         value: '確認: 案 A にする'
+  - name: VoiceReviewed
+    description: 既定の挙動（review）で、文字起こしの結果を挿入した全文をレビュー中に追加した。入力欄を空にし、元のボタンに戻して「文字起こしの結果をレビュー中に追加しました。」
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: reviewed
+  - name: VoiceReviewFailed
+    description: 文字起こしはできたが、レビュー中に追加できなかった。挿入した全文を入力欄に残し、「レビューに追加」で続けられるようにする
+    args:
+      - name: target
+        value: D-022
+      - name: status
+        value: voice-failed
+      - name: detail
+        value: レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。
+      - name: body
+        value: '確認: 案 A にする'
+  - name: VoiceBusy
+    description: ほかの入力欄で録音中・文字起こし中。マイクのボタンを押せない見た目にし、ホバーとフォーカスで理由のツールチップを出す。キーボードの入力と「レビューに追加」はできる
+    args:
+      - name: target
+        value: D-022
+      - name: voice
+        value: disabled
+      - name: voiceReason
+        value: ほかの入力欄で音声入力中のため、音声で入力できません。
+      - name: body
+        value: D-2 も確認
 lead: 詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄と「レビューに追加」のボタン。選んだ箇所を添えられ、溜めた結果を入力の近くに出す。
 test_file: tests/integration/storybook/test_send_form_stories.py
 status: implemented
@@ -292,8 +321,8 @@ args:
     type: 列挙
     required: false
     default: idle
-    choices: idle・saving・saved・empty・failed・sent・inserted・voice-failed
-    description: 溜める状態。idle は結果を出さない。saving はボタンを押せなくし入力欄を書き換えられなくする。sent は送信した結果、inserted は入力欄へ挿入した結果、voice-failed は音声入力の失敗の理由（`detail`）を出す。empty・failed は入力欄の中身を残す
+    choices: idle・saving・saved・empty・failed・sent・inserted・reviewed・voice-failed
+    description: 溜める状態。idle は結果を出さない。saving はボタンを押せなくし入力欄を書き換えられなくする。sent は送信した結果、inserted は入力欄へ挿入した結果、reviewed は文字起こしの結果をレビュー中に追加した結果（「文字起こしの結果をレビュー中に追加しました。」）、voice-failed は音声入力の失敗の理由（`detail`）を出す。empty・failed は入力欄の中身を残す
   - name: count
     type: 整数
     required: false
@@ -334,7 +363,7 @@ args:
     type: 文字列
     required: false
     enabled_when: '`voice` が `disabled` のとき'
-    description: マイクのボタンを押せない理由（『文字起こしの可否』の `detail`、ブラウザがマイクを使えないときは使う側が持つ文）。ツールチップと読み上げの説明に出す
+    description: マイクのボタンを押せない理由（『文字起こしの可否』の `detail`、ブラウザがマイクを使えないときとほかの入力欄で音声入力中のときは使う側が持つ文）。ツールチップと読み上げの説明に出す
   - name: elapsed
     type: 整数
     required: false
@@ -389,11 +418,11 @@ events:
   - name: 録音をキャンセル
     when: × のボタンを押したとき（`voice` が `recording`）
     value: なし
-    description: 使う側が録音を捨ててマイクを解放し、`voice` を `idle` に戻す。入力欄の中身は変えない。録音中に入力が無くなるか向けた先が変わるとき（パネル・全画面・一覧・スレッドを閉じる・入力を畳む・別の項目やタブへ移る）も、使う側が同じく録音を捨ててマイクを解放する。書き換えの知らせでの描き直しでは録音を止めない
+    description: 使う側が録音を捨ててマイクを解放し、`voice` を `idle` に戻す。入力欄の中身は変えない。録音中に入力が画面から消えても（パネル・全画面・一覧・スレッドを閉じる・入力を畳む・別の項目やタブへ移る）録音は捨てず、使う側が画面で 1 つの置き場所に録音を持ち続ける。録音を捨てるのは、このボタンと、行き先の項目・スレッドが記録から無くなったときだけ。書き換えの知らせでの描き直しでは録音を止めない
   - name: 文字起こし
     when: ✓ のボタンを押したとき（`voice` が `recording`）
     value: target・loc・body（入力欄の中身そのまま）
-    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `insert`）が `send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら送らずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。文字起こし中に入力が無くなったときと、返った時点の向けた先が押したときと違うときは、返った文字を捨てる（挿入も送信もしない）
+    description: 使う側が録音を止めて `voice` を `transcribing` にし、`POST /api/transcriptions` へ送る。入力欄に戻して返った文字をカーソルの位置へ挿入し、設定の挙動（無ければ `review`）が `review` なら挿入した全文を `POST /api/comments` へ送ってレビュー中に溜め、溜められたら入力欄を空にして `reviewed`（溜められなければ全文を残して `voice-failed`）、`send` なら挿入した全文を `POST /api/comments/send-now` へ送って入力欄を空にし `sent`、`insert` なら送らずに `inserted` にする（送信は利用者が「レビューに追加」を押したとき）。失敗は入力欄の中身を残して `voice-failed`。どの場合も `voice` を `idle` に戻す（503 のときは `disabled`）。文字起こし中に入力欄が画面から消えても、返った文字は録音を始めた入力欄の書きかけへ挿入して同じく扱い、失敗のときは使う側がトップバーの下の帯で知らせる
   - name: 押せないマイクを押す
     when: '`voice` が `disabled` のマイクのボタンを押したとき'
     value: なし
@@ -415,3 +444,4 @@ accessibility:
   - 録音中の波形は読み上げから外す（`aria-hidden`）。録音を始めたらフォーカスを ✓ の「文字起こし」へ移し、録音を終えたら入力欄へ戻してカーソルを録音前の位置に置く
   - 'マイク・× ・✓ のボタンは「レビューに追加」と同じ大きさにし、タッチが主な端末（`pointer: coarse`）では 44 x 44 CSS px にする'
   - 画面の文言に文字起こしのサービスの名前（voice-paste）を出さない
+  - トップバーの音声入力中の表示から戻ったときは、録音中なら ✓ の「文字起こし」へフォーカスを移す
