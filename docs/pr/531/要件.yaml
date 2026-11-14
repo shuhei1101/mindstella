@@ -181,10 +181,10 @@ scope_out:
     plan: '#525'
   - item: 全てのワークスペースの画面を常駐サーバーの 1 つのポートで配る作りへの切り替え（A-119 の画面の配信）
     reason: '今はワークスペースごとに空きポートで配り、画面は `/api/...` を絶対のパスで呼ぶ。切り替えると画面（frontend・プレビュー）の全ての呼び出しが変わり、#516 の範囲（scope: に frontend が無い）を超える。#516 では、作成が返す画面の URL を今のワークスペースごとの配信の URL にすると判断した。判断が分かれるためレビューで確定する'
-    plan: to_file
+    plan: '#538'
   - item: MindStella の MCP の引数を、共通の cwd・session_id・source・outside_scope に揃える作り直し（A-119 の MindStella の MCP の引数）
     reason: 記録のツールの行き先（#517）と一緒に決まる。#516 で足すツールは、今のセッションの値の注入（inject_session.py）の引数に合わせる
     plan: '#517'
-  - item: E2E テスト（`tests/e2e/単一ユースケース/test_workspace_create.py`・`test_workspace_upgrade.py`・`test_discussion_to_goal.py`）が削除した `init` のツールを呼ぶ箇所の、`create_workspace` と `update_settings` への書き換え
-    reason: タスク一覧に E2E の工程が無く、E2E は release ブランチで回す。直さないまま release で回すと、この PR の変更（IF-489-25 の削除）で落ちることが分かっている
-    plan: to_file
+  - item: E2E テスト（`tests/e2e/単一ユースケース/test_workspace_create.py`・`test_workspace_upgrade.py`・`tests/e2e/複合ユースケース/test_discussion_to_goal.py`）が削除した `init` のツールを呼ぶ箇所
+    reason: 'タスク一覧に E2E の工程が無く、E2E は release ブランチで回す。develop から `tests/e2e/` を全て削除する open の #477（D-311・D-307 で 0.x の間は E2E を回さず修正しない）がこの 3 ファイルを削除するので、書き換えの Issue は起票しない'
+    plan: '#477'
