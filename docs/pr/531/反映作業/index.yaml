@@ -1,0 +1,15 @@
+claude-balancer のクライアントの追加:
+  説明: 端末の claude-balancer の設定 `~/.config/claude-balancer/settings.yaml` の `clients` に `mindstella` を足し、claude-balancer を起動し直す。セッションの管理は `claude-balancer exec --client mindstella` で MindStella のセッションを起動し、`clients` に無い名前は 125 で断られる
+  タグ: [設定の書き換え, 再起動]
+  実行者: planner
+  時期: マージの後
+  回数: 1 回限り
+  起動し直す対象: claude-balancer
+  可逆: true
+  疎通確認: null
+  実行: null
+  確認: null
+  切り戻し: null
+  失敗時: 既定の対処を 1 回、2 回連続で失敗したら依頼元へ返す
+  確認方法: claude-balancer の `GET /clients` の `clients` に `mindstella` がある
+  状態: "-"
