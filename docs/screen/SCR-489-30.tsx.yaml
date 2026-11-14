@@ -26,7 +26,7 @@ elements:
       - name: body
         value: 詳細パネルと同じ（パネルと全画面を行き来しても書きかけと添えた箇所を保つ）
       - name: status
-        value: 詳細パネルと同じ。音声入力では、書き込みをすぐ送るの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
+        value: 詳細パネルと同じ。音声入力では、既定の挙動でレビュー中のコメントの追加をした結果（reviewed）・書き込みをすぐ送るの結果（sent）・入力欄へ挿入した（inserted）・録音と文字起こしと送信の失敗（voice-failed）
       - name: count
         value: 詳細パネルと同じ
       - name: detail
@@ -34,9 +34,9 @@ elements:
       - name: open
         value: 端末の保存領域に覚えたコメントの入力の開閉（覚えていなければ開く）
       - name: voice
-        value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面が持つ）から決める。使えないときは disabled
+        value: 文字起こしの可否（GET /api/transcription）の available と、ブラウザが navigator.mediaDevices.getUserMedia を持つか、録音・文字起こしの進み（画面で 1 つの音声入力の状態）から決める。使えないときと、ほかの入力欄で録音・文字起こし中のときは disabled
       - name: voiceReason
-        value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」）
+        value: 文字起こしの可否.detail（ブラウザがマイクを使えないときは画面が持つ文「このページではマイクを使用できません。HTTPS か localhost の URL で開いてください。」、ほかの入力欄で音声入力中のときは「ほかの入力欄で音声入力中のため、音声で入力できません。」）
       - name: elapsed
         value: 録音を始めてからの秒数（画面が 1 秒ごとに進める）
       - name: levels
