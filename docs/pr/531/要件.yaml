@@ -73,11 +73,15 @@ docs:
   - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
     new: false
     change: 常駐サーバーを systemd --user で起動・停止・状態の確認する手順にし、プラグインを更新した後に古いコードのままと案内されたときの再起動の手順を加える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
     new: false
     change: 起動のコマンドが MindStella の API でワークスペースと MindStella のセッションを作る流れと、引数（進め方の文書・追加の MCP・プラグイン）、停止とクローズに書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/コマンド.md
     new: false
     change: MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）と同じ操作の MCP のツール、起動のコマンドの引数、常駐サーバーの起動の確認の出力を加える
@@ -85,55 +89,69 @@ docs:
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: 「1 つの常駐サーバーが複数のワークスペースを扱う」に、MindStella の API でワークスペースと MindStella のセッションを作る・止める・クローズにする仕組みと、MindStella のセッションと通常のセッションの違いを加える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/動作環境.md
     new: false
     change: OS を Linux・Windows の WSL（どちらも systemd --user が使えること）にして macOS を外し、claude-balancer（任意。無ければ既定のアカウント。使うときは `clients` に `mindstella` を足す）、project-index（配信元の行の単位の API を持つ版）、グローバルの設定のファイルの `mindstella.allowed_dirs` を加える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: plugins/mindstella/skills/mindmap/README.md
     new: false
     change: 起動のコマンドと常駐サーバーの起動の記述を、systemd --user と MindStella の API に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
     new: false
-    change: 登録した alias が呼ぶ起動のコマンド（端末から起動する）に合わせ、アカウントごとの alias の扱いをインターフェース定義の決定に合わせる
-    status: todo
+    change: アカウントごとの alias の `CLAUDE_CONFIG_DIR` が claude-balancer の無い端末でだけ使われることと、同じフォルダは起動中の MindStella のセッションへつながることに合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/話し合い-セットアップから始める.md
     new: false
     change: 起動のコマンドがワークスペースと MindStella のセッションを作り、セットアップが設定を書く流れに合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 起動のコマンドで MindStella のセッションを作り直す・起動中のペインへつなぐ流れに合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/使い方.md
     new: false
-    change: 『起動スクリプトで立ち上げる』の指し方を『端末から起動する』と起動のコマンドに合わせる
-    status: todo
+    change: 常駐サーバーを起動するの行の概要を、手順のページの冒頭（プラグインを上げた後に古いコードのままと出たとき）に揃える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/README.md
     new: false
-    change: 『起動スクリプトで立ち上げる』の指し方を起動のコマンドに合わせる
-    status: todo
+    change: 常駐サーバーを起動するの行の概要を、手順のページの冒頭に揃える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/プレビューを見る.md
     new: false
-    change: ワークスペースの作成が返す画面の URL で開けることと、起動のコマンドの指し方を加える
-    status: todo
-  - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
-    new: false
-    change: 起動スクリプトの呼び方を起動のコマンドに合わせる
-    status: todo
+    change: 送ったコメントが MindStella のセッションのペインへ入力され、止めた後（停止の依頼・クローズの後）はスレッドに残るだけであることを加える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/セットアップ手順-プレビューを外から見る.md
     new: false
-    change: 許可するホスト名からは MindStella の API と /mcp を受けず、画面の閲覧とコメントの送信だけを受けること（D-340）を加え、起動のコマンドの指し方を合わせる
-    status: todo
-  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
-    new: false
-    change: 起動スクリプトの呼び方を起動のコマンドに合わせる
-    status: todo
+    change: 許可するホスト名からは MindStella の API と /mcp を受けず、画面の閲覧とコメントの送信だけを受けること（D-340）を加え、立ち上げ直しを `mindstella server restart` に合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
   - page: docs/guide/files.yml
     new: false
-    change: 編集したガイドのページの行の概要文を、起動のコマンドと常駐サーバーの systemd --user に合わせる
-    status: todo
+    change: 常駐サーバーを起動する・起動スクリプトで立ち上げるの行の概要文を、systemd --user と MindStella のセッションに合わせる
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T19:47:46.203228+00:00'
 scope_out:
   - item: 記録の検索と書き込みの project-index への移行、変更の検知のフォルダの監視、採番のツール（A-107 の No 2）
     reason: '親 #481 の分割で別の子にした。停止のときのまとめていない変更の commit は、今の commit・pending の仕組みで行う'
