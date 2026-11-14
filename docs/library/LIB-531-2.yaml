@@ -35,7 +35,7 @@ catalogs:
         purpose: 常駐サーバーのユニット（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`）。『常駐サーバーの起動の確認』が起動と起動し直しのたびに書く
 lead: Linux のサービスの管理。利用者ごとの systemd --user で、ログインの間に常駐するプロセスを動かす。
 supplier: systemd プロジェクト
-dependency_scope: 任意
+dependency_scope: 必須
 adoption: 採用
 used_in:
   - plugins/mindstella/skills/mindmap/scripts/ensure_server.py
@@ -51,4 +51,4 @@ limitations:
   - item: 出力と終了コード
     content: ユニットとして起動したプロセスの出力と終了コードは、`systemctl --user start` を呼んだ側に返らない（`Type=simple`・`exec` は起動した時点で成功を返す）。ポートが使われているかは起動の前に判定する
   - item: 無い端末
-    content: macOS と systemd の無い WSL では使えない。『常駐サーバーの起動の確認』が新しいセッションで起動する
+    content: macOS と systemd を有効にしていない WSL では使えない。『常駐サーバーの起動の確認』は起動せず、systemd --user が要ることを示す（動作環境の外）

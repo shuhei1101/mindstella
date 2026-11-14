@@ -16,10 +16,10 @@ requirements:
     category: 動作環境
     external_constraint: Claude Code が動く OS（macOS・Linux・Windows）
     source_kind: 実行基盤の制限
-    value: Linux・macOS・Windows（WSL を含む）
-    rationale: スクリプトは標準ライブラリのファイル操作と PyYAML・jsonschema だけを使い、OS ごとの分岐を持たない。テストは Linux（WSL2 の Ubuntu 24.04）で流し、macOS・Windows は確かめていない。常駐サーバーは systemd --user が使える端末ではユニットとして、使えない端末（macOS・systemd の無い WSL）では起動の確認が新しいセッションで起動する
+    value: Linux・Windows の WSL（どちらも systemd --user が使えること）
+    rationale: 'スクリプトは標準ライブラリのファイル操作と PyYAML・jsonschema だけを使い、OS ごとの分岐を持たない。常駐サーバーは systemd --user のユニットとして動かすため、systemd --user が使えない端末（macOS・systemd を有効にしていない WSL）は外した（PR #531 の確認ログ。利用者が「今の環境で動けば ok」と決めた）。テストは Linux（WSL2 の Ubuntu 24.04）で流す'
     source: https://github.com/shuhei1101/mindmap/pull/12
-    measurement: '実機での確認: macOS・Windows の端末で `check-env`・`init`・`add`・`build` を流す'
+    measurement: '実機での確認: Windows の WSL の端末で `check-env`・`init`・`add`・`build` を流す'
     overflow: Windows で、ほかのプロセスが開いている YAML を `os.replace` で置き換えようとすると失敗する。そのとき書き込みのコマンドはエラーで終わり、元のファイルは変わらない
   - id: NFR-3
     name: Python の版

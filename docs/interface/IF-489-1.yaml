@@ -299,7 +299,7 @@ constraints:
   - item: 待ち受けのポート
     constraint: '`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）。値は起動した環境から起動時に 1 回読む'
   - item: 立てる Python
-    constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。『常駐サーバーの起動の確認』が、`systemctl --user` が使える端末では systemd --user のユニット `mindstella.service` として、使えない端末では新しいセッションで（`start_new_session`）標準入出力をつながずに起動する
+    constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。『常駐サーバーの起動の確認』が、systemd --user のユニット `mindstella.service` として起動する
   - item: 待ち受けの確認
     constraint: '`GET /_admin/status` に、`server_status` と同じ JSON を返す。『常駐サーバーの起動の確認』と起動スクリプトは、この応答の `name` が `mindstella` かで、常駐サーバーが待ち受けているかを決める'
   - item: ツールの引数
@@ -319,7 +319,7 @@ constraints:
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
   - item: MindStella の API
-    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close` と、フックの受け口 `POST /_admin/sessions/{session}/events`・停止の `POST /_admin/stop` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信だけが受ける）'
+    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close` と、フックの受け口 `POST /_admin/sessions/{session}/events` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信だけが受ける）'
   - item: 常駐サーバーの状態
     constraint: 状態のフォルダ `${XDG_STATE_HOME:-~/.local/state}/mindstella/` に、ワークスペースの ID の一覧と、ワークスペースごとの MindStella のセッション・追加の MCP とプラグインを書く（ER 図『常駐サーバーの状態』）。Git の外に置き、設定と記録には入れない
 refs:
@@ -334,7 +334,7 @@ refs:
   - IF-531-6#
 notes:
   1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、止めたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
-  systemd --user と新しいセッション: 端末に 1 つの常駐サーバーを、セッションを閉じても残る形で持つため、systemd --user が使える端末ではユニットとして動かす（A-119・D-285）。動作環境の macOS など systemd --user が無い端末は、今までどおり起動の確認が新しいセッションで起動する
+  systemd --user: 端末に 1 つの常駐サーバーを、セッションを閉じても残る形で持つため、systemd --user のユニットとして動かす（A-119・D-285）。systemd --user が使えない端末は動作環境の外（非機能要件『OS』）
 callers:
   - IF-489-38#
   - IF-489-56#

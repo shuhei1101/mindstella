@@ -134,7 +134,7 @@ subsystems:
     scope: server
     role: 端末に 1 つの常駐のプロセスで、MCP のツール（ワークスペースの YAML の読み書き・検索・影響の洗い出し・点検・配る書き出し・送信の取り込み・常駐サーバーの状態と停止）と、プレビューの配信・送信の受け付けと、MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）を持つ。MindStella のセッションは tmux のペインの中で起動する。起動のコマンドは、MindStella の API でワークスペースと MindStella のセッションを作ってそのペインへつなぐ。並行する複数のセッションが 1 つの常駐サーバーを共有し、複数のワークスペースを扱う
     runtime: Python 3（起動スクリプトは bash）
-    runs_on: 利用者の端末（systemd --user が使える端末ではユニット `mindstella.service`、使えない端末では SessionStart のフックか起動のコマンドが、落ちていればバックグラウンドで起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート。状態は `${XDG_STATE_HOME:-~/.local/state}/mindstella/`）
+    runs_on: 利用者の端末（systemd --user のユニット `mindstella.service` として、SessionStart のフックか起動のコマンドが落ちていれば起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート。状態は `${XDG_STATE_HOME:-~/.local/state}/mindstella/`）
     status: implemented
 external_systems:
   - name: Claude Code
@@ -196,7 +196,7 @@ external_systems:
     protocol: CLI（`systemctl --user`）
     detail: LIB-531-2#
     notes:
-      事前確認: 要。『常駐サーバーの起動の確認』が `systemctl --user show-environment` で使えるかを確かめ、使えない端末では新しいセッションで起動する
+      事前確認: 要。『常駐サーバーの起動の確認』が `systemctl --user show-environment` で使えるかを確かめ、使えない端末では起動せずに systemd --user が要ることを示す
 lead: mindstella のサブシステムと、Claude Code・tmux・ブラウザ・CDN との境界。
 constraints: |-
   - プラグインは、常駐サーバーへの接続をルートの `.mcp.json` に `type: http` で書き、`hooks/hooks.json` に SessionStart（未読へ戻す・常駐サーバーの起動の確認）と PreToolUse（セッションの値の注入）のフックを持つ。`plugin.json` には MCP サーバーを書かない

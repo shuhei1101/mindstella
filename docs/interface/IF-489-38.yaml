@@ -111,31 +111,6 @@ flows:
       - 終了コードが 0 で、標準出力に何も書かない
       - 標準エラーに `[mindstella]` で始まる、起動したポートの行がある
     test: test_normal_when_called_by_launcher
-  - name: 正常系（systemd --user が無い）
-    summary: '`systemctl --user` が使えない端末（macOS・systemd の無い WSL）では、今までどおり新しいセッションで `server.py` を起動する'
-    setup:
-      - name: systemctl
-        description: '`PATH` に `systemctl` が無い'
-      - name: 仮想環境
-        description: 正常系と同じ
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as Claude Code（代わり）
-        participant IF as ensure_server.py
-        participant SV as 常駐サーバー
-
-        CC->>IF: SessionStart の入力
-        IF-->>SV: GET /_admin/status
-        IF->>IF: systemctl --user が使えない
-        IF->>SV: 仮想環境の Python で server.py を新しいセッションで起動する
-        SV-->>IF: name mindstella
-        IF-->>CC: つなぎ直す案内、終了コード 0
-      ```
-    expected:
-      - 常駐サーバーが待ち受け、ユニットのファイルが書かれていない
-      - 終了コードが 0 で、標準出力に起動した旨がある
-    test: test_normal_when_no_systemd
   - name: 正常系（起動し直す）
     summary: '`--restart` は、待ち受けていてもユニットをこのフォルダで書き直してから起動し直す'
     setup:
@@ -210,9 +185,31 @@ flows:
       - 標準出力に `PyYAML`・`jsonschema`・`mcp` と、`-m pip install` を含むそろえるコマンドがある
       - '`MINDSTELLA_PORT` のポートで待ち受けているプロセスが無い'
     test: test_error_when_dependency_missing
+  - name: 異常系（systemd --user が使えない・SystemdUnavailableError）
+    summary: '`systemctl --user` が使えない端末では起動せず、systemd --user が要ることを示す'
+    setup:
+      - name: systemctl
+        description: '`PATH` に `systemctl` が無い'
+      - name: 仮想環境
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（代わり）
+        participant IF as ensure_server.py
+
+        CC->>IF: SessionStart の入力
+        IF->>IF: systemctl --user が使えない
+        IF-->>CC: systemd --user が要ることの案内、終了コード 0
+      ```
+    expected:
+      - 終了コードが 0 で、標準出力に systemd --user が要ることの案内がある
+      - 常駐サーバーが起動しておらず、ユニットのファイルが書かれていない
+      - '`--hook` を付けずに同じ状態で呼ぶと、終了コード 1 で、標準エラーに同じ案内がある'
+    test: test_error_when_systemd_unavailable
 lead: Claude Code が会話を始めるたびと起動スクリプトが Claude Code を立ち上げる前に、mindstella の常駐サーバーが待ち受けているかを確かめ、落ちていれば起動する。
 idempotent: true
-side_effects: 常駐サーバーが落ちていれば、`systemctl --user` が使える端末ではユニットのファイル `mindstella.service` を書いて（内容が同じなら書かない）`systemctl --user daemon-reload` と `systemctl --user start mindstella.service` を呼ぶ。使えない端末では、仮想環境の Python で `server.py` を新しいセッションで（`start_new_session`）起動し、標準出力・標準エラーを `~/.mindmap/server.log` に書き足す。ワークスペースは書かない
+side_effects: 常駐サーバーが落ちていれば、ユニットのファイル `mindstella.service` を書いて（内容が同じなら書かない）`systemctl --user daemon-reload` と `systemctl --user start mindstella.service` を呼ぶ。常駐サーバーの出力はユニットが `~/.mindmap/server.log` に書き足す。systemd --user が使えない端末では起動しない。ワークスペースは書かない
 request:
   - name: --hook
     type: bool
@@ -250,7 +247,10 @@ exceptions:
     notes: '`--hook` では終了コード 0、無ければ 1'
   - name: ServerStartTimeoutError
     condition: 起動した常駐サーバーが、終わらないまま 10 秒以内に `GET /_admin/status` へ応答しない
-    notes: '`--hook` では終了コード 0、無ければ 1。systemd --user で起動したときは `systemctl --user status mindstella.service` と `journalctl --user -u mindstella.service` を、使えない端末では `~/.mindmap/server.log` を見るよう案内する'
+    notes: '`--hook` では終了コード 0、無ければ 1。`systemctl --user status mindstella.service` と `~/.mindmap/server.log` を見るよう案内する'
+  - name: SystemdUnavailableError
+    condition: '`systemctl --user show-environment` が終了コード 0 でない（macOS・systemd を有効にしていない WSL）'
+    notes: '`--hook` では終了コード 0、無ければ 1。systemd --user が要ることを示し、起動しない'
 error_format: '`[mindstella] エラー: {内容}` の行を出し、そろえるコマンド・案内があれば次の行に出す。`--hook` では標準出力、無ければ標準エラーに出す'
 constraints:
   - item: 契機
@@ -264,17 +264,17 @@ constraints:
     constraint: 応答の `version` とプラグインの `version.ini` のバージョン、応答の `plugin_root` の末尾のフォルダ名と、このスクリプトのプラグインのフォルダの末尾のフォルダ名を比べる。どちらかが違うときは再起動せず、違う値と、起動のコマンドで再起動する手順（`mindstella server restart`）を示す（並行する別のセッションが使っているため）
     notes: Claude Code のプロファイル（`~/.claude`・`~/.claude-sub5` など）ごとにプラグインのフォルダのパスが違うので、パスの全体ではなく末尾のフォルダ名（コミットの SHA かバージョン）で比べる。プロファイルごとに別のコミットを入れているときは、そのプロファイルのセッションで案内が出て、どちらのコードで動かすかは利用者が再起動で選ぶ
   - item: 起動の仕方
-    constraint: 依存を確かめ（『依存の確認』と同じ確かめ方）、`systemctl --user show-environment` が終了コード 0 なら systemd --user で、そうでなければ新しいセッションで起動する。systemd --user では、起動するたびに、このスクリプトのプラグインのフォルダでユニットのファイル `${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service` を書き（内容が同じなら書かない）、`daemon-reload` してから `start` する。ユニットは `Type=exec`・`ExecStart={python_path} {このスクリプトのプラグインのフォルダ}/skills/mindmap/scripts/server.py`・`StandardOutput=append:{~/.mindmap/server.log}`・`StandardError=append:{~/.mindmap/server.log}`・`Restart=on-failure`・`RestartSec=5`・`StartLimitIntervalSec=60`・`StartLimitBurst=3`、呼び出し元の環境の `MINDSTELLA_*`・`PROJECT_INDEX_PORT`・`XDG_STATE_HOME` を並べた `Environment=` を持つ。新しいセッションでは、環境変数は呼び出し元の環境をそのまま渡し、標準入力はつながず、標準出力・標準エラーは `~/.mindmap/server.log` に書き足す
-    notes: どちらの起動でも、常駐サーバーの出力は `~/.mindmap/server.log` に書き足されるので、起動を待つ間に同じファイルから理由を読める。`RestartSec=5` は起動を待つ上限（10 秒）の間に起動し直しが 1 回までになる値
+    constraint: 依存を確かめ（『依存の確認』と同じ確かめ方）、`systemctl --user show-environment` が終了コード 0 であることを確かめてから、systemd --user で起動する（0 でなければ SystemdUnavailableError）。起動するたびに、このスクリプトのプラグインのフォルダでユニットのファイル `${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service` を書き（内容が同じなら書かない）、`daemon-reload` してから `start` する。ユニットは `Type=exec`・`ExecStart={python_path} {このスクリプトのプラグインのフォルダ}/skills/mindmap/scripts/server.py`・`StandardOutput=append:{~/.mindmap/server.log}`・`StandardError=append:{~/.mindmap/server.log}`・`Restart=on-failure`・`RestartSec=5`・`StartLimitIntervalSec=60`・`StartLimitBurst=3`、呼び出し元の環境の `MINDSTELLA_*`・`PROJECT_INDEX_PORT`・`XDG_STATE_HOME` を並べた `Environment=` を持つ
+    notes: 常駐サーバーの出力は `~/.mindmap/server.log` に書き足されるので、起動を待つ間に同じファイルから理由を読める。`RestartSec=5` は起動を待つ上限（10 秒）の間に起動し直しが 1 回までになる値
   - item: 起動を待つ上限
-    constraint: '`GET /_admin/status` を 0.2 秒ごとに送り、10 秒まで待つ。その間に常駐サーバーのプロセスが終わったら、`server.log` に書き足された分から理由を読んで示す。終わったかは、新しいセッションでは起動した子プロセスの終了で、systemd --user では `systemctl --user is-active mindstella.service` が `failed` か `activating`（`Restart=on-failure` の起動し直しを待っている）を返したことで見分ける'
+    constraint: '`GET /_admin/status` を 0.2 秒ごとに送り、10 秒まで待つ。その間に `systemctl --user is-active mindstella.service` が `failed` か `activating`（`Restart=on-failure` の起動し直しを待っている）を返したら、常駐サーバーのプロセスが終わったとみなし、`server.log` に書き足された分から理由を読んで示す'
     notes: 'mcp の SDK と PyYAML を読み込んで待ち受けるまでの時間（`MCPServer` の起動。WSL で 1 秒前後）に余裕を持たせた値。会話の始まりを待たせるのは起動したときだけ'
   - item: 標準出力
     constraint: '`--hook` で、起動した・古いコードのまま動いている・起動できないときだけ書く（会話の文脈に入る）。既に同じバージョンと同じフォルダが待ち受けていれば何も書かない'
   - item: つなぎ直す案内
     constraint: 起動したときは、Claude Code が会話の始まりに常駐サーバーへつなげず mindstella のツールを持たないことがあるため、`/mcp` で mindstella につなぎ直す案内を出す
   - item: 起動し直し（--restart）
-    constraint: 待ち受けているかを確かめず、systemd --user ではユニットのファイルを書き直し（このスクリプトのプラグインのフォルダと、呼び出し元の環境の `Environment=`）、`daemon-reload` してから `systemctl --user restart mindstella.service` を呼ぶ。新しいセッションの端末では `POST /_admin/stop` を送り、ポートが閉じるまで 0.2 秒ごとに 10 秒まで待ってから起動する。どちらも、その後は「起動を待つ上限」と同じに待つ
+    constraint: 待ち受けているかを確かめず、ユニットのファイルを書き直し（このスクリプトのプラグインのフォルダと、呼び出し元の環境の `Environment=`）、`daemon-reload` してから `systemctl --user restart mindstella.service` を呼ぶ。その後は「起動を待つ上限」と同じに待つ
     notes: 起動のコマンドは `installPath` の `ensure_server.py` を `--restart` で呼ぶので、古いコードの常駐サーバーは、比べる値（`installPath` の末尾のフォルダ名）と同じフォルダのコードに替わる
 refs:
   - IF-489-1#
@@ -287,4 +287,4 @@ callers:
   - IF-489-56#
 test_file: tests/integration/server/test_ensure_server.py
 notes:
-  systemd を使う端末: 端末に 1 つの常駐サーバーを、セッションを閉じても残る形で持つ（A-119・D-285）。systemd --user が無い端末（macOS・systemd の無い WSL）は、今までどおり起動の確認が新しいセッションで起動する（非機能要件『OS』を変えない）
+  systemd を使う端末: '端末に 1 つの常駐サーバーを、セッションを閉じても残る形で持つ（A-119・D-285）。systemd --user が使えない端末は動作環境の外にする（非機能要件『OS』。PR #531 の確認ログ）'
