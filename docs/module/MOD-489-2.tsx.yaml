@@ -6,7 +6,7 @@ components:
     title: プレビューの外枠
     kind: コンポーネント
     usecase: SPAを開く
-    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
+    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を読み直したら `discardVoice` を呼ぶ。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
     refs:
       - IF-489-70#
     unit_tests:
@@ -76,6 +76,18 @@ components:
         condition: 表示する種類にメモが無く、`?tab=tasks&search=1&q=メモ` で結果の N-1 を押す
         mock: MSW
         expected: URL が `?id=N-1` で、概要と N-1 の詳細パネルが描かれる
+      - name: test_preview_shell_when_voice
+        case: 正常
+        summary: 録音中にほかの画面へ移り、トップバーから録音中の入力欄へ戻る
+        condition: '`?tab=tasks&id=T-1` で T-1 のコメントの入力のマイクを押し、コメントの一覧で TH-1 を開いてからトップバーの音声入力中の表示を押す'
+        mock: MSW と `vi.stubGlobal`
+        expected: TH-1 を開いている間もトップバーに音声入力中の表示があり、押すと URL が `?tab=tasks&id=T-1` になって T-1 のコメントの入力の ✓ にフォーカスがある
+      - name: test_preview_shell_when_voice_target_removed
+        case: 正常
+        summary: 録音中に行き先の項目が無くなったら録音を捨てて帯を出す
+        condition: T-1 で録音中に、書き換えの知らせの後の記録に T-1 が無い
+        mock: MSW と `vi.stubGlobal`
+        expected: トップバーの音声入力中の表示が消え、帯に「T-1 が削除されたため、録音を破棄しました。」
     container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）

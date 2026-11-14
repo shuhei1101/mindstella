@@ -250,6 +250,8 @@ items:
     summary: "clsx と tailwind-merge でクラス名を 1 つにする"
   - page: MOD-489-136.ts.yaml
     summary: "書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）"
+  - page: MOD-489-254.ts.yaml
+    summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）"
   - page: MOD-489-141.ts.yaml
     summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml

@@ -91,3 +91,18 @@ components:
         required: false
         default: 'false'
         description: 保存待ちのボタンを置くか（部品設計『トップバー』の `pending`。配る書き出しと差分の表示中は false）。置くときはコメントのボタンの左。件数は `pendingCount`（0 ならボタンを出さない）、パネルを開いているかは `pendingOpen`、書き込めない編集があるかは `pendingBlocked`、押したときは `onPending`
+      - name: voice
+        type: "{state: 'recording' | 'transcribing', label: string, elapsed: number} | null"
+        required: false
+        default: 'null'
+        description: 音声入力中の入力欄（部品設計『トップバー』の `voice`）。あるとき、コメントのボタンの左に `data-act="voice"` のボタンを置く
+      - name: voiceNotice
+        type: "{kind: 'discarded' | 'failed', text: string} | null"
+        required: false
+        default: 'null'
+        description: 音声入力の知らせ（部品設計『トップバー』の `voiceNotice`）。あるとき、トップバーの下に帯を置く
+      - name: onVoice
+        type: "(act: 'open' | 'dismiss') => void"
+        required: false
+        default: なし
+        description: 音声入力中の表示・帯の「入力欄を開く」を押したとき `open`、帯の × を押したとき `dismiss`

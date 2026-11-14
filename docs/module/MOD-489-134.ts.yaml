@@ -22,13 +22,13 @@ functions:
     title: 音声入力
     kind: フック
     usecase: 音声でコメントする
-    summary: 向けた先（`{target, loc}` か `{thread}`）と入力欄の中身の書き換えを受け、`voice`・`voiceReason`・`elapsed`・`levels` と `onVoiceStart`・`onVoiceCancel`・`onVoiceDone`・`onVoiceBlocked` を返す。録音は同時に 1 つで、ほかの入力が録っている間はマイクを押しても何もしない
+    summary: 入力欄の識別（`key`）・向けた先・開く画面・トップバーに出す名前と入力欄の中身の書き換えを受け、`useVoiceStore` の自分の `key` の分を購読して `voice`・`voiceReason`・`elapsed`・`levels` と `onVoiceStart`・`onVoiceCancel`・`onVoiceDone`・`onVoiceBlocked` を返す。録音は画面で同時に 1 つで、ほかの入力が録っている間は `voice` を `disabled`（`VOICE_TEXT.busy`）にする
     description: |-
-      - `voice` は、`micSupported()` が偽なら `disabled`（`VOICE_TEXT.noMicrophone`）、可否の `available` が偽なら `disabled`（`detail`）、それ以外は録音の段階
-      - `onVoiceStart` は `startRecording` の `onLevel` で `pushLevel` した並びを `levels` に持つ。録音を終えたら（キャンセル・✓・失敗・向けた先の変更）`levels` を空にする
-      - `onVoiceDone` は、録音を止めて `POST /api/transcriptions` へ送り、返った文字を `insertAtCursor` で挿入する。記録の `settings.transcription.action`（無ければ `insert`）が `insert` なら中身を書き換えて `inserted`、`send` なら `POST /api/comments/send-now` へ全文を送り、送れたら中身を空にしてスレッドを読み直し `sent`（`entered`）、送れなければ挿入した中身を残して `VOICE_TEXT.sendFailed`
+      - `voice` は、`micSupported()` が偽なら `disabled`（`VOICE_TEXT.noMicrophone`）、可否の `available` が偽なら `disabled`（`detail`）、`session` がほかの `key` なら `disabled`（`VOICE_TEXT.busy`）、自分の `key` なら `session.phase`、それ以外は `idle`
+      - `onVoiceStart` は `startVoice`、`onVoiceCancel` は `cancelVoice` を呼ぶ。`elapsed`・`levels` は `session` から読む
+      - `onVoiceDone` は、記録の `settings.transcription.action`（無ければ `review`）と、部品が付いているかを返す関数で `finishVoice` を呼ぶ。部品が付いていれば結果を写し、`reviewed` は中身を空にしてレビュー中を読み直し、`sent` は中身を空にしてスレッドを読み直し（`entered`）、`inserted` は中身を書き換え、`failed` は中身を残して `detail` を出す
       - 503 は可否の query のデータを返った `reason`・`detail` に書き換え、`voice` を `disabled` にする
-      - 向けた先が変わったときと、使う部品が外れたとき（unmount）は録音を `cancel` し、文字起こし中の結果を捨てる。書き換えの知らせでの描き直しでは止めない
+      - 使う部品が外れても（unmount）・向けた先が変わっても録音と文字起こしは止めない。部品が付いたとき（mount）は `takeVoiceResult(key)` の結果があれば写す
     returns:
       type: '{voice, voiceReason, elapsed, levels, status, detail, entered, onVoiceStart, onVoiceCancel, onVoiceDone, onVoiceBlocked}'
       description: 部品設計『コメントの入力.tsx』『返信の入力.tsx』の音声入力の props
@@ -36,21 +36,21 @@ functions:
       - name: test_use_voice_input
         case: 正常
         summary: 録音して挙動で分ける
-        condition: '偽の録音。`POST /api/transcriptions` が `{text: 案 A にする}`。`settings.transcription.action` が `insert` / 無い（`insert`）/ `send`'
+        condition: '偽の録音。`POST /api/transcriptions` が `{text: 案 A にする}`。`settings.transcription.action` が `insert` / 無い（`review`）/ `send`'
         mock: MSW と `vi.stubGlobal`
-        expected: '中身が `確認: 案 A にする` で `status` が `inserted`、`send-now` は呼ばれない / 同じく `inserted` で `send-now` は呼ばれない / `send-now` が全文で 1 回呼ばれ、中身が空で `status` が `sent`'
+        expected: '中身が `確認: 案 A にする` で `status` が `inserted`、`send-now` は呼ばれない / `POST /api/comments` が全文で 1 回呼ばれ、中身が空で `status` が `reviewed` / `send-now` が全文で 1 回呼ばれ、中身が空で `status` が `sent`'
       - name: test_use_voice_input_when_unavailable
         case: 異常
         summary: 押せない理由と 503
         condition: '`micSupported()` が偽 / `POST /api/transcriptions` が 503・`reason: unsupported`'
         mock: MSW と `vi.stubGlobal`
         expected: '`voice` が `disabled` で `voiceReason` が `VOICE_TEXT.noMicrophone` / `voice` が `disabled` で `voiceReason` がその `detail`'
-      - name: test_use_voice_input_when_destination_changed
+      - name: test_use_voice_input_when_unmounted
         case: 正常
-        summary: 向けた先が変わったら録音を捨てる
-        condition: 録音中に向けた先を D-1 から D-2 に変える / 文字起こし中に unmount する
+        summary: 部品が外れても録音を続け、付き直したら結果を受け取る
+        condition: 録音中に unmount して ✓ の後の結果を `results` に入れてから、同じ `key` で mount し直す / ほかの `key` で録音中に呼ぶ
         mock: MSW と `vi.stubGlobal`
-        expected: 録音の `cancel` が呼ばれ `voice` が `idle` / 返った文字を挿入も送信もしない
+        expected: 録音の `cancel` が呼ばれず、mount し直すと `status` が `reviewed` / `voice` が `disabled` で `voiceReason` が `VOICE_TEXT.busy`
       - name: test_use_voice_input_levels
         case: 正常
         summary: 録音中の音量を `levels` に持ち、終えたら空にする

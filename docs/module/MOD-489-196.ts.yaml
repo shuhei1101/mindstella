@@ -199,7 +199,7 @@ data_models:
         type: string[]
         description: 用語集のプリセットの候補
       - name: action
-        type: "'send' | 'insert'"
+        type: "'review' | 'send' | 'insert'"
         description: 文字起こし後の挙動
       - name: preset
         type: string | null

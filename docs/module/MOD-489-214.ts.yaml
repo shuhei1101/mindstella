@@ -50,10 +50,10 @@ components:
         default: "''"
         description: 入力欄の中身
       - name: status
-        type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed' | 'sent' | 'inserted' | 'voice-failed'"
+        type: "'idle' | 'saving' | 'saved' | 'empty' | 'failed' | 'reviewed' | 'sent' | 'inserted' | 'voice-failed'"
         required: false
         default: "'idle'"
-        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）。`sent` は送信した結果（`entered`）、`inserted` は「文字起こしの結果を挿入しました。」、`voice-failed` は `detail` を出す
+        description: 溜める状態。`saving` が 1 秒を超えたら回る印と文言を出す（`SENDING_NOTICE_DELAY_MS`）。`sent` は送信した結果（`entered`）、`reviewed` は「文字起こしの結果をレビュー中に追加しました。」、`inserted` は「文字起こしの結果を挿入しました。」、`voice-failed` は `detail` を出す
       - name: count
         type: number | null
         required: false
@@ -118,9 +118,9 @@ components:
       - name: test_send_form_when_voice
         case: 正常
         summary: 音声入力の状態ごとのボタンと結果の行
-        condition: '`parametrize`: `voice: idle` / `voice: disabled`・`voiceReason` あり / `voice: recording`・`elapsed: 72`・`levels: [0.2, 0.8]` / `voice: transcribing` / `status: sent`・`entered: false` / `status: inserted`'
+        condition: '`parametrize`: `voice: idle` / `voice: disabled`・`voiceReason` あり / `voice: recording`・`elapsed: 72`・`levels: [0.2, 0.8]` / `voice: transcribing` / `status: sent`・`entered: false` / `status: inserted` / `status: reviewed`'
         mock: なし（DOM を作って見る）
-        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクのボタンが `aria-disabled="true"` で `disabled` でなく、`title` と `aria-describedby` の先が理由 / × と ✓ のボタンがあり「レビューに追加」が無く、結果の行に `1:12`（`aria-hidden`）と読み上げの「録音中」、入力欄が `hidden` で、`aria-hidden` の `.send-wave` に `--lv` が `0.2`・`0.8` の `<i>` が 2 つ / × と ✓ が `disabled` で入力欄が `readonly` / 「送信しました。Claude Code へは入力していません。」/ 「文字起こしの結果を挿入しました。」。どの状態のボタンも文字を持たない
+        expected: マイクのボタン（`aria-label`「音声で入力」）が「レビューに追加」の左 / マイクのボタンが `aria-disabled="true"` で `disabled` でなく、`title` と `aria-describedby` の先が理由 / × と ✓ のボタンがあり「レビューに追加」が無く、結果の行に `1:12`（`aria-hidden`）と読み上げの「録音中」、入力欄が `hidden` で、`aria-hidden` の `.send-wave` に `--lv` が `0.2`・`0.8` の `<i>` が 2 つ / × と ✓ が `disabled` で入力欄が `readonly` / 「送信しました。Claude Code へは入力していません。」/ 「文字起こしの結果を挿入しました。」/ 「文字起こしの結果をレビュー中に追加しました。」。どの状態のボタンも文字を持たない
       - name: test_send_form_when_voice_events
         case: 正常
         summary: 音声入力のボタンのコールバック

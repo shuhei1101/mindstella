@@ -21,6 +21,16 @@ constants:
         value: 文字起こしできませんでした。もう一度お試しください。
       - key: sendFailed
         value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
+      - key: reviewFailed
+        value: レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。
+      - key: busy
+        value: ほかの入力欄で音声入力中のため、音声で入力できません。
+      - key: discarded
+        value: '`(id) => `${id} が削除されたため、録音を破棄しました。``'
+        description: 行き先の項目・スレッドが記録から無くなったときの帯の文
+      - key: notMountedFailed
+        value: '`(label, detail) => `${label}: ${detail}``'
+        description: 入力欄が画面に無い間に失敗したときの帯の文（例「D-022 へのコメントをレビュー中に追加できませんでした。…」は `label` と `reviewFailed` の文をつないだもの）
     container: frontend/src/shared/core/voice.ts
   - name: WAVE_SAMPLE_MS
     title: 音量を取る間隔
@@ -47,6 +57,29 @@ classes:
         type: '"denied" | "no-microphone"'
         description: 許可の拒否は `denied`、それ以外は `no-microphone`
 functions:
+  - name: acquireWakeLock
+    title: 画面の消灯の抑止を求める
+    kind: 関数
+    usecase: 音声でコメントする
+    is_async: true
+    summary: '`navigator.wakeLock.request("screen")` を呼び、解く関数を返す。`navigator.wakeLock` が無い・断られた（`NotAllowedError` など）ときは何も出さずに何もしない関数を返す'
+    returns:
+      type: 'Promise<() => void>'
+      description: 抑止を解く関数（`WakeLockSentinel.release()` を呼ぶ。2 回目以降は何もしない）
+    unit_tests:
+      - name: test_acquire_wake_lock
+        case: 正常
+        summary: 求めて解く
+        condition: 偽の `navigator.wakeLock`。返った関数を 2 回呼ぶ
+        mock: '`vi.stubGlobal`'
+        expected: '`request` が `screen` で 1 回、`release` が 1 回'
+      - name: test_acquire_wake_lock_when_unavailable
+        case: 異常
+        summary: 持たない・断られたときは何もしない
+        condition: '`parametrize`: `navigator.wakeLock` が無い / `request` が `NotAllowedError` で断る'
+        mock: '`vi.stubGlobal`'
+        expected: 例外を送らず、返った関数を呼んでも何も起きない
+    container: frontend/src/shared/core/voice.ts
   - name: micSupported
     title: マイクを使えるか
     kind: 関数

@@ -20,10 +20,10 @@ components:
         default: "''"
         description: 入力欄の中身（`maxlength` 10000。1 行から 8 行まで伸びる）
       - name: status
-        type: "'idle' | 'saving' | 'saved' | 'failed' | 'sent' | 'inserted' | 'voice-failed'"
+        type: "'idle' | 'saving' | 'saved' | 'failed' | 'reviewed' | 'sent' | 'inserted' | 'voice-failed'"
         required: false
         default: "'idle'"
-        description: 溜める状態。`sent`・`inserted`・`voice-failed` は `sendForm` と同じ
+        description: 溜める状態。`reviewed`・`sent`・`inserted`・`voice-failed` は `sendForm` と同じ
       - name: count
         type: number | null
         required: false

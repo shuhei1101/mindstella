@@ -35,6 +35,12 @@ components:
         condition: 'D-1 の入力でマイクを押して ✓。`POST /api/transcriptions` が `{text: 案 A にする}` で、挙動が `send`'
         mock: MSW と `vi.stubGlobal`
         expected: '`POST /api/comments/send-now` が `{target: D-1, body: 案 A にする}` で 1 回呼ばれ、入力欄が空で「送信し、Claude Code へ入力しました。」'
+      - name: test_detail_comments_when_voice_reviewed
+        case: 正常
+        summary: 既定の挙動で項目へのコメントをレビュー中に溜め、録音中に項目を移っても続ける
+        condition: 'D-1 の入力でマイクを押し、D-2 へ移ってから D-1 へ戻って ✓。`POST /api/transcriptions` が `{text: 案 A にする}` で、挙動が無い（`review`）'
+        mock: MSW と `vi.stubGlobal`
+        expected: 'D-2 の入力のマイクが `aria-disabled`、D-1 へ戻ると録音中の波形が出て、`POST /api/comments` が `{target: D-1, body: 案 A にする}` で 1 回、入力欄が空で「文字起こしの結果をレビュー中に追加しました。」'
     container: frontend/src/features/detail/detail-panel/components/detail-comments.tsx
 notes:
   単体テスト: 同じフォルダの `detail-comments.test.tsx` に置く（knowledge の規約『フォルダ構成』）
