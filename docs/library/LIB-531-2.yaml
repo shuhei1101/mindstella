@@ -1,0 +1,51 @@
+id: LIB-531-2
+title: systemd
+kind: サービス
+version:
+  current: 255（確かめた版）
+  checked_on: '2026-11-15'
+  pinning: 版は固定しない。`systemctl --user show-environment` が終了コード 0 の端末でだけ使う
+catalogs:
+- name: コマンド
+  version: '255'
+  entries:
+  - name: systemctl --user show-environment
+    kind: コマンド
+    purpose: systemd --user が使える端末かを確かめる
+  - name: systemctl --user daemon-reload
+    kind: コマンド
+    purpose: 書き換えたユニットのファイルを読み直す
+  - name: systemctl --user start|stop|restart mindstella.service
+    kind: コマンド
+    purpose: 常駐サーバーを起動する・止める・起動し直す
+  - name: systemctl --user status mindstella.service
+    kind: コマンド
+    purpose: 起動を待つ上限を過ぎたときに、利用者が状態を確かめる
+  - name: journalctl --user -u mindstella.service
+    kind: コマンド
+    purpose: 常駐サーバーの標準出力・標準エラーを読む
+- name: ファイル
+  version: '255'
+  entries:
+  - name: ${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service
+    kind: ファイル
+    purpose: 常駐サーバーのユニット（`Type=exec`・`ExecStart`・`Restart=on-failure`・`Environment=`）。『常駐サーバーの起動の確認』が書く
+lead: Linux のサービスの管理。利用者ごとの systemd --user で、ログインの間に常駐するプロセスを動かす。
+supplier: systemd プロジェクト
+dependency_scope: 任意
+adoption: 採用
+used_in:
+- plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+- plugins/mindstella/bin/mindstella
+upstream: systemd/systemd
+verification:
+  state: 済
+  date: '2026-11-15'
+  detail: この端末（WSL2 の Ubuntu 24.04・systemd 255）で、dev-docs.service・rule-inject.service が systemd --user で常駐していることを `systemctl --user list-units` で確かめた
+official_url: https://systemd.io/
+docs_url: https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+limitations:
+- item: 出力と終了コード
+  content: ユニットとして起動したプロセスの出力と終了コードは、`systemctl --user start` を呼んだ側に返らない（`Type=simple`・`exec` は起動した時点で成功を返す）。ポートが使われているかは起動の前に判定する
+- item: 無い端末
+  content: macOS と systemd の無い WSL では使えない。『常駐サーバーの起動の確認』が新しいセッションで起動する

@@ -1,0 +1,163 @@
+id: IF-531-6
+title: MindStella のセッションの出来事の受け取り
+entry:
+  kind: endpoint
+  value: POST `/_admin/sessions/{session}/events`
+lead: MindStella のセッションのフックが送る出来事（起動・終了・応答の始まりと終わり）を受け、状態のフォルダの MindStella のセッションに記録する。
+idempotent: true
+side_effects: '`session.json` の `claude_session_id`・`pid`・`pane`・`status`・`responding` を書き換える'
+request:
+  - name: session
+    type: str
+    required: true
+    location: path
+    description: MindStella のセッションの ID（フックが `MINDSTELLA_SESSION` から入れる）
+  - name: event
+    type: Literal['session_start', 'session_end', 'prompt_submit', 'stop', 'stop_failure']
+    required: true
+    location: body
+    description: 出来事
+  - name: claude_session_id
+    type: str
+    required: true
+    location: body
+    description: Claude Code の `session_id`
+  - name: source
+    type: str | None
+    required: false
+    default: なし
+    location: body
+    description: SessionStart の `source`（`startup`・`resume`・`clear`・`compact`）
+  - name: reason
+    type: str | None
+    required: false
+    default: なし
+    location: body
+    description: SessionEnd の `reason`
+  - name: pane
+    type: str | None
+    required: false
+    default: なし
+    location: body
+    description: '`TMUX_PANE`'
+  - name: pid
+    type: int | None
+    required: false
+    default: なし
+    location: body
+    description: Claude Code のプロセスの PID（『セッションの値の注入』と同じ引き方）
+  - name: pid_started_at
+    type: str | None
+    required: false
+    default: なし
+    location: body
+    description: '`pid` のプロセスの起動時刻の文字列'
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: recorded
+    type: bool
+    description: 記録したか。`session` が状態に無いときは偽
+status_codes:
+  - code: '200'
+    condition: 受けた（記録しなかったときも 200。フックを失敗させない）
+  - code: '400'
+    condition: '`event` が無いか値が違う'
+  - code: '403'
+    condition: '`Host` が受ける値でない'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
+  - item: 記録する中身
+    constraint: '`session_start`: `claude_session_id`・`pid`・`pid_started_at`・`pane` を入れる（`clear`・`compact` の後は新しい `claude_session_id` で入れ直す）。`session_end`: `reason` が `clear`・`resume` 以外なら `status` を `stopped`、`responding` を偽にする。`prompt_submit`: `responding` を真。`stop`・`stop_failure`: `responding` を偽'
+  - item: 同時の依頼
+    constraint: '`session.json` ごとの書き込みの鍵だけを取って読み・書く。ワークスペースごとの順番の鍵は取らない（『MindStella のセッションの作成』が鍵を持ったまま SessionStart の登録を待つため）'
+flows:
+  - name: 正常系
+    summary: SessionStart で claude_session_id とペインを記録する
+    setup:
+      - name: Mock
+        description: なし（HTTP のクライアントで送る）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: 状態
+        description: '`status: running` で `claude_session_id` が空の `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/events
+
+        クライアント->>API: session_start・claude_session_id・pane・pid
+        API-->>クライアント: 200 recorded: true
+      ```
+    expected:
+      - '`session.json` に `claude_session_id`・`pane`・`pid` が入っている'
+    test: test_normal
+  - name: 正常系（応答の始まりと終わり）
+    summary: prompt_submit で responding が真、stop で偽
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/events
+
+        クライアント->>API: prompt_submit
+        クライアント->>API: stop_failure
+      ```
+    expected:
+      - '`prompt_submit` の後に `responding` が真、`stop_failure` の後に偽'
+    test: test_normal_when_responding
+  - name: 正常系（clear の後の終了）
+    summary: SessionEnd の reason が clear なら停止済みにしない
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/events
+
+        クライアント->>API: session_end・reason: clear
+        API-->>クライアント: 200
+      ```
+    expected:
+      - '`status` が `running` のまま'
+    test: test_normal_when_cleared
+  - name: 正常系（知らない MindStella のセッション）
+    summary: 状態に無い session には記録せず 200 を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /_admin/sessions/{session}/events
+
+        クライアント->>API: 状態に無い session
+        API-->>クライアント: 200 recorded: false
+      ```
+    expected:
+      - 応答が 200 で `recorded` が偽
+      - 状態のフォルダが変わっていない
+    test: test_normal_when_unknown_session
+refs:
+  - IF-531-7#
+callers:
+  - IF-531-7#
+test_file: tests/integration/server/test_session_events.py

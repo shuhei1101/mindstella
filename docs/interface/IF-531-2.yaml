@@ -1,0 +1,239 @@
+id: IF-531-2
+title: MindStella のセッションの作成
+entry:
+  kind: endpoint
+  value: POST `/workspaces/{id}/sessions`
+lead: ワークスペースの MindStella のセッションを tmux のペインの中で起動し、SessionStart のフックが状態に登録するのを待ってから、MindStella のセッションの ID・tmux のペイン・画面の URL を返す。MindStella の MCP の `create_session` も同じ処理を呼ぶ。
+idempotent: false
+side_effects: tmux のセッションを 1 つ立て、その中で Claude Code を起動する（claude-balancer がある端末は `claude-balancer exec` で借りる）。状態のフォルダの `workspaces/{id}/session.json` に MindStella のセッションを書き、クローズ待ちを解く。失敗したときは起動したプロセスを止めてペインを閉じ、`session.json` を作る前に戻す
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: claude_config_dir
+    type: str | None
+    required: false
+    default: なし（利用者の既定の設定のフォルダ）
+    location: body
+    description: Claude Code の設定のフォルダ。claude-balancer が無い端末でだけ、MindStella のセッションの `CLAUDE_CONFIG_DIR` に使う
+    notes: 起動のコマンドが、呼ばれた環境の `CLAUDE_CONFIG_DIR` を渡す（アカウントごとの alias）。claude-balancer がある端末では、アカウントは claude-balancer が選ぶ（D-292）
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: session
+    type: str
+    description: MindStella のセッションの ID（`S-` に続く 12 桁の 16 進）。`/clear`・圧縮で Claude Code の `session_id` が変わっても変えない
+  - name: pane
+    type: str
+    description: MindStella のセッションが動く tmux のペイン（`{tmux のセッションの名前}:0.0`）。起動のコマンドがつなぐ
+  - name: url
+    type: str
+    description: 画面の URL（『ワークスペースの作成』の `url` と同じ）
+status_codes:
+  - code: '201'
+    condition: MindStella のセッションが起動し、SessionStart のフックが状態に登録した
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無い'
+  - code: '409'
+    condition: MindStella のセッションが既にある（起動中・停止の途中・起動し直しの途中）、またはワークスペースがクローズ済み
+    notes: '`stage` は `exists` か `closed`。`exists` のときは拡張のメンバー `session`・`pane` に起動中の MindStella のセッションを入れる'
+  - code: '503'
+    condition: claude-balancer に空いたアカウントが無い（`exec` が利用の上限で終わった）
+    notes: ペインを閉じる。`stage` は `account`
+  - code: '504'
+    condition: 上限の時間までに SessionStart のフックが状態に登録しない
+    notes: Claude Code を止めてペインを閉じる。`stage` は `ready`
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: あるとみなす状態
+    constraint: 状態の `status` が `running`・`stopping`・`restarting` で、tmux のペインと Claude Code のプロセスがあるもの。状態が `running` でもペインかプロセスが無ければ落ちたもの（`crashed`）として状態に記録し、無いとみなす
+  - item: 起動のコマンド
+    constraint: tmux の `new-session -d -s {ワークスペースの ID} -c {フォルダ}` で、`claude-balancer exec --client mindstella -- claude {引数}` を起動する。`PATH` に `claude-balancer` が無ければ `claude {引数}` を、`claude_config_dir` があれば `CLAUDE_CONFIG_DIR` に入れて起動する。tmux のサーバーは利用者の既定のソケット
+  - item: Claude Code の引数
+    constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`、プラグインの `skills/mindmap/references/起動時の指示.md` の中身を `--append-system-prompt`。引数ごとに分けて渡し、シェルで解釈させない'
+  - item: 渡す環境変数
+    constraint: '`MINDSTELLA_SESSION`（MindStella のセッションの ID）・`MINDSTELLA_WORKSPACE`（ワークスペースの ID）・`MINDSTELLA_PORT`、設定に進め方の文書があれば `MINDSTELLA_FLOW`（`{配信元の ID}#{文書の ID}`）。tmux の `new-session -e` で渡す'
+    decided_by: CFG-489-1#
+  - item: 最初の入力
+    constraint: SessionStart のフックが登録した後、ペインへ 1 行の文字列（`[mindstella] MindStella のセッションを起動しました`）を『コメントをまとめて送る』と同じ貼り方で入れる
+    notes: 'SessionStart の注入だけでは応答が始まらないため（#481 の資料に未反映の点）。起動と再開のエージェントフローの指示の注入は #518'
+  - item: 準備を待つ上限
+    constraint: 状態の `claude_session_id` が入るまで 0.5 秒ごとに `session.json` を読み、上限まで待つ
+    decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
+  - item: 状態
+    constraint: '`session.json` に `session`・`status: running`・`claude_session_id`（フックが入れる）・`pane`・`pid`（フックが入れる）・`responding: false`・`pending_write: false`・`close_pending: false`・`started_at` を書く（ER 図『常駐サーバーの状態』）'
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵（ワークスペースの管理と共有する）を、クローズ済みかの確かめから状態を書くまで持つ。準備を待つ間も持つ。`session.json` の読み書きは、`session.json` ごとの書き込みの鍵を取って行う（『MindStella のセッションの出来事の受け取り』と同じ鍵）
+  - item: MCP のツール
+    constraint: '`create_session` は `workspace_id`・`claude_config_dir` を受け、同じ処理を呼ぶ'
+flows:
+  - name: 正常系
+    summary: claude-balancer exec で起動し、フックの登録の後に ID・ペイン・URL を返す
+    setup:
+      - name: Mock
+        description: claude-balancer（`PATH` の先頭に置く。受けた引数を記録し、`--` の後のコマンドを実行する）・Claude Code（`PATH` の先頭に置く。引数と環境変数を記録し、『MindStella のセッションのフック』の SessionStart を叩いて待つ）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー（`TMUX_TMPDIR`）
+      - name: ワークスペース
+        description: 『ワークスペースの作成』で作り、`mcp_config`・`plugin_dirs`・`flow` を記録したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions
+        participant TM as tmux
+        participant CB as claude-balancer（Mock）
+        participant CC as Claude Code（Mock）
+        participant HK as フックの受け口
+
+        クライアント->>API: POST
+        API->>TM: new-session -e MINDSTELLA_SESSION ...
+        TM->>CB: exec --client mindstella -- claude ...
+        CB->>CC: 起動する
+        CC->>HK: SessionStart（claude_session_id・pane・pid）
+        API->>TM: 最初の入力を貼る
+        API-->>クライアント: 201 session・pane・url
+      ```
+    expected:
+      - 応答が 201 で、`session` が `S-` で始まる
+      - Mock の claude-balancer が `exec --client mindstella` を受けている
+      - Mock の Claude Code が `--mcp-config`・`--plugin-dir`・`--append-system-prompt` と、`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_FLOW` を受けている
+      - '`session.json` の `status` が `running` で、`claude_session_id`・`pane`・`pid` が入っている'
+      - ペインに最初の入力の行が貼られている
+    test: test_normal
+  - name: 正常系（claude-balancer が無い）
+    summary: claude を直接起動し、`claude_config_dir` を `CLAUDE_CONFIG_DIR` に入れる
+    setup:
+      - name: Mock
+        description: 正常系の Claude Code だけ（`PATH` に claude-balancer が無い）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: tmux
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions
+        participant CC as Claude Code（Mock）
+
+        クライアント->>API: claude_config_dir
+        API->>CC: CLAUDE_CONFIG_DIR を入れて起動する
+        CC->>API: SessionStart
+        API-->>クライアント: 201
+      ```
+    expected:
+      - 応答が 201
+      - Mock の Claude Code が `CLAUDE_CONFIG_DIR` に渡した値を受けている
+    test: test_normal_when_no_balancer
+  - name: 異常系（既にある）
+    summary: 起動中の MindStella のセッションがあれば 409 と起動中の ID・ペインを返す
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: 正常系で MindStella のセッションを起動したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions
+
+        クライアント->>API: POST
+        API-->>クライアント: 409 stage: exists・session・pane
+      ```
+    expected:
+      - 応答が 409 で、`session`・`pane` が起動中のもの
+      - Mock の claude-balancer が 2 回目の `exec` を受けていない
+    test: test_error_when_session_exists
+  - name: 異常系（クローズ済み）
+    summary: クローズしたワークスペースは 409
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: クローズしたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions
+
+        クライアント->>API: POST
+        API-->>クライアント: 409 stage: closed
+      ```
+    expected:
+      - 応答が 409 で `stage` が `closed`
+      - tmux のセッションが立っていない
+    test: test_error_when_workspace_closed
+  - name: 異常系（空いたアカウントが無い）
+    summary: claude-balancer が利用の上限で終われば、ペインを閉じて 503
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` が利用の上限のエラーで終了コード 1 で終わる）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions
+        participant CB as claude-balancer（Mock）
+
+        クライアント->>API: POST
+        API->>CB: exec
+        CB-->>API: 利用の上限で終わる
+        API->>API: ペインを閉じる
+        API-->>クライアント: 503 stage: account
+      ```
+    expected:
+      - 応答が 503 で `stage` が `account`
+      - tmux のセッションと `session.json` が残っていない
+    test: test_error_when_no_account
+  - name: 異常系（準備ができない）
+    summary: 上限までにフックが登録しなければ、止めてペインを閉じて 504
+    setup:
+      - name: Mock
+        description: Claude Code（起動するが SessionStart を叩かない）
+      - name: 常駐サーバー
+        description: 正常系と同じ。準備を待つ上限をテストの環境変数で短くする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions
+        participant CC as Claude Code（Mock）
+
+        クライアント->>API: POST
+        API->>CC: 起動する
+        API->>API: 上限まで待つ
+        API->>CC: 止めてペインを閉じる
+        API-->>クライアント: 504 stage: ready
+      ```
+    expected:
+      - 応答が 504 で `stage` が `ready`
+      - Mock の Claude Code のプロセスと tmux のセッションが残っていない
+    test: test_error_when_session_not_ready
+refs:
+  - IF-531-6#
+  - IF-531-7#
+  - IF-489-6#
+  - LIB-531-1#
+callers:
+  - SC-531-1#
+  - SC-489-41#
+test_file: tests/integration/server/test_create_session.py

@@ -64,3 +64,7 @@ items:
     summary: "commit の前に、ビルドの出力がソースと合うかを確認する（開発用）"
   - page: LIB-489-30.yaml
     summary: "プレビュー（React）の単体テストを流す（開発用）"
+  - page: LIB-531-1.yaml
+    summary: "MindStella のセッションを起動するときに、一番空いている Claude Code のアカウントを借りる"
+  - page: LIB-531-2.yaml
+    summary: "常駐サーバーを systemd --user のユニットとして起動・停止する"

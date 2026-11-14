@@ -1,0 +1,29 @@
+id: LIB-531-1
+title: claude-balancer
+kind: CLI
+version:
+  current: 端末に入っているもの（版の文字列を出さない）
+  checked_on: '2026-11-15'
+  pinning: 版は固定しない。セッションの管理は `PATH` の `claude-balancer` を使い、無ければ claude-balancer を通さずに起動する
+catalogs:
+- name: コマンド
+  version: 2026-11-15 に端末で確かめた引数
+  entries:
+  - name: claude-balancer exec --client {名前} -- {コマンド}
+    kind: コマンド
+    purpose: 一番空いているアカウントを借り、そのアカウントでコマンド（`claude`）を実行する。子プロセスが終わるとアカウントを返す。セッションの管理が `--client mindstella` で MindStella のセッションを起動する
+lead: 複数の Claude Code のアカウントから空いているものを貸し、そのアカウントでコマンドを実行する CLI。
+supplier: shuhei1101
+dependency_scope: 任意
+adoption: 採用
+used_in:
+- plugins/mindstella/skills/mindmap/scripts/server.py
+upstream: shuhei1101/claude-balancer
+verification:
+  state: 未確認
+  detail: '`exec` で MindStella のセッションを起動し、利用の上限のときの終了コードと出力を確かめていない。実装の段で確かめる'
+limitations:
+- item: 利用の上限
+  content: '全てのアカウントが利用の上限に達していると、`exec` はエラーで終わる。セッションの管理は 503（`stage: account`）を返す'
+- item: 無い端末
+  content: '`PATH` に無い端末では、利用者の既定のアカウントで起動する（D-292）'

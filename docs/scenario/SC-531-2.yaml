@@ -6,7 +6,7 @@ scenarios:
   - name: Mock
     description: Claude Code のセッション（止める依頼を受けたことを記録し、SessionEnd のフックを呼ぶ）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: project-index
     description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
   - name: ワークスペース
@@ -52,7 +52,7 @@ scenarios:
   - name: Mock
     description: Claude Code のセッション（応答の途中で、しばらくして Stop のフックを呼ぶ）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: ワークスペース
     description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースで、応答の途中
   flow: |-
@@ -81,7 +81,7 @@ scenarios:
   - name: Mock
     description: なし（MindStella のセッションは落ちている）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: ワークスペース
     description: 状態は起動中だが tmux のペインとプロセスが無く、落ちる前のまとめていない変更が残っている
   flow: |-
@@ -108,7 +108,7 @@ scenarios:
   - name: Mock
     description: Claude Code のセッション（応答の途中）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: ワークスペース
     description: MindStella のセッションが応答の途中で、まとめていない変更がある
   flow: |-
@@ -137,7 +137,7 @@ scenarios:
   - name: Mock
     description: なし（MindStella のセッションは止まっている）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: project-index
     description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
   - name: ワークスペース
@@ -174,7 +174,7 @@ scenarios:
   - name: Mock
     description: Claude Code のセッション（応答の途中のまま、上限の時間までに Stop のフックを呼ばない）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: ワークスペース
     description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースと MindStella のセッション
   flow: |-
@@ -202,7 +202,7 @@ scenarios:
   - name: Mock
     description: Claude Code のセッション（起動したまま）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: ワークスペース
     description: MindStella のセッションが起動している
   flow: |-
@@ -228,7 +228,7 @@ scenarios:
   - name: Mock
     description: なし（Claude Code を起動しない）
   - name: 常駐サーバー
-    description: 起動している。状態のフォルダ・グローバルの設定のファイルの環境変数はテストごとの一時フォルダ・一時ファイルを指す
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
   - name: project-index
     description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
   - name: ワークスペース

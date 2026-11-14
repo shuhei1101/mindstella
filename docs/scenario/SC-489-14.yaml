@@ -6,7 +6,7 @@ scenarios:
       - name: Mock
         description: 常駐サーバーを立て、MCP のクライアントで `create_workspace` を呼ぶ。project-index の配信元への登録は、登録の依頼を記録するだけの Mock にする（登録そのものは単一ユースケース『外部のアプリから起動する』で通す）
       - name: ワークスペースの場所
-        description: 許可するフォルダの環境変数が指すテストごとの一時フォルダの下の、まだ無いフォルダ
+        description: グローバルの設定のファイルの許可するフォルダ（`mindstella.allowed_dirs`）が指すテストごとの一時フォルダの下の、まだ無いフォルダ
     flow: |-
       ```mermaid
       sequenceDiagram

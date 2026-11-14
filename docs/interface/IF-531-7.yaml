@@ -1,0 +1,127 @@
+id: IF-531-7
+title: MindStella のセッションのフック
+entry:
+  kind: trigger
+  value: '`session_hook.py`（SessionStart・SessionEnd・UserPromptSubmit・Stop・StopFailure）'
+lead: プラグインのフックが全てのセッションで呼び、環境変数 `MINDSTELLA_SESSION` を持つ MindStella のセッションでだけ、出来事を常駐サーバーへ送り、SessionStart では進め方の文書の場所を注入する。
+idempotent: true
+side_effects: 『MindStella のセッションの出来事の受け取り』へ送る。ほかは書かない
+request:
+- name: '{出来事}'
+  type: str
+  required: true
+  location: argument
+  description: コマンドの最初の引数。`session-start`・`session-end`・`prompt-submit`・`stop`・`stop-failure`
+- name: 標準入力
+  type: JSON
+  required: true
+  location: argument
+  description: Claude Code のフックの入力（`session_id`・`source`・`reason` など）
+- name: MINDSTELLA_SESSION
+  type: str
+  required: false
+  default: なし（通常のセッション。何もせずに終了コード 0）
+  location: argument
+  description: 環境変数。MindStella のセッションの ID
+- name: MINDSTELLA_FLOW
+  type: str
+  required: false
+  default: なし（注入しない）
+  location: argument
+  description: 環境変数。進め方の文書の場所（`{配信元の ID}#{文書の ID}`）
+- name: MINDSTELLA_PORT
+  type: str
+  required: false
+  default: '`8784`'
+  location: argument
+  description: 環境変数。送り先のポート
+response:
+- name: 標準出力
+  type: JSON | なし
+  description: SessionStart で `MINDSTELLA_FLOW` があるときだけ、`hookSpecificOutput.additionalContext` に進め方の文書の場所と、`search_docs` で参照する旨の 1 行を入れた JSON。ほかは何も書かない
+exceptions:
+- name: なし（正常終了）
+  condition: どの結末も
+  notes: 終了コード 0。常駐サーバーへつながらない・応答が 200 でないときは標準エラーに 1 行書いて終わり、会話を止めない
+constraints:
+- item: 契機
+  constraint: プラグインの `hooks/hooks.json` の `SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure`（`matcher` なし）に、`python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/session_hook.py" {出来事}` を置く
+- item: 動く Python
+  constraint: システムの `python3` の標準ライブラリだけ（『常駐サーバーの起動の確認』と同じ）
+- item: 送る時間の上限
+  constraint: 1 回の送信を 2 秒で打ち切る
+  decided_by: NFR-489-1#requirements[フックの送信の上限]
+- item: PID の引き方
+  constraint: 『セッションの値の注入』と同じく、フックのプロセスから親をたどり、最初に名前が `claude` のプロセス
+- item: 通常のセッション
+  constraint: '`MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて何もしない'
+flows:
+- name: 正常系
+  summary: SessionStart で出来事を送り、進め方の文書の場所を注入する
+  setup:
+  - name: Mock
+    description: 常駐サーバーの代わりに、受けた要求を記録する HTTP のサーバーを空きポートで立てる
+  - name: 環境変数
+    description: '`MINDSTELLA_SESSION`・`MINDSTELLA_FLOW`・`MINDSTELLA_PORT`・`TMUX_PANE`'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+      participant SV as 常駐サーバー（Mock）
+
+      CC->>HK: session-start（標準入力に session_id・source: startup）
+      HK->>SV: POST /_admin/sessions/{session}/events
+      HK-->>CC: additionalContext
+    ```
+  expected:
+  - 'Mock が `event: session_start`・`claude_session_id`・`pane`・`source: startup` を受けている'
+  - 標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値がある
+  - 終了コードが 0
+  test: test_normal
+- name: 正常系（通常のセッション）
+  summary: MINDSTELLA_SESSION が無ければ何もしない
+  setup:
+  - name: Mock
+    description: 正常系と同じ
+  - name: 環境変数
+    description: '`MINDSTELLA_SESSION` を渡さない'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+
+      CC->>HK: session-start
+      HK-->>CC: 何も出さない
+    ```
+  expected:
+  - Mock が要求を受けておらず、標準出力が空で、終了コードが 0
+  test: test_normal_when_ordinary_session
+- name: 異常系（常駐サーバーへつながらない）
+  summary: 標準エラーに 1 行書いて終了コード 0
+  setup:
+  - name: Mock
+    description: なし（ポートで待ち受けない）
+  - name: 環境変数
+    description: 正常系と同じ
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+
+      CC->>HK: stop
+      HK->>HK: つながらない
+      HK-->>CC: 終了コード 0
+    ```
+  expected:
+  - 終了コードが 0 で、標準エラーに `[mindstella]` の行がある
+  test: test_error_when_server_down
+refs:
+- IF-531-6#
+- IF-489-68#
+- IF-489-15#
+callers:
+- IF-531-2#
+test_file: tests/integration/plugin/test_session_hook.py

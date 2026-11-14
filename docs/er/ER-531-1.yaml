@@ -1,0 +1,125 @@
+id: ER-531-1
+title: 'ER 図: 常駐サーバーの状態'
+lead: 常駐サーバーが端末に持つ状態のフォルダ `${XDG_STATE_HOME:-~/.local/state}/mindstella/` の形。ワークスペースの ID の一覧と、ワークスペースごとの MindStella のセッションと追加の MCP・プラグインを持つ。Git の外に置き、ワークスペースの設定と記録には入れない（D-289・D-318・D-323）。
+er:
+  entities:
+  - name: ワークスペースの ID の一覧
+    columns:
+    - type: array
+      name: ids
+      key: PK
+  - name: MindStella のセッション
+    columns:
+    - type: string
+      name: workspace
+      key: FK
+      comment: '参照: ワークスペースの ID の一覧.ids'
+    - type: string
+      name: session
+  - name: 追加の MCP とプラグイン
+    columns:
+    - type: string
+      name: workspace
+      key: FK
+      comment: '参照: ワークスペースの ID の一覧.ids'
+  relations:
+  - from: ワークスペースの ID の一覧
+    to: MindStella のセッション
+    from_column: ids
+    to_column: workspace
+    from_cardinality: '1'
+    to_cardinality: 0..1
+    label: 最後の MindStella のセッション
+  - from: ワークスペースの ID の一覧
+    to: 追加の MCP とプラグイン
+    from_column: ids
+    to_column: workspace
+    from_cardinality: '1'
+    to_cardinality: 0..1
+    label: 起動の指定
+tables:
+- name: workspaces.yaml
+  title: ワークスペースの ID の一覧
+  datastore: YAML
+  summary: MindStella が作ったワークスペースの配信元の ID の一覧。MindStella の MCP と API は、project-index の配信元の行のうち、この一覧にある行だけをワークスペースとして扱う
+  scale: 1 件（ID はワークスペースの数）
+  access: 全件
+  columns:
+  - name: ids
+    title: ワークスペースの ID
+    type: array
+    not_null: true
+    description: ワークスペースの ID の並び。『ワークスペースの作成』が配信元の行の追加の後に足す。重なりなし
+    example: '[mindstella-家計簿アプリ-3f2a9c]'
+- name: workspaces/{ID}/session.json
+  title: MindStella のセッション
+  datastore: JSON
+  summary: ワークスペースの最後の MindStella のセッション 1 つの状態
+  scale: ワークスペースごとに 0〜1 件
+  access: キー（ワークスペースの ID）
+  columns:
+  - name: session
+    title: MindStella のセッションの ID
+    type: string
+    not_null: true
+    description: '`S-` に続く 12 桁の 16 進。作成のときに振り、`/clear`・圧縮で変えない'
+  - name: status
+    title: 状態
+    type: string
+    not_null: true
+    description: '`running`・`stopping`・`stopped`・`crashed` のどれか'
+  - name: claude_session_id
+    title: Claude Code の session_id
+    type: string | null
+    description: SessionStart のフックが入れる。`clear`・`compact` の後は入れ直す。入るまで `null`
+  - name: pane
+    title: tmux のペイン
+    type: string | null
+    description: '`{tmux のセッションの名前}:0.0`。止まった・落ちたら `null`'
+  - name: pid
+    title: Claude Code の PID
+    type: integer | null
+    description: SessionStart のフックが入れる
+  - name: pid_started_at
+    title: PID の起動時刻
+    type: string | null
+    description: '`pid` の使い回しを見分ける（『セッションの値の注入』の `claude_started_at` と同じ引き方）'
+  - name: responding
+    title: 応答の途中か
+    type: boolean
+    not_null: true
+    description: UserPromptSubmit で真、Stop・StopFailure で偽
+  - name: pending_write
+    title: 待っている書き込みがあるか
+    type: boolean
+    not_null: true
+    description: 停止を待つ上限を過ぎたとき真
+  - name: close_pending
+    title: クローズ待ちか
+    type: boolean
+    not_null: true
+    description: API で停止を受けたとき・ワークスペースをクローズしたとき真。作成・開き直しで偽
+  - name: started_at
+    title: 起動した日時
+    type: string
+    not_null: true
+    description: UTC のタイムゾーン付き ISO 8601
+- name: workspaces/{ID}/launch.json
+  title: 追加の MCP とプラグイン
+  datastore: JSON
+  summary: MindStella のセッションを起動するたびに指定する追加の MCP の定義とプラグインのフォルダ。指定が空でもファイルを作り、ファイルが無いことと区別する（D-320）
+  scale: ワークスペースごとに 0〜1 件
+  access: キー（ワークスペースの ID）
+  columns:
+  - name: mcp_config
+    title: 追加の MCP の定義
+    type: object | null
+    description: Claude Code の `--mcp-config` に渡す JSON。空の指定は `null`
+  - name: plugin_dirs
+    title: プラグインのフォルダ
+    type: array
+    not_null: true
+    description: Claude Code の `--plugin-dir` に渡す絶対パス。空の指定は `[]`
+notes:
+  削除: ワークスペースの削除（#523）で、そのワークスペースの `workspaces/{ID}/` と `ids` の行を消す。クローズでは残す（D-322）
+  書き込み: 一時ファイルから `os.replace` で置き換える。`workspaces.yaml` は全体で 1 つの鍵、`session.json` はファイルごとの鍵を取って書く

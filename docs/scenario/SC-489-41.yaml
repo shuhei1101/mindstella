@@ -13,9 +13,9 @@ scenarios:
         description: テストごとに専用のソケットで立てた tmux のサーバー
         notes: 利用者の tmux のセッションに触れない
       - name: ワークスペースのフォルダ
-        description: 許可するフォルダの環境変数が指すテストごとの一時フォルダの下の、記録の無いフォルダ
+        description: グローバルの設定のファイルの許可するフォルダ（`mindstella.allowed_dirs`）が指すテストごとの一時フォルダの下の、記録の無いフォルダ
       - name: project-index の配信元への登録
-        description: Mock。登録の依頼を記録するだけにする（登録そのものは単一ユースケース『外部のアプリから起動する』で通す）。グローバルの設定のファイルの環境変数は、テストごとの一時ファイルを指す
+        description: Mock。登録の依頼を記録するだけにする（登録そのものは単一ユースケース『外部のアプリから起動する』で通す）。project-index の接続先（`PROJECT_INDEX_PORT`）はその Mock を指し、Mock が返すグローバルの設定のファイルはテストごとの一時ファイル
       - name: 落ちている常駐サーバー
         description: テストごとに選んだ空きポートを `MINDSTELLA_PORT` で渡し、そのポートで待ち受けているプロセスが無い
     flow: |-
@@ -204,7 +204,7 @@ scenarios:
       - name: 依存が揃った環境
         description: 正常シナリオと同じ
       - name: 許可するフォルダの外
-        description: 許可するフォルダの環境変数が指す一時フォルダの外のフォルダを渡す
+        description: グローバルの設定のファイルの許可するフォルダ（`mindstella.allowed_dirs`）が指す一時フォルダの外のフォルダを渡す
     flow: |-
       ```mermaid
       sequenceDiagram

@@ -21,7 +21,7 @@ scenarios:
         participant WS as ワークスペース
 
         U->>CC: /mindstella:setup {フォルダ}
-        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無と、設定が既定のまま（概要が空）かを見る
+        CC->>WS: .mindstella/config.yaml と、直下の config.yaml・mindmap.yaml の有無と、記録の項目が 1 件も無いかを見る
         CC->>CC: 選んだ進め方ガイドから題名・プレイブック・最上位の軸の呼び名・フェーズ・カテゴリー・ゴールのたたき台を作る
         CC-->>U: たたき台を示して確認を取る
         U->>CC: 確定する

@@ -4,7 +4,7 @@ lead: 起動スクリプト（`bin/mindstella`）と SessionStart のフック�
 directory: |-
   ```
   plugins/mindstella/
-    bin/mindstella          起動スクリプト（bash。引数・tmux・claude の確かめと tmux のセッション。形はインターフェース定義『起動スクリプト』）
+    bin/mindstella          起動スクリプト（bash。引数・tmux・claude の確かめと tmux のセッション。形はインターフェース定義『起動のコマンド』）
     skills/mindmap/scripts/
       check_env.py          依存の確認（システムの python3 で起動。Python 3.8 で読める構文）
       launch.py             起動の手助け（仮想環境の Python で起動。プラグインのフォルダ・セッションの名前）

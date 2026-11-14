@@ -1,0 +1,126 @@
+id: IF-531-3
+title: MindStella のセッションの一覧
+entry:
+  kind: endpoint
+  value: GET `/workspaces/{id}/sessions`
+lead: ワークスペースの最後の MindStella のセッション 1 つの状態を返す。停止の完了はこれで確かめる。MindStella の MCP の `sessions` も同じ処理を呼ぶ。
+idempotent: true
+side_effects: 状態が `running` でも tmux のペインか Claude Code のプロセスが無ければ、`crashed` として状態に記録する。ほかは書かない
+request:
+- name: id
+  type: str
+  required: true
+  location: path
+  description: ワークスペースの ID
+- name: Host
+  type: str
+  required: true
+  location: header
+  description: 要求のホスト
+response:
+- name: sessions[].id
+  type: str
+  description: MindStella のセッションの ID
+- name: sessions[].status
+  type: Literal['running', 'stopping', 'stopped', 'crashed']
+  description: 起動中・停止の途中・停止済み・落ちている
+  notes: '起動し直しの途中（`restarting`）は #524 で足す'
+- name: sessions[].responding
+  type: bool
+  description: 応答の途中か（UserPromptSubmit から Stop・StopFailure まで）
+- name: sessions[].pending_write
+  type: bool
+  description: 停止を待つ上限を過ぎ、最後の書き込みを待っているか
+- name: sessions[].pane
+  type: str | None
+  description: tmux のペイン。`stopped`・`crashed` では `None`
+- name: close_pending
+  type: bool
+  description: クローズ待ちか（API で停止を受けた後）
+response_notes: MindStella のセッションを一度も作っていないワークスペースは、`sessions` が空の並び。並びは最後の 1 つだけを持つ
+status_codes:
+- code: '200'
+  condition: 返した
+- code: '404'
+  condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無い'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+- item: 受ける Host
+  constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
+  decided_by: NFR-489-1#requirements[待ち受けの範囲]
+- item: 落ちたかの判定
+  constraint: '`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違う（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
+- item: MCP のツール
+  constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
+flows:
+- name: 正常系
+  summary: 起動中の MindStella のセッションを返す
+  setup:
+  - name: Mock
+    description: 『MindStella のセッションの作成』の正常系と同じ
+  - name: 常駐サーバー
+    description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+  - name: ワークスペース
+    description: MindStella のセッションが起動している
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant クライアント
+      participant API as GET /workspaces/{id}/sessions
+
+      クライアント->>API: GET
+      API-->>クライアント: 200 sessions[0].status: running
+    ```
+  expected:
+  - 応答の `sessions` が 1 件で、`status` が `running`、`responding` が偽、`close_pending` が偽
+  test: test_normal
+- name: 正常系（落ちている）
+  summary: 状態が running でもプロセスが無ければ crashed を返し、状態に記録する
+  setup:
+  - name: Mock
+    description: なし
+  - name: 常駐サーバー
+    description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+  - name: ワークスペース
+    description: '`session.json` が `running` で、`pane` のペインが無い'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant クライアント
+      participant API as GET /workspaces/{id}/sessions
+
+      クライアント->>API: GET
+      API->>API: ペインとプロセスを確かめる
+      API-->>クライアント: 200 status: crashed
+    ```
+  expected:
+  - 応答の `status` が `crashed`
+  - '`session.json` の `status` が `crashed`'
+  test: test_normal_when_crashed
+- name: 正常系（一度も作っていない）
+  summary: sessions が空の並び
+  setup:
+  - name: Mock
+    description: なし
+  - name: 常駐サーバー
+    description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+  - name: ワークスペース
+    description: 作成だけを済ませたワークスペース
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant クライアント
+      participant API as GET /workspaces/{id}/sessions
+
+      クライアント->>API: GET
+      API-->>クライアント: 200 sessions: []
+    ```
+  expected:
+  - 応答の `sessions` が空の並び
+  test: test_normal_when_never_created
+refs:
+- IF-531-2#
+- IF-531-4#
+callers:
+- SC-531-2#
+test_file: tests/integration/server/test_list_sessions.py

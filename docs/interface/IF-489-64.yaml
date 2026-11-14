@@ -36,7 +36,7 @@ flows:
 lead: 新しいワークスペースを作るか既存のワークスペースの状況を示して、`/mindstella:session` へ渡すスキルの入口と、そのファイルの形。
 callers:
   - SC-489-37#
-side_effects: サーバーの MCP のツール `init` でワークスペースを作る（新しいワークスペースのときだけ）。起動スクリプトの登録では、登録のスクリプトがログインシェルの設定と `~/.config/mindstella/` を書く。スキルが自分でファイルを書くことはない
+side_effects: 新しいワークスペースのときだけ、記録が無ければ MindStella の MCP の `create_workspace` で作り、決めた設定を `update_settings` で書く。起動スクリプトの登録では、登録のスクリプトがログインシェルの設定と `~/.config/mindstella/` を書く。スキルが自分でファイルを書くことはない
 request:
   - name: $ARGUMENTS
     type: str
@@ -56,7 +56,7 @@ constraints:
   - item: front matter の description
     constraint: いつ使うか（話し合いを始める・再開するとき）が分かる 1 文
   - item: front matter の allowed-tools
-    constraint: '`Read, mcp__plugin_mindstella_mindstella__init, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__migrate, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/register.py:*)`。Bash は登録のスクリプトだけを許す'
+    constraint: '`Read, mcp__plugin_mindstella_mindstella__create_workspace, mcp__plugin_mindstella_mindstella__update_settings, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__migrate, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/register.py:*)`。Bash は登録のスクリプトだけを許す'
     notes: PoC（#73）で、権限のモード `default` でもスキルから呼んだ MCP のツールに確認が出ないことを確かめた
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
@@ -66,7 +66,7 @@ constraints:
     constraint: '既存のワークスペースでは `status` の前に `migrate` を `plan: true` で呼ぶ。`relation` が `older` なら `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインの更新を案内して止まる。`same` のときだけ `status` へ進む'
     notes: インターフェース定義『記録の形式の移行』（サーバー）
   - item: ツールの呼び出し
-    constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。設定は `init` の `settings` に JSON のオブジェクトで渡す。Bash で起動するのは登録のスクリプト（インターフェース定義『起動スクリプトの登録』）だけで、ワークスペースを触るスクリプトを Bash で起動しない
+    constraint: ワークスペースの読み書きは全て mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で行い、`workspace` にワークスペースのフォルダを渡す。新しいワークスペースは、記録が無いか、記録の項目（検討事項・タスク・調査・資料・用語・メモ・会話ログ）が 1 件も無ければ新しいワークスペースとして扱い、記録が無いときだけ `create_workspace`（`folder`）で作ってから、決めた設定を `update_settings` の `settings` に JSON のオブジェクトで渡す。Bash で起動するのは登録のスクリプト（インターフェース定義『起動スクリプトの登録』）だけで、ワークスペースを触るスクリプトを Bash で起動しない
     notes: インターフェース定義『MCP サーバーの起動』
   - item: MCP のツールが使えないとき
     constraint: 最初に mindstella の MCP のツールがあるかを見て、無ければワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py`（『常駐サーバーの起動の確認』）を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直す手順を案内して止まる。利用者が登録を変えたい・外したい・アカウントを足したいと言ったときは、MCP のツールの有無に関わらず `steps/起動スクリプトの登録.md` へ進む
