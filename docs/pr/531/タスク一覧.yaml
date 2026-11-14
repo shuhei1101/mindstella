@@ -60,7 +60,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-14T15:07:40.718152+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    note: MOD-531-1〜6（state.py・project_index.py・workspaces.py・sessions.py・api.py・session_hook.py）を新規、MOD-489-192・193・177・144・190・153・156・168 を変更
+    updated_by: planner
+    updated_at: '2026-11-14T19:31:26.374225+00:00'
   - process: ドキュメント修正
     status: todo
   - process: 単体テスト作成
