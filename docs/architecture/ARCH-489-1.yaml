@@ -132,9 +132,9 @@ subsystems:
     status: implemented
   - name: サーバー
     scope: server
-    role: 起動スクリプトで tmux と Claude Code を立ち上げ、1 つの常駐のプロセスで MCP のツール（ワークスペースの YAML の読み書き・検索・影響の洗い出し・点検・配る書き出し・送信の取り込み・常駐サーバーの状態と停止）と、プレビューの配信・送信の受け付けを持つ。並行する複数のセッションが 1 つの常駐サーバーを共有し、複数のワークスペースを扱う
+    role: 端末に 1 つの常駐のプロセスで、MCP のツール（ワークスペースの YAML の読み書き・検索・影響の洗い出し・点検・配る書き出し・送信の取り込み・常駐サーバーの状態と停止）と、プレビューの配信・送信の受け付けと、MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）を持つ。MindStella のセッションは tmux のペインの中で起動する。起動のコマンドは、MindStella の API でワークスペースと MindStella のセッションを作ってそのペインへつなぐ。並行する複数のセッションが 1 つの常駐サーバーを共有し、複数のワークスペースを扱う
     runtime: Python 3（起動スクリプトは bash）
-    runs_on: 利用者の端末（SessionStart のフックか起動スクリプトが、落ちていればバックグラウンドで起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート）
+    runs_on: 利用者の端末（systemd --user が使える端末ではユニット `mindstella.service`、使えない端末では SessionStart のフックか起動のコマンドが、落ちていればバックグラウンドで起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート。状態は `${XDG_STATE_HOME:-~/.local/state}/mindstella/`）
     status: implemented
 external_systems:
   - name: Claude Code
@@ -142,7 +142,7 @@ external_systems:
     direction: 双方向
     protocol: プラグインのマニフェスト（JSON）/ スキル（Markdown）/ フック（標準入出力の JSON）/ MCP（Streamable HTTP の JSON-RPC）
     notes:
-      事前確認: 要。起動スクリプトが、`PATH` に `claude` があることと、`claude plugin list --json` に mindstella があることを確かめ、無ければ Claude Code を立てずに止まる。常駐サーバーは、SessionStart のフックと起動スクリプトが `GET /_admin/status` で待ち受けているかを確かめ、落ちていれば起動する。
+      事前確認: 要。起動スクリプトが、`PATH` に `claude` があることと、`claude plugin list --json` に mindstella があることを確かめ、無ければ Claude Code を立てずに止まる。常駐サーバーは、SessionStart のフックと起動スクリプトが `GET /_admin/status` で待ち受けているかを確かめ、落ちていれば起動する。。MindStella のセッションは、SessionStart のフックが状態に登録したことで準備ができたと判定し、上限まで待つ
     detail: LIB-489-4#
   - name: jsDelivr
     purpose: プレビューの描画のライブラリ（mdmark・marked・elkjs・mermaid）と差分の計算のライブラリ（jsdiff）の取得。サーバーが配るプレビューは開いたブラウザが読み、配る書き出し（`export`）は書き出すときに取って中に持つ
@@ -176,6 +176,27 @@ external_systems:
     detail: API-489-2#
     notes:
       事前確認: 要。画面が開いたときと設定の画面を開いたときに、サーバーが『文字起こしの可否』で用語集のプリセットの一覧を尋ね、届かない・音声を受け付ける口が無いときはマイクのボタンを押せなくして理由を出す。サービスが無くても、マイクのボタンのほかの操作は変わらない。voice-paste は Windows で動くため、WSL の常駐サーバーから `127.0.0.1` で届くには WSL のネットワークを mirrored にする（届かないときは `stopped` と同じに扱う）
+  - name: claude-balancer
+    purpose: MindStella のセッションの Claude Code のアカウントを貸す。セッションの管理が `claude-balancer exec` で借りる（D-292）
+    direction: 送信のみ
+    protocol: CLI（`claude-balancer exec --client mindstella -- claude …`）
+    detail: LIB-531-1#
+    notes:
+      事前確認: 要。セッションの管理が起動のたびに `PATH` に `claude-balancer` があるかを確かめ、無ければ利用者の既定のアカウントで起動する。空いたアカウントが無いときは 503 を返す
+  - name: project-index
+    purpose: ワークスペースを配信元の行として登録・クローズする。グローバルの設定のファイルの場所と、許可するフォルダのキーを読む（D-300）
+    direction: 双方向
+    protocol: HTTP（`http://127.0.0.1:${PROJECT_INDEX_PORT:-8786}` の `/settings/sources`）
+    detail: API-531-1#
+    notes:
+      事前確認: 要。『ワークスペースの作成』と『ワークスペースのクローズ』が呼ぶたびに確かめ、届かない・エラーのときは 502 を返して、作成ではこの依頼で作った記録を消す
+  - name: systemd --user
+    purpose: 常駐サーバーをユニットとして起動・停止する
+    direction: 送信のみ
+    protocol: CLI（`systemctl --user`）
+    detail: LIB-531-2#
+    notes:
+      事前確認: 要。『常駐サーバーの起動の確認』が `systemctl --user show-environment` で使えるかを確かめ、使えない端末では新しいセッションで起動する
 lead: mindstella のサブシステムと、Claude Code・tmux・ブラウザ・CDN との境界。
 constraints: |-
   - プラグインは、常駐サーバーへの接続をルートの `.mcp.json` に `type: http` で書き、`hooks/hooks.json` に SessionStart（未読へ戻す・常駐サーバーの起動の確認）と PreToolUse（セッションの値の注入）のフックを持つ。`plugin.json` には MCP サーバーを書かない

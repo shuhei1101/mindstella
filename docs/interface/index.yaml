@@ -17,21 +17,33 @@ items:
   - page: IF-489-70.yaml
     summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで描き直す"
   - page: IF-489-56.yaml
-    summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、tmux のセッションで Claude Code を立ち上げる"
+    summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動する"
   - page: IF-489-27.yaml
     summary: "check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp の版を確かめる"
   - page: IF-489-1.yaml
     summary: "常駐の MCP サーバー mindstella を HTTP で待ち受ける。全てのツールに共通の結果とエラーの返し方"
   - page: IF-489-38.yaml
-    summary: "ensure_server.py: SessionStart のフックと起動スクリプトが、落ちていた常駐サーバーを起動する"
+    summary: "ensure_server.py: SessionStart のフックと起動のコマンドが、落ちていた常駐サーバーを systemd --user で起動し、古いコードなら再起動を案内する"
   - page: IF-489-15.yaml
     summary: "inject_session.py: PreToolUse のフックが、呼んだセッションの作業フォルダとペインをツールの引数に入れる"
   - page: IF-489-37.yaml
     summary: "server_status: 待ち受けのポート・バージョンと、配信しているワークスペースを返す"
   - page: IF-489-36.yaml
     summary: "server_stop: 配信を全て止めて常駐サーバーを終える"
-  - page: IF-489-25.yaml
-    summary: "init: 設定を受け取って空のワークスペースを作る"
+  - page: IF-531-1.yaml
+    summary: "POST /workspaces: 許可するフォルダの下にワークスペースの記録を作るか開き、配信元に登録して ID と画面の URL を返す"
+  - page: IF-531-2.yaml
+    summary: "POST /workspaces/{id}/sessions: MindStella のセッションを tmux のペインで起動し、準備ができてから ID・ペイン・画面の URL を返す"
+  - page: IF-531-3.yaml
+    summary: "GET /workspaces/{id}/sessions: 最後の MindStella のセッションの状態を返す"
+  - page: IF-531-4.yaml
+    summary: "DELETE /workspaces/{id}/sessions/{session}: すぐに受け付け、最後の書き込みを待って MindStella のセッションを止める"
+  - page: IF-531-5.yaml
+    summary: "POST /workspaces/{id}/close: MindStella のセッションが無いワークスペースの配信元の行を outside_read: false にする"
+  - page: IF-531-6.yaml
+    summary: "POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送る出来事を状態に記録する"
+  - page: IF-531-7.yaml
+    summary: "session_hook.py: MindStella のセッションでだけ、フックの出来事を常駐サーバーへ送り、進め方の文書の場所を注入する"
   - page: IF-489-63.yaml
     summary: "add: 1 項目を足す"
   - page: IF-489-60.yaml

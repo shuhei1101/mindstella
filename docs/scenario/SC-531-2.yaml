@@ -1,0 +1,286 @@
+id: SC-531-2
+title: MindStella のセッションを止めてワークスペースをクローズにする
+scenarios:
+- name: 正常シナリオ
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（止める依頼を受けたことを記録し、SessionEnd のフックを呼ぶ）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
+  - name: ワークスペース
+    description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースで、応答の途中でなく、まとめていない変更が無い
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant WSM as ワークスペースの管理
+      participant CC as MindStella のセッション
+      participant HK as フック
+      participant PI as project-index
+
+      APP->>API: 停止を依頼する（DELETE /workspaces/{id}/sessions/{session}）
+      API->>MGR: 停止を依頼する
+      API-->>APP: 受け付けた
+      MGR->>MGR: 状態をクローズ待ちにする
+      MGR->>MGR: 応答の途中でないので、最後の書き込みが終わったとみなす
+      MGR->>CC: 止めて tmux のペインを閉じる
+      CC->>HK: SessionEnd
+      HK->>MGR: 状態に停止済みを記録する
+      APP->>API: MindStella のセッションの一覧を取得する（GET /workspaces/{id}/sessions）
+      API-->>APP: 停止済み
+      APP->>API: クローズを依頼する（POST /workspaces/{id}/close）
+      API->>WSM: クローズを依頼する
+      WSM->>MGR: MindStella のセッションの有無を問い合わせる
+      MGR-->>WSM: 無い
+      WSM->>PI: 配信元の行を outside_read: false にする
+      PI-->>WSM: 変更した結果
+      API-->>APP: クローズした
+    ```
+  expected:
+  - 外部のアプリが、停止の依頼をすぐに受け付けられている
+  - Mock のセッションが止める依頼を受け、状態に停止済みが記録されている
+  - 停止の依頼の後、状態がクローズ待ちになっている
+  - MindStella のセッションの一覧が、停止済みを返している
+  - 'ワークスペースの配信元の行が `outside_read: false` になっている。ワークスペースの記録と、状態のフォルダの追加の MCP・プラグインの記録は残っている'
+  test: test_normal
+- name: 正常シナリオ（最後の書き込みを待つ）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（応答の途中で、しばらくして Stop のフックを呼ぶ）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: ワークスペース
+    description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースで、応答の途中
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CC as MindStella のセッション
+
+      APP->>API: 停止を依頼する（DELETE /workspaces/{id}/sessions/{session}）
+      API->>MGR: 停止を依頼する
+      API-->>APP: 受け付けた
+      MGR->>MGR: 状態をクローズ待ちにする
+      MGR->>MGR: 応答の途中なので、終わるまで待つ（待つ間に新しいコメントを貼り付けない）
+      CC->>MGR: 応答の終わり（Stop のフック）
+      MGR->>CC: 止めて tmux のペインを閉じる
+      CC->>MGR: 停止済み（SessionEnd のフック）
+    ```
+  expected:
+  - MindStella のセッションは Stop のフックの後に止まっている
+  - 待つ間の MindStella のセッションの一覧が、停止の途中を返している
+  test: test_normal_when_waiting_last_write
+- name: 正常シナリオ（MindStella のセッションが落ちている）
+  setup:
+  - name: Mock
+    description: なし（MindStella のセッションは落ちている）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: ワークスペース
+    description: 状態は起動中だが tmux のペインとプロセスが無く、落ちる前のまとめていない変更が残っている
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CHG as 変更の記録（commit）
+
+      APP->>API: 停止を依頼する（DELETE /workspaces/{id}/sessions/{session}）
+      API->>MGR: 停止を依頼する
+      API-->>APP: 受け付けた
+      MGR->>MGR: 状態をクローズ待ちにする
+      MGR->>MGR: tmux のペインとプロセスが無いので、止める工程を飛ばす
+      MGR->>CHG: まとめていない変更の commit を依頼する（落ちていたことを説明に添える）
+      MGR->>MGR: 状態に停止済みを記録する
+    ```
+  expected:
+  - 止める工程を飛ばし、まとめていない変更が落ちていたことを添えて commit され、状態に停止済みが記録されている
+  test: test_normal_when_session_crashed
+- name: 正常シナリオ（強制の停止）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（応答の途中）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: ワークスペース
+    description: MindStella のセッションが応答の途中で、まとめていない変更がある
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CC as MindStella のセッション
+      participant CHG as 変更の記録（commit）
+
+      APP->>API: 強制を指定して停止を依頼する（DELETE /workspaces/{id}/sessions/{session}）
+      API->>MGR: 強制の停止を依頼する
+      API-->>APP: 受け付けた
+      MGR->>MGR: 状態をクローズ待ちにする
+      MGR->>CC: 応答の途中でも止めて tmux のペインを閉じる
+      CC->>MGR: 停止済み（SessionEnd のフック）
+      MGR->>CHG: まとめていない変更の commit を依頼する（強制の停止で止めたことを説明に添える）
+    ```
+  expected:
+  - MindStella のセッションが応答の終わりを待たずに止まっている
+  - まとめていない変更が、強制の停止で止めたことを添えて commit されている
+  test: test_normal_when_forced
+- name: 正常シナリオ（停止の後、クローズの前にコメントが届く）
+  setup:
+  - name: Mock
+    description: なし（MindStella のセッションは止まっている）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
+  - name: ワークスペース
+    description: 停止の依頼を受けて MindStella のセッションが止まり、状態がクローズ待ち
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      actor U as 利用者
+      participant NT as コメントの通知
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant WSM as ワークスペースの管理
+      participant PI as project-index
+
+      U->>NT: 画面でコメントを送る
+      NT->>NT: クローズ待ちなので貼り付けず、スレッドに残す
+      APP->>API: クローズを依頼する（POST /workspaces/{id}/close）
+      API->>WSM: クローズを依頼する
+      WSM->>MGR: MindStella のセッションの有無を問い合わせる
+      MGR-->>WSM: 無い
+      WSM->>PI: 配信元の行を outside_read: false にする
+      PI-->>WSM: 変更した結果
+      API-->>APP: クローズした
+      U->>NT: クローズの後に画面でコメントを送る
+      NT->>NT: スレッドに残す
+    ```
+  expected:
+  - MindStella のセッションは起動されず、コメントはスレッドに残り、クローズが受け付けられている
+  - クローズの後に画面で届いたコメントも、スレッドに残り、MindStella のセッションを起動しない
+  test: test_normal_when_comment_before_close
+- name: 異常シナリオ（最後の書き込みを待つ上限を過ぎる）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（応答の途中のまま、上限の時間までに Stop のフックを呼ばない）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: ワークスペース
+    description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースと MindStella のセッション
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+
+      APP->>API: 停止を依頼する（DELETE /workspaces/{id}/sessions/{session}）
+      API->>MGR: 停止を依頼する
+      API-->>APP: 受け付けた
+      MGR->>MGR: 状態をクローズ待ちにする
+      MGR->>MGR: 上限の時間まで応答の終わりを待つ（上限を過ぎても止めない）
+      MGR->>MGR: 待っている書き込みがあることを状態に記録する
+      APP->>API: MindStella のセッションの一覧を取得する（GET /workspaces/{id}/sessions）
+      API-->>APP: 起動中・待っている書き込みがある
+    ```
+  expected:
+  - MindStella のセッションは起動したまま、状態に待っている書き込みがあることが記録されている
+  - MindStella のセッションの一覧が、待っている書き込みがあることを返している（外部のアプリは停止を依頼し直すか、強制を指定する）
+  test: test_error_when_wait_exceeds_limit
+- name: 異常シナリオ（MindStella のセッションがある間のクローズ）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（起動したまま）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: ワークスペース
+    description: MindStella のセッションが起動している
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant MGR as セッションの管理
+
+      APP->>API: クローズを依頼する（POST /workspaces/{id}/close）
+      API->>WSM: クローズを依頼する
+      WSM->>MGR: MindStella のセッションの有無を問い合わせる
+      MGR-->>WSM: ある
+      API-->>APP: 先に MindStella のセッションを止めるよう求めるエラー
+    ```
+  expected:
+  - 配信元の行は変わらず、MindStella のセッションは起動したまま
+  - 外部のアプリが、先に MindStella のセッションを止めるよう求めるエラーを受け取っている
+  test: test_error_when_session_running
+- name: 異常シナリオ（クローズと MindStella のセッションの作成が同時に届く）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を指し、そのグローバルの設定のファイルはテストごとの一時ファイル
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）の行を書き換える
+  - name: ワークスペース
+    description: MindStella のセッションを止めた後で、クローズの依頼と MindStella のセッションの作成の依頼が同時に届く
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant MGR as セッションの管理
+      participant PI as project-index
+
+      APP->>API: クローズを依頼する（POST /workspaces/{id}/close）
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>WSM: クローズを依頼する（作成の依頼は、ワークスペースごとの順番でクローズが終わるまで待つ）
+      WSM->>MGR: MindStella のセッションの有無を問い合わせる
+      MGR-->>WSM: 無い
+      WSM->>PI: 配信元の行を outside_read: false にする
+      PI-->>WSM: 変更した結果
+      API-->>APP: クローズした
+      API->>WSM: クローズ済みかを確かめる
+      WSM-->>API: クローズ済み
+      API-->>APP: クローズしたワークスペースのエラー
+    ```
+  expected:
+  - ワークスペースがクローズされ、MindStella のセッションは起動せず、外部のアプリが作成の依頼にクローズしたワークスペースのエラーを受け取っている
+  test: test_error_when_create_during_close
+lead: '外部のアプリが MindStella のセッションの停止を依頼すると、MindStella は依頼を受け付けてすぐに返却し、最後の書き込みが終わるのを待ってから MindStella のセッションを止める。止まった後に外部のアプリがクローズを依頼すると、配信元の行を `outside_read: false` にしてワークスペースをクローズにする単一ユースケース。'
+issue: 516
+primary_actor: 外部のアプリ（aituber など）
+stakeholders:
+- name: 外部のアプリ
+  interest: 活動を終えたときに、書きかけを失わずに MindStella のセッションを止め、アカウントを返せる
+- name: 利用者
+  interest: クローズの後に送ったコメントが消えずにスレッドに残る
+trigger: 外部のアプリが MindStella の API に MindStella のセッションの停止を依頼する
+preconditions:
+- 外部のアプリがワークスペースと MindStella のセッションを作っている（単一ユースケース『外部のアプリから起動する』）
+success_guarantee: 'MindStella のセッションが止まり、状態に停止済みが記録されている。ワークスペースの配信元の行が `outside_read: false` になっている（クローズの正本）。ワークスペースの記録と、状態のフォルダの追加の MCP・プラグインの記録は残っている。クローズ待ちとクローズの後に届いたコメントはスレッドに残り、MindStella のセッションを起動しない。'
+minimal_guarantee: 最後の書き込みを待つ上限を過ぎたときは、MindStella のセッションを止めず、待っている書き込みがあることを状態に記録する。MindStella のセッションがある間のクローズの依頼は断り、ワークスペースを変えない。
+frequency: 外部のアプリが活動を終えるたびに 1 回
+priority: 高
+refs:
+- SC-531-1#
+notes:
+  読み替え: 端末からの停止とクローズは、起動のコマンドが同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える。MindStella の MCP の `stop_session`・`close_workspace` からの依頼は、外部のアプリを MCP を呼んだセッションに読み替える
+  停止の完了: 停止の依頼はすぐに受け付けて返却し、完了は MindStella のセッションの一覧（`GET /workspaces/{id}/sessions`）で確かめる
+  停止の判定: SessionEnd のフックが届かないときは、tmux のペインとプロセスが無くなったことで停止済みとする
+  最後の書き込みの判定: 応答の途中かどうかは、UserPromptSubmit（応答の始まり）と Stop・StopFailure（応答の終わり）のフックが状態に記録する。応答の途中でないのにまとめていない変更が残っているときは、commit してから止める
+  受け持ち: 停止はセッションの管理、クローズはワークスペースの管理が受け持つ。ワークスペースの管理は、クローズの前にセッションの管理に MindStella のセッションの有無を問い合わせる
+  インターフェース定義で決めること: 待つ上限の値と強制の指定のキー
+  スコープ外: '無操作の上限での停止は #521、開き直しは #523 で扱う'
+  E2E の範囲: MindStella のセッションのエージェントは Mock にする
+test_file: tests/e2e/単一ユースケース/test_session_close.py

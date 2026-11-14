@@ -1,0 +1,32 @@
+id: LIB-531-1
+title: claude-balancer
+kind: CLI
+version:
+  current: 端末に入っているもの（版の文字列を出さない）
+  checked_on: '2026-11-15'
+  pinning: 版は固定しない。セッションの管理は `PATH` の `claude-balancer` を使い、無ければ claude-balancer を通さずに起動する
+catalogs:
+  - name: コマンド
+    version: 2026-11-15 に端末で確かめた引数
+    entries:
+      - name: claude-balancer exec --client {名前} -- {コマンド}
+        kind: コマンド
+        purpose: 一番空いているアカウントを借り、そのアカウントでコマンド（`claude`）を実行する。子プロセスが終わるとアカウントを返し、子プロセスの終了コードで終わる。借りられない・`--client` が `clients` に無い・バックエンドへつながらないときは子プロセスを起動せず、理由を標準エラーに書いて 125 で終わる。コマンドが見つからなければ 127。セッションの管理が `--client mindstella` で MindStella のセッションを起動する
+lead: 複数の Claude Code のアカウントから空いているものを貸し、そのアカウントでコマンドを実行する CLI。
+supplier: shuhei1101
+dependency_scope: 任意
+adoption: 採用
+used_in:
+  - plugins/mindstella/skills/mindmap/scripts/server.py
+upstream: shuhei1101/claude-balancer
+verification:
+  state: 未確認
+  detail: 'claude-balancer の develop の設計書『借りて実行』（IF-275-21）で終了コードを確かめ、この端末の `claude-balancer exec --help` で引数を確かめた。この端末の `clients` は `ai-monitor`・`user`・`small-worker`・`aituber`・`ai-monitor-e2e` で、`mindstella` は無い。`--client user` で `exec -- claude` を tmux のペインの中で起動し、SessionStart のフックまでの時間を測った（非機能要件『MindStella のセッションの準備を待つ上限』）'
+limitations:
+  - item: 利用の上限
+    content: '全てのアカウントが利用の上限に達していると、`exec` はエラーで終わる。セッションの管理は 503（`stage: account`）を返す'
+  - item: 無い端末
+    content: '`PATH` に無い端末では、利用者の既定のアカウントで起動する（D-292）'
+  - item: クライアント
+    content: '`--client` は claude-balancer の設定の `clients` にある名前だけを受ける。MindStella を使う端末では `clients` に `mindstella` を足し、claude-balancer を起動し直す'
+docs_url: https://github.com/shuhei1101/claude-balancer/tree/develop/docs/interface

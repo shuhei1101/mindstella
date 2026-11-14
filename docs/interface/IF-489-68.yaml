@@ -30,7 +30,7 @@ flows:
       - 取り込まれたプラグインのフォルダの直下に `LICENSE` があり、本文がリポジトリの直下の `LICENSE` と一致する
       - 取り込まれたプラグインのフォルダに `dev/`・`docs/`・`tests/`・`.storybook/`・`package.json` が無く、`plugin.json` が `mcpServers` を持たない
       - 取り込まれたプラグインのフォルダの直下の `.mcp.json` の `mcpServers.mindstella` が、`type` が `http`、`url` が `http://127.0.0.1:${MINDSTELLA_PORT:-8784}/mcp` で、ほかのキーを持たない
-      - '`claude plugin details` で hooks が、`SessionStart` の `reset_unread.py` と `ensure_server.py --hook` を呼ぶ 2 件と、`matcher` が `mcp__plugin_mindstella_mindstella__.*` で `inject_session.py` を呼ぶ `PreToolUse` の 1 件'
+      - '`claude plugin details` で hooks が、`SessionStart` の `reset_unread.py` と `ensure_server.py --hook` と `session_hook.py session-start` を呼ぶ 3 件、`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure` で `session_hook.py` を呼ぶ 4 件と、`matcher` が `mcp__plugin_mindstella_mindstella__.*` で `inject_session.py` を呼ぶ `PreToolUse` の 1 件'
       - その設定のフォルダで、`MINDSTELLA_PORT` に待ち受けているプロセスの無い空きポートを渡すと、`claude mcp list` の `plugin:mindstella:mindstella` がつながらない状態として出る
     test: test_normal
 lead: Claude Code がプラグイン mindstella をインストールして読み込むときの、プラグインのマニフェストとフォルダの形。
@@ -87,7 +87,7 @@ request:
   - name: bin/mindstella
     type: ファイル
     required: true
-    description: 起動スクリプト。実行の権限を持つ。形はインターフェース定義『起動スクリプト』
+    description: 起動スクリプト。実行の権限を持つ。形はインターフェース定義『起動のコマンド』
 request_example: |-
   ```json
   {
@@ -101,7 +101,7 @@ request_example: |-
   ```
 constraints:
   - item: 持つ部品
-    constraint: スキルと、`.mcp.json` の常駐サーバーへの接続 1 つと、`hooks/hooks.json` のフック 3 つ（`SessionStart` の『未読へ戻す』『常駐サーバーの起動の確認』、`PreToolUse` の『セッションの値の注入』）だけ。コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱し、`.mcp.json` は起動せずに `url` でつなぐだけにする（常駐サーバーの起動は『常駐サーバーの起動の確認』と起動スクリプトが担う）
+    constraint: スキルと、`.mcp.json` の常駐サーバーへの接続 1 つと、`hooks/hooks.json` のフック（`SessionStart` の『未読へ戻す』『常駐サーバーの起動の確認』、`PreToolUse` の『セッションの値の注入』、`SessionStart`・`SessionEnd`・`UserPromptSubmit`・`Stop`・`StopFailure` の『MindStella のセッションのフック』）だけ。コマンド・エージェントは持たない。MCP サーバーの実体（`skills/mindmap/scripts/server.py`）は同梱し、`.mcp.json` は起動せずに `url` でつなぐだけにする（常駐サーバーの起動は『常駐サーバーの起動の確認』と起動のコマンドが担う）
   - item: 版
     constraint: '`version` は持たない'
     notes: 版の正はタグと `version.ini`（規約『バージョニング』）。マニフェストに写すと揃える作業がリリースごとに増える

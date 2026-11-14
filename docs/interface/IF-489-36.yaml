@@ -60,10 +60,15 @@ constraints:
   - item: 止める時
     constraint: 結果のレスポンスを返し終えてから、SIGTERM を受けたときと同じ終わり方を始める（結果を返す前に待ち受けを閉じない）
   - item: 起動し直し
-    constraint: 起動し直すツールは持たない。止めた後は、次に Claude Code を立ち上げたときの『常駐サーバーの起動の確認』か起動スクリプトが、そのときにインストールされているバージョンのプラグインで起動する
+    constraint: 起動し直すツールは持たない。止めた後は、次に Claude Code を立ち上げたときの『常駐サーバーの起動の確認』か起動のコマンドが、そのときにインストールされているバージョンのプラグインで起動する。起動のコマンドの `mindstella server restart` は、止めてから起動の確認を呼ぶ
     notes: 常駐サーバーが自分を起動し直すと、止めたときのバージョンのフォルダの `server.py` を起動してしまい、上げたプラグインに替わらない
+  - item: HTTP の入口
+    constraint: '`POST /_admin/stop` も同じ処理を呼び、同じ JSON を返す。MCP のクライアントを持たない起動のコマンドの `mindstella server stop`（systemd --user が無い端末）が呼ぶ。`Host` は『MindStella のセッションの作成』と同じく `127.0.0.1`・`localhost` だけを受ける'
+  - item: systemd --user で動いているとき
+    constraint: 終了コード 0 で終わる。ユニットの `Restart=on-failure` は、0 で終わったプロセスを起動し直さない。起動のコマンドの `mindstella server stop` は、systemd --user では `systemctl --user stop mindstella.service` を使う
 refs:
   - IF-489-1#
 callers:
   - SC-489-20#
+  - IF-489-56#
 test_file: tests/integration/server/test_server_stop.py

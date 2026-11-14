@@ -17,7 +17,7 @@ requirements:
     external_constraint: Claude Code が動く OS（macOS・Linux・Windows）
     source_kind: 実行基盤の制限
     value: Linux・macOS・Windows（WSL を含む）
-    rationale: スクリプトは標準ライブラリのファイル操作と PyYAML・jsonschema だけを使い、OS ごとの分岐を持たない。テストは Linux（WSL2 の Ubuntu 24.04）で流し、macOS・Windows は確かめていない
+    rationale: スクリプトは標準ライブラリのファイル操作と PyYAML・jsonschema だけを使い、OS ごとの分岐を持たない。テストは Linux（WSL2 の Ubuntu 24.04）で流し、macOS・Windows は確かめていない。常駐サーバーは systemd --user が使える端末ではユニットとして、使えない端末（macOS・systemd の無い WSL）では起動の確認が新しいセッションで起動する
     source: https://github.com/shuhei1101/mindmap/pull/12
     measurement: '実機での確認: macOS・Windows の端末で `check-env`・`init`・`add`・`build` を流す'
     overflow: Windows で、ほかのプロセスが開いている YAML を `os.replace` で置き換えようとすると失敗する。そのとき書き込みのコマンドはエラーで終わり、元のファイルは変わらない
@@ -356,4 +356,73 @@ requirements:
       記録のフォルダを Windows のドライブ（`/mnt/c`）に置いても、Linux の領域と比べた差は 0.1 秒以内だった
     measurement: 実例と同じ件数（資料 136 件・検討事項 392 件・用語 162 件・スレッド 787 件で、項目ごとに変更履歴を 3 回分持つ）のワークスペースを作り、常駐サーバーのプロセスの中で 1 回の `update`・`thread`・`update_thread`・`set_thread_status` を呼んだ時間を測る。読み込みと検証を 1 回済ませた後の時間とする
     overflow: 時間で打ち切らず、最後まで読み書きする。PyYAML が libyaml を持たない環境では、Python の実装で読み書きするため上限を超える
+  - id: NFR-27
+    name: MindStella のセッションの準備を待つ上限
+    english_name: session_ready_timeout
+    category: 性能
+    external_constraint: 制限なし
+    source_kind: 制限なし
+    value: '30'
+    unit: 秒（tmux のペインで Claude Code を起動してから、SessionStart のフックが状態に登録するまで）
+    rationale: 下流（claude-balancer の `exec` で借りて、プラグイン mindstella・project-index を入れた Claude Code を tmux のペインで起動し、SessionStart のフックが動くまで）の実測の最大に余裕 50% を足して切り上げた。実測は WSL2 の Ubuntu 24.04 で、`claude-balancer exec --client user -- claude` を tmux のペインの中で 20 回起動し、起動から SessionStart のフック（`date` を一時ファイルに追記する仮のフック）までが 6.5〜15.0 秒（中央値 11.0 秒）だった。20 回では p99.9 を出せないため最大の 15.0 秒を p99.9 とみなし、15.0 + 7.5 = 22.5 秒を 30 秒に切り上げた
+    measurement: release ブランチで、起動のコマンドで MindStella のセッションを 20 回作り、起動から SessionStart のフックの登録までの時間を測る。最大の 1.5 倍が 30 秒を超えたら見直す
+    overflow: '上限を過ぎたら Claude Code を止めてペインを閉じ、504（`stage: ready`）を返す。ワークスペースは開いたまま残す'
+    refs:
+      - IF-531-2#
+    breakdown:
+      - part: 実測の最大（p99.9 とみなす）
+        value: 15.0 秒
+        notes: 20 回の最大。中央値は 11.0 秒。2026-11-15 に測った
+      - part: 余裕
+        value: 7.5 秒
+        notes: 規約『資源の値の決め方』の既定の 50%
+      - part: 切り上げ
+        value: 30 秒
+        notes: 22.5 秒を切り上げた
+  - id: NFR-28
+    name: 最後の書き込みを待つ上限
+    english_name: stop_wait_timeout
+    category: 性能
+    external_constraint: 制限なし
+    source_kind: 制限なし
+    value: '5400'
+    unit: 秒（停止を受け付けてから、MindStella のセッションの応答が終わるまで）
+    rationale: 下流（MindStella のセッションの 1 回の応答）の実測の p99.9 に余裕 50% を足して切り上げた。実測は、この端末の話し合いのワークスペース（`/mnt/c/Users/shuhe/repo/tmp/何でも会話`）の全てのアカウントの会話の記録（jsonl 66 件）から、利用者の入力の行から、次の利用者の入力の前の最後のアシスタントの行までを 1 回の応答として引いた 3,267 回で、中央値 314 秒・p99 2,763 秒・p99.9 3,355 秒だった。応答の途中に 10 分を超える間（許可の確認や利用の上限で待った間）がある 286 回は除いた。3,355 + 1,678 = 5,033 秒を 5,400 秒（90 分）に切り上げた
+    measurement: release ブランチで、会話の記録から 1 回の応答の時間を 1,000 回分以上引き、p99.9 の 1.5 倍が 5,400 秒を超えたら見直す
+    overflow: 上限を過ぎたら止めずに `pending_write` を真にし、`status` を `running` に戻す。外部のアプリは停止を依頼し直すか、強制を指定する。応答の途中に許可の確認で止まっている MindStella のセッションも、上限まで待つ
+    refs:
+      - IF-531-4#
+    breakdown:
+      - part: 実測の p99.9
+        value: 3,355 秒
+        notes: 3,267 回の応答。中央値は 314 秒。2026-11-15 に測った
+      - part: 余裕
+        value: 1,678 秒
+        notes: 規約『資源の値の決め方』の既定の 50%
+      - part: 切り上げ
+        value: 5,400 秒
+        notes: 5,033 秒を 90 分に切り上げた。停止の依頼はすぐに受け付けて返すので、待つ間も外部のアプリは止まらない
+  - id: NFR-29
+    name: フックの送信の上限
+    english_name: session_hook_post_timeout
+    category: 性能
+    external_constraint: 制限なし
+    source_kind: 制限なし
+    value: '2'
+    unit: 秒（『MindStella のセッションのフック』が常駐サーバーへ 1 回送り、応答を受けるまで）
+    rationale: 下流（システムの `python3` を起動して `127.0.0.1` の常駐サーバーへ 1 回送る）の実測の最大に余裕 50% を足して切り上げた。実測は WSL2 の Ubuntu 24.04 で、`python3` で `GET /_admin/status` を 30 回送り、0.15 秒（中央値）〜0.22 秒（最大）だった。30 回では p99.9 を出せないため最大の 0.22 秒を p99.9 とみなし、0.22 + 0.11 = 0.33 秒を、常駐サーバーが `session.json` の鍵を待つ間を見込んで 2 秒に切り上げた。打ち切ってもフックは終了コード 0 で終わり、会話は止まらない
+    measurement: release ブランチで、MindStella のセッションのフックを 100 回呼び、送ってから応答を受けるまでの時間を測る。最大の 1.5 倍が 2 秒を超えたら見直す
+    overflow: 打ち切ったら標準エラーに 1 行書いて終了コード 0 で終わる。状態は記録されないまま残る（『MindStella のセッションの作成』は準備を待つ上限で 504 を返す）
+    breakdown:
+      - part: 実測の最大（p99.9 とみなす）
+        value: 0.22 秒
+        notes: '`python3` の起動を含む 30 回の最大。中央値は 0.15 秒'
+      - part: 余裕
+        value: 0.11 秒
+        notes: 規約『資源の値の決め方』の既定の 50%
+      - part: 切り上げ
+        value: 2 秒
+        notes: 常駐サーバーが鍵を待つ間を見込んで切り上げた
+    refs:
+      - IF-531-7#
 lead: mindstella が外部の制約から逆算して決める値。

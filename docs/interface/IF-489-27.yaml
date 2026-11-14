@@ -200,7 +200,7 @@ exceptions:
     notes: 終了コード 1。標準出力には同じ形の JSON（`install` は入れる）
 constraints:
   - item: 起動する Python
-    constraint: '`check_env.py` はシステムの `python3`（仮想環境の外）で起動する。MCP サーバーは、このスクリプトが返す `python_path` で起動する（『起動スクリプト』）'
+    constraint: '`check_env.py` はシステムの `python3`（仮想環境の外）で起動する。MCP サーバーは、このスクリプトが返す `python_path` で起動する（『起動のコマンド』）'
   - item: 読み込みの順と書き方
     constraint: '`check_env.py` は PyYAML・jsonschema・mcp を import せず、Python 3.8 でも読める構文だけで書く（`type` 文・`match` 文・`X | Y` の型注釈を実行時に評価する書き方を使わない）。3.12 の書き方はサーバーのモジュールに閉じる'
   - item: 仮想環境の中の確かめ方

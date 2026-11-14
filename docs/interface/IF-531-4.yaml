@@ -1,0 +1,191 @@
+id: IF-531-4
+title: MindStella のセッションの停止
+entry:
+  kind: endpoint
+  value: DELETE `/workspaces/{id}/sessions/{session}`
+lead: 停止の依頼をすぐに受け付けて返し、状態をクローズ待ちにしてから、最後の書き込みが終わるのを待って MindStella のセッションを止める。MindStella の MCP の `stop_session` も同じ処理を呼ぶ。
+idempotent: true
+side_effects: 状態の `close_pending` を真にし、`status` を `stopping` にする。応答の途中でなくなったら、まとめていない変更があれば commit してから、Claude Code に `/exit` を送り、止まらなければプロセスに SIGTERM を送って tmux のペインを閉じる。落ちていたとき・強制で止めたときは、まとめていない変更を理由を添えて commit する。待つ上限を過ぎたら止めずに `pending_write` を真にする
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: session
+    type: str
+    required: true
+    location: path
+    description: MindStella のセッションの ID
+  - name: force
+    type: bool
+    required: false
+    default: 偽
+    location: query
+    description: 真なら応答の終わりを待たずに止める
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: session
+    type: str
+    description: 止める MindStella のセッションの ID
+  - name: status
+    type: Literal['stopping', 'stopped']
+    description: '`stopping` 受け付けて止め始めた / `stopped` 既に止まっていた（落ちていたものを含む。停止済みを記録した）'
+status_codes:
+  - code: '202'
+    condition: 受け付けた（`stopping`）。完了は『MindStella のセッションの一覧』で確かめる
+  - code: '200'
+    condition: 既に止まっていた（`stopped`）
+  - code: '404'
+    condition: ワークスペースか `session` が無い
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 最後の書き込みの判定
+    constraint: 状態の `responding` が偽なら終わったとみなす。真の間は 1 秒ごとに状態を読み、上限まで待つ。待つ間はコメントの貼り付けをしない（`close_pending` が真のため）
+  - item: 最後の書き込みを待つ上限
+    constraint: 上限を過ぎたら止めずに `pending_write` を真にし、`status` を `running` に戻す
+    decided_by: NFR-489-1#requirements[最後の書き込みを待つ上限]
+  - item: 止め方
+    constraint: ペインへ `/exit` を貼り、10 秒以内に Claude Code のプロセスが終わらなければ SIGTERM を送り、tmux の `kill-session -t ={ワークスペースの ID}` でペインを閉じる。SessionEnd のフックが届かないときは、ペインとプロセスが無くなったことで `stopped` にする
+    notes: claude-balancer の `exec` は、子プロセスが終わるとアカウントを返す
+  - item: まとめていない変更
+    constraint: 『まだまとめていない変更』（`pending`）が空でなければ、`commit` と同じ処理で、落ちていた・強制で止めた・止める前の分のどれかを説明に入れてまとめる
+    notes: '変更の検知のフォルダの監視は #517'
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵を、受け付けて状態を書くまで持つ。待つ間と止める間は持たない（クローズの依頼は `status` が `stopping` のため断られる）。`session.json` の読み書きは、`session.json` ごとの書き込みの鍵を取って行う（『MindStella のセッションの出来事の受け取り』と同じ鍵）
+  - item: MCP のツール
+    constraint: '`stop_session` は `workspace_id`・`session_id`・`force` を受け、同じ処理を呼ぶ'
+flows:
+  - name: 正常系
+    summary: すぐに 202 を返し、応答の途中でなければ止めて停止済みにする
+    setup:
+      - name: Mock
+        description: Claude Code（ペインに `/exit` が貼られたら『MindStella のセッションのフック』の SessionEnd を叩いて終わる）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: MindStella のセッションが起動し、応答の途中でない
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE
+        participant CC as Claude Code（Mock）
+        participant HK as フックの受け口
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202 stopping
+        API->>CC: /exit を貼る
+        CC->>HK: SessionEnd
+        HK->>HK: status: stopped
+      ```
+    expected:
+      - 応答が 202 で、受け付けた直後の状態の `close_pending` が真
+      - 5 秒以内に `session.json` の `status` が `stopped` で、tmux のセッションが無い
+    test: test_normal
+  - name: 正常系（応答の終わりを待つ）
+    summary: 応答の途中なら Stop のフックの後に止める
+    setup:
+      - name: Mock
+        description: Claude Code（応答の途中の状態から、2 秒後に Stop を叩く）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE
+        participant CC as Claude Code（Mock）
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202
+        API->>API: responding が偽になるまで待つ
+        CC->>API: Stop
+        API->>CC: /exit を貼る
+      ```
+    expected:
+      - '`/exit` が Stop の後に貼られている'
+    test: test_normal_when_waiting_last_write
+  - name: 正常系（落ちている）
+    summary: 止める工程を飛ばし、まとめていない変更を落ちていたことを添えて commit し、200 を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: '`session.json` が `running` でペインが無く、まとめていない変更がある'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE
+
+        クライアント->>API: DELETE
+        API->>API: crashed と判定して commit する
+        API-->>クライアント: 200 stopped
+      ```
+    expected:
+      - 応答が 200 で `status` が `stopped`
+      - '`changes.yaml` に、落ちていたことを説明に持つまとまりがある'
+    test: test_normal_when_session_crashed
+  - name: 正常系（強制）
+    summary: 応答の途中でも止め、強制で止めたことを添えて commit する
+    setup:
+      - name: Mock
+        description: Claude Code（応答の途中のまま）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: まとめていない変更がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE?force=true
+        participant CC as Claude Code（Mock）
+
+        クライアント->>API: DELETE?force=true
+        API-->>クライアント: 202
+        API->>CC: 止める
+        API->>API: commit する
+      ```
+    expected:
+      - Mock の Claude Code が Stop を叩く前に止まっている
+      - '`changes.yaml` に、強制で止めたことを説明に持つまとまりがある'
+    test: test_normal_when_forced
+  - name: 異常系（待つ上限を過ぎる）
+    summary: 止めずに pending_write を真にする
+    setup:
+      - name: Mock
+        description: Claude Code（応答の途中のまま Stop を叩かない）
+      - name: 常駐サーバー
+        description: 待つ上限をテストの環境変数で短くする
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202
+        API->>API: 上限まで待つ
+        API->>API: pending_write: true・status: running
+      ```
+    expected:
+      - Mock の Claude Code が動いたまま、`session.json` の `pending_write` が真で `status` が `running`
+    test: test_error_when_wait_exceeds_limit
+refs:
+  - IF-531-3#
+  - IF-489-4#
+  - IF-489-36#
+callers:
+  - SC-531-2#
+test_file: tests/integration/server/test_stop_session.py

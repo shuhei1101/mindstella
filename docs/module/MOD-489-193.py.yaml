@@ -27,7 +27,7 @@ constants:
     title: パスのハッシュの桁数
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 起動スクリプトで立ち上げる
-    summary: セッションの名前に付ける、絶対パスの SHA-256 の 16 進の先頭の桁数（インターフェース定義『起動スクリプト』）
+    summary: セッションの名前に付ける、絶対パスの SHA-256 の 16 進の先頭の桁数（インターフェース定義『起動のコマンド』）
     value: '6'
 functions:
   - name: find_plugin_dir

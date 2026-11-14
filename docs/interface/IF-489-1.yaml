@@ -275,7 +275,7 @@ response:
     description: '`mindstella`。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる'
   - name: ツール
     type: list[str]
-    description: '`init`・`add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`write_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`'
+    description: '`add`・`update`・`remove`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`impact`・`find`・`show`・`attrs`・`tags`・`check`・`goal`・`migrate`・`clear_release`・`write_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`・`server_status`・`server_stop`・`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`'
   - name: 結果
     type: CallToolResult
     description: ツールの結果。構造化の結果（`structuredContent`）に JSON のオブジェクトを 1 個入れ、同じ JSON を文字列の本文（`content` の text）にも入れる
@@ -299,13 +299,13 @@ constraints:
   - item: 待ち受けのポート
     constraint: '`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）。値は起動した環境から起動時に 1 回読む'
   - item: 立てる Python
-    constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。『常駐サーバーの起動の確認』と起動スクリプトが、新しいセッションで（`start_new_session`）、標準入出力をつながずに起動する
+    constraint: 依存の確認が確かめた仮想環境の Python（『依存の確認』の `python_path`）。『常駐サーバーの起動の確認』が、`systemctl --user` が使える端末では systemd --user のユニット `mindstella.service` として、使えない端末では新しいセッションで（`start_new_session`）標準入出力をつながずに起動する
   - item: 待ち受けの確認
     constraint: '`GET /_admin/status` に、`server_status` と同じ JSON を返す。『常駐サーバーの起動の確認』と起動スクリプトは、この応答の `name` が `mindstella` かで、常駐サーバーが待ち受けているかを決める'
   - item: ツールの引数
-    constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`init`・`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
+    constraint: 前のスクリプトのコマンドの引数と同じ中身を、引数の名前から `--` を落とした名前で受ける（`--workspace` → `workspace`）。項目の中身は `item`（`add`・`update`）・`settings`（`update_settings`）の JSON のオブジェクトで受ける。Python の予約語と重なる `--from`・`--to` は `from_version`・`to_version` にする
   - item: ワークスペース
-    constraint: '`server_status`・`server_stop` 以外の全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスは `session.cwd` から読み、`session` が無いときは引数の誤りにする（常駐サーバーの作業フォルダは使わない）。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する'
+    constraint: '`server_status`・`server_stop` と MindStella の API と同じ操作のツール（`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace`）以外の全てのツールが `workspace`（ワークスペースのフォルダのパス）を受ける。1 つのプロセスが複数のワークスペースを扱える。相対パスは `session.cwd` から読み、`session` が無いときは引数の誤りにする（常駐サーバーの作業フォルダは使わない）。`.mindstella/config.yaml` があるフォルダをワークスペースとして扱い、記録のファイルは全て `.mindstella/` の下で引く（直下には書かない）。`.mindstella/config.yaml` が無く、直下に `config.yaml` か `mindmap.yaml`（v0.6.0 より前の置き場所の設定ファイル）があるフォルダには、`migrate` 以外のツールは WorkspaceNotFoundError を返し、本文で `/mindstella:upgrade` での移し替えを案内する'
   - item: セッションの値
     constraint: '`session` はツールの呼び出しごとに受け、モジュール変数に持たない。ペインへの入力の宛先は、そのワークスペースのプレビューの配信が最後に受けた `session` を持つ（『コメントをまとめて送る』）'
   - item: 同時の呼び出し
@@ -313,18 +313,28 @@ constraints:
   - item: 終わり方
     constraint: SIGTERM・SIGINT を受けるか『常駐サーバーの停止』が呼ばれると、立てた配信ごとに終了時のフック（`MINDSTELLA_PREVIEW_STOP_HOOK`）を起動時と同じポートとワークスペースのフォルダの名前を足して呼び、配信を止めてプロセスを終える。終了時のフックは 1 つの配信に 1 回だけ呼ぶ。フックのコマンドは新しいセッションで立て（`start_new_session`）、標準入出力をつながず、終わりを待たない（立てられないときは標準エラーに記録して続ける）。MCP のクライアントが切れても終わらない
   - item: 読む環境変数
-    constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK` を、常駐サーバーを起動した環境から読む。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` は読まない（`session` で受ける）'
+    constraint: '`MINDSTELLA_PORT`・`MINDSTELLA_ALLOWED_HOSTS`・`MINDSTELLA_PREVIEW_START_HOOK`・`MINDSTELLA_PREVIEW_STOP_HOOK`・`PROJECT_INDEX_PORT`・`XDG_STATE_HOME` を、常駐サーバーを起動した環境から読む。`TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` は読まない（`session` で受ける）'
     notes: テストで常駐サーバーを呼ぶときは、tmux への入力を確かめるフロー以外で `session` に `tmux`・`tmux_pane` を入れない（テストを動かすペインへ貼らないため）
   - item: 結果の組み立て
     constraint: ツールは、成功もエラーも `CallToolResult` を自分で組み立てて返す（成功は `structured_content` と同じ JSON の本文、エラーは `is_error` を真にした本文）。例外を送って SDK に任せない
     notes: '`mcp` 2.3.0 で確かめた。例外を送ると本文の頭に `Error executing tool {ツール}: ` が付き（`ToolError` 以外は内容も消える）、`エラー: ` で始まらない'
+  - item: MindStella の API
+    constraint: '`/mcp` と同じポートで、`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close` と、フックの受け口 `POST /_admin/sessions/{session}/events`・停止の `POST /_admin/stop` を待ち受ける。`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` の要求だけを受ける（D-304・D-340。`MINDSTELLA_ALLOWED_HOSTS` のホスト名はプレビューの配信だけが受ける）'
+  - item: 常駐サーバーの状態
+    constraint: 状態のフォルダ `${XDG_STATE_HOME:-~/.local/state}/mindstella/` に、ワークスペースの ID の一覧と、ワークスペースごとの MindStella のセッション・追加の MCP とプラグインを書く（ER 図『常駐サーバーの状態』）。Git の外に置き、設定と記録には入れない
 refs:
   - LIB-489-12#
   - IF-489-37#
   - IF-489-36#
+  - IF-531-1#
+  - IF-531-2#
+  - IF-531-3#
+  - IF-531-4#
+  - IF-531-5#
+  - IF-531-6#
 notes:
   1 つのプロセスに持つ理由: ツールの書き換えと配信の書き換えの知らせを同じプロセスで持つと、止めたときに配信も一緒に止まり、残ったプロセスを片付けずに済む（確認ログの「サブシステムの組み替え」）
-  systemd を使わない理由: 動作環境の macOS に systemd が無いため、『常駐サーバーの起動の確認』と起動スクリプトが、落ちていたときに起動する（dev-docs と同じ形）。規約の `sdk-transport-06` が主にする systemd --user から外れる（要件.md の「常駐サーバーの起動と管理の仕方」）
+  systemd --user と新しいセッション: 端末に 1 つの常駐サーバーを、セッションを閉じても残る形で持つため、systemd --user が使える端末ではユニットとして動かす（A-119・D-285）。動作環境の macOS など systemd --user が無い端末は、今までどおり起動の確認が新しいセッションで起動する
 callers:
   - IF-489-38#
   - IF-489-56#

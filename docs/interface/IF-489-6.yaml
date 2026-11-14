@@ -353,6 +353,32 @@ flows:
       - '`threads.yaml` に TH-1 がある'
       - 常駐サーバーの標準エラーに、宛先のセッションが終わった旨の行がある
     test: test_normal_when_session_ended
+  - name: 正常系（MindStella のセッションへ入力する・クローズ待ち）
+    summary: MindStella のセッションがあればそのペインへ入力し、クローズ待ちなら入力せずにスレッドに残す
+    setup:
+      - name: Mock
+        description: 正常系（Claude Code へ入力する）と同じ偽のコマンドを tmux のペインで動かす
+      - name: 状態
+        description: '状態のフォルダのこのワークスペースの `session.json` に、そのペインと偽のコマンドの `pid`・`pid_started_at`、`status: running` を書く。2 回目は `close_pending: true` にする'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as POST /api/comments/send
+        participant ST as 状態のフォルダ
+        participant P as MindStella のセッションのペイン
+
+        画面->>IF: 送る（1 回目）
+        IF->>ST: session.json を読む
+        IF->>P: 件数の 1 行を貼る
+        IF-->>画面: entered: true
+        画面->>IF: 送る（2 回目・close_pending: true）
+        IF-->>画面: entered: false（スレッドに残す）
+      ```
+    expected:
+      - 1 回目は、状態の `pane` のペインに件数の 1 行が貼られ、`entered` が真
+      - 2 回目は、ペインに何も貼られず、`entered` が偽で、書き込みは `threads.yaml` に足されている
+    test: test_normal_when_mindstella_session
   - name: 異常系（HTML の本文の箇所が合わない・409）
     summary: HTML の本文が書き換わって選んだ文が無くなったコメントがあれば、どれも送らない
     setup:
@@ -529,8 +555,8 @@ constraints:
   - item: 二重に送らない
     constraint: 同じ `comment` を持つ書き込みが既にあるコメントは足さず、そのスレッドと書き込みの ID を `items[]` に返してレビュー中から外す（`threads.yaml` を書いた後、`comments.yaml` を書く前にプロセスが落ちたとき）
   - item: 送り先
-    constraint: 'このワークスペースを指して最後にツールを呼んだセッションの `session`（『MCP サーバーの起動』の `session`）を宛先にし、`session.tmux_pane` のペインへ、`session.tmux` の最初の `,` より前のソケット（`tmux -S {ソケット}`）で入力する。常駐サーバーは、`workspace` と `session` を受けたツールの呼び出しのたびに、そのワークスペースの宛先を書き換える（配信の前に受けた分も持つ）。宛先が無い・`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無いときは tmux を呼ばずに `entered: false` にする'
-    notes: 宛先はワークスペースごとに 1 つ。同じワークスペースを 2 つのセッションが指すと、後から呼んだ方に貼る
+    constraint: '状態のフォルダにこのワークスペースの MindStella のセッションの記録（`session.json`）があるときは、`close_pending` が偽で `status` が `running` のときだけ、その `pane` を宛先にし、`pid`・`pid_started_at` を『宛先が生きているかの確かめ』の `claude_pid`・`claude_started_at` に使う。`close_pending` が真か、MindStella のセッションが止まっている・落ちているときは入力せず（`entered: false`）、書き込みはスレッドに残す。記録が無いワークスペースは、このワークスペースを指して最後にツールを呼んだセッションの `session`（『MCP サーバーの起動』の `session`）を宛先にし、`session.tmux_pane` のペインへ、`session.tmux` の最初の `,` より前のソケット（`tmux -S {ソケット}`）で入力する。常駐サーバーは、`workspace` と `session` を受けたツールの呼び出しのたびに、そのワークスペースの宛先を書き換える（配信の前に受けた分も持つ）。宛先が無い・`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` のどれかが無いときは tmux を呼ばずに `entered: false` にする'
+    notes: '宛先はワークスペースごとに 1 つ。同じワークスペースを 2 つのセッションが指すと、後から呼んだ方に貼る 記録が無いワークスペースの宛先（最後にツールを呼んだセッション）は、通常のセッションのコメントのやり取りを外す #518 まで残す。MindStella のセッションが無いときの起動し直しは #520'
   - item: 宛先が生きているかの確かめ
     constraint: '貼る前に、`claude_pid` のプロセスの起動時刻（Linux は `/proc/{claude_pid}/stat` の 22 番目の欄 `starttime`、`/proc` が無い OS は `ps -o lstart= -p {claude_pid}`）が `claude_started_at` と一致し、そのプロセスが `tmux -S {ソケット} display-message -p -t {tmux_pane} "#{pane_pid}"` の PID かその子孫であることを確かめる。どれかが違えば（プロセスが無い・PID が使い回された・ペインが無い・別のペインへ移った）、tmux へ貼らずに `entered: false` にし、宛先のセッションが終わった旨を標準エラーに記録する'
     notes: 子孫かは、`claude_pid` から `ps -o ppid=` で親をたどって `pane_pid` に着くかで決める（32 段まで）。`#{pane_pid}` はペインで最初に動いたプロセス（多くはシェル）で、Claude Code はその子孫になる
@@ -555,5 +581,6 @@ constraints:
 refs:
   - ER-489-1#
   - SC-489-3#
+  - IF-531-2#
 test_file: tests/integration/server/test_comments_send.py
 notes: {}
