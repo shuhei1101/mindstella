@@ -23,3 +23,9 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569830526
+  - topic: 入力欄が画面に無い間に失敗したときの帯（理由と「入力欄を開く」。合意済みのモックへの追加）
+    decision: この帯と文言で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 9305ccbf
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4570030217
