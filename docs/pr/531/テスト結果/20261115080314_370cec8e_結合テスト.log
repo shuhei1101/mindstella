@@ -1,0 +1,37 @@
+# 結合テスト（reviewer が確認した範囲。計画書の「実行する範囲」）
+# commit: 370cec8e
+# 実行日時: 2026-11-15 08:03:14 JST
+$ pytest tests/integration/server/test_create_workspace.py tests/integration/server/test_close_workspace.py tests/integration/server/test_create_session.py tests/integration/server/test_list_sessions.py tests/integration/server/test_stop_session.py tests/integration/server/test_session_events.py tests/integration/plugin/test_session_hook.py tests/integration/server/test_ensure_server.py tests/integration/server/test_launch.py tests/integration/server/test_comments_send.py tests/integration/server/test_comments_send_now.py tests/integration/server/test_inject_session.py tests/integration/server/test_mcp_server.py tests/integration/server/test_migrate.py tests/integration/server/test_preview_url.py tests/integration/server/test_server_status.py tests/integration/server/test_server_stop.py tests/integration/server/test_readme.py tests/integration/plugin/test_plugin_loading.py tests/integration/skill/test_setup.py tests/integration/skill/test_session.py tests/integration/preview/test_review_screen.py tests/integration/server/test_update_settings.py -p no:cacheprovider
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-session-lifecycle
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 210 items
+
+tests/integration/server/test_create_workspace.py ........               [  3%]
+tests/integration/server/test_close_workspace.py ...                     [  5%]
+tests/integration/server/test_create_session.py .......                  [  8%]
+tests/integration/server/test_list_sessions.py ...                       [ 10%]
+tests/integration/server/test_stop_session.py .....                      [ 12%]
+tests/integration/server/test_session_events.py ....                     [ 14%]
+tests/integration/plugin/test_session_hook.py ...                        [ 15%]
+tests/integration/server/test_ensure_server.py ........                  [ 19%]
+tests/integration/server/test_launch.py .................                [ 27%]
+tests/integration/server/test_comments_send.py .................         [ 35%]
+tests/integration/server/test_comments_send_now.py ......                [ 38%]
+tests/integration/server/test_inject_session.py ....                     [ 40%]
+tests/integration/server/test_mcp_server.py ..........                   [ 45%]
+tests/integration/server/test_migrate.py .....................           [ 55%]
+tests/integration/server/test_preview_url.py .............               [ 61%]
+tests/integration/server/test_server_status.py ..                        [ 62%]
+tests/integration/server/test_server_stop.py .                           [ 62%]
+tests/integration/server/test_readme.py ......                           [ 65%]
+tests/integration/plugin/test_plugin_loading.py .                        [ 66%]
+tests/integration/skill/test_setup.py .                                  [ 66%]
+tests/integration/skill/test_session.py .                                [ 67%]
+tests/integration/preview/test_review_screen.py ........................ [ 78%]
+...............................                                          [ 93%]
+tests/integration/server/test_update_settings.py ..............          [100%]
+
+======================= 210 passed in 581.56s (0:09:41) ========================
