@@ -405,9 +405,13 @@ def test_normal_when_moved_while_recording(
     expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_have_count(0)
     page.evaluate("location.hash = '#tab=decisions&view=board&id=D-2'")
     expect(page.locator(DETAIL_TEXTAREA)).to_have_value("D-2 も確認")
-    expect(page.locator(DETAIL_FORM).get_by_role("button", name="音声で入力")).not_to_have_attribute("aria-disabled", "true")
+    detail_mic = page.locator(DETAIL_FORM).get_by_role("button", name="音声で入力")
+    expect(detail_mic).to_be_visible()
+    expect(detail_mic).not_to_have_attribute("aria-disabled", "true")
     open_thread(page, "TH-1")
-    expect(page.locator(REPLY_FORM).get_by_role("button", name="音声で入力")).not_to_have_attribute("aria-disabled", "true")
+    reply_mic = page.locator(REPLY_FORM).get_by_role("button", name="音声で入力")
+    expect(reply_mic).to_be_visible()
+    expect(reply_mic).not_to_have_attribute("aria-disabled", "true")
 
 
 def expect_mic_blocked_busy(form: Locator) -> None:
