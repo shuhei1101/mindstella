@@ -23,7 +23,7 @@ scenarios:
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
         HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
-        HK->>SV: mindstella の応答が無いので、systemd --user のユニットを起動する
+        HK->>SV: ポートで待ち受けているプロセスが無いので、systemd --user のユニットを起動する
         SV->>SV: 127.0.0.1 の MINDSTELLA_PORT で /mcp と MindStella の API を待ち受ける
         CC->>SV: ツールの一覧
         SV-->>CC: mindstella のツール
@@ -156,14 +156,12 @@ scenarios:
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
         HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
-        HK->>SV: mindstella の応答が無いので、systemd --user のユニットを起動する
-        SV->>SV: ポートで待ち受けられない
-        SV-->>HK: 使われているポートを示して終わる
-        HK-->>CC: 立ち上げを止めない
+        HK->>HK: ポートは開いているが mindstella の応答が無いので、ユニットを起動しない
+        HK-->>CC: 使われているポートと、MINDSTELLA_PORT で変える手順を示し、立ち上げを止めない
       ```
     expected:
-      - 常駐サーバーが 1 の終了コードで終わり、出力に使われているポートがある
-      - フックが 0 の終了コードで終わる
+      - Mock の `systemctl --user` が mindstella のユニットの `start` を受けていない
+      - フックが 0 の終了コードで終わり、出力に使われているポートと `MINDSTELLA_PORT` がある
       - ポートを先に待ち受けていた側が、そのまま待ち受けている
     test: test_error_when_port_in_use
 lead: Claude Code を立ち上げたときに、落ちていた端末に 1 つの mindstella の常駐サーバーが systemd --user で起動し、並行する複数のセッションが 1 つの常駐サーバーを共有する単一ユースケース。プラグインのコードが更新されたのに常駐サーバーが古いコードで動いているときは、利用者が気づいて再起動できる。利用者は起動のコマンドで常駐サーバーの状態を確かめ、止められる。
@@ -184,7 +182,7 @@ refs:
   - SC-489-41#
   - SC-489-10#
 notes:
-  待ち受けているかの判定: '`MINDSTELLA_PORT` のポートで mindstella の常駐サーバーが版を返すかで決める。ポートが開いていても mindstella の応答が無ければ、落ちているとみなして起動する'
+  待ち受けているかの判定: '`MINDSTELLA_PORT` のポートで mindstella の常駐サーバーが版を返すかで決める。ポートで待ち受けているプロセスが無ければ、落ちているとみなしてユニットを起動する。ポートが開いているのに mindstella の応答が無ければ、ユニットを起動せずに使われているポートを示す（ユニットとして起動したプロセスの出力と終了コードは、起動した側に届かないため）'
   古いコードの判定: 'Claude Code のプロファイル（`~/.claude`・`~/.claude-sub5` など）ごとにプラグインのフォルダのパスが違うので、パスの全体ではなく末尾のフォルダ名（コミットの SHA）で比べる。版の文字列が違うときも同じ案内を出す'
   状態を確かめる・止める手段: 起動のコマンドのサブコマンドが systemd --user のユニットを確かめる・止める・再起動する。サブコマンドの名前はインターフェース定義で決める
   E2E の範囲: 本物の Claude Code と systemd --user は使わず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる

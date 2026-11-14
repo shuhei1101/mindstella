@@ -30,7 +30,7 @@ scenarios:
         U->>LS: 起動のコマンド {フォルダ}（進め方の文書・追加の MCP・プラグインは任意の引数）
         LS->>LS: 依存を確かめる
         LS->>SV: 待ち受けているか（MINDSTELLA_PORT で版とプラグインのフォルダを尋ねる）
-        LS->>SV: mindstella の応答が無いので、systemd --user のユニットを起動する
+        LS->>SV: ポートで待ち受けているプロセスが無いので、systemd --user のユニットを起動する
         LS->>SV: ワークスペースの作成を依頼する（POST /workspaces）
         SV-->>LS: ワークスペースの ID と画面の URL
         LS->>SV: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
@@ -167,14 +167,13 @@ scenarios:
 
         U->>LS: 起動のコマンド {フォルダ}
         LS->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
-        LS->>SV: mindstella の応答が無いので、systemd --user のユニットを起動する
-        SV-->>LS: 使われているポートを示して終わる
+        LS->>LS: ポートは開いているが mindstella の応答が無いので、ユニットを起動しない
         LS-->>U: 使われているポートと、MINDSTELLA_PORT で変える手順を示して止まる
       ```
     expected:
       - 起動のコマンドが 0 以外の終了コードで終わる
       - 出力に、使われているポートと `MINDSTELLA_PORT` がある
-      - ワークスペースと MindStella のセッションが作られていない
+      - Mock の `systemctl --user` が mindstella のユニットの `start` を受けておらず、ワークスペースと MindStella のセッションが作られていない
     test: test_error_when_server_not_started
   - name: 異常シナリオ（tmux が無い）
     setup:
