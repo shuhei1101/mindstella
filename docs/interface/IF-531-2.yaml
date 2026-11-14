@@ -59,7 +59,7 @@ constraints:
   - item: あるとみなす状態
     constraint: 状態の `status` が `running`・`stopping`・`restarting` で、tmux のペインと Claude Code のプロセスがあるもの。状態が `running` でもペインかプロセスが無ければ落ちたもの（`crashed`）として状態に記録し、無いとみなす
   - item: 起動のコマンド
-    constraint: コマンドを付けずに tmux の `new-session -d -s {ワークスペースの ID} -c {フォルダ}` でペインを作り、`set-option -t ={ワークスペースの ID} remain-on-exit on` を立ててから、`respawn-pane -k -t ={ワークスペースの ID} -c {フォルダ} -e {環境変数}... {コマンド}` でコマンドを動かす（ペインのコマンドがすぐに終わっても、ペインを残して終わり方を読むため）。準備ができたら `set-option -t ={ワークスペースの ID} remain-on-exit off` に戻し、以降はペインのコマンドが終わればセッションごと閉じる。ペインを作る前に、MindStella のセッションが無いとみなしたのに `has-session -t ={ワークスペースの ID}` が 0 を返せば、`kill-session` で残ったセッションを閉じる。コマンドは `claude-balancer exec --client mindstella -- claude {引数}`。`PATH` に `claude-balancer` が無ければ `claude {引数}` を、`claude_config_dir` があれば `CLAUDE_CONFIG_DIR` に入れて動かす。tmux のサーバーは利用者の既定のソケット
+    constraint: 'コマンドを付けずに tmux の `new-session -d -s {ワークスペースの ID} -c {フォルダ}` でペインを作り、`set-option -w -t ={ワークスペースの ID}: remain-on-exit on` を立ててから、`respawn-pane -k -t ={ワークスペースの ID}: -c {フォルダ} -e {環境変数}... {コマンド}` でコマンドを動かす（ペインのコマンドがすぐに終わっても、ペインを残して終わり方を読むため。ウィンドウ・ペインを指す `-t` は末尾に `:` を付ける）。準備ができたら `set-option -w -t ={ワークスペースの ID}: remain-on-exit off` に戻し、以降はペインのコマンドが終わればセッションごと閉じる。ペインを作る前に、MindStella のセッションが無いとみなしたのに `has-session -t ={ワークスペースの ID}` が 0 を返せば、`kill-session` で残ったセッションを閉じる。コマンドは `claude-balancer exec --client mindstella -- claude {引数}`。`PATH` に `claude-balancer` が無ければ `claude {引数}` を、`claude_config_dir` があれば `CLAUDE_CONFIG_DIR` に入れて動かす。tmux のサーバーは利用者の既定のソケット'
     notes: '`new-session -d` はセッションを立てた時点で返るので、ペインの中の `claude-balancer exec` の終了コードは tmux から読む。claude-balancer の `exec` は、借りられない・クライアントが無い・バックエンドへつながらないときに子プロセスを起動せず 125 で終わる（LIB-531-1）'
   - item: Claude Code の引数
     constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`、プラグインの `skills/mindmap/references/起動時の指示.md` の中身を `--append-system-prompt`。引数ごとに分けて渡し、シェルで解釈させない'
@@ -67,10 +67,10 @@ constraints:
     constraint: '`MINDSTELLA_SESSION`（MindStella のセッションの ID）・`MINDSTELLA_WORKSPACE`（ワークスペースの ID）・`MINDSTELLA_PORT`、設定に進め方の文書があれば `MINDSTELLA_FLOW`（`{配信元の ID}#{文書の ID}`）。tmux の `respawn-pane -e` で渡す'
     decided_by: CFG-489-1#
   - item: 最初の入力
-    constraint: SessionStart のフックが登録した後、ペインへ 1 行の文字列（`[mindstella] MindStella のセッションを起動しました`）を『コメントをまとめて送る』と同じ貼り方で入れる
+    constraint: SessionStart のフックが登録した後、SessionStart のフックが登録したペイン（`TMUX_PANE`）へ 1 行の文字列（`[mindstella] MindStella のセッションを起動しました`）を『コメントをまとめて送る』と同じ貼り方で入れる
     notes: 'SessionStart の注入だけでは応答が始まらないため（#481 の資料に未反映の点）。起動と再開のエージェントフローの指示の注入は #518'
   - item: 準備を待つ上限
-    constraint: "0.5 秒ごとに、状態の `claude_session_id` が入ったかと、`display-message -p -t ={ワークスペースの ID} '#{pane_dead} #{pane_dead_status}'` でペインのコマンドが終わったかを読み、上限まで待つ。登録が入ったら 201、ペインのコマンドが先に終わったら終了コードで 503（125）と 502（ほか）を分け、`capture-pane -p -S -20` で最後の 20 行を読んでからペインを閉じる。上限を過ぎたら 504"
+    constraint: "0.5 秒ごとに、状態の `claude_session_id` が入ったかと、`display-message -p -t ={ワークスペースの ID}: '#{pane_dead} #{pane_dead_status}'` でペインのコマンドが終わったかを読み、上限まで待つ。登録が入ったら 201、ペインのコマンドが先に終わったら終了コードで 503（125）と 502（ほか）を分け、`capture-pane -p -S -20` で最後の 20 行を読んでからペインを閉じる。上限を過ぎたら 504"
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: 状態
     constraint: '`session.json` に `session`・`status: running`・`claude_session_id`（フックが入れる）・`pane`・`pid`（フックが入れる）・`responding: false`・`pending_write: false`・`close_pending: false`・`started_at` を書く（ER 図『常駐サーバーの状態』）'

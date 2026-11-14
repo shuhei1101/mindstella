@@ -65,8 +65,11 @@ UNIT_START_LIMIT = (60, 3)
 # ユニットの Environment= に書く、呼び出し元の環境変数の名前の頭
 PASS_ENV_PREFIXES = ("MINDSTELLA_",)
 
-# ユニットの Environment= に書く、呼び出し元の環境変数の名前（PATH は常駐サーバーが claude-balancer・claude・tmux を探すため）
-PASS_ENV_NAMES = ("PATH", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
+# ユニットの Environment= に書く、呼び出し元の環境変数の名前（PATH は claude-balancer・claude・tmux を探すため、TMUX_TMPDIR は利用者と同じ tmux のサーバーを使うため）
+PASS_ENV_NAMES = ("PATH", "TMUX_TMPDIR", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
+
+# 呼んだコマンドが見つからないときの終了コード（シェルと同じ）
+COMMAND_NOT_FOUND = 127
 
 # ポートはつながるが mindstella の応答でないときの fetch_status の値
 PORT_IN_USE = "port_in_use"
@@ -362,16 +365,25 @@ def write_unit(text: str, environ: Mapping[str, str]) -> bool:
 
 
 def run_systemctl(args: list[str]) -> int:
-    """`systemctl --user {引数}` を子プロセスで呼び、終了コードを返す。"""
-    completed = subprocess.run(["systemctl", "--user", *args], capture_output=True, check=False)
+    """`systemctl --user {引数}` を子プロセスで呼び、終了コードを返す。`systemctl` が無ければ 127。"""
+    try:
+        completed = subprocess.run(["systemctl", "--user", *args], capture_output=True, check=False)
+    except OSError:
+        return COMMAND_NOT_FOUND
     return completed.returncode
 
 
 def read_unit_state() -> str:
     """`systemctl --user is-active mindstella.service` の出力を返す。"""
-    completed = subprocess.run(
-        ["systemctl", "--user", "is-active", UNIT_NAME], capture_output=True, text=True, check=False
-    )
+    try:
+        completed = subprocess.run(
+            ["systemctl", "--user", "is-active", UNIT_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return ""
     return completed.stdout.strip()
 
 

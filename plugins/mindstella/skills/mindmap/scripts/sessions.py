@@ -76,6 +76,9 @@ MCP_CONFIG_FILE = "mcp-config.json"
 # 貼り付けに使う tmux のバッファの名前
 PASTE_BUFFER = "mindstella-session"
 
+# tmux へ渡さない常駐サーバーの環境変数の名前の頭
+SERVER_ENV_PREFIX = "MINDSTELLA_"
+
 # 1 回の tmux のコマンドを打ち切る秒数
 TMUX_TIMEOUT_SEC = 5.0
 
@@ -97,9 +100,21 @@ class TmuxRunner:
     """利用者の既定のソケットの tmux を子プロセスで呼ぶ。"""
 
     def run(self, args: list[str], stdin: bytes | None = None) -> tuple[int, str]:
-        """引数の並びで tmux を呼び、終了コードと標準出力を返す。"""
+        """引数の並びで tmux を呼び、終了コードと標準出力を返す。
+
+        常駐サーバーの `MINDSTELLA_*` は渡さない（このとき tmux のサーバーが立つと、ペインがその値を受け継ぐため）。
+        MindStella のセッションに渡す値は `respawn-pane -e` で渡す。
+        """
+        env = {
+            key: value for key, value in os.environ.items() if not key.startswith(SERVER_ENV_PREFIX)
+        }
         completed = subprocess.run(
-            ["tmux", *args], input=stdin, capture_output=True, timeout=TMUX_TIMEOUT_SEC, check=False
+            ["tmux", *args],
+            input=stdin,
+            env=env,
+            capture_output=True,
+            timeout=TMUX_TIMEOUT_SEC,
+            check=False,
         )
         return completed.returncode, completed.stdout.decode("utf-8", errors="replace").strip()
 
@@ -203,7 +218,7 @@ def create_session(
                 "exists",
                 "MindStella のセッションが既にあります",
                 session=current.session,
-                pane=current.pane,
+                pane=f"{workspace_id}:0.0",
             )
         folder = workspaces.workspace_folder(row)
         session_id = new_session_id()
@@ -237,7 +252,13 @@ def create_session(
         try:
             _launch(ctx.tmux, workspace_id, folder, env, command)
             _wait_ready(ctx, workspace_id)
-            _paste(ctx.tmux, pane, FIRST_INPUT)
+            registered = state.read_session(ctx.state_root, workspace_id)
+            # フックが登録したペイン（`TMUX_PANE`）へ貼る。無ければセッションの今のペイン
+            _paste(
+                ctx.tmux,
+                (registered.pane if registered else None) or _window(workspace_id),
+                FIRST_INPUT,
+            )
         except ApiError as error:
             # 起動できなかった: ペインを閉じて session.json を作る前に戻す
             ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
@@ -343,6 +364,7 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
                 pid=event.get("pid", current.pid),
                 pid_started_at=event.get("pid_started_at", current.pid_started_at),
                 pane=event.get("pane") or current.pane,
+                socket=event.get("socket") or current.socket,
             )
         # 終了: clear・resume のほかは停止済み
         if kind == "session_end":
@@ -401,10 +423,10 @@ def _launch(
     tmux: TmuxRunner, workspace_id: str, folder: Path, env: dict[str, str], command: list[str]
 ) -> None:
     """コマンドの無いペインを作り、remain-on-exit を立ててからコマンドを動かす。"""
-    target = f"={workspace_id}"
+    target = _window(workspace_id)
     steps = [
         ["new-session", "-d", "-s", workspace_id, "-c", str(folder)],
-        ["set-option", "-t", target, "remain-on-exit", "on"],
+        ["set-option", "-w", "-t", target, "remain-on-exit", "on"],
         [
             "respawn-pane",
             "-k",
@@ -424,6 +446,12 @@ def _launch(
             )
 
 
+def _window(workspace_id: str) -> str:
+    """ワークスペースの ID の tmux のセッションの今のウィンドウ（とペイン）を指す `-t` の値を返す。"""
+    # `=` で名前の完全一致にし、末尾の `:` でウィンドウ・ペインを指す（`=` だけではペインに当たらない）
+    return f"={workspace_id}:"
+
+
 def _wait_ready(ctx: Any, workspace_id: str) -> None:
     """SessionStart の登録か、ペインのコマンドの終わりを上限まで待つ。"""
     timeout = float(os.environ.get(READY_TIMEOUT_ENV) or READY_TIMEOUT_SEC)
@@ -433,17 +461,23 @@ def _wait_ready(ctx: Any, workspace_id: str) -> None:
         # 登録が入った: 準備ができた
         # 登録が入った: 準備ができたので、以降はペインのコマンドが終わればセッションごと閉じる
         if current is not None and current.claude_session_id:
-            ctx.tmux.run(["set-option", "-t", f"={workspace_id}", "remain-on-exit", "off"])
+            ctx.tmux.run(["set-option", "-w", "-t", _window(workspace_id), "remain-on-exit", "off"])
             return
         _code, out = ctx.tmux.run(
-            ["display-message", "-p", "-t", f"={workspace_id}", "#{pane_dead} #{pane_dead_status}"]
+            [
+                "display-message",
+                "-p",
+                "-t",
+                _window(workspace_id),
+                "#{pane_dead} #{pane_dead_status}",
+            ]
         )
         words = out.split()
         # ペインのコマンドが先に終わった: 終了コードで分ける
         if words[:1] == ["1"]:
             exit_code = int(words[1]) if len(words) > 1 and words[1].lstrip("-").isdigit() else None
             _code, tail = ctx.tmux.run(
-                ["capture-pane", "-p", "-t", f"={workspace_id}", "-S", f"-{PANE_TAIL_LINES}"]
+                ["capture-pane", "-p", "-t", _window(workspace_id), "-S", f"-{PANE_TAIL_LINES}"]
             )
             if exit_code == NO_ACCOUNT_EXIT:
                 raise ApiError(

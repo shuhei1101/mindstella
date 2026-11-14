@@ -48,6 +48,8 @@ class SessionState:
     # SessionStart のフックが入れる Claude Code の session_id（入るまで None）
     claude_session_id: str | None = None
     pane: str | None = None
+    # ペインの tmux のサーバーのソケット（SessionStart のフックが `TMUX` から入れる）
+    socket: str | None = None
     pid: int | None = None
     pid_started_at: str | None = None
     # UserPromptSubmit から Stop・StopFailure までの応答の途中か

@@ -169,7 +169,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
-    description: 記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名・`DEFAULT_*`）を渡して書く。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）
+    description: 記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名・`DEFAULT_*`）を渡して書く。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない
     side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
     args:
       - name: request
@@ -204,7 +204,7 @@ functions:
       - name: test_create_workspace_already_open
         case: 正常
         summary: 既に開いていれば何も変えない
-        condition: 記録・`launch.json`・`ids` あり、`add_source` が `exists_same`
+        condition: 記録・`launch.json`・`ids`・配信元の行あり
         mock: 同上
         expected: '`(200, {result: already_open, launch_options_recorded: false})`、`launch.json` は変わらない'
       - name: test_create_workspace_reopened

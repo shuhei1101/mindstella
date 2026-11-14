@@ -35,6 +35,12 @@ request:
   default: '`8784`'
   location: argument
   description: 環境変数。送り先のポート
+- name: TMUX
+  type: str
+  required: false
+  default: なし（`socket` を送らない）
+  location: argument
+  description: 環境変数。最初の `,` より前をペインの tmux のサーバーのソケットとして `socket` で送る
 response:
 - name: 標準出力
   type: JSON | なし

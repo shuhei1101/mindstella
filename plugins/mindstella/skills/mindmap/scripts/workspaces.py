@@ -335,15 +335,15 @@ def _register_source(
 ) -> str:
     """配信元の行を追加するか戻し、作成の結果（created・opened・reopened・already_open）を返す。"""
     existing = find_workspace_row(ctx.pi_port, workspace_id)
-    added = project_index.add_source(ctx.pi_port, _source_row(workspace_id, folder))
-    # 行を追加した: 作ったか、残っている記録を開いた
-    if added == "added":
+    # 行が無い: 追加する（同じ内容の行が同時に足されていれば、追加済みとして続ける）
+    if existing is None:
+        added = project_index.add_source(ctx.pi_port, _source_row(workspace_id, folder))
+        # 同じ ID で中身の違う行がある: 別のフォルダの行とみなして止める
+        if added == "exists_different":
+            raise ProjectIndexError(409, f"配信元 {workspace_id} の行が別の内容で登録されています")
         return "created" if created else "opened"
-    # 同じ ID で中身の違う行がある: 別のフォルダの行とみなして止める
-    if added == "exists_different":
-        raise ProjectIndexError(409, f"配信元 {workspace_id} の行が別の内容で登録されています")
     # クローズ済みの行: outside_read を戻してクローズ待ちを解く
-    if existing is not None and is_closed(existing):
+    if is_closed(existing):
         project_index.patch_source(ctx.pi_port, workspace_id, {"outside_read": True})
         state.update_session(
             ctx.state_root,

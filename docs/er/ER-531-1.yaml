@@ -75,7 +75,11 @@ tables:
       - name: pane
         title: tmux のペイン
         type: string | null
-        description: '`{tmux のセッションの名前}:0.0`。止まった・落ちたら `null`'
+        description: '`{tmux のセッションの名前}:0.0`。SessionStart のフックが `TMUX_PANE` で入れ直す。止まった・落ちたら `null`'
+      - name: socket
+        title: tmux のソケット
+        type: string | null
+        description: ペインの tmux のサーバーのソケット。SessionStart のフックが `TMUX` の最初の `,` より前を入れる。コメントをペインへ貼るときに使う
       - name: pid
         title: Claude Code の PID
         type: integer | null

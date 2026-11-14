@@ -208,7 +208,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-2 の順で、残ったセッションを閉じてペインを作り、`remain-on-exit` を立ててからコマンドを動かし、SessionStart の登録かペインの終わりを待つ
-    description: ワークスペースごとの鍵を、クローズ済みかの確かめから状態を書くまで持つ（準備を待つ間も）。`session.json` の読み書きは `state.update_session` の鍵を使う
+    description: ワークスペースごとの鍵を、クローズ済みかの確かめから状態を書くまで持つ（準備を待つ間も）。`session.json` の読み書きは `state.update_session` の鍵を使う。ウィンドウ・ペインを指す tmux の `-t` は `={ワークスペースの ID}:`（末尾の `:` が無いとペインに当たらない）。最初の入力は SessionStart のフックが登録したペインへ貼る。409 の `pane` は 201 と同じ `{ワークスペースの ID}:0.0`
     side_effects: tmux のセッションを作り、`session.json` を書く。失敗のときはペインを閉じて `session.json` を消す
     args:
       - name: workspace_id
@@ -388,7 +388,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket` も入れる）
     side_effects: '`session.json` を書く'
     args:
       - name: session_id
@@ -427,7 +427,7 @@ classes:
     title: tmux のコマンドを呼ぶもの
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
-    summary: '`tmux` を子プロセスで呼び、終了コードと標準出力を返す。テストは偽に置き換える'
+    summary: '`tmux` を常駐サーバーの `MINDSTELLA_*` を除いた環境で子プロセスで呼び（このとき tmux のサーバーが立つとペインがその値を受け継ぐため）、終了コードと標準出力を返す。テストは偽に置き換える'
     kind: クラス
     methods:
       - name: run

@@ -98,8 +98,8 @@ constants:
     title: ユニットに渡す環境変数の名前
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 呼び出し元の環境からユニットの `Environment=` に書く環境変数の名前（`PATH` は常駐サーバーが `claude-balancer`・`claude`・`tmux` を探すため）
-    value: ("PATH", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
+    summary: 呼び出し元の環境からユニットの `Environment=` に書く環境変数の名前（`PATH` は常駐サーバーが `claude-balancer`・`claude`・`tmux` を探すため、`TMUX_TMPDIR` は利用者と同じ tmux のサーバーを使うため）
+    value: ("PATH", "TMUX_TMPDIR", "PROJECT_INDEX_PORT", "XDG_STATE_HOME")
   - name: PORT_IN_USE
     title: ポートが使われている
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
@@ -413,7 +413,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: '`systemctl --user {引数}` を子プロセスで呼び、終了コードを返す'
+    summary: '`systemctl --user {引数}` を子プロセスで呼び、終了コードを返す。`systemctl` が無ければ 127（`show-environment` の失敗として扱う）'
     args:
       - name: args
         type: list[str]
@@ -436,7 +436,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 共通
     scope: public
-    summary: '`systemctl --user is-active mindstella.service` の出力を返す'
+    summary: '`systemctl --user is-active mindstella.service` の出力を返す。`systemctl` が無ければ空の文字列'
     args: []
     returns:
       type: str

@@ -129,6 +129,10 @@ def _build_body(
     pane = environ.get("TMUX_PANE")
     if pane:
         body["pane"] = pane
+    # TMUX は `{ソケット},{PID},{番号}`。ペインへ貼る先のソケットを送る
+    socket = (environ.get("TMUX") or "").split(",", 1)[0]
+    if socket:
+        body["socket"] = socket
     # SessionStart だけ、ペインのコメントを貼る先の Claude Code のプロセスを探す
     if event == "session_start":
         found = find_claude_process(os.getppid())

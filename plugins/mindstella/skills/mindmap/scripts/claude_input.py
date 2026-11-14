@@ -174,7 +174,7 @@ def mindstella_session_target(
     ):
         return BLOCKED
     return InputTarget(
-        socket=_default_socket(),
+        socket=current.socket or _default_socket(),
         pane=current.pane,
         config_dir=_process_config_dir(current.pid, proc_dir),
         cwd=cwd,

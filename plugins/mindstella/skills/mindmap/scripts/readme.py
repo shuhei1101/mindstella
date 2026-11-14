@@ -26,9 +26,9 @@ LAUNCH_SCRIPT = "bin/mindstella"
 
 # 起動のコマンドの後ろに並べる、付けられる引数と説明
 LAUNCH_OPTIONS = (
-    ("--flow {配信元の ID}#{文書の ID}", "進め方の文書（記録が無いフォルダの最初の起動だけ）"),
-    ("--mcp-config {ファイル}", "追加の MCP の定義の JSON"),
-    ("--plugin-dir {フォルダ}", "追加のプラグインのフォルダ（何度でも）"),
+    ("--flow {配信元の ID}#{文書の ID}", "進め方の文書"),
+    ("--mcp-config {ファイル}", "追加の MCP の定義"),
+    ("--plugin-dir {フォルダ}", "追加のプラグイン（何度でも）"),
 )
 
 # プレビューの節に、URL の代わりに書く行
@@ -61,12 +61,12 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
     commands = (
         (
             "起動",
-            "このフォルダで MindStella のセッションを起動します。",
+            "このフォルダのワークスペースと MindStella のセッションを作り、そのセッションにつなぎます。",
             f"{launch_script} {folder}",
         ),
         (
             "接続",
-            "起動済みの MindStella のセッションにつなぎ直します。",
+            "起動中の MindStella のセッションにつなぎ直します。",
             f"tmux attach-session -t ={session}",
         ),
         (
@@ -106,6 +106,7 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
         lines += [f"**{label}:**", "", description, "", "```bash", command, "```", ""]
         # 起動の後ろだけ、付けられる引数を並べる
         if label == "起動":
+            lines += ["任意の引数:", ""]
             lines += [f"- `{option}`: {summary}" for option, summary in LAUNCH_OPTIONS] + [""]
     lines += ["## ドキュメント", ""]
     lines += [f"- [{title}]({url})" for title, url in DOC_LINKS]
