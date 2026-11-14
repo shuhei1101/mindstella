@@ -46,6 +46,7 @@ class FakeTmux:
         self.capture = "最後の行"
         self.fail_on_exit_paste = False
         self.exit_pasted = False
+        self.session_exists = False
 
     @property
     def calls(self) -> list[list[str]]:
@@ -66,6 +67,8 @@ class FakeTmux:
             return (0, str(PID)) if self.pane_alive else (1, "")
         if command == "capture-pane":
             return 0, self.capture
+        if command == "has-session":
+            return (0, "") if self.session_exists else (1, "")
         return 0, ""
 
 
@@ -329,15 +332,20 @@ def test_create_session(ctx: SimpleNamespace, clock: FakeClock) -> None:
     assert body["url"] == "http://127.0.0.1:9100/mindstella.html"
     names = [call[0] for call in ctx.tmux.calls if call[0] != "display-message"]
     assert names == [
+        "has-session",
         "new-session",
         "set-option",
         "respawn-pane",
+        "set-option",
         "load-buffer",
         "paste-buffer",
         "send-keys",
     ]
-    set_option = next(call for call in ctx.tmux.calls if call[0] == "set-option")
-    assert set_option[-2:] == ["remain-on-exit", "on"]
+    set_options = [call for call in ctx.tmux.calls if call[0] == "set-option"]
+    assert [call[-2:] for call in set_options] == [
+        ["remain-on-exit", "on"],
+        ["remain-on-exit", "off"],
+    ]
     respawn = next(call for call in ctx.tmux.calls if call[0] == "respawn-pane")
     assert "-k" in respawn
     assert f"MINDSTELLA_SESSION={body['session']}" in respawn
@@ -352,6 +360,20 @@ def test_create_session(ctx: SimpleNamespace, clock: FakeClock) -> None:
         "running",
         False,
     )
+
+
+@pytest.mark.parametrize(
+    "status", [pytest.param("stopped", id="stopped"), pytest.param("crashed", id="crashed")]
+)
+def test_create_session_stale(status: str, ctx: SimpleNamespace, clock: FakeClock) -> None:
+    """止まった・落ちた後に同じ名前の tmux のセッションが残っていれば、閉じてから作る。"""
+    _write_session(ctx, status=status)
+    ctx.tmux.session_exists = True
+    _register_on_sleep(ctx, clock)
+    status_code, _body = sessions.create_session(WORKSPACE_ID, None, ctx)
+    assert status_code == 201
+    names = [call[0] for call in ctx.tmux.calls if call[0] != "display-message"]
+    assert names[:3] == ["has-session", "kill-session", "new-session"]
 
 
 def test_create_session_exists(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:

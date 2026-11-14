@@ -307,7 +307,7 @@ def test_create_workspace_reopened(
 def test_create_workspace_rollback(
     allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
 ) -> None:
-    """配信元の登録に失敗したら、作った記録を消す。"""
+    """配信元の登録に失敗したら、作った記録とこの依頼で書いた README を消す。"""
     folder = allowed / "家計簿"
     fake_pi.add_error = ProjectIndexError(None, "つながりません")
     with pytest.raises(ApiError) as caught:
@@ -315,8 +315,22 @@ def test_create_workspace_rollback(
     assert (caught.value.status, caught.value.stage) == (502, "source")
     workspace_id = workspaces.workspace_id_for(folder)
     assert not (folder / ".mindstella").exists()
+    assert not (folder / "README.md").exists()
     assert state.read_launch(ctx.state_root, workspace_id) is None
     assert workspace_id not in state.read_ids(ctx.state_root)
+
+
+def test_create_workspace_rollback_keeps_user_readme(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """作成の前からあった利用者の README は、巻き戻しで消さない。"""
+    folder = allowed / "家計簿"
+    folder.mkdir()
+    (folder / "README.md").write_text("利用者のメモ\n", encoding="utf-8")
+    fake_pi.add_error = ProjectIndexError(None, "つながりません")
+    with pytest.raises(ApiError):
+        workspaces.create_workspace(_request(folder), ctx)
+    assert (folder / "README.md").read_text(encoding="utf-8") == "利用者のメモ\n"
 
 
 @pytest.mark.parametrize(

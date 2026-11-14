@@ -539,7 +539,12 @@ def test_unit_text(tmp_path: Path) -> None:
     text = ensure_server.unit_text(
         "/v/bin/python",
         plugin_root,
-        {"MINDSTELLA_PORT": "9000", "PROJECT_INDEX_PORT": "8786", "HOME": "/h"},
+        {
+            "MINDSTELLA_PORT": "9000",
+            "PROJECT_INDEX_PORT": "8786",
+            "PATH": "/h/.local/bin:/usr/bin",
+            "HOME": "/h",
+        },
         log_file,
     )
     # 検証
@@ -547,6 +552,7 @@ def test_unit_text(tmp_path: Path) -> None:
     assert f"ExecStart=/v/bin/python {plugin_root}/skills/mindmap/scripts/server.py" in lines
     assert "Environment=MINDSTELLA_PORT=9000" in lines
     assert "Environment=PROJECT_INDEX_PORT=8786" in lines
+    assert "Environment=PATH=/h/.local/bin:/usr/bin" in lines
     assert not any("HOME=" in line for line in lines)
     assert f"StandardOutput=append:{log_file}" in lines
     assert f"StandardError=append:{log_file}" in lines
