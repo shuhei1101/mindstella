@@ -1,0 +1,126 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-20.yaml
+    impact: changed
+    detail: 常駐サーバーを端末に 1 つ、systemd --user で起動・停止する。プラグインのコードが更新されたのに常駐サーバーが古いコードのまま動いているとき、利用者が気づけて再起動できる（D-480）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: new
+    detail: 外部のアプリがフォルダ・進め方の文書・追加の MCP・プラグインを指定してワークスペースを作り、MindStella のセッションを作って、画面の URL と MindStella のセッションの ID を受け取る（A-115）
+    depends_on:
+      - docs/scenario/SC-489-20.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: new
+    detail: 外部のアプリが MindStella のセッションを止め、最後の書き込みが終わってから止まったことを確かめて、ワークスペースをクローズにする（A-116）
+    depends_on:
+      - docs/scenario/SC-531-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-41.yaml
+    impact: changed
+    detail: 端末の起動のコマンドが、外部のアプリと同じ MindStella の API でワークスペース（進め方の文書・追加の MCP・プラグインを指定）と MindStella のセッションを作る
+    depends_on:
+      - docs/scenario/SC-531-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: changed
+    detail: ワークスペースを、スキルのツールではなく MindStella の API の作成で、許可するフォルダの下だけに作り、配信元に登録する
+    depends_on:
+      - docs/scenario/SC-531-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: changed
+    detail: README の起動のコマンドの一覧に、起動のコマンドの引数（進め方の文書・追加の MCP・プラグイン）を加える
+    depends_on:
+      - docs/scenario/SC-489-41.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-37.yaml
+    impact: following
+    detail: '新しいワークスペースを作る段を、MindStella の API の作成に合わせる（セットアップのスキルの削除は #518）'
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: following
+    detail: ワークスペースの作成と MindStella のセッションの作成が返す画面の URL で開けることに合わせる
+    depends_on:
+      - docs/scenario/SC-531-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-9.yaml
+    impact: run_only
+    detail: プラグインのフックの定義が増えるので、利用者の入れ方でインストールして起動できることを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-42.yaml
+    impact: run_only
+    detail: 起動のコマンドの中身が変わっても、登録した alias から起動のコマンドを呼べることを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: run_only
+    detail: 許可するホスト名からの画面の閲覧とコメントの送信が、MindStella の API を加えた後も通ることを確かめる
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: following
+    detail: 話し合いの始まりを、起動のコマンドが MindStella の API でワークスペースと MindStella のセッションを作る流れに合わせる
+    depends_on:
+      - docs/scenario/SC-489-41.yaml
+      - docs/scenario/SC-489-14.yaml
+docs:
+  - page: docs/guide/セットアップ手順-常駐サーバーを起動する.md
+    new: false
+    change: 常駐サーバーを systemd --user で起動・停止・状態の確認する手順にし、プラグインを更新した後に古いコードのままと案内されたときの再起動の手順を加える
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 起動のコマンドが MindStella の API でワークスペースと MindStella のセッションを作る流れと、引数（進め方の文書・追加の MCP・プラグイン）、停止とクローズに書き換える
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）と同じ操作の MCP のツール、起動のコマンドの引数、常駐サーバーの起動の確認の出力を加える
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 「1 つの常駐サーバーが複数のワークスペースを扱う」に、MindStella の API でワークスペースと MindStella のセッションを作る・止める・クローズにする仕組みと、MindStella のセッションと通常のセッションの違いを加える
+    status: todo
+  - page: docs/guide/動作環境.md
+    new: false
+    change: systemd --user が使えることと、claude-balancer（任意。無ければ既定のアカウント）、project-index（配信元の行の単位の API を持つ版）を加える
+    status: todo
+  - page: plugins/mindstella/skills/mindmap/README.md
+    new: false
+    change: 起動のコマンドと常駐サーバーの起動の記述を、systemd --user と MindStella の API に合わせる
+    status: todo
+scope_out:
+  - item: 記録の検索と書き込みの project-index への移行、変更の検知のフォルダの監視、採番のツール（A-107 の No 2）
+    reason: '親 #481 の分割で別の子にした。停止のときのまとめていない変更の commit は、今の commit・pending の仕組みで行う'
+    plan: '#517'
+  - item: 起動と再開・コメントの取り込み・記録の使い分けのエージェントフローと、setup・session・upgrade のスキル・プレイブック・削除する機能の削除（A-107 の No 3）
+    reason: '親 #481 の分割で別の子にした。SessionStart のフックが注入する「起動と再開のエージェントフローを先に進める指示」もエージェントフローの中身と一緒にこちらへ回すと判断した。#516 は進め方の文書の場所を環境変数で渡し、注入するところまで。判断が分かれるためレビューで確定する'
+    plan: '#518'
+  - item: MindStella のセッションの自動の起動し直し（コメント・落ちた・利用の上限・PreCompact）、状態のフォルダに追加の MCP・プラグインの記録が無いときの警告と画面の通知、画面の起動のボタン（A-107 の No 5。A-115 の「追加の MCP・プラグインの記録が無いワークスペース」のシナリオ）
+    reason: '親 #481 の分割で別の子にした。#516 では作成で必ず記録を作るので、記録が無い場合は生じない'
+    plan: '#520'
+  - item: 無操作の上限での停止（A-107 の No 6）
+    reason: '親 #481 の分割で別の子にした'
+    plan: '#521'
+  - item: ワークスペースの状態の取得（GET /workspaces/{id}。A-126）
+    reason: '親 #481 の分割で別の子にした。停止の完了の確認に使う MindStella のセッションの一覧（GET /workspaces/{id}/sessions）は #516 に含める'
+    plan: '#522'
+  - item: ワークスペースの開き直しと削除（POST /workspaces/{id}/reopen・DELETE /workspaces/{id}。A-107 の No 8）
+    reason: '親 #481 の分割で別の子にした。クローズしたフォルダへのワークスペースの作成で配信元の行を戻す処理は #516 に含める'
+    plan: '#523'
+  - item: ワークスペースの設定の書き換え（PATCH /workspaces/{id}）と MindStella のセッションの起動し直し（restart。A-107 の No 9）
+    reason: '親 #481 の分割で別の子にした'
+    plan: '#524'
+  - item: 常駐サーバーの起動時の状態の照合、ワークスペースの ID の一覧の作り直し、プラグインの配信元のパスの確認（A-107 の No 10）
+    reason: '親 #481 の分割で別の子にした。プラグインのコードが更新されたときに古い常駐サーバーに気づけて再起動できること（D-480）は #516 に含める'
+    plan: '#525'
+  - item: 全てのワークスペースの画面を常駐サーバーの 1 つのポートで配る作りへの切り替え（A-119 の画面の配信）
+    reason: '今はワークスペースごとに空きポートで配り、画面は `/api/...` を絶対のパスで呼ぶ。切り替えると画面（frontend・プレビュー）の全ての呼び出しが変わり、#516 の範囲（scope: に frontend が無い）を超える。#516 では、作成が返す画面の URL を今のワークスペースごとの配信の URL にすると判断した。判断が分かれるためレビューで確定する'
+    plan: to_file
+  - item: MindStella の MCP の引数を、共通の cwd・session_id・source・outside_scope に揃える作り直し（A-119 の MindStella の MCP の引数）
+    reason: 記録のツールの行き先（#517）と一緒に決まる。#516 で足すツールは、今のセッションの値の注入（inject_session.py）の引数に合わせる
+    plan: '#517'
