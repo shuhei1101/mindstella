@@ -78,7 +78,7 @@ stores:
              - `send` の場合、`POST /api/comments/send-now` へ送り、送れたら空の中身の `sent`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.sendFailed`）
              - `insert` の場合、挿入した中身と位置の `inserted`
           4. `session` を null にする
-          5. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`VOICE_TEXT.notMountedFailed(label)`・`key`）にする
+          5. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
         unit_tests:
           - name: test_finish_voice
             case: 正常

@@ -28,9 +28,15 @@ constants:
       - key: discarded
         value: '`(id) => `${id} が削除されたため、録音を破棄しました。``'
         description: 行き先の項目・スレッドが記録から無くなったときの帯の文
-      - key: notMountedFailed
-        value: '`(label, detail) => `${label}: ${detail}``'
-        description: 入力欄が画面に無い間に失敗したときの帯の文（例「D-022 へのコメントをレビュー中に追加できませんでした。…」は `label` と `reviewFailed` の文をつないだもの）
+      - key: awayReviewFailed
+        value: '`(label) => `${label}をレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。``'
+        description: 入力欄が画面に無い間に、レビュー中への追加に失敗したときの帯の文
+      - key: awaySendFailed
+        value: '`(label) => `${label}を送信できませんでした。文字起こしの結果は入力欄に残しています。``'
+        description: 入力欄が画面に無い間に、送信に失敗したときの帯の文
+      - key: awayTranscribeFailed
+        value: '`(label) => `${label}の文字起こしができませんでした。もう一度お試しください。``'
+        description: 入力欄が画面に無い間に、文字起こしに失敗した・サービスが使えなくなったときの帯の文
     container: frontend/src/shared/core/voice.ts
   - name: WAVE_SAMPLE_MS
     title: 音量を取る間隔
