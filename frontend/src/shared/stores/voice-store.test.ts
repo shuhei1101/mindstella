@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 /** 文字起こしの応答を差し替え、レビュー中への追加・すぐ送る・書きかけの保存の本文を控える */
-const stubVoiceApi = (options: { transcribe?: () => Response; comments?: number } = {}) => {
+const stubVoiceApi = (options: { transcribe?: () => Response | Promise<Response>; comments?: number; drafts?: number } = {}) => {
   const added: unknown[] = [];
   const sent: unknown[] = [];
   const drafts: unknown[] = [];
@@ -52,6 +52,8 @@ const stubVoiceApi = (options: { transcribe?: () => Response; comments?: number 
     }),
     http.put("/api/drafts", async ({ request }) => {
       drafts.push(await request.json());
+      const status = options.drafts ?? 200;
+      if (status !== 200) return HttpResponse.json({ type: "about:blank", title: "Error", status, detail: "x" }, { status });
       return HttpResponse.json({ ok: true });
     }),
   );
@@ -138,6 +140,42 @@ describe("finishVoice", () => {
     // 検証
     expect(failing.drafts).toEqual([{ target: "D-1", loc: null, body: "確認: 案 A にする" }]);
     expect(readVoiceState().notice).toEqual({ kind: "failed", text: VOICE_TEXT.awayReviewFailed("D-1 へのコメント"), key: "D-1#" });
+    // 準備
+    resetVoiceStore();
+    stubVoiceApi({ comments: 500, drafts: 500 });
+    await startVoice(D1);
+    // 実行
+    await finishVoice({ body: "確認: ", start: 4, end: 4, action: "review", mounted: () => false });
+    // 検証
+    expect(readVoiceState().results["D-1#"]?.kind).toBe("failed");
+    expect(readVoiceState().notice).toEqual({ kind: "failed", text: VOICE_TEXT.awayReviewFailed("D-1 へのコメント"), key: "D-1#" });
+  });
+
+  // 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・書きかけも知らせも当てない（正常系）
+  test("finish_voice_when_discarded", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    let respond: (() => void) | undefined;
+    const api = stubVoiceApi({
+      transcribe: () =>
+        new Promise<Response>((resolve) => {
+          respond = () => resolve(HttpResponse.json({ text: "案 A にする" }));
+        }),
+    });
+    await startVoice(D1);
+    const finishing = finishVoice({ body: "確認: ", start: 4, end: 4, action: "review", mounted: () => false });
+    await vi.waitFor(() => expect(respond).toBeDefined());
+    // 実行
+    discardVoice(() => false);
+    respond?.();
+    const result = await finishing;
+    // 検証
+    expect(result.kind).toBe("discarded");
+    expect(api.added).toEqual([]);
+    expect(api.drafts).toEqual([]);
+    expect(readVoiceState().results).toEqual({});
+    expect(readVoiceState().notice).toEqual({ kind: "discarded", text: VOICE_TEXT.discarded("D-1"), key: null });
   });
 
   // 文字起こしと追加・送信の失敗（異常系）
