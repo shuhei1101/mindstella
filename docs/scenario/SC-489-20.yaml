@@ -4,7 +4,7 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。Claude Code の代わりに、SessionStart のフックが叩く起動の処理を叩き、MCP のクライアントで常駐サーバーの `/mcp` につなぐ
+        description: モデルを呼ばない。Claude Code の代わりに、SessionStart のフックが叩く起動の処理を叩き、MCP のクライアントで常駐サーバーの `/mcp` につなぐ。`systemctl --user` は、受けた引数を記録し、`start` で常駐サーバーのプロセスを起動するコマンドに置き換える
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
       - name: 待ち受けのポート
@@ -23,13 +23,14 @@ scenarios:
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
         HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
-        HK->>SV: mindstella の応答が無いので起動する
-        SV->>SV: 127.0.0.1 の MINDSTELLA_PORT で /mcp を待ち受ける
+        HK->>SV: mindstella の応答が無いので、systemd --user のユニットを起動する
+        SV->>SV: 127.0.0.1 の MINDSTELLA_PORT で /mcp と MindStella の API を待ち受ける
         CC->>SV: ツールの一覧
         SV-->>CC: mindstella のツール
       ```
     expected:
       - 常駐サーバーが `127.0.0.1` の `MINDSTELLA_PORT` のポートで `/mcp` を待ち受けている
+      - Mock の `systemctl --user` が、mindstella のユニットの `start` を受けている
       - MCP のクライアントでつなぐと、mindstella のツールの一覧が返る
       - フックが 0 の終了コードで終わり、Claude Code の立ち上げを止めない
     test: test_normal
@@ -78,11 +79,11 @@ scenarios:
         actor U as 利用者
         participant SV as 常駐サーバー
 
-        U->>SV: 常駐サーバーの状態を確かめる
-        SV-->>U: 待ち受けのポートと、配信しているワークスペースごとのポート
+        U->>SV: 起動のコマンドで常駐サーバーの状態を確かめる
+        SV-->>U: 待ち受けのポート・読み込んだプラグインのフォルダと、配信しているワークスペースごとのポート
       ```
     expected:
-      - 状態に、`MINDSTELLA_PORT` のポートがある
+      - 状態に、`MINDSTELLA_PORT` のポートと、常駐サーバーが読み込んだプラグインのフォルダがある
       - 状態に、フォルダ A と B のそれぞれの配信のポートがある
     test: test_normal_when_status_checked
   - name: 正常シナリオ（止める）
@@ -102,7 +103,7 @@ scenarios:
         participant SV as 常駐サーバー
         participant HK as 終了時のフック
 
-        U->>SV: 常駐サーバーを止める
+        U->>SV: 起動のコマンドで常駐サーバーを止める（systemd --user のユニットを止める）
         SV->>HK: フォルダ A の配信の終了時のフック
         SV->>HK: フォルダ B の配信の終了時のフック
         SV->>SV: 全ての配信を止めて終わる
@@ -111,6 +112,33 @@ scenarios:
       - 終了時のフックが、フォルダ A と B の配信ごとに 1 回ずつ呼ばれている
       - 常駐サーバーのプロセスと、配信のポートの待ち受けが残っていない
     test: test_normal_when_stopped
+  - name: 正常シナリオ（古いコードの常駐サーバーが待ち受けている）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 古いコードの常駐サーバー
+        description: 'テストが `MINDSTELLA_PORT` で、`GET /_admin/status` に `name` が `mindstella`・`version` がプラグインと同じ・読み込んだプラグインのフォルダの末尾の名前がインストール済みのプラグインのフォルダと違う JSON を返す HTTP のサーバーを先に待ち受ける'
+        notes: プラグインの更新で `version.ini` が変わらず、プラグインのフォルダ（コミットの SHA の名前）だけが変わった場合に当たる
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code
+        participant HK as SessionStart のフック
+        participant SV as 常駐サーバー
+
+        U->>CC: プラグインを更新した後に Claude Code を立ち上げる
+        CC->>HK: SessionStart
+        HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版とプラグインのフォルダを尋ねる）
+        SV-->>HK: 同じ版、違うプラグインのフォルダ
+        HK-->>CC: 古いコードで動いていることと、起動のコマンドで再起動する手順
+        U->>SV: 起動のコマンドで常駐サーバーを再起動する（systemd --user のユニットを再起動する）
+      ```
+    expected:
+      - フックが 0 の終了コードで終わり、出力に、常駐サーバーが読み込んだプラグインのフォルダの名前とインストール済みのフォルダの名前、起動のコマンドで再起動する手順がある
+      - フックは常駐サーバーを再起動しておらず、先に待ち受けていた HTTP のサーバーがそのまま待ち受けている
+      - 起動のコマンドで再起動すると、Mock の `systemctl --user` が mindstella のユニットの `restart` を受けている
+    test: test_normal_when_outdated_code
   - name: 異常シナリオ（待ち受けのポートが使われている）
     setup:
       - name: Mock
@@ -128,7 +156,7 @@ scenarios:
         U->>CC: Claude Code を立ち上げる
         CC->>HK: SessionStart
         HK->>SV: 待ち受けているか（MINDSTELLA_PORT で版を尋ねる）
-        HK->>SV: mindstella の応答が無いので起動する
+        HK->>SV: mindstella の応答が無いので、systemd --user のユニットを起動する
         SV->>SV: ポートで待ち受けられない
         SV-->>HK: 使われているポートを示して終わる
         HK-->>CC: 立ち上げを止めない
@@ -138,17 +166,18 @@ scenarios:
       - フックが 0 の終了コードで終わる
       - ポートを先に待ち受けていた側が、そのまま待ち受けている
     test: test_error_when_port_in_use
-lead: Claude Code を立ち上げたときに、落ちていた mindstella の常駐の MCP サーバーが起動し、並行する複数のセッションが 1 つの常駐サーバーを共有する単一ユースケース。利用者は常駐サーバーの状態を確かめ、止められる。
+lead: Claude Code を立ち上げたときに、落ちていた端末に 1 つの mindstella の常駐サーバーが systemd --user で起動し、並行する複数のセッションが 1 つの常駐サーバーを共有する単一ユースケース。プラグインのコードが更新されたのに常駐サーバーが古いコードで動いているときは、利用者が気づいて再起動できる。利用者は起動のコマンドで常駐サーバーの状態を確かめ、止められる。
 issue: 338
 primary_actor: 利用者
 stakeholders:
   - name: 利用者
-    interest: 起動を意識せずに mindstella のツールを使え、セッションを並べても常駐サーバーは 1 つで済む。セッションを閉じてもプレビューの配信が止まらない
-trigger: 利用者が Claude Code を立ち上げる。または常駐サーバーの状態を確かめる・止める
+    interest: 起動を意識せずに mindstella のツールを使え、セッションを並べても常駐サーバーは 1 つで済む。セッションを閉じてもプレビューの配信が止まらない。プラグインを更新した後に、古いコードの常駐サーバーが残っていることに気づける
+trigger: 利用者が Claude Code を立ち上げる。または起動のコマンドで常駐サーバーの状態を確かめる・止める・再起動する
 preconditions:
   - プラグイン mindstella がインストールされている
-success_guarantee: 常駐サーバーが `127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で `/mcp` を待ち受け、並行するセッションがそれぞれ自分の作業フォルダを基準にワークスペースを扱える。止めたときは、全ての配信を止めて配信ごとに終了時のフックを呼ぶ。
-minimal_guarantee: 待ち受けのポートが使われているときは、使われているポートを示して終わり、Claude Code の立ち上げは止めない。
+  - systemd --user が使える
+success_guarantee: 常駐サーバーが systemd --user のユニットとして、`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で `/mcp` と MindStella の API を待ち受け、並行するセッションがそれぞれ自分の作業フォルダを基準にワークスペースを扱える。止めたときは、全ての配信を止めて配信ごとに終了時のフックを呼ぶ。
+minimal_guarantee: 待ち受けのポートが使われているときは、使われているポートを示して終わり、Claude Code の立ち上げは止めない。古いコードの常駐サーバーは、並行するほかのセッションが使っているため、フックが再起動しない。
 frequency: 端末を起動して最初に Claude Code を立ち上げるときに 1 回
 priority: 高
 refs:
@@ -156,7 +185,8 @@ refs:
   - SC-489-10#
 notes:
   待ち受けているかの判定: '`MINDSTELLA_PORT` のポートで mindstella の常駐サーバーが版を返すかで決める。ポートが開いていても mindstella の応答が無ければ、落ちているとみなして起動する'
-  状態を確かめる・止める手段: インターフェース定義で、常駐サーバーの起動と管理の仕方とあわせて決める
-  E2E の範囲: 本物の Claude Code は立ち上げず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる
+  古いコードの判定: 'Claude Code のプロファイル（`~/.claude`・`~/.claude-sub5` など）ごとにプラグインのフォルダのパスが違うので、パスの全体ではなく末尾のフォルダ名（コミットの SHA）で比べる。版の文字列が違うときも同じ案内を出す'
+  状態を確かめる・止める手段: 起動のコマンドのサブコマンドが systemd --user のユニットを確かめる・止める・再起動する。サブコマンドの名前はインターフェース定義で決める
+  E2E の範囲: 本物の Claude Code と systemd --user は使わず、SessionStart のフックが叩く起動の処理と、MCP のクライアントでの呼び出しを確かめる。プラグインの `.mcp.json` を Claude Code が読んでつなぐことは結合テストが確かめる
   対応テストファイル: E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` を足す
 test_file: tests/e2e/単一ユースケース/test_resident_server.py

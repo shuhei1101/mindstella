@@ -3,11 +3,11 @@ items:
   - page: SC-489-9.yaml
     summary: "マーケットプレイスを登録してプラグイン mindstella をインストールする"
   - page: SC-489-41.yaml
-    summary: "依存を確かめ、常駐サーバーが落ちていれば起動して、tmux の中で Claude Code を立ち上げる"
+    summary: "依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ"
   - page: SC-489-20.yaml
-    summary: "Claude Code を立ち上げたときに落ちていた常駐サーバーを起動し、状態を確かめ、止める"
+    summary: "Claude Code を立ち上げたときに落ちていた常駐サーバーを systemd --user で起動し、古いコードで動いていれば再起動を案内し、状態を確かめ、止める"
   - page: SC-489-14.yaml
-    summary: "新しいワークスペースを作る"
+    summary: "許可するフォルダの下に、新しいワークスペースの記録を既定の設定で作る"
   - page: SC-531-1.yaml
     summary: "外部のアプリからワークスペースと MindStella のセッションを作り、画面の URL を受け取る"
   - page: SC-531-2.yaml

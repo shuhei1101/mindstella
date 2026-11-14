@@ -4,7 +4,7 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する。示された URL を実際のブラウザで開く
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する。示された URL を実際のブラウザで開く
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
     flow: |-
@@ -31,6 +31,32 @@ scenarios:
       - ワークスペースに `preview.html` が無い
       - 直下の `README.md` のプレビューの節が、示した URL である
     test: test_normal
+  - name: 正常シナリオ（ワークスペースの作成が返した URL で開く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーを立て、MCP のクライアントで `create_workspace` を呼ぶ。project-index の配信元への登録は、登録の依頼を記録するだけの Mock にする。返った画面の URL を実際のブラウザで開く
+      - name: ワークスペースのフォルダ
+        description: 許可するフォルダの環境変数が指すテストごとの一時フォルダの下の、記録の無いフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CL as MindStella の API を呼ぶ側
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+
+        CL->>SV: ワークスペースの作成（create_workspace）
+        SV->>SV: 配信を立てる
+        SV-->>CL: ワークスペースの ID と画面の URL
+        CL-->>U: 画面の URL を示す
+        U->>P: URL を開く
+        P->>SV: 記録を読む
+        P-->>U: 概要
+      ```
+    expected:
+      - 返った画面の URL が、そのワークスペースのプレビューの URL の取得が返す URL と同じである
+      - 開いた画面が、作ったワークスペースの概要である
+    test: test_normal_when_opened_from_create
   - name: 正常シナリオ（Claude Code を閉じた後も開ける）
     setup:
       - name: Mock
@@ -61,7 +87,7 @@ scenarios:
   - name: 正常シナリオ（記録を書き換える）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、`add` を MCP のクライアントで呼ぶ。プレビューは実際のブラウザで開いておく
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、`add` を MCP のクライアントで呼ぶ。プレビューは実際のブラウザで開いておく
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 開いている画面
@@ -88,7 +114,7 @@ scenarios:
   - name: 異常シナリオ（設定がスキーマに合わない）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、手順が連ねるプレビューの URL の取得を再生する
       - name: 設定を手で崩したワークスペース
         description: '`config.yaml` の見た目の既定を、選べる値に無い `rainbow` にしたワークスペース'
     flow: |-
@@ -114,7 +140,7 @@ scenarios:
   - name: 正常シナリオ（HTML の本文を書き換える）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、プレビューは実際のブラウザで開いておく
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、プレビューは実際のブラウザで開いておく
       - name: 作成済みのワークスペース
         description: 本文を HTML で持ち、段落「一覧の画面」を持つ資料 A-1
       - name: 開いている画面
@@ -142,7 +168,7 @@ scenarios:
   - name: 正常シナリオ（直したまとまりを指すリンク）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・プレビューの URL の取得を再生する。示されたリンクを端末の保存領域が空のブラウザで開く
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・プレビューの URL の取得を再生する。示されたリンクを端末の保存領域が空のブラウザで開く
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ
     flow: |-
@@ -171,7 +197,7 @@ scenarios:
   - name: 正常シナリオ（記録の本文に直したまとまりを書く）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・会話ログの追加を再生する。配信を止めて別のポートで立て直し、端末の保存領域が空のブラウザで開く。立て直す間、前のポートをテストが `127.0.0.1` で待ち受けて塞いでおく
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・会話ログの追加を再生する。配信を止めて別のポートで立て直し、端末の保存領域が空のブラウザで開く。立て直す間、前のポートをテストが `127.0.0.1` で待ち受けて塞いでおく
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ。`preview.port` を持たない
     flow: |-
@@ -200,7 +226,7 @@ scenarios:
   - name: 正常シナリオ（スレッドに直したまとまりを書く）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・スレッドへの返信を再生する。配信を止めて別のポートで立て直し、端末の保存領域が空のブラウザで開く。立て直す間、前のポートをテストが `127.0.0.1` で待ち受けて塞いでおく
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、手順が連ねる記録の書き換え・`commit`・スレッドへの返信を再生する。配信を止めて別のポートで立て直し、端末の保存領域が空のブラウザで開く。立て直す間、前のポートをテストが `127.0.0.1` で待ち受けて塞いでおく
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 と D-2 を持ち、まとまり V-1 を 1 つ持つ。`preview.port` を持たない
       - name: スレッド

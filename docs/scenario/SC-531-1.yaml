@@ -1,47 +1,455 @@
 id: SC-531-1
-title: "外部のアプリから起動する"
+title: 外部のアプリから起動する
+scenarios:
+- name: 正常シナリオ
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（起動の引数と環境変数を記録し、SessionStart のフックを呼ぶ）・claude-balancer（`exec` で空いたアカウントを選んだことを記録する）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）に行を書く
+  - name: ワークスペース
+    description: 指定したフォルダにワークスペースの記録が無い
+  - name: 依頼
+    description: 進め方の文書（配信元の ID と文書の ID）・追加の MCP の定義（`--mcp-config` に渡す形）・プラグイン（`--plugin-dir` に渡すフォルダ）を指定する
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant MGR as セッションの管理
+      participant PI as project-index
+      participant CB as claude-balancer
+      participant CC as MindStella のセッション
+      participant HK as フック
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>API: 許可するフォルダと、追加の MCP の定義・プラグインを読めるか確かめる
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>PI: 進め方の文書を参照できるか確かめる
+      PI-->>WSM: 参照できる
+      WSM->>WSM: 記録を作り、ワークスペースの ID と進め方の文書を設定に記録する
+      WSM->>MGR: 追加の MCP・プラグインの記録を依頼する
+      WSM->>PI: 配信元に登録する（sources[] にワークスペースの行を追加する）
+      PI-->>WSM: 登録した結果
+      WSM->>WSM: 状態のフォルダのワークスペースの ID の一覧に追加する
+      API-->>APP: ワークスペースの ID・画面の URL・今回の追加の MCP とプラグインの指定を記録したか
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>WSM: クローズ済みかを確かめる
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>CB: tmux のペインの中で claude-balancer exec を起動する（cwd・環境変数・--mcp-config・--plugin-dir）
+      CB->>CC: 空いたアカウントで Claude Code を起動する
+      CC->>HK: SessionStart
+      HK->>MGR: Claude Code の session_id と tmux のペインを状態に登録する
+      HK-->>CC: 進め方の文書の場所を注入する
+      API-->>APP: MindStella のセッションの ID と画面の URL
+    ```
+  expected:
+  - 指定したフォルダにワークスペースの記録があり、設定にワークスペースの ID と進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録されている
+  - グローバルの設定のファイルにワークスペースの行があり、状態のフォルダのワークスペースの ID の一覧にある
+  - 作成の応答が、今回の追加の MCP・プラグインの指定を記録したことを示している
+  - Mock の claude-balancer が `exec` を受け、Mock のセッションが追加の MCP・プラグイン・MindStella のセッションを見分ける環境変数・進め方の文書の場所の環境変数を指定され、ワークスペースの配下を cwd にして起動している
+  - SessionStart のフックの注入に、進め方の文書の場所が入っている
+  - 状態に MindStella のセッションの ID・Claude Code の `session_id`・tmux のペインが登録されている
+  - 外部のアプリが、SessionStart のフックが状態に登録した後に、MindStella のセッションの ID と画面の URL を受け取っている
+  test: test_normal
+- name: 正常シナリオ（ワークスペースの記録が既にある）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）に行を書く
+  - name: ワークスペース
+    description: 指定したフォルダにワークスペースの記録があり、配信元の行と、状態のフォルダの追加の MCP・プラグインの記録が無い（削除した後に同じフォルダを指定した、または別の端末で作った記録を Git で取り込んだ）
+  - name: 依頼
+    description: 進め方の文書・追加の MCP の定義・プラグインを指定する
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant MGR as セッションの管理
+      participant PI as project-index
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>WSM: 残っている記録をそのまま開く（今回の進め方の文書の指定は使わず、設定のまま）
+      WSM->>MGR: 状態のフォルダに追加の MCP・プラグインの記録があるかを問い合わせる
+      MGR-->>WSM: 無い
+      WSM->>MGR: 今回の追加の MCP・プラグインの記録を依頼する
+      WSM->>PI: 配信元に登録する
+      PI-->>WSM: 登録した結果
+      WSM->>WSM: 状態のフォルダのワークスペースの ID の一覧に追加する
+      API-->>APP: ワークスペースの ID・画面の URL・今回の指定を記録したこと
+    ```
+  expected:
+  - ワークスペースの記録と設定（ワークスペースの ID・進め方の文書）は変わっていない
+  - 状態のフォルダに、今回指定した追加の MCP・プラグインが記録されている
+  - ワークスペースが再び配信元に登録され、状態のフォルダの ID の一覧にある
+  test: test_normal_when_records_exist
+- name: 正常シナリオ（ワークスペースが既に開いている）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: ワークスペース
+    description: 指定したフォルダにワークスペースの記録と配信元の行があり、状態のフォルダの ID の一覧と、追加の MCP・プラグインの記録がある
+  - name: 依頼
+    description: 記録と違う追加の MCP の定義・プラグインを指定する
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM-->>API: 既に開いているワークスペースの ID（記録・設定・配信元の行・状態のフォルダの記録は変えない）
+      API-->>APP: ワークスペースの ID・画面の URL・今回の指定を記録しなかったこと
+    ```
+  expected:
+  - 記録・設定・状態のフォルダの記録・配信元の行は変わらず、外部のアプリが既にあるワークスペースの ID を受け取っている
+  - 作成の応答が、今回の追加の MCP・プラグインの指定を記録しなかったことを示している（外部のアプリは設定の書き換えで指定する。D-341）
+  test: test_normal_when_workspace_open
+- name: 正常シナリオ（クローズしたワークスペースのフォルダ）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）に行を書く
+  - name: ワークスペース
+    description: '指定したフォルダにワークスペースの記録があり、配信元の行が `outside_read: false`（クローズ済み）。状態がクローズ待ちで、状態のフォルダに追加の MCP・プラグインの記録がある'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant MGR as セッションの管理
+      participant PI as project-index
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>WSM: 残っている記録をそのまま開く（状態のフォルダに記録があるので、今回の追加の MCP・プラグインの指定は使わない）
+      WSM->>PI: 配信元の行の outside_read を true に戻す
+      PI-->>WSM: 変更した結果
+      WSM->>MGR: クローズ待ちを解くよう依頼する
+      API-->>APP: ワークスペースの ID と画面の URL
+    ```
+  expected:
+  - ワークスペースの記録・設定・状態のフォルダの追加の MCP とプラグインの記録は変わっていない
+  - '配信元の行が `outside_read: true` に戻り、外部のアプリがワークスペースの ID を受け取っている'
+  - 状態がクローズ待ちでない
+  test: test_normal_when_workspace_closed
+- name: 正常シナリオ（claude-balancer が無い端末）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（起動の引数と環境変数を記録し、SessionStart のフックを呼ぶ）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: 端末
+    description: PATH に claude-balancer が無い
+  - name: ワークスペース
+    description: 作成済みで、MindStella のセッションが無い
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CC as MindStella のセッション
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>CC: tmux のペインの中で利用者の既定のアカウントで起動する
+      CC->>MGR: 状態に登録した（SessionStart のフック）
+      API-->>APP: MindStella のセッションの ID と画面の URL
+    ```
+  expected:
+  - Mock のセッションが claude-balancer を通さずに起動し、外部のアプリが MindStella のセッションの ID と画面の URL を受け取っている
+  test: test_normal_when_no_balancer
+- name: 異常シナリオ（MindStella のセッションが既にある）
+  setup:
+  - name: Mock
+    description: なし（2 つ目の MindStella のセッションを起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: ワークスペース
+    description: 指定したワークスペースで、MindStella のセッションが起動している
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR-->>API: 既にある（1 つのワークスペースに 1 つだけ）
+      API-->>APP: 既にあるエラーと、起動中の MindStella のセッションの ID・tmux のペイン
+    ```
+  expected:
+  - MindStella のセッションは 1 つのまま
+  - 外部のアプリが、既にあるエラーと起動中の MindStella のセッションの ID・tmux のペインを受け取っている
+  test: test_error_when_session_exists
+- name: 異常シナリオ（クローズしたワークスペース）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: ワークスペース
+    description: クローズしたワークスペース
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>WSM: クローズ済みかを確かめる
+      WSM-->>API: クローズ済み
+      API-->>APP: クローズしたワークスペースのエラー（開き直してから作成するよう求める）
+    ```
+  expected:
+  - MindStella のセッションが起動しておらず、外部のアプリがクローズしたワークスペースのエラーを受け取っている
+  test: test_error_when_workspace_closed
+- name: 異常シナリオ（許可するフォルダの外）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: 依頼
+    description: フォルダが、許可するフォルダの外にある
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API-->>APP: 許可するフォルダの外のエラー
+    ```
+  expected:
+  - 外部のアプリが許可するフォルダの外のエラーを受け取っている
+  - 記録・配信元の行・状態のフォルダの記録が作られていない
+  test: test_error_when_folder_not_allowed
+- name: 異常シナリオ（追加の MCP の定義が読めない）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: 依頼
+    description: 追加の MCP の定義が `--mcp-config` に渡す JSON の形でない、またはサーバーの名前がユーザー配下の `mindstella`・`project-index` と重なる
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API-->>APP: 読めない定義か重なった名前を示す追加の MCP の定義のエラー
+    ```
+  expected:
+  - 外部のアプリが読めない定義か重なった名前を示す追加の MCP の定義のエラーを受け取っている
+  - 記録・配信元の行・状態のフォルダの記録が作られていない
+  test: test_error_when_mcp_config_invalid
+- name: 異常シナリオ（プラグインが見つからない）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: 依頼
+    description: プラグインのフォルダが無い、またはフォルダに `.claude-plugin/plugin.json` が無いか壊れている
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API-->>APP: 見つからないプラグインを示すエラー
+    ```
+  expected:
+  - 外部のアプリが見つからないプラグインを示すエラーを受け取っている
+  - 記録・配信元の行・状態のフォルダの記録が作られていない
+  test: test_error_when_plugin_invalid
+- name: 異常シナリオ（進め方の文書を参照できない）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: project-index
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）に行を書く
+  - name: 進め方の文書
+    description: 指定した文書が無い、または配信元の `scope.read` にワークスペースを作るフォルダが含まれない
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant PI as project-index
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>PI: 進め方の文書を参照できるか確かめる
+      PI-->>WSM: 参照できない
+      API-->>APP: 進め方の文書を参照できないエラー
+    ```
+  expected:
+  - 記録・配信元の行・状態のフォルダの記録が作られていない
+  - 外部のアプリが、参照できない進め方の文書と理由（無い・`scope.read` に含まれない）を含むエラーを受け取っている
+  test: test_error_when_flow_unreadable
+- name: 異常シナリオ（配信元の登録に失敗する）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: project-index
+    description: 配信元の行の単位の API がエラーを返す
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant MGR as セッションの管理
+      participant PI as project-index
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>WSM: 記録を作り、進め方の文書を設定に記録する
+      WSM->>MGR: 追加の MCP・プラグインの記録を依頼する
+      WSM->>PI: 配信元に登録する
+      PI-->>WSM: 登録の失敗
+      WSM->>WSM: この依頼で作った記録を削除し、状態のフォルダの記録の削除を依頼する
+      API-->>APP: 失敗した段階（配信元の登録）と理由
+    ```
+  expected:
+  - この依頼で作った記録と、状態のフォルダの記録が残っていない
+  - 外部のアプリが、失敗した段階（配信元の登録）と理由を含むエラーを受け取っている
+  test: test_error_when_source_registration_fails
+- name: 異常シナリオ（空いたアカウントが無い）
+  setup:
+  - name: Mock
+    description: claude-balancer（全てのアカウントが利用の上限に達していて、`exec` がエラーで終わる）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: ワークスペース
+    description: 作成済みで、MindStella のセッションが無い
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CB as claude-balancer
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>CB: tmux のペインの中で claude-balancer exec を起動する
+      CB-->>MGR: 空いたアカウントが無い
+      MGR->>MGR: tmux のペインを閉じる
+      API-->>APP: 空いたアカウントが無いエラー（ワークスペースは開いたまま）
+    ```
+  expected:
+  - tmux のペインが残っておらず、状態に MindStella のセッションが登録されていない
+  - ワークスペースは開いたままで、配信元の行も残っている
+  - 外部のアプリが、空いたアカウントが無いエラーを受け取っている
+  test: test_error_when_no_account
+- name: 異常シナリオ（MindStella のセッションの準備ができない）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（tmux では起動するが、上限の時間までに SessionStart のフックを呼ばない）
+  - name: 常駐サーバー
+    description: 起動している。許可するフォルダの環境変数はテストごとの一時フォルダ、グローバルの設定のファイルの環境変数はテストごとの一時ファイル、状態のフォルダの環境変数はテストごとの一時フォルダを指す
+  - name: ワークスペース
+    description: 作成済みで、MindStella のセッションが無い
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CC as MindStella のセッション
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>CC: tmux のペインの中で起動する
+      MGR->>MGR: 上限の時間まで状態への登録を待つ
+      MGR->>CC: 止めて tmux のペインを閉じる
+      API-->>APP: 失敗した段階（MindStella のセッションの準備）と理由
+    ```
+  expected:
+  - MindStella のセッションが止まり、tmux のペインが残っていない
+  - ワークスペースは開いたままで、配信元の行も残っている
+  - 外部のアプリが、失敗した段階（MindStella のセッションの準備）と理由を含むエラーを受け取っている
+  test: test_error_when_session_not_ready
+- name: 異常シナリオ（常駐サーバーが起動していない）
+  setup:
+  - name: Mock
+    description: '`systemctl --user` は、受けた引数を記録し、`start` で常駐サーバーのプロセスを起動するコマンドに置き換える'
+  - name: 常駐サーバー
+    description: 起動していない
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant CMD as 起動のコマンド
+      participant API as MindStella の API
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API-->>APP: 接続できない
+      APP->>CMD: 起動のコマンドで常駐サーバーを起動する（systemd --user のユニットを起動する）
+      CMD-->>APP: 起動した
+      APP->>API: ワークスペースの作成を依頼し直す
+    ```
+  expected:
+  - 外部のアプリが接続できないことを受け取り、常駐サーバーを起動した後の依頼で正常シナリオと同じ結果になっている
+  test: test_error_when_server_down
 lead: 外部のアプリがフォルダ・進め方の文書・追加の MCP・プラグインを指定してワークスペースを作り、続けて MindStella のセッションの作成を依頼し、MindStella のセッションの準備ができてから画面の URL と MindStella のセッションの ID を受け取る単一ユースケース。
 issue: 516
 primary_actor: 外部のアプリ（aituber など）
+stakeholders:
+- name: 外部のアプリ
+  interest: 自分の進め方の文書と MCP で、利用者と話し合う MindStella のセッションを API だけで始められる
+- name: 利用者
+  interest: 画面の URL を開けば、外部のアプリが始めた話し合いに加われる
 trigger: 外部のアプリが MindStella の API にワークスペースの作成を依頼する
 preconditions:
-  - 常駐サーバーが起動している
-  - 指定するフォルダが、設定で許可するフォルダの下にある
+- 常駐サーバーが起動している
+- 指定するフォルダが、設定で許可するフォルダの下にある
+- 進め方の文書の配信元の `scope.read` が、ワークスペースを作るフォルダを含む
 success_guarantee: ワークスペースの記録があり、その設定に進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録され、ワークスペースが project-index の配信元に登録され、状態のフォルダのワークスペースの ID の一覧にある。MindStella のセッションが tmux で起動して準備ができ、外部のアプリが画面の URL と MindStella のセッションの ID を受け取っている。
-minimal_guarantee: ワークスペースの作成に失敗したときは、記録も配信元の行も状態のフォルダの記録も作らずに失敗の理由を返却する。MindStella のセッションの作成に失敗したときは、起動したプロセスを止め、ワークスペースは開いたまま残す。
+minimal_guarantee: ワークスペースの作成に失敗したときは、記録も配信元の行も状態のフォルダの記録も作らずに失敗の理由を返却する。MindStella のセッションの作成に失敗したときは、起動したプロセスを止め、ワークスペースは開いたまま残し、失敗の理由を返却する。外部のアプリは MindStella のセッションの作成だけを依頼し直せる。
+frequency: 外部のアプリが活動（台本作成など）を始めるたびに 1 回
+priority: 高
+refs:
+- SC-531-2#
+- SC-489-14#
+- SC-489-41#
+notes:
+  読み替え: 端末からの起動は、起動のコマンドが同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える（単一ユースケース『端末から起動する』）。MindStella の MCP の `create_workspace`・`create_session` からの作成は、外部のアプリを MCP を呼んだセッションに読み替える
+  並行の依頼: ワークスペースの管理とセッションの管理は、ワークスペースごとに 1 つの順番を共有して依頼を処理する。ワークスペースの作成はフォルダごとに 1 つの順番で処理する
+  MCP の接続の確認: 作成のときは定義の形とプラグインのフォルダだけを確かめる。MCP のサーバーが起動しない・つながらないことは検出しない
+  準備の判定: 準備ができたことは、SessionStart のフックが状態に登録したことで判定し、セッションの管理は上限の時間まで待つ
+  受ける Host: API は `Host` が `127.0.0.1`・`localhost` の要求だけを受ける（D-340）
+  スコープ外: '状態のフォルダに追加の MCP・プラグインの記録が無いワークスペースの作成（警告と画面の通知）は #520 で扱う'
+  E2E の範囲: MindStella のセッションのエージェントと claude-balancer は Mock にし、起動と再開のエージェントフローの中身は確かめない
 test_file: tests/e2e/単一ユースケース/test_session_start.py
-scenarios:
-  - name: 正常シナリオ
-    setup:
-      - name: Mock
-        description: Claude Code のセッション（起動の引数と環境変数を記録し、SessionStart のフックを呼ぶ）・claude-balancer（`exec` で空いたアカウントを選んだことを記録する）
-      - name: ワークスペース
-        description: 指定したフォルダにワークスペースの記録が無い
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant APP as 外部のアプリ
-        participant API as MindStella の API
-        participant WSM as ワークスペースの管理
-        participant MGR as セッションの管理
-        participant PI as project-index
-        participant CC as MindStella のセッション
-
-        APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
-        API->>WSM: ワークスペースの作成を依頼する
-        WSM->>WSM: 記録を作り、進め方の文書を設定に記録する
-        WSM->>MGR: 追加の MCP・プラグインの記録を依頼する
-        WSM->>PI: 配信元に登録する
-        WSM->>WSM: 状態のフォルダのワークスペースの ID の一覧に追加する
-        API-->>APP: ワークスペースの ID と画面の URL
-        APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
-        API->>MGR: MindStella のセッションの作成を依頼する
-        MGR->>CC: tmux のペインの中で claude-balancer exec で起動する
-        CC->>MGR: SessionStart のフックが状態に登録する
-        API-->>APP: MindStella のセッションの ID と画面の URL
-      ```
-    expected:
-      - 指定したフォルダにワークスペースの記録があり、設定に進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録されている
-      - ワークスペースが project-index の配信元に登録され、状態のフォルダの ID の一覧にある
-      - 外部のアプリが、SessionStart のフックが状態に登録した後に、MindStella のセッションの ID と画面の URL を受け取っている
-    test: test_normal
