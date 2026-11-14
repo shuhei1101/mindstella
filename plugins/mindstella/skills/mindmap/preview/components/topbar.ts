@@ -1,4 +1,4 @@
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯（右端にネットワークの入口）を出す。
 
 namespace MindmapPreview {
   /** ライト / ダーク */
@@ -81,6 +81,12 @@ namespace MindmapPreview {
     pendingBlocked?: boolean;
     /** 保存待ちのボタンを押したとき（パネルを開く・閉じる） */
     onPending?: () => void;
+    /** 音声入力中の入力欄。あるとき、コメントのボタンの左に音声入力中の表示を置く（配る書き出しでは渡さない） */
+    voice?: { state: "recording" | "transcribing"; label: string; elapsed: number } | null;
+    /** 音声入力の知らせ。あるとき、トップバーの下に帯を置く */
+    voiceNotice?: { kind: "discarded" | "failed"; text: string } | null;
+    /** 音声入力中の表示・帯の「入力欄を開く」を押したとき `open`、帯の × を押したとき `dismiss` */
+    onVoice?: (act: "open" | "dismiss") => void;
   };
 
   /** 件数の表示を揺らさない上限 */
@@ -230,6 +236,49 @@ namespace MindmapPreview {
     });
   }
 
+  /** 音声入力中の表示（印と「音声入力中」と経過の時間、文字起こし中は回る印と「文字起こし中」）。押すと録音中の入力欄へ移る */
+  function voiceButton({ voice, onClick }: { voice: { state: "recording" | "transcribing"; label: string; elapsed: number }; onClick?: () => void }): HTMLElement {
+    const recording = voice.state === "recording";
+    return h({
+      tag: "button",
+      attrs: {
+        class: `voice-btn${recording ? "" : " transcribing"}`,
+        type: "button",
+        "data-act": "voice",
+        "aria-label": recording ? `音声入力中（${voice.label}）。録音中の入力欄へ移動` : `文字起こし中（${voice.label}）。入力欄へ移動`,
+        title: recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`,
+        onclick: () => onClick?.(),
+      },
+      children: recording
+        ? [
+            h({ tag: "span", attrs: { class: "vb-mic" }, children: [icon("mic")] }),
+            h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["音声入力中"] }),
+            h({ tag: "span", attrs: { class: "vb-time", "aria-hidden": "true" }, children: [formatElapsed(voice.elapsed)] }),
+          ]
+        : [h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["文字起こし中"] })],
+    });
+  }
+
+  /** トップバーの下の音声入力の知らせの帯（警告の印・理由の文・失敗のときは「入力欄を開く」・閉じる ×） */
+  function voiceNoticeBand({ notice, onVoice }: { notice: { kind: "discarded" | "failed"; text: string }; onVoice?: (act: "open" | "dismiss") => void }): HTMLElement {
+    return h({
+      tag: "div",
+      attrs: { class: "voice-note" },
+      children: [
+        icon("alert"),
+        h({ tag: "span", attrs: { class: "vn-text", role: "status" }, children: [notice.text] }),
+        notice.kind === "failed"
+          ? h({ tag: "button", attrs: { class: "vn-open", type: "button", "data-act": "voice-open", onclick: () => onVoice?.("open") }, children: ["入力欄を開く"] })
+          : null,
+        h({
+          tag: "button",
+          attrs: { class: "vn-close", type: "button", "data-act": "voice-dismiss", "aria-label": "閉じる", title: "閉じる", onclick: () => onVoice?.("dismiss") },
+          children: [icon("x")],
+        }),
+      ],
+    });
+  }
+
   /** 保存待ちのボタン（印と「保存待ち」と件数）。押すと保存待ちのパネルを開く・閉じる */
   function pendingButton({
     count,
@@ -341,6 +390,9 @@ namespace MindmapPreview {
     pendingOpen = false,
     pendingBlocked = false,
     onPending,
+    voice = null,
+    voiceNotice = null,
+    onVoice,
   }: TopbarProps): HTMLElement {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     const bar = h({
@@ -384,6 +436,7 @@ namespace MindmapPreview {
         pending && pendingCount > 0
           ? pendingButton({ count: pendingCount, open: pendingOpen, blocked: pendingBlocked, onClick: onPending })
           : null,
+        voice === null ? null : voiceButton({ voice, onClick: () => onVoice?.("open") }),
         comments ? commentsButton({ count: commentCount, open: commentsOpen, unread: commentsUnread, onClick: onComments }) : null,
         h({
           tag: "button",
@@ -407,6 +460,6 @@ namespace MindmapPreview {
         tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
       ],
     });
-    return h({ tag: "div", attrs: { class: "top" }, children: [bar, tabbar] });
+    return h({ tag: "div", attrs: { class: "top" }, children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar] });
   }
 }

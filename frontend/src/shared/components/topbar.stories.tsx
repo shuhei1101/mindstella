@@ -549,3 +549,27 @@ export const PendingFitNarrowest: Story = {
   },
   ...fitViewport,
 };
+
+/** 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・「音声入力中」・経過の時間のボタンを出す */
+export const VoiceRecording: Story = { args: { comments: true, commentCount: 3, voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 }, onOpenVoice: fn() } };
+
+/** 文字起こし中。アイコンを回る印に替え、「文字起こし中」にして、枠をトップバーの線の色にする */
+export const VoiceTranscribing: Story = { args: { comments: true, commentCount: 3, voice: { state: "transcribing", label: "D-022 へのコメント", elapsed: 0 }, onOpenVoice: fn() } };
+
+/** 幅 390px の録音中。マイクのアイコンだけのボタンにし、名前は読み上げとツールチップに持つ */
+export const VoiceRecordingNarrow: Story = {
+  args: { comments: true, commentCount: 3, voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 }, onOpenVoice: fn() },
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 録音中に行き先の項目が削除され、録音を破棄した。トップバーの下の帯に理由を出し、× で閉じる */
+export const VoiceDiscarded: Story = { args: { comments: true, commentCount: 3, voiceNotice: { kind: "discarded", text: "D-022 が削除されたため、録音を破棄しました。" }, onOpenVoice: fn(), onDismissVoiceNotice: fn() } };
+
+/** 入力欄が画面に無い間に、レビュー中への追加に失敗した。帯に理由と「入力欄を開く」を出す */
+export const VoiceFailed: Story = { args: { comments: true, commentCount: 3, voiceNotice: { kind: "failed", text: "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。" }, onOpenVoice: fn(), onDismissVoiceNotice: fn() } };

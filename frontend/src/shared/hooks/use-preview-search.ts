@@ -21,6 +21,9 @@ declare module "@tanstack/react-router" {
 /** search の変更 */
 type Patch = Partial<PreviewSearch>;
 
+/** 音声入力の入力欄の画面（詳細パネル・詳細の全画面の項目か、コメントの一覧のスレッドか新しいスレッド） */
+export type VoiceTarget = { item: string; full: boolean } | { thread: string | null };
+
 /** search と操作 */
 export type PreviewSearchApi = {
   search: PreviewSearch;
@@ -47,6 +50,8 @@ export type PreviewSearchApi = {
   openList: (tab: PreviewTab, patch: Patch) => void;
   /** 記録に合わない値を外した search へ置き換える */
   replaceSearch: (search: PreviewSearch) => void;
+  /** 音声入力の入力欄の画面を開く（項目を開くときは履歴に積み、パネルの中を移るときは置き換える） */
+  openVoiceInput: (target: VoiceTarget) => void;
   /** 全体の検索を開閉し、検索の言葉を書き換える（置き換える） */
   setSearch: (patch: Pick<Patch, "search" | "q">) => void;
   /** 全体の検索の結果の項目を、その種類の画面（`undefined` は概要）で開く。画面が今と違えば履歴に積み、同じなら置き換える。`diff` と左のパネルを残し、ほかの値を外す */
@@ -113,6 +118,19 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     },
     setSearch: (patch) => {
       apply(patch, true);
+    },
+    openVoiceInput: (target) => {
+      if ("thread" in target) {
+        apply({ panel: "comments", thread: target.thread ?? undefined, review: undefined }, true);
+        return;
+      }
+      const full = target.full ? "1" : undefined;
+      if (search.id === target.item && search.full === full) {
+        apply({ panel: undefined, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined }, true);
+        return;
+      }
+      const items = [...trail.items.slice(0, trail.position + 1), target.item];
+      void navigate({ search: (previous) => ({ ...previous, id: target.item, full, h: undefined, panel: undefined, thread: undefined, review: undefined, tstatus: undefined, ttag: undefined }), state: (previous) => ({ ...previous, trail: { items, position: trail.position + 1 } }) });
     },
     openFromSearch: (tab, id) => {
       const { diff, panel, thread, review, tstatus, ttag } = search;

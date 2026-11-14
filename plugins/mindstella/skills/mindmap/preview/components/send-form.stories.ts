@@ -174,3 +174,12 @@ export const RecordingNarrow: Story = { args: { target: "D-022", voice: "recordi
 
 /** 文字起こしはできたが送信できなかった。挿入した全文を入力欄に残す */
 export const VoiceSendFailed: Story = { args: { target: "D-022", status: "voice-failed", detail: "送信できませんでした。文字起こしの結果は入力欄に残しています。", body: "確認: 案 A にする" } };
+
+/** 既定の挙動（review）で、文字起こしの結果を挿入した全文をレビュー中に追加した。入力欄を空にし、元のボタンに戻す */
+export const VoiceReviewed: Story = { args: { target: "D-022", status: "reviewed" } };
+
+/** 文字起こしはできたが、レビュー中に追加できなかった。挿入した全文を入力欄に残す */
+export const VoiceReviewFailed: Story = { args: { target: "D-022", status: "voice-failed", detail: "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。", body: "確認: 案 A にする" } };
+
+/** ほかの入力欄で録音中・文字起こし中。マイクのボタンを押せない見た目にし、キーボードの入力と「レビューに追加」はできる */
+export const VoiceBusy: Story = { args: { target: "D-022", voice: "disabled", voiceReason: "ほかの入力欄で音声入力中のため、音声で入力できません。", body: "D-2 も確認" } };

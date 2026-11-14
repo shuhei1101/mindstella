@@ -9,6 +9,7 @@ export type TranscriptionStatusAction = typeof TranscriptionStatusAction[keyof t
 
 
 export const TranscriptionStatusAction = {
+  review: 'review',
   send: 'send',
   insert: 'insert',
 } as const;

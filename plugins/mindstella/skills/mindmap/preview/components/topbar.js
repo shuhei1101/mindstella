@@ -1,5 +1,5 @@
 "use strict";
-// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。
+// トップバー。話し合いの題名・全体の検索の入口・変更履歴・ライト / ダークの切り替え・表示の設定・絞り込み・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯（右端にネットワークの入口）を出す。
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 件数の表示を揺らさない上限 */
@@ -136,6 +136,47 @@ var MindmapPreview;
             ],
         });
     }
+    /** 音声入力中の表示（印と「音声入力中」と経過の時間、文字起こし中は回る印と「文字起こし中」）。押すと録音中の入力欄へ移る */
+    function voiceButton({ voice, onClick }) {
+        const recording = voice.state === "recording";
+        return MindmapPreview.h({
+            tag: "button",
+            attrs: {
+                class: `voice-btn${recording ? "" : " transcribing"}`,
+                type: "button",
+                "data-act": "voice",
+                "aria-label": recording ? `音声入力中（${voice.label}）。録音中の入力欄へ移動` : `文字起こし中（${voice.label}）。入力欄へ移動`,
+                title: recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`,
+                onclick: () => onClick?.(),
+            },
+            children: recording
+                ? [
+                    MindmapPreview.h({ tag: "span", attrs: { class: "vb-mic" }, children: [MindmapPreview.icon("mic")] }),
+                    MindmapPreview.h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["音声入力中"] }),
+                    MindmapPreview.h({ tag: "span", attrs: { class: "vb-time", "aria-hidden": "true" }, children: [MindmapPreview.formatElapsed(voice.elapsed)] }),
+                ]
+                : [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["文字起こし中"] })],
+        });
+    }
+    /** トップバーの下の音声入力の知らせの帯（警告の印・理由の文・失敗のときは「入力欄を開く」・閉じる ×） */
+    function voiceNoticeBand({ notice, onVoice }) {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "voice-note" },
+            children: [
+                MindmapPreview.icon("alert"),
+                MindmapPreview.h({ tag: "span", attrs: { class: "vn-text", role: "status" }, children: [notice.text] }),
+                notice.kind === "failed"
+                    ? MindmapPreview.h({ tag: "button", attrs: { class: "vn-open", type: "button", "data-act": "voice-open", onclick: () => onVoice?.("open") }, children: ["入力欄を開く"] })
+                    : null,
+                MindmapPreview.h({
+                    tag: "button",
+                    attrs: { class: "vn-close", type: "button", "data-act": "voice-dismiss", "aria-label": "閉じる", title: "閉じる", onclick: () => onVoice?.("dismiss") },
+                    children: [MindmapPreview.icon("x")],
+                }),
+            ],
+        });
+    }
     /** 保存待ちのボタン（印と「保存待ち」と件数）。押すと保存待ちのパネルを開く・閉じる */
     function pendingButton({ count, open, blocked, onClick, }) {
         return MindmapPreview.h({
@@ -205,7 +246,7 @@ var MindmapPreview;
         });
     }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, voice = null, voiceNotice = null, onVoice, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -248,6 +289,7 @@ var MindmapPreview;
                 pending && pendingCount > 0
                     ? pendingButton({ count: pendingCount, open: pendingOpen, blocked: pendingBlocked, onClick: onPending })
                     : null,
+                voice === null ? null : voiceButton({ voice, onClick: () => onVoice?.("open") }),
                 comments ? commentsButton({ count: commentCount, open: commentsOpen, unread: commentsUnread, onClick: onComments }) : null,
                 MindmapPreview.h({
                     tag: "button",
@@ -271,7 +313,7 @@ var MindmapPreview;
                 tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
             ],
         });
-        return MindmapPreview.h({ tag: "div", attrs: { class: "top" }, children: [bar, tabbar] });
+        return MindmapPreview.h({ tag: "div", attrs: { class: "top" }, children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar] });
     }
     MindmapPreview.topbar = topbar;
 })(MindmapPreview || (MindmapPreview = {}));

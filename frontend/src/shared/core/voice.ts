@@ -9,6 +9,12 @@ export const VOICE_TEXT = {
   denied: "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。",
   failed: "文字起こしできませんでした。もう一度お試しください。",
   sendFailed: "送信できませんでした。文字起こしの結果は入力欄に残しています。",
+  reviewFailed: "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。",
+  busy: "ほかの入力欄で音声入力中のため、音声で入力できません。",
+  discarded: (id: string) => `${id} が削除されたため、録音を破棄しました。`,
+  awayReviewFailed: (label: string) => `${label}をレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。`,
+  awaySendFailed: (label: string) => `${label}を送信できませんでした。文字起こしの結果は入力欄に残しています。`,
+  awayTranscribeFailed: (label: string) => `${label}の文字起こしができませんでした。もう一度お試しください。`,
 } as const;
 
 /** 録音中の 1 回分。`stop` と `cancel` のどちらかを 1 回だけ呼ぶ */
@@ -125,3 +131,24 @@ export const insertAtCursor = (value: string, start: number, end: number, text: 
 
 /** 秒数を `m:ss` にする */
 export const formatElapsed = (seconds: number): string => `${String(Math.floor(seconds / 60))}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+
+/** 画面の消灯の抑止（ブラウザの Screen Wake Lock）。持たない環境では undefined */
+type WakeLockApi = { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
+
+/** 画面の消灯の抑止を求め、解く関数を返す。持たない・断られたときは何もしない関数を返す */
+export const acquireWakeLock = async (): Promise<() => void> => {
+  const wakeLock = (navigator as { wakeLock?: WakeLockApi }).wakeLock;
+  if (wakeLock === undefined) return () => {};
+  try {
+    const sentinel = await wakeLock.request("screen");
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      void sentinel.release();
+    };
+  } catch {
+    // 断られた（画面が見えていない・利用者のエージェントの方針）: 録音はそのまま続ける
+    return () => {};
+  }
+};

@@ -46,6 +46,8 @@ namespace MindmapPreview {
     entered: boolean;
     /** `reviewed` のとき、溜めた後のレビュー中のコメントの件数 */
     count?: number;
+    /** `reviewed` のとき、溜めたコメントの ID */
+    id?: string;
     /** `failed`・`unavailable` の理由の文 */
     detail: string | null;
     /** `unavailable` の理由 */
@@ -228,7 +230,7 @@ namespace MindmapPreview {
       if (!added.ok) {
         return { kind: "failed", body: inserted.value, caret: inserted.caret, entered: false, detail: VOICE_TEXT.reviewFailed, reason: null };
       }
-      return { kind: "reviewed", body: "", caret: null, entered: false, count: added.data?.count, detail: null, reason: null };
+      return { kind: "reviewed", body: "", caret: null, entered: false, count: added.data?.count, id: added.data?.id, detail: null, reason: null };
     }
     const sent = await api.sendNow({ ...input.destination, body: inserted.value });
     if (!sent.ok) {

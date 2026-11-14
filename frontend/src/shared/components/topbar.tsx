@@ -1,8 +1,9 @@
-// トップバー（部品設計『トップバー.tsx』）。題名・接続の状態・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・コメントのボタンと、画面を移るタブの帯を出す
+// トップバー（部品設計『トップバー.tsx』）。題名・接続の状態・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯を出す
 import type { MouseEvent } from "react";
 
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
+import { formatElapsed } from "@/shared/core/voice";
 import { cn } from "@/shared/lib/cn";
 import type { Connection } from "@/shared/stores/connection-store";
 import type { Theme } from "@/shared/stores/theme-store";
@@ -23,6 +24,12 @@ export type TopbarTab = {
   /** 差分の表示の間、その種類に新規・変更・消した項目があるか */
   marked?: boolean;
 };
+
+/** 音声入力中の入力欄 */
+export type TopbarVoice = { state: "recording" | "transcribing"; label: string; elapsed: number };
+
+/** トップバーの下の音声入力の知らせ */
+export type TopbarVoiceNotice = { kind: "discarded" | "failed"; text: string };
 
 /** 変更履歴で選んだ時点 */
 export type DiffPoint = { name: string; sub: string };
@@ -48,6 +55,10 @@ export type TopbarProps = {
   pendingCount?: number;
   pendingOpen?: boolean;
   pendingBlocked?: boolean;
+  /** 渡さないと音声入力中の表示を出さない */
+  voice?: TopbarVoice | null;
+  /** 渡さないと知らせの帯を出さない */
+  voiceNotice?: TopbarVoiceNotice | null;
   onNavigate?: (key: TopbarCurrent) => void;
   onOpenSearch?: () => void;
   onThemeChange?: (theme: Theme) => void;
@@ -59,6 +70,9 @@ export type TopbarProps = {
   onToggleSettings?: () => void;
   onToggleFilter?: () => void;
   onTogglePending?: () => void;
+  /** 音声入力中の表示と帯の「入力欄を開く」を押したとき */
+  onOpenVoice?: () => void;
+  onDismissVoiceNotice?: () => void;
 };
 
 /** 件数の表示を揺らさない上限 */
@@ -428,6 +442,52 @@ const CommentsButton = ({
   </Button>
 );
 
+/** 音声入力中の表示（コメントのボタンの左隣）。押すと録音中の入力欄へ移る */
+const VoiceButton = ({ voice, onClick }: { voice: TopbarVoice; onClick: (() => void) | undefined }) => {
+  const recording = voice.state === "recording";
+  return (
+    <button
+      type="button"
+      aria-label={recording ? `音声入力中（${voice.label}）。録音中の入力欄へ移動` : `文字起こし中（${voice.label}）。入力欄へ移動`}
+      title={recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-8 min-w-8 flex-none cursor-pointer items-center justify-center gap-1.5 rounded-control border bg-transparent px-2.5 text-small whitespace-nowrap text-topbar-fg hover:bg-topbar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mark-line",
+        recording ? "border-topbar-danger" : "border-topbar-line",
+        "max-xl:px-2 max-sm:gap-0 max-sm:px-0.5",
+      )}
+    >
+      {recording ? <Icon name="mic" className="text-topbar-danger" /> : <Icon name="spin" className="size-3 animate-spin" />}
+      <span aria-hidden="true" className="max-xl:hidden">
+        {recording ? "音声入力中" : "文字起こし中"}
+      </span>
+      {recording ? (
+        <span aria-hidden="true" className="font-mono text-count text-topbar-fg-2 tabular-nums max-sm:hidden">
+          {formatElapsed(voice.elapsed)}
+        </span>
+      ) : null}
+    </button>
+  );
+};
+
+/** トップバーの下の音声入力の知らせの帯。× か「入力欄を開く」を押すまで残す */
+const VoiceNoticeBand = ({ notice, onOpen, onDismiss }: { notice: TopbarVoiceNotice; onOpen: (() => void) | undefined; onDismiss: (() => void) | undefined }) => (
+  <div className="flex items-center gap-2 border-b border-border bg-muted py-1 pr-1 pl-5 text-small text-foreground max-sm:pl-2.5">
+    <Icon name="alert" className="flex-none text-st-review" />
+    <span role="status" className="min-w-0 flex-1 wrap-anywhere">
+      {notice.text}
+    </span>
+    {notice.kind === "failed" ? (
+      <Button variant="outline" className="flex-none" onClick={onOpen}>
+        入力欄を開く
+      </Button>
+    ) : null}
+    <Button variant="ghost" size="icon" className="flex-none" aria-label="閉じる" title="閉じる" onClick={onDismiss}>
+      <Icon name="x" />
+    </Button>
+  </div>
+);
+
 /** ライト / ダークの切り替え */
 const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChange: ((theme: Theme) => void) | undefined }) => {
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
@@ -491,6 +551,8 @@ export const Topbar = (props: TopbarProps) => {
     pendingCount = 0,
     pendingOpen = false,
     pendingBlocked = false,
+    voice = null,
+    voiceNotice = null,
     onOpenHistory,
     onToggleSettings,
   } = props;
@@ -513,11 +575,13 @@ export const Topbar = (props: TopbarProps) => {
         {fit.pending ? (
           <PendingButton fit={fit} count={pendingCount} open={pendingOpen} blocked={pendingBlocked} onClick={props.onTogglePending} />
         ) : null}
+        {voice === null ? null : <VoiceButton voice={voice} onClick={props.onOpenVoice} />}
         {comments ? (
           <CommentsButton fit={fit} count={commentCount} open={commentsOpen} unread={commentsUnread} onClick={props.onToggleComments} />
         ) : null}
         <ThemeButton fit={fit} theme={theme} onChange={props.onThemeChange} />
       </header>
+      {voiceNotice === null ? null : <VoiceNoticeBand notice={voiceNotice} onOpen={props.onOpenVoice} onDismiss={props.onDismissVoiceNotice} />}
       <TabBar tabs={tabs} current={current} onNavigate={props.onNavigate} />
     </div>
   );
