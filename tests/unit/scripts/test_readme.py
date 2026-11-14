@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-import launch
 import readme
+import workspaces
 from errors import WriteFailedError
 
 # 自動で書いた印の README を書き直すときの、古い中身の行
@@ -80,11 +80,15 @@ def test_render_readme(tmp_path: Path) -> None:
     absolute = str(root.resolve())
     assert [shlex.split(command) for _label, _description, command in commands] == [
         ["/p/mindstella/0.7.0/bin/mindstella", absolute],
-        ["tmux", "attach-session", "-t", f"={launch.session_name(root)}"],
+        ["tmux", "attach-session", "-t", f"={workspaces.workspace_id_for(root)}"],
         ["/mindstella:session", absolute],
         ["/mindstella:setup", absolute],
         ["/mindstella:upgrade", absolute],
     ]
+    assert all(
+        option in _section(text, "## コマンド")
+        for option in ("--flow", "--mcp-config", "--plugin-dir")
+    )
     assert "(https://shuhei1101.github.io/mindstella/guide/プレビューを見る.html)" in text
     assert (
         "(https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html)"

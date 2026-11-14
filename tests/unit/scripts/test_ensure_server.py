@@ -1,4 +1,4 @@
-"""ensure_server.py（常駐サーバーの起動の確認：状態を読む・起動する・待ち受けるまで待つ）の単体テスト。"""
+"""ensure_server.py（常駐サーバーの起動の確認：状態を読む・ユニットを書いて起動する・待ち受けるまで待つ）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import ast
 import io
 import json
 import subprocess
+from types import SimpleNamespace
 import threading
 from collections.abc import Callable, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,11 +21,11 @@ import ensure_server
 # インストールしたプラグインのバージョン（テストの中で置く version.ini の 1 行目）
 CURRENT_VERSION = "v0.12.0"
 
-# 待ち受けている常駐サーバーが返す、同じバージョンの状態
+# 待ち受けている常駐サーバーが返す、同じバージョンの状態（plugin_root は fixture が足す）
 RUNNING_STATUS: dict[str, Any] = {"name": "mindstella", "version": CURRENT_VERSION}
 
-# 待ち受けている常駐サーバーが返す、古いバージョンの状態
-OUTDATED_STATUS: dict[str, Any] = {"name": "mindstella", "version": "v0.0.1"}
+# プラグインのフォルダの末尾のフォルダ名（インストールの単位）
+PLUGIN_TAIL = "c938"
 
 # SessionStart のフックが標準入力へ渡す入力
 HOOK_INPUT = json.dumps({"hook_event_name": "SessionStart"})
@@ -58,18 +59,6 @@ MISSING_MCP_REPORT: dict[str, Any] = {
 # 起動してから記録のファイルに書き足される 30 行と、そのうち示す末尾の 20 行
 APPENDED_LOG_LINES = [f"line {number}" for number in range(1, 31)]
 TAIL_LOG_LINES = [f"line {number}" for number in range(11, 31)]
-
-
-class _FakeProcess:
-    """poll が決めた終了コードを返す偽のプロセス。"""
-
-    def __init__(self, returncode: int | None) -> None:
-        """poll が返す値（終わっていなければ None）を受け取る。"""
-        self._returncode = returncode
-
-    def poll(self) -> int | None:
-        """決めた終了コードを返す。"""
-        return self._returncode
 
 
 class _FakeTime:
@@ -108,11 +97,17 @@ class _Recorder:
 @pytest.fixture
 def installed_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
     """プラグインのフォルダを version.ini に CURRENT_VERSION を書いた一時フォルダに差し替え、その版を返す。"""
-    plugin_root = tmp_path / "plugin"
-    plugin_root.mkdir()
+    plugin_root = tmp_path / "plugin" / PLUGIN_TAIL
+    plugin_root.mkdir(parents=True)
     (plugin_root / "version.ini").write_text(f"{CURRENT_VERSION}\n", encoding="utf-8")
     monkeypatch.setattr(ensure_server, "PLUGIN_ROOT", plugin_root)
     return CURRENT_VERSION
+
+
+@pytest.fixture
+def running_status(installed_version: str) -> dict[str, Any]:
+    """同じバージョンと同じプラグインのフォルダで待ち受けている常駐サーバーの状態。"""
+    return {**RUNNING_STATUS, "plugin_root": str(ensure_server.PLUGIN_ROOT)}
 
 
 def _patch_check_env(monkeypatch: pytest.MonkeyPatch, run: Callable[..., dict[str, Any]]) -> None:
@@ -131,11 +126,34 @@ def _raising(error: Exception) -> Callable[..., Any]:
     return _raise
 
 
+class _Systemctl:
+    """systemctl --user の引数を控え、show-environment だけ決めた終了コードを返す偽の関数。"""
+
+    def __init__(self, show_environment: int = 0) -> None:
+        """show-environment の終了コードを受け取る。"""
+        self.calls: list[list[str]] = []
+        self._show_environment = show_environment
+
+    def __call__(self, args: list[str]) -> int:
+        """引数を控え、終了コードを返す。"""
+        self.calls.append(list(args))
+        return self._show_environment if args[:1] == ["show-environment"] else 0
+
+    def commands(self) -> list[str]:
+        """控えた呼び出しを 1 つの文字列ずつにして返す。"""
+        return [" ".join(call) for call in self.calls]
+
+
+def _unit_path(config_home: Path) -> Path:
+    """ユニットのファイルのパス。"""
+    return config_home / "systemd" / "user" / ensure_server.UNIT_NAME
+
+
 def _run_main(
     argv: list[str],
     *,
-    fetch: Callable[[int], dict[str, Any] | None],
-    start: Callable[..., Any],
+    fetch: Callable[[int], Any],
+    systemctl: _Systemctl,
     log_file: Path,
     environ: dict[str, str] | None = None,
 ) -> tuple[int, dict[str, str]]:
@@ -144,75 +162,89 @@ def _run_main(
     stderr = io.StringIO()
     code = ensure_server.main(
         argv,
-        environ={} if environ is None else environ,
+        environ={"XDG_CONFIG_HOME": str(log_file.parent / "config")}
+        if environ is None
+        else environ,
         stdin=io.StringIO(HOOK_INPUT),
         stdout=stdout,
         stderr=stderr,
         fetch=fetch,
-        start=start,
+        systemctl=systemctl,
         log_file=log_file,
     )
     return code, {"stdout": stdout.getvalue(), "stderr": stderr.getvalue()}
 
 
 def test_main(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed_version: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, running_status: dict[str, Any]
 ) -> None:
-    """落ちていれば起動し、つなぎ直す案内を出す（正常系）。"""
+    """落ちていればユニットを書いて起動し、つなぎ直す案内を出す（正常系）。"""
     # 準備
-    fetch = _Recorder(None, {"name": "mindstella", "version": installed_version})
-    start = _Recorder(_FakeProcess(None))
+    fetch = _Recorder(None, running_status)
+    systemctl = _Systemctl()
     _patch_check_env(monkeypatch, lambda *args, **kwargs: GOOD_REPORT)
     monkeypatch.setattr("time.sleep", lambda seconds: None)
     # 実行
     code, output = _run_main(
-        ["--hook"], fetch=fetch, start=start, log_file=tmp_path / "server.log"
+        ["--hook"], fetch=fetch, systemctl=systemctl, log_file=tmp_path / "server.log"
     )
     # 検証
     assert code == 0
-    assert len(start.calls) == 1
+    assert _unit_path(tmp_path / "config").is_file()
+    assert systemctl.commands() == [
+        "show-environment",
+        "daemon-reload",
+        f"start {ensure_server.UNIT_NAME}",
+    ]
     assert "ポート 8784" in output["stdout"]
     assert "/mcp" in output["stdout"]
-    assert output["stderr"] == ""
 
 
-def test_main_when_running(tmp_path: Path, installed_version: str) -> None:
-    """同じバージョンが待ち受けていれば何もしない（正常系）。"""
+def test_main_when_running(tmp_path: Path, running_status: dict[str, Any]) -> None:
+    """同じバージョンと同じプラグインのフォルダで待ち受けていれば何もしない（正常系）。"""
     # 準備
-    fetch = _Recorder({"name": "mindstella", "version": installed_version})
-    start = _Recorder(_FakeProcess(None))
+    systemctl = _Systemctl()
     # 実行
     code, output = _run_main(
-        ["--hook"], fetch=fetch, start=start, log_file=tmp_path / "server.log"
+        ["--hook"],
+        fetch=_Recorder(running_status),
+        systemctl=systemctl,
+        log_file=tmp_path / "server.log",
     )
     # 検証
     assert code == 0
-    assert start.calls == []
+    assert systemctl.calls == []
     assert output["stdout"] == ""
 
 
 @pytest.mark.parametrize(
-    ("argv", "stream"),
+    ("changes", "expected_texts"),
     [
-        pytest.param(["--hook"], "stdout", id="hook"),
-        pytest.param([], "stderr", id="launcher"),
+        pytest.param({"version": "v0.0.1"}, ["v0.0.1", CURRENT_VERSION], id="version"),
+        pytest.param({"plugin_root": "/p/mindstella/0fd2"}, ["0fd2", PLUGIN_TAIL], id="plugin"),
     ],
 )
 def test_main_when_outdated(
-    tmp_path: Path, installed_version: str, argv: list[str], stream: str
+    tmp_path: Path,
+    running_status: dict[str, Any],
+    changes: dict[str, str],
+    expected_texts: list[str],
 ) -> None:
-    """バージョンが違えば起動し直さずに差と手順を示す（正常系）。"""
+    """古いコードで待ち受けていれば起動し直さずに違いと手順を示す（正常系）。"""
     # 準備
-    fetch = _Recorder(OUTDATED_STATUS)
-    start = _Recorder(_FakeProcess(None))
+    systemctl = _Systemctl()
     # 実行
-    code, output = _run_main(argv, fetch=fetch, start=start, log_file=tmp_path / "server.log")
+    code, output = _run_main(
+        ["--hook"],
+        fetch=_Recorder({**running_status, **changes}),
+        systemctl=systemctl,
+        log_file=tmp_path / "server.log",
+    )
     # 検証
     assert code == 0
-    assert start.calls == []
-    assert "v0.0.1" in output[stream]
-    assert installed_version in output[stream]
-    assert "server_stop" in output[stream]
+    assert not any(call[0] in ("start", "restart") for call in systemctl.calls)
+    assert all(text in output["stdout"] for text in expected_texts)
+    assert "mindstella server restart" in output["stdout"]
 
 
 @pytest.mark.parametrize(
@@ -228,12 +260,12 @@ def test_main_when_port_invalid(
     """ポートの値が誤りなら確かめずに案内する（異常系）。"""
     # 準備
     fetch = _Recorder(None)
-    start = _Recorder(_FakeProcess(None))
+    systemctl = _Systemctl()
     # 実行
     code, output = _run_main(
         argv,
         fetch=fetch,
-        start=start,
+        systemctl=systemctl,
         log_file=tmp_path / "server.log",
         environ={"MINDSTELLA_PORT": "abc"},
     )
@@ -241,7 +273,7 @@ def test_main_when_port_invalid(
     assert code == expected_code
     assert "abc" in output[stream]
     assert fetch.calls == []
-    assert start.calls == []
+    assert systemctl.calls == []
 
 
 @pytest.mark.parametrize(
@@ -260,54 +292,110 @@ def test_main_when_dependency_missing(
 ) -> None:
     """依存が足りなければ起動せずにそろえるコマンドを示す（異常系）。"""
     # 準備
-    fetch = _Recorder(None)
-    start = _Recorder(_FakeProcess(None))
+    systemctl = _Systemctl()
     _patch_check_env(monkeypatch, _raising(check_env.DependencyMissingError(MISSING_MCP_REPORT)))
     # 実行
-    code, output = _run_main(argv, fetch=fetch, start=start, log_file=tmp_path / "server.log")
+    code, output = _run_main(
+        argv, fetch=_Recorder(None), systemctl=systemctl, log_file=tmp_path / "server.log"
+    )
     # 検証
     assert code == expected_code
     assert "mcp" in output[stream]
     assert MISSING_MCP_REPORT["install"] in output[stream]
-    assert start.calls == []
+    assert not any(call[0] == "start" for call in systemctl.calls)
+
+
+def test_main_when_port_in_use(tmp_path: Path, installed_version: str) -> None:
+    """ポートが別のプロセスに使われていれば起動せずに示す（異常系）。"""
+    # 準備
+    systemctl = _Systemctl()
+    # 実行
+    code, output = _run_main(
+        ["--hook"],
+        fetch=_Recorder(ensure_server.PORT_IN_USE),
+        systemctl=systemctl,
+        log_file=tmp_path / "server.log",
+    )
+    # 検証
+    assert code == 0
+    assert systemctl.calls == []
+    assert "8784" in output["stdout"]
+    assert "MINDSTELLA_PORT" in output["stdout"]
 
 
 @pytest.mark.parametrize(
-    ("error", "expected_texts"),
+    ("argv", "expected_code", "stream"),
     [
-        pytest.param(ensure_server.PortInUseError(8784), ["MINDSTELLA_PORT"], id="port_in_use"),
-        pytest.param(
-            ensure_server.ServerExitedError(1, ["ImportError: x"]),
-            ["ImportError: x", "{log_file}"],
-            id="exited",
-        ),
-        pytest.param(ensure_server.ServerStartTimeoutError(), ["{log_file}"], id="timeout"),
+        pytest.param(["--hook"], 0, "stdout", id="hook"),
+        pytest.param([], 1, "stderr", id="launcher"),
     ],
 )
-def test_main_when_start_failed(
+def test_main_when_systemd_unavailable(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    error: Exception,
-    expected_texts: list[str],
+    installed_version: str,
+    argv: list[str],
+    expected_code: int,
+    stream: str,
 ) -> None:
-    """起動できなければ理由ごとに案内する（異常系）。"""
+    """systemd --user が使えなければユニットを書かずに示す（異常系）。"""
     # 準備
-    log_file = tmp_path / "server.log"
-    fetch = _Recorder(None)
-    start = _Recorder(_FakeProcess(None))
+    systemctl = _Systemctl(show_environment=1)
     _patch_check_env(monkeypatch, lambda *args, **kwargs: GOOD_REPORT)
-    monkeypatch.setattr(ensure_server, "wait_until_ready", _raising(error))
     # 実行
-    code, output = _run_main(["--hook"], fetch=fetch, start=start, log_file=log_file)
+    code, output = _run_main(
+        argv, fetch=_Recorder(None), systemctl=systemctl, log_file=tmp_path / "server.log"
+    )
+    # 検証
+    assert code == expected_code
+    assert not _unit_path(tmp_path / "config").exists()
+    assert "systemd --user" in output[stream]
+
+
+def test_main_when_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, running_status: dict[str, Any]
+) -> None:
+    """--restart では待ち受けていてもユニットを書き直して起動し直す（正常系）。"""
+    # 準備
+    systemctl = _Systemctl()
+    _patch_check_env(monkeypatch, lambda *args, **kwargs: GOOD_REPORT)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+    # 実行
+    code, _output = _run_main(
+        ["--restart"],
+        fetch=_Recorder(running_status),
+        systemctl=systemctl,
+        log_file=tmp_path / "server.log",
+    )
     # 検証
     assert code == 0
-    assert _missing_texts(output["stdout"], expected_texts, log_file=log_file) == []
+    unit = _unit_path(tmp_path / "config").read_text(encoding="utf-8")
+    assert (
+        f"ExecStart=/v/bin/python {ensure_server.PLUGIN_ROOT}/skills/mindmap/scripts/server.py"
+        in unit
+    )
+    commands = systemctl.commands()
+    assert commands.index("daemon-reload") < commands.index(f"restart {ensure_server.UNIT_NAME}")
 
 
-def _missing_texts(text: str, expected: list[str], *, log_file: Path) -> list[str]:
-    """expected の {log_file} を記録のファイルのパスに置き換え、text に含まれないものを返す。"""
-    filled = [item.format(log_file=log_file) for item in expected]
-    return [item for item in filled if item not in text]
+def test_main_when_start_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed_version: str
+) -> None:
+    """起動した常駐サーバーが待ち受ける前に終われば、記録の末尾を示す（異常系）。"""
+    # 準備
+    _patch_check_env(monkeypatch, lambda *args, **kwargs: GOOD_REPORT)
+    monkeypatch.setattr(
+        ensure_server,
+        "wait_until_ready",
+        _raising(ensure_server.ServerExitedError("failed", ["ImportError: x"])),
+    )
+    # 実行
+    code, output = _run_main(
+        [], fetch=_Recorder(None), systemctl=_Systemctl(), log_file=tmp_path / "server.log"
+    )
+    # 検証
+    assert code == 1
+    assert "ImportError: x" in output["stderr"]
 
 
 def test_main_when_old_syntax(scripts_dir: Path) -> None:
@@ -351,9 +439,7 @@ def status_server() -> Iterator[Callable[[int, bytes], int]]:
 
     def _start(status_code: int, body: bytes) -> int:
         """status_code と body を返すサーバーを立て、そのポートを返す。"""
-        handler = type(
-            "_Handler", (_StatusHandler,), {"status_code": status_code, "body": body}
-        )
+        handler = type("_Handler", (_StatusHandler,), {"status_code": status_code, "body": body})
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         servers.append(server)
         threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -386,9 +472,9 @@ def _status_port(
             {"name": "mindstella", "version": "v1.0.0"},
             id="mindstella",
         ),
-        pytest.param((404, b"{}"), None, id="not_found"),
-        pytest.param((200, b'{"name": "other"}'), None, id="other_server"),
-        pytest.param((200, b"x"), None, id="not_json"),
+        pytest.param((404, b"{}"), ensure_server.PORT_IN_USE, id="not_found"),
+        pytest.param((200, b'{"name": "other"}'), ensure_server.PORT_IN_USE, id="other_server"),
+        pytest.param((200, b"x"), ensure_server.PORT_IN_USE, id="not_json"),
         pytest.param(None, None, id="not_listening"),
     ],
 )
@@ -396,9 +482,9 @@ def test_fetch_status(
     status_server: Callable[[int, bytes], int],
     free_port: int,
     response: tuple[int, bytes] | None,
-    expected: dict[str, Any] | None,
+    expected: dict[str, Any] | str | None,
 ) -> None:
-    """mindstella の状態だけを返す（正常系）。"""
+    """mindstella の状態を返し、つながるのに mindstella でなければ PORT_IN_USE を返す（正常系）。"""
     # 準備
     port = _status_port(response, status_server, free_port)
     # 実行
@@ -417,25 +503,87 @@ def test_read_installed_version(tmp_path: Path) -> None:
     assert result == "v0.12.0"
 
 
-def test_start_server(tmp_path: Path) -> None:
-    """新しいセッションで、記録へつないで起動する（正常系）。"""
-    # 準備
-    popen = _Recorder(_FakeProcess(None))
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        pytest.param({}, None, id="same"),
+        pytest.param({"version": "v0.0.1"}, [("version", "v0.0.1", CURRENT_VERSION)], id="version"),
+        pytest.param(
+            {"plugin_root": f"/other/.claude-sub1/plugins/cache/mindstella/{PLUGIN_TAIL}"},
+            None,
+            id="other-profile",
+        ),
+        pytest.param(
+            {"plugin_root": "/p/mindstella/0fd2"}, [("plugin", "0fd2", PLUGIN_TAIL)], id="plugin"
+        ),
+    ],
+)
+def test_is_outdated(
+    running_status: dict[str, Any],
+    status: dict[str, str],
+    expected: list[tuple[str, str, str]] | None,
+) -> None:
+    """バージョンとプラグインのフォルダの末尾のフォルダ名の違う組を返す（正常系）。"""
     # 実行
-    ensure_server.start_server(
+    result = ensure_server.is_outdated({**running_status, **status}, ensure_server.PLUGIN_ROOT)
+    # 検証
+    assert result == expected
+
+
+def test_unit_text(tmp_path: Path) -> None:
+    """ExecStart・渡す環境変数・記録の書き足し先を持つユニットを返す（正常系）。"""
+    # 準備
+    log_file = tmp_path / "server.log"
+    plugin_root = tmp_path / "plugin"
+    # 実行
+    text = ensure_server.unit_text(
         "/v/bin/python",
-        environ={"MINDSTELLA_PORT": "9000"},
-        log_file=tmp_path / "logs" / "server.log",
-        popen=popen,
+        plugin_root,
+        {"MINDSTELLA_PORT": "9000", "PROJECT_INDEX_PORT": "8786", "HOME": "/h"},
+        log_file,
     )
     # 検証
-    args, kwargs = popen.calls[0]
-    assert args[0] == ["/v/bin/python", str(ensure_server.SERVER_FILE)]
-    assert ensure_server.SERVER_FILE.name == "server.py"
-    assert kwargs["start_new_session"] is True
-    assert kwargs["stdin"] == subprocess.DEVNULL
-    assert kwargs["stderr"] == subprocess.STDOUT
-    assert (tmp_path / "logs").is_dir()
+    lines = text.splitlines()
+    assert f"ExecStart=/v/bin/python {plugin_root}/skills/mindmap/scripts/server.py" in lines
+    assert "Environment=MINDSTELLA_PORT=9000" in lines
+    assert "Environment=PROJECT_INDEX_PORT=8786" in lines
+    assert not any("HOME=" in line for line in lines)
+    assert f"StandardOutput=append:{log_file}" in lines
+    assert f"StandardError=append:{log_file}" in lines
+    assert "Type=exec" in lines
+    assert "Restart=on-failure" in lines
+
+
+def test_write_unit(tmp_path: Path) -> None:
+    """中身が変わったときだけ書く（正常系）。"""
+    # 準備
+    environ = {"XDG_CONFIG_HOME": str(tmp_path)}
+    # 実行
+    first = ensure_server.write_unit("[Service]\n", environ)
+    written_at = _unit_path(tmp_path).stat().st_mtime_ns
+    second = ensure_server.write_unit("[Service]\n", environ)
+    # 検証
+    assert first is True
+    assert second is False
+    assert _unit_path(tmp_path).stat().st_mtime_ns == written_at
+
+
+def test_run_systemctl(monkeypatch: pytest.MonkeyPatch) -> None:
+    """systemctl --user を呼び、終了コードを返す（正常系）。"""
+    # 準備
+    calls: list[list[str]] = []
+
+    def run(args: list[str], **kwargs: Any) -> SimpleNamespace:
+        """引数を控えて 3 を返す。"""
+        calls.append(args)
+        return SimpleNamespace(returncode=3)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    # 実行
+    code = ensure_server.run_systemctl(["daemon-reload"])
+    # 検証
+    assert calls == [["systemctl", "--user", "daemon-reload"]]
+    assert code == 3
 
 
 def test_wait_until_ready(tmp_path: Path) -> None:
@@ -445,11 +593,11 @@ def test_wait_until_ready(tmp_path: Path) -> None:
     fetch = _Recorder(None, None, RUNNING_STATUS)
     # 実行
     result = ensure_server.wait_until_ready(
-        _FakeProcess(None),
         8784,
         log_file=tmp_path / "server.log",
         log_offset=0,
         fetch=fetch,
+        unit_state=lambda: "active",
         clock=fake.clock,
         sleep=fake.sleep,
     )
@@ -467,63 +615,28 @@ def _write_exit_log(log_file: Path) -> int:
     return offset
 
 
-def _exit_error_attrs(error: Exception, names: list[str]) -> dict[str, Any]:
-    """例外の names の属性を辞書にして返す。"""
-    return {name: getattr(error, name) for name in names}
-
-
-def _expected_exit_attrs(error_type: type[Exception], port: int) -> dict[str, Any]:
-    """終わったときの例外の型ごとに、持つはずの属性を返す。"""
-    # ポートに別のプロセスがつながる: そのポート
-    if error_type is ensure_server.PortInUseError:
-        return {"port": port}
-    # ポートが空いている: 終了コードと、書き足された末尾の 20 行
-    return {"returncode": 1, "log_tail": TAIL_LOG_LINES}
-
-
 @pytest.mark.parametrize(
-    ("port_fixture", "fetched", "error_type"),
-    [
-        pytest.param("listening_port", None, ensure_server.PortInUseError, id="port_in_use"),
-        pytest.param("free_port", None, ensure_server.ServerExitedError, id="port_free"),
-        pytest.param("listening_port", RUNNING_STATUS, None, id="other_server_ready"),
-    ],
+    "unit_state", [pytest.param("failed", id="failed"), pytest.param("activating", id="activating")]
 )
-def test_wait_until_ready_when_exited(
-    tmp_path: Path,
-    request: pytest.FixtureRequest,
-    port_fixture: str,
-    fetched: dict[str, Any] | None,
-    error_type: type[Exception] | None,
-) -> None:
-    """終わったら、先に待ち受けた mindstella があればその状態を返し、無ければポートの使われ方で分ける（異常系）。"""
+def test_wait_until_ready_when_exited(tmp_path: Path, unit_state: str) -> None:
+    """ユニットが落ちたら、書き足された記録の末尾を持つ ServerExitedError（異常系）。"""
     # 準備
-    port = request.getfixturevalue(port_fixture)
     log_file = tmp_path / "server.log"
     offset = _write_exit_log(log_file)
     fake = _FakeTime()
-
-    def run() -> dict[str, Any]:
-        """終わったプロセスで待つ。"""
-        return ensure_server.wait_until_ready(
-            _FakeProcess(1),
-            port,
+    # 実行・検証
+    with pytest.raises(ensure_server.ServerExitedError) as raised:
+        ensure_server.wait_until_ready(
+            8784,
             log_file=log_file,
             log_offset=offset,
-            fetch=_Recorder(fetched),
+            fetch=_Recorder(None),
+            unit_state=lambda: unit_state,
             clock=fake.clock,
             sleep=fake.sleep,
         )
-
-    # 実行・検証
-    # 同時に起動した mindstella が待ち受けている: 例外を送らずにその状態を返す
-    if error_type is None:
-        assert run() == fetched
-        return
-    expected = _expected_exit_attrs(error_type, port)
-    with pytest.raises(error_type) as raised:
-        run()
-    assert _exit_error_attrs(raised.value, list(expected)) == expected
+    assert raised.value.state == unit_state
+    assert raised.value.log_tail == TAIL_LOG_LINES
 
 
 def test_wait_until_ready_when_timeout(tmp_path: Path) -> None:
@@ -533,11 +646,11 @@ def test_wait_until_ready_when_timeout(tmp_path: Path) -> None:
     # 実行・検証
     with pytest.raises(ensure_server.ServerStartTimeoutError):
         ensure_server.wait_until_ready(
-            _FakeProcess(None),
             8784,
             log_file=tmp_path / "server.log",
             log_offset=0,
             fetch=_Recorder(None),
+            unit_state=lambda: "active",
             clock=fake.clock,
             sleep=fake.sleep,
         )

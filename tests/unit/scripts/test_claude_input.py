@@ -15,6 +15,8 @@ from typing import Any
 import pytest
 
 import claude_input
+import state
+from state import SessionState
 
 # 会話の記録の user の行に入る作業フォルダと、そのフォルダに当たる会話の記録のフォルダ名
 WORK_DIR = Path("/work/ws")
@@ -971,3 +973,47 @@ def test_enter_to_claude_when_concurrent(tmp_path: Path) -> None:
     assert len(set(owners[:5])) == 1
     assert len(set(owners[5:])) == 1
     assert owners[0] != owners[5]
+
+
+# MindStella のセッションのワークスペースの ID
+MINDSTELLA_WORKSPACE = "mindstella-家計簿-3f2a9c"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        pytest.param({"status": "running", "close_pending": False}, "target", id="running"),
+        pytest.param({"status": "running", "close_pending": True}, "blocked", id="close_pending"),
+        pytest.param({"status": "stopped", "close_pending": False}, "blocked", id="stopped"),
+        pytest.param(None, None, id="no_record"),
+    ],
+)
+def test_mindstella_session_target(
+    tmp_path: Path, values: dict[str, Any] | None, expected: str | None
+) -> None:
+    """状態のフォルダの MindStella のセッションで宛先を決める（正常系）。"""
+    # 準備
+    if values is not None:
+        written = SessionState(
+            session="S-0123456789ab",
+            pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+            pid=CLAUDE_PID,
+            pid_started_at=STARTED_AT,
+            started_at="2026-11-15T00:00:00+00:00",
+            **values,
+        )
+        state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+    # 実行
+    target = claude_input.mindstella_session_target(tmp_path, MINDSTELLA_WORKSPACE)
+    # 検証
+    if expected is None:
+        assert target is None
+    elif expected == "blocked":
+        assert target is claude_input.BLOCKED
+    else:
+        assert isinstance(target, claude_input.InputTarget)
+        assert (target.pane, target.claude_pid, target.claude_started_at) == (
+            f"{MINDSTELLA_WORKSPACE}:0.0",
+            CLAUDE_PID,
+            STARTED_AT,
+        )
