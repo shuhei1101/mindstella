@@ -88,7 +88,7 @@ docs:
     status: todo
   - page: docs/guide/動作環境.md
     new: false
-    change: systemd --user が使えることと、claude-balancer（任意。無ければ既定のアカウント）、project-index（配信元の行の単位の API を持つ版）を加える
+    change: systemd --user が使えること（使えない端末の扱いは確認事項の決着に合わせる）と、claude-balancer（任意。無ければ既定のアカウント。使うときは `clients` に `mindstella` を足す）、project-index（配信元の行の単位の API を持つ版）、グローバルの設定のファイルの `mindstella.allowed_dirs` を加える
     status: todo
   - page: plugins/mindstella/skills/mindmap/README.md
     new: false
