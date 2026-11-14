@@ -20,7 +20,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-14T15:07:40.718152+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: done
+    note: SC-489-52 の始まりを、起動のコマンドが MindStella の API でワークスペースと MindStella のセッションを作り、セットアップが update_settings で設定を書く流れに合わせた
+    updated_by: planner
+    updated_at: '2026-11-14T15:22:11.852954+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: '判定フローチャート『モック要否』で、利用者に見える画面の見た目が変わらない（NO）。画面の起動のボタンと、記録が無いまま起動した通知の画面の表示は #520 の範囲'
