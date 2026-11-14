@@ -3,22 +3,11 @@ title: サーバー / 起動 / ensure_server.py
 test_files:
   - tests/unit/scripts/test_ensure_server.py
 classes:
-  - name: PortInUseError
-    title: 待ち受けのポートが使われている
-    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
-    usecase: 常駐サーバーの起動と停止
-    summary: ポートはつながるが `GET /_admin/status` が mindstella の応答を返さない（別のプロセスがポートを使っている）。起動せずに `main` が案内を出す
-    kind: クラス
-    inherits: Exception
-    properties:
-      - name: port
-        type: int
-        description: 待ち受けのポート
   - name: ServerExitedError
     title: 常駐サーバーが起動直後に終わった
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
-    summary: 起動した常駐サーバーが待ち受ける前に終わった（`systemctl --user is-active` が `failed`・`activating`）。`main` が `server.log` の書き足された分を出す
+    summary: 起動した常駐サーバーが待ち受ける前に落ちた（`systemctl --user is-active` が `failed`・`activating`）。ユニットの状態（`state`）と、`server.log` の書き足された末尾（`log_tail`）を持ち、`main` が出す
     kind: クラス
     inherits: Exception
     properties:
@@ -30,13 +19,6 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     summary: 起動した常駐サーバーが、終わらないまま `START_TIMEOUT_SEC` 秒以内に `GET /_admin/status` へ応答しない。`main` が `server.log` を見る案内を出す（プロセスは止めない）
-    kind: クラス
-    inherits: Exception
-  - name: SystemdUnavailableError
-    title: systemd --user が使えない
-    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
-    usecase: 常駐サーバーの起動と停止
-    summary: '`systemctl --user show-environment` が終了コード 0 でない。起動せずに `main` が systemd --user が要ることを示す'
     kind: クラス
     inherits: Exception
 constants:
@@ -125,7 +107,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 常駐サーバーが同じバージョンと同じプラグインのフォルダで待ち受けていれば何もせず、違えば違いと再起動の手順を示し、ポートが別のプロセスに使われていれば起動せずに示し、落ちていれば systemd --user のユニットを書いて起動し、待ち受けるまで待つ。`--restart` では待ち受けていてもユニットを書き直して起動し直す
+    summary: 常駐サーバーが同じバージョンと同じプラグインのフォルダで待ち受けていれば何もせず、違えば違いと再起動の手順を示し、ポートが別のプロセスに使われていれば起動せずに示し、落ちていれば systemd --user のユニットを書いて起動し、待ち受けるまで待つ。`--restart` では待ち受けていてもユニットを書き直して起動し直す。ポートを別のプロセスが使っているとき（`fetch_status` が `PORT_IN_USE`）と systemd --user が使えないとき（`show-environment` が 0 でない）は、例外を作らずに案内を出して止まる
     description: 末尾で `sys.exit(main())`。SessionStart のフックは `--hook` を付け、起動のコマンドは付けずに呼ぶ。`mindstella server restart` は `--restart` を付ける
     side_effects: ユニットのファイルを書き、`systemctl --user` を呼ぶ。案内を標準出力か標準エラーに書く
     args:
@@ -358,7 +340,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: '`mindstella.service` の中身（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`）を返す'
+    summary: '`mindstella.service` の中身（`Type=exec`・`ExecStart`・`StandardOutput=append:`・`StandardError=append:`・`Restart=on-failure`・`RestartSec`・`StartLimitIntervalSec`・`StartLimitBurst`・`Environment=`・`KillMode=process`（常駐サーバーが立てた tmux のサーバーを、起動し直しと停止で止めない））を返す'
     args:
       - name: python_path
         type: str
@@ -442,6 +424,17 @@ functions:
         condition: '`["daemon-reload"]`'
         mock: '`subprocess.run`'
         expected: '`["systemctl", "--user", "daemon-reload"]` で呼ばれ、その終了コードを返す'
+  - name: read_unit_state
+    title: ユニットの状態を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/ensure_server.py
+    usecase: 共通
+    scope: public
+    summary: '`systemctl --user is-active mindstella.service` の出力を返す'
+    args: []
+    returns:
+      type: str
+      description: ユニットの状態
   - name: wait_until_ready
     title: 待ち受けるまで待つ
     kind: 関数
@@ -450,11 +443,6 @@ functions:
     scope: public
     summary: '`GET /_admin/status` に応答するまで `START_POLL_SEC` ごとに確かめ、`systemctl --user is-active mindstella.service` が `failed`・`activating` なら ServerExitedError、上限を過ぎたら ServerStartTimeoutError を送る'
     args:
-      - name: process
-        type: subprocess.Popen
-        required: true
-        passing: positional
-        description: 起動したプロセス
       - name: port
         type: int
         required: true
@@ -476,6 +464,12 @@ functions:
         default: fetch_status
         passing: injected
         description: 状態を読む関数
+      - name: unit_state
+        type: Callable[[], str]
+        required: false
+        default: read_unit_state
+        passing: injected
+        description: ユニットの状態（`systemctl --user is-active` の出力）を読む関数
       - name: clock
         type: Callable[[], float]
         required: false
@@ -508,20 +502,20 @@ functions:
       - name: test_wait_until_ready
         case: 正常
         summary: 応答したら状態を返す
-        condition: 終わらない偽のプロセス。`fetch` が 2 回 `None` の後に状態を返す
-        mock: '`process`・`fetch`・`clock`・`sleep`'
+        condition: '`fetch` が 2 回 `None` の後に状態を返す。`unit_state` は `active`'
+        mock: '`fetch`・`unit_state`・`clock`・`sleep`'
         expected: その状態を返し、`sleep` が 2 回呼ばれる
       - name: test_wait_until_ready_when_exited
         case: 異常
         summary: 終わったら、先に待ち受けた mindstella があればその状態を返し、無ければポートの使われ方で分ける
-        condition: '`process.poll()` が 1 を返す。`log_file` の `log_offset` より後ろに 30 行。`parametrize`: `fetch` が常に `None` でテストが待ち受けているポート / `fetch` が常に `None` で空きポート / `fetch` が状態を返し、テストが待ち受けているポート'
-        mock: '`process`・`fetch`'
-        expected: '`PortInUseError`（`port` がそのポート）/ `ServerExitedError`（`returncode` が 1、`log_tail` が書き足した末尾の 20 行）/ 例外を送らずにその状態を返す'
+        condition: '`unit_state` が `parametrize`: `failed` / `activating`。`fetch` は常に `None`。`log_file` の `log_offset` より後ろに 30 行'
+        mock: '`fetch`・`unit_state`'
+        expected: '`ServerExitedError`（`state` がその状態、`log_tail` が書き足した末尾の 20 行）'
         exception: プロセスが終わった
       - name: test_wait_until_ready_when_timeout
         case: 異常
         summary: 上限までに応答しなければ ServerStartTimeoutError
-        condition: 終わらない偽のプロセス。`fetch` が常に `None`。`clock` は `sleep` の分だけ進む
-        mock: '`process`・`fetch`・`clock`・`sleep`'
+        condition: '`fetch` が常に `None`。`unit_state` は `active`。`clock` は `sleep` の分だけ進む'
+        mock: '`fetch`・`unit_state`・`clock`・`sleep`'
         expected: '`ServerStartTimeoutError`。`sleep` に渡した秒の合計が `START_TIMEOUT_SEC` を超えない'
         exception: 上限までに応答しない

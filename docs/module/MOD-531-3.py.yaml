@@ -67,6 +67,22 @@ functions:
         condition: '`/a/家計簿.app` / 同じパスへのシンボリックリンク / `/b/家計簿.app`'
         mock: なし
         expected: '`mindstella-家計簿-app-{6 桁}` / 同じ値 / 違う値'
+  - name: workspace_id_of
+    title: 記録のワークスペースの ID
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 記録の設定の `id` を返す。記録か `id` が無ければ `workspace_id_for` で振る（README の接続のコマンドと、入力の宛先の台帳が使う）
+    args:
+      - name: folder
+        type: Path
+        required: true
+        passing: positional
+        description: フォルダ
+    returns:
+      type: str
+      description: ワークスペースの ID
   - name: validate_options
     title: 起動の指定を確かめる
     kind: 関数
@@ -265,8 +281,61 @@ functions:
         condition: '`ids` が空'
         mock: なし
         expected: '`ApiError`（404）'
+  - name: find_workspace_row
+    title: 配信元の行を引く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: project-index の `GET /settings/sources` の行のうち、ワークスペースの ID の行を返す（セッションの管理がクローズ済みかとフォルダを読む）
+    args:
+      - name: pi_port
+        type: int
+        required: true
+        passing: positional
+        description: project-index のポート
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: dict | None
+      description: 行。無ければ `None`
+  - name: workspace_folder
+    title: 配信元の行のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 行の `config`（`{フォルダ}/.mindstella/dev-docs.yaml`）からワークスペースのフォルダを返す
+    args:
+      - name: row
+        type: dict
+        required: true
+        passing: positional
+        description: 配信元の行
+    returns:
+      type: Path
+      description: ワークスペースのフォルダ
+  - name: is_closed
+    title: クローズ済みか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/workspaces.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 行の `outsideRead` が偽かを返す
+    args:
+      - name: row
+        type: dict
+        required: true
+        passing: positional
+        description: 配信元の行
+    returns:
+      type: bool
+      description: クローズ済みか
 notes:
-  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewManager`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
+  ServerContext: 状態のフォルダ・project-index のポート・`WorkspaceLocks`・配信（`serve.PreviewRegistry`）・プラグインのフォルダを持つ、入口（`server.py`）が作って渡す値。モジュール構成『入口』の `ServerContext`
   ログ: |
     `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
 

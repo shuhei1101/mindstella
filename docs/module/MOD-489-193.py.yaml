@@ -233,6 +233,12 @@ functions:
         required: true
         passing: positional
         description: 出力先
+      - name: request
+        type: Callable[..., tuple[int, dict]]
+        required: false
+        default: api_request
+        passing: keyword
+        description: MindStella の API を呼ぶ関数
     returns:
       type: int
       description: 0 待ち受けている / 1 待ち受けていない

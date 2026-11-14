@@ -103,6 +103,27 @@ functions:
         condition: '`parametrize`: `{XDG_STATE_HOME: /tmp/x}` / `{}`'
         mock: '`Path.home`'
         expected: '`/tmp/x/mindstella` / `{home}/.local/state/mindstella`'
+  - name: workspace_dir
+    title: ワークスペースの状態のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`{状態のフォルダ}/workspaces/{ID}` を返す（作らない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: Path
+      description: ワークスペースの状態のフォルダ
   - name: read_ids
     title: ID の一覧を読む
     kind: 関数
@@ -161,6 +182,27 @@ functions:
         condition: 2 つのスレッドから別の ID を 50 回ずつ足す
         mock: なし
         expected: '`ids` が 100 件'
+  - name: remove_id
+    title: ID の一覧から外す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 全体の鍵を取り、`ids` から外して置き換える（作成の巻き戻しに使う）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: None
+      description: なし
   - name: read_session
     title: MindStella のセッションを読む
     kind: 関数

@@ -1,0 +1,13 @@
+前提確認: ok
+--- ~/.config/claude-balancer/settings.yaml
++++ ~/.config/claude-balancer/settings.yaml
+@@ -58,6 +58,7 @@
+ - small-worker
+ - aituber
+ - ai-monitor-e2e
++- mindstella
+ watchdog:
+   interval_sec: 15
+   restart_max: 3
+clients への追加: changed
+バックエンドの起動し直し: changed

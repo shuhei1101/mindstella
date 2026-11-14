@@ -1004,7 +1004,7 @@ def test_mindstella_session_target(
         )
         state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
     # 実行
-    target = claude_input.mindstella_session_target(tmp_path, MINDSTELLA_WORKSPACE)
+    target = claude_input.mindstella_session_target(tmp_path, MINDSTELLA_WORKSPACE, cwd=tmp_path)
     # 検証
     if expected is None:
         assert target is None

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# mindstella の常駐サーバーが落ちていれば起動してから、Claude Code を tmux のセッションの中で立ち上げてつなぐ。
+# mindstella の常駐サーバーが落ちていれば起動してから、ワークスペースと MindStella のセッションを作り、そのペインへつなぐ。
 # 使い方:
-#   {プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ}
+#   {プラグインのフォルダ}/bin/mindstella {ワークスペースのフォルダ} [--flow {配信元の ID}#{文書の ID}] [--mcp-config {ファイル}] [--plugin-dir {フォルダ}]...
+#   {プラグインのフォルダ}/bin/mindstella server {status|stop|restart}
 # 環境変数:
 #   MINDSTELLA_VENV    常駐サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
 #   MINDSTELLA_PORT    常駐サーバーの待ち受けのポート（既定は 8784）
-#   CLAUDE_CONFIG_DIR  あれば、Claude Code の設定のフォルダ（アカウント）として tmux のセッションへ渡し、セッションの名前にも使う
+#   CLAUDE_CONFIG_DIR  あれば、claude-balancer が無い端末で MindStella のセッションの Claude Code の設定のフォルダ（アカウント）にする
 #   MINDSTELLA_ALLOWED_HOSTS / MINDSTELLA_PREVIEW_START_HOOK / MINDSTELLA_PREVIEW_STOP_HOOK /
-#   MINDSTELLA_TRANSCRIBER / MINDSTELLA_TRANSCRIBER_URL
-#                      あれば、常駐サーバーを起動するときにそのまま渡す
+#   MINDSTELLA_TRANSCRIBER / MINDSTELLA_TRANSCRIBER_URL / PROJECT_INDEX_PORT
+#                      あれば、常駐サーバーを起動するときにユニットの Environment= に書いて渡す
 # 終了コード: 0 正常 / 1 実行時のエラー / 2 引数の誤り
 set -euo pipefail
 
@@ -17,6 +18,16 @@ SCRIPTS_DIR="$SCRIPT_DIR/../skills/mindmap/scripts"
 
 # 標準エラーに出すエラーの行の頭
 ERROR_PREFIX="[mindstella] エラー:"
+
+# 常駐サーバーの systemd --user のユニット
+UNIT_NAME="mindstella.service"
+
+# 使い方を標準エラーに出して、終了コード 2 で終わる
+usage() {
+  echo "使い方: $0 {ワークスペースのフォルダ} [--flow {配信元の ID}#{文書の ID}] [--mcp-config {ファイル}] [--plugin-dir {フォルダ}]..." >&2
+  echo "        $0 server {status|stop|restart}" >&2
+  exit 2
+}
 
 # エラーを標準エラーに出して、終了コード 1 で終わる（2 つ目の引数があれば次の行に添える）
 fail() {
@@ -54,12 +65,23 @@ else:
 ' "$1"
 }
 
-# 1. 引数: ワークスペースのフォルダを 1 つ受け取る
-if [ "$#" -ne 1 ] || [ -z "$1" ]; then
-  echo "使い方: $0 {ワークスペースのフォルダ}" >&2
-  exit 2
+# 1. 引数: ワークスペースのフォルダと付ける引数か、server のサブコマンドを受け取る
+[ "$#" -ge 1 ] && [ -n "$1" ] || usage
+SERVER_COMMAND=""
+if [ "$1" = "server" ]; then
+  [ "$#" -eq 2 ] || usage
+  case "$2" in
+    status | stop | restart) SERVER_COMMAND="$2" ;;
+    *) usage ;;
+  esac
 fi
-FOLDER="$1"
+
+# 停止: systemd --user のユニットを止めるだけ（依存もプラグインも確かめない）
+if [ "$SERVER_COMMAND" = "stop" ]; then
+  systemctl --user stop "$UNIT_NAME" || fail "systemctl --user stop $UNIT_NAME が失敗しました"
+  echo "[mindstella] 常駐サーバーを止めました" >&2
+  exit 0
+fi
 
 # 2. 依存: システムの python3 で依存の確認を起動する
 command -v python3 >/dev/null 2>&1 || fail "python3 が見つかりません。Python 3.12 以上を入れてください"
@@ -86,44 +108,38 @@ if [ "$CHECK_STATUS" -ne 0 ]; then
 fi
 PYTHON_PATH="$(read_report python_path <<<"$REPORT")"
 
+# 状態: 常駐サーバーの状態を出す
+if [ "$SERVER_COMMAND" = "status" ]; then
+  exec "$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --server-status
+fi
+
 # 3. tmux と Claude Code
 command -v tmux >/dev/null 2>&1 || fail "tmux が見つかりません。tmux を入れてください"
 command -v claude >/dev/null 2>&1 || fail "claude が見つかりません。Claude Code を入れてください"
 
-# 4. プラグインのフォルダ・セッションの名前（標準出力の 2 行を 1 行ずつ受ける）
+# 4. プラグインのフォルダ: インストールした今の版のフォルダを引く
 LISTING="$(claude plugin list --json)" || fail "claude plugin list --json を実行できません"
-LAUNCHED="$("$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --folder "$FOLDER" --format lines <<<"$LISTING")" || exit 1
-{
-  IFS= read -r PLUGIN_DIR
-  IFS= read -r SESSION
-} <<<"$LAUNCHED"
+PLUGIN_DIR="$("$PYTHON_PATH" "$SCRIPTS_DIR/launch.py" --find-plugin <<<"$LISTING")" || exit 1
 echo "[mindstella] プラグイン: $PLUGIN_DIR" >&2
-echo "[mindstella] セッション: $SESSION" >&2
 
-# 5. 起動時の指示: インストールした今の版のフォルダから読み、Claude Code へ --append-system-prompt で渡す
-STARTUP_PROMPT_FILE="$PLUGIN_DIR/skills/mindmap/references/起動時の指示.md"
-[ -r "$STARTUP_PROMPT_FILE" ] || fail "起動時の指示がありません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
-STARTUP_PROMPT="$(<"$STARTUP_PROMPT_FILE")" || fail "起動時の指示を読めません: $STARTUP_PROMPT_FILE（プラグインを入れ直してください）"
-
-# 6. 常駐サーバー: インストールした今の版の起動の確認で、落ちていれば起動する（案内は標準エラーに出る）
-python3 "$PLUGIN_DIR/skills/mindmap/scripts/ensure_server.py" || exit 1
-
-# 7. セッション: 同じ名前（同じフォルダ）のセッションが既にあれば立てず、そのセッションへつなぐ
-if tmux has-session -t "=$SESSION" 2>/dev/null; then
-  echo "[mindstella] 既にあるセッションへつなぎます: $SESSION" >&2
-else
-  mkdir -p "$FOLDER"
-  WORK_DIR="$(cd "$FOLDER" && pwd -P)"
-  ENV_ARGS=()
-  if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
-    # tmux のサーバーが先に立っていると呼び出し元の環境変数は渡らないので、セッションへ渡す
-    ENV_ARGS=(-e "CLAUDE_CONFIG_DIR=$CLAUDE_CONFIG_DIR")
-  fi
-  # コマンドを引数ごとに分けて渡し、起動時の指示の中身をシェルで解釈させない
-  tmux new-session -d -s "$SESSION" -c "$WORK_DIR" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} -- claude --append-system-prompt "$STARTUP_PROMPT"
+# 起動し直し: インストールした今の版のフォルダでユニットを書き直して起動し直す
+if [ "$SERVER_COMMAND" = "restart" ]; then
+  exec python3 "$PLUGIN_DIR/skills/mindmap/scripts/ensure_server.py" --restart
 fi
 
-# 8. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければつなぐコマンドを出して終わる
+# 5. 常駐サーバー: インストールした今の版の起動の確認で、落ちていれば起動する（案内は標準エラーに出る）
+python3 "$PLUGIN_DIR/skills/mindmap/scripts/ensure_server.py" || exit 1
+
+# 6. ワークスペースと MindStella のセッション: 画面の URL とペインを 1 行ずつ受ける
+STARTED="$("$PYTHON_PATH" "$PLUGIN_DIR/skills/mindmap/scripts/launch.py" --start "$@")" || exit $?
+{
+  IFS= read -r URL
+  IFS= read -r PANE
+} <<<"$STARTED"
+SESSION="${PANE%%:*}"
+
+# 7. つなぐ: 標準出力が端末のときだけつなぎ、端末でなければ画面の URL とつなぐコマンドを出して終わる
+echo "$URL"
 if [ -t 1 ]; then
   if [ -n "${TMUX:-}" ]; then
     exec tmux switch-client -t "=$SESSION"

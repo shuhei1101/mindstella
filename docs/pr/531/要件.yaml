@@ -85,7 +85,9 @@ docs:
   - page: docs/guide/コマンド.md
     new: false
     change: MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）と同じ操作の MCP のツール、起動のコマンドの引数、常駐サーバーの起動の確認の出力を加える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T20:39:24.578789+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: 「1 つの常駐サーバーが複数のワークスペースを扱う」に、MindStella の API でワークスペースと MindStella のセッションを作る・止める・クローズにする仕組みと、MindStella のセッションと通常のセッションの違いを加える

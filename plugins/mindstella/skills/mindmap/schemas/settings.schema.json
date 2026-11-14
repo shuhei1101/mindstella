@@ -13,6 +13,30 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "id": {
+      "type": "string",
+      "description": "ワークスペースの ID（project-index の配信元の行の `id`。`mindstella-{フォルダ名}-{ハッシュ}`）。常駐サーバーの API で作ったワークスペースだけが持つ",
+      "minLength": 1
+    },
+    "flow": {
+      "type": "object",
+      "description": "進め方の文書（project-index の配信元の ID と文書の ID）。MindStella のセッションの SessionStart のフックが場所を注入する",
+      "required": [
+        "source",
+        "doc"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "doc": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "playbooks": {
       "type": "array",
       "description": "並べて使う進め方ガイドの名前（例 `[壁打ち, システム開発]`）。1 件以上で、重複しない",

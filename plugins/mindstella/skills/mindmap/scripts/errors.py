@@ -164,3 +164,15 @@ class EditsBlockedError(MindmapError):
         """メッセージと、書き込めない編集の並びを持つ。"""
         super().__init__(message)
         self.blocked: list[BlockedEdit] = blocked
+
+
+class ApiError(MindmapError):
+    """MindStella の API とそのツールが返すエラー。`api.problem_response` が problem+json に、入口がツールのエラーにする。"""
+
+    def __init__(self, status: int, stage: str, detail: str, **extra: object) -> None:
+        """ステータス・失敗した段階・日本語の理由と、応答に足す拡張のメンバーを持つ。"""
+        super().__init__(detail)
+        self.status = status
+        self.stage = stage
+        self.detail = detail
+        self.extra: dict[str, object] = extra

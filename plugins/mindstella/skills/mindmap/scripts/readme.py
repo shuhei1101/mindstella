@@ -8,7 +8,6 @@ import uuid
 from pathlib import Path
 
 from errors import WriteFailedError
-from launch import session_name
 
 # ワークスペースの直下に書くファイルの名前
 README_FILE = "README.md"
@@ -24,6 +23,13 @@ PLUGIN_DIR = Path(__file__).resolve().parents[PLUGIN_DIR_DEPTH]
 
 # プラグインのフォルダからの起動スクリプトのパス
 LAUNCH_SCRIPT = "bin/mindstella"
+
+# 起動のコマンドの後ろに並べる、付けられる引数と説明
+LAUNCH_OPTIONS = (
+    ("--flow {配信元の ID}#{文書の ID}", "進め方の文書（記録が無いフォルダの最初の起動だけ）"),
+    ("--mcp-config {ファイル}", "追加の MCP の定義の JSON"),
+    ("--plugin-dir {フォルダ}", "追加のプラグインのフォルダ（何度でも）"),
+)
 
 # プレビューの節に、URL の代わりに書く行
 PREVIEW_HINT = "`/mindstella:session` でプレビューを頼むと URL が表示されます。"
@@ -43,17 +49,24 @@ TEMP_SUFFIX = ".tmp"
 
 def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> str:
     """1 行目が `README_MARK` で、プレビュー・コマンド・ドキュメントの節を持つ README の Markdown を作る。"""
+    # ワークスペースの管理が記録を書くときに読むため、関数の中で読む
+    from workspaces import workspace_id_of
+
     resolved = root.resolve()
     # コマンドに埋めるパスは、空白などを含んでもそのまま叩けるよう引用する
     folder = shlex.quote(str(resolved))
     launch_script = shlex.quote(str(plugin_dir / LAUNCH_SCRIPT))
-    session = shlex.quote(session_name(resolved))
+    session = shlex.quote(workspace_id_of(resolved))
     # 見出し・短い説明・コマンドの 3 つ組を、起動・接続・セッション・セットアップ・アップグレードの順に並べる
     commands = (
-        ("起動", "このフォルダで Claude Code を立ち上げます。", f"{launch_script} {folder}"),
+        (
+            "起動",
+            "このフォルダで MindStella のセッションを起動します。",
+            f"{launch_script} {folder}",
+        ),
         (
             "接続",
-            "立ち上げ済みのセッションにつなぎ直します。",
+            "起動済みの MindStella のセッションにつなぎ直します。",
             f"tmux attach-session -t ={session}",
         ),
         (
@@ -91,6 +104,9 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
     ]
     for label, description, command in commands:
         lines += [f"**{label}:**", "", description, "", "```bash", command, "```", ""]
+        # 起動の後ろだけ、付けられる引数を並べる
+        if label == "起動":
+            lines += [f"- `{option}`: {summary}" for option, summary in LAUNCH_OPTIONS] + [""]
     lines += ["## ドキュメント", ""]
     lines += [f"- [{title}]({url})" for title, url in DOC_LINKS]
     return "\n".join(lines) + "\n"

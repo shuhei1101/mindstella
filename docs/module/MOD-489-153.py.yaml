@@ -53,6 +53,12 @@ constants:
     usecase: README の書き直し
     summary: プレビューの節に、URL の代わりに書く行
     value: '"`/mindstella:session` でプレビューを頼むと URL が表示されます。"'
+  - name: LAUNCH_OPTIONS
+    title: 起動の引数の一覧
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: コマンドの節の起動の後ろに並べる、付けられる引数（`--flow`・`--mcp-config`・`--plugin-dir`）と説明の組
+    value: (("--flow {配信元の ID}#{文書の ID}", "..."), ("--mcp-config {ファイル}", "..."), ("--plugin-dir {フォルダ}", "..."))
   - name: DOC_LINKS
     title: ドキュメントのリンク
     container: plugins/mindstella/skills/mindmap/scripts/readme.py

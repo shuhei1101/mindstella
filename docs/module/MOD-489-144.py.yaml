@@ -689,18 +689,23 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/claude_input.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: 状態のフォルダにこのワークスペースの `session.json` があれば、`status` が `running` で `close_pending` が偽のときだけ、その `pane`・`pid`・`pid_started_at` から `InputTarget` を返す。記録があって条件に合わなければ `BLOCKED`、記録が無ければ `None`（最後にツールを呼んだセッションを宛先にする）
+    summary: 状態のフォルダにこのワークスペースの `session.json` があれば、`status` が `running` で `close_pending` が偽のときだけ、その `pane`・`pid`・`pid_started_at` から `InputTarget` を返す。記録があって条件に合わなければ `BLOCKED`、記録が無ければ `None`（最後にツールを呼んだセッションを宛先にする）。ソケットは利用者の既定の tmux のソケット、設定のフォルダは `/proc/{pid}/environ` の `CLAUDE_CONFIG_DIR`（読めなければ `~/.claude`）
     args:
       - name: state_root
         type: Path
         required: true
         passing: positional
         description: 状態のフォルダ
-      - name: workspace
-        type: Path
+      - name: workspace_id
+        type: str
         required: true
         passing: positional
-        description: ワークスペースの絶対パス（設定の `id` を読む）
+        description: ワークスペースの ID
+      - name: cwd
+        type: Path
+        required: true
+        passing: keyword
+        description: ワークスペースのフォルダ（会話の記録のフォルダ名に使う）
     returns:
       type: InputTarget | Literal["blocked"] | None
       description: 宛先

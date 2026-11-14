@@ -357,6 +357,11 @@ functions:
         required: true
         passing: keyword
         description: HTTP のサーバーに終わり始めるよう頼む関数（`server_stop` が使う）
+      - name: context
+        type: ServerContext
+        required: true
+        passing: keyword
+        description: ワークスペースの管理・セッションの管理・MindStella の API に渡す値（MindStella の API の経路も `custom_route` で足す）
     returns:
       type: MCPServer
       description: 名前が `SERVER_NAME` で、ツールを `TOOL_NAMES` の順に持つサーバー
@@ -653,7 +658,7 @@ data_models:
         type: WorkspaceLocks
         description: 依頼の順番の鍵
       - name: previews
-        type: PreviewManager
+        type: PreviewRegistry
         description: プレビューの配信
       - name: plugin_root
         type: Path

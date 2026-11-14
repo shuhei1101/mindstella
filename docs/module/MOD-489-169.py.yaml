@@ -111,7 +111,7 @@ classes:
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
     usecase: プレビューを開く
     role: 長期保持のランタイム状態
-    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ。文字起こしのインターフェースもキーワード引数 `transcriber` で受け取る（既定は `None`）
+    summary: このプロセスが立てた配信をワークスペースの絶対パスごとに 1 つ持ち、プロセスが終わるときに全て止める。作るときにツールと共有する書き換えの鍵を位置引数で、外から見る設定をキーワード引数で受け取る（`PreviewRegistry(write_lock, external=ExternalAccess())`）。ワークスペースごとの Claude Code への入力の宛先も持つ。文字起こしのインターフェースもキーワード引数 `transcriber` で受け取る（既定は `None`）。入力の宛先の台帳は、入口が状態のフォルダとワークスペースの ID の引き方（`workspaces.workspace_id_of`）を渡して作った `InputTargets` を `input_targets` で受ける（無ければ空の台帳）
     kind: クラス
     properties:
       - name: _servers

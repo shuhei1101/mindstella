@@ -1,7 +1,8 @@
 """常駐する mindstella の MCP サーバー。ワークスペースを読み書きするツールを登録し、`127.0.0.1` の HTTP で待ち受ける。
 
-常駐サーバーの起動の確認（`ensure_server.py`）が `{仮想環境の Python} server.py` を新しいセッションで起動する。
-プレビューの配信と、常駐サーバーの状態と停止も同じプロセスに持つ。記録は `logging` で標準エラーへ書く。
+常駐サーバーの起動の確認（`ensure_server.py`）が書いた systemd --user のユニットが `{仮想環境の Python} server.py` を起動する。
+プレビューの配信、ワークスペースと MindStella のセッションの API、常駐サーバーの状態と停止も同じプロセスに持つ。
+記録は `logging` で標準エラーへ書く。
 """
 
 import json
@@ -12,6 +13,7 @@ import socket
 import sys
 import threading
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -24,8 +26,13 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import api
 import commands
-from claude_input import Session, parse_session
+import project_index
+import sessions
+import state
+import workspaces
+from claude_input import InputTargets, Session, parse_session
 from errors import ArgumentError, MindmapError, SchemaMismatchError
 from kinds import Kind
 from query import DEFAULT_LIMIT, MAX_LIMIT, SearchFilter, parse_attr, render_find_markdown
@@ -55,7 +62,6 @@ SERVER_NAME = "mindstella"
 
 # 登録するツールの名前の並び
 TOOL_NAMES = (
-    "init",
     "add",
     "update",
     "remove",
@@ -87,6 +93,11 @@ TOOL_NAMES = (
     "reply",
     "set_thread_status",
     "update_thread",
+    "create_workspace",
+    "create_session",
+    "sessions",
+    "stop_session",
+    "close_workspace",
     "server_status",
     "server_stop",
 )
@@ -110,6 +121,9 @@ STATUS_PATH = "/_admin/status"
 # 終わり始めてから、返している途中のレスポンスとつながったままの MCP の通り道を待つ秒数
 SHUTDOWN_GRACE_SEC = 2
 
+# project-index のポートを渡す環境変数
+PI_PORT_ENV = "PROJECT_INDEX_PORT"
+
 # `MindmapError` でない例外をツールのエラーにするときの文言
 UNEXPECTED_ERROR = "予期しないエラー（{type}）: {message}"
 
@@ -121,7 +135,26 @@ type SessionArg = Annotated[
     Field(description="ツールを呼んだセッションの値（PreToolUse のフックが入れる）"),
 ]
 
+type WorkspaceIdArg = Annotated[
+    str, Field(description="ワークスペースの ID（create_workspace が返す id）")
+]
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ServerContext:
+    """ワークスペースの管理・セッションの管理・MindStella の API に渡す値。`main` が 1 つ作る。"""
+
+    port: int
+    pi_port: int
+    state_root: Path
+    locks: workspaces.WorkspaceLocks
+    previews: PreviewRegistry
+    plugin_root: Path
+    tmux: sessions.TmuxRunner
+    proc: sessions.ProcessInspector
+    write_lock: threading.Lock
 
 
 class InvalidPortError(Exception):
@@ -167,16 +200,34 @@ def main(
         transcriber = load_transcriber(source)
     except InvalidTranscriberError as error:
         listening.close()
-        logger.error("常駐サーバーを待ち受けられません: %s（設定『サーバー』の許す値を渡してください）", error)  # noqa: TRY400
+        logger.error(  # noqa: TRY400
+            "常駐サーバーを待ち受けられません: %s（設定『サーバー』の許す値を渡してください）",
+            error,
+        )
         return 1
 
     write_lock = threading.Lock()
+    state_root = state.state_root(source)
     previews = PreviewRegistry(
-        write_lock, external=load_external_access(source), transcriber=transcriber
+        write_lock,
+        external=load_external_access(source),
+        transcriber=transcriber,
+        input_targets=InputTargets(state_root=state_root, workspace_id=workspaces.workspace_id_of),
     )
     started_at = datetime.now(UTC).isoformat(timespec="seconds")
     plugin_root = PLUGIN_VERSION_FILE.parent
     version = str(read_plugin_version())
+    context = ServerContext(
+        port=port,
+        pi_port=int(source.get(PI_PORT_ENV) or project_index.DEFAULT_PORT),
+        state_root=state_root,
+        locks=workspaces.WorkspaceLocks(),
+        previews=previews,
+        plugin_root=plugin_root,
+        tmux=sessions.TmuxRunner(),
+        proc=sessions.ProcessInspector(),
+        write_lock=write_lock,
+    )
 
     def status() -> dict[str, Any]:
         """今の常駐サーバーの状態を作る。"""
@@ -189,11 +240,20 @@ def main(
         http_server.should_exit = True
 
     mcp_server = (build or build_server)(
-        previews=previews, write_lock=write_lock, status=status, request_stop=request_stop
+        previews=previews,
+        write_lock=write_lock,
+        status=status,
+        request_stop=request_stop,
+        context=context,
     )
     app = mcp_server.streamable_http_app(streamable_http_path=MCP_PATH, host=LISTEN_HOST)
     http_server = (make_server or _make_http_server)(app)
-    logger.info("常駐サーバーが待ち受けを始めた（ポート %s、バージョン %s、PID %s）", port, version, os.getpid())
+    logger.info(
+        "常駐サーバーが待ち受けを始めた（ポート %s、バージョン %s、PID %s）",
+        port,
+        version,
+        os.getpid(),
+    )
     # uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、SIGTERM を SystemExit にして finally まで進める
     previous_sigterm = signal.signal(signal.SIGTERM, _exit_on_sigterm)
     try:
@@ -277,6 +337,7 @@ def build_server(
     write_lock: threading.Lock,
     status: Callable[[], dict[str, Any]],
     request_stop: Callable[[], None],
+    context: Any,
 ) -> MCPServer:
     """`TOOL_NAMES` のツールを登録した MCP サーバーを作る。"""
     server = MCPServer(SERVER_NAME)
@@ -325,15 +386,6 @@ def build_server(
             lock_create=create,
             lock_require=require,
         )
-
-    @server.tool(name="init", description="設定を受け取って空のワークスペースを作る")
-    def init(
-        workspace: WorkspaceArg,
-        settings: Annotated[dict[str, Any], Field(description=".mindstella/config.yaml の中身")],
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        # まだ無いフォルダへ書く `init` だけが、フォルダを作る鍵を取る
-        return write(workspace, session, lambda root: commands.run_init(root, settings), create=True)
 
     @server.tool(name="add", description="項目を 1 つ足す（ID・日時・本文を付ける）")
     def add(
@@ -427,7 +479,9 @@ def build_server(
             Literal["add", "update", "remove"],
             Field(description="add は末尾に足す、update は指した案を直す、remove は指した案を消す"),
         ],
-        key: Annotated[str, Field(description="案の記号。add では足す案、update・remove では指す案")],
+        key: Annotated[
+            str, Field(description="案の記号。add では足す案、update・remove では指す案")
+        ],
         option: Annotated[
             dict[str, Any] | None,
             Field(
@@ -477,7 +531,8 @@ def build_server(
         return write(workspace, session, lambda root: commands.run_commit(root, summary))
 
     @server.tool(
-        name="pending", description="まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を返す"
+        name="pending",
+        description="まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を返す",
     )
     def pending(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
         return read(workspace, session, commands.run_pending)
@@ -542,7 +597,9 @@ def build_server(
         ] = None,
         count_only: Annotated[
             bool,
-            Field(description="true のとき、一覧を返さず total・total_chars・tag_counts だけを返す"),
+            Field(
+                description="true のとき、一覧を返さず total・total_chars・tag_counts だけを返す"
+            ),
         ] = False,
         format: Annotated[
             Literal["markdown", "json"],
@@ -580,9 +637,7 @@ def build_server(
         )
 
     @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
-    def show(
-        workspace: WorkspaceArg, id: ItemIdArg, session: SessionArg = None
-    ) -> CallToolResult:
+    def show(workspace: WorkspaceArg, id: ItemIdArg, session: SessionArg = None) -> CallToolResult:
         return read(workspace, session, lambda root: commands.run_show(root, id))
 
     @server.tool(name="attrs", description="使っている属性名と件数を返す")
@@ -632,7 +687,11 @@ def build_server(
 
         # 並べるだけの `plan` は何も書かないので、鍵を取らない
         # 書き換える `migrate` は、前の版の設定ファイルだけのフォルダにも鍵を取る
-        return read(workspace, session, run) if plan else write(workspace, session, run, require=require_migratable)
+        return (
+            read(workspace, session, run)
+            if plan
+            else write(workspace, session, run, require=require_migratable)
+        )
 
     @server.tool(name="clear_release", description=".mindstella/release/ の中身を消す")
     def clear_release(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
@@ -645,12 +704,17 @@ def build_server(
     def write_release(
         workspace: WorkspaceArg,
         path: Annotated[
-            str, Field(description="release/ からの書き出すファイルのパス（.md か .html。.. は使えない）")
+            str,
+            Field(
+                description="release/ からの書き出すファイルのパス（.md か .html。.. は使えない）"
+            ),
         ],
         content: Annotated[str, Field(description="書き出す本文（Markdown か HTML）")],
         session: SessionArg = None,
     ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_write_release(root, path, content))
+        return write(
+            workspace, session, lambda root: commands.run_write_release(root, path, content)
+        )
 
     @server.tool(name="export", description="見るだけの 1 枚の HTML（配る書き出し）を書き出す")
     def export(
@@ -674,7 +738,11 @@ def build_server(
         ] = None,
         session: SessionArg = None,
     ) -> CallToolResult:
-        return read(workspace, session, lambda root: commands.run_preview_url(root, previews=previews, diff=diff))
+        return read(
+            workspace,
+            session,
+            lambda root: commands.run_preview_url(root, previews=previews, diff=diff),
+        )
 
     @server.tool(
         name="readme",
@@ -696,13 +764,20 @@ def build_server(
             ),
         ] = None,
         tag: Annotated[str | None, Field(description="このタグを持つスレッドだけ")] = None,
-        unread: Annotated[bool, Field(description="真なら AI の未読の書き込みを持つスレッドだけ")] = False,
+        unread: Annotated[
+            bool, Field(description="真なら AI の未読の書き込みを持つスレッドだけ")
+        ] = False,
         awaiting: Annotated[
-            bool, Field(description="真なら AI が取り込んでいない利用者の書き込みを持つスレッドだけ")
+            bool,
+            Field(description="真なら AI が取り込んでいない利用者の書き込みを持つスレッドだけ"),
         ] = False,
         session: SessionArg = None,
     ) -> CallToolResult:
-        return read(workspace, session, lambda root: commands.run_threads(root, status, tag, unread, awaiting))
+        return read(
+            workspace,
+            session,
+            lambda root: commands.run_threads(root, status, tag, unread, awaiting),
+        )
 
     @server.tool(
         name="thread",
@@ -740,7 +815,9 @@ def build_server(
         session: SessionArg = None,
     ) -> CallToolResult:
         return write(
-            workspace, session, lambda root: commands.run_new_thread(root, body, summary, tags, target)
+            workspace,
+            session,
+            lambda root: commands.run_new_thread(root, body, summary, tags, target),
         )
 
     @server.tool(
@@ -753,11 +830,16 @@ def build_server(
         body: Annotated[str, Field(description="返信の本文（1〜10000 文字）")],
         summary: Annotated[str, Field(description="書き直した要約（1〜400 文字）")],
         take: Annotated[
-            bool, Field(description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする")
+            bool,
+            Field(
+                description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする"
+            ),
         ] = True,
         session: SessionArg = None,
     ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_reply(root, id, body, summary, take))
+        return write(
+            workspace, session, lambda root: commands.run_reply(root, id, body, summary, take)
+        )
 
     @server.tool(
         name="set_thread_status",
@@ -771,7 +853,9 @@ def build_server(
         session: SessionArg = None,
     ) -> CallToolResult:
         return write(
-            workspace, session, lambda root: commands.run_set_thread_status(root, id, status, reason)
+            workspace,
+            session,
+            lambda root: commands.run_set_thread_status(root, id, status, reason),
         )
 
     @server.tool(
@@ -786,12 +870,112 @@ def build_server(
             list[str] | None, Field(description="置き換えるタグ。空の一覧でタグを外す")
         ] = None,
         take: Annotated[
-            bool, Field(description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする")
+            bool,
+            Field(
+                description="真なら既読にした取り込んでいない利用者の書き込みを取り込み済みにする"
+            ),
         ] = False,
         session: SessionArg = None,
     ) -> CallToolResult:
         return write(
-            workspace, session, lambda root: commands.run_update_thread(root, id, summary, tags, take)
+            workspace,
+            session,
+            lambda root: commands.run_update_thread(root, id, summary, tags, take),
+        )
+
+    @server.tool(
+        name="create_workspace",
+        description=(
+            "許可するフォルダの下に、ワークスペースの記録を作るか残っている記録を開き、"
+            "project-index の配信元に登録して、ワークスペースの ID と画面の URL を返す"
+        ),
+    )
+    def create_workspace(
+        folder: Annotated[
+            str, Field(description="ワークスペースのフォルダの絶対パス。無ければ作る")
+        ],
+        flow: Annotated[
+            dict[str, str] | None,
+            Field(
+                description="進め方の文書 {source: 配信元の ID, doc: 文書の ID}。記録が無いフォルダにだけ記録する"
+            ),
+        ] = None,
+        mcp_config: Annotated[
+            dict[str, Any] | None,
+            Field(description="Claude Code の --mcp-config に渡す JSON（{mcpServers: {...}}）"),
+        ] = None,
+        plugin_dirs: Annotated[
+            list[str] | None,
+            Field(description="Claude Code の --plugin-dir に渡すフォルダの絶対パス"),
+        ] = None,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        request = {
+            "folder": folder,
+            "flow": flow,
+            "mcp_config": mcp_config,
+            "plugin_dirs": plugin_dirs or [],
+        }
+        return call_tool(
+            lambda: workspaces.create_workspace(request, context)[1], write_lock=write_lock
+        )
+
+    @server.tool(
+        name="create_session",
+        description=(
+            "ワークスペースの MindStella のセッションを tmux のペインの中で起動し、準備ができてから、"
+            "MindStella のセッションの ID・tmux のペイン・画面の URL を返す"
+        ),
+    )
+    def create_session(
+        workspace_id: WorkspaceIdArg,
+        claude_config_dir: Annotated[
+            str | None,
+            Field(description="claude-balancer が無い端末で使う Claude Code の設定のフォルダ"),
+        ] = None,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: sessions.create_session(workspace_id, claude_config_dir, context)[1],
+            write_lock=write_lock,
+        )
+
+    @server.tool(
+        name="sessions",
+        description="ワークスペースの最後の MindStella のセッション 1 つの状態を返す。停止の完了はこれで確かめる",
+    )
+    def list_sessions(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+        return call_tool(
+            lambda: sessions.list_sessions(workspace_id, context), write_lock=write_lock
+        )
+
+    @server.tool(
+        name="stop_session",
+        description=(
+            "停止の依頼をすぐに受け付けて返し、クローズ待ちにしてから、最後の書き込みが終わるのを待って"
+            " MindStella のセッションを止める"
+        ),
+    )
+    def stop_session(
+        workspace_id: WorkspaceIdArg,
+        session_id: Annotated[
+            str, Field(description="MindStella のセッションの ID（S- で始まる）")
+        ],
+        force: Annotated[bool, Field(description="真なら応答の終わりを待たずに止める")] = False,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: sessions.stop_session(workspace_id, session_id, force, context)[1],
+            write_lock=write_lock,
+        )
+
+    @server.tool(
+        name="close_workspace",
+        description="MindStella のセッションが無いワークスペースの配信元の行を outside_read: false にしてクローズにする",
+    )
+    def close_workspace(workspace_id: WorkspaceIdArg, session: SessionArg = None) -> CallToolResult:
+        return call_tool(
+            lambda: workspaces.close_workspace(workspace_id, context), write_lock=write_lock
         )
 
     @server.tool(
@@ -809,6 +993,11 @@ def build_server(
         return call_tool(
             lambda: run_server_stop(previews, request_stop=request_stop), write_lock=write_lock
         )
+
+    # MindStella の API の経路を、MCP と同じ待ち受けに足す
+    for route in api.build_routes(context):
+        methods = sorted((route.methods or set()) - {"HEAD"})
+        server.custom_route(route.path, methods=methods)(route.endpoint)
 
     @server.custom_route(STATUS_PATH, methods=["GET"])
     async def admin_status(request: Request) -> JSONResponse:
@@ -831,9 +1020,7 @@ def call_tool(
     try:
         if lock_root is not None:
             # 書き換えるツール: 読む前から書き終えるまで鍵を持つ
-            with workspace_lock(
-                lock_root, write_lock, create=lock_create, require=lock_require
-            ):
+            with workspace_lock(lock_root, write_lock, create=lock_create, require=lock_require):
                 payload = handler()
         else:
             payload = handler()
@@ -877,7 +1064,8 @@ def resolve_workspace(path: str, session: Session | None, *, argument: str = "wo
     # 相対パスでセッションが無い: 常駐サーバーの作業フォルダは使わない
     if session is None:
         raise ArgumentError(
-            argument, "相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください"
+            argument,
+            "相対パスはセッションの作業フォルダが無いと読めません。絶対パスで渡してください",
         )
     return session.cwd / expanded
 

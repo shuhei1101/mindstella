@@ -326,6 +326,12 @@ functions:
         required: true
         passing: positional
         description: 状態のフォルダ・鍵
+      - name: spawn
+        type: Callable[[Callable[[], None]], None] | None
+        required: false
+        default: None
+        passing: keyword
+        description: 止める処理を走らせる関数（既定は別のスレッド。テストは同じスレッドで走らせる）
     returns:
       type: tuple[int, dict]
       description: '`(202, {status: stopping})` か `(200, {status: stopped})`'
@@ -401,9 +407,15 @@ functions:
       - name: test_record_event
         case: 正常
         summary: 出来事ごとの書き換え
-        condition: '`session_start`（`source: startup`・`clear`・`fork`）/ `session_end`（`reason: clear`・`logout`）/ `prompt_submit` / `stop_failure` / 知らない `session`'
+        condition: '`parametrize`: `session_start`（`source: startup`・`clear`・`fork`）/ `session_end`（`reason: clear`・`logout`）/ `prompt_submit` / `stop_failure`'
         mock: なし
-        expected: '`claude_session_id` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽 / `False`'
+        expected: '`claude_session_id` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽'
+      - name: test_record_event_unknown
+        case: 正常
+        summary: 知らない MindStella のセッションは記録しない
+        condition: 状態に無い `session`
+        mock: なし
+        expected: '`False` を返し、`session.json` が変わらない'
 classes:
   - name: TmuxRunner
     title: tmux のコマンドを呼ぶもの

@@ -283,13 +283,14 @@ class PreviewRegistry:
         *,
         external: ExternalAccess | None = None,
         transcriber: Transcriber | None = None,
+        input_targets: InputTargets | None = None,
     ) -> None:
-        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と文字起こしを受け取り、空の台帳を作る。"""
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と文字起こしと入力の宛先の台帳を受け取り、空の台帳を作る。"""
         self._servers: dict[Path, PreviewServer] = {}
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
         # ワークスペースごとの Claude Code への入力の宛先（立てる配信へ渡す。配信の前に受けたセッションも持つ）
-        self._input_targets = InputTargets()
+        self._input_targets = InputTargets() if input_targets is None else input_targets
         # 文字起こしのインターフェース（立てる配信へ渡す）
         self._transcriber = transcriber
         # `_servers` を触る間だけ取る鍵（フックの中から同じスレッドで呼び直されても戻れるよう、再入できる鍵）
@@ -1303,7 +1304,9 @@ def _transcription_settings(root: Path) -> dict[str, Any] | Response:
 
 def _unavailable_response(reason: UnavailableReason) -> Response:
     """使えない理由を本文の reason に足した 503 の応答を作る。"""
-    problem = json.loads(problem_response(HTTPStatus.SERVICE_UNAVAILABLE, UNAVAILABLE_DETAILS[reason]).body)
+    problem = json.loads(
+        problem_response(HTTPStatus.SERVICE_UNAVAILABLE, UNAVAILABLE_DETAILS[reason]).body
+    )
     problem["reason"] = reason
     return Response(
         status=HTTPStatus.SERVICE_UNAVAILABLE,

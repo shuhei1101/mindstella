@@ -6,10 +6,10 @@ claude-balancer のクライアントの追加:
   回数: 1 回限り
   起動し直す対象: claude-balancer
   可逆: true
-  疎通確認: null
-  実行: null
-  確認: null
-  切り戻し: null
+  疎通確認: claude-balancer のクライアントの追加/疎通確認.sh
+  実行: claude-balancer のクライアントの追加/実行.py
+  確認: claude-balancer のクライアントの追加/確認.sh
+  切り戻し:
   失敗時: 既定の対処を 1 回、2 回連続で失敗したら依頼元へ返す
   確認方法: claude-balancer の `GET /clients` の `clients` に `mindstella` がある
   状態: "-"

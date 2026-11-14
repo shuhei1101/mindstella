@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import signal
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -174,6 +175,7 @@ def ctx(
         plugin_root=plugin_root,
         tmux=tmux,
         proc=FakeProc(tmux),
+        write_lock=threading.Lock(),
         row=row,
     )
 
