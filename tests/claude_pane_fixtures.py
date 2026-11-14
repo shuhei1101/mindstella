@@ -152,8 +152,18 @@ def start_claude_pane(tmp_path: Path) -> Iterator[StartClaudePane]:
         script.write_text(FAKE_CLAUDE_SCRIPT, encoding="utf-8")
         ready = tmp_path / "pane-ready"
         name = f"pane{len(sessions)}"
+        # 偽のコマンドの環境変数にも、Claude Code と同じく設定のフォルダを入れる
         fake = shlex.join(
-            [sys.executable, str(script), mode, str(transcript), str(ready), str(cwd.resolve())]
+            [
+                "env",
+                f"CLAUDE_CONFIG_DIR={config_dir}",
+                sys.executable,
+                str(script),
+                mode,
+                str(transcript),
+                str(ready),
+                str(cwd.resolve()),
+            ]
         )
         # 偽のコマンドをシェルの子として動かし、終わってもペインにシェルを残す
         command = shlex.join(["sh", "-c", f"{fake}; exec sh"])

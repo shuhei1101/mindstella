@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 # front matter の allowed-tools の値
 SETUP_ALLOWED_TOOLS = (
-    "Read, mcp__plugin_mindstella_mindstella__init, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__migrate, "
+    "Read, mcp__plugin_mindstella_mindstella__create_workspace, mcp__plugin_mindstella_mindstella__update_settings, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__migrate, "
     "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/register.py:*)"
 )
 

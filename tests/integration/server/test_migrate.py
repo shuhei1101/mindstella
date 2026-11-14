@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from workspace_fixtures import LOCK_FILE_NAME, RECORD_DIR, plugin_version, step_versions_after
+from workspace_fixtures import (
+    LOCK_FILE_NAME,
+    RECORD_DIR,
+    plugin_version,
+    step_versions_after,
+    write_yaml,
+)
 
 from .fixture_types import (
     CallTool,
@@ -85,10 +91,14 @@ def _init_git(path: Path) -> None:
 def _create_current_workspace(
     tmp_path: Path, call_tool: CallTool, valid_settings: dict[str, Any]
 ) -> Path:
-    """init で今の版のワークスペースを作り、そのフォルダを返す。"""
+    """プラグインの版を記録した今の形式のワークスペースを作り、そのフォルダを返す。"""
     root = tmp_path / "current"
-    result = call_tool("init", workspace=str(root), settings=valid_settings)
-    assert result.is_error is False
+    records = root / RECORD_DIR
+    (records / "docs").mkdir(parents=True)
+    (records / "release").mkdir()
+    write_yaml(records / "config.yaml", valid_settings)
+    (records / VERSION_FILE).write_text(f"{PLUGIN_VERSION}\n", encoding="utf-8")
+    assert call_tool("check", workspace=str(root)).is_error is False
     return root
 
 
@@ -425,9 +435,9 @@ def test_normal_when_answer_to_option(
     # 検証
     assert result.is_error is False
     assert result.data is not None
-    assert [(step["version"], step["op"], step["destructive"]) for step in result.data["steps"]] == [
-        ("v0.7.0", "call", False)
-    ]
+    assert [
+        (step["version"], step["op"], step["destructive"]) for step in result.data["steps"]
+    ] == [("v0.7.0", "call", False)]
     after = _read_decisions(root)
     assert after[0]["options"] == [
         {"key": "A", "content": "種類ごとに分ける", "reason": "探しやすい", "adopted": True}
@@ -461,7 +471,9 @@ def test_normal_when_submissions_to_threads(
     result = call_tool("migrate", workspace=str(root))
     # 検証
     assert result.is_error is False
-    threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))["items"]
+    threads = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))[
+        "items"
+    ]
     closed, opened = threads
     assert (closed["id"], closed["status"], closed["target"]) == ("TH-1", "closed", "D-1")
     assert [(event["kind"], event["author"]) for event in closed["events"]] == [("closed", "ai")]
@@ -492,7 +504,9 @@ def test_normal_when_tags_to_vocabulary(
     )
     write_threads(root, make_thread("TH-1", tags=["起票"]))
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.9.0\n", encoding="utf-8")
-    settings_before = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
+    settings_before = yaml.safe_load(
+        (root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8")
+    )
     records_before = {
         name: data
         for name, data in snapshot_tree(root).items()
@@ -606,9 +620,9 @@ def test_normal_when_tags_to_objects(
     decision = yaml.safe_load(decisions_path.read_text(encoding="utf-8"))["items"][0]
     assert decision["tags"] == [{"name": "保存"}, {"name": "通知"}, {"name": "ＡＰＩ"}]
     assert decision["updated"] == updated_before
-    note = yaml.safe_load((root / RECORD_DIR / "notes.yaml").read_text(encoding="utf-8"))[
-        "items"
-    ][0]
+    note = yaml.safe_load((root / RECORD_DIR / "notes.yaml").read_text(encoding="utf-8"))["items"][
+        0
+    ]
     assert note["tags"] == []
     thread = yaml.safe_load((root / RECORD_DIR / "threads.yaml").read_text(encoding="utf-8"))[
         "items"

@@ -23,7 +23,7 @@ HASH_DIGITS = 6
 
 
 def session_name_of(root: Path) -> str:
-    """起動スクリプトが立てる tmux のセッションの名前（`mindstella-{フォルダ名}-{ハッシュ}`）を作る。"""
+    """MindStella のセッションの tmux のセッションの名前（ワークスペースの ID `mindstella-{フォルダ名}-{ハッシュ}`）を作る。"""
     resolved = root.resolve()
     digest = hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:HASH_DIGITS]
     name = resolved.name.replace(".", "-").replace(":", "-")
@@ -52,15 +52,21 @@ URL は起動のたびに変わります。
 
 **起動:**
 
-このフォルダで Claude Code を立ち上げます。
+このフォルダのワークスペースと MindStella のセッションを作り、そのセッションにつなぎます。
 
 ```bash
 {launch} {folder}
 ```
 
+任意の引数:
+
+- `--flow {{配信元の ID}}#{{文書の ID}}`: 進め方の文書
+- `--mcp-config {{ファイル}}`: 追加の MCP の定義
+- `--plugin-dir {{フォルダ}}`: 追加のプラグイン（何度でも）
+
 **接続:**
 
-立ち上げ済みのセッションにつなぎ直します。
+起動中の MindStella のセッションにつなぎ直します。
 
 ```bash
 tmux attach-session -t ={session}

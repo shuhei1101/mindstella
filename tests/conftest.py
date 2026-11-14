@@ -15,6 +15,9 @@ from claude_pane_fixtures import start_claude_pane  # noqa: F401
 # 起動スクリプトを隔離して動かす fixture
 from launch_fixtures import ready_venv, resident_port, sandbox, serve_fake_status  # noqa: F401
 
+# MindStella の API を project-index の Mock・偽の claude・専用の tmux で動かす fixture
+from session_fixtures import fake_systemctl, session_world  # noqa: F401
+
 # 単体・結合・E2E が共有する fixture（pytest は conftest の名前空間にある fixture を登録する）
 from workspace_fixtures import (  # noqa: F401
     call_tool,
@@ -79,7 +82,9 @@ def run_claude(tmp_path: Path) -> RunClaude:
     config_dir.mkdir()
     env = {**os.environ, "CLAUDE_CONFIG_DIR": str(config_dir)}
 
-    def _run(*args: str, extra_env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    def _run(
+        *args: str, extra_env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
         """claude にサブコマンドを渡して実行し、終了コードが 0 以外なら例外にする。extra_env は環境変数に足す。"""
         return subprocess.run(
             ["claude", *args],

@@ -19,6 +19,7 @@ ENVIRON = {
     "MINDSTELLA_FLOW": "aituber#flow-1",
     "MINDSTELLA_PORT": str(PORT),
     "TMUX_PANE": "%3",
+    "TMUX": "/tmp/tmux-1000/default,123,0",
 }
 
 
@@ -41,6 +42,7 @@ def test_main() -> None:
     assert body["claude_session_id"] == "c1"
     assert body["source"] == "startup"
     assert body["pane"] == "%3"
+    assert body["socket"] == "/tmp/tmux-1000/default"
     output = json.loads(stdout.getvalue())
     assert "aituber#flow-1" in output["hookSpecificOutput"]["additionalContext"]
 

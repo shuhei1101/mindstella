@@ -999,6 +999,7 @@ def test_mindstella_session_target(
             pane=f"{MINDSTELLA_WORKSPACE}:0.0",
             pid=CLAUDE_PID,
             pid_started_at=STARTED_AT,
+            socket="/tmp/mst/tmux-1000/default",
             started_at="2026-11-15T00:00:00+00:00",
             **values,
         )
@@ -1012,6 +1013,7 @@ def test_mindstella_session_target(
         assert target is claude_input.BLOCKED
     else:
         assert isinstance(target, claude_input.InputTarget)
+        assert target.socket == "/tmp/mst/tmux-1000/default"
         assert (target.pane, target.claude_pid, target.claude_started_at) == (
             f"{MINDSTELLA_WORKSPACE}:0.0",
             CLAUDE_PID,

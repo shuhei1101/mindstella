@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import threading
 import time
 from collections.abc import Callable
@@ -86,7 +88,12 @@ def test_normal(
     assert "loc" not in threads[0]
     assert threads[1]["loc"] == loc
     first_post = threads[0]["posts"][0]
-    assert (first_post["author"], first_post["read"], first_post["taken"], first_post["comment"]) == (
+    assert (
+        first_post["author"],
+        first_post["read"],
+        first_post["taken"],
+        first_post["comment"],
+    ) == (
         "user",
         False,
         None,
@@ -116,7 +123,9 @@ def test_normal_when_reply(
     write_threads(
         root,
         make_thread(
-            "TH-1", make_post("TH-1-1", author="ai", body="D-1 を起票してよいですか"), summary="起票の確認"
+            "TH-1",
+            make_post("TH-1-1", author="ai", body="D-1 を起票してよいですか"),
+            summary="起票の確認",
         ),
     )
     reply = make_comment("C-1", body="起票してよい", thread="TH-1")
@@ -567,3 +576,59 @@ def test_normal_when_session_ended(
     while "プロセス" not in server.stderr_text() and time.monotonic() < deadline:
         time.sleep(POLL_INTERVAL_SEC)
     assert f"Claude Code のプロセス {pane.session['claude_pid']} が無い" in server.stderr_text()
+
+
+def _workspace_id(root: Path) -> str:
+    """記録の設定に id の無いワークスペースの ID（フォルダ名とシンボリックリンクを解いた絶対パスのハッシュ）。"""
+    resolved = root.resolve()
+    name = resolved.name.replace(".", "-").replace(":", "-")
+    return f"mindstella-{name}-{hashlib.sha256(str(resolved).encode('utf-8')).hexdigest()[:6]}"
+
+
+def test_normal_when_mindstella_session(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_comment: MakeComment,
+    write_comments: WriteComments,
+    start_server: StartServer,
+    start_claude_pane: StartClaudePane,
+) -> None:
+    """MindStella のセッションがあればそのペインへ入力し、クローズ待ちなら入力せずにスレッドに残す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_comments(
+        root, make_comment("C-1", body="案 A にする"), make_comment("C-2", body="案 B も見る")
+    )
+    pane = start_claude_pane(mode="user", cwd=root)
+    state_home = tmp_path / "state"
+    session_file = state_home / "mindstella" / "workspaces" / _workspace_id(root) / "session.json"
+    session_file.parent.mkdir(parents=True)
+    values = {
+        "session": "S-0123456789ab",
+        "status": "running",
+        "started_at": "2026-11-15T00:00:00+00:00",
+        "claude_session_id": "c-1",
+        "pane": pane.session["tmux_pane"],
+        "socket": pane.session["tmux"].split(",", 1)[0],
+        "pid": pane.session["claude_pid"],
+        "pid_started_at": pane.session["claude_started_at"],
+        "close_pending": False,
+    }
+    session_file.write_text(json.dumps(values), encoding="utf-8")
+    server = start_server(extra_env={"XDG_STATE_HOME": str(state_home)})
+    # session を渡さずに配信を立てる（最後にツールを呼んだセッションの宛先を持たない）
+    opened = server.call("preview_url", workspace=str(root))
+    assert opened.data is not None
+    # 実行
+    first = post_json(str(opened.data["url"]), SEND_PATH, {"ids": ["C-1"]})
+    session_file.write_text(json.dumps({**values, "close_pending": True}), encoding="utf-8")
+    second = post_json(str(opened.data["url"]), SEND_PATH, {"ids": ["C-2"]})
+    # 検証
+    assert first.status == 201
+    assert first.json()["entered"] is True
+    assert len(pane.lines()) == 1
+    assert second.status == 201
+    assert second.json()["entered"] is False
+    assert len(pane.lines()) == 1
+    assert [item["id"] for item in read_threads(root)] == ["TH-1", "TH-2"]
