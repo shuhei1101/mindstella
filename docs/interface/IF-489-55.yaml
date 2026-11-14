@@ -359,7 +359,7 @@ flows:
       - '`changed` が `transcription` だけ'
     test: test_normal_when_transcription
   - name: 異常系（文字起こし後の挙動の値が合わない・SchemaMismatchError）
-    summary: '`send`・`insert` のどちらでもない挙動を渡すと、何も書かない'
+    summary: '`review`・`send`・`insert` のどれでもない挙動を渡すと、何も書かない'
     setup:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）

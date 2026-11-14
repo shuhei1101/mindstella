@@ -296,7 +296,7 @@ tables:
       - name: transcription
         title: 文字起こしの設定
         type: object
-        description: 任意。コメント・返信の入力の音声入力の設定。`action`（文字起こし後の挙動。`send` は入力欄へ挿入した全文をその 1 件だけで Claude Code へ送信し、`insert` は入力欄のカーソルの位置に挿入して送信しない。無ければ `insert`）と `preset`（文字起こしのサービスへ渡す用語集のプリセットの名前。1 文字以上の文字列か `null`。無いか `null` ならサービスの既定）を持つ。どのサービスを使うかは持たない（常駐サーバーの環境変数 `MINDSTELLA_TRANSCRIBER`）。`update_settings` と設定の画面が書く
+        description: 任意。コメント・返信の入力の音声入力の設定。`action`（文字起こし後の挙動。`review` は入力欄へ挿入した全文をレビュー中に溜めて送信しない。`send` は入力欄へ挿入した全文をその 1 件だけで Claude Code へ送信し、`insert` は入力欄のカーソルの位置に挿入して送信しない。無ければ `review`）と `preset`（文字起こしのサービスへ渡す用語集のプリセットの名前。1 文字以上の文字列か `null`。無いか `null` ならサービスの既定）を持つ。どのサービスを使うかは持たない（常駐サーバーの環境変数 `MINDSTELLA_TRANSCRIBER`）。`update_settings` と設定の画面が書く
         example: '{action: insert, preset: 開発}'
       - name: preview
         title: プレビューの配信

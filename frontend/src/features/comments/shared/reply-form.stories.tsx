@@ -62,3 +62,12 @@ export const VoiceFailed: Story = { args: { thread: "TH-1", status: "voice-faile
 
 /** 最も狭い幅（320px）の録音中。2 つのボタンはマイクと「レビューに追加」と同じ大きさで、入力欄の右に並んだまま収まる */
 export const RecordingNarrow: Story = { args: { thread: "TH-1", voice: "recording", elapsed: 12, levels: [0.25, 0.4, 0.7, 0.55, 0.9, 0.6, 0.35, 0.8, 1, 0.65] } };
+
+/** 既定の挙動（review）で、文字起こしの結果を挿入した全文をレビュー中に追加した。入力欄を空にし、元のボタンに戻す */
+export const VoiceReviewed: Story = { args: { thread: "TH-1", status: "reviewed" } };
+
+/** 文字起こしはできたが、レビュー中に追加できなかった。挿入した全文を入力欄に残す */
+export const VoiceReviewFailed: Story = { args: { thread: "TH-1", status: "voice-failed", detail: "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。", body: "確認: 案 A にする" } };
+
+/** ほかの入力欄で録音中・文字起こし中。マイクのボタンを押せない見た目にし、キーボードの入力と「レビューに追加」はできる */
+export const VoiceBusy: Story = { args: { thread: "TH-1", voice: "disabled", voiceReason: "ほかの入力欄で音声入力中のため、音声で入力できません。", body: "D-2 も確認" } };

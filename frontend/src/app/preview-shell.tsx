@@ -1,6 +1,6 @@
 // SPA の外枠（インターフェース定義『SPAを開く』）。`tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネル、`search` の全体の検索を重ねる。features の画面を組むのはここだけ
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CommentsPanel } from "@/features/comments/comments-panel/comments-panel";
 import { DecisionsScreen } from "@/features/decisions/decisions/decisions-screen";
@@ -27,7 +27,7 @@ import { normalizeSearch } from "@/shared/core/preview-search";
 import { KIND_KEYS, KIND_LABEL, type Kind } from "@/shared/core/records";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
-import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
+import { usePreviewSearch, type VoiceTarget } from "@/shared/hooks/use-preview-search";
 import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
@@ -35,6 +35,7 @@ import { useConnectionStore } from "@/shared/stores/connection-store";
 import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
+import { discardVoice, dismissVoiceNotice, useVoiceNotice, useVoiceSession, voiceTargetOf, type VoiceDestination } from "@/shared/stores/voice-store";
 
 const TAB_ICON: Record<TabKey, IconName> = { overview: "home", decisions: "decision", tasks: "task", research: "research", docs: "doc", terms: "term", notes: "note", logs: "log" };
 
@@ -59,9 +60,56 @@ const RecordsError = ({ error }: { error: Error }) => (
   </section>
 );
 
+/** 入力欄の向けた先と開く画面から、開く画面を決める */
+const voiceTargetFor = (key: string): VoiceTarget | null => {
+  const target = voiceTargetOf(key);
+  if (target === null) return null;
+  const { destination, view } = target;
+  if ("thread" in destination) return { thread: destination.thread };
+  if (view === "comments" || destination.target === null) return { thread: null };
+  return { item: destination.target, full: view === "full" };
+};
+
+/** 録音中なら ✓ の「文字起こし」、文字起こし中は入力欄へフォーカスを移す（画面を開いた後の描画を待つ） */
+const focusVoiceInput = (): void => {
+  window.setTimeout(() => {
+    const done = document.querySelector<HTMLButtonElement>('button[aria-label="文字起こし"]');
+    if (done !== null) {
+      done.focus();
+      return;
+    }
+    document.querySelector('button[aria-label="文字起こし中"]')?.closest("form")?.querySelector("textarea")?.focus();
+  }, 0);
+};
+
+/** トップバーの音声入力中の表示と知らせの帯。記録・スレッドを読み直したら、向けた先が無くなった録音を捨てる */
+const useVoiceTopbar = ({ exists, openVoiceInput }: { exists: ((destination: VoiceDestination) => boolean) | null; openVoiceInput: (target: VoiceTarget) => void }) => {
+  const session = useVoiceSession();
+  const notice = useVoiceNotice();
+  useEffect(() => {
+    if (exists !== null) discardVoice(exists);
+  }, [exists]);
+  const onOpenVoice = (): void => {
+    const key = session?.key ?? notice?.key ?? null;
+    if (key === null) return;
+    if (session === null) dismissVoiceNotice();
+    const target = voiceTargetFor(key);
+    if (target !== null) openVoiceInput(target);
+    // 詳細のコメントの入力を閉じていれば開く
+    if (target !== null && "item" in target) writePrefs({ commentFormClosed: null });
+    focusVoiceInput();
+  };
+  return {
+    voice: session === null ? null : { state: session.phase, label: session.label, elapsed: session.elapsed },
+    voiceNotice: notice === null ? null : { kind: notice.kind, text: notice.text },
+    onOpenVoice,
+    onDismissVoiceNotice: dismissVoiceNotice,
+  };
+};
+
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
 export const PreviewShell = () => {
-  const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch, setSearch, openFromSearch } = usePreviewSearch();
+  const { search, setTab, openItem, openList, setDiff, setPanel, replaceSearch, setSearch, openFromSearch, openVoiceInput } = usePreviewSearch();
   const records = useQuery(recordsQuery());
   const comments = useQuery(commentsQuery());
   const threads = useQuery(threadsQuery());
@@ -107,6 +155,13 @@ export const PreviewShell = () => {
   const opened = useRef(false);
   const threadList = threads.data?.status === 200 ? (threads.data.data.threads as unknown as Thread[]) : null;
   const reviewItems = comments.data?.status === 200 ? ((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []) : null;
+  // 録っている入力の向けた先があるか（記録・スレッド・レビュー中を読み直したら作り直す）
+  const voiceExists = useMemo(() => {
+    if (index === null || threads.data?.status !== 200 || comments.data?.status !== 200) return null;
+    const threadIds = new Set([...(threads.data.data.threads as unknown as Thread[]).map((thread) => thread.id), ...((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []).map((item) => item.id)]);
+    return (destination: VoiceDestination): boolean => ("thread" in destination ? threadIds.has(destination.thread) : destination.target === null || index.byId.has(destination.target));
+  }, [index, threads.data, comments.data]);
+  const voiceTopbar = useVoiceTopbar({ exists: voiceExists, openVoiceInput });
   // スレッドとレビュー中の書き込みを読む前は、`thread`・`ttag` を外さない
   const threadContext = threadList === null || reviewItems === null ? {} : { threadIds: [...threadList.map((thread) => thread.id), ...reviewItems.filter((item) => item.thread === null).map((item) => item.id)], threadTags: [...new Set(threadList.flatMap((thread) => thread.tags))] };
   // 記録に合わない値を外す（並べ替えの列は一覧の画面が確かめる）
@@ -175,6 +230,7 @@ export const PreviewShell = () => {
         pendingCount={pendingCount}
         pendingOpen={search.panel === "pending"}
         pendingBlocked={blocked.length > 0}
+        {...voiceTopbar}
         onNavigate={setTab}
         onOpenSearch={() => { setSearch({ search: "1" }); }}
         onThemeChange={setTheme}

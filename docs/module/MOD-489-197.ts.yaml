@@ -22,14 +22,14 @@ data_models:
     summary: '`finishVoice` の結果。入口がこれを入力の状態に写す'
     properties:
       - name: kind
-        type: "'sent' | 'inserted' | 'failed' | 'unavailable'"
-        description: '`sent` は送信した、`inserted` は挿入した、`failed` は入力欄を残して失敗、`unavailable` はサービスが使えない（マイクを押せなくする）'
+        type: "'reviewed' | 'sent' | 'inserted' | 'failed' | 'unavailable'"
+        description: '`reviewed` はレビュー中に追加した、`sent` は送信した、`inserted` は挿入した、`failed` は入力欄を残して失敗、`unavailable` はサービスが使えない（マイクを押せなくする）'
       - name: body
         type: string
-        description: 入力欄に置く中身（`sent` は空。`failed` で文字起こしの前に失敗したときは元の中身）
+        description: 入力欄に置く中身（`reviewed`・`sent` は空。`failed` で文字起こしの前に失敗したときは元の中身）
       - name: caret
         type: number | null
-        description: 置くカーソルの位置（挿入した文字の後ろ。`sent` と元の中身のままのときは `null`）
+        description: 置くカーソルの位置（挿入した文字の後ろ。`reviewed`・`sent` と元の中身のままのときは `null`）
       - name: entered
         type: boolean
         description: '`sent` のとき、Claude Code へ入力したか'
@@ -61,6 +61,22 @@ constants:
         description: 届かない・空の文字・`detail` の無い失敗
       - key: sendFailed
         value: 送信できませんでした。文字起こしの結果は入力欄に残しています。
+      - key: reviewFailed
+        value: レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。
+      - key: busy
+        value: ほかの入力欄で音声入力中のため、音声で入力できません。
+      - key: discarded
+        value: '`(id) => `${id} が削除されたため、録音を破棄しました。``'
+        description: 行き先の項目・スレッドが記録から無くなったときの帯の文
+      - key: awayReviewFailed
+        value: '`(label) => `${label}をレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。``'
+        description: 入力欄が画面に無い間に、レビュー中への追加に失敗したときの帯の文
+      - key: awaySendFailed
+        value: '`(label) => `${label}を送信できませんでした。文字起こしの結果は入力欄に残しています。``'
+        description: 入力欄が画面に無い間に、送信に失敗したときの帯の文
+      - key: awayTranscribeFailed
+        value: '`(label) => `${label}の文字起こしができませんでした。もう一度お試しください。``'
+        description: 入力欄が画面に無い間に、文字起こしに失敗した・サービスが使えなくなったときの帯の文
   - name: WAVE_SAMPLE_MS
     title: 音量を取る間隔
     container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
@@ -74,6 +90,29 @@ constants:
     summary: 波形に持つ音量の数の上限（古いものから捨てる）。入力欄の最も広い詳細の全画面の幅の上限 1600px を、縦の棒の最も狭い間隔（棒 2px + すき間 2px）の 4px で割った数で、どの幅でも枠を埋める
     value: '400'
 functions:
+  - name: acquireWakeLock
+    title: 画面の消灯の抑止を求める
+    kind: 関数
+    usecase: 音声でコメントする
+    is_async: true
+    summary: '`navigator.wakeLock.request("screen")` を呼び、解く関数を返す。`navigator.wakeLock` が無い・断られた（`NotAllowedError` など）ときは何も出さずに何もしない関数を返す'
+    returns:
+      type: 'Promise<() => void>'
+      description: 抑止を解く関数（`WakeLockSentinel.release()` を呼ぶ。2 回目以降は何もしない）
+    unit_tests:
+      - name: test_acquire_wake_lock
+        case: 正常
+        summary: 求めて解く
+        condition: 偽の `navigator.wakeLock`。返った関数を 2 回呼ぶ
+        mock: '`vi.stubGlobal`'
+        expected: '`request` が `screen` で 1 回、`release` が 1 回'
+      - name: test_acquire_wake_lock_when_unavailable
+        case: 異常
+        summary: 持たない・断られたときは何もしない
+        condition: '`parametrize`: `navigator.wakeLock` が無い / `request` が `NotAllowedError` で断る'
+        mock: '`vi.stubGlobal`'
+        expected: 例外を送らず、返った関数を呼んでも何も起きない
+    container: plugins/mindstella/skills/mindmap/preview/core/voice.ts
   - name: micSupported
     title: マイクを使えるか
     kind: 関数
@@ -249,7 +288,7 @@ functions:
     usecase: 音声でコメントする
     scope: public
     is_async: true
-    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `send` なら全文をすぐ送る（`insert` なら送らない）
+    summary: 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が `review` なら全文をレビュー中に溜め、`send` なら全文をすぐ送る（`insert` なら送らない）
     args:
       - name: recording
         type: Recording
@@ -257,16 +296,16 @@ functions:
         passing: positional
         description: 止める録音
       - name: input
-        type: '{body: string, start: number, end: number, action: ''send'' | ''insert'', destination: {target, loc} | {thread}}'
+        type: '{body: string, start: number, end: number, action: ''review'' | ''send'' | ''insert'', destination: {target, loc} | {thread}}'
         required: true
         passing: positional
         description: ✓ を押したときの入力欄の中身とカーソルの位置、設定の挙動、向けた先
       - name: api
-        type: ReturnType<typeof voiceApi>
+        type: ReturnType<typeof voiceApi> & Pick<ReturnType<typeof commentApi>, 'add'>
         required: false
-        default: voiceApi()
+        default: '{...voiceApi(), add: commentApi().add}'
         passing: injected
-        description: 音声入力の API
+        description: 音声入力の API と、レビュー中のコメントの追加
     returns:
       type: Promise<VoiceOutcome>
       description: 結果
@@ -277,19 +316,22 @@ functions:
          - `text` が前後の空白を除いて空の場合、元の中身のまま `VOICE_TEXT.failed` の `failed` を返す
       2. `insertAtCursor` で挿入する
       3. `action` が `insert` なら、挿入した中身と位置の `inserted` を返す
-      4. `api.sendNow` に向けた先と挿入した全文を送る
+      4. `action` が `review` なら、`api.add` に向けた先と挿入した全文を送る
+         - 溜められた場合、空の中身と応答の `count` の `reviewed` を返す
+         - 溜められなかった場合、挿入した中身と位置と `VOICE_TEXT.reviewFailed` の `failed` を返す
+      5. `api.sendNow` に向けた先と挿入した全文を送る
          - 送れた場合、空の中身と応答の `entered` の `sent` を返す
          - 送れなかった場合、挿入した中身と位置と `VOICE_TEXT.sendFailed` の `failed` を返す
     unit_tests:
       - name: test_finish_voice
         case: 正常
         summary: 挿入してから挙動で分ける
-        condition: '入力欄 `確認: `・カーソル 4、`transcribe` が `案 A にする` を返す偽の API。`parametrize`: `action: insert` / `action: send` で `sendNow` が `entered: true`'
+        condition: '入力欄 `確認: `・カーソル 4、`transcribe` が `案 A にする` を返す偽の API。`parametrize`: `action: review` / `action: insert` / `action: send` で `sendNow` が `entered: true`'
         mock: 偽の API・偽の録音
-        expected: '`{kind: inserted, body: 確認: 案 A にする, caret: 11}` で `sendNow` を呼ばない / `{kind: sent, body: "", entered: true}` で `sendNow` が `{target, loc, body: 確認: 案 A にする}` で 1 回'
+        expected: '`{kind: reviewed, body: "", count: 1}` で `add` が `{target, loc, body: 確認: 案 A にする}` で 1 回 / `{kind: inserted, body: 確認: 案 A にする, caret: 11}` で `add`・`sendNow` を呼ばない / `{kind: sent, body: "", entered: true}` で `sendNow` が `{target, loc, body: 確認: 案 A にする}` で 1 回'
       - name: test_finish_voice_when_failed
         case: 異常
-        summary: 文字起こしと送信の失敗
-        condition: '`parametrize`: `transcribe` が 503・`reason: stopped` / 502・`detail` あり / 届かない / `text` が空 / `send` で `sendNow` が 409'
+        summary: 文字起こしと追加・送信の失敗
+        condition: '`parametrize`: `transcribe` が 503・`reason: stopped` / 502・`detail` あり / 届かない / `text` が空 / `send` で `sendNow` が 409 / `review` で `add` が 500'
         mock: 偽の API・偽の録音
-        expected: '`unavailable`・`stopped` / `failed`・その `detail`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.failed`・元の中身 / `failed`・`VOICE_TEXT.sendFailed`・挿入した中身'
+        expected: '`unavailable`・`stopped` / `failed`・その `detail`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.failed`・元の中身 / `failed`・`VOICE_TEXT.sendFailed`・挿入した中身 / `failed`・`VOICE_TEXT.reviewFailed`・挿入した中身'

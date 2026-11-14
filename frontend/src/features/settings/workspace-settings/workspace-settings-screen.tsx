@@ -21,8 +21,9 @@ const NO_BLOCKED: ReadonlySet<string> = new Set();
 
 /** 文字起こし後の挙動の選択肢 */
 const TRANSCRIPTION_ACTIONS = [
-  { value: "send", label: "送信する" },
+  { value: "review", label: "レビュー中に追加する" },
   { value: "insert", label: "入力欄へ挿入する" },
+  { value: "send", label: "送信する" },
 ] as const;
 
 /** 用語集のプリセットの「サービスの既定」（プリセットを指定しない） */
@@ -297,7 +298,7 @@ export const WorkspaceSettingsScreen = () => {
             <legend className="font-medium">音声入力</legend>
             {(() => {
               const current = ((settings as unknown as Record<string, unknown>).transcription ?? {}) as { action?: string; preset?: string | null };
-              const action: TranscriptionAction = current.action === "send" ? "send" : "insert";
+              const action: TranscriptionAction = current.action === "send" || current.action === "insert" ? current.action : "review";
               const preset = typeof current.preset === "string" ? current.preset : null;
               // 記録の値が選んだときと変わっていれば、続けて選んだ値を捨てて記録の値を使う
               const base = JSON.stringify(current);
@@ -330,7 +331,7 @@ export const WorkspaceSettingsScreen = () => {
                           </label>
                         ))}
                       </div>
-                      <p className="m-0 text-xs text-muted-foreground">「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。</p>
+                      <p className="m-0 text-xs text-muted-foreground">「レビュー中に追加する」は文字起こしの結果を挿入した全文をレビュー中に追加し、送信しません。「入力欄へ挿入する」はカーソルの位置に挿入するだけです。「送信する」はその書き込みだけで Claude Code へ送信します。</p>
                     </>,
                   )}
                   {field(

@@ -310,3 +310,33 @@ def test_recording_narrow(open_story: OpenStory) -> None:
     assert form is not None
     assert form["width"] <= NARROWEST_WIDTH
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_voice_reviewed(open_story: OpenStory) -> None:
+    """既定の挙動（review）で、文字起こしの結果を挿入した全文をレビュー中に追加した。入力欄を空にし、元のボタンに戻す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-replyform--voice-reviewed")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "文字起こしの結果をレビュー中に追加しました。"
+    assert page.input_value("textarea") == ""
+    assert_mic_ready(page)
+
+
+def test_voice_review_failed(open_story: OpenStory) -> None:
+    """文字起こしはできたが、レビュー中に追加できなかった。挿入した全文を入力欄に残す（正常系）。"""
+    # 準備・実行
+    page = open_story("comments-replyform--voice-review-failed")
+    # 検証
+    assert page.inner_text(VOICE_MESSAGE).strip() == "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"
+    assert page.input_value("textarea") == "確認: 案 A にする"
+    assert_mic_ready(page)
+
+
+def test_voice_busy(open_story: OpenStory) -> None:
+    """ほかの入力欄で音声入力中。マイクのボタンを押せない見た目にして理由を出し、入力欄は書き換えられるまま（正常系）。"""
+    # 準備
+    page = open_story("comments-replyform--voice-busy")
+    # 実行・検証
+    assert_mic_blocked(page, "ほかの入力欄で音声入力中のため、音声で入力できません。")
+    assert page.input_value("textarea") == "D-2 も確認"
+    assert page.locator("textarea").is_editable()

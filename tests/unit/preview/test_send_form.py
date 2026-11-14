@@ -520,6 +520,11 @@ VOICE_EVENTS_SCRIPT = """({props, press, caret}) => {
             {"statusText": "文字起こしの結果を挿入しました。"},
             id="inserted",
         ),
+        pytest.param(
+            {"target": "D-1", "status": "reviewed"},
+            {"statusText": "文字起こしの結果をレビュー中に追加しました。"},
+            id="reviewed",
+        ),
     ],
 )
 def test_send_form_when_voice(

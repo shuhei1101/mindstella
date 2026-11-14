@@ -19,7 +19,7 @@ components:
       - name: test_workspace_settings_screen_when_transcription
         case: 正常
         summary: 音声入力のまとまり
-        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で既定の「入力欄へ挿入する」から「送信する」を選ぶ / `{available: false, reason: stopped}`'
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で既定の「レビュー中に追加する」から「送信する」を選ぶ / `{available: false, reason: stopped}`'
         mock: MSW
         expected: '`POST /api/edits` が `{op: setting, key: transcription, value: {action: send, preset: null}}` で呼ばれる / プリセットのセレクトが押せず「文字起こしのサービスが起動していないため、候補を取得できません。サービスを起動してから設定の画面を開き直してください。」'
       - name: test_workspace_settings_screen_when_transcription_chosen_in_a_row
@@ -31,13 +31,13 @@ components:
       - name: test_workspace_settings_screen_when_transcription_choice_outdated
         case: 正常
         summary: 保存待ちの編集が変わった後の選択
-        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で「送信する」を選び、保存待ちの `transcription` を取り消して記録の `settings.transcription` が `{action: insert}` に戻った後に、プリセットの「一般」を選ぶ'
+        condition: '`GET /api/transcription` が `{available: true, presets: [一般, 開発]}` で「送信する」を選び、保存待ちの `transcription` を取り消して記録の `settings.transcription` が `{action: review}` に戻った後に、プリセットの「一般」を選ぶ'
         mock: MSW
-        expected: '最後の `POST /api/edits` が `{op: setting, key: transcription, value: {action: insert, preset: 一般}}` で呼ばれる'
+        expected: '最後の `POST /api/edits` が `{op: setting, key: transcription, value: {action: review, preset: 一般}}` で呼ばれる'
     state:
       - name: transcriptionChoice
         title: 最後に選んだ文字起こしの設定
-        type: '{ base: string; action?: "send" | "insert"; preset?: string | null } | null'
+        type: '{ base: string; action?: "review" | "send" | "insert"; preset?: string | null } | null'
         initial: 'null'
         description: 保存待ちの編集を再取得する前に続けて選んだ文字起こし後の挙動と用語集のプリセットと、選んだときの記録の `settings.transcription` の JSON の文字列（`base`）。選んだときに溜める `transcription` のもう一方の値はここから取り、ここに無い値は記録の `settings.transcription` から取る。描くときに記録の `settings.transcription` の JSON の文字列が `base` と一致しなければ `null` に戻す
         notes: '`useState`（記録の値が `base` と違えば、描くときに `null` へ戻す）'

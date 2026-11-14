@@ -1,10 +1,28 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test, vi } from "vitest";
+import { http, HttpResponse } from "msw";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { resetVoiceStore } from "@/shared/stores/voice-store";
+import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
+import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { RECORDS } from "@/testing/msw/handlers";
+import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
+
+afterEach(() => {
+  resetVoiceStore();
+  removeFakeMedia();
+  removeFakeWakeLock();
+});
+
+/** 音声入力を使える状態にする */
+const enableVoice = (): void => {
+  installFakeMedia();
+  installFakeWakeLock();
+  server.use(http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "review", preset: null })));
+};
 
 // キャンバスは jsdom で描けないため、ネットワークの描画を差し替える
 vi.mock("@/features/graph/graph/components/graph-canvas", () => ({
@@ -121,5 +139,37 @@ describe("PreviewShell", () => {
     // 検証
     await waitFor(() => expect(window.location.search).toBe("?id=N-1"));
     expect(await screen.findByRole("complementary", { name: /詳細/ })).toBeInTheDocument();
+  });
+
+  // 録音中にほかの画面へ移り、トップバーから録音中の入力欄へ戻る（正常系）
+  test("preview_shell_when_voice", async () => {
+    // 準備
+    enableVoice();
+    renderRoute("/spa/?tab=tasks&id=T-1");
+    await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
+    // 実行
+    await userEvent.click(screen.getByRole("button", { name: /^コメント（/ }));
+    expect(await screen.findByRole("dialog", { name: "コメント" })).toBeInTheDocument();
+    const voice = screen.getByRole("button", { name: /^音声入力中（T-1 へのコメント）/ });
+    await userEvent.click(voice);
+    // 検証
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("id")).toBe("T-1"));
+    expect(new URLSearchParams(window.location.search).get("panel")).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "文字起こし" })).toHaveFocus());
+  });
+
+  // 録音中に行き先の項目が無くなったら録音を捨てて帯を出す（正常系）
+  test("preview_shell_when_voice_target_removed", async () => {
+    // 準備
+    enableVoice();
+    const view = renderRoute("/spa/?tab=tasks&id=T-1");
+    await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
+    await screen.findByRole("button", { name: /^音声入力中（T-1 へのコメント）/ });
+    stubRecords({ tasks: [] });
+    // 実行
+    await act(() => view.queryClient.invalidateQueries());
+    // 検証
+    expect(await screen.findByText("T-1 が削除されたため、録音を破棄しました。")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^音声入力中/ })).toBeNull();
   });
 });

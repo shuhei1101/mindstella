@@ -1,0 +1,37 @@
+confirmations:
+  - topic: 画面一覧・画面遷移（トップバーの音声入力中の表示から録音中の入力欄へ戻る・録音中の移動・マイクのボタンの排他・設定の選択肢）
+    decision: この画面一覧・画面遷移で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 65fa36ce
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569381424
+  - topic: モックと画面の文言（既定のレビュー中への追加・追加できなかったとき・ほかの入力欄で音声入力中・トップバーの表示・録音を破棄した帯・設定の選択肢の並び）
+    decision: このモックと文言で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569828547
+  - topic: トップバーの音声入力中の表示の位置
+    decision: コメントのボタンの左隣（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569829571
+  - topic: 詳細の全画面で始めた録音へ戻るときに開く画面
+    decision: 録音を始めた詳細の全画面を開き直す（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4569830526
+  - topic: 入力欄が画面に無い間に失敗したときの帯（理由と「入力欄を開く」。合意済みのモックへの追加）
+    decision: この帯と文言で進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 9305ccbf
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4570030217
+  - topic: 入力欄が画面に無い間に失敗したときの帯の文（送信・文字起こしの失敗）
+    decision: 「{label}を送信できませんでした。文字起こしの結果は入力欄に残しています。」「{label}の文字起こしができませんでした。もう一度お試しください。」で進める（推奨案 A）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 6aa01013
+    thread: https://github.com/shuhei1101/mindstella/pull/529#discussion_r4570966249

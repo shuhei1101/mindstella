@@ -1,0 +1,35 @@
+# Red（テストコードの commit 09f8686d、実装なし）
+
+$ pytest tests/unit/preview/test_voice.py tests/unit/preview/test_send_form.py tests/unit/preview/test_reply_form.py tests/unit/preview/test_workspace_settings.py tests/unit/scripts/test_serve.py -q
+FAILED tests/unit/preview/test_voice.py::test_finish_voice[chromium-review]
+FAILED tests/unit/preview/test_voice.py::test_acquire_wake_lock[chromium] - A...
+FAILED tests/unit/preview/test_voice.py::test_acquire_wake_lock_when_unavailable[chromium-missing]
+FAILED tests/unit/preview/test_workspace_settings.py::test_workspace_settings_when_transcription[chromium-available]
+FAILED tests/unit/preview/test_voice.py::test_acquire_wake_lock_when_unavailable[chromium-denied]
+FAILED tests/unit/preview/test_workspace_settings.py::test_workspace_settings_when_transcription[chromium-unsupported]
+FAILED tests/unit/preview/test_voice.py::test_finish_voice_when_failed[chromium-review_failed]
+FAILED tests/unit/preview/test_send_form.py::test_send_form_when_voice[chromium-reviewed]
+FAILED tests/unit/scripts/test_serve.py::test_transcription_response_when_unavailable
+9 failed, 206 passed in 243.72s (0:04:03)
+
+$ npx vitest run
+ FAIL  frontend/src/app/preview-shell.test.tsx [ frontend/src/app/preview-shell.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/voice-store" from "frontend/src/app/preview-shell.test.tsx". Does the file exist?
+ FAIL  frontend/src/shared/hooks/use-voice-input.test.ts [ frontend/src/shared/hooks/use-voice-input.test.ts ]
+Error: Failed to resolve import "@/shared/stores/voice-store" from "frontend/src/shared/hooks/use-voice-input.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/stores/voice-store.test.ts [ frontend/src/shared/stores/voice-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/voice-store" from "frontend/src/shared/stores/voice-store.test.ts". Does the file exist?
+ FAIL  frontend/src/features/comments/thread/thread-view.test.tsx [ frontend/src/features/comments/thread/thread-view.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/voice-store" from "frontend/src/features/comments/thread/thread-view.test.tsx". Does the file exist?
+ FAIL  frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx [ frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/voice-store" from "frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx". Does the file exist?
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/components/send-form.test.tsx > SendForm > send_form_when_reviewed
+ FAIL  frontend/src/shared/components/topbar.test.tsx > Topbar > topbar_when_voice
+ FAIL  frontend/src/shared/core/voice.test.ts > acquireWakeLock > acquire_wake_lock
+ FAIL  frontend/src/shared/core/voice.test.ts > acquireWakeLock > acquire_wake_lock_when_unavailable
+ FAIL  frontend/src/features/comments/shared/reply-form.test.tsx > ReplyForm > reply_form_when_reviewed
+ FAIL  frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_transcription
+ FAIL  frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen_when_transcription_choice_outdated
+ Test Files  10 failed | 71 passed (81)
+      Tests  7 failed | 239 passed (246)

@@ -1,0 +1,162 @@
+id: MOD-489-254
+title: プレビュー / voice-store
+lead: 画面で 1 つの音声入力（録音を始めた入力欄・録音の段階・経過の時間・音量・画面の消灯の抑止）と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）。
+stores:
+  - name: useVoiceStore
+    title: 音声入力
+    container: frontend/src/shared/stores/voice-store.ts
+    usecase: 音声でコメントする
+    summary: 録音は画面で同時に 1 つで、録音を始めた入力欄の部品が外れても（画面を移る・パネルや入力を閉じる）録音と文字起こしを続ける。部品は selector で自分の入力欄（`key`）の分だけを購読する
+    state:
+      - name: session
+        type: '{key, destination, label, phase, recording, elapsed, levels, selection, ticket} | null'
+        initial: 'null'
+        description: 'いま録音・文字起こししている入力欄。`key` は入力欄の識別（`{target}#{loc}` か `thread:{id}` か `new-thread`）、`destination` は向けた先（`{target, loc}` か `{thread}`）と開く画面（`panel`・`full`・`comments`・`thread`）、`label` はトップバーに出す入力欄の名前、`phase` は `recording`・`transcribing`、`selection` はマイクを押したときの選んだ範囲、`ticket` は録音を始めるたびに 1 進める番号'
+      - name: notice
+        type: "{kind: 'discarded' | 'failed', text: string, key: string | null} | null"
+        initial: 'null'
+        description: トップバーの `voiceNotice` に渡す知らせ。`failed` は「入力欄を開く」で開く入力欄の `key` を持つ
+      - name: results
+        type: Record<string, VoiceResult>
+        initial: '{}'
+        description: 入力欄が画面に無い間に終わった結果。入力欄の部品が次に付いたとき（mount）に `takeVoiceResult` で受け取り、`status` に当てて消す
+    actions:
+      - name: startVoice
+        title: 録音を始める
+        kind: メソッド
+        is_async: true
+        summary: '`session` が無いときだけ、`startRecording` で録り始めて `session` を `phase: recording` で入れ、1 秒ごとに `elapsed` を進め、`onLevel` で `levels` に `pushLevel` する。続けて `acquireWakeLock` を呼ぶ。`session` があれば何もしない'
+        args:
+          - name: input
+            type: '{key, destination, label, selection}'
+            required: true
+            description: 録音を始めた入力欄
+        returns:
+          type: Promise<RecordingFailure | null>
+          description: 録音を始められなかった理由（`denied`・`no-microphone`）。始めたら null
+        unit_tests:
+          - name: test_start_voice
+            case: 正常
+            summary: 1 つだけ録り、画面の消灯の抑止を求める
+            condition: 偽の録音・偽の `navigator.wakeLock`。D-1 で始めた後に D-2 で始める
+            mock: '`vi.stubGlobal`'
+            expected: '`session.key` が D-1 のまま、`startRecording` と `wakeLock.request("screen")` が 1 回ずつ'
+      - name: cancelVoice
+        title: 録音をキャンセル
+        kind: メソッド
+        summary: '`recording.cancel()` と `releaseWakeLock` を呼び、`session` を null にする（× を押したとき）'
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_cancel_voice
+            case: 正常
+            summary: 録音を捨てて抑止を解く
+            condition: 録音中に呼ぶ
+            mock: '`vi.stubGlobal`'
+            expected: '`cancel` と `release` が 1 回ずつ、`session` が null'
+      - name: finishVoice
+        title: 文字起こしを終える
+        kind: メソッド
+        is_async: true
+        summary: 録音を止めて文字起こしし、受け取った入力欄の中身へ挿入して設定の挙動で溜める・送る。入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけを知らせる
+        args:
+          - name: input
+            type: "{body: string, start: number, end: number, action: 'review' | 'send' | 'insert', mounted: () => boolean}"
+            required: true
+            description: ✓ を押したときの入力欄の中身とカーソルの位置、設定の挙動、入力欄がまだ画面にあるかを返す関数
+        returns:
+          type: Promise<VoiceResult>
+          description: '`reviewed`（空の中身・`count`）・`sent`（空の中身・`entered`）・`inserted`（中身・`caret`）・`failed`（中身・`detail`）・`unavailable`（`reason`・`detail`）・`discarded`（文字起こし中に録音を捨てた。何もしない）'
+        process: |-
+          1. `phase: transcribing` にして `releaseWakeLock` を呼び、`recording.stop()` の音声を `POST /api/transcriptions` へ送る
+             - 503 の場合、`unavailable` にする
+             - 断られた・届かない・`text` が空の場合、元の中身のまま `failed`（`detail` か `VOICE_TEXT.failed`）にする
+          2. 文字起こしが返った時点で `session.ticket` が変わっていれば（`discardVoice` で捨てた）、溜めも送りもせずに `discarded` を返す
+          3. `insertAtCursor` で挿入する
+          4. `action`（無ければ `review`）で分ける
+             - `review` の場合、`POST /api/comments` へ向けた先と全文を送り、201 なら空の中身の `reviewed`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.reviewFailed`）
+             - `send` の場合、`POST /api/comments/send-now` へ送り、送れたら空の中身の `sent`、それ以外は挿入した中身の `failed`（`VOICE_TEXT.sendFailed`）
+             - `insert` の場合、挿入した中身と位置の `inserted`
+          5. 溜める・送る間に `session.ticket` が変わっていれば、書きかけも知らせも当てずに `discarded` を返す。変わっていなければ `session` を null にする
+          6. `mounted()` が偽なら、結果の中身を `PUT /api/drafts` で書きかけに当て（失敗しても続ける）、`results` に入れる。`failed`・`unavailable` なら `notice` を `failed`（`key` と、失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする
+        unit_tests:
+          - name: test_finish_voice
+            case: 正常
+            summary: 挙動で分ける
+            condition: '入力欄 `確認: `・カーソル 4、文字起こしが `案 A にする`。`parametrize`: `action: review` / 無い / `insert` / `send`'
+            mock: MSW と `vi.stubGlobal`
+            expected: '`POST /api/comments` が `確認: 案 A にする` で 1 回、`reviewed` で中身が空 / 同じ / `inserted`・`caret: 11` でどの送信も呼ばない / `send-now` が 1 回で `sent`'
+          - name: test_finish_voice_when_unmounted
+            case: 正常
+            summary: 入力欄が画面に無い間に終わったら書きかけへ当て、失敗だけ知らせる
+            condition: '`mounted` が偽。`POST /api/comments` が 201 / 500 / 500 で `PUT /api/drafts` も 500'
+            mock: MSW と `vi.stubGlobal`
+            expected: '`results` に `reviewed` が入り `notice` が null / `PUT /api/drafts` が挿入した全文で呼ばれ、`notice` が `failed` で `key` を持つ / `PUT /api/drafts` も 500 でも `results` に `failed` が入り `notice` が `failed`'
+          - name: test_finish_voice_when_discarded
+            case: 正常
+            summary: 文字起こし中に行き先が無くなって録音を捨てたら、溜めず・書きかけも知らせも当てない
+            condition: '`mounted` が偽。文字起こしの応答を待つ間に `discardVoice(() => false)` を呼ぶ'
+            mock: MSW と `vi.stubGlobal`
+            expected: '`discarded` を返し、`POST /api/comments`・`PUT /api/drafts` を呼ばず、`results` が空で `notice` が `discarded` のまま'
+          - name: test_finish_voice_when_failed
+            case: 異常
+            summary: 文字起こしと追加・送信の失敗
+            condition: '`parametrize`: 文字起こしが 503・`reason: stopped` / 502 / 届かない / `review` で `POST /api/comments` が 500'
+            mock: MSW と `vi.stubGlobal`
+            expected: '`unavailable`・`stopped` / `failed`・元の中身 / `failed`・`VOICE_TEXT.failed` / `failed`・`VOICE_TEXT.reviewFailed`・挿入した中身'
+      - name: discardVoice
+        title: 行き先が無くなった録音を捨てる
+        kind: メソッド
+        summary: '記録を読み直したとき、`session.destination` の項目・スレッドが無ければ `cancelVoice` と同じく捨て、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にする'
+        args:
+          - name: exists
+            type: '(destination) => boolean'
+            required: true
+            description: 向けた先が記録にあるか
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_discard_voice
+            case: 正常
+            summary: 行き先が無いときだけ捨てる
+            condition: '`exists` が真 / 偽'
+            mock: '`vi.stubGlobal`'
+            expected: '`session` がそのまま / null で `notice` が `discarded`'
+      - name: dismissVoiceNotice
+        title: 知らせを閉じる
+        kind: メソッド
+        summary: '`notice` を null にする'
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_dismiss_voice_notice
+            case: 正常
+            summary: 知らせを消す
+            condition: '`notice` があるときに呼ぶ'
+            mock: なし
+            expected: '`notice` が null'
+      - name: takeVoiceResult
+        title: 画面に無い間の結果を受け取る
+        kind: メソッド
+        summary: '`results` から `key` の結果を返して消す'
+        args:
+          - name: key
+            type: string
+            required: true
+            description: 入力欄の識別
+        returns:
+          type: VoiceResult | null
+          description: 結果
+        unit_tests:
+          - name: test_take_voice_result
+            case: 正常
+            summary: 1 回だけ受け取る
+            condition: '`results` に D-1 の結果があるときに 2 回呼ぶ'
+            mock: なし
+            expected: 1 回目は結果、2 回目は null
+notes:
+  単体テスト: 同じフォルダの `voice-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  画面の消灯の抑止: '`visibilitychange` で画面が見えたとき、`session` が `recording` で抑止が解かれていれば `acquireWakeLock` を呼び直す。購読はストアを作るときに 1 回だけ張る'

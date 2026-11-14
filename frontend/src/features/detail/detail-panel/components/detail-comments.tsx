@@ -103,9 +103,12 @@ export const DetailComments = ({ id, titles, changeSets, onOpenItem, onOpenChang
   };
   const shown = [...items, ...removed.map((item) => ({ ...item, gone: true as const }))].sort((a, b) => (order === "newest" ? commentNumber(b.id) - commentNumber(a.id) : commentNumber(a.id) - commentNumber(b.id)));
   const text = form.body ?? draft;
-  // 音声入力（録音・文字起こし・すぐ送る）。向けた先が変わったら録音を捨てる
+  // 音声入力（録音・文字起こし・レビュー中に溜める・すぐ送る）。向けた先が変わっても録音は続ける
   const voice = useVoiceInput({
+    key: `${id}#${loc === null ? "" : JSON.stringify(loc)}`,
     destination: { target: id, loc },
+    view: "panel",
+    label: `${id} へのコメント`,
     body: text,
     onBodyChange: (next) => {
       if (next === "") setLoc(null);

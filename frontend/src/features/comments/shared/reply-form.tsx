@@ -8,7 +8,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/cn";
 
 /** 返信を溜める状態。idle は結果を出さない */
-export type ReplyStatus = "idle" | "saving" | "saved" | "failed" | "sent" | "inserted" | "voice-failed";
+export type ReplyStatus = "idle" | "saving" | "saved" | "failed" | "sent" | "inserted" | "reviewed" | "voice-failed";
 
 /** 本文の最大の文字数（『レビュー中のコメントの追加』の body） */
 const COMMENT_BODY_MAX_LENGTH = 10000;
@@ -96,7 +96,7 @@ export const ReplyForm = ({ thread, body, status, count = null, detail = null, v
       <p id={messageId} role="status" className={cn("m-0 flex items-start gap-1 text-small text-muted-foreground empty:hidden", (status === "failed" || status === "voice-failed") && "text-foreground")}>
         {voice === "recording" || voice === "transcribing" ? (
           <VoiceProgress voice={voice} elapsed={elapsed} />
-        ) : status === "sent" || status === "inserted" || status === "voice-failed" ? (
+        ) : status === "sent" || status === "inserted" || status === "reviewed" || status === "voice-failed" ? (
           <VoiceResult status={status} detail={detail} entered={entered} />
         ) : (
           <ReplyResult status={status} count={count} detail={detail} />

@@ -485,7 +485,7 @@ def test_normal_when_transcription(make_workspace: MakeWorkspace, call_tool: Cal
 def test_error_when_transcription_action_invalid(
     make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
 ) -> None:
-    """send・insert のどちらでもない挙動を渡すと、何も書かない（異常系）。"""
+    """review・send・insert のどれでもない挙動を渡すと、何も書かない（異常系）。"""
     # 準備
     root = make_workspace()
     before = snapshot_tree(root)

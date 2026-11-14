@@ -9,6 +9,7 @@ export type SettingsTranscriptionAction = typeof SettingsTranscriptionAction[key
 
 
 export const SettingsTranscriptionAction = {
+  review: 'review',
   send: 'send',
   insert: 'insert',
 } as const;

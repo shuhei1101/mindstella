@@ -2,7 +2,7 @@
 
 namespace MindmapPreview {
   /** 溜める状態。idle は結果を出さない */
-  export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "sent" | "inserted" | "voice-failed";
+  export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "reviewed" | "sent" | "inserted" | "voice-failed";
 
   /** 音声入力の状態 */
   export type VoicePhase = "idle" | "disabled" | "recording" | "transcribing";
@@ -140,13 +140,16 @@ namespace MindmapPreview {
     return [];
   }
 
-  /** 音声入力の結果（送信した・挿入した・失敗した）の中身。音声入力の結果でなければ null */
+  /** 音声入力の結果（レビュー中に追加した・送信した・挿入した・失敗した）の中身。音声入力の結果でなければ null */
   export function voiceResultContent(status: string | undefined, detail: string | null | undefined, entered = false): Child[] | null {
     if (status === "sent") {
       return [icon("check"), h({ tag: "span", children: [entered ? "送信し、Claude Code へ入力しました。" : "送信しました。Claude Code へは入力していません。"] })];
     }
     if (status === "inserted") {
       return [icon("check"), h({ tag: "span", children: ["文字起こしの結果を挿入しました。"] })];
+    }
+    if (status === "reviewed") {
+      return [icon("check"), h({ tag: "span", children: ["文字起こしの結果をレビュー中に追加しました。"] })];
     }
     if (status === "voice-failed") {
       return [icon("alert"), h({ tag: "span", children: [detail ?? VOICE_TEXT.failed] })];

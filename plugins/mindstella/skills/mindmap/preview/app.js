@@ -680,6 +680,12 @@ var MindmapPreview;
                 pendingOpen: editState.open,
                 pendingBlocked: editState.blocked.length > 0,
                 onPending: togglePending,
+                // 録っている間は音声入力中の表示、知らせがあれば帯を出す
+                voice: serverMode && comment.voice.key !== null && comment.voice.phase !== "idle"
+                    ? { state: comment.voice.phase, label: comment.voice.label ?? "", elapsed: comment.voice.elapsed }
+                    : null,
+                voiceNotice: serverMode ? comment.voice.notice : null,
+                onVoice,
                 diffPoint: point === null ? null : { name: point.name, sub: point.sub },
                 onHistory: openHistory,
                 onDiffOff: () => selectPoint(null),
@@ -1043,7 +1049,6 @@ var MindmapPreview;
             renderDetail();
             renderPending();
             renderWorkspace();
-            checkVoice();
             if (route.tab === "graph")
                 MindmapPreview.selectGraphItem(route.id);
             // 作り直した本文にも、開いているパネルの下の部品を止める
@@ -1260,7 +1265,7 @@ var MindmapPreview;
             reviewFocus: null,
             expanded: new Set(),
             detailExpanded: new Set(),
-            voice: { availability: null, key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, ticket: 0 },
+            voice: { availability: null, key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, ticket: 0, destination: null, label: null, notice: null, release: null },
         };
         const threadsApi = MindmapPreview.threadApi();
         const voiceCalls = MindmapPreview.voiceApi();
@@ -1388,6 +1393,9 @@ var MindmapPreview;
             if (voice.key === key && voice.phase !== "idle") {
                 return { voice: voice.phase, voiceReason: null, elapsed: voice.elapsed, levels: voice.levels };
             }
+            // ほかの入力で録っている間は押せない
+            if (voice.key !== null)
+                return { voice: "disabled", voiceReason: MindmapPreview.VOICE_TEXT.busy, elapsed: 0, levels: [] };
             return { voice: "idle", voiceReason: null, elapsed: 0, levels: [] };
         };
         /** 録っている入力の波形へ音量を 1 つ足す（入力を描き直さず、波形の棒だけを足して古い棒を捨てる） */
@@ -1418,14 +1426,37 @@ var MindmapPreview;
             if (range !== null)
                 field.setSelectionRange(range.start, range.end);
         };
-        /** 録音をやめ、マイクを解放して、文字起こし中の結果を捨てる */
+        /** 画面の消灯の抑止を解く */
+        const releaseVoiceLock = () => {
+            comment.voice.release?.();
+            comment.voice.release = null;
+        };
+        /** 画面の消灯の抑止を求める。待つ間に録音が終わった・もう抑止していたら解く */
+        const lockVoice = (ticket) => {
+            void MindmapPreview.acquireWakeLock().then((release) => {
+                const { voice } = comment;
+                if (voice.ticket !== ticket || voice.phase !== "recording" || voice.release !== null) {
+                    release();
+                    return;
+                }
+                voice.release = release;
+            });
+        };
+        /** 録っている入力を空にする（録音の段階・向けた先・名前も戻す） */
+        const clearVoice = () => {
+            Object.assign(comment.voice, { key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, destination: null, label: null });
+        };
+        /** 録音をやめ、マイクと画面の消灯の抑止を解放して、文字起こし中の結果を捨てる */
         const abandonVoice = () => {
             const { voice } = comment;
             if (voice.key === null)
                 return;
             voice.recording?.cancel();
             window.clearInterval(voiceTimer);
-            Object.assign(voice, { key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, ticket: voice.ticket + 1 });
+            releaseVoiceLock();
+            clearVoice();
+            voice.ticket += 1;
+            renderTop();
         };
         /** 今の画面に出ている入力の `formKey`（詳細の下端・新しいスレッド・開いているスレッドの返信） */
         const shownFormKeys = () => {
@@ -1441,20 +1472,95 @@ var MindmapPreview;
             }
             return keys;
         };
-        /** 録っている入力が無くなった・向けた先が変わったら録音を捨てる（書き換えの知らせでの描き直しでは入力が残るので止めない） */
-        const checkVoice = () => {
-            const { key } = comment.voice;
-            if (key !== null && !shownFormKeys().has(key))
-                abandonVoice();
+        /** 記録を読み直したとき、録っている入力の向けた先の項目・スレッドが無ければ録音を捨てて知らせる */
+        const discardMissingVoice = () => {
+            const { destination } = comment.voice;
+            if (destination === null || "newThread" in destination)
+                return;
+            const id = "thread" in destination ? destination.thread : destination.target;
+            const exists = "thread" in destination ? comment.threads.some((thread) => thread.id === id) : index.byId.has(id);
+            if (exists)
+                return;
+            abandonVoice();
+            comment.voice.notice = { kind: "discarded", text: MindmapPreview.VOICE_TEXT.discarded(id), key: null };
+            renderTop();
         };
         /** 入力の向けた先 */
         const destinationOf = (state) => state.thread !== null ? { thread: state.thread } : { target: state.target, loc: state.loc };
+        /** 録っている入力の向けた先と、戻るときに開く画面 */
+        const voiceDestinationOf = (state) => {
+            if (state.thread !== null)
+                return { thread: state.thread };
+            if (state.target === null)
+                return { newThread: true };
+            return { target: state.target, loc: state.loc, view: route.full ? "full" : "panel" };
+        };
+        /** トップバーに出す入力の名前 */
+        const voiceLabelOf = (state) => {
+            if (state.thread !== null)
+                return `${state.thread} への返信`;
+            return state.target === null ? "新しいスレッド" : `${state.target} へのコメント`;
+        };
         /** 入力を今の状態で描き直す（詳細の下端は入力だけ、コメントの一覧の入力はパネルごと） */
         const redrawVoiceForm = (state, focus) => {
             if (state.thread !== null || state.target === null)
                 renderComments();
             else
                 redrawForm({ target: state.target, focus });
+        };
+        /** 入力の向けた先の画面を、その画面を今開くときと同じく開く（入力が閉じていれば開く）。録音中は ✓、文字起こし中は入力欄へフォーカスを移す */
+        const openVoiceInput = (key) => {
+            const state = comment.forms.get(key);
+            if (state === undefined)
+                return;
+            const destination = comment.voice.key === key ? comment.voice.destination : voiceDestinationOf(state);
+            if (destination === null)
+                return;
+            if ("target" in destination) {
+                if (comment.listOpen)
+                    closeList();
+                prefs.commentFormClosed = null;
+                display.storageOk = persist();
+                if (route.id !== destination.target || route.full !== (destination.view === "full")) {
+                    route = { ...route, full: destination.view === "full" };
+                    openItem(destination.target, false);
+                }
+                else {
+                    redrawForm({ target: destination.target, focus: false });
+                }
+            }
+            else {
+                if (!comment.listOpen)
+                    openList();
+                if ("thread" in destination) {
+                    if (comment.openedThread?.id !== destination.thread || comment.view !== "thread")
+                        openThread(destination.thread, false);
+                }
+                else {
+                    resetPanelView();
+                    comment.composing = true;
+                    renderComments();
+                }
+            }
+            if (comment.voice.key === key && comment.voice.phase === "recording")
+                document.querySelector(".send-rec-done")?.focus();
+            else
+                voiceField(state)?.focus();
+        };
+        /** トップバーの音声入力中の表示・帯の「入力欄を開く」（`open`）と、帯の ×（`dismiss`） */
+        const onVoice = (act) => {
+            const { voice } = comment;
+            if (act === "dismiss") {
+                voice.notice = null;
+                renderTop();
+                return;
+            }
+            const key = voice.key ?? voice.notice?.key ?? null;
+            if (voice.key === null)
+                voice.notice = null;
+            renderTop();
+            if (key !== null)
+                openVoiceInput(key);
         };
         /** 文字起こしの可否を読み直す。返ったら入力と、設定の画面の音声入力のまとまりを描き直す */
         const refreshAvailability = async () => {
@@ -1465,6 +1571,13 @@ var MindmapPreview;
             if (comment.listOpen)
                 renderComments();
             renderWorkspaceTranscription();
+        };
+        /** 入力が画面に無い間に失敗したときの知らせの文 */
+        const awayVoiceText = (outcome, action, label) => {
+            // 文字起こしの前に失敗した（中身に挿入していない）・使えない: 文字起こしの失敗として知らせる
+            if (outcome.kind === "unavailable" || outcome.caret === null)
+                return MindmapPreview.VOICE_TEXT.awayTranscribeFailed(label);
+            return action === "send" ? MindmapPreview.VOICE_TEXT.awaySendFailed(label) : MindmapPreview.VOICE_TEXT.awayReviewFailed(label);
         };
         /** 入力のマイク・×・✓ のコールバック */
         const voiceHandlers = (state) => {
@@ -1489,17 +1602,17 @@ var MindmapPreview;
                             recording.cancel();
                             return;
                         }
-                        Object.assign(comment.voice, { key, phase: "recording", recording, elapsed: 0, levels: [] });
+                        Object.assign(comment.voice, { key, phase: "recording", recording, elapsed: 0, levels: [], destination: voiceDestinationOf(state), label: voiceLabelOf(state) });
                         Object.assign(state, { status: "idle", detail: null });
                         window.clearInterval(voiceTimer);
-                        // 1 秒ごとに経過の時間を進め、録っている入力の時間だけを書き換える
+                        // 1 秒ごとに経過の時間を進め、録っている入力とトップバーの時間だけを書き換える
                         voiceTimer = window.setInterval(() => {
                             comment.voice.elapsed += 1;
-                            const time = document.querySelector(".send-msg.recording .rec-time");
-                            if (time !== null)
+                            for (const time of document.querySelectorAll(".send-msg.recording .rec-time, .voice-btn .vb-time"))
                                 time.textContent = MindmapPreview.formatElapsed(comment.voice.elapsed);
-                            checkVoice();
                         }, 1000);
+                        lockVoice(ticket);
+                        renderTop();
                         redrawVoiceForm(state, false);
                         // 入力欄を波形に替えたため、録音中に押す ✓ へフォーカスを移す
                         document.querySelector(".send-rec-done")?.focus();
@@ -1529,18 +1642,23 @@ var MindmapPreview;
                         return;
                     const ticket = voice.ticket;
                     window.clearInterval(voiceTimer);
+                    releaseVoiceLock();
                     voice.phase = "transcribing";
                     state.body = input.body;
+                    renderTop();
                     redrawVoiceForm(state, false);
                     const selection = voice.selection;
-                    const action = data.settings.transcription?.action === "send" ? "send" : "insert";
+                    const label = voice.label ?? voiceLabelOf(state);
+                    const configured = data.settings.transcription?.action;
+                    const action = configured === "send" || configured === "insert" ? configured : "review";
                     // 入力欄は録音中に作り直されて選んだ範囲を失うため、押したときの範囲に挿入する
                     const range = selection ?? { start: input.start, end: input.end };
-                    void MindmapPreview.finishVoice(recording, { ...input, ...range, action, destination: destinationOf(state) }, voiceCalls).then(async (outcome) => {
-                        // 返る前に入力が無くなった・別の録音を始めた: 結果を捨てる
+                    void MindmapPreview.finishVoice(recording, { ...input, ...range, action, destination: destinationOf(state) }, { ...voiceCalls, add: api.add }).then(async (outcome) => {
+                        // 返る前に録音を捨てた・別の録音を始めた: 結果を捨てる
                         if (comment.voice.ticket !== ticket)
                             return;
-                        Object.assign(comment.voice, { key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null });
+                        const shown = shownFormKeys().has(key);
+                        clearVoice();
                         if (outcome.kind === "unavailable") {
                             const known = comment.voice.availability;
                             comment.voice.availability = {
@@ -1548,27 +1666,47 @@ var MindmapPreview;
                                 reason: outcome.reason,
                                 detail: outcome.detail,
                                 presets: [],
-                                action: known?.action ?? "insert",
+                                action: known?.action ?? "review",
                                 preset: known?.preset ?? null,
                             };
                         }
-                        const statusOf = { sent: "sent", inserted: "inserted", failed: "voice-failed", unavailable: "voice-failed" };
-                        Object.assign(state, { body: outcome.body, status: statusOf[outcome.kind], detail: outcome.detail, entered: outcome.entered });
-                        if (outcome.kind === "sent") {
-                            // 送った: 書きかけを消し、箇所を添えた入力は箇所を外す
+                        const statusOf = { reviewed: "reviewed", sent: "sent", inserted: "inserted", failed: "voice-failed", unavailable: "voice-failed" };
+                        Object.assign(state, { body: outcome.body, status: statusOf[outcome.kind], detail: outcome.detail, entered: outcome.entered, count: outcome.count ?? null });
+                        const delivered = outcome.kind === "sent" || outcome.kind === "reviewed";
+                        if (delivered) {
+                            // 溜めた・送った: 書きかけを消し、箇所を添えた入力は箇所を外す
                             saveDraftNow(state);
                             if (state.loc !== null && state.target !== null)
                                 comment.pendingLoc.delete(state.target);
-                            await loadThreads();
                         }
-                        else {
+                        else if (shown) {
                             scheduleDraft(state);
                         }
+                        else {
+                            // 入力が画面に無い: 結果の中身を書きかけに保つ
+                            saveDraftNow(state);
+                        }
+                        if (!shown && (outcome.kind === "failed" || outcome.kind === "unavailable"))
+                            comment.voice.notice = { kind: "failed", text: awayVoiceText(outcome, action, label), key };
+                        renderTop();
+                        if (outcome.kind === "reviewed") {
+                            if (outcome.id !== undefined) {
+                                knownIds.add(outcome.id);
+                                comment.checked.add(outcome.id);
+                            }
+                            await loadReview();
+                            refreshComments();
+                        }
+                        else if (outcome.kind === "sent") {
+                            await loadThreads();
+                        }
+                        if (!shown)
+                            return;
                         redrawVoiceForm(state, true);
                         // 挿入した: カーソルを挿入した文字の後ろへ置く。中身が元のままの失敗: 押したときの範囲へ戻す
-                        if (outcome.caret !== null)
+                        if (outcome.caret !== null && !delivered)
                             focusVoiceField(state, { start: outcome.caret, end: outcome.caret });
-                        else if (outcome.kind !== "sent" && outcome.body === input.body)
+                        else if (!delivered && outcome.body === input.body)
                             focusVoiceField(state, selection);
                     });
                 },
@@ -1581,6 +1719,14 @@ var MindmapPreview;
                 },
             };
         };
+        // 画面が見えたとき、録音中で抑止が解かれていれば求め直す（ブラウザは画面が隠れると抑止を解く）
+        document.addEventListener("visibilitychange", () => {
+            const { voice } = comment;
+            if (document.visibilityState !== "visible" || voice.phase !== "recording")
+                return;
+            voice.release = null;
+            lockVoice(voice.ticket);
+        });
         /** 書きかけをすぐ保つ（空なら消える）。届かないときは何も出さない */
         const saveDraftNow = (state) => {
             const key = formKey(state.target, state.loc, state.thread);
@@ -1634,7 +1780,6 @@ var MindmapPreview;
                 return;
             const next = MindmapPreview.sendForm(formProps(target));
             current.replaceWith(next);
-            checkVoice();
             if (!focus)
                 return;
             const field = next.querySelector("textarea");
@@ -1693,9 +1838,6 @@ var MindmapPreview;
                     // 開閉を端末に残し、下端の入力を描き直して開閉のボタンへフォーカスを戻す（書きかけはそのまま残す）
                     toggle: (open) => {
                         prefs.commentFormClosed = open ? null : true;
-                        // 入力を畳む: 録っていれば録音を捨てる
-                        if (!open && comment.voice.key === formKey(target, loc))
-                            abandonVoice();
                         display.storageOk = persist();
                         if (target === null)
                             return;
@@ -1783,7 +1925,6 @@ var MindmapPreview;
                     comment.listScroll = current.querySelector(".comments-body")?.scrollTop ?? 0;
                 current?.remove();
                 scheduleInert();
-                checkVoice();
                 return;
             }
             captureTyped();
@@ -1819,7 +1960,6 @@ var MindmapPreview;
                 panel?.querySelector(`[data-focus="${focusKey}"]`)?.focus();
             }
             scheduleInert();
-            checkVoice();
         };
         /** トップバーの件数・詳細パネルのレビュー中のコメント・一覧を、入力中の欄とスクロールの位置を保って描き直す */
         const refreshComments = () => {
@@ -3434,6 +3574,8 @@ var MindmapPreview;
             // 差分の表示に移っていれば保存待ちの編集は当てず、そうでなければ当て直す
             syncEditView();
             document.title = `${data.settings.summary} | mindstella`;
+            // 録っている入力の向けた先が無くなった: 録音を捨てて知らせる
+            discardMissingVoice();
             // 開いていた項目が消えた: 詳細パネルを閉じる
             if (route.id !== null && !index.byId.has(route.id)) {
                 route = { ...route, id: null, full: false, filters: {}, heading: null };

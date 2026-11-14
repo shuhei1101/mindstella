@@ -58,7 +58,7 @@ def test_normal_when_not_configured(
     result = _get_status(start_voice_server, fake.url, root)
     # 検証
     assert result.status == 200
-    assert (result.json()["action"], result.json()["preset"]) == ("insert", None)
+    assert (result.json()["action"], result.json()["preset"]) == ("review", None)
 
 
 def test_normal_when_service_stopped(

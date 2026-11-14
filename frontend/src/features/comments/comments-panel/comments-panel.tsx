@@ -15,6 +15,7 @@ import { useVoiceInput } from "@/shared/hooks/use-voice-input";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { cn } from "@/shared/lib/cn";
 import { usePrefs, writePrefs } from "@/shared/stores/prefs-store";
+import { readVoiceState } from "@/shared/stores/voice-store";
 
 const FILTERS = [
   { key: "open", label: "オープン" },
@@ -27,14 +28,20 @@ export type CommentsPanelProps = {
   onOpenChangeSet: (id: string) => void;
 };
 
+/** 新しいスレッドの入力の、音声入力の識別 */
+const NEW_THREAD_VOICE_KEY = "new-thread";
+
 type FreeState = { body: string; status: SendStatus; count: number | null; detail: string | null };
 
-/** 新しいスレッドの入力。閉じると外れるので、録っていれば録音を捨てる */
+/** 新しいスレッドの入力。閉じて外れても録音と文字起こしは続ける */
 const NewThreadForm = ({ free, setFree }: { free: FreeState; setFree: (next: FreeState | ((current: FreeState) => FreeState)) => void }) => {
   const add = useAddComment();
   const saveDraft = useSaveDraft();
   const voice = useVoiceInput({
+    key: NEW_THREAD_VOICE_KEY,
     destination: { target: null, loc: null },
+    view: "comments",
+    label: "新しいスレッド",
     body: free.body,
     onBodyChange: (next) => {
       setFree({ body: next, status: "idle", count: null, detail: null });
@@ -89,7 +96,8 @@ export const CommentsPanel = ({ onOpenItem, onOpenChangeSet }: CommentsPanelProp
   const filter: ThreadFilter = search.tstatus ?? "open";
   const tag = search.ttag ?? null;
   const freeDraft = data.drafts.find((draft) => draft.target === null && draft.thread === null)?.body ?? "";
-  const [composing, setComposing] = useState(false);
+  // 新しいスレッドの入力で音声入力中なら、入力を出して開く
+  const [composing, setComposing] = useState(() => readVoiceState().session?.key === NEW_THREAD_VOICE_KEY);
   const heading = useRef<HTMLHeadingElement>(null);
   const composer = useRef<HTMLDivElement>(null);
   // 開いたときに見出しへフォーカスを移す（パネルが Esc を受ける）

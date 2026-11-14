@@ -33,7 +33,7 @@ export const GetRecordsResponse = zod.looseObject({
   "visible_kinds": zod.array(zod.enum(['decisions', 'tasks', 'research', 'docs', 'terms', 'notes', 'logs'])).optional()
 }).optional(),
   "transcription": zod.object({
-  "action": zod.enum(['send', 'insert']).optional(),
+  "action": zod.enum(['review', 'send', 'insert']).optional(),
   "preset": zod.string().nullish()
 }).optional()
 }),
@@ -384,7 +384,7 @@ export const GetTranscriptionResponse = zod.object({
   "reason": zod.union([zod.literal('stopped'),zod.literal('unsupported'),zod.literal(null)]).nullable(),
   "detail": zod.string().nullable(),
   "presets": zod.array(zod.string()),
-  "action": zod.enum(['send', 'insert']),
+  "action": zod.enum(['review', 'send', 'insert']),
   "preset": zod.string().nullable()
 })
 

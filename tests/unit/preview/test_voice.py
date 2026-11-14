@@ -73,12 +73,14 @@ RECORDING_SCRIPT = """async ({action, failure, ticks}) => {
 }"""
 
 # 偽の API と録音で finishVoice を呼ぶ JavaScript
-FINISH_SCRIPT = """async ({action, transcribe, sendNow}) => {
+FINISH_SCRIPT = """async ({action, transcribe, sendNow, add}) => {
     const sent = [];
+    const added = [];
     const api = {
         status: async () => ({ok: true, data: null}),
         transcribe: async () => transcribe,
         sendNow: async (input) => { sent.push(input); return sendNow; },
+        add: async (input) => { added.push(input); return add; },
     };
     const recording = {stop: async () => new Blob(["v"], {type: "audio/webm"}), cancel: () => {}};
     const outcome = await MindmapPreview.finishVoice(
@@ -86,11 +88,35 @@ FINISH_SCRIPT = """async ({action, transcribe, sendNow}) => {
         {body: "確認: ", start: 4, end: 4, action, destination: {target: "D-1", loc: null}},
         api,
     );
-    return {outcome, sent};
+    return {outcome, sent, added};
 }"""
 
 # 文字起こしできたときの API の結果
 TRANSCRIBED = {"ok": True, "data": {"text": "案 A にする"}, "status": 200, "detail": None, "stale": []}
+
+# レビュー中に溜められたときの API の結果
+ADDED = {"ok": True, "data": {"id": "C-1", "created": "2026-11-14T00:00:00+00:00", "count": 1}}
+
+# 偽の navigator.wakeLock で acquireWakeLock を呼び、返った関数を 2 回呼ぶ JavaScript
+WAKE_LOCK_SCRIPT = """async ({mode}) => {
+    const requested = [];
+    let released = 0;
+    const sentinel = {release: async () => { released += 1; }};
+    const navigator = mode === "missing" ? {} : {wakeLock: {request: async (type) => {
+        requested.push(type);
+        if (mode === "denied") { throw new DOMException("x", "NotAllowedError"); }
+        return sentinel;
+    }}};
+    try {
+        const release = await MindmapPreview.acquireWakeLock({navigator});
+        release();
+        release();
+        await Promise.resolve();
+        return {requested, released, error: null};
+    } catch (error) {
+        return {requested, released, error: String(error)};
+    }
+}"""
 
 
 @pytest.mark.parametrize(
@@ -260,6 +286,12 @@ def test_format_elapsed(
     ("action", "expected_outcome", "expected_sent"),
     [
         pytest.param(
+            "review",
+            {"kind": "reviewed", "body": "", "count": 1},
+            [],
+            id="review",
+        ),
+        pytest.param(
             "insert",
             {"kind": "inserted", "body": "確認: 案 A にする", "caret": 11},
             [],
@@ -286,11 +318,14 @@ def test_finish_voice(
     sent_now = {"ok": True, "data": {"sent": "t", "thread": "TH-1", "post": "TH-1-1", "entered": True}}
     # 実行
     result = preview_page.evaluate(
-        FINISH_SCRIPT, {"action": action, "transcribe": TRANSCRIBED, "sendNow": sent_now}
+        FINISH_SCRIPT,
+        {"action": action, "transcribe": TRANSCRIBED, "sendNow": sent_now, "add": ADDED},
     )
     # 検証
     assert {key: result["outcome"][key] for key in expected_outcome} == expected_outcome
     assert result["sent"] == expected_sent
+    expected_added = [{"target": "D-1", "loc": None, "body": "確認: 案 A にする"}] if action == "review" else []
+    assert result["added"] == expected_added
 
 
 @pytest.mark.parametrize(
@@ -339,6 +374,17 @@ def test_finish_voice(
             },
             id="send_failed",
         ),
+        pytest.param(
+            "review",
+            TRANSCRIBED,
+            None,
+            {
+                "kind": "failed",
+                "detail": "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。",
+                "body": "確認: 案 A にする",
+            },
+            id="review_failed",
+        ),
     ],
 )
 def test_finish_voice_when_failed(
@@ -349,12 +395,38 @@ def test_finish_voice_when_failed(
     send_now: dict[str, Any] | None,
     expected: dict[str, Any],
 ) -> None:
-    """文字起こしと送信の失敗（異常系）。"""
+    """文字起こしと追加・送信の失敗（異常系）。"""
     # 準備
     load_preview_scripts()
+    add_failed = {"ok": False, "status": 500, "detail": "x", "stale": []}
     # 実行
     result = preview_page.evaluate(
-        FINISH_SCRIPT, {"action": action, "transcribe": transcribe, "sendNow": send_now}
+        FINISH_SCRIPT,
+        {"action": action, "transcribe": transcribe, "sendNow": send_now, "add": add_failed},
     )
     # 検証
     assert {key: result["outcome"][key] for key in expected} == expected
+
+
+def test_acquire_wake_lock(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """求めて解く（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(WAKE_LOCK_SCRIPT, {"mode": "ok"})
+    # 検証
+    assert result == {"requested": ["screen"], "released": 1, "error": None}
+
+
+@pytest.mark.parametrize("mode", [pytest.param("missing", id="missing"), pytest.param("denied", id="denied")])
+def test_acquire_wake_lock_when_unavailable(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, mode: str
+) -> None:
+    """持たない・断られたときは何もしない（異常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(WAKE_LOCK_SCRIPT, {"mode": mode})
+    # 検証
+    assert result["error"] is None
+    assert result["released"] == 0

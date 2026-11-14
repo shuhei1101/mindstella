@@ -1,0 +1,13 @@
+# lint の全件実行（テスト実行方法 TL-7）。0ac0a57d で実行
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+exit=0

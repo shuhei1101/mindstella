@@ -1,6 +1,6 @@
 id: CMP-489-20
 title: トップバー
-lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・保存待ちのボタン・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
+lead: 画面の最上部の帯。ツール名 `mindstella`・話し合いの題名・サーバーにつながらないときの接続の状態・全体の検索の入口（右端にキーの案内 `Ctrl+K`、macOS は `⌘K`）・ライト / ダークの切り替え・絞り込みのボタン・保存待ちのボタン・音声入力中の表示・コメントのボタンと、画面を移るタブの帯（右端にネットワークの入口）を出す。ネットワークの入口のアイコンは、4 つの星を線で結び端の 1 つをきらめく星にした星座の形にする。
 implementation: frontend/src/shared/components/topbar.tsx#Topbar
 story: Shared/Topbar
 test_file: tests/integration/storybook_react/test_topbar_stories.py
@@ -131,6 +131,16 @@ args:
     default: 'false'
     enabled_when: '`pending` が `true` のとき'
     description: 直前の保存で書き込めない編集があったか。真のとき、印を警告に替え、件数の塗りをトップバーの上の失敗の赤（`--red-300`）にする
+  - name: voice
+    type: オブジェクト
+    required: false
+    default: なし（出さない）
+    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新しいスレッド」「{スレッド} への返信」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコン・「音声入力中」・`elapsed` を `m:ss`、transcribing は回る印・「文字起こし中」で枠をトップバーの線の色にする。幅 1100px 以下は文字を隠してアイコンと時間、幅 480px 以下はアイコンだけにする。配る書き出しでは渡さない
+  - name: voiceNotice
+    type: オブジェクト
+    required: false
+    default: なし（出さない）
+    description: 音声入力の知らせ。`kind`（discarded・failed）と `text`（理由の文）を持つ。あるとき、トップバーの下にページの幅の帯を出し、警告の印・`text`・閉じる × を並べる。failed は `text` の右に「入力欄を開く」のボタンも出す。帯は × か「入力欄を開く」を押すまで残す
 events:
   - name: 画面を移る
     when: タブかネットワークの入口を押したとき
@@ -168,6 +178,18 @@ events:
     when: 保存待ちのボタンを押したとき
     description: 使う側が保存待ちのパネルを開く。開いているときは閉じる。コメントの一覧・表示の設定のパネル・絞り込みのドロワーを開いていれば閉じてから開く。どちらも履歴に積まない
     value: '`onTogglePending()`'
+  - name: 音声入力中の入力欄へ移る
+    when: 音声入力中の表示を押したとき
+    value: '`onOpenVoice()`'
+    description: 使う側が録音を始めた入力欄の画面（詳細パネル・詳細の全画面・コメントの一覧・スレッド）を、その画面を今開くときと同じ開き方と履歴の扱いで開き、入力欄が閉じていれば開いて、録音中なら ✓ の「文字起こし」、文字起こし中は入力欄へフォーカスを移す。その入力欄が開いている画面では、フォーカスを移すだけにする
+  - name: 音声入力の入力欄を開く
+    when: 帯の「入力欄を開く」を押したとき（`voiceNotice.kind` が failed）
+    value: '`onOpenVoice()`'
+    description: 使う側が「音声入力中の入力欄へ移る」と同じく入力欄の画面を開いてフォーカスを移し、帯を消す
+  - name: 音声入力の知らせを閉じる
+    when: 帯の × を押したとき
+    value: '`onDismissVoiceNotice()`'
+    description: 使う側が帯を消す。書きかけは変えない
 states:
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
@@ -693,6 +715,33 @@ states:
         value: 'true'
       - name: commentCount
         value: '120'
+  - name: VoiceRecording
+    description: 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・「音声入力中」・経過の時間のボタンを出す
+    args:
+      - name: voice
+        value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
+  - name: VoiceTranscribing
+    description: 文字起こし中。アイコンを回る印に替え、「文字起こし中」にして、枠をトップバーの線の色にする
+    args:
+      - name: voice
+        value: '{"state": "transcribing", "label": "D-022 へのコメント"}'
+  - name: VoiceRecordingNarrow
+    description: 幅 390px の録音中。マイクのアイコンだけのボタンにし、名前は読み上げとツールチップに持つ
+    args:
+      - name: voice
+        value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
+    notes:
+      見せ方: Storybook の画面幅を 390px にして確かめる
+  - name: VoiceDiscarded
+    description: 録音中に行き先の項目が削除され、録音を破棄した。トップバーの下の帯に理由を出し、× で閉じる
+    args:
+      - name: voiceNotice
+        value: '{"kind": "discarded", "text": "D-022 が削除されたため、録音を破棄しました。"}'
+  - name: VoiceFailed
+    description: 入力欄が画面に無い間に、レビュー中への追加に失敗した。帯に理由と「入力欄を開く」を出す
+    args:
+      - name: voiceNotice
+        value: '{"kind": "failed", "text": "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"}'
 refs:
   - CMP-489-19#
 accessibility:
@@ -706,6 +755,8 @@ accessibility:
   - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
   - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す
   - どの幅でも、全てのボタン（差分の札の × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を足しても 24px を割らないようにする
+  - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}。押すと録音中の入力欄へ移動します」（文字起こし中は「文字起こし中: {label}。押すと入力欄へ移動します」）を持つ。経過の時間とアイコンは読み上げから外し、狭い幅で文字を隠しても名前を残す。色だけでなくマイクのアイコンと文言で音声入力中を伝える'
+  - 音声入力の知らせの帯は `role="status"` で読み上げに伝え、× に読み上げの名前「閉じる」を持つ。警告の印は読み上げから外す
 notes:
   部品の作り: shadcn/ui（Base UI 版）の Button を使い、ボタンの見た目の違いは Button の variants で持つ。色・余白はデザイン方針のトークンだけを Tailwind のクラスで指す
   引数の名前: 今の部品（関連の『トップバー』の `.ts`）と同じ引数・イベント・状態を、camelCase の props と `on{動作}` の props で持つ

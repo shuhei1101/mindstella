@@ -350,6 +350,25 @@ files:
   related:
   - to: MOD-489-141
     type: implements
+- path: src/shared/stores/voice-store.test.ts
+  name: 音声入力のストアの単体テスト
+  description: 画面で 1 つの音声入力のストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/stores/voice-store.ts
+    type: tests
+- path: src/shared/stores/voice-store.ts
+  name: 音声入力のストア
+  description: 画面で 1 つの音声入力（録音を始めた入力欄・録音の段階・画面の消灯の抑止）と、トップバーの下の音声入力の知らせを持つ。録音中に画面を移ったときの振る舞いを変更するときに読む。
+  tags:
+  - tool:zustand
+  - topic:音声入力
+  related:
+  - to: MOD-489-254
+    type: implements
 - path: src/shared/styles/index.css
   name: React のプレビューのスタイル
   description: Tailwind を読み、標準のパレットを消して、tokens.css のトークンを割り当てる。React のプレビューの共通のスタイルを変更するときに読む。
@@ -376,6 +395,13 @@ files:
   tags:
   - tool:vitest
   - topic:sse
+  - topic:テスト
+- path: src/testing/fake-wake-lock.ts
+  name: テスト用の画面の消灯の抑止
+  description: 'テスト用の navigator.wakeLock: 求めた回数と解いた回数を数え、断る・持たない環境も作る。画面の消灯の抑止を確かめるテストの補助を変更するときに読む。'
+  tags:
+  - tool:vitest
+  - topic:音声入力
   - topic:テスト
 - path: src/testing/msw/handlers.ts
   name: 配信の API の MSW の handler

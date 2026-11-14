@@ -59,13 +59,16 @@ var MindmapPreview;
         }
         return [];
     }
-    /** 音声入力の結果（送信した・挿入した・失敗した）の中身。音声入力の結果でなければ null */
+    /** 音声入力の結果（レビュー中に追加した・送信した・挿入した・失敗した）の中身。音声入力の結果でなければ null */
     function voiceResultContent(status, detail, entered = false) {
         if (status === "sent") {
             return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: [entered ? "送信し、Claude Code へ入力しました。" : "送信しました。Claude Code へは入力していません。"] })];
         }
         if (status === "inserted") {
             return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: ["文字起こしの結果を挿入しました。"] })];
+        }
+        if (status === "reviewed") {
+            return [MindmapPreview.icon("check"), MindmapPreview.h({ tag: "span", children: ["文字起こしの結果をレビュー中に追加しました。"] })];
         }
         if (status === "voice-failed") {
             return [MindmapPreview.icon("alert"), MindmapPreview.h({ tag: "span", children: [detail ?? MindmapPreview.VOICE_TEXT.failed] })];

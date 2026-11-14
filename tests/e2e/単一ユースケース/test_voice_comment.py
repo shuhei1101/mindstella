@@ -1,4 +1,4 @@
-"""音声でコメントする（コメント・返信の入力のマイクのボタンで話した内容を文字起こしし、送信するか入力欄へ挿入する）の E2E テスト。
+"""音声でコメントする（コメント・返信の入力のマイクのボタンで話した内容を文字起こしし、レビュー中に溜めるか、送信するか、入力欄へ挿入する）の E2E テスト。
 
 voice-paste の代わりの偽の文字起こしのサービスを 127.0.0.1 で起動し、常駐の MCP サーバーをそこへ向けて起動する。
 サーバーが配るプレビューを、偽のマイク（Web Audio の音を流すトラック）を持つ実際のブラウザで開く。描画のライブラリは CDN から読む。
@@ -6,20 +6,28 @@ voice-paste の代わりの偽の文字起こしのサービスを 127.0.0.1 で
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from playwright.sync_api import Page, expect
+import yaml
+
+from playwright.sync_api import Locator, Page, expect
 from preview_helpers import DETAIL_FORM, DETAIL_MESSAGE, DETAIL_TEXTAREA, REPLY_FORM, REPLY_MESSAGE, REPLY_TEXTAREA, open_thread
+from workspace_fixtures import RECORD_DIR
 from voice_helpers import (
     DENIED_MIC_SCRIPT,
     DENIED_REASON,
     FAKE_MIC_SCRIPT,
+    FAKE_WAKE_LOCK_SCRIPT,
     NO_MIC_REASON,
     NO_MIC_SCRIPT,
+    NO_WAKE_LOCK_SCRIPT,
+    REVIEWED_TEXT,
     SENT_TEXT,
     STOPPED_REASON,
     UNSUPPORTED_REASON,
     VOICE_TIMEOUT_MS,
+    WAKE_LOCK_LOG_JS,
     ServeVoiceWorkspace,
     StartFakeTranscriber,
     expect_idle,
@@ -35,6 +43,18 @@ BOARD_D1_HASH = "#tab=decisions&view=board&id=D-1"
 
 # 偽のサーバーが返す文字起こしの結果
 TRANSCRIBED = "案 A にする"
+
+# トップバーの音声入力中の表示（読み上げの名前の頭で引く）
+VOICE_BUTTON_NAME = re.compile("^音声入力中（")
+
+# ほかの入力欄で音声入力中のときのマイクのボタンの理由
+BUSY_REASON = "ほかの入力欄で音声入力中のため、音声で入力できません。"
+
+# レビュー中に溜められなかったときの結果の行の文
+REVIEW_FAILED_TEXT = "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"
+
+# 録音を捨てたときのトップバーの下の帯の文
+DISCARDED_TEXT = "D-1 が削除されたため、録音を破棄しました。"
 
 # 文字起こしに失敗したときの結果の行の文
 FAILED_TEXT = "文字起こしできませんでした。もう一度お試しください。"
@@ -53,7 +73,7 @@ def test_normal(
     start_fake_transcriber: StartFakeTranscriber,
     serve_voice_workspace: ServeVoiceWorkspace,
 ) -> None:
-    """詳細パネルのコメントの入力で話すと、結果がその 1 件だけのスレッドになり、レビュー中の書き込みは残る（正常系）。"""
+    """詳細パネルのコメントの入力で話すと、既定の挙動（review）で結果がレビュー中に溜まり、何も送らない。録音中はトップバーに音声入力中の表示を出し、画面の消灯の抑止を求める（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     url, root = serve_voice_workspace(
@@ -63,33 +83,41 @@ def test_normal(
         comments=(make_comment("C-1", body="案 B も見たい"),),
     )
     page.add_init_script(FAKE_MIC_SCRIPT)
+    page.add_init_script(FAKE_WAKE_LOCK_SCRIPT)
     open_with_status(page, f"{url}{BOARD_D1_HASH}")
     form = page.locator(DETAIL_FORM)
-    # 実行
+    # 実行（録音を始めて、キーボードで打つ）
     record(form)
+    page.keyboard.type("x")
+    # 検証（録音中）
+    expect(form.locator(".send-wave")).to_be_visible()
+    expect(page.locator(DETAIL_TEXTAREA)).to_have_value("")
+    expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_be_visible()
+    assert page.evaluate(WAKE_LOCK_LOG_JS) == {"requested": ["screen"], "released": 0}
+    # 実行（文字起こし）
     form.get_by_role("button", name="文字起こし").click()
     # 検証
-    expect(page.locator(DETAIL_MESSAGE)).to_have_text(SENT_TEXT, timeout=VOICE_TIMEOUT_MS)
-    threads = read_items(root, "threads.yaml")
-    assert [(item["status"], item["target"]) for item in threads] == [("open", "D-1")]
-    post = threads[0]["posts"][0]
-    assert (post["author"], post["body"], post["read"], post["taken"]) == ("user", "案 A にする", False, None)
-    assert [item["body"] for item in read_items(root, "comments.yaml")] == ["案 B も見たい"]
+    expect(page.locator(DETAIL_MESSAGE)).to_have_text(REVIEWED_TEXT, timeout=VOICE_TIMEOUT_MS)
+    assert read_items(root, "threads.yaml") == []
+    assert [item["body"] for item in read_items(root, "comments.yaml")] == ["案 B も見たい", "案 A にする"]
     assert [job.preset for job in fake.jobs] == ["開発"]
     expect(page.locator(DETAIL_TEXTAREA)).to_have_value("")
     expect_idle(form)
+    expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_have_count(0)
+    assert page.evaluate(WAKE_LOCK_LOG_JS) == {"requested": ["screen"], "released": 1}
 
 
 def test_normal_when_sent_after_typed_text(
     page: Page,
     make_item: MakeItem,
+    valid_settings: dict[str, Any],
     start_fake_transcriber: StartFakeTranscriber,
     serve_voice_workspace: ServeVoiceWorkspace,
 ) -> None:
-    """打ちかけの文字の末尾で話すと、続けた全文がその 1 件だけのスレッドになる（正常系）。"""
+    """文字起こし後の挙動が send のとき、打ちかけの文字の末尾で話すと、続けた全文がその 1 件だけのスレッドになる（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
-    url, root = serve_voice_workspace(fake.url, make_item("D-1"))
+    url, root = serve_voice_workspace(fake.url, make_item("D-1"), settings=_settings(valid_settings, {"action": "send"}))
     page.add_init_script(FAKE_MIC_SCRIPT)
     open_with_status(page, f"{url}{BOARD_D1_HASH}")
     form = page.locator(DETAIL_FORM)
@@ -114,10 +142,11 @@ def test_normal_when_reply_sent(
     make_post: MakePost,
     make_thread: MakeThread,
     make_comment: MakeComment,
+    valid_settings: dict[str, Any],
     start_fake_transcriber: StartFakeTranscriber,
     serve_voice_workspace: ServeVoiceWorkspace,
 ) -> None:
-    """スレッドの返信の入力で話すと、結果がスレッドの末尾に足され、レビュー中の返信は残る（正常系）。"""
+    """文字起こし後の挙動が send のとき、スレッドの返信の入力で話すと、結果がスレッドの末尾に足され、レビュー中の返信は残る（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     reply = make_comment("C-1", body="了解", thread="TH-1")
@@ -134,6 +163,7 @@ def test_normal_when_reply_sent(
             ),
         ),
         comments=(reply,),
+        settings=_settings(valid_settings, {"action": "send"}),
     )
     page.add_init_script(FAKE_MIC_SCRIPT)
     open_with_status(page, f"{url}#tab=decisions&view=board")
@@ -190,11 +220,12 @@ def test_normal_when_cancelled(
     start_fake_transcriber: StartFakeTranscriber,
     serve_voice_workspace: ServeVoiceWorkspace,
 ) -> None:
-    """録音中に「キャンセル」を押すと、録音を捨て、入力欄と記録を変えずに元のボタンへ戻す（正常系）。"""
+    """録音中に「キャンセル」を押すと、録音と画面の消灯の抑止を解き、入力欄と記録を変えずに元のボタンへ戻す（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     url, root = serve_voice_workspace(fake.url, make_item("D-1"))
     page.add_init_script(FAKE_MIC_SCRIPT)
+    page.add_init_script(FAKE_WAKE_LOCK_SCRIPT)
     open_with_status(page, f"{url}{BOARD_D1_HASH}")
     form = page.locator(DETAIL_FORM)
     page.fill(DETAIL_TEXTAREA, "案 B も見たい")
@@ -207,6 +238,8 @@ def test_normal_when_cancelled(
     assert fake.jobs == []
     assert read_items(root, "threads.yaml") == []
     assert read_items(root, "comments.yaml") == []
+    expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_have_count(0)
+    assert page.evaluate(WAKE_LOCK_LOG_JS) == {"requested": ["screen"], "released": 1}
 
 
 def test_error_when_transcriber_stopped(
@@ -325,4 +358,149 @@ def test_error_when_transcription_failed(
     expect(page.locator(DETAIL_TEXTAREA)).to_have_value("案 B も見たい")
     expect_idle(form)
     assert read_items(root, "threads.yaml") == []
+    assert read_items(root, "comments.yaml") == []
+
+
+def test_normal_when_moved_while_recording(
+    page: Page,
+    make_item: MakeItem,
+    make_post: MakePost,
+    make_thread: MakeThread,
+    start_fake_transcriber: StartFakeTranscriber,
+    serve_voice_workspace: ServeVoiceWorkspace,
+) -> None:
+    """録音中にほかの項目・スレッドを開いても録音を続け、ほかの入力欄のマイクのボタンを押せなくする。トップバーの表示から録音中の入力欄へ戻り、既定の挙動で溜める（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = serve_voice_workspace(
+        fake.url,
+        make_item("D-1"),
+        make_item("D-2"),
+        threads=(make_thread("TH-1", make_post("TH-1-1", author="ai", body="どちらにしますか"), target="D-1"),),
+    )
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    open_with_status(page, f"{url}{BOARD_D1_HASH}")
+    record(page.locator(DETAIL_FORM))
+    # 実行（D-2 を開いて打つ）
+    page.evaluate("location.hash = '#tab=decisions&view=board&id=D-2'")
+    expect(page.locator(DETAIL_FORM)).to_have_attribute("data-id", "D-2")
+    page.fill(DETAIL_TEXTAREA, "D-2 も確認")
+    # 検証（録音を続け、D-2 のマイクは押せない）
+    expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_be_visible()
+    expect_mic_blocked_busy(page.locator(DETAIL_FORM))
+    expect(page.locator(DETAIL_TEXTAREA)).to_have_value("D-2 も確認")
+    # 実行（TH-1 を開く）
+    open_thread(page, "TH-1")
+    # 検証
+    expect_mic_blocked_busy(page.locator(REPLY_FORM))
+    # 実行（トップバーから戻って文字起こし）
+    page.get_by_role("button", name=VOICE_BUTTON_NAME).click()
+    form = page.locator(DETAIL_FORM)
+    done = form.get_by_role("button", name="文字起こし")
+    expect(done).to_be_focused(timeout=VOICE_TIMEOUT_MS)
+    done.click()
+    # 検証
+    expect(page.locator(DETAIL_MESSAGE)).to_have_text(REVIEWED_TEXT, timeout=VOICE_TIMEOUT_MS)
+    assert [(item["target"], item["body"]) for item in read_items(root, "comments.yaml")] == [("D-1", "案 A にする")]
+    expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_have_count(0)
+    page.evaluate("location.hash = '#tab=decisions&view=board&id=D-2'")
+    expect(page.locator(DETAIL_TEXTAREA)).to_have_value("D-2 も確認")
+    detail_mic = page.locator(DETAIL_FORM).get_by_role("button", name="音声で入力")
+    expect(detail_mic).to_be_visible()
+    expect(detail_mic).not_to_have_attribute("aria-disabled", "true")
+    open_thread(page, "TH-1")
+    reply_mic = page.locator(REPLY_FORM).get_by_role("button", name="音声で入力")
+    expect(reply_mic).to_be_visible()
+    expect(reply_mic).not_to_have_attribute("aria-disabled", "true")
+
+
+def expect_mic_blocked_busy(form: Locator) -> None:
+    """ほかの入力欄で音声入力中のため、マイクのボタンを押せない。"""
+    mic = form.get_by_role("button", name="音声で入力")
+    expect(mic).to_have_attribute("aria-disabled", "true", timeout=VOICE_TIMEOUT_MS)
+    expect(mic).to_have_attribute("title", BUSY_REASON)
+
+
+def test_error_when_review_add_failed(
+    page: Page,
+    make_item: MakeItem,
+    start_fake_transcriber: StartFakeTranscriber,
+    serve_voice_workspace: ServeVoiceWorkspace,
+) -> None:
+    """レビュー中への追加が 500 のときは、挿入した全文を入力欄に残し、溜められなかった旨を出す（異常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = serve_voice_workspace(fake.url, make_item("D-1"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    page.route(
+        re.compile(r".*/api/comments$"),
+        lambda route: route.fulfill(status=500, json={"type": "about:blank", "title": "Error", "status": 500, "detail": "x"})
+        if route.request.method == "POST"
+        else route.continue_(),
+    )
+    open_with_status(page, f"{url}{BOARD_D1_HASH}")
+    form = page.locator(DETAIL_FORM)
+    page.fill(DETAIL_TEXTAREA, "確認: ")
+    # 実行
+    record(form)
+    form.get_by_role("button", name="文字起こし").click()
+    # 検証
+    expect(page.locator(DETAIL_MESSAGE)).to_have_text(REVIEW_FAILED_TEXT, timeout=VOICE_TIMEOUT_MS)
+    expect(page.locator(DETAIL_TEXTAREA)).to_have_value("確認: 案 A にする")
+    assert read_items(root, "threads.yaml") == []
+    assert read_items(root, "comments.yaml") == []
+
+
+def test_error_when_wake_lock_unavailable(
+    page: Page,
+    make_item: MakeItem,
+    start_fake_transcriber: StartFakeTranscriber,
+    serve_voice_workspace: ServeVoiceWorkspace,
+) -> None:
+    """端末が画面の消灯の抑止を持たないときも、理由を出さずに録音して溜める（異常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = serve_voice_workspace(fake.url, make_item("D-1"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    page.add_init_script(NO_WAKE_LOCK_SCRIPT)
+    open_with_status(page, f"{url}{BOARD_D1_HASH}")
+    form = page.locator(DETAIL_FORM)
+    # 実行
+    record(form)
+    # 検証（録音中に理由を出さない）
+    expect(page.locator(DETAIL_MESSAGE)).not_to_contain_text("できません")
+    # 実行
+    form.get_by_role("button", name="文字起こし").click()
+    # 検証
+    expect(page.locator(DETAIL_MESSAGE)).to_have_text(REVIEWED_TEXT, timeout=VOICE_TIMEOUT_MS)
+    assert [(item["target"], item["body"]) for item in read_items(root, "comments.yaml")] == [("D-1", "案 A にする")]
+
+
+def test_error_when_target_removed_while_recording(
+    page: Page,
+    make_item: MakeItem,
+    start_fake_transcriber: StartFakeTranscriber,
+    serve_voice_workspace: ServeVoiceWorkspace,
+) -> None:
+    """録音中に行き先の D-1 が記録から消えたら、録音と画面の消灯の抑止を解き、捨てた旨を帯に出す（異常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = serve_voice_workspace(fake.url, make_item("D-1"), make_item("D-2"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    page.add_init_script(FAKE_WAKE_LOCK_SCRIPT)
+    open_with_status(page, f"{url}{BOARD_D1_HASH}")
+    record(page.locator(DETAIL_FORM))
+    page.evaluate("location.hash = '#tab=decisions&view=board&id=D-2'")
+    expect(page.locator(DETAIL_FORM)).to_have_attribute("data-id", "D-2")
+    # 実行（記録から D-1 を消す。サーバーが書き換えを知らせる）
+    decisions = root / RECORD_DIR / "decisions.yaml"
+    data = yaml.safe_load(decisions.read_text(encoding="utf-8"))
+    data["items"] = [item for item in data["items"] if item["id"] != "D-1"]
+    decisions.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    # 検証
+    expect(page.get_by_role("status").filter(has_text=DISCARDED_TEXT)).to_be_visible(timeout=VOICE_TIMEOUT_MS)
+    expect(page.get_by_role("button", name=VOICE_BUTTON_NAME)).to_have_count(0)
+    expect(page.locator(DETAIL_FORM).get_by_role("button", name="音声で入力")).not_to_have_attribute("aria-disabled", "true")
+    assert page.evaluate(WAKE_LOCK_LOG_JS) == {"requested": ["screen"], "released": 1}
+    assert fake.jobs == []
     assert read_items(root, "comments.yaml") == []

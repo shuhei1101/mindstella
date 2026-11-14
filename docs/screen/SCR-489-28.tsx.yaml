@@ -116,11 +116,11 @@ elements:
   - name: 文字起こし後の挙動
     kind: radio
     position: 設定のまとまり > 音声入力
-    description: コメント・返信の入力で文字起こしした後の挙動を選ぶ。選んだときに `transcription` の `setting` を 1 件溜める（値の `preset` は、保存待ちの編集を再取得する前に続けて選んだときは最後に選んだ値、それ以外は記録の値）。下にヒント「「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。」を出す
+    description: コメント・返信の入力で文字起こしした後の挙動を選ぶ。選んだときに `transcription` の `setting` を 1 件溜める（値の `preset` は、保存待ちの編集を再取得する前に続けて選んだときは最後に選んだ値、それ以外は記録の値）。下にヒント「「レビュー中に追加する」は文字起こしの結果を挿入した全文をレビュー中に追加し、送信しません。「入力欄へ挿入する」はカーソルの位置に挿入するだけです。「送信する」はその書き込みだけで Claude Code へ送信します。」を出す
     label: 文字起こし後の挙動
     io: 入力
-    options: 送信する（send）・入力欄へ挿入する（insert。既定）
-    source: 記録の取得.settings.transcription.action（無ければ insert）
+    options: レビュー中に追加する（review。既定）・入力欄へ挿入する（insert）・送信する（send）
+    source: 記録の取得.settings.transcription.action（無ければ review）
     target: 保存待ちの編集の追加.value（key が transcription）
     status: planned
   - name: 用語集のプリセット

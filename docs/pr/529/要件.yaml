@@ -1,0 +1,41 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: 確定の既定をレビュー中への追加にし、録音中もほかの項目・スレッドへ移れて、トップバーの表示から録音中の入力欄へ戻れる。音声入力は同時に 1 つだけ。録音中は端末の画面が暗くならない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: following
+    detail: 文字起こし後の挙動に選べる値が増え、既定が変わるのに追随する
+    depends_on:
+      - docs/scenario/SC-489-45.yaml
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: '`### 音声でコメントする` の文字起こし後の挙動の表と既定、録音中の移動で録音を捨てる記述を、レビュー中への追加の既定・録音中の移動とトップバーからの戻り・同時に 1 つだけの音声入力・録音中の画面の消灯の抑止に直す。設定の画面の「音声入力」の選択肢も直す'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T02:52:21.580188+00:00'
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: '`transcription.action` の値にレビュー中へ追加する値を足し、無いときの既定をその値にする'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T02:52:21.580188+00:00'
+  - page: docs/er/ER-489-1.yaml
+    new: false
+    change: '`config.yaml` の `transcription.action` の値と既定を直す'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-13T23:42:35.480054+00:00'
+  - page: docs/guide/動作環境.md
+    new: false
+    change: 音声入力の行に、録音中の画面の消灯の抑止が Screen Wake Lock に対応したブラウザだけで効くことを足す
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-14T02:52:21.580188+00:00'
+scope_out:
+  - item: 入力欄にカーソルがある間と録音中に、記録の更新を画面に反映せず録音が途切れないようにする
+    reason: 記録の更新の反映の扱いを変える別の要望で、この束の子に含まれない
+    plan: '#514'

@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
+import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
@@ -26,6 +28,8 @@ const unseen = {
 };
 
 afterEach(() => {
+  resetVoiceStore();
+  removeFakeWakeLock();
   vi.unstubAllGlobals();
 });
 
@@ -151,6 +155,33 @@ describe("ThreadView", () => {
     // 検証
     await waitFor(() => expect(sent).toEqual([{ thread: "TH-1", body: "x" }]));
     await waitFor(() => expect(threadReads).toBeGreaterThan(readsBefore));
+    removeFakeMedia();
+  });
+
+  // 既定の挙動で返信をレビュー中に溜める（正常系）
+  test("thread_view_when_voice_reviewed", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    const added: unknown[] = [];
+    server.use(
+      http.get("/api/threads", () => HttpResponse.json(unseen)),
+      http.post("/api/threads/:id/seen", () => HttpResponse.json({ id: "TH-1", seen: [] })),
+      http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "review", preset: null })),
+      http.post("/api/transcriptions", () => HttpResponse.json({ text: "x" })),
+      http.post("/api/comments", async ({ request }) => {
+        added.push(await request.json());
+        return HttpResponse.json({ id: "C-1", created: "2026-11-14T00:00:00+00:00", count: 1 }, { status: 201 });
+      }),
+    );
+    renderRoute("/spa/?panel=comments&thread=TH-1");
+    await screen.findByText("どちらにしますか");
+    // 実行
+    await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
+    await userEvent.click(await screen.findByRole("button", { name: "文字起こし" }));
+    // 検証
+    await waitFor(() => expect(added).toEqual([{ thread: "TH-1", body: "x" }]));
+    expect(await screen.findByText("文字起こしの結果をレビュー中に追加しました。")).toBeInTheDocument();
     removeFakeMedia();
   });
 });

@@ -48,9 +48,12 @@ export const ThreadView = ({ id, data, onBack, onOpenItem, onOpenChangeSet }: Th
   }, [thread, markSeen]);
   const draft = drafts.find((one) => one.thread === id && one.target === null)?.body ?? "";
   const [reply, setReply] = useState<{ body: string; status: ReplyStatus; count: number | null; detail: string | null }>({ body: draft, status: "idle", count: null, detail: null });
-  // 音声入力（録音・文字起こし・すぐ送る）。開くスレッドが変わったら録音を捨てる
+  // 音声入力（録音・文字起こし・レビュー中に溜める・すぐ送る）。開くスレッドが変わっても録音は続ける
   const voice = useVoiceInput({
+    key: `thread:${id}`,
     destination: { thread: id },
+    view: "thread",
+    label: `${id} への返信`,
     body: reply.body,
     onBodyChange: (next) => {
       setReply({ body: next, status: "idle", count: null, detail: null });

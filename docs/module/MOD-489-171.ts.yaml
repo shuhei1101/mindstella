@@ -144,7 +144,7 @@ data_models:
     title: 音声入力の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 音声でコメントする
-    summary: 開いている間だけ持つ録音の状態。録音は同時に 1 つで、録っている入力（`key`）にだけ `recording`・`transcribing` を渡し、ほかの入力のマイクは `idle` のまま描く。書き換えの知らせでの描き直しでは保つ
+    summary: 開いている間だけ持つ録音の状態。録音は同時に 1 つで、録っている入力（`key`）にだけ `recording`・`transcribing` を渡し、録っている間はほかの入力のマイクを `disabled`（`VOICE_TEXT.busy`）で描く。録っている入力が画面から消えても（画面を移る・パネルや入力を閉じる）保ち、書き換えの知らせでの描き直しでも保つ
     properties:
       - name: availability
         type: TranscriptionStatus | null
@@ -170,6 +170,18 @@ data_models:
       - name: ticket
         type: number
         description: 録音を始めるたびに 1 進める番号。文字起こしの結果が返ったとき、押したときの番号と違えば結果を捨てる
+      - name: destination
+        type: "{target, loc, view: 'panel' | 'full'} | {thread} | {newThread: true} | null"
+        description: 録っている入力の向けた先と、戻るときに開く画面（詳細パネル・詳細の全画面・コメントの一覧の新しいスレッド・スレッド）
+      - name: label
+        type: string | null
+        description: トップバーの `voice.label`（「{ID} へのコメント」「新しいスレッド」「{スレッド} への返信」）
+      - name: notice
+        type: "{kind: 'discarded' | 'failed', text: string, key: string | null} | null"
+        description: トップバーの `voiceNotice`。`failed` は「入力欄を開く」で開く入力の `key` を持つ
+      - name: release
+        type: (() => void) | null
+        description: 画面の消灯の抑止を解く関数（`acquireWakeLock` が返したもの。解いたら `null`）
   - name: DisplayState
     title: 表示の設定の画面の状態
     container: plugins/mindstella/skills/mindmap/preview/app.ts
@@ -463,7 +475,7 @@ functions:
          - 「前回開いてから」の始まりを決める（`resolveSince`。読んだ記録の先頭のまとまりの `until_seq` を渡す）
          - 選んだ時点を引く（`resolveDiffPoint`。ハッシュの `diff`（`parseHash` の `Route.diff`）があればそれ、無ければ `Prefs.diffSel` と、始まり）。引けたら `Prefs.diffSel` と `Route.diff` をその時点にし、引けなければどちらも `null` にして残す（`savePrefs`）
       4. ハッシュを読み（`parseHash`）、記録に無い `id` だった場合は `id` の無いハッシュに置き換える（`navigate`、`push: false`）。`tab` が表示しない種類を指す場合は `overview` のハッシュに置き換える（`id` は残し、詳細パネルは開く）。3 で `Route.diff` が読んだハッシュの `diff` と変わった場合も、そのハッシュに置き換える（`navigate`、`push: false`）
-      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る。`open` は `Prefs.commentFormClosed` が `true` なら偽）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
+      5. トップバーと画面を描き、`id` があれば詳細パネルを開く。トップバーのタブは概要と表示する種類だけにし、表示の設定のボタン（`DisplayState.open`）を渡す。サーバーの配信では、録っている間は `voice`（`VoiceState.phase`・`label`・`elapsed`）、知らせがあれば `voiceNotice`（`VoiceState.notice`）も渡す。概要に表示する種類を、ネットワークに見た目・ワークスペースの既定の見た目・効いているロック（12）を、検討事項に効いているロックを渡す。選んだ時点があれば、トップバーに `diffPoint` とタブの `marked`、表に `marks`、画面と詳細パネル・図の拡大に `diff` を渡す。タブの `marked` は、その種類に印の付く項目があるか `removedOf` が空でない種類を真にする。検討事項・タスク・資料・記録の表には `removedOf` で引いたその種類の消した項目を `removed` で渡す。ハッシュの絞り込みは、その画面を初めて開いたとき（`f.{列}` があるときは開き直したときも）`initialFilters` で `FilterState.byTab` に入れてから、ハッシュから消す（`navigate`、`push: false`）。サーバーの配信では、`Prefs.filters` のその画面の分を今の記録で `pruneFilters` にかけてから `initialFilters` の `saved` に渡す（`f.{列}` で開いたときは `Prefs.filters` を書き換えない）。画面に `FilterState` のその画面の絞り込みと `drawerOpen` を渡し、概要以外ではトップバーに絞り込みのボタン（件数は `activeConditionCount`）を渡す。サーバーの配信では、トップバーにコメントのボタン（件数は `review.items` の件数）を、詳細パネルにその項目へのコメントの入力（`forms` に無ければ、同じ向けた先の `review.drafts` の本文で `idle` で作る。`open` は `Prefs.commentFormClosed` が `true` なら偽）とレビュー中のコメントを渡す。`listOpen` ならコメントの一覧を、`DisplayState.open` なら表示の設定を重ねる（`settingsDrawer`）
          - 描き直しで詳細パネルを作り直すときは、本文のスクロールの位置を保ち、作り直す前に本文のスクロール領域にフォーカスがあれば、作り直した後の本文のスクロール領域へフォーカスを戻す
          - 詳細パネル・全画面の本文のスクロール領域をスクロールしたら、開いている項目の位置を残す（`writeBodyScrolls`。`scroll` は伝わらないため `document` でキャプチャフェーズで受ける）。詳細パネルか全画面を開く・項目を移る・全画面と行き来するときは、見出し（`heading`）もコメントの箇所（`highlight`）も示さなければ、描いた次のコマで本文をその項目の位置へ戻す（位置は 3 で `readBodyScrolls` で読む。残っていなければ先頭から）
          - 左のパネル（絞り込みのドロワー・コメントの一覧・表示の設定・保存待ち）のどれかを開いているときは、描いた後に前の解除を呼んでから、本文の部品を止め直す（条件の変更・表示形式の切り替え・書き換えの知らせで作り直した本文にも乗せる）。ピン止めしたコメントの一覧（`Prefs.commentsPinned`）は `inertBehind` で覆った範囲だけを止め、グレーアウトを出さない。それ以外は、`body` の直下のグレーアウト（`div.left-scrim`。`aria-hidden`、トップバーとタブの帯の下から。幅 900px 以下では出さない）に `on` を付け、`inertOutside` で止める。詳細パネルは、左のパネルの中（グレーアウトの上に出した詳細パネルの中を含む）の押下で開いたときだけ `body` に `detail-above-scrim` を付けてグレーアウトの上に出し、それ以外は `inert` を付ける。押下の出どころは `click` をキャプチャフェーズで受けて控え、左のパネルか詳細パネルを閉じたら戻す
@@ -475,12 +487,14 @@ functions:
          - 「箇所を外す」では `pendingLoc` から外し、書きかけは箇所を持たない向けた先へ移す
          - 「本文をコピー」では `navigator.clipboard.writeText` でコピーする
          - 「開閉」では、押した後の開閉が閉じるなら `Prefs.commentFormClosed` を `true`、開くなら `null` にして残し（`savePrefs`）、開いている詳細パネル・詳細の全画面の下端の入力を描き直して、その開閉のボタンへフォーカスを戻す。書きかけ（`forms`）はそのまま残し、履歴に積まず、ハッシュも変えない
-         - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、それ以外は `idle`
-         - 「録音を始める」では、別の入力で録っていれば何もしない。押したときの入力欄の選んだ範囲を `selection` に持ち、`startRecording` で始め（`onLevel` で `levels` に `pushLevel` して録っている入力の波形を描き直す）、`key`・`recording`・`phase: recording`・`elapsed: 0`・`levels: []` にして、描き直した入力の ✓ へフォーカスを移して `ticket` を進め、1 秒ごとに `elapsed` を進める。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
-         - 「録音をキャンセル」では `recording.cancel()` し、`key`・`recording` を `null`・`phase: idle` にして入力欄の中身を変えず、描き直した入力欄へフォーカスを移して `selection` の範囲に戻す
-         - 「文字起こし」では `phase: transcribing` にし、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `insert`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違うか録っていた入力が無くなっていれば結果を捨てる。そうでなければ `phase: idle` に戻し、`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを消し（`saveDraft` を空で）、スレッドを読み直す。`inserted` は中身を書き換えて入力欄へフォーカスを移し、挿入した文字の後ろにカーソルを置いて `status: inserted`、`failed` は中身を書き換えて入力欄へフォーカスを移し、文字起こしの前に失敗して中身が元のままなら `selection` の範囲に戻して `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
+         - コメント・返信の入力に渡す `voice` は、`micSupported()` が偽なら `disabled`（`voiceReason` は `VOICE_TEXT.noMicrophone`）、`availability.available` が偽なら `disabled`（`availability.detail`）、録っている入力なら `VoiceState.phase`、ほかの入力で録っていれば `disabled`（`VOICE_TEXT.busy`）、それ以外は `idle`
+         - 「録音を始める」では、別の入力で録っていれば何もしない。押したときの入力欄の選んだ範囲を `selection` に持ち、`startRecording` で始め（`onLevel` で `levels` に `pushLevel` して録っている入力の波形を描き直す）、`key`・`recording`・`destination`・`label`・`phase: recording`・`elapsed: 0`・`levels: []` にして、描き直した入力の ✓ へフォーカスを移して `ticket` を進め、1 秒ごとに `elapsed` を進めて、トップバーを描き直す。`acquireWakeLock` の関数を `release` に持つ。`denied` なら `status` を `voice-failed`（`VOICE_TEXT.denied`）、`no-microphone` なら `voice-failed`（`VOICE_TEXT.noMicrophone`）にする
+         - 「録音をキャンセル」では `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にしてトップバーを描き直し、入力欄の中身を変えず、描き直した入力欄へフォーカスを移して `selection` の範囲に戻す
+         - 「文字起こし」では `phase: transcribing` にして `release` を呼び、押したときの `ticket` と入力欄の中身・カーソルの位置・記録の `settings.transcription.action`（無ければ `review`）・向けた先で `finishVoice` を呼ぶ。返ったとき、`ticket` が違えば結果を捨てる。そうでなければ `phase: idle`・`key`・`destination`・`label` を `null` に戻してトップバーを描き直し、録っていた入力が画面に無ければ、結果の中身を `forms` に入れて書きかけを保ち（`saveDraft`）、`failed`・`unavailable` のときだけ `notice` を `failed`（失敗の種類の文。レビュー中への追加は `VOICE_TEXT.awayReviewFailed(label)`、送信は `awaySendFailed(label)`、文字起こし・`unavailable` は `awayTranscribeFailed(label)`）にする。画面にあれば、`reviewed` は `forms` の中身と添えた箇所を空にして `status: reviewed`、書きかけを消し（`saveDraft` を空で）、レビュー中を読み直して溜めた ID を `checked` に足し、トップバーの件数と一覧を描き直す。`sent` は `forms` の中身と添えた箇所を空にして `status: sent`（`entered`）、書きかけを消し（`saveDraft` を空で）、スレッドを読み直す。`inserted` は中身を書き換えて入力欄へフォーカスを移し、挿入した文字の後ろにカーソルを置いて `status: inserted`、`failed` は中身を書き換えて入力欄へフォーカスを移し、文字起こしの前に失敗して中身が元のままなら `selection` の範囲に戻して `voice-failed`（`detail`）、`unavailable` は `availability` を `available: false` と返った `reason`・`detail` に書き換えて `voice-failed`（`detail`）にする
          - 「押せないマイクを押す」では `status` を `voice-failed`（`voiceReason` と同じ文）にし、`micSupported()` が真なら文字起こしの可否を読み直して `availability` に入れる（使えるようになっていれば `idle` で描き直す。録音は始めない）
-         - 録っている入力が無くなる・向けた先が変わるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、`recording` があれば `cancel()` し、`key`・`recording` を `null`・`phase: idle` にして `ticket` を進める（文字起こし中の結果を捨てる）。書き換えの知らせでの描き直しでは止めない
+         - 録っている入力が画面から消えるとき（詳細パネル・全画面・コメントの一覧・スレッドを閉じる、入力を畳む、別の項目・スレッド・タブへ移る）は、録音も文字起こしも止めない。記録を読み直したとき、`destination` の項目・スレッドが無ければ `recording.cancel()` と `release` を呼び、`key`・`recording`・`destination`・`label` を `null`・`phase: idle` にして `ticket` を進め（文字起こし中の結果を捨てる）、`notice` を `discarded`（`VOICE_TEXT.discarded(id)`）にしてトップバーを描き直す
+         - トップバーの「音声入力中の入力欄へ移る」では、`destination` の画面（詳細パネル・詳細の全画面は項目を開き、コメントの一覧は一覧を開いて新しいスレッドの入力を出し、スレッドは一覧でそのスレッドを開く）を、その画面を今開くときと同じ開き方と履歴の扱いで開き、入力が閉じていれば開いて、録音中は ✓、文字起こし中は入力欄へフォーカスを移す。「音声入力の入力欄を開く」は `notice.key` の入力の画面を同じく開いて `notice` を `null` にし、「音声入力の知らせを閉じる」は `notice` を `null` にする。どれもトップバーを描き直す
+         - `visibilitychange` で画面が見えたとき、`phase` が `recording` で `release` が `null` なら `acquireWakeLock` を呼び直す
          - 項目を指さない入力は、幅 720px 以下でフォーカスが無く本文が空なら `collapsed`
       7. 選んだ箇所の入口を次で扱う
          - `pointerup` と、ポインターを押していない間の `selectionchange` で、全画面を開いている間は全画面の中、それ以外は詳細パネルの中の選択から箇所を求め（`selectionLocation`）、あれば入口を出し、無ければ閉じる（図の拡大を開いている間は出さない）

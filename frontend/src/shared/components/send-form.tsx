@@ -9,7 +9,7 @@ import { formatElapsed } from "@/shared/core/voice";
 import { cn } from "@/shared/lib/cn";
 
 /** 溜める状態。idle は結果を出さない */
-export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "sent" | "inserted" | "voice-failed";
+export type SendStatus = "idle" | "saving" | "saved" | "empty" | "failed" | "sent" | "inserted" | "reviewed" | "voice-failed";
 
 /** 音声入力の状態（部品設計の `voice`） */
 export type VoicePhase = "idle" | "disabled" | "recording" | "transcribing";
@@ -64,12 +64,12 @@ export type SendFormProps = VoiceProps & {
 const SENDING_NOTICE_DELAY_MS = 1000;
 
 /** 結果の行の文字の色（空・失敗は文言を本文の色で読ませる。印の色は `ResultMessage` が付ける） */
-const RESULT_TONE = { idle: "", saving: "", saved: "", empty: "text-foreground", failed: "text-foreground", sent: "", inserted: "", "voice-failed": "text-foreground" } as const satisfies Record<SendStatus, string>;
+const RESULT_TONE = { idle: "", saving: "", saved: "", empty: "text-foreground", failed: "text-foreground", sent: "", inserted: "", reviewed: "", "voice-failed": "text-foreground" } as const satisfies Record<SendStatus, string>;
 
 /** 項目を指さないコメントの入力欄の読み上げの名前 */
 const NO_TARGET_LABEL = "項目を指さないコメント";
 
-/** 音声入力の結果（送信した・挿入した・失敗した）。音声入力の結果でなければ null */
+/** 音声入力の結果（送信した・挿入した・レビュー中に追加した・失敗した）。音声入力の結果でなければ null */
 export const VoiceResult = ({ status, detail, entered }: { status: string; detail: string | null; entered: boolean }) => {
   if (status === "sent") {
     return (
@@ -84,6 +84,14 @@ export const VoiceResult = ({ status, detail, entered }: { status: string; detai
       <>
         <Icon name="check" className="text-mark" />
         <span>文字起こしの結果を挿入しました。</span>
+      </>
+    );
+  }
+  if (status === "reviewed") {
+    return (
+      <>
+        <Icon name="check" className="text-mark" />
+        <span>文字起こしの結果をレビュー中に追加しました。</span>
       </>
     );
   }
@@ -137,9 +145,9 @@ export const VoiceWave = ({ voice, levels }: { voice: VoicePhase; levels: readon
 /** 入力欄を書き換えられないか（溜めている間・録音中・文字起こし中） */
 export const fieldLocked = (saving: boolean, voice: VoicePhase): boolean => saving || voice === "recording" || voice === "transcribing";
 
-/** 録音を始めたら ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す（入力欄は隠すだけで外さないため、選んだ範囲が残る） */
+/** 録音を始めたとき・録音中の入力欄が付いたときは ✓ へ、終えたら入力欄の録音前の範囲へフォーカスを移す（入力欄は隠すだけで外さないため、選んだ範囲が残る） */
 export const useVoiceFocus = (voice: VoicePhase, field: RefObject<HTMLTextAreaElement | null>, done: RefObject<HTMLButtonElement | null>): void => {
-  const previous = useRef(voice);
+  const previous = useRef<VoicePhase>("idle");
   useEffect(() => {
     const before = previous.current;
     previous.current = voice;
@@ -233,7 +241,7 @@ const ResultMessage = ({ status, count, detail, showSpinner, onCopy }: { status:
 /** 結果の行の中身（録音中・文字起こし中、音声入力の結果、溜めた結果の順に選ぶ） */
 const FormMessage = ({ voice, elapsed, status, count, detail, entered, showSpinner, onCopy }: { voice: VoicePhase; elapsed: number; status: SendStatus; count: number | null; detail: string | null; entered: boolean; showSpinner: boolean; onCopy: () => void }) => {
   if (voice === "recording" || voice === "transcribing") return <VoiceProgress voice={voice} elapsed={elapsed} />;
-  if (status === "sent" || status === "inserted" || status === "voice-failed") return <VoiceResult status={status} detail={detail} entered={entered} />;
+  if (status === "sent" || status === "inserted" || status === "reviewed" || status === "voice-failed") return <VoiceResult status={status} detail={detail} entered={entered} />;
   return <ResultMessage status={status} count={count} detail={detail} showSpinner={showSpinner} onCopy={onCopy} />;
 };
 

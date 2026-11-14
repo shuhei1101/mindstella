@@ -46,6 +46,12 @@ components:
         condition: '入力欄 `確認: でよい`・カーソル 4 で recording にし、idle へ描き直す'
         mock: なし
         expected: 入力欄が見え、フォーカスが入力欄にあり、カーソルが 4
+      - name: test_send_form_when_reviewed
+        case: 正常
+        summary: 既定の挙動でレビュー中に追加した結果と、ほかの入力欄で音声入力中
+        condition: '`status: reviewed` / `voice: disabled`・`voiceReason: ほかの入力欄で音声入力中のため、音声で入力できません。`'
+        mock: なし
+        expected: 結果の行に「文字起こしの結果をレビュー中に追加しました。」/ マイクが `aria-disabled="true"` で理由を `aria-describedby` で指し、入力欄に文字を打てる
     container: frontend/src/shared/components/send-form.tsx
 notes:
   単体テスト: 同じフォルダの `send-form.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,16 @@
+# 結合テスト（今回変えたテストと、音声入力・文字起こしの設定に関係するテスト）。56eb3652 で実行。Storybook は npx storybook build -o storybook-static と npm run build-storybook-react の出力を使用
+
+$ python3 -m pytest -p no:cacheprovider -q -rfE tests/integration/server/test_transcription_status.py tests/integration/server/test_update_settings.py tests/integration/storybook/test_topbar_stories.py tests/integration/storybook_react/test_topbar_stories.py tests/integration/storybook/test_send_form_stories.py tests/integration/storybook_react/test_send_form_stories.py tests/integration/storybook/test_reply_form_stories.py tests/integration/storybook_react/test_reply_form_stories.py tests/integration/preview/test_workspace_settings_screen.py tests/integration/preview/test_spa_workspace_settings_screen.py tests/integration/preview/test_detail_panel_screen.py tests/integration/preview/test_spa_detail_panel_screen.py -k "voice or transcription"
+tests/workspace_fixtures.py:281: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_spa_detail_panel_screen.py::test_voice_input[chromium]
+1 failed, 57 passed, 985 deselected in 380.20s (0:06:20)
+
+# 上の 1 failed は、常駐サーバーの起動待ちの時間切れ（端末の load average 17）。同じテストは直前の再実行で pass している:
+$ python3 -m pytest -p no:cacheprovider -q -rfE tests/integration/preview/test_detail_panel_screen.py::test_voice_input_reviewed_after_moving tests/integration/preview/test_detail_panel_screen.py::test_voice_input_when_service_stopped tests/integration/preview/test_spa_detail_panel_screen.py::test_voice_input tests/integration/preview/test_spa_detail_panel_screen.py::test_voice_input_recording tests/integration/preview/test_spa_detail_panel_screen.py::test_voice_input_reviewed_after_moving tests/integration/preview/test_spa_detail_panel_screen.py::test_voice_input_when_service_stopped 
+......                                                                   [100%]
+6 passed in 104.93s (0:01:44)
+
+# その後の単独の再実行では、文字起こしの可否の応答が待ちの上限 10 秒を超えて fail した（負荷による遅れ）。待ちの上限（preview_voice_helpers.py の STATUS_TIMEOUT_MS）を一時的に 40 秒にすると pass（テストコードは変えていない）:
+$ python3 -m pytest -p no:cacheprovider -q "tests/integration/preview/test_spa_detail_panel_screen.py::test_voice_input"   # STATUS_TIMEOUT_MS=40_000
+1 passed in 28.62s

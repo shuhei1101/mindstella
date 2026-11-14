@@ -1261,11 +1261,12 @@ def test_voice_input_recording(
     make_item: _MakeItem,
     start_fake_transcriber: Callable[..., Any],
     start_voice_preview: _StartVoicePreview,
+    valid_settings: dict[str, Any],
 ) -> None:
-    """録音中は入力欄を波形に替えてキーボードの入力を受け付けず、✓ で文字起こしの結果を録音前のカーソルの位置へ挿入して送信しない。フォーカスは ✓ から入力欄へ戻る（正常系）。"""
+    """文字起こし後の挙動が insert のとき、録音中は入力欄を波形に替えてキーボードの入力を受け付けず、✓ で文字起こしの結果を録音前のカーソルの位置へ挿入して送信しない。フォーカスは ✓ から入力欄へ戻る（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
-    url, root = start_voice_preview(fake.url, make_item("D-1"))
+    url, root = start_voice_preview(fake.url, make_item("D-1"), settings={**valid_settings, "transcription": {"action": "insert"}})
     page.add_init_script(FAKE_MIC_SCRIPT)
     with wait_transcription_status(page):
         open_spa(page, url, "?tab=decisions&id=D-1")
@@ -1285,6 +1286,45 @@ def test_voice_input_recording(
     expect(field).to_have_value("確認: 案 A にするでよい")
     expect(field).to_be_focused()
     assert not (root / ".mindstella" / "threads.yaml").exists()
+
+
+def test_voice_input_reviewed_after_moving(
+    page: Page,
+    make_item: _MakeItem,
+    start_fake_transcriber: Callable[..., Any],
+    start_voice_preview: _StartVoicePreview,
+) -> None:
+    """録音中にコメントの一覧を開いても録音を続け、トップバーの音声入力中の表示を出す。表示を押すと一覧を閉じて録音中の入力へ戻り ✓ にフォーカスがあり、✓ で既定の挙動（review）のとおり挿入した全文をレビュー中に溜める（正常系）。"""
+    # 準備
+    fake = start_fake_transcriber("done")
+    url, root = start_voice_preview(fake.url, make_item("D-1"))
+    page.add_init_script(FAKE_MIC_SCRIPT)
+    with wait_transcription_status(page):
+        open_spa(page, url, "?tab=decisions&id=D-1")
+    form = page.locator("form[data-id='D-1']")
+    put_caret(form.locator("textarea"), "確認: ", 4)
+    start_recording(form)
+    # 実行（コメントの一覧を開く）
+    page.get_by_role("button", name=re.compile("^コメント（")).click()
+    expect(page.get_by_role("dialog", name="コメント")).to_be_visible()
+    # 検証（録音を続ける）
+    voice = page.get_by_role("button", name="音声入力中（D-1 へのコメント）。録音中の入力欄へ移動")
+    expect(voice).to_be_visible()
+    # 実行（録音中の入力欄へ戻る）
+    voice.click()
+    # 検証
+    expect(page.get_by_role("dialog", name="コメント")).to_have_count(0)
+    done = form.get_by_role("button", name="文字起こし", exact=True)
+    expect(done).to_be_focused()
+    # 実行（文字起こし）
+    done.click()
+    # 検証（レビュー中に溜めて入力欄を空にし、トップバーの表示を消す）
+    expect(form.locator("[role=status]")).to_have_text("文字起こしの結果をレビュー中に追加しました。", timeout=VOICE_TIMEOUT_MS)
+    expect(form.locator("textarea")).to_have_value("")
+    expect(page.get_by_role("button", name=re.compile("^音声入力中"))).to_have_count(0)
+    items = yaml.safe_load((root / RECORD_DIR / "comments.yaml").read_text(encoding="utf-8"))["items"]
+    assert [(item["target"], item["body"]) for item in items] == [("D-1", "確認: 案 A にする")]
+
 
 def test_voice_input_when_service_stopped(
     page: Page,

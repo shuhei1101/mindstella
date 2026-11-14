@@ -10,6 +10,12 @@ var MindmapPreview;
         denied: "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。",
         failed: "文字起こしできませんでした。もう一度お試しください。",
         sendFailed: "送信できませんでした。文字起こしの結果は入力欄に残しています。",
+        reviewFailed: "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。",
+        busy: "ほかの入力欄で音声入力中のため、音声で入力できません。",
+        discarded: (id) => `${id} が削除されたため、録音を破棄しました。`,
+        awayReviewFailed: (label) => `${label}をレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。`,
+        awaySendFailed: (label) => `${label}を送信できませんでした。文字起こしの結果は入力欄に残しています。`,
+        awayTranscribeFailed: (label) => `${label}の文字起こしができませんでした。もう一度お試しください。`,
     };
     /** 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。fftSize 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上 */
     MindmapPreview.WAVE_SAMPLE_MS = 50;
@@ -22,6 +28,27 @@ var MindmapPreview;
             peak = Math.max(peak, Math.abs(value - 128));
         return Math.min(peak / 128, 1);
     }
+    /** 画面の消灯の抑止を求め、解く関数を返す。持たない・断られたときは何もしない関数を返す */
+    async function acquireWakeLock(win = window) {
+        const wakeLock = win.navigator.wakeLock;
+        if (wakeLock === undefined)
+            return () => { };
+        try {
+            const sentinel = await wakeLock.request("screen");
+            let released = false;
+            return () => {
+                if (released)
+                    return;
+                released = true;
+                void sentinel.release();
+            };
+        }
+        catch {
+            // 断られた（画面が見えていない・利用者のエージェントの方針）: 録音はそのまま続ける
+            return () => { };
+        }
+    }
+    MindmapPreview.acquireWakeLock = acquireWakeLock;
     /** マイクの音量を WAVE_SAMPLE_MS ごとに取って知らせ始め、止める関数を返す（AudioContext が無ければ何もしない） */
     function watchLevels(stream, onLevel, win) {
         const Context = win.AudioContext;
@@ -113,8 +140,8 @@ var MindmapPreview;
         return `${minutes}:${String(rest).padStart(2, "0")}`;
     }
     MindmapPreview.formatElapsed = formatElapsed;
-    /** 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が send なら全文をすぐ送る */
-    async function finishVoice(recording, input, api = MindmapPreview.voiceApi()) {
+    /** 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が review なら全文をレビュー中に溜め、send なら全文をすぐ送る */
+    async function finishVoice(recording, input, api = { ...MindmapPreview.voiceApi(), add: MindmapPreview.commentApi().add }) {
         const kept = { body: input.body, caret: null, entered: false, reason: null };
         const audio = await recording.stop();
         const result = await api.transcribe(audio);
@@ -133,6 +160,13 @@ var MindmapPreview;
         const inserted = insertAtCursor(input.body, input.start, input.end, text);
         if (input.action === "insert") {
             return { kind: "inserted", body: inserted.value, caret: inserted.caret, entered: false, detail: null, reason: null };
+        }
+        if (input.action === "review") {
+            const added = await api.add({ ...input.destination, body: inserted.value });
+            if (!added.ok) {
+                return { kind: "failed", body: inserted.value, caret: inserted.caret, entered: false, detail: MindmapPreview.VOICE_TEXT.reviewFailed, reason: null };
+            }
+            return { kind: "reviewed", body: "", caret: null, entered: false, count: added.data?.count, id: added.data?.id, detail: null, reason: null };
         }
         const sent = await api.sendNow({ ...input.destination, body: inserted.value });
         if (!sent.ok) {
