@@ -1309,3 +1309,86 @@ def test_pending_fit_narrowest_when_width(open_story: OpenStory, width: int) -> 
     assert button_width is not None
     assert button_width["width"] >= 24
     assert page.inner_text(f"{PENDING_BUTTON} .count") == "99+"
+
+
+# 幅 1100px 以下で、音声入力中の表示の文字を隠す幅
+VOICE_MEDIUM_SIZE = {"width": 1100, "height": 600}
+
+# 音声入力中の表示とコメントのボタンの左右の位置を読む
+VOICE_BOXES_SCRIPT = """() => {
+  const box = (selector) => {
+    const r = document.querySelector(selector).getBoundingClientRect();
+    return { left: r.left, right: r.right, width: r.width };
+  };
+  return { voice: box('header button[aria-label$="入力欄へ移動"]'), comments: box('header button[aria-label^="コメント（"]') };
+}"""
+
+
+def test_voice_recording(open_story: OpenStory) -> None:
+    """録音中。コメントのボタンの左隣に、マイクのアイコン・「音声入力中」・経過の時間のボタンを出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--voice-recording")
+    # 検証
+    button = page.get_by_role("button", name="音声入力中（D-022 へのコメント）。録音中の入力欄へ移動")
+    assert button.count() == 1
+    assert button.inner_text().split() == ["音声入力中", "0:12"]
+    assert button.get_attribute("title") == "音声入力中（D-022 へのコメント）"
+    boxes = page.evaluate(VOICE_BOXES_SCRIPT)
+    assert boxes["voice"]["right"] <= boxes["comments"]["left"]
+
+
+def test_voice_recording_when_medium(open_story: OpenStory) -> None:
+    """幅 1100px 以下の録音中。文字を隠し、アイコンと経過の時間だけにする（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--voice-recording")
+    # 実行
+    page.set_viewport_size(VOICE_MEDIUM_SIZE)
+    page.wait_for_function("innerWidth === 1100")
+    # 検証
+    button = page.get_by_role("button", name="音声入力中（D-022 へのコメント）。録音中の入力欄へ移動")
+    assert button.inner_text().split() == ["0:12"]
+
+
+def test_voice_transcribing(open_story: OpenStory) -> None:
+    """文字起こし中。アイコンを回る印に替え、「文字起こし中」にする（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--voice-transcribing")
+    # 検証
+    button = page.get_by_role("button", name="文字起こし中（D-022 へのコメント）。入力欄へ移動")
+    assert button.count() == 1
+    assert button.inner_text().strip() == "文字起こし中"
+
+
+def test_voice_recording_narrow(open_story: OpenStory) -> None:
+    """幅 390px の録音中。マイクのアイコンだけのボタンにし、名前は読み上げとツールチップに持つ。ページは横にはみ出さない（正常系）。"""
+    # 準備
+    page = open_story("preview-topbar--voice-recording-narrow")
+    # 実行
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 検証
+    button = page.get_by_role("button", name="音声入力中（D-022 へのコメント）。録音中の入力欄へ移動")
+    assert button.inner_text().strip() == ""
+    assert button.get_attribute("title") == "音声入力中（D-022 へのコメント）"
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_voice_discarded(open_story: OpenStory) -> None:
+    """録音中に行き先の項目が削除され、録音を破棄した。トップバーの下の帯に理由と閉じる × を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--voice-discarded")
+    # 検証
+    assert page.get_by_role("status").filter(has_text="録音を破棄しました").inner_text().strip() == "D-022 が削除されたため、録音を破棄しました。"
+    assert page.get_by_role("button", name="入力欄を開く").count() == 0
+    assert page.get_by_role("button", name="閉じる").count() == 1
+
+
+def test_voice_failed(open_story: OpenStory) -> None:
+    """入力欄が画面に無い間に、レビュー中への追加に失敗した。帯に理由と「入力欄を開く」・閉じる × を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--voice-failed")
+    # 検証
+    status = page.get_by_role("status").filter(has_text="レビュー中に追加できませんでした")
+    assert status.inner_text().strip() == "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"
+    assert page.get_by_role("button", name="入力欄を開く").count() == 1
+    assert page.get_by_role("button", name="閉じる").count() == 1

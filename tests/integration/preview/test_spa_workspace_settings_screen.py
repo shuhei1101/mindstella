@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from preview_edit_helpers import wait_edits_match
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import wait_transcription_status
@@ -178,7 +180,7 @@ def test_transcription(
     start_fake_transcriber: Any,
     valid_settings: dict[str, Any],
 ) -> None:
-    """文字起こし後の挙動と用語集のプリセットを選ぶと、もう一方の値を保った transcription を 1 件溜める。挙動を持たない設定では既定の「入力欄へ挿入する」を選んでいる。候補は文字起こしの可否の presets（正常系）。"""
+    """文字起こし後の挙動と用語集のプリセットを選ぶと、もう一方の値を保った transcription を 1 件溜める。挙動を持たない設定では既定の「レビュー中に追加する」を選び、選択肢は「レビュー中に追加する」「入力欄へ挿入する」「送信する」の順。候補は文字起こしの可否の presets（正常系）。"""
     # 準備
     fake = start_fake_transcriber("done")
     _open_voice_settings(
@@ -187,9 +189,11 @@ def test_transcription(
     preset = page.get_by_label("用語集のプリセット", exact=True)
     # 検証（今の値と候補）
     expect(page.get_by_role("group", name="音声入力")).to_be_visible()
-    expect(page.get_by_role("radio", name="入力欄へ挿入する")).to_be_checked()
+    expect(page.get_by_role("radio", name="レビュー中に追加する")).to_be_checked()
+    radios = page.get_by_role("radio", name=re.compile("^(レビュー中に追加する|入力欄へ挿入する|送信する)$"))
+    assert [radios.nth(i).get_attribute("value") for i in range(radios.count())] == ["review", "insert", "send"]
     expect(preset).to_have_value("開発")
-    assert preset.locator("option").all_inner_texts() == ["サービスの既定", "一般", "開発"]
+    expect(preset.locator("option")).to_have_text(["サービスの既定", "一般", "開発"])
     expect(page.locator(PRESET_HINT)).to_have_text("文字起こしの補正に使用する用語集です。候補は文字起こしのサービスから取得します。")
     # 実行（文字起こし後の挙動）
     page.get_by_role("radio", name="送信する").check()
