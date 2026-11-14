@@ -53,9 +53,10 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-42.yaml
-    impact: run_only
-    detail: 起動のコマンドの中身が変わっても、登録した alias から起動のコマンドを呼べることを確かめる
-    depends_on: []
+    impact: following
+    detail: 登録した alias が、題名を変えた『端末から起動する』の起動のコマンドを呼ぶことに合わせる。MindStella のセッションのアカウントは claude-balancer が選ぶので、アカウントごとの alias の扱いはインターフェース定義設計で決める
+    depends_on:
+      - docs/scenario/SC-489-41.yaml
   - kind: single
     scenario: docs/scenario/SC-489-10.yaml
     impact: run_only
@@ -92,6 +93,46 @@ docs:
   - page: plugins/mindstella/skills/mindmap/README.md
     new: false
     change: 起動のコマンドと常駐サーバーの起動の記述を、systemd --user と MindStella の API に合わせる
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: 登録した alias が呼ぶ起動のコマンド（端末から起動する）に合わせ、アカウントごとの alias の扱いをインターフェース定義の決定に合わせる
+    status: todo
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: 起動のコマンドがワークスペースと MindStella のセッションを作り、セットアップが設定を書く流れに合わせる
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 起動のコマンドで MindStella のセッションを作り直す・起動中のペインへつなぐ流れに合わせる
+    status: todo
+  - page: docs/guide/使い方.md
+    new: false
+    change: 『起動スクリプトで立ち上げる』の指し方を『端末から起動する』と起動のコマンドに合わせる
+    status: todo
+  - page: docs/guide/README.md
+    new: false
+    change: 『起動スクリプトで立ち上げる』の指し方を起動のコマンドに合わせる
+    status: todo
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: ワークスペースの作成が返す画面の URL で開けることと、起動のコマンドの指し方を加える
+    status: todo
+  - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
+    new: false
+    change: 起動スクリプトの呼び方を起動のコマンドに合わせる
+    status: todo
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    new: false
+    change: 許可するホスト名からは MindStella の API と /mcp を受けず、画面の閲覧とコメントの送信だけを受けること（D-340）を加え、起動のコマンドの指し方を合わせる
+    status: todo
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
+    new: false
+    change: 起動スクリプトの呼び方を起動のコマンドに合わせる
+    status: todo
+  - page: docs/guide/files.yml
+    new: false
+    change: 編集したガイドのページの行の概要文を、起動のコマンドと常駐サーバーの systemd --user に合わせる
     status: todo
 scope_out:
   - item: 記録の検索と書き込みの project-index への移行、変更の検知のフォルダの監視、採番のツール（A-107 の No 2）

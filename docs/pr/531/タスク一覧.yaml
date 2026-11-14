@@ -35,7 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-14T15:07:40.718152+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    note: SC-531-1・SC-531-2 を新規、SC-489-20・SC-489-41（題名を『端末から起動する』へ）・SC-489-14・SC-489-2 を変更、SC-489-37・SC-489-12・SC-489-42 を追従
+    updated_by: planner
+    updated_at: '2026-11-14T15:48:03.898486+00:00'
   - process: モック作成
     status: skipped
     reason: 判定フローチャート『モック要否』で、利用者に見える画面の見た目が変わらない（NO）
