@@ -20,8 +20,9 @@ used_in:
   - plugins/mindstella/skills/mindmap/scripts/server.py
 upstream: shuhei1101/claude-balancer
 verification:
-  state: 未確認
-  detail: 'claude-balancer の develop の設計書『借りて実行』（IF-275-21）で終了コードを確かめ、この端末の `claude-balancer exec --help` で引数を確かめた。この端末の `clients` は `ai-monitor`・`user`・`small-worker`・`aituber`・`ai-monitor-e2e` で、`mindstella` は無い。`--client user` で `exec -- claude` を tmux のペインの中で起動し、SessionStart のフックまでの時間を測った（非機能要件『MindStella のセッションの準備を待つ上限』）'
+  state: 済
+  detail: 'claude-balancer の develop の設計書『借りて実行』（IF-275-21）で終了コードを確かめ、この端末の `claude-balancer exec --help` で引数を確かめた。この端末の `clients` は `ai-monitor`・`user`・`small-worker`・`aituber`・`ai-monitor-e2e` で、`mindstella` は無い。`--client user` で `exec -- claude` を tmux のペインの中で起動し、SessionStart のフックまでの時間を測った（非機能要件『MindStella のセッションの準備を待つ上限』）。`clients` に無い `--client mindstella` で `claude-balancer exec -- true` を流し、子プロセスを起動せずに「知らないクライアントです: mindstella」を標準エラーに出して終了コード 125 で終わることを確かめた（2026-11-15）'
+  date: '2026-11-15'
 limitations:
   - item: 利用の上限
     content: '全てのアカウントが利用の上限に達していると、`exec` はエラーで終わる。セッションの管理は 503（`stage: account`）を返す'

@@ -101,7 +101,7 @@ def find_doc_path(port: int, source: str, doc_id: str) -> str | None:
     status, body = _request(port, "GET", path)
     if status != HTTPStatus.OK:
         raise _failed("GET", path, status, body)
-    for doc in body.get("docs") or []:
+    for doc in body.get("documents") or []:
         if isinstance(doc, dict) and doc.get("id") == doc_id:
             return str(doc.get("path"))
     return None

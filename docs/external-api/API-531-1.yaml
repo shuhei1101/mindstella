@@ -58,7 +58,7 @@ used_in:
   - plugins/mindstella/skills/mindmap/scripts/server.py
 verification:
   state: 未確認
-  detail: project-index の develop の設計書（IF-30〜IF-34）で入出力を確かめた。MindStella から呼んで動かしてはいない。実装の段で確かめる
+  detail: 'この端末の project-index（develop）を `project_index.py` から呼んで確かめた（2026-11-15）。`GET /settings/sources` は `settingsPath`・`sources[]`（行は `outsideRead` を持つ）・`version`・`warnings` を返す。`GET /sources/{source}/docs` は `documents[]`（`id`・`path`）を返し、配信元が無ければ 404。`GET /sources/{source}/docs/{path}?id=` は文書があれば 200、ID が違えば 404（`missing: doc`）。`POST`・`PATCH /settings/sources` は利用者の端末の設定のファイルを書き換えるため流していない（結合テストの project-index の Mock と、マージの後の起動で確かめる）'
 base_urls:
   - env: 全て
     url: http://127.0.0.1:${PROJECT_INDEX_PORT:-8786}
