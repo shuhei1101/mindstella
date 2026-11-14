@@ -1,0 +1,47 @@
+id: SC-531-2
+title: "MindStella のセッションを止めてワークスペースをクローズにする"
+lead: '外部のアプリが MindStella のセッションの停止を依頼すると、MindStella は依頼を受け付けてすぐに返却し、最後の書き込みが終わるのを待ってから MindStella のセッションを止める。止まった後に外部のアプリがクローズを依頼すると、配信元の行を `outside_read: false` にしてワークスペースをクローズにする単一ユースケース。'
+issue: 516
+primary_actor: 外部のアプリ（aituber など）
+trigger: 外部のアプリが MindStella の API に MindStella のセッションの停止を依頼する
+preconditions:
+  - 外部のアプリがワークスペースと MindStella のセッションを作っている（SC-531-1）
+success_guarantee: 'MindStella のセッションが止まり、状態に停止済みが記録されている。ワークスペースの配信元の行が `outside_read: false` になっている。ワークスペースの記録と、状態のフォルダの追加の MCP・プラグインの記録は残っている。'
+minimal_guarantee: 最後の書き込みを待つ上限を過ぎたときは、MindStella のセッションを止めず、待っている書き込みがあることを状態に記録する。MindStella のセッションがある間のクローズの依頼は断り、ワークスペースを変えない。
+test_file: tests/e2e/単一ユースケース/test_session_close.py
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（止める依頼を受けたことを記録し、SessionEnd のフックを呼ぶ）
+      - name: ワークスペース
+        description: SC-531-1 で作ったワークスペースで、応答の途中でなく、まとめていない変更が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant MGR as セッションの管理
+        participant WSM as ワークスペースの管理
+        participant CC as MindStella のセッション
+        participant PI as project-index
+
+        APP->>API: 停止を依頼する（DELETE /workspaces/{id}/sessions/{session}）
+        API-->>APP: 受け付けた
+        API->>MGR: 停止を依頼する
+        MGR->>MGR: 状態をクローズ待ちにし、最後の書き込みが終わったかを確かめる
+        MGR->>CC: 止めて tmux のペインを閉じる
+        CC->>MGR: SessionEnd のフックが状態に停止済みを記録する
+        APP->>API: MindStella のセッションの一覧を取得する（GET /workspaces/{id}/sessions）
+        API-->>APP: 停止済み
+        APP->>API: クローズを依頼する（POST /workspaces/{id}/close）
+        API->>WSM: クローズを依頼する
+        WSM->>MGR: MindStella のセッションの有無を問い合わせる
+        WSM->>PI: 配信元の行を outside_read: false にする
+        API-->>APP: クローズした
+      ```
+    expected:
+      - 外部のアプリが、停止の依頼をすぐに受け付けられている
+      - Mock のセッションが止める依頼を受け、状態に停止済みが記録されている
+      - ワークスペースの配信元の行が `outside_read: false` になっている。ワークスペースの記録と、状態のフォルダの追加の MCP・プラグインの記録は残っている
+    test: test_normal

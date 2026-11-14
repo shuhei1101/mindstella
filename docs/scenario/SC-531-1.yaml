@@ -1,0 +1,47 @@
+id: SC-531-1
+title: "外部のアプリから起動する"
+lead: 外部のアプリがフォルダ・進め方の文書・追加の MCP・プラグインを指定してワークスペースを作り、続けて MindStella のセッションの作成を依頼し、MindStella のセッションの準備ができてから画面の URL と MindStella のセッションの ID を受け取る単一ユースケース。
+issue: 516
+primary_actor: 外部のアプリ（aituber など）
+trigger: 外部のアプリが MindStella の API にワークスペースの作成を依頼する
+preconditions:
+  - 常駐サーバーが起動している
+  - 指定するフォルダが、設定で許可するフォルダの下にある
+success_guarantee: ワークスペースの記録があり、その設定に進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録され、ワークスペースが project-index の配信元に登録され、状態のフォルダのワークスペースの ID の一覧にある。MindStella のセッションが tmux で起動して準備ができ、外部のアプリが画面の URL と MindStella のセッションの ID を受け取っている。
+minimal_guarantee: ワークスペースの作成に失敗したときは、記録も配信元の行も状態のフォルダの記録も作らずに失敗の理由を返却する。MindStella のセッションの作成に失敗したときは、起動したプロセスを止め、ワークスペースは開いたまま残す。
+test_file: tests/e2e/単一ユースケース/test_session_start.py
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（起動の引数と環境変数を記録し、SessionStart のフックを呼ぶ）・claude-balancer（`exec` で空いたアカウントを選んだことを記録する）
+      - name: ワークスペース
+        description: 指定したフォルダにワークスペースの記録が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant WSM as ワークスペースの管理
+        participant MGR as セッションの管理
+        participant PI as project-index
+        participant CC as MindStella のセッション
+
+        APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+        API->>WSM: ワークスペースの作成を依頼する
+        WSM->>WSM: 記録を作り、進め方の文書を設定に記録する
+        WSM->>MGR: 追加の MCP・プラグインの記録を依頼する
+        WSM->>PI: 配信元に登録する
+        WSM->>WSM: 状態のフォルダのワークスペースの ID の一覧に追加する
+        API-->>APP: ワークスペースの ID と画面の URL
+        APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+        API->>MGR: MindStella のセッションの作成を依頼する
+        MGR->>CC: tmux のペインの中で claude-balancer exec で起動する
+        CC->>MGR: SessionStart のフックが状態に登録する
+        API-->>APP: MindStella のセッションの ID と画面の URL
+      ```
+    expected:
+      - 指定したフォルダにワークスペースの記録があり、設定に進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録されている
+      - ワークスペースが project-index の配信元に登録され、状態のフォルダの ID の一覧にある
+      - 外部のアプリが、SessionStart のフックが状態に登録した後に、MindStella のセッションの ID と画面の URL を受け取っている
+    test: test_normal
