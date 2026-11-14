@@ -1,84 +1,91 @@
 id: MOD-531-5
 title: サーバー / 入口 / api.py
 test_files:
-- tests/unit/scripts/test_api.py
+  - tests/unit/scripts/test_api.py
 functions:
-- name: build_routes
-  title: MindStella の API の経路
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/api.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: IF-531-1〜6 の経路を starlette の `Route` で返す。どの経路も `check_host` を通してから、ワークスペースの管理・セッションの管理を呼ぶ
-  args:
-  - name: ctx
-    type: ServerContext
-    required: true
-    passing: positional
-    description: 入口が作った値
-  returns:
-    type: list[Route]
-    description: 経路の並び
-  unit_tests:
-  - name: test_build_routes
-    case: 正常
-    summary: 経路とメソッドが揃う
-    condition: '`build_routes` の結果'
-    mock: なし
-    expected: '`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close`・`POST /_admin/sessions/{session}/events` がある'
-- name: check_host
-  title: Host と Origin を確かめる
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/api.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` で、`Origin` があるときも同じ 2 つのどちらかかを確かめる'
-  args:
-  - name: request
-    type: Request
-    required: true
-    passing: positional
-    description: 要求
-  - name: port
-    type: int
-    required: true
-    passing: positional
-    description: 常駐サーバーのポート
-  returns:
-    type: None
-    description: なし
-  exceptions:
-  - name: ApiError
-    condition: '403（`stage: host`）'
-  unit_tests:
-  - name: test_check_host
-    case: 正常
-    summary: 端末の中の Host だけを通す
-    condition: '`parametrize`: `127.0.0.1:8784` / `localhost:8784` / `preview.example.test` / Origin が `http://evil.test`'
-    mock: なし
-    expected: 通る / 通る / `ApiError` 403 / `ApiError` 403
-- name: problem_response
-  title: エラーの応答
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/api.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`ApiError` を `application/problem+json`（`type`・`title`・`status`・`detail`・`stage` と拡張のメンバー）にする'
-  args:
-  - name: error
-    type: ApiError
-    required: true
-    passing: positional
-    description: エラー
-  returns:
-    type: JSONResponse
-    description: 応答
-  unit_tests:
-  - name: test_problem_response
-    case: 正常
-    summary: 形とステータス
-    condition: '`ApiError(409, ''exists'', ''…'', session=''S-1'', pane=''w:0.0'')`'
-    mock: なし
-    expected: ステータス 409、`Content-Type` が `application/problem+json`、本文に `stage`・`session`・`pane`
+  - name: build_routes
+    title: MindStella の API の経路
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/api.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: IF-531-1〜6 の経路を starlette の `Route` で返す。どの経路も `check_host` を通してから、ワークスペースの管理・セッションの管理を呼ぶ
+    args:
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 入口が作った値
+    returns:
+      type: list[Route]
+      description: 経路の並び
+    unit_tests:
+      - name: test_build_routes
+        case: 正常
+        summary: 経路とメソッドが揃う
+        condition: '`build_routes` の結果'
+        mock: なし
+        expected: '`POST /workspaces`・`POST /workspaces/{id}/sessions`・`GET /workspaces/{id}/sessions`・`DELETE /workspaces/{id}/sessions/{session}`・`POST /workspaces/{id}/close`・`POST /_admin/sessions/{session}/events` がある'
+  - name: check_host
+    title: Host と Origin を確かめる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/api.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` で、`Origin` があるときも同じ 2 つのどちらかかを確かめる'
+    args:
+      - name: request
+        type: Request
+        required: true
+        passing: positional
+        description: 要求
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+    returns:
+      type: None
+      description: なし
+    exceptions:
+      - name: ApiError
+        condition: '403（`stage: host`）'
+    unit_tests:
+      - name: test_check_host
+        case: 正常
+        summary: 端末の中の Host だけを通す
+        condition: '`parametrize`: `127.0.0.1:8784` / `localhost:8784` / `preview.example.test` / Origin が `http://evil.test`'
+        mock: なし
+        expected: 通る / 通る / `ApiError` 403 / `ApiError` 403
+  - name: problem_response
+    title: エラーの応答
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/api.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`ApiError` を `application/problem+json`（`type`・`title`・`status`・`detail`・`stage` と拡張のメンバー）にする'
+    args:
+      - name: error
+        type: ApiError
+        required: true
+        passing: positional
+        description: エラー
+    returns:
+      type: JSONResponse
+      description: 応答
+    unit_tests:
+      - name: test_problem_response
+        case: 正常
+        summary: 形とステータス
+        condition: '`ApiError(409, ''exists'', ''…'', session=''S-1'', pane=''w:0.0'')`'
+        mock: なし
+        expected: ステータス 409、`Content-Type` が `application/problem+json`、本文に `stage`・`session`・`pane`
 notes:
   MCP のツール: '`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` は入口（`server.py`）が登録し、同じワークスペースの管理・セッションの管理の関数を呼ぶ（`check_host` は `/mcp` の確かめに任せる）'
+  ログ: |
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+
+    | イベント名 | 水準 | いつ | 属性 |
+    | --- | --- | --- | --- |
+    | `mindstella.api.host_rejected` | WARN | `check_host` が 403 にした | `Host`・`Origin`・経路 |
+    | `mindstella.api.unexpected_error` | ERROR | 経路の処理で `ApiError` でない例外を捕まえて 500 を返した（`logger.exception`） | 経路・メソッド |

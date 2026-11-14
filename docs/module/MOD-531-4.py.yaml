@@ -1,422 +1,442 @@
 id: MOD-531-4
 title: サーバー / セッションの管理 / sessions.py
 test_files:
-- tests/unit/scripts/test_sessions.py
+  - tests/unit/scripts/test_sessions.py
 constants:
-- name: READY_TIMEOUT_SEC
-  title: 準備を待つ上限
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: SessionStart のフックの登録を待つ秒数。`MINDSTELLA_SESSION_READY_TIMEOUT` で上書きできる
-  value: 30.0（非機能要件『MindStella のセッションの準備を待つ上限』）
-- name: READY_POLL_SEC
-  title: 準備を確かめる間隔
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: '`session.json` とペインの終わり方を読む間隔'
-  value: '0.5'
-- name: STOP_WAIT_SEC
-  title: 最後の書き込みを待つ上限
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: MindStella のセッションを止めてワークスペースをクローズにする
-  summary: 停止で応答の終わりを待つ秒数。`MINDSTELLA_STOP_WAIT_TIMEOUT` で上書きできる
-  value: 5400.0（非機能要件『最後の書き込みを待つ上限』）
-- name: STOP_POLL_SEC
-  title: 応答の終わりを確かめる間隔
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: MindStella のセッションを止めてワークスペースをクローズにする
-  summary: 停止を待つ間に `session.json` を読む間隔
-  value: '1.0'
-- name: EXIT_WAIT_SEC
-  title: /exit の後に待つ上限
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: MindStella のセッションを止めてワークスペースをクローズにする
-  summary: '`/exit` を貼ってから Claude Code のプロセスが終わるまで待つ秒数。過ぎたら SIGTERM を送る'
-  value: '10.0'
-- name: PANE_TAIL_LINES
-  title: 返すペインの行数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: 失敗のときに `detail` に入れるペインの最後の行数
-  value: '20'
-- name: BALANCER_CLIENT
-  title: claude-balancer のクライアント
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: '`claude-balancer exec --client` に渡す名前'
-  value: '"mindstella"'
-- name: NO_ACCOUNT_EXIT
-  title: 借りられないときの終了コード
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: claude-balancer の `exec` が子プロセスを起動せずに終わるときの終了コード（LIB-531-1）
-  value: '125'
-- name: FIRST_INPUT
-  title: 最初の入力
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: '準備ができた後にペインへ入力する 1 行（PR #531 の確認ログ）'
-  value: '"[mindstella] MindStella のセッションを起動しました"'
+  - name: READY_TIMEOUT_SEC
+    title: 準備を待つ上限
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: SessionStart のフックの登録を待つ秒数。`MINDSTELLA_SESSION_READY_TIMEOUT` で上書きできる
+    value: 30.0（非機能要件『MindStella のセッションの準備を待つ上限』）
+  - name: READY_POLL_SEC
+    title: 準備を確かめる間隔
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: '`session.json` とペインの終わり方を読む間隔'
+    value: '0.5'
+  - name: STOP_WAIT_SEC
+    title: 最後の書き込みを待つ上限
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: MindStella のセッションを止めてワークスペースをクローズにする
+    summary: 停止で応答の終わりを待つ秒数。`MINDSTELLA_STOP_WAIT_TIMEOUT` で上書きできる
+    value: 5400.0（非機能要件『最後の書き込みを待つ上限』）
+  - name: STOP_POLL_SEC
+    title: 応答の終わりを確かめる間隔
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: MindStella のセッションを止めてワークスペースをクローズにする
+    summary: 停止を待つ間に `session.json` を読む間隔
+    value: '1.0'
+  - name: EXIT_WAIT_SEC
+    title: /exit の後に待つ上限
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: MindStella のセッションを止めてワークスペースをクローズにする
+    summary: '`/exit` を貼ってから Claude Code のプロセスが終わるまで待つ秒数。過ぎたら SIGTERM を送る'
+    value: '10.0'
+  - name: PANE_TAIL_LINES
+    title: 返すペインの行数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: 失敗のときに `detail` に入れるペインの最後の行数
+    value: '20'
+  - name: BALANCER_CLIENT
+    title: claude-balancer のクライアント
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: '`claude-balancer exec --client` に渡す名前'
+    value: '"mindstella"'
+  - name: NO_ACCOUNT_EXIT
+    title: 借りられないときの終了コード
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: claude-balancer の `exec` が子プロセスを起動せずに終わるときの終了コード（LIB-531-1）
+    value: '125'
+  - name: FIRST_INPUT
+    title: 最初の入力
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: '準備ができた後にペインへ入力する 1 行（PR #531 の確認ログ）'
+    value: '"[mindstella] MindStella のセッションを起動しました"'
 functions:
-- name: new_session_id
-  title: MindStella のセッションの ID を振る
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`S-` に続く 12 桁の 16 進（`secrets.token_hex(6)`）を返す'
-  args: []
-  returns:
-    type: str
-    description: MindStella のセッションの ID
-  unit_tests:
-  - name: test_new_session_id
-    case: 正常
-    summary: 形と重なり
-    condition: 1,000 回振る
-    mock: なし
-    expected: 全て `^S-[0-9a-f]{12}$` に合い、重ならない
-- name: build_command
-  title: 起動のコマンドを組み立てる
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella -- claude ...`、無ければ `claude ...`）。`--mcp-config`・`--plugin-dir`・`--append-system-prompt` を足す
-  args:
-  - name: options
-    type: LaunchOptions | None
-    required: true
-    passing: positional
-    description: 起動の指定
-  - name: mcp_config_file
-    type: Path | None
-    required: true
-    passing: positional
-    description: '`mcp_config` を書いた一時ファイル'
-  - name: startup_prompt
-    type: str
-    required: true
-    passing: positional
-    description: 起動時の指示の中身
-  - name: balancer
-    type: str | None
-    required: true
-    passing: positional
-    description: '`claude-balancer` のパス（`shutil.which`）'
-  returns:
-    type: list[str]
-    description: コマンドの引数の並び
-  unit_tests:
-  - name: test_build_command
-    case: 正常
-    summary: claude-balancer の有無と指定で並びが変わる
-    condition: '`parametrize`: balancer あり・指定あり / balancer 無し・指定が空 / 記録無し（`None`）'
-    mock: なし
-    expected: '`[balancer, exec, --client, mindstella, --, claude, --mcp-config, f, --plugin-dir, p, --append-system-prompt, s]` / `[claude, --append-system-prompt, s]` / 同じく指定なし'
-- name: build_env
-  title: 渡す環境変数を組み立てる
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_PORT`・`MINDSTELLA_FLOW`（あれば）・`CLAUDE_CONFIG_DIR`（claude-balancer が無く指定があれば）を返す'
-  args:
-  - name: session_id
-    type: str
-    required: true
-    passing: positional
-    description: MindStella のセッションの ID
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: port
-    type: int
-    required: true
-    passing: positional
-    description: 常駐サーバーのポート
-  - name: flow
-    type: dict | None
-    required: true
-    passing: positional
-    description: 設定の進め方の文書
-  - name: claude_config_dir
-    type: str | None
-    required: true
-    passing: positional
-    description: 依頼の `claude_config_dir`
-  - name: has_balancer
-    type: bool
-    required: true
-    passing: positional
-    description: claude-balancer があるか
-  returns:
-    type: dict[str, str]
-    description: 環境変数
-  unit_tests:
-  - name: test_build_env
-    case: 正常
-    summary: 進め方の文書と CLAUDE_CONFIG_DIR の入り方
-    condition: '`parametrize`: flow あり・balancer あり・config_dir あり / flow 無し・balancer 無し・config_dir あり'
-    mock: なし
-    expected: '`MINDSTELLA_FLOW: src#doc` があり `CLAUDE_CONFIG_DIR` が無い / `MINDSTELLA_FLOW` が無く `CLAUDE_CONFIG_DIR` がある'
-- name: is_alive
-  title: MindStella のセッションが生きているか
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`status` が `running`・`stopping` で、ペインと `pid` のプロセスがあり起動時刻が合うかを返す。合わなければ状態を `crashed` にする'
-  side_effects: 落ちていれば `session.json` を `crashed` にする
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: tmux
-    type: TmuxRunner
-    required: true
-    passing: positional
-    description: tmux のコマンドを呼ぶもの
-  - name: proc
-    type: ProcessInspector
-    required: true
-    passing: positional
-    description: プロセスの起動時刻を読むもの
-  returns:
-    type: bool
-    description: 生きているか
-  unit_tests:
-  - name: test_is_alive
-    case: 正常
-    summary: ペインとプロセスで判定し、落ちていれば crashed
-    condition: '`running`・ペインあり・起動時刻が合う / ペインが無い / 起動時刻が違う / `stopped`'
-    mock: '`TmuxRunner`・`ProcessInspector`'
-    expected: '`True` / `False` で `crashed` / `False` で `crashed` / `False` で変えない'
-- name: create_session
-  title: MindStella のセッションを作る
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: IF-531-2 の順で、ペインを作り `remain-on-exit` を立ててからコマンドを動かし、SessionStart の登録かペインの終わりを待つ
-  description: ワークスペースごとの鍵を、クローズ済みかの確かめから状態を書くまで持つ（準備を待つ間も）。`session.json` の読み書きは `state.update_session` の鍵を使う
-  side_effects: tmux のセッションを作り、`session.json` を書く。失敗のときはペインを閉じて `session.json` を消す
-  args:
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: claude_config_dir
-    type: str | None
-    required: true
-    passing: positional
-    description: 依頼の `claude_config_dir`
-  - name: ctx
-    type: ServerContext
-    required: true
-    passing: positional
-    description: 状態のフォルダ・鍵・ポート・プラグインのフォルダ
-  returns:
-    type: tuple[int, dict]
-    description: '`(201, {session, pane, url})`'
-  exceptions:
-  - name: ApiError
-    condition: 404・409・502・503・504
-  unit_tests:
-  - name: test_create_session
-    case: 正常
-    summary: 登録が入れば 201 と最初の入力
-    condition: '`TmuxRunner` の偽。0.5 秒後に `session.json` の `claude_session_id` を入れる'
-    mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
-    expected: '`(201, ...)`。tmux の呼び出しが `new-session` → `set-option remain-on-exit on` → `respawn-pane -k ... -e MINDSTELLA_SESSION=...` → 最初の入力の貼り付けの順'
-  - name: test_create_session_exists
-    case: 異常
-    summary: 生きている MindStella のセッションがあれば 409
-    condition: '`session.json` が `running` で `is_alive` が真'
-    mock: '`is_alive`'
-    expected: '`ApiError`（409、`stage: exists`、`session`・`pane`）、tmux を呼ばない'
-  - name: test_create_session_closed
-    case: 異常
-    summary: クローズ済みなら 409
-    condition: '配信元の行が `outsideRead: false`'
-    mock: '`project_index.get_settings`'
-    expected: '`ApiError`（409、`stage: closed`）'
-  - name: test_create_session_no_account
-    case: 異常
-    summary: ペインが 125 で終われば 503
-    condition: '`display-message` が `1 125`、`capture-pane` が理由の行'
-    mock: '`TmuxRunner`'
-    expected: '`ApiError`（503、`stage: account`、`detail` に理由の行）、`kill-session` が呼ばれ、`session.json` が無い'
-  - name: test_create_session_launch_exit
-    case: 異常
-    summary: 125 以外で終われば 502
-    condition: '`display-message` が `1 1`'
-    mock: '`TmuxRunner`'
-    expected: '`ApiError`（502、`stage: launch`）'
-  - name: test_create_session_not_ready
-    case: 異常
-    summary: 上限を過ぎれば 504
-    condition: 登録が入らず、ペインも終わらない。上限を 1 秒にする
-    mock: '`TmuxRunner`・`time.monotonic`'
-    expected: '`ApiError`（504、`stage: ready`）、`kill-session` が呼ばれる'
-- name: list_sessions
-  title: MindStella のセッションの一覧
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: MindStella のセッションを止めてワークスペースをクローズにする
-  scope: public
-  summary: 最後の MindStella のセッションの状態と `close_pending` を返す
-  args:
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: ctx
-    type: ServerContext
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  returns:
-    type: dict
-    description: '`{sessions: [...], close_pending}`'
-  unit_tests:
-  - name: test_list_sessions
-    case: 正常
-    summary: 無ければ空、落ちていれば crashed
-    condition: '`session.json` 無し / `running` で生きている / `running` でペインが無い'
-    mock: '`is_alive`'
-    expected: '`sessions: []` / `status: running` / `status: crashed`'
-- name: stop_session
-  title: MindStella のセッションを止める
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: MindStella のセッションを止めてワークスペースをクローズにする
-  scope: public
-  summary: '`close_pending` を真・`status` を `stopping` にしてすぐ返し、別のスレッドで応答の終わりを待って止める。落ちていれば止める工程を飛ばして commit し 200'
-  side_effects: '`session.json` を書き、ペインへ `/exit` を貼り、プロセスに SIGTERM を送り、tmux のセッションを閉じ、まとめていない変更を commit する'
-  args:
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: session_id
-    type: str
-    required: true
-    passing: positional
-    description: MindStella のセッションの ID
-  - name: force
-    type: bool
-    required: true
-    passing: positional
-    description: 応答の終わりを待たない
-  - name: ctx
-    type: ServerContext
-    required: true
-    passing: positional
-    description: 状態のフォルダ・鍵
-  returns:
-    type: tuple[int, dict]
-    description: '`(202, {status: stopping})` か `(200, {status: stopped})`'
-  exceptions:
-  - name: ApiError
-    condition: '404'
-  unit_tests:
-  - name: test_stop_session
-    case: 正常
-    summary: すぐに 202 を返し、応答の途中でなければ /exit を貼る
-    condition: '`running`・`responding: false`'
-    mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる'
-    expected: '`(202, ...)`、受けた直後に `close_pending` が真、`/exit` が貼られる'
-  - name: test_stop_session_waits
-    case: 正常
-    summary: 応答の途中なら終わるまで貼らない
-    condition: '`responding: true` が 2 回の確認の後に偽になる'
-    mock: 同上・`time.sleep`
-    expected: '`/exit` が偽になった後に貼られる'
-  - name: test_stop_session_wait_limit
-    case: 異常
-    summary: 上限を過ぎれば止めずに pending_write
-    condition: '`responding` が真のまま、上限を 2 秒にする'
-    mock: 同上・`time.monotonic`
-    expected: '`/exit` が貼られず、`pending_write` が真、`status` が `running`'
-  - name: test_stop_session_crashed
-    case: 正常
-    summary: 落ちていれば commit して 200
-    condition: '`running` でペインが無い、まとめていない変更がある'
-    mock: '`is_alive`・`history` の commit'
-    expected: '`(200, {status: stopped})`、commit の説明に落ちていた旨'
-  - name: test_stop_session_forced
-    case: 正常
-    summary: 強制なら待たずに止めて commit
-    condition: '`responding: true`、`force=True`'
-    mock: 同上
-    expected: '`/exit` を待たずに SIGTERM と `kill-session`、commit の説明に強制の旨'
-- name: record_event
-  title: フックの出来事を記録する
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽
-  side_effects: '`session.json` を書く'
-  args:
-  - name: session_id
-    type: str
-    required: true
-    passing: positional
-    description: MindStella のセッションの ID
-  - name: event
-    type: dict
-    required: true
-    passing: positional
-    description: 出来事の本文
-  - name: ctx
-    type: ServerContext
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  returns:
-    type: bool
-    description: 記録したか
-  unit_tests:
-  - name: test_record_event
-    case: 正常
-    summary: 出来事ごとの書き換え
-    condition: '`session_start`（`source: startup`・`clear`・`fork`）/ `session_end`（`reason: clear`・`logout`）/ `prompt_submit` / `stop_failure` / 知らない `session`'
-    mock: なし
-    expected: '`claude_session_id` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽 / `False`'
+  - name: new_session_id
+    title: MindStella のセッションの ID を振る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`S-` に続く 12 桁の 16 進（`secrets.token_hex(6)`）を返す'
+    args: []
+    returns:
+      type: str
+      description: MindStella のセッションの ID
+    unit_tests:
+      - name: test_new_session_id
+        case: 正常
+        summary: 形と重なり
+        condition: 1,000 回振る
+        mock: なし
+        expected: 全て `^S-[0-9a-f]{12}$` に合い、重ならない
+  - name: build_command
+    title: 起動のコマンドを組み立てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella -- claude ...`、無ければ `claude ...`）。`--mcp-config`・`--plugin-dir`・`--append-system-prompt` を足す
+    args:
+      - name: options
+        type: LaunchOptions | None
+        required: true
+        passing: positional
+        description: 起動の指定
+      - name: mcp_config_file
+        type: Path | None
+        required: true
+        passing: positional
+        description: '`mcp_config` を書いた一時ファイル'
+      - name: startup_prompt
+        type: str
+        required: true
+        passing: positional
+        description: 起動時の指示の中身
+      - name: balancer
+        type: str | None
+        required: true
+        passing: positional
+        description: '`claude-balancer` のパス（`shutil.which`）'
+    returns:
+      type: list[str]
+      description: コマンドの引数の並び
+    unit_tests:
+      - name: test_build_command
+        case: 正常
+        summary: claude-balancer の有無と指定で並びが変わる
+        condition: '`parametrize`: balancer あり・指定あり / balancer 無し・指定が空 / 記録無し（`None`）'
+        mock: なし
+        expected: '`[balancer, exec, --client, mindstella, --, claude, --mcp-config, f, --plugin-dir, p, --append-system-prompt, s]` / `[claude, --append-system-prompt, s]` / 同じく指定なし'
+  - name: build_env
+    title: 渡す環境変数を組み立てる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_PORT`・`MINDSTELLA_FLOW`（あれば）・`CLAUDE_CONFIG_DIR`（claude-balancer が無く指定があれば）を返す'
+    args:
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+      - name: flow
+        type: dict | None
+        required: true
+        passing: positional
+        description: 設定の進め方の文書
+      - name: claude_config_dir
+        type: str | None
+        required: true
+        passing: positional
+        description: 依頼の `claude_config_dir`
+      - name: has_balancer
+        type: bool
+        required: true
+        passing: positional
+        description: claude-balancer があるか
+    returns:
+      type: dict[str, str]
+      description: 環境変数
+    unit_tests:
+      - name: test_build_env
+        case: 正常
+        summary: 進め方の文書と CLAUDE_CONFIG_DIR の入り方
+        condition: '`parametrize`: flow あり・balancer あり・config_dir あり / flow 無し・balancer 無し・config_dir あり'
+        mock: なし
+        expected: '`MINDSTELLA_FLOW: src#doc` があり `CLAUDE_CONFIG_DIR` が無い / `MINDSTELLA_FLOW` が無く `CLAUDE_CONFIG_DIR` がある'
+  - name: is_alive
+    title: MindStella のセッションが生きているか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`status` が `running`・`stopping` で、ペインと `pid` のプロセスがあり起動時刻が合うかを返す。合わなければ状態を `crashed` にする'
+    side_effects: 落ちていれば `session.json` を `crashed` にする
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: tmux
+        type: TmuxRunner
+        required: true
+        passing: positional
+        description: tmux のコマンドを呼ぶもの
+      - name: proc
+        type: ProcessInspector
+        required: true
+        passing: positional
+        description: プロセスの起動時刻を読むもの
+    returns:
+      type: bool
+      description: 生きているか
+    unit_tests:
+      - name: test_is_alive
+        case: 正常
+        summary: ペインとプロセスで判定し、落ちていれば crashed
+        condition: '`running`・ペインあり・起動時刻が合う / ペインが無い / 起動時刻が違う / `stopped`'
+        mock: '`TmuxRunner`・`ProcessInspector`'
+        expected: '`True` / `False` で `crashed` / `False` で `crashed` / `False` で変えない'
+  - name: create_session
+    title: MindStella のセッションを作る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: IF-531-2 の順で、ペインを作り `remain-on-exit` を立ててからコマンドを動かし、SessionStart の登録かペインの終わりを待つ
+    description: ワークスペースごとの鍵を、クローズ済みかの確かめから状態を書くまで持つ（準備を待つ間も）。`session.json` の読み書きは `state.update_session` の鍵を使う
+    side_effects: tmux のセッションを作り、`session.json` を書く。失敗のときはペインを閉じて `session.json` を消す
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: claude_config_dir
+        type: str | None
+        required: true
+        passing: positional
+        description: 依頼の `claude_config_dir`
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・鍵・ポート・プラグインのフォルダ
+    returns:
+      type: tuple[int, dict]
+      description: '`(201, {session, pane, url})`'
+    exceptions:
+      - name: ApiError
+        condition: 404・409・502・503・504
+    unit_tests:
+      - name: test_create_session
+        case: 正常
+        summary: 登録が入れば 201 と最初の入力
+        condition: '`TmuxRunner` の偽。0.5 秒後に `session.json` の `claude_session_id` を入れる'
+        mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
+        expected: '`(201, ...)`。tmux の呼び出しが `new-session` → `set-option remain-on-exit on` → `respawn-pane -k ... -e MINDSTELLA_SESSION=...` → 最初の入力の貼り付けの順'
+      - name: test_create_session_exists
+        case: 異常
+        summary: 生きている MindStella のセッションがあれば 409
+        condition: '`session.json` が `running` で `is_alive` が真'
+        mock: '`is_alive`'
+        expected: '`ApiError`（409、`stage: exists`、`session`・`pane`）、tmux を呼ばない'
+      - name: test_create_session_closed
+        case: 異常
+        summary: クローズ済みなら 409
+        condition: '配信元の行が `outsideRead: false`'
+        mock: '`project_index.get_settings`'
+        expected: '`ApiError`（409、`stage: closed`）'
+      - name: test_create_session_no_account
+        case: 異常
+        summary: ペインが 125 で終われば 503
+        condition: '`display-message` が `1 125`、`capture-pane` が理由の行'
+        mock: '`TmuxRunner`'
+        expected: '`ApiError`（503、`stage: account`、`detail` に理由の行）、`kill-session` が呼ばれ、`session.json` が無い'
+      - name: test_create_session_launch_exit
+        case: 異常
+        summary: 125 以外で終われば 502
+        condition: '`display-message` が `1 1`'
+        mock: '`TmuxRunner`'
+        expected: '`ApiError`（502、`stage: launch`）'
+      - name: test_create_session_not_ready
+        case: 異常
+        summary: 上限を過ぎれば 504
+        condition: 登録が入らず、ペインも終わらない。上限を 1 秒にする
+        mock: '`TmuxRunner`・`time.monotonic`'
+        expected: '`ApiError`（504、`stage: ready`）、`kill-session` が呼ばれる'
+  - name: list_sessions
+    title: MindStella のセッションの一覧
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: MindStella のセッションを止めてワークスペースをクローズにする
+    scope: public
+    summary: 最後の MindStella のセッションの状態と `close_pending` を返す
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+    returns:
+      type: dict
+      description: '`{sessions: [...], close_pending}`'
+    unit_tests:
+      - name: test_list_sessions
+        case: 正常
+        summary: 無ければ空、落ちていれば crashed
+        condition: '`session.json` 無し / `running` で生きている / `running` でペインが無い'
+        mock: '`is_alive`'
+        expected: '`sessions: []` / `status: running` / `status: crashed`'
+  - name: stop_session
+    title: MindStella のセッションを止める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: MindStella のセッションを止めてワークスペースをクローズにする
+    scope: public
+    summary: '`close_pending` を真・`status` を `stopping` にしてすぐ返し、別のスレッドで応答の終わりを待って止める。落ちていれば止める工程を飛ばして commit し 200'
+    side_effects: '`session.json` を書き、ペインへ `/exit` を貼り、プロセスに SIGTERM を送り、tmux のセッションを閉じ、まとめていない変更を commit する'
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: force
+        type: bool
+        required: true
+        passing: positional
+        description: 応答の終わりを待たない
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・鍵
+    returns:
+      type: tuple[int, dict]
+      description: '`(202, {status: stopping})` か `(200, {status: stopped})`'
+    exceptions:
+      - name: ApiError
+        condition: '404'
+    unit_tests:
+      - name: test_stop_session
+        case: 正常
+        summary: すぐに 202 を返し、応答の途中でなければ /exit を貼る
+        condition: '`running`・`responding: false`'
+        mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる'
+        expected: '`(202, ...)`、受けた直後に `close_pending` が真、`/exit` が貼られる'
+      - name: test_stop_session_waits
+        case: 正常
+        summary: 応答の途中なら終わるまで貼らない
+        condition: '`responding: true` が 2 回の確認の後に偽になる'
+        mock: 同上・`time.sleep`
+        expected: '`/exit` が偽になった後に貼られる'
+      - name: test_stop_session_wait_limit
+        case: 異常
+        summary: 上限を過ぎれば止めずに pending_write
+        condition: '`responding` が真のまま、上限を 2 秒にする'
+        mock: 同上・`time.monotonic`
+        expected: '`/exit` が貼られず、`pending_write` が真、`status` が `running`'
+      - name: test_stop_session_crashed
+        case: 正常
+        summary: 落ちていれば commit して 200
+        condition: '`running` でペインが無い、まとめていない変更がある'
+        mock: '`is_alive`・`history` の commit'
+        expected: '`(200, {status: stopped})`、commit の説明に落ちていた旨'
+      - name: test_stop_session_forced
+        case: 正常
+        summary: 強制なら待たずに止めて commit
+        condition: '`responding: true`、`force=True`'
+        mock: 同上
+        expected: '`/exit` を待たずに SIGTERM と `kill-session`、commit の説明に強制の旨'
+      - name: test_stop_session_thread_error
+        case: 異常
+        summary: 別のスレッドで例外が起きれば記録して status を戻す
+        condition: '`/exit` の貼り付けで `TmuxRunner` が例外を送る'
+        mock: '`TmuxRunner`・止める処理を同じスレッドで走らせる・`caplog`'
+        expected: '`caplog` に `mindstella.session.stop_failed`（ワークスペースの ID・段階 `exit`）、`session.json` の `status` が `running`（生きている）で `last_error` に段階と理由、`close_pending` が真'
+    description: 別のスレッドの本体は例外で包む。例外（tmux のコマンドの失敗・commit の失敗・`session.json` の書き込みの失敗）を捕まえたら `logger.exception` で `mindstella.session.stop_failed` を書き、`is_alive` で判定して `status` を `running`（生きている）か `crashed`（落ちた）に戻し、`last_error` に段階と理由を入れる。`close_pending` は真のまま残す（外部のアプリは停止を依頼し直せる）
+  - name: record_event
+    title: フックの出来事を記録する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽
+    side_effects: '`session.json` を書く'
+    args:
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: event
+        type: dict
+        required: true
+        passing: positional
+        description: 出来事の本文
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+    returns:
+      type: bool
+      description: 記録したか
+    unit_tests:
+      - name: test_record_event
+        case: 正常
+        summary: 出来事ごとの書き換え
+        condition: '`session_start`（`source: startup`・`clear`・`fork`）/ `session_end`（`reason: clear`・`logout`）/ `prompt_submit` / `stop_failure` / 知らない `session`'
+        mock: なし
+        expected: '`claude_session_id` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽 / `False`'
 classes:
-- name: TmuxRunner
-  title: tmux のコマンドを呼ぶもの
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: '`tmux` を子プロセスで呼び、終了コードと標準出力を返す。テストは偽に置き換える'
-  kind: クラス
-  methods:
-  - name: run
-    title: tmux を呼ぶ
-    kind: メソッド
-    summary: 引数の並びで `tmux` を呼び、`(終了コード, 標準出力)` を返す
-- name: ProcessInspector
-  title: プロセスの起動時刻を読むもの
-  container: plugins/mindstella/skills/mindmap/scripts/sessions.py
-  usecase: 外部のアプリから起動する
-  summary: PID の起動時刻を読む（『セッションの値の注入』と同じ引き方）。テストは偽に置き換える
-  kind: クラス
-  methods:
-  - name: started_at
-    title: 起動時刻
-    kind: メソッド
-    summary: PID の起動時刻の文字列を返す。プロセスが無ければ `None`
+  - name: TmuxRunner
+    title: tmux のコマンドを呼ぶもの
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: '`tmux` を子プロセスで呼び、終了コードと標準出力を返す。テストは偽に置き換える'
+    kind: クラス
+    methods:
+      - name: run
+        title: tmux を呼ぶ
+        kind: メソッド
+        summary: 引数の並びで `tmux` を呼び、`(終了コード, 標準出力)` を返す
+  - name: ProcessInspector
+    title: プロセスの起動時刻を読むもの
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 外部のアプリから起動する
+    summary: PID の起動時刻を読む（『セッションの値の注入』と同じ引き方）。テストは偽に置き換える
+    kind: クラス
+    methods:
+      - name: started_at
+        title: 起動時刻
+        kind: メソッド
+        summary: PID の起動時刻の文字列を返す。プロセスが無ければ `None`
+notes:
+  ログ: |
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+
+    | イベント名 | 水準 | いつ | 属性 |
+    | --- | --- | --- | --- |
+    | `mindstella.session.started` | INFO | `create_session` が 201 を返す | ワークスペースの ID・MindStella のセッションの ID・claude-balancer を通したか |
+    | `mindstella.session.start_failed` | ERROR | `create_session` が 502・503・504 を返す | ワークスペースの ID・段階（`launch`・`account`・`ready`）・終了コード・ペインの最後の 20 行 |
+    | `mindstella.session.crashed` | WARN | `is_alive` が落ちたと判定して `crashed` にした | ワークスペースの ID・MindStella のセッションの ID・理由（ペインが無い・PID が無い・起動時刻が違う） |
+    | `mindstella.session.stopped` | INFO | 止まって `stopped` を記録した | ワークスペースの ID・MindStella のセッションの ID・強制か・落ちていたか |
+    | `mindstella.session.stop_wait_exceeded` | WARN | 待つ上限を過ぎて `pending_write` を真にした | ワークスペースの ID・MindStella のセッションの ID・待った秒数 |
+    | `mindstella.session.stop_failed` | ERROR | 停止の別のスレッドで例外を捕まえた（`logger.exception`） | ワークスペースの ID・MindStella のセッションの ID・段階（`wait`・`exit`・`term`・`commit`・`state`） |
+    | `mindstella.session.event_unknown` | WARN | `record_event` が状態に無い MindStella のセッションの出来事を受けた | MindStella のセッションの ID・出来事 |

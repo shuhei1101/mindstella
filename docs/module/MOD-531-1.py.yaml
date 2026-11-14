@@ -1,321 +1,330 @@
 id: MOD-531-1
 title: サーバー / 常駐サーバーの状態 / state.py
 test_files:
-- tests/unit/scripts/test_state.py
+  - tests/unit/scripts/test_state.py
 data_models:
-- name: SessionState
-  title: MindStella のセッションの状態
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  summary: '`workspaces/{ID}/session.json` の 1 件（ER 図『常駐サーバーの状態』）'
-  properties:
-  - name: session
-    type: str
-    description: MindStella のセッションの ID
-  - name: status
-    type: str
-    description: '`running`・`stopping`・`stopped`・`crashed`'
-  - name: claude_session_id
-    type: str | None
-    description: SessionStart のフックが入れる
-  - name: pane
-    type: str | None
-    description: tmux のペイン
-  - name: pid
-    type: int | None
-    description: Claude Code の PID
-  - name: pid_started_at
-    type: str | None
-    description: PID の起動時刻
-  - name: responding
-    type: bool
-    description: 応答の途中か
-  - name: pending_write
-    type: bool
-    description: 待っている書き込みがあるか
-  - name: close_pending
-    type: bool
-    description: クローズ待ちか
-  - name: started_at
-    type: str
-    description: 起動した日時
-- name: LaunchOptions
-  title: 追加の MCP とプラグイン
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  summary: '`workspaces/{ID}/launch.json` の中身'
-  properties:
-  - name: mcp_config
-    type: dict | None
-    description: '`--mcp-config` に渡す JSON'
-  - name: plugin_dirs
-    type: list[str]
-    description: '`--plugin-dir` に渡すフォルダ'
+  - name: SessionState
+    title: MindStella のセッションの状態
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    summary: '`workspaces/{ID}/session.json` の 1 件（ER 図『常駐サーバーの状態』）'
+    properties:
+      - name: session
+        type: str
+        description: MindStella のセッションの ID
+      - name: status
+        type: str
+        description: '`running`・`stopping`・`stopped`・`crashed`'
+      - name: claude_session_id
+        type: str | None
+        description: SessionStart のフックが入れる
+      - name: pane
+        type: str | None
+        description: tmux のペイン
+      - name: pid
+        type: int | None
+        description: Claude Code の PID
+      - name: pid_started_at
+        type: str | None
+        description: PID の起動時刻
+      - name: responding
+        type: bool
+        description: 応答の途中か
+      - name: pending_write
+        type: bool
+        description: 待っている書き込みがあるか
+      - name: close_pending
+        type: bool
+        description: クローズ待ちか
+      - name: started_at
+        type: str
+        description: 起動した日時
+      - name: last_error
+        type: str | None
+        description: 最後の停止・起動し直しに失敗した段階と理由。次に作成・停止が通ったら `None` に戻す
+  - name: LaunchOptions
+    title: 追加の MCP とプラグイン
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    summary: '`workspaces/{ID}/launch.json` の中身'
+    properties:
+      - name: mcp_config
+        type: dict | None
+        description: '`--mcp-config` に渡す JSON'
+      - name: plugin_dirs
+        type: list[str]
+        description: '`--plugin-dir` に渡すフォルダ'
 constants:
-- name: STATE_DIR_NAME
-  title: 状態のフォルダの名前
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  summary: '`XDG_STATE_HOME` の下に置くフォルダの名前'
-  value: '"mindstella"'
-- name: IDS_FILE
-  title: ID の一覧のファイル
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  summary: ワークスペースの ID の一覧
-  value: '"workspaces.yaml"'
-- name: SESSION_FILE
-  title: MindStella のセッションのファイル
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  summary: '`workspaces/{ID}/` の下の MindStella のセッション'
-  value: '"session.json"'
-- name: LAUNCH_FILE
-  title: 起動の指定のファイル
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  summary: '`workspaces/{ID}/` の下の追加の MCP とプラグイン'
-  value: '"launch.json"'
+  - name: STATE_DIR_NAME
+    title: 状態のフォルダの名前
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    summary: '`XDG_STATE_HOME` の下に置くフォルダの名前'
+    value: '"mindstella"'
+  - name: IDS_FILE
+    title: ID の一覧のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    summary: ワークスペースの ID の一覧
+    value: '"workspaces.yaml"'
+  - name: SESSION_FILE
+    title: MindStella のセッションのファイル
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    summary: '`workspaces/{ID}/` の下の MindStella のセッション'
+    value: '"session.json"'
+  - name: LAUNCH_FILE
+    title: 起動の指定のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    summary: '`workspaces/{ID}/` の下の追加の MCP とプラグイン'
+    value: '"launch.json"'
 functions:
-- name: state_root
-  title: 状態のフォルダ
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`${XDG_STATE_HOME:-~/.local/state}/mindstella` を返す（作らない）'
-  args:
-  - name: environ
-    type: Mapping[str, str]
-    required: true
-    passing: positional
-    description: '`XDG_STATE_HOME` を読む環境変数'
-  returns:
-    type: Path
-    description: 状態のフォルダ
-  unit_tests:
-  - name: test_state_root
-    case: 正常
-    summary: XDG_STATE_HOME があればその下、無ければ ~/.local/state の下
-    condition: '`parametrize`: `{XDG_STATE_HOME: /tmp/x}` / `{}`'
-    mock: '`Path.home`'
-    expected: '`/tmp/x/mindstella` / `{home}/.local/state/mindstella`'
-- name: read_ids
-  title: ID の一覧を読む
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`workspaces.yaml` の `ids` を返す。ファイルが無ければ空の並び'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  returns:
-    type: list[str]
-    description: ワークスペースの ID の並び
-  unit_tests:
-  - name: test_read_ids
-    case: 正常
-    summary: ファイルが無ければ空、あれば ids
-    condition: '一時フォルダ。ファイル無し / `ids: [a, b]`'
-    mock: なし
-    expected: '`[]` / `[a, b]`'
-- name: add_id
-  title: ID を一覧に足す
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: 全体で 1 つの鍵（`workspaces.yaml.lock` の `fcntl.flock`）を取り、`ids` に無ければ足して一時ファイルから置き換える
-  side_effects: '`workspaces.yaml` を書く'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: 足す ID
-  returns:
-    type: None
-    description: なし
-  unit_tests:
-  - name: test_add_id
-    case: 正常
-    summary: 重ねて足しても 1 件
-    condition: 同じ ID を 2 回足す
-    mock: なし
-    expected: '`ids` に 1 件だけある'
-  - name: test_add_id_concurrent
-    case: 正常
-    summary: 並行して足しても失わない
-    condition: 2 つのスレッドから別の ID を 50 回ずつ足す
-    mock: なし
-    expected: '`ids` が 100 件'
-- name: read_session
-  title: MindStella のセッションを読む
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`session.json` を読む。無ければ `None`'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  returns:
-    type: SessionState | None
-    description: MindStella のセッション
-  unit_tests:
-  - name: test_read_session
-    case: 正常
-    summary: 無ければ None、あれば中身
-    condition: ファイル無し / 書いたもの
-    mock: なし
-    expected: '`None` / 書いた値と同じ'
-- name: update_session
-  title: MindStella のセッションを書き換える
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`session.json` ごとの鍵（`session.json.lock`）を取り、今の値を渡した関数で書き換えて置き換える。今の値が無いときは `None` を渡す'
-  side_effects: '`session.json` を書くか消す'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: change
-    type: Callable[[SessionState | None], SessionState | None]
-    required: true
-    passing: positional
-    description: 新しい値を返す関数。`None` を返すとファイルを消す
-  returns:
-    type: SessionState | None
-    description: 書いた後の値
-  unit_tests:
-  - name: test_update_session
-    case: 正常
-    summary: 書き換えと消すことができる
-    condition: '`responding` を真にする関数 / `None` を返す関数'
-    mock: なし
-    expected: ファイルの `responding` が真 / ファイルが無い
-  - name: test_update_session_concurrent
-    case: 正常
-    summary: 並行して書き換えても失わない
-    condition: 2 つのスレッドから `pending_write` と `responding` を 50 回ずつ切り替える
-    mock: なし
-    expected: 最後の値が両方の切り替えを反映している（JSON として読める）
-- name: read_launch
-  title: 起動の指定を読む
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`launch.json` を読む。無ければ `None`（記録が無いことと空の指定を区別する）'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  returns:
-    type: LaunchOptions | None
-    description: 起動の指定
-  unit_tests:
-  - name: test_read_launch
-    case: 正常
-    summary: 無ければ None、空の指定は空の LaunchOptions
-    condition: 'ファイル無し / `{mcp_config: null, plugin_dirs: []}`'
-    mock: なし
-    expected: '`None` / `LaunchOptions(None, [])`'
-- name: write_launch
-  title: 起動の指定を書く
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`launch.json` を一時ファイルから置き換えて書く'
-  side_effects: '`launch.json` を書く'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  - name: options
-    type: LaunchOptions
-    required: true
-    passing: positional
-    description: 書く指定
-  returns:
-    type: None
-    description: なし
-  unit_tests:
-  - name: test_write_launch
-    case: 正常
-    summary: 書いたものを読める
-    condition: '`LaunchOptions({mcpServers: {a: {...}}}, [/p])`'
-    mock: なし
-    expected: '`read_launch` が同じ値を返す'
-- name: delete_launch
-  title: 起動の指定を消す
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/state.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`launch.json` を消す（作成の巻き戻しに使う）'
-  side_effects: '`launch.json` を消す'
-  args:
-  - name: root
-    type: Path
-    required: true
-    passing: positional
-    description: 状態のフォルダ
-  - name: workspace_id
-    type: str
-    required: true
-    passing: positional
-    description: ワークスペースの ID
-  returns:
-    type: None
-    description: なし
-  unit_tests:
-  - name: test_delete_launch
-    case: 正常
-    summary: 無くても失敗しない
-    condition: ファイルあり / 無し
-    mock: なし
-    expected: どちらもファイルが無い
+  - name: state_root
+    title: 状態のフォルダ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`${XDG_STATE_HOME:-~/.local/state}/mindstella` を返す（作らない）'
+    args:
+      - name: environ
+        type: Mapping[str, str]
+        required: true
+        passing: positional
+        description: '`XDG_STATE_HOME` を読む環境変数'
+    returns:
+      type: Path
+      description: 状態のフォルダ
+    unit_tests:
+      - name: test_state_root
+        case: 正常
+        summary: XDG_STATE_HOME があればその下、無ければ ~/.local/state の下
+        condition: '`parametrize`: `{XDG_STATE_HOME: /tmp/x}` / `{}`'
+        mock: '`Path.home`'
+        expected: '`/tmp/x/mindstella` / `{home}/.local/state/mindstella`'
+  - name: read_ids
+    title: ID の一覧を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`workspaces.yaml` の `ids` を返す。ファイルが無ければ空の並び'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+    returns:
+      type: list[str]
+      description: ワークスペースの ID の並び
+    unit_tests:
+      - name: test_read_ids
+        case: 正常
+        summary: ファイルが無ければ空、あれば ids
+        condition: '一時フォルダ。ファイル無し / `ids: [a, b]`'
+        mock: なし
+        expected: '`[]` / `[a, b]`'
+  - name: add_id
+    title: ID を一覧に足す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: 全体で 1 つの鍵（`workspaces.yaml.lock` の `fcntl.flock`）を取り、`ids` に無ければ足して一時ファイルから置き換える
+    side_effects: '`workspaces.yaml` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: 足す ID
+    returns:
+      type: None
+      description: なし
+    unit_tests:
+      - name: test_add_id
+        case: 正常
+        summary: 重ねて足しても 1 件
+        condition: 同じ ID を 2 回足す
+        mock: なし
+        expected: '`ids` に 1 件だけある'
+      - name: test_add_id_concurrent
+        case: 正常
+        summary: 並行して足しても失わない
+        condition: 2 つのスレッドから別の ID を 50 回ずつ足す
+        mock: なし
+        expected: '`ids` が 100 件'
+  - name: read_session
+    title: MindStella のセッションを読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`session.json` を読む。無ければ `None`'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: SessionState | None
+      description: MindStella のセッション
+    unit_tests:
+      - name: test_read_session
+        case: 正常
+        summary: 無ければ None、あれば中身
+        condition: ファイル無し / 書いたもの
+        mock: なし
+        expected: '`None` / 書いた値と同じ'
+  - name: update_session
+    title: MindStella のセッションを書き換える
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`session.json` ごとの鍵（`session.json.lock`）を取り、今の値を渡した関数で書き換えて置き換える。今の値が無いときは `None` を渡す'
+    side_effects: '`session.json` を書くか消す'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: change
+        type: Callable[[SessionState | None], SessionState | None]
+        required: true
+        passing: positional
+        description: 新しい値を返す関数。`None` を返すとファイルを消す
+    returns:
+      type: SessionState | None
+      description: 書いた後の値
+    unit_tests:
+      - name: test_update_session
+        case: 正常
+        summary: 書き換えと消すことができる
+        condition: '`responding` を真にする関数 / `None` を返す関数'
+        mock: なし
+        expected: ファイルの `responding` が真 / ファイルが無い
+      - name: test_update_session_concurrent
+        case: 正常
+        summary: 並行して書き換えても失わない
+        condition: 2 つのスレッドから `pending_write` と `responding` を 50 回ずつ切り替える
+        mock: なし
+        expected: 最後の値が両方の切り替えを反映している（JSON として読める）
+  - name: read_launch
+    title: 起動の指定を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`launch.json` を読む。無ければ `None`（記録が無いことと空の指定を区別する）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: LaunchOptions | None
+      description: 起動の指定
+    unit_tests:
+      - name: test_read_launch
+        case: 正常
+        summary: 無ければ None、空の指定は空の LaunchOptions
+        condition: 'ファイル無し / `{mcp_config: null, plugin_dirs: []}`'
+        mock: なし
+        expected: '`None` / `LaunchOptions(None, [])`'
+  - name: write_launch
+    title: 起動の指定を書く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`launch.json` を一時ファイルから置き換えて書く'
+    side_effects: '`launch.json` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: options
+        type: LaunchOptions
+        required: true
+        passing: positional
+        description: 書く指定
+    returns:
+      type: None
+      description: なし
+    unit_tests:
+      - name: test_write_launch
+        case: 正常
+        summary: 書いたものを読める
+        condition: '`LaunchOptions({mcpServers: {a: {...}}}, [/p])`'
+        mock: なし
+        expected: '`read_launch` が同じ値を返す'
+  - name: delete_launch
+    title: 起動の指定を消す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/state.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`launch.json` を消す（作成の巻き戻しに使う）'
+    side_effects: '`launch.json` を消す'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+    returns:
+      type: None
+      description: なし
+    unit_tests:
+      - name: test_delete_launch
+        case: 正常
+        summary: 無くても失敗しない
+        condition: ファイルあり / 無し
+        mock: なし
+        expected: どちらもファイルが無い
 notes:
   書き方: どのファイルも同じフォルダの一時ファイルに書いてから `os.replace` で置き換える。JSON は標準の `json`、`workspaces.yaml` は PyYAML で読み書きする
+  ログ: |
+    `logging.getLogger("mindstella.{モジュール}")` で標準エラーへ書く（ユニットが `~/.mindmap/server.log` に書き足す）。イベント名は固定の文字列にし、ワークスペースの ID・MindStella のセッションの ID・段階・理由は `extra` の属性に分ける。同じ例外は 1 回だけ書き、呼び出し元へ `ApiError` で返すだけの経路は、下の表に挙げたものだけを書く
+
+    | イベント名 | 水準 | いつ | 属性 |
+    | --- | --- | --- | --- |
+    | `mindstella.state.read_failed` | ERROR | `session.json`・`launch.json`・`workspaces.yaml` を JSON・YAML として読めない（呼び出し元へ送出する前に 1 回だけ書く） | ファイルのパス・理由 |

@@ -1,116 +1,118 @@
 id: MOD-531-6
 title: サーバー / 起動 / session_hook.py
 test_files:
-- tests/unit/scripts/test_session_hook.py
+  - tests/unit/scripts/test_session_hook.py
 constants:
-- name: POST_TIMEOUT_SEC
-  title: 送信の上限
-  container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
-  usecase: 外部のアプリから起動する
-  summary: 常駐サーバーへ 1 回送る上限
-  value: 2.0（非機能要件『フックの送信の上限』）
-- name: EVENTS
-  title: 出来事の名前
-  container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
-  usecase: 外部のアプリから起動する
-  summary: コマンドの引数から本文の `event` への対応
-  value: '{"session-start": "session_start", "session-end": "session_end", "prompt-submit": "prompt_submit", "stop": "stop", "stop-failure": "stop_failure"}'
+  - name: POST_TIMEOUT_SEC
+    title: 送信の上限
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 外部のアプリから起動する
+    summary: 常駐サーバーへ 1 回送る上限
+    value: 2.0（非機能要件『フックの送信の上限』）
+  - name: EVENTS
+    title: 出来事の名前
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 外部のアプリから起動する
+    summary: コマンドの引数から本文の `event` への対応
+    value: '{"session-start": "session_start", "session-end": "session_end", "prompt-submit": "prompt_submit", "stop": "stop", "stop-failure": "stop_failure"}'
 functions:
-- name: main
-  title: フックの入口
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`MINDSTELLA_SESSION` があれば出来事を送り、SessionStart で `MINDSTELLA_FLOW` があれば `additionalContext` を出す。どの結末も 0 を返す'
-  description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
-  side_effects: 常駐サーバーへ出来事を送る
-  args:
-  - name: argv
-    type: list[str] | None
-    required: false
-    default: None
-    passing: positional
-    description: '`[出来事]`'
-  - name: environ
-    type: Mapping[str, str]
-    required: false
-    default: os.environ
-    passing: keyword
-    description: 環境変数
-  - name: stdin
-    type: TextIO
-    required: false
-    default: sys.stdin
-    passing: keyword
-    description: フックの入力
-  - name: stdout
-    type: TextIO
-    required: false
-    default: sys.stdout
-    passing: keyword
-    description: 注入の出力先
-  - name: post
-    type: Callable[[int, str, dict], None]
-    required: false
-    default: post_event
-    passing: injected
-    description: 送る関数
-  returns:
-    type: int
-    description: 常に 0
-  unit_tests:
-  - name: test_main
-    case: 正常
-    summary: SessionStart で送り、進め方の文書の場所を注入する
-    condition: '`[session-start]`、`MINDSTELLA_SESSION`・`MINDSTELLA_FLOW`・`TMUX_PANE` あり、入力 `{session_id: c1, source: startup}`'
-    mock: '`post`・PID の引き方'
-    expected: '0 を返し、`post` が `event: session_start`・`claude_session_id: c1`・`pane` で呼ばれ、標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値'
-  - name: test_main_ordinary_session
-    case: 正常
-    summary: MINDSTELLA_SESSION が無ければ何もしない
-    condition: '`MINDSTELLA_SESSION` 無し'
-    mock: '`post`'
-    expected: 0 を返し、`post` が呼ばれず、標準出力が空
-  - name: test_main_server_down
-    case: 異常
-    summary: 送れなくても 0
-    condition: '`post` が `OSError`'
-    mock: '`post`'
-    expected: 0 を返し、標準エラーに `[mindstella]` の行
-- name: post_event
-  title: 出来事を送る
-  kind: 関数
-  container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
-  usecase: 外部のアプリから起動する
-  scope: public
-  summary: '`POST /_admin/sessions/{session}/events` に JSON を送る（`POST_TIMEOUT_SEC` で打ち切る）'
-  args:
-  - name: port
-    type: int
-    required: true
-    passing: positional
-    description: 常駐サーバーのポート
-  - name: session_id
-    type: str
-    required: true
-    passing: positional
-    description: MindStella のセッションの ID
-  - name: body
-    type: dict
-    required: true
-    passing: positional
-    description: 本文
-  returns:
-    type: None
-    description: なし
-  exceptions:
-  - name: OSError
-    condition: つながらない・打ち切った
-  unit_tests:
-  - name: test_post_event
-    case: 正常
-    summary: 経路と本文
-    condition: テストが空きポートで HTTP のサーバーを立てる
-    mock: なし
-    expected: 経路が `/_admin/sessions/S-1/events`、本文が同じ JSON
+  - name: main
+    title: フックの入口
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り、SessionStart で `MINDSTELLA_FLOW` があれば `additionalContext` を出す。どの結末も 0 を返す'
+    description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
+    side_effects: 常駐サーバーへ出来事を送る
+    args:
+      - name: argv
+        type: list[str] | None
+        required: false
+        default: None
+        passing: positional
+        description: '`[出来事]`'
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: keyword
+        description: 環境変数
+      - name: stdin
+        type: TextIO
+        required: false
+        default: sys.stdin
+        passing: keyword
+        description: フックの入力
+      - name: stdout
+        type: TextIO
+        required: false
+        default: sys.stdout
+        passing: keyword
+        description: 注入の出力先
+      - name: post
+        type: Callable[[int, str, dict], None]
+        required: false
+        default: post_event
+        passing: injected
+        description: 送る関数
+    returns:
+      type: int
+      description: 常に 0
+    unit_tests:
+      - name: test_main
+        case: 正常
+        summary: SessionStart で送り、進め方の文書の場所を注入する
+        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`MINDSTELLA_FLOW`・`TMUX_PANE` あり、入力 `{session_id: c1, source: startup}`'
+        mock: '`post`・PID の引き方'
+        expected: '0 を返し、`post` が `event: session_start`・`claude_session_id: c1`・`pane` で呼ばれ、標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値'
+      - name: test_main_ordinary_session
+        case: 正常
+        summary: MINDSTELLA_SESSION が無ければ何もしない
+        condition: '`MINDSTELLA_SESSION` 無し'
+        mock: '`post`'
+        expected: 0 を返し、`post` が呼ばれず、標準出力が空
+      - name: test_main_server_down
+        case: 異常
+        summary: 送れなくても 0
+        condition: '`post` が `OSError`'
+        mock: '`post`'
+        expected: 0 を返し、標準エラーに `[mindstella]` の行
+  - name: post_event
+    title: 出来事を送る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: 外部のアプリから起動する
+    scope: public
+    summary: '`POST /_admin/sessions/{session}/events` に JSON を送る（`POST_TIMEOUT_SEC` で打ち切る）'
+    args:
+      - name: port
+        type: int
+        required: true
+        passing: positional
+        description: 常駐サーバーのポート
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: body
+        type: dict
+        required: true
+        passing: positional
+        description: 本文
+    returns:
+      type: None
+      description: なし
+    exceptions:
+      - name: OSError
+        condition: つながらない・打ち切った
+    unit_tests:
+      - name: test_post_event
+        case: 正常
+        summary: 経路と本文
+        condition: テストが空きポートで HTTP のサーバーを立てる
+        mock: なし
+        expected: 経路が `/_admin/sessions/S-1/events`、本文が同じ JSON
+notes:
+  ログ: '`logging` を使わず、送れなかったときだけ標準エラーに `[mindstella] {理由}` の 1 行を `print` で書く（フックのスクリプトは単一ファイルのスクリプトの規約に従い、Claude Code がフックの標準エラーを記録する）'

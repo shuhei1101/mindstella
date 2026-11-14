@@ -5,7 +5,7 @@ entry:
   value: DELETE `/workspaces/{id}/sessions/{session}`
 lead: 停止の依頼をすぐに受け付けて返し、状態をクローズ待ちにしてから、最後の書き込みが終わるのを待って MindStella のセッションを止める。MindStella の MCP の `stop_session` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 状態の `close_pending` を真にし、`status` を `stopping` にする。応答の途中でなくなったら、まとめていない変更があれば commit してから、Claude Code に `/exit` を送り、止まらなければプロセスに SIGTERM を送って tmux のペインを閉じる。落ちていたとき・強制で止めたときは、まとめていない変更を理由を添えて commit する。待つ上限を過ぎたら止めずに `pending_write` を真にする
+side_effects: 状態の `close_pending` を真にし、`status` を `stopping` にする。応答の途中でなくなったら、まとめていない変更があれば commit してから、Claude Code に `/exit` を送り、止まらなければプロセスに SIGTERM を送って tmux のペインを閉じる。落ちていたとき・強制で止めたときは、まとめていない変更を理由を添えて commit する。待つ上限を過ぎたら止めずに `pending_write` を真にする。止める間に失敗したら、`status` を `running`（生きている）か `crashed` に戻し、`last_error` に段階と理由を入れる（`close_pending` は真のまま）
 request:
   - name: id
     type: str
