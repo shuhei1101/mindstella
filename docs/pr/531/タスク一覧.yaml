@@ -45,7 +45,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-14T15:07:40.718152+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
+    note: IF-531-1〜7 を新規、IF-489-1・2・6・36・38・56・64・67・68 を変更、IF-489-25（init）を削除。あわせて CFG-489-1・ER-489-1・ER-531-1・NFR-489-1・LIB-531-1・LIB-531-2・API-531-1・ARCH-489-1
+    updated_by: planner
+    updated_at: '2026-11-14T16:28:49.729108+00:00'
   - process: 部品設計
     status: skipped
     reason: 画面の部品の追加・変更が無い
