@@ -2,7 +2,7 @@
 
 namespace MindmapPreview {
   /** 返信を溜める状態。idle は結果を出さない */
-  export type ReplyStatus = "idle" | "saving" | "saved" | "failed" | "sent" | "inserted" | "voice-failed";
+  export type ReplyStatus = "idle" | "saving" | "saved" | "failed" | "reviewed" | "sent" | "inserted" | "voice-failed";
 
   /** 返信の入力の引数 */
   export type ReplyFormProps = VoiceProps & {

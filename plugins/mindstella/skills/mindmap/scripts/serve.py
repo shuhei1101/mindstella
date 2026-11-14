@@ -127,7 +127,7 @@ TRANSCRIPTIONS_PATH = "/api/transcriptions"
 SEND_NOW_PATH = "/api/comments/send-now"
 
 # config.yaml に transcription.action が無いときの文字起こし後の挙動
-DEFAULT_TRANSCRIPTION_ACTION = "insert"
+DEFAULT_TRANSCRIPTION_ACTION = "review"
 
 # レビュー中のコメント・まとめて送る・書きかけのパス
 COMMENTS_PATH = "/api/comments"

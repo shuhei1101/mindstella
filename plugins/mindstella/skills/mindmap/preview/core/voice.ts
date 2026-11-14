@@ -10,6 +10,12 @@ namespace MindmapPreview {
     denied: "マイクを使用できませんでした。ブラウザの設定でこのページのマイクを許可してください。",
     failed: "文字起こしできませんでした。もう一度お試しください。",
     sendFailed: "送信できませんでした。文字起こしの結果は入力欄に残しています。",
+    reviewFailed: "レビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。",
+    busy: "ほかの入力欄で音声入力中のため、音声で入力できません。",
+    discarded: (id: string) => `${id} が削除されたため、録音を破棄しました。`,
+    awayReviewFailed: (label: string) => `${label}をレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。`,
+    awaySendFailed: (label: string) => `${label}を送信できませんでした。文字起こしの結果は入力欄に残しています。`,
+    awayTranscribeFailed: (label: string) => `${label}の文字起こしができませんでした。もう一度お試しください。`,
   } as const;
 
   /** 録音中にマイクの音量を取って波形の棒を 1 本足す間隔（ミリ秒）。fftSize 2048 が 48 kHz で 1 回に見る長さ（約 43 ms）以上 */
@@ -31,13 +37,15 @@ namespace MindmapPreview {
 
   /** 文字起こしの結果 */
   export type VoiceOutcome = {
-    kind: "sent" | "inserted" | "failed" | "unavailable";
+    kind: "reviewed" | "sent" | "inserted" | "failed" | "unavailable";
     /** 入力欄に置く中身 */
     body: string;
     /** 置くカーソルの位置（挿入した文字の後ろ。動かさないときは null） */
     caret: number | null;
     /** `sent` のとき、Claude Code へ入力したか */
     entered: boolean;
+    /** `reviewed` のとき、溜めた後のレビュー中のコメントの件数 */
+    count?: number;
     /** `failed`・`unavailable` の理由の文 */
     detail: string | null;
     /** `unavailable` の理由 */
@@ -58,6 +66,29 @@ namespace MindmapPreview {
     let peak = 0;
     for (const value of values) peak = Math.max(peak, Math.abs(value - 128));
     return Math.min(peak / 128, 1);
+  }
+
+  /** 画面の消灯の抑止を持つ窓（テストでは偽のものを渡す） */
+  type WakeLockWindow = {
+    navigator: { wakeLock?: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> } };
+  };
+
+  /** 画面の消灯の抑止を求め、解く関数を返す。持たない・断られたときは何もしない関数を返す */
+  export async function acquireWakeLock(win: WakeLockWindow = window as unknown as WakeLockWindow): Promise<() => void> {
+    const wakeLock = win.navigator.wakeLock;
+    if (wakeLock === undefined) return () => {};
+    try {
+      const sentinel = await wakeLock.request("screen");
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        void sentinel.release();
+      };
+    } catch {
+      // 断られた（画面が見えていない・利用者のエージェントの方針）: 録音はそのまま続ける
+      return () => {};
+    }
   }
 
   /** マイクの音量を WAVE_SAMPLE_MS ごとに取って知らせ始め、止める関数を返す（AudioContext が無ければ何もしない） */
@@ -160,16 +191,19 @@ namespace MindmapPreview {
     /** `selectionEnd` */
     end: number;
     /** 設定の文字起こし後の挙動 */
-    action: "send" | "insert";
+    action: "review" | "send" | "insert";
     /** 向けた先（項目と箇所か、返信先のスレッド） */
     destination: { target: string | null; loc: Location | null } | { thread: string };
   };
 
-  /** 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が send なら全文をすぐ送る */
+  /** 文字起こしの結果を扱う API（音声入力の API と、レビュー中のコメントの追加） */
+  export type VoiceFinishApi = ReturnType<typeof voiceApi> & Pick<ReturnType<typeof commentApi>, "add">;
+
+  /** 録音を止めて文字起こしし、結果を入力欄の中身のカーソルの位置へ挿入して、挙動が review なら全文をレビュー中に溜め、send なら全文をすぐ送る */
   export async function finishVoice(
     recording: Recording,
     input: VoiceFinishInput,
-    api: ReturnType<typeof voiceApi> = voiceApi(),
+    api: VoiceFinishApi = { ...voiceApi(), add: commentApi().add },
   ): Promise<VoiceOutcome> {
     const kept = { body: input.body, caret: null, entered: false, reason: null };
     const audio = await recording.stop();
@@ -188,6 +222,13 @@ namespace MindmapPreview {
     const inserted = insertAtCursor(input.body, input.start, input.end, text);
     if (input.action === "insert") {
       return { kind: "inserted", body: inserted.value, caret: inserted.caret, entered: false, detail: null, reason: null };
+    }
+    if (input.action === "review") {
+      const added = await api.add({ ...input.destination, body: inserted.value });
+      if (!added.ok) {
+        return { kind: "failed", body: inserted.value, caret: inserted.caret, entered: false, detail: VOICE_TEXT.reviewFailed, reason: null };
+      }
+      return { kind: "reviewed", body: "", caret: null, entered: false, count: added.data?.count, detail: null, reason: null };
     }
     const sent = await api.sendNow({ ...input.destination, body: inserted.value });
     if (!sent.ok) {

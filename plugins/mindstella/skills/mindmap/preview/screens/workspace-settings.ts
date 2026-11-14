@@ -63,8 +63,9 @@ namespace MindmapPreview {
 
   /** 文字起こし後の挙動の選択肢 */
   const TRANSCRIPTION_ACTIONS = [
-    { value: "send", label: "送信する" },
+    { value: "review", label: "レビュー中に追加する" },
     { value: "insert", label: "入力欄へ挿入する" },
+    { value: "send", label: "送信する" },
   ] as const;
 
   /** 用語集のプリセットの「サービスの既定」（プリセットを指定しない） */
@@ -242,7 +243,7 @@ namespace MindmapPreview {
       preset?: string | null;
     };
     // 描き直す前に続けて選んでも、もう一方の値は最後に選んだものを保つ
-    let action: string = current.action === "send" ? "send" : "insert";
+    let action: string = current.action === "send" || current.action === "insert" ? current.action : "review";
     let preset: string | null = typeof current.preset === "string" ? current.preset : null;
     const mark = marks.transcription;
     const fieldClass = `pe-field${mark === "pending" ? " is-pending" : ""}${mark === "blocked" ? " is-blocked" : ""}`;
@@ -280,7 +281,7 @@ namespace MindmapPreview {
         h({
           tag: "p",
           attrs: { class: "pe-hint" },
-          children: ["「送信する」は文字起こしの結果をその書き込みだけで Claude Code へ送信します。「入力欄へ挿入する」はカーソルの位置に挿入し、送信しません。"],
+          children: ["「レビュー中に追加する」は文字起こしの結果を挿入した全文をレビュー中に追加し、送信しません。「入力欄へ挿入する」はカーソルの位置に挿入するだけです。「送信する」はその書き込みだけで Claude Code へ送信します。"],
         }),
       ],
     });

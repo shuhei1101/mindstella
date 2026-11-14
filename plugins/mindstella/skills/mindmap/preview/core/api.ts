@@ -48,7 +48,7 @@ namespace MindmapPreview {
     /** 用語集のプリセットの候補 */
     presets: string[];
     /** 文字起こし後の挙動 */
-    action: "send" | "insert";
+    action: "review" | "send" | "insert";
     /** ワークスペースの用語集のプリセット */
     preset: string | null;
   };
