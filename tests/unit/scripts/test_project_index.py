@@ -161,7 +161,7 @@ def test_find_doc_path(
     docs: list[dict[str, str]], expected: str | None, fake_pi: Callable[..., FakeProjectIndex]
 ) -> None:
     """一覧から文書の ID でパスを引く。"""
-    server = fake_pi({("GET", "/sources/aituber/docs"): [(200, {"docs": docs})]})
+    server = fake_pi({("GET", "/sources/aituber/docs"): [(200, {"documents": docs})]})
     assert project_index.find_doc_path(server.port, "aituber", "flow-1") == expected
 
 
