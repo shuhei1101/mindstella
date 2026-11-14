@@ -34,9 +34,9 @@ export type VoiceSession = VoiceInput & {
   ticket: number;
 };
 
-/** 文字起こしを終えた結果。`body` は入力欄に残す中身、`caret` は挿入した文字の後ろの位置（`inserted` だけ）、`count` は溜めた後のレビュー中の件数（`reviewed` だけ）、`entered` は Claude Code へ入力したか（`sent` だけ）、`reason` は使えない理由（`unavailable` だけ） */
+/** 文字起こしを終えた結果（`discarded` は文字起こし中に録音を捨てたため、何もしなかった）。`body` は入力欄に残す中身、`caret` は挿入した文字の後ろの位置（`inserted` だけ）、`count` は溜めた後のレビュー中の件数（`reviewed` だけ）、`entered` は Claude Code へ入力したか（`sent` だけ）、`reason` は使えない理由（`unavailable` だけ） */
 export type VoiceResult = {
-  kind: "reviewed" | "sent" | "inserted" | "failed" | "unavailable";
+  kind: "reviewed" | "sent" | "inserted" | "failed" | "unavailable" | "discarded";
   body: string;
   caret: number | null;
   count: number | null;
@@ -209,7 +209,7 @@ const deliver = async (destination: VoiceDestination, inserted: { value: string;
 type VoiceStage = "transcribe" | VoiceAction;
 
 /** 録った音声を文字起こしし、挿入して設定の挙動で溜める・送る */
-const transcribeAndDeliver = async (audio: Blob, destination: VoiceDestination, input: VoiceFinishInput): Promise<{ result: VoiceResult; stage: VoiceStage }> => {
+const transcribeAndDeliver = async ({ audio, destination, input, alive }: { audio: Blob; destination: VoiceDestination; input: VoiceFinishInput; alive: () => boolean }): Promise<{ result: VoiceResult; stage: VoiceStage }> => {
   let text: string;
   try {
     const response = await postTranscription(audio, { headers: { "Content-Type": audio.type } });
@@ -221,6 +221,8 @@ const transcribeAndDeliver = async (audio: Blob, destination: VoiceDestination, 
     }
     return { result: resultOf("failed", input.body, { detail: error instanceof AppError ? error.message : VOICE_TEXT.failed }), stage: "transcribe" };
   }
+  // 文字起こしの間に録音を捨てた（行き先が削除された）: 溜めも送りもしない
+  if (!alive()) return { result: resultOf("discarded", input.body), stage: "transcribe" };
   // 話し声が無かった: 溜めも送りもしない
   if (text.trim() === "") return { result: resultOf("failed", input.body, { detail: VOICE_TEXT.failed }), stage: "transcribe" };
   const action = input.action ?? "review";
@@ -241,10 +243,20 @@ export const finishVoice = async (input: VoiceFinishInput): Promise<VoiceResult>
   unlock();
   useVoiceStore.setState({ session: { ...session, phase: "transcribing" } });
   const audio = await current.stop();
-  const { result, stage } = await transcribeAndDeliver(audio, session.destination, input);
-  if (useVoiceStore.getState().session?.ticket === session.ticket) useVoiceStore.setState({ session: null });
+  const alive = (): boolean => useVoiceStore.getState().session?.ticket === session.ticket;
+  const transcribed = await transcribeAndDeliver({ audio, destination: session.destination, input, alive });
+  // 溜める・送る間に録音を捨てた: 書きかけも知らせも当てない
+  if (!alive()) return resultOf("discarded", input.body);
+  const { result, stage } = transcribed;
+  useVoiceStore.setState({ session: null });
   if (input.mounted()) return result;
-  if (result.kind !== "unavailable") await saveDraft({ ...session.destination, body: result.body });
+  if (result.kind !== "unavailable") {
+    try {
+      await saveDraft({ ...session.destination, body: result.body });
+    } catch {
+      // 書きかけを保てない（サーバーが止まった・届かない）: 結果と知らせは当てて続ける
+    }
+  }
   useVoiceStore.setState((state) => ({
     results: { ...state.results, [session.key]: result },
     notice: result.kind === "failed" || result.kind === "unavailable" ? { kind: "failed", text: awayText(stage, session.label), key: session.key } : state.notice,

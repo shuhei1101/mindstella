@@ -95,6 +95,9 @@ export const useVoiceInput = ({ key, destination, view, label, body, onBodyChang
           onBodyChange(done.body);
           show({ status: "voice-failed", detail: done.detail, entered: false });
           return;
+        case "discarded":
+          // 文字起こし中に録音を捨てた: 入力欄はそのまま
+          return;
         case "unavailable":
           // サービスが使えない: 可否を書き換えてマイクのボタンを押せなくする
           queryClient.setQueryData(transcriptionKey(), { status: 200, data: unavailableStatus(done, status.data ?? null), headers: new Headers() });
