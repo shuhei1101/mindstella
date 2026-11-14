@@ -67,4 +67,12 @@ describe("ReplyForm", () => {
     expect(restored).toHaveFocus();
     expect([restored.selectionStart, restored.selectionEnd]).toEqual([4, 4]);
   });
+
+  // 既定の挙動でレビュー中に追加した結果（正常系）
+  test("reply_form_when_reviewed", () => {
+    // 準備と実行
+    render(<ReplyForm thread="TH-1" body="" status="reviewed" onSubmit={vi.fn()} onInput={vi.fn()} />);
+    // 検証
+    expect(screen.getByRole("status")).toHaveTextContent("文字起こしの結果をレビュー中に追加しました。");
+  });
 });

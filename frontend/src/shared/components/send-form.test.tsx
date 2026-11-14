@@ -110,4 +110,21 @@ describe("SendForm", () => {
     expect(restored).toHaveFocus();
     expect([restored.selectionStart, restored.selectionEnd]).toEqual([4, 4]);
   });
+
+  // 既定の挙動でレビュー中に追加した結果と、ほかの入力欄で音声入力中（正常系）
+  test("send_form_when_reviewed", async () => {
+    // 準備と実行
+    const { rerender } = render(<SendForm target="D-1" loc={null} body="" status="reviewed" onSubmit={vi.fn()} onInput={vi.fn()} />);
+    // 検証
+    expect(screen.getByRole("status")).toHaveTextContent("文字起こしの結果をレビュー中に追加しました。");
+    const onInput = vi.fn();
+    rerender(
+      <SendForm target="D-1" loc={null} body="" status="idle" voice="disabled" voiceReason="ほかの入力欄で音声入力中のため、音声で入力できません。" onSubmit={vi.fn()} onInput={onInput} />,
+    );
+    const mic = screen.getByRole("button", { name: "音声で入力" });
+    expect(mic).toHaveAttribute("aria-disabled", "true");
+    expect(mic).toHaveAccessibleDescription("ほかの入力欄で音声入力中のため、音声で入力できません。");
+    await userEvent.type(screen.getByRole("textbox"), "a");
+    expect(onInput).toHaveBeenCalledWith("a");
+  });
 });

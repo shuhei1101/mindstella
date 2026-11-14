@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
+  acquireWakeLock,
   formatElapsed,
   insertAtCursor,
   micSupported,
@@ -10,9 +11,11 @@ import {
   WAVE_SAMPLE_MS,
 } from "@/shared/core/voice";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
+import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 
 afterEach(() => {
   removeFakeMedia();
+  removeFakeWakeLock();
   vi.useRealTimers();
 });
 
@@ -107,5 +110,34 @@ describe("formatElapsed", () => {
     // 実行・検証
     expect(formatElapsed(0)).toBe("0:00");
     expect(formatElapsed(72)).toBe("1:12");
+  });
+});
+
+describe("acquireWakeLock", () => {
+  // 求めて解く（正常系）
+  test("acquire_wake_lock", async () => {
+    // 準備
+    const wakeLock = installFakeWakeLock();
+    // 実行
+    const release = await acquireWakeLock();
+    release();
+    release();
+    await Promise.resolve();
+    // 検証
+    expect(wakeLock.requested()).toEqual(["screen"]);
+    expect(wakeLock.released()).toBe(1);
+  });
+
+  // 持たない・断られたときは何もしない（異常系）
+  test("acquire_wake_lock_when_unavailable", async () => {
+    for (const mode of ["missing", "denied"] as const) {
+      // 準備
+      const wakeLock = installFakeWakeLock(mode);
+      // 実行
+      const release = await acquireWakeLock();
+      // 検証
+      expect(() => release()).not.toThrow();
+      expect(wakeLock.released()).toBe(0);
+    }
   });
 });

@@ -1893,7 +1893,7 @@ def test_transcription_response_when_unavailable(
     assert response.status == 200
     payload = json.loads(response.body)
     assert (payload["available"], payload["reason"], payload["presets"]) == (False, "stopped", [])
-    assert (payload["action"], payload["preset"]) == ("insert", None)
+    assert (payload["action"], payload["preset"]) == ("review", None)
     assert b"voice-paste" not in response.body
 
 

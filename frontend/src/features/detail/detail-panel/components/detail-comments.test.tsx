@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { resetVoiceStore } from "@/shared/stores/voice-store";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
+import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { stubRecords } from "@/testing/msw/fixtures";
 import { RECORDS } from "@/testing/msw/handlers";
 import { server } from "@/testing/msw/server";
@@ -15,6 +17,8 @@ const doc = { id: "A-1", title: "A-1の題", status: "下書き", body: "docs/A-
 
 afterEach(() => {
   localStorage.clear();
+  resetVoiceStore();
+  removeFakeWakeLock();
 });
 
 describe("DetailComments", () => {
@@ -140,6 +144,47 @@ describe("DetailComments", () => {
     expect(sent[0]).toMatchObject({ target: "D-1", body: "案 A にする" });
     expect(await within(panel).findByText("送信し、Claude Code へ入力しました。")).toBeInTheDocument();
     expect(within(panel).getByRole("textbox", { name: /D-1 へのコメント/ })).toHaveValue("");
+    removeFakeMedia();
+  });
+
+  // 既定の挙動で項目へのコメントをレビュー中に溜め、録音中に項目を移っても続ける（正常系）
+  test("detail_comments_when_voice_reviewed", async () => {
+    // 準備
+    installFakeMedia();
+    installFakeWakeLock();
+    stubRecords({
+      decisions: [
+        { id: "D-1", title: "D-1の題", status: "未決定", category: "記録", phase: "目的" },
+        { id: "D-2", title: "D-2の題", status: "未決定", category: "記録", phase: "目的" },
+      ],
+    });
+    const added: unknown[] = [];
+    server.use(
+      http.get("/api/comments", () => HttpResponse.json({ items: [], drafts: [] })),
+      http.get("/api/transcription", () => HttpResponse.json({ available: true, reason: null, detail: null, presets: [], action: "review", preset: null })),
+      http.post("/api/transcriptions", () => HttpResponse.json({ text: "案 A にする" })),
+      http.post("/api/comments", async ({ request }) => {
+        added.push(await request.json());
+        return HttpResponse.json({ id: "C-1", created: "2026-11-14T00:00:00+00:00", count: 1 }, { status: 201 });
+      }),
+    );
+    const view = renderRoute("/spa/?tab=decisions&id=D-1");
+    const panel = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(await within(panel).findByRole("button", { name: "音声で入力" }));
+    // 実行
+    view.unmount();
+    renderRoute("/spa/?tab=decisions&id=D-2");
+    const other = await screen.findByRole("complementary", { name: /詳細/ });
+    const otherMic = await within(other).findByRole("button", { name: "音声で入力" });
+    const otherDisabled = otherMic.getAttribute("aria-disabled");
+    await userEvent.click(screen.getByRole("button", { name: /^音声入力中（D-1 へのコメント）/ }));
+    const back = await screen.findByRole("complementary", { name: /詳細/ });
+    await userEvent.click(await within(back).findByRole("button", { name: "文字起こし" }));
+    // 検証
+    expect(otherDisabled).toBe("true");
+    await waitFor(() => expect(added).toEqual([{ target: "D-1", loc: null, body: "案 A にする" }]));
+    expect(await within(back).findByText("文字起こしの結果をレビュー中に追加しました。")).toBeInTheDocument();
+    expect(within(back).getByRole("textbox", { name: /D-1 へのコメント/ })).toHaveValue("");
     removeFakeMedia();
   });
 });

@@ -194,6 +194,9 @@ def test_workspace_settings_when_transcription(
     )
     # 検証
     assert legends[-1] == "音声入力"
+    assert preview_page.evaluate(
+        """() => [...document.querySelectorAll('input[name$="action"]')].map((input) => input.labels[0].textContent.trim())"""
+    ) == ["レビュー中に追加する", "入力欄へ挿入する", "送信する"]
     assert preset.count() == 1
     assert observed["calls"] == expected_calls
     assert observed["options"] == expected_options

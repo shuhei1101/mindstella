@@ -32,7 +32,10 @@ describe("WorkspaceSettingsScreen", () => {
     );
     const { unmount } = renderRoute("/spa/?tab=settings");
     // 実行
-    await userEvent.click(await screen.findByRole("radio", { name: "送信する" }));
+    const radios = await screen.findAllByRole("radio", { name: /レビュー中に追加する|入力欄へ挿入する|送信する/ });
+    expect(radios.map((radio) => radio.getAttribute("value"))).toEqual(["review", "insert", "send"]);
+    expect(screen.getByRole("radio", { name: "レビュー中に追加する" })).toBeChecked();
+    await userEvent.click(screen.getByRole("radio", { name: "送信する" }));
     await waitFor(() => expect(posted).toHaveBeenCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "send", preset: null } }));
     unmount();
     server.use(http.get("/api/transcription", () => HttpResponse.json({ available: false, reason: "stopped", detail: "x", presets: [], action: "send", preset: null })));
@@ -91,7 +94,7 @@ describe("WorkspaceSettingsScreen", () => {
     // 実行
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "用語集のプリセット" }), "一般");
     // 検証
-    await waitFor(() => expect(posted).toHaveBeenLastCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "insert", preset: "一般" } }));
+    await waitFor(() => expect(posted).toHaveBeenLastCalledWith({ op: "setting", target: "settings", key: "transcription", value: { action: "review", preset: "一般" } }));
   });
 });
 
