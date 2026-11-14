@@ -92,10 +92,10 @@ constraints:
     constraint: project-index の `GET /settings/sources` が返す `settingsPath` のファイルを読み、最上位の `mindstella.allowed_dirs`（絶対パスの並び）を使う。キーが無いか空なら、どのフォルダも許可しない（403）
     notes: project-index は知らないキーを警告にして読み込みを続ける（shuhei1101/project-index#11）
   - item: 記録が既にあるフォルダ
-    constraint: '`.mindstella/config.yaml` があれば作り直さずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）'
+    constraint: '`.mindstella/config.yaml` があれば作り直さずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）。`outside_read` を戻すときは、`GET /settings/sources` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す'
   - item: 配信元の行
-    constraint: 'project-index の `POST /settings/sources` に `{id, config: [{フォルダ}/.mindstella], scope: {read: [{フォルダ}], write: [{フォルダ}]}, outside_read: true}` を送る。同じ `id` の行がある（409・`exists`）ときは、内容が同じなら追加済みとして続け、違えば 502'
-    notes: 配信元の行のキーの形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）
+    constraint: 'project-index の `POST /settings/sources` に `{"source": {"id": {ID}, "config": "{フォルダ}/.mindstella/dev-docs.yaml", "scope": {"read": ["{フォルダ}", "{フォルダ}/**"], "write": ["{フォルダ}", "{フォルダ}/**"]}, "outside_read": true}}` を送る（`expectedVersion` は送らない）。`scope` はワークスペースのフォルダと、その下の全てのフォルダを作業場所にしたセッションを対象にする。同じ `id` の行がある（409・`result: exists`）ときは、`same` が真なら追加済みとして続け、偽なら 502'
+    notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』。`.mindstella/dev-docs.yaml`（記録を配信元として配る設定）は #517 で書くので、#516 では行は `not_served` で登録される（追加は通る。IF-31 の「追加した配信元が検証に通らない」）'
   - item: ID の一覧
     constraint: 状態のフォルダの `workspaces.yaml` の `ids` に足す。配信元の行の追加が通った後に足す
   - item: 追加の MCP・プラグインの記録
@@ -104,6 +104,9 @@ constraints:
     constraint: 同じフォルダへの作成はフォルダごとの鍵、ID の一覧の書き込みは全体で 1 つの鍵、記録と状態の書き込みはワークスペースごとの鍵（セッションの管理と共有する）を取ってから行う
   - item: MCP のツール
     constraint: '`create_workspace` は同じ引数（`folder`・`flow`・`mcp_config`・`plugin_dirs`）を受け、同じ処理を呼び、応答と同じ JSON を構造化の結果で返す。エラーは `エラー: {detail}`（『MCP サーバーの起動』のエラーの形）。`Host` の確かめは `/mcp` の確かめに任せる'
+  - item: 進め方の文書の確かめ方
+    constraint: 'project-index の HTTP の読み取り API で 3 段に確かめる。(1) `GET /settings/sources` の `flow.source` の行の `scope.read` に、ワークスペースのフォルダが当たる（当たらなければ 422・理由 `scope`）。(2) `GET /sources/{flow.source}/docs` の一覧から、`id` が `flow.doc` の文書のパスを引く（無ければ 422・理由 `missing`。配信元が無ければ 404 の `missing: source`）。(3) `GET /sources/{flow.source}/docs/{パス}?id={flow.doc}` が 200 を返す（404 なら 422・理由 `missing`）'
+    notes: 常駐サーバーは文書の MCP（`search_docs`）を呼ばない
 flows:
   - name: 正常系
     summary: 記録が無いフォルダに記録を作り、配信元に登録して ID と URL を返す

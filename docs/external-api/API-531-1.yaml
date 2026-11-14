@@ -1,48 +1,66 @@
 id: API-531-1
-title: project-index の端末の設定の API
+title: project-index の端末の設定の API と読み取り API
 version:
   api_version: shuhei1101/project-index の develop（#29 で配信元の行の単位の API を追加。release は未作成）
   checked_on: '2026-11-15'
 auth:
   method: なし（`127.0.0.1` で待ち受け、別のオリジンの要求を 403 で断る）
 endpoints:
-- name: GET /settings/sources
-  method: GET
-  path: /settings/sources
-  summary: 端末の設定のファイルのパス（`settingsPath`）・配信元の行・`version` を返す。ワークスペースの管理が、許可するフォルダを読むファイルの場所と、行を変える前の `version` を引く
-  status_codes:
-  - code: '200'
-    condition: 返した
-- name: POST /settings/sources
-  method: POST
-  path: /settings/sources
-  summary: 配信元の行を 1 行追加する（201）。同じ `id` の行があれば追加せず、内容が同じか（`same`）を 409 で返す。『ワークスペースの作成』が呼ぶ
-  status_codes:
-  - code: '201'
-    condition: 追加した
-  - code: '409'
-    condition: 同じ id の行がある（`same` で内容が同じか）か、`expectedVersion` が古い
-  - code: '422'
-    condition: 行がスキーマに通らない
-- name: PATCH /settings/sources/{id}
-  method: PATCH
-  path: /settings/sources/{id}
-  summary: 配信元の行を 1 行だけ、送ったキーで変える。`expectedVersion` が古ければ 409。『ワークスペースのクローズ』と、クローズしたフォルダへの作成が `outside_read` を変える
-  status_codes:
-  - code: '200'
-    condition: 変えた
-  - code: '404'
-    condition: 行が無い
-  - code: '409'
-    condition: '`expectedVersion` が古い'
+  - name: GET /settings/sources
+    method: GET
+    path: /settings/sources
+    summary: 端末の設定のファイルのパス（`settingsPath`）・配信元の行・`version` を返す。ワークスペースの管理が、許可するフォルダを読むファイルの場所と、行を変える前の `version` を引く
+    status_codes:
+      - code: '200'
+        condition: 返した
+  - name: POST /settings/sources
+    method: POST
+    path: /settings/sources
+    summary: '配信元の行を 1 行追加する（201）。本文は `{"source": {id, config, scope, outside_read}, "expectedVersion"?}`。同じ `id` の行があれば追加せず、内容が同じか（`same`）を 409 で返す。『ワークスペースの作成』が呼ぶ'
+    status_codes:
+      - code: '201'
+        condition: 追加した
+      - code: '409'
+        condition: 同じ id の行がある（`same` で内容が同じか）か、`expectedVersion` が古い
+      - code: '422'
+        condition: 行がスキーマに通らない
+  - name: PATCH /settings/sources/{id}
+    method: PATCH
+    path: /settings/sources/{id}
+    summary: '配信元の行を 1 行だけ、送ったキーで変える。本文は `{"expectedVersion": 必須, "source": {outside_read など}}`。`expectedVersion` が無ければ 400、古ければ 409（`current` に今の版）。『ワークスペースのクローズ』と、クローズしたフォルダへの作成が `outside_read` を変える'
+    status_codes:
+      - code: '200'
+        condition: 変えた
+      - code: '404'
+        condition: 行が無い
+      - code: '409'
+        condition: '`expectedVersion` が古い'
+  - name: GET /sources/{source}/docs
+    method: GET
+    path: /sources/{source}/docs
+    summary: 配信元の文書の ID・パス・種類の一覧。『ワークスペースの作成』が、進め方の文書の ID からパスを引く
+    status_codes:
+      - code: '200'
+        condition: 返した
+      - code: '404'
+        condition: '配信元が無い（`missing: source`）'
+  - name: GET /sources/{source}/docs/{path}
+    method: GET
+    path: /sources/{source}/docs/{path}?id=
+    summary: 文書 1 件の値とメタデータ。『ワークスペースの作成』が、進め方の文書を参照できるかを確かめる
+    status_codes:
+      - code: '200'
+        condition: 返した
+      - code: '404'
+        condition: 配信元・リビジョン・文書が無い（`missing`）
 lead: 端末の設定（project-index と dev-docs が共有するグローバルの設定のファイル）の配信元の行を、1 行ずつ版を照合して追加・変更・削除する project-index の HTTP の API。MindStella のワークスペースの管理が、ワークスペースを配信元として登録・クローズするときに呼ぶ（D-300）。
 used_in:
-- plugins/mindstella/skills/mindmap/scripts/server.py
+  - plugins/mindstella/skills/mindmap/scripts/server.py
 verification:
   state: 未確認
   detail: project-index の develop の設計書（IF-30〜IF-34）で入出力を確かめた。MindStella から呼んで動かしてはいない。実装の段で確かめる
 base_urls:
-- env: 全て
-  url: http://127.0.0.1:${PROJECT_INDEX_PORT:-8786}
+  - env: 全て
+    url: http://127.0.0.1:${PROJECT_INDEX_PORT:-8786}
 official_url: https://github.com/shuhei1101/project-index
 docs_url: https://github.com/shuhei1101/project-index/blob/develop/docs/guide/読み取りAPI.md

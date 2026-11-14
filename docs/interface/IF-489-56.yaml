@@ -152,7 +152,7 @@ flows:
       - 標準出力に、待ち受けのポート・バージョン・`plugin_root`・配信しているワークスペースのポートがある
     test: test_normal_when_server_status
   - name: 正常系（常駐サーバーの停止と再起動）
-    summary: '`server stop`・`server restart` は、systemd --user なら `systemctl --user stop`・`restart`、無ければ『常駐サーバーの停止』と『常駐サーバーの起動の確認』を呼ぶ'
+    summary: '`server stop` は systemd --user なら `systemctl --user stop`、無ければ『常駐サーバーの停止』を呼ぶ。`server restart` は `installPath` の `ensure_server.py --restart` を呼ぶ'
     setup:
       - name: Mock
         description: 正常系と同じ偽の `systemctl`
@@ -163,14 +163,16 @@ flows:
       sequenceDiagram
         participant クライアント
         participant IF as bin/mindstella
+        participant ES as installPath の ensure_server.py
         participant SC as systemctl（偽）
 
         クライアント->>IF: mindstella server restart
-        IF->>SC: --user daemon-reload・restart mindstella.service
+        IF->>ES: --restart
+        ES->>SC: --user daemon-reload・restart mindstella.service
         IF-->>クライアント: 終了コード 0
       ```
     expected:
-      - '`server restart` で、偽の `systemctl` が `--user restart mindstella.service` を受けている'
+      - '`server restart` で、ユニットのファイルの `ExecStart` が `installPath` のフォルダの `server.py` になり、偽の `systemctl` が `--user daemon-reload` と `--user restart mindstella.service` を受けている'
       - '`server stop` で、偽の `systemctl` が `--user stop mindstella.service` を受けている'
     test: test_normal_when_server_restart
   - name: 異常系（依存が足りない・DependencyMissingError）
@@ -590,7 +592,7 @@ constraints:
     constraint: 仮想環境の Python の標準ライブラリ（`urllib.request`）で `http://127.0.0.1:{MINDSTELLA_PORT}` へ JSON を送る。`Host` は `127.0.0.1:{ポート}`。準備を待つ上限（『MindStella のセッションの作成』）より長く待つため、打ち切りは準備を待つ上限に 10 秒を足す
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: server のサブコマンド
-    constraint: '`status` は `GET /_admin/status` を読んで出す（待ち受けていなければ終了コード 1）。`stop`・`restart` は、`systemctl --user show-environment` が終了コード 0 なら `systemctl --user stop mindstella.service`・`systemctl --user restart mindstella.service`、無ければ `stop` は『常駐サーバーの停止』と同じ `POST /_admin/stop`、`restart` は停止の後に `installPath` の `ensure_server.py` を呼ぶ'
+    constraint: '`status` は `GET /_admin/status` を読んで出す（待ち受けていなければ終了コード 1）。`stop` は、`systemctl --user show-environment` が終了コード 0 なら `systemctl --user stop mindstella.service`、無ければ『常駐サーバーの停止』と同じ `POST /_admin/stop`。`restart` は、`installPath` の `ensure_server.py` を `--restart` で呼ぶ（ユニットを `installPath` のフォルダで書き直してから起動し直す。『常駐サーバーの起動の確認』の「起動し直し」）'
 refs:
   - IF-489-27#
   - IF-489-1#

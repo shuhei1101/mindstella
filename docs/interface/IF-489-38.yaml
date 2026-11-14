@@ -136,6 +136,31 @@ flows:
       - 常駐サーバーが待ち受け、ユニットのファイルが書かれていない
       - 終了コードが 0 で、標準出力に起動した旨がある
     test: test_normal_when_no_systemd
+  - name: 正常系（起動し直す）
+    summary: '`--restart` は、待ち受けていてもユニットをこのフォルダで書き直してから起動し直す'
+    setup:
+      - name: systemctl
+        description: 正常系と同じ Mock。`restart` で、プロセスを止めて今のユニットの `ExecStart` で起動し直す
+      - name: 古いユニット
+        description: 別のフォルダの `server.py` を `ExecStart` に持つユニットのファイルと、そのコードで待ち受けている常駐サーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CMD as 起動のコマンド
+        participant IF as ensure_server.py --restart
+        participant SV as 常駐サーバー
+
+        CMD->>IF: --restart
+        IF->>IF: このフォルダで mindstella.service を書き直して daemon-reload する
+        IF->>SV: systemctl --user restart mindstella.service
+        IF-->>SV: GET /_admin/status（待ち受けるまで）
+        SV-->>IF: plugin_root がこのフォルダ
+      ```
+    expected:
+      - ユニットのファイルの `ExecStart` が、このスクリプトのプラグインのフォルダの `server.py`
+      - Mock の `systemctl` が `--user daemon-reload` と `--user restart mindstella.service` をこの順で受けている
+      - '`GET /_admin/status` の `plugin_root` がこのスクリプトのプラグインのフォルダ'
+    test: test_normal_when_restarted
   - name: 異常系（待ち受けのポートが使われている・PortInUseError）
     summary: ポートを mindstella でないプロセスが使っていれば、起動せずに使われているポートを示し、会話の始まりは止めない
     setup:
@@ -195,6 +220,12 @@ request:
     default: なし（起動スクリプトからの呼び出しとして、案内を標準エラーに出し、失敗は終了コード 1）
     location: argument
     description: SessionStart のフックからの呼び出し。標準入力のフックの入力を読み捨て、案内を標準出力に出し、どの結末も終了コード 0 で終わる
+  - name: --restart
+    type: bool
+    required: false
+    default: なし（落ちているときだけ起動する）
+    location: argument
+    description: 起動のコマンドの `mindstella server restart` からの呼び出し。待ち受けていても止めて、このスクリプトのプラグインのフォルダのコードで起動し直す
   - name: MINDSTELLA_PORT
     type: str
     required: false
@@ -233,15 +264,18 @@ constraints:
     constraint: 応答の `version` とプラグインの `version.ini` のバージョン、応答の `plugin_root` の末尾のフォルダ名と、このスクリプトのプラグインのフォルダの末尾のフォルダ名を比べる。どちらかが違うときは再起動せず、違う値と、起動のコマンドで再起動する手順（`mindstella server restart`）を示す（並行する別のセッションが使っているため）
     notes: Claude Code のプロファイル（`~/.claude`・`~/.claude-sub5` など）ごとにプラグインのフォルダのパスが違うので、パスの全体ではなく末尾のフォルダ名（コミットの SHA かバージョン）で比べる。プロファイルごとに別のコミットを入れているときは、そのプロファイルのセッションで案内が出て、どちらのコードで動かすかは利用者が再起動で選ぶ
   - item: 起動の仕方
-    constraint: 依存を確かめ（『依存の確認』と同じ確かめ方）、`systemctl --user show-environment` が終了コード 0 なら systemd --user で、そうでなければ新しいセッションで起動する。systemd --user では、ユニットのファイル（`Type=exec`・`ExecStart={python_path} {プラグインのフォルダ}/skills/mindmap/scripts/server.py`・`Restart=on-failure`・呼び出し元の環境の `MINDSTELLA_*`・`PROJECT_INDEX_PORT` を並べた `Environment=`）を `${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service` に書き、`daemon-reload` してから `start` する。新しいセッションでは、環境変数は呼び出し元の環境をそのまま渡し、標準入力はつながず、標準出力・標準エラーは `~/.mindmap/server.log` に書き足す
-    notes: ユニットのファイルは待ち受けていないときにだけ書き換える。プラグインを上げた後の起動では、そのとき入れてあるフォルダのコードで動く
+    constraint: 依存を確かめ（『依存の確認』と同じ確かめ方）、`systemctl --user show-environment` が終了コード 0 なら systemd --user で、そうでなければ新しいセッションで起動する。systemd --user では、起動するたびに、このスクリプトのプラグインのフォルダでユニットのファイル `${XDG_CONFIG_HOME:-~/.config}/systemd/user/mindstella.service` を書き（内容が同じなら書かない）、`daemon-reload` してから `start` する。ユニットは `Type=exec`・`ExecStart={python_path} {このスクリプトのプラグインのフォルダ}/skills/mindmap/scripts/server.py`・`StandardOutput=append:{~/.mindmap/server.log}`・`StandardError=append:{~/.mindmap/server.log}`・`Restart=on-failure`・`RestartSec=5`・`StartLimitIntervalSec=60`・`StartLimitBurst=3`、呼び出し元の環境の `MINDSTELLA_*`・`PROJECT_INDEX_PORT`・`XDG_STATE_HOME` を並べた `Environment=` を持つ。新しいセッションでは、環境変数は呼び出し元の環境をそのまま渡し、標準入力はつながず、標準出力・標準エラーは `~/.mindmap/server.log` に書き足す
+    notes: どちらの起動でも、常駐サーバーの出力は `~/.mindmap/server.log` に書き足されるので、起動を待つ間に同じファイルから理由を読める。`RestartSec=5` は起動を待つ上限（10 秒）の間に起動し直しが 1 回までになる値
   - item: 起動を待つ上限
-    constraint: '`GET /_admin/status` を 0.2 秒ごとに送り、10 秒まで待つ。その間に常駐サーバーのプロセスが終わったら、`server.log` に書き足された分から理由を読んで示す'
+    constraint: '`GET /_admin/status` を 0.2 秒ごとに送り、10 秒まで待つ。その間に常駐サーバーのプロセスが終わったら、`server.log` に書き足された分から理由を読んで示す。終わったかは、新しいセッションでは起動した子プロセスの終了で、systemd --user では `systemctl --user is-active mindstella.service` が `failed` か `activating`（`Restart=on-failure` の起動し直しを待っている）を返したことで見分ける'
     notes: 'mcp の SDK と PyYAML を読み込んで待ち受けるまでの時間（`MCPServer` の起動。WSL で 1 秒前後）に余裕を持たせた値。会話の始まりを待たせるのは起動したときだけ'
   - item: 標準出力
     constraint: '`--hook` で、起動した・古いコードのまま動いている・起動できないときだけ書く（会話の文脈に入る）。既に同じバージョンと同じフォルダが待ち受けていれば何も書かない'
   - item: つなぎ直す案内
     constraint: 起動したときは、Claude Code が会話の始まりに常駐サーバーへつなげず mindstella のツールを持たないことがあるため、`/mcp` で mindstella につなぎ直す案内を出す
+  - item: 起動し直し（--restart）
+    constraint: 待ち受けているかを確かめず、systemd --user ではユニットのファイルを書き直し（このスクリプトのプラグインのフォルダと、呼び出し元の環境の `Environment=`）、`daemon-reload` してから `systemctl --user restart mindstella.service` を呼ぶ。新しいセッションの端末では `POST /_admin/stop` を送り、ポートが閉じるまで 0.2 秒ごとに 10 秒まで待ってから起動する。どちらも、その後は「起動を待つ上限」と同じに待つ
+    notes: 起動のコマンドは `installPath` の `ensure_server.py` を `--restart` で呼ぶので、古いコードの常駐サーバーは、比べる値（`installPath` の末尾のフォルダ名）と同じフォルダのコードに替わる
 refs:
   - IF-489-1#
   - IF-489-37#

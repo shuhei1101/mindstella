@@ -27,7 +27,7 @@ request:
     required: false
     default: なし
     location: body
-    description: SessionStart の `source`（`startup`・`resume`・`clear`・`compact`）
+    description: SessionStart の `source`（`startup`・`resume`・`clear`・`compact`・`fork`）
   - name: reason
     type: str | None
     required: false
@@ -73,7 +73,7 @@ constraints:
   - item: 受ける Host
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
   - item: 記録する中身
-    constraint: '`session_start`: `claude_session_id`・`pid`・`pid_started_at`・`pane` を入れる（`clear`・`compact` の後は新しい `claude_session_id` で入れ直す）。`session_end`: `reason` が `clear`・`resume` 以外なら `status` を `stopped`、`responding` を偽にする。`prompt_submit`: `responding` を真。`stop`・`stop_failure`: `responding` を偽'
+    constraint: '`session_start`: `claude_session_id`・`pid`・`pid_started_at`・`pane` を入れる（`clear`・`compact`・`fork` の後は新しい `claude_session_id` で入れ直す）。`session_end`: `reason` が `clear`・`resume` 以外なら `status` を `stopped`、`responding` を偽にする。`prompt_submit`: `responding` を真。`stop`・`stop_failure`: `responding` を偽'
   - item: 同時の依頼
     constraint: '`session.json` ごとの書き込みの鍵だけを取って読み・書く。ワークスペースごとの順番の鍵は取らない（『MindStella のセッションの作成』が鍵を持ったまま SessionStart の登録を待つため）'
 flows:
