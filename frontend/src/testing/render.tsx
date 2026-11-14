@@ -1,4 +1,4 @@
-// Provider とルーターつきで画面を描く
+// Provider とルーターつきで画面を描く（使った QueryClient も返す）
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, waitFor } from "@testing-library/react";
@@ -15,11 +15,12 @@ export const renderRoute = (path: string) => {
   window.history.replaceState(null, "", path);
   const queryClient = createQueryClient();
   const router = createAppRouter(queryClient);
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return { ...rendered, queryClient };
 };
 
 /** メモリの履歴のルーターの中で hook を呼び、最新の戻り値と履歴を返す */

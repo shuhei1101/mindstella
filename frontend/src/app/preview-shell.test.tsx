@@ -4,7 +4,6 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { resetVoiceStore } from "@/shared/stores/voice-store";
-import { FakeEventSource } from "@/testing/fake-event-source";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { stubRecords } from "@/testing/msw/fixtures";
@@ -163,11 +162,12 @@ describe("PreviewShell", () => {
   test("preview_shell_when_voice_target_removed", async () => {
     // 準備
     enableVoice();
-    renderRoute("/spa/?tab=tasks&id=T-1");
+    const view = renderRoute("/spa/?tab=tasks&id=T-1");
     await userEvent.click(await screen.findByRole("button", { name: "音声で入力" }));
+    await screen.findByRole("button", { name: /^音声入力中（T-1 へのコメント）/ });
     stubRecords({ tasks: [] });
     // 実行
-    act(() => FakeEventSource.last?.emit("changed"));
+    await act(() => view.queryClient.invalidateQueries());
     // 検証
     expect(await screen.findByText("T-1 が削除されたため、録音を破棄しました。")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^音声入力中/ })).toBeNull();

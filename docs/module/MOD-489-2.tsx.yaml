@@ -85,7 +85,7 @@ components:
       - name: test_preview_shell_when_voice_target_removed
         case: 正常
         summary: 録音中に行き先の項目が無くなったら録音を捨てて帯を出す
-        condition: T-1 で録音中に、書き換えの知らせの後の記録に T-1 が無い
+        condition: T-1 で録音中に、読み直した記録に T-1 が無い
         mock: MSW と `vi.stubGlobal`
         expected: トップバーの音声入力中の表示が消え、帯に「T-1 が削除されたため、録音を破棄しました。」
     container: frontend/src/app/preview-shell.tsx
