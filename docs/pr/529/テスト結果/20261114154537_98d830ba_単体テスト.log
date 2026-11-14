@@ -1,0 +1,5 @@
+# 単体テスト（React の側の全件）。98d830ba（テストは 8f23a89b）で実行。今の画面・サーバーのコードは 0ac0a57d から変わっていないため Python の単体テストは 20261114151617_0ac0a57d_単体テスト.log を使う
+
+$ npx vitest run
+ Test Files  81 passed (81)
+      Tests  284 passed (284)
