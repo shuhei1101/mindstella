@@ -359,7 +359,7 @@ functions:
       4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
       5. 対象とカテゴリーを付け替える（`remap_names`。対応が `None` なら空）。書き換えのたびに呼ぶので、新しい設定に無い対象・カテゴリーが残れば `UnmappedTargetError` で止まる。カテゴリーの `target` が変わったら変わったキーに `categories` を足す
       6. 4.・5. で付け替えた項目がある種類を `Change` にし、まとめて書く（`save_settings`。`ConcurrentWriteError` なら 1. から 1 回だけ当て直す）
-      7. 変更の検知の前回の中身を書いた中身で置き換える（『変更の検知』の `accept_own_write`）
+      7. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い（`load_workspace` から伝わる）'

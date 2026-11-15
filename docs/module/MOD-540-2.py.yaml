@@ -178,18 +178,26 @@ classes:
       - name: accept_own_write
         title: 自分の書き込みを受け取る
         kind: メソッド
-        summary: 常駐サーバーが書いた後に、前回の中身を今の中身で置き換え、二重に記録しない（MindStella の MCP のツール・画面の保存・設定の更新が、書き込んだ鍵の中で呼ぶ）
+        summary: 常駐サーバーが書いた後に、書いたファイルの分だけ前回の中身を書いた中身で置き換え、二重に記録しない（MindStella の MCP のツール・画面の保存・設定の更新が、書き込んだ鍵の中で呼ぶ）
+        args:
+          - name: written
+            type: dict[str, str]
+            required: true
+            passing: positional
+            description: 書いたファイル（記録のフォルダからのパス）→ 書いた中身
         returns:
           type: None
           description: 何も返さない
-        process: 1. 今の中身を読み（`take_snapshot`）、前回の中身と書き換えの印を置き換え、`snapshot/` に書く
+        process: |-
+          1. 前回の中身の `written` のファイルだけを渡した中身で置き換え、ほかのファイルは前回の中身のままにする（`os.replace` から呼ぶまでの間に project-index が書いた分は、次の `poll` で違いとして記録する）
+          2. `snapshot/` に書く。書き換えの印は作り直さない（次の `poll` で中身を比べる）
         unit_tests:
           - name: test_accept_own_write
             case: 正常
-            summary: 受け取った後の poll は記録しない
-            condition: D-1 の案を書き換えて `accept_own_write` を呼んでから `poll` を呼ぶ
+            summary: 受け取った後の poll は自分の書き込みを記録せず、間に書かれたほかのファイルは記録する
+            condition: D-1 の案を書き換えた `decisions.yaml` を `accept_own_write` に渡し、その前に `notes.yaml` の N-1 も書き換えてから `poll` を呼ぶ
             mock: なし
-            expected: '`history.yaml`・`changes.yaml` が `accept_own_write` の前と同じ'
+            expected: '`history.yaml` に D-1 の変更履歴が増えず、N-1 の変更履歴が 1 回分増える'
       - name: duplicate_ids
         title: 重なった ID
         kind: メソッド

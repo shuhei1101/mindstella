@@ -458,7 +458,7 @@ functions:
       5. 利用者の変更を `commit_pending` で `USER_EDIT_SUMMARY` のまとまりにする
       6. 項目・本文・設定・`history.yaml`・`changes.yaml`・空にした `edits.yaml`（`seq`・`new_seq` はそのまま）を `save_batch` で 1 回で書く
          - `ConcurrentWriteError` の場合（project-index が間に書いた）、ワークスペースを読み直して 2. から 1 回だけ当て直す。2 回目も同じなら 409（`changed`）にする
-      7. 変更の検知の前回の中身を書いた中身で置き換える（『変更の検知』の `accept_own_write`）
+      7. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
       7. まとまりの ID・日時・足した項目・書き換えた項目・消した項目・書き換えた設定のキーを返す
     exceptions:
       - name: EditInvalidError

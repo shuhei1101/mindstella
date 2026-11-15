@@ -309,12 +309,29 @@ functions:
       2. 採用を切り替え（`switch_adopted`）、履歴の行の `updated` を今の日時、`updated_by` を `EDITOR` にする
       3. 変更履歴と通し番号を `stage_update` の 3. と同じく付ける（本文は変えないので `before_body` と `after_body` は同じ。`by` は `EDITOR`）
       4. 差し替えた並び・履歴・まとまりを書き込む（`save_change`。まとまりの `pending.by` が `external` なら、先に外部の変更のまとまりにする（`flush_pending`））
-      5. 変更の検知の前回の中身を書いた中身で置き換える（『変更の検知』の `accept_own_write`）
+         - `ConcurrentWriteError` の場合（project-index が間に書いた）、1. から読み直して 1 回だけ当て直す。2 回目も同じなら `ConcurrentWriteError` を送る
+      5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
     exceptions:
+      - name: ConcurrentWriteError
+        condition: 読み直して当て直しても、置き換える直前に種類の YAML がほかから書き換えられた
+        message: '記録がほかから書き換えられました: {ファイル名}'
       - name: ItemNotFoundError
         condition: ID が検討事項でない
         message: '検討事項がありません: {item_id}'
     unit_tests:
+      - name: test_run_adopt_when_concurrent_write
+        case: 正常
+        summary: 1 回目の書き込みでほかが書いていれば、読み直して当て直す
+        condition: '1 回目の `save_change` だけ `ConcurrentWriteError` を送り、その間に D-1 の `answer` を書き換えておく'
+        mock: '`save_change`（1 回目だけ送る）'
+        expected: 2 回目で書き、書き換えた `answer` が残る
+      - name: test_run_adopt_when_concurrent_write_twice
+        case: 異常
+        summary: 2 回続けてほかが書いていればエラー
+        condition: '`save_change` が 2 回とも `ConcurrentWriteError` を送る'
+        mock: '`save_change`'
+        expected: '`ConcurrentWriteError`'
+        exception: 当て直してもほかが書いた
       - name: test_run_adopt
         case: 正常
         summary: 切り替えて書き込む
@@ -1105,12 +1122,29 @@ functions:
       2. ワークスペースとまとまりを読み、項目を引く（`load_workspace`、`load_changes`、`find_item`）
       3. 案の書き換えを当て（`apply_option_edit`）、その `options` を `item` にして更新を当てる（`stage_update`。`options` は `RESERVED_KEYS` に無いのでそのまま渡せる）
       4. 書き込む（`save_batch`。履歴も書く）。`changed` は `stage_update` の `changed` が `options` を含むか
-      5. 変更の検知の前回の中身を書いた中身で置き換える（`accept_own_write`）
+         - `ConcurrentWriteError` の場合、2. から読み直して 1 回だけ当て直す。2 回目も同じなら `ConcurrentWriteError` を送る
+      5. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（`accept_own_write`）
     exceptions:
+      - name: ConcurrentWriteError
+        condition: 読み直して当て直しても、置き換える直前に種類の YAML がほかから書き換えられた
+        message: '記録がほかから書き換えられました: {ファイル名}'
       - name: ArgumentError
         condition: '`id` が検討事項の ID でない'
         message: '引数の誤り: id: 検討事項の ID（D-）を渡してください'
     unit_tests:
+      - name: test_run_edit_option_when_concurrent_write
+        case: 正常
+        summary: 1 回目の書き込みでほかが書いていれば、読み直して当て直す
+        condition: '1 回目の `save_batch` だけ `ConcurrentWriteError` を送り、その間に D-1 の `answer` を書き換えておく'
+        mock: '`save_batch`（1 回目だけ送る）'
+        expected: 2 回目で書き、書き換えた `answer` が残る
+      - name: test_run_edit_option_when_concurrent_write_twice
+        case: 異常
+        summary: 2 回続けてほかが書いていればエラー
+        condition: '`save_batch` が 2 回とも `ConcurrentWriteError` を送る'
+        mock: '`save_batch`'
+        expected: '`ConcurrentWriteError`'
+        exception: 当て直してもほかが書いた
       - name: test_run_edit_option
         case: 正常
         summary: 案を足して変更履歴と通し番号を付ける
