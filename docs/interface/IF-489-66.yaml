@@ -79,7 +79,7 @@ constraints:
     constraint: いつ使うか（セットアップの後に話し合いを進めるとき）が分かる 1 文
   - item: front matter の allowed-tools
     constraint: '`Read, Agent, WebSearch, WebFetch` と、`init` を除く mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__next_id`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`pending`・`status`・`next`・`check`・`goal`・`migrate`・`clear_release`・`write_release`・`export`・`preview_url`・`readme`・`threads`・`thread`・`new_thread`・`reply`・`set_thread_status`・`update_thread`。`mcp__plugin_mindstella_mindstella__` を頭に付けて並べる）と、project-index の MCP のツール（`mcp__plugin_project-index_project-index__search_docs`・`write_docs`・`delete_docs`・`trace_related`）。Write・Edit・Bash は許していない'
-    notes: 'Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は project-index の `write_docs` で、項目の `body` に本文のファイルのパスを入れ、本文の中身を `create` の `data.body`・`update` の `set`・`text_edits`（`field: body`）で書く（project-index#83）。`config.yaml` は `update_settings` で書く。`release/` の書き出しは `write_release` で行い、パスで絞れない Write・Edit を許さない（書き込みの確認をターミナルに出さない）'
+    notes: 'Agent・WebSearch・WebFetch はリサーチのサブエージェントに使う。許可がサブエージェントの WebSearch・WebFetch に及ぶことは PoC で確かめた。`docs/` の本文は project-index の `write_docs` で、項目の `body` に本文のファイルのパスを入れ、本文の中身を project-index の本文の書き込み（project-index#83）で書く。`config.yaml` は `update_settings` で書く。`release/` の書き出しは `write_release` で行い、パスで絞れない Write・Edit を許さない（書き込みの確認をターミナルに出さない）'
   - item: 共通のファイルの参照
     constraint: 本文では `${CLAUDE_PLUGIN_ROOT}/skills/mindmap/...` と書く。本文が指すパスは全てプラグインの中に実体がある
   - item: リサーチの確認
@@ -120,7 +120,7 @@ constraints:
     constraint: '検討事項は ER 図『ワークスペース』の案と状態の決まりに合わせて書く。取り込みでは、`未整理` を除く状態の検討事項を必ず案（`options` の `key`・`content`・`pros`・`cons`）を書いて足し、未決定なら AI が推す案に `recommended: true` を付ける。決まったこととして足すときは、選ばれた案を `adopted: true` にして状態を `決定済み` にする。問いの形にならない未整理は案を持たずに足し、未決定へ変えるときに案を書く。既にある検討事項の案と推奨の印を足す・直す・消すときは `edit_option` を使い、`write_docs` で案の配列を丸ごと渡さない。採用している案を消すときは、先に `adopt` で採用を移す。ヒアリングは、聞く前に `edit_option` で推奨の印を案の表の `推奨:` と揃え、答えを受けたら `adopt` で採用して `write_docs` で `answer`・`reason` を書く。方針転換では `adopt` が状態を `決定済み` にすることを前提にし、`answer` だけを `write_docs` で直す'
     notes: 単一ユースケース『発言の取り込み』『ヒアリング』
   - item: 納品物の資料
-    constraint: 'ゴールの納品物のうち `doc` を持たないものがあれば、取り込み（範囲の見直しで納品物を足したときはその後）で、概要・背景・最終的な構成を先に置いた本文の資料（`deliverable: true`・`status: 下書き`）を `next_id` で ID を取って `write_docs` で足し、`update_settings` で納品物の `doc` から指す。以降は決まったことに合わせて本文を `write_docs` の `text_edits` で書き足す'
+    constraint: 'ゴールの納品物のうち `doc` を持たないものがあれば、取り込み（範囲の見直しで納品物を足したときはその後）で、概要・背景・最終的な構成を先に置いた本文の資料（`deliverable: true`・`status: 下書き`）を `next_id` で ID を取って `write_docs` で足し、`update_settings` で納品物の `doc` から指す。以降は決まったことに合わせて本文を project-index の本文の書き込み（project-index#83）で書き足す'
     notes: 単一ユースケース『発言の取り込み』『話し合いの範囲の見直し』
   - item: 用語集
     constraint: 次の語は、利用者が指定しなくても用語集に足す。システムの名前・業務や製品の固有の言葉・話し合いで決めた呼び名、一般的な語でもこの話し合いで一般と違う・狭い意味で使う語、リサーチで調べた外部ライブラリ・外部サービスの名前、同じものに 2 つ以上の言い方が出たときの正式な語（残りの言い方は `aliases` に入れる）。リサーチの結果や読んだコード・ドキュメントにある固有の言葉も足す。一般的な意味のまま使う技術の言葉と、1 項目の中だけで使いほかに出ない語は足さない
