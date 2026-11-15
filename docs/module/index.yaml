@@ -420,6 +420,18 @@ items:
     summary: "プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。読み書きと検証・入口（項目の追加と更新）・設定の更新・変更履歴に依存し、鍵は呼ぶ側（配信）が取る。例外はモジュール構成『読み書きと検証』の `EditInvalidError`・`EditNotFoundError`・`EditConflictError`・`EditsBlockedError`。単体テストは `tests/unit/scripts/test_edits.py` に置く。"
   - page: MOD-489-192.py.yaml
     summary: "サーバー / 起動 / ensure_server.py"
+  - page: MOD-531-1.py.yaml
+    summary: "サーバー / 常駐サーバーの状態 / state.py"
+  - page: MOD-531-2.py.yaml
+    summary: "サーバー / 常駐サーバーの状態 / project_index.py"
+  - page: MOD-531-3.py.yaml
+    summary: "サーバー / ワークスペースの管理 / workspaces.py"
+  - page: MOD-531-4.py.yaml
+    summary: "サーバー / セッションの管理 / sessions.py"
+  - page: MOD-531-5.py.yaml
+    summary: "サーバー / 入口 / api.py"
+  - page: MOD-531-6.py.yaml
+    summary: "サーバー / 起動 / session_hook.py"
   - page: MOD-489-190.py.yaml
     summary: "サーバー / 読み書きと検証 / errors.py"
   - page: MOD-489-175.py.yaml

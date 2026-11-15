@@ -53,6 +53,12 @@ constants:
     usecase: README の書き直し
     summary: プレビューの節に、URL の代わりに書く行
     value: '"`/mindstella:session` でプレビューを頼むと URL が表示されます。"'
+  - name: LAUNCH_OPTIONS
+    title: 起動の引数の一覧
+    container: plugins/mindstella/skills/mindmap/scripts/readme.py
+    usecase: README の書き直し
+    summary: コマンドの節の起動の後ろに並べる、付けられる引数（`--flow`・`--mcp-config`・`--plugin-dir`）と説明の組
+    value: (("--flow {配信元の ID}#{文書の ID}", "..."), ("--mcp-config {ファイル}", "..."), ("--plugin-dir {フォルダ}", "..."))
   - name: DOC_LINKS
     title: ドキュメントのリンク
     container: plugins/mindstella/skills/mindmap/scripts/readme.py
@@ -90,7 +96,7 @@ functions:
       1. `root` を `resolve()` し、フォルダ名を見出しに、絶対パスを `shlex.quote` で引用してコマンドに使う
       2. プレビューの節に `preview_url` を書く
          - `None` の場合、`PREVIEW_HINT` を書く
-      3. コマンドの節に、起動（`{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`。どちらも `shlex.quote`）・接続（`tmux attach-session -t ={セッションの名前}`。`session_name`を `shlex.quote`）・セッション・セットアップ・アップグレード（`/mindstella:session`・`/mindstella:setup`・`/mindstella:upgrade` と絶対パス）をこの順に、太字の見出し・短い説明・`bash` のコードブロックで書く
+      3. コマンドの節に、起動（`{plugin_dir / LAUNCH_SCRIPT} {絶対パス}`。どちらも `shlex.quote`）・起動の任意の引数（`--flow`・`--mcp-config`・`--plugin-dir`）の一覧・接続（`tmux attach-session -t ={ワークスペースの ID}`。`workspaces.workspace_id_for` を `shlex.quote`）・セッション・セットアップ・アップグレード（`/mindstella:session`・`/mindstella:setup`・`/mindstella:upgrade` と絶対パス）をこの順に、太字の見出し・短い説明・`bash` のコードブロックで書く
       4. ドキュメントの節に `DOC_LINKS` を箇条書きのリンクで書く
     unit_tests:
       - name: test_render_readme
@@ -98,7 +104,7 @@ functions:
         summary: 配っていないときの一覧を作る
         condition: '`root=tmp_path / "家計簿アプリ"`、`plugin_dir=Path("/p/mindstella/0.7.0")`、`preview_url=None`'
         mock: なし
-        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。節が `## プレビュー` → `## コマンド` → `## ドキュメント` の順で、プレビューの節が `PREVIEW_HINT` で `http://127.0.0.1` を含まない。コマンドの節に `**起動:**`・`**接続:**`・`**セッション:**`・`**セットアップ:**`・`**アップグレード:**` がこの順にあり、それぞれの後ろの `bash` のコードブロックが起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `session_name(root)`）・3 つのスキルの呼び方。`DOC_LINKS` の 2 つの URL がある
+        expected: 1 行目が `README_MARK`、見出しが `# 家計簿アプリ`。節が `## プレビュー` → `## コマンド` → `## ドキュメント` の順で、プレビューの節が `PREVIEW_HINT` で `http://127.0.0.1` を含まない。コマンドの節に `**起動:**`・`**接続:**`・`**セッション:**`・`**セットアップ:**`・`**アップグレード:**` がこの順にあり、それぞれの後ろの `bash` のコードブロックが起動（`/p/mindstella/0.7.0/bin/mindstella {絶対パス}`）・接続（`tmux attach-session -t =` と `workspace_id_for(root)`）。起動の節に `--flow`・`--mcp-config`・`--plugin-dir` の一覧がある・3 つのスキルの呼び方。`DOC_LINKS` の 2 つの URL がある
       - name: test_render_readme_when_serving
         case: 正常
         summary: 配っているときは URL を書く
@@ -175,4 +181,4 @@ functions:
         expected: '`WriteFailedError`（メッセージに `README.md` のパス）。フォルダに一時ファイルが残っていない'
         exception: README.md を書けない
 notes:
-  依存の向き: '`readme.py` は `launch.py`（`session_name`）と `errors.py` だけを読み、`store.py`・`serve.py` を読まない。配っている URL は呼ぶ側（`commands.py`）が台帳から引いて渡す。'
+  依存の向き: '`readme.py` は `workspaces.py`（`workspace_id_for`）と `errors.py` だけを読み、`store.py`・`serve.py` を読まない。配っている URL は呼ぶ側（`commands.py`）が台帳から引いて渡す。'

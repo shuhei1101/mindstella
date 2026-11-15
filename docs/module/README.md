@@ -217,6 +217,12 @@
 | [サーバー / コメント / comments.py](./MOD-489-147.py.yaml) | レビュー中のコメント（`comments.yaml`）と書きかけ（`drafts.yaml`）を読み書きし、チェックしたコメントをスレッドへ移す。文字起こしの結果の書き込み 1 件は、レビュー中に溜めずにすぐスレッドへ足す。箇所・スレッド・読み書きと検証に依存し、鍵は呼ぶ側（配信）が取る。 |
 | [サーバー / 保存待ちの編集 / edits.py](./MOD-489-155.py.yaml) | プレビューで利用者が溜めた保存待ちの編集（`edits.yaml`）を読み書きし、まとめて保存するときに項目と設定へ当てる。読み書きと検証・入口（項目の追加と更新）・設定の更新・変更履歴に依存し、鍵は呼ぶ側（配信）が取る。例外はモジュール構成『読み書きと検証』の `EditInvalidError`・`EditNotFoundError`・`EditConflictError`・`EditsBlockedError`。単体テストは `tests/unit/scripts/test_edits.py` に置く。 |
 | [サーバー / 起動 / ensure_server.py](./MOD-489-192.py.yaml) | サーバー / 起動 / ensure_server.py |
+| [サーバー / 常駐サーバーの状態 / state.py](./MOD-531-1.py.yaml) | サーバー / 常駐サーバーの状態 / state.py |
+| [サーバー / 常駐サーバーの状態 / project_index.py](./MOD-531-2.py.yaml) | サーバー / 常駐サーバーの状態 / project_index.py |
+| [サーバー / ワークスペースの管理 / workspaces.py](./MOD-531-3.py.yaml) | サーバー / ワークスペースの管理 / workspaces.py |
+| [サーバー / セッションの管理 / sessions.py](./MOD-531-4.py.yaml) | サーバー / セッションの管理 / sessions.py |
+| [サーバー / 入口 / api.py](./MOD-531-5.py.yaml) | サーバー / 入口 / api.py |
+| [サーバー / 起動 / session_hook.py](./MOD-531-6.py.yaml) | サーバー / 起動 / session_hook.py |
 | [サーバー / 読み書きと検証 / errors.py](./MOD-489-190.py.yaml) | サーバー / 読み書きと検証 / errors.py |
 | [サーバー / ゴール判定 / graph.py](./MOD-489-175.py.yaml) | サーバー / ゴール判定 / graph.py |
 | [サーバー / 変更履歴 / history.py](./MOD-489-157.py.yaml) | 項目の変更履歴の 1 回分を作って積み、書き換えのまとまり（`changes.yaml`）・AI が最後に読んだ時点・前回開いた日時（`.mindstella-opened`）を読み書きし、読んだ時点からの変更を組み立てる。『読み書きと検証』にだけ依存し、書き込みは `save_change`・`save_batch` に任せる。 |

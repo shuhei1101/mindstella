@@ -1,0 +1,13 @@
+confirmations:
+  - topic: systemd --user が使えない端末（macOS・systemd を有効にしていない WSL）の扱い
+    decision: systemd --user だけにし、動作環境から macOS と systemd の無い WSL を外す（別案 B。今の環境で動けば ok）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/531#discussion_r4574716996
+  - topic: MindStella のセッションを起動した直後にペインへ入力する最初の 1 行の文言
+    decision: '`[mindstella] MindStella のセッションを起動しました`（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/531#discussion_r4574717669

@@ -33,7 +33,6 @@ SERVER_NAME = "mindstella"
 
 # 登録するツールの名前（インターフェース定義『MCP サーバーの起動』）
 TOOL_NAMES = [
-    "init",
     "add",
     "update",
     "remove",
@@ -65,6 +64,11 @@ TOOL_NAMES = [
     "reply",
     "set_thread_status",
     "update_thread",
+    "create_workspace",
+    "create_session",
+    "sessions",
+    "stop_session",
+    "close_workspace",
     "server_status",
     "server_stop",
 ]
@@ -125,10 +129,16 @@ def test_normal(start_server: StartServer) -> None:
     assert all("session" in tool["inputSchema"]["properties"] for tool in tools)
     assert all("session" not in tool["inputSchema"].get("required", []) for tool in tools)
     assert [
-        tool["name"]
-        for tool in tools
-        if "workspace" not in tool["inputSchema"].get("required", [])
-    ] == ["server_status", "server_stop"]
+        tool["name"] for tool in tools if "workspace" not in tool["inputSchema"].get("required", [])
+    ] == [
+        "create_workspace",
+        "create_session",
+        "sessions",
+        "stop_session",
+        "close_workspace",
+        "server_status",
+        "server_stop",
+    ]
 
 
 def test_normal_when_tool_fails(tmp_path: Path, start_server: StartServer) -> None:

@@ -1,0 +1,2323 @@
+# 単体テスト（Red：実装の前。テストだけを足した commit で実行）
+# commit: 71385295
+# 実行日時: 2026-11-15 05:34:06 JST
+$ pytest tests/unit --continue-on-collection-errors -p no:cacheprovider
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 2080 items / 9 errors
+
+tests/unit/preview/test_api.py ................                          [  0%]
+tests/unit/preview/test_app.py ............................              [  2%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [  2%]
+tests/unit/preview/test_chips_input.py ...                               [  2%]
+tests/unit/preview/test_comment_mark.py ..                               [  2%]
+tests/unit/preview/test_comments_panel.py .............................. [  3%]
+.                                                                        [  3%]
+tests/unit/preview/test_decisions.py ....                                [  4%]
+tests/unit/preview/test_detail.py ...................................... [  5%]
+.................                                                        [  6%]
+tests/unit/preview/test_detail_edit.py ........                          [  7%]
+tests/unit/preview/test_diff.py .................................        [  8%]
+tests/unit/preview/test_diff_minimap.py .....                            [  8%]
+tests/unit/preview/test_doc_export.py ......                             [  9%]
+tests/unit/preview/test_docs.py ..                                       [  9%]
+tests/unit/preview/test_dom.py ...............                           [ 10%]
+tests/unit/preview/test_edits.py ..                                      [ 10%]
+tests/unit/preview/test_graph.py ..                                      [ 10%]
+tests/unit/preview/test_libs.py ........................................ [ 12%]
+.                                                                        [ 12%]
+tests/unit/preview/test_lock.py ...                                      [ 12%]
+tests/unit/preview/test_looks.py ....                                    [ 12%]
+tests/unit/preview/test_markdown_body.py ..........                      [ 13%]
+tests/unit/preview/test_overview.py .                                    [ 13%]
+tests/unit/preview/test_pending_edits.py ......                          [ 13%]
+tests/unit/preview/test_pending_mark.py ..                               [ 13%]
+tests/unit/preview/test_records.py .........                             [ 13%]
+tests/unit/preview/test_reply_form.py ...                                [ 14%]
+tests/unit/preview/test_review_body_fold.py ....                         [ 14%]
+tests/unit/preview/test_router.py ......                                 [ 14%]
+tests/unit/preview/test_selection_comment.py ..                          [ 14%]
+tests/unit/preview/test_send_form.py .......                             [ 14%]
+tests/unit/preview/test_settings.py .                                    [ 15%]
+tests/unit/preview/test_settings_confirm.py .                            [ 15%]
+tests/unit/preview/test_settings_panel.py ....                           [ 15%]
+tests/unit/preview/test_side_by_side_body_diff.py ....                   [ 15%]
+tests/unit/preview/test_table.py .............                           [ 16%]
+tests/unit/preview/test_tag_list.py .                                    [ 16%]
+tests/unit/preview/test_tasks.py ..                                      [ 16%]
+tests/unit/preview/test_term_tip.py ...                                  [ 16%]
+tests/unit/preview/test_thread_post.py .........                         [ 16%]
+tests/unit/preview/test_thread_row.py .........                          [ 17%]
+tests/unit/preview/test_voice.py ............                            [ 17%]
+tests/unit/preview/test_workspace_settings.py ....                       [ 17%]
+tests/unit/preview/test_api.py .............                             [ 18%]
+tests/unit/preview/test_app.py .......................                   [ 19%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [ 19%]
+tests/unit/preview/test_comment_mark.py .                                [ 19%]
+tests/unit/preview/test_comments_panel.py ...................            [ 20%]
+tests/unit/preview/test_decisions.py ...                                 [ 20%]
+tests/unit/preview/test_detail.py ....................                   [ 21%]
+tests/unit/preview/test_detail_edit.py ..                                [ 21%]
+tests/unit/preview/test_diff.py .............                            [ 22%]
+tests/unit/preview/test_diff_minimap.py ...                              [ 22%]
+tests/unit/preview/test_doc_export.py ...                                [ 22%]
+tests/unit/preview/test_docs.py .                                        [ 22%]
+tests/unit/preview/test_dom.py ......                                    [ 23%]
+tests/unit/preview/test_edits.py .                                       [ 23%]
+tests/unit/preview/test_libs.py ................                         [ 23%]
+tests/unit/preview/test_lock.py ...                                      [ 24%]
+tests/unit/preview/test_looks.py ...                                     [ 24%]
+tests/unit/preview/test_markdown_body.py .......                         [ 24%]
+tests/unit/preview/test_overview.py .                                    [ 24%]
+tests/unit/preview/test_pending_edits.py ..                              [ 24%]
+tests/unit/preview/test_pending_mark.py .                                [ 24%]
+tests/unit/preview/test_records.py ......                                [ 25%]
+tests/unit/preview/test_reply_form.py ...                                [ 25%]
+tests/unit/preview/test_review_body_fold.py .                            [ 25%]
+tests/unit/preview/test_router.py .....                                  [ 25%]
+tests/unit/preview/test_selection_comment.py .                           [ 25%]
+tests/unit/preview/test_send_form.py .......                             [ 25%]
+tests/unit/preview/test_settings_confirm.py .                            [ 25%]
+tests/unit/preview/test_settings_panel.py ...                            [ 26%]
+tests/unit/preview/test_side_by_side_body_diff.py .                      [ 26%]
+tests/unit/preview/test_table.py .......                                 [ 26%]
+tests/unit/preview/test_tag_list.py .                                    [ 26%]
+tests/unit/preview/test_tasks.py .                                       [ 26%]
+tests/unit/preview/test_term_tip.py ..                                   [ 26%]
+tests/unit/preview/test_thread_post.py ......                            [ 26%]
+tests/unit/preview/test_thread_row.py .....                              [ 27%]
+tests/unit/preview/test_voice.py ........                                [ 27%]
+tests/unit/preview/test_workspace_settings.py ..                         [ 27%]
+tests/unit/preview/test_api.py ........                                  [ 28%]
+tests/unit/preview/test_app.py ..................                        [ 28%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [ 28%]
+tests/unit/preview/test_comment_mark.py .                                [ 29%]
+tests/unit/preview/test_comments_panel.py ..........                     [ 29%]
+tests/unit/preview/test_decisions.py ..                                  [ 29%]
+tests/unit/preview/test_detail.py ................                       [ 30%]
+tests/unit/preview/test_diff.py .......                                  [ 30%]
+tests/unit/preview/test_diff_minimap.py ...                              [ 30%]
+tests/unit/preview/test_doc_export.py .                                  [ 30%]
+tests/unit/preview/test_dom.py ...                                       [ 31%]
+tests/unit/preview/test_edits.py .                                       [ 31%]
+tests/unit/preview/test_libs.py ..........                               [ 31%]
+tests/unit/preview/test_lock.py ...                                      [ 31%]
+tests/unit/preview/test_looks.py ...                                     [ 31%]
+tests/unit/preview/test_markdown_body.py ......                          [ 32%]
+tests/unit/preview/test_pending_edits.py ..                              [ 32%]
+tests/unit/preview/test_pending_mark.py .                                [ 32%]
+tests/unit/preview/test_records.py ......                                [ 32%]
+tests/unit/preview/test_reply_form.py ...                                [ 32%]
+tests/unit/preview/test_review_body_fold.py .                            [ 32%]
+tests/unit/preview/test_router.py ....                                   [ 32%]
+tests/unit/preview/test_selection_comment.py .                           [ 33%]
+tests/unit/preview/test_send_form.py .....                               [ 33%]
+tests/unit/preview/test_settings_confirm.py .                            [ 33%]
+tests/unit/preview/test_settings_panel.py .                              [ 33%]
+tests/unit/preview/test_table.py ......                                  [ 33%]
+tests/unit/preview/test_tag_list.py .                                    [ 33%]
+tests/unit/preview/test_term_tip.py ..                                   [ 33%]
+tests/unit/preview/test_thread_post.py ...                               [ 33%]
+tests/unit/preview/test_thread_row.py ....                               [ 34%]
+tests/unit/preview/test_voice.py ......                                  [ 34%]
+tests/unit/preview/test_workspace_settings.py .                          [ 34%]
+tests/unit/preview/test_api.py .....                                     [ 34%]
+tests/unit/preview/test_app.py ............                              [ 35%]
+tests/unit/preview/test_comment_mark.py .                                [ 35%]
+tests/unit/preview/test_comments_panel.py .......                        [ 35%]
+tests/unit/preview/test_decisions.py ..                                  [ 35%]
+tests/unit/preview/test_detail.py .........                              [ 36%]
+tests/unit/preview/test_diff.py ......                                   [ 36%]
+tests/unit/preview/test_diff_minimap.py ..                               [ 36%]
+tests/unit/preview/test_dom.py ...                                       [ 36%]
+tests/unit/preview/test_edits.py .                                       [ 36%]
+tests/unit/preview/test_libs.py ........                                 [ 37%]
+tests/unit/preview/test_lock.py ..                                       [ 37%]
+tests/unit/preview/test_looks.py ..                                      [ 37%]
+tests/unit/preview/test_markdown_body.py ...                             [ 37%]
+tests/unit/preview/test_pending_edits.py ..                              [ 37%]
+tests/unit/preview/test_records.py ...                                   [ 37%]
+tests/unit/preview/test_reply_form.py ..                                 [ 37%]
+tests/unit/preview/test_router.py ...                                    [ 37%]
+tests/unit/preview/test_send_form.py ....                                [ 38%]
+tests/unit/preview/test_settings_panel.py .                              [ 38%]
+tests/unit/preview/test_table.py ....                                    [ 38%]
+tests/unit/preview/test_thread_post.py ..                                [ 38%]
+tests/unit/preview/test_thread_row.py .                                  [ 38%]
+tests/unit/preview/test_voice.py ...                                     [ 38%]
+tests/unit/preview/test_api.py ...                                       [ 38%]
+tests/unit/preview/test_app.py ..                                        [ 38%]
+tests/unit/preview/test_comments_panel.py .                              [ 38%]
+tests/unit/preview/test_decisions.py .                                   [ 39%]
+tests/unit/preview/test_detail.py ....                                   [ 39%]
+tests/unit/preview/test_diff.py ..                                       [ 39%]
+tests/unit/preview/test_diff_minimap.py .                                [ 39%]
+tests/unit/preview/test_dom.py ..                                        [ 39%]
+tests/unit/preview/test_edits.py .                                       [ 39%]
+tests/unit/preview/test_libs.py ......                                   [ 39%]
+tests/unit/preview/test_lock.py ..                                       [ 39%]
+tests/unit/preview/test_looks.py ..                                      [ 40%]
+tests/unit/preview/test_markdown_body.py ...                             [ 40%]
+tests/unit/preview/test_pending_edits.py .                               [ 40%]
+tests/unit/preview/test_reply_form.py ..                                 [ 40%]
+tests/unit/preview/test_router.py .                                      [ 40%]
+tests/unit/preview/test_send_form.py ..                                  [ 40%]
+tests/unit/preview/test_table.py .                                       [ 40%]
+tests/unit/preview/test_thread_row.py .                                  [ 40%]
+tests/unit/preview/test_voice.py .                                       [ 40%]
+tests/unit/preview/test_api.py ...                                       [ 40%]
+tests/unit/preview/test_app.py .                                         [ 40%]
+tests/unit/preview/test_decisions.py .                                   [ 40%]
+tests/unit/preview/test_detail.py .                                      [ 40%]
+tests/unit/preview/test_diff.py .                                        [ 40%]
+tests/unit/preview/test_diff_minimap.py .                                [ 40%]
+tests/unit/preview/test_dom.py .                                         [ 41%]
+tests/unit/preview/test_edits.py .                                       [ 41%]
+tests/unit/preview/test_libs.py ....                                     [ 41%]
+tests/unit/preview/test_lock.py .                                        [ 41%]
+tests/unit/preview/test_reply_form.py .                                  [ 41%]
+tests/unit/preview/test_router.py .                                      [ 41%]
+tests/unit/preview/test_send_form.py .                                   [ 41%]
+tests/unit/preview/test_voice.py .                                       [ 41%]
+tests/unit/preview/test_api.py .                                         [ 41%]
+tests/unit/preview/test_app.py .                                         [ 41%]
+tests/unit/preview/test_diff.py .                                        [ 41%]
+tests/unit/preview/test_diff_minimap.py .                                [ 41%]
+tests/unit/preview/test_libs.py ....                                     [ 41%]
+tests/unit/preview/test_lock.py .                                        [ 41%]
+tests/unit/preview/test_router.py .                                      [ 41%]
+tests/unit/preview/test_send_form.py .                                   [ 42%]
+tests/unit/preview/test_diff.py .                                        [ 42%]
+tests/unit/preview/test_diff_minimap.py .                                [ 42%]
+tests/unit/preview/test_libs.py ....                                     [ 42%]
+tests/unit/preview/test_lock.py .                                        [ 42%]
+tests/unit/preview/test_router.py .                                      [ 42%]
+tests/unit/preview/test_diff.py .                                        [ 42%]
+tests/unit/preview/test_libs.py ...                                      [ 42%]
+tests/unit/preview/test_router.py .                                      [ 42%]
+tests/unit/preview/test_libs.py .....................                    [ 43%]
+tests/unit/scripts/test_answer_to_adopted_option.py .....                [ 43%]
+tests/unit/scripts/test_backup.py ......                                 [ 44%]
+tests/unit/scripts/test_builder.py ..................................... [ 45%]
+.......................                                                  [ 47%]
+tests/unit/scripts/test_check_env.py ........................            [ 48%]
+tests/unit/scripts/test_checker.py ...........................           [ 49%]
+tests/unit/scripts/test_commands.py .................................... [ 51%]
+........................................................................ [ 54%]
+....                                                                     [ 54%]
+tests/unit/scripts/test_comments.py .................................... [ 56%]
+..............................                                           [ 58%]
+tests/unit/scripts/test_edits.py ....................................... [ 59%]
+...                                                                      [ 60%]
+tests/unit/scripts/test_field_to_playbooks.py ....                       [ 60%]
+tests/unit/scripts/test_graph.py .................                       [ 61%]
+tests/unit/scripts/test_history.py ..................................... [ 62%]
+.....                                                                    [ 63%]
+tests/unit/scripts/test_html_body.py .................                   [ 63%]
+tests/unit/scripts/test_inject_session.py ...................            [ 64%]
+tests/unit/scripts/test_kinds.py .......                                 [ 65%]
+tests/unit/scripts/test_launch.py ..FFFFFFFFFF                           [ 65%]
+tests/unit/scripts/test_locations.py ................................... [ 67%]
+...                                                                      [ 67%]
+tests/unit/scripts/test_migration_coverage.py .........                  [ 68%]
+tests/unit/scripts/test_migration_ops.py .....................           [ 69%]
+tests/unit/scripts/test_migrator.py ............................         [ 70%]
+tests/unit/scripts/test_query.py ....................................... [ 72%]
+..................                                                       [ 73%]
+tests/unit/scripts/test_register.py ...................................s [ 74%]
+...........                                                              [ 75%]
+tests/unit/scripts/test_remove_tag_vocabulary.py ...                     [ 75%]
+tests/unit/scripts/test_reset_unread.py ............                     [ 76%]
+tests/unit/scripts/test_serve.py ....................................... [ 77%]
+........................................................................ [ 81%]
+.........................                                                [ 82%]
+tests/unit/scripts/test_server.py .....................FFFFFFFF......... [ 84%]
+......                                                                   [ 84%]
+tests/unit/scripts/test_settings_update.py ............................. [ 86%]
+...                                                                      [ 86%]
+tests/unit/scripts/test_store.py ....................................... [ 88%]
+........................................................................ [ 91%]
+.....................                                                    [ 92%]
+tests/unit/scripts/test_submissions_to_threads.py ......                 [ 92%]
+tests/unit/scripts/test_tag_text.py ...............                      [ 93%]
+tests/unit/scripts/test_tags_to_objects.py ...                           [ 93%]
+tests/unit/scripts/test_tags_to_vocabulary.py ....                       [ 93%]
+tests/unit/scripts/test_threads.py ..................................... [ 95%]
+....................................                                     [ 97%]
+tests/unit/scripts/test_transcriber.py ....                              [ 97%]
+tests/unit/scripts/test_transcriber_registry.py ......                   [ 97%]
+tests/unit/scripts/test_versions.py .................                    [ 98%]
+tests/unit/scripts/test_voice_paste.py ......................            [ 99%]
+tests/unit/test_isolated_environment.py ...                              [100%]
+
+==================================== ERRORS ====================================
+_______________ ERROR collecting tests/unit/scripts/test_api.py ________________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_api.py:12: in <module>
+    import api
+E   ModuleNotFoundError: No module named 'api'
+___________ ERROR collecting tests/unit/scripts/test_claude_input.py ___________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_claude_input.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_claude_input.py:18: in <module>
+    import state
+E   ModuleNotFoundError: No module named 'state'
+__________ ERROR collecting tests/unit/scripts/test_ensure_server.py ___________
+tests/unit/scripts/test_ensure_server.py:475: in <module>
+    pytest.param((404, b"{}"), ensure_server.PORT_IN_USE, id="not_found"),
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'ensure_server' has no attribute 'PORT_IN_USE'
+__________ ERROR collecting tests/unit/scripts/test_project_index.py ___________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_project_index.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_project_index.py:14: in <module>
+    import project_index
+E   ModuleNotFoundError: No module named 'project_index'
+______________ ERROR collecting tests/unit/scripts/test_readme.py ______________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_readme.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_readme.py:14: in <module>
+    import workspaces
+E   ModuleNotFoundError: No module named 'workspaces'
+___________ ERROR collecting tests/unit/scripts/test_session_hook.py ___________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_session_hook.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_session_hook.py:11: in <module>
+    import session_hook
+E   ModuleNotFoundError: No module named 'session_hook'
+_____________ ERROR collecting tests/unit/scripts/test_sessions.py _____________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_sessions.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_sessions.py:16: in <module>
+    import project_index
+E   ModuleNotFoundError: No module named 'project_index'
+______________ ERROR collecting tests/unit/scripts/test_state.py _______________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_state.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_state.py:11: in <module>
+    import state
+E   ModuleNotFoundError: No module named 'state'
+____________ ERROR collecting tests/unit/scripts/test_workspaces.py ____________
+ImportError while importing test module '/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_workspaces.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_workspaces.py:14: in <module>
+    import project_index
+E   ModuleNotFoundError: No module named 'project_index'
+=================================== FAILURES ===================================
+_______________________________ test_run_launch ________________________________
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+args = ['--find-plugin'], namespace = Namespace(folder=None, format='lines')
+intermixed = False
+
+    def _parse_known_args2(self, args, namespace, intermixed):
+        if args is None:
+            # args default to the system args
+            args = _sys.argv[1:]
+        else:
+            # make sure that args are mutable
+            args = list(args)
+    
+        # default Namespace built from parser defaults
+        if namespace is None:
+            namespace = Namespace()
+    
+        # add any action defaults that aren't present
+        for action in self._actions:
+            if action.dest is not SUPPRESS:
+                if not hasattr(namespace, action.dest):
+                    if action.default is not SUPPRESS:
+                        setattr(namespace, action.dest, action.default)
+    
+        # add any parser defaults that aren't present
+        for dest in self._defaults:
+            if not hasattr(namespace, dest):
+                setattr(namespace, dest, self._defaults[dest])
+    
+        # parse the arguments and exit if there are any errors
+        if self.exit_on_error:
+            try:
+>               namespace, args = self._parse_known_args(args, namespace, intermixed)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1943: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+arg_strings = ['--find-plugin']
+namespace = Namespace(folder=None, format='lines'), intermixed = False
+
+    def _parse_known_args(self, arg_strings, namespace, intermixed):
+        # replace arg strings that are file references
+        if self.fromfile_prefix_chars is not None:
+            arg_strings = self._read_args_from_files(arg_strings)
+    
+        # map all mutually exclusive arguments to the other arguments
+        # they can't occur with
+        action_conflicts = {}
+        for mutex_group in self._mutually_exclusive_groups:
+            group_actions = mutex_group._group_actions
+            for i, mutex_action in enumerate(mutex_group._group_actions):
+                conflicts = action_conflicts.setdefault(mutex_action, [])
+                conflicts.extend(group_actions[:i])
+                conflicts.extend(group_actions[i + 1:])
+    
+        # find all option indices, and determine the arg_string_pattern
+        # which has an 'O' if there is an option at an index,
+        # an 'A' if there is an argument, or a '-' if there is a '--'
+        option_string_indices = {}
+        arg_string_pattern_parts = []
+        arg_strings_iter = iter(arg_strings)
+        for i, arg_string in enumerate(arg_strings_iter):
+    
+            # all args after -- are non-options
+            if arg_string == '--':
+                arg_string_pattern_parts.append('-')
+                for arg_string in arg_strings_iter:
+                    arg_string_pattern_parts.append('A')
+    
+            # otherwise, add the arg to the arg strings
+            # and note the index if it was an option
+            else:
+                option_tuples = self._parse_optional(arg_string)
+                if option_tuples is None:
+                    pattern = 'A'
+                else:
+                    option_string_indices[i] = option_tuples
+                    pattern = 'O'
+                arg_string_pattern_parts.append(pattern)
+    
+        # join the pieces together to form the pattern
+        arg_strings_pattern = ''.join(arg_string_pattern_parts)
+    
+        # converts arg strings to the appropriate and then takes the action
+        seen_actions = set()
+        seen_non_default_actions = set()
+    
+        def take_action(action, argument_strings, option_string=None):
+            seen_actions.add(action)
+            argument_values = self._get_values(action, argument_strings)
+    
+            # error if this argument is not allowed with other previously
+            # seen arguments
+            if action.option_strings or argument_strings:
+                seen_non_default_actions.add(action)
+                for conflict_action in action_conflicts.get(action, []):
+                    if conflict_action in seen_non_default_actions:
+                        msg = _('not allowed with argument %s')
+                        action_name = _get_action_name(conflict_action)
+                        raise ArgumentError(action, msg % action_name)
+    
+            # take the action if we didn't receive a SUPPRESS value
+            # (e.g. from a default)
+            if argument_values is not SUPPRESS:
+                action(self, namespace, argument_values, option_string)
+    
+        # function to convert arg_strings into an optional action
+        def consume_optional(start_index):
+    
+            # get the optional identified at this index
+            option_tuples = option_string_indices[start_index]
+            # if multiple actions match, the option string was ambiguous
+            if len(option_tuples) > 1:
+                options = ', '.join([option_string
+                    for action, option_string, sep, explicit_arg in option_tuples])
+                args = {'option': arg_strings[start_index], 'matches': options}
+                msg = _('ambiguous option: %(option)s could match %(matches)s')
+                raise ArgumentError(None, msg % args)
+    
+            action, option_string, sep, explicit_arg = option_tuples[0]
+    
+            # identify additional optionals in the same arg string
+            # (e.g. -xyz is the same as -x -y -z if no args are required)
+            match_argument = self._match_argument
+            action_tuples = []
+            while True:
+    
+                # if we found no optional action, skip it
+                if action is None:
+                    extras.append(arg_strings[start_index])
+                    extras_pattern.append('O')
+                    return start_index + 1
+    
+                # if there is an explicit argument, try to match the
+                # optional's string arguments to only this
+                if explicit_arg is not None:
+                    arg_count = match_argument(action, 'A')
+    
+                    # if the action is a single-dash option and takes no
+                    # arguments, try to parse more single-dash options out
+                    # of the tail of the option string
+                    chars = self.prefix_chars
+                    if (
+                        arg_count == 0
+                        and option_string[1] not in chars
+                        and explicit_arg != ''
+                    ):
+                        if sep or explicit_arg[0] in chars:
+                            msg = _('ignored explicit argument %r')
+                            raise ArgumentError(action, msg % explicit_arg)
+                        action_tuples.append((action, [], option_string))
+                        char = option_string[0]
+                        option_string = char + explicit_arg[0]
+                        optionals_map = self._option_string_actions
+                        if option_string in optionals_map:
+                            action = optionals_map[option_string]
+                            explicit_arg = explicit_arg[1:]
+                            if not explicit_arg:
+                                sep = explicit_arg = None
+                            elif explicit_arg[0] == '=':
+                                sep = '='
+                                explicit_arg = explicit_arg[1:]
+                            else:
+                                sep = ''
+                        else:
+                            extras.append(char + explicit_arg)
+                            extras_pattern.append('O')
+                            stop = start_index + 1
+                            break
+                    # if the action expect exactly one argument, we've
+                    # successfully matched the option; exit the loop
+                    elif arg_count == 1:
+                        stop = start_index + 1
+                        args = [explicit_arg]
+                        action_tuples.append((action, args, option_string))
+                        break
+    
+                    # error if a double-dash option did not use the
+                    # explicit argument
+                    else:
+                        msg = _('ignored explicit argument %r')
+                        raise ArgumentError(action, msg % explicit_arg)
+    
+                # if there is no explicit argument, try to match the
+                # optional's string arguments with the following strings
+                # if successful, exit the loop
+                else:
+                    start = start_index + 1
+                    selected_patterns = arg_strings_pattern[start:]
+                    arg_count = match_argument(action, selected_patterns)
+                    stop = start + arg_count
+                    args = arg_strings[start:stop]
+                    action_tuples.append((action, args, option_string))
+                    break
+    
+            # add the Optional to the list and return the index at which
+            # the Optional's string args stopped
+            assert action_tuples
+            for action, args, option_string in action_tuples:
+                take_action(action, args, option_string)
+            return stop
+    
+        # the list of Positionals left to be parsed; this is modified
+        # by consume_positionals()
+        positionals = self._get_positional_actions()
+    
+        # function to convert arg_strings into positional actions
+        def consume_positionals(start_index):
+            # match as many Positionals as possible
+            match_partial = self._match_arguments_partial
+            selected_pattern = arg_strings_pattern[start_index:]
+            arg_counts = match_partial(positionals, selected_pattern)
+    
+            # slice off the appropriate arg strings for each Positional
+            # and add the Positional and its args to the list
+            for action, arg_count in zip(positionals, arg_counts):
+                args = arg_strings[start_index: start_index + arg_count]
+                # Strip out the first '--' if it is not in REMAINDER arg.
+                if action.nargs == PARSER:
+                    if arg_strings_pattern[start_index] == '-':
+                        assert args[0] == '--'
+                        args.remove('--')
+                elif action.nargs != REMAINDER:
+                    if (arg_strings_pattern.find('-', start_index,
+                                                 start_index + arg_count) >= 0):
+                        args.remove('--')
+                start_index += arg_count
+                take_action(action, args)
+    
+            # slice off the Positionals that we just parsed and return the
+            # index at which the Positionals' string args stopped
+            positionals[:] = positionals[len(arg_counts):]
+            return start_index
+    
+        # consume Positionals and Optionals alternately, until we have
+        # passed the last option string
+        extras = []
+        extras_pattern = []
+        start_index = 0
+        if option_string_indices:
+            max_option_string_index = max(option_string_indices)
+        else:
+            max_option_string_index = -1
+        while start_index <= max_option_string_index:
+    
+            # consume any Positionals preceding the next option
+            next_option_string_index = min([
+                index
+                for index in option_string_indices
+                if index >= start_index])
+            if not intermixed and start_index != next_option_string_index:
+                positionals_end_index = consume_positionals(start_index)
+    
+                # only try to parse the next optional if we didn't consume
+                # the option string during the positionals parsing
+                if positionals_end_index > start_index:
+                    start_index = positionals_end_index
+                    continue
+                else:
+                    start_index = positionals_end_index
+    
+            # if we consumed all the positionals we could and we're not
+            # at the index of an option string, there were extra arguments
+            if start_index not in option_string_indices:
+                strings = arg_strings[start_index:next_option_string_index]
+                extras.extend(strings)
+                extras_pattern.extend(arg_strings_pattern[start_index:next_option_string_index])
+                start_index = next_option_string_index
+    
+            # consume the next optional and any arguments for it
+            start_index = consume_optional(start_index)
+    
+        if not intermixed:
+            # consume any positionals following the last Optional
+            stop_index = consume_positionals(start_index)
+    
+            # if we didn't consume all the argument strings, there were extras
+            extras.extend(arg_strings[stop_index:])
+        else:
+            extras.extend(arg_strings[start_index:])
+            extras_pattern.extend(arg_strings_pattern[start_index:])
+            extras_pattern = ''.join(extras_pattern)
+            assert len(extras_pattern) == len(extras)
+            # consume all positionals
+            arg_strings = [s for s, c in zip(extras, extras_pattern) if c != 'O']
+            arg_strings_pattern = extras_pattern.replace('O', '')
+            stop_index = consume_positionals(0)
+            # leave unknown optionals and non-consumed positionals in extras
+            for i, c in enumerate(extras_pattern):
+                if not stop_index:
+                    break
+                if c != 'O':
+                    stop_index -= 1
+                    extras[i] = None
+            extras = [s for s in extras if s is not None]
+    
+        # make sure all required actions were present and also convert
+        # action defaults which were not given as arguments
+        required_actions = []
+        for action in self._actions:
+            if action not in seen_actions:
+                if action.required:
+                    required_actions.append(_get_action_name(action))
+                else:
+                    # Convert action default now instead of doing it before
+                    # parsing arguments to avoid calling convert functions
+                    # twice (which may fail) if the argument was given, but
+                    # only if it was defined already in the namespace
+                    if (action.default is not None and
+                        isinstance(action.default, str) and
+                        hasattr(namespace, action.dest) and
+                        action.default is getattr(namespace, action.dest)):
+                        setattr(namespace, action.dest,
+                                self._get_value(action, action.default))
+    
+        if required_actions:
+>           raise ArgumentError(None, _('the following arguments are required: %s') %
+                       ', '.join(required_actions))
+E           argparse.ArgumentError: the following arguments are required: --folder
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2230: ArgumentError
+
+During handling of the above exception, another exception occurred:
+
+capsys = <_pytest.capture.CaptureFixture object at 0x7092ba0db410>
+
+    def test_run_launch(capsys: pytest.CaptureFixture[str]) -> None:
+        """--find-plugin でプラグインのフォルダを 1 行出す（正常系）。"""
+        # 準備
+        stdin = io.StringIO(json.dumps([OTHER_PLUGIN, MINDSTELLA_PLUGIN]))
+        # 実行
+>       exit_code = launch.run_launch(["--find-plugin"], stdin=stdin)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/launch.py:74: in run_launch
+    args = parser.parse_args(argv)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1904: in parse_args
+    args, argv = self.parse_known_args(args, namespace)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1914: in parse_known_args
+    return self._parse_known_args2(args, namespace, intermixed=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1945: in _parse_known_args2
+    self.error(str(err))
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2650: in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+status = 2
+message = 'pytest: error: the following arguments are required: --folder\n'
+
+    def exit(self, status=0, message=None):
+        if message:
+            self._print_message(message, _sys.stderr)
+>       _sys.exit(status)
+E       SystemExit: 2
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2637: SystemExit
+----------------------------- Captured stderr call -----------------------------
+usage: pytest [-h] --folder FOLDER [--format {lines}]
+pytest: error: the following arguments are required: --folder
+_____________________ test_run_launch_when_plugin_missing ______________________
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+args = ['--find-plugin'], namespace = Namespace(folder=None, format='lines')
+intermixed = False
+
+    def _parse_known_args2(self, args, namespace, intermixed):
+        if args is None:
+            # args default to the system args
+            args = _sys.argv[1:]
+        else:
+            # make sure that args are mutable
+            args = list(args)
+    
+        # default Namespace built from parser defaults
+        if namespace is None:
+            namespace = Namespace()
+    
+        # add any action defaults that aren't present
+        for action in self._actions:
+            if action.dest is not SUPPRESS:
+                if not hasattr(namespace, action.dest):
+                    if action.default is not SUPPRESS:
+                        setattr(namespace, action.dest, action.default)
+    
+        # add any parser defaults that aren't present
+        for dest in self._defaults:
+            if not hasattr(namespace, dest):
+                setattr(namespace, dest, self._defaults[dest])
+    
+        # parse the arguments and exit if there are any errors
+        if self.exit_on_error:
+            try:
+>               namespace, args = self._parse_known_args(args, namespace, intermixed)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1943: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+arg_strings = ['--find-plugin']
+namespace = Namespace(folder=None, format='lines'), intermixed = False
+
+    def _parse_known_args(self, arg_strings, namespace, intermixed):
+        # replace arg strings that are file references
+        if self.fromfile_prefix_chars is not None:
+            arg_strings = self._read_args_from_files(arg_strings)
+    
+        # map all mutually exclusive arguments to the other arguments
+        # they can't occur with
+        action_conflicts = {}
+        for mutex_group in self._mutually_exclusive_groups:
+            group_actions = mutex_group._group_actions
+            for i, mutex_action in enumerate(mutex_group._group_actions):
+                conflicts = action_conflicts.setdefault(mutex_action, [])
+                conflicts.extend(group_actions[:i])
+                conflicts.extend(group_actions[i + 1:])
+    
+        # find all option indices, and determine the arg_string_pattern
+        # which has an 'O' if there is an option at an index,
+        # an 'A' if there is an argument, or a '-' if there is a '--'
+        option_string_indices = {}
+        arg_string_pattern_parts = []
+        arg_strings_iter = iter(arg_strings)
+        for i, arg_string in enumerate(arg_strings_iter):
+    
+            # all args after -- are non-options
+            if arg_string == '--':
+                arg_string_pattern_parts.append('-')
+                for arg_string in arg_strings_iter:
+                    arg_string_pattern_parts.append('A')
+    
+            # otherwise, add the arg to the arg strings
+            # and note the index if it was an option
+            else:
+                option_tuples = self._parse_optional(arg_string)
+                if option_tuples is None:
+                    pattern = 'A'
+                else:
+                    option_string_indices[i] = option_tuples
+                    pattern = 'O'
+                arg_string_pattern_parts.append(pattern)
+    
+        # join the pieces together to form the pattern
+        arg_strings_pattern = ''.join(arg_string_pattern_parts)
+    
+        # converts arg strings to the appropriate and then takes the action
+        seen_actions = set()
+        seen_non_default_actions = set()
+    
+        def take_action(action, argument_strings, option_string=None):
+            seen_actions.add(action)
+            argument_values = self._get_values(action, argument_strings)
+    
+            # error if this argument is not allowed with other previously
+            # seen arguments
+            if action.option_strings or argument_strings:
+                seen_non_default_actions.add(action)
+                for conflict_action in action_conflicts.get(action, []):
+                    if conflict_action in seen_non_default_actions:
+                        msg = _('not allowed with argument %s')
+                        action_name = _get_action_name(conflict_action)
+                        raise ArgumentError(action, msg % action_name)
+    
+            # take the action if we didn't receive a SUPPRESS value
+            # (e.g. from a default)
+            if argument_values is not SUPPRESS:
+                action(self, namespace, argument_values, option_string)
+    
+        # function to convert arg_strings into an optional action
+        def consume_optional(start_index):
+    
+            # get the optional identified at this index
+            option_tuples = option_string_indices[start_index]
+            # if multiple actions match, the option string was ambiguous
+            if len(option_tuples) > 1:
+                options = ', '.join([option_string
+                    for action, option_string, sep, explicit_arg in option_tuples])
+                args = {'option': arg_strings[start_index], 'matches': options}
+                msg = _('ambiguous option: %(option)s could match %(matches)s')
+                raise ArgumentError(None, msg % args)
+    
+            action, option_string, sep, explicit_arg = option_tuples[0]
+    
+            # identify additional optionals in the same arg string
+            # (e.g. -xyz is the same as -x -y -z if no args are required)
+            match_argument = self._match_argument
+            action_tuples = []
+            while True:
+    
+                # if we found no optional action, skip it
+                if action is None:
+                    extras.append(arg_strings[start_index])
+                    extras_pattern.append('O')
+                    return start_index + 1
+    
+                # if there is an explicit argument, try to match the
+                # optional's string arguments to only this
+                if explicit_arg is not None:
+                    arg_count = match_argument(action, 'A')
+    
+                    # if the action is a single-dash option and takes no
+                    # arguments, try to parse more single-dash options out
+                    # of the tail of the option string
+                    chars = self.prefix_chars
+                    if (
+                        arg_count == 0
+                        and option_string[1] not in chars
+                        and explicit_arg != ''
+                    ):
+                        if sep or explicit_arg[0] in chars:
+                            msg = _('ignored explicit argument %r')
+                            raise ArgumentError(action, msg % explicit_arg)
+                        action_tuples.append((action, [], option_string))
+                        char = option_string[0]
+                        option_string = char + explicit_arg[0]
+                        optionals_map = self._option_string_actions
+                        if option_string in optionals_map:
+                            action = optionals_map[option_string]
+                            explicit_arg = explicit_arg[1:]
+                            if not explicit_arg:
+                                sep = explicit_arg = None
+                            elif explicit_arg[0] == '=':
+                                sep = '='
+                                explicit_arg = explicit_arg[1:]
+                            else:
+                                sep = ''
+                        else:
+                            extras.append(char + explicit_arg)
+                            extras_pattern.append('O')
+                            stop = start_index + 1
+                            break
+                    # if the action expect exactly one argument, we've
+                    # successfully matched the option; exit the loop
+                    elif arg_count == 1:
+                        stop = start_index + 1
+                        args = [explicit_arg]
+                        action_tuples.append((action, args, option_string))
+                        break
+    
+                    # error if a double-dash option did not use the
+                    # explicit argument
+                    else:
+                        msg = _('ignored explicit argument %r')
+                        raise ArgumentError(action, msg % explicit_arg)
+    
+                # if there is no explicit argument, try to match the
+                # optional's string arguments with the following strings
+                # if successful, exit the loop
+                else:
+                    start = start_index + 1
+                    selected_patterns = arg_strings_pattern[start:]
+                    arg_count = match_argument(action, selected_patterns)
+                    stop = start + arg_count
+                    args = arg_strings[start:stop]
+                    action_tuples.append((action, args, option_string))
+                    break
+    
+            # add the Optional to the list and return the index at which
+            # the Optional's string args stopped
+            assert action_tuples
+            for action, args, option_string in action_tuples:
+                take_action(action, args, option_string)
+            return stop
+    
+        # the list of Positionals left to be parsed; this is modified
+        # by consume_positionals()
+        positionals = self._get_positional_actions()
+    
+        # function to convert arg_strings into positional actions
+        def consume_positionals(start_index):
+            # match as many Positionals as possible
+            match_partial = self._match_arguments_partial
+            selected_pattern = arg_strings_pattern[start_index:]
+            arg_counts = match_partial(positionals, selected_pattern)
+    
+            # slice off the appropriate arg strings for each Positional
+            # and add the Positional and its args to the list
+            for action, arg_count in zip(positionals, arg_counts):
+                args = arg_strings[start_index: start_index + arg_count]
+                # Strip out the first '--' if it is not in REMAINDER arg.
+                if action.nargs == PARSER:
+                    if arg_strings_pattern[start_index] == '-':
+                        assert args[0] == '--'
+                        args.remove('--')
+                elif action.nargs != REMAINDER:
+                    if (arg_strings_pattern.find('-', start_index,
+                                                 start_index + arg_count) >= 0):
+                        args.remove('--')
+                start_index += arg_count
+                take_action(action, args)
+    
+            # slice off the Positionals that we just parsed and return the
+            # index at which the Positionals' string args stopped
+            positionals[:] = positionals[len(arg_counts):]
+            return start_index
+    
+        # consume Positionals and Optionals alternately, until we have
+        # passed the last option string
+        extras = []
+        extras_pattern = []
+        start_index = 0
+        if option_string_indices:
+            max_option_string_index = max(option_string_indices)
+        else:
+            max_option_string_index = -1
+        while start_index <= max_option_string_index:
+    
+            # consume any Positionals preceding the next option
+            next_option_string_index = min([
+                index
+                for index in option_string_indices
+                if index >= start_index])
+            if not intermixed and start_index != next_option_string_index:
+                positionals_end_index = consume_positionals(start_index)
+    
+                # only try to parse the next optional if we didn't consume
+                # the option string during the positionals parsing
+                if positionals_end_index > start_index:
+                    start_index = positionals_end_index
+                    continue
+                else:
+                    start_index = positionals_end_index
+    
+            # if we consumed all the positionals we could and we're not
+            # at the index of an option string, there were extra arguments
+            if start_index not in option_string_indices:
+                strings = arg_strings[start_index:next_option_string_index]
+                extras.extend(strings)
+                extras_pattern.extend(arg_strings_pattern[start_index:next_option_string_index])
+                start_index = next_option_string_index
+    
+            # consume the next optional and any arguments for it
+            start_index = consume_optional(start_index)
+    
+        if not intermixed:
+            # consume any positionals following the last Optional
+            stop_index = consume_positionals(start_index)
+    
+            # if we didn't consume all the argument strings, there were extras
+            extras.extend(arg_strings[stop_index:])
+        else:
+            extras.extend(arg_strings[start_index:])
+            extras_pattern.extend(arg_strings_pattern[start_index:])
+            extras_pattern = ''.join(extras_pattern)
+            assert len(extras_pattern) == len(extras)
+            # consume all positionals
+            arg_strings = [s for s, c in zip(extras, extras_pattern) if c != 'O']
+            arg_strings_pattern = extras_pattern.replace('O', '')
+            stop_index = consume_positionals(0)
+            # leave unknown optionals and non-consumed positionals in extras
+            for i, c in enumerate(extras_pattern):
+                if not stop_index:
+                    break
+                if c != 'O':
+                    stop_index -= 1
+                    extras[i] = None
+            extras = [s for s in extras if s is not None]
+    
+        # make sure all required actions were present and also convert
+        # action defaults which were not given as arguments
+        required_actions = []
+        for action in self._actions:
+            if action not in seen_actions:
+                if action.required:
+                    required_actions.append(_get_action_name(action))
+                else:
+                    # Convert action default now instead of doing it before
+                    # parsing arguments to avoid calling convert functions
+                    # twice (which may fail) if the argument was given, but
+                    # only if it was defined already in the namespace
+                    if (action.default is not None and
+                        isinstance(action.default, str) and
+                        hasattr(namespace, action.dest) and
+                        action.default is getattr(namespace, action.dest)):
+                        setattr(namespace, action.dest,
+                                self._get_value(action, action.default))
+    
+        if required_actions:
+>           raise ArgumentError(None, _('the following arguments are required: %s') %
+                       ', '.join(required_actions))
+E           argparse.ArgumentError: the following arguments are required: --folder
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2230: ArgumentError
+
+During handling of the above exception, another exception occurred:
+
+capsys = <_pytest.capture.CaptureFixture object at 0x7092ba392990>
+
+    def test_run_launch_when_plugin_missing(capsys: pytest.CaptureFixture[str]) -> None:
+        """プラグインが無ければ案内して 1（正常系）。"""
+        # 実行
+>       exit_code = launch.run_launch(["--find-plugin"], stdin=io.StringIO("[]"))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/launch.py:74: in run_launch
+    args = parser.parse_args(argv)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1904: in parse_args
+    args, argv = self.parse_known_args(args, namespace)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1914: in parse_known_args
+    return self._parse_known_args2(args, namespace, intermixed=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1945: in _parse_known_args2
+    self.error(str(err))
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2650: in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+status = 2
+message = 'pytest: error: the following arguments are required: --folder\n'
+
+    def exit(self, status=0, message=None):
+        if message:
+            self._print_message(message, _sys.stderr)
+>       _sys.exit(status)
+E       SystemExit: 2
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2637: SystemExit
+----------------------------- Captured stderr call -----------------------------
+usage: pytest [-h] --folder FOLDER [--format {lines}]
+pytest: error: the following arguments are required: --folder
+________________ test_run_launch_when_listing_invalid[not_json] ________________
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+args = ['--find-plugin'], namespace = Namespace(folder=None, format='lines')
+intermixed = False
+
+    def _parse_known_args2(self, args, namespace, intermixed):
+        if args is None:
+            # args default to the system args
+            args = _sys.argv[1:]
+        else:
+            # make sure that args are mutable
+            args = list(args)
+    
+        # default Namespace built from parser defaults
+        if namespace is None:
+            namespace = Namespace()
+    
+        # add any action defaults that aren't present
+        for action in self._actions:
+            if action.dest is not SUPPRESS:
+                if not hasattr(namespace, action.dest):
+                    if action.default is not SUPPRESS:
+                        setattr(namespace, action.dest, action.default)
+    
+        # add any parser defaults that aren't present
+        for dest in self._defaults:
+            if not hasattr(namespace, dest):
+                setattr(namespace, dest, self._defaults[dest])
+    
+        # parse the arguments and exit if there are any errors
+        if self.exit_on_error:
+            try:
+>               namespace, args = self._parse_known_args(args, namespace, intermixed)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1943: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+arg_strings = ['--find-plugin']
+namespace = Namespace(folder=None, format='lines'), intermixed = False
+
+    def _parse_known_args(self, arg_strings, namespace, intermixed):
+        # replace arg strings that are file references
+        if self.fromfile_prefix_chars is not None:
+            arg_strings = self._read_args_from_files(arg_strings)
+    
+        # map all mutually exclusive arguments to the other arguments
+        # they can't occur with
+        action_conflicts = {}
+        for mutex_group in self._mutually_exclusive_groups:
+            group_actions = mutex_group._group_actions
+            for i, mutex_action in enumerate(mutex_group._group_actions):
+                conflicts = action_conflicts.setdefault(mutex_action, [])
+                conflicts.extend(group_actions[:i])
+                conflicts.extend(group_actions[i + 1:])
+    
+        # find all option indices, and determine the arg_string_pattern
+        # which has an 'O' if there is an option at an index,
+        # an 'A' if there is an argument, or a '-' if there is a '--'
+        option_string_indices = {}
+        arg_string_pattern_parts = []
+        arg_strings_iter = iter(arg_strings)
+        for i, arg_string in enumerate(arg_strings_iter):
+    
+            # all args after -- are non-options
+            if arg_string == '--':
+                arg_string_pattern_parts.append('-')
+                for arg_string in arg_strings_iter:
+                    arg_string_pattern_parts.append('A')
+    
+            # otherwise, add the arg to the arg strings
+            # and note the index if it was an option
+            else:
+                option_tuples = self._parse_optional(arg_string)
+                if option_tuples is None:
+                    pattern = 'A'
+                else:
+                    option_string_indices[i] = option_tuples
+                    pattern = 'O'
+                arg_string_pattern_parts.append(pattern)
+    
+        # join the pieces together to form the pattern
+        arg_strings_pattern = ''.join(arg_string_pattern_parts)
+    
+        # converts arg strings to the appropriate and then takes the action
+        seen_actions = set()
+        seen_non_default_actions = set()
+    
+        def take_action(action, argument_strings, option_string=None):
+            seen_actions.add(action)
+            argument_values = self._get_values(action, argument_strings)
+    
+            # error if this argument is not allowed with other previously
+            # seen arguments
+            if action.option_strings or argument_strings:
+                seen_non_default_actions.add(action)
+                for conflict_action in action_conflicts.get(action, []):
+                    if conflict_action in seen_non_default_actions:
+                        msg = _('not allowed with argument %s')
+                        action_name = _get_action_name(conflict_action)
+                        raise ArgumentError(action, msg % action_name)
+    
+            # take the action if we didn't receive a SUPPRESS value
+            # (e.g. from a default)
+            if argument_values is not SUPPRESS:
+                action(self, namespace, argument_values, option_string)
+    
+        # function to convert arg_strings into an optional action
+        def consume_optional(start_index):
+    
+            # get the optional identified at this index
+            option_tuples = option_string_indices[start_index]
+            # if multiple actions match, the option string was ambiguous
+            if len(option_tuples) > 1:
+                options = ', '.join([option_string
+                    for action, option_string, sep, explicit_arg in option_tuples])
+                args = {'option': arg_strings[start_index], 'matches': options}
+                msg = _('ambiguous option: %(option)s could match %(matches)s')
+                raise ArgumentError(None, msg % args)
+    
+            action, option_string, sep, explicit_arg = option_tuples[0]
+    
+            # identify additional optionals in the same arg string
+            # (e.g. -xyz is the same as -x -y -z if no args are required)
+            match_argument = self._match_argument
+            action_tuples = []
+            while True:
+    
+                # if we found no optional action, skip it
+                if action is None:
+                    extras.append(arg_strings[start_index])
+                    extras_pattern.append('O')
+                    return start_index + 1
+    
+                # if there is an explicit argument, try to match the
+                # optional's string arguments to only this
+                if explicit_arg is not None:
+                    arg_count = match_argument(action, 'A')
+    
+                    # if the action is a single-dash option and takes no
+                    # arguments, try to parse more single-dash options out
+                    # of the tail of the option string
+                    chars = self.prefix_chars
+                    if (
+                        arg_count == 0
+                        and option_string[1] not in chars
+                        and explicit_arg != ''
+                    ):
+                        if sep or explicit_arg[0] in chars:
+                            msg = _('ignored explicit argument %r')
+                            raise ArgumentError(action, msg % explicit_arg)
+                        action_tuples.append((action, [], option_string))
+                        char = option_string[0]
+                        option_string = char + explicit_arg[0]
+                        optionals_map = self._option_string_actions
+                        if option_string in optionals_map:
+                            action = optionals_map[option_string]
+                            explicit_arg = explicit_arg[1:]
+                            if not explicit_arg:
+                                sep = explicit_arg = None
+                            elif explicit_arg[0] == '=':
+                                sep = '='
+                                explicit_arg = explicit_arg[1:]
+                            else:
+                                sep = ''
+                        else:
+                            extras.append(char + explicit_arg)
+                            extras_pattern.append('O')
+                            stop = start_index + 1
+                            break
+                    # if the action expect exactly one argument, we've
+                    # successfully matched the option; exit the loop
+                    elif arg_count == 1:
+                        stop = start_index + 1
+                        args = [explicit_arg]
+                        action_tuples.append((action, args, option_string))
+                        break
+    
+                    # error if a double-dash option did not use the
+                    # explicit argument
+                    else:
+                        msg = _('ignored explicit argument %r')
+                        raise ArgumentError(action, msg % explicit_arg)
+    
+                # if there is no explicit argument, try to match the
+                # optional's string arguments with the following strings
+                # if successful, exit the loop
+                else:
+                    start = start_index + 1
+                    selected_patterns = arg_strings_pattern[start:]
+                    arg_count = match_argument(action, selected_patterns)
+                    stop = start + arg_count
+                    args = arg_strings[start:stop]
+                    action_tuples.append((action, args, option_string))
+                    break
+    
+            # add the Optional to the list and return the index at which
+            # the Optional's string args stopped
+            assert action_tuples
+            for action, args, option_string in action_tuples:
+                take_action(action, args, option_string)
+            return stop
+    
+        # the list of Positionals left to be parsed; this is modified
+        # by consume_positionals()
+        positionals = self._get_positional_actions()
+    
+        # function to convert arg_strings into positional actions
+        def consume_positionals(start_index):
+            # match as many Positionals as possible
+            match_partial = self._match_arguments_partial
+            selected_pattern = arg_strings_pattern[start_index:]
+            arg_counts = match_partial(positionals, selected_pattern)
+    
+            # slice off the appropriate arg strings for each Positional
+            # and add the Positional and its args to the list
+            for action, arg_count in zip(positionals, arg_counts):
+                args = arg_strings[start_index: start_index + arg_count]
+                # Strip out the first '--' if it is not in REMAINDER arg.
+                if action.nargs == PARSER:
+                    if arg_strings_pattern[start_index] == '-':
+                        assert args[0] == '--'
+                        args.remove('--')
+                elif action.nargs != REMAINDER:
+                    if (arg_strings_pattern.find('-', start_index,
+                                                 start_index + arg_count) >= 0):
+                        args.remove('--')
+                start_index += arg_count
+                take_action(action, args)
+    
+            # slice off the Positionals that we just parsed and return the
+            # index at which the Positionals' string args stopped
+            positionals[:] = positionals[len(arg_counts):]
+            return start_index
+    
+        # consume Positionals and Optionals alternately, until we have
+        # passed the last option string
+        extras = []
+        extras_pattern = []
+        start_index = 0
+        if option_string_indices:
+            max_option_string_index = max(option_string_indices)
+        else:
+            max_option_string_index = -1
+        while start_index <= max_option_string_index:
+    
+            # consume any Positionals preceding the next option
+            next_option_string_index = min([
+                index
+                for index in option_string_indices
+                if index >= start_index])
+            if not intermixed and start_index != next_option_string_index:
+                positionals_end_index = consume_positionals(start_index)
+    
+                # only try to parse the next optional if we didn't consume
+                # the option string during the positionals parsing
+                if positionals_end_index > start_index:
+                    start_index = positionals_end_index
+                    continue
+                else:
+                    start_index = positionals_end_index
+    
+            # if we consumed all the positionals we could and we're not
+            # at the index of an option string, there were extra arguments
+            if start_index not in option_string_indices:
+                strings = arg_strings[start_index:next_option_string_index]
+                extras.extend(strings)
+                extras_pattern.extend(arg_strings_pattern[start_index:next_option_string_index])
+                start_index = next_option_string_index
+    
+            # consume the next optional and any arguments for it
+            start_index = consume_optional(start_index)
+    
+        if not intermixed:
+            # consume any positionals following the last Optional
+            stop_index = consume_positionals(start_index)
+    
+            # if we didn't consume all the argument strings, there were extras
+            extras.extend(arg_strings[stop_index:])
+        else:
+            extras.extend(arg_strings[start_index:])
+            extras_pattern.extend(arg_strings_pattern[start_index:])
+            extras_pattern = ''.join(extras_pattern)
+            assert len(extras_pattern) == len(extras)
+            # consume all positionals
+            arg_strings = [s for s, c in zip(extras, extras_pattern) if c != 'O']
+            arg_strings_pattern = extras_pattern.replace('O', '')
+            stop_index = consume_positionals(0)
+            # leave unknown optionals and non-consumed positionals in extras
+            for i, c in enumerate(extras_pattern):
+                if not stop_index:
+                    break
+                if c != 'O':
+                    stop_index -= 1
+                    extras[i] = None
+            extras = [s for s in extras if s is not None]
+    
+        # make sure all required actions were present and also convert
+        # action defaults which were not given as arguments
+        required_actions = []
+        for action in self._actions:
+            if action not in seen_actions:
+                if action.required:
+                    required_actions.append(_get_action_name(action))
+                else:
+                    # Convert action default now instead of doing it before
+                    # parsing arguments to avoid calling convert functions
+                    # twice (which may fail) if the argument was given, but
+                    # only if it was defined already in the namespace
+                    if (action.default is not None and
+                        isinstance(action.default, str) and
+                        hasattr(namespace, action.dest) and
+                        action.default is getattr(namespace, action.dest)):
+                        setattr(namespace, action.dest,
+                                self._get_value(action, action.default))
+    
+        if required_actions:
+>           raise ArgumentError(None, _('the following arguments are required: %s') %
+                       ', '.join(required_actions))
+E           argparse.ArgumentError: the following arguments are required: --folder
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2230: ArgumentError
+
+During handling of the above exception, another exception occurred:
+
+capsys = <_pytest.capture.CaptureFixture object at 0x7092ba3924e0>, text = '{'
+
+    @pytest.mark.parametrize(
+        "text", [pytest.param("{", id="not_json"), pytest.param("{}", id="not_array")]
+    )
+    def test_run_launch_when_listing_invalid(capsys: pytest.CaptureFixture[str], text: str) -> None:
+        """一覧を読めなければ 1（正常系）。"""
+        # 実行
+>       exit_code = launch.run_launch(["--find-plugin"], stdin=io.StringIO(text))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/launch.py:74: in run_launch
+    args = parser.parse_args(argv)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1904: in parse_args
+    args, argv = self.parse_known_args(args, namespace)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1914: in parse_known_args
+    return self._parse_known_args2(args, namespace, intermixed=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1945: in _parse_known_args2
+    self.error(str(err))
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2650: in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+status = 2
+message = 'pytest: error: the following arguments are required: --folder\n'
+
+    def exit(self, status=0, message=None):
+        if message:
+            self._print_message(message, _sys.stderr)
+>       _sys.exit(status)
+E       SystemExit: 2
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2637: SystemExit
+----------------------------- Captured stderr call -----------------------------
+usage: pytest [-h] --folder FOLDER [--format {lines}]
+pytest: error: the following arguments are required: --folder
+_______________ test_run_launch_when_listing_invalid[not_array] ________________
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+args = ['--find-plugin'], namespace = Namespace(folder=None, format='lines')
+intermixed = False
+
+    def _parse_known_args2(self, args, namespace, intermixed):
+        if args is None:
+            # args default to the system args
+            args = _sys.argv[1:]
+        else:
+            # make sure that args are mutable
+            args = list(args)
+    
+        # default Namespace built from parser defaults
+        if namespace is None:
+            namespace = Namespace()
+    
+        # add any action defaults that aren't present
+        for action in self._actions:
+            if action.dest is not SUPPRESS:
+                if not hasattr(namespace, action.dest):
+                    if action.default is not SUPPRESS:
+                        setattr(namespace, action.dest, action.default)
+    
+        # add any parser defaults that aren't present
+        for dest in self._defaults:
+            if not hasattr(namespace, dest):
+                setattr(namespace, dest, self._defaults[dest])
+    
+        # parse the arguments and exit if there are any errors
+        if self.exit_on_error:
+            try:
+>               namespace, args = self._parse_known_args(args, namespace, intermixed)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1943: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+arg_strings = ['--find-plugin']
+namespace = Namespace(folder=None, format='lines'), intermixed = False
+
+    def _parse_known_args(self, arg_strings, namespace, intermixed):
+        # replace arg strings that are file references
+        if self.fromfile_prefix_chars is not None:
+            arg_strings = self._read_args_from_files(arg_strings)
+    
+        # map all mutually exclusive arguments to the other arguments
+        # they can't occur with
+        action_conflicts = {}
+        for mutex_group in self._mutually_exclusive_groups:
+            group_actions = mutex_group._group_actions
+            for i, mutex_action in enumerate(mutex_group._group_actions):
+                conflicts = action_conflicts.setdefault(mutex_action, [])
+                conflicts.extend(group_actions[:i])
+                conflicts.extend(group_actions[i + 1:])
+    
+        # find all option indices, and determine the arg_string_pattern
+        # which has an 'O' if there is an option at an index,
+        # an 'A' if there is an argument, or a '-' if there is a '--'
+        option_string_indices = {}
+        arg_string_pattern_parts = []
+        arg_strings_iter = iter(arg_strings)
+        for i, arg_string in enumerate(arg_strings_iter):
+    
+            # all args after -- are non-options
+            if arg_string == '--':
+                arg_string_pattern_parts.append('-')
+                for arg_string in arg_strings_iter:
+                    arg_string_pattern_parts.append('A')
+    
+            # otherwise, add the arg to the arg strings
+            # and note the index if it was an option
+            else:
+                option_tuples = self._parse_optional(arg_string)
+                if option_tuples is None:
+                    pattern = 'A'
+                else:
+                    option_string_indices[i] = option_tuples
+                    pattern = 'O'
+                arg_string_pattern_parts.append(pattern)
+    
+        # join the pieces together to form the pattern
+        arg_strings_pattern = ''.join(arg_string_pattern_parts)
+    
+        # converts arg strings to the appropriate and then takes the action
+        seen_actions = set()
+        seen_non_default_actions = set()
+    
+        def take_action(action, argument_strings, option_string=None):
+            seen_actions.add(action)
+            argument_values = self._get_values(action, argument_strings)
+    
+            # error if this argument is not allowed with other previously
+            # seen arguments
+            if action.option_strings or argument_strings:
+                seen_non_default_actions.add(action)
+                for conflict_action in action_conflicts.get(action, []):
+                    if conflict_action in seen_non_default_actions:
+                        msg = _('not allowed with argument %s')
+                        action_name = _get_action_name(conflict_action)
+                        raise ArgumentError(action, msg % action_name)
+    
+            # take the action if we didn't receive a SUPPRESS value
+            # (e.g. from a default)
+            if argument_values is not SUPPRESS:
+                action(self, namespace, argument_values, option_string)
+    
+        # function to convert arg_strings into an optional action
+        def consume_optional(start_index):
+    
+            # get the optional identified at this index
+            option_tuples = option_string_indices[start_index]
+            # if multiple actions match, the option string was ambiguous
+            if len(option_tuples) > 1:
+                options = ', '.join([option_string
+                    for action, option_string, sep, explicit_arg in option_tuples])
+                args = {'option': arg_strings[start_index], 'matches': options}
+                msg = _('ambiguous option: %(option)s could match %(matches)s')
+                raise ArgumentError(None, msg % args)
+    
+            action, option_string, sep, explicit_arg = option_tuples[0]
+    
+            # identify additional optionals in the same arg string
+            # (e.g. -xyz is the same as -x -y -z if no args are required)
+            match_argument = self._match_argument
+            action_tuples = []
+            while True:
+    
+                # if we found no optional action, skip it
+                if action is None:
+                    extras.append(arg_strings[start_index])
+                    extras_pattern.append('O')
+                    return start_index + 1
+    
+                # if there is an explicit argument, try to match the
+                # optional's string arguments to only this
+                if explicit_arg is not None:
+                    arg_count = match_argument(action, 'A')
+    
+                    # if the action is a single-dash option and takes no
+                    # arguments, try to parse more single-dash options out
+                    # of the tail of the option string
+                    chars = self.prefix_chars
+                    if (
+                        arg_count == 0
+                        and option_string[1] not in chars
+                        and explicit_arg != ''
+                    ):
+                        if sep or explicit_arg[0] in chars:
+                            msg = _('ignored explicit argument %r')
+                            raise ArgumentError(action, msg % explicit_arg)
+                        action_tuples.append((action, [], option_string))
+                        char = option_string[0]
+                        option_string = char + explicit_arg[0]
+                        optionals_map = self._option_string_actions
+                        if option_string in optionals_map:
+                            action = optionals_map[option_string]
+                            explicit_arg = explicit_arg[1:]
+                            if not explicit_arg:
+                                sep = explicit_arg = None
+                            elif explicit_arg[0] == '=':
+                                sep = '='
+                                explicit_arg = explicit_arg[1:]
+                            else:
+                                sep = ''
+                        else:
+                            extras.append(char + explicit_arg)
+                            extras_pattern.append('O')
+                            stop = start_index + 1
+                            break
+                    # if the action expect exactly one argument, we've
+                    # successfully matched the option; exit the loop
+                    elif arg_count == 1:
+                        stop = start_index + 1
+                        args = [explicit_arg]
+                        action_tuples.append((action, args, option_string))
+                        break
+    
+                    # error if a double-dash option did not use the
+                    # explicit argument
+                    else:
+                        msg = _('ignored explicit argument %r')
+                        raise ArgumentError(action, msg % explicit_arg)
+    
+                # if there is no explicit argument, try to match the
+                # optional's string arguments with the following strings
+                # if successful, exit the loop
+                else:
+                    start = start_index + 1
+                    selected_patterns = arg_strings_pattern[start:]
+                    arg_count = match_argument(action, selected_patterns)
+                    stop = start + arg_count
+                    args = arg_strings[start:stop]
+                    action_tuples.append((action, args, option_string))
+                    break
+    
+            # add the Optional to the list and return the index at which
+            # the Optional's string args stopped
+            assert action_tuples
+            for action, args, option_string in action_tuples:
+                take_action(action, args, option_string)
+            return stop
+    
+        # the list of Positionals left to be parsed; this is modified
+        # by consume_positionals()
+        positionals = self._get_positional_actions()
+    
+        # function to convert arg_strings into positional actions
+        def consume_positionals(start_index):
+            # match as many Positionals as possible
+            match_partial = self._match_arguments_partial
+            selected_pattern = arg_strings_pattern[start_index:]
+            arg_counts = match_partial(positionals, selected_pattern)
+    
+            # slice off the appropriate arg strings for each Positional
+            # and add the Positional and its args to the list
+            for action, arg_count in zip(positionals, arg_counts):
+                args = arg_strings[start_index: start_index + arg_count]
+                # Strip out the first '--' if it is not in REMAINDER arg.
+                if action.nargs == PARSER:
+                    if arg_strings_pattern[start_index] == '-':
+                        assert args[0] == '--'
+                        args.remove('--')
+                elif action.nargs != REMAINDER:
+                    if (arg_strings_pattern.find('-', start_index,
+                                                 start_index + arg_count) >= 0):
+                        args.remove('--')
+                start_index += arg_count
+                take_action(action, args)
+    
+            # slice off the Positionals that we just parsed and return the
+            # index at which the Positionals' string args stopped
+            positionals[:] = positionals[len(arg_counts):]
+            return start_index
+    
+        # consume Positionals and Optionals alternately, until we have
+        # passed the last option string
+        extras = []
+        extras_pattern = []
+        start_index = 0
+        if option_string_indices:
+            max_option_string_index = max(option_string_indices)
+        else:
+            max_option_string_index = -1
+        while start_index <= max_option_string_index:
+    
+            # consume any Positionals preceding the next option
+            next_option_string_index = min([
+                index
+                for index in option_string_indices
+                if index >= start_index])
+            if not intermixed and start_index != next_option_string_index:
+                positionals_end_index = consume_positionals(start_index)
+    
+                # only try to parse the next optional if we didn't consume
+                # the option string during the positionals parsing
+                if positionals_end_index > start_index:
+                    start_index = positionals_end_index
+                    continue
+                else:
+                    start_index = positionals_end_index
+    
+            # if we consumed all the positionals we could and we're not
+            # at the index of an option string, there were extra arguments
+            if start_index not in option_string_indices:
+                strings = arg_strings[start_index:next_option_string_index]
+                extras.extend(strings)
+                extras_pattern.extend(arg_strings_pattern[start_index:next_option_string_index])
+                start_index = next_option_string_index
+    
+            # consume the next optional and any arguments for it
+            start_index = consume_optional(start_index)
+    
+        if not intermixed:
+            # consume any positionals following the last Optional
+            stop_index = consume_positionals(start_index)
+    
+            # if we didn't consume all the argument strings, there were extras
+            extras.extend(arg_strings[stop_index:])
+        else:
+            extras.extend(arg_strings[start_index:])
+            extras_pattern.extend(arg_strings_pattern[start_index:])
+            extras_pattern = ''.join(extras_pattern)
+            assert len(extras_pattern) == len(extras)
+            # consume all positionals
+            arg_strings = [s for s, c in zip(extras, extras_pattern) if c != 'O']
+            arg_strings_pattern = extras_pattern.replace('O', '')
+            stop_index = consume_positionals(0)
+            # leave unknown optionals and non-consumed positionals in extras
+            for i, c in enumerate(extras_pattern):
+                if not stop_index:
+                    break
+                if c != 'O':
+                    stop_index -= 1
+                    extras[i] = None
+            extras = [s for s in extras if s is not None]
+    
+        # make sure all required actions were present and also convert
+        # action defaults which were not given as arguments
+        required_actions = []
+        for action in self._actions:
+            if action not in seen_actions:
+                if action.required:
+                    required_actions.append(_get_action_name(action))
+                else:
+                    # Convert action default now instead of doing it before
+                    # parsing arguments to avoid calling convert functions
+                    # twice (which may fail) if the argument was given, but
+                    # only if it was defined already in the namespace
+                    if (action.default is not None and
+                        isinstance(action.default, str) and
+                        hasattr(namespace, action.dest) and
+                        action.default is getattr(namespace, action.dest)):
+                        setattr(namespace, action.dest,
+                                self._get_value(action, action.default))
+    
+        if required_actions:
+>           raise ArgumentError(None, _('the following arguments are required: %s') %
+                       ', '.join(required_actions))
+E           argparse.ArgumentError: the following arguments are required: --folder
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2230: ArgumentError
+
+During handling of the above exception, another exception occurred:
+
+capsys = <_pytest.capture.CaptureFixture object at 0x7092ba391910>, text = '{}'
+
+    @pytest.mark.parametrize(
+        "text", [pytest.param("{", id="not_json"), pytest.param("{}", id="not_array")]
+    )
+    def test_run_launch_when_listing_invalid(capsys: pytest.CaptureFixture[str], text: str) -> None:
+        """一覧を読めなければ 1（正常系）。"""
+        # 実行
+>       exit_code = launch.run_launch(["--find-plugin"], stdin=io.StringIO(text))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/launch.py:74: in run_launch
+    args = parser.parse_args(argv)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1904: in parse_args
+    args, argv = self.parse_known_args(args, namespace)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1914: in parse_known_args
+    return self._parse_known_args2(args, namespace, intermixed=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:1945: in _parse_known_args2
+    self.error(str(err))
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2650: in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='pytest', usage=None, description='起動スクリプトの手助け', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+status = 2
+message = 'pytest: error: the following arguments are required: --folder\n'
+
+    def exit(self, status=0, message=None):
+        if message:
+            self._print_message(message, _sys.stderr)
+>       _sys.exit(status)
+E       SystemExit: 2
+
+/home/shuhei2441/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/argparse.py:2637: SystemExit
+----------------------------- Captured stderr call -----------------------------
+usage: pytest [-h] --folder FOLDER [--format {lines}]
+pytest: error: the following arguments are required: --folder
+_______________________________ test_api_request _______________________________
+
+api_port = 57504
+
+    def test_api_request(api_port: int) -> None:
+        """ステータスと JSON の本文を返し、Host を 127.0.0.1:{port} で送る（正常系）。"""
+        # 実行
+>       created = launch.api_request(api_port, "POST", "/workspaces", {"folder": "/w"}, 5.0)
+                  ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'launch' has no attribute 'api_request'
+
+tests/unit/scripts/test_launch.py:160: AttributeError
+________________________________ test_run_start ________________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-8233/test_run_start0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7092ba390f20>
+
+    def test_run_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ワークスペースと MindStella のセッションを作り、URL とペインを出す（正常系）。"""
+        # 準備
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "m.json").write_text(
+            json.dumps({"mcpServers": {"a": {"command": "a"}}}), encoding="utf-8"
+        )
+        request = _Requests(
+            (201, CREATED), (201, {"session": "S-1", "pane": "w:0.0", "url": PREVIEW_URL})
+        )
+        argv = ["/w/家計簿", "--flow", "aituber#flow-1", "--mcp-config", "m.json", "--plugin-dir", "p"]
+        # 実行
+>       code, stdout, _stderr = _run_start(argv, request, {"CLAUDE_CONFIG_DIR": "/c"})
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_launch.py:181: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+argv = ['/w/家計簿', '--flow', 'aituber#flow-1', '--mcp-config', 'm.json', '--plugin-dir', ...]
+request = <test_launch._Requests object at 0x7092ba393b30>
+environ = {'CLAUDE_CONFIG_DIR': '/c'}
+
+    def _run_start(
+        argv: list[str], request: _Requests, environ: dict[str, str] | None = None
+    ) -> tuple[int, str, str]:
+        """run_start を呼び、終了コードと標準出力・標準エラーを返す。"""
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+>       code = launch.run_start(
+               ^^^^^^^^^^^^^^^^
+            argv, environ=environ or {}, stdout=stdout, stderr=stderr, request=request
+        )
+E       AttributeError: module 'launch' has no attribute 'run_start'
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/red-531/tests/unit/scripts/test_launch.py:61: AttributeError
+____________________________ test_run_start_exists _____________________________
+
+    def test_run_start_exists() -> None:
+        """MindStella のセッションが既にあれば、そのペインを出す（正常系）。"""
+        # 準備
+        request = _Requests(
+            (200, CREATED), (409, {"status": 409, "stage": "exists", "session": "S-1", "pane": "w:0.0"})
+        )
+        # 実行
+>       code, stdout, stderr = _run_start(["/w/家計簿"], request)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:209: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+argv = ['/w/家計簿'], request = <test_launch._Requests object at 0x7092ba1ee3f0>
+environ = None
+
+    def _run_start(
+        argv: list[str], request: _Requests, environ: dict[str, str] | None = None
+    ) -> tuple[int, str, str]:
+        """run_start を呼び、終了コードと標準出力・標準エラーを返す。"""
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+>       code = launch.run_start(
+               ^^^^^^^^^^^^^^^^
+            argv, environ=environ or {}, stdout=stdout, stderr=stderr, request=request
+        )
+E       AttributeError: module 'launch' has no attribute 'run_start'
+
+tests/unit/scripts/test_launch.py:61: AttributeError
+_________________________ test_run_start_error[create] _________________________
+
+responses = [(403, {'status': 403, 'stage': 'folder', 'detail': '許可していないフォルダです'})]
+texts = ['許可していないフォルダです']
+
+    @pytest.mark.parametrize(
+        ("responses", "texts"),
+        [
+            pytest.param(
+                [(403, {"status": 403, "stage": "folder", "detail": "許可していないフォルダです"})],
+                ["許可していないフォルダです"],
+                id="create",
+            ),
+            pytest.param(
+                [
+                    (201, CREATED),
+                    (503, {"status": 503, "stage": "account", "detail": "借りられません"}),
+                ],
+                ["借りられません", PREVIEW_URL],
+                id="session",
+            ),
+        ],
+    )
+    def test_run_start_error(responses: list[tuple[int, dict[str, Any]]], texts: list[str]) -> None:
+        """作成に失敗したら 1 を返し、理由を出す（異常系）。"""
+        # 実行
+>       code, _stdout, stderr = _run_start(["/w/家計簿"], _Requests(*responses))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+argv = ['/w/家計簿'], request = <test_launch._Requests object at 0x7092bbee8aa0>
+environ = None
+
+    def _run_start(
+        argv: list[str], request: _Requests, environ: dict[str, str] | None = None
+    ) -> tuple[int, str, str]:
+        """run_start を呼び、終了コードと標準出力・標準エラーを返す。"""
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+>       code = launch.run_start(
+               ^^^^^^^^^^^^^^^^
+            argv, environ=environ or {}, stdout=stdout, stderr=stderr, request=request
+        )
+E       AttributeError: module 'launch' has no attribute 'run_start'
+
+tests/unit/scripts/test_launch.py:61: AttributeError
+________________________ test_run_start_error[session] _________________________
+
+responses = [(201, {'id': 'mindstella-家計簿-3f2a9c', 'url': 'http://127.0.0.1:9100/mindstella.html', 'result': 'created'}), (503, {'status': 503, 'stage': 'account', 'detail': '借りられません'})]
+texts = ['借りられません', 'http://127.0.0.1:9100/mindstella.html']
+
+    @pytest.mark.parametrize(
+        ("responses", "texts"),
+        [
+            pytest.param(
+                [(403, {"status": 403, "stage": "folder", "detail": "許可していないフォルダです"})],
+                ["許可していないフォルダです"],
+                id="create",
+            ),
+            pytest.param(
+                [
+                    (201, CREATED),
+                    (503, {"status": 503, "stage": "account", "detail": "借りられません"}),
+                ],
+                ["借りられません", PREVIEW_URL],
+                id="session",
+            ),
+        ],
+    )
+    def test_run_start_error(responses: list[tuple[int, dict[str, Any]]], texts: list[str]) -> None:
+        """作成に失敗したら 1 を返し、理由を出す（異常系）。"""
+        # 実行
+>       code, _stdout, stderr = _run_start(["/w/家計簿"], _Requests(*responses))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_launch.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+argv = ['/w/家計簿'], request = <test_launch._Requests object at 0x7092ba1769c0>
+environ = None
+
+    def _run_start(
+        argv: list[str], request: _Requests, environ: dict[str, str] | None = None
+    ) -> tuple[int, str, str]:
+        """run_start を呼び、終了コードと標準出力・標準エラーを返す。"""
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+>       code = launch.run_start(
+               ^^^^^^^^^^^^^^^^
+            argv, environ=environ or {}, stdout=stdout, stderr=stderr, request=request
+        )
+E       AttributeError: module 'launch' has no attribute 'run_start'
+
+tests/unit/scripts/test_launch.py:61: AttributeError
+____________________________ test_run_server_status ____________________________
+
+    def test_run_server_status() -> None:
+        """常駐サーバーの状態を出し、つながらなければ 1（正常系）。"""
+        # 準備
+        status = {
+            "name": "mindstella",
+            "version": "v0.12.0",
+            "port": 8784,
+            "plugin_root": "/p/c938",
+            "previews": [],
+        }
+    
+        def unreachable(*_args: Any, **_kwargs: Any) -> tuple[int, dict[str, Any]]:
+            """つながらない。"""
+            raise OSError("refused")
+    
+        # 実行
+        stdout = io.StringIO()
+>       code = launch.run_server_status({}, stdout, request=lambda *_args, **_kwargs: (200, status))
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'launch' has no attribute 'run_server_status'
+
+tests/unit/scripts/test_launch.py:260: AttributeError
+______________________________ test_build_server _______________________________
+
+    def test_build_server() -> None:
+        """管理のツールの他は全てのツールを workspace つきで登録する（正常系）。"""
+        # 準備
+>       mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:485: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092ba0e0650>, status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+_________________________ test_build_server_api_tools __________________________
+
+    def test_build_server_api_tools() -> None:
+        """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
+        # 準備
+>       mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:500: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092ba0867e0>, status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+__________________ test_build_server_when_relative_workspace ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-8233/test_build_server_when_relativ0')
+make_workspace = <function make_workspace.<locals>._make at 0x7092bbdb5120>
+make_item = <function make_item.<locals>._make at 0x7092bbdb6160>
+
+    def test_build_server_when_relative_workspace(
+        tmp_path: Path, make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """相対パスの workspace をセッションの作業フォルダから読む（正常系）。"""
+        # 準備
+        make_workspace(make_item("D-1"), name="ws")
+>       mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:514: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092bbd258e0>, status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+_______________ test_build_server_when_relative_without_session ________________
+
+    def test_build_server_when_relative_without_session() -> None:
+        """セッションが無い相対パスは引数の誤り（異常系）。"""
+        # 準備
+>       mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:528: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092bbd24770>, status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+_____________________ test_build_server_when_session_given _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-8233/test_build_server_when_session0')
+make_workspace = <function make_workspace.<locals>._make at 0x7092bbdb5620>
+make_item = <function make_item.<locals>._make at 0x7092bbdb7b00>
+
+    def test_build_server_when_session_given(
+        tmp_path: Path, make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """セッションを受けたらそのワークスペースの宛先を書き換える（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"), name="ws")
+        raw_session = {
+            "cwd": str(tmp_path),
+            "claude_config_dir": str(tmp_path / "cfg"),
+            "tmux": "/s,1,0",
+            "tmux_pane": "%3",
+            "claude_pid": 40,
+            "claude_started_at": "Mon Nov 2 10:00:00 2026",
+        }
+        previews = _SessionRecorder()
+>       mcp_server = _build(previews)
+                     ^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:552: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <test_server._SessionRecorder object at 0x7092ba085bb0>
+status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+_____________________ test_build_server_when_status_route ______________________
+
+    def test_build_server_when_status_route() -> None:
+        """GET /_admin/status が status の結果を返す（正常系）。"""
+        # 準備
+>       mcp_server = _build(
+            serve.PreviewRegistry(threading.Lock()), status=lambda: {"name": "mindstella"}
+        )
+
+tests/unit/scripts/test_server.py:562: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092bbda3b30>
+status = <function test_build_server_when_status_route.<locals>.<lambda> at 0x7092bbdb7ce0>
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+_________________ test_build_server_when_find_format[markdown] _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-8233/test_build_server_when_find_fo0')
+make_workspace = <function make_workspace.<locals>._make at 0x7092bbdb4860>
+make_item = <function make_item.<locals>._make at 0x7092bbdb45e0>
+extra_arguments = {}, expected_text_head = '全 1 件・合計', expected_first_id = None
+
+    @pytest.mark.parametrize(
+        ("extra_arguments", "expected_text_head", "expected_first_id"),
+        [
+            pytest.param({}, "全 1 件・合計", None, id="markdown"),
+            pytest.param({"format": "json"}, None, "D-1", id="json"),
+        ],
+    )
+    def test_build_server_when_find_format(
+        tmp_path: Path,
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        extra_arguments: dict[str, str],
+        expected_text_head: str | None,
+        expected_first_id: str | None,
+    ) -> None:
+        """find は既定で Markdown の本文、json で構造化の結果を返す（正常系）。"""
+        # 準備
+        make_workspace(make_item("D-1"), name="ws")
+>       mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:591: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092bc37bd10>, status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+___________________ test_build_server_when_find_format[json] ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-shuhei2441/pytest-8233/test_build_server_when_find_fo1')
+make_workspace = <function make_workspace.<locals>._make at 0x7092bbdb5e40>
+make_item = <function make_item.<locals>._make at 0x7092bbdb4fe0>
+extra_arguments = {'format': 'json'}, expected_text_head = None
+expected_first_id = 'D-1'
+
+    @pytest.mark.parametrize(
+        ("extra_arguments", "expected_text_head", "expected_first_id"),
+        [
+            pytest.param({}, "全 1 件・合計", None, id="markdown"),
+            pytest.param({"format": "json"}, None, "D-1", id="json"),
+        ],
+    )
+    def test_build_server_when_find_format(
+        tmp_path: Path,
+        make_workspace: MakeWorkspace,
+        make_item: MakeItem,
+        extra_arguments: dict[str, str],
+        expected_text_head: str | None,
+        expected_first_id: str | None,
+    ) -> None:
+        """find は既定で Markdown の本文、json で構造化の結果を返す（正常系）。"""
+        # 準備
+        make_workspace(make_item("D-1"), name="ws")
+>       mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_server.py:591: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+previews = <serve.PreviewRegistry object at 0x7092ba29d460>, status = None
+
+    def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+        """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
+>       return server.build_server(
+            previews=previews,
+            write_lock=threading.Lock(),
+            status=(lambda: {}) if status is None else status,
+            request_stop=lambda: None,
+            context=SimpleNamespace(port=8784),
+        )
+E       TypeError: build_server() got an unexpected keyword argument 'context'
+
+tests/unit/scripts/test_server.py:209: TypeError
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.cache/mindstella-e2e-venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_launch.py::test_run_launch - SystemExit: 2
+FAILED tests/unit/scripts/test_launch.py::test_run_launch_when_plugin_missing
+FAILED tests/unit/scripts/test_launch.py::test_run_launch_when_listing_invalid[not_json]
+FAILED tests/unit/scripts/test_launch.py::test_run_launch_when_listing_invalid[not_array]
+FAILED tests/unit/scripts/test_launch.py::test_api_request - AttributeError: ...
+FAILED tests/unit/scripts/test_launch.py::test_run_start - AttributeError: mo...
+FAILED tests/unit/scripts/test_launch.py::test_run_start_exists - AttributeEr...
+FAILED tests/unit/scripts/test_launch.py::test_run_start_error[create] - Attr...
+FAILED tests/unit/scripts/test_launch.py::test_run_start_error[session] - Att...
+FAILED tests/unit/scripts/test_launch.py::test_run_server_status - AttributeE...
+FAILED tests/unit/scripts/test_server.py::test_build_server - TypeError: buil...
+FAILED tests/unit/scripts/test_server.py::test_build_server_api_tools - TypeE...
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_relative_workspace
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_relative_without_session
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_session_given
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_status_route
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_find_format[markdown]
+FAILED tests/unit/scripts/test_server.py::test_build_server_when_find_format[json]
+ERROR tests/unit/scripts/test_api.py
+ERROR tests/unit/scripts/test_claude_input.py
+ERROR tests/unit/scripts/test_ensure_server.py - AttributeError: module 'ensu...
+ERROR tests/unit/scripts/test_project_index.py
+ERROR tests/unit/scripts/test_readme.py
+ERROR tests/unit/scripts/test_session_hook.py
+ERROR tests/unit/scripts/test_sessions.py
+ERROR tests/unit/scripts/test_state.py
+ERROR tests/unit/scripts/test_workspaces.py
+= 18 failed, 2061 passed, 1 skipped, 5 warnings, 9 errors in 1969.76s (0:32:49) =

@@ -43,13 +43,14 @@ settings:
     type: str
     required: false
     default: なし（Claude Code の既定の設定のフォルダ）
-    description: あれば起動スクリプトが tmux のセッションへ `new-session -e` で渡し、`claude plugin list --json` もそのフォルダで引く
+    description: あれば起動スクリプトが tmux のセッションへ `new-session -e` で渡し、`claude plugin list --json` もそのフォルダで引く。起動のコマンドは、この値を『MindStella のセッションの作成』の `claude_config_dir` に渡す（claude-balancer が無い端末でだけ使われる）
     env_var: CLAUDE_CONFIG_DIR
     reload: restart
     status: implemented
     visibility: user
     refs:
       - IF-489-56#
+      - IF-531-2#
   - key: MINDSTELLA_ALLOWED_HOSTS
     title: 許可するホスト名
     file: 環境変数
@@ -142,3 +143,119 @@ settings:
       - IF-489-58#
       - IF-489-41#
       - API-489-2#
+  - key: mindstella.allowed_dirs
+    title: 許可するフォルダ
+    file: グローバルの設定のファイル（project-index の `GET /settings/sources` の `settingsPath`）
+    type: list[str]
+    required: false
+    default: なし（どのフォルダにもワークスペースを作れない）
+    description: ワークスペースを作ってよいフォルダの絶対パスの並び。『ワークスペースの作成』は、渡されたフォルダがこのどれかの下でなければ断る
+    reload: immediate
+    status: planned
+    visibility: user
+    refs:
+      - IF-531-1#
+    notes:
+      補足: project-index は最上位の知らないキーを警告にして読み込みを続ける（shuhei1101/project-index#11）。作成のたびにファイルを読む
+  - key: PROJECT_INDEX_PORT
+    title: project-index のポート
+    file: 環境変数
+    type: str
+    required: false
+    default: '8786'
+    description: 常駐サーバーが配信元の行の登録・変更とグローバルの設定のファイルの場所の取得に呼ぶ project-index のポート
+    env_var: PROJECT_INDEX_PORT
+    reload: restart
+    status: planned
+    visibility: user
+    refs:
+      - IF-531-1#
+      - IF-531-5#
+    notes:
+      補足: project-index と同じ環境変数を読む
+  - key: XDG_STATE_HOME
+    title: 状態のフォルダの親
+    file: 環境変数
+    type: str
+    required: false
+    default: ~/.local/state
+    description: 常駐サーバーの状態のフォルダ `{XDG_STATE_HOME}/mindstella/` の親
+    env_var: XDG_STATE_HOME
+    reload: restart
+    status: planned
+    visibility: user
+    refs:
+      - IF-489-1#
+    notes:
+      補足: テストは一時フォルダを渡す（利用者の状態に触れない）
+  - key: MINDSTELLA_SESSION
+    title: MindStella のセッションの ID
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（通常のセッション）
+    description: セッションの管理が MindStella のセッションを起動するときに渡す、MindStella のセッションの ID。『MindStella のセッションのフック』は、これがあるセッションでだけ動く
+    env_var: MINDSTELLA_SESSION
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-531-2#
+      - IF-531-7#
+  - key: MINDSTELLA_WORKSPACE
+    title: MindStella のセッションのワークスペースの ID
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（通常のセッション）
+    description: セッションの管理が MindStella のセッションを起動するときに渡す、ワークスペースの ID
+    env_var: MINDSTELLA_WORKSPACE
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-531-2#
+  - key: MINDSTELLA_FLOW
+    title: 進め方の文書の場所
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（進め方の文書を持たない）
+    description: セッションの管理が、起動のたびにワークスペースの設定の進め方の文書から作って渡す `{配信元の ID}#{文書の ID}`。『MindStella のセッションのフック』の SessionStart が注入する
+    env_var: MINDSTELLA_FLOW
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-531-2#
+      - IF-531-7#
+  - key: MINDSTELLA_SESSION_READY_TIMEOUT
+    title: MindStella のセッションの準備を待つ上限の秒数
+    file: 環境変数
+    type: str
+    required: false
+    default: 非機能要件『MindStella のセッションの準備を待つ上限』の値
+    description: 『MindStella のセッションの作成』が SessionStart のフックの登録を待つ秒数を上書きする
+    env_var: MINDSTELLA_SESSION_READY_TIMEOUT
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-531-2#
+    notes:
+      補足: 結合テストが短くするために使う
+  - key: MINDSTELLA_STOP_WAIT_TIMEOUT
+    title: 最後の書き込みを待つ上限の秒数
+    file: 環境変数
+    type: str
+    required: false
+    default: 非機能要件『最後の書き込みを待つ上限』の値
+    description: 『MindStella のセッションの停止』が応答の終わりを待つ秒数を上書きする
+    env_var: MINDSTELLA_STOP_WAIT_TIMEOUT
+    reload: restart
+    status: planned
+    visibility: developer
+    refs:
+      - IF-531-4#
+    notes:
+      補足: 結合テストが短くするために使う

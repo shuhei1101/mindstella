@@ -67,7 +67,7 @@ files:
   - topic:マーケットプレイス
 - path: セットアップ手順-常駐サーバーを起動する.md
   name: 常駐サーバーの起動の手順
-  description: mindstella のツールが Claude Code に無いとき、常駐サーバーの状態を確かめたいとき、常駐サーバーを止めたいとき、待ち受けのポートを変えたいときに実行する。常駐サーバーを起動する手順を調べるときに読む。
+  description: mindstella のツールが Claude Code に無いとき、常駐サーバーの状態を確かめたいとき、常駐サーバーを止めたいとき、待ち受けのポートを変えたいとき、プラグインを上げた後に古いコードのままと出たときに実行する。systemd --user の常駐サーバーを起動・停止・再起動する手順を調べるときに読む。
   visibility: public
   category: 使い方
   tags:
@@ -85,7 +85,7 @@ files:
   - topic:環境変数
 - path: セットアップ手順-起動スクリプトで立ち上げる.md
   name: 起動スクリプトで立ち上げる手順
-  description: mindstella のスキルを使い始めるとき、話し合いを再開するとき、止まったサーバーを立ち上げ直すときに実行する。起動スクリプトで Claude Code を立ち上げる手順を調べるときに読む。
+  description: mindstella のスキルを使い始めるとき、話し合いを再開するとき、止まったサーバーを立ち上げ直すときに実行する。起動スクリプトでワークスペースと MindStella のセッションを作って立ち上げる手順を調べるときに読む。
   visibility: public
   category: 使い方
   tags:

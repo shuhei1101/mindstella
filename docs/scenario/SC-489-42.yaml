@@ -5,7 +5,7 @@ scenarios:
     setup:
       - name: Mock
         description: モデルを呼ばない。スキルの手順が連ねる登録のスクリプトの呼び出しを、決めた引数で再生する。Claude Code の CLI を、`plugin list --json` に決めた `installPath` を返す偽のコマンドに差し替える。`installPath` の版のフォルダの `bin/mindstella` を、受け取った引数をファイルに書く偽のスクリプトに差し替える
-        notes: 本物の起動スクリプトの先（依存の確認・常駐サーバーの起動・tmux）は『起動スクリプトで立ち上げる』が確かめる
+        notes: 本物の起動スクリプトの先（依存の確認・常駐サーバーの起動・tmux）は『端末から起動する』が確かめる
       - name: ホームのフォルダ
         description: テストごとの空の一時フォルダを `HOME` にする。ログインシェルは bash で、`~/.bashrc` に利用者が書いた行を 1 行持つ
         notes: 利用者のシェルの設定に触れない

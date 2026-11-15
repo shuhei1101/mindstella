@@ -235,3 +235,23 @@ classes:
     summary: AI が、取り込み待ちの利用者の書き込みか利用者が未読の AI の書き込みのあるスレッドをクローズにしようとした。メッセージは `スレッド {ID} はクローズにできません`、`lines` に当たった条件ごとの書き込みの ID と案内の行（`_check_ai_close`）
     kind: クラス
     inherits: MindmapError
+  - name: ApiError
+    title: MindStella の API のエラー
+    container: plugins/mindstella/skills/mindmap/scripts/errors.py
+    usecase: 外部のアプリから起動する
+    summary: 'MindStella の API とそのツールが返すエラー。`api.problem_response` が problem+json に、入口がツールのエラー（`エラー: {detail}`）にする'
+    kind: クラス
+    inherits: MindmapError
+    properties:
+      - name: status
+        type: int
+        description: HTTP のステータス
+      - name: stage
+        type: str
+        description: 失敗した段階（`folder`・`host`・`mcp_config`・`plugin_dirs`・`flow`・`source`・`exists`・`closed`・`session`・`account`・`launch`・`ready`）
+      - name: detail
+        type: str
+        description: 日本語の理由
+      - name: extra
+        type: dict
+        description: 拡張のメンバー（`session`・`pane` など）

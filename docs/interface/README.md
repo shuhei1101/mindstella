@@ -16,14 +16,20 @@
 | [起動スクリプトの登録](./IF-489-67.yaml) | register.py: 起動スクリプトを呼ぶ mindstella・mindstella-{名前} と環境変数を、ログインシェルの設定に登録・読み返し・外す |
 | [プレビューを開く](./IF-489-71.yaml) | URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで描き直し、回答・意見を送る |
 | [SPAを開く](./IF-489-70.yaml) | React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで描き直す |
-| [起動スクリプト](./IF-489-56.yaml) | bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、tmux のセッションで Claude Code を立ち上げる |
+| [起動のコマンド](./IF-489-56.yaml) | bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動する |
 | [依存の確認](./IF-489-27.yaml) | check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp の版を確かめる |
 | [MCP サーバーの起動](./IF-489-1.yaml) | 常駐の MCP サーバー mindstella を HTTP で待ち受ける。全てのツールに共通の結果とエラーの返し方 |
-| [常駐サーバーの起動の確認](./IF-489-38.yaml) | ensure_server.py: SessionStart のフックと起動スクリプトが、落ちていた常駐サーバーを起動する |
+| [常駐サーバーの起動の確認](./IF-489-38.yaml) | ensure_server.py: SessionStart のフックと起動のコマンドが、落ちていた常駐サーバーを systemd --user で起動し、古いコードなら再起動を案内する |
 | [セッションの値の注入](./IF-489-15.yaml) | inject_session.py: PreToolUse のフックが、呼んだセッションの作業フォルダとペインをツールの引数に入れる |
 | [常駐サーバーの状態](./IF-489-37.yaml) | server_status: 待ち受けのポート・バージョンと、配信しているワークスペースを返す |
 | [常駐サーバーの停止](./IF-489-36.yaml) | server_stop: 配信を全て止めて常駐サーバーを終える |
-| [ワークスペースの作成](./IF-489-25.yaml) | init: 設定を受け取って空のワークスペースを作る |
+| [ワークスペースの作成](./IF-531-1.yaml) | POST /workspaces: 許可するフォルダの下にワークスペースの記録を作るか開き、配信元に登録して ID と画面の URL を返す |
+| [MindStella のセッションの作成](./IF-531-2.yaml) | POST /workspaces/{id}/sessions: MindStella のセッションを tmux のペインで起動し、準備ができてから ID・ペイン・画面の URL を返す |
+| [MindStella のセッションの一覧](./IF-531-3.yaml) | GET /workspaces/{id}/sessions: 最後の MindStella のセッションの状態を返す |
+| [MindStella のセッションの停止](./IF-531-4.yaml) | DELETE /workspaces/{id}/sessions/{session}: すぐに受け付け、最後の書き込みを待って MindStella のセッションを止める |
+| [ワークスペースのクローズ](./IF-531-5.yaml) | POST /workspaces/{id}/close: MindStella のセッションが無いワークスペースの配信元の行を outside_read: false にする |
+| [MindStella のセッションの出来事の受け取り](./IF-531-6.yaml) | POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送る出来事を状態に記録する |
+| [MindStella のセッションのフック](./IF-531-7.yaml) | session_hook.py: MindStella のセッションでだけ、フックの出来事を常駐サーバーへ送り、進め方の文書の場所を注入する |
 | [項目の追加](./IF-489-63.yaml) | add: 1 項目を足す |
 | [項目の更新](./IF-489-60.yaml) | update: 1 項目のキーを置き換える |
 | [採用する案の切り替え](./IF-489-40.yaml) | adopt: 検討事項の採用する案を 1 つに切り替える |

@@ -26,7 +26,9 @@ RESET_UNREAD_COMMAND = (
     '"${MINDSTELLA_VENV:-$HOME/.mindmap/venv}/bin/python" '
     '"${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/reset_unread.py"'
 )
-ENSURE_SERVER_COMMAND = 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/ensure_server.py" --hook'
+ENSURE_SERVER_COMMAND = (
+    'python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/ensure_server.py" --hook'
+)
 INJECT_SESSION_COMMAND = 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/mindmap/scripts/inject_session.py"'
 
 # PreToolUse のフックを当てるツールの名前
@@ -46,8 +48,13 @@ def _hook_events(details: str) -> list[str]:
     return [name.strip() for name in match.group(1).split(",")]
 
 
+def _session_hook_command(event: str) -> str:
+    """MindStella のセッションのフックのコマンド。"""
+    return f'python3 "${{CLAUDE_PLUGIN_ROOT}}/skills/mindmap/scripts/session_hook.py" {event}'
+
+
 def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
-    """プラグイン mindstella が、スキルのフォルダと常駐サーバーへの接続の設定と 3 つのフックを持って読み込まれる（正常系）。"""
+    """プラグイン mindstella が、スキルのフォルダと常駐サーバーへの接続の設定とフックを持って読み込まれる（正常系）。"""
     # 準備
     run_claude("plugin", "marketplace", "add", str(repo_root))
 
@@ -85,7 +92,8 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 直下の .mcp.json が、常駐サーバーへ HTTP でつなぐ mindstella だけを持つ
     mcp = json.loads((install_path / ".mcp.json").read_text(encoding="utf-8"))
     assert mcp == {"mcpServers": {"mindstella": MCP_SERVER_CONFIG}}
-    # hooks/hooks.json が SessionStart の 2 つのコマンドと、mindstella のツールの PreToolUse の 1 つを持つ
+    # hooks/hooks.json が SessionStart の 3 つのコマンド、mindstella のツールの PreToolUse の 1 つ、
+    # SessionEnd・UserPromptSubmit・Stop・StopFailure の MindStella のセッションのフックを持つ
     hooks = json.loads((install_path / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
     assert {
         event: [
@@ -93,10 +101,23 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
         ]
         for event, groups in hooks.items()
     } == {
-        "SessionStart": [(None, [RESET_UNREAD_COMMAND, ENSURE_SERVER_COMMAND])],
+        "SessionStart": [
+            (
+                None,
+                [
+                    RESET_UNREAD_COMMAND,
+                    ENSURE_SERVER_COMMAND,
+                    _session_hook_command("session-start"),
+                ],
+            )
+        ],
         "PreToolUse": [(INJECT_MATCHER, [INJECT_SESSION_COMMAND])],
+        "SessionEnd": [(None, [_session_hook_command("session-end")])],
+        "UserPromptSubmit": [(None, [_session_hook_command("prompt-submit")])],
+        "Stop": [(None, [_session_hook_command("stop")])],
+        "StopFailure": [(None, [_session_hook_command("stop-failure")])],
     }
-    assert _hook_events(details.stdout) == ["SessionStart", "PreToolUse"]
+    assert sorted(_hook_events(details.stdout)) == sorted(hooks)
     # 待ち受けているプロセスの無いポートでは、claude mcp list の mindstella がつながらない
     port = free_port()
     listed = run_claude("mcp", "list", extra_env={PORT_ENV: str(port)}).stdout

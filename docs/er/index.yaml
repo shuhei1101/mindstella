@@ -2,3 +2,5 @@ summary: "データストアの定義"
 items:
   - page: ER-489-1.yaml
     summary: "1 つの話し合いのフォルダが持つ設定と種類ごとの YAML の形"
+  - page: ER-531-1.yaml
+    summary: "常駐サーバーが端末に持つ、ワークスペースの ID の一覧と MindStella のセッション・追加の MCP とプラグインの状態の形"

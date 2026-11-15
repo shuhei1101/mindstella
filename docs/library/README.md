@@ -40,5 +40,7 @@
 | [eslint](./LIB-489-6.yaml) | プレビュー（React）のソースを規則で検査する（開発用） |
 | [lefthook](./LIB-489-10.yaml) | commit の前に、ビルドの出力がソースと合うかを確認する（開発用） |
 | [vitest](./LIB-489-30.yaml) | プレビュー（React）の単体テストを流す（開発用） |
+| [claude-balancer](./LIB-531-1.yaml) | MindStella のセッションを起動するときに、一番空いている Claude Code のアカウントを借りる |
+| [systemd](./LIB-531-2.yaml) | 常駐サーバーを systemd --user のユニットとして起動・停止する |
 
 <!-- /table -->

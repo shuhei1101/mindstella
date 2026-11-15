@@ -228,10 +228,20 @@ tables:
   - name: config.yaml
     title: 設定
     datastore: YAML
-    summary: 題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポート
+    summary: ワークスペースの ID・進め方の文書・題名・話し合いの概要・プレイブック・最上位の軸の呼び名・フェーズ・対象とカテゴリー・ゴール・関連する場所・変更履歴を保持する回数・表示の既定・プレビューの配信のポート
     scale: 1 件
     access: 全件
     columns:
+      - name: id
+        title: ワークスペースの ID
+        type: string
+        description: 任意。『ワークスペースの作成』が振る、project-index の配信元の行の `id` と常駐サーバーの状態のフォルダのキー（`mindstella-{フォルダ名}-{ハッシュ}`）。書き換えない
+        example: mindstella-家計簿アプリ-3f2a9c
+      - name: flow
+        title: 進め方の文書
+        type: object
+        description: 任意。`source`（配信元の ID）と `doc`（文書の ID）。『ワークスペースの作成』が記録の無いフォルダにだけ書き、MindStella のセッションを起動するたびにセッションの管理が読む
+        example: '{source: aituber, doc: flow-script}'
       - name: playbooks
         title: プレイブック
         type: array

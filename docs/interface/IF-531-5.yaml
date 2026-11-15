@@ -1,0 +1,133 @@
+id: IF-531-5
+title: ワークスペースのクローズ
+entry:
+  kind: endpoint
+  value: POST `/workspaces/{id}/close`
+lead: 'MindStella のセッションが無いワークスペースの配信元の行を `outside_read: false` にしてクローズにする。MindStella の MCP の `close_workspace` も同じ処理を呼ぶ。'
+idempotent: true
+side_effects: project-index の配信元の行の `outside_read` を偽にし、状態の `close_pending` を真にする。記録と、状態のフォルダの追加の MCP・プラグインの記録は残す（D-322）
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: id
+    type: str
+    description: クローズしたワークスペースの ID
+  - name: closed
+    type: bool
+    description: 常に真
+status_codes:
+  - code: '200'
+    condition: クローズした（既にクローズ済みのときも 200）
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無い'
+  - code: '409'
+    condition: MindStella のセッションがある（起動中・停止の途中）
+    notes: 配信元の行を変えない。`stage` は `session`
+  - code: '502'
+    condition: project-index へつながらない、または行の変更がエラーを返した
+    notes: '`stage` は `source`'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: あるとみなす状態
+    constraint: 『MindStella のセッションの作成』と同じ。落ちたものは無いとみなす
+  - item: 配信元の行
+    constraint: 'project-index の `GET /settings/sources` で今の `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: false` を送る。409（版が古い）なら 1 回だけ引き直して送り直す'
+  - item: クローズの正本
+    constraint: '配信元の行の `outside_read: false`。ワークスペースの設定には記録しない'
+  - item: コメント
+    constraint: クローズ待ちとクローズの後に届いたコメントはスレッドに残し、ペインへ貼らない（『コメントをまとめて送る』）
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵を、MindStella のセッションの有無の確かめから行の変更まで持つ
+  - item: MCP のツール
+    constraint: '`close_workspace` は `workspace_id` を受け、同じ処理を呼ぶ'
+flows:
+  - name: 正常系
+    summary: '配信元の行を outside_read: false にする'
+    setup:
+      - name: Mock
+        description: project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する。一時ファイルの `mindstella.allowed_dirs` はテストの一時フォルダ）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: MindStella のセッションを止めたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/close
+        participant PI as project-index（Mock）
+
+        クライアント->>API: POST
+        API->>PI: GET /settings/sources
+        API->>PI: PATCH /settings/sources/{id}（outside_read: false）
+        API-->>クライアント: 200 closed
+      ```
+    expected:
+      - 応答が 200
+      - 'project-index の Mock が `outside_read: false` の変更を受けている'
+      - 記録と `launch.json` が残っている
+    test: test_normal
+  - name: 異常系（MindStella のセッションがある）
+    summary: 409 を返し、配信元の行を変えない
+    setup:
+      - name: Mock
+        description: project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する。一時ファイルの `mindstella.allowed_dirs` はテストの一時フォルダ）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: MindStella のセッションが起動している
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/close
+
+        クライアント->>API: POST
+        API-->>クライアント: 409 stage: session
+      ```
+    expected:
+      - 応答が 409
+      - project-index の Mock が変更を受けていない
+    test: test_error_when_session_running
+  - name: 異常系（作成と同時に届く）
+    summary: クローズが先に終わり、後の作成はクローズ済みで断られる
+    setup:
+      - name: Mock
+        description: project-index の Mock（テストが空きポートで立て、`PROJECT_INDEX_PORT` で常駐サーバーへ渡す。`GET /settings/sources` が一時ファイルの `settingsPath` を返し、`POST`・`PATCH`・`DELETE /settings/sources` の依頼を記録する。一時ファイルの `mindstella.allowed_dirs` はテストの一時フォルダ）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: ワークスペース
+        description: MindStella のセッションを止めたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as 常駐サーバー
+
+        クライアント->>API: POST close と POST sessions を同時に送る
+        API-->>クライアント: close は 200
+        API-->>クライアント: sessions は 409 stage: closed
+      ```
+    expected:
+      - クローズが 200、作成が 409 で `stage` が `closed`
+      - tmux のセッションが立っていない
+    test: test_error_when_create_during_close
+refs:
+  - IF-531-2#
+  - IF-531-4#
+  - API-531-1#
+callers:
+  - SC-531-2#
+test_file: tests/integration/server/test_close_workspace.py

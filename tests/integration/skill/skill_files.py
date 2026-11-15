@@ -42,7 +42,6 @@ DEFAULT_MARK = "（既定）"
 
 # MCP サーバーのツールの名前（インターフェース定義『MCP サーバーの起動』）
 SERVER_TOOL_NAMES = [
-    "init",
     "add",
     "update",
     "remove",
@@ -74,6 +73,11 @@ SERVER_TOOL_NAMES = [
     "reply",
     "set_thread_status",
     "update_thread",
+    "create_workspace",
+    "create_session",
+    "sessions",
+    "stop_session",
+    "close_workspace",
 ]
 
 # Claude Code の中のツールの名前の頭（`mcp__plugin_{プラグインの名前}_{サーバーの名前}__{ツール}`）

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import re
 import subprocess
 import threading
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import state
 from inject_session import PROC_DIR, process_started_at
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,12 @@ INIT_PID = 1
 
 # `session.claude_config_dir` が無いか空のときの Claude Code の設定のフォルダ
 DEFAULT_CONFIG_DIR = Path.home() / ".claude"
+
+# 状態のフォルダに記録はあるが、ペインへ貼らない MindStella のセッションの宛先（クローズ待ち・止まっている）
+BLOCKED = "blocked"
+
+# ペインへ貼る MindStella のセッションの状態
+DELIVERABLE_STATUS = "running"
 
 # Claude Code が会話の記録のフォルダ名をそのまま使う上限の文字数（超えると先頭この文字数に `-{パスのハッシュ}` を足す）
 TRANSCRIPT_NAME_MAX = 200
@@ -92,8 +100,16 @@ class InputTarget:
 class InputTargets:
     """ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ台帳。"""
 
-    def __init__(self) -> None:
-        """空の台帳と、台帳の鍵・ペインごとの入力の鍵・貼り付けの鍵を作る。"""
+    def __init__(
+        self, *, state_root: Path | None = None, workspace_id: Callable[[Path], str] | None = None
+    ) -> None:
+        """空の台帳と、台帳の鍵・ペインごとの入力の鍵・貼り付けの鍵を作る。
+
+        `state_root` と `workspace_id`（フォルダからワークスペースの ID を引く関数）を渡すと、
+        状態のフォルダの MindStella のセッションを、最後にツールを呼んだセッションより先に宛先にする。
+        """
+        self._state_root = state_root
+        self._workspace_id = workspace_id
         # ワークスペース → 宛先（最後のセッションが tmux の外なら None）
         self._targets: dict[Path, InputTarget | None] = {}
         self._guard = threading.Lock()
@@ -108,20 +124,81 @@ class InputTargets:
         with self._guard:
             self._targets[root.resolve()] = target
 
-    def target_of(self, root: Path) -> InputTarget | None:
-        """そのワークスペースの宛先を返す。"""
+    def target_of(self, root: Path) -> InputTarget | str | None:
+        """そのワークスペースの宛先を返す。MindStella のセッションが貼れない状態なら `BLOCKED`。"""
+        resolved = root.resolve()
+        # 状態のフォルダに MindStella のセッションの記録があれば、そちらで決める
+        if self._state_root is not None and self._workspace_id is not None:
+            found = mindstella_session_target(
+                self._state_root, self._workspace_id(resolved), cwd=resolved
+            )
+            if found is not None:
+                return found
         with self._guard:
-            return self._targets.get(root.resolve())
+            return self._targets.get(resolved)
 
     def enter(self, root: Path, count: int) -> bool:
         """そのワークスペースの宛先へ、届いた件数の 1 行を入力し、会話の記録に入ったかを返す。"""
         target = self.target_of(root)
+        # MindStella のセッションがクローズ待ちか止まっている: 貼らない
+        if target == BLOCKED:
+            logger.info(
+                "MindStella のセッションがクローズ待ちか止まっているため、Claude Code へ入力しません"
+            )
+            return False
         # 宛先が無い: ペインの鍵を作らない
-        if target is None:
+        if target is None or isinstance(target, str):
             return enter_to_claude(None, count, pane_lock=None, paste_lock=self._paste_lock)
         with self._guard:
             pane_lock = self._pane_locks.setdefault((target.socket, target.pane), threading.Lock())
         return enter_to_claude(target, count, pane_lock=pane_lock, paste_lock=self._paste_lock)
+
+
+def mindstella_session_target(
+    state_root: Path, workspace_id: str, *, cwd: Path, proc_dir: Path = PROC_DIR
+) -> InputTarget | str | None:
+    """状態のフォルダの MindStella のセッションから宛先を返す。
+
+    記録が running でクローズ待ちでなければ宛先、記録があって条件に合わなければ `BLOCKED`、記録が無ければ None。
+    """
+    current = state.read_session(state_root, workspace_id)
+    if current is None:
+        return None
+    # 貼れる状態でない・宛先の値がそろわない: 貼らない
+    if (
+        current.status != DELIVERABLE_STATUS
+        or current.close_pending
+        or current.pane is None
+        or current.pid is None
+        or current.pid_started_at is None
+    ):
+        return BLOCKED
+    return InputTarget(
+        socket=current.socket or _default_socket(),
+        pane=current.pane,
+        config_dir=_process_config_dir(current.pid, proc_dir),
+        cwd=cwd,
+        claude_pid=current.pid,
+        claude_started_at=current.pid_started_at,
+    )
+
+
+def _default_socket() -> str:
+    """利用者の既定の tmux のソケットのパスを返す。"""
+    return str(Path(os.environ.get("TMUX_TMPDIR") or "/tmp") / f"tmux-{os.getuid()}" / "default")
+
+
+def _process_config_dir(pid: int, proc_dir: Path) -> Path:
+    """プロセスの環境変数の CLAUDE_CONFIG_DIR を返す。読めなければ既定の設定のフォルダ。"""
+    try:
+        raw = (proc_dir / str(pid) / "environ").read_bytes()
+    except OSError:
+        return DEFAULT_CONFIG_DIR
+    for entry in raw.split(b"\0"):
+        name, _, value = entry.partition(b"=")
+        if name == b"CLAUDE_CONFIG_DIR" and value:
+            return Path(value.decode("utf-8", errors="replace"))
+    return DEFAULT_CONFIG_DIR
 
 
 def parse_session(raw: Mapping[str, Any] | None) -> Session | None:

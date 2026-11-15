@@ -4,8 +4,13 @@ lead: 常駐する MCP サーバー `mindstella` を `127.0.0.1` の HTTP で待
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    server.py     入口（常駐サーバーの待ち受けと終わり方・ツールの登録・結果とエラー・書き換えの鍵・状態と停止）
-    commands.py   ツールごとの処理（引数 → 各機能 → 結果の辞書）
+    server.py          入口（常駐サーバーの待ち受けと終わり方・ツールの登録・結果とエラー・書き換えの鍵・状態と停止）
+    commands.py        ツールごとの処理（引数 → 各機能 → 結果の辞書）
+    api.py             MindStella の API の経路（Host と Origin の確かめ・problem+json）
+    workspaces.py      ワークスペースの管理（作成・クローズ・配信元の行・依頼の順番の鍵）
+    sessions.py        セッションの管理（MindStella のセッションの起動・一覧・停止・フックの出来事）
+    state.py           常駐サーバーの状態（`${XDG_STATE_HOME}/mindstella/` の読み書き）
+    project_index.py   project-index の端末の設定の API と読み取り API の呼び出し
   ```
 diagrams:
   - name: 全体
@@ -27,6 +32,11 @@ diagrams:
         class 移行
         class 設定の更新
         class ワークスペースのREADME
+        class MindStellaのAPI
+        class ワークスペースの管理
+        class セッションの管理
+        class 常駐サーバーの状態
+        class project-indexの呼び出し
         入口 --> ツールの処理 : ツールごとに呼ぶ
         入口 --> 読み書きと検証 : 書き換えの鍵
         入口 --> 配信 : 終わるときに止める
@@ -46,6 +56,18 @@ diagrams:
         配信 --> スレッド : /api/threads
         配信 --> Claude Codeへの入力 : まとめて送った後
         コメント --> スレッド : まとめて送る
+        入口 --> MindStellaのAPI : 経路を足す
+        入口 --> ワークスペースの管理 : create_workspace・close_workspace
+        入口 --> セッションの管理 : create_session・sessions・stop_session
+        MindStellaのAPI --> ワークスペースの管理
+        MindStellaのAPI --> セッションの管理
+        ワークスペースの管理 --> ツールの処理 : run_init（既定の設定）
+        ワークスペースの管理 --> project-indexの呼び出し : 配信元の行・進め方の文書
+        ワークスペースの管理 --> 常駐サーバーの状態 : ID の一覧・起動の指定
+        ワークスペースの管理 --> セッションの管理 : 有無・クローズ待ち
+        セッションの管理 --> 常駐サーバーの状態 : session.json
+        セッションの管理 --> Claude Codeへの入力 : 最初の入力・/exit を貼る
+        Claude Codeへの入力 --> 常駐サーバーの状態 : MindStella のセッションの宛先
       ```
 notes:
   モジュールの読み込み: サーバーはパッケージとして入れず、『常駐サーバーの起動の確認』（`ensure_server.py`）が `{仮想環境の Python} {プラグインのフォルダ}/skills/mindmap/scripts/server.py` を起動する。起動したファイルのフォルダが `sys.path` の先頭に入るので、各モジュールは `import store` のように同じフォルダの名前で読む。単体テストは `tests/unit/scripts/conftest.py` で `plugins/mindstella/skills/mindmap/scripts` を `sys.path` に足して同じ名前で読む

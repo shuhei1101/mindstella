@@ -305,6 +305,7 @@ constraints:
     constraint: 叩くたびに `claude plugin list --json` の `mindstella@mindstella` の `installPath` を引き、`{installPath}/bin/mindstella` に引数をそのまま渡す。JSON はシステムの `python3` で読み、`jq` に頼らない。引けなければ `[mindstella] エラー:` で始まる行を標準エラーに出して 1 を返す
   - item: alias mindstella-{名前}
     constraint: '`CLAUDE_CONFIG_DIR` をそのアカウントの設定のフォルダにして、`installPath` を引く `claude plugin list --json` と起動スクリプトの両方を動かす。利用者のシェルの `CLAUDE_CONFIG_DIR` は変えない'
+    notes: 起動のコマンドは受けた `CLAUDE_CONFIG_DIR` を『MindStella のセッションの作成』の `claude_config_dir` に渡す。claude-balancer がある端末では、MindStella のセッションのアカウントは claude-balancer が選ぶ（D-292）ため、この値は claude-balancer が無い端末でだけ使われる
   - item: 環境変数
     constraint: 登録した環境変数を `shell.sh` に `export` で書く。値はシェルの単引用符で囲む
   - item: 書き方

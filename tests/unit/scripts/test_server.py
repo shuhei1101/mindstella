@@ -10,6 +10,7 @@ import socket
 import threading
 from collections.abc import Callable, Coroutine, Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from urllib.parse import urlparse
 
@@ -28,7 +29,6 @@ from voice_paste import VoicePasteTranscriber
 
 # build_server が登録するツールの名前（インターフェース定義『MCP サーバーの起動』）
 EXPECTED_TOOL_NAMES = (
-    "init",
     "add",
     "update",
     "remove",
@@ -60,12 +60,26 @@ EXPECTED_TOOL_NAMES = (
     "reply",
     "set_thread_status",
     "update_thread",
+    "create_workspace",
+    "create_session",
+    "sessions",
+    "stop_session",
+    "close_workspace",
     "server_status",
     "server_stop",
 )
 
-# workspace を受けない管理のツール
-ADMIN_TOOL_NAMES = ("server_status", "server_stop")
+# MindStella の API と同じ操作のツール（インターフェース定義『ワークスペースの作成』ほか）
+API_TOOL_NAMES = (
+    "create_workspace",
+    "create_session",
+    "sessions",
+    "stop_session",
+    "close_workspace",
+)
+
+# workspace を受けないツール
+ADMIN_TOOL_NAMES = (*API_TOOL_NAMES, "server_status", "server_stop")
 
 
 class _FakeHttpServer:
@@ -197,6 +211,7 @@ def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None)
         write_lock=threading.Lock(),
         status=(lambda: {}) if status is None else status,
         request_stop=lambda: None,
+        context=SimpleNamespace(port=8784),
     )
 
 
@@ -207,9 +222,7 @@ def _session_of(cwd: Path) -> dict[str, str]:
 
 def _listing_of(started: list[tuple[Path, str]]) -> list[dict[str, Any]]:
     """start したワークスペースと URL から、配信の一覧に出るはずの要素を返す。"""
-    return [
-        {"workspace": str(root.resolve()), "port": urlparse(url).port} for root, url in started
-    ]
+    return [{"workspace": str(root.resolve()), "port": urlparse(url).port} for root, url in started]
 
 
 def test_main(monkeypatch: pytest.MonkeyPatch, free_port: int) -> None:
@@ -479,6 +492,17 @@ def test_build_server() -> None:
     assert _not_requiring(schemas, "workspace") == list(ADMIN_TOOL_NAMES)
     assert _lacking_property(schemas, "session") == []
     assert _requiring(schemas, "session") == []
+
+
+def test_build_server_api_tools() -> None:
+    """MindStella の API と同じ操作のツールがあり、init が無い（正常系）。"""
+    # 準備
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
+    # 実行
+    names = [tool.name for tool in _run_async(mcp_server.list_tools())]
+    # 検証
+    assert set(API_TOOL_NAMES) <= set(names)
+    assert "init" not in names
 
 
 def test_build_server_when_relative_workspace(
