@@ -2574,3 +2574,25 @@ def test_normal_when_embedded_html_diff(
     # 検証（見せ方を切り替えても、ハッシュと履歴の数が変わらない）
     assert page.evaluate("location.hash") == hash_text
     assert page.evaluate("history.length") == history_length
+
+
+def test_normal_when_duplicate_ids(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, tmp_path: Path
+) -> None:
+    """同じ ID の項目が 2 件になったら、トップバーの下に重なった ID の通知を出し、閉じると隠す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    root = tmp_path / "workspace"
+    duplicated = [make_item("D-1"), make_item("D-1", title="もう 1 件")]
+    # 実行
+    (root / RECORD_DIR / "decisions.yaml").write_text(
+        yaml.safe_dump({"items": duplicated}, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    notice = page.get_by_role("alert").filter(has_text="同じ ID の項目が 2 件あります")
+    expect(notice).to_be_visible()
+    text = " ".join(notice.inner_text().split())
+    notice.get_by_role("button", name="通知を閉じる").click()
+    # 検証
+    assert "D-1 が重なりました。片方の ID を変更してください。" in text
+    expect(notice).to_have_count(0)

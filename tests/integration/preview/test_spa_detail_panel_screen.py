@@ -1340,3 +1340,48 @@ def test_voice_input_when_service_stopped(
     open_spa(page, url, "?tab=decisions&id=D-1")
     # 検証
     assert_mic_blocked_after_click(page.locator("form[data-id='D-1']"), "[role=status]")
+
+
+def test_edit_relations(page: Page, spa_preview: str) -> None:
+    """関係の入力は種類ごとに見出しを置き、ID かタイトルで足すと保存待ちに溜め、当たらない値は誤りを出す（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+    page.get_by_role("button", name="編集する").click()
+    # 検証（種類ごとの見出し）
+    for name in ("前提", "親", "関連"):
+        expect(page.get_by_role("group", name=name)).to_be_visible()
+    # 実行（タイトルで前提を足す）
+    adding = page.get_by_role("combobox", name="前提を追加")
+    adding.fill("画面の幅")
+    adding.press("Enter")
+    # 検証（タイトルで前提を足す）
+    expect(page.get_by_role("group", name="前提").get_by_role("button", name="D-2 を外す")).to_be_visible()
+    page.get_by_role("button", name="保存待ち").first.click()
+    expect(page.get_by_role("complementary", name="保存待ちの編集")).to_contain_text("D-2")
+    page.keyboard.press("Escape")
+    # 実行（当たらない ID を入れる）
+    parent = page.get_by_role("combobox", name="親を追加")
+    parent.fill("D-99")
+    parent.press("Enter")
+    # 検証（当たらない ID を入れる）
+    expect(parent).to_have_attribute("aria-invalid", "true")
+    expect(parent).to_have_value("D-99")
+    expect(page.locator(f"#{parent.get_attribute('aria-describedby')}")).to_have_text(
+        "入力の誤り: D-99 が見つかりません。ID を確認してください。"
+    )
+
+
+def test_related_items_by_type(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """関係する項目を related の種類ごとの見出しに分け、派生元と派生した項目を並べる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="親の問い"),
+        make_item("D-2", title="子の問い", related=[{"to": "D-1", "type": "parent"}]),
+    )
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    # 実行
+    expect(panel.get_by_role("heading", name="派生した項目")).to_be_visible()
+    panel.get_by_role("button", name="D-2").click()
+    # 検証
+    expect(panel.get_by_role("heading", name="派生元")).to_be_visible()

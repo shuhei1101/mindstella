@@ -690,3 +690,26 @@ def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteRe
     assert [item["id"] for item in _workspace_yaml(root, "comments.yaml")["items"]] == ["C-1"]
     assert (_workspace_yaml(root, "threads.yaml") or {"items": []})["items"] == []
     assert errors.exceptions == []
+
+
+def test_normal_when_duplicate_ids(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool, page: Page
+) -> None:
+    """同じ ID の項目が 2 件になったら、トップバーの下に重なった ID の通知を出し、閉じると隠す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_spa(page, served.data["url"], "?tab=decisions")
+    duplicated = [make_item("D-1"), make_item("D-1", title="もう 1 件")]
+    # 実行
+    (root / RECORD_DIR / "decisions.yaml").write_text(
+        yaml.safe_dump({"items": duplicated}, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    notice = page.get_by_role("alert").filter(has_text="同じ ID の項目が 2 件あります")
+    expect(notice).to_be_visible()
+    text = " ".join(notice.inner_text().split())
+    notice.get_by_role("button", name="通知を閉じる").click()
+    # 検証
+    assert "D-1 が重なりました。片方の ID を変更してください。" in text
+    expect(notice).to_have_count(0)

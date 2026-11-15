@@ -5315,7 +5315,7 @@ def test_edit_view_fields(
         "category",
         "phase",
         "tags",
-        "depends_on",
+        "related",
         "options",
         "answer",
         "reason",
@@ -6727,3 +6727,63 @@ def test_voice_input_when_service_stopped(
     page.goto(f"{url}#tab=decisions&view=table&id=D-1")
     # 検証
     assert_mic_blocked_after_click(page.locator("aside.panel form.send"), ".send-msg")
+
+
+def test_edit_relations(
+    write_edit_preview: WriteReviewPreview,
+    make_item: MakeItem,
+    valid_settings: dict[str, Any],
+    open_preview: OpenPreview,
+) -> None:
+    """関係の入力は種類ごとに見出しを置き、ID かタイトルで足すと related の並びを溜め、当たらない値は誤りを出す（正常系）。"""
+    # 準備
+    items = (
+        make_item("D-1", title="最初の問い", related=[{"to": "N-1", "type": "see_also"}]),
+        make_item("D-2", title="後続の問い"),
+        make_item("N-1", title="メモ"),
+    )
+    page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview, items=items)
+    field = page.locator(f"{EDIT_FORM} .pe-field[data-key=related]")
+    # 検証（種類ごとの見出し）
+    assert field.locator(".pe-rel-group").evaluate_all("nodes => nodes.map(n => n.dataset.type)") == [
+        "depends_on",
+        "parent",
+        "see_also",
+    ]
+    assert field.locator(".pe-rel-group .pe-sub-label").all_inner_texts() == ["前提", "親", "関連"]
+    assert page.get_by_role("group", name="関連").locator(".pe-chip").all_inner_texts() == ["N-1"]
+    # 実行（タイトルで前提を足す）
+    page.get_by_label("前提を追加").fill("後続の問い")
+    page.get_by_label("前提を追加").press("Enter")
+    wait_saved_edit(
+        page, "related", [{"to": "D-2", "type": "depends_on"}, {"to": "N-1", "type": "see_also"}]
+    )
+    # 検証（タイトルで前提を足す）
+    assert page.get_by_role("group", name="前提").locator(".pe-chip").all_inner_texts() == ["D-2"]
+    assert read_items_file(root, "decisions.yaml")[0]["related"] == [{"to": "N-1", "type": "see_also"}]
+    # 実行（当たらない ID を入れる）
+    page.get_by_label("親を追加").fill("D-99")
+    page.get_by_label("親を追加").press("Enter")
+    # 検証（当たらない ID を入れる）
+    error = page.locator(f"#{page.get_by_label('親を追加').get_attribute('aria-describedby')}")
+    expect(error).to_have_text("入力の誤り: D-99 が見つかりません。ID を確認してください。")
+    expect(page.get_by_label("親を追加")).to_have_value("D-99")
+    assert page.get_by_role("group", name="親").locator(".pe-chip").count() == 0
+
+
+def test_related_items_by_type(write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem) -> None:
+    """関係する項目を related の種類ごとの見出しに分け、派生元と派生した項目を並べる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="親の問い"),
+        make_item("D-2", title="子の問い", related=[{"to": "D-1", "type": "parent"}]),
+    )
+    page = open_preview(url, "#tab=decisions&view=table&id=D-1")
+    # 実行
+    sections = page.eval_on_selector_all("aside.panel .d-sec h3", "hs => hs.map(h => h.textContent)")
+    page.click("aside.panel .d-sec:has(h3:text-is('派生した項目')) button.idlink")
+    page.wait_for_function("document.querySelector('aside.panel .d-title')?.textContent === '子の問い'")
+    child_sections = page.eval_on_selector_all("aside.panel .d-sec h3", "hs => hs.map(h => h.textContent)")
+    # 検証
+    assert "派生した項目" in sections
+    assert "派生元" in child_sections

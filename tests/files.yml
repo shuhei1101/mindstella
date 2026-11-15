@@ -1095,6 +1095,16 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
+- path: integration/server/test_change_detection.py
+  name: 変更の検知の結合テスト
+  description: 変更の検知（外部の変更・応答の途中の書き込み・画面の保存・Git の操作・重なった ID・保持する回数・止まっていた間の変更・書き込みの途中）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:履歴
+  related:
+  - to: IF-540-2
+    type: tests
 - path: integration/server/test_changes_since_read.py
   name: 前回読んだ時点からの変更の結合テスト
   description: changes_since_read（前回読んだ時点からの変更）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1283,6 +1293,16 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
+- path: integration/server/test_next_id.py
+  name: ID の採番の結合テスト
+  description: next_id（ID の採番）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:ID
+  related:
+  - to: IF-540-1
+    type: tests
 - path: integration/server/test_opened.py
   name: 前回開いた日時の結合テスト
   description: POST /api/opened（前回開いた日時）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1566,6 +1586,17 @@ files:
   - topic:ストーリー
   - topic:結合テスト
   - topic:資料
+- path: integration/storybook/test_duplicate_id_notice_stories.py
+  name: 重なった ID の通知のストーリーの結合テスト
+  description: 部品『重なった ID の通知』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+  - topic:ストーリー
+  related:
+  - to: CMP-540-1
+    type: tests
 - path: integration/storybook/test_filter_drawer_stories.py
   name: 部品設計『絞り込み』の状態の結合テスト
   description: 部品設計『絞り込み』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1779,6 +1810,17 @@ files:
   - tool:storybook
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/storybook_react/test_duplicate_id_notice_stories.py
+  name: React の重なった ID の通知のストーリーの結合テスト
+  description: 部品『重なった ID の通知.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+  - topic:ストーリー
+  related:
+  - to: CMP-540-2
+    type: tests
 - path: integration/storybook_react/test_topbar_stories.py
   name: 部品設計『トップバー.tsx』の状態の結合テスト
   description: 部品設計『トップバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1805,6 +1847,14 @@ files:
   - topic:テスト
   - topic:プレビュー
   - topic:ヘルパー
+- path: record_write_helpers.py
+  name: 記録の書き換えの補助
+  description: 結合テストが記録を project-index の write_docs と同じ書き方（next_id で ID を取り、一時ファイルに書いて置き換える）で書き換え、変更の検知に応答の途中の変更として記録させる関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:ヘルパー
+  - topic:履歴
 - path: unit/preview/conftest.py
   name: プレビューの単体テストの共通の fixture
   description: プレビューの単体テスト（フロント）の共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。

@@ -99,3 +99,16 @@ def test_narrow(open_story: OpenStory) -> None:
     assert dialog_box["x"] + dialog_box["width"] <= 390
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     assert page.evaluate("getComputedStyle(document.querySelector('.hist-list')).overflowY") == "auto"
+
+
+def test_external(open_story: OpenStory) -> None:
+    """外部の変更のまとまりの名前の横に「外部の変更」の札を付け、行の読み上げ名に含める（正常系）。"""
+    # 準備・実行
+    page = _open_dialog(open_story, "preview-historydialog--external")
+    # 検証
+    row = page.locator("dialog.hist .hist-item[data-sel='V-3']")
+    assert row.locator(".hist-tag").inner_text() == "外部の変更"
+    assert row.locator(".hist-name").inner_text().startswith("ほかのセッションの書き込み")
+    # 行のボタンの読み上げ名（中身の文字）が、名前に続けて札を読む
+    assert " ".join(row.inner_text().split()).startswith("ほかのセッションの書き込み 外部の変更")
+    assert page.locator("dialog.hist .hist-tag").count() == 1
