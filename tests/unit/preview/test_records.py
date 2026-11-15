@@ -19,8 +19,8 @@ def test_build_index(
     """ID で引け、参照元を逆に引ける（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1"), make_item("D-2", depends_on=["D-1"])],
-        tasks=[make_item("T-1", **{"for": ["D-1"]})],
+        decisions=[make_item("D-1"), make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}])],
+        tasks=[make_item("T-1", related=[{"to": "D-1", "type": "for"}])],
         next_ids=["D-1"],
     )
     load_preview_scripts()
@@ -50,13 +50,20 @@ def test_related_items(
     # 準備
     data = make_data(
         decisions=[
-            make_item("D-1", depends_on=["D-0"]),
-            make_item("D-2", depends_on=["D-1"]),
+            make_item("D-1", related=[{"to": "D-0", "type": "depends_on"}]),
+            make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
         ],
-        tasks=[make_item("T-1", **{"for": ["D-1"]})],
-        logs=[make_item("L-1", related=["D-1"])],
-        notes=[make_item("N-1", related=["D-1"])],
+        tasks=[make_item("T-1", related=[{"to": "D-1", "type": "for"}])],
+        logs=[make_item("L-1", related=[{"to": "D-1", "type": "see_also"}])],
+        notes=[make_item("N-1", related=[{"to": "D-1", "type": "see_also"}])],
     )
+    with_child = {
+        **data,
+        "decisions": [
+            *data["decisions"],
+            make_item("D-3", related=[{"to": "D-1", "type": "parent"}]),
+        ],
+    }
     load_preview_scripts()
     # 実行
     result = preview_page.evaluate(
@@ -66,12 +73,43 @@ def test_related_items(
         }""",
         data,
     )
+    family = preview_page.evaluate(
+        """(data) => {
+            const index = MindmapPreview.buildIndex(data);
+            return {
+                children: MindmapPreview.relatedItems({id: "D-1", index}).children,
+                parents: MindmapPreview.relatedItems({id: "D-3", index}).parents,
+            };
+        }""",
+        with_child,
+    )
     # 検証
     assert result["prerequisites"] == ["D-0"]
     assert result["successors"] == ["D-2"]
     assert result["tasks"] == ["T-1"]
     assert result["logs"] == ["L-1"]
     assert result["referencedBy"] == ["N-1"]
+    assert family == {"children": ["D-3"], "parents": ["D-1"]}
+
+
+def test_refs_of(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, make_item: MakeItem
+) -> None:
+    """種類が同じ関連の相手だけを並べる（正常系）。"""
+    # 準備
+    item = make_item(
+        "D-3",
+        related=[
+            {"to": "D-1", "type": "depends_on"},
+            {"to": "R-1", "type": "see_also"},
+            {"to": "D-2", "type": "depends_on"},
+        ],
+    )
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate("(item) => MindmapPreview.refsOf(item, 'depends_on')", item)
+    # 検証
+    assert result == ["D-1", "D-2"]
 
 
 @pytest.mark.parametrize(
@@ -96,7 +134,7 @@ def test_search_items(
     data = make_data(
         decisions=[make_item("D-1"), make_item("D-2")],
         docs=[make_item("A-1")],
-        bodies={"A-1.md": "ゼブラの話\n"},
+        bodies={"docs/A-1.md": "ゼブラの話\n"},
     )
     load_preview_scripts()
     # 実行
@@ -120,7 +158,7 @@ def test_search_items(
                 "terms": [("G-1", {"title": "シナリオの依頼"})],
                 "docs": [("A-1", {})],
             },
-            {"A-1.md": "シナリオの依頼の話\n"},
+            {"docs/A-1.md": "シナリオの依頼の話\n"},
             "シナリオの依頼 ",
             [["G-1", 1], ["D-1", 2], ["A-1", 3]],
             id="title_exact_then_title_part_then_other",
@@ -142,7 +180,7 @@ def test_search_items(
                 "decisions": [("D-1", {"answer": "保存先は共有のフォルダにする"})],
                 "docs": [("A-2", {"title": "保存先の決め方"})],
             },
-            {"A-2.md": "本文\n"},
+            {"docs/A-2.md": "本文\n"},
             "保存先",
             [["A-2", 2], ["D-1", 3]],
             id="tier_before_kind_order",
@@ -153,7 +191,7 @@ def test_search_items(
                 "terms": [("G-1", {"title": "シナリオの依頼"})],
                 "docs": [("A-1", {})],
             },
-            {"A-1.md": "シナリオの依頼の話\n"},
+            {"docs/A-1.md": "シナリオの依頼の話\n"},
             "シナリオ 受け方",
             [["D-1", 2]],
             id="all_words_in_title",
@@ -215,8 +253,8 @@ def test_search_items_when_html(
     """HTML の本文と html のコードブロックを描いた文で当てる（正常系）。"""
     # 準備
     data = make_data(
-        docs=[make_item("A-1", body="A-1.html"), make_item("A-2", body="A-2.md")],
-        bodies={"A-1.html": FLOW_PARAGRAPH, "A-2.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
+        docs=[make_item("A-1", body="docs/A-1.html"), make_item("A-2", body="docs/A-2.md")],
+        bodies={"docs/A-1.html": FLOW_PARAGRAPH, "docs/A-2.md": f"```html\n{FLOW_PARAGRAPH}\n```\n"},
     )
     load_preview_scripts()
     # 実行

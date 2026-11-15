@@ -226,7 +226,7 @@ def test_check_location_when_html_body(
 ) -> None:
     """HTML の本文はタグを外した描いた文と照らす（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    root = make_workspace(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     workspace = store.load_workspace(root)
     item = store.find_item(workspace, "A-1").item
     # 実行

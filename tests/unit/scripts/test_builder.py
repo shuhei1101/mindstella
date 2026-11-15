@@ -142,7 +142,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
     # 準備
     root = make_workspace(
         make_item("A-1"),
-        make_item("R-1", body="R-1.md"),
+        make_item("R-1", body="docs/R-1.md"),
         bodies={"A-1.md": "資料の本文\n", "X-1.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -177,7 +177,7 @@ def test_collect_preview_data_with_html_body(
     # 準備
     root = make_workspace(
         make_item("A-1"),
-        make_item("A-2", body="A-2.html"),
+        make_item("A-2", body="docs/A-2.html"),
         bodies={"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
     )
     workspace = store.load_workspace(root)
@@ -329,7 +329,7 @@ def test_derive_preview_values(
     }
     root = make_workspace(
         make_item("D-1", category="A", phase="目的", status="決定済み"),
-        make_item("D-2", category="A", phase="要件", status="未決定", depends_on=["D-1"]),
+        make_item("D-2", category="A", phase="要件", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("D-3", category="B", phase="要件", status="対象外"),
         settings=settings,
     )
@@ -379,7 +379,7 @@ def test_derive_preview_values_when_no_goal(
     }
     root = make_workspace(
         make_item("D-1", category="A", phase="目的", status="決定済み"),
-        make_item("D-2", category="A", phase="要件", status="未決定", depends_on=["D-1"]),
+        make_item("D-2", category="A", phase="要件", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("D-3", category="B", phase="要件", status="対象外"),
         settings=settings,
     )

@@ -12,8 +12,8 @@ const index = buildIndex({
     { id: "D-1", title: "画面" },
     { id: "D-2", title: "画面の分け方" },
   ],
-  tasks: [{ id: "T-1", title: "作業", body: "T-1.md" }],
-  bodies: { "T-1.md": "画面を作る" },
+  tasks: [{ id: "T-1", title: "作業", body: "docs/T-1.md" }],
+  bodies: { "docs/T-1.md": "画面を作る" },
 } as unknown as MindmapData);
 
 const props = (patch: Partial<Parameters<typeof SearchDialog>[0]> = {}) => ({ index, query: "", onQueryChange: vi.fn(), onOpen: vi.fn(), onClose: vi.fn(), ...patch });

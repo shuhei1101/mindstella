@@ -739,3 +739,73 @@ def test_mark_read() -> None:
     # 検証
     assert marked["read_seq"] == 7
     assert "read_seq" not in changes
+
+
+def test_load_item_history(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """行を読み、無ければ空（正常系）。"""
+    # 準備
+    with_rows = make_workspace(make_item("D-1", updated=NOW), name="with_rows")
+    without_rows = make_workspace(name="without_rows")
+    # 実行
+    rows = history.load_item_history(with_rows)
+    empty = history.load_item_history(without_rows)
+    # 検証
+    assert rows == {"D-1": {"created": "2026-10-01T00:00:00+00:00", "updated": NOW}}
+    assert empty == {}
+
+
+def test_merge_item_history(make_item: MakeItem) -> None:
+    """行のキーを足す（正常系）。"""
+    # 準備
+    item = make_item("D-1")
+    entry = {"seq": 1, "at": NOW, "by": "ai", "before": {"answer": None}}
+    rows = {"D-1": {"updated": NOW, "history": [entry]}}
+    # 実行
+    merged = history.merge_item_history(item, rows)
+    # 検証
+    assert merged == {**item, "updated": NOW, "history": [entry]}
+    assert list(merged) == [*item, "updated", "history"]
+
+
+@pytest.mark.parametrize(
+    ("by", "expected_sets", "expected_pending"),
+    [
+        pytest.param(
+            "ai",
+            [
+                {
+                    "id": "V-1",
+                    "at": NOW,
+                    "summary": "ほかのセッションの書き込み",
+                    "until_seq": 1,
+                    "added": [],
+                    "changed": ["D-1"],
+                    "by": "external",
+                }
+            ],
+            {"added": [], "changed": []},
+            id="other_writer",
+        ),
+        pytest.param(
+            "external",
+            [],
+            {"added": [], "changed": ["D-1"], "by": "external"},
+            id="same_writer",
+        ),
+    ],
+)
+def test_flush_pending(
+    by: str, expected_sets: list[dict[str, Any]], expected_pending: dict[str, Any]
+) -> None:
+    """書いた元が違えば先にまとめ、同じならまとめない（正常系）。"""
+    # 準備
+    changes: Any = {
+        "last_seq": 1,
+        "sets": [],
+        "pending": {"added": [], "changed": ["D-1"], "by": "external"},
+    }
+    # 実行
+    flushed = history.flush_pending(changes, by, NOW)
+    # 検証
+    assert flushed["sets"] == expected_sets
+    assert flushed["pending"] == expected_pending

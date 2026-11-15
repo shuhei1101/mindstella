@@ -833,7 +833,7 @@ def test_workspace_signature_with_html_body(
 ) -> None:
     """HTML の本文の書き換えでも印が変わる（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+    root = make_workspace(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
     before = serve.workspace_signature(root)
     target = root / RECORD_DIR / "docs" / file_name
     # 実行

@@ -17,7 +17,6 @@ import builder
 import commands
 import errors
 import history
-import query
 import store
 from errors import (
     ArgumentError,
@@ -44,8 +43,7 @@ from fixture_types import (
     WriteThreads,
 )
 from migrator import plan_migration
-from query import SearchFilter
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import RECORD_DIR, write_yaml
 
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-02T08:00:00+00:00"
@@ -102,6 +100,7 @@ def _make_staged(
         items=workspace.items,
         touched=frozenset(),
         bodies={},
+        history=history.load_item_history(root),
         changes={
             "last_seq": last_seq,
             "sets": [],
@@ -113,6 +112,12 @@ def _make_staged(
 def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
     """ワークスペースの YAML を読んで、項目の並びを返す。"""
     data = yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))
+    return data["items"]
+
+
+def _read_history(root: Path) -> dict[str, Any]:
+    """ワークスペースの項目の履歴（history.yaml）の行を読む。"""
+    data = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))
     return data["items"]
 
 
@@ -326,150 +331,6 @@ def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: P
     ) == f"{plugin_version.splitlines()[0]}\n"
 
 
-def test_run_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """本文つきの検討事項を足す（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    item = {
-        "title": "問い",
-        "status": "未決定",
-        "options": [{"key": "A", "content": "案 A"}],
-        "body_markdown": "## 経緯\n",
-    }
-    # 実行
-    payload = commands.run_add(root, "decision", item, now=_fixed_now)
-    # 検証
-    assert payload == {
-        "id": "D-2",
-        "file": ".mindstella/decisions.yaml",
-        "body": ".mindstella/docs/D-2.md",
-    }
-    added = _read_items(root, "decisions.yaml")[1]
-    assert added["created"] == FIXED_NOW
-    assert added["updated"] == FIXED_NOW
-    assert added["updated_by"] == "ai"
-    assert added["body"] == "D-2.md"
-    assert "body_markdown" not in added
-    assert (root / RECORD_DIR / "docs" / "D-2.md").read_text(encoding="utf-8") == "## 経緯\n"
-
-
-def test_run_add_when_no_body(make_workspace: MakeWorkspace) -> None:
-    """本文が無ければ body を付けない（正常系）。"""
-    # 準備
-    root = make_workspace()
-    item = {"title": "作業", "kind": "作業", "status": "未着手"}
-    # 実行
-    payload = commands.run_add(root, "task", item, now=_fixed_now)
-    # 検証
-    assert payload == {"id": "T-1", "file": ".mindstella/tasks.yaml", "body": None}
-    assert "body" not in _read_items(root, "tasks.yaml")[0]
-
-
-def test_run_remove(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """項目と本文を消し、消した項目を記録する（正常系）。"""
-    # 準備
-    changes = {
-        "last_seq": 2,
-        "sets": [
-            {
-                "id": "V-1",
-                "at": FIXED_NOW,
-                "summary": "足す",
-                "until_seq": 2,
-                "added": ["N-1", "N-2"],
-                "changed": [],
-            }
-        ],
-        "pending": {"added": [], "changed": []},
-    }
-    root = make_workspace(
-        make_item("N-1", body="N-1.md", added_seq=1, seq=1),
-        make_item("N-2", title="重複したメモ", body="N-2.md", added_seq=2, seq=2),
-        bodies={"N-1.md": "残す本文\n", "N-2.md": "消す本文\n"},
-        raw_files={"changes.yaml": yaml.safe_dump(changes, allow_unicode=True, sort_keys=False)},
-    )
-    # 実行
-    payload = commands.run_remove(root, "N-2")
-    # 検証
-    assert payload == {
-        "id": "N-2",
-        "kind": "note",
-        "title": "重複したメモ",
-        "file": ".mindstella/notes.yaml",
-        "body_removed": True,
-    }
-    assert [item["id"] for item in _read_items(root, "notes.yaml")] == ["N-1"]
-    assert (root / RECORD_DIR / "docs" / "N-1.md").exists()
-    assert not (root / RECORD_DIR / "docs" / "N-2.md").exists()
-    recorded = _read_changes(root)
-    assert recorded["last_seq"] == 3
-    assert recorded["pending"]["removed"] == [
-        {"id": "N-2", "kind": "note", "title": "重複したメモ", "seq": 3, "added_seq": 2}
-    ]
-
-
-def test_run_remove_when_referenced(
-    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
-) -> None:
-    """ほかの記録が指していれば消さない（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"), make_item("D-2", depends_on=["D-1"]))
-    before = snapshot_tree(root)
-    # 実行・検証
-    with pytest.raises(errors.ItemReferencedError) as exc_info:
-        commands.run_remove(root, "D-1")
-    assert exc_info.value.lines == ["decisions.yaml: D-2: depends_on"]
-    assert snapshot_tree(root) == before
-
-
-def test_run_remove_when_not_found(
-    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
-) -> None:
-    """無い ID は消さない（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("N-1"))
-    before = snapshot_tree(root)
-    # 実行・検証
-    with pytest.raises(ItemNotFoundError, match="N-9"):
-        commands.run_remove(root, "N-9")
-    assert snapshot_tree(root) == before
-
-
-def test_run_update(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """キーを置き換えて更新日時と編集した人を変える（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", lead="l", weight="大"))
-    # 実行
-    payload = commands.run_update(root, "D-1", {"answer": "a", "weight": None}, now=_fixed_now)
-    # 検証
-    assert payload == {
-        "id": "D-1",
-        "file": ".mindstella/decisions.yaml",
-        "changed": ["answer", "weight"],
-    }
-    updated = _read_items(root, "decisions.yaml")[0]
-    assert updated["answer"] == "a"
-    assert "weight" not in updated
-    assert updated["lead"] == "l"
-    assert updated["created"] == DEFAULT_TIMESTAMP
-    assert updated["updated"] == FIXED_NOW
-    assert updated["updated_by"] == "ai"
-
-
-def test_run_update_stacks_history(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """変わったキーを変更履歴に積み、まだまとめていない変更に足す（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", status="未決定"))
-    # 実行
-    commands.run_update(root, "D-1", {"status": "保留"}, now=_fixed_now)
-    # 検証
-    stacked = _read_items(root, "decisions.yaml")[0]["history"][0]
-    assert stacked["before"] == {"status": "未決定"}
-    changes = _read_changes(root)
-    assert changes["pending"]["changed"] == ["D-1"]
-    assert changes["last_seq"] == stacked["seq"]
-
-
 def test_stage_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """通し番号と編集した人を付けて足す（正常系）。"""
     # 準備
@@ -480,9 +341,11 @@ def test_stage_add(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 検証
     assert result["id"] == "D-2"
     added = new_staged.items["decision"][1]
-    assert added["seq"] == 4
-    assert added["added_seq"] == 4
-    assert added["updated_by"] == "ai"
+    assert new_staged.history["D-2"]["seq"] == 4
+    assert new_staged.history["D-2"]["added_seq"] == 4
+    assert new_staged.history["D-2"]["updated_by"] == "ai"
+    assert "seq" not in added
+    assert "updated_by" not in added
     assert new_staged.changes["last_seq"] == 4
     assert new_staged.changes["pending"]["added"] == ["D-2"]
     # 渡した Staged はそのまま
@@ -500,12 +363,12 @@ def test_stage_add_when_note_has_body(make_workspace: MakeWorkspace) -> None:
     new_staged, _ = commands.stage_add(staged, "note", item, now=_fixed_now)
     # 検証
     assert new_staged.items["note"][0]["id"] == "N-1"
-    assert new_staged.items["note"][0]["body"] == "N-1.md"
-    assert new_staged.bodies["N-1.md"].text == "b"
+    assert new_staged.items["note"][0]["body"] == "docs/N-1.md"
+    assert new_staged.bodies["docs/N-1.md"].text == "b"
 
 
 def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None:
-    """資料の HTML の本文を `{ID}.html` の書き込みにする（正常系）。"""
+    """資料の HTML の本文を `docs/{ID}.html` の書き込みにする（正常系）。"""
     # 準備
     staged = _make_staged(make_workspace(), 0)
     item = {"title": "t", "kind": "モック", "status": "下書き", "body_html": "<p>a</p>"}
@@ -514,9 +377,9 @@ def test_stage_add_when_doc_has_html_body(make_workspace: MakeWorkspace) -> None
     # 検証
     added = new_staged.items["doc"][0]
     assert added["id"] == "A-1"
-    assert added["body"] == "A-1.html"
+    assert added["body"] == "docs/A-1.html"
     assert "body_html" not in added
-    assert new_staged.bodies["A-1.html"].text == "<p>a</p>"
+    assert new_staged.bodies["docs/A-1.html"].text == "<p>a</p>"
     assert result["body"] == ".mindstella/docs/A-1.html"
 
 
@@ -542,7 +405,7 @@ def test_stage_add_when_user_editor(make_workspace: MakeWorkspace) -> None:
     new_staged, _ = commands.stage_add(staged, "task", item, now=_fixed_now, editor="user")
     # 検証
     assert new_staged.items["task"][0]["id"] == "T-1"
-    assert new_staged.items["task"][0]["updated_by"] == "user"
+    assert new_staged.history["T-1"]["updated_by"] == "user"
 
 
 def test_stage_add_when_main_false(make_workspace: MakeWorkspace) -> None:
@@ -572,9 +435,9 @@ def test_stage_update_when_limit_zero(
     # 実行
     new_staged, _ = commands.stage_update(staged, "D-1", {"answer": "a"}, now=_fixed_now)
     # 検証
-    updated = new_staged.items["decision"][0]
-    assert updated["seq"] == 4
-    assert "history" not in updated
+    row = new_staged.history["D-1"]
+    assert row["seq"] == 4
+    assert "history" not in row
     assert new_staged.changes["last_seq"] == 4
     assert new_staged.changes["pending"]["changed"] == []
 
@@ -587,10 +450,10 @@ def test_stage_update_sets_editor(make_workspace: MakeWorkspace, make_item: Make
     # 実行
     new_staged, _ = commands.stage_update(staged, "D-1", {"answer": "a"}, now=_fixed_now)
     # 検証
-    updated = new_staged.items["decision"][0]
-    assert updated["updated_by"] == "ai"
-    assert updated["history"][0]["by"] == "ai"
-    assert "updated_by" not in updated["history"][0]["before"]
+    row = new_staged.history["D-1"]
+    assert row["updated_by"] == "ai"
+    assert row["history"][0]["by"] == "ai"
+    assert "updated_by" not in row["history"][0]["before"]
 
 
 def test_stage_update_when_user_editor(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -603,9 +466,9 @@ def test_stage_update_when_user_editor(make_workspace: MakeWorkspace, make_item:
         staged, "D-1", {"answer": "a"}, now=_fixed_now, editor="user"
     )
     # 検証
-    updated = new_staged.items["decision"][0]
-    assert updated["updated_by"] == "user"
-    assert updated["history"][0]["by"] == "user"
+    row = new_staged.history["D-1"]
+    assert row["updated_by"] == "user"
+    assert row["history"][0]["by"] == "user"
 
 
 def test_stage_update_when_main_false(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -634,7 +497,7 @@ def test_stage_update_when_nothing_changed(
     # 検証
     assert result["changed"] == []
     assert new_staged.changes["last_seq"] == 3
-    assert new_staged.items["decision"][0]["seq"] == 2
+    assert new_staged.history["D-1"]["seq"] == 2
 
 
 def test_stage_update_when_body_format_changed(
@@ -642,7 +505,7 @@ def test_stage_update_when_body_format_changed(
 ) -> None:
     """形式を替えると前の形式の本文を消す書き込みにし、前の body を変更履歴に積む（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="A-1.md"), bodies={"A-1.md": "a\nb\n"})
+    root = make_workspace(make_item("A-1", body="docs/A-1.md"), bodies={"A-1.md": "a\nb\n"})
     staged = _make_staged(root, 3)
     # 実行（Markdown から HTML へ）
     to_html, to_html_result = commands.stage_update(
@@ -650,19 +513,19 @@ def test_stage_update_when_body_format_changed(
     )
     # 検証
     html_item = to_html.items["doc"][0]
-    assert html_item["body"] == "A-1.html"
-    assert "A-1.html" in to_html.bodies
-    assert to_html.removed_bodies == ["A-1.md"]
+    assert html_item["body"] == "docs/A-1.html"
+    assert "docs/A-1.html" in to_html.bodies
+    assert to_html.removed_bodies == ["docs/A-1.md"]
     assert to_html_result["changed"] == ["body", "body_html"]
-    entry = html_item["history"][0]
-    assert entry["before"]["body"] == "A-1.md"
+    entry = to_html.history["A-1"]["history"][0]
+    assert entry["before"]["body"] == "docs/A-1.md"
     assert history.apply_body_diff("<p>a</p>\n", entry["body_diff"]) == "a\nb\n"
     # 実行（続けて HTML から Markdown へ）
     to_markdown, _ = commands.stage_update(to_html, "A-1", {"body_markdown": "a\n"}, now=_fixed_now)
     # 検証
-    assert to_markdown.items["doc"][0]["body"] == "A-1.md"
-    assert to_markdown.removed_bodies == ["A-1.html"]
-    assert "A-1.html" not in to_markdown.bodies
+    assert to_markdown.items["doc"][0]["body"] == "docs/A-1.md"
+    assert to_markdown.removed_bodies == ["docs/A-1.html"]
+    assert "docs/A-1.html" not in to_markdown.bodies
 
 
 @pytest.mark.parametrize(
@@ -815,103 +678,11 @@ def test_run_edit_option(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
         "options": [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         "changed": True,
     }
-    saved = _read_items(root, "decisions.yaml")[0]
+    row = _read_history(root)["D-1"]
     changes = _read_changes(root)
-    assert saved["history"][0]["before"] == {"options": [{"key": "A", "content": "案 A"}]}
-    assert saved["seq"] == changes["last_seq"]
-    assert saved["history"][0]["seq"] == changes["last_seq"]
-
-
-def test_resolve_refs() -> None:
-    """参照のキーの番号だけを ID にする（正常系）。"""
-    # 準備
-    item = {"for": ["$1", "D-3"], "parent": "$1", "title": "$1"}
-    # 実行
-    resolved = commands.resolve_refs(item, {1: "D-5"})
-    # 検証
-    assert resolved == {"for": ["D-5", "D-3"], "parent": "D-5", "title": "$1"}
-
-
-def test_resolve_refs_when_unknown() -> None:
-    """前の add を指さない番号を拒む（異常系）。"""
-    # 準備
-    item = {"for": ["$2"]}
-    # 実行・検証
-    with pytest.raises(ArgumentError, match=r"\$2"):
-        commands.resolve_refs(item, {1: "D-5"})
-
-
-def test_run_batch(
-    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """先に足した項目を指す追加・更新・取得を 1 回で書く（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    operations = [
-        {
-            "op": "add",
-            "kind": "decision",
-            "item": {
-                "title": "記録の単位",
-                "status": "未決定",
-                "options": [{"key": "A", "content": "月ごと", "recommended": True}],
-            },
-        },
-        {
-            "op": "add",
-            "kind": "task",
-            "item": {"title": "調べる", "kind": "調査", "status": "未着手", "for": ["$1"]},
-        },
-        {"op": "update", "id": "D-1", "item": {"reason": "単位が決まるまで待つ", "status": "保留"}},
-        {"op": "show", "id": "D-1"},
-    ]
-    # commands が書き込みに使う save_batch の呼び出しを数える（書き込み自体は本物に任せる）
-    calls: list[store.BatchChange] = []
-    real_save_batch = commands.save_batch
-
-    def _spy_save_batch(workspace: store.Workspace, change: store.BatchChange) -> None:
-        """渡された変更を控えて、本物の save_batch で書く。"""
-        calls.append(change)
-        real_save_batch(workspace, change)
-
-    monkeypatch.setattr(commands, "save_batch", _spy_save_batch)
-    # 実行
-    payload = commands.run_batch(root, operations, now=_fixed_now)
-    # 検証
-    results = payload["results"]
-    assert [result["op"] for result in results] == ["add", "add", "update", "show"]
-    assert results[0]["result"]["id"] == "D-2"
-    assert results[1]["result"]["id"] == "T-1"
-    assert results[2]["result"]["changed"] == ["reason", "status"]
-    assert results[3]["result"]["item"]["reason"] == "単位が決まるまで待つ"
-    assert results[3]["result"]["item"]["status"] == "保留"
-    assert _read_items(root, "tasks.yaml")[0]["for"] == ["D-2"]
-    assert len(calls) == 1
-
-
-def test_run_batch_when_operation_fails(
-    make_workspace: MakeWorkspace, make_item: MakeItem, snapshot_tree: SnapshotTree
-) -> None:
-    """途中の操作が失敗したら番号を付けて止め、何も書かない（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    before = snapshot_tree(root)
-    operations = [
-        {
-            "op": "add",
-            "kind": "decision",
-            "item": {
-                "title": "問い",
-                "status": "未決定",
-                "options": [{"key": "A", "content": "案 A"}],
-            },
-        },
-        {"op": "update", "id": "D-9", "item": {"answer": "a"}},
-    ]
-    # 実行・検証
-    with pytest.raises(ItemNotFoundError, match=r"^2 番目の操作（update）: "):
-        commands.run_batch(root, operations, now=_fixed_now)
-    assert snapshot_tree(root) == before
+    assert row["history"][0]["before"] == {"options": [{"key": "A", "content": "案 A"}]}
+    assert row["seq"] == changes["last_seq"]
+    assert row["history"][0]["seq"] == changes["last_seq"]
 
 
 def test_run_changes_since_read(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -983,8 +754,7 @@ def test_run_adopt(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     options = _read_items(root, "decisions.yaml")[0]["options"]
     assert options[0]["adopted"] is False
     assert options[1]["adopted"] is True
-    adopted = _read_items(root, "decisions.yaml")[0]
-    assert adopted["updated_by"] == "ai"
+    assert _read_history(root)["D-1"]["updated_by"] == "ai"
 
 
 def test_run_adopt_when_not_decision(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1017,7 +787,7 @@ def test_run_adopt_when_undecided(make_workspace: MakeWorkspace, make_item: Make
     }
     saved = _read_items(root, "decisions.yaml")[0]
     assert saved["status"] == "決定済み"
-    before = saved["history"][0]["before"]
+    before = _read_history(root)["D-1"]["history"][0]["before"]
     assert before["status"] == "未決定"
     assert before["options"] == [
         {"key": "A", "content": "案 A"},
@@ -1025,12 +795,13 @@ def test_run_adopt_when_undecided(make_workspace: MakeWorkspace, make_item: Make
     ]
 
 
-def test_run_commit(make_workspace: MakeWorkspace) -> None:
+def test_run_commit(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """まだまとめていない変更をまとめる（正常系）。"""
     # 準備
-    root = make_workspace()
-    item = {"title": "問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}
-    commands.run_add(root, "decision", item, now=_fixed_now)
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={"changes.yaml": "last_seq: 1\nsets: []\npending: {added: [D-1], changed: []}\n"},
+    )
     # 実行
     payload = commands.run_commit(root, "  足す ", now=_fixed_now)
     # 検証
@@ -1079,7 +850,7 @@ def test_run_check(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
 def test_run_check_when_problems(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """問題があれば ok が偽（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", depends_on=["D-9"]))
+    root = make_workspace(make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]))
     # 実行
     payload = commands.run_check(root)
     # 検証
@@ -1114,29 +885,6 @@ def test_run_check_when_decision_state(make_workspace: MakeWorkspace, make_item:
     assert problem["file"] == ".mindstella/decisions.yaml"
     assert problem["key"] == "items[0].options"
     assert "/mindstella:upgrade" in problem["detail"]
-
-
-def test_run_impact(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """影響を出力の形にする（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1"), make_item("D-2", title="依存する問い", depends_on=["D-1"])
-    )
-    # 実行
-    payload = commands.run_impact(root, "D-1")
-    # 検証
-    assert payload == {
-        "id": "D-1",
-        "affected": [
-            {
-                "id": "D-2",
-                "title": "依存する問い",
-                "status": "未決定",
-                "via": [],
-                "key": "depends_on",
-            }
-        ],
-    }
 
 
 def test_run_next(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1177,152 +925,6 @@ def test_run_status(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     # 検証
     assert payload["needs_review"] == [{"id": "D-1", "title": "見直しの問い"}]
     assert {"in_progress", "resumable", "waiting", "on_hold", "next"} <= set(payload)
-
-
-def _find(root: Path, search_filter: SearchFilter, **overrides: Any) -> dict[str, Any]:
-    """既定の量（view=brief・include と exclude は空・count_only は偽）で run_find を呼ぶ。"""
-    arguments: dict[str, Any] = {
-        "limit": 20,
-        "cursor": None,
-        "view": "brief",
-        "include": [],
-        "exclude": [],
-        "count_only": False,
-    }
-    arguments.update(overrides)
-    return commands.run_find(root, search_filter, **arguments)
-
-
-def _chars(root: Path, item_id: str) -> int:
-    """ワークスペースを読み、ID が item_id の項目の文字数（item_chars）を返す。"""
-    workspace = store.load_workspace(root)
-    return query.item_chars(workspace, store.find_item(workspace, item_id).item)
-
-
-def test_run_find(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """既定の量で検索結果をページの出力にする（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", title="最初の問い"))
-    chars = _chars(root, "D-1")
-    # 実行
-    payload = _find(root, SearchFilter())
-    # 検証
-    assert payload == {
-        "items": [
-            {
-                "id": "D-1",
-                "kind": "decision",
-                "title": "最初の問い",
-                "status": "未決定",
-                "tags": [],
-                "chars": chars,
-            }
-        ],
-        "total": 1,
-        "total_chars": chars,
-        "next_cursor": None,
-        "hint": None,
-        "omitted": ["target", "category", "phase", "attrs", "updated", "extra", "body"],
-    }
-
-
-@pytest.mark.parametrize("limit", [0, 81])
-def test_run_find_when_limit_out_of_range(
-    make_workspace: MakeWorkspace, make_item: MakeItem, limit: int
-) -> None:
-    """範囲の外の件数は引数の誤りにする（異常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行・検証
-    with pytest.raises(ArgumentError) as raised:
-        _find(root, SearchFilter(), limit=limit)
-    assert raised.value.argument == "limit"
-
-
-def test_run_find_when_stray_tag(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """どの項目も使っていないタグは 0 件と近いタグの案内を返す（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", tags=[{"name": "データ"}]))
-    # 実行
-    payload = _find(root, SearchFilter(tags=("データー",)))
-    # 検証
-    assert payload["items"] == []
-    assert payload["total"] == 0
-    assert payload["total_chars"] == 0
-    assert "データー はどの項目も使っていないタグです（近いタグ: データ）" in payload["hint"]
-
-
-def test_run_find_when_count_only(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """件数・文字数・タグの件数だけを返す（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", tags=[{"name": "データ", "main": True}]),
-        make_item("D-2", tags=[{"name": "データ"}, {"name": "画面"}]),
-    )
-    # 実行
-    payload = _find(root, SearchFilter(), limit=1, count_only=True)
-    # 検証
-    assert payload == {
-        "total": 2,
-        "total_chars": _chars(root, "D-1") + _chars(root, "D-2"),
-        "tag_counts": [{"tag": "データ", "count": 2}, {"tag": "画面", "count": 1}],
-    }
-
-
-def test_run_find_when_total_chars_over_pages(
-    make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """合計の文字数はページに分ける前の全件の和にする（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"), make_item("D-2"), make_item("D-3"))
-    # 実行
-    payload = _find(root, SearchFilter(), limit=1)
-    # 検証
-    assert [row["id"] for row in payload["items"]] == ["D-1"]
-    assert payload["total_chars"] == sum(_chars(root, f"D-{number}") for number in range(1, 4))
-
-
-def test_run_show(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """1 件を出力の形にする（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1"))
-    # 実行
-    payload = commands.run_show(root, "D-1")
-    # 検証
-    assert set(payload) == {
-        "item",
-        "kind",
-        "body_markdown",
-        "body_html",
-        "body_format",
-        "referenced_by",
-    }
-
-
-def test_run_attrs(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """属性名を出力の形にする（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", attrs={"担当": "自分"}))
-    # 実行
-    payload = commands.run_attrs(root)
-    # 検証
-    assert payload == {"attrs": [{"name": "担当", "count": 1, "kinds": ["decision"]}]}
-
-
-def test_run_tags(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    make_thread: MakeThread,
-    write_threads: WriteThreads,
-) -> None:
-    """項目とスレッドのタグを出力の形にする（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("D-1", tags=["データ"]))
-    write_threads(root, make_thread("TH-1", tags=["データ"]))
-    # 実行
-    payload = commands.run_tags(root)
-    # 検証
-    assert payload == {"tags": [{"name": "データ", "count": 2, "kinds": ["decision", "thread"]}]}
 
 
 def test_run_goal(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -1821,3 +1423,135 @@ def test_run_set_thread_status(
     # 検証
     assert payload == {"id": "TH-1", "status": "closed", "changed": True}
     assert _read_threads(root)[0]["events"][-1]["author"] == "ai"
+
+
+def _concurrent_once(
+    real: Callable[..., Any], root: Path, item: dict[str, Any]
+) -> Callable[..., Any]:
+    """1 回目だけ decisions.yaml を item で書き換えて ConcurrentWriteError を送り、2 回目からは本物を呼ぶ関数を返す。"""
+    calls: list[int] = []
+
+    def _save(*args: Any, **kwargs: Any) -> Any:
+        """呼ばれた回数で、書き換えて送るか本物へ渡すかを分ける。"""
+        calls.append(1)
+        # 1 回目: project-index が間に書いた形にする
+        if len(calls) == 1:
+            write_yaml(root / RECORD_DIR / "decisions.yaml", {"items": [item]})
+            raise errors.ConcurrentWriteError("decisions.yaml")
+        return real(*args, **kwargs)
+
+    return _save
+
+
+def _always_concurrent(*args: Any, **kwargs: Any) -> None:
+    """いつも ConcurrentWriteError を送る。"""
+    raise errors.ConcurrentWriteError("decisions.yaml")
+
+
+def test_run_adopt_when_concurrent_write(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """読み直して当て直す（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    root = make_workspace(make_item("D-1", options=options))
+    monkeypatch.setattr(
+        commands,
+        "save_change",
+        _concurrent_once(
+            commands.save_change, root, make_item("D-1", options=options, answer="ほかで書いた答え")
+        ),
+    )
+    # 実行
+    commands.run_adopt(root, "D-1", "B", now=_fixed_now)
+    # 検証
+    saved = _read_items(root, "decisions.yaml")[0]
+    assert saved["answer"] == "ほかで書いた答え"
+    assert saved["options"][1]["adopted"] is True
+
+
+def test_run_adopt_when_concurrent_write_twice(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """2 回目も書き換えられていれば送る（異常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+    root = make_workspace(make_item("D-1", options=options))
+    monkeypatch.setattr(commands, "save_change", _always_concurrent)
+    # 実行・検証
+    with pytest.raises(errors.ConcurrentWriteError, match=r"decisions\.yaml"):
+        commands.run_adopt(root, "D-1", "B", now=_fixed_now)
+
+
+def test_run_edit_option_when_concurrent_write(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """読み直して当て直す（正常系）。"""
+    # 準備
+    options = [{"key": "A", "content": "案 A"}]
+    root = make_workspace(make_item("D-1", options=options))
+    monkeypatch.setattr(
+        commands,
+        "save_batch",
+        _concurrent_once(
+            commands.save_batch, root, make_item("D-1", options=options, answer="ほかで書いた答え")
+        ),
+    )
+    # 実行
+    commands.run_edit_option(root, "D-1", "add", "B", {"content": "案 B"}, now=_fixed_now)
+    # 検証
+    saved = _read_items(root, "decisions.yaml")[0]
+    assert saved["answer"] == "ほかで書いた答え"
+    assert saved["options"] == [{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}]
+
+
+def test_run_edit_option_when_concurrent_write_twice(
+    make_workspace: MakeWorkspace, make_item: MakeItem, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """2 回目も書き換えられていれば送る（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", options=[{"key": "A", "content": "案 A"}]))
+    monkeypatch.setattr(commands, "save_batch", _always_concurrent)
+    # 実行・検証
+    with pytest.raises(errors.ConcurrentWriteError, match=r"decisions\.yaml"):
+        commands.run_edit_option(root, "D-1", "add", "B", {"content": "案 B"}, now=_fixed_now)
+
+
+def test_run_commit_when_external_pending(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """外部の変更を先にまとめ、自分のまとまりは作らない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={
+            "changes.yaml": "last_seq: 2\nsets: []\npending: {added: [], changed: [D-1], by: external}\n"
+        },
+    )
+    # 実行
+    payload = commands.run_commit(root, "a", now=_fixed_now)
+    # 検証
+    assert payload["id"] is None
+    changes = _read_changes(root)
+    assert changes["sets"][0]["by"] == "external"
+    assert changes["sets"][0]["summary"] == "ほかのセッションの書き込み"
+    assert changes["sets"][0]["changed"] == ["D-1"]
+    assert changes["pending"] == {"added": [], "changed": []}
+
+
+def test_run_next_id(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """種類の連番の最大の次から振る（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-2"))
+    # 実行
+    payload = commands.run_next_id(root, "decision", count=2)
+    # 検証
+    assert payload == {"ids": ["D-3", "D-4"]}
+
+
+def test_run_next_id_when_kind_unknown(make_workspace: MakeWorkspace) -> None:
+    """決めた種類でなければ振らない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    # 実行・検証
+    with pytest.raises(ArgumentError, match="kind") as exc_info:
+        commands.run_next_id(root, "thread")
+    assert exc_info.value.argument == "kind"

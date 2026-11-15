@@ -41,6 +41,12 @@ def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
     return data["items"]
 
 
+def _read_history(root: Path) -> dict[str, Any]:
+    """ワークスペースの項目の履歴（history.yaml）の行を読む。"""
+    data = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))
+    return data["items"]
+
+
 def _read_changes(root: Path) -> dict[str, Any]:
     """ワークスペースの書き換えのまとまり（changes.yaml）を読む。"""
     return yaml.safe_load((root / RECORD_DIR / "changes.yaml").read_text(encoding="utf-8"))
@@ -616,9 +622,10 @@ def test_save_edits(
     assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形"}]
     assert [option["key"] for option in decision["options"]] == ["A", "B", "C"]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["C"]
-    assert decision["updated_by"] == "user"
-    assert len(decision["history"]) == 1
-    assert decision["history"][0]["by"] == "user"
+    row = _read_history(root)["D-1"]
+    assert row["updated_by"] == "user"
+    assert len(row["history"]) == 1
+    assert row["history"][0]["by"] == "user"
     changes = _read_changes(root)
     assert changes["sets"][0]["summary"] == "画面からの編集"
     assert changes["pending"]["added"] == []
@@ -648,7 +655,11 @@ def test_save_edits_when_add_remove_settings(
             target="new-1",
             op="item-add",
             key="tasks",
-            value={"title": "画面を作る", **task, "depends_on": ["new-2"]},
+            value={
+                "title": "画面を作る",
+                **task,
+                "related": [{"to": "new-2", "type": "depends_on"}],
+            },
             base=None,
         ),
         make_edit(
@@ -677,8 +688,8 @@ def test_save_edits_when_add_remove_settings(
     assert result["removed"] == ["N-1"]
     assert result["settings"] == ["summary"]
     added = _find(_read_items(root, "tasks.yaml"), "T-2")
-    assert added["depends_on"] == ["T-3"]
-    assert added["updated_by"] == "user"
+    assert added["related"] == [{"to": "T-3", "type": "depends_on"}]
+    assert _read_history(root)["T-2"]["updated_by"] == "user"
 
 
 def test_save_edits_when_item_add_with_options(
@@ -716,7 +727,7 @@ def test_save_edits_when_item_add_with_options(
     assert [option["key"] for option in added["options"]] == ["A", "B"]
     assert [option["key"] for option in added["options"] if option.get("adopted")] == ["B"]
     assert added["status"] == "決定済み"
-    assert added["updated_by"] == "user"
+    assert _read_history(root)["D-2"]["updated_by"] == "user"
     assert _read_edits(root)["items"] == []
 
 
@@ -741,8 +752,7 @@ def test_save_edits_when_ai_pending(
         ("V-1", "まとめる前の AI の書き換え", ["T-1"]),
     ]
     assert changes["pending"]["changed"] == []
-    task = _find(_read_items(root, "tasks.yaml"), "T-1")
-    assert task["history"][0]["by"] == "ai"
+    assert _read_history(root)["T-1"]["history"][0]["by"] == "ai"
 
 
 def test_save_edits_drops_edits_of_removed(
@@ -780,7 +790,7 @@ def test_save_edits_drops_edits_of_removed(
         ),
         pytest.param(
             _no_rewrite,
-            [("D-1", {}), ("D-2", {"depends_on": ["D-1"]})],
+            [("D-1", {}), ("D-2", {"related": [{"to": "D-1", "type": "depends_on"}]})],
             {},
             [("E-1", {"op": "item-remove", "key": None, "value": None})],
             [("E-1", "referenced", ["D-2"])],
@@ -791,7 +801,7 @@ def test_save_edits_drops_edits_of_removed(
             _no_rewrite,
             [("D-1", {})],
             {},
-            [("E-1", {"key": "depends_on", "value": ["D-99"]})],
+            [("E-1", {"key": "related", "value": [{"to": "D-99", "type": "depends_on"}]})],
             [("E-1", "invalid", [])],
             "D-99",
             id="invalid_reference",

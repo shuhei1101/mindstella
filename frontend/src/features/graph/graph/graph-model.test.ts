@@ -14,11 +14,11 @@ describe("buildGraph", () => {
     const index = indexOf({
       decisions: [
         { id: "D-1", title: "前提" },
-        { id: "D-2", title: "後続", depends_on: ["D-1"], sources: ["R-1"] },
+        { id: "D-2", title: "後続", related: [{ to: "D-1", type: "depends_on" }], sources: ["R-1"] },
       ],
-      tasks: [{ id: "T-1", title: "作業", for: ["D-1"] }],
+      tasks: [{ id: "T-1", title: "作業", related: [{ to: "D-1", type: "for" }] }],
       research: [{ id: "R-1", title: "調査" }],
-      notes: [{ id: "N-1", title: "メモ", related: ["D-1"] }],
+      notes: [{ id: "N-1", title: "メモ", related: [{ to: "D-1", type: "see_also" }] }],
     });
     // 実行
     const graph = buildGraph({ index, shownIds: new Set(["D-1", "D-2", "T-1", "R-1"]) });

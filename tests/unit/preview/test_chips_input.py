@@ -119,3 +119,66 @@ def test_chips_input_when_disabled(
     assert toggle.is_disabled()
     assert remove.is_disabled()
     assert _calls(preview_page) == []
+
+
+# 入れた値を確かめる関数を渡して部品を描く JavaScript
+VALIDATE_MOUNT_SCRIPT = """() => {
+    window.calls = [];
+    const results = {
+        "D-1": {value: "D-1"},
+        "保存先": {value: "D-2"},
+        "D-99": {error: "D-99 が見つかりません。ID を確認してください。"},
+    };
+    const element = MindmapPreview.chipsInput({
+        controlId: "pe-tags",
+        name: "前提",
+        hint: "ID かタイトルを入れる",
+        suggestions: null,
+        monospace: true,
+        disabled: false,
+        values: [],
+        mainToggle: false,
+        validate: (value) => results[value],
+        onChange: (values, removed) => window.calls.push([values, removed]),
+    });
+    document.body.append(element);
+}"""
+
+
+def _error_state(page: Page) -> dict[str, Any]:
+    """入力欄の値・aria-invalid と、aria-describedby が指す文を返す。"""
+    return page.evaluate(
+        """() => {
+            const input = document.getElementById("pe-tags");
+            const described = input.getAttribute("aria-describedby");
+            const message = described ? document.getElementById(described) : null;
+            return {
+                value: input.value,
+                invalid: input.getAttribute("aria-invalid"),
+                message: message ? message.textContent : null,
+            };
+        }"""
+    )
+
+
+def test_chips_input_when_validate(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """validate の値で追加し、誤りは入力欄に残して直下に出し、書き換えると消す（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    preview_page.evaluate(VALIDATE_MOUNT_SCRIPT)
+    # 実行
+    _add(preview_page, "保存先")
+    _add(preview_page, "D-99")
+    after_error = _error_state(preview_page)
+    preview_page.locator("#pe-tags").press("Backspace")
+    after_edit = _error_state(preview_page)
+    # 検証
+    assert _calls(preview_page) == [[["D-2"], None]]
+    assert after_error == {
+        "value": "D-99",
+        "invalid": "true",
+        "message": "入力の誤り: D-99 が見つかりません。ID を確認してください。",
+    }
+    assert after_edit == {"value": "D-9", "invalid": None, "message": None}

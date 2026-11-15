@@ -81,8 +81,12 @@ LOCK_FILE_NAME = ".mindstella.lock"
 # ワークスペースの直下に置く、記録を全てまとめるフォルダ（ER 図『ワークスペース』）
 RECORD_DIR = ".mindstella"
 
-# 項目に入れる既定の日時（UTC のタイムゾーン付き ISO 8601）
+# 項目の履歴に入れる既定の日時（UTC のタイムゾーン付き ISO 8601）
 DEFAULT_TIMESTAMP = "2026-10-01T00:00:00+00:00"
+
+# 項目の履歴のファイル（ER 図『項目の履歴』）と、項目に持たずそこへ移すキー
+HISTORY_FILE = "history.yaml"
+HISTORY_KEYS = ("created", "updated", "updated_by", "seq", "added_seq", "history", "history_dropped_seq")
 
 # ID の頭の文字 → 書き込む YAML のファイル名（並びは D・T・R・A・G・N・L）
 KIND_FILES = {
@@ -390,16 +394,14 @@ def make_item() -> MakeItem:
     """ID の頭の文字に合う必須のキーを持つ項目を作る関数を返す。"""
 
     def _make(item_id: str, **overrides: Any) -> dict[str, Any]:
-        """ID・題・種類ごとの必須のキーに、渡したキーを重ねて日時を足した項目を返す。"""
+        """ID・題・種類ごとの必須のキーに、渡したキーを重ねた項目を返す。"""
         item: dict[str, Any] = {"id": item_id, "title": f"{item_id}の題"}
         # 案の配列などの入れ子は、項目どうしで共有しないよう写してから入れる
         item.update(copy.deepcopy(KIND_DEFAULTS[item_id[0]]))
-        # 資料は本文が必須なので、ID に揃えたファイル名を既定にする
+        # 資料は本文が必須なので、ID に揃えた本文のパス（YAML からの相対パス）を既定にする
         if item_id[0] == "A":
-            item["body"] = f"{item_id}.md"
+            item["body"] = f"docs/{item_id}.md"
         item.update(overrides)
-        item.setdefault("created", DEFAULT_TIMESTAMP)
-        item.setdefault("updated", DEFAULT_TIMESTAMP)
         return item
 
     return _make
@@ -621,18 +623,26 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         name: str = "workspace",
         settings_file: str = "config.yaml",
         top: bool = False,
+        with_history: bool = True,
     ) -> Path:
         """項目のある種類の YAML だけを置いたワークスペースを作り、そのフォルダを返す。
 
         記録は直下の `.mindstella/` の下に置く。top を真にすると、v0.6.0 より前の形式として
         記録を直下に置く。設定のファイル名は settings_file で決める（v0.6.0 より前は mindmap.yaml）。
         raw_files と bodies のキーは、記録を置くフォルダからの相対パス。
+        項目に渡した履歴のキー（HISTORY_KEYS）は項目から外して `history.yaml` に書き、作成日時・
+        更新日時の無い項目には既定の日時を入れる。with_history を偽にすると、履歴のキーを項目に
+        残したまま `history.yaml` を置かない（v0.13.0 より前の形式）。
         """
         root = tmp_path / name
         base = root if top else root / RECORD_DIR
         (base / "docs").mkdir(parents=True)
         (base / "release").mkdir()
         write_yaml(base / settings_file, valid_settings if settings is None else settings)
+        if with_history:
+            items, item_history = split_history(items)
+            if item_history:
+                write_yaml(base / HISTORY_FILE, {"items": item_history})
         # 項目のある種類だけ、渡した並びのまま 1 つの YAML にまとめる
         for prefix, file_name in KIND_FILES.items():
             kind_items = [item for item in items if item["id"][0] == prefix]
@@ -654,7 +664,8 @@ def make_legacy_item(make_item: MakeItem) -> MakeLegacyItem:
 
     def _make(item_id: str, done: bool) -> dict[str, Any]:
         """status の位置に done を置いた資料を返す（キーの並びは今の形式のまま）。"""
-        item = make_item(item_id)
+        # 前の版の本文は docs/ からのファイル名で持つ
+        item = make_item(item_id, body=f"{item_id}.md")
         return {
             ("done" if key == "status" else key): (done if key == "status" else value)
             for key, value in item.items()
@@ -680,14 +691,19 @@ def make_legacy_workspace(
 
         記録を置く場所と設定のファイル名は make_workspace の top・settings_file と同じ。
         """
+        # 前の版の項目は作成日時・更新日時を項目に持つ
+        stamps = {"created": DEFAULT_TIMESTAMP, "updated": DEFAULT_TIMESTAMP}
+        items = tuple({**stamps, **item} for item in items)
         legacy_items = [
-            make_legacy_item(doc_id, done) for doc_id, done in (legacy_docs or {}).items()
+            {**stamps, **make_legacy_item(doc_id, done)}
+            for doc_id, done in (legacy_docs or {}).items()
         ]
         root = make_workspace(
             *items,
             bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items},
             settings_file=settings_file,
             top=top,
+            with_history=False,
         )
         base = root if top else root / RECORD_DIR
         # 前の形式の資料を docs.yaml に直接書く（今の形式の資料の後ろに並べる）
@@ -755,6 +771,24 @@ def make_venv(tmp_path: Path) -> MakeVenv:
         return venv_dir
 
     return _make
+
+
+def split_history(
+    items: tuple[dict[str, Any], ...],
+) -> tuple[tuple[dict[str, Any], ...], dict[str, dict[str, Any]]]:
+    """項目から履歴のキーを外し、外した項目と、ID → 履歴（作成日時・更新日時の既定を足す）を返す。"""
+    stripped = tuple(
+        {key: value for key, value in item.items() if key not in HISTORY_KEYS} for item in items
+    )
+    item_history = {
+        item["id"]: {
+            "created": DEFAULT_TIMESTAMP,
+            "updated": DEFAULT_TIMESTAMP,
+            **{key: value for key, value in item.items() if key in HISTORY_KEYS},
+        }
+        for item in items
+    }
+    return stripped, item_history
 
 
 def write_yaml(path: Path, data: Any) -> None:
