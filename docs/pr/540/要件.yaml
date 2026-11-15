@@ -125,7 +125,7 @@ scope_out:
     reason: この時点の判断は捨てる。project-index の related は when を持たず、project-index には MindStella のための変更を入れない（D-290）。スコープに含めるか判断が分かれるため、レビューで確定する
     plan: none
   - item: session のスキルの手順と公開ドキュメント『スキル』の、find・show・add・update・remove・batch・tags・impact の呼び出しを project-index のツールへ書き換える
-    reason: 'この時点の判断は #518 へ回す。#518 が session のスキルを削除し、project-index のツールで記録するエージェントフロー（A-112・A-113）へ置き換える。この作業 PR をマージしてから #518 をマージするまでの間、session のスキルは削除したツールを呼ぶ。スコープに含めるか判断が分かれるため、レビューで確定する'
+    reason: '#518 は next の区分で、0.13.0 が削除したツールを呼ぶ session のスキルのままリリースされるため、レビューで #518 へ回す判断は認められなかった。この PR で削除するツールを呼ぶ箇所だけを書き換えるかを、スコープの追加になるためユーザーに確認している（推奨はこの PR で書き換える）'
     plan: '#518'
   - item: next・goal・status・write_release・clear_release の削除と、SessionStart のフックが前回参照した時点より後の変更を注入すること（D-326）
     reason: 話し合いの進め方に依存する機能の削除と再開の状況の注入は、A-107 の No 3（記録のエージェントフローと削除）の範囲
