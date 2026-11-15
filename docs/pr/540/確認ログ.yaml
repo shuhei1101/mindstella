@@ -14,3 +14,18 @@ confirmations:
     decided_by: thumbs_up
     approver: shuhei1101
     thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577661089
+  - topic: 変更履歴で外部の変更のまとまりを見分ける表示と文言
+    decision: まとまりの名前を「ほかのセッションの書き込み」にし、名前の横に「外部の変更」の札を付ける（モックの history-dialog/540/a-tag。推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578196106
+  - topic: 重なった ID の通知の置き場所と文面
+    decision: トップバーの下に閉じられるバーで「同じ ID の項目が 2 件あります」と、重なった項目の ID・片方の ID の変更を促す文を表示する（モックの duplicate-id-notice/540/a-banner。推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578196510
+  - topic: 詳細パネルで種類つきの関係を表示・入力する構成と種類の表示名
+    decision: 種類ごとに見出しを配置し、今のチップの入力（CMP-489-17・18）を並べる。表示名は depends_on を「前提」、parent を「親」、see_also を「関連」、for を「向けた検討事項」にする（モックの detail-panel/540/b-type-group。推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578197037
