@@ -9,3 +9,8 @@ confirmations:
     decided_by: thumbs_up
     approver: shuhei1101
     thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577425296
+  - topic: 記録の参照（depends_on・parent・for・related）を project-index でたどれるようにする手段
+    decision: この PR で、参照のキーを related の {to, type} に移し、depends_on・parent・for をやめる（D-275 B を前倒しする。#390 の {to, type} の設計と移し替えの方針を使う。推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577661089

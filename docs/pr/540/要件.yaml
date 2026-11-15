@@ -60,7 +60,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-17.yaml
     impact: changed
-    detail: 既存のワークスペースを移し替えると、project-index で検索・書き込みできる状態になる
+    detail: 既存のワークスペースを移し替えると、記録を配信する設定が置かれ、参照のキーが種類つきの related になり、project-index で検索・書き込み・関連のたどりができる
     depends_on:
       - docs/scenario/SC-489-14.yaml
   - kind: single
@@ -103,6 +103,60 @@ use_cases:
     scenario: docs/scenario/SC-540-1.yaml
     impact: new
     detail: どのセッションの書き込みも変更履歴に残り、MindStella のセッションの応答の途中でない間の変更は外部の変更のまとまりになる。重なった ID を知らせる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: following
+    detail: 詳細パネルの関係（前提・後続・親子・関連）を、種類つきの related から出す。利用者から見た振る舞いは変わらず、表示と入力は画面設計・部品設計で合わせる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-24.yaml
+    impact: following
+    detail: 検討事項のマップの依存と親子を、種類つきの related から辿る
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-7.yaml
+    impact: following
+    detail: ネットワークのつながりを、種類つきの related から引く
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-6.yaml
+    impact: following
+    detail: タスクが向く検討事項を、種類 for の related から出す
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-22.yaml
+    impact: following
+    detail: 方針転換で影響を受ける項目を、種類つきの related をたどって洗い出す
+    depends_on:
+      - docs/scenario/SC-489-21.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: following
+    detail: 要見直しと後続の件数を、種類 depends_on の related から数える
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: following
+    detail: 概要のタイルの前提を、種類 depends_on の related から読む
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-8.yaml
+    impact: following
+    detail: 前提が揃った未決定を、種類 depends_on の related から選ぶ
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-13.yaml
+    impact: following
+    detail: 調査を元の検討事項へ、種類つきの related でつなぐ
     depends_on:
       - docs/scenario/SC-489-34.yaml
 docs:
@@ -169,8 +223,8 @@ scope_out:
   - item: next・goal・status・write_release・clear_release の削除と、SessionStart のフックが前回参照した時点より後の変更を注入すること（D-326）
     reason: 話し合いの進め方に依存する機能の削除と再開の状況の注入は、A-107 の No 3（記録のエージェントフローと削除）の範囲
     plan: '#518'
-  - item: 検討事項の depends_on・parent を related の type で表し、専用のキーを削除する（D-275 B）。項目の attrs・targets・categories・phase などの削除の候補のキーを削除する
-    reason: A-107 の「削除の候補」は No 3 で作り直す。この作業 PR は今のキーのまま project-index の related の型へ対応させる
+  - item: 項目の attrs・targets・categories・phase などの削除の候補のキーを削除する
+    reason: A-107 の「削除の候補」は No 3 で作り直す。参照のキーを related の {to, type} に移すこと（D-275 B）は、確認ログの決着でこの作業 PR に含めた
     plan: '#518'
   - item: migrate を常駐サーバーの読み込みのときの移し替えへ移し、upgrade のスキルを削除する（D-288）
     reason: スキルの削除は A-107 の No 3 の範囲。この作業 PR は今の移し替えの仕組みに手順を追加するだけにする

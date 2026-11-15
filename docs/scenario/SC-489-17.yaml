@@ -412,6 +412,33 @@ scenarios:
       - 種類ごとの YAML と本文の中身が、移し替えの前と同じである
     notes:
       配信元の行: 配信元の行が無いワークスペース（#516 より前に作ったもの）に行を登録するのは、移し替えではなくワークスペースの作成（記録が既にあるフォルダを開く）が行う（単一ユースケース『外部のアプリから起動する』）。このシナリオの project-index の端末の設定には、そのワークスペースの行を載せておく
+  - name: 正常シナリオ（参照のキーを related へ移す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・点検・版の書き換えを、決めた引数で順に再生する
+      - name: 一つ前の版のワークスペース
+        description: 版のファイルにこの作業 PR の前の版を持ち、参照を ID の文字列の配列で持つ記録
+        notes: 'D-2 が `depends_on: [D-1]`・`parent: D-1`、T-1 が `for: [D-2]`、R-1 が `related: [D-2]` を持つ。YAML を直接書いて作る'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: 版を比べ、手順の一覧を出す
+        SV-->>CC: 参照のキーを related へ移す手順
+        CC->>SV: 手順を当てる
+        SV->>WS: depends_on・parent・for・related の ID を、種類つきの related の行に書き換える
+        SV->>WS: 版のファイルを書き換える
+      ```
+    expected:
+      - 'D-2 が `related: [{to: D-1, type: depends_on}, {to: D-1, type: parent}]` を持ち、`depends_on`・`parent` を持たない'
+      - 'T-1 が `related: [{to: D-2, type: for}]` を持ち、`for` を持たない'
+      - 'R-1 が `related: [{to: D-2, type: see_also}]` を持つ'
+      - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
+    notes:
+      種類の名前: 関連の種類の名前と、元のキーとの対応はインターフェース定義設計で決める。#390 の `{to, type}` の設計と移し替えの方針を使う
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者
