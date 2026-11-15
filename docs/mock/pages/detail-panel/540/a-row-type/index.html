@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>詳細パネル（種類つきの関連の入力）・案 A 1 件 1 行で種類を選ぶ | mindstella プレビューのモック</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR の分とモック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../../../refs/540/assets/style.css">
+  <!-- 見本のダーク: クエリの theme=dark で data-theme を当てる（実画面はトップバーのボタンで切り替える） -->
+  <script>if (new URLSearchParams(location.search).get("theme") === "dark") document.documentElement.dataset.theme = "dark";</script>
+</head>
+<body>
+  <div class="mockbar" data-mock-bar role="group" aria-label="モックの操作">
+    <span class="label">案:</span>
+    <a href="../a-row-type/index.html" aria-current="true">A 1 件 1 行で種類を選ぶ</a>
+    <a href="../b-type-group/index.html">B 種類ごとにまとめる</a>
+    <span class="label">見本:</span>
+    <a href="?">ライト</a>
+    <a href="?theme=dark">ダーク</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">detail-panel</a> / <a href="../index.md">540</a> / a-row-type</nav>
+  </div>
+  <header class="m-topbar"><span class="site">mindstella</span><span class="title">記録の作り直しの話し合い</span><span class="spacer"></span></header>
+  <main class="m-main">
+    <p class="m-note">関係を 1 件 1 行で並べ、行ごとに種類を選ぶ。足すときは相手と種類を選んで「追加」を押す。</p>
+    <aside class="panel open m-static" aria-label="D-7 の詳細の編集">
+      <div class="panel-head"><span class="panel-kind">検討事項</span><span class="panel-title is-shown">D-7 保存の形式を決める</span><span class="spacer"></span></div>
+      <div class="panel-body">
+        <h3>関係</h3>
+        <div class="m-rel">
+          <div class="m-rel-row"><span class="m-rel-to"><span class="id">D-1</span><span class="t">保存先を決める</span></span><select aria-label="D-1 との関係の種類"><option value="depends_on" selected>前提</option><option value="parent">親</option><option value="for">向けた検討事項</option><option value="see_also">関連</option></select><button class="m-close" type="button" aria-label="D-1 との関係を削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="m-rel-row"><span class="m-rel-to"><span class="id">D-4</span><span class="t">画面の構成を決める</span></span><select aria-label="D-4 との関係の種類"><option value="depends_on">前提</option><option value="parent" selected>親</option><option value="for">向けた検討事項</option><option value="see_also">関連</option></select><button class="m-close" type="button" aria-label="D-4 との関係を削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="m-rel-row"><span class="m-rel-to"><span class="id">R-2</span><span class="t">保存先の候補の比較</span></span><select aria-label="R-2 との関係の種類"><option value="depends_on">前提</option><option value="parent">親</option><option value="for">向けた検討事項</option><option value="see_also" selected>関連</option></select><button class="m-close" type="button" aria-label="R-2 との関係を削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="m-rel-add"><input type="text" placeholder="ID かタイトル" aria-label="関係を追加する項目"><select aria-label="追加する関係の種類"><option value="depends_on" selected>前提</option><option value="parent">親</option><option value="for">向けた検討事項</option><option value="see_also">関連</option></select><button class="m-btn" type="button">追加</button></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>
