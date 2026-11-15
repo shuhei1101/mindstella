@@ -59,3 +59,14 @@ export const Narrow: Story = {
   },
   globals: { viewport: { value: "narrow", isRotated: false } },
 };
+
+/** 外部の変更のまとまりがある。名前「ほかのセッションの書き込み」の横に「外部の変更」の札を付ける */
+export const External: Story = {
+  args: {
+    points: [
+      ...POINTS.filter((point) => point.sel !== "pending").slice(0, 3),
+      { sel: "V-3", name: "ほかのセッションの書き込み", sub: "10/04 12:10・書き換えが止んで 1 分後に自動でまとめた", count: 4, external: true },
+      ...POINTS.slice(4),
+    ],
+  },
+};
