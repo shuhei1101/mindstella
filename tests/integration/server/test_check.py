@@ -12,6 +12,7 @@ from .fixture_types import (
     MakeThread,
     MakeWorkspace,
     SnapshotTree,
+    StartServer,
     WriteThreads,
 )
 from .history_helpers import DECISION_ITEM, add_item, commit, remove_item, update_item
@@ -91,14 +92,18 @@ def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> 
 def test_normal_when_history_stale(
     make_workspace: MakeWorkspace,
     call_tool: CallTool,
+    start_server: StartServer,
     snapshot_tree: SnapshotTree,
 ) -> None:
     """本文を手で書き換えて前の版を組み立てられない変更履歴を、問題として返す（正常系）。"""
     # 準備
     root = make_workspace()
-    add_item(call_tool, root, "decision", {**DECISION_ITEM, "body_markdown": "1 行目\n2 行目\n3 行目\n"})
-    commit(call_tool, root, "足す")
-    update_item(call_tool, root, "D-1", {"body_markdown": "1 行目\n書き換えた 2 行目\n3 行目\n"})
+    # 変更履歴を積んだ常駐サーバーを止め、変更の検知が見ていない間に本文を手で書き換える
+    watching = start_server()
+    add_item(watching.call, root, "decision", {**DECISION_ITEM, "body_markdown": "1 行目\n2 行目\n3 行目\n"})
+    commit(watching.call, root, "足す")
+    update_item(watching.call, root, "D-1", {"body_markdown": "1 行目\n書き換えた 2 行目\n3 行目\n"})
+    watching.stop()
     (root / RECORD_DIR / "docs" / "D-1.md").write_text(
         "手で書いた A\n手で書いた B\n手で書いた C\n", encoding="utf-8"
     )

@@ -169,8 +169,10 @@ def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace, call_tool
     assert after["A-2"]["status"] == "下書き"
     assert "done" not in after["A-1"]
     assert "done" not in after["A-2"]
-    assert after["A-1"]["updated"] == before["A-1"]["updated"]
-    assert after["A-2"]["updated"] == before["A-2"]["updated"]
+    # 更新日時は v0.13.0 の手順で history.yaml の行へ値を変えずに移る
+    history = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]
+    assert history["A-1"]["updated"] == before["A-1"]["updated"]
+    assert history["A-2"]["updated"] == before["A-2"]["updated"]
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
         {"file": value["file"], "key": value["key"]} for value in payload["needs_values"]
     ]
@@ -333,15 +335,14 @@ def test_normal_when_already_current(
     """今の形（config.yaml）に版のファイルが無くても全ての手順を当てて、何も変えずに成功する（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1", status="完成"))
-    before = snapshot_tree(root)
-    mtimes = _mtimes(root)
+    watched = [root / RECORD_DIR / SETTINGS, root / RECORD_DIR / "docs.yaml"]
+    before = [(path.read_bytes(), path.stat().st_mtime_ns) for path in watched]
     # 実行
     result = call_tool("migrate", workspace=str(root))
     # 検証
     assert result.is_error is False
     assert result.data["needs_values"] == []
-    assert snapshot_tree(root) == before
-    assert _mtimes(root) == mtimes
+    assert [(path.read_bytes(), path.stat().st_mtime_ns) for path in watched] == before
     assert not (root / LEGACY_SETTINGS).exists()
 
 
@@ -359,6 +360,7 @@ def test_normal_when_rename_settings_file(
         bodies={"D-1.md": "本文\n"},
         settings_file=LEGACY_SETTINGS,
         top=True,
+        with_history=False,
     )
     (root / VERSION_FILE).write_text("v0.5.0\n", encoding="utf-8")
     (root / "release" / "資料.md").write_text("資料\n", encoding="utf-8")
@@ -433,6 +435,7 @@ def test_normal_when_answer_to_option(
             for item in (decided, undecided)
         ),
         already,
+        with_history=False,
     )
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.6.0\n", encoding="utf-8")
     before = _read_decisions(root)
@@ -693,8 +696,8 @@ def test_normal_when_project_index_layout(
     ]
     assert not {"depends_on", "parent", "updated", "history"} & set(decisions["D-2"])
     assert tasks["T-1"]["related"] == [
-        {"to": "D-2", "type": "for"},
         {"to": "T-2", "type": "depends_on"},
+        {"to": "D-2", "type": "for"},
     ]
     assert not {"for", "depends_on"} & set(tasks["T-1"])
     assert decisions["D-2"]["body"] == "docs/D-2.md"

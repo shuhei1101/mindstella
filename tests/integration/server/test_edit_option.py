@@ -65,7 +65,7 @@ def test_normal_when_added(decision_workspace, call_tool: CallTool) -> None:
     assert history[0]["before"] == {"options": [OPTION_A]}
     changes = read_changes(root)
     assert changes["pending"]["changed"] == ["D-1"]
-    assert item["seq"] == changes["last_seq"]
+    assert read_history(root)["D-1"]["seq"] == changes["last_seq"]
 
 
 def test_normal_when_updated(decision_workspace, call_tool: CallTool) -> None:

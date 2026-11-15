@@ -281,10 +281,9 @@ def test_normal_when_duplicate_ids(
     # 検証
     events = [entry for entry in [*first, *second] if entry[0] == "duplicate_ids"]
     assert events == [("duplicate_ids", '["D-1"]')]
-    pasted = [
-        line for line in pane.capture().splitlines() if line.startswith("[mindstella] 同じ ID の項目が 2 件あります: D-1")
-    ]
-    assert len(pasted) == 1
+    # ペインは貼り付けの文字列を折り返して見せるので、行をつないで数える
+    pasted = "".join(pane.capture().splitlines()).count("[mindstella] 同じ ID の項目が 2 件あります: D-1")
+    assert pasted == 1, pane.capture()
 
 
 def test_normal_when_history_limit_exceeded(

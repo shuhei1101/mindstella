@@ -8,6 +8,7 @@ from .skill_files import (
     SERVER_TOOL_NAMES,
     SKILLS_DIR,
     allowed_mcp_tools,
+    allowed_project_index_tools,
     mentions_old_mode,
     missing_plugin_paths,
     read_skill,
@@ -23,7 +24,8 @@ if TYPE_CHECKING:
 
 # front matter の allowed-tools の値
 UPGRADE_ALLOWED_TOOLS = (
-    "Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__batch"
+    "Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__check, "
+    "mcp__plugin_project-index_project-index__search_docs, mcp__plugin_project-index_project-index__write_docs"
 )
 
 # 本文のツールの表に並ぶ migrate の呼び方（版を比べる・手順を当てる・値を入れる・版を書き換える）
@@ -46,15 +48,16 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 本文の ${CLAUDE_PLUGIN_ROOT}/ で始まるパスが全てリポジトリの中にある
     assert missing_plugin_paths(texts) == []
     # 本文が呼ぶツールが全て allowed-tools にあり、サーバーのツールの一覧にある
-    assert tools_listed_in(texts) == ["migrate", "check", "batch"]
+    assert tools_listed_in(texts) == ["migrate", "check", "search_docs", "write_docs"]
     assert set(allowed_mcp_tools(front_matter)) <= set(SERVER_TOOL_NAMES)
-    # 本文のツールの一覧に migrate（plan・手順を当てる・values・record）と check・batch がある
+    assert allowed_project_index_tools(front_matter) == ["search_docs", "write_docs"]
+    # 本文のツールの一覧に migrate（plan・手順を当てる・values・record）と check・search_docs・write_docs がある
     assert [call for call in MIGRATE_CALLS if f"`{call}`" not in body] == []
     assert "| `migrate`（手順を当てる） | `workspace` |" in body
-    assert "| `batch` |" in body
-    # decision_state を利用者に確かめてから batch 1 回で直すステップが、record: true より前にある
+    assert "| `write_docs`（project-index） |" in body
+    # decision_state を利用者に確かめてから write_docs 1 回で直すステップが、record: true より前にある
     assert "`decision_state`" in body
-    assert body.index("`batch` 1 回") < body.index("`record: true`")
+    assert body.index("`write_docs` 1 回") < body.index("`record: true`")
     # 本文が mindmap.py・build・check-env を指さない
     assert mentions_old_mode(texts) == []
     # 本文に、MCP のツールが無いとき常駐サーバーを起動する手順を案内して止まる分岐がある

@@ -777,6 +777,9 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
             items, item_history = split_history(items)
             if item_history:
                 write_yaml(base / HISTORY_FILE, {"items": item_history})
+        else:
+            # v0.13.0 より前の形式は、作成日時・更新日時を項目に持つ
+            items = tuple(_with_stamps(item) for item in items)
         # 項目のある種類だけ、渡した並びのまま 1 つの YAML にまとめる
         for prefix, file_name in KIND_FILES.items():
             kind_items = [item for item in items if item["id"][0] == prefix]
