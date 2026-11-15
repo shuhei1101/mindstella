@@ -1,0 +1,37 @@
+id: MOD-540-6
+title: サーバー / 移行 / meta_to_history_yaml.py
+functions:
+  - name: meta_to_history_yaml.migrate
+    title: 項目の履歴のキーを history.yaml へ移す移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/meta_to_history_yaml.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 'v0.13.0 の `call`（`meta_to_history_yaml`）が呼ぶ変換。種類ごとの YAML の項目の `created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq` を、値を変えずに `.mindstella/history.yaml` の行へ移す'
+    side_effects: '種類ごとの YAML と `.mindstella/history.yaml` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `.mindstella/history.yaml` を読む（無ければ空の `items`）
+      2. 種類ごとの YAML の項目ごとに、移すキーを取り出し、`history.yaml` のその ID の行へ足す（行が既にそのキーを持てば上書きしない）。項目からそのキーを消す
+      3. `history.yaml` を先に、変えた種類の YAML をその後に、一時ファイルから `os.replace` で置き換える
+      4. 変えたファイルの相対パスを返す
+    exceptions:
+      - name: ValueError
+        condition: 種類の YAML の形が崩れている
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_meta_to_history_yaml
+        case: 正常
+        summary: 履歴のキーを値を変えずに移す
+        condition: 'D-1（`created`・`updated`・`updated_by: ai`・`seq: 3`・`history` 1 回分）を持つワークスペース'
+        mock: なし
+        expected: '`history.yaml` の D-1 の行がその 5 つのキーを同じ値で持ち、`decisions.yaml` の D-1 はそれらを持たない。2 度当てても変わらない'

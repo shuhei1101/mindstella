@@ -10,6 +10,12 @@ components:
     refs:
       - SCR-489-16#
     unit_tests:
+      - name: test_history_screen_when_external_set
+        case: 正常
+        summary: '`sets[].by` が external のまとまりを external の時点にする'
+        condition: '`changes.sets` の 1 件が `by: external`・説明「ほかのセッションの書き込み」'
+        mock: なし
+        expected: その行が「ほかのセッションの書き込み」で「外部の変更」の札を持つ
       - name: test_history_screen
         case: 正常
         summary: 時点を選ぶ

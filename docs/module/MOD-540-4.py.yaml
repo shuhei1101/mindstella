@@ -1,0 +1,36 @@
+id: MOD-540-4
+title: サーバー / 移行 / body_to_docs_path.py
+functions:
+  - name: body_to_docs_path.migrate
+    title: 本文のパスを docs/ から書く移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/body_to_docs_path.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 'v0.13.0 の `call`（`body_to_docs_path`）が呼ぶ変換。項目の `body` が `/` を含まないファイル名なら `docs/{ファイル名}` にする（project-index の `body_file` は YAML のファイルからの相対で解くため）'
+    side_effects: '`body` を持つ種類の YAML を書き換える'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. 種類ごとの YAML を読む（無いファイルは飛ばす。形が崩れていれば `ValueError`）
+      2. `body` が文字列で `/` を含まなければ `docs/{body}` にする。`updated`・`history` は変えない
+      3. 変えたファイルだけを一時ファイルから `os.replace` で置き換え、相対パスを返す
+    exceptions:
+      - name: ValueError
+        condition: 種類の YAML の形が崩れている
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_body_to_docs_path
+        case: 正常
+        summary: ファイル名だけの body を docs/ からのパスにする
+        condition: 'D-1（`body: D-1.md`）・D-2（`body: docs/D-2.md`）・D-3（`body` なし）'
+        mock: なし
+        expected: 'D-1 の `body` が `docs/D-1.md`、D-2・D-3 は変わらない。2 度当てても変わらない'

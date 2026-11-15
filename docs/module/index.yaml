@@ -120,6 +120,8 @@ items:
     summary: "24px の枠に描いた線のアイコンと、状態の 10px の印"
   - page: MOD-489-88.tsx.yaml
     summary: "部品設計『トップバー.tsx』の props・イベント・状態を持つ"
+  - page: MOD-540-8.tsx.yaml
+    summary: "部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ。"
   - page: MOD-489-89.tsx.yaml
     summary: "shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ"
   - page: MOD-489-96.tsx.yaml
@@ -250,6 +252,8 @@ items:
     summary: "clsx と tailwind-merge でクラス名を 1 つにする"
   - page: MOD-489-136.ts.yaml
     summary: "書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」）"
+  - page: MOD-540-9.ts.yaml
+    summary: "変更の検知が知らせた重なった ID と、利用者が閉じた集まり。"
   - page: MOD-489-254.ts.yaml
     summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）"
   - page: MOD-489-141.ts.yaml
@@ -298,12 +302,26 @@ items:
     summary: "サーバー / 移行 / answer_to_adopted_option.py"
   - page: MOD-489-184.py.yaml
     summary: "サーバー / 移行 / submissions_to_threads.py"
+  - page: MOD-540-3.py.yaml
+    summary: "サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え"
+  - page: MOD-540-4.py.yaml
+    summary: "サーバー / 移行 / v0.13.0 の本文のパスを docs/ から書く移し替え"
+  - page: MOD-540-5.py.yaml
+    summary: "サーバー / 移行 / v0.13.0 の記録の配信の設定を置く移し替え"
+  - page: MOD-540-6.py.yaml
+    summary: "サーバー / 移行 / v0.13.0 の項目の履歴のキーを history.yaml へ移す移し替え"
+  - page: MOD-540-1.py.yaml
+    summary: "サーバー / ID の採番 / ids.py"
+  - page: MOD-540-2.py.yaml
+    summary: "サーバー / 変更の検知 / change_detection.py"
   - page: MOD-489-171.ts.yaml
     summary: "プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。"
   - page: MOD-489-205.ts.yaml
     summary: "プレビュー / 画面と部品 / body-diff-layout-switch.ts"
   - page: MOD-489-243.ts.yaml
     summary: "プレビュー / 画面と部品 / chips-input.ts"
+  - page: MOD-540-7.ts.yaml
+    summary: "プレビュー / 画面と部品 / duplicate-id-notice.ts"
   - page: MOD-489-215.ts.yaml
     summary: "プレビュー / 画面と部品 / comment-mark.ts"
   - page: MOD-489-229.ts.yaml
@@ -452,8 +470,6 @@ items:
     summary: "サーバー / 移行 / migration_ops.py"
   - page: MOD-489-179.py.yaml
     summary: "サーバー / 移行 / migrator.py"
-  - page: MOD-489-161.py.yaml
-    summary: "条件で項目を探してページに分け、返す量を選んで JSON か Markdown にし、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証・タグの表記だけに依存し、ファイルを書かない。"
   - page: MOD-489-153.py.yaml
     summary: "ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL の一覧）を組み立てて書く。`init`・`readme`・`preview_url` の 3 つのツールが同じ関数で書く。"
   - page: MOD-489-160.py.yaml

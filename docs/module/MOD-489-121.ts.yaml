@@ -6,7 +6,7 @@ functions:
     title: 記録の索引
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 記録から ID → 項目の索引と逆向きの関係を作る
+    summary: 記録から ID → 項目の索引と、`related[].to`・`sources` の逆向きの関係を作る
     args:
       - name: data
         type: MindmapData
@@ -19,7 +19,7 @@ functions:
       - name: test_build_index
         case: 正常
         summary: 項目と逆向きを引ける
-        condition: D-1 を D-2 の `depends_on` が指す記録
+        condition: D-1 を D-2 の種類 `depends_on` の `related` が指す記録
         mock: なし
         expected: D-1 の参照元に D-2
     container: frontend/src/shared/core/records.ts
@@ -27,7 +27,7 @@ functions:
     title: 関係する項目
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 前提・後続・関連タスク・経緯・関連・参照元を返す
+    summary: 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照元を、種類つきの `related` から返す（今の画面の `relatedItems`・`refsOf` と同じ）
     args:
       - name: id
         type: string
@@ -90,7 +90,7 @@ functions:
       - name: test_body_format_of
         case: 正常
         summary: 拡張子で分ける
-        condition: '`A-1.html`'
+        condition: '`docs/A-1.html`'
         mock: なし
         expected: '`html`'
     container: frontend/src/shared/core/records.ts

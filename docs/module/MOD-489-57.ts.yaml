@@ -14,7 +14,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/adapters/events-client.ts
     usecase: SPAを開く
-    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` で記録の query を読み直し、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
+    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` で記録の query を読み直し、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
     args:
       - name: queryClient
         type: QueryClient
@@ -29,7 +29,9 @@ functions:
 
       3. `changed` で記録・レビュー中のコメント・保存待ちの編集・スレッドの query を読み直す
 
-      4. `error` で接続の状態を offline にする（前の記録の query は残す）'
+      4. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば出し直す）
+
+      5. `error` で接続の状態を offline にする（前の記録の query は残す）'
     unit_tests:
       - name: test_connect_events_when_changed
         case: 正常
@@ -43,5 +45,11 @@ functions:
         condition: 偽物の EventSource から `error` を送り、続けて `open` を送る
         mock: EventSource（偽物）
         expected: '`error` の後に offline、`open` の後に online'
+      - name: test_connect_events_when_duplicate_ids
+        case: 正常
+        summary: duplicate_ids で重なった ID のストアを書き換える
+        condition: '偽物の EventSource から `duplicate_ids`（`data: ["D-1"]`）を送る'
+        mock: EventSource（偽物）
+        expected: 重なった ID のストアが `["D-1"]`
 notes:
   単体テスト: 同じフォルダの `events-client.test.ts` に置く（knowledge の規約『フォルダ構成』）

@@ -1,0 +1,136 @@
+id: MOD-540-1
+title: サーバー / ID の採番 / ids.py
+lead: 種類ごとの次の ID を、常駐サーバーのメモリに持つ予約と合わせて振る。『読み書きと検証』の `next_id` にだけ依存し、ファイルを書かない。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    scripts/
+      ids.py  ワークスペースごと・種類ごとの予約と、予約から振る ID
+  ```
+classes:
+  - name: IdReservations
+    title: ID の予約
+    container: plugins/mindstella/skills/mindmap/scripts/ids.py
+    usecase: 記録の追加と更新
+    role: 長期保持のランタイム状態
+    summary: ワークスペースの絶対パスと種類ごとに、振った最大の連番を 1 つ持つ。常駐サーバーのプロセスに 1 つだけ作り、`next_id` のツールと画面の保存が共有する
+    kind: クラス
+    properties:
+      - name: _reserved
+        type: dict[tuple[Path, Kind], int]
+        access: 内部 (_)
+        description: （ワークスペース, 種類）→ 振った最大の連番
+      - name: _guard
+        type: threading.Lock
+        access: 内部 (_)
+        description: '`_reserved` を触る間だけ取る鍵'
+    methods:
+      - name: reserve
+        title: 予約から振る
+        kind: メソッド
+        summary: その種類の連番の最大（項目・消した ID・予約）+ 1 から `count` 個の ID を振り、予約を進める
+        args:
+          - name: root
+            type: Path
+            required: true
+            passing: positional
+            description: ワークスペースの絶対パス
+          - name: kind
+            type: Kind
+            required: true
+            passing: positional
+            description: 種類
+          - name: items
+            type: list[dict[str, Any]]
+            required: true
+            passing: positional
+            description: その種類の今の項目
+          - name: taken
+            type: Iterable[str]
+            required: true
+            passing: positional
+            description: 消した項目の ID（『変更履歴』の `removed_items`）
+          - name: count
+            type: int
+            required: false
+            default: '1'
+            passing: keyword
+            description: 振る数
+        returns:
+          type: list[str]
+          description: 振った ID（小さい順）
+        process: |-
+          1. `_guard` を取る
+          2. `taken` に、`_reserved` のその（ワークスペース, 種類）の連番の ID を足して、最大 + 1 の ID を求める（『読み書きと検証』の `next_id`）
+          3. その連番から `count` 個の ID を作り、`_reserved` を最後の連番にする
+        unit_tests:
+          - name: test_reserve
+            case: 正常
+            summary: 項目と消した ID の最大の次から振る
+            condition: D-1・D-2 の項目と、消した D-3 で `count` 2
+            mock: なし
+            expected: '`[D-4, D-5]`'
+          - name: test_reserve_when_reserved
+            case: 正常
+            summary: 書き込まれていない予約の次から振る
+            condition: D-1 の項目で 1 回振った後、項目を変えずにもう 1 回振る
+            mock: なし
+            expected: 1 回目が `[D-2]`、2 回目が `[D-3]`
+          - name: test_reserve_when_concurrent
+            case: 正常
+            summary: 並行して振っても重ならない
+            condition: D-1 の項目で、8 つのスレッドから同時に 1 個ずつ振る
+            mock: なし
+            expected: 8 つの ID が `D-2`〜`D-9` で重ならない
+          - name: test_reserve_when_other_workspace
+            case: 正常
+            summary: ワークスペースと種類ごとに予約を分ける
+            condition: ワークスペース A の検討事項で 1 回振った後、ワークスペース B の検討事項と、A のタスクで振る
+            mock: なし
+            expected: B は `D-1`、A のタスクは `T-1`
+functions:
+  - name: reserve_ids
+    title: 予約から振る
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/ids.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: プロセスに 1 つの `IdReservations` の `reserve` を呼ぶ（『コマンド』の `stage_add`・`run_next_id` が使う）
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: 種類
+      - name: items
+        type: list[dict[str, Any]]
+        required: true
+        passing: positional
+        description: その種類の今の項目
+      - name: taken
+        type: Iterable[str]
+        required: true
+        passing: positional
+        description: 消した項目の ID
+      - name: count
+        type: int
+        required: false
+        default: '1'
+        passing: keyword
+        description: 振る数
+    returns:
+      type: list[str]
+      description: 振った ID
+    process: 1. モジュール変数 `RESERVATIONS` の `reserve` を呼んで返す
+constants:
+  - name: RESERVATIONS
+    title: プロセスの予約
+    container: plugins/mindstella/skills/mindmap/scripts/ids.py
+    usecase: 記録の追加と更新
+    summary: 常駐サーバーのプロセスに 1 つの `IdReservations`（起動し直すと空になる）
+    value: IdReservations()

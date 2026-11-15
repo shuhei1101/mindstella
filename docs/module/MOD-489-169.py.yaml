@@ -157,9 +157,10 @@ classes:
           2. `config.yaml` を検査する（設定の検査。`check_settings`）
              - 問題がある場合、問題ごとの `config.yaml: {キーのパス}: {理由}` を `lines` に持った `SchemaMismatchError` を送る（配信を立てない）
           3. 読んだ設定を初めの値に、`preview.port`（無ければ 0）と `_external.allowed_hosts` と `_input_targets` と `_transcriber` を渡して配信を立て（`start_preview_server`）`_servers` に入れる
+          4. そのワークスペースの変更の検知を始める（『変更の検知』の `ChangeDetector.start`。書き換えの鍵と入力の宛先を渡す）
              - `[INFO]` 配信を立てた（ワークスペース、URL）
-          4. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
-          5. URL と `True` を返す
+          5. `_external.start_hook` があれば、配信のポートとワークスペースのフォルダの名前を渡してフックを呼ぶ（`run_hook`）
+          6. URL と `True` を返す
         unit_tests:
           - name: test_start
             case: 正常
@@ -861,7 +862,8 @@ functions:
          - `SchemaMismatchError` の場合、`lines` を改行でつないだ `detail` の 422 を返す
          - `WorkspaceNotFoundError` の場合、そのメッセージの 422 を返す
       2. `settings_problem` が `None` なら、読んだ `settings` を最後に検査に通った設定にする（`SettingsHolder.accept`）
-      3. `ensure_ascii=False` の JSON を返す
+      3. 種類ごとの項目に `history.yaml` の行のキーを足す（『変更履歴』の `load_item_history`・`merge_item_history`。`bodies` のキーは項目の `body` の値）
+      4. `ensure_ascii=False` の JSON を返す
     unit_tests:
       - name: test_records_response
         case: 正常
@@ -904,7 +906,7 @@ functions:
       type: str
       description: 書き換えの印。どれかのファイルが変わる・足される・消されると変わる
     process: |-
-      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`edits.yaml`・`docs/` の直下の `*.md`・`*.html` を名前の順に並べる（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
+      1. `records_root(root)` の下の `config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`・`changes.yaml`・`history.yaml`・`edits.yaml`・`docs/` の直下の `*.md`・`*.html` を名前の順に並べる（`.mindstella-opened`・`comments.yaml`・`drafts.yaml` は見ない）
       2. ファイルごとに `{名前}:{st_mtime_ns}:{st_size}` を作り（無いファイルは `{名前}:-`）、`|` でつなぐ
     unit_tests:
       - name: test_workspace_signature
@@ -976,6 +978,7 @@ functions:
       2. つながっている間、繰り返す
          - `POLL_INTERVAL_SEC` 待ち、印を作り直す
          - 印が前と違う場合、`event: changed` と `data: {印}` の知らせを書き、控えと時刻を更める
+         - 変更の検知の重なった ID の集まりが前に書いたものと違う場合（『変更の検知』の `ChangeDetector.duplicate_ids`）、`event: duplicate_ids` と `data: {ID の JSON の配列}` を書く
          - そうでなく、最後に書いてから `KEEPALIVE_SEC` 以上経った場合、`: keepalive` を書く
       3. `write` が `BrokenPipeError`・`ConnectionResetError` を送ったら戻る（画面が閉じた）
     unit_tests:

@@ -51,7 +51,7 @@ data_models:
         description: 起点とこの項目の間にある項目の ID
       - name: key
         type: Literal["depends_on", "parent", "for"]
-        description: 直前の項目とつなぐキー
+        description: 直前の項目とつなぐ `related` の種類
   - name: Candidate
     title: 次の候補
     container: plugins/mindstella/skills/mindmap/scripts/graph.py
@@ -91,7 +91,7 @@ data_models:
         description: タイトル
       - name: waiting_for
         type: list[str]
-        description: 未完了の `depends_on` の ID
+        description: 未完了の、種類 `depends_on` の `related` の `to`
   - name: StatusSummary
     title: 再開時の状況
     container: plugins/mindstella/skills/mindmap/scripts/graph.py
@@ -114,7 +114,7 @@ data_models:
         description: 決定待ちの保留
       - name: on_hold
         type: list[dict[str, str | None]]
-        description: '`depends_on` を持たない保留'
+        description: 種類 `depends_on` の `related` を持たない保留
       - name: next
         type: list[Candidate]
         description: 次の候補の先頭
@@ -138,10 +138,10 @@ constants:
       - key: 小
         value: '2'
   - name: IMPACT_KEYS
-    title: 影響をたどるキー
+    title: 影響をたどる関連の種類
     container: plugins/mindstella/skills/mindmap/scripts/graph.py
     usecase: 共通
-    summary: 種類 → 参照先から参照元へ逆向きにたどるキー
+    summary: 項目の種類 → 参照先から参照元へ逆向きにたどる `related` の種類（`see_also` はたどらない）
     entries:
       - key: decision
         value: depends_on, parent
@@ -213,12 +213,12 @@ functions:
     returns:
       type: dict[str, list[tuple[str, str]]]
       description: 参照先の ID → `(参照元の ID, キー)` の並び（参照元の並びはファイルの並び）
-    process: 1. `IMPACT_KEYS` の種類ごとに項目を見て、キーの値（`parent` は文字列、ほかは配列）の ID ごとに `(自分の ID, キー)` を足す
+    process: 1. `IMPACT_KEYS` の項目の種類ごとに項目を見て、`related` のうち種類が `IMPACT_KEYS` にある要素の `to` ごとに `(自分の ID, 種類)` を足す
     unit_tests:
       - name: test_build_reverse_edges
         case: 正常
-        summary: depends_on・parent・for を逆向きにし、related は含めない
-        condition: 'D-2 `depends_on: [D-1]`・D-3 `parent: D-1`・T-1 `for: [D-1]`・D-4 `related: [D-1]`'
+        summary: 種類 depends_on・parent・for を逆向きにし、see_also は含めない
+        condition: 'D-2 `related: [{to: D-1, type: depends_on}]`・D-3 `related: [{to: D-1, type: parent}]`・T-1 `related: [{to: D-1, type: for}]`・D-4 `related: [{to: D-1, type: see_also}]`'
         mock: なし
         expected: '`D-1` → `[(D-2, depends_on), (D-3, parent), (T-1, for)]`'
   - name: trace_impact
@@ -255,13 +255,13 @@ functions:
       - name: test_trace_impact
         case: 正常
         summary: 間接の影響まで、経路つきで近い順に返す
-        condition: 'D-2 `depends_on: [D-1]`・D-3 `parent: D-2`・T-1 `for: [D-3]`・D-4 `related: [D-1]` で起点 D-1'
+        condition: 'D-2 `related: [{to: D-1, type: depends_on}]`・D-3 `related: [{to: D-2, type: parent}]`・T-1 `related: [{to: D-3, type: for}]`・D-4 `related: [{to: D-1, type: see_also}]` で起点 D-1'
         mock: なし
         expected: 'D-2（`via: []`・`depends_on`）・D-3（`via: [D-2]`・`parent`）・T-1（`via: [D-2, D-3]`・`for`）の 3 件'
       - name: test_trace_impact_when_cycle
         case: 正常
         summary: 循環があっても同じ項目を 2 度出さず終わる
-        condition: 'D-1 `depends_on: [D-2]`・D-2 `depends_on: [D-1]` で起点 D-1'
+        condition: 'D-1 `related: [{to: D-2, type: depends_on}]`・D-2 `related: [{to: D-1, type: depends_on}]` で起点 D-1'
         mock: なし
         expected: D-2 の 1 件だけ
   - name: is_settled
@@ -329,7 +329,7 @@ functions:
       - name: test_count_followers
         case: 正常
         summary: 間接の後続も数え、決着したものは数えない
-        condition: 'D-6 `depends_on: [D-4]`（未決定）・D-7 `depends_on: [D-6]`（未決定）・D-8 `depends_on: [D-4]`（決定済み）で D-4'
+        condition: 'D-6 `related: [{to: D-4, type: depends_on}]`（未決定）・D-7 `related: [{to: D-6, type: depends_on}]`（未決定）・D-8 `related: [{to: D-4, type: depends_on}]`（決定済み）で D-4'
         mock: なし
         expected: '2'
   - name: list_next_candidates
@@ -355,14 +355,14 @@ functions:
       type: list[Candidate]
       description: 並べた候補
     process: |-
-      1. 状態が `未決定` の検討事項のうち、`depends_on` の ID が全て決着しているものを選ぶ（決着の判定。`is_settled`。無い ID は未完了）
+      1. 状態が `未決定` の検討事項のうち、種類 `depends_on` の `related` の `to` が全て決着しているものを選ぶ（決着の判定。`is_settled`。無い ID は未完了）
       2. 候補ごとに後続の件数を数える（`count_followers`）
       3. フェーズの並び（設定の `phases` の位置。無い・設定に無いフェーズは最後）→ `WEIGHT_ORDER` → 後続の件数の多い順 → 連番の小さい順に並べ、`limit` で切る
     unit_tests:
       - name: test_list_next_candidates
         case: 正常
         summary: 前提が揃った未決定を決めた順に並べる
-        condition: 'フェーズ `目的`→`要件`→`構成`。D-1 `要件`・`小`／D-2 `目的`・`小`／D-3 `要件`・`大`／D-4 `要件`・`大`／D-5 `depends_on: [D-1]`／D-6 `depends_on: [D-4]`／D-7 `depends_on: [D-6]`（どれも未決定）'
+        condition: 'フェーズ `目的`→`要件`→`構成`。D-1 `要件`・`小`／D-2 `目的`・`小`／D-3 `要件`・`大`／D-4 `要件`・`大`／D-5 `related: [{to: D-1, type: depends_on}]`／D-6 `related: [{to: D-4, type: depends_on}]`／D-7 `related: [{to: D-6, type: depends_on}]`（どれも未決定）'
         mock: なし
         expected: D-2・D-4（followers 2）・D-3（followers 0）・D-1（followers 1）
       - name: test_list_next_candidates_when_phase_unknown
@@ -395,8 +395,8 @@ functions:
       description: 再開時の状況
     process: |-
       1. 状態が `要見直し` の検討事項と `進行中` のタスクを拾う
-      2. 状態が `保留` の検討事項・タスクを、`depends_on` で分ける（決着の判定。`is_settled`）
-         - `depends_on` が空の場合、`on_hold` に入れる
+      2. 状態が `保留` の検討事項・タスクを、種類 `depends_on` の `related` で分ける（決着の判定。`is_settled`）
+         - 種類 `depends_on` の `related` が無い場合、`on_hold` に入れる
          - 全て決着している場合、`resumable` に入れる
          - 未完了が残る場合、未完了の ID を `waiting_for` にして `waiting` に入れる
       3. 次の候補を `STATUS_NEXT_LIMIT` 件引く（`list_next_candidates`）
@@ -404,6 +404,6 @@ functions:
       - name: test_summarize_status
         case: 正常
         summary: 状態と依存で分ける
-        condition: 'D-1 `要見直し`／T-1 `進行中`／D-2 `保留`・`depends_on: [D-3]`／D-3 `決定済み`／D-4 `保留`・`depends_on: [D-5]`／D-5 `未決定`／D-6 `保留`・`reason: 予算が決まったら`／T-2 `保留`・`depends_on: [T-1]`'
+        condition: 'D-1 `要見直し`／T-1 `進行中`／D-2 `保留`・`related: [{to: D-3, type: depends_on}]`／D-3 `決定済み`／D-4 `保留`・`related: [{to: D-5, type: depends_on}]`／D-5 `未決定`／D-6 `保留`・`reason: 予算が決まったら`／T-2 `保留`・`related: [{to: T-1, type: depends_on}]`'
         mock: なし
         expected: '`needs_review` D-1、`in_progress` T-1、`resumable` D-2、`waiting` D-4（`[D-5]`）と T-2（`[T-1]`）、`on_hold` D-6（reason つき）、`next` D-5'

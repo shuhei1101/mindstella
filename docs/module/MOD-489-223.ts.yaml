@@ -8,6 +8,18 @@ components:
     kind: コンポーネント
     summary: 部品設計『トップバー』の引数を受け、画面を移る・検索を開く・テーマの切り替えをコールバックで知らせる。検索の入口は `aria-keyshortcuts="Control+K Meta+K"` を持ち、右端の `kbd` にキーの案内（`navigator.platform` が Mac・iPhone・iPad なら `⌘K`、それ以外は `Ctrl+K`）を出す
     props:
+      - name: duplicateIds
+        type: '{id: string, kind: string}[]'
+        required: false
+        description: 重なった ID。空でなければタブの帯の下に重なった ID の通知（`duplicateIdNotice`）を出す
+      - name: onOpenDuplicate
+        type: '(id: string) => void'
+        required: false
+        description: 重なった ID の通知の ID のリンクを押したとき
+      - name: onCloseDuplicate
+        type: () => void
+        required: false
+        description: 重なった ID の通知を閉じたとき
       - name: title
         type: string
         required: true
@@ -106,3 +118,10 @@ components:
         required: false
         default: なし
         description: 音声入力中の表示・帯の「入力欄を開く」を押したとき `open`、帯の × を押したとき `dismiss`
+    unit_tests:
+      - name: test_topbar_when_duplicate_ids
+        case: 正常
+        summary: 重なった ID があれば通知を出し、閉じると知らせる
+        condition: '`duplicateIds: [{id: D-12, kind: 検討事項}]`。閉じるボタンを押す'
+        mock: '`onCloseDuplicate`'
+        expected: タブの帯の下に `role="alert"` の帯があり `D-12` のリンクを持つ。`onCloseDuplicate` が 1 回呼ばれる

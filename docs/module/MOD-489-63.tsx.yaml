@@ -6,7 +6,7 @@ components:
     title: チップの入力
     kind: コンポーネント
     usecase: 画面で項目を編集して保存する
-    summary: 部品設計『チップの入力.tsx』の props・イベント・状態を持つ
+    summary: 部品設計『チップの入力.tsx』の props（`validate` を含む）・イベント・状態を持つ
     refs:
       - CMP-489-18#
     unit_tests:
@@ -16,6 +16,12 @@ components:
         condition: 入力して Enter
         mock: なし
         expected: '`onChange` が新しい並びで呼ばれる'
+      - name: test_chips_input_when_validate
+        case: 正常
+        summary: validate の value を追加し、error なら追加せず誤りを出す
+        condition: '`validate` が `保存先` に `{value: D-2}`、`D-99` に `{error: ...}` を返す。順に入れて Enter'
+        mock: なし
+        expected: '`onChange` が `[D-2]` で 1 回だけ。`D-99` は入力欄に残り、直下に「入力の誤り: ...」、入力欄が `aria-invalid` と `aria-describedby` を持つ'
     container: frontend/src/shared/components/chips-input.tsx
 notes:
   単体テスト: 同じフォルダの `chips-input.test.tsx` に置く（knowledge の規約『フォルダ構成』）

@@ -1556,9 +1556,6 @@ files:
   tags:
   - topic:タグ
   - topic:検索
-  related:
-  - to: MOD-489-161
-    type: implements
 - path: skills/mindmap/scripts/readme.py
   name: ワークスペースの README の書き出し
   description: ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL）の組み立てと書き込み。ワークスペースの直下の README.md の中身を変更するときに読む。

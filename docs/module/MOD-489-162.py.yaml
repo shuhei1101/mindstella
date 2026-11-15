@@ -13,19 +13,19 @@ constants:
     title: 参照の正しい種類
     container: plugins/mindstella/skills/mindmap/scripts/checker.py
     usecase: ワークスペースの点検
-    summary: （参照する側の種類, キー）→ 指してよい種類。表に無い組はそのキーを持たない
+    summary: （参照する側の種類, `related` の種類かキー）→ 指してよい種類。表に無い組は持たない
     entries:
-      - key: (decision, depends_on)
+      - key: (decision, related.depends_on)
         value: decision
-      - key: (decision, parent)
+      - key: (decision, related.parent)
         value: decision
       - key: (decision, sources)
         value: log
-      - key: (task, depends_on)
+      - key: (task, related.depends_on)
         value: task
-      - key: (task, for)
+      - key: (task, related.for)
         value: decision
-      - key: (全ての種類, related)
+      - key: (全ての種類, related.see_also)
         value: 全ての種類
       - key: (設定, goal.deliverables[].doc)
         value: doc
@@ -61,15 +61,15 @@ functions:
       - name: test_check_workspace
         case: 正常
         summary: 整ったワークスペースは問題 0 件
-        condition: 'D-1（本文 `docs/D-1.md` あり）・D-2 `depends_on: [D-1]`'
+        condition: 'D-1（本文 `docs/D-1.md` あり）・D-2 `related: [{to: D-1, type: depends_on}]`'
         mock: なし
         expected: 空の並び
       - name: test_check_workspace_when_problems
         case: 正常
         summary: 4 種類の問題をまとめて返す
-        condition: 'D-1 `depends_on: [D-9]`・D-2 `status: 完了`・R-1 `body: R-1.md`（ファイル無し）・`docs/X-1.md`（どこからも指されない）'
+        condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・D-2 `status: 完了`・R-1 `body: R-1.md`（ファイル無し）・`docs/X-1.md`（どこからも指されない）'
         mock: なし
-        expected: '`broken_ref`（D-1・`depends_on`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.md` → `.mindstella/research.yaml` の順'
+        expected: '`broken_ref`（D-1・`related[0].to`）・`schema`（`items[1].status`）・`orphan_body`（`.mindstella/docs/X-1.md`）・`missing_body`（R-1）を含み、`.mindstella/decisions.yaml` → `.mindstella/docs/X-1.md` → `.mindstella/research.yaml` の順'
       - name: test_check_workspace_when_decision_state
         case: 正常
         summary: 案と状態の合わない検討事項を拾い、必須でない状態は拾わない
@@ -117,34 +117,35 @@ functions:
       type: list[Problem]
       description: 問題の並び（`detail` に指した ID と理由）
     process: |-
-      1. 全ての項目と設定の `goal.deliverables[].doc` について、`REF_RULES` のキーの値の ID を見る（設定が `goal` を持たなければ設定は見ない）
+      1. 全ての項目の `related[].to`（`related[].type` の組で `REF_RULES` を引く）と `sources`、設定の `goal.deliverables[].doc` の ID を見る（設定が `goal` を持たなければ設定は見ない）。問題のキーのパスは `related[{番号}].to` にする
+         - `REF_RULES` に無い組（`related[].type` が `related.types` に無い・その種類が持てない種類）の場合、`broken_ref`（`使えない関連の種類: {種類}`）
          - 種類が合わない場合、`broken_ref`（`指してはいけない種類: {ID}`）
          - その種類に ID が無い場合、`broken_ref`（`存在しない ID: {ID}`）
     unit_tests:
       - name: test_check_refs_when_missing
         case: 正常
         summary: 存在しない ID を指す参照
-        condition: 'D-1 `depends_on: [D-9]`・T-1 `for: [D-8]`・設定の `goal.deliverables[0].doc: A-9`'
+        condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・T-1 `related: [{to: D-8, type: for}]`・設定の `goal.deliverables[0].doc: A-9`'
         mock: なし
         expected: 3 件の `broken_ref`（`detail` に `D-9`・`D-8`・`A-9`）
       - name: test_check_refs_when_wrong_kind
         case: 正常
         summary: 決めた種類でない ID を指す参照
-        condition: 'D-1 `parent: T-1`（T-1 はある）'
+        condition: 'D-1 `related: [{to: T-1, type: parent}]`（T-1 はある）'
         mock: なし
-        expected: '`broken_ref`（D-1・`parent`・`detail` に `T-1`）'
+        expected: '`broken_ref`（D-1・`related[0].to`・`detail` に `T-1`）'
       - name: test_check_refs_when_related_any_kind
         case: 正常
-        summary: related は種類を問わない
-        condition: 'D-1 `related: [T-1, G-1]`（どちらもある）'
+        summary: 種類 see_also の related は、指す項目の種類を問わない
+        condition: 'D-1 `related: [{to: T-1, type: see_also}, {to: G-1, type: see_also}]`（どちらもある）'
         mock: なし
         expected: 空の並び
       - name: test_check_refs_when_no_goal
         case: 正常
         summary: ゴールを持たない設定は納品物の参照を見ない
-        condition: '`goal` を持たない設定と D-1 `depends_on: [D-9]`'
+        condition: '`goal` を持たない設定と D-1 `related: [{to: D-9, type: depends_on}]`'
         mock: なし
-        expected: '`broken_ref`（D-1・`depends_on`・`detail` に `D-9`）の 1 件だけ'
+        expected: '`broken_ref`（D-1・`related[0].to`・`detail` に `D-9`）の 1 件だけ'
   - name: _check_bodies
     title: 本文のずれの点検
     kind: 関数
@@ -349,7 +350,7 @@ functions:
       type: list[str]
       description: '`{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行（指している記録が無ければ空）'
     process: |-
-      1. 種類の順に、`REF_RULES` のキーで `item_id` を指すほかの項目を拾う（`{種類のファイル}: {指している項目の ID}: {キー}`）
+      1. 種類の順に、`related[].to`・`sources` で `item_id` を指すほかの項目を拾う（`{種類のファイル}: {指している項目の ID}: {related.{種類} か sources}`）
       2. 設定の納品物の `doc` が指していれば拾う（`config.yaml: goal.deliverables[{番号}].doc: doc`）
       3. レビュー中のコメント・書きかけの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、書きかけは `drafts.yaml: items[{番号}]: target`）
       4. 取り込み待ちのスレッド（`awaiting_posts` が 1 件以上。オープンでもクローズでも）の `target` が指していれば拾う（`load_threads`。`threads.yaml: {スレッドの ID}: target`）
@@ -357,9 +358,9 @@ functions:
       - name: test_find_referrers
         case: 正常
         summary: 項目・納品物・コメントが指すのを拾う
-        condition: D-1 を D-2 の `depends_on` と T-1 の `for` が指し、A-1 を納品物の `doc` とコメント C-1 が指す。D-1 と A-1 でそれぞれ呼ぶ
+        condition: D-1 を D-2 の種類 `depends_on` の `related` と T-1 の種類 `for` の `related` が指し、A-1 を納品物の `doc` とコメント C-1 が指す。D-1 と A-1 でそれぞれ呼ぶ
         mock: なし
-        expected: 'D-1 は `decisions.yaml: D-2: depends_on` と `tasks.yaml: T-1: for`、A-1 は `config.yaml: goal.deliverables[0].doc: doc` と `comments.yaml: C-1: target`'
+        expected: 'D-1 は `decisions.yaml: D-2: related.depends_on` と `tasks.yaml: T-1: related.for`、A-1 は `config.yaml: goal.deliverables[0].doc: doc` と `comments.yaml: C-1: target`'
       - name: test_find_referrers_with_threads
         case: 正常
         summary: 取り込み待ちのスレッドだけを拾う
