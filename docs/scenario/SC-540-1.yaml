@@ -1,0 +1,249 @@
+title: 書き込みを履歴に残す
+lead: 常駐サーバーの変更の検知が、ワークスペースの記録の書き込みをフォルダの監視で見つけ、項目の変更履歴・日時・編集した人・通し番号に記録し、MindStella のセッションの応答の途中でない間の変更を外部の変更のまとまりとして自動で commit する単一ユースケース。
+issue: 517
+primary_actor: 常駐サーバーの変更の検知
+stakeholders:
+  - name: 利用者
+    interest: どのセッションが書き込んだ変更も履歴に残り、変更履歴から差分を確かめられる
+  - name: MindStella のセッション
+    interest: 自分の書き込みと、ほかのセッションの書き込みが、別のまとまりに分かれる
+trigger: 配信しているワークスペースの記録のファイル（種類ごとの YAML と `.mindstella/docs/` の本文）が書き換わる
+preconditions:
+  - ワークスペースが作成済みで、常駐サーバーが配信している
+success_guarantee: 書き換えた項目の変更履歴・更新日・編集した人・通し番号が記録され、MindStella のセッションの応答の途中の変更はそのセッションのまだまとめていない変更に、それ以外は外部の変更のまとまりに入る。
+minimal_guarantee: Git の操作（checkout・merge）による書き換えは記録しない。MindStella の MCP と画面の書き込みを二重に記録しない。
+scenarios:
+  - name: 正常シナリオ（外部の変更をまとめる）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、project-index の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、`commit` を済ませたワークスペース
+      - name: 通常のセッション
+        description: 状態に登録していない `session_id` で project-index の `write_docs` を呼ぶ。MindStella のセッションは状態に無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（通常のセッション）
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        CC->>PI: D-1 の答えを直す
+        PI->>WS: decisions.yaml に書く
+        CD->>WS: 書き換えを見つけ、直す前の値を D-1 の変更履歴に積む
+        CD->>CD: MindStella のセッションの応答の途中でないので、外部の変更とする
+        CD->>CD: 書き換えが止んでから決めた時間を待つ
+        CD->>WS: 外部の変更のまとまりとして commit する
+      ```
+    expected:
+      - D-1 が変更履歴を 1 回分持ち、直す前の答えが入っている
+      - D-1 の `updated_by` と、その変更履歴の書き換えた人が、外部の変更を表す値である
+      - まとまりが 1 つ増え、外部の変更のまとまりであることを持ち、D-1 の変更履歴がそのまとまりに属する
+      - '`pending` が空を返す'
+    test: test_normal_when_external_change_committed
+  - name: 正常シナリオ（応答の途中の書き込み）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、`commit` を済ませたワークスペース
+      - name: MindStella のセッション
+        description: 状態に登録し、応答の始まり（UserPromptSubmit）を記録した MindStella のセッション
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（MindStella のセッション）
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+        participant MS as MindStella の MCP
+
+        CC->>PI: D-1 の答えを直す
+        PI->>WS: decisions.yaml に書く
+        CD->>WS: 書き換えを見つけ、D-1 の変更履歴に積む
+        CD->>CD: MindStella のセッションの応答の途中なので、そのセッションの変更とする
+        CC->>MS: pending
+        MS-->>CC: D-1
+      ```
+    expected:
+      - D-1 の `updated_by` と、その変更履歴の書き換えた人が `ai` である
+      - '`pending` が D-1（変えたキー `answer`）を返し、自動で commit されない'
+    test: test_normal_when_session_responding
+  - name: 正常シナリオ（落ちた MindStella のセッションの書き込み）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、project-index の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持つワークスペース
+      - name: MindStella のセッション
+        description: 状態は応答の途中のまま、tmux のペインとプロセスが無い MindStella のセッション
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（通常のセッション）
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        CC->>PI: D-1 の答えを直す
+        PI->>WS: decisions.yaml に書く
+        CD->>WS: 書き換えを見つける
+        CD->>CD: 状態は応答の途中だが、ペインとプロセスが無いので外部の変更とする
+        CD->>WS: 外部の変更のまとまりとして commit する
+      ```
+    expected:
+      - D-1 の変更履歴が外部の変更のまとまりに属する
+    test: test_normal_when_session_gone
+  - name: 正常シナリオ（画面の書き込みを二重に記録しない）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、配信の HTTP を呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持つワークスペース
+      - name: 保存待ちの編集
+        description: D-1 の答えを直す保存待ちの編集
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant BR as ブラウザ
+        participant SV as 配信
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        BR->>SV: 保存待ちの編集をまとめて保存する
+        SV->>WS: decisions.yaml に書き、変更履歴と利用者のまとまりを自分で記録する
+        CD->>WS: 書き換えを見つける
+        CD->>CD: 配信が記録した書き込みなので、記録しない
+      ```
+    expected:
+      - D-1 の変更履歴が 1 回分だけで、書き換えた人が利用者である
+      - まとまりが利用者のまとまり 1 つだけ増える
+    test: test_normal_when_preview_write_not_doubled
+  - name: 正常シナリオ（Git の操作による書き換え）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、ワークスペースのフォルダで git を実行する）
+      - name: make_workspace
+        description: Git で管理し、D-1 の答えが違う 2 つのブランチを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant US as 利用者
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        US->>WS: もう一方のブランチを checkout する
+        CD->>WS: 書き換えを見つける
+        CD->>CD: Git の操作による書き換えなので、記録しない
+      ```
+    expected:
+      - D-1 の変更履歴が増えない
+      - まとまりが増えず、`pending` が空を返す
+    test: test_normal_when_git_checkout
+  - name: 正常シナリオ（重なった ID を通知する）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、project-index の MCP にクライアントでつなぐ。MindStella のセッションのペインへの貼り付けは記録するだけにする）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、MindStella のセッションを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（通常のセッション）
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+        participant BR as ブラウザ
+
+        CC->>PI: next_id を通さずに、ID が D-1 の検討事項をもう 1 件書き込む
+        PI->>WS: decisions.yaml に書く
+        CD->>WS: 書き換えを見つけ、D-1 が 2 件あることを見つける
+        CD->>BR: 重なった ID を通知する
+        CD->>CD: MindStella のセッションのペインへ、重なった ID を貼り付ける
+      ```
+    expected:
+      - 開いている画面に、重なった ID `D-1` の通知が届く
+      - MindStella のセッションのペインへ、重なった ID `D-1` の通知が 1 回貼り付けられる
+    test: test_normal_when_duplicate_id
+  - name: 正常シナリオ（保持する回数を超えて直す）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、project-index の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `history_limit` を 1 にして、本文を持つ検討事項 D-1 を 1 件足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        CC->>PI: D-1 の答えを直す
+        CD->>WS: 変更履歴を 1 回分積む
+        CC->>PI: D-1 の本文を直す
+        CD->>WS: 変更履歴を積み、保持する回数を超えた古い履歴を消す
+        CC->>PI: D-1 の本文を同じ中身で直す
+        CD->>CD: 変わったキーが無く、変更履歴を積まない
+      ```
+    expected:
+      - D-1 の変更履歴が 1 回分だけで、本文を直した回のものである
+      - その変更履歴から、本文を直す前の本文を組み立てられる
+      - 答えを直した回の変更履歴は残っていない
+      - 同じ中身で直した後も、変更履歴はその前と同じ
+      - 変更履歴に本文の全文は入っていない
+    test: test_normal_when_over_history_limit
+  - name: 正常シナリオ（保持する回数が 0）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、project-index の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 保持する回数を 0 にし、検討事項 D-1 を 1 件足したワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code
+        participant PI as project-index
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        CC->>PI: D-1 の答えを直す
+        PI->>WS: decisions.yaml に書く
+        CD->>CD: 保持する回数が 0 のため、変更履歴を積まない
+      ```
+    expected:
+      - D-1 の答えが直した値になっている
+      - D-1 が変更履歴を持たない
+    test: test_normal_when_history_limit_zero
+  - name: 正常シナリオ（読んでいない回を残す）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
+      - name: make_workspace
+        description: 保持する回数を 1 にし、検討事項 D-1 を足してから前回読んだ時点からの変更を一度読んだワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（MindStella のセッション）
+        participant PI as project-index
+        participant MS as MindStella の MCP
+        participant CD as 変更の検知
+
+        CC->>PI: D-1 の答えを直す
+        CC->>PI: D-1 の理由を直す
+        CD->>CD: 保持する回数を超えるが、どちらの回も AI が最後に読んだ時点より後なので消さない
+        CC->>MS: 前回読んだ時点からの変更を読む
+        CC->>PI: D-1 の答えをもう一度直す
+        CD->>CD: 読み終えた回のうち、保持する回数を超えた古い回を消す
+      ```
+    expected:
+      - 2 回直した後、D-1 が変更履歴を 2 回分持ち、`history_dropped_seq` を持たない
+      - 前回読んだ時点からの変更が、D-1 の答えと理由の両方を前の値つきで返す
+      - 3 回目に直した後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が消した回の最も大きい通し番号である
+    test: test_normal_when_unread_history_kept
+notes:
+  読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、超えた古い回を消す。保持する回数が 0 のときは積まない
+  自動で commit する契機: 書き換えが止んでから待つ時間は、インターフェース定義設計で規約『資源の値の決め方』から導く
+  Git の操作の見分け方: checkout・merge による書き換えを見分ける手段は、インターフェース定義設計で決める
+id: SC-540-1
