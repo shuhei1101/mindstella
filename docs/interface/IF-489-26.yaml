@@ -251,6 +251,7 @@ flows:
       - ツールのエラーにならず、`ok` が偽
       - '`problems` に `duplicate_id`（`D-1`）が 1 件ある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal_when_duplicate_ids
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）

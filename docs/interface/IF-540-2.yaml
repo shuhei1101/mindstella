@@ -4,6 +4,7 @@ entry:
   kind: trigger
   value: 配信しているワークスペースの記録のファイルの書き換え（『書き換えの知らせ』と同じ書き換えの印を 250ms ごとに作り直し、前と違ったとき）
 lead: 常駐サーバーが、ワークスペースの記録の書き換えを前回の中身と比べて項目の追加・変更・削除を見つけ、作成日・更新日・編集した人・変更履歴・通し番号を記録する。MindStella のセッションの応答の途中でない間の変更は、外部の変更のまとまりとして自動で commit する。
+test_file: tests/integration/server/test_change_detection.py
 idempotent: true
 side_effects: '`history.yaml` の項目の行（`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`）と、`changes.yaml` の `last_seq`・`pending`・`sets` を書き換える。見るファイル（種類ごとの YAML と本文）は書かない。状態のフォルダの `workspaces/{ID}/snapshot/` に前回の中身を書く。重なった ID を見つけたら、開いている画面へ知らせ、MindStella のセッションのペインへ貼り付ける'
 callers:
@@ -90,6 +91,7 @@ flows:
       - '`history.yaml` の D-1 の `updated_by` が `external`'
       - '`decisions.yaml` の中身が、クライアントが書いた後のまま（検知が書き換えない）'
       - '`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'
+    test: test_normal
   - name: 正常系（応答の途中の書き込み）
     summary: MindStella のセッションの応答の途中の書き込みは、そのセッションのまだまとめていない変更にする
     setup:
@@ -115,6 +117,7 @@ flows:
       - '`history.yaml` の D-1 の `updated_by` と変更履歴の `by` が `ai`'
       - '`changes.yaml` の `pending.changed` が `[D-1]`、`pending.by` が `ai`'
       - 自動で commit するまでの時間を過ぎても、まとまりが増えない
+    test: test_normal_when_responding
   - name: 正常系（落ちた MindStella のセッション）
     summary: 状態が応答の途中でも、ペインとプロセスが無ければ外部の変更にする
     setup:
@@ -137,6 +140,7 @@ flows:
       ```
     expected:
       - D-1 の変更履歴の `by` が `external` で、外部の変更のまとまりに属する
+    test: test_normal_when_session_crashed
   - name: 正常系（画面の書き込み）
     summary: 画面の保存が書いた変更を二重に記録しない
     setup:
@@ -158,6 +162,7 @@ flows:
     expected:
       - D-1 の変更履歴が 1 回分だけで、`by` が `user`
       - まとまりが利用者のまとまり 1 つだけ増える
+    test: test_normal_when_screen_save
   - name: 正常系（Git の操作）
     summary: checkout による書き換えは記録しない
     setup:
@@ -180,6 +185,7 @@ flows:
       - D-1 の変更履歴が増えない
       - まとまりが増えず、`pending` が空
       - checkout の後に D-1 の答えを直すと、checkout の後の中身との違いだけが変更履歴に積まれる
+    test: test_normal_when_git_checkout
   - name: 正常系（重なった ID）
     summary: 同じ ID の項目が 2 件になったら、画面とペインへ 1 回知らせる
     setup:
@@ -205,6 +211,7 @@ flows:
     expected:
       - '`/api/events` に `event: duplicate_ids` が 1 回だけ届き、`data` が `["D-1"]`'
       - 'ペインに `[mindstella] 同じ ID の項目が 2 件あります: D-1` で始まる行が 1 回だけある'
+    test: test_normal_when_duplicate_ids
   - name: 正常系（保持する回数を超える）
     summary: 保持する回数を超えた古い変更履歴を消し、同じ中身の書き換えでは積まない
     setup:
@@ -230,6 +237,7 @@ flows:
       - D-1 の変更履歴が 1 回分だけで、本文を直した回のもの
       - その回の `body_diff` を当てると、本文を直す前の本文になる
       - 同じ中身で書き直した後も、変更履歴と `last_seq` がその前と同じ
+    test: test_normal_when_history_limit_exceeded
   - name: 正常系（保持する回数が 0）
     summary: 変更履歴を積まずに通し番号だけ進める
     setup:
@@ -250,6 +258,7 @@ flows:
     expected:
       - '`history.yaml` の D-1 が `history` を持たず、`seq` が書き換え前の `last_seq` + 1'
       - '`pending.changed` に D-1 が無い'
+    test: test_normal_when_history_limit_zero
   - name: 正常系（読んでいない回）
     summary: AI がまだ読んでいない回は、保持する回数を超えても消さない
     setup:
@@ -274,6 +283,7 @@ flows:
     expected:
       - 2 回直した後、D-1 が変更履歴を 2 回分持ち、`history_dropped_seq` を持たない
       - 3 回目の後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が消した回の最も大きい `seq`
+    test: test_normal_when_unread
   - name: 正常系（止まっていた間の変更）
     summary: 常駐サーバーが止まっていた間の書き換えを、起動したときに外部の変更として記録する
     setup:
@@ -294,6 +304,7 @@ flows:
       ```
     expected:
       - D-1 の変更履歴の `by` が `external`
+    test: test_normal_when_server_was_stopped
   - name: 正常系（書き込みの途中）
     summary: 読めない YAML の回は飛ばし、読めるようになってから記録する
     setup:
@@ -316,6 +327,7 @@ flows:
     expected:
       - 読めない中身の間、`decisions.yaml` と `changes.yaml` を書き換えない
       - 正しい中身に戻した後、D-1 が変更履歴を 1 回分持つ
+    test: test_normal_when_partial_write
 refs:
   - ER-489-1#
   - ER-531-1#

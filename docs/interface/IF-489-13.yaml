@@ -158,6 +158,7 @@ flows:
     expected:
       - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: new_thread`'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_not_mindstella_session
 lead: AI から利用者へ返事を求めるスレッドを立てる。最初の書き込みは AI の本文で、要約とタグを一緒に書く。
 idempotent: false
 side_effects: '`threads.yaml` にオープンのスレッドを 1 件足す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'

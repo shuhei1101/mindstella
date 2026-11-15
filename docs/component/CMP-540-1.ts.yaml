@@ -19,6 +19,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にして見せる
 lead: トップバーの下に出す、同じ ID の項目が 2 件あることの通知の帯。重なった ID と、片方の ID を変更する案内を出し、閉じられる。
+test_file: tests/integration/storybook/test_duplicate_id_notice_stories.py
 args:
   - name: ids
     type: オブジェクトの配列

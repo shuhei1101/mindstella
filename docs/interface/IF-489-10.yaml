@@ -257,6 +257,7 @@ flows:
     expected:
       - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: set_thread_status`'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_not_mindstella_session
 lead: AI がスレッドをクローズにするかオープンに戻し、書き手（AI）・任意の理由・日時をスレッドに残す。利用者の書き換えは『画面からのスレッドの状態の書き換え』。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'

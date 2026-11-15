@@ -185,6 +185,7 @@ flows:
       - ツールのエラーにならない
       - '`changed` が D-1 の 1 件で、変わったキーが `answer`、読んだ時点の答えを持つ'
       - D-1 の `updated_by` が `external`、`by` が `["external"]`
+    test: test_normal_when_external
 lead: AI が最後に読んだ時点（`changes.yaml` の `read_seq`）より後に足した・変えた・消した項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。`session` の準備で必ず呼ぶ。
 idempotent: false
 side_effects: '`changes.yaml` の `read_seq` を書き換える（`changes.yaml` が無ければ、まとまり 0 件・まだまとめていない変更なし・`last_seq: 0`・`read_seq: 0` で作る）。項目の YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'

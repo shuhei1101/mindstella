@@ -203,6 +203,7 @@ flows:
     expected:
       - ツールのエラーにならず、`id` が `null`
       - '`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'
+    test: test_normal_when_external_pending
   - name: 異常系（MindStella のセッションでない・NotMindStellaSessionError）
     summary: MindStella のセッションでない呼び出しではまとめない
     setup:
@@ -226,6 +227,7 @@ flows:
     expected:
       - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: commit`'
       - '`changes.yaml` の中身が呼ぶ前と同じ'
+    test: test_error_when_not_mindstella_session
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'

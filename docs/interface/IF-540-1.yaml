@@ -4,6 +4,7 @@ entry:
   kind: mcp_tool
   value: '`next_id`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__next_id`）。結果とエラーの返し方は『MCP サーバーの起動』'
 lead: 項目を project-index の `write_docs` で書き込む前に、種類ごとの次の ID を返す。返した ID は予約として常駐サーバーが持ち、並行して取った ID と重ならない。
+test_file: tests/integration/server/test_next_id.py
 idempotent: false
 side_effects: 常駐サーバーのメモリの上の、ワークスペースごとの予約の番号を進める。ワークスペースのファイルは書き換えない
 callers:
@@ -83,6 +84,7 @@ flows:
       - ツールのエラーにならない
       - '`ids` が `[D-4]`'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal
   - name: 正常系（並行して取る）
     summary: 書き込む前に続けて取っても、同じ ID を返さない
     setup:
@@ -108,6 +110,7 @@ flows:
     expected:
       - 2 つの呼び出しが返した ID が、`D-2`・`D-3`・`D-4` を重ならずに分け合う
       - どの ID の項目も書き込んでいなくても、続けて取った ID が `D-5`
+    test: test_normal_when_parallel
   - name: 異常系（決めた種類でない・引数の誤り）
     summary: 知らない種類には ID を振らない
     setup:
@@ -129,6 +132,7 @@ flows:
     expected:
       - '1 回目がツールのエラーになり、本文が `エラー: 引数の誤り: kind:` で始まる'
       - 2 回目の `ids` が `[D-2]`（1 回目で予約を進めていない）
+    test: test_error_when_unknown_kind
   - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
     summary: .mindstella/config.yaml が無いフォルダを指すと、ID を振らない
     setup:
@@ -150,6 +154,7 @@ flows:
     expected:
       - ツールのエラーになる
       - エラーの本文にフォルダのパスがある
+    test: test_error_when_workspace_not_found
 refs:
   - ER-489-1#
   - IF-489-1#

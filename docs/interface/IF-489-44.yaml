@@ -114,6 +114,7 @@ flows:
       ```
     expected:
       - '書いてから 1 秒以内に `event: duplicate_ids` が届き、`data` が `["D-1"]`'
+    test: test_normal_when_duplicate_ids
 lead: 配信しているワークスペースのファイルが書き換わったら、開いている画面へ Server-Sent Events で知らせる。画面は知らせを受けて『記録の取得』を読み直す。
 idempotent: true
 side_effects: なし（読むだけ。接続ごとにワークスペースのファイルの更新日時を見続ける）
