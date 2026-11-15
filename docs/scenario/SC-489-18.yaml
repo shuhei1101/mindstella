@@ -158,10 +158,11 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant P as プレビュー（ブラウザ）
         actor U as 利用者
 
-        CC->>SV: update（D-3 の本文を書き換える）と commit
+        CC->>PI: write_docs（D-3 の本文を書き換える）と commit
         SV-->>P: 書き換えを知らせる
         P->>SV: 記録を読み直す
         P-->>U: 同じ時点の差分の表示のまま描き直した検討事項の表

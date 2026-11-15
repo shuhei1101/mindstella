@@ -16,6 +16,7 @@ scenarios:
         actor U as 利用者
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         U->>CC: /mindstella:session {フォルダ}
@@ -27,7 +28,7 @@ scenarios:
         SV-->>CC: D-1 への「案 A にする」
         CC-->>U: 届いていたコメントを示す
         CC->>SV: adopt D-1 A
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: スレッドへ返信する（D-1 の ID を含む）・取り込み済みにする・要約を書き直す
         SV->>WS: 書く
       ```
@@ -77,6 +78,7 @@ scenarios:
         actor U as 利用者
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         U->>CC: /mindstella:session {フォルダ}
@@ -84,11 +86,11 @@ scenarios:
         SV-->>CC: 2 件
         CC->>SV: 1 件目のスレッドを読む（未読だけ）
         SV-->>CC: A-1 の 2 行目への「ここは言い換える」
-        CC->>SV: add（会話ログ。A-1 の箇所と選んだ文を添える）
+        CC->>PI: write_docs（会話ログ。A-1 の箇所と選んだ文を添える）
         CC->>SV: 1 件目へ返信する・取り込み済みにする・要約を書き直す
         CC->>SV: 2 件目のスレッドを読む（未読だけ）
         SV-->>CC: 項目を指さない「全体に目を通した」
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: 2 件目を取り込み済みにする・要約を書き直す
         CC->>SV: 2 件目をクローズにする（理由つき）
         SV->>WS: 書く
@@ -116,6 +118,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         participant SV as サーバー
+        participant PI as project-index
         participant CC as Claude Code（session）
         participant WS as ワークスペース
 
@@ -125,7 +128,7 @@ scenarios:
         CC->>SV: スレッドを読む（未読だけ）
         SV-->>CC: D-1 への「案 A にする」
         CC->>SV: adopt D-1 A
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: スレッドへ返信する（D-1 の ID を含む）・取り込み済みにする・要約を書き直す
         SV->>WS: 書く
       ```
@@ -149,13 +152,14 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: AI が立てたスレッド（要約つき）
         CC->>SV: スレッドを読む（未読だけ）
         SV-->>CC: 利用者の「起票してよい」
-        CC->>SV: add（メモ N-1 と会話ログ）
+        CC->>PI: write_docs（メモ N-1 と会話ログ）
         CC->>SV: スレッドへ返信する（N-1 の ID を含む）・取り込み済みにする・要約を書き直す
         SV->>WS: 書く
       ```
@@ -179,13 +183,14 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: D-1 へのスレッド
         CC->>SV: スレッドを読む（未読だけ）
         SV-->>CC: 利用者の「了解」
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: 取り込み済みにする・要約を書き直す
         CC->>SV: スレッドをクローズにする（理由つき）
         SV->>WS: 状態をクローズに書き、書き手（AI）・理由・日時を残す
@@ -210,6 +215,7 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: 取り込み待ちのスレッドの一覧
@@ -217,7 +223,7 @@ scenarios:
         CC->>SV: スレッドを読む（未読だけ）
         SV-->>CC: 利用者の「それでよい」
         CC->>SV: adopt D-1 B
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: 取り込み済みにする・要約を書き直す
         SV->>WS: 書く
       ```
@@ -241,13 +247,14 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: クローズの D-2 へのスレッド
         CC->>SV: スレッドを読む（未読だけ）
         SV-->>CC: 利用者の「版はどこに書く？」
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: スレッドをオープンに戻す（理由つき）
         SV->>WS: 状態をオープンに書き、書き手（AI）・理由・日時を残す
         CC->>SV: スレッドへ返信する（D-2 の ID を含む）・取り込み済みにする・要約を書き直す
@@ -272,13 +279,14 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: 取り込み待ちのスレッドの一覧
         SV-->>CC: D-1 へのスレッド
         CC->>SV: スレッドを読む（未読だけ）
         SV-->>CC: 利用者の「了解」
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: 取り込み済みにする・要約を書き直す
         CC->>SV: スレッドをクローズにする（理由つき）
         SV-->>CC: エラー（利用者が未読の AI の書き込み）
