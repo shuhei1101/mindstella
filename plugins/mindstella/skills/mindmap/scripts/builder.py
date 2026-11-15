@@ -49,6 +49,7 @@ SCRIPT_FILES = (
     "core/lock.js",
     "core/voice.js",
     "components/view-switch.js",
+    "components/duplicate-id-notice.js",
     "components/topbar.js",
     "components/diff-mark.js",
     "components/removed-band.js",
