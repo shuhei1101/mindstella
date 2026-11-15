@@ -3,6 +3,11 @@ title: チップの入力
 implementation: frontend/src/shared/components/chips-input.tsx#ChipsInput
 story: Shared/ChipsInput
 states:
+  - name: Error
+    description: '`validate` が誤りの文を返した。入力欄に入れた値が残り、入力欄の直下に「入力の誤り: D-99 が見つかりません。ID を確認してください。」、入力欄の枠を失敗の色にし、`aria-invalid`・`aria-describedby` を付ける'
+    args:
+      - name: validate
+        value: '値が D-99 のとき「D-99 が見つかりません。ID を確認してください。」を返す関数'
   - name: Default
     description: 参照の ID を等幅の文字のチップで並べる。主題のトグルを持たない
     args:
@@ -70,6 +75,11 @@ args:
     type: 真偽値
     required: true
     description: 真のとき、入力欄・チップを外すボタン・主題のトグルを押せなくする（削除を溜めた項目）
+  - name: validate
+    type: 関数
+    required: false
+    default: なし（入れた値をそのまま追加する）
+    description: '追加する前に入れた値を受け取り、誤りの文（文字列）か `null` を返す関数。誤りの文を返したときは追加せず、入れた値を入力欄に残して、入力欄の直下に「入力の誤り: {誤りの文}」を出し、入力欄に `aria-invalid="true"` と、その文を指す `aria-describedby` を付ける。入力を書き換えると誤りの文を消す'
 events:
   - name: change
     when: 値を追加したとき・チップを外したとき・主題のトグルを押したとき
@@ -79,6 +89,7 @@ uses:
   - component: CMP-489-16#
     how: 主題のチップに、タグの並びと同じ二重丸のマーカーと枠の濃さを当てる
 accessibility:
+  - 入力の誤りは色に加えて「入力の誤り:」の文言で伝え、入力欄と `aria-describedby` で結ぶ
   - 主題のトグルは `button` で、読み上げ名「{タグ} を主題」と押した状態（`aria-pressed`）を読み上げる。`title` は主題のとき「主題を外す」、それ以外は「主題にする」
   - 主題のトグルの押せる範囲は縦横 24px にする
   - トグルを押した後も、同じタグのトグルにフォーカスを残す
