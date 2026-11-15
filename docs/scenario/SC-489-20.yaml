@@ -138,7 +138,6 @@ scenarios:
       - フックが 0 の終了コードで終わり、出力に、常駐サーバーが読み込んだプラグインのフォルダの名前とインストール済みのフォルダの名前、起動のコマンドで再起動する手順がある
       - フックは常駐サーバーを再起動しておらず、先に待ち受けていた HTTP のサーバーがそのまま待ち受けている
       - 起動のコマンドで再起動すると、Mock の `systemctl --user` が mindstella のユニットの `restart` を受けている
-    test: test_normal_when_outdated_code
   - name: 異常シナリオ（待ち受けのポートが使われている）
     setup:
       - name: Mock

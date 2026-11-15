@@ -74,7 +74,6 @@ scenarios:
     expected:
       - ワークスペースの設定に進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録されている
       - Mock の MindStella のセッションが、`--mcp-config`・`--plugin-dir` と、進め方の文書の場所の環境変数を受け取っている
-    test: test_normal_when_options_given
   - name: 正常シナリオ（MindStella のセッションが既にある）
     setup:
       - name: Mock
@@ -101,7 +100,6 @@ scenarios:
     expected:
       - MindStella のセッションは 1 つのままで、Mock の claude-balancer が 2 回目の `exec` を受けていない
       - 起動のコマンドが、起動中の MindStella のセッションのペインへつないでいる
-    test: test_normal_when_session_exists
   - name: 正常シナリオ（古いコードの常駐サーバーが待ち受けている）
     setup:
       - name: Mock
@@ -220,7 +218,6 @@ scenarios:
     expected:
       - 起動のコマンドが 0 以外の終了コードで終わり、出力に許可するフォルダの外である旨がある
       - MindStella のセッションの作成を依頼しておらず、tmux にペインが立っていない
-    test: test_error_when_workspace_rejected
   - name: 異常シナリオ（MindStella のセッションを作れない）
     setup:
       - name: Mock
@@ -245,7 +242,6 @@ scenarios:
     expected:
       - 起動のコマンドが 0 以外の終了コードで終わり、出力に空いたアカウントが無い旨と画面の URL がある
       - ワークスペースは開いたままで、tmux にペインが残っていない
-    test: test_error_when_session_not_created
 lead: 利用者が起動のコマンドにワークスペースのフォルダ（と任意の進め方の文書・追加の MCP・プラグイン）を渡すと、依存を確かめ、常駐サーバーが落ちていれば systemd --user で起動してから、外部のアプリと同じ MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ単一ユースケース。
 issue: 67
 primary_actor: 利用者

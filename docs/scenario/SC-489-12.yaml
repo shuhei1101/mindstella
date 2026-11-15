@@ -56,7 +56,6 @@ scenarios:
     expected:
       - 返った画面の URL が、そのワークスペースのプレビューの URL の取得が返す URL と同じである
       - 開いた画面が、作ったワークスペースの概要である
-    test: test_normal_when_opened_from_create
   - name: 正常シナリオ（Claude Code を閉じた後も開ける）
     setup:
       - name: Mock

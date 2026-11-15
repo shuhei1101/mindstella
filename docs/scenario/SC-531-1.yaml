@@ -54,7 +54,6 @@ scenarios:
   - SessionStart のフックの注入に、進め方の文書の場所が入っている
   - 状態に MindStella のセッションの ID・Claude Code の `session_id`・tmux のペインが登録されている
   - 外部のアプリが、SessionStart のフックが状態に登録した後に、MindStella のセッションの ID と画面の URL を受け取っている
-  test: test_normal
 - name: 正常シナリオ（ワークスペースの記録が既にある）
   setup:
   - name: Mock
@@ -91,7 +90,6 @@ scenarios:
   - ワークスペースの記録と設定（ワークスペースの ID・進め方の文書）は変わっていない
   - 状態のフォルダに、今回指定した追加の MCP・プラグインが記録されている
   - ワークスペースが再び配信元に登録され、状態のフォルダの ID の一覧にある
-  test: test_normal_when_records_exist
 - name: 正常シナリオ（ワークスペースが既に開いている）
   setup:
   - name: Mock
@@ -117,7 +115,6 @@ scenarios:
   expected:
   - 記録・設定・状態のフォルダの記録・配信元の行は変わらず、外部のアプリが既にあるワークスペースの ID を受け取っている
   - 作成の応答が、今回の追加の MCP・プラグインの指定を記録しなかったことを示している（外部のアプリは設定の書き換えで指定する。D-341）
-  test: test_normal_when_workspace_open
 - name: 正常シナリオ（クローズしたワークスペースのフォルダ）
   setup:
   - name: Mock
@@ -149,7 +146,6 @@ scenarios:
   - ワークスペースの記録・設定・状態のフォルダの追加の MCP とプラグインの記録は変わっていない
   - '配信元の行が `outside_read: true` に戻り、外部のアプリがワークスペースの ID を受け取っている'
   - 状態がクローズ待ちでない
-  test: test_normal_when_workspace_closed
 - name: 正常シナリオ（claude-balancer が無い端末）
   setup:
   - name: Mock
@@ -176,7 +172,6 @@ scenarios:
     ```
   expected:
   - Mock のセッションが claude-balancer を通さずに起動し、外部のアプリが MindStella のセッションの ID と画面の URL を受け取っている
-  test: test_normal_when_no_balancer
 - name: 異常シナリオ（MindStella のセッションが既にある）
   setup:
   - name: Mock
@@ -200,7 +195,6 @@ scenarios:
   expected:
   - MindStella のセッションは 1 つのまま
   - 外部のアプリが、既にあるエラーと起動中の MindStella のセッションの ID・tmux のペインを受け取っている
-  test: test_error_when_session_exists
 - name: 異常シナリオ（クローズしたワークスペース）
   setup:
   - name: Mock
@@ -223,7 +217,6 @@ scenarios:
     ```
   expected:
   - MindStella のセッションが起動しておらず、外部のアプリがクローズしたワークスペースのエラーを受け取っている
-  test: test_error_when_workspace_closed
 - name: 異常シナリオ（許可するフォルダの外）
   setup:
   - name: Mock
@@ -244,7 +237,6 @@ scenarios:
   expected:
   - 外部のアプリが許可するフォルダの外のエラーを受け取っている
   - 記録・配信元の行・状態のフォルダの記録が作られていない
-  test: test_error_when_folder_not_allowed
 - name: 異常シナリオ（追加の MCP の定義が読めない）
   setup:
   - name: Mock
@@ -265,7 +257,6 @@ scenarios:
   expected:
   - 外部のアプリが読めない定義か重なった名前を示す追加の MCP の定義のエラーを受け取っている
   - 記録・配信元の行・状態のフォルダの記録が作られていない
-  test: test_error_when_mcp_config_invalid
 - name: 異常シナリオ（プラグインが見つからない）
   setup:
   - name: Mock
@@ -286,7 +277,6 @@ scenarios:
   expected:
   - 外部のアプリが見つからないプラグインを示すエラーを受け取っている
   - 記録・配信元の行・状態のフォルダの記録が作られていない
-  test: test_error_when_plugin_invalid
 - name: 異常シナリオ（進め方の文書を参照できない）
   setup:
   - name: Mock
@@ -314,7 +304,6 @@ scenarios:
   expected:
   - 記録・配信元の行・状態のフォルダの記録が作られていない
   - 外部のアプリが、参照できない進め方の文書と理由（無い・`scope.read` に含まれない）を含むエラーを受け取っている
-  test: test_error_when_flow_unreadable
 - name: 異常シナリオ（配信元の登録に失敗する）
   setup:
   - name: Mock
@@ -344,7 +333,6 @@ scenarios:
   expected:
   - この依頼で作った記録と、状態のフォルダの記録が残っていない
   - 外部のアプリが、失敗した段階（配信元の登録）と理由を含むエラーを受け取っている
-  test: test_error_when_source_registration_fails
 - name: 異常シナリオ（空いたアカウントが無い）
   setup:
   - name: Mock
@@ -372,7 +360,6 @@ scenarios:
   - tmux のペインが残っておらず、状態に MindStella のセッションが登録されていない
   - ワークスペースは開いたままで、配信元の行も残っている
   - 外部のアプリが、空いたアカウントが無いエラーを受け取っている
-  test: test_error_when_no_account
 - name: 異常シナリオ（MindStella のセッションの準備ができない）
   setup:
   - name: Mock
@@ -400,7 +387,6 @@ scenarios:
   - MindStella のセッションが止まり、tmux のペインが残っていない
   - ワークスペースは開いたままで、配信元の行も残っている
   - 外部のアプリが、失敗した段階（MindStella のセッションの準備）と理由を含むエラーを受け取っている
-  test: test_error_when_session_not_ready
 - name: 異常シナリオ（常駐サーバーが起動していない）
   setup:
   - name: Mock
@@ -422,7 +408,6 @@ scenarios:
     ```
   expected:
   - 外部のアプリが接続できないことを受け取り、常駐サーバーを起動した後の依頼で正常シナリオと同じ結果になっている
-  test: test_error_when_server_down
 lead: 外部のアプリがフォルダ・進め方の文書・追加の MCP・プラグインを指定してワークスペースを作り、続けて MindStella のセッションの作成を依頼し、MindStella のセッションの準備ができてから画面の URL と MindStella のセッションの ID を受け取る単一ユースケース。
 issue: 516
 primary_actor: 外部のアプリ（aituber など）
@@ -452,4 +437,3 @@ notes:
   受ける Host: API は `Host` が `127.0.0.1`・`localhost` の要求だけを受ける（D-340）
   スコープ外: '状態のフォルダに追加の MCP・プラグインの記録が無いワークスペースの作成（警告と画面の通知）は #520 で扱う'
   E2E の範囲: MindStella のセッションのエージェントと claude-balancer は Mock にし、起動と再開のエージェントフローの中身は確かめない
-test_file: tests/e2e/単一ユースケース/test_session_start.py
