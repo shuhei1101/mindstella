@@ -35,7 +35,7 @@
 /* ===== 変更履歴の外部の変更のまとまり ===== */
 
 /* モーダルを開いたまま見せる（実画面は showModal で開く） */
-dialog.hist.m-static { position: static; margin: 24px auto; display: flex; flex-direction: column; }
+dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 24px auto; display: flex; flex-direction: column; }
 /* 案 A: 名前の横の「外部の変更」の札（線の枠。強い色は使わない） */
 .hist-tag { display: inline-flex; align-items: center; height: 20px; margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); font-weight: 500; vertical-align: 1px; }
 /* 案 B: 行の頭の書き手の列 */
@@ -80,7 +80,7 @@ dialog.hist.m-static { position: static; margin: 24px auto; display: flex; flex-
 /* 相手のタイトル */
 .m-rel-to .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); font-size: var(--fs-small); }
 /* 種類の選択 */
-.m-rel select, .m-rel input { height: var(--control-h); padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
+.m-rel select, .m-rel input { min-width: 0; min-height: 32px; height: var(--control-h); padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
 /* 関連を足す行 */
 .m-rel-add { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; gap: 8px; }
 /* 足すボタン */
@@ -109,3 +109,6 @@ dialog.hist.m-static { position: static; margin: 24px auto; display: flex; flex-
 :root[data-state="error"] .m-rel-add input, :root[data-state="error"] .m-rel-group:first-child input { border-color: var(--st-review); }
 /* 長いタイトル: 相手のタイトルを長くして、省略の形を見せる */
 :root[data-state="long"] .m-rel-to .t::after, :root[data-state="long"] .chip::after { content: "（保存の形式・置き場所・移し替えの手順・既存のワークスペースの扱いをまとめて決める）"; }
+
+/* 関係の種類ごとのチップの入力欄: タップ対象の高さを揃える */
+.m-rel-group .chips input { min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
