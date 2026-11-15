@@ -70,11 +70,11 @@ dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 
 /* 詳細パネルを開いたまま、画面の右に置いて見せる */
 .panel.m-static { position: static; transform: none; visibility: visible; width: min(640px, 100%); margin: 0 auto; box-shadow: none; border: 1px solid var(--border); }
 /* 関連の入力の区画 */
-.m-rel { display: grid; gap: 8px; margin: 4px 0 16px; }
+.m-rel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 4px 0 16px; }
 /* 案 A: 関連 1 件の行（相手・種類・削除） */
 .m-rel-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px 32px; align-items: center; gap: 8px; }
 /* 行の相手（ID とタイトル） */
-.m-rel-to { display: flex; align-items: baseline; gap: 8px; min-width: 0; height: var(--control-h); padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m-rel-to { box-sizing: border-box; display: flex; align-items: center; gap: 8px; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* 相手の ID */
 .m-rel-to .id { flex: none; font-family: var(--font-mono); font-size: var(--fs-small); }
 /* 相手のタイトル */
@@ -85,13 +85,16 @@ dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 
 .m-rel-add { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; gap: 8px; }
 /* 足すボタン */
 .m-btn { height: var(--control-h); padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: var(--fs-small); }
+/* 案 B: チップを入力欄の幅に収め、長いタイトルは「…」で省く */
+.m-rel-group .chip { max-width: 100%; min-width: 0; }
+.m-rel-group .chip .t { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* 案 B: 種類ごとの見出し */
-.m-rel-group { display: grid; gap: 4px; }
+.m-rel-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 /* 種類ごとの見出しの文字 */
 .m-rel-group .k { color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; }
 /* 狭い幅: 行を 2 段にする */
 @media (max-width: 560px) {
-  .m-rel-row { grid-template-columns: minmax(0, 1fr) 32px; }
+  .m-rel-row { grid-template-columns: minmax(0, 1fr) 32px; padding-bottom: 8px; border-bottom: 1px solid var(--border-soft); }
   .m-rel-row select { grid-column: 1; }
   .m-rel-add { grid-template-columns: minmax(0, 1fr); }
 }
@@ -108,7 +111,7 @@ dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 
 :root[data-state="error"] .m-error::before { content: "入力の誤り: "; font-weight: 600; color: var(--st-review); }
 :root[data-state="error"] .m-rel-add input, :root[data-state="error"] .m-rel-group:first-child input { border-color: var(--st-review); }
 /* 長いタイトル: 相手のタイトルを長くして、省略の形を見せる */
-:root[data-state="long"] .m-rel-to .t::after, :root[data-state="long"] .chip::after { content: "（保存の形式・置き場所・移し替えの手順・既存のワークスペースの扱いをまとめて決める）"; }
+:root[data-state="long"] .m-rel-to .t::after, :root[data-state="long"] .chip .t::after { content: "（保存の形式・置き場所・移し替えの手順・既存のワークスペースの扱いをまとめて決める）"; }
 
 /* 関係の種類ごとのチップの入力欄: タップ対象の高さを揃える */
 .m-rel-group .chips input { min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
