@@ -89,7 +89,7 @@ scenarios:
       - name: Mock
         description: モデル（スキルの手順を読む Claude）を呼ばない。起動のコマンドの代わりに MindStella の MCP サーバーを立て、MindStella と project-index の MCP にクライアントでつなぎ、セットアップの版の比較、移し替えのスキルの手順の一覧・写し・当てる・点検・版の書き換え、2 回目のセットアップの `status`、session の準備の README の書き直し、取り込みの `next_id` と `write_docs` を、決めた引数で再生する。起動のコマンドそのものは単一ユースケース『端末から起動する』で確かめる
       - name: 依存が揃った環境
-        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている。テストごとの一時の端末の設定で project-index を起動し、ワークスペースのフォルダが配信元の行に載って配信されている（`create_workspace` で作るシナリオでは、`create_workspace` が行を登録する）
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている。テストごとの一時の端末の設定で project-index を起動している。ワークスペースは配信の設定を持たず、配信されていない（移し替えが配信の設定を配置する）
       - name: 版を記録する前の形式のワークスペース
         description: '版のファイルを持たず、`mindmap.yaml` が `summary` を持たず `field: システム開発` を持ち、資料 A-1 が `done: true` で、検討事項 D-1 を持つワークスペース'
         notes: YAML を直接書いて作る。点検で聞かれる題名には `要件出しのスキルを設計する` と答える。最後の検討事項の ID は D-1。D-1 は `answer` と `reason` を持つ決定済みで、案を持たない
@@ -121,7 +121,8 @@ scenarios:
       - 移し替えの後、`config.yaml`・種類ごとの YAML・`docs/`・`release/`・版のファイルが `.mindstella/` の下にあり、直下に残っていない
       - session の準備の後、直下に `README.md` があり、このフォルダの起動・接続のコマンドとスキルの呼び方の一覧がある
       - 2 回目のセットアップが版の案内を出さず、状況と続きの推奨を出す
-      - 既存の項目の ID が変わらず、取り込みで足した検討事項が D-2 になっている
+      - 移し替えの後、`.mindstella/` に配信の設定があり、既存の検討事項 D-1 が project-index の `search_docs` でヒットする
+      - 既存の項目の ID が変わらず、移し替えの後に取り込みの `next_id` と `write_docs` で足した検討事項が D-2 になっている
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_resume_older_version
   - name: 正常シナリオ（画面から送った回答を取り込む）
