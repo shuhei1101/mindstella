@@ -21,7 +21,7 @@ import { HTML_BODY_ATTR } from "@/shared/core/body-render";
 import { buildVersions, type DiffPoint, type VersionPair } from "@/shared/core/diff";
 import { pendingMarkOf, type BlockedEdit, type PendingMarkKind } from "@/shared/core/edits";
 import type { BodyView as BodyDisplay } from "@/shared/core/markdown-decorate";
-import { relatedItems, tagNames, type Item, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
+import { tagNames, type Item, type Kind, type RecordIndex, refsOf, relatedItems, type Tag } from "@/shared/core/records";
 import { applyHighlight } from "@/shared/core/term-tips";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { useAddEdit, useCancelEdit } from "@/shared/hooks/use-edits";
@@ -200,6 +200,8 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
         {body("本文")}
         {relation("前提", related.prerequisites)}
         {relation("後続の項目", related.successors)}
+        {relation("派生元", related.parents)}
+        {relation("派生した項目", related.children)}
         {relation("関連タスク", related.tasks)}
         {relation("経緯（会話ログ）", related.logs)}
       </>
@@ -207,7 +209,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     tasks: (
       <>
         <Labelled label="理由" name="reason" value={item.reason} keys={keys} />
-        {relation("進める検討事項", item.for ?? [])}
+        {relation("進める検討事項", refsOf(item, "for"))}
         {relation("前提", related.prerequisites)}
         {relation("結果", item.result === undefined ? [] : [item.result])}
         {body("本文")}
@@ -258,14 +260,14 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
     if (entry !== undefined) blockedByKey[name] = entry;
   }
   const removal = edits.find((edit) => edit.target === id && edit.op === "item-remove");
-  const referrers = [...index.byId.values()].filter(({ item: other }) => (other.depends_on ?? []).includes(id) || (other.related ?? []).includes(id)).map(({ item: other }) => other.id);
+  const referrers = index.referencedBy.get(id) ?? [];
   const change = ({ op, key, value }: EditChange): void => { add.mutate({ op, target: id, key, value }); };
   return (
     <DiffDeadlineContext.Provider value={deadline}>
       <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
-          <DetailEditor kind={kind} item={entry.item} settings={index.data.settings} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
+          <DetailEditor index={index} kind={kind} item={entry.item} settings={index.data.settings} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
         ) : (
           <div className="flex flex-col gap-3 p-3">
             {diff === null ? null : (

@@ -246,7 +246,7 @@ var MindmapPreview;
         });
     }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, voice = null, voiceNotice = null, onVoice, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, voice = null, voiceNotice = null, onVoice, duplicateIds = [], onOpenDuplicate, onCloseDuplicate, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -313,7 +313,16 @@ var MindmapPreview;
                 tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
             ],
         });
-        return MindmapPreview.h({ tag: "div", attrs: { class: "top" }, children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar] });
+        const duplicates = MindmapPreview.duplicateIdNotice({
+            ids: duplicateIds,
+            onOpen: (id) => onOpenDuplicate?.(id),
+            onClose: () => onCloseDuplicate?.(),
+        });
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "top" },
+            children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar, duplicates],
+        });
     }
     MindmapPreview.topbar = topbar;
 })(MindmapPreview || (MindmapPreview = {}));

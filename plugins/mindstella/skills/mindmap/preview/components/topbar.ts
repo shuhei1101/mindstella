@@ -87,6 +87,12 @@ namespace MindmapPreview {
     voiceNotice?: { kind: "discarded" | "failed"; text: string } | null;
     /** 音声入力中の表示・帯の「入力欄を開く」を押したとき `open`、帯の × を押したとき `dismiss` */
     onVoice?: (act: "open" | "dismiss") => void;
+    /** 重なった ID と種類の名前。空でなければ、タブの帯の下に重なった ID の通知を出す */
+    duplicateIds?: { id: string; kind: string }[];
+    /** 重なった ID の通知の ID のリンクを押したとき */
+    onOpenDuplicate?: (id: string) => void;
+    /** 重なった ID の通知の閉じるボタンを押したとき */
+    onCloseDuplicate?: () => void;
   };
 
   /** 件数の表示を揺らさない上限 */
@@ -393,6 +399,9 @@ namespace MindmapPreview {
     voice = null,
     voiceNotice = null,
     onVoice,
+    duplicateIds = [],
+    onOpenDuplicate,
+    onCloseDuplicate,
   }: TopbarProps): HTMLElement {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     const bar = h({
@@ -460,6 +469,15 @@ namespace MindmapPreview {
         tabLink({ key: "graph", label: "ネットワーク", icon: "network" }, current, onNavigate, "tab-special"),
       ],
     });
-    return h({ tag: "div", attrs: { class: "top" }, children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar] });
+    const duplicates = duplicateIdNotice({
+      ids: duplicateIds,
+      onOpen: (id) => onOpenDuplicate?.(id),
+      onClose: () => onCloseDuplicate?.(),
+    });
+    return h({
+      tag: "div",
+      attrs: { class: "top" },
+      children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar, duplicates],
+    });
   }
 }

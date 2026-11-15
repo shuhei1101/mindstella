@@ -15,7 +15,7 @@ export const historyPoints = (changes: Changes, since: OpenedPoint): HistoryPoin
     { sel: "", name: "差分を出さない（今の内容）", sub: "印と差分を出さずに今の内容だけを読む" },
     ...(hasPending ? [{ sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: countOf("pending") }] : []),
     { sel: "since", name: "前回開いてから", sub: `${formatJst(since.at)} より後`, count: countOf("since") },
-    ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: formatJst(set.at), count: countOf(set.id) })),
+    ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: formatJst(set.at), count: countOf(set.id), external: set.by === "external" })),
   ];
 };
 

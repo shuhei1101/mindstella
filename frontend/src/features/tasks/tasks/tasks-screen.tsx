@@ -1,9 +1,9 @@
 // タスクの画面（画面設計『タスク.tsx』）。ボード（既定）と表で見る
 import { addedCards, Board, boardColumns, ItemCard } from "@/shared/components/board";
-import { commonColumns, IdLinks, rowTexts } from "@/shared/components/list-columns";
+import { commonColumns, IdLinks } from "@/shared/components/list-columns";
 import { ListScreen } from "@/shared/components/list-screen";
 import type { TableColumn } from "@/shared/components/table";
-import { TASK_STATUSES, titleOf, type RecordIndex } from "@/shared/core/records";
+import { type Item, type RecordIndex, refsOf, TASK_STATUSES, titleOf } from "@/shared/core/records";
 
 const VIEWS = [
   { key: "board", label: "ボード" },
@@ -17,7 +17,7 @@ const taskColumns = (index: RecordIndex, onOpen: (id: string) => void): TableCol
     common.title(),
     common.status(TASK_STATUSES),
     common.text("kind", "種類", { filterable: true }),
-    { key: "for", label: "進める検討事項", get: (row) => rowTexts(row, "for"), cell: (row) => <IdLinks ids={rowTexts(row, "for")} titleOf={(id) => titleOf(index, id)} onOpen={onOpen} /> },
+    { key: "for", label: "進める検討事項", get: (row) => refsOf(row as unknown as Item, "for"), cell: (row) => <IdLinks ids={refsOf(row as unknown as Item, "for")} titleOf={(id) => titleOf(index, id)} onOpen={onOpen} /> },
     common.target,
     common.category,
     common.phase,
@@ -39,7 +39,7 @@ export const TasksScreen = ({ drawerOpen, onCloseDrawer }: TasksScreenProps) => 
         columns={boardColumns({ items: shown, statuses: TASK_STATUSES, statusFilter: filters["status"] ?? [] })}
         emptyText="タスクはありません。"
         added={addedCards(edit, TASK_STATUSES, onOpenAdded)}
-        card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind, item.category]} links={item.for ?? []} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
+        card={(item) => <ItemCard key={item.id} index={index} item={item} meta={[item.kind, item.category]} links={refsOf(item, "for")} selected={item.id === selectedId} marks={marks} comments={comments} edit={edit} onOpen={onOpen} />}
       />
     )}
   />

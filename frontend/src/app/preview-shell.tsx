@@ -24,7 +24,7 @@ import { AppError } from "@/shared/core/app-error";
 import { anyOpenUnseen, type ReviewItem, type Thread } from "@/shared/core/comments";
 import { SETTINGS_TARGET } from "@/shared/core/edits";
 import { normalizeSearch } from "@/shared/core/preview-search";
-import { KIND_KEYS, KIND_LABEL, type Kind } from "@/shared/core/records";
+import { KIND_KEYS, KIND_LABEL, kindOfId, type Kind } from "@/shared/core/records";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch, type VoiceTarget } from "@/shared/hooks/use-preview-search";
@@ -32,6 +32,7 @@ import { useRecords } from "@/shared/hooks/use-records";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 import { useConnectionStore } from "@/shared/stores/connection-store";
+import { useDuplicateIdsStore, useShownDuplicateIds } from "@/shared/stores/duplicate-ids-store";
 import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
@@ -148,6 +149,11 @@ export const PreviewShell = () => {
   }, [noticeAt]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // 変更の検知が知らせた重なった ID（閉じた集まりと同じ間は空）
+  const duplicateIds = useShownDuplicateIds().map((id) => {
+    const kind = kindOfId(id);
+    return { id, kind: kind === null ? "" : KIND_LABEL[kind] };
+  });
   const visible = useVisibleKinds();
   const pendingCount = edits.length;
   const diffActive = point !== null;
@@ -231,6 +237,9 @@ export const PreviewShell = () => {
         pendingOpen={search.panel === "pending"}
         pendingBlocked={blocked.length > 0}
         {...voiceTopbar}
+        duplicateIds={duplicateIds}
+        onOpenDuplicate={openItem}
+        onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}
         onNavigate={setTab}
         onOpenSearch={() => { setSearch({ search: "1" }); }}
         onThemeChange={setTheme}

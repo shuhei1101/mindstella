@@ -326,14 +326,17 @@ namespace MindmapPreview {
     };
   }
 
-  /** 書き換えの知らせにつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる。返す関数でつながりを閉じる */
+  /** 書き換えの知らせにつなぎ、`changed`・重なった ID（`duplicate_ids`）と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる。返す関数でつながりを閉じる */
   export function subscribeEvents({
     onChanged,
     onConnection,
+    onDuplicates,
     EventSourceCtor = window.EventSource,
   }: {
     onChanged: () => void;
     onConnection: (connected: boolean) => void;
+    /** 重なった ID の集まりが変わったとき（空の配列は重なりが無くなったとき） */
+    onDuplicates?: (ids: string[]) => void;
     EventSourceCtor?: EventSourceCtor;
   }): () => void {
     const source = new EventSourceCtor(API_PATHS.events);
@@ -347,7 +350,23 @@ namespace MindmapPreview {
     source.addEventListener("open", () => report(true));
     source.addEventListener("error", () => report(false));
     source.addEventListener("changed", () => onChanged());
+    source.addEventListener("duplicate_ids", (event) => {
+      const ids = parseDuplicateIds((event as MessageEvent<string>).data);
+      // 読めない知らせは捨てる（次の知らせで描き直す）
+      if (ids !== null) onDuplicates?.(ids);
+    });
     return () => source.close();
+  }
+
+  /** `duplicate_ids` の `data`（ID の JSON の配列）を読む。読めなければ null */
+  function parseDuplicateIds(data: unknown): string[] | null {
+    if (typeof data !== "string") return null;
+    try {
+      const value: unknown = JSON.parse(data);
+      return Array.isArray(value) && value.every((entry) => typeof entry === "string") ? value : null;
+    } catch {
+      return null;
+    }
   }
 
   /** すぐ送った応答の本文 */
