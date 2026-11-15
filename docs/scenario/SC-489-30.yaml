@@ -4,7 +4,7 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねるタグの集計（`search_docs` の `group_by: tags`）・`next_id`・`write_docs`・`commit` を、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねるタグの集計（`search_docs` の `group_by`）・`next_id`・`write_docs`・`commit` を、決めた引数で順に再生する
         notes: '-'
       - name: 作成済みのワークスペース
         description: プレイブックがシステム開発で、検討事項を持たず、タグ `topic:保存` を持つメモ N-1 だけを持つワークスペース
@@ -284,7 +284,7 @@ scenarios:
   - name: 正常シナリオ（言い方の違うタグを使い回す）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねるタグの集計（`search_docs` の `group_by: tags`）・`next_id`・`write_docs`・`commit` を、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねるタグの集計（`search_docs` の `group_by`）・`next_id`・`write_docs`・`commit` を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
         description: 検討事項を持たず、タグ `topic:サーバ` を持つメモ N-1 だけを持つ
       - name: 再生する書き込み

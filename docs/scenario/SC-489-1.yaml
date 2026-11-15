@@ -126,7 +126,6 @@ scenarios:
     expected:
       - ツールがエラーを返し、理由に MindStella のセッションだけがスレッドを書き込めることがある
       - スレッドが 0 件のままである
-    test: test_error_when_not_mindstella_session
 lead: '`session` が、利用者に返事を求める質問と知らせを、ターミナルに書かずにスレッドを立てて利用者に返事を求める単一ユースケース。既にある検討事項で決めることはその検討事項を、長いたたき台は資料を向けて立てる。'
 issue: 208
 primary_actor: スキルの手順を実行する Claude Code

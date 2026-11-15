@@ -219,7 +219,6 @@ scenarios:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
       - 出力に、ID `D-1` が 2 件ある旨がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
-    test: test_normal_when_duplicate_id
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code

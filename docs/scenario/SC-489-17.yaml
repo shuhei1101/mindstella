@@ -384,6 +384,34 @@ scenarios:
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である
       - 最後の `check` が問題を 0 件で返す
     test: test_normal_when_item_tags_migrated
+  - name: 正常シナリオ（記録を配信する設定を配置する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・版の書き換えを、決めた引数で順に再生する。project-index はテストごとの一時の端末の設定で起動する
+      - name: 一つ前の版のワークスペース
+        description: 版のファイルにこの作業 PR の前の版を持ち、記録を配信する設定を持たず、本文を持つ検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant PI as project-index
+
+        CC->>SV: 版を比べ、手順の一覧を出す
+        SV-->>CC: 記録を配信する設定を配置する手順
+        CC->>SV: 手順を当てる
+        SV->>WS: .mindstella/ に記録を配信する設定を書き、版のファイルを書き換える
+        CC->>PI: D-1 を検索する
+        PI-->>CC: D-1 の中身と本文
+      ```
+    expected:
+      - 移し替えの後、`.mindstella/` に記録を配信する設定がある
+      - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である'
+      - project-index の `search_docs` で D-1 がヒットし、本文を持つ
+      - 種類ごとの YAML と本文の中身が、移し替えの前と同じである
+    notes:
+      配信元の行: 配信元の行が無いワークスペース（#516 より前に作ったもの）に行を登録するのは、移し替えではなくワークスペースの作成（記録が既にあるフォルダを開く）が行う（単一ユースケース『外部のアプリから起動する』）。このシナリオの project-index の端末の設定には、そのワークスペースの行を載せておく
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者

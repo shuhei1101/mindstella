@@ -136,7 +136,6 @@ scenarios:
       - '`.mindstella/notes.yaml` に N-1 が無い'
       - スレッドが N-1 を指したまま残っている
       - 開いている画面と MindStella のセッションのペインに、取り込み待ちのスレッドが消した N-1 を指している通知が届く
-    test: test_normal_when_awaiting_thread_refers
   - name: 正常シナリオ（取り込み済みのスレッドだけが指している）
     setup:
       - name: Mock

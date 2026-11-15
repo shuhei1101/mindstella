@@ -66,7 +66,6 @@ scenarios:
     expected:
       - 2 つの呼び出しが、重ならない ID（`D-2` と `D-3`）を返す
       - どちらの ID の項目もまだ書き込んでいなくても、続けて取った ID が `D-4` になる
-    test: test_normal_when_ids_taken_concurrently
   - name: 異常シナリオ（スキーマに合わない）
     setup:
       - name: Mock

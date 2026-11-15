@@ -21,7 +21,7 @@ items:
   - page: SC-489-26.yaml
     summary: "再開時の状況と、次に検討する項目の候補を読む"
   - page: SC-489-33.yaml
-    summary: "項目を探し、1 件の中身と参照元・使っている属性名を読む"
+    summary: "project-index で項目を探し、1 件の中身と参照元・使っているタグを読む"
   - page: SC-489-16.yaml
     summary: "参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズを洗い出す"
   - page: SC-489-37.yaml
