@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 from kinds import KINDS, Kind, id_number, kind_of_id
-from store import Workspace, as_ids, find_item
+from store import Workspace, find_item, related_ids
 
 # 再開時の状況に載せる次の候補の件数
 STATUS_NEXT_LIMIT = 3
@@ -17,7 +17,7 @@ DOC_COMPLETE_STATUS = "完成"
 # 影響度 → 並べる順。影響度が無いものは最後
 WEIGHT_ORDER = {"大": 0, "中": 1, "小": 2}
 
-# 種類 → 参照先から参照元へ逆向きにたどるキー
+# 種類 → 参照先から参照元へ逆向きにたどる関連の種類
 IMPACT_KEYS: dict[Kind, tuple[str, ...]] = {
     "decision": ("depends_on", "parent"),
     "task": ("for", "depends_on"),
@@ -100,10 +100,13 @@ def build_reverse_edges(workspace: Workspace) -> dict[str, list[tuple[str, str]]
     edges: dict[str, list[tuple[str, str]]] = {}
     for kind, keys in IMPACT_KEYS.items():
         for item in workspace.items[kind]:
-            for key in keys:
-                # 参照元の並びはファイルの並び
-                for target_id in as_ids(item.get(key)):
-                    edges.setdefault(target_id, []).append((item["id"], key))
+            related = item.get("related")
+            # 参照元の並びはファイルの並び、同じ項目の中は related の並び
+            for entry in related if isinstance(related, list) else []:
+                if not isinstance(entry, dict) or entry.get("type") not in keys:
+                    continue
+                if isinstance(entry.get("to"), str):
+                    edges.setdefault(entry["to"], []).append((item["id"], entry["type"]))
     return edges
 
 
@@ -236,7 +239,7 @@ def list_next_candidates(workspace: Workspace, *, limit: int | None = None) -> l
         if item.get("status") != "未決定":
             continue
         # 前提（depends_on）が全て決着していないものは候補にしない（無い ID は未完了）
-        if not all(_is_id_settled(index, dep) for dep in as_ids(item.get("depends_on"))):
+        if not all(_is_id_settled(index, dep) for dep in related_ids(item, "depends_on")):
             continue
         candidates.append(
             Candidate(
@@ -280,7 +283,7 @@ def summarize_status(workspace: Workspace) -> StatusSummary:
             elif kind == "task" and status == "進行中":
                 in_progress.append(row)
             elif status == "保留":
-                depends_on = as_ids(item.get("depends_on"))
+                depends_on = related_ids(item, "depends_on")
                 unsettled = [dep for dep in depends_on if not _is_id_settled(index, dep)]
                 # depends_on が無い: 再開できるかは reason を読んで判断する保留
                 if not depends_on:

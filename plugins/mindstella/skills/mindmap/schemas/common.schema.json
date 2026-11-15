@@ -24,12 +24,10 @@
     },
     "item": {
       "type": "object",
-      "description": "全ての種類の項目が持つキー",
+      "description": "全ての種類の項目が持つキー（作成日時・更新日時・編集した人・通し番号・変更履歴は項目に持たず `history.yaml` に持つ）",
       "required": [
         "id",
-        "title",
-        "created",
-        "updated"
+        "title"
       ],
       "properties": {
         "id": {
@@ -88,10 +86,31 @@
         },
         "related": {
           "type": "array",
-          "description": "関連する項目の ID。向きを持たず、`impact` はたどらない",
+          "description": "関連する項目。要素は `{to, type}`。`type` は `depends_on`（先に決まっている必要がある項目。保留の待ち先も持つ）・`parent`（派生元）・`for`（タスクが進める検討事項）・`see_also`（向きを持たない関連。影響をたどらない）",
           "items": {
-            "type": "string",
-            "pattern": "^[A-Z]-[0-9]+$"
+            "type": "object",
+            "required": [
+              "to",
+              "type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "to": {
+                "type": "string",
+                "description": "指す項目の ID",
+                "pattern": "^[A-Z]-[0-9]+$"
+              },
+              "type": {
+                "type": "string",
+                "description": "関連の種類",
+                "enum": [
+                  "depends_on",
+                  "parent",
+                  "for",
+                  "see_also"
+                ]
+              }
+            }
           }
         },
         "links": {
@@ -99,114 +118,6 @@
           "description": "リンク",
           "items": {
             "$ref": "#/$defs/link"
-          }
-        },
-        "created": {
-          "type": "string",
-          "description": "作成日時。UTC のタイムゾーン付き ISO 8601。スクリプトが付ける",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(\\+00:00|Z)$"
-        },
-        "updated": {
-          "type": "string",
-          "description": "更新日時。UTC のタイムゾーン付き ISO 8601。スクリプトが付ける",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(\\+00:00|Z)$"
-        },
-        "updated_by": {
-          "type": "string",
-          "enum": [
-            "ai",
-            "user"
-          ],
-          "description": "編集した人。最後に項目を足した・値を変えたのが AI（`ai`。MCP のツールの書き込み）か利用者（`user`）か。`updated` と一緒に書き換える。このキーを入れる前に書いた項目は持たない。ツールが付ける"
-        },
-        "history": {
-          "$ref": "#/$defs/history"
-        },
-        "history_dropped_seq": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換え、一度も消していなければ持たない。ツールが付ける"
-        },
-        "seq": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "その項目を足した・値を変えたときに振った `changes.yaml` の通し番号のうち、最も新しいもの。フェーズ・対象・カテゴリーの付け替えでは進めない。ツールが付ける"
-        },
-        "added_seq": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "その項目を足したときに振った `changes.yaml` の通し番号。ツールが付ける"
-        }
-      }
-    },
-    "history": {
-      "type": "array",
-      "description": "変更履歴。`update`・`adopt` が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。数は設定の `history_limit` まで。ツールが付ける",
-      "items": {
-        "type": "object",
-        "description": "変更履歴の 1 回分",
-        "required": [
-          "seq",
-          "at",
-          "before"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "seq": {
-            "type": "integer",
-            "description": "`changes.yaml` の通し番号",
-            "minimum": 1
-          },
-          "at": {
-            "type": "string",
-            "description": "書き換えた日時。UTC のタイムゾーン付き ISO 8601",
-            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(\\+00:00|Z)$"
-          },
-          "by": {
-            "type": "string",
-            "enum": [
-              "ai",
-              "user"
-            ],
-            "description": "その回を書き換えた人（`ai` か `user`）。このキーを入れる前に積んだ回は持たない"
-          },
-          "before": {
-            "type": "object",
-            "description": "変わったキー → 書き換える前の値。前に無かったキーは null。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は入れない。ただし `body` は、前に本文が無かった回（null）と資料の本文の形式を替えた回（前のファイル名）だけ入れる"
-          },
-          "body_diff": {
-            "type": "array",
-            "description": "本文が変わったときだけ持つ。今の本文を前の本文へ戻す、行の置き換えの並び（行の位置の小さい順）",
-            "items": {
-              "type": "object",
-              "required": [
-                "line",
-                "now",
-                "before"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "line": {
-                  "type": "integer",
-                  "description": "その書き換えの後の本文の 1 始まりの行。`now` が空のときはその行の前に差し込む",
-                  "minimum": 1
-                },
-                "now": {
-                  "type": "array",
-                  "description": "その行からの今の行（改行を含まない）",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "before": {
-                  "type": "array",
-                  "description": "置き換える前の行",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
           }
         }
       }

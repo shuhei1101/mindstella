@@ -77,6 +77,8 @@ class Session:
     claude_pid: int | None = None
     # そのプロセスの起動時刻（`inject_session.process_started_at` の値）
     claude_started_at: str | None = None
+    # Claude Code のセッションの ID（フックの入力の `session_id`）
+    claude_session_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -220,6 +222,7 @@ def parse_session(raw: Mapping[str, Any] | None) -> Session | None:
         # bool は int の仲間なので除く
         claude_pid=pid if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0 else None,
         claude_started_at=" ".join(started_at.split()) if started_at else None,
+        claude_session_id=_text_or_none(raw.get("claude_session_id")),
     )
 
 

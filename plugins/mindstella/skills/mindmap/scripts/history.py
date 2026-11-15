@@ -15,7 +15,7 @@ from typing import Any, Literal, NotRequired, TypedDict
 import yaml
 from errors import ItemNotFoundError, SchemaMismatchError
 from jsonschema import Draft202012Validator
-from kinds import KINDS, Kind, records_root
+from kinds import HISTORY_FILE, KINDS, Kind, records_root
 from store import (
     CHANGES_FILE,
     SCHEMA_DIR,
@@ -34,13 +34,17 @@ __all__ = [
     "CHANGES_FILE",
     "CHANGES_SCHEMA",
     "DEFAULT_HISTORY_LIMIT",
+    "EXTERNAL_SUMMARY",
+    "HISTORY_FILE",
     "OPENED_FILE",
+    "PENDING_AI_SUMMARY",
     "SET_ID_PREFIX",
     "SUMMARY_MAX_LENGTH",
     "BodyDiffHunk",
     "ChangeSet",
     "Changes",
     "HistoryEntry",
+    "ItemHistory",
     "OpenedPoint",
     "Pending",
     "RemovedItem",
@@ -49,11 +53,14 @@ __all__ = [
     "changes_since",
     "commit_pending",
     "diff_body",
+    "flush_pending",
     "head_until_seq",
     "history_limit",
     "load_changes",
+    "load_item_history",
     "make_entry",
     "mark_read",
+    "merge_item_history",
     "note_pending",
     "note_removed",
     "pending_view",
@@ -80,6 +87,15 @@ SET_ID_PREFIX = "V-"
 
 # `commit` の `summary` の前後の空白を除いた文字数の上限
 SUMMARY_MAX_LENGTH = 200
+
+# 変更の検知が外部の変更をまとめるときの説明
+EXTERNAL_SUMMARY = "ほかのセッションの書き込み"
+
+# 書いた元が違う変更の前に、AI のまだまとめていない変更をまとめるときの説明
+PENDING_AI_SUMMARY = "まとめる前の AI の書き換え"
+
+# 書いた元
+type Writer = Literal["ai", "user", "external"]
 
 # 変更履歴の `before` に入れない、ツールが付けるキー（本文は `body_diff` で持つ）
 NON_HISTORY_KEYS = frozenset(
@@ -110,7 +126,7 @@ class HistoryEntry(TypedDict):
     seq: int
     at: str
     # その回を書き換えた人。このキーを入れる前に積んだ回は持たない
-    by: NotRequired[Literal["ai", "user"]]
+    by: NotRequired[Writer]
     # 変わったキー → 書き換える前の値。前に無かったキーは `None`
     before: dict[str, Any]
     # 今の本文を前の本文へ戻す行の置き換えの並び（本文が変わったときだけ）
@@ -143,6 +159,8 @@ class ChangeSet(TypedDict):
     changed: list[str]
     # 消した項目。消した項目が無いまとまりはキーを持たない
     removed: NotRequired[list[RemovedItem]]
+    # まとめた変更の書いた元。このキーを入れる前のまとまりは持たない
+    by: NotRequired[Writer]
 
 
 class Pending(TypedDict):
@@ -154,6 +172,25 @@ class Pending(TypedDict):
     changed: list[str]
     # 消した項目（消した順）。無ければ消した項目なし
     removed: NotRequired[list[RemovedItem]]
+    # 入っている変更の書いた元。無ければ `ai`
+    by: NotRequired[Literal["ai", "external"]]
+
+
+class ItemHistory(TypedDict, total=False):
+    """`history.yaml` の `items` の 1 行（項目の ID → 行）。"""
+
+    created: str
+    updated: str
+    # 最後に項目を足した・値を変えた書いた元
+    updated_by: Writer
+    # 最後に振った通し番号
+    seq: int
+    # 足したときの通し番号
+    added_seq: int
+    # 変更履歴（新しい順）
+    history: list[HistoryEntry]
+    # 消した変更履歴の通し番号の最大
+    history_dropped_seq: int
 
 
 class OpenedPoint(TypedDict):
@@ -205,6 +242,45 @@ def load_changes(root: Path) -> Changes:
     return value
 
 
+def load_item_history(root: Path) -> dict[str, ItemHistory]:
+    """`history.yaml` を読んで項目の ID → 行の辞書を返す。無ければ空の辞書。"""
+    path = records_root(root) / HISTORY_FILE
+    # ファイルが無い: どの項目も履歴を持たない
+    if not path.is_file():
+        return {}
+    try:
+        value = load_yaml_text(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as error:
+        raise SchemaMismatchError([f"{HISTORY_FILE}: items"]) from error
+    rows = value.get("items") if isinstance(value, dict) else None
+    # 一番上が辞書でないか、items が辞書でない
+    if not isinstance(rows, dict):
+        raise SchemaMismatchError([f"{HISTORY_FILE}: items"])
+    return rows
+
+
+def merge_item_history(item: dict[str, Any], rows: dict[str, ItemHistory]) -> dict[str, Any]:
+    """項目に `history.yaml` のその ID の行のキーを足した新しい項目を返す。行が無ければ項目のまま。"""
+    row = rows.get(item.get("id", ""))
+    if row is None:
+        return item
+    return {**item, **row}
+
+
+def flush_pending(changes: Changes, by: Literal["ai", "external"], at: str) -> Changes:
+    """書いた元が違う変更を記録する前に、入っている変更をその書いた元のまとまりにした新しい記録を返す。"""
+    current = changes["pending"].get("by", "ai")
+    # 入っている変更の書いた元が同じ: まとめない
+    if current == by:
+        return changes
+    # 外部の変更は外部の変更のまとまり、AI の変更はまとめる前の AI の書き換えにする
+    if current == "external":
+        committed, _ = commit_pending(changes, EXTERNAL_SUMMARY, at, by="external")
+    else:
+        committed, _ = commit_pending(changes, PENDING_AI_SUMMARY, at, by="ai")
+    return committed
+
+
 def history_limit(settings: dict[str, Any]) -> int:
     """設定の `history_limit` を返す。無ければ `DEFAULT_HISTORY_LIMIT`。"""
     return int(settings.get("history_limit", DEFAULT_HISTORY_LIMIT))
@@ -244,7 +320,7 @@ def make_entry(
     after_body: str | None,
     seq: int,
     at: str,
-    by: Literal["ai", "user"],
+    by: Writer,
 ) -> HistoryEntry | None:
     """書き換える前と後の項目と本文を比べ、変わったものがあれば 1 回分を作る。"""
     keys = [
@@ -306,7 +382,11 @@ def stack_history(
 
 
 def note_pending(
-    changes: Changes, item_id: str, kind: Literal["added", "changed"]
+    changes: Changes,
+    item_id: str,
+    kind: Literal["added", "changed"],
+    *,
+    by: Literal["ai", "external"] = "ai",
 ) -> Changes:
     """まだまとめていない変更に ID を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
     # 消した項目の記録はそのまま引き継ぐ
@@ -315,6 +395,7 @@ def note_pending(
         "added": list(changes["pending"]["added"]),
         "changed": list(changes["pending"]["changed"]),
     }
+    pending["by"] = by
     # 足した項目は、変えても changed に入れない。同じ ID は二度足さない
     already = item_id in pending["added"] or (kind == "changed" and item_id in pending["changed"])
     if not already:
@@ -325,15 +406,15 @@ def note_pending(
 def note_removed(changes: Changes, removed: RemovedItem) -> Changes:
     """`pending.added`・`pending.changed` から消した ID を除き、`pending.removed` の末尾に消した項目を足した新しい記録を返す（通し番号は進めない。進めるのは `advance_seq`）。"""
     pending = changes["pending"]
-    return {
-        **changes,
-        "pending": {
-            "added": [item_id for item_id in pending["added"] if item_id != removed["id"]],
-            "changed": [item_id for item_id in pending["changed"] if item_id != removed["id"]],
-            # まとめる前に足した項目も、消した ID を振り直さないために記録する
-            "removed": [*pending.get("removed", []), removed],
-        },
+    noted: Pending = {
+        "added": [item_id for item_id in pending["added"] if item_id != removed["id"]],
+        "changed": [item_id for item_id in pending["changed"] if item_id != removed["id"]],
+        # まとめる前に足した項目も、消した ID を振り直さないために記録する
+        "removed": [*pending.get("removed", []), removed],
     }
+    if "by" in pending:
+        noted["by"] = pending["by"]
+    return {**changes, "pending": noted}
 
 
 def removed_items(changes: Changes) -> list[RemovedItem]:
@@ -353,7 +434,9 @@ def advance_seq(changes: Changes) -> tuple[Changes, int]:
     return {**changes, "last_seq": seq}, seq
 
 
-def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, ChangeSet | None]:
+def commit_pending(
+    changes: Changes, summary: str, at: str, *, by: Writer = "ai"
+) -> tuple[Changes, ChangeSet | None]:
     """まだまとめていない変更を 1 つのまとまりにした新しい記録と、足したまとまりを返す。"""
     pending = changes["pending"]
     pending_removed = pending.get("removed", [])
@@ -372,6 +455,7 @@ def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, Ch
     # 消した項目があるときだけ、まとまりに写す
     if pending_removed:
         change_set["removed"] = list(pending_removed)
+    change_set["by"] = by
     committed: Changes = {
         **changes,
         "sets": [change_set, *changes["sets"]],
@@ -383,6 +467,7 @@ def commit_pending(changes: Changes, summary: str, at: str) -> tuple[Changes, Ch
 def pending_view(workspace: Workspace, changes: Changes) -> dict[str, Any]:
     """まだまとめていない項目を、タイトルと変えたキーつきで返し、消した項目も並べる（`pending` のツールの結果の形）。"""
     sets = changes["sets"]
+    rows = load_item_history(workspace.root)
     # 最後のまとまりより後の変更履歴だけが、まだまとめていない分
     floor = sets[0]["until_seq"] if sets else 0
     added = [
@@ -392,7 +477,7 @@ def pending_view(workspace: Workspace, changes: Changes) -> dict[str, Any]:
     changed = []
     for item_id, item in _existing_items(workspace, changes["pending"]["changed"]):
         keys: list[str] = []
-        for entry in item.get("history", []):
+        for entry in rows.get(item_id, {}).get("history", []):
             if entry["seq"] <= floor:
                 continue
             keys.extend(entry["before"])
@@ -446,10 +531,12 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
             "removed": [],
         }
     limit = history_limit(workspace.settings)
+    rows = load_item_history(workspace.root)
     added: list[dict[str, Any]] = []
     changed: list[dict[str, Any]] = []
     for kind in KINDS:
-        for item in workspace.items[kind]:
+        for plain in workspace.items[kind]:
+            item = merge_item_history(plain, rows)
             # 読んだ時点より後に足した項目
             if item.get("added_seq", 0) > read_seq:
                 added.append(
@@ -502,13 +589,13 @@ def changes_since(workspace: Workspace, changes: Changes) -> dict[str, Any]:
 
 
 def _editors_since(item: dict[str, Any], read_seq: int) -> list[str]:
-    """読んだ時点より後の変更履歴の回を書き換えた人を、重なりなく `user`・`ai` の順で返す（`by` を持たない回は数えない）。"""
+    """読んだ時点より後の変更履歴の回を書き換えた人を、重なりなく `user`・`external`・`ai` の順で返す（`by` を持たない回は数えない）。"""
     editors = {
         entry["by"]
         for entry in item.get("history", [])
         if entry["seq"] > read_seq and "by" in entry
     }
-    return [editor for editor in ("user", "ai") if editor in editors]
+    return [editor for editor in ("user", "external", "ai") if editor in editors]
 
 
 def mark_read(changes: Changes) -> Changes:

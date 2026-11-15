@@ -119,6 +119,15 @@
           "removed": {
             "$ref": "#/$defs/removed",
             "description": "消した項目。消した項目が無いまとまりはキーを持たない"
+          },
+          "by": {
+            "type": "string",
+            "description": "まとめた変更の書いた元。`commit` は `ai`、画面の保存は `user`、変更の検知が自動でまとめた外部の変更は `external`。このキーを入れる前のまとまりは持たない",
+            "enum": [
+              "ai",
+              "user",
+              "external"
+            ]
           }
         }
       }
@@ -151,6 +160,14 @@
         "removed": {
           "$ref": "#/$defs/removed",
           "description": "消した項目（消した順）。無ければ消した項目なしとして扱う"
+        },
+        "by": {
+          "type": "string",
+          "description": "入っている変更の書いた元。無ければ `ai`",
+          "enum": [
+            "ai",
+            "external"
+          ]
         }
       }
     },

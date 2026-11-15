@@ -19,7 +19,7 @@ from typing import Any, cast
 import store
 from errors import ArgumentError, DownloadFailedError
 from graph import is_settled, judge_goal, list_next_candidates
-from history import load_changes
+from history import load_changes, load_item_history, merge_item_history
 from html_body import mark_lines
 from kinds import KINDS, SETTINGS_FILE
 from store import NowFn, Workspace, now_utc
@@ -298,9 +298,12 @@ def collect_preview_data(
 ) -> dict[str, Any]:
     """設定・7 種類・本文・まとまり・画面に出す値・読んだ日時・設定の問題を 1 つの辞書にまとめる（送信は含めない）。"""
     data: dict[str, Any] = {"settings": workspace.settings}
-    # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで入れる
+    rows = load_item_history(workspace.root)
+    # 種類ごとの items を、ファイル名から `.yaml` を落としたキーで、history.yaml の行を合わせて入れる
     for kind, spec in KINDS.items():
-        data[spec.file.removesuffix(".yaml")] = workspace.items[kind]
+        data[spec.file.removesuffix(".yaml")] = [
+            merge_item_history(item, rows) for item in workspace.items[kind]
+        ]
     # 項目の body が指す本文だけを集める（読めないものは入れない）
     bodies: dict[str, str] = {}
     marked_bodies: dict[str, str] = {}
@@ -317,7 +320,7 @@ def collect_preview_data(
                     marked_bodies[body] = mark_lines(text)
     data["bodies"] = bodies
     data["marked_bodies"] = marked_bodies
-    # 書き換えのまとまり（項目の `history` は項目のまま入っている）
+    # 書き換えのまとまり（項目の `history` は項目に合わせて入っている）
     data["changes"] = load_changes(workspace.root)
     data["derived"] = derive_preview_values(workspace)
     data["built_at"] = built_at
