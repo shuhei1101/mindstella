@@ -220,6 +220,38 @@ files:
   related:
   - to: MOD-489-57
     type: implements
+- path: src/shared/components/duplicate-id-notice.stories.tsx
+  name: React の重なった ID の通知のストーリー
+  description: 部品『重なった ID の通知.tsx』の状態ごとの Storybook のストーリー。重なった ID の通知の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: frontend/src/shared/components/duplicate-id-notice.tsx
+    type: see_also
+- path: src/shared/components/duplicate-id-notice.test.tsx
+  name: React の重なった ID の通知の単体テスト
+  description: React の重なった ID の通知の振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/components/duplicate-id-notice.tsx
+    type: tests
+- path: src/shared/components/duplicate-id-notice.tsx
+  name: React の重なった ID の通知
+  description: トップバーの下の帯に、同じ ID の項目が 2 件になったことと、その ID のリンク・閉じるボタンを出す。React の重なった ID の通知の表示や文面を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:部品
+  - topic:通知
+  related:
+  - to: MOD-540-8
+    type: implements
+  - to: CMP-540-2
+    type: implements
 - path: src/shared/components/icon.tsx
   name: React のアイコンと状態の印
   description: 24px の枠に描いた線のアイコンと、状態の 10px の印（今の画面の `core/dom.ts` と同じ絵）。アイコンや状態の印の絵を追加・変更するときに読む。
@@ -329,6 +361,26 @@ files:
   - topic:sse
   related:
   - to: MOD-489-136
+    type: implements
+- path: src/shared/stores/duplicate-ids-store.test.ts
+  name: 重なった ID のストアの単体テスト
+  description: 重なった ID のストアの振る舞いを Vitest で確かめる。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:react
+  - tool:vitest
+  - topic:単体テスト
+  related:
+  - to: frontend/src/shared/stores/duplicate-ids-store.ts
+    type: tests
+- path: src/shared/stores/duplicate-ids-store.ts
+  name: 重なった ID のストア
+  description: 書き換えの知らせが伝えた重なった ID と、利用者が閉じた集まりを持つ。重なった ID の受け取り方・閉じ方を変更するときに読む。
+  tags:
+  - tool:react
+  - topic:ストア
+  - topic:通知
+  related:
+  - to: MOD-540-9
     type: implements
 - path: src/shared/stores/theme-store.test.ts
   name: ライト / ダークのストアの単体テスト
