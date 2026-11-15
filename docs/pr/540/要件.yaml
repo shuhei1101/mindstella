@@ -132,7 +132,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-22.yaml
     impact: following
-    detail: 方針転換で影響を受ける項目を、種類つきの related をたどって洗い出す
+    detail: 方針転換で影響を受ける項目を、種類つきの related を trace_related でたどって洗い出し、要見直しと見直しのタスクを project-index の書き込みで積む
     depends_on:
       - docs/scenario/SC-489-21.yaml
   - kind: single
@@ -150,13 +150,31 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-8.yaml
     impact: following
-    detail: 前提が揃った未決定を、種類 depends_on の related から選ぶ
+    detail: 前提が揃った未決定を、種類 depends_on の related から選び、答えと会話ログを project-index の書き込みで残す
     depends_on:
       - docs/scenario/SC-489-34.yaml
   - kind: single
     scenario: docs/scenario/SC-489-13.yaml
     impact: following
-    detail: 調査を元の検討事項へ、種類つきの related でつなぐ
+    detail: 調査・タスク・用語・会話ログを project-index の書き込みで足し、調査を元の検討事項へ種類つきの related でつなぐ
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-4.yaml
+    impact: following
+    detail: ゴール判定の手順の記録の読み書きを、project-index のツールと ID の採番に合わせる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-38.yaml
+    impact: following
+    detail: 話し合いの範囲の見直しのたたき台と会話ログの書き込みを、project-index のツールと ID の採番に合わせる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: following
+    detail: 開いている画面に出る書き換えを、project-index の書き込みで作る
     depends_on:
       - docs/scenario/SC-489-34.yaml
 docs:
