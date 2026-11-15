@@ -78,7 +78,7 @@ scenarios:
   - name: 正常シナリオ（図や文書を資料に残す）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `next_id`・`write_docs`（本文は project-index#83 の本文の入出力に沿ったモックで書く）を、決めた引数で再生する
+        description: モデルを呼ばない。手順が連ねる `next_id`・`write_docs`を、決めた引数で再生する
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 再生する書き込み
@@ -132,7 +132,7 @@ scenarios:
   - name: 正常シナリオ（納品物の資料を作る）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `next_id`・`write_docs`（本文は project-index#83 の本文の入出力に沿ったモックで書く）・設定の更新を、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねる `next_id`・`write_docs`・設定の更新を、決めた引数で順に再生する
       - name: 作成済みのワークスペース
         description: ゴールの納品物に `要件定義書`（`doc` 無し）を持つ
       - name: 再生する書き込み
@@ -257,7 +257,7 @@ scenarios:
   - name: 正常シナリオ（見た目のある資料を HTML で残す）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `next_id`・`write_docs`（本文は HTML。project-index#83 の本文の入出力に沿ったモックで書く）を、決めた引数で再生する
+        description: モデルを呼ばない。手順が連ねる `next_id`・`write_docs`（本文は HTML）を、決めた引数で再生する
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 再生する書き込み

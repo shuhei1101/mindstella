@@ -212,7 +212,7 @@ scenarios:
   - name: 正常シナリオ（タスク・用語集・メモに本文を書く）
     setup:
       - name: Mock
-        description: project-index の本文のファイルの書き込みは、project-index#83 の本文の入出力に沿ったモック。ほかはなし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 本文
@@ -319,7 +319,7 @@ scenarios:
   - name: 正常シナリオ（資料の本文を HTML で書く）
     setup:
       - name: Mock
-        description: project-index の本文のファイルの書き込みは、project-index#83 の本文の入出力に沿ったモック。ほかはなし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませた、項目を持たないワークスペース
       - name: 本文
@@ -355,7 +355,7 @@ scenarios:
   - name: 異常シナリオ（資料以外に HTML の本文を渡す）
     setup:
       - name: Mock
-        description: project-index の本文のファイルの書き込みは、project-index#83 の本文の入出力に沿ったモック。ほかはなし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませた、タスク T-1 を持つワークスペース
       - name: 本文
@@ -503,4 +503,4 @@ notes:
   読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、今までどおり超えた古い回を消す（正常シナリオ（保持する回数を超えて直す）はこの形）。保持する回数が 0 のときは、今までどおり積まない
   検討事項の案: 検討事項は、`未整理`・`対象外`・`取り下げ` を除く状態で案を 1 つ以上持つ。`決定済み` は採用した案を 1 つ持ち、採用した案を持つ検討事項は `未決定` にならない。この決まりは種類のスキーマが持ち、project-index の書き込みの検査で止まる。セットアップで足す検討事項もこの形で作る
   変更履歴: 変更履歴・作成日・更新日・編集した人・通し番号は、変更の検知が書き込みを見つけて記録する（単一ユースケース『書き込みを履歴に残す』）。保持する回数と読んでいない回の扱いも、そちらが持つ
-  本文の書き込み: '本文のファイルの書き込みは project-index#83 で作る。それまでは、project-index#83 の本文の入出力に沿ったモックで書き込む（本物への付け替えは #541）'
+  本文の書き込み: 本文のファイルは、project-index#83 で入る `write_docs` の本文の書き込みで書く。この作業 PR は project-index#83 のリリースの後にマージする

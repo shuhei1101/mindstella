@@ -184,6 +184,3 @@ scope_out:
   - item: project-index に、MindStella のための書き込みの前後のフック・採番・書き込みの制限を追加する
     reason: project-index は MindStella を知らず、MindStella だけが project-index に依存する（D-290・D-291）
     plan: none
-  - item: 資料の本文の書き込みを、付け替え口とモックから project-index の本物の write_docs へ付け替える
-    reason: 本文のファイルの書き込みは project-index#83 で作る。この PR は project-index#83 の本文の入出力に沿った付け替え口とモックで作る（規約『複数リポジトリのAPI契約』）
-    plan: '#541'

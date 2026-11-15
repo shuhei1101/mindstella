@@ -38,7 +38,7 @@ scenarios:
       ```
     expected:
       - D-1 が変更履歴を 1 回分持ち、直す前の答えが入っている
-      - D-1 の `updated_by` と、その変更履歴の書き換えた人が、外部の変更を表す値である
+      - D-1 の `updated_by` と、その変更履歴の書き換えた人が、`external`である
       - まとまりが 1 つ増え、外部の変更のまとまりであることを持ち、D-1 の変更履歴がそのまとまりに属する
       - '`pending` が空を返す'
     test: test_normal_when_external_change_committed
