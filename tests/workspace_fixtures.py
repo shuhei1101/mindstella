@@ -692,10 +692,9 @@ def make_legacy_workspace(
         記録を置く場所と設定のファイル名は make_workspace の top・settings_file と同じ。
         """
         # 前の版の項目は作成日時・更新日時を項目に持つ
-        stamps = {"created": DEFAULT_TIMESTAMP, "updated": DEFAULT_TIMESTAMP}
-        items = tuple({**stamps, **item} for item in items)
+        items = tuple(_with_stamps(item) for item in items)
         legacy_items = [
-            {**stamps, **make_legacy_item(doc_id, done)}
+            _with_stamps(make_legacy_item(doc_id, done))
             for doc_id, done in (legacy_docs or {}).items()
         ]
         root = make_workspace(
@@ -771,6 +770,15 @@ def make_venv(tmp_path: Path) -> MakeVenv:
         return venv_dir
 
     return _make
+
+
+def _with_stamps(item: dict[str, Any]) -> dict[str, Any]:
+    """作成日時・更新日時を持たない項目の末尾に、既定の日時を足して返す。"""
+    return {
+        **item,
+        "created": item.get("created", DEFAULT_TIMESTAMP),
+        "updated": item.get("updated", DEFAULT_TIMESTAMP),
+    }
 
 
 def split_history(
