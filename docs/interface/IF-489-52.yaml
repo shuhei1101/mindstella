@@ -575,7 +575,7 @@ flows:
       - ツールのエラーにならない
       - '`steps` が `version: v0.13.0` の 4 件で、`refs_to_related`・`body_to_docs_path`・`meta_to_history_yaml` が `destructive: true`、`place_source_config` が `destructive: false`'
       - 'D-2 が `related: [{to: D-1, type: depends_on}, {to: D-1, type: parent}, {to: R-1, type: see_also}]` を持ち、`depends_on`・`parent` を持たない'
-      - 'T-1 が `related: [{to: D-2, type: for}, {to: T-2, type: depends_on}]` を持ち、`for`・`depends_on` を持たない'
+      - 'T-1 が `related: [{to: T-2, type: depends_on}, {to: D-2, type: for}]` を持ち、`for`・`depends_on` を持たない'
       - 'D-2 の `body` が `docs/D-2.md` で、D-2 の `updated`・`history` が値を変えずに `history.yaml` の D-2 の行へ移り、`decisions.yaml` の項目はそれらのキーを持たない'
       - '`.mindstella/dev-docs.yaml` と `.mindstella/schemas/` が『ワークスペースの作成』の「配信の設定」と同じ中身'
       - 同じ呼び出しをもう一度当てても、ワークスペースが変わらない
