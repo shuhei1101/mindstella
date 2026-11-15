@@ -5,7 +5,7 @@ entry:
   value: 配信しているワークスペースの記録のファイルの書き換え（『書き換えの知らせ』と同じ書き換えの印を 250ms ごとに作り直し、前と違ったとき）
 lead: 常駐サーバーが、ワークスペースの記録の書き換えを前回の中身と比べて項目の追加・変更・削除を見つけ、作成日・更新日・編集した人・変更履歴・通し番号を記録する。MindStella のセッションの応答の途中でない間の変更は、外部の変更のまとまりとして自動で commit する。
 idempotent: true
-side_effects: 書き換わった種類の YAML の項目に `created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq` を書き、`changes.yaml` の `last_seq`・`pending`・`sets` を書き換える。状態のフォルダの `workspaces/{ID}/snapshot/` に前回の中身を書く。重なった ID を見つけたら、開いている画面へ知らせ、MindStella のセッションのペインへ貼り付ける
+side_effects: '`history.yaml` の項目の行（`created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`）と、`changes.yaml` の `last_seq`・`pending`・`sets` を書き換える。見るファイル（種類ごとの YAML と本文）は書かない。状態のフォルダの `workspaces/{ID}/snapshot/` に前回の中身を書く。重なった ID を見つけたら、開いている画面へ知らせ、MindStella のセッションのペインへ貼り付ける'
 callers:
   - IF-489-1#
 constraints:
@@ -19,7 +19,7 @@ constraints:
   - item: 起動したとき
     constraint: 常駐サーバーがワークスペースの配信を始めたとき、`snapshot/` と今の中身を比べる。違いは止まっていた間の外部の変更として記録する。`snapshot/` が無ければ、比べずに今の中身で作る
   - item: 書いた元の見分け方
-    constraint: '次の順に見分ける。(1) 常駐サーバーが自分で書いた（MindStella の MCP のツール・画面の保存・この検知の書き戻し）: 書いた処理が前回の中身を置き換えるため、違いが出ず記録しない。(2) Git の操作: 前回の中身を置き換えるだけで記録しない（「Git の操作の見分け方」）。(3) そのワークスペースの MindStella のセッションが応答の途中で、ペインとプロセスがある: 編集した人を `ai` にし、まだまとめていない変更に入れる。(4) それ以外: 編集した人を `external` にし、外部の変更とする'
+    constraint: '次の順に見分ける。(1) 常駐サーバーが自分で書いた（MindStella の MCP のツール・画面の保存・設定の更新）: 書いた処理が前回の中身を置き換えるため、違いが出ず記録しない。(2) Git の操作: 前回の中身を置き換えるだけで記録しない（「Git の操作の見分け方」）。(3) そのワークスペースの MindStella のセッションが応答の途中で、ペインとプロセスがある: 編集した人を `ai` にし、まだまとめていない変更に入れる。(4) それ以外: 編集した人を `external` にし、外部の変更とする'
   - item: Git の操作の見分け方
     constraint: ワークスペースのフォルダが Git の作業ツリーのとき、前回の中身を置き換えた時点の `git rev-parse HEAD` とシンボリック参照（`git symbolic-ref -q HEAD`）を持つ。書き換えを見つけたときにどちらかが変わっている、または `.git/MERGE_HEAD`・`.git/index.lock` があれば Git の操作とする。Git の作業ツリーでなければ、この見分けをしない
     notes: '`git checkout -- {ファイル}` のように HEAD を動かさない書き戻しは、外部の変更として記録する'
@@ -29,17 +29,17 @@ constraints:
     constraint: MindStella のセッションの応答の途中に別のセッションが書き込んだ変更も、そのセッションの変更（`ai`）として記録する
     notes: 書き込みのファイルからは書いたセッションを見分けられないため、応答の途中の変更を全てそのセッションに帰属させる
   - item: 項目の比べ方
-    constraint: 種類ごとの YAML の `items` を `id` で突き合わせる。前回に無い ID は追加、今に無い ID は削除、両方にあって `created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq` を除いたキーか本文の中身が違えば変更とする。本文は項目の `body` が指す `.mindstella/docs/` のファイルの中身で比べる
+    constraint: 種類ごとの YAML の `items` を `id` で突き合わせる。前回に無い ID は追加、今に無い ID は削除、両方にあってキーか本文の中身が違えば変更とする。本文は項目の `body` が指す `.mindstella/docs/` のファイルの中身で比べる
   - item: 追加の記録
-    constraint: '`created`・`updated` を見つけた日時、`updated_by` を書いた元、`added_seq`・`seq` を `last_seq` + 1 にし、`pending.added` に ID を足す。変更履歴は積まない'
+    constraint: '`history.yaml` にその項目の行を作り、`created`・`updated` を見つけた日時、`updated_by` を書いた元、`added_seq`・`seq` を `last_seq` + 1 にし、`pending.added` に ID を足す。変更履歴は積まない'
   - item: 変更履歴を積むとき
     constraint: 変更を見つけたときだけ積む。変わったものが無ければ積まず、`pending` にも足さない
   - item: 変更履歴の 1 回分
-    constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（見つけた日時。`updated` と同じ）・`by`（書いた元の `ai` か `external`）・`before`（変わったキー → 前回の中身の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前回の本文の行へ戻す差分）を、`history` の先頭に置く。本文の全文は持たない。形は ER 図『ワークスペース』の共通のキー `history`'
+    constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（見つけた日時。`updated` と同じ）・`by`（書いた元の `ai` か `external`）・`before`（変わったキー → 前回の中身の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前回の本文の行へ戻す差分）を、`history.yaml` のその項目の行の `history` の先頭に置き、`updated`・`updated_by` を書き換える。本文の全文は持たない。形は ER 図『ワークスペース』の `history.yaml`'
   - item: 保持する回数
-    constraint: '`config.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
+    constraint: '`config.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を `history.yaml` の行の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
   - item: 通し番号
-    constraint: 変更を見つけたとき、項目の `seq` をその回で振った番号にする（保持する回数が 0 で積まないときも `last_seq` を 1 進めてその番号を入れる）
+    constraint: 変更を見つけたとき、`history.yaml` の行の `seq` をその回で振った番号にする（保持する回数が 0 で積まないときも `last_seq` を 1 進めてその番号を入れる）
   - item: 削除の記録
     constraint: '`pending.removed` に `id`・`kind`・`title`（前回の中身のタイトル）・`seq`（`last_seq` + 1）・`added_seq` を足す。最後のまとまりより後に足して消した項目は `pending.added` から除く'
   - item: まだまとめていない変更の書いた元
@@ -47,9 +47,11 @@ constraints:
   - item: 外部の変更を自動で commit する契機
     constraint: '外部の変更を最後に記録してから 60 秒、次の書き換えが無ければ、`pending` を説明「ほかのセッションの書き込み」・`by: external` のまとまりにする'
     notes: '導出の元は、別の Claude Code のセッションが 1 回の応答の中で続けて書き込む間隔（ツールの呼び出しの間にモデルが生成する時間）。実測が無いため 60 秒を仮に置き、結合テストで書き込みの間隔を測る作業を残す（規約『資源の値の決め方』）'
-  - item: 書き戻しの排他
-    constraint: '`.mindstella.lock` の排他ロックを取り、読んだ時点の中身と今の中身が同じことを確かめてから、一時ファイルに書いて `os.replace` で置き換える。違えば書かずにロックを放し、次の印の変化で読み直す'
-    notes: project-index の `write_docs` はこのロックを取らないため、置き換える直前に中身を比べて、書き込みを上書きで失わないようにする
+  - item: 書き込む先
+    constraint: '`history.yaml` と `changes.yaml` だけを、`.mindstella.lock` の排他ロックを取って、一時ファイルに書いて `os.replace` で置き換える。見るファイル（種類ごとの YAML と本文）は書かない。項目を消したときは、`history.yaml` のその項目の行を消す'
+    notes: project-index の `write_docs` は `.mindstella.lock` を取らず、種類ごとの YAML を読んで書き換える。検知が同じファイルを書くと、互いの書き込みを上書きで失い、`write_docs` の結果のバージョンも古くなるため、検知は project-index が書くファイルを書かない
+  - item: ログ
+    constraint: '次のときに、常駐サーバーのログ（標準エラー）へ `[change-detection] {ワークスペースの ID} {理由}: {ファイル}` の 1 行を残す。読めないファイルを飛ばしたとき（理由 `unreadable`）・`history.yaml` か `changes.yaml` を書けなかったとき（`write_failed`）・ペインへの貼り付けに失敗したとき（`paste_failed`）。同じワークスペースの同じファイルの `unreadable` は、読めるようになるまで 1 回だけ残す'
   - item: 読めないファイル
     constraint: YAML として読めないか、`items` が配列でない種類の YAML は、その回は比べずに飛ばし、前回の中身を置き換えない（書き込みの途中を読んだときは次の回で読める）
   - item: スキーマの検査
@@ -79,13 +81,14 @@ flows:
         クライアント->>WS: D-1 の答えを直す
         IF-->>WS: 書き換えの印が変わり、decisions.yaml を読む
         IF->>IF: 前回の中身と比べて D-1 の変更を見つける
-        IF->>WS: D-1 に変更履歴・updated_by external を書き、pending に入れる
+        IF->>WS: history.yaml の D-1 に変更履歴・updated_by external を書き、pending に入れる
         IF->>IF: 書き換えが止んでから待つ
         IF->>WS: pending を外部の変更のまとまりにする
       ```
     expected:
       - D-1 が変更履歴を 1 回分持ち、`before` に直す前の答え、`by` が `external`
-      - D-1 の `updated_by` が `external`
+      - '`history.yaml` の D-1 の `updated_by` が `external`'
+      - '`decisions.yaml` の中身が、クライアントが書いた後のまま（検知が書き換えない）'
       - '`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'
   - name: 正常系（応答の途中の書き込み）
     summary: MindStella のセッションの応答の途中の書き込みは、そのセッションのまだまとめていない変更にする
@@ -106,10 +109,10 @@ flows:
         クライアント->>WS: D-1 の答えを直す
         IF-->>WS: decisions.yaml を読む
         IF->>IF: 応答の途中で、ペインとプロセスがある
-        IF->>WS: D-1 に変更履歴・updated_by ai を書き、pending に入れる
+        IF->>WS: history.yaml の D-1 に変更履歴・updated_by ai を書き、pending に入れる
       ```
     expected:
-      - D-1 の `updated_by` と変更履歴の `by` が `ai`
+      - '`history.yaml` の D-1 の `updated_by` と変更履歴の `by` が `ai`'
       - '`changes.yaml` の `pending.changed` が `[D-1]`、`pending.by` が `ai`'
       - 自動で commit するまでの時間を過ぎても、まとまりが増えない
   - name: 正常系（落ちた MindStella のセッション）
@@ -242,10 +245,10 @@ flows:
         participant IF as 変更の検知
 
         クライアント->>WS: D-1 の答えを直す
-        IF->>WS: updated・seq だけを書く
+        IF->>WS: history.yaml の D-1 の updated・seq だけを書く
       ```
     expected:
-      - D-1 が `history` を持たず、`seq` が書き換え前の `last_seq` + 1
+      - '`history.yaml` の D-1 が `history` を持たず、`seq` が書き換え前の `last_seq` + 1'
       - '`pending.changed` に D-1 が無い'
   - name: 正常系（読んでいない回）
     summary: AI がまだ読んでいない回は、保持する回数を超えても消さない

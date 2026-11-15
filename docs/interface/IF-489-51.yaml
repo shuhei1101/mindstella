@@ -73,7 +73,7 @@ flows:
       ```
     expected:
       - ステータスが 200
-      - '`decisions` の D-1 が `history` を 1 回分持ち、YAML と同じ'
+      - '`decisions` の D-1 が `history` を 1 回分持ち、`history.yaml` の D-1 の行と同じ'
       - '`changes.sets` が「足す」の 1 つで、`added` が `[D-1]`'
       - '`changes.pending.changed` が `[D-1]`'
     test: test_normal_when_history
@@ -193,10 +193,10 @@ response:
     description: '`config.yaml` の中身。`display`（見た目の既定・表示する種類の既定）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
   - name: decisions / tasks / research / docs / terms / notes / logs
     type: list[dict]
-    description: 種類ごとの YAML の `items` の中身（キー名はファイル名から `.yaml` を落としたもの）
+    description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`）を足したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを足さない
   - name: bodies
     type: dict[str, str]
-    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。Markdown は `{ID}.md`、HTML は `{ID}.html` のキーで、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
+    description: '`docs/` のファイル名 → 本文の原文（項目の `body` が指すものだけ。キーは `body` の値（Markdown は `docs/{ID}.md`、HTML は `docs/{ID}.html`）で、どちらも書いたまま）。画面はキーの拡張子で形式を決め、差分・検索・前の版の組み立てには原文を使う'
   - name: built_at
     type: str
     description: 読んだ日時（UTC のタイムゾーン付き ISO 8601）。画面はつながらないときに「{日時} に読んだ記録」と出す

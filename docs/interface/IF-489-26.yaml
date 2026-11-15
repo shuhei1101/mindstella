@@ -307,7 +307,7 @@ constraints:
   - item: フェーズを確かめるキー
     constraint: '種類ごとの YAML の項目の `phase` と設定の `goal.phase` が、設定の `phases` のどれかでないものを `unknown_phase` にする（`goal.phase` は `file: .mindstella/config.yaml`・`id: null`・`key: goal.phase`）。`detail` にそのフェーズの名前'
   - item: 変更履歴のずれ
-    constraint: 本文を持つ項目の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
+    constraint: 本文を持つ項目の `history.yaml` の行の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
 refs:

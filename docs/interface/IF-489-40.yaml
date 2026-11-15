@@ -183,7 +183,7 @@ flows:
     test: test_normal_when_undecided_adopted
 lead: 検討事項の案のうち、指定した記号の案だけを採用にし、ほかの案の採用を外して、状態を `決定済み` にする。
 idempotent: true
-side_effects: '`decisions.yaml` のその検討事項の `options[].adopted`・`status` と `updated`・`updated_by`（`ai`）を書き換える。採用か状態が変わったときは、`history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『変更の検知』と同じ積み方）。答え（`answer`）・推奨の印（`options[].recommended`）は変えない'
+side_effects: '`decisions.yaml` のその検討事項の `options[].adopted`・`status` と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。採用か状態が変わったときは、`history.yaml` の `history` に 1 回分を積み、`changes.yaml` の `last_seq` と `pending.changed` を書き換える（『変更の検知』と同じ積み方）。答え（`answer`）・推奨の印（`options[].recommended`）は変えない'
 request:
   - name: workspace
     type: str

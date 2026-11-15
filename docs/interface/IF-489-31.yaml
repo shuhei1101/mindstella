@@ -27,7 +27,7 @@ flows:
       ```
     expected:
       - ステータスが 200 で、`set` が `V-1`、`changed` が `["D-1"]`
-      - D-1 の `answer`・`tags`・案 C が書かれ、採用する案が C で、`updated_by` が `user`
+      - D-1 の `answer`・`tags`・案 C が書かれ、採用する案が C で、`history.yaml` の D-1 の `updated_by` が `user`
       - D-1 の変更履歴が 1 回分だけ増え、その `by` が `user`
       - '`changes.yaml` の先頭のまとまりが `V-1`・説明「画面からの編集」・`changed: [D-1]` で、`pending` が空'
       - '`edits.yaml` の編集が 0 件'
@@ -54,7 +54,7 @@ flows:
       ```
     expected:
       - 'ステータスが 200 で、`added` が `[{temp: new-1, id: T-2}]`、`removed` が `["N-1"]`、`settings` が `["summary"]`'
-      - '`tasks.yaml` の T-2 が `related: [{to: T-1, type: depends_on}]`・`updated_by: user` を持つ'
+      - '`tasks.yaml` の T-2 が `related: [{to: T-1, type: depends_on}]` を持ち、`history.yaml` の T-2 の `updated_by` が `user`'
       - '`notes.yaml` から N-1 が消え、`changes.yaml` の先頭のまとまりの `removed` に N-1 がある'
       - '`config.yaml` の題名が「画面の編集」'
     test: test_normal_when_add_remove_settings
@@ -286,11 +286,11 @@ constraints:
   - item: 参照の置き換え
     constraint: 参照（`related[].to`・`sources`）の値が溜めた足す項目の仮の ID（`new-{連番}`）なら、振った ID に置き換える
   - item: 編集した人
-    constraint: 書いた項目の `updated_by` と、積んだ変更履歴の `by` を `user` にする。MCP のツールは今どおり `ai` で書く
+    constraint: 書いた項目の `history.yaml` の行の `updated_by` と、積んだ変更履歴の `by` を `user` にする。MCP のツールは今どおり `ai` で書く
   - item: 書き換えのまとまり
     constraint: '当てる前に `changes.yaml` のまだまとめていない変更（`pending`）があれば、それを先に 1 つのまとまりにする（`pending.by` が `ai` なら説明「まとめる前の AI の書き換え」、`external` なら説明「ほかのセッションの書き込み」・`by: external`）。その後、利用者の編集で積んだ変更を説明「画面からの編集」・`by: user` で別の 1 つのまとまりにする（まとまりの中身は『書き換えのまとまり』と同じ）。保存の後の `pending` は空'
   - item: 書く順と戻し方
-    constraint: 項目の YAML・本文・`config.yaml` → `changes.yaml` → `edits.yaml`（編集を空にし、`seq`・`new_seq` はそのまま）の順に書く。途中で書けなければ、書いたファイルを前の中身に書き戻して（前に無かったファイルは消して） 500 を返す
+    constraint: 項目の YAML・本文・`config.yaml` → `history.yaml` → `changes.yaml` → `edits.yaml`（編集を空にし、`seq`・`new_seq` はそのまま）の順に書く。途中で書けなければ、書いたファイルを前の中身に書き戻して（前に無かったファイルは消して） 500 を返す
   - item: 書き換えの知らせ
     constraint: 書いた後、今の書き換えの知らせ（『書き換えの知らせ』）で開いている画面へ知らせる
   - item: 送り元の確かめ

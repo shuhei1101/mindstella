@@ -317,7 +317,7 @@ tables:
     title: 共通のキー
     datastore: JSON
     summary: 種類ごとの YAML の項目が共通で持つキー（各種類のスキーマが `$ref` で指す）
-    description: 種類ごとの YAML はどれも `items:` の配列を持ち、1 要素 = 1 項目。この表のキーは全ての種類の項目が持つ。
+    description: 種類ごとの YAML はどれも `items:` の配列を持ち、1 要素 = 1 項目。この表のキーは全ての種類の項目が持つ。作成日時・更新日時・編集した人・通し番号・変更履歴は項目に持たず、`history.yaml` に持つ。
     columns:
       - name: id
         title: ID
@@ -362,46 +362,6 @@ tables:
         title: リンク
         type: array
         description: 要素は `title`・`url`
-      - name: created
-        title: 作成日時
-        type: string
-        not_null: false
-        auto: 作成日時
-        description: UTC のタイムゾーン付き ISO 8601。変更の検知が足した項目に付け、project-index の `write_docs` では渡さなくてよい（スキーマは必須にしない）
-        example: '2026-10-02T08:00:00+00:00'
-      - name: updated
-        title: 更新日時
-        type: string
-        not_null: false
-        auto: 更新日時
-        description: UTC のタイムゾーン付き ISO 8601。変更の検知が足した・変えた項目に付け、project-index の `write_docs` では渡さなくてよい（スキーマは必須にしない）
-      - name: history
-        title: 変更履歴
-        type: array
-        description: '変更の検知・`adopt`・案の書き換え・画面の保存が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`by`（その回を書き換えたのが `ai` か `user` か `external`（ほかのセッションの書き込み）か。このキーを入れる前に積んだ回は持たない）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。ただし `body` は、前に本文が無かった回（`null`）と資料の本文の形式を替えた回（前のファイル名）だけ `before` に入れる。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても消さない。無ければ変更履歴 0 回分として扱う。変更の検知が付ける'
-      - name: history_dropped_seq
-        title: 消した変更履歴の通し番号
-        type: number
-        not_null: false
-        description: 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換える。差分の表示で、選んだ時点の範囲の中の回が消えたかを見分けるのに使う。一度も消していなければキーを持たない。変更の検知が付ける
-        example: '5'
-      - name: seq
-        title: 最後に振った通し番号
-        type: number
-        not_null: false
-        description: その項目を足した・値を変えたときに振った `changes.yaml` の通し番号のうち、最も新しいもの。『前回読んだ時点からの変更』が `read_seq` と比べる。フェーズ・対象・カテゴリーの付け替えでは進めない。このキーを入れる前に足した項目は、次に値を変えるまでキーを持たない。変更の検知が付ける
-        example: '14'
-      - name: added_seq
-        title: 足したときの通し番号
-        type: number
-        not_null: false
-        description: その項目を足したときに振った `changes.yaml` の通し番号。『前回読んだ時点からの変更』が、読んだ時点より後に足した項目と変えた項目を分けるのに使う。このキーを入れる前に足した項目は持たない。変更の検知が付ける
-        example: '14'
-      - name: updated_by
-        title: 編集した人
-        type: string
-        description: 最後に項目を足した・値を変えたのが AI か利用者かほかのセッションか。`ai`（MindStella のセッションの応答の途中の書き込みと MindStella の MCP のツールの書き込み）・`user`（画面からの編集）・`external`（それ以外の書き込み。『変更の検知』）。`updated` を書き換える全ての書き込み（`update_settings` のフェーズ・対象・カテゴリーの付け替えを含む）が一緒に書く。このキーを入れる前に書いた項目は、次に書き換えるまで持たず、編集した人が分からないものとして扱う。変更の検知が付ける
-        example: ai
   - name: decisions.yaml
     title: 検討事項
     datastore: YAML
@@ -714,6 +674,56 @@ tables:
         title: 中身
         type: string
         description: 空。ロックの対象としてだけ使う
+  - name: history.yaml
+    title: 項目の履歴
+    datastore: YAML
+    summary: 項目ごとの作成日時・更新日時・編集した人・通し番号・変更履歴
+    scale: ~1000
+    growth: 項目を足すたびに 1 件
+    deletion: 項目を消したときにその項目の行を消す（消した項目は `changes.yaml` の `removed` に残る）
+    access: キー（項目の ID）
+    description: '最上位に `items:` の対応（項目の ID → その項目の行）を持つ。変更の検知・`adopt`・案の書き換え・画面の保存・設定の更新だけが、`.mindstella.lock` を取って書く。project-index の配信の対象にせず、種類ごとの YAML の項目はこれらのキーを持たない（project-index の `write_docs` と同じファイルを書かないため）。『記録の取得』は、各項目へこの行のキーを足して返す。無ければどの項目も履歴を持たないものとして扱う'
+    columns:
+      - name: items.{ID}.created
+        title: 作成日時
+        type: string
+        not_null: true
+        auto: 作成日時
+        description: UTC のタイムゾーン付き ISO 8601。項目を足したときに変更の検知が書く
+        example: '2026-10-02T08:00:00+00:00'
+      - name: items.{ID}.updated
+        title: 更新日時
+        type: string
+        not_null: true
+        auto: 更新日時
+        description: UTC のタイムゾーン付き ISO 8601。項目を足した・値を変えたときに書く
+      - name: items.{ID}.updated_by
+        title: 編集した人
+        type: string
+        description: 最後に項目を足した・値を変えたのが AI か利用者かほかのセッションか。`ai`（MindStella のセッションの応答の途中の書き込みと MindStella の MCP のツールの書き込み）・`user`（画面からの編集）・`external`（それ以外の書き込み。『変更の検知』）。`updated` を書き換える全ての書き込み（`update_settings` のフェーズ・対象・カテゴリーの付け替えを含む）が一緒に書く。このキーを入れる前に書いた項目は、次に書き換えるまで持たず、編集した人が分からないものとして扱う。変更の検知が付ける
+        example: ai
+      - name: items.{ID}.seq
+        title: 最後に振った通し番号
+        type: number
+        not_null: false
+        description: その項目を足した・値を変えたときに振った `changes.yaml` の通し番号のうち、最も新しいもの。『前回読んだ時点からの変更』が `read_seq` と比べる。フェーズ・対象・カテゴリーの付け替えでは進めない。このキーを入れる前に足した項目は、次に値を変えるまでキーを持たない。変更の検知が付ける
+        example: '14'
+      - name: items.{ID}.added_seq
+        title: 足したときの通し番号
+        type: number
+        not_null: false
+        description: その項目を足したときに振った `changes.yaml` の通し番号。『前回読んだ時点からの変更』が、読んだ時点より後に足した項目と変えた項目を分けるのに使う。このキーを入れる前に足した項目は持たない。変更の検知が付ける
+        example: '14'
+      - name: items.{ID}.history
+        title: 変更履歴
+        type: array
+        description: '変更の検知・`adopt`・案の書き換え・画面の保存が値を変えるたびに先頭に 1 要素を足し、新しい順に並べる。要素は `seq`（`changes.yaml` の通し番号）・`at`（書き換えた日時）・`by`（その回を書き換えたのが `ai` か `user` か `external`（ほかのセッションの書き込み）か。このキーを入れる前に積んだ回は持たない）・`before`（変わったキー → 書き換える前の値。前に無かったキーは `null`）・`body_diff`（本文が変わったときだけ。要素は `line`（その書き換えの後の本文の 1 始まりの行）・`now`（そこからの今の行の並び）・`before`（置き換える前の行の並び））。後ろの行から当てると前の本文になる。`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq`・`body` は `before` に入れず、本文の全文も持たない。ただし `body` は、前に本文が無かった回（`null`）と資料の本文の形式を替えた回（前のファイル名）だけ `before` に入れる。数は設定の `history_limit` までで、超えた古い要素は次に積むときに消す。ただし `changes.yaml` の `read_seq` より大きい `seq` の要素（AI がまだ読んでいない回）は、超えても消さない。無ければ変更履歴 0 回分として扱う。変更の検知が付ける'
+      - name: items.{ID}.history_dropped_seq
+        title: 消した変更履歴の通し番号
+        type: number
+        not_null: false
+        description: 保持する回数を超えて `history` から消した要素のうち、最も大きい `seq`。消すたびに大きい方へ書き換える。差分の表示で、選んだ時点の範囲の中の回が消えたかを見分けるのに使う。一度も消していなければキーを持たない。変更の検知が付ける
+        example: '5'
   - name: changes.yaml
     title: 書き換えのまとまり
     datastore: YAML
@@ -1121,7 +1131,7 @@ tables:
       - name: base
         title: 溜めたときの更新日時
         type: string
-        description: 項目への編集（`item-add`・`setting` を除く）のとき、最初に溜めた時点のその項目の `updated`。保存のときに項目の `updated` と違えば、溜めた後に書き換わった編集として書き込まない
+        description: 項目への編集（`item-add`・`setting` を除く）のとき、最初に溜めた時点のその項目の `updated`（`history.yaml`）。保存のときに今の `updated` と違えば、溜めた後に書き換わった編集として書き込まない
         example: '2026-10-07T01:18:00+00:00'
       - name: created
         title: 溜めた日時
