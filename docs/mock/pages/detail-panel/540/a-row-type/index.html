@@ -49,5 +49,7 @@
       </div>
     </aside>
   </main>
+  <!-- 見本の「無い ID を入れた」: 誤りのあった入力欄を誤りの文と結び付ける -->
+  <script>if (document.documentElement.dataset.state === "error") { const i = document.querySelector(".m-rel-add input"); i.setAttribute("aria-invalid", "true"); i.setAttribute("aria-describedby", "rel-error"); }</script>
 </body>
 </html>

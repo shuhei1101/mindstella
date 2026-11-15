@@ -39,14 +39,15 @@
         <h2 class="sr-only">D-7 の詳細</h2>
         <h3>関係</h3>
         <div class="m-rel">
-          <div class="m-rel-group"><span class="k">前提</span><div class="chips"><span class="chip"><span class="t">D-1 保存先を決める</span><button type="button" aria-label="D-1 を前提から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="前提に追加する項目"></div></div>
+          <div class="m-rel-group"><span class="k">前提</span><div class="chips"><span class="chip"><span class="t">D-1 保存先を決める</span><button type="button" aria-label="D-1 を前提から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="前提に追加する項目"></div><p class="m-error" id="rel-error">D-99 が見つかりません。ID を確認してください。</p></div>
           <div class="m-rel-group"><span class="k">親</span><div class="chips"><span class="chip"><span class="t">D-4 画面の構成を決める</span><button type="button" aria-label="D-4 を親から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="親に追加する項目"></div></div>
           <div class="m-rel-group"><span class="k">関連</span><div class="chips"><span class="chip"><span class="t">R-2 保存先の候補の比較</span><button type="button" aria-label="R-2 を関連から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="関連に追加する項目"></div></div>
           <p class="m-empty">なし</p>
-          <p class="m-error" id="rel-error">D-99 が見つかりません。ID を確認してください。</p>
         </div>
       </div>
     </aside>
   </main>
+  <!-- 見本の「無い ID を入れた」: 誤りのあった入力欄を誤りの文と結び付ける -->
+  <script>if (document.documentElement.dataset.state === "error") { const i = document.querySelector(".m-rel-group:first-child input"); i.setAttribute("aria-invalid", "true"); i.setAttribute("aria-describedby", "rel-error"); }</script>
 </body>
 </html>

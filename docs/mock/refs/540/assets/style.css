@@ -113,5 +113,7 @@ dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 
 /* 長いタイトル: 相手のタイトルを長くして、省略の形を見せる */
 :root[data-state="long"] .m-rel-to .t::after, :root[data-state="long"] .chip .t::after { content: "（保存の形式・置き場所・移し替えの手順・既存のワークスペースの扱いをまとめて決める）"; }
 
+/* 関係の入力欄の placeholder: ダークでも 4.5:1 以上の色にする */
+.m-rel input::placeholder { color: var(--text-2); opacity: 1; }
 /* 関係の種類ごとのチップの入力欄: タップ対象の高さを揃える */
 .m-rel-group .chips input { min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
