@@ -1,0 +1,1 @@
+# 記録の検索と書き込みを project-index へ移し、commit とスレッドを MindStella の MCP に残す
