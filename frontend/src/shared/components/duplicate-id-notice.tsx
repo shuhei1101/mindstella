@@ -25,7 +25,7 @@ export const DuplicateIdNotice = ({ ids, onOpen, onClose }: DuplicateIdNoticePro
             {kind}{" "}
             <a
               href={`#id=${encodeURIComponent(id)}`}
-              className="font-mono text-mark underline"
+              className="font-mono whitespace-nowrap text-mark underline"
               onClick={(event) => {
                 event.preventDefault();
                 onOpen?.(id);

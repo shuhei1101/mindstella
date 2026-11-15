@@ -1229,7 +1229,7 @@ dialog.hist::backdrop { background: var(--scrim); }
 /* 帯の見出し */
 .dup-note strong { display: block; margin-bottom: 2px; }
 /* 重なった項目の ID のリンク */
-.dup-note .dup-ids a { font-family: var(--font-mono); }
+.dup-note .dup-ids a { font-family: var(--font-mono); white-space: nowrap; }
 /* 帯の閉じるボタン */
 .dup-note .dup-close { flex: none; display: inline-grid; place-items: center; width: var(--target-min); height: var(--target-min); border: 0; border-radius: var(--radius); background: none; color: var(--text-2); cursor: pointer; }
 .dup-note .dup-close:hover { background: var(--hover); color: var(--text); }
