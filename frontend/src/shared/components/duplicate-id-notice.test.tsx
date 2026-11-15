@@ -13,7 +13,7 @@ describe("DuplicateIdNotice", () => {
     render(<DuplicateIdNotice ids={[{ id: "D-12", kind: "検討事項" }]} onOpen={onOpen} onClose={onClose} />);
     // 実行
     await userEvent.click(screen.getByRole("link", { name: "D-12" }));
-    await userEvent.click(screen.getByRole("button", { name: "閉じる" }));
+    await userEvent.click(screen.getByRole("button", { name: "通知を閉じる" }));
     // 検証
     expect(screen.getByRole("alert")).toHaveTextContent("同じ ID の項目が 2 件あります");
     expect(onOpen).toHaveBeenCalledWith("D-12");
