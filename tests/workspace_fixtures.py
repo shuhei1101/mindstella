@@ -691,8 +691,7 @@ def make_legacy_workspace(
 
         記録を置く場所と設定のファイル名は make_workspace の top・settings_file と同じ。
         """
-        # 前の版の項目は作成日時・更新日時を項目に持つ
-        items = tuple(_with_stamps(item) for item in items)
+        # 前の版の資料は作成日時・更新日時を項目に持つ
         legacy_items = [
             _with_stamps(make_legacy_item(doc_id, done))
             for doc_id, done in (legacy_docs or {}).items()
@@ -702,7 +701,6 @@ def make_legacy_workspace(
             bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items},
             settings_file=settings_file,
             top=top,
-            with_history=False,
         )
         base = root if top else root / RECORD_DIR
         # 前の形式の資料を docs.yaml に直接書く（今の形式の資料の後ろに並べる）

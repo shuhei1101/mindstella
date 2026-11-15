@@ -9,7 +9,6 @@ from typing import Any
 import pytest
 import yaml
 
-import commands
 import edits
 from errors import (
     EditConflictError,
@@ -20,6 +19,7 @@ from errors import (
 )
 from fixture_types import MakeEdit, MakeItem, MakeWorkspace, SnapshotTree, WriteEdits
 from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
+from record_helpers import ai_update
 
 # now の代わりに返す日時
 FIXED_NOW = "2026-10-21T05:02:00+00:00"
@@ -63,7 +63,7 @@ def _no_rewrite(root: Path) -> None:
 
 def _rewrite_title_of_d1(root: Path) -> None:
     """保存待ちを溜めた後に、MCP のツールの書き込みで D-1 のタイトルを書き換える。"""
-    commands.run_update(root, "D-1", {"title": "AI が書き換えた題"}, now=_fixed_now)
+    ai_update(root, "D-1", {"title": "AI が書き換えた題"}, now=_fixed_now)
 
 
 def _with_settings(settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
@@ -740,7 +740,7 @@ def test_save_edits_when_ai_pending(
     """まだまとめていない AI の書き換えを先に別のまとまりにする（正常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"), make_item("T-1"))
-    commands.run_update(root, "T-1", {"status": "進行中"}, now=_fixed_now)
+    ai_update(root, "T-1", {"status": "進行中"}, now=_fixed_now)
     write_edits(root, make_edit("E-1", value="答え"))
     # 実行
     result = edits.save_edits(root, now=_fixed_now)
@@ -867,7 +867,7 @@ def test_save_edits_when_empty(
     """保存待ちが空なら何もしない（異常系）。"""
     # 準備
     root = make_workspace(make_item("D-1"))
-    commands.run_update(root, "D-1", {"answer": "a"}, now=_fixed_now)
+    ai_update(root, "D-1", {"answer": "a"}, now=_fixed_now)
     before = snapshot_tree(root)
     # 実行・検証
     with pytest.raises(EditInvalidError):

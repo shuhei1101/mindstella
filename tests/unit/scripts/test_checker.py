@@ -8,7 +8,6 @@ import pytest
 import yaml
 
 import checker
-import commands
 import store
 from fixture_types import (
     MakeComment,
@@ -20,6 +19,7 @@ from fixture_types import (
     WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR
+from record_helpers import ai_update
 
 
 def _keys(
@@ -380,7 +380,7 @@ def test_check_history_when_body_rewritten(
     root = make_workspace(
         make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "元の 1 行目\n元の 2 行目\n"}
     )
-    commands.run_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
+    ai_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
     (root / RECORD_DIR / "docs" / "D-1.md").write_text(
         "手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8"
     )

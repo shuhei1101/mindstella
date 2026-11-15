@@ -859,7 +859,7 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
     # 実行
     files = store.create_workspace(root, valid_settings, version="v0.3.0")
     # 検証
-    assert len(files) == 12
+    assert len(files) == 14
     assert set(files) == {
         "README.md",
         ".mindstella/config.yaml",
@@ -871,6 +871,8 @@ def test_create_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> Non
         ".mindstella/notes.yaml",
         ".mindstella/logs.yaml",
         ".mindstella/mindstella-version.ini",
+        ".mindstella/dev-docs.yaml",
+        ".mindstella/schemas/",
         ".mindstella/docs/",
         ".mindstella/release/",
     }

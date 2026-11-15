@@ -293,7 +293,7 @@ def test_note_pending() -> None:
     # 実行
     noted = history.note_pending(added, "D-1", "changed")
     # 検証
-    assert noted["pending"] == {"added": ["D-1"], "changed": []}
+    assert noted["pending"] == {"added": ["D-1"], "changed": [], "by": "ai"}
     assert noted["last_seq"] == 0
 
 
@@ -324,6 +324,7 @@ def test_commit_pending() -> None:
         "until_seq": 3,
         "added": ["T-1"],
         "changed": ["D-1"],
+        "by": "ai",
     }
     assert committed["sets"][0] == change_set
     assert committed["sets"][1]["id"] == "V-1"

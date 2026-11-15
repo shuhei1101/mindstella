@@ -32,7 +32,7 @@ from export_helpers import (
     module_url,
 )
 from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 # 埋め込み先の要素の開きタグ（DATA_ELEMENT から閉じタグを除いたもの）
 DATA_ELEMENT_OPEN = builder.DATA_ELEMENT.removesuffix("</script>")
@@ -165,7 +165,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "built_at",
         "settings_problem",
     }
-    assert data["bodies"] == {"A-1.md": "資料の本文\n"}
+    assert data["bodies"] == {"docs/A-1.md": "資料の本文\n"}
     assert data["marked_bodies"] == {}
     assert data["settings_problem"] is None
 
@@ -184,8 +184,8 @@ def test_collect_preview_data_with_html_body(
     # 実行
     data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
     # 検証
-    assert data["bodies"] == {"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"}
-    assert data["marked_bodies"] == {"A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
+    assert data["bodies"] == {"docs/A-1.md": "資料の本文\n", "docs/A-2.html": "<p>a</p>"}
+    assert data["marked_bodies"] == {"docs/A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
 
 
 def test_collect_preview_data_with_changes(
@@ -593,8 +593,10 @@ def test_export_preview(
     assert path == out
     html = out.read_text(encoding="utf-8")
     data = _read_embedded(html)
-    assert data["decisions"] == [make_item("D-1")]
-    assert data["bodies"] == {"A-1.md": "本文 </script>\n"}
+    assert data["decisions"] == [
+        {**make_item("D-1"), "created": DEFAULT_TIMESTAMP, "updated": DEFAULT_TIMESTAMP}
+    ]
+    assert data["bodies"] == {"docs/A-1.md": "本文 </script>\n"}
     assert "src=" not in html
     assert "href=" not in html
     assert builder.LICENSES_OPEN in html

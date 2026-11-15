@@ -324,7 +324,7 @@ def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: P
     payload = commands.run_init(root, valid_settings)
     # 検証
     assert payload["workspace"] == str(root)
-    assert len(payload["files"]) == 12
+    assert len(payload["files"]) == 14
     assert "README.md" in payload["files"]
     assert (root / RECORD_DIR / "mindstella-version.ini").read_text(
         encoding="utf-8"
@@ -1207,19 +1207,20 @@ def test_run_preview_url_when_readme_write_fails(
     assert [record.levelno for record in caplog.records] == [logging.WARNING]
 
 
-def _make_workspace_with_set(make_workspace: MakeWorkspace) -> Path:
+def _make_workspace_with_set(make_workspace: MakeWorkspace, make_item: MakeItem) -> Path:
     """検討事項 D-1 を足して commit し、まとまり V-1 を持つワークスペースを作る。"""
-    root = make_workspace()
-    item = {"title": "問い", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}
-    commands.run_add(root, "decision", item, now=_fixed_now)
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={"changes.yaml": "last_seq: 1\nsets: []\npending: {added: [D-1], changed: []}\n"},
+    )
     commands.run_commit(root, "足す", now=_fixed_now)
     return root
 
 
-def test_run_preview_url_when_diff_given(make_workspace: MakeWorkspace) -> None:
+def test_run_preview_url_when_diff_given(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """まとまりを指す URL を返し、README にはハッシュを書かない（正常系）。"""
     # 準備
-    root = _make_workspace_with_set(make_workspace)
+    root = _make_workspace_with_set(make_workspace, make_item)
     url = "http://127.0.0.1:1/mindstella.html"
     previews = _SequenceRegistry((url, True), (url, False))
     # 実行（1 回目は立てて README を書く。2 回目は立っている配信を引く）
@@ -1233,10 +1234,10 @@ def test_run_preview_url_when_diff_given(make_workspace: MakeWorkspace) -> None:
     assert "#diff=" not in written_after_first
 
 
-def test_run_preview_url_when_diff_not_found(make_workspace: MakeWorkspace) -> None:
+def test_run_preview_url_when_diff_not_found(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """記録に無いまとまりでは配信を立てない（異常系）。"""
     # 準備
-    root = _make_workspace_with_set(make_workspace)
+    root = _make_workspace_with_set(make_workspace, make_item)
     previews = _FakeRegistry()
     # 実行・検証
     with pytest.raises(ArgumentError, match=r"^引数の誤り: diff: .*V-99") as exc_info:
@@ -1245,10 +1246,10 @@ def test_run_preview_url_when_diff_not_found(make_workspace: MakeWorkspace) -> N
     assert previews.started == []
 
 
-def test_run_preview_url_when_changes_invalid(make_workspace: MakeWorkspace) -> None:
+def test_run_preview_url_when_changes_invalid(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """changes.yaml が読めなければ配信を立てない（異常系）。"""
     # 準備
-    root = _make_workspace_with_set(make_workspace)
+    root = _make_workspace_with_set(make_workspace, make_item)
     (root / RECORD_DIR / "changes.yaml").write_text("sets: [\n", encoding="utf-8")
     previews = _FakeRegistry()
     # 実行・検証
