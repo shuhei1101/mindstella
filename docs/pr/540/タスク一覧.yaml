@@ -35,7 +35,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-15T06:24:39.754564+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    note: SC-540-1（書き込みを履歴に残す）を新規、SC-489-34・33・32・21・16・1・14・17・18・19・43 を変更、SC-489-30・29・27 を追従。edit_option・adopt・check は MindStella の MCP に残す
+    updated_by: planner
+    updated_at: '2026-11-15T08:15:45.679576+00:00'
   - process: モック作成
     status: todo
   - process: インターフェース定義設計

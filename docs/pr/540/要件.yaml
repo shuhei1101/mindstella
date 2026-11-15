@@ -9,7 +9,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-489-33.yaml
     impact: changed
-    detail: 記録の検索・1 件の中身と参照元・タグと属性名の一覧を、project-index の検索と関連のたどりで行う
+    detail: 記録の検索・1 件の中身と参照元・タグの一覧を、project-index の検索と関連のたどりで行う
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-34.yaml
@@ -23,18 +23,18 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-23.yaml
-    impact: changed
-    detail: 検討事項の案の部分更新を、project-index の書き込みで表すか MindStella に残すかを決めた行き先で行う
+    impact: none
+    detail: 案の書き換えは MindStella の MCP に残し（同じ記号・採用中の案の検査は汎用の書き込みで表せない）、振る舞いは変わらない
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-21.yaml
     impact: changed
-    detail: 採用する案の切り替えと決定済みへの変更を、決めた行き先で行い、影響の洗い出しは関連のたどりで行う
+    detail: 採用する案の切り替えと決定済みへの変更は MindStella の MCP に残し、影響の洗い出しを project-index の関連のたどりで行う
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-16.yaml
     impact: changed
-    detail: ワークスペースの点検を、project-index の検査と変更の検知の参照の検査で行う
+    detail: ワークスペースの点検は MindStella に残し、スキーマ違反は project-index の書き込みの検査が止める。重なった ID も洗い出す
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-1.yaml
@@ -71,8 +71,8 @@ use_cases:
       - docs/scenario/SC-489-34.yaml
   - kind: single
     scenario: docs/scenario/SC-489-28.yaml
-    impact: following
-    detail: 画面で保存した書き込みは今と同じく利用者の変更として履歴に残り、二重に記録されない
+    impact: none
+    detail: 画面の保存は今と同じく自分で履歴を記録し、二重に記録しないことは『書き込みを履歴に残す』が確かめる
     depends_on:
       - docs/scenario/SC-489-34.yaml
   - kind: single
@@ -89,14 +89,20 @@ use_cases:
       - docs/scenario/SC-489-32.yaml
   - kind: single
     scenario: docs/scenario/SC-531-1.yaml
-    impact: following
-    detail: 外部のアプリが作成したワークスペースの記録も、project-index で検索・書き込みできる
+    impact: none
+    detail: 配信の設定はワークスペースの作成が配置し（『ワークスペースの作成』）、外部のアプリから起動する流れは変わらない
     depends_on:
       - docs/scenario/SC-489-14.yaml
   - kind: single
     scenario: docs/scenario/SC-489-30.yaml
     impact: following
     detail: 発言を記録する手順の記録のツールを、project-index のツールと ID の採番に合わせる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: new
+    detail: どのセッションの書き込みも変更履歴に残り、MindStella のセッションの応答の途中でない間の変更は外部の変更のまとまりになる。重なった ID を知らせる
     depends_on:
       - docs/scenario/SC-489-34.yaml
 docs:
