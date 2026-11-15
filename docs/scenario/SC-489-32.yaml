@@ -4,54 +4,57 @@ scenarios:
   - name: 正常シナリオ
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
-        description: 作成を済ませ、本文を持つメモ N-1・N-2 を足して `commit` したワークスペース（保持する回数は既定の 5）
+        description: 作成を済ませ、本文を持つメモ N-1・N-2 を足して `commit` したワークスペース
         notes: N-2 は N-1 と同じ中身を重ねて足した重複
+      - name: MindStella のセッション
+        description: 状態に登録した、応答の途中の MindStella のセッションの `session_id` で呼ぶ
     flow: |-
       ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant PI as project-index
+        participant MS as MindStella の MCP
         participant WS as ワークスペース
+        participant CD as 変更の検知
 
-        CC->>SV: N-2 を消す
-        SV->>WS: N-2 を指す記録が無いことを確かめる
-        SV->>WS: notes.yaml から N-2 を、docs/ から N-2 の本文を消す
-        SV->>WS: まだまとめていない変更に、消した N-2 の ID・種類・タイトルを積む
-        SV-->>CC: 消した項目の ID
-        CC->>SV: pending
-        SV-->>CC: 消した項目に N-2
-        CC->>SV: commit（重複した N-2 を消す）
-        SV->>WS: まとまりを書く
-        CC->>SV: メモを 1 件足す
-        SV-->>CC: 足した項目の ID
+        CC->>PI: N-2 を削除する
+        PI->>WS: N-2 を関連で指す文書が無いことを確かめ、notes.yaml から N-2 を除く
+        CD->>WS: 削除を見つけ、どの項目も指さなくなった N-2 の本文を消し、まだまとめていない変更に消した N-2 の ID・種類・タイトルを積む
+        CC->>MS: pending
+        MS-->>CC: 消した項目に N-2
+        CC->>MS: commit（重複した N-2 を消す）
+        MS->>WS: まとまりを書く
+        CC->>MS: メモの次の ID を取る
+        MS-->>CC: N-3
       ```
     expected:
-      - 消すツールが N-2 を返す
+      - '`delete_docs` が N-2 を消した結果を返す'
       - '`.mindstella/notes.yaml` に N-2 が無く、N-1 は消す前のまま残る'
       - '`.mindstella/docs/` に N-2 の本文の Markdown が無い'
       - '`pending` が、消した項目として N-2 の ID・種類 `note`・消したときのタイトルを返す'
       - '`commit` の後、増えたまとまりが消した項目に N-2 を持ち、`pending` が空を返す'
-      - 消した後に足したメモの ID が N-3 である
+      - 消した後に `next_id` が返すメモの ID が N-3 である
       - '`check` が問題を 0 件で返す'
     test: test_normal
   - name: 正常シナリオ（取り下げる）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませ、調査 R-1 と、R-1 を `related` で指す検討事項 D-1 を足したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
+        participant CD as 変更の検知
 
-        CC->>SV: R-1 を取り下げる（理由を添える）
-        SV->>WS: R-1 に取り下げの印と理由を書き、変更履歴を 1 回分積む
-        SV-->>CC: 取り下げた項目
+        CC->>PI: R-1 に取り下げの印と理由を書き込む
+        PI->>WS: research.yaml に書く
+        CD->>WS: 取り下げる前の値を R-1 の変更履歴に積む
       ```
     expected:
       - '`.mindstella/research.yaml` に R-1 が残り、取り下げの印と渡した理由を持つ'
@@ -61,11 +64,11 @@ scenarios:
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_withdrawn
     notes:
-      状態を持つ種類: '検討事項は状態 `取り下げ`・`対象外`、タスクは状態 `中止` で取り下げる。状態を持たない調査・資料・用語集・メモ・会話ログは、`update` で `withdrawn: true` と `reason` を書く'
+      状態を持つ種類: '検討事項は状態 `取り下げ`・`対象外`、タスクは状態 `中止` で取り下げる。状態を持たない調査・資料・用語集・メモ・会話ログは、`write_docs` で `withdrawn: true` と `reason` を書く'
   - name: 異常シナリオ（ほかの記録が指している）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: なし（project-index を立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 作成を済ませ、検討事項 D-1 と、D-1 に依存する検討事項 D-2 を足したワークスペース
         notes: 'D-2 が `depends_on: [D-1]`'
@@ -73,67 +76,71 @@ scenarios:
       ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
-        CC->>SV: D-1 を消す
-        SV->>WS: D-1 を指す記録を探す
-        SV-->>CC: エラー（D-1 を指している D-2 の depends_on）
+        CC->>PI: D-1 を削除する（参照されていれば断る）
+        PI->>WS: D-1 を関連で指す文書を探す
+        PI-->>CC: エラー（D-1 を指している D-2）
       ```
     expected:
-      - 消すツールがエラーを返す
-      - エラーの本文に、D-1 を指している D-2 とキー `depends_on` がある
-      - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+      - '`delete_docs` がエラーを返す'
+      - エラーに、D-1 を指している D-2 がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_referenced
     notes:
-      指す側: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`、ゴールの納品物の `doc`、レビュー中のコメントと取り込み待ちのスレッド（AI が取り込んでいない利用者の書き込みを持つスレッド）の向け先が指しているとき。指している側の参照は、スキルが先に付け替えるか外す。取り込み待ちでないスレッドは記録として残し、指していても消せる
+      指す側: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`（配信の設定で project-index の関連に対応づけたキー）が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
   - name: 異常シナリオ（存在しない ID を消す）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: なし（project-index を立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 作成を済ませ、メモ N-1 を足したワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant PI as project-index
 
-        CC->>SV: N-9 を消す
-        SV-->>CC: エラー（N-9 が無い）
+        CC->>PI: N-9 を削除する
+        PI-->>CC: エラー（N-9 が無い）
       ```
     expected:
-      - 消すツールがエラーを返す
-      - エラーの本文に、渡した ID `N-9` がある
-      - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
+      - '`delete_docs` がエラーを返す'
+      - エラーに、渡した ID `N-9` がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_item_missing
-  - name: 異常シナリオ（取り込み待ちのスレッドが指している）
+  - name: 正常シナリオ（取り込み待ちのスレッドが指す項目を消す）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ。MindStella のセッションのペインへの貼り付けは記録するだけにする）
       - name: make_workspace
-        description: 作成を済ませ、メモ N-1 と、最初の書き込みが N-1 を指す取り込み待ちのスレッドを足したワークスペース
+        description: 作成を済ませ、メモ N-1 と、最初の書き込みが N-1 を指す取り込み待ちのスレッドと、MindStella のセッションを持つワークスペース
         notes: スレッドは利用者がクローズにしていて、利用者の書き込みを AI が取り込んでいない
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant CC as Claude Code
+        participant PI as project-index
         participant WS as ワークスペース
+        participant CD as 変更の検知
+        participant BR as ブラウザ
 
-        CC->>SV: N-1 を消す
-        SV->>WS: N-1 を指す記録を探す
-        SV-->>CC: エラー（N-1 を指している取り込み待ちのスレッド）
+        CC->>PI: N-1 を削除する
+        PI->>WS: notes.yaml から N-1 を除く
+        CD->>WS: 削除を見つけ、N-1 を取り込み待ちのスレッドが指していることを見つける
+        CD->>BR: 取り込み待ちのスレッドが消した項目を指していることを通知する
+        CD->>CD: MindStella のセッションのペインへ同じ内容を貼り付ける
       ```
     expected:
-      - 消すツールがエラーを返す
-      - エラーの本文に、N-1 を指している取り込み待ちのスレッドがある
-      - ワークスペースの全てのファイルの中身が、消すツールを呼ぶ前と同じである
-    test: test_error_when_awaiting_thread_refers
+      - '`.mindstella/notes.yaml` に N-1 が無い'
+      - スレッドが N-1 を指したまま残っている
+      - 開いている画面と MindStella のセッションのペインに、取り込み待ちのスレッドが消した N-1 を指している通知が届く
+    test: test_normal_when_awaiting_thread_refers
   - name: 正常シナリオ（取り込み済みのスレッドだけが指している）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: なし（MindStella の MCP サーバーと project-index を立て、両方の MCP にクライアントでつなぐ）
       - name: make_workspace
         description: 作成を済ませ、メモ N-1・N-2 と、最初の書き込みが N-2 を指すスレッド 2 件を足したワークスペース
         notes: 1 件は最後の書き込みが AI の返信のオープンのスレッド、もう 1 件は利用者の書き込みだけのクローズのスレッド。どちらも利用者の書き込みは取り込み済み
@@ -141,20 +148,21 @@ scenarios:
       ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant PI as project-index
+        participant MS as MindStella の MCP
         participant WS as ワークスペース
+        participant CD as 変更の検知
 
-        CC->>SV: N-2 を消す
-        SV->>WS: N-2 を指す記録を探す（取り込み待ちのスレッドは無い）
-        SV->>WS: notes.yaml から N-2 を消す
-        SV-->>CC: 消した項目の ID
-        CC->>SV: check
-        SV-->>CC: 問題が無い
+        CC->>PI: N-2 を削除する
+        PI->>WS: notes.yaml から N-2 を除く
+        CD->>WS: 削除を見つける（取り込み待ちのスレッドは指していないので通知しない）
+        CC->>MS: check
+        MS-->>CC: 問題が無い
       ```
     expected:
-      - 消すツールが N-2 を返す
       - '`.mindstella/notes.yaml` に N-2 が無い'
       - 2 件のスレッドが、N-2 を指したまま残っている
+      - 消した項目を指す通知が届かない
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_taken_thread_refers
 lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
@@ -165,13 +173,13 @@ stakeholders:
     interest: やめた検討の経緯は後から読み返せ、誤って足した記録は残らない。消した記録を指したままの項目が残らない
 trigger: 話し合いの中で、利用者がやめると言った項目か、誤って足した・重複した項目が見つかる
 preconditions:
-  - ワークスペースが作成済みである
-  - 起動スクリプトで立ち上げ、mindstella の MCP のツールが使える
-success_guarantee: 取り下げた項目は取り下げの印と理由を持って残り、消した項目は種類の YAML と本文の Markdown から無くなる。消した項目は、まだまとめていない変更・書き換えのまとまり・前回読んだ時点からの差分に、ID・種類・消したときのタイトルで残る。消した ID は、後から足す項目に振られない。
-minimal_guarantee: ほかの記録が指している項目・無い ID を消そうとしたときは、どのファイルも書き換えない。
+  - ワークスペースが作成済みで、project-index の配信元として配信している
+success_guarantee: 取り下げた項目は取り下げの印と理由を持って残り、消した項目は種類の YAML と本文のファイルから無くなる。消した項目は、変更の検知がまだまとめていない変更・書き換えのまとまり・前回読んだ時点からの差分に、ID・種類・消したときのタイトルで残す。消した ID は、`next_id` が後から振らない。
+minimal_guarantee: ほかの記録が関連で指している項目・無い ID を消そうとしたときは、project-index がどのファイルも書き換えない。
 frequency: 話し合いで項目をやめる・誤りに気付くたび
 priority: 中
 notes:
-  E2E の範囲: MCP サーバーを立て、MCP のクライアントで `remove`・`update`・`pending`・`commit`・`check`・`add` を呼んで、結果とワークスペースの状態を確かめる
+  E2E の範囲: project-index と MindStella の MCP にクライアントでつなぎ、`delete_docs`・`write_docs`・`pending`・`commit`・`check`・`next_id` を呼んで、結果とワークスペースの状態を確かめる
   消すか取り下げるか: やめた項目は経緯として読み返すため取り下げで残し、消すのは誤って足した・重複した項目に限る。消した項目の中身は戻せない。消す前の利用者への確認は、ターミナルに書かず、消す項目を向けたスレッドで取る（単一ユースケース『AIがスレッドを立てる』）
+  スレッドが指す項目: project-index はスレッドを知らないため、取り込み待ちのスレッドが指す項目の削除は止められない。変更の検知が、削除を見つけたときに画面と MindStella のセッションへ通知する
 test_file: tests/e2e/単一ユースケース/test_record_remove_withdraw.py

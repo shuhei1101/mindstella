@@ -24,16 +24,17 @@ scenarios:
       ```mermaid
       sequenceDiagram
         participant CC as Claude Code（スキル）
-        participant SV as サーバー
+        participant SV as MindStella の MCP
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: D-1 の採用する案を B に切り替える
         SV->>SV: 案 A を外し案 B を採用にして、スキーマと突き合わせる
         SV->>WS: decisions.yaml に書く
         SV-->>CC: 切り替えた案
-        CC->>SV: D-1 の影響を洗い出す
-        SV->>WS: 依存をたどる
-        SV-->>CC: 影響を受ける項目の一覧
+        CC->>PI: D-1 を参照している項目を、関連を逆向きにたどる
+        PI->>WS: 関連をたどる
+        PI-->>CC: 影響を受ける項目の一覧
       ```
     expected:
       - D-1 の案 B が採用、案 A が採用でない
@@ -100,7 +101,7 @@ scenarios:
       - D-2 が決定済みで、案 A だけが採用である
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_undecided_adopted
-lead: スキルが、方針転換で検討事項の採用する案を切り替え、依存をたどって影響を受ける項目を洗い出す単一ユースケース。
+lead: スキルが、方針転換で検討事項の採用する案を MindStella の MCP で切り替え、project-index で関連をたどって影響を受ける項目を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
 stakeholders:
@@ -112,3 +113,6 @@ preconditions:
 success_guarantee: 採用する案がちょうど 1 つになり、その検討事項に直接・間接に依存する項目と、それを進めるタスクが洗い出される。採用した検討事項は決定済みになる。
 minimal_guarantee: 存在しない案を指したときは、どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_option_adopt.py
+notes:
+  切り替えを MindStella に残す理由: 採用する案を 1 つにして状態を決定済みにする切り替えは、project-index の汎用の書き込みでは 1 回で当てられないため、MindStella の MCP に残す。MindStella の MCP の書き込みは、自分で変更履歴を記録し、変更の検知は二重に記録しない（単一ユースケース『書き込みを履歴に残す』）
+  影響の洗い出し: '`depends_on`・`parent`・`for` は配信の設定で project-index の関連の種類に対応づけ、`trace_related` の `direction: in` でたどる。たどった経路は関連の種類と、経た項目で返る'
