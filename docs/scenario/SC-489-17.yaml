@@ -228,7 +228,7 @@ scenarios:
   - name: 正常シナリオ（案を持たない検討事項を直す）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・`batch`・版の書き換えを、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・project-index の `write_docs`・版の書き換えを、決めた引数で順に再生する
         notes: '-'
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
@@ -238,7 +238,7 @@ scenarios:
         notes: YAML を直接書いて作る
       - name: 再生する確かめ
         description: '`check` が挙げた D-2 には AI が案 A・B のたたき台（A に推奨の印）を書いて示し、利用者がそのまま書いてよいと答える。D-4 は利用者が案 A で決まっていると答える'
-        notes: '`batch` 1 回で、D-2 は `update` で案 A・B を書き、D-4 は `update` で状態を決定済みにする'
+        notes: '`write_docs` 1 回で、D-2 は案 A・B を書き、D-4 は状態を決定済みにする'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -401,5 +401,5 @@ notes:
   E2E の範囲: E2E はモデルを呼ばず、スキルの手順が連ねるツールの呼び出しの並びを再生してワークスペースの状態を確かめる。手順の一覧の示し方・破壊的な操作を当てる前の確認・案内の文面はモデルの応答で、確かめない。破壊的な操作の印は、`mindmap.yaml` を `config.yaml` へ改める手順で確かめる
   スキルの呼び名: 移し替えのスキルは `upgrade`（`/mindstella:upgrade`）
   対応テストファイル: '`tests/e2e/単一ユースケース/test_workspace_upgrade.py`。E2E テスト作成でファイルを作ったときに `test_file` と各シナリオの `test` へ移す'
-  案を持たない検討事項: v0.7.0 の手順は、`決定済み` で `answer` を持ち案を持たない検討事項に、`answer` を内容・`reason` を理由にした採用した案を 1 つ作る。ほかの案と状態の合わない検討事項は、点検の後に移し替えのスキルが AI の書いたたたき台を利用者に確かめてから、`batch` 1 回でまとめて直す（書き込むツールはワークスペース全体を案と状態の決まりと突き合わせるため、1 件ずつは直せない）
+  案を持たない検討事項: v0.7.0 の手順は、`決定済み` で `answer` を持ち案を持たない検討事項に、`answer` を内容・`reason` を理由にした採用した案を 1 つ作る。ほかの案と状態の合わない検討事項は、点検の後に移し替えのスキルが AI の書いたたたき台を利用者に確かめてから、`write_docs` 1 回でまとめて直す（書き込むツールはワークスペース全体を案と状態の決まりと突き合わせるため、1 件ずつは直せない）
 test_file: tests/e2e/単一ユースケース/test_workspace_upgrade.py

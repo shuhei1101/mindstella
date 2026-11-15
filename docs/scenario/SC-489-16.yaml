@@ -195,6 +195,31 @@ scenarios:
       - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_threads_problems_found
+  - name: 正常シナリオ（重なった ID がある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 重なった ID
+        description: ID がどちらも D-1 の検討事項 2 件
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML を読む
+        SV-->>CC: 重なった ID の一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、ID `D-1` が 2 件ある旨がある
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
+    test: test_normal_when_duplicate_id
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -206,3 +231,5 @@ preconditions:
   - ワークスペースが作成済みである
 success_guarantee: 参照切れとずれが全て、どの項目のどのキーかとともに出る。どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_workspace_check.py
+notes:
+  project-index の検査との分担: 種類のスキーマに合わない書き込みは project-index の `write_docs` が書き込みの前に止める。`check` は MindStella に残し、ファイルを直接書き換えた記録を含めて、参照切れ・本文のずれ・設定に無いフェーズ・案と状態・重なった ID・スレッドの問題を洗い出す

@@ -145,7 +145,7 @@ scenarios:
   - name: 正常シナリオ（開いたまま書き換わる）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、端末の保存領域が空のブラウザでプレビューを開いたまま、MCP のクライアントで `update` と `commit` を呼ぶ）
+        description: なし（MCP サーバーを立て、端末の保存領域が空のブラウザでプレビューを開いたまま、MCP のクライアントで project-index の `write_docs` と MindStella の `commit` を呼ぶ）
       - name: make_workspace
         description: 作成を済ませたワークスペース（保持する回数は既定の 5）
       - name: 記録
@@ -318,7 +318,7 @@ scenarios:
       - name: 記録
         description: メモ N-1・N-2（N-2 は N-1 と同じ中身を重ねて足した重複）と調査 R-1・R-2
       - name: 書き換え
-        description: 'MCP のツールで N-2 を `remove` で消し、R-1 を `update` で `withdrawn: true` と `reason`「別の調査で足りた」にして `commit`（説明「重複と不要な調査を片付ける」）する'
+        description: 'N-2 を project-index の `delete_docs` で消し、R-1 を `write_docs` で `withdrawn: true` と `reason`「別の調査で足りた」にして `commit`（説明「重複と不要な調査を片付ける」）する'
         notes: まとまりは `changed` に R-1、`removed` に N-2（種類 `note`・消したときのタイトル）を持つ。N-1・R-2 は書き換えない
       - name: 配信
         description: 記録を配っているサーバー。差分の表示は出していない（既定）
@@ -358,7 +358,7 @@ scenarios:
         description: 記録を作った後に、プレビューを一度開いて閉じる
         notes: 端末に前回開いた日時が残る
       - name: 書き換え
-        description: その後、MCP のツールでメモ N-2 を足して `commit`（説明「メモを足す」）し、N-2 を `remove` で消して `commit`（説明「足したメモを消す」）する
+        description: その後、MCP のツールでメモ N-2 を足して `commit`（説明「メモを足す」）し、N-2 を `delete_docs` で消して `commit`（説明「足したメモを消す」）する
         notes: 「前回開いてから」の範囲で、N-2 は 1 つ目のまとまりの `added` と 2 つ目のまとまりの `removed` の両方にある
     flow: |-
       ```mermaid
