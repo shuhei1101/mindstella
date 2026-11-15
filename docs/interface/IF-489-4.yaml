@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer`・`status` を `update` で直し、タスク T-1 を `add` で足したワークスペース（保持する回数は既定の 5）
+        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer`・`status` を直し、タスク T-1 を足して、変更の検知が `pending` に記録したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -101,7 +101,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
         notes: '-'
       - name: make_workspace
-        description: メモ N-1・N-2 を足して `commit` し、`remove` で N-2 を消したワークスペース
+        description: メモ N-1・N-2 を足して `commit` し、N-2 を消して、変更の検知が `pending.removed` に記録したワークスペース
         notes: N-2 のタイトルは `重複したメモ`
     flow: |-
       ```mermaid
@@ -159,6 +159,9 @@ response:
   - name: removed[].title
     type: str
     description: 消したときのタイトル
+  - name: by
+    type: '"ai" | "external"'
+    description: まだまとめていない変更の書いた元（`changes.yaml` の `pending.by`。無ければ `ai`）。`external` は、MindStella のセッションの応答の途中でない間の変更で、変更の検知が自動でまとまりにする
 exceptions:
   - name: なし（正常終了）
     condition: 一覧を作れた（空のときも含む。`changes.yaml` が無ければ空）
@@ -184,4 +187,5 @@ constraints:
 refs:
   - ER-489-1#
   - IF-489-43#
+  - IF-540-2#
 test_file: tests/integration/server/test_pending.py

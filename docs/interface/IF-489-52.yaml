@@ -552,6 +552,34 @@ flows:
       - 同じ呼び出しをもう一度当てても、D-1 が変わらない
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_tags_to_objects
+  - name: 正常系（記録を project-index で配る形にする）
+    summary: v0.12.0 のワークスペースの参照のキーを種類つきの related へ移し、本文のパスを docs/ から書き、配信の設定を置く
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '版 v0.12.0 で、検討事項 D-1、D-2（`depends_on: [D-1]`・`parent: D-1`・`related: [R-1]`・`body: D-2.md`）、調査 R-1、タスク T-1（`for: [D-2]`・`depends_on: [T-2]`）、タスク T-2 を持つワークスペース'
+        notes: '`migrate` を `apply` で呼ぶ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace apply
+        IF->>WS: refs_to_related・body_to_docs_path・place_source_config を当てる
+        IF-->>クライアント: JSON
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`steps` が `version: v0.13.0` の 3 件で、`refs_to_related`・`body_to_docs_path` が `destructive: true`、`place_source_config` が `destructive: false`'
+      - 'D-2 が `related: [{to: D-1, type: depends_on}, {to: D-1, type: parent}, {to: R-1, type: see_also}]` を持ち、`depends_on`・`parent` を持たない'
+      - 'T-1 が `related: [{to: D-2, type: for}, {to: T-2, type: depends_on}]` を持ち、`for`・`depends_on` を持たない'
+      - 'D-2 の `body` が `docs/D-2.md` で、D-2 の `updated`・`history` が呼ぶ前と同じ'
+      - '`.mindstella/dev-docs.yaml` と `.mindstella/schemas/` が『ワークスペースの作成』の「配信の設定」と同じ中身'
+      - 同じ呼び出しをもう一度当てても、ワークスペースが変わらない
+      - '`check` が問題を 0 件で返す'
 lead: ワークスペースの版とプラグインの版を比べ、間の版の移し替えの手順（`migrations/{版}/steps.yaml`）を版の順に並べる・当てる。値が要るキーを入れ、点検に合えば版のファイルを書き換える。
 idempotent: false
 side_effects: '`plan` は何も書かない。手順を当てるときは、当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書く。失敗したら写しから戻す。`values` は指したファイルの 1 キーを、`record` は `.mindstella/mindstella-version.ini` を書く'
@@ -717,7 +745,11 @@ constraints:
   - item: v0.12.0 の手順
     constraint: '`call`（`tags_to_objects`）の 1 手順。`.mindstella/` の種類ごとの YAML の項目が持つ `tags` の文字列の要素を `{name: {文字列}}` に置き換える（並びと表記は変えず、どのタグも `main` を持たない）。NFKC と小文字にそろえて同じ名前のタグは、最初の 1 件だけを残す。既にオブジェクトの要素と `threads.yaml` のスレッドの `tags` は変えない。書き換えた項目の `updated`・`history` は変えない。破壊的な操作'
     notes: 版の番号は計画の次の Sprint の版。Sprint の版が変わったら合わせる
+  - item: v0.13.0 の手順
+    constraint: '次の順の 3 手順。(1) `call`（`refs_to_related`）。`.mindstella/decisions.yaml` の `depends_on`・`parent`、`tasks.yaml` の `for`・`depends_on` を、項目の `related` の `{to, type}`（`type` はキーの名前）へ移してキーを消す。既にある `related` の ID の文字列は `{to: {ID}, type: see_also}` に置き換える。並びは `depends_on`・`parent`・`for`・元の `related` の順で、同じ `to`・`type` の組は 1 件だけ残す。破壊的な操作。(2) `call`（`body_to_docs_path`）。種類ごとの YAML の項目の `body` が `/` を含まないファイル名なら `docs/{ファイル名}` に置き換える。破壊的な操作。(3) `call`（`place_source_config`）。`.mindstella/dev-docs.yaml` が無ければ『ワークスペースの作成』の「配信の設定」と同じ中身で書き、`.mindstella/schemas/` をプラグインのスキーマで置き換える。破壊的な操作ではない。どの手順も、書き換えた項目の `updated`・`history`（変更履歴の `before` を含む）を変えない'
+    notes: 版の番号は計画の次の Sprint の版。Sprint の版が変わったら合わせる
 refs:
   - ER-489-1#tables[docs.yaml]
   - ER-489-1#tables[mindstella-version.ini]
+  - IF-531-1#
 test_file: tests/integration/server/test_migrate.py

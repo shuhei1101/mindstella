@@ -1,0 +1,324 @@
+id: IF-540-2
+title: 変更の検知
+entry:
+  kind: trigger
+  value: 配信しているワークスペースの記録のファイルの書き換え（『書き換えの知らせ』と同じ書き換えの印を 250ms ごとに作り直し、前と違ったとき）
+lead: 常駐サーバーが、ワークスペースの記録の書き換えを前回の中身と比べて項目の追加・変更・削除を見つけ、作成日・更新日・編集した人・変更履歴・通し番号を記録する。MindStella のセッションの応答の途中でない間の変更は、外部の変更のまとまりとして自動で commit する。
+idempotent: true
+side_effects: 書き換わった種類の YAML の項目に `created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq` を書き、`changes.yaml` の `last_seq`・`pending`・`sets` を書き換える。状態のフォルダの `workspaces/{ID}/snapshot/` に前回の中身を書く。重なった ID を見つけたら、開いている画面へ知らせ、MindStella のセッションのペインへ貼り付ける
+callers:
+  - IF-489-1#
+constraints:
+  - item: 見るファイル
+    constraint: '`.mindstella/` の種類ごとの 7 つの YAML（`decisions.yaml`・`tasks.yaml`・`research.yaml`・`docs.yaml`・`terms.yaml`・`notes.yaml`・`logs.yaml`）と、`.mindstella/docs/` の直下の `*.md`・`*.html`'
+  - item: 見る間隔
+    constraint: 『書き換えの知らせ』と同じ書き換えの印を 250ms ごとに作り直す。印が変わったときだけ中身を読んで比べる
+    decided_by: NFR-489-1#requirements[画面への反映の時間]
+  - item: 前回の中身
+    constraint: ワークスペースごとに、見るファイルの前回の中身を、常駐サーバーのメモリと状態のフォルダの `workspaces/{ID}/snapshot/`（見るファイルと同じ名前の複製）に持つ。記録を書き込んだ後と、記録しない書き換え（自分の書き込み・Git の操作）を見つけた後に、今の中身で置き換える
+  - item: 起動したとき
+    constraint: 常駐サーバーがワークスペースの配信を始めたとき、`snapshot/` と今の中身を比べる。違いは止まっていた間の外部の変更として記録する。`snapshot/` が無ければ、比べずに今の中身で作る
+  - item: 書いた元の見分け方
+    constraint: '次の順に見分ける。(1) 常駐サーバーが自分で書いた（MindStella の MCP のツール・画面の保存・この検知の書き戻し）: 書いた処理が前回の中身を置き換えるため、違いが出ず記録しない。(2) Git の操作: 前回の中身を置き換えるだけで記録しない（「Git の操作の見分け方」）。(3) そのワークスペースの MindStella のセッションが応答の途中で、ペインとプロセスがある: 編集した人を `ai` にし、まだまとめていない変更に入れる。(4) それ以外: 編集した人を `external` にし、外部の変更とする'
+  - item: Git の操作の見分け方
+    constraint: ワークスペースのフォルダが Git の作業ツリーのとき、前回の中身を置き換えた時点の `git rev-parse HEAD` とシンボリック参照（`git symbolic-ref -q HEAD`）を持つ。書き換えを見つけたときにどちらかが変わっている、または `.git/MERGE_HEAD`・`.git/index.lock` があれば Git の操作とする。Git の作業ツリーでなければ、この見分けをしない
+    notes: '`git checkout -- {ファイル}` のように HEAD を動かさない書き戻しは、外部の変更として記録する'
+  - item: ペインとプロセスの確かめ方
+    constraint: 状態の `session.json` の `pane` が `tmux display-message -p -t {pane}` で引け、`pid` のプロセスがあって起動時刻が `pid_started_at` と同じとき、ペインとプロセスがあるとする（『セッションの値の注入』の起動時刻の求め方）
+  - item: 応答の途中の書き込みの帰属
+    constraint: MindStella のセッションの応答の途中に別のセッションが書き込んだ変更も、そのセッションの変更（`ai`）として記録する
+    notes: 書き込みのファイルからは書いたセッションを見分けられないため、応答の途中の変更を全てそのセッションに帰属させる
+  - item: 項目の比べ方
+    constraint: 種類ごとの YAML の `items` を `id` で突き合わせる。前回に無い ID は追加、今に無い ID は削除、両方にあって `created`・`updated`・`updated_by`・`history`・`history_dropped_seq`・`seq`・`added_seq` を除いたキーか本文の中身が違えば変更とする。本文は項目の `body` が指す `.mindstella/docs/` のファイルの中身で比べる
+  - item: 追加の記録
+    constraint: '`created`・`updated` を見つけた日時、`updated_by` を書いた元、`added_seq`・`seq` を `last_seq` + 1 にし、`pending.added` に ID を足す。変更履歴は積まない'
+  - item: 変更履歴を積むとき
+    constraint: 変更を見つけたときだけ積む。変わったものが無ければ積まず、`pending` にも足さない
+  - item: 変更履歴の 1 回分
+    constraint: '`seq`（`changes.yaml` の `last_seq` + 1）・`at`（見つけた日時。`updated` と同じ）・`by`（書いた元の `ai` か `external`）・`before`（変わったキー → 前回の中身の値。前に無かったキーは `null`）・`body_diff`（本文が変わったとき。今の本文の行を前回の本文の行へ戻す差分）を、`history` の先頭に置く。本文の全文は持たない。形は ER 図『ワークスペース』の共通のキー `history`'
+  - item: 保持する回数
+    constraint: '`config.yaml` の `history_limit`（無ければ 5）。積んだ後、新しいものからその回数を残して古いものを消し、消した回の最大の `seq` を項目の `history_dropped_seq` に残す。ただし `changes.yaml` に `read_seq` があるときは、`seq` が `read_seq` より大きい回（AI がまだ読んでいない回）を回数を超えても消さない。0 のときは積まず、`pending.changed` にも足さず、持っている `history`・`history_dropped_seq` をキーごと消す'
+  - item: 通し番号
+    constraint: 変更を見つけたとき、項目の `seq` をその回で振った番号にする（保持する回数が 0 で積まないときも `last_seq` を 1 進めてその番号を入れる）
+  - item: 削除の記録
+    constraint: '`pending.removed` に `id`・`kind`・`title`（前回の中身のタイトル）・`seq`（`last_seq` + 1）・`added_seq` を足す。最後のまとまりより後に足して消した項目は `pending.added` から除く'
+  - item: まだまとめていない変更の書いた元
+    constraint: '`changes.yaml` の `pending.by` に、入っている変更の書いた元（`ai` か `external`）を持つ。書いた元が違う変更を記録する前に、入っている変更を先にまとまりにする（`ai` は説明「まとめる前の AI の書き換え」、`external` は説明「ほかのセッションの書き込み」・`by: external`）。まとまりの作り方は『書き換えのまとまり』と同じ'
+  - item: 外部の変更を自動で commit する契機
+    constraint: '外部の変更を最後に記録してから 60 秒、次の書き換えが無ければ、`pending` を説明「ほかのセッションの書き込み」・`by: external` のまとまりにする'
+    notes: '導出の元は、別の Claude Code のセッションが 1 回の応答の中で続けて書き込む間隔（ツールの呼び出しの間にモデルが生成する時間）。実測が無いため 60 秒を仮に置き、結合テストで書き込みの間隔を測る作業を残す（規約『資源の値の決め方』）'
+  - item: 書き戻しの排他
+    constraint: '`.mindstella.lock` の排他ロックを取り、読んだ時点の中身と今の中身が同じことを確かめてから、一時ファイルに書いて `os.replace` で置き換える。違えば書かずにロックを放し、次の印の変化で読み直す'
+    notes: project-index の `write_docs` はこのロックを取らないため、置き換える直前に中身を比べて、書き込みを上書きで失わないようにする
+  - item: 読めないファイル
+    constraint: YAML として読めないか、`items` が配列でない種類の YAML は、その回は比べずに飛ばし、前回の中身を置き換えない（書き込みの途中を読んだときは次の回で読める）
+  - item: スキーマの検査
+    constraint: しない（書き込みの前に project-index の `write_docs` が検査する）
+  - item: 重なった ID
+    constraint: '比べた後、見るファイルの全ての種類の YAML で同じ `id` を持つ項目が 2 件以上あれば、重なった ID とする。重なった ID の集まりが前回と変わったときだけ、開いている画面へ `event: duplicate_ids`（『書き換えの知らせ』）で知らせ、そのワークスペースの MindStella のセッションのペインへ 1 回貼り付ける（『ClaudeCodeへの貼り付け』と同じ貼り付け方）。重なった項目の記録は通常どおり行う'
+  - item: 貼り付ける文
+    constraint: '`[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で振り直してください`。ID が複数あれば `、` でつなぐ'
+  - item: MindStella のセッションが無いとき
+    constraint: 貼り付けずに画面へだけ知らせる
+exclusivity: ワークスペースごとに 1 つの検知だけが動く（常駐サーバーのプロセスの中のワークスペースごとの鍵を、MindStella の MCP のツール・画面の保存と共有する）
+flows:
+  - name: 正常系
+    summary: 通常のセッションの書き込みを外部の変更として記録し、60 秒後にまとまりにする
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが種類の YAML を project-index の `write_docs` と同じ書き方（一時ファイルに書いて置き換える）で書き換える。自動で commit するまでの時間は環境変数で 1 秒に縮める）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、`commit` を済ませたワークスペース。MindStella のセッションは状態に無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: D-1 の答えを直す
+        IF-->>WS: 書き換えの印が変わり、decisions.yaml を読む
+        IF->>IF: 前回の中身と比べて D-1 の変更を見つける
+        IF->>WS: D-1 に変更履歴・updated_by external を書き、pending に入れる
+        IF->>IF: 書き換えが止んでから待つ
+        IF->>WS: pending を外部の変更のまとまりにする
+      ```
+    expected:
+      - D-1 が変更履歴を 1 回分持ち、`before` に直す前の答え、`by` が `external`
+      - D-1 の `updated_by` が `external`
+      - '`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'
+  - name: 正常系（応答の途中の書き込み）
+    summary: MindStella のセッションの応答の途中の書き込みは、そのセッションのまだまとめていない変更にする
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが種類の YAML を書き換える。tmux のペインとプロセスの確かめは、テストが立てた tmux のペインと `sleep` のプロセスで満たす）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、`commit` を済ませたワークスペース
+      - name: MindStella のセッション
+        description: '`responding: true` の `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: D-1 の答えを直す
+        IF-->>WS: decisions.yaml を読む
+        IF->>IF: 応答の途中で、ペインとプロセスがある
+        IF->>WS: D-1 に変更履歴・updated_by ai を書き、pending に入れる
+      ```
+    expected:
+      - D-1 の `updated_by` と変更履歴の `by` が `ai`
+      - '`changes.yaml` の `pending.changed` が `[D-1]`、`pending.by` が `ai`'
+      - 自動で commit するまでの時間を過ぎても、まとまりが増えない
+  - name: 正常系（落ちた MindStella のセッション）
+    summary: 状態が応答の途中でも、ペインとプロセスが無ければ外部の変更にする
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが種類の YAML を書き換える。自動で commit するまでの時間は 1 秒に縮める）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持つワークスペース
+      - name: MindStella のセッション
+        description: '`responding: true` で、`pane` に無いペイン、`pid` に終わったプロセスを持つ `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: D-1 の答えを直す
+        IF->>IF: 応答の途中だが、ペインとプロセスが無い
+        IF->>WS: 外部の変更として記録し、まとまりにする
+      ```
+    expected:
+      - D-1 の変更履歴の `by` が `external` で、外部の変更のまとまりに属する
+  - name: 正常系（画面の書き込み）
+    summary: 画面の保存が書いた変更を二重に記録しない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、配信の `POST /api/edits/save` を呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、D-1 の答えを直す保存待ちの編集を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: 保存待ちの編集をまとめて保存する（変更履歴と利用者のまとまりを書き、前回の中身を置き換える）
+        IF-->>WS: decisions.yaml を読む
+        IF->>IF: 前回の中身と違いが無い
+      ```
+    expected:
+      - D-1 の変更履歴が 1 回分だけで、`by` が `user`
+      - まとまりが利用者のまとまり 1 つだけ増える
+  - name: 正常系（Git の操作）
+    summary: checkout による書き換えは記録しない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、ワークスペースのフォルダで git を実行する）
+      - name: make_workspace
+        description: Git の作業ツリーで、D-1 の答えが違う 2 つのブランチを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: もう一方のブランチを checkout する
+        IF-->>WS: decisions.yaml を読む
+        IF->>IF: HEAD が変わったので Git の操作とし、前回の中身を置き換える
+      ```
+    expected:
+      - D-1 の変更履歴が増えない
+      - まとまりが増えず、`pending` が空
+      - checkout の後に D-1 の答えを直すと、checkout の後の中身との違いだけが変更履歴に積まれる
+  - name: 正常系（重なった ID）
+    summary: 同じ ID の項目が 2 件になったら、画面とペインへ 1 回知らせる
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てて `/api/events` へつなぐ。ペインへの貼り付けは、テストが立てた tmux のペインの中身を `capture-pane` で読む）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、MindStella のセッションを持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: ID が D-1 の検討事項をもう 1 件書き込む
+        IF-->>WS: decisions.yaml を読む
+        IF->>IF: D-1 が 2 件ある
+        IF-->>クライアント: event: duplicate_ids（D-1）
+        IF->>IF: MindStella のセッションのペインへ貼り付ける
+        クライアント->>WS: 別のキーを書き換える
+        IF->>IF: 重なった ID の集まりが変わらないので知らせない
+      ```
+    expected:
+      - '`/api/events` に `event: duplicate_ids` が 1 回だけ届き、`data` が `["D-1"]`'
+      - 'ペインに `[mindstella] 同じ ID の項目が 2 件あります: D-1` で始まる行が 1 回だけある'
+  - name: 正常系（保持する回数を超える）
+    summary: 保持する回数を超えた古い変更履歴を消し、同じ中身の書き換えでは積まない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが種類の YAML と本文を書き換える）
+      - name: make_workspace
+        description: '`history_limit` を 1 にし、本文を持つ検討事項 D-1 を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: D-1 の答えを直す
+        IF->>WS: 変更履歴を 1 回分積む
+        クライアント->>WS: D-1 の本文を直す
+        IF->>WS: 変更履歴を積み、古い回を消す
+        クライアント->>WS: D-1 の本文を同じ中身で書き直す
+        IF->>IF: 変わったものが無い
+      ```
+    expected:
+      - D-1 の変更履歴が 1 回分だけで、本文を直した回のもの
+      - その回の `body_diff` を当てると、本文を直す前の本文になる
+      - 同じ中身で書き直した後も、変更履歴と `last_seq` がその前と同じ
+  - name: 正常系（保持する回数が 0）
+    summary: 変更履歴を積まずに通し番号だけ進める
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが種類の YAML を書き換える）
+      - name: make_workspace
+        description: '`history_limit` を 0 にし、検討事項 D-1 を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: D-1 の答えを直す
+        IF->>WS: updated・seq だけを書く
+      ```
+    expected:
+      - D-1 が `history` を持たず、`seq` が書き換え前の `last_seq` + 1
+      - '`pending.changed` に D-1 が無い'
+  - name: 正常系（読んでいない回）
+    summary: AI がまだ読んでいない回は、保持する回数を超えても消さない
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが種類の YAML を書き換え、MCP のクライアントで `changes_since_read` を呼ぶ）
+      - name: make_workspace
+        description: '`history_limit` を 1 にし、検討事項 D-1 を持ち、`changes_since_read` を一度呼んだワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: D-1 の答えを直す
+        クライアント->>WS: D-1 の理由を直す
+        IF->>IF: どちらの回も read_seq より後なので消さない
+        クライアント->>IF: changes_since_read を呼ぶ
+        クライアント->>WS: D-1 の答えをもう一度直す
+        IF->>WS: 読み終えた古い回を消す
+      ```
+    expected:
+      - 2 回直した後、D-1 が変更履歴を 2 回分持ち、`history_dropped_seq` を持たない
+      - 3 回目の後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が消した回の最も大きい `seq`
+  - name: 正常系（止まっていた間の変更）
+    summary: 常駐サーバーが止まっていた間の書き換えを、起動したときに外部の変更として記録する
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てて止め、止まっている間にテストが種類の YAML を書き換えてから立て直す）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、`snapshot/` を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: 止まっている間に D-1 の答えを直す
+        IF-->>WS: 配信を始めたときに snapshot/ と比べる
+        IF->>WS: 外部の変更として記録する
+      ```
+    expected:
+      - D-1 の変更履歴の `by` が `external`
+  - name: 正常系（書き込みの途中）
+    summary: 読めない YAML の回は飛ばし、読めるようになってから記録する
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、テストが `decisions.yaml` を YAML として読めない中身にしてから、正しい中身に戻す）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant WS as ワークスペース
+        participant IF as 変更の検知
+
+        クライアント->>WS: 読めない中身を書く
+        IF->>IF: 比べずに飛ばす
+        クライアント->>WS: D-1 の答えを直した正しい中身を書く
+        IF->>WS: D-1 の変更を記録する
+      ```
+    expected:
+      - 読めない中身の間、`decisions.yaml` と `changes.yaml` を書き換えない
+      - 正しい中身に戻した後、D-1 が変更履歴を 1 回分持つ
+refs:
+  - ER-489-1#
+  - ER-531-1#
+  - IF-489-44#
+  - IF-489-43#
+  - IF-489-31#
+  - IF-540-1#
+  - SC-540-1#
+  - SC-489-34#

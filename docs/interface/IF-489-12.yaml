@@ -178,6 +178,27 @@ flows:
       - 'ツールのエラーになり、本文に `エラー: 引数の誤り: body:` がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_body_empty
+  - name: 異常系（MindStella のセッションでない・NotMindStellaSessionError）
+    summary: MindStella のセッションでない呼び出しでは書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 と MindStella のセッションを持つワークスペース
+      - name: 呼ぶ値
+        description: '`session.claude_session_id` に、状態の MindStella のセッションと違う値を入れる'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as reply（MCP のツール）
+
+        クライアント->>IF: reply（違う claude_session_id）
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: reply`'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
 lead: オープンのスレッドの末尾に AI の返信を足し、同じ呼び出しで要約を書き直して、AI が読んだ利用者の書き込みを取り込み済みにする。
 idempotent: false
 side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件足し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -214,6 +235,12 @@ request:
     default: 'true'
     location: argument
     description: 真なら、そのスレッドの AI が既読にした取り込んでいない利用者の書き込みを取り込み済みにする
+  - name: session.claude_session_id
+    type: str
+    required: true
+    location: argument
+    description: 呼んだ Claude Code の `session_id`（『セッションの値の注入』が入れる）
+    constraints: そのワークスペースの MindStella のセッションの `claude_session_id`（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）
 response:
   - name: id
     type: str
@@ -232,6 +259,9 @@ exceptions:
   - name: なし（正常終了）
     condition: 返信した
     notes: 結果を返す
+  - name: NotMindStellaSessionError
+    condition: '`session.claude_session_id` が、そのワークスペースの MindStella のセッションでない'
+    notes: ツールのエラー。何も書き込まない
   - name: ThreadClosedError
     condition: スレッドがクローズ
     notes: ツールのエラー。本文に『スレッドの状態の書き換え』（`set_thread_status`）でオープンに戻してから返信する案内。何も書き込まない
@@ -252,6 +282,8 @@ exceptions:
     notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
+  - item: 呼べるセッション
+    constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
   - item: エラーの返し方

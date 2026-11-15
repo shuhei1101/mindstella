@@ -10,25 +10,25 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: 検討事項 D-1 を持つワークスペース
+        description: 案 A を持つ検討事項 D-1 を持つワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram
         participant クライアント
         participant IF as GET /api/events
-        participant T as add（MCP のツール）
+        participant T as edit_option（MCP のツール）
         participant WS as ワークスペース
 
         クライアント->>IF: GET /api/events
         IF-->>クライアント: 200（つないだまま）
-        クライアント->>T: add workspace kind decision（D-2）
+        クライアント->>T: edit_option workspace D-1（案 B を足す）
         T->>WS: decisions.yaml を書く
         IF->>WS: 書き換えの印が変わった
         IF-->>クライアント: event: changed
       ```
     expected:
       - ステータスが 200、`Content-Type` が `text/event-stream`
-      - '`add` を呼んでから 1 秒以内に `event: changed` が届く'
+      - '`edit_option` を呼んでから 1 秒以内に `event: changed` が届く'
     test: test_normal
   - name: 正常系（別のプロセスが書き換える）
     summary: 同じワークスペースを別の MCP サーバーのツールで書き換えても知らせる
@@ -42,14 +42,14 @@ flows:
       sequenceDiagram
         participant クライアント
         participant IF as GET /api/events（1 つ目）
-        participant T as add（2 つ目の MCP のツール）
+        participant T as edit_option（2 つ目の MCP のツール）
 
         クライアント->>IF: GET /api/events
-        クライアント->>T: add workspace kind decision（D-2）
+        クライアント->>T: edit_option workspace D-1（案 B を足す）
         IF-->>クライアント: event: changed
       ```
     expected:
-      - '`add` を呼んでから 1 秒以内に `event: changed` が届く'
+      - '`edit_option` を呼んでから 1 秒以内に `event: changed` が届く'
     test: test_normal_when_other_process_writes
   - name: 正常系（書き換えが無い）
     summary: 書き換えが無ければ changed を送らない
@@ -92,6 +92,28 @@ flows:
     expected:
       - '`docs/A-1.html` を書き換えてから 1 秒以内に `event: changed` が届く'
     test: test_normal_when_html_body_rewritten
+  - name: 正常系（重なった ID）
+    summary: 同じ ID の項目が 2 件になると duplicate_ids を知らせる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL の `/api/events` へ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+        notes: つないだ後に、ID が D-1 の検討事項をもう 1 件 `decisions.yaml` へ直接書く
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/events
+        participant WS as ワークスペース
+
+        クライアント->>IF: GET /api/events
+        クライアント->>WS: ID が D-1 の検討事項をもう 1 件書く
+        IF-->>クライアント: event: changed
+        IF-->>クライアント: event: duplicate_ids
+      ```
+    expected:
+      - '書いてから 1 秒以内に `event: duplicate_ids` が届き、`data` が `["D-1"]`'
 lead: 配信しているワークスペースのファイルが書き換わったら、開いている画面へ Server-Sent Events で知らせる。画面は知らせを受けて『記録の取得』を読み直す。
 idempotent: true
 side_effects: なし（読むだけ。接続ごとにワークスペースのファイルの更新日時を見続ける）
@@ -111,6 +133,9 @@ response:
   - name: event changed
     type: Server-Sent Events のイベント
     description: '`event: changed` と `data: {書き換えの印}`。書き換えの印は、見ているファイルの名前・更新日時（ナノ秒）・大きさをつないだ文字列で、画面は中身を読まない'
+  - name: event duplicate_ids
+    type: Server-Sent Events のイベント
+    description: '`event: duplicate_ids` と `data: {重なった ID の JSON の配列}`。変更の検知が同じ ID の項目を 2 件以上見つけ、重なった ID の集まりが前と変わったときに送る（『変更の検知』）。重なりが無くなったときは空の配列を送る'
   - name: 保つための行
     type: Server-Sent Events のコメント
     description: '`: keepalive`。15 秒知らせが無ければ送る'
@@ -129,11 +154,12 @@ constraints:
   - item: 保つための行の間隔
     constraint: 15 秒
   - item: 書き換えた元
-    constraint: 問わない。このプロセスのツール・別のプロセスのツール・手での書き換え・画面からまとめて送る・画面からのクローズのどれでも知らせる
+    constraint: 問わない。このプロセスのツール・別のプロセスのツール・project-index の書き込み・手での書き換え・画面からまとめて送る・画面からのクローズのどれでも知らせる
   - item: 接続の数
     constraint: 制限なし（開いている画面ごとに 1 本。端末の中だけで使う）
   - item: 接続先の確かめ
     constraint: 『プレビューの配信』と同じ（`Host` が合わなければ 403 を返す。確かめは『プレビューの配信』の異常系が持つ）
 refs:
   - IF-489-51#
+  - IF-540-2#
 test_file: tests/integration/server/test_events.py

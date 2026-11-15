@@ -59,7 +59,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit`（説明「足す」）し、D-1 の `answer` を `update` で直したワークスペース
+        description: 検討事項 D-1 を足して `commit`（説明「足す」）し、D-1 の `answer` を直して変更の検知が変更履歴を積んだワークスペース
     flow: |-
       ```mermaid
       sequenceDiagram

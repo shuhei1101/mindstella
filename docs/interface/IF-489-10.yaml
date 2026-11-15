@@ -236,6 +236,27 @@ flows:
     expected:
       - ツールのエラーにならず、TH-1 の `status` が `open`
     test: test_normal_when_reopen_with_unseen
+  - name: 異常系（MindStella のセッションでない・NotMindStellaSessionError）
+    summary: MindStella のセッションでない呼び出しでは書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 と MindStella のセッションを持つワークスペース
+      - name: 呼ぶ値
+        description: '`session.claude_session_id` に、状態の MindStella のセッションと違う値を入れる'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as set_thread_status（MCP のツール）
+
+        クライアント->>IF: set_thread_status（違う claude_session_id）
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: set_thread_status`'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
 lead: AI がスレッドをクローズにするかオープンに戻し、書き手（AI）・任意の理由・日時をスレッドに残す。利用者の書き換えは『画面からのスレッドの状態の書き換え』。
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
@@ -266,6 +287,12 @@ request:
     location: argument
     description: 状態を変える理由
     constraints: 前後の空白を除いて 400 文字まで。空白だけは理由なしとして扱う
+  - name: session.claude_session_id
+    type: str
+    required: true
+    location: argument
+    description: 呼んだ Claude Code の `session_id`（『セッションの値の注入』が入れる）
+    constraints: そのワークスペースの MindStella のセッションの `claude_session_id`（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）
 response:
   - name: id
     type: str
@@ -280,6 +307,9 @@ exceptions:
   - name: なし（正常終了）
     condition: 状態を変えたか、既にその状態だった
     notes: 結果を返す
+  - name: NotMindStellaSessionError
+    condition: '`session.claude_session_id` が、そのワークスペースの MindStella のセッションでない'
+    notes: ツールのエラー。何も書き込まない
   - name: ThreadNotFoundError
     condition: '`id` のスレッドが無い'
     notes: ツールのエラー。何も書き込まない
@@ -300,6 +330,8 @@ exceptions:
     notes: 'ツールのエラー。何も書き込まない。本文に当たった条件ごとの行（取り込み待ちは書き込みの ID と `update_thread`（`take: true`）で取り込み済みにする案内、未読は書き込みの ID と利用者が読むまで開いたまま待つ案内）。既にクローズのスレッドは確かめず `changed: false` を返す'
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
+  - item: 呼べるセッション
+    constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
   - item: エラーの返し方

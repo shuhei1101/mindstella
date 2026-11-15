@@ -10,7 +10,9 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer` を `update` で直し、タスク T-1 を `add` で足したワークスペース（保持する回数は既定の 5）
+        description: 検討事項 D-1 を足して `commit` した後、D-1 の `answer` を直し、タスク T-1 を足して、変更の検知が `pending` に記録したワークスペース（保持する回数は既定の 5）
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -27,7 +29,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`id` が `V-2`、`added` が `[T-1]`、`changed` が `[D-1]`、`summary` が渡した説明'
-      - '`changes.yaml` の `sets` の先頭が V-2 で、`until_seq` が `last_seq` と同じ。`pending` の `added`・`changed` が空'
+      - '`changes.yaml` の `sets` の先頭が V-2 で、`by` が `ai`、`until_seq` が `last_seq` と同じ。`pending` の `added`・`changed` が空'
       - D-1 の変更履歴の先頭の `seq` が、V-1 の `until_seq` より大きく V-2 の `until_seq` 以下
       - '`decisions.yaml`・`tasks.yaml` の中身が呼ぶ前と同じ'
     test: test_normal
@@ -153,8 +155,10 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
         notes: '-'
       - name: make_workspace
-        description: メモ N-1・N-2 を足して `commit` し、`remove` で N-2 を消したワークスペース
+        description: メモ N-1・N-2 を足して `commit` し、N-2 を消して、変更の検知が `pending.removed` に記録したワークスペース
         notes: '-'
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
       - name: summary
         description: 一言の説明
         notes: '`重複した N-2 を消す`'
@@ -175,6 +179,53 @@ flows:
       - 結果の `id` が空でなく、`removed` が N-2 の 1 件
       - '`changes.yaml` の `sets` の先頭が `removed` に N-2 を持ち、`pending` の `added`・`changed`・`removed` が空'
     test: test_normal_when_item_removed
+  - name: 正常系（外部の変更が残っている）
+    summary: 外部の変更を先に外部の変更のまとまりにしてから、自分の書き換えをまとめる
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: '検討事項 D-1 を持ち、`changes.yaml` の `pending` が `by: external`・`changed: [D-1]` のワークスペース'
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: commit workspace summary「a」
+        IF-->>WS: changes.yaml を読む
+        IF->>WS: 外部の変更をまとまりにする
+        IF-->>クライアント: JSON（id: null）
+      ```
+    expected:
+      - ツールのエラーにならず、`id` が `null`
+      - '`changes.yaml` の `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」・`changed: [D-1]` で、`pending` が空'
+  - name: 異常系（MindStella のセッションでない・NotMindStellaSessionError）
+    summary: MindStella のセッションでない呼び出しではまとめない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足し、まだ `commit` していないワークスペース
+      - name: MindStella のセッション
+        description: 状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
+      - name: 呼ぶ値
+        description: '`session.claude_session_id` に、状態の MindStella のセッションと違う値を入れる'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as commit（MCP のツール）
+
+        クライアント->>IF: commit（違う claude_session_id）
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: commit`'
+      - '`changes.yaml` の中身が呼ぶ前と同じ'
 lead: まだまとめていない書き換え（最後のまとまりより後に `pending` に入った書き換え）を、日時と一言の説明を付けた 1 つのまとまりにする。プレビューの変更履歴は、このまとまりを並べる。
 idempotent: false
 side_effects: '`changes.yaml` の `sets` の先頭にまとまりを 1 つ足し、`pending` を空にする。項目の YAML と本文は書き換えない'
@@ -194,6 +245,12 @@ request:
     description: このまとまりで何をしたかの一言の説明。プレビューの変更履歴にそのまま出る
     constraints: 前後の空白を除いて 1〜200 文字
     example: D-1 を決め、T-1 を積む
+  - name: session.claude_session_id
+    type: str
+    required: true
+    location: argument
+    description: 呼んだ Claude Code の `session_id`（『セッションの値の注入』が入れる）
+    constraints: そのワークスペースの MindStella のセッションの `claude_session_id`（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）
 response:
   - name: id
     type: str | None
@@ -224,6 +281,9 @@ exceptions:
   - name: WorkspaceNotFoundError
     condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
     notes: ツールのエラー。何も書き込まない
+  - name: NotMindStellaSessionError
+    condition: '`session.claude_session_id` が、そのワークスペースの MindStella のセッションでない'
+    notes: ツールのエラー。何も書き込まない
   - name: SchemaMismatchError
     condition: '`changes.yaml` がスキーマに合わないか、YAML として読めない'
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
@@ -232,6 +292,8 @@ exceptions:
     notes: ツールのエラー。エラーの本文に書けなかったパスと理由。`changes.yaml` を書き換えない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。引数の誤りは `エラー: 引数の誤り: summary: {理由}`。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
+  - item: 呼べるセッション
+    constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
   - item: エラーの返し方
@@ -240,6 +302,11 @@ constraints:
     constraint: '`V-` + 連番。連番はまとまりの最大 + 1（まとまりが無ければ 1）で、番号を使い回さない'
   - item: まとまりの中身
     constraint: '`changes.yaml` の `pending` の `added`・`changed`・`removed` をそのまま写し、`until_seq` に `last_seq` を書く。`removed` が空のときはまとまりに `removed` のキーを置かない。まとまりに入る変更履歴は、1 つ前のまとまりの `until_seq` より大きく、このまとまりの `until_seq` 以下の `seq` を持つもの（ER 図『ワークスペース』の `changes.yaml`）'
+  - item: まとまりの書いた元
+    constraint: '足したまとまりに `by: ai` を書く'
+  - item: 外部の変更が残っているとき
+    constraint: '`pending.by` が `external` なら、それを先に説明「ほかのセッションの書き込み」・`by: external` のまとまりにしてから、このまとまりを足す。外部の変更だけが残っていたときは、外部の変更のまとまりだけを足し、結果はまとまりを足さなかったときと同じにする'
+    notes: 外部の変更は MindStella のセッションの応答の途中でない間にだけ記録されるため、`commit` を呼んだ応答の変更と混ざらない（『変更の検知』）
   - item: まだまとめていない書き換えが無いとき
     constraint: '`pending` の `added`・`changed`・`removed` が全て空なら、まとまりを足さず、`changes.yaml` も書かない'
   - item: まとまりの保持
@@ -252,4 +319,5 @@ exclusivity: ワークスペースを書き換えるツールと同じ鍵とロ�
 refs:
   - ER-489-1#
   - IF-489-4#
+  - IF-540-2#
 test_file: tests/integration/server/test_commit.py

@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: タイトル `問い A` と 3 行の本文を持つ検討事項 D-1 を足してこのツールを 1 回呼び、`update` で D-1 のタイトルを `問い B` に、続けてタイトルを `問い C` にし本文の 2 行目を直し、タスク T-1 を `add` したワークスペース（保持する回数は既定の 5）
+        description: タイトル `問い A` と 3 行の本文を持つ検討事項 D-1 を足してこのツールを 1 回呼び、D-1 のタイトルを `問い B` に、続けてタイトルを `問い C` にし本文の 2 行目を直し、タスク T-1 を足して、変更の検知がそれぞれを記録したワークスペース（保持する回数は既定の 5）
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -141,7 +141,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
         notes: '-'
       - name: make_workspace
-        description: メモ N-1・N-2 を足してから `changes_since_read` を一度呼び、`remove` で N-2 を消し、メモ N-3 を足して `remove` で消したワークスペース
+        description: メモ N-1・N-2 を足してから `changes_since_read` を一度呼び、N-2 を消し、メモ N-3 を足して消して、変更の検知がそれぞれを記録したワークスペース
         notes: N-2 のタイトルは `重複したメモ`
     flow: |-
       ```mermaid
@@ -162,6 +162,29 @@ flows:
       - '`added`・`changed`・`removed` のどれにも N-3 が無い'
       - 呼んだ後の `read_seq` が `last_seq` と同じ
     test: test_normal_when_item_removed
+  - name: 正常系（外部の変更）
+    summary: ほかのセッションが書き込んだ変更も、書き換えた人 external つきで返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を足してこのツールを 1 回呼び、MindStella のセッションの応答の途中でない間に D-1 の答えを直して、変更の検知が外部の変更のまとまりにしたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as changes_since_read（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: changes_since_read workspace
+        IF-->>WS: changes.yaml と種類ごとの YAML を読む
+        IF->>WS: read_seq を last_seq に書く
+        IF-->>クライアント: JSON（changed に D-1）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`changed` が D-1 の 1 件で、変わったキーが `answer`、読んだ時点の答えを持つ'
+      - D-1 の `updated_by` が `external`、`by` が `["external"]`
 lead: AI が最後に読んだ時点（`changes.yaml` の `read_seq`）より後に足した・変えた・消した項目を、変わったキーと読んだ時点の値（本文は行の差分）つきで返し、`read_seq` を今の `last_seq` に書き換える。`session` の準備で必ず呼ぶ。
 idempotent: false
 side_effects: '`changes.yaml` の `read_seq` を書き換える（`changes.yaml` が無ければ、まとまり 0 件・まだまとめていない変更なし・`last_seq: 0`・`read_seq: 0` で作る）。項目の YAML と本文は書き換えない。一時ファイルを書き終えてから `os.replace` で置き換える'
@@ -202,11 +225,11 @@ response:
     type: list[{line, now, before}] | None
     description: 本文が変わったとき、今の本文の行を読んだ時点の本文の行へ戻す差分（形は変更履歴の `body_diff` と同じ）。本文が変わっていないときと、保持する回数が 0 のときは `null`
   - name: changed[].updated_by
-    type: '"ai" | "user" | None'
+    type: '"ai" | "user" | "external" | None'
     description: 今の編集した人（最後に書き換えたのが誰か）。持たない項目は `null`
   - name: changed[].by
-    type: list["ai" | "user"]
-    description: 読んだ時点より後の変更履歴の回を書き換えた人（重なりなし、`user`・`ai` の順）。利用者が直した後に AI が直しても、利用者の編集を見分けられる。`by` を持たない回と、保持する回数が 0 で変更履歴が無いときは空
+    type: list["ai" | "user" | "external"]
+    description: 読んだ時点より後の変更履歴の回を書き換えた人（重なりなし、`user`・`external`・`ai` の順）。ほかのセッションの書き込み（外部の変更）は `external`。利用者が直した後に AI が直しても、利用者の編集を見分けられる。`by` を持たない回と、保持する回数が 0 で変更履歴が無いときは空
   - name: removed[]
     type: list[{id, kind, title}]
     description: '`read_seq` より後に消し、読んだ時点に有った項目（`changes.yaml` の `sets[].removed`・`pending.removed` のうち `seq` が `read_seq` より大きく、`added_seq` が `read_seq` 以下のもの）。消した順。`title` は消したときのタイトル。`had_read_point` が偽のときは空'
@@ -229,9 +252,11 @@ constraints:
   - item: 読んだ時点の値の組み立て方
     constraint: 項目の `history` のうち `seq` が `read_seq` より大きい回を古い順に見て、キーごとに最も古い回の `before` を読んだ時点の値にする。本文はその回の `body_diff` を新しい順に当てて読んだ時点の本文を組み立て、今の本文との差分を返す。読んだ時点の値が今の値と同じキーは `before` に入れず、変わったキーも本文の差分も残らない項目は `changed` に入れない
   - item: 読んでいない回が残ること
-    constraint: '`read_seq` があるとき、`read_seq` より大きい `seq` の回は保持する回数を超えても消えない（『項目の更新』の「保持する回数」）ため、読んだ時点の値を必ず組み立てられる'
+    constraint: '`read_seq` があるとき、`read_seq` より大きい `seq` の回は保持する回数を超えても消えない（『変更の検知』の「保持する回数」）ため、読んだ時点の値を必ず組み立てられる'
   - item: 対象
     constraint: 種類ごとの YAML の項目と、`changes.yaml` に記録した消した項目だけ。設定（`config.yaml`）と、フェーズ・対象・カテゴリーの付け替えは返さない（変更履歴を持たず、通し番号も進めない）。読んだ時点より後に足して消した項目は、読んだ時点にも今にも無いため返さない
   - item: 読んだ時点が進むとき
     constraint: このツールを呼んだときだけ。ほかのツールの書き込みは `read_seq` を書き換えない
+refs:
+  - IF-540-2#
 test_file: tests/integration/server/test_changes_since_read.py

@@ -44,26 +44,12 @@ items:
     summary: "POST /_admin/sessions/{session}/events: MindStella のセッションのフックが送る出来事を状態に記録する"
   - page: IF-531-7.yaml
     summary: "session_hook.py: MindStella のセッションでだけ、フックの出来事を常駐サーバーへ送り、進め方の文書の場所を注入する"
-  - page: IF-489-63.yaml
-    summary: "add: 1 項目を足す"
-  - page: IF-489-60.yaml
-    summary: "update: 1 項目のキーを置き換える"
   - page: IF-489-40.yaml
     summary: "adopt: 検討事項の採用する案を 1 つに切り替える"
   - page: IF-489-32.yaml
     summary: "status: 要見直し・進行中・再開可能・決定待ち・次の候補をまとめて返す"
   - page: IF-489-48.yaml
     summary: "next: 前提が揃った未決定をフェーズ → 影響度 → 後続の件数の順に返す"
-  - page: IF-489-39.yaml
-    summary: "impact: 参照を逆向きにたどって影響を受ける項目を返す"
-  - page: IF-489-61.yaml
-    summary: "find: 条件に合う項目を返す"
-  - page: IF-489-62.yaml
-    summary: "show: 1 項目の中身・本文・参照元を返す"
-  - page: IF-489-35.yaml
-    summary: "attrs: 使っている属性名と件数を返す"
-  - page: IF-489-16.yaml
-    summary: "tags: 使っているタグと件数・種類を返す"
   - page: IF-489-7.yaml
     summary: "goal: ゴールのフェーズまでが決着し納品物が揃ったかと、残りの項目を返す"
   - page: IF-489-26.yaml
@@ -86,6 +72,10 @@ items:
     summary: "GET /api/records: ワークスペースの記録をその場で読んで返す"
   - page: IF-489-44.yaml
     summary: "GET /api/events: 書き換えを Server-Sent Events で知らせる"
+  - page: IF-540-1.yaml
+    summary: "next_id: 項目を書き込む前に種類ごとの次の ID を返し、予約して並行して取った ID と重ねない"
+  - page: IF-540-2.yaml
+    summary: "変更の検知: 記録の書き換えを前回の中身と比べて履歴と通し番号に記録し、外部の変更を自動でまとまりにし、重なった ID を知らせる"
   - page: IF-489-43.yaml
     summary: "commit: まだまとめていない書き換えを説明つきのまとまりにする"
   - page: IF-489-4.yaml
@@ -108,8 +98,6 @@ items:
     summary: "POST /api/comments/send: チェックしたレビュー中の書き込みをスレッドへ移す"
   - page: IF-489-47.yaml
     summary: "edit_option: 検討事項の案を記号で指して 1 つ足す・直す・消す"
-  - page: IF-489-5.yaml
-    summary: "batch: 項目の追加・更新・取得を並べて 1 回で当てる"
   - page: IF-489-33.yaml
     summary: "changes_since_read: AI が前回読んだ時点より後に足した・変えた項目を返し、読んだ時点を進める"
   - page: IF-489-54.yaml
@@ -118,8 +106,6 @@ items:
     summary: "POST /api/config/reload: 手で直した config.yaml を検査し、通れば配信の設定を差し替える"
   - page: IF-489-2.yaml
     summary: "readme: 直下の README.md を起動・接続・スキル・プレビューの一覧に書き直す"
-  - page: IF-489-59.yaml
-    summary: "remove: 1 項目を消し、消した項目をまだまとめていない変更に残す"
   - page: IF-489-8.yaml
     summary: "threads: スレッドを状態・タグ・未読・取り込み待ちで絞り、キーだけを返す"
   - page: IF-489-14.yaml

@@ -137,6 +137,27 @@ flows:
       - 'ツールのエラーになり、本文に `threads.yaml: items[0]` で始まる行がある'
       - '`threads.yaml` の中身が呼ぶ前と同じ'
     test: test_error_when_schema_mismatch
+  - name: 異常系（MindStella のセッションでない・NotMindStellaSessionError）
+    summary: MindStella のセッションでない呼び出しでは書き込まない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: スレッド TH-1 と MindStella のセッションを持つワークスペース
+      - name: 呼ぶ値
+        description: '`session.claude_session_id` に、状態の MindStella のセッションと違う値を入れる'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as new_thread（MCP のツール）
+
+        クライアント->>IF: new_thread（違う claude_session_id）
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - 'ツールのエラーになり、本文が `エラー: MindStella のセッションだけが呼べます: new_thread`'
+      - '`threads.yaml` の中身が呼ぶ前と同じ'
 lead: AI から利用者へ返事を求めるスレッドを立てる。最初の書き込みは AI の本文で、要約とタグを一緒に書く。
 idempotent: false
 side_effects: '`threads.yaml` にオープンのスレッドを 1 件足す（無ければ作る）。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
@@ -175,6 +196,12 @@ request:
     location: argument
     description: 向ける項目の ID
     constraints: ワークスペースにある項目
+  - name: session.claude_session_id
+    type: str
+    required: true
+    location: argument
+    description: 呼んだ Claude Code の `session_id`（『セッションの値の注入』が入れる）
+    constraints: そのワークスペースの MindStella のセッションの `claude_session_id`（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）
 response:
   - name: id
     type: str
@@ -191,6 +218,9 @@ exceptions:
   - name: なし（正常終了）
     condition: 立てた
     notes: 結果を返す
+  - name: NotMindStellaSessionError
+    condition: '`session.claude_session_id` が、そのワークスペースの MindStella のセッションでない'
+    notes: ツールのエラー。何も書き込まない
   - name: ArgumentError
     condition: '`body`・`summary` が空か上限を超える、`tags` に重なりか空の文字列がある'
     notes: 'ツールのエラー（`エラー: 引数の誤り: {引数の名前}: {理由}`）。何も書き込まない'
@@ -208,6 +238,8 @@ exceptions:
     notes: ツールのエラー。エラーの本文に合わない箇所。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。'
 constraints:
+  - item: 呼べるセッション
+    constraint: そのワークスペースの MindStella のセッションだけ（『MCP サーバーの起動』の「MindStella のセッションに限るツール」）。正常系のフローは、状態に登録した MindStella のセッションの `claude_session_id` を `session.claude_session_id` に入れて呼ぶ
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
   - item: エラーの返し方
@@ -223,7 +255,7 @@ constraints:
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送ると重なっても ID が重ならない
   - item: タグ
-    constraint: 『項目の追加』と同じ（どの文字列でも、渡した表記のまま書く）。重なりと空の文字列は今までどおり ArgumentError
+    constraint: どの文字列でも、渡した表記のまま書く。重なりと空の文字列は今までどおり ArgumentError
 refs:
   - ER-489-1#tables[threads.yaml]
   - SC-489-1#

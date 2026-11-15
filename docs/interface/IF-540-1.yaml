@@ -1,0 +1,159 @@
+id: IF-540-1
+title: ID の採番
+entry:
+  kind: mcp_tool
+  value: '`next_id`（MCP サーバー `mindstella` のツール。Claude Code からは `mcp__plugin_mindstella_mindstella__next_id`）。結果とエラーの返し方は『MCP サーバーの起動』'
+lead: 項目を project-index の `write_docs` で書き込む前に、種類ごとの次の ID を返す。返した ID は予約として常駐サーバーが持ち、並行して取った ID と重ならない。
+idempotent: false
+side_effects: 常駐サーバーのメモリの上の、ワークスペースごとの予約の番号を進める。ワークスペースのファイルは書き換えない
+callers:
+  - IF-489-66#
+request:
+  - name: workspace
+    type: str
+    required: true
+    location: argument
+    description: ワークスペースのフォルダのパス
+    constraints: '`.mindstella/config.yaml` があるフォルダ'
+  - name: kind
+    type: '"decision" | "task" | "research" | "doc" | "term" | "note" | "log"'
+    required: true
+    location: argument
+    description: 足す項目の種類。ID の頭の文字が決まる（decision → D / task → T / research → R / doc → A / term → G / note → N / log → L）
+  - name: count
+    type: int
+    required: false
+    default: '1'
+    location: argument
+    description: 続けて取る ID の数。1 回の `write_docs` で同じ種類の項目を複数足すときに使う
+    constraints: 1〜50
+response:
+  - name: ids
+    type: list[str]
+    description: 振った ID。小さい順
+    example: '["D-13", "D-14"]'
+exceptions:
+  - name: なし（正常終了）
+    condition: ID を振った
+    notes: 結果を返す
+  - name: 引数の誤り
+    condition: '`kind` が決めた種類でない、または `count` が 1〜50 でない'
+    notes: ツールのエラー。予約を進めない
+  - name: WorkspaceNotFoundError
+    condition: '`workspace` のフォルダに `.mindstella/config.yaml` が無い'
+    notes: ツールのエラー。予約を進めない
+  - name: SchemaMismatchError
+    condition: その種類の YAML か `changes.yaml` が YAML として読めない
+    notes: ツールのエラー。エラーの本文に読めないファイル。予約を進めない
+error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。引数の誤りは `エラー: 引数の誤り: {引数}: {理由}`'
+constraints:
+  - item: 結果の形
+    constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文）
+  - item: ID の振り方
+    constraint: その種類の連番の最大 + 1 から `count` 個。最大は、今ある項目・`changes.yaml` の `sets[].removed`・`pending.removed` にあるその種類の ID と、そのワークスペースのその種類の予約の最大から取る。消した ID と予約した ID を振り直さない
+  - item: 予約の持ち方
+    constraint: 常駐サーバーのメモリに、ワークスペースの ID・種類ごとに、振った最大の連番を 1 つだけ持つ。期限を設けず、書き込まれなかった ID は欠番になる。常駐サーバーを起動し直すと予約は消え、次の採番はファイルの最大から求める
+    notes: 書き込まれずに起動し直した予約の ID を後で振り直しても、その ID の項目はファイルに無いので重ならない
+  - item: 画面で足す項目
+    constraint: 保存待ちの編集をまとめて保存するとき（『保存待ちの編集をまとめて保存』）の ID も、同じ予約から振る
+  - item: 重なった ID
+    constraint: '`next_id` を通さずに書き込んで同じ ID が 2 件になったときは、変更の検知が見つけて通知する（『変更の検知』）'
+exclusivity: 常駐サーバーのプロセスの中のワークスペースごとの鍵を取ってから、ファイルを読み、予約を進める（別のプロセスは採番しないため、ファイルのロックは取らない）
+flows:
+  - name: 正常系
+    summary: 種類の連番の最大 + 1 を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1・D-2 を持ち、`changes.yaml` の `pending.removed` に D-3 があるワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as next_id（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: next_id workspace kind decision
+        IF-->>WS: decisions.yaml と changes.yaml を読む
+        IF->>IF: 最大 3 の次を予約する
+        IF-->>クライアント: JSON（ids: [D-4]）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`ids` が `[D-4]`'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+  - name: 正常系（並行して取る）
+    summary: 書き込む前に続けて取っても、同じ ID を返さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントを 2 つつないで同時に呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant C1 as クライアント（1 つ目）
+        participant C2 as クライアント（2 つ目）
+        participant IF as next_id（MCP のツール）
+
+        C1->>IF: next_id kind decision
+        C2->>IF: next_id kind decision count 2
+        IF->>IF: ワークスペースの鍵を取り、予約を進める
+        IF-->>C1: 1 つ目の ID
+        IF-->>C2: 2 つ目・3 つ目の ID
+        C1->>IF: next_id kind decision
+        IF-->>C1: D-5
+      ```
+    expected:
+      - 2 つの呼び出しが返した ID が、`D-2`・`D-3`・`D-4` を重ならずに分け合う
+      - どの ID の項目も書き込んでいなくても、続けて取った ID が `D-5`
+  - name: 異常系（決めた種類でない・引数の誤り）
+    summary: 知らない種類には ID を振らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 検討事項 D-1 を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as next_id（MCP のツール）
+
+        クライアント->>IF: next_id kind thread
+        IF-->>クライアント: ツールのエラー
+        クライアント->>IF: next_id kind decision
+        IF-->>クライアント: JSON（ids: [D-2]）
+      ```
+    expected:
+      - '1 回目がツールのエラーになり、本文が `エラー: 引数の誤り: kind:` で始まる'
+      - 2 回目の `ids` が `[D-2]`（1 回目で予約を進めていない）
+  - name: 異常系（ワークスペースが無い・WorkspaceNotFoundError）
+    summary: .mindstella/config.yaml が無いフォルダを指すと、ID を振らない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: 空のフォルダ
+        description: テストごとの一時フォルダ（`.mindstella/config.yaml` が無い）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as next_id（MCP のツール）
+        participant WS as フォルダ
+
+        クライアント->>IF: next_id workspace kind decision
+        IF-->>WS: .mindstella/config.yaml が無い
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - エラーの本文にフォルダのパスがある
+refs:
+  - ER-489-1#
+  - IF-489-1#
+  - IF-540-2#
+  - IF-489-31#
+  - SC-489-34#
+  - SC-489-29#

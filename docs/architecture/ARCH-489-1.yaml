@@ -132,7 +132,7 @@ subsystems:
     status: implemented
   - name: サーバー
     scope: server
-    role: 端末に 1 つの常駐のプロセスで、MCP のツール（ワークスペースの YAML の読み書き・検索・影響の洗い出し・点検・配る書き出し・送信の取り込み・常駐サーバーの状態と停止）と、プレビューの配信・送信の受け付けと、MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）を持つ。MindStella のセッションは tmux のペインの中で起動する。起動のコマンドは、MindStella の API でワークスペースと MindStella のセッションを作ってそのペインへつなぐ。並行する複数のセッションが 1 つの常駐サーバーを共有し、複数のワークスペースを扱う
+    role: 端末に 1 つの常駐のプロセスで、MCP のツール（ID の採番・案の書き換えと採用・点検・配る書き出し・スレッドと書き換えのまとまり・送信の取り込み・常駐サーバーの状態と停止）と、記録の書き換えを履歴に残す変更の検知と、プレビューの配信・送信の受け付けと、MindStella の API（ワークスペースの作成・クローズ、MindStella のセッションの作成・一覧・停止）を持つ。MindStella のセッションは tmux のペインの中で起動する。起動のコマンドは、MindStella の API でワークスペースと MindStella のセッションを作ってそのペインへつなぐ。並行する複数のセッションが 1 つの常駐サーバーを共有し、複数のワークスペースを扱う
     runtime: Python 3（起動スクリプトは bash）
     runs_on: 利用者の端末（systemd --user のユニット `mindstella.service` として、SessionStart のフックか起動のコマンドが落ちていれば起動する常駐サーバー。`127.0.0.1` の `MINDSTELLA_PORT`（無ければ 8784）で待ち受ける。配信は `127.0.0.1` の空きポートか、`config.yaml` の `preview.port` で固定したポート。状態は `${XDG_STATE_HOME:-~/.local/state}/mindstella/`）
     status: implemented
@@ -184,7 +184,7 @@ external_systems:
     notes:
       事前確認: 要。セッションの管理が起動のたびに `PATH` に `claude-balancer` があるかを確かめ、無ければ利用者の既定のアカウントで起動する。空いたアカウントが無いときは 503 を返す
   - name: project-index
-    purpose: ワークスペースを配信元の行として登録・クローズする。グローバルの設定のファイルの場所と、許可するフォルダのキーを読む（D-300）
+    purpose: ワークスペースを配信元の行として登録・クローズする。グローバルの設定のファイルの場所と、許可するフォルダのキーを読む（D-300）。ワークスペースの記録（種類ごとの YAML の項目と本文）は、ワークスペースの `.mindstella/dev-docs.yaml` で project-index の配信元として配り、Claude Code が project-index の MCP（`search_docs`・`write_docs`・`delete_docs`・`trace_related`）で検索・書き込む
     direction: 双方向
     protocol: HTTP（`http://127.0.0.1:${PROJECT_INDEX_PORT:-8786}` の `/settings/sources`）
     detail: API-531-1#
