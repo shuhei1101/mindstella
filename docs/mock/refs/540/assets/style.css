@@ -26,7 +26,7 @@
 /* トップバーの右寄せの隙間 */
 .m-topbar .spacer { flex: 1; }
 /* 本文の区画 */
-.m-main { max-width: 960px; margin: 0 auto; padding: 24px 20px 64px; }
+.m-main { box-sizing: border-box; width: 100%; max-width: 960px; margin: 0 auto; padding: 24px 20px 64px; }
 /* 本文の見出し */
 .m-main h1 { margin: 0 0 12px; font-size: var(--fs-h2); }
 /* 本文の補足 */
@@ -80,7 +80,7 @@ dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 
 /* 相手のタイトル */
 .m-rel-to .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); font-size: var(--fs-small); }
 /* 種類の選択 */
-.m-rel select, .m-rel input { min-width: 0; min-height: 32px; height: var(--control-h); padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
+.m-rel select, .m-rel input { min-width: 0; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
 /* 関連を足す行 */
 .m-rel-add { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; gap: 8px; }
 /* 足すボタン */
