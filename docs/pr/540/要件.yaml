@@ -199,11 +199,15 @@ docs:
   - page: tests/files.yml
     new: false
     change: 削除するテストの行を削除し、新規作成するテストの行を追加する。#531 で削除した integration/server/test_init.py の行が残っており、project-index が tests/files.yml を読み込めないので、その行も削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T18:39:28.140012+00:00'
   - page: plugins/mindstella/files.yml
     new: false
     change: 削除・新規作成するコードの行と、記録を配信する設定のテンプレートの行を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T18:39:28.140012+00:00'
   - page: plugins/mindstella/skills/session/SKILL.md
     new: false
     change: 削除するツール（find・show・add・update・remove・batch・tags・impact）を呼ぶ箇所だけを、project-index のツールと next_id に書き換える。手順の流れは変えない（確認ログの決着）
