@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from record_write_helpers import write_tool
 import json
 import re
 import time
@@ -117,7 +118,7 @@ def test_normal_when_records_changed(
     scroll_top = page.evaluate(SCROLL_TO_MIDDLE_SCRIPT)
     assert scroll_top > 0
     # 実行
-    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
     started = time.monotonic()
     page.wait_for_selector(f"{DECISIONS_COUNT}:text-is('2')", timeout=UPDATE_TIMEOUT_MS)
     elapsed = time.monotonic() - started
@@ -259,7 +260,7 @@ def test_normal_when_records_changed_with_item(make_workspace: MakeWorkspace, ma
     open_spa(page, served.data["url"], "?tab=decisions&id=D-1")
     panel = page.get_by_role("complementary", name="詳細")
     panel.wait_for()
-    call_tool("update", workspace=str(root), id="D-1", item={"title": "書き換えた題"})
+    write_tool(call_tool, "update", workspace=str(root), id="D-1", item={"title": "書き換えた題"})
     expect(panel.get_by_role("heading", name="書き換えた題")).to_be_visible()
 
 
@@ -267,7 +268,7 @@ def _served_with_commit(make_workspace: MakeWorkspace, call_tool: CallTool, *ite
     """実際のツールで項目を足して `commit`（V-1）したワークスペースの配信の URL を返す。"""
     root = make_workspace()
     for kind, item in items:
-        added = call_tool("add", workspace=str(root), kind=kind, item=item)
+        added = write_tool(call_tool, "add", workspace=str(root), kind=kind, item=item)
         assert added.is_error is False, added.text
     committed = call_tool("commit", workspace=str(root), summary="最初の書き込み")
     assert committed.is_error is False, committed.text
@@ -395,7 +396,7 @@ def test_normal_when_settings(page: Page, spa_preview: str) -> None:
 
 def test_error_when_library_unavailable(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """描画のライブラリが読めないとき、原文とライブラリの名前を出す（異常系）。"""
-    url = write_preview(make_item("D-1", title="本文あり", status="未決定", body="D-1.md"), bodies={"D-1.md": "本文の原文"})
+    url = write_preview(make_item("D-1", title="本文あり", status="未決定", body="docs/D-1.md"), bodies={"D-1.md": "本文の原文"})
 
     def _abort(route: Route) -> None:
         """mdmark の取得を止める。"""
@@ -679,7 +680,7 @@ def test_error_when_comment_send_stale(page: Page, write_review_preview: WriteRe
     panel = page.get_by_role("dialog", name="コメント")
     expect(panel.locator("li[data-comment='C-1']")).to_be_visible()
     # 実行（A-1 の本文を 1 行にしてから、まとめて送る）
-    updated = call_tool("update", workspace=str(root), id="A-1", item={"body_markdown": "一行だけ\n"})
+    updated = write_tool(call_tool, "update", workspace=str(root), id="A-1", item={"body_markdown": "一行だけ\n"})
     assert updated.is_error is False, updated.text
     panel.get_by_role("button", name="まとめて送る（1 件）").click()
     # 検証

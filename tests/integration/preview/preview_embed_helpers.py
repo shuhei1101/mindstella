@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from record_write_helpers import write_tool
 import json
 from pathlib import Path
 from typing import Any
@@ -132,7 +133,7 @@ def build_embedded_diff_workspace(
         ("commit", {"summary": "直す"}),
     )
     for name, arguments in steps:
-        result = call_tool(name, workspace=workspace, **arguments)
+        result = write_tool(call_tool, name, workspace=workspace, **arguments)
         assert result.is_error is False, result.text
     return root
 

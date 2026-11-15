@@ -135,6 +135,26 @@ class EventStream:
             if line.startswith(b"event: changed"):
                 return True
 
+    def collect(self, timeout: float) -> list[tuple[str, str]]:
+        """timeout 秒の間に届いた知らせを、（`event` の名前・`data` の文字列）の並びで返す。"""
+        events: list[tuple[str, str]] = []
+        name = ""
+        deadline = time.monotonic() + timeout
+        while (remaining := deadline - time.monotonic()) > 0:
+            self._socket.settimeout(max(remaining, MIN_READ_TIMEOUT_SEC))
+            try:
+                line = self._reader.readline().decode("utf-8").rstrip("\r\n")
+            except TimeoutError:
+                break
+            # 名前の行: 次の data の行と組にする
+            if line.startswith("event: "):
+                name = line.removeprefix("event: ")
+            # data の行: 直前の名前と組にして残す
+            elif line.startswith("data: ") and name:
+                events.append((name, line.removeprefix("data: ")))
+                name = ""
+        return events
+
     def close(self) -> None:
         """つなぎを閉じる。"""
         self._reader.close()

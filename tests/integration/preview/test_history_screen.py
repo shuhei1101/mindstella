@@ -9,6 +9,7 @@ from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_history_helpers import preselect_diff
 from preview_removed_helpers import BAND, REMOVED_IN_V2_BY_TAB, assert_removed_band
 from workspace_fixtures import CallTool
+from record_write_helpers import write_tool
 
 # 変更履歴のモーダルと、時点の行
 DIALOG = "dialog.hist"
@@ -206,8 +207,7 @@ def test_selection_kept_when_reloaded_and_rewritten(
     # 読み込み直すと絞り込みは開いたときの既定に戻るので、決定済みの D-1 は出ず、印は D-2 だけに付く
     assert page.locator("table.grid .df-mark").count() == 1
     # 実行（開いたまま、まとまり V-2 に入る項目をまとめる前に別の項目を足す）
-    result = call_tool(
-        "add",
+    result = write_tool(call_tool, "add",
         workspace=str(root),
         kind="decision",
         item={

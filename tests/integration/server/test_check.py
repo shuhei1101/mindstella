@@ -29,8 +29,8 @@ def test_normal_when_clean(
     """整ったワークスペースで問題 0 件を返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="D-1.md"),
-        make_item("D-2", depends_on=["D-1"]),
+        make_item("D-1", body="docs/D-1.md"),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
         bodies={"D-1.md": "本文\n"},
     )
     # 実行
@@ -51,9 +51,9 @@ def test_normal_when_problems_found(
     """スキーマ違反・参照切れ・本文のずれを全て返す。問題があるときもツールのエラーにしない（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", depends_on=["D-9"]),
+        make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
         make_item("D-2", status="完了"),
-        make_item("R-1", body="R-1.md"),
+        make_item("R-1", body="docs/R-1.md"),
         bodies={"X-1.md": "どこからも指されない本文\n"},
     )
     write_threads(root, make_thread("TH-1", target="D-8"))
@@ -65,7 +65,7 @@ def test_normal_when_problems_found(
     assert result.data is not None
     assert result.data["ok"] is False
     assert _problem_keys(result.data["problems"]) == {
-        ("broken_ref", ".mindstella/decisions.yaml", "D-1", "depends_on"),
+        ("broken_ref", ".mindstella/decisions.yaml", "D-1", "related[0].to"),
         ("broken_ref", ".mindstella/threads.yaml", "TH-1", "target"),
         ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
         ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
@@ -224,8 +224,8 @@ def test_normal_when_html_body_problems_found(
     """HTML の本文も、指す本文が無い・どこからも指されないの対象にする（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="A-1.html"),
-        make_item("A-2", body="A-2.html"),
+        make_item("A-1", body="docs/A-1.html"),
+        make_item("A-2", body="docs/A-2.html"),
         bodies={
             "A-2.html": "<p>詳細の画面</p>\n",
             "A-9.html": "<p>どの項目も指さない画面</p>\n",
@@ -266,4 +266,25 @@ def test_normal_when_string_tags(
         ("schema", ".mindstella/decisions.yaml", "D-1", "items[0].tags[0]"),
     }
     assert "/mindstella:upgrade" in result.data["problems"][0]["detail"]
+    assert snapshot_tree(root) == before
+
+
+def test_normal_when_duplicate_ids(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """ID が重なった項目があれば duplicate_id を 1 件返し、何も書き換えない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-1", title="もう 1 件"))
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    duplicates = [row for row in result.data["problems"] if row["kind"] == "duplicate_id"]
+    assert [row["id"] for row in duplicates] == ["D-1"]
     assert snapshot_tree(root) == before

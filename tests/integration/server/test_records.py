@@ -12,6 +12,7 @@ from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, write_yaml
 from .fixture_types import CallTool, MakeItem, MakeWorkspace
 from .history_helpers import DECISION_ITEM, add_item, commit, read_items, update_item
 from .http_helpers import http_request
+from record_write_helpers import write_tool
 
 # 検討事項 D-1 の本文
 DECISION_BODY = "## 経緯\n\n種類ごとに分ける案を考えた。\n"
@@ -27,7 +28,7 @@ def test_normal(
     """全ての種類と本文と導いた値を返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="D-1.md"),
+        make_item("D-1", body="docs/D-1.md"),
         make_item("T-1"),
         make_item("R-1"),
         make_item("A-1"),
@@ -43,14 +44,14 @@ def test_normal(
     assert result.status == 200
     records = result.json()
     assert records["settings"] == valid_settings
-    assert records["decisions"] == [make_item("D-1", body="D-1.md")]
+    assert records["decisions"] == [make_item("D-1", body="docs/D-1.md")]
     assert records["tasks"] == [make_item("T-1")]
     assert records["research"] == [make_item("R-1")]
     assert records["docs"] == [make_item("A-1")]
     assert records["terms"] == [make_item("G-1")]
     assert records["notes"] == [make_item("N-1")]
     assert records["logs"] == [make_item("L-1")]
-    assert records["bodies"]["D-1.md"] == DECISION_BODY
+    assert records["bodies"]["docs/D-1.md"] == DECISION_BODY
     next_result = call_tool("next", workspace=str(root))
     assert next_result.data is not None
     assert records["derived"]["next"] == next_result.data["candidates"]
@@ -140,7 +141,7 @@ def test_normal_when_rewritten(
         "options": [{"key": "A", "content": "案 A"}],
     }
     # 実行
-    added = call_tool("add", workspace=str(root), kind="decision", item=new_decision)
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=new_decision)
     second = http_request(url, "/api/records").json()
     # 検証
     assert added.is_error is False
@@ -205,7 +206,7 @@ def test_normal_when_html_body(
     )
     root = make_workspace(
         make_item("A-1"),
-        make_item("A-2", body="A-2.html"),
+        make_item("A-2", body="docs/A-2.html"),
         bodies={"A-1.md": markdown_body, "A-2.html": html_body},
     )
     url = serve_preview(root)
@@ -214,8 +215,8 @@ def test_normal_when_html_body(
     # 検証
     assert result.status == 200
     records = result.json()
-    assert records["bodies"]["A-1.md"] == markdown_body
-    assert records["bodies"]["A-2.html"] == html_body
+    assert records["bodies"]["docs/A-1.md"] == markdown_body
+    assert records["bodies"]["docs/A-2.html"] == html_body
     assert list(records["marked_bodies"]) == ["A-2.html"]
     marked = records["marked_bodies"]["A-2.html"]
     # 複数行にまたがる開きタグの印は、中身が始まる行（開きタグが閉じる行）と、閉じタグが始まる行

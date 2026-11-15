@@ -6,12 +6,15 @@ fixture は `tests/conftest.py` が読み込み、`tests/` の下の全てのテ
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import itertools
 import copy
 import json
 import os
 import re
+import shutil
 import socket
+import tempfile
 import subprocess
 import sys
 import threading
@@ -112,6 +115,35 @@ KIND_DEFAULTS: dict[str, dict[str, Any]] = {
     "N": {"content": "メモの中身"},
     "L": {"date": "2026-10-01"},
 }
+
+# MindStella のセッションだけが呼べるツール（インターフェース定義『MCP サーバーの起動』の「MindStella のセッションに限るツール」）
+MINDSTELLA_ONLY_TOOLS = frozenset({"commit", "new_thread", "reply", "set_thread_status", "update_thread"})
+
+# 常駐サーバーが状態のフォルダを置く場所を読む環境変数の名前と、その下のフォルダ
+STATE_HOME_ENV = "XDG_STATE_HOME"
+STATE_SESSION_PATH = ("mindstella", "workspaces")
+STATE_SESSION_FILE = "session.json"
+
+# 変更の検知が記録し終えるのを待つ上限秒数と、確かめる間隔
+DETECTION_WAIT_SEC = 10
+DETECTION_POLL_SEC = 0.05
+
+# 応答の途中の MindStella のセッションに見せる tmux のセッションの名前・ペインで動かすコマンドと、tmux の 1 コマンドを待つ上限秒数
+AI_PANE_SESSION = "mindstella-ai"
+AI_PANE_COMMAND = "exec sleep 86400"
+AI_PANE_TMUX_TIMEOUT_SEC = 10
+
+# `/proc/{PID}/stat` のコマンドの名前を閉じる最後の `)` より後ろの、starttime の位置（0 始まり）
+PROC_STARTTIME_INDEX = 19
+
+# テストが状態に登録する MindStella のセッションの値
+TEST_SESSION_ID = "S-000000000000"
+TEST_CLAUDE_SESSION_ID = "c-mindstella-test"
+
+# 記録の設定に id の無いワークスペースの ID の頭と、フォルダ名で置き換える文字・パスのハッシュの桁数
+WORKSPACE_ID_PREFIX = "mindstella"
+WORKSPACE_ID_UNSAFE_CHARS = ".:"
+WORKSPACE_ID_HASH_DIGITS = 6
 
 type StartServer = Callable[..., McpServer]
 type CallTool = Callable[..., ToolResult]
@@ -243,6 +275,54 @@ class McpClient:
         self._thread.join(timeout=CLIENT_TIMEOUT_SEC)
 
 
+@dataclass(frozen=True)
+class AiPane:
+    """応答の途中の MindStella のセッションに見せる、専用の tmux のサーバーのペインと、その中で動くプロセス。"""
+
+    socket: str
+    pane: str
+    pid: int
+    pid_started_at: str
+    tmux: str
+
+    @classmethod
+    def start(cls) -> AiPane:
+        """専用のソケットで tmux のセッションを立て、ペインのプロセスの PID と起動時刻を控える。"""
+        tmux = shutil.which("tmux")
+        if tmux is None:
+            pytest.skip("tmux が無い")
+        # ソケットのパスが長いとつながらないため、短い一時フォルダに置く
+        socket_path = str(Path(tempfile.mkdtemp(prefix="msai", dir="/tmp")) / "s")
+        pane = _run_tmux(tmux, socket_path, "new-session", "-d", "-s", AI_PANE_SESSION, "-P", "-F", "#{pane_id}", AI_PANE_COMMAND)
+        pid = int(_run_tmux(tmux, socket_path, "display-message", "-p", "-t", pane, "#{pane_pid}"))
+        stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+        started_at = stat.rpartition(")")[2].split()[PROC_STARTTIME_INDEX]
+        return cls(socket=socket_path, pane=pane, pid=pid, pid_started_at=started_at, tmux=tmux)
+
+    def stop(self) -> None:
+        """立てた専用の tmux のセッションを落とす（最後のセッションなので専用のサーバーも終わる）。"""
+        subprocess.run(
+            [self.tmux, "-S", self.socket, "kill-session", "-t", AI_PANE_SESSION],
+            capture_output=True,
+            timeout=AI_PANE_TMUX_TIMEOUT_SEC,
+            check=False,
+        )
+
+
+def _run_tmux(tmux: str, socket_path: str, *args: str) -> str:
+    """専用のソケットで tmux を呼び、標準出力を返す（呼び出し元の tmux の環境変数を渡さない）。"""
+    env = {key: value for key, value in os.environ.items() if key not in ("TMUX", "TMUX_PANE")}
+    completed = subprocess.run(
+        [tmux, "-S", socket_path, *args],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=AI_PANE_TMUX_TIMEOUT_SEC,
+        check=True,
+    )
+    return completed.stdout.strip()
+
+
 class McpServer:
     """常駐サーバーを空きポートで子プロセスとして起動し、MCP のクライアントでつないでツールを呼ぶ。"""
 
@@ -251,6 +331,8 @@ class McpServer:
     ) -> None:
         """常駐サーバーを起動して待ち受けを待ち、クライアントを 1 つつなぐ。"""
         self.port = int(env.get(PORT_ENV) or free_port())
+        # 状態のフォルダ（MindStella のセッションを登録する先）。環境変数が無ければ登録しない
+        self.state_home = Path(env[STATE_HOME_ENV]) if env.get(STATE_HOME_ENV) else None
         self.url = f"http://{LISTEN_HOST}:{self.port}{MCP_PATH}"
         self.process = subprocess.Popen(
             [python, str(script)],
@@ -268,6 +350,7 @@ class McpServer:
         self._output_reader.start()
         self._wait_listening()
         self._clients: list[McpClient] = []
+        self._ai_pane: AiPane | None = None
         self.client = self.connect()
         self.server_name = self.client.server_name
 
@@ -302,8 +385,53 @@ class McpServer:
         return self.client.list_tools()
 
     def call(self, name: str, **arguments: Any) -> ToolResult:
-        """最初につないだクライアントでツールを呼ぶ。"""
+        """最初につないだクライアントでツールを呼ぶ。
+
+        MindStella のセッションに限るツールを `session` を渡さずに呼んだときは、ワークスペースの
+        MindStella のセッションを状態に登録し、その `claude_session_id` を `session` に入れて呼ぶ。
+        """
+        if name in MINDSTELLA_ONLY_TOOLS and "session" not in arguments and self.state_home is not None:
+            arguments["session"] = mindstella_session(self.state_home, Path(arguments["workspace"]))
         return self.client.call(name, **arguments)
+
+    def write_as_ai(self, root: Path, change: Callable[[Path], None]) -> None:
+        """MindStella のセッションの応答の途中として root の記録を書き換え、変更の検知が記録し終えるまで待つ。
+
+        配信を立てて変更の検知を始め、`session.json` を応答の途中（ペインとプロセスがある）にしてから、
+        change に記録のフォルダ（`.mindstella/`）を渡して書き換えさせる。change は project-index の
+        `write_docs` と同じく、一時ファイルに書いて置き換える。
+        """
+        assert self.state_home is not None, "状態のフォルダを持たない常駐サーバーです"
+        if self._ai_pane is None:
+            self._ai_pane = AiPane.start()
+        self.call("preview_url", workspace=str(root))
+        path = self.state_home.joinpath(*STATE_SESSION_PATH, workspace_id_of(root), STATE_SESSION_FILE)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "session": TEST_SESSION_ID,
+                    "status": "running",
+                    "started_at": DEFAULT_TIMESTAMP,
+                    "claude_session_id": TEST_CLAUDE_SESSION_ID,
+                    "pane": self._ai_pane.pane,
+                    "socket": self._ai_pane.socket,
+                    "pid": self._ai_pane.pid,
+                    "pid_started_at": self._ai_pane.pid_started_at,
+                    "responding": True,
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        changes = root / RECORD_DIR / "changes.yaml"
+        before = changes.read_text(encoding="utf-8") if changes.is_file() else None
+        change(root / RECORD_DIR)
+        # 変更の検知は history.yaml の後に changes.yaml を書くので、changes.yaml が変わるまで待つ
+        deadline = time.monotonic() + DETECTION_WAIT_SEC
+        while (changes.read_text(encoding="utf-8") if changes.is_file() else None) == before:
+            assert time.monotonic() < deadline, f"変更の検知が記録しません: {self.stderr_text()}"
+            time.sleep(DETECTION_POLL_SEC)
 
     def wait_exit(self, timeout: float = SERVER_EXIT_TIMEOUT_SEC) -> int:
         """プロセスが終わるのを待ち、終了コードを返す。"""
@@ -313,6 +441,8 @@ class McpServer:
         """クライアントを閉じ、まだ動いていれば SIGTERM で終わらせ、動いたままなら止める。"""
         for client in self._clients:
             client.close()
+        if self._ai_pane is not None:
+            self._ai_pane.stop()
         if self.process.poll() is None:
             self.process.terminate()
             try:
@@ -341,9 +471,9 @@ def start_server(tmp_path: Path) -> Iterator[StartServer]:
         script: Path = SERVER_SCRIPT,
     ) -> McpServer:
         """常駐サーバーを起動してクライアントをつなぐ。cwd は常駐サーバーの作業フォルダ。"""
-        server = McpServer(
-            python=python, env={**base_env, **(extra_env or {})}, cwd=cwd or tmp_path, script=script
-        )
+        # 状態のフォルダはテストごとの一時フォルダにし、利用者の状態に触れない
+        env = {**base_env, STATE_HOME_ENV: str(tmp_path / "state"), **(extra_env or {})}
+        server = McpServer(python=python, env=env, cwd=cwd or tmp_path, script=script)
         started.append(server)
         return server
 
@@ -357,7 +487,11 @@ def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
     """テスト全体で共有する常駐サーバーを 1 つ起動して返す（立ち上げに数秒かかるため）。"""
     server = McpServer(
         python=sys.executable,
-        env={**os.environ, "PYTHONUTF8": "1"},
+        env={
+            **os.environ,
+            "PYTHONUTF8": "1",
+            STATE_HOME_ENV: str(tmp_path_factory.mktemp("mcp-server-state")),
+        },
         cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
     )
     yield server
@@ -701,6 +835,7 @@ def make_legacy_workspace(
             bodies={f"{item['id']}.md": "資料の本文\n" for item in legacy_items},
             settings_file=settings_file,
             top=top,
+            with_history=False,
         )
         base = root if top else root / RECORD_DIR
         # 前の形式の資料を docs.yaml に直接書く（今の形式の資料の後ろに並べる）
@@ -829,3 +964,36 @@ def step_versions_after(version: str | None) -> set[str]:
         and (version is None or _version_key(version) < _version_key(folder.name))
         and _version_key(folder.name) <= plugin
     }
+
+
+def workspace_id_of(root: Path) -> str:
+    """ワークスペースの ID（記録の設定の id。無ければフォルダ名とシンボリックリンクを解いた絶対パスのハッシュ）。"""
+    for settings in (root / RECORD_DIR / "config.yaml", root / "config.yaml"):
+        if settings.is_file():
+            loaded = yaml.safe_load(settings.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict) and loaded.get("id"):
+                return str(loaded["id"])
+            break
+    resolved = root.resolve()
+    name = resolved.name
+    for char in WORKSPACE_ID_UNSAFE_CHARS:
+        name = name.replace(char, "-")
+    digest = hashlib.sha256(str(resolved).encode("utf-8")).hexdigest()[:WORKSPACE_ID_HASH_DIGITS]
+    return f"{WORKSPACE_ID_PREFIX}-{name}-{digest}"
+
+
+def mindstella_session(state_home: Path, root: Path) -> dict[str, Any]:
+    """root の MindStella のセッションを状態に登録し、ツールに渡す `session` を返す。
+
+    既に `session.json` があり `claude_session_id` を持てばその値を使い、無ければテストの値で書く。
+    """
+    path = state_home.joinpath(*STATE_SESSION_PATH, workspace_id_of(root), STATE_SESSION_FILE)
+    recorded = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+    if recorded is None or not recorded.get("claude_session_id"):
+        recorded = {
+            **(recorded or {"session": TEST_SESSION_ID, "status": "running", "started_at": DEFAULT_TIMESTAMP}),
+            "claude_session_id": TEST_CLAUDE_SESSION_ID,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(recorded, ensure_ascii=False), encoding="utf-8")
+    return {"cwd": str(root), "claude_session_id": recorded["claude_session_id"]}

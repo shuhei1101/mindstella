@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from record_write_helpers import write_tool
 from preview_fixture_types import StartVoicePreview as _StartVoicePreview
 from preview_voice_helpers import (
     FAKE_MIC_SCRIPT,
@@ -435,7 +436,7 @@ def test_adopted_section(
             answer="種類ごとに分ける",
             reason="探しやすい",
             options=ADOPTED_OPTIONS,
-            body="D-1.md",
+            body="docs/D-1.md",
         ),
         bodies={"D-1.md": "## 経緯\n\n本文の段落\n"},
     )
@@ -542,7 +543,7 @@ def test_body_markdown_when_line_break_in_paragraph(
     """本文の段落の中の 1 つの改行は、改行にせず 1 つの段落に結合したままにする（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-1", status="未決定", body="D-1.md"),
+        make_item("D-1", status="未決定", body="docs/D-1.md"),
         bodies={"D-1.md": f"{LINE_BREAK_VALUE}\n"},
     )
     # 実行
@@ -641,7 +642,7 @@ def test_content_when_body_in_other_kinds(
     """タスク・用語集・メモの本文も、ほかの種類と同じ本文の節に出す（正常系）。"""
     # 準備
     url = write_preview(
-        make_item(item_id, body=f"{item_id}.md"),
+        make_item(item_id, body=f"docs/{item_id}.md"),
         bodies={f"{item_id}.md": "## 経緯\n\n会話で持ち越した\n"},
     )
     # 実行
@@ -678,7 +679,7 @@ def test_referenced_by(
     # 準備
     url = write_preview(
         make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
-        make_item("D-2", status="決定済み", options=ADOPTED_OPTIONS, related=["D-1"]),
+        make_item("D-2", status="決定済み", options=ADOPTED_OPTIONS, related=[{"to": "D-1", "type": "see_also"}]),
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-1")
     # 実行
@@ -2363,7 +2364,7 @@ def test_body_focus_when_redrawn(
     scrolled = page.evaluate(SETTLED_SCROLL_TOP_JS, PANEL_BODY)
     page.evaluate("document.querySelector('aside.panel .panel-body').dataset.drawn = 'before'")
     # 実行（項目を足して、書き換えの知らせで描き直させる）
-    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
     assert added.is_error is False, added.text
     page.wait_for_function(
         "document.querySelector('aside.panel .panel-body')?.dataset.drawn !== 'before'",
@@ -2410,7 +2411,7 @@ def test_body_scroll_restored(
     block_web_fonts(page)
     url = write_preview(
         make_item("D-1"),
-        make_item("D-2", depends_on=["D-1"], body="D-2.md"),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}], body="docs/D-2.md"),
         bodies={"D-2.md": LONG_BODY},
     )
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
@@ -2458,7 +2459,7 @@ def test_body_scroll_when_heading(
     """位置を残した項目でも、見出しを示して開くときは残した位置ではなく見出しを出す（正常系）。"""
     # 準備
     block_web_fonts(page)
-    url = write_preview(make_item("D-1"), make_item("D-2", body="D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
+    url = write_preview(make_item("D-1"), make_item("D-2", body="docs/D-2.md"), bodies={"D-2.md": TAIL_HEADING_BODY})
     page = open_preview(url, "#tab=decisions&view=table&id=D-2")
     page.wait_for_selector(f"{PANEL_BODY} .md")
     page.eval_on_selector(PANEL_BODY, "(body, top) => { body.scrollTop = top; }", BODY_SCROLL_TOP)
@@ -2490,7 +2491,7 @@ def test_body_scroll_when_comment_location(
             "D-3",
             status="要見直し",
             options=[{"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True}],
-            body="D-3.md",
+            body="docs/D-3.md",
         ),
         bodies={"D-3.md": LONG_BODY},
         comments=(
@@ -3228,8 +3229,7 @@ def test_diff_note_when_body_too_large(
     before = "".join(f"前の行 {index}\n" for index in range(LARGE_LINE_COUNT))
     after = "".join(f"後の行 {index}\n" for index in range(LARGE_LINE_COUNT))
     for body, summary in ((before, "大きな本文にする"), (after, None)):
-        result = call_tool(
-            "update", workspace=str(root), id="D-1", item={"body_markdown": body, "answer": f"答え {body[:5]}"}
+        result = write_tool(call_tool, "update", workspace=str(root), id="D-1", item={"body_markdown": body, "answer": f"答え {body[:5]}"}
         )
         assert result.is_error is False, result.text
         if summary is not None:
@@ -4155,7 +4155,7 @@ def test_format_badge(
     """資料の見出しに本文の形式の札（HTML / MD）を置き、資料以外には置かない（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", body="A-1.html"),
+        make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
         make_item("D-1"),
         bodies={"A-1.html": HTML_BODY, "A-2.md": "資料の本文\n"},
@@ -4177,7 +4177,7 @@ def test_html_body(
 ) -> None:
     """本文が HTML の資料は、本文を枠で描き、枠の高さを中身に合わせる（正常系）。"""
     # 準備・実行
-    url, _ = write_review_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    url, _ = write_review_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     # 検証
@@ -4251,7 +4251,7 @@ def test_selection_entry_when_html_body(
 ) -> None:
     """枠の中の文を選ぶと入口を出し、押すと元の HTML の行の箇所を添える。選びを外すと入口を閉じる（正常系）。"""
     # 準備
-    url, _ = write_review_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    url, _ = write_review_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     # 実行（選ぶ）
@@ -4280,7 +4280,7 @@ def test_highlight_location_when_html_body(
     """コメントの一覧の行から開くと、枠の中でその行を含む最も内側の要素を示す（正常系）。"""
     # 準備
     url, _ = write_review_preview(
-        make_item("A-1", body="A-1.html"),
+        make_item("A-1", body="docs/A-1.html"),
         bodies={"A-1.html": HTML_BODY},
         comments=(
             make_comment(
@@ -4318,9 +4318,9 @@ def test_diff_html_body_when_format_changed(
         "deliverable": False,
         "body_markdown": "# 画面のモック\n一覧の画面\n",
     }
-    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False
     assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
-    updated = call_tool("update", workspace=workspace, id="A-1", item={"body_html": HTML_BODY})
+    updated = write_tool(call_tool, "update", workspace=workspace, id="A-1", item={"body_html": HTML_BODY})
     assert updated.is_error is False
     assert call_tool("commit", workspace=workspace, summary="形式を替える").is_error is False
     url = str(call_tool("preview_url", workspace=workspace).data["url"])
@@ -4385,10 +4385,9 @@ def test_html_body_diff_when_link_pressed(
         "deliverable": False,
         "body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("リンクの文"),
     }
-    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False
     assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
-    updated = call_tool(
-        "update",
+    updated = write_tool(call_tool, "update",
         workspace=workspace,
         id="A-1",
         item={"body_html": "<p>1 つ目の段落</p>\n" + paragraph.format("書き直したリンクの文")},
@@ -4831,7 +4830,7 @@ def test_diff_body_layout_switch_when_body_unchanged(
     """選んだ時点で本文が変わっていない項目には、切り替えも左右に並べた本文も出さない（正常系）。"""
     # 準備（A-1 の題だけを直したまとまり V-3 を選ぶ）
     url, root = write_body_layout_preview()
-    assert call_tool("update", workspace=str(root), id="A-1", item={"title": "題だけ直す"}).is_error is False
+    assert write_tool(call_tool, "update", workspace=str(root), id="A-1", item={"title": "題だけ直す"}).is_error is False
     assert call_tool("commit", workspace=str(root), summary="題を直す").is_error is False
     seed_side_layout(page, "V-3")
     page.set_viewport_size(SIDE_VIEWPORT)
@@ -4873,7 +4872,7 @@ def test_diff_body_layout_switch_when_body_too_large(
     before = "".join(f"前の行 {index}\n" for index in range(LARGE_LINE_COUNT))
     after = "".join(f"後の行 {index}\n" for index in range(LARGE_LINE_COUNT))
     for body, summary in ((before, "大きな本文にする"), (after, None)):
-        assert call_tool("update", workspace=str(root), id="A-1", item={"body_markdown": body}).is_error is False
+        assert write_tool(call_tool, "update", workspace=str(root), id="A-1", item={"body_markdown": body}).is_error is False
         if summary is not None:
             assert call_tool("commit", workspace=str(root), summary=summary).is_error is False
     seed_side_layout(page, "pending")
@@ -5030,7 +5029,7 @@ def test_body_wrap_when_long_words_and_tables(
 ) -> None:
     """本文の長い URL とインラインコードは本文の幅で折り返し（項目の ID のリンクは折り返さない）、列の多い表は包む入れ物の中だけで横に送れ、幅に収まる表は送れず、本文の区画は横に送れない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
     page.wait_for_selector("aside.panel .md-table-wrap")
@@ -5060,7 +5059,7 @@ def test_body_table_scroll_by_keyboard(
 ) -> None:
     """列の多い表を包む入れ物はキーボードのフォーカスで止まり、右の矢印で表の中だけを横に送れて、フォーカスの枠は内側に描く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.md"), make_item(WRAP_ITEM_ID), bodies={"A-1.md": WRAP_BODY})
     page = open_preview(url, "#tab=docs&id=A-1")
     page.set_viewport_size({"width": width, "height": 800})
     wrap = page.locator("aside.panel .md-table-wrap").first
@@ -5118,7 +5117,7 @@ def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
             tags=[{"name": "画面"}],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
-        make_item("D-2", title="後続の問い", depends_on=["D-1"]),
+        make_item("D-2", title="後続の問い", related=[{"to": "D-1", "type": "depends_on"}]),
     )
 
 
@@ -5482,7 +5481,7 @@ HOLD_POLL_LIMIT = 100
 def _redraw_by_add(page: Page, root: Path, call_tool: CallTool) -> None:
     """項目を足して書き換えの通知を起こし、編集の表示のフォームが描き直されるのを待つ。"""
     page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
-    added = call_tool("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
     assert added.is_error is False, added.text
     page.wait_for_function(
         f"document.querySelector('{EDIT_FORM}')?.dataset.drawn !== 'before'",
@@ -5994,7 +5993,7 @@ def test_export_entry(
     # 準備
     url = write_preview(
         make_item("A-1", title="Markdown の資料"),
-        make_item("A-2", body="A-2.html"),
+        make_item("A-2", body="docs/A-2.html"),
         make_item("D-1"),
         bodies={"A-1.md": MARKDOWN_EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
     )
@@ -6409,10 +6408,9 @@ def _serve_main_tag_diff(make_workspace: MakeWorkspace, call_tool: CallTool, val
     root = make_workspace(settings=valid_settings)
     workspace = str(root)
     steps = (
-        call_tool("add", workspace=workspace, kind="decision", item=MAIN_TAG_DECISION),
+        write_tool(call_tool, "add", workspace=workspace, kind="decision", item=MAIN_TAG_DECISION),
         call_tool("commit", workspace=workspace, summary="最初の書き込み"),
-        call_tool(
-            "update",
+        write_tool(call_tool, "update",
             workspace=workspace,
             id="D-1",
             item={"tags": [{"name": "データ"}, {"name": "画面", "main": True}]},

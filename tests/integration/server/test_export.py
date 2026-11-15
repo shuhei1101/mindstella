@@ -161,7 +161,7 @@ def test_normal(
     assert data["terms"] == [make_item("G-1")]
     assert data["notes"] == [make_item("N-1")]
     assert data["logs"] == [make_item("L-1")]
-    assert data["bodies"] == {"A-1.md": BODY_WITH_SCRIPT_TAG}
+    assert data["bodies"] == {"docs/A-1.md": BODY_WITH_SCRIPT_TAG}
     assert [entry["id"] for entry in data["changes"]["sets"]] == ["V-1"]
     # script・link・img が外のファイルや URL を指さず、import map も無い
     references = _ExternalReferences()
@@ -208,7 +208,7 @@ def test_normal_when_html_body(
     """HTML の本文も、原文と行の印を足したものを埋め込みのデータに入れる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY}
+        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY}
     )
     out = tmp_path / "配る.html"
     # 実行
@@ -217,7 +217,7 @@ def test_normal_when_html_body(
     assert result.is_error is False, result.text
     html = out.read_text(encoding="utf-8")
     data = json.loads(_read_element(html, DATA_ELEMENT_OPEN))
-    assert data["bodies"]["A-1.html"] == HTML_BODY
+    assert data["bodies"]["docs/A-1.html"] == HTML_BODY
     # 『記録の取得』と同じ行の印つきの本文を持つ
     records = http_request(serve_preview(root), "/api/records").json()
     assert data["marked_bodies"]["A-1.html"] == records["marked_bodies"]["A-1.html"]

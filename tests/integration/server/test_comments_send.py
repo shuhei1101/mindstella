@@ -254,7 +254,7 @@ def test_error_when_html_body_location_stale(
     """HTML の本文が書き換わって選んだ文が無くなったコメントがあれば、どれも送らない（異常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="A-1.html"),
+        make_item("A-1", body="docs/A-1.html"),
         bodies={"A-1.html": "<style>p { color: red; }</style>\n\n\n<p>書き直した文</p>\n"},
     )
     loc = {"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"}

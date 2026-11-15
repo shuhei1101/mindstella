@@ -1089,27 +1089,9 @@ files:
   - topic:readme
   - topic:ヘルパー
   - topic:結合テスト
-- path: integration/server/test_add.py
-  name: 項目の追加の結合テスト
-  description: add（項目の追加）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_adopt.py
   name: 採用する案の切り替えの結合テスト
   description: adopt（採用する案の切り替え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/server/test_attrs.py
-  name: 属性名の一覧の結合テスト
-  description: attrs（属性名の一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/server/test_batch.py
-  name: まとめての読み書きの結合テスト
-  description: batch（まとめての読み書き）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:結合テスト
@@ -1254,25 +1236,12 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_find.py
-  name: 項目の検索の結合テスト
-  description: find（項目の検索）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:検索
-  - topic:結合テスト
 - path: integration/server/test_goal.py
   name: ゴール判定の結合テスト
   description: goal（ゴール判定）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:ゴール
-  - topic:結合テスト
-- path: integration/server/test_impact.py
-  name: 影響の洗い出しの結合テスト
-  description: impact（影響の洗い出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_inject_session.py
   name: PreToolUse のフックの inject_session.pyの結合テスト
@@ -1355,12 +1324,6 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_remove.py
-  name: 項目の削除の結合テスト
-  description: remove（項目の削除）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_reply.py
   name: スレッドへの返信の結合テスト
   description: reply（スレッドへの返信）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1395,12 +1358,6 @@ files:
   - tool:pytest
   - topic:スレッド
   - topic:結合テスト
-- path: integration/server/test_show.py
-  name: 項目の表示の結合テスト
-  description: show（項目の表示）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_spa_serve.py
   name: React のプレビューの配信の結合テスト
   description: React のプレビュー（SPA）の配信（GET /spa/{path}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1413,13 +1370,6 @@ files:
   description: status（再開時の状況）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
-  - topic:結合テスト
-- path: integration/server/test_tags.py
-  name: タグの一覧の結合テスト
-  description: tags（タグの一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:タグ
   - topic:結合テスト
 - path: integration/server/test_thread.py
   name: スレッドを読むの結合テスト
@@ -1455,12 +1405,6 @@ files:
   tags:
   - tool:pytest
   - topic:スレッド
-  - topic:結合テスト
-- path: integration/server/test_update.py
-  name: 項目の更新の結合テスト
-  description: update（項目の更新）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_update_settings.py
   name: 設定の更新の結合テスト

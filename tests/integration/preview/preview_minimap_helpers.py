@@ -10,6 +10,7 @@ from preview_body_scroll_helpers import SETTLED_SCROLL_TOP_JS
 from preview_fixture_types import OpenPreview
 from preview_head_title_helpers import ANIMATIONS_FINISHED_JS
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from record_write_helpers import write_tool
 
 __all__ = [
     "FULL_SCOPE",
@@ -132,8 +133,7 @@ def build_minimap_workspace(
         bodies={"A-1.md": MINIMAP_BODY_BEFORE, "A-2.md": UNCHANGED_BODY},
     )
     workspace = str(root)
-    updated = call_tool(
-        "update", workspace=workspace, id="A-1", item={"body_markdown": MINIMAP_BODY_AFTER}
+    updated = write_tool(call_tool, "update", workspace=workspace, id="A-1", item={"body_markdown": MINIMAP_BODY_AFTER}
     )
     assert updated.is_error is False, updated.text
     committed = call_tool("commit", workspace=workspace, summary="段落を消して足す")

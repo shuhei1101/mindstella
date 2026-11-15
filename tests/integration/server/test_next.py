@@ -17,9 +17,9 @@ def next_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> Path:
         make_item("D-2", phase="目的", weight="小"),
         make_item("D-3", phase="要件", weight="大"),
         make_item("D-4", phase="要件", weight="大"),
-        make_item("D-5", depends_on=["D-1"]),
-        make_item("D-6", depends_on=["D-4"]),
-        make_item("D-7", depends_on=["D-6"]),
+        make_item("D-5", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("D-6", related=[{"to": "D-4", "type": "depends_on"}]),
+        make_item("D-7", related=[{"to": "D-6", "type": "depends_on"}]),
     )
 
 

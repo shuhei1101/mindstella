@@ -32,6 +32,7 @@ from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
 from preview_spa_helpers import open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
+from record_write_helpers import write_tool
 
 # 送る本文のスクロールの位置（px）
 SCROLLED_TOP = 600
@@ -105,7 +106,7 @@ def test_back_keeps_trail_over_filter(page: Page, spa_preview: str) -> None:
 def test_restores_body_scroll(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文を送った項目を開き直すと、その位置へ戻る（正常系）。"""
     long_body = "\n\n".join(f"段落 {number}" for number in range(200))
-    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="D-1.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.md": long_body})
+    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="docs/D-1.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.md": long_body})
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.get_by_text("段落 199").wait_for()
     page.locator("aside .panel-body").evaluate(f"(element) => {{ element.scrollTop = {SCROLLED_TOP}; }}")
@@ -242,7 +243,7 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
 def test_body_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文は、項目が Markdown の `body` を持つときに mdmark で描き、HTML の本文では枠で描く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), make_item("A-2", body="A-2.html"), bodies={"A-1.md": "## 見出し\n\n段落\n", "A-2.html": HTML_BODY})
+    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), bodies={"A-1.md": "## 見出し\n\n段落\n", "A-2.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).locator(".md").get_by_role("heading", name="見出し")).to_be_visible()
     # 実行
@@ -306,7 +307,7 @@ LONG_COMMENT = "\n\n".join(f"{index} 行目のコメント" for index in range(1
 def comment_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
     """D-1 へのレビュー中のコメント C-1（5 行目の箇所つき）・C-2・C-3（長い本文）を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
-        make_item("D-1", title="記録の形", status="未決定", body="D-1.md"),
+        make_item("D-1", title="記録の形", status="未決定", body="docs/D-1.md"),
         make_item("D-2", title="画面の幅", status="保留"),
         comments=(
             make_comment("C-1", target="D-1", loc={"kind": "body", "start": 5, "end": 5, "text": "二つ目の段落"}, body="ここを直す"),
@@ -604,9 +605,9 @@ def test_body_too_large_label(page: Page, write_history_preview: WriteReviewPrev
     url, root = write_history_preview()
     before = "".join(f"前の行 {index}\n" for index in range(LARGE_LINE_COUNT))
     after = "".join(f"後の行 {index}\n" for index in range(LARGE_LINE_COUNT))
-    assert call_tool("update", workspace=str(root), id="D-1", item={"body_markdown": before, "answer": "大きい前"}).is_error is False
+    assert write_tool(call_tool, "update", workspace=str(root), id="D-1", item={"body_markdown": before, "answer": "大きい前"}).is_error is False
     assert call_tool("commit", workspace=str(root), summary="大きな本文にする").is_error is False
-    assert call_tool("update", workspace=str(root), id="D-1", item={"body_markdown": after, "answer": "大きい後"}).is_error is False
+    assert write_tool(call_tool, "update", workspace=str(root), id="D-1", item={"body_markdown": after, "answer": "大きい後"}).is_error is False
     # 実行
     panel = _diff(page, url, "pending")
     # 検証
@@ -797,7 +798,7 @@ def test_withdrawn_reason_visible(page: Page, write_preview: WritePreview, make_
 def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """資料の見出しにだけ本文の形式の札を置く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="A-1.html"), make_item("D-1"), bodies={"A-1.html": HTML_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), make_item("D-1"), bodies={"A-1.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).get_by_text("HTML", exact=True)).to_be_visible()
     # 実行
@@ -810,7 +811,7 @@ def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item
 def test_html_body_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """資料の `body` が `.html` で終わるときは、本文を枠で描く（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     frame = _panel(page).frame_locator("iframe.html-frame")
     # 検証
@@ -821,7 +822,7 @@ def test_html_body_action(page: Page, write_preview: WritePreview, make_item: Ma
     """HTML の本文の中の外のページへのリンクは、枠の中では移らず新しいタブで開く（正常系）。"""
     # 準備
     body = '<p><a id="out" href="https://example.com/">外のページ</a></p>\n'
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
     open_spa(page, url, "?tab=docs&id=A-1")
     frame = _panel(page).frame_locator("iframe.html-frame")
     page.context.route("https://example.com/**", lambda route: route.fulfill(status=200, body="ok"))
@@ -1157,7 +1158,7 @@ def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeIt
 def test_export_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """エクスポートは本文が Markdown の資料にだけ置き、HTML の資料・資料以外・編集の表示の間は置かない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), make_item("A-2", body="A-2.html"), make_item("D-1"), bodies={"A-1.md": "本文\n", "A-2.html": HTML_BODY})
+    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), make_item("D-1"), bodies={"A-1.md": "本文\n", "A-2.html": HTML_BODY})
     # 実行・検証（HTML の資料と資料以外）
     open_spa(page, url, "?tab=docs&id=A-2")
     expect(_panel(page).get_by_role("button", name="エクスポート", exact=True)).to_have_count(0)

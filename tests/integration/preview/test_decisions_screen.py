@@ -969,7 +969,7 @@ def test_table_ready_column_when_waiting(
     # 準備
     url = write_preview(
         make_item("D-1", status="未決定"),
-        make_item("D-2", status="未決定", depends_on=["D-1"]),
+        make_item("D-2", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
     )
     page = open_preview(url, "#tab=decisions&view=table")
     # 実行

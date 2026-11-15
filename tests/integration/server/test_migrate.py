@@ -53,6 +53,11 @@ BROKEN_SETTINGS = "field: [\n"
 NEWER_VERSION = "v99.0.0"
 
 
+def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
+    """ワークスペースの種類ごとの YAML の項目の並びを読む。"""
+    return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))["items"]
+
+
 def _read_docs(root: Path) -> list[dict[str, Any]]:
     """ワークスペースの資料の並びを読む。"""
     return yaml.safe_load((root / RECORD_DIR / "docs.yaml").read_text(encoding="utf-8"))["items"]
@@ -124,12 +129,13 @@ def test_normal_when_plan(
     assert payload["relation"] == "older"
     assert payload["steps"] != []
     assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
-    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）、v0.12.0 の手順（項目のタグの置き換え）だけ
+    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）、v0.12.0 の手順（項目のタグの置き換え）、v0.13.0 の手順（参照・本文・履歴の置き換え）だけ
     assert {step["version"] for step in payload["steps"] if step["destructive"]} == {
         "v0.6.0",
         "v0.8.0",
         "v0.11.0",
         "v0.12.0",
+        "v0.13.0",
     }
     # 値が要るキーは、全ての手順を当てた後の名前（.mindstella/config.yaml）で返す
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
@@ -600,7 +606,9 @@ def test_normal_when_tags_to_objects(
     """v0.11.0 のワークスペースの項目の文字列のタグを {name} に置き換え、スレッドのタグは残す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", tags=["保存", "通知", "ＡＰＩ", "api"]), make_item("N-1", tags=[])
+        make_item("D-1", tags=["保存", "通知", "ＡＰＩ", "api"]),
+        make_item("N-1", tags=[]),
+        with_history=False,
     )
     write_threads(root, make_thread("TH-1", tags=["起票"]))
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.11.0\n", encoding="utf-8")
@@ -609,7 +617,7 @@ def test_normal_when_tags_to_objects(
         "updated"
     ]
     # 実行
-    result = call_tool("migrate", workspace=str(root))
+    result = call_tool("migrate", workspace=str(root), to_version="v0.12.0")
     # 検証
     assert result.is_error is False
     assert result.data is not None
@@ -630,9 +638,74 @@ def test_normal_when_tags_to_objects(
     assert thread["tags"] == ["起票"]
     # もう一度当てても、D-1 は変わらない
     decisions_after = decisions_path.read_text(encoding="utf-8")
-    again = call_tool("migrate", workspace=str(root))
+    again = call_tool("migrate", workspace=str(root), to_version="v0.12.0")
     assert again.is_error is False
     assert decisions_path.read_text(encoding="utf-8") == decisions_after
+
+
+def test_normal_when_project_index_layout(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """v0.12.0 のワークスペースの参照・本文・履歴を、記録を project-index で配る形にする（正常系）。"""
+    # 準備
+    stamps = {"created": "2026-10-01T00:00:00+00:00", "updated": "2026-10-02T00:00:00+00:00"}
+    history = [{"seq": 2, "at": "2026-10-02T00:00:00+00:00", "by": "ai", "before": {"answer": None}}]
+    root = make_workspace(
+        make_item("D-1", **stamps),
+        make_item(
+            "D-2",
+            depends_on=["D-1"],
+            parent="D-1",
+            related=["R-1"],
+            body="D-2.md",
+            history=history,
+            **stamps,
+        ),
+        make_item("R-1", **stamps),
+        make_item("T-1", depends_on=["T-2"], **{"for": ["D-2"]}, **stamps),
+        make_item("T-2", **stamps),
+        bodies={"D-2.md": "D-2 の本文\n"},
+        with_history=False,
+    )
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.12.0\n", encoding="utf-8")
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    steps = result.data["steps"]
+    # 手順は refs_to_related・body_to_docs_path・place_source_config・meta_to_history_yaml の順
+    assert [(step["version"], step["op"], step["destructive"]) for step in steps] == [
+        ("v0.13.0", "call", True),
+        ("v0.13.0", "call", True),
+        ("v0.13.0", "call", False),
+        ("v0.13.0", "call", True),
+    ]
+    decisions = {item["id"]: item for item in _read_items(root, "decisions.yaml")}
+    tasks = {item["id"]: item for item in _read_items(root, "tasks.yaml")}
+    assert decisions["D-2"]["related"] == [
+        {"to": "D-1", "type": "depends_on"},
+        {"to": "D-1", "type": "parent"},
+        {"to": "R-1", "type": "see_also"},
+    ]
+    assert not {"depends_on", "parent", "updated", "history"} & set(decisions["D-2"])
+    assert tasks["T-1"]["related"] == [
+        {"to": "D-2", "type": "for"},
+        {"to": "T-2", "type": "depends_on"},
+    ]
+    assert not {"for", "depends_on"} & set(tasks["T-1"])
+    assert decisions["D-2"]["body"] == "docs/D-2.md"
+    row = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]["D-2"]
+    assert (row["updated"], row["history"]) == (stamps["updated"], history)
+    assert (root / RECORD_DIR / "dev-docs.yaml").is_file()
+    assert (root / RECORD_DIR / "schemas").is_dir()
+    after = snapshot_tree(root)
+    again = call_tool("migrate", workspace=str(root))
+    assert again.is_error is False
+    assert snapshot_tree(root) == after
     assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
 
 
