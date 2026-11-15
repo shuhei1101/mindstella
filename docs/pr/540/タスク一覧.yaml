@@ -20,7 +20,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-15T06:24:39.754564+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: done
+    note: SC-489-52 の記録の読み書きを next_id と project-index のツールに合わせた。単一ユースケースの連鎖（フロー）は変えていない
+    updated_by: planner
+    updated_at: '2026-11-15T06:42:46.573827+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: 判定フローチャート『モック要否』で、デザイン方針（docs/design-policy.md）があり、見た目の方向を変えない（YES）
