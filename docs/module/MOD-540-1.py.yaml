@@ -1,6 +1,8 @@
 id: MOD-540-1
 title: サーバー / ID の採番 / ids.py
 lead: 種類ごとの次の ID を、常駐サーバーのメモリに持つ予約と合わせて振る。『読み書きと検証』の `next_id` にだけ依存し、ファイルを書かない。
+test_files:
+  - tests/unit/scripts/test_ids.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/

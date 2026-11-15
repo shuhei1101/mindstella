@@ -1,5 +1,7 @@
 id: MOD-540-7
 title: プレビュー / 画面と部品 / duplicate-id-notice.ts
+test_files:
+  - tests/unit/preview/test_duplicate_id_notice.py
 components:
   - name: duplicateIdNotice
     title: 重なった ID の通知

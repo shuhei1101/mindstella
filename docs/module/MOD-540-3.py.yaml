@@ -1,5 +1,7 @@
 id: MOD-540-3
 title: サーバー / 移行 / refs_to_related.py
+test_files:
+  - tests/unit/scripts/test_refs_to_related.py
 functions:
   - name: refs_to_related.migrate
     title: 参照のキーを種類つきの関連へ移す移し替え

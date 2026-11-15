@@ -1,6 +1,8 @@
 id: MOD-540-2
 title: サーバー / 変更の検知 / change_detection.py
 lead: 配信しているワークスペースの記録のファイルの書き換えを前回の中身と比べ、項目の追加・変更・削除を `history.yaml` と `changes.yaml` に記録し、外部の変更を自動でまとめ、重なった ID を知らせる。記録のファイル（種類ごとの YAML と本文）は書かない。
+test_files:
+  - tests/unit/scripts/test_change_detection.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/

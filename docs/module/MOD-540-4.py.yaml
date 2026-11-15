@@ -1,5 +1,7 @@
 id: MOD-540-4
 title: サーバー / 移行 / body_to_docs_path.py
+test_files:
+  - tests/unit/scripts/test_body_to_docs_path.py
 functions:
   - name: body_to_docs_path.migrate
     title: 本文のパスを docs/ から書く移し替え

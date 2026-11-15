@@ -1,5 +1,7 @@
 id: MOD-540-5
 title: サーバー / 移行 / place_source_config.py
+test_files:
+  - tests/unit/scripts/test_place_source_config.py
 functions:
   - name: place_source_config.migrate
     title: 記録の配信の設定を置く移し替え

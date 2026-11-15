@@ -1,5 +1,7 @@
 id: MOD-489-230
 title: プレビュー / 画面と部品 / history-dialog.ts
+test_files:
+  - tests/unit/preview/test_history_dialog.py
 components:
   - name: historyDialog
     title: 変更履歴

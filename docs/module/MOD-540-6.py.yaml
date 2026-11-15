@@ -1,5 +1,7 @@
 id: MOD-540-6
 title: サーバー / 移行 / meta_to_history_yaml.py
+test_files:
+  - tests/unit/scripts/test_meta_to_history_yaml.py
 functions:
   - name: meta_to_history_yaml.migrate
     title: 項目の履歴のキーを history.yaml へ移す移し替え

@@ -1,5 +1,7 @@
 id: MOD-489-223
 title: プレビュー / 画面と部品 / topbar.ts
+test_files:
+  - tests/unit/preview/test_topbar.py
 components:
   - name: topbar
     title: トップバー
