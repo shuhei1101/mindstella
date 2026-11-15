@@ -181,15 +181,21 @@ docs:
   - page: docs/guide/コマンド.md
     new: false
     change: MindStella の MCP のツールの一覧から、project-index へ移すツールを削除し、next_id を追加する。commit とスレッドの書き込みが MindStella のセッションの呼び出しだけを受け付けることを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: docs/guide/ワークスペースの書式.md
     new: false
     change: 配信の設定のファイルを追加し、changes.yaml を作るツールの一覧と外部の変更のまとまりを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: 記録を project-index で検索・書き込みすることと、影響を受ける項目を trace_related でたどること、ほかのセッションの書き込みも履歴に残ることを記載する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: tests/files.yml
     new: false
     change: 削除するテストの行を削除し、新規作成するテストの行を追加する。#531 で削除した integration/server/test_init.py の行が残っており、project-index が tests/files.yml を読み込めないので、その行も削除する
@@ -201,39 +207,57 @@ docs:
   - page: plugins/mindstella/skills/session/SKILL.md
     new: false
     change: 削除するツール（find・show・add・update・remove・batch・tags・impact）を呼ぶ箇所だけを、project-index のツールと next_id に書き換える。手順の流れは変えない（確認ログの決着）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/session/steps/取り込み.md
     new: false
     change: 同上（tags・find・batch・add・update・remove）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/session/steps/ヒアリング.md
     new: false
     change: 同上（find・update・add）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/session/steps/リサーチ.md
     new: false
     change: 同上（add・update・find）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/session/steps/方針転換.md
     new: false
     change: 同上（impact・update・add）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/session/steps/範囲の見直し.md
     new: false
     change: 削除するツールを呼ぶ箇所だけを、project-index のツールと next_id に書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/session/steps/ゴール判定.md
     new: false
     change: 同上（show・find・update・add）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: plugins/mindstella/skills/upgrade/SKILL.md
     new: false
     change: 移し替えの後の補正で呼ぶ batch・update を project-index の write_docs に書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
   - page: docs/guide/スキル.md
     new: false
     change: ステップごとの呼ぶツールの列と説明の、削除するツールを project-index のツールと next_id に書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:58:46.916127+00:00'
 scope_out:
   - item: '#390 の関連の when（いつ参照するか）を記録の関連に持たせる'
     reason: この時点の判断は捨てる。project-index の related は when を持たず、project-index には MindStella のための変更を入れない（D-290）。スコープに含めるか判断が分かれるため、レビューで確定する
