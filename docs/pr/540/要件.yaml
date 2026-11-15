@@ -1,0 +1,147 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: following
+    detail: 話し合いの中で記録を検索・追加・更新する手順を、project-index のツールと ID の採番で行う流れに合わせる
+    depends_on:
+      - docs/scenario/SC-489-33.yaml
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: changed
+    detail: 記録の検索・1 件の中身と参照元・タグと属性名の一覧を、project-index の検索と関連のたどりで行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: changed
+    detail: 記録の追加と更新を、ID を採番してから project-index の書き込みで行い、書き込んだ変更が履歴に残る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-32.yaml
+    impact: changed
+    detail: 記録の削除と取り下げを project-index の書き込み・削除で行い、ほかの記録が指す項目は削除しない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-23.yaml
+    impact: changed
+    detail: 検討事項の案の部分更新を、project-index の書き込みで表すか MindStella に残すかを決めた行き先で行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-21.yaml
+    impact: changed
+    detail: 採用する案の切り替えと決定済みへの変更を、決めた行き先で行い、影響の洗い出しは関連のたどりで行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: changed
+    detail: ワークスペースの点検を、project-index の検査と変更の検知の参照の検査で行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: スレッドを立てられるのを MindStella のセッションだけにする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: スレッドの取り込みと書き換えのまとまりを、MindStella のセッションだけが行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-19.yaml
+    impact: changed
+    detail: ほかのセッションが書き込んだ変更（外部の変更）も、前回読んだ時点からの変更に含める
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: changed
+    detail: ワークスペースを作成したら、記録を project-index で検索・書き込みできる状態になる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 既存のワークスペースを移し替えると、project-index で検索・書き込みできる状態になる
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: changed
+    detail: 変更履歴で、ほかのセッションが書き込んだ変更のまとまりを見分けて差分を参照できる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: following
+    detail: 画面で保存した書き込みは今と同じく利用者の変更として履歴に残り、二重に記録されない
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-29.yaml
+    impact: following
+    detail: 画面で追加した項目の ID の採番を、採番のツールと重ならないようにする
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-27.yaml
+    impact: following
+    detail: 画面で削除した項目が、今と同じく利用者の変更として履歴に残る
+    depends_on:
+      - docs/scenario/SC-489-32.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: following
+    detail: 外部のアプリが作成したワークスペースの記録も、project-index で検索・書き込みできる
+    depends_on:
+      - docs/scenario/SC-489-14.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: following
+    detail: 発言を記録する手順の記録のツールを、project-index のツールと ID の採番に合わせる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: MindStella の MCP のツールの一覧から、project-index へ移すツールを削除し、next_id を追加する。commit とスレッドの書き込みが MindStella のセッションの呼び出しだけを受け付けることを記載する
+    status: todo
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: 配信の設定のファイルを追加し、changes.yaml を作るツールの一覧と外部の変更のまとまりを記載する
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: 記録を project-index で検索・書き込みすることと、影響を受ける項目を trace_related でたどること、ほかのセッションの書き込みも履歴に残ることを記載する
+    status: todo
+  - page: tests/files.yml
+    new: false
+    change: 削除するテストの行を削除し、新規作成するテストの行を追加する。#531 で削除した integration/server/test_init.py の行が残っており、project-index が tests/files.yml を読み込めないので、その行も削除する
+    status: todo
+  - page: plugins/mindstella/files.yml
+    new: false
+    change: 削除・新規作成するコードの行と、記録を配信する設定のテンプレートの行を修正する
+    status: todo
+scope_out:
+  - item: '#390 の関連の when（いつ参照するか）を記録の関連に持たせる'
+    reason: この時点の判断は捨てる。project-index の related は when を持たず、project-index には MindStella のための変更を入れない（D-290）。スコープに含めるか判断が分かれるため、レビューで確定する
+    plan: none
+  - item: session のスキルの手順と公開ドキュメント『スキル』の、find・show・add・update・remove・batch・tags・impact の呼び出しを project-index のツールへ書き換える
+    reason: 'この時点の判断は #518 へ回す。#518 が session のスキルを削除し、project-index のツールで記録するエージェントフロー（A-112・A-113）へ置き換える。この作業 PR をマージしてから #518 をマージするまでの間、session のスキルは削除したツールを呼ぶ。スコープに含めるか判断が分かれるため、レビューで確定する'
+    plan: '#518'
+  - item: next・goal・status・write_release・clear_release の削除と、SessionStart のフックが前回参照した時点より後の変更を注入すること（D-326）
+    reason: 話し合いの進め方に依存する機能の削除と再開の状況の注入は、A-107 の No 3（記録のエージェントフローと削除）の範囲
+    plan: '#518'
+  - item: 検討事項の depends_on・parent を related の type で表し、専用のキーを削除する（D-275 B）。項目の attrs・targets・categories・phase などの削除の候補のキーを削除する
+    reason: A-107 の「削除の候補」は No 3 で作り直す。この作業 PR は今のキーのまま project-index の related の型へ対応させる
+    plan: '#518'
+  - item: migrate を常駐サーバーの読み込みのときの移し替えへ移し、upgrade のスキルを削除する（D-288）
+    reason: スキルの削除は A-107 の No 3 の範囲。この作業 PR は今の移し替えの仕組みに手順を追加するだけにする
+    plan: '#518'
+  - item: update_settings を MindStella の API の設定の書き換え（PATCH /workspaces/{id}）と同じ操作のツールにまとめる
+    reason: A-107 の No 9（ワークスペースの設定の書き換え）の範囲
+    plan: '#524'
+  - item: find・show など削除するツールを呼ぶ E2E のテストと、E2E の環境に project-index を入れること
+    reason: 'E2E は 0.x の間は回さず、tests/e2e/ は #477 で削除する'
+    plan: '#477'
+  - item: project-index に、MindStella のための書き込みの前後のフック・採番・書き込みの制限を追加する
+    reason: project-index は MindStella を知らず、MindStella だけが project-index に依存する（D-290・D-291）
+    plan: none
