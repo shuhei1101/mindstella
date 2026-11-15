@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
   <link rel="stylesheet" href="../../../../refs/540/assets/style.css">
   <!-- 見本のダーク: クエリの theme=dark で data-theme を当てる（実画面はトップバーのボタンで切り替える） -->
-  <script>if (new URLSearchParams(location.search).get("theme") === "dark") document.documentElement.dataset.theme = "dark";</script>
+  <script>const q = new URLSearchParams(location.search); if (q.get("theme") === "dark") document.documentElement.dataset.theme = "dark"; document.documentElement.dataset.state = q.get("state") ?? "";</script>
 </head>
 <body>
   <div class="mockbar" data-mock-bar role="group" aria-label="モックの操作">
@@ -24,12 +24,14 @@
     <span class="label">見本:</span>
     <a href="?">ライト</a>
     <a href="?theme=dark">ダーク</a>
+    <a href="?state=empty">関係なし</a>
+    <a href="?state=error">無い ID を入れた</a>
+    <a href="?state=long">長いタイトル</a>
     <span class="spacer"></span>
     <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">detail-panel</a> / <a href="../index.md">540</a> / b-type-group</nav>
   </div>
   <header class="m-topbar"><span class="site">mindstella</span><span class="title">記録の作り直しの話し合い</span><span class="spacer"></span></header>
   <main class="m-main">
-    <p class="m-note">関係の種類ごとに見出しを分け、今と同じチップの入力で相手を足す。種類を変えるときは、削除して別の種類へ足す。</p>
     <aside class="panel open m-static" aria-label="D-7 の詳細の編集">
       <div class="panel-head"><span class="panel-kind">検討事項</span><span class="panel-title is-shown">D-7 保存の形式を決める</span><span class="spacer"></span></div>
       <div class="panel-body">
@@ -38,6 +40,8 @@
           <div class="m-rel-group"><span class="k">前提</span><div class="chips"><span class="chip">D-1 保存先を決める<button type="button" aria-label="D-1 を前提から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="前提に追加する項目"></div></div>
           <div class="m-rel-group"><span class="k">親</span><div class="chips"><span class="chip">D-4 画面の構成を決める<button type="button" aria-label="D-4 を親から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="親に追加する項目"></div></div>
           <div class="m-rel-group"><span class="k">関連</span><div class="chips"><span class="chip">R-2 保存先の候補の比較<button type="button" aria-label="R-2 を関連から削除"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></span><input type="text" placeholder="ID かタイトル" aria-label="関連に追加する項目"></div></div>
+          <p class="m-empty">なし</p>
+          <p class="m-error" id="rel-error">D-99 が見つかりません。ID を確認してください。</p>
         </div>
       </div>
     </aside>

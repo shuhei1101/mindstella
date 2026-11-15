@@ -95,3 +95,17 @@ dialog.hist.m-static { position: static; margin: 24px auto; display: flex; flex-
   .m-rel-row select { grid-column: 1; }
   .m-rel-add { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ===== 見本の状態（モックの中だけ。クエリの state で切り替える） ===== */
+
+/* 空の表示と入力の誤りは、その見本のときだけ出す */
+.m-empty, .m-error { display: none; margin: 0; font-size: var(--fs-small); }
+/* 関係なし: 関係の行・見出しを隠して「なし」を出す */
+:root[data-state="empty"] :is(.m-rel-row, .m-rel-group .chip) { display: none; }
+:root[data-state="empty"] .m-empty { display: block; color: var(--text-2); }
+/* 無い ID を入れた: 追加の入力の下に、原因と修正方法を出す（色に加えて文言で伝える） */
+:root[data-state="error"] .m-error { display: block; color: var(--text); }
+:root[data-state="error"] .m-error::before { content: "入力の誤り: "; font-weight: 600; color: var(--st-review); }
+:root[data-state="error"] .m-rel-add input, :root[data-state="error"] .m-rel-group:first-child input { border-color: var(--st-review); }
+/* 長いタイトル: 相手のタイトルを長くして、省略の形を見せる */
+:root[data-state="long"] .m-rel-to .t::after, :root[data-state="long"] .chip::after { content: "（保存の形式・置き場所・移し替えの手順・既存のワークスペースの扱いをまとめて決める）"; }
