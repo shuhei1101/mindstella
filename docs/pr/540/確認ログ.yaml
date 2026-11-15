@@ -1,0 +1,11 @@
+confirmations:
+  - topic: session のスキルと公開ドキュメント『スキル』の、削除するツールを呼ぶ箇所をこの PR で書き換えるか
+    decision: この PR で、削除するツールを呼ぶ箇所だけを project-index のツールと next_id に書き換える。手順の流れは変えない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577424937
+  - topic: 資料などの本文（.mindstella/docs/{ID}.md）の書き込みの手段
+    decision: project-index に、body_file が指す本文のファイルを write_docs の set・text_edits で書き込む汎用の変更を起票し、この PR はその変更に依存する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577425296

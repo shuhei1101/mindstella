@@ -120,13 +120,46 @@ docs:
     new: false
     change: 削除・新規作成するコードの行と、記録を配信する設定のテンプレートの行を修正する
     status: todo
+  - page: plugins/mindstella/skills/session/SKILL.md
+    new: false
+    change: 削除するツール（find・show・add・update・remove・batch・tags・impact）を呼ぶ箇所だけを、project-index のツールと next_id に書き換える。手順の流れは変えない（確認ログの決着）
+    status: todo
+  - page: plugins/mindstella/skills/session/steps/取り込み.md
+    new: false
+    change: 同上（tags・find・batch・add・update・remove）
+    status: todo
+  - page: plugins/mindstella/skills/session/steps/ヒアリング.md
+    new: false
+    change: 同上（find・update・add）
+    status: todo
+  - page: plugins/mindstella/skills/session/steps/リサーチ.md
+    new: false
+    change: 同上（add・update・find）
+    status: todo
+  - page: plugins/mindstella/skills/session/steps/方針転換.md
+    new: false
+    change: 同上（impact・update・add）
+    status: todo
+  - page: plugins/mindstella/skills/session/steps/範囲の見直し.md
+    new: false
+    change: 削除するツールを呼ぶ箇所だけを、project-index のツールと next_id に書き換える
+    status: todo
+  - page: plugins/mindstella/skills/session/steps/ゴール判定.md
+    new: false
+    change: 同上（show・find・update・add）
+    status: todo
+  - page: plugins/mindstella/skills/upgrade/SKILL.md
+    new: false
+    change: 移し替えの後の補正で呼ぶ batch・update を project-index の write_docs に書き換える
+    status: todo
+  - page: docs/guide/スキル.md
+    new: false
+    change: ステップごとの呼ぶツールの列と説明の、削除するツールを project-index のツールと next_id に書き換える
+    status: todo
 scope_out:
   - item: '#390 の関連の when（いつ参照するか）を記録の関連に持たせる'
     reason: この時点の判断は捨てる。project-index の related は when を持たず、project-index には MindStella のための変更を入れない（D-290）。スコープに含めるか判断が分かれるため、レビューで確定する
     plan: none
-  - item: session のスキルの手順と公開ドキュメント『スキル』の、find・show・add・update・remove・batch・tags・impact の呼び出しを project-index のツールへ書き換える
-    reason: '#518 は next の区分で、0.13.0 が削除したツールを呼ぶ session のスキルのままリリースされるため、レビューで #518 へ回す判断は認められなかった。この PR で削除するツールを呼ぶ箇所だけを書き換えるかを、スコープの追加になるためユーザーに確認している（推奨はこの PR で書き換える）'
-    plan: '#518'
   - item: next・goal・status・write_release・clear_release の削除と、SessionStart のフックが前回参照した時点より後の変更を注入すること（D-326）
     reason: 話し合いの進め方に依存する機能の削除と再開の状況の注入は、A-107 の No 3（記録のエージェントフローと削除）の範囲
     plan: '#518'
@@ -145,3 +178,6 @@ scope_out:
   - item: project-index に、MindStella のための書き込みの前後のフック・採番・書き込みの制限を追加する
     reason: project-index は MindStella を知らず、MindStella だけが project-index に依存する（D-290・D-291）
     plan: none
+  - item: 資料の本文の書き込みを、付け替え口とモックから project-index の本物の write_docs へ付け替える
+    reason: 本文のファイルの書き込みは project-index#83 で作る。この PR は project-index#83 の本文の入出力に沿った付け替え口とモックで作る（規約『複数リポジトリのAPI契約』）
+    plan: '#541'
