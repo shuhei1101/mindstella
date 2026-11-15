@@ -13,10 +13,10 @@ scenarios:
         description: 状態が `進行中` のタスク T-1
       - name: 再開可能な検討事項
         description: 状態が `保留` で、依存先の D-3 が決定済みの検討事項 D-2
-        notes: '`depends_on: [D-3]`'
+        notes: '`related: [{to: D-3, type: depends_on}]`'
       - name: 決定待ちの検討事項
         description: 状態が `保留` で、依存先の D-5 が未決定の検討事項 D-4
-        notes: '`depends_on: [D-5]`'
+        notes: '`related: [{to: D-5, type: depends_on}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -48,7 +48,7 @@ scenarios:
         notes: 'D-1: `要件`・影響度 `小`／D-2: `目的`・影響度 `小`／D-3: `要件`・影響度 `大`／D-4: `要件`・影響度 `大`'
       - name: 前提が揃っていない未決定
         description: 未決定の検討事項に依存する未決定の検討事項 D-5〜D-7
-        notes: 'D-5: `目的`・`depends_on: [D-1]`／D-6: `depends_on: [D-4]`／D-7: `depends_on: [D-6]`（D-1 の後続 1 件、D-3 の後続 0 件、D-4 の後続 2 件）'
+        notes: 'D-5: `目的`・`related: [{to: D-1, type: depends_on}]`／D-6: `related: [{to: D-4, type: depends_on}]`／D-7: `related: [{to: D-6, type: depends_on}]`（D-1 の後続 1 件、D-3 の後続 0 件、D-4 の後続 2 件）'
     flow: |-
       ```mermaid
       sequenceDiagram

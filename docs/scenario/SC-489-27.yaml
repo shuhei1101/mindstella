@@ -43,7 +43,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
-        description: 検討事項 D-1 と、D-1 を依存先（`depends_on`）に持つ検討事項 D-2
+        description: 検討事項 D-1 と、D-1 を依存先（`depends_on` の種類の `related`）に持つ検討事項 D-2
       - name: 保存待ちの編集
         description: D-1 を消す編集と、D-2 の答えの編集の 2 件
       - name: 配信

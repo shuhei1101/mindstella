@@ -71,7 +71,7 @@ scenarios:
         description: なし（project-index を立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 作成を済ませ、検討事項 D-1 と、D-1 に依存する検討事項 D-2 を足したワークスペース
-        notes: 'D-2 が `depends_on: [D-1]`'
+        notes: 'D-2 が `related: [{to: D-1, type: depends_on}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -89,7 +89,7 @@ scenarios:
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_referenced
     notes:
-      指す側: ほかの項目の `parent`・`depends_on`・`for`・`sources`・`related`（配信の設定で project-index の関連に対応づけたキー）が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
+      指す側: ほかの項目の `related`（種類 `depends_on`・`parent`・`for`・`see_also`）が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
   - name: 異常シナリオ（存在しない ID を消す）
     setup:
       - name: Mock

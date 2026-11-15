@@ -6,7 +6,7 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。手順が連ねる `next`・`edit_option`（推奨の印）・スレッドを立てる・取り込み待ちのスレッドの一覧・スレッドを読む・`adopt`・`update`・`add`（会話ログ）・スレッドへの返信を、決めた引数で順に再生する。利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する
       - name: 作成済みのワークスペース
-        description: 前提が揃った未決定 D-1・D-2（どちらも案 A・B を持ち、推奨の印を持たない）と、D-1 に `depends_on` で依存する未決定 D-3 を持つ
+        description: 前提が揃った未決定 D-1・D-2（どちらも案 A・B を持ち、推奨の印を持たない）と、D-1 に `depends_on` の種類の `related` で依存する未決定 D-3 を持つ
       - name: 再生する答え
         description: 聞く前に D-1 は案 A、D-2 は案 A に推奨の印を立てる。D-1 のスレッドへ `A にする`、D-2 のスレッドへ `B にする` と回答し、答えで D-1 は案 A、D-2 は案 B を `adopt` で採用し、`update` で `answer` と `reason` を入れる
     flow: |-

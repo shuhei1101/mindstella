@@ -156,7 +156,7 @@ scenarios:
         description: 作成を済ませ、検討事項 D-1 を 1 件足して `commit` したワークスペース
       - name: 書き込む操作
         description: 検討事項 D-2 を足す → D-2 を進めるタスク T-1 を足す → D-1 の答えと状態を直す、の 3 つをこの順に 1 回の `write_docs` で渡す
-        notes: D-2・T-1 の ID は先に `next_id` で取る。T-1 の `for` は D-2 を指す
+        notes: D-2・T-1 の ID は先に `next_id` で取る。T-1 の `related` は種類 `for` で D-2 を指す
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -177,7 +177,7 @@ scenarios:
       ```
     expected:
       - '`write_docs` が 3 つの操作の結果を渡した順に返す'
-      - 'T-1 が `for: [D-2]` を持つ'
+      - 'T-1 が `related: [{to: D-2, type: for}]` を持つ'
       - 検索した D-1 が、直した後の答えと状態を持つ
       - D-1 が変更履歴を 1 回分持ち、直す前の答えと状態が入っている
       - '`pending` が D-2・T-1（足した）と D-1（変えた）を返す'

@@ -9,7 +9,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 状態が未着手・進行中・保留・完了・中止のタスクを 1 件ずつ（T-1〜T-5）。T-2（進行中）は検討事項 D-3 を進める
-        notes: 'T-2 は `for: [D-3]`'
+        notes: 'T-2 は `related: [{to: D-3, type: for}]`'
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
