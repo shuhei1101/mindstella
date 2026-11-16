@@ -107,6 +107,8 @@ def test_validate_settings_input() -> None:
         pytest.param({"field": "システム開発"}, id="not_editable_key"),
         pytest.param({"summary": None}, id="required_key_null"),
         pytest.param({"tags": []}, id="tags_removed"),
+        pytest.param({"mdmark": {"version": "v0.13.0", "map": {}}}, id="mdmark_map_given"),
+        pytest.param({"mdmark": None}, id="mdmark_null"),
     ],
 )
 def test_validate_settings_input_when_bad_key(settings: dict[str, Any]) -> None:
@@ -240,6 +242,17 @@ def test_merge_settings(make_settings: MakeSettings) -> None:
     assert changed == ["summary", "goal", "description"]
     # 渡した設定そのものは書き換えない
     assert "goal" in current
+
+
+def test_merge_settings_when_mdmark() -> None:
+    """mdmark は version だけを置き換え、移し替えが書いた map を残す（正常系）。"""
+    # 準備
+    current = {"summary": "題名", "mdmark": {"version": "latest", "map": {"kinds": {"llm": {}}}}}
+    # 実行
+    merged, changed = settings_update.merge_settings(current, {"mdmark": {"version": "v0.13.0"}})
+    # 検証
+    assert merged["mdmark"] == {"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}
+    assert changed == ["mdmark"]
 
 
 def test_remap_phases(

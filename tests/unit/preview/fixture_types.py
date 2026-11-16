@@ -19,19 +19,17 @@ __all__ = [
     "MdmarkDist",
     "PutEmbeddedMdmark",
     "PutMdmarkCss",
-    "PutMdmarkImportMap",
+    "PutMdmarkConfig",
     "ServeMdmark",
 ]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MdmarkDist:
-    """外部ライブラリの設計書が固定した mdmark の JavaScript の URL・integrity・中身。"""
+    """単体テストが固定した版の mdmark の配布物の URL・中身。"""
 
-    # 配信元の URL（import map の `integrity` のキー）
+    # 配信元の URL
     url: str
-    # 設計書の `integrity`（`sha384-{Base64}`）
-    integrity: str
     # 配布物の中身
     body: str
 
@@ -41,7 +39,7 @@ type LoadPreviewStyles = Callable[[], None]
 type LoadLibrary = Callable[[str], None]
 type LoadMdmark = Callable[[], None]
 type ServeMdmark = Callable[..., None]
-type PutMdmarkImportMap = Callable[..., None]
+type PutMdmarkConfig = Callable[..., None]
 type PutEmbeddedMdmark = Callable[[], None]
 type PutMdmarkCss = Callable[..., None]
 type MakeData = Callable[..., dict[str, Any]]
