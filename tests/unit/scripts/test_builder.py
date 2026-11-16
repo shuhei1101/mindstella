@@ -19,7 +19,7 @@ import errors
 import store
 from errors import SchemaMismatchError, WriteFailedError
 from export_helpers import (
-    Module,
+    Mdmark,
     Script,
     dist_url,
     external_template,
@@ -27,9 +27,7 @@ from export_helpers import (
     make_fetch,
     make_library,
     make_responses,
-    module_css_url,
-    module_js_url,
-    module_url,
+    mdmark_url,
 )
 from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
 from workspace_fixtures import RECORD_DIR
@@ -62,7 +60,10 @@ def _write_preview_dir(preview_dir: Path, template: str) -> None:
 def preview_dir(tmp_path: Path) -> Path:
     """差し込み口と埋め込み先を持つ template.html と、空に近い CSS・JavaScript を置いた雛形のフォルダを返す。"""
     folder = tmp_path / "preview"
-    _write_preview_dir(folder, f"{builder.STYLE_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}")
+    _write_preview_dir(
+        folder,
+        f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}",
+    )
     return folder
 
 
@@ -303,9 +304,11 @@ def test_assemble_template_when_slot_count_wrong(
     """差し込み口が 1 つでない雛形は受け付けない（異常系）。"""
     # 準備
     if slot_kind == "style_slot_none":
-        template = f"{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
+        template = f"{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
     else:
-        template = f"{builder.STYLE_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT * 2}"
+        template = (
+            f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT * 2}"
+        )
     folder = tmp_path / "preview"
     _write_preview_dir(folder, template)
     # 実行・検証
@@ -420,21 +423,13 @@ def test_derive_preview_values_when_no_goal(
 # 配る書き出しのテストが雛形に置く外の読み込み（実物の VENDOR_LIBRARIES にあるパッケージ）
 MARKED_SCRIPTS: list[Script] = [("marked", b"/* marked */")]
 
-# 配る書き出しのテストが雛形に置く外の ES モジュール（実物の VENDOR_LIBRARIES にあるパッケージ）
-MDMARK_PACKAGE = "shuhei1101/mdmark"
-MDMARK_MODULE: Module = (MDMARK_PACKAGE, b"/* mdmark */", b".mdmark{}")
+# 配る書き出しのテストが取る mdmark の中身（JavaScript・CSS）
+MDMARK: Mdmark = (b"/* mdmark */", b".mdmark{}")
 
-# 組み立てのテストが雛形に置く外の ES モジュール（ライセンスは雛形のフォルダのファイルから読み、束ねた依存は取る）
-MODULE_PACKAGE = "o/m"
-MODULE: Module = (MODULE_PACKAGE, b"/* m */", b".m{}")
-
-# 外の ES モジュールの import map と integrity を持つ link の、正しい組（read_external_module のテスト）
-MODULE_JS_URL = "https://cdn.jsdelivr.net/gh/o/m@v1.0.0/dist/index.js"
-MODULE_CSS_URL = "https://cdn.jsdelivr.net/gh/o/m@v1.0.0/dist/index.css"
-VALID_IMPORT_MAP = (
-    f'<script type="importmap">{{"integrity": {{"{MODULE_JS_URL}": "sha384-j"}}}}</script>'
-)
-VALID_LINK = f'<link rel="stylesheet" href="{MODULE_CSS_URL}" integrity="sha384-c">'
+# 組み立てのテストの mdmark の設定と中身（ライセンスは雛形のフォルダのファイルから読み、束ねた依存は取る）
+MDMARK_SETTINGS = {"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}
+MDMARK_VERSION = "v0.13.0"
+MODULE: Mdmark = (b"/* m */", b".m{}")
 
 # 手元の HTTP サーバーが 200 で返す本文
 SERVED_BODY = b"abc"
@@ -482,9 +477,9 @@ def _fill_marks(template: str) -> str:
 
 @pytest.fixture
 def export_preview_dir(tmp_path: Path) -> Path:
-    """外の読み込みの印の間に mdmark の import map・link と marked の <script src integrity> を持つ雛形のフォルダを返す。"""
+    """外の読み込みの印の間に mdmark の差し込み口と marked の <script src integrity> を持つ雛形のフォルダを返す。"""
     folder = tmp_path / "preview"
-    _write_preview_dir(folder, external_template(MARKED_SCRIPTS, MDMARK_MODULE))
+    _write_preview_dir(folder, external_template(MARKED_SCRIPTS))
     (folder / "licenses").mkdir()
     (folder / "licenses" / "mdmark-LICENSE.txt").write_text("MIT の本文", encoding="utf-8")
     return folder
@@ -492,27 +487,25 @@ def export_preview_dir(tmp_path: Path) -> Path:
 
 def _export_responses() -> dict[str, bytes]:
     """配る書き出しで取る URL → 中身（marked・mdmark の配布ファイルとライセンスの本文）を返す。"""
-    responses = make_responses(MARKED_SCRIPTS, module=MDMARK_MODULE)
-    responses[module_url(MDMARK_PACKAGE, "dist/THIRD_PARTY_LICENSES.txt")] = "束ねた本文".encode()
+    responses = make_responses(MARKED_SCRIPTS, mdmark=MDMARK)
+    responses[mdmark_url("THIRD_PARTY_LICENSES.txt")] = "束ねた本文".encode()
     return responses
 
 
 def _module_library() -> builder.VendorLibrary:
     """ライセンスを雛形のフォルダの licenses/m.txt から読み、束ねた依存のライセンスを dist/T.txt から取る ES モジュールのライブラリを返す。"""
     return make_library(
-        MODULE_PACKAGE,
+        builder.MDMARK_PACKAGE,
         license_path=None,
         license_file="licenses/m.txt",
         bundled_license_path="dist/T.txt",
     )
 
 
-def _module_preview_dir(
-    tmp_path: Path, scripts: list[Script], module: Module, license_text: str = "本文 m"
-) -> Path:
-    """外の読み込みの印の間に ES モジュールと script を置いた雛形のフォルダと、licenses/m.txt を返す。"""
+def _module_preview_dir(tmp_path: Path, scripts: list[Script], license_text: str = "本文 m") -> Path:
+    """外の読み込みの印の間に mdmark の差し込み口と script を置いた雛形のフォルダと、licenses/m.txt を返す。"""
     folder = tmp_path / "preview"
-    _write_preview_dir(folder, external_template(scripts, module))
+    _write_preview_dir(folder, external_template(scripts))
     (folder / "licenses").mkdir()
     (folder / "licenses" / "m.txt").write_text(license_text, encoding="utf-8")
     return folder
@@ -683,7 +676,7 @@ def test_validate_export_out_when_invalid(tmp_path: Path) -> None:
 
 
 def test_list_external_scripts() -> None:
-    """印の間の script を並びの順に読み、印の外と import map・link は読まない（正常系）。"""
+    """印の間の script を並びの順に読み、印の外と src を持たない script・link は読まない（正常系）。"""
     # 準備
     template = _fill_marks(
         '<script src="a.js"></script>'
@@ -760,10 +753,9 @@ def test_template_matches_vendor_libraries() -> None:
     template = (builder.PREVIEW_DIR / "template.html").read_text(encoding="utf-8")
     libraries = builder.VENDOR_LIBRARIES
     # 実行
-    module = builder.read_external_module(template)
     scripts = builder.list_external_scripts(template)
     # 検証
-    assert [module.package, *(script.package for script in scripts)] == [
+    assert [builder.MDMARK_PACKAGE, *(script.package for script in scripts)] == [
         library.package for library in libraries
     ]
     # ライセンスの本文は、取る（license_path）か読む（license_file）かのちょうど一方
@@ -785,68 +777,6 @@ def test_template_matches_vendor_libraries() -> None:
         if name is not None
     ]
     assert [name for name in local_files if not (builder.PREVIEW_DIR / name).is_file()] == []
-
-
-def test_read_external_module() -> None:
-    """印の間の import map と integrity を持つ link を読み、文字の link と script src は読まない（正常系）。"""
-    # 準備
-    template = _fill_marks(
-        "<<START>>"
-        f"{VALID_IMPORT_MAP}"
-        f"{VALID_LINK}"
-        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">'
-        '<script src="https://cdn.jsdelivr.net/npm/x@1.0.0/x.js" integrity="sha384-AAA"></script>'
-        "<<END>>"
-    )
-    # 実行
-    module = builder.read_external_module(template)
-    # 検証
-    assert module == builder.ExternalModule(
-        js_url=MODULE_JS_URL,
-        js_integrity="sha384-j",
-        css_url=MODULE_CSS_URL,
-        css_integrity="sha384-c",
-        package="o/m",
-        version="v1.0.0",
-    )
-
-
-@pytest.mark.parametrize(
-    "template",
-    [
-        pytest.param(f"<<START>>{VALID_LINK}<<END>>", id="import_map_none"),
-        pytest.param(f"<<START>>{VALID_IMPORT_MAP}<<END>>", id="link_none"),
-        pytest.param(f"<<START>>{VALID_IMPORT_MAP}{VALID_LINK}{VALID_LINK}<<END>>", id="link_two"),
-        pytest.param(
-            '<<START>><script type="importmap">'
-            f'{{"integrity": {{"{MODULE_JS_URL}": "sha384-j", "{MODULE_JS_URL}x": "sha384-k"}}}}'
-            f"</script>{VALID_LINK}<<END>>",
-            id="integrity_keys_two",
-        ),
-        pytest.param(
-            f'<<START>><script type="importmap">これは JSON ではない</script>{VALID_LINK}<<END>>',
-            id="import_map_not_json",
-        ),
-        pytest.param(
-            '<<START>><script type="importmap">'
-            '{"integrity": {"https://cdn.jsdelivr.net/npm/x@1.0.0/dist/index.js": "sha384-j"}}'
-            f"</script>{VALID_LINK}<<END>>",
-            id="js_url_npm",
-        ),
-        pytest.param(
-            f"<<START>>{VALID_IMPORT_MAP}"
-            f'<link rel="stylesheet" href="{MODULE_CSS_URL.replace("v1.0.0", "v1.0.1")}"'
-            ' integrity="sha384-c"><<END>>',
-            id="css_tag_differs",
-        ),
-        pytest.param(f"<<END>><<START>>{VALID_IMPORT_MAP}{VALID_LINK}", id="end_first"),
-    ],
-)
-def test_read_external_module_when_invalid(template: str) -> None:
-    """import map や link の形が違う雛形は受け付けない（異常系）。"""
-    # 実行・検証
-    with pytest.raises(ValueError):  # noqa: PT011 メッセージは印・import map・link・URL の形の違いで分かれる
-        builder.read_external_module(_fill_marks(template))
 
 
 def test_fetch_url(local_server: str) -> None:
@@ -876,75 +806,69 @@ def test_fetch_url_when_unreachable(
         builder.fetch_url(url)
 
 
+def _bundled_url() -> str:
+    """組み立てのテストの mdmark の束ねた依存のライセンス（`dist/T.txt`）の URL を返す。"""
+    return mdmark_url("T.txt", MDMARK_VERSION)
+
+
 def test_assemble_standalone_template(tmp_path: Path) -> None:
-    """外の読み込みを取った CSS・JavaScript・配布ファイルとライセンスの表示に置き換える（正常系）。"""
+    """外の読み込みを取った mdmark の中身・配布ファイルとライセンスの表示に置き換える（正常系）。"""
     # 準備
     scripts: list[Script] = [("a", b"/* a */"), ("b", b"/* b */")]
-    folder = _module_preview_dir(tmp_path, scripts, MODULE)
-    responses = make_responses(scripts, module=MODULE)
-    responses[module_url(MODULE_PACKAGE, "dist/T.txt")] = "束ねた本文 m".encode()
+    folder = _module_preview_dir(tmp_path, scripts)
+    responses = make_responses(scripts, mdmark=MODULE, mdmark_version=MDMARK_VERSION)
+    responses[_bundled_url()] = "束ねた本文 m".encode()
     fetch, calls = make_fetch(responses)
     libraries = (_module_library(), make_library("a"), make_library("b"))
     # 実行
     html = builder.assemble_standalone_template(
-        preview_dir=folder, libraries=libraries, fetch=fetch
+        preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
     )
     # 検証
     assert "https://" not in html
     assert builder.EXTERNAL_START not in html
     assert builder.EXTERNAL_END not in html
-    assert "importmap" not in html
+    assert builder.MDMARK_SLOT not in html
     assert '<style id="mindmap-mdmark-css">.m{}</style>' in html
     assert html.split(builder.MDMARK_OPEN, 1)[1].split("</script>", 1)[0] == "/* m */"
+    part_open = builder.MDMARK_PART_OPEN.format(name="map")
+    assert html.split(part_open, 1)[1].split("</script>", 1)[0] == "/* map.js */"
+    config = html.split(builder.MDMARK_CONFIG_OPEN, 1)[1].split("</script>", 1)[0]
+    assert json.loads(config) == {"map": {"kinds": {"llm": {}}}}
     _assert_in_order(html, ["/* m */", "/* a */", "/* b */", '<script id="mindmap-app">'])
     licenses = html.split(builder.LICENSES_OPEN, 1)[1].split("</script>", 1)[0]
     _assert_in_order(licenses, ["本文 m", "束ねた本文 m", "本文 a", "本文 b"])
+    mdmark_calls = [url for url in calls if builder.MDMARK_PACKAGE in url]
+    assert mdmark_calls
+    assert all(f"@{MDMARK_VERSION}/" in url for url in mdmark_calls)
     assert sorted(calls) == sorted(
         [
-            module_js_url(MODULE_PACKAGE),
-            module_css_url(MODULE_PACKAGE),
+            mdmark_url("index.js", MDMARK_VERSION),
+            mdmark_url("index.css", MDMARK_VERSION),
+            *(mdmark_url(name, MDMARK_VERSION) for name in builder.MDMARK_PART_FILES),
             dist_url("a"),
             dist_url("b"),
-            module_url(MODULE_PACKAGE, "dist/T.txt"),
+            _bundled_url(),
             license_url("a"),
             license_url("b"),
         ]
     )
 
 
-@pytest.mark.parametrize(
-    ("served", "url"),
-    [
-        pytest.param(
-            (MODULE_PACKAGE, b"/* x */", b".m{}", b"/* a */"),
-            module_js_url(MODULE_PACKAGE),
-            id="module_js",
-        ),
-        pytest.param(
-            (MODULE_PACKAGE, b"/* m */", b".x{}", b"/* a */"),
-            module_css_url(MODULE_PACKAGE),
-            id="module_css",
-        ),
-        pytest.param(
-            (MODULE_PACKAGE, b"/* m */", b".m{}", b"/* x */"), dist_url("a"), id="dist"
-        ),
-    ],
-)
-def test_assemble_standalone_template_when_integrity_mismatch(
-    tmp_path: Path, served: tuple[str, bytes, bytes, bytes], url: str
-) -> None:
-    """integrity と合わない中身は差し込まない（異常系）。"""
+def test_assemble_standalone_template_when_integrity_mismatch(tmp_path: Path) -> None:
+    """integrity と合わない配布ファイルは差し込まない（異常系）。"""
     # 準備
-    folder = _module_preview_dir(tmp_path, [("a", b"/* a */")], MODULE)
+    folder = _module_preview_dir(tmp_path, [("a", b"/* a */")])
     # 雛形の integrity と違う中身を返す
-    package, js, css, dist = served
-    responses = make_responses([("a", dist)], module=(package, js, css))
-    responses[module_url(MODULE_PACKAGE, "dist/T.txt")] = "束ねた本文 m".encode()
+    responses = make_responses([("a", b"/* x */")], mdmark=MODULE, mdmark_version=MDMARK_VERSION)
+    responses[_bundled_url()] = "束ねた本文 m".encode()
     fetch, _calls = make_fetch(responses)
     libraries = (_module_library(), make_library("a"))
     # 実行・検証
-    with pytest.raises(errors.DownloadFailedError, match=re.escape(url)):
-        builder.assemble_standalone_template(preview_dir=folder, libraries=libraries, fetch=fetch)
+    with pytest.raises(errors.DownloadFailedError, match=re.escape(dist_url("a"))):
+        builder.assemble_standalone_template(
+            preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+        )
 
 
 @pytest.mark.parametrize(
@@ -952,8 +876,15 @@ def test_assemble_standalone_template_when_integrity_mismatch(
     [
         pytest.param({"dist": "</SCRIPT>"}, re.escape(dist_url("a")), id="dist_closing"),
         pytest.param({"dist": "x <!--<script y"}, re.escape(dist_url("a")), id="dist_opening"),
-        pytest.param({"js": "</script>"}, re.escape(module_js_url(MODULE_PACKAGE)), id="module_js"),
-        pytest.param({"css": "</Style>"}, re.escape(module_css_url(MODULE_PACKAGE)), id="module_css"),
+        pytest.param(
+            {"js": "</script>"}, re.escape(mdmark_url("index.js", MDMARK_VERSION)), id="module_js"
+        ),
+        pytest.param(
+            {"part": "</script>"}, re.escape(mdmark_url("map.js", MDMARK_VERSION)), id="module_part"
+        ),
+        pytest.param(
+            {"css": "</Style>"}, re.escape(mdmark_url("index.css", MDMARK_VERSION)), id="module_css"
+        ),
         pytest.param({"license": "本文 </script>"}, re.escape(license_url("a")), id="license"),
         pytest.param({"module_license": "<script"}, r"m\.txt", id="license_file"),
         pytest.param({"bundled": "束ねた <Script"}, "bundled.txt", id="bundled"),
@@ -967,17 +898,23 @@ def test_assemble_standalone_template_when_tag_inside(
     texts = {
         "js": "/* m */",
         "css": ".m{}",
+        "part": "/* map.js */",
         "dist": "/* a */",
         "license": "本文 a",
         "module_license": "本文 m",
         "bundled": "束ねた本文",
     } | overrides
     scripts: list[Script] = [("a", texts["dist"].encode("utf-8"))]
-    module: Module = (MODULE_PACKAGE, texts["js"].encode("utf-8"), texts["css"].encode("utf-8"))
-    folder = _module_preview_dir(tmp_path, scripts, module, texts["module_license"])
+    folder = _module_preview_dir(tmp_path, scripts, texts["module_license"])
     (folder / "licenses" / "bundled.txt").write_text(texts["bundled"], encoding="utf-8")
-    responses = make_responses(scripts, {"a": texts["license"]}, module)
-    responses[module_url(MODULE_PACKAGE, "dist/T.txt")] = "束ねた本文 m".encode()
+    responses = make_responses(
+        scripts,
+        {"a": texts["license"]},
+        (texts["js"].encode("utf-8"), texts["css"].encode("utf-8")),
+        MDMARK_VERSION,
+    )
+    responses[mdmark_url("map.js", MDMARK_VERSION)] = texts["part"].encode("utf-8")
+    responses[_bundled_url()] = "束ねた本文 m".encode()
     fetch, _calls = make_fetch(responses)
     libraries = (
         _module_library(),
@@ -985,24 +922,24 @@ def test_assemble_standalone_template_when_tag_inside(
     )
     # 実行・検証
     with pytest.raises(ValueError, match=match):
-        builder.assemble_standalone_template(preview_dir=folder, libraries=libraries, fetch=fetch)
+        builder.assemble_standalone_template(
+            preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+        )
 
 
 @pytest.mark.parametrize(
-    ("scripts", "module", "make_libraries", "package"),
+    ("scripts", "make_libraries", "package"),
     [
         pytest.param(
             [("c", b"/* c */")],
-            MODULE,
             lambda: (_module_library(),),
             "c",
             id="script_without_library",
         ),
         pytest.param(
             [("a", b"/* a */")],
-            ("o/x", b"/* x */", b".x{}"),
             lambda: (make_library("a"),),
-            "o/x",
+            builder.MDMARK_PACKAGE,
             id="module_without_library",
         ),
     ],
@@ -1010,18 +947,19 @@ def test_assemble_standalone_template_when_tag_inside(
 def test_assemble_standalone_template_when_library_unknown(
     tmp_path: Path,
     scripts: list[Script],
-    module: Module,
     make_libraries: Callable[[], tuple[builder.VendorLibrary, ...]],
     package: str,
 ) -> None:
-    """VENDOR_LIBRARIES に無いパッケージの外の読み込みは受け付けない（異常系）。"""
+    """VENDOR_LIBRARIES に無いパッケージの読み込みは受け付けない（異常系）。"""
     # 準備
-    folder = _module_preview_dir(tmp_path, scripts, module)
-    fetch, calls = make_fetch(make_responses(scripts, module=module))
+    folder = _module_preview_dir(tmp_path, scripts)
+    fetch, calls = make_fetch(make_responses(scripts, mdmark=MODULE, mdmark_version=MDMARK_VERSION))
     libraries = make_libraries()
     # 実行・検証
-    with pytest.raises(ValueError, match=f"ライセンスの表示が無い外の読み込み: {package}"):
-        builder.assemble_standalone_template(preview_dir=folder, libraries=libraries, fetch=fetch)
+    with pytest.raises(ValueError, match=f"ライセンスの表示が無い外の読み込み: {re.escape(package)}"):
+        builder.assemble_standalone_template(
+            preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+        )
     assert calls == []
 
 
