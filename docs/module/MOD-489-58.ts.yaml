@@ -35,6 +35,24 @@ functions:
         mock: なし
         expected: '`mdmarkUrls()` の `js` が `.../mdmark@develop/dist/index.js` / 同じ / `.../mdmark@v0.13.0/dist/index.js`。`mdmarkMapConfig()` が `undefined` / `undefined` / `{kinds: {llm: {}}}`'
     container: frontend/src/shared/adapters/libraries.ts
+  - name: mdmarkUrls
+    title: mdmark を読む URL
+    kind: 関数
+    usecase: SPAを開く
+    summary: '`setMdmarkSettings` で決めた mdmark の JavaScript と CSS の URL を返す（受けていなければ `develop`）'
+    returns:
+      type: '{js: string, css: string}'
+      description: '`MDMARK_CDN_BASE` の `index.js`・`index.css`'
+    container: frontend/src/shared/adapters/libraries.ts
+  - name: mdmarkMapConfig
+    title: mdmark の map の指定
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: '`setMdmarkSettings` で受けた `map`（`mount` の `config.map` に渡す）を返す'
+    returns:
+      type: MdmarkMapConfig | undefined
+      description: 受けていなければ `undefined`
+    container: frontend/src/shared/adapters/libraries.ts
   - name: loadLibrary
     title: ライブラリの読み込み
     kind: 関数

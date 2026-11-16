@@ -7,7 +7,7 @@ directory: |-
   ```
   plugins/mindstella/skills/mindmap/
     preview/
-      template.html   プレビューの雛形（CSS・JavaScript・データの差し込み口と、描画のライブラリ・文字の読み込み。読み込みは EXTERNAL_START と EXTERNAL_END の間に置く。mdmark は import map と CSS の link）
+      template.html   プレビューの雛形（CSS・JavaScript・データの差し込み口と、描画のライブラリ・文字の読み込み。読み込みは EXTERNAL_START と EXTERNAL_END の間に置く。mdmark は MDMARK_SLOT の印）
       tokens.css・style.css・*.ts（と tsc が生成した *.js）  画面の中身（モジュール構成『プレビュー』）
       licenses/
         README.md  mermaid-bundled.txt を集め直す手順（使うコマンドと写すもの）と、mdmark-LICENSE.txt を置いている理由
@@ -105,36 +105,6 @@ data_models:
       - name: bundled_text
         type: str | None
         description: 束ねた依存のライセンス（`bundled_license_file` の中身か、`bundled_license_path` から取った本文）。無ければ `None`
-  - name: ExternalModule
-    title: 外の ES モジュールの読み込み
-    container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: 配る書き出し
-    role: DTO
-    summary: 雛形の外の読み込みの、import map で `integrity` を書いた ES モジュールの JavaScript と、その CSS の `<link>` の組（mdmark）。`@dataclass(frozen=True, slots=True, kw_only=True)`
-    status: planned
-    properties:
-      - name: js_url
-        type: str
-        description: import map の `integrity` のキー
-        example: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.7.0/dist/index.js
-      - name: js_integrity
-        type: str
-        description: import map の `integrity` の値（`sha384-{Base64}`）
-      - name: css_url
-        type: str
-        description: '`<link rel="stylesheet">` の `href`'
-        example: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.7.0/dist/index.css
-      - name: css_integrity
-        type: str
-        description: '`<link>` の `integrity`（`sha384-{Base64}`）'
-      - name: package
-        type: str
-        description: URL の `{owner}/{repo}`
-        example: shuhei1101/mdmark
-      - name: version
-        type: str
-        description: URL のタグ
-        example: v0.7.0
 constants:
   - name: DATA_ELEMENT
     title: 埋め込み先の要素
@@ -176,7 +146,7 @@ constants:
     title: 配る書き出しに入れるライブラリの一覧
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: 雛形の描画のライブラリ（`ExternalModule` と `<script src>` の並び）ごとの、ライセンスの表示に使う `VendorLibrary`。`package` で外の読み込みの URL のパッケージ名と結ぶ。版と URL と `integrity` は雛形が持ち、ここには持たない
+    summary: 描画のライブラリ（mdmark（`MDMARK_PACKAGE`）と雛形の `<script src>` の並び）ごとの、ライセンスの表示に使う `VendorLibrary`。`package` で mdmark と外の読み込みの URL のパッケージ名と結ぶ。版と URL と `integrity` は設定と雛形が持ち、ここには持たない
     value: (VendorLibrary(package="shuhei1101/mdmark", name="mdmark", notice="Copyright (c) 2026 shuhei1101", license="MIT", license_path=None, license_file="licenses/mdmark-LICENSE.txt", bundled_license_path="dist/THIRD_PARTY_LICENSES.txt", bundled_license_file=None, repository="https://github.com/shuhei1101/mdmark", tag="{version}"), VendorLibrary(package="marked", name="marked", notice="Copyright (c) 2018+, MarkedJS / Copyright (c) 2011-2018, Christopher Jeffrey", license="MIT", license_path="LICENSE", license_file=None, bundled_license_path=None, bundled_license_file=None, repository="https://github.com/markedjs/marked", tag="v{version}"), VendorLibrary(package="elkjs", name="elkjs", notice="(c) Kiel University and others", license="EPL-2.0", license_path="LICENSE.md", license_file=None, bundled_license_path=None, bundled_license_file=None, repository="https://github.com/kieler/elkjs", tag="{version}"), VendorLibrary(package="mermaid", name="mermaid", notice="Copyright (c) 2014 - 2022 Knut Sveidqvist", license="MIT", license_path="LICENSE", license_file=None, bundled_license_path=None, bundled_license_file="licenses/mermaid-bundled.txt", repository="https://github.com/mermaid-js/mermaid", tag="mermaid@{version}"), VendorLibrary(package="diff", name="jsdiff", notice="Copyright (c) 2009-2015, Kevin Decker", license="BSD-3-Clause", license_path="LICENSE", license_file=None, bundled_license_path=None, bundled_license_file=None, repository="https://github.com/kpdecker/jsdiff", tag="v{version}"))
   - name: FETCH_TIMEOUT_SEC
     title: 取るときの待ちの上限
@@ -194,7 +164,7 @@ constants:
     title: 外の読み込みの始まり
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
-    summary: '`template.html` がちょうど 1 つ持つ、描画のライブラリの import map・`<link>`・`<script src>` と文字の `<link>` の前に置くコメント'
+    summary: '`template.html` がちょうど 1 つ持つ、`MDMARK_SLOT`・描画のライブラリの `<script src>` と文字の `<link>` の前に置くコメント'
     value: "'<!-- mindmap-external:start -->'"
   - name: EXTERNAL_END
     title: 外の読み込みの終わり
@@ -581,7 +551,7 @@ functions:
     process: |-
       1. ワークスペースを検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（取らず、書かない）
-      2. 配る書き出しの雛形を組み立て、データを集めて埋め込む（`assemble_standalone_template`、`collect_preview_data`、`embed_data`）
+      2. ワークスペースの設定の `mdmark` で配る書き出しの雛形を組み立て、データを集めて埋め込む（`assemble_standalone_template`、`collect_preview_data`、`embed_data`）
          - 取れない場合、`DownloadFailedError` がそのまま上がる（書かない）
       3. `out` を置き換える（`replace_file`）
     exceptions:
@@ -596,7 +566,7 @@ functions:
       - name: test_export_preview
         case: 正常
         summary: 記録と取ったライブラリとライセンスの表示を持つ HTML を out に書き、ワークスペースは触らない
-        condition: D-1 と資料 A-1（`docs/A-1.md` あり）を持つワークスペースと、外の読み込みの印の間に import map・`<link rel="stylesheet" integrity>` と 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
+        condition: D-1 と資料 A-1（`docs/A-1.md` あり）を持つワークスペースと、外の読み込みの印の間に `MDMARK_SLOT` と 1 つの `<script src integrity>` を持つ `template.html`・空の CSS・JavaScript を置いた雛形のフォルダ。`out` はワークスペースの外の `tmp_path / "配る.html"`
         mock: '`fetch`（URL ごとに決めた中身を返す関数。配布ファイルの中身は `integrity` と合うもの）'
         expected: 戻り値が `out`。`out` の `mindmap-data` を JSON として読むと `decisions` に D-1、`bodies` に `A-1.md`。`out` に `src=`・`href=` が無く、`mindmap-licenses` の要素がある。ワークスペースのファイルが呼ぶ前と同じ
       - name: test_export_preview_when_schema_mismatch
@@ -664,7 +634,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: 配る書き出し
     scope: public
-    summary: 雛形の `EXTERNAL_START` と `EXTERNAL_END` の間の `<script src integrity>` を、並びの順に `ExternalScript` にして返す（import map の `<script>` と `<link>` は読まない）
+    summary: 雛形の `EXTERNAL_START` と `EXTERNAL_END` の間の `<script src integrity>` を、並びの順に `ExternalScript` にして返す（`src` を持たない `<script>` と `<link>` は読まない）
     args:
       - name: template
         type: str
@@ -703,7 +673,7 @@ functions:
         summary: 本物の雛形の外の読み込みと VENDOR_LIBRARIES が 1 対 1 で結べる
         condition: 本物の `PREVIEW_DIR` の `template.html` と `VENDOR_LIBRARIES`
         mock: なし
-        expected: '`read_external_module` の `package` の後に `list_external_scripts` の `package` を並べたものが、`VENDOR_LIBRARIES` の `package` の並びと一致する。各 `VendorLibrary` が `license_path` と `license_file` のちょうど一方を持ち、`bundled_license_path` と `bundled_license_file` を両方は持たない。`license_file`・`bundled_license_file` が `None` 以外のものはファイルがある'
+        expected: '`MDMARK_PACKAGE` の後に `list_external_scripts` の `package` を並べたものが、`VENDOR_LIBRARIES` の `package` の並びと一致する。各 `VendorLibrary` が `license_path` と `license_file` のちょうど一方を持ち、`bundled_license_path` と `bundled_license_file` を両方は持たない。`license_file`・`bundled_license_file` が `None` 以外のものはファイルがある'
         exception: '-'
   - name: fetch_url
     title: URL の中身を取る
@@ -776,52 +746,58 @@ functions:
         default: fetch_url
         passing: keyword
         description: URL の中身を取る関数
+      - name: mdmark_settings
+        type: dict[str, Any]
+        required: false
+        default: '{}'
+        passing: keyword
+        description: ワークスペースの設定の `mdmark`（`version`・`map`。無いキーは `latest`・空）
     returns:
       type: str
       description: 外のファイルも URL も指さない HTML（`DATA_ELEMENT` は空のまま）
     process: |-
-      1. ワークスペースの設定の `mdmark` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で設定のバージョンの `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする（`read_external_module` は使わない）
-      2. 外の ES モジュールと外の読み込みごとに、`package` が同じ `VendorLibrary` を引く
+      1. `mdmark_settings` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で `mdmark_settings` のバージョンの `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする
+      2. mdmark（`MDMARK_PACKAGE`）と外の読み込みごとに、`package` が同じ `VendorLibrary` を引く
          - 無い場合、`ValueError` を送る（同梱の誤り）
       3. mdmark の CSS・JavaScript・部品と、外の読み込みごとの配布ファイルを取り（`fetch`）、外の読み込みだけ sha384 を Base64 にした `sha384-{値}` がそれぞれの `integrity` と同じことを確かめる（mdmark は確かめない）
          - 違う場合、`DownloadFailedError` を送る
-      4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（外の ES モジュールは `CDN_REPO_URL`、外の読み込みは `CDN_PACKAGE_URL`。`version` はそれぞれの版）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り、`bundled_license_file` があれば雛形のフォルダから読む
+      4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（mdmark は `mdmark_dist_url`、外の読み込みは `CDN_PACKAGE_URL` に版を入れた URL）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り（mdmark は `mdmark_dist_url` に `bundled_license_path` の `dist/` の後ろを渡す）、`bundled_license_file` があれば雛形のフォルダから読む
       5. 取った・読んだ中身を UTF-8 で読み、JavaScript・配布ファイル・ライセンスの本文・束ねた依存のライセンスが `</script` と `<script` を、CSS が `</style` を含まないことを確かめる（大文字・小文字を区別しない。`<!--` の後の `<script` は script 要素を閉じさせなくする）
          - 含む場合、`ValueError` を送る（取った中身の誤り）
-      6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。import map・`<link>` も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、部品ごとの `<script type="text/plain" id="mindmap-mdmark-{部品の名前}">` + 中身 + `</script>`、`MDMARK_CONFIG_OPEN` + `{"map": 設定の mdmark.map}` + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（外の ES モジュール、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
+      6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。mdmark の `<link>` と読み込みの設定の要素も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、部品ごとの `<script type="text/plain" id="mindmap-mdmark-{部品の名前}">` + 中身 + `</script>`、`MDMARK_CONFIG_OPEN` + `{"map": 設定の mdmark.map}` + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（mdmark、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
     exceptions:
       - name: ValueError
-        condition: 外の ES モジュールか外の読み込みに `VendorLibrary` が無いか、取った・読んだ中身が `</script`・`<script`（CSS は `</style`）を含む
+        condition: mdmark か外の読み込みに `VendorLibrary` が無いか、取った・読んだ中身が `</script`・`<script`（CSS は `</style`）を含む
         message: 'ライセンスの表示が無い外の読み込み: {package} / 取った {URL かファイル名} が {タグ} を含みます'
       - name: DownloadFailedError
-        condition: 取れないか、JavaScript・CSS・配布ファイルが `integrity` と合わない
+        condition: 取れないか、外の読み込みの配布ファイルが `integrity` と合わない
         message: '取れませんでした: {URL}（{理由}） / integrity が合いません: {URL}'
     unit_tests:
       - name: test_assemble_standalone_template
         case: 正常
-        summary: 外の読み込みを取った CSS・JavaScript・配布ファイルとライセンスの表示に置き換える
-        condition: '`tmp_path` に、外の読み込みの印の間にパッケージ `o/m` の import map と `<link rel="stylesheet" integrity>`、2 つの `<script src integrity>`（パッケージ `a`・`b`）を持つ `template.html` と、中身 `本文 m` の `licenses/m.txt`。`o/m`（`license_file` が `licenses/m.txt`、`bundled_license_path` が `dist/T.txt`）・`a`・`b` の `VendorLibrary`（入手先の `repository` は `https://` を持たない値）'
-        mock: '`fetch`（JavaScript は `/* m */`、CSS は `.m{}`、配布ファイルは `/* a */`・`/* b */` で、`integrity` はそれぞれの sha384。`dist/T.txt` の URL には `束ねた本文 m`、ライセンスの URL には `本文 a`・`本文 b`）'
-        expected: '`https://`・外の読み込みの印・`importmap` が無い。`<style id="mindmap-mdmark-css">.m{}</style>` があり、`mindmap-mdmark` の要素の中身が `/* m */`。`/* m */`・`/* a */`・`/* b */` がこの順で、どれも `<script id="mindmap-app">` より前にある。`mindmap-licenses` の要素の中に `本文 m`・`束ねた本文 m`・`本文 a`・`本文 b` がこの順にある。`fetch` に渡った URL が JavaScript・CSS・配布ファイル 2 つ・`dist/T.txt`・ライセンスの本文 2 つで、`o/m` のライセンスの本文の URL を含まない'
+        summary: 外の読み込みを取った mdmark の中身・配布ファイルとライセンスの表示に置き換える
+        condition: '`tmp_path` に、外の読み込みの印の間に `MDMARK_SLOT` と 2 つの `<script src integrity>`（パッケージ `a`・`b`）を持つ `template.html` と、中身 `本文 m` の `licenses/m.txt`。`MDMARK_PACKAGE`（`license_file` が `licenses/m.txt`、`bundled_license_path` が `dist/T.txt`）・`a`・`b` の `VendorLibrary`（入手先の `repository` は `https://` を持たない値）。`mdmark_settings` が `{"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}`'
+        mock: '`fetch`（mdmark の JavaScript は `/* m */`、CSS は `.m{}`、部品は `/* {部品の名前} */`、配布ファイルは `/* a */`・`/* b */`（`integrity` はそれぞれの sha384）。`dist/T.txt` の URL には `束ねた本文 m`、ライセンスの URL には `本文 a`・`本文 b`）'
+        expected: '`https://`・外の読み込みの印・`MDMARK_SLOT` が無い。`<style id="mindmap-mdmark-css">.m{}</style>` があり、`mindmap-mdmark` の要素の中身が `/* m */`、`mindmap-mdmark-map` の要素の中身が `/* map.js */`、`mindmap-mdmark-config` の要素の中身が `{"map": {"kinds": {"llm": {}}}}`。`/* m */`・`/* a */`・`/* b */` がこの順で、どれも `<script id="mindmap-app">` より前にある。`mindmap-licenses` の要素の中に `本文 m`・`束ねた本文 m`・`本文 a`・`本文 b` がこの順にある。`fetch` に渡った mdmark の URL が全て `@v0.13.0` で、`MDMARK_PACKAGE` のライセンスの本文の URL を含まない'
         exception: '-'
       - name: test_assemble_standalone_template_when_integrity_mismatch
         case: 異常
-        summary: integrity と合わない中身は差し込まない
-        condition: '`parametrize`: `fetch` が `integrity` と違う中身を返すのが JavaScript / CSS / 配布ファイル'
+        summary: integrity と合わない配布ファイルは差し込まない
+        condition: '`fetch` が `integrity` と違う中身を返すのが配布ファイル'
         mock: '`fetch`'
         expected: '`DownloadFailedError`（`match` にその URL）'
         exception: 取れないか integrity と合わない
       - name: test_assemble_standalone_template_when_tag_inside
         case: 異常
         summary: 閉じタグか開きタグを含む中身は差し込まない
-        condition: '`parametrize`: 配布ファイルに `</SCRIPT>` / 配布ファイルに `<!--<script` / mdmark の JavaScript に `</script>` / mdmark の CSS に `</Style>` / ライセンスの本文に `</script>` / `license_file` に `<script` / 束ねた依存のライセンスに `<Script`（取る中身の `integrity` は中身に合わせる）'
+        condition: '`parametrize`: 配布ファイルに `</SCRIPT>` / 配布ファイルに `<!--<script` / mdmark の JavaScript に `</script>` / mdmark の部品に `</script>` / mdmark の CSS に `</Style>` / ライセンスの本文に `</script>` / `license_file` に `<script` / 束ねた依存のライセンスに `<Script`（取る中身の `integrity` は中身に合わせる）'
         mock: '`fetch`'
         expected: '`ValueError`（`match` にその URL かファイル名）'
         exception: VendorLibrary が無いか中身がタグを含む
       - name: test_assemble_standalone_template_when_library_unknown
         case: 異常
-        summary: VENDOR_LIBRARIES に無いパッケージの外の読み込み
-        condition: '`parametrize`: 雛形の外の読み込みのパッケージ `c` / ES モジュールのパッケージ `o/x` に `VendorLibrary` が無い'
+        summary: VENDOR_LIBRARIES に無いパッケージの読み込み
+        condition: '`parametrize`: 雛形の外の読み込みのパッケージ `c` / `MDMARK_PACKAGE` に `VendorLibrary` が無い'
         mock: '`fetch`（呼ばれた回数を数える）'
         expected: '`ValueError`（`match` にそのパッケージ）。`fetch` が呼ばれていない'
         exception: VendorLibrary が無いか中身がタグを含む
@@ -910,49 +886,6 @@ functions:
         condition: '`config.yaml` の `display.network_look` を `rainbow` にしたワークスペース。`parametrize`: `last_settings` に `display.network_look: starlight` の設定 / `last_settings` を渡さない'
         mock: なし
         expected: '`settings.display.network_look` が `starlight` で、`settings_problem` に `config.yaml: display.network_look: ` で始まる行 / `SchemaMismatchError`（`lines` に同じ行）'
-  - name: read_external_module
-    title: 外の ES モジュールの読み取り
-    container: plugins/mindstella/skills/mindmap/scripts/builder.py
-    usecase: 配る書き出し
-    summary: 雛形の `EXTERNAL_START` と `EXTERNAL_END` の間の import map と `integrity` を持つ `<link rel="stylesheet">` を、`ExternalModule` にして返す
-    kind: 関数
-    scope: public
-    status: planned
-    args:
-      - name: template
-        type: str
-        required: true
-        passing: positional
-        description: 雛形の HTML
-    returns:
-      type: ExternalModule
-      description: mdmark の JavaScript と CSS の URL と `integrity`
-    process: |-
-      1. `EXTERNAL_START`・`EXTERNAL_END` を確かめ、間の `type="importmap"` の `<script>` の中身と、`integrity` を持つ `<link rel="stylesheet">` を読む（印の確かめ方は `list_external_scripts` と同じ。`html.parser.HTMLParser`。`integrity` を持たない文字の `<link>` は読まない）
-         - 印が 1 つずつでないか、import map と `<link>` がそれぞれちょうど 1 つでない場合、`ValueError` を送る（同梱の雛形の誤り）
-      2. import map を JSON として読み、`integrity` のただ 1 つのキーと値を JavaScript の URL と `integrity` にする
-         - JSON として読めないか、`integrity` のキーが 1 つでない場合、`ValueError` を送る
-      3. JavaScript と CSS の URL を `https://cdn.jsdelivr.net/gh/{package}@{version}/{path}` の形で分ける
-         - どちらかがこの形でないか、2 つの `package`・`version` が違う場合、`ValueError` を送る
-    exceptions:
-      - name: ValueError
-        condition: 外の読み込みの印が 1 つずつでないか順が逆、import map か `integrity` を持つ `<link>` が 1 つでない、import map の `integrity` のキーが 1 つでない、または URL がタグを固定した jsDelivr の GitHub の URL でないか 2 つで違う
-        message: '雛形に外の読み込みの印が 1 つずつありません / 雛形に import map と integrity を持つ link が 1 つずつありません / 雛形の import map が integrity を 1 つだけ持ちません / 雛形の ES モジュールがタグを固定した同じ jsDelivr の URL を持ちません: {URL}'
-    unit_tests:
-      - name: test_read_external_module
-        case: 正常
-        summary: 印の間の import map と integrity を持つ link を読み、文字の link と script src は読まない
-        condition: '印の間に `{"integrity": {"https://cdn.jsdelivr.net/gh/o/m@v1.0.0/dist/index.js": "sha384-j"}}` の import map、`integrity="sha384-c"` の `<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/o/m@v1.0.0/dist/index.css">`、`integrity` を持たない Google Fonts の `<link>`、`<script src integrity>` を持つ雛形'
-        mock: なし
-        expected: '`js_url`・`js_integrity`・`css_url`・`css_integrity` が雛形の値で、`package` が `o/m`、`version` が `v1.0.0`'
-        exception: '-'
-      - name: test_read_external_module_when_invalid
-        case: 異常
-        summary: import map や link の形が違う雛形
-        condition: '`parametrize`: import map 0 個 / `integrity` を持つ `<link>` 2 個 / `integrity` のキー 2 つ / import map が JSON でない / JavaScript の URL が npm の形 / CSS のタグが `v1.0.1` / `EXTERNAL_END` が前'
-        mock: なし
-        expected: '`ValueError`'
-        exception: 印・import map・link・URL の形が違う
 function_types:
   - name: FetchFn
     title: URL の中身を取る関数

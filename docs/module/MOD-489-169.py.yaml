@@ -335,7 +335,7 @@ classes:
           1. `Host` が合わなければ 403 を返す（`check_host`、`problem_response`）
           2. パスで分ける（クエリとハッシュは見ない）
              - `/` の場合、`302`・`Location: /mindstella.html`・本文なしで送り直す（`PAGE_PATH`）
-             - `/mindstella.html` の場合、画面を返す（`index_response`）
+             - `/mindstella.html` の場合、最後に検査に通った設定の `mdmark` で画面を返す（`index_response`）
              - `/spa` の場合、`302`・`Location: /spa/`・本文なしで送り直す（`SPA_PATH`）
              - `/spa/` で始まる場合、SPA の出力のファイルを返す（`spa_response`。`{プレビューのフォルダ}/{SPA_DIR}` と `/spa` より後ろのパスを渡す）
              - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
@@ -813,11 +813,16 @@ functions:
         required: true
         passing: positional
         description: 雛形のフォルダ
+      - name: mdmark_settings
+        type: dict[str, Any]
+        required: true
+        passing: keyword
+        description: 最後に検査に通った設定（`ServeContext.settings`）の `mdmark`（無ければ空の辞書）
     returns:
       type: Response
       description: 200・`text/html; charset=utf-8` の応答。雛形の誤りは 500
     process: |-
-      1. 雛形を組み立てる（雛形の組み立て。`assemble_template`）
+      1. `mdmark_settings` で雛形を組み立てる（雛形の組み立て。`assemble_template`）
          - `ValueError` の場合、500 を返す（`problem_response`）
            - `[ERROR]` 同梱の雛形の誤り（例外のメッセージ）
       2. 組み立てた HTML を UTF-8 にして返す（要求ごとに読み直し、控えない。プラグインを上げた後に古い画面を返さない）
@@ -825,9 +830,9 @@ functions:
       - name: test_index_response
         case: 正常
         summary: 差し込んだ雛形を返し、記録は空のまま
-        condition: 差し込み口と `DATA_ELEMENT` を持つ小さな雛形のフォルダ
+        condition: '差し込み口と `DATA_ELEMENT` を持つ小さな雛形のフォルダ。`mdmark_settings` が `{"version": "v0.13.0"}`'
         mock: なし
-        expected: 200 で、本文に `DATA_ELEMENT` がそのままあり、`STYLE_FILES` の中身が入っている
+        expected: 200 で、本文に `DATA_ELEMENT` がそのままあり、`STYLE_FILES` の中身と `mdmark@v0.13.0/dist/index.js` が入っている
       - name: test_index_response_when_template_invalid
         case: 正常
         summary: 雛形の誤りは 500
