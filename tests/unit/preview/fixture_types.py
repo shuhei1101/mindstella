@@ -18,8 +18,8 @@ __all__ = [
     "MakeItem",
     "MdmarkDist",
     "PutEmbeddedMdmark",
-    "PutMdmarkCss",
     "PutMdmarkConfig",
+    "PutMdmarkCss",
     "ServeMdmark",
 ]
 
