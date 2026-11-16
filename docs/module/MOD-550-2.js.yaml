@@ -1,0 +1,34 @@
+title: プレビュー / Storybook / main.js
+lead: 今の画面の部品の Storybook（`.storybook/`）の設定。ストーリーの画面の head に、雛形の文字と描画のライブラリ・mdmark の読み込みと部品の JavaScript を差し込む。
+constants:
+  - name: TEMPLATE_TAGS
+    title: 雛形から取り出すタグ
+    container: .storybook/main.js
+    usecase: 共通
+    summary: 雛形から取り出す、文字の `<link>` と描画のライブラリの `<script src>` の正規表現。mdmark の `<link>` と import map は取り出さない（雛形は `MDMARK_SLOT` の印だけを持つ）
+    value: /<link rel="stylesheet" href="https:\/\/fonts[^>]*>|<script src="https:\/\/cdn[^>]*><\/script>/g
+  - name: MDMARK_STORYBOOK_URL
+    title: Storybook が読む mdmark の配信元
+    container: .storybook/main.js
+    usecase: 共通
+    summary: Storybook の画面が読む mdmark の `dist/`。設定を持たないときの既定（`latest` = `@develop`）で、サーバーの `mdmark_dist_url` と同じ組み立て
+    value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist"'
+functions:
+  - name: templateTags
+    title: 雛形のタグの取り出し
+    kind: 関数
+    container: .storybook/main.js
+    usecase: 共通
+    scope: internal
+    summary: 雛形から文字と描画のライブラリを読むタグを取り出し、mdmark の読み込みを足して返す
+    returns:
+      type: string
+      description: head に差し込むタグの並び
+    process: |-
+      1. `template.html` を読み、`TEMPLATE_TAGS` に当たるタグを並びの順に取り出す
+      2. `MDMARK_STORYBOOK_URL` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`<script type="application/json" id="mindmap-mdmark-config">{"js": "{MDMARK_STORYBOOK_URL}/index.js", "map": {}}</script>` を足す（今の画面の `loadMdmark` がこの `js` を読む）
+      3. 改行でつないで返す
+notes:
+  React の画面の Storybook: '`.storybook-react/` は変えない。React の画面の `libraries.ts` は `setMdmarkSettings` を呼ばないと既定（`@develop`）の URL から読むため、ストーリーの loaders の `loadLibrary("mdmark")` がそのまま既定のバージョンを読む'
+  単体テスト: Storybook の設定は単体テストを持たない。ストーリーが mdmark で本文を描けることは、実装の後に Storybook を配信して確かめる
+id: MOD-550-2
