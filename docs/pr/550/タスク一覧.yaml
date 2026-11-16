@@ -15,8 +15,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-16T12:27:40.658864+00:00'
   - process: PoC 検証
-    status: todo
+    status: done
     note: jsDelivr の @develop から mdmark の dist を読めるか（mdmark#620 の後）と反映の遅れ、v0.8.0 から develop の最新までの mount・features・描いた要素の属性の差、mdmark#534 の変換をワークスペースの資料に当てる呼び方を確かめる
+    updated_by: planner
+    updated_at: '2026-11-16T15:44:08.828147+00:00'
   - process: 複合ユースケース設計
     status: skipped
     reason: 複合ユースケースの流れは変わらない（読む mdmark の版だけが変わる）
