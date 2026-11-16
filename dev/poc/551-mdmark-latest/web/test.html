@@ -1,0 +1,19 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>poc</title></head><body>
+<div id="root"></div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const ver = q.get("ver"); const doc = q.get("doc") || "sample.md"; const withMap = q.get("map") === "1";
+const base = `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@${ver}/dist`;
+const link = document.createElement("link"); link.rel = "stylesheet"; link.href = `${base}/index.css`; link.crossOrigin = "anonymous"; document.head.append(link);
+const FEATURES = { glossary:false, backlinks:false, comments:false, print:false, anchors:false, sections:false, table:false, toc:false, views:false, syntax:false };
+try {
+  const m = await import(`${base}/index.js`);
+  const md = await (await fetch(doc)).text();
+  const config = { features: FEATURES };
+  if (withMap) config.map = await (await fetch("mapconfig.json")).json();
+  const root = document.getElementById("root");
+  m.mount(root, { markdown: md, config });
+  window.__result = { ok: true, version: typeof m.version === "function" ? m.version() : null, exports: Object.keys(m).sort(),
+    collect: typeof m.collectMatches === "function" ? m.collectMatches({ index: { docs: [{ id: "a", path: "a.md", title: "A" }], terms: [{ id: "g1", term: "りんご", meaning: "果物" }] }, documents: { "a.md": "りんごを買う" } }) : null };
+} catch (e) { window.__result = { ok: false, error: String(e) }; }
+</script></body></html>

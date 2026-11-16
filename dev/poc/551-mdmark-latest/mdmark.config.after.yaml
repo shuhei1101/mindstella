@@ -1,0 +1,65 @@
+map:
+  kinds:
+    llm:
+      label: LLM
+      icon: bot
+      shape: rounded
+      color: purple
+    script:
+      label: スクリプト
+      icon: code-xml
+      shape: rect
+      color: blue
+    mcp:
+      label: MCP
+      icon: plug
+      shape: rounded
+      color: green
+    data:
+      label: データ
+      icon: database
+      shape: double
+      color: yellow
+    external:
+      label: 外部
+      icon: globe
+      shape: rounded
+      color: gray
+    dm:
+      label: 意思決定モデル
+      icon: split
+      shape: rounded
+      color: orange
+    start:
+      label: 開始
+      icon: play
+      shape: pill
+      color: green
+    question:
+      label: 質問
+      icon: circle-question-mark
+      shape: double
+      color: orange
+    action:
+      label: アクション
+      icon: wrench
+      shape: rect
+      color: blue
+    result:
+      label: 結果
+      icon: flag
+      shape: pill
+      color: purple
+  lines:
+    write:
+      dash: solid
+      width: thick
+      head: filled
+    read:
+      dash: dashed
+      width: normal
+      head: open
+    reply:
+      dash: dotted
+      width: normal
+      head: open

@@ -1,0 +1,4 @@
+version: v0.10.0
+build:
+  include: ["docs/**/*.md"]
+  out: dist/site.html

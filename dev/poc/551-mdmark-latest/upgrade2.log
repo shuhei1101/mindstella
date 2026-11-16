@@ -1,0 +1,12 @@
+手元のバージョン: v0.10.0
+目標のバージョン: v0.13.0
+v0.11.0:
+  call（壊す手順）: 文書のマーカーの今の書き方の引数を JSON のオブジェクトへ書き換える（書き出さない記載と拡張・`libraries` のマーカーは移行の報告に挙げる）
+v0.13.0:
+  call（壊す手順）: 文書の廃止した `flow`・`sequence` の範囲を map の範囲へ書き換え、使用していた種類を設定の `map.kinds`・`map.lines` へ書き足す（写さない値と読めない範囲は移行の報告に挙げる）
+変更履歴を読み込めません（ENOENT: no such file or directory, open '/tmp/poc551/mdmark/docs/guide/変更履歴.md'）。mdmark をもう一度入れてください。
+
+real	0m0.277s
+user	0m0.186s
+sys	0m0.059s
+exit=1

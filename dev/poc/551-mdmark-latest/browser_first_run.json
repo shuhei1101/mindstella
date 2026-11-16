@@ -1,0 +1,413 @@
+{
+ "v080_sample": {
+  "ok": true,
+  "version": "v0.8.0",
+  "exports": [
+   "checkIndex",
+   "collectMatches",
+   "collectReferences",
+   "mount",
+   "mountComments",
+   "mountView",
+   "registerExtension",
+   "render",
+   "version"
+  ],
+  "collect": {
+   "byDocument": {
+    "a": [
+     {
+      "kind": "term",
+      "id": "g1",
+      "title": "りんご",
+      "description": "果物",
+      "text": "りんご",
+      "line": 1,
+      "start": 0,
+      "end": 3
+     }
+    ]
+   },
+   "avoided": {
+    "a": []
+   },
+   "targets": [
+    {
+     "kind": "term",
+     "id": "g1",
+     "title": "りんご",
+     "description": "果物"
+    }
+   ]
+  },
+  "probe": {
+   "rootClass": "mdmark",
+   "blocksWithSourceLine": 13,
+   "mdmarkHtml": 0,
+   "paramCopy": 0,
+   "paramCopyText": [],
+   "alert": 1,
+   "pre": 3,
+   "mermaidCode": 1,
+   "mermaidSvg": 0,
+   "sideToc": 0,
+   "backToTop": 0,
+   "map": 0,
+   "mapNodes": 0,
+   "mapKinds": [],
+   "notices": [],
+   "topClasses": [
+    "mdmark-syntax-warning",
+    "mdmark-syntax-warning-title"
+   ]
+  },
+  "errors": []
+ },
+ "dev_sample": {
+  "ok": true,
+  "version": "v0.13.0",
+  "exports": [
+   "buildAliases",
+   "checkIndex",
+   "collectMatches",
+   "collectReferences",
+   "diffModes",
+   "mount",
+   "mountComments",
+   "mountView",
+   "registerExtension",
+   "render",
+   "version"
+  ],
+  "collect": {
+   "byDocument": {
+    "a": [
+     {
+      "kind": "term",
+      "id": "g1",
+      "title": "りんご",
+      "description": "果物",
+      "text": "りんご",
+      "line": 1,
+      "start": 0,
+      "end": 3
+     }
+    ]
+   },
+   "avoided": {
+    "a": []
+   },
+   "targets": [
+    {
+     "kind": "term",
+     "id": "g1",
+     "title": "りんご",
+     "description": "果物"
+    }
+   ]
+  },
+  "probe": {
+   "rootClass": "mdmark",
+   "blocksWithSourceLine": 12,
+   "mdmarkHtml": 0,
+   "paramCopy": 0,
+   "paramCopyText": [],
+   "alert": 1,
+   "pre": 2,
+   "mermaidCode": 0,
+   "mermaidSvg": 1,
+   "sideToc": 11,
+   "backToTop": 1,
+   "map": 0,
+   "mapNodes": 0,
+   "mapKinds": [],
+   "notices": [],
+   "topClasses": [
+    "mdmark-back-to-top",
+    "mdmark-code",
+    "mdmark-code-bar",
+    "mdmark-code-copy",
+    "mdmark-code-lang",
+    "mdmark-code-lang-name",
+    "mdmark-code-meta",
+    "mdmark-code-status",
+    "mdmark-content",
+    "mdmark-diagram",
+    "mdmark-diagram-box",
+    "mdmark-diagram-head",
+    "mdmark-diagram-icon",
+    "mdmark-diagram-legend",
+    "mdmark-diagram-resize",
+    "mdmark-diagram-sizer",
+    "mdmark-diagram-stage",
+    "mdmark-diagram-title",
+    "mdmark-diagram-tool",
+    "mdmark-diagram-tools",
+    "mdmark-diagram-tools-group",
+    "mdmark-diagram-viewport",
+    "mdmark-diagram-zoom",
+    "mdmark-mermaid",
+    "mdmark-side-toc",
+    "mdmark-side-toc-bar",
+    "mdmark-side-toc-current",
+    "mdmark-side-toc-head",
+    "mdmark-side-toc-list",
+    "mdmark-side-toc-panel",
+    "mdmark-side-toc-pin",
+    "mdmark-side-toc-pin-off",
+    "mdmark-side-toc-pin-on",
+    "mdmark-side-toc-rail",
+    "mdmark-side-toc-toggle",
+    "mdmark-syntax-warning",
+    "mdmark-syntax-warning-title",
+    "mdmark-visually-hidden"
+   ]
+  },
+  "errors": []
+ },
+ "dev_map_noconfig": {
+  "ok": true,
+  "version": "v0.13.0",
+  "exports": [
+   "buildAliases",
+   "checkIndex",
+   "collectMatches",
+   "collectReferences",
+   "diffModes",
+   "mount",
+   "mountComments",
+   "mountView",
+   "registerExtension",
+   "render",
+   "version"
+  ],
+  "collect": {
+   "byDocument": {
+    "a": [
+     {
+      "kind": "term",
+      "id": "g1",
+      "title": "りんご",
+      "description": "果物",
+      "text": "りんご",
+      "line": 1,
+      "start": 0,
+      "end": 3
+     }
+    ]
+   },
+   "avoided": {
+    "a": []
+   },
+   "targets": [
+    {
+     "kind": "term",
+     "id": "g1",
+     "title": "りんご",
+     "description": "果物"
+    }
+   ]
+  },
+  "probe": {
+   "rootClass": "mdmark",
+   "blocksWithSourceLine": 9,
+   "mdmarkHtml": 0,
+   "paramCopy": 0,
+   "paramCopyText": [],
+   "alert": 0,
+   "pre": 1,
+   "mermaidCode": 0,
+   "mermaidSvg": 0,
+   "sideToc": 11,
+   "backToTop": 1,
+   "map": 3,
+   "mapNodes": 13,
+   "mapKinds": [
+    "map",
+    "loop"
+   ],
+   "notices": [],
+   "topClasses": [
+    "mdmark-back-to-top",
+    "mdmark-code",
+    "mdmark-code-bar",
+    "mdmark-code-copy",
+    "mdmark-code-lang",
+    "mdmark-code-lang-name",
+    "mdmark-code-meta",
+    "mdmark-code-status",
+    "mdmark-content",
+    "mdmark-diagram",
+    "mdmark-diagram-arrowhead",
+    "mdmark-diagram-box",
+    "mdmark-diagram-group-info",
+    "mdmark-diagram-head",
+    "mdmark-diagram-icon",
+    "mdmark-diagram-info",
+    "mdmark-diagram-label",
+    "mdmark-diagram-legend",
+    "mdmark-diagram-lifeline",
+    "mdmark-diagram-node",
+    "mdmark-diagram-node-kind",
+    "mdmark-diagram-node-link",
+    "mdmark-diagram-node-name",
+    "mdmark-diagram-resize",
+    "mdmark-diagram-seq-heads",
+    "mdmark-diagram-sizer",
+    "mdmark-diagram-stage",
+    "mdmark-diagram-tip",
+    "mdmark-diagram-title",
+    "mdmark-diagram-tool",
+    "mdmark-diagram-tools",
+    "mdmark-diagram-tools-group",
+    "mdmark-diagram-viewport",
+    "mdmark-diagram-wire",
+    "mdmark-diagram-wire-hit",
+    "mdmark-diagram-wires",
+    "mdmark-diagram-zoom",
+    "mdmark-hint-tip",
+    "mdmark-map",
+    "mdmark-side-toc",
+    "mdmark-side-toc-bar",
+    "mdmark-side-toc-current",
+    "mdmark-side-toc-head",
+    "mdmark-side-toc-list",
+    "mdmark-side-toc-panel",
+    "mdmark-side-toc-pin",
+    "mdmark-side-toc-pin-off",
+    "mdmark-side-toc-pin-on",
+    "mdmark-side-toc-rail",
+    "mdmark-side-toc-toggle",
+    "mdmark-syntax-warning",
+    "mdmark-syntax-warning-title",
+    "mdmark-term-tip-heading",
+    "mdmark-term-tip-meaning",
+    "mdmark-term-tip-section",
+    "mdmark-visually-hidden"
+   ]
+  },
+  "errors": []
+ },
+ "dev_map_config": {
+  "ok": true,
+  "version": "v0.13.0",
+  "exports": [
+   "buildAliases",
+   "checkIndex",
+   "collectMatches",
+   "collectReferences",
+   "diffModes",
+   "mount",
+   "mountComments",
+   "mountView",
+   "registerExtension",
+   "render",
+   "version"
+  ],
+  "collect": {
+   "byDocument": {
+    "a": [
+     {
+      "kind": "term",
+      "id": "g1",
+      "title": "りんご",
+      "description": "果物",
+      "text": "りんご",
+      "line": 1,
+      "start": 0,
+      "end": 3
+     }
+    ]
+   },
+   "avoided": {
+    "a": []
+   },
+   "targets": [
+    {
+     "kind": "term",
+     "id": "g1",
+     "title": "りんご",
+     "description": "果物"
+    }
+   ]
+  },
+  "probe": {
+   "rootClass": "mdmark",
+   "blocksWithSourceLine": 9,
+   "mdmarkHtml": 0,
+   "paramCopy": 0,
+   "paramCopyText": [],
+   "alert": 0,
+   "pre": 1,
+   "mermaidCode": 0,
+   "mermaidSvg": 0,
+   "sideToc": 11,
+   "backToTop": 1,
+   "map": 3,
+   "mapNodes": 13,
+   "mapKinds": [
+    "map",
+    "loop"
+   ],
+   "notices": [],
+   "topClasses": [
+    "mdmark-back-to-top",
+    "mdmark-code",
+    "mdmark-code-bar",
+    "mdmark-code-copy",
+    "mdmark-code-lang",
+    "mdmark-code-lang-name",
+    "mdmark-code-meta",
+    "mdmark-code-status",
+    "mdmark-content",
+    "mdmark-diagram",
+    "mdmark-diagram-arrowhead",
+    "mdmark-diagram-box",
+    "mdmark-diagram-group-info",
+    "mdmark-diagram-head",
+    "mdmark-diagram-icon",
+    "mdmark-diagram-info",
+    "mdmark-diagram-label",
+    "mdmark-diagram-legend",
+    "mdmark-diagram-lifeline",
+    "mdmark-diagram-node",
+    "mdmark-diagram-node-kind",
+    "mdmark-diagram-node-link",
+    "mdmark-diagram-node-name",
+    "mdmark-diagram-resize",
+    "mdmark-diagram-seq-heads",
+    "mdmark-diagram-sizer",
+    "mdmark-diagram-stage",
+    "mdmark-diagram-tip",
+    "mdmark-diagram-title",
+    "mdmark-diagram-tool",
+    "mdmark-diagram-tools",
+    "mdmark-diagram-tools-group",
+    "mdmark-diagram-viewport",
+    "mdmark-diagram-wire",
+    "mdmark-diagram-wire-hit",
+    "mdmark-diagram-wires",
+    "mdmark-diagram-zoom",
+    "mdmark-hint-tip",
+    "mdmark-icon",
+    "mdmark-map",
+    "mdmark-side-toc",
+    "mdmark-side-toc-bar",
+    "mdmark-side-toc-current",
+    "mdmark-side-toc-head",
+    "mdmark-side-toc-list",
+    "mdmark-side-toc-panel",
+    "mdmark-side-toc-pin",
+    "mdmark-side-toc-pin-off",
+    "mdmark-side-toc-pin-on",
+    "mdmark-side-toc-rail",
+    "mdmark-side-toc-toggle",
+    "mdmark-term-tip-heading",
+    "mdmark-term-tip-meaning",
+    "mdmark-term-tip-section",
+    "mdmark-visually-hidden"
+   ]
+  },
+  "errors": []
+ }
+}
