@@ -60,7 +60,7 @@ functions:
     title: 本文を描く
     kind: 関数
     usecase: 項目の詳細を読む
-    summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 7 のコードブロックの `pre` のフォーカスの属性を含む）
+    summary: 本文の Markdown を mdmark で描いた要素にする。処理は今の画面の『基盤』の `renderMarkdown` と同じ（処理 7 のコードブロックの `pre` のフォーカスの属性を含む）。`config.features` は今の画面の `MDMARK_FEATURES` と同じ値、`config.map` は『libraries』の `mdmarkMapConfig()`
     args:
       - name: source
         type: string

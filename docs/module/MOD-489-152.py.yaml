@@ -222,6 +222,30 @@ constants:
     summary: 配る書き出しに置く、mdmark の JavaScript を中身に持つ要素の開きタグ（閉じタグは `</script>`）。画面の JavaScript が中身から Blob の URL を作って `import()` する（モジュール構成『プレビュー / 基盤』の `loadMdmark`）
     value: "'<script type=\"text/plain\" id=\"mindmap-mdmark\">'"
     status: planned
+  - name: MDMARK_SLOT
+    title: mdmark の読み込みの差し込み口
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: プレビューを開く
+    summary: 雛形の `EXTERNAL_START` と `EXTERNAL_END` の間に 1 つだけ置く印。配信のたびに、設定のバージョンの mdmark の CSS の `<link>` と `MDMARK_CONFIG_OPEN` の要素に置き換える
+    value: "'<!-- mindmap-mdmark -->'"
+  - name: MDMARK_CONFIG_OPEN
+    title: mdmark の読み込みの設定の要素
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: プレビューを開く
+    summary: '画面が mdmark の JavaScript の URL と `mount` に指定する `map` を読む JSON の要素の開きタグ（中身は `{"js": URL, "map": 設定の mdmark.map}`、閉じタグは `</script>`）'
+    value: "'<script type=\"application/json\" id=\"mindmap-mdmark-config\">'"
+  - name: MDMARK_PACKAGE
+    title: mdmark のリポジトリ
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 共通
+    summary: '`CDN_REPO_URL` の `package` に入れる mdmark のリポジトリ'
+    value: '"shuhei1101/mdmark"'
+  - name: MDMARK_PART_FILES
+    title: mdmark の部品のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 配る書き出し
+    summary: '`dist/index.js` が隣から `import()` する部品の配布ファイル。配る書き出しは中身を持ち、mdmark の部品の読み込みの差し替え（shuhei1101/mdmark#624）で渡す'
+    value: ("map.js", "view.js", "comments.js")
   - name: MDMARK_CSS_OPEN
     title: mdmark の CSS の要素の開きタグ
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
@@ -351,14 +375,51 @@ functions:
         mock: なし
         expected: '`ValueError`（`match` に `0 個`・`2 個`）'
         exception: 雛形の要素が 0 個か 2 個以上
+  - name: mdmark_dist_url
+    title: mdmark の配布ファイルの URL
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/builder.py
+    usecase: 共通
+    scope: public
+    summary: 設定の mdmark のバージョンから、jsDelivr の配布ファイルの URL を組み立てる
+    args:
+      - name: version
+        type: str | None
+        required: true
+        passing: positional
+        description: 設定の `mdmark.version`（無ければ `None`）
+      - name: path
+        type: str
+        required: true
+        passing: positional
+        description: '`dist/` の中のファイル名（`index.js` ほか）か、リポジトリの直下のファイル（`LICENSE`）'
+    returns:
+      type: str
+      description: '`CDN_REPO_URL` に `MDMARK_PACKAGE` と ref（`latest` か `None` は `develop`、タグはそのまま）を入れた URL'
+    process: |-
+      1. `version` が `None` か `latest` なら ref を `develop`、それ以外は `version` にする
+      2. `path` が `LICENSE` ならそのまま、それ以外は `dist/{path}` にして `CDN_REPO_URL` に入れる
+    unit_tests:
+      - name: test_mdmark_dist_url
+        case: 正常
+        summary: latest と無しは develop、タグはそのまま
+        condition: '`parametrize`: (`None`, `index.js`) / (`latest`, `index.css`) / (`v0.13.0`, `map.js`) / (`v0.13.0`, `LICENSE`)'
+        mock: なし
+        expected: '`.../mdmark@develop/dist/index.js` / `.../mdmark@develop/dist/index.css` / `.../mdmark@v0.13.0/dist/map.js` / `.../mdmark@v0.13.0/LICENSE`'
   - name: assemble_template
     title: 雛形の組み立て
     kind: 関数
     container: plugins/mindstella/skills/mindmap/scripts/builder.py
     usecase: プレビューを開く
     scope: public
-    summary: '`template.html` に CSS・JavaScript を差し込んだ HTML を返す'
+    summary: '`template.html` に CSS・JavaScript と、設定のバージョンの mdmark の読み込みを差し込んだ HTML を返す'
     args:
+      - name: mdmark_settings
+        type: dict[str, Any]
+        required: false
+        default: '{}'
+        passing: keyword
+        description: ワークスペースの設定の `mdmark`（`version`・`map`。無いキーは `latest`・空）
       - name: preview_dir
         type: Path
         required: false
@@ -375,6 +436,7 @@ functions:
       3. `STYLE_SLOT`・`SCRIPT_SLOT` がそれぞれちょうど 1 つあることを確かめる
          - 1 つでない場合、`ValueError` を送る
       4. CSS を改行でつないで `STYLE_SLOT` の中身に、JavaScript を改行でつないで `SCRIPT_SLOT` の中身に入れる
+      5. `MDMARK_SLOT` がちょうど 1 つあることを確かめ（1 つでなければ `ValueError`）、`mdmark_dist_url` の `index.css` を `href` に持ち `crossorigin="anonymous"` を付けた `<link rel="stylesheet">` と、`MDMARK_CONFIG_OPEN` + `{"js": index.js の URL, "map": mdmark_settings の map}`（`escape_for_script`）+ `</script>` に置き換える。`integrity` は付けない
     exceptions:
       - name: ValueError
         condition: CSS が `</style`、JavaScript が `</script` を含むか、差し込み口が 0 個か 2 個以上
@@ -718,15 +780,15 @@ functions:
       type: str
       description: 外のファイルも URL も指さない HTML（`DATA_ELEMENT` は空のまま）
     process: |-
-      1. 雛形を組み立て、外の ES モジュールと外の読み込みを読む（`assemble_template`、`read_external_module`、`list_external_scripts`）
+      1. ワークスペースの設定の `mdmark` で雛形を組み立て、外の読み込みを読む（`assemble_template`、`list_external_scripts`）。mdmark は `mdmark_dist_url` で設定のバージョンの `index.css`・`index.js`・`MDMARK_PART_FILES` の URL にする（`read_external_module` は使わない）
       2. 外の ES モジュールと外の読み込みごとに、`package` が同じ `VendorLibrary` を引く
          - 無い場合、`ValueError` を送る（同梱の誤り）
-      3. 外の ES モジュールの JavaScript と CSS、外の読み込みごとの配布ファイルを取り（`fetch`）、sha384 を Base64 にした `sha384-{値}` がそれぞれの `integrity` と同じことを確かめる
+      3. mdmark の CSS・JavaScript・部品と、外の読み込みごとの配布ファイルを取り（`fetch`）、外の読み込みだけ sha384 を Base64 にした `sha384-{値}` がそれぞれの `integrity` と同じことを確かめる（mdmark は確かめない）
          - 違う場合、`DownloadFailedError` を送る
       4. ライブラリごとに、ライセンスの本文を、`license_path` があれば取り（外の ES モジュールは `CDN_REPO_URL`、外の読み込みは `CDN_PACKAGE_URL`。`version` はそれぞれの版）、無ければ `license_file` を雛形のフォルダから読む。束ねた依存のライセンスは、`bundled_license_path` があれば同じく取り、`bundled_license_file` があれば雛形のフォルダから読む
       5. 取った・読んだ中身を UTF-8 で読み、JavaScript・配布ファイル・ライセンスの本文・束ねた依存のライセンスが `</script` と `<script` を、CSS が `</style` を含まないことを確かめる（大文字・小文字を区別しない。`<!--` の後の `<script` は script 要素を閉じさせなくする）
          - 含む場合、`ValueError` を送る（取った中身の誤り）
-      6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。import map・`<link>` も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（外の ES モジュール、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
+      6. `EXTERNAL_START` から `EXTERNAL_END` まで（両方を含む。import map・`<link>` も消える）を、`MDMARK_CSS_OPEN` + CSS + `</style>`、`MDMARK_OPEN` + JavaScript + `</script>`、部品ごとの `<script type="text/plain" id="mindmap-mdmark-{部品の名前}">` + 中身 + `</script>`、`MDMARK_CONFIG_OPEN` + `{"map": 設定の mdmark.map}` + `</script>`、外の読み込みごとの `<script>{配布ファイルの中身}</script>` を並びの順につないだものと、`LICENSES_OPEN` + ライセンスの表示（外の ES モジュール、外の読み込みの順。`format_licenses`）+ `</script>` に置き換える
     exceptions:
       - name: ValueError
         condition: 外の ES モジュールか外の読み込みに `VendorLibrary` が無いか、取った・読んだ中身が `</script`・`<script`（CSS は `</style`）を含む

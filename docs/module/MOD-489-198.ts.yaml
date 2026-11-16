@@ -29,8 +29,8 @@ constants:
     title: mdmark で止める機能
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 共通
-    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ（`code`・`html`・`diagrams` は既定のまま）'
-    value: '{glossary: false, backlinks: false, comments: false, print: false, anchors: false, sections: false, table: false, toc: false, views: false, syntax: false}'
+    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大と、mermaid の描画（プレビューが描いて差分を取る）も止める（`code`・`html`・`diagrams`・`map` は既定のまま）'
+    value: '{glossary: false, backlinks: false, comments: false, print: false, anchors: false, sections: false, table: false, toc: false, views: false, syntax: false, mermaid: false, "side-toc": false, "back-to-top": false, "diagram-resize": false, lightbox: false}'
     status: planned
   - name: MDMARK_PARAM_COPY_LABEL
     title: 今の値をコピーするボタンの文言
@@ -112,7 +112,7 @@ functions:
     process: |-
       1. mdmark が読めたか確かめる（`missingLibraries`）
          - 読めていない場合、知らせと原文を返す（本文に mermaid のコードブロックがあり mermaid も読めていなければ名前に足す）
-      2. `div` を作り、`mdmark.mount` に本文と `config.features` の `MDMARK_FEATURES` を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）。描いた後、`br` の直後の改行の文字を外す（mdmark は強制改行を `br` と改行の文字で描き、`selectionLocation` は改行の文字と `br` の両方を行として数えるため）。続けて `relabelParamCopy` を当てる
+      2. `div` を作り、`mdmark.mount` に本文と、`config.features` の `MDMARK_FEATURES`・`config.map` の `#mindmap-mdmark-config` の `map`（無ければ指定しない）を渡して描く（描き直しは要素ごと作り直すので、返った `update`・`destroy` は使わない）。描いた後、`br` の直後の改行の文字を外す（mdmark は強制改行を `br` と改行の文字で描き、`selectionLocation` は改行の文字と `br` の両方を行として数えるため）。続けて `relabelParamCopy` を当てる
       3. mdmark が付けた `data-source-line`（0 始まりのブロックの開始行）を、元の行の印 `data-line-start`（1 始まり）に読み替える（PoC #80 の対応づけ。読み替えは PR #342 の PoC 結果）
          - 見出し・段落・リストの項目・表の行・`pre` は、値に 1 を足した `data-line-start` を付ける。フェンスのコードの `pre` は 2 を足す（中身の最初の行）。フェンスかは、原文のその行から行頭の空白・引用の `>`・リストのマーカーを除いた先が ```` ``` ```` か `~~~` で始まるかで判定する（`/^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*(```|~~~)/`。PR #342 の PoC 結果）
          - 段落を持つリストの項目は中の段落に任せ、項目には付けない。リスト・表・引用・区切り線にも付けない
@@ -592,20 +592,21 @@ functions:
       description: 読み終えたか、読めないと分かったら解決する（読めなくても拒否しない）
     process: |-
       1. 雛形に `#mindmap-mdmark`（配る書き出しが中身を入れた要素）がある場合、その中身を `type: "text/javascript"` の Blob にした URL を `import()` で読み、読み終えたら URL を `URL.revokeObjectURL` で捨てる
-      2. 無い場合（サーバーの配信）、雛形の import map（`script[type="importmap"]`）の `integrity` のただ 1 つのキーの URL を `import()` で読む（ブラウザが import map の `integrity` で中身を確かめる）
-         - import map が無いか読めない、または `import()` が拒否された場合、グローバルの `mdmark` を置かずに解決する（読めなかったことは `missingLibraries` が伝える）
+         - 部品の中身（`#mindmap-mdmark-{部品の名前}`）があれば、部品ごとに中身の Blob の URL を `import()` する関数を mdmark の部品の読み込みの差し替え（shuhei1101/mdmark#624）で渡す
+      2. 無い場合（サーバーの配信）、`#mindmap-mdmark-config`（サーバーが設定のバージョンから組み立てた JSON）の `js` の URL を `import()` で読む（`integrity` は付けない）
+         - 要素が無いか読めない、または `import()` が拒否された場合、グローバルの `mdmark` を置かずに解決する（読めなかったことは `missingLibraries` が伝える）
       3. 読んだモジュールをグローバルの `mdmark` に置く
     unit_tests:
       - name: test_load_mdmark
         case: 正常
         summary: サーバーの配信と配る書き出しのどちらでも読み、グローバルに置く
-        condition: '`parametrize`: import map に外部ライブラリの設計書の mdmark の URL と `integrity` を持つページ / `#mindmap-mdmark` に配布物の中身を持ち import map を持たないページ'
+        condition: '`parametrize`: `#mindmap-mdmark-config` の `js` に配信元の URL を持つページ / `#mindmap-mdmark` に配布物の中身を持つページ'
         mock: 描画のライブラリの配信元（`page.route`）
-        expected: 解決した後、`window.mdmark.version()` が `v0.8.0` で、`missingLibraries(["mdmark"])` が空
+        expected: 解決した後、`window.mdmark.version()` が配った配布物の版で、`missingLibraries(["mdmark"])` が空
       - name: test_load_mdmark_when_unavailable
         case: 正常
         summary: 読めなければ拒否せず、グローバルを置かない
-        condition: '`parametrize`: 配信元が 404 を返す / import map の `integrity` が配布物と違う値'
+        condition: '`parametrize`: 配信元が 404 を返す / `#mindmap-mdmark-config` が無い'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: 拒否せずに解決し、`window.mdmark` が無く、`missingLibraries(["mdmark"])` が `["mdmark"]`
     status: planned
