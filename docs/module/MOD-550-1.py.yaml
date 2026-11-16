@@ -1,0 +1,72 @@
+title: サーバー / 移行 / mdmark_documents.py
+lead: v0.13.0 の `call`（`mdmark_documents`）が呼ぶ変換。ワークスペースの資料の Markdown を mdmark の CLI の `upgrade` で今の書き方（JSON のマーカー・map の図）へ移し、書き足された map の種類を `config.yaml` の `mdmark.map` へ移す。
+constants:
+  - name: MDMARK_REPO_SPEC
+    title: mdmark の CLI の取得元
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
+    usecase: 記録の形式の移行
+    summary: '`npx` に渡す mdmark の取得元の書式（`{ref}` にタグか `develop`）'
+    value: '"github:shuhei1101/mdmark#{ref}"'
+  - name: MDMARK_BASE_VERSION
+    title: 変換の起点のバージョン
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
+    usecase: 記録の形式の移行
+    summary: 一時の mdmark の設定の `version`。ここから `v0.11.0`（マーカーの JSON）と `v0.13.0`（map）の手順が当たる
+    value: '"v0.10.0"'
+  - name: MDMARK_COMMAND_ENV
+    title: CLI の差し替えの環境変数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
+    usecase: 記録の形式の移行
+    summary: 設定されていれば `npx -y {取得元}` の代わりに呼ぶコマンド（空白区切り）。結合テストが失敗を起こすコマンドへ差し替える
+    value: '"MINDSTELLA_MDMARK_COMMAND"'
+functions:
+  - name: mdmark_documents.migrate
+    title: 資料を mdmark の今の書き方へ移す移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 一時の mdmark の設定を置いて `upgrade --yes` を呼び、書き足された map の種類を `config.yaml` へ移す
+    side_effects: '`.mindstella/docs/` の Markdown と `.mindstella/config.yaml` を書き換える。一時の設定と mdmark の写し（`.mindstella/.mdmark/`）は終わりに削除する'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: tuple[list[str], list[str]]
+      description: 変えたファイル（ワークスペースからの相対パス）と、mdmark の移行の報告の行
+    process: |-
+      1. `.mindstella/config.yaml` を読み、`mdmark.version`（無ければ `latest`）から取得元の ref を決める（`latest` は `develop`）
+      2. `.mindstella/` に一時の mdmark の設定（`version: MDMARK_BASE_VERSION`・`build.include: [docs/**/*.md]`）を書く
+      3. `MDMARK_COMMAND_ENV` があればそのコマンド、無ければ `npx -y {MDMARK_REPO_SPEC}` に `upgrade --yes --config {一時の設定}` を付け、`.mindstella/` を作業場所にして呼ぶ（標準出力と標準エラーを取る）
+         - 終了コードが 0 以外の場合、一時の設定と `.mdmark/` を削除し、標準出力と標準エラーを理由にした `RuntimeError` を送る（ワークスペースの戻しは移行の写しが担う）
+      4. 一時の設定を読み直し、`map` があれば `config.yaml` の `mdmark.map` に入れて（`version` はそのまま）、キーの並びを保って書き換える
+      5. 一時の設定と `.mdmark/` を削除する
+      6. mdmark が書き換えた `docs/` のファイル（呼ぶ前と後の中身の差で求める）と、書き換えたら `config.yaml` を変えたファイルに、標準出力の `  docs/` で始まる行を報告の行にして返す
+    exceptions:
+      - name: RuntimeError
+        condition: mdmark の CLI が終了コード 0 以外で終わるか、呼べない
+        message: 'mdmark の変換が失敗しました: {標準出力と標準エラー}'
+    unit_tests:
+      - name: test_mdmark_documents_migrate
+        case: 正常
+        summary: map の種類を config.yaml へ移し、一時のファイルを消す
+        condition: '`MDMARK_COMMAND_ENV` に、`docs/A-1.md` を書き換え一時の設定に `map.kinds.llm` を書き足して報告の行を出し終了コード 0 で終わる代わりのコマンド'
+        mock: mdmark の CLI（環境変数で代わりのコマンドに差し替える）
+        expected: 戻り値のファイルが `.mindstella/docs/A-1.md`・`.mindstella/config.yaml`、報告の行が 1 件。`config.yaml` の `mdmark.map.kinds.llm` があり `mdmark.version` が呼ぶ前と同じ。一時の設定と `.mdmark/` が無い
+      - name: test_mdmark_documents_migrate_when_command_fails
+        case: 異常
+        summary: CLI が失敗したら理由つきで送り、一時のファイルを残さない
+        condition: 理由を出し終了コード 1 で終わる代わりのコマンド
+        mock: mdmark の CLI（代わりのコマンド）
+        expected: '`RuntimeError` のメッセージに理由がある。一時の設定と `.mdmark/` が無い'
+        exception: mdmark の CLI が終了コード 0 以外で終わるか、呼べない
+      - name: test_mdmark_documents_migrate_when_version_set
+        case: 正常
+        summary: 設定のタグの mdmark を呼ぶ
+        condition: '`config.yaml` の `mdmark.version` が `v0.13.0`。`MDMARK_COMMAND_ENV` を設定しない'
+        mock: '`subprocess.run`（終了コード 0 を返す）'
+        expected: '`subprocess.run` に渡ったコマンドが `npx -y github:shuhei1101/mdmark#v0.13.0 upgrade --yes --config ...`'
+id: MOD-550-1

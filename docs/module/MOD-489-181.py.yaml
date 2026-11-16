@@ -38,14 +38,14 @@ functions:
         passing: positional
         description: 当てる手順
     returns:
-      type: list[str]
-      description: 変えたファイル・フォルダ（ワークスペースからの相対パス）。何も変えなければ空
+      type: tuple[list[str], list[str]]
+      description: 変えたファイル・フォルダ（ワークスペースからの相対パス。何も変えなければ空）と、手順の報告の行（`call` の変換が返したときだけ。無ければ空）
     process: |-
       1. `op` で分ける。パスはどの版の手順も `root`（ワークスペースの直下）からの相対。対象が無い・既にあるときの振る舞いはインターフェース定義『記録の形式の移行』の制約「対象が無い・既にあるとき」のとおり
          - `rename_file`・`move_dir`: `from` が無ければ飛ばす。`to` があれば `StepError`。`to` の親のフォルダが無ければ作り（`parents=True`）、動かす
          - `delete`: `path` が無ければ飛ばす。あればファイルかフォルダを消す
          - `rename_key`・`set_default`・`map_values`: `file` が無ければ飛ばす（後の版で名前を改めたファイル・記録のフォルダへ移したファイルを指す前の版の手順を、今の形のワークスペースに当てたとき）。あれば読む（読めなければ `StepError`。`{file} を読めません: {理由}`）。`each_item` なら `items[]` の各項目に、そうでなければ最上位の辞書に当てる。キーの位置を保ったまま書き換える
-         - `call`: `{folder}/scripts/{script}.py` を読み込んで `migrate(root)` を呼び、返した相対パスの並びを変えたものにする（例外は `StepError`）
+         - `call`: `{folder}/scripts/{script}.py` を読み込んで `migrate(root)` を呼び、返した相対パスの並びを変えたものにする（例外は `StepError`）。`migrate` が `(変えたもの, 報告の行)` の組を返したときは、報告の行を手順の報告にする（`mdmark_documents`）
       2. YAML の操作は、中身が変わったときだけ一時ファイルに書いてから置き換える（`dump_yaml`・`write_temp`・`os.replace`。`OSError` は `StepError`）
     exceptions:
       - name: StepError
@@ -106,7 +106,13 @@ functions:
         summary: 変換のスクリプトの migrate を呼ぶ
         condition: '`scripts/convert.py` に、`notes.yaml` を書いて `["notes.yaml"]` を返す `migrate(root)` を置いた版のフォルダと、`call`（`convert`）'
         mock: なし
-        expected: 戻り値が `["notes.yaml"]`
+        expected: 戻り値が `(["notes.yaml"], [])`
+      - name: test_apply_step_when_call_reports
+        case: 正常
+        summary: 変換のスクリプトが返した報告の行を手順の報告にする
+        condition: '`scripts/convert.py` に、変えたもの `["docs/A-1.md"]` と報告の行 1 件の組を返す `migrate(root)` を置いた版のフォルダと、`call`（`convert`）'
+        mock: なし
+        expected: 戻り値が、変えたもの `["docs/A-1.md"]` と報告の行 1 件の組
       - name: test_apply_step_when_unreadable
         case: 異常
         summary: YAML として読めなければ送る

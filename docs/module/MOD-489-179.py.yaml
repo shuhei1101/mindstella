@@ -75,6 +75,10 @@ data_models:
         type: Version | None
         default: None
         description: '`--record` で書いた版'
+      - name: reports
+        type: list[str]
+        default: '[]'
+        description: 当てた手順が返した報告の行（`{版} #{番号}: {行}`。出力の `steps[]` の該当の手順の `report` に入れる）
 constants:
   - name: MIGRATIONS_DIR
     title: 手順の置き場所
