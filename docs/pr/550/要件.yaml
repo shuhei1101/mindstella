@@ -82,6 +82,12 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-16T17:09:37.732697+00:00'
+  - page: docs/nonfunctional/NFR-489-1.yaml
+    new: false
+    change: 通信（NFR-7）に、移し替えの v0.13.0 の手順が要る Node.js と GitHub・npm のレジストリへの HTTPS を加える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:15:07.196085+00:00'
 scope_out:
   - item: リポジトリの文書（docs/・plugins/mindstella/skills/mindmap/references/）のマーカーを JSON の記載へ移す
     reason: '扱いの判断で #512 に残した（この PR はワークスペースの文書を移す手段だけ）'
