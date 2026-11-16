@@ -1,5 +1,7 @@
 title: サーバー / 移行 / mdmark_documents.py
 lead: v0.13.0 の `call`（`mdmark_documents`）が呼ぶ変換。ワークスペースの資料の Markdown を mdmark の CLI の `upgrade` で今の書き方（JSON のマーカー・map の図）へ移し、書き足された map の種類を `config.yaml` の `mdmark.map` へ移す。
+test_files:
+  - tests/unit/scripts/test_mdmark_documents.py
 constants:
   - name: MDMARK_REPO_SPEC
     title: mdmark の CLI の取得元
