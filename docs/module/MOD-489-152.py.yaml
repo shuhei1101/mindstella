@@ -362,20 +362,20 @@ functions:
         type: str
         required: true
         passing: positional
-        description: '`dist/` の中のファイル名（`index.js` ほか）か、リポジトリの直下のファイル（`LICENSE`）'
+        description: '`dist/` の中のファイル名（`index.js` ほか）'
     returns:
       type: str
       description: '`CDN_REPO_URL` に `MDMARK_PACKAGE` と ref（`latest` か `None` は `develop`、タグはそのまま）を入れた URL'
     process: |-
       1. `version` が `None` か `latest` なら ref を `develop`、それ以外は `version` にする
-      2. `path` が `LICENSE` ならそのまま、それ以外は `dist/{path}` にして `CDN_REPO_URL` に入れる
+      2. `dist/{path}` にして `CDN_REPO_URL` に入れる
     unit_tests:
       - name: test_mdmark_dist_url
         case: 正常
         summary: latest と無しは develop、タグはそのまま
-        condition: '`parametrize`: (`None`, `index.js`) / (`latest`, `index.css`) / (`v0.13.0`, `map.js`) / (`v0.13.0`, `LICENSE`)'
+        condition: '`parametrize`: (`None`, `index.js`) / (`latest`, `index.css`) / (`v0.13.0`, `map.js`)'
         mock: なし
-        expected: '`.../mdmark@develop/dist/index.js` / `.../mdmark@develop/dist/index.css` / `.../mdmark@v0.13.0/dist/map.js` / `.../mdmark@v0.13.0/LICENSE`'
+        expected: '`.../mdmark@develop/dist/index.js` / `.../mdmark@develop/dist/index.css` / `.../mdmark@v0.13.0/dist/map.js`'
   - name: assemble_template
     title: 雛形の組み立て
     kind: 関数
