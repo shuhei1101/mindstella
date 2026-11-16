@@ -26,7 +26,7 @@ flows:
         IF-->>WS: 全ての YAML と docs/ を読む
         IF->>IF: スキーマと突き合わせる
         IF-->>CDN: 雛形が指す配布ファイルとライセンスの本文を取る
-        IF->>IF: 配布ファイルを integrity と突き合わせ、雛形に画面・描画のライブラリ・ライセンスの表示・データを入れる
+        IF->>IF: mdmark 以外の配布ファイルを integrity と突き合わせ、雛形に画面・描画のライブラリ・ライセンスの表示・データを入れる
         IF->>OUT: HTML を書く
         IF-->>クライアント: JSON（path）
       ```
@@ -35,8 +35,8 @@ flows:
       - '`path` が `配る.html` の絶対パス'
       - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`settings` と 7 つの種類の項目が YAML と同じで、`bodies` に `A-1.md` の本文、`changes` に書き換えのまとまりがある'
       - '`配る.html` の `script`・`link`・`img` に `src`・`href` を持つものが無く、import map も無い'
-      - '`配る.html` の中の `</script>` の数が、雛形の数から import map の 1 つを引き、mdmark の JavaScript とライセンスの表示の要素の 2 つを足した数（本文の `</script>` で要素が閉じていない）'
-      - '`mindmap-mdmark` の中身の sha384 が、雛形の import map の mdmark の `integrity` と一致する'
+      - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数（本文の `</script>` で要素が閉じていない）'
+      - '`mindmap-mdmark` と部品（`mindmap-mdmark-map`・`mindmap-mdmark-view`・`mindmap-mdmark-comments`）の要素が中身を持ち、`mindmap-mdmark-config` の中身が `{"map": {}}`'
       - '`mindmap-licenses` の中身に、mdmark・marked・elkjs・mermaid・jsdiff のそれぞれの名前・版・著作権の表示・ライセンスの名前があり、elkjs のソースコードの入手先の URL と、mdmark の `THIRD_PARTY_LICENSES.txt` の本文がある'
     test: test_normal
   - name: 異常系（out の末尾が .html でない・引数の誤り）
@@ -189,7 +189,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - '`配る.html` の `mindmap-data` の中身を JSON として読むと、`bodies` の `A-1.html` が本文のファイルと同じで、`marked_bodies` の `A-1.html` が『記録の取得』と同じ'
-      - '`配る.html` の中の `</script>` の数が、雛形の数にライセンスの表示の要素の 1 つを足した数（本文の `</script>` で要素が閉じていない）'
+      - '`配る.html` の中の `</script>` の数が、雛形の数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数（本文の `</script>` で要素が閉じていない）'
     test: test_normal_when_html_body
 lead: ワークスペースの記録を、画面と描画のライブラリまで中に持つ見るだけの 1 枚の HTML にして、指定したパスへ書き出す。ワークスペースもサーバーもネットも持たない人へ配るために使う。
 idempotent: true
