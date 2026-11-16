@@ -1,0 +1,88 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: changed
+    detail: 書き換えられる設定に、画面が読む mdmark の版を足す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 移し替えで、資料のマーカーを JSON の記載へ、flow・sequence の図を map へ移す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: 配る書き出しが、設定の版の mdmark を中に持つ
+    depends_on:
+      - docs/scenario/SC-489-36.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: run_only
+    detail: 画面が設定の版の mdmark を読む。開く流れは変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: 本文を新しい版の mdmark で描く。図・見出しのリンク・用語のリンクが今と同じく動くかを確かめる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: run_only
+    detail: 資料の HTML のエクスポートが、新しい版の mdmark を中に持つ
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 資料の本文を新しい版の mdmark で描く
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-18.yaml
+    impact: run_only
+    detail: 本文と図の差分を新しい版の mdmark で描く
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: run_only
+    detail: 記録を読み返す流れの本文を新しい版の mdmark で描く
+    depends_on: []
+docs:
+  - page: docs/library/LIB-489-13.yaml
+    new: false
+    change: 版を「設定で指定、既定は develop の最新」にし、integrity の記載・API の一覧・制限・ライセンスを latest に合わせる
+    status: todo
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: jsDelivr の境界の事前確認の mdmark の URL を、設定の版（latest は @develop）にする
+    status: todo
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: 設定に mdmark の版のキーを足す
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: update_settings の書き換えられるキーに mdmark の版を足し、export が設定の版の mdmark とライセンスの本文を取ることに合わせる
+    status: todo
+  - page: docs/guide/動作環境.md
+    new: false
+    change: 通信の行の mdmark（v0.8.0）を、設定の版（既定は develop の最新）にする
+    status: todo
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
+    new: false
+    change: 移し替えで資料のマーカーと図が書き換わることを足す
+    status: todo
+scope_out:
+  - item: リポジトリの文書（docs/・plugins/mindstella/skills/mindmap/references/）のマーカーを JSON の記載へ移す
+    reason: '扱いの判断で #512 に残した（この PR はワークスペースの文書を移す手段だけ）'
+    plan: '#512'
+  - item: 常駐サーバーが mdmark のファイルを配信し、CDN から読まない作り（D-441 の C）
+    reason: '作り直しの #481 の範囲。残すかは要件.md の「未確定」で決める'
+    plan: '#481'
+  - item: mdmark 以外の描画のライブラリ（marked・elkjs・mermaid・jsdiff）の版を設定で指定する
+    reason: 要望は mdmark だけ。ほかのライブラリは版と integrity を固定したままにする
+    plan: none
+  - item: mdmark のコピーのボタンの文言を、mdmark の設定で渡す形に付け替える
+    reason: 新しい版の機能を使う別の要望。この PR の後に着手できる
+    plan: '#351'
+  - item: プレビューで --mdmark-color-bg-opaque に周りの面の色を指定し、暫定の CSS の追記をやめる
+    reason: 新しい版の機能を使う別の要望
+    plan: '#398'
