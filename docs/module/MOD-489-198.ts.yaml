@@ -29,8 +29,8 @@ constants:
     title: mdmark で止める機能
     container: plugins/mindstella/skills/mindmap/preview/core/libs.ts
     usecase: 共通
-    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大と、mermaid の描画（プレビューが描いて差分を取る）も止める（`code`・`html`・`diagrams`・`map` は既定のまま）'
-    value: '{glossary: false, backlinks: false, comments: false, print: false, anchors: false, sections: false, table: false, toc: false, views: false, syntax: false, mermaid: false, "side-toc": false, "back-to-top": false, "diagram-resize": false, lightbox: false}'
+    summary: '`mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品（`code`。オンだと `pre` を入れ物で包み、行の印と mermaid の原文の取り出しが変わる）と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま）'
+    value: '{glossary: false, backlinks: false, comments: false, print: false, anchors: false, sections: false, table: false, toc: false, views: false, syntax: false, code: false, mermaid: false, "side-toc": false, "back-to-top": false, "diagram-resize": false, lightbox: false}'
     status: planned
   - name: MDMARK_PARAM_COPY_LABEL
     title: 今の値をコピーするボタンの文言
