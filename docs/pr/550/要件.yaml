@@ -49,27 +49,39 @@ docs:
   - page: docs/library/LIB-489-13.yaml
     new: false
     change: 版を「設定で指定、既定は develop の最新」にし、integrity の記載・API の一覧・制限・ライセンスを latest に合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:37.732697+00:00'
   - page: docs/architecture/ARCH-489-1.yaml
     new: false
     change: jsDelivr の境界の事前確認の mdmark の URL を、設定の版（latest は @develop）にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:37.732697+00:00'
   - page: docs/guide/ワークスペースの書式.md
     new: false
     change: 設定に mdmark の版のキーを足す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:37.732697+00:00'
   - page: docs/guide/コマンド.md
     new: false
     change: update_settings の書き換えられるキーに mdmark の版を足し、export が設定の版の mdmark とライセンスの本文を取ることに合わせる
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:37.732697+00:00'
   - page: docs/guide/動作環境.md
     new: false
     change: 通信の行の mdmark（v0.8.0）を、設定の版（既定は develop の最新）にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:37.732697+00:00'
   - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
     new: false
     change: 移し替えで資料のマーカーと図が書き換わることを足す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:37.732697+00:00'
 scope_out:
   - item: リポジトリの文書（docs/・plugins/mindstella/skills/mindmap/references/）のマーカーを JSON の記載へ移す
     reason: '扱いの判断で #512 に残した（この PR はワークスペースの文書を移す手段だけ）'

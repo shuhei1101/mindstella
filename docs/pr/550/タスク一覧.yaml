@@ -62,8 +62,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-16T16:45:01.116146+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
     note: 外部ライブラリの設計書『mdmark』（LIB-489-13）・アーキテクチャ図・公開ドキュメント（ワークスペースの書式・コマンド・動作環境・変更履歴）
+    updated_by: planner
+    updated_at: '2026-11-16T17:09:38.789380+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
