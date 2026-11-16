@@ -388,7 +388,7 @@ flows:
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
         description: 作成を済ませ、`config.yaml` の `mdmark` が `map.kinds.llm` だけを持つワークスペース
-        notes: '`settings` は `{"mdmark": {"version": "v0.13.0", "map": {"kinds": {"llm": {...}}}}}`（`map` は読んだ値をそのまま渡す）'
+        notes: '`settings` は `{"mdmark": {"version": "v0.13.0"}}`（`map` を指定しない）'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -398,7 +398,7 @@ flows:
 
         クライアント->>IF: update_settings workspace settings.mdmark
         IF-->>WS: config.yaml を読む
-        IF->>IF: mdmark を置き換え、スキーマと突き合わせる
+        IF->>IF: mdmark.version だけを置き換え（mdmark.map は残す）、スキーマと突き合わせる
         IF->>WS: config.yaml を書く
         IF-->>クライアント: JSON（changed）
       ```
@@ -446,7 +446,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。1 つ以上のキーを持つ
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ
     example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
   - name: phase_map
     type: dict[str, str]

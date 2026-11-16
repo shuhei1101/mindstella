@@ -316,7 +316,7 @@ tables:
       - name: mdmark
         title: 画面が読み込む mdmark
         type: object
-        description: 任意。`version`（画面・Storybook・配る書き出しが読み込む mdmark のバージョン。`latest` か `v{数字}.{数字}.{数字}` のタグ。無ければ `latest`。`latest` は jsDelivr の `gh/shuhei1101/mdmark@develop` を指す）と `map`（map の図の種類。mdmark の設定の `map` と同じ形の `kinds`・`lines`。移し替えの変換が書き足し、画面が `mount` の `config.map` に指定する）を持つ。`update_settings` と移し替えの手順が書く。『設定の再読み込み』の後に開いた画面から効く
+        description: 任意。`version`（画面・Storybook・配る書き出しが読み込む mdmark のバージョン。`latest` か `v{数字}.{数字}.{数字}` のタグ。無ければ `latest`。`latest` は jsDelivr の `gh/shuhei1101/mdmark@develop` を指す）と `map`（map の図の種類。mdmark の設定の `map` と同じ形の `kinds`・`lines`。移し替えの変換が書き足し、画面が `mount` の `config.map` に指定する）を持つ。`version` は `update_settings` が書き、`map` は移し替えの手順だけが書く（`update_settings` は `map` を受けず、`version` を書き換えても残す）。『設定の再読み込み』の後に開いた画面から効く
         example: '{version: latest, map: {kinds: {llm: {label: LLM, icon: bot, shape: rounded, color: purple}}}}'
   - name: plugins/mindstella/skills/mindmap/schemas/common.schema.json
     title: 共通のキー
