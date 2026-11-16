@@ -1,13 +1,43 @@
-// 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
+// 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から読む。mdmark は設定のバージョンから `integrity` なしで、それ以外は `integrity` で確かめて読む（インターフェース定義『SPAを開く』の制約「描画のライブラリ」）
 import { useSyncExternalStore } from "react";
 
-const MDMARK_BASE = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.8.0/dist";
+/** jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に `develop` かタグ） */
+export const MDMARK_CDN_BASE = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist";
 
-/** mdmark の JavaScript */
-export const MDMARK_JS = { url: `${MDMARK_BASE}/index.js`, integrity: "sha384-TM6o/p3o+qWHh5HK5iGMRN6krIdz4rxapjSgvX1yJhY9z7eHJl2WGBaiJAiZIAoq" };
+/** 設定の mdmark のバージョンの既定と、`latest` が指す mdmark のブランチ */
+const MDMARK_LATEST = "latest";
+const MDMARK_LATEST_REF = "develop";
 
-/** mdmark の CSS */
-export const MDMARK_CSS = { url: `${MDMARK_BASE}/index.css`, integrity: "sha384-3lS+93C5w5loNr+EKJlqTfbAHmBGx+GCkqJiqOGUFFaA56e87waceMQ1TMY94wcV" };
+/** mdmark の `mount` の `config.map`（mdmark の設定の `map` と同じ形） */
+export type MdmarkMapConfig = Record<string, unknown>;
+
+/** 『記録の取得』の `settings.mdmark` */
+export type MdmarkSettings = { version?: string; map?: MdmarkMapConfig };
+
+let mdmarkRef = MDMARK_LATEST_REF;
+let mdmarkMap: MdmarkMapConfig | undefined;
+
+/** `settings.mdmark` を受け取り、mdmark を読む URL と `mount` に指定する `map` を決める。読み始めた後に違うバージョンを受けたら、次に開いた画面から使う */
+export const setMdmarkSettings = (settings: MdmarkSettings | undefined): void => {
+  const version = settings?.version;
+  mdmarkRef = version === undefined || version === MDMARK_LATEST ? MDMARK_LATEST_REF : version;
+  mdmarkMap = settings?.map;
+};
+
+/** `setMdmarkSettings` で決めた mdmark の JavaScript と CSS の URL を返す（受けていなければ `develop`） */
+export const mdmarkUrls = (): { js: string; css: string } => {
+  const base = MDMARK_CDN_BASE.replace("{ref}", mdmarkRef);
+  return { js: `${base}/index.js`, css: `${base}/index.css` };
+};
+
+/** `setMdmarkSettings` で受けた `map`（`mount` の `config.map` に渡す）を返す */
+export const mdmarkMapConfig = (): MdmarkMapConfig | undefined => mdmarkMap;
+
+/** URL の ES モジュールを読む関数（単体テストで差し替える） */
+type ImportModule = (url: string) => Promise<unknown>;
+
+const importByUrl: ImportModule = (url) => import(/* @vite-ignore */ url) as Promise<unknown>;
+let importModule: ImportModule = importByUrl;
 
 /** script 要素で読むライブラリの URL・integrity と、読めたときに置かれるグローバルの名前 */
 export const LIBRARIES = {
@@ -52,17 +82,17 @@ const loadScript = (name: keyof typeof LIBRARIES): Promise<unknown> =>
     document.head.appendChild(script);
   });
 
-/** mdmark の CSS を link で読み、JavaScript を import map の integrity で確かめて読む */
+/** 設定のバージョンの mdmark の CSS を link で読み、JavaScript を `integrity` なしで読む */
 const loadMdmark = async (): Promise<unknown> => {
-  if (document.querySelector(`link[href="${MDMARK_CSS.url}"]`) === null) {
+  const { js, css } = mdmarkUrls();
+  if (document.querySelector(`link[href="${css}"]`) === null) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = MDMARK_CSS.url;
-    link.integrity = MDMARK_CSS.integrity;
+    link.href = css;
     link.crossOrigin = "anonymous";
     document.head.appendChild(link);
   }
-  return (await import(/* @vite-ignore */ MDMARK_JS.url)) as unknown;
+  return await importModule(js);
 };
 
 /** 1 つのライブラリを 1 度だけ読み、結果を返す。読めなかったら代わりを読まず null を返す */
@@ -107,9 +137,16 @@ export const useLibrary = (name: LibraryName): LibraryState => {
   return { status, library: status === "ready" ? getLibrary(name) : null };
 };
 
-/** テストの間で読み込みの状態を消す */
+/** テストの間で読み込みの状態と mdmark の設定を消す */
 export const resetLibrariesForTest = (): void => {
   loading.clear();
   loaded.clear();
   failed.clear();
+  setMdmarkSettings(undefined);
+  importModule = importByUrl;
+};
+
+/** テストで mdmark の `import()` を差し替える */
+export const setMdmarkImportForTest = (fake: ImportModule): void => {
+  importModule = fake;
 };

@@ -1,4 +1,5 @@
 // 記録の型・索引・関係する項目（今の画面の `core/records.ts` と同じ振る舞い）
+import type { MdmarkSettings } from "@/shared/adapters/libraries";
 export type Location = { kind: "body" | "value"; start?: number; end?: number; key?: string; text: string };
 
 /** 項目の種類（`mindmap-data` のキー） */
@@ -194,6 +195,8 @@ export type Settings = {
   history_limit?: number;
   /** ワークスペースの表示の既定。個人の上書きが無い項目に使う */
   display?: DisplayDefaults;
+  /** 画面が読み込む mdmark のバージョンと map の図の種類。無い設定もある */
+  mdmark?: MdmarkSettings;
 };
 
 /** ネットワークの見た目の値 */

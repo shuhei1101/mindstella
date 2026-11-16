@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
 // 描いた本文の加工（行の印・図と HTML の入れ物・見出しと本文の印・選んだ範囲の箇所・図の描画）。今の画面の `core/libs.ts` と同じ振る舞い
-import { getLibrary, libraryState } from "@/shared/adapters/libraries";
+import { getLibrary, libraryState, mdmarkMapConfig } from "@/shared/adapters/libraries";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import type { Location, RecordIndex } from "@/shared/core/records";
 
 /** 読み込んだ mdmark の、ここで使う口 */
 type Mdmark = {
-  mount: (root: HTMLElement, options: { markdown: string; config: { features: Record<string, boolean> } }) => { update?: unknown; destroy?: () => void } | undefined;
+  mount: (root: HTMLElement, options: { markdown: string; config: { features: Record<string, boolean>; map?: Record<string, unknown> } }) => { update?: unknown; destroy?: () => void } | undefined;
   collectMatches: (input: { index: { docs: { id: string; path: string; title: string }[]; terms: { id: string; term: string; meaning: string }[] }; documents: Record<string, string> }) => { byDocument: Record<string, { id: string; line: number; start: number; end: number }[] | undefined> };
 };
 
@@ -37,7 +37,7 @@ export const missingLibraries = (names: ("mdmark" | "mermaid")[]): ("mdmark" | "
 /** 図の入れ物が原文を持つ属性の名前 */
 export const DIAGRAM_SOURCE_ATTR = "data-source";
 
-/** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ（`code`・`html`・`diagrams` は既定のまま） */
+/** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大と、mermaid の描画（プレビューが描いて差分を取る）も止める（`code`・`html`・`diagrams`・`map` は既定のまま） */
 export const MDMARK_FEATURES: Record<string, boolean> = {
   glossary: false,
   backlinks: false,
@@ -49,6 +49,11 @@ export const MDMARK_FEATURES: Record<string, boolean> = {
   toc: false,
   views: false,
   syntax: false,
+  mermaid: false,
+  "side-toc": false,
+  "back-to-top": false,
+  "diagram-resize": false,
+  lightbox: false,
 };
 
 /** mdmark の操作できる部品の今の値をコピーするボタン（`.mdmark-param-copy`）に出す文言 */
@@ -124,7 +129,8 @@ const convertSourceLines = ({ root, source }: { root: HTMLElement; source: strin
 
 /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
 const mountMarkdown = ({ root, markdown }: { root: HTMLElement; markdown: string }): void => {
-  mdmarkOf().mount(root, { markdown, config: { features: MDMARK_FEATURES } });
+  const map = mdmarkMapConfig();
+  mdmarkOf().mount(root, { markdown, config: { features: MDMARK_FEATURES, ...(map === undefined ? {} : { map }) } });
   trimBreakNewlines(root);
   relabelParamCopy(root);
 };

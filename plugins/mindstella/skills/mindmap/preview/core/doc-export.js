@@ -11,14 +11,14 @@ var MindmapPreview;
     };
     /** 配る書き出しが mdmark の CSS を中身に持つ `<style>` の id */
     MindmapPreview.MDMARK_CSS_EMBEDDED_ID = "mindmap-mdmark-css";
-    /** URL を `integrity` で確かめて読み、本文を返す。`integrity` が合わないか、200 台でないときは投げる */
-    async function fetchChecked({ url, integrity }) {
-        const response = await fetch(url, { integrity, mode: "cors", credentials: "omit" });
+    /** URL を読み、本文を返す。200 台でないときは投げる */
+    async function fetchText(url) {
+        const response = await fetch(url, { mode: "cors", credentials: "omit" });
         if (!response.ok)
             throw new Error(`${url} が ${response.status} を返しました`);
         return response.text();
     }
-    /** 1 枚の HTML に入れる mdmark の CSS と JavaScript の中身を取る。配る書き出しは中身を持つ要素の文字を返し、サーバーの配信は CSS の `link` と import map の URL を `integrity` で確かめて読む。取れないときは拒否せず理由を返す */
+    /** 1 枚の HTML に入れる mdmark の CSS と JavaScript の中身を取る。配る書き出しは中身を持つ要素の文字を返し、サーバーの配信は CSS の `link` と読み込みの設定の `js` の URL を `integrity` なしで読む。取れないときは拒否せず理由を返す */
     async function mdmarkAssets() {
         const embeddedJs = document.getElementById(MindmapPreview.MDMARK_EMBEDDED_ID);
         const embeddedCss = document.getElementById(MindmapPreview.MDMARK_CSS_EMBEDDED_ID);
@@ -26,16 +26,16 @@ var MindmapPreview;
         if (embeddedJs !== null && embeddedCss !== null) {
             return { ok: true, css: embeddedCss.textContent ?? "", js: embeddedJs.textContent ?? "" };
         }
-        // サーバーの配信: import map の JavaScript の URL と、同じ場所の CSS の `link`
-        const entry = MindmapPreview.mdmarkImportMapEntry();
-        if (entry === null)
-            return { ok: false, reason: "mdmark の JavaScript の URL を import map から読めませんでした" };
-        const cssUrl = entry.url.replace(/index\.js$/, "index.css");
+        // サーバーの配信: 読み込みの設定の JavaScript の URL と、同じ場所の CSS の `link`
+        const jsUrl = MindmapPreview.mdmarkConfig().js;
+        if (jsUrl === undefined)
+            return { ok: false, reason: "mdmark の JavaScript の URL を読み込みの設定から読めませんでした" };
+        const cssUrl = jsUrl.replace(/index\.js$/, "index.css");
         const link = [...document.querySelectorAll('link[rel="stylesheet"]')].find((element) => element.getAttribute("href") === cssUrl);
         if (link === undefined)
             return { ok: false, reason: "mdmark の CSS の link を読めませんでした" };
         try {
-            const [css, js] = await Promise.all([fetchChecked({ url: cssUrl, integrity: link.integrity }), fetchChecked(entry)]);
+            const [css, js] = await Promise.all([fetchText(cssUrl), fetchText(jsUrl)]);
             return { ok: true, css, js };
         }
         catch (error) {

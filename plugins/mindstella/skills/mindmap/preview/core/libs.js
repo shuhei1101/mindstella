@@ -12,7 +12,7 @@ var MindmapPreview;
     };
     /** 図の入れ物が原文を持つ属性の名前 */
     MindmapPreview.DIAGRAM_SOURCE_ATTR = "data-source";
-    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ（`code`・`html`・`diagrams` は既定のまま） */
+    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大と、mermaid の描画（プレビューが描いて差分を取る）も止める（`code`・`html`・`diagrams`・`map` は既定のまま） */
     MindmapPreview.MDMARK_FEATURES = {
         glossary: false,
         backlinks: false,
@@ -24,52 +24,72 @@ var MindmapPreview;
         toc: false,
         views: false,
         syntax: false,
+        mermaid: false,
+        "side-toc": false,
+        "back-to-top": false,
+        "diagram-resize": false,
+        lightbox: false,
     };
     /** mdmark の操作できる部品の今の値をコピーするボタン（`.mdmark-param-copy`）に出す文言 */
     MindmapPreview.MDMARK_PARAM_COPY_LABEL = "今の値をコピー";
     /** 配る書き出しが mdmark の JavaScript を中身に持つ要素の id */
     MindmapPreview.MDMARK_EMBEDDED_ID = "mindmap-mdmark";
-    /** 雛形の import map（`script[type="importmap"]`）の `integrity` のただ 1 つのキー（mdmark の JavaScript の URL）と、その `integrity` を返す。import map が無いか読めないか、キーが 1 つでないときは null */
-    function mdmarkImportMapEntry() {
-        const script = document.querySelector('script[type="importmap"]');
-        if (script === null)
-            return null;
+    /** サーバーが設定のバージョンから組み立てた mdmark の読み込みの設定（JavaScript の URL と `mount` の `config.map`）の要素の id */
+    MindmapPreview.MDMARK_CONFIG_ID = "mindmap-mdmark-config";
+    /** 配る書き出しが mdmark の部品（`map.js` ほか）を中身に持つ要素の id の頭（後ろに部品の名前） */
+    const MDMARK_PART_ID_PREFIX = "mindmap-mdmark-";
+    /** 配る書き出しが中身を持つ mdmark の部品の名前 */
+    const MDMARK_PART_NAMES = ["map", "view", "comments"];
+    /** 読み込みの設定の要素（`#mindmap-mdmark-config`）の中身を返す。要素が無いか読めないときは空 */
+    function mdmarkConfig() {
+        const element = document.getElementById(MindmapPreview.MDMARK_CONFIG_ID);
+        if (element === null)
+            return {};
         try {
-            const entries = Object.entries(JSON.parse(script.textContent ?? "").integrity ?? {});
-            const [only] = entries;
-            return entries.length === 1 && only !== undefined ? { url: only[0], integrity: only[1] } : null;
+            const parsed = JSON.parse(element.textContent ?? "");
+            return typeof parsed === "object" && parsed !== null ? parsed : {};
         }
         catch {
-            // JSON として読めない import map は、読めなかったものとして扱う
-            return null;
+            return {};
         }
     }
-    MindmapPreview.mdmarkImportMapEntry = mdmarkImportMapEntry;
-    /** mdmark の JavaScript を読み、読めたらグローバルの `mdmark` に置く。配る書き出しは中身を持つ要素（`#mindmap-mdmark`）を Blob の URL にして読み、サーバーの配信は import map の URL をブラウザが `integrity` で確かめて読む。読めなくても拒否せず解決する（読めなかったことは `missingLibraries` が伝える） */
+    MindmapPreview.mdmarkConfig = mdmarkConfig;
+    /** 中身の文字を Blob の URL にして `import()` し、読み終えたら URL を捨てる */
+    async function importText(text) {
+        const url = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+        try {
+            return (await import(url));
+        }
+        finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+    /** mdmark の JavaScript を読み、読めたらグローバルの `mdmark` に置く。配る書き出しは中身を持つ要素（`#mindmap-mdmark`）を Blob の URL にして読み、部品の中身があれば部品の読み込みを差し替える。サーバーの配信は読み込みの設定の `js` の URL を `integrity` なしで読む。読めなくても拒否せず解決する（読めなかったことは `missingLibraries` が伝える） */
     async function loadMdmark() {
         const embedded = document.getElementById(MindmapPreview.MDMARK_EMBEDDED_ID);
         try {
             let loaded;
             if (embedded !== null) {
-                const url = URL.createObjectURL(new Blob([embedded.textContent ?? ""], { type: "text/javascript" }));
-                try {
-                    loaded = (await import(url));
-                }
-                finally {
-                    URL.revokeObjectURL(url);
+                loaded = (await importText(embedded.textContent ?? ""));
+                for (const name of MDMARK_PART_NAMES) {
+                    const part = document.getElementById(`${MDMARK_PART_ID_PREFIX}${name}`);
+                    if (part === null || loaded.setPartModuleLoader === undefined)
+                        continue;
+                    const text = part.textContent ?? "";
+                    loaded.setPartModuleLoader(name, () => importText(text));
                 }
             }
             else {
-                const entry = mdmarkImportMapEntry();
-                // import map が無いか読めない
-                if (entry === null)
+                const url = mdmarkConfig().js;
+                // 読み込みの設定が無いか読めない
+                if (url === undefined)
                     return;
-                loaded = (await import(entry.url));
+                loaded = (await import(url));
             }
             Reflect.set(window, MindmapPreview.LIBRARIES.mdmark, loaded);
         }
         catch {
-            // `import()` の拒否（取れない・`integrity` が合わない）は、グローバルを置かずに解決する
+            // `import()` の拒否（取れない）は、グローバルを置かずに解決する
         }
     }
     MindmapPreview.loadMdmark = loadMdmark;
@@ -141,7 +161,8 @@ var MindmapPreview;
     }
     /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
     function mountMarkdown({ root, markdown }) {
-        mdmark.mount(root, { markdown, config: { features: MindmapPreview.MDMARK_FEATURES } });
+        const map = mdmarkConfig().map;
+        mdmark.mount(root, { markdown, config: { features: MindmapPreview.MDMARK_FEATURES, ...(map === undefined ? {} : { map }) } });
         trimBreakNewlines(root);
         relabelParamCopy(root);
     }
