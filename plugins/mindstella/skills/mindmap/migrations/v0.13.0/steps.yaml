@@ -1,0 +1,4 @@
+steps:
+  - op: call
+    script: mdmark_documents
+    destructive: true

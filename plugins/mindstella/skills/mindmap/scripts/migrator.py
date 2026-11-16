@@ -89,6 +89,7 @@ class MigrationReport:
     needs_values: list[NeededValue] = field(default_factory=list)
     backup: Backup | None = None
     recorded: Version | None = None
+    reports: list[str] = field(default_factory=list)
 
 
 def list_versions(*, migrations_dir: Path = MIGRATIONS_DIR) -> list[Version]:
@@ -184,11 +185,13 @@ def apply_migration(
         return plan
     target_version = to_version if to_version is not None else plan.plugin_version
     backup = take_backup(root, target_version)
+    reports: list[str] = []
     for step in plan.steps:
         try:
-            apply_step(root, step)
+            _, report = apply_step(root, step)
         except StepError as error:
             raise _step_failed(root, step, backup, error) from error
+        reports.extend(f"{step.version} #{step.index}: {line}" for line in report)
     return MigrationReport(
         workspace_version=plan.workspace_version,
         plugin_version=plan.plugin_version,
@@ -196,6 +199,7 @@ def apply_migration(
         steps=plan.steps,
         needs_values=_collect_needed_values(root, plan.steps, applied=True),
         backup=backup,
+        reports=reports,
     )
 
 

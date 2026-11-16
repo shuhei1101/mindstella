@@ -32,16 +32,16 @@ class StepError(Exception):
     """1 つの手順が失敗した理由。`apply_migration` が写しから戻して版と番号を添えた `StepFailedError` にする。"""
 
 
-def apply_step(root: Path, step: MigrationStep) -> list[str]:
-    """操作ごとに手順を当て、変えたファイル・フォルダ（ワークスペースからの相対パス）を返す。何も変えなければ空。"""
+def apply_step(root: Path, step: MigrationStep) -> tuple[list[str], list[str]]:
+    """操作ごとに手順を当て、変えたファイル・フォルダ（ワークスペースからの相対パス）と手順の報告の行を返す。"""
     args = step.args
     if step.op in ("rename_file", "move_dir"):
-        return _move(root, args["from"], args["to"])
+        return _move(root, args["from"], args["to"]), []
     if step.op == "delete":
-        return _delete(root, args["path"])
+        return _delete(root, args["path"]), []
     if step.op == "call":
         return _call(root, step)
-    return _apply_yaml_step(root, step)
+    return _apply_yaml_step(root, step), []
 
 
 def describe_step(step: MigrationStep) -> str:
@@ -124,8 +124,8 @@ def _delete(root: Path, path: str) -> list[str]:
     return [path]
 
 
-def _call(root: Path, step: MigrationStep) -> list[str]:
-    """手順の版のフォルダの `scripts/{script}.py` を読み込み、`migrate(root)` が返した変えたパスを返す。"""
+def _call(root: Path, step: MigrationStep) -> tuple[list[str], list[str]]:
+    """手順の版のフォルダの `scripts/{script}.py` を読み込み、`migrate(root)` が返した変えたパスと報告の行を返す。"""
     script = step.args["script"]
     path = _resolve(step.folder / "scripts", f"{script}.py")
     spec = importlib.util.spec_from_file_location(f"migration_{step.version}_{script}", path)
@@ -135,10 +135,12 @@ def _call(root: Path, step: MigrationStep) -> list[str]:
     # 変換のスクリプトが送るどの例外も、手順の失敗として扱う
     try:
         spec.loader.exec_module(module)
-        changed = getattr(module, CALL_FUNCTION)(root)
+        result = getattr(module, CALL_FUNCTION)(root)
     except Exception as error:
         raise StepError(f"{script} の変換が失敗しました: {error}") from error
-    return [str(name) for name in changed]
+    # (変えたもの, 報告の行) の組を返す変換と、変えたものだけを返す変換がある
+    changed, report = result if isinstance(result, tuple) else (result, [])
+    return [str(name) for name in changed], [str(line) for line in report]
 
 
 def _apply_yaml_step(root: Path, step: MigrationStep) -> list[str]:
