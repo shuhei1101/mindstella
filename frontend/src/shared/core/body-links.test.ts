@@ -13,6 +13,7 @@ const CODE_BLOCK_HTML = [
 ].join("");
 vi.mock("@/shared/adapters/libraries", () => ({
   libraryState: () => "ready",
+  mdmarkMapConfig: () => undefined,
   getLibrary: () => ({
     mount: (root: HTMLElement) => {
       root.innerHTML = CODE_BLOCK_HTML;

@@ -80,6 +80,6 @@ describe("loadLibrary (mdmark)", () => {
     expect(importModule).toHaveBeenCalledWith(`${MDMARK_CDN}@v0.13.0/dist/index.js`);
     const link = append.mock.calls[0]?.[0] as HTMLLinkElement;
     expect(link.href).toBe(`${MDMARK_CDN}@v0.13.0/dist/index.css`);
-    expect(link.integrity).toBe("");
+    expect(link.getAttribute("integrity")).toBeNull();
   });
 });
