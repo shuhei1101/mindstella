@@ -121,7 +121,7 @@ scenarios:
       - name: Mock
         description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、配る書き出しのツールを MCP のクライアントで呼ぶ（描画のライブラリは jsDelivr から取る）。ブラウザは外への通信を全て止めて、書き出した HTML を開く
       - name: make_workspace
-        description: 作成を済ませ、画面が読み込む mdmark のバージョンを設定したワークスペース
+        description: 作成を済ませ、画面が読み込む mdmark のバージョンと、map の種類 `llm`（札とアイコン）を設定したワークスペース
         notes: バージョンは map を持つタグ
       - name: 記録
         description: 本文の Markdown に map の図（種類 `llm` のノード）を 1 つ持つ資料 A-1

@@ -312,7 +312,6 @@ scenarios:
         SV-->>CC: 書き換えた後の設定
       ```
     expected:
-      - 書き換える前の設定の取得で、mdmark のバージョンが `latest` として返る（キーが無いときの既定）
       - '`config.yaml` の mdmark のバージョンが `v0.13.0` である'
       - '`summary`・`playbooks`・`phases`・`goal`・`display`・`transcription` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う

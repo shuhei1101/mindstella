@@ -254,6 +254,52 @@ scenarios:
       - 立て直した配信のポートが、立て直す前と違う
       - リンクを押すと、トップバーに V-2 の説明の札が出て、D-1 に変更の印が付き、D-2 には付かず、D-1 へのスレッドの画面が開いたまま
     test: test_normal_when_thread_link_written
+  - name: 正常シナリオ（設定したバージョンの mdmark と map の種類で描く）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、プレビューの URL を取得して実際のブラウザで開く（mdmark は jsDelivr から取る）
+      - name: 作成済みのワークスペース
+        description: 画面が読み込む mdmark のバージョンと、map の種類 `llm`（札とアイコン）を設定し、本文の Markdown に map の図（種類 `llm` のノード）を 1 つ持つ資料 A-1 を持つ
+        notes: バージョンは map を持つタグ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant SV as サーバー
+        participant P as プレビュー（ブラウザ）
+        participant CDN as jsDelivr
+
+        U->>P: プレビューの URL を開き、A-1 の詳細パネルを開く
+        P->>SV: 記録と設定を読む
+        P->>CDN: 設定のバージョンの mdmark を読む
+        P-->>U: map の図を描いた本文
+      ```
+    expected:
+      - 画面が mdmark を、設定したバージョンのタグの jsDelivr の URL から参照する
+      - A-1 の詳細パネルの本文に map の図が描かれ、ノードが種類 `llm` の札とアイコンを持つ
+      - どの画面にも、読めなかったライブラリの知らせが出ない
+    test: test_normal_when_mdmark_version_and_map_kinds_set
+  - name: 正常シナリオ（mdmark のバージョンを設定しない）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、プレビューの URL を取得して実際のブラウザで開く
+      - name: 作成済みのワークスペース
+        description: '`config.yaml` が mdmark の設定を持たず、検討事項 D-1 を持つ'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant CDN as jsDelivr
+
+        U->>P: プレビューの URL を開く
+        P->>CDN: mdmark の develop の最新を読む
+        P-->>U: 概要
+      ```
+    expected:
+      - 画面が mdmark を、jsDelivr の `gh/shuhei1101/mdmark@develop` の URL から参照する
+      - 開いた画面に D-1 がある
+    test: test_normal_when_mdmark_version_unset
 lead: '`session` が、サーバーが配るプレビューの URL を示し、利用者がブラウザで開いて、記録を書き換えるたびに画面が描き直される単一ユースケース。記録を直したときは、そのまとまりの差分を開くリンクを示す。'
 issue: 4
 primary_actor: 利用者
