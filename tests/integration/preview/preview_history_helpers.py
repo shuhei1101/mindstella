@@ -20,6 +20,7 @@ __all__ = [
     "assert_topbar_history",
     "build_history_workspace",
     "build_long_line_diff_workspace",
+    "mismatch_body_diff",
     "preselect_diff",
     "read_yaml",
 ]
@@ -189,6 +190,16 @@ def build_history_workspace(
         f"{OPENED_AT}\n{changes['sets'][1]['until_seq']}\n", encoding="utf-8"
     )
     return root
+
+
+def mismatch_body_diff(root: Path, item_id: str) -> None:
+    """`history.yaml` の項目の変更履歴の本文の差分の `now` を、今の本文に当たらない行にする。"""
+    path = root / RECORD_DIR / "history.yaml"
+    history = read_yaml(path)
+    for entry in history["items"][item_id]["history"]:
+        for hunk in entry.get("body_diff", []):
+            hunk["now"] = ["今の本文に無い行"]
+    path.write_text(yaml.safe_dump(history, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
 def preselect_diff(page: Page, sel: str | None) -> None:

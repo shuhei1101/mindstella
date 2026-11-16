@@ -30,6 +30,7 @@ from preview_body_scroll_helpers import LONG_LINES_BODY, SCROLLABLE_REGION_RULE
 from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import mismatch_body_diff
 from preview_spa_helpers import open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
 from record_write_helpers import write_tool
@@ -579,10 +580,10 @@ def test_trimmed_note_visible(page: Page, write_history_preview: WriteReviewPrev
 
 
 def test_body_unavailable_label(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """書き換えの後に本文のファイルが直接書き換えられていると、本文の差分を出せない旨を出す（正常系）。"""
-    # 準備
+    """変更履歴の本文の差分が今の本文に当たらないと、本文の差分を出せない旨を出す（正常系）。"""
+    # 準備（D-1 の変更履歴の本文の差分を今の本文に当たらなくする）
     url, root = write_history_preview()
-    (root / RECORD_DIR / "docs" / "D-1.md").write_text("手で書いた A\n\n手で書いた B\n", encoding="utf-8")
+    mismatch_body_diff(root, "D-1")
     # 実行
     panel = _diff(page, url, "V-2")
     # 検証

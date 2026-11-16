@@ -153,7 +153,7 @@ from preview_fixture_types import (
     WriteReviewPreview,
     WriteSamplePreview,
 )
-from preview_history_helpers import build_long_line_diff_workspace, preselect_diff
+from preview_history_helpers import build_long_line_diff_workspace, mismatch_body_diff, preselect_diff
 from preview_head_title_helpers import (
     ANIMATIONS_FINISHED_JS,
     HEAD_BUTTON_WIDTH_PX,
@@ -3204,15 +3204,15 @@ def test_diff_note_when_body_rewritten(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """書き換えの後に本文のファイルが直接書き換えられていると、その旨を出して今の本文を差分なしで描き、キーの差分は出す（正常系）。"""
-    # 準備
+    """変更履歴の本文の差分が今の本文に当たらないと、その旨を出して今の本文を差分なしで描き、キーの差分は出す（正常系）。"""
+    # 準備（D-1 の変更履歴の本文の差分を今の本文に当たらなくする）
     url, root = write_history_preview()
-    (root / RECORD_DIR / "docs" / "D-1.md").write_text("手で書いた A\n\n手で書いた B\n", encoding="utf-8")
+    mismatch_body_diff(root, "D-1")
     _open_diff_panel(page, open_preview, url, "V-2")
     page.wait_for_selector("aside.panel .df-note")
     # 検証
     assert page.inner_text("aside.panel .df-note") == NOTE_BODY_UNAVAILABLE
-    assert "手で書いた A" in page.inner_text("aside.panel .md:not(.md-value)")
+    assert "最初の段落です。" in page.inner_text("aside.panel .md:not(.md-value)")
     assert page.locator("aside.panel .md:not(.md-value) ins.df-blk, aside.panel .md:not(.md-value) del.df-blk").count() == 0
     assert page.locator('aside.panel [data-key="status"] .df-kv').count() == 1
 
