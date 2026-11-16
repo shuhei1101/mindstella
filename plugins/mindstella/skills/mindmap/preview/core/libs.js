@@ -12,7 +12,7 @@ var MindmapPreview;
     };
     /** 図の入れ物が原文を持つ属性の名前 */
     MindmapPreview.DIAGRAM_SOURCE_ATTR = "data-source";
-    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大と、mermaid の描画（プレビューが描いて差分を取る）も止める（`code`・`html`・`diagrams`・`map` は既定のまま） */
+    /** `mdmark.mount` の `config.features` に渡す、プレビューの画面と重なる機能と、コードの色付け（`syntax`。配信元から highlight.js を `integrity` なしで読む）のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・画像の拡大・コードブロックのバーと行の部品と、mermaid の描画（プレビューが描いて差分を取る）も止める（`html`・`diagrams`・`map` は既定のまま） */
     MindmapPreview.MDMARK_FEATURES = {
         glossary: false,
         backlinks: false,
@@ -24,6 +24,7 @@ var MindmapPreview;
         toc: false,
         views: false,
         syntax: false,
+        code: false,
         mermaid: false,
         "side-toc": false,
         "back-to-top": false,
