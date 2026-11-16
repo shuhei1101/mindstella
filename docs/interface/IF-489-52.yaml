@@ -558,7 +558,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ。mdmark の変換は実際に呼ぶ）
       - name: make_workspace
-        description: この手順を持つ版より前の版で、資料 A-1 の本文に flow の図（種類 `llm`・`script` のノード）と sequence の図を、資料 A-2 の本文に `<!-- table: data +count -->` を持つワークスペース
+        description: 'この手順を持つ版より前の版で、資料 A-1 の本文に flow の図（種類 `llm`・`script` のノード）と sequence の図を、資料 A-2 の本文に `<!-- table: data +count -->` を持つワークスペース'
         notes: '`migrate` を `apply` で呼ぶ'
     flow: |-
       ```mermaid
@@ -580,7 +580,7 @@ flows:
     expected:
       - ツールのエラーにならない
       - A-1 の本文に flow・sequence の範囲が残らず、map の範囲が 2 件ある
-      - A-2 の本文のマーカーが `<!-- table: {"kind": "data", ...} -->` の JSON の記載である
+      - 'A-2 の本文のマーカーが `<!-- table: {"kind": "data", ...} -->` の JSON の記載である'
       - '`config.yaml` の `mdmark.map.kinds` に `llm`・`script` がある'
       - 結果の `steps` のこの手順に、mdmark の移行の報告の行がある
       - ワークスペースに一時の mdmark の設定と `.mdmark/` が残っていない
