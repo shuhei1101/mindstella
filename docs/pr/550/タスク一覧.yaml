@@ -58,7 +58,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-16T12:27:40.658864+00:00'
   - process: モジュール構成設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T16:45:01.116146+00:00'
   - process: ドキュメント修正
     status: todo
     note: 外部ライブラリの設計書『mdmark』（LIB-489-13）・アーキテクチャ図・公開ドキュメント（ワークスペースの書式・コマンド・動作環境・変更履歴）
