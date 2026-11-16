@@ -482,9 +482,9 @@ def start_server(tmp_path: Path) -> Iterator[StartServer]:
         server.stop()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
-    """テスト全体で共有する常駐サーバーを 1 つ起動して返す（立ち上げに数秒かかるため）。"""
+    """テストのファイルごとに常駐サーバーを 1 つ起動して返す（配信ごとの変更の検知が積み上がらないようにする）。"""
     server = McpServer(
         python=sys.executable,
         env={
