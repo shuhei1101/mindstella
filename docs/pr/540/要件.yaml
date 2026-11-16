@@ -284,3 +284,6 @@ scope_out:
   - item: project-index に、MindStella のための書き込みの前後のフック・採番・書き込みの制限を追加する
     reason: project-index は MindStella を知らず、MindStella だけが project-index に依存する（D-290・D-291）
     plan: none
+  - item: プレビューの詳細パネルの結合テスト 3 件（test_body_alias_tooltip_pinned・test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch）の fail
+    reason: develop（1013853b）でも同じく fail する既存の不具合で、今回の要望に含まれない
+    plan: '#553'
