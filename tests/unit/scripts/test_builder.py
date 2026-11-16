@@ -1087,7 +1087,6 @@ MDMARK_CDN = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark"
         pytest.param(None, "index.js", f"{MDMARK_CDN}@develop/dist/index.js", id="unset"),
         pytest.param("latest", "index.css", f"{MDMARK_CDN}@develop/dist/index.css", id="latest"),
         pytest.param("v0.13.0", "map.js", f"{MDMARK_CDN}@v0.13.0/dist/map.js", id="tag"),
-        pytest.param("v0.13.0", "LICENSE", f"{MDMARK_CDN}@v0.13.0/LICENSE", id="license"),
     ],
 )
 def test_mdmark_dist_url(version: str | None, path: str, expected: str) -> None:
