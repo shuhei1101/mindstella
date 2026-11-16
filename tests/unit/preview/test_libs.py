@@ -1564,13 +1564,13 @@ def test_render_value_when_library_missing(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     serve_mdmark: ServeMdmark,
-    put_mdmark_import_map: PutMdmarkConfig,
+    put_mdmark_config: PutMdmarkConfig,
 ) -> None:
     """ライブラリが読めなければ、改行を残した文字のままの要素を返す（正常系）。"""
     # 準備
     load_preview_scripts()
     serve_mdmark(status=404)
-    put_mdmark_import_map()
+    put_mdmark_config()
     # 実行
     result = preview_page.evaluate(
         """async (source) => {
