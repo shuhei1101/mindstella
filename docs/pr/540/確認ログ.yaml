@@ -29,3 +29,8 @@ confirmations:
     decided_by: thumbs_up
     approver: shuhei1101
     thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578197037
+  - topic: メモリが足りないときのフロントの結合テストの実行
+    decision: メモリが空いたらユーザーが確認事項のスレッドに返信し、フロントの結合テストを並列数 1 で実行する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4585763422
