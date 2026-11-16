@@ -495,3 +495,39 @@ def test_error_when_transcription_action_invalid(
     assert result.is_error is True
     assert any(line.startswith("config.yaml: transcription.action") for line in result.text.splitlines())
     assert snapshot_tree(root) == before
+
+
+def test_normal_when_mdmark_version(
+    make_workspace: MakeWorkspace, valid_settings: dict[str, Any], call_tool: CallTool
+) -> None:
+    """画面が読み込む mdmark のバージョンをタグにし、ほかのキーと map の種類を残す（正常系）。"""
+    # 準備
+    mdmark_map = {"kinds": {"llm": {"label": "LLM"}}}
+    root = make_workspace(settings={**valid_settings, "mdmark": {"map": mdmark_map}})
+    before = _read_yaml(root, "config.yaml")
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), settings={"mdmark": {"version": "v0.13.0"}})
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    assert result.data["changed"] == ["mdmark"]
+    after = _read_yaml(root, "config.yaml")
+    assert after["mdmark"] == {"map": mdmark_map, "version": "v0.13.0"}
+    assert {key: value for key, value in after.items() if key != "mdmark"} == {
+        key: value for key, value in before.items() if key != "mdmark"
+    }
+
+
+def test_error_when_mdmark_version_invalid(
+    make_workspace: MakeWorkspace, call_tool: CallTool, snapshot_tree: SnapshotTree
+) -> None:
+    """latest でもタグでもないバージョンを渡すと、何も書かない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("update_settings", workspace=str(root), settings={"mdmark": {"version": "develop"}})
+    # 検証
+    assert result.is_error is True
+    assert any(line.startswith("config.yaml: mdmark.version") for line in result.text.splitlines())
+    assert snapshot_tree(root) == before
