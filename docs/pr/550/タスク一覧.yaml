@@ -44,7 +44,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-16T12:27:40.658864+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T16:25:29.430287+00:00'
   - process: 部品設計
     status: skipped
     reason: 部品の UI 項目と操作が変わらない（mdmark の読み込みはモジュール構成の範囲）
