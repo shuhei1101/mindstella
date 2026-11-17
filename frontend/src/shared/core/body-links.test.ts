@@ -59,7 +59,7 @@ describe("renderMarkdown", () => {
     // 実行
     const root = renderMarkdown("```json\n{}\n```");
     // 検証
-    const outside = [...root.querySelectorAll("pre")].filter((pre) => pre.closest(".mdmark-html") === null && !pre.classList.contains("dg-raw"));
+    const outside = [...root.querySelectorAll("pre")].filter((pre) => pre.closest(".mdmark-html, .mdmark-map") === null && !pre.classList.contains("dg-raw"));
     expect(outside.map(attributes)).toEqual([
       { tabindex: "0", role: null, label: "コード: json" },
       { tabindex: "0", role: null, label: "コード" },
