@@ -15,7 +15,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant MS as MindStella の MCP
         participant PI as project-index
         participant WS as ワークスペース
@@ -78,7 +78,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -100,7 +100,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -124,7 +124,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant MS as MindStella の MCP
         participant PI as project-index
         participant WS as ワークスペース
@@ -160,7 +160,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant MS as MindStella の MCP
         participant PI as project-index
         participant WS as ワークスペース
@@ -195,7 +195,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -221,7 +221,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant MS as MindStella の MCP
         participant PI as project-index
         participant WS as ワークスペース
@@ -253,7 +253,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -277,7 +277,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 案を持たない未決定の検討事項を書き込む
@@ -301,7 +301,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: D-1 を、採用した案を持たないまま決定済みに直す
@@ -328,7 +328,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
         participant CD as 変更の検知
@@ -363,7 +363,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: HTML の本文を渡してタスクを書き込む
@@ -387,7 +387,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
         participant CD as 変更の検知
@@ -416,7 +416,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -445,7 +445,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -475,7 +475,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: タグを文字列で渡して検討事項を書き込む
@@ -489,7 +489,7 @@ scenarios:
     test: test_error_when_tag_is_string
 lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログを、MindStella の MCP で ID を取ってから project-index の書き込みでワークスペースに足し、後から直す単一ユースケース。
 issue: 3
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 会話で決めたことが漏れなく残る。形の崩れた記録で、ワークスペースが読めなくならない

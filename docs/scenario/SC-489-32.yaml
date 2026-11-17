@@ -13,7 +13,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant MS as MindStella の MCP
         participant WS as ワークスペース
@@ -47,7 +47,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
         participant CD as 変更の検知
@@ -75,7 +75,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -99,7 +99,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: N-9 を削除する
@@ -146,7 +146,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant MS as MindStella の MCP
         participant WS as ワークスペース
@@ -166,7 +166,7 @@ scenarios:
     test: test_normal_when_taken_thread_refers
 lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
 issue: 96
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: やめた検討の経緯は後から読み返せ、誤って足した記録は残らない。消した記録を指したままの項目が残らない

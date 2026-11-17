@@ -11,7 +11,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -66,7 +66,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as 常駐サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -94,7 +94,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant PI as project-index
         participant WS as ワークスペース
@@ -121,7 +121,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -175,7 +175,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -204,7 +204,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 
@@ -236,7 +236,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant P as プレビュー（ブラウザ）
 

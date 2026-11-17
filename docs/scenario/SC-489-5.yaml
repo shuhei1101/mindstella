@@ -131,7 +131,7 @@ scenarios:
         participant P as プレビュー（ブラウザ）
         participant SV as サーバー
         participant WS as ワークスペース
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
 
         CC->>SV: スレッドへ返信する
         SV-->>P: 書き換えの知らせ
@@ -305,7 +305,7 @@ scenarios:
         actor U as 利用者
         participant P as プレビュー（ブラウザ）
         participant SV as サーバー
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
 
         CC->>SV: スレッドをクローズにする（理由つき）
         SV-->>P: 書き換えの知らせ
@@ -338,7 +338,7 @@ scenarios:
         participant P as プレビュー（ブラウザ）
         participant SV as サーバー
         participant WS as ワークスペース
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
 
         CC->>SV: 1 件目のスレッドへ返信する
         SV->>WS: AI の返信を利用者の未読で足す

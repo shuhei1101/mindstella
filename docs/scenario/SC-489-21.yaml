@@ -23,7 +23,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as MindStella の MCP
         participant PI as project-index
         participant WS as ワークスペース
@@ -56,7 +56,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -82,7 +82,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -103,7 +103,7 @@ scenarios:
     test: test_normal_when_undecided_adopted
 lead: スキルが、方針転換で検討事項の採用する案を MindStella の MCP で切り替え、project-index で関連をたどって影響を受ける項目を洗い出す単一ユースケース。
 issue: 3
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 方針を変えたときに、見直しが要る検討事項とタスクを漏れなく知る

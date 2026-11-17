@@ -14,7 +14,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant GW as 外の入口
         participant P as プレビュー（ブラウザ）
@@ -52,7 +52,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant HK as フック
 
@@ -84,7 +84,7 @@ scenarios:
       ```mermaid
       sequenceDiagram
         actor U as 利用者
-        participant CC as Claude Code（session）
+        participant CC as MindStella のセッション
         participant SV as サーバー
 
         U->>CC: 記録を見たい

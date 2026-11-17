@@ -18,7 +18,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
         participant WS as ワークスペース
 
@@ -57,7 +57,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 存在しない ID を検索する
@@ -78,7 +78,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 検討事項を検索する
@@ -108,7 +108,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: タグ「Api」を持つ項目を検索する
@@ -137,7 +137,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 検討事項を一覧で検索する
@@ -171,7 +171,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant PI as project-index
 
         CC->>PI: 主題のタグが「データ」の項目を検索する
@@ -186,7 +186,7 @@ scenarios:
     test: test_normal_when_main_tag_first
 lead: スキルが、project-index の検索と関連のたどりで、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っているタグを読む単一ユースケース。
 issue: 3
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 前に決めたことを会話の中ですぐ引ける。同じ意味の属性が別の名前で増えない

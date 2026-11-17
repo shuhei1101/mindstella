@@ -13,7 +13,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -41,7 +41,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -68,7 +68,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -97,7 +97,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -125,7 +125,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -150,7 +150,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -180,7 +180,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -207,7 +207,7 @@ scenarios:
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
+        participant CC as MindStella のセッション
         participant SV as サーバー
         participant WS as ワークスペース
 
@@ -221,7 +221,7 @@ scenarios:
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 消した項目を指したままの記録や、どの項目にも結び付かない本文が残らない

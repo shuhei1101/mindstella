@@ -148,7 +148,7 @@ primary_actor: 利用者
 stakeholders:
   - name: 利用者
     interest: 長い本文のどの文への意見かを、書き写さずに伝えられる
-  - name: Claude Code（session）
+  - name: MindStella のセッション
     interest: 取り込むとき、意見が本文のどの行・どの値へのものかを、本文の中を探さずに知れる
 trigger: 利用者が詳細パネルで本文を読み、特定の文や値に意見を付けたくなる
 preconditions:
