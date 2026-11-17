@@ -224,7 +224,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース
+        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -250,7 +250,7 @@ flows:
       - name: Mock
         description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
       - name: make_workspace
-        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 だけを持つワークスペース
+        description: 検討事項 D-1 を足して `commit` し、まとまり V-1 だけを持つワークスペース。ツールを呼ぶ常駐サーバーでは、このワークスペースの配信を起動していない
     flow: |-
       ```mermaid
       sequenceDiagram

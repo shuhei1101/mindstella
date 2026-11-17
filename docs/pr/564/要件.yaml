@@ -2,7 +2,9 @@ docs:
   - page: docs/interface/IF-489-17.yaml
     new: false
     change: 「正常系（まとまりを指す）」「異常系（記録に無いまとまり・引数の誤り）」の setup の make_workspace に、ツールを呼ぶ常駐サーバーではワークスペースの配信を起動していないことを書き足す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T18:45:26.923202+00:00'
 scope_out:
   - item: McpServer.write_as_ai が preview_url を呼んで配信を起動すること自体の変更
     reason: 変更の検知は配信を起動したワークスペースだけで動くため、記録の書き換えを ai の変更として記録させるには配信の起動が要る。他の結合テストはこの前提で pass している
