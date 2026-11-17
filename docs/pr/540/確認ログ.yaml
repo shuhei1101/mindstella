@@ -39,3 +39,8 @@ confirmations:
     decided_by: thumbs_up
     approver: shuhei1101
     thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4592299800
+  - topic: project-index の依存のバージョン（リリースを待つか）
+    decision: project-index のリリースを待たず、develop の最新（#92 を含む）を前提にしてマージする。前の決着（リリースまで待つ）を置き換える
+    decided_by: reply
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4602841296
