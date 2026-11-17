@@ -80,6 +80,8 @@ def test_main() -> None:
     output = json.loads(out)["hookSpecificOutput"]
     assert code == 0
     assert output["hookEventName"] == "PreToolUse"
+    assert output["permissionDecision"] == "allow"
+    assert output["permissionDecisionReason"] == "mindstella のツールの呼び出しにセッションの値を入れた"
     assert output["updatedInput"]["workspace"] == "talk"
     assert output["updatedInput"]["session"] == {
         "cwd": "/w",
