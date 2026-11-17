@@ -4,5 +4,5 @@
 
 | 案 | 説明 |
 | --- | --- |
-| [a-tag-tree](./a-tag-tree/index.html) | 根から主題のタグ（`main` の付いたタグ）で分け、タグの下に検討事項を並べる。主題のタグが無い検討事項は「主題のタグなし」にまとめる |
+| [a-tag-tree](./a-tag-tree/index.html) | 根から主題のタグ（`main` の付いたタグ）で分け、タグの下に検討事項を並べる。`parent` の種類の `related` を持つ検討事項は親の下に並べる。主題のタグが無い検討事項は「主題のタグなし」にまとめる |
 | [b-parent-tree](./b-parent-tree/index.html) | `related` の `parent` で親子をつなぎ、親を持たない検討事項を根の下に並べる |
