@@ -144,6 +144,9 @@ namespace MindmapPreview {
   /** mdmark が描いた、埋め込んだ HTML の範囲の要素の class */
   export const EMBEDDED_HTML_CLASS = "mdmark-html";
 
+  /** mdmark の map の範囲の入れ物の class（中の mermaid の原文を mdmark の map の部品が読んで描く） */
+  const MAP_CLASS = "mdmark-map";
+
   /** 埋め込んだ HTML の範囲の要素が持つ、範囲の始まりの印 `<!-- html -->` の行（1 始まり）の属性 */
   export const HTML_OPEN_ATTR = "data-html-open";
 
@@ -473,9 +476,9 @@ namespace MindmapPreview {
       element.setAttribute(HTML_OPEN_ATTR, String(range.open));
       element.setAttribute(HTML_CLOSE_ATTR, String(range.close));
     });
-    // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える（埋め込んだ HTML の範囲の外だけ）
+    // mermaid のコードブロックを、原文を持つ図の入れ物（拡大・Raw・コピーの道具つき）に置き換える（埋め込んだ HTML の範囲と、mdmark の map の部品が原文を読む map の範囲の外だけ）
     for (const code of root.querySelectorAll("code.language-mermaid")) {
-      if (code.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
+      if (code.closest(`.${EMBEDDED_HTML_CLASS}, .${MAP_CLASS}`) !== null) continue;
       const original = code.textContent ?? "";
       const figure = h({
         tag: "figure",
