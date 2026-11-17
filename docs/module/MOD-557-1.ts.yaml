@@ -15,6 +15,10 @@ stores:
         type: boolean
         initial: 'false'
         description: 画面への反映を保留しているか。トップバーの `stale` に渡す
+      - name: heldElement
+        type: HTMLElement | null
+        initial: 'null'
+        description: 保留を始めたときにフォーカスがあった要素。`restoreAnchor` では消さず、保留を下ろすときにフォーカスのある要素が無ければ基準にする
       - name: anchor
         type: '{element: HTMLElement, top: number} | null'
         initial: 'null'
@@ -113,7 +117,7 @@ functions:
     side_effects: '`pending`・`anchor` を書き換える'
     process: |-
       1. 保留する間でなければ（`isHolding`）、`refresh` を呼んで終える
-      2. `pending` が偽なら、フォーカスのある要素とその画面の上の位置を `anchor` に入れる
+      2. `pending` が偽なら、フォーカスのある要素を `heldElement` に、その要素と画面の上の位置を `anchor` に入れる
       3. `pending` を true にする
     unit_tests:
       - name: test_request_refresh
@@ -127,7 +131,7 @@ functions:
         summary: 入力中は保留する
         condition: '`textarea` にフォーカスがあり、2 回呼ぶ'
         mock: '`refresh`（`vi.fn`）'
-        expected: '`refresh` が呼ばれず、`pending` が true、`anchor.element` がその `textarea`'
+        expected: '`refresh` が呼ばれず、`pending` が true、`heldElement` と `anchor.element` がその `textarea`'
   - name: releaseRefresh
     title: 保留の解除
     kind: 関数
@@ -146,15 +150,15 @@ functions:
     side_effects: '`pending`・`anchor` を書き換える'
     process: |-
       1. `pending` が偽か、保留する間（`isHolding`）なら何もしない
-      2. フォーカスのある要素（無ければ `anchor` の要素。どちらも無ければ null）とその画面の上の位置を `anchor` に入れる
-      3. `pending` を false にして、`refresh` を 1 回呼ぶ
+      2. フォーカスのある要素（無ければ `heldElement`。どちらも無ければ null）とその画面の上の位置を `anchor` に入れる
+      3. `pending` を false、`heldElement` を null にして、`refresh` を 1 回呼ぶ
     unit_tests:
       - name: test_release_refresh
         case: 正常
         summary: 離れたら 1 回だけ読み直す
-        condition: '`pending` true・`focused` false・音声入力なしで 2 回呼ぶ'
+        condition: '`textarea` にフォーカスがあるまま `requestRefresh` を呼び、帯を出した後の `restoreAnchor` を呼んでから、フォーカスを外して `focused` false・音声入力なしで 2 回呼ぶ'
         mock: '`refresh`（`vi.fn`）'
-        expected: '`refresh` が 1 回だけ呼ばれ、`pending` が false、`anchor.element` がフォーカスのある要素'
+        expected: '`refresh` が 1 回だけ呼ばれ、`pending` が false、`heldElement` が null、`anchor.element` がその `textarea`'
       - name: test_release_refresh_when_holding
         case: 正常
         summary: まだ入力中なら読み直さない

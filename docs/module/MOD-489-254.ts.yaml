@@ -157,6 +157,25 @@ stores:
             condition: '`results` に D-1 の結果があるときに 2 回呼ぶ'
             mock: なし
             expected: 1 回目は結果、2 回目は null
+      - name: subscribeVoice
+        title: 状態の購読
+        kind: メソッド
+        summary: React の外（書き換えの知らせへの接続）から、状態が変わるたびに呼ぶ関数を登録する。ストアは公開しない
+        args:
+          - name: listener
+            type: () => void
+            required: true
+            description: 状態が変わるたびに呼ぶ関数
+        returns:
+          type: () => void
+          description: 購読をやめる関数
+        unit_tests:
+          - name: test_subscribe_voice
+            case: 正常
+            summary: 変わるたびに呼び、やめた後は呼ばない
+            condition: 登録して `dismissVoiceNotice` を呼び、やめてからもう一度呼ぶ
+            mock: '`listener`（`vi.fn`）'
+            expected: '`listener` が 1 回だけ呼ばれる'
 notes:
   単体テスト: 同じフォルダの `voice-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
   画面の消灯の抑止: '`visibilitychange` で画面が見えたとき、`session` が `recording` で抑止が解かれていれば `acquireWakeLock` を呼び直す。購読はストアを作るときに 1 回だけ張る'

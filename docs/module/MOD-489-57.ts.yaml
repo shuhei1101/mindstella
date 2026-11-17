@@ -25,7 +25,7 @@ functions:
       description: 接続を閉じる関数
     process: '1. EventSource を `EVENTS_URL` で作る
 
-      2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore`）と音声入力（`useVoiceStore`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の読み直し（`invalidatePreview`）を渡す
+      2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の読み直し（`invalidatePreview`）を渡す
 
       3. `open` で接続の状態を online にし、4 つの query の読み直しを反映の依頼（`requestRefresh`）に渡す（切れている間の書き換えを拾う）
 
