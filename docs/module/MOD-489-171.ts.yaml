@@ -910,25 +910,53 @@ functions:
     kind: 関数
     container: plugins/mindstella/skills/mindmap/preview/app.ts
     usecase: 音声でコメントする
-    scope: internal
+    scope: public
     is_async: true
-    summary: 音声入力の間に書き換えの通知を受けたとき、描き直さずに記録とスレッドを読み、録音の行き先が無ければ録音を捨てて知らせる
+    summary: 音声入力の間に書き換えの通知を受けたとき、描いている記録とスレッドを書き換えずに読み直し、録音の行き先が無くなっていればその ID を返す
+    args:
+      - name: destination
+        type: VoiceDestination | null
+        required: true
+        passing: keyword
+        description: 録音の行き先（`comment.voice.destination`）
+      - name: fetchRecords
+        type: '() => Promise<{ok: true, data: MindmapData} | {ok: false}>'
+        required: true
+        passing: injected
+        description: 記録の取得（『記録の取得』）
+      - name: fetchThreads
+        type: '() => Promise<{ok: true, threads: Thread[]} | {ok: false}>'
+        required: true
+        passing: injected
+        description: スレッドの取得（`threadApi().read`）
     returns:
-      type: Promise<void>
-      description: '-'
+      type: Promise<string | null>
+      description: 行き先が無くなっていればその ID。行き先が無い・新しいスレッド・あった・読めなかったときは null
     process: |-
-      1. 音声入力の行き先（`comment.voice.destination`）が無いか、新しいスレッドなら何もしない
-      2. 記録（`fetchRecords`）とスレッド（`api.threads`）を読む。どちらかが読めなければ何もしない（描いている記録・スレッドは書き換えない）
-      3. 読んだ記録の項目の ID とスレッドの ID に行き先が無ければ、録音を捨て（`abandonVoice`）、知らせを discarded にしてトップバーを描き直す（`renderTop`）
+      1. `destination` が null か新しいスレッドなら null を返す
+      2. `fetchRecords` と `fetchThreads` を読む。どちらかが読めなければ null を返す
+      3. 行き先がスレッドなら読んだスレッドの ID に、項目なら読んだ記録の項目の ID（`buildIndex`）にあるかを確かめ、無ければ行き先の ID を、あれば null を返す
     unit_tests:
+      - name: test_check_voice_destination
+        case: 正常
+        summary: 行き先があれば null
+        condition: '`destination` が `{target: D-1}`、`fetchRecords` が D-1 を含む記録を返す'
+        mock: '`fetchRecords`・`fetchThreads`'
+        expected: 'null'
       - name: test_check_voice_destination_when_removed
         case: 正常
-        summary: 行き先が無ければ録音を捨てる
-        condition: D-1 へ録音中に、偽のサーバーが D-1 の無い記録を返す
-        mock: fetch（偽物）
-        expected: トップバーの音声入力中の表示が消え、帯に「D-1 が削除されたため、録音を破棄しました。」。表は描き直されない
+        summary: 行き先が無ければその ID
+        condition: '`destination` が `{target: D-1}` と `{thread: TH-1}` で、記録に D-1 が無く、スレッドに TH-1 が無い'
+        mock: '`fetchRecords`・`fetchThreads`'
+        expected: '`D-1`・`TH-1`'
+      - name: test_check_voice_destination_when_unreadable
+        case: 正常
+        summary: 読めなければ null
+        condition: '`destination` が `{target: D-1}`、`fetchRecords` が `{ok: false}`'
+        mock: '`fetchRecords`・`fetchThreads`'
+        expected: 'null'
 notes:
-  入力中の読み直しの保留: サーバーの配信では、`start` で描き直しの保留（`createRefreshHold`。`isVoiceActive` は `comment.voice.phase` が `idle` でないこと、`reload` は記録の読み直し、`onStaleChange` はトップバーの `stale` を書き換えて `renderTop`）を作る。書き換えの通知（`onChanged`）とつながり直したときの読み直しは `request` を呼び、音声入力があれば続けて `checkVoiceDestination` を呼ぶ。音声入力が終わったとき（文字起こしの結果が入った・キャンセル・失敗・捨てた）は `release` を呼ぶ。配る書き出しでは作らない
+  入力中の読み直しの保留: サーバーの配信では、`start` で描き直しの保留（`createRefreshHold`。`isVoiceActive` は `comment.voice.phase` が `idle` でないこと、`reload` は記録の読み直し、`onStaleChange` はトップバーの `stale` を書き換えて `renderTop`）を作る。書き換えの通知（`onChanged`）とつながり直したときの読み直しは `request` を呼び、音声入力があれば続けて `checkVoiceDestination` を呼んで、ID が返れば録音を捨て（`abandonVoice`）、知らせを discarded にしてトップバーを描き直す（`renderTop`）。音声入力が終わったとき（文字起こしの結果が入った・キャンセル・失敗・捨てた）は `release` を呼ぶ。配る書き出しでは作らない
   スレッドの読み直し: |-
     `start` の 2（開いたとき）・13（`changed` を受けたときとつながり直したとき）では、記録とレビュー中に続けてスレッドも読む（`threadApi().read`）。読めたら `CommentState.threads` を置き換えて `threadsError` を `null` にし、断られた・届かないときは `threads` を前のまま残して `threadsError` に理由を入れる。読み直した後、パネルを開いていればスクロールの位置・絞り込み・入力中の返信と理由を保ったままパネルを描き直す（AI の返信・AI が立てたスレッド・AI のクローズとオープンへの戻しが届く）。配る書き出しでは読まない
     読み直したらトップバーの `commentsUnread` を `anyOpenUnseen(threads)` で描き直す（パネルを閉じていても読む）。`view` が `thread` で、開いているスレッドが送ったもの（`openedThread.pending` が偽）で `hasUnseen` が真なら、「既読にする」を行う（開いている間に届いた返信も既読にする）
