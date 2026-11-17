@@ -154,6 +154,69 @@ scenarios:
       - D-2・D-4 は移し替える前と同じ中身で、`check` が D-2 と D-4 を問題として返す
       - 移し替えの後、`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョンで、ワークスペースが配信されている
     test: test_normal_when_corrections_remain
+  - name: 正常シナリオ（資料の図とマーカーを mdmark の今の書き方へ移す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を立て、MindStella の API のワークスペースの作成と、MindStella の MCP の `check` を呼ぶ。mdmark の変換は実際に呼ぶ
+      - name: 依存が揃った環境
+        description: Node.js で mdmark の CLI を呼べる
+      - name: mdmark の今の書き方より前の資料を持つワークスペース
+        description: '`.mindstella/mindstella-version.ini` がこの移し替えの手順を持つバージョンより前で、資料 A-1 の本文に flow の図（種類 `llm`・`script` のノード）と sequence の図を、資料 A-2 の本文に今の書き方の引数のマーカー（`<!-- table: data +count -->`）を持つワークスペース'
+        notes: 本文は mdmark の移行の試験の入力に合わせて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant MD as mdmark の変換
+        participant WS as ワークスペース
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: 写しを取る
+        SV->>MD: 資料の本文を渡して変換を呼ぶ
+        MD-->>SV: 書き換えた本文・追加した map の種類・移行の報告
+        SV->>WS: 資料の本文と、map の種類を持つ設定を書く
+        SV->>WS: バージョンを書き換える
+        SV-->>CL: ワークスペースの ID・画面の URL・移行の報告
+        CL->>SV: check
+        SV-->>CL: 問題 0 件
+      ```
+    expected:
+      - A-1 の本文に flow・sequence の範囲が残らず、map の範囲が 2 件ある
+      - 'A-2 の本文のマーカーが JSON の記載（`<!-- table: {...} -->`）である'
+      - ワークスペースの設定の map の種類に `llm`・`script` がある
+      - ワークスペースの作成の応答の移行の報告が、写さなかった値（`scope`・`updated` ほか）を資料と行つきで示す
+      - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョンで、ワークスペースが配信されている'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_mdmark_documents_migrated
+    notes:
+      写さなかった値の通知: '利用者に確認せずに適用し、写さなかった値は MindStella のセッションが通知のスレッドか検討事項で利用者に知らせる（PR #565 の確認ログ）。移し替えの前の中身は写しに残る。利用者への知らせ方はインターフェース定義設計で決める'
+  - name: 異常シナリオ（mdmark の変換が失敗する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を立て、MindStella の API のワークスペースの作成を呼ぶ。mdmark の変換は、終了コード 1 と理由を返す代わりのコマンドに差し替える
+      - name: mdmark の今の書き方より前の資料を持つワークスペース
+        description: 正常シナリオ（資料の図とマーカーを mdmark の今の書き方へ移す）と同じワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant MD as mdmark の変換
+        participant WS as ワークスペース
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: 写しを取る
+        SV->>MD: 変換を呼ぶ
+        MD-->>SV: 終了コード 1 と理由
+        SV->>WS: 写しから戻す
+        SV-->>CL: エラー（失敗したバージョン・手順・mdmark が返した理由）
+      ```
+    expected:
+      - ワークスペースの作成がエラーを返し、応答に失敗したバージョン・手順と mdmark が返した理由がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+      - ワークスペースが配信されていない
+    test: test_error_when_mdmark_migration_fails
 lead: 常駐サーバーが、ワークスペースを読み込むときに記録のバージョンとプラグインのバージョンを比べ、古ければバージョンごとの手順を順に適用して移し替えてから配信する単一ユースケース。
 issue: 43
 primary_actor: 常駐サーバー

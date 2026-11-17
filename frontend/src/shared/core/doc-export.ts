@@ -1,5 +1,5 @@
 // 資料のエクスポート。mdmark の CSS と JavaScript・用語の索引・本文を 1 枚の HTML にまとめる組み立てと、埋め込んだ HTML を除いた Markdown の組み立てと、ブラウザへのダウンロード（今の画面の `core/doc-export.ts` と同じ振る舞い）
-import { MDMARK_CSS, MDMARK_JS } from "@/shared/adapters/libraries";
+import { mdmarkUrls } from "@/shared/adapters/libraries";
 import { MDMARK_PARAM_COPY_LABEL, embeddedHtmlRanges } from "@/shared/core/body-links";
 import { h } from "@/shared/core/dom-parts";
 import type { Item, RecordIndex } from "@/shared/core/records";
@@ -18,17 +18,18 @@ export type MdmarkAssets = { css: string; js: string };
 /** `mdmarkAssets` の結果。取れたら CSS と JavaScript の中身、取れなければ理由 */
 export type MdmarkAssetsResult = ({ ok: true } & MdmarkAssets) | { ok: false; reason: string };
 
-/** URL を `integrity` で確かめて読み、本文を返す。`integrity` が合わないか、200 台でないときは投げる */
-const fetchChecked = async ({ url, integrity }: { url: string; integrity: string }): Promise<string> => {
-  const response = await fetch(url, { integrity, mode: "cors", credentials: "omit" });
+/** URL を読み、本文を返す。200 台でないときは投げる */
+const fetchText = async (url: string): Promise<string> => {
+  const response = await fetch(url, { mode: "cors", credentials: "omit" });
   if (!response.ok) throw new Error(`${url} が ${response.status} を返しました`);
   return response.text();
 };
 
-/** 1 枚の HTML に入れる mdmark の CSS と JavaScript の中身を取る。配る書き出しは中身を持つ要素の文字を返し、サーバーの配信は CSS の `link` と import map の URL を `integrity` で確かめて読む。取れないときは拒否せず理由を返す */
+/** 1 枚の HTML に入れる、設定のバージョンの mdmark の CSS と JavaScript の中身を `integrity` なしで取る。取れないときは拒否せず理由を返す */
 export const mdmarkAssets = async (): Promise<MdmarkAssetsResult> => {
+  const urls = mdmarkUrls();
   try {
-    const [css, js] = await Promise.all([fetchChecked(MDMARK_CSS), fetchChecked(MDMARK_JS)]);
+    const [css, js] = await Promise.all([fetchText(urls.css), fetchText(urls.js)]);
     return { ok: true, css, js };
   } catch (error) {
     return { ok: false, reason: `mdmark の CSS と JavaScript を読み込めませんでした（${error instanceof Error ? error.message : String(error)}）` };

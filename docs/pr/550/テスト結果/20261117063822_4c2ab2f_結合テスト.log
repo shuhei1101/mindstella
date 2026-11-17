@@ -1,0 +1,8 @@
+$ pytest tests/integration/server/test_update_settings.py tests/integration/server/test_migrate.py tests/integration/server/test_export.py tests/integration/server/test_preview_serve.py tests/integration/preview/test_open_preview.py tests/integration/preview/test_spa_open.py tests/integration/storybook/test_markdown_body_stories.py -n 4 --basetemp=<一時フォルダ>
+=========================== short test summary info ============================
+FAILED tests/integration/preview/test_open_preview.py::test_normal_when_html_body_commented[chromium]
+FAILED tests/integration/server/test_migrate.py::test_normal_when_mdmark_documents
+2 failed, 150 passed in 72.69s (0:01:12)
+
+$ pytest tests/integration/preview/test_open_preview.py::test_normal_when_html_body_commented（単独で 2 回）
+1 passed / 1 passed（並列 4 の実行でだけ fail。単独では pass）

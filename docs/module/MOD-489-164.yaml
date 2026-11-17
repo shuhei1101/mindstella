@@ -35,6 +35,10 @@ directory: |-
           steps.yaml                   v0.11.0 の形式 → v0.12.0 の手順（項目のタグをオブジェクトにする）
           scripts/
             tags_to_objects.py         項目の文字列のタグを `{name}` にする変換
+        v0.13.0/
+          steps.yaml                   v0.12.0 の形式 → v0.13.0 の手順（資料を mdmark の今の書き方へ移す）
+          scripts/
+            mdmark_documents.py        mdmark の CLI の `upgrade` で資料を移し、map の種類を `config.yaml` へ移す変換
       schemas/
         migration-steps.schema.json    steps.yaml の形
       scripts/

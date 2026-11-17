@@ -1,0 +1,47 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: changed
+    detail: 記録が書き換わっても、入力欄にカーソルがある間と録音中は画面を描き直さずに「更新があります」を出し、カーソルが離れた・録音が終わったときにまとめて描き直す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: changed
+    detail: 録音中に記録が書き換わっても録音が途切れず、録音が終わってから描き直す
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-47.yaml
+    impact: following
+    detail: コメントを書いている間に記録が書き換わっても、書きかけの文字と変換中の文字が消えない
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-5.yaml
+    impact: following
+    detail: 返信を書いている間に記録が書き換わっても、書きかけの返信が消えない
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: following
+    detail: 項目のキー・本文を画面で書き換えている間に記録が書き換わっても、入力が途切れない
+    depends_on:
+      - docs/scenario/SC-489-12.yaml
+docs:
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 入力欄にカーソルがある間と録音中は記録の更新を画面に反映せず「更新があります」を出し、離れた・録音が終わったときにまとめて反映することを書き足す
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T18:24:18.146592+00:00'
+scope_out:
+  - item: サーバーへ接続し直して最新の記録を読み込み直す更新のボタン
+    reason: 要望に含まれない（入力中に溜めた更新を自動で反映する扱いだけを入れる）
+    plan: '#482'
+  - item: 配る書き出し（1 枚の HTML）の画面
+    reason: 書き換えの知らせを受けないため、記録の更新で入力が途切れることが無い
+    plan: none
+  - item: 音声入力中の表示とサーバーにつながらない表示が並ぶと、幅 901px・1441px でトップバーが横にはみ出す
+    reason: 「更新があります」を出さないときも起きる既存の崩れ（#529 の音声入力中の表示と接続の状態の組み合わせ）で、この要望に含まれない
+    plan: '#560'

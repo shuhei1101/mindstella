@@ -116,6 +116,40 @@ scenarios:
       - 本文の `<style>` が、詳細パネルの外の色と余白を変えない
       - 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
     test: test_normal_when_html_doc_exported
+  - name: 正常シナリオ（設定したバージョンの mdmark で map の図を配る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。起動スクリプトの代わりに MCP サーバーを立て、配る書き出しのツールを MCP のクライアントで呼ぶ（描画のライブラリは jsDelivr から取る）。ブラウザは外への通信を全て止めて、書き出した HTML を開く
+      - name: make_workspace
+        description: 作成を済ませ、画面が読み込む mdmark のバージョンと、map の種類 `llm`（札とアイコン）を設定したワークスペース
+        notes: バージョンは map を持つタグ
+      - name: 記録
+        description: 本文の Markdown に map の図（種類 `llm` のノード）を 1 つ持つ資料 A-1
+      - name: 書き出す先
+        description: ワークスペースの外の一時フォルダの中のパス
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（session）
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant CDN as jsDelivr
+        participant P as 配る書き出し（通信を止めたブラウザ）
+
+        CC->>SV: 配る書き出し
+        SV->>WS: 設定・全ての YAML・docs/ を読む
+        SV->>CDN: 設定のバージョンの mdmark の配布ファイルとライセンスの本文を取る
+        SV-->>CC: 書き出したファイルのパス
+        U->>P: 書き出したファイルを開き、A-1 の詳細パネルを開く
+        P-->>U: map の図を描いた本文
+      ```
+    expected:
+      - 書き出した HTML の中の mdmark の名前・版が、設定したバージョンである
+      - A-1 の詳細パネルの本文に map の図が描かれ、ノードが種類 `llm` の札とアイコンを持つ
+      - 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
+      - どの画面にも、読めなかったライブラリの知らせが出ない
+    test: test_normal_when_map_exported_with_pinned_mdmark
 lead: 利用者が、記録を見るだけの 1 枚の HTML（配る書き出し）に書き出してもらい、ネットにつながらない端末のブラウザで開いて読む単一ユースケース。
 issue: 19
 test_file: tests/e2e/単一ユースケース/test_preview_export.py

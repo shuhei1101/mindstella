@@ -1,6 +1,6 @@
 // SPA の外枠（インターフェース定義『SPAを開く』）。`tab` の画面を描き、`id`・`full`・`panel` の詳細と保存待ちのパネル、`search` の全体の検索を重ねる。features の画面を組むのはここだけ
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { CommentsPanel } from "@/features/comments/comments-panel/comments-panel";
 import { DecisionsScreen } from "@/features/decisions/decisions/decisions-screen";
@@ -25,6 +25,7 @@ import { anyOpenUnseen, type ReviewItem, type Thread } from "@/shared/core/comme
 import { SETTINGS_TARGET } from "@/shared/core/edits";
 import { normalizeSearch } from "@/shared/core/preview-search";
 import { KIND_KEYS, KIND_LABEL, kindOfId, type Kind } from "@/shared/core/records";
+import { voiceDestinationExists } from "@/shared/core/voice";
 import { commentsQuery, recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { useDiffView } from "@/shared/hooks/use-diff-view";
 import { usePreviewSearch, type VoiceTarget } from "@/shared/hooks/use-preview-search";
@@ -35,6 +36,7 @@ import { useConnectionStore } from "@/shared/stores/connection-store";
 import { useDuplicateIdsStore, useShownDuplicateIds } from "@/shared/stores/duplicate-ids-store";
 import { clearDisplayNotice, displayChanged, sameDisplay, useDisplayNoticeAt } from "@/shared/stores/display-notice-store";
 import { writePrefs } from "@/shared/stores/prefs-store";
+import { restoreAnchor, useStale } from "@/shared/stores/refresh-hold-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 import { discardVoice, dismissVoiceNotice, useVoiceNotice, useVoiceSession, voiceTargetOf, type VoiceDestination } from "@/shared/stores/voice-store";
 
@@ -165,9 +167,12 @@ export const PreviewShell = () => {
   const voiceExists = useMemo(() => {
     if (index === null || threads.data?.status !== 200 || comments.data?.status !== 200) return null;
     const threadIds = new Set([...(threads.data.data.threads as unknown as Thread[]).map((thread) => thread.id), ...((comments.data.data.items as unknown as ReviewItem[] | undefined) ?? []).map((item) => item.id)]);
-    return (destination: VoiceDestination): boolean => ("thread" in destination ? threadIds.has(destination.thread) : destination.target === null || index.byId.has(destination.target));
+    return voiceDestinationExists({ itemIds: new Set(index.byId.keys()), threadIds });
   }, [index, threads.data, comments.data]);
   const voiceTopbar = useVoiceTopbar({ exists: voiceExists, openVoiceInput });
+  // 反映を保留している間はトップバーの下に帯を出し、帯を出した後と消した後に入力欄の位置を戻す
+  const stale = useStale();
+  useLayoutEffect(restoreAnchor, [stale]);
   // スレッドとレビュー中の書き込みを読む前は、`thread`・`ttag` を外さない
   const threadContext = threadList === null || reviewItems === null ? {} : { threadIds: [...threadList.map((thread) => thread.id), ...reviewItems.filter((item) => item.thread === null).map((item) => item.id)], threadTags: [...new Set(threadList.flatMap((thread) => thread.tags))] };
   // 記録に合わない値を外す（並べ替えの列は一覧の画面が確かめる）
@@ -237,6 +242,7 @@ export const PreviewShell = () => {
         pendingOpen={search.panel === "pending"}
         pendingBlocked={blocked.length > 0}
         {...voiceTopbar}
+        stale={stale}
         duplicateIds={duplicateIds}
         onOpenDuplicate={openItem}
         onCloseDuplicate={() => { useDuplicateIdsStore.getState().dismiss(); }}

@@ -1,0 +1,42 @@
+$ pytest tests/unit/preview && npx vitest run
+                    texts.findIndex((text) => text.includes(staleText)),
+                ];
+            }""",
+            STALE_TEXT,
+        )
+        # 検証
+>       assert alone == {"count": 1, "buttons": 0}
+E       AssertionError: assert {'count': 0, 'buttons': 0} == {'count': 1, 'buttons': 0}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'count': 0} != {'count': 1}
+E         Use -v to get more diff
+
+tests/unit/preview/test_topbar.py:85: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_app.py::test_check_voice_destination[chromium]
+FAILED tests/unit/preview/test_app.py::test_check_voice_destination_when_removed[chromium]
+FAILED tests/unit/preview/test_app.py::test_check_voice_destination_when_unreadable[chromium]
+FAILED tests/unit/preview/test_refresh_hold.py::test_is_text_entry[chromium]
+FAILED tests/unit/preview/test_refresh_hold.py::test_create_refresh_hold[chromium]
+FAILED tests/unit/preview/test_refresh_hold.py::test_create_refresh_hold_when_typing[chromium]
+FAILED tests/unit/preview/test_refresh_hold.py::test_create_refresh_hold_when_voice[chromium]
+FAILED tests/unit/preview/test_topbar.py::test_topbar_when_stale[chromium] - ...
+8 failed, 919 passed in 393.81s (0:06:33)
+---
+     × topbar_when_stale 9ms
+     × voice_destination_exists 5ms
+ FAIL  frontend/src/app/preview-shell.test.tsx [ frontend/src/app/preview-shell.test.tsx ]
+Error: Failed to resolve import "@/shared/stores/refresh-hold-store" from "frontend/src/app/preview-shell.test.tsx". Does the file exist?
+ FAIL  frontend/src/shared/adapters/events-client.test.ts [ frontend/src/shared/adapters/events-client.test.ts ]
+Error: Failed to resolve import "@/shared/stores/refresh-hold-store" from "frontend/src/shared/adapters/events-client.test.ts". Does the file exist?
+ FAIL  frontend/src/shared/stores/refresh-hold-store.test.ts [ frontend/src/shared/stores/refresh-hold-store.test.ts ]
+Error: Failed to resolve import "@/shared/stores/refresh-hold-store" from "frontend/src/shared/stores/refresh-hold-store.test.ts". Does the file exist?
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/components/topbar.test.tsx > Topbar > topbar_when_stale
+TestingLibraryElementError: Unable to find an element with the text: 更新があります。入力欄から離れると反映します。. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ FAIL  frontend/src/shared/core/voice.test.ts > voiceDestinationExists > voice_destination_exists
+TypeError: voiceDestinationExists is not a function
+ Test Files  5 failed | 79 passed (84)
+      Tests  2 failed | 275 passed (277)

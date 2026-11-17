@@ -103,4 +103,27 @@ describe("Topbar", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("同じ ID の項目が 2 件あります");
     expect(screen.getByRole("link", { name: "D-12" })).toBeInTheDocument();
   });
+  // 保留中は「更新があります」の帯を出す（正常系）
+  test("topbar_when_stale", () => {
+    // 準備
+    const { rerender } = render(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" stale />);
+    // 実行
+    const band = screen.getByText("更新があります。入力欄から離れると反映します。").closest('[role="status"]');
+    // 検証
+    expect(band).not.toBeNull();
+    expect(band?.querySelector("button")).toBeNull();
+    rerender(
+      <Topbar
+        title="話し合い"
+        tabs={[...TABS]}
+        current="overview"
+        theme="light"
+        stale
+        voiceNotice={{ kind: "discarded", text: "D-022 が削除されたため、録音を破棄しました。" }}
+      />,
+    );
+    const stale = screen.getByText("更新があります。入力欄から離れると反映します。");
+    const notice = screen.getByText("D-022 が削除されたため、録音を破棄しました。");
+    expect(notice.compareDocumentPosition(stale) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

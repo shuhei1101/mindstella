@@ -7,7 +7,7 @@ declare const mdmark: {
     el: HTMLElement,
     opts: {
       markdown: string;
-      config?: { features?: Record<string, boolean> };
+      config?: { features?: Record<string, boolean>; map?: Record<string, unknown> };
       /** 用語と資料のツールチップに使う索引。資料の 1 枚の HTML だけが渡す */
       index?: {
         docs: { id: string; path: string; title: string; aliases?: string[]; body?: string }[];
@@ -19,6 +19,8 @@ declare const mdmark: {
   ) => { update: (markdown: string) => void; destroy: () => void };
   /** 読み込んだ mdmark のバージョン */
   version: () => string;
+  /** 部品（`map`・`view`・`comments`）の読み込みを、モジュールを返す関数に差し替える（shuhei1101/mdmark#624。公開していない版は持たない） */
+  setPartModuleLoader?: (name: string, loader: () => Promise<Record<string, unknown>>) => void;
   /** 文書ごとに、用語に一致した位置を返す。一致の前に全角半角・英字の大文字小文字・前後の空白を正規化する（`line` は 1 始まり、`start`・`end` は行の中の文字の位置） */
   collectMatches: (args: {
     index: { docs: { id: string; path: string; title: string }[]; terms: { id: string; term: string; meaning: string }[] };

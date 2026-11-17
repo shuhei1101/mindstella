@@ -58,7 +58,7 @@ def test_apply_step_when_rename_key(make_legacy_workspace: MakeLegacyWorkspace) 
     # 準備
     root = make_legacy_workspace(legacy_docs={"A-1": True}, top=True)
     # 実行
-    changed = migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
+    changed, _ = migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
     # 検証
     item = _read_items(root, "docs.yaml")[0]
     assert list(item) == [
@@ -84,7 +84,7 @@ def test_apply_step_when_rename_key_missing(
     before = snapshot_tree(root)
     mtimes = snapshot_mtimes(root)
     # 実行
-    changed = migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
+    changed, _ = migration_ops.apply_step(root, make_step("rename_key", RENAME_DONE_ARGS))
     # 検証
     assert changed == []
     assert snapshot_tree(root) == before
@@ -129,7 +129,7 @@ def test_apply_step_when_set_default_ask(
     root = make_legacy_workspace(without_summary=True, settings_file="mindmap.yaml", top=True)
     before = snapshot_tree(root)
     # 実行
-    changed = migration_ops.apply_step(root, make_step("set_default", ASK_SUMMARY_ARGS))
+    changed, _ = migration_ops.apply_step(root, make_step("set_default", ASK_SUMMARY_ARGS))
     # 検証
     assert changed == []
     assert snapshot_tree(root) == before
@@ -163,7 +163,7 @@ def test_apply_step_when_file_missing(make_workspace: MakeWorkspace, step: Any) 
     # 準備
     root = make_workspace(top=True)
     # 実行
-    changed = migration_ops.apply_step(root, step)
+    changed, _ = migration_ops.apply_step(root, step)
     # 検証
     assert changed == []
     assert not (root / "mindmap.yaml").exists()
@@ -229,7 +229,7 @@ def test_apply_step_when_rename_file(
     changed: list[str] | None = None
     # 実行・検証
     with expectation:
-        changed = migration_ops.apply_step(root, step)
+        changed, _ = migration_ops.apply_step(root, step)
     assert changed == expected_changed
     assert (root / "a.yaml").exists() is expected_a_exists
     assert (root / "b.yaml").read_text(encoding="utf-8") == expected_b_text
@@ -259,7 +259,7 @@ def test_apply_step_when_rename_file_into_record_dir(
     (root / "decisions.yaml").write_text("items: []\n", encoding="utf-8")
     step = make_step(op, {"from": source, "to": destination})
     # 実行
-    changed = migration_ops.apply_step(root, step)
+    changed, _ = migration_ops.apply_step(root, step)
     # 検証
     assert changed == [source, destination]
     assert (root / moved_file).exists()
@@ -271,7 +271,7 @@ def test_apply_step_when_delete_missing(make_workspace: MakeWorkspace) -> None:
     # 準備
     root = make_workspace(top=True)
     # 実行
-    changed = migration_ops.apply_step(root, make_step("delete", {"path": "old/"}))
+    changed, _ = migration_ops.apply_step(root, make_step("delete", {"path": "old/"}))
     # 検証
     assert changed == []
 
@@ -285,10 +285,36 @@ def test_apply_step_when_call(make_workspace: MakeWorkspace, tmp_path: Path) -> 
     (folder / "scripts" / "convert.py").write_text(CONVERT_SCRIPT, encoding="utf-8")
     step = make_step("call", {"script": "convert"}, folder=folder)
     # 実行
-    changed = migration_ops.apply_step(root, step)
+    result = migration_ops.apply_step(root, step)
     # 検証
-    assert changed == ["notes.yaml"]
+    assert result == (["notes.yaml"], [])
     assert (root / "notes.yaml").exists()
+
+
+REPORT_LINE = "  docs/A-1.md:5: flow: scope: 範囲: map の範囲に写す先がありません"
+
+REPORTING_SCRIPT = f"""\
+from pathlib import Path
+
+
+def migrate(root: Path) -> tuple[list[str], list[str]]:
+    \"\"\"変えたファイルと報告の行を返す。\"\"\"
+    return ["docs/A-1.md"], [{REPORT_LINE!r}]
+"""
+
+
+def test_apply_step_when_call_reports(make_workspace: MakeWorkspace, tmp_path: Path) -> None:
+    """変換のスクリプトが返した報告の行を手順の報告にする（正常系）。"""
+    # 準備
+    root = make_workspace(top=True)
+    folder = tmp_path / "v0.13.0"
+    (folder / "scripts").mkdir(parents=True)
+    (folder / "scripts" / "convert.py").write_text(REPORTING_SCRIPT, encoding="utf-8")
+    step = make_step("call", {"script": "convert"}, folder=folder)
+    # 実行
+    result = migration_ops.apply_step(root, step)
+    # 検証
+    assert result == (["docs/A-1.md"], [REPORT_LINE])
 
 
 def test_apply_step_when_unreadable(make_workspace: MakeWorkspace) -> None:

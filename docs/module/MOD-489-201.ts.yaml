@@ -36,19 +36,19 @@ functions:
       description: 取れたら CSS と JavaScript の中身、取れなければ理由
     process: |-
       1. 配る書き出しは、`#mindmap-mdmark`（`MDMARK_EMBEDDED_ID`）の文字と `#mindmap-mdmark-css`（`MDMARK_CSS_EMBEDDED_ID`）の文字を返す
-      2. サーバーの配信は、mdmark の CSS の `link` の `href` と import map の JavaScript の URL を、それぞれの `integrity` を付けた `fetch` で取る
-      3. 要素が無い・取れない・`integrity` が合わないときは `{ok: false, reason}` を返す（拒否しない）
+      2. サーバーの配信は、mdmark の CSS の `link` の `href` と `#mindmap-mdmark-config` の `js` の URL を `fetch` で取る（`integrity` は付けない）
+      3. 要素が無い・取れないときは `{ok: false, reason}` を返す（拒否しない）
     unit_tests:
       - name: test_mdmark_assets
         case: 正常
         summary: 配る書き出しとサーバーの配信のどちらでも中身を返す
-        condition: '`parametrize`: `#mindmap-mdmark` と `#mindmap-mdmark-css` を持つ画面 / `link` と import map を持つ画面'
+        condition: '`parametrize`: `#mindmap-mdmark` と `#mindmap-mdmark-css` を持つ画面 / `link` と `#mindmap-mdmark-config` を持つ画面'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: どちらも `ok` が真で、`css` と `js` が配った中身と同じ
       - name: test_mdmark_assets_when_unavailable
         case: 異常
         summary: 取れないときは理由を返す
-        condition: '`parametrize`: 配信元が 404 / 配信元の中身を書き換えて `integrity` を合わなくする'
+        condition: '`parametrize`: 配信元が 404 / `#mindmap-mdmark-config` が無い'
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '`ok` が偽で `reason` が空でない'
     status: planned

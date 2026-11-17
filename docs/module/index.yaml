@@ -256,6 +256,8 @@ items:
     summary: "変更の検知が知らせた重なった ID と、利用者が閉じた集まり。"
   - page: MOD-489-254.ts.yaml
     summary: "画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」）"
+  - page: MOD-557-1.ts.yaml
+    summary: "入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の読み直しの保留」）"
   - page: MOD-489-141.ts.yaml
     summary: "今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す"
   - page: MOD-489-140.ts.yaml
@@ -296,6 +298,10 @@ items:
     summary: "サーバー / 移行 / remove_tag_vocabulary.py"
   - page: MOD-489-187.py.yaml
     summary: "サーバー / 移行 / tags_to_objects.py"
+  - page: MOD-550-1.py.yaml
+    summary: "サーバー / 移行 / mdmark_documents.py"
+  - page: MOD-550-2.js.yaml
+    summary: "プレビュー / Storybook / main.js"
   - page: MOD-489-182.py.yaml
     summary: "サーバー / 移行 / field_to_playbooks.py"
   - page: MOD-489-183.py.yaml
@@ -390,6 +396,8 @@ items:
     summary: "プレビュー / 基盤 / router.ts"
   - page: MOD-489-197.ts.yaml
     summary: "プレビュー / 基盤 / voice.ts"
+  - page: MOD-557-2.ts.yaml
+    summary: "プレビュー / 基盤 / refresh-hold.ts"
   - page: MOD-489-213.ts.yaml
     summary: "プレビュー / 画面と部品 / graph.ts"
   - page: MOD-489-216.ts.yaml

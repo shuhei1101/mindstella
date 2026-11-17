@@ -1,4 +1,5 @@
 // コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い）
+import type { VoiceDestination } from "@/shared/stores/voice-store";
 
 /** `MediaRecorder.isTypeSupported` が真の最初の形で録る（今の画面と同じ並び） */
 export const VOICE_MIME_TYPES = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"] as const;
@@ -152,3 +153,9 @@ export const acquireWakeLock = async (): Promise<() => void> => {
     return () => {};
   }
 };
+
+/** 項目の ID とスレッドの ID の集まりから、録音の行き先があるかを返す関数を作る */
+export const voiceDestinationExists =
+  ({ itemIds, threadIds }: { itemIds: ReadonlySet<string>; threadIds: ReadonlySet<string> }) =>
+  (destination: VoiceDestination): boolean =>
+    "thread" in destination ? threadIds.has(destination.thread) : destination.target === null || itemIds.has(destination.target);

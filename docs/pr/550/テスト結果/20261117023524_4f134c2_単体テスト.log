@@ -1,0 +1,46 @@
+$ pytest tests/unit/scripts/test_settings_update.py tests/unit/scripts/test_migration_ops.py tests/unit/scripts/test_mdmark_documents.py tests/unit/scripts/test_builder.py --basetemp=<一時フォルダ>
+（Red: 実装が無いことによる fail だけ。/tmp/pytest-of-{ユーザー} が別のアカウントの持ち物のため --basetemp で一時フォルダを指定）
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_settings_update.py::test_merge_settings_when_mdmark
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_key
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_key_missing
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_set_default_ask
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[set_default]
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[rename_key]
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_file_missing[map_values]
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file[move]
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file_into_record_dir[file]
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_rename_file_into_record_dir[dir]
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_delete_missing
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_call - ...
+FAILED tests/unit/scripts/test_migration_ops.py::test_apply_step_when_call_reports
+FAILED tests/unit/scripts/test_builder.py::test_mdmark_dist_url[unset] - Attr...
+FAILED tests/unit/scripts/test_builder.py::test_mdmark_dist_url[latest] - Att...
+FAILED tests/unit/scripts/test_builder.py::test_mdmark_dist_url[tag] - Attrib...
+FAILED tests/unit/scripts/test_builder.py::test_mdmark_dist_url[license] - At...
+ERROR tests/unit/scripts/test_mdmark_documents.py::test_mdmark_documents_migrate
+ERROR tests/unit/scripts/test_mdmark_documents.py::test_mdmark_documents_migrate_when_command_fails
+ERROR tests/unit/scripts/test_mdmark_documents.py::test_mdmark_documents_migrate_when_version_set
+=================== 17 failed, 104 passed, 3 errors in 3.11s ===================
+
+$ npx tsc -p . && npx vitest run frontend/src/shared/adapters/libraries.test.ts
+（Red: setMdmarkSettings ほかが無いことによる fail だけ）
+     × set_mdmark_settings (unset) 1ms
+     × set_mdmark_settings (latest) 0ms
+     × set_mdmark_settings (tag) 0ms
+     × load_library_when_mdmark 0ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  frontend/src/shared/adapters/libraries.test.ts > setMdmarkSettings > set_mdmark_settings (unset)
+ FAIL  frontend/src/shared/adapters/libraries.test.ts > setMdmarkSettings > set_mdmark_settings (latest)
+ FAIL  frontend/src/shared/adapters/libraries.test.ts > setMdmarkSettings > set_mdmark_settings (tag)
+TypeError: setMdmarkSettings is not a function
+ FAIL  frontend/src/shared/adapters/libraries.test.ts > loadLibrary (mdmark) > load_library_when_mdmark
+TypeError: setMdmarkSettings is not a function
+      Tests  4 failed | 2 passed (6)
+
+$ pytest tests/unit/preview/test_libs.py tests/unit/preview/test_doc_export.py -k mdmark --basetemp=<一時フォルダ>
+（Red: 今の loadMdmark・mdmarkAssets が import map を読み、#mindmap-mdmark-config を読まないことによる fail だけ）
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_libs.py::test_load_mdmark[chromium-config] - p...
+FAILED tests/unit/preview/test_doc_export.py::test_mdmark_assets[chromium-served]
+================= 2 failed, 6 passed, 119 deselected in 3.71s ==================

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from record_write_helpers import write_tool
 import json
 from pathlib import Path
@@ -179,6 +180,16 @@ DIAGRAM_TIMEOUT_MS = 20_000
 
 # 書き換えや接続の切れが画面に出るまで待つ上限ミリ秒
 UPDATE_TIMEOUT_MS = 10_000
+
+
+# 「更新があります」の帯の文言
+STALE_TEXT = "更新があります。入力欄から離れると反映します。"
+
+# 入力中に書き換えてから、描き直していないことを確かめるまで待つミリ秒（インターフェース定義の期待の 3 秒）
+HOLD_CHECK_MS = 3_000
+
+# 書き換えてから画面に出るまでの上限秒数（非機能要件『画面への反映の時間』）
+REFLECT_LIMIT_SEC = 2.0
 
 # タブを移ったネットワークで、選んだ項目の玉が中心へ寄り終わるまで待つミリ秒
 TAB_MOVE_SETTLE_MS = 5_000
@@ -498,6 +509,8 @@ def test_normal_when_rewritten(
     open_preview(served.data["url"], "#tab=decisions&view=table&id=D-3")
     page.wait_for_selector("aside.panel.open .d-title")
     page.fill(SEND_TEXTAREA, "書きかけ")
+    # 入力欄から離れておく（入力中は描き直しを保留する）
+    page.evaluate("document.activeElement.blur()")
     opened_url = page.url
     history_length = page.evaluate("history.length")
     new_decision = {
@@ -522,6 +535,58 @@ def test_normal_when_rewritten(
     assert page.input_value(SEND_TEXTAREA) == "書きかけ"
     assert page.url == opened_url
     assert page.evaluate("history.length") == history_length
+
+
+def test_normal_when_rewritten_while_typing(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    open_preview: OpenPreview,
+    page: Any,
+) -> None:
+    """入力する欄にフォーカスがある間は描き直さず「更新があります」を出し、フォーカスが外れたら 1 回だけ描き直す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), make_item("D-3", status="要見直し"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_preview(served.data["url"], "#tab=decisions&view=table&id=D-3")
+    page.wait_for_selector("aside.panel.open .d-title")
+    page.fill(SEND_TEXTAREA, "途中まで")
+    opened_url = page.url
+    new_decision = {
+        "title": "新しい問い",
+        "target": "mindmap",
+        "category": "データ構造",
+        "phase": "要件",
+        "status": "未決定",
+        "options": [{"key": "A", "content": "案 A"}],
+    }
+    # 実行（入力欄にフォーカスを置いたまま検討事項を足す）
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=new_decision)
+    band = page.get_by_role("status").filter(has_text=STALE_TEXT)
+    band.wait_for(timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_timeout(HOLD_CHECK_MS)
+    held = {
+        "rows": _row_ids(page),
+        "value": page.input_value(SEND_TEXTAREA),
+        "focused": page.evaluate(f"document.activeElement === document.querySelector({SEND_TEXTAREA!r})"),
+    }
+    # 実行（入力欄の外を押す）
+    band.click()
+    started = time.monotonic()
+    page.wait_for_function(
+        "document.querySelectorAll('table.grid tbody tr').length === 3", timeout=UPDATE_TIMEOUT_MS
+    )
+    elapsed = time.monotonic() - started
+    page.wait_for_function(f"!document.body.innerText.includes({STALE_TEXT!r})", timeout=UPDATE_TIMEOUT_MS)
+    # 検証
+    assert added.is_error is False, added.text
+    assert held == {"rows": ["D-1", "D-3"], "value": "途中まで", "focused": True}
+    assert elapsed <= REFLECT_LIMIT_SEC
+    assert _row_ids(page) == ["D-1", "D-3", "D-4"]
+    assert page.inner_text("aside.panel .d-title") == "D-3の題"
+    assert page.input_value(SEND_TEXTAREA) == "途中まで"
+    assert page.url == opened_url
 
 
 def test_normal_when_sent(

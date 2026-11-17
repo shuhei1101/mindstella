@@ -7,6 +7,7 @@ import {
   micSupported,
   pushLevel,
   startRecording,
+  voiceDestinationExists,
   WAVE_LEVELS_MAX,
   WAVE_SAMPLE_MS,
 } from "@/shared/core/voice";
@@ -139,5 +140,17 @@ describe("acquireWakeLock", () => {
       expect(() => release()).not.toThrow();
       expect(wakeLock.released()).toBe(0);
     }
+  });
+});
+
+describe("voiceDestinationExists", () => {
+  // 行き先の有無（正常系）
+  test("voice_destination_exists", () => {
+    // 準備
+    const exists = voiceDestinationExists({ itemIds: new Set(["T-1"]), threadIds: new Set(["TH-1"]) });
+    // 実行
+    const results = [{ target: "T-1", loc: null }, { target: "T-9", loc: null }, { target: null, loc: null }, { thread: "TH-1" }, { thread: "TH-9" }].map((destination) => exists(destination));
+    // 検証
+    expect(results).toEqual([true, false, true, true, false]);
   });
 });

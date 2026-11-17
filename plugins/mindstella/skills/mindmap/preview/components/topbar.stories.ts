@@ -571,6 +571,27 @@ export const VoiceDiscarded: Story = { args: { comments: true, commentCount: 3, 
 /** 入力欄が画面に無い間に、レビュー中への追加に失敗した。帯に理由と「入力欄を開く」を出す */
 export const VoiceFailed: Story = { args: { comments: true, commentCount: 3, voiceNotice: { kind: "failed", text: "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。" }, onVoice: fn() } };
 
+/** 入力中に記録が書き換わり、反映を保留している。トップバーの下に「更新があります」の帯を出す */
+export const Stale: Story = { args: { stale: true } };
+
+/** 幅 390px の保留中。帯の文言を省かずに折り返す */
+export const StaleNarrow: Story = {
+  args: { stale: true },
+  parameters: {
+    layout: "fullscreen",
+    viewport: {
+      options: { narrow: { name: "幅 390px", styles: { width: "390px", height: "844px" } } },
+    },
+  },
+  globals: { viewport: { value: "narrow", isRotated: false } },
+};
+
+/** 録音中に記録が書き換わり、反映を保留している。音声入力中の表示と帯を並べて出す */
+export const StaleVoiceRecording: Story = { args: { comments: true, commentCount: 3, stale: true, voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 }, onVoice: fn() } };
+
+/** 音声入力の知らせと保留が同時にある。音声入力の知らせの帯の下に「更新があります」の帯を出す */
+export const StaleWithVoiceNotice: Story = { args: { comments: true, commentCount: 3, stale: true, voiceNotice: { kind: "discarded", text: "D-022 が削除されたため、録音を破棄しました。" }, onVoice: fn() } };
+
 /** 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる */
 export const DuplicateIds: Story = {
   args: { duplicateIds: [{ id: "D-12", kind: "検討事項" }], onOpenDuplicate: fn(), onCloseDuplicate: fn() },

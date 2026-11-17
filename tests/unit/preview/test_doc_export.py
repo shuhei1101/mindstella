@@ -16,7 +16,7 @@ from .fixture_types import (
     MdmarkDist,
     PutEmbeddedMdmark,
     PutMdmarkCss,
-    PutMdmarkImportMap,
+    PutMdmarkConfig,
     ServeMdmark,
 )
 
@@ -98,7 +98,7 @@ def test_mdmark_assets(
     mdmark_css_dist: MdmarkDist,
     put_embedded_mdmark: PutEmbeddedMdmark,
     put_mdmark_css: PutMdmarkCss,
-    put_mdmark_import_map: PutMdmarkImportMap,
+    put_mdmark_config: PutMdmarkConfig,
     serve_mdmark: ServeMdmark,
     mode: str,
 ) -> None:
@@ -118,9 +118,9 @@ def test_mdmark_assets(
             mdmark_css_dist.body,
         )
     else:
-        # サーバーの配信: CSS の link と JavaScript の import map
+        # サーバーの配信: CSS の link と読み込みの設定
         serve_mdmark()
-        put_mdmark_import_map()
+        put_mdmark_config()
         put_mdmark_css()
     # 実行
     result = preview_page.evaluate("() => MindmapPreview.mdmarkAssets()")
@@ -129,27 +129,28 @@ def test_mdmark_assets(
 
 
 @pytest.mark.parametrize(
-    ("css_status", "tamper"),
+    ("css_status", "with_config"),
     [
-        pytest.param(404, False, id="not_found"),
-        pytest.param(200, True, id="integrity_mismatch"),
+        pytest.param(404, True, id="not_found"),
+        pytest.param(200, False, id="no_config"),
     ],
 )
 def test_mdmark_assets_when_unavailable(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     put_mdmark_css: PutMdmarkCss,
-    put_mdmark_import_map: PutMdmarkImportMap,
+    put_mdmark_config: PutMdmarkConfig,
     serve_mdmark: ServeMdmark,
     css_status: int,
-    tamper: bool,
+    with_config: bool,
 ) -> None:
     """取れないときは理由を返す（異常系）。"""
     # 準備
     load_preview_scripts()
     serve_mdmark()
-    put_mdmark_import_map()
-    put_mdmark_css(status=css_status, tamper=tamper)
+    if with_config:
+        put_mdmark_config()
+    put_mdmark_css(status=css_status)
     # 実行
     result = preview_page.evaluate("() => MindmapPreview.mdmarkAssets()")
     # 検証

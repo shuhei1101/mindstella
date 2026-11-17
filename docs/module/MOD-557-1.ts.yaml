@@ -1,0 +1,218 @@
+title: プレビュー / refresh-hold-store
+lead: 入力中・音声入力中に、書き換えの通知による画面への反映を保留する（インターフェース定義『SPAを開く』の制約「入力中の読み直しの保留」）。
+stores:
+  - name: useRefreshHoldStore
+    title: 反映の保留
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 文字を入力する欄にフォーカスがあるか・反映を保留しているか・帯を出す・消す直前の基準の要素の画面の上の位置を持つ
+    state:
+      - name: focused
+        type: boolean
+        initial: 'false'
+        description: 文字を入力する欄（`isTextEntry`）にフォーカスがあるか
+      - name: pending
+        type: boolean
+        initial: 'false'
+        description: 画面への反映を保留しているか。トップバーの `stale` に渡す
+      - name: heldElement
+        type: HTMLElement | null
+        initial: 'null'
+        description: 保留を始めたときにフォーカスがあった要素。`restoreAnchor` では消さず、保留を下ろすときにフォーカスのある要素が無ければ基準にする
+      - name: anchor
+        type: '{element: HTMLElement, top: number} | null'
+        initial: 'null'
+        description: 帯を出す・消す直前の基準の要素と、その画面の上の位置（`getBoundingClientRect().top`）。帯を出す・消して描いた後に位置を戻すために使い、戻したら null にする
+    actions: []
+functions:
+  - name: isTextEntry
+    title: 文字を入力する欄か
+    kind: 関数
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 要素が文字を入力する欄（文字の `input`・`textarea`・`contenteditable`）かを返す
+    args:
+      - name: element
+        type: Element | null
+        required: true
+        description: 確かめる要素
+    returns:
+      type: boolean
+      description: 文字を入力する欄なら true
+    process: |-
+      1. `textarea` か、`isContentEditable` が真の `HTMLElement` なら true
+      2. `input` で、`type` が `TEXT_INPUT_TYPES` のどれかなら true
+      3. それ以外（null を含む）は false
+    unit_tests:
+      - name: test_is_text_entry
+        case: 正常
+        summary: 文字を入力する欄を見分ける
+        condition: '`textarea`・`input[type=text]`・`input[type=search]`・`contenteditable` の `div`・`input[type=checkbox]`・`button`・null'
+        mock: なし
+        expected: 前の 4 つが true、後の 3 つが false
+  - name: watchTextFocus
+    title: 文字の入力欄のフォーカスの見張り
+    kind: 関数
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 文書の `focusin`・`focusout` を受けて `focused` を書き換える。入力欄から別の入力欄へ移るときは偽にしない
+    args:
+      - name: doc
+        type: Document
+        required: true
+        passing: injected
+        description: 見張る文書
+    returns:
+      type: () => void
+      description: 見張りをやめる関数
+    side_effects: '`useRefreshHoldStore` の `focused` を書き換える'
+    process: |-
+      1. 始めに `doc.activeElement` で `focused` を決める（`isTextEntry`）
+      2. `focusin` で、対象が文字を入力する欄なら `focused` を true にする
+      3. `focusout` で、移り先（`relatedTarget`）が文字を入力する欄でなければ `focused` を false にする
+    unit_tests:
+      - name: test_watch_text_focus
+        case: 正常
+        summary: 入力欄に入る・離れる
+        condition: '`textarea` にフォーカスを移し、続けて `button` へ移す'
+        mock: なし（jsdom）
+        expected: '`focused` が true、続けて false'
+      - name: test_watch_text_focus_when_moved_between_entries
+        case: 正常
+        summary: 入力欄から入力欄へ移る
+        condition: '`textarea` から `input[type=text]` へフォーカスを移す'
+        mock: なし（jsdom）
+        expected: '`focused` が true のまま、途中で false にならない'
+  - name: isHolding
+    title: 保留する間か
+    kind: 関数
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 文字を入力する欄にフォーカスがあるか、音声入力（録音・文字起こし中）があるかを返す
+    returns:
+      type: boolean
+      description: '`focused` が真か、`readVoiceState().session` が null でなければ true'
+    unit_tests:
+      - name: test_is_holding
+        case: 正常
+        summary: フォーカスと音声入力で保留する
+        condition: '`focused` と音声入力の `session` を、どちらも無い・`focused` だけ・`session` だけで渡す'
+        mock: なし（ストアを直接書く）
+        expected: false・true・true
+  - name: requestRefresh
+    title: 反映の依頼
+    kind: 関数
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 保留する間なら `pending` を立てて読み直さず、そうでなければすぐ読み直す
+    args:
+      - name: refresh
+        type: () => void
+        required: true
+        passing: injected
+        description: 画面に反映する読み直し
+    returns:
+      type: void
+      description: '-'
+    side_effects: '`pending`・`anchor` を書き換える'
+    process: |-
+      1. 保留する間でなければ（`isHolding`）、`refresh` を呼んで終える
+      2. `pending` が偽なら、フォーカスのある要素を `heldElement` に、その要素と画面の上の位置を `anchor` に入れる
+      3. `pending` を true にする
+    unit_tests:
+      - name: test_request_refresh
+        case: 正常
+        summary: 入力中でなければすぐ読み直す
+        condition: '`focused` false・音声入力なし'
+        mock: '`refresh`（`vi.fn`）'
+        expected: '`refresh` が 1 回呼ばれ、`pending` が false'
+      - name: test_request_refresh_when_holding
+        case: 正常
+        summary: 入力中は保留する
+        condition: '`textarea` にフォーカスがあり、2 回呼ぶ'
+        mock: '`refresh`（`vi.fn`）'
+        expected: '`refresh` が呼ばれず、`pending` が true、`heldElement` と `anchor.element` がその `textarea`'
+  - name: releaseRefresh
+    title: 保留の解除
+    kind: 関数
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 保留していて、保留する間でなくなっていれば、`pending` を下ろして 1 回だけ読み直す
+    args:
+      - name: refresh
+        type: () => void
+        required: true
+        passing: injected
+        description: 画面に反映する読み直し
+    returns:
+      type: void
+      description: '-'
+    side_effects: '`pending`・`anchor` を書き換える'
+    process: |-
+      1. `pending` が偽か、保留する間（`isHolding`）なら何もしない
+      2. フォーカスのある要素（無ければ `heldElement`。どちらも無ければ null）とその画面の上の位置を `anchor` に入れる
+      3. `pending` を false、`heldElement` を null にして、`refresh` を 1 回呼ぶ
+    unit_tests:
+      - name: test_release_refresh
+        case: 正常
+        summary: 離れたら 1 回だけ読み直す
+        condition: '`textarea` にフォーカスがあるまま `requestRefresh` を呼び、帯を出した後の `restoreAnchor` を呼んでから、フォーカスを外して `focused` false・音声入力なしで 2 回呼ぶ'
+        mock: '`refresh`（`vi.fn`）'
+        expected: '`refresh` が 1 回だけ呼ばれ、`pending` が false、`heldElement` が null、`anchor.element` がその `textarea`'
+      - name: test_release_refresh_when_holding
+        case: 正常
+        summary: まだ入力中なら読み直さない
+        condition: '`pending` true・音声入力の `session` あり'
+        mock: '`refresh`（`vi.fn`）'
+        expected: '`refresh` が呼ばれず、`pending` が true のまま'
+  - name: restoreAnchor
+    title: 入力欄の位置の戻し
+    kind: 関数
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: 帯を出した後と消した後、`anchor` の要素の画面の上の位置が帯を出す・消す直前と同じになるよう、要素をスクロールする祖先を差の分だけ送る
+    returns:
+      type: void
+      description: '-'
+    side_effects: スクロールする祖先の `scrollTop` を書き換え、`anchor` を null にする
+    process: |-
+      1. `anchor` が null か、要素が文書から外れていれば何もしない
+      2. 今の `getBoundingClientRect().top` と `anchor.top` の差を求める
+      3. 差が 0 でなければ、要素の最も近いスクロールする祖先（無ければ `document.scrollingElement`）を差の分だけ送る
+      4. `anchor` を null にする
+    unit_tests:
+      - name: test_restore_anchor
+        case: 正常
+        summary: ずれた分だけ送る
+        condition: '`anchor.top` 100、今の top 130 の要素をスクロールする祖先の中に置く'
+        mock: '`getBoundingClientRect`（`vi.spyOn`）'
+        expected: 祖先の `scrollTop` が 30 増え、`anchor` が null
+      - name: test_restore_anchor_when_released
+        case: 正常
+        summary: 帯を消して上へずれた分だけ戻す
+        condition: '`anchor.top` 130、帯を消した後の今の top 100 の要素をスクロールする祖先の中に置く'
+        mock: '`getBoundingClientRect`（`vi.spyOn`）'
+        expected: 祖先の `scrollTop` が 30 減り、`anchor` が null
+  - name: useStale
+    title: 保留しているか
+    kind: フック
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: '`pending` を購読して返す（トップバーの `stale`）'
+    returns:
+      type: boolean
+      description: '`pending`'
+constants:
+  - name: TEXT_INPUT_TYPES
+    title: 文字を入力する input の type
+    container: frontend/src/shared/stores/refresh-hold-store.ts
+    usecase: SPAを開く
+    summary: '`isTextEntry` が文字を入力する欄とみなす `input` の `type`'
+    value: "['text', 'search', 'email', 'url', 'tel', 'password', 'number']"
+refs:
+  - IF-489-70#
+  - MOD-489-254#
+notes:
+  単体テスト: 同じフォルダの `refresh-hold-store.test.ts` に置く（knowledge の規約『フォルダ構成』）
+  置き場所: 画面をまたいで React の外（書き換えの通知への接続）からも読むため、`shared/stores/` の Zustand に置く（knowledge の判定フローチャート『React の状態の置き場所』）
+id: MOD-557-1

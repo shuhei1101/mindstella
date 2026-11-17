@@ -87,6 +87,8 @@ namespace MindmapPreview {
     voiceNotice?: { kind: "discarded" | "failed"; text: string } | null;
     /** 音声入力中の表示・帯の「入力欄を開く」を押したとき `open`、帯の × を押したとき `dismiss` */
     onVoice?: (act: "open" | "dismiss") => void;
+    /** 画面への反映を保留しているか。真のとき、トップバーの下に「更新があります」の帯を置く（配る書き出しでは渡さない） */
+    stale?: boolean;
     /** 重なった ID と種類の名前。空でなければ、タブの帯の下に重なった ID の通知を出す */
     duplicateIds?: { id: string; kind: string }[];
     /** 重なった ID の通知の ID のリンクを押したとき */
@@ -285,6 +287,18 @@ namespace MindmapPreview {
     });
   }
 
+  /** トップバーの下の「更新があります」の帯（印の点と文。押せず、閉じるボタンも持たない） */
+  function staleBand(): HTMLElement {
+    return h({
+      tag: "div",
+      attrs: { class: "stale-note", role: "status" },
+      children: [
+        h({ tag: "span", attrs: { class: "st-dot", "aria-hidden": "true" } }),
+        h({ tag: "span", attrs: { class: "sn-text" }, children: ["更新があります。入力欄から離れると反映します。"] }),
+      ],
+    });
+  }
+
   /** 保存待ちのボタン（印と「保存待ち」と件数）。押すと保存待ちのパネルを開く・閉じる */
   function pendingButton({
     count,
@@ -399,6 +413,7 @@ namespace MindmapPreview {
     voice = null,
     voiceNotice = null,
     onVoice,
+    stale = false,
     duplicateIds = [],
     onOpenDuplicate,
     onCloseDuplicate,
@@ -477,7 +492,7 @@ namespace MindmapPreview {
     return h({
       tag: "div",
       attrs: { class: "top" },
-      children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar, duplicates],
+      children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), stale ? staleBand() : null, tabbar, duplicates],
     });
   }
 }

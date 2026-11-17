@@ -253,6 +253,22 @@
         }
       }
     },
+    "mdmark": {
+      "type": "object",
+      "description": "画面・Storybook・配る書き出しが読み込む mdmark。`version` は `update_settings` が書き、`map` は移し替えの手順だけが書く。設定の再読み込みの後に開いた画面から効く",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "読み込む mdmark のバージョン。`latest`（jsDelivr の `gh/shuhei1101/mdmark@develop`）か `v{数字}.{数字}.{数字}` のタグ。無ければ `latest`",
+          "pattern": "^(latest|v[0-9]+\\.[0-9]+\\.[0-9]+)$"
+        },
+        "map": {
+          "type": "object",
+          "description": "map の図の種類。mdmark の設定の `map` と同じ形の `kinds`・`lines`。画面が `mount` の `config.map` に指定する"
+        }
+      }
+    },
     "preview": {
       "type": "object",
       "description": "プレビューの配信。配信を立てるときだけ読み、設定の再読み込みでは待ち受けを変えない",

@@ -1,0 +1,2 @@
+$ pytest tests/integration/server/test_update_settings.py tests/integration/server/test_migrate.py tests/integration/server/test_export.py tests/integration/server/test_preview_serve.py tests/integration/preview/test_open_preview.py tests/integration/preview/test_spa_open.py tests/integration/storybook/test_markdown_body_stories.py -n 4 --basetemp=<一時フォルダ>
+155 passed in 75.12s (0:01:15)

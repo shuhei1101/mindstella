@@ -291,6 +291,9 @@ export const takeVoiceResult = (key: string): VoiceResult | null => {
   return result;
 };
 
+/** 状態が変わるたびに呼ぶ関数を登録し、やめる関数を返す（React の外から購読する） */
+export const subscribeVoice = (listener: () => void): (() => void) => useVoiceStore.subscribe(listener);
+
 /** 今の状態（テストと React の外から読む） */
 export const readVoiceState = (): VoiceState => useVoiceStore.getState();
 

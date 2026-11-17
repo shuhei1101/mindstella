@@ -6,7 +6,7 @@ import itertools
 
 import pytest
 from integration.preview.preview_a11y_checks import axe_rule_results
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 from .storybook_react_fixture_types import OpenStory
 
 # 狭い幅（Storybook の画面幅を 390px にしたときの幅と高さ）
@@ -1403,3 +1403,64 @@ def test_duplicate_ids(open_story: OpenStory) -> None:
     assert tabs_box is not None
     assert notice_box is not None
     assert tabs_box["y"] + tabs_box["height"] <= notice_box["y"]
+
+
+# 「更新があります」の帯の文言
+STALE_TEXT = "更新があります。入力欄から離れると反映します。"
+
+
+def _stale_band(page: Page) -> Locator:
+    """「更新があります」の帯（読み上げの status）を返す。"""
+    return page.get_by_role("status").filter(has_text=STALE_TEXT)
+
+
+def test_stale(open_story: OpenStory) -> None:
+    """入力中に記録が書き換わり、反映を保留している。トップバーの下・タブの帯の上に、押せない「更新があります」の帯を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--stale")
+    # 検証
+    band = _stale_band(page)
+    assert band.count() == 1
+    assert band.inner_text().strip() == STALE_TEXT
+    assert band.get_by_role("button").count() == 0
+    header_box = page.locator("#storybook-root header").first.bounding_box()
+    band_box = band.bounding_box()
+    tabs_box = page.get_by_role("navigation", name="項目の種類").bounding_box()
+    assert header_box is not None
+    assert band_box is not None
+    assert tabs_box is not None
+    assert header_box["y"] + header_box["height"] <= band_box["y"]
+    assert band_box["y"] + band_box["height"] <= tabs_box["y"]
+
+
+def test_stale_narrow(open_story: OpenStory) -> None:
+    """幅 390px の保留中。帯の文言を省かずに折り返し、ページは横にはみ出さない（正常系）。"""
+    # 準備
+    page = open_story("shared-topbar--stale-narrow")
+    # 実行
+    page.set_viewport_size(NARROW_SIZE)
+    page.wait_for_function("innerWidth === 390")
+    # 検証
+    assert _stale_band(page).inner_text().replace("\n", "").strip() == STALE_TEXT
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+def test_stale_voice_recording(open_story: OpenStory) -> None:
+    """録音中に記録が書き換わり、反映を保留している。音声入力中の表示と帯を並べて出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--stale-voice-recording")
+    # 検証
+    assert _stale_band(page).count() == 1
+    assert page.get_by_role("button", name="音声入力中（D-022 へのコメント）。録音中の入力欄へ移動").count() == 1
+
+
+def test_stale_with_voice_notice(open_story: OpenStory) -> None:
+    """音声入力の知らせと保留が同時にある。音声入力の知らせの帯の下に「更新があります」の帯を出す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-topbar--stale-with-voice-notice")
+    # 検証
+    notice_box = page.get_by_role("status").filter(has_text="録音を破棄しました").bounding_box()
+    band_box = _stale_band(page).bounding_box()
+    assert notice_box is not None
+    assert band_box is not None
+    assert notice_box["y"] + notice_box["height"] <= band_box["y"]

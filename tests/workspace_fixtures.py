@@ -121,6 +121,10 @@ MINDSTELLA_ONLY_TOOLS = frozenset({"commit", "new_thread", "reply", "set_thread_
 
 # 常駐サーバーが状態のフォルダを置く場所を読む環境変数の名前と、その下のフォルダ
 STATE_HOME_ENV = "XDG_STATE_HOME"
+
+# 移し替えが呼ぶ mdmark の CLI を差し替える環境変数と、既定の差し替え（何もせず終了コード 0 で終わる。資料の変換を確かめるテストだけ空で指定して実際の CLI を呼ぶ）
+MDMARK_COMMAND_ENV = "MINDSTELLA_MDMARK_COMMAND"
+NOOP_MDMARK_COMMAND = f"{sys.executable} -c pass"
 STATE_SESSION_PATH = ("mindstella", "workspaces")
 STATE_SESSION_FILE = "session.json"
 
@@ -460,7 +464,7 @@ class McpServer:
 def start_server(tmp_path: Path) -> Iterator[StartServer]:
     """常駐サーバーを空きポートで子プロセスとして起動する関数を返し、テストの後で全て止める。"""
     # 子プロセスの入出力を UTF-8 に揃える（既定の文字コードに左右されないため）
-    base_env = {**os.environ, "PYTHONUTF8": "1"}
+    base_env = {**os.environ, "PYTHONUTF8": "1", MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND}
     started: list[McpServer] = []
 
     def _start(
@@ -491,6 +495,7 @@ def mcp_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[McpServer]:
             **os.environ,
             "PYTHONUTF8": "1",
             STATE_HOME_ENV: str(tmp_path_factory.mktemp("mcp-server-state")),
+            MDMARK_COMMAND_ENV: NOOP_MDMARK_COMMAND,
         },
         cwd=tmp_path_factory.mktemp("mcp-server-cwd"),
     )

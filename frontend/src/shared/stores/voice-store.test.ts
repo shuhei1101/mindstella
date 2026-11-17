@@ -6,6 +6,7 @@ import {
   cancelVoice,
   discardVoice,
   dismissVoiceNotice,
+  subscribeVoice,
   finishVoice,
   readVoiceState,
   resetVoiceStore,
@@ -256,5 +257,20 @@ describe("takeVoiceResult", () => {
     // 検証
     expect(first?.kind).toBe("reviewed");
     expect(second).toBeNull();
+  });
+});
+
+describe("subscribeVoice", () => {
+  // 変わるたびに呼び、やめた後は呼ばない（正常系）
+  test("subscribe_voice", () => {
+    // 準備
+    const listener = vi.fn();
+    const unsubscribe = subscribeVoice(listener);
+    // 実行
+    dismissVoiceNotice();
+    unsubscribe();
+    dismissVoiceNotice();
+    // 検証
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
