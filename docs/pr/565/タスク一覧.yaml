@@ -20,7 +20,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T19:13:06.527228+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T19:21:17.175241+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: デザイン方針があり、見た目の方向を変えない
