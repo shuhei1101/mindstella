@@ -40,7 +40,7 @@ functions:
     process: |-
       1. `focusin`・`focusout`（移り先が文字を入力する欄なら離れたとみなさない）で入力中かを持ち、離れたら `release` を呼ぶ
       2. `request`: 入力中でも音声入力中でもなければ `reload` を呼ぶ。そうでなければ、保留していなかったときはフォーカスのある要素の画面の上の位置を控え、保留を立てて `onStaleChange(true)` を呼び、描いた後に控えた位置と今の位置の差の分だけスクロールする祖先を送る
-      3. `release`: 保留していて、入力中でも音声入力中でもなければ、保留を下ろして `onStaleChange(false)` と `reload` を 1 回ずつ呼ぶ
+      3. `release`: 保留していて、入力中でも音声入力中でもなければ、フォーカスのある要素（無ければ保留を始めたときの要素）の画面の上の位置を控え、保留を下ろして `onStaleChange(false)` と `reload` を 1 回ずつ呼び、帯を消して描いた後に控えた位置と今の位置の差の分だけスクロールする祖先を送る
     unit_tests:
       - name: test_create_refresh_hold
         case: 正常
@@ -53,7 +53,7 @@ functions:
         summary: 入力中は保留し、離れたら 1 回だけ描き直す
         condition: '`textarea` にフォーカスがあるまま `request` を 2 回、続けてフォーカスを `button` へ移す'
         mock: '`reload`・`onStaleChange`'
-        expected: 離れるまで `reload` は呼ばれず `onStaleChange(true)` が 1 回、離れた後に `onStaleChange(false)` と `reload` が 1 回ずつ
+        expected: 離れるまで `reload` は呼ばれず `onStaleChange(true)` が 1 回、離れた後に `onStaleChange(false)` と `reload` が 1 回ずつ。帯を出したとき・消したときの前後で、フォーカスのある要素の画面の上の位置が変わらない
       - name: test_create_refresh_hold_when_voice
         case: 正常
         summary: 音声入力中は保留し、終わったら描き直す

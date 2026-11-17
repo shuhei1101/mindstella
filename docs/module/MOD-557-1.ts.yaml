@@ -18,7 +18,7 @@ stores:
       - name: anchor
         type: '{element: HTMLElement, top: number} | null'
         initial: 'null'
-        description: 保留を始めたときにフォーカスがあった要素と、その画面の上の位置（`getBoundingClientRect().top`）。帯を出した後に位置を戻すために使い、戻したら null にする
+        description: 帯を出す・消す直前の基準の要素と、その画面の上の位置（`getBoundingClientRect().top`）。帯を出す・消して描いた後に位置を戻すために使い、戻したら null にする
     actions: []
 functions:
   - name: isTextEntry
@@ -146,14 +146,15 @@ functions:
     side_effects: '`pending`・`anchor` を書き換える'
     process: |-
       1. `pending` が偽か、保留する間（`isHolding`）なら何もしない
-      2. `pending` を false、`anchor` を null にして、`refresh` を 1 回呼ぶ
+      2. フォーカスのある要素（無ければ `anchor` の要素。どちらも無ければ null）とその画面の上の位置を `anchor` に入れる
+      3. `pending` を false にして、`refresh` を 1 回呼ぶ
     unit_tests:
       - name: test_release_refresh
         case: 正常
         summary: 離れたら 1 回だけ読み直す
         condition: '`pending` true・`focused` false・音声入力なしで 2 回呼ぶ'
         mock: '`refresh`（`vi.fn`）'
-        expected: '`refresh` が 1 回だけ呼ばれ、`pending` が false'
+        expected: '`refresh` が 1 回だけ呼ばれ、`pending` が false、`anchor.element` がフォーカスのある要素'
       - name: test_release_refresh_when_holding
         case: 正常
         summary: まだ入力中なら読み直さない
@@ -165,7 +166,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/stores/refresh-hold-store.ts
     usecase: SPAを開く
-    summary: 帯を出した後、`anchor` の要素の画面の上の位置が保留を始めたときと同じになるよう、要素をスクロールする祖先を差の分だけ送る
+    summary: 帯を出した後と消した後、`anchor` の要素の画面の上の位置が帯を出す・消す直前と同じになるよう、要素をスクロールする祖先を差の分だけ送る
     returns:
       type: void
       description: '-'
@@ -182,6 +183,12 @@ functions:
         condition: '`anchor.top` 100、今の top 130 の要素をスクロールする祖先の中に置く'
         mock: '`getBoundingClientRect`（`vi.spyOn`）'
         expected: 祖先の `scrollTop` が 30 増え、`anchor` が null
+      - name: test_restore_anchor_when_released
+        case: 正常
+        summary: 帯を消して上へずれた分だけ戻す
+        condition: '`anchor.top` 130、帯を消した後の今の top 100 の要素をスクロールする祖先の中に置く'
+        mock: '`getBoundingClientRect`（`vi.spyOn`）'
+        expected: 祖先の `scrollTop` が 30 減り、`anchor` が null
   - name: useStale
     title: 保留しているか
     kind: フック

@@ -6,7 +6,7 @@ components:
     title: プレビューの外枠
     kind: コンポーネント
     usecase: SPAを開く
-    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を読み直したら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。トップバーの `stale` に反映の保留（`useStale`）を渡し、保留が立って描いた後に入力欄の位置を戻す（`restoreAnchor`）。記録を読み直しても、開いている入力欄を作り直さず、入力中の値とカーソルの位置を書き換えない。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
+    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を読み直したら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。トップバーの `stale` に反映の保留（`useStale`）を渡し、保留が立って描いた後と、保留が下りて描いた後に、入力欄の位置を戻す（`restoreAnchor`）。記録を読み直しても、開いている入力欄を作り直さず、入力中の値とカーソルの位置を書き換えない。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
     refs:
       - IF-489-70#
     unit_tests:
