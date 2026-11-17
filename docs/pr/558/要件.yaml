@@ -13,8 +13,8 @@ docs:
     updated_at: '2026-11-17T18:00:40.814267+00:00'
 scope_out:
   - item: シナリオの `test_file` とスキーマ `schemas/scenario.schema.yaml` の `test_file` の説明
-    reason: D-311 で、作り直すときの対応の印として残すと決めた。スキーマは `^tests/.+` の形だけを見て、ファイルの実在を点検しない
-    plan: none
+    reason: D-311 で、作り直すときの対応の印として残すと決めた。スキーマは `^tests/.+` の形だけを見る。AI Monitor の設計書の検証（`design_docs validate`）は、削除後のシナリオの `test_file` に `対応テストファイルがありません` を出す（51 件）。`write_docs` の書き込みとマージの「設計書の検証」は止めない。E2E を開発の間は作らないプロジェクトでの検証の扱いは shuhei1101/ai-monitor#3403 が持つ
+    plan: shuhei1101/ai-monitor#3403
   - item: 外部ライブラリ『pytest-playwright』（LIB-489-17）と Playwright の依存
     reason: 結合テスト（`tests/integration/`）が使い続ける
     plan: none
