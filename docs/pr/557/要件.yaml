@@ -32,7 +32,9 @@ docs:
   - page: docs/guide/プレビューを見る.md
     new: false
     change: 入力欄にカーソルがある間と録音中は記録の更新を画面に反映せず「更新があります」を出し、離れた・録音が終わったときにまとめて反映することを書き足す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T18:24:18.146592+00:00'
 scope_out:
   - item: サーバーへ接続し直して最新の記録を読み込み直す更新のボタン
     reason: 要望に含まれない（入力中に溜めた更新を自動で反映する扱いだけを入れる）
