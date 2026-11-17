@@ -21,6 +21,7 @@ from commands import (
     switch_adopted,
 )
 from errors import (
+    ConcurrentWriteError,
     EditConflictError,
     EditInvalidError,
     EditNotFoundError,
@@ -28,7 +29,10 @@ from errors import (
     ItemNotFoundError,
     MindmapError,
 )
+from change_detection import accept_written
 from history import (
+    EXTERNAL_SUMMARY,
+    load_item_history,
     RemovedItem,
     advance_seq,
     commit_pending,
@@ -36,6 +40,7 @@ from history import (
     note_removed,
     removed_items,
 )
+from ids import reserve_ids
 from kinds import KINDS, SETTINGS_FILE, Kind, records_root
 from settings_update import (
     EDITABLE_KEYS,
@@ -53,7 +58,6 @@ from store import (
     kind_required_keys,
     load_key_validator,
     load_workspace,
-    next_id,
     now_utc,
     read_body,
     remove_files,
@@ -327,7 +331,18 @@ def delete_edit(root: Path, edit_id: str) -> dict[str, Any]:
 
 
 def save_edits(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
-    """保存待ちの編集を全て確かめてメモリの上で当て、まとまりにして 1 回で書く。1 件でも書き込めなければ何も書かない。"""
+    """保存待ちの編集を全て確かめてメモリの上で当て、まとまりにして 1 回で書く。1 件でも書き込めなければ何も書かない。
+
+    ほかが間に種類の YAML を書いていたら、読み直して 1 回だけ当て直す（2 回目も同じなら ConcurrentWriteError）。
+    """
+    try:
+        return _save_edits_once(root, now)
+    except ConcurrentWriteError:
+        return _save_edits_once(root, now)
+
+
+def _save_edits_once(root: Path, now: NowFn) -> dict[str, Any]:
+    """読んで保存待ちの編集を当て、まとまりにして 1 回で書く。"""
     workspace = load_workspace(root)
     edit_file = load_edits(root)
     if not edit_file.items:
@@ -338,13 +353,21 @@ def save_edits(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
         edit for edit in edit_file.items if edit.op == "item-remove" or edit.target not in removing
     ]
     blocked = _find_blocked(workspace, live)
-    # まだまとめていない AI の変更は、先に別のまとまりにする
-    record, _ = commit_pending(load_changes(root), AI_PENDING_SUMMARY, now())
+    # まだまとめていない AI か外部の変更は、先にその書いた元のまとまりにする
+    loaded = load_changes(root)
+    pending_by = loaded["pending"].get("by", "ai")
+    record, _ = commit_pending(
+        loaded,
+        EXTERNAL_SUMMARY if pending_by == "external" else AI_PENDING_SUMMARY,
+        now(),
+        by=pending_by,
+    )
     staged = Staged(
         workspace=workspace,
         items=workspace.items,
         touched=frozenset(),
         bodies={},
+        history=load_item_history(root),
         changes=record,
     )
     blocked_ids = {entry.id for entry in blocked}
@@ -364,7 +387,7 @@ def save_edits(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
         )
     # 利用者の変更を 1 つのまとまりにする
     at = now()
-    record, change_set = commit_pending(staged.changes, USER_EDIT_SUMMARY, at)
+    record, change_set = commit_pending(staged.changes, USER_EDIT_SUMMARY, at, by="user")
     settings_written = settings_stage is not None and (
         settings_stage.settings != workspace.settings
     )
@@ -373,17 +396,23 @@ def save_edits(root: Path, now: NowFn = now_utc) -> dict[str, Any]:
         touched.update(
             kind for kind in KINDS if settings_stage.items[kind] != workspace.items[kind]
         )
-    save_batch(
+    history = dict(staged.history)
+    # 設定の付け替えで更新日時を変えた行も書く
+    if settings_stage is not None:
+        history = {**settings_stage.history, **history}
+    written = save_batch(
         workspace,
         BatchChange(
             items={kind: staged.items[kind] for kind in KINDS if kind in touched},
             bodies=list(staged.bodies.values()),
+            history=history,
             changes=dict(record),
             removed_bodies=list(staged.removed_bodies),
             settings=settings_stage.settings if settings_written and settings_stage else None,
             edits=_edit_dict(EditFile(seq=edit_file.seq, new_seq=edit_file.new_seq, items=[])),
         ),
     )
+    accept_written(workspace.root, written)
     return {
         "set": change_set["id"] if change_set is not None else None,
         "at": at,
@@ -608,16 +637,18 @@ def _current_value(workspace: Workspace, edit: PendingEdit) -> Any:
 
 
 def _base_of(workspace: Workspace, op: str, target: str) -> str | None:
-    """項目への編集のとき、その項目の今の `updated` を返す（`item-add`・`setting` は None）。"""
+    """項目への編集のとき、`history.yaml` のその項目の今の `updated` を返す（`item-add`・`setting` は None）。"""
     if op in ("item-add", "setting"):
         return None
-    updated = find_item(workspace, target).item.get("updated")
+    find_item(workspace, target)
+    updated = load_item_history(workspace.root).get(target, {}).get("updated")
     return updated if isinstance(updated, str) else None
 
 
 def _find_blocked(workspace: Workspace, edits: list[PendingEdit]) -> list[BlockedEdit]:
     """当てる前に分かる、溜めた後の書き換え（`changed`）と項目の消失（`missing`）の編集を溜めた順に返す。"""
     blocked: list[BlockedEdit] = []
+    rows = load_item_history(workspace.root)
     for edit in edits:
         if edit.op == "item-add":
             continue
@@ -633,14 +664,14 @@ def _find_blocked(workspace: Workspace, edits: list[PendingEdit]) -> list[Blocke
                 )
             continue
         try:
-            item = find_item(workspace, edit.target).item
+            find_item(workspace, edit.target)
         except ItemNotFoundError:
             blocked.append(
                 BlockedEdit(id=edit.id, reason="missing", detail=f"項目がありません: {edit.target}")
             )
             continue
         # 溜めた時点の更新日時と違う
-        if edit.base is not None and item.get("updated") != edit.base:
+        if edit.base is not None and rows.get(edit.target, {}).get("updated") != edit.base:
             blocked.append(
                 BlockedEdit(
                     id=edit.id,
@@ -680,7 +711,12 @@ def _apply_edits(
         item = _resolve_temp_refs(_body_input(dict(edit.value)), mapping)
         try:
             staged, _ = stage_add(
-                staged, KIND_BY_STEM[str(edit.key)], item, now, editor=USER_EDITOR
+                staged,
+                KIND_BY_STEM[str(edit.key)],
+                item,
+                now,
+                editor=USER_EDITOR,
+                item_id=mapping[edit.target],
             )
         except MindmapError as error:
             invalid.append(_invalid(edit, error))
@@ -798,17 +834,17 @@ def _adopt(item: dict[str, Any], key: str | None) -> dict[str, Any]:
 
 
 def _predict_ids(staged: Staged, adds: list[PendingEdit]) -> dict[str, str]:
-    """追加する項目に振られる ID を、仮の ID の順に求める（参照の置き換えに先に使う）。"""
-    workspace = replace(staged.workspace, items=staged.items)
+    """追加する項目の ID を、種類ごとに仮の ID の順で予約から振る（参照の置き換えに先に使う）。"""
     taken = [entry["id"] for entry in removed_items(staged.changes)]
-    next_numbers: dict[Kind, int] = {}
-    mapping: dict[str, str] = {}
+    by_kind: dict[Kind, list[PendingEdit]] = {}
     for edit in adds:
-        kind = KIND_BY_STEM[str(edit.key)]
-        if kind not in next_numbers:
-            next_numbers[kind] = int(next_id(workspace, kind, taken=taken).split("-", 1)[1])
-        mapping[edit.target] = f"{KINDS[kind].prefix}-{next_numbers[kind]}"
-        next_numbers[kind] += 1
+        by_kind.setdefault(KIND_BY_STEM[str(edit.key)], []).append(edit)
+    mapping: dict[str, str] = {}
+    for kind, group in by_kind.items():
+        ids = reserve_ids(
+            staged.workspace.root, kind, staged.items[kind], taken, count=len(group)
+        )
+        mapping.update({edit.target: item_id for edit, item_id in zip(group, ids, strict=True)})
     return mapping
 
 
@@ -818,10 +854,17 @@ def _resolve_temp_refs(item: dict[str, Any], mapping: dict[str, str]) -> dict[st
     for key in REF_KEYS:
         value = resolved.get(key)
         if isinstance(value, list):
-            resolved[key] = [mapping.get(entry, entry) for entry in value]
-        elif isinstance(value, str):
-            resolved[key] = mapping.get(value, value)
+            resolved[key] = [_resolve_entry(entry, mapping) for entry in value]
     return resolved
+
+
+def _resolve_entry(entry: Any, mapping: dict[str, str]) -> Any:
+    """`related` の要素は `to`、`sources` の要素はそのまま、仮の ID を振った ID に置き換える。"""
+    if isinstance(entry, dict) and isinstance(entry.get("to"), str):
+        return {**entry, "to": mapping.get(entry["to"], entry["to"])}
+    if isinstance(entry, str):
+        return mapping.get(entry, entry)
+    return entry
 
 
 def _body_input(item: dict[str, Any]) -> dict[str, Any]:
@@ -852,7 +895,10 @@ def _missing_refs(
         for name, entry in values.items():
             if name not in REF_KEYS:
                 continue
-            ids = entry if isinstance(entry, list) else [entry]
+            ids = [
+                ref.get("to") if isinstance(ref, dict) else ref
+                for ref in (entry if isinstance(entry, list) else [entry])
+            ]
             missing = [ref for ref in ids if isinstance(ref, str) and ref not in existing]
             if missing:
                 blocked.append(
@@ -906,7 +952,7 @@ def _remove_staged(staged: Staged, item_id: str) -> Staged:
         "kind": ref.kind,
         "title": ref.item["title"],
         "seq": seq,
-        "added_seq": ref.item.get("added_seq", 0),
+        "added_seq": staged.history.get(item_id, {}).get("added_seq", 0),
     }
     record = note_removed(record, removed)
     rows = [row for index, row in enumerate(staged.items[ref.kind]) if index != ref.index]
@@ -919,6 +965,7 @@ def _remove_staged(staged: Staged, item_id: str) -> Staged:
         staged,
         items={**staged.items, ref.kind: rows},
         touched=staged.touched | {ref.kind},
+        history={key: row for key, row in staged.history.items() if key != item_id},
         changes=record,
         removed_bodies=removed_bodies,
     )

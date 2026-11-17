@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import yaml
 from playwright.sync_api import Page
 from preview_fit_helpers import assert_fits_smallest, set_smallest
 from preview_drawer_helpers import ALL_DECISION_STATUSES_HASH
 from preview_fixture_types import OpenPreview, WriteReviewPreview
 from preview_history_helpers import preselect_diff
 from preview_removed_helpers import BAND, REMOVED_IN_V2_BY_TAB, assert_removed_band
-from workspace_fixtures import CallTool
+from workspace_fixtures import RECORD_DIR, CallTool
+from record_write_helpers import write_tool
 
 # 変更履歴のモーダルと、時点の行
 DIALOG = "dialog.hist"
@@ -206,8 +210,7 @@ def test_selection_kept_when_reloaded_and_rewritten(
     # 読み込み直すと絞り込みは開いたときの既定に戻るので、決定済みの D-1 は出ず、印は D-2 だけに付く
     assert page.locator("table.grid .df-mark").count() == 1
     # 実行（開いたまま、まとまり V-2 に入る項目をまとめる前に別の項目を足す）
-    result = call_tool(
-        "add",
+    result = write_tool(call_tool, "add",
         workspace=str(root),
         kind="decision",
         item={
@@ -234,3 +237,27 @@ def test_fit_smallest(write_history_preview: WriteReviewPreview, open_preview: O
     _open_dialog(page)
     # 検証
     assert_fits_smallest(page, (DIALOG, ROW), scope=DIALOG)
+
+def _mark_external(root: Path) -> None:
+    """まとまり V-2 を、外部の変更のまとまり（`by: external`・説明「ほかのセッションの書き込み」）にする。"""
+    path = root / RECORD_DIR / "changes.yaml"
+    changes = yaml.safe_load(path.read_text(encoding="utf-8"))
+    for change_set in changes["sets"]:
+        if change_set["id"] == "V-2":
+            change_set.update(by="external", summary="ほかのセッションの書き込み")
+    path.write_text(yaml.safe_dump(changes, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def test_list_when_external(write_history_preview: WriteReviewPreview, open_preview: OpenPreview) -> None:
+    """外部の変更のまとまりは、名前「ほかのセッションの書き込み」の横に「外部の変更」の札を付ける（正常系）。"""
+    # 準備
+    url, root = write_history_preview()
+    _mark_external(root)
+    page = open_preview(url, "#tab=decisions&view=table")
+    # 実行
+    _open_dialog(page)
+    # 検証
+    external = page.locator(f"{ROW}[data-sel='V-2']")
+    assert external.locator(".hist-tag").inner_text() == "外部の変更"
+    assert " ".join(external.locator(".hist-name").inner_text().split()) == "ほかのセッションの書き込み 外部の変更"
+    assert page.locator(f"{DIALOG} .hist-tag").count() == 1

@@ -20,6 +20,10 @@ items:
     summary: "差分の表示で比べる時点を選ぶモーダル"
   - page: CMP-489-26.tsx.yaml
     summary: "React のプレビューの変更履歴。今の変更履歴と同じ引数・イベント・状態を props で持つ"
+  - page: CMP-540-1.ts.yaml
+    summary: "トップバーの下に出す、同じ ID の項目が 2 件あることの通知の帯（今の画面）"
+  - page: CMP-540-2.tsx.yaml
+    summary: "トップバーの下に出す、同じ ID の項目が 2 件あることの通知の帯（React の画面）"
   - page: CMP-489-7.ts.yaml
     summary: "詳細パネル・詳細の全画面の下端と、コメントの一覧の新しいスレッドの入力に置く、コメントをレビュー中に溜める入力欄とボタン"
   - page: CMP-489-8.tsx.yaml

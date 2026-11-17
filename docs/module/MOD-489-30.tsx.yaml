@@ -1,12 +1,12 @@
 id: MOD-489-30
 title: プレビュー / related-list
-lead: 前提・後続・関連タスク・経緯・関連・参照元を並べる。
+lead: 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照元を、種類つきの `related` から並べる。
 components:
   - name: RelatedList
     title: 関係する項目
     kind: コンポーネント
     usecase: 項目の詳細を読む
-    summary: 前提・後続・関連タスク・経緯・関連・参照元を並べる
+    summary: 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照元を、`related` の種類ごとの見出しに分けて並べる（記録の `relatedItems`）
     container: frontend/src/features/detail/detail-panel/components/related-list.tsx
 notes:
   単体テスト: 同じフォルダの `related-list.test.tsx` に置く（knowledge の規約『フォルダ構成』）

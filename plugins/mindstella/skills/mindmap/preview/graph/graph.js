@@ -2,13 +2,18 @@
 // ネットワーク。全種類の項目を、関連（依存・関連・根拠・進めるタスク）でつないで 3D で描く。ライブラリを使わず、星をキャンバスへ透視で描く。見た目ごとの描き方は looks.ts、ロックの判定は core/lock.ts が持つ。
 var MindmapPreview;
 (function (MindmapPreview) {
-    /** 項目が別の項目を指すキー → 線の種類 */
-    const LINK_KEYS = [
+    /** 線にする関連の種類 → 線の種類（派生元は線にしない） */
+    const RELATION_LINKS = [
         ["depends_on", "depends"],
         ["for", "for"],
-        ["sources", "source"],
-        ["related", "related"],
+        ["see_also", "related"],
     ];
+    /** 項目が別の項目を指す先と線の種類（依存・進めるタスク・根拠・関連の順） */
+    function linkTargets(item) {
+        const byType = (type, link) => MindmapPreview.refsOf(item, type).map((target) => [target, link]);
+        const [depends, forLinks, related] = RELATION_LINKS.map(([type, link]) => byType(type, link));
+        return [...(depends ?? []), ...(forLinks ?? []), ...(item.sources ?? []).map((target) => [target, "source"]), ...(related ?? [])];
+    }
     /** 渡した ID の項目を玉に、関連を線にして返す（両端のどちらかが渡していない項目か記録に無い線は含めない） */
     function buildGraph({ index, shownIds, }) {
         const nodes = [];
@@ -22,15 +27,13 @@ var MindmapPreview;
             const item = index.byId.get(source)?.item;
             if (item === undefined)
                 continue;
-            for (const [key, type] of LINK_KEYS) {
-                for (const target of item[key] ?? []) {
-                    const identity = `${type}|${source}|${target}`;
-                    // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
-                    if (source === target || !shown.has(target) || seen.has(identity))
-                        continue;
-                    seen.add(identity);
-                    links.push({ source, target, type });
-                }
+            for (const [target, type] of linkTargets(item)) {
+                const identity = `${type}|${source}|${target}`;
+                // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
+                if (source === target || !shown.has(target) || seen.has(identity))
+                    continue;
+                seen.add(identity);
+                links.push({ source, target, type });
             }
         }
         return { nodes, links };

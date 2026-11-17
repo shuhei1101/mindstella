@@ -2,7 +2,7 @@
 name: session
 description: セットアップの後に、ワークスペースの話し合いを進めるとき。発言の取り込み・ヒアリング・リサーチ・方針転換・範囲の見直し・プレビュー・ゴール判定を場面に応じて回し、ゴールまで進める
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstella__add, mcp__plugin_mindstella_mindstella__update, mcp__plugin_mindstella_mindstella__remove, mcp__plugin_mindstella_mindstella__update_settings, mcp__plugin_mindstella_mindstella__adopt, mcp__plugin_mindstella_mindstella__edit_option, mcp__plugin_mindstella_mindstella__batch, mcp__plugin_mindstella_mindstella__changes_since_read, mcp__plugin_mindstella_mindstella__commit, mcp__plugin_mindstella_mindstella__pending, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__next, mcp__plugin_mindstella_mindstella__impact, mcp__plugin_mindstella_mindstella__find, mcp__plugin_mindstella_mindstella__show, mcp__plugin_mindstella_mindstella__attrs, mcp__plugin_mindstella_mindstella__tags, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__goal, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__clear_release, mcp__plugin_mindstella_mindstella__write_release, mcp__plugin_mindstella_mindstella__export, mcp__plugin_mindstella_mindstella__preview_url, mcp__plugin_mindstella_mindstella__readme, mcp__plugin_mindstella_mindstella__threads, mcp__plugin_mindstella_mindstella__thread, mcp__plugin_mindstella_mindstella__new_thread, mcp__plugin_mindstella_mindstella__reply, mcp__plugin_mindstella_mindstella__set_thread_status, mcp__plugin_mindstella_mindstella__update_thread
+allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstella__next_id, mcp__plugin_mindstella_mindstella__update_settings, mcp__plugin_mindstella_mindstella__adopt, mcp__plugin_mindstella_mindstella__edit_option, mcp__plugin_mindstella_mindstella__changes_since_read, mcp__plugin_mindstella_mindstella__commit, mcp__plugin_mindstella_mindstella__pending, mcp__plugin_mindstella_mindstella__status, mcp__plugin_mindstella_mindstella__next, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__goal, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__clear_release, mcp__plugin_mindstella_mindstella__write_release, mcp__plugin_mindstella_mindstella__export, mcp__plugin_mindstella_mindstella__preview_url, mcp__plugin_mindstella_mindstella__readme, mcp__plugin_mindstella_mindstella__threads, mcp__plugin_mindstella_mindstella__thread, mcp__plugin_mindstella_mindstella__new_thread, mcp__plugin_mindstella_mindstella__reply, mcp__plugin_mindstella_mindstella__set_thread_status, mcp__plugin_mindstella_mindstella__update_thread, mcp__plugin_project-index_project-index__search_docs, mcp__plugin_project-index_project-index__write_docs, mcp__plugin_project-index_project-index__delete_docs, mcp__plugin_project-index_project-index__trace_related
 ---
 
 # session
@@ -21,7 +21,7 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstel
 
 | ステップ | 手順 | 実行する場面 |
 | --- | --- | --- |
-| 準備 | mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__add` など）があるかを見る。無ければ、ワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py` を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`readme` を呼んでワークスペースの直下の README を書き直す（`written` が偽でも利用者には示さずに続ける。ツールのエラーは本文を利用者に短く示して準備を続ける）。続けて `playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `changes_since_read` を呼ぶ。`had_read_point` が偽なら何も示さない。`added`・`changed`・`removed` があれば、前回読んだ後に足された・変わった・消された項目として、ID・タイトル・変わったキーと読んだ時点の値（`before`）を短く示し、話し合いの前提にする。利用者が画面で足した項目（`updated_by` が `user`）と変えた項目（`by` に `user` を含む）は、利用者が画面で変えた分として AI の変更と分けて示す。続けて `threads` を `awaiting: true` で呼ぶ（状態は渡さず、オープンもクローズも拾う）。1 件以上あれば、スレッド 1 件ずつ、`thread` で未読の書き込みを読み、利用者に示す。示すとき、箇所（`loc`）を持つスレッドには本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` のスレッドには項目を指さない旨を添える。続けて取り込みのステップで記録してから、「スレッドの返し方」に沿って返信するかクローズにする。`loc` を持つスレッドはその箇所への意見として、項目を指さないスレッドは発言と同じく対象を振り分けて記録する。0 件ならスレッドの取り込みを飛ばす。取り込みの前に `pending` を呼び、空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する | 話し合いの最初の 1 回 |
+| 準備 | mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__next_id` など）と project-index の MCP のツール（`mcp__plugin_project-index_project-index__search_docs` など）があるかを見る。無ければ、ワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py` を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直すよう案内して止まる。あれば `{ワークスペースのフォルダ}/.mindstella/config.yaml`（無ければ直下の `config.yaml` か `mindmap.yaml`）を Read で読み、`migrate` を `plan: true` で呼ぶ。結果の `relation` が `older` なら何も書き込まず `/mindstella:upgrade {フォルダ}` を案内して止まり、`newer` ならプラグインを更新するよう案内して止まる。`same` のときだけ、`readme` を呼んでワークスペースの直下の README を書き直す（`written` が偽でも利用者には示さずに続ける。ツールのエラーは本文を利用者に短く示して準備を続ける）。続けて `playbooks` に並んだ進め方ガイドをすべて（`${CLAUDE_PLUGIN_ROOT}/skills/mindmap/playbooks/{プレイブック}.md`）Read で読み、続けて `changes_since_read` を呼ぶ。`had_read_point` が偽なら何も示さない。`added`・`changed`・`removed` があれば、前回読んだ後に足された・変わった・消された項目として、ID・タイトル・変わったキーと読んだ時点の値（`before`）を短く示し、話し合いの前提にする。利用者が画面で足した項目（`updated_by` が `user`）と変えた項目（`by` に `user` を含む）は、利用者が画面で変えた分として AI の変更と分けて示す。続けて `threads` を `awaiting: true` で呼ぶ（状態は渡さず、オープンもクローズも拾う）。1 件以上あれば、スレッド 1 件ずつ、`thread` で未読の書き込みを読み、利用者に示す。示すとき、箇所（`loc`）を持つスレッドには本文の行の範囲か値のキーと選んだ文を添え、`target` が `null` のスレッドには項目を指さない旨を添える。続けて取り込みのステップで記録してから、「スレッドの返し方」に沿って返信するかクローズにする。`loc` を持つスレッドはその箇所への意見として、項目を指さないスレッドは発言と同じく対象を振り分けて記録する。0 件ならスレッドの取り込みを飛ばす。取り込みの前に `pending` を呼び、空でなければ、前の話し合いでまとめ忘れた分として説明を付けて `commit` する | 話し合いの最初の 1 回 |
 | スレッドの取り込み | 利用者の発言としては取り込まず、入力された文字列の中身も記録に使わない。`threads` を `awaiting: true` で呼び、一覧にあるスレッドだけを、準備のときと同じく 1 件ずつ取り込みのステップで記録してから、「スレッドの返し方」に沿って返信するかクローズにする。0 件なら何も記録しない | 話し合いの途中に `[mindstella]` で始まる 1 行が入力された |
 | 取り込み | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/取り込み.md` | 利用者が発言した（決め事・問い・やること・保留・中止・図や文書・脱線した質問） |
 | ヒアリング | `${CLAUDE_PLUGIN_ROOT}/skills/session/steps/ヒアリング.md` | 取り込みの後に前提が揃った未決定がある、または利用者が次に決めることを求めた |
@@ -36,8 +36,8 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstel
 記録（検討事項・タスク・調査・資料・用語集・メモ・会話ログ）は、状況が変わるたびに利用者に確かめずに足し、書き換える。
 利用者に確かめるのは、GitHub への起票などワークスペースの外へ書き込むときだけ。
 設定（`.mindstella/config.yaml`）の書き換え・リサーチの起動前の確認・ゴール判定の確定は記録の書き込みに含めず、それぞれのステップの確かめを残す。
-資料・調査を `add` で足すときは、次の条件で `aliases` に書く。タイトルだけでは中身が分からないときは、`description` に 1 文で「何について書いてあるか」と「どんなときに読むか」を書く。
-呼び名が増えた・変わったときは `update` で直す。タグ（`tags`）には入れない。
+資料・調査を `write_docs` で足すときは、次の条件で `aliases` に書く。タイトルだけでは中身が分からないときは、`description` に 1 文で「何について書いてあるか」と「どんなときに読むか」を書く。
+呼び名が増えた・変わったときは `write_docs` で直す。タグ（`tags`）には入れない。
 
 | `aliases` に | 条件 | 例 |
 | --- | --- | --- |
@@ -69,28 +69,26 @@ allowed-tools: Read, Agent, WebSearch, WebFetch, mcp__plugin_mindstella_mindstel
 
 ## ツール
 
-どれも mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
+記録（種類ごとの YAML の項目と `docs/` の本文）の検索・書き込み・削除・関連のたどりは project-index の MCP のツール（`mcp__plugin_project-index_project-index__{ツール}`）で、`source` にワークスペースの ID（`config.yaml` の `id`）を渡す。
+それ以外は mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__{ツール}`）で、`workspace` にワークスペースのフォルダを渡す。
+項目を足す前に `next_id` で ID を取り、`write_docs` の `create` の `id` に渡す。
 スクリプトを Bash で起動しない。
-ツールが書き換えた記録は、サーバーが開いている画面へ知らせるため、書いた後に書き出しを流さない。
+書き換えた記録は、サーバーが変更履歴に残して開いている画面へ知らせるため、書いた後に書き出しを流さない。
 
 | ツール | 使う引数 |
 | --- | --- |
-| `add` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`item`（項目の JSON のオブジェクト。`id`・`created`・`updated`・`updated_by`・`body` は渡さない。本文はどの種類も `body_markdown`。資料は `body_html` で HTML の本文も書ける） |
-| `update` | `workspace`・`id`・`item`（置き換えるキーのオブジェクト。消すキーは `null`） |
-| `remove` | `workspace`・`id`（消す項目。ほかの記録が指しているとエラーで、指している記録の行が返る） |
+| `next_id` | `workspace`・`kind`（`decision`・`task`・`research`・`doc`・`term`・`note`・`log`）・`count`（任意。続けて取る数。既定 1） |
+| `search_docs`（project-index） | `source`・`filter`（`kind`・`status`・`tags` など。種類は `kind`、本文の語は `@matches` か `snippets`）・`view`（`summary`・`full`）・`group_by`（`tags` で使われているタグと件数）・`cursor`（続き）。`id` で絞れば 1 件の中身 |
+| `write_docs`（project-index） | `source`・`operations`（`create` は `kind`・`id`（`next_id` の ID）・`data`（項目のキー）、`update` は `id`・`expected_version`・`set`・`text_edits`）。1 回で複数の操作を当てる。本文のファイル（Markdown は `docs/{ID}.md`、資料の HTML は `docs/{ID}.html`）は、project-index の本文の書き込み（`create` の本文・`update` の `set`・`text_edits`）で書く。`created`・`updated`・`updated_by` は渡さない（変更の検知が付ける） |
+| `delete_docs`（project-index） | `source`・`targets`（`id`・`expected_version`）。ほかの記録の `related` が指していると断る |
+| `trace_related`（project-index） | `source`・`from_ids`・`direction`（`in` で参照元）・`depth`。関連は `related` の `{to, type}`（`depends_on`・`parent`・`for`・`see_also`） |
 | `update_settings` | `workspace`・`settings`（置き換える設定のキーのオブジェクト。`summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit` だけ。`description`・`goal`・`links`・`history_limit` は `null` で消す）・`phase_map`・`target_map`・`category_map`（任意。`phases`・`targets`・`categories` を変えるときだけ、新しい設定に無い古い名前 → 新しい名前の対応） |
 | `adopt` | `workspace`・`id`（検討事項）・`key`（採用する案の記号）。状態が `決定済み` になる |
 | `edit_option` | `workspace`・`id`（検討事項）・`action`（`add`・`update`・`remove`）・`key`（案の記号）・`option`（`add`・`update` の案の中身のオブジェクト。`content`・`pros`・`cons`・`note`・`reason`・`recommended`。`recommended: true` で推奨の印を立てる（ほかの案の印は外れる）。`update` で消すキーは `null`。`remove` では渡さない） |
-| `batch` | `workspace`・`operations`（操作の配列。要素は `op`（`add`・`update`・`show`）と、`add` は `kind`・`item`、`update` は `id`・`item`、`show` は `id`。同じ呼び出しで先に足した項目は `$番号`（`add` の番号、1 始まり）で指す） |
 | `changes_since_read` | `workspace` |
 | `commit` | `workspace`・`summary`（このまとまりで何をしたかの一言の説明。1〜200 文字） |
 | `pending` | `workspace` |
 | `next` | `workspace`・`limit`（任意） |
-| `impact` | `workspace`・`id` |
-| `find` | `workspace`・`text`・`kind`・`status`・`tags`（全てを持つ。AND）・`any_tags`（いずれかを持つ。OR）・`target`・`category`・`phase`・`attr`（`名前=値` の配列）・`limit`（1 ページの件数。既定 20）・`cursor`（前のページの `next_cursor`）・`response_format`（`concise`・`detailed`）。条件は全て任意。タグは NFKC と小文字にそろえて比べる |
-| `show` | `workspace`・`id` |
-| `attrs` | `workspace` |
-| `tags` | `workspace` |
 | `migrate` | `workspace`・`plan: true` |
 | `status` | `workspace` |
 | `check` | `workspace` |

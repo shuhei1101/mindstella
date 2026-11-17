@@ -96,7 +96,7 @@ export const ItemAddPanel = ({ kind, target, index, edits }: ItemAddPanelProps) 
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <DetailEditor kind={kind} item={item} settings={index.data.settings} marks={{}} blocked={{}} removing={false} removedOptions={[]} referrers={[]} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={typeof value["body"] === "string" ? value["body"] : ""} onChange={onChange} onRemove={closeAdd} onCancelRemove={closeAdd} />
+        <DetailEditor index={index} kind={kind} item={item} settings={index.data.settings} marks={{}} blocked={{}} removing={false} removedOptions={[]} referrers={[]} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={typeof value["body"] === "string" ? value["body"] : ""} onChange={onChange} onRemove={closeAdd} onCancelRemove={closeAdd} />
         {failure === null ? null : (
           <p role="alert" className="mx-3 flex items-center gap-1 text-small text-destructive">
             <Icon name="alert" className="size-4" />

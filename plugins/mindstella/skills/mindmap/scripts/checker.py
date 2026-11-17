@@ -8,23 +8,41 @@ from typing import Any
 
 from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
-from history import CHANGES_FILE, Changes, apply_body_diff, load_changes, removed_items
+from history import (
+    CHANGES_FILE,
+    Changes,
+    apply_body_diff,
+    load_changes,
+    load_item_history,
+    removed_items,
+)
 from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
-from store import Problem, Workspace, as_ids, find_item, read_body, validate_workspace
+from store import (
+    Problem,
+    Workspace,
+    as_ids,
+    find_item,
+    read_body,
+    related_ids,
+    validate_workspace,
+)
 from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targets
 
 # 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
 SETTINGS_KIND = "settings"
 DELIVERABLE_DOC_KEY = "goal.deliverables[].doc"
 
-# （参照する側の種類, キー）→ 指してよい種類。表に無い組はそのキーを持たない
+# 関連の種類を表すキーの頭（`related.depends_on` など）
+RELATED_PREFIX = "related."
+
+# （参照する側の種類, `related` の種類かキー）→ 指してよい種類。表に無い組は持たない
 REF_RULES: dict[tuple[str, str], frozenset[str]] = {
-    ("decision", "depends_on"): frozenset({"decision"}),
-    ("decision", "parent"): frozenset({"decision"}),
+    ("decision", "related.depends_on"): frozenset({"decision"}),
+    ("decision", "related.parent"): frozenset({"decision"}),
     ("decision", "sources"): frozenset({"log"}),
-    ("task", "depends_on"): frozenset({"task"}),
-    ("task", "for"): frozenset({"decision"}),
-    **{(kind, "related"): frozenset(KINDS) for kind in KINDS},
+    ("task", "related.depends_on"): frozenset({"task"}),
+    ("task", "related.for"): frozenset({"decision"}),
+    **{(kind, "related.see_also"): frozenset(KINDS) for kind in KINDS},
     (SETTINGS_KIND, DELIVERABLE_DOC_KEY): frozenset({"doc"}),
 }
 
@@ -56,7 +74,7 @@ def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
             if item.get("id") == item_id:
                 continue
             for rule_kind, key in REF_RULES:
-                if rule_kind == kind and item_id in as_ids(item.get(key)):
+                if rule_kind == kind and item_id in _refs_of(item, key):
                     lines.append(f"{spec.file}: {item.get('id')}: {key}")
     # 設定の納品物の資料が指している
     for index, deliverable in enumerate(_deliverables(workspace.settings)):
@@ -120,21 +138,43 @@ def _check_refs(workspace: Workspace) -> list[Problem]:
     problems: list[Problem] = []
     for kind, spec in KINDS.items():
         for item in workspace.items[kind]:
-            for (rule_kind, key), allowed in REF_RULES.items():
-                if rule_kind != kind:
+            related = item.get("related")
+            # 関連は要素ごとに、種類の組で指してよい種類を引く
+            for index, entry in enumerate(related if isinstance(related, list) else []):
+                if not isinstance(entry, dict) or not isinstance(entry.get("to"), str):
                     continue
-                for ref in as_ids(item.get(key)):
-                    detail = _ref_error(ref, allowed, existing)
-                    if detail is not None:
-                        problems.append(
-                            Problem(
-                                kind="broken_ref",
-                                file=spec.file,
-                                id=item.get("id"),
-                                key=key,
-                                detail=detail,
-                            )
+                allowed = REF_RULES.get((kind, f"{RELATED_PREFIX}{entry.get('type')}"))
+                # その種類が持てない関連の種類
+                if allowed is None:
+                    detail: str | None = f"使えない関連の種類: {entry.get('type')}"
+                else:
+                    detail = _ref_error(entry["to"], allowed, existing)
+                if detail is not None:
+                    problems.append(
+                        Problem(
+                            kind="broken_ref",
+                            file=spec.file,
+                            id=item.get("id"),
+                            key=f"related[{index}].to",
+                            detail=detail,
                         )
+                    )
+            # 出典（sources）は種類の組でそのまま引く
+            sources_allowed = REF_RULES.get((kind, "sources"))
+            if sources_allowed is None:
+                continue
+            for ref in as_ids(item.get("sources")):
+                detail = _ref_error(ref, sources_allowed, existing)
+                if detail is not None:
+                    problems.append(
+                        Problem(
+                            kind="broken_ref",
+                            file=spec.file,
+                            id=item.get("id"),
+                            key="sources",
+                            detail=detail,
+                        )
+                    )
     allowed_docs = REF_RULES[(SETTINGS_KIND, DELIVERABLE_DOC_KEY)]
     for index, deliverable in enumerate(_deliverables(workspace.settings)):
         for ref in as_ids(deliverable.get("doc")):
@@ -161,6 +201,10 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
             body = item.get("body")
             if not isinstance(body, str):
                 continue
+            # 前の版の形（docs/ の無いファイル名）はスキーマの問題として拾うので、本文の有無は見ない
+            if "/" not in body:
+                referenced.add(f"{BODY_DIR}/{body}")
+                continue
             referenced.add(body)
             # body が指す本文のファイルが無い
             if read_body(workspace, body) is None:
@@ -170,14 +214,14 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
                         file=spec.file,
                         id=item.get("id"),
                         key=f"items[{index}].body",
-                        detail=f"本文がありません: {BODY_DIR}/{body}",
+                        detail=f"本文がありません: {body}",
                     )
                 )
     body_dir = records_root(workspace.root) / BODY_DIR
     # どの項目の body にも無い本文は、どこからも指されていない
     paths = [*body_dir.glob("*.md"), *body_dir.glob("*.html")] if body_dir.is_dir() else []
     for path in sorted(paths):
-        if path.name not in referenced:
+        if f"{BODY_DIR}/{path.name}" not in referenced:
             problems.append(
                 Problem(
                     kind="orphan_body",
@@ -188,6 +232,13 @@ def _check_bodies(workspace: Workspace) -> list[Problem]:
                 )
             )
     return problems
+
+
+def _refs_of(item: dict[str, Any], key: str) -> list[str]:
+    """`related.{種類}` はその種類の関連の相手、それ以外はそのキーの ID の並びを返す。"""
+    if key.startswith(RELATED_PREFIX):
+        return related_ids(item, key.removeprefix(RELATED_PREFIX))
+    return as_ids(item.get(key))
 
 
 def _ref_error(ref: str, allowed: frozenset[str], existing: dict[str, set[Any]]) -> str | None:
@@ -373,11 +424,12 @@ def _missing_change_refs(workspace: Workspace, changes: Changes) -> list[Problem
 def _stale_histories(workspace: Workspace) -> list[Problem]:
     """本文を持つ項目の変更履歴を今の本文へ新しい順に当て、当たらなくなる回を `stale_history` にする。"""
     problems: list[Problem] = []
+    rows = load_item_history(workspace.root)
     for kind, spec in KINDS.items():
         for item in workspace.items[kind]:
             name = item.get("body")
             text = read_body(workspace, name) if isinstance(name, str) else None
-            history = item.get("history")
+            history = rows.get(str(item.get("id")), {}).get("history")
             # 本文か変更履歴が無い項目は確かめるものが無い
             if text is None or not isinstance(history, list):
                 continue

@@ -112,6 +112,8 @@ export type ChangeSet = {
   changed: string[];
   /** 消した項目。何も消していないまとまりは持たない */
   removed?: RemovedItem[];
+  /** まとめた変更の書いた元（`ai`・`user`・`external`）。このキーを入れる前のまとまりは持たない */
+  by?: "ai" | "user" | "external";
 };
 
 /** `changes.yaml` の中身（まとまりと、まだまとめていない変更） */
@@ -128,7 +130,13 @@ export type Tag = {
   main?: true;
 };
 
-/** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る） */
+/** 関連の種類 */
+export type RelationType = "depends_on" | "parent" | "for" | "see_also";
+
+/** 項目の関連の 1 件 */
+export type Relation = { to: string; type: RelationType };
+
+/** 7 種類の項目が持つキーをまとめた型（種類ごとに持つキーだけが入る。作成日時・更新日時・変更履歴は `history.yaml` の行を合わせたもの） */
 export type Item = {
   id: string;
   title: string;
@@ -136,24 +144,21 @@ export type Item = {
   category?: string;
   phase?: string;
   tags?: Tag[];
-  related?: string[];
+  related?: Relation[];
   links?: { title: string; url: string }[];
   created: string;
   updated: string;
-  /** 最後に項目を足した・値を変えた人（`ai` か `user`）。このキーを入れる前に書いた項目は持たない */
-  updated_by?: "ai" | "user";
+  /** 最後に項目を足した・値を変えた人（`ai`・`user`・`external`）。このキーを入れる前に書いた項目は持たない */
+  updated_by?: "ai" | "user" | "external";
   status?: string;
   lead?: string;
   answer?: string;
   options?: Option[];
   weight?: string;
-  parent?: string;
-  depends_on?: string[];
   reason?: string;
   body?: string;
   sources?: string[];
   kind?: string;
-  for?: string[];
   result?: string;
   question?: string;
   conclusion?: string;
@@ -246,19 +251,26 @@ export type RecordIndex = {
   data: MindmapData;
   /** ID → 種類と項目 */
   byId: Map<string, { kind: Kind; item: Item }>;
-  /** ID → その項目を `depends_on`・`for`・`related`・`sources` で指す項目の ID（ID の順） */
+  /** ID → その項目を `related[].to`・`sources` で指す項目の ID（ID の順） */
   referencedBy: Map<string, string[]>;
   /** 着手可能な検討事項の ID（`derived.next` の ID） */
   readyIds: Set<string>;
 };
 
-/** 項目が別の項目を指すキー */
-const REFERENCE_KEYS = ["depends_on", "for", "related", "sources"] as const;
+/** 項目の `related` のうち、種類が同じものの `to` を並べて返す（`related` が無ければ空） */
+export const refsOf = (item: Pick<Item, "related"> | undefined, type: RelationType): string[] =>
+  (item?.related ?? []).filter((relation) => relation.type === type).map((relation) => relation.to);
+
+/** 項目が指す全ての ID（`related[].to` と `sources`） */
+const referencesOf = (item: Item): string[] => [...(item.related ?? []).map((relation) => relation.to), ...(item.sources ?? [])];
 
 /** 項目の `tags` から名前だけを並びの順に取り出す（文字列のタグはそのまま） */
 export const tagNames = (tags: readonly (Tag | string)[] | undefined): string[] => {
   return (tags ?? []).map((tag) => (typeof tag === "string" ? tag : tag.name));
 };
+
+/** ID の頭の文字から種類を返す（当たらなければ null） */
+export const kindOfId = (id: string): Kind | null => KIND_OF_PREFIX[id.slice(0, 1)] ?? null;
 
 /** ID を種類の順 → 連番の順に比べる */
 export const compareIds = (a: string, b: string): number => {
@@ -275,12 +287,10 @@ export const buildIndex = (data: MindmapData): RecordIndex => {
   // 各項目が指す先ごとに、指した側の ID を足す（記録に無い ID もそのまま持つ）
   const referencedBy = new Map<string, string[]>();
   for (const { item } of byId.values()) {
-    for (const key of REFERENCE_KEYS) {
-      for (const target of item[key] ?? []) {
-        const sources = referencedBy.get(target) ?? [];
-        sources.push(item.id);
-        referencedBy.set(target, sources);
-      }
+    for (const target of new Set(referencesOf(item))) {
+      const sources = referencedBy.get(target) ?? [];
+      sources.push(item.id);
+      referencedBy.set(target, sources);
     }
   }
   for (const sources of referencedBy.values()) sources.sort(compareIds);
@@ -296,42 +306,54 @@ export const buildIndex = (data: MindmapData): RecordIndex => {
 export type RelatedItems = {
   prerequisites: string[];
   successors: string[];
+  parents: string[];
+  children: string[];
   tasks: string[];
   logs: string[];
   related: string[];
   referencedBy: string[];
 };
 
-/** 前提・後続・関連タスク・経緯・関連・参照している項目を返す */
+/** 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照している項目を返す */
 export const relatedItems = ({ id, index }: { id: string; index: RecordIndex }): RelatedItems => {
   const entry = index.byId.get(id);
   const item = entry?.item;
   const referrers = index.referencedBy.get(id) ?? [];
-  /** ID の項目が、キーで id を指しているか */
-  const points = (referrer: string, key: "depends_on" | "for" | "related"): boolean =>
-    (index.byId.get(referrer)?.item[key] ?? []).includes(id);
+  /** ID の項目が、その種類の関連で id を指しているか */
+  const points = (referrer: string, type: RelationType): boolean => refsOf(index.byId.get(referrer)?.item, type).includes(id);
   const kindOf = (referrer: string): Kind | undefined => index.byId.get(referrer)?.kind;
 
   const successors = referrers.filter((referrer) => points(referrer, "depends_on"));
-  const tasks = referrers.filter(
-    (referrer) => kindOf(referrer) === "tasks" && points(referrer, "for"),
-  );
-  // 経緯: この項目を更新した会話ログと、この項目が経緯として指す会話ログ
-  const incomingLogs = referrers.filter(
-    (referrer) => kindOf(referrer) === "logs" && points(referrer, "related"),
-  );
+  const children = referrers.filter((referrer) => points(referrer, "parent"));
+  const tasks = referrers.filter((referrer) => kindOf(referrer) === "tasks" && points(referrer, "for"));
+  // 経緯: この項目を種類 see_also で指す会話ログと、この項目が経緯として指す会話ログ
+  const incomingLogs = referrers.filter((referrer) => kindOf(referrer) === "logs" && points(referrer, "see_also"));
   const logs = [...new Set([...incomingLogs, ...(item?.sources ?? [])])].sort(compareIds);
-  const related = item?.related ?? [];
-  const shown = new Set([...successors, ...tasks, ...logs, ...related]);
+  const related = refsOf(item, "see_also");
+  const shown = new Set([...successors, ...children, ...tasks, ...logs, ...related]);
   return {
-    prerequisites: item?.depends_on ?? [],
+    prerequisites: refsOf(item, "depends_on"),
     successors,
+    parents: refsOf(item, "parent"),
+    children,
     tasks,
     logs,
     related,
     referencedBy: referrers.filter((referrer) => !shown.has(referrer)),
   };
 };
+
+/** 関係の入力で、入れた値を記録の項目の ID に当てる関数を返す（当たらない・その種類が指せない項目なら誤り） */
+export const relationValidator =
+  (type: RelationType, kind: Kind, index: RecordIndex) =>
+  (value: string): { error: string } | { value: string } => {
+    const text = value.trim();
+    const found = index.byId.get(text) ?? [...index.byId.values()].find((entry) => entry.item.title === text);
+    // 前提・親は同じ種類、向けた検討事項は検討事項だけを指せる
+    const allowed = found !== undefined && (type === "see_also" || (type === "for" ? found.kind === "decisions" : found.kind === kind));
+    if (found === undefined || !allowed) return { error: `${value} が見つかりません。ID を確認してください。` };
+    return { value: found.item.id };
+  };
 
 /** 全体の検索の段（1 は ID かタイトルが言葉と完全に一致、2 はタイトルが語を全て含む、3 はそれ以外） */
 export type SearchTier = 1 | 2 | 3;

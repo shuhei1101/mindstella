@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
-from .history_helpers import add_item, commit, read_changes
+from .history_helpers import add_item, commit, read_changes, read_history
 from workspace_fixtures import RECORD_DIR
 
 
@@ -62,9 +62,10 @@ def test_normal(
     ]
     assert adopted["status"] == "決定済み"
     assert adopted["answer"] == "案 A に決めた"
-    assert len(adopted["history"]) == 1
-    assert adopted["history"][0]["before"]["options"] == two_options
-    assert "status" not in adopted["history"][0]["before"]
+    history = read_history(root)["D-1"]["history"]
+    assert len(history) == 1
+    assert history[0]["before"]["options"] == two_options
+    assert "status" not in history[0]["before"]
     assert read_changes(root)["pending"]["changed"] == ["D-1"]
 
 
@@ -114,14 +115,15 @@ def test_normal_when_undecided_adopted(
         {**option_b, "adopted": True},
     ]
     assert decided["answer"] == "仮の答え"
-    assert decided["history"][0]["before"] == {
+    history = read_history(root)
+    assert history["D-1"]["history"][0]["before"] == {
         "status": "未決定",
         "options": [option_a, option_b],
     }
     # 要見直しだった D-2: 案 A が採用のまま、変更履歴は状態だけを持つ
     assert reviewed["status"] == "決定済み"
     assert [option.get("adopted") for option in reviewed["options"]] == [True, False]
-    assert reviewed["history"][0]["before"] == {"status": "要見直し"}
+    assert history["D-2"]["history"][0]["before"] == {"status": "要見直し"}
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:

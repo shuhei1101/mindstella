@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { connectEvents } from "@/shared/adapters/events-client";
 import { useConnectionStore } from "@/shared/stores/connection-store";
+import { useDuplicateIdsStore } from "@/shared/stores/duplicate-ids-store";
 import { FakeEventSource } from "@/testing/fake-event-source";
 
 describe("connectEvents", () => {
@@ -34,5 +35,15 @@ describe("connectEvents", () => {
     // 検証
     expect(afterError).toBe("offline");
     expect(useConnectionStore.getState().connection).toBe("online");
+  });
+
+  // duplicate_ids で重なった ID のストアを書き換える（正常系）
+  test("connect_events_when_duplicate_ids", () => {
+    // 準備
+    connectEvents(new QueryClient());
+    // 実行
+    FakeEventSource.last?.emit("duplicate_ids", JSON.stringify(["D-1"]));
+    // 検証
+    expect(useDuplicateIdsStore.getState().ids).toEqual(["D-1"]);
   });
 });

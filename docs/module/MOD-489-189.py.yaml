@@ -102,6 +102,10 @@ data_models:
         type: BodyWrite | None
         default: None
         description: 一緒に書く本文
+      - name: history
+        type: dict[str, ItemHistory] | None
+        default: None
+        description: 一緒に書く `history.yaml` の `items`（項目の ID → 行。モジュール構成『変更履歴』の `ItemHistory`）。変えないときは `None`
       - name: changes
         type: Changes | None
         default: None
@@ -112,7 +116,7 @@ data_models:
     usecase: 記録の追加と更新
     role: DTO
     summary: 複数の種類の項目の並びと複数の本文とまとまりを、一緒に書く変更
-    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`add`・`update`・`remove`・`edit_option`・`batch` が使う。'
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。`edit_option`・まとめて保存・設定の更新が使う。'
     properties:
       - name: items
         type: dict[Kind, list[dict[str, Any]]]
@@ -121,6 +125,10 @@ data_models:
         type: list[BodyWrite]
         default: '[]'
         description: 一緒に書く本文（同じ名前は 1 つだけ。後のものを残す）
+      - name: history
+        type: dict[str, ItemHistory] | None
+        default: None
+        description: 一緒に書く `history.yaml` の `items`（項目の ID → 行。モジュール構成『変更履歴』の `ItemHistory`）。変えないときは `None`
       - name: changes
         type: Changes | None
         default: None
@@ -128,7 +136,7 @@ data_models:
       - name: removed_bodies
         type: list[str]
         default: '[]'
-        description: 書き換えた後に消す `docs/` の本文のファイル名（`remove` が使う）
+        description: 書き換えた後に消す本文のパス（`body` の値。形式を替えた資料の前の形式の本文）
       - name: settings
         type: dict[str, Any] | None
         default: None
@@ -223,6 +231,24 @@ constants:
     usecase: 記録の追加と更新
     summary: 案（`options`）を持たなくてよい検討事項の状態（ER 図『ワークスペース』の decisions.yaml の案と状態の決まり）
     value: frozenset({"未整理", "対象外", "取り下げ"})
+  - name: SOURCE_CONFIG_FILE
+    title: 記録の配信の設定のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの作成
+    summary: 記録のフォルダの中の、project-index の配信元の設定のファイル名
+    value: dev-docs.yaml
+  - name: SOURCE_SCHEMA_DIR
+    title: 記録のスキーマの複製の置き場所
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの作成
+    summary: 記録のフォルダの中の、配信の設定が指すスキーマの複製のフォルダ
+    value: schemas
+  - name: RELATED_TYPES
+    title: 関連の種類
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 共通
+    summary: '`related[].type` に使える種類（ER 図『ワークスペース』の共通のキー `related`）'
+    value: ("depends_on", "parent", "for", "see_also")
 functions:
   - name: load_workspace
     title: ワークスペースの読み込み
@@ -580,7 +606,7 @@ functions:
       type: str
       description: '`{頭の文字}-{連番}`'
     process: |-
-      1. その種類の項目の `id` と `taken` のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
+      1. その種類の項目の `id` と `taken`（消した ID と、『ID の採番』の予約の最大を含む）のうち、頭の文字が一致し連番が数字のものの最大を取る（無ければ 0）
       2. 最大 + 1 で ID を作って返す
     unit_tests:
       - name: test_next_id
@@ -639,14 +665,19 @@ functions:
          - 項目の中の値だけが合わない問題はここでは止めない（変更で直せるため。残っていれば 2. で止まる）
       2. `raw` のその種類のファイルを `{"items": 変更後の並び}` に差し替えたワークスペースを作り、検証する（ワークスペースの検証。`validate_workspace`。`unchanged` は差し替えたファイルを除く `raw` のファイル）
          - 問題がある場合、書き換える項目の ID（`_written_ids`）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
-      3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
+      3. YAML の一時ファイルを書く（`dump_yaml`、`write_temp`）。本文があれば本文の一時ファイルも書き、置き換える前の本文を控える（無ければ `None`）。`history` があれば `history.yaml`、`changes` があれば `changes.yaml` の一時ファイルも書き、置き換える前の種類の YAML を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → YAML → `changes.yaml` の順に `os.replace` で置き換える
+      4. 置き換える直前に、書き換える種類の YAML の今の中身の要約（`_digest`）が、読んだときの `workspace.digests` と同じかを確かめる
+         - 違う場合（project-index の `write_docs` が間に書いた）、一時ファイルを消して `ConcurrentWriteError` を送る（何も置き換えない。呼ぶ側が読み直して 1 回だけ当て直す）
+      5. 本文 → YAML → `history.yaml` → `changes.yaml` の順に `os.replace` で置き換える
          - 本文の置き換えで `OSError` が起きた場合、一時ファイルを消して `WriteFailedError` を送る
          - YAML の置き換えで `OSError` が起きた場合、本文を控えに戻し（控えが `None` なら本文を消し）、残った一時ファイルを消して `WriteFailedError` を送る
          - `changes.yaml` の置き換えで `OSError` が起きた場合、YAML を控えに戻し、本文も YAML のときと同じく戻し、残った一時ファイルを消して `WriteFailedError` を送る
-      5. 書き込んだ種類の YAML の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
+      6. 書き込んだ種類の YAML の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
     exceptions:
+      - name: ConcurrentWriteError
+        condition: 置き換える直前に、書き換える種類の YAML が読んだときと違う
+        message: '記録がほかから書き換えられました: {ファイル名}'
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または変更を当てた後のワークスペースに問題がある
         message: スキーマに合いません（`lines` に問題ごとの行）
@@ -657,6 +688,13 @@ functions:
         condition: YAML の置き換えで `OSError` が起きた（本文を戻した後）
         message: '書き込めませんでした: {パス}（{理由}）'
     unit_tests:
+      - name: test_save_change_when_changed_by_other
+        case: 異常
+        summary: 読んだ後に種類の YAML が書き換わっていれば置き換えない
+        condition: ワークスペースを読んだ後、`decisions.yaml` を別の中身に書き換えてから D-1 の変更を書く
+        mock: なし
+        expected: '`ConcurrentWriteError`。`decisions.yaml` が書き換えた別の中身のまま'
+        exception: ほかが書き換えた
       - name: test_save_change
         case: 正常
         summary: 項目の並びと本文を書き、一時ファイルを残さない
@@ -748,7 +786,7 @@ functions:
       1. `records_root(root) / SETTINGS_FILE` があれば `WorkspaceExistsError` を送る。直下に `SETTINGS_FILE` か `LEGACY_SETTINGS_FILE` があれば、`lines` に `UPGRADE_HINT` を持つ `WorkspaceExistsError` を送る（前の版のワークスペースの記録を残したまま空の記録を作らない）
       2. 設定と空の 7 種類で `Workspace` を組み、検証する（ワークスペースの検証。`validate_workspace`）
          - 問題がある場合、`SchemaMismatchError` を送る（フォルダも作らない）
-      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README のほかはどれも `records_root(root)` の下）
+      3. `records_root(root)` とその中の `docs/`・`release/` を作り、7 種類の YAML（`items: []`）と `VERSION_FILE`（`version` と改行）と、記録の配信の設定（`SOURCE_CONFIG_FILE`。`build_source_config`）とスキーマの複製（`SOURCE_SCHEMA_DIR` へ `SCHEMA_DIR` の種類ごとの 7 つと `COMMON_SCHEMA`）を書き、直下の README を書き（README の書き込み。`write_readme(root)`）、最後に `config.yaml` を書く（`dump_yaml`。README のほかはどれも `records_root(root)` の下）
          - `OSError` か README の `WriteFailedError` が起きた場合、この関数が作ったファイルとフォルダ（この呼び出しで書いた README を含む。前からあった README は消さない）を消して `WriteFailedError` を送る（`config.yaml` を最後に書くので、途中で止まってもワークスペースとして扱われない）
     exceptions:
       - name: WorkspaceExistsError
@@ -806,7 +844,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 共通
     scope: public
-    summary: '`docs/` の本文を読む'
+    summary: 項目の `body` が指す本文を読む
     args:
       - name: workspace
         type: Workspace
@@ -817,19 +855,19 @@ functions:
         type: str
         required: true
         passing: positional
-        description: '`docs/` の中のファイル名'
+        description: '`body` の値（記録のフォルダからのパス。`docs/{ID}.md`）'
     returns:
       type: str | None
       description: 本文。ファイルが無いか、名前が `docs/` の外を指すときは `None`
     process: |-
-      1. `docs/{name}` を解決し、`docs/` の配下にあるか確かめる
+      1. 記録のフォルダと `name` を結んで解決し、`docs/` の配下にあるか確かめる
          - 配下に無い場合、`None` を返す
       2. ファイルがあれば UTF-8 で読んで返し、無ければ `None` を返す
     unit_tests:
       - name: test_read_body
         case: 正常
         summary: ある本文を読む
-        condition: '`docs/D-1.md` を置く'
+        condition: '`docs/D-1.md` を置き、`name` に `docs/D-1.md`'
         mock: なし
         expected: その中身
       - name: test_read_body_when_missing
@@ -841,7 +879,7 @@ functions:
       - name: test_read_body_when_outside
         case: 正常
         summary: docs/ の外を指す名前は読まない
-        condition: '`../config.yaml`'
+        condition: '`config.yaml`・`docs/../config.yaml`'
         mock: なし
         expected: '`None`'
   - name: dump_yaml
@@ -1156,12 +1194,17 @@ functions:
       1. `items` の種類ごとに、書き戻しても中身を失わない形かを確かめる（`save_change` の 1. と同じ）
       2. `raw` の `items` の種類のファイル（`settings` があれば `config.yaml` も）を全て差し替えたワークスペースを作り、検証する（`validate_workspace`。`unchanged` は差し替えたファイルを除く `raw` のファイル）
          - 問題がある場合、書き換える項目の ID（種類ごとの `_written_ids` の和）を `written_ids` にして `SchemaMismatchError` を送る（`build_mismatch_error`。何も書かない）
-      3. 書く全てのファイル（本文・種類の YAML・`config.yaml`・`threads.yaml`・`changes.yaml`・`edits.yaml`。`None` のものは書かない）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
+      3. 書く全てのファイル（本文・種類の YAML・`config.yaml`・`threads.yaml`・`history.yaml`・`changes.yaml`・`edits.yaml`。`None` のものは書かない）の一時ファイルを書き、置き換える前の中身を控える（無ければ `None`）。`removed_bodies` の本文の中身も控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
-      4. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
+      4. 置き換える直前に、書き換える種類の YAML の今の中身の要約（`_digest`）が、読んだときの `workspace.digests` と同じかを確かめる
+         - 違う場合（project-index の `write_docs` が間に書いた）、一時ファイルを消して `ConcurrentWriteError` を送る（何も置き換えない。呼ぶ側が読み直して 1 回だけ当て直す）
+      5. 本文 → 種類の YAML（`KINDS` の順）→ `config.yaml` → `threads.yaml` → `history.yaml` → `changes.yaml` → `edits.yaml` の順に `os.replace` で置き換え、最後に `removed_bodies` の本文を消す（無ければ飛ばす）
          - 途中で `OSError` が起きた場合、置き換えたファイルと消した本文を控えに戻し（控えが `None` なら消し）、残った一時ファイルを消して `WriteFailedError` を送る
-      5. 書き込んだ種類の YAML と `config.yaml` の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
+      6. 書き込んだ種類の YAML と `config.yaml` の文字列の要約（`_digest`）と空の問題で、`_VALIDATION_CACHE` の `(root, ファイル名)` を置き換える（次の読み込みで同じ中身を検証し直さない）
     exceptions:
+      - name: ConcurrentWriteError
+        condition: 置き換える直前に、書き換える種類の YAML が読んだときと違う
+        message: '記録がほかから書き換えられました: {ファイル名}'
       - name: SchemaMismatchError
         condition: 変更する種類のファイルが読めないか書き戻すと中身を失う形、または差し替えた後のワークスペースに問題がある
         message: スキーマに合いません（`lines` に問題ごとの行）
@@ -1169,6 +1212,13 @@ functions:
         condition: 一時ファイルの書き込みか置き換えで `OSError` が起きた（置き換えたものを戻した後）
         message: '書き込めませんでした: {パス}（{理由}）'
     unit_tests:
+      - name: test_save_batch_when_changed_by_other
+        case: 異常
+        summary: 読んだ後に種類の YAML が書き換わっていれば置き換えない
+        condition: ワークスペースを読んだ後、`decisions.yaml` を別の中身に書き換えてから D-1 の変更を書く
+        mock: なし
+        expected: '`ConcurrentWriteError`。`decisions.yaml` が書き換えた別の中身のまま'
+        exception: ほかが書き換えた
       - name: test_save_batch
         case: 正常
         summary: 複数の種類と本文とまとまりを書き、一時ファイルを残さない
@@ -1559,3 +1609,34 @@ functions:
         mock: '`os.replace`（monkeypatch。前者だけ）'
         expected: '`WriteFailedError`。`release/` に一時ファイルも置き換え先も無い（後者は `release/図` のファイルが呼ぶ前と同じ）'
         exception: フォルダの作成か置き換えで OSError
+  - name: build_source_config
+    title: 記録の配信の設定の組み立て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: ワークスペースの作成
+    scope: public
+    summary: ワークスペースの ID と題名から、記録の配信の設定（`dev-docs.yaml`）の中身を組み立てる
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID
+      - name: summary
+        type: str
+        required: true
+        passing: positional
+        description: 設定の `summary`
+    returns:
+      type: dict[str, Any]
+      description: インターフェース定義『ワークスペースの作成』の制約「配信の設定」の中身
+    process: |-
+      1. `version: "3"`・`name`・`description`・`related.types`（`RELATED_TYPES`）を置く
+      2. `KINDS` の順に、種類ごとの `documents` の行（`id`・`title`・`paths`・`schema`・`records: items`・`body_file: body`・`metadata`）を足す
+    unit_tests:
+      - name: test_build_source_config
+        case: 正常
+        summary: 種類ごとの 7 つの行と関連の種類を持つ
+        condition: '`mindstella-a-123456`・題名「a」'
+        mock: なし
+        expected: '`documents` が 7 行で、`decisions` の行が `paths: [decisions.yaml]`・`records: items`・`body_file: body`・`schema: schemas/decisions.schema.json`。`related.types` が `[depends_on, parent, for, see_also]`'

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from record_write_helpers import write_tool
 import json
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,7 @@ from preview_edit_helpers import (
     PENDING_BUTTON as EDIT_PENDING_BUTTON,
     SAVE_BUTTON as EDIT_SAVE_BUTTON,
     open_pending as open_edit_pending,
+    read_history_file,
     read_items_file,
     reached_by_tab,
 )
@@ -231,7 +233,7 @@ def test_normal(
     # 準備
     url = write_preview(
         make_item("D-1"),
-        make_item("D-3", status="要見直し", body="D-3.md"),
+        make_item("D-3", status="要見直し", body="docs/D-3.md"),
         bodies={"D-3.md": BODY_WITH_DIAGRAM},
     )
     hash_text = "#tab=decisions&view=table&id=D-3"
@@ -354,7 +356,7 @@ def test_normal_when_exported_offline(
     """描画のライブラリを中に持つ配る書き出しは、通信が無くても本文・図・マップを描く（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-3", status="要見直し", body="D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
+        make_item("D-3", status="要見直し", body="docs/D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
     )
     out = tmp_path / "配る.html"
     result = call_tool("export", workspace=str(root), out=str(out))
@@ -456,7 +458,7 @@ def test_error_when_library_unavailable(
     """描画のライブラリの配信元に届かないと、使う箇所に読み込めなかったライブラリの名前を出す（異常系）。"""
     # 準備
     url = write_preview(
-        make_item("D-3", status="要見直し", body="D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
+        make_item("D-3", status="要見直し", body="docs/D-3.md"), bodies={"D-3.md": BODY_WITH_DIAGRAM}
     )
     page.route(LIBRARY_HOST_PATTERN, lambda route: route.abort())
     # 実行
@@ -507,7 +509,7 @@ def test_normal_when_rewritten(
         "options": [{"key": "A", "content": "案 A"}],
     }
     # 実行
-    added = call_tool("add", workspace=str(root), kind="decision", item=new_decision)
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=new_decision)
     # 検証
     assert added.is_error is False, added.text
     page.wait_for_function(
@@ -945,7 +947,7 @@ def test_normal_when_html_body(
     """HTML の本文をスクリプトを動かさない枠に描き、本文の CSS を画面へ漏らさない（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", body="A-1.html"),
+        make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
         bodies={"A-1.html": LEAKING_HTML_BODY, "A-2.md": "資料の本文\n"},
     )
@@ -982,7 +984,7 @@ def test_normal_when_html_body_commented(
     """枠の中で選んだ文を元の HTML の行の範囲にして、箇所を添えたコメントを溜める（正常系）。"""
     # 準備
     url, root = write_review_preview(
-        make_item("A-1", body="A-1.html"), bodies={"A-1.html": COMMENT_HTML_BODY}
+        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": COMMENT_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
@@ -1027,10 +1029,9 @@ def test_normal_when_html_body_diff(
         "deliverable": False,
         "body_html": THREE_PARAGRAPH_HTML,
     }
-    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False
     assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
-    updated = call_tool(
-        "update", workspace=workspace, id="A-1", item={"body_html": THREE_PARAGRAPH_HTML_REWRITTEN}
+    updated = write_tool(call_tool, "update", workspace=workspace, id="A-1", item={"body_html": THREE_PARAGRAPH_HTML_REWRITTEN}
     )
     assert updated.is_error is False
     assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
@@ -1081,10 +1082,9 @@ def test_normal_when_html_body_diff_after_closed_element(
         "deliverable": False,
         "body_html": CLOSED_ELEMENT_HTML,
     }
-    assert call_tool("add", workspace=workspace, kind="doc", item=item).is_error is False
+    assert write_tool(call_tool, "add", workspace=workspace, kind="doc", item=item).is_error is False
     assert call_tool("commit", workspace=workspace, summary="足す").is_error is False
-    updated = call_tool(
-        "update", workspace=workspace, id="A-1", item={"body_html": CLOSED_ELEMENT_HTML_REWRITTEN}
+    updated = write_tool(call_tool, "update", workspace=workspace, id="A-1", item={"body_html": CLOSED_ELEMENT_HTML_REWRITTEN}
     )
     assert updated.is_error is False
     assert call_tool("commit", workspace=workspace, summary="直す").is_error is False
@@ -1143,7 +1143,7 @@ def test_normal_when_html_body_line_edge_cases(
     """入れ子の複数行の開きタグの後・`<br>` の後・`<pre>` の中の文を選んでも、元の HTML の行にして箇所を添える（正常系）。"""
     # 準備
     url, root = write_review_preview(
-        make_item("A-1", body="A-1.html"), bodies={"A-1.html": LINE_EDGE_HTML_BODY}
+        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": LINE_EDGE_HTML_BODY}
     )
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
@@ -1212,7 +1212,7 @@ def test_normal_when_html_body_link(
         ("blank", f'href="{link_target}/blank" target="_blank"', "別のタブを指すリンク"),
         ("mail", 'href="mailto:a@example.com"', "メールのリンク"),
     )
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1276,7 +1276,7 @@ def test_normal_when_html_body_anchor_link(
         + '<h2 id="使い方">使い方の見出し</h2>\n'
         + spacer
     )
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1314,7 +1314,7 @@ def test_normal_when_html_body_link_not_opened(
         ("script", 'href="javascript:parent.__mark=1"', "javascript のリンク"),
         ("data", 'href="data:text/html,x"', "data のリンク"),
     )
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1342,7 +1342,7 @@ def test_normal_when_html_body_link_text_selected(
     """リンクの文をなぞって選んだ直後の押下では開かず、選んだ後にリンクにフォーカスして Enter を押すと開く（正常系）。"""
     # 準備
     body = f'<p>前の文 <a id="link" href="{link_target}/selected">リンクの文</a> 後の文</p>\n'
-    url, _ = write_review_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    url, _ = write_review_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
     page = open_preview(url, "#tab=docs&id=A-1")
     wait_frame_rendered(page, BODY_FRAME)
     frame = frame_of(page, BODY_FRAME)
@@ -1383,8 +1383,7 @@ def _make_diff_workspace(
     workspace = str(root)
     rewrites = [("D-1", "D-1 を直す")] + ([("D-2", "D-2 を直す")] if second else [])
     for item_id, summary in rewrites:
-        updated = call_tool(
-            "update", workspace=workspace, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"}
+        updated = write_tool(call_tool, "update", workspace=workspace, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"}
         )
         assert updated.is_error is False, updated.text
         committed = call_tool("commit", workspace=workspace, summary=summary)
@@ -2112,7 +2111,8 @@ def test_normal_when_edits_saved(
     page.wait_for_selector(".pe-toast")
     # 検証（保存した後）
     decision = read_items_file(root, "decisions.yaml")[0]
-    assert (decision["answer"], decision["updated_by"]) == ("新しい答え", "user")
+    assert decision["answer"] == "新しい答え"
+    assert read_history_file(root)[decision["id"]]["updated_by"] == "user"
     assert page.inner_text(".pe-toast").strip() == "1 件を保存しました。"
     assert page.locator(EDIT_PENDING_BUTTON).count() == 0
     assert page.locator(".pm").count() == 0
@@ -2574,3 +2574,25 @@ def test_normal_when_embedded_html_diff(
     # 検証（見せ方を切り替えても、ハッシュと履歴の数が変わらない）
     assert page.evaluate("location.hash") == hash_text
     assert page.evaluate("history.length") == history_length
+
+
+def test_normal_when_duplicate_ids(
+    write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem, tmp_path: Path
+) -> None:
+    """同じ ID の項目が 2 件になったら、トップバーの下に重なった ID の通知を出し、閉じると隠す（正常系）。"""
+    # 準備
+    url = write_preview(make_item("D-1"))
+    page = open_preview(url, "#tab=decisions&view=table")
+    root = tmp_path / "workspace"
+    duplicated = [make_item("D-1"), make_item("D-1", title="もう 1 件")]
+    # 実行
+    (root / RECORD_DIR / "decisions.yaml").write_text(
+        yaml.safe_dump({"items": duplicated}, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    notice = page.get_by_role("alert").filter(has_text="同じ ID の項目が 2 件あります")
+    expect(notice).to_be_visible()
+    text = " ".join(notice.inner_text().split())
+    notice.get_by_role("button", name="通知を閉じる").click()
+    # 検証
+    assert "D-1 が重なりました。片方の ID を変更してください。" in text
+    expect(notice).to_have_count(0)

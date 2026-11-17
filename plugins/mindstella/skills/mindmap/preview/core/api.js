@@ -141,8 +141,8 @@ var MindmapPreview;
         };
     }
     MindmapPreview.threadApi = threadApi;
-    /** 書き換えの知らせにつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる。返す関数でつながりを閉じる */
-    function subscribeEvents({ onChanged, onConnection, EventSourceCtor = window.EventSource, }) {
+    /** 書き換えの知らせにつなぎ、`changed`・重なった ID（`duplicate_ids`）と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる。返す関数でつながりを閉じる */
+    function subscribeEvents({ onChanged, onConnection, onDuplicates, EventSourceCtor = window.EventSource, }) {
         const source = new EventSourceCtor(MindmapPreview.API_PATHS.events);
         let last = null;
         /** 接続の状態が変わったときだけ知らせる */
@@ -155,9 +155,27 @@ var MindmapPreview;
         source.addEventListener("open", () => report(true));
         source.addEventListener("error", () => report(false));
         source.addEventListener("changed", () => onChanged());
+        source.addEventListener("duplicate_ids", (event) => {
+            const ids = parseDuplicateIds(event.data);
+            // 読めない知らせは捨てる（次の知らせで描き直す）
+            if (ids !== null)
+                onDuplicates?.(ids);
+        });
         return () => source.close();
     }
     MindmapPreview.subscribeEvents = subscribeEvents;
+    /** `duplicate_ids` の `data`（ID の JSON の配列）を読む。読めなければ null */
+    function parseDuplicateIds(data) {
+        if (typeof data !== "string")
+            return null;
+        try {
+            const value = JSON.parse(data);
+            return Array.isArray(value) && value.every((entry) => typeof entry === "string") ? value : null;
+        }
+        catch {
+            return null;
+        }
+    }
     /** 文字起こしの可否・音声の文字起こし・すぐ送るの 3 つの呼び出しを束ねて返す */
     function voiceApi(fetchFn = window.fetch.bind(window)) {
         return {

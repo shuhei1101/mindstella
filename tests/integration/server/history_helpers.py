@@ -9,6 +9,7 @@ import yaml
 
 from .fixture_types import CallTool
 from workspace_fixtures import RECORD_DIR
+from record_write_helpers import write_tool
 
 # 案を必須にする状態の検討事項に付ける案
 OPTIONS: list[dict[str, Any]] = [{"key": "A", "content": "案 A"}]
@@ -24,8 +25,8 @@ DECISION_ITEM: dict[str, Any] = {
 
 
 def add_item(call_tool: CallTool, root: Path, kind: str, item: dict[str, Any]) -> str:
-    """`add` で項目を足し、付いた ID を返す。エラーならテストを止める。"""
-    result = call_tool("add", workspace=str(root), kind=kind, item=item)
+    """項目を足して変更の検知に記録させ、付いた ID を返す。エラーならテストを止める。"""
+    result = write_tool(call_tool, "add", workspace=str(root), kind=kind, item=item)
     assert result.is_error is False, result.text
     assert result.data is not None
     return str(result.data["id"])
@@ -40,14 +41,14 @@ def commit(call_tool: CallTool, root: Path, summary: str) -> dict[str, Any]:
 
 
 def update_item(call_tool: CallTool, root: Path, item_id: str, item: dict[str, Any]) -> None:
-    """`update` で項目を直す。エラーならテストを止める。"""
-    result = call_tool("update", workspace=str(root), id=item_id, item=item)
+    """項目を直して変更の検知に記録させる。エラーならテストを止める。"""
+    result = write_tool(call_tool, "update", workspace=str(root), id=item_id, item=item)
     assert result.is_error is False, result.text
 
 
 def remove_item(call_tool: CallTool, root: Path, item_id: str) -> dict[str, Any]:
-    """`remove` で項目を消した結果を返す。エラーならテストを止める。"""
-    result = call_tool("remove", workspace=str(root), id=item_id)
+    """項目を消して変更の検知に記録させ、結果を返す。エラーならテストを止める。"""
+    result = write_tool(call_tool, "remove", workspace=str(root), id=item_id)
     assert result.is_error is False, result.text
     assert result.data is not None
     return result.data
@@ -61,6 +62,14 @@ def read_changes(root: Path) -> dict[str, Any]:
 def read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
     """種類ごとの YAML の項目の並びを読む。"""
     return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))["items"]
+
+
+def read_history(root: Path) -> dict[str, dict[str, Any]]:
+    """`history.yaml` の項目の行（ID → 作成日時・更新日時・編集した人・通し番号・変更履歴）を読む（無ければ空）。"""
+    path = root / RECORD_DIR / "history.yaml"
+    if not path.is_file():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["items"]
 
 
 def write_settings(root: Path, **overrides: Any) -> None:

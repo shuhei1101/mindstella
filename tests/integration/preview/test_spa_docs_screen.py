@@ -19,7 +19,7 @@ def test_cards_put_deliverable_first(page: Page, write_preview: WritePreview, ma
 
 def test_board_and_table(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """ボードは状態の列、表は形式の列を持つ（正常系）。"""
-    url = write_preview(make_item("A-1", title="普通の資料", body="A-1.md"), bodies={"A-1.md": "本文"})
+    url = write_preview(make_item("A-1", title="普通の資料", body="docs/A-1.md"), bodies={"A-1.md": "本文"})
     open_spa(page, url, "?tab=docs&view=board")
     expect(page.locator("[data-id='A-1']")).to_be_visible()
     open_spa(page, url, "?tab=docs&view=table")
@@ -171,7 +171,7 @@ def test_withdrawn_badge_visible(page: Page, write_removed_preview: WriteReviewP
 def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item: MakeItem, view: str, body: str, badge: str) -> None:
     """本文を持つ資料のカード・ボードに、本文の形式の札（`MD` / `HTML`）を出す（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1", body=body), bodies={body: "本文"})
+    url = write_preview(make_item("A-1", body=f"docs/{body}"), bodies={body: "本文"})
     open_spa(page, url, f"?tab=docs&view={view}")
     # 検証
     expect(page.locator("[data-id='A-1']").get_by_text(badge, exact=True)).to_be_visible()

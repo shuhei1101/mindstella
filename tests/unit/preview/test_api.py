@@ -619,6 +619,46 @@ def test_subscribe_events(preview_page: Page, load_preview_scripts: LoadPreviewS
     assert result["url"].endswith("api/events")
 
 
+def test_subscribe_events_when_duplicate_ids(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """duplicate_ids の重なった ID を onDuplicates で知らせる（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """() => {
+            const calls = [];
+            let source = null;
+            // 偽の EventSource（addEventListener で受けた種類に data つきの知らせを送る）
+            class FakeEventSource {
+                constructor(url) {
+                    this.listeners = {};
+                    source = this;
+                }
+                addEventListener(type, listener) {
+                    (this.listeners[type] ||= []).push(listener);
+                }
+                close() {}
+                emit(type, data) {
+                    (this.listeners[type] || []).forEach((listener) => listener({type, data}));
+                }
+            }
+            const close = MindmapPreview.subscribeEvents({
+                onChanged: () => {},
+                onConnection: () => {},
+                onDuplicates: (ids) => calls.push(ids),
+                EventSourceCtor: FakeEventSource,
+            });
+            source.emit("duplicate_ids", JSON.stringify(["D-1"]));
+            close();
+            return calls;
+        }"""
+    )
+    # 検証
+    assert result == [["D-1"]]
+
+
 @pytest.mark.parametrize(
     ("respond", "expected"),
     [

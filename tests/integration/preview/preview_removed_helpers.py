@@ -9,6 +9,7 @@ import yaml
 from playwright.sync_api import Page
 from preview_history_helpers import FIRST_SET_AT, SECOND_SET_AT, read_yaml
 from workspace_fixtures import RECORD_DIR, CallTool, MakeItem, MakeWorkspace
+from record_write_helpers import call_or_write
 
 __all__ = [
     "BAND",
@@ -85,12 +86,9 @@ ADDED_DECISION: dict[str, Any] = {
 }
 
 
-def _call(call_tool: CallTool, name: str, **arguments: Any) -> dict[str, Any]:
-    """ツールを呼び、エラーならテストを止めて結果を返す。"""
-    result = call_tool(name, **arguments)
-    assert result.is_error is False, result.text
-    assert result.data is not None
-    return result.data
+def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
+    """ツールを呼ぶか記録を書き換え（add・update・remove）、エラーならテストを止めて結果を返す。"""
+    return call_or_write(call_tool, name, **arguments)
 
 
 def build_removed_workspace(

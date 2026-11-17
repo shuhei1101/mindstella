@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from record_write_helpers import write_tool
 
 __all__ = [
     "BODY_LINK_HASH",
@@ -45,7 +46,7 @@ def build_body_link_workspace(make_workspace: Any, make_item: Any, call_tool: An
         ("D-2", LINK_BODY, "D-2 を直す"),
     ]
     for item_id, body, summary in rewrites:
-        updated = call_tool("update", workspace=workspace, id=item_id, item={"body_markdown": body})
+        updated = write_tool(call_tool, "update", workspace=workspace, id=item_id, item={"body_markdown": body})
         assert updated.is_error is False, updated.text
         committed = call_tool("commit", workspace=workspace, summary=summary)
         assert committed.is_error is False, committed.text

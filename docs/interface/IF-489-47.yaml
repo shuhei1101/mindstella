@@ -332,7 +332,7 @@ flows:
     test: test_error_when_last_option_removed
 lead: 検討事項の案を記号（`key`）で指して、1 つ足す・中身と推奨の印を直す・消す。指さない案と検討事項のほかのキーはそのまま残し（推奨の印を立てたときはほかの案の印を外す）、値が変わったときは書き換える前の案の並びを変更履歴に 1 回分積む。
 idempotent: false
-side_effects: '`decisions.yaml` のその検討事項の `options` と `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『項目の更新』と同じく `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML と `changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`decisions.yaml` のその検討事項の `options` と、`history.yaml` のその項目の行の `updated`・`updated_by`（`ai`）を書き換える。値が変わったときは、『変更の検知』と同じ積み方で `history.yaml` の `history`・`seq` と `changes.yaml` の `last_seq`・`pending.changed` を書き換える。YAML・`history.yaml`・`changes.yaml` の一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace
@@ -413,6 +413,8 @@ exceptions:
     notes: ツールのエラー。エラーの本文に ID と記号と、案を 1 つ以上残す旨（先に `add` で別の案を足す案内）。何も書き込まない
 error_format: 'ツールのエラーの本文に `エラー: {内容}` の行を出す。案の記号のエラーは `エラー: {ID} の案 {記号}: {理由}` にする。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。'
 constraints:
+  - item: 変更の検知との分担
+    constraint: 書き込んだ後に、変更の検知（『変更の検知』）の前回の中身をこのツールが書いた中身で置き換え、変更の検知に二重に記録させない
   - item: 結果の形
     constraint: ツールの結果に JSON のオブジェクトを 1 個（構造化の結果と、同じ JSON の文字列の本文。日本語はエスケープしない）
   - item: エラーの返し方
@@ -422,9 +424,11 @@ constraints:
   - item: 採用と状態
     constraint: '案の `adopted` と検討事項の `status`・`answer` は書き換えない（採用と状態は『採用する案の切り替え』が書き換える）。`未整理`・`対象外`・`取り下げ` を除く状態の検討事項は、案を 1 つ以上残す'
   - item: 変更履歴
-    constraint: 『項目の更新』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」「まだまとめていない変更」と同じ。`before` は `options`（書き換える前の案の並びの全体）
+    constraint: 『変更の検知』の「変更履歴を積むとき」「変更履歴の 1 回分」「保持する回数」「通し番号」と同じ（`by` は `ai`）。積んだとき `changes.yaml` の `pending.changed` に ID を足し、`pending.by` が `external` なら先に外部の変更のまとまりにする（『変更の検知』の「まだまとめていない変更の書いた元」）。`before` は `options`（書き換える前の案の並びの全体）
   - item: 部分成功
     constraint: 起こさない。YAML か `changes.yaml` の置き換えに失敗したら、置き換えたものを前の中身に戻してからツールのエラーで終わる
   - item: 推奨の印
     constraint: '`recommended` が真の案は 0 か 1 つ。`option` に `recommended: true` を渡すと、その案に印を立ててほかの案の `recommended` のキーを消す。印を外した案は `recommended` のキーを持たない'
+refs:
+  - IF-540-2#
 test_file: tests/integration/server/test_edit_option.py

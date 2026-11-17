@@ -23,12 +23,12 @@ functions:
         description: 絞り込みの条件に合う項目の ID
     returns:
       type: '{nodes: {id, kind}[], links: {source, target, type}[]}'
-      description: '`type` は `depends`・`related`・`source`・`for`。両端のどちらかが非表示か記録に無い線は含めない'
+      description: '`type` は `depends`（種類 `depends_on`・`parent` の `related`）・`related`（種類 `see_also`）・`source`（`sources`）・`for`（種類 `for`）。両端どちらかが非表示か記録に無い線は含めない'
     unit_tests:
       - name: test_build_graph
         case: 正常
         summary: 線の種類を分け、渡していない項目の線を落とす
-        condition: 'D-2（`depends_on: [D-1]`、`sources: [R-1]`）・T-1（`for: [D-1]`）・N-1（`related: [D-1]`）。`shownIds` から N-1 を外す'
+        condition: 'D-2（`related: [{to: D-1, type: depends_on}]`、`sources: [R-1]`）・T-1（`related: [{to: D-1, type: for}]`）・N-1（`related: [{to: D-1, type: see_also}]`）。`shownIds` から N-1 を外す'
         mock: なし
         expected: 線が `depends`（D-2→D-1）・`source`（D-2→R-1）・`for`（T-1→D-1）の 3 本で、N-1 とその線が無い
   - name: graphConditions

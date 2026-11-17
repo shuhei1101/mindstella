@@ -9,7 +9,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 整った記録
         description: D-2 が D-1 に依存し、D-1 の本文が `.mindstella/docs/` にある検討事項。D-1 は案 A を採用した決定済み、D-2 は案 A・B を持つ未決定
-        notes: '`depends_on: [D-1]`'
+        notes: '`related: [{to: D-1, type: depends_on}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -33,7 +33,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 参照切れ
         description: 存在しない D-9 に依存する検討事項 D-1
-        notes: '`depends_on: [D-9]`'
+        notes: '`related: [{to: D-9, type: depends_on}]`'
       - name: 本文の無い項目
         description: 本文を指しているのに、`.mindstella/docs/` にその Markdown が無い調査 R-1 とメモ N-1
       - name: 項目の無い本文
@@ -51,7 +51,7 @@ scenarios:
       ```
     expected:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
-      - 出力に、D-1 の `depends_on` が存在しない D-9 を指す旨がある
+      - 出力に、D-1 の `depends_on` の種類の `related` が存在しない D-9 を指す旨がある
       - 出力に、R-1 と N-1 の本文が `.mindstella/docs/` に無い旨がある
       - 出力に、どの項目からも指されていない `.mindstella/docs/` の Markdown のファイル名がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
@@ -195,6 +195,30 @@ scenarios:
       - 出力に、状態がオープンでもクローズでもないスレッドが、スキーマ違反としてある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_threads_problems_found
+  - name: 正常シナリオ（重なった ID がある）
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 重なった ID
+        description: ID がどちらも D-1 の検討事項 2 件
+        notes: YAML を直接書いて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as Claude Code（スキル）
+        participant SV as サーバー
+        participant WS as ワークスペース
+
+        CC->>SV: ワークスペースを点検する
+        SV->>WS: 全ての YAML を読む
+        SV-->>CC: 重なった ID の一覧
+      ```
+    expected:
+      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
+      - 出力に、ID `D-1` が 2 件ある旨がある
+      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
 lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: スキルの手順を実行する Claude Code
@@ -206,3 +230,5 @@ preconditions:
   - ワークスペースが作成済みである
 success_guarantee: 参照切れとずれが全て、どの項目のどのキーかとともに出る。どのファイルも書き換えない。
 test_file: tests/e2e/単一ユースケース/test_workspace_check.py
+notes:
+  project-index の検査との分担: 種類のスキーマに合わない書き込みは project-index の `write_docs` が書き込みの前に止める。`check` は MindStella に残し、ファイルを直接書き換えた記録を含めて、参照切れ・本文のずれ・設定に無いフェーズ・案と状態・重なった ID・スレッドの問題を洗い出す

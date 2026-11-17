@@ -14,6 +14,7 @@ from preview_edit_helpers import (
     SAVE_PATTERN,
     open_pending,
     read_edits_file,
+    read_history_file,
     read_items_file,
 )
 from preview_scrim_helpers import SCRIM_ON, click_scrim, detail_above_scrim, main_inert, scrim_visible
@@ -340,7 +341,8 @@ def test_save(
     assert page.locator(PENDING_PANEL).count() == 0
     assert page.locator(PENDING_BUTTON).count() == 0
     decision = read_items_file(root, "decisions.yaml")[0]
-    assert (decision["answer"], decision["updated_by"]) == ("案 A にする", "user")
+    assert decision["answer"] == "案 A にする"
+    assert read_history_file(root)[decision["id"]]["updated_by"] == "user"
     assert [item["id"] for item in read_items_file(root, "notes.yaml")] == []
     assert [item["title"] for item in read_items_file(root, "tasks.yaml")] == ["画面を作る"]
     assert read_edits_file(root)["items"] == []

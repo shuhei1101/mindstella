@@ -111,6 +111,56 @@ files:
   related:
   - to: MOD-489-164
     type: implements
+- path: skills/mindmap/migrations/v0.13.0/scripts/body_to_docs_path.py
+  name: v0.13.0 の資料の本文をパスにする移し替えのスクリプト
+  description: 資料などの本文のキーを、ワークスペースの直下からの本文のファイルのパスにする。v0.13.0 の本文の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  - topic:本文
+  related:
+  - to: MOD-540-4
+    type: implements
+- path: skills/mindmap/migrations/v0.13.0/scripts/meta_to_history_yaml.py
+  name: v0.13.0 の項目の履歴を history.yaml へ移すスクリプト
+  description: 項目が持つ作成日時・更新日時・変更履歴を `history.yaml` の行へ移す。v0.13.0 の履歴の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  - topic:履歴
+  related:
+  - to: MOD-540-6
+    type: implements
+- path: skills/mindmap/migrations/v0.13.0/scripts/place_source_config.py
+  name: v0.13.0 の配信元の設定を置くスクリプト
+  description: ワークスペースに project-index の配信元の設定（`.mindstella/dev-docs.yaml`）を置く。v0.13.0 の配信元の設定の置き方を修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  - topic:配信元
+  related:
+  - to: MOD-540-5
+    type: implements
+- path: skills/mindmap/migrations/v0.13.0/scripts/refs_to_related.py
+  name: v0.13.0 の参照を種類つきの related にするスクリプト
+  description: 項目の `depends_on`・`parent`・`for`・`related` を、種類つきの `related`（`{to, type}`）にまとめる。v0.13.0 の参照の移し替えを修正するときに読む。
+  tags:
+  - topic:バージョン
+  - topic:移行
+  - topic:参照
+  related:
+  - to: MOD-540-3
+    type: implements
+- path: skills/mindmap/migrations/v0.13.0/steps.yaml
+  name: v0.13.0 の移し替えの手順
+  description: ワークスペースを v0.13.0 へ移し替える操作を順に並べる。v0.13.0 の移し替えの操作を修正するときに読む。
+  tags:
+  - tool:yaml
+  - topic:バージョン
+  - topic:移行
+  related:
+  - to: MOD-489-164
+    type: implements
 - path: skills/mindmap/migrations/v0.3.0/steps.yaml
   name: v0.3.0 の移し替えの手順
   description: ワークスペースを v0.3.0 へ移し替える操作を順に並べる。v0.3.0 の移し替えの操作を修正するときに読む。
@@ -375,6 +425,29 @@ files:
   - to: MOD-489-241
     type: implements
   - to: CMP-489-53
+    type: implements
+- path: skills/mindmap/preview/components/duplicate-id-notice.stories.ts
+  name: 重なった ID の通知のストーリー
+  description: 部品『重なった ID の通知』の状態ごとの Storybook のストーリー。重なった ID の通知の状態を追加・変更するときに読む。
+  tags:
+  - tool:storybook
+  - topic:ストーリー
+  - topic:部品
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/duplicate-id-notice.ts
+    type: see_also
+- path: skills/mindmap/preview/components/duplicate-id-notice.ts
+  name: 重なった ID の通知
+  description: 変更の検知が知らせた重なった ID を、トップバーの下の閉じられるバーで知らせる。重なった ID の通知の表示や文面を変更するときに読む。
+  tags:
+  - tool:typescript
+  - topic:プレビュー
+  - topic:部品
+  - topic:通知
+  related:
+  - to: MOD-540-7
+    type: implements
+  - to: CMP-540-1
     type: implements
 - path: skills/mindmap/preview/components/filter-drawer.stories.ts
   name: 絞り込みのドロワーのストーリー
@@ -1389,6 +1462,16 @@ files:
   related:
   - to: MOD-489-152
     type: implements
+- path: skills/mindmap/scripts/change_detection.py
+  name: 変更の検知
+  description: 配信しているワークスペースの記録のファイルの書き換えを見張り、ほかのセッションの書き込みを履歴と `changes.yaml` に記録し、重なった ID を知らせる。外部の変更の記録・まとめ方・重なった ID の知らせを変更するときに読む。
+  tags:
+  - topic:履歴
+  - topic:変更
+  - topic:監視
+  related:
+  - to: MOD-540-2
+    type: implements
 - path: skills/mindmap/scripts/check_env.py
   name: 依存の確認
   description: スキル専用の仮想環境の Python の版と、PyYAML・jsonschema・mcp の版を確かめる。スキルの仮想環境で確認する Python とライブラリの版を変更するときに読む。
@@ -1495,6 +1578,15 @@ files:
   related:
   - to: MOD-489-145
     type: implements
+- path: skills/mindmap/scripts/ids.py
+  name: ID の採番
+  description: 種類ごとに次の ID を予約して返す。ID の採番と予約を変更するときに読む。
+  tags:
+  - topic:ID
+  - topic:採番
+  related:
+  - to: MOD-540-1
+    type: implements
 - path: skills/mindmap/scripts/inject_session.py
   name: セッションの値の注入
   description: PreToolUse のフックで、mindstella のツールを呼んだセッションの値をツールの入力の `session` に入れて返す。ツールの入力へ入れるセッションの値を変更するときに読む。
@@ -1549,15 +1641,6 @@ files:
   - topic:移行
   related:
   - to: MOD-489-179
-    type: implements
-- path: skills/mindmap/scripts/query.py
-  name: 項目の検索と表示
-  description: 項目の検索・1 件の表示と参照元・属性名とタグの一覧（読むだけで、ファイルを書かない）。検索・1 件の表示・属性名とタグの一覧を変更するときに読む。
-  tags:
-  - topic:タグ
-  - topic:検索
-  related:
-  - to: MOD-489-161
     type: implements
 - path: skills/mindmap/scripts/readme.py
   name: ワークスペースの README の書き出し

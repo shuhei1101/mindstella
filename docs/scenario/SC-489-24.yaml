@@ -9,7 +9,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 対象 1・カテゴリー 2・フェーズ 2 にまたがる検討事項。決定済みの D-1、要見直しの D-3（前提 D-1・後続 D-5）、未決定の D-5
-        notes: 'D-3 は `depends_on: [D-1]`、D-5 は `depends_on: [D-3]`'
+        notes: 'D-3 は `related: [{to: D-1, type: depends_on}]`、D-5 は `related: [{to: D-3, type: depends_on}]`'
       - name: 配信
         description: 記録を配っているサーバー。表示の幅は 1280px
     flow: |-
@@ -178,7 +178,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 正常シナリオと同じ検討事項（決定済みの D-1、要見直しの D-3、未決定の D-5）
-        notes: 'D-3 は `depends_on: [D-1]`、D-5 は `depends_on: [D-3]`'
+        notes: 'D-3 は `related: [{to: D-1, type: depends_on}]`、D-5 は `related: [{to: D-3, type: depends_on}]`'
       - name: 配信
         description: 記録を配っているサーバー。表示の幅は 1280px
       - name: 拡大率
@@ -249,7 +249,7 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: 記録
         description: 正常シナリオと同じ検討事項（決定済みの D-1、要見直しの D-3、未決定の D-5）
-        notes: 'D-3 は `depends_on: [D-1]`、D-5 は `depends_on: [D-3]`'
+        notes: 'D-3 は `related: [{to: D-1, type: depends_on}]`、D-5 は `related: [{to: D-3, type: depends_on}]`'
       - name: 配信
         description: 記録を配っているサーバー。表示の幅は 1280px
     flow: |-

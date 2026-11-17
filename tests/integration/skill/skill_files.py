@@ -42,23 +42,15 @@ DEFAULT_MARK = "（既定）"
 
 # MCP サーバーのツールの名前（インターフェース定義『MCP サーバーの起動』）
 SERVER_TOOL_NAMES = [
-    "add",
-    "update",
-    "remove",
+    "next_id",
     "update_settings",
     "adopt",
     "edit_option",
-    "batch",
     "changes_since_read",
     "commit",
     "pending",
     "status",
     "next",
-    "impact",
-    "find",
-    "show",
-    "attrs",
-    "tags",
     "check",
     "goal",
     "migrate",
@@ -82,6 +74,10 @@ SERVER_TOOL_NAMES = [
 
 # Claude Code の中のツールの名前の頭（`mcp__plugin_{プラグインの名前}_{サーバーの名前}__{ツール}`）
 MCP_TOOL_PREFIX = "mcp__plugin_mindstella_mindstella__"
+
+# project-index の MCP のツールの名前の頭と、スキルが記録の検索・書き込みに使うツール
+PROJECT_INDEX_TOOL_PREFIX = "mcp__plugin_project-index_project-index__"
+PROJECT_INDEX_TOOL_NAMES = ["search_docs", "write_docs", "delete_docs", "trace_related"]
 
 # 本文のツールの表を持つ節の見出し
 TOOL_SECTION_HEAD = "## ツール\n"
@@ -211,4 +207,14 @@ def texts_with_forbidden_name() -> list[str]:
         str(path.relative_to(REPO_ROOT))
         for path in sorted(SKILLS_DIR.rglob("*.md"))
         if FORBIDDEN_NAME_PATTERN.search(path.read_text(encoding="utf-8"))
+    ]
+
+
+def allowed_project_index_tools(front_matter: dict[str, Any]) -> list[str]:
+    """front matter の allowed-tools にある project-index のツールを、頭を落とした名前で並びのまま返す。"""
+    entries = [entry.strip() for entry in str(front_matter["allowed-tools"]).split(",")]
+    return [
+        entry.removeprefix(PROJECT_INDEX_TOOL_PREFIX)
+        for entry in entries
+        if entry.startswith(PROJECT_INDEX_TOOL_PREFIX)
     ]

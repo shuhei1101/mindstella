@@ -15,6 +15,8 @@ elements:
         value: 概要と同じ
       - name: connection
         value: 概要と同じ
+      - name: duplicateIds
+        value: 書き換えの知らせの duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
       - name: read_at
         value: 概要と同じ
       - name: diffPoint

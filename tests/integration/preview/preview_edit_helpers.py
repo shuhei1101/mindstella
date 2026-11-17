@@ -120,6 +120,11 @@ def read_items_file(root: Path, file_name: str) -> list[dict[str, Any]]:
     return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))["items"]
 
 
+def read_history_file(root: Path) -> dict[str, dict[str, Any]]:
+    """`history.yaml` の項目の行（ID → 作成日時・更新日時・編集した人・変更履歴）を読む。"""
+    return yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]
+
+
 def added_edit(
     make_edit: Any, edit_id: str, temp: str, kind: str, **value: Any
 ) -> dict[str, Any]:

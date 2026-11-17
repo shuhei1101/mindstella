@@ -8,20 +8,32 @@ import { Button } from "@/shared/components/ui/button";
 import { AppError } from "@/shared/core/app-error";
 import { SETTINGS_TARGET, type PendingEdit } from "@/shared/core/edits";
 import { toText } from "@/shared/core/format";
-import { KIND_LABEL, type Kind, type RecordIndex, type Tag } from "@/shared/core/records";
+import { KIND_LABEL, type Kind, type RecordIndex, type Relation, type RelationType, type Tag } from "@/shared/core/records";
 import { useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 
 const SETTING_LABELS: Record<string, string> = { summary: "題名", description: "説明", playbooks: "プレイブック", phases: "フェーズ", target_label: "最上位の軸の呼び名", goal: "ゴール", targets: "対象", categories: "カテゴリー", links: "関連する場所", history_limit: "保持する回数" };
 
-const KEY_LABELS: Record<string, string> = { status: "状態", title: "タイトル", target: "機能", category: "カテゴリー", phase: "フェーズ", tags: "タグ", depends_on: "依存先", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", confidence: "確からしさ", related: "関連", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", deliverable: "納品物", description: "説明" };
+const KEY_LABELS: Record<string, string> = { status: "状態", title: "タイトル", target: "機能", category: "カテゴリー", phase: "フェーズ", tags: "タグ", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", confidence: "確からしさ", related: "関係", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", deliverable: "納品物", description: "説明" };
 
 /** 値を 1 行の文字にする（空は「（空）」、配列は「、」でつなぐ） */
+/** 関係の種類の表示名 */
+const RELATION_NAMES: Record<RelationType, string> = { depends_on: "前提", parent: "親", for: "向けた検討事項", see_also: "関連" };
+
+/** 値が関係の 1 件（`{to, type}`）か */
+const isRelation = (value: unknown): value is Relation => {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record["to"] === "string" && typeof record["type"] === "string" && record["type"] in RELATION_NAMES;
+};
+
 const flat = (value: unknown): string => {
   if (value === undefined || value === null || value === "") return "（空）";
   if (Array.isArray(value)) return value.length === 0 ? "（空）" : value.map(flat).join("、");
   if (value === true) return "はい";
   if (value === false) return "いいえ";
+  // 関係の 1 件は「{種類の表示名}: {相手の ID}」
+  if (isRelation(value)) return `${RELATION_NAMES[value.type]}: ${value.to}`;
   if (typeof value === "object") return JSON.stringify(value);
   return toText(value).replace(/\s+/g, " ");
 };

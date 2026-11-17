@@ -537,6 +537,7 @@ functions:
          - `changed` を受けた場合、記録を読み直し、開いている画面・表示形式・ハッシュ・詳細パネルの項目・表の並べ替え・`FilterState`・`CommentState`・`DisplayState`・選んだ時点と「前回開いてから」の始まりを保ったまま 3・5 を履歴に積まずに描き直す。開いていた項目が消えていれば詳細パネルを閉じる。読み直しが読めない（422）場合は描き直さない
          - 読み直した記録で選んだ時点が引けなくなった（まとまりが消えた・`pending` が空になった）場合、`Prefs.diffSel` と `Route.diff` を `null` にして残し（`savePrefs`）、ハッシュを置き換える（`navigate`、`push: false`）
          - 読み直した `settings.display` が前と違う場合、`savedDisplay` と等しければ `savedDisplay` を `null` に戻すだけにする。そうでなければ、画面の下に「ワークスペースの既定が変わりました。」を `NOTICE_MS` の間出し、`message` を「ワークスペースの既定が変わりました（{MM/DD HH:mm}）。」にする（上書きを持たない項目だけが、読み分けで新しい既定になる）
+         - `duplicate_ids` を受けた場合、ID と記録の項目の種類の名前を `duplicateIds` にしてトップバーを描き直す。閉じたら `duplicateIds` を空にし、閉じたときの ID の集まりと違う `duplicate_ids` を受けるまで出し直さない。ID のリンクを押すとその項目の詳細パネルを開く
          - つながりが切れた場合、接続の状態を `offline`（読んだ日時は最後に読めた記録の `built_at`）にしてトップバーを描き直す
          - つながり直した場合、記録とレビュー中を読み直して接続の状態を `online` に戻す
       14. `hashchange`・`popstate` で 3 の選んだ時点の引き直しと 4・5 を繰り返す

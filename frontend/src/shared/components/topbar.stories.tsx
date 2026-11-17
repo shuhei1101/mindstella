@@ -573,3 +573,8 @@ export const VoiceDiscarded: Story = { args: { comments: true, commentCount: 3, 
 
 /** 入力欄が画面に無い間に、レビュー中への追加に失敗した。帯に理由と「入力欄を開く」を出す */
 export const VoiceFailed: Story = { args: { comments: true, commentCount: 3, voiceNotice: { kind: "failed", text: "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。" }, onOpenVoice: fn(), onDismissVoiceNotice: fn() } };
+
+/** 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる */
+export const DuplicateIds: Story = {
+  args: { duplicateIds: [{ id: "D-12", kind: "検討事項" }], onOpenDuplicate: fn(), onCloseDuplicate: fn() },
+};

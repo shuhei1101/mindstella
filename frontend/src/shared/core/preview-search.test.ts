@@ -9,7 +9,7 @@ const data = {
   ...empty,
   derived: { next: [] },
   tasks: [{ id: "T-1", title: "T-1の題", status: "進行中" }],
-  docs: [{ id: "A-1", title: "A-1の題", body: "A-1.html" }],
+  docs: [{ id: "A-1", title: "A-1の題", body: "docs/A-1.html" }],
   changes: { last_seq: 1, sets: [{ id: "V-1", at: "2026-11-01T00:00:00+00:00", summary: "", until_seq: 1, added: [], changed: [] }], pending: { added: [], changed: [] } },
 } as unknown as MindmapData;
 

@@ -32,7 +32,7 @@ from export_helpers import (
     module_url,
 )
 from fixture_types import MakeItem, MakeWorkspace, SnapshotTree
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 # 埋め込み先の要素の開きタグ（DATA_ELEMENT から閉じタグを除いたもの）
 DATA_ELEMENT_OPEN = builder.DATA_ELEMENT.removesuffix("</script>")
@@ -142,7 +142,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
     # 準備
     root = make_workspace(
         make_item("A-1"),
-        make_item("R-1", body="R-1.md"),
+        make_item("R-1", body="docs/R-1.md"),
         bodies={"A-1.md": "資料の本文\n", "X-1.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -165,7 +165,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "built_at",
         "settings_problem",
     }
-    assert data["bodies"] == {"A-1.md": "資料の本文\n"}
+    assert data["bodies"] == {"docs/A-1.md": "資料の本文\n"}
     assert data["marked_bodies"] == {}
     assert data["settings_problem"] is None
 
@@ -177,15 +177,15 @@ def test_collect_preview_data_with_html_body(
     # 準備
     root = make_workspace(
         make_item("A-1"),
-        make_item("A-2", body="A-2.html"),
+        make_item("A-2", body="docs/A-2.html"),
         bodies={"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"},
     )
     workspace = store.load_workspace(root)
     # 実行
     data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
     # 検証
-    assert data["bodies"] == {"A-1.md": "資料の本文\n", "A-2.html": "<p>a</p>"}
-    assert data["marked_bodies"] == {"A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
+    assert data["bodies"] == {"docs/A-1.md": "資料の本文\n", "docs/A-2.html": "<p>a</p>"}
+    assert data["marked_bodies"] == {"docs/A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
 
 
 def test_collect_preview_data_with_changes(
@@ -329,7 +329,7 @@ def test_derive_preview_values(
     }
     root = make_workspace(
         make_item("D-1", category="A", phase="目的", status="決定済み"),
-        make_item("D-2", category="A", phase="要件", status="未決定", depends_on=["D-1"]),
+        make_item("D-2", category="A", phase="要件", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("D-3", category="B", phase="要件", status="対象外"),
         settings=settings,
     )
@@ -379,7 +379,7 @@ def test_derive_preview_values_when_no_goal(
     }
     root = make_workspace(
         make_item("D-1", category="A", phase="目的", status="決定済み"),
-        make_item("D-2", category="A", phase="要件", status="未決定", depends_on=["D-1"]),
+        make_item("D-2", category="A", phase="要件", status="未決定", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("D-3", category="B", phase="要件", status="対象外"),
         settings=settings,
     )
@@ -593,8 +593,10 @@ def test_export_preview(
     assert path == out
     html = out.read_text(encoding="utf-8")
     data = _read_embedded(html)
-    assert data["decisions"] == [make_item("D-1")]
-    assert data["bodies"] == {"A-1.md": "本文 </script>\n"}
+    assert data["decisions"] == [
+        {**make_item("D-1"), "created": DEFAULT_TIMESTAMP, "updated": DEFAULT_TIMESTAMP}
+    ]
+    assert data["bodies"] == {"docs/A-1.md": "本文 </script>\n"}
     assert "src=" not in html
     assert "href=" not in html
     assert builder.LICENSES_OPEN in html

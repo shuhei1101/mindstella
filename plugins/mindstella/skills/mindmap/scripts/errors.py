@@ -87,6 +87,24 @@ class WriteFailedError(MindmapError):
     """ファイルの書き込み・置き換えで OSError が起きた。"""
 
 
+class ConcurrentWriteError(MindmapError):
+    """置き換える直前に、書き換える種類の YAML が読んだときと違う（ほかのセッションが間に書いた）。"""
+
+    def __init__(self, file_name: str) -> None:
+        """書き換えられたファイル名を持ち、メッセージを `記録がほかから書き換えられました: {ファイル名}` にする。"""
+        super().__init__(f"記録がほかから書き換えられました: {file_name}")
+        self.file_name = file_name
+
+
+class NotMindStellaSessionError(MindmapError):
+    """MindStella のセッションに限るツールを、そのワークスペースの MindStella のセッションでない呼び出しが呼んだ。"""
+
+    def __init__(self, tool: str) -> None:
+        """呼んだツールの名前を持ち、メッセージを `MindStella のセッションだけが呼べます: {ツール}` にする。"""
+        super().__init__(f"MindStella のセッションだけが呼べます: {tool}")
+        self.tool = tool
+
+
 class ArgumentError(MindmapError):
     """ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない）。"""
 

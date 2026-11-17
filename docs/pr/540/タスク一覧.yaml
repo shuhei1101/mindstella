@@ -1,0 +1,77 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-15T06:24:39.754564+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書が揃っているため対象外
+    updated_by: planner
+    updated_at: '2026-11-15T06:24:39.754564+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: '方針決めを依頼する Issue ではない（方針は親の #481 と資料 A-119・A-106・A-107 で決定済み）'
+    updated_by: planner
+    updated_at: '2026-11-15T06:24:39.754564+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 核心の機構は既に動いている。project-index が records と body_file で YAML の項目を 1 件ずつの文書として配信・書き込みすること（このリポジトリの dev-docs.yaml が使用中）、配信のファイルの監視（インターフェース定義『書き換えの通知』で稼働中）、状態のフォルダの応答の途中の記録（#531 で稼働中）
+    updated_by: planner
+    updated_at: '2026-11-15T06:24:39.754564+00:00'
+  - process: 複合ユースケース設計
+    status: done
+    note: SC-489-52 の記録の読み書きを next_id と project-index のツールに合わせた。単一ユースケースの連鎖（フロー）は変えていない
+    updated_by: planner
+    updated_at: '2026-11-15T06:42:46.573827+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 判定フローチャート『モック要否』で、デザイン方針（docs/design-policy.md）があり、見た目の方向を変えない（YES）
+    updated_by: planner
+    updated_at: '2026-11-15T06:24:39.754564+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 判定フローチャート『モック要否』で、画面の追加・削除と画面遷移の変更が無い（NO）。変わる画面（変更履歴・重なった ID の通知）だけモックを作成する
+    updated_by: planner
+    updated_at: '2026-11-15T06:24:39.754564+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    note: SC-540-1（書き込みを履歴に残す）を新規、SC-489-34・33・32・21・16・1・14・17・18・19・43 を変更、SC-489-30・29・27 を追従。edit_option・adopt・check は MindStella の MCP に残す
+    updated_by: planner
+    updated_at: '2026-11-15T08:15:45.679576+00:00'
+  - process: モック作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T11:43:21.985978+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T12:14:41.062785+00:00'
+  - process: 部品設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T12:44:03.740166+00:00'
+  - process: 画面設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T12:44:03.740166+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:35:43.176562+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T13:59:16.447744+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T15:45:07.869844+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-15T19:18:40.598958+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-16T21:54:36.861831+00:00'

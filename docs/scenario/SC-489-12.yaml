@@ -86,7 +86,7 @@ scenarios:
   - name: 正常シナリオ（記録を書き換える）
     setup:
       - name: Mock
-        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、`add` を MCP のクライアントで呼ぶ。プレビューは実際のブラウザで開いておく
+        description: モデルを呼ばない。起動のコマンドの代わりに MCP サーバーを立て、`next_id`・`write_docs` を MCP のクライアントで呼ぶ。プレビューは実際のブラウザで開いておく
       - name: 作成済みのワークスペース
         description: 検討事項 D-1 を持つ
       - name: 開いている画面
@@ -96,11 +96,12 @@ scenarios:
       sequenceDiagram
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
         participant P as プレビュー（ブラウザ）
 
-        CC->>SV: add（検討事項 D-2）
-        SV->>WS: decisions.yaml に書く
+        CC->>PI: write_docs（検討事項 D-2）
+        PI->>WS: decisions.yaml に書く
         SV->>SV: 書き換えを見つける
         SV-->>P: 書き換えを知らせる
         P->>SV: 記録を読み直す

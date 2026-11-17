@@ -1,0 +1,518 @@
+id: MOD-540-2
+title: サーバー / 変更の検知 / change_detection.py
+lead: 配信しているワークスペースの記録のファイルの書き換えを前回の中身と比べ、項目の追加・変更・削除を `history.yaml` と `changes.yaml` に記録し、外部の変更を自動でまとめ、重なった ID を知らせる。記録のファイル（種類ごとの YAML と本文）は書かない。
+test_files:
+  - tests/unit/scripts/test_change_detection.py
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/
+    scripts/
+      change_detection.py  前回の中身・項目の比べ方・書いた元の見分け・記録・自動のまとめ・重なった ID
+  ```
+data_models:
+  - name: Snapshot
+    title: 前回の中身
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    role: DTO
+    summary: 見るファイルの前回の中身と、そのときの Git の位置
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。状態のフォルダの `workspaces/{ID}/snapshot/` に、`files` を同じ名前で書いて残す。'
+    properties:
+      - name: files
+        type: dict[str, str]
+        description: 記録のフォルダからのパス（`decisions.yaml`・`docs/D-1.md` など）→ 中身
+      - name: git_head
+        type: str | None
+        description: '`git rev-parse HEAD`（Git の作業ツリーでなければ `None`）'
+      - name: git_ref
+        type: str | None
+        description: '`git symbolic-ref -q HEAD`（無ければ `None`）'
+  - name: ItemDiff
+    title: 項目の違い
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    role: DTO
+    summary: 前回の中身と今の中身を比べた、項目ごとの追加・変更・削除
+    description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。'
+    properties:
+      - name: added
+        type: list[tuple[Kind, dict[str, Any]]]
+        description: 足した項目（種類の順・項目の並びの順）
+      - name: changed
+        type: 'list[tuple[Kind, dict[str, Any], dict[str, Any], str | None, str | None]]'
+        description: 変えた項目（種類・前の項目・今の項目・前の本文・今の本文）
+      - name: removed
+        type: list[tuple[Kind, dict[str, Any]]]
+        description: 消した項目（種類・前の項目）
+enums:
+  - name: Writer
+    title: 書いた元
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    summary: 見つけた書き換えをどう扱うか
+    values:
+      - value: git
+        title: Git の操作
+        description: 前回の中身を置き換えるだけで記録しない
+      - value: ai
+        title: MindStella のセッション
+        description: 応答の途中の MindStella のセッションの変更として記録する
+      - value: external
+        title: 外部
+        description: 外部の変更として記録し、自動でまとめる
+classes:
+  - name: ChangeDetector
+    title: 変更の検知
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    role: 長期保持のランタイム状態
+    summary: 1 つのワークスペースの変更の検知。配信の台帳が配信を立てるときに作って始め、止めるときに止める。作るときにワークスペースの絶対パス・状態のフォルダ・ツールと共有する書き換えの鍵・入力の宛先を受け取る
+    kind: クラス
+    properties:
+      - name: _root
+        type: Path
+        access: 内部 (_)
+        description: ワークスペースの絶対パス
+      - name: _snapshot
+        type: Snapshot
+        access: 内部 (_)
+        description: 前回の中身
+      - name: _signature
+        type: str
+        access: 内部 (_)
+        description: 前回の書き換えの印（『配信』の `workspace_signature` と同じ作り方で、見るファイルだけ）
+      - name: _duplicates
+        type: tuple[str, ...]
+        access: 内部 (_)
+        description: 前回知らせた重なった ID
+      - name: _external_since
+        type: float | None
+        access: 内部 (_)
+        description: 外部の変更を最後に記録した時刻（`time.monotonic()`。外部の変更が無ければ `None`）
+      - name: _unreadable
+        type: set[str]
+        access: 内部 (_)
+        description: 読めないことをログに残したファイル（読めるようになったら外す）
+      - name: _write_lock
+        type: threading.Lock
+        access: 内部 (_)
+        description: ツール・画面の保存と共有する書き換えの鍵
+      - name: _stop
+        type: threading.Event
+        access: 内部 (_)
+        description: 止める合図
+    methods:
+      - name: start
+        title: 検知を始める
+        kind: メソッド
+        summary: '`snapshot/` と今の中身を比べて止まっていた間の変更を記録し、`POLL_INTERVAL_SEC` ごとに `poll` を呼ぶデーモンのスレッドを始める'
+        returns:
+          type: None
+          description: 何も返さない
+        process: |-
+          1. 状態のフォルダの `snapshot/` を読む（`load_snapshot`）
+             - 無い場合、今の中身で前回の中身を作り（`take_snapshot`）、書いて（`save_snapshot`）、比べない
+             - ある場合、前回の中身にして `poll` を 1 回呼ぶ（書いた元は `external` として扱う。止まっていた間はどのセッションの応答の途中か分からないため）
+          2. デーモンのスレッドで、`_stop` が立つまで `POLL_INTERVAL_SEC` ごとに `poll` を呼ぶ
+        unit_tests:
+          - name: test_start_when_no_snapshot
+            case: 正常
+            summary: snapshot が無ければ今の中身で作り、記録しない
+            condition: D-1 を持ち `snapshot/` の無いワークスペース
+            mock: '`threading.Thread`'
+            expected: '`snapshot/decisions.yaml` が今の中身と同じで、`history.yaml`・`changes.yaml` が呼ぶ前と同じ'
+          - name: test_start_when_changed_while_stopped
+            case: 正常
+            summary: snapshot と違えば外部の変更として記録する
+            condition: D-1 の答えが違う `snapshot/decisions.yaml` を持つワークスペース
+            mock: '`threading.Thread`'
+            expected: '`history.yaml` の D-1 の変更履歴の `by` が `external`'
+      - name: poll
+        title: 書き換えを見る
+        kind: メソッド
+        summary: 書き換えの印が変わったときだけ中身を読み、違いを記録する。外部の変更の自動のまとめの時刻も見る
+        returns:
+          type: None
+          description: 何も返さない
+        process: |-
+          1. 書き換えの印を作り直す（`signature_of`）。前と同じなら 4. へ
+          2. 書き換えの鍵と `.mindstella.lock` を取り（『読み書きと検証』の `workspace_lock`）、今の中身を読む（`take_snapshot`）
+             - 種類の YAML が読めない・`items` が配列でない場合、そのファイルは前回の中身のままにして比べない。初めてのときだけログに残す
+               - `[WARNING]` `[change-detection] {ワークスペースの ID} unreadable: {ファイル}`
+          3. 書いた元を見分け（`classify_writer`）、違いを求める（`diff_snapshots`）
+             - 違いが無い、または書いた元が `git` の場合、前回の中身を置き換えるだけにする
+             - それ以外の場合、記録して（`record_diff`）、前回の中身を置き換え、`snapshot/` に書く（`save_snapshot`）。書いた元が `external` なら `_external_since` を今にする
+             - 記録で `WriteFailedError` が起きた場合、前回の中身を置き換えずにログに残す（次の回で記録し直す）
+               - `[ERROR]` `[change-detection] {ワークスペースの ID} write_failed: {パス}`
+             - 重なった ID を求め（`find_duplicate_ids`）、前に知らせたものと違えば `_duplicates` を置き換え、ペインへ貼り付ける（`paste_duplicates`）
+          4. `_external_since` から `EXTERNAL_COMMIT_DELAY_SEC` が過ぎていれば、鍵とロックを取って外部の変更をまとめ（『変更履歴』の `flush_pending` を `ai` で呼ぶのと同じく、`pending.by` が `external` のときだけ `commit_pending` で説明 `EXTERNAL_SUMMARY`・`by: external`）、`_external_since` を `None` にする
+        unit_tests:
+          - name: test_poll_when_external
+            case: 正常
+            summary: MindStella のセッションが応答の途中でなければ外部の変更として記録し、時間が過ぎたらまとめる
+            condition: D-1 を持つワークスペースで、D-1 の答えを書き換えてから `poll` を呼び、時計を `EXTERNAL_COMMIT_DELAY_SEC` 進めてもう一度呼ぶ
+            mock: '`time.monotonic`・`classify_writer`（`external` を返す）'
+            expected: '1 回目の後 `history.yaml` の D-1 の `updated_by` が `external` で `pending.by` が `external`。2 回目の後 `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」で `pending` が空。`decisions.yaml` は書き換えた後のまま'
+          - name: test_poll_when_session
+            case: 正常
+            summary: 応答の途中の書き換えは ai の変更としてまとめない
+            condition: '同じ書き換えで `classify_writer` が `ai` を返す'
+            mock: '`time.monotonic`・`classify_writer`'
+            expected: '`history.yaml` の D-1 の `updated_by` が `ai`、`pending.by` が `ai`。時計を進めても `sets` が増えない'
+          - name: test_poll_when_git
+            case: 正常
+            summary: Git の操作は記録せず前回の中身だけ置き換える
+            condition: '同じ書き換えで `classify_writer` が `git` を返す'
+            mock: '`classify_writer`'
+            expected: '`history.yaml`・`changes.yaml` が呼ぶ前と同じで、前回の中身が今の中身'
+          - name: test_poll_when_unreadable
+            case: 正常
+            summary: 読めない種類の YAML は飛ばし、ログを 1 回だけ残す
+            condition: '`decisions.yaml` を YAML として読めない中身にして 2 回呼ぶ'
+            mock: なし
+            expected: '`history.yaml`・`changes.yaml` が呼ぶ前と同じ。ログの `unreadable` の行が 1 行だけ'
+          - name: test_poll_when_duplicate
+            case: 正常
+            summary: 重なった ID の集まりが変わったときだけ貼り付ける
+            condition: ID が D-1 の検討事項を 2 件にして呼び、別のキーを書き換えてもう一度呼ぶ
+            mock: '`paste_duplicates`'
+            expected: '`paste_duplicates` が `("D-1",)` で 1 回だけ呼ばれ、`duplicate_ids` が `("D-1",)`'
+      - name: accept_own_write
+        title: 自分の書き込みを受け取る
+        kind: メソッド
+        summary: 常駐サーバーが書いた後に、書いたファイルの分だけ前回の中身を書いた中身で置き換え、二重に記録しない（MindStella の MCP のツール・画面の保存・設定の更新が、書き込んだ鍵の中で呼ぶ）
+        args:
+          - name: written
+            type: dict[str, str]
+            required: true
+            passing: positional
+            description: 書いたファイル（記録のフォルダからのパス）→ 書いた中身
+        returns:
+          type: None
+          description: 何も返さない
+        process: |-
+          1. 前回の中身の `written` のファイルだけを渡した中身で置き換え、ほかのファイルは前回の中身のままにする（`os.replace` から呼ぶまでの間に project-index が書いた分は、次の `poll` で違いとして記録する）
+          2. `snapshot/` に書く。書き換えの印は作り直さない（次の `poll` で中身を比べる）
+        unit_tests:
+          - name: test_accept_own_write
+            case: 正常
+            summary: 受け取った後の poll は自分の書き込みを記録せず、間に書かれたほかのファイルは記録する
+            condition: D-1 の案を書き換えた `decisions.yaml` を `accept_own_write` に渡し、その前に `notes.yaml` の N-1 も書き換えてから `poll` を呼ぶ
+            mock: なし
+            expected: '`history.yaml` に D-1 の変更履歴が増えず、N-1 の変更履歴が 1 回分増える'
+      - name: duplicate_ids
+        title: 重なった ID
+        kind: メソッド
+        summary: 最後に求めた重なった ID を返す（『配信』の `stream_events` が読む）
+        returns:
+          type: tuple[str, ...]
+          description: 重なった ID（ID の順）
+        process: 1. `_duplicates` を返す
+      - name: stop
+        title: 検知を止める
+        kind: メソッド
+        summary: '`_stop` を立て、スレッドの終わりを待つ'
+        returns:
+          type: None
+          description: 何も返さない
+        process: 1. `_stop` を立て、スレッドを `POLL_INTERVAL_SEC` の 2 倍まで待つ
+functions:
+  - name: take_snapshot
+    title: 今の中身を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: 見るファイル（`WATCHED_KINDS` の YAML と `docs/` の直下の本文）の今の中身と Git の位置を読む
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: previous
+        type: Snapshot | None
+        required: false
+        default: None
+        passing: keyword
+        description: 読めないファイルの代わりに使う前回の中身
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess[str]]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: git を呼ぶ関数
+    returns:
+      type: tuple[Snapshot, list[str]]
+      description: 今の中身と、読めなかったファイル
+    process: |-
+      1. 種類ごとの YAML を UTF-8 で読み、YAML として読めて `items` が配列なら `files` に入れる。読めなければ読めなかったファイルに足し、`previous` があればその中身を入れる
+      2. `docs/` の直下の `*.md`・`*.html` を読んで `files` に入れる
+      3. ワークスペースが Git の作業ツリーなら `git rev-parse HEAD` と `git symbolic-ref -q HEAD` を読む（失敗したら `None`）
+    unit_tests:
+      - name: test_take_snapshot
+        case: 正常
+        summary: 種類の YAML と本文を読み、読めないファイルは前回の中身で埋める
+        condition: D-1（本文 `docs/D-1.md`）を持ち、`notes.yaml` が読めない中身のワークスペースと、`notes.yaml` を持つ前回の中身
+        mock: '`run`（Git の作業ツリーでない）'
+        expected: '`files` に `decisions.yaml`・`docs/D-1.md` と前回の `notes.yaml`、読めなかったファイルが `[notes.yaml]`、`git_head` が `None`'
+  - name: diff_snapshots
+    title: 中身を比べる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: 前回と今の中身の種類ごとの `items` を `id` で突き合わせ、追加・変更・削除を返す
+    args:
+      - name: before
+        type: Snapshot
+        required: true
+        passing: positional
+        description: 前回の中身
+      - name: after
+        type: Snapshot
+        required: true
+        passing: positional
+        description: 今の中身
+    returns:
+      type: ItemDiff
+      description: 項目の違い
+    process: |-
+      1. `KINDS` の順に、前回と今の `items` を `id` で突き合わせる（同じ ID が 2 件以上あれば最初の 1 件で比べる）
+         - 今にだけある ID は追加、前回にだけある ID は削除にする
+         - 両方にある ID は、キーか、`body` が指す本文の中身が違えば変更にする
+    unit_tests:
+      - name: test_diff_snapshots
+        case: 正常
+        summary: 追加・変更・削除と、本文だけの変更を見分ける
+        condition: 前回 D-1・D-2・D-3、今 D-1（答えを変えた）・D-2（本文だけ変えた）・D-4
+        mock: なし
+        expected: 追加が D-4、変更が D-1・D-2（D-2 は前と今の本文つき）、削除が D-3
+      - name: test_diff_snapshots_when_same
+        case: 正常
+        summary: 同じ中身なら違いが無い
+        condition: 前回と今が同じ
+        mock: なし
+        expected: 追加・変更・削除がどれも空
+  - name: classify_writer
+    title: 書いた元を見分ける
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: Git の位置の変化と MindStella のセッションの状態から、書き換えの書いた元を決める
+    args:
+      - name: before
+        type: Snapshot
+        required: true
+        passing: positional
+        description: 前回の中身
+      - name: after
+        type: Snapshot
+        required: true
+        passing: positional
+        description: 今の中身
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: state_dir
+        type: Path
+        required: true
+        passing: positional
+        description: 状態のフォルダ
+      - name: alive
+        type: Callable[[dict[str, Any]], bool]
+        required: false
+        default: session_alive
+        passing: injected
+        description: '`session.json` のペインとプロセスがあるかを返す関数'
+    returns:
+      type: Writer
+      description: 書いた元
+    process: |-
+      1. 前回と今の `git_head` か `git_ref` が違う、または `.git/MERGE_HEAD`・`.git/index.lock` があれば `git`
+      2. そのワークスペースの `session.json`（『状態』の `read_session`）が `responding` が真で、ペインとプロセスがあれば（`alive`）`ai`
+      3. それ以外は `external`
+    unit_tests:
+      - name: test_classify_writer
+        case: 正常
+        summary: Git の操作・応答の途中・それ以外を見分ける
+        condition: '`parametrize`: `git_head` が違う / `.git/MERGE_HEAD` がある / `responding: true` で `alive` が真 / `responding: true` で `alive` が偽 / `session.json` が無い'
+        mock: '`alive`'
+        expected: '`git` / `git` / `ai` / `external` / `external`'
+  - name: session_alive
+    title: セッションのペインとプロセスがあるか
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: '`session.json` の `pane` が tmux で引け、`pid` のプロセスの起動時刻が `pid_started_at` と同じかを返す'
+    args:
+      - name: session
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`session.json` の中身'
+      - name: run
+        type: Callable[..., subprocess.CompletedProcess[str]]
+        required: false
+        default: subprocess.run
+        passing: injected
+        description: tmux を呼ぶ関数
+    returns:
+      type: bool
+      description: ペインとプロセスがあれば真
+    process: |-
+      1. `pane`・`socket` が無い、または `tmux -S {socket} display-message -p -t {pane} '#{pane_id}'` が失敗すれば偽
+      2. `pid` のプロセスの起動時刻（『セッションの値の注入』の `process_started_at`）が `pid_started_at` と違えば偽。それ以外は真
+    unit_tests:
+      - name: test_session_alive
+        case: 正常
+        summary: ペインとプロセスの有無を見分ける
+        condition: '`parametrize`: ペインがあり起動時刻が同じ / ペインが無い / 起動時刻が違う'
+        mock: '`run`・`process_started_at`'
+        expected: 真 / 偽 / 偽
+  - name: record_diff
+    title: 違いを記録する
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: 項目の違いを、書いた元つきで `history.yaml` と `changes.yaml` に記録する
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: diff
+        type: ItemDiff
+        required: true
+        passing: positional
+        description: 項目の違い
+      - name: writer
+        type: Literal["ai", "external"]
+        required: true
+        passing: positional
+        description: 書いた元
+      - name: now
+        type: Callable[[], str]
+        required: false
+        default: now_utc
+        passing: injected
+        description: 今の日時を返す関数
+    returns:
+      type: None
+      description: 何も返さない
+    process: |-
+      1. 項目の履歴と記録を読む（『変更履歴』の `load_item_history`・`load_changes`）。書いた元が違う変更が入っていれば先にまとめる（`flush_pending`）
+      2. 追加ごとに、通し番号を振り（`advance_seq`）、`created`・`updated`・`updated_by`・`seq`・`added_seq` の行を作り、`pending.added` に足す（`note_pending`、`by` は書いた元）
+      3. 変更ごとに、1 回分を作り（`make_entry`、`by` は書いた元）、あれば通し番号を振って行の `seq`・`updated`・`updated_by` を書き換え、行に積み（`history_limit`、`stack_history`）、保持する回数が 0 より大きければ `pending.changed` に足す
+      4. 削除ごとに、通し番号を振り、`pending.removed` に足して（`note_removed`）、行を消す
+      5. `history.yaml` と `changes.yaml` を一時ファイルに書いてから `os.replace` で置き換える（`OSError` は一時ファイルを消して `WriteFailedError`）
+    exceptions:
+      - name: WriteFailedError
+        condition: '`history.yaml` か `changes.yaml` を書けない'
+        message: '書き込めませんでした: {パス}（{理由}）'
+    unit_tests:
+      - name: test_record_diff
+        case: 正常
+        summary: 追加・変更・削除をそれぞれ記録する
+        condition: '`last_seq` 3 の記録で、追加 D-4・変更 D-1（答え）・削除 D-2 を `external` で記録する'
+        mock: '`now`'
+        expected: '`history.yaml` に D-4 の行（`added_seq` 4）、D-1 の行に `by: external`・`before.answer` の 1 回分、D-2 の行が無い。`pending` が `added: [D-4]`・`changed: [D-1]`・`removed` に D-2・`by: external`'
+      - name: test_record_diff_when_writer_differs
+        case: 正常
+        summary: 書いた元が違う変更が入っていれば先にまとめる
+        condition: '`pending` が `by: ai`・`changed: [D-3]` の記録で、D-1 の変更を `external` で記録する'
+        mock: '`now`'
+        expected: '`sets` の先頭が説明「まとめる前の AI の書き換え」・`changed: [D-3]` で、`pending` が `by: external`・`changed: [D-1]`'
+  - name: find_duplicate_ids
+    title: 重なった ID を求める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: 全ての種類の YAML で同じ `id` を持つ項目が 2 件以上ある ID を返す
+    args:
+      - name: snapshot
+        type: Snapshot
+        required: true
+        passing: positional
+        description: 今の中身
+    returns:
+      type: tuple[str, ...]
+      description: 重なった ID（ID の順）
+    process: 1. 種類ごとの YAML の `items` の `id` を数え、2 件以上の ID を並べて返す
+    unit_tests:
+      - name: test_find_duplicate_ids
+        case: 正常
+        summary: 種類をまたいでも数える
+        condition: '`decisions.yaml` に D-1 が 2 件、`notes.yaml` に N-1 が 1 件'
+        mock: なし
+        expected: '`("D-1",)`'
+  - name: paste_duplicates
+    title: 重なった ID を貼り付ける
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    scope: public
+    summary: そのワークスペースの MindStella のセッションのペインへ、重なった ID の文を貼り付ける
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: duplicates
+        type: tuple[str, ...]
+        required: true
+        passing: positional
+        description: 重なった ID（空なら貼らない）
+      - name: targets
+        type: InputTargets
+        required: true
+        passing: positional
+        description: 入力の宛先の台帳（『Claude Code への入力』）
+    returns:
+      type: None
+      description: 何も返さない
+    process: |-
+      1. `duplicates` が空か、宛先が無ければ何もしない
+      2. `DUPLICATE_MESSAGE` に ID と項目のファイル名を入れた文を、宛先のペインへ貼り付ける（『Claude Code への入力』の貼り付け）
+         - 貼り付けに失敗した場合、ログに残して続ける
+           - `[WARNING]` `[change-detection] {ワークスペースの ID} paste_failed: {ペイン}`
+    unit_tests:
+      - name: test_paste_duplicates
+        case: 正常
+        summary: 宛先があれば 1 回貼り、無ければ貼らない
+        condition: '`("D-1",)` で、宛先がある台帳 / 宛先が無い台帳'
+        mock: 貼り付けの関数
+        expected: '前は `[mindstella] 同じ ID の項目が 2 件あります: D-1（decisions.yaml）` で始まる文で 1 回、後は呼ばれない'
+constants:
+  - name: POLL_INTERVAL_SEC
+    title: 見る間隔
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    summary: 書き換えの印を作り直す間隔（『書き換えの知らせ』と同じ。非機能要件「画面への反映の時間」）
+    value: '0.25'
+  - name: EXTERNAL_COMMIT_DELAY_SEC
+    title: 外部の変更を自動でまとめるまでの秒数
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    summary: 外部の変更を最後に記録してから、まとめるまで待つ秒数（インターフェース定義『変更の検知』。結合テストは環境変数 `MINDSTELLA_EXTERNAL_COMMIT_DELAY_SEC` で縮める）
+    value: '60'
+  - name: SNAPSHOT_DIR
+    title: 前回の中身のフォルダ
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    summary: 状態のフォルダの `workspaces/{ID}/` の下の、前回の中身のフォルダ名（ER 図『常駐サーバーの状態』）
+    value: snapshot
+  - name: DUPLICATE_MESSAGE
+    title: 重なった ID の貼り付ける文
+    container: plugins/mindstella/skills/mindmap/scripts/change_detection.py
+    usecase: 書き込みを履歴に残す
+    summary: ペインへ貼り付ける文の形（インターフェース定義『変更の検知』の「貼り付ける文」）
+    value: '[mindstella] 同じ ID の項目が 2 件あります: {ID}（{ファイル名}）。片方の ID を next_id で振り直してください'

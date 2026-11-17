@@ -11,6 +11,12 @@ components:
     refs:
       - CMP-489-20#
     unit_tests:
+      - name: test_topbar_when_duplicate_ids
+        case: 正常
+        summary: 重なった ID があれば通知を出す
+        condition: '`duplicateIds: [{id: D-12, kind: 検討事項}]`'
+        mock: なし
+        expected: タブの帯の下に重なった ID の通知（`DuplicateIdNotice`）がある
       - name: test_topbar_when_navigate
         case: 正常
         summary: タブを押すと onNavigate

@@ -83,7 +83,7 @@ functions:
       1. 標準入力を JSON として読む
          - 読めないか、オブジェクトでないか、`cwd` が文字列でないか、`tool_input` がオブジェクトでない場合、何も出さずに 0 を返す
       2. tmux の中（`TMUX`・`TMUX_PANE` がどちらも空でない）なら、`find_claude(os.getppid())` で Claude Code のプロセスを探す。tmux の外なら探さない
-      3. セッションの値を作る（`build_session`）
+      3. セッションの値を作る（`build_session`。入力の `session_id` が文字列なら渡す）
       4. `tool_input` のコピーの `session` を 3 の値で置き換え、`{"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": コピー}}` を標準出力に JSON（`ensure_ascii=False`）で出す
       5. 0 を返す
     unit_tests:
@@ -134,14 +134,27 @@ functions:
         required: true
         passing: positional
         description: Claude Code のプロセスの PID と起動時刻（見つからなければ `None`）
+      - name: session_id
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: フックの入力の `session_id`（Claude Code の `session_id`）
     returns:
       type: dict[str, Any]
       description: '`cwd`・`claude_config_dir` と、tmux の中なら `tmux`・`tmux_pane`、`claude` があれば `claude_pid`・`claude_started_at`（インターフェース定義『MCP サーバーの起動』の `session`）'
     process: |-
       1. `cwd` と、`CLAUDE_CONFIG_DIR` が空でなければそれを `expanduser` して絶対パスにしたもの、空なら `DEFAULT_CONFIG_DIR` を `claude_config_dir` に入れる
       2. `TMUX`・`TMUX_PANE` がどちらも空でなければ、`tmux`・`tmux_pane` に入れ、`claude` があれば `claude_pid`・`claude_started_at` も入れる
-      3. 辞書を返す
+      3. `session_id` があれば `claude_session_id` に入れる
+      4. 辞書を返す
     unit_tests:
+      - name: test_build_session_when_session_id
+        case: 正常
+        summary: session_id を claude_session_id に入れる
+        condition: '`session_id="abc"`、`environ` は `TMUX` を持たない'
+        mock: '`Path.home`（`/h`）'
+        expected: '`cwd`・`claude_config_dir`・`claude_session_id`（`abc`）の 3 つのキー'
       - name: test_build_session
         case: 正常
         summary: tmux の中と外で入れるキーを分ける

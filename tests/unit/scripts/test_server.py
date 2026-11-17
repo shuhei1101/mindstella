@@ -23,29 +23,28 @@ import migrator
 import serve
 import server
 import store
-from errors import ArgumentError, SchemaMismatchError, WorkspaceNotFoundError
+from errors import (
+    ArgumentError,
+    NotMindStellaSessionError,
+    SchemaMismatchError,
+    WorkspaceNotFoundError,
+)
 from fixture_types import MakeItem, MakeWorkspace
+from state import SessionState, update_session
 from voice_paste import VoicePasteTranscriber
+from workspaces import workspace_id_of
 
 # build_server が登録するツールの名前（インターフェース定義『MCP サーバーの起動』）
 EXPECTED_TOOL_NAMES = (
-    "add",
-    "update",
-    "remove",
+    "next_id",
     "update_settings",
     "adopt",
     "edit_option",
-    "batch",
     "changes_since_read",
     "commit",
     "pending",
     "status",
     "next",
-    "impact",
-    "find",
-    "show",
-    "attrs",
-    "tags",
     "check",
     "goal",
     "migrate",
@@ -204,15 +203,31 @@ def registry() -> Iterator[serve.PreviewRegistry]:
     created.stop_all()
 
 
-def _build(previews: Any, *, status: Callable[[], dict[str, Any]] | None = None) -> Any:
+def _build(
+    previews: Any,
+    *,
+    status: Callable[[], dict[str, Any]] | None = None,
+    state_root: Path | None = None,
+) -> Any:
     """status と request_stop を何もしない関数にしてサーバーを組み立てる。"""
     return server.build_server(
         previews=previews,
         write_lock=threading.Lock(),
         status=(lambda: {}) if status is None else status,
         request_stop=lambda: None,
-        context=SimpleNamespace(port=8784),
+        context=SimpleNamespace(port=8784, state_root=state_root),
     )
+
+
+def _write_mindstella_session(state_root: Path, root: Path, claude_session_id: str) -> None:
+    """そのワークスペースの session.json に、Claude Code の session_id を持つ MindStella のセッションを置く。"""
+    session = SessionState(
+        session="mindstella-ws",
+        status="running",
+        started_at="2026-11-15T00:00:00+00:00",
+        claude_session_id=claude_session_id,
+    )
+    update_session(state_root, workspace_id_of(root), lambda _: session)
 
 
 def _session_of(cwd: Path) -> dict[str, str]:
@@ -514,12 +529,14 @@ def test_build_server_when_relative_workspace(
     mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
     # 実行
     result = _run_async(
-        mcp_server.call_tool("attrs", {"workspace": "ws", "session": _session_of(tmp_path)})
+        mcp_server.call_tool("pending", {"workspace": "ws", "session": _session_of(tmp_path)})
     )
     # 検証
     assert isinstance(result, CallToolResult)
     assert result.is_error is False
-    assert result.structured_content == {"attrs": []}
+    assert result.structured_content is not None
+    assert result.structured_content["added"] == []
+    assert result.structured_content["changed"] == []
 
 
 def test_build_server_when_relative_without_session() -> None:
@@ -527,7 +544,7 @@ def test_build_server_when_relative_without_session() -> None:
     # 準備
     mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
     # 実行
-    result = _run_async(mcp_server.call_tool("attrs", {"workspace": "ws"}))
+    result = _run_async(mcp_server.call_tool("pending", {"workspace": "ws"}))
     # 検証
     assert isinstance(result, CallToolResult)
     assert result.is_error is True
@@ -551,7 +568,7 @@ def test_build_server_when_session_given(
     previews = _SessionRecorder()
     mcp_server = _build(previews)
     # 実行
-    _run_async(mcp_server.call_tool("attrs", {"workspace": str(root), "session": raw_session}))
+    _run_async(mcp_server.call_tool("pending", {"workspace": str(root), "session": raw_session}))
     # 検証
     assert previews.remembered == [(root, claude_input.parse_session(raw_session))]
 
@@ -568,43 +585,6 @@ def test_build_server_when_status_route() -> None:
     # 検証
     assert response.status_code == 200
     assert response.json() == {"name": "mindstella"}
-
-
-@pytest.mark.parametrize(
-    ("extra_arguments", "expected_text_head", "expected_first_id"),
-    [
-        pytest.param({}, "全 1 件・合計", None, id="markdown"),
-        pytest.param({"format": "json"}, None, "D-1", id="json"),
-    ],
-)
-def test_build_server_when_find_format(
-    tmp_path: Path,
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    extra_arguments: dict[str, str],
-    expected_text_head: str | None,
-    expected_first_id: str | None,
-) -> None:
-    """find は既定で Markdown の本文、json で構造化の結果を返す（正常系）。"""
-    # 準備
-    make_workspace(make_item("D-1"), name="ws")
-    mcp_server = _build(serve.PreviewRegistry(threading.Lock()))
-    arguments = {"workspace": "ws", "session": _session_of(tmp_path), **extra_arguments}
-    # 実行
-    result = _run_async(mcp_server.call_tool("find", arguments))
-    # 検証
-    assert isinstance(result, CallToolResult)
-    assert result.is_error is False
-    assert _find_summary(result) == (expected_text_head, expected_first_id)
-
-
-def _find_summary(result: CallToolResult) -> tuple[str | None, str | None]:
-    """find の結果を（Markdown の本文の先頭 7 文字、構造化の結果の最初の ID）にする。持たない方は None。"""
-    # 構造化の結果が無い: Markdown の本文だけを返した
-    if result.structured_content is None:
-        return _text_of(result)[: len("全 1 件・合計")], None
-    # 構造化の結果がある: JSON で返した
-    return None, result.structured_content["items"][0]["id"]
 
 
 def test_call_tool() -> None:
@@ -788,3 +768,40 @@ def test_resolve_workspace_when_no_session(path: str, expected_head: str) -> Non
     result = _resolve_or_message(path)
     # 検証
     assert result.startswith(expected_head)
+
+
+def test_build_server_when_not_mindstella_session(
+    tmp_path: Path, make_workspace: MakeWorkspace, make_item: MakeItem
+) -> None:
+    """MindStella のセッションに限るツールは、違うセッションの呼び出しをエラーにする（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), name="ws")
+    state_root = tmp_path / "state"
+    _write_mindstella_session(state_root, root, "abc")
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()), state_root=state_root)
+    session = {**_session_of(tmp_path), "claude_session_id": "xyz"}
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool("commit", {"workspace": str(root), "summary": "a", "session": session})
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is True
+    assert _text_of(result) == "エラー: MindStella のセッションだけが呼べます: commit"
+    assert not (root / ".mindstella" / "changes.yaml").exists()
+
+
+def test_require_mindstella_session(tmp_path: Path, make_workspace: MakeWorkspace) -> None:
+    """同じ claude_session_id なら通し、違えば断る（正常系）。"""
+    # 準備
+    root = make_workspace(name="ws")
+    state_root = tmp_path / "state"
+    _write_mindstella_session(state_root, root, "abc")
+    context = SimpleNamespace(state_root=state_root)
+    same = claude_input.parse_session({**_session_of(tmp_path), "claude_session_id": "abc"})
+    other = claude_input.parse_session({**_session_of(tmp_path), "claude_session_id": "xyz"})
+    # 実行
+    server.require_mindstella_session(context, root, same, "commit")
+    # 検証
+    with pytest.raises(NotMindStellaSessionError, match="commit"):
+        server.require_mindstella_session(context, root, other, "commit")

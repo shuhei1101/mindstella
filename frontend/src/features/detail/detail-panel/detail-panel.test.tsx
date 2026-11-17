@@ -21,7 +21,7 @@ describe("DetailPanel", () => {
   // 項目を描く（正常系）
   test("detail_panel", async () => {
     // 準備
-    stubRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", depends_on: ["D-1"] }], bodies: { "docs/D-1.md": "本文の文" } });
+    stubRecords({ decisions: [decision, { id: "D-2", title: "D-2の題", status: "未決定", related: [{ to: "D-1", type: "depends_on" }] }], bodies: { "docs/D-1.md": "本文の文" } });
     // 実行
     renderRoute("/spa/?tab=decisions&id=D-1");
     // 検証

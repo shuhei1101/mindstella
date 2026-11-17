@@ -17,8 +17,8 @@ functions:
         passing: positional
         description: 項目の種類
     returns:
-      type: "{key: string, input: 'text' | 'textarea' | 'select' | 'tags' | 'refs' | 'check' | 'body' | 'options'}[]"
-      description: キーと入力の種類（`id`・`created`・`updated` は含めず、編集の表示の頭に読むだけで並べる）
+      type: "{key: string, input: 'text' | 'textarea' | 'select' | 'tags' | 'related' | 'check' | 'body' | 'options'}[]"
+      description: キーと入力の種類（`id`・`created`・`updated` は含めず、編集の表示の頭に読むだけで並べる）。関係は `related` 1 つにまとめ、`sources` は今どおり ID のチップ
     unit_tests:
       - name: test_editable_keys
         case: 正常
@@ -49,13 +49,50 @@ functions:
         condition: 'D-1: `[{name: API, main: true}]`・T-1: `[{name: ａｐｉ}, {name: 画面}]`・N-1: `[{name: 保存}]`・TH-1: `[画面]`'
         mock: なし
         expected: '`[api, 画面, 保存]`'
+  - name: relationValidator
+    title: 関係の入力の確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
+    usecase: 画面で項目を編集して保存する
+    scope: public
+    summary: 関係の種類と索引から、チップの入力の `validate` に渡す関数を作る。ID かタイトルが指せる項目に当たればその ID、当たらなければ誤りの文を返す
+    args:
+      - name: type
+        type: '"depends_on" | "parent" | "for" | "see_also"'
+        required: true
+        passing: positional
+        description: 関係の種類
+      - name: kind
+        type: Kind
+        required: true
+        passing: positional
+        description: 編集している項目の種類
+      - name: index
+        type: RecordIndex
+        required: true
+        passing: positional
+        description: 記録の索引
+    returns:
+      type: '(value: string) => {error: string} | {value: string}'
+      description: チップの入力の `validate`
+    process: |-
+      1. 入れた値を前後の空白を除いて ID として引き、無ければタイトルが同じ項目を引く（同じタイトルが複数なら最初の 1 件）
+      2. 引けない、またはその種類が指せない項目（`depends_on`・`parent` は `kind` と違う種類、`for` は検討事項以外）なら `{error: "{入れた値} が見つかりません。ID を確認してください。"}` を返す
+      3. 引けたらその項目の ID を `{value}` で返す
+    unit_tests:
+      - name: test_relation_validator
+        case: 正常
+        summary: ID とタイトルを ID にし、指せない項目は誤りにする
+        condition: 'D-1「保存先を決める」・T-1 を持つ索引で、`depends_on`・`decisions` の関数に `D-1` / `保存先を決める` / `T-1` / `D-99`'
+        mock: なし
+        expected: '`{value: D-1}` / `{value: D-1}` / `{error: "T-1 が見つかりません。ID を確認してください。"}` / `{error: "D-99 が見つかりません。ID を確認してください。"}`'
 components:
   - name: detailEditForm
     title: 編集の表示
     container: plugins/mindstella/skills/mindmap/preview/screens/detail-edit.ts
     usecase: 画面で項目を編集して保存する
     kind: 画面
-    summary: '画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。タグは `chipsInput`（`mainToggle: true`、`suggestions` は `usedTags`）で描き、`onChange` の並びを `{op: set, key: tags, value}` で溜める。参照は `chipsInput`（`mainToggle: false`）で描く。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ'
+    summary: '画面設計『詳細パネル』の「編集の表示」「タイトルの入力」「案の入力」「項目を削除」「書き込めない理由」を描く `form` を返す。並べるキーは `editableKeys`。タグは `chipsInput`（`mainToggle: true`、`suggestions` は `usedTags`）で描き、`onChange` の並びを `{op: set, key: tags, value}` で溜める。関係は種類ごとの見出しの下に `chipsInput`（`mainToggle: false`）を 1 つずつ描き（検討事項は 前提・親・関連、タスクは 向けた検討事項・前提・関連、ほかの種類は 関連）、`validate` に `relationValidator` を渡す。どれかの並びが変わったら全ての種類の並びを `related` の `{to, type}` の並び（種類の表示の順）にして `{op: set, key: related, value}` で溜める。どの種類も空なら関係の見出しの下に「なし」を出す。入力欄を離れたとき（選ぶ・チェックは選んだとき）に `on.change` を呼ぶ。タイトルが空白だけなら呼ばず「タイトルを書いてください。」を出して `aria-invalid="true"` にする。削除を溜めた項目は入力を読むだけにして頭に「削除を溜めています。削除を取り消すと編集できます。」を出す。`target` が仮の ID のときは項目を追加する入力として描き、「項目を削除」と、採用している案の「案 {記号} を削除」を置かない。書きかけの案は `optionDrafts` から描き、「案を追加」を押すと次の記号と空の中身で `on.draft` を呼ぶ。書きかけの案に打つと `on.draft` を呼び、空でない中身で離れたら `on.change`（`option-add`）を呼ぶ'
     props:
       - name: kind
         type: Kind

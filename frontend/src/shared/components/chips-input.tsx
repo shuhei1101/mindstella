@@ -1,5 +1,5 @@
 // チップの入力（部品設計『チップの入力.tsx』）。値のチップと、値を足す入力欄。項目のタグは主題のトグルを持つ
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { Icon } from "@/shared/components/icon";
 import { Input } from "@/shared/components/ui/input";
@@ -15,6 +15,8 @@ export type ChipsInputProps = {
   monospace?: boolean;
   mainToggle?: boolean;
   disabled?: boolean;
+  /** 追加する前に入れた値を確かめる。`value` を返したらその値を追加し、`error` を返したら追加せず入力欄の直下に誤りを出す */
+  validate?: (value: string) => { error: string } | { value: string };
   onChange: (values: (Tag | string)[], removed: string | null) => void;
 };
 
@@ -23,21 +25,31 @@ const toTag = (value: Tag | string): Tag => {
   return value.main === true ? { name: value.name, main: true } : { name: value.name };
 };
 
-export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = null, monospace = false, mainToggle = false, disabled = false, onChange }: ChipsInputProps) => {
+export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = null, monospace = false, mainToggle = false, disabled = false, validate, onChange }: ChipsInputProps) => {
   const field = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
   const current = values.map(toTag);
   const output = (tags: Tag[]): (Tag | string)[] => (mainToggle ? tags : tags.map((tag) => tag.name));
   const addValue = (): void => {
     const input = field.current;
     if (input === null) return;
-    const text = input.value.trim();
+    const entered = input.value.trim();
+    if (entered === "") return;
+    const checked = validate === undefined ? { value: entered } : validate(entered);
+    // 誤り: 追加せず、入れた値を入力欄に残して直下に誤りを出す
+    if ("error" in checked) {
+      setError(checked.error);
+      return;
+    }
+    setError(null);
     input.value = "";
-    if (text === "" || current.some((tag) => tag.name === text)) return;
-    onChange(output([...current, { name: text }]), null);
+    if (current.some((tag) => tag.name === checked.value)) return;
+    onChange(output([...current, { name: checked.value }]), null);
   };
   const listId = `${controlId}-list`;
+  const errorId = `${controlId}-error`;
   return (
-    <div role="group" aria-label={name} className="flex flex-wrap items-center gap-1">
+    <div role="group" aria-label={name} className={cn("flex flex-wrap items-center gap-1", error !== null && "rounded-md ring-1 ring-destructive")}>
       {current.map((entry, index) => (
         <span key={entry.name} className={cn("inline-flex items-center gap-1 rounded-full bg-muted px-2 text-xs", monospace && "font-mono", entry.main === true && "bg-mark-weak")}>
           {mainToggle ? (
@@ -80,9 +92,14 @@ export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = n
         aria-label={`${name}を追加`}
         aria-expanded={false}
         aria-controls={listId}
+        aria-invalid={error === null ? undefined : true}
+        aria-describedby={error === null ? undefined : errorId}
         autoComplete="off"
         disabled={disabled}
         className="w-40 flex-1"
+        onChange={() => {
+          setError(null);
+        }}
         onKeyDown={(event) => {
           if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
           event.preventDefault();
@@ -90,6 +107,11 @@ export const ChipsInput = ({ controlId, name, hint = "", values, suggestions = n
         }}
         onBlur={addValue}
       />
+      {error === null ? null : (
+        <p id={errorId} className="m-0 basis-full text-small">
+          入力の誤り: {error}
+        </p>
+      )}
       {suggestions === null ? null : (
         <datalist id={listId}>
           {suggestions.map((tag) => (

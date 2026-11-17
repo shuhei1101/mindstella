@@ -17,6 +17,8 @@ namespace MindmapPreview {
     /** 主題のトグルを置くか（項目のタグだけ真） */
     mainToggle?: boolean;
     disabled: boolean;
+    /** 追加する前に入れた値を確かめる。`value` を返したらその値を追加し、`error` を返したら追加せず入力欄の直下に誤りを出す（渡さなければ入れた値をそのまま追加する） */
+    validate?: (value: string) => { error: string } | { value: string };
     /** 値を追加した・外した・主題を付け外ししたときに新しい並びを渡す（外したときは外した値の名前も） */
     onChange: (values: (Tag | string)[], removed: string | null) => void;
   };
@@ -31,6 +33,7 @@ namespace MindmapPreview {
     monospace,
     mainToggle = false,
     disabled,
+    validate,
     onChange,
   }: ChipsInputProps): HTMLElement {
     let current: Tag[] = values.map((value) =>
@@ -53,11 +56,35 @@ namespace MindmapPreview {
         disabled,
       },
     });
+    const errorId = `${controlId}-error`;
+    const error = h({ tag: "p", attrs: { class: "pe-chip-error", id: errorId, hidden: true } });
+    /** 入力の誤りを出す（null で消す）。誤りの間は入力欄が誤りの文を指す */
+    const showError = (message: string | null): void => {
+      error.hidden = message === null;
+      error.textContent = message === null ? "" : `入力の誤り: ${message}`;
+      if (message === null) {
+        field.removeAttribute("aria-invalid");
+        field.removeAttribute("aria-describedby");
+      } else {
+        field.setAttribute("aria-invalid", "true");
+        field.setAttribute("aria-describedby", errorId);
+      }
+    };
+    field.addEventListener("input", () => showError(null));
     /** 入力した値を並びに追加する（空と、もうある値は追加しない。追加したタグは主題でない） */
     const addValue = (): void => {
-      const text = field.value.trim();
+      const entered = field.value.trim();
+      if (entered === "") return;
+      const checked = validate === undefined ? { value: entered } : validate(entered);
+      // 誤り: 追加せず、入れた値を入力欄に残して直下に誤りを出す
+      if ("error" in checked) {
+        showError(checked.error);
+        return;
+      }
+      showError(null);
       field.value = "";
-      if (text === "" || current.some((tag) => tag.name === text)) return;
+      const text = checked.value;
+      if (current.some((tag) => tag.name === text)) return;
       current = [...current, { name: text }];
       draw();
       onChange(output(), null);
@@ -126,6 +153,7 @@ namespace MindmapPreview {
           }),
         ),
         field,
+        error,
         ...(suggestions === null
           ? []
           : [

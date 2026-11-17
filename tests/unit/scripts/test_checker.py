@@ -8,7 +8,6 @@ import pytest
 import yaml
 
 import checker
-import commands
 import store
 from fixture_types import (
     MakeComment,
@@ -20,6 +19,7 @@ from fixture_types import (
     WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR
+from record_helpers import ai_update
 
 
 def _keys(
@@ -33,8 +33,8 @@ def test_check_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     """整ったワークスペースは問題 0 件（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="D-1.md"),
-        make_item("D-2", depends_on=["D-1"]),
+        make_item("D-1", body="docs/D-1.md"),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
         bodies={"D-1.md": "本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -66,9 +66,9 @@ def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item:
     """4 種類の問題をまとめて返す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", depends_on=["D-9"]),
+        make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
         make_item("D-2", status="完了"),
-        make_item("R-1", body="R-1.md"),
+        make_item("R-1", body="docs/R-1.md"),
         bodies={"X-1.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -76,7 +76,7 @@ def test_check_workspace_when_problems(make_workspace: MakeWorkspace, make_item:
     problems = checker.check_workspace(workspace)
     # 検証
     assert _keys(problems) == {
-        ("broken_ref", ".mindstella/decisions.yaml", "D-1", "depends_on"),
+        ("broken_ref", ".mindstella/decisions.yaml", "D-1", "related[0].to"),
         ("schema", ".mindstella/decisions.yaml", "D-2", "items[1].status"),
         ("orphan_body", ".mindstella/docs/X-1.md", None, None),
         ("missing_body", ".mindstella/research.yaml", "R-1", "items[0].body"),
@@ -107,8 +107,8 @@ def test_check_refs_when_missing(
     # 準備
     valid_settings["goal"]["deliverables"] = [{"title": "納品物", "doc": "A-9"}]
     root = make_workspace(
-        make_item("D-1", depends_on=["D-9"]),
-        make_item("T-1", **{"for": ["D-8"]}),
+        make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]),
+        make_item("T-1", related=[{"to": "D-8", "type": "for"}]),
         settings=valid_settings,
     )
     workspace = store.load_workspace(root)
@@ -130,12 +130,12 @@ def test_check_refs_when_no_goal(
     """ゴールを持たない設定は納品物の参照を見ない（正常系）。"""
     # 準備
     settings = {key: value for key, value in valid_settings.items() if key != "goal"}
-    root = make_workspace(make_item("D-1", depends_on=["D-9"]), settings=settings)
+    root = make_workspace(make_item("D-1", related=[{"to": "D-9", "type": "depends_on"}]), settings=settings)
     workspace = store.load_workspace(root)
     # 実行
     problems = checker._check_refs(workspace)
     # 検証
-    assert _keys(problems) == {("broken_ref", "decisions.yaml", "D-1", "depends_on")}
+    assert _keys(problems) == {("broken_ref", "decisions.yaml", "D-1", "related[0].to")}
     assert "D-9" in problems[0].detail
 
 
@@ -186,7 +186,7 @@ def test_check_phases_when_no_goal(
 def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
     """決めた種類でない ID を指す参照を拾う（正常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1", parent="T-1"), make_item("T-1"))
+    root = make_workspace(make_item("D-1", related=[{"to": "T-1", "type": "parent"}]), make_item("T-1"))
     workspace = store.load_workspace(root)
     # 実行
     problems = checker._check_refs(workspace)
@@ -194,7 +194,7 @@ def test_check_refs_when_wrong_kind(make_workspace: MakeWorkspace, make_item: Ma
     assert len(problems) == 1
     assert problems[0].kind == "broken_ref"
     assert problems[0].id == "D-1"
-    assert problems[0].key == "parent"
+    assert problems[0].key == "related[0].to"
     assert "T-1" in problems[0].detail
 
 
@@ -204,7 +204,7 @@ def test_check_refs_when_related_any_kind(
     """related は種類を問わない（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", related=["T-1", "G-1"]),
+        make_item("D-1", related=[{"to": "T-1", "type": "see_also"}, {"to": "G-1", "type": "see_also"}]),
         make_item("T-1"),
         make_item("G-1"),
     )
@@ -219,8 +219,8 @@ def test_check_bodies(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     """本文が無い項目と指されない本文を拾う（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("R-1", body="R-1.md"),
-        make_item("D-1", body="D-1.md"),
+        make_item("R-1", body="docs/R-1.md"),
+        make_item("D-1", body="docs/D-1.md"),
         bodies={"D-1.md": "本文\n", "X-1.md": "どこからも指されない本文\n"},
     )
     workspace = store.load_workspace(root)
@@ -237,8 +237,8 @@ def test_check_bodies_when_html(make_workspace: MakeWorkspace, make_item: MakeIt
     """HTML の本文も本文のずれの対象にする（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="A-1.html"),
-        make_item("A-2", body="A-2.html"),
+        make_item("A-1", body="docs/A-1.html"),
+        make_item("A-2", body="docs/A-2.html"),
         bodies={"A-2.html": "<p>本文</p>\n", "A-9.html": "<p>どこからも指されない本文</p>\n"},
     )
     workspace = store.load_workspace(root)
@@ -378,9 +378,9 @@ def test_check_history_when_body_rewritten(
     """手で書き換えた本文に当たらない変更履歴を拾う（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", body="D-1.md"), bodies={"D-1.md": "元の 1 行目\n元の 2 行目\n"}
+        make_item("D-1", body="docs/D-1.md"), bodies={"D-1.md": "元の 1 行目\n元の 2 行目\n"}
     )
-    commands.run_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
+    ai_update(root, "D-1", {"body_markdown": "新しい 1 行目\n新しい 2 行目\n"})
     (root / RECORD_DIR / "docs" / "D-1.md").write_text(
         "手で書いた 1 行目\n手で書いた 2 行目\n", encoding="utf-8"
     )
@@ -476,8 +476,8 @@ def test_find_referrers(
     }
     root = make_workspace(
         make_item("D-1"),
-        make_item("D-2", depends_on=["D-1"]),
-        make_item("T-1", **{"for": ["D-1"]}),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("T-1", related=[{"to": "D-1", "type": "for"}]),
         make_item("A-1"),
         settings=settings,
     )
@@ -487,7 +487,7 @@ def test_find_referrers(
     decision_lines = checker.find_referrers(workspace, "D-1")
     doc_lines = checker.find_referrers(workspace, "A-1")
     # 検証
-    assert decision_lines == ["decisions.yaml: D-2: depends_on", "tasks.yaml: T-1: for"]
+    assert decision_lines == ["decisions.yaml: D-2: related.depends_on", "tasks.yaml: T-1: related.for"]
     assert doc_lines == ["config.yaml: goal.deliverables[0].doc: doc", "comments.yaml: C-1: target"]
 
 

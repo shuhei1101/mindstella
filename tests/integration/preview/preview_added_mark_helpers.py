@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from record_write_helpers import call_or_write
 
 __all__ = [
     "DECORATION_LINES_JS",
@@ -70,10 +71,8 @@ DECORATION_LINES_JS = """selector => {
 
 
 def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
-    """ツールを呼び、エラーならテストを止めて結果を返す。"""
-    result = call_tool(name, **arguments)
-    assert result.is_error is False, result.text
-    return result.data
+    """ツールを呼ぶか記録を書き換え（add・update・remove）、エラーならテストを止めて結果を返す。"""
+    return call_or_write(call_tool, name, **arguments)
 
 
 def build_added_mark_workspace(

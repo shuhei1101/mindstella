@@ -11,7 +11,7 @@ var MindmapPreview;
             { key: "category", input: "select" },
             { key: "phase", input: "select" },
             { key: "tags", input: "tags" },
-            { key: "depends_on", input: "refs" },
+            { key: "related", input: "relations" },
             { key: "options", input: "options" },
             { key: "answer", input: "textarea" },
             { key: "reason", input: "textarea" },
@@ -23,6 +23,7 @@ var MindmapPreview;
             { key: "target", input: "select" },
             { key: "kind", input: "select" },
             { key: "tags", input: "tags" },
+            { key: "related", input: "relations" },
             { key: "result", input: "textarea" },
             { key: "body", input: "body" },
         ],
@@ -32,7 +33,7 @@ var MindmapPreview;
             { key: "conclusion", input: "textarea" },
             { key: "confidence", input: "select" },
             { key: "tags", input: "tags" },
-            { key: "related", input: "refs" },
+            { key: "related", input: "relations" },
             { key: "withdrawn", input: "check" },
             { key: "reason", input: "textarea" },
             { key: "body", input: "body" },
@@ -43,7 +44,7 @@ var MindmapPreview;
             { key: "kind", input: "text" },
             { key: "deliverable", input: "check" },
             { key: "tags", input: "tags" },
-            { key: "related", input: "refs" },
+            { key: "related", input: "relations" },
             { key: "withdrawn", input: "check" },
             { key: "reason", input: "textarea" },
             { key: "body", input: "body" },
@@ -61,7 +62,7 @@ var MindmapPreview;
             { key: "title", input: "text" },
             { key: "content", input: "textarea" },
             { key: "tags", input: "tags" },
-            { key: "related", input: "refs" },
+            { key: "related", input: "relations" },
             { key: "withdrawn", input: "check" },
             { key: "reason", input: "textarea" },
             { key: "body", input: "body" },
@@ -69,7 +70,7 @@ var MindmapPreview;
         logs: [
             { key: "title", input: "text" },
             { key: "date", input: "text" },
-            { key: "related", input: "refs" },
+            { key: "related", input: "relations" },
             { key: "withdrawn", input: "check" },
             { key: "reason", input: "textarea" },
             { key: "body", input: "body" },
@@ -114,10 +115,41 @@ var MindmapPreview;
     /** 値を並べるキーの入力欄に出す案内 */
     const CHIP_HINTS = {
         tags: "タグを入れる",
-        depends_on: "ID を入れる",
-        related: "ID を入れる",
         aliases: "別名を入れる",
     };
+    /** 種類ごとに関係の入力へ並べる関連の種類（表示の順） */
+    const RELATION_TYPES = {
+        decisions: ["depends_on", "parent", "see_also"],
+        tasks: ["for", "depends_on", "see_also"],
+        research: ["see_also"],
+        docs: ["see_also"],
+        terms: ["see_also"],
+        notes: ["see_also"],
+        logs: ["see_also"],
+    };
+    /** 関連の種類の表示名 */
+    const RELATION_LABELS = {
+        depends_on: "前提",
+        parent: "親",
+        for: "向けた検討事項",
+        see_also: "関連",
+    };
+    /** 関係の入力欄に出す案内 */
+    const RELATION_HINT = "ID かタイトル";
+    /** 関係の入力で、入れた値を記録の項目の ID に当てる関数を返す（当たらない・その種類が指せない項目なら誤り） */
+    function relationValidator(type, kind, index) {
+        return (value) => {
+            const text = value.trim();
+            const found = index.byId.get(text) ?? [...index.byId.values()].find((entry) => entry.item.title === text);
+            // 前提・親は同じ種類、向けた検討事項は検討事項だけを指せる
+            const allowed = found !== undefined &&
+                (type === "see_also" || (type === "for" ? found.kind === "decisions" : found.kind === kind));
+            if (found === undefined || !allowed)
+                return { error: `${value} が見つかりません。ID を確認してください。` };
+            return { value: found.item.id };
+        };
+    }
+    MindmapPreview.relationValidator = relationValidator;
     /** 種類ごとに編集の表示へ並べるキーと入力の種類（`id`・`created`・`updated` は含めない） */
     function editableKeys(kind) {
         return EDITABLE_KEYS[kind].map((entry) => ({ ...entry }));
@@ -217,13 +249,13 @@ var MindmapPreview;
                         MindmapPreview.h({ tag: "dt", children: ["更新"] }),
                         MindmapPreview.h({
                             tag: "dd",
-                            children: [`${MindmapPreview.formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : "AI"}）`],
+                            children: [`${MindmapPreview.formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : item.updated_by === "external" ? "ほかのセッション" : "AI"}）`],
                         }),
                     ]),
             ],
         }));
         for (const { key, input } of keys) {
-            form.append(input === "options" ? optionsField(props) : keyField({ props, key, input }));
+            form.append(input === "options" ? optionsField(props) : input === "relations" ? relationsField(props) : keyField({ props, key, input }));
         }
         if (!adding)
             form.append(removeSection(props));
@@ -232,6 +264,60 @@ var MindmapPreview;
         return form;
     }
     MindmapPreview.detailEditForm = detailEditForm;
+    /** 関係の入力（種類ごとに見出しを置き、その下にチップの入力を 1 つずつ並べる）。どれかが変わったら全ての種類の並びを `related` にして溜める */
+    function relationsField(props) {
+        const { kind, item, removing, on, index } = props;
+        const mark = props.marks["related"];
+        const types = RELATION_TYPES[kind];
+        // 種類 → 今の相手の ID の並び
+        const current = new Map(types.map((type) => [type, MindmapPreview.refsOf(item, type)]));
+        const empty = MindmapPreview.h({ tag: "p", attrs: { class: "pe-rel-empty" }, children: ["なし"] });
+        const refreshEmpty = () => {
+            empty.hidden = [...current.values()].some((ids) => ids.length > 0);
+        };
+        refreshEmpty();
+        const groups = types.map((type) => {
+            const controlId = `pe-${safeId(item.id)}-related-${type}`;
+            const name = RELATION_LABELS[type];
+            return MindmapPreview.h({
+                tag: "div",
+                attrs: { class: "pe-rel-group", "data-type": type },
+                children: [
+                    MindmapPreview.h({ tag: "label", attrs: { class: "pe-sub-label", for: controlId }, children: [name] }),
+                    MindmapPreview.chipsInput({
+                        controlId,
+                        name,
+                        hint: RELATION_HINT,
+                        values: current.get(type) ?? [],
+                        suggestions: null,
+                        monospace: true,
+                        mainToggle: false,
+                        disabled: removing,
+                        validate: index === undefined ? undefined : relationValidator(type, kind, index),
+                        onChange: (values) => {
+                            current.set(type, values.map((value) => (typeof value === "string" ? value : value.name)));
+                            refreshEmpty();
+                            const related = types.flatMap((each) => (current.get(each) ?? []).map((to) => ({ to, type: each })));
+                            on.change({ op: "set", key: "related", value: related });
+                        },
+                    }),
+                ],
+            });
+        });
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: `pe-field pe-rel${mark === "pending" ? " is-pending" : ""}${mark === "blocked" ? " is-blocked" : ""}`, "data-key": "related" },
+            children: [
+                MindmapPreview.h({
+                    tag: "div",
+                    attrs: { class: "pe-label-row" },
+                    children: [MindmapPreview.h({ tag: "span", attrs: { class: "pe-label" }, children: ["関係"] }), mark === undefined ? null : MindmapPreview.pendingEditMark({ kind: mark, compact: true })],
+                }),
+                empty,
+                ...groups,
+            ],
+        });
+    }
     /** キーの名前の行（名前と、必須の印・保存待ちの印） */
     function labelRow({ props, key, controlId, name, }) {
         const mark = props.marks[key];

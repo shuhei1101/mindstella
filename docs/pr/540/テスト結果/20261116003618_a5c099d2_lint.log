@@ -1,0 +1,51 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+frontend/src/shared/adapters/events-client.test.ts(6,38): error TS2307: Cannot find module '@/shared/stores/duplicate-ids-store' or its corresponding type declarations.
+frontend/src/shared/components/chips-input.test.tsx(24,62): error TS2322: Type '{ controlId: string; name: string; values: never[]; validate: (value: string) => { value: string; error?: undefined; } | { error: string; value?: undefined; }; onChange: Mock<Procedure>; }' is not assignable to type 'IntrinsicAttributes & ChipsInputProps'.
+  Property 'validate' does not exist on type 'IntrinsicAttributes & ChipsInputProps'.
+frontend/src/shared/components/duplicate-id-notice.test.tsx(5,35): error TS2307: Cannot find module '@/shared/components/duplicate-id-notice' or its corresponding type declarations.
+frontend/src/shared/components/history-dialog.test.tsx(26,78): error TS2353: Object literal may only specify known properties, and 'external' does not exist in type 'HistoryPoint'.
+frontend/src/shared/components/topbar.test.tsx(101,83): error TS2322: Type '{ title: string; tabs: ({ readonly key: "overview"; readonly label: "概要"; readonly icon: "home"; } | { readonly key: "decisions"; readonly label: "検討事項"; readonly icon: "decision"; readonly count: 2; })[]; current: "overview"; theme: "light"; duplicateIds: { ...; }[]; }' is not assignable to type 'IntrinsicAttributes & TopbarProps'.
+  Property 'duplicateIds' does not exist on type 'IntrinsicAttributes & TopbarProps'.
+frontend/src/shared/stores/duplicate-ids-store.test.ts(4,38): error TS2307: Cannot find module '@/shared/stores/duplicate-ids-store' or its corresponding type declarations.
+(exit 2)
+
+$ npm run lint（型検査で止まったため単独で回す）
+
+> lint
+> eslint
+
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index/frontend/src/shared/adapters/events-client.test.ts
+  47:12  error  Unsafe call of a type that could not be resolved                  @typescript-eslint/no-unsafe-call
+  47:33  error  Unsafe member access .getState on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  47:44  error  Unsafe member access .ids on a type that cannot be resolved       @typescript-eslint/no-unsafe-member-access
+
+/mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index/frontend/src/shared/stores/duplicate-ids-store.test.ts
+   8:5   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+   8:26  error  Unsafe member access .setState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  16:11  error  Unsafe assignment of an error typed value                          @typescript-eslint/no-unsafe-assignment
+  16:33  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  16:54  error  Unsafe member access .getState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  18:7   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  19:7   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  23:7   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  25:11  error  Unsafe assignment of an error typed value                          @typescript-eslint/no-unsafe-assignment
+  25:21  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  25:42  error  Unsafe member access .getState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  27:7   error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  30:20  error  Unsafe member access .dismissed on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+  31:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  31:33  error  Unsafe member access .getState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  31:44  error  Unsafe member access .ids on a type that cannot be resolved        @typescript-eslint/no-unsafe-member-access
+  32:12  error  Unsafe call of a type that could not be resolved                   @typescript-eslint/no-unsafe-call
+  32:33  error  Unsafe member access .getState on a type that cannot be resolved   @typescript-eslint/no-unsafe-member-access
+  32:44  error  Unsafe member access .dismissed on a type that cannot be resolved  @typescript-eslint/no-unsafe-member-access
+
+✖ 22 problems (22 errors, 0 warnings)
+
+(exit 1)

@@ -1,0 +1,13 @@
+steps:
+  - op: call
+    script: refs_to_related
+    destructive: true
+  - op: call
+    script: body_to_docs_path
+    destructive: true
+  - op: call
+    script: place_source_config
+    destructive: false
+  - op: call
+    script: meta_to_history_yaml
+    destructive: true

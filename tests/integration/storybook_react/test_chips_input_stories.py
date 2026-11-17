@@ -13,6 +13,7 @@ STATES = (
     "shared-chipsinput--main-toggle",
     "shared-chipsinput--main-toggle-disabled",
     "shared-chipsinput--main-toggle-long-narrow",
+    "shared-chipsinput--error",
 )
 
 # 幅 390px の画面の大きさ
@@ -90,3 +91,17 @@ def test_main_toggle_long_narrow(open_story: OpenStory) -> None:
     assert second is not None
     assert second["y"] > first["y"]
     assert first["y"] <= toggle["y"] + toggle["height"] / 2 <= first["y"] + first["height"]
+
+
+def test_error(open_story: OpenStory) -> None:
+    """validate が誤りを返すと、入れた値を残して直下に誤りの文を出し、入力欄が誤りの文を指す（正常系）。"""
+    # 準備・実行
+    page = open_story("shared-chipsinput--error")
+    field = page.get_by_role("combobox", name="前提を追加")
+    expect(field).to_have_attribute("aria-invalid", "true")
+    # 検証
+    expect(field).to_have_value("D-99")
+    error = page.locator(f"#{field.get_attribute('aria-describedby')}")
+    expect(error).to_have_text("入力の誤り: D-99 が見つかりません。ID を確認してください。")
+    assert page.get_by_role("button", name="D-99 を外す").count() == 0
+    expect(page.get_by_role("button", name="D-1 を外す")).to_be_visible()

@@ -53,7 +53,7 @@ data_models:
         description: 最初に溜めたときの元の値。`option-add`・`item-add` は `None`
       - name: base
         type: str | None
-        description: 項目への編集で、最初に溜めた時点のその項目の `updated`。`item-add`・`setting` は `None`
+        description: 項目への編集で、最初に溜めた時点のその項目の `updated`（`history.yaml` の行）。`item-add`・`setting` は `None`
       - name: created
         type: str
         description: 最初に溜めた日時
@@ -277,7 +277,7 @@ functions:
          - 合わない場合、`EditInvalidError` を送る
       5. 同じ編集を探す（`item-add` は `target`、それ以外は `target`・`op`・`key` が同じもの）
          - ある場合、`value`（`setting` は `map` も）だけを書き換える
-         - 無い場合、`E-{seq + 1}` を振り、元の値（`_current_value`）・`base`（項目への編集はその項目の `updated`）・`created` を付けて足す。`item-add` で `target` を省いたときは `new-{new_seq + 1}` を振る
+         - 無い場合、`E-{seq + 1}` を振り、元の値（`_current_value`）・`base`（項目への編集はその項目の `history.yaml` の行の `updated`）・`created` を付けて足す。`item-add` で `target` を省いたときは `new-{new_seq + 1}` を振る
       6. `set`・`option-edit`・`adopt`・`setting` で、`value` が今のワークスペースの値（`_current_value`）と同じなら、その編集を外し `id` を `None` にする
       7. `edits.yaml` を書き（`_write_edits`）、本文と新しく溜めたかを返す
     exceptions:
@@ -446,7 +446,7 @@ functions:
     process: |-
       1. ワークスペース・`changes.yaml`・`load_edits` を読む
          - 編集が 0 件の場合、`EditInvalidError` を送る
-      2. 書き込めない編集を集める（`_find_blocked`）。`changed`（`base` が項目の今の `updated` と違う、`setting` は `before` が今の設定の値と違う）・`missing`（項目が無い）・`referenced`（消す項目を、同じ保存で消さない項目が指している。`find_referrers`）
+      2. 書き込めない編集を集める（`_find_blocked`）。`changed`（`base` が項目の `history.yaml` の行の今の `updated` と違う、`setting` は `before` が今の設定の値と違う）・`missing`（項目が無い）・`referenced`（消す項目を、同じ保存で消さない項目が指している。`find_referrers`）
       3. 当てる（`_apply_edits`）。削除を溜めた項目へのほかの編集は捨てる
          - まだまとめていない変更があれば、先に `commit_pending` で `AI_PENDING_SUMMARY` のまとまりにする
          - 設定（`setting`）を `stage_settings` で当てる（`map` を `MAPPABLE_SETTING_KEYS` の引数に渡し、`editor` は `USER_EDITOR`）
@@ -456,7 +456,9 @@ functions:
          - 当てる途中の `SchemaMismatchError`・`UnmappedPhaseError`・`UnmappedTargetError` は、引き起こした編集の ID に紐づけて `invalid` にする
       4. 2. か 3. で書き込めない編集が 1 件以上あれば、溜めた順に並べて `EditsBlockedError` を送る（何も書かない）
       5. 利用者の変更を `commit_pending` で `USER_EDIT_SUMMARY` のまとまりにする
-      6. 項目・本文・設定・`changes.yaml`・空にした `edits.yaml`（`seq`・`new_seq` はそのまま）を `save_batch` で 1 回で書く
+      6. 項目・本文・設定・`history.yaml`・`changes.yaml`・空にした `edits.yaml`（`seq`・`new_seq` はそのまま）を `save_batch` で 1 回で書く
+         - `ConcurrentWriteError` の場合（project-index が間に書いた）、ワークスペースを読み直して 2. から 1 回だけ当て直す。2 回目も同じなら 409（`changed`）にする
+      7. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
       7. まとまりの ID・日時・足した項目・書き換えた項目・消した項目・書き換えた設定のキーを返す
     exceptions:
       - name: EditInvalidError
@@ -473,11 +475,11 @@ functions:
         summary: キー・案・採用を当て、編集した人を利用者にして 1 つのまとまりにする
         condition: '未決定の D-1（案 A・B、タグ `[{name: 画面}]`）と、E-1（`answer`）・E-2（`tags` をまだ使われていないタグを含む `[{name: 画面}, {name: 記録の形}]`）・E-3（案 C の追加）・E-4（採用する案を C）'
         mock: '`now`'
-        expected: '`set` が V-1、`changed` が `[D-1]`。D-1 の採用する案が C で `updated_by` が `user`、変更履歴が 1 回分だけ増えて `by` が `user`。まとまりの説明が「画面からの編集」で、`edits.yaml` が 0 件'
+        expected: '`set` が V-1、`changed` が `[D-1]`。D-1 の採用する案が C で、`history.yaml` の D-1 の `updated_by` が `user`、変更履歴が 1 回分だけ増えて `by` が `user`。まとまりの説明が「画面からの編集」で、`edits.yaml` が 0 件'
       - name: test_save_edits_when_add_remove_settings
         case: 正常
         summary: 設定 → 追加 → 削除の順に当て、仮の ID を振った ID に置き換える
-        condition: 'T-1・N-1 と、E-1（タスクの追加 `new-1`、`depends_on: [new-2]`）・E-2（タスクの追加 `new-2`）・E-3（N-1 の削除）・E-4（題名を「画面の編集」）'
+        condition: 'T-1・N-1 と、E-1（タスクの追加 `new-1`、`related: [{to: new-2, type: depends_on}]`）・E-2（タスクの追加 `new-2`）・E-3（N-1 の削除）・E-4（題名を「画面の編集」）'
         mock: '`now`'
         expected: '`added` が `[{temp: new-1, id: T-2}, {temp: new-2, id: T-3}]`、T-2 の `depends_on` が `[T-3]`、`removed` が `[N-1]`、`settings` が `[summary]`'
       - name: test_save_edits_when_ai_pending
@@ -511,7 +513,7 @@ functions:
         summary: 案を持つ足す検討事項を、案ごと書き込む
         condition: 'D-1 と、E-1（検討事項の追加 `new-1`、`status: 決定済み`、`options` が案 A・B で B が採用）'
         mock: '`now`'
-        expected: '`added` が `[{temp: new-1, id: D-2}]`。D-2 が案 A・B を持ち B だけが採用、状態が決定済み、`updated_by` が `user` で、`edits.yaml` が 0 件'
+        expected: '`added` が `[{temp: new-1, id: D-2}]`。D-2 が案 A・B を持ち B だけが採用、状態が決定済み、`history.yaml` の D-2 の `updated_by` が `user` で、`edits.yaml` が 0 件'
   - name: _parse_edit_input
     title: 追加の本文の確かめ
     kind: 関数

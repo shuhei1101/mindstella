@@ -1,0 +1,21 @@
+id: MOD-540-8
+title: プレビュー / duplicate-id-notice
+lead: 部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ。
+components:
+  - name: DuplicateIdNotice
+    title: 重なった ID の通知
+    kind: コンポーネント
+    usecase: 書き込みを履歴に残す
+    summary: 部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ
+    refs:
+      - CMP-540-2#
+    unit_tests:
+      - name: test_duplicate_id_notice
+        case: 正常
+        summary: 重なった ID を並べ、リンクと閉じるで知らせる
+        condition: '`ids: [{id: D-12, kind: 検討事項}]`。リンクと閉じるボタンを押す'
+        mock: なし
+        expected: '`role="alert"` の帯に `D-12` のリンク。`onOpen` が `D-12` で、`onClose` が 1 回呼ばれる'
+    container: frontend/src/shared/components/duplicate-id-notice.tsx
+notes:
+  単体テスト: 同じフォルダの `duplicate-id-notice.test.tsx` に置く（knowledge の規約『フォルダ構成』）

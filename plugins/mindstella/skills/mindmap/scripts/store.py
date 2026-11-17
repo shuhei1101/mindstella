@@ -20,6 +20,7 @@ from typing import IO, Any, Literal
 import yaml
 from errors import (
     ArgumentError,
+    ConcurrentWriteError,
     ItemNotFoundError,
     SchemaMismatchError,
     WorkspaceExistsError,
@@ -29,6 +30,7 @@ from errors import (
 from jsonschema import Draft202012Validator
 from kinds import (
     BODY_DIR,
+    HISTORY_FILE,
     KINDS,
     LEGACY_SETTINGS_FILE,
     RECORD_DIR,
@@ -83,6 +85,26 @@ THREADS_FILE = "threads.yaml"
 
 # 保存待ちの編集を持つファイルの名前（`records_root` の下。無ければ 0 件）
 EDITS_FILE = "edits.yaml"
+
+# project-index の配信元の設定のファイルの名前（`records_root` の下）
+SOURCE_CONFIG_FILE = "dev-docs.yaml"
+
+# 配信の設定が指すスキーマの複製のフォルダの名前（`records_root` の下）
+SOURCE_SCHEMA_DIR = "schemas"
+
+# `related[].type` に使える種類
+RELATED_TYPES = ("depends_on", "parent", "for", "see_also")
+
+# 種類 → 配信の設定の `documents` の行の `id`・`title` と、`lead`・`status` を持つか
+SOURCE_DOCUMENTS: dict[Kind, tuple[str, str, bool, bool]] = {
+    "decision": ("decisions", "検討事項", True, True),
+    "task": ("tasks", "タスク", False, True),
+    "research": ("research", "調査", False, False),
+    "doc": ("docs", "資料", False, True),
+    "term": ("terms", "用語集", False, False),
+    "note": ("notes", "メモ", False, False),
+    "log": ("logs", "会話ログ", False, False),
+}
 
 # YAML の読み込みに使用するローダー（libyaml の C 実装があればそれ、無ければ Python の実装）
 YAML_LOADER: Any = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
@@ -165,7 +187,7 @@ class ItemRef:
 class BodyWrite:
     """`docs/` に書く 1 つの本文。"""
 
-    # `docs/` の中のファイル名（`{ID}.md`、資料の HTML の本文は `{ID}.html`）
+    # 項目の `body` の値（記録のフォルダからのパス。`docs/{ID}.md`、資料の HTML の本文は `docs/{ID}.html`）
     name: str
     # 本文（Markdown か HTML）
     text: str
@@ -179,6 +201,8 @@ class Change:
     # 書き換えた後の `items` の並び全体
     items: list[dict[str, Any]]
     body: BodyWrite | None = None
+    # 一緒に書く `history.yaml` の `items`（項目の ID → 行）。変えないときは None
+    history: dict[str, Any] | None = None
     # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
     changes: dict[str, Any] | None = None
 
@@ -191,9 +215,11 @@ class BatchChange:
     items: dict[Kind, list[dict[str, Any]]]
     # 一緒に書く本文（同じ名前は 1 つだけ。後のものを残す）
     bodies: list[BodyWrite] = field(default_factory=list)
+    # 一緒に書く `history.yaml` の `items`（項目の ID → 行）。変えないときは None
+    history: dict[str, Any] | None = None
     # 一緒に書く `changes.yaml` の新しい中身。変えないときは None
     changes: dict[str, Any] | None = None
-    # 書き換えた後に消す `docs/` の本文のファイル名
+    # 書き換えた後に消す本文のパス（`body` の値）
     removed_bodies: list[str] = field(default_factory=list)
     # 一緒に書く `config.yaml` の新しい中身。変えないときは None（まとめて保存が使う）
     settings: dict[str, Any] | None = None
@@ -605,6 +631,11 @@ def is_legacy_problem(
             if isinstance(tags, list) and tag_index < len(tags):
                 return isinstance(tags[tag_index], str)
         return False
+    # v0.13.0 より前の形の項目（履歴のキー・参照のキー・文字列の関連・docs/ の無い本文）を持つ
+    if problem.id is not None and problem.id not in written_ids:
+        items = _extract_items(workspace.raw.get(problem.file))
+        if any(item.get("id") == problem.id and _has_legacy_item_form(item) for item in items):
+            return True
     # 資料: done を持ち、status を持たない
     if problem.file == KINDS["doc"].file and problem.id is not None:
         docs = _extract_items(workspace.raw.get(problem.file))
@@ -615,8 +646,39 @@ def is_legacy_problem(
     return False
 
 
-def save_change(workspace: Workspace, change: Change) -> None:
-    """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。"""
+# v0.13.0 より前の版で項目が持っていたキー（履歴のキーと参照のキー）
+LEGACY_ITEM_KEYS = frozenset(
+    {
+        "created",
+        "updated",
+        "updated_by",
+        "seq",
+        "added_seq",
+        "history",
+        "history_dropped_seq",
+        "depends_on",
+        "parent",
+        "for",
+    }
+)
+
+
+def _has_legacy_item_form(item: dict[str, Any]) -> bool:
+    """項目が v0.13.0 より前の形（履歴のキー・参照のキー・文字列の関連・docs/ の無い本文）を持つか。"""
+    related = item.get("related")
+    body = item.get("body")
+    return (
+        any(key in item for key in LEGACY_ITEM_KEYS)
+        or (isinstance(related, list) and any(isinstance(entry, str) for entry in related))
+        or (isinstance(body, str) and "/" not in body)
+    )
+
+
+def save_change(workspace: Workspace, change: Change) -> dict[str, str | None]:
+    """1 種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+
+    書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身を返す（変更の検知に渡す）。
+    """
     spec = KINDS[change.kind]
     # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
     if _loses_content_on_rewrite(workspace, change.kind):
@@ -632,8 +694,9 @@ def save_change(workspace: Workspace, change: Change) -> None:
 
     records = records_root(workspace.root)
     yaml_path = records / spec.file
+    history_path = records / HISTORY_FILE
     changes_path = records / CHANGES_FILE
-    body_path = records / BODY_DIR / change.body.name if change.body else None
+    body_path = body_path_of(records, change.body.name) if change.body else None
     # 置き換える前の中身を控える（無ければ None）
     previous_body = body_path.read_bytes() if body_path and body_path.is_file() else None
     previous_yaml = yaml_path.read_bytes() if yaml_path.is_file() else None
@@ -641,7 +704,9 @@ def save_change(workspace: Workspace, change: Change) -> None:
     # 一時ファイルを先に全て書く
     temps: list[Path] = []
     body_temp: Path | None = None
+    history_temp: Path | None = None
     changes_temp: Path | None = None
+    previous_history = history_path.read_bytes() if history_path.is_file() else None
     yaml_text = dump_yaml({"items": change.items})
     try:
         yaml_temp = write_temp(yaml_path, yaml_text)
@@ -650,14 +715,23 @@ def save_change(workspace: Workspace, change: Change) -> None:
             body_path.parent.mkdir(exist_ok=True)
             body_temp = write_temp(body_path, change.body.text)
             temps.append(body_temp)
+        if change.history is not None:
+            history_temp = write_temp(history_path, dump_yaml({"items": change.history}))
+            temps.append(history_temp)
         if change.changes is not None:
             changes_temp = write_temp(changes_path, dump_yaml(change.changes))
             temps.append(changes_temp)
     except OSError as error:
         _remove_files(temps)
         raise write_failed(yaml_path, error) from error
+    # 読んだ後にほかが種類の YAML を書いていれば、何も置き換えない
+    try:
+        require_unchanged(workspace, [spec.file])
+    except ConcurrentWriteError:
+        _remove_files(temps)
+        raise
 
-    # 本文 → YAML → まとまりの順に置き換える
+    # 本文 → YAML → 履歴 → まとまりの順に置き換える
     try:
         if body_temp and body_path:
             os.replace(body_temp, body_path)
@@ -673,10 +747,22 @@ def save_change(workspace: Workspace, change: Change) -> None:
         _remove_files(temps)
         raise write_failed(yaml_path, error) from error
     try:
+        if history_temp:
+            os.replace(history_temp, history_path)
+    except OSError as error:
+        # 履歴を置き換えられなかった: 置き換えた YAML と本文を元に戻す
+        _restore_file(yaml_path, previous_yaml)
+        if body_path and body_temp:
+            _restore_body(body_path, previous_body)
+        _remove_files(temps)
+        raise write_failed(history_path, error) from error
+    try:
         if changes_temp:
             os.replace(changes_temp, changes_path)
     except OSError as error:
-        # まとまりを置き換えられなかった: 置き換えた YAML と本文を元に戻す
+        # まとまりを置き換えられなかった: 置き換えた履歴・YAML・本文を元に戻す
+        if history_temp:
+            _restore_file(history_path, previous_history)
         _restore_file(yaml_path, previous_yaml)
         if body_path and body_temp:
             _restore_body(body_path, previous_body)
@@ -684,10 +770,17 @@ def save_change(workspace: Workspace, change: Change) -> None:
         raise write_failed(changes_path, error) from error
     # 書き込んだ中身は検証を済ませたので、次の読み込みで検証し直さないよう記録する
     _remember_valid(workspace.root, [(yaml_path, yaml_text)])
+    written: dict[str, str | None] = {spec.file: yaml_text}
+    if change.body is not None:
+        written[change.body.name] = change.body.text
+    return written
 
 
-def save_batch(workspace: Workspace, change: BatchChange) -> None:
-    """複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。"""
+def save_batch(workspace: Workspace, change: BatchChange) -> dict[str, str | None]:
+    """複数の種類の項目の並びと本文とまとまりを、検証してから全て書き換えるか、どれも書き換えない。
+
+    書いた種類の YAML と本文（記録のフォルダからのパス）→ 書いた中身（消した本文は None）を返す（変更の検知に渡す）。
+    """
     kinds = [kind for kind in KINDS if kind in change.items]
     # 書き戻すと中身を失う形のファイルには書かない（変更を当てる前の、そのファイルの問題を返す）
     for kind in kinds:
@@ -720,7 +813,7 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
     records = records_root(workspace.root)
     bodies = {body.name: body for body in change.bodies}
     targets: list[tuple[Path, str]] = [
-        (records / BODY_DIR / body.name, body.text) for body in bodies.values()
+        (body_path_of(records, body.name), body.text) for body in bodies.values()
     ]
     targets.extend(
         (records / KINDS[kind].file, dump_yaml({"items": change.items[kind]})) for kind in kinds
@@ -730,6 +823,8 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
         targets.append((records / SETTINGS_FILE, dump_yaml(change.settings)))
     if change.threads is not None:
         targets.append((records / THREADS_FILE, dump_yaml({"items": change.threads})))
+    if change.history is not None:
+        targets.append((records / HISTORY_FILE, dump_yaml({"items": change.history})))
     if change.changes is not None:
         targets.append((records / CHANGES_FILE, dump_yaml(change.changes)))
     if change.edits is not None:
@@ -737,7 +832,7 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
     # 置き換える前の中身を控える（無ければ None）
     previous = {path: path.read_bytes() if path.is_file() else None for path, _ in targets}
     # 消す本文の中身も控える（無ければ消さずに飛ばす）
-    removed_paths = [records / BODY_DIR / name for name in change.removed_bodies]
+    removed_paths = [body_path_of(records, name) for name in change.removed_bodies]
     removed_previous = {path: path.read_bytes() for path in removed_paths if path.is_file()}
 
     # 一時ファイルを先に全て書く
@@ -750,6 +845,12 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
         except OSError as error:
             _remove_files(temps)
             raise write_failed(path, error) from error
+    # 読んだ後にほかが種類の YAML を書いていれば、何も置き換えない
+    try:
+        require_unchanged(workspace, [KINDS[kind].file for kind in kinds])
+    except ConcurrentWriteError:
+        _remove_files(temps)
+        raise
 
     # 順に置き換え、失敗したら置き換えたファイルを控えに戻す（前に無ければ消す）
     replaced: list[Path] = []
@@ -782,6 +883,72 @@ def save_batch(workspace: Workspace, change: BatchChange) -> None:
     _remember_valid(
         workspace.root, [(path, text) for path, text in targets if path.name in replaced_files]
     )
+    kind_files = {KINDS[kind].file for kind in kinds}
+    written: dict[str, str | None] = {
+        path.relative_to(records).as_posix(): text
+        for path, text in targets
+        if path.name in kind_files or path.parent.name == BODY_DIR
+    }
+    for path in removed_done:
+        written[path.relative_to(records).as_posix()] = None
+    return written
+
+
+def body_path_of(records: Path, name: str) -> Path:
+    """記録のフォルダと本文のパス（`body` の値）を結んだパスを返す。"""
+    return records / name
+
+
+def require_unchanged(workspace: Workspace, file_names: list[str]) -> None:
+    """種類の YAML の今の中身が読んだときと同じかを確かめ、違えば ConcurrentWriteError を送る。"""
+    records = records_root(workspace.root)
+    for file_name in file_names:
+        expected = workspace.digests.get(file_name)
+        # 読んだときの要約を持たない（ワークスペースを読まずに組み立てた）: 比べない
+        if expected is None:
+            continue
+        path = records / file_name
+        current = _digest(path.read_bytes()) if path.is_file() else MISSING_DIGEST
+        if current != expected:
+            raise ConcurrentWriteError(file_name)
+
+
+def build_source_config(workspace_id: str, summary: str) -> dict[str, Any]:
+    """ワークスペースの ID と題名から、記録の配信の設定（`dev-docs.yaml`）の中身を組み立てる。"""
+    documents: list[dict[str, Any]] = []
+    for kind, spec in KINDS.items():
+        document_id, title, has_lead, has_status = SOURCE_DOCUMENTS[kind]
+        metadata: dict[str, str] = {"id": "id", "name": "title"}
+        if has_lead:
+            metadata["description"] = "lead"
+        metadata.update(
+            {"tags": "tags[].name", "main_tags": "tags[main].name", "related": "related"}
+        )
+        if has_status:
+            metadata["status"] = "status"
+        documents.append(
+            {
+                "id": document_id,
+                "title": title,
+                "paths": [spec.file],
+                "schema": f"{SOURCE_SCHEMA_DIR}/{spec.schema}",
+                "records": "items",
+                "body_file": "body",
+                "metadata": metadata,
+            }
+        )
+    return {
+        "version": "3",
+        "name": workspace_id,
+        "description": summary,
+        "related": {"types": list(RELATED_TYPES)},
+        "documents": documents,
+    }
+
+
+def source_schema_files() -> list[str]:
+    """配信の設定が指すスキーマの複製に写す、プラグインのスキーマのファイル名を返す。"""
+    return [COMMON_SCHEMA, *(spec.schema for spec in KINDS.values())]
 
 
 def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
@@ -835,6 +1002,15 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
         (records / VERSION_FILE).write_text(f"{version}\n", encoding="utf-8")
         created.append(records / VERSION_FILE)
         files.append(f"{RECORD_DIR}/{VERSION_FILE}")
+        # 記録を project-index で配信する設定と、設定が指すスキーマの複製
+        source_config = build_source_config(_workspace_id(root, settings), str(settings["summary"]))
+        (records / SOURCE_CONFIG_FILE).write_text(dump_yaml(source_config), encoding="utf-8")
+        created.append(records / SOURCE_CONFIG_FILE)
+        files.append(f"{RECORD_DIR}/{SOURCE_CONFIG_FILE}")
+        _make_dir(records / SOURCE_SCHEMA_DIR, created)
+        for schema_name in source_schema_files():
+            shutil.copyfile(SCHEMA_DIR / schema_name, records / SOURCE_SCHEMA_DIR / schema_name)
+        files.append(f"{RECORD_DIR}/{SOURCE_SCHEMA_DIR}/")
         # 直下の README は、前からあったものを失敗のときに消さないよう、無かったときだけ作ったものに数える
         readme_existed = (root / README_FILE).exists()
         readme_written = write_readme(root)
@@ -854,6 +1030,15 @@ def create_workspace(root: Path, settings: dict[str, Any], *, version: str) -> l
     if readme_written:
         files.append(README_FILE)
     return files
+
+
+def _workspace_id(root: Path, settings: dict[str, Any]) -> str:
+    """設定の `id` を返す。無ければフォルダから振る。"""
+    # ワークスペースの管理が記録を書くときに読むため、関数の中で読む
+    from workspaces import workspace_id_for
+
+    value = settings.get("id")
+    return str(value) if value else workspace_id_for(root)
 
 
 def clear_release(root: Path) -> list[str]:
@@ -920,9 +1105,10 @@ def write_release(root: Path, path: str, content: str) -> tuple[str, int]:
 
 
 def read_body(workspace: Workspace, name: str) -> str | None:
-    """`.mindstella/docs/` の本文を読む。ファイルが無いか、名前が `docs/` の外を指すときは None を返す。"""
-    body_dir = (records_root(workspace.root) / BODY_DIR).resolve()
-    path = (body_dir / name).resolve()
+    """項目の `body` が指す本文を読む。ファイルが無いか、パスが `docs/` の外を指すときは None を返す。"""
+    records = records_root(workspace.root)
+    body_dir = (records / BODY_DIR).resolve()
+    path = body_path_of(records, name).resolve()
     # docs/ の外を指す名前は読まない
     if not path.is_relative_to(body_dir):
         return None
@@ -950,6 +1136,18 @@ def as_ids(value: Any) -> list[str]:
     if isinstance(value, list):
         return [element for element in value if isinstance(element, str)]
     return []
+
+
+def related_ids(item: dict[str, Any], related_type: str) -> list[str]:
+    """項目の `related` のうち、種類が同じ要素の `to` を並べて返す（`related` が無ければ空）。"""
+    related = item.get("related")
+    if not isinstance(related, list):
+        return []
+    return [
+        entry["to"]
+        for entry in related
+        if isinstance(entry, dict) and entry.get("type") == related_type and isinstance(entry.get("to"), str)
+    ]
 
 
 def dump_yaml(data: Any) -> str:

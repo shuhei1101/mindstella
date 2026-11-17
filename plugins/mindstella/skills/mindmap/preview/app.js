@@ -347,7 +347,13 @@ var MindmapPreview;
                 ? [{ sel: "pending", name: "まだまとめていない変更", sub: "AI がまだ区切っていない書き換え", count: countOf("pending") }]
                 : []),
             { sel: "since", name: "前回開いてから", sub: `${MindmapPreview.formatJst(since.at)} より後`, count: countOf("since") },
-            ...changes.sets.map((set) => ({ sel: set.id, name: set.summary, sub: MindmapPreview.formatJst(set.at), count: countOf(set.id) })),
+            ...changes.sets.map((set) => ({
+                sel: set.id,
+                name: set.summary,
+                sub: MindmapPreview.formatJst(set.at),
+                count: countOf(set.id),
+                external: set.by === "external",
+            })),
         ];
     }
     /** 選んだ時点の、項目の ID → 差分の印 */
@@ -461,6 +467,16 @@ var MindmapPreview;
         let serverIndex = index;
         document.title = `${data.settings.summary} | mindstella`;
         let connection = "online";
+        /** 変更の検知が知らせた重なった ID と、利用者が閉じたときの集まり（同じ集まりの間は通知を出さない） */
+        let duplicates = [];
+        let dismissedDuplicates = null;
+        /** トップバーに渡す重なった ID と種類の名前 */
+        const shownDuplicates = () => dismissedDuplicates !== null && dismissedDuplicates.join(",") === duplicates.join(",")
+            ? []
+            : duplicates.map((id) => {
+                const kind = MindmapPreview.kindOfId(id);
+                return { id, kind: kind === null ? "" : MindmapPreview.KIND_LABEL[kind] };
+            });
         // 表示の設定: 項目ごとに、個人の上書き → ワークスペースの既定 → 組み込みの既定の順で読み分けた値
         let resolved = resolveDisplay(prefs, data.settings.display);
         const display = { open: false, confirm: null, message: null, savedDisplay: null, storageOk: true };
@@ -686,6 +702,12 @@ var MindmapPreview;
                     : null,
                 voiceNotice: serverMode ? comment.voice.notice : null,
                 onVoice,
+                duplicateIds: serverMode ? shownDuplicates() : [],
+                onOpenDuplicate: (id) => openItem(id, false),
+                onCloseDuplicate: () => {
+                    dismissedDuplicates = [...duplicates];
+                    renderTop();
+                },
                 diffPoint: point === null ? null : { name: point.name, sub: point.sub },
                 onHistory: openHistory,
                 onDiffOff: () => selectPoint(null),
@@ -2955,6 +2977,7 @@ var MindmapPreview;
                 usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
                 body: index.data.bodies[item.body ?? ""] ?? "",
                 optionDrafts: draftsOf(id),
+                index,
                 on: {
                     change: (input) => void submitEdit({
                         payload: { target: id, ...input },
@@ -3188,6 +3211,7 @@ var MindmapPreview;
                 usedTags: MindmapPreview.usedTags({ index, threads: comment.threads }),
                 body: typeof record["body"] === "string" ? record["body"] : "",
                 optionDrafts: draftsOf(item.id),
+                index,
                 on: {
                     change: (input) => void submitAddField({ input }),
                     remove: () => undefined,
@@ -3729,6 +3753,13 @@ var MindmapPreview;
         if (serverMode) {
             MindmapPreview.subscribeEvents({
                 onChanged: () => void reload(),
+                onDuplicates: (ids) => {
+                    duplicates = ids;
+                    // 閉じたときと違う集まりを受けたら出し直す
+                    if (dismissedDuplicates !== null && dismissedDuplicates.join(",") !== ids.join(","))
+                        dismissedDuplicates = null;
+                    renderTop();
+                },
                 onConnection: (connected) => {
                     // 切れた: 接続の状態を出し、最後に読めた記録で描き続ける
                     if (!connected) {

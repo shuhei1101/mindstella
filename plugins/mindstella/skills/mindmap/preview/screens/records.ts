@@ -19,8 +19,8 @@ namespace MindmapPreview {
       key: "related",
       label,
       priority: 3,
-      get: (row) => rowTexts(row, "related"),
-      cell: (row) => idLinksCell(rowTexts(row, "related"), open),
+      get: (row) => refsOf(row as unknown as Item, "see_also"),
+      cell: (row) => idLinksCell(refsOf(row as unknown as Item, "see_also"), open),
     });
     const columnsOf: Record<RecordKind, Column[]> = {
       research: [

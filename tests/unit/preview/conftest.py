@@ -16,12 +16,15 @@ import pytest
 import yaml
 from playwright.sync_api import Page
 
+from workspace_fixtures import DEFAULT_TIMESTAMP
+
 from .fixture_types import (
     LoadLibrary,
     LoadMdmark,
     LoadPreviewScripts,
     LoadPreviewStyles,
     MakeData,
+    MakeItem,
     MdmarkDist,
     PutEmbeddedMdmark,
     PutMdmarkCss,
@@ -346,6 +349,21 @@ def load_preview_styles(preview_page: Page) -> LoadPreviewStyles:
             preview_page.add_style_tag(path=str(PREVIEW_DIR / name))
 
     return _load
+
+
+@pytest.fixture
+def make_item(make_item: MakeItem) -> MakeItem:
+    """記録の取得が返す形（項目に履歴の作成日時・更新日時を合わせた形）の項目を作る関数を返す。"""
+
+    def _make(item_id: str, **overrides: Any) -> dict[str, Any]:
+        """共通の項目に、渡していなければ既定の作成日時・更新日時を足して返す。"""
+        return {
+            **make_item(item_id, **overrides),
+            "created": overrides.get("created", DEFAULT_TIMESTAMP),
+            "updated": overrides.get("updated", DEFAULT_TIMESTAMP),
+        }
+
+    return _make
 
 
 @pytest.fixture

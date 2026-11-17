@@ -8,7 +8,7 @@ flows:
     summary: tmux の中のセッションの値を `session` に入れた入力を返す
     setup:
       - name: Mock
-        description: 'Claude Code の代わりに、フックの入力の JSON（`cwd` はテストの一時フォルダ、`tool_input` は `{"workspace": "talk"}`）を標準入力に渡してスクリプトを起動する'
+        description: 'Claude Code の代わりに、フックの入力の JSON（`cwd` はテストの一時フォルダ、`session_id` は `abc`、`tool_input` は `{"workspace": "talk"}`）を標準入力に渡してスクリプトを起動する'
       - name: 環境変数
         description: '`TMUX` に `/tmp/tmux-1000/default,1234,0`、`TMUX_PANE` に `%3`、`CLAUDE_CONFIG_DIR` にテストの一時フォルダを渡す'
       - name: Claude Code のプロセス
@@ -20,12 +20,13 @@ flows:
         participant CC as Claude Code（代わり）
         participant IF as inject_session.py
 
-        CC->>IF: PreToolUse の入力（cwd・tool_input）
+        CC->>IF: PreToolUse の入力（cwd・session_id・tool_input）
         IF->>IF: 親をたどって claude のプロセスを探す
         IF-->>CC: updatedInput（tool_input と session）
       ```
     expected:
       - 終了コードが 0
+      - '`updatedInput.session.claude_session_id` が `abc`'
       - 標準出力の JSON の `hookSpecificOutput.hookEventName` が `PreToolUse`
       - '`hookSpecificOutput.updatedInput.workspace` が `talk` のまま'
       - '`updatedInput.session` の `cwd`・`tmux`・`tmux_pane`・`claude_config_dir` が、入力の `cwd` と渡した環境変数の値'
@@ -83,7 +84,7 @@ flows:
     expected:
       - 終了コードが 0 で、標準出力に何も書かない
     test: test_normal_when_input_invalid
-lead: mindstella のツールを呼ぶたびに、呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの引数 `session` に入れる。
+lead: mindstella のツールを呼ぶたびに、呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセス・Claude Code の `session_id` を、ツールの引数 `session` に入れる。
 idempotent: true
 side_effects: なし（何も書き込まない）
 request:
@@ -92,6 +93,12 @@ request:
     required: true
     location: body
     description: Claude Code がフックの標準入力に渡す JSON の作業フォルダ
+  - name: session_id
+    type: str
+    required: false
+    default: なし（`session.claude_session_id` を入れない）
+    location: body
+    description: Claude Code がフックの標準入力に渡す JSON の `session_id`。`session.claude_session_id` に入れる
   - name: tool_input
     type: dict
     required: true

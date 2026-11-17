@@ -267,7 +267,7 @@ namespace MindmapPreview {
     let flowId = 0;
     for (const node of laid.children) {
       if (node.kind !== "item" || node.item === undefined) continue;
-      for (const prerequisite of node.item.depends_on ?? []) {
+      for (const prerequisite of refsOf(node.item, "depends_on")) {
         const from = positions.get(prerequisite);
         if (from === undefined) continue;
         const related = selected !== null && (selected === prerequisite || selected === node.id);
@@ -752,8 +752,8 @@ namespace MindmapPreview {
         key: "depends_on",
         label: "前提",
         priority: 3,
-        get: (row) => rowTexts(row, "depends_on"),
-        cell: (row) => idLinksCell(rowTexts(row, "depends_on"), open),
+        get: (row) => refsOf(row as unknown as Item, "depends_on"),
+        cell: (row) => idLinksCell(refsOf(row as unknown as Item, "depends_on"), open),
       },
       common.tags,
     ];
@@ -828,7 +828,7 @@ namespace MindmapPreview {
                 index,
                 item,
                 meta: [item.category, item.phase],
-                links: item.depends_on ?? [],
+                links: refsOf(item, "depends_on"),
                 open: on.open,
                 mark: marks?.[item.id],
                 comments,

@@ -4,7 +4,7 @@ scenarios:
   - name: 正常シナリオ（ゴールに届いた）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `goal`・スレッドを立てる・スレッドを読む・`show`・`clear-release`・リリースの資料を書き出すツール・`add`（会話ログ）・スレッドへの返信を、決めた引数で順に再生する。利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する
+        description: モデルを呼ばない。手順が連ねる `goal`・スレッドを立てる・スレッドを読む・`search_docs`・`clear-release`・リリースの資料を書き出すツール・`next_id`・`write_docs`（会話ログ）・スレッドへの返信を、決めた引数で順に再生する。利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する
       - name: 作成済みのワークスペース
         description: 'ゴールがインターフェースまでで、目的からインターフェースまでの検討事項が全て案を採用した決定済みか対象外で、ゴールの `deliverables` の資料 A-1 が `status: 完成`'
         notes: コンテンツのフェーズに未決定の D-9 を置き、ゴールより後ろのフェーズは判定に入らないことを確かめる
@@ -18,6 +18,7 @@ scenarios:
         actor U as 利用者
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: goal
@@ -26,12 +27,12 @@ scenarios:
         CC->>SV: スレッドを立てる（決まった検討事項と納品物を示して確定を求める）
         U->>SV: スレッドへ確定を送る
         CC->>SV: スレッドを読む（未読だけ）
-        CC->>SV: show（納品物の本文）
+        CC->>PI: search_docs（納品物の本文）
         CC->>SV: clear-release
         SV->>WS: .mindstella/release/ の中身を消す
         CC->>SV: リリースの資料を書き出す（release/ の下のファイル名と本文）
         SV->>WS: .mindstella/release/ に書く
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: スレッドへ返信する（書き出した .mindstella/release/ のファイル）
       ```
     expected:
@@ -90,24 +91,25 @@ scenarios:
   - name: 正常シナリオ（タスクの成果の資料が欠けている）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `goal`・`find`・`add`・`update`・スレッドを立てるを、決めた引数で順に再生する
+        description: モデルを呼ばない。手順が連ねる `goal`・`search_docs`・`next_id`・`write_docs`・`write_docs`・スレッドを立てるを、決めた引数で順に再生する
       - name: 作成済みのワークスペース
         description: 'ゴールに届いた状態（ゴールのフェーズまでの検討事項が決着し、納品物の資料 A-1 が `status: 完成`）で、完了した作業のタスク T-1 が `result` に成果を持ち、成果の資料を `related` に持たない'
       - name: 再生する書き込み
-        description: 'T-1 の成果を本文にした資料 A-2（`deliverable: false`）を足し、T-1 を `related: [A-2]` に更新する'
+        description: 'T-1 の成果を本文にした資料 A-2（`deliverable: false`）を足し、T-1 を `related: [{to: A-2, type: see_also}]` に更新する'
     flow: |-
       ```mermaid
       sequenceDiagram
         actor U as 利用者
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
 
         CC->>SV: goal
         SV-->>CC: 届いた（残り 0 件）
-        CC->>SV: find（完了したタスク。続きを取る値が無くなるまでたどる）
+        CC->>PI: search_docs（完了したタスク。続きを取る値が無くなるまでたどる）
         SV-->>CC: T-1（成果の資料が無い）
-        CC->>SV: add（資料 A-2）
-        CC->>SV: update（T-1 を related: A-2 にする）
+        CC->>PI: write_docs（資料 A-2）
+        CC->>PI: write_docs（T-1 の related に A-2 を種類 see_also で足す）
         CC->>SV: スレッドを立てる（足した資料と、決まった検討事項と納品物を示して確定を求める）
       ```
     expected:
@@ -118,7 +120,7 @@ scenarios:
   - name: 正常シナリオ（納品物が HTML の資料）
     setup:
       - name: Mock
-        description: モデルを呼ばない。手順が連ねる `goal`・スレッドを立てる・スレッドを読む・`show`・`clear-release`・リリースの資料を書き出すツール・`add`（会話ログ）・スレッドへの返信を、決めた引数で順に再生する。利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する
+        description: モデルを呼ばない。手順が連ねる `goal`・スレッドを立てる・スレッドを読む・`search_docs`・`clear-release`・リリースの資料を書き出すツール・`next_id`・`write_docs`（会話ログ）・スレッドへの返信を、決めた引数で順に再生する。利用者の回答は、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する
       - name: 作成済みのワークスペース
         description: 'ゴールのフェーズまでの検討事項が全て決定済みで、ゴールの `deliverables` に、本文を Markdown で持つ資料 A-1 と本文を HTML で持つ資料 A-2（タイトル: 画面のモック）があり、どちらも `status: 完成`'
       - name: 利用者の返答
@@ -129,6 +131,7 @@ scenarios:
         actor U as 利用者
         participant CC as Claude Code（session）
         participant SV as サーバー
+        participant PI as project-index
         participant WS as ワークスペース
 
         CC->>SV: goal
@@ -136,11 +139,11 @@ scenarios:
         CC->>SV: スレッドを立てる（決まった検討事項と納品物を示して確定を求める）
         U->>SV: スレッドへ確定を送る
         CC->>SV: スレッドを読む（未読だけ）
-        CC->>SV: show（納品物の本文と形式）
+        CC->>PI: search_docs（納品物の本文と形式）
         CC->>SV: clear-release
         CC->>SV: リリースの資料を書き出す（release/ の下のファイル名と本文）
         SV->>WS: .mindstella/release/ に書く
-        CC->>SV: add（会話ログ）
+        CC->>PI: write_docs（会話ログ）
         CC->>SV: スレッドへ返信する（書き出した .mindstella/release/ のファイル）
       ```
     expected:

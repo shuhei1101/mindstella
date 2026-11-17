@@ -219,7 +219,7 @@ functions:
       description: 付け替えた種類ごとの変更（付け替えた項目がある種類だけ）・付け替えた項目・`goal.phase` を付け替えた設定
     process: |-
       1. 種類の順（`KINDS`）に、項目の並びを見る
-         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`updated` を今の日時、`updated_by` を `editor` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
+         - `phase` を持ち新しい `phases` に無い項目は、`phase_map` に対応があれば `phase` を置き換え、`history.yaml` の行の `updated` を今の日時、`updated_by` を `editor` にして `PhaseRemap` を足す。無ければ残るものに `({ID}, {フェーズ})` を足す
          - 付け替えた項目がある種類だけ、並び全体を `Change` にする
       2. 設定が `goal` を持ち `goal.phase` が新しい `phases` に無い場合、`phase_map` に対応があれば置き換え、無ければ残るものに `(goal, {フェーズ})` を足す
       3. 残るものが 1 つ以上あれば `UnmappedPhaseError`（残るものを全て）
@@ -273,7 +273,8 @@ functions:
       3. 書く全てのファイルの一時ファイルを書き（`dump_yaml`、`write_temp`）、置き換える前の中身を控える
          - 一時ファイルの書き込みで `OSError` が起きた場合、書いた一時ファイルを消して `WriteFailedError` を送る
          - `settings` が `workspace.settings` と同じ場合、`config.yaml` は書く対象に入れない
-      4. `changes` の種類 → `config.yaml` の順に `os.replace` で置き換える
+      4. 置き換える直前に、`changes` の種類の YAML の今の中身の要約が読んだときと同じかを確かめる（違えば一時ファイルを消して `ConcurrentWriteError`。呼ぶ側が読み直して 1 回だけ当て直す）
+      5. `changes` の種類 → `history.yaml`（付け替えた項目の行の `updated`・`updated_by`）→ `config.yaml` の順に `os.replace` で置き換える
          - 途中で `OSError` が起きた場合、置き換えたファイルを控えに戻し、残った一時ファイルを消して `WriteFailedError` を送る
     exceptions:
       - name: SchemaMismatchError
@@ -357,7 +358,8 @@ functions:
       3. 設定を置き換える（`merge_settings`）
       4. フェーズを付け替える（`remap_phases`。`settings` が `phases` を持たなければ今の `phases` のままで確かめ、`phase_map` が `None` なら空）。書き換えのたびに呼ぶので、`phases` に無いフェーズを持つ項目か `goal.phase` が残れば `UnmappedPhaseError` で止まる。`goal` が変わったら変わったキーに `goal` を足す
       5. 対象とカテゴリーを付け替える（`remap_names`。対応が `None` なら空）。書き換えのたびに呼ぶので、新しい設定に無い対象・カテゴリーが残れば `UnmappedTargetError` で止まる。カテゴリーの `target` が変わったら変わったキーに `categories` を足す
-      6. 4.・5. で付け替えた項目がある種類を `Change` にし、まとめて書く（`save_settings`）
+      6. 4.・5. で付け替えた項目がある種類を `Change` にし、まとめて書く（`save_settings`。`ConcurrentWriteError` なら 1. から 1 回だけ当て直す）
+      7. 変更の検知の前回の中身を、書いたファイルとその中身で置き換える（『変更の検知』の `accept_own_write`）
     exceptions:
       - name: WorkspaceNotFoundError
         condition: '`config.yaml` が無い（`load_workspace` から伝わる）'
@@ -434,7 +436,7 @@ functions:
       description: 付け替えた後の種類ごとの項目・付け替えた項目とキー・カテゴリーの `target` を付け替えた設定
     process: |-
       1. 設定の `categories` の `target` が新しい `targets` に無ければ、`target_map` に対応があれば置き換え、無ければ残るものに `(categories[{名前}], target, {名前})` を足す
-      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `updated` を今の日時、`updated_by` を `editor` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
+      2. 種類の順（`KINDS`）に、項目の `target`・`category` を同じく付け替え、付け替えた項目は `history.yaml` の行の `updated` を今の日時、`updated_by` を `editor` にして `PhaseRemap` を足す（変更履歴・通し番号・`pending` は触らない）
       3. 残るものが 1 つ以上あれば `UnmappedTargetError`（残るものを全て）
     exceptions:
       - name: UnmappedTargetError

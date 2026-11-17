@@ -15,7 +15,7 @@ scenarios:
         participant WS as ワークスペース
 
         CL->>WSM: フォルダを渡してワークスペースを作る（POST /workspaces・create_workspace）
-        WSM->>WS: .mindstella/ に既定の設定（ワークスペースの ID・進め方の文書を含む）・空の YAML・docs/・release/・版のファイルを書く
+        WSM->>WS: .mindstella/ に既定の設定（ワークスペースの ID・進め方の文書を含む）・空の YAML・docs/・release/・版のファイルと、記録を project-index で配信する設定を書く
         WSM->>WS: 直下に README.md（コマンドの一覧）を書く
         WSM-->>CL: ワークスペースの ID と画面の URL
       ```
@@ -27,6 +27,8 @@ scenarios:
       - ワークスペースの直下に、設定・種類ごとの YAML・`docs/`・`release/`・版のファイルが無い
       - ワークスペースの直下に `README.md` があり、このフォルダの起動・接続のコマンドとスキルの呼び方の一覧がある
       - ワークスペースの全ての YAML がスキーマに合う
+      - ワークスペースの `.mindstella/` に記録を配信する設定があり、種類ごとの YAML の項目を 1 件ずつの文書として、`.mindstella/docs/` の本文をその項目の本文として指す
+      - 配信元の登録の依頼の `config` が、その配信の設定のパスである
     test: test_normal
   - name: 異常シナリオ（移す前の形のワークスペースがある）
     setup:
@@ -88,7 +90,7 @@ preconditions:
   - プラグイン mindstella がインストールされている
   - 常駐サーバーが起動している
   - 渡すフォルダが、設定で許可するフォルダの下にある
-success_guarantee: 指定したフォルダの `.mindstella/` に、既定の設定とワークスペースの ID を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini` があり、全ての YAML がスキーマに合う。
+success_guarantee: 指定したフォルダの `.mindstella/` に、既定の設定とワークスペースの ID を持つ `config.yaml` と、空の種類ごとの YAML・`docs/`・`release/`・プラグインの版を書いた `mindstella-version.ini`・記録を project-index で配信する設定があり、全ての YAML がスキーマに合う。
 minimal_guarantee: 移す前の形のワークスペースがあるときは、フォルダの中身を書き換えない。記録が既にあるフォルダは作り直さずに開く（単一ユースケース『外部のアプリから起動する』）。
 test_file: tests/e2e/単一ユースケース/test_workspace_create.py
 refs:

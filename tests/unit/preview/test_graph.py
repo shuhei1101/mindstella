@@ -19,10 +19,10 @@ def test_build_graph(
     """線の種類を分け、渡していない項目の線を落とす（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1"), make_item("D-2", depends_on=["D-1"], sources=["R-1"])],
-        tasks=[make_item("T-1", **{"for": ["D-1"]})],
+        decisions=[make_item("D-1"), make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}], sources=["R-1"])],
+        tasks=[make_item("T-1", related=[{"to": "D-1", "type": "for"}])],
         research=[make_item("R-1")],
-        notes=[make_item("N-1", related=["D-1"])],
+        notes=[make_item("N-1", related=[{"to": "D-1", "type": "see_also"}])],
     )
     load_preview_scripts()
     # 実行

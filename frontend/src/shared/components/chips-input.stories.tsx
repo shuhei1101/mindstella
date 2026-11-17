@@ -34,3 +34,17 @@ export const MainToggleLongNarrow: Story = {
     </div>
   ),
 };
+
+/** `validate` が誤りを返した。入れた値を入力欄に残し、直下に誤りの文を出して、入力欄の枠を失敗の色にする */
+export const Error: Story = {
+  args: {
+    name: "前提",
+    hint: "ID を入れる",
+    values: ["D-1"],
+    monospace: true,
+    validate: (value) => (value === "D-99" ? { error: "D-99 が見つかりません。ID を確認してください。" } : { value }),
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.type(canvas.getByRole("combobox"), "D-99{Enter}");
+  },
+};

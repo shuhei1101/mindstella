@@ -33,23 +33,15 @@ SERVER_NAME = "mindstella"
 
 # 登録するツールの名前（インターフェース定義『MCP サーバーの起動』）
 TOOL_NAMES = [
-    "add",
-    "update",
-    "remove",
+    "next_id",
     "update_settings",
     "adopt",
     "edit_option",
-    "batch",
     "changes_since_read",
     "commit",
     "pending",
     "status",
     "next",
-    "impact",
-    "find",
-    "show",
-    "attrs",
-    "tags",
     "check",
     "goal",
     "migrate",
@@ -82,18 +74,14 @@ PREVIEW_PAGE = "/mindstella.html"
 # 終了時のフックを渡す環境変数
 STOP_HOOK_ENV = "MINDSTELLA_PREVIEW_STOP_HOOK"
 
-# 2 つのプロセスがそれぞれ足す検討事項の件数
-ADDS_PER_PROCESS = 20
+# 2 つのプロセスがそれぞれ案を足す検討事項の件数
+EDITS_PER_PROCESS = 20
 
-# 足す検討事項
-NEW_DECISION: dict[str, Any] = {
-    "title": "並べて足す問い",
-    "target": "mindmap",
-    "category": "データ構造",
-    "phase": "要件",
-    "status": "未決定",
-    "options": [{"key": "A", "content": "案 A"}],
-}
+# 案を足す検討事項の数（2 つのプロセスの合計）
+DECISION_COUNT = 40
+
+# 足す案
+NEW_OPTION: dict[str, Any] = {"content": "案 B"}
 
 
 def _run_server(port: str) -> subprocess.CompletedProcess[str]:
@@ -109,10 +97,12 @@ def _run_server(port: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _add_many(server: McpServer, root: Path, errors: list[str]) -> None:
-    """検討事項を ADDS_PER_PROCESS 件足し、エラーになった本文を errors に集める。"""
-    for _ in range(ADDS_PER_PROCESS):
-        result = server.call("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+def _edit_many(server: McpServer, root: Path, first: int, errors: list[str]) -> None:
+    """D-{first} から EDITS_PER_PROCESS 件の検討事項へ案 B を足し、エラーになった本文を errors に集める。"""
+    for number in range(first, first + EDITS_PER_PROCESS):
+        result = server.call(
+            "edit_option", workspace=str(root), id=f"D-{number}", action="add", key="B", option=NEW_OPTION
+        )
         if result.is_error:
             errors.append(result.text)
 
@@ -206,17 +196,17 @@ def test_normal_when_relative_path_without_session(
 
 
 def test_normal_when_two_processes_write(
-    make_workspace: MakeWorkspace, start_server: StartServer
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer
 ) -> None:
-    """2 つのプロセスが同じワークスペースへ同時に書いても、どちらの書き換えも失わず ID も重ならない（正常系）。"""
+    """2 つのプロセスが同じワークスペースへ同時に書いても、どちらの書き換えも失わない（正常系）。"""
     # 準備
-    root = make_workspace()
+    root = make_workspace(*[make_item(f"D-{number}") for number in range(1, DECISION_COUNT + 1)])
     first = start_server()
     second = start_server()
     errors: list[str] = []
     threads = [
-        threading.Thread(target=_add_many, args=(server, root, errors))
-        for server in (first, second)
+        threading.Thread(target=_edit_many, args=(server, root, start, errors))
+        for server, start in ((first, 1), (second, EDITS_PER_PROCESS + 1))
     ]
     # 実行
     for thread in threads:
@@ -228,7 +218,9 @@ def test_normal_when_two_processes_write(
     items = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))[
         "items"
     ]
-    assert [item["id"] for item in items] == [f"D-{number}" for number in range(1, 41)]
+    assert {item["id"]: [option["key"] for option in item["options"]] for item in items} == {
+        f"D-{number}": ["A", "B"] for number in range(1, DECISION_COUNT + 1)
+    }
 
 
 def test_normal_when_sigterm(

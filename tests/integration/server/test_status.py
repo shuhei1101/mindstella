@@ -15,9 +15,9 @@ def test_normal(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: C
     root = make_workspace(
         make_item("D-1", title="見直しの問い", status="要見直し"),
         make_item("T-1", title="進めている作業", status="進行中"),
-        make_item("D-2", title="再開できる保留", status="保留", depends_on=["D-3"]),
+        make_item("D-2", title="再開できる保留", status="保留", related=[{"to": "D-3", "type": "depends_on"}]),
         make_item("D-3", title="決まった問い", status="決定済み", options=ADOPTED_OPTIONS),
-        make_item("D-4", title="決定待ちの保留", status="保留", depends_on=["D-5"]),
+        make_item("D-4", title="決定待ちの保留", status="保留", related=[{"to": "D-5", "type": "depends_on"}]),
         make_item("D-5", title="次に決める問い"),
         make_item("D-6", title="予算待ち", status="保留", reason="予算が決まったら"),
     )

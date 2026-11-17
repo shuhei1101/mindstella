@@ -194,3 +194,19 @@ def test_main_toggle_long_narrow(open_story: OpenStory) -> None:
     assert layout["nameLines"] == 1
     assert layout["toggleInFirst"] is True
     assert layout["toggleBesideName"] is True
+
+
+def test_error(open_story: OpenStory) -> None:
+    """validate が誤りを返すと、入れた値を残して直下に誤りの文を出し、入力欄が誤りの文を指す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-chipsinput--error")
+    page.wait_for_selector("#storybook-root .pe-chip-error:not([hidden])")
+    # 検証
+    field = page.locator("#storybook-root .pe-chip-input")
+    error = page.locator("#storybook-root .pe-chip-error")
+    assert field.input_value() == "D-99"
+    assert error.inner_text() == "入力の誤り: D-99 が見つかりません。ID を確認してください。"
+    assert field.get_attribute("aria-invalid") == "true"
+    assert field.get_attribute("aria-describedby") == error.get_attribute("id")
+    assert page.evaluate(CHIPS_SCRIPT)[0]["name"] == "D-1"
+    assert len(page.evaluate(CHIPS_SCRIPT)) == 1

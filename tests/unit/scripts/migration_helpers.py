@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 from migrator import MigrationStep
@@ -56,3 +58,16 @@ def init_git_repo(path: Path) -> None:
     run_git(path, "config", "user.name", "テスト")
     run_git(path, "config", "user.email", "test@example.com")
     run_git(path, "config", "commit.gpgsign", "false")
+
+
+def load_migration_script(scripts_dir: Path, version: str, name: str) -> ModuleType:
+    """版のフォルダにある変換のスクリプトを、`call` と同じように場所から読み込んで返す。"""
+    path = scripts_dir.parent / "migrations" / version / "scripts" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(
+        f"migration_{version.replace('.', '_')}_{name}", path
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

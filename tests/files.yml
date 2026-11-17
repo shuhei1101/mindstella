@@ -1089,30 +1089,22 @@ files:
   - topic:readme
   - topic:ヘルパー
   - topic:結合テスト
-- path: integration/server/test_add.py
-  name: 項目の追加の結合テスト
-  description: add（項目の追加）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_adopt.py
   name: 採用する案の切り替えの結合テスト
   description: adopt（採用する案の切り替え）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_attrs.py
-  name: 属性名の一覧の結合テスト
-  description: attrs（属性名の一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+- path: integration/server/test_change_detection.py
+  name: 変更の検知の結合テスト
+  description: 変更の検知（外部の変更・応答の途中の書き込み・画面の保存・Git の操作・重なった ID・保持する回数・止まっていた間の変更・書き込みの途中）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_batch.py
-  name: まとめての読み書きの結合テスト
-  description: batch（まとめての読み書き）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
+  - topic:履歴
+  related:
+  - to: IF-540-2
+    type: tests
 - path: integration/server/test_changes_since_read.py
   name: 前回読んだ時点からの変更の結合テスト
   description: changes_since_read（前回読んだ時点からの変更）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1254,32 +1246,12 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_find.py
-  name: 項目の検索の結合テスト
-  description: find（項目の検索）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:検索
-  - topic:結合テスト
 - path: integration/server/test_goal.py
   name: ゴール判定の結合テスト
   description: goal（ゴール判定）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:ゴール
-  - topic:結合テスト
-- path: integration/server/test_impact.py
-  name: 影響の洗い出しの結合テスト
-  description: impact（影響の洗い出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
-- path: integration/server/test_init.py
-  name: ワークスペースの作成の結合テスト
-  description: init（ワークスペースの作成）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:ワークスペース
   - topic:結合テスト
 - path: integration/server/test_inject_session.py
   name: PreToolUse のフックの inject_session.pyの結合テスト
@@ -1321,6 +1293,16 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
+- path: integration/server/test_next_id.py
+  name: ID の採番の結合テスト
+  description: next_id（ID の採番）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:結合テスト
+  - topic:ID
+  related:
+  - to: IF-540-1
+    type: tests
 - path: integration/server/test_opened.py
   name: 前回開いた日時の結合テスト
   description: POST /api/opened（前回開いた日時）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1362,12 +1344,6 @@ files:
   tags:
   - tool:pytest
   - topic:結合テスト
-- path: integration/server/test_remove.py
-  name: 項目の削除の結合テスト
-  description: remove（項目の削除）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_reply.py
   name: スレッドへの返信の結合テスト
   description: reply（スレッドへの返信）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1402,12 +1378,6 @@ files:
   - tool:pytest
   - topic:スレッド
   - topic:結合テスト
-- path: integration/server/test_show.py
-  name: 項目の表示の結合テスト
-  description: show（項目の表示）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:結合テスト
 - path: integration/server/test_spa_serve.py
   name: React のプレビューの配信の結合テスト
   description: React のプレビュー（SPA）の配信（GET /spa/{path}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1420,13 +1390,6 @@ files:
   description: status（再開時の状況）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
-  - topic:結合テスト
-- path: integration/server/test_tags.py
-  name: タグの一覧の結合テスト
-  description: tags（タグの一覧）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
-  - topic:タグ
   - topic:結合テスト
 - path: integration/server/test_thread.py
   name: スレッドを読むの結合テスト
@@ -1462,12 +1425,6 @@ files:
   tags:
   - tool:pytest
   - topic:スレッド
-  - topic:結合テスト
-- path: integration/server/test_update.py
-  name: 項目の更新の結合テスト
-  description: update（項目の更新）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
-  tags:
-  - tool:pytest
   - topic:結合テスト
 - path: integration/server/test_update_settings.py
   name: 設定の更新の結合テスト
@@ -1629,6 +1586,17 @@ files:
   - topic:ストーリー
   - topic:結合テスト
   - topic:資料
+- path: integration/storybook/test_duplicate_id_notice_stories.py
+  name: 重なった ID の通知のストーリーの結合テスト
+  description: 部品『重なった ID の通知』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+  - topic:ストーリー
+  related:
+  - to: CMP-540-1
+    type: tests
 - path: integration/storybook/test_filter_drawer_stories.py
   name: 部品設計『絞り込み』の状態の結合テスト
   description: 部品設計『絞り込み』の状態（ストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1842,6 +1810,17 @@ files:
   - tool:storybook
   - topic:ヘルパー
   - topic:結合テスト
+- path: integration/storybook_react/test_duplicate_id_notice_stories.py
+  name: React の重なった ID の通知のストーリーの結合テスト
+  description: 部品『重なった ID の通知.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:結合テスト
+  - topic:ストーリー
+  related:
+  - to: CMP-540-2
+    type: tests
 - path: integration/storybook_react/test_topbar_stories.py
   name: 部品設計『トップバー.tsx』の状態の結合テスト
   description: 部品設計『トップバー.tsx』の状態（React の Storybook のストーリー）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -1868,6 +1847,14 @@ files:
   - topic:テスト
   - topic:プレビュー
   - topic:ヘルパー
+- path: record_write_helpers.py
+  name: 記録の書き換えの補助
+  description: 結合テストが記録を project-index の write_docs と同じ書き方（next_id で ID を取り、一時ファイルに書いて置き換える）で書き換え、変更の検知に応答の途中の変更として記録させる関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:テスト
+  - topic:ヘルパー
+  - topic:履歴
 - path: unit/preview/conftest.py
   name: プレビューの単体テストの共通の fixture
   description: プレビューの単体テスト（フロント）の共通 fixture。テストの準備や共有の操作を追加・変更するときに読む。
@@ -2040,6 +2027,17 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/preview/core/dom.ts
     type: tests
+- path: unit/preview/test_duplicate_id_notice.py
+  name: 重なった ID の通知の単体テスト
+  description: components/duplicate-id-notice.ts（重なった ID の通知）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:通知
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/duplicate-id-notice.ts
+    type: tests
 - path: unit/preview/test_edits.py
   name: 保存待ちの編集を当てた記録・保存待ちの印の種類の単体テスト
   description: core/edits.ts（保存待ちの編集を当てた記録・保存待ちの印の種類）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -2061,6 +2059,17 @@ files:
   - topic:単体テスト
   related:
   - to: plugins/mindstella/skills/mindmap/preview/graph/graph.ts
+    type: tests
+- path: unit/preview/test_history_dialog.py
+  name: 変更履歴の単体テスト
+  description: components/history-dialog.ts（変更履歴）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:履歴
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/history-dialog.ts
     type: tests
 - path: unit/preview/test_libs.py
   name: 描画のライブラリの有無と呼び出し・選んだ範囲から箇所を求める処理の単体テスト
@@ -2313,6 +2322,17 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/preview/components/thread-row.ts
     type: tests
+- path: unit/preview/test_topbar.py
+  name: トップバーの単体テスト
+  description: components/topbar.ts（トップバー）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:単体テスト
+  - topic:トップバー
+  related:
+  - to: plugins/mindstella/skills/mindmap/preview/components/topbar.ts
+    type: tests
 - path: unit/preview/test_workspace_settings.py
   name: 設定の画面・設定の値を使っている件数の単体テスト
   description: screens/workspace-settings.ts（設定の画面・設定の値を使っている件数）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -2363,6 +2383,13 @@ files:
   - topic:ヘルパー
   - topic:単体テスト
   - topic:移行
+- path: unit/scripts/record_helpers.py
+  name: 記録の単体テストの補助
+  description: 記録の単体テストが共有する、ワークスペースの記録・履歴の書き方と読み取りの関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:ヘルパー
 - path: unit/scripts/test_answer_to_adopted_option.py
   name: 決定済みの答えから採用した案を作る変換の単体テスト
   description: migrations/v0.7.0/scripts/answer_to_adopted_option.py（決定済みの答えから採用した案を作る変換）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -2381,6 +2408,16 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/scripts/backup.py
     type: tests
+- path: unit/scripts/test_body_to_docs_path.py
+  name: 資料の本文をパスにする移し替えの単体テスト
+  description: migrations/v0.13.0/scripts/body_to_docs_path.py（資料の本文をパスにする移し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:移行
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/body_to_docs_path.py
+    type: tests
 - path: unit/scripts/test_builder.py
   name: プレビューのデータの収集・埋め込み・書き出しの単体テスト
   description: builder.py（プレビューのデータの収集・埋め込み・書き出し）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -2390,6 +2427,16 @@ files:
   - topic:単体テスト
   related:
   - to: plugins/mindstella/skills/mindmap/scripts/builder.py
+    type: tests
+- path: unit/scripts/test_change_detection.py
+  name: 変更の検知の単体テスト
+  description: change_detection.py（変更の検知）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:履歴
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/change_detection.py
     type: tests
 - path: unit/scripts/test_check_env.py
   name: 依存の確認の単体テスト
@@ -2499,6 +2546,16 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/scripts/html_body.py
     type: tests
+- path: unit/scripts/test_ids.py
+  name: ID の採番の単体テスト
+  description: ids.py（ID の採番）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:ID
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/ids.py
+    type: tests
 - path: unit/scripts/test_inject_session.py
   name: セッションの値の注入の単体テスト
   description: inject_session.py（PreToolUse のフックでツールの引数 session にセッションの値を入れる）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
@@ -2538,6 +2595,16 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/scripts/locations.py
     type: tests
+- path: unit/scripts/test_meta_to_history_yaml.py
+  name: 項目の履歴を history.yaml へ移す移し替えの単体テスト
+  description: migrations/v0.13.0/scripts/meta_to_history_yaml.py（項目の履歴を history.yaml へ移す移し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:移行
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/meta_to_history_yaml.py
+    type: tests
 - path: unit/scripts/test_migration_coverage.py
   name: スキーマの変更と移し替えの手順の対応の点検
   description: 開発側の点検：ワークスペースの形（スキーマ）を変えた PR（任意のキーを足すだけの変更を除く）が、版を上げて移し替えの手順を足しているか。テストの期待値や準備を確認・修正するときに読む。
@@ -2565,15 +2632,15 @@ files:
   related:
   - to: plugins/mindstella/skills/mindmap/scripts/migrator.py
     type: tests
-- path: unit/scripts/test_query.py
-  name: 検索・1 件の表示と参照元・属性名の一覧の単体テスト
-  description: query.py（検索・1 件の表示と参照元・属性名の一覧）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+- path: unit/scripts/test_place_source_config.py
+  name: 配信元の設定を置く移し替えの単体テスト
+  description: migrations/v0.13.0/scripts/place_source_config.py（配信元の設定を置く移し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
   - topic:単体テスト
-  - topic:検索
+  - topic:移行
   related:
-  - to: plugins/mindstella/skills/mindmap/scripts/query.py
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/place_source_config.py
     type: tests
 - path: unit/scripts/test_readme.py
   name: 直下の README.md の組み立て・書くかの判定・書き込みの単体テスト
@@ -2584,6 +2651,16 @@ files:
   - topic:単体テスト
   related:
   - to: plugins/mindstella/skills/mindmap/scripts/readme.py
+    type: tests
+- path: unit/scripts/test_refs_to_related.py
+  name: 参照を種類つきの related にする移し替えの単体テスト
+  description: migrations/v0.13.0/scripts/refs_to_related.py（参照を種類つきの related にする移し替え）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:単体テスト
+  - topic:移行
+  related:
+  - to: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/refs_to_related.py
     type: tests
 - path: unit/scripts/test_register.py
   name: 起動スクリプトの alias と環境変数の登録の単体テスト

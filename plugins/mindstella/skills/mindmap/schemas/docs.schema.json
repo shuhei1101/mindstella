@@ -22,8 +22,6 @@
       "required": [
         "id",
         "title",
-        "created",
-        "updated",
         "kind",
         "deliverable",
         "status",
@@ -59,27 +57,6 @@
         "links": {
           "$ref": "common.schema.json#/$defs/item/properties/links"
         },
-        "created": {
-          "$ref": "common.schema.json#/$defs/item/properties/created"
-        },
-        "updated": {
-          "$ref": "common.schema.json#/$defs/item/properties/updated"
-        },
-        "updated_by": {
-          "$ref": "common.schema.json#/$defs/item/properties/updated_by"
-        },
-        "history": {
-          "$ref": "common.schema.json#/$defs/item/properties/history"
-        },
-        "history_dropped_seq": {
-          "$ref": "common.schema.json#/$defs/item/properties/history_dropped_seq"
-        },
-        "seq": {
-          "$ref": "common.schema.json#/$defs/item/properties/seq"
-        },
-        "added_seq": {
-          "$ref": "common.schema.json#/$defs/item/properties/added_seq"
-        },
         "kind": {
           "type": "string",
           "description": "図 / 文書 など（自由な文字列）",
@@ -112,8 +89,8 @@
         },
         "body": {
           "type": "string",
-          "description": "`docs/` の本文のファイル名。Markdown は `{ID}.md`、HTML は `{ID}.html`",
-          "pattern": "^[^/\\\\]+\\.(md|html)$"
+          "description": "本文のパス（記録のフォルダからの相対）。Markdown は `docs/{ID}.md`、HTML は `docs/{ID}.html`",
+          "pattern": "^docs/[^/\\\\]+\\.(md|html)$"
         },
         "withdrawn": {
           "type": "boolean",

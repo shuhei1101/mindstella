@@ -47,7 +47,17 @@ components:
         type: '(values: (Tag | string)[], removed: string | null) => void'
         required: true
         description: 値を追加した・外した・主題を付け外ししたときに呼ぶ
+      - name: validate
+        type: '(value: string) => {error: string} | {value: string}'
+        required: false
+        description: '追加する前に入れた値を渡す関数（部品設計『チップの入力』の `validate`）。`value` ならその値を追加し、`error` なら追加せず入力欄の直下に「入力の誤り: {error}」を出し、入力欄に `aria-invalid`・`aria-describedby` を付ける。入力を書き換えると誤りの文を消す'
     unit_tests:
+      - name: test_chips_input_when_validate
+        case: 正常
+        summary: validate の value を追加し、error なら追加せず誤りを出す
+        condition: '`validate` が `D-1` に `{value: D-1}`、`保存先` に `{value: D-2}`、`D-99` に `{error: "D-99 が見つかりません。ID を確認してください。"}` を返す。`保存先`・`D-99` の順に入れて Enter し、入力を 1 文字書き換える'
+        mock: '`onChange`'
+        expected: '`onChange` が `([D-2], null)` の 1 回だけ。`D-99` の後、入力欄に `D-99` が残り、直下に「入力の誤り: D-99 が見つかりません。ID を確認してください。」、入力欄が `aria-invalid="true"` でその文を `aria-describedby` で指す。書き換えた後は文と `aria-invalid` が無い'
       - name: test_chips_input
         case: 正常
         summary: 値を追加し・外し、並びに有るものは追加しない
