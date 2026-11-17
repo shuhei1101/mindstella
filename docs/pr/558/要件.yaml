@@ -27,3 +27,6 @@ scope_out:
   - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` の fail
     reason: base（origin/develop）でも fail する既存の不具合で、この作業 PR の変更によらない
     plan: '#561'
+  - item: 結合テスト `tests/integration/server/test_preview_url.py` の `test_normal_when_diff_given`・`test_error_when_diff_not_found` の fail
+    reason: base（origin/develop）でも fail する既存の不具合で、この作業 PR の変更によらない
+    plan: '#562'
