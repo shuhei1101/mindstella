@@ -8,7 +8,9 @@ docs:
   - page: tests/files.yml
     new: false
     change: '`e2e/` の行を削除し、共有の部品の行の概要文から E2E を外す'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T18:00:40.814267+00:00'
 scope_out:
   - item: シナリオの `test_file` とスキーマ `schemas/scenario.schema.yaml` の `test_file` の説明
     reason: D-311 で、作り直すときの対応の印として残すと決めた。スキーマは `^tests/.+` の形だけを見て、ファイルの実在を点検しない
@@ -22,3 +24,6 @@ scope_out:
   - item: v1.0.0 の前の E2E の作り直し
     reason: D-307・D-299 で、メジャーのリリースの前の精査の工程で作ると決めた
     plan: none
+  - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` の fail
+    reason: base（origin/develop）でも fail する既存の不具合で、この作業 PR の変更によらない
+    plan: '#561'
