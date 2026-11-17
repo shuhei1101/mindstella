@@ -869,12 +869,13 @@ def test_normal_when_mdmark_documents(
     first = (record / "docs" / "A-1.md").read_text(encoding="utf-8")
     assert "<!-- flow" not in first
     assert "<!-- sequence" not in first
-    assert first.count("<!-- map") == 2
+    assert first.count("<!-- /map -->") == 2
     second = (record / "docs" / "A-2.md").read_text(encoding="utf-8")
     assert '<!-- table: {"kind": "data"' in second
     settings = yaml.safe_load((record / SETTINGS).read_text(encoding="utf-8"))
     assert {"llm", "script"} <= set(settings["mdmark"]["map"]["kinds"])
-    step = next(step for step in result.data["steps"] if step["version"] == MDMARK_STEP_VERSION)
+    # v0.13.0 の 5 件目（mdmark_documents）の報告の行
+    step = result.data["steps"][[(s["version"], s["index"]) for s in result.data["steps"]].index((MDMARK_STEP_VERSION, MDMARK_STEP_INDEX))]
     assert step["report"] != []
     assert not (record / "mdmark.config.yaml").exists()
     assert not (record / ".mdmark").exists()
