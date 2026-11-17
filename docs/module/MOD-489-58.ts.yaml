@@ -7,7 +7,52 @@ constants:
     usecase: SPAを開く
     summary: 名前ごとの URL と integrity。値は今の画面の `template.html`・`core/libs.ts` と同じ
     container: frontend/src/shared/adapters/libraries.ts
+  - name: MDMARK_CDN_BASE
+    title: mdmark の配信元の URL
+    usecase: SPAを開く
+    summary: 'jsDelivr の mdmark の `dist/` の URL の形（`{ref}` に `develop` かタグ）'
+    value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist"'
+    container: frontend/src/shared/adapters/libraries.ts
 functions:
+  - name: setMdmarkSettings
+    title: mdmark の設定の受け取り
+    kind: 関数
+    usecase: SPAを開く
+    summary: 『記録の取得』の `settings.mdmark` を受け取り、mdmark を読む URL と `mount` に指定する `map` を決める。読み始めた後に違うバージョンを受けたら、次に開いた画面から使う
+    args:
+      - name: settings
+        type: '{version?: string, map?: MdmarkMapConfig} | undefined'
+        required: true
+        description: '`settings.mdmark`'
+    returns:
+      type: void
+      description: なし
+    unit_tests:
+      - name: test_set_mdmark_settings
+        case: 正常
+        summary: バージョンから URL を決め、無ければ develop
+        condition: '`parametrize`: `undefined` / `{version: "latest"}` / `{version: "v0.13.0", map: {kinds: {llm: {}}}}`'
+        mock: なし
+        expected: '`mdmarkUrls()` の `js` が `.../mdmark@develop/dist/index.js` / 同じ / `.../mdmark@v0.13.0/dist/index.js`。`mdmarkMapConfig()` が `undefined` / `undefined` / `{kinds: {llm: {}}}`'
+    container: frontend/src/shared/adapters/libraries.ts
+  - name: mdmarkUrls
+    title: mdmark を読む URL
+    kind: 関数
+    usecase: SPAを開く
+    summary: '`setMdmarkSettings` で決めた mdmark の JavaScript と CSS の URL を返す（受けていなければ `develop`）'
+    returns:
+      type: '{js: string, css: string}'
+      description: '`MDMARK_CDN_BASE` の `index.js`・`index.css`'
+    container: frontend/src/shared/adapters/libraries.ts
+  - name: mdmarkMapConfig
+    title: mdmark の map の指定
+    kind: 関数
+    usecase: 項目の詳細を読む
+    summary: '`setMdmarkSettings` で受けた `map`（`mount` の `config.map` に渡す）を返す'
+    returns:
+      type: MdmarkMapConfig | undefined
+      description: 受けていなければ `undefined`
+    container: frontend/src/shared/adapters/libraries.ts
   - name: loadLibrary
     title: ライブラリの読み込み
     kind: 関数
@@ -28,6 +73,12 @@ functions:
         condition: 同じ名前で 2 回呼ぶ
         mock: script 要素の読み込み
         expected: 読み込みが 1 回
+      - name: test_load_library_when_mdmark
+        case: 正常
+        summary: mdmark は設定のバージョンの URL から integrity なしで読む
+        condition: '`setMdmarkSettings({version: "v0.13.0"})` の後に `loadLibrary("mdmark")`'
+        mock: '`import()` と link 要素の読み込み'
+        expected: '`import()` の URL が `.../mdmark@v0.13.0/dist/index.js`、link の `href` が `.../index.css` で `integrity` を持たない'
       - name: test_load_library_when_failed
         case: 異常
         summary: 読めない

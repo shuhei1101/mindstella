@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,7 @@ from .fixture_types import (
     MakeThread,
     MakeWorkspace,
     SnapshotTree,
+    StartServer,
     WriteSubmissions,
     WriteThreads,
 )
@@ -51,6 +54,61 @@ BROKEN_SETTINGS = "field: [\n"
 
 # 版が新しいワークスペースに書く版
 NEWER_VERSION = "v99.0.0"
+
+# 資料を mdmark の今の書き方へ移す手順の版と、その前の版
+MDMARK_STEP_VERSION = "v0.13.0"
+
+# 資料を mdmark の今の書き方へ移す手順の、v0.13.0 の中の番号
+MDMARK_STEP_INDEX = 5
+BEFORE_MDMARK_VERSION = "v0.12.1"
+
+# mdmark の CLI を差し替える環境変数（`mdmark_documents.MDMARK_COMMAND_ENV`）
+MDMARK_COMMAND_ENV = "MINDSTELLA_MDMARK_COMMAND"
+
+# mdmark の今の版で廃止した flow の範囲の定義（種類 llm・script のノード）
+RETIRED_FLOW = {
+    "title": "問い合わせへの自動返信",
+    "scope": "メールを受け取ってから下書きを作るまで",
+    "width": 600,
+    "height": 200,
+    "nodes": [
+        {"id": "recv", "kind": "script", "x": 20, "y": 60, "w": 140, "h": 64, "name": "受け取り"},
+        {"id": "draft", "kind": "llm", "x": 300, "y": 60, "w": 140, "h": 64, "name": "返信の下書き"},
+    ],
+    "wires": [
+        {"id": "w-body", "from": "recv", "to": "draft", "line": "flow", "points": [[160, 92], [300, 92]], "label": "本文"}
+    ],
+}
+
+# mdmark の今の版で廃止した sequence の範囲の定義
+RETIRED_SEQUENCE = {
+    "title": "問い合わせ 1 通の流れ",
+    "participants": [
+        {"id": "recv", "kind": "script", "name": "受け取り"},
+        {"id": "draft", "kind": "llm", "name": "返信の下書き"},
+    ],
+    "steps": [{"from": "recv", "to": "draft", "label": "本文"}],
+}
+
+
+def _retired_range(directive: str, definition: dict[str, Any]) -> str:
+    """廃止した図の範囲（マーカーと JSON のコードブロック）を返す。"""
+    body = json.dumps(definition, ensure_ascii=False, indent=2)
+    return f"<!-- {directive} -->\n\n```json\n{body}\n```\n\n<!-- /{directive} -->\n"
+
+
+def _make_mdmark_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> Path:
+    """A-1 に flow・sequence の図、A-2 に引数を書いた表のマーカーを持つ、v0.12.1 のワークスペースを作る。"""
+    root = make_workspace(
+        make_item("A-1"),
+        make_item("A-2"),
+        bodies={
+            "A-1.md": f"# 構成\n\n{_retired_range('flow', RETIRED_FLOW)}\n{_retired_range('sequence', RETIRED_SEQUENCE)}",
+            "A-2.md": "# 一覧\n\n<!-- table: data +count -->\n\n| 名前 | 数 |\n| --- | --- |\n| a | 1 |\n\n<!-- /table -->\n",
+        },
+    )
+    (root / RECORD_DIR / VERSION_FILE).write_text(f"{BEFORE_MDMARK_VERSION}\n", encoding="utf-8")
+    return root
 
 
 def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
@@ -680,11 +738,12 @@ def test_normal_when_project_index_layout(
     assert result.is_error is False
     assert result.data is not None
     steps = result.data["steps"]
-    # 手順は refs_to_related・body_to_docs_path・place_source_config・meta_to_history_yaml の順
+    # 手順は refs_to_related・body_to_docs_path・place_source_config・meta_to_history_yaml・mdmark_documents の順
     assert [(step["version"], step["op"], step["destructive"]) for step in steps] == [
         ("v0.13.0", "call", True),
         ("v0.13.0", "call", True),
         ("v0.13.0", "call", False),
+        ("v0.13.0", "call", True),
         ("v0.13.0", "call", True),
     ]
     decisions = {item["id"]: item for item in _read_items(root, "decisions.yaml")}
@@ -791,3 +850,56 @@ def test_error_when_workspace_not_found(
     assert result.is_error is True
     assert str(root) in result.text
     assert snapshot_tree(root) == {}
+
+
+def test_normal_when_mdmark_documents(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer, call_tool: CallTool
+) -> None:
+    """資料の flow・sequence の図を map へ、引数のマーカーを JSON の記載へ移し、map の種類を設定へ移す（正常系）。"""
+    # 準備
+    root = _make_mdmark_workspace(make_workspace, make_item)
+    # 実際の mdmark の CLI を呼ぶ（空の指定は既定の差し替えを外す）
+    server = start_server(extra_env={MDMARK_COMMAND_ENV: ""})
+    # 実行
+    result = server.call("migrate", workspace=str(root), to_version=MDMARK_STEP_VERSION)
+    # 検証
+    assert result.is_error is False, result.text
+    assert result.data is not None
+    record = root / RECORD_DIR
+    first = (record / "docs" / "A-1.md").read_text(encoding="utf-8")
+    assert "<!-- flow" not in first
+    assert "<!-- sequence" not in first
+    assert first.count("<!-- /map -->") == 2
+    second = (record / "docs" / "A-2.md").read_text(encoding="utf-8")
+    assert '<!-- table: {"kind": "data"' in second
+    settings = yaml.safe_load((record / SETTINGS).read_text(encoding="utf-8"))
+    assert {"llm", "script"} <= set(settings["mdmark"]["map"]["kinds"])
+    # v0.13.0 の 5 件目（mdmark_documents）の報告の行
+    step = result.data["steps"][[(s["version"], s["index"]) for s in result.data["steps"]].index((MDMARK_STEP_VERSION, MDMARK_STEP_INDEX))]
+    assert step["report"] != []
+    assert not (record / "mdmark.config.yaml").exists()
+    assert not (record / ".mdmark").exists()
+    assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
+
+
+def test_error_when_mdmark_documents_fail(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    start_server: StartServer,
+    snapshot_tree: SnapshotTree,
+    tmp_path: Path,
+) -> None:
+    """mdmark の CLI が終了コード 0 以外で終わると、写しから戻してエラーを返す（異常系）。"""
+    # 準備
+    root = _make_mdmark_workspace(make_workspace, make_item)
+    fake = tmp_path / "fake_mdmark.py"
+    fake.write_text('import sys\nprint("変換できません: docs/A-1.md")\nsys.exit(1)\n', encoding="utf-8")
+    server = start_server(extra_env={MDMARK_COMMAND_ENV: f"{sys.executable} {fake}"})
+    before = snapshot_tree(root)
+    # 実行
+    result = server.call("migrate", workspace=str(root), to_version=MDMARK_STEP_VERSION)
+    # 検証
+    assert result.is_error is True
+    assert result.text.startswith(f"エラー: {MDMARK_STEP_VERSION} の手順 {MDMARK_STEP_INDEX}（call）: ")
+    assert "変換できません: docs/A-1.md" in result.text
+    assert snapshot_tree(root) == before

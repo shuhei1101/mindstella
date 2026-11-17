@@ -54,7 +54,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
     usecase: 設定の更新
     summary: '`update_settings` の `settings` に渡せるキー'
-    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit", "display", "transcription")
+    value: ("summary", "description", "playbooks", "phases", "target_label", "goal", "targets", "categories", "links", "history_limit", "display", "transcription", "mdmark")
   - name: REMOVABLE_KEYS
     title: null で消せる設定のキー
     container: plugins/mindstella/skills/mindmap/scripts/settings_update.py
@@ -105,6 +105,7 @@ functions:
       description: 問題が無ければ何も返さない
     process: |-
       1. `settings` が空か、`EDITABLE_KEYS` に無いキーを持つか、`REMOVABLE_KEYS` に無いキーの値が `None` なら `SchemaMismatchError`（行は `config.yaml: {キー}: {理由}`）
+         - `mdmark` が `version` 以外のキーを持てば `SchemaMismatchError`（行は `config.yaml: mdmark.{キー}: 書き換えられないキー`。`map` は移し替えの手順だけが書く）
       2. `phase_map` がある場合
          - `settings` が `phases` を持たなければ `ArgumentError`（`phase_map`）
          - キーが `current_phases` に無いか、新しい `phases` にもあるなら `ArgumentError`（理由にそのキー）
@@ -133,7 +134,7 @@ functions:
       - name: test_validate_settings_input_when_bad_key
         case: 異常
         summary: 書き換えられないキーと必須のキーの null を拒む
-        condition: '`parametrize`: `{}` / `{"field": "システム開発"}` / `{"summary": null}` / `{"tags": []}`'
+        condition: '`parametrize`: `{}` / `{"field": "システム開発"}` / `{"summary": null}` / `{"tags": []}` / `{"mdmark": {"version": "v0.13.0", "map": {}}}` / `{"mdmark": null}`'
         mock: なし
         expected: '`SchemaMismatchError`'
       - name: test_validate_settings_input_when_bad_phase_map
@@ -171,7 +172,7 @@ functions:
       description: 置き換えた設定（新しい辞書）と、値が変わった・消えたキーの名前（`settings` の並び）
     process: |-
       1. `current` を写し、キーの並びを保つ
-      2. `settings` のキーごとに、値が `None` ならキーを消し、それ以外は値ごと置き換える（無いキーは末尾に足す）
+      2. `settings` のキーごとに、値が `None` ならキーを消し、それ以外は値ごと置き換える（無いキーは末尾に足す）。`mdmark` だけは今の `mdmark` の `version` を置き換え、`map` を残す
       3. 前と値が違うキーだけを変わったキーに入れる
     unit_tests:
       - name: test_merge_settings
@@ -180,6 +181,12 @@ functions:
         condition: '`summary`・`goal`・`phases` を持つ設定に `{"summary": "新しい題名", "goal": null, "description": "概要", "phases": 前と同じ値}`'
         mock: なし
         expected: '`summary` が新しい題名、`goal` が無く、`description` が末尾にあり、他のキーの並びがそのまま。変わったキーが `[summary, goal, description]`'
+      - name: test_merge_settings_when_mdmark
+        case: 正常
+        summary: mdmark は version だけを置き換え、移し替えが書いた map を残す
+        condition: '`mdmark` が `{"version": "latest", "map": {"kinds": {"llm": {}}}}` の設定に `{"mdmark": {"version": "v0.13.0"}}`'
+        mock: なし
+        expected: '`mdmark` が `{"version": "v0.13.0", "map": {"kinds": {"llm": {}}}}`。変わったキーが `[mdmark]`'
   - name: remap_phases
     title: フェーズの付け替え
     kind: 関数

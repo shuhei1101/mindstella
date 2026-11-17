@@ -11,3 +11,6 @@ steps:
   - op: call
     script: meta_to_history_yaml
     destructive: true
+  - op: call
+    script: mdmark_documents
+    destructive: true

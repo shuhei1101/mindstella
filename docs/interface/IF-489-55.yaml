@@ -381,6 +381,55 @@ flows:
       - 'エラーの本文に `config.yaml: transcription.action` で始まる行がある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_error_when_transcription_action_invalid
+  - name: 正常系（mdmark のバージョンを書き換える）
+    summary: 画面が読み込む mdmark のバージョンをタグにし、ほかのキーと map の種類を残す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark` が `map.kinds.llm` だけを持つワークスペース
+        notes: '`settings` は `{"mdmark": {"version": "v0.13.0"}}`（`map` を指定しない）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: update_settings workspace settings.mdmark
+        IF-->>WS: config.yaml を読む
+        IF->>IF: mdmark.version だけを置き換え（mdmark.map は残す）、スキーマと突き合わせる
+        IF->>WS: config.yaml を書く
+        IF-->>クライアント: JSON（changed）
+      ```
+    expected:
+      - ツールのエラーにならない
+      - '`config.yaml` の `mdmark.version` が `v0.13.0` で、`mdmark.map.kinds.llm` が呼ぶ前と同じ'
+      - '`changed` が `mdmark` だけ'
+    test: test_normal_when_mdmark_version
+  - name: 異常系（mdmark のバージョンの値が合わない・SchemaMismatchError）
+    summary: '`latest` でもタグでもないバージョンを渡すと、何も書かない'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+        notes: '`settings` は `{"mdmark": {"version": "develop"}}`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as update_settings（MCP のツール）
+
+        クライアント->>IF: update_settings workspace（version が develop）
+        IF->>IF: スキーマと突き合わせて合わない
+        IF-->>クライアント: ツールのエラー
+      ```
+    expected:
+      - ツールのエラーになる
+      - 'エラーの本文に `config.yaml: mdmark.version` で始まる行がある'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_error_when_mdmark_version_invalid
 lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
 side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `history.yaml` の行の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、`seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
@@ -397,7 +446,7 @@ request:
     required: true
     location: argument
     description: 置き換える設定のキーと値。渡したキーだけを値ごと置き換え（配列・オブジェクトも丸ごと）、値が `null` のキーは消す。渡さないキーはそのまま
-    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`・`transcription` だけ。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ
+    constraints: キーは `summary`・`description`・`playbooks`・`phases`・`target_label`・`goal`・`targets`・`categories`・`links`・`history_limit`・`display`・`transcription`・`mdmark` だけ。`mdmark` は `version` だけを受けて `version` だけを置き換え、移し替えの手順が書いた `mdmark.map` を残す。`null` で消せるのは任意の `description`・`goal`・`links`・`history_limit`・`display`・`transcription` だけ。1 つ以上のキーを持つ
     example: '{"display": {"network_look": "starlight", "visible_kinds": ["decisions", "tasks", "research", "docs", "terms", "notes"]}}'
   - name: phase_map
     type: dict[str, str]

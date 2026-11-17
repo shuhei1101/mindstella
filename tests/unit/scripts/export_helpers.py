@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -14,14 +13,11 @@ import builder
 # 外の読み込みの版（雛形の <script src> と、取るライセンスの本文の URL に入る）
 EXTERNAL_VERSION = "1.0.0"
 
-# 外の ES モジュールのタグ（jsDelivr の GitHub の URL に入る）
-MODULE_VERSION = "v1.0.0"
-
 # 外の読み込み 1 つ（パッケージ名・配布ファイルの中身）
 type Script = tuple[str, bytes]
 
-# 外の ES モジュール 1 つ（`{owner}/{repo}`・JavaScript の中身・CSS の中身）
-type Module = tuple[str, bytes, bytes]
+# mdmark の中身（JavaScript の中身・CSS の中身）。部品は `/* {ファイル名} */` を返す
+type Mdmark = tuple[bytes, bytes]
 
 # URL を受けて本文を返す関数と、呼ばれた URL の記録
 type FetchSpy = tuple[Callable[[str], bytes], list[str]]
@@ -42,19 +38,14 @@ def license_url(package: str) -> str:
     return package_url(package, "LICENSE")
 
 
-def module_url(package: str, path: str) -> str:
-    """jsDelivr の、タグを固定した GitHub のリポジトリの中のファイルの URL を返す。"""
-    return f"https://cdn.jsdelivr.net/gh/{package}@{MODULE_VERSION}/{path}"
+def mdmark_url(path: str, version: str | None = None) -> str:
+    """設定のバージョン（無ければ develop）の mdmark の `dist/{path}` の URL を返す。"""
+    return builder.mdmark_dist_url(version, path)
 
 
-def module_js_url(package: str) -> str:
-    """外の ES モジュールの JavaScript の URL を返す。"""
-    return module_url(package, "dist/index.js")
-
-
-def module_css_url(package: str) -> str:
-    """外の ES モジュールの CSS の URL を返す。"""
-    return module_url(package, "dist/index.css")
+def mdmark_part_body(name: str) -> bytes:
+    """mdmark の部品の配布ファイルとして返す中身を返す。"""
+    return f"/* {name} */".encode()
 
 
 def integrity_of(content: bytes) -> str:
@@ -63,20 +54,9 @@ def integrity_of(content: bytes) -> str:
     return f"sha384-{digest}"
 
 
-def module_tags(module: Module) -> str:
-    """外の ES モジュールの import map と CSS の `<link>` を返す。"""
-    package, js, css = module
-    import_map = json.dumps({"integrity": {module_js_url(package): integrity_of(js)}})
-    return (
-        f'<script type="importmap">{import_map}</script>'
-        f'<link rel="stylesheet" href="{module_css_url(package)}"'
-        f' integrity="{integrity_of(css)}" crossorigin="anonymous">'
-    )
-
-
-def external_template(scripts: list[Script], module: Module | None = None) -> str:
-    """外の読み込みの印の間に、ES モジュールの import map と `<link>`、パッケージごとの `<script src integrity>` を置いた雛形を返す。"""
-    module_part = "" if module is None else module_tags(module)
+def external_template(scripts: list[Script]) -> str:
+    """外の読み込みの印の間に、mdmark の差し込み口と、パッケージごとの `<script src integrity>` を置いた雛形を返す。"""
+    module_part = builder.MDMARK_SLOT
     tags = "".join(
         f'<script src="{dist_url(package)}" integrity="{integrity_of(content)}"'
         ' crossorigin="anonymous" defer></script>'
@@ -91,18 +71,21 @@ def external_template(scripts: list[Script], module: Module | None = None) -> st
 def make_responses(
     scripts: list[Script],
     license_texts: dict[str, str] | None = None,
-    module: Module | None = None,
+    mdmark: Mdmark | None = None,
+    mdmark_version: str | None = None,
 ) -> dict[str, bytes]:
-    """URL → 取れる中身（配布ファイルと、既定は `本文 {パッケージ}` のライセンスの本文。ES モジュールは JavaScript と CSS）を返す。"""
+    """URL → 取れる中身（配布ファイルと、既定は `本文 {パッケージ}` のライセンスの本文。mdmark は JavaScript・CSS・部品）を返す。"""
     responses: dict[str, bytes] = {}
     for package, content in scripts:
         responses[dist_url(package)] = content
         text = (license_texts or {}).get(package, f"本文 {package}")
         responses[license_url(package)] = text.encode("utf-8")
-    if module is not None:
-        package, js, css = module
-        responses[module_js_url(package)] = js
-        responses[module_css_url(package)] = css
+    if mdmark is not None:
+        js, css = mdmark
+        responses[mdmark_url("index.js", mdmark_version)] = js
+        responses[mdmark_url("index.css", mdmark_version)] = css
+        for name in builder.MDMARK_PART_FILES:
+            responses[mdmark_url(name, mdmark_version)] = mdmark_part_body(name)
     return responses
 
 

@@ -1,0 +1,11 @@
+$ ruff check plugins tests
+All checks passed!
+$ npm run typecheck
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+exit=0
+$ npm run lint
+> lint
+> eslint
+

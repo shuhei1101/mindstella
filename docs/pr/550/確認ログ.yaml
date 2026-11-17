@@ -1,0 +1,13 @@
+confirmations:
+  - topic: PoC で mdmark の develop の 3 件の事象が分かった後の進め方
+    decision: 'A: 3 件を mdmark へ起票し、この PR は起票した Issue の完了を待つ。待つ間に設定のキー・機能のオフ・config.map の受け渡しの設計を進める（推奨案）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 01c3c100
+    thread: https://github.com/shuhei1101/mindstella/pull/550#discussion_r4587856152
+  - topic: 話し合いの決定 D-441 の C（常駐サーバーが mdmark を配信し CDN から読まない）の扱い
+    decision: 'A: C を取り下げる。設定のバージョンを jsDelivr から読む作りを続け、#481 に不要になったことをコメントする（推奨案）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 5f419879
+    thread: https://github.com/shuhei1101/mindstella/pull/550#discussion_r4588509099
