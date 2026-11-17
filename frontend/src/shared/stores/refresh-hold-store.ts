@@ -14,11 +14,13 @@ type RefreshHoldState = {
   focused: boolean;
   /** 画面への反映を保留しているか */
   pending: boolean;
+  /** 保留を始めたときにフォーカスがあった要素（帯を消すときの基準。`restoreAnchor` では消さない） */
+  heldElement: HTMLElement | null;
   /** 帯を出す・消して描いた後に位置を戻す基準 */
   anchor: Anchor | null;
 };
 
-export const useRefreshHoldStore = create<RefreshHoldState>()(() => ({ focused: false, pending: false, anchor: null }));
+export const useRefreshHoldStore = create<RefreshHoldState>()(() => ({ focused: false, pending: false, heldElement: null, anchor: null }));
 
 /** 要素が文字を入力する欄（文字の input・textarea・contenteditable）か */
 export const isTextEntry = (element: Element | null): boolean => {
@@ -67,15 +69,19 @@ export const requestRefresh = (refresh: () => void): void => {
   }
   const { pending } = useRefreshHoldStore.getState();
   // 保留を始めるときだけ、帯を出す前の位置を控える
-  if (!pending) useRefreshHoldStore.setState({ anchor: anchorOf(focusedElement()) });
+  if (!pending) {
+    const element = focusedElement();
+    useRefreshHoldStore.setState({ heldElement: element, anchor: anchorOf(element) });
+  }
   useRefreshHoldStore.setState({ pending: true });
 };
 
 /** 保留していて、保留する間でなくなっていれば、`pending` を下ろして 1 回だけ読み直す */
 export const releaseRefresh = (refresh: () => void): void => {
-  const { pending, anchor } = useRefreshHoldStore.getState();
+  const { pending, heldElement } = useRefreshHoldStore.getState();
   if (!pending || isHolding()) return;
-  useRefreshHoldStore.setState({ anchor: anchorOf(focusedElement() ?? anchor?.element ?? null), pending: false });
+  // 入力欄から離れた直後はフォーカスのある要素が無いため、保留を始めたときの要素を基準にする
+  useRefreshHoldStore.setState({ anchor: anchorOf(focusedElement() ?? heldElement), pending: false, heldElement: null });
   refresh();
 };
 
