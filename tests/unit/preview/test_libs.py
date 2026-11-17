@@ -217,6 +217,39 @@ def test_render_markdown(
     assert result["sourceLines"] == 0
 
 
+# map の範囲（中の mermaid の原文を mdmark の map の部品が読む）と、範囲の外の mermaid のコードブロックを持つ本文
+MAP_SOURCE = (
+    '<!-- map: {"title": "流れ"} -->\n\n'
+    "```mermaid\nflowchart TB\n  a[受け取り] --> b[返信]\n```\n\n"
+    '<!-- map-data: {"version": 1} -->\n\n'
+    "<!-- /map -->\n\n"
+    "```mermaid\nflowchart LR\n  x --> y\n```\n"
+)
+
+
+def test_render_markdown_when_map(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """map の範囲の mermaid の原文を図の入れ物に置き換えない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            return {
+                maps: root.querySelectorAll(".mdmark-map").length,
+                diagramsInMap: root.querySelectorAll(".mdmark-map .diagram").length,
+                diagrams: root.querySelectorAll(".diagram").length,
+            };
+        }""",
+        MAP_SOURCE,
+    )
+    # 検証
+    assert result == {"maps": 1, "diagramsInMap": 0, "diagrams": 1}
+
+
 def test_render_markdown_when_embedded_html(
     preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
 ) -> None:

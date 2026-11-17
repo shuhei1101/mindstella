@@ -10,6 +10,7 @@ const CODE_BLOCK_HTML = [
   '<pre data-source-line="8"><code>字下げのコード</code></pre>',
   '<pre tabindex="0" aria-label="コード: mermaid" data-source-line="10"><code class="language-mermaid">flowchart LR</code></pre>',
   '<div class="mdmark-html"><pre><code>範囲の中のコード</code></pre></div>',
+  '<div class="mdmark-map"><pre><code class="language-mermaid">flowchart TB</code></pre></div>',
 ].join("");
 vi.mock("@/shared/adapters/libraries", () => ({
   libraryState: () => "ready",
@@ -66,5 +67,7 @@ describe("renderMarkdown", () => {
     ]);
     expect([...root.querySelectorAll("pre.dg-raw")].map((pre) => pre.getAttribute("tabindex"))).toEqual([null]);
     expect([...root.querySelectorAll(".mdmark-html pre")].map((pre) => pre.getAttribute("tabindex"))).toEqual([null]);
+    expect(root.querySelectorAll(".mdmark-map .diagram").length).toBe(0);
+    expect(root.querySelectorAll(".mdmark-map code.language-mermaid").length).toBe(1);
   });
 });
