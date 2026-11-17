@@ -1,0 +1,59 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 対象の設計書（シナリオ・インターフェース定義・部品設計・モジュール構成）が揃っているため対象外
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: フォーカス・録音の状態を見て読み直しを止めるだけで、未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 変わるのはプレビューを開いている間の画面の描き直しだけで、複合ユースケースの流れは変わらない
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: docs/design-policy.md があり、Issue は見た目の方向を変えない
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無い
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: 単一ユースケース設計
+    status: todo
+  - process: モック作成
+    status: todo
+  - process: インターフェース定義設計
+    status: todo
+  - process: 部品設計
+    status: todo
+  - process: 画面設計
+    status: skipped
+    reason: 足す表示「更新があります」はトップバー（部品設計）に置き、各画面の要素と操作は変わらない
+    updated_by: planner
+    updated_at: '2026-11-17T17:08:22.983857+00:00'
+  - process: モジュール構成設計
+    status: todo
+  - process: ドキュメント修正
+    status: todo
+  - process: 単体テスト作成
+    status: todo
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
