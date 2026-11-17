@@ -1,0 +1,17 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+frontend/src/app/preview-shell.test.tsx(7,37): error TS2307: Cannot find module '@/shared/stores/refresh-hold-store' or its corresponding type declarations.
+frontend/src/shared/adapters/events-client.test.ts(4,10): error TS2305: Module '"@/shared/adapters/events-client"' has no exported member 'checkVoiceDestination'.
+frontend/src/shared/adapters/events-client.test.ts(7,37): error TS2307: Cannot find module '@/shared/stores/refresh-hold-store' or its corresponding type declarations.
+frontend/src/shared/components/topbar.test.tsx(109,104): error TS2322: Type '{ title: string; tabs: ({ readonly key: "overview"; readonly label: "概要"; readonly icon: "home"; } | { readonly key: "decisions"; readonly label: "検討事項"; readonly icon: "decision"; readonly count: 2; })[]; current: "overview"; theme: "light"; stale: true; }' is not assignable to type 'IntrinsicAttributes & TopbarProps'.
+  Property 'stale' does not exist on type 'IntrinsicAttributes & TopbarProps'.
+frontend/src/shared/components/topbar.test.tsx(121,9): error TS2322: Type '{ title: string; tabs: ({ readonly key: "overview"; readonly label: "概要"; readonly icon: "home"; } | { readonly key: "decisions"; readonly label: "検討事項"; readonly icon: "decision"; readonly count: 2; })[]; current: "overview"; theme: "light"; stale: true; voiceNotice: { ...; }; }' is not assignable to type 'IntrinsicAttributes & TopbarProps'.
+  Property 'stale' does not exist on type 'IntrinsicAttributes & TopbarProps'.
+frontend/src/shared/core/voice.test.ts(10,3): error TS2305: Module '"@/shared/core/voice"' has no exported member 'voiceDestinationExists'.
+frontend/src/shared/stores/refresh-hold-store.test.ts(11,8): error TS2307: Cannot find module '@/shared/stores/refresh-hold-store' or its corresponding type declarations.
+frontend/src/shared/stores/refresh-hold-store.test.ts(88,56): error TS7006: Parameter 'state' implicitly has an 'any' type.
+exit=2

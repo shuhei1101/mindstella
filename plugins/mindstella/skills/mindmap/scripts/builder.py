@@ -48,6 +48,7 @@ SCRIPT_FILES = (
     "core/edits.js",
     "core/lock.js",
     "core/voice.js",
+    "core/refresh-hold.js",
     "components/view-switch.js",
     "components/duplicate-id-notice.js",
     "components/topbar.js",

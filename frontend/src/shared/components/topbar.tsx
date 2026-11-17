@@ -60,6 +60,8 @@ export type TopbarProps = {
   voice?: TopbarVoice | null;
   /** 渡さないと知らせの帯を出さない */
   voiceNotice?: TopbarVoiceNotice | null;
+  /** 真のとき、画面への反映を保留している帯を出す */
+  stale?: boolean;
   onNavigate?: (key: TopbarCurrent) => void;
   onOpenSearch?: () => void;
   onThemeChange?: (theme: Theme) => void;
@@ -493,6 +495,14 @@ const VoiceNoticeBand = ({ notice, onOpen, onDismiss }: { notice: TopbarVoiceNot
   </div>
 );
 
+/** 「更新があります」の帯（押せない。閉じるボタンも持たない） */
+const StaleBand = () => (
+  <div role="status" className="flex items-center gap-2 border-b border-border bg-muted py-1 pr-1 pl-5 text-small text-foreground max-sm:pl-2.5">
+    <span aria-hidden="true" className="size-2 flex-none rounded-full bg-mark" />
+    <span className="min-w-0 flex-1 wrap-anywhere">更新があります。入力欄から離れると反映します。</span>
+  </div>
+);
+
 /** ライト / ダークの切り替え */
 const ThemeButton = ({ fit, theme, onChange }: { fit: Fit; theme: Theme; onChange: ((theme: Theme) => void) | undefined }) => {
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
@@ -558,6 +568,7 @@ export const Topbar = (props: TopbarProps) => {
     pendingBlocked = false,
     voice = null,
     voiceNotice = null,
+    stale = false,
     duplicateIds = [],
     onOpenHistory,
     onToggleSettings,
@@ -588,6 +599,7 @@ export const Topbar = (props: TopbarProps) => {
         <ThemeButton fit={fit} theme={theme} onChange={props.onThemeChange} />
       </header>
       {voiceNotice === null ? null : <VoiceNoticeBand notice={voiceNotice} onOpen={props.onOpenVoice} onDismiss={props.onDismissVoiceNotice} />}
+      {stale ? <StaleBand /> : null}
       <TabBar tabs={tabs} current={current} onNavigate={props.onNavigate} />
       <DuplicateIdNotice ids={duplicateIds} onOpen={props.onOpenDuplicate} onClose={props.onCloseDuplicate} />
     </div>

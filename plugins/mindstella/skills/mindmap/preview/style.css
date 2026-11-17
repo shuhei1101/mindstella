@@ -2736,3 +2736,7 @@ body:has(.pe-ws) #main { display: none; }
 .voice-note .vn-close { flex: none; display: inline-grid; place-items: center; width: var(--target-min); height: var(--target-min); border: 0; border-radius: var(--radius); background: transparent; color: var(--text-2); cursor: pointer; }
 .voice-note .vn-close:hover { background: var(--hover); color: var(--text); }
 .voice-note .vn-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 更新があります: 音声入力の知らせの帯と同じ形で、閉じるボタンを持たない。印の色の点と文を並べ、文は折り返す */
+.stale-note { display: flex; align-items: center; gap: 8px; padding: 4px var(--page-pad); border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: var(--fs-small); }
+.stale-note .st-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.stale-note .sn-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }

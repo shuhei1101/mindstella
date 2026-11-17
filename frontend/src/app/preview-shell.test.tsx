@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { connectEvents } from "@/shared/adapters/events-client";
+import { useRefreshHoldStore } from "@/shared/stores/refresh-hold-store";
 import { resetVoiceStore } from "@/shared/stores/voice-store";
+import { FakeEventSource } from "@/testing/fake-event-source";
 import { installFakeMedia, removeFakeMedia } from "@/testing/fake-media";
 import { installFakeWakeLock, removeFakeWakeLock } from "@/testing/fake-wake-lock";
 import { stubRecords } from "@/testing/msw/fixtures";
@@ -12,6 +15,7 @@ import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
 afterEach(() => {
+  useRefreshHoldStore.setState({ focused: false, pending: false, heldElement: null, anchor: null });
   resetVoiceStore();
   removeFakeMedia();
   removeFakeWakeLock();
@@ -171,5 +175,45 @@ describe("PreviewShell", () => {
     // 検証
     expect(await screen.findByText("T-1 が削除されたため、録音を破棄しました。")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^音声入力中/ })).toBeNull();
+  });
+  // 入力中に書き換わったら帯を出し、離れたら反映する（正常系）
+  test("preview_shell_when_records_changed_while_typing", async () => {
+    // 準備
+    const view = renderRoute("/spa/?tab=tasks&id=T-1");
+    const close = connectEvents(view.queryClient);
+    const input = await screen.findByRole("textbox", { name: /T-1 へのコメント/ });
+    await userEvent.type(input, "途中まで");
+    stubRecords({ tasks: [...RECORDS.tasks, { id: "T-2", title: "T-2の題", status: "未着手" }] });
+    // 実行
+    act(() => FakeEventSource.last?.emit("changed"));
+    // 検証
+    expect(await screen.findByText("更新があります。入力欄から離れると反映します。")).toBeInTheDocument();
+    expect(screen.queryByText("T-2の題")).toBeNull();
+    // 実行
+    await userEvent.click(screen.getByRole("group", { name: "表示形式" }));
+    // 検証
+    expect(await screen.findByText("T-2の題")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("更新があります。入力欄から離れると反映します。")).toBeNull());
+    expect(screen.getByRole("textbox", { name: /T-1 へのコメント/ })).toHaveValue("途中まで");
+    close();
+  });
+
+  // 読み直しで入力欄を作り直さない（正常系）
+  test("preview_shell_when_records_changed", async () => {
+    // 準備
+    const view = renderRoute("/spa/?tab=tasks&id=T-1");
+    const close = connectEvents(view.queryClient);
+    const input = await screen.findByRole("textbox", { name: /T-1 へのコメント/ });
+    await userEvent.type(input, "途中まで");
+    await userEvent.click(screen.getByRole("group", { name: "表示形式" }));
+    stubRecords({ tasks: [...RECORDS.tasks, { id: "T-2", title: "T-2の題", status: "未着手" }] });
+    // 実行
+    act(() => FakeEventSource.last?.emit("changed"));
+    // 検証
+    expect(await screen.findByText("T-2の題")).toBeInTheDocument();
+    const after = screen.getByRole("textbox", { name: /T-1 へのコメント/ });
+    expect(after).toBe(input);
+    expect(after).toHaveValue("途中まで");
+    close();
   });
 });

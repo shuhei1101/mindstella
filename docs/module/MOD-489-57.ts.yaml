@@ -14,7 +14,7 @@ functions:
     kind: 関数
     container: frontend/src/shared/adapters/events-client.ts
     usecase: SPAを開く
-    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` で記録の query を読み直し、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
+    summary: '`EVENTS_URL` へ EventSource でつなぎ、`changed` とつなぎ直し（`open`）で記録の query の読み直しを反映の依頼（`requestRefresh`）に渡し、入力中・音声入力中は保留して離れたときに読み直し、`duplicate_ids` で重なった ID のストアを書き換え、接続の状態を書き換える。つなぎ直しは EventSource に任せる'
     args:
       - name: queryClient
         type: QueryClient
@@ -25,13 +25,17 @@ functions:
       description: 接続を閉じる関数
     process: '1. EventSource を `EVENTS_URL` で作る
 
-      2. `open` で接続の状態を online にし、記録の query を読み直す（切れている間の書き換えを拾う）
+      2. 文字の入力欄のフォーカスを見張る（`watchTextFocus`）。反映の保留（`useRefreshHoldStore.subscribe`）と音声入力（`subscribeVoice`）が変わるたびに、保留の解除（`releaseRefresh`）に 4 つの query の読み直し（`invalidatePreview`）を渡す
 
-      3. `changed` で記録・レビュー中のコメント・保存待ちの編集・スレッドの query を読み直す
+      3. `open` で接続の状態を online にし、4 つの query の読み直しを反映の依頼（`requestRefresh`）に渡す（切れている間の書き換えを拾う）
 
-      4. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば出し直す）
+      4. `changed` で 4 つの query の読み直しを反映の依頼（`requestRefresh`）に渡す。音声入力があれば、続けて録音の行き先の確かめ（`checkVoiceDestination`）を呼ぶ
 
-      5. `error` で接続の状態を offline にする（前の記録の query は残す）'
+      5. `duplicate_ids` で `data` の ID の配列を重なった ID のストアに入れる（閉じた後も、集まりが変われば出し直す）
+
+      6. `error` で接続の状態を offline にする（前の記録の query は残す）
+
+      7. 閉じる関数は、EventSource を閉じ、フォーカスの見張りと購読をやめる'
     unit_tests:
       - name: test_connect_events_when_changed
         case: 正常
@@ -51,5 +55,44 @@ functions:
         condition: '偽物の EventSource から `duplicate_ids`（`data: ["D-1"]`）を送る'
         mock: EventSource（偽物）
         expected: 重なった ID のストアが `["D-1"]`
+      - name: test_connect_events_when_typing
+        case: 正常
+        summary: 入力中の changed は保留し、離れたら 1 回だけ読み直す
+        condition: '`textarea` にフォーカスがあるまま偽物の EventSource から `changed` を 2 回送り、続けてフォーカスを `button` へ移す'
+        mock: EventSource（偽物）
+        expected: 離れるまで記録の query は invalidate されず `pending` が true、離れた後に 1 回だけ invalidate され `pending` が false
+      - name: test_connect_events_when_voice_target_removed
+        case: 正常
+        summary: 音声入力中の changed で行き先が無ければ録音を捨てる
+        condition: T-1 へ録音中に、MSW の `GET /api/records` が T-1 の無い記録を返す状態で `changed` を送る
+        mock: EventSource（偽物）・MSW
+        expected: '`changed` を受けた時点では記録の query は invalidate されず、`discardVoice` で録音が捨てられ、音声入力の知らせが discarded。録音が終わった後に保留の解除で記録の query が 1 回だけ invalidate される'
+  - name: checkVoiceDestination
+    title: 録音の行き先の確かめ
+    kind: 関数
+    container: frontend/src/shared/adapters/events-client.ts
+    usecase: 音声でコメントする
+    summary: 音声入力の間に書き換えの通知を受けたとき、記録・スレッド・レビュー中のコメントを query のキャッシュに入れずに読み、録音の行き先が無ければ録音を捨てる
+    is_async: true
+    returns:
+      type: Promise<void>
+      description: '-'
+    process: |-
+      1. 音声入力（`readVoiceState().session`）が無ければ何もしない
+      2. `GET /api/records`・`GET /api/threads`・`GET /api/comments` を生成した関数（`getRecords`・`getThreads`・`getComments`）で読む（query のキャッシュは書き換えない）。どれかが 200 でなければ何もしない
+      3. 記録の索引（`buildIndex`）の項目の ID と、スレッドとレビュー中の新しいスレッドの ID から行き先の有無の関数（`voiceDestinationExists`）を作り、`discardVoice` に渡す
+    unit_tests:
+      - name: test_check_voice_destination
+        case: 正常
+        summary: 行き先があれば何もしない
+        condition: T-1 へ録音中に、MSW が T-1 を含む記録を返す
+        mock: MSW
+        expected: 録音が続き、知らせが無い
+      - name: test_check_voice_destination_when_unreadable
+        case: 正常
+        summary: 読めなければ何もしない
+        condition: T-1 へ録音中に、MSW の `GET /api/records` が 422
+        mock: MSW
+        expected: 録音が続き、知らせが無い
 notes:
   単体テスト: 同じフォルダの `events-client.test.ts` に置く（knowledge の規約『フォルダ構成』）

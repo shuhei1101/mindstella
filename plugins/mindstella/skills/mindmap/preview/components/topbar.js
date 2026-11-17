@@ -177,6 +177,17 @@ var MindmapPreview;
             ],
         });
     }
+    /** トップバーの下の「更新があります」の帯（印の点と文。押せず、閉じるボタンも持たない） */
+    function staleBand() {
+        return MindmapPreview.h({
+            tag: "div",
+            attrs: { class: "stale-note", role: "status" },
+            children: [
+                MindmapPreview.h({ tag: "span", attrs: { class: "st-dot", "aria-hidden": "true" } }),
+                MindmapPreview.h({ tag: "span", attrs: { class: "sn-text" }, children: ["更新があります。入力欄から離れると反映します。"] }),
+            ],
+        });
+    }
     /** 保存待ちのボタン（印と「保存待ち」と件数）。押すと保存待ちのパネルを開く・閉じる */
     function pendingButton({ count, open, blocked, onClick, }) {
         return MindmapPreview.h({
@@ -246,7 +257,7 @@ var MindmapPreview;
         });
     }
     /** トップバーとタブの帯を返す */
-    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, voice = null, voiceNotice = null, onVoice, duplicateIds = [], onOpenDuplicate, onCloseDuplicate, }) {
+    function topbar({ title, tabs, current, theme, onNavigate, onSearch, onTheme, connection = "online", readAt = null, comments = false, commentCount = 0, commentsOpen = false, commentsUnread = false, onComments, diffPoint = null, onHistory, onDiffOff, settingsOpen = false, onSettings, filter = false, filterCount = 0, filterOpen = false, onFilter, pending = false, pendingCount = 0, pendingOpen = false, pendingBlocked = false, onPending, voice = null, voiceNotice = null, onVoice, stale = false, duplicateIds = [], onOpenDuplicate, onCloseDuplicate, }) {
         const nextTheme = theme === "dark" ? "light" : "dark";
         const bar = MindmapPreview.h({
             tag: "header",
@@ -321,7 +332,7 @@ var MindmapPreview;
         return MindmapPreview.h({
             tag: "div",
             attrs: { class: "top" },
-            children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), tabbar, duplicates],
+            children: [bar, voiceNotice === null ? null : voiceNoticeBand({ notice: voiceNotice, onVoice }), stale ? staleBand() : null, tabbar, duplicates],
         });
     }
     MindmapPreview.topbar = topbar;

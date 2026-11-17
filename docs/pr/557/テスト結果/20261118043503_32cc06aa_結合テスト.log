@@ -1,0 +1,17 @@
+$ pytest tests/integration/preview/test_spa_open.py::test_normal_when_records_changed tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_with_item tests/integration/preview/test_spa_open.py::test_error_when_server_stopped tests/integration/preview/test_spa_open.py::test_normal_when_records_changed_while_typing tests/integration/preview/test_open_preview.py::test_normal_when_rewritten tests/integration/preview/test_open_preview.py::test_normal_when_rewritten_while_typing tests/integration/storybook/test_topbar_stories.py::test_stale tests/integration/storybook/test_topbar_stories.py::test_stale_narrow tests/integration/storybook/test_topbar_stories.py::test_stale_voice_recording tests/integration/storybook/test_topbar_stories.py::test_stale_with_voice_notice tests/integration/storybook_react/test_topbar_stories.py::test_stale tests/integration/storybook_react/test_topbar_stories.py::test_stale_narrow tests/integration/storybook_react/test_topbar_stories.py::test_stale_voice_recording tests/integration/storybook_react/test_topbar_stories.py::test_stale_with_voice_notice tests/integration/server/test_export.py::test_normal --basetemp=tmp/pytest-int
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-hold-refresh-while-typing
+configfile: pytest.ini
+plugins: xdist-3.8.0, base-url-2.1.0, anyio-4.14.1, asyncio-1.4.0, playwright-0.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 15 items
+
+tests/integration/preview/test_spa_open.py ....                          [ 26%]
+tests/integration/preview/test_open_preview.py ..                        [ 40%]
+tests/integration/storybook/test_topbar_stories.py ....                  [ 66%]
+tests/integration/storybook_react/test_topbar_stories.py ....            [ 93%]
+tests/integration/server/test_export.py .                                [100%]
+
+============================= 15 passed in 24.15s ==============================
+exit=0

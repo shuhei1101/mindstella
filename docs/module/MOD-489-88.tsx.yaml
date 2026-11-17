@@ -41,5 +41,11 @@ components:
         condition: '`voice` が `{state: recording, label: D-022 へのコメント, elapsed: 12}` / `{state: transcribing, label: D-022 へのコメント}` / `voiceNotice` が `{kind: failed, text: …}` で「入力欄を開く」と × を押す'
         mock: なし
         expected: 'コメントのボタンの左に読み上げの名前「音声入力中（D-022 へのコメント）。録音中の入力欄へ移動」のボタンと `0:12`、押すと `onOpenVoice` が 1 回 / 「文字起こし中」/ 帯が `role="status"` で、`onOpenVoice` と `onDismissVoiceNotice` が 1 回ずつ'
+      - name: test_topbar_when_stale
+        case: 正常
+        summary: 保留中は「更新があります」の帯を出す
+        condition: '`stale: true`、続けて `stale: true` と `voiceNotice` を渡す'
+        mock: なし
+        expected: トップバーの下に `role="status"` で「更新があります。入力欄から離れると反映します。」の帯があり押せない。`voiceNotice` があるときはその帯の下に並ぶ
 notes:
   単体テスト: 同じフォルダの `topbar.test.tsx` に置く（knowledge の規約『フォルダ構成』）

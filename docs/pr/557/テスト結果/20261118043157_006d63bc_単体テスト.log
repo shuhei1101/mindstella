@@ -1,0 +1,6 @@
+$ pytest tests/unit/preview && npx vitest run
+................................................................         [100%]
+928 passed in 322.27s (0:05:22)
+ Test Files  84 passed (84)
+      Tests  314 passed (314)
+exit=0

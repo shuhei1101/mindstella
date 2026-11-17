@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
-from .fixture_types import LoadPreviewScripts
+from .fixture_types import LoadPreviewScripts, MakeData, MakeItem
 
 # 既定の設定
 DEFAULT_PREFS = {
@@ -1175,3 +1175,78 @@ def test_write_body_scrolls(
     )
     # 検証
     assert scrolls == expected
+
+
+# 録音の行き先の確かめを、記録とスレッドの取得の結果を渡して呼ぶ JavaScript
+CHECK_VOICE_SCRIPT = """async ({destination, records, threads}) =>
+    MindmapPreview.checkVoiceDestination({
+        destination,
+        fetchRecords: async () => records,
+        fetchThreads: async () => threads,
+    })"""
+
+
+def test_check_voice_destination(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """行き先があれば null（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    records = {"ok": True, "data": make_data(decisions=[make_item("D-1")])}
+    # 実行
+    missing = preview_page.evaluate(
+        CHECK_VOICE_SCRIPT,
+        {
+            "destination": {"target": "D-1", "loc": None},
+            "records": records,
+            "threads": {"ok": True, "threads": []},
+        },
+    )
+    # 検証
+    assert missing is None
+
+
+def test_check_voice_destination_when_removed(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+) -> None:
+    """行き先が無ければその ID（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    records = {"ok": True, "data": make_data(decisions=[make_item("D-2")])}
+    threads = {"ok": True, "threads": []}
+    # 実行
+    item = preview_page.evaluate(
+        CHECK_VOICE_SCRIPT,
+        {"destination": {"target": "D-1", "loc": None}, "records": records, "threads": threads},
+    )
+    thread = preview_page.evaluate(
+        CHECK_VOICE_SCRIPT,
+        {"destination": {"thread": "TH-1"}, "records": records, "threads": threads},
+    )
+    # 検証
+    assert [item, thread] == ["D-1", "TH-1"]
+
+
+def test_check_voice_destination_when_unreadable(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts
+) -> None:
+    """読めなければ null（正常系）。"""
+    # 準備
+    load_preview_scripts(include_app=True)
+    # 実行
+    missing = preview_page.evaluate(
+        CHECK_VOICE_SCRIPT,
+        {
+            "destination": {"target": "D-1", "loc": None},
+            "records": {"ok": False},
+            "threads": {"ok": True, "threads": []},
+        },
+    )
+    # 検証
+    assert missing is None
