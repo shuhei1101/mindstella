@@ -41,7 +41,7 @@ functions:
       description: 変えたファイル（ワークスペースからの相対パス）と、mdmark の移行の報告の行
     process: |-
       1. `.mindstella/config.yaml` を読み、`mdmark.version`（無ければ `latest`）から取得元の ref を決める（`latest` は `develop`）
-      2. `.mindstella/` に一時の mdmark の設定（`version: MDMARK_BASE_VERSION`・`build.include: [docs/**/*.md]`）を書く
+      2. `.mindstella/` に一時の mdmark の設定（`version: MDMARK_BASE_VERSION`・`build.include: [docs/**/*.md]`・`build.out: .mdmark/site.html`。mdmark の点検が `build.out` を求め、`.mdmark/` は終わりに削除する）を書く
       3. `MDMARK_COMMAND_ENV` があればそのコマンド、無ければ `npx -y {MDMARK_REPO_SPEC}` に `upgrade --yes --config {一時の設定}` を付け、`.mindstella/` を作業場所にして呼ぶ（標準出力と標準エラーを取る）
          - 終了コードが 0 以外の場合、一時の設定と `.mdmark/` を削除し、標準出力と標準エラーを理由にした `RuntimeError` を送る（ワークスペースの戻しは移行の写しが担う）
       4. 一時の設定を読み直し、`map` があれば `config.yaml` の `mdmark.map` に入れて（`version` はそのまま）、キーの並びを保って書き換える
