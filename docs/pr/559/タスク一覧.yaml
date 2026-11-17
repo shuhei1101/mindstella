@@ -63,7 +63,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T17:24:03.317833+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: 更新ドキュメント（LIB-489-4）はインターフェース定義設計の段で反映済み
+    updated_by: planner
+    updated_at: '2026-11-17T17:27:10.357971+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装

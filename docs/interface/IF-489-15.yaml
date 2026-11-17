@@ -132,7 +132,7 @@ response:
     description: '`tool_input` のコピーに、`session`（『MCP サーバーの起動』の `session` のキー）を上書きで入れたもの'
   - name: hookSpecificOutput.permissionDecision
     type: '"allow"'
-    description: 書き換えた入力での呼び出しを許可する。auto モードで、書き換えた呼び出しを拒否させない。どのモードでも権限の確認を省き、mindstella のツール（`remove`・`close_workspace`・`server_stop` を含む）を確認なしで呼べる（設定の deny・ask のルールは評価される）
+    description: 書き換えた入力での呼び出しを許可する。auto モードで、書き換えた呼び出しを拒否させない。plan モード以外では権限の確認を省き、mindstella のツール（`remove`・`close_workspace`・`server_stop` を含む）を確認なしで呼べる（設定の deny・ask のルールは評価される）
   - name: hookSpecificOutput.permissionDecisionReason
     type: str
     description: 許可の理由。`mindstella のツールの呼び出しにセッションの値を入れた` に固定する
