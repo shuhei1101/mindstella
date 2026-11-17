@@ -45,7 +45,7 @@ flows:
         participant IF as inject_session.py
 
         CC->>IF: PreToolUse の入力
-        IF-->>CC: updatedInput（cwd と claude_config_dir の session）
+        IF-->>CC: permissionDecision（allow）と updatedInput（cwd と claude_config_dir の session）
       ```
     expected:
       - '`updatedInput.session` のキーが `cwd` と `claude_config_dir` だけ'
@@ -63,7 +63,7 @@ flows:
         participant IF as inject_session.py
 
         CC->>IF: PreToolUse の入力（session あり）
-        IF-->>CC: updatedInput（フックの値の session）
+        IF-->>CC: permissionDecision（allow）と updatedInput（フックの値の session）
       ```
     expected:
       - '`updatedInput.session.cwd` が入力の `cwd` で、`/etc` でない'
@@ -132,7 +132,7 @@ response:
     description: '`tool_input` のコピーに、`session`（『MCP サーバーの起動』の `session` のキー）を上書きで入れたもの'
   - name: hookSpecificOutput.permissionDecision
     type: '"allow"'
-    description: 書き換えた入力での呼び出しを許可する。auto モードで、書き換えた呼び出しを拒否させない
+    description: 書き換えた入力での呼び出しを許可する。auto モードで、書き換えた呼び出しを拒否させない。どのモードでも権限の確認を省き、mindstella のツール（`remove`・`close_workspace`・`server_stop` を含む）を確認なしで呼べる（設定の deny・ask のルールは評価される）
   - name: hookSpecificOutput.permissionDecisionReason
     type: str
     description: 許可の理由。`mindstella のツールの呼び出しにセッションの値を入れた` に固定する

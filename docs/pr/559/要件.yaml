@@ -11,7 +11,4 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-17T17:16:15.365258+00:00'
-scope_out:
-  - item: 規約『フック』へ permissionDecision の決まりを追加する
-    reason: 別のリポジトリ knowledge の規約で、この作業 PR の変更範囲の外
-    plan: shuhei1101/knowledge#244
+scope_out: []
