@@ -1,0 +1,17 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: run_only
+    detail: ツールを呼んだセッションへコメントを入力する宛先は、フックが入れるセッションの値で決まる。手順と結果は変わらないが、フックの返却を変えるため壊していないかを確かめる
+    depends_on: []
+docs:
+  - page: docs/library/LIB-489-4.yaml
+    new: false
+    change: PreToolUse の updatedInput の説明に、permissionDecision を付けて返却する形式と、付けないと auto モードで書き換えた呼び出しが拒否されうることを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T17:16:15.365258+00:00'
+scope_out:
+  - item: 単体テスト tests/unit/scripts/test_store.py::test_is_legacy_problem[decision] の fail
+    reason: base（develop 0730919f）でも同じく fail する既存の不具合で、この作業 PR の変更と関係しない
+    plan: '#561'

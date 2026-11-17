@@ -89,6 +89,8 @@ def test_normal(tmp_path: Path, run_hook: Any) -> None:
     assert result["returncode"] == 0
     output = json.loads(result["stdout"])["hookSpecificOutput"]
     assert output["hookEventName"] == "PreToolUse"
+    assert output["permissionDecision"] == "allow"
+    assert output["permissionDecisionReason"] != ""
     assert output["updatedInput"] == {
         "workspace": "talk",
         "session": {

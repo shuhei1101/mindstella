@@ -76,7 +76,7 @@ catalogs:
       - name: PreToolUse の updatedInput
         kind: フックの出力
         purpose: '`matcher` が `mcp__plugin_mindstella_mindstella__.*` の PreToolUse のフックが、ツールの入力を書き換えて渡す'
-        description: '標準入力に `cwd`・`tool_name`・`tool_input` などの JSON が渡る。標準出力に `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": {...}}}` を書くと、ツールは `updatedInput` を入力として呼ばれる。`permissionDecision` を出さなければ許可の判断は変えない'
+        description: '標準入力に `cwd`・`tool_name`・`tool_input` などの JSON が渡る。標準出力に `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "...", "updatedInput": {...}}}` を書くと、ツールは `updatedInput` を入力として呼ばれる。`permissionDecision` を出さずに `updatedInput` だけを返却すると、auto モードでは分類器が確認するのが書き換える前の入力になり、書き換えた呼び出しが拒否され得る（公式の資料 https://code.claude.com/docs/en/hooks の「updatedInput in auto mode」）。設定の deny・ask のルールは `allow` を返却しても評価される'
         refs:
           - IF-489-15#
         status: implemented
