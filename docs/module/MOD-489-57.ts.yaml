@@ -66,7 +66,7 @@ functions:
         summary: 音声入力中の changed で行き先が無ければ録音を捨てる
         condition: T-1 へ録音中に、MSW の `GET /api/records` が T-1 の無い記録を返す状態で `changed` を送る
         mock: EventSource（偽物）・MSW
-        expected: 記録の query は invalidate されず、`discardVoice` で録音が捨てられ、音声入力の知らせが discarded
+        expected: '`changed` を受けた時点では記録の query は invalidate されず、`discardVoice` で録音が捨てられ、音声入力の知らせが discarded。録音が終わった後に保留の解除で記録の query が 1 回だけ invalidate される'
   - name: checkVoiceDestination
     title: 録音の行き先の確かめ
     kind: 関数

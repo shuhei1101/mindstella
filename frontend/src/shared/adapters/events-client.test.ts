@@ -46,9 +46,10 @@ describe("connectEvents", () => {
     // 準備
     const queryClient = new QueryClient();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    connectEvents(queryClient);
+    const close = connectEvents(queryClient);
     // 実行
     FakeEventSource.last?.emit("changed");
+    close();
     // 検証
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["/api/records"] });
   });
@@ -56,11 +57,12 @@ describe("connectEvents", () => {
   // 切れたら offline（正常系）
   test("connect_events_when_error", () => {
     // 準備
-    connectEvents(new QueryClient());
+    const close = connectEvents(new QueryClient());
     // 実行
     FakeEventSource.last?.emit("error");
     const afterError = useConnectionStore.getState().connection;
     FakeEventSource.last?.emit("open");
+    close();
     // 検証
     expect(afterError).toBe("offline");
     expect(useConnectionStore.getState().connection).toBe("online");
@@ -69,9 +71,10 @@ describe("connectEvents", () => {
   // duplicate_ids で重なった ID のストアを書き換える（正常系）
   test("connect_events_when_duplicate_ids", () => {
     // 準備
-    connectEvents(new QueryClient());
+    const close = connectEvents(new QueryClient());
     // 実行
     FakeEventSource.last?.emit("duplicate_ids", JSON.stringify(["D-1"]));
+    close();
     // 検証
     expect(useDuplicateIdsStore.getState().ids).toEqual(["D-1"]);
   });
@@ -104,13 +107,16 @@ describe("connectEvents", () => {
     stubRecords({ tasks: [] });
     const queryClient = new QueryClient();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    connectEvents(queryClient);
+    const close = connectEvents(queryClient);
     // 実行
     FakeEventSource.last?.emit("changed");
+    const onChanged = recordsInvalidations(invalidate);
     // 検証
     await vi.waitFor(() => expect(readVoiceState().notice?.kind).toBe("discarded"));
+    close();
+    expect(onChanged).toBe(0);
     expect(readVoiceState().session).toBeNull();
-    expect(recordsInvalidations(invalidate)).toBe(0);
+    expect(recordsInvalidations(invalidate)).toBe(1);
   });
 });
 
