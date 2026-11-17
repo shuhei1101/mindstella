@@ -47,7 +47,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T17:55:13.066397+00:00'
   - process: 部品設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T18:03:41.689046+00:00'
   - process: 画面設計
     status: skipped
     reason: 足す表示「更新があります」はトップバー（部品設計）に置き、各画面の要素と操作は変わらない
