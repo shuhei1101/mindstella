@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 'base の #550 の mdmark の移し替え（移せない値が資料から消える手順）に、D-288 の確認なしの移し替えを当てるか'
+    decision: 'A: 確認せずに適用し、移せなかった値を MindStella のセッションが通知のスレッドか検討事項で利用者に知らせる（推奨案）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 670a76e8
+    thread: https://github.com/shuhei1101/mindstella/pull/565#discussion_r4605055111
