@@ -2,7 +2,9 @@ docs:
   - page: docs/test-procedure/TP-489-1.yaml
     new: false
     change: E2E テストの層（TL-5）の `pytest tests/e2e` と E2E の前提を外し、0.x の間は E2E のテストを持たないことにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T17:12:54.652163+00:00'
   - page: tests/files.yml
     new: false
     change: '`e2e/` の行を削除し、共有の部品の行の概要文から E2E を外す'
