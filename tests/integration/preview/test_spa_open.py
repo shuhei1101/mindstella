@@ -129,6 +129,63 @@ def test_normal_when_records_changed(
     assert page.evaluate(SCROLL_TOP_SCRIPT) == scroll_top
 
 
+# 「更新があります」の帯の文言
+STALE_TEXT = "更新があります。入力欄から離れると反映します。"
+
+# 入力中に書き換えてから、画面に反映していないことを確かめるまで待つミリ秒（インターフェース定義の期待の 3 秒）
+HOLD_CHECK_MS = 3_000
+
+
+def test_normal_when_records_changed_while_typing(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    page: Page,
+) -> None:
+    """入力する欄にフォーカスがある間は読み直さず「更新があります」を出し、フォーカスが外れたら 1 回だけ読み直す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    served = call_tool("preview_url", workspace=str(root))
+    assert served.data is not None
+    open_spa(page, served.data["url"], "?tab=decisions&view=table&id=D-1")
+    main = page.locator("main#main")
+    expect(main.get_by_text("D-1の題").first).to_be_visible()
+    entry = page.get_by_role("complementary", name="詳細").get_by_role("textbox", name="D-1 へのコメント")
+    entry.fill("途中まで")
+    opened_url = page.url
+    records_requests: list[str] = []
+    page.on(
+        "request",
+        lambda request: records_requests.append(request.url)
+        if request.method == "GET" and request.url.split("?")[0].endswith("/api/records")
+        else None,
+    )
+    # 実行（入力欄にフォーカスを置いたまま検討事項を足す）
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    band = page.get_by_role("status").filter(has_text=STALE_TEXT)
+    band.wait_for(timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_timeout(HOLD_CHECK_MS)
+    held = {
+        "requests": len(records_requests),
+        "added_shown": main.get_by_text(NEW_DECISION["title"]).count(),
+        "value": entry.input_value(),
+        "focused": entry.evaluate("e => document.activeElement === e"),
+    }
+    # 実行（入力欄の外を押す）
+    band.click()
+    started = time.monotonic()
+    expect(main.get_by_text(NEW_DECISION["title"]).first).to_be_visible(timeout=UPDATE_TIMEOUT_MS)
+    elapsed = time.monotonic() - started
+    expect(band).to_have_count(0)
+    # 検証
+    assert added.is_error is False, added.text
+    assert held == {"requests": 0, "added_shown": 0, "value": "途中まで", "focused": True}
+    assert elapsed <= REFLECT_LIMIT_SEC
+    assert len(records_requests) == 1
+    assert entry.input_value() == "途中まで"
+    assert page.url == opened_url
+
+
 def test_normal_when_search_invalid(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
