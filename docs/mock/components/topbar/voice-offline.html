@@ -32,11 +32,16 @@
       const bar = document.querySelector(".topbar");
       const fit = params.get("fit") ?? "a";
       if (fit !== "now") bar.classList.add(`fit-${fit}`);
+      // 案 E: 文字を出さない分、名前と状態をツールチップに持たせる
+      if (fit === "e") {
+        const tips = { ".search-trigger": "すべての項目を検索（Ctrl+K）", ".hist-btn": "変更履歴", ".settings-btn": "表示の設定", ".filter-btn": "絞り込み", ".pending-btn": "保存待ち（5 件）", ".comments-btn": "コメント（レビュー中 0 件）" };
+        for (const [sel, tip] of Object.entries(tips)) { const el = bar.querySelector(sel); if (el) el.title = tip; }
+      }
       if (params.get("offline") !== "0") {
         const conn = document.createElement("span");
         conn.className = "conn";
         conn.setAttribute("role", "status");
-        conn.title = "2026/11/18 02:21 に読んだ記録";
+        conn.title = fit === "e" ? "サーバーにつながりません（2026/11/18 02:21 に読んだ記録）" : "2026/11/18 02:21 に読んだ記録";
         conn.innerHTML = '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"></path><path d="M3 3l18 18"></path></svg><span class="conn-long">サーバーにつながりません（2026/11/18 02:21 に読んだ記録）</span><span class="conn-short">つながりません</span>';
         document.querySelector(".spacer").after(conn);
       }
@@ -50,7 +55,7 @@
       } else {
         v.className = "voice-btn";
         v.setAttribute("aria-label", "音声入力中（D-022 へのコメント）。録音中の入力欄へ移動");
-        v.title = "音声入力中: D-022 へのコメント。押すと録音中の入力欄へ移動します";
+        v.title = fit === "e" ? "音声入力中（0:12）: D-022 へのコメント。押すと録音中の入力欄へ移動します" : "音声入力中: D-022 へのコメント。押すと録音中の入力欄へ移動します";
         v.innerHTML = '<svg class="icon vb-mic" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"></path></svg><span class="label">音声入力中</span><span class="vb-time" aria-hidden="true">0:12</span>';
       }
       document.querySelector(".comments-btn").before(v);
