@@ -78,7 +78,7 @@ scenarios:
       ```
     expected:
       - '`config.yaml` の見た目の既定が `starlight` で、表示する種類の既定が会話ログを除いた種類である'
-      - '`summary`・`playbooks`・`phases`・`goal`・`history_limit` が呼ぶ前と同じである'
+      - '`summary`・`history_limit` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_display_defaults_changed
   - name: 正常シナリオ（関連する場所と保持する回数）
@@ -104,7 +104,7 @@ scenarios:
       ```
     expected:
       - '`config.yaml` の `links` が渡した 1 件で、`history_limit` が 3 である'
-      - 題名・プレイブック・フェーズ・対象・カテゴリー・ゴールが呼ぶ前と同じである
+      - 題名・概要が呼ぶ前と同じである
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_links_and_history_limit
   - name: 正常シナリオ（文字起こしの設定を書き換える）
@@ -130,7 +130,7 @@ scenarios:
       ```
     expected:
       - '`config.yaml` の文字起こし後の挙動が `insert` で、用語集のプリセットが `開発` である'
-      - '`summary`・`playbooks`・`phases`・`goal`・`display` が呼ぶ前と同じである'
+      - '`summary`・`display` が呼ぶ前と同じである'
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_transcription_settings_changed
   - name: 異常シナリオ（文字起こし後の挙動の値が合わない）

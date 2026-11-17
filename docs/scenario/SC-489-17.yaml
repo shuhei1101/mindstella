@@ -128,7 +128,7 @@ scenarios:
       - ワークスペースに `mindmap.yaml` が無く、種類ごとの YAML・`docs/` が `.mindstella/` の下にあり、直下に残っていない
       - 資料 A-1・A-2 の本文が、移し替える前と同じ中身で `.mindstella/docs/` にある
       - '`check` が問題を 0 件で返す'
-    test: test_normal
+    test: test_normal_when_unversioned_format
   - name: 正常シナリオ（利用者の判断が要る補正が残る）
     setup:
       - name: Mock

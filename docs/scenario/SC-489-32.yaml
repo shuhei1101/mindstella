@@ -89,7 +89,7 @@ scenarios:
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_error_when_referenced
     notes:
-      指す側: ほかの項目の `related`（種類 `depends_on`・`parent`・`for`・`see_also`）が指しているとき。指している側の参照は、スキルが先に付け替えるか外す
+      指す側: ほかの項目の `related`（種類 `depends_on`・`parent`・`for`・`see_also`）が指しているとき。指している側の参照は、MindStella のセッションが先に付け替えるか外す
   - name: 異常シナリオ（存在しない ID を消す）
     setup:
       - name: Mock
