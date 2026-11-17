@@ -13,3 +13,5 @@
 .stale-note { display: flex; align-items: center; gap: 8px; padding: 4px var(--page-pad); border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: var(--fs-small); }
 .stale-note .st-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .stale-note .sn-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* 幅 480px 以下: ボタンの幅を詰めないよう、点をロゴの右上に重ね、帯の中の幅を取らない */
+@media (max-width: 480px) { .stale { position: absolute; top: 12px; left: 30px; padding: 0; } .stale .st-dot { box-shadow: 0 0 0 2px var(--topbar-bg); } }
