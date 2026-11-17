@@ -15,8 +15,9 @@
 .mockbar .spacer { flex: 1; }
 
 /* ===== 概要（#565） ===== */
-/* 4 つの一覧のタイル: 広い幅は 2 列、狭い幅は 1 列 */
-.bento.bento-4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+/* 4 つの一覧のタイル: 2 列 x 2 段に並べ、720px 以下は 1 列 */
+.bento.bento-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 720px) { .bento.bento-4 { grid-template-columns: 1fr; } }
 /* 0 件のタイルの文言 */
 .t-empty { margin: 0; color: var(--text-2); font-size: var(--fs-small); }
 
