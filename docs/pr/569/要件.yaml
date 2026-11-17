@@ -1,19 +1,13 @@
 use_cases:
   - kind: single
-    scenario: docs/scenario/SC-531-2.yaml
-    impact: following
-    detail: MindStella のセッションが止まったときに、止まった理由の知らせが Discord に届くことを追記する（新しい単一ユースケース『作業の完了と停止を通知する』に追随）
-    depends_on:
-      - docs/scenario/SC-568-1.yaml
-  - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: none
-    detail: commit の説明を通知に載せるが、外部の変更のまとまりの自動の commit は通知しないため、履歴の残し方は変わらない
+    detail: 外部の変更のまとまりの自動の commit は通知の対象にしないため、履歴の残し方は変わらない
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-568-1.yaml
     impact: new
-    detail: MindStella のセッションが 1 回の作業を終えたときと止まったときに、利用者の Discord のチャンネルへ知らせが届く
+    detail: MindStella のセッションが 1 回の作業を終えたときに、利用者の Discord のチャンネルへ知らせが届く
     depends_on: []
 docs:
   - page: docs/guide/セットアップ手順-Discordに通知する.md
@@ -33,12 +27,6 @@ docs:
     change: 常駐サーバーが読む環境変数に、Webhook の設定のファイルの場所を追加する
     status: todo
 scope_out:
-  - item: 利用上限で止まったときの通知の呼び出し
-    reason: '利用上限での停止の検知は #520 が作る。この PR は通知の仕組みを作り、#520 がそれを呼ぶ（計画の判断）。利用上限で止まった応答は StopFailure の通知で届くため、#520 は同じ停止の通知を重ねて送信しない'
-    plan: '#520'
-  - item: 無操作の上限で止まったときの通知の呼び出し
-    reason: '無操作の上限での停止は #521 が作る。この PR は通知の仕組みを作り、#521 がそれを呼ぶ（計画の判断）'
-    plan: '#521'
   - item: AI の書き込みを commit までステージングする
     reason: '#157 で見送った範囲。通常のセッションが project-index で書き込む構成と合わない'
     plan: none
@@ -47,4 +35,10 @@ scope_out:
     plan: none
   - item: 通常の Claude Code のセッション（MindStella のセッションでない）の作業の通知
     reason: 要望は MindStella のセッションだけ。応答の終わりは MindStella のセッションのフックだけが常駐サーバーへ送る
+    plan: none
+  - item: MindStella のセッションが止まったとき（エラー・利用上限・無操作の上限・停止の依頼）の通知
+    reason: '利用者の判断で、まずは作業が完了したときの通知だけにする（PR #569 の確認事項）。#520・#521 の停止からの呼び出しも、止まったときの通知を作るときに扱う'
+    plan: to_file
+  - item: 通知にスレッドの要約・commit の説明を記載する
+    reason: '利用者の判断で、通知にはワークスペースの名前・作業が完了したこと・プレビューの URL だけを記載する（PR #569 の確認事項）'
     plan: none

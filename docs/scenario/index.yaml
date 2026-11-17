@@ -111,4 +111,4 @@ items:
   - page: SC-489-51.yaml
     summary: "同じワークスペースを見る 2 人が表示の設定を各自で変え、既定の保存だけが上書きを持たない項目に効く"
   - page: SC-568-1.yaml
-    summary: MindStella のセッションの作業の完了と停止を、Discord に通知する
+    summary: MindStella のセッションの作業の完了を、Discord に通知する

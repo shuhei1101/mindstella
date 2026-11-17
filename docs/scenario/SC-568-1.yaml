@@ -1,20 +1,20 @@
 id: SC-568-1
-title: 作業の完了と停止を通知する
-lead: MindStella のセッションが 1 回の作業（1 回の応答）を終えたときと止まったときに、常駐サーバーが、利用者が用意した Webhook の設定のファイルの Webhook で、利用者の Discord のチャンネルへ通知する単一ユースケース。
+title: 作業の完了を通知する
+lead: MindStella のセッションが 1 回の作業（1 回の応答）を終えたときに、常駐サーバーが、利用者が用意した Webhook の設定のファイルの Webhook で、利用者の Discord のチャンネルへ通知する単一ユースケース。
 issue: 568
 primary_actor: 常駐サーバー
 stakeholders:
   - name: 利用者
-    interest: MindStella の画面を開かずに、依頼した作業が終わったこと・MindStella のセッションが止まったことを知れる。1 回の作業で通知が何件も届かない
+    interest: MindStella の画面を開かずに、依頼した作業が終わったことを知れる。1 回の作業で通知が何件も届かない
   - name: 外部のアプリ
     interest: 通知に失敗しても、MindStella のセッションの起動・停止・記録の書き込みが変わらない
-trigger: MindStella のセッションのフックが、応答の終了（Stop・StopFailure）か終了（SessionEnd）を常駐サーバーへ送信する
+trigger: MindStella のセッションのフックが、応答の終了（Stop）を常駐サーバーへ送信する
 preconditions:
   - 常駐サーバーが、環境変数で指定された Webhook の設定のファイル（中身は Webhook の URL の 1 行）を参照できる
   - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で起動している
-success_guarantee: 1 回の応答の間に AI がスレッドに書き込んだか commit したときは、応答の終了で 1 件の通知が Discord のチャンネルに届く。MindStella のセッションが止まったときは、止まった理由の通知が 1 件届く。
-minimal_guarantee: Webhook の設定が無い・送信に失敗したときも、出来事の記録・スレッドの書き込み・commit・MindStella のセッションの停止は変わらない。Webhook の URL は、ログ・応答・ワークスペースの記録に記載しない。
-frequency: MindStella のセッションの応答が終了するたびと、MindStella のセッションが止まるたびに 1 回
+success_guarantee: 1 回の応答の間に AI がスレッドに書き込んだか commit したときは、応答の終了で 1 件の通知が Discord のチャンネルに届く。
+minimal_guarantee: Webhook の設定が無い・送信に失敗したときも、出来事の記録・スレッドの書き込み・commit は変わらない。Webhook の URL は、ログ・応答・ワークスペースの記録に記載しない。
+frequency: MindStella のセッションの応答が終了するたびに 1 回
 priority: 高
 scenarios:
   - name: 正常シナリオ
@@ -35,20 +35,18 @@ scenarios:
 
         CC->>HK: 応答の始まり（UserPromptSubmit）
         HK->>SRV: 応答の始まりを記録する
-        CC->>SRV: スレッドに返信する・スレッドを立てる
-        SRV->>SRV: スレッドの要約を応答の出来事として溜める
-        CC->>SRV: 書き換えをまとめる（commit）
-        SRV->>SRV: commit の説明を応答の出来事として溜める
+        CC->>SRV: スレッドに返信する・書き換えをまとめる（commit）
+        SRV->>SRV: この応答で書き込みがあったことを記録する
         CC->>HK: 応答の終了（Stop）
         HK->>SRV: 応答の終了を記録する
         SRV-->>HK: 受けた
-        SRV->>DC: 溜めた出来事を 1 件の通知にして送信する
+        SRV->>DC: 作業が終わったことを 1 件の通知で送信する
         DC-->>SRV: 受けた
-        SRV->>SRV: 溜めた出来事を空にする
+        SRV->>SRV: 書き込みがあった記録を削除する
       ```
     expected:
       - エンドポイントに、応答 1 回につき 1 件の要求が届いている
-      - 通知に、ワークスペースの名前・作業が終わったこと・スレッドの要約・commit の説明・プレビューの URL が記載されている
+      - 通知に、ワークスペースの名前・作業が終わったこと・プレビューの URL が記載されている
       - 常駐サーバーのログに送信が成功したことが記録され、ログに Webhook の URL が記載されていない
     test: test_normal
   - name: 正常シナリオ（スレッドの書き込みも commit も無い応答）
@@ -68,65 +66,11 @@ scenarios:
         HK->>SRV: 応答の始まりを記録する
         CC->>HK: 応答の終了（Stop）
         HK->>SRV: 応答の終了を記録する
-        SRV->>SRV: 溜めた出来事が無いので送信しない
+        SRV->>SRV: 書き込みが無いので送信しない
       ```
     expected:
       - エンドポイントに要求が届いていない
     test: test_normal_when_nothing_written
-  - name: 正常シナリオ（MindStella のセッションが止まった）
-    setup:
-      - name: Mock
-        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）と、Claude Code のセッション（SessionEnd のフックを呼ぶ）
-      - name: 常駐サーバー
-        description: 起動している。Webhook の設定のファイルはテストのエンドポイントの URL を記載した一時ファイル
-      - name: 停止の依頼
-        description: 外部のアプリが、単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』で停止を依頼する
-        notes: SessionEnd の `reason` は `clear`・`resume` 以外
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as MindStella のセッション
-        participant HK as フック
-        participant SRV as 常駐サーバー
-        participant DC as Discord
-
-        CC->>HK: 終了（SessionEnd）
-        HK->>SRV: 終了を記録する
-        SRV->>SRV: 状態に停止済みを記録する
-        SRV-->>HK: 受けた
-        SRV->>DC: 止まった理由と、溜めた出来事があればその出来事を 1 件の通知にして送信する
-        DC-->>SRV: 受けた
-        SRV->>SRV: 溜めた出来事を空にする
-      ```
-    expected:
-      - エンドポイントに 1 件の要求が届き、ワークスペースの名前・MindStella のセッションが止まったこと・止まった理由が記載されている
-      - 状態に停止済みが記録されている
-      - 応答の途中で止まったときは、その応答で溜めたスレッドの要約・commit の説明も同じ通知に記載され、溜めた出来事が空になっている
-    test: test_normal_when_session_stopped
-  - name: 正常シナリオ（応答がエラーで終わった）
-    setup:
-      - name: Mock
-        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）と、Claude Code のセッション（応答の間にスレッドに返信し、StopFailure のフックで応答を終える）
-      - name: 常駐サーバー
-        description: 起動している。Webhook の設定のファイルはテストのエンドポイントの URL を記載した一時ファイル
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as MindStella のセッション
-        participant HK as フック
-        participant SRV as 常駐サーバー
-        participant DC as Discord
-
-        CC->>SRV: スレッドに返信する
-        SRV->>SRV: スレッドの要約を応答の出来事として溜める
-        CC->>HK: 応答の終了（StopFailure）
-        HK->>SRV: エラーでの応答の終了を記録する
-        SRV->>DC: エラーで止まったことと溜めた出来事を 1 件の通知にして送信する
-        DC-->>SRV: 受けた
-      ```
-    expected:
-      - エンドポイントに 1 件の要求が届き、ワークスペースの名前・エラーで止まったこと・止まった理由・溜めたスレッドの要約が記載されている
-    test: test_normal_when_response_failed
   - name: 正常シナリオ（Webhook の設定が無い）
     setup:
       - name: Mock
@@ -177,49 +121,16 @@ scenarios:
       - 応答の終了が記録され、スレッドの返信が残っている
       - 常駐サーバーのログに送信の失敗が記録され、ログに Webhook の URL が記載されていない
     test: test_error_when_send_failed
-  - name: 正常シナリオ（通知が 2000 文字を超える）
-    setup:
-      - name: Mock
-        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）と、Claude Code のセッション（応答の間に多くのスレッドを立てて commit し、応答を終える）
-      - name: 常駐サーバー
-        description: 起動している。Webhook の設定のファイルはテストのエンドポイントの URL を記載した一時ファイル
-      - name: 出来事
-        description: 溜めた出来事を全て並べると本文が 2000 文字を超える
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as MindStella のセッション
-        participant HK as フック
-        participant SRV as 常駐サーバー
-        participant DC as Discord
-
-        CC->>SRV: スレッドを立てる（繰り返す）・commit する
-        CC->>HK: 応答の終了（Stop）
-        HK->>SRV: 応答の終了を記録する
-        SRV->>SRV: 2000 文字に収まるところまで出来事を並べ、残りを「ほか N 件」にまとめる
-        SRV->>DC: 1 件の通知を送信する
-        DC-->>SRV: 受けた
-      ```
-    expected:
-      - エンドポイントに 1 件の要求が届き、`content` が 2000 文字以内である
-      - 通知に、「ほか N 件」の行とプレビューの URL が記載されている
-    test: test_normal_when_content_too_long
 refs:
-  - SC-531-2#
   - SC-540-1#
 notes:
   通知の文面: |-
-    作業が終わったときと止まったときの文面は、利用者の確認を取ってから確定する（PR #569 の承認確認）。推奨の案は次のとおり。
+    本文は次の 2 行だけにする（絵文字を使用しない）。
 
-    | 出来事 | 文面 |
-    | --- | --- |
-    | 作業が終わった | 1 行目に `✅ {ワークスペースの名前}: 作業が終わりました`、続けてスレッドごとに `- スレッド「{要約}」` と commit ごとに `- 記録の更新: {commit の説明}`、最後の行にプレビューの URL |
-    | 止まった | 1 行目に `⏹ {ワークスペースの名前}: MindStella のセッションが止まりました（{止まった理由}）`。溜めた出来事があれば、続けて作業が終わったときと同じ構成で記載し、最後の行にプレビューの URL |
-    | エラーで止まった | 1 行目に `⚠️ {ワークスペースの名前}: エラーで止まりました（{止まった理由}）`、続けて溜めた出来事を作業が終わったときと同じ構成で記載し、最後の行にプレビューの URL |
+    ```text
+    {ワークスペースの名前}: 作業が完了しました
+    {プレビューの URL}
+    ```
 
     ワークスペースの名前は `config.yaml` の題名で、題名が無ければフォルダの名前にする。
-
-    通知の本文は Discord の `content` の上限（2000 文字）に収める。収まらないときは、収まるところまで出来事の行を並べ、残りを `- ほか {N} 件` の 1 行にまとめる。1 行目とプレビューの URL の行は常に残す。
-
-    止まった理由は、SessionEnd では `reason`、StopFailure ではフックの入力のエラーの種類（フックから送信する値に追加する。入力の形状はインターフェース定義設計で公式の記述を参照して確認する）。利用上限で止まった応答は StopFailure で終わり、この通知で届くため、#520 は利用上限での停止から同じ通知を重ねて送信しない。
-  通知しない出来事: 外部の変更のまとまりの自動の commit（単一ユースケース『書き込みを履歴に残す』）と、停止の工程が依頼するまとめていない変更の commit（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』）は、AI の応答の中の作業ではないため溜めない。SessionEnd の `reason` が `clear`・`resume` のときは止まっていないため通知しない。
+  通知しない出来事: 外部の変更のまとまりの自動の commit（単一ユースケース『書き込みを履歴に残す』）と、停止の工程が依頼するまとめていない変更の commit は、AI の応答の中の作業ではないため通知の対象にしない。応答がエラーで終わったとき（StopFailure）と、MindStella のセッションが止まったとき（SessionEnd）は、通知しない（止まったときの通知はこの単一ユースケースの範囲の外）。StopFailure で終わった応答の書き込みの記録は、次の応答の始まりで削除する。

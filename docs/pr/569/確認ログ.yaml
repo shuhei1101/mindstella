@@ -1,0 +1,16 @@
+confirmations:
+  - topic: 「1 回の作業を終えた」として何を通知するか
+    decision: 応答の終わりに、その応答の間にスレッドに書き込んだか commit したときだけ 1 件通知する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/569#discussion_r4607237417
+  - topic: 通知の文面
+    decision: ワークスペースの名前・作業が完了したこと・プレビューの URL だけにし、絵文字を使用しない（案 A・B のどちらでもない利用者の指示）
+    decided_by: reply
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/569#discussion_r4607266343
+  - topic: 依頼で止めたときも通知するか
+    decision: 今回は作業が完了したときの通知だけにし、止まったときの通知は範囲の外にする（利用者の指示）
+    decided_by: reply
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/569#discussion_r4607274086

@@ -46,7 +46,6 @@ scenarios:
   - 停止の依頼の後、状態がクローズ待ちになっている
   - MindStella のセッションの一覧が、停止済みを返している
   - 'ワークスペースの配信元の行が `outside_read: false` になっている。ワークスペースの記録と、状態のフォルダの追加の MCP・プラグインの記録は残っている'
-  - Webhook の設定があるときは、MindStella のセッションが止まったことの通知が Discord に 1 件届いている（単一ユースケース『作業の完了と停止を通知する』）
 - name: 正常シナリオ（最後の書き込みを待つ）
   setup:
   - name: Mock
@@ -267,7 +266,6 @@ frequency: 外部のアプリが活動を終えるたびに 1 回
 priority: 高
 refs:
 - SC-531-1#
-- SC-568-1#
 notes:
   読み替え: 端末からの停止とクローズは、起動のコマンドが同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える。MindStella の MCP の `stop_session`・`close_workspace` からの依頼は、外部のアプリを MCP を呼んだセッションに読み替える
   停止の完了: 停止の依頼はすぐに受け付けて返却し、完了は MindStella のセッションの一覧（`GET /workspaces/{id}/sessions`）で確かめる
