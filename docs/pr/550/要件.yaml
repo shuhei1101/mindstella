@@ -106,3 +106,4 @@ scope_out:
     plan: '#398'
   - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` が develop（`30c3fe89`）で fail する
     reason: この PR の変更と関係しない既存の不具合（develop の worktree で同じ fail を確認した）
+    plan: '#561'
