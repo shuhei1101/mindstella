@@ -140,3 +140,5 @@ items:
     summary: "POST /api/transcriptions: 録音した音声を文字起こしのサービスへ渡し、終わるまで待って起こした文字を返す"
   - page: IF-489-45.yaml
     summary: "POST /api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送って Claude Code へ入力する"
+  - page: IF-568-1.yaml
+    summary: 応答の間に AI が書き込んだとき、応答の終わりに Discord へ作業の完了を通知する

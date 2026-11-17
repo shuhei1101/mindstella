@@ -1,0 +1,234 @@
+id: IF-568-1
+title: 作業の完了の通知
+entry:
+  kind: trigger
+  value: 『MindStella のセッションの出来事の受け取り』が `stop` を記録して応答を返却した後
+lead: MindStella のセッションの 1 回の応答の間に AI がスレッドに書き込んだか commit したときに、応答の終わりで、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、作業が完了したことを 1 件送信する。
+test_file: tests/integration/server/test_work_done_notify.py
+idempotent: false
+side_effects: Discord の Webhook へ 1 件の `POST`。送信の結果を標準エラーへ 1 行記録する（Webhook の URL を含めない）
+callers:
+  - IF-531-6#
+exclusivity: 送信は常駐サーバーの中の別のスレッドで行い、出来事の受け取りの応答を待たせない。MindStella のセッションごとの記録した数は、`stop` 1 回につき 1 回だけ比べる
+exceptions:
+  - name: なし（正常終了）
+    condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
+constraints:
+  - item: 通知するか
+    constraint: 応答の始まり（`prompt_submit`）で、ワークスペースの `changes.yaml` の `sets` のうち `by` が `ai` のまとまりの数と、`threads.yaml` の `posts` のうち `author` が `ai` の書き込みの数を、MindStella のセッションごとに常駐サーバーのメモリに記録する。応答の終わり（`stop`）で同じ 2 つを数え直し、どちらかが記録した数より増えていれば送信する。増えていないときと、記録した数が無いとき（常駐サーバーが応答の途中で起動し直した）は送信しない
+  - item: 記録した数の削除
+    constraint: '`stop` で比べた後と、`stop_failure`・`session_end` を受けたときに削除する。`stop_failure`・`session_end` では送信しない'
+  - item: 本文
+    constraint: '`{ワークスペースの名前}: 作業が完了しました` と `{画面の URL}` の 2 行。絵文字を使用しない。ワークスペースの名前は `config.yaml` の題名（`summary`）で、空ならフォルダの名前。画面の URL は『ワークスペースの作成』の `url` と同じ。本文が 2000 文字を超えるときは、ワークスペースの名前を切り詰めて 2000 文字以内にする'
+  - item: 送信の方法
+    constraint: '`POST {Webhook の URL}?wait=true` に JSON `{"content": 本文}` を送信する。`200` を成功とし、それ以外の応答・接続できない・上限を過ぎたときは失敗として標準エラーに 1 行記録する。再送信しない'
+  - item: 送信を待つ上限
+    constraint: 非機能要件『Webhook の送信を待つ上限』の秒数
+    decided_by: NFR-489-1#
+  - item: Webhook の設定
+    constraint: 環境変数 `MINDSTELLA_DISCORD_WEBHOOK_FILE` が指すファイルの 1 行目（前後の空白を除く）を Webhook の URL とする。環境変数が無い・ファイルが無い・参照できない・1 行目が `http://` か `https://` で始まらないときは送信しない。ファイルは送信のたびに参照する（常駐サーバーを起動し直さずに差し替えられる）
+  - item: Webhook の URL の秘匿
+    constraint: Webhook の URL を、標準エラー・応答・ワークスペース・状態のフォルダに記録しない。失敗の行に記録するのは、ステータスコードか失敗の種類（接続できない・上限を過ぎた・設定を参照できない）だけ
+flows:
+  - name: 正常系
+    summary: 応答の間に AI がスレッドに返信したので、応答の終わりに 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）
+      - name: 常駐サーバー
+        description: テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ、`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を 1 行記載した一時ファイル
+      - name: 状態
+        description: '`status: running` の `session.json` と、題名を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+        participant DC as Discord
+
+        クライアント->>EV: prompt_submit
+        EV->>EV: AI のまとまりと書き込みの数を記録する
+        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>EV: stop
+        EV-->>クライアント: 200 recorded: true
+        EV->>IF: 記録した数と今の数
+        IF->>DC: POST ?wait=true content
+        DC-->>IF: 200
+      ```
+    expected:
+      - エンドポイントが 1 件の要求を受け、クエリに `wait=true` がある
+      - '`content` が `{題名}: 作業が完了しました` と画面の URL の 2 行である'
+      - 標準エラーに送信の成功の行があり、エンドポイントの URL を含まない
+    test: test_normal
+  - name: 正常系（commit だけの応答）
+    summary: 応答の間に AI が commit だけしたときも 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。200 を返却する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+        participant DC as Discord
+
+        クライアント->>EV: prompt_submit
+        クライアント->>クライアント: changes.yaml に by: ai のまとまりを追加する
+        クライアント->>EV: stop
+        EV->>IF: 記録した数と今の数
+        IF->>DC: POST ?wait=true content
+        DC-->>IF: 200
+      ```
+    expected:
+      - エンドポイントが 1 件の要求を受けている
+    test: test_normal_when_commit_only
+  - name: 正常系（書き込みが無い）
+    summary: AI の書き込みも commit も増えていない応答では送信しない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: '正常系と同じ。応答の間に `by: external` のまとまりと利用者の書き込みだけを追加する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+
+        クライアント->>EV: prompt_submit
+        クライアント->>EV: stop
+        EV->>IF: 記録した数と今の数
+        IF->>IF: 増えていないので送信しない
+      ```
+    expected:
+      - エンドポイントが要求を受けていない
+    test: test_normal_when_nothing_written
+  - name: 正常系（エラーで終わった応答）
+    summary: stop_failure で終わった応答では送信せず、記録した数を削除する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+
+        クライアント->>EV: prompt_submit
+        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>EV: stop_failure
+        EV->>EV: 記録した数を削除する
+        クライアント->>EV: stop
+        EV->>IF: 記録した数が無い
+        IF->>IF: 送信しない
+      ```
+    expected:
+      - エンドポイントが要求を受けていない
+    test: test_normal_when_response_failed
+  - name: 正常系（Webhook の設定が無い）
+    summary: 環境変数が無いときは送信しない
+    setup:
+      - name: Mock
+        description: なし（送信先が無い）
+      - name: 常駐サーバー
+        description: '`MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定せずに起動する'
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+
+        クライアント->>EV: prompt_submit
+        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>EV: stop
+        EV-->>クライアント: 200 recorded: true
+        EV->>IF: 記録した数と今の数
+        IF->>IF: 設定が無いので送信しない
+      ```
+    expected:
+      - '`stop` の応答が 200 で `recorded` が真'
+      - 標準エラーに送信の行が無い
+    test: test_normal_when_webhook_not_configured
+  - name: 異常系（送信の失敗・なし）
+    summary: Webhook が 500 を返却しても出来事の受け取りは成功し、失敗を URL を含めずに記録する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。500 を返却する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+        participant DC as Discord
+
+        クライアント->>EV: prompt_submit
+        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>EV: stop
+        EV-->>クライアント: 200 recorded: true
+        EV->>IF: 記録した数と今の数
+        IF->>DC: POST ?wait=true content
+        DC-->>IF: 500
+        IF->>IF: 標準エラーに失敗を 1 行記録する
+      ```
+    expected:
+      - '`stop` の応答が 200 で `recorded` が真'
+      - エンドポイントが 1 件だけ要求を受けている（再送信しない）
+      - 標準エラーに `500` を含む失敗の行があり、エンドポイントの URL を含まない
+    test: test_error_when_send_failed
+  - name: 異常系（送信を待つ上限・なし）
+    summary: Webhook が上限まで応答しないときは打ち切り、出来事の受け取りを待たせない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。上限より長く応答しない）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 作業の完了の通知
+        participant DC as Discord
+
+        クライアント->>EV: prompt_submit
+        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>EV: stop
+        EV-->>クライアント: 200 recorded: true
+        EV->>IF: 記録した数と今の数
+        IF->>DC: POST ?wait=true content
+        IF->>IF: 上限で打ち切り、標準エラーに失敗を 1 行記録する
+      ```
+    expected:
+      - '`stop` の応答が、送信の結果を待たずに 200 で返っている'
+      - 標準エラーに上限を過ぎた失敗の行があり、エンドポイントの URL を含まない
+    test: test_error_when_send_timed_out
+refs:
+  - IF-531-6#
+  - API-568-1#
+  - SC-568-1#
+  - CFG-489-1#
+  - NFR-489-1#

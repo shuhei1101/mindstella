@@ -425,4 +425,18 @@ requirements:
         notes: 常駐サーバーが鍵を待つ間を見込んで切り上げた
     refs:
       - IF-531-7#
+  - id: NFR-30
+    name: Webhook の送信を待つ上限
+    english_name: discord_webhook_timeout
+    category: 性能
+    external_constraint: 接続できない場合は応答自体が返らない
+    source_kind: 外部 API の制限
+    source: API-568-1#endpoints[POST /webhooks/{webhook.id}/{webhook.token}]
+    value: '10'
+    unit: 秒（『作業の完了の通知』が Webhook へ 1 回送信し、応答を受けるまで）
+    rationale: 同じ端末で同じ Webhook の API に送信する claude-balancer の決定値（送信を待つのは 10 秒まで）に合わせた。送信は出来事の受け取りの応答を返却した後に別のスレッドで行うため、待つ間もフックと会話は止まらない。次の応答の終わりで次の通知が届くため、再送信しない
+    measurement: release ブランチで、常駐サーバーの標準エラーの送信の行から上限を過ぎた回数を数え、通知の 1% を超えたら見直す
+    overflow: 上限を過ぎたら打ち切り、標準エラーに上限を過ぎたことを 1 行記録してその回を終える（Webhook の URL を含めない）
+    refs:
+      - IF-568-1#
 lead: mindstella が外部の制約から逆算して決める値。
