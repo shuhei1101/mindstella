@@ -35,7 +35,7 @@ const startRecording = async (): Promise<void> => {
 };
 
 beforeEach(() => {
-  useRefreshHoldStore.setState({ focused: false, pending: false, anchor: null });
+  useRefreshHoldStore.setState({ focused: false, pending: false, heldElement: null, anchor: null });
   resetVoiceStore();
 });
 
@@ -137,6 +137,7 @@ describe("requestRefresh", () => {
     // 検証
     expect(refresh).not.toHaveBeenCalled();
     expect(useRefreshHoldStore.getState().pending).toBe(true);
+    expect(useRefreshHoldStore.getState().heldElement).toBe(textarea);
     expect(useRefreshHoldStore.getState().anchor?.element).toBe(textarea);
   });
 });
@@ -146,14 +147,21 @@ describe("releaseRefresh", () => {
   test("release_refresh", () => {
     // 準備
     const textarea = append("textarea");
-    useRefreshHoldStore.setState({ pending: true, focused: false, anchor: { element: textarea, top: 0 } });
+    textarea.focus();
+    useRefreshHoldStore.setState({ focused: true });
     const refresh = vi.fn();
+    requestRefresh(refresh);
+    // 帯を出して描いた後
+    restoreAnchor();
+    textarea.blur();
+    useRefreshHoldStore.setState({ focused: false });
     // 実行
     releaseRefresh(refresh);
     releaseRefresh(refresh);
     // 検証
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(useRefreshHoldStore.getState().pending).toBe(false);
+    expect(useRefreshHoldStore.getState().heldElement).toBeNull();
     expect(useRefreshHoldStore.getState().anchor?.element).toBe(textarea);
   });
 

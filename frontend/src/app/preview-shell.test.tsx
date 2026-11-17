@@ -15,7 +15,7 @@ import { server } from "@/testing/msw/server";
 import { renderRoute } from "@/testing/render";
 
 afterEach(() => {
-  useRefreshHoldStore.setState({ focused: false, pending: false, anchor: null });
+  useRefreshHoldStore.setState({ focused: false, pending: false, heldElement: null, anchor: null });
   resetVoiceStore();
   removeFakeMedia();
   removeFakeWakeLock();

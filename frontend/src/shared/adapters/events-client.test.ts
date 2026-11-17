@@ -29,7 +29,7 @@ const recordsInvalidations = (invalidate: { mock: { calls: readonly (readonly un
 
 afterEach(() => {
   document.body.replaceChildren();
-  useRefreshHoldStore.setState({ focused: false, pending: false, anchor: null });
+  useRefreshHoldStore.setState({ focused: false, pending: false, heldElement: null, anchor: null });
   resetVoiceStore();
   removeFakeMedia();
   removeFakeWakeLock();
