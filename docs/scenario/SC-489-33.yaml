@@ -184,7 +184,7 @@ scenarios:
       - タグで検索した結果が D-1・D-2・T-1 である
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
     test: test_normal_when_main_tag_first
-lead: スキルが、project-index の検索と関連のたどりで、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っているタグを読む単一ユースケース。
+lead: MindStella のセッションが、project-index の検索と関連のたどりで、ワークスペースの項目を条件で探し、1 件の中身とそれを参照している項目、使っているタグを読む単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
 stakeholders:
@@ -197,4 +197,3 @@ success_guarantee: 条件に合う項目のページと全体の件数・1 件�
 test_file: tests/e2e/単一ユースケース/test_record_search.py
 notes:
   project-index に移したもの: 探して空のときの外せる条件の案内・近いタグの案内・主題のタグを上に並べる並べ方は、project-index の `search_docs` が持たないため持ち越さない。主題のタグは `main_tags` の条件で絞る
-  属性名の一覧: '項目の `attrs` は #518 で削除する（D-277）。それまでは `search_docs` の `fields` に `attrs` を指定して読む'

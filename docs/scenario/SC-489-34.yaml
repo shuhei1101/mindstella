@@ -10,7 +10,7 @@ scenarios:
       - name: MindStella のセッション
         description: 状態に登録した、応答の途中の MindStella のセッションの `session_id` で呼ぶ
       - name: 検討事項の中身
-        description: タイトル・対象・カテゴリー・フェーズ・状態・問いの説明・影響度・案
+        description: タイトル・状態・問いの説明・影響度・案
         notes: 状態 `未決定`、影響度 `大`、案 A・B（推奨の印は A）
     flow: |-
       ```mermaid
@@ -34,7 +34,7 @@ scenarios:
       ```
     expected:
       - '`next_id` が返した ID が `D-` で始まる'
-      - '`.mindstella/decisions.yaml` にその ID の項目が 1 件あり、足したタイトル・対象・カテゴリー・フェーズ・問いの説明・影響度を持つ'
+      - '`.mindstella/decisions.yaml` にその ID の項目が 1 件あり、足したタイトル・問いの説明・影響度を持つ'
       - 足した項目が案 A・B を持ち、案 A だけが推奨の印を持つ
       - 更新の後、その項目の答えと状態が直した値になっている
       - 更新の後、その項目が決定済みで、案 A だけが採用である
@@ -487,13 +487,13 @@ scenarios:
       - 違反に、合わない箇所 `tags[{番号}]` と、オブジェクトで渡すことが要るという理由がある
       - ワークスペースの全てのファイルの中身が、書き込みを呼ぶ前と同じである
     test: test_error_when_tag_is_string
-lead: スキルが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログを、MindStella の MCP で ID を取ってから project-index の書き込みでワークスペースに足し、後から直す単一ユースケース。
+lead: MindStella のセッションが、会話で出た検討事項・タスク・調査・資料・用語・メモ・会話ログを、MindStella の MCP で ID を取ってから project-index の書き込みでワークスペースに足し、後から直す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 会話で決めたことが漏れなく残る。形の崩れた記録で、ワークスペースが読めなくならない
-trigger: スキルが取り込みのステップで、発言を記録する項目に振り分け終える
+trigger: MindStella のセッションが記録の使い分けで、発言を記録する項目に振り分け終える
 preconditions:
   - ワークスペースが作成済みである
 success_guarantee: 足した項目は `next_id` が振った種類の頭の文字の ID を持ち、変更の検知が作成日・更新日・編集した人（MindStella のセッションの書き込みは `ai`）を記録し、直した項目の更新日が変わり、ワークスペースの全ての YAML がスキーマに合う。どの種類の項目も本文を持て、資料は本文を Markdown か HTML のどちらかで持てる。

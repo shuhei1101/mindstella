@@ -101,7 +101,7 @@ scenarios:
       - D-2 が決定済みで、案 A だけが採用である
       - ワークスペースの全ての YAML がスキーマに合う
     test: test_normal_when_undecided_adopted
-lead: スキルが、方針転換で検討事項の採用する案を MindStella の MCP で切り替え、project-index で関連をたどって影響を受ける項目を洗い出す単一ユースケース。
+lead: MindStella のセッションが、利用者の回答で検討事項の採用する案を MindStella の MCP で切り替え、project-index で関連をたどって影響を受ける項目を洗い出す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
 stakeholders:

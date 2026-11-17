@@ -164,7 +164,7 @@ scenarios:
       - 消した項目を指す通知が届かない
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_taken_thread_refers
-lead: スキルが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
+lead: MindStella のセッションが、やめた項目を記録に残したまま取り下げ、誤って足した・重複した項目をワークスペースから消す単一ユースケース。
 issue: 96
 primary_actor: MindStella のセッション
 stakeholders:
