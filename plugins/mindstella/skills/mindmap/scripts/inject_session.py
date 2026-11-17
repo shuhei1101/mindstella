@@ -33,6 +33,9 @@ STAT_STARTTIME_INDEX = 19
 # これ以下の PID に着いたら、親をたどるのをやめる（init）
 INIT_PID = 1
 
+# 書き換えた入力での呼び出しを許可するときの理由（出力の permissionDecisionReason）
+PERMISSION_REASON = "mindstella のツールの呼び出しにセッションの値を入れた"
+
 
 def main(
     *,
@@ -63,7 +66,15 @@ def main(
     updated["session"] = build_session(
         cwd, env, claude, session_id=session_id if isinstance(session_id, str) else None
     )
-    output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": updated}}
+    # 書き換えた入力のまま呼ばせるため allow を付ける（付けないと auto モードで拒否されうる）
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "permissionDecisionReason": PERMISSION_REASON,
+            "updatedInput": updated,
+        }
+    }
     print(json.dumps(output, ensure_ascii=False), file=sys.stdout if stdout is None else stdout)
     return 0
 
