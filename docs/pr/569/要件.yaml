@@ -3,11 +3,17 @@ use_cases:
     scenario: docs/scenario/SC-531-2.yaml
     impact: following
     detail: MindStella のセッションが止まったときに、止まった理由の知らせが Discord に届くことを追記する（新しい単一ユースケース『作業の完了と停止を通知する』に追随）
-    depends_on: []
+    depends_on:
+      - docs/scenario/SC-568-1.yaml
   - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: none
     detail: commit の説明を通知に載せるが、外部の変更のまとまりの自動の commit は通知しないため、履歴の残し方は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: new
+    detail: MindStella のセッションが 1 回の作業を終えたときと止まったときに、利用者の Discord のチャンネルへ知らせが届く
     depends_on: []
 docs:
   - page: docs/guide/セットアップ手順-Discordに通知する.md
