@@ -80,5 +80,7 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T18:41:02.469170+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
     note: test_preview_url.py の _make_workspace_with_set の準備を、call_tool の常駐サーバーで配信を起動しない形に直す
+    updated_by: planner
+    updated_at: '2026-11-17T18:55:17.700006+00:00'
