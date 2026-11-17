@@ -1,4 +1,6 @@
 title: プレビュー / 基盤 / refresh-hold.ts
+test_files:
+  - tests/unit/preview/test_refresh_hold.py
 lead: 今の画面で、入力中・音声入力中に書き換えの通知による描き直しを保留する（インターフェース定義『プレビューを開く』の制約「入力中の読み直しの保留」）。
 functions:
   - name: isTextEntry
