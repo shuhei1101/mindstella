@@ -1,0 +1,67 @@
+title: プレビュー / 基盤 / refresh-hold.ts
+lead: 今の画面で、入力中・音声入力中に書き換えの通知による描き直しを保留する（インターフェース定義『プレビューを開く』の制約「入力中の読み直しの保留」）。
+functions:
+  - name: isTextEntry
+    title: 文字を入力する欄か
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/refresh-hold.ts
+    usecase: プレビューを開く
+    summary: 要素が文字を入力する欄（文字の `input`・`textarea`・`contenteditable`）かを返す（React の `refresh-hold-store` の `isTextEntry` と同じ判定）
+    args:
+      - name: element
+        type: Element | null
+        required: true
+        description: 確かめる要素
+    returns:
+      type: boolean
+      description: 文字を入力する欄なら true
+    unit_tests:
+      - name: test_is_text_entry
+        case: 正常
+        summary: 文字を入力する欄を見分ける
+        condition: '`textarea`・`input[type=text]`・`contenteditable` の `div`・`input[type=checkbox]`・`button`・null'
+        mock: なし
+        expected: 前の 3 つが true、後の 3 つが false
+  - name: createRefreshHold
+    title: 描き直しの保留
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/refresh-hold.ts
+    usecase: プレビューを開く
+    summary: 文書のフォーカスを見張り、入力中・音声入力中は描き直しの依頼を保留して、離れたときに 1 回だけ描き直す
+    args:
+      - name: deps
+        type: '{doc: Document, isVoiceActive: () => boolean, reload: () => void, onStaleChange: (stale: boolean) => void}'
+        required: true
+        passing: injected
+        description: 見張る文書・音声入力（録音・文字起こし中）があるか・描き直し・保留が変わったときの知らせ
+    returns:
+      type: '{request: () => void, release: () => void, stale: () => boolean, dispose: () => void}'
+      description: '`request` は書き換えの通知・つなぎ直しで呼ぶ、`release` は音声入力が終わったときに呼ぶ、`stale` は保留しているか、`dispose` は見張りをやめる'
+    process: |-
+      1. `focusin`・`focusout`（移り先が文字を入力する欄なら離れたとみなさない）で入力中かを持ち、離れたら `release` を呼ぶ
+      2. `request`: 入力中でも音声入力中でもなければ `reload` を呼ぶ。そうでなければ、保留していなかったときはフォーカスのある要素の画面の上の位置を控え、保留を立てて `onStaleChange(true)` を呼び、描いた後に控えた位置と今の位置の差の分だけスクロールする祖先を送る
+      3. `release`: 保留していて、入力中でも音声入力中でもなければ、保留を下ろして `onStaleChange(false)` と `reload` を 1 回ずつ呼ぶ
+    unit_tests:
+      - name: test_create_refresh_hold
+        case: 正常
+        summary: 入力中でなければすぐ描き直す
+        condition: フォーカスが `button` で `request`
+        mock: '`reload`・`onStaleChange`'
+        expected: '`reload` が 1 回、`onStaleChange` は呼ばれない'
+      - name: test_create_refresh_hold_when_typing
+        case: 正常
+        summary: 入力中は保留し、離れたら 1 回だけ描き直す
+        condition: '`textarea` にフォーカスがあるまま `request` を 2 回、続けてフォーカスを `button` へ移す'
+        mock: '`reload`・`onStaleChange`'
+        expected: 離れるまで `reload` は呼ばれず `onStaleChange(true)` が 1 回、離れた後に `onStaleChange(false)` と `reload` が 1 回ずつ
+      - name: test_create_refresh_hold_when_voice
+        case: 正常
+        summary: 音声入力中は保留し、終わったら描き直す
+        condition: '`isVoiceActive` が true の間に `request`、false にしてから `release`'
+        mock: '`reload`・`onStaleChange`・`isVoiceActive`'
+        expected: '`release` の後に `reload` が 1 回'
+refs:
+  - IF-489-71#
+notes:
+  単体テスト: '`tests/unit/preview/test_refresh_hold.py` に置く（今の画面の部品と同じく、tsc が生成した JavaScript をブラウザで読んで確かめる）'
+id: MOD-557-2

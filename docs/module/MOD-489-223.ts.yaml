@@ -120,6 +120,11 @@ components:
         required: false
         default: なし
         description: 音声入力中の表示・帯の「入力欄を開く」を押したとき `open`、帯の × を押したとき `dismiss`
+      - name: stale
+        type: boolean
+        required: false
+        default: 'false'
+        description: 反映を保留しているか（部品設計『トップバー』の `stale`）。真のとき、トップバーの下に「更新があります。入力欄から離れると反映します。」の帯を置く（音声入力の知らせの帯があればその下）
     unit_tests:
       - name: test_topbar_when_duplicate_ids
         case: 正常
@@ -127,3 +132,9 @@ components:
         condition: '`duplicateIds: [{id: D-12, kind: 検討事項}]`。閉じるボタンを押す'
         mock: '`onCloseDuplicate`'
         expected: タブの帯の下に `role="alert"` の帯があり `D-12` のリンクを持つ。`onCloseDuplicate` が 1 回呼ばれる
+      - name: test_topbar_when_stale
+        case: 正常
+        summary: 保留中は「更新があります」の帯を出す
+        condition: '`stale: true`、続けて `stale: true` と `voiceNotice` を渡す'
+        mock: なし
+        expected: トップバーの下に `role="status"` で「更新があります。入力欄から離れると反映します。」の帯があり押せない。`voiceNotice` があるときはその帯の下に並ぶ

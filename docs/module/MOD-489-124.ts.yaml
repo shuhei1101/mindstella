@@ -190,5 +190,26 @@ functions:
         mock: なし
         expected: '`0:00` / `1:12`'
     container: frontend/src/shared/core/voice.ts
+  - name: voiceDestinationExists
+    title: 録音の行き先の有無
+    kind: 関数
+    container: frontend/src/shared/core/voice.ts
+    usecase: 音声でコメントする
+    summary: 項目の ID とスレッドの ID の集まりから、録音の行き先があるかを返す関数を作る（外枠の描き直しと、書き換えの通知での確かめが共に使う）
+    args:
+      - name: ids
+        type: '{itemIds: ReadonlySet<string>, threadIds: ReadonlySet<string>}'
+        required: true
+        description: 記録の項目の ID と、スレッドとレビュー中の新しいスレッドの ID
+    returns:
+      type: '(destination: VoiceDestination) => boolean'
+      description: 行き先がスレッドなら `threadIds` に、項目なら `target` が null か `itemIds` にあれば true
+    unit_tests:
+      - name: test_voice_destination_exists
+        case: 正常
+        summary: 行き先の有無
+        condition: '`itemIds` に T-1、`threadIds` に TH-1 を渡し、`{target: T-1}`・`{target: T-9}`・`{target: null}`・`{thread: TH-1}`・`{thread: TH-9}` を確かめる'
+        mock: なし
+        expected: true・false・true・true・false
 notes:
   単体テスト: 同じフォルダの `voice.test.ts` に置く（knowledge の規約『フォルダ構成』）

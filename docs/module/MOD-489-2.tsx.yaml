@@ -6,7 +6,7 @@ components:
     title: プレビューの外枠
     kind: コンポーネント
     usecase: SPAを開く
-    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を読み直したら `discardVoice` を呼ぶ。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
+    summary: search の `tab` の画面を描き、`id`・`full`・`panel` の詳細と、保存待ちのパネル・コメントの一覧・表示の設定を重ねる。トップバーのコメントのボタンと表示の設定のボタンで `panel` を開閉する。トップバーに `useVoiceStore` の `session`・`notice` を `voice`・`voiceNotice` で渡し、「音声入力中の入力欄へ移る」「音声入力の入力欄を開く」で `session.destination`（`notice.key`）の画面を、その画面を今開くときと同じ search の書き換えで開く。記録を読み直したら `discardVoice` を呼ぶ（行き先の有無は `voiceDestinationExists` で作る）。トップバーの `stale` に反映の保留（`useStale`）を渡し、保留が立って描いた後に入力欄の位置を戻す（`restoreAnchor`）。記録を読み直しても、開いている入力欄を作り直さず、入力中の値とカーソルの位置を書き換えない。`tab=graph` でネットワークの画面を描き、`search` で全体の検索を重ねる（トップバーの検索の入口と `useSearchShortcut` で開き、結果の項目を『SPAを開く』の制約「画面の移動と項目」「履歴」のとおりに開く）。読み直した記録の `settings.display` が前と違えば `displayChanged` を呼び、画面の下の「ワークスペースの既定が変わりました。」を 6 秒出す
     refs:
       - IF-489-70#
     unit_tests:
@@ -88,6 +88,18 @@ components:
         condition: T-1 で録音中に、読み直した記録に T-1 が無い
         mock: MSW と `vi.stubGlobal`
         expected: トップバーの音声入力中の表示が消え、帯に「T-1 が削除されたため、録音を破棄しました。」
+      - name: test_preview_shell_when_records_changed_while_typing
+        case: 正常
+        summary: 入力中に書き換わったら帯を出し、離れたら反映する
+        condition: '`?tab=tasks&id=T-1` で T-1 のコメントの入力に「途中まで」と入れてフォーカスを置いたまま、MSW の記録に T-2 を足して偽物の EventSource から `changed` を送り、続けて入力欄の外を押す'
+        mock: MSW・EventSource（偽物）
+        expected: 離れるまでタスクの画面に T-2 が無く、トップバーの下に「更新があります。入力欄から離れると反映します。」の帯がある。離れた後に T-2 が出て帯が消え、入力欄の値が「途中まで」
+      - name: test_preview_shell_when_records_changed
+        case: 正常
+        summary: 読み直しで入力欄を作り直さない
+        condition: '`?tab=tasks&id=T-1` で T-1 のコメントの入力に「途中まで」と入れ、フォーカスを入力欄の外へ移してから、MSW の記録に T-2 を足して `changed` を送る'
+        mock: MSW・EventSource（偽物）
+        expected: T-2 が出た後も、コメントの入力の `textarea` が読み直す前と同じ要素で、値が「途中まで」
     container: frontend/src/app/preview-shell.tsx
 notes:
   単体テスト: 同じフォルダの `preview-shell.test.tsx` に置く（knowledge の規約『フォルダ構成』）
