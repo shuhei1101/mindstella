@@ -30,8 +30,9 @@ MDMARK_WORK_DIR = ".mdmark"
 LATEST = "latest"
 LATEST_REF = "develop"
 
-# 一時の設定が対象にする資料の Markdown（`.mindstella/` からの相対）
+# 一時の設定が対象にする資料の Markdown と、mdmark の点検が求める書き出し先（どちらも `.mindstella/` からの相対。書き出し先は終わりに消す `.mdmark/` の下）
 DOCS_GLOB = "docs/**/*.md"
+BUILD_OUT = f"{MDMARK_WORK_DIR}/site.html"
 
 # 標準出力のうち、移行の報告の行の頭
 REPORT_PREFIX = "  docs/"
@@ -45,7 +46,7 @@ def migrate(root: Path) -> tuple[list[str], list[str]]:
     before = _snapshot(record)
     temp_config = record / TEMP_CONFIG
     temp_config.write_text(
-        dump_yaml({"version": MDMARK_BASE_VERSION, "build": {"include": [DOCS_GLOB]}}),
+        dump_yaml({"version": MDMARK_BASE_VERSION, "build": {"include": [DOCS_GLOB], "out": BUILD_OUT}}),
         encoding="utf-8",
     )
     try:
