@@ -5,7 +5,7 @@ stores:
     title: 反映の保留
     container: frontend/src/shared/stores/refresh-hold-store.ts
     usecase: SPAを開く
-    summary: 文字を入力する欄にフォーカスがあるか・反映を保留しているか・保留を始めたときの入力欄の画面の上の位置を持つ
+    summary: 文字を入力する欄にフォーカスがあるか・反映を保留しているか・帯を出す・消す直前の基準の要素の画面の上の位置を持つ
     state:
       - name: focused
         type: boolean
