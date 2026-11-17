@@ -34,7 +34,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T19:13:06.527228+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T19:50:26.125407+00:00'
   - process: モック作成
     status: todo
     note: 変わる画面（概要・検討事項のマップ）だけを作る

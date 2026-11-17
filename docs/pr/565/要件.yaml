@@ -162,6 +162,12 @@ use_cases:
     detail: 配る書き出しからゴール・納品物・フェーズが無くなることに追従する
     depends_on:
       - docs/scenario/SC-489-25.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: following
+    detail: ワークスペースを作るときにリリースのフォルダを作らず、README にスキルの呼び方を書かないことに追従する
+    depends_on:
+      - docs/scenario/SC-489-2.yaml
 docs:
   - page: docs/guide/スキル.md
     new: false
