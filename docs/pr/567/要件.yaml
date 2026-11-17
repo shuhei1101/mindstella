@@ -1,0 +1,11 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-45.yaml
+    impact: none
+    detail: 録音中にサーバーとの接続が切れたときのトップバーの見え方だけが変わり、音声でコメントする流れは変わらない
+    depends_on: []
+scope_out:
+  - item: React のプレビュー（frontend/）のトップバーで、音声入力中の表示とつながらない表示が並ぶときの収まり
+    reason: Issue の対象は今の画面。React の画面で同じ事象が起きるかは未確認で、実装の工程で同じ幅を測って起きていれば起票する（スコープに含めるかはレビューで確定する）
+    plan: to_file
+docs: []

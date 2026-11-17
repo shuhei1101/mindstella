@@ -1,0 +1,77 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存のリポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 設計書があるため対象外
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではない
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: CSS の規則の修正で、未検証の技術に依存しない
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: ユースケースの流れは変わらない
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: デザイン方針があり、見た目の方向を変えない
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の追加・削除と画面遷移の変更が無い
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 音声でコメントするシナリオの記述は変わらない
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: モック作成
+    status: todo
+    note: docs/mock/components/topbar/ に音声入力中とつながらない表示が並ぶ状態を追加する
+  - process: インターフェース定義設計
+    status: skipped
+    reason: インターフェースは変わらない
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 部品設計
+    status: todo
+    note: CMP-489-19.ts.yaml の voice と states
+  - process: 画面設計
+    status: skipped
+    reason: 変わるのはトップバーの部品で、画面の UI 項目は変わらない（部品設計で扱う）
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: モジュールの追加・変更が無い（style.css の規則だけ）
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: ドキュメント修正
+    status: skipped
+    reason: 更新ドキュメントが無い
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 単体テスト作成
+    status: skipped
+    reason: CSS だけの変更で、幅ごとの収まりはストーリーの結合テストで確認する
+    updated_by: planner
+    updated_at: '2026-11-17T19:53:29.028394+00:00'
+  - process: 実装
+    status: todo
+  - process: 結合テスト作成
+    status: todo
+    note: tests/integration/storybook/test_topbar_stories.py
