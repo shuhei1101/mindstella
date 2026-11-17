@@ -1,0 +1,1 @@
+# 結合テスト test_preview_url.py の diff を渡す 2 件を、配信を立てていない準備で pass させる
