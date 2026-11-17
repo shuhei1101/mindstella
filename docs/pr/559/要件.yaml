@@ -8,7 +8,9 @@ docs:
   - page: docs/library/LIB-489-4.yaml
     new: false
     change: PreToolUse の updatedInput の説明に、permissionDecision を付けて返却する形式と、付けないと auto モードで書き換えた呼び出しが拒否されうることを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T17:16:15.365258+00:00'
 scope_out:
   - item: 規約『フック』へ permissionDecision の決まりを追加する
     reason: 別のリポジトリ knowledge の規約で、この作業 PR の変更範囲の外
