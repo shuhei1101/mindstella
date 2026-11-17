@@ -1,0 +1,1 @@
+# MindStella のセッションの作業の完了と停止を Discord に通知する
