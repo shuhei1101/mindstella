@@ -1,0 +1,233 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: changed
+    detail: スキルで設定を決めて進め方ガイドで進め、ゴール判定でリリースする流れをやめ、MindStella のセッションが起動と再開・コメントの取り込み・記録の使い分けのエージェントフローで記録する流れにする
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: following
+    detail: 概要の画面からゴールと次の候補が無くなることに追従する
+    depends_on:
+      - docs/scenario/SC-489-25.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-37.yaml
+    impact: removed
+    detail: セットアップのスキルを削除する。ワークスペースの作成と MindStella のセッションの起動は MindStella の API が行う
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-8.yaml
+    impact: removed
+    detail: ヒアリングは進め方として導入する側に任せる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-13.yaml
+    impact: removed
+    detail: リサーチは進め方として導入する側に任せる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-22.yaml
+    impact: removed
+    detail: 方針転換は進め方として導入する側に任せる。採用する案の切り替えと影響の洗い出しは残る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-38.yaml
+    impact: removed
+    detail: 話し合いの範囲の見直し（題名・ゴール・プレイブック・フェーズ・対象・カテゴリーの書き換え）を削除する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-4.yaml
+    impact: removed
+    detail: ゴール判定とリリースの書き出しを削除する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 利用者がスキルで移し替えるのをやめ、常駐サーバーがワークスペースを読み込むときに移し替える。削除するキーを既存のワークスペースから除く
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: changed
+    detail: 再開の状況を SessionStart の注入で受け取り、起動と再開のエージェントフローで確認する。次の候補は無くなる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-19.yaml
+    impact: changed
+    detail: 前回参照した後に変わった項目は SessionStart の注入で受け取り、注入に収まらない分だけを取得する
+    depends_on:
+      - docs/scenario/SC-489-26.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-30.yaml
+    impact: changed
+    detail: 発言を対象・カテゴリー・フェーズに振り分けず、記録の使い分けのエージェントフローで記録の種類に振り分ける。利用者に聞くことは検討事項にする
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-43.yaml
+    impact: changed
+    detail: コメントの取り込みのエージェントフローで、スレッドごとに記録に反映してから返信かクローズにし、最後に追加した検討事項と反映した回答を 1 件のスレッドで通知する
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-1.yaml
+    impact: changed
+    detail: スレッドで利用者に回答を求めず、検討事項と回答の通知のスレッドだけを立てる
+    depends_on:
+      - docs/scenario/SC-489-43.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-36.yaml
+    impact: changed
+    detail: 題名・ゴール・プレイブック・フェーズ・最上位の軸・対象・カテゴリーの書き換えと付け替えを除く
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: changed
+    detail: 設定に無いフェーズの検査を除く
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-42.yaml
+    impact: changed
+    detail: セットアップのスキルを使わずに起動スクリプトを登録する
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-2.yaml
+    impact: changed
+    detail: README の一覧からスキルの呼び方を除く
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-25.yaml
+    impact: changed
+    detail: 概要を未読の AI の書き込み・未決定・要見直し・確認中の資料だけを並べるトップにし、ゴールと次の候補と進み具合を無くす
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-24.yaml
+    impact: changed
+    detail: 対象 → カテゴリー → フェーズの木をやめ、タグか関連で検討事項を辿る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: changed
+    detail: 資料を納品物を先頭にして並べない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: following
+    detail: プレビューの URL を示す主体が session のスキルから MindStella のセッションに変わることに追従する
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-21.yaml
+    impact: following
+    detail: 方針転換のスキルが無くなり、MindStella のセッションが採用する案を切り替えることに追従する
+    depends_on:
+      - docs/scenario/SC-489-22.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-23.yaml
+    impact: following
+    detail: スキルが主語の記述を MindStella のセッションに追従させる
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-32.yaml
+    impact: following
+    detail: 削除は検討事項で利用者の合意を得てから行う（記録の使い分け）に追従する
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: following
+    detail: スキルが主語の記述を MindStella のセッションに追従させる
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: following
+    detail: 削除するキー（対象・カテゴリー・フェーズ・属性・重み・納品物・観点・確かさ）を書かないことに追従する
+    depends_on:
+      - docs/scenario/SC-489-30.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-28.yaml
+    impact: following
+    detail: 設定の画面と詳細パネルから削除するキーの入力が無くなることに追従する
+    depends_on:
+      - docs/scenario/SC-489-36.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-49.yaml
+    impact: following
+    detail: 表の列と絞り込みからフェーズ・対象・カテゴリーが無くなることに追従する
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: following
+    detail: 配る書き出しからゴール・納品物・フェーズが無くなることに追従する
+    depends_on:
+      - docs/scenario/SC-489-25.yaml
+docs:
+  - page: docs/guide/スキル.md
+    new: false
+    change: スキルの一覧を削除し、エージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）の一覧に置き換える
+    status: todo
+  - page: docs/guide/コアコンセプト-話し合いの進め方.md
+    new: false
+    change: 進め方ガイド・ステップ・ゴールの仕組みを削除し、進め方は導入する側の文書で持ち、MindStella はエージェントフローで記録することに書き換える
+    status: todo
+  - page: docs/guide/話し合い-ゴールでリリースする.md
+    new: false
+    change: ゴール判定とリリースを削除するので、ページを削除する
+    status: todo
+  - page: docs/guide/話し合い-セットアップから始める.md
+    new: false
+    change: setup のスキルと進め方ガイドの選択を削除し、MindStella の API と起動のコマンドで始める手順に書き換える
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: session のスキルでの再開を、起動と再開のエージェントフローに書き換える
+    status: todo
+  - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
+    new: false
+    change: upgrade のスキルを削除し、常駐サーバーが読み込みのときに移し替えることに書き換える
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: setup のスキルからの登録を、要件の未確定の決着に合わせて書き換える
+    status: todo
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: 削除するキー（goal・phases・playbooks・targets・target_label・categories・phase・target・category・attrs・deliverable・weight・angles・confidence）と release フォルダを除く
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 削除する MCP のツール（next・goal・write_release・clear_release・status・migrate）を除く
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: release フォルダと進め方ガイドへの言及を除く
+    status: todo
+  - page: docs/guide/使い方.md
+    new: false
+    change: スキルを呼んで話し合いを始める説明を、エージェントフローと MindStella の API に書き換え、ゴールでリリースするページの行を除く
+    status: todo
+  - page: docs/guide/はじめに.md
+    new: false
+    change: スキル・進め方ガイド・ゴールへの言及を、エージェントフローに書き換える
+    status: todo
+  - page: README.md
+    new: false
+    change: スキルの説明を、エージェントフローに書き換える
+    status: todo
+scope_out:
+  - item: 記録の種類ごとの使い方のガイド（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・スレッド。D-502）
+    reason: ガイドの資料（作業 T-67）が未作成で、着手が資料より先になった。この PR に含めるか別の Issue に分けるかは task-planner が判断する（起点 Issue のコメント）。判断が出るまでは、記録の使い分けのエージェントフローが参照する先を持たない
+    plan: to_file
+  - item: 常駐サーバーの起動のときにプラグインの配信元のパスを確認して登録し直す
+    reason: A-107 の No 10 の範囲
+    plan: '#525'
+  - item: MindStella のセッションの自動の起動し直し（PreCompact で止めて起動し直す契機を含む）
+    reason: A-107 の No 5 の範囲。この PR は起動し直した後に起動と再開のエージェントフローを進める注入だけを持つ
+    plan: '#520'
+  - item: ワークスペースの設定の書き換えの API（PATCH /workspaces/{id}）へ update_settings をまとめる
+    reason: A-107 の No 9 の範囲。この PR は update_settings から削除するキーを除くだけ
+    plan: '#524'
+  - item: 今の画面（/mindstella.html）の廃止
+    reason: 要望に含まれない。この PR は今の画面と React の画面の両方から削除するキーを除く
+    plan: none
