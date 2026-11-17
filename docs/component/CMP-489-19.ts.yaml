@@ -792,6 +792,13 @@ states:
         value: 'true'
       - name: voice
         value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
+  - name: StaleWithVoiceNotice
+    description: 音声入力の知らせと保留が同時にある。音声入力の知らせの帯の下に「更新があります」の帯を出す
+    args:
+      - name: stale
+        value: 'true'
+      - name: voiceNotice
+        value: '{"kind": "discarded", "text": "D-022 が削除されたため、録音を破棄しました。"}'
 uses:
   - component: CMP-540-1#
     how: タブの帯の下の、重なった ID の通知の帯
