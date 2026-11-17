@@ -22,8 +22,6 @@
       "required": [
         "id",
         "title",
-        "created",
-        "updated",
         "content"
       ],
       "additionalProperties": false,
@@ -56,35 +54,14 @@
         "links": {
           "$ref": "common.schema.json#/$defs/item/properties/links"
         },
-        "created": {
-          "$ref": "common.schema.json#/$defs/item/properties/created"
-        },
-        "updated": {
-          "$ref": "common.schema.json#/$defs/item/properties/updated"
-        },
-        "updated_by": {
-          "$ref": "common.schema.json#/$defs/item/properties/updated_by"
-        },
-        "history": {
-          "$ref": "common.schema.json#/$defs/item/properties/history"
-        },
-        "history_dropped_seq": {
-          "$ref": "common.schema.json#/$defs/item/properties/history_dropped_seq"
-        },
-        "seq": {
-          "$ref": "common.schema.json#/$defs/item/properties/seq"
-        },
-        "added_seq": {
-          "$ref": "common.schema.json#/$defs/item/properties/added_seq"
-        },
         "content": {
           "type": "string",
           "description": "メモの中身"
         },
         "body": {
           "type": "string",
-          "description": "`docs/` の本文の Markdown のファイル名（`{ID}.md`）。経緯や補足を残す",
-          "pattern": "^[^/\\\\]+\\.md$"
+          "description": "本文の Markdown のパス（記録のフォルダからの相対。`docs/{ID}.md`）。経緯や補足を残す",
+          "pattern": "^docs/[^/\\\\]+\\.md$"
         },
         "withdrawn": {
           "type": "boolean",

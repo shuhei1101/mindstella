@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport: スマホ幅でも等倍で開く（拡大は禁止しない） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>重なった ID の通知・案 B 右下のトースト | mindstella プレビューのモック</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <!-- トークン・今のプレビューのスタイル・この PR の分とモック専用の操作列 -->
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/tokens.css">
+  <link rel="stylesheet" href="../../../../../../plugins/mindstella/skills/mindmap/preview/style.css">
+  <link rel="stylesheet" href="../../../../refs/540/assets/style.css">
+  <!-- 見本のダーク: クエリの theme=dark で data-theme を当てる（実画面はトップバーのボタンで切り替える） -->
+  <script>if (new URLSearchParams(location.search).get("theme") === "dark") document.documentElement.dataset.theme = "dark";</script>
+</head>
+<body>
+  <div class="mockbar" data-mock-bar role="group" aria-label="モックの操作">
+    <span class="label">案:</span>
+    <a href="../a-banner/index.html">A トップバーの下の帯</a>
+    <a href="../b-toast/index.html" aria-current="true">B 右下のトースト</a>
+    <span class="label">見本:</span>
+    <a href="?">ライト</a>
+    <a href="?theme=dark">ダーク</a>
+    <span class="spacer"></span>
+    <nav class="crumbs" aria-label="パンくず"><a href="../../../index.md">pages</a> / <a href="../../index.md">duplicate-id-notice</a> / <a href="../index.md">540</a> / b-toast</nav>
+  </div>
+  <header class="m-topbar"><span class="site">mindstella</span><span class="title">記録の作り直しの話し合い</span><span class="spacer"></span></header>
+  <main class="m-main">
+    <h1>概要</h1>
+    <div class="m-toast" role="alert"><svg class="m-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg><div class="m-body"><strong>同じ ID の項目が 2 件あります</strong>ほかのセッションの書き込みで、検討事項 <span class="m-ids"><a href="#">D-12</a></span>が重なりました。片方の ID を変更してください。</div><button class="m-close" type="button" aria-label="通知を閉じる"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+  </main>
+</body>
+</html>

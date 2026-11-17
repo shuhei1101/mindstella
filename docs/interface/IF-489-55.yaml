@@ -62,7 +62,7 @@ flows:
       - ツールのエラーにならない
       - D-1 の `phase` が `目的`、D-2 の `phase` が `発散`、T-1 の `phase` が `要件`
       - '`goal.phase` が `要件`'
-      - D-1 と T-1 の `updated` が書き換えた日時で `updated_by` が `ai`、D-2 の `updated` と `updated_by` が呼ぶ前と同じ
+      - '`history.yaml` の D-1 と T-1 の `updated` が書き換えた日時で `updated_by` が `ai`、D-2 の `updated` と `updated_by` が呼ぶ前と同じ'
       - '`remapped` が D-1（問い → 目的）・T-1（整理 → 要件）の 2 件、`changed` が `playbooks`・`phases`・`goal`'
       - '`check` が問題を 0 件で返す'
     test: test_normal_when_phases_remapped
@@ -432,7 +432,7 @@ flows:
     test: test_error_when_mdmark_version_invalid
 lead: '`settings` で渡した設定のキーを置き換える。フェーズ・対象・カテゴリーを変えるときは、`phase_map`・`target_map`・`category_map` の対応で項目の `phase`・`target`・`category` と `goal.phase`・カテゴリーの `target` も同じ書き込みで付け替える。'
 idempotent: false
-side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、項目の `seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
+side_effects: '`config.yaml` を書き換える。フェーズ・対象・カテゴリーを付け替えた項目があれば、その種類の YAML も書き換え、付け替えた項目の `history.yaml` の行の `updated` と `updated_by`（`ai`）を書く。付け替えは変更履歴にも書き換えのまとまりにも入れず、`seq` も進めない。全ての一時ファイルを書き終えてから `os.replace` で置き換える'
 exclusivity: 『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 request:
   - name: workspace

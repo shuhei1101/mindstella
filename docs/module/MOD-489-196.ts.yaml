@@ -280,13 +280,18 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/api.ts
     usecase: プレビューを開く
     scope: public
-    summary: '`GET /api/events` に `EventSource` でつなぎ、`changed` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる'
+    summary: '`GET /api/events` に `EventSource` でつなぎ、`changed`・`duplicate_ids` と接続の状態の変化を知らせる。つなぎ直しは `EventSource` に任せる'
     args:
       - name: onChanged
         type: () => void
         required: true
         passing: keyword
         description: '`changed` を受けたとき'
+      - name: onDuplicates
+        type: '(ids: string[]) => void'
+        required: false
+        passing: keyword
+        description: '`duplicate_ids` を受けたとき（`data` の JSON の配列）'
       - name: onConnection
         type: '(connected: boolean) => void'
         required: true
@@ -303,7 +308,7 @@ functions:
       description: つながりを閉じる関数
     process: |-
       1. `API_PATHS.events` へ `EventSource` を開く
-      2. `changed` で `onChanged`、`open` で `onConnection(true)`、`error` で `onConnection(false)` を呼ぶ（同じ状態が続くときは呼ばない）
+      2. `changed` で `onChanged`、`duplicate_ids` で `data` を JSON として読んで `onDuplicates`、`open` で `onConnection(true)`、`error` で `onConnection(false)` を呼ぶ（同じ状態が続くときは呼ばない）
     unit_tests:
       - name: test_subscribe_events
         case: 正常
@@ -311,6 +316,12 @@ functions:
         condition: 偽の `EventSourceCtor` で `open` → `changed` → `error` → `error` → `open` を起こす
         mock: '`EventSourceCtor`'
         expected: '`onConnection` が `true` → `false` → `true` の 3 回、`onChanged` が 1 回。返った関数で `close` が呼ばれる'
+      - name: test_subscribe_events_when_duplicate_ids
+        case: 正常
+        summary: duplicate_ids を ID の配列で知らせる
+        condition: '偽の `EventSourceCtor` で `duplicate_ids`（`data: ["D-1"]`）を起こす'
+        mock: '`EventSourceCtor`'
+        expected: '`onDuplicates` が `["D-1"]` で 1 回'
   - name: postOpened
     title: 前回開いた日時を引く
     kind: 関数

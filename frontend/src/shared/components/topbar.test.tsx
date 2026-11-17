@@ -94,4 +94,13 @@ describe("Topbar", () => {
     expect(onOpenVoice).toHaveBeenCalledTimes(2);
     expect(onDismissVoiceNotice).toHaveBeenCalledTimes(1);
   });
+
+  // 重なった ID の通知を出す（正常系）
+  test("topbar_when_duplicate_ids", () => {
+    // 実行
+    render(<Topbar title="話し合い" tabs={[...TABS]} current="overview" theme="light" duplicateIds={[{ id: "D-12", kind: "検討事項" }]} />);
+    // 検証
+    expect(screen.getByRole("alert")).toHaveTextContent("同じ ID の項目が 2 件あります");
+    expect(screen.getByRole("link", { name: "D-12" })).toBeInTheDocument();
+  });
 });

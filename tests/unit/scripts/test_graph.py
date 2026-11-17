@@ -24,9 +24,9 @@ def next_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> store.
         make_item("D-2", phase="目的", weight="小"),
         make_item("D-3", phase="要件", weight="大"),
         make_item("D-4", phase="要件", weight="大"),
-        make_item("D-5", depends_on=["D-1"]),
-        make_item("D-6", depends_on=["D-4"]),
-        make_item("D-7", depends_on=["D-6"]),
+        make_item("D-5", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("D-6", related=[{"to": "D-4", "type": "depends_on"}]),
+        make_item("D-7", related=[{"to": "D-6", "type": "depends_on"}]),
     )
     return store.load_workspace(root)
 
@@ -36,10 +36,10 @@ def test_build_reverse_edges(make_workspace: MakeWorkspace, make_item: MakeItem)
     # 準備
     root = make_workspace(
         make_item("D-1"),
-        make_item("D-2", depends_on=["D-1"]),
-        make_item("D-3", parent="D-1"),
-        make_item("D-4", related=["D-1"]),
-        make_item("T-1", **{"for": ["D-1"]}),
+        make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("D-3", related=[{"to": "D-1", "type": "parent"}]),
+        make_item("D-4", related=[{"to": "D-1", "type": "see_also"}]),
+        make_item("T-1", related=[{"to": "D-1", "type": "for"}]),
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -53,10 +53,10 @@ def test_trace_impact(make_workspace: MakeWorkspace, make_item: MakeItem) -> Non
     # 準備
     root = make_workspace(
         make_item("D-1"),
-        make_item("D-2", title="直接の依存", depends_on=["D-1"]),
-        make_item("D-3", title="派生", parent="D-2"),
-        make_item("D-4", related=["D-1"]),
-        make_item("T-1", title="進めるタスク", **{"for": ["D-3"]}),
+        make_item("D-2", title="直接の依存", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("D-3", title="派生", related=[{"to": "D-2", "type": "parent"}]),
+        make_item("D-4", related=[{"to": "D-1", "type": "see_also"}]),
+        make_item("T-1", title="進めるタスク", related=[{"to": "D-3", "type": "for"}]),
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -79,8 +79,8 @@ def test_trace_impact_when_cycle(make_workspace: MakeWorkspace, make_item: MakeI
     """循環があっても同じ項目を 2 度出さず終わる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", depends_on=["D-2"]),
-        make_item("D-2", title="循環の相手", depends_on=["D-1"]),
+        make_item("D-1", related=[{"to": "D-2", "type": "depends_on"}]),
+        make_item("D-2", title="循環の相手", related=[{"to": "D-1", "type": "depends_on"}]),
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -121,9 +121,9 @@ def test_count_followers(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     # 準備
     root = make_workspace(
         make_item("D-4"),
-        make_item("D-6", depends_on=["D-4"]),
-        make_item("D-7", depends_on=["D-6"]),
-        make_item("D-8", depends_on=["D-4"], status="決定済み"),
+        make_item("D-6", related=[{"to": "D-4", "type": "depends_on"}]),
+        make_item("D-7", related=[{"to": "D-6", "type": "depends_on"}]),
+        make_item("D-8", related=[{"to": "D-4", "type": "depends_on"}], status="決定済み"),
     )
     workspace = store.load_workspace(root)
     # 実行
@@ -176,12 +176,12 @@ def test_summarize_status(make_workspace: MakeWorkspace, make_item: MakeItem) ->
     root = make_workspace(
         make_item("D-1", title="見直しの問い", status="要見直し"),
         make_item("T-1", title="進めている作業", status="進行中"),
-        make_item("D-2", title="再開できる保留", status="保留", depends_on=["D-3"]),
+        make_item("D-2", title="再開できる保留", status="保留", related=[{"to": "D-3", "type": "depends_on"}]),
         make_item("D-3", status="決定済み"),
-        make_item("D-4", title="決定待ちの保留", status="保留", depends_on=["D-5"]),
+        make_item("D-4", title="決定待ちの保留", status="保留", related=[{"to": "D-5", "type": "depends_on"}]),
         make_item("D-5"),
         make_item("D-6", title="予算待ち", status="保留", reason="予算が決まったら"),
-        make_item("T-2", title="作業待ちの保留", status="保留", depends_on=["T-1"]),
+        make_item("T-2", title="作業待ちの保留", status="保留", related=[{"to": "T-1", "type": "depends_on"}]),
     )
     workspace = store.load_workspace(root)
     # 実行

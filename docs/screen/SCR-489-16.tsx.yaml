@@ -14,6 +14,8 @@ elements:
         value: 差分を出さない（今の内容）・まだまとめていない変更・前回開いてから・sets[].summary
       - name: points[].sub
         value: 印と差分を出さずに今の内容だけを読む・AI がまだ区切っていない書き換え・{前回開いた日時} より後・sets[].at（JST の MM/DD HH:mm）
+      - name: points[].external
+        value: sets[].by が external のまとまりで真（名前の横に「外部の変更」の札。名前は sets[].summary の「ほかのセッションの書き込み」）
       - name: points[].count
         value: その時点の added・changed・removed の数。合わせた範囲で足して消した項目は、消した項目として 1 件に数える（差分を出さない行は渡さない）
       - name: current

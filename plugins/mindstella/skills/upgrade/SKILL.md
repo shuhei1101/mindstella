@@ -2,7 +2,7 @@
 name: upgrade
 description: プラグインを上げた後、ワークスペースの版が古いと案内されたときに、ワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて今の版へ移し替えるスキル
 argument-hint: "[ワークスペースのフォルダ]"
-allowed-tools: Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__check, mcp__plugin_mindstella_mindstella__batch
+allowed-tools: Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_mindstella_mindstella__check, mcp__plugin_project-index_project-index__search_docs, mcp__plugin_project-index_project-index__write_docs
 ---
 
 # upgrade
@@ -22,12 +22,12 @@ allowed-tools: Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_min
 
 | ステップ | 手順 |
 | --- | --- |
-| ツールの確認 | mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__migrate`・`check`・`batch`）があるかを見る。無ければ、ワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py` を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直すよう案内して止まる（以降は実行しない）。依存は `ensure_server.py` が確かめる |
+| ツールの確認 | mindstella の MCP のツール（`mcp__plugin_mindstella_mindstella__migrate`・`check`）と project-index の MCP のツール（`mcp__plugin_project-index_project-index__search_docs`・`write_docs`）があるかを見る。無ければ、ワークスペースに何も書かず、常駐サーバーが待ち受けていないことを示し、端末で `python3 {プラグインのフォルダ}/skills/mindmap/scripts/ensure_server.py` を叩いてから `/mcp` で mindstella につなぎ直し、スキルを呼び直すよう案内して止まる（以降は実行しない）。依存は `ensure_server.py` が確かめる |
 | 版の比較 | `migrate` を `plan: true` で呼び、結果の `relation` を読む。`same` なら移し替えるものが無いと示して終える。`newer` ならプラグインを更新するよう案内して止まる（以降は実行しない） |
 | 手順の一覧 | 結果の `steps` を版の順に、`version` と `summary` で示す。`destructive` が `true` の手順があるときだけ、当ててよいかを利用者に確かめる（利用者が断ったら止まる） |
 | 手順を当てる | `migrate`（`plan` なし）を呼ぶ。ツールのエラーが返ったら、本文の失敗した版・手順・理由を示して止まる（`migrate` が写しから戻している）。結果の `backup` が写しの場所になる |
 | 点検 | `check` を呼ぶ。`migrate` の結果の `needs_values` のキーだけを、`description` を添えて利用者に聞き、答えを `migrate` の `values` で入れる。`needs_values` のキーと `decision_state` 以外の問題が出たときは、示して止まる |
-| 案と状態の補正 | `check` が `decision_state` で返した検討事項を直す。案を持たない検討事項は、問いと本文から案のたたき台（未決定なら推奨の印も）を書いて示し、採用した案と状態が合わない検討事項は、どう直すかを示して、まとめて利用者に確かめる。確かめた内容を `batch` 1 回で書く（検討事項ごとに `update` で `options`・`status` を直す）。もう一度 `check` を呼び、問題が残れば示して止まる |
+| 案と状態の補正 | `check` が `decision_state` で返した検討事項を直す。案を持たない検討事項は、問いと本文から案のたたき台（未決定なら推奨の印も）を書いて示し、採用した案と状態が合わない検討事項は、どう直すかを示して、まとめて利用者に確かめる。確かめた内容を `write_docs` 1 回で書く（検討事項ごとに `update` の操作で `options`・`status` を直す。`expected_version` は `search_docs` で読んだ版）。もう一度 `check` を呼び、問題が残れば示して止まる |
 | 版の書き換え | `migrate` を `record: true` で呼ぶ。ツールのエラーが返ったら、本文の合わない箇所を示して止まる |
 | 仕上げ | 結果の `recorded` の版と、`backup` の写しの場所を示し、`/mindstella:session {ワークスペースのフォルダ}` で続けるよう案内する |
 
@@ -43,4 +43,5 @@ allowed-tools: Read, mcp__plugin_mindstella_mindstella__migrate, mcp__plugin_min
 | `migrate`（値を入れる） | `workspace`・`values`（値が要るキーごとに `file`・`key`・`value` を持つオブジェクトの配列） |
 | `migrate`（版を書き換える） | `workspace`・`record: true` |
 | `check` | `workspace` |
-| `batch` | `workspace`・`operations`（検討事項ごとの `op: update`・`id`・`item`（`options`・`status`）の配列） |
+| `search_docs`（project-index） | `source`（ワークスペースの ID）・`filter`（`id` で直す検討事項に絞る）・`view: full` |
+| `write_docs`（project-index） | `source`・`operations`（検討事項ごとの `op: update`・`id`・`expected_version`・`set`（`options`・`status`）の配列） |

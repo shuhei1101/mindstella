@@ -33,52 +33,27 @@ import sessions
 import state
 import workspaces
 from claude_input import InputTargets, Session, parse_session
-from errors import ArgumentError, MindmapError, SchemaMismatchError
-from kinds import Kind
-from query import DEFAULT_LIMIT, MAX_LIMIT, SearchFilter, parse_attr, render_find_markdown
+from errors import ArgumentError, MindmapError, NotMindStellaSessionError, SchemaMismatchError
 from serve import LISTEN_HOST, PreviewRegistry, load_external_access
 from migrator import require_migratable
 from store import LEGACY_HINT, require_workspace, workspace_lock
 from transcriber_registry import InvalidTranscriberError, load_transcriber
 from versions import PLUGIN_VERSION_FILE, read_plugin_version
 
-# `find` の `include`・`exclude` に渡せる名前
-FieldName = Literal[
-    "title",
-    "status",
-    "tags",
-    "chars",
-    "target",
-    "category",
-    "phase",
-    "attrs",
-    "updated",
-    "extra",
-    "body",
-]
-
 # MCP サーバーの名前（`server_status` の `name`）。Claude Code の中のツールの名前は `mcp__plugin_mindstella_mindstella__{ツール}` になる
 SERVER_NAME = "mindstella"
 
 # 登録するツールの名前の並び
 TOOL_NAMES = (
-    "add",
-    "update",
-    "remove",
+    "next_id",
     "update_settings",
     "adopt",
     "edit_option",
-    "batch",
     "changes_since_read",
     "commit",
     "pending",
     "status",
     "next",
-    "impact",
-    "find",
-    "show",
-    "attrs",
-    "tags",
     "check",
     "goal",
     "migrate",
@@ -100,6 +75,18 @@ TOOL_NAMES = (
     "close_workspace",
     "server_status",
     "server_stop",
+)
+
+# MindStella のセッションの呼び出しだけを受け付けるツール
+MINDSTELLA_SESSION_TOOLS = ("commit", "new_thread", "reply", "set_thread_status", "update_thread")
+
+# MCP の初期化の応答の `instructions`
+INSTRUCTIONS = (
+    "記録の検索・書き込み・削除・関連のたどりは、project-index の search_docs・write_docs・"
+    "delete_docs・trace_related で行う（source はワークスペースの ID）。"
+    "項目を足す前に next_id でその種類の ID を取る。"
+    "commit とスレッドの書き込み（new_thread・reply・set_thread_status・update_thread）は、"
+    "そのワークスペースの MindStella のセッションだけが呼べる。"
 )
 
 # `MINDSTELLA_PORT` が無いか空のときに待ち受けるポート（`ensure_server.py` の同じ名前の定数と合わせる）
@@ -213,6 +200,7 @@ def main(
         external=load_external_access(source),
         transcriber=transcriber,
         input_targets=InputTargets(state_root=state_root, workspace_id=workspaces.workspace_id_of),
+        state_root=state_root,
     )
     started_at = datetime.now(UTC).isoformat(timespec="seconds")
     plugin_root = PLUGIN_VERSION_FILE.parent
@@ -340,7 +328,7 @@ def build_server(
     context: Any,
 ) -> MCPServer:
     """`TOOL_NAMES` のツールを登録した MCP サーバーを作る。"""
-    server = MCPServer(SERVER_NAME)
+    server = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS)
     # ツールの `status` が同じ名前を覆うので、常駐サーバーの状態を作る関数は別の名前で持つ
     server_state = status
 
@@ -373,11 +361,15 @@ def build_server(
         *,
         create: bool = False,
         require: Callable[[Path], None] = require_workspace,
+        tool: str | None = None,
     ) -> CallToolResult:
-        """ワークスペースを書き換えるツールの処理を、書き換えの鍵を取って呼ぶ。"""
+        """ワークスペースを書き換えるツールの処理を、書き換えの鍵を取って呼ぶ。tool を渡すと MindStella のセッションに限る。"""
         try:
             root = locate(workspace, session)
-        except ArgumentError as error:
+            # MindStella のセッションに限るツール: 違うセッションの呼び出しは何も書かない
+            if tool is not None:
+                require_mindstella_session(context, root, parse_session(session), tool)
+        except (ArgumentError, NotMindStellaSessionError) as error:
             return error_result(error)
         return call_tool(
             lambda: run(root),
@@ -387,39 +379,20 @@ def build_server(
             lock_require=require,
         )
 
-    @server.tool(name="add", description="項目を 1 つ足す（ID・日時・本文を付ける）")
-    def add(
-        workspace: WorkspaceArg,
-        kind: Annotated[Kind, Field(description="足す項目の種類")],
-        item: Annotated[
-            dict[str, Any],
-            Field(
-                description="項目の中身。本文は body_markdown（資料だけ body_html で HTML の本文も書ける）"
-            ),
-        ],
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_add(root, kind, item))
-
-    @server.tool(name="update", description="項目 1 つのキーを置き換える")
-    def update(
-        workspace: WorkspaceArg,
-        id: ItemIdArg,
-        item: Annotated[dict[str, Any], Field(description="置き換えるキーと値。null で消す")],
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_update(root, id, item))
-
     @server.tool(
-        name="remove",
-        description="項目 1 つを消す（本文も消し、消した項目をまだまとめていない変更に残す）。ほかの記録が指している項目は消さずにエラーにする。やめた項目を残すときは update で取り下げる",
+        name="next_id",
+        description="項目を project-index の write_docs で書き込む前に、種類ごとの次の ID を返す。返した ID は予約として常駐サーバーが持ち、並行して取った ID と重ならない",
     )
-    def remove(
+    def next_id(
         workspace: WorkspaceArg,
-        id: ItemIdArg,
+        kind: Annotated[
+            str,
+            Field(description="足す項目の種類（decision・task・research・doc・term・note・log）"),
+        ],
+        count: Annotated[int, Field(description="続けて取る ID の数（1〜50）")] = 1,
         session: SessionArg = None,
     ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_remove(root, id))
+        return read(workspace, session, lambda root: commands.run_next_id(root, kind, count=count))
 
     @server.tool(
         name="update_settings",
@@ -495,22 +468,6 @@ def build_server(
         )
 
     @server.tool(
-        name="batch",
-        description="項目の追加・更新・取得の操作を並べた順に 1 回で当てる。全てを当ててから 1 回だけ書き、1 つでも失敗したら何も書かない。先に足した項目は $番号（add の番号、1 始まり）で指せる",
-    )
-    def batch(
-        workspace: WorkspaceArg,
-        operations: Annotated[
-            list[dict[str, Any]],
-            Field(
-                description="当てる操作の並び。要素は op（add・update・show）と、add は kind・item、update は id・item、show は id"
-            ),
-        ],
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_batch(root, operations))
-
-    @server.tool(
         name="changes_since_read",
         description="AI が最後に読んだ時点より後に足した・変えた項目を、変わったキーと読んだ時点の値つきで返し、読んだ時点を今に進める",
     )
@@ -528,7 +485,9 @@ def build_server(
         ],
         session: SessionArg = None,
     ) -> CallToolResult:
-        return write(workspace, session, lambda root: commands.run_commit(root, summary))
+        return write(
+            workspace, session, lambda root: commands.run_commit(root, summary), tool="commit"
+        )
 
     @server.tool(
         name="pending",
@@ -548,108 +507,6 @@ def build_server(
         session: SessionArg = None,
     ) -> CallToolResult:
         return read(workspace, session, lambda root: commands.run_next(root, limit))
-
-    @server.tool(name="impact", description="参照を逆向きにたどって影響を受ける項目を返す")
-    def impact(
-        workspace: WorkspaceArg, id: ItemIdArg, session: SessionArg = None
-    ) -> CallToolResult:
-        return read(workspace, session, lambda root: commands.run_impact(root, id))
-
-    @server.tool(
-        name="find",
-        description="文字・種類・状態・タグ・対象・カテゴリー・フェーズ・属性の条件に合う項目を、ページに分けて返す。タグは NFKC と小文字にそろえて比べる。使える絞り込みは text・kind・status・tags・any_tags・target・category・phase・attr。タグで絞る前に tags で使われているタグを引く。全体の件数が 1 ページより多いときは next_cursor を同じ条件で cursor に渡して続きを読む。量の見積もりは count_only と各項目の chars・total_chars で行い、返す量は view・include・exclude で選ぶ",
-    )
-    def find(
-        workspace: WorkspaceArg,
-        text: str | None = None,
-        kind: Kind | None = None,
-        status: str | None = None,
-        tags: Annotated[
-            list[str] | None, Field(description="全てを持つ項目に絞るタグ（AND）")
-        ] = None,
-        any_tags: Annotated[
-            list[str] | None, Field(description="いずれかを持つ項目に絞るタグ（OR）")
-        ] = None,
-        target: str | None = None,
-        category: str | None = None,
-        phase: str | None = None,
-        attr: Annotated[
-            list[str] | None, Field(description="`名前=値`（`名前` だけならその属性を持つ項目）")
-        ] = None,
-        limit: Annotated[
-            int, Field(description=f"1 ページに返す件数（1〜{MAX_LIMIT}）")
-        ] = DEFAULT_LIMIT,
-        cursor: Annotated[
-            str | None,
-            Field(description="前のページの next_cursor。前のページと同じ条件で渡す"),
-        ] = None,
-        view: Annotated[
-            Literal["brief", "standard", "full"],
-            Field(
-                description="返す量。brief は title・status・tags・chars、standard はそれに target・category・phase・attrs・updated、full はさらに extra・body・body_format を加える。id・kind はどの量でも返す"
-            ),
-        ] = "brief",
-        include: Annotated[
-            list[FieldName] | None, Field(description="view に加えて返す項目の名前")
-        ] = None,
-        exclude: Annotated[
-            list[FieldName] | None, Field(description="view から外す項目の名前")
-        ] = None,
-        count_only: Annotated[
-            bool,
-            Field(
-                description="true のとき、一覧を返さず total・total_chars・tag_counts だけを返す"
-            ),
-        ] = False,
-        format: Annotated[
-            Literal["markdown", "json"],
-            Field(
-                description="結果の書き方。markdown は本文に Markdown を入れ、json は構造化の結果と本文に同じ JSON を入れる"
-            ),
-        ] = "markdown",
-        session: SessionArg = None,
-    ) -> CallToolResult:
-        search_filter = SearchFilter(
-            text=text,
-            kind=kind,
-            status=status,
-            target=target,
-            category=category,
-            phase=phase,
-            attrs=[parse_attr(entry) for entry in attr or []],
-            tags=tuple(tags or []),
-            any_tags=tuple(any_tags or []),
-        )
-        return read(
-            workspace,
-            session,
-            lambda root: commands.run_find(
-                root,
-                search_filter,
-                limit=limit,
-                cursor=cursor,
-                view=view,
-                include=list(include or []),
-                exclude=list(exclude or []),
-                count_only=count_only,
-            ),
-            render=render_find_markdown if format == "markdown" else None,
-        )
-
-    @server.tool(name="show", description="項目 1 つの中身・本文・参照元を返す")
-    def show(workspace: WorkspaceArg, id: ItemIdArg, session: SessionArg = None) -> CallToolResult:
-        return read(workspace, session, lambda root: commands.run_show(root, id))
-
-    @server.tool(name="attrs", description="使っている属性名と件数を返す")
-    def attrs(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
-        return read(workspace, session, commands.run_attrs)
-
-    @server.tool(
-        name="tags",
-        description="項目とスレッドに付いているタグを、正規化した表記ごとに件数と種類を添えて返す。タグを付ける前や find でタグを渡す前に呼び、同じ概念の言い方・活用の違いのタグがあれば使い回す",
-    )
-    def tags(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
-        return read(workspace, session, commands.run_tags)
 
     @server.tool(name="check", description="スキーマ違反・参照切れ・本文のずれを洗い出す")
     def check(workspace: WorkspaceArg, session: SessionArg = None) -> CallToolResult:
@@ -818,6 +675,7 @@ def build_server(
             workspace,
             session,
             lambda root: commands.run_new_thread(root, body, summary, tags, target),
+            tool="new_thread",
         )
 
     @server.tool(
@@ -838,7 +696,10 @@ def build_server(
         session: SessionArg = None,
     ) -> CallToolResult:
         return write(
-            workspace, session, lambda root: commands.run_reply(root, id, body, summary, take)
+            workspace,
+            session,
+            lambda root: commands.run_reply(root, id, body, summary, take),
+            tool="reply",
         )
 
     @server.tool(
@@ -856,6 +717,7 @@ def build_server(
             workspace,
             session,
             lambda root: commands.run_set_thread_status(root, id, status, reason),
+            tool="set_thread_status",
         )
 
     @server.tool(
@@ -881,6 +743,7 @@ def build_server(
             workspace,
             session,
             lambda root: commands.run_update_thread(root, id, summary, tags, take),
+            tool="update_thread",
         )
 
     @server.tool(
@@ -1054,6 +917,21 @@ def error_result(error: MindmapError) -> CallToolResult:
     if isinstance(error, SchemaMismatchError) and error.legacy:
         lines.append(LEGACY_HINT)
     return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))], is_error=True)
+
+
+def require_mindstella_session(
+    context: Any, root: Path, session: Session | None, tool: str
+) -> None:
+    """呼んだセッションが、そのワークスペースの MindStella のセッションかを確かめ、違えば送る。"""
+    recorded = state.read_session(context.state_root, workspaces.workspace_id_of(root))
+    # MindStella のセッションが無い・ID を持たない・呼んだセッションが無い・ID が違う
+    if (
+        recorded is None
+        or recorded.claude_session_id is None
+        or session is None
+        or session.claude_session_id != recorded.claude_session_id
+    ):
+        raise NotMindStellaSessionError(tool)
 
 
 def resolve_workspace(path: str, session: Session | None, *, argument: str = "workspace") -> Path:

@@ -68,6 +68,7 @@
 | [プレビュー / libraries](./MOD-489-58.ts.yaml) | 描画のライブラリ（mdmark・mermaid・elkjs・marked・jsdiff）を、今の画面と同じ配信元と版から `integrity` で確かめて読む（制約「描画のライブラリ」） |
 | [プレビュー / icon](./MOD-489-74.tsx.yaml) | 24px の枠に描いた線のアイコンと、状態の 10px の印 |
 | [プレビュー / topbar](./MOD-489-88.tsx.yaml) | 部品設計『トップバー.tsx』の props・イベント・状態を持つ |
+| [プレビュー / duplicate-id-notice](./MOD-540-8.tsx.yaml) | 部品設計『重なった ID の通知.tsx』の props・イベント・状態を持つ。 |
 | [プレビュー / button](./MOD-489-89.tsx.yaml) | shadcn/ui の Button（Base UI 版）。見た目の違いは variants（default・secondary・ghost・outline・destructive）で持つ |
 | [プレビュー / table](./MOD-489-96.tsx.yaml) | shadcn/ui の Table |
 | [プレビュー / dialog](./MOD-489-91.tsx.yaml) | shadcn/ui の Dialog（Base UI 版） |
@@ -133,6 +134,8 @@
 | [プレビュー / voice](./MOD-489-124.ts.yaml) | コメント・返信の入力の録音と、カーソルの位置への挿入（今の画面の `core/voice.ts` と同じ振る舞い） |
 | [プレビュー / cn](./MOD-489-135.ts.yaml) | clsx と tailwind-merge でクラス名を 1 つにする |
 | [プレビュー / connection-store](./MOD-489-136.ts.yaml) | 書き換えの知らせがつながっているか（インターフェース定義『SPAを開く』の制約「接続の状態」） |
+| [プレビュー / duplicate-ids-store](./MOD-540-9.ts.yaml) | 変更の検知が知らせた重なった ID と、利用者が閉じた集まり。 |
+| [プレビュー / voice-store](./MOD-489-254.ts.yaml) | 画面で 1 つの音声入力と、トップバーの下の音声入力の知らせを持つ（インターフェース定義『SPAを開く』の制約「音声の入力」） |
 | [プレビュー / theme-store](./MOD-489-141.ts.yaml) | 今の画面と同じキー。値の JSON の `theme` だけを読み書きし、他のキーは残す |
 | [プレビュー / prefs-store](./MOD-489-140.ts.yaml) | 表の列・ピン留め・差分のミニマップ・本文の差分の並べ方・本文の見せ方・絞り込みの条件・表示する種類・ネットワークの見た目・コメントの一覧のピン止め・レビュー中のコメントの並びを、今の画面と同じ `localStorage` のキーで読み書きする（制約「端末の保存領域」） |
 | [プレビュー / edit-session-store](./MOD-489-138.ts.yaml) | 開いている追加の入力と、直前の保存で書き込めなかった編集 |
@@ -156,9 +159,16 @@
 | [サーバー / 移行 / field_to_playbooks.py](./MOD-489-182.py.yaml) | サーバー / 移行 / field_to_playbooks.py |
 | [サーバー / 移行 / answer_to_adopted_option.py](./MOD-489-183.py.yaml) | サーバー / 移行 / answer_to_adopted_option.py |
 | [サーバー / 移行 / submissions_to_threads.py](./MOD-489-184.py.yaml) | サーバー / 移行 / submissions_to_threads.py |
+| [サーバー / 移行 / refs_to_related.py](./MOD-540-3.py.yaml) | サーバー / 移行 / v0.13.0 の参照のキーを種類つきの関連へ移す移し替え |
+| [サーバー / 移行 / body_to_docs_path.py](./MOD-540-4.py.yaml) | サーバー / 移行 / v0.13.0 の本文のパスを docs/ から書く移し替え |
+| [サーバー / 移行 / place_source_config.py](./MOD-540-5.py.yaml) | サーバー / 移行 / v0.13.0 の記録の配信の設定を置く移し替え |
+| [サーバー / 移行 / meta_to_history_yaml.py](./MOD-540-6.py.yaml) | サーバー / 移行 / v0.13.0 の項目の履歴のキーを history.yaml へ移す移し替え |
+| [サーバー / ID の採番 / ids.py](./MOD-540-1.py.yaml) | サーバー / ID の採番 / ids.py |
+| [サーバー / 変更の検知 / change_detection.py](./MOD-540-2.py.yaml) | サーバー / 変更の検知 / change_detection.py |
 | [プレビュー / 入口 / app.ts](./MOD-489-171.ts.yaml) | プレビューを開いたときに記録を読み（配る書き出しは埋め込みから、サーバーの配信は『記録の取得』から）、URL のハッシュが指す画面を描き、操作を画面の移動・書き換えの知らせ・コメントの読み書き・端末の保存領域につなぐ。 |
 | [プレビュー / 画面と部品 / body-diff-layout-switch.ts](./MOD-489-205.ts.yaml) | プレビュー / 画面と部品 / body-diff-layout-switch.ts |
 | [プレビュー / 画面と部品 / chips-input.ts](./MOD-489-243.ts.yaml) | プレビュー / 画面と部品 / chips-input.ts |
+| [プレビュー / 画面と部品 / duplicate-id-notice.ts](./MOD-540-7.ts.yaml) | プレビュー / 画面と部品 / duplicate-id-notice.ts |
 | [プレビュー / 画面と部品 / comment-mark.ts](./MOD-489-215.ts.yaml) | プレビュー / 画面と部品 / comment-mark.ts |
 | [プレビュー / 画面と部品 / diff-mark.ts](./MOD-489-229.ts.yaml) | プレビュー / 画面と部品 / diff-mark.ts |
 | [プレビュー / 画面と部品 / diff-minimap.ts](./MOD-489-203.ts.yaml) | プレビュー / 画面と部品 / diff-minimap.ts |
@@ -233,7 +243,6 @@
 | [サーバー / 箇所 / locations.py](./MOD-489-165.py.yaml) | コメントが指す箇所（本文の行の範囲か項目の値のキーと、選んだ文）の形を確かめ、今の項目に合うかを確かめる。読み書きと検証だけに依存し、書き込まない。 |
 | [サーバー / 移行 / migration_ops.py](./MOD-489-181.py.yaml) | サーバー / 移行 / migration_ops.py |
 | [サーバー / 移行 / migrator.py](./MOD-489-179.py.yaml) | サーバー / 移行 / migrator.py |
-| [サーバー / 検索 / query.py](./MOD-489-161.py.yaml) | 条件で項目を探してページに分け、返す量を選んで JSON か Markdown にし、1 件の中身と参照元、使っている属性名とタグを出す。読み書きと検証・タグの表記だけに依存し、ファイルを書かない。 |
 | [サーバー / ワークスペースの README / readme.py](./MOD-489-153.py.yaml) | ワークスペースの直下の `README.md`（起動・接続のコマンド、スキルの呼び方、プレビューの URL の一覧）を組み立てて書く。`init`・`readme`・`preview_url` の 3 つのツールが同じ関数で書く。 |
 | [サーバー / 未読へ戻す / reset_unread.py](./MOD-489-160.py.yaml) | Claude Code の `SessionStart` のフックが呼ぶスクリプト。作業フォルダとその直下のワークスペースを探し、ロックを取ってスレッドの書き込みを未読に戻す。スレッドと読み書きと検証に依存する。単体テストは `tests/unit/scripts/test_reset_unread.py` に置く。 |
 | [サーバー / 配信 / serve.py](./MOD-489-169.py.yaml) | ワークスペースごとに `127.0.0.1` の空きポートでプレビューを配る。画面・記録・スレッド・書き換えの知らせを返し、レビュー中のコメント・書きかけ・まとめて送る・スレッドの状態の書き換え・スレッドの利用者の既読・設定の既定の書き換え・設定の再読み込み・書き込みをすぐ送るを受け付ける。まとめて送った後とすぐ送った後は Claude Code へ入力する。文字起こしの可否を返し、受けた音声を文字起こしのインターフェースへ渡す。ビルド（雛形と記録）とコメントとスレッドと Claude Code への入力と設定の更新と文字起こしと読み書きと検証に依存する。 |

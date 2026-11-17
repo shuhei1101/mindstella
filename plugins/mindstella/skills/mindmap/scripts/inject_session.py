@@ -33,6 +33,9 @@ STAT_STARTTIME_INDEX = 19
 # これ以下の PID に着いたら、親をたどるのをやめる（init）
 INIT_PID = 1
 
+# 書き換えた入力での呼び出しを許可するときの理由（出力の permissionDecisionReason）
+PERMISSION_REASON = "mindstella のツールの呼び出しにセッションの値を入れた"
+
 
 def main(
     *,
@@ -41,7 +44,7 @@ def main(
     environ: Mapping[str, str] | None = None,
     find_claude: Callable[[int], tuple[int, str] | None] | None = None,
 ) -> int:
-    """フックの入力の `tool_input` の `session` を、このセッションの値で上書きした `updatedInput` を出す。"""
+    """フックの入力の `tool_input` の `session` を、このセッションの値で上書きした `updatedInput` を、`permissionDecision` の `allow` と一緒に出す。"""
     env = os.environ if environ is None else environ
     search = find_claude_process if find_claude is None else find_claude
     try:
@@ -59,8 +62,19 @@ def main(
     # tmux の中だけ、入力を貼る先の Claude Code のプロセスを探す
     claude = search(os.getppid()) if _inside_tmux(env) else None
     updated = dict(tool_input)
-    updated["session"] = build_session(cwd, env, claude)
-    output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": updated}}
+    session_id = hook_input.get("session_id")
+    updated["session"] = build_session(
+        cwd, env, claude, session_id=session_id if isinstance(session_id, str) else None
+    )
+    # 書き換えた入力のまま呼ばせるため allow を付ける（付けないと auto モードで拒否されうる）
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "permissionDecisionReason": PERMISSION_REASON,
+            "updatedInput": updated,
+        }
+    }
     print(json.dumps(output, ensure_ascii=False), file=sys.stdout if stdout is None else stdout)
     return 0
 
@@ -71,9 +85,13 @@ def _inside_tmux(environ: Mapping[str, str]) -> bool:
 
 
 def build_session(
-    cwd: str, environ: Mapping[str, str], claude: tuple[int, str] | None
+    cwd: str,
+    environ: Mapping[str, str],
+    claude: tuple[int, str] | None,
+    *,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
-    """作業フォルダ・環境変数・Claude Code のプロセスから、ツールの引数 `session` の辞書を作る。"""
+    """作業フォルダ・環境変数・Claude Code のプロセス・セッションの ID から、ツールの引数 `session` の辞書を作る。"""
     config_dir = environ.get("CLAUDE_CONFIG_DIR") or ""
     session: dict[str, Any] = {
         "cwd": cwd,
@@ -81,6 +99,9 @@ def build_session(
         if config_dir
         else str(DEFAULT_CONFIG_DIR),
     }
+    # Claude Code のセッションの ID（MindStella のセッションに限るツールの確かめに使う）
+    if session_id is not None:
+        session["claude_session_id"] = session_id
     # tmux の外: 入力を貼る先を持たない
     if not _inside_tmux(environ):
         return session

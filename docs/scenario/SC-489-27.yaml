@@ -43,7 +43,7 @@ scenarios:
       - name: make_workspace
         description: 作成を済ませたワークスペース
       - name: 記録
-        description: 検討事項 D-1 と、D-1 を依存先（`depends_on`）に持つ検討事項 D-2
+        description: 検討事項 D-1 と、D-1 を依存先（`depends_on` の種類の `related`）に持つ検討事項 D-2
       - name: 保存待ちの編集
         description: D-1 を消す編集と、D-2 の答えの編集の 2 件
       - name: 配信
@@ -83,5 +83,5 @@ frequency: 話し合いの合間に画面で記録を整えるたび
 priority: 中
 notes:
   E2E の範囲: MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで操作し、ワークスペースの YAML と本文のファイルを読んで確かめる。対応テストファイルは `tests/e2e/単一ユースケース/test_item_remove.py` にし、E2E テスト作成で書き足す
-  消すと取り下げる: 消すのは誤って足した・重なった項目で、やめた項目は取り下げ・対象外・中止の状態にする（単一ユースケース『画面で項目を編集して保存する』）。指されている項目を消せない扱いは MCP の `remove` と同じ
+  消すと取り下げる: 消すのは誤って足した・重なった項目で、やめた項目は取り下げ・対象外・中止の状態にする（単一ユースケース『画面で項目を編集して保存する』）。指されている項目を消せない扱いは project-index の `delete_docs` と同じ
 test_file: tests/e2e/単一ユースケース/test_item_remove.py

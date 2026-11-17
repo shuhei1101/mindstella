@@ -46,13 +46,25 @@ var MindmapPreview;
     MindmapPreview.TASK_STATUSES = ["未着手", "進行中", "保留", "完了", "中止"];
     /** 資料の状態の並び */
     MindmapPreview.DOC_STATUSES = ["下書き", "確認中", "完成"];
-    /** 項目が別の項目を指すキー */
-    const REFERENCE_KEYS = ["depends_on", "for", "related", "sources"];
+    /** 項目の `related` のうち、種類が同じものの `to` を並べて返す（`related` が無ければ空） */
+    function refsOf(item, type) {
+        return (item?.related ?? []).filter((relation) => relation.type === type).map((relation) => relation.to);
+    }
+    MindmapPreview.refsOf = refsOf;
+    /** 項目が指す全ての ID（`related[].to` と `sources`） */
+    function referencesOf(item) {
+        return [...(item.related ?? []).map((relation) => relation.to), ...(item.sources ?? [])];
+    }
     /** 項目の `tags` から名前だけを並びの順に取り出す（文字列のタグはそのまま） */
     function tagNames(tags) {
         return (tags ?? []).map((tag) => (typeof tag === "string" ? tag : tag.name));
     }
     MindmapPreview.tagNames = tagNames;
+    /** ID の頭の文字から種類を返す（当たらなければ null） */
+    function kindOfId(id) {
+        return KIND_OF_PREFIX[id.slice(0, 1)] ?? null;
+    }
+    MindmapPreview.kindOfId = kindOfId;
     /** ID を種類の順 → 連番の順に比べる */
     function compareIds(a, b) {
         const rank = (id) => MindmapPreview.KIND_KEYS.indexOf(KIND_OF_PREFIX[id.slice(0, 1)] ?? "logs");
@@ -69,12 +81,10 @@ var MindmapPreview;
         // 各項目が指す先ごとに、指した側の ID を足す（記録に無い ID もそのまま持つ）
         const referencedBy = new Map();
         for (const { item } of byId.values()) {
-            for (const key of REFERENCE_KEYS) {
-                for (const target of item[key] ?? []) {
-                    const sources = referencedBy.get(target) ?? [];
-                    sources.push(item.id);
-                    referencedBy.set(target, sources);
-                }
+            for (const target of new Set(referencesOf(item))) {
+                const sources = referencedBy.get(target) ?? [];
+                sources.push(item.id);
+                referencedBy.set(target, sources);
             }
         }
         for (const sources of referencedBy.values())
@@ -87,24 +97,27 @@ var MindmapPreview;
         };
     }
     MindmapPreview.buildIndex = buildIndex;
-    /** 前提・後続・関連タスク・経緯・関連・参照している項目を返す */
+    /** 前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照している項目を返す */
     function relatedItems({ id, index }) {
         const entry = index.byId.get(id);
         const item = entry?.item;
         const referrers = index.referencedBy.get(id) ?? [];
-        /** ID の項目が、キーで id を指しているか */
-        const points = (referrer, key) => (index.byId.get(referrer)?.item[key] ?? []).includes(id);
+        /** ID の項目が、その種類の関連で id を指しているか */
+        const points = (referrer, type) => refsOf(index.byId.get(referrer)?.item, type).includes(id);
         const kindOf = (referrer) => index.byId.get(referrer)?.kind;
         const successors = referrers.filter((referrer) => points(referrer, "depends_on"));
+        const children = referrers.filter((referrer) => points(referrer, "parent"));
         const tasks = referrers.filter((referrer) => kindOf(referrer) === "tasks" && points(referrer, "for"));
-        // 経緯: この項目を更新した会話ログと、この項目が経緯として指す会話ログ
-        const incomingLogs = referrers.filter((referrer) => kindOf(referrer) === "logs" && points(referrer, "related"));
+        // 経緯: この項目を種類 see_also で指す会話ログと、この項目が経緯として指す会話ログ
+        const incomingLogs = referrers.filter((referrer) => kindOf(referrer) === "logs" && points(referrer, "see_also"));
         const logs = [...new Set([...incomingLogs, ...(item?.sources ?? [])])].sort(compareIds);
-        const related = item?.related ?? [];
-        const shown = new Set([...successors, ...tasks, ...logs, ...related]);
+        const related = refsOf(item, "see_also");
+        const shown = new Set([...successors, ...children, ...tasks, ...logs, ...related]);
         return {
-            prerequisites: item?.depends_on ?? [],
+            prerequisites: refsOf(item, "depends_on"),
             successors,
+            parents: refsOf(item, "parent"),
+            children,
             tasks,
             logs,
             related,

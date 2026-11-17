@@ -13,13 +13,15 @@ items:
   - page: SC-531-2.yaml
     summary: "MindStella のセッションを止めて、ワークスペースをクローズにする"
   - page: SC-489-34.yaml
-    summary: "検討事項・タスクなどの項目を足す・直す。複数の項目の追加・更新・取得を 1 回で行う"
+    summary: "ID を取ってから、project-index の書き込みで検討事項・タスクなどの項目を足す・直す"
+  - page: SC-540-1.yaml
+    summary: "どのセッションの書き込みも、変更の検知が履歴に残し、外部の変更を別のまとまりにする"
   - page: SC-489-21.yaml
     summary: "検討事項の採用する案を切り替え、影響を受ける項目を洗い出す"
   - page: SC-489-26.yaml
     summary: "再開時の状況と、次に検討する項目の候補を読む"
   - page: SC-489-33.yaml
-    summary: "項目を探し、1 件の中身と参照元・使っている属性名を読む"
+    summary: "project-index で項目を探し、1 件の中身と参照元・使っているタグを読む"
   - page: SC-489-16.yaml
     summary: "参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズを洗い出す"
   - page: SC-489-37.yaml

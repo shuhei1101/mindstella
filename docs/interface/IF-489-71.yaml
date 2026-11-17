@@ -1049,7 +1049,7 @@ flows:
       ```
     expected:
       - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちのバッジがあり、トップバーの件数が 1
-      - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、バッジと件数が画面を開き直さずに消える
+      - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で、`history.yaml` の D-1 の `updated_by` が `user`、バッジと件数が画面を開き直さずに消える
       - 「編集する」・入力欄・トップバーの件数・取り消す・まとめて保存するに Tab キーで届く
     test: test_normal_when_edits_saved
   - name: 正常系（本文の表とセクションを読む）

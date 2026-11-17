@@ -8,13 +8,16 @@ from pathlib import Path
 from typing import Any, Literal
 
 
+from change_detection import accept_written
 from errors import (
     ArgumentError,
+    ConcurrentWriteError,
     SchemaMismatchError,
     SettingsInvalidError,
     UnmappedPhaseError,
     UnmappedTargetError,
 )
+from history import HISTORY_FILE, ItemHistory, load_item_history
 from kinds import EDITOR, KINDS, RECORD_DIR, SETTINGS_FILE, Kind, records_root
 from store import (
     WHOLE_PATH,
@@ -30,6 +33,7 @@ from store import (
     loses_content_on_rewrite,
     now_utc,
     remove_files,
+    require_unchanged,
     validate_workspace,
     write_failed,
     write_temp,
@@ -99,6 +103,8 @@ class SettingsStage:
     changed: list[str]
     # 付け替えた項目（`update_settings` の `remapped` の並びの順）
     remapped: list[PhaseRemap]
+    # 付け替えた後の `history.yaml` の行（項目の ID → 行）
+    history: dict[str, ItemHistory]
 
 
 def validate_settings_input(
@@ -190,10 +196,12 @@ def remap_phases(
     phase_map: dict[str, str],
     now: NowFn = now_utc,
     *,
+    rows: dict[str, ItemHistory],
     editor: str = EDITOR,
-) -> tuple[list[Change], list[PhaseRemap], dict[str, Any]]:
-    """新しい phases に無いフェーズを持つ項目と goal.phase を、対応で付け替える。"""
+) -> tuple[list[Change], list[PhaseRemap], dict[str, Any], dict[str, ItemHistory]]:
+    """新しい phases に無いフェーズを持つ項目と goal.phase を、対応で付け替え、行の更新日時を変える。"""
     phases = settings.get("phases", [])
+    rows = dict(rows)
     changes: list[Change] = []
     remapped: list[PhaseRemap] = []
     unmapped: list[tuple[str, str]] = []
@@ -209,10 +217,9 @@ def remap_phases(
             if phase not in phase_map:
                 unmapped.append((str(item.get("id")), phase))
                 continue
-            # 対応がある: フェーズと更新日時を置き換える
+            # 対応がある: フェーズと、履歴の行の更新日時を置き換える
             item["phase"] = phase_map[phase]
-            item["updated"] = now()
-            item["updated_by"] = editor
+            rows[item["id"]] = _touched(rows.get(item["id"], {}), now(), editor)
             remapped.append(
                 PhaseRemap(
                     id=item["id"], key="phase", from_value=phase, to_value=phase_map[phase]
@@ -234,7 +241,7 @@ def remap_phases(
             unmapped.append(("goal", str(goal_phase)))
     if unmapped:
         raise UnmappedPhaseError(unmapped)
-    return changes, remapped, new_settings
+    return changes, remapped, new_settings, rows
 
 
 def remap_names(
@@ -244,9 +251,13 @@ def remap_names(
     category_map: dict[str, str],
     now: NowFn = now_utc,
     *,
+    rows: dict[str, ItemHistory],
     editor: str = EDITOR,
-) -> tuple[dict[Kind, list[dict[str, Any]]], list[PhaseRemap], dict[str, Any]]:
-    """新しい targets・categories に無い名前を持つ項目とカテゴリーの target を、対応で付け替える。"""
+) -> tuple[
+    dict[Kind, list[dict[str, Any]]], list[PhaseRemap], dict[str, Any], dict[str, ItemHistory]
+]:
+    """新しい targets・categories に無い名前を持つ項目とカテゴリーの target を、対応で付け替え、行の更新日時を変える。"""
+    rows = dict(rows)
     targets = _names(settings.get("targets"))
     categories = _names(settings.get("categories"))
     unmapped: list[str] = []
@@ -267,7 +278,7 @@ def remap_names(
     remapped: list[PhaseRemap] = []
     new_items: dict[Kind, list[dict[str, Any]]] = {}
     for kind in KINDS:
-        rows: list[dict[str, Any]] = []
+        kind_items: list[dict[str, Any]] = []
         for original in items[kind]:
             item = dict(original)
             renamed = False
@@ -291,23 +302,24 @@ def remap_names(
                 else:
                     # 対応が無い: 残るものとして控える
                     unmapped.append(f"{item.get('id')}: {key}: {value}")
-            # 付け替えた項目だけ更新日時を変える
+            # 付け替えた項目だけ、履歴の行の更新日時を変える
             if renamed:
-                item["updated"] = now()
-                item["updated_by"] = editor
-            rows.append(item)
-        new_items[kind] = rows
+                rows[str(item.get("id"))] = _touched(rows.get(str(item.get("id")), {}), now(), editor)
+            kind_items.append(item)
+        new_items[kind] = kind_items
     if unmapped:
         raise UnmappedTargetError(unmapped)
-    return new_items, remapped, new_settings
+    return new_items, remapped, new_settings, rows
 
 
 def save_settings(
     workspace: Workspace,
     settings: dict[str, Any],
     changes: list[Change],
+    *,
+    history: dict[str, ItemHistory] | None = None,
 ) -> list[str]:
-    """設定（変わるときだけ）と、付け替えた種類の項目の並びを、検証してから全て書き換えるか、どれも書き換えない。"""
+    """設定（変わるときだけ）と、付け替えた種類の項目の並びと履歴の行を、検証してから全て書き換えるか、どれも書き換えない。"""
     # 書き戻すと中身を失う形のファイルには書かない
     for change in changes:
         if loses_content_on_rewrite(workspace, change.kind):
@@ -327,21 +339,30 @@ def save_settings(
 
     # 置き換える順（種類のファイル → 設定）に、書く先と中身を並べる
     targets = [(KINDS[change.kind].file, {"items": change.items}) for change in changes]
+    # 付け替えた項目の履歴の行（更新日時・編集した人）
+    if history is not None:
+        targets.append((HISTORY_FILE, {"items": history}))
     # 設定が変わらないときは、`config.yaml` を書かない
     settings_written = settings != workspace.settings
     if settings_written:
         targets.append((SETTINGS_FILE, settings))
     # 一時ファイルを先に全て書き、置き換える前の中身を控える
     temps: list[tuple[Path, Path]] = []
-    previous: dict[Path, bytes] = {}
+    previous: dict[Path, bytes | None] = {}
     for file_name, data in targets:
         path = records_root(workspace.root) / file_name
         try:
-            previous[path] = path.read_bytes()
+            previous[path] = path.read_bytes() if path.is_file() else None
             temps.append((write_temp(path, dump_yaml(data)), path))
         except OSError as error:
             remove_files([temp for temp, _ in temps])
             raise write_failed(path, error) from error
+    # 読んだ後にほかが種類の YAML を書いていれば、何も置き換えない
+    try:
+        require_unchanged(workspace, [KINDS[change.kind].file for change in changes])
+    except ConcurrentWriteError:
+        remove_files([temp for temp, _ in temps])
+        raise
     # 順に置き換え、失敗したら置き換えたファイルを控えに戻す
     replaced: list[Path] = []
     for temp, path in temps:
@@ -349,7 +370,12 @@ def save_settings(
             os.replace(temp, path)
         except OSError as error:
             for done in replaced:
-                done.write_bytes(previous[done])
+                before = previous[done]
+                # 前に無かったファイルは消し、あったファイルは控えに戻す
+                if before is None:
+                    done.unlink(missing_ok=True)
+                else:
+                    done.write_bytes(before)
             remove_files([leftover for leftover, _ in temps])
             raise write_failed(path, error) from error
         replaced.append(path)
@@ -384,13 +410,18 @@ def stage_settings(
     )
     merged, changed = merge_settings(workspace.settings, settings)
     # 書き換えのたびに確かめるので、phases に無いフェーズが残れば止まる
-    phase_changes, phase_remapped, phased_settings = remap_phases(
-        workspace, merged, phase_map or {}, now, editor=editor
+    phase_changes, phase_remapped, phased_settings, rows = remap_phases(
+        workspace,
+        merged,
+        phase_map or {},
+        now,
+        rows=load_item_history(workspace.root),
+        editor=editor,
     )
     items = {**workspace.items, **{change.kind: change.items for change in phase_changes}}
     # 書き換えのたびに確かめるので、新しい設定に無い対象・カテゴリーが残れば止まる
-    items, name_remapped, remapped_settings = remap_names(
-        items, phased_settings, target_map or {}, category_map or {}, now, editor=editor
+    items, name_remapped, remapped_settings, rows = remap_names(
+        items, phased_settings, target_map or {}, category_map or {}, now, rows=rows, editor=editor
     )
     # 対応で goal.phase だけが変わったときも goal を変わったキーに入れる
     if phased_settings.get("goal") != merged.get("goal") and "goal" not in changed:
@@ -416,6 +447,7 @@ def stage_settings(
         items=items,
         changed=changed,
         remapped=ordered,
+        history=rows,
     )
 
 
@@ -428,7 +460,22 @@ def update_settings(
     target_map: dict[str, str] | None = None,
     category_map: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリーを付け替え、まとめて書く。"""
+    """引数を確かめ、設定を置き換えてフェーズ・対象・カテゴリーを付け替え、まとめて書く。ほかが間に書いたら 1 回だけ当て直す。"""
+    try:
+        return _update_settings_once(root, settings, phase_map, now, target_map, category_map)
+    except ConcurrentWriteError:
+        return _update_settings_once(root, settings, phase_map, now, target_map, category_map)
+
+
+def _update_settings_once(
+    root: Path,
+    settings: dict[str, Any],
+    phase_map: dict[str, str] | None,
+    now: NowFn,
+    target_map: dict[str, str] | None,
+    category_map: dict[str, str] | None,
+) -> dict[str, Any]:
+    """読んで設定と付け替えを当て、まとめて書く。"""
     workspace = load_workspace(root)
     staged = stage_settings(
         workspace,
@@ -444,7 +491,14 @@ def update_settings(
         for kind in KINDS
         if staged.items[kind] != workspace.items[kind]
     ]
-    files = save_settings(workspace, staged.settings, changes)
+    files = save_settings(
+        workspace, staged.settings, changes, history=staged.history if changes else None
+    )
+    # 書いた種類の YAML を、変更の検知の前回の中身に入れる
+    accept_written(
+        workspace.root,
+        {KINDS[change.kind].file: dump_yaml({"items": change.items}) for change in changes},
+    )
     return {
         "changed": staged.changed,
         "remapped": [
@@ -480,6 +534,11 @@ def update_display(root: Path, body: dict[str, Any]) -> dict[str, Any]:
     # 変更履歴にも書き換えのまとまりにも入れず、設定だけを書く
     save_settings(workspace, settings, [])
     return {"display": display}
+
+
+def _touched(row: ItemHistory, at: str, editor: str) -> ItemHistory:
+    """履歴の行の更新日時と編集した人を書き換えた新しい行を返す。"""
+    return {**row, "updated": at, "updated_by": editor}  # type: ignore[typeddict-item]
 
 
 def _settings_key_lines(settings: dict[str, Any]) -> list[str]:

@@ -1,0 +1,46 @@
+confirmations:
+  - topic: session のスキルと公開ドキュメント『スキル』の、削除するツールを呼ぶ箇所をこの PR で書き換えるか
+    decision: この PR で、削除するツールを呼ぶ箇所だけを project-index のツールと next_id に書き換える。手順の流れは変えない（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577424937
+  - topic: 資料などの本文（.mindstella/docs/{ID}.md）の書き込みの手段
+    decision: project-index に、body_file が指す本文のファイルを write_docs の set・text_edits で書き込む汎用の変更を起票し、この PR はその変更に依存する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577425296
+  - topic: 記録の参照（depends_on・parent・for・related）を project-index でたどれるようにする手段
+    decision: この PR で、参照のキーを related の {to, type} に移し、depends_on・parent・for をやめる（D-275 B を前倒しする。#390 の {to, type} の設計と移し替えの方針を使う。推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4577661089
+  - topic: 変更履歴で外部の変更のまとまりを見分ける表示と文言
+    decision: まとまりの名前を「ほかのセッションの書き込み」にし、名前の横に「外部の変更」の札を付ける（モックの history-dialog/540/a-tag。推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578196106
+  - topic: 重なった ID の通知の置き場所と文面
+    decision: トップバーの下に閉じられるバーで「同じ ID の項目が 2 件あります」と、重なった項目の ID・片方の ID の変更を促す文を表示する（モックの duplicate-id-notice/540/a-banner。推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578196510
+  - topic: 詳細パネルで種類つきの関係を表示・入力する構成と種類の表示名
+    decision: 種類ごとに見出しを配置し、今のチップの入力（CMP-489-17・18）を並べる。表示名は depends_on を「前提」、parent を「親」、see_also を「関連」、for を「向けた検討事項」にする（モックの detail-panel/540/b-type-group。推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4578197037
+  - topic: メモリが足りないときのフロントの結合テストの実行
+    decision: メモリが空いたらユーザーが確認事項のスレッドに返信し、フロントの結合テストを並列数 1 で実行する（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4585763422
+  - topic: project-index#83 の変更（#92）がリリースされていないときのマージ
+    decision: 'project-index が #92 を含むバージョンをリリースするまで待ち、リリースしたらユーザーが返信してマージする（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4592299800
+  - topic: project-index の依存のバージョン（リリースを待つか）
+    decision: project-index のリリースを待たず、develop の最新（#92 を含む）を前提にしてマージする。前の決着（リリースまで待つ）を置き換える
+    decided_by: reply
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4602841296

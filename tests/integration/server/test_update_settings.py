@@ -146,10 +146,11 @@ def test_normal_when_phases_remapped(
     assert decisions["D-2"]["phase"] == "発散"
     assert tasks["T-1"]["phase"] == "要件"
     assert _read_yaml(root, "config.yaml")["goal"]["phase"] == "要件"
-    # 付け替えた項目だけ updated が書き換えた日時になる
-    assert decisions["D-2"]["updated"] == DEFAULT_TIMESTAMP
-    assert "updated_by" not in decisions["D-2"]
-    for remapped in (decisions["D-1"], tasks["T-1"]):
+    # 付け替えた項目だけ history.yaml の updated が書き換えた日時になる
+    history = _read_yaml(root, "history.yaml")["items"]
+    assert history["D-2"]["updated"] == DEFAULT_TIMESTAMP
+    assert "updated_by" not in history["D-2"]
+    for remapped in (history["D-1"], history["T-1"]):
         assert remapped["updated"] != DEFAULT_TIMESTAMP
         assert remapped["updated_by"] == "ai"
         assert datetime.fromisoformat(remapped["updated"]).tzinfo is not None

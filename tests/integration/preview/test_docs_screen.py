@@ -828,7 +828,7 @@ def test_drawer_saved_filter_when_value_missing(
 def _write_format_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
     """本文の形式が違う資料 2 件の配信の URL を返す。"""
     return write_preview(
-        make_item("A-1", body="A-1.html"),
+        make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
         bodies={"A-1.html": "<p>一覧の画面</p>\n", "A-2.md": "資料の本文\n"},
     )

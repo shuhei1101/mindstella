@@ -3,7 +3,7 @@
 var MindmapPreview;
 (function (MindmapPreview) {
     /** 値を並べるキーの入力（チップと、追加する入力欄）。`mainToggle` が真のときは値を `{name, main?}` で持ち、チップに主題のトグルを置く */
-    function chipsInput({ controlId, name, hint, values, suggestions, monospace, mainToggle = false, disabled, onChange, }) {
+    function chipsInput({ controlId, name, hint, values, suggestions, monospace, mainToggle = false, disabled, validate, onChange, }) {
         let current = values.map((value) => typeof value === "string" ? { name: value } : value.main === true ? { name: value.name, main: true } : { name: value.name });
         /** `onChange` に渡す並び（トグルを持たないときは名前の文字列の並び） */
         const output = () => (mainToggle ? current.map((tag) => ({ ...tag })) : current.map((tag) => tag.name));
@@ -22,11 +22,37 @@ var MindmapPreview;
                 disabled,
             },
         });
+        const errorId = `${controlId}-error`;
+        const error = MindmapPreview.h({ tag: "p", attrs: { class: "pe-chip-error", id: errorId, hidden: true } });
+        /** 入力の誤りを出す（null で消す）。誤りの間は入力欄が誤りの文を指す */
+        const showError = (message) => {
+            error.hidden = message === null;
+            error.textContent = message === null ? "" : `入力の誤り: ${message}`;
+            if (message === null) {
+                field.removeAttribute("aria-invalid");
+                field.removeAttribute("aria-describedby");
+            }
+            else {
+                field.setAttribute("aria-invalid", "true");
+                field.setAttribute("aria-describedby", errorId);
+            }
+        };
+        field.addEventListener("input", () => showError(null));
         /** 入力した値を並びに追加する（空と、もうある値は追加しない。追加したタグは主題でない） */
         const addValue = () => {
-            const text = field.value.trim();
+            const entered = field.value.trim();
+            if (entered === "")
+                return;
+            const checked = validate === undefined ? { value: entered } : validate(entered);
+            // 誤り: 追加せず、入れた値を入力欄に残して直下に誤りを出す
+            if ("error" in checked) {
+                showError(checked.error);
+                return;
+            }
+            showError(null);
             field.value = "";
-            if (text === "" || current.some((tag) => tag.name === text))
+            const text = checked.value;
+            if (current.some((tag) => tag.name === text))
                 return;
             current = [...current, { name: text }];
             draw();
@@ -90,7 +116,7 @@ var MindmapPreview;
                         children: [MindmapPreview.icon("x")],
                     }),
                 ],
-            })), field, ...(suggestions === null
+            })), field, error, ...(suggestions === null
                 ? []
                 : [
                     MindmapPreview.h({

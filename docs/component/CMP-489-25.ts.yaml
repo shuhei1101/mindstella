@@ -17,6 +17,11 @@ states:
     description: まだまとめていない変更が無い。その行を出さない
   - name: LongName
     description: 長い説明のまとまり。名前を折り返し、日時と件数の列を押し出さない
+  - name: External
+    description: 外部の変更のまとまりがある。名前「ほかのセッションの書き込み」の横に「外部の変更」の札（線の枠・強い色を使わない）を付け、補足に「書き換えが止んで 1 分後に自動でまとめた」
+    args:
+      - name: points[].external
+        value: true（2 つ目のまとまり）
   - name: Narrow
     description: 幅 390px。モーダルを画面幅に合わせ、一覧を縦に送る
     notes:
@@ -50,6 +55,12 @@ args:
     choices: 0 以上
     description: その時点で足した・変えた・消した項目の数。「{数} 件」と出す
     status: implemented
+  - name: points[].external
+    type: 真偽値
+    required: false
+    default: 偽（札を付けない）
+    description: 'ほかのセッションの書き込みのまとまり（`changes.yaml` の `sets[].by` が `external`）か。真なら名前の横に「外部の変更」の札を付ける。札は文言で伝え、色だけに頼らない'
+    status: planned
   - name: current
     type: 文字列
     required: true
@@ -67,4 +78,5 @@ accessibility:
   - '`dialog` を `showModal()` で開き、見出し「変更履歴」を読み上げ名にする'
   - 選んでいる行に `aria-current="true"` を付け、チェックの印だけに頼らない
   - 行はボタンにし、キーボードで移って選べる
+  - 「外部の変更」の札は行のボタンの読み上げ名に含める（名前に続けて読む）
 test_file: tests/integration/storybook/test_history_dialog_stories.py

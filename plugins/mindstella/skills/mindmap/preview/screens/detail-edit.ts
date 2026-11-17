@@ -2,7 +2,7 @@
 
 namespace MindmapPreview {
   /** 編集の表示のキーの入力の種類 */
-  export type EditableInput = "text" | "textarea" | "select" | "tags" | "refs" | "check" | "body" | "options";
+  export type EditableInput = "text" | "textarea" | "select" | "tags" | "refs" | "relations" | "check" | "body" | "options";
 
   /** 編集の表示から使う側へ知らせる、溜める編集 1 件（向け先は使う側が持つ） */
   export type EditInput = {
@@ -38,6 +38,8 @@ namespace MindmapPreview {
     body?: string;
     /** まだ溜めていない書きかけの案（`EditState.optionDrafts`）。案の後ろに並べて描く */
     optionDrafts: OptionDraft[];
+    /** 記録の索引（関係の入力で、入れた ID かタイトルを項目に当てる。渡さなければ入れた値をそのまま追加する） */
+    index?: RecordIndex;
     on: {
       change: (input: EditInput) => void;
       remove: () => void;
@@ -59,7 +61,7 @@ namespace MindmapPreview {
       { key: "category", input: "select" },
       { key: "phase", input: "select" },
       { key: "tags", input: "tags" },
-      { key: "depends_on", input: "refs" },
+      { key: "related", input: "relations" },
       { key: "options", input: "options" },
       { key: "answer", input: "textarea" },
       { key: "reason", input: "textarea" },
@@ -71,6 +73,7 @@ namespace MindmapPreview {
       { key: "target", input: "select" },
       { key: "kind", input: "select" },
       { key: "tags", input: "tags" },
+      { key: "related", input: "relations" },
       { key: "result", input: "textarea" },
       { key: "body", input: "body" },
     ],
@@ -80,7 +83,7 @@ namespace MindmapPreview {
       { key: "conclusion", input: "textarea" },
       { key: "confidence", input: "select" },
       { key: "tags", input: "tags" },
-      { key: "related", input: "refs" },
+      { key: "related", input: "relations" },
       { key: "withdrawn", input: "check" },
       { key: "reason", input: "textarea" },
       { key: "body", input: "body" },
@@ -91,7 +94,7 @@ namespace MindmapPreview {
       { key: "kind", input: "text" },
       { key: "deliverable", input: "check" },
       { key: "tags", input: "tags" },
-      { key: "related", input: "refs" },
+      { key: "related", input: "relations" },
       { key: "withdrawn", input: "check" },
       { key: "reason", input: "textarea" },
       { key: "body", input: "body" },
@@ -109,7 +112,7 @@ namespace MindmapPreview {
       { key: "title", input: "text" },
       { key: "content", input: "textarea" },
       { key: "tags", input: "tags" },
-      { key: "related", input: "refs" },
+      { key: "related", input: "relations" },
       { key: "withdrawn", input: "check" },
       { key: "reason", input: "textarea" },
       { key: "body", input: "body" },
@@ -117,7 +120,7 @@ namespace MindmapPreview {
     logs: [
       { key: "title", input: "text" },
       { key: "date", input: "text" },
-      { key: "related", input: "refs" },
+      { key: "related", input: "relations" },
       { key: "withdrawn", input: "check" },
       { key: "reason", input: "textarea" },
       { key: "body", input: "body" },
@@ -167,10 +170,49 @@ namespace MindmapPreview {
   /** 値を並べるキーの入力欄に出す案内 */
   const CHIP_HINTS: Record<string, string> = {
     tags: "タグを入れる",
-    depends_on: "ID を入れる",
-    related: "ID を入れる",
     aliases: "別名を入れる",
   };
+
+  /** 種類ごとに関係の入力へ並べる関連の種類（表示の順） */
+  const RELATION_TYPES: Record<Kind, RelationType[]> = {
+    decisions: ["depends_on", "parent", "see_also"],
+    tasks: ["for", "depends_on", "see_also"],
+    research: ["see_also"],
+    docs: ["see_also"],
+    terms: ["see_also"],
+    notes: ["see_also"],
+    logs: ["see_also"],
+  };
+
+  /** 関連の種類の表示名 */
+  const RELATION_LABELS: Record<RelationType, string> = {
+    depends_on: "前提",
+    parent: "親",
+    for: "向けた検討事項",
+    see_also: "関連",
+  };
+
+  /** 関係の入力欄に出す案内 */
+  const RELATION_HINT = "ID かタイトル";
+
+  /** 関係の入力で、入れた値を記録の項目の ID に当てる関数を返す（当たらない・その種類が指せない項目なら誤り） */
+  export function relationValidator(
+    type: RelationType,
+    kind: Kind,
+    index: RecordIndex,
+  ): (value: string) => { error: string } | { value: string } {
+    return (value) => {
+      const text = value.trim();
+      const found =
+        index.byId.get(text) ?? [...index.byId.values()].find((entry) => entry.item.title === text);
+      // 前提・親は同じ種類、向けた検討事項は検討事項だけを指せる
+      const allowed =
+        found !== undefined &&
+        (type === "see_also" || (type === "for" ? found.kind === "decisions" : found.kind === kind));
+      if (found === undefined || !allowed) return { error: `${value} が見つかりません。ID を確認してください。` };
+      return { value: found.item.id };
+    };
+  }
 
   /** 種類ごとに編集の表示へ並べるキーと入力の種類（`id`・`created`・`updated` は含めない） */
   export function editableKeys(kind: Kind): { key: string; input: EditableInput }[] {
@@ -283,7 +325,7 @@ namespace MindmapPreview {
                 h({ tag: "dt", children: ["更新"] }),
                 h({
                   tag: "dd",
-                  children: [`${formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : "AI"}）`],
+                  children: [`${formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : item.updated_by === "external" ? "ほかのセッション" : "AI"}）`],
                 }),
               ]),
         ],
@@ -291,13 +333,70 @@ namespace MindmapPreview {
     );
 
     for (const { key, input } of keys) {
-      form.append(input === "options" ? optionsField(props) : keyField({ props, key, input }));
+      form.append(
+        input === "options" ? optionsField(props) : input === "relations" ? relationsField(props) : keyField({ props, key, input }),
+      );
     }
 
     if (!adding) form.append(removeSection(props));
     // 溜めた知らせ（読み上げにも伝える。使う側が文言を入れる）
     form.append(h({ tag: "p", attrs: { class: "pe-form-msg", role: "status" } }));
     return form;
+  }
+
+  /** 関係の入力（種類ごとに見出しを置き、その下にチップの入力を 1 つずつ並べる）。どれかが変わったら全ての種類の並びを `related` にして溜める */
+  function relationsField(props: DetailEditFormProps): HTMLElement {
+    const { kind, item, removing, on, index } = props;
+    const mark = props.marks["related"];
+    const types = RELATION_TYPES[kind];
+    // 種類 → 今の相手の ID の並び
+    const current = new Map<RelationType, string[]>(types.map((type) => [type, refsOf(item, type)]));
+    const empty = h({ tag: "p", attrs: { class: "pe-rel-empty" }, children: ["なし"] });
+    const refreshEmpty = (): void => {
+      empty.hidden = [...current.values()].some((ids) => ids.length > 0);
+    };
+    refreshEmpty();
+    const groups = types.map((type) => {
+      const controlId = `pe-${safeId(item.id)}-related-${type}`;
+      const name = RELATION_LABELS[type];
+      return h({
+        tag: "div",
+        attrs: { class: "pe-rel-group", "data-type": type },
+        children: [
+          h({ tag: "label", attrs: { class: "pe-sub-label", for: controlId }, children: [name] }),
+          chipsInput({
+            controlId,
+            name,
+            hint: RELATION_HINT,
+            values: current.get(type) ?? [],
+            suggestions: null,
+            monospace: true,
+            mainToggle: false,
+            disabled: removing,
+            validate: index === undefined ? undefined : relationValidator(type, kind, index),
+            onChange: (values) => {
+              current.set(type, values.map((value) => (typeof value === "string" ? value : value.name)));
+              refreshEmpty();
+              const related: Relation[] = types.flatMap((each) => (current.get(each) ?? []).map((to) => ({ to, type: each })));
+              on.change({ op: "set", key: "related", value: related });
+            },
+          }),
+        ],
+      });
+    });
+    return h({
+      tag: "div",
+      attrs: { class: `pe-field pe-rel${mark === "pending" ? " is-pending" : ""}${mark === "blocked" ? " is-blocked" : ""}`, "data-key": "related" },
+      children: [
+        h({
+          tag: "div",
+          attrs: { class: "pe-label-row" },
+          children: [h({ tag: "span", attrs: { class: "pe-label" }, children: ["関係"] }), mark === undefined ? null : pendingEditMark({ kind: mark, compact: true })],
+        }),
+        empty,
+        ...groups,
+      ],
+    });
   }
 
   /** キーの名前の行（名前と、必須の印・保存待ちの印） */

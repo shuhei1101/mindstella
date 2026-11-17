@@ -39,7 +39,7 @@ def review_preview(
 ) -> tuple[str, Path]:
     """レビュー中の書き込み（D-1 への箇所つきの新しいスレッド C-41・TH-1 への返信 C-43・クローズの TH-5 への返信 C-44・項目を指さない長い C-45）を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
-        make_item("D-1", title="最初の問い", body="D-1.md"),
+        make_item("D-1", title="最初の問い", body="docs/D-1.md"),
         threads=(
             make_thread("TH-1", make_post("TH-1-1", body="案 A にする"), summary="D-1 の案の相談", target="D-1"),
             make_thread("TH-5", make_post("TH-5-1", body="閉じた質問"), status="closed", summary="閉じた話"),

@@ -1,0 +1,32 @@
+docs:
+  - page: docs/test-procedure/TP-489-1.yaml
+    new: false
+    change: E2E テストの層（TL-5）の `pytest tests/e2e` と E2E の前提を外し、0.x の間は E2E のテストを持たないことにする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T17:12:54.652163+00:00'
+  - page: tests/files.yml
+    new: false
+    change: '`e2e/` の行を削除し、共有の部品の行の概要文から E2E を外す'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-17T18:00:40.814267+00:00'
+scope_out:
+  - item: シナリオの `test_file` とスキーマ `schemas/scenario.schema.yaml` の `test_file` の説明
+    reason: D-311 で、作り直すときの対応の印として残すと決めた。スキーマは `^tests/.+` の形だけを見る。AI Monitor の設計書の検証（`design_docs validate`）は、削除後のシナリオの `test_file` に `対応テストファイルがありません` を出す（51 件）。`write_docs` の書き込みとマージの「設計書の検証」は止めない。E2E を開発の間は作らないプロジェクトでの検証の扱いは shuhei1101/ai-monitor#3403 が持つ
+    plan: shuhei1101/ai-monitor#3403
+  - item: 外部ライブラリ『pytest-playwright』（LIB-489-17）と Playwright の依存
+    reason: 結合テスト（`tests/integration/`）が使い続ける
+    plan: none
+  - item: '`tests/` 直下の共有の部品（`conftest.py`・`launch_fixtures.py`・`claude_pane_fixtures.py`・`external_access_helpers.py`・`preview_clock_helpers.py`・`workspace_fixtures.py`）のファイル'
+    reason: どれも結合テストか単体テストが import していて、E2E だけの部品ではない。docstring の E2E の記述だけを直す
+    plan: none
+  - item: v1.0.0 の前の E2E の作り直し
+    reason: D-307・D-299 で、メジャーのリリースの前の精査の工程で作ると決めた
+    plan: none
+  - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` の fail
+    reason: base（origin/develop）でも fail する既存の不具合で、この作業 PR の変更によらない
+    plan: '#561'
+  - item: 結合テスト `tests/integration/server/test_preview_url.py` の `test_normal_when_diff_given`・`test_error_when_diff_not_found` の fail
+    reason: base（origin/develop）でも fail する既存の不具合で、この作業 PR の変更によらない
+    plan: '#562'

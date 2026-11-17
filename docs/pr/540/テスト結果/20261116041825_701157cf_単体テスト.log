@@ -1,0 +1,754 @@
+# 単体テスト: 実装の末尾の commit 701157cf
+
+$ npx tsc -p .
+(exit 0)
+
+$ pytest tests/unit
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 19%]
+........................................................................ [ 22%]
+........................................................................ [ 25%]
+........................................................................ [ 28%]
+........................................................................ [ 31%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 66%]
+........................................................................ [ 70%]
+........................................................................ [ 73%]
+..s..................................................................... [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+...........................                                              [100%]
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.venvs/mindstella-dev/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2258 passed, 1 skipped, 5 warnings in 1526.17s (0:25:26)
+(exit 0)
+
+$ npx vitest run
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_item
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_full
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+·stderr | frontend/src/features/settings/workspace-settings/workspace-settings-screen.test.tsx > WorkspaceSettingsScreen > workspace_settings_screen
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/graph/graph/graph-screen.test.tsx > GraphScreen > graph_screen_when_lock_tapped
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_settings
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/graph/graph/graph-screen.test.tsx > GraphScreen > graph_screen_when_lock_key
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_order
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/graph/graph/graph-screen.test.tsx > GraphScreen > graph_screen_when_lock_key_pinned_panel
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/graph/graph/graph-screen.test.tsx > GraphScreen > graph_screen_when_lock_key_typing
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_toggle_open
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_graph
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_toggle_open
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailHeader inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailHeader inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_toggle_open
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+·stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_toggle_open
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailHeader inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ListScreen inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailHeader inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailContent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | frontend/src/features/detail/detail-panel/components/detail-comments.test.tsx > DetailComments > detail_comments_when_toggle_open
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search_same_tab
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_search_hidden_kind
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+·stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_voice
+An update to DetailComments inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to DetailComments inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+·stderr | frontend/src/app/preview-shell.test.tsx > PreviewShell > preview_shell_when_voice_target_removed
+An update to PreviewShell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_seen_failed
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_seen_failed
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/comments/thread/thread-view.test.tsx > ThreadView > thread_view_when_close_focus
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/components/body-view.test.tsx > BodyView > body_view_when_heading
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/components/body-view.test.tsx > BodyView > body_view_when_heading_missing
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/shared/hooks/use-voice-input.test.ts > useVoiceInput > use_voice_input_when_unmounted
+An update to Host inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to Host inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | frontend/src/features/comments/comments-panel/comments-panel.test.tsx > CommentsPanel > comments_panel_when_new_thread
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_diff
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_body_scroll_saved
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_editing
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-panel/detail-panel.test.tsx > DetailPanel > detail_panel_when_comments
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx > DetailFullscreen > detail_fullscreen
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+stderr | frontend/src/features/detail/detail-fullscreen/detail-fullscreen.test.tsx > DetailFullscreen > detail_fullscreen_when_comments
+[MSW] Error: intercepted a request without a matching request handler:
+
+  • GET /api/transcription
+
+If you still wish to intercept this unhandled request, please create a request handler for it.
+Read more: https://mswjs.io/docs/http/intercepting-requests
+
+································································································································
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-pool]: Failed to start forks worker for test files /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index/frontend/src/shared/components/review-body-fold.test.tsx.
+ ❯ node_modules/vitest/dist/chunks/index.Di8au7q4.js:5932:94
+ ❯ Pool.schedule node_modules/vitest/dist/chunks/index.Di8au7q4.js:5932:5
+
+Caused by: Error: [vitest-pool-runner]: Timeout waiting for worker to respond
+ ❯ Timeout.<anonymous> node_modules/vitest/dist/chunks/index.Di8au7q4.js:5429:58
+ ❯ listOnTimeout node:internal/timers:605:17
+ ❯ processTimers node:internal/timers:541:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  82 passed (82)
+      Tests  289 passed (289)
+     Errors  1 error
+   Start at  04:07:20
+   Duration  656.46s (environment 55%, import 23%, setup 19%, transform 1%, tests 1%, worker 1%)
+
+Environment  jsdom was created 82 times · 2326.81s total, 55% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+(exit 1)
+
+# 全件の実行で worker の起動が時間切れになったファイル（review-body-fold.test.tsx。/mnt/c の上の worktree で起きる環境の要因で、前の全件の実行では chips-input.test.tsx で起きた）を単独で流し直す
+$ npx vitest run frontend/src/shared/components/review-body-fold.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  04:17:40
+   Duration  36.82s (environment 77%, setup 17%, import 3%, transform 2%, worker 1%)
+
+(exit 0)

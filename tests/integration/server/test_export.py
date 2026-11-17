@@ -16,7 +16,7 @@ import yaml
 
 from .fixture_types import CallTool, MakeItem, MakeWorkspace, SnapshotTree, StartServer
 from .http_helpers import http_request
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import DEFAULT_TIMESTAMP, RECORD_DIR
 
 # このファイルから見たリポジトリの直下（tests/integration/server の 3 つ上）
 REPO_ROOT_PARENT_DEPTH = 3
@@ -106,6 +106,12 @@ class _ExternalReferences(HTMLParser):
             self.found.append((tag, values))
 
 
+def _stamped(item: dict[str, Any]) -> dict[str, Any]:
+    """項目に、history.yaml の行の作成日時・更新日時（make_workspace の既定の日時）を合わせた形を返す。"""
+    return {**item, "created": DEFAULT_TIMESTAMP, "updated": DEFAULT_TIMESTAMP}
+
+
+
 def _read_element(html: str, open_tag: str) -> str:
     """HTML の指定した script 要素の中身を返す。"""
     return html.split(open_tag, 1)[1].split("</script>", 1)[0]
@@ -148,14 +154,14 @@ def test_normal(
     html = out.read_text(encoding="utf-8")
     data = json.loads(_read_element(html, DATA_ELEMENT_OPEN))
     assert data["settings"] == valid_settings
-    assert data["decisions"] == [make_item("D-1")]
-    assert data["tasks"] == [make_item("T-1")]
-    assert data["research"] == [make_item("R-1")]
-    assert data["docs"] == [make_item("A-1")]
-    assert data["terms"] == [make_item("G-1")]
-    assert data["notes"] == [make_item("N-1")]
-    assert data["logs"] == [make_item("L-1")]
-    assert data["bodies"] == {"A-1.md": BODY_WITH_SCRIPT_TAG}
+    assert data["decisions"] == [_stamped(make_item("D-1"))]
+    assert data["tasks"] == [_stamped(make_item("T-1"))]
+    assert data["research"] == [_stamped(make_item("R-1"))]
+    assert data["docs"] == [_stamped(make_item("A-1"))]
+    assert data["terms"] == [_stamped(make_item("G-1"))]
+    assert data["notes"] == [_stamped(make_item("N-1"))]
+    assert data["logs"] == [_stamped(make_item("L-1"))]
+    assert data["bodies"] == {"docs/A-1.md": BODY_WITH_SCRIPT_TAG}
     assert [entry["id"] for entry in data["changes"]["sets"]] == ["V-1"]
     # script・link・img が外のファイルや URL を指さず、import map も無い
     references = _ExternalReferences()
@@ -203,7 +209,7 @@ def test_normal_when_html_body(
     """HTML の本文も、原文と行の印を足したものを埋め込みのデータに入れる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY}
+        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY}
     )
     out = tmp_path / "配る.html"
     # 実行
@@ -212,10 +218,10 @@ def test_normal_when_html_body(
     assert result.is_error is False, result.text
     html = out.read_text(encoding="utf-8")
     data = json.loads(_read_element(html, DATA_ELEMENT_OPEN))
-    assert data["bodies"]["A-1.html"] == HTML_BODY
+    assert data["bodies"]["docs/A-1.html"] == HTML_BODY
     # 『記録の取得』と同じ行の印つきの本文を持つ
     records = http_request(serve_preview(root), "/api/records").json()
-    assert data["marked_bodies"]["A-1.html"] == records["marked_bodies"]["A-1.html"]
+    assert data["marked_bodies"]["docs/A-1.html"] == records["marked_bodies"]["docs/A-1.html"]
     # 本文の `</script>` で埋め込みの要素が閉じていない
     template_closes = TEMPLATE_PATH.read_text(encoding="utf-8").count("</script>")
     assert html.count("</script>") == template_closes + MDMARK_ADDED_ELEMENTS

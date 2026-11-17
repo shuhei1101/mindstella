@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import stat
+import time
 from pathlib import Path
 
-from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
+import yaml
+
+from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree, StartServer
 from .history_helpers import (
     OPTIONS,
     add_item,
@@ -180,3 +184,43 @@ def test_normal_when_item_removed(make_workspace: MakeWorkspace, call_tool: Call
     assert "N-3" not in returned
     changes = read_changes(root)
     assert changes["read_seq"] == changes["last_seq"]
+
+
+# 外部の変更を自動で commit するまでの秒数を縮める環境変数と、テストで渡す秒数
+EXTERNAL_DELAY_ENV = "MINDSTELLA_EXTERNAL_COMMIT_DELAY_SEC"
+EXTERNAL_DELAY_SEC = 1
+
+# 外部の変更のまとまりができるのを待つ上限秒数と、確かめる間隔
+EXTERNAL_WAIT_SEC = 10
+EXTERNAL_POLL_SEC = 0.05
+
+
+def test_normal_when_external(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer
+) -> None:
+    """MindStella のセッションの応答の途中でない間の変更を、外部の変更として返す（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1", answer="読んだ答え"))
+    server = start_server(extra_env={EXTERNAL_DELAY_ENV: str(EXTERNAL_DELAY_SEC)})
+    assert server.call("preview_url", workspace=str(root)).is_error is False
+    assert server.call("changes_since_read", workspace=str(root)).is_error is False
+    path = root / RECORD_DIR / "decisions.yaml"
+    temporary = path.with_name(".decisions.yaml.tmp")
+    temporary.write_text(
+        yaml.safe_dump({"items": [make_item("D-1", answer="直した答え")]}, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    os.replace(temporary, path)
+    deadline = time.monotonic() + EXTERNAL_WAIT_SEC
+    while not read_changes(root).get("sets"):
+        assert time.monotonic() < deadline, "外部の変更のまとまりができません"
+        time.sleep(EXTERNAL_POLL_SEC)
+    # 実行
+    result = server.call("changes_since_read", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert len(result.data["changed"]) == 1
+    changed = result.data["changed"][0]
+    assert (changed["id"], changed["before"]) == ("D-1", {"answer": "読んだ答え"})
+    assert (changed["updated_by"], changed["by"]) == ("external", ["external"])

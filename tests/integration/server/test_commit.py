@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .fixture_types import CallTool, LockDirs, MakeWorkspace, SnapshotTree
+from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, McpServer, SnapshotTree
 from .history_helpers import (
     DECISION_ITEM,
     add_item,
     commit,
     read_changes,
-    read_items,
+    read_history,
     remove_item,
     update_item,
 )
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import RECORD_DIR, mindstella_session
 
 # 手で崩した `changes.yaml`（`pending` から `added` を消した）
 BROKEN_CHANGES = "last_seq: 0\nsets: []\npending:\n  changed: []\n"
@@ -46,7 +46,7 @@ def test_normal(make_workspace: MakeWorkspace, call_tool: CallTool) -> None:
     assert changes["sets"][0]["id"] == "V-2"
     assert changes["sets"][0]["until_seq"] == changes["last_seq"]
     assert changes["pending"] == {"added": [], "changed": []}
-    history_seq = read_items(root, "decisions.yaml")[0]["history"][0]["seq"]
+    history_seq = read_history(root)["D-1"]["history"][0]["seq"]
     assert first["sets"][0]["until_seq"] < history_seq <= changes["sets"][0]["until_seq"]
     assert (root / RECORD_DIR / "decisions.yaml").read_bytes() == before["decisions"]
     assert (root / RECORD_DIR / "tasks.yaml").read_bytes() == before["tasks"]
@@ -159,3 +159,44 @@ def test_normal_when_item_removed(make_workspace: MakeWorkspace, call_tool: Call
     assert pending["added"] == []
     assert pending["changed"] == []
     assert pending.get("removed", []) == []
+
+
+def test_normal_when_external_pending(
+    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+) -> None:
+    """外部の変更が残っていれば、外部の変更のまとまりにして自分のまとまりは作らない（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item("D-1"),
+        raw_files={
+            "changes.yaml": "last_seq: 1\nsets: []\npending:\n  added: []\n  changed:\n  - D-1\n  by: external\n"
+        },
+    )
+    # 実行
+    result = call_tool("commit", workspace=str(root), summary="AI の書き換え")
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["id"] is None
+    changes = read_changes(root)
+    first = changes["sets"][0]
+    assert (first["by"], first["summary"], first["changed"]) == ("external", "ほかのセッションの書き込み", ["D-1"])
+    assert changes["pending"] == {"added": [], "changed": []}
+
+
+def test_error_when_not_mindstella_session(
+    make_workspace: MakeWorkspace, mcp_server: McpServer
+) -> None:
+    """MindStella のセッションでない呼び出しではまとめない（異常系）。"""
+    # 準備
+    root = make_workspace()
+    add_item(mcp_server.call, root, "decision", DECISION_ITEM)
+    mindstella_session(mcp_server.state_home, root)
+    before = (root / RECORD_DIR / "changes.yaml").read_bytes()
+    other = {"cwd": str(root), "claude_session_id": "c-other"}
+    # 実行
+    result = mcp_server.call("commit", workspace=str(root), summary="まとめる", session=other)
+    # 検証
+    assert result.is_error is True
+    assert result.text.startswith("エラー: MindStella のセッションだけが呼べます: commit")
+    assert (root / RECORD_DIR / "changes.yaml").read_bytes() == before

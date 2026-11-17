@@ -1465,6 +1465,8 @@ namespace MindmapPreview {
           bodySection("本文"),
           relation("前提", related.prerequisites),
           relation("後続の項目", related.successors),
+          relation("派生元", related.parents),
+          relation("派生した項目", related.children),
           relation("関連タスク", related.tasks),
           relation("経緯（会話ログ）", related.logs),
         ],
@@ -1474,7 +1476,7 @@ namespace MindmapPreview {
         parent: body,
         children: [
           labelled({ label: "理由", key: "reason", value: item.reason, top: TITLE_TOP_HEADING_LEVEL }),
-          relation("進める検討事項", item.for ?? []),
+          relation("進める検討事項", refsOf(item, "for")),
           relation("前提", related.prerequisites),
           relation("結果", item.result === undefined ? [] : [item.result]),
           bodySection("本文"),

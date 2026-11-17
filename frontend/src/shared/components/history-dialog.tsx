@@ -5,8 +5,11 @@ import { Icon } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/shared/components/ui/dialog";
 
-/** モーダルに並べる時点 1 つ */
-export type HistoryPoint = { sel: string; name: string; sub: string; count?: number };
+/** モーダルに並べる時点 1 つ（`external` が真ならほかのセッションの書き込みのまとまり） */
+export type HistoryPoint = { sel: string; name: string; sub: string; count?: number; external?: boolean };
+
+/** 外部の変更のまとまりに付ける札の文言 */
+const EXTERNAL_TAG = "外部の変更";
 
 export type HistoryDialogProps = {
   points: HistoryPoint[];
@@ -52,7 +55,15 @@ export const HistoryDialog = ({ points, current, onSelect, onClose }: HistoryDia
                   {selected ? <Icon name="check" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-small font-medium wrap-break-word">{point.name}</span>
+                  <span className="block text-small font-medium wrap-break-word">
+                    {point.name}
+                    {point.external === true ? (
+                      <>
+                        {" "}
+                        <span className="ml-1 inline-flex h-5 items-center rounded-sm border border-border px-1.5 align-middle text-xs font-medium text-muted-foreground">{EXTERNAL_TAG}</span>
+                      </>
+                    ) : null}
+                  </span>
                   <span className="block truncate text-xs text-muted-foreground">{point.sub}</span>
                 </span>
                 {point.count === undefined ? null : <span className="flex-none font-mono text-xs whitespace-nowrap text-muted-foreground">{point.count} 件</span>}

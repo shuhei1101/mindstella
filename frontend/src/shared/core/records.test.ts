@@ -5,7 +5,7 @@ import { bodyFormatOf, buildIndex, compareIds, relatedItems, type MindmapData } 
 const data = {
   decisions: [
     { id: "D-1", title: "前提", status: "決定済み" },
-    { id: "D-2", title: "後続", status: "未決定", depends_on: ["D-1"] },
+    { id: "D-2", title: "後続", status: "未決定", related: [{ to: "D-1", type: "depends_on" }] },
   ],
   tasks: [],
   research: [],
@@ -48,6 +48,6 @@ describe("compareIds", () => {
 describe("bodyFormatOf", () => {
   // 拡張子で分ける（正常系）
   test("body_format_of", () => {
-    expect(bodyFormatOf("A-1.html")).toBe("html");
+    expect(bodyFormatOf("docs/A-1.html")).toBe("html");
   });
 });

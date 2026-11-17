@@ -1,0 +1,47 @@
+id: MOD-540-9
+title: プレビュー / duplicate-ids-store
+lead: '変更の検知が知らせた重なった ID と、利用者が閉じた集まり（インターフェース定義『書き換えの知らせ』の `event: duplicate_ids`）。'
+stores:
+  - name: useDuplicateIdsStore
+    title: 重なった ID
+    container: frontend/src/shared/stores/duplicate-ids-store.ts
+    usecase: 書き込みを履歴に残す
+    summary: 書き換えの知らせの `duplicate_ids` で受けた ID と、閉じたときの集まりを持ち、トップバーの `duplicateIds` に渡す ID を決める
+    state:
+      - name: ids
+        type: string[]
+        initial: '[]'
+        description: 最後に受けた重なった ID
+      - name: dismissed
+        type: string[] | null
+        initial: 'null'
+        description: 閉じたときの ID の集まり。`ids` が同じ間は通知を出さない
+    actions:
+      - name: setIds
+        title: 重なった ID の書き換え
+        kind: メソッド
+        summary: 受けた ID に書き換え、閉じたときの集まりと違えば `dismissed` を `null` に戻す
+        args:
+          - name: ids
+            type: string[]
+            required: true
+            description: 受けた ID
+        returns:
+          type: void
+          description: '-'
+        unit_tests:
+          - name: test_set_ids
+            case: 正常
+            summary: 閉じた集まりと違う ID を受けたら出し直す
+            condition: '`["D-1"]` を受けて閉じ、`["D-1"]`・`["D-1", "T-2"]` の順に受ける'
+            mock: なし
+            expected: '`["D-1"]` の 2 回目の後は通知に渡す ID が空、`["D-1", "T-2"]` の後は 2 件'
+      - name: dismiss
+        title: 通知を閉じる
+        kind: メソッド
+        summary: 今の `ids` を `dismissed` にする
+        returns:
+          type: void
+          description: '-'
+notes:
+  単体テスト: 同じフォルダの `duplicate-ids-store.test.ts` に置く（knowledge の規約『フォルダ構成』）

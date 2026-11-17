@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import http.client
 import json
+import queue
 import socket
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -117,6 +119,8 @@ class EventStream:
                 break
             name, _, value = line.partition(":")
             self.headers[name.lower()] = value.strip()
+        # collect が読み始めてから溜める行（読み始める前は None）
+        self._lines: queue.Queue[str] | None = None
 
     def wait_for_changed(self, timeout: float) -> bool:
         """`event: changed` が timeout 秒以内に届けば真、届かなければ偽を返す。"""
@@ -134,6 +138,42 @@ class EventStream:
                 return False
             if line.startswith(b"event: changed"):
                 return True
+
+    def collect(self, timeout: float) -> list[tuple[str, str]]:
+        """timeout 秒の間に届いた知らせを、（`event` の名前・`data` の文字列）の並びで返す。
+
+        行は別のスレッドで読み続けて溜め（読み取りを時間切れで止めると、その後に読めなくなるため）、
+        前回の呼び出しより後に届いた分を返す。
+        """
+        if self._lines is None:
+            self._lines = queue.Queue()
+            self._socket.settimeout(None)
+            threading.Thread(target=self._read_lines, daemon=True).start()
+        events: list[tuple[str, str]] = []
+        name = ""
+        deadline = time.monotonic() + timeout
+        while (remaining := deadline - time.monotonic()) > 0:
+            try:
+                line = self._lines.get(timeout=remaining)
+            except queue.Empty:
+                break
+            # 名前の行: 次の data の行と組にする
+            if line.startswith("event: "):
+                name = line.removeprefix("event: ")
+            # data の行: 直前の名前と組にして残す
+            elif line.startswith("data: ") and name:
+                events.append((name, line.removeprefix("data: ")))
+                name = ""
+        return events
+
+    def _read_lines(self) -> None:
+        """つなぎが閉じるまで行を読み、溜める。"""
+        assert self._lines is not None
+        try:
+            for raw in self._reader:
+                self._lines.put(raw.decode("utf-8").rstrip("\r\n"))
+        except (OSError, ValueError):
+            return
 
     def close(self) -> None:
         """つなぎを閉じる。"""

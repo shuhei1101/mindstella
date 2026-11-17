@@ -1,0 +1,119 @@
+/* PR #540 で足す、外部の変更のまとまりの見分け方・重なった ID の通知・種類つきの関連の表示と入力と、モック専用の操作列 */
+
+/* ===== モック専用の操作列（実画面には無い） ===== */
+
+/* 操作列: トップバーの上に置き、地の色を変えて実画面と見分ける */
+.mockbar { display: flex; align-items: center; gap: 4px 14px; min-height: 32px; padding: 0 20px; background: #fff7d6; color: #5c4a00; font-size: var(--fs-xs); white-space: nowrap; overflow-x: auto; scrollbar-width: none; }
+/* 操作列（ダーク） */
+:root[data-theme="dark"] .mockbar { background: #2a2410; color: #f5e3a3; }
+/* 操作列のリンク */
+.mockbar a { color: inherit; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; }
+/* 開いている案・見本 */
+.mockbar [aria-current] { border-color: currentColor; text-decoration: none; }
+/* 操作列の区切りの見出し */
+.mockbar .label { opacity: .8; }
+/* 操作列の右寄せの隙間 */
+.mockbar .spacer { flex: 1; }
+
+/* ===== 画面の土台（モックの中だけの簡略なトップバーと本文） ===== */
+
+/* 簡略なトップバー: 今の画面と同じ暗い帯 */
+.m-topbar { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 20px; background: var(--topbar-bg); color: var(--topbar-fg); }
+/* トップバーのサイト名 */
+.m-topbar .site { font-weight: 700; }
+/* トップバーの題名 */
+.m-topbar .title { color: var(--topbar-fg-2); font-size: var(--fs-small); }
+/* トップバーの右寄せの隙間 */
+.m-topbar .spacer { flex: 1; }
+/* 本文の区画 */
+.m-main { box-sizing: border-box; width: 100%; max-width: 960px; margin: 0 auto; padding: 24px 20px 64px; }
+/* 本文の見出し */
+.m-main h1 { margin: 0 0 12px; font-size: var(--fs-h2); }
+/* 本文の補足 */
+.m-note { color: var(--text-2); font-size: var(--fs-small); }
+
+/* ===== 変更履歴の外部の変更のまとまり ===== */
+
+/* モーダルを開いたまま見せる（実画面は showModal で開く） */
+dialog.hist.m-static { position: static; width: 100%; max-width: 520px; margin: 24px auto; display: flex; flex-direction: column; }
+/* 案 A: 名前の横の「外部の変更」の札（線の枠。強い色は使わない） */
+.hist-tag { display: inline-flex; align-items: center; height: 20px; margin-left: 8px; padding: 0 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-2); font-size: var(--fs-xs); font-weight: 500; vertical-align: 1px; }
+/* 案 B: 行の頭の書き手の列 */
+.hist-item.m-by { grid-template-columns: 20px 64px 1fr auto; }
+/* 案 B: 書き手の名前 */
+.hist-by { color: var(--text-2); font-size: var(--fs-xs); }
+/* 案 B: 外部の変更の書き手（斜体でも分ける） */
+.hist-by[data-by="external"] { font-style: italic; }
+
+/* ===== 重なった ID の通知 ===== */
+
+/* 案 A: トップバーの下の帯（閉じられる） */
+.m-banner { display: flex; align-items: flex-start; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: var(--fs-small); }
+/* 帯の印（失敗の印と同じ赤。色に加えてアイコンと文言で伝える） */
+.m-banner .m-icon, .m-toast .m-icon { flex: none; width: 18px; height: 18px; color: var(--st-review); }
+/* 帯の本文 */
+.m-banner .m-body { flex: 1; min-width: 0; }
+/* 帯・トーストの見出し */
+.m-banner strong, .m-toast strong { display: block; margin-bottom: 2px; }
+/* 重なった項目の ID のリンク */
+.m-ids a { font-family: var(--font-mono); margin-right: 8px; }
+/* 帯の閉じるボタン */
+.m-close { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--radius); background: none; color: var(--text-2); }
+.m-close:hover { background: var(--hover); color: var(--text); }
+/* 案 B: 右下のトースト（閉じるまで残す） */
+.m-toast { position: fixed; right: 20px; bottom: 20px; display: flex; align-items: flex-start; gap: 10px; width: min(380px, calc(100vw - 40px)); padding: 12px 12px 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: var(--fs-small); box-shadow: var(--shadow-pop); }
+/* トーストの本文 */
+.m-toast .m-body { flex: 1; min-width: 0; }
+
+/* ===== 種類つきの関連の表示と入力 ===== */
+
+/* 詳細パネルを開いたまま、画面の右に置いて見せる */
+.panel.m-static { position: static; transform: none; visibility: visible; width: min(640px, 100%); margin: 0 auto; box-shadow: none; border: 1px solid var(--border); }
+/* 関連の入力の区画 */
+.m-rel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 4px 0 16px; }
+/* 案 A: 関連 1 件の行（相手・種類・削除） */
+.m-rel-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px 32px; align-items: center; gap: 8px; }
+/* 行の相手（ID とタイトル） */
+.m-rel-to { box-sizing: border-box; display: flex; align-items: center; gap: 8px; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* 相手の ID */
+.m-rel-to .id { flex: none; font-family: var(--font-mono); font-size: var(--fs-small); }
+/* 相手のタイトル */
+.m-rel-to .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); font-size: var(--fs-small); }
+/* 種類の選択 */
+.m-rel select, .m-rel input { min-width: 0; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }
+/* 関連を足す行 */
+.m-rel-add { display: grid; grid-template-columns: minmax(0, 1fr) 140px auto; gap: 8px; }
+/* 足すボタン */
+.m-btn { height: var(--control-h); padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: var(--fs-small); }
+/* 案 B: チップを入力欄の幅に収め、長いタイトルは「…」で省く */
+.m-rel-group .chip { max-width: 100%; min-width: 0; }
+.m-rel-group .chip .t { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* 案 B: 種類ごとの見出し */
+.m-rel-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+/* 種類ごとの見出しの文字 */
+.m-rel-group .k { color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; }
+/* 狭い幅: 行を 2 段にする */
+@media (max-width: 560px) {
+  .m-rel-row { grid-template-columns: minmax(0, 1fr) 32px; padding-bottom: 8px; border-bottom: 1px solid var(--border-soft); }
+  .m-rel-row select { grid-column: 1; }
+  .m-rel-add { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ===== 見本の状態（モックの中だけ。クエリの state で切り替える） ===== */
+
+/* 空の表示と入力の誤りは、その見本のときだけ出す */
+.m-empty, .m-error { display: none; margin: 0; font-size: var(--fs-small); }
+/* 関係なし: 関係の行・見出しを隠して「なし」を出す */
+:root[data-state="empty"] :is(.m-rel-row, .m-rel-group .chip) { display: none; }
+:root[data-state="empty"] .m-empty { display: block; color: var(--text-2); }
+/* 無い ID を入れた: 追加の入力の下に、原因と修正方法を出す（色に加えて文言で伝える） */
+:root[data-state="error"] .m-error { display: block; color: var(--text); }
+:root[data-state="error"] .m-error::before { content: "入力の誤り: "; font-weight: 600; color: var(--st-review); }
+:root[data-state="error"] .m-rel-add input, :root[data-state="error"] .m-rel-group:first-child input { border-color: var(--st-review); }
+/* 長いタイトル: 相手のタイトルを長くして、省略の形を見せる */
+:root[data-state="long"] .m-rel-to .t::after, :root[data-state="long"] .chip .t::after { content: "（保存の形式・置き場所・移し替えの手順・既存のワークスペースの扱いをまとめて決める）"; }
+
+/* 関係の入力欄の placeholder: ダークでも 4.5:1 以上の色にする */
+.m-rel input::placeholder { color: var(--text-2); opacity: 1; }
+/* 関係の種類ごとのチップの入力欄: タップ対象の高さを揃える */
+.m-rel-group .chips input { min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); }

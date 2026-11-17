@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING
 from .skill_files import (
     PLAYBOOK_NAMES,
     SECTION_PATTERN,
+    PROJECT_INDEX_TOOL_NAMES,
     SERVER_TOOL_NAMES,
     SKILLS_DIR,
     allowed_mcp_tools,
+    allowed_project_index_tools,
     edits_settings_directly,
     mentions_old_mode,
     missing_plugin_paths,
@@ -29,42 +31,42 @@ if TYPE_CHECKING:
 
     from conftest import RunClaude
 
-# front matter の allowed-tools の値（`init` を除く mindstella の MCP のツールを並べる）
+# front matter の allowed-tools の値（`init` を除く mindstella の MCP のツールと、記録を読み書きする project-index の MCP のツールを並べる）
 SESSION_ALLOWED_TOOLS = "Read, Agent, WebSearch, WebFetch, " + ", ".join(
-    f"mcp__plugin_mindstella_mindstella__{name}"
-    for name in (
-        "add",
-        "update",
-        "remove",
-        "update_settings",
-        "adopt",
-        "edit_option",
-        "batch",
-        "changes_since_read",
-        "commit",
-        "pending",
-        "status",
-        "next",
-        "impact",
-        "find",
-        "show",
-        "attrs",
-        "tags",
-        "check",
-        "goal",
-        "migrate",
-        "clear_release",
-        "write_release",
-        "export",
-        "preview_url",
-        "readme",
-        "threads",
-        "thread",
-        "new_thread",
-        "reply",
-        "set_thread_status",
-        "update_thread",
-    )
+    [
+        *(
+            f"mcp__plugin_mindstella_mindstella__{name}"
+            for name in (
+                "next_id",
+                "update_settings",
+                "adopt",
+                "edit_option",
+                "changes_since_read",
+                "commit",
+                "pending",
+                "status",
+                "next",
+                "check",
+                "goal",
+                "migrate",
+                "clear_release",
+                "write_release",
+                "export",
+                "preview_url",
+                "readme",
+                "threads",
+                "thread",
+                "new_thread",
+                "reply",
+                "set_thread_status",
+                "update_thread",
+            )
+        ),
+        *(
+            f"mcp__plugin_project-index_project-index__{name}"
+            for name in ("search_docs", "write_docs", "delete_docs", "trace_related")
+        ),
+    ]
 )
 
 # 版を比べる呼び方
@@ -115,8 +117,9 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # 本文が呼ぶツールが全て allowed-tools にあり、サーバーのツールの一覧にある
     called = tools_listed_in(texts)
     assert called != []
-    assert set(called) <= set(allowed_mcp_tools(front_matter))
+    assert set(called) <= {*allowed_mcp_tools(front_matter), *allowed_project_index_tools(front_matter)}
     assert set(allowed_mcp_tools(front_matter)) <= set(SERVER_TOOL_NAMES)
+    assert set(allowed_project_index_tools(front_matter)) <= set(PROJECT_INDEX_TOOL_NAMES)
     # 本文が mindmap.py・build・preview.html を指さない
     assert mentions_old_mode(texts) == []
     # 本文が mindmap.yaml を Edit ツールで直す手順を持たない
@@ -153,13 +156,12 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     # steps/範囲の見直し.md が update_settings を呼ぶ
     scope_step = (SKILLS_DIR / "session" / "steps" / "範囲の見直し.md").read_text(encoding="utf-8")
     assert "`update_settings`" in scope_step
-    # steps/取り込み.md が batch を呼ぶ
+    # steps/取り込み.md が next_id と project-index の write_docs を呼ぶ
     capture_step = (SKILLS_DIR / "session" / "steps" / "取り込み.md").read_text(encoding="utf-8")
-    assert "`batch`" in capture_step
-    # steps/取り込み.md が batch で書く前に tags を引き、対象を話題に使わないと書く
-    assert "`tags`" in capture_step
-    assert capture_step.index("`tags`") < capture_step.index("`batch`")
-    assert "話題には使わない" in capture_step
+    assert "`next_id`" in capture_step
+    assert "`write_docs`" in capture_step
+    # steps/取り込み.md が project-index の search_docs を group_by: tags で呼ぶ
+    assert "`search_docs` を `group_by: tags` で呼び" in capture_step
     # steps/取り込み.md と references/質問の書式.md が recommended を指す
     question_format = (SKILLS_DIR / "mindmap" / "references" / "質問の書式.md").read_text(
         encoding="utf-8"
@@ -170,11 +172,11 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     hearing_step = (SKILLS_DIR / "session" / "steps" / "ヒアリング.md").read_text(encoding="utf-8")
     assert "`edit_option`" in hearing_step
     assert "`adopt`" in hearing_step
-    # steps/取り込み.md が資料の HTML の本文を body_html で渡すと書く
-    assert "`body_html`" in capture_step
-    # steps/ゴール判定.md が show の body_format を見て、playbooks/資料作り.md のリリースの形が .html を指す
+    # steps/取り込み.md が資料の HTML の本文（docs/{ID}.html）を指す
+    assert "`docs/{ID}.html`" in capture_step
+    # steps/ゴール判定.md が資料の body の拡張子 .html を指し、playbooks/資料作り.md のリリースの形が .html を指す
     goal_step = (SKILLS_DIR / "session" / "steps" / "ゴール判定.md").read_text(encoding="utf-8")
-    assert "`body_format`" in goal_step
+    assert "`body` が `.html`" in goal_step
     document_playbook = (SKILLS_DIR / "mindmap" / "playbooks" / "資料作り.md").read_text(
         encoding="utf-8"
     )

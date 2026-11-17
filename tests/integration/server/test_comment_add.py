@@ -84,7 +84,7 @@ def test_normal_when_html_body_location(
 ) -> None:
     """HTML の本文の文を選んだコメントを、タグを外した文と照らして溜める（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": A_HTML_BODY})
+    root = make_workspace(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": A_HTML_BODY})
     url = serve_preview(root)
     loc = {"kind": "body", "start": 4, "end": 4, "text": "言い換えたい文"}
     # 実行

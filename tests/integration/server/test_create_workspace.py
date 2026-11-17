@@ -74,6 +74,13 @@ def test_normal(session_world: SessionWorld) -> None:
     assert (body["result"], body["launch_options_recorded"]) == ("created", True)
     config = yaml.safe_load((folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8"))
     assert (config["id"], config["flow"]) == (body["id"], FLOW)
+    # 記録を配信する設定は種類ごとの 7 つの文書の行と関連の種類を持ち、行が指すスキーマが schemas/ にある
+    source = yaml.safe_load((folder / ".mindstella" / "dev-docs.yaml").read_text(encoding="utf-8"))
+    documents = source["documents"]
+    assert len(documents) == 7
+    assert {(row["records"], row["body_file"]) for row in documents} == {("items", "body")}
+    assert source["related"]["types"]
+    assert all((folder / ".mindstella" / row["schema"]).is_file() for row in documents)
     assert _launch_json(world, body["id"]) == {
         "mcp_config": MCP_CONFIG,
         "plugin_dirs": [str(plugin)],

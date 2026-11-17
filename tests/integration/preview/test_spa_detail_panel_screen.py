@@ -30,8 +30,10 @@ from preview_body_scroll_helpers import LONG_LINES_BODY, SCROLLABLE_REGION_RULE
 from preview_edit_helpers import edit_edits, edit_items
 from preview_embed_helpers import EMBEDDED_BODY, build_embedded_diff_workspace
 from preview_fixture_types import WritePreview, WriteReviewPreview, WriteSamplePreview
+from preview_history_helpers import mismatch_body_diff
 from preview_spa_helpers import open_spa
 from workspace_fixtures import ADOPTED_OPTIONS, RECORD_DIR, CallTool, MakeComment, MakeEdit, MakeItem, MakeWorkspace
+from record_write_helpers import write_tool
 
 # 送る本文のスクロールの位置（px）
 SCROLLED_TOP = 600
@@ -105,7 +107,7 @@ def test_back_keeps_trail_over_filter(page: Page, spa_preview: str) -> None:
 def test_restores_body_scroll(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文を送った項目を開き直すと、その位置へ戻る（正常系）。"""
     long_body = "\n\n".join(f"段落 {number}" for number in range(200))
-    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="D-1.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.md": long_body})
+    url = write_preview(make_item("D-1", title="長い本文", status="未決定", body="docs/D-1.md"), make_item("D-2", title="別の項目", status="未決定"), bodies={"D-1.md": long_body})
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.get_by_text("段落 199").wait_for()
     page.locator("aside .panel-body").evaluate(f"(element) => {{ element.scrollTop = {SCROLLED_TOP}; }}")
@@ -242,7 +244,7 @@ def test_code_block_when_long_line(page: Page, write_preview: WritePreview, make
 def test_body_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """本文は、項目が Markdown の `body` を持つときに mdmark で描き、HTML の本文では枠で描く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), make_item("A-2", body="A-2.html"), bodies={"A-1.md": "## 見出し\n\n段落\n", "A-2.html": HTML_BODY})
+    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), bodies={"A-1.md": "## 見出し\n\n段落\n", "A-2.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).locator(".md").get_by_role("heading", name="見出し")).to_be_visible()
     # 実行
@@ -306,7 +308,7 @@ LONG_COMMENT = "\n\n".join(f"{index} 行目のコメント" for index in range(1
 def comment_preview(write_review_preview: WriteReviewPreview, make_item: MakeItem, make_comment: MakeComment) -> tuple[str, Path]:
     """D-1 へのレビュー中のコメント C-1（5 行目の箇所つき）・C-2・C-3（長い本文）を持つワークスペースの配信の URL とフォルダを返す。"""
     return write_review_preview(
-        make_item("D-1", title="記録の形", status="未決定", body="D-1.md"),
+        make_item("D-1", title="記録の形", status="未決定", body="docs/D-1.md"),
         make_item("D-2", title="画面の幅", status="保留"),
         comments=(
             make_comment("C-1", target="D-1", loc={"kind": "body", "start": 5, "end": 5, "text": "二つ目の段落"}, body="ここを直す"),
@@ -578,10 +580,10 @@ def test_trimmed_note_visible(page: Page, write_history_preview: WriteReviewPrev
 
 
 def test_body_unavailable_label(page: Page, write_history_preview: WriteReviewPreview) -> None:
-    """書き換えの後に本文のファイルが直接書き換えられていると、本文の差分を出せない旨を出す（正常系）。"""
-    # 準備
+    """変更履歴の本文の差分が今の本文に当たらないと、本文の差分を出せない旨を出す（正常系）。"""
+    # 準備（D-1 の変更履歴の本文の差分を今の本文に当たらなくする）
     url, root = write_history_preview()
-    (root / RECORD_DIR / "docs" / "D-1.md").write_text("手で書いた A\n\n手で書いた B\n", encoding="utf-8")
+    mismatch_body_diff(root, "D-1")
     # 実行
     panel = _diff(page, url, "V-2")
     # 検証
@@ -604,9 +606,9 @@ def test_body_too_large_label(page: Page, write_history_preview: WriteReviewPrev
     url, root = write_history_preview()
     before = "".join(f"前の行 {index}\n" for index in range(LARGE_LINE_COUNT))
     after = "".join(f"後の行 {index}\n" for index in range(LARGE_LINE_COUNT))
-    assert call_tool("update", workspace=str(root), id="D-1", item={"body_markdown": before, "answer": "大きい前"}).is_error is False
+    assert write_tool(call_tool, "update", workspace=str(root), id="D-1", item={"body_markdown": before, "answer": "大きい前"}).is_error is False
     assert call_tool("commit", workspace=str(root), summary="大きな本文にする").is_error is False
-    assert call_tool("update", workspace=str(root), id="D-1", item={"body_markdown": after, "answer": "大きい後"}).is_error is False
+    assert write_tool(call_tool, "update", workspace=str(root), id="D-1", item={"body_markdown": after, "answer": "大きい後"}).is_error is False
     # 実行
     panel = _diff(page, url, "pending")
     # 検証
@@ -797,7 +799,7 @@ def test_withdrawn_reason_visible(page: Page, write_preview: WritePreview, make_
 def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """資料の見出しにだけ本文の形式の札を置く（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1", body="A-1.html"), make_item("D-1"), bodies={"A-1.html": HTML_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), make_item("D-1"), bodies={"A-1.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     expect(_panel(page).get_by_text("HTML", exact=True)).to_be_visible()
     # 実行
@@ -810,7 +812,7 @@ def test_format_badge_visible(page: Page, write_preview: WritePreview, make_item
 def test_html_body_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """資料の `body` が `.html` で終わるときは、本文を枠で描く（正常系）。"""
     # 準備・実行
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": HTML_BODY})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": HTML_BODY})
     open_spa(page, url, "?tab=docs&id=A-1")
     frame = _panel(page).frame_locator("iframe.html-frame")
     # 検証
@@ -821,7 +823,7 @@ def test_html_body_action(page: Page, write_preview: WritePreview, make_item: Ma
     """HTML の本文の中の外のページへのリンクは、枠の中では移らず新しいタブで開く（正常系）。"""
     # 準備
     body = '<p><a id="out" href="https://example.com/">外のページ</a></p>\n'
-    url = write_preview(make_item("A-1", body="A-1.html"), bodies={"A-1.html": body})
+    url = write_preview(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": body})
     open_spa(page, url, "?tab=docs&id=A-1")
     frame = _panel(page).frame_locator("iframe.html-frame")
     page.context.route("https://example.com/**", lambda route: route.fulfill(status=200, body="ok"))
@@ -1157,7 +1159,7 @@ def test_export_label(page: Page, write_preview: WritePreview, make_item: MakeIt
 def test_export_visible(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """エクスポートは本文が Markdown の資料にだけ置き、HTML の資料・資料以外・編集の表示の間は置かない（正常系）。"""
     # 準備
-    url = write_preview(make_item("A-1"), make_item("A-2", body="A-2.html"), make_item("D-1"), bodies={"A-1.md": "本文\n", "A-2.html": HTML_BODY})
+    url = write_preview(make_item("A-1"), make_item("A-2", body="docs/A-2.html"), make_item("D-1"), bodies={"A-1.md": "本文\n", "A-2.html": HTML_BODY})
     # 実行・検証（HTML の資料と資料以外）
     open_spa(page, url, "?tab=docs&id=A-2")
     expect(_panel(page).get_by_role("button", name="エクスポート", exact=True)).to_have_count(0)
@@ -1339,3 +1341,48 @@ def test_voice_input_when_service_stopped(
     open_spa(page, url, "?tab=decisions&id=D-1")
     # 検証
     assert_mic_blocked_after_click(page.locator("form[data-id='D-1']"), "[role=status]")
+
+
+def test_edit_relations(page: Page, spa_preview: str) -> None:
+    """関係の入力は種類ごとに見出しを置き、ID かタイトルで足すと保存待ちに溜め、当たらない値は誤りを出す（正常系）。"""
+    # 準備
+    open_spa(page, spa_preview, "?tab=decisions&id=D-1")
+    page.get_by_role("button", name="編集する").click()
+    # 検証（種類ごとの見出し）
+    for name in ("前提", "親", "関連"):
+        expect(page.get_by_role("group", name=name)).to_be_visible()
+    # 実行（タイトルで前提を足す）
+    adding = page.get_by_role("combobox", name="前提を追加")
+    adding.fill("画面の幅")
+    adding.press("Enter")
+    # 検証（タイトルで前提を足す）
+    expect(page.get_by_role("group", name="前提").get_by_role("button", name="D-2 を外す")).to_be_visible()
+    page.get_by_role("button", name="保存待ち").first.click()
+    expect(page.get_by_role("complementary", name="保存待ちの編集")).to_contain_text("D-2")
+    page.keyboard.press("Escape")
+    # 実行（当たらない ID を入れる）
+    parent = page.get_by_role("combobox", name="親を追加")
+    parent.fill("D-99")
+    parent.press("Enter")
+    # 検証（当たらない ID を入れる）
+    expect(parent).to_have_attribute("aria-invalid", "true")
+    expect(parent).to_have_value("D-99")
+    expect(page.locator(f"#{parent.get_attribute('aria-describedby')}")).to_have_text(
+        "入力の誤り: D-99 が見つかりません。ID を確認してください。"
+    )
+
+
+def test_related_items_by_type(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
+    """関係する項目を related の種類ごとの見出しに分け、派生元と派生した項目を並べる（正常系）。"""
+    # 準備
+    url = write_preview(
+        make_item("D-1", title="親の問い"),
+        make_item("D-2", title="子の問い", related=[{"to": "D-1", "type": "parent"}]),
+    )
+    open_spa(page, url, "?tab=decisions&id=D-1")
+    panel = page.get_by_role("complementary", name="詳細")
+    # 実行
+    expect(panel.get_by_role("heading", name="派生した項目")).to_be_visible()
+    panel.get_by_role("button", name="D-2").click()
+    # 検証
+    expect(panel.get_by_role("heading", name="派生元")).to_be_visible()

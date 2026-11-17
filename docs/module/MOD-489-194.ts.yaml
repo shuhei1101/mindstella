@@ -17,7 +17,7 @@ data_models:
         description: ID → 種類と項目
       - name: referencedBy
         type: Map<string, string[]>
-        description: ID → その項目を `depends_on`・`for`・`related`・`sources` で指す項目の ID（ID の順）
+        description: ID → その項目を `related[].to`（どの種類も）・`sources` で指す項目の ID（ID の順）
       - name: readyIds
         type: Set<string>
         description: 着手可能な検討事項の ID（`data.derived.next` の ID）。表の「着手可否」の列は、ここにある未決定を「着手可能」、ほかの未決定を「前提待ち」、未決定以外を「なし」にする
@@ -52,13 +52,13 @@ functions:
       description: 索引
     process: |-
       1. 7 種類の項目を ID で `byId` に入れる
-      2. 各項目の `depends_on`・`for`・`related`・`sources` が指す ID ごとに、指した側の ID を `referencedBy` に足す（記録に無い ID もそのまま持つ）
+      2. 各項目の `related[].to`・`sources` が指す ID ごとに、指した側の ID を `referencedBy` に足す（記録に無い ID もそのまま持つ）
       3. `derived.next` の ID を `readyIds` に入れる
     unit_tests:
       - name: test_build_index
         case: 正常
         summary: ID で引け、参照元を逆に引ける
-        condition: 'D-1・D-2（`depends_on: [D-1]`）・T-1（`for: [D-1]`）を持ち、`derived.next` が D-1 だけのデータ'
+        condition: 'D-1・D-2（`related: [{to: D-1, type: depends_on}]`）・T-1（`related: [{to: D-1, type: for}]`）を持ち、`derived.next` が D-1 だけのデータ'
         mock: なし
         expected: '`byId.get("T-1").kind` が `tasks`。`referencedBy.get("D-1")` が `["D-2", "T-1"]`。`readyIds` が D-1 だけ'
   - name: relatedItems
@@ -67,7 +67,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/preview/core/records.ts
     usecase: 項目の詳細を読む
     scope: public
-    summary: 詳細パネルに出す前提・後続・関連タスク・経緯・関連・参照している項目を返す
+    summary: 詳細パネルに出す前提・後続・派生元・派生した項目・関連タスク・経緯・関連・参照している項目を返す
     args:
       - name: id
         type: string
@@ -80,15 +80,44 @@ functions:
         passing: keyword
         description: 索引
     returns:
-      type: '{prerequisites, successors, tasks, logs, related, referencedBy}'
-      description: それぞれ ID の並び。前提は `depends_on`、後続はその逆向き、関連タスクは `for` で指すタスク、経緯は `related` で指す会話ログ、参照している項目はそれ以外の `referencedBy`
+      type: '{prerequisites, successors, parents, children, tasks, logs, related, referencedBy}'
+      description: それぞれ ID の並び。前提は種類 `depends_on` の `related`、後続はその逆向き、派生元は種類 `parent`、派生した項目はその逆向き、関連タスクは種類 `for` で指すタスク、経緯は種類 `see_also` で指す会話ログ、関連は種類 `see_also` で指すそれ以外、参照している項目はそれ以外の `referencedBy`（`refsOf`）
     unit_tests:
       - name: test_related_items
         case: 正常
         summary: 関係の種類ごとに分ける
-        condition: 'D-2（`depends_on: [D-1]`）・T-1（`for: [D-1]`）・L-1（`related: [D-1]`）・N-1（`related: [D-1]`）と D-1（`depends_on: [D-0]`）'
+        condition: 'D-2（`related: [{to: D-1, type: depends_on}]`）・T-1（`related: [{to: D-1, type: for}]`）・L-1（`related: [{to: D-1, type: see_also}]`）・N-1（`related: [{to: D-1, type: see_also}]`）と D-1（`related: [{to: D-0, type: depends_on}]`）'
         mock: なし
-        expected: D-1 の `prerequisites` が D-0、`successors` が D-2、`tasks` が T-1、`logs` が L-1、`referencedBy` が N-1
+        expected: 'D-1 の `prerequisites` が D-0、`successors` が D-2、`tasks` が T-1、`logs` が L-1、`referencedBy` が N-1。D-3（`related: [{to: D-1, type: parent}]`）を足すと D-1 の `children` が D-3、D-3 の `parents` が D-1'
+  - name: refsOf
+    title: 種類ごとの関連の指す先
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/preview/core/records.ts
+    usecase: 共通
+    scope: public
+    summary: 項目の `related` のうち、渡した種類の要素の `to` を並びの順に返す（前提・派生元・進める検討事項・関連を読む全ての画面が使う）
+    args:
+      - name: item
+        type: Item
+        required: true
+        passing: positional
+        description: 項目
+      - name: type
+        type: '"depends_on" | "parent" | "for" | "see_also"'
+        required: true
+        passing: positional
+        description: 関連の種類
+    returns:
+      type: string[]
+      description: 指す ID（`related` が無ければ空）
+    process: 1. `related` の要素のうち `type` が同じものの `to` を並べて返す
+    unit_tests:
+      - name: test_refs_of
+        case: 正常
+        summary: 種類で絞る
+        condition: '`related: [{to: D-1, type: depends_on}, {to: R-1, type: see_also}, {to: D-2, type: depends_on}]` の項目と `depends_on`'
+        mock: なし
+        expected: '`["D-1", "D-2"]`'
   - name: searchItems
     title: 全体の検索
     kind: 関数

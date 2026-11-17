@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces`
 lead: 許可するフォルダの下に、ワークスペースの記録を作るか残っている記録を開き、project-index の配信元に登録して、ワークスペースの ID と画面の URL を返す。MindStella の MCP の `create_workspace` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録を書き（『ワークスペースの作成』と同じ書き方）、直下に `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に足す。記録が既にあるフォルダは記録を書き換えない。そのワークスペースのプレビューの配信を立てる
+side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に足す。記録が既にあるフォルダは記録を書き換えない。そのワークスペースのプレビューの配信を立てる
 request:
   - name: folder
     type: str
@@ -95,7 +95,10 @@ constraints:
     constraint: '`.mindstella/config.yaml` があれば作り直さずに開く。進め方の文書は設定のまま使い、今回の `flow` は使わない（D-283）。追加の MCP・プラグインは、状態のフォルダに記録が無いときだけ今回の指定を記録する（D-321）。配信元の行が無ければ追加し、`outside_read` が偽（クローズ済み）なら真に戻してクローズ待ちを解く（`reopened`）。`outside_read` を戻すときは、`GET /settings/sources` で `version` を引き、`PATCH /settings/sources/{id}` に `expectedVersion` と `source.outside_read: true` を送る。409（版が古い）なら 1 回だけ引き直して送り直す'
   - item: 配信元の行
     constraint: 'project-index の `POST /settings/sources` に `{"source": {"id": {ID}, "config": "{フォルダ}/.mindstella/dev-docs.yaml", "scope": {"read": ["{フォルダ}", "{フォルダ}/**"], "write": ["{フォルダ}", "{フォルダ}/**"]}, "outside_read": true}}` を送る（`expectedVersion` は送らない）。`scope` はワークスペースのフォルダと、その下の全てのフォルダを作業場所にしたセッションを対象にする。同じ `id` の行がある（409・`result: exists`）ときは、`same` が真なら追加済みとして続け、偽なら 502'
-    notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』。`.mindstella/dev-docs.yaml`（記録を配信元として配る設定）は #517 で書くので、#516 では行は `not_served` で登録される（追加は通る。IF-31 の「追加した配信元が検証に通らない」）'
+    notes: '本文の形は project-index の『端末の設定の配信元の 1 行の追加』（IF-32）、`/**` の当たり方はコアコンセプト『scope による権限』'
+  - item: 配信の設定
+    constraint: '記録が無いフォルダに、`.mindstella/dev-docs.yaml`（project-index の配信元の設定。書式は project-index のガイド『設定』）と `.mindstella/schemas/`（プラグインの `skills/mindmap/schemas/` の種類ごとの 7 つのスキーマと `common.schema.json` の複製）を書く。設定は `version: "3"`・`name`（ワークスペースの ID）・`description`（設定の `summary`）・`related.types`（`[depends_on, parent, for, see_also]`）と、種類ごとの 7 つの `documents` の行を持つ。行は `id`（種類の名前。`decisions` など）・`title`（種類の日本語の名前）・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`metadata`（`id: id`・`name: title`・`description: lead`（持つ種類だけ）・`tags: tags[].name`・`main_tags: tags[main].name`・`related: related`・`status: status`（持つ種類だけ））'
+    notes: '`body` は `.mindstella/` からの相対で本文のファイルを指す（`docs/{ID}.md`。ER 図『ワークスペース』）。`threads.yaml`・`changes.yaml`・`config.yaml` などは配信しない（MindStella の MCP が読み書きする）'
   - item: ID の一覧
     constraint: 状態のフォルダの `workspaces.yaml` の `ids` に足す。配信元の行の追加が通った後に足す
   - item: 追加の MCP・プラグインの記録
@@ -141,6 +144,7 @@ flows:
       - '`.mindstella/config.yaml` の `id` が応答の `id` で、`flow` が渡した値'
       - 状態のフォルダの `workspaces/{id}/launch.json` に渡した `mcp_config`・`plugin_dirs` があり、`workspaces.yaml` の `ids` に `id` がある
       - 'project-index の Mock が、`config`・`scope`・`outside_read: true` の行の追加を受けている'
+      - '`.mindstella/dev-docs.yaml` が種類ごとの 7 つの `documents` の行（`records: items`・`body_file: body`）と `related.types` を持ち、`.mindstella/schemas/` にその行が指すスキーマがある'
       - '`url` を開くと、そのワークスペースの画面が返る'
     test: test_normal
   - name: 正常系（記録が既にある）

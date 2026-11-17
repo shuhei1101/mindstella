@@ -1,0 +1,13 @@
+# lint: 結合テスト作成の末尾の commit 3efafd0d
+
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+(exit 0)

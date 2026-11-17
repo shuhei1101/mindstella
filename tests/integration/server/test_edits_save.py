@@ -17,7 +17,7 @@ from .fixture_types import (
     StartServer,
     WriteEdits,
 )
-from .history_helpers import read_changes, read_items, update_item
+from .history_helpers import read_changes, read_history, read_items, update_item
 from .http_helpers import post_json
 from workspace_fixtures import RECORD_DIR
 
@@ -88,8 +88,9 @@ def test_normal(
     assert decision["answer"] == "案 C にする"
     assert decision["tags"] == [{"name": "画面"}, {"name": "記録の形", "main": True}]
     assert [option["key"] for option in decision["options"] if option.get("adopted")] == ["C"]
-    assert decision["updated_by"] == "user"
-    assert [entry["by"] for entry in decision["history"]] == ["user"]
+    row = read_history(root)["D-1"]
+    assert row["updated_by"] == "user"
+    assert [entry["by"] for entry in row["history"]] == ["user"]
     changes = read_changes(root)
     first = changes["sets"][0]
     assert (first["id"], first["summary"], first["changed"]) == ("V-1", "画面からの編集", ["D-1"])
@@ -117,7 +118,7 @@ def test_normal_when_add_remove_settings(
             target="new-1",
             op="item-add",
             key="tasks",
-            value={"title": "画面を作る", "kind": "作業", "status": "未着手", "depends_on": ["T-1"]},
+            value={"title": "画面を作る", "kind": "作業", "status": "未着手", "related": [{"to": "T-1", "type": "depends_on"}]},
             before=None,
             base=None,
         ),
@@ -142,7 +143,8 @@ def test_normal_when_add_remove_settings(
     assert payload["removed"] == ["N-1"]
     assert payload["settings"] == ["summary"]
     added = _find(read_items(root, "tasks.yaml"), "T-2")
-    assert (added["depends_on"], added["updated_by"]) == (["T-1"], "user")
+    assert added["related"] == [{"to": "T-1", "type": "depends_on"}]
+    assert read_history(root)["T-2"]["updated_by"] == "user"
     assert read_items(root, "notes.yaml") == []
     assert [entry["id"] for entry in read_changes(root)["sets"][0]["removed"]] == ["N-1"]
     config = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
@@ -175,8 +177,7 @@ def test_normal_when_ai_pending(
         ("V-1", "まとめる前の AI の書き換え", ["T-1"]),
     ]
     assert changes["pending"] == {"added": [], "changed": []}
-    task = _find(read_items(root, "tasks.yaml"), "T-1")
-    assert task["history"][-1]["by"] == "ai"
+    assert read_history(root)["T-1"]["history"][-1]["by"] == "ai"
 
 
 def test_error_when_no_edits(
@@ -261,7 +262,7 @@ def test_error_when_item_referenced(
 ) -> None:
     """ほかの項目が指している項目の削除があれば、どの編集も当てない（異常系）。"""
     # 準備
-    root = make_workspace(make_item("D-1"), make_item("D-2", depends_on=["D-1"]))
+    root = make_workspace(make_item("D-1"), make_item("D-2", related=[{"to": "D-1", "type": "depends_on"}]))
     write_edits(
         root,
         make_edit("E-1", op="item-remove", key=None, value=None, before=None),
@@ -294,7 +295,7 @@ def test_error_when_invalid_value(
     write_edits(
         root,
         make_edit("E-1", key="tags", value=[{"name": "保存"}], before=[]),
-        make_edit("E-2", key="depends_on", value=["D-99"], before=[]),
+        make_edit("E-2", key="related", value=[{"to": "D-99", "type": "depends_on"}], before=[]),
     )
     url = serve_preview(root)
     before = snapshot_tree(root)

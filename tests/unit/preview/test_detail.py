@@ -86,8 +86,8 @@ def test_detail_panel_when_diff_highlight(
         "body_diff": REMOVED_PARAGRAPHS_DIFF,
     }
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[entry])],
-        bodies={"D-1.md": NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[entry])],
+        bodies={"docs/D-1.md": NOW_BODY},
     )
     highlight = {"kind": "body", "start": 3, "end": 3, "text": "今の 3 行目の段落"}
     load_preview_scripts()
@@ -175,8 +175,8 @@ def test_detail_panel_when_old_set_after_body_edit(
     """古いまとまりを選び、その後に本文を直した項目では、本文の行の印を外す（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=OLD_SET_HISTORY)],
-        bodies={"D-1.md": OLD_SET_NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=OLD_SET_HISTORY)],
+        bodies={"docs/D-1.md": OLD_SET_NOW_BODY},
     )
     highlight = {"kind": "body", "start": 5, "end": 5, "text": "V-1 の 3 行目の段落"}
     load_preview_scripts()
@@ -313,8 +313,8 @@ def test_detail_panel_when_diff_reuses_current_diagram(
     """開いたまま時点を選ぶと、flowchart の図は今の版を描き直さず、前の版も描かずに差分の印を付ける（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[DIAGRAM_ENTRY], seq=1)],
-        bodies={"D-1.md": DIAGRAM_NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[DIAGRAM_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": DIAGRAM_NOW_BODY},
     )
     load_preview_scripts()
     load_library("marked")
@@ -366,8 +366,8 @@ def test_detail_panel_when_diff_renders_before_sequence(
     """flowchart でない図は、前の版の図だけを描いて突き合わせる（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[SEQUENCE_ENTRY], seq=1)],
-        bodies={"D-1.md": SEQUENCE_NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[SEQUENCE_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": SEQUENCE_NOW_BODY},
     )
     load_preview_scripts()
     load_library("marked")
@@ -505,7 +505,7 @@ def test_detail_panel_when_heading(
     # 準備
     data = make_data(
         docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
-        bodies={"A-1.md": HEADING_BODY},
+        bodies={"docs/A-1.md": HEADING_BODY},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -596,14 +596,14 @@ def test_detail_panel_when_decision_order(
         lead="何を決めるか",
         answer="月ごとに分ける",
         reason="探しやすい",
-        body="D-1.md",
+        body="docs/D-1.md",
         options=[
             {"key": "A", "content": "案 A", "adopted": True},
             {"key": "B", "content": "案 B", "adopted": False},
             {"key": "C", "content": "案 C"},
         ],
     )
-    data = make_data(decisions=[decision], bodies={"D-1.md": "本文の段落\n"})
+    data = make_data(decisions=[decision], bodies={"docs/D-1.md": "本文の段落\n"})
     load_preview_scripts()
     load_mdmark()
     # 実行
@@ -1532,8 +1532,8 @@ def test_detail_panel_when_diff_inline_words(
     """書き換えた段落の変わった語だけを囲み、消しただけの段落は囲まない（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[WORD_BODY_ENTRY], seq=1)],
-        bodies={"D-1.md": WORD_BODY_NOW},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[WORD_BODY_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": WORD_BODY_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -1584,8 +1584,8 @@ def test_detail_panel_when_diff_lines_unpaired(
     """行の数が揃わない書き換えは語の面を付けない（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[UNPAIRED_BODY_ENTRY], seq=1)],
-        bodies={"D-1.md": UNPAIRED_BODY_NOW},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[UNPAIRED_BODY_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": UNPAIRED_BODY_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -1625,11 +1625,11 @@ def test_detail_panel_when_diff_inline_words_keep_links(
     # 準備
     data = make_data(
         decisions=[
-            make_item("D-1", body="D-1.md", history=[LINKS_BODY_ENTRY], seq=1),
+            make_item("D-1", body="docs/D-1.md", history=[LINKS_BODY_ENTRY], seq=1),
             make_item("D-2"),
         ],
         terms=[make_item("G-1", title=TERM_TITLE)],
-        bodies={"D-1.md": LINKS_BODY_NOW},
+        bodies={"docs/D-1.md": LINKS_BODY_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -1669,8 +1669,8 @@ def test_detail_panel_when_diff_inline_words_in_table_row(
     """表の行の対では、行の印を除いて比べ、書き換えたセルの語だけを囲む（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[TABLE_BODY_ENTRY], seq=1)],
-        bodies={"D-1.md": TABLE_BODY_NOW},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[TABLE_BODY_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": TABLE_BODY_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -1738,8 +1738,8 @@ def test_detail_panel_when_diff_removed_before_table(
     """表の直前で消した塊を、表を包む入れ物と枠の外（表の前）へ差し込む（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
-        bodies={"D-1.md": REMOVED_BEFORE_TABLE_NOW},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[REMOVED_BEFORE_TABLE_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": REMOVED_BEFORE_TABLE_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -1783,8 +1783,8 @@ def test_detail_panel_when_diff_raw_inline_words(
     """図の Raw の変えた行の対に、変わった語だけの面を付ける（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[RAW_BODY_ENTRY], seq=1)],
-        bodies={"D-1.md": RAW_BODY_NOW},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[RAW_BODY_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": RAW_BODY_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -2137,12 +2137,12 @@ def test_detail_panel_when_diff_key_words_body_too_large(
             make_item(
                 "D-1",
                 lead="要件は今週までに決める。",
-                body="D-1.md",
+                body="docs/D-1.md",
                 history=[BODY_TOO_LARGE_ENTRY],
                 seq=1,
             )
         ],
-        bodies={"D-1.md": WORD_BODY_NOW},
+        bodies={"docs/D-1.md": WORD_BODY_NOW},
     )
     load_preview_scripts()
     load_library("marked")
@@ -2246,7 +2246,7 @@ def test_detail_panel_when_description_aliases(
                 angles=["観点 1"],
             )
         ],
-        bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
+        bodies={"docs/A-1.md": "本文の段落\n", "docs/A-2.md": "本文の段落\n"},
     )
     load_preview_scripts()
     load_mdmark()
@@ -2301,11 +2301,11 @@ def _alias_tip_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
             make_item("G-2", title="保存先", meaning="置き場所の用語"),
         ],
         docs=[
-            make_item("A-1", body="A-1.md"),
+            make_item("A-1", body="docs/A-1.md"),
             make_item("A-2", title="効果の資料", aliases=["特殊効果"], description="資料の説明"),
         ],
         research=[make_item("R-1", title="効果の調査", aliases=["特殊効果"])],
-        bodies={"A-1.md": "特殊効果と保存先\n"},
+        bodies={"docs/A-1.md": "特殊効果と保存先\n"},
     )
 
 
@@ -2427,8 +2427,8 @@ def test_detail_panel_when_term_aliases_tip(
             make_item("G-1", title="移し替え", meaning="移すことの意味"),
             make_item("G-2", title="版の更新", aliases=["移し替え"], meaning="版を上げることの意味"),
         ],
-        docs=[make_item("A-1", body="A-1.md")],
-        bodies={"A-1.md": "移し替え\n"},
+        docs=[make_item("A-1", body="docs/A-1.md")],
+        bodies={"docs/A-1.md": "移し替え\n"},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -2561,7 +2561,7 @@ def _head_title_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]
             make_item("A-1", title=HEAD_TITLE_LONG_TITLE),
             make_item("A-2", title="短い本文の資料"),
         ],
-        bodies={"A-1.md": long_body, "A-2.md": "短い段落\n"},
+        bodies={"docs/A-1.md": long_body, "docs/A-2.md": "短い段落\n"},
     )
 
 
@@ -2762,8 +2762,8 @@ def test_detail_panel_when_change_set_link(
     """本文のまとまりのリンクで `on.changeSet` を呼ぶ（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=CHANGE_SET_LINK_HISTORY)],
-        bodies={"D-1.md": CHANGE_SET_LINK_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=CHANGE_SET_LINK_HISTORY)],
+        bodies={"docs/D-1.md": CHANGE_SET_LINK_BODY},
     )
     load_preview_scripts()
     load_library("marked")
@@ -2853,8 +2853,8 @@ def test_detail_panel_when_diff_minimap(
     """差分の表示の間だけ本文の右に帯を並べ、表示しない上書きでは並べない（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[MINIMAP_ENTRY], seq=1)],
-        bodies={"D-1.md": MINIMAP_NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[MINIMAP_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": MINIMAP_NOW_BODY},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -3002,7 +3002,7 @@ def test_detail_panel_when_body_heading_levels(
     # 準備
     data = make_data(
         docs=[make_item("A-1", history=entries, seq=1)],
-        bodies={"A-1.md": body},
+        bodies={"docs/A-1.md": body},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -3134,8 +3134,8 @@ def test_detail_panel_when_body_side_by_side(
     """並べ方が side のとき、切り替えと左右の本文を置き、本文の幅が足りなければインラインを出す（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=entries, seq=1)],
-        bodies={"D-1.md": MINIMAP_NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=entries, seq=1)],
+        bodies={"docs/D-1.md": MINIMAP_NOW_BODY},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -3190,8 +3190,8 @@ def test_detail_panel_when_body_layout_changed(
     """並べ方のボタンを押すと on.layout を呼ぶ（正常系）。"""
     # 準備
     data = make_data(
-        decisions=[make_item("D-1", body="D-1.md", history=[MINIMAP_ENTRY], seq=1)],
-        bodies={"D-1.md": MINIMAP_NOW_BODY},
+        decisions=[make_item("D-1", body="docs/D-1.md", history=[MINIMAP_ENTRY], seq=1)],
+        bodies={"docs/D-1.md": MINIMAP_NOW_BODY},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -3540,7 +3540,7 @@ def test_detail_panel_when_body_view(
     entries = [BODY_VIEW_ENTRY] if with_diff else []
     data = make_data(
         docs=[make_item("A-1", **({"history": entries, "seq": 1} if entries else {}))],
-        bodies={"A-1.md": BODY_VIEW_BODY},
+        bodies={"docs/A-1.md": BODY_VIEW_BODY},
     )
     load_preview_scripts()
     load_preview_styles()
@@ -3903,8 +3903,8 @@ def _export_data(make_data: MakeData, make_item: MakeItem) -> dict[str, Any]:
     """本文が Markdown の資料 A-1・本文が HTML の資料 A-2・検討事項 D-1 を持つ埋め込みのデータを返す。"""
     return make_data(
         decisions=[make_item("D-1")],
-        docs=[make_item("A-1", title="エクスポートする資料"), make_item("A-2", body="A-2.html")],
-        bodies={"A-1.md": EXPORT_BODY, "A-2.html": "<p>HTML の本文</p>"},
+        docs=[make_item("A-1", title="エクスポートする資料"), make_item("A-2", body="docs/A-2.html")],
+        bodies={"docs/A-1.md": EXPORT_BODY, "docs/A-2.html": "<p>HTML の本文</p>"},
     )
 
 
@@ -4117,8 +4117,8 @@ def test_detail_panel_when_embedded_html_diff(
     """変わった埋め込んだ HTML の範囲だけを HTML の本文の差分に置き換える（正常系）。"""
     # 準備
     data = make_data(
-        docs=[make_item("A-1", body="A-1.md", history=[EMBEDDED_DIFF_ENTRY])],
-        bodies={"A-1.md": EMBEDDED_DIFF_NOW},
+        docs=[make_item("A-1", body="docs/A-1.md", history=[EMBEDDED_DIFF_ENTRY])],
+        bodies={"docs/A-1.md": EMBEDDED_DIFF_NOW},
     )
     load_preview_scripts()
     load_preview_styles()

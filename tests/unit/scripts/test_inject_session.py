@@ -80,6 +80,8 @@ def test_main() -> None:
     output = json.loads(out)["hookSpecificOutput"]
     assert code == 0
     assert output["hookEventName"] == "PreToolUse"
+    assert output["permissionDecision"] == "allow"
+    assert output["permissionDecisionReason"] == "mindstella のツールの呼び出しにセッションの値を入れた"
     assert output["updatedInput"]["workspace"] == "talk"
     assert output["updatedInput"]["session"] == {
         "cwd": "/w",
@@ -299,3 +301,18 @@ def test_process_started_at_when_missing(
     result = inject_session.process_started_at(40, run=run, proc_dir=proc_dir)
     # 検証
     assert result is None
+
+
+def test_build_session_when_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Claude Code の session_id を claude_session_id に入れる（正常系）。"""
+    # 準備
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: Path("/h")))
+    monkeypatch.setattr(inject_session, "DEFAULT_CONFIG_DIR", Path("/h") / ".claude")
+    # 実行
+    result = inject_session.build_session("/w", {}, None, session_id="abc")
+    # 検証
+    assert result == {
+        "cwd": "/w",
+        "claude_config_dir": "/h/.claude",
+        "claude_session_id": "abc",
+    }

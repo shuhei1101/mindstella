@@ -10,6 +10,12 @@ components:
     refs:
       - CMP-489-26#
     unit_tests:
+      - name: test_history_dialog_when_external
+        case: 正常
+        summary: 外部の変更のまとまりに札を付ける
+        condition: '`points[1].external` が真'
+        mock: なし
+        expected: 2 つ目の行だけ「外部の変更」の札を持つ
       - name: test_history_dialog
         case: 正常
         summary: 時点を選ぶ

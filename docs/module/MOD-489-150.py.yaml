@@ -41,6 +41,12 @@ constants:
     usecase: コメントを選んで送る
     summary: '`/proc/{PID}/stat` のコマンドの名前を閉じる最後の `)` より後ろを空白で分けたときの、22 番目の欄 `starttime` の位置（0 始まり）'
     value: '19'
+  - name: PERMISSION_REASON
+    title: 許可の理由
+    container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
+    usecase: コメントを選んで送る
+    summary: 出力の `permissionDecisionReason`（インターフェース定義『セッションの値の注入』の固定の文字列）
+    value: '"mindstella のツールの呼び出しにセッションの値を入れた"'
 functions:
   - name: main
     title: セッションの値の注入の入口
@@ -48,7 +54,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/inject_session.py
     usecase: コメントを選んで送る
     scope: public
-    summary: 標準入力のフックの入力を読み、`tool_input` の `session` をこのセッションの値で上書きした `updatedInput` を標準出力に出す
+    summary: 標準入力のフックの入力を読み、`tool_input` の `session` をこのセッションの値で上書きした `updatedInput` を、`permissionDecision` の `allow` と一緒に標準出力に出す
     description: 末尾で `sys.exit(main())`。どの結末も終了コード 0 で終え、ツールの呼び出しを止めない。
     side_effects: 標準出力に書く
     args:
@@ -83,8 +89,8 @@ functions:
       1. 標準入力を JSON として読む
          - 読めないか、オブジェクトでないか、`cwd` が文字列でないか、`tool_input` がオブジェクトでない場合、何も出さずに 0 を返す
       2. tmux の中（`TMUX`・`TMUX_PANE` がどちらも空でない）なら、`find_claude(os.getppid())` で Claude Code のプロセスを探す。tmux の外なら探さない
-      3. セッションの値を作る（`build_session`）
-      4. `tool_input` のコピーの `session` を 3 の値で置き換え、`{"hookSpecificOutput": {"hookEventName": "PreToolUse", "updatedInput": コピー}}` を標準出力に JSON（`ensure_ascii=False`）で出す
+      3. セッションの値を作る（`build_session`。入力の `session_id` が文字列なら渡す）
+      4. `tool_input` のコピーの `session` を 3 の値で置き換え、`{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": PERMISSION_REASON, "updatedInput": コピー}}` を標準出力に JSON（`ensure_ascii=False`）で出す
       5. 0 を返す
     unit_tests:
       - name: test_main
@@ -92,7 +98,7 @@ functions:
         summary: session を入れた updatedInput を出す
         condition: '`{"cwd": "/w", "tool_input": {"workspace": "talk", "session": {"cwd": "/etc"}}}`、`environ` は `TMUX`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR` を持つ。`find_claude` は `(42, "Mon Nov 2 10:00:00 2026")` を返す'
         mock: '`find_claude`'
-        expected: 0 を返し、出力の `hookSpecificOutput.hookEventName` が `PreToolUse`、`updatedInput.workspace` が `talk`、`updatedInput.session` が `build_session` の値（`cwd` が `/w`）
+        expected: 0 を返し、出力の `hookSpecificOutput.hookEventName` が `PreToolUse`、`permissionDecision` が `allow`、`permissionDecisionReason` が `PERMISSION_REASON`、`updatedInput.workspace` が `talk`、`updatedInput.session` が `build_session` の値（`cwd` が `/w`）
       - name: test_main_when_outside_tmux
         case: 正常
         summary: tmux の外では Claude Code のプロセスを探さない
@@ -134,14 +140,27 @@ functions:
         required: true
         passing: positional
         description: Claude Code のプロセスの PID と起動時刻（見つからなければ `None`）
+      - name: session_id
+        type: str | None
+        required: false
+        default: None
+        passing: keyword
+        description: フックの入力の `session_id`（Claude Code の `session_id`）
     returns:
       type: dict[str, Any]
       description: '`cwd`・`claude_config_dir` と、tmux の中なら `tmux`・`tmux_pane`、`claude` があれば `claude_pid`・`claude_started_at`（インターフェース定義『MCP サーバーの起動』の `session`）'
     process: |-
       1. `cwd` と、`CLAUDE_CONFIG_DIR` が空でなければそれを `expanduser` して絶対パスにしたもの、空なら `DEFAULT_CONFIG_DIR` を `claude_config_dir` に入れる
       2. `TMUX`・`TMUX_PANE` がどちらも空でなければ、`tmux`・`tmux_pane` に入れ、`claude` があれば `claude_pid`・`claude_started_at` も入れる
-      3. 辞書を返す
+      3. `session_id` があれば `claude_session_id` に入れる
+      4. 辞書を返す
     unit_tests:
+      - name: test_build_session_when_session_id
+        case: 正常
+        summary: session_id を claude_session_id に入れる
+        condition: '`session_id="abc"`、`environ` は `TMUX` を持たない'
+        mock: '`Path.home`（`/h`）'
+        expected: '`cwd`・`claude_config_dir`・`claude_session_id`（`abc`）の 3 つのキー'
       - name: test_build_session
         case: 正常
         summary: tmux の中と外で入れるキーを分ける

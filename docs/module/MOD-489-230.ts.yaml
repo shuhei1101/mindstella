@@ -1,5 +1,7 @@
 id: MOD-489-230
 title: プレビュー / 画面と部品 / history-dialog.ts
+test_files:
+  - tests/unit/preview/test_history_dialog.py
 components:
   - name: historyDialog
     title: 変更履歴
@@ -12,6 +14,10 @@ components:
         type: '{sel, name, sub, count?}[]'
         required: true
         description: 並べる時点。`count` はその時点の `DiffPoint` の `added`・`changed`・`removed` の件数の和
+      - name: points[].external
+        type: boolean
+        required: false
+        description: 外部の変更のまとまり（`sets[].by` が `external`）。真なら名前の横に「外部の変更」の札を付け、行のボタンの読み上げ名に含める
       - name: current
         type: string
         required: true
@@ -24,3 +30,10 @@ components:
         type: () => void
         required: true
         description: 閉じる
+    unit_tests:
+      - name: test_history_dialog_when_external
+        case: 正常
+        summary: 外部の変更のまとまりに札を付ける
+        condition: 2 つ目のまとまりだけ `external` が真の `points`
+        mock: なし
+        expected: 2 つ目の行だけ「外部の変更」の札（`.hist-tag`）を持ち、行のボタンの読み上げ名が名前と「外部の変更」を含む

@@ -8,7 +8,7 @@ flows:
     summary: tmux の中のセッションの値を `session` に入れた入力を返す
     setup:
       - name: Mock
-        description: 'Claude Code の代わりに、フックの入力の JSON（`cwd` はテストの一時フォルダ、`tool_input` は `{"workspace": "talk"}`）を標準入力に渡してスクリプトを起動する'
+        description: 'Claude Code の代わりに、フックの入力の JSON（`cwd` はテストの一時フォルダ、`session_id` は `abc`、`tool_input` は `{"workspace": "talk"}`）を標準入力に渡してスクリプトを起動する'
       - name: 環境変数
         description: '`TMUX` に `/tmp/tmux-1000/default,1234,0`、`TMUX_PANE` に `%3`、`CLAUDE_CONFIG_DIR` にテストの一時フォルダを渡す'
       - name: Claude Code のプロセス
@@ -20,16 +20,18 @@ flows:
         participant CC as Claude Code（代わり）
         participant IF as inject_session.py
 
-        CC->>IF: PreToolUse の入力（cwd・tool_input）
+        CC->>IF: PreToolUse の入力（cwd・session_id・tool_input）
         IF->>IF: 親をたどって claude のプロセスを探す
-        IF-->>CC: updatedInput（tool_input と session）
+        IF-->>CC: permissionDecision（allow）と updatedInput（tool_input と session）
       ```
     expected:
       - 終了コードが 0
+      - '`updatedInput.session.claude_session_id` が `abc`'
       - 標準出力の JSON の `hookSpecificOutput.hookEventName` が `PreToolUse`
       - '`hookSpecificOutput.updatedInput.workspace` が `talk` のまま'
       - '`updatedInput.session` の `cwd`・`tmux`・`tmux_pane`・`claude_config_dir` が、入力の `cwd` と渡した環境変数の値'
       - '`updatedInput.session.claude_pid` が `claude` の名前のプロセスの PID で、`claude_started_at` がそのプロセスの `/proc/{PID}/stat` の 22 番目の欄 `starttime`'
+      - '`hookSpecificOutput.permissionDecision` が `allow` で、`hookSpecificOutput.permissionDecisionReason` が空でない'
     test: test_normal
   - name: 正常系（tmux の外）
     summary: '`TMUX`・`TMUX_PANE` が無ければ、`cwd` と `claude_config_dir` だけを入れる'
@@ -43,7 +45,7 @@ flows:
         participant IF as inject_session.py
 
         CC->>IF: PreToolUse の入力
-        IF-->>CC: updatedInput（cwd と claude_config_dir の session）
+        IF-->>CC: permissionDecision（allow）と updatedInput（cwd と claude_config_dir の session）
       ```
     expected:
       - '`updatedInput.session` のキーが `cwd` と `claude_config_dir` だけ'
@@ -61,7 +63,7 @@ flows:
         participant IF as inject_session.py
 
         CC->>IF: PreToolUse の入力（session あり）
-        IF-->>CC: updatedInput（フックの値の session）
+        IF-->>CC: permissionDecision（allow）と updatedInput（フックの値の session）
       ```
     expected:
       - '`updatedInput.session.cwd` が入力の `cwd` で、`/etc` でない'
@@ -83,7 +85,7 @@ flows:
     expected:
       - 終了コードが 0 で、標準出力に何も書かない
     test: test_normal_when_input_invalid
-lead: mindstella のツールを呼ぶたびに、呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセスを、ツールの引数 `session` に入れる。
+lead: mindstella のツールを呼ぶたびに、呼んだセッションの作業フォルダ・tmux のペイン・設定のフォルダ・Claude Code のプロセス・Claude Code の `session_id` を、ツールの引数 `session` に入れる。
 idempotent: true
 side_effects: なし（何も書き込まない）
 request:
@@ -92,6 +94,12 @@ request:
     required: true
     location: body
     description: Claude Code がフックの標準入力に渡す JSON の作業フォルダ
+  - name: session_id
+    type: str
+    required: false
+    default: なし（`session.claude_session_id` を入れない）
+    location: body
+    description: Claude Code がフックの標準入力に渡す JSON の `session_id`。`session.claude_session_id` に入れる
   - name: tool_input
     type: dict
     required: true
@@ -122,10 +130,16 @@ response:
   - name: hookSpecificOutput.updatedInput
     type: dict
     description: '`tool_input` のコピーに、`session`（『MCP サーバーの起動』の `session` のキー）を上書きで入れたもの'
+  - name: hookSpecificOutput.permissionDecision
+    type: '"allow"'
+    description: 書き換えた入力での呼び出しを許可する。auto モードで、書き換えた呼び出しを拒否させない。plan モード以外では権限の確認を省き、mindstella のツール（`remove`・`close_workspace`・`server_stop` を含む）を確認なしで呼べる（設定の deny・ask のルールは評価される）
+  - name: hookSpecificOutput.permissionDecisionReason
+    type: str
+    description: 許可の理由。`mindstella のツールの呼び出しにセッションの値を入れた` に固定する
 exceptions:
   - name: なし（正常終了）
     condition: 入力を書き換えたか、読めない入力で何もしなかった
-    notes: 終了コード 0。許可の判断（`permissionDecision`）は出さない
+    notes: 終了コード 0。入力を書き換えたときは `permissionDecision` を `allow` で出し、入力を書き換えなかったときは出さない
 constraints:
   - item: 契機
     constraint: プラグインの `hooks/hooks.json` の `PreToolUse`。`matcher` は `mcp__plugin_mindstella_mindstella__.*`
@@ -142,6 +156,9 @@ constraints:
   - item: 上限
     constraint: '`ps` をたどるのは 32 段まで'
     notes: Claude Code の下のフックのプロセスの深さは数段で、たどり続けて止まらないことを防ぐ上限
+  - item: 許可の判断
+    constraint: '`allow` を出すのは、`matcher` に該当する mindstella の MCP のツールの呼び出しだけ'
+    notes: 設定の deny・ask のルールは、フックの返却に関係なく評価される
 refs:
   - IF-489-1#
   - LIB-489-4#

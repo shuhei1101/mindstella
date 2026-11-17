@@ -2,6 +2,8 @@
 // 変更履歴のモーダル。差分の表示で比べる時点を、日時・説明・変わった項目の数つきで新しい順に並べ、1 つ選ばせる。
 var MindmapPreview;
 (function (MindmapPreview) {
+    /** 外部の変更のまとまりに付ける札の文言 */
+    const EXTERNAL_TAG = "外部の変更";
     /** 時点の行（押すと選ぶ。選んでいる行にチェックと `aria-current` を付ける） */
     function pointRow({ point, selected, onPick, }) {
         return MindmapPreview.h({
@@ -24,7 +26,18 @@ var MindmapPreview;
                             tag: "span",
                             attrs: { class: "hist-main" },
                             children: [
-                                MindmapPreview.h({ tag: "span", attrs: { class: "hist-name" }, children: [point.name] }),
+                                MindmapPreview.h({
+                                    tag: "span",
+                                    attrs: { class: "hist-name" },
+                                    children: [
+                                        point.name,
+                                        // 名前と札の間の空白（読み上げで名前と札の文言を分ける）
+                                        point.external === true ? " " : null,
+                                        point.external === true
+                                            ? MindmapPreview.h({ tag: "span", attrs: { class: "hist-tag" }, children: [EXTERNAL_TAG] })
+                                            : null,
+                                    ],
+                                }),
                                 MindmapPreview.h({ tag: "span", attrs: { class: "hist-sub" }, children: [point.sub] }),
                             ],
                         }),

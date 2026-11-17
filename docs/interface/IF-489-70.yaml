@@ -194,7 +194,7 @@ flows:
     expected:
       - 溜めた後、D-1 の答えのキーとボードの D-1 のカードに保存待ちの印があり、トップバーの件数が 1
       - 保存待ちのパネルを開いた後、URL に `panel=pending` があり、履歴の数が変わらない
-      - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で `updated_by` が `user`、印と件数が開き直さずに消え、URL から `panel` が外れる
+      - 保存した後、`decisions.yaml` の D-1 の `answer` が書いた値で、`history.yaml` の D-1 の `updated_by` が `user`、印と件数が開き直さずに消え、URL から `panel` が外れる
       - 「編集する」・入力欄・トップバーの件数・取り消す・まとめて保存するに Tab キーで届く
     test: test_normal_when_edits_saved
   - name: 正常系（一覧の画面から項目を足して消す）

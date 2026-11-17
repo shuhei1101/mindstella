@@ -37,7 +37,7 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     summary: 登録するツールの名前の並び（インターフェース定義『MCP サーバーの起動』のツール）。`init` を外し、`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` を足す
-    value: ("add", "update", "remove", "update_settings", "adopt", "edit_option", "batch", "changes_since_read", "commit", "pending", "status", "next", "impact", "find", "show", "attrs", "tags", "check", "goal", "migrate", "clear_release", "write_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
+    value: ("next_id", "update_settings", "adopt", "edit_option", "changes_since_read", "commit", "pending", "status", "next", "check", "goal", "migrate", "clear_release", "write_release", "export", "preview_url", "readme", "threads", "thread", "new_thread", "reply", "set_thread_status", "update_thread", "server_status", "server_stop")
   - name: DEFAULT_PORT
     title: 既定の待ち受けのポート
     container: plugins/mindstella/skills/mindmap/scripts/server.py
@@ -74,6 +74,18 @@ constants:
     usecase: 共通
     summary: '`MindmapError` でない例外をツールのエラーにするときの文言（`{type}` は例外のクラス名）'
     value: '"予期しないエラー（{type}）: {message}"'
+  - name: MINDSTELLA_SESSION_TOOLS
+    title: MindStella のセッションに限るツール
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: スレッドと書き換えのまとまり
+    summary: MindStella のセッションの呼び出しだけを受け付けるツール（インターフェース定義『MCP サーバーの起動』）
+    value: ("commit", "new_thread", "reply", "set_thread_status", "update_thread")
+  - name: INSTRUCTIONS
+    title: MCP の案内
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: 共通
+    summary: MCP の初期化の応答の `instructions`。記録の検索・書き込み・削除・関連のたどりは project-index の `search_docs`・`write_docs`・`delete_docs`・`trace_related` で行い、項目を足す前に `next_id` で ID を取り、`commit` とスレッドの書き込みは MindStella のセッションだけが呼べることを書く
+    value: （インターフェース定義『MCP サーバーの起動』の制約「instructions」の文）
 functions:
   - name: main
     title: 入口
@@ -367,12 +379,12 @@ functions:
       description: 名前が `SERVER_NAME` で、ツールを `TOOL_NAMES` の順に持つサーバー
     process: |-
       1. `MCPServer(SERVER_NAME)` を作る
-      2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数と、全てのツールに共通の `session: dict[str, Any] | None = None` を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード。`find`・`tags` は冒頭リードに、インターフェース定義の制約「ツールの説明」の文を続ける）
+      2. ツールごとに、インターフェース定義のリクエストと同じ名前・型の引数と、全てのツールに共通の `session: dict[str, Any] | None = None` を持つ関数を `@server.tool(name=...)` で登録する（ツールの説明はインターフェース定義の冒頭リード）。`MCPServer` の `instructions` に `INSTRUCTIONS` を渡す
+         - `MINDSTELLA_SESSION_TOOLS` のツールは、ツールの処理を呼ぶ前に MindStella のセッションかを確かめ（`require_mindstella_session`）、違えば `error_result` を返す
          - `workspace` を受ける関数は、`session` を読み（`parse_session`）、`workspace` を絶対パスにし（`resolve_workspace`）、セッションがあればそのワークスペースの宛先を書き換えてから（`previews.remember_session`）、ツールの処理を呼ぶ。`resolve_workspace` が `ArgumentError` を送った場合、ツールの処理を呼ばずにエラーの結果を返す（`error_result`）。`out` も同じセッションで絶対パスにする（`argument="out"`）
          - `server_status` は `call_tool(status)`、`server_stop` は `call_tool(lambda: run_server_stop(previews, request_stop=request_stop))` にする（`session` は受けても使わない）
-         - `find` は `tags`・`any_tags`（`list[str] | None`）をタプルにし、`attr` の要素を `parse_attr` で分けて `SearchFilter` を作り、`limit`（既定 `DEFAULT_LIMIT`）・`cursor`・`view`（既定 `brief`）・`include`・`exclude`（既定 空）・`count_only`（既定 偽）と一緒に `run_find` へ渡す。`format`（既定 `markdown`）が `markdown` なら `call_tool` に `render=render_find_markdown` を渡す
          - 各関数は `workspace` を絶対パスにし（`resolve_workspace`）、ツールの処理を呼んで結果にする（`call_tool`、`run_{ツール}`）
-         - ワークスペースを書き換えるツール（`init`・`add`・`update`・`update_settings`・`adopt`・`edit_option`・`batch`・`changes_since_read`・`clear_release`・`write_release`・`new_thread`・`reply`・`set_thread_status`・`update_thread` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
+         - ワークスペースを書き換えるツール（`init`・`update_settings`・`adopt`・`edit_option`・`changes_since_read`・`commit`・`clear_release`・`write_release`・`new_thread`・`reply`・`set_thread_status`・`update_thread` と、`plan` でない `migrate`）は、`call_tool` に `lock_root` を渡す。`init` だけ `lock_create=True` も、`plan` でない `migrate` だけ `lock_require=require_migratable`（前の版の `mindmap.yaml` だけのフォルダも通す）も渡す。直下の README だけを書く `readme`・`preview_url` には `lock_root` を渡さない（インターフェース定義『README の書き出し』の排他）
          - `thread` は `lock_root` を渡さず、既読を書くときだけ鍵を取れるよう、`run_thread` に `lock=lambda: workspace_lock(root, write_lock)` を渡す（インターフェース定義『スレッドを読む』の同時の呼び出し）
       3. `@server.custom_route(STATUS_PATH, methods=["GET"])` で、`status()` を `JSONResponse` で返す入口を登録する
       4. サーバーを返す
@@ -386,20 +398,20 @@ functions:
       - name: test_build_server_when_relative_workspace
         case: 正常
         summary: 相対パスの workspace をセッションの作業フォルダから読む
-        condition: '`tmp_path / "ws"` に作成済みのワークスペース。`call_tool("attrs", {"workspace": "ws", "session": {"cwd": "{tmp_path}", "claude_config_dir": "{tmp_path}/cfg"}})`'
+        condition: '`tmp_path / "ws"` に作成済みのワークスペース。`call_tool("pending", {"workspace": "ws", "session": {"cwd": "{tmp_path}", "claude_config_dir": "{tmp_path}/cfg"}})`'
         mock: なし
-        expected: '結果の `is_error` が偽で、`structured_content` が `{"attrs": []}`'
+        expected: '結果の `is_error` が偽で、`structured_content` の `added`・`changed` が空'
       - name: test_build_server_when_relative_without_session
         case: 異常
         summary: セッションが無い相対パスは引数の誤り
-        condition: '`call_tool("attrs", {"workspace": "ws"})`'
+        condition: '`call_tool("pending", {"workspace": "ws"})`'
         mock: なし
         expected: '`is_error` が真で、本文が `エラー: 引数の誤り: workspace:` で始まる'
         exception: ArgumentError
       - name: test_build_server_when_session_given
         case: 正常
         summary: セッションを受けたらそのワークスペースの宛先を書き換える
-        condition: 作成済みのワークスペース `ws`（絶対パス）。`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` を持つ `session` で `attrs` を呼ぶ。`previews` は `remember_session` を記録する偽の台帳
+        condition: 作成済みのワークスペース `ws`（絶対パス）。`tmux`・`tmux_pane`・`claude_pid`・`claude_started_at` を持つ `session` で `pending` を呼ぶ。`previews` は `remember_session` を記録する偽の台帳
         mock: '`previews`'
         expected: '`remember_session` がワークスペースの絶対パスとそのセッションで 1 回呼ばれている'
       - name: test_build_server_when_status_route
@@ -408,12 +420,13 @@ functions:
         condition: '`status` が `{"name": "mindstella"}` を返す関数。`streamable_http_app()` のアプリを `starlette.testclient.TestClient` で開き、`GET /_admin/status` を送る'
         mock: '`status`'
         expected: '200 で、JSON が `{"name": "mindstella"}`'
-      - name: test_build_server_when_find_format
-        case: 正常
-        summary: find は既定で Markdown の本文、json で構造化の結果を返す
-        condition: 'D-1 を持つワークスペース `ws` を `tmp_path` に置き、`session` の `cwd` を `tmp_path` にする。`parametrize`: `call_tool("find", {"workspace": "ws", "session": ...})` / `call_tool("find", {"workspace": "ws", "format": "json", "session": ...})`'
+      - name: test_build_server_when_not_mindstella_session
+        case: 異常
+        summary: MindStella のセッションに限るツールは、違うセッションの呼び出しをエラーにする
+        condition: '`claude_session_id` `abc` の `session.json` を持つワークスペースで、`session.claude_session_id` を `xyz` にして `commit` を呼ぶ'
         mock: なし
-        expected: 本文が `全 1 件・合計` で始まり `structured_content` が `None` / `structured_content` の `items[0].id` が `D-1`
+        expected: '`is_error` が真で、本文が `エラー: MindStella のセッションだけが呼べます: commit`。`changes.yaml` が呼ぶ前と同じ'
+        exception: NotMindStellaSessionError
       - name: test_build_server_api_tools
         case: 正常
         summary: MindStella の API と同じ操作のツールがあり、init が無い
@@ -462,7 +475,7 @@ functions:
         required: false
         default: None
         passing: keyword
-        description: 成功の辞書を本文の文字にする関数。渡したときは `text_result` にする（`find` の `format` が `markdown` のとき `render_find_markdown`）
+        description: 成功の辞書を本文の文字にする関数。渡したときは `text_result` にする
     returns:
       type: CallToolResult
       description: 成功は `ok_result`、エラーは `error_result` の結果
@@ -638,6 +651,51 @@ functions:
         condition: '`全 2 件・合計 300 文字`'
         mock: なし
         expected: 本文がその文字で、`structured_content` が `None`、`is_error` が偽
+  - name: require_mindstella_session
+    title: MindStella のセッションの確かめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/server.py
+    usecase: スレッドと書き換えのまとまり
+    scope: public
+    summary: 呼んだセッションの `claude_session_id` が、そのワークスペースの MindStella のセッションと同じかを確かめる
+    args:
+      - name: context
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダを持つ値
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースの絶対パス
+      - name: session
+        type: Session | None
+        required: true
+        passing: positional
+        description: '`parse_session` の戻り値'
+      - name: tool
+        type: str
+        required: true
+        passing: keyword
+        description: ツールの名前（エラーの文に使う）
+    returns:
+      type: None
+      description: 同じなら何も返さない
+    process: |-
+      1. ワークスペースの ID を引き（`workspace_id_of`）、状態の `session.json` を読む（セッションの管理の `read_session`）
+      2. `session.json` が無い・`claude_session_id` が無い・`session` が無い・`session.claude_session_id` が違う場合、`NotMindStellaSessionError`（`tool`）を送る
+    exceptions:
+      - name: NotMindStellaSessionError
+        condition: MindStella のセッションでない呼び出し
+        message: 'MindStella のセッションだけが呼べます: {tool}'
+    unit_tests:
+      - name: test_require_mindstella_session
+        case: 正常
+        summary: 同じ claude_session_id なら通し、違えば断る
+        condition: '`claude_session_id` `abc` の `session.json` を置き、`abc` と `xyz` で呼ぶ'
+        mock: なし
+        expected: '`abc` は何も送らず、`xyz` は `NotMindStellaSessionError`（本文に `commit`）'
 data_models:
   - name: ServerContext
     title: 入口が渡す値

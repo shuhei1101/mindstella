@@ -1392,3 +1392,18 @@ def test_voice_failed(open_story: OpenStory) -> None:
     assert status.inner_text().strip() == "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"
     assert page.get_by_role("button", name="入力欄を開く").count() == 1
     assert page.get_by_role("button", name="閉じる").count() == 1
+
+
+def test_duplicate_ids(open_story: OpenStory) -> None:
+    """重なった ID の通知を、タブの帯の下に出す（正常系）。"""
+    # 準備・実行
+    page = open_story("preview-topbar--duplicate-ids")
+    # 検証
+    notice = page.locator("#storybook-root [role='alert'].dup-note")
+    assert notice.count() == 1
+    assert "同じ ID の項目が 2 件あります" in notice.inner_text()
+    tabs_box = page.locator("#storybook-root nav.tabbar").bounding_box()
+    notice_box = notice.bounding_box()
+    assert tabs_box is not None
+    assert notice_box is not None
+    assert tabs_box["y"] + tabs_box["height"] <= notice_box["y"]

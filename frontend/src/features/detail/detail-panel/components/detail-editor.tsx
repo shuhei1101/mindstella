@@ -12,21 +12,21 @@ import { Select } from "@/shared/components/ui/select";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { NEW_ID_PREFIX, type BlockedEdit, type PendingEdit, type PendingMarkKind } from "@/shared/core/edits";
 import { formatJst } from "@/shared/core/format";
-import { DECISION_STATUSES, DOC_STATUSES, KIND_LABEL, TASK_STATUSES, type Item, type Kind, type Settings, type Tag } from "@/shared/core/records";
+import { DECISION_STATUSES, DOC_STATUSES, KIND_LABEL, refsOf, relationValidator, TASK_STATUSES, type Item, type Kind, type RecordIndex, type Relation, type RelationType, type Settings, type Tag } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
-type Input = "text" | "textarea" | "select" | "tags" | "refs" | "check" | "body" | "options";
+type Input = "text" | "textarea" | "select" | "tags" | "refs" | "relations" | "check" | "body" | "options";
 
 const key = (name: string, input: Input) => ({ key: name, input });
 
 const EDITABLE_KEYS: Record<Kind, { key: string; input: Input }[]> = {
-  decisions: [key("status", "select"), key("title", "text"), key("target", "select"), key("category", "select"), key("phase", "select"), key("tags", "tags"), key("depends_on", "refs"), key("options", "options"), key("answer", "textarea"), key("reason", "textarea"), key("body", "body")],
-  tasks: [key("status", "select"), key("title", "text"), key("target", "select"), key("kind", "select"), key("tags", "tags"), key("result", "textarea"), key("body", "body")],
-  research: [key("title", "text"), key("question", "textarea"), key("conclusion", "textarea"), key("confidence", "select"), key("tags", "tags"), key("related", "refs"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
-  docs: [key("status", "select"), key("title", "text"), key("kind", "text"), key("deliverable", "check"), key("tags", "tags"), key("related", "refs"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
+  decisions: [key("status", "select"), key("title", "text"), key("target", "select"), key("category", "select"), key("phase", "select"), key("tags", "tags"), key("related", "relations"), key("options", "options"), key("answer", "textarea"), key("reason", "textarea"), key("body", "body")],
+  tasks: [key("status", "select"), key("title", "text"), key("target", "select"), key("kind", "select"), key("tags", "tags"), key("related", "relations"), key("result", "textarea"), key("body", "body")],
+  research: [key("title", "text"), key("question", "textarea"), key("conclusion", "textarea"), key("confidence", "select"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
+  docs: [key("status", "select"), key("title", "text"), key("kind", "text"), key("deliverable", "check"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
   terms: [key("title", "text"), key("meaning", "textarea"), key("aliases", "refs"), key("tags", "tags"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
-  notes: [key("title", "text"), key("content", "textarea"), key("tags", "tags"), key("related", "refs"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
-  logs: [key("title", "text"), key("date", "text"), key("related", "refs"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
+  notes: [key("title", "text"), key("content", "textarea"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
+  logs: [key("title", "text"), key("date", "text"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
 };
 
 const ADD_KEYS: Record<Kind, string[]> = {
@@ -41,12 +41,26 @@ const ADD_KEYS: Record<Kind, string[]> = {
 
 /** キーの呼び名 */
 export const KEY_LABELS: Record<string, string> = {
-  status: "状態", title: "タイトル", target: "機能", category: "カテゴリー", phase: "フェーズ", tags: "タグ", depends_on: "依存先", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", confidence: "確からしさ", related: "関連", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", deliverable: "納品物", description: "説明",
+  status: "状態", title: "タイトル", target: "機能", category: "カテゴリー", phase: "フェーズ", tags: "タグ", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", confidence: "確からしさ", related: "関係", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", deliverable: "納品物", description: "説明",
 };
 
 const TASK_KINDS = ["作業", "調査", "検証"];
 const CONFIDENCES = ["高", "中", "低"];
-const CHIP_HINTS: Record<string, string> = { tags: "タグを入れる", depends_on: "ID を入れる", related: "ID を入れる", aliases: "別名を入れる" };
+const CHIP_HINTS: Record<string, string> = { tags: "タグを入れる", aliases: "別名を入れる" };
+
+/** 種類ごとに関係の入力へ並べる関連の種類（表示の順） */
+const RELATION_TYPES: Record<Kind, RelationType[]> = {
+  decisions: ["depends_on", "parent", "see_also"],
+  tasks: ["for", "depends_on", "see_also"],
+  research: ["see_also"],
+  docs: ["see_also"],
+  terms: ["see_also"],
+  notes: ["see_also"],
+  logs: ["see_also"],
+};
+
+/** 関連の種類の表示名 */
+const RELATION_LABELS: Record<RelationType, string> = { depends_on: "前提", parent: "親", for: "向けた検討事項", see_also: "関連" };
 
 const labelOf = (kind: Kind, name: string): string => {
   if (name === "title" && kind === "terms") return "用語";
@@ -78,9 +92,51 @@ export type DetailEditorProps = {
   referrers: readonly string[];
   usedTags: readonly string[];
   body: string | undefined;
+  /** 記録の索引（関係の入力で、入れた ID かタイトルを項目に当てる。渡さなければ入れた値をそのまま追加する） */
+  index?: RecordIndex;
   onChange: (change: EditChange) => void;
   onRemove: () => void;
   onCancelRemove: () => void;
+};
+
+/** 関係の入力（種類ごとに見出しを置き、その下にチップの入力を 1 つずつ並べる）。どれかが変わったら全ての種類の並びを `related` にして溜める */
+const RelationsField = ({ kind, item, mark, removing, index, onChange }: { kind: Kind; item: Item; mark: PendingMarkKind | undefined; removing: boolean; index: RecordIndex | undefined; onChange: (related: Relation[]) => void }) => {
+  const types = RELATION_TYPES[kind];
+  const current = new Map<RelationType, string[]>(types.map((type) => [type, refsOf(item, type)]));
+  const empty = [...current.values()].every((ids) => ids.length === 0);
+  return (
+    <div data-key="related" className="flex flex-col gap-1">
+      <div className="flex items-center gap-1 text-small font-medium">
+        <span>関係</span>
+        {mark === undefined ? null : <PendingMark kind={mark} compact />}
+      </div>
+      {empty ? <p className="m-0 text-small text-muted-foreground">なし</p> : null}
+      {types.map((type) => {
+        const controlId = `pe-${item.id.replace(/[^A-Za-z0-9]/g, "")}-related-${type}`;
+        return (
+          <div key={type} data-type={type} className="flex flex-col gap-1">
+            <label htmlFor={controlId} className="text-xs text-muted-foreground">
+              {RELATION_LABELS[type]}
+            </label>
+            <ChipsInput
+              controlId={controlId}
+              name={RELATION_LABELS[type]}
+              hint="ID かタイトル"
+              values={current.get(type) ?? []}
+              monospace
+              disabled={removing}
+              validate={index === undefined ? undefined : relationValidator(type, kind, index)}
+              onChange={(values) => {
+                const next = new Map(current);
+                next.set(type, values.map((value) => (typeof value === "string" ? value : value.name)));
+                onChange(types.flatMap((each) => (next.get(each) ?? []).map((to) => ({ to, type: each }))));
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 const Field = ({ label, controlId, required, mark, children }: { label: string; controlId: string; required?: boolean; mark: PendingMarkKind | undefined; children: ReactNode }) => (
@@ -95,7 +151,7 @@ const Field = ({ label, controlId, required, mark, children }: { label: string; 
 );
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
-export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, removedOptions, referrers, usedTags, body, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
+export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, removedOptions, referrers, usedTags, body, index, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
   const adding = item.id.startsWith(NEW_ID_PREFIX);
   const [titleEmpty, setTitleEmpty] = useState(false);
   const [drafts, setDrafts] = useState<{ key: string; content: string }[]>([]);
@@ -171,12 +227,14 @@ export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, r
             <dt>作成</dt>
             <dd>{item.created === undefined ? "" : formatJst(item.created)}</dd>
             <dt>更新</dt>
-            <dd>{`${item.updated === undefined ? "" : formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : "AI"}）`}</dd>
+            <dd>{`${item.updated === undefined ? "" : formatJst(item.updated)}（${item.updated_by === "user" ? "利用者" : item.updated_by === "external" ? "ほかのセッション" : "AI"}）`}</dd>
           </>
         )}
       </dl>
       {keys.map(({ key: name, input }) =>
-        input === "options" ? (
+        input === "relations" ? (
+          <RelationsField key={name} kind={kind} item={item} mark={marks["related"]} removing={removing} index={index} onChange={(related) => { set("related", related); }} />
+        ) : input === "options" ? (
           <fieldset key={name} data-key="options" className="flex flex-col gap-2">
             <legend className="text-small font-medium">案</legend>
             {options.map((option) => {

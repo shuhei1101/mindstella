@@ -274,7 +274,7 @@ def test_search_by_html_body(write_preview: WritePreview, open_preview: OpenPrev
     """HTML の本文と html のコードブロックを、タグ・属性を除いた描いた文で探す（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", body="A-1.html"),
+        make_item("A-1", body="docs/A-1.html"),
         make_item("A-2"),
         make_item("T-1"),
         bodies={"A-1.html": FLOW_HTML_BODY, "A-2.md": FLOW_MARKDOWN_BODY},

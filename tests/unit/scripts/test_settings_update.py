@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 import errors
+import history
 import settings_update
 import store
 from errors import (
@@ -273,22 +274,22 @@ def test_remap_phases(
     settings = {**workspace.settings, "phases": ["目的", "発散", "要件"]}
     phase_map = {"問い": "目的", "整理": "要件", "結論": "要件"}
     # 実行
-    changes, remapped, new_settings = settings_update.remap_phases(
-        workspace, settings, phase_map, now=_fixed_now
+    changes, remapped, new_settings, rows = settings_update.remap_phases(
+        workspace, settings, phase_map, rows=history.load_item_history(root), now=_fixed_now
     )
     # 検証
     assert [change.kind for change in changes] == ["decision", "task"]
     decisions = {item["id"]: item for item in changes[0].items}
     tasks = {item["id"]: item for item in changes[1].items}
     assert decisions["D-1"]["phase"] == "目的"
-    assert decisions["D-1"]["updated"] == NOW
-    assert decisions["D-1"]["updated_by"] == "ai"
+    assert rows["D-1"]["updated"] == NOW
+    assert rows["D-1"]["updated_by"] == "ai"
     assert decisions["D-2"]["phase"] == "発散"
-    assert decisions["D-2"]["updated"] == DEFAULT_TIMESTAMP
-    assert "updated_by" not in decisions["D-2"]
+    assert rows["D-2"]["updated"] == DEFAULT_TIMESTAMP
+    assert "updated_by" not in rows["D-2"]
     assert tasks["T-1"]["phase"] == "要件"
-    assert tasks["T-1"]["updated"] == NOW
-    assert tasks["T-1"]["updated_by"] == "ai"
+    assert rows["T-1"]["updated"] == NOW
+    assert rows["T-1"]["updated_by"] == "ai"
     assert remapped == [
         settings_update.PhaseRemap(id="D-1", key="phase", from_value="問い", to_value="目的"),
         settings_update.PhaseRemap(id="T-1", key="phase", from_value="整理", to_value="要件"),
@@ -313,7 +314,7 @@ def test_remap_phases_when_unmapped(
     settings = {**workspace.settings, "phases": ["目的", "要件"]}
     # 実行・検証
     with pytest.raises(UnmappedPhaseError) as raised:
-        settings_update.remap_phases(workspace, settings, {"問い": "目的"})
+        settings_update.remap_phases(workspace, settings, {"問い": "目的"}, rows={})
     assert set(raised.value.lines) == {"D-2: 発散", "goal: 結論"}
 
 
@@ -429,8 +430,8 @@ def test_update_settings(
     }
     saved = yaml.safe_load((root / RECORD_DIR / "config.yaml").read_text(encoding="utf-8"))
     assert saved["goal"]["phase"] == "目的"
-    decisions = yaml.safe_load((root / RECORD_DIR / "decisions.yaml").read_text(encoding="utf-8"))
-    assert decisions["items"][0]["updated_by"] == "ai"
+    rows = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))
+    assert rows["items"]["D-1"]["updated_by"] == "ai"
 
 
 def test_stage_settings(
@@ -460,7 +461,7 @@ def test_stage_settings(
         settings_update.PhaseRemap(id="D-1", key="phase", from_value="問い", to_value="目的")
     ]
     assert staged.items["decision"][0]["phase"] == "目的"
-    assert staged.items["decision"][0]["updated_by"] == "user"
+    assert staged.history["D-1"]["updated_by"] == "user"
     assert snapshot_tree(root) == before
 
 
@@ -535,17 +536,22 @@ def test_remap_names(
         ],
     }
     # 実行
-    items, remapped, new_settings = settings_update.remap_names(
-        workspace.items, settings, {"本体": "アプリ"}, {"設定": "運用"}, now=_fixed_now
+    items, remapped, new_settings, rows = settings_update.remap_names(
+        workspace.items,
+        settings,
+        {"本体": "アプリ"},
+        {"設定": "運用"},
+        rows=history.load_item_history(root),
+        now=_fixed_now,
     )
     # 検証
     decisions = {item["id"]: item for item in items["decision"]}
     assert (decisions["D-1"]["target"], decisions["D-1"]["category"]) == ("アプリ", "画面")
     assert (decisions["D-2"]["target"], decisions["D-2"]["category"]) == ("管理画面", "運用")
-    assert decisions["D-1"]["updated"] == NOW
-    assert decisions["D-2"]["updated"] == NOW
-    assert decisions["D-1"]["updated_by"] == "ai"
-    assert decisions["D-2"]["updated_by"] == "ai"
+    assert rows["D-1"]["updated"] == NOW
+    assert rows["D-2"]["updated"] == NOW
+    assert rows["D-1"]["updated_by"] == "ai"
+    assert rows["D-2"]["updated_by"] == "ai"
     assert remapped == [
         settings_update.PhaseRemap(id="D-1", key="target", from_value="本体", to_value="アプリ"),
         settings_update.PhaseRemap(id="D-2", key="category", from_value="設定", to_value="運用"),
@@ -556,8 +562,8 @@ def test_remap_names(
         "管理画面",
     ]
     # 付け替えは変更履歴を積まない
-    assert "history" not in decisions["D-1"]
-    assert "history" not in decisions["D-2"]
+    assert "history" not in rows["D-1"]
+    assert "history" not in rows["D-2"]
 
 
 def test_remap_names_when_unmapped(
@@ -577,7 +583,7 @@ def test_remap_names_when_unmapped(
     }
     # 実行・検証
     with pytest.raises(errors.UnmappedTargetError) as raised:
-        settings_update.remap_names(workspace.items, settings, {}, {})
+        settings_update.remap_names(workspace.items, settings, {}, {}, rows={})
     assert raised.value.lines == ["D-2: category: 設定"]
 
 

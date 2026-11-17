@@ -14,6 +14,7 @@ STATES = (
     "shared-historydialog--no-pending",
     "shared-historydialog--long-name",
     "shared-historydialog--narrow",
+    "shared-historydialog--external",
 )
 
 # 幅 390px の画面の大きさ
@@ -106,3 +107,15 @@ def test_narrow(open_story: OpenStory) -> None:
     assert page.evaluate(
         "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
     )
+
+
+def test_external(open_story: OpenStory) -> None:
+    """外部の変更のまとまりの名前の横に「外部の変更」の札を付け、行の読み上げ名に含める（正常系）。"""
+    # 準備・実行
+    dialog = open_story("shared-historydialog--external").get_by_role("dialog", name="変更履歴")
+    row = dialog.locator("button[data-sel='V-3']")
+    # 検証
+    expect(row).to_contain_text("ほかのセッションの書き込み")
+    expect(row).to_contain_text("外部の変更")
+    assert "ほかのセッションの書き込み 外部の変更" in " ".join(row.inner_text().split())
+    assert dialog.get_by_text("外部の変更", exact=True).count() == 1

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
+from record_write_helpers import write_tool
 
 __all__ = [
     "DIFF_CHIP_TITLE",
@@ -45,8 +46,7 @@ def build_post_link_workspace(make_workspace: Any, make_item: Any, call_tool: An
     root: Path = make_workspace(make_item("D-1", title="最初の問い"), make_item("D-2", title="次の問い"))
     workspace = str(root)
     for item_id in ("D-1", "D-2"):
-        updated = call_tool(
-            "update", workspace=workspace, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"}
+        updated = write_tool(call_tool, "update", workspace=workspace, id=item_id, item={"body_markdown": f"{item_id} の本文を直した\n"}
         )
         assert updated.is_error is False, updated.text
         committed = call_tool("commit", workspace=workspace, summary=f"{item_id} を直す")

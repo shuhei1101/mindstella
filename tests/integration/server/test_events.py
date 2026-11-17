@@ -6,6 +6,8 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+import yaml
+from record_write_helpers import write_tool
 from workspace_fixtures import RECORD_DIR, McpServer
 
 from .fixture_types import MakeItem, MakeWorkspace, StartServer
@@ -33,7 +35,7 @@ NEW_DECISION = {
 
 def _add_decision(server: McpServer, root: Path) -> None:
     """検討事項を 1 件足す。エラーならテストを止める。"""
-    result = server.call("add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    result = write_tool(server.call, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
     assert result.is_error is False, result.text
 
 
@@ -96,7 +98,7 @@ def test_normal_when_html_body_rewritten(
     """YAML を書き換えずに HTML の本文のファイルだけが変わっても知らせる（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>一覧の画面</p>\n"}
+        make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": "<p>一覧の画面</p>\n"}
     )
     stream = open_events(serve_preview(root))
     time.sleep(WATCH_START_SEC)
@@ -104,3 +106,24 @@ def test_normal_when_html_body_rewritten(
     (root / RECORD_DIR / "docs" / "A-1.html").write_text("<p>書き換えた画面</p>\n", encoding="utf-8")
     # 検証
     assert stream.wait_for_changed(CHANGED_WITHIN_SEC) is True
+
+
+def test_normal_when_duplicate_ids(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    serve_preview: Callable[[Path], str],
+    open_events: Callable[[str], EventStream],
+) -> None:
+    """同じ ID の項目が 2 件になったら duplicate_ids を知らせる（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    stream = open_events(serve_preview(root))
+    time.sleep(WATCH_START_SEC)
+    items = [make_item("D-1"), make_item("D-1", title="もう 1 件")]
+    # 実行
+    (root / RECORD_DIR / "decisions.yaml").write_text(
+        yaml.safe_dump({"items": items}, allow_unicode=True, sort_keys=False), encoding="utf-8"
+    )
+    events = stream.collect(CHANGED_WITHIN_SEC)
+    # 検証
+    assert ("duplicate_ids", '["D-1"]') in events

@@ -287,3 +287,40 @@ def test_used_tags(
     )
     # 検証
     assert result == ["api", "画面", "保存"]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        pytest.param("D-1", {"value": "D-1"}, id="id"),
+        pytest.param("保存先を決める", {"value": "D-1"}, id="title"),
+        pytest.param(
+            "T-1", {"error": "T-1 が見つかりません。ID を確認してください。"}, id="other_kind"
+        ),
+        pytest.param(
+            "D-99", {"error": "D-99 が見つかりません。ID を確認してください。"}, id="missing"
+        ),
+    ],
+)
+def test_relation_validator(
+    preview_page: Page,
+    load_preview_scripts: LoadPreviewScripts,
+    make_data: MakeData,
+    make_item: MakeItem,
+    value: str,
+    expected: dict[str, str],
+) -> None:
+    """入れた値を ID かタイトルで引き、指せない項目は誤りにする（正常系）。"""
+    # 準備
+    data = make_data(decisions=[make_item("D-1", title="保存先を決める")], tasks=[make_item("T-1")])
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """([data, value]) => {
+            const index = MindmapPreview.buildIndex(data);
+            return MindmapPreview.relationValidator("depends_on", "decisions", index)(value);
+        }""",
+        [data, value],
+    )
+    # 検証
+    assert result == expected

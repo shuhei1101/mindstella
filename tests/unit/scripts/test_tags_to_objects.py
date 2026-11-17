@@ -55,6 +55,7 @@ def test_tags_to_objects(
         make_item("D-1", tags=["API", "画面", "ａｐｉ"], updated=UPDATED_T0),
         make_item("T-1", tags=[{"name": "通知", "main": True}]),
         make_item("N-1"),
+        with_history=False,
     )
     write_threads(root, make_thread("TH-1", tags=["起票"]))
     before = snapshot_tree(root)

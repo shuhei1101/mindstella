@@ -10,13 +10,19 @@ namespace MindmapPreview {
   /** ネットワークの線（`source` が指す側、`target` が指される側） */
   export type GraphLink = { source: string; target: string; type: LinkType };
 
-  /** 項目が別の項目を指すキー → 線の種類 */
-  const LINK_KEYS: [keyof Item, LinkType][] = [
+  /** 線にする関連の種類 → 線の種類（派生元は線にしない） */
+  const RELATION_LINKS: [RelationType, LinkType][] = [
     ["depends_on", "depends"],
     ["for", "for"],
-    ["sources", "source"],
-    ["related", "related"],
+    ["see_also", "related"],
   ];
+
+  /** 項目が別の項目を指す先と線の種類（依存・進めるタスク・根拠・関連の順） */
+  function linkTargets(item: Item): [string, LinkType][] {
+    const byType = (type: RelationType, link: LinkType): [string, LinkType][] => refsOf(item, type).map((target) => [target, link]);
+    const [depends, forLinks, related] = RELATION_LINKS.map(([type, link]) => byType(type, link));
+    return [...(depends ?? []), ...(forLinks ?? []), ...(item.sources ?? []).map((target): [string, LinkType] => [target, "source"]), ...(related ?? [])];
+  }
 
   /** 渡した ID の項目を玉に、関連を線にして返す（両端のどちらかが渡していない項目か記録に無い線は含めない） */
   export function buildGraph({
@@ -35,14 +41,12 @@ namespace MindmapPreview {
     for (const { id: source } of nodes) {
       const item = index.byId.get(source)?.item;
       if (item === undefined) continue;
-      for (const [key, type] of LINK_KEYS) {
-        for (const target of (item[key] as string[] | undefined) ?? []) {
-          const identity = `${type}|${source}|${target}`;
-          // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
-          if (source === target || !shown.has(target) || seen.has(identity)) continue;
-          seen.add(identity);
-          links.push({ source, target, type });
-        }
+      for (const [target, type] of linkTargets(item)) {
+        const identity = `${type}|${source}|${target}`;
+        // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
+        if (source === target || !shown.has(target) || seen.has(identity)) continue;
+        seen.add(identity);
+        links.push({ source, target, type });
       }
     }
     return { nodes, links };

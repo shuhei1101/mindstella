@@ -1,0 +1,37 @@
+id: MOD-540-7
+title: プレビュー / 画面と部品 / duplicate-id-notice.ts
+test_files:
+  - tests/unit/preview/test_duplicate_id_notice.py
+components:
+  - name: duplicateIdNotice
+    title: 重なった ID の通知
+    container: plugins/mindstella/skills/mindmap/preview/components/duplicate-id-notice.ts
+    usecase: 書き込みを履歴に残す
+    kind: コンポーネント
+    summary: 部品設計『重なった ID の通知』の引数を受け、トップバーの下の帯（`role="alert"`）に見出し・重なった ID のリンク・片方の ID を変更する案内・閉じるボタンを描く。自動では閉じない
+    props:
+      - name: ids
+        type: '{id: string, kind: string}[]'
+        required: true
+        description: 重なった ID と種類の名前。空なら何も描かない
+      - name: onOpen
+        type: '(id: string) => void'
+        required: true
+        description: ID のリンクを押したとき
+      - name: onClose
+        type: () => void
+        required: true
+        description: 閉じるボタンを押したとき
+    unit_tests:
+      - name: test_duplicate_id_notice
+        case: 正常
+        summary: 重なった ID を並べ、リンクと閉じるで知らせる
+        condition: '`ids: [{id: D-12, kind: 検討事項}, {id: T-3, kind: タスク}]`。`D-12` のリンクと閉じるボタンを押す'
+        mock: '`onOpen`・`onClose`'
+        expected: '`role="alert"` の帯に見出し「同じ ID の項目が 2 件あります」と `D-12`・`T-3` のリンク。`onOpen` が `D-12` で 1 回、`onClose` が 1 回'
+      - name: test_duplicate_id_notice_when_empty
+        case: 正常
+        summary: 空なら描かない
+        condition: '`ids: []`'
+        mock: なし
+        expected: 何も描かない

@@ -129,7 +129,7 @@ def test_notes_id_button_size(
     # 準備
     url = write_preview(
         make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
-        make_item("N-1", related=["D-1"]),
+        make_item("N-1", related=[{"to": "D-1", "type": "see_also"}]),
     )
     page = open_preview(url, "#tab=notes")
     # 実行

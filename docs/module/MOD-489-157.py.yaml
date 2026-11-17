@@ -33,7 +33,7 @@ data_models:
         type: list[BodyDiffHunk]
         description: 今の本文を前の本文へ戻す行の置き換えの並び（行の位置の小さい順）
       - name: by
-        type: Literal["ai", "user"]
+        type: Literal["ai", "user", "external"]
         description: その回を書き換えた人（`NotRequired`。このキーを入れる前に積んだ回は持たない）
   - name: BodyDiffHunk
     title: 本文の差分の 1 か所
@@ -81,6 +81,9 @@ data_models:
       - name: removed
         type: NotRequired[list[RemovedItem]]
         description: 消した項目。消した項目が無いまとまりはキーを持たない
+      - name: by
+        type: NotRequired[Literal["ai", "user", "external"]]
+        description: まとめた変更の書いた元（`commit` は `ai`、まとめて保存は `user`、変更の検知が自動でまとめた外部の変更は `external`）
   - name: Changes
     title: まとまりの記録
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -141,6 +144,9 @@ data_models:
       - name: removed
         type: NotRequired[list[RemovedItem]]
         description: 消した項目（消した順）。無ければ消した項目なし
+      - name: by
+        type: NotRequired[Literal["ai", "external"]]
+        description: 入っている変更の書いた元。無ければ `ai`
   - name: OpenedPoint
     title: 前回開いた時点
     container: plugins/mindstella/skills/mindmap/scripts/history.py
@@ -155,6 +161,35 @@ data_models:
       - name: seq
         type: int
         description: 開いた時点の通し番号（`head_until_seq`）。0 以上
+  - name: ItemHistory
+    title: 項目の履歴の行
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    role: DTO
+    summary: '`history.yaml` の `items` の 1 行（ER 図『ワークスペース』の `history.yaml`）'
+    description: '`TypedDict`。`history`・`history_dropped_seq` は持つときだけ（`NotRequired`）。'
+    properties:
+      - name: created
+        type: str
+        description: 作成日時
+      - name: updated
+        type: str
+        description: 更新日時
+      - name: updated_by
+        type: Literal["ai", "user", "external"]
+        description: 編集した人
+      - name: seq
+        type: int
+        description: 最後に振った通し番号
+      - name: added_seq
+        type: int
+        description: 足したときの通し番号
+      - name: history
+        type: list[HistoryEntry]
+        description: 変更履歴（新しい順）
+      - name: history_dropped_seq
+        type: int
+        description: 消した変更履歴の通し番号の最大
 constants:
   - name: CHANGES_FILE
     title: まとまりのファイル名
@@ -192,6 +227,24 @@ constants:
     usecase: 記録の追加と更新
     summary: '`commit` の `summary` の前後の空白を除いた文字数の上限（インターフェース定義『書き換えのまとまり』）'
     value: '200'
+  - name: HISTORY_FILE
+    title: 項目の履歴のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    summary: 記録のフォルダの中の、項目の履歴のファイル名
+    value: history.yaml
+  - name: EXTERNAL_SUMMARY
+    title: 外部の変更のまとまりの説明
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    summary: 変更の検知が外部の変更をまとめるときの説明
+    value: ほかのセッションの書き込み
+  - name: PENDING_AI_SUMMARY
+    title: まとめる前の AI の書き換えの説明
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    summary: 書いた元が違う変更の前に、AI のまだまとめていない変更をまとめるときの説明（まとめて保存と同じ）
+    value: まとめる前の AI の書き換え
 functions:
   - name: load_changes
     title: まとまりを読む
@@ -358,10 +411,10 @@ functions:
         passing: keyword
         description: 書き換えた日時
       - name: by
-        type: Literal["ai", "user"]
+        type: Literal["ai", "user", "external"]
         required: true
         passing: keyword
-        description: 書き換えた人（MCP のツールは `ai`）
+        description: 書き換えた人（MCP のツールは `ai`、変更の検知は書いた元）
     returns:
       type: HistoryEntry | None
       description: 変わったものが無ければ `None`
@@ -407,7 +460,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: 書き換えた後の項目
+        description: 書き換えた後の項目の履歴の行（`ItemHistory`）
       - name: entry
         type: HistoryEntry | None
         required: true
@@ -425,10 +478,10 @@ functions:
         description: '`changes.yaml` の `read_seq`（無ければ `None`）'
     returns:
       type: dict[str, Any]
-      description: 新しい項目。`limit` が 0 なら `history` のキーを持たない
+      description: 新しい履歴の行。`limit` が 0 なら `history` のキーを持たない
     process: |-
-      1. `limit` が 0 の場合、`history`・`history_dropped_seq` を除いた項目を返す
-      2. `entry` が `None` の場合、項目をそのまま返す
+      1. `limit` が 0 の場合、`history`・`history_dropped_seq` を除いた行を返す
+      2. `entry` が `None` の場合、行をそのまま返す
       3. `[entry] + 今の history` のうち、先頭 `limit` 個と、`read_seq` が `None` でなければ `seq` が `read_seq` より大きいものを、並びを保って `history` にする
       4. 残り（消した要素）があれば、その最大の `seq` と今の `history_dropped_seq` の大きい方を `history_dropped_seq` にする
     unit_tests:
@@ -479,11 +532,18 @@ functions:
         required: true
         passing: positional
         description: 足したか変えたか
+      - name: by
+        type: Literal["ai", "external"]
+        required: false
+        default: '"ai"'
+        passing: keyword
+        description: 書いた元
     returns:
       type: Changes
       description: 新しい記録
     process: |-
-      1. `kind` が `changed` で、ID が既に `pending.added` か `pending.changed` にあれば足さない（`added` も同じ ID を二度足さない）
+      1. `pending.by` に `by`（`ai` か `external`）を書く（呼ぶ側は、書いた元が違う変更が入っていれば先に `flush_pending` でまとめる）
+      2. `kind` が `changed` で、ID が既に `pending.added` か `pending.changed` にあれば足さない（`added` も同じ ID を二度足さない）
     unit_tests:
       - name: test_note_pending
         case: 正常
@@ -514,12 +574,18 @@ functions:
         required: true
         passing: positional
         description: まとめた日時
+      - name: by
+        type: Literal["ai", "user", "external"]
+        required: false
+        default: '"ai"'
+        passing: keyword
+        description: まとまりの書いた元
     returns:
       type: tuple[Changes, ChangeSet | None]
       description: まだまとめていない変更が空なら `(changes, None)`
     process: |-
       1. `pending.added`・`pending.changed`・`pending.removed` が全て空なら `(changes, None)` を返す
-      2. ID を `SET_ID_PREFIX` + （`sets` の連番の最大 + 1）にし、`until_seq` を `last_seq` にしたまとまりを `sets` の先頭に置き、`pending` を空にする
+      2. ID を `SET_ID_PREFIX` + （`sets` の連番の最大 + 1）にし、`until_seq` を `last_seq` ・`by` を `by` にしたまとまりを `sets` の先頭に置き、`pending` を空にする（`pending.by` も除く）
          - `pending.removed` が空でない場合だけ、まとまりに `removed` として写す
     unit_tests:
       - name: test_commit_pending
@@ -657,7 +723,7 @@ functions:
         type: dict[str, Any]
         required: true
         passing: positional
-        description: 今の項目
+        description: 今の項目の履歴の行（`ItemHistory`）。読んだ時点の値は項目と比べるため、呼ぶ側は項目と行を合わせた辞書を渡す
       - name: body
         type: str | None
         required: true
@@ -711,10 +777,10 @@ functions:
       description: '`{had_read_point, read_seq, until_seq, added, changed, removed}`（インターフェース定義『前回読んだ時点からの変更』のレスポンス）'
     process: |-
       1. `read_seq` が無ければ `{had_read_point: False, read_seq: None, until_seq: last_seq, added: [], changed: [], removed: []}` を返す
-      2. 種類の順（`KINDS`）、項目の並びの順に見る
+      2. 種類の順（`KINDS`）、項目の並びの順に、項目と `history.yaml` のその ID の行を合わせて見る（`load_item_history`）
          - `added_seq` が `read_seq` より大きい項目は `added` に `{id, kind, title, updated_by}` で足す（`updated_by` を持たなければ `None`）
          - それ以外で `seq` が `read_seq` より大きい項目は、保持する回数が 0 なら `before`・`body_diff` を `None`、`by` を空にして `changed` に足す。それ以外は本文を読み（`read_body`）、読んだ時点の値を組み立てて（`values_at_read`）、変わったキーか本文の差分があれば `changed` に足す
-         - `changed` の要素は `updated_by`（今の値。無ければ `None`）と、`by`（`seq` が `read_seq` より大きい変更履歴の回の `by` を重なりなく `user`・`ai` の順で並べたもの。`by` を持たない回は数えない）を持つ
+         - `changed` の要素は `updated_by`（今の値。無ければ `None`）と、`by`（`seq` が `read_seq` より大きい変更履歴の回の `by` を重なりなく `user`・`external`・`ai` の順で並べたもの。`by` を持たない回は数えない）を持つ
       3. 消した項目の記録（`removed_items`）のうち、`seq` が `read_seq` より大きく `added_seq` が `read_seq` 以下のものを `{id, kind, title}` にして `removed` に並べる
       4. `until_seq` を `last_seq` にして返す
     unit_tests:
@@ -860,3 +926,98 @@ functions:
         condition: '`parametrize`: まとまりが無い（`last_seq` 3）/ まとまり 2 つ（新しい順に `until_seq` 5・2、`last_seq` 7）'
         mock: なし
         expected: 0 / 5
+  - name: load_item_history
+    title: 項目の履歴の読み込み
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: '`history.yaml` を読んで項目の ID → 行の辞書を返す。無ければ空の辞書'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: dict[str, ItemHistory]
+      description: 項目の ID → 履歴の行
+    process: |-
+      1. `records_root(root) / HISTORY_FILE` が無ければ空の辞書を返す
+      2. 読んで `items` の辞書を返す。YAML として読めないか `items` が辞書でなければ `SchemaMismatchError`（`history.yaml: items`）を送る
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`history.yaml` が読めないか形が違う'
+        message: 'スキーマに合いません（`history.yaml: items`）'
+    unit_tests:
+      - name: test_load_item_history
+        case: 正常
+        summary: 行を読み、無ければ空
+        condition: D-1 の行を持つ `history.yaml` と、`history.yaml` の無いワークスペース
+        mock: なし
+        expected: '前は `{D-1: 行}`、後は `{}`'
+  - name: merge_item_history
+    title: 項目と履歴の行の合わせ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の取得
+    scope: public
+    summary: 項目に `history.yaml` のその ID の行のキーを足した新しい項目を返す（『記録の取得』と、項目の履歴を読む処理が使う）
+    args:
+      - name: item
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: 種類の YAML の項目
+      - name: rows
+        type: dict[str, ItemHistory]
+        required: true
+        passing: positional
+        description: '`load_item_history` の戻り値'
+    returns:
+      type: dict[str, Any]
+      description: 行のキーを足した項目。行が無ければ項目のまま
+    process: 1. その ID の行があれば、項目のキーの後ろに行のキーを足した新しい辞書を返す
+    unit_tests:
+      - name: test_merge_item_history
+        case: 正常
+        summary: 行のキーを足す
+        condition: D-1 の項目と、D-1 の `updated`・`history` を持つ行
+        mock: なし
+        expected: 項目のキーに続けて `updated`・`history` を持つ
+  - name: flush_pending
+    title: まだまとめていない変更の先のまとめ
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/history.py
+    usecase: 記録の追加と更新
+    scope: public
+    summary: 書いた元が違う変更を記録する前に、入っている変更をその書いた元のまとまりにする
+    args:
+      - name: changes
+        type: Changes
+        required: true
+        passing: positional
+        description: 今の記録
+      - name: by
+        type: Literal["ai", "external"]
+        required: true
+        passing: positional
+        description: これから記録する変更の書いた元
+      - name: at
+        type: str
+        required: true
+        passing: positional
+        description: まとめた日時
+    returns:
+      type: Changes
+      description: 新しい記録
+    process: |-
+      1. `pending` が空か、`pending.by`（無ければ `ai`）が `by` と同じなら、そのまま返す
+      2. `pending.by` が `ai` なら説明 `PENDING_AI_SUMMARY`、`external` なら説明 `EXTERNAL_SUMMARY`・`by: external` でまとめる（`commit_pending`）
+    unit_tests:
+      - name: test_flush_pending
+        case: 正常
+        summary: 書いた元が違えば先にまとめ、同じならまとめない
+        condition: '`pending` が `by: external`・`changed: [D-1]` の記録を `ai` で / `external` で渡す'
+        mock: なし
+        expected: '`ai` では `sets` の先頭が `by: external`・説明「ほかのセッションの書き込み」で `pending` が空。`external` では記録が変わらない'

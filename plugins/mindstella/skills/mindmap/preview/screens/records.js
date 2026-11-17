@@ -9,8 +9,8 @@ var MindmapPreview;
             key: "related",
             label,
             priority: 3,
-            get: (row) => MindmapPreview.rowTexts(row, "related"),
-            cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "related"), open),
+            get: (row) => MindmapPreview.refsOf(row, "see_also"),
+            cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.refsOf(row, "see_also"), open),
         });
         const columnsOf = {
             research: [

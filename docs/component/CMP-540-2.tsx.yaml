@@ -1,0 +1,53 @@
+id: CMP-540-2
+title: 重なった ID の通知
+implementation: frontend/src/shared/components/duplicate-id-notice.tsx#DuplicateIdNotice
+story: Shared/DuplicateIdNotice
+status: planned
+states:
+  - name: Single
+    description: 重なった ID が 1 件。見出し「同じ ID の項目が 2 件あります」と、本文「ほかのセッションの書き込みで、{種類} {ID} が重なりました。片方の ID を変更してください。」
+    args:
+      - name: ids
+        value: '[{"id": "D-12", "kind": "検討事項"}]'
+  - name: Multiple
+    description: 重なった ID が 3 件。ID のリンクを `、` で並べ、折り返す
+    args:
+      - name: ids
+        value: '[{"id": "D-12", "kind": "検討事項"}, {"id": "T-3", "kind": "タスク"}, {"id": "N-8", "kind": "メモ"}]'
+  - name: Narrow
+    description: 幅 390px。本文を折り返し、閉じるボタンを右上に残す
+    notes:
+      見せ方: Storybook の画面幅を 390px にして見せる
+lead: トップバーの下に出す、同じ ID の項目が 2 件あることの通知の帯。重なった ID と、片方の ID を変更する案内を出し、閉じられる。
+test_file: tests/integration/storybook_react/test_duplicate_id_notice_stories.py
+args:
+  - name: ids
+    type: オブジェクトの配列
+    required: true
+    description: '重なった ID と、その項目の種類の名前（変更の検知の `event: duplicate_ids` から使う側が組み立てる）。空なら何も出さない'
+  - name: ids[].id
+    type: 文字列
+    required: true
+    description: 重なった ID。押すとその項目の詳細を開くリンクにする
+  - name: ids[].kind
+    type: 文字列
+    required: true
+    description: 項目の種類の名前（検討事項・タスクなど）
+events:
+  - name: 項目を開く
+    when: ID のリンクを押したとき
+    value: '`onOpen(id)`'
+    description: 使う側がその項目の詳細を開く
+  - name: 閉じる
+    when: 閉じるボタンを押したとき
+    value: '`onClose()`'
+    description: 使う側が帯を隠す。重なった ID の集まりが変わるまで出し直さない（自動では閉じない）
+accessibility:
+  - 帯に `role="alert"` を付け、出たときに読み上げる
+  - 印（警告のアイコン）に加えて見出しと本文の文言で伝え、色だけに頼らない
+  - 閉じるボタンの読み上げ名を「通知を閉じる」にする
+refs:
+  - CMP-540-1#
+  - CMP-489-20#
+  - IF-540-2#
+  - IF-489-44#

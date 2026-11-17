@@ -18,6 +18,8 @@ elements:
         value: 個人の上書き（端末の保存領域）の値（無ければ OS の設定）
       - name: connection
         value: サーバーの配信で、`GET /api/events` のつながりが切れている間と `GET /api/records` に届かないときは offline、それ以外と配る書き出しは online（SPAを開く.接続の状態）
+      - name: duplicateIds
+        value: 書き換えの知らせの duplicate_ids の ID と、記録の取得の項目の種類の名前（閉じた後は、集まりが変わるまで []）
       - name: readAt
         value: 記録の取得.built_at（最後に読めた記録）
       - name: diffPoint
@@ -49,7 +51,7 @@ elements:
   - name: 次に検討する項目
     id: tile-next
     kind: list
-    description: 前提（`depends_on`）が全て決着（決定済み・対象外・取り下げ）した未決定の検討事項を、`build` が `next` と同じ並びで埋め込んだ順に、タイルの枠に収まるだけ並べる（縦に積む幅では上位 3 件）。影響度は目盛りに「影響度 大」のように軸の名前を添えて出す。押すと詳細パネル（`?tab={種類}&id={ID}`）を開く
+    description: 前提（種類 `depends_on` の `related`）が全て決着（決定済み・対象外・取り下げ）した未決定の検討事項を、`build` が `next` と同じ並びで埋め込んだ順に、タイルの枠に収まるだけ並べる（縦に積む幅では上位 3 件）。影響度は目盛りに「影響度 大」のように軸の名前を添えて出す。押すと詳細パネル（`?tab={種類}&id={ID}`）を開く
     io: 表示
     source: 記録の取得.derived.next
     visible_when: 常時（0 件のときは「次に検討する項目はありません。」）

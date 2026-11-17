@@ -21,6 +21,7 @@ from typing import Any, cast
 from urllib.parse import unquote, urlsplit
 
 from builder import PREVIEW_DIR, assemble_template, read_records
+from change_detection import ChangeDetector, detector_of
 from claude_input import InputTargets, Session
 from comments import (
     ReviewComment,
@@ -34,6 +35,7 @@ from comments import (
 )
 from edits import add_edit, delete_edit, list_edits, save_edits
 from errors import (
+    ConcurrentWriteError,
     ArgumentError,
     CommentConflictError,
     CommentInvalidError,
@@ -284,9 +286,15 @@ class PreviewRegistry:
         external: ExternalAccess | None = None,
         transcriber: Transcriber | None = None,
         input_targets: InputTargets | None = None,
+        state_root: Path | None = None,
     ) -> None:
-        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と文字起こしと入力の宛先の台帳を受け取り、空の台帳を作る。"""
+        """ツールと共有する書き換えの鍵と、外から見る設定（無ければ空）と文字起こしと入力の宛先の台帳と状態のフォルダを受け取り、空の台帳を作る。
+
+        状態のフォルダを渡すと、配信を立てるたびにそのワークスペースの変更の検知を始める。
+        """
         self._servers: dict[Path, PreviewServer] = {}
+        self._detectors: dict[Path, ChangeDetector] = {}
+        self._state_root = state_root
         self._write_lock = write_lock
         self._external = ExternalAccess() if external is None else external
         # ワークスペースごとの Claude Code への入力の宛先（立てる配信へ渡す。配信の前に受けたセッションも持つ）
@@ -319,6 +327,13 @@ class PreviewRegistry:
             )
             self._servers[key] = preview
             logger.info("配信を立てた: %s %s", key, preview.url)
+            # そのワークスペースの変更の検知を始める
+            if self._state_root is not None:
+                detector = ChangeDetector(
+                    key, self._state_root, self._write_lock, self._input_targets
+                )
+                detector.start()
+                self._detectors[key] = detector
             # 立てた直後に起動時のフックを呼ぶ
             if self._external.start_hook:
                 run_hook(self._external.start_hook, preview.port, key.name)
@@ -346,6 +361,10 @@ class PreviewRegistry:
         with self._guard:
             taken = list(self._servers.values())
             self._servers = {}
+            detectors = list(self._detectors.values())
+            self._detectors = {}
+        for detector in detectors:
+            detector.stop()
         # 配信を止める前に、終了時のフックを全て立てる
         if self._external.stop_hook:
             for preview in taken:
@@ -921,14 +940,23 @@ def stream_events(
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
     signature: Callable[[Path], str] = workspace_signature,
+    duplicates: Callable[[Path], tuple[str, ...]] | None = None,
 ) -> None:
-    """書き換えの印が変わったら `changed` を、知らせが無いまま一定時間過ぎたら保つ行を書き続ける。"""
+    """書き換えの印が変わったら `changed` を、重なった ID の集まりが変わったら `duplicate_ids` を、知らせが無いまま一定時間過ぎたら保つ行を書き続ける。"""
     last_signature = signature(root)
     last_written = clock()
+    last_duplicates: tuple[str, ...] = ()
+    read_duplicates = duplicates or _detected_duplicates
     while True:
         sleep(POLL_INTERVAL_SEC)
         current = signature(root)
+        found = read_duplicates(root)
         try:
+            # 重なった ID の集まりが前に書いたものと違う: その集まりを知らせる
+            if found != last_duplicates:
+                write(f"event: duplicate_ids\ndata: {json.dumps(list(found))}\n\n".encode())
+                last_duplicates = found
+                last_written = clock()
             if current != last_signature:
                 # 印が変わった: 変わったことだけを知らせる（画面が記録を読み直す）
                 write(f"event: changed\ndata: {current}\n\n".encode())
@@ -941,6 +969,12 @@ def stream_events(
         except (BrokenPipeError, ConnectionResetError):
             # 画面が閉じた
             return
+
+
+def _detected_duplicates(root: Path) -> tuple[str, ...]:
+    """そのワークスペースの変更の検知が最後に求めた重なった ID を返す（検知が動いていなければ空）。"""
+    detector = detector_of(root)
+    return () if detector is None else detector.duplicate_ids()
 
 
 def comments_response(root: Path) -> Response:
@@ -1124,7 +1158,7 @@ def error_response(error: MindmapError) -> Response:
                 body=json.dumps(problem, ensure_ascii=False).encode("utf-8"),
             )
         return response
-    if isinstance(error, EditConflictError):
+    if isinstance(error, (EditConflictError, ConcurrentWriteError)):
         return problem_response(HTTPStatus.CONFLICT, detail)
     # 書き込めない編集は、全てを返す
     if isinstance(error, EditsBlockedError):

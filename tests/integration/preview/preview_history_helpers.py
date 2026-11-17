@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 from playwright.sync_api import Page
 from workspace_fixtures import RECORD_DIR
+from record_write_helpers import call_or_write
 
 __all__ = [
     "BODY_A1_AFTER",
@@ -19,6 +20,7 @@ __all__ = [
     "assert_topbar_history",
     "build_history_workspace",
     "build_long_line_diff_workspace",
+    "mismatch_body_diff",
     "preselect_diff",
     "read_yaml",
 ]
@@ -108,10 +110,8 @@ def read_yaml(path: Path) -> Any:
 
 
 def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
-    """ツールを呼び、エラーならテストを止めて結果を返す。"""
-    result = call_tool(name, **arguments)
-    assert result.is_error is False, result.text
-    return result.data
+    """ツールを呼ぶか記録を書き換え（add・update・remove）、エラーならテストを止めて結果を返す。"""
+    return call_or_write(call_tool, name, **arguments)
 
 
 def build_history_workspace(
@@ -190,6 +190,16 @@ def build_history_workspace(
         f"{OPENED_AT}\n{changes['sets'][1]['until_seq']}\n", encoding="utf-8"
     )
     return root
+
+
+def mismatch_body_diff(root: Path, item_id: str) -> None:
+    """`history.yaml` の項目の変更履歴の本文の差分の `now` を、今の本文に当たらない行にする。"""
+    path = root / RECORD_DIR / "history.yaml"
+    history = read_yaml(path)
+    for entry in history["items"][item_id]["history"]:
+        for hunk in entry.get("body_diff", []):
+            hunk["now"] = ["今の本文に無い行"]
+    path.write_text(yaml.safe_dump(history, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
 def preselect_diff(page: Page, sel: str | None) -> None:

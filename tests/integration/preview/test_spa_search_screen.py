@@ -101,7 +101,7 @@ def test_query_when_html_body(write_preview: WritePreview, make_item: MakeItem, 
     """HTML の本文は描いた文で当て、タグ・属性の値では当てない（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", title="画面の資料", body="A-1.html"),
+        make_item("A-1", title="画面の資料", body="docs/A-1.html"),
         bodies={"A-1.html": '<p class="unmatched-class">描いた文の言葉</p>'},
     )
     open_spa(page, url, "?search=1")

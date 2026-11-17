@@ -10,10 +10,11 @@ from .fixture_types import (
     MakeItem,
     MakeThread,
     MakeWorkspace,
+    McpServer,
     WriteThreads,
 )
 from .thread_helpers import drop_thread_key, find_thread, threads_path
-from workspace_fixtures import RECORD_DIR
+from workspace_fixtures import RECORD_DIR, mindstella_session
 
 
 def test_normal(
@@ -138,4 +139,26 @@ def test_error_when_schema_mismatch(
     # 検証
     assert result.is_error is True
     assert any(line.startswith("threads.yaml: items[0]") for line in result.text.splitlines())
+    assert threads_path(root).read_bytes() == before
+
+
+def test_error_when_not_mindstella_session(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    make_thread: MakeThread,
+    write_threads: WriteThreads,
+    mcp_server: McpServer,
+) -> None:
+    """MindStella のセッションでない呼び出しでは書き込まない（異常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    write_threads(root, make_thread("TH-1"))
+    mindstella_session(mcp_server.state_home, root)
+    before = threads_path(root).read_bytes()
+    other = {"cwd": str(root), "claude_session_id": "c-other"}
+    # 実行
+    result = mcp_server.call("new_thread", workspace=str(root), body="問い", summary="要約", session=other)
+    # 検証
+    assert result.is_error is True
+    assert result.text.startswith("エラー: MindStella のセッションだけが呼べます: new_thread")
     assert threads_path(root).read_bytes() == before

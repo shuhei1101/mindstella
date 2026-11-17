@@ -23,7 +23,6 @@ var MindmapPreview;
         category: "カテゴリー",
         phase: "フェーズ",
         tags: "タグ",
-        depends_on: "依存先",
         answer: "決定内容",
         reason: "理由",
         body: "本文",
@@ -32,7 +31,7 @@ var MindmapPreview;
         question: "問い",
         conclusion: "結論",
         confidence: "確からしさ",
-        related: "関連",
+        related: "関係",
         withdrawn: "取り下げ",
         meaning: "意味",
         aliases: "別名",
@@ -41,6 +40,15 @@ var MindmapPreview;
         deliverable: "納品物",
         description: "説明",
     };
+    /** 関係の種類の表示名 */
+    const RELATION_NAMES = { depends_on: "前提", parent: "親", for: "向けた検討事項", see_also: "関連" };
+    /** 値が関係の 1 件（`{to, type}`）か */
+    function isRelation(value) {
+        if (typeof value !== "object" || value === null)
+            return false;
+        const record = value;
+        return typeof record["to"] === "string" && typeof record["type"] === "string" && record["type"] in RELATION_NAMES;
+    }
     /** 値を 1 行の文字にする（空は「（空）」、配列は「、」でつなぐ） */
     function flat(value) {
         if (value === undefined || value === null || value === "")
@@ -51,6 +59,9 @@ var MindmapPreview;
             return "はい";
         if (value === false)
             return "いいえ";
+        // 関係の 1 件は「{種類の表示名}: {相手の ID}」
+        if (isRelation(value))
+            return `${RELATION_NAMES[value.type]}: ${value.to}`;
         if (typeof value === "object")
             return JSON.stringify(value);
         return String(value).replace(/\s+/g, " ");

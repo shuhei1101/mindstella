@@ -20,7 +20,6 @@ import pytest
 import yaml
 
 import builder
-import commands
 import errors
 import serve
 from transcriber import (
@@ -53,6 +52,7 @@ from fixture_types import (
     WriteThreads,
 )
 from workspace_fixtures import RECORD_DIR, write_yaml
+from record_helpers import ai_update
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
 SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
@@ -834,7 +834,7 @@ def test_workspace_signature_with_html_body(
 ) -> None:
     """HTML の本文の書き換えでも印が変わる（正常系）。"""
     # 準備
-    root = make_workspace(make_item("A-1", body="A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
+    root = make_workspace(make_item("A-1", body="docs/A-1.html"), bodies={"A-1.html": "<p>前</p>\n"})
     before = serve.workspace_signature(root)
     target = root / RECORD_DIR / "docs" / file_name
     # 実行
@@ -1573,7 +1573,7 @@ def _no_rewrite(root: Path) -> None:
 
 def _rewrite_title_of_d1(root: Path) -> None:
     """保存待ちを溜めた後に、MCP のツールの書き込みで D-1 のタイトルを書き換える。"""
-    commands.run_update(root, "D-1", {"title": "AI が書き換えた題"})
+    ai_update(root, "D-1", {"title": "AI が書き換えた題"})
 
 
 @pytest.mark.parametrize(

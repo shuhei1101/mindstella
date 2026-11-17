@@ -11,6 +11,8 @@ namespace MindmapPreview {
     sub: string;
     /** その時点で足した・変えた・消した項目の数（差分を出さない行は持たない） */
     count?: number;
+    /** ほかのセッションの書き込みのまとまりか。真なら名前の横に「外部の変更」の札を付ける */
+    external?: boolean;
   };
 
   /** 変更履歴のモーダルの引数 */
@@ -24,6 +26,9 @@ namespace MindmapPreview {
     /** 閉じたとき（選ばずに閉じたときを含む） */
     onClose: () => void;
   };
+
+  /** 外部の変更のまとまりに付ける札の文言 */
+  const EXTERNAL_TAG = "外部の変更";
 
   /** 時点の行（押すと選ぶ。選んでいる行にチェックと `aria-current` を付ける） */
   function pointRow({
@@ -55,7 +60,18 @@ namespace MindmapPreview {
               tag: "span",
               attrs: { class: "hist-main" },
               children: [
-                h({ tag: "span", attrs: { class: "hist-name" }, children: [point.name] }),
+                h({
+                  tag: "span",
+                  attrs: { class: "hist-name" },
+                  children: [
+                    point.name,
+                    // 名前と札の間の空白（読み上げで名前と札の文言を分ける）
+                    point.external === true ? " " : null,
+                    point.external === true
+                      ? h({ tag: "span", attrs: { class: "hist-tag" }, children: [EXTERNAL_TAG] })
+                      : null,
+                  ],
+                }),
                 h({ tag: "span", attrs: { class: "hist-sub" }, children: [point.sub] }),
               ],
             }),

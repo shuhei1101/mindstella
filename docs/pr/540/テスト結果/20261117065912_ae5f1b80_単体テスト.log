@@ -1,0 +1,20 @@
+# 単体テスト: builder.py（62b84cce で修正）を使用する単体テスト。作業ブランチの末尾の commit ae5f1b80
+
+$ TMPDIR=/tmp/mm540-tmp pytest tests/unit/scripts/test_builder.py tests/unit/scripts/test_commands.py tests/unit/scripts/test_serve.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-records-via-project-index
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 294 items
+
+tests/unit/scripts/test_builder.py ..................................... [ 12%]
+.......................                                                  [ 20%]
+tests/unit/scripts/test_commands.py .................................... [ 32%]
+..............................................................           [ 53%]
+tests/unit/scripts/test_serve.py ....................................... [ 67%]
+........................................................................ [ 91%]
+.........................                                                [100%]
+
+============================= 294 passed in 10.91s =============================
+(exit 0)

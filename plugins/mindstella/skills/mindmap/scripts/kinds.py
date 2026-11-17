@@ -12,6 +12,9 @@ type Kind = Literal["decision", "task", "research", "doc", "term", "note", "log"
 # ワークスペースの直下に置く、設定・YAML・本文・リリース・版・ロックなど全ての記録をまとめるフォルダ名
 RECORD_DIR = ".mindstella"
 
+# 項目ごとの作成日時・更新日時・編集した人・通し番号・変更履歴を持つファイルの名前（`records_root` の下）
+HISTORY_FILE = "history.yaml"
+
 # MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）
 EDITOR = "ai"
 

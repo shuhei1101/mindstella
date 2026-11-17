@@ -1,6 +1,6 @@
 id: ER-531-1
 title: 'ER 図: 常駐サーバーの状態'
-lead: 常駐サーバーが端末に持つ状態のフォルダ `${XDG_STATE_HOME:-~/.local/state}/mindstella/` の形。ワークスペースの ID の一覧と、ワークスペースごとの MindStella のセッションと追加の MCP・プラグインを持つ。Git の外に置き、ワークスペースの設定と記録には入れない（D-289・D-318・D-323）。
+lead: 常駐サーバーが端末に持つ状態のフォルダ `${XDG_STATE_HOME:-~/.local/state}/mindstella/` の形。ワークスペースの ID の一覧と、ワークスペースごとの MindStella のセッションと追加の MCP・プラグインと変更の検知の前回の中身を持つ。Git の外に置き、ワークスペースの設定と記録には入れない（D-289・D-318・D-323）。
 er:
   entities:
     - name: ワークスペースの ID の一覧
@@ -128,6 +128,21 @@ tables:
         type: array
         not_null: true
         description: Claude Code の `--plugin-dir` に渡す絶対パス。空の指定は `[]`
+  - name: workspaces/{ID}/snapshot/
+    title: 変更の検知の前回の中身
+    datastore: YAML
+    summary: 変更の検知が比べる、ワークスペースの記録のファイルの前回の中身（『変更の検知』）
+    scale: ワークスペースごとに、種類ごとの 7 つの YAML と本文のファイルの複製
+    access: ファイル名で引く
+    columns:
+      - name: '{種類}.yaml'
+        title: 種類ごとの YAML の複製
+        type: string
+        description: '`.mindstella/{種類}.yaml` の前回の中身'
+      - name: 'docs/{ファイル名}'
+        title: 本文の複製
+        type: string
+        description: '`.mindstella/docs/` の本文の前回の中身'
 notes:
   削除: ワークスペースの削除（#523）で、そのワークスペースの `workspaces/{ID}/` と `ids` の行を消す。クローズでは残す（D-322）
   書き込み: 一時ファイルから `os.replace` で置き換える。`workspaces.yaml` は全体で 1 つの鍵、`session.json` はファイルごとの鍵を取って書く

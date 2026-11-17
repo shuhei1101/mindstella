@@ -141,6 +141,11 @@ args:
     required: false
     default: なし（出さない）
     description: 音声入力の知らせ。`kind`（discarded・failed）と `text`（理由の文）を持つ。あるとき、トップバーの下にページの幅の帯を出し、警告の印・`text`・閉じる × を並べる。failed は `text` の右に「入力欄を開く」のボタンも出す。帯は × か「入力欄を開く」を押すまで残す
+  - name: duplicateIds
+    type: オブジェクトの配列
+    required: false
+    default: '`[]`（通知を出さない）'
+    description: '重なった ID と種類の名前（`{id, kind}`）。空でなければ、タブの帯の下に重なった ID の通知を出す（『書き換えの知らせ』の `event: duplicate_ids` から使う側が組み立て、閉じたら重なった ID の集まりが変わるまで空を渡す）'
 events:
   - name: 画面を移る
     when: タブかネットワークの入口を押したとき
@@ -190,7 +195,19 @@ events:
     when: 帯の × を押したとき
     value: '`onDismissVoiceNotice()`'
     description: 使う側が帯を消す。書きかけは変えない
+  - name: 重なった ID の項目を開く
+    when: 重なった ID の通知の ID のリンクを押したとき
+    value: '`onOpenDuplicate(id)`'
+    description: 使う側がその項目の詳細を開く
+  - name: 重なった ID の通知を閉じる
+    when: 重なった ID の通知の閉じるボタンを押したとき
+    description: 使う側が通知を隠し、重なった ID の集まりが変わるまで `duplicateIds` に空を渡す
 states:
+  - name: DuplicateIds
+    description: 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる
+    args:
+      - name: duplicateIds
+        value: '[{"id": "D-12", "kind": "検討事項"}]'
   - name: Overview
     description: 概要を開いている。開いている画面のタブに印の色の下線
     args:
@@ -744,6 +761,9 @@ states:
         value: '{"kind": "failed", "text": "D-022 へのコメントをレビュー中に追加できませんでした。文字起こしの結果は入力欄に残しています。"}'
 refs:
   - CMP-489-19#
+uses:
+  - component: CMP-540-2#
+    how: タブの帯の下の、重なった ID の通知の帯
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
   - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける

@@ -79,8 +79,8 @@ def write_preview(make_workspace: MakeWorkspace, call_tool: CallTool) -> WritePr
 def spa_preview(write_preview: WritePreview, make_item: MakeItem) -> str:
     """React の画面のテストが開く、検討事項・タスクと本文を持つワークスペースの配信の URL を返す。"""
     return write_preview(
-        make_item("D-1", title="記録の形", status="未決定", options=[{"key": "A", "content": "案 A"}], body="D-1.md"),
-        make_item("D-2", title="画面の幅", status="保留", depends_on=["D-1"]),
+        make_item("D-1", title="記録の形", status="未決定", options=[{"key": "A", "content": "案 A"}], body="docs/D-1.md"),
+        make_item("D-2", title="画面の幅", status="保留", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("T-1", title="画面を作る", status="進行中"),
         bodies={"D-1.md": SPA_BODY},
     )
@@ -380,7 +380,7 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
             phase="要件",
             category="データ構造",
             target="mindmap",
-            depends_on=["D-1"],
+            related=[{"to": "D-1", "type": "depends_on"}],
             weight="大",
             lead="キーをどう持つか",
             options=[
@@ -394,20 +394,20 @@ def sample_items(make_item: MakeItem) -> list[dict[str, Any]]:
             phase="要件",
             category="画面",
             target="mindmap",
-            body="D-3.md",
+            body="docs/D-3.md",
             options=[
                 {"key": "A", "content": "表で見せる", "pros": "並べやすい", "adopted": True},
                 {"key": "B", "content": "カードで見せる", "cons": ["数が多いと長い"]},
             ],
         ),
-        make_item("D-4", status="保留", phase="構成", category="画面", depends_on=["D-2"]),
-        make_item("D-5", status="未決定", phase="構成", category="画面", depends_on=["D-1"]),
-        make_item("T-1", status="進行中", **{"for": ["D-2"]}),
+        make_item("D-4", status="保留", phase="構成", category="画面", related=[{"to": "D-2", "type": "depends_on"}]),
+        make_item("D-5", status="未決定", phase="構成", category="画面", related=[{"to": "D-1", "type": "depends_on"}]),
+        make_item("T-1", status="進行中", related=[{"to": "D-2", "type": "for"}]),
         make_item("T-2", status="未着手"),
         make_item("T-3", status="完了"),
         make_item("R-1", confidence="高", conclusion="結論の文"),
         make_item("A-1", deliverable=True, status="完成", kind="文書"),
-        make_item("A-2", deliverable=False, status="下書き", body="A-2.md"),
+        make_item("A-2", deliverable=False, status="下書き", body="docs/A-2.md"),
         make_item("G-1", meaning="用語の意味"),
         make_item("N-1", content="メモの中身"),
         make_item("L-1", date="2026-10-01"),

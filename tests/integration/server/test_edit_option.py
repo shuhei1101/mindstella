@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from .fixture_types import CallTool, LockDirs, MakeItem, MakeWorkspace, SnapshotTree
-from .history_helpers import add_item, commit, read_changes, read_items
+from .history_helpers import add_item, commit, read_changes, read_history, read_items
 from workspace_fixtures import RECORD_DIR
 
 # 案 A（利点・欠点を持つ）と案 B
@@ -60,11 +60,12 @@ def test_normal_when_added(decision_workspace, call_tool: CallTool) -> None:
     }
     item = read_items(root, "decisions.yaml")[0]
     assert item["options"] == [OPTION_A, added]
-    assert len(item["history"]) == 1
-    assert item["history"][0]["before"] == {"options": [OPTION_A]}
+    history = read_history(root)["D-1"]["history"]
+    assert len(history) == 1
+    assert history[0]["before"] == {"options": [OPTION_A]}
     changes = read_changes(root)
     assert changes["pending"]["changed"] == ["D-1"]
-    assert item["seq"] == changes["last_seq"]
+    assert read_history(root)["D-1"]["seq"] == changes["last_seq"]
 
 
 def test_normal_when_updated(decision_workspace, call_tool: CallTool) -> None:
@@ -88,8 +89,9 @@ def test_normal_when_updated(decision_workspace, call_tool: CallTool) -> None:
     assert result.data["changed"] is True
     item = read_items(root, "decisions.yaml")[0]
     assert item["options"] == [updated, OPTION_B]
-    assert len(item["history"]) == 1
-    assert item["history"][0]["before"] == {"options": [OPTION_A, OPTION_B]}
+    history = read_history(root)["D-1"]["history"]
+    assert len(history) == 1
+    assert history[0]["before"] == {"options": [OPTION_A, OPTION_B]}
 
 
 def test_normal_when_removed(decision_workspace, call_tool: CallTool) -> None:
@@ -132,8 +134,9 @@ def test_normal_when_recommendation_moved(decision_workspace, call_tool: CallToo
     assert "recommended" not in item["options"][0]
     assert item["status"] == "未決定"
     assert all("adopted" not in option for option in item["options"])
-    assert len(item["history"]) == 1
-    assert item["history"][0]["before"]["options"] == [{**OPTION_A, "recommended": True}, OPTION_B]
+    history = read_history(root)["D-1"]["history"]
+    assert len(history) == 1
+    assert history[0]["before"]["options"] == [{**OPTION_A, "recommended": True}, OPTION_B]
 
 
 def test_error_when_workspace_not_found(tmp_path: Path, call_tool: CallTool) -> None:

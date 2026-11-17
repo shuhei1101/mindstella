@@ -17,7 +17,7 @@ CENTER_TOLERANCE_PX = 16
 @pytest.fixture
 def viewer(page: Page, write_preview: WritePreview, make_item: MakeItem) -> Locator:
     """本文の図を拡大して開き、図の拡大のモーダルを返す。"""
-    url = write_preview(make_item("D-1", title="図", status="未決定", body="D-1.md"), bodies={"D-1.md": "```mermaid\nflowchart LR; A-->B\n```\n"})
+    url = write_preview(make_item("D-1", title="図", status="未決定", body="docs/D-1.md"), bodies={"D-1.md": "```mermaid\nflowchart LR; A-->B\n```\n"})
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.locator(".mermaid svg").wait_for()
     page.get_by_role("button", name="図を拡大表示").click()
@@ -69,7 +69,7 @@ def test_close_label_when_narrow(page: Page, write_preview: WritePreview, make_i
     """幅 389px 以下では文字を隠して印だけにし、読み上げの名前は「本文へ戻る」のまま（正常系）。"""
     # 準備
     page.set_viewport_size({"width": ICON_BACK_MAX_WIDTH, "height": 800})
-    url = write_preview(make_item("D-1", title="図", status="未決定", body="D-1.md"), bodies={"D-1.md": "```mermaid\nflowchart LR; A-->B\n```\n"})
+    url = write_preview(make_item("D-1", title="図", status="未決定", body="docs/D-1.md"), bodies={"D-1.md": "```mermaid\nflowchart LR; A-->B\n```\n"})
     open_spa(page, url, "?tab=decisions&id=D-1")
     page.locator(".mermaid svg").wait_for(timeout=DIAGRAM_TIMEOUT_MS)
     # 実行

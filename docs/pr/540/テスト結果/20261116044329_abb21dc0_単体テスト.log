@@ -1,0 +1,21 @@
+# 単体テスト: レビューの指摘の修正 abb21dc0（スタイルの 1 行ずつだけを変えたため、変えた部品の単体テストを流す）
+
+$ npx tsc -p .
+(exit 0)
+
+$ pytest tests/unit/preview/test_duplicate_id_notice.py tests/unit/preview/test_topbar.py
+...                                                                      [100%]
+3 passed in 8.91s
+(exit 0)
+
+$ npx vitest run frontend/src/shared/components/duplicate-id-notice.test.tsx frontend/src/shared/components/topbar.test.tsx
+
+ RUN  v5.1.0 /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index
+
+
+ Test Files  2 passed (2)
+      Tests  6 passed (6)
+   Start at  04:37:42
+   Duration  23.35s (environment 61%, setup 21%, import 12%, transform 4%, tests 1%, worker 1%)
+
+(exit 0)

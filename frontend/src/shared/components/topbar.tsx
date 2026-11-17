@@ -1,6 +1,7 @@
-// トップバー（部品設計『トップバー.tsx』）。題名・接続の状態・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯を出す
+// トップバー（部品設計『トップバー.tsx』）。題名・接続の状態・検索の入口・変更履歴・ライト / ダーク・表示の設定・絞り込み・保存待ち・音声入力中の表示・コメントのボタンと、音声入力の知らせの帯・画面を移るタブの帯・重なった ID の通知を出す
 import type { MouseEvent } from "react";
 
+import { DuplicateIdNotice } from "@/shared/components/duplicate-id-notice";
 import { Icon, type IconName } from "@/shared/components/icon";
 import { Button } from "@/shared/components/ui/button";
 import { formatElapsed } from "@/shared/core/voice";
@@ -73,6 +74,10 @@ export type TopbarProps = {
   /** 音声入力中の表示と帯の「入力欄を開く」を押したとき */
   onOpenVoice?: () => void;
   onDismissVoiceNotice?: () => void;
+  /** 重なった ID と種類の名前。空でなければ、タブの帯の下に重なった ID の通知を出す */
+  duplicateIds?: { id: string; kind: string }[];
+  onOpenDuplicate?: (id: string) => void;
+  onCloseDuplicate?: () => void;
 };
 
 /** 件数の表示を揺らさない上限 */
@@ -553,6 +558,7 @@ export const Topbar = (props: TopbarProps) => {
     pendingBlocked = false,
     voice = null,
     voiceNotice = null,
+    duplicateIds = [],
     onOpenHistory,
     onToggleSettings,
   } = props;
@@ -583,6 +589,7 @@ export const Topbar = (props: TopbarProps) => {
       </header>
       {voiceNotice === null ? null : <VoiceNoticeBand notice={voiceNotice} onOpen={props.onOpenVoice} onDismiss={props.onDismissVoiceNotice} />}
       <TabBar tabs={tabs} current={current} onNavigate={props.onNavigate} />
+      <DuplicateIdNotice ids={duplicateIds} onOpen={props.onOpenDuplicate} onClose={props.onCloseDuplicate} />
     </div>
   );
 };

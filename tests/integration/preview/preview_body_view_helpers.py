@@ -9,6 +9,7 @@ from typing import Any
 from playwright.sync_api import Page
 from preview_head_title_helpers import ANIMATIONS_FINISHED_JS
 from workspace_fixtures import CallTool, MakeItem, MakeWorkspace
+from record_write_helpers import call_or_write
 
 __all__ = [
     "BODY_VIEW_DIFF_HASH",
@@ -90,10 +91,9 @@ _TABLE_STATE_JS = """(scope) => {
 }"""
 
 
-def _call(call_tool: CallTool, name: str, **arguments: Any) -> None:
-    """ツールを呼び、エラーでないことを確かめる。"""
-    result = call_tool(name, **arguments)
-    assert result.is_error is False, result.text
+def _call(call_tool: Any, name: str, **arguments: Any) -> dict[str, Any]:
+    """ツールを呼ぶか記録を書き換え（add・update・remove）、エラーならテストを止めて結果を返す。"""
+    return call_or_write(call_tool, name, **arguments)
 
 
 def build_body_view_workspace(make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool) -> Path:

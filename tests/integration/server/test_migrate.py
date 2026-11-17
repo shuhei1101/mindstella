@@ -57,6 +57,9 @@ NEWER_VERSION = "v99.0.0"
 
 # 資料を mdmark の今の書き方へ移す手順の版と、その前の版
 MDMARK_STEP_VERSION = "v0.13.0"
+
+# 資料を mdmark の今の書き方へ移す手順の、v0.13.0 の中の番号
+MDMARK_STEP_INDEX = 5
 BEFORE_MDMARK_VERSION = "v0.12.1"
 
 # mdmark の CLI を差し替える環境変数（`mdmark_documents.MDMARK_COMMAND_ENV`）
@@ -106,6 +109,11 @@ def _make_mdmark_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -
     )
     (root / RECORD_DIR / VERSION_FILE).write_text(f"{BEFORE_MDMARK_VERSION}\n", encoding="utf-8")
     return root
+
+
+def _read_items(root: Path, file_name: str) -> list[dict[str, Any]]:
+    """ワークスペースの種類ごとの YAML の項目の並びを読む。"""
+    return yaml.safe_load((root / RECORD_DIR / file_name).read_text(encoding="utf-8"))["items"]
 
 
 def _read_docs(root: Path) -> list[dict[str, Any]]:
@@ -179,12 +187,13 @@ def test_normal_when_plan(
     assert payload["relation"] == "older"
     assert payload["steps"] != []
     assert {step["version"] for step in payload["steps"]} == STEP_VERSIONS
-    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）、v0.12.0 の手順（項目のタグの置き換え）だけ
+    # 破壊的な操作は v0.6.0 の手順（設定ファイルの名前の改め・記録の移動・前の版のファイルの削除）、v0.8.0 の手順（送信のファイルの削除）、v0.11.0 の手順（タグの語彙の削除）、v0.12.0 の手順（項目のタグの置き換え）、v0.13.0 の手順（参照・本文・履歴の置き換え）だけ
     assert {step["version"] for step in payload["steps"] if step["destructive"]} == {
         "v0.6.0",
         "v0.8.0",
         "v0.11.0",
         "v0.12.0",
+        "v0.13.0",
     }
     # 値が要るキーは、全ての手順を当てた後の名前（.mindstella/config.yaml）で返す
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
@@ -218,8 +227,10 @@ def test_normal_when_apply(make_legacy_workspace: MakeLegacyWorkspace, call_tool
     assert after["A-2"]["status"] == "下書き"
     assert "done" not in after["A-1"]
     assert "done" not in after["A-2"]
-    assert after["A-1"]["updated"] == before["A-1"]["updated"]
-    assert after["A-2"]["updated"] == before["A-2"]["updated"]
+    # 更新日時は v0.13.0 の手順で history.yaml の行へ値を変えずに移る
+    history = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]
+    assert history["A-1"]["updated"] == before["A-1"]["updated"]
+    assert history["A-2"]["updated"] == before["A-2"]["updated"]
     assert {"file": ".mindstella/config.yaml", "key": "summary"} in [
         {"file": value["file"], "key": value["key"]} for value in payload["needs_values"]
     ]
@@ -382,15 +393,14 @@ def test_normal_when_already_current(
     """今の形（config.yaml）に版のファイルが無くても全ての手順を当てて、何も変えずに成功する（正常系）。"""
     # 準備
     root = make_workspace(make_item("A-1", status="完成"))
-    before = snapshot_tree(root)
-    mtimes = _mtimes(root)
+    watched = [root / RECORD_DIR / SETTINGS, root / RECORD_DIR / "docs.yaml"]
+    before = [(path.read_bytes(), path.stat().st_mtime_ns) for path in watched]
     # 実行
     result = call_tool("migrate", workspace=str(root))
     # 検証
     assert result.is_error is False
     assert result.data["needs_values"] == []
-    assert snapshot_tree(root) == before
-    assert _mtimes(root) == mtimes
+    assert [(path.read_bytes(), path.stat().st_mtime_ns) for path in watched] == before
     assert not (root / LEGACY_SETTINGS).exists()
 
 
@@ -408,6 +418,7 @@ def test_normal_when_rename_settings_file(
         bodies={"D-1.md": "本文\n"},
         settings_file=LEGACY_SETTINGS,
         top=True,
+        with_history=False,
     )
     (root / VERSION_FILE).write_text("v0.5.0\n", encoding="utf-8")
     (root / "release" / "資料.md").write_text("資料\n", encoding="utf-8")
@@ -482,6 +493,7 @@ def test_normal_when_answer_to_option(
             for item in (decided, undecided)
         ),
         already,
+        with_history=False,
     )
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.6.0\n", encoding="utf-8")
     before = _read_decisions(root)
@@ -655,7 +667,9 @@ def test_normal_when_tags_to_objects(
     """v0.11.0 のワークスペースの項目の文字列のタグを {name} に置き換え、スレッドのタグは残す（正常系）。"""
     # 準備
     root = make_workspace(
-        make_item("D-1", tags=["保存", "通知", "ＡＰＩ", "api"]), make_item("N-1", tags=[])
+        make_item("D-1", tags=["保存", "通知", "ＡＰＩ", "api"]),
+        make_item("N-1", tags=[]),
+        with_history=False,
     )
     write_threads(root, make_thread("TH-1", tags=["起票"]))
     (root / RECORD_DIR / VERSION_FILE).write_text("v0.11.0\n", encoding="utf-8")
@@ -664,7 +678,7 @@ def test_normal_when_tags_to_objects(
         "updated"
     ]
     # 実行
-    result = call_tool("migrate", workspace=str(root))
+    result = call_tool("migrate", workspace=str(root), to_version="v0.12.0")
     # 検証
     assert result.is_error is False
     assert result.data is not None
@@ -685,9 +699,75 @@ def test_normal_when_tags_to_objects(
     assert thread["tags"] == ["起票"]
     # もう一度当てても、D-1 は変わらない
     decisions_after = decisions_path.read_text(encoding="utf-8")
-    again = call_tool("migrate", workspace=str(root))
+    again = call_tool("migrate", workspace=str(root), to_version="v0.12.0")
     assert again.is_error is False
     assert decisions_path.read_text(encoding="utf-8") == decisions_after
+
+
+def test_normal_when_project_index_layout(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """v0.12.0 のワークスペースの参照・本文・履歴を、記録を project-index で配る形にする（正常系）。"""
+    # 準備
+    stamps = {"created": "2026-10-01T00:00:00+00:00", "updated": "2026-10-02T00:00:00+00:00"}
+    history = [{"seq": 2, "at": "2026-10-02T00:00:00+00:00", "by": "ai", "before": {"answer": None}}]
+    root = make_workspace(
+        make_item("D-1", **stamps),
+        make_item(
+            "D-2",
+            depends_on=["D-1"],
+            parent="D-1",
+            related=["R-1"],
+            body="D-2.md",
+            history=history,
+            **stamps,
+        ),
+        make_item("R-1", **stamps),
+        make_item("T-1", depends_on=["T-2"], **{"for": ["D-2"]}, **stamps),
+        make_item("T-2", **stamps),
+        bodies={"D-2.md": "D-2 の本文\n"},
+        with_history=False,
+    )
+    (root / RECORD_DIR / VERSION_FILE).write_text("v0.12.0\n", encoding="utf-8")
+    # 実行
+    result = call_tool("migrate", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    steps = result.data["steps"]
+    # 手順は refs_to_related・body_to_docs_path・place_source_config・meta_to_history_yaml・mdmark_documents の順
+    assert [(step["version"], step["op"], step["destructive"]) for step in steps] == [
+        ("v0.13.0", "call", True),
+        ("v0.13.0", "call", True),
+        ("v0.13.0", "call", False),
+        ("v0.13.0", "call", True),
+        ("v0.13.0", "call", True),
+    ]
+    decisions = {item["id"]: item for item in _read_items(root, "decisions.yaml")}
+    tasks = {item["id"]: item for item in _read_items(root, "tasks.yaml")}
+    assert decisions["D-2"]["related"] == [
+        {"to": "D-1", "type": "depends_on"},
+        {"to": "D-1", "type": "parent"},
+        {"to": "R-1", "type": "see_also"},
+    ]
+    assert not {"depends_on", "parent", "updated", "history"} & set(decisions["D-2"])
+    assert tasks["T-1"]["related"] == [
+        {"to": "T-2", "type": "depends_on"},
+        {"to": "D-2", "type": "for"},
+    ]
+    assert not {"for", "depends_on"} & set(tasks["T-1"])
+    assert decisions["D-2"]["body"] == "docs/D-2.md"
+    row = yaml.safe_load((root / RECORD_DIR / "history.yaml").read_text(encoding="utf-8"))["items"]["D-2"]
+    assert (row["updated"], row["history"]) == (stamps["updated"], history)
+    assert (root / RECORD_DIR / "dev-docs.yaml").is_file()
+    assert (root / RECORD_DIR / "schemas").is_dir()
+    after = snapshot_tree(root)
+    again = call_tool("migrate", workspace=str(root))
+    assert again.is_error is False
+    assert snapshot_tree(root) == after
     assert call_tool("check", workspace=str(root)).data == {"ok": True, "problems": []}
 
 
@@ -773,13 +853,15 @@ def test_error_when_workspace_not_found(
 
 
 def test_normal_when_mdmark_documents(
-    make_workspace: MakeWorkspace, make_item: MakeItem, call_tool: CallTool
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer, call_tool: CallTool
 ) -> None:
     """資料の flow・sequence の図を map へ、引数のマーカーを JSON の記載へ移し、map の種類を設定へ移す（正常系）。"""
     # 準備
     root = _make_mdmark_workspace(make_workspace, make_item)
+    # 実際の mdmark の CLI を呼ぶ（空の指定は既定の差し替えを外す）
+    server = start_server(extra_env={MDMARK_COMMAND_ENV: ""})
     # 実行
-    result = call_tool("migrate", workspace=str(root), to_version=MDMARK_STEP_VERSION)
+    result = server.call("migrate", workspace=str(root), to_version=MDMARK_STEP_VERSION)
     # 検証
     assert result.is_error is False, result.text
     assert result.data is not None
@@ -817,6 +899,6 @@ def test_error_when_mdmark_documents_fail(
     result = server.call("migrate", workspace=str(root), to_version=MDMARK_STEP_VERSION)
     # 検証
     assert result.is_error is True
-    assert result.text.startswith(f"エラー: {MDMARK_STEP_VERSION} の手順 1（call）: ")
+    assert result.text.startswith(f"エラー: {MDMARK_STEP_VERSION} の手順 {MDMARK_STEP_INDEX}（call）: ")
     assert "変換できません: docs/A-1.md" in result.text
     assert snapshot_tree(root) == before

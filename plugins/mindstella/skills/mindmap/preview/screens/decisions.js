@@ -159,7 +159,7 @@ var MindmapPreview;
         for (const node of laid.children) {
             if (node.kind !== "item" || node.item === undefined)
                 continue;
-            for (const prerequisite of node.item.depends_on ?? []) {
+            for (const prerequisite of MindmapPreview.refsOf(node.item, "depends_on")) {
                 const from = positions.get(prerequisite);
                 if (from === undefined)
                     continue;
@@ -570,8 +570,8 @@ var MindmapPreview;
                 key: "depends_on",
                 label: "前提",
                 priority: 3,
-                get: (row) => MindmapPreview.rowTexts(row, "depends_on"),
-                cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.rowTexts(row, "depends_on"), open),
+                get: (row) => MindmapPreview.refsOf(row, "depends_on"),
+                cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.refsOf(row, "depends_on"), open),
             },
             common.tags,
         ];
@@ -638,7 +638,7 @@ var MindmapPreview;
                             index,
                             item,
                             meta: [item.category, item.phase],
-                            links: item.depends_on ?? [],
+                            links: MindmapPreview.refsOf(item, "depends_on"),
                             open: on.open,
                             mark: marks?.[item.id],
                             comments,

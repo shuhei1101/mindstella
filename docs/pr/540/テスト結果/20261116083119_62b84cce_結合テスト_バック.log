@@ -1,0 +1,42 @@
+# 結合テスト（バック）: 作業ブランチの末尾の commit 62b84cce。reviewer と合意した範囲（サーバー.md の『結合テストの実行範囲』）
+
+$ pytest tests/integration/server/test_adopt.py tests/integration/server/test_change_detection.py tests/integration/server/test_changes_since_read.py tests/integration/server/test_check.py tests/integration/server/test_comment_add.py tests/integration/server/test_comments_send.py tests/integration/server/test_commit.py tests/integration/server/test_create_workspace.py tests/integration/server/test_edit_option.py tests/integration/server/test_edits_save.py tests/integration/server/test_events.py tests/integration/server/test_export.py tests/integration/server/test_inject_session.py tests/integration/server/test_mcp_server.py tests/integration/server/test_migrate.py tests/integration/server/test_new_thread.py tests/integration/server/test_next.py tests/integration/server/test_next_id.py tests/integration/server/test_pending.py tests/integration/server/test_preview_serve.py tests/integration/server/test_records.py tests/integration/server/test_reply.py tests/integration/server/test_set_thread_status.py tests/integration/server/test_spa_serve.py tests/integration/server/test_status.py tests/integration/server/test_update_settings.py tests/integration/server/test_update_thread.py tests/integration/skill/test_session.py tests/integration/skill/test_upgrade.py 
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /mnt/c/Users/shuhe/repo/mindmap/.claude/worktrees/feat-server-records-via-project-index
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 238 items
+
+tests/integration/server/test_adopt.py .......                           [  2%]
+tests/integration/server/test_change_detection.py ...........            [  7%]
+tests/integration/server/test_changes_since_read.py .......              [ 10%]
+tests/integration/server/test_check.py ..........                        [ 14%]
+tests/integration/server/test_comment_add.py ..............              [ 20%]
+tests/integration/server/test_comments_send.py .................         [ 27%]
+tests/integration/server/test_commit.py .........                        [ 31%]
+tests/integration/server/test_create_workspace.py ........               [ 34%]
+tests/integration/server/test_edit_option.py .............               [ 40%]
+tests/integration/server/test_edits_save.py .........                    [ 44%]
+tests/integration/server/test_events.py .....                            [ 46%]
+tests/integration/server/test_export.py .......                          [ 49%]
+tests/integration/server/test_inject_session.py ....                     [ 50%]
+tests/integration/server/test_mcp_server.py ..........                   [ 55%]
+tests/integration/server/test_migrate.py ......................          [ 64%]
+tests/integration/server/test_new_thread.py .......                      [ 67%]
+tests/integration/server/test_next.py ...                                [ 68%]
+tests/integration/server/test_next_id.py ....                            [ 70%]
+tests/integration/server/test_pending.py .....                           [ 72%]
+tests/integration/server/test_preview_serve.py .....                     [ 74%]
+tests/integration/server/test_records.py .......                         [ 77%]
+tests/integration/server/test_reply.py .........                         [ 81%]
+tests/integration/server/test_set_thread_status.py ............          [ 86%]
+tests/integration/server/test_spa_serve.py ......                        [ 88%]
+tests/integration/server/test_status.py ...                              [ 89%]
+tests/integration/server/test_update_settings.py ..............          [ 95%]
+tests/integration/server/test_update_thread.py ........                  [ 99%]
+tests/integration/skill/test_session.py .                                [ 99%]
+tests/integration/skill/test_upgrade.py .                                [100%]
+
+======================= 238 passed in 418.13s (0:06:58) ========================
+(exit 0)

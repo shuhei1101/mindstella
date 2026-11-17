@@ -1,4 +1,5 @@
 // 検討事項のマップ。木を elkjs で配置して描き、拡大・全体を表示・キーワードの強調と、狭い幅の字下げの一覧を持つ
+import { refsOf } from "@/shared/core/records";
 import { useEffect, useRef, useState } from "react";
 
 import { DecisionOutline } from "@/features/decisions/decisions/components/decision-outline";
@@ -100,7 +101,7 @@ export const DecisionMap = ({ items, settings, selectedId, marks, comments = {},
   for (let id: string | undefined = focus ?? undefined; id !== undefined; id = parentOf.get(id)) chain.add(id);
   const near = new Set(chain);
   const dependencies = (laid?.nodes ?? []).flatMap((node) =>
-    (node.item?.depends_on ?? []).flatMap((prerequisite) => {
+    refsOf(node.item, "depends_on").flatMap((prerequisite) => {
       const from = byId.get(prerequisite);
       if (from === undefined) return [];
       const related = focus !== null && (focus === prerequisite || focus === node.id);

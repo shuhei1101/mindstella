@@ -1,0 +1,45 @@
+id: MOD-540-5
+title: サーバー / 移行 / place_source_config.py
+test_files:
+  - tests/unit/scripts/test_place_source_config.py
+functions:
+  - name: place_source_config.migrate
+    title: 記録の配信の設定を置く移し替え
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/place_source_config.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: 'v0.13.0 の `call`（`place_source_config`）が呼ぶ変換。`.mindstella/dev-docs.yaml` が無ければ作り、`.mindstella/schemas/` をプラグインのスキーマで置き換える'
+    side_effects: '`.mindstella/dev-docs.yaml`（無いときだけ）と `.mindstella/schemas/` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
+    process: |-
+      1. `.mindstella/config.yaml` からワークスペースの ID と `summary` を読む（ID が無ければ『ワークスペースの管理』の `workspace_id_for`）
+      2. `.mindstella/dev-docs.yaml` が無ければ、『読み書きと検証』の `build_source_config` の中身を一時ファイルから書く
+      3. `.mindstella/schemas/` を作り、プラグインの種類ごとの 7 つのスキーマと `common.schema.json` を複製する（中身が同じファイルは書かない）
+      4. 書いたファイルの相対パスを返す
+    exceptions:
+      - name: ValueError
+        condition: 種類の YAML の形が崩れている
+      - name: OSError
+        condition: 読めない・書けない
+    unit_tests:
+      - name: test_place_source_config
+        case: 正常
+        summary: 設定が無ければ作り、スキーマを置き換える
+        condition: '`dev-docs.yaml` の無いワークスペース'
+        mock: なし
+        expected: '`dev-docs.yaml` が `build_source_config` の中身で、`schemas/` に 8 つのスキーマがある'
+      - name: test_place_source_config_when_config_exists
+        case: 正常
+        summary: 既にある設定は書き換えない
+        condition: '利用者が書き換えた `dev-docs.yaml` を持つワークスペース'
+        mock: なし
+        expected: '`dev-docs.yaml` が呼ぶ前と同じで、`schemas/` はプラグインのスキーマと同じ'

@@ -1,7 +1,7 @@
 // ネットワークの玉と線、描く項目、絞る条件（今の画面の `graph/graph.ts` の計算と同じ振る舞い）
 import type { Filters } from "@/shared/core/filters";
 import { filterRows, type ListColumn } from "@/shared/core/list-rows";
-import { DECISION_STATUSES, DOC_STATUSES, KIND_KEYS, KIND_LABEL, TASK_STATUSES, tagNames, type Item, type Kind, type RecordIndex } from "@/shared/core/records";
+import { tagNames, DECISION_STATUSES, DOC_STATUSES, type Item, type Kind, KIND_KEYS, KIND_LABEL, type RecordIndex, refsOf, TASK_STATUSES } from "@/shared/core/records";
 
 /** 線の種類 */
 export type LinkType = "depends" | "related" | "source" | "for";
@@ -18,12 +18,12 @@ export type Graph = { nodes: GraphNode[]; links: GraphLink[] };
 /** 条件で絞る行（索引の項目に ID を足したもの） */
 export type GraphRow = { id: string; kind: Kind; item: Item };
 
-/** 項目が別の項目を指すキー → 線の種類 */
-const LINK_KEYS: readonly ["depends_on" | "for" | "sources" | "related", LinkType][] = [
-  ["depends_on", "depends"],
-  ["for", "for"],
-  ["sources", "source"],
-  ["related", "related"],
+/** 項目が別の項目を指す先と線の種類（依存・進めるタスク・根拠・関連の順。派生元は線にしない） */
+const linkTargets = (item: Item): [string, LinkType][] => [
+  ...refsOf(item, "depends_on").map((target): [string, LinkType] => [target, "depends"]),
+  ...refsOf(item, "for").map((target): [string, LinkType] => [target, "for"]),
+  ...(item.sources ?? []).map((target): [string, LinkType] => [target, "source"]),
+  ...refsOf(item, "see_also").map((target): [string, LinkType] => [target, "related"]),
 ];
 
 /** 状態を持つ種類（検討事項・タスク・資料）の状態を重ねた並び（状態の条件の値の順） */
@@ -39,14 +39,12 @@ export const buildGraph = ({ index, shownIds }: { index: RecordIndex; shownIds: 
   for (const { id: source } of nodes) {
     const item = index.byId.get(source)?.item;
     if (item === undefined) continue;
-    for (const [key, type] of LINK_KEYS) {
-      for (const target of item[key] ?? []) {
-        const identity = `${type}|${source}|${target}`;
-        // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
-        if (source === target || !shown.has(target) || seen.has(identity)) continue;
-        seen.add(identity);
-        links.push({ source, target, type });
-      }
+    for (const [target, type] of linkTargets(item)) {
+      const identity = `${type}|${source}|${target}`;
+      // 自分自身へ・渡していないか記録に無い項目へ・同じ線の重なりは作らない
+      if (source === target || !shown.has(target) || seen.has(identity)) continue;
+      seen.add(identity);
+      links.push({ source, target, type });
     }
   }
   return { nodes, links };
