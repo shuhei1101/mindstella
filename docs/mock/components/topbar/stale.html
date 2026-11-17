@@ -61,7 +61,7 @@
         el.innerHTML = '<span class="st-dot" aria-hidden="true"></span><span class="st-label">更新があります</span>';
         const conn = document.querySelector(".conn");
         if (conn !== null) conn.after(el); else document.querySelector(".spacer").after(el);
-        // 幅 900px 以下は案 B と同じ帯で出す（CSS で幅により片方だけを出す）
+        // 幅 1440px 以下とつながらない表示があるときは案 B と同じ帯で出す（CSS で片方だけを出す）
         const note = document.createElement("div");
         note.className = "stale-note for-narrow";
         note.setAttribute("role", "status");
