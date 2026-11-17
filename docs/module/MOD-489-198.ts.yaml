@@ -118,7 +118,7 @@ functions:
          - 段落を持つリストの項目は中の段落に任せ、項目には付けない。リスト・表・引用・区切り線にも付けない
          - 読み替えた後、全ての `data-source-line` を外す
          - 埋め込んだ HTML の範囲（`.mdmark-html`）は `data-source-line` を持たないため、本文の中で n 番目の範囲に、`embeddedHtmlRanges` の n 番目の `open` を `data-html-open`、`close` を `data-html-close` で持たせる（範囲の中の要素には `data-line-start` を付けない）
-      4. `.mdmark-html` の外の `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
+      4. `.mdmark-html` と map の範囲（`.mdmark-map`。mdmark の map の部品が中の mermaid の原文を読んで描く）の外の `language-mermaid` のコードブロックを、原文を `data-source` に持つ図の入れ物に `pre` ごと置き換える（入れ物には `data-line-start` を付けない。描くのは `renderDiagrams`）
       5. `.mdmark-html` の外の `language-html` のコードブロックを、原文を `data-source` に持ち `pre` の `data-line-start` を残した HTML の本文の枠の入れ物（`.html-block`）に `pre` ごと置き換える（描くのは使う側が部品『HTMLの本文の枠』で、`selectable` は偽）
       6. `.mdmark-html` の外の表（`table`）を 1 つずつ、表の中だけで横に送る入れ物（`div.md-table-wrap`、`tabindex="0"`・`role="group"`・`aria-label="本文の表"`）で包む（範囲の中の表は書いた HTML のまま包まない）。表の行の `data-line-start` は表に残し、入れ物には付けない（画面設計『詳細パネル』の本文。本文の差分の部品が描く本文とスレッドの書き込みも同じ）
       7. `.mdmark-html` の外の、処理 4・5 で置き換えずに残ったコードブロックの `pre`（子に `code` を持つ `pre`）のうち、`tabindex` を持たないもの（mdmark の `fence` の規則を通らない字下げのコードブロック）に、`tabindex="0"`・`aria-label="コード"` を付ける（部品設計『Markdownの本文』。mdmark がフェンスのコードブロックに付けた `tabindex="0"`・`aria-label="コード: {言語}"` は残す。範囲の中の `pre` は書いた HTML のまま付けない）
@@ -165,6 +165,12 @@ functions:
         condition: 言語指定 `json` のコードブロック・言語指定の無いコードブロック・字下げのコードブロック・mermaid のコードブロックと、`<!-- html -->` の範囲の中の `<pre><code>` を持つ本文
         mock: 描画のライブラリの配信元（`page.route`）
         expected: '範囲の外の 3 つのコードブロックの `pre` が `tabindex="0"` を持ち、`aria-label` は順に mdmark が付けた `コード: json`・`コード` と、字下げのコードブロックに付けた `コード`。`role` は持たず、`data-line-start` は付けないときと同じ。図の入れ物の `pre.dg-raw` と範囲の中の `pre` は `tabindex` を持たない'
+      - name: test_render_markdown_when_map
+        case: 正常
+        summary: map の範囲の mermaid の原文を図の入れ物に置き換えない
+        condition: 'map の範囲（`<!-- map: {"title": "流れ"} -->` と mermaid のコードブロックと `<!-- map-data: {"version": 1} -->`）と、範囲の外の mermaid のコードブロックを持つ本文'
+        mock: 描画のライブラリの配信元（`page.route`）
+        expected: '`.mdmark-map` が 1 つで、その中に図の入れ物（`.diagram`）が無い。範囲の外の mermaid のコードブロックだけが図の入れ物になる'
   - name: renderDiagrams
     title: 図を描く
     kind: 関数
