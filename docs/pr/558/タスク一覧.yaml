@@ -65,7 +65,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T17:09:58.397356+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: done
+    note: TP-489-1 を直した。tests/files.yml は実装でファイルの削除と一緒に直す
+    updated_by: planner
+    updated_at: '2026-11-17T17:13:07.501208+00:00'
   - process: 単体テスト作成
     status: skipped
     reason: テストを足さない。既存の単体テストの全 pass で確かめる
