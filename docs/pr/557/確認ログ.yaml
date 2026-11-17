@@ -1,0 +1,11 @@
+confirmations:
+  - topic: 入力中・音声入力中に記録が書き換わったときの「更新があります」の置き場所
+    decision: 全ての幅でトップバーの下に帯で出す。帯を出す・消すときは帯の高さの分だけスクロールの位置をずらし、入力欄が画面の上で動かないようにする（モックの components/topbar/stale.html?place=b。推奨案 B）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/557#discussion_r4603526586
+  - topic: 「更新があります」の帯の文言
+    decision: 「更新があります。入力欄から離れると反映します。」（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/557#discussion_r4603527863
