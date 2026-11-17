@@ -56,32 +56,6 @@ scenarios:
       - 出力に、どの項目からも指されていない `.mindstella/docs/` の Markdown のファイル名がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
     test: test_normal_when_problems_found
-  - name: 正常シナリオ（設定に無いフェーズがある）
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
-      - name: make_workspace
-        description: フェーズ 目的 → 要件 で作成を済ませたワークスペース
-      - name: 設定に無いフェーズ
-        description: '`phase` が `発散` の検討事項 D-1 と、`goal.phase` が `結論` の設定'
-        notes: YAML を直接書いて作る
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant CC as MindStella のセッション
-        participant SV as サーバー
-        participant WS as ワークスペース
-
-        CC->>SV: ワークスペースを点検する
-        SV->>WS: config.yaml と全ての YAML を読む
-        SV-->>CC: 設定に無いフェーズの一覧
-      ```
-    expected:
-      - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
-      - 出力に、D-1 の `phase` の `発散` が設定の `phases` に無い旨がある
-      - 出力に、`goal.phase` の `結論` が設定の `phases` に無い旨がある
-      - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
-    test: test_normal_when_unknown_phase
   - name: 正常シナリオ（検討事項の案と状態が合わない）
     setup:
       - name: Mock
@@ -219,13 +193,13 @@ scenarios:
       - 点検のツールがツールのエラーにせず、`ok` が偽の結果を返す
       - 出力に、ID `D-1` が 2 件ある旨がある
       - ワークスペースの全てのファイルの中身が、点検を呼ぶ前と同じである
-lead: スキルが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、設定に無いフェーズと、案と状態の合わない検討事項を洗い出す単一ユースケース。
+lead: MindStella のセッションが、ワークスペースの参照切れと、YAML と本文の Markdown のずれと、案と状態の合わない検討事項を洗い出す単一ユースケース。
 issue: 3
 primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
     interest: 消した項目を指したままの記録や、どの項目にも結び付かない本文が残らない
-trigger: スキルが記録を書き終えた、または利用者がワークスペースを手で直した
+trigger: MindStella のセッションが記録を書き終えた、または利用者がワークスペースを手で直した
 preconditions:
   - ワークスペースが作成済みである
 success_guarantee: 参照切れとずれが全て、どの項目のどのキーかとともに出る。どのファイルも書き換えない。
