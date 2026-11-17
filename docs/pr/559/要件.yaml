@@ -11,4 +11,7 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-17T17:16:15.365258+00:00'
-scope_out: []
+scope_out:
+  - item: 単体テスト tests/unit/scripts/test_store.py::test_is_legacy_problem[decision] の fail
+    reason: base（develop 0730919f）でも同じく fail する既存の不具合で、この作業 PR の変更と関係しない
+    plan: '#561'
