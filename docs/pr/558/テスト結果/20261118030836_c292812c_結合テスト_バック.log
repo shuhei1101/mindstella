@@ -1,0 +1,38 @@
+# 結合テスト（バック）: 実装の末尾の commit c292812c
+
+$ pytest tests/integration/server/test_ensure_server.py tests/integration/server/test_launch.py tests/integration/server/test_mcp_server.py tests/integration/server/test_preview_url.py tests/integration/server/test_server_stop.py --basetemp=/tmp/pr558/bt-int
+call_tool = <bound method McpServer.call of <workspace_fixtures.McpServer object at 0x7e69b41576e0>>
+
+    def test_error_when_diff_not_found(
+        make_workspace: MakeWorkspace, call_tool: CallTool
+    ) -> None:
+        """記録に無いまとまりを diff に渡すと、配信を立てずに終わる（異常系）。"""
+        # 準備
+        root = _make_workspace_with_set(make_workspace, call_tool)
+        # 実行
+        result = call_tool("preview_url", workspace=str(root), diff=UNKNOWN_SET_ID)
+        # 検証
+        assert result.is_error is True
+        assert result.text.startswith("エラー: 引数の誤り: diff:")
+        assert UNKNOWN_SET_ID in result.text
+        # 配信を立てていないので、diff を渡さずに呼ぶと立てる
+        again = call_tool("preview_url", workspace=str(root))
+        assert again.data is not None
+>       assert again.data["started"] is True
+E       assert False is True
+
+tests/integration/server/test_preview_url.py:306: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_preview_url.py::test_normal_when_diff_given
+FAILED tests/integration/server/test_preview_url.py::test_error_when_diff_not_found
+2 failed, 47 passed in 67.25s (0:01:07)
+(exit 1)
+
+## base（origin/develop の 0730919f）での同じ失敗
+
+$ pytest tests/integration/server/test_preview_url.py（base の worktree で実行）
+FAILED tests/integration/server/test_preview_url.py::test_normal_when_diff_given
+FAILED tests/integration/server/test_preview_url.py::test_error_when_diff_not_found
+2 failed, 11 passed in 10.51s
+
+test_preview_url.py の 2 件は base でも同じ箇所で fail する。この 2 件は、この作業 PR が削除した ForwardProxy を使わない。

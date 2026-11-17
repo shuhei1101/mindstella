@@ -1,4 +1,4 @@
-"""起動スクリプト（bin/mindstella）を、隔離した環境で動かす共通の fixture と関数（結合テストと E2E テストが共有する）。
+"""起動スクリプト（bin/mindstella）を、隔離した環境で動かす共通の fixture と関数。
 
 `claude` は偽物を、`tmux` は専用のソケット（`-L`）と一時フォルダへ向けるラッパーを `PATH` の先頭に置き、
 利用者の tmux のセッションに触れない。fixture は `tests/conftest.py` が読み込む。
@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
 import os
@@ -304,17 +303,3 @@ def ready_venv(make_venv: MakeVenv) -> Path:
     """PyYAML・jsonschema・mcp が見える仮想環境を作る。"""
     return make_venv("venv")
 
-
-def read_tool_names(server_script: Path) -> list[str]:
-    """サーバーのスクリプトが登録するツールの名前の並び（`TOOL_NAMES`）を、読み込まずに読む。"""
-    tree = ast.parse(server_script.read_text(encoding="utf-8"))
-    for node in tree.body:
-        # `TOOL_NAMES = (...)` の代入だけを拾う
-        if (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == "TOOL_NAMES"
-        ):
-            return list(ast.literal_eval(node.value))
-    raise AssertionError(f"{server_script} に TOOL_NAMES が無い")

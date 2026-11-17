@@ -1,0 +1,11 @@
+# lint: 実装の末尾の commit c292812c
+
+$ ruff check plugins tests
+All checks passed!
+(exit 0)
+
+$ pytest tests/integration --collect-only -q
+3081 tests collected in 2.82s
+(exit 0)
+
+npm run typecheck・npm run lint は実行していない。この作業 PR は .ts / .tsx / frontend/ を変えず（Python のテストと YAML だけ）、型検査・ESLint の対象に変更が無いため。
