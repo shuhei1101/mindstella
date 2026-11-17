@@ -1,0 +1,10 @@
+$ pytest tests/integration/preview/test_thread_screen.py::test_updated_by_change --basetemp=tmp/pytest-int
+configfile: pytest.ini
+plugins: xdist-3.8.0, base-url-2.1.0, anyio-4.14.1, asyncio-1.4.0, playwright-0.9.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/integration/preview/test_thread_screen.py .                        [100%]
+
+============================== 1 passed in 2.96s ===============================
+exit=0
