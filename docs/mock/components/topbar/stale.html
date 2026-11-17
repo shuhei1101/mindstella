@@ -58,9 +58,15 @@
         el.className = "stale";
         el.setAttribute("role", "status");
         el.title = tip;
-        el.innerHTML = '<span class="st-dot" aria-hidden="true"></span><span class="st-long">更新があります（入力欄から離れると反映）</span><span class="st-short">更新があります</span>';
+        el.innerHTML = '<span class="st-dot" aria-hidden="true"></span><span class="st-label">更新があります</span>';
         const conn = document.querySelector(".conn");
         if (conn !== null) conn.after(el); else document.querySelector(".spacer").after(el);
+        // 幅 900px 以下は案 B と同じ帯で出す（CSS で幅により片方だけを出す）
+        const note = document.createElement("div");
+        note.className = "stale-note for-narrow";
+        note.setAttribute("role", "status");
+        note.innerHTML = '<span class="st-dot" aria-hidden="true"></span><span class="sn-text">更新があります。入力欄から離れると反映します。</span>';
+        document.querySelector(".topbar").after(note);
       }
       if (params.get("voice") === "1") {
         const v = document.createElement("button");

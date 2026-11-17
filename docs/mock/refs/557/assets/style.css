@@ -1,17 +1,17 @@
 /* PR #557: 入力中・音声入力中に溜まった記録の更新の表示 */
 
-/* 更新があります（案 A）: 接続の状態と同じ位置に出す押せない表示。点の印と文言 */
+/* 更新があります（案 A）: 幅 1441px 以上で接続の状態を出していないときだけ、題名の右に出す押せない表示。点と文言 */
 .stale { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--topbar-fg); white-space: nowrap; }
 .stale .st-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-.stale .st-short { display: none; }
-/* 幅 1440px 以下: 接続の状態と同じく短い文言にする */
-@media (max-width: 1440px) { .stale .st-long { display: none; } .stale .st-short { display: inline; } }
-/* 幅 900px 以下: 文言は読み上げとツールチップだけに持ち、点の印だけを出す */
-@media (max-width: 900px) { .stale .st-short { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } .stale { gap: 0; padding: 0 4px; } }
 
 /* 更新があります（案 B）: トップバーの下の帯。音声入力の知らせの帯と同じ形で、閉じるボタンを持たない */
 .stale-note { display: flex; align-items: center; gap: 8px; padding: 4px var(--page-pad); border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: var(--fs-small); }
 .stale-note .st-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .stale-note .sn-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-/* 幅 480px 以下: ボタンの幅を詰めないよう、点をロゴの右上に重ね、帯の中の幅を取らない */
-@media (max-width: 480px) { .stale { position: absolute; top: 12px; left: 30px; padding: 0; } .stale .st-dot { box-shadow: 0 0 0 2px var(--topbar-bg); } }
+
+/* 案 A の帯: トップバーに出せるときは出さない */
+.stale-note.for-narrow { display: none; }
+/* 幅 1440px 以下と、接続の状態を出しているとき: トップバーに幅が無いので、案 B と同じ帯で出す */
+@media (max-width: 1440px) { .stale { display: none; } .stale-note.for-narrow { display: flex; } }
+.top:has(.conn) .stale { display: none; }
+.top:has(.conn) .stale-note.for-narrow { display: flex; }
