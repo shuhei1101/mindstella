@@ -34,3 +34,8 @@ confirmations:
     decided_by: thumbs_up
     approver: shuhei1101
     thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4585763422
+  - topic: project-index#83 の変更（#92）がリリースされていないときのマージ
+    decision: 'project-index が #92 を含むバージョンをリリースするまで待ち、リリースしたらユーザーが返信してマージする（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/540#discussion_r4592299800
