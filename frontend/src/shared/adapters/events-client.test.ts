@@ -24,8 +24,8 @@ const startRecording = async (): Promise<void> => {
 };
 
 /** 記録の query の読み直しの回数 */
-const recordsInvalidations = (invalidate: ReturnType<typeof vi.spyOn>): number =>
-  invalidate.mock.calls.filter((args: unknown[]) => JSON.stringify((args[0] as { queryKey?: unknown } | undefined)?.queryKey) === JSON.stringify(["/api/records"])).length;
+const recordsInvalidations = (invalidate: { mock: { calls: readonly (readonly unknown[])[] } }): number =>
+  invalidate.mock.calls.filter((args) => JSON.stringify((args[0] as { queryKey?: unknown } | undefined)?.queryKey) === JSON.stringify(["/api/records"])).length;
 
 afterEach(() => {
   document.body.replaceChildren();
