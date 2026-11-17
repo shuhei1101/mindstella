@@ -32,3 +32,9 @@
 @media (min-width: 901px) { .topbar.fit-e .conn { display: inline-grid; place-items: center; width: 32px; height: 32px; } }
 /* 幅 481〜600px で音声入力中の表示を出している間: 幅 480px 以下と同じく、ツール名の文字を隠して要素の間隔と左右の余白を詰める */
 @media (min-width: 481px) and (max-width: 600px) { .topbar.fit-e:has(.voice-btn) .brand-name { display: none; } .topbar.fit-e:has(.voice-btn) { gap: 3px; padding: 0 10px; } }
+/* 案 E のツールチップ: 選んだ箇所のコメントの起点（.sc-tip）と同じ見た目で、ボタンの下に出す。ホバーとキーボードのフォーカスで出し、読み上げはボタンの名前に任せる */
+.topbar.fit-e [data-tip] { position: relative; }
+.topbar.fit-e .tb-tip { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; display: none; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; line-height: 1.4; width: max-content; max-width: 240px; white-space: normal; overflow-wrap: anywhere; pointer-events: none; }
+/* 右寄りのボタンは右端を揃え、画面の外へはみ出さない。長い文（読んだ日時つきのつながらない表示）は幅 240px で折り返す */
+.topbar.fit-e [data-tip="end"] .tb-tip { left: auto; right: 0; }
+.topbar.fit-e [data-tip]:is(:hover, :focus-visible, .is-tip) .tb-tip { display: block; }
