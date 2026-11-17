@@ -1,0 +1,15 @@
+/* PR #567: トップバーに音声入力中の表示とつながらない表示が並ぶときの詰め方 */
+
+/* 両案: つながらない表示があるとき、幅 1440px 以下は音声入力中の表示もほかのボタンと同じく文字を隠す */
+@media (max-width: 1440px) { :where(.topbar:is(.fit-a, .fit-b):has(.conn)) .voice-btn .label { display: none; } :where(.topbar:is(.fit-a, .fit-b):has(.conn)) .voice-btn { padding: 0 8px; } }
+
+/* 両案: つながらない表示と音声入力中の表示が並ぶとき、幅 1100px 以下は検索の入口を幅 900px 以下と同じ虫眼鏡だけにする */
+@media (max-width: 1100px) { .topbar:is(.fit-a, .fit-b):has(.conn):has(.voice-btn) .search-trigger { min-width: 0; width: 32px; padding: 0; justify-content: center; } .topbar:is(.fit-a, .fit-b):has(.conn):has(.voice-btn) .search-trigger :is(.label, kbd) { display: none; } }
+
+/* 案 A: 音声入力中の表示があるときは、幅に関わらずつながらない表示を短い文言にする（読んだ日時は title に持つ） */
+.topbar.fit-a:has(.voice-btn) .conn .conn-long { display: none; }
+.topbar.fit-a:has(.voice-btn) .conn .conn-short { display: inline; }
+
+/* 案 B: 音声入力中の表示とつながらない表示が並ぶときは、幅 1441px 以上でもボタンの文字を隠す */
+:where(.topbar.fit-b:has(.conn):has(.voice-btn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn, .voice-btn) .label { display: none; }
+:where(.topbar.fit-b:has(.conn):has(.voice-btn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn, .voice-btn) { padding: 0 8px; }
