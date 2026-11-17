@@ -1,0 +1,13 @@
+confirmations:
+  - topic: 音声入力中の表示とつながらない表示が並ぶトップバーの詰め方
+    decision: 状態の表示（つながらない・音声入力中）とボタン（検索の入口・表示の設定・絞り込み など）は常に文字を出さずアイコンだけにし、名前と状態はツールチップに持つ（案 C・D のどちらでもない別案）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/567#discussion_r4607303081
+  - topic: つながらない表示が無くても幅 1101〜1259px でトップバーがはみ出す事象の扱い
+    decision: この PR で扱う。トップバーのボタンの文字を出さない作りにして、どの組み合わせでも収める（推奨案 A の範囲を、ボタンの文字を出さない作りで満たす）
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/567#discussion_r4607313244
