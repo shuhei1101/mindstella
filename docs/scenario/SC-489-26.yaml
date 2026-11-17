@@ -1,82 +1,132 @@
 id: SC-489-26
-title: "状況の確認"
+title: "起動と再開"
 scenarios:
-  - name: 正常シナリオ（再開時の状況）
+  - name: 正常シナリオ（起動）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: 'モデルを呼ばない。MindStella の MCP サーバーを立て、SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` と `source: startup` で呼び、起動と再開の工程が連ねる `pending`・`threads` を決めた引数で再生する'
       - name: make_workspace
-        description: 作成を済ませたワークスペース
-      - name: 要見直しの検討事項
-        description: 状態が `要見直し` の検討事項 D-1
-      - name: 進行中のタスク
-        description: 状態が `進行中` のタスク T-1
-      - name: 再開可能な検討事項
-        description: 状態が `保留` で、依存先の D-3 が決定済みの検討事項 D-2
-        notes: '`related: [{to: D-3, type: depends_on}]`'
-      - name: 決定待ちの検討事項
-        description: 状態が `保留` で、依存先の D-5 が未決定の検討事項 D-4
-        notes: '`related: [{to: D-5, type: depends_on}]`'
+        description: 作成したばかりで、項目もスレッドも持たないワークスペース
+        notes: 進め方の文書を指定せずに作った MindStella のセッション
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
-        participant SV as サーバー
-        participant WS as ワークスペース
+        participant HK as SessionStart のフック
+        participant CC as MindStella のセッション
+        participant SV as MindStella の MCP
 
-        CC->>SV: 再開時の状況を出す
-        SV->>WS: 全ての YAML を読む
-        SV-->>CC: 要見直し・進行中・再開可能・決定待ち・次の候補
+        HK->>SV: 再開の状況を取得する
+        SV-->>HK: 状況（どれも 0 件）
+        HK->>CC: 起動の契機・状況・起動と再開のエージェントフローの案内を注入する
+        CC->>SV: まだまとめていない変更を取得する
+        SV-->>CC: 0 件
+        CC->>SV: 取り込み待ちのスレッドの一覧
+        SV-->>CC: 0 件
+        CC->>CC: 進め方の文書が無いので、コメントを待つ
       ```
     expected:
-      - 要見直しに D-1 がある
-      - 進行中に T-1 がある
-      - 再開可能に D-2 がある
-      - 保留の D-4 が、待っている D-5 の ID とともに決定待ちとして出る
-      - 次の候補の欄に D-5 がある
+      - 注入文が、起動の契機 `起動` と、起動と再開のエージェントフロー `mindstella/startup` を参照する案内を持つ
+      - 注入文が、次の候補・スキルの呼び方を持たない
+      - 前回参照した時点が、常駐サーバーの状態のフォルダに今の通し番号で記録されている
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+    test: test_normal_when_startup
+  - name: 正常シナリオ（再開）
+    setup:
+      - name: Mock
+        description: 'モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` と `source: compact` で呼び、起動と再開の工程が連ねる `pending`・`commit`・`threads` を決めた引数で再生する。コメントの取り込みの中身は単一ユースケース『コメントの取り込み』で確かめるので、取り込み待ちのスレッドの一覧までを再生する'
+      - name: make_workspace
+        description: 要見直しの検討事項 D-1・進行中の作業 T-1・未決定の検討事項 D-2 と、まだまとめていない変更と、取り込み待ちのスレッド 1 件を持つワークスペース
+        notes: 前回参照した時点を状態のフォルダに記録した後に、`write_docs` で D-1 のタイトルを書き換え、`commit` せずに残す
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant HK as SessionStart のフック
+        participant CC as MindStella のセッション
+        participant SV as MindStella の MCP
+
+        HK->>SV: 再開の状況を取得する
+        SV-->>HK: 取り込み待ち 1 件・変わった D-1・要見直し D-1・進行中 T-1
+        HK->>SV: 前回参照した時点を今の通し番号に書き換える
+        HK->>CC: 再開の契機・状況・起動と再開のエージェントフローの案内を注入する
+        CC->>SV: まだまとめていない変更を取得する
+        SV-->>CC: D-1
+        CC->>SV: commit（まとめ忘れ）
+        CC->>SV: 取り込み待ちのスレッドの一覧
+        SV-->>CC: 1 件
+        CC->>CC: コメントの取り込みへ進む
+      ```
+    expected:
+      - 注入文が、起動の契機 `再開` と、取り込み待ちのスレッドの件数 1・前回参照した後に変わった D-1 の ID と要約・要見直しの D-1・進行中の T-1 を持つ
+      - 注入文が、次の候補を持たず、未決定の D-2 を候補として並べない
+      - まとめ忘れの変更が 1 つのまとまりとして commit され、まだまとめていない変更が 0 件である
+      - 前回参照した時点が書き換わり、続けて SessionStart のフックを呼ぶと、前回参照した後に変わった項目が 0 件である
     test: test_normal_when_resume
-  - name: 正常シナリオ（次に検討する項目）
+  - name: 正常シナリオ（進め方の文書がある）
     setup:
       - name: Mock
-        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+        description: 'モデルを呼ばない。MindStella の MCP サーバーと project-index を立て、SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` と `source: startup` で呼び、起動と再開の工程が連ねる `pending`・ project-index の `search_docs`・`threads` を決めた引数で再生する'
       - name: make_workspace
-        description: 作成を済ませたワークスペース
-        notes: フェーズの並び `目的` → `要件` → `構成`
-      - name: 前提が揃った未決定
-        description: 依存先を持たない未決定の検討事項 D-1〜D-4
-        notes: 'D-1: `要件`・影響度 `小`／D-2: `目的`・影響度 `小`／D-3: `要件`・影響度 `大`／D-4: `要件`・影響度 `大`'
-      - name: 前提が揃っていない未決定
-        description: 未決定の検討事項に依存する未決定の検討事項 D-5〜D-7
-        notes: 'D-5: `目的`・`related: [{to: D-1, type: depends_on}]`／D-6: `related: [{to: D-4, type: depends_on}]`／D-7: `related: [{to: D-6, type: depends_on}]`（D-1 の後続 1 件、D-3 の後続 0 件、D-4 の後続 2 件）'
+        description: 進め方の文書（外部のアプリの配信元の文書 1 件）を指定して作ったワークスペースと MindStella のセッション
     flow: |-
       ```mermaid
       sequenceDiagram
-        participant CC as Claude Code（スキル）
-        participant SV as サーバー
-        participant WS as ワークスペース
+        participant HK as SessionStart のフック
+        participant CC as MindStella のセッション
+        participant SV as MindStella の MCP
+        participant PI as project-index の MCP
 
-        CC->>SV: 次に検討する項目を出す
-        SV->>WS: 全ての YAML を読む
-        SV->>SV: 前提が揃った未決定を選び、フェーズ → 影響度 → 後続の件数の順に並べる
-        SV-->>CC: 候補の一覧
+        HK->>CC: 起動の契機・状況・進め方の文書の場所・起動と再開のエージェントフローの案内を注入する
+        CC->>SV: まだまとめていない変更を取得する
+        SV-->>CC: 0 件
+        CC->>PI: 進め方の文書を参照する（search_docs）
+        PI-->>CC: 進め方の文書
+        CC->>SV: 取り込み待ちのスレッドの一覧
+        SV-->>CC: 0 件
+        CC->>CC: 進め方の起動時の工程へ進む
       ```
     expected:
-      - 候補が D-2・D-4・D-3・D-1 の順に並ぶ
-      - 候補に D-5・D-6・D-7 が無い
-      - 各候補に、フェーズ・影響度・後続の件数がある（D-4 は後続 2 件）
+      - 注入文が、進め方の文書の場所（配信元の ID と文書の ID）を持つ
+      - 進め方の文書が project-index の `search_docs` で参照できる
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
-    test: test_normal_when_next
-lead: スキルが、話し合いを再開するときの状況と、次に検討する項目の候補を読む単一ユースケース。
+    test: test_normal_when_progress_doc_given
+  - name: 正常シナリオ（通常のセッション）
+    setup:
+      - name: Mock
+        description: なし（SessionStart のフックのスクリプトを `MINDSTELLA_SESSION` を持たない環境で呼ぶ）
+      - name: make_workspace
+        description: 取り込み待ちのスレッド 1 件を持つワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant HK as SessionStart のフック
+        participant CC as Claude Code（通常のセッション）
+
+        HK->>HK: MINDSTELLA_SESSION が無いので注入しない
+        HK-->>CC: 空の出力
+      ```
+    expected:
+      - フックの出力が、起動と再開の案内も再開の状況も持たない
+      - 前回参照した時点が書き換わらない
+    test: test_normal_when_ordinary_session
+lead: MindStella のセッションが、起動の直後と `/clear`・起動し直し・圧縮の後に、SessionStart のフックが注入した起動の契機と再開の状況を受け、起動と再開のエージェントフロー（`mindstella/startup`）に従って、まとめ忘れを commit し、進め方の文書を参照し、取り込み待ちのコメントを取り込んでから進め方の工程へ進む単一ユースケース。
 issue: 3
-primary_actor: スキルの手順を実行する Claude Code
+primary_actor: MindStella のセッション
 stakeholders:
   - name: 利用者
-    interest: 前回の続きから迷わず再開できる。前提が揃っていない問いを先に聞かれない
-trigger: スキルがセットアップのステップで既存のワークスペースを開く、またはヒアリングのステップで次に聞く問いを選ぶ
+    interest: MindStella のセッションが落ちた・止めた・圧縮された後も、前回の続きから記録を読み落とさずに再開できる。届いていたコメントが取り込まれる
+  - name: 導入する側（外部のアプリ）
+    interest: 起動のときに指定した進め方の文書の工程へ進む
+trigger: MindStella のセッションが起動するか、`/clear` の後・PreCompact で止めて起動し直した後・圧縮を止められずに圧縮された後に、SessionStart のフックが呼ばれる
 preconditions:
   - ワークスペースが作成済みである
-success_guarantee: 要見直し・進行中・再開可能・次の候補が、決めた並びで出る。どのファイルも書き換えない。
+  - MindStella のセッションが、環境変数 `MINDSTELLA_SESSION` を持って起動している
+success_guarantee: 注入文が、起動の契機と、再開の状況（取り込み待ちのスレッドの件数・前回参照した後に変わった項目の ID と要約・要見直しの検討事項・進行中の作業）と、起動と再開のエージェントフローを参照する案内を持つ。次の候補は持たない。まとめ忘れは commit され、取り込み待ちのコメントは取り込まれ、前回参照した時点が書き換わっている。
 test_file: tests/e2e/単一ユースケース/test_status.py
 notes:
   検討事項の案: セットアップの検討事項は、単一ユースケース『記録の追加と更新』の補足「検討事項の案」の形で作る
+  注入の契機: SessionStart の `source` が `startup` のときを起動、`clear`・`resume`・`compact` のときと、止めて起動し直したときを再開として注入する。`source` ごとの注入は A-119 のフックの表に従う。環境変数 `MINDSTELLA_SESSION` を持たない通常のセッションには注入しない
+  前回参照した時点: 前回参照した時点は常駐サーバーの状態のフォルダに持ち、注入したときに書き換える。注入に収まらない分は、単一ユースケース『前回読んだ時点からの変更を読む』で取得する
+  進み具合: エージェントフローの工程ごとの進み具合は書き込まず、圧縮・クリアの後は記録と commit から戻す
+  E2E の範囲: モデルを呼ばず、SessionStart のフックのスクリプトを MindStella のセッションの環境変数と契機で呼んで注入文を確かめ、起動と再開の工程が連ねるツールの呼び出しを再生する。進め方の工程の中身は確かめない
+minimal_guarantee: 注入に失敗しても MindStella のセッションの起動は止めず、前回参照した時点を書き換えない。
+frequency: MindStella のセッションの起動・`/clear`・起動し直し・圧縮のたびに 1 回
