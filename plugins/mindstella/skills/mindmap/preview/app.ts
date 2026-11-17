@@ -629,6 +629,25 @@ namespace MindmapPreview {
     return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
   }
 
+  /** 音声入力の間に書き換えの通知を受けたとき、描いている記録とスレッドを書き換えずに読み直し、録音の行き先が無くなっていればその ID を返す */
+  export async function checkVoiceDestination({
+    destination,
+    fetchRecords: readRecords,
+    fetchThreads,
+  }: {
+    destination: VoiceDestination | null;
+    fetchRecords: () => Promise<{ ok: true; data: MindmapData } | { ok: false }>;
+    fetchThreads: () => Promise<{ ok: true; threads: Thread[] } | { ok: false }>;
+  }): Promise<string | null> {
+    if (destination === null || "newThread" in destination) return null;
+    const [records, threads] = await Promise.all([readRecords(), fetchThreads()]);
+    // 読めなければ確かめない（次の書き換えか、保留の解除の描き直しで確かめる）
+    if (!records.ok || !threads.ok) return null;
+    // 行き先がスレッドなら読んだスレッドに、項目なら読んだ記録の項目にあるか
+    if ("thread" in destination) return threads.threads.some((thread) => thread.id === destination.thread) ? null : destination.thread;
+    return buildIndex(records.data).byId.has(destination.target) ? null : destination.target;
+  }
+
   /** mdmark を読み終えるのを待ち（読めなくても続ける）、記録を読み、ハッシュが指す画面を描き、操作と履歴をつなぐ */
   export async function start(): Promise<void> {
     await loadMdmark();
@@ -685,6 +704,8 @@ namespace MindmapPreview {
 
   /** 記録を用意し（サーバーの配信では取得して）、画面を描いて操作とつなぐ */
   async function run(embedded: MindmapData | null): Promise<void> {
+    /** 入力中・音声入力中の描き直しの保留（サーバーの配信だけ。書き換えの知らせにつなぐときに作る） */
+    let refreshHold: RefreshHold | null = null;
     /** サーバーの配信か（配る書き出しは記録を埋め込みから読み、送信も書き換えの知らせも持たない） */
     const serverMode = embedded === null;
     const storage = openStorage("localStorage");
@@ -969,6 +990,7 @@ namespace MindmapPreview {
               : null,
           voiceNotice: serverMode ? comment.voice.notice : null,
           onVoice,
+          stale: refreshHold?.stale() ?? false,
           duplicateIds: serverMode ? shownDuplicates() : [],
           onOpenDuplicate: (id) => openItem(id, false),
           onCloseDuplicate: () => {
@@ -1749,9 +1771,10 @@ namespace MindmapPreview {
       });
     };
 
-    /** 録っている入力を空にする（録音の段階・向けた先・名前も戻す） */
+    /** 録っている入力を空にする（録音の段階・向けた先・名前も戻す）。呼んだ側が入力欄へフォーカスを移した後に、保留していた描き直しを解く */
     const clearVoice = (): void => {
       Object.assign(comment.voice, { key: null, phase: "idle", recording: null, elapsed: 0, levels: [], selection: null, destination: null, label: null });
+      window.setTimeout(() => refreshHold?.release(), 0);
     };
 
     /** 録音をやめ、マイクと画面の消灯の抑止を解放して、文字起こし中の結果を捨てる */
@@ -4039,10 +4062,39 @@ namespace MindmapPreview {
     // 絞り込みは画面に渡した後、ハッシュから消す
     navigate({ route: { ...route, filters: {} }, push: false });
 
+    /** 音声入力の間に書き換えを受けたとき、録音の行き先が無くなっていれば、同じ録音が続いている場合に限って録音を捨てて知らせる */
+    const checkVoice = async (): Promise<void> => {
+      const { destination, ticket } = comment.voice;
+      const missing = await checkVoiceDestination({
+        destination,
+        fetchRecords: () => fetchRecords(),
+        fetchThreads: async () => {
+          const result = await threadsApi.read();
+          return result.ok && result.data !== null ? { ok: true, threads: result.data.threads } : { ok: false };
+        },
+      });
+      // 確かめている間に録音が終わった・別の録音を始めたときは捨てない
+      if (missing === null || comment.voice.ticket !== ticket || comment.voice.destination !== destination || comment.voice.phase === "idle") return;
+      abandonVoice();
+      comment.voice.notice = { kind: "discarded", text: VOICE_TEXT.discarded(missing), key: null };
+      renderTop();
+    };
+
     // ===== 書き換えの知らせにつなぐ（サーバーの配信だけ） =====
     if (serverMode) {
+      const hold = createRefreshHold({
+        doc: document,
+        isVoiceActive: () => comment.voice.phase !== "idle",
+        reload: () => void reload(),
+        onStaleChange: () => renderTop(),
+      });
+      refreshHold = hold;
       subscribeEvents({
-        onChanged: () => void reload(),
+        onChanged: () => {
+          hold.request();
+          // 音声入力の間は描き直さず、録音の行き先の有無だけを確かめる
+          if (comment.voice.phase !== "idle") void checkVoice();
+        },
         onDuplicates: (ids) => {
           duplicates = ids;
           // 閉じたときと違う集まりを受けたら出し直す
@@ -4060,7 +4112,7 @@ namespace MindmapPreview {
           if (connection === "offline") {
             connection = "online";
             renderTop();
-            void reload();
+            hold.request();
           }
         },
       });
