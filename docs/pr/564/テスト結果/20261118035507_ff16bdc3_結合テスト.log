@@ -1,0 +1,13 @@
+# 結合テスト（バック）: テストコードの末尾の commit ff16bdc3
+
+$ pytest tests/integration/server/test_preview_url.py --basetemp=/tmp/pr564/bt-int
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-preview-url-diff-test-setup
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 13 items
+
+tests/integration/server/test_preview_url.py .............               [100%]
+
+============================= 13 passed in 12.75s ==============================
