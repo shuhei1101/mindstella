@@ -44,7 +44,7 @@ def main(
     environ: Mapping[str, str] | None = None,
     find_claude: Callable[[int], tuple[int, str] | None] | None = None,
 ) -> int:
-    """フックの入力の `tool_input` の `session` を、このセッションの値で上書きした `updatedInput` を出す。"""
+    """フックの入力の `tool_input` の `session` を、このセッションの値で上書きした `updatedInput` を、`permissionDecision` の `allow` と一緒に出す。"""
     env = os.environ if environ is None else environ
     search = find_claude_process if find_claude is None else find_claude
     try:
