@@ -257,19 +257,29 @@ def test_normal_when_start_hook_set(
 
 
 def _make_workspace_with_set(make_workspace: MakeWorkspace, call_tool: CallTool) -> Path:
-    """検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペースを作る。"""
+    """検討事項 D-1 を足して `commit` し、まとまり V-1 を持つワークスペースを作る。
+
+    項目を足すと call_tool の常駐サーバーがそのワークスペースの配信を立てる（変更の検知を動かすため）。
+    """
     root = make_workspace()
     add_item(call_tool, root, "decision", DECISION_ITEM)
     assert commit(call_tool, root, "足す")["id"] == KNOWN_SET_ID
     return root
 
 
+def _make_workspace_with_set_unserved(
+    make_workspace: MakeWorkspace, start_server: StartServer
+) -> Path:
+    """まとまり V-1 を持つワークスペースを、別の常駐サーバーで作る（fixture call_tool の常駐サーバーは配信を立てていない）。"""
+    return _make_workspace_with_set(make_workspace, start_server().call)
+
+
 def test_normal_when_diff_given(
-    make_workspace: MakeWorkspace, call_tool: CallTool
+    make_workspace: MakeWorkspace, call_tool: CallTool, start_server: StartServer
 ) -> None:
     """diff を渡すと、そのまとまりの差分を開くハッシュを付けた URL を返す（正常系）。"""
     # 準備
-    root = _make_workspace_with_set(make_workspace, call_tool)
+    root = _make_workspace_with_set_unserved(make_workspace, start_server)
     # 実行
     result = call_tool("preview_url", workspace=str(root), diff=KNOWN_SET_ID)
     # 検証
@@ -289,11 +299,11 @@ def test_normal_when_diff_given(
 
 
 def test_error_when_diff_not_found(
-    make_workspace: MakeWorkspace, call_tool: CallTool
+    make_workspace: MakeWorkspace, call_tool: CallTool, start_server: StartServer
 ) -> None:
     """記録に無いまとまりを diff に渡すと、配信を立てずに終わる（異常系）。"""
     # 準備
-    root = _make_workspace_with_set(make_workspace, call_tool)
+    root = _make_workspace_with_set_unserved(make_workspace, start_server)
     # 実行
     result = call_tool("preview_url", workspace=str(root), diff=UNKNOWN_SET_ID)
     # 検証

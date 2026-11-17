@@ -1581,7 +1581,7 @@ constraints:
   - item: 記録
     constraint: '`mindmap-data` に中身があれば `JSON.parse` して読み、空なら開いたときに `GET /api/records` を読む。画面から記録を書き換えない（コメントはサーバーがレビュー中・送信として持つだけ）'
   - item: 描画のライブラリ
-    constraint: 描画のライブラリ（`refs` の外部ライブラリの設計書）を配信元から、版を固定し `integrity` で中身を確かめて読む。mdmark 以外は `integrity` と `crossorigin="anonymous"` を付けた script 要素で読む。mdmark は ES モジュールのため、CSS を `integrity` と `crossorigin="anonymous"` を付けた link 要素で読み、JavaScript を import map の `integrity` に書いた URL から `import()` で読む。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出す。本文は原文を出し、表・ボード・カード・ネットワークはそのまま使える。配る書き出しは描画のライブラリを中に持ち、配信元から読まない
+    constraint: 描画のライブラリ（`refs` の外部ライブラリの設計書）を配信元から読む。mdmark 以外は、版を固定し `integrity` と `crossorigin="anonymous"` を付けた script 要素で読む。mdmark は、ワークスペースの設定の `mdmark.version`（無ければ `latest`）の jsDelivr の URL（タグは `gh/shuhei1101/mdmark@{タグ}/dist/`、`latest` は `gh/shuhei1101/mdmark@develop/dist/`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める）と、ワークスペースの設定の `mdmark.map` を `map` として指定する。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出す。本文は原文を出し、表・ボード・カード・ネットワークはそのまま使える。配る書き出しは描画のライブラリを中に持ち、配信元から読まない
   - item: 本文の無害化
     constraint: '本文とスレッドの書き込みの Markdown は、mdmark が HTML に描くときに無害化した結果を差し込む。図はスクリプトを動かさない安全の設定で描く。HTML の本文は、記録の `marked_bodies` を `sandbox="allow-same-origin"`（`allow-scripts` を付けない）の iframe の `srcdoc` に描き、本文のスクリプトを動かさず、本文の CSS を枠の外へ漏らさない。枠の高さは `ResizeObserver` で描いた中身に合わせる。Markdown の中の言語指定 `html` のコードブロックも、コードではなく同じ枠に描く（行の印は付けない）。Markdown の中の `<!-- html -->` 〜 `<!-- /html -->` の範囲（埋め込んだ HTML）は、枠に入れず mdmark の HTML の埋め込みの機能で本文の中に描き、範囲に書いたスクリプトとイベントの属性は無害化で外す'
   - item: 文字

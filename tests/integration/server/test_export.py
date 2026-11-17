@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-import base64
-import hashlib
 import json
 import re
 from html.parser import HTMLParser
@@ -37,6 +35,18 @@ DATA_ELEMENT_OPEN = '<script type="application/json" id="mindmap-data">'
 LICENSES_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-licenses">'
 MDMARK_ELEMENT_OPEN = '<script type="text/plain" id="mindmap-mdmark">'
 MDMARK_CSS_ELEMENT_OPEN = '<style id="mindmap-mdmark-css">'
+
+# 配る書き出しの mdmark の読み込みの設定の要素の開きタグ
+MDMARK_CONFIG_ELEMENT_OPEN = '<script type="application/json" id="mindmap-mdmark-config">'
+
+# 配る書き出しが中身を持つ mdmark の部品の名前
+MDMARK_PARTS = ("map", "view", "comments")
+
+# 配る書き出しが雛形に足す `</script>` を持つ要素の数（mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示）
+MDMARK_ADDED_ELEMENTS = 6
+
+# 設定の mdmark のバージョンが無いとき（latest）に読む mdmark の ref
+MDMARK_LATEST_REF = "develop"
 
 # 資料の本文（要素を閉じる文字列を含む）
 BODY_WITH_SCRIPT_TAG = "本文に </script> を含む\n"
@@ -113,22 +123,6 @@ def _template_versions() -> dict[str, str]:
     return dict(re.findall(r'src="https://cdn\.jsdelivr\.net/npm/([^@"]+)@([^/"]+)/', template))
 
 
-def _template_mdmark() -> tuple[str, str]:
-    """雛形の import map から、mdmark の版のタグと JavaScript の `integrity` を読む。"""
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    import_map = json.loads(re.search(r'<script type="importmap">(.*?)</script>', template, re.DOTALL).group(1))  # type: ignore[union-attr]
-    ((url, integrity),) = import_map["integrity"].items()
-    return re.search(r"/mdmark@([^/]+)/", url).group(1), integrity  # type: ignore[union-attr]
-
-
-def _template_mdmark_css_integrity() -> str:
-    """雛形の mdmark の CSS の `<link>` から、CSS の `integrity` を読む。"""
-    template = TEMPLATE_PATH.read_text(encoding="utf-8")
-    link = re.search(r'<link rel="stylesheet" href="[^"]*/mdmark@[^"]*/index\.css" integrity="([^"]+)"', template)
-    assert link is not None
-    return link.group(1)
-
-
 def test_normal(
     make_workspace: MakeWorkspace,
     make_item: MakeItem,
@@ -174,17 +168,18 @@ def test_normal(
     references.feed(html)
     assert references.found == []
     assert references.import_maps == 0
-    # 本文の </script> で要素が閉じていない（雛形の閉じタグの数から import map の 1 つを引き、mdmark の JavaScript とライセンスの表示の要素の 2 つを足した数）
+    # 本文の </script> で要素が閉じていない（雛形の閉じタグの数に、mdmark の JavaScript・部品の 3 つ・読み込みの設定・ライセンスの表示の要素の 6 つを足した数）
     template_closes = TEMPLATE_PATH.read_text(encoding="utf-8").count("</script>")
-    assert html.count("</script>") == template_closes - 1 + 2
-    # mdmark の JavaScript の sha384 が、雛形の import map の `integrity` と一致する
-    mdmark_version, mdmark_integrity = _template_mdmark()
-    digest = base64.b64encode(hashlib.sha384(_read_element(html, MDMARK_ELEMENT_OPEN).encode("utf-8")).digest()).decode("ascii")
-    assert f"sha384-{digest}" == mdmark_integrity
-    # mdmark の CSS が id を持つ `<style>` の中身になり、sha384 が雛形の `<link>` の `integrity` と一致する
-    css = html.split(MDMARK_CSS_ELEMENT_OPEN, 1)[1].split("</style>", 1)[0]
-    css_digest = base64.b64encode(hashlib.sha384(css.encode("utf-8")).digest()).decode("ascii")
-    assert f"sha384-{css_digest}" == _template_mdmark_css_integrity()
+    assert html.count("</script>") == template_closes + MDMARK_ADDED_ELEMENTS
+    # mdmark の JavaScript と部品の要素が中身を持ち、読み込みの設定の要素が map を持つ
+    assert _read_element(html, MDMARK_ELEMENT_OPEN) != ""
+    for part in MDMARK_PARTS:
+        assert _read_element(html, f'<script type="text/plain" id="mindmap-mdmark-{part}">') != ""
+    assert json.loads(_read_element(html, MDMARK_CONFIG_ELEMENT_OPEN)) == {"map": {}}
+    # mdmark の CSS が id を持つ `<style>` の中身になる
+    assert html.split(MDMARK_CSS_ELEMENT_OPEN, 1)[1].split("</style>", 1)[0] != ""
+    # 設定のバージョンが無いワークスペースは develop の最新を書き出す
+    mdmark_version = MDMARK_LATEST_REF
     # ライセンスの表示に、ライブラリごとの名前・版・著作権の表示・ライセンスの名前がある
     licenses = _read_element(html, LICENSES_ELEMENT_OPEN)
     versions = _template_versions()
@@ -229,7 +224,7 @@ def test_normal_when_html_body(
     assert data["marked_bodies"]["docs/A-1.html"] == records["marked_bodies"]["docs/A-1.html"]
     # 本文の `</script>` で埋め込みの要素が閉じていない
     template_closes = TEMPLATE_PATH.read_text(encoding="utf-8").count("</script>")
-    assert html.count("</script>") == template_closes + 1
+    assert html.count("</script>") == template_closes + MDMARK_ADDED_ELEMENTS
 
 
 def test_error_when_out_not_html(

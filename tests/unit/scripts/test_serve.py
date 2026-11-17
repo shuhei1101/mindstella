@@ -55,7 +55,7 @@ from workspace_fixtures import RECORD_DIR, write_yaml
 from record_helpers import ai_update
 
 # index_response の雛形（差し込み口と、記録の入る空の要素）
-SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
+SMALL_TEMPLATE = f"{builder.STYLE_SLOT}{builder.MDMARK_SLOT}{builder.DATA_ELEMENT}{builder.SCRIPT_SLOT}"
 
 # 配信のテストで使う待ち受けのポート（check_host・check_origin の比較用。実際には待ち受けない）
 PORT = 5000
@@ -593,13 +593,14 @@ def test_index_response(tmp_path: Path) -> None:
     preview_dir = tmp_path / "preview"
     write_preview_dir(preview_dir, SMALL_TEMPLATE)
     # 実行
-    response = serve.index_response(preview_dir)
+    response = serve.index_response(preview_dir, mdmark_settings={"version": "v0.13.0"})
     # 検証
     body = response.body.decode("utf-8")
     assert response.status == 200
     assert response.content_type == "text/html; charset=utf-8"
     assert builder.DATA_ELEMENT in body
     assert all(f"/* {name} */" in body for name in builder.STYLE_FILES)
+    assert "mdmark@v0.13.0/dist/index.js" in body
 
 
 def test_index_response_when_template_invalid(tmp_path: Path) -> None:
@@ -609,7 +610,7 @@ def test_index_response_when_template_invalid(tmp_path: Path) -> None:
     write_preview_dir(preview_dir, SMALL_TEMPLATE)
     (preview_dir / builder.SCRIPT_FILES[-1]).write_text("</script>", encoding="utf-8")
     # 実行
-    response = serve.index_response(preview_dir)
+    response = serve.index_response(preview_dir, mdmark_settings={})
     # 検証
     assert response.status == 500
     assert response.content_type == "application/problem+json; charset=utf-8"

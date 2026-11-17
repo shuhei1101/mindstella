@@ -395,7 +395,12 @@ class PreviewHandler(BaseHTTPRequestHandler):
             # 画面のパスへ送り直す
             self._reply(redirect_response(PAGE_PATH))
         elif path == PAGE_PATH:
-            self._reply(index_response(context.preview_dir))
+            self._reply(
+                index_response(
+                    context.preview_dir,
+                    mdmark_settings=context.settings.current().get("mdmark") or {},
+                )
+            )
         elif path == SPA_PATH:
             self._reply(redirect_response(f"{SPA_PATH}/"))
         elif path.startswith(f"{SPA_PATH}/"):
@@ -794,10 +799,10 @@ def spa_response(spa_dir: Path, sub_path: str) -> Response:
     return Response(status=HTTPStatus.OK, content_type=content_type, body=target.read_bytes())
 
 
-def index_response(preview_dir: Path) -> Response:
-    """雛形に CSS と JavaScript を差し込んだ画面を返す（記録は埋め込まない）。"""
+def index_response(preview_dir: Path, *, mdmark_settings: dict[str, Any]) -> Response:
+    """雛形に CSS と JavaScript と設定のバージョンの mdmark の読み込みを差し込んだ画面を返す（記録は埋め込まない）。"""
     try:
-        html = assemble_template(preview_dir=preview_dir)
+        html = assemble_template(mdmark_settings=mdmark_settings, preview_dir=preview_dir)
     except (ValueError, OSError) as error:
         # 同梱の雛形の誤り（差し込み口の数・閉じタグ・欠けたファイル）
         logger.error("同梱の雛形の誤り: %s", error)  # noqa: TRY400

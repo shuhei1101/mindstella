@@ -149,7 +149,7 @@ constraints:
   - item: 差し込みの安全
     constraint: 差し込む CSS・JavaScript が `</style>`・`</script>` を含むときは、同梱の雛形の誤りとして 500 を返す
   - item: 読み込むファイル
-    constraint: 返す HTML は、描画のライブラリを jsDelivr から、文字を Google Fonts から読む（雛形が持つ）。ローカルのファイルは指さない
+    constraint: 返す HTML は、描画のライブラリを jsDelivr から、文字を Google Fonts から読む（雛形が持つ）。mdmark の CSS の link 要素と JavaScript の URL は、返すたびにワークスペースの設定の `mdmark.version`（無ければ `latest`）から組み立てて雛形へ入れ、`integrity` を付けない。ローカルのファイルは指さない
   - item: 通信
     constraint: 配信は外へ通信しない
   - item: 送り元の確かめ

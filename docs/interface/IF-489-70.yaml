@@ -659,7 +659,7 @@ constraints:
   - item: 通信
     constraint: サーバーの配信（同じオリジンの `/api/`）と、描画のライブラリと Google Fonts の文字の配信元だけへ通信する。記録を外へ送らない。HTML の本文が外の画像・CSS を指すときだけ、描くときにブラウザがその URL を読みに行く
   - item: 描画のライブラリ
-    constraint: mdmark・mermaid・elkjs・marked・jsdiff は、今の画面と同じ配信元と版から、`integrity` で中身を確かめて読む。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
+    constraint: mermaid・elkjs・marked・jsdiff は、今の画面と同じ配信元と版から、`integrity` で中身を確かめて読む。mdmark は、『記録の取得』の `settings.mdmark.version`（無ければ `latest`）の jsDelivr の URL（タグは `gh/shuhei1101/mdmark@{タグ}/dist/`、`latest` は `gh/shuhei1101/mdmark@develop/dist/`）から、`integrity` を付けずに `crossorigin="anonymous"` で読む。ES モジュールのため、CSS を link 要素で読み、JavaScript を `import()` で読む。`mount` の `config` には、`features`（画面と重なる機能のオフ。mdmark が既定でオンにする目次のレール・先頭へ戻るボタン・図の拡大・mermaid の描画も含める）と、`settings.mdmark.map` を `map` として指定する。読めなかったときは代わりの読み込みをせず、そのライブラリを使う箇所に名前を出し、本文は原文を出す。表・ボード・カードはそのまま使える
   - item: 本文の無害化
     constraint: 『プレビューを開く』の制約「本文の無害化」と同じ
   - item: 画面への反映の時間

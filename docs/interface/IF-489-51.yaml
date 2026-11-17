@@ -190,7 +190,7 @@ request:
 response:
   - name: settings
     type: dict
-    description: '`config.yaml` の中身。`display`（見た目の既定・表示する種類の既定）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
+    description: '`config.yaml` の中身。`display`（見た目の既定・表示する種類の既定）と `mdmark`（画面が読み込む mdmark のバージョンと map の種類）を含む。`config.yaml` がスキーマに合わないときは、配信が持つ最後に検査に通った設定'
   - name: decisions / tasks / research / docs / terms / notes / logs
     type: list[dict]
     description: 種類ごとの YAML の `items` の中身に、`history.yaml` のその項目の行のキー（`created`・`updated`・`updated_by`・`seq`・`added_seq`・`history`・`history_dropped_seq`）を足したもの（キー名はファイル名から `.yaml` を落としたもの）。行が無い項目はキーを足さない

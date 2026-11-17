@@ -8,13 +8,14 @@ from typing import Any
 import pytest
 from playwright.sync_api import Page
 
+from .conftest import MDMARK_TEST_VERSION
 from .fixture_types import (
     LoadLibrary,
     LoadMdmark,
     LoadPreviewScripts,
     MakeData,
     MakeItem,
-    PutMdmarkImportMap,
+    PutMdmarkConfig,
     ServeMdmark,
 )
 
@@ -87,7 +88,7 @@ def test_missing_libraries(preview_page: Page, load_preview_scripts: LoadPreview
 @pytest.mark.parametrize(
     "put_name",
     [
-        pytest.param("put_mdmark_import_map", id="import_map"),
+        pytest.param("put_mdmark_config", id="config"),
         pytest.param("put_embedded_mdmark", id="embedded"),
     ],
 )
@@ -102,7 +103,7 @@ def test_load_mdmark(
     # 準備
     load_preview_scripts()
     serve_mdmark()
-    # import map に URL と integrity を持つページか、中身を要素に持つページ
+    # 読み込みの設定に URL を持つページか、中身を要素に持つページ
     request.getfixturevalue(put_name)()
     # 実行
     result = preview_page.evaluate(
@@ -115,29 +116,30 @@ def test_load_mdmark(
         }"""
     )
     # 検証
-    assert result == {"version": "v0.8.0", "missing": []}
+    assert result == {"version": MDMARK_TEST_VERSION, "missing": []}
 
 
 @pytest.mark.parametrize(
-    ("status", "integrity"),
+    ("status", "with_config"),
     [
-        pytest.param(404, None, id="not_found"),
-        pytest.param(200, "sha384-" + "A" * 64, id="integrity_mismatch"),
+        pytest.param(404, True, id="not_found"),
+        pytest.param(200, False, id="no_config"),
     ],
 )
 def test_load_mdmark_when_unavailable(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     serve_mdmark: ServeMdmark,
-    put_mdmark_import_map: PutMdmarkImportMap,
+    put_mdmark_config: PutMdmarkConfig,
     status: int,
-    integrity: str | None,
+    with_config: bool,
 ) -> None:
     """読めなければ拒否せず、グローバルを置かない（正常系）。"""
     # 準備
     load_preview_scripts()
     serve_mdmark(status=status)
-    put_mdmark_import_map(integrity=integrity)
+    if with_config:
+        put_mdmark_config()
     # 実行
     result = preview_page.evaluate(
         """async () => {
@@ -213,6 +215,39 @@ def test_render_markdown(
     assert result["containerCount"] == 1
     assert "flowchart TD" in result["source"]
     assert result["sourceLines"] == 0
+
+
+# map の範囲（中の mermaid の原文を mdmark の map の部品が読む）と、範囲の外の mermaid のコードブロックを持つ本文
+MAP_SOURCE = (
+    '<!-- map: {"title": "流れ"} -->\n\n'
+    "```mermaid\nflowchart TB\n  a[受け取り] --> b[返信]\n```\n\n"
+    '<!-- map-data: {"version": 1} -->\n\n'
+    "<!-- /map -->\n\n"
+    "```mermaid\nflowchart LR\n  x --> y\n```\n"
+)
+
+
+def test_render_markdown_when_map(
+    preview_page: Page, load_preview_scripts: LoadPreviewScripts, load_mdmark: LoadMdmark
+) -> None:
+    """map の範囲の mermaid の原文を図の入れ物に置き換えない（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    load_mdmark()
+    # 実行
+    result = preview_page.evaluate(
+        """(source) => {
+            const root = MindmapPreview.renderMarkdown(source);
+            return {
+                maps: root.querySelectorAll(".mdmark-map").length,
+                diagramsInMap: root.querySelectorAll(".mdmark-map .diagram").length,
+                diagrams: root.querySelectorAll(".diagram").length,
+            };
+        }""",
+        MAP_SOURCE,
+    )
+    # 検証
+    assert result == {"maps": 1, "diagramsInMap": 0, "diagrams": 1}
 
 
 def test_render_markdown_when_embedded_html(
@@ -1562,13 +1597,13 @@ def test_render_value_when_library_missing(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     serve_mdmark: ServeMdmark,
-    put_mdmark_import_map: PutMdmarkImportMap,
+    put_mdmark_config: PutMdmarkConfig,
 ) -> None:
     """ライブラリが読めなければ、改行を残した文字のままの要素を返す（正常系）。"""
     # 準備
     load_preview_scripts()
     serve_mdmark(status=404)
-    put_mdmark_import_map()
+    put_mdmark_config()
     # 実行
     result = preview_page.evaluate(
         """async (source) => {

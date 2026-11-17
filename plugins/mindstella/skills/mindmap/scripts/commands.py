@@ -46,7 +46,14 @@ from history import (
 from ids import reserve_ids
 from kinds import BODY_DIR, EDITOR, KINDS, RECORD_DIR, Kind, records_root
 from migration_ops import DESTRUCTIVE_OPS, describe_step
-from migrator import MigrationReport, apply_migration, plan_migration, record_version, set_values
+from migrator import (
+    MigrationReport,
+    MigrationStep,
+    apply_migration,
+    plan_migration,
+    record_version,
+    set_values,
+)
 from readme import README_FILE, write_readme
 from settings_update import update_settings
 from store import (
@@ -957,6 +964,7 @@ def _migration_payload(report: MigrationReport) -> dict[str, Any]:
                 "op": step.op,
                 "destructive": step.op in DESTRUCTIVE_OPS or bool(step.args.get("destructive")),
                 "summary": describe_step(step),
+                **_step_report(report.reports, step),
             }
             for step in report.steps
         ],
@@ -964,6 +972,13 @@ def _migration_payload(report: MigrationReport) -> dict[str, Any]:
         "backup": asdict(report.backup) if report.backup is not None else None,
         "recorded": _version_text(report.recorded),
     }
+
+
+def _step_report(reports: list[str], step: MigrationStep) -> dict[str, list[str]]:
+    """手順が報告の行を返していれば `{"report": 行の並び}`、無ければ空の辞書を返す。"""
+    prefix = f"{step.version} #{step.index}: "
+    lines = [line.removeprefix(prefix) for line in reports if line.startswith(prefix)]
+    return {"report": lines} if lines else {}
 
 
 def _version_text(version: Version | None) -> str | None:

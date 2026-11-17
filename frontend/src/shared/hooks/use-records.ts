@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
+import { setMdmarkSettings } from "@/shared/adapters/libraries";
 import { applyEdits, type PendingEdit } from "@/shared/core/edits";
 import { buildIndex, type MindmapData, type RecordIndex } from "@/shared/core/records";
 import { editsQuery, recordsQuery } from "@/shared/hooks/preview-queries";
@@ -23,6 +24,8 @@ export const useRecords = (): RecordsState => {
   const edits = useQuery(editsQuery());
   const items = (edits.data?.data as { items?: PendingEdit[] } | undefined)?.items ?? NO_EDITS;
   const data = records.data?.status === 200 ? (records.data.data as unknown as MindmapData) : null;
+  // 本文を描く部品が mdmark を読み始める前に、設定のバージョンと map を渡す（何度渡しても同じ値になる）
+  if (data !== null) setMdmarkSettings(data.settings.mdmark);
   // 索引の同一性で本文を描き直すので、記録と編集が変わったときだけ作り直す
   const index = useMemo(() => (data === null ? null : buildIndex(applyEdits(data, items))), [data, items]);
   const rawIndex = useMemo(() => (data === null ? null : buildIndex(data)), [data]);

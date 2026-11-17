@@ -439,6 +439,79 @@ scenarios:
       - ワークスペースの全ての YAML がスキーマに合い、点検が問題を 0 件で返す
     notes:
       種類の名前: 関連の種類の名前と、元のキーとの対応はインターフェース定義設計で決める。#390 の `{to, type}` の設計と移し替えの方針を使う
+  - name: 正常シナリオ（資料の図とマーカーを mdmark の今の書き方へ移す）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てる・`check`・版の書き換えを、決めた引数で順に再生する。mdmark の変換は実際に呼ぶ
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入り、Node.js で mdmark の CLI を呼べる
+      - name: mdmark の今の書き方より前の資料を持つワークスペース
+        description: '`.mindstella/mindstella-version.ini` がこの移し替えの手順を持つ版より前で、資料 A-1 の本文に flow の図（種類 `llm`・`script` のノード）と sequence の図を、資料 A-2 の本文に今の書き方の引数のマーカー（`<!-- table: data +count -->`）を持つワークスペース'
+        notes: 本文は mdmark の移行の試験の入力に合わせて作る
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant MD as mdmark の変換
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:upgrade {フォルダ}
+        CC->>SV: 版を比べ、当てる手順を並べる
+        SV-->>CC: 資料の図とマーカーを mdmark の今の書き方へ移す手順（破壊的な操作）
+        CC-->>U: 当てる手順の一覧を示し、破壊的な操作を当ててよいか確かめる
+        U->>CC: 当ててよい
+        CC->>SV: 写しを取って手順を当てる
+        SV->>WS: 写しを取る
+        SV->>MD: 資料の本文を渡して変換を呼ぶ
+        MD-->>SV: 書き換えた本文・追加した map の種類・移行の報告
+        SV->>WS: 資料の本文と、map の種類を持つ設定を書く
+        SV-->>CC: 当てた手順と移行の報告
+        CC->>SV: check
+        SV-->>CC: 問題 0 件
+        CC->>SV: 版を書き換える
+        CC-->>U: 移し替えた版と、移行の報告（写さなかった値）を示す
+      ```
+    expected:
+      - A-1 の本文に flow・sequence の範囲が残らず、map の範囲が 2 件ある
+      - 'A-2 の本文のマーカーが JSON の記載（`<!-- table: {...} -->`）である'
+      - ワークスペースの設定の map の種類に `llm`・`script` がある
+      - 移行の報告が、写さなかった値（`scope`・`updated` ほか）を資料と行つきで利用者に示す
+      - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインの版である'
+      - '`check` が問題を 0 件で返す'
+    test: test_normal_when_mdmark_documents_migrated
+  - name: 異常シナリオ（mdmark の変換が失敗する）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。手順が連ねる版の比較と手順の一覧・手順を当てるを、決めた引数で順に再生する。mdmark の変換は、終了コード 1 と理由を返す代わりのコマンドに差し替える
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている
+      - name: mdmark の今の書き方より前の資料を持つワークスペース
+        description: 正常シナリオ（資料の図とマーカーを mdmark の今の書き方へ移す）と同じワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as Claude Code（upgrade）
+        participant SV as サーバー
+        participant MD as mdmark の変換
+        participant WS as ワークスペース
+
+        U->>CC: /mindstella:upgrade {フォルダ}
+        CC->>SV: 写しを取って手順を当てる
+        SV->>WS: 写しを取る
+        SV->>MD: 変換を呼ぶ
+        MD-->>SV: 終了コード 1 と理由
+        SV->>WS: 写しから戻す
+        SV-->>CC: エラー（失敗した版・手順・mdmark が返した理由）
+        CC-->>U: どの手順で mdmark が何を理由に止まったかを示して止まる
+      ```
+    expected:
+      - 手順を当てるツールがエラーを返し、出力に失敗した版・手順と mdmark が返した理由がある
+      - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
+      - '`.mindstella/mindstella-version.ini` が呼ぶ前の版のままである'
+    test: test_error_when_mdmark_migration_fails
 lead: 利用者がプラグインを上げた後、移し替えのスキル `upgrade` を呼び、ワークスペースを記録した版からプラグインの版まで、版ごとの手順を順に当てて移し替える単一ユースケース。
 issue: 43
 primary_actor: 利用者
