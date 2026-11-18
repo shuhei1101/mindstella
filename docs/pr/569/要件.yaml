@@ -80,3 +80,6 @@ scope_out:
   - item: 通知にスレッドの要約・commit の説明を記載する
     reason: '利用者の判断で、通知にはワークスペースの名前・作業が完了したこと・プレビューの URL だけを記載する（PR #569 の確認事項）'
     plan: none
+  - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` の fail
+    reason: base（origin/develop の 2534d615）でも fail する既存の不具合で、この PR の変更に関係しない
+    plan: to_file
