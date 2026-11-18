@@ -393,7 +393,7 @@ def test_create_session_stale(status: str, ctx: SimpleNamespace, clock: FakeCloc
 def test_create_session_exists(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
     """生きている MindStella のセッションがあれば 409 で、tmux を呼ばない。"""
     _write_session(ctx)
-    monkeypatch.setattr(sessions, "is_alive", lambda *_args: True)
+    monkeypatch.setattr(sessions, "is_alive", lambda *_args, **_kwargs: True)
     with pytest.raises(ApiError) as caught:
         sessions.create_session(WORKSPACE_ID, None, ctx)
     assert (caught.value.status, caught.value.stage) == (409, "exists")
