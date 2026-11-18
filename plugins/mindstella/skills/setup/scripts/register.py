@@ -30,6 +30,7 @@ ENV_KEYS = (
     "MINDSTELLA_PREVIEW_STOP_HOOK",
     "MINDSTELLA_TRANSCRIBER",
     "MINDSTELLA_TRANSCRIBER_URL",
+    "MINDSTELLA_DISCORD_WEBHOOK_FILE",
 )
 
 # 既定のアカウントで立ち上げる alias の名前（アカウントごとの alias は `{ALIAS_NAME}-{名前}`）

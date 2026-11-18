@@ -259,3 +259,21 @@ settings:
       - IF-531-4#
     notes:
       補足: 結合テストが短くするために使う
+  - key: MINDSTELLA_DISCORD_WEBHOOK_FILE
+    title: Discord の Webhook の設定のファイル
+    file: 環境変数
+    type: str
+    required: false
+    default: なし（通知しない）
+    description: 『作業の完了の通知』が送信する Discord の Webhook の URL を 1 行目に記載したファイルの絶対パス。常駐サーバーを起動した環境から参照し、ファイルは送信のたびに参照する
+    missing: 通知しない。ファイルが無い・1 行目が `http://` か `https://` で始まらないときも通知しない
+    env_var: MINDSTELLA_DISCORD_WEBHOOK_FILE
+    reload: restart
+    allowed: ファイルのパス。中身の差し替えは起動し直さずに有効になる
+    reason: Webhook の URL はそれ自体が資格情報なので、環境変数にもリポジトリにも `config.yaml` にも配置せず、利用者が用意したファイルの場所だけを指定する
+    status: planned
+    visibility: user
+    refs:
+      - IF-568-1#
+    introduced:
+      pr: 569
