@@ -38,3 +38,5 @@
 /* 右寄りのボタンは右端を揃え、画面の外へはみ出さない。長い文（読んだ日時つきのつながらない表示）は幅 240px で折り返す */
 .topbar.fit-e [data-tip="end"] .tb-tip { left: auto; right: 0; }
 .topbar.fit-e [data-tip]:is(:hover, :focus-visible, .is-tip) .tb-tip { display: block; }
+/* フォーカスを残したまま別の要素にホバーしている間は、フォーカスの側のツールチップを出さず、2 つ重ねない */
+.topbar.fit-e:hover [data-tip]:focus-visible:not(:hover) .tb-tip { display: none; }
