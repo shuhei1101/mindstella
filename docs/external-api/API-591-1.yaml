@@ -23,7 +23,7 @@ used_in:
 verification:
   state: 済
   date: '2026-11-19'
-  detail: '`curl` で `GET /repos/shuhei1101/mdmark/commits/develop` を `Accept: application/vnd.github.sha` で呼び、本文が mdmark の `origin/develop` と同じ `05a79a26b04f557433469db12794a274629f3079` で、`x-ratelimit-limit` が 60 であることを確認した。その SHA の jsDelivr の `gh/shuhei1101/mdmark@{SHA}/dist/index.js` が `origin/develop` の `dist/index.js` と同じ SHA-256 で、`cache-control` が `immutable`、`x-jsd-version-type` が `commit` であることも確認した。応答の時間は 6 回の最大で 0.26 秒'
+  detail: '`curl` で `GET /repos/shuhei1101/mdmark/commits/develop` を `Accept: application/vnd.github.sha` で呼び、本文が mdmark の `origin/develop` と同じ `05a79a26b04f557433469db12794a274629f3079` で、`x-ratelimit-limit` が 60 であることを確認した。その SHA の jsDelivr の `gh/shuhei1101/mdmark@{SHA}/dist/index.js` が `origin/develop` の `dist/index.js` と同じ SHA-256 で、`cache-control` が `immutable`、`x-jsd-version-type` が `commit` であることも確認した。認証つきで 1,000 回呼んだ応答の時間は、接続の p99.9 が 7.10 秒、読み取りの p99.9 が 1.17 秒、全体の p50 が 0.32 秒（30 秒でも接続できなかったのが 1 回）'
 base_urls:
   - env: 全て
     url: https://api.github.com
