@@ -5464,6 +5464,13 @@ HOLD_POLL_MS = 50
 HOLD_POLL_LIMIT = 100
 
 
+# 「更新があります」の帯の文言
+STALE_TEXT = "更新があります。入力欄から離れると反映します。"
+
+# 入力中に記録を書き換えてから、描き直していないことを確かめるまで待つミリ秒（インターフェース定義の期待の 3 秒）
+HOLD_CHECK_MS = 3_000
+
+
 def _redraw_by_add(page: Page, root: Path, call_tool: CallTool) -> None:
     """項目を足して書き換えの通知を起こし、編集の表示のフォームが描き直されるのを待つ。"""
     page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
@@ -5482,21 +5489,35 @@ def test_option_draft_when_redrawn(
     open_preview: OpenPreview,
     call_tool: CallTool,
 ) -> None:
-    """「案を追加」で置いた書きかけの案は、入力の途中で書き換えの通知により描き直しても打った中身ごと残り、離れたときに溜める（正常系）。"""
+    """「案を追加」で置いた書きかけの案は、入力の途中で記録を書き換えても描き直さずに打った中身ごと残り、離れたときに 1 回だけ描き直して溜める（正常系）。"""
     # 準備
     page, root = _open_edit_view(write_edit_preview, make_item, valid_settings, open_preview)
     page.get_by_role("button", name="案を追加").click()
-    page.get_by_label("案 C の中身").fill("書きかけの案 C")
-    # 実行（離れずに描き直させる）
-    _redraw_by_add(page, root, call_tool)
-    # 検証（描き直し）
     draft = page.get_by_label("案 C の中身")
-    expect(draft).to_have_value("書きかけの案 C")
+    draft.fill("書きかけの案 C")
+    page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn = 'before'")
+    # 実行（離れずに記録を書き換える）
+    added = write_tool(call_tool, "add", workspace=str(root), kind="decision", item=NEW_DECISION)
+    band = page.get_by_role("status").filter(has_text=STALE_TEXT)
+    band.wait_for(timeout=UPDATE_TIMEOUT_MS)
+    page.wait_for_timeout(HOLD_CHECK_MS)
+    held = {
+        "drawn": page.evaluate(f"document.querySelector('{EDIT_FORM}').dataset.drawn"),
+        "value": draft.input_value(),
+        "focused": draft.evaluate("element => element === document.activeElement"),
+    }
     # 実行（離れる）
     _blur_and_wait(page, draft, 1)
-    # 検証（離れる）
+    page.wait_for_function(
+        f"document.querySelector('{EDIT_FORM}')?.dataset.drawn !== 'before'",
+        timeout=UPDATE_TIMEOUT_MS,
+    )
+    # 検証
+    assert added.is_error is False, added.text
+    assert held == {"drawn": "before", "value": "書きかけの案 C", "focused": True}
     wait_saved_edit(page, "C", {"content": "書きかけの案 C"}, op="option-add")
     expect(page.get_by_label("案 C の中身")).to_have_value("書きかけの案 C")
+    expect(band).to_have_count(0, timeout=UPDATE_TIMEOUT_MS)
 
 
 def test_sent_value_when_redrawn(
