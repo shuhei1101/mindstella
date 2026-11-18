@@ -35,7 +35,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T15:35:41.551361+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:43:39.700836+00:00'
   - process: モック作成
     status: skipped
     reason: '画面を変更しないため対象外（止まった理由の画面の表示は #586）'
