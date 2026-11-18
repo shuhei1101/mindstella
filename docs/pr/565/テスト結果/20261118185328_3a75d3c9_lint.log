@@ -1,0 +1,15 @@
+# lint（違反なし）
+# commit: 3a75d3c9
+# 実行日時: 2026-11-18 18:53:28 JST
+
+$ ruff check plugins tests; npm run typecheck && npm run lint
+All checks passed!
+
+> typecheck
+> tsc -p . --noEmit && tsc -p .storybook && tsc -p frontend
+
+
+> lint
+> eslint
+
+exit=0
