@@ -19,7 +19,6 @@ DECISION_ITEM: dict[str, Any] = {
     "title": "キーを種類ごとに分けるか",
     "status": "未決定",
     "lead": "キーを種類ごとに分けるか",
-    "weight": "大",
     "options": [{"key": "A", "content": "種類ごとに分ける"}, {"key": "B", "content": "1 つにまとめる"}],
 }
 

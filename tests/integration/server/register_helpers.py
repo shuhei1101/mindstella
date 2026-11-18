@@ -1,4 +1,4 @@
-"""起動スクリプトの登録（register.py）の結合テストが共有する、隔離したホームと偽の `claude`・偽の起動スクリプト。
+"""起動スクリプトの登録（`bin/mindstella register`）の結合テストが共有する、隔離したホームと偽の `claude`・偽の起動スクリプト。
 
 ホームのフォルダは空の一時フォルダを `HOME` にして差し替え、`PATH` の先頭に置いた偽の `claude` が
 `plugin list --json` に決めた `installPath` を返す。偽の `bin/mindstella` は、受け取った引数と
@@ -14,13 +14,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from .skill_files import PLUGIN_DIR
+from launch_fixtures import PLUGIN_DIR
 
 __all__ = [
     "BASHRC_USER_LINE",
     "CONFIG_UNSET",
     "MARK_BEGIN",
-    "REGISTER_SCRIPT",
+    "LAUNCH_COMMAND",
     "LockFiles",
     "RegisterSandbox",
     "read_report",
@@ -28,8 +28,8 @@ __all__ = [
 
 type LockFiles = Callable[..., None]
 
-# 登録のスクリプト
-REGISTER_SCRIPT = PLUGIN_DIR / "skills" / "setup" / "scripts" / "register.py"
+# 登録のサブコマンドを持つ起動のコマンド
+LAUNCH_COMMAND = PLUGIN_DIR / "bin" / "mindstella"
 
 # `~/.bashrc` に置いておく、印の範囲の外にある利用者の行
 BASHRC_USER_LINE = "export EDITOR=vim"
@@ -40,7 +40,7 @@ MARK_BEGIN = "# >>> mindstella >>>"
 # 偽の起動スクリプトが `CLAUDE_CONFIG_DIR` を受け取らなかったときに控える値
 CONFIG_UNSET = "__unset__"
 
-# 登録のスクリプトと `bash -ic` を待つ上限秒数
+# 登録のサブコマンドと `bash -ic` を待つ上限秒数
 COMMAND_TIMEOUT_SEC = 60
 
 # 偽の `claude`（`plugin list --json` には設定のフォルダごとの一覧を返し、それ以外は失敗する）
@@ -68,7 +68,7 @@ fi
 
 @dataclass
 class RegisterSandbox:
-    """登録のスクリプトを動かす、隔離した環境（ホーム・偽の `claude`・偽の起動スクリプトの記録）。"""
+    """登録のサブコマンドを動かす、隔離した環境（ホーム・偽の `claude`・偽の起動スクリプトの記録）。"""
 
     root: Path
     home: Path
@@ -86,7 +86,7 @@ class RegisterSandbox:
         return self.home / ".config" / "mindstella"
 
     def env(self) -> dict[str, str]:
-        """登録のスクリプトと `bash -ic` に渡す環境変数。`XDG_CONFIG_HOME`・`CLAUDE_CONFIG_DIR` は持たない。"""
+        """登録のサブコマンドと `bash -ic` に渡す環境変数。`XDG_CONFIG_HOME`・`CLAUDE_CONFIG_DIR` は持たない。"""
         return {
             "HOME": str(self.home),
             "SHELL": "/bin/bash",
@@ -120,9 +120,9 @@ class RegisterSandbox:
         return install
 
     def run(self, *args: str) -> subprocess.CompletedProcess[str]:
-        """登録のスクリプトをシステムの `python3` で動かす。終了コードが 0 以外でも例外にしない。"""
+        """起動のコマンドの `register` を動かす。終了コードが 0 以外でも例外にしない。"""
         return subprocess.run(
-            ["python3", str(REGISTER_SCRIPT), *args],
+            [str(LAUNCH_COMMAND), "register", *args],
             env=self.env(),
             capture_output=True,
             text=True,
@@ -152,5 +152,5 @@ class RegisterSandbox:
 
 
 def read_report(result: subprocess.CompletedProcess[str]) -> dict[str, object]:
-    """登録のスクリプトが標準出力に出した JSON を読む。"""
+    """登録のサブコマンドが標準出力に出した JSON を読む。"""
     return json.loads(result.stdout)  # type: ignore[no-any-return]

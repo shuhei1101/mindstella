@@ -964,7 +964,7 @@ def test_add_button_hidden_when_diff(
     write_edits(
         root,
         make_edit("E-1", target="A-1", key="title", value="書き換えた題", before="A-1の題"),
-        make_edit("E-2", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "deliverable": False, "body": "", "status": "下書き"}, before=None, base=None),
+        make_edit("E-2", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "body": "", "status": "下書き"}, before=None, base=None),
     )
     preselect_diff(page, "V-1")
     # 実行
@@ -1063,8 +1063,8 @@ def test_added_items_cards(
     url, _ = write_edit_preview(
         make_item("A-1", title="今ある項目"),
         edits=(
-            make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "deliverable": False, "body": "", "status": "下書き"}, before=None, base=None),
-            make_edit("E-2", target="new-2", op="item-add", key="docs", value={"title": "", "kind": "文書", "deliverable": False, "body": "", "status": "下書き"}, before=None, base=None),
+            make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "body": "", "status": "下書き"}, before=None, base=None),
+            make_edit("E-2", target="new-2", op="item-add", key="docs", value={"title": "", "kind": "文書", "body": "", "status": "下書き"}, before=None, base=None),
         ), bodies=_BODIES,
     )
     # 実行
@@ -1094,8 +1094,8 @@ def test_added_items_board(
         make_item("A-1", title="今ある項目", status="確認中"),
         make_item("A-2", title="もう 1 件", status="下書き"),
         edits=(
-            make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "deliverable": False, "body": "", "status": "確認中"}, before=None, base=None),
-            make_edit("E-2", target="new-2", op="item-add", key="docs", value={"title": "", "kind": "文書", "deliverable": False, "body": "", "status": "下書き"}, before=None, base=None),
+            make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "body": "", "status": "確認中"}, before=None, base=None),
+            make_edit("E-2", target="new-2", op="item-add", key="docs", value={"title": "", "kind": "文書", "body": "", "status": "下書き"}, before=None, base=None),
         ), bodies=_BODIES,
     )
     # 実行
@@ -1126,8 +1126,8 @@ def test_added_items_table(
     url, _ = write_edit_preview(
         make_item("A-1", title="今ある項目"),
         edits=(
-            make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "deliverable": False, "body": "", "status": "下書き"}, before=None, base=None),
-            make_edit("E-2", target="new-2", op="item-add", key="docs", value={"title": "", "kind": "文書", "deliverable": False, "body": "", "status": "下書き"}, before=None, base=None),
+            make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す項目", "kind": "文書", "body": "", "status": "下書き"}, before=None, base=None),
+            make_edit("E-2", target="new-2", op="item-add", key="docs", value={"title": "", "kind": "文書", "body": "", "status": "下書き"}, before=None, base=None),
         ), bodies=_BODIES,
     )
     # 実行

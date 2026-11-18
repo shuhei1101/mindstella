@@ -134,10 +134,6 @@ def build_history_workspace(
             {"key": "A", "content": "種類ごとに分ける"},
             {"key": "B", "content": "1 つにまとめる"},
         ],
-        "weight": "大",
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
     _call(call_tool, "add", workspace=workspace, kind="decision", item={**decision, "body_markdown": BODY_D1_BEFORE})
     _call(
@@ -152,7 +148,7 @@ def build_history_workspace(
         "add",
         workspace=workspace,
         kind="doc",
-        item={"title": "工程の資料", "kind": "図", "deliverable": False, "status": "下書き", "body_markdown": BODY_A1_BEFORE},
+        item={"title": "工程の資料", "kind": "図", "status": "下書き", "body_markdown": BODY_A1_BEFORE},
     )
     _call(call_tool, "add", workspace=workspace, kind="task", item={"title": "決める", "kind": "作業", "status": "未着手"})
     _call(call_tool, "commit", workspace=workspace, summary="最初の書き込み")
@@ -232,10 +228,6 @@ def build_long_line_diff_workspace(make_workspace: Any, call_tool: Any, long_lin
         "title": "長い行を足す問い",
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
-        "weight": "大",
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
     before = "# 概要\n\n```mermaid\nflowchart LR\n  A --> B\n```\n"
     after = f"# 概要\n\n```mermaid\nflowchart LR\n  A --> B\n  B --> C[{long_line}]\n```\n"

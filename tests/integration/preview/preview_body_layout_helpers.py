@@ -110,12 +110,8 @@ def build_body_layout_workspace(make_workspace: MakeWorkspace, call_tool: CallTo
             {"key": "A", "content": "今週に決める"},
             {"key": "B", "content": "来週に決める"},
         ],
-        "weight": "大",
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
-    doc = {"title": "工程の資料", "kind": "図", "deliverable": False, "status": "下書き"}
+    doc = {"title": "工程の資料", "kind": "図", "status": "下書き"}
     _call(call_tool, "add", workspace=workspace, kind="doc", item={**doc, "body_markdown": MARKDOWN_A1_BEFORE})
     _call(
         call_tool, "add", workspace=workspace, kind="decision", item={**decision, "body_markdown": MARKDOWN_D1_BEFORE}
@@ -131,7 +127,7 @@ def build_html_body_layout_workspace(make_workspace: MakeWorkspace, call_tool: C
     """段落 3 つを 1 行ずつ持つ HTML の本文の資料 A-1 を足して `commit`（V-1）し、2 つ目の段落を書き換えて `commit`（V-2）したワークスペースを作る。"""
     root = make_workspace()
     workspace = str(root)
-    doc = {"title": "画面のモック", "kind": "モック", "status": "下書き", "deliverable": False}
+    doc = {"title": "画面のモック", "kind": "モック", "status": "下書き"}
     _call(call_tool, "add", workspace=workspace, kind="doc", item={**doc, "body_html": HTML_BODY_BEFORE})
     _call(call_tool, "commit", workspace=workspace, summary="足す")
     _call(call_tool, "update", workspace=workspace, id="A-1", item={"body_html": HTML_BODY_AFTER})

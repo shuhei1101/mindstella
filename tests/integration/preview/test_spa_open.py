@@ -57,9 +57,6 @@ SCROLLABLE_HEIGHT = 360
 # 足す検討事項
 NEW_DECISION = {
     "title": "新しい問い",
-    "target": "mindmap",
-    "category": "データ構造",
-    "phase": "要件",
     "status": "未決定",
     "options": [{"key": "A", "content": "案 A"}],
 }
@@ -343,12 +340,11 @@ def _history_length(page: Page) -> int:
 def test_normal_when_graph(make_workspace: MakeWorkspace, call_tool: CallTool, page: Page) -> None:
     """タブの帯の右端のネットワークの入口で、`id` の項目を選んだネットワークを開き、`f.{列}` で描く玉を絞る（正常系）。"""
     # 準備
-    decision = {"category": "データ構造", "phase": "要件", "target": "mindmap"}
     url = _served_with_commit(
         make_workspace,
         call_tool,
-        ("decision", {**decision, "title": "記録の形", "status": "決定済み", "answer": "種類ごとに分ける", "options": [{"key": "A", "content": "種類ごとに分ける", "adopted": True}]}),
-        ("decision", {**decision, "title": "画面の幅", "status": "要見直し", "options": [{"key": "A", "content": "案 A"}]}),
+        ("decision", {"title": "記録の形", "status": "決定済み", "answer": "種類ごとに分ける", "options": [{"key": "A", "content": "種類ごとに分ける", "adopted": True}]}),
+        ("decision", {"title": "画面の幅", "status": "要見直し", "options": [{"key": "A", "content": "案 A"}]}),
     )
     console = watch_console(page)
     open_spa(page, url, "?tab=decisions&view=table&id=D-1&diff=V-1")
@@ -378,7 +374,7 @@ def test_normal_when_search(make_workspace: MakeWorkspace, call_tool: CallTool, 
     url = _served_with_commit(
         make_workspace,
         call_tool,
-        ("decision", {"title": "画面の分け方", "status": "未決定", "category": "データ構造", "phase": "要件", "target": "mindmap", "options": [{"key": "A", "content": "案 A"}]}),
+        ("decision", {"title": "画面の分け方", "status": "未決定", "options": [{"key": "A", "content": "案 A"}]}),
         ("task", {"title": "決める", "kind": "作業", "status": "未着手"}),
     )
     open_spa(page, url, "?tab=tasks&diff=V-1")

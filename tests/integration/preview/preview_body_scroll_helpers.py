@@ -40,9 +40,6 @@ LONG_BODY = "\n\n".join(f"{n} 番目の段落" for n in range(1, 121)) + "\n"
 # 本文にフォーカスしたまま描き直すために足す検討事項
 NEW_DECISION = {
     "title": "新しい問い",
-    "target": "mindmap",
-    "category": "データ構造",
-    "phase": "要件",
     "status": "未決定",
     "options": [{"key": "A", "content": "案 A"}],
 }

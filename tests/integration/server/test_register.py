@@ -1,7 +1,7 @@
-"""register.py（起動スクリプトの alias と環境変数の登録）の結合テスト。
+"""`bin/mindstella register`（起動スクリプトの alias と環境変数の登録）の結合テスト。
 
 隔離したホームのフォルダ・偽の `claude`・偽の起動スクリプトは `register_helpers.py` と `conftest.py`。
-登録のスクリプトは実物を子プロセスで動かし、alias は `bash -ic` で呼んで確かめる。
+登録のサブコマンドは実物の起動のコマンドを子プロセスで動かし、alias は `bash -ic` で呼んで確かめる。
 """
 
 from __future__ import annotations

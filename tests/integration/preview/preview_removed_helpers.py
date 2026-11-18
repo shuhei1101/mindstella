@@ -79,10 +79,6 @@ ADDED_DECISION: dict[str, Any] = {
     "title": REMOVED_TITLES["D-4"],
     "status": "未決定",
     "options": [{"key": "A", "content": "案 A"}],
-    "weight": "大",
-    "category": "データ構造",
-    "phase": "要件",
-    "target": "mindmap",
 }
 
 

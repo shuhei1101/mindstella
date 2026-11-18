@@ -2708,11 +2708,6 @@ def test_diff_keys(
     assert page.eval_on_selector(
         'aside.panel [data-key="answer"] ins.df-now', "e => getComputedStyle(e).textDecorationLine"
     ) == "underline"
-    # 変わっていない影響度は今の値のまま
-    assert page.locator("aside.panel .d-meta .df-key").count() == 0 or "影響度" not in page.inner_text(
-        "aside.panel .d-meta dt.df-key"
-    )
-    assert "大" in page.inner_text("aside.panel .d-meta")
 
 
 def test_diff_body(
@@ -3030,7 +3025,7 @@ def test_diff_keys_when_inline_words_skipped(
     open_preview: OpenPreview,
     page: Page,
 ) -> None:
-    """状態・キーの一覧（影響度）・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
+    """状態・タグには語の面を付けない。前の値・今の値は今までどおり並ぶ（正常系）。"""
     # 準備・実行
     url = serve_key_word_diff_workspace(make_workspace, call_tool, valid_settings)
     # 語の差分の打ち切り時刻が、負荷で描画が遅れても過ぎないようにする
@@ -3046,15 +3041,13 @@ def test_diff_keys_when_inline_words_skipped(
     assert status.locator("del.df-was").inner_text().endswith("未決定")
     assert status.locator("ins.df-now").inner_text().endswith("要見直し")
     assert status.locator("span.df-word").count() == 0
-    # キーの一覧（影響度）とタグ
+    # タグ
     meta = page.locator("aside.panel .d-meta dd.df-key .df-kv")
-    assert meta.count() == 2
+    assert meta.count() == 1
     assert meta.locator("span.df-word").count() == 0
-    assert meta.nth(0).locator("del.df-was").inner_text().endswith("大")
-    assert meta.nth(0).locator("ins.df-now").inner_text().endswith("中")
     # タグの前の値と今の値は、それぞれタグの並びで描く
-    assert meta.nth(1).locator("del.df-was span.tag").all_inner_texts() == ["要件", "会議"]
-    assert meta.nth(1).locator("ins.df-now span.tag").all_inner_texts() == ["要件", "運用"]
+    assert meta.nth(0).locator("del.df-was span.tag").all_inner_texts() == ["要件", "会議"]
+    assert meta.nth(0).locator("ins.df-now span.tag").all_inner_texts() == ["要件", "運用"]
 
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
@@ -3923,13 +3916,12 @@ def test_detail_description_aliases(
             description="調査の説明",
             conclusion="調べた結論",
             aliases=["効果"],
-            angles=["観点 1"],
         ),
         bodies={"A-1.md": "本文の段落\n", "A-2.md": "本文の段落\n"},
     )
     sections = """() => [...document.querySelectorAll('aside.panel .detail > *')]
         .map((e) => e.dataset.key ?? e.querySelector('h3, b')?.textContent ?? '')
-        .filter((label) => ['question', '説明', '結論', 'エイリアス', '調査の観点', '本文'].includes(label))"""
+        .filter((label) => ['question', '説明', '結論', 'エイリアス', '本文'].includes(label))"""
     # 実行（資料）
     page = open_preview(url, "#tab=docs&view=table&id=A-1")
     page.wait_for_selector("aside.panel .detail h3")
@@ -3964,7 +3956,7 @@ def test_detail_description_aliases(
     assert tags == ["特殊効果", "エフェクト"]
     assert not {"説明", "エイリアス", "description", "aliases"} & set(meta)
     assert empty == ["本文"]
-    assert research == ["question", "説明", "結論", "エイリアス", "調査の観点"]
+    assert research == ["question", "説明", "結論", "エイリアス"]
 
 
 # コードブロックの折り返しと、フォーカスの属性を読む
@@ -5113,7 +5105,6 @@ def _edit_items(make_item: MakeItem) -> tuple[dict[str, Any], ...]:
             "D-1",
             title="最初の問い",
             answer="元の答え",
-            phase="目的",
             tags=[{"name": "画面"}],
             options=[{"key": "A", "content": "案 A"}, {"key": "B", "content": "案 B"}],
         ),
@@ -5311,9 +5302,6 @@ def test_edit_view_fields(
     assert keys == [
         "status",
         "title",
-        "target",
-        "category",
-        "phase",
         "tags",
         "related",
         "options",

@@ -85,10 +85,6 @@ def build_added_mark_workspace(
         "title": "足した印を確かめる問い",
         "status": "未決定",
         "options": [{"key": "A", "content": "案 A"}],
-        "weight": "大",
-        "category": "データ構造",
-        "phase": "要件",
-        "target": "mindmap",
     }
     _call(
         call_tool,

@@ -213,7 +213,7 @@ def test_added_items_visible(page: Page, write_edit_preview: WriteReviewPreview,
     # 準備・実行
     url, _ = write_edit_preview(
         make_item("A-1"),
-        edits=(make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す資料", "kind": "文書", "status": "下書き", "deliverable": False}, before=None, base=None),),
+        edits=(make_edit("E-1", target="new-1", op="item-add", key="docs", value={"title": "足す資料", "kind": "文書", "status": "下書き"}, before=None, base=None),),
     )
     open_spa(page, url, "?tab=docs&view=cards")
     # 検証

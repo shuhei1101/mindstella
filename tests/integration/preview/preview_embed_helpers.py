@@ -125,7 +125,7 @@ def build_embedded_diff_workspace(
     """範囲を持つ Markdown の本文の資料 A-1 を `before` で足して `commit`（V-1）し、`after` へ書き換えて `commit`（V-2、説明「直す」）したワークスペースを作る。"""
     root = make_workspace()
     workspace = str(root)
-    doc = {"title": "範囲を持つ資料", "kind": "図", "deliverable": False, "status": "下書き"}
+    doc = {"title": "範囲を持つ資料", "kind": "図", "status": "下書き"}
     steps = (
         ("add", {"kind": "doc", "item": {**doc, "body_markdown": before}}),
         ("commit", {"summary": "足す"}),

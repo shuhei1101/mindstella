@@ -25,9 +25,6 @@ WATCH_START_SEC = 0.5
 # 足す検討事項
 NEW_DECISION = {
     "title": "新しい問い",
-    "target": "mindmap",
-    "category": "データ構造",
-    "phase": "要件",
     "status": "未決定",
     "options": [{"key": "A", "content": "案 A"}],
 }
