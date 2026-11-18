@@ -45,7 +45,7 @@ functions:
       description: '`{trigger, awaiting_threads, changed, changed_more, removed, removed_more, needs_review, needs_review_more, in_progress, in_progress_more, flow, migration, until_seq, context}`'
     process: |-
       1. ワークスペースとまとまりを読む（`load_workspace`、『変更履歴』の `load_changes`。`read_seq` は『前回参照した時点』の値）
-      2. 前回参照した後の変更を並べ（`changes_since`）、`added` と `changed` をこの順に `{id, kind, title, updated_by}` にして `changed` にする。`removed` は `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
+      2. 前回参照した時点より後に足した項目（`added_seq` が大きい）を種類の順に、続けて変えた項目（`seq` が大きい）を種類の順に `{id, kind, title, updated_by}` で並べて `changed` にする（前の値は組み立てない。`seq`・`added_seq` は『変更履歴』の `merge_item_history` で引く）。`removed` はまとまりの消した項目のうち、前回参照した時点にあって後で消したもの（`removed_items`）を `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
       3. 状態が `要見直し` の検討事項と `進行中` のタスクを `{id, title}` で連番の順に拾う
       4. 2.・3. の 4 つの並びを `SUMMARY_LIMIT` 件で切り、超えた件数を `{キー}_more` に入れる（超えなければ 0）
       5. スレッドを読み（`load_threads`）、取り込み待ちの書き込みを持つスレッドを数える（`awaiting_posts`）

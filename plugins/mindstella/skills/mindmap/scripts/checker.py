@@ -1,4 +1,4 @@
-"""スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。"""
+"""スキーマ違反・ID の重複・参照切れ・本文のずれ・変更履歴のずれの点検（読むだけで、ファイルを書かない）。"""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from history import (
     load_item_history,
     removed_items,
 )
-from kinds import BODY_DIR, KINDS, RECORD_DIR, SETTINGS_FILE, kind_of_id, records_root
+from kinds import BODY_DIR, KINDS, RECORD_DIR, kind_of_id, records_root
 from store import (
     Problem,
     Workspace,
@@ -27,10 +27,6 @@ from store import (
     validate_workspace,
 )
 from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targets
-
-# 設定の納品物の資料を指すキー（`REF_RULES` の参照する側の種類に使う）
-SETTINGS_KIND = "settings"
-DELIVERABLE_DOC_KEY = "goal.deliverables[].doc"
 
 # 関連の種類を表すキーの頭（`related.depends_on` など）
 RELATED_PREFIX = "related."
@@ -43,7 +39,6 @@ REF_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("task", "related.depends_on"): frozenset({"task"}),
     ("task", "related.for"): frozenset({"decision"}),
     **{(kind, "related.see_also"): frozenset(KINDS) for kind in KINDS},
-    (SETTINGS_KIND, DELIVERABLE_DOC_KEY): frozenset({"doc"}),
 }
 
 
@@ -56,7 +51,6 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_bodies(workspace),
         *_check_threads(workspace),
         *_check_comments(workspace),
-        *_check_phases(workspace),
         *_check_history(workspace),
     ]
     # ファイル名の順に並べ（sorted は安定なので、同じファイルの中は拾った順を保つ）、ワークスペースからの相対パスにする
@@ -76,10 +70,6 @@ def find_referrers(workspace: Workspace, item_id: str) -> list[str]:
             for rule_kind, key in REF_RULES:
                 if rule_kind == kind and item_id in _refs_of(item, key):
                     lines.append(f"{spec.file}: {item.get('id')}: {key}")
-    # 設定の納品物の資料が指している
-    for index, deliverable in enumerate(_deliverables(workspace.settings)):
-        if item_id in as_ids(deliverable.get("doc")):
-            lines.append(f"{SETTINGS_FILE}: goal.deliverables[{index}].doc: doc")
     # レビュー中のコメントと書きかけが向けている
     lines.extend(
         f"{COMMENTS_FILE}: {comment.id}: target"
@@ -175,20 +165,6 @@ def _check_refs(workspace: Workspace) -> list[Problem]:
                             detail=detail,
                         )
                     )
-    allowed_docs = REF_RULES[(SETTINGS_KIND, DELIVERABLE_DOC_KEY)]
-    for index, deliverable in enumerate(_deliverables(workspace.settings)):
-        for ref in as_ids(deliverable.get("doc")):
-            detail = _ref_error(ref, allowed_docs, existing)
-            if detail is not None:
-                problems.append(
-                    Problem(
-                        kind="broken_ref",
-                        file=SETTINGS_FILE,
-                        id=None,
-                        key=f"goal.deliverables[{index}].doc",
-                        detail=detail,
-                    )
-                )
     return problems
 
 
@@ -272,50 +248,6 @@ def _check_comments(workspace: Workspace) -> list[Problem]:
                 for line in error.lines
             )
     return problems
-
-
-def _check_phases(workspace: Workspace) -> list[Problem]:
-    """項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする。"""
-    settings = workspace.settings
-    phases = settings.get("phases")
-    known = set(phases) if isinstance(phases, list) else set()
-    problems: list[Problem] = []
-    goal = settings.get("goal")
-    # ゴールのフェーズが phases に無い
-    if isinstance(goal, dict) and goal.get("phase") not in known:
-        problems.append(
-            Problem(
-                kind="unknown_phase",
-                file=SETTINGS_FILE,
-                id=None,
-                key="goal.phase",
-                detail=str(goal.get("phase")),
-            )
-        )
-    for kind, spec in KINDS.items():
-        for index, item in enumerate(workspace.items[kind]):
-            phase = item.get("phase")
-            # フェーズを持ち、phases に無い
-            if phase is not None and phase not in known:
-                problems.append(
-                    Problem(
-                        kind="unknown_phase",
-                        file=spec.file,
-                        id=item.get("id") if isinstance(item.get("id"), str) else None,
-                        key=f"items[{index}].phase",
-                        detail=str(phase),
-                    )
-                )
-    return problems
-
-
-def _deliverables(settings: dict[str, Any]) -> list[dict[str, Any]]:
-    """設定のゴールの納品物のうち、辞書のものを取り出す。"""
-    goal = settings.get("goal")
-    deliverables = goal.get("deliverables") if isinstance(goal, dict) else None
-    if not isinstance(deliverables, list):
-        return []
-    return [deliverable for deliverable in deliverables if isinstance(deliverable, dict)]
 
 
 def _check_threads(workspace: Workspace) -> list[Problem]:

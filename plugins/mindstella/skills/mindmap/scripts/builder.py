@@ -10,7 +10,7 @@ import os
 import re
 import urllib.request
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, replace
+from dataclasses import dataclass, replace
 from html.parser import HTMLParser
 from http import HTTPStatus
 from pathlib import Path
@@ -18,7 +18,7 @@ from typing import Any, cast
 
 import store
 from errors import ArgumentError, DownloadFailedError
-from graph import is_settled, judge_goal, list_next_candidates
+from graph import list_ready
 from history import load_changes, load_item_history, merge_item_history
 from html_body import mark_lines
 from kinds import KINDS, SETTINGS_FILE
@@ -420,43 +420,8 @@ def _mdmark_loading(mdmark_settings: dict[str, Any]) -> str:
 
 
 def derive_preview_values(workspace: Workspace) -> dict[str, Any]:
-    """概要と表に出す次の候補・ゴールまで・カテゴリー別の進み具合を、コマンドと同じ関数で計算する。"""
-    next_candidates = [
-        asdict(candidate) for candidate in list_next_candidates(workspace, limit=None)
-    ]
-    report = judge_goal(workspace)
-    goal = asdict(report)
-    # 判定に入れたフェーズごとの、決着した検討事項の数と全体の数
-    goal["phase_progress"] = [_count_decisions(workspace, phase) for phase in report.phases]
-    # カテゴリーごとに、フェーズの順のセルと合計を並べる
-    progress = []
-    for category in workspace.settings.get("categories", []):
-        cells = [
-            _count_decisions(workspace, phase, category=category["name"])
-            for phase in workspace.settings.get("phases", [])
-        ]
-        progress.append(
-            {
-                "category": category["name"],
-                "cells": cells,
-                "settled": sum(cell["settled"] for cell in cells),
-                "total": sum(cell["total"] for cell in cells),
-            }
-        )
-    return {"next": next_candidates, "goal": goal, "progress": progress}
-
-
-def _count_decisions(
-    workspace: Workspace, phase: str, *, category: str | None = None
-) -> dict[str, Any]:
-    """フェーズ（と、あればカテゴリー）の検討事項のうち、決着した数と全体の数を返す。"""
-    rows = [
-        item
-        for item in workspace.items["decision"]
-        if item.get("phase") == phase and (category is None or item.get("category") == category)
-    ]
-    settled = sum(1 for item in rows if is_settled("decision", item))
-    return {"phase": phase, "settled": settled, "total": len(rows)}
+    """表に出す着手できる検討事項を、記録の取得の `derived` にして返す。"""
+    return {"ready": list_ready(workspace)}
 
 
 def validate_export_out(out: Path) -> Path:

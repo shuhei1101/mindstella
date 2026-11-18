@@ -322,7 +322,7 @@ def test_run_init(tmp_path: Path, valid_settings: dict[str, Any], scripts_dir: P
     payload = commands.run_init(root, valid_settings)
     # 検証
     assert payload["workspace"] == str(root)
-    assert len(payload["files"]) == 14
+    assert len(payload["files"]) == 13
     assert "README.md" in payload["files"]
     assert (root / RECORD_DIR / "mindstella-version.ini").read_text(
         encoding="utf-8"
@@ -1064,7 +1064,7 @@ def test_run_readme(make_workspace: MakeWorkspace) -> None:
     # 検証
     assert payload == {"path": str(root / "README.md"), "written": True, "preview_url": None}
     text = (root / "README.md").read_text(encoding="utf-8")
-    assert "`/mindstella:session` でプレビューを頼むと URL が表示されます。" in text
+    assert readme.PREVIEW_HINT in text
 
 
 def test_run_readme_when_serving(make_workspace: MakeWorkspace) -> None:

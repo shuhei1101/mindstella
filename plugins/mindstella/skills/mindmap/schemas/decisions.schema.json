@@ -33,20 +33,8 @@
         "title": {
           "$ref": "common.schema.json#/$defs/item/properties/title"
         },
-        "target": {
-          "$ref": "common.schema.json#/$defs/item/properties/target"
-        },
-        "category": {
-          "$ref": "common.schema.json#/$defs/item/properties/category"
-        },
-        "phase": {
-          "$ref": "common.schema.json#/$defs/item/properties/phase"
-        },
         "tags": {
           "$ref": "common.schema.json#/$defs/item/properties/tags"
-        },
-        "attrs": {
-          "$ref": "common.schema.json#/$defs/item/properties/attrs"
         },
         "related": {
           "$ref": "common.schema.json#/$defs/item/properties/related"
@@ -172,15 +160,6 @@
               "maxContains": 1
             }
           ]
-        },
-        "weight": {
-          "type": "string",
-          "enum": [
-            "大",
-            "中",
-            "小"
-          ],
-          "description": "影響度（派生の多さ）"
         },
         "reason": {
           "type": "string",

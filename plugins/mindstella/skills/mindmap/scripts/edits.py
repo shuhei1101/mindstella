@@ -93,13 +93,6 @@ EDIT_OPS = (
     "setting",
 )
 
-# 付け替えの対応を持てる設定のキー → まとめて保存が `stage_settings` に渡す引数の名前
-MAPPABLE_SETTING_KEYS = {
-    "phases": "phase_map",
-    "targets": "target_map",
-    "categories": "category_map",
-}
-
 # `set`・`item-add` の `value` に渡せないキー（案は `option-*`・`adopt` で編集する。`item-add` の `options` だけは除く）
 UNEDITABLE_KEYS = frozenset(
     {
@@ -175,8 +168,6 @@ class PendingEdit:
     base: str | None
     # 最初に溜めた日時
     created: str
-    # `setting` の付け替えの対応（書かないときは None）
-    map: dict[str, str | None] | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -219,7 +210,6 @@ def load_edits(root: Path) -> EditFile:
             before=item.get("before"),
             base=item.get("base"),
             created=item["created"],
-            map=item.get("map"),
         )
         for item in value["items"]
     ]
@@ -231,7 +221,7 @@ def load_edits(root: Path) -> EditFile:
 
 
 def list_edits(root: Path) -> dict[str, Any]:
-    """保存待ちの編集を、控え（`base`・`map`）を除いて溜めた順に並べ、件数を添えた読み取りの形にする。"""
+    """保存待ちの編集を、控え（`base`）を除いて溜めた順に並べ、件数を添えた読み取りの形にする。"""
     require_workspace(root)
     edits = load_edits(root).items
     return {
@@ -253,7 +243,7 @@ def list_edits(root: Path) -> dict[str, Any]:
 
 def add_edit(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[dict[str, Any], bool]:
     """1 件の編集を確かめ、新しく溜めるか同じ編集を書き換えるか外して、`edits.yaml` を書く。"""
-    op, target, key, value, mapping = _parse_edit_input(data)
+    op, target, key, value = _parse_edit_input(data)
     workspace = load_workspace(root)
     edit_file = load_edits(root)
     pending = edit_file.items
@@ -284,7 +274,7 @@ def add_edit(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[di
         return {"id": None, "target": target, "count": len(kept)}, False
     if existing is not None:
         # 同じ編集は値だけを書き換え、ID・元の値・更新日時の控え・溜めた日時は最初のまま
-        changed = replace(existing, key=key, value=value, map=mapping)
+        changed = replace(existing, key=key, value=value)
         items = [changed if edit is existing else edit for edit in pending]
         _write_edits(root, EditFile(seq=seq, new_seq=new_seq, items=items))
         return {"id": existing.id, "target": target, "count": len(items)}, False
@@ -298,7 +288,6 @@ def add_edit(root: Path, data: dict[str, Any], now: NowFn = now_utc) -> tuple[di
         before=current,
         base=_base_of(workspace, op, target),
         created=now(),
-        map=mapping,
     )
     items = [*pending, edit]
     _write_edits(root, EditFile(seq=seq, new_seq=new_seq, items=items))
@@ -392,14 +381,7 @@ def _save_edits_once(root: Path, now: NowFn) -> dict[str, Any]:
         settings_stage.settings != workspace.settings
     )
     touched = set(staged.touched)
-    if settings_stage is not None:
-        touched.update(
-            kind for kind in KINDS if settings_stage.items[kind] != workspace.items[kind]
-        )
     history = dict(staged.history)
-    # 設定の付け替えで更新日時を変えた行も書く
-    if settings_stage is not None:
-        history = {**settings_stage.history, **history}
     written = save_batch(
         workspace,
         BatchChange(
@@ -425,8 +407,8 @@ def _save_edits_once(root: Path, now: NowFn) -> dict[str, Any]:
 
 def _parse_edit_input(
     data: dict[str, Any],
-) -> tuple[EditOp, str | None, str | None, Any, dict[str, str | None] | None]:
-    """本文から `op`・`target`・`key`・`value`・`map` を取り出し、`op` ごとに要るキーと `map` の渡し方を確かめる。"""
+) -> tuple[EditOp, str | None, str | None, Any]:
+    """本文から `op`・`target`・`key`・`value` を取り出し、`op` ごとに要るキーを確かめる。"""
     op = data.get("op")
     if op not in EDIT_OPS:
         raise EditInvalidError(f"op: {'・'.join(EDIT_OPS)} のどれかを渡してください")
@@ -454,21 +436,7 @@ def _parse_edit_input(
             raise EditInvalidError(f"value: 渡せないキーです: {'、'.join(unknown)}")
     if op == "adopt" and value is not None and not isinstance(value, str):
         raise EditInvalidError("value: 採用する案の記号か null を渡してください")
-    mapping = data.get("map")
-    if mapping is not None:
-        _check_map(op, key, mapping)
-    return op, target, key, value, mapping
-
-
-def _check_map(op: str, key: str | None, mapping: Any) -> None:
-    """`map` が、渡せる `op`・`key` で、値の型が合うかを確かめる。"""
-    if op != "setting" or key not in MAPPABLE_SETTING_KEYS:
-        raise EditInvalidError("map: phases・targets・categories の設定の編集だけが渡せます")
-    if not isinstance(mapping, dict) or not all(isinstance(name, str) for name in mapping):
-        raise EditInvalidError("map: 古い値 → 新しい値のオブジェクトを渡してください")
-    for new in mapping.values():
-        if not isinstance(new, str):
-            raise EditInvalidError("map: 値は文字列にしてください")
+    return op, target, key, value
 
 
 def _check_target(
@@ -695,13 +663,7 @@ def _apply_edits(
         settings_stage, failed = _stage_settings_guarded(workspace, setting_edits, now)
         invalid.extend(failed)
     if settings_stage is not None:
-        staged = replace(
-            staged,
-            workspace=replace(workspace, settings=settings_stage.settings),
-            items=settings_stage.items,
-            touched=staged.touched
-            | {kind for kind in KINDS if settings_stage.items[kind] != workspace.items[kind]},
-        )
+        staged = replace(staged, workspace=replace(workspace, settings=settings_stage.settings))
     # 項目の追加（仮の ID の連番の順）
     adds = sorted(
         (edit for edit in edits if edit.op == "item-add"), key=lambda edit: _number_of(edit.target)
@@ -739,17 +701,7 @@ def _stage_settings_guarded(
     """設定の編集を 1 回で当てる。当てられなければ 1 件ずつ試して、当てられない編集を挙げる。"""
     def attempt(group: list[PendingEdit]) -> SettingsStage:
         """渡した設定の編集をまとめて当てる。"""
-        maps: dict[str, dict[str, Any]] = {}
-        for edit in group:
-            if edit.map is not None:
-                maps[MAPPABLE_SETTING_KEYS[str(edit.key)]] = edit.map
-        return stage_settings(
-            workspace,
-            {str(edit.key): edit.value for edit in group},
-            editor=USER_EDITOR,
-            now=now,
-            **maps,
-        )
+        return stage_settings(workspace, {str(edit.key): edit.value for edit in group})
 
     try:
         return attempt(edits), []
@@ -1026,10 +978,10 @@ def _number_of(identifier: str) -> int:
 
 
 def _edit_dict(edit_file: EditFile) -> dict[str, Any]:
-    """保存待ちの編集のファイルを YAML に書く辞書にする（`map` は持つときだけ書く）。"""
+    """保存待ちの編集のファイルを YAML に書く辞書にする。"""
     items: list[dict[str, Any]] = []
     for edit in edit_file.items:
-        entry: dict[str, Any] = {
+        entry = {
             "id": edit.id,
             "target": edit.target,
             "op": edit.op,
@@ -1039,8 +991,6 @@ def _edit_dict(edit_file: EditFile) -> dict[str, Any]:
             "base": edit.base,
             "created": edit.created,
         }
-        if edit.map is not None:
-            entry["map"] = edit.map
         items.append(entry)
     return {"seq": edit_file.seq, "new_seq": edit_file.new_seq, "items": items}
 

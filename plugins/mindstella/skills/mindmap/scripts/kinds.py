@@ -27,9 +27,6 @@ LEGACY_SETTINGS_FILE = "mindmap.yaml"
 # 本文の Markdown を置くフォルダ名（`records_root` の下）
 BODY_DIR = "docs"
 
-# ゴール判定でリリースの資料を書き出すフォルダ名（`records_root` の下）
-RELEASE_DIR = "release"
-
 # `{英大文字}-{正の整数}` の形の ID
 ID_PATTERN = re.compile(r"^([A-Z])-([1-9][0-9]*)$")
 

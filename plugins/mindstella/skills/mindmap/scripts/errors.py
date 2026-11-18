@@ -35,26 +35,6 @@ class SchemaMismatchError(MindmapError):
         self.legacy = legacy
 
 
-class UnmappedPhaseError(MindmapError):
-    """新しい `phases` に対応の無いフェーズを持つ項目か `goal.phase` が残る。`lines` に残るものごとの `{ID か goal}: {フェーズ}` を持つ。"""
-
-    def __init__(self, unmapped: list[tuple[str, str]]) -> None:
-        """残るもの（ID か `goal`、フェーズ）を持ち、その並びを `lines` の行にする。"""
-        super().__init__(
-            "新しいフェーズに対応の無いフェーズが残ります",
-            [f"{owner}: {phase}" for owner, phase in unmapped],
-        )
-        self.unmapped = unmapped
-
-
-class UnmappedTargetError(MindmapError):
-    """新しい設定に無い対象・カテゴリーを持つ項目かカテゴリーが残る、または `target_map`・`category_map` の値が新しい設定に無い。`lines` に残るものごとの行を持つ。"""
-
-    def __init__(self, lines: list[str]) -> None:
-        """残るものごとの行を持ち、メッセージを固定の文言にする。"""
-        super().__init__("新しい設定に対応の無い対象・カテゴリーが残ります", lines)
-
-
 class ItemNotFoundError(MindmapError):
     """渡した ID の項目が無い。"""
 
