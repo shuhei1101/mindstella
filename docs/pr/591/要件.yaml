@@ -45,10 +45,14 @@ docs:
     updated_at: '2026-11-18T15:09:34.417551+00:00'
   - page: docs/scenario/SC-489-31.yaml
     change: 表示の設定の流れと期待値から「表の列の固定」「表の見出しの固定」「表のしま模様」を外し、セクションの折りたたみだけを切り替える流れにする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T16:23:44.177545+00:00'
   - page: docs/scenario/SC-489-46.yaml
     change: 本文の表の操作（列の固定のボタン・しま模様の既定）を、mdmark の表の機能（ピン止め・並べ替え・列の幅の変更）の操作と期待値にする
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T16:23:44.177545+00:00'
 scope_out:
   - item: 本文の差分（インライン・左右に並べる・HTML の本文の差分）を MindStella の実装から mdmark の差分の機能へ寄せること
     reason: '利用者が挙げた差分の見た目（削除した行の打ち消し線・変わった所だけ濃い色）は mdmark の差分の機能のもので、今の画面は MindStella の差分の実装で描いている。実装の入れ替えは #347 が持つ。この PR は mdmark が描いた部品への CSS の上書きを取り除く範囲に留める。含めるかは設計のレビューで確定する'
