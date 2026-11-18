@@ -48,7 +48,7 @@ data_models:
     container: plugins/mindstella/skills/mindmap/scripts/migrator.py
     usecase: 記録の形式の移行
     role: DTO
-    summary: '`migrate` の出力の中身。入口は版を文字列にし、手順を `{version, index, op, destructive, summary}` にして出す'
+    summary: '`migrate` の結果。『ワークスペースの作成』が応答の `migration` にする'
     properties:
       - name: workspace_version
         type: Version | None
@@ -79,6 +79,14 @@ data_models:
         type: list[str]
         default: '[]'
         description: 当てた手順が返した報告の行（`{版} #{番号}: {行}`。出力の `steps[]` の該当の手順の `report` に入れる）
+      - name: provisional
+        type: list[dict[str, str]]
+        default: '[]'
+        description: 値が要るキーに入れた仮の値（`{file, key, value}`）
+      - name: not_carried
+        type: list[dict[str, str]]
+        default: '[]'
+        description: 移せずに記録から消えた値（`{item, key, value}`。`reports` の行から作る）
 constants:
   - name: MIGRATIONS_DIR
     title: 手順の置き場所
@@ -501,3 +509,63 @@ functions:
         condition: '`parametrize`: `mindmap.yaml` と v0.6.0 の手順の並び / `mindmap.yaml` と空の並び / `docs.yaml` と v0.6.0 の手順の並び'
         mock: なし
         expected: '`.mindstella/config.yaml` / `mindmap.yaml` / `.mindstella/docs.yaml`'
+  - name: migrate
+    title: 記録の形式の移行
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/migrator.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: インターフェース定義『記録の形式の移行』の入口。手順を当て、値が要るキーに仮の値を入れ、版を書く
+    description: 呼ぶ側（モジュール構成『ワークスペースの管理』『セッションの管理』）がワークスペースごとの鍵と `workspace_lock`（`require=require_migratable`）を取った中で呼ぶ
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: MigrationReport
+      description: 当てた手順・写し・書いた版・仮の値・移せなかった値。当てる手順が無ければ `steps` が空
+    process: |-
+      1. 手順を当てる（`apply_migration`。版が新しいときは `WorkspaceNewerError` が伝わる）
+         - 当てる手順が無く、版が同じ場合、何も書かずに返す
+      2. 値が要るキーに仮の値を入れる（`set_values`。`summary` はフォルダの名前、ほかのキーは空文字）。入れた値を `provisional` にする
+      3. 版を書く（`record_version`）
+         - `SchemaMismatchError`・`WriteFailedError` の場合、写しから戻し（`restore_backup`）てそのまま送る
+      4. `reports` の行を `not_carried` にする。`{項目の ID}: {キー}: {値}` の行は 3 つに分け、それ以外の行は `item`・`key` を空にして行を `value` にする
+      5. 結果を返す
+    exceptions:
+      - name: WorkspaceNotFoundError
+        condition: 設定のファイルが無い（`require_migratable` から伝わる）
+      - name: WorkspaceNewerError
+        condition: ワークスペースの版がプラグインより新しい（`apply_migration` から伝わる）
+      - name: StepFailedError
+        condition: 手順が失敗した（`apply_migration` から伝わる）
+      - name: SchemaMismatchError
+        condition: 当てた後のワークスペースがスキーマに合わない（写しから戻した後）
+    unit_tests:
+      - name: test_migrate
+        case: 正常
+        summary: 手順を当て、題名に仮の値を入れて版を書く
+        condition: 版のファイルと `summary` を持たない `tmp_path / "家計簿"` のワークスペース
+        mock: '`read_plugin_version`（`v0.14.0`）'
+        expected: '`steps` が空でなく、`provisional` が `[{file: .mindstella/config.yaml, key: summary, value: 家計簿}]`、`recorded` が `v0.14.0`'
+      - name: test_migrate_when_same
+        case: 正常
+        summary: 版が同じなら何も書かない
+        condition: プラグインと同じ版のワークスペース
+        mock: '`read_plugin_version`'
+        expected: '`steps` が空で `recorded` が `None`。ワークスペースが呼ぶ前と同じ'
+      - name: test_migrate_when_schema_mismatch
+        case: 異常
+        summary: 当てた後にスキーマに合わなければ写しから戻す
+        condition: '手順を当ててもスキーマに合わない項目（`status: 完了` の検討事項）を持つ古い版のワークスペース'
+        mock: '`read_plugin_version`'
+        expected: '`SchemaMismatchError`。ワークスペースが呼ぶ前と同じ'
+        exception: スキーマに合わない
+      - name: test_migrate_when_not_carried
+        case: 正常
+        summary: 手順の報告の行を移せなかった値にする
+        condition: '`D-1: scope: 社内` と `その他の行` を報告する `call` の手順を持つ版のフォルダ'
+        mock: '`read_plugin_version`'
+        expected: '`not_carried` が `[{item: D-1, key: scope, value: 社内}, {item: "", key: "", value: その他の行}]`'
