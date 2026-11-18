@@ -1,0 +1,1 @@
+# 結合テスト test_stop_session.py の準備を、無くなった MCP のツール add から記録の直接の書き込みへ直す
