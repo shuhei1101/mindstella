@@ -1,0 +1,45 @@
+$ python3 -m pytest tests/integration/server/test_migrate.py tests/integration/server/test_create_workspace.py -p no:cacheprovider -v --basetemp=/tmp/pr584-it9
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0 -- /home/shuhei2441/.venvs/mindstella-dev/bin/python3
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-project-index-write-records
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collecting ... collected 34 items
+
+tests/integration/server/test_migrate.py::test_normal_when_apply PASSED  [  2%]
+tests/integration/server/test_migrate.py::test_normal_when_backup_git PASSED [  5%]
+tests/integration/server/test_migrate.py::test_normal_when_same PASSED   [  8%]
+tests/integration/server/test_migrate.py::test_normal_when_backup_ignored PASSED [ 11%]
+tests/integration/server/test_migrate.py::test_normal_when_already_current PASSED [ 14%]
+tests/integration/server/test_migrate.py::test_normal_when_field_to_playbooks PASSED [ 17%]
+tests/integration/server/test_migrate.py::test_normal_when_rename_settings_file PASSED [ 20%]
+tests/integration/server/test_migrate.py::test_error_when_newer PASSED   [ 23%]
+tests/integration/server/test_migrate.py::test_error_when_step_fails PASSED [ 26%]
+tests/integration/server/test_migrate.py::test_error_when_schema_mismatch PASSED [ 29%]
+tests/integration/server/test_migrate.py::test_error_when_workspace_not_found PASSED [ 32%]
+tests/integration/server/test_migrate.py::test_normal_when_answer_to_option PASSED [ 35%]
+tests/integration/server/test_migrate.py::test_normal_when_submissions_to_threads PASSED [ 38%]
+tests/integration/server/test_migrate.py::test_normal_when_tags_to_vocabulary PASSED [ 41%]
+tests/integration/server/test_migrate.py::test_normal_when_tag_vocabulary_removed PASSED [ 44%]
+tests/integration/server/test_migrate.py::test_normal_when_tags_to_objects PASSED [ 47%]
+tests/integration/server/test_migrate.py::test_normal_when_project_index_layout PASSED [ 50%]
+tests/integration/server/test_migrate.py::test_normal_when_mdmark_documents PASSED [ 52%]
+tests/integration/server/test_migrate.py::test_error_when_mdmark_documents_fail PASSED [ 55%]
+tests/integration/server/test_migrate.py::test_normal_when_discussion_keys_removed PASSED [ 58%]
+tests/integration/server/test_migrate.py::test_normal_when_schema_copy_stale PASSED [ 61%]
+tests/integration/server/test_migrate.py::test_normal_when_source_config_without_write_dates PASSED [ 64%]
+tests/integration/server/test_create_workspace.py::test_normal PASSED    [ 67%]
+tests/integration/server/test_create_workspace.py::test_normal_when_records_exist PASSED [ 70%]
+tests/integration/server/test_create_workspace.py::test_normal_when_already_open PASSED [ 73%]
+tests/integration/server/test_create_workspace.py::test_normal_when_closed PASSED [ 76%]
+tests/integration/server/test_create_workspace.py::test_normal_when_folder_moved PASSED [ 79%]
+tests/integration/server/test_create_workspace.py::test_error_when_duplicate_id PASSED [ 82%]
+tests/integration/server/test_create_workspace.py::test_error_when_folder_not_allowed PASSED [ 85%]
+tests/integration/server/test_create_workspace.py::test_error_when_options_invalid PASSED [ 88%]
+tests/integration/server/test_create_workspace.py::test_error_when_source_registration_fails PASSED [ 91%]
+tests/integration/server/test_create_workspace.py::test_error_when_host_not_local PASSED [ 94%]
+tests/integration/server/test_create_workspace.py::test_normal_when_schema_copy_rewritten PASSED [ 97%]
+tests/integration/server/test_create_workspace.py::test_normal_when_real_project_index PASSED [100%]
+
+============================= 34 passed in 31.71s ==============================
+exit=0
