@@ -18,7 +18,7 @@ components:
         type: (() => void) | null
         required: false
         default: 'null'
-        description: パネルの下端に見出し「ワークスペースの設定」と「題名・フェーズ・ゴール・対象・カテゴリー」、「設定を編集する」を置き、押すと呼ぶ。`null`（配る書き出し・差分の表示中）なら置かない
+        description: パネルの下端に見出し「ワークスペースの設定」と「題名・説明・関連する場所」、「設定を編集する」を置き、押すと呼ぶ。`null`（配る書き出し・差分の表示中）なら置かない
     unit_tests:
       - name: test_settings_drawer
         case: 正常

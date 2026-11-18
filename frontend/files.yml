@@ -85,9 +85,7 @@ files:
   - tool:react
   - topic:概要
   - topic:画面
-  related:
-  - to: MOD-489-39
-    type: implements
+  related: []
 - path: src/features/overview/overview/components/list-tile.tsx
   name: 件数と名前のタイル
   description: 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」のタイル。要見直し・保留・進行中のタスクのタイルの表示を変更するときに読む。
@@ -105,9 +103,7 @@ files:
   - tool:react
   - topic:概要
   - topic:画面
-  related:
-  - to: MOD-489-41
-    type: implements
+  related: []
 - path: src/features/overview/overview/components/progress-table.tsx
   name: カテゴリー別の進捗のタイル
   description: カテゴリーを行、フェーズを列にする）。カテゴリー別の進捗の表を変更するときに読む。
@@ -115,9 +111,7 @@ files:
   - tool:react
   - topic:概要
   - topic:画面
-  related:
-  - to: MOD-489-42
-    type: implements
+  related: []
 - path: src/features/overview/overview/overview-screen.stories.tsx
   name: React の概要の画面のストーリー
   description: 記録・レビュー中のコメント・保存待ちの編集・スレッドは MSW の handler（testing/msw/handlers.ts）が返す。React の概要の画面の状態を追加・変更するときに読む。

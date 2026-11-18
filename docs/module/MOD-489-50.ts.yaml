@@ -6,7 +6,7 @@ data_models:
     title: 設定の入力
     usecase: 画面で項目を編集して保存する
     role: Zod スキーマ
-    summary: 題名・プレイブック・フェーズ・ゴール・対象・カテゴリー・関連する場所・保持する回数の入力
+    summary: 題名・説明・関連する場所・保持する回数・音声入力の入力
     properties:
       - name: summary
         type: string

@@ -2,37 +2,13 @@ id: MOD-489-211
 title: プレビュー / 画面と部品 / docs.ts
 test_files:
   - tests/unit/preview/test_docs.py
-functions:
-  - name: orderDocs
-    title: 資料の並び
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
-    usecase: 資料を読む
-    scope: public
-    summary: 納品物を先頭に、それぞれ連番の順に並べた資料を返す
-    args:
-      - name: docs
-        type: object[]
-        required: true
-        passing: positional
-        description: 資料
-    returns:
-      type: object[]
-      description: 並べた資料
-    unit_tests:
-      - name: test_order_docs
-        case: 正常
-        summary: 納品物が先
-        condition: A-1（納品物でない）・A-3（納品物）・A-2（納品物）
-        mock: なし
-        expected: A-2・A-3・A-1
 components:
   - name: docsScreen
     title: 資料
     container: plugins/mindstella/skills/mindmap/preview/screens/docs.ts
     usecase: 資料を読む
     kind: 画面
-    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードの並びは `orderDocs`。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに `orderDocs` で並べ直して `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。`withdrawn` が真の資料のカードとボードのカードは、差分の表示によらずタイトルの右、差分の印より前に `withdrawnBadge` を置き、カードの文字を薄くする。ツールバーに絞り込みのボタンとポップオーバーを置かない。カード・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
+    summary: 画面設計『資料』を描く。資料を `filters` で絞り（`filterRows`）、カード・ボード・表に同じ結果を渡す。カードは連番の順に並べる。ボードは絞った資料を `boardColumns`（`DOC_STATUSES` と状態の条件）で列に分け、列ごとに連番の順で `board` に渡す。ボードのカードは資料のカードから状態の印を外したもの。`withdrawn` が真の資料のカードとボードのカードは、差分の表示によらずタイトルの右、差分の印より前に `withdrawnBadge` を置き、カードの文字を薄くする。ツールバーに絞り込みのボタンとポップオーバーを置かない。カード・ボードではツールバーの下に `filterChips` を描く。`drawerOpen` のときは `drawerGroups` で組んだ `filterDrawer` を描く
     props:
       - name: index
         type: RecordIndex
