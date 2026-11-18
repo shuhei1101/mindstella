@@ -1,0 +1,256 @@
+id: MOD-565-1
+title: サーバー / 前回参照した時点 / read_point.py
+lead: AI が前回参照した時点（`read_seq`）と、まだ知らせていない移し替えの報告を、常駐サーバーの状態のフォルダの `workspaces/{ワークスペースの ID}/` に読み書きする。『読み書きと検証』と『常駐サーバーの状態』に依存し、ワークスペースの ID は `workspaces.workspace_id_of` を関数の中で import して引く（`store.py`・`readme.py` と同じ読み方）。
+constants:
+  - name: READ_POINT_FILE
+    title: 前回参照した時点のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 前回読んだ時点からの変更を読む
+    summary: '`workspaces/{ID}/` の下の前回参照した時点（`{"read_seq": 整数}`）'
+    value: '"read_point.json"'
+  - name: MIGRATION_REPORT_FILE
+    title: 移し替えの報告のファイル
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 起動と再開
+    summary: '`workspaces/{ID}/` の下の、まだ知らせていない移し替えの報告（`{not_carried, provisional}`）'
+    value: '"migration.json"'
+functions:
+  - name: load_read_seq
+    title: 前回参照した時点を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 前回読んだ時点からの変更を読む
+    scope: public
+    summary: ワークスペースの `read_point.json` の `read_seq` を返す。ファイルが無ければ `None`
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ。`None` は `state.state_root()`
+    returns:
+      type: int | None
+      description: 前回参照した時点
+    process: |-
+      1. ワークスペースの ID を引き（`workspace_id_of`）、`state.workspace_dir(state_root, ID) / READ_POINT_FILE` を読む
+      2. ファイルが無ければ `None` を返す
+      3. JSON として読めないか `read_seq` が 0 以上の整数でない場合、`read_point.json: read_seq: {理由}` の行を持った `SchemaMismatchError` を送る
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`read_point.json` が壊れている'
+    unit_tests:
+      - name: test_load_read_seq
+        case: 正常
+        summary: 書いた時点を読む
+        condition: '`save_read_seq(root, 5)` の後'
+        mock: なし（`state_root` は `tmp_path`）
+        expected: '`5`'
+      - name: test_load_read_seq_when_missing
+        case: 正常
+        summary: 無ければ None
+        condition: '`read_point.json` が無い'
+        mock: なし
+        expected: '`None`'
+      - name: test_load_read_seq_when_broken
+        case: 異常
+        summary: 壊れたファイルは読まない
+        condition: '`parametrize`: JSON でない / `read_seq` が `-1` / `read_seq` が文字列'
+        mock: なし
+        expected: '`SchemaMismatchError`（`lines` に `read_point.json: read_seq`）'
+        exception: 壊れている
+  - name: save_read_seq
+    title: 前回参照した時点を書く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 前回読んだ時点からの変更を読む
+    scope: public
+    summary: '`read_point.json` を一時ファイルから置き換えて書く（フォルダが無ければ作る）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: read_seq
+        type: int
+        required: true
+        passing: positional
+        description: 書く時点
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. `workspaces/{ID}/` を作り、同じフォルダの一時ファイルに書いて `os.replace` で置き換える
+      2. 書けない場合、一時ファイルを消して `WriteFailedError` を送る（前の `read_point.json` はそのまま）
+    exceptions:
+      - name: WriteFailedError
+        condition: 一時ファイルの書き込みか置き換えに失敗した
+    unit_tests:
+      - name: test_save_read_seq_when_write_fails
+        case: 異常
+        summary: 書けなければ前の時点を残す
+        condition: '`read_seq` 3 を書いた後、`os.replace` が `OSError` で 7 を書く'
+        mock: '`os.replace`'
+        expected: '`WriteFailedError`。`load_read_seq` が 3 で、一時ファイルが残らない'
+        exception: 書けない
+  - name: advance_read_seq
+    title: 前回参照した時点を進める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 起動と再開
+    scope: public
+    summary: 『前回参照した時点の更新』の処理。今の時点より大きいときだけ `until_seq` を書き、移し替えの報告を消す
+    description: 呼ぶ側がワークスペースごとの鍵（`WorkspaceLocks`）を取る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: until_seq
+        type: int
+        required: true
+        passing: positional
+        description: 『再開の状況』が返した通し番号
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: int
+      description: 書き換えた後の `read_seq`
+    process: |-
+      1. `until_seq` が 0 未満か、まとまりの `last_seq`（『変更履歴』の `load_changes`）より大きければ `ArgumentError` を送る
+      2. 今の時点を読み（`load_read_seq`）、無いか `until_seq` より小さければ `until_seq` を書く（`save_read_seq`）
+      3. 移し替えの報告を消す（`clear_migration_report`）
+      4. 書き換えた後の時点を返す
+    exceptions:
+      - name: ArgumentError
+        condition: '`until_seq` が 0 未満か `last_seq` より大きい'
+      - name: WriteFailedError
+        condition: 書けない
+    unit_tests:
+      - name: test_advance_read_seq
+        case: 正常
+        summary: 時点を進め、移し替えの報告を消す
+        condition: '`read_seq` 3、`last_seq` 5、移し替えの報告ありで `until_seq` 5'
+        mock: なし
+        expected: '`5` を返し、`load_read_seq` が 5、`load_migration_report` が `None`'
+      - name: test_advance_read_seq_when_already_ahead
+        case: 正常
+        summary: 今の時点を戻さない
+        condition: '`read_seq` 5、`last_seq` 5 で `until_seq` 3'
+        mock: なし
+        expected: '`5` を返し、`load_read_seq` が 5'
+      - name: test_advance_read_seq_when_out_of_range
+        case: 異常
+        summary: 通し番号の外は書かない
+        condition: '`parametrize`: `until_seq` -1 / `last_seq` 5 で `until_seq` 9'
+        mock: なし
+        expected: '`ArgumentError`。`load_read_seq` が呼ぶ前と同じ'
+        exception: 範囲の外
+  - name: load_migration_report
+    title: 移し替えの報告を読む
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 起動と再開
+    scope: public
+    summary: '`migration.json` を返す。無ければ `None`'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: dict[str, Any] | None
+      description: '`{not_carried, provisional}`'
+    process: 1. `workspaces/{ID}/` の `MIGRATION_REPORT_FILE` を JSON で読む。無ければ `None`
+  - name: save_migration_report
+    title: 移し替えの報告を書く
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 起動と再開
+    scope: public
+    summary: 『ワークスペースの作成』が移し替えた後に、報告を `migration.json` へ一時ファイルから置き換えて書く。既にあれば `not_carried`・`provisional` を末尾に足す
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: report
+        type: dict[str, Any]
+        required: true
+        passing: positional
+        description: '`{not_carried, provisional}`'
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: None
+      description: なし
+    process: |-
+      1. 今の報告を読み（`load_migration_report`）、あれば並びを足し合わせる
+      2. `save_read_seq` と同じ書き方で置き換える
+    exceptions:
+      - name: WriteFailedError
+        condition: 書けない
+    unit_tests:
+      - name: test_save_migration_report_appends
+        case: 正常
+        summary: 知らせていない報告に足す
+        condition: '`not_carried` 1 件の報告を書いた後に、`not_carried` 1 件・`provisional` 1 件を書く'
+        mock: なし
+        expected: '`load_migration_report` が `not_carried` 2 件・`provisional` 1 件'
+  - name: clear_migration_report
+    title: 移し替えの報告を消す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/read_point.py
+    usecase: 起動と再開
+    scope: public
+    summary: '`migration.json` を消す（無ければ何もしない）'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: None
+      description: なし
+    process: 1. `MIGRATION_REPORT_FILE` を `unlink(missing_ok=True)` で消す
+refs:
+  - IF-489-33#
+  - IF-489-32#
+  - IF-565-2#
+  - MOD-531-1#

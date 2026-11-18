@@ -1,0 +1,80 @@
+id: MOD-565-2
+title: サーバー / 再開の状況 / resume.py
+lead: MindStella のセッションの SessionStart のフックが呼ぶ『再開の状況』を組み立てる。取り込み待ちのスレッド・前回参照した後の変更・要見直し・進行中・移し替えの報告を読むだけで、何も書かない。『読み書きと検証』・『変更履歴』・『スレッド』・『前回参照した時点』に依存する。
+constants:
+  - name: SUMMARY_LIMIT
+    title: 状況の件数の上限
+    container: plugins/mindstella/skills/mindmap/scripts/resume.py
+    usecase: 起動と再開
+    summary: '`changed`・`removed`・`needs_review`・`in_progress` のそれぞれの上限（インターフェース定義『再開の状況』の制約「件数の上限」）'
+    value: '20'
+functions:
+  - name: summarize_resume
+    title: 再開の状況をまとめる
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/resume.py
+    usecase: 起動と再開
+    scope: public
+    summary: 『再開の状況』の応答の辞書を組み立てる（前回参照した時点も移し替えの報告も書き換えない）
+    description: 呼ぶ側がワークスペースごとの鍵（`WorkspaceLocks`）を取る
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+      - name: source
+        type: Literal["startup", "resume", "clear", "compact"]
+        required: true
+        passing: positional
+        description: SessionStart の `source`
+      - name: state_root
+        type: Path | None
+        required: false
+        default: None
+        passing: keyword
+        description: 状態のフォルダ
+    returns:
+      type: dict[str, Any]
+      description: '`{trigger, awaiting_threads, changed, changed_more, removed, removed_more, needs_review, needs_review_more, in_progress, in_progress_more, flow, migration, until_seq}`'
+    process: |-
+      1. ワークスペースとまとまりを読む（`load_workspace`、『変更履歴』の `load_changes`。`read_seq` は『前回参照した時点』の値）
+      2. 前回参照した後の変更を並べ（`changes_since`）、`added` と `changed` をこの順に `{id, kind, title, updated_by}` にして `changed` にする。`removed` は `{id, kind, title}` にする。前回参照した時点が無ければどちらも空
+      3. 状態が `要見直し` の検討事項と `進行中` のタスクを `{id, title}` で連番の順に拾う
+      4. 2.・3. の 4 つの並びを `SUMMARY_LIMIT` 件で切り、超えた件数を `{キー}_more` に入れる（超えなければ 0）
+      5. スレッドを読み（`load_threads`）、取り込み待ちの書き込みを持つスレッドを数える（`awaiting_posts`）
+      6. 設定の `flow`（無ければ `None`）、移し替えの報告（`load_migration_report`）、`until_seq`（まとまりの `last_seq`）を入れる
+      7. `source` が `startup` なら `trigger` を `startup`、それ以外は `resume` にして返す
+    exceptions:
+      - name: SchemaMismatchError
+        condition: '`changes.yaml`・`read_point.json` が壊れている（読む関数から伝わる）'
+    unit_tests:
+      - name: test_summarize_resume
+        case: 正常
+        summary: 変更・要見直し・進行中・取り込み待ちをまとめ、何も書かない
+        condition: '`read_seq` 3、`last_seq` 5。D-1（`seq` 5、状態 `要見直し`）・T-1（`added_seq` 4、状態 `進行中`）・未決定の D-2（`seq` 2）、取り込み待ちのスレッド 1 件で `source` が `compact`'
+        mock: なし（`state_root` は `tmp_path`）
+        expected: '`trigger` が `resume`、`changed` が T-1・D-1 の順、`needs_review` が D-1、`in_progress` が T-1、`awaiting_threads` が 1、`until_seq` が 5、`{キー}_more` が全て 0。`load_read_seq` が 3 のまま'
+      - name: test_summarize_resume_when_no_read_point
+        case: 正常
+        summary: 前回参照した時点が無ければ変更を返さない
+        condition: '`read_point.json` が無く `last_seq` 4 で `source` が `startup`'
+        mock: なし
+        expected: '`trigger` が `startup`、`changed`・`removed` が空、`until_seq` が 4'
+      - name: test_summarize_resume_when_over_limit
+        case: 正常
+        summary: 上限を超えた分は件数だけにする
+        condition: 前回参照した後に足したメモ 25 件
+        mock: なし
+        expected: '`changed` が 20 件で `changed_more` が 5'
+      - name: test_summarize_resume_when_migrated
+        case: 正常
+        summary: 知らせていない移し替えの報告を返し、消さない
+        condition: '`save_migration_report` で `not_carried` 1 件を書いたワークスペースを 2 回まとめる'
+        mock: なし
+        expected: 2 回とも `migration.not_carried` が 1 件
+refs:
+  - IF-489-32#
+  - MOD-565-1#
+  - MOD-489-157#
+  - MOD-489-149#
