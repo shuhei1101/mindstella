@@ -123,7 +123,7 @@ print(json.dumps({
     "provisional": report.provisional,
     "not_carried": report.not_carried,
     "reports": report.reports,
-    "schemas": report.schemas,
+    "source_files": report.source_files,
 }, ensure_ascii=False))
 """
 
@@ -226,6 +226,28 @@ def _create_current_workspace(tmp_path: Path, valid_settings: dict[str, Any]) ->
     for name in SOURCE_SCHEMAS:
         shutil.copyfile(PLUGIN_SCHEMA_DIR / name, copies / name)
     return root
+
+
+# 子プロセスでプラグインの配信の設定を組み立て、YAML で標準出力に書くコード
+SOURCE_CONFIG_RUNNER = """
+import sys
+import yaml
+sys.path.insert(0, sys.argv[1])
+import store
+print(yaml.safe_dump(store.build_source_config("current", "題名"), allow_unicode=True, sort_keys=False))
+"""
+
+
+def _build_source_config() -> dict[str, Any]:
+    """プラグインの `build_source_config` が組み立てる配信の設定を返す。"""
+    completed = subprocess.run(
+        [sys.executable, "-c", SOURCE_CONFIG_RUNNER, str(SCRIPTS_DIR)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    )
+    return yaml.safe_load(completed.stdout)
 
 
 # 配信の設定が指すスキーマ（プラグインの `skills/mindmap/schemas/` の中の名前）
@@ -887,9 +909,51 @@ def test_normal_when_schema_copy_stale(
     assert result.error is None, result.text
     assert result.data is not None
     assert (result.data["relation"], result.data["steps"], result.data["backup"]) == ("same", [], None)
-    assert result.data["schemas"] == [".mindstella/schemas/docs.schema.json"]
+    assert result.data["source_files"] == [".mindstella/schemas/docs.schema.json"]
     assert (copies / "docs.schema.json").read_bytes() == (PLUGIN_SCHEMA_DIR / "docs.schema.json").read_bytes()
     assert (copies / "legacy.schema.json").read_text(encoding="utf-8") == '{"title": "前の版"}\n'
     after = _mtimes(root)
     changed = sorted(path for path in after if after[path] != before.get(path))
     assert changed == [".mindstella/schemas/docs.schema.json"]
+
+
+def test_normal_when_source_config_without_write_dates(
+    tmp_path: Path, valid_settings: dict[str, Any]
+) -> None:
+    """今の版のワークスペースの配信の設定の、write_dates を持たない種類の行に write_dates: false を足す（正常系）。"""
+    # 準備
+    root = _create_current_workspace(tmp_path, valid_settings)
+    config = _build_source_config()
+    for row in config["documents"]:
+        row.pop("write_dates", None)
+        # 利用者が書いた値にあたる
+        if row["id"] == "terms":
+            row["write_dates"] = True
+    path = root / RECORD_DIR / "dev-docs.yaml"
+    write_yaml(path, config)
+    before = _mtimes(root)
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    assert (result.data["relation"], result.data["steps"]) == ("same", [])
+    assert result.data["source_files"] == [".mindstella/dev-docs.yaml"]
+    written = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert {row["id"]: row["write_dates"] for row in written["documents"]} == {
+        "decisions": False,
+        "tasks": False,
+        "research": False,
+        "docs": False,
+        "terms": True,
+        "notes": False,
+        "logs": False,
+    }
+    for row in written["documents"]:
+        row.pop("write_dates")
+    for row in config["documents"]:
+        row.pop("write_dates", None)
+    assert written == config
+    after = _mtimes(root)
+    changed = sorted(path for path in after if after[path] != before.get(path))
+    assert changed == [".mindstella/dev-docs.yaml"]
