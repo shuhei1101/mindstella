@@ -38,3 +38,6 @@ scope_out:
   - item: ほかのワークスペース（/mnt/c の nandemo-kaiwa）の個別の確認と修復
     reason: 不具合 2 の修正で、次に開いたときにスキーマの複製が再配置される
     plan: none
+  - item: store.create_workspace と v0.13.0 の place_source_config.py のスキーマの複製を sync_source_schemas に寄せる
+    reason: 不具合の修正に含まれない重複の解消（モジュール構成設計のレビューの任意の指摘 2）。この作業 PR で入れる関数への寄せ替えなので、マージの後に起票する
+    plan: to_file

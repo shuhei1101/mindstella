@@ -284,7 +284,7 @@ functions:
     scope: public
     summary: 端末の設定のファイルの `sources` の行をそのまま `PUT /settings/sources` に送り、全ての配信元を再読み込みさせる。409（版が古い）なら 1 回だけ引き直して送り直す
     description: '`GET /settings/sources` の応答の行は状態を含む camelCase の構造で `PUT` の要求の行と違うので、行は応答ではなく `settingsPath` のファイルから読む'
-    side_effects: project-index の端末の設定のファイルを同じ行で書き換えさせる（中身は変わらない）
+    side_effects: project-index の端末の設定のファイルを同じ行で書き換えさせる（行の値は変わらない。project-index が行を組み立て直すので、`sources` の行の中のコメントや書き方は残らないことがある）
     args:
       - name: port
         type: int
