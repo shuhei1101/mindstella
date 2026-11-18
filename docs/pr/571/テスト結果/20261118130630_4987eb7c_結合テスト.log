@@ -1,0 +1,123 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify-stop
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 25 items
+
+tests/integration/server/test_launch.py .................                [ 68%]
+tests/integration/server/test_create_workspace.py .......F               [100%]
+
+=================================== FAILURES ===================================
+________________________ test_error_when_host_not_local ________________________
+
+self = SessionWorld(root=PosixPath('<一時フォルダ>/test_error_when_host_not_local0'), allowed=PosixPath('<一時フォルダ>...eProjectIndex object at 0x75e998306330>, servers=[<workspace_fixtures.McpServer object at 0x75e99822f560>], port=20024)
+method = 'POST', path = '/workspaces'
+body = {'folder': '<一時フォルダ>/test_error_when_host_not_local0/allowed/家計簿'}
+host = 'example.test', origin = None
+
+    def api(
+        self,
+        method: str,
+        path: str,
+        body: Any = None,
+        *,
+        host: str | None = None,
+        origin: str | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        """MindStella の API を呼び、ステータスと JSON の本文を返す。"""
+        headers = {"Content-Type": "application/json", "Host": host or f"127.0.0.1:{self.port}"}
+        if origin is not None:
+            headers["Origin"] = origin
+        request = urllib.request.Request(
+            f"http://{LISTEN_HOST}:{self.port}{urllib.parse.quote(path, safe='/?=&')}",
+            data=None if body is None else json.dumps(body).encode("utf-8"),
+            method=method,
+            headers=headers,
+        )
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+>           with opener.open(request, timeout=HTTP_TIMEOUT_SEC) as response:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/session_fixtures.py:317: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/urllib/request.py:521: in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/urllib/request.py:630: in http_response
+    response = self.parent.error(
+/usr/lib/python3.12/urllib/request.py:559: in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/urllib/request.py:492: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <urllib.request.HTTPDefaultErrorHandler object at 0x75e9982054f0>
+req = <urllib.request.Request object at 0x75e99830a660>
+fp = <http.client.HTTPResponse object at 0x75e9982043a0>, code = 403
+msg = 'Forbidden', hdrs = <http.client.HTTPMessage object at 0x75e9982071d0>
+
+    def http_error_default(self, req, fp, code, msg, hdrs):
+>       raise HTTPError(req.full_url, code, msg, hdrs, fp)
+E       urllib.error.HTTPError: HTTP Error 403: Forbidden
+
+/usr/lib/python3.12/urllib/request.py:639: HTTPError
+
+During handling of the above exception, another exception occurred:
+
+session_world = SessionWorld(root=PosixPath('<一時フォルダ>/test_error_when_host_not_local0'), allowed=PosixPath('<一時フォルダ>...eProjectIndex object at 0x75e998306330>, servers=[<workspace_fixtures.McpServer object at 0x75e99822f560>], port=20024)
+
+    def test_error_when_host_not_local(session_world: SessionWorld) -> None:
+        """Host が端末の中の値でなければ 403（異常系）。"""
+        # 準備
+        world = session_world
+        world.start({"MINDSTELLA_ALLOWED_HOSTS": "example.test"})
+        # 実行
+>       status, body = world.api(
+            "POST", "/workspaces", {"folder": str(world.folder())}, host="example.test"
+        )
+
+tests/integration/server/test_create_workspace.py:231: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/session_fixtures.py:320: in api
+    return error.code, json.loads(error.read() or b"{}")
+                                  ^^^^^^^^^^^^
+/usr/lib/python3.12/tempfile.py:638: in func_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/http/client.py:500: in read
+    s = self._safe_read(self.length)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/http/client.py:646: in _safe_read
+    data = self.fp.read(cursize)
+           ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <socket.SocketIO object at 0x75e9982060b0>
+b = <memory at 0x75e9984fb640>
+
+    def readinto(self, b):
+        """Read up to len(b) bytes into the writable buffer *b* and return
+        the number of bytes read.  If the socket is non-blocking and no bytes
+        are available, None is returned.
+    
+        If *b* is non-empty, a 0 return value indicates that the connection
+        was shutdown at the other end.
+        """
+        self._checkClosed()
+        self._checkReadable()
+        if self._timeout_occurred:
+            raise OSError("cannot read from timed out object")
+        while True:
+            try:
+>               return self._sock.recv_into(b)
+                       ^^^^^^^^^^^^^^^^^^^^^^^
+E               ConnectionResetError: [Errno 104] Connection reset by peer
+
+/usr/lib/python3.12/socket.py:707: ConnectionResetError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_create_workspace.py::test_error_when_host_not_local
+======================== 1 failed, 24 passed in 37.52s =========================

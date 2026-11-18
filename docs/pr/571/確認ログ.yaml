@@ -1,0 +1,13 @@
+confirmations:
+  - topic: 止まったときの通知の文面
+    decision: '`{ワークスペースの名前}: 停止しました（{止まった理由}）` とプレビューの URL の 2 行（推奨案 A を「停止しました」に修正）'
+    decided_by: reply
+    approver: shuhei1101
+    commit: 6c837285
+    thread: https://github.com/shuhei1101/mindstella/pull/571#discussion_r4608197422
+  - topic: 止まった理由の文言
+    decision: 停止の依頼・強制停止・異常終了・停止処理の失敗・Claude Code の終了の 5 つ（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/571#discussion_r4608523442

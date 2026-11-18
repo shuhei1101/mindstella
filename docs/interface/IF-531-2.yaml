@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces/{id}/sessions`
 lead: ワークスペースの MindStella のセッションを tmux のペインの中で起動し、SessionStart のフックが状態に登録するのを待ってから、MindStella のセッションの ID・tmux のペイン・画面の URL を返す。MindStella の MCP の `create_session` も同じ処理を呼ぶ。
 idempotent: false
-side_effects: tmux のセッションを 1 つ立て、その中で Claude Code を起動する（claude-balancer がある端末は `claude-balancer exec` で借りる）。状態のフォルダの `workspaces/{id}/session.json` に MindStella のセッションを書き、クローズ待ちを解く。失敗したときは起動したプロセスを止めてペインを閉じ、`session.json` を作る前に戻す
+side_effects: tmux のセッションを 1 つ立て、その中で Claude Code を起動する（claude-balancer がある端末は `claude-balancer exec` で借りる）。状態のフォルダの `workspaces/{id}/session.json` に MindStella のセッションを書き、クローズ待ちを解く。失敗したときは起動したプロセスを止めてペインを閉じ、`session.json` を作る前に戻す。既存の MindStella のセッションが `running` のまま落ちていて `crashed` にしたときは、『停止の通知』を止まった理由 `crashed` で呼ぶ
 request:
   - name: id
     type: str
@@ -81,6 +81,8 @@ constraints:
   - item: claude-balancer のクライアント
     constraint: '`claude-balancer exec` の `--client` は `mindstella`。claude-balancer の設定の `clients` に `mindstella` が要る（無ければ 503 で、`detail` に claude-balancer の標準エラーが入る）'
     notes: claude-balancer は起動時に `clients` を読む。足したら claude-balancer を起動し直す
+  - item: 停止の通知
+    constraint: 既存の MindStella のセッションの生死の判定で `running` から `crashed` に書き換えたときだけ、『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。`stopping` から `crashed` への書き換えでは呼ばない。通知の成否は応答に含めない
 flows:
   - name: 正常系
     summary: claude-balancer exec で起動し、フックの登録の後に ID・ペイン・URL を返す
@@ -267,6 +269,7 @@ refs:
   - IF-531-7#
   - IF-489-6#
   - LIB-531-1#
+  - IF-570-1#
 callers:
   - SC-531-1#
   - SC-489-41#

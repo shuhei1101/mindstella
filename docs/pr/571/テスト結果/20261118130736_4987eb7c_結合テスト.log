@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify-stop
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 25 items
+
+tests/integration/server/test_launch.py .................                [ 68%]
+tests/integration/server/test_create_workspace.py ........               [100%]
+
+============================= 25 passed in 36.92s ==============================
