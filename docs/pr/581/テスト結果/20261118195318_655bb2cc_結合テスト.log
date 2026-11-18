@@ -1,0 +1,11 @@
+$ pytest "tests/integration/preview/test_detail_panel_screen.py::test_option_draft_when_redrawn"
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-option-draft-redraw-test
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 1 item
+
+tests/integration/preview/test_detail_panel_screen.py .                  [100%]
+
+============================== 1 passed in 6.50s ===============================

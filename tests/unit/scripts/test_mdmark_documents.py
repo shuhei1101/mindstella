@@ -139,3 +139,32 @@ def test_mdmark_documents_migrate_when_version_set(
     # 検証
     assert calls[0][:5] == ["npx", "-y", "github:shuhei1101/mdmark#v0.13.0", "upgrade", "--yes"]
     assert "--config" in calls[0]
+
+
+@pytest.mark.parametrize("mdmark", [None, {"version": "latest"}], ids=["unset", "latest"])
+def test_mdmark_documents_migrate_when_version_unset(
+    mdmark_documents: ModuleType,
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    mdmark: dict[str, str] | None,
+) -> None:
+    """設定に mdmark のタグが無いときは移し替えのタグの mdmark を呼ぶ（正常系）。"""
+    # 準備
+    settings = {key: value for key, value in valid_settings.items() if key != "mdmark"}
+    if mdmark is not None:
+        settings["mdmark"] = mdmark
+    root = make_workspace(settings=settings)
+    monkeypatch.delenv("MINDSTELLA_MDMARK_COMMAND", raising=False)
+    calls: list[list[str]] = []
+
+    def fake_run(args: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(mdmark_documents.subprocess, "run", fake_run)
+    # 実行
+    mdmark_documents.migrate(root)
+    # 検証
+    assert calls[0][:5] == ["npx", "-y", "github:shuhei1101/mdmark#v0.13.0", "upgrade", "--yes"]
+    assert "--config" in calls[0]
