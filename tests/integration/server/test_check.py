@@ -119,40 +119,6 @@ def test_normal_when_history_stale(
     assert snapshot_tree(root) == before
 
 
-def test_normal_when_unknown_phase(
-    make_workspace: MakeWorkspace,
-    make_item: MakeItem,
-    valid_settings: dict[str, Any],
-    call_tool: CallTool,
-    snapshot_tree: SnapshotTree,
-) -> None:
-    """項目の phase と goal.phase が設定の phases に無ければ unknown_phase を返す（正常系）。"""
-    # 準備
-    settings = {
-        **valid_settings,
-        "phases": ["目的", "要件"],
-        "goal": {"phase": "結論", "summary": "まとめる", "deliverables": []},
-    }
-    root = make_workspace(make_item("D-1", phase="発散"), settings=settings)
-    before = snapshot_tree(root)
-    # 実行
-    result = call_tool("check", workspace=str(root))
-    # 検証
-    assert result.is_error is False
-    payload = result.data
-    assert payload["ok"] is False
-    unknown = {
-        (row["file"], row["id"], row["key"], row["detail"])
-        for row in payload["problems"]
-        if row["kind"] == "unknown_phase"
-    }
-    assert unknown == {
-        (".mindstella/decisions.yaml", "D-1", "items[0].phase", "発散"),
-        (".mindstella/config.yaml", None, "goal.phase", "結論"),
-    }
-    assert snapshot_tree(root) == before
-
-
 def _without_options(item: dict[str, Any]) -> dict[str, Any]:
     """案のキーを持たない検討事項にする。"""
     return {key: value for key, value in item.items() if key != "options"}
@@ -270,7 +236,7 @@ def test_normal_when_string_tags(
     assert _problem_keys(result.data["problems"]) == {
         ("schema", ".mindstella/decisions.yaml", "D-1", "items[0].tags[0]"),
     }
-    assert "/mindstella:upgrade" in result.data["problems"][0]["detail"]
+    assert "起動スクリプトでワークスペースを開き直すと今の形式に移せます" in result.data["problems"][0]["detail"]
     assert snapshot_tree(root) == before
 
 

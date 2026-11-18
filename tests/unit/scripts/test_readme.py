@@ -84,7 +84,9 @@ def test_render_readme(tmp_path: Path) -> None:
         "(https://shuhei1101.github.io/mindstella/guide/セットアップ手順-起動スクリプトで立ち上げる.html)"
         in text
     )
-    assert readme.FLOW_NOTE in _section(text, "## ドキュメント")
+    assert readme.FLOW_NOTE not in _section(text, "## ドキュメント")
+    intro = "mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。"
+    assert f"{intro}\n{readme.FLOW_NOTE}\n" in text
 
 
 def test_render_readme_when_serving(tmp_path: Path) -> None:

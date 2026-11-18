@@ -40,13 +40,7 @@ TOOL_NAMES = [
     "changes_since_read",
     "commit",
     "pending",
-    "status",
-    "next",
     "check",
-    "goal",
-    "migrate",
-    "clear_release",
-    "write_release",
     "export",
     "preview_url",
     "readme",
@@ -138,7 +132,7 @@ def test_normal_when_tool_fails(tmp_path: Path, start_server: StartServer) -> No
     root = tmp_path / "empty"
     root.mkdir()
     # 実行
-    result = server.call("status", workspace=str(root))
+    result = server.call("pending", workspace=str(root))
     tools = server.list_tools()
     # 検証
     assert result.is_error is True
@@ -153,7 +147,7 @@ def test_normal_when_argument_missing(start_server: StartServer) -> None:
     # 準備
     server = start_server()
     # 実行
-    result = server.call("status")
+    result = server.call("pending")
     # 検証
     assert result.is_error is True
     assert "workspace" in result.text
@@ -170,13 +164,15 @@ def test_normal_when_relative_path_with_session(
     first = server.client
     second = server.connect()
     # 実行
-    first_result = first.call("status", workspace="talk", session={"cwd": str(tmp_path / "a")})
-    second_result = second.call("status", workspace="talk", session={"cwd": str(tmp_path / "b")})
+    first_result = first.call("next_id", workspace="talk", kind="decision", session={"cwd": str(tmp_path / "a")})
+    second_result = second.call("next_id", workspace="talk", kind="decision", session={"cwd": str(tmp_path / "b")})
     # 検証
     assert first_result.is_error is False, first_result.text
-    assert ("D-1" in first_result.text, "D-2" in first_result.text) == (True, False)
+    assert first_result.data is not None
+    assert first_result.data["ids"] == ["D-2"]
     assert second_result.is_error is False, second_result.text
-    assert ("D-1" in second_result.text, "D-2" in second_result.text) == (False, True)
+    assert second_result.data is not None
+    assert second_result.data["ids"] == ["D-3"]
 
 
 def test_normal_when_relative_path_without_session(
@@ -187,7 +183,7 @@ def test_normal_when_relative_path_without_session(
     make_workspace(make_item("D-1"), name="talk")
     server = start_server(cwd=tmp_path)
     # 実行
-    result = server.call("status", workspace="talk")
+    result = server.call("pending", workspace="talk")
     # 検証
     assert result.is_error is True
     assert result.text.startswith("エラー: 引数の誤り: workspace: ")
