@@ -233,7 +233,13 @@ def close_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:
         raise ApiError(404, "workspace", f"ワークスペースがありません: {workspace_id}")
     with ctx.locks.for_workspace(workspace_id):
         # MindStella のセッションが起動中・停止の途中: 行を変えない
-        if sessions.is_alive(ctx.state_root, workspace_id, ctx.tmux, ctx.proc):
+        if sessions.is_alive(
+            ctx.state_root,
+            workspace_id,
+            ctx.tmux,
+            ctx.proc,
+            on_crashed=lambda: sessions.notify_stopped(ctx, workspace_id, "crashed"),
+        ):
             raise ApiError(
                 409, "session", "MindStella のセッションが動いているため、クローズにできません"
             )

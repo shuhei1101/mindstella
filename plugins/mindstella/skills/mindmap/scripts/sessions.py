@@ -174,8 +174,18 @@ def build_env(
     return env
 
 
-def is_alive(root: Path, workspace_id: str, tmux: TmuxRunner, proc: ProcessInspector) -> bool:
-    """ペインと Claude Code のプロセスがあるかを返し、無ければ状態を crashed にする。"""
+def is_alive(
+    root: Path,
+    workspace_id: str,
+    tmux: TmuxRunner,
+    proc: ProcessInspector,
+    *,
+    on_crashed: Callable[[], object] | None = None,
+) -> bool:
+    """ペインと Claude Code のプロセスがあるかを返し、無ければ状態を crashed にする。
+
+    running から crashed に書き換えたときだけ on_crashed を呼ぶ（stopping の間は止めるスレッドが通知する）。
+    """
     current = state.read_session(root, workspace_id)
     if current is None or current.status not in ALIVE_STATUSES:
         return False
@@ -183,11 +193,14 @@ def is_alive(root: Path, workspace_id: str, tmux: TmuxRunner, proc: ProcessInspe
     if reason is None:
         return True
     session_id = current.session
+    # 鍵の中で読んだ書き換える前の status
+    previous: list[str] = []
 
     def mark(latest: SessionState | None) -> SessionState | None:
         """同じ MindStella のセッションがまだあるとみなされているときだけ crashed にする。"""
         if latest is None or latest.session != session_id or latest.status not in ALIVE_STATUSES:
             return latest
+        previous.append(latest.status)
         return latest.replace(status="crashed", responding=False)
 
     state.update_session(root, workspace_id, mark)
@@ -195,7 +208,15 @@ def is_alive(root: Path, workspace_id: str, tmux: TmuxRunner, proc: ProcessInspe
         "mindstella.session.crashed",
         extra={"workspace_id": workspace_id, "session_id": session_id, "reason": reason},
     )
+    # running から落ちた: 異常終了を通知する
+    if previous == ["running"] and on_crashed is not None:
+        on_crashed()
     return False
+
+
+def notify_stopped(ctx: Any, workspace_id: str, reason: notify.StopReason) -> threading.Thread | None:
+    """ワークスペースの名前と画面の URL を参照する関数を添えて、停止を通知する。"""
+    return notify.notify_stopped(workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id))
 
 
 def create_session(
@@ -213,7 +234,13 @@ def create_session(
             )
         current = state.read_session(ctx.state_root, workspace_id)
         # 生きている MindStella のセッションがある: そのペインを返す
-        if current is not None and is_alive(ctx.state_root, workspace_id, ctx.tmux, ctx.proc):
+        if current is not None and is_alive(
+            ctx.state_root,
+            workspace_id,
+            ctx.tmux,
+            ctx.proc,
+            on_crashed=lambda: notify_stopped(ctx, workspace_id, "crashed"),
+        ):
             raise ApiError(
                 409,
                 "exists",
@@ -284,7 +311,13 @@ def create_session(
 def list_sessions(workspace_id: str, ctx: Any) -> dict[str, Any]:
     """ワークスペースの最後の MindStella のセッション 1 つの状態を返す。落ちていれば crashed にする。"""
     _require_known(ctx, workspace_id)
-    is_alive(ctx.state_root, workspace_id, ctx.tmux, ctx.proc)
+    is_alive(
+        ctx.state_root,
+        workspace_id,
+        ctx.tmux,
+        ctx.proc,
+        on_crashed=lambda: notify_stopped(ctx, workspace_id, "crashed"),
+    )
     current = state.read_session(ctx.state_root, workspace_id)
     if current is None:
         return {"sessions": [], "close_pending": False}
@@ -317,7 +350,13 @@ def stop_session(
         if current.status == "stopped":
             return 200, {"session": session_id, "status": "stopped"}
         # 落ちている: 止める工程を飛ばし、まとめていない変更を記録して停止済みにする
-        if not is_alive(ctx.state_root, workspace_id, ctx.tmux, ctx.proc):
+        if not is_alive(
+            ctx.state_root,
+            workspace_id,
+            ctx.tmux,
+            ctx.proc,
+            on_crashed=lambda: notify_stopped(ctx, workspace_id, "crashed"),
+        ):
             _commit_pending(ctx, workspace_id, "crashed")
             _mark_stopped(ctx, workspace_id, session_id)
             logger.info(
@@ -353,10 +392,14 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         )
         return False
 
+    # 鍵の中で読んだ書き換える前の status
+    previous: list[str] = []
+
     def change(current: SessionState | None) -> SessionState | None:
         """出来事ごとに書き換える。"""
         if current is None or current.session != session_id:
             return current
+        previous.append(current.status)
         # 起動・clear・compact・fork: Claude Code の session_id とプロセスを入れ直す
         if kind == "session_start":
             return current.replace(
@@ -382,6 +425,14 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
     # 応答の始まり・エラーで終わった応答・終了: 通知せずにマーカーを解除する
     elif kind in ("prompt_submit", "stop_failure", "session_end"):
         notify.clear_written(workspace_id)
+    # 停止の依頼なしに running から止まった: Claude Code の終了を通知する
+    # （stopping からは止めるスレッドが通知する）
+    if (
+        kind == "session_end"
+        and event.get("reason") not in CONTINUING_END_REASONS
+        and previous == ["running"]
+    ):
+        notify_stopped(ctx, workspace_id, "session_ended")
     return True
 
 
@@ -555,7 +606,10 @@ def _stop_in_background(ctx: Any, workspace_id: str, session_id: str, force: boo
             stage = "commit"
             _commit_pending(ctx, workspace_id, "forced")
         stage = "state"
-        _mark_stopped(ctx, workspace_id, session_id)
+        previous = _mark_stopped(ctx, workspace_id, session_id)
+        # 停止の途中の状態から止め終えた: 停止の依頼か強制停止を通知する
+        if previous in ("stopping", "stopped", "crashed"):
+            notify_stopped(ctx, workspace_id, "force_stopped" if force else "stop_requested")
         logger.info(
             "mindstella.session.stopped",
             extra={
@@ -639,31 +693,37 @@ def _commit_pending(ctx: Any, workspace_id: str, reason: str) -> None:
         commands.run_commit(folder, COMMIT_SUMMARIES[reason])
 
 
-def _mark_stopped(ctx: Any, workspace_id: str, session_id: str) -> None:
-    """停止済みを記録する（クローズ待ちのまま）。"""
-    state.update_session(
-        ctx.state_root,
-        workspace_id,
-        lambda latest: (
-            None
-            if latest is None or latest.session != session_id
-            else latest.replace(status="stopped", responding=False, close_pending=True)
-        ),
-    )
+def _mark_stopped(ctx: Any, workspace_id: str, session_id: str) -> str | None:
+    """停止済みを記録し（クローズ待ちのまま）、鍵の中で読んだ書き換える前の status を返す。"""
+    previous: list[str] = []
+
+    def mark(latest: SessionState | None) -> SessionState | None:
+        """同じ MindStella のセッションのときだけ停止済みにする。"""
+        if latest is None or latest.session != session_id:
+            return None
+        previous.append(latest.status)
+        return latest.replace(status="stopped", responding=False, close_pending=True)
+
+    state.update_session(ctx.state_root, workspace_id, mark)
+    return previous[0] if previous else None
 
 
 def _restore_after_failure(ctx: Any, workspace_id: str, session_id: str, reason: str) -> None:
     """止める間の失敗の後、生きていれば running・落ちていれば crashed に戻し、理由を残す。"""
     alive = is_alive(ctx.state_root, workspace_id, ctx.tmux, ctx.proc)
-    state.update_session(
-        ctx.state_root,
-        workspace_id,
-        lambda latest: (
-            None
-            if latest is None or latest.session != session_id
-            else latest.replace(status="running" if alive else "crashed", last_error=reason)
-        ),
-    )
+    restored: list[bool] = []
+
+    def restore(latest: SessionState | None) -> SessionState | None:
+        """同じ MindStella のセッションのときだけ戻す。"""
+        if latest is None or latest.session != session_id:
+            return None
+        restored.append(True)
+        return latest.replace(status="running" if alive else "crashed", last_error=reason)
+
+    state.update_session(ctx.state_root, workspace_id, restore)
+    # 止める間に落ちた: 停止処理の失敗を通知する（生きていて running に戻したときは通知しない）
+    if restored and not alive:
+        notify_stopped(ctx, workspace_id, "stop_failed")
 
 
 def _find_workspace_of(root: Path, session_id: str) -> str | None:
