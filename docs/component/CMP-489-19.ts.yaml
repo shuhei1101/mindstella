@@ -47,13 +47,13 @@ args:
     required: false
     default: online
     choices: online・offline
-    description: サーバーにつながっているか。offline のときだけ、検索の入口の左に押せない接続の状態を出す。配る書き出しは常に online
+    description: サーバーにつながっているか。offline のときだけ、検索の入口の左に押せない接続の状態を印だけで出す。配る書き出しは常に online
     status: implemented
   - name: read_at
     type: 文字列
     required: false
     enabled_when: '`connection` が `offline` のとき'
-    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」と出す。幅 1440px 以下は「つながりません」だけにして日時を `title` に持たせ、幅 900px 以下は印だけを見せて文言を読み上げにだけ残す
+    description: 描いている記録を読んだ日時（『記録の取得』の `built_at`）。JST の `MM/DD HH:mm` で「サーバーにつながりません（{日時} に読んだ記録）」を、どの幅でも見た目に出さず、読み上げとツールチップにだけ持たせる
     status: implemented
   - name: tabs[].marked
     type: 真偽値
@@ -71,7 +71,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる
+    description: コメントのボタンを出すか。サーバーの配信では true、配る書き出しでは false。出すときはライト / ダークの切り替えの左隣に置き、全体の検索の入口を中央へ寄せる。ボタンは「コメント」の文字を出さず、印と件数だけにする
     status: implemented
   - name: comment_count
     type: 整数
@@ -79,7 +79,7 @@ args:
     default: '0'
     choices: 0 以上
     enabled_when: '`comments` が `true` のとき'
-    description: レビュー中のコメントの件数。印と「コメント」の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身の印 `data-wide` を付ける
+    description: レビュー中のコメントの件数。印の右に出す。0 件は件数の塗りを外し、99 を超えたら `99+` にして幅を揺らさない。99 を超えたら件数の札に幅の広い中身の印 `data-wide` を付ける
     status: implemented
   - name: comments_open
     type: 真偽値
@@ -92,18 +92,18 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 表示の設定のパネルを開いているか。開いているときは表示の設定のボタンを枠と面で選んだ見た目にする。表示の設定のボタンはサーバーの配信でも配る書き出しでも出し、絞り込みのボタンがあればその左、無ければコメントのボタンの左に置く
+    description: 表示の設定のパネルを開いているか。開いているときは表示の設定のボタンを枠と面で選んだ見た目にする。表示の設定のボタンはサーバーの配信でも配る書き出しでも出し、絞り込みのボタンがあればその左、無ければコメントのボタンの左に置く。ボタンは「表示の設定」の文字を出さず、印だけにする
   - name: filter
     type: 真偽値
     default: 'false'
-    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・ネットワーク）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする
+    description: 絞り込みのボタンを出すか。項目を並べる画面（検討事項・タスク・資料・記録の表・ネットワーク）では true、概要では false。出すときはコメントのボタンの左隣（コメントのボタンが無いときはライト / ダークの切り替えの左隣）に置き、どちらのパネルにも覆われないようにする。ボタンは「絞り込み」の文字を出さず、印とバッジだけにする
     status: implemented
   - name: filter_count
     type: 整数
     default: '0'
     choices: 0 以上
     enabled_when: '`filter` が `true` のとき'
-    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで「絞り込み」の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身の印 `data-wide` を付ける
+    description: 値を 1 つ以上選んでいる条件の数。1 以上のときだけ印の色のバッジで印の右に出し、0 のときはバッジを出さない。10 以上のときはバッジに幅の広い中身の印 `data-wide` を付ける
     status: implemented
   - name: filter_open
     type: 真偽値
@@ -122,7 +122,7 @@ args:
     type: 真偽値
     required: false
     default: 'false'
-    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、幅 1100px 以下は「保存待ち」の文字を隠して印と件数だけにする。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
+    description: 保存待ちのボタンを出すか。サーバーの配信で保存待ちの編集が 1 件以上あるとき true、配る書き出しと差分の表示の間は false。出すときは絞り込みのボタンとコメントのボタンの間に置き、どの幅でも「保存待ち」の文字を出さず、印と件数だけにする。幅 480px 以下で出している間はツール名の文字を隠して幅を回す
     status: planned
   - name: pending_count
     type: 整数
@@ -130,7 +130,7 @@ args:
     default: '0'
     choices: 1 以上
     enabled_when: '`pending` が `true` のとき'
-    description: 保存待ちの編集の件数。重ねた紙の印と「保存待ち」の右に印の色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身の印 `data-wide` を付ける
+    description: 保存待ちの編集の件数。重ねた紙の印の右に印の色の塗りで出す。99 を超えたら `99+` にして幅を揺らさず、件数の札に幅の広い中身の印 `data-wide` を付ける
     status: planned
   - name: pending_open
     type: 真偽値
@@ -150,7 +150,7 @@ args:
     type: オブジェクト
     required: false
     default: なし（出さない）
-    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新しいスレッド」「{スレッド} への返信」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコン・「音声入力中」・`elapsed` を `m:ss`、transcribing は回る印・「文字起こし中」で枠をトップバーの線の色にする。幅 1100px 以下は文字を隠してアイコンと時間、幅 480px 以下はアイコンだけにする。配る書き出しでは渡さない
+    description: 音声入力中の入力欄。`state`（recording・transcribing）・`label`（入力欄の名前。「{ID} へのコメント」「新しいスレッド」「{スレッド} への返信」）・`elapsed`（録音を始めてからの秒数）を持つ。あるとき、コメントのボタンの左隣に失敗の色（`--red-300`）の枠のボタンを出す。recording は失敗の色のマイクのアイコンと `elapsed` の `m:ss`、transcribing は回る印だけで枠をトップバーの線の色にする。「音声入力中」「文字起こし中」の文字はどの幅でも出さず、読み上げとツールチップにだけ持たせる。経過の時間はどの幅でも出す。配る書き出しでは渡さない
   - name: voiceNotice
     type: オブジェクト
     required: false
@@ -247,14 +247,14 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px にして確かめる
   - name: Offline
-    description: サーバーにつながらない。検索の入口の左に、印と「サーバーにつながりません（{日時} に読んだ記録）」を出す。印を `--red-300`、文言をトップバーの文字色（`--topbar-fg`）で出す
+    description: サーバーにつながらない。検索の入口の左に `--red-300` の印だけを出し、「サーバーにつながりません（{日時} に読んだ記録）」を読み上げとホバーのツールチップに持つ
     args:
       - name: connection
         value: offline
       - name: read_at
         value: '2026-10-04T02:21:00+00:00'
     notes:
-      見せ方: Storybook の画面幅を 1441px にして見せる（幅 1440px 以下は「つながりません」だけになる）
+      見せ方: Storybook の画面幅を 1441px にして見せる
   - name: OfflineNarrow
     description: 幅 390px でサーバーにつながらない。印だけを出し、「つながりません」を読み上げに、読んだ日時を `title` に持つ
     args:
@@ -354,7 +354,7 @@ states:
       - name: comment_count
         value: '2'
   - name: FilterOn
-    description: 2 つの条件で絞り込み中。「絞り込み」の右に印の色のバッジ「2」を出す
+    description: 2 つの条件で絞り込み中。絞り込みの印の右に印の色のバッジ「2」を出す
     args:
       - name: filter
         value: 'true'
@@ -378,7 +378,7 @@ states:
       - name: comment_count
         value: '2'
   - name: FilterNarrow
-    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（幅 1100px 以下で同じ）
+    description: 幅 390px。絞り込みのボタンの文字を隠し、アイコンとバッジだけにする（どの幅でも同じ）
     args:
       - name: filter
         value: 'true'
@@ -389,7 +389,7 @@ states:
       - name: comment_count
         value: '2'
   - name: FilterDiffMedium
-    description: 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 900px 以下と同じく、3 つのボタンと「変更履歴」の文字を隠してアイコン（件数・バッジは残す）だけにし、札に `5.5em` 以上の幅を回して、トップバーもページも横にはみ出さない。幅 1101px 以上ではボタンの文字を出し、札は `5.5em` 以上を保ったまま題名の側を縮める
+    description: 幅 901〜1100px で、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。3 つのボタンと「変更履歴」はどの幅でもアイコン（件数・バッジは残す）だけで、札に `5.5em` 以上の幅を回して、トップバーもページも横にはみ出さない。幅が足りないときは題名の側を縮める
     args:
       - name: filter
         value: 'true'
@@ -404,7 +404,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 901px・963px・1100px にして見せる
   - name: FilterDiffOffline
-    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。幅 901〜1440px では、3 つのボタンと「変更履歴」の文字を隠し、接続の状態を「つながりません」だけにして、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
+    description: サーバーにつながらず、絞り込み・表示の設定・コメントのボタンを出し、差分を表示している間。接続の状態は印だけ、3 つのボタンと「変更履歴」はアイコンだけで、トップバーもページも横にはみ出さない。札は `5.5em` 以上を取る
     args:
       - name: connection
         value: offline
@@ -679,7 +679,7 @@ states:
     notes:
       見せ方: Storybook の画面幅を 390px・480px にして見せる
   - name: Pending
-    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙の印・「保存待ち」・印の色の塗りの件数「5」を出す
+    description: 保存待ちが 5 件。絞り込みとコメントのボタンの間に、重ねた紙の印と印の色の塗りの件数「5」を出す（「保存待ち」は読み上げとツールチップ）
     args:
       - name: pending
         value: 'true'
@@ -747,17 +747,17 @@ states:
       - name: comment_count
         value: '120'
   - name: VoiceRecording
-    description: 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・「音声入力中」・経過の時間のボタンを出す
+    description: 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・経過の時間のボタンを出す（「音声入力中」は読み上げとツールチップ）
     args:
       - name: voice
         value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
   - name: VoiceTranscribing
-    description: 文字起こし中。アイコンを回る印に替え、「文字起こし中」にして、枠をトップバーの線の色にする
+    description: 文字起こし中。アイコンを回る印に替え、枠をトップバーの線の色にする（「文字起こし中」は読み上げとツールチップ）
     args:
       - name: voice
         value: '{"state": "transcribing", "label": "D-022 へのコメント"}'
   - name: VoiceRecordingNarrow
-    description: 幅 390px の録音中。マイクのアイコンだけのボタンにし、名前は読み上げとツールチップに持つ
+    description: 幅 390px の録音中。マイクのアイコンと経過の時間のボタンにし、名前は読み上げとツールチップに持つ
     args:
       - name: voice
         value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
@@ -799,20 +799,72 @@ states:
         value: 'true'
       - name: voiceNotice
         value: '{"kind": "discarded", "text": "D-022 が削除されたため、録音を破棄しました。"}'
+  - name: VoiceRecordingOffline
+    description: 録音中にサーバーとの接続が切れ、保存待ち・絞り込み・表示の設定・コメント・変更履歴のボタンも並ぶ。接続の状態は印だけ、音声入力中の表示はマイクと経過の時間だけで、どの幅でもトップバーもページも横にはみ出さない。幅 360px 以下はツール名の印も隠し、要素の間隔 1px・左右の余白 8px に詰める
+    args:
+      - name: connection
+        value: offline
+      - name: read_at
+        value: '2026-10-04T02:21:00+00:00'
+      - name: voice
+        value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '5'
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '0'
+    notes:
+      見せ方: Storybook の画面幅を 320px・360px・390px・481px・901px・1101px・1441px・1920px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: VoiceRecordingCrowded
+    description: サーバーにつながり、録音中の表示と保存待ち・絞り込み・表示の設定・コメント・変更履歴のボタンが並ぶ。幅 481〜600px はツール名の文字を隠し、要素の間隔 3px・左右の余白 10px に詰めて、どの幅でもトップバーもページも横にはみ出さない
+    args:
+      - name: voice
+        value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
+      - name: pending
+        value: 'true'
+      - name: pending_count
+        value: '5'
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '0'
+    notes:
+      見せ方: Storybook の画面幅を 481px・600px・601px・1101px・1200px にして見せる。変更履歴のボタンを出すため、ストーリーは `変更履歴を開く` を受ける
+  - name: TooltipOnFocus
+    description: アイコンだけのボタンにキーボードでフォーカスしている。ボタンの下に名前と状態のツールチップを出し、右寄りのボタンはツールチップの右端をボタンの右端に揃えて画面の内側に収める
+    args:
+      - name: voice
+        value: '{"state": "recording", "label": "D-022 へのコメント", "elapsed": 12}'
+      - name: filter
+        value: 'true'
+      - name: comments
+        value: 'true'
+      - name: comment_count
+        value: '3'
+    notes:
+      見せ方: Storybook の画面幅を 1280px・390px にして、Tab で検索の入口・音声入力中の表示・コメントのボタンへフォーカスを移して確かめる
 uses:
   - component: CMP-540-1#
     how: タブの帯の下の、重なった ID の通知の帯
 accessibility:
   - タブはリンクの並び（`nav`）にし、開いている画面に `aria-current="page"` を付ける
-  - アイコンだけのボタン（狭い幅の検索の入口・テーマの切り替え）に読み上げ名を付ける
+  - アイコンだけのボタン（検索の入口・変更履歴・表示の設定・絞り込み・保存待ち・音声入力中の表示・コメント・テーマの切り替え）に読み上げ名を付ける
+  - アイコンだけのボタン（テーマの切り替えを除く）と接続の状態は、名前と状態をツールチップに持つ。ツールチップは `title` 属性を使わず、選んだ箇所のコメントの入口と同じ見た目でボタンの下に、ホバーとキーボードのフォーカス（`:focus-visible`）で出す（接続の状態はフォーカスを受けないのでホバーだけ）。右寄りのボタンは右端を揃え、長い文は幅 240px で折り返す。フォーカスを残したまま別の要素にホバーしている間は、フォーカスの側を出さない。ツールチップは読み上げから外し（`aria-hidden`）、読み上げはボタンの名前に任せる
   - ホバーは面の色、キーボードのフォーカスは印の色の輪で見分ける
-  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンと文言でも示す。押せる部品にはしない
-  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、狭い幅で文言を隠しても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
+  - 接続の状態は `role="status"` で読み上げに伝え、色だけでなく印のアイコンでも示す。文言は見た目から外して読み上げとツールチップに残す。押せる部品にはしない
+  - 「変更履歴」は `aria-haspopup="dialog"` と読み上げ名「変更履歴」を持ち、文言を出さなくても名前を残す。札の × は「差分の表示をやめる」の読み上げ名を持つ
   - コメントのボタンの読み上げの名前は「コメント（レビュー中 {件数} 件）」と実際の件数を持ち、`comments_unread` が `true` のときは「コメント（未読あり・レビュー中 {件数} 件）」にする。点は読み上げから外し、一覧を開いているかを `aria-expanded` で示す
-  - 表示の設定のボタンの読み上げの名前は「表示の設定」で、狭い幅で文字を隠しても残し、パネルを開いているかを `aria-expanded` で示す
-  - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、狭い幅で文字を隠しても名前を残す
-  - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。キーの案内は `kbd` 要素で出し、狭い幅で文字を隠しても読み上げ名「すべての項目を検索」を残す
+  - 表示の設定のボタンの読み上げの名前は「表示の設定」で、文字を出さなくても残し、パネルを開いているかを `aria-expanded` で示す
+  - 絞り込みのボタンの読み上げの名前は、絞っていないとき「絞り込み」、絞り込み中は「絞り込み（{条件の数} つの条件で絞り込み中）」にし、バッジは読み上げから外す。ドロワーを開いているかを `aria-expanded`、開く先を `aria-controls` で示し、文字を出さなくても名前を残す
+  - 検索の入口は `aria-keyshortcuts="Control+K Meta+K"` でキーの近道を支援技術にも伝える。「すべての項目を検索」の文字はどの幅でも出さず、読み上げ名とツールチップに持つ。キーの案内は幅 901px 以上で `kbd` 要素として虫眼鏡の右に出し、幅 900px 以下は出さない
   - どの幅でも、全てのボタン（差分の札の × を含む）の押せる的を縦横 `--target-min`（24px）以上に保つ。表示の設定・絞り込み・コメントのボタンの幅の下限は幅で区切らずに持ち、狭い幅の詰め方を足しても 24px を割らないようにする
-  - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}。押すと録音中の入力欄へ移動します」（文字起こし中は「文字起こし中: {label}。押すと入力欄へ移動します」）を持つ。経過の時間とアイコンは読み上げから外し、狭い幅で文字を隠しても名前を残す。色だけでなくマイクのアイコンと文言で音声入力中を伝える'
+  - '音声入力中の表示はボタンにし、読み上げの名前を「音声入力中（{label}）。録音中の入力欄へ移動」（文字起こし中は「文字起こし中（{label}）。入力欄へ移動」）、ツールチップに「音声入力中: {label}」（文字起こし中は「文字起こし中: {label}」）を持つ。経過の時間とアイコンは読み上げから外し、文字を出さなくても名前を残す。色だけでなくマイクのアイコンと経過の時間で音声入力中を伝える'
   - 音声入力の知らせの帯は `role="status"` で読み上げに伝え、× に読み上げの名前「閉じる」を持つ。警告の印は読み上げから外す
   - 「更新があります」の帯は `role="status"` で読み上げに伝え、点は読み上げから外す。押せる部品にはしない。色だけでなく文言で保留を伝える
