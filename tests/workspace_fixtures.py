@@ -110,7 +110,7 @@ KIND_DEFAULTS: dict[str, dict[str, Any]] = {
     "D": {"status": "未決定", "options": [{"key": "A", "content": "案 A"}]},
     "T": {"kind": "作業", "status": "未着手"},
     "R": {"question": "何を調べたか"},
-    "A": {"kind": "図", "deliverable": False, "status": "下書き"},
+    "A": {"kind": "図", "status": "下書き"},
     "G": {"meaning": "用語の意味"},
     "N": {"content": "メモの中身"},
     "L": {"date": "2026-10-01"},
@@ -514,16 +514,6 @@ def valid_settings() -> dict[str, Any]:
     """設定のスキーマに合う設定（config.yaml の中身）を返す。"""
     return {
         "summary": "要件出しのスキル mindmap を設計する",
-        "playbooks": ["システム開発"],
-        "target_label": "システム",
-        "phases": ["目的", "要件", "構成"],
-        "targets": [{"name": "mindmap", "summary": "話し合いを記録するスキル"}],
-        "categories": [{"name": "データ構造", "target": "mindmap", "summary": "YAML の種類とキー"}],
-        "goal": {
-            "phase": "構成",
-            "summary": "作り始められる",
-            "deliverables": [{"title": "YAML のスキーマ"}],
-        },
         "links": [],
     }
 
@@ -776,7 +766,6 @@ def make_workspace(tmp_path: Path, valid_settings: dict[str, Any]) -> MakeWorksp
         root = tmp_path / name
         base = root if top else root / RECORD_DIR
         (base / "docs").mkdir(parents=True)
-        (base / "release").mkdir()
         write_yaml(base / settings_file, valid_settings if settings is None else settings)
         if with_history:
             items, item_history = split_history(items)

@@ -232,10 +232,10 @@ def test_main_when_remove_not_writable(
     assert snapshot_tree(tmp_path) == before
 
 
-def test_main_when_old_syntax(setup_scripts_dir: Path) -> None:
+def test_main_when_old_syntax(scripts_dir: Path) -> None:
     """登録のスクリプトが Python 3.8 の構文で読め、型注釈を実行時に評価しない（正常系）。"""
     # 準備
-    source = (setup_scripts_dir / "register.py").read_text(encoding="utf-8")
+    source = (scripts_dir / "register.py").read_text(encoding="utf-8")
     # 実行
     tree = ast.parse(source, feature_version=OLDEST_PYTHON)
     # 検証（docstring の次の文）
@@ -272,14 +272,6 @@ def test_main_when_registration_broken(
     assert report is not None
     assert str(broken) in report["error"]
     assert snapshot_tree(tmp_path) == before
-
-
-def test_register_module_when_name_unique(register: ModuleType, scripts_dir: Path) -> None:
-    """register.py と同じ名前のモジュールが mindmap のスクリプトに無く、セットアップ側のものを読む（正常系）。"""
-    # 検証
-    assert not (scripts_dir / "register.py").exists()
-    assert Path(register.__file__).parent.name == "scripts"
-    assert Path(register.__file__).parent.parent.name == "setup"
 
 
 @pytest.mark.parametrize(
