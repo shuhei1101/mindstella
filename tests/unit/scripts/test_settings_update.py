@@ -152,7 +152,7 @@ def test_update_settings(make_workspace: MakeWorkspace, make_item: MakeItem) -> 
     # 準備
     root = make_workspace(make_item("D-1"))
     decisions_before = (root / RECORD_DIR / "decisions.yaml").read_bytes()
-    links = [{"label": "仕様", "url": "https://example.com"}]
+    links = [{"title": "仕様", "url": "https://example.com"}]
     # 実行
     result = settings_update.update_settings(root, {"summary": "新しい題名", "links": links})
     # 検証

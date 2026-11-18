@@ -228,7 +228,7 @@ functions:
       - name: test_update_settings
         case: 正常
         summary: 設定を置き換えて書く
-        condition: '`settings` `{"summary": "新しい題名", "links": [{"label": "仕様", "url": "https://example.com"}]}`'
+        condition: '`settings` `{"summary": "新しい題名", "links": [{"title": "仕様", "url": "https://example.com"}]}`'
         mock: なし
         expected: '`changed` が `[summary, links]`、`files` が `[.mindstella/config.yaml]`。種類ごとの YAML が呼ぶ前と同じ'
       - name: test_update_settings_when_removed_key

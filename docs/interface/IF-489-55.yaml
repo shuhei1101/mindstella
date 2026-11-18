@@ -13,7 +13,7 @@ flows:
         description: 保持する回数 3 と表示の既定を持つワークスペース
       - name: settings
         description: '`summary`・`description`・`links` を渡す'
-        notes: '`links` は `[{label: 設計書, url: https://example.com}]`'
+        notes: '`links` は `[{title: 設計書, url: https://example.com}]`'
     flow: |-
       ```mermaid
       sequenceDiagram
