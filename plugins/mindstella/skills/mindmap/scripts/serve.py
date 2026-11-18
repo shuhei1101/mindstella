@@ -53,7 +53,14 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
-from files_serve import FILES_DIR, FILES_PATH, plan_file, resolve_file, write_file
+from files_serve import (
+    FILE_SECURITY_HEADERS,
+    FILES_DIR,
+    FILES_PATH,
+    plan_file,
+    resolve_file,
+    write_file,
+)
 from history import head_until_seq, load_changes, touch_opened
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
 from locations import location_to_dict
@@ -607,12 +614,14 @@ class PreviewHandler(BaseHTTPRequestHandler):
             return None
         return length if length >= 0 else None
 
-    def _reply(self, response: Response) -> None:
-        """ステータスコード・ヘッダー・本文を書く（常に控えさせない）。"""
+    def _reply(self, response: Response, extra_headers: tuple[tuple[str, str], ...] = ()) -> None:
+        """ステータスコード・ヘッダー（extra_headers を加える）・本文を書く（常に控えさせない）。"""
         self.send_response(response.status)
         self.send_header("Content-Type", response.content_type)
         self.send_header("Content-Length", str(len(response.body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in extra_headers:
+            self.send_header(name, value)
         # 送り直す応答は宛先を持つ
         if response.location is not None:
             self.send_header("Location", response.location)
@@ -626,13 +635,13 @@ class PreviewHandler(BaseHTTPRequestHandler):
         path = resolve_file(records_root(context.root) / FILES_DIR, sub_path)
         # フォルダの外部・無い・フォルダは、パスを含めずに 404 にする
         if path is None:
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"))
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
             return
         try:
             plan = plan_file(path, self.headers.get("Range"))
         except OSError:
             # 解決した後に消された
-            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"))
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
             return
         # 控えさせない _reply は使わず、ファイルの応答のヘッダーで書く
         self.send_response(plan.status)

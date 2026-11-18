@@ -37,12 +37,17 @@ FILE_DEFAULT_TYPE = "application/octet-stream"
 # ファイルから参照して応答へ書き出す 1 回のバイト数（配信が音声の本文を読む単位と同じ）
 FILE_WRITE_CHUNK = 65536
 
+# `/files/` の全ての応答（404 を含む）に付ける、直接開いたときにスクリプトを動かさないヘッダー
+FILE_SECURITY_HEADERS: tuple[tuple[str, str], ...] = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("Content-Security-Policy", "sandbox"),
+)
+
 # 200・206・416 に共通して付けるヘッダー
 FILE_HEADERS: tuple[tuple[str, str], ...] = (
     ("Accept-Ranges", "bytes"),
     ("Cache-Control", "no-cache"),
-    ("X-Content-Type-Options", "nosniff"),
-    ("Content-Security-Policy", "sandbox"),
+    *FILE_SECURITY_HEADERS,
 )
 
 # `bytes=` より後ろの 1 つの範囲（始め・終わりのどちらかが空でもよい）
