@@ -1,0 +1,51 @@
+$ pytest tests/unit --basetemp=<一時フォルダ>
+（Red: 実装の notify.py が無いことによる ImportError だけ。依存は ~/.venvs/mindstella-dev の Python）
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 2189 items / 3 errors
+
+==================================== ERRORS ====================================
+______________ ERROR collecting tests/unit/scripts/test_notify.py ______________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify/tests/unit/scripts/test_notify.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_notify.py:15: in <module>
+    import notify
+E   ModuleNotFoundError: No module named 'notify'
+______________ ERROR collecting tests/unit/scripts/test_server.py ______________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify/tests/unit/scripts/test_server.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_server.py:24: in <module>
+    import notify
+E   ModuleNotFoundError: No module named 'notify'
+_____________ ERROR collecting tests/unit/scripts/test_sessions.py _____________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify/tests/unit/scripts/test_sessions.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_sessions.py:17: in <module>
+    import notify
+E   ModuleNotFoundError: No module named 'notify'
+=========================== short test summary info ============================
+ERROR tests/unit/scripts/test_notify.py
+ERROR tests/unit/scripts/test_server.py
+ERROR tests/unit/scripts/test_sessions.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 3 errors in 1.73s ===============================
+exit=2
+
+$ ruff check plugins tests
+All checks passed!
+（npm run typecheck・lint は、この worktree に node_modules が無いため実行していない。変更はフロントエンドに触れない）
