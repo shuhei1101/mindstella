@@ -549,9 +549,38 @@ flows:
       - '`.mindstella/mindstella-version.ini` の 1 行目がプラグインのバージョン'
       - 同じ呼び出しをもう一度当てても、ワークスペースが変わらない
     test: test_normal_when_discussion_keys_removed
+  - name: 正常系（版が同じでスキーマの複製が更新前）
+    summary: 今の版のワークスペースでは手順を当てず、プラグインのスキーマと中身が違うスキーマの複製だけを書き直す
+    setup:
+      - name: Mock
+        description: なし（関数 `migrate` を直接呼ぶ）
+      - name: make_workspace
+        description: '`init` で作り、`.mindstella/schemas/docs.schema.json` を前の版のスキーマ（`deliverable` を必須に持つ）に書き換え、`.mindstella/schemas/legacy.schema.json`（プラグインに無いファイル）を置いたワークスペース'
+        notes: 前の版のスキーマはテストのデータとして持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as migrate
+        participant WS as ワークスペース
+
+        クライアント->>IF: migrate workspace
+        IF-->>WS: 版のファイルを読む（プラグインと同じ）
+        IF-->>WS: スキーマの複製をプラグインのスキーマと比べる
+        IF->>WS: 中身が違う docs.schema.json を書き直す
+        IF-->>クライアント: 結果（relation: same・schemas に docs.schema.json）
+      ```
+    expected:
+      - 例外にならない
+      - '`relation` が `same`、`steps` が空、`backup` が `null`'
+      - '`schemas` が `.mindstella/schemas/docs.schema.json` の 1 件'
+      - '`.mindstella/schemas/docs.schema.json` の中身がプラグインの `skills/mindmap/schemas/docs.schema.json` と同じ'
+      - '`.mindstella/schemas/legacy.schema.json` が呼ぶ前と同じ中身で残っている'
+      - '`.mindstella/schemas/` のほかのファイルと、記録の YAML・本文・バージョンのファイルの中身と更新日時が呼ぶ前と同じ'
+    test: test_normal_when_schema_copy_stale
 lead: ワークスペースを開く前に、ワークスペースのバージョンとプラグインのバージョンを比べ、古ければ間のバージョンの移し替えの手順（`migrations/{バージョン}/steps.yaml`）を利用者に確認せずに順に当て、スキーマに合えばバージョンのファイルを書き換える。
 idempotent: false
-side_effects: '手順を当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書き、値が要るキーに仮の値を入れ、`to_version` がプラグインのバージョンのときは `.mindstella/mindstella-version.ini` を書く。手順が失敗するかスキーマに合わなければ写しから戻す'
+side_effects: '手順を当てる前に写しを取り（ワークスペースが git の作業ツリーの中ならワークスペースのパスだけをコミット、そうでなければフォルダの隣へ複製）、手順が書き換えるファイルを書き、値が要るキーに仮の値を入れ、`to_version` がプラグインのバージョンのときは `.mindstella/mindstella-version.ini` を書く。バージョンが同じときも含め、プラグインのスキーマと中身が違うスキーマの複製（`.mindstella/schemas/`）を書き直す。手順が失敗するかスキーマに合わなければ写しから戻す'
 exclusivity: 呼ぶ側がワークスペースごとの鍵を取った中で呼ぶ。その上で『MCP サーバーの起動』の制約「同時の呼び出し」のとおり（プロセスの中の鍵の後に `.mindstella.lock` の排他ロックを取り、別のプロセスとも排他する）
 callers:
   - IF-531-1#
@@ -624,6 +653,10 @@ response:
   - name: not_carried[]
     type: list[{item, key, value}]
     description: 移せずに記録から消えた値（mdmark の移行の報告が写さなかったとした値）。項目の ID・キー・消えた値の並び
+  - name: schemas[]
+    type: list[str]
+    description: 書き直したスキーマの複製のワークスペースからのパス（中身がプラグインのスキーマと同じファイルは含まない）
+    example: .mindstella/schemas/docs.schema.json
 exceptions:
   - name: なし（正常終了）
     condition: 手順を当ててバージョンを書いた、または当てる手順が無かった
@@ -689,10 +722,12 @@ constraints:
   - item: バージョンのファイルの書き換え
     constraint: 手順を全て当て、ワークスペースの全ての YAML がスキーマに合うときだけ、`.mindstella/mindstella-version.ini` を `to_version` に書き換える。点検（`check`）が返す利用者の判断が要る問題（案と状態の合わない検討事項など）は、バージョンの書き換えを止めない
   - item: 移し替えるとき
-    constraint: ワークスペースのバージョンがプラグインより古いときだけ手順を当てる。同じときは何も書かず、新しいときは WorkspaceNewerError（D-288）
+    constraint: ワークスペースのバージョンがプラグインより古いときだけ手順を当てる。同じときは手順を当てず、スキーマの複製（『スキーマの複製』）のほかは何も書かず、新しいときは WorkspaceNewerError（D-288）
   - item: v0.14.0 の手順
     constraint: '`call`（`remove_discussion_keys`）の 1 手順。破壊的な操作。`.mindstella/config.yaml` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を消す。種類ごとの YAML の項目の `target`・`category` は値を `topic:{値}` のタグ（既にあれば足さない）へ、`attrs` は本文の末尾の「属性」の表（キーと値）へ、調査の `angles`・`confidence` は本文の末尾の「観点と確かさ」の表へ移してキーを消す。`phase`・検討事項の `weight`・資料の `deliverable` は移さずに消す。`.mindstella/release/` は消さない。書き換えた項目の変更履歴は変えない（D-276 A・D-277 A・D-278 A）'
     notes: バージョンの番号は計画の次の Sprint のバージョン。Sprint のバージョンが変わったら合わせる
+  - item: スキーマの複製
+    constraint: 手順を当ててバージョンのファイルを書いた後と、バージョンが同じで手順を当てないときに、配信の設定が指すスキーマ（`common.schema.json` と種類ごとのスキーマ）の `.mindstella/schemas/` の複製をプラグインの `skills/mindmap/schemas/` の同じ名前のファイルと比べ、無いか中身が違うファイルだけを書き直して `schemas` に返す。複製の側にだけあるファイルは消さない（配信の設定が指さないので検査に使われない）。写しは取らない。書けなければ WriteFailedError。`to_version` がプラグインのバージョンより古いとき・WorkspaceNewerError のとき・手順が失敗したときは比べない
 refs:
   - ER-489-1#tables[docs.yaml]
   - ER-489-1#tables[mindstella-version.ini]
