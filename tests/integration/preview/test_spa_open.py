@@ -82,12 +82,11 @@ def test_normal(
     console = watch_console(page)
     # 実行
     open_spa(page, url)
-    page.wait_for_selector("#tile-running")
+    page.wait_for_selector("#tile-open")
     # 検証
     assert page.get_attribute("header span[title]", "title") == "要件出しのスキル mindmap を設計する"
     assert page.get_attribute(CURRENT_TAB, "data-tab") == "overview"
-    assert "T-1の題" in page.inner_text("#tile-running")
-    assert "D-1の題" in page.inner_text("#tile-next")
+    assert "D-1の題" in page.inner_text("#tile-open")
     assert page.get_attribute('header button[aria-label^="コメント"]', "aria-label") == (
         "コメント（未読あり・レビュー中 2 件）"
     )
@@ -196,7 +195,7 @@ def test_normal_when_search_invalid(
     assert served.data is not None
     # 実行
     open_spa(page, served.data["url"], "?tab=unknown")
-    page.wait_for_selector("#tile-next")
+    page.wait_for_selector("#tile-open")
     # 検証
     assert page.get_attribute(CURRENT_TAB, "data-tab") == "overview"
     assert page.evaluate("new URLSearchParams(location.search).has('tab')") is False
@@ -221,7 +220,7 @@ def test_error_when_records_invalid(
     assert "記録を読めませんでした" in alert
     assert "decisions.yaml" in alert
     assert "status" in alert
-    assert page.locator("#tile-next").count() == 0
+    assert page.locator("#tile-open").count() == 0
     assert console.exceptions == []
 
 
@@ -239,19 +238,19 @@ def test_error_when_server_stopped(
     served = server.call("preview_url", workspace=str(root))
     assert served.data is not None
     open_spa(page, served.data["url"])
-    page.wait_for_selector("#tile-next")
+    page.wait_for_selector("#tile-open")
     # 実行（server_stop で常駐サーバーを止める）
     server.call("server_stop")
     server.wait_exit()
     page.wait_for_selector(CONNECTION, timeout=UPDATE_TIMEOUT_MS)
-    stopped_tile = page.inner_text("#tile-next")
+    stopped_tile = page.inner_text("#tile-open")
     restarted = start_server().call("preview_url", workspace=str(root))
     page.wait_for_selector(CONNECTION, state="detached", timeout=UPDATE_TIMEOUT_MS)
     # 検証
     assert "D-1の題" in stopped_tile
     assert restarted.data is not None
     assert restarted.data["url"] == served.data["url"]
-    assert "D-1の題" in page.inner_text("#tile-next")
+    assert "D-1の題" in page.inner_text("#tile-open")
 
 
 def test_normal_when_list_screen(page: Page, spa_preview: str) -> None:
