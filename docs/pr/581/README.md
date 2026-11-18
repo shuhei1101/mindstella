@@ -1,0 +1,1 @@
+# 結合テスト test_option_draft_when_redrawn を、入力欄にカーソルがある間は描き直さない今の振る舞いに合わせる
