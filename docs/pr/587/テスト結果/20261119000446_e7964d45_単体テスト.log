@@ -1,0 +1,446 @@
+# TMPDIR=/tmp/planner-587-tmp（/tmp/pytest-of-shuhei2441 が root の持ち物のため）。回した commit: e7964d45
+$ pytest tests/unit && npx vitest run
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 2409 items
+
+tests/unit/preview/test_api.py .................                         [  0%]
+tests/unit/preview/test_app.py ...............................           [  1%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [  2%]
+tests/unit/preview/test_chips_input.py ....                              [  2%]
+tests/unit/preview/test_comment_mark.py ..                               [  2%]
+tests/unit/preview/test_comments_panel.py .............................. [  3%]
+.                                                                        [  3%]
+tests/unit/preview/test_decisions.py ....                                [  3%]
+tests/unit/preview/test_detail.py ...................................... [  5%]
+.................                                                        [  6%]
+tests/unit/preview/test_detail_edit.py .........                         [  6%]
+tests/unit/preview/test_diff.py .................................        [  7%]
+tests/unit/preview/test_diff_minimap.py .....                            [  7%]
+tests/unit/preview/test_doc_export.py ......                             [  8%]
+tests/unit/preview/test_docs.py .                                        [  8%]
+tests/unit/preview/test_dom.py .............                             [  8%]
+tests/unit/preview/test_duplicate_id_notice.py ..                        [  8%]
+tests/unit/preview/test_edits.py ..                                      [  8%]
+tests/unit/preview/test_graph.py ..                                      [  9%]
+tests/unit/preview/test_history_dialog.py .                              [  9%]
+tests/unit/preview/test_libs.py ........................................ [ 10%]
+...                                                                      [ 10%]
+tests/unit/preview/test_lock.py ...                                      [ 11%]
+tests/unit/preview/test_looks.py ....                                    [ 11%]
+tests/unit/preview/test_markdown_body.py ..........                      [ 11%]
+tests/unit/preview/test_overview.py ..                                   [ 11%]
+tests/unit/preview/test_pending_edits.py ......                          [ 11%]
+tests/unit/preview/test_pending_mark.py ..                               [ 11%]
+tests/unit/preview/test_records.py ..........                            [ 12%]
+tests/unit/preview/test_refresh_hold.py ....                             [ 12%]
+tests/unit/preview/test_reply_form.py ...                                [ 12%]
+tests/unit/preview/test_review_body_fold.py ....                         [ 12%]
+tests/unit/preview/test_router.py ......                                 [ 13%]
+tests/unit/preview/test_selection_comment.py ..                          [ 13%]
+tests/unit/preview/test_send_form.py .......                             [ 13%]
+tests/unit/preview/test_settings.py .                                    [ 13%]
+tests/unit/preview/test_settings_confirm.py .                            [ 13%]
+tests/unit/preview/test_settings_panel.py ....                           [ 13%]
+tests/unit/preview/test_side_by_side_body_diff.py ....                   [ 13%]
+tests/unit/preview/test_table.py .............                           [ 14%]
+tests/unit/preview/test_tag_list.py .                                    [ 14%]
+tests/unit/preview/test_tasks.py ..                                      [ 14%]
+tests/unit/preview/test_term_tip.py ...                                  [ 14%]
+tests/unit/preview/test_thread_post.py .........                         [ 15%]
+tests/unit/preview/test_thread_row.py .........                          [ 15%]
+tests/unit/preview/test_topbar.py ..                                     [ 15%]
+tests/unit/preview/test_voice.py ............                            [ 16%]
+tests/unit/preview/test_workspace_settings.py ..                         [ 16%]
+tests/unit/preview/test_api.py .............                             [ 16%]
+tests/unit/preview/test_app.py .......................                   [ 17%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [ 17%]
+tests/unit/preview/test_comment_mark.py .                                [ 17%]
+tests/unit/preview/test_comments_panel.py ...................            [ 18%]
+tests/unit/preview/test_decisions.py ...                                 [ 18%]
+tests/unit/preview/test_detail.py ....................                   [ 19%]
+tests/unit/preview/test_detail_edit.py ...                               [ 19%]
+tests/unit/preview/test_diff.py .............                            [ 20%]
+tests/unit/preview/test_diff_minimap.py ...                              [ 20%]
+tests/unit/preview/test_doc_export.py ...                                [ 20%]
+tests/unit/preview/test_docs.py .                                        [ 20%]
+tests/unit/preview/test_dom.py .....                                     [ 20%]
+tests/unit/preview/test_edits.py .                                       [ 20%]
+tests/unit/preview/test_libs.py ................                         [ 21%]
+tests/unit/preview/test_lock.py ...                                      [ 21%]
+tests/unit/preview/test_looks.py ...                                     [ 21%]
+tests/unit/preview/test_markdown_body.py .......                         [ 21%]
+tests/unit/preview/test_overview.py .                                    [ 21%]
+tests/unit/preview/test_pending_edits.py ..                              [ 21%]
+tests/unit/preview/test_pending_mark.py .                                [ 22%]
+tests/unit/preview/test_records.py ......                                [ 22%]
+tests/unit/preview/test_reply_form.py ...                                [ 22%]
+tests/unit/preview/test_review_body_fold.py .                            [ 22%]
+tests/unit/preview/test_router.py .....                                  [ 22%]
+tests/unit/preview/test_selection_comment.py .                           [ 22%]
+tests/unit/preview/test_send_form.py .......                             [ 22%]
+tests/unit/preview/test_settings_confirm.py .                            [ 22%]
+tests/unit/preview/test_settings_panel.py ...                            [ 23%]
+tests/unit/preview/test_side_by_side_body_diff.py .                      [ 23%]
+tests/unit/preview/test_table.py .......                                 [ 23%]
+tests/unit/preview/test_tag_list.py .                                    [ 23%]
+tests/unit/preview/test_tasks.py .                                       [ 23%]
+tests/unit/preview/test_term_tip.py ..                                   [ 23%]
+tests/unit/preview/test_thread_post.py ......                            [ 23%]
+tests/unit/preview/test_thread_row.py .....                              [ 24%]
+tests/unit/preview/test_voice.py ........                                [ 24%]
+tests/unit/preview/test_workspace_settings.py .                          [ 24%]
+tests/unit/preview/test_api.py ........                                  [ 24%]
+tests/unit/preview/test_app.py ..................                        [ 25%]
+tests/unit/preview/test_body_diff_layout_switch.py .                     [ 25%]
+tests/unit/preview/test_comment_mark.py .                                [ 25%]
+tests/unit/preview/test_comments_panel.py ..........                     [ 26%]
+tests/unit/preview/test_decisions.py ..                                  [ 26%]
+tests/unit/preview/test_detail.py ................                       [ 26%]
+tests/unit/preview/test_detail_edit.py .                                 [ 26%]
+tests/unit/preview/test_diff.py .......                                  [ 27%]
+tests/unit/preview/test_diff_minimap.py ...                              [ 27%]
+tests/unit/preview/test_doc_export.py .                                  [ 27%]
+tests/unit/preview/test_dom.py ..                                        [ 27%]
+tests/unit/preview/test_edits.py .                                       [ 27%]
+tests/unit/preview/test_libs.py ..........                               [ 27%]
+tests/unit/preview/test_lock.py ...                                      [ 27%]
+tests/unit/preview/test_looks.py ...                                     [ 28%]
+tests/unit/preview/test_markdown_body.py ......                          [ 28%]
+tests/unit/preview/test_pending_edits.py ..                              [ 28%]
+tests/unit/preview/test_pending_mark.py .                                [ 28%]
+tests/unit/preview/test_records.py ......                                [ 28%]
+tests/unit/preview/test_reply_form.py ...                                [ 28%]
+tests/unit/preview/test_review_body_fold.py .                            [ 28%]
+tests/unit/preview/test_router.py ....                                   [ 29%]
+tests/unit/preview/test_selection_comment.py .                           [ 29%]
+tests/unit/preview/test_send_form.py .....                               [ 29%]
+tests/unit/preview/test_settings_confirm.py .                            [ 29%]
+tests/unit/preview/test_settings_panel.py .                              [ 29%]
+tests/unit/preview/test_table.py ......                                  [ 29%]
+tests/unit/preview/test_tag_list.py .                                    [ 29%]
+tests/unit/preview/test_term_tip.py ..                                   [ 29%]
+tests/unit/preview/test_thread_post.py ...                               [ 29%]
+tests/unit/preview/test_thread_row.py ....                               [ 30%]
+tests/unit/preview/test_voice.py ......                                  [ 30%]
+tests/unit/preview/test_api.py .....                                     [ 30%]
+tests/unit/preview/test_app.py ............                              [ 30%]
+tests/unit/preview/test_comment_mark.py .                                [ 31%]
+tests/unit/preview/test_comments_panel.py .......                        [ 31%]
+tests/unit/preview/test_decisions.py ..                                  [ 31%]
+tests/unit/preview/test_detail.py .........                              [ 31%]
+tests/unit/preview/test_detail_edit.py .                                 [ 31%]
+tests/unit/preview/test_diff.py ......                                   [ 32%]
+tests/unit/preview/test_diff_minimap.py ..                               [ 32%]
+tests/unit/preview/test_dom.py ..                                        [ 32%]
+tests/unit/preview/test_edits.py .                                       [ 32%]
+tests/unit/preview/test_libs.py ........                                 [ 32%]
+tests/unit/preview/test_lock.py ..                                       [ 32%]
+tests/unit/preview/test_looks.py ..                                      [ 32%]
+tests/unit/preview/test_markdown_body.py ...                             [ 32%]
+tests/unit/preview/test_pending_edits.py ..                              [ 32%]
+tests/unit/preview/test_records.py ...                                   [ 33%]
+tests/unit/preview/test_reply_form.py ..                                 [ 33%]
+tests/unit/preview/test_router.py ...                                    [ 33%]
+tests/unit/preview/test_send_form.py ....                                [ 33%]
+tests/unit/preview/test_settings_panel.py .                              [ 33%]
+tests/unit/preview/test_table.py ....                                    [ 33%]
+tests/unit/preview/test_thread_post.py ..                                [ 33%]
+tests/unit/preview/test_thread_row.py .                                  [ 33%]
+tests/unit/preview/test_voice.py ...                                     [ 33%]
+tests/unit/preview/test_api.py ...                                       [ 34%]
+tests/unit/preview/test_app.py ..                                        [ 34%]
+tests/unit/preview/test_comments_panel.py .                              [ 34%]
+tests/unit/preview/test_decisions.py .                                   [ 34%]
+tests/unit/preview/test_detail.py ....                                   [ 34%]
+tests/unit/preview/test_diff.py ..                                       [ 34%]
+tests/unit/preview/test_diff_minimap.py .                                [ 34%]
+tests/unit/preview/test_dom.py .                                         [ 34%]
+tests/unit/preview/test_edits.py .                                       [ 34%]
+tests/unit/preview/test_libs.py ......                                   [ 34%]
+tests/unit/preview/test_lock.py ..                                       [ 34%]
+tests/unit/preview/test_looks.py ..                                      [ 34%]
+tests/unit/preview/test_markdown_body.py ...                             [ 35%]
+tests/unit/preview/test_pending_edits.py .                               [ 35%]
+tests/unit/preview/test_reply_form.py ..                                 [ 35%]
+tests/unit/preview/test_router.py .                                      [ 35%]
+tests/unit/preview/test_send_form.py ..                                  [ 35%]
+tests/unit/preview/test_table.py .                                       [ 35%]
+tests/unit/preview/test_thread_row.py .                                  [ 35%]
+tests/unit/preview/test_voice.py .                                       [ 35%]
+tests/unit/preview/test_api.py ...                                       [ 35%]
+tests/unit/preview/test_app.py .                                         [ 35%]
+tests/unit/preview/test_decisions.py .                                   [ 35%]
+tests/unit/preview/test_detail.py .                                      [ 35%]
+tests/unit/preview/test_diff.py .                                        [ 35%]
+tests/unit/preview/test_diff_minimap.py .                                [ 35%]
+tests/unit/preview/test_edits.py .                                       [ 35%]
+tests/unit/preview/test_libs.py ....                                     [ 36%]
+tests/unit/preview/test_lock.py .                                        [ 36%]
+tests/unit/preview/test_reply_form.py .                                  [ 36%]
+tests/unit/preview/test_router.py .                                      [ 36%]
+tests/unit/preview/test_send_form.py .                                   [ 36%]
+tests/unit/preview/test_voice.py .                                       [ 36%]
+tests/unit/preview/test_api.py .                                         [ 36%]
+tests/unit/preview/test_app.py .                                         [ 36%]
+tests/unit/preview/test_diff.py .                                        [ 36%]
+tests/unit/preview/test_diff_minimap.py .                                [ 36%]
+tests/unit/preview/test_libs.py ....                                     [ 36%]
+tests/unit/preview/test_lock.py .                                        [ 36%]
+tests/unit/preview/test_router.py .                                      [ 36%]
+tests/unit/preview/test_send_form.py .                                   [ 36%]
+tests/unit/preview/test_diff.py .                                        [ 36%]
+tests/unit/preview/test_diff_minimap.py .                                [ 36%]
+tests/unit/preview/test_libs.py ....                                     [ 36%]
+tests/unit/preview/test_lock.py .                                        [ 36%]
+tests/unit/preview/test_router.py .                                      [ 37%]
+tests/unit/preview/test_diff.py .                                        [ 37%]
+tests/unit/preview/test_libs.py ...                                      [ 37%]
+tests/unit/preview/test_router.py .                                      [ 37%]
+tests/unit/preview/test_libs.py .....................                    [ 38%]
+tests/unit/scripts/test_answer_to_adopted_option.py .....                [ 38%]
+tests/unit/scripts/test_api.py ......                                    [ 38%]
+tests/unit/scripts/test_backup.py ......                                 [ 38%]
+tests/unit/scripts/test_body_to_docs_path.py .                           [ 38%]
+tests/unit/scripts/test_builder.py ..................................... [ 40%]
+...............                                                          [ 41%]
+tests/unit/scripts/test_change_detection.py .........................    [ 42%]
+tests/unit/scripts/test_check_env.py ........................            [ 43%]
+tests/unit/scripts/test_checker.py ...............................       [ 44%]
+tests/unit/scripts/test_claude_input.py ................................ [ 45%]
+..................................                                       [ 47%]
+tests/unit/scripts/test_commands.py .................................... [ 48%]
+.................................................                        [ 50%]
+tests/unit/scripts/test_comments.py .................................... [ 52%]
+..............................                                           [ 53%]
+tests/unit/scripts/test_edits.py ....................................... [ 54%]
+                                                                         [ 54%]
+tests/unit/scripts/test_ensure_server.py ............................... [ 56%]
+                                                                         [ 56%]
+tests/unit/scripts/test_field_to_playbooks.py ....                       [ 56%]
+tests/unit/scripts/test_files_serve.py ................................  [ 57%]
+tests/unit/scripts/test_graph.py .........                               [ 58%]
+tests/unit/scripts/test_history.py ..................................... [ 59%]
+...........                                                              [ 60%]
+tests/unit/scripts/test_html_body.py .................                   [ 60%]
+tests/unit/scripts/test_ids.py ....                                      [ 60%]
+tests/unit/scripts/test_inject_session.py ....................           [ 61%]
+tests/unit/scripts/test_kinds.py .......                                 [ 62%]
+tests/unit/scripts/test_launch.py ............                           [ 62%]
+tests/unit/scripts/test_locations.py ................................... [ 64%]
+...                                                                      [ 64%]
+tests/unit/scripts/test_mdmark_documents.py .....                        [ 64%]
+tests/unit/scripts/test_meta_to_history_yaml.py .                        [ 64%]
+tests/unit/scripts/test_migration_coverage.py .........                  [ 64%]
+tests/unit/scripts/test_migration_ops.py ......................          [ 65%]
+tests/unit/scripts/test_migrator.py .................................    [ 67%]
+tests/unit/scripts/test_notify.py ..................................     [ 68%]
+tests/unit/scripts/test_place_source_config.py .....                     [ 68%]
+tests/unit/scripts/test_project_index.py ..................              [ 69%]
+tests/unit/scripts/test_read_point.py ...........                        [ 69%]
+tests/unit/scripts/test_readme.py ..........                             [ 70%]
+tests/unit/scripts/test_refs_to_related.py ..                            [ 70%]
+tests/unit/scripts/test_register.py ..................................s. [ 71%]
+..........                                                               [ 72%]
+tests/unit/scripts/test_remove_discussion_keys.py .....                  [ 72%]
+tests/unit/scripts/test_remove_tag_vocabulary.py ...                     [ 72%]
+tests/unit/scripts/test_reset_unread.py ............                     [ 73%]
+tests/unit/scripts/test_resume.py .......                                [ 73%]
+tests/unit/scripts/test_serve.py ....................................... [ 75%]
+........................................................................ [ 78%]
+...........................                                              [ 79%]
+tests/unit/scripts/test_server.py ...................................... [ 80%]
+........                                                                 [ 81%]
+tests/unit/scripts/test_session_hook.py .................                [ 81%]
+tests/unit/scripts/test_sessions.py .................................... [ 83%]
+........................................................                 [ 85%]
+tests/unit/scripts/test_settings_update.py ...........................   [ 86%]
+tests/unit/scripts/test_state.py ...........                             [ 87%]
+tests/unit/scripts/test_store.py ....................................... [ 88%]
+........................................................................ [ 91%]
+.............                                                            [ 92%]
+tests/unit/scripts/test_submissions_to_threads.py ......                 [ 92%]
+tests/unit/scripts/test_tag_text.py ...............                      [ 93%]
+tests/unit/scripts/test_tags_to_objects.py ...                           [ 93%]
+tests/unit/scripts/test_tags_to_vocabulary.py ....                       [ 93%]
+tests/unit/scripts/test_threads.py ..................................... [ 95%]
+....................................                                     [ 96%]
+tests/unit/scripts/test_transcriber.py ....                              [ 96%]
+tests/unit/scripts/test_transcriber_registry.py ......                   [ 96%]
+tests/unit/scripts/test_versions.py .................                    [ 97%]
+tests/unit/scripts/test_voice_paste.py ......................            [ 98%]
+tests/unit/scripts/test_workspaces.py ................................   [ 99%]
+tests/unit/test_isolated_environment.py ...                              [100%]
+
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /tmp/planner-587-venv/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========== 2408 passed, 1 skipped, 5 warnings in 318.89s (0:05:18) ============
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+ Test Files  84 passed (84)
+      Tests  316 passed (316)
+   Start at  00:03:36
+   Duration  15.09s (environment 45%, tests 25%, import 14%, setup 10%, transform 5%)
+
+Environment  jsdom was created 84 times · 42.96s total, 45% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit 0
