@@ -22,7 +22,7 @@ use_cases:
 docs:
   - page: docs/er/ER-489-1.yaml
     new: false
-    change: 不具合 1 を A で修正する場合、項目の共通のキーに `created`・`updated` を追加する
+    change: project-index#195 の完了後、配信の設定（`.mindstella/dev-docs.yaml`）に日時を付けない指定を加えるなら、その記述を追加する
     status: todo
   - page: plugins/mindstella/agent-flows/record.yaml
     new: false
