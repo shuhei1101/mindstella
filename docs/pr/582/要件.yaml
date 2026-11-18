@@ -40,6 +40,12 @@ use_cases:
     detail: MindStella のセッションが落ちた・無操作の上限で止めた後にコメントを送ると、前の会話を引き継いで起動し直してから届く。起動し直しに失敗したときは、コメントはスレッドに残る
     depends_on:
       - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: new
+    detail: 利用上限・圧縮・落ちた後のコメント・起動し直しの依頼で、MindStella のセッションが同じ ID のまま起動し直し、契機に応じて前の会話を引き継ぐ。空いたアカウントが無い・追加のプラグインを読めないときは失敗の理由が分かり、コメントは残る
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
 docs:
   - page: docs/guide/話し合い-続きを再開する.md
     new: false

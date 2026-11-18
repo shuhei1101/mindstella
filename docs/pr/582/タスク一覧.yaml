@@ -34,7 +34,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T10:47:28.809730+00:00'
   - process: 単一ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T11:31:36.167628+00:00'
   - process: モック作成
     status: skipped
     reason: 画面の変更をスコープ外にしたため対象外
