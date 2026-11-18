@@ -19,7 +19,9 @@ from mcp.types import CallToolResult, TextContent
 from starlette.testclient import TestClient
 
 import claude_input
+import commands
 import migrator
+import notify
 import serve
 import server
 import store
@@ -805,3 +807,59 @@ def test_require_mindstella_session(tmp_path: Path, make_workspace: MakeWorkspac
     # 検証
     with pytest.raises(NotMindStellaSessionError, match="commit"):
         server.require_mindstella_session(context, root, other, "commit")
+
+
+def test_build_server_when_marking_tool(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MindStella のセッションの reply が成功したら書き込みのマーカーを付ける（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), name="ws")
+    state_root = tmp_path / "state"
+    _write_mindstella_session(state_root, root, "abc")
+    commands.run_new_thread(root, body="質問です", summary="質問", tags=None, target=None)
+    monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()), state_root=state_root)
+    session = {**_session_of(tmp_path), "claude_session_id": "abc"}
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool(
+            "reply",
+            {"workspace": str(root), "id": "TH-1", "body": "答えます", "summary": "質問", "session": session},
+        )
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is False
+    assert notify.MARKERS.take(workspace_id_of(root)) is True
+
+
+def test_build_server_when_marking_tool_failed(
+    tmp_path: Path,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """違うセッションの呼び出しは書き込みのマーカーを付けない（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"), name="ws")
+    state_root = tmp_path / "state"
+    _write_mindstella_session(state_root, root, "abc")
+    commands.run_new_thread(root, body="質問です", summary="質問", tags=None, target=None)
+    monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
+    mcp_server = _build(serve.PreviewRegistry(threading.Lock()), state_root=state_root)
+    session = {**_session_of(tmp_path), "claude_session_id": "xyz"}
+    # 実行
+    result = _run_async(
+        mcp_server.call_tool(
+            "reply",
+            {"workspace": str(root), "id": "TH-1", "body": "答えます", "summary": "質問", "session": session},
+        )
+    )
+    # 検証
+    assert isinstance(result, CallToolResult)
+    assert result.is_error is True
+    assert notify.MARKERS.take(workspace_id_of(root)) is False

@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 import commands
+import notify
 import project_index
 import sessions
 import state
@@ -676,3 +677,55 @@ def test_record_event_unknown(ctx: SimpleNamespace) -> None:
         is False
     )
     assert _session(ctx) == before
+
+
+def test_record_event_when_stop(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+    """stop で書き込んだ応答の通知を呼ぶ（正常系）。"""
+    # 準備
+    _write_session(ctx, responding=True)
+    called: list[str] = []
+    monkeypatch.setattr(
+        notify,
+        "notify_if_written",
+        lambda workspace_id, _describe, **_kwargs: called.append(workspace_id),
+    )
+    # 実行
+    recorded = sessions.record_event(SESSION_ID, {"event": "stop", "claude_session_id": "c1"}, ctx)
+    # 検証
+    assert recorded is True
+    assert called == [WORKSPACE_ID]
+    assert _session(ctx).responding is False
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        pytest.param({"event": "prompt_submit", "claude_session_id": "c1"}, id="prompt"),
+        pytest.param({"event": "stop_failure", "claude_session_id": "c1"}, id="stop-failure"),
+        pytest.param(
+            {"event": "session_end", "claude_session_id": "c1", "reason": "logout"},
+            id="session-end",
+        ),
+    ],
+)
+def test_record_event_when_clearing(
+    event: dict[str, Any],
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """prompt_submit・stop_failure・session_end では通知せずにマーカーを解除する（正常系）。"""
+    # 準備
+    _write_session(ctx, responding=True)
+    monkeypatch.setattr(notify, "MARKERS", notify.WriteMarkers())
+    notify.MARKERS.mark(WORKSPACE_ID)
+    called: list[str] = []
+    monkeypatch.setattr(
+        notify,
+        "notify_if_written",
+        lambda workspace_id, _describe, **_kwargs: called.append(workspace_id),
+    )
+    # 実行
+    sessions.record_event(SESSION_ID, event, ctx)
+    # 検証
+    assert notify.MARKERS.take(WORKSPACE_ID) is False
+    assert called == []
