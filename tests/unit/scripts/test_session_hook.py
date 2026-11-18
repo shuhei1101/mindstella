@@ -288,11 +288,25 @@ def test_post_read_point(serve_json: ServeJson) -> None:
 @pytest.mark.parametrize(
     ("source", "flow", "contained", "absent"),
     [
-        pytest.param("compact", "src#doc", ["再開", "src#doc", "mindstella/startup"], ["/mindstella:"], id="resume_flow"),
-        pytest.param("startup", None, ["起動", "mindstella/startup"], ["進め方の文書", "/mindstella:"], id="startup"),
+        pytest.param(
+            "compact",
+            "src#doc",
+            ["再開", "src#doc", "mindstella/startup"],
+            ["/mindstella:"],
+            id="resume_flow",
+        ),
+        pytest.param(
+            "startup",
+            None,
+            ["起動", "mindstella/startup"],
+            ["進め方の文書", "/mindstella:"],
+            id="startup",
+        ),
     ],
 )
-def test_fallback_context(source: str, flow: str | None, contained: list[str], absent: list[str]) -> None:
+def test_fallback_context(
+    source: str, flow: str | None, contained: list[str], absent: list[str]
+) -> None:
     """契機と進め方の文書を埋める（正常系）。"""
     # 実行
     result = session_hook.fallback_context(source, flow)
@@ -336,7 +350,11 @@ def _refuse(_port: int, _session: str, _body: dict[str, Any]) -> None:
 def test_main_when_pre_compact(case: str, blocked: bool) -> None:
     """送れたときだけ圧縮を止める（正常系）。"""
     # 準備
-    environ = {key: value for key, value in ENVIRON.items() if case != "no-session" or key != "MINDSTELLA_SESSION"}
+    environ = {
+        key: value
+        for key, value in ENVIRON.items()
+        if case != "no-session" or key != "MINDSTELLA_SESSION"
+    }
     stdout = io.StringIO()
     sent: list[dict[str, Any]] = []
     post = _refuse if case == "refused" else (lambda _port, _session, body: sent.append(body))
