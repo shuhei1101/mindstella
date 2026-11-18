@@ -41,6 +41,12 @@ request:
   default: なし（`socket` を送らない）
   location: argument
   description: 環境変数。最初の `,` より前をペインの tmux のサーバーのソケットとして `socket` で送る
+- name: CLAUDE_CONFIG_DIR
+  type: str
+  required: false
+  default: なし（`~/.claude` を絶対パスにした値を送る）
+  location: argument
+  description: 環境変数。Claude Code の設定のフォルダ。`session-start` で絶対パスにして `claude_config_dir` で送る
 response:
 - name: 標準出力
   type: JSON | なし
@@ -61,6 +67,9 @@ constraints:
   constraint: 『セッションの値の注入』と同じく、フックのプロセスから親をたどり、最初に名前が `claude` のプロセス
 - item: 通常のセッション
   constraint: '`MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて何もしない'
+- item: 設定のフォルダ
+  constraint: '`session-start` で、`CLAUDE_CONFIG_DIR` があればその値を、無ければホームの `.claude` を、それぞれ `~` を展開した絶対パスにして `claude_config_dir` で送る'
+  notes: claude-balancer は既定の設定のフォルダのアカウントを貸すとき `CLAUDE_CONFIG_DIR` を外して起動する（LIB-531-1）
 flows:
 - name: 正常系
   summary: SessionStart で出来事を送り、進め方の文書の場所を注入する
@@ -84,6 +93,7 @@ flows:
   - 'Mock が `event: session_start`・`claude_session_id`・`pane`・`source: startup` を受けている'
   - 標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値がある
   - 終了コードが 0
+  - Mock が受けた `claude_config_dir` が、`CLAUDE_CONFIG_DIR` に渡したフォルダの絶対パス
   test: test_normal
 - name: 正常系（通常のセッション）
   summary: MINDSTELLA_SESSION が無ければ何もしない
@@ -124,6 +134,27 @@ flows:
   expected:
   - 終了コードが 0 で、標準エラーに `[mindstella]` の行がある
   test: test_error_when_server_down
+- name: 正常系（設定のフォルダを指定しない）
+  summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る
+  setup:
+  - name: Mock
+    description: 正常系と同じ
+  - name: 環境変数
+    description: 正常系と同じ。`CLAUDE_CONFIG_DIR` を渡さず、`HOME` をテストの一時フォルダにする
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+      participant SV as 常駐サーバー（Mock）
+
+      CC->>HK: session-start
+      HK->>SV: POST /_admin/sessions/{session}/events（claude_config_dir: {HOME}/.claude）
+    ```
+  expected:
+  - Mock が受けた `claude_config_dir` が `{HOME}/.claude`
+  - 終了コードが 0
+  test: test_normal_when_config_dir_not_set
 refs:
 - IF-531-6#
 - IF-489-68#

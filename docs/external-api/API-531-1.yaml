@@ -16,7 +16,7 @@ endpoints:
   - name: POST /settings/sources
     method: POST
     path: /settings/sources
-    summary: '配信元の行を 1 行追加する（201）。本文は `{"source": {id, config, scope, outside_read}, "expectedVersion"?}`。同じ `id` の行があれば追加せず、内容が同じか（`same`）を 409 で返す。『ワークスペースの作成』が呼ぶ'
+    summary: '配信元の行を 1 行追加する（201）。本文は `{"source": {id, config, scope, outside_read}, "expectedVersion": 必須}`。`expectedVersion` が無ければ 400（`errors` に `expectedVersion` の `Field required`）。同じ `id` の行があれば追加せず、内容が同じか（`same`）を 409 で返す。『ワークスペースの作成』が呼ぶ'
     status_codes:
       - code: '201'
         condition: 追加した
@@ -24,6 +24,8 @@ endpoints:
         condition: 同じ id の行がある（`same` で内容が同じか）か、`expectedVersion` が古い
       - code: '422'
         condition: 行がスキーマに通らない
+      - code: '400'
+        condition: '`expectedVersion` が無い・本文の構造が違う'
   - name: PATCH /settings/sources/{id}
     method: PATCH
     path: /settings/sources/{id}

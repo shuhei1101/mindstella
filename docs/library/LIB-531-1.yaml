@@ -12,6 +12,9 @@ catalogs:
       - name: claude-balancer exec --client {名前} -- {コマンド}
         kind: コマンド
         purpose: 一番空いているアカウントを借り、そのアカウントでコマンド（`claude`）を実行する。子プロセスが終わるとアカウントを返し、子プロセスの終了コードで終わる。借りられない・`--client` が `clients` に無い・バックエンドへつながらないときは子プロセスを起動せず、理由を標準エラーに書いて 125 で終わる。コマンドが見つからなければ 127。セッションの管理が `--client mindstella` で MindStella のセッションを起動する
+      - name: claude-balancer exec --client {名前} --account {アカウント} -- {コマンド}
+        kind: コマンド
+        purpose: 指定したアカウント（claude-balancer の設定のアカウント名か、設定のフォルダのパス。`~` を展開した絶対パスで照合する）だけを借りてコマンドを実行する。貸せない・設定に無いときはほかのアカウントに切り替えず、子プロセスを起動せずに理由を標準エラーに出力して 125 で終わる。既定の設定のフォルダ（`~/.claude`）のアカウントを貸すときは、子プロセスの環境変数から `CLAUDE_CONFIG_DIR` を除外して起動する。セッションの管理が、アカウントを指定した MindStella のセッションを起動する
 lead: 複数の Claude Code のアカウントから空いているものを貸し、そのアカウントでコマンドを実行する CLI。
 supplier: shuhei1101
 dependency_scope: 任意
@@ -30,4 +33,6 @@ limitations:
     content: '`PATH` に無い端末では、利用者の既定のアカウントで起動する（D-292）'
   - item: クライアント
     content: '`--client` は claude-balancer の設定の `clients` にある名前だけを受ける。MindStella を使う端末では `clients` に `mindstella` を足し、claude-balancer を起動し直す'
+  - item: アカウントの指定
+    content: '`exec --account` は shuhei1101/claude-balancer#346（develop の 353d665a）で入った。それより前の claude-balancer は `--account` を知らない引数として断るため、アカウントを指定した起動は 125 以外で終わり 502（`stage: launch`）になる'
 docs_url: https://github.com/shuhei1101/claude-balancer/tree/develop/docs/interface

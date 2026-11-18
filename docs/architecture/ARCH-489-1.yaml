@@ -179,7 +179,7 @@ external_systems:
   - name: claude-balancer
     purpose: MindStella のセッションの Claude Code のアカウントを貸す。セッションの管理が `claude-balancer exec` で借りる（D-292）
     direction: 送信のみ
-    protocol: CLI（`claude-balancer exec --client mindstella -- claude …`）
+    protocol: CLI（`claude-balancer exec --client mindstella [--account {設定のフォルダ}] -- claude …`。`--account` はアカウントを指定して起動するときだけ付ける）
     detail: LIB-531-1#
     notes:
       事前確認: 要。セッションの管理が起動のたびに `PATH` に `claude-balancer` があるかを確かめ、無ければ利用者の既定のアカウントで起動する。空いたアカウントが無いときは 503 を返す

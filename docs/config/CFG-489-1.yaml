@@ -43,7 +43,7 @@ settings:
     type: str
     required: false
     default: なし（Claude Code の既定の設定のフォルダ）
-    description: あれば起動スクリプトが tmux のセッションへ `new-session -e` で渡し、`claude plugin list --json` もそのフォルダで引く。起動のコマンドは、この値を『MindStella のセッションの作成』の `claude_config_dir` に渡す（claude-balancer が無い端末でだけ使われる）
+    description: あれば起動スクリプトが tmux のセッションへ `new-session -e` で渡し、`claude plugin list --json` もそのフォルダで引く。起動のコマンドは、この値を『MindStella のセッションの作成』の `claude_config_dir` に渡す（claude-balancer がある端末では `exec --account` でそのアカウントを借り、無い端末では MindStella のセッションの `CLAUDE_CONFIG_DIR` になる）
     env_var: CLAUDE_CONFIG_DIR
     reload: restart
     status: implemented

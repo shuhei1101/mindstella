@@ -42,8 +42,8 @@ flows:
         IF->>API: POST /workspaces（folder）
         API-->>IF: id・url
         IF->>API: POST /workspaces/{id}/sessions（claude_config_dir）
-        API-->>IF: session・pane・url
-        IF-->>クライアント: 画面の URL とつなぐコマンド、終了コード 0
+        API-->>IF: session・pane・url・account
+        IF-->>クライアント: 画面の URL と起動したアカウントとつなぐコマンド、終了コード 0
       ```
     expected:
       - 終了コードが 0
@@ -51,6 +51,7 @@ flows:
       - 状態のフォルダの `session.json` の `status` が `running` で、tmux に `{ワークスペースの ID}` のセッションがある
       - '`MINDSTELLA_PORT` の `GET /_admin/status` の `plugin_root` が `installPath`'
       - 標準出力に画面の URL と `tmux attach-session -t ={ワークスペースの ID}` がある
+      - 標準出力に、起動したアカウントとして応答の `account`（`CLAUDE_CONFIG_DIR` に渡した一時フォルダの絶対パス）がある
     test: test_normal
   - name: 正常系（プラグインを上げた後）
     summary: 古い版のフォルダのスクリプトを叩いても、新しい版の常駐サーバーを起動する
