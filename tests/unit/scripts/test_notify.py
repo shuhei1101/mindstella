@@ -359,3 +359,105 @@ def test_notify_if_written_when_not_configured(markers: notify.WriteMarkers) -> 
     assert thread is None
     assert sent == []
     assert markers.take(WORKSPACE_ID) is False
+
+
+@pytest.mark.parametrize(
+    ("reason", "text"),
+    [
+        pytest.param("stop_requested", "停止の依頼", id="stop-requested"),
+        pytest.param("force_stopped", "強制停止", id="force-stopped"),
+        pytest.param("crashed", "異常終了", id="crashed"),
+        pytest.param("stop_failed", "停止処理の失敗", id="stop-failed"),
+        pytest.param("session_ended", "Claude Code の終了", id="session-ended"),
+    ],
+)
+def test_build_stopped_content(reason: notify.StopReason, text: str) -> None:
+    """止まった理由ごとの文言と URL の 2 行（正常系）。"""
+    # 実行
+    result = notify.build_stopped_content("家計簿", reason, PAGE_URL)
+    # 検証
+    assert result == f"家計簿: 停止しました（{text}）\nhttp://127.0.0.1:47800/mindstella.html"
+
+
+def test_build_stopped_content_when_no_url() -> None:
+    """URL が無いときは 1 行（正常系）。"""
+    # 実行
+    result = notify.build_stopped_content("家計簿", "crashed", None)
+    # 検証
+    assert result == "家計簿: 停止しました（異常終了）"
+
+
+def test_build_stopped_content_when_too_long() -> None:
+    """上限を超える名前を切り詰める（正常系）。"""
+    # 準備
+    name = "あ" * 3000
+    # 実行
+    result = notify.build_stopped_content(name, "stop_requested", PAGE_URL)
+    # 検証
+    assert len(result) <= 2000
+    assert result.endswith("…: 停止しました（停止の依頼）\nhttp://127.0.0.1:47800/mindstella.html")
+    assert result.startswith("あ")
+
+
+def test_notify_stopped(webhook_file: Path) -> None:
+    """1 回送信する（正常系）。"""
+    # 準備
+    sent: list[tuple[str, str]] = []
+    described: list[bool] = []
+    # 実行
+    thread = notify.notify_stopped(
+        WORKSPACE_ID,
+        "stop_requested",
+        _recording_describe(described, ("家計簿", "http://127.0.0.1:1/mindstella.html")),
+        environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
+        send=_recording_send(sent),
+    )
+    assert thread is not None
+    thread.join(timeout=5)
+    # 検証
+    assert thread.daemon is True
+    assert sent == [
+        (WEBHOOK_URL, "家計簿: 停止しました（停止の依頼）\nhttp://127.0.0.1:1/mindstella.html")
+    ]
+
+
+def test_notify_stopped_when_not_configured() -> None:
+    """Webhook の設定が無ければ送信しない（正常系）。"""
+    # 準備
+    sent: list[tuple[str, str]] = []
+    described: list[bool] = []
+    # 実行
+    thread = notify.notify_stopped(
+        WORKSPACE_ID,
+        "crashed",
+        _recording_describe(described, ("家計簿", None)),
+        environ={},
+        send=_recording_send(sent),
+    )
+    # 検証
+    assert thread is None
+    assert sent == []
+    assert described == []
+
+
+def test_notify_stopped_when_workspace_missing(webhook_file: Path) -> None:
+    """ワークスペースが見つからなければ送信しない（正常系）。"""
+    # 準備
+    sent: list[tuple[str, str]] = []
+
+    def describe() -> None:
+        """ワークスペースが見つからない。"""
+        return
+
+    # 実行
+    thread = notify.notify_stopped(
+        WORKSPACE_ID,
+        "crashed",
+        describe,
+        environ={"MINDSTELLA_DISCORD_WEBHOOK_FILE": str(webhook_file)},
+        send=_recording_send(sent),
+    )
+    assert thread is not None
+    thread.join(timeout=5)
+    # 検証
+    assert sent == []

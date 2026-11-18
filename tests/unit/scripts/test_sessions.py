@@ -132,6 +132,18 @@ def clock(log: list[Any], monkeypatch: pytest.MonkeyPatch) -> FakeClock:
     return fake
 
 
+@pytest.fixture(autouse=True)
+def stopped_notices(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
+    """停止の通知の代わりにワークスペースの ID と止まった理由を控える。"""
+    notices: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        notify,
+        "notify_stopped",
+        lambda workspace_id, reason, _describe, **_kwargs: notices.append((workspace_id, reason)),
+    )
+    return notices
+
+
 @pytest.fixture
 def folder(tmp_path: Path) -> Path:
     """ワークスペースのフォルダ。"""
@@ -729,3 +741,186 @@ def test_record_event_when_clearing(
     # 検証
     assert notify.MARKERS.take(WORKSPACE_ID) is False
     assert called == []
+
+
+@pytest.mark.parametrize(
+    ("status", "notified"),
+    [
+        pytest.param("running", 1, id="running"),
+        pytest.param("stopping", 0, id="stopping"),
+    ],
+)
+def test_is_alive_when_crashed_from_running(
+    status: str, notified: int, ctx: SimpleNamespace
+) -> None:
+    """running から落ちたときだけ on_crashed を呼ぶ（正常系）。"""
+    # 準備
+    _write_session(ctx, status=status)
+    ctx.tmux.pane_alive = False
+    calls: list[bool] = []
+    # 実行
+    alive = sessions.is_alive(
+        ctx.state_root, WORKSPACE_ID, ctx.tmux, ctx.proc, on_crashed=lambda: calls.append(True)
+    )
+    # 検証
+    assert alive is False
+    assert _session(ctx).status == "crashed"
+    assert len(calls) == notified
+
+
+def _spawn_after(
+    ctx: SimpleNamespace, before_body: Callable[[], None]
+) -> Callable[[Callable[[], None]], None]:
+    """止める処理を同じスレッドで走らせ、走らせる直前に決めた処理を挟む。"""
+
+    def spawn(body: Callable[[], None]) -> None:
+        """挟んでから走らせる。"""
+        before_body()
+        body()
+
+    return spawn
+
+
+def _set_status(ctx: SimpleNamespace, status: str | None) -> Callable[[], None]:
+    """止める間に別の経路が状態を書き換えたことにする関数を作る。"""
+
+    def apply() -> None:
+        """status を書き換える（None なら何もしない）。"""
+        if status is None:
+            return
+        state.update_session(
+            ctx.state_root,
+            WORKSPACE_ID,
+            lambda current: None if current is None else current.replace(status=status),
+        )
+
+    return apply
+
+
+@pytest.mark.parametrize(
+    ("force", "written", "reason"),
+    [
+        pytest.param(False, None, "stop_requested", id="stopping"),
+        pytest.param(False, "stopped", "stop_requested", id="session-end-first"),
+        pytest.param(False, "crashed", "stop_requested", id="listed-while-stopping"),
+        pytest.param(True, None, "force_stopped", id="forced"),
+    ],
+)
+def test_stop_session_when_notifying(
+    force: bool,
+    written: str | None,
+    reason: str,
+    ctx: SimpleNamespace,
+    clock: FakeClock,
+    monkeypatch: pytest.MonkeyPatch,
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """止め終えたときに停止の依頼か強制停止を 1 回通知する（正常系）。"""
+    # 準備
+    monkeypatch.setattr(sessions.os, "kill", lambda _pid, _sig: None)
+    _write_session(ctx)
+    # 実行
+    sessions.stop_session(
+        WORKSPACE_ID, SESSION_ID, force, ctx, spawn=_spawn_after(ctx, _set_status(ctx, written))
+    )
+    # 検証
+    assert _session(ctx).status == "stopped"
+    assert stopped_notices == [(WORKSPACE_ID, reason)]
+
+
+@pytest.mark.parametrize(
+    ("pane_alive", "final_status", "notices"),
+    [
+        pytest.param(False, "crashed", [(WORKSPACE_ID, "stop_failed")], id="crashed"),
+        pytest.param(True, "running", [], id="alive"),
+    ],
+)
+def test_stop_session_when_stop_failed(
+    pane_alive: bool,
+    final_status: str,
+    notices: list[tuple[str, str]],
+    ctx: SimpleNamespace,
+    clock: FakeClock,
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """止める間の失敗で crashed に戻したときだけ停止処理の失敗を通知する（異常系）。"""
+    # 準備
+    _write_session(ctx)
+    ctx.tmux.fail_on_exit_paste = True
+
+    def die() -> None:
+        """止める処理の前にペインの生死を決める。"""
+        ctx.tmux.pane_alive = pane_alive
+
+    # 実行
+    sessions.stop_session(WORKSPACE_ID, SESSION_ID, False, ctx, spawn=_spawn_after(ctx, die))
+    # 検証
+    current = _session(ctx)
+    assert current.status == final_status
+    assert current.last_error is not None
+    assert stopped_notices == notices
+
+
+def test_stop_session_when_crashed_before(
+    ctx: SimpleNamespace, clock: FakeClock, stopped_notices: list[tuple[str, str]]
+) -> None:
+    """落ちていた MindStella のセッションへの停止は異常終了だけを通知する（正常系）。"""
+    # 準備
+    _write_session(ctx)
+    ctx.tmux.pane_alive = False
+    # 実行
+    status, body = sessions.stop_session(
+        WORKSPACE_ID, SESSION_ID, False, ctx, spawn=_spawn(ctx, [])
+    )
+    # 検証
+    assert (status, body) == (200, {"session": SESSION_ID, "status": "stopped"})
+    assert stopped_notices == [(WORKSPACE_ID, "crashed")]
+
+
+@pytest.mark.parametrize(
+    ("status", "reason", "notices"),
+    [
+        pytest.param(
+            "running", "prompt_input_exit", [(WORKSPACE_ID, "session_ended")], id="running"
+        ),
+        pytest.param("stopping", "prompt_input_exit", [], id="stopping"),
+        pytest.param("running", "clear", [], id="clear"),
+    ],
+)
+def test_record_event_when_session_ended(
+    status: str,
+    reason: str,
+    notices: list[tuple[str, str]],
+    ctx: SimpleNamespace,
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """running からの session_end だけ Claude Code の終了を通知する（正常系）。"""
+    # 準備
+    _write_session(ctx, status=status)
+    # 実行
+    sessions.record_event(
+        SESSION_ID, {"event": "session_end", "claude_session_id": "c1", "reason": reason}, ctx
+    )
+    # 検証
+    assert stopped_notices == notices
+
+
+def test_notify_stopped(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+    """ワークスペースの名前と画面の URL を添えて通知を呼ぶ（正常系）。"""
+    # 準備
+    ctx.previews.url_of = lambda _folder: "http://127.0.0.1:9100/mindstella.html"
+    received: list[tuple[str, str, Callable[[], Any]]] = []
+    monkeypatch.setattr(
+        notify,
+        "notify_stopped",
+        lambda workspace_id, reason, describe, **_kwargs: received.append(
+            (workspace_id, reason, describe)
+        ),
+    )
+    # 実行
+    sessions.notify_stopped(ctx, WORKSPACE_ID, "crashed")
+    # 検証
+    assert len(received) == 1
+    workspace_id, reason, describe = received[0]
+    assert (workspace_id, reason) == (WORKSPACE_ID, "crashed")
+    assert describe() == ("家計簿", "http://127.0.0.1:9100/mindstella.html")
