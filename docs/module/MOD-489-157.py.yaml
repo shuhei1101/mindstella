@@ -485,7 +485,7 @@ functions:
         type: int | None
         required: true
         passing: keyword
-        description: '`changes.yaml` の `read_seq`（無ければ `None`）'
+        description: '前回参照した時点（`load_changes` が入れた `read_seq`。『前回参照した時点』の値で、無ければ `changes.yaml` の前のバージョンの値。どちらも無ければ `None`）'
     returns:
       type: dict[str, Any]
       description: 新しい履歴の行。`limit` が 0 なら `history` のキーを持たない

@@ -742,7 +742,7 @@ functions:
          - 前の `body` があり新しい `body` と名前が違う（形式を替えた）場合、前の名前を `removed_bodies` に足す（同じ名前が `bodies` にあればそこから外す）。新しい名前が `removed_bodies` にあれば外す
          - `changed` には、`body` の名前が変わったとき `body` を、本文の中身が変わったとき渡したキー（`body_markdown` か `body_html`）を入れる
       3. 書き換える前の本文（`staged.bodies` にあればそれ、無ければ `read_body`）と比べて変更履歴の 1 回分を作る（`make_entry`。`seq` は `last_seq` + 1、`by` は `editor`）
-         - 変わったものがある場合、通し番号を振り（`advance_seq`）、`staged.history` の行の `seq` をその番号にして、行に変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は記録のもの）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
+         - 変わったものがある場合、通し番号を振り（`advance_seq`）、`staged.history` の行の `seq` をその番号にして、行に変更履歴を積む（`history_limit`、`stack_history`。`read_seq` は `load_changes` が入れた前回参照した時点）。保持する回数が 0 より大きければ、まだまとめていない変更の `changed` に ID を足す（`note_pending`）
       4. その位置を差し替えた並びと、`touched` にその種類を足した `Staged` を返す
     exceptions:
       - name: ItemNotFoundError
