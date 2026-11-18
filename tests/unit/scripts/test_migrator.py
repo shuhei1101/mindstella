@@ -584,6 +584,8 @@ def test_migrate_when_same(
     """版が同じなら何も書かない（正常系）。"""
     # 準備
     root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    # 作成で置かれる、プラグインと同じ中身のスキーマの複製を持たせる
+    _place_schema_copies(root, None)
     patch_plugin_version(V0140)
     before = snapshot_tree(root)
     # 実行
@@ -635,12 +637,15 @@ def test_migrate_when_not_carried(
     ]
 
 
-def _place_schema_copies(root: Path, stale: str) -> Path:
-    """プラグインのスキーマを `.mindstella/schemas/` に複製し、stale のファイルだけ別の中身にして、その場所を返す。"""
+def _place_schema_copies(root: Path, stale: str | None) -> Path:
+    """プラグインのスキーマを `.mindstella/schemas/` に複製し、stale のファイルがあればそれだけ別の中身にして、その場所を返す。"""
     copies = root / RECORD_DIR / "schemas"
     copies.mkdir(parents=True, exist_ok=True)
     for name in store.source_schema_files():
         shutil.copyfile(store.SCHEMA_DIR / name, copies / name)
+    # 別の中身にするファイルが無い: プラグインと同じ複製のまま
+    if stale is None:
+        return copies
     (copies / stale).write_text("{}\n", encoding="utf-8")
     return copies
 
