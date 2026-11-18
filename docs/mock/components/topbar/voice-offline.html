@@ -59,12 +59,12 @@
         const recording = !v.classList.contains("transcribing");
         const tips = [
           [".conn", "サーバーにつながりません（2026/11/18 02:21 に読んだ記録）", "start"],
-          [".search-trigger", "すべての項目を検索（Ctrl+K）", "start"],
+          [".search-trigger", "すべての項目を検索", "start"],
           [".hist-btn", "変更履歴", "start"],
           [".settings-btn", "表示の設定", "end"],
           [".filter-btn", "絞り込み", "end"],
           [".pending-btn", "保存待ち（5 件）", "end"],
-          [".voice-btn", recording ? "音声入力中（0:12）: D-022 へのコメント" : "文字起こし中: D-022 へのコメント", "end"],
+          [".voice-btn", recording ? "音声入力中: D-022 へのコメント" : "文字起こし中: D-022 へのコメント", "end"],
           [".comments-btn", "コメント（レビュー中 0 件）", "end"],
         ];
         for (const [sel, text, side] of tips) {

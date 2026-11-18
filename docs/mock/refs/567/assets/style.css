@@ -21,11 +21,15 @@
 /* 案 E: 幅に関わらず、トップバーの状態の表示とボタンの文字を出さず、アイコン（と件数）だけにする。名前と状態はツールチップと読み上げに持つ */
 /* 文字を見た目からだけ外す: 読み上げには残す */
 .topbar.fit-e :is(.search-trigger .label, .conn .conn-long, .settings-btn .label, .filter-btn .label, .pending-btn .label, .comments-btn .label, .hist-btn .label, .voice-btn .label) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-/* キーの案内と短い文言・経過時間は出さない（ツールチップに持つ） */
-.topbar.fit-e :is(.search-trigger kbd, .conn .conn-short, .voice-btn .vb-time) { display: none; }
+/* つながらない表示の短い文言は出さない（ツールチップに持つ）。検索の入口のキーの案内と、音声入力中の経過時間は見せたまま残す */
+.topbar.fit-e .conn .conn-short { display: none; }
+/* 音声入力中の経過時間: 幅 480px 以下でも隠さない */
+.topbar.fit-e .voice-btn .vb-time { display: inline; }
 /* 幅 901px 以上: 検索の入口と変更履歴はほかのアイコンだけのボタンと同じ 32px の四角、ほかのボタンは文字の分の余白を詰める（幅 900px 以下は今の狭い幅の作りのまま） */
 @media (min-width: 901px) {
-  .topbar.fit-e :is(.search-trigger, .hist-btn) { flex: none; min-width: 0; width: 32px; padding: 0; justify-content: center; }
+  .topbar.fit-e .hist-btn { flex: none; min-width: 0; width: 32px; padding: 0; justify-content: center; }
+  /* 検索の入口: 虫眼鏡とキーの案内だけを並べる */
+  .topbar.fit-e .search-trigger { flex: none; min-width: 0; width: auto; padding: 0 6px 0 8px; gap: 6px; }
   .topbar.fit-e :is(.settings-btn, .filter-btn, .pending-btn, .comments-btn, .voice-btn) { padding: 0 8px; gap: 4px; }
 }
 /* つながらない表示: アイコンだけ。幅 901px 以上はボタンと同じ 32px の的にしてツールチップを出しやすくする（幅 900px 以下は今の作りのまま） */
@@ -40,3 +44,5 @@
 .topbar.fit-e [data-tip]:is(:hover, :focus-visible, .is-tip) .tb-tip { display: block; }
 /* フォーカスを残したまま別の要素にホバーしている間は、フォーカスの側のツールチップを出さず、2 つ重ねない */
 .topbar.fit-e:hover [data-tip]:focus-visible:not(:hover) .tb-tip { display: none; }
+/* 幅 360px 以下でつながらない表示と録音中の経過時間が並ぶ間: 差分の札を出すときと同じく押せない飾りのツール名の印を隠し、要素の間隔を 1px、左右の余白を 8px に詰める */
+@media (max-width: 360px) { .topbar.fit-e:has(.conn):has(.voice-btn) { gap: 1px; padding: 0 8px; } .topbar.fit-e:has(.conn):has(.voice-btn) .brand { display: none; } }
