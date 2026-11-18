@@ -82,20 +82,18 @@ def _card_ids(page) -> list[str]:
 
 
 def test_cards(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """納品物を先頭に印付きで並べ、資料の状態を出し、押すと詳細を開く（正常系）。"""
+    """連番の順に並べ、資料の状態を出し、納品物の印を出さず、押すと詳細を開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs")
     # 実行
     ids = _card_ids(page)
-    badge_cards = page.eval_on_selector_all(
-        ".doc-card:has(.deliv-badge)", "cards => cards.map(c => c.dataset.id)"
-    )
+    badges = page.locator(".doc-card .deliv-badge").count()
     statuses = page.eval_on_selector_all(".doc-card .st", "marks => marks.map(m => m.dataset.st)")
     page.click('.doc-card[data-id="A-2"]')
     # 検証
     assert ids == ["A-1", "A-2"]
-    assert badge_cards == ["A-1"]
+    assert badges == 0
     assert statuses == ["完成", "下書き"]
     page.wait_for_selector("aside.panel.open")
     assert page.inner_text("aside.panel .d-title") == "A-2の題"
@@ -149,14 +147,14 @@ def test_card_filter(write_sample_preview: WriteSamplePreview, open_preview: Ope
     toolbar_buttons = page.locator('.toolbar [aria-label="絞り込み"]').count()
     # 実行
     open_drawer(page)
-    click_value(page, "deliverable", "納品物以外")
+    click_value(page, "kind", "図")
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 1")
     selected = (_card_ids(page), badge_text(page), chip_texts(page))
-    page.click(f"{DRAWER} button[aria-label='納品物の条件を解除']")
+    page.click(f"{DRAWER} button[aria-label='種類の条件を解除']")
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 2")
     # 検証
     assert toolbar_buttons == 0
-    assert selected == (["A-2"], "1", ["納品物: 納品物以外"])
+    assert selected == (["A-2"], "1", ["種類: 図"])
     assert _card_ids(page) == ["A-1", "A-2"]
     assert page.locator(".chips .chip").count() == 0
     assert page.locator(".pop").count() == 0
@@ -168,7 +166,7 @@ def test_card_filter_clear_all(
     """条件が 2 つあるとき、ドロワーの「すべて解除」で全ての条件を解除し、バッジを外す（正常系）。"""
     # 準備
     url = write_sample_preview()
-    page = open_preview(url, "#tab=docs&f.deliverable=納品物&f.status=完成")
+    page = open_preview(url, "#tab=docs&f.kind=文書&f.status=完成")
     assert _card_ids(page) == ["A-1"]
     assert badge_text(page) == "2"
     # 実行
@@ -180,7 +178,7 @@ def test_card_filter_clear_all(
 
 
 def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """ドロワーは、種類・状態・納品物（納品物 → 納品物以外の順）・形式を並べ、何も選んでいない状態で開く（正常系）。"""
+    """ドロワーは、種類・状態・形式を並べ、何も選んでいない状態で開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=docs")
@@ -188,9 +186,8 @@ def test_drawer(write_sample_preview: WriteSamplePreview, open_preview: OpenPrev
     open_drawer(page)
     groups = {group["label"]: group for group in drawer_groups(page)}
     # 検証
-    assert list(groups) == ["種類", "状態", "納品物", "形式"]
+    assert list(groups) == ["種類", "状態", "形式"]
     assert groups["状態"]["values"] == [["下書き", 1, False], ["完成", 1, False]]
-    assert groups["納品物"]["values"] == [["納品物", 1, False], ["納品物以外", 1, False]]
     assert groups["形式"]["values"] == [["MD", 2, False]]
     assert badge_text(page) is None
     assert page.is_visible(FILTER_BUTTON)
@@ -234,16 +231,14 @@ def test_board(write_sample_preview: WriteSamplePreview, open_preview: OpenPrevi
     # 実行
     columns = _board_columns(page)
     marks = page.locator(".board .doc-card .st").count()
-    badge_cards = page.eval_on_selector_all(
-        ".board .doc-card:has(.deliv-badge)", "cards => cards.map(c => c.dataset.id)"
-    )
+    badges = page.locator(".board .doc-card .deliv-badge").count()
     # 検証
     assert columns == [["下書き", "1", ["A-2"]], ["確認中", "0", []], ["完成", "1", ["A-1"]]]
     assert (
         page.locator(".board section.board-col").nth(1).inner_text().endswith("資料はありません。")
     )
     assert marks == 0
-    assert badge_cards == ["A-1"]
+    assert badges == 0
 
 
 def test_board_order(
@@ -252,14 +247,14 @@ def test_board_order(
     make_item: MakeItem,
     sample_settings: dict[str, Any],
 ) -> None:
-    """列の中は納品物を先頭に連番の順に並べる（正常系）。"""
+    """列の中は連番の順に並べる（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("A-1", deliverable=False, status="完成", kind="文書"),
-        make_item("A-2", deliverable=False, status="完成", kind="文書"),
-        make_item("A-3", deliverable=True, status="完成", kind="文書"),
-        make_item("A-4", deliverable=True, status="下書き", kind="文書"),
-        make_item("A-5", deliverable=False, status="下書き", kind="文書"),
+        make_item("A-3", status="完成", kind="文書"),
+        make_item("A-1", status="完成", kind="文書"),
+        make_item("A-2", status="完成", kind="文書"),
+        make_item("A-5", status="下書き", kind="文書"),
+        make_item("A-4", status="下書き", kind="文書"),
         settings=sample_settings,
     )
     page = open_preview(url, "#tab=docs&view=board")
@@ -269,7 +264,7 @@ def test_board_order(
     assert columns == [
         ["下書き", "2", ["A-4", "A-5"]],
         ["確認中", "0", []],
-        ["完成", "3", ["A-3", "A-1", "A-2"]],
+        ["完成", "3", ["A-1", "A-2", "A-3"]],
     ]
 
 
@@ -298,7 +293,7 @@ def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: Op
     page = open_preview(url, "#tab=docs&view=board")
     # 実行
     open_drawer(page)
-    click_value(page, "deliverable", "納品物以外")
+    click_value(page, "kind", "図")
     page.wait_for_function("document.querySelectorAll('.board .doc-card').length === 1")
     # 検証
     assert _board_columns(page) == [
@@ -306,9 +301,9 @@ def test_board_filter(write_sample_preview: WriteSamplePreview, open_preview: Op
         ["確認中", "0", []],
         ["完成", "0", []],
     ]
-    assert chip_texts(page) == ["納品物: 納品物以外"]
+    assert chip_texts(page) == ["種類: 図"]
     # 条件の「解除」で全ての列のカードが戻る
-    page.click(f"{DRAWER} button[aria-label='納品物の条件を解除']")
+    page.click(f"{DRAWER} button[aria-label='種類の条件を解除']")
     page.wait_for_function("document.querySelectorAll('.board .doc-card').length === 2")
     assert _board_columns(page) == [
         ["下書き", "1", ["A-2"]],
@@ -599,7 +594,7 @@ def test_chips(
     url = write_sample_preview()
     page = open_preview(url, f"#tab=docs&view={view}")
     open_drawer(page)
-    click_value(page, "deliverable", "納品物以外")
+    click_value(page, "kind", "図")
     click_value(page, "status", "下書き")
     close_drawer(page)
     # 実行
@@ -607,20 +602,20 @@ def test_chips(
     below_toolbar = page.evaluate(
         "document.querySelector('.screen.docs .toolbar').nextElementSibling.classList.contains('chips')"
     )
-    remove_chip(page, "納品物: 納品物以外")
+    remove_chip(page, "種類: 図")
     page.wait_for_function("document.querySelectorAll('.chips .chip').length === 1")
     after_remove = (chip_texts(page), badge_text(page), len(_card_ids(page)))
     clear_all_chips(page)
     page.wait_for_function("document.querySelectorAll('.chips .chip').length === 0")
     page.wait_for_function("document.querySelectorAll('.doc-card').length === 2")
     # 検証
-    assert chips == ["納品物: 納品物以外", "状態: 下書き"]
+    assert chips == ["種類: 図", "状態: 下書き"]
     assert below_toolbar is True
     assert after_remove == (["状態: 下書き"], "1", 1)
     assert badge_text(page) is None
     # チップを外すとドロワーの選びも外れる
     open_drawer(page)
-    assert checked_values(page, "deliverable") == []
+    assert checked_values(page, "kind") == []
     assert checked_values(page, "status") == []
 
 
