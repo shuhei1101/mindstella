@@ -82,7 +82,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella -- claude ...`、無ければ `claude ...`）。`--mcp-config`・`--plugin-dir`・`--append-system-prompt` を足す
+    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella [--account {claude_config_dir}] -- claude ...`、無ければ `claude ...`）。`--account` は claude-balancer があり `claude_config_dir` があるときだけ付ける。`--mcp-config`・`--plugin-dir`・`--append-system-prompt` を足す
     args:
       - name: options
         type: LaunchOptions | None
@@ -104,6 +104,11 @@ functions:
         required: true
         passing: positional
         description: '`claude-balancer` のパス（`shutil.which`）'
+      - name: claude_config_dir
+        type: str | None
+        required: true
+        passing: positional
+        description: 依頼の `claude_config_dir`（claude-balancer の `--account` に渡す）
     returns:
       type: list[str]
       description: コマンドの引数の並び
@@ -111,9 +116,9 @@ functions:
       - name: test_build_command
         case: 正常
         summary: claude-balancer の有無と指定で並びが変わる
-        condition: '`parametrize`: balancer あり・指定あり / balancer 無し・指定が空 / 記録無し（`None`）'
+        condition: '`parametrize`: balancer あり・指定あり / balancer 無し・指定が空 / 記録無し（`None`） / balancer あり・`claude_config_dir` が `/c` / balancer 無し・`claude_config_dir` が `/c`'
         mock: なし
-        expected: '`[balancer, exec, --client, mindstella, --, claude, --mcp-config, f, --plugin-dir, p, --append-system-prompt, s]` / `[claude, --append-system-prompt, s]` / 同じく指定なし'
+        expected: '`[balancer, exec, --client, mindstella, --, claude, --mcp-config, f, --plugin-dir, p, --append-system-prompt, s]` / `[claude, --append-system-prompt, s]` / 同じく指定なし / `[balancer, exec, --client, mindstella, --account, /c, --, claude, --append-system-prompt, s]` / `[claude, --append-system-prompt, s]`（`--account` を付けない）'
   - name: build_env
     title: 渡す環境変数を組み立てる
     kind: 関数
@@ -240,7 +245,7 @@ functions:
         description: 状態のフォルダ・鍵・ポート・プラグインのフォルダ
     returns:
       type: tuple[int, dict]
-      description: '`(201, {session, pane, url})`'
+      description: '`(201, {session, pane, url, account})`。`account` は SessionStart のフックが `session.json` に入れた `claude_config_dir`'
     exceptions:
       - name: ApiError
         condition: 404・409・502・503・504
@@ -248,9 +253,9 @@ functions:
       - name: test_create_session
         case: 正常
         summary: 登録が入れば 201 と最初の入力
-        condition: '`TmuxRunner` の偽。0.5 秒後に `session.json` の `claude_session_id` を入れる'
+        condition: '`TmuxRunner` の偽。0.5 秒後に `session.json` の `claude_session_id` と `claude_config_dir`（`/c`）を入れる'
         mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
-        expected: '`(201, ...)`。tmux の呼び出しが `has-session` → `new-session` → `set-option remain-on-exit on` → `respawn-pane -k ... -e MINDSTELLA_SESSION=...` → 登録の後の `set-option remain-on-exit off` → 最初の入力の貼り付けの順'
+        expected: '`(201, {..., account: /c})`。tmux の呼び出しが `has-session` → `new-session` → `set-option remain-on-exit on` → `respawn-pane -k ... -e MINDSTELLA_SESSION=...` → 登録の後の `set-option remain-on-exit off` → 最初の入力の貼り付けの順'
       - name: test_create_session_stale
         case: 正常
         summary: 止まった・落ちた後に残った tmux のセッションを閉じてから作る
@@ -418,7 +423,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket` も入れる）。記録した後に、`prompt_submit`・`stop_failure`・`session_end` では書き込みのマーカーを解除し（`notify.clear_written`）、`stop` では作業の完了を通知する（`notify.notify_if_written`。名前と画面の URL は、`workspaces.find_workspace_row` のフォルダの `config.yaml` の `summary`（空ならフォルダの名前）と `ctx.previews.url_of` をスレッドの中で参照する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket`・`claude_config_dir` も入れる）。記録した後に、`prompt_submit`・`stop_failure`・`session_end` では書き込みのマーカーを解除し（`notify.clear_written`）、`stop` では作業の完了を通知する（`notify.notify_if_written`。名前と画面の URL は、`workspaces.find_workspace_row` のフォルダの `config.yaml` の `summary`（空ならフォルダの名前）と `ctx.previews.url_of` をスレッドの中で参照する）。`session_end` が書き換える前の `running` から `stopped` にしたときだけ `notify_stopped` を `session_ended` で呼ぶ
     side_effects: '`session.json` を書く。書き込みのマーカーを解除する。`stop` では通知のスレッドを起動することがある'
     args:
       - name: session_id
@@ -445,7 +450,7 @@ functions:
         summary: 出来事ごとの書き換え
         condition: '`parametrize`: `session_start`（`source: startup`・`clear`・`fork`）/ `session_end`（`reason: clear`・`logout`）/ `prompt_submit` / `stop_failure`'
         mock: なし
-        expected: '`claude_session_id` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽'
+        expected: '`claude_session_id`・`claude_config_dir` を入れる・入れ直す / `running` のまま・`stopped` / `responding` 真 / 偽'
       - name: test_record_event_unknown
         case: 正常
         summary: 知らない MindStella のセッションは記録しない

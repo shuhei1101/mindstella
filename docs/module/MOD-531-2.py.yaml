@@ -63,7 +63,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/project_index.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`POST /settings/sources` に `{source: row}` を送る。201 なら `added`、409 で `result: exists` なら `same` を見て `exists_same`・`exists_different` を返す'
+    summary: '`get_settings` で `version` を取得し、`POST /settings/sources` に `{source: row, expectedVersion: version}` を送信する。201 なら `added`、409 で `result: exists` なら `same` を見て `exists_same`・`exists_different` を返す。409 でそれ以外（内容のバージョンの不一致）なら 1 回だけ `version` を取得し直して再送信する'
     args:
       - name: port
         type: int
@@ -80,20 +80,32 @@ functions:
       description: 追加の結果
     exceptions:
       - name: ProjectIndexError
-        condition: 201・409 のほか、またはつながらない
+        condition: 201・409 のほか、内容のバージョンの不一致の 409 が 2 回、またはつながらない
     unit_tests:
       - name: test_add_source
         case: 正常
         summary: 201・409 の same で結果を分ける
         condition: '`parametrize`: 201 / 409 `{result: exists, same: true}` / 409 `{result: exists, same: false}`'
         mock: テストの HTTP のサーバー
-        expected: '`added` / `exists_same` / `exists_different`。送った本文が `{source: row}`'
+        expected: '`added` / `exists_same` / `exists_different`。送った本文が `{source: row, expectedVersion: {GET /settings/sources の version}}`'
       - name: test_add_source_error
         case: 異常
         summary: 422・500 とつながらないときは ProjectIndexError
         condition: 422 / 500 / 待ち受けていないポート
         mock: テストの HTTP のサーバー
         expected: '`ProjectIndexError`'
+      - name: test_add_source_version_conflict
+        case: 正常
+        summary: 内容のバージョンの不一致は 1 回だけ取得し直して再送信する
+        condition: 1 回目の POST が `result` を持たない 409、2 回目が 201
+        mock: テストの HTTP のサーバー
+        expected: '`added`。GET が 2 回、POST が 2 回で、2 回目の `expectedVersion` が取得し直した `version`'
+      - name: test_add_source_version_conflict_twice
+        case: 異常
+        summary: 内容のバージョンの不一致が 2 回続けば ProjectIndexError
+        condition: POST が 2 回とも `result` を持たない 409
+        mock: テストの HTTP のサーバー
+        expected: '`ProjectIndexError`（`status` が 409）'
   - name: patch_source
     title: 配信元の行を変える
     kind: 関数
@@ -271,5 +283,5 @@ notes:
 
     | イベント名 | 水準 | いつ | 属性 |
     | --- | --- | --- | --- |
-    | `mindstella.project_index.version_conflict` | WARN | `patch_source` が 409 を受けて版を引き直した | 配信元の ID |
+    | `mindstella.project_index.version_conflict` | WARN | `add_source`・`patch_source` が内容のバージョンの不一致の 409 を受けて `version` を取得し直した | 配信元の ID |
     | `mindstella.project_index.request_failed` | WARN | `ProjectIndexError` を送る（呼び出し元が 502 にするときは呼び出し元が ERROR を書くので、ここでは段階を残すだけ） | メソッド・パス・ステータス・理由 |

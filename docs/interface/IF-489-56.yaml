@@ -51,7 +51,7 @@ flows:
       - 状態のフォルダの `session.json` の `status` が `running` で、tmux に `{ワークスペースの ID}` のセッションがある
       - '`MINDSTELLA_PORT` の `GET /_admin/status` の `plugin_root` が `installPath`'
       - 標準出力に画面の URL と `tmux attach-session -t ={ワークスペースの ID}` がある
-      - 標準出力に、起動したアカウントとして応答の `account`（`CLAUDE_CONFIG_DIR` に渡した一時フォルダの絶対パス）がある
+      - 標準エラーに、起動したアカウントとして応答の `account`（`CLAUDE_CONFIG_DIR` に渡した一時フォルダの絶対パス）がある
     test: test_normal
   - name: 正常系（プラグインを上げた後）
     summary: 古い版のフォルダのスクリプトを叩いても、新しい版の常駐サーバーを起動する
