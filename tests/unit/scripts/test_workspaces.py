@@ -338,7 +338,7 @@ def test_create_workspace_moved(
     # 検証
     assert (status, body["id"], body["result"]) == (200, workspace_id, "opened")
     assert fake_pi.patched == [(workspace_id, _moved_changes(after))]
-    assert len(fake_pi.added) == 1
+    assert [row["id"] for row in fake_pi.added] == [workspace_id, workspaces.AGENT_FLOWS_SOURCE]
 
 
 def test_create_workspace_moved_closed(
@@ -378,7 +378,10 @@ def test_create_workspace_duplicate(
     assert (caught.value.status, caught.value.stage) == (409, "duplicate")
     assert str(original.resolve()) in caught.value.detail
     assert fake_pi.patched == []
-    assert len(fake_pi.added) == 1
+    assert [row["id"] for row in fake_pi.added] == [
+        workspaces.workspace_id_for(original.resolve()),
+        workspaces.AGENT_FLOWS_SOURCE,
+    ]
 
 
 def test_create_workspace_moved_patch_failed(
