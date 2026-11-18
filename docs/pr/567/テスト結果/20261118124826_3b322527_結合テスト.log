@@ -1,0 +1,20 @@
+$ pytest tests/integration/storybook/test_topbar_stories.py tests/integration/preview/test_topbar_screen.py::test_settings_button tests/integration/preview/test_open_preview.py::test_error_when_server_unreachable tests/integration/preview/test_detail_panel_screen.py::test_voice_input_reviewed_after_moving
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-preview-topbar-voice-offline-fit
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 293 items
+
+tests/integration/storybook/test_topbar_stories.py ..................... [  7%]
+.....................................................                    [ 25%]
+tests/integration/preview/test_topbar_screen.py .                        [ 25%]
+tests/integration/preview/test_open_preview.py .                         [ 25%]
+tests/integration/preview/test_detail_panel_screen.py .                  [ 26%]
+tests/integration/storybook/test_topbar_stories.py ..................... [ 33%]
+........................................................................ [ 58%]
+........................................................................ [ 82%]
+...................................................                      [100%]
+
+======================= 293 passed in 224.71s (0:03:44) ========================
+exit=0

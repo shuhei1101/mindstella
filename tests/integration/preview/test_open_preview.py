@@ -203,7 +203,7 @@ SEND_MESSAGE = "aside.panel form.send .send-msg"
 SEND_BUTTON = "aside.panel form.send button[type=submit]"
 CONNECTION = "header.topbar .conn"
 
-# サーバーにつながらないとき、接続の状態の全文が出る幅（幅 1440px 以下は短い文言になる）
+# 広い幅（幅 1440px 以下で接続の状態を短い文言にしていたときの区切りより広い）
 WIDE_SIZE = {"width": 1441, "height": 900}
 
 # 変更履歴のモーダルと検索のダイアログ・差分の札・札の × のボタン
@@ -707,7 +707,7 @@ def test_error_when_server_unreachable(
     page.click(SEND_BUTTON)
     page.wait_for_selector(f"{SEND_MESSAGE}.failed", timeout=UPDATE_TIMEOUT_MS)
     # 検証
-    connection = page.inner_text(CONNECTION)
+    connection = page.text_content(f"{CONNECTION} .tb-tip") or ""
     assert "サーバーにつながりません" in connection
     assert "に読んだ記録" in connection
     assert _row_ids(page) == ["D-1", "D-3"]

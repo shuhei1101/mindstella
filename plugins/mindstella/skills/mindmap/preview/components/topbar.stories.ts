@@ -1,7 +1,7 @@
 // トップバーのストーリー（部品設計『トップバー』の状態）。
 
 import type { Meta, StoryObj } from "@storybook/html-vite";
-import { fn } from "storybook/test";
+import { fn, userEvent } from "storybook/test";
 
 const meta = {
   title: "Preview/Topbar",
@@ -547,13 +547,13 @@ export const PendingFitNarrowest: Story = {
   ...fitViewport,
 };
 
-/** 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・「音声入力中」・経過の時間のボタンを出す */
+/** 録音中。コメントのボタンの左隣に、失敗の色の枠・マイクのアイコン・経過の時間のボタンを出す（「音声入力中」は読み上げとツールチップ） */
 export const VoiceRecording: Story = { args: { comments: true, commentCount: 3, voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 }, onVoice: fn() } };
 
-/** 文字起こし中。アイコンを回る印に替え、「文字起こし中」にして、枠をトップバーの線の色にする */
+/** 文字起こし中。アイコンを回る印に替え、枠をトップバーの線の色にする（「文字起こし中」は読み上げとツールチップ） */
 export const VoiceTranscribing: Story = { args: { comments: true, commentCount: 3, voice: { state: "transcribing", label: "D-022 へのコメント", elapsed: 0 }, onVoice: fn() } };
 
-/** 幅 390px の録音中。マイクのアイコンだけのボタンにし、名前は読み上げとツールチップに持つ */
+/** 幅 390px の録音中。マイクのアイコンと経過の時間のボタンにし、名前は読み上げとツールチップに持つ */
 export const VoiceRecordingNarrow: Story = {
   args: { comments: true, commentCount: 3, voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 }, onVoice: fn() },
   parameters: {
@@ -595,4 +595,56 @@ export const StaleWithVoiceNotice: Story = { args: { comments: true, commentCoun
 /** 重なった ID の通知を出している。タブの帯の下に帯を出し、本文を下げる */
 export const DuplicateIds: Story = {
   args: { duplicateIds: [{ id: "D-12", kind: "検討事項" }], onOpenDuplicate: fn(), onCloseDuplicate: fn() },
+};
+
+/** 録音中にサーバーとの接続が切れ、保存待ち・絞り込み・表示の設定・コメント・変更履歴のボタンも並ぶ。接続の状態は印だけ、音声入力中の表示はマイクと経過の時間だけで、どの幅でもトップバーもページも横にはみ出さない */
+export const VoiceRecordingOffline: Story = {
+  args: {
+    connection: "offline",
+    readAt: "2026-10-04T02:21:00+00:00",
+    voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 },
+    onVoice: fn(),
+    pending: true,
+    pendingCount: 5,
+    onPending: fn(),
+    filter: true,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 0,
+    onHistory: fn(),
+  },
+};
+
+/** サーバーにつながり、録音中の表示と保存待ち・絞り込み・表示の設定・コメント・変更履歴のボタンが並ぶ。どの幅でもトップバーもページも横にはみ出さない */
+export const VoiceRecordingCrowded: Story = {
+  args: {
+    voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 },
+    onVoice: fn(),
+    pending: true,
+    pendingCount: 5,
+    onPending: fn(),
+    filter: true,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 0,
+    onHistory: fn(),
+  },
+};
+
+/** アイコンだけのボタンにキーボードでフォーカスしている。ボタンの下に名前と状態のツールチップを出し、右寄りのボタンは右端を揃えて画面の内側に収める */
+export const TooltipOnFocus: Story = {
+  args: {
+    voice: { state: "recording", label: "D-022 へのコメント", elapsed: 12 },
+    onVoice: fn(),
+    filter: true,
+    onFilter: fn(),
+    comments: true,
+    commentCount: 3,
+    onComments: fn(),
+  },
+  // キーボードでフォーカスを移した状態にする（`:focus-visible` を効かせる）
+  play: async ({ canvasElement }) => {
+    const voice = canvasElement.querySelector<HTMLElement>('[data-act="voice"]');
+    while (voice !== null && document.activeElement !== voice) await userEvent.tab();
+  },
 };
