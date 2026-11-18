@@ -150,6 +150,37 @@ scenarios:
       - 開いてから操作を終えるまでに、ブラウザが外へ出した要求が 0 件
       - どの画面にも、読めなかったライブラリの知らせが出ない
     test: test_normal_when_map_exported_with_pinned_mdmark
+  - name: 正常シナリオ（埋め込んだファイルを持つ資料を配る）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。MCP サーバーを立て、配る書き出しのツールを MCP のクライアントで呼ぶ（描画のライブラリは jsDelivr から取る）。ブラウザは外への通信を全て止めて、書き出した HTML を開く
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1
+        notes: 本文に `![動画](../files/clip.mp4)` と `![画面](../files/shot.png)` を持ち、両方を `.mindstella/files/` に配置する
+      - name: 書き出す先
+        description: ワークスペースの外の一時フォルダの中のパス
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant CC as MindStella のセッション
+        participant SV as サーバー
+        participant WS as ワークスペース
+        participant P as 配る書き出し（通信を止めたブラウザ）
+
+        CC->>SV: 配る書き出し
+        SV->>WS: 全ての YAML と docs/ と本文が指すファイルを読む
+        SV-->>CC: 書き出したファイルのパスと、動画をコピーしたフォルダのパス
+        U->>P: 書き出したファイルを開き、A-1 の詳細パネルで動画を再生する
+        P-->>U: 画像と、再生される動画
+      ```
+    expected:
+      - 書き出した HTML の隣に `{HTML の名前}_files/clip.mp4` がある
+      - A-1 の詳細パネルで画像が表示され、動画を再生できる
+      - 開いてから操作を終えるまでに、ブラウザがページ自身・`_files/` の下のファイル・`data:` のほかへ出した要求が 0 件
+    test: test_normal_when_embedded_files_exported
 lead: 利用者が、記録を見るだけの 1 枚の HTML（配る書き出し）に書き出してもらい、ネットにつながらない端末のブラウザで開いて読む単一ユースケース。
 issue: 19
 test_file: tests/e2e/単一ユースケース/test_preview_export.py

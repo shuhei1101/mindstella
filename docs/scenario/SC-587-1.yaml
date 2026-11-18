@@ -1,0 +1,115 @@
+id: SC-587-1
+title: 動画などのファイルを配置して資料に埋め込む
+lead: MindStella のセッションか利用者が、動画・音声・画像のファイルをワークスペースのファイルのフォルダ `.mindstella/files/` に配置し、資料の本文に mdmark の `![キャプション](../files/{名前})` で埋め込み、利用者がサーバーが配るプレビューの詳細パネルで動画・音声を再生し、画像を確認する単一ユースケース。
+issue: 519
+test_file: tests/e2e/単一ユースケース/test_embed_files.py
+primary_actor: MindStella のセッション
+stakeholders:
+  - name: 利用者
+    interest: 話し合いで作った動画を、資料を開いたその場で再生して確認できる
+  - name: 外部のアプリ（aituber）
+    interest: 動画作成ノードが書き出した mp4 を、配置と資料への記載だけで利用者に見せられる
+trigger: MindStella のセッションが動画などのファイルを作った、または利用者がファイルを資料に掲載したい
+preconditions:
+  - ワークスペースが作成済みである
+  - サーバーが記録を配っている
+success_guarantee: 資料の本文が `../files/{名前}` で指すファイルを、プレビューの詳細パネルと詳細の全画面で再生・表示できる。ファイルの配置は項目の変更として記録されない。
+minimal_guarantee: ファイルのフォルダの外のファイルは、プレビューの配信から返却されない。ファイルが無いときも本文のほかの部分は描かれる。
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: ファイル
+        description: 数秒の mp4 の動画・mp3 の音声・png の画像
+        notes: '`.mindstella/files/clip.mp4`・`.mindstella/files/voice.mp3`・`.mindstella/files/shot.png` に配置する'
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1
+        notes: 本文に `![完成した動画](../files/clip.mp4)`・`![読み上げ](../files/voice.mp3)`・`![画面](../files/shot.png)` を持つ
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant WS as ワークスペース
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        CC->>WS: ファイルをファイルのフォルダに配置する
+        CC->>WS: 資料 A-1 の本文に ![キャプション](../files/{名前}) を記載する
+        U->>P: 資料のカードで A-1 を押す
+        P->>SV: 本文が指すファイルを要求する
+        SV-->>P: ファイルのフォルダの中のファイル
+        P-->>U: 再生バーを持つ動画・音声と画像を、キャプションつきで描いた詳細パネル
+        U->>P: 動画の再生を押し、再生位置を途中へ移す
+        P->>SV: 動画の途中からの範囲を要求する
+        SV-->>P: 要求した範囲の部分の応答
+        P-->>U: 移した位置から再生される動画
+      ```
+    expected:
+      - A-1 の詳細パネルの本文に、再生バーを持つ動画と音声、表示された画像が、それぞれのキャプションつきで出る
+      - 動画を再生すると再生位置が進み、再生位置を途中へ移すとその位置から再生される
+      - 詳細の全画面でも、動画・音声・画像が同じく出る
+      - サーバーの配信が、動画の範囲の要求に部分の応答（206）と要求した範囲の中身を返却する
+      - ファイルの配置の後に、どの項目も変更履歴と `updated_at` が変わらない
+    test: test_normal
+  - name: 異常シナリオ（埋め込んだファイルが無い）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1
+        notes: 本文に段落と `![完成した動画](../files/missing.mp4)` を持ち、`.mindstella/files/missing.mp4` は配置しない
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant P as プレビュー（ブラウザ）
+        participant SV as サーバー
+
+        U->>P: 資料のカードで A-1 を押す
+        P->>SV: 本文が指すファイルを要求する
+        SV-->>P: 404
+        P-->>U: 読み込めないファイルの警告と、本文のほかの部分を描いた詳細パネル
+      ```
+    expected:
+      - A-1 の詳細パネルに、`../files/missing.mp4` を読み込めない旨の警告が出る
+      - A-1 の本文の段落は描かれる
+    test: test_error_when_file_missing
+  - name: 異常シナリオ（ファイルのフォルダの外を指す）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立て、サーバーの配信へ HTTP のクライアントで要求する）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: フォルダの外のファイル
+        description: ワークスペースの記録の `decisions.yaml` と、ワークスペースの外のファイル
+        notes: '`.mindstella/files/outside` を、ワークスペースの外のファイルへのシンボリックリンクにする'
+      - name: 配信
+        description: 記録を配っているサーバー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant C as HTTP のクライアント
+        participant SV as サーバー
+
+        C->>SV: ファイルのフォルダから .. で decisions.yaml を指すパスを要求する
+        SV-->>C: 404
+        C->>SV: フォルダの外を指すシンボリックリンクのパスを要求する
+        SV-->>C: 404
+      ```
+    expected:
+      - どちらの要求も 404 が返り、本文にファイルの中身を含まない
+    test: test_error_when_outside_files_folder
+notes:
+  パスの書き方: 資料（`.mindstella/docs/`）からの相対パス `../files/{名前}` で記載し、mdmark の書き出し・点検と画面で同じパスが通るようにする。ファイルのフォルダの下にフォルダを作ってよい
+  E2E の範囲: 今の画面で確認する。React の画面の本文の描画は同じ解決を使用し、React の画面の結合テストが確認する
+  HTML の本文: 本文を HTML で持つ資料は、`<img>`・`<video>` の `src` を本文の HTML のまま描き、`../files/{名前}` の解決をしない
