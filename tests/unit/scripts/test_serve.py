@@ -2029,3 +2029,65 @@ def test_transcribe_response_when_rejected(
     # 検証
     assert response.status == status
     assert fake.transcribe_calls == []
+
+
+def _get_raw(port: int, path: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, str], bytes]:
+    """パスを正規化せずに GET し、ステータス・ヘッダー・本文を返却する。"""
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=HTTP_TIMEOUT_SEC)
+    try:
+        connection.request("GET", path, headers=headers or {})
+        response = connection.getresponse()
+        return response.status, dict(response.getheaders()), response.read()
+    finally:
+        connection.close()
+
+
+def test_send_file(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """ファイルの全体と範囲を返却する（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    data = bytes(range(250)) * 4
+    files = root / RECORD_DIR / "files"
+    files.mkdir()
+    (files / "clip.mp4").write_bytes(data)
+    preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
+    try:
+        port = _port_of(preview.url)
+        # 実行
+        whole = _get_raw(port, "/files/clip.mp4")
+        part = _get_raw(port, "/files/clip.mp4", {"Range": "bytes=100-199"})
+    finally:
+        preview.stop()
+    # 検証
+    assert whole[0] == 200
+    assert whole[2] == data
+    assert whole[1]["Content-Type"] == "video/mp4"
+    assert whole[1]["Cache-Control"] == "no-cache"
+    assert whole[1]["Content-Security-Policy"] == "sandbox"
+    assert part[0] == 206
+    assert part[2] == data[100:200]
+    assert part[1]["Content-Range"] == "bytes 100-199/1000"
+    assert part[1]["Cache-Control"] == "no-cache"
+    assert part[1]["Content-Security-Policy"] == "sandbox"
+
+
+def test_send_file_when_missing(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """解決できなければ 404（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("D-1"))
+    (root / RECORD_DIR / "files").mkdir()
+    config = (root / RECORD_DIR / "config.yaml").read_bytes()
+    preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
+    try:
+        port = _port_of(preview.url)
+        # 実行
+        missing = _get_raw(port, "/files/missing.mp4")
+        outside = _get_raw(port, "/files/../config.yaml")
+    finally:
+        preview.stop()
+    # 検証
+    assert missing[0] == 404
+    assert missing[1]["Content-Type"] == serve.PROBLEM_TYPE
+    assert outside[0] == 404
+    assert outside[1]["Content-Type"] == serve.PROBLEM_TYPE
+    assert config not in outside[2]
