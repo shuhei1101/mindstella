@@ -11,3 +11,9 @@ confirmations:
     approver: shuhei1101
     commit: 22aa2dd5
     thread: https://github.com/shuhei1101/mindstella/pull/565#discussion_r4607367874
+  - topic: '検討事項のマップ（#542 で削除する）を、この PR が #542 より先にマージされる間どうするか'
+    decision: 'A: 作り直さず、SC-489-24 の書き換えを戻し、#542 までは削除するキーを使わずに根の下へ検討事項を平らに並べるだけにする（推奨案）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 2ce364eb
+    thread: https://github.com/shuhei1101/mindstella/pull/565#discussion_r4608530240

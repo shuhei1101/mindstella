@@ -38,8 +38,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T19:50:26.125407+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: 変わる画面（概要・検討事項のマップ）だけを作る
+    updated_by: planner
+    updated_at: '2026-11-18T03:09:49.914782+00:00'
   - process: インターフェース定義設計
     status: todo
   - process: 部品設計
