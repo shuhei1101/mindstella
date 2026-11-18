@@ -58,7 +58,7 @@ constraints:
   - item: 起動し直す状態
     constraint: '`running`・`stopped`・`crashed` から起動し直す。`running` でもペインかプロセスが無ければ、止める工程を飛ばす。`comment` の契機は、クローズ待ち（`close_pending`）のとき起動し直さずに断る。`api` の契機はクローズ待ちを解く'
   - item: 止め方
-    constraint: 『MindStella のセッションの停止』と同じく、応答の途中なら終わるまで非機能要件『最後の書き込みを待つ上限』まで待ち（`force` と `rate_limit`・`compact` の契機は待たない）、ペインに `/exit` を貼って tmux のセッションが閉じる（`claude-balancer exec` が終わる）のを待つ。上限を過ぎたときは起動し直さず、`pending_write` を真にして `running` に戻す
+    constraint: 『MindStella のセッションの停止』と同じく、応答の途中なら終わるまで非機能要件『最後の書き込みを待つ上限』まで待ち（`force` と `rate_limit`・`compact` の契機は待たない）、ペインに `/exit` を貼る。Claude Code のプロセスが終わるまでの待ちと、終わらないときの SIGTERM は『MindStella のセッションの停止』と同じ。Claude Code が終わった後は `kill-session` をせず、`claude-balancer exec` が通知と返却を済ませて自分で終わり tmux のセッションが閉じるのを、`/exit` を貼ってから非機能要件『起動し直しで exec の終了を待つ上限』まで待つ。上限を過ぎたら `kill-session` で閉じ、上限を過ぎたことを標準エラーに 1 行記録してから起動する。最後の書き込みを待つ上限を過ぎたときは起動し直さず、`pending_write` を真にして `running` に戻す
     decided_by: NFR-489-1#requirements[最後の書き込みを待つ上限]
   - item: 利用上限の通知
     constraint: '`claude-balancer report-limit` を呼ばない。子プロセスが利用上限で終わったときは `claude-balancer exec` が返却の前に自分で通知するので、`exec` が終わる（tmux のセッションが閉じる）のを待ってから起動する'
@@ -80,6 +80,9 @@ constraints:
     constraint: ワークスペースごとの鍵を状態を `restarting` にするまで持ち、止めて起動する工程は別のスレッドで行う。`restarting` の間に届いた内部の契機は重ねて起動しない（`comment` は準備ができるのを待つ）
   - item: MCP のツール
     constraint: '`restart_session` は `workspace_id`・`session_id`・`force` を受け、同じ処理を呼ぶ'
+  - item: exec の終了を待つ上限
+    constraint: 非機能要件『起動し直しで exec の終了を待つ上限』の秒数。『止め方』のとおり、上限を過ぎたら `kill-session` してから起動する
+    decided_by: NFR-489-1#requirements[起動し直しで exec の終了を待つ上限]
 flows:
   - name: 正常系
     summary: 起動中の MindStella のセッションを止め、前の会話を引き継いで同じ ID のまま起動し直す
