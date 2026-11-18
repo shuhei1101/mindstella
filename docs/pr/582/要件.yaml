@@ -50,19 +50,27 @@ docs:
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: 「止めた後なら、新しい MindStella のセッションが作られる」を、前の会話を引き継いで起動する記載へ修正し、利用上限・落ちた後・圧縮で自動で起動し直すことを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:19:18.163207+00:00'
   - page: docs/guide/コマンド.md
     new: false
     change: 起動し直しの API と MindStella の MCP のツール、作成の応答の警告、一覧の起動し直しの途中の状態と失敗の理由を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:19:18.163207+00:00'
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: 「停止したとき」の停止した理由の表に、利用上限を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:19:18.163207+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
     new: false
     change: 止めた後に立ち上げると前の会話を引き継ぐことと、追加の MCP・プラグインの記録が無いときの警告を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:19:18.163207+00:00'
 scope_out:
   - item: 画面での MindStella のセッションの表示（起動し直している間のコメントの入力の表示・起動し直しに失敗した理由と起動のボタン・追加の MCP とプラグインの記録が無いことの警告）
     reason: '今の画面は MindStella のセッションの状態を表示しておらず、画面を常駐サーバーの 1 つのポートで配る #538 の前に作ると作り直しになる。この PR は状態と失敗の理由を API の応答で返却するところまでにし、画面の表示は別の Issue にして #538 の後に作る（利用者が確認事項で推奨案 A を承認）'
