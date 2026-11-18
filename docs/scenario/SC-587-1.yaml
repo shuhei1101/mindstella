@@ -24,10 +24,10 @@ scenarios:
         description: 作成を済ませたワークスペース
       - name: ファイル
         description: 数秒の mp4 の動画・mp3 の音声・png の画像
-        notes: '`.mindstella/files/clip.mp4`・`.mindstella/files/voice.mp3`・`.mindstella/files/shot.png` に配置する'
+        notes: '`.mindstella/files/clip.mp4`・`.mindstella/files/voice.mp3`・`.mindstella/files/shot.png` に、フローの中で配置する'
       - name: 記録
         description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に `![完成した動画](../files/clip.mp4)`・`![読み上げ](../files/voice.mp3)`・`![画面](../files/shot.png)` を持つ
+        notes: 本文に `![完成した動画](../files/clip.mp4)`・`![読み上げ](../files/voice.mp3)`・`![画面](../files/shot.png)` を持つ。本文の記載と `commit` を済ませておく
       - name: 配信
         description: 記録を配っているサーバー
     flow: |-
@@ -40,7 +40,6 @@ scenarios:
         participant SV as サーバー
 
         CC->>WS: ファイルをファイルのフォルダに配置する
-        CC->>WS: 資料 A-1 の本文に ![キャプション](../files/{名前}) を記載する
         U->>P: 資料のカードで A-1 を押す
         P->>SV: 本文が指すファイルを要求する
         SV-->>P: ファイルのフォルダの中のファイル
@@ -78,10 +77,10 @@ scenarios:
         U->>P: 資料のカードで A-1 を押す
         P->>SV: 本文が指すファイルを要求する
         SV-->>P: 404
-        P-->>U: 読み込めないファイルの警告と、本文のほかの部分を描いた詳細パネル
+        P-->>U: 本文のほかの部分と、再生できない動画の要素を描いた詳細パネル
       ```
     expected:
-      - A-1 の詳細パネルに、`../files/missing.mp4` を読み込めない旨の警告が出る
+      - サーバーの配信が `../files/missing.mp4` の要求に 404 を返却し、動画の要素は再生できない（ファイルが無いことは、画面ではなく単一ユースケース『ワークスペースの点検』が参照切れとして通知する）
       - A-1 の本文の段落は描かれる
     test: test_error_when_file_missing
   - name: 異常シナリオ（ファイルのフォルダの外を指す）
