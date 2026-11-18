@@ -20,7 +20,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T10:47:28.809730+00:00'
   - process: 複合ユースケース設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T10:54:07.516657+00:00'
   - process: デザインスタイル選定
     status: skipped
     reason: 画面の変更をスコープ外にしたため対象外
