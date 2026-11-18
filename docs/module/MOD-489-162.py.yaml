@@ -1,12 +1,12 @@
 id: MOD-489-162
 title: サーバー / 点検 / checker.py
-lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
+lead: ワークスペースのスキーマ違反・ID の重複・参照切れ・本文のずれを問題として洗い出す。読み書きと検証だけに依存し、ファイルを書かない。
 test_files:
   - tests/unit/scripts/test_checker.py
 directory: |-
   ```
   plugins/mindstella/skills/mindmap/scripts/
-    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ・設定に無いフェーズ
+    checker.py   スキーマ違反・ID の重複・参照切れ・本文のずれ
   ```
 constants:
   - name: REF_RULES
@@ -27,8 +27,6 @@ constants:
         value: decision
       - key: (全ての種類, related.see_also)
         value: 全ての種類
-      - key: (設定, goal.deliverables[].doc)
-        value: doc
 functions:
   - name: check_workspace
     title: ワークスペースの点検
@@ -53,10 +51,9 @@ functions:
       4. 本文のずれを拾う（`_check_bodies`）
       5. スレッドのスキーマ違反と参照切れを拾う（`_check_threads`）
       6. レビュー中のコメントと書きかけのスキーマ違反を拾う（`_check_comments`）
-      7. 設定に無いフェーズを拾う（`_check_phases`）
-      8. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
-      9. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
-      10. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜8. の関数は記録のフォルダからの相対パスで拾う）
+      7. まとまりのスキーマ違反・参照切れと、変更履歴のずれを拾う（`_check_history`）
+      8. ファイル名の順に並べる（同じファイルの中は拾った順を保つ）
+      9. 各問題の `file`（記録のフォルダからの相対パス）の頭に `{RECORD_DIR}/` を付け、ワークスペースからの相対パスにする（1.〜7. の関数は記録のフォルダからの相対パスで拾う）
     unit_tests:
       - name: test_check_workspace
         case: 正常
@@ -117,7 +114,7 @@ functions:
       type: list[Problem]
       description: 問題の並び（`detail` に指した ID と理由）
     process: |-
-      1. 全ての項目の `related[].to`（`related[].type` の組で `REF_RULES` を引く）と `sources`、設定の `goal.deliverables[].doc` の ID を見る（設定が `goal` を持たなければ設定は見ない）。問題のキーのパスは `related[{番号}].to` にする
+      1. 全ての項目の `related[].to`（`related[].type` の組で `REF_RULES` を引く）と `sources` の ID を見る。問題のキーのパスは `related[{番号}].to` にする
          - `REF_RULES` に無い組（`related[].type` が `related.types` に無い・その種類が持てない種類）の場合、`broken_ref`（`使えない関連の種類: {種類}`）
          - 種類が合わない場合、`broken_ref`（`指してはいけない種類: {ID}`）
          - その種類に ID が無い場合、`broken_ref`（`存在しない ID: {ID}`）
@@ -125,9 +122,9 @@ functions:
       - name: test_check_refs_when_missing
         case: 正常
         summary: 存在しない ID を指す参照
-        condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・T-1 `related: [{to: D-8, type: for}]`・設定の `goal.deliverables[0].doc: A-9`'
+        condition: 'D-1 `related: [{to: D-9, type: depends_on}]`・T-1 `related: [{to: D-8, type: for}]`'
         mock: なし
-        expected: 3 件の `broken_ref`（`detail` に `D-9`・`D-8`・`A-9`）
+        expected: 2 件の `broken_ref`（`detail` に `D-9`・`D-8`）
       - name: test_check_refs_when_wrong_kind
         case: 正常
         summary: 決めた種類でない ID を指す参照
@@ -140,12 +137,6 @@ functions:
         condition: 'D-1 `related: [{to: T-1, type: see_also}, {to: G-1, type: see_also}]`（どちらもある）'
         mock: なし
         expected: 空の並び
-      - name: test_check_refs_when_no_goal
-        case: 正常
-        summary: ゴールを持たない設定は納品物の参照を見ない
-        condition: '`goal` を持たない設定と D-1 `related: [{to: D-9, type: depends_on}]`'
-        mock: なし
-        expected: '`broken_ref`（D-1・`related[0].to`・`detail` に `D-9`）の 1 件だけ'
   - name: _check_bodies
     title: 本文のずれの点検
     kind: 関数
@@ -229,38 +220,6 @@ functions:
         condition: スキーマに合わない `threads.yaml` に、無い項目を指すスレッドを持たせる
         mock: なし
         expected: '`schema` の問題と、そのスレッドの `broken_ref` が両方ある'
-  - name: _check_phases
-    title: フェーズの点検
-    kind: 関数
-    container: plugins/mindstella/skills/mindmap/scripts/checker.py
-    usecase: ワークスペースの点検
-    scope: internal
-    summary: 項目の `phase` と設定の `goal.phase` のうち、設定の `phases` に無いものを `unknown_phase` にする
-    args:
-      - name: workspace
-        type: Workspace
-        required: true
-        passing: positional
-        description: ワークスペース
-    returns:
-      type: list[Problem]
-      description: 問題の並び（`detail` にそのフェーズの名前）
-    process: |-
-      1. 設定が `goal` を持ち、`goal.phase` が `phases` に無い場合、`unknown_phase`（`file: config.yaml`・`id: None`・`key: goal.phase`）にする
-      2. 種類の順（`KINDS`）に項目を見て、`phase` を持ち `phases` に無い項目を `unknown_phase`（その種類の YAML・`key: items[n].phase`）にする
-    unit_tests:
-      - name: test_check_phases
-        case: 正常
-        summary: 設定の phases に無い項目の phase と goal.phase を拾う
-        condition: '`phases` 目的・要件、`goal.phase` 結論。D-1（発散）・D-2（要件）・T-1（`phase` 無し）'
-        mock: なし
-        expected: '`unknown_phase`（`config.yaml`・`goal.phase`・`detail` が `結論`）と `unknown_phase`（`decisions.yaml`・D-1・`items[0].phase`・`detail` が `発散`）の 2 件'
-      - name: test_check_phases_when_no_goal
-        case: 正常
-        summary: ゴールを持たない設定は goal.phase を見ない
-        condition: '`phases` 目的・要件で `goal` を持たない設定と D-1（目的）'
-        mock: なし
-        expected: 空の並び
   - name: _check_comments
     title: レビュー中の点検
     kind: 関数
@@ -351,16 +310,15 @@ functions:
       description: '`{ファイル名}: {指している側の ID かキーのパス}: {キー}` の行（指している記録が無ければ空）'
     process: |-
       1. 種類の順に、`related[].to`・`sources` で `item_id` を指すほかの項目を拾う（`{種類のファイル}: {指している項目の ID}: {related.{種類} か sources}`）
-      2. 設定の納品物の `doc` が指していれば拾う（`config.yaml: goal.deliverables[{番号}].doc: doc`）
-      3. レビュー中のコメント・書きかけの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、書きかけは `drafts.yaml: items[{番号}]: target`）
-      4. 取り込み待ちのスレッド（`awaiting_posts` が 1 件以上。オープンでもクローズでも）の `target` が指していれば拾う（`load_threads`。`threads.yaml: {スレッドの ID}: target`）
+      2. レビュー中のコメント・書きかけの `target` が指していれば拾う（`load_comments`・`load_drafts`。コメントは `comments.yaml: {コメントの ID}: target`、書きかけは `drafts.yaml: items[{番号}]: target`）
+      3. 取り込み待ちのスレッド（`awaiting_posts` が 1 件以上。オープンでもクローズでも）の `target` が指していれば拾う（`load_threads`。`threads.yaml: {スレッドの ID}: target`）
     unit_tests:
       - name: test_find_referrers
         case: 正常
-        summary: 項目・納品物・コメントが指すのを拾う
-        condition: D-1 を D-2 の種類 `depends_on` の `related` と T-1 の種類 `for` の `related` が指し、A-1 を納品物の `doc` とコメント C-1 が指す。D-1 と A-1 でそれぞれ呼ぶ
+        summary: 項目・コメントが指すのを拾う
+        condition: D-1 を D-2 の種類 `depends_on` の `related` と T-1 の種類 `for` の `related` が指し、A-1 をコメント C-1 が指す。D-1 と A-1 でそれぞれ呼ぶ
         mock: なし
-        expected: 'D-1 は `decisions.yaml: D-2: related.depends_on` と `tasks.yaml: T-1: related.for`、A-1 は `config.yaml: goal.deliverables[0].doc: doc` と `comments.yaml: C-1: target`'
+        expected: 'D-1 は `decisions.yaml: D-2: related.depends_on` と `tasks.yaml: T-1: related.for`、A-1 は `comments.yaml: C-1: target`'
       - name: test_find_referrers_with_threads
         case: 正常
         summary: 取り込み待ちのスレッドだけを拾う

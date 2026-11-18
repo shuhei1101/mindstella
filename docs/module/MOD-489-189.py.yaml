@@ -39,7 +39,7 @@ data_models:
     description: '`@dataclass(frozen=True, slots=True, kw_only=True)`。点検の出力の `problems[]` と同じキーを持ち、`dataclasses.asdict` で JSON にする。'
     properties:
       - name: kind
-        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "unknown_phase", "stale_history", "decision_state"]
+        type: Literal["schema", "duplicate_id", "broken_ref", "missing_body", "orphan_body", "stale_history", "decision_state"]
         description: 問題の種類
       - name: file
         type: str
