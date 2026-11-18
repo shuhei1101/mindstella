@@ -1196,13 +1196,15 @@ def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
 
 
 def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
-    """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
+    """まとめて送った応答の本文に、Claude Code へ入力したか（`entered`）と起動し直したか（`restarted`）を足す。"""
     targets = context.input_targets
-    # 宛先の台帳が無い: 入力しない
     # まとめて送るは送った件数、すぐ送るは 1 件
     count = len(body["items"]) if "items" in body else 1
-    entered = False if targets is None else targets.enter(context.root, count)
-    return {**body, "entered": entered}
+    # 宛先の台帳が無い: 入力しない
+    if targets is None:
+        return {**body, "entered": False, "restarted": False}
+    entered, restarted = targets.enter_or_restart(context.root, count)
+    return {**body, "entered": entered, "restarted": restarted}
 
 
 def _sent_now_body(sent: str, post: SentPost) -> dict[str, Any]:
