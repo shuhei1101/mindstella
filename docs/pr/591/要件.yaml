@@ -53,3 +53,6 @@ scope_out:
   - item: '`docs/mock/` のモックが読む、版を固定した mdmark の URL'
     reason: モックは作った時点の見た目を残す資料で、設定の `latest` を読まない
     plan: none
+  - item: 本文の表の見出し行を、本文の区画を縦にスクロールしても区画の上端に留めること
+    reason: mdmark の `mount` で描いた表は見出し行を留めず、スクロールする区画の中で留める位置もブラウザで変わる（shuhei1101/mdmark#683）。画面の CSS で mdmark を上書きしない方針のため、mdmark の対応を待ち、対応後に制約「本文の表とセクションの見せ方」の「留めない」を外す。この PR を mdmark の対応の待ちにするかは、承認確認でユーザーに確認する
+    plan: to_file
