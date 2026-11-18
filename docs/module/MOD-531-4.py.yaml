@@ -192,11 +192,11 @@ functions:
         passing: positional
         description: プロセスの起動時刻を読むもの
       - name: on_crashed
-        type: Callable[[], None] | None
+        type: Callable[[], object] | None
         required: false
         default: None
         passing: keyword
-        description: '`running` から `crashed` に書き換えたときに呼ぶ関数（呼び出し元は `lambda: notify_stopped(ctx, workspace_id, "crashed")` を渡す）'
+        description: '`running` から `crashed` に書き換えたときに呼ぶ関数（呼び出し元は `lambda: notify_stopped(ctx, workspace_id, "crashed")` を渡す。戻り値は使わない）'
     returns:
       type: bool
       description: 生きているか
