@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html as html_lib
 import os
 import tempfile
 from pathlib import Path
@@ -135,14 +136,22 @@ def _append_sections(
     for heading, rows in sections:
         # HTML の本文: 見出しと table で足す
         if html:
-            cells = "".join(f"<tr><td>{key}</td><td>{value}</td></tr>" for key, value in rows)
+            cells = "".join(
+                f"<tr><td>{html_lib.escape(key)}</td><td>{html_lib.escape(value)}</td></tr>"
+                for key, value in rows
+            )
             blocks.append(f"<h2>{heading}</h2>\n<table><tbody>{cells}</tbody></table>")
         else:
             lines = [f"## {heading}", "", "| キー | 値 |", "| --- | --- |"]
-            lines += [f"| {key} | {value} |" for key, value in rows]
+            lines += [f"| {_markdown_cell(key)} | {_markdown_cell(value)} |" for key, value in rows]
             blocks.append("\n".join(lines))
     head = text.rstrip("\n")
     return (head + "\n\n" if head else "") + "\n\n".join(blocks) + "\n"
+
+
+def _markdown_cell(text: str) -> str:
+    """表のセルに入れる文字の `|` を打ち消し、改行を `<br>` にする。"""
+    return text.replace("|", "\\|").replace("\r\n", "<br>").replace("\n", "<br>")
 
 
 def _load(path: Path) -> Any:

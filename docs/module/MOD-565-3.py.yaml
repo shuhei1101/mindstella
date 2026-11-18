@@ -42,7 +42,7 @@ functions:
       1. `.mindstella/config.yaml` を読み、`REMOVED_SETTING_KEYS` を消す（キーの並びを保つ）
       2. `KIND_FILES` の各ファイルの `items[]` を項目の並びの順に見る
          - `target`・`category` の値を `{name: topic:{値}}` のタグにし、同じ名前のタグが無ければ `tags` の末尾に足してキーを消す
-         - `attrs` を本文の末尾の「属性」の表（キーと値）に、調査の `angles`・`confidence` を本文の末尾の「観点と確かさ」の表にしてキーを消す（本文が無ければ `docs/{ID}.md` を作り `body` を足す。このときだけ本文のファイルを書く）
+         - `attrs` を本文の末尾の「属性」の表（キーと値）に、調査の `angles`・`confidence` を本文の末尾の「観点と確かさ」の表にしてキーを消す（本文が無ければ `docs/{ID}.md` を作り `body` を足す。このときだけ本文のファイルを書く）。表のセルの値は、Markdown の本文では `|` を `\|`、改行を `<br>` にし、HTML の本文では `html.escape` を通す
          - `DROPPED_ITEM_KEYS` を移さずに消す
       3. 書き換えたファイルだけを一時ファイルに書いてから置き換え、変えたファイルを返す。消すキーをどれも持たなければ何も書かない
     exceptions:
@@ -67,6 +67,12 @@ functions:
         condition: '`test_migrate` を当てた後のワークスペース'
         mock: なし
         expected: 戻り値が空で、全てのファイルが呼ぶ前と同じ
+      - name: test_migrate_when_cell_has_special_chars
+        case: 正常
+        summary: 表のセルの記号を打ち消す
+        condition: '`parametrize`: `attrs: {メモ: "A|B\nC"}` と Markdown の本文を持つ D-1 / `attrs: {式: "a<b&c"}` と HTML の本文（`docs/A-1.html`）を持つ A-1'
+        mock: なし
+        expected: D-1 の本文に `| メモ | A\|B<br>C |`、A-1 の本文に `<td>a&lt;b&amp;c</td>`
 refs:
   - IF-489-52#
   - MOD-489-164#
