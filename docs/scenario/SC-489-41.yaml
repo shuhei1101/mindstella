@@ -46,7 +46,7 @@ scenarios:
       - ワークスペースのフォルダにワークスペースの記録があり、状態のフォルダのワークスペースの ID の一覧にある
       - Mock の claude-balancer が `exec` を受け、tmux のペインの中で Mock の MindStella のセッションが起動している
       - 状態に MindStella のセッションの ID と tmux のペインが登録されている
-      - 出力に画面の URL と、Mock の claude-balancer が貸したアカウントの設定のフォルダがあり、起動のコマンドが MindStella のセッションのペインへつないでいる
+      - 出力に画面の URL と、Mock の claude-balancer が貸したアカウントの設定のフォルダ（単一ユースケース『外部のアプリから起動する』の補足『起動したアカウント』の値）があり、起動のコマンドが MindStella のセッションのペインへつないでいる
     test: test_normal
   - name: 正常シナリオ（進め方の文書・追加の MCP・プラグインを指定する）
     setup:

@@ -22,8 +22,8 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-17.yaml
-    impact: run_only
-    detail: 前のバージョンの形式の問題の判定を設計書に合わせて修正するため、移し替えの案内が出る条件を壊していないかを確かめる（#561）
+    impact: changed
+    detail: v0.13.0 の移し替えで、設定にワークスペースの ID を持たない記録へ ID を記録する。前のバージョンの形式の問題の判定を設計書に合わせて修正するため、移し替えの案内が出る条件を壊していないかも確かめる（#554・#561）
     depends_on: []
   - kind: composite
     scenario: docs/scenario/SC-489-52.yaml

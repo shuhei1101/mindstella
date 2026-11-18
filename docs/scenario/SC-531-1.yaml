@@ -57,7 +57,7 @@ scenarios:
   - 状態に MindStella のセッションの ID・Claude Code の `session_id`・tmux のペインが登録されている
   - 外部のアプリが、SessionStart のフックが状態に登録した後に、MindStella のセッションの ID と画面の URL を受け取っている
   - グローバルの設定のファイルにワークスペースの行が無い状態から、行の追加が取得した内容のバージョンを添えて通っている
-  - 外部のアプリが受け取った起動したアカウントが、Mock の claude-balancer が貸したアカウントの設定のフォルダである
+  - 外部のアプリが受け取った起動したアカウントが、Mock の claude-balancer が貸したアカウントの設定のフォルダ（補足『起動したアカウント』の値）である
 - name: 正常シナリオ（ワークスペースの記録が既にある）
   setup:
   - name: Mock
@@ -172,10 +172,11 @@ scenarios:
       API->>MGR: MindStella のセッションの作成を依頼する
       MGR->>CC: tmux のペインの中で利用者の既定のアカウントで起動する
       CC->>MGR: 状態に登録した（SessionStart のフック）
-      API-->>APP: MindStella のセッションの ID と画面の URL
+      API-->>APP: MindStella のセッションの ID・画面の URL・起動したアカウント
     ```
   expected:
   - Mock のセッションが claude-balancer を通さずに起動し、外部のアプリが MindStella のセッションの ID と画面の URL を受け取っている
+  - 外部のアプリが受け取った起動したアカウントが、既定の設定のフォルダ `~/.claude` を絶対パスにした値である
 - name: 異常シナリオ（MindStella のセッションが既にある）
   setup:
   - name: Mock
@@ -478,36 +479,6 @@ scenarios:
   - 外部のアプリが受け取ったワークスペースの ID が、移す前と同じである
   - グローバルの設定のファイルにその ID の行が 1 行だけあり、配信の設定と作業範囲が移した先のフォルダを指す
   - 状態のフォルダの追加の MCP・プラグインの記録が移す前のままである
-- name: 正常シナリオ（設定にワークスペースの ID が無い記録）
-  setup:
-  - name: Mock
-    description: なし（Claude Code を起動しない）
-  - name: 常駐サーバー
-    description: 正常シナリオと同じ
-  - name: project-index
-    description: 正常シナリオと同じ
-  - name: ワークスペース
-    description: 指定したフォルダに、設定にワークスペースの ID を持たない記録があり、配信元の行が無い
-    notes: ワークスペースの ID を設定に持たなかったバージョンで作った記録
-  flow: |-
-    ```mermaid
-    sequenceDiagram
-      participant APP as 外部のアプリ
-      participant API as MindStella の API
-      participant WSM as ワークスペースの管理
-      participant PI as project-index
-
-      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
-      API->>WSM: ワークスペースの作成を依頼する
-      WSM->>WSM: フォルダからワークスペースの ID を振り、記録の設定に記録する
-      WSM->>PI: 配信元に登録する
-      PI-->>WSM: 登録した結果
-      API-->>APP: ワークスペースの ID と画面の URL
-    ```
-  expected:
-  - 記録の設定に、外部のアプリが受け取ったワークスペースの ID が記録されている
-  - 設定のほかのキーと種類ごとの YAML は変わっていない
-  - グローバルの設定のファイルにその ID の行がある
 - name: 異常シナリオ（同じ ID のワークスペースが別のフォルダにある）
   setup:
   - name: Mock
@@ -594,3 +565,4 @@ notes:
   受ける Host: API は `Host` が `127.0.0.1`・`localhost` の要求だけを受ける（D-340）
   スコープ外: '状態のフォルダに追加の MCP・プラグインの記録が無いワークスペースの作成（警告と画面の通知）は #520 で扱う'
   E2E の範囲: MindStella のセッションのエージェントと claude-balancer は Mock にし、起動と再開のエージェントフローの中身は確かめない
+  起動したアカウント: 起動したアカウントは、MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス。`CLAUDE_CONFIG_DIR` が無いまま起動したとき（claude-balancer が既定のアカウントを貸したときと、claude-balancer が無い端末で指定が無いとき）は、既定の設定のフォルダ `~/.claude` を絶対パスにした値にする。claude-balancer の `exec --account` は設定のフォルダのパスを受けるため、この値をそのまま次の指定に使用できる
