@@ -288,14 +288,106 @@ def test_post_read_point(serve_json: ServeJson) -> None:
 @pytest.mark.parametrize(
     ("source", "flow", "contained", "absent"),
     [
-        pytest.param("compact", "src#doc", ["再開", "src#doc", "mindstella/startup"], ["/mindstella:"], id="resume_flow"),
-        pytest.param("startup", None, ["起動", "mindstella/startup"], ["進め方の文書", "/mindstella:"], id="startup"),
+        pytest.param(
+            "compact",
+            "src#doc",
+            ["再開", "src#doc", "mindstella/startup"],
+            ["/mindstella:"],
+            id="resume_flow",
+        ),
+        pytest.param(
+            "startup",
+            None,
+            ["起動", "mindstella/startup"],
+            ["進め方の文書", "/mindstella:"],
+            id="startup",
+        ),
     ],
 )
-def test_fallback_context(source: str, flow: str | None, contained: list[str], absent: list[str]) -> None:
+def test_fallback_context(
+    source: str, flow: str | None, contained: list[str], absent: list[str]
+) -> None:
     """契機と進め方の文書を埋める（正常系）。"""
     # 実行
     result = session_hook.fallback_context(source, flow)
     # 検証
     assert all(word in result for word in contained)
     assert not any(word in result for word in absent)
+
+
+def test_main_when_rate_limit() -> None:
+    """stop-failure で error を送る（正常系）。"""
+    # 準備
+    sent: list[dict[str, Any]] = []
+    stdout = io.StringIO()
+    # 実行
+    code = session_hook.main(
+        ["stop-failure"],
+        environ=ENVIRON,
+        stdin=io.StringIO(json.dumps({"session_id": "c1", "error": "rate_limit"})),
+        stdout=stdout,
+        post=lambda _port, _session, body: sent.append(body),
+    )
+    # 検証
+    assert code == 0
+    assert [(body["event"], body.get("error")) for body in sent] == [("stop_failure", "rate_limit")]
+    assert stdout.getvalue() == ""
+
+
+def _refuse(_port: int, _session: str, _body: dict[str, Any]) -> None:
+    """つながらない常駐サーバー。"""
+    raise OSError("connection refused")
+
+
+@pytest.mark.parametrize(
+    ("case", "blocked"),
+    [
+        pytest.param("sent", True, id="sent"),
+        pytest.param("refused", False, id="refused"),
+        pytest.param("no-session", False, id="no-session"),
+    ],
+)
+def test_main_when_pre_compact(case: str, blocked: bool) -> None:
+    """送れたときだけ圧縮を止める（正常系）。"""
+    # 準備
+    environ = {
+        key: value
+        for key, value in ENVIRON.items()
+        if case != "no-session" or key != "MINDSTELLA_SESSION"
+    }
+    stdout = io.StringIO()
+    sent: list[dict[str, Any]] = []
+    post = _refuse if case == "refused" else (lambda _port, _session, body: sent.append(body))
+    # 実行
+    code = session_hook.main(
+        ["pre-compact"],
+        environ=environ,
+        stdin=io.StringIO(json.dumps({"session_id": "c1", "trigger": "auto"})),
+        stdout=stdout,
+        post=post,
+    )
+    # 検証
+    assert code == 0
+    if blocked:
+        assert json.loads(stdout.getvalue()) == session_hook.BLOCK_COMPACT
+        assert [body["event"] for body in sent] == ["pre_compact"]
+    else:
+        assert stdout.getvalue() == ""
+
+
+def test_main_when_compact_relaunch(tmp_path: Path) -> None:
+    """圧縮で起動し直した startup は再開として引く（正常系）。"""
+    # 準備
+    sources: list[str] = []
+    # 実行
+    session_hook.main(
+        ["session-start"],
+        environ={**ENVIRON, "HOME": str(tmp_path), "MINDSTELLA_LAUNCH_REASON": "compact"},
+        stdin=io.StringIO(json.dumps({"session_id": "c2", "source": "startup"})),
+        stdout=io.StringIO(),
+        post=lambda _port, _session, _body: None,
+        resume=lambda _port, _session, source: sources.append(source) or _resume_status(),
+        advance=lambda _port, _session, _until: None,
+    )
+    # 検証
+    assert sources == ["compact"]

@@ -174,6 +174,15 @@ files:
   - topic:ヘルパー
   - topic:結合テスト
   - topic:資料
+- path: integration/preview/preview_embedded_files_helpers.py
+  name: 資料に埋め込んだファイルの結合テストの補助
+  description: 資料に埋め込んだ動画・画像を画面で描く結合テストが共有する、ファイルの中身・本文と配置の関数。テストの準備や共有の操作を追加・変更するときに読む。
+  tags:
+  - tool:playwright
+  - tool:pytest
+  - topic:ヘルパー
+  - topic:結合テスト
+  - topic:資料
 - path: integration/preview/preview_fit_helpers.py
   name: 幅 320px で見切れないことの結合テストの補助
   description: 幅 320px で、トップバー以外の画面が横にスクロールせず見切れないことを確かめる結合テストが共有する操作と値。テストの準備や共有の操作を追加・変更するときに読む。
@@ -739,6 +748,13 @@ files:
   description: export（配る書き出し）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
   tags:
   - tool:pytest
+  - topic:結合テスト
+- path: integration/server/test_files_serve.py
+  name: ワークスペースのファイルの配信の結合テスト
+  description: ワークスペースのファイルの配信（GET /files/{path}）の結合テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:プレビュー
   - topic:結合テスト
 - path: integration/server/test_inject_session.py
   name: PreToolUse のフックの inject_session.pyの結合テスト
@@ -1961,6 +1977,16 @@ files:
   - topic:設定
   related:
   - to: plugins/mindstella/skills/mindmap/migrations/v0.5.0/scripts/field_to_playbooks.py
+    type: tests
+- path: unit/scripts/test_files_serve.py
+  name: ワークスペースのファイルの配信の単体テスト
+  description: files_serve.py（ファイルのフォルダのパスの解決・Range の解釈・返却する範囲の決定・分けた書き出し）の単体テスト。テストの期待値や準備を確認・修正するときに読む。
+  tags:
+  - tool:pytest
+  - topic:プレビュー
+  - topic:単体テスト
+  related:
+  - to: plugins/mindstella/skills/mindmap/scripts/files_serve.py
     type: tests
 - path: unit/scripts/test_graph.py
   name: 逆向きの参照・影響・後続の件数・次の候補・再開時の状況の単体テスト

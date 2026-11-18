@@ -95,11 +95,11 @@ tables:
         title: 状態
         type: string
         not_null: true
-        description: '`running`・`stopping`・`stopped`・`crashed` のどれか'
+        description: '`running`・`stopping`・`restarting`・`stopped`・`crashed` のどれか'
       - name: claude_session_id
         title: Claude Code の session_id
         type: string | null
-        description: SessionStart のフックが入れる。`clear`・`compact` の後は入れ直す。入るまで `null`
+        description: SessionStart のフックが入れる。`clear`・`compact` の後は入れ直す。入るまで `null`。止まった・落ちた後も削除せず、起動し直しと次の作成が会話を引き継ぐときに使用する
       - name: pane
         title: tmux のペイン
         type: string | null
@@ -139,11 +139,15 @@ tables:
       - name: last_error
         title: 最後の失敗
         type: string | null
-        description: 最後の停止・起動し直しに失敗した段階と理由。次に作成・停止が通ったら `null` に戻す
+        description: '最後の停止・起動し直しに失敗した段階と理由（`{stage}: {detail}`）。次に作成・停止・起動し直しが通ったら `null` に戻す'
       - name: claude_config_dir
         title: Claude Code の設定のフォルダ
         type: string | null
         description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス（起動したアカウント）。SessionStart のフックが入れる。`CLAUDE_CONFIG_DIR` が無いまま起動したときは `~/.claude` の絶対パス
+      - name: restart_reason
+        title: 起動し直しの契機
+        type: string | null
+        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`）。起動し直しが終わったら `null`。失敗したときに『停止の通知』を呼ぶかを決める'
   - name: workspaces/{ID}/launch.json
     title: 追加の MCP とプラグイン
     datastore: JSON

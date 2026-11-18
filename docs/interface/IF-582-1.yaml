@@ -1,0 +1,255 @@
+id: IF-582-1
+title: MindStella のセッションの起動し直し
+entry:
+  kind: endpoint
+  value: POST `/workspaces/{id}/sessions/{session}/restart`
+lead: MindStella のセッションを、同じ MindStella のセッションの ID のまま止めて起動し直す。外部のアプリの依頼のほか、利用上限・圧縮・落ちた後のコメントの契機でも、常駐サーバーの中から同じ処理を呼ぶ。MindStella の MCP の `restart_session` も同じ処理を呼ぶ。
+idempotent: false
+side_effects: '`session.json` の `status` を `restarting` にし、`close_pending` を偽にする。起動中なら Claude Code を止めて tmux のペインを閉じ、『MindStella のセッションの作成』と同じ起動のコマンドで tmux のセッションを立て直す。契機が利用上限のときは『停止の通知』を止まった理由 `rate_limited` で呼ぶ。失敗したときは `status` を `crashed` にし、`last_error` に段階と理由を記録する'
+request:
+  - name: id
+    type: str
+    required: true
+    location: path
+    description: ワークスペースの ID
+  - name: session
+    type: str
+    required: true
+    location: path
+    description: MindStella のセッションの ID
+  - name: force
+    type: bool
+    required: false
+    default: 'false'
+    location: query
+    description: 真なら、応答の途中でも最後の書き込みを待たずに止める
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: 要求のホスト
+response:
+  - name: session
+    type: str
+    description: MindStella のセッションの ID（起動し直しで変わらない）
+  - name: status
+    type: Literal['restarting']
+    description: 受け付けた時点の状態。起動し直しの完了と失敗は『MindStella のセッションの一覧』で確かめる
+  - name: warnings
+    type: list[str]
+    description: 状態のフォルダに追加の MCP・プラグインの記録（`launch.json`）が無いとき `launch_record_missing` を含む。無ければ空の並び
+status_codes:
+  - code: '202'
+    condition: 起動し直しを受け付けた
+  - code: '404'
+    condition: '`id` のワークスペースが状態のフォルダの ID の一覧に無いか、`session` がそのワークスペースの最後の MindStella のセッションでない'
+  - code: '409'
+    condition: ワークスペースがクローズ済みか、既に停止の途中・起動し直しの途中
+    notes: '`stage` は `closed`・`stopping`・`restarting` のどれか'
+  - code: '403'
+    condition: '`Host` が受ける値でない'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語。失敗した段階は拡張のメンバー `stage` に入れる
+constraints:
+  - item: 受ける Host
+    constraint: 『MindStella のセッションの作成』と同じ
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 契機
+    constraint: '`api`（このエンドポイントと MCP のツール）・`rate_limit`（『MindStella のセッションの出来事の受け取り』の `stop_failure` の `error: rate_limit`）・`compact`（同じく `pre_compact`）・`comment`（『コメントをまとめて送る』）のどれか。内部の契機は HTTP を通さず同じ処理を呼び、`session.json` の `restart_reason` に記録する'
+  - item: 起動し直す状態
+    constraint: '`running`・`stopped`・`crashed` から起動し直す。`running` でもペインかプロセスが無ければ、止める工程を飛ばす。`comment` の契機は、クローズ待ち（`close_pending`）のとき起動し直さずに断る。`api` の契機はクローズ待ちを解く'
+  - item: 止め方
+    constraint: 『MindStella のセッションの停止』と同じく、応答の途中なら終わるまで非機能要件『最後の書き込みを待つ上限』まで待ち（`force` と `rate_limit`・`compact` の契機は待たない）、ペインに `/exit` を貼る。Claude Code のプロセスが終わるまでの待ちと、終わらないときの SIGTERM は『MindStella のセッションの停止』と同じ。Claude Code が終わった後は `kill-session` をせず、`claude-balancer exec` が通知と返却を済ませて自分で終わり tmux のセッションが閉じるのを、`/exit` を貼ってから非機能要件『起動し直しで exec の終了を待つ上限』まで待つ。上限を過ぎたら `kill-session` で閉じ、上限を過ぎたことを標準エラーに 1 行記録してから起動する。最後の書き込みを待つ上限を過ぎたときは起動し直さず、`pending_write` を真にして `running` に戻す
+    decided_by: NFR-489-1#requirements[最後の書き込みを待つ上限]
+  - item: 利用上限の通知
+    constraint: '`claude-balancer report-limit` を呼ばない。子プロセスが利用上限で終わったときは `claude-balancer exec` が返却の前に自分で通知するので、`exec` が終わる（tmux のセッションが閉じる）のを待ってから起動する'
+  - item: 会話の引き継ぎ
+    constraint: '`compact` の契機は新規の会話で起動する。ほかの契機は、`session.json` の `claude_session_id` と `claude_config_dir` があり、会話の記録のファイル `{claude_config_dir}/projects/{ワークスペースのフォルダの絶対パスの英数字以外を - に置き換えた名前}/{claude_session_id}.jsonl` があれば、Claude Code の引数に `--resume {claude_session_id}` を付ける。無ければ付けずに新規の会話で起動する'
+    notes: claude-balancer では各アカウントの `projects/` が共通の置き場へのリンクなので、前回のアカウントの設定のフォルダで確かめればよい（LIB-531-1）
+  - item: アカウント
+    constraint: '`--account` を付けない。`--resume` を付けた `exec` は claude-balancer が前回のアカウントを優先し、利用上限に達したアカウントは貸与の判定で除外される。`compact` の契機はアカウントを指定しない'
+  - item: 起動の指定の確かめ
+    constraint: '起動の前に、`launch.json` の `mcp_config` を『ワークスペースの作成』と同じ検査にかけ、`plugin_dirs` の各フォルダに `.claude-plugin/plugin.json` があるかを確かめる。通らなければ `claude-balancer exec` を起動せず、`last_error` を `launch_options: {読めない指定と理由}` にして `crashed` にする。`launch.json` が無ければ指定なしで起動し、応答の `warnings` に `launch_record_missing` を入れる'
+  - item: 起動
+    constraint: 『MindStella のセッションの作成』の「起動のコマンド」「Claude Code の引数」「渡す環境変数」「最初の入力」「準備を待つ上限」と同じ。`compact` の契機は環境変数 `MINDSTELLA_LAUNCH_REASON=compact` を足す。準備ができたら `status` を `running` にし、`restart_reason`・`last_error` を `null` に戻す
+    decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
+  - item: 失敗
+    constraint: '起動の失敗は『MindStella のセッションの作成』の 503（`account`）・502（`launch`）・504（`ready`）と同じ見分けで、ペインを閉じ、`last_error` を `{stage}: {detail}` にして `crashed` にする。応答は受け付けた時点で返しているので、失敗は一覧で確かめる'
+  - item: 停止の通知
+    constraint: '`rate_limit` の契機だけ、止めた後・起動の前に『停止の通知』を `rate_limited` で呼ぶ。`api`・`compact` の契機で起動に失敗したときは `restart_failed` で呼ぶ。`rate_limit`・`comment` の契機の失敗は、止まったことを通知済みなので呼ばない'
+  - item: 同時の依頼
+    constraint: ワークスペースごとの鍵を状態を `restarting` にするまで持ち、止めて起動する工程は別のスレッドで行う。`restarting` の間に届いた内部の契機は重ねて起動しない（`comment` は準備ができるのを待つ）
+  - item: MCP のツール
+    constraint: '`restart_session` は `workspace_id`・`session_id`・`force` を受け、同じ処理を呼ぶ'
+  - item: exec の終了を待つ上限
+    constraint: 非機能要件『起動し直しで exec の終了を待つ上限』の秒数。『止め方』のとおり、上限を過ぎたら `kill-session` してから起動する
+    decided_by: NFR-489-1#requirements[起動し直しで exec の終了を待つ上限]
+flows:
+  - name: 正常系
+    summary: 起動中の MindStella のセッションを止め、前の会話を引き継いで同じ ID のまま起動し直す
+    setup:
+      - name: Mock
+        description: claude-balancer（`PATH` の先頭に置く。受けた引数を記録し、`--` の後のコマンドを実行する）・Claude Code（`PATH` の先頭に置く。引数を記録し、会話の記録のファイルを書いて『MindStella のセッションのフック』の SessionStart を叩き、`/exit` が貼られたら SessionEnd を叩いて終わる）
+      - name: 常駐サーバー
+        description: 常駐サーバー（テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ）
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー（`TMUX_TMPDIR`）
+      - name: ワークスペース
+        description: 『MindStella のセッションの作成』で起動し、応答の途中でない MindStella のセッション
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST /workspaces/{id}/sessions/{session}/restart
+        participant TM as tmux
+        participant CB as claude-balancer（Mock）
+        participant CC as Claude Code（Mock）
+
+        クライアント->>API: POST
+        API-->>クライアント: 202 status: restarting
+        API->>TM: /exit を貼り、セッションが閉じるのを待つ
+        API->>TM: new-session・respawn-pane（claude-balancer exec -- claude --resume {session_id}）
+        TM->>CB: exec
+        CB->>CC: 起動する
+        CC->>API: SessionStart（フックの受け口）
+        API->>TM: 最初の入力を貼る
+      ```
+    expected:
+      - 応答が 202 で `session` が起動し直す前と同じ
+      - Mock の claude-balancer が 2 回目に受けた引数に `--resume` と 1 回目の `claude_session_id` があり、`--account` が無い
+      - 起動し直した後の `session.json` の `status` が `running` で、`session` が変わらず、`claude_session_id` が 2 回目に登録された値
+    test: test_normal
+  - name: 正常系（応答の途中）
+    summary: 応答の終わりを待ってから止め、待つ間の一覧は restarting を返す
+    setup:
+      - name: Mock
+        description: 正常系と同じ。Claude Code は応答の途中で、しばらくして Stop を叩く
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 'MindStella のセッションが応答の途中（`responding: true`）'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+        participant LS as GET /workspaces/{id}/sessions
+
+        クライアント->>API: POST
+        API-->>クライアント: 202
+        クライアント->>LS: GET
+        LS-->>クライアント: status: restarting
+        API->>API: Stop の後に止めて起動し直す
+      ```
+    expected:
+      - 待つ間の一覧の `status` が `restarting`
+      - Mock の Claude Code が Stop を叩いた後に `/exit` を受けている
+    test: test_normal_when_responding
+  - name: 正常系（会話の記録が無い）
+    summary: 会話の記録のファイルが無ければ --resume を付けずに起動する
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: '`status: crashed` で `claude_session_id`・`claude_config_dir` を持ち、その会話の記録のファイルが無い `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+        participant CB as claude-balancer（Mock）
+
+        クライアント->>API: POST
+        API->>API: 会話の記録のファイルが無い
+        API->>CB: exec -- claude（--resume なし）
+      ```
+    expected:
+      - Mock の claude-balancer が `exec` を 1 回だけ受け、引数に `--resume` が無い
+      - '`session.json` の `status` が `running`'
+    test: test_normal_when_transcript_missing
+  - name: 異常系（プラグインのフォルダが無い）
+    summary: 記録したプラグインのフォルダが無ければ起動せず、last_error に記録する
+    setup:
+      - name: Mock
+        description: claude-balancer（受けた引数を記録する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: '`status: crashed` の `session.json` と、削除したフォルダを `plugin_dirs` に持つ `launch.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+        participant LS as GET /workspaces/{id}/sessions
+
+        クライアント->>API: POST
+        API-->>クライアント: 202
+        API->>API: プラグインのフォルダが無い
+        クライアント->>LS: GET
+        LS-->>クライアント: crashed・last_error: launch_options: ...
+      ```
+    expected:
+      - Mock の claude-balancer が `exec` を受けていない
+      - 一覧の `status` が `crashed` で、`last_error` が `launch_options:` で始まり、削除したフォルダのパスを含む
+    test: test_error_when_plugin_dir_missing
+  - name: 異常系（アカウントを借りられない）
+    summary: exec が 125 で終わればペインを閉じ、last_error に記録する
+    setup:
+      - name: Mock
+        description: claude-balancer（子プロセスを起動せず、標準エラーに理由を書いて 125 で終わる）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: '`status: crashed` の `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+        participant CB as claude-balancer（Mock）
+
+        クライアント->>API: POST
+        API-->>クライアント: 202
+        API->>CB: exec
+        CB-->>API: 125
+        API->>API: ペインを閉じ、crashed・last_error を記録する
+      ```
+    expected:
+      - '`session.json` の `status` が `crashed` で、`last_error` が `account:` で始まり Mock の標準エラーを含む'
+      - tmux のセッションが残っていない
+    test: test_error_when_no_account
+  - name: 異常系（クローズ済み・409）
+    summary: クローズ済みのワークスペースは 409 を返す
+    setup:
+      - name: Mock
+        description: なし
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: ワークスペース
+        description: 『ワークスペースのクローズ』でクローズしたワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as POST .../restart
+
+        クライアント->>API: POST
+        API-->>クライアント: 409 stage: closed
+      ```
+    expected:
+      - 応答が 409 で `stage` が `closed`
+      - '`session.json` が変わっていない'
+    test: test_error_when_closed
+refs:
+  - IF-531-2#
+  - IF-531-3#
+  - IF-531-4#
+  - IF-570-1#
+  - LIB-531-1#
+callers:
+  - SC-582-1#
+  - IF-531-6#
+  - IF-489-6#
+test_file: tests/integration/server/test_restart_session.py

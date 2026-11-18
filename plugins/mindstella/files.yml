@@ -96,7 +96,7 @@ files:
     type: implements
 - path: hooks/hooks.json
   name: フックの登録
-  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。SessionStart・PreToolUse のフックで動かすスクリプトを変更するときに読む。
+  description: 会話の始まりにスレッドを未読へ戻して常駐サーバーを起動するフックと、mindstella のツールの呼び出しにセッションの値を入れるフックを登録する。PreCompact では圧縮を止めて常駐サーバーへ起動し直しを依頼するフックを登録する。SessionStart・PreToolUse・PreCompact のフックで動かすスクリプトを変更するときに読む。
   tags:
   - tool:claude-code
   - topic:フック
@@ -1576,6 +1576,17 @@ files:
   - topic:例外
   related:
   - to: MOD-489-190
+    type: implements
+- path: skills/mindmap/scripts/files_serve.py
+  name: ワークスペースのファイルの配信
+  description: ワークスペースのファイルのフォルダのパスの解決・Range の解釈・返却する範囲の決定・分けた書き出し。`/files/` で返却するファイルや範囲の扱いを変更するときに読む。
+  tags:
+  - topic:http
+  - topic:プレビュー
+  - topic:配信
+  - topic:ファイル
+  related:
+  - to: MOD-587-1
     type: implements
 - path: skills/mindmap/scripts/graph.py
   name: 依存と影響

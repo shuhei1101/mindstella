@@ -15,6 +15,9 @@ catalogs:
       - name: claude-balancer exec --client {名前} --account {アカウント} -- {コマンド}
         kind: コマンド
         purpose: 指定したアカウント（claude-balancer の設定のアカウント名か、設定のフォルダのパス。`~` を展開した絶対パスで照合する）だけを借りてコマンドを実行する。貸せない・設定に無いときはほかのアカウントに切り替えず、子プロセスを起動せずに理由を標準エラーに出力して 125 で終わる。既定の設定のフォルダ（`~/.claude`）のアカウントを貸すときは、子プロセスの環境変数から `CLAUDE_CONFIG_DIR` を除外して起動する。セッションの管理が、アカウントを指定した MindStella のセッションを起動する
+      - name: claude-balancer exec --client {名前} -- claude --resume {会話の ID}
+        kind: コマンド
+        purpose: 会話の再開とみなし、その会話を前回実行したアカウントを優先して借りる（利用上限などで貸せなければほかのアカウント）。子プロセスが終わった後、会話の記録の最も新しい assistant の記録の `error` が `rate_limit` なら、返却の前に利用上限の到達を自分で通知する。各アカウントの設定のフォルダの `projects/` が共通の置き場へのリンクなので、別のアカウントでも同じ会話を再開できる。セッションの管理が MindStella のセッションを起動し直す
 lead: 複数の Claude Code のアカウントから空いているものを貸し、そのアカウントでコマンドを実行する CLI。
 supplier: shuhei1101
 dependency_scope: 任意

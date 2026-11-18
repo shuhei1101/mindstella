@@ -1,0 +1,204 @@
+id: IF-587-1
+title: ワークスペースのファイルの配信
+lead: '`preview_url` が立てた配信が、ワークスペースのファイルのフォルダ `.mindstella/files/` のファイルを `/files/` の下で返す。画面は資料の本文の `../files/{名前}` をこのパスへ解決して、動画・音声を再生し、画像を表示する。'
+entry:
+  kind: endpoint
+  value: GET /files/{path}
+flows:
+  - name: 正常系
+    summary: ファイルのフォルダのファイルを、拡張子に合う Content-Type で返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: ファイル
+        description: 数秒の mp4・png
+        notes: '`.mindstella/files/clip.mp4` と `.mindstella/files/img/shot.png` に配置する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /files/{path}
+
+        クライアント->>IF: GET /files/clip.mp4
+        IF-->>クライアント: 200、mp4 の中身
+        クライアント->>IF: GET /files/img/shot.png
+        IF-->>クライアント: 200、png の中身
+      ```
+    expected:
+      - mp4 はステータスが 200 で、`Content-Type` が `video/mp4`、`Accept-Ranges` が `bytes`、`Content-Length` がファイルの大きさ、`Content-Security-Policy` が `sandbox`、本文がファイルと同じ
+      - png はステータスが 200 で、`Content-Type` が `image/png`、本文がファイルと同じ（ファイルのフォルダの下のフォルダも返す）
+    test: test_normal
+  - name: 正常系（範囲の要求）
+    summary: '`Range` の要求に、要求した範囲だけを部分の応答で返す'
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: ファイル
+        description: 1000 バイトのファイル `.mindstella/files/clip.mp4`
+        notes: '`Range: bytes=100-199`・`Range: bytes=900-`・`Range: bytes=-50` を付けて GET する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /files/{path}
+
+        クライアント->>IF: GET /files/clip.mp4（Range: bytes=100-199）
+        IF-->>クライアント: 206、100〜199 バイト目
+      ```
+    expected:
+      - '`bytes=100-199` はステータスが 206 で、`Content-Range` が `bytes 100-199/1000`、`Content-Length` が `100`、本文がファイルの 100〜199 バイト目'
+      - '`bytes=900-` は `Content-Range` が `bytes 900-999/1000` で、本文が末尾の 100 バイト'
+      - '`bytes=-50` は `Content-Range` が `bytes 950-999/1000` で、本文が末尾の 50 バイト'
+    test: test_normal_when_range
+  - name: 異常系（範囲がファイルの外・416）
+    summary: ファイルの大きさを超えた範囲は 416 を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: ファイル
+        description: 1000 バイトのファイル `.mindstella/files/clip.mp4`
+        notes: '`Range: bytes=1000-` を付けて GET する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /files/{path}
+
+        クライアント->>IF: GET /files/clip.mp4（Range: bytes=1000-）
+        IF-->>クライアント: 416
+      ```
+    expected:
+      - ステータスが 416 で、`Content-Range` が `bytes */1000`
+    test: test_error_when_range_not_satisfiable
+  - name: 異常系（ファイルが無い・フォルダの外・404）
+    summary: 無いファイルと、ファイルのフォルダの外を指すパスは 404 を返す
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: フォルダの外を指すパス
+        description: '`.mindstella/files/outside` をワークスペースの外のファイルへのシンボリックリンクにする'
+        notes: '`/files/missing.mp4`・`/files/../decisions.yaml`（`..` を正規化せずに送る）・`/files/%2e%2e/decisions.yaml`・`/files/outside`・`/files/`（フォルダそのもの）を GET する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /files/{path}
+
+        クライアント->>IF: GET /files/../decisions.yaml
+        IF-->>クライアント: 404、problem+json
+      ```
+    expected:
+      - どの要求もステータスが 404 で、`Content-Type` が `application/problem+json`
+      - 本文に `decisions.yaml` とワークスペースの外のファイルの中身が無く、フォルダの中の一覧も無い
+    test: test_error_when_not_found_or_outside
+  - name: 異常系（接続先が違う・403）
+    summary: Host が端末の中の名前でなければファイルを返さない
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立てて `preview_url` を呼び、返った URL のオリジンへ HTTP のクライアントでつなぐ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: ファイル
+        description: '`.mindstella/files/clip.mp4`'
+        notes: '`Host: attacker.example:{ポート}` を付けて GET する'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /files/{path}
+
+        クライアント->>IF: GET /files/clip.mp4（Host: attacker.example）
+        IF-->>クライアント: 403
+      ```
+    expected:
+      - ステータスが 403 で、本文にファイルの中身が無い
+    test: test_error_when_host_mismatch
+idempotent: true
+side_effects: なし（読むだけ）
+callers:
+  - IF-489-71#
+  - IF-489-70#
+request:
+  - name: path
+    type: str
+    required: true
+    location: path
+    description: '`/files/` より後ろのパス。ファイルのフォルダ `.mindstella/files/` からの相対パスで、パーセントエンコードを戻してから解決する'
+    constraints: 解決した先がファイルのフォルダの配下の通常のファイルでないときは 404
+  - name: Range
+    type: str
+    required: false
+    default: なし（全体を返す）
+    location: header
+    description: 返す範囲。`bytes={始め}-{終わり}`・`bytes={始め}-`・`bytes=-{末尾からの長さ}` の 1 つだけを受ける
+    constraints: 複数の範囲・書式に合わない値は無視して全体を 200 で返す
+  - name: Host
+    type: str
+    required: true
+    location: header
+    description: ブラウザが付ける接続先
+    constraints: 『プレビューの配信』の制約「接続先の確かめ」と同じ
+response:
+  - name: 本文
+    type: bytes
+    description: ファイルの中身。`Range` を受けたときはその範囲だけ
+  - name: Content-Type
+    type: str
+    description: 拡張子から決める。`.mp4` は `video/mp4`、`.webm` は `video/webm`、`.mov` は `video/quicktime`、`.mp3` は `audio/mpeg`、`.wav` は `audio/wav`、`.ogg` は `audio/ogg`、`.m4a` は `audio/mp4`、`.png` は `image/png`、`.jpg`・`.jpeg` は `image/jpeg`、`.gif` は `image/gif`、`.webp` は `image/webp`、`.svg` は `image/svg+xml`。表に無い拡張子は `application/octet-stream`
+  - name: Accept-Ranges
+    type: str
+    description: '`bytes`'
+  - name: Content-Range
+    type: str
+    description: 206 のとき `bytes {始め}-{終わり}/{大きさ}`、416 のとき `bytes */{大きさ}`
+  - name: Cache-Control
+    type: str
+    description: '`no-cache`（差し替えたファイルを古いまま見せない）'
+  - name: X-Content-Type-Options
+    type: str
+    description: '`nosniff`'
+  - name: Content-Security-Policy
+    type: str
+    description: '`sandbox`（全ての応答に付ける。SVG などを直接開いても、スクリプトを動かさず、プレビューとオリジンを分ける。`img`・`video`・`audio` での読み込みには効かない）'
+status_codes:
+  - code: '200'
+    condition: ファイルの全体を返せた
+  - code: '206'
+    condition: '`Range` の範囲を返せた'
+  - code: '403'
+    condition: '`Host` が『プレビューの配信』の制約「接続先の確かめ」に合わない'
+    notes: 本文は返さない
+  - code: '404'
+    condition: ファイルが無い、フォルダを指す、ファイルのフォルダの外を指す
+  - code: '416'
+    condition: '`Range` の始めがファイルの大きさ以上'
+error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語で、ワークスペースの絶対パスを含めない
+constraints:
+  - item: 待ち受け
+    constraint: 『プレビューのURL』が立てた配信と同じ待ち受けで、新しいポートを開かない
+    decided_by: NFR-489-1#requirements[待ち受けの範囲]
+  - item: 接続先の確かめ
+    constraint: 『プレビューの配信』の制約「接続先の確かめ」と同じ確かめを、`/files/` の下の全てのパスに当てる
+  - item: フォルダの外のファイル
+    constraint: シンボリックリンクをたどって解決した後に、ファイルのフォルダの配下にあることを確かめる。フォルダの中の一覧は返さない
+  - item: 大きなファイル
+    constraint: ファイルを丸ごとメモリへ読まず、一定の大きさずつ読んで送る。大きさの値はモジュール構成で導く。送る途中でブラウザが接続を切っても、ほかの要求の応答を止めない
+  - item: Git 管理外のワークスペース
+    constraint: ワークスペースが Git のリポジトリかどうかによらず同じに返す
+  - item: 通信
+    constraint: 配信は外へ通信しない
+  - item: 直接開いたファイルのスクリプト
+    constraint: '`/files/` の全ての応答に `Content-Security-Policy: sandbox` を付け、配置した SVG・HTML をブラウザで直接開いても、プレビューのオリジンでスクリプトを動かさない'
+refs:
+  - IF-489-18#
+  - IF-489-3#
+  - IF-489-17#
+test_file: tests/integration/server/test_files_serve.py

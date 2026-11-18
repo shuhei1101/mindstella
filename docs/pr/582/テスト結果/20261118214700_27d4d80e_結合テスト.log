@@ -1,0 +1,22 @@
+$ pytest tests/integration/server/test_restart_session.py tests/integration/server/test_crash_watch.py tests/integration/server/test_create_session.py tests/integration/server/test_list_sessions.py tests/integration/server/test_session_events.py tests/integration/server/test_stop_notify.py tests/integration/server/test_comments_send.py tests/integration/server/test_comments_send_now.py tests/integration/server/test_mcp_server.py tests/integration/plugin/test_session_hook.py tests/integration/plugin/test_plugin_loading.py -p no:cacheprovider（並列数 1）
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-session-auto-restart
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 75 items
+
+tests/integration/server/test_restart_session.py ......                  [  8%]
+tests/integration/server/test_crash_watch.py ..                          [ 10%]
+tests/integration/server/test_create_session.py .........                [ 22%]
+tests/integration/server/test_list_sessions.py ...                       [ 26%]
+tests/integration/server/test_session_events.py ....                     [ 32%]
+tests/integration/server/test_stop_notify.py ..........                  [ 45%]
+tests/integration/server/test_comments_send.py .................         [ 68%]
+tests/integration/server/test_comments_send_now.py ......                [ 76%]
+tests/integration/server/test_mcp_server.py ..........                   [ 89%]
+tests/integration/plugin/test_session_hook.py .......                    [ 98%]
+tests/integration/plugin/test_plugin_loading.py .                        [100%]
+
+======================== 75 passed in 138.64s (0:02:18) ========================
+exit=0

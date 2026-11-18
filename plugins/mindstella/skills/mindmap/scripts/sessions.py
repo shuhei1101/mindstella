@@ -9,6 +9,7 @@ import secrets
 import shutil
 import signal
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -17,6 +18,7 @@ from typing import Any
 
 import yaml
 
+import claude_input
 import commands
 import notify
 import read_point
@@ -86,7 +88,41 @@ TMUX_TIMEOUT_SEC = 5.0
 CONTINUING_END_REASONS = ("clear", "resume")
 
 # 受ける出来事
-EVENT_NAMES = ("session_start", "session_end", "prompt_submit", "stop", "stop_failure")
+EVENT_NAMES = (
+    "session_start",
+    "session_end",
+    "prompt_submit",
+    "stop",
+    "stop_failure",
+    "pre_compact",
+)
+
+# 起動し直しで /exit を貼ってから tmux のセッションが閉じるまで待つ秒数（非機能要件『起動し直しで exec の終了を待つ上限』）
+EXEC_EXIT_WAIT_SEC = 75.0
+
+# 落ちたことを見回る間隔の秒数（非機能要件『落ちたことを見回る間隔』）
+CRASH_WATCH_INTERVAL_SEC = 60.0
+
+# 見回る間隔を上書きする環境変数
+CRASH_WATCH_INTERVAL_ENV = "MINDSTELLA_CRASH_WATCH_INTERVAL"
+
+# 圧縮の契機で起動したことをフックへ渡す環境変数の名前
+LAUNCH_REASON_ENV = "MINDSTELLA_LAUNCH_REASON"
+
+# 作成・起動し直しの応答の warnings に入れる値（launch.json が無い）
+LAUNCH_RECORD_MISSING = "launch_record_missing"
+
+# restart_reason に入る値
+RESTART_REASONS = ("api", "rate_limit", "compact", "comment")
+
+# 最後の書き込みを待たずに止める契機
+NO_WAIT_REASONS = ("rate_limit", "compact")
+
+# 起動に失敗したときに restart_failed を通知する契機（rate_limit・comment は止まったことを通知済み）
+FAILURE_NOTIFIED_REASONS = ("api", "compact")
+
+# stop_failure の error のうち、利用上限
+RATE_LIMIT_ERROR = "rate_limit"
 
 # まとめていない変更をまとめるときの説明
 COMMIT_SUMMARIES = {
@@ -137,6 +173,8 @@ def build_command(
     mcp_config_file: Path | None,
     balancer: str | None,
     claude_config_dir: str | None,
+    *,
+    resume_id: str | None = None,
 ) -> list[str]:
     """ペインで動かすコマンドの引数の並びを作る。"""
     claude = ["claude"]
@@ -144,6 +182,9 @@ def build_command(
         claude += ["--mcp-config", str(mcp_config_file)]
     for folder in options.plugin_dirs if options is not None else []:
         claude += ["--plugin-dir", folder]
+    # 引き継ぐ会話がある: その会話から再開する
+    if resume_id:
+        claude += ["--resume", resume_id]
     # claude-balancer がある: アカウントを借りて起動する
     if balancer is not None:
         # アカウントの指定がある: そのアカウントを借りる
@@ -159,6 +200,8 @@ def build_env(
     flow: dict[str, str] | None,
     claude_config_dir: str | None,
     has_balancer: bool,
+    *,
+    launch_reason: str | None = None,
 ) -> dict[str, str]:
     """MindStella のセッションに渡す環境変数を作る。"""
     env = {
@@ -171,7 +214,36 @@ def build_env(
     # claude-balancer が無い: 依頼の設定のフォルダのアカウントで起動する
     if not has_balancer and claude_config_dir:
         env["CLAUDE_CONFIG_DIR"] = claude_config_dir
+    if launch_reason:
+        env[LAUNCH_REASON_ENV] = launch_reason
     return env
+
+
+def resume_id_for(current: SessionState | None, folder: Path) -> str | None:
+    """記録した会話の記録のファイルがあれば、その Claude Code の session_id を返す。"""
+    if current is None or not current.claude_session_id or not current.claude_config_dir:
+        return None
+    target = claude_input.InputTarget(
+        socket="",
+        pane="",
+        config_dir=Path(current.claude_config_dir),
+        cwd=folder.resolve(),
+        claude_pid=0,
+        claude_started_at="",
+    )
+    for directory in claude_input.transcript_dirs(target):
+        if (directory / f"{current.claude_session_id}.jsonl").is_file():
+            return current.claude_session_id
+    return None
+
+
+def check_launch_options(options: LaunchOptions) -> str | None:
+    """追加の MCP とプラグインを読めるかを確かめ、読めなければ理由を返す。"""
+    try:
+        workspaces.validate_options(options.mcp_config, options.plugin_dirs)
+    except ApiError as error:
+        return f"{error.stage}: {error.detail}"
+    return None
 
 
 def is_alive(
@@ -214,9 +286,13 @@ def is_alive(
     return False
 
 
-def notify_stopped(ctx: Any, workspace_id: str, reason: notify.StopReason) -> threading.Thread | None:
+def notify_stopped(
+    ctx: Any, workspace_id: str, reason: notify.StopReason
+) -> threading.Thread | None:
     """ワークスペースの名前と画面の URL を参照する関数を添えて、停止を通知する。"""
-    return notify.notify_stopped(workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id))
+    return notify.notify_stopped(
+        workspace_id, reason, lambda: _describe_workspace(ctx, workspace_id)
+    )
 
 
 def create_session(
@@ -253,11 +329,13 @@ def create_session(
         pane = f"{workspace_id}:0.0"
         balancer = shutil.which("claude-balancer")
         options = state.read_launch(ctx.state_root, workspace_id)
+        warnings = [] if options is not None else [LAUNCH_RECORD_MISSING]
         command = build_command(
             options,
             _write_mcp_config(ctx.state_root, workspace_id, options),
             balancer,
             claude_config_dir,
+            resume_id=resume_id_for(current, folder),
         )
         env = build_env(
             session_id,
@@ -306,7 +384,13 @@ def create_session(
             "balancer": balancer is not None,
         },
     )
-    return 201, {"session": session_id, "pane": pane, "url": url, "account": account}
+    return 201, {
+        "session": session_id,
+        "pane": pane,
+        "url": url,
+        "account": account,
+        "warnings": warnings,
+    }
 
 
 def list_sessions(workspace_id: str, ctx: Any) -> dict[str, Any]:
@@ -401,6 +485,12 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         if current is None or current.session != session_id:
             return current
         previous.append(current.status)
+        # 起動し直しの途中の終了: 状態を変えない（起動し直しのスレッドが書き換える）
+        if kind == "session_end" and current.status == "restarting":
+            return current.replace(responding=False)
+        # 圧縮の前: 状態を変えない
+        if kind == "pre_compact":
+            return current
         # 起動・clear・compact・fork: Claude Code の session_id とプロセスを入れ直す
         if kind == "session_start":
             return current.replace(
@@ -435,7 +525,327 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         and previous == ["running"]
     ):
         notify_stopped(ctx, workspace_id, "session_ended")
+    # 起動中に利用上限・圧縮が来た: 応答を返した後に起動し直す
+    reason = _restart_reason_of(kind, event)
+    if reason is not None and previous == ["running"]:
+        _start_thread(lambda: request_restart(workspace_id, reason, ctx))
     return True
+
+
+def _restart_reason_of(kind: str, event: dict[str, Any]) -> str | None:
+    """出来事から起動し直しの契機を返す。起動し直さないなら None。"""
+    if kind == "stop_failure" and event.get("error") == RATE_LIMIT_ERROR:
+        return "rate_limit"
+    if kind == "pre_compact":
+        return "compact"
+    return None
+
+
+def restart_session(
+    workspace_id: str, session_id: str | None, reason: str, force: bool, ctx: Any
+) -> tuple[int, dict[str, Any]]:
+    """起動し直しを受け付け、止めて起動する工程を別のスレッドで始める。"""
+    if reason not in RESTART_REASONS:
+        raise ApiError(
+            400, "reason", f"reason は {', '.join(RESTART_REASONS)} のどれかにしてください"
+        )
+    _require_known(ctx, workspace_id)
+    with ctx.locks.for_workspace(workspace_id):
+        current = state.read_session(ctx.state_root, workspace_id)
+        if current is None or (session_id is not None and current.session != session_id):
+            raise ApiError(
+                404, "session", f"MindStella のセッションがありません: {session_id or workspace_id}"
+            )
+        row = workspaces.find_workspace_row(ctx.pi_port, workspace_id)
+        if row is None:
+            raise ApiError(404, "workspace", f"配信元の行がありません: {workspace_id}")
+        if workspaces.is_closed(row):
+            raise ApiError(409, "closed", "ワークスペースはクローズ済みです")
+        if current.status in ("stopping", "restarting"):
+            raise ApiError(
+                409, current.status, f"MindStella のセッションは {current.status} の途中です"
+            )
+        if reason == "comment" and current.close_pending:
+            raise ApiError(409, "close_pending", "MindStella のセッションはクローズ待ちです")
+        folder = workspaces.workspace_folder(row)
+        options = state.read_launch(ctx.state_root, workspace_id)
+        warnings = [] if options is not None else [LAUNCH_RECORD_MISSING]
+        target = current.session
+        state.update_session(
+            ctx.state_root,
+            workspace_id,
+            lambda latest: (
+                None
+                if latest is None
+                else latest.replace(
+                    status="restarting",
+                    restart_reason=reason,
+                    close_pending=False if reason == "api" else latest.close_pending,
+                )
+            ),
+        )
+    logger.info(
+        "mindstella.session.restart_requested",
+        extra={"workspace_id": workspace_id, "session_id": target, "reason": reason},
+    )
+    _start_thread(
+        lambda: _restart_in_background(ctx, workspace_id, target, folder, current, reason, force)
+    )
+    return 202, {"session": target, "status": "restarting", "warnings": warnings}
+
+
+def request_restart(workspace_id: str, reason: str, ctx: Any) -> bool:
+    """内部の契機で起動し直す。起動し直しを始めたか、既に起動し直しの途中なら True。"""
+    current = state.read_session(ctx.state_root, workspace_id)
+    if current is None:
+        return False
+    if current.status == "restarting":
+        return True
+    if reason == "comment" and current.close_pending:
+        return False
+    try:
+        restart_session(workspace_id, None, reason, False, ctx)
+    except ApiError as error:
+        logger.warning(
+            "mindstella.session.restart_refused",
+            extra={"workspace_id": workspace_id, "reason": reason, "stage": error.stage},
+        )
+        return error.stage == "restarting"
+    return True
+
+
+def wait_until_running(workspace_id: str, ctx: Any) -> bool:
+    """session.json が restarting でなくなるまで待ち、running なら True を返す。"""
+    limit = (
+        float(os.environ.get(STOP_WAIT_ENV) or STOP_WAIT_SEC)
+        + EXEC_EXIT_WAIT_SEC
+        + float(os.environ.get(READY_TIMEOUT_ENV) or READY_TIMEOUT_SEC)
+    )
+    started = time.monotonic()
+    while True:
+        current = state.read_session(ctx.state_root, workspace_id)
+        if current is None:
+            return False
+        if current.status != "restarting":
+            return current.status == "running"
+        if time.monotonic() - started >= limit:
+            return False
+        time.sleep(READY_POLL_SEC)
+
+
+def watch_crashes_once(ctx: Any) -> int:
+    """running の MindStella のセッションが落ちていれば crashed にして通知し、その数を返す。"""
+    count = 0
+    for workspace_id in state.read_ids(ctx.state_root):
+        try:
+            current = state.read_session(ctx.state_root, workspace_id)
+            if current is None or current.status != "running":
+                continue
+            if not is_alive(
+                ctx.state_root,
+                workspace_id,
+                ctx.tmux,
+                ctx.proc,
+                on_crashed=lambda workspace_id=workspace_id: notify_stopped(
+                    ctx, workspace_id, "crashed"
+                ),
+            ):
+                count += 1
+        except Exception:
+            logger.exception(
+                "mindstella.session.watch_failed", extra={"workspace_id": workspace_id}
+            )
+    return count
+
+
+def start_crash_watch(ctx: Any, stop: threading.Event) -> threading.Thread:
+    """間隔ごとに watch_crashes_once を呼ぶ daemon のスレッドを始める。"""
+    interval = float(os.environ.get(CRASH_WATCH_INTERVAL_ENV) or CRASH_WATCH_INTERVAL_SEC)
+
+    def loop() -> None:
+        """stop が立つまで見回る。"""
+        while not stop.wait(interval):
+            watch_crashes_once(ctx)
+
+    thread = threading.Thread(target=loop, name="mindstella-crash-watch", daemon=True)
+    thread.start()
+    return thread
+
+
+def _restart_in_background(
+    ctx: Any,
+    workspace_id: str,
+    session_id: str,
+    folder: Path,
+    before: SessionState,
+    reason: str,
+    force: bool,
+) -> None:
+    """生きていれば止め、記録した指定と会話で起動し直す。失敗は crashed と last_error にする。"""
+    stage = "wait"
+    try:
+        alive = before.status == "running" and _dead_reason(before, ctx.tmux, ctx.proc) is None
+        if alive:
+            # 応答の途中なら終わりを待つ（上限を過ぎたら起動し直さない）
+            waits = not force and reason not in NO_WAIT_REASONS
+            if waits and not _wait_last_write(ctx, workspace_id, session_id):
+                _clear_restart_reason(ctx, workspace_id, session_id)
+                return
+            stage = "exit"
+            _exit_claude(ctx, workspace_id)
+            _wait_exec_exit(ctx, workspace_id)
+        elif ctx.tmux.run(["has-session", "-t", f"={workspace_id}"])[0] == 0:
+            ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
+        if reason == "rate_limit":
+            notify_stopped(ctx, workspace_id, "rate_limited")
+        stage = "launch_options"
+        options = state.read_launch(ctx.state_root, workspace_id)
+        if options is not None:
+            problem = check_launch_options(options)
+            if problem is not None:
+                raise ApiError(422, "launch_options", problem)
+        _relaunch(ctx, workspace_id, session_id, folder, options, reason)
+        logger.info(
+            "mindstella.session.restarted",
+            extra={"workspace_id": workspace_id, "session_id": session_id, "reason": reason},
+        )
+    except ApiError as error:
+        _fail_restart(ctx, workspace_id, session_id, reason, f"{error.stage}: {error.detail}")
+    except Exception as error:
+        logger.exception(
+            "mindstella.session.restart_failed",
+            extra={"workspace_id": workspace_id, "session_id": session_id, "stage": stage},
+        )
+        _fail_restart(ctx, workspace_id, session_id, reason, f"{stage}: {error}")
+
+
+def _wait_exec_exit(ctx: Any, workspace_id: str) -> None:
+    """claude-balancer exec が終わって tmux のセッションが閉じるのを待ち、上限を過ぎたら閉じる。"""
+    deadline = time.monotonic() + EXEC_EXIT_WAIT_SEC
+    while ctx.tmux.run(["has-session", "-t", f"={workspace_id}"])[0] == 0:
+        if time.monotonic() >= deadline:
+            print(
+                f"[mindstella] {EXEC_EXIT_WAIT_SEC:g} 秒以内に exec が終わらないため、"
+                f"tmux のセッションを閉じます: {workspace_id}",
+                file=sys.stderr,
+            )
+            ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
+            return
+        time.sleep(STOP_POLL_SEC)
+
+
+def _relaunch(
+    ctx: Any,
+    workspace_id: str,
+    session_id: str,
+    folder: Path,
+    options: LaunchOptions | None,
+    reason: str,
+) -> None:
+    """同じ MindStella のセッションの ID で起動し、準備ができたら running に戻す。"""
+    current = state.read_session(ctx.state_root, workspace_id)
+    resume_id = None if reason == "compact" else resume_id_for(current, folder)
+    balancer = shutil.which("claude-balancer")
+    command = build_command(
+        options,
+        _write_mcp_config(ctx.state_root, workspace_id, options),
+        balancer,
+        None,
+        resume_id=resume_id,
+    )
+    env = build_env(
+        session_id,
+        workspace_id,
+        ctx.port,
+        _read_flow(folder),
+        None,
+        balancer is not None,
+        launch_reason="compact" if reason == "compact" else None,
+    )
+    # 準備の判定に使うため、登録を空けて起動する（失敗したら戻す）
+    state.update_session(
+        ctx.state_root,
+        workspace_id,
+        lambda latest: (
+            None
+            if latest is None
+            else latest.replace(
+                claude_session_id=None, pid=None, pid_started_at=None, pane=f"{workspace_id}:0.0"
+            )
+        ),
+    )
+    try:
+        _launch(ctx.tmux, workspace_id, folder, env, command)
+        _wait_ready(ctx, workspace_id)
+    except ApiError:
+        ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
+        claude_session_id = current.claude_session_id if current else None
+        state.update_session(
+            ctx.state_root,
+            workspace_id,
+            lambda latest: (
+                None if latest is None else latest.replace(claude_session_id=claude_session_id)
+            ),
+        )
+        raise
+    registered = state.read_session(ctx.state_root, workspace_id)
+    state.update_session(
+        ctx.state_root,
+        workspace_id,
+        lambda latest: (
+            None
+            if latest is None or latest.session != session_id
+            else latest.replace(
+                status="running", restart_reason=None, last_error=None, pending_write=False
+            )
+        ),
+    )
+    _paste(
+        ctx.tmux,
+        (registered.pane if registered else None) or _window(workspace_id),
+        FIRST_INPUT,
+    )
+
+
+def _clear_restart_reason(ctx: Any, workspace_id: str, session_id: str) -> None:
+    """最後の書き込みを待つ上限を過ぎた: restart_reason を戻す（running・pending_write は待ちが書いた）。"""
+    state.update_session(
+        ctx.state_root,
+        workspace_id,
+        lambda latest: (
+            None
+            if latest is None
+            else latest.replace(restart_reason=None)
+            if latest.session == session_id
+            else latest
+        ),
+    )
+
+
+def _fail_restart(
+    ctx: Any, workspace_id: str, session_id: str, reason: str, last_error: str
+) -> None:
+    """起動し直しの失敗を crashed と last_error に記録し、契機により通知する。"""
+    ctx.tmux.run(["kill-session", "-t", f"={workspace_id}"])
+    state.update_session(
+        ctx.state_root,
+        workspace_id,
+        lambda latest: (
+            None
+            if latest is None
+            else latest.replace(
+                status="crashed", responding=False, restart_reason=None, last_error=last_error
+            )
+            if latest.session == session_id
+            else latest
+        ),
+    )
+    logger.error(
+        "mindstella.session.restart_failed",
+        extra={"workspace_id": workspace_id, "session_id": session_id, "detail": last_error},
+    )
+    if reason in FAILURE_NOTIFIED_REASONS:
+        notify_stopped(ctx, workspace_id, "restart_failed")
 
 
 # 再開の状況の本文の `source` に受ける値
@@ -446,7 +856,9 @@ def resume_status(session_id: str, body: dict[str, Any], ctx: Any) -> dict[str, 
     """`session` のワークスペースの再開の状況を、ワークスペースごとの鍵の中でまとめる（何も書かない）。"""
     source = body.get("source")
     if source not in RESUME_SOURCES:
-        raise ApiError(400, "source", f"source は {', '.join(RESUME_SOURCES)} のどれかにしてください")
+        raise ApiError(
+            400, "source", f"source は {', '.join(RESUME_SOURCES)} のどれかにしてください"
+        )
     workspace_id, folder = _session_workspace(ctx, session_id)
     with ctx.locks.for_workspace(workspace_id):
         return resume.summarize_resume(folder, source, state_root=ctx.state_root)
@@ -626,7 +1038,7 @@ def _paste(tmux: TmuxRunner, pane: str, text: str) -> None:
 
 
 def _start_thread(body: Callable[[], None]) -> None:
-    """止める処理を別のスレッドで走らせる。"""
+    """止める・起動し直す処理を別のスレッドで走らせる。"""
     threading.Thread(target=body, name="mindstella-stop", daemon=True).start()
 
 

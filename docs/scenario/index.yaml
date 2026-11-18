@@ -102,3 +102,7 @@ items:
     summary: MindStella のセッションの作業の完了を、Discord に通知する
   - page: SC-570-1.yaml
     summary: MindStella のセッションが止まったことと理由を、Discord に通知する
+  - page: SC-582-1.yaml
+    summary: 利用上限・圧縮・落ちた後のコメント・起動し直しの依頼で、MindStella のセッションを同じ ID のまま起動し直す
+  - page: SC-587-1.yaml
+    summary: 動画・音声・画像をワークスペースのファイルのフォルダに配置し、資料に埋め込んで画面で再生する

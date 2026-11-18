@@ -1,0 +1,78 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 既存の設計書があるため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めを依頼する Issue でないため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 利用上限の検知（StopFailure の rate_limit）・PreCompact で圧縮を止める作り・別のアカウントでの会話の再開は、AI Monitor と claude-balancer で実装済みの機構のため
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: 複合ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T10:54:07.516657+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面の変更をスコープ外にしたため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面の変更をスコープ外にしたため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T11:31:36.167628+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面の変更をスコープ外にしたため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T11:50:07.131161+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の変更をスコープ外にしたため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面の変更をスコープ外にしたため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:47:28.809730+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:13:03.884480+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:19:19.758288+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:30:49.343025+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:30:49.343025+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T12:47:07.282592+00:00'

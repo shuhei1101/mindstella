@@ -103,7 +103,11 @@ class InputTargets:
     """ワークスペースの絶対パスごとに、最後にツールを呼んだセッションの宛先を 1 つ持つ台帳。"""
 
     def __init__(
-        self, *, state_root: Path | None = None, workspace_id: Callable[[Path], str] | None = None
+        self,
+        *,
+        state_root: Path | None = None,
+        workspace_id: Callable[[Path], str] | None = None,
+        restarter: Callable[[Path], bool] | None = None,
     ) -> None:
         """空の台帳と、台帳の鍵・ペインごとの入力の鍵・貼り付けの鍵を作る。
 
@@ -112,6 +116,8 @@ class InputTargets:
         """
         self._state_root = state_root
         self._workspace_id = workspace_id
+        # MindStella のセッションを契機 comment で起動し直し、準備ができたかを返す関数
+        self._restarter = restarter
         # ワークスペース → 宛先（最後のセッションが tmux の外なら None）
         self._targets: dict[Path, InputTarget | None] = {}
         self._guard = threading.Lock()
@@ -154,6 +160,29 @@ class InputTargets:
         with self._guard:
             pane_lock = self._pane_locks.setdefault((target.socket, target.pane), threading.Lock())
         return enter_to_claude(target, count, pane_lock=pane_lock, paste_lock=self._paste_lock)
+
+    def enter_or_restart(self, root: Path, count: int) -> tuple[bool, bool]:
+        """宛先へ入力し、MindStella のセッションが落ちていれば起動し直してから入力する。
+
+        `(entered, restarted)` を返す。
+        """
+        current = None
+        if self._state_root is not None and self._workspace_id is not None:
+            current = state.read_session(self._state_root, self._workspace_id(root.resolve()))
+        # MindStella のセッションが無い: 起動し直さずに入力する
+        if current is None:
+            return self.enter(root, count), False
+        # 起動し直しの途中・クローズ待ち・起動し直せない: 入力せずスレッドに残す
+        if current.status == "restarting" or current.close_pending or self._restarter is None:
+            return False, False
+        # 貼れる状態: 入力できればそのまま（落ちていて貼れなければ起動し直す）
+        if current.status == DELIVERABLE_STATUS:
+            entered = self.enter(root, count)
+            if entered:
+                return True, False
+        if not self._restarter(root):
+            return False, False
+        return self.enter(root, count), True
 
 
 def mindstella_session_target(

@@ -14,7 +14,7 @@ data_models:
         description: MindStella のセッションの ID
       - name: status
         type: str
-        description: '`running`・`stopping`・`stopped`・`crashed`'
+        description: '`running`・`restarting`・`stopping`・`stopped`・`crashed`'
       - name: claude_session_id
         type: str | None
         description: SessionStart のフックが入れる
@@ -45,6 +45,9 @@ data_models:
       - name: claude_config_dir
         type: str | None
         description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス。SessionStart のフックが入れる
+      - name: restart_reason
+        type: str | None
+        description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`）。起動し直しが終わったら `None`'
   - name: LaunchOptions
     title: 追加の MCP とプラグイン
     container: plugins/mindstella/skills/mindmap/scripts/state.py

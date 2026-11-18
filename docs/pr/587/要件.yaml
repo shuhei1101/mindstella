@@ -1,0 +1,98 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: none
+    detail: 資料の本文に埋め込みの記法を記載するのは今の本文の書き込みのままで、配置から再生までの流れは単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持つ
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: run_only
+    detail: 詳細パネルの本文の描画でファイルのパスを解決するため、今の本文の描画を壊しうる。再生の流れは単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持ち、シナリオの記述は変わらない
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: none
+    detail: 資料のカードとボードは変わらない（本文の再生は単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持つ）
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: none
+    detail: '書き出しは今のまま。埋め込んだ動画・音声の書き出しは #589 で mdmark の書き出しに合わせる'
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: none
+    detail: '配る書き出しは今のまま。埋め込んだ動画・音声の書き出しは #589 で mdmark の書き出しに合わせる'
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: changed
+    detail: 資料の本文が埋め込んだファイルがワークスペースに無いことを、参照切れとして洗い出す
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: changed
+    detail: ファイルのフォルダへの配置・差し替え・削除を、項目の変更として記録せず、書き換えのまとまりも作らない。Git のリポジトリの中でも Git 管理外でも同じに動き、ワークスペースの Git は操作しない
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: run_only
+    detail: 外の入口の内側で開いたプレビューでも、埋め込んだ動画を再生できる。シナリオの記述は変わらないが、ファイルの配信の追加が外から開いたときの許可するホスト名の判定を壊しうる
+    depends_on:
+      - docs/scenario/SC-587-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-587-1.yaml
+    impact: new
+    detail: MindStella のセッションか利用者が、動画・音声・画像をワークスペースのファイルのフォルダに配置して資料に埋め込み、利用者が詳細パネルで再生・表示する。ファイルが無いときも本文のほかの部分は描かれ、フォルダの外のファイルは返却されない
+    depends_on: []
+docs:
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: ファイルのフォルダと、資料から埋め込むときのパスの書き方を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T14:23:20.859793+00:00'
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: ワークスペースに動画などのファイルを配置して資料に埋め込めることを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T14:23:20.859793+00:00'
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 資料に埋め込んだ動画・音声を画面で再生できることを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T14:23:20.859793+00:00'
+  - page: docs/guide/コマンド.md
+    new: false
+    change: ファイルの配信のエンドポイントを追加し、点検の問題の種類に `missing_file` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T14:23:20.859793+00:00'
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 記録の使い分けのエージェントフローに、動画などのファイルをファイルのフォルダへ配置し、資料に `![キャプション](パス)` で埋め込む手順を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T14:23:20.859793+00:00'
+scope_out:
+  - item: 画面からファイルをアップロードしてワークスペースに配置する操作
+    reason: 要望に含まれない。配置は MindStella のセッション（D-267 の動画作成ノード）か利用者がファイルのフォルダへ置く
+    plan: none
+  - item: aituber の動画作成ノード（資料 A-103）が書き出した mp4 を配置する側の変更
+    reason: 別のリポジトリ（aituber）の変更で、この PR は配置先のフォルダと埋め込み・再生だけを持つ
+    plan: none
+  - item: 資料の本文の動画・音声・画像を読み込めないときに、画面の要素の場所へ警告を表示する
+    reason: mdmark の部品『動画と音声』は読み込みの失敗の警告を持たず、mindstella の画面で警告を持つと部品と画面設計が増える。この PR では点検が参照切れとして通知し、画面の警告は mdmark の描画で持つかを別に決める
+    plan: '#592'
+  - item: 埋め込んだ動画・音声を書き出した先（資料を書き出す・配る書き出し）でも再生できるようにする
+    reason: 書き出しの画像の埋め込みと動画・音声のコピーは mdmark の書き出しが持ち、mindstella に同じ処理を重ねない（ユーザーの決定）
+    plan: '#589'

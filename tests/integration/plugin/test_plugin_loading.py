@@ -100,7 +100,7 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
     mcp = json.loads((install_path / ".mcp.json").read_text(encoding="utf-8"))
     assert mcp == {"mcpServers": {"mindstella": MCP_SERVER_CONFIG}}
     # hooks/hooks.json が SessionStart の 3 つのコマンド、mindstella のツールの PreToolUse の 1 つ、
-    # SessionEnd・UserPromptSubmit・Stop・StopFailure の MindStella のセッションのフックを持つ
+    # SessionEnd・UserPromptSubmit・Stop・StopFailure・PreCompact の MindStella のセッションのフックを持つ
     hooks = json.loads((install_path / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
     assert {
         event: [
@@ -123,6 +123,7 @@ def test_normal(run_claude: RunClaude, repo_root: Path) -> None:
         "UserPromptSubmit": [(None, [_session_hook_command("prompt-submit")])],
         "Stop": [(None, [_session_hook_command("stop")])],
         "StopFailure": [(None, [_session_hook_command("stop-failure")])],
+        "PreCompact": [(None, [_session_hook_command("pre-compact")])],
     }
     assert sorted(_hook_events(details.stdout)) == sorted(hooks)
     # 待ち受けているプロセスの無いポートでは、claude mcp list の mindstella がつながらない

@@ -966,13 +966,13 @@ def test_notify_stopped(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -
     assert describe() == ("家計簿", "http://127.0.0.1:9100/mindstella.html")
 
 
-def test_resume_status(
-    ctx: SimpleNamespace, folder: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_resume_status(ctx: SimpleNamespace, folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """セッションのワークスペースの状況を返す（正常系）。"""
     # 準備
     _write_session(ctx)
-    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    monkeypatch.setattr(
+        sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row
+    )
     called: list[tuple[Path, str]] = []
     status = {"trigger": "resume", "until_seq": 7}
 
@@ -993,9 +993,13 @@ def test_resume_status_when_unknown(ctx: SimpleNamespace, monkeypatch: pytest.Mo
     """知らないセッションは 404（異常系）。"""
     # 準備
     _write_session(ctx)
-    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    monkeypatch.setattr(
+        sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row
+    )
     called: list[str] = []
-    monkeypatch.setattr(resume, "summarize_resume", lambda *_args, **_kwargs: called.append("called"))
+    monkeypatch.setattr(
+        resume, "summarize_resume", lambda *_args, **_kwargs: called.append("called")
+    )
     # 実行・検証
     with pytest.raises(ApiError) as raised:
         sessions.resume_status("S-999999999999", {"source": "compact"}, ctx)
@@ -1016,7 +1020,9 @@ def test_advance_read_point(
     """前回参照した時点を進める（正常系）。"""
     # 準備
     _write_session(ctx)
-    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    monkeypatch.setattr(
+        sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row
+    )
     _write_changes(folder, 5)
     read_point.save_read_seq(folder, 3, state_root=ctx.state_root)
     # 実行
@@ -1038,7 +1044,9 @@ def test_advance_read_point_when_invalid(
     """通し番号でない値・範囲の外は 400（異常系）。"""
     # 準備
     _write_session(ctx)
-    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    monkeypatch.setattr(
+        sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row
+    )
     _write_changes(folder, 5)
     read_point.save_read_seq(folder, 3, state_root=ctx.state_root)
     # 実行・検証
@@ -1046,3 +1054,540 @@ def test_advance_read_point_when_invalid(
         sessions.advance_read_point(SESSION_ID, {"until_seq": until_seq}, ctx)
     assert raised.value.status == 400
     assert read_point.load_read_seq(folder, state_root=ctx.state_root) == 3
+
+
+def test_build_command_when_resume() -> None:
+    """resume_id があれば --resume を付ける（正常系）。"""
+    # 実行
+    command = sessions.build_command(None, None, "balancer", None, resume_id="abc")
+    # 検証
+    assert command == [
+        "balancer",
+        "exec",
+        "--client",
+        "mindstella",
+        "--",
+        "claude",
+        "--resume",
+        "abc",
+    ]
+
+
+def test_build_env_when_compact() -> None:
+    """圧縮の契機を渡す（正常系）。"""
+    # 実行
+    env = sessions.build_env(
+        SESSION_ID, WORKSPACE_ID, 8784, None, None, True, launch_reason="compact"
+    )
+    # 検証
+    assert env["MINDSTELLA_LAUNCH_REASON"] == "compact"
+
+
+def _transcript(config_dir: Path, folder: Path, claude_session_id: str) -> Path:
+    """会話の記録のファイルを Claude Code と同じ名前の作り方で作る。"""
+    two_units = "".join("--" if ord(char) > 0xFFFF else char for char in str(folder))
+    name = re.sub(r"[^A-Za-z0-9]", "-", two_units)
+    path = config_dir / "projects" / name / f"{claude_session_id}.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text("{}\n", encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    [
+        pytest.param("recorded", "c1", id="recorded"),
+        pytest.param("missing", None, id="transcript-missing"),
+        pytest.param("no-id", None, id="no-claude-session-id"),
+        pytest.param("no-state", None, id="no-state"),
+    ],
+)
+def test_resume_id_for(case: str, expected: str | None, tmp_path: Path, folder: Path) -> None:
+    """会話の記録のファイルの有無で決まる（正常系）。"""
+    # 準備
+    config_dir = tmp_path / "config"
+    if case != "missing":
+        _transcript(config_dir, folder, "c1")
+    current: SessionState | None = SessionState(
+        session=SESSION_ID,
+        status="stopped",
+        started_at="2026-11-15T00:00:00+00:00",
+        claude_session_id=None if case == "no-id" else "c1",
+        claude_config_dir=str(config_dir),
+    )
+    if case == "no-state":
+        current = None
+    # 実行・検証
+    assert sessions.resume_id_for(current, folder) == expected
+
+
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    [
+        pytest.param("ok", None, id="readable"),
+        pytest.param("plugin-missing", "plugin", id="plugin-missing"),
+        pytest.param("mcp-invalid", "mcp", id="mcp-invalid"),
+    ],
+)
+def test_check_launch_options(case: str, expected: str | None, tmp_path: Path) -> None:
+    """プラグインのフォルダと MCP の定義を確かめる（正常系）。"""
+    # 準備
+    plugin = tmp_path / "plugin"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    (plugin / ".claude-plugin" / "plugin.json").write_text("{}", encoding="utf-8")
+    plugin_dirs = [str(plugin)]
+    mcp_config: dict[str, Any] | None = {"mcpServers": {"extra": {"command": "x"}}}
+    if case == "plugin-missing":
+        plugin_dirs = [str(tmp_path / "gone")]
+    if case == "mcp-invalid":
+        mcp_config = {"servers": []}
+    # 実行
+    result = sessions.check_launch_options(
+        LaunchOptions(mcp_config=mcp_config, plugin_dirs=plugin_dirs)
+    )
+    # 検証
+    if expected is None:
+        assert result is None
+    elif expected == "plugin":
+        assert result is not None
+        assert str(tmp_path / "gone") in result
+    else:
+        assert result is not None
+        assert "mcp" in result.lower()
+
+
+def test_create_session_when_resume(
+    ctx: SimpleNamespace, clock: FakeClock, tmp_path: Path, folder: Path
+) -> None:
+    """停止済みの記録の会話を引き継ぐ（正常系）。"""
+    # 準備
+    config_dir = tmp_path / "config"
+    _transcript(config_dir, folder, "c0")
+    _write_session(ctx, status="stopped", claude_session_id="c0", claude_config_dir=str(config_dir))
+    _register_on_sleep(ctx, clock)
+    # 実行
+    status, body = sessions.create_session(WORKSPACE_ID, None, ctx)
+    # 検証
+    assert status == 201
+    assert body["session"] != SESSION_ID
+    respawn = next(call for call in ctx.tmux.calls if call[0] == "respawn-pane")
+    assert respawn[-2:] == ["--resume", "c0"]
+
+
+def test_create_session_when_launch_record_missing(ctx: SimpleNamespace, clock: FakeClock) -> None:
+    """launch.json が無ければ指定なしで起動して警告を返す（正常系）。"""
+    # 準備
+    (state.workspace_dir(ctx.state_root, WORKSPACE_ID) / "launch.json").unlink()
+    _register_on_sleep(ctx, clock)
+    # 実行
+    status, body = sessions.create_session(WORKSPACE_ID, None, ctx)
+    # 検証
+    assert status == 201
+    assert body["warnings"] == ["launch_record_missing"]
+    respawn = next(call for call in ctx.tmux.calls if call[0] == "respawn-pane")
+    assert "--mcp-config" not in respawn
+    assert "--plugin-dir" not in respawn
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        pytest.param(
+            {"event": "stop_failure", "claude_session_id": "c1", "error": "rate_limit"},
+            ["rate_limit"],
+            id="rate-limit",
+        ),
+        pytest.param(
+            {"event": "stop_failure", "claude_session_id": "c1", "error": "server_error"},
+            [],
+            id="server-error",
+        ),
+        pytest.param(
+            {"event": "pre_compact", "claude_session_id": "c1"}, ["compact"], id="pre-compact"
+        ),
+    ],
+)
+def test_record_event_when_rate_limit(
+    event: dict[str, Any],
+    expected: list[str],
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """stop_failure の rate_limit と pre_compact で起動し直しを始める（正常系）。"""
+    # 準備
+    _write_session(ctx)
+    reasons: list[str] = []
+    monkeypatch.setattr(
+        sessions,
+        "request_restart",
+        lambda _workspace_id, reason, _ctx: reasons.append(reason) or True,
+    )
+    monkeypatch.setattr(sessions, "_start_thread", lambda body: body())
+    # 実行
+    assert sessions.record_event(SESSION_ID, event, ctx) is True
+    # 検証
+    assert reasons == expected
+
+
+def test_record_event_when_restarting(
+    ctx: SimpleNamespace, stopped_notices: list[tuple[str, str]]
+) -> None:
+    """起動し直しの途中の session_end は状態を変えず通知しない（正常系）。"""
+    # 準備
+    _write_session(ctx, status="restarting", responding=True)
+    # 実行
+    sessions.record_event(
+        SESSION_ID, {"event": "session_end", "claude_session_id": "c1", "reason": "other"}, ctx
+    )
+    # 検証
+    current = _session(ctx)
+    assert (current.status, current.responding) == ("restarting", False)
+    assert stopped_notices == []
+
+
+class RestartTmux(FakeTmux):
+    """/exit が貼られたら tmux のセッションを閉じる（exec が終わる）tmux の偽。"""
+
+    def __init__(self, log: list[Any]) -> None:
+        """セッションがある状態で始める。"""
+        super().__init__(log)
+        self.session_exists = True
+        self.close_on_exit = True
+
+    def run(self, args: list[str], stdin: bytes | None = None) -> tuple[int, str]:
+        """/exit で閉じ、kill-session・new-session でセッションの有無を変える。"""
+        result = super().run(args, stdin)
+        if args[0] == "load-buffer" and stdin == b"/exit" and self.close_on_exit:
+            self.session_exists = False
+        if args[0] == "kill-session":
+            self.session_exists = False
+        if args[0] == "new-session":
+            self.session_exists = True
+        return result
+
+
+@pytest.fixture
+def restart_ctx(
+    ctx: SimpleNamespace, log: list[Any], monkeypatch: pytest.MonkeyPatch
+) -> SimpleNamespace:
+    """起動し直しの tmux の偽を持ち、別のスレッドを同じスレッドで走らせる ctx。"""
+    ctx.tmux = RestartTmux(log)
+    ctx.proc = FakeProc(ctx.tmux)
+    monkeypatch.setattr(sessions, "_start_thread", lambda body: body())
+    monkeypatch.setattr(sessions.os, "kill", lambda _pid, _sig: None)
+    return ctx
+
+
+def _register_new_on_sleep(ctx: SimpleNamespace, clock: FakeClock, claude_session_id: str) -> None:
+    """/exit の後の sleep で、起動し直した Claude Code の SessionStart が登録したことにする。"""
+
+    def register(_count: int) -> None:
+        """起動のコマンドを打った後だけ登録する。"""
+        if not any(call[0] == "respawn-pane" for call in ctx.tmux.calls):
+            return
+        state.update_session(
+            ctx.state_root,
+            WORKSPACE_ID,
+            lambda current: (
+                None
+                if current is None
+                else current.replace(
+                    claude_session_id=claude_session_id,
+                    pid=PID + 1,
+                    pid_started_at="67890",
+                    claude_config_dir=current.claude_config_dir,
+                )
+            ),
+        )
+
+    clock.on_sleep = register
+
+
+def test_restart_session(
+    restart_ctx: SimpleNamespace, clock: FakeClock, tmp_path: Path, folder: Path
+) -> None:
+    """起動中を止めて --resume で起動し直す（正常系）。"""
+    # 準備
+    ctx = restart_ctx
+    config_dir = tmp_path / "config"
+    _transcript(config_dir, folder, "c1")
+    _write_session(ctx, claude_config_dir=str(config_dir))
+    ctx.proc.exit_on_paste = False
+    _register_new_on_sleep(ctx, clock, "c2")
+    # 実行
+    status, body = sessions.restart_session(WORKSPACE_ID, SESSION_ID, "api", False, ctx)
+    # 検証
+    assert (status, body) == (202, {"session": SESSION_ID, "status": "restarting", "warnings": []})
+    respawn = next(call for call in ctx.tmux.calls if call[0] == "respawn-pane")
+    assert respawn[-2:] == ["--resume", "c1"]
+    current = _session(ctx)
+    assert (current.status, current.session, current.restart_reason) == (
+        "running",
+        SESSION_ID,
+        None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("case", "stage"),
+    [
+        pytest.param("closed", "closed", id="closed"),
+        pytest.param("stopping", "stopping", id="stopping"),
+        pytest.param("restarting", "restarting", id="restarting"),
+    ],
+)
+def test_restart_session_when_rejected(case: str, stage: str, restart_ctx: SimpleNamespace) -> None:
+    """クローズ済み・停止の途中・起動し直しの途中は 409（異常系）。"""
+    # 準備
+    ctx = restart_ctx
+    _write_session(ctx, status="running" if case == "closed" else case)
+    if case == "closed":
+        ctx.row["outsideRead"] = False
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        sessions.restart_session(WORKSPACE_ID, SESSION_ID, "api", False, ctx)
+    assert (caught.value.status, caught.value.stage) == (409, stage)
+
+
+@pytest.mark.parametrize(
+    ("reason", "case", "error_prefix", "notices"),
+    [
+        pytest.param("api", "no-account", "account:", [(WORKSPACE_ID, "restart_failed")], id="api"),
+        pytest.param("comment", "no-account", "account:", [], id="comment"),
+        pytest.param(
+            "api",
+            "plugin-missing",
+            "launch_options:",
+            [(WORKSPACE_ID, "restart_failed")],
+            id="plugin-missing",
+        ),
+    ],
+)
+def test_restart_session_when_launch_failed(
+    reason: str,
+    case: str,
+    error_prefix: str,
+    notices: list[tuple[str, str]],
+    restart_ctx: SimpleNamespace,
+    clock: FakeClock,
+    tmp_path: Path,
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """起動に失敗すると crashed と last_error、契機で通知を呼び分ける（異常系）。"""
+    # 準備
+    ctx = restart_ctx
+    _write_session(ctx, status="crashed")
+    ctx.tmux.session_exists = False
+    if case == "no-account":
+        ctx.tmux.pane_dead = "1 125"
+    else:
+        state.write_launch(
+            ctx.state_root,
+            WORKSPACE_ID,
+            LaunchOptions(mcp_config=None, plugin_dirs=[str(tmp_path / "gone")]),
+        )
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, reason, False, ctx)
+    # 検証
+    current = _session(ctx)
+    assert current.status == "crashed"
+    assert current.last_error is not None
+    assert current.last_error.startswith(error_prefix)
+    assert stopped_notices == notices
+    if case == "plugin-missing":
+        assert not any(call[0] == "respawn-pane" for call in ctx.tmux.calls)
+
+
+def test_restart_session_when_rate_limited(
+    restart_ctx: SimpleNamespace,
+    clock: FakeClock,
+    monkeypatch: pytest.MonkeyPatch,
+    stopped_notices: list[tuple[str, str]],
+) -> None:
+    """利用上限の契機では止めた後に rate_limited を通知し、report-limit を呼ばない（正常系）。"""
+    # 準備
+    ctx = restart_ctx
+    _write_session(ctx, responding=True)
+    ctx.proc.exit_on_paste = False
+    _register_new_on_sleep(ctx, clock, "c2")
+    commands_run: list[list[str]] = []
+    monkeypatch.setattr(
+        sessions.subprocess, "run", lambda args, **_kwargs: commands_run.append(list(args))
+    )
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, "rate_limit", False, ctx)
+    # 検証
+    assert stopped_notices == [(WORKSPACE_ID, "rate_limited")]
+    assert not any("report-limit" in args for args in commands_run)
+    assert _session(ctx).status == "running"
+
+
+def test_restart_session_when_exec_slow(restart_ctx: SimpleNamespace, clock: FakeClock) -> None:
+    """exec が上限までに終わらなければ kill-session してから起動する（正常系）。"""
+    # 準備
+    ctx = restart_ctx
+    ctx.tmux.close_on_exit = False
+    _write_session(ctx)
+    _register_new_on_sleep(ctx, clock, "c2")
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, "api", False, ctx)
+    # 検証
+    names = [call[0] for call in ctx.tmux.calls]
+    kill = names.index("kill-session")
+    assert kill < names.index("new-session")
+    assert clock.now >= sessions.EXEC_EXIT_WAIT_SEC
+
+
+def test_restart_session_when_write_timeout(
+    restart_ctx: SimpleNamespace, clock: FakeClock, log: list[Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """最後の書き込みを待つ上限を過ぎたら起動し直さず running に戻す（異常系）。"""
+    # 準備
+    ctx = restart_ctx
+    monkeypatch.setenv("MINDSTELLA_STOP_WAIT_TIMEOUT", "2")
+    _write_session(ctx, responding=True)
+    # 実行
+    sessions.restart_session(WORKSPACE_ID, SESSION_ID, "api", False, ctx)
+    # 検証
+    assert _exit_pastes(log) == []
+    current = _session(ctx)
+    assert (current.status, current.pending_write, current.restart_reason) == (
+        "running",
+        True,
+        None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "close_pending", "reason", "expected", "calls"),
+    [
+        pytest.param("crashed", False, "comment", True, 1, id="crashed-comment"),
+        pytest.param("restarting", False, "comment", True, 0, id="restarting-comment"),
+        pytest.param("crashed", True, "comment", False, 0, id="close-pending-comment"),
+        pytest.param("running", False, "rate_limit", True, 1, id="running-rate-limit"),
+    ],
+)
+def test_request_restart(
+    status: str,
+    close_pending: bool,
+    reason: str,
+    expected: bool,
+    calls: int,
+    ctx: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """契機と状態で始めるかが決まる（正常系）。"""
+    # 準備
+    _write_session(ctx, status=status, close_pending=close_pending)
+    called: list[tuple[str, str | None, str, bool]] = []
+
+    def _restart(
+        workspace_id: str, session_id: str | None, reason: str, force: bool, _ctx: Any
+    ) -> tuple[int, dict[str, Any]]:
+        """呼ばれた引数を控える。"""
+        called.append((workspace_id, session_id, reason, force))
+        return 202, {"session": SESSION_ID, "status": "restarting", "warnings": []}
+
+    monkeypatch.setattr(sessions, "restart_session", _restart)
+    # 実行・検証
+    assert sessions.request_restart(WORKSPACE_ID, reason, ctx) is expected
+    assert len(called) == calls
+
+
+@pytest.mark.parametrize(
+    ("after", "expected"),
+    [pytest.param("running", True, id="running"), pytest.param("crashed", False, id="crashed")],
+)
+def test_wait_until_running(
+    after: str, expected: bool, ctx: SimpleNamespace, clock: FakeClock
+) -> None:
+    """restarting の後の状態で返り値が決まる（正常系）。"""
+    # 準備
+    _write_session(ctx, status="restarting")
+
+    def finish(count: int) -> None:
+        """2 回目の確認の前に状態を変える。"""
+        if count == 1:
+            state.update_session(
+                ctx.state_root,
+                WORKSPACE_ID,
+                lambda current: None if current is None else current.replace(status=after),
+            )
+
+    clock.on_sleep = finish
+    # 実行・検証
+    assert sessions.wait_until_running(WORKSPACE_ID, ctx) is expected
+
+
+def test_watch_crashes_once(ctx: SimpleNamespace, stopped_notices: list[tuple[str, str]]) -> None:
+    """running で落ちているものだけ crashed にして通知する（正常系）。"""
+    # 準備
+    others = ["mindstella-b-000001", "mindstella-c-000002"]
+    for workspace_id in others:
+        state.add_id(ctx.state_root, workspace_id)
+    _write_session(ctx, pane="%dead")
+    state.update_session(
+        ctx.state_root,
+        others[0],
+        lambda _current: SessionState(
+            session="S-000000000001", status="restarting", started_at="t", pane="%dead"
+        ),
+    )
+    state.update_session(
+        ctx.state_root,
+        others[1],
+        lambda _current: SessionState(
+            session="S-000000000002",
+            status="running",
+            started_at="t",
+            pane="%alive",
+            pid=PID,
+            pid_started_at=PID_STARTED_AT,
+        ),
+    )
+    original = ctx.tmux.run
+
+    def run(args: list[str], stdin: bytes | None = None) -> tuple[int, str]:
+        """%dead のペインだけ無いことにする。"""
+        if args[0] == "display-message" and "%dead" in args:
+            return 1, ""
+        return original(args, stdin)
+
+    ctx.tmux.run = run
+    # 実行
+    count = sessions.watch_crashes_once(ctx)
+    # 検証
+    assert count == 1
+    assert _session(ctx).status == "crashed"
+    restarting = state.read_session(ctx.state_root, others[0])
+    alive = state.read_session(ctx.state_root, others[1])
+    assert restarting is not None
+    assert alive is not None
+    assert (restarting.status, alive.status) == ("restarting", "running")
+    assert stopped_notices == [(WORKSPACE_ID, "crashed")]
+
+
+def test_start_crash_watch(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+    """間隔ごとに見回り、stop で終わる（正常系）。"""
+    # 準備
+    monkeypatch.setenv("MINDSTELLA_CRASH_WATCH_INTERVAL", "0.01")
+    calls: list[int] = []
+    twice = threading.Event()
+
+    def _watch(_ctx: Any) -> int:
+        """呼ばれた回数を数える。"""
+        calls.append(1)
+        if len(calls) >= 2:
+            twice.set()
+        return 0
+
+    monkeypatch.setattr(sessions, "watch_crashes_once", _watch)
+    stop = threading.Event()
+    # 実行
+    thread = sessions.start_crash_watch(ctx, stop)
+    assert twice.wait(5)
+    stop.set()
+    thread.join(5)
+    # 検証
+    assert len(calls) >= 2
+    assert not thread.is_alive()

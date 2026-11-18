@@ -403,3 +403,53 @@ def test_normal_when_partial_write(
     # 検証
     assert during == (broken, None)
     assert len(_history_of(root, "D-1")["history"]) == 1
+
+
+def _git_in(root: Path, *args: str) -> str:
+    """ワークスペースのフォルダで git を実行し、標準出力を返却する。"""
+    completed = subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, text=True)
+    return completed.stdout
+
+
+def _records_snapshot(root: Path) -> tuple[str | None, str | None, str]:
+    """`changes.yaml`・`history.yaml`・`decisions.yaml` の中身を返却する（無ければ None）。"""
+    records = root / RECORD_DIR
+    changes = records / "changes.yaml"
+    history = records / "history.yaml"
+    return (
+        changes.read_text(encoding="utf-8") if changes.is_file() else None,
+        history.read_text(encoding="utf-8") if history.is_file() else None,
+        (records / "decisions.yaml").read_text(encoding="utf-8"),
+    )
+
+
+def test_normal_when_files_folder_written(
+    make_workspace: MakeWorkspace, make_item: MakeItem, start_server: StartServer
+) -> None:
+    """ファイルのフォルダへの配置では何も記録しない（正常系）。"""
+    # 準備
+    in_git = make_workspace(make_item("D-1"), name="in-git")
+    plain = make_workspace(make_item("D-1"), name="plain")
+    _git_in(in_git, "init", "-b", "main")
+    _git_in(in_git, "config", "user.name", "テスト")
+    _git_in(in_git, "config", "user.email", "test@example.com")
+    _git_in(in_git, "add", "-A")
+    _git_in(in_git, "commit", "-m", "main")
+    server = _start(start_server)
+    _serve(server, in_git)
+    _serve(server, plain)
+    before_git = _records_snapshot(in_git)
+    before_plain = _records_snapshot(plain)
+    head = _git_in(in_git, "rev-parse", "HEAD")
+    index = (in_git / ".git" / "index").read_bytes()
+    # 実行
+    (in_git / RECORD_DIR / "files").mkdir()
+    (in_git / RECORD_DIR / "files" / "clip.mp4").write_bytes(b"mp4")
+    (plain / RECORD_DIR / "files").mkdir()
+    (plain / RECORD_DIR / "files" / "clip.mp4").write_bytes(b"mp4")
+    time.sleep(EXTERNAL_DELAY_SEC + QUIET_SEC)
+    # 検証
+    assert _records_snapshot(in_git) == before_git
+    assert _records_snapshot(plain) == before_plain
+    assert _git_in(in_git, "rev-parse", "HEAD") == head
+    assert (in_git / ".git" / "index").read_bytes() == index

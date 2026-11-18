@@ -53,6 +53,14 @@ from errors import (
     WorkspaceNotFoundError,
     WriteFailedError,
 )
+from files_serve import (
+    FILE_SECURITY_HEADERS,
+    FILES_DIR,
+    FILES_PATH,
+    plan_file,
+    resolve_file,
+    write_file,
+)
 from history import head_until_seq, load_changes, touch_opened
 from kinds import BODY_DIR, KINDS, SETTINGS_FILE, records_root
 from locations import location_to_dict
@@ -382,7 +390,7 @@ class PreviewHandler(BaseHTTPRequestHandler):
         return cast("ServeContext", getattr(self.server, "context"))  # noqa: B009
 
     def do_GET(self) -> None:
-        """`Host` を確かめ、`/`・`/mindstella.html`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける。"""
+        """`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/files/`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける。"""
         context = self.context
         # 接続先が合わない
         if not check_host(
@@ -405,6 +413,8 @@ class PreviewHandler(BaseHTTPRequestHandler):
             self._reply(redirect_response(f"{SPA_PATH}/"))
         elif path.startswith(f"{SPA_PATH}/"):
             self._reply(spa_response(context.preview_dir / SPA_DIR, path.removeprefix(SPA_PATH)))
+        elif path.startswith(FILES_PATH):
+            self._send_file(context, path.removeprefix(FILES_PATH))
         elif path == "/api/records":
             self._reply(records_response(context))
         elif path == "/api/events":
@@ -604,12 +614,14 @@ class PreviewHandler(BaseHTTPRequestHandler):
             return None
         return length if length >= 0 else None
 
-    def _reply(self, response: Response) -> None:
-        """ステータスコード・ヘッダー・本文を書く（常に控えさせない）。"""
+    def _reply(self, response: Response, extra_headers: tuple[tuple[str, str], ...] = ()) -> None:
+        """ステータスコード・ヘッダー（extra_headers を加える）・本文を書く（常に控えさせない）。"""
         self.send_response(response.status)
         self.send_header("Content-Type", response.content_type)
         self.send_header("Content-Length", str(len(response.body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in extra_headers:
+            self.send_header(name, value)
         # 送り直す応答は宛先を持つ
         if response.location is not None:
             self.send_header("Location", response.location)
@@ -617,6 +629,32 @@ class PreviewHandler(BaseHTTPRequestHandler):
         # 204 は本文を持たない
         if response.status != HTTPStatus.NO_CONTENT:
             self.wfile.write(response.body)
+
+    def _send_file(self, context: ServeContext, sub_path: str) -> None:
+        """ワークスペースのファイルを解決し、200・206・416 のヘッダーを書いて本文を分けて書き出す。解決できなければ 404。"""
+        path = resolve_file(records_root(context.root) / FILES_DIR, sub_path)
+        # フォルダの外部・無い・フォルダは、パスを含めずに 404 にする
+        if path is None:
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
+            return
+        try:
+            plan = plan_file(path, self.headers.get("Range"))
+        except OSError:
+            # 解決した後に消された
+            self._reply(problem_response(HTTPStatus.NOT_FOUND, "ファイルがありません"), FILE_SECURITY_HEADERS)
+            return
+        # 控えさせない _reply は使わず、ファイルの応答のヘッダーで書く
+        self.send_response(plan.status)
+        self.send_header("Content-Type", plan.content_type)
+        self.send_header("Content-Length", str(plan.length))
+        for name, value in plan.headers:
+            self.send_header(name, value)
+        self.end_headers()
+        try:
+            write_file(plan, self.wfile.write)
+        except (BrokenPipeError, ConnectionResetError):
+            # ブラウザが再生位置を移して接続を切った
+            return
 
     def _stream(self, context: ServeContext) -> None:
         """`200` と `text/event-stream` を書き、画面が閉じるまで書き換えを知らせ続ける。"""
@@ -1196,13 +1234,15 @@ def _sent_body(sent: str, items: list[SentPost]) -> dict[str, Any]:
 
 
 def _entered_body(context: ServeContext, body: dict[str, Any]) -> dict[str, Any]:
-    """まとめて送った応答の本文に、Claude Code へ入力して会話の記録に入ったか（`entered`）を足す。"""
+    """まとめて送った応答の本文に、Claude Code へ入力したか（`entered`）と起動し直したか（`restarted`）を足す。"""
     targets = context.input_targets
-    # 宛先の台帳が無い: 入力しない
     # まとめて送るは送った件数、すぐ送るは 1 件
     count = len(body["items"]) if "items" in body else 1
-    entered = False if targets is None else targets.enter(context.root, count)
-    return {**body, "entered": entered}
+    # 宛先の台帳が無い: 入力しない
+    if targets is None:
+        return {**body, "entered": False, "restarted": False}
+    entered, restarted = targets.enter_or_restart(context.root, count)
+    return {**body, "entered": entered, "restarted": restarted}
 
 
 def _sent_now_body(sent: str, post: SentPost) -> dict[str, Any]:

@@ -22,9 +22,8 @@ response:
     type: str
     description: MindStella のセッションの ID
   - name: sessions[].status
-    type: Literal['running', 'stopping', 'stopped', 'crashed']
-    description: 起動中・停止の途中・停止済み・落ちている
-    notes: '起動し直しの途中（`restarting`）は #524 で足す'
+    type: Literal['running', 'stopping', 'restarting', 'stopped', 'crashed']
+    description: 起動中・停止の途中・起動し直しの途中・停止済み・落ちている
   - name: sessions[].responding
     type: bool
     description: 応答の途中か（UserPromptSubmit から Stop・StopFailure まで）
@@ -36,8 +35,7 @@ response:
     description: tmux のペイン。`stopped`・`crashed` では `None`
   - name: sessions[].last_error
     type: str | None
-    description: 最後の停止に失敗した段階と理由（『MindStella のセッションの停止』の別のスレッドの失敗）。無ければ `None`
-    notes: 起動し直しに失敗した理由（#520）も同じ値で返す
+    description: '最後の停止・起動し直しに失敗した段階と理由（`{stage}: {detail}`。『MindStella のセッションの停止』・『MindStella のセッションの起動し直し』の別のスレッドの失敗）。無ければ `None`'
   - name: close_pending
     type: bool
     description: クローズ待ちか（API で停止を受けた後）
@@ -128,6 +126,7 @@ refs:
   - IF-531-2#
   - IF-531-4#
   - IF-570-1#
+  - IF-582-1#
 callers:
   - SC-531-2#
 test_file: tests/integration/server/test_list_sessions.py

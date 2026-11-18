@@ -1019,3 +1019,65 @@ def test_mindstella_session_target(
             CLAUDE_PID,
             STARTED_AT,
         )
+
+
+@pytest.mark.parametrize(
+    ("status", "close_pending", "restarted_ok", "expected", "restarter_calls"),
+    [
+        pytest.param("running", False, True, (True, False), 0, id="running"),
+        pytest.param("running-dead", False, True, (True, True), 1, id="running-dead"),
+        pytest.param("restarting", False, True, (False, False), 0, id="restarting"),
+        pytest.param("crashed", False, True, (True, True), 1, id="crashed-restarted"),
+        pytest.param("crashed", False, False, (False, False), 1, id="crashed-failed"),
+        pytest.param("crashed", True, True, (False, False), 0, id="close-pending"),
+    ],
+)
+def test_enter_or_restart(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
+    close_pending: bool,
+    restarted_ok: bool,
+    expected: tuple[bool, bool],
+    restarter_calls: int,
+) -> None:
+    """落ちていれば起動し直してから入力する（正常系）。"""
+    # 準備
+    dead = status == "running-dead"
+    written = SessionState(
+        session="S-0123456789ab",
+        status="running" if dead else status,
+        close_pending=close_pending,
+        pane=f"{MINDSTELLA_WORKSPACE}:0.0",
+        pid=CLAUDE_PID,
+        pid_started_at=STARTED_AT,
+        started_at="2026-11-15T00:00:00+00:00",
+    )
+    state.update_session(tmp_path, MINDSTELLA_WORKSPACE, lambda _current: written)
+    calls: list[Path] = []
+    # running のまま落ちている: 起動し直すまで貼れない
+    monkeypatch.setattr(
+        claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+    )
+
+    def _restarter(root: Path) -> bool:
+        """呼ばれたフォルダを控え、成功なら running にする。"""
+        calls.append(root)
+        if restarted_ok:
+            state.update_session(
+                tmp_path,
+                MINDSTELLA_WORKSPACE,
+                lambda current: None if current is None else current.replace(status="running"),
+            )
+        return restarted_ok
+
+    targets = claude_input.InputTargets(
+        state_root=tmp_path,
+        workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+        restarter=_restarter,
+    )
+    # 実行
+    result = targets.enter_or_restart(tmp_path, 1)
+    # 検証
+    assert result == expected
+    assert len(calls) == restarter_calls

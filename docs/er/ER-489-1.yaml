@@ -1071,3 +1071,13 @@ tables:
     status: planned
     introduced:
       pr: 325
+  - name: files/
+    title: ファイルのフォルダ
+    datastore: ファイル
+    summary: 資料に埋め込む動画・音声・画像などのファイル。資料の本文から `../files/{名前}` で指す。記録ではなく、変更の検知は見ず、ワークスペースを作ったときには作らない
+    access: パスで引く（配信の `/files/{path}`・点検）
+    columns:
+      - name: (中身)
+        title: 中身
+        type: bytes
+        description: ファイルそのもの。MindStella のセッションか利用者が配置する。下にフォルダを作ってよい

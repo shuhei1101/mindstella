@@ -200,6 +200,49 @@ scenarios:
     notes:
       シナリオの判定: 判定フローチャート『シナリオ』で、既存の複合ユースケースへのシナリオの追加とした。AI が利用者に聞くことを検討事項に挙げて通知し、利用者が検討事項へ回答して決まるまでは、コメントの取り込みを 2 回またぎ、単一ユースケースの E2E では再現できない（Q4）
     test: test_normal_when_ai_asks_in_decision
+  - name: 正常シナリオ（利用上限に達した後に別のアカウントで続ける）
+    setup:
+      - name: Mock
+        description: 'モデル（エージェントフローを読む Claude）を呼ばない。claude-balancer（`PATH` の先頭に置く。`exec` で受けた引数を記録して `--` の後のコマンドをアカウントの `CLAUDE_CONFIG_DIR` で実行する。子プロセスが終わった後、会話の記録の最も新しい assistant の記録の `error` が `rate_limit` なら、そのアカウントを利用上限に達したと記録して以降は貸さない）・Claude Code（`PATH` の先頭に置く。引数と `CLAUDE_CONFIG_DIR` を記録し、『MindStella のセッションのフック』の SessionStart を叩いて待ち、ペインに貼られた入力を受けると UserPromptSubmit を叩き、アカウント A で起動したときは、会話の記録に `error: rate_limit` の assistant の記録を書いてから続けて StopFailure（`rate_limit`）を叩く）・Discord の Webhook（受けた本文を記録する HTTP のサーバーを空きポートで立てる）。利用者のコメントは、ブラウザを使わず、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する。コメントの取り込みの `threads`・`thread`・`update_thread` は、MindStella の MCP にクライアントでつないで決めた引数で再生する。起動のコマンドそのものは単一ユースケース『端末から起動する』で確かめる'
+      - name: 依存が揃った環境
+        description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている。テストごとの一時の端末の設定で project-index を起動している。常駐サーバーは、テストごとの一時の状態のフォルダ（`XDG_STATE_HOME`）と、Webhook の Mock を指す Webhook の設定のファイルで起動している
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー（`TMUX_TMPDIR`）
+      - name: 空のワークスペースのフォルダ
+        description: まだ `.mindstella/config.yaml` を持たないフォルダで、グローバルの設定のファイルの許可するフォルダ（`mindstella.allowed_dirs`）が指すテストごとの一時フォルダの下にある
+      - name: 貸せるアカウント
+        description: claude-balancer の Mock が貸すアカウント A・B の設定のフォルダ
+        notes: 最初の `exec` では A を貸す。コメントの本文は `通知の方法を決めたい`
+    flow: |-
+      ```mermaid
+      flowchart TD
+        U0([利用者]) -->|空のワークスペースのフォルダを渡して起動のコマンドを叩き、MindStella の API でワークスペースと MindStella のセッションを作る| L1([端末から起動する:正常シナリオ])
+        L1 -->|SessionStart のフックが起動の契機を注入する| S1([起動と再開:正常シナリオ（起動）])
+        S1 -->|コメントを書き、まとめて送る| A1([コメントを選んで送る:正常シナリオ（Claude Code へ入力する）])
+        A1 -->|応答の途中でアカウント A が利用上限に達し、StopFailure のフックが利用上限を常駐サーバーへ送信する| R1([MindStella のセッションを起動し直す:正常シナリオ（利用上限）])
+        R1 -->|止まった理由「利用上限」を Discord に通知する| N1([止まったことを通知する:正常シナリオ（利用上限）])
+        N1 -->|アカウント B で前の会話を引き継いで起動し、SessionStart のフックが再開の状況を注入する| S2([起動と再開:正常シナリオ（再開）])
+        S2 -->|取り込み待ちのコメントを取り込む| I1([コメントの取り込み:正常シナリオ])
+        I1 --> DONE([利用者が何もしなくても、別のアカウントで同じ会話の続きから、送ったコメントが取り込まれた状態])
+
+        click L1 "id:SC-489-41#scenarios[正常シナリオ]"
+        click S1 "id:SC-489-26#scenarios[正常シナリオ（起動）]"
+        click A1 "id:SC-489-3#scenarios[正常シナリオ（Claude Code へ入力する）]"
+        click R1 "id:SC-582-1#scenarios[正常シナリオ（利用上限）]"
+        click N1 "id:SC-570-1#scenarios[正常シナリオ（利用上限）]"
+        click S2 "id:SC-489-26#scenarios[正常シナリオ（再開）]"
+        click I1 "id:SC-489-43#scenarios[正常シナリオ]"
+      ```
+    expected:
+      - Mock の claude-balancer がアカウント A を利用上限に達したと記録している。MindStella が `report-limit` を呼んでいない
+      - 2 回目の `exec` で起動した Claude Code が、`--resume` に 1 回目の Claude Code の `session_id` を受け、`CLAUDE_CONFIG_DIR` がアカウント B の設定のフォルダである
+      - 『MindStella のセッションの一覧』が、1 回目と同じ MindStella のセッションの ID を `running` で返し、アカウントが B である
+      - Webhook の Mock が、止まった理由「利用上限」の通知を 1 件受けている
+      - 送ったコメントのスレッドが取り込み済みで、取り込み待ちの一覧が 0 件を返す
+      - 利用者が起動のコマンドを 2 回目に叩いていない（ペインへの接続は 1 回だけ）
+    test: test_normal_when_rate_limited
+    notes:
+      シナリオの判定: 判定フローチャート『シナリオ』で、既存の複合ユースケースへのシナリオの追加とした。利用上限で止まってから別のアカウントで同じ会話を引き継いでコメントを取り込むまでは、フック・常駐サーバーのセッションの管理・claude-balancer・通知をまたぎ、単一ユースケースの E2E では再現できない（Q4）
 lead: 利用者が起動のコマンドで MindStella の API からワークスペースと MindStella のセッションを作り、画面から送ったコメントを、MindStella のセッションが起動と再開・コメントの取り込み・記録の使い分けのエージェントフローで記録に取り込み、利用者の回答が要ることを検討事項に挙げて通知し、検討事項への回答で決めていく複合ユースケース。
 issue: 4
 primary_actor: 利用者
@@ -213,8 +256,8 @@ preconditions:
   - プラグイン mindstella がインストールされている
   - tmux が入っている
   - 常駐サーバーが systemd --user で起動できる
-success_guarantee: 利用者が画面から送ったコメントは、記録の種類ごとに振り分けて記録され、利用者の回答が要ることは検討事項として残り、検討事項への回答で決まる。ワークスペースの YAML はどの時点でもスキーマに合い、サーバーが配るプレビューは最後の編集を表示している。ワークスペースの直下には記録のフォルダ `.mindstella/` と `README.md` だけがある。
-minimal_guarantee: 途中で MindStella のセッションを止めても、それまでに記録した項目と会話ログ、取り込み待ちのスレッドはワークスペースに残り、次に起動のコマンドで MindStella のセッションを作ると、起動と再開のエージェントフローで続きから再開できる。
+success_guarantee: 利用者が画面から送ったコメントは、記録の種類ごとに振り分けて記録され、利用者の回答が要ることは検討事項として残り、検討事項への回答で決まる。ワークスペースの YAML はどの時点でもスキーマに合い、サーバーが配るプレビューは最後の編集を表示している。ワークスペースの直下には記録のフォルダ `.mindstella/` と `README.md` だけがある。アカウントが利用上限に達しても、利用者が何もしなくても、別のアカウントで同じ会話の続きから進む。
+minimal_guarantee: 途中で MindStella のセッションを止めても、それまでに記録した項目と会話ログ、取り込み待ちのスレッドはワークスペースに残り、次に起動のコマンドで MindStella のセッションを作ると、起動と再開のエージェントフローで続きから再開できる。自動の起動し直しに失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した理由が『MindStella のセッションの一覧』で分かる。
 frequency: 1 つの話し合いにつき、起動 1 回と、数回〜数十回のコメントの送信と取り込み
 priority: 高
 notes:

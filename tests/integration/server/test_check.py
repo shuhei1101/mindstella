@@ -259,3 +259,44 @@ def test_normal_when_duplicate_ids(
     duplicates = [row for row in result.data["problems"] if row["kind"] == "duplicate_id"]
     assert [row["id"] for row in duplicates] == ["D-1"]
     assert snapshot_tree(root) == before
+
+
+# 埋め込んだファイルが無いことを確かめる資料の本文（あるファイル・無いファイル・絶対 URL・コードブロックの中）
+EMBEDDED_BODY = (
+    "![動画](../files/clip.mp4)\n\n"
+    "![無い](../files/missing.mp4)\n\n"
+    "![外](https://example.com/a.png)\n\n"
+    "```\n![例](../files/sample.png)\n```\n"
+)
+
+
+def test_normal_when_embedded_file_missing(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    call_tool: CallTool,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """資料の本文が指すワークスペースの中のファイルが無いものを missing_file にする（正常系）。"""
+    # 準備
+    root = make_workspace(make_item("A-1", body="docs/A-1.md"), bodies={"A-1.md": EMBEDDED_BODY})
+    files = root / RECORD_DIR / "files"
+    files.mkdir()
+    (files / "clip.mp4").write_bytes(b"mp4")
+    before = snapshot_tree(root)
+    # 実行
+    result = call_tool("check", workspace=str(root))
+    # 検証
+    assert result.is_error is False
+    assert result.data is not None
+    assert result.data["ok"] is False
+    missing = [row for row in result.data["problems"] if row["kind"] == "missing_file"]
+    assert missing == [
+        {
+            "kind": "missing_file",
+            "file": ".mindstella/docs/A-1.md",
+            "id": "A-1",
+            "key": None,
+            "detail": "../files/missing.mp4",
+        }
+    ]
+    assert snapshot_tree(root) == before

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { linkBody, linkHeadings, renderMarkdown } from "@/shared/core/body-links";
+import { linkBody, linkHeadings, renderMarkdown, resolveFileSources } from "@/shared/core/body-links";
 import { buildIndex, type MindmapData } from "@/shared/core/records";
 
 // mdmark の代わりに、決まった HTML を描く（mdmark と同じ属性のフェンスのコードブロック 2 つ・属性の無い字下げのコードブロック・mermaid のコードブロック・範囲の中の pre）
@@ -69,5 +69,46 @@ describe("renderMarkdown", () => {
     expect([...root.querySelectorAll(".mdmark-html pre")].map((pre) => pre.getAttribute("tabindex"))).toEqual([null]);
     expect(root.querySelectorAll(".mdmark-map .diagram").length).toBe(0);
     expect(root.querySelectorAll(".mdmark-map code.language-mermaid").length).toBe(1);
+  });
+});
+
+describe("resolveFileSources", () => {
+  // 相対パスだけを配信のパスにする（正常系）
+  test("resolve_file_sources", () => {
+    // 準備
+    window.history.pushState({}, "", "/spa/decisions");
+    const root = document.createElement("div");
+    root.innerHTML = [
+      '<p><img id="a" src="../files/a.png"></p>',
+      '<figure><video id="b" src="../files/b.mp4#t=2" poster="../files/p.png"></video></figure>',
+      '<figure><audio id="c" src="../files/c.mp3"></audio></figure>',
+      '<p><img id="u" src="https://example.com/u.png"></p>',
+      '<p><img id="d" src="data:image/png;base64,AA"></p>',
+      '<p><img id="r" src="/r.png"></p>',
+      '<div class="mdmark-html"><img id="h" src="../files/h.png"></div>',
+    ].join("");
+    const attr = (id: string, name: string) => root.querySelector(`#${id}`)?.getAttribute(name);
+    // 実行
+    resolveFileSources(root);
+    // 検証
+    expect({
+      a: attr("a", "src"),
+      b: attr("b", "src"),
+      poster: attr("b", "poster"),
+      c: attr("c", "src"),
+      u: attr("u", "src"),
+      d: attr("d", "src"),
+      r: attr("r", "src"),
+      h: attr("h", "src"),
+    }).toEqual({
+      a: "/files/a.png",
+      b: "/files/b.mp4#t=2",
+      poster: "/files/p.png",
+      c: "/files/c.mp3",
+      u: "https://example.com/u.png",
+      d: "data:image/png;base64,AA",
+      r: "/r.png",
+      h: "../files/h.png",
+    });
   });
 });

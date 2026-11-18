@@ -1,0 +1,5 @@
+$ ruff check plugins tests
+All checks passed!
+exit=0
+
+# npm run typecheck・npm run lint は流していない: 作業 PR は .ts・frontend/ を変更しておらず、この worktree に node_modules が無い

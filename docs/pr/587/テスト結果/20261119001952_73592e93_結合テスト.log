@@ -1,0 +1,16 @@
+# 任意の指摘（404 の全ての要求の Content-Type）を反映した後の実行。回した commit: 73592e93
+$ pytest tests/integration/server/test_files_serve.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 5 items
+
+tests/integration/server/test_files_serve.py .....                       [100%]
+
+============================== 5 passed in 1.31s ===============================
+exit 0
+$ ruff check tests/integration/server/test_files_serve.py
+All checks passed!
+exit 0

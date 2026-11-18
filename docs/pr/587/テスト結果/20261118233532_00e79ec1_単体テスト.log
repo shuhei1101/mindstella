@@ -1,0 +1,570 @@
+# 単体テスト（Red）。テストコードの末尾の commit: 00e79ec1
+# 実装の前から pass したテスト: tests/unit/scripts/test_serve.py::test_send_file_when_missing
+#   既にある振る舞い: serve.py の do_GET の最後の分岐（知らないパスは 404 の問題の応答。plugins/mindstella/skills/mindmap/scripts/serve.py:420-421）。db1227b0 より前から作業ブランチにある
+
+# TMPDIR=/tmp/planner-587-tmp（/tmp/pytest-of-shuhei2441 が root の持ち物のため）
+$ pytest tests/unit && npx vitest run（全件実行。pytest は files_serve.py が無いことで収集が止まる）
+$ pytest tests/unit
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 2377 items / 1 error
+
+==================================== ERRORS ====================================
+___________ ERROR collecting tests/unit/scripts/test_files_serve.py ____________
+ImportError while importing test module '/home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files/tests/unit/scripts/test_files_serve.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_files_serve.py:10: in <module>
+    import files_serve
+E   ModuleNotFoundError: No module named 'files_serve'
+=========================== short test summary info ============================
+ERROR tests/unit/scripts/test_files_serve.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.57s ===============================
+exit 2
+
+$ npx vitest run
+
+ RUN  v5.1.0 /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+
+ ❯ frontend/src/shared/core/body-links.test.ts (4 tests | 1 failed) 61ms
+   ❯ resolveFileSources (1)
+     × resolve_file_sources 10ms
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+Not implemented: Window's scrollTo() method
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  frontend/src/shared/core/body-links.test.ts > resolveFileSources > resolve_file_sources
+TypeError: resolveFileSources is not a function
+ ❯ frontend/src/shared/core/body-links.test.ts:92:5
+     90|     const attr = (id: string, name: string) => root.querySelector(`#${…
+     91|     // 実行
+     92|     resolveFileSources(root);
+       |     ^
+     93|     // 検証
+     94|     expect({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 83 passed (84)
+      Tests  1 failed | 315 passed (316)
+   Start at  23:34:17
+   Duration  15.95s (environment 44%, tests 27%, import 15%, setup 8%, transform 5%, worker 1%)
+
+Environment  jsdom was created 84 times · 44.13s total, 44% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+exit 1
+
+$ pytest tests/unit/scripts/test_checker.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 31 items
+
+tests/unit/scripts/test_checker.py ........................FFFFFFF       [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_check_embedded_files ___________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x7db619108220>
+make_item = <function make_item.<locals>._make at 0x7db6191082c0>
+
+    def test_check_embedded_files(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """無いファイルだけを拾う（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="docs/A-1.md"),
+            bodies={
+                "A-1.md": (
+                    "![a](../files/clip.mp4)\n\n"
+                    "![b](../files/missing.mp4)\n\n"
+                    "![c](../files/sub/x%20y.png#t=1)\n"
+                )
+            },
+        )
+        files = root / RECORD_DIR / "files"
+        (files / "sub").mkdir(parents=True)
+        (files / "clip.mp4").write_bytes(b"mp4")
+        (files / "sub" / "x y.png").write_bytes(b"png")
+        workspace = store.load_workspace(root)
+        # 実行
+>       problems = checker._check_embedded_files(workspace)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute '_check_embedded_files'
+
+tests/unit/scripts/test_checker.py:509: AttributeError
+_____________ test_check_embedded_files_when_html_or_missing_body ______________
+
+make_workspace = <function make_workspace.<locals>._make at 0x7db619109620>
+make_item = <function make_item.<locals>._make at 0x7db619109120>
+
+    def test_check_embedded_files_when_html_or_missing_body(
+        make_workspace: MakeWorkspace, make_item: MakeItem
+    ) -> None:
+        """HTML の本文と無い本文は確かめない（正常系）。"""
+        # 準備
+        root = make_workspace(
+            make_item("A-1", body="docs/A-1.html"),
+            make_item("A-2", body="docs/A-2.md"),
+            bodies={"A-1.html": '<img src="../files/missing.png">\n'},
+        )
+        workspace = store.load_workspace(root)
+        # 実行
+>       problems = checker._check_embedded_files(workspace)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute '_check_embedded_files'
+
+tests/unit/scripts/test_checker.py:534: AttributeError
+________________________ test_embedded_paths[relative] _________________________
+
+markdown = '![a](../files/a.mp4) ![b](<../files/b c.png> "t")'
+expected = ['../files/a.mp4', '../files/b c.png']
+
+    @pytest.mark.parametrize(
+        ("markdown", "expected"),
+        [
+            pytest.param(
+                '![a](../files/a.mp4) ![b](<../files/b c.png> "t")',
+                ["../files/a.mp4", "../files/b c.png"],
+                id="relative",
+            ),
+            pytest.param("```\n![x](../files/x.png)\n```\n", [], id="fence"),
+            pytest.param("`![y](../files/y.png)`", [], id="inline_code"),
+            pytest.param("前の段落\n\n    ![z](../files/z.png)\n", [], id="indented_code"),
+            pytest.param(
+                "![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)",
+                [],
+                id="absolute",
+            ),
+        ],
+    )
+    def test_embedded_paths(markdown: str, expected: list[str]) -> None:
+        """コードの外の相対パスだけを拾う（正常系）。"""
+        # 準備
+        # 実行
+>       paths = checker.embedded_paths(markdown)
+                ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute 'embedded_paths'
+
+tests/unit/scripts/test_checker.py:561: AttributeError
+__________________________ test_embedded_paths[fence] __________________________
+
+markdown = '```\n![x](../files/x.png)\n```\n', expected = []
+
+    @pytest.mark.parametrize(
+        ("markdown", "expected"),
+        [
+            pytest.param(
+                '![a](../files/a.mp4) ![b](<../files/b c.png> "t")',
+                ["../files/a.mp4", "../files/b c.png"],
+                id="relative",
+            ),
+            pytest.param("```\n![x](../files/x.png)\n```\n", [], id="fence"),
+            pytest.param("`![y](../files/y.png)`", [], id="inline_code"),
+            pytest.param("前の段落\n\n    ![z](../files/z.png)\n", [], id="indented_code"),
+            pytest.param(
+                "![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)",
+                [],
+                id="absolute",
+            ),
+        ],
+    )
+    def test_embedded_paths(markdown: str, expected: list[str]) -> None:
+        """コードの外の相対パスだけを拾う（正常系）。"""
+        # 準備
+        # 実行
+>       paths = checker.embedded_paths(markdown)
+                ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute 'embedded_paths'
+
+tests/unit/scripts/test_checker.py:561: AttributeError
+_______________________ test_embedded_paths[inline_code] _______________________
+
+markdown = '`![y](../files/y.png)`', expected = []
+
+    @pytest.mark.parametrize(
+        ("markdown", "expected"),
+        [
+            pytest.param(
+                '![a](../files/a.mp4) ![b](<../files/b c.png> "t")',
+                ["../files/a.mp4", "../files/b c.png"],
+                id="relative",
+            ),
+            pytest.param("```\n![x](../files/x.png)\n```\n", [], id="fence"),
+            pytest.param("`![y](../files/y.png)`", [], id="inline_code"),
+            pytest.param("前の段落\n\n    ![z](../files/z.png)\n", [], id="indented_code"),
+            pytest.param(
+                "![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)",
+                [],
+                id="absolute",
+            ),
+        ],
+    )
+    def test_embedded_paths(markdown: str, expected: list[str]) -> None:
+        """コードの外の相対パスだけを拾う（正常系）。"""
+        # 準備
+        # 実行
+>       paths = checker.embedded_paths(markdown)
+                ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute 'embedded_paths'
+
+tests/unit/scripts/test_checker.py:561: AttributeError
+______________________ test_embedded_paths[indented_code] ______________________
+
+markdown = '前の段落\n\n    ![z](../files/z.png)\n', expected = []
+
+    @pytest.mark.parametrize(
+        ("markdown", "expected"),
+        [
+            pytest.param(
+                '![a](../files/a.mp4) ![b](<../files/b c.png> "t")',
+                ["../files/a.mp4", "../files/b c.png"],
+                id="relative",
+            ),
+            pytest.param("```\n![x](../files/x.png)\n```\n", [], id="fence"),
+            pytest.param("`![y](../files/y.png)`", [], id="inline_code"),
+            pytest.param("前の段落\n\n    ![z](../files/z.png)\n", [], id="indented_code"),
+            pytest.param(
+                "![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)",
+                [],
+                id="absolute",
+            ),
+        ],
+    )
+    def test_embedded_paths(markdown: str, expected: list[str]) -> None:
+        """コードの外の相対パスだけを拾う（正常系）。"""
+        # 準備
+        # 実行
+>       paths = checker.embedded_paths(markdown)
+                ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute 'embedded_paths'
+
+tests/unit/scripts/test_checker.py:561: AttributeError
+________________________ test_embedded_paths[absolute] _________________________
+
+markdown = '![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)'
+expected = []
+
+    @pytest.mark.parametrize(
+        ("markdown", "expected"),
+        [
+            pytest.param(
+                '![a](../files/a.mp4) ![b](<../files/b c.png> "t")',
+                ["../files/a.mp4", "../files/b c.png"],
+                id="relative",
+            ),
+            pytest.param("```\n![x](../files/x.png)\n```\n", [], id="fence"),
+            pytest.param("`![y](../files/y.png)`", [], id="inline_code"),
+            pytest.param("前の段落\n\n    ![z](../files/z.png)\n", [], id="indented_code"),
+            pytest.param(
+                "![u](https://example.com/u.png) ![d](data:image/png;base64,AA) ![r](/r.png)",
+                [],
+                id="absolute",
+            ),
+        ],
+    )
+    def test_embedded_paths(markdown: str, expected: list[str]) -> None:
+        """コードの外の相対パスだけを拾う（正常系）。"""
+        # 準備
+        # 実行
+>       paths = checker.embedded_paths(markdown)
+                ^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'checker' has no attribute 'embedded_paths'
+
+tests/unit/scripts/test_checker.py:561: AttributeError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_checker.py::test_check_embedded_files - Attrib...
+FAILED tests/unit/scripts/test_checker.py::test_check_embedded_files_when_html_or_missing_body
+FAILED tests/unit/scripts/test_checker.py::test_embedded_paths[relative] - At...
+FAILED tests/unit/scripts/test_checker.py::test_embedded_paths[fence] - Attri...
+FAILED tests/unit/scripts/test_checker.py::test_embedded_paths[inline_code]
+FAILED tests/unit/scripts/test_checker.py::test_embedded_paths[indented_code]
+FAILED tests/unit/scripts/test_checker.py::test_embedded_paths[absolute] - At...
+========================= 7 failed, 24 passed in 0.23s =========================
+exit 1
+
+$ pytest tests/unit/scripts/test_serve.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 138 items
+
+tests/unit/scripts/test_serve.py ....................................... [ 28%]
+........................................................................ [ 80%]
+.........................F.                                              [100%]
+
+=================================== FAILURES ===================================
+________________________________ test_send_file ________________________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x74f93609d260>
+make_item = <function make_item.<locals>._make at 0x74f93609d580>
+
+    def test_send_file(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+        """ファイルの全体と範囲を返却する（正常系）。"""
+        # 準備
+        root = make_workspace(make_item("D-1"))
+        data = bytes(range(250)) * 4
+        files = root / RECORD_DIR / "files"
+        files.mkdir()
+        (files / "clip.mp4").write_bytes(data)
+        preview = serve.start_preview_server(root, write_lock=threading.Lock(), settings={})
+        try:
+            port = _port_of(preview.url)
+            # 実行
+            whole = _get_raw(port, "/files/clip.mp4")
+            part = _get_raw(port, "/files/clip.mp4", {"Range": "bytes=100-199"})
+        finally:
+            preview.stop()
+        # 検証
+>       assert whole[0] == 200
+E       assert 404 == 200
+
+tests/unit/scripts/test_serve.py:2062: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_serve.py::test_send_file - assert 404 == 200
+======================== 1 failed, 137 passed in 8.63s =========================
+exit 1
+
+$ pytest tests/unit/preview/test_libs.py
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-embed-files
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 119 items
+
+tests/unit/preview/test_libs.py ........................................ [ 33%]
+..F..................................................................... [ 94%]
+.......                                                                  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_resolve_file_sources[chromium] ______________________
+
+preview_page = <Page url='https://preview.test/index.html'>
+load_preview_scripts = <function load_preview_scripts.<locals>._load at 0x71ea250974c0>
+
+    def test_resolve_file_sources(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+        """相対パスだけを配信のパスにする（正常系）。"""
+        # 準備
+        load_preview_scripts()
+        # 実行
+>       result = preview_page.evaluate(
+            """(html) => {
+                const root = document.createElement("div");
+                root.innerHTML = html;
+                MindmapPreview.resolveFileSources(root);
+                const attr = (id, name) => root.querySelector(`#${id}`).getAttribute(name);
+                return {
+                    a: attr("a", "src"),
+                    b: attr("b", "src"),
+                    poster: attr("b", "poster"),
+                    c: attr("c", "src"),
+                    u: attr("u", "src"),
+                    d: attr("d", "src"),
+                    r: attr("r", "src"),
+                    h: attr("h", "src"),
+                };
+            }""",
+            FILE_SOURCES_HTML,
+        )
+
+tests/unit/preview/test_libs.py:2186: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/playwright/sync_api/_generated.py:9413: in evaluate
+    self._sync(
+.venv/lib/python3.12/site-packages/playwright/_impl/_page.py:474: in evaluate
+    return await self._main_frame.evaluate(expression, arg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/playwright/_impl/_frame.py:346: in evaluate
+    await self._channel.send(
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <playwright._impl._connection.Connection object at 0x71ea25f29190>
+cb = <function Channel.send.<locals>.<lambda> at 0x71ea25094c20>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.Error: Page.evaluate: TypeError: MindmapPreview.resolveFileSources is not a function
+E               at eval (eval at evaluate (:311:30), <anonymous>:4:28)
+E               at UtilityScript.evaluate (<anonymous>:318:18)
+E               at UtilityScript.<anonymous> (<anonymous>:1:44)
+
+.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py:632: Error
+=========================== short test summary info ============================
+FAILED tests/unit/preview/test_libs.py::test_resolve_file_sources[chromium]
+======================== 1 failed, 118 passed in 35.43s ========================
+exit 1
+
