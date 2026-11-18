@@ -177,6 +177,13 @@ class FakeProjectIndex:
                 status, payload = fake.patch(self.path, body)
                 self._send(status, payload)
 
+            def do_PUT(self) -> None:
+                """端末の設定の配信元の行を丸ごと置き換え、全ての配信元を読み直したことにする。"""
+                body = self._body()
+                fake.requests.append(("PUT", self.path, body))
+                status, payload = fake.put(body)
+                self._send(status, payload)
+
             def log_message(self, *args: object) -> None:
                 """記録を出さない。"""
 
@@ -251,6 +258,14 @@ class FakeProjectIndex:
                 row["config"] = [changes["config"]]
             if "scope" in changes:
                 row["scope"] = changes["scope"]
+            self.version += 1
+        return 200, {"version": str(self.version)}
+
+    def put(self, body: Any) -> tuple[int, Any]:
+        """行を丸ごと受ける（行は変えない）。版が古ければ 409。"""
+        with self._lock:
+            if body.get("expectedVersion") != str(self.version):
+                return 409, {"current": str(self.version)}
             self.version += 1
         return 200, {"version": str(self.version)}
 

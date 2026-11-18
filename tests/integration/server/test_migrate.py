@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -122,6 +123,7 @@ print(json.dumps({
     "provisional": report.provisional,
     "not_carried": report.not_carried,
     "reports": report.reports,
+    "schemas": report.schemas,
 }, ensure_ascii=False))
 """
 
@@ -218,7 +220,28 @@ def _create_current_workspace(tmp_path: Path, valid_settings: dict[str, Any]) ->
     (records / "docs").mkdir(parents=True)
     write_yaml(records / "config.yaml", valid_settings)
     (records / VERSION_FILE).write_text(f"{PLUGIN_VERSION}\n", encoding="utf-8")
+    # 作成で置かれる、プラグインと同じ中身のスキーマの複製
+    copies = records / "schemas"
+    copies.mkdir()
+    for name in SOURCE_SCHEMAS:
+        shutil.copyfile(PLUGIN_SCHEMA_DIR / name, copies / name)
     return root
+
+
+# 配信の設定が指すスキーマ（プラグインの `skills/mindmap/schemas/` の中の名前）
+SOURCE_SCHEMAS = (
+    "common.schema.json",
+    "decisions.schema.json",
+    "tasks.schema.json",
+    "research.schema.json",
+    "docs.schema.json",
+    "terms.schema.json",
+    "notes.schema.json",
+    "logs.schema.json",
+)
+
+# プラグインのスキーマの置き場所
+PLUGIN_SCHEMA_DIR = SCRIPTS_DIR.parent / "schemas"
 
 
 def _read_version(root: Path) -> str:
@@ -844,3 +867,29 @@ def test_normal_when_discussion_keys_removed(
     again = _migrate(root)
     assert again.error is None, again.text
     assert snapshot_tree(root) == after
+
+
+def test_normal_when_schema_copy_stale(
+    tmp_path: Path, valid_settings: dict[str, Any], snapshot_tree: SnapshotTree
+) -> None:
+    """今の版のワークスペースでは手順を当てず、プラグインのスキーマと中身が違うスキーマの複製だけを書き直す（正常系）。"""
+    # 準備
+    root = _create_current_workspace(tmp_path, valid_settings)
+    copies = root / RECORD_DIR / "schemas"
+    (copies / "docs.schema.json").write_text(
+        json.dumps({"type": "object", "required": ["deliverable"]}), encoding="utf-8"
+    )
+    (copies / "legacy.schema.json").write_text('{"title": "前の版"}\n', encoding="utf-8")
+    before = _mtimes(root)
+    # 実行
+    result = _migrate(root)
+    # 検証
+    assert result.error is None, result.text
+    assert result.data is not None
+    assert (result.data["relation"], result.data["steps"], result.data["backup"]) == ("same", [], None)
+    assert result.data["schemas"] == [".mindstella/schemas/docs.schema.json"]
+    assert (copies / "docs.schema.json").read_bytes() == (PLUGIN_SCHEMA_DIR / "docs.schema.json").read_bytes()
+    assert (copies / "legacy.schema.json").read_text(encoding="utf-8") == '{"title": "前の版"}\n'
+    after = _mtimes(root)
+    changed = sorted(path for path in after if after[path] != before.get(path))
+    assert changed == [".mindstella/schemas/docs.schema.json"]

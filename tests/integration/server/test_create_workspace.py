@@ -303,3 +303,24 @@ def test_error_when_host_not_local(session_world: SessionWorld) -> None:
     assert (status, body["stage"]) == (403, "host"), body
     assert not world.folder().exists()
     assert world.pi.requests == []
+
+
+def test_normal_when_schema_copy_rewritten(session_world: SessionWorld) -> None:
+    """今のバージョンの記録のスキーマの複製を書き直し、端末の設定の行をそのまま送る PUT で project-index に配信元を読み直させる（正常系）。"""
+    # 準備
+    world = session_world
+    world.start()
+    world.create_workspace()
+    (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+    plugin_schema = PLUGIN_DIR / "skills" / "mindmap" / "schemas" / "docs.schema.json"
+    settings_rows = yaml.safe_load(world.pi.settings_path.read_text(encoding="utf-8"))["sources"]
+    world.pi.requests.clear()
+    # 実行
+    status, body = world.api("POST", "/workspaces", {"folder": str(world.folder())})
+    # 検証
+    assert status == 200, body
+    assert (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").read_bytes() == plugin_schema.read_bytes()
+    puts = [request for request in world.pi.requests if request[0] == "PUT"]
+    assert [(path, request["sources"]) for _method, path, request in puts] == [("/settings/sources", settings_rows)]
+    assert "expectedVersion" in puts[0][2]
+    assert world.pi.changes() == []
