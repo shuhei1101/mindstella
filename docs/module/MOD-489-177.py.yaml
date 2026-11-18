@@ -93,7 +93,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 常駐サーバーの起動と停止
     scope: public
-    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに足す
+    summary: 待ち受けのポートを取り、MCP サーバーを組み立てて `127.0.0.1` の HTTP で動かし、SIGTERM・SIGINT を受けるか `server_stop` が呼ばれたら、終了時のフックを呼んで配信を止めて終える。`ServerContext` を作り、`sessions.start_crash_watch` で落ちたことの見回りを始め（終えるときに止める）、`InputTargets` に `_restarter`（`sessions.request_restart` を `comment` で呼んで `sessions.wait_until_running` を待つ関数）を渡し、MindStella の API の経路（`api.build_routes`）を `/mcp`・`/_admin/status` と同じアプリに足す
     description: 末尾で `sys.exit(main())`。
     side_effects: '`127.0.0.1` の `MINDSTELLA_PORT` で待ち受け、記録を標準エラーに書く'
     args:
@@ -347,7 +347,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/server.py
     usecase: 共通
     scope: public
-    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`create_workspace`・`create_session`・`sessions`・`stop_session`・`close_workspace` は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
+    summary: '`TOOL_NAMES` のツールを登録した `MCPServer` を作る。`create_workspace`・`create_session`・`sessions`・`stop_session`・`restart_session`・`close_workspace` は `ServerContext` を受け、ワークスペースの管理・セッションの管理の同じ関数を呼ぶ'
     args:
       - name: previews
         type: PreviewRegistry
