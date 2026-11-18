@@ -1,0 +1,14 @@
+$ ~/.venvs/mindstella-dev/bin/python3 -m pytest tests/unit/scripts -p no:cacheprovider -q --basetemp=/tmp/pr584-g3
+# 共有の /tmp/pytest-of-shuhei2441 が別のユーザーの所有で使えないため、--basetemp で一時フォルダを替えた
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.venvs/mindstella-dev/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1418 passed, 1 skipped, 5 warnings in 27.71s
+exit=0

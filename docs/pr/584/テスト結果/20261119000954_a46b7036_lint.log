@@ -1,0 +1,4 @@
+$ ruff check plugins tests; ruff_status=$?; npm run typecheck && npm run lint && [ "$ruff_status" -eq 0 ]
+All checks passed!
+ruff_status=0
+node_modules が無いため npm の検査を回せない（Python のファイルだけを変更した）
