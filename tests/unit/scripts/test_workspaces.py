@@ -11,11 +11,14 @@ from typing import Any
 import pytest
 import yaml
 
+import migrator
 import project_index
+import read_point
 import sessions
 import state
 import workspaces
-from errors import ApiError
+from errors import ApiError, StepFailedError
+from fixture_types import PatchPluginVersion, SnapshotTree
 from project_index import ProjectIndexError
 from state import LaunchOptions, SessionState
 from workspaces import WorkspaceLocks
@@ -354,17 +357,116 @@ def test_create_workspace_folder_not_allowed(
     assert not ctx.state_root.exists()
 
 
-def test_create_workspace_unmigrated(
-    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
-) -> None:
-    """直下に移す前の設定ファイルがあれば 409。"""
+def _legacy_folder(allowed: Path, version: str) -> Path:
+    """版 version の記録を持ち、設定に削除したキー playbooks を持つワークスペースのフォルダを作る。"""
     folder = allowed / "家計簿"
-    folder.mkdir()
-    (folder / "mindmap.yaml").write_text("summary: x\n", encoding="utf-8")
+    records = folder / ".mindstella"
+    (records / "docs").mkdir(parents=True)
+    (records / "config.yaml").write_text(
+        "summary: 家計簿\nplaybooks: [システム開発]\nlinks: []\n", encoding="utf-8"
+    )
+    (records / "mindstella-version.ini").write_text(f"{version}\n", encoding="utf-8")
+    return folder
+
+
+def test_create_workspace_migrated(
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    patch_plugin_version: PatchPluginVersion,
+) -> None:
+    """前の版の記録は移し替えて開き、報告を残す（正常系）。"""
+    # 準備
+    patch_plugin_version("v0.14.0")
+    folder = _legacy_folder(allowed, "v0.13.0")
+    # 実行
+    status, body = workspaces.create_workspace(_request(folder), ctx)
+    # 検証
+    assert (status, body["result"]) == (200, "opened")
+    assert body["migration"]["from_version"] == "v0.13.0"
+    config = yaml.safe_load((folder / ".mindstella" / "config.yaml").read_text(encoding="utf-8"))
+    assert "playbooks" not in config
+    assert read_point.load_migration_report(folder, state_root=ctx.state_root) is not None
+
+
+def test_create_workspace_newer(
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    patch_plugin_version: PatchPluginVersion,
+    snapshot_tree: SnapshotTree,
+) -> None:
+    """記録の版が新しければ 409（異常系）。"""
+    # 準備
+    patch_plugin_version("v0.14.0")
+    folder = _legacy_folder(allowed, "v9.0.0")
+    before = snapshot_tree(folder)
+    # 実行・検証
     with pytest.raises(ApiError) as caught:
         workspaces.create_workspace(_request(folder), ctx)
-    assert caught.value.status == 409
+    assert (caught.value.status, caught.value.stage) == (409, "version")
+    assert snapshot_tree(folder) == before
     assert fake_pi.added == []
+
+
+def test_create_workspace_migration_failed(
+    allowed: Path,
+    fake_pi: FakeProjectIndex,
+    ctx: SimpleNamespace,
+    patch_plugin_version: PatchPluginVersion,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """移し替えが失敗したら 422（異常系）。"""
+    # 準備
+    patch_plugin_version("v0.14.0")
+    folder = _legacy_folder(allowed, "v0.13.0")
+
+    def _fail(*_args: object, **_kwargs: object) -> None:
+        """手順の失敗を送る。"""
+        raise StepFailedError("v0.14.0 の手順 1（call）: 手順が失敗しました")
+
+    monkeypatch.setattr(migrator, "migrate", _fail)
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.create_workspace(_request(folder), ctx)
+    assert (caught.value.status, caught.value.stage) == (422, "migration")
+    assert fake_pi.added == []
+
+
+def test_ensure_agent_flows_source(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """行が無ければ足す（正常系）。"""
+    # 実行
+    workspaces.ensure_agent_flows_source(ctx, [Path("/w")])
+    # 検証
+    assert len(fake_pi.added) == 1
+    row = fake_pi.added[0]
+    assert row["id"] == "mindstella-agent-flows"
+    assert row["config"].endswith("/agent-flows/dev-docs.yaml")
+    assert row["scope"]["read"] == ["/w", "/w/**"]
+    assert "write" not in row["scope"]
+
+
+def test_ensure_agent_flows_source_when_exists(fake_pi: FakeProjectIndex, ctx: SimpleNamespace) -> None:
+    """行があれば何も送らない（正常系）。"""
+    # 準備
+    fake_pi.rows["mindstella-agent-flows"] = {"id": "mindstella-agent-flows", "config": [], "scope": {}}
+    # 実行
+    workspaces.ensure_agent_flows_source(ctx, [Path("/w")])
+    # 検証
+    assert fake_pi.added == []
+
+
+def test_ensure_agent_flows_source_when_failed(
+    fake_pi: FakeProjectIndex, ctx: SimpleNamespace, caplog: pytest.LogCaptureFixture
+) -> None:
+    """足せなくても止めずに記録する（正常系）。"""
+    # 準備
+    fake_pi.add_error = ProjectIndexError(None, "つながりません")
+    # 実行
+    with caplog.at_level(logging.WARNING):
+        workspaces.ensure_agent_flows_source(ctx, [Path("/w")])
+    # 検証
+    assert "mindstella.agent_flows.register_failed" in caplog.text
 
 
 def test_create_workspace_rollback_failed(

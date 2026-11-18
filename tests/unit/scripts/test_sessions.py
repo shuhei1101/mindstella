@@ -16,6 +16,8 @@ import pytest
 import commands
 import notify
 import project_index
+import read_point
+import resume
 import sessions
 import state
 from errors import ApiError
@@ -166,10 +168,7 @@ def ctx(
     state.add_id(root, WORKSPACE_ID)
     state.write_launch(root, WORKSPACE_ID, LaunchOptions(mcp_config=None, plugin_dirs=[]))
     plugin_root = tmp_path / "plugin"
-    (plugin_root / "skills" / "mindmap" / "references").mkdir(parents=True)
-    (plugin_root / "skills" / "mindmap" / "references" / "起動時の指示.md").write_text(
-        "起動時の指示", encoding="utf-8"
-    )
+    plugin_root.mkdir()
     row = {
         "id": WORKSPACE_ID,
         "config": [f"{folder}/.mindstella/dev-docs.yaml"],
@@ -265,8 +264,6 @@ def test_new_session_id() -> None:
                 "f",
                 "--plugin-dir",
                 "p",
-                "--append-system-prompt",
-                "s",
             ],
             id="balancer",
         ),
@@ -274,17 +271,17 @@ def test_new_session_id() -> None:
             LaunchOptions(mcp_config=None, plugin_dirs=[]),
             None,
             None,
-            ["claude", "--append-system-prompt", "s"],
+            ["claude"],
             id="no-balancer",
         ),
-        pytest.param(None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"),
+        pytest.param(None, None, None, ["claude"], id="no-record"),
     ],
 )
 def test_build_command(
     options: LaunchOptions | None, mcp_file: Path | None, balancer: str | None, expected: list[str]
 ) -> None:
     """claude-balancer の有無と指定で並びが変わる。"""
-    assert sessions.build_command(options, mcp_file, "s", balancer) == expected
+    assert sessions.build_command(options, mcp_file, balancer) == expected
 
 
 @pytest.mark.parametrize(
@@ -926,3 +923,85 @@ def test_notify_stopped(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -
     workspace_id, reason, describe = received[0]
     assert (workspace_id, reason) == (WORKSPACE_ID, "crashed")
     assert describe() == ("家計簿", "http://127.0.0.1:9100/mindstella.html")
+
+
+def test_resume_status(
+    ctx: SimpleNamespace, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """セッションのワークスペースの状況を返す（正常系）。"""
+    # 準備
+    _write_session(ctx)
+    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    called: list[tuple[Path, str]] = []
+    status = {"trigger": "resume", "until_seq": 7}
+
+    def _summarize(root: Path, source: str, **_kwargs: Any) -> dict[str, Any]:
+        """呼ばれたフォルダと契機を控えて、決めた状況を返す。"""
+        called.append((root, source))
+        return status
+
+    monkeypatch.setattr(resume, "summarize_resume", _summarize)
+    # 実行
+    result = sessions.resume_status(SESSION_ID, {"source": "compact"}, ctx)
+    # 検証
+    assert called == [(folder, "compact")]
+    assert result == status
+
+
+def test_resume_status_when_unknown(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+    """知らないセッションは 404（異常系）。"""
+    # 準備
+    _write_session(ctx)
+    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    called: list[str] = []
+    monkeypatch.setattr(resume, "summarize_resume", lambda *_args, **_kwargs: called.append("called"))
+    # 実行・検証
+    with pytest.raises(ApiError) as raised:
+        sessions.resume_status("S-999999999999", {"source": "compact"}, ctx)
+    assert raised.value.status == 404
+    assert called == []
+
+
+def _write_changes(folder: Path, last_seq: int) -> None:
+    """ワークスペースの changes.yaml を、まとまり 0 件・まだまとめていない変更なしの last_seq で書く。"""
+    (folder / ".mindstella" / "changes.yaml").write_text(
+        f"last_seq: {last_seq}\nsets: []\npending: {{added: [], changed: []}}\n", encoding="utf-8"
+    )
+
+
+def test_advance_read_point(
+    ctx: SimpleNamespace, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """前回参照した時点を進める（正常系）。"""
+    # 準備
+    _write_session(ctx)
+    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    _write_changes(folder, 5)
+    read_point.save_read_seq(folder, 3, state_root=ctx.state_root)
+    # 実行
+    result = sessions.advance_read_point(SESSION_ID, {"until_seq": 5}, ctx)
+    # 検証
+    assert result == {"read_seq": 5}
+
+
+@pytest.mark.parametrize(
+    "until_seq",
+    [
+        pytest.param("5", id="not_integer"),
+        pytest.param(9, id="beyond_last_seq"),
+    ],
+)
+def test_advance_read_point_when_invalid(
+    ctx: SimpleNamespace, folder: Path, monkeypatch: pytest.MonkeyPatch, until_seq: object
+) -> None:
+    """通し番号でない値・範囲の外は 400（異常系）。"""
+    # 準備
+    _write_session(ctx)
+    monkeypatch.setattr(sessions.workspaces, "find_workspace_row", lambda *_args, **_kwargs: ctx.row)
+    _write_changes(folder, 5)
+    read_point.save_read_seq(folder, 3, state_root=ctx.state_root)
+    # 実行・検証
+    with pytest.raises(ApiError) as raised:
+        sessions.advance_read_point(SESSION_ID, {"until_seq": until_seq}, ctx)
+    assert raised.value.status == 400
+    assert read_point.load_read_seq(folder, state_root=ctx.state_root) == 3

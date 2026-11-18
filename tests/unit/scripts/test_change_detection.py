@@ -12,6 +12,7 @@ import pytest
 import yaml
 
 import change_detection
+import read_point
 from change_detection import ChangeDetector, ItemDiff, Snapshot, Writer
 from claude_input import InputTarget, InputTargets
 from fixture_types import MakeItem, MakeWorkspace
@@ -510,6 +511,35 @@ def test_record_diff_when_writer_differs(make_workspace: MakeWorkspace, make_ite
     assert changes["sets"][0]["changed"] == ["D-3"]
     assert changes["pending"] == {"added": [], "changed": ["D-1"], "by": "external"}
 
+
+
+def test_record_diff_keeps_unread_after_read_point(
+    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
+) -> None:
+    """前回参照した時点より後の回を残す（正常系）。"""
+    # 準備
+    entries = [
+        {"seq": 5, "at": NOW, "by": "ai", "before": {"answer": "5 の前"}},
+        {"seq": 3, "at": NOW, "by": "ai", "before": {"answer": "3 の前"}},
+    ]
+    d1_before = make_item("D-1", answer="今の前の答え", seq=5, history=entries)
+    root = make_workspace(
+        d1_before,
+        settings={**valid_settings, "history_limit": 1},
+        raw_files={"changes.yaml": "last_seq: 5\nread_seq: 1\nsets: []\npending: {added: [], changed: []}\n"},
+    )
+    read_point.save_read_seq(root, 4)
+    diff = ItemDiff(
+        added=[],
+        changed=[("decision", d1_before, make_item("D-1", answer="今の答え"), None, None)],
+        removed=[],
+    )
+    # 実行
+    change_detection.record_diff(root, diff, "external", now=lambda: NOW)
+    # 検証
+    row = _read(root, "history.yaml")["items"]["D-1"]
+    assert [entry["seq"] for entry in row["history"]] == [6, 5]
+    assert row["history_dropped_seq"] == 3
 
 def test_find_duplicate_ids(make_item: MakeItem) -> None:
     """種類をまたいでも数える（正常系）。"""
