@@ -1,0 +1,79 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 対象の設計書が全てあるため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではないため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: '未検証の技術機構に依存しない（project-index の POST /settings/sources は expectedVersion 付きで 201 を返すことを #554 で確認済み、claude-balancer の exec --account は端末の CLI にある）'
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: ユースケースの連鎖は変わらない
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えないため対象外（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えないため対象外（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: 単一ユースケース設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:01:36.879375+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えないため対象外（判定フローチャート『モック要否』）
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: インターフェース定義設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:31.647738+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えないため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面を変えないため対象外（判定フローチャート『画面設計要否』）
+    updated_by: planner
+    updated_at: '2026-11-18T03:47:52.997203+00:00'
+  - process: モジュール構成設計
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:35:30.358730+00:00'
+  - process: ドキュメント修正
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:04.350607+00:00'
+  - process: 単体テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:02:29.573900+00:00'
+  - process: 実装
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:10:22.839501+00:00'
+  - process: 結合テスト作成
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:20:57.875162+00:00'

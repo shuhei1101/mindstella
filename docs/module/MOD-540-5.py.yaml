@@ -9,8 +9,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/place_source_config.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 'v0.13.0 の `call`（`place_source_config`）が呼ぶ変換。`.mindstella/dev-docs.yaml` が無ければ作り、`.mindstella/schemas/` をプラグインのスキーマで置き換える'
-    side_effects: '`.mindstella/dev-docs.yaml`（無いときだけ）と `.mindstella/schemas/` を書く'
+    summary: 'v0.13.0 の `call`（`place_source_config`）が呼ぶ変換。`.mindstella/config.yaml` に `id` が無ければフォルダから振ったワークスペースの ID を記録し、`.mindstella/dev-docs.yaml` が無ければ作り、`.mindstella/schemas/` をプラグインのスキーマで置き換える'
+    side_effects: '`.mindstella/config.yaml` の `id`（無いときだけ）・`.mindstella/dev-docs.yaml`（無いときだけ）と `.mindstella/schemas/` を書く'
     args:
       - name: root
         type: Path
@@ -21,7 +21,7 @@ functions:
       type: list[str]
       description: 変えたファイル（ワークスペースからの相対パス。変えなければ空）
     process: |-
-      1. `.mindstella/config.yaml` からワークスペースの ID と `summary` を読む（ID が無ければ『ワークスペースの管理』の `workspace_id_for`）
+      1. `.mindstella/config.yaml` からワークスペースの ID と `summary` を読む。ID が無ければ『ワークスペースの管理』の `workspace_id_for` で振り、`config.yaml` のほかのキーを変えずに `id` を足して一時ファイルから置き換える（`dev-docs.yaml` の有無と関係なく行う）
       2. `.mindstella/dev-docs.yaml` が無ければ、『読み書きと検証』の `build_source_config` の中身を一時ファイルから書く
       3. `.mindstella/schemas/` を作り、プラグインの種類ごとの 7 つのスキーマと `common.schema.json` を複製する（中身が同じファイルは書かない）
       4. 書いたファイルの相対パスを返す
@@ -43,3 +43,9 @@ functions:
         condition: '利用者が書き換えた `dev-docs.yaml` を持つワークスペース'
         mock: なし
         expected: '`dev-docs.yaml` が呼ぶ前と同じで、`schemas/` はプラグインのスキーマと同じ'
+      - name: test_place_source_config_records_id
+        case: 正常
+        summary: 設定に ID が無ければ記録する
+        condition: '`parametrize`: `config.yaml` に `id` が無く `dev-docs.yaml` も無い / `id` が無く `dev-docs.yaml` がある / `id` がある'
+        mock: なし
+        expected: '`config.yaml` の `id` が `workspace_id_for(root)` でほかのキーが変わらず、返り値に `.mindstella/config.yaml` がある / 同じ / `config.yaml` が呼ぶ前と同じで、返り値に無い'

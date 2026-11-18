@@ -24,7 +24,7 @@ def _send(
 
 
 def test_normal(session_world: SessionWorld) -> None:
-    """SessionStart で claude_session_id とペインを記録する（正常系）。"""
+    """SessionStart で claude_session_id・ペイン・設定のフォルダを記録する（正常系）。"""
     # 準備
     world = session_world
     workspace_id = _prepare(world, claude_session_id=None)
@@ -38,6 +38,7 @@ def test_normal(session_world: SessionWorld) -> None:
             "pane": "%7",
             "pid": 4242,
             "pid_started_at": "99",
+            "claude_config_dir": "/home/user/.claude-sub6",
         },
     )
     # 検証
@@ -45,6 +46,7 @@ def test_normal(session_world: SessionWorld) -> None:
     session = world.read_session(workspace_id)
     assert session is not None
     assert (session["claude_session_id"], session["pane"], session["pid"]) == ("c-9", "%7", 4242)
+    assert session["claude_config_dir"] == "/home/user/.claude-sub6"
 
 
 def test_normal_when_responding(session_world: SessionWorld) -> None:

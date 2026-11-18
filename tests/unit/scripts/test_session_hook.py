@@ -7,6 +7,7 @@ import json
 import threading
 from collections.abc import Callable, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -85,9 +86,10 @@ def _context_of(stdout: io.StringIO) -> str:
     return json.loads(stdout.getvalue())["hookSpecificOutput"]["additionalContext"]
 
 
-def test_main() -> None:
-    """SessionStart で送り、状況を注入してから時点を進める（正常系）。"""
+def test_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SessionStart で設定のフォルダとともに送り、状況を注入してから時点を進める（正常系）。"""
     # 準備
+    monkeypatch.setenv("HOME", str(tmp_path))
     calls: list[tuple[str, Any]] = []
     stdout = io.StringIO()
 
@@ -98,7 +100,7 @@ def test_main() -> None:
     # 実行
     code = session_hook.main(
         ["session-start"],
-        environ=ENVIRON,
+        environ={**ENVIRON, "HOME": str(tmp_path), "CLAUDE_CONFIG_DIR": "~/c"},
         stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "compact"})),
         stdout=stdout,
         post=lambda port, session, body: calls.append(("post", body)),
@@ -114,10 +116,31 @@ def test_main() -> None:
     assert body["source"] == "compact"
     assert body["pane"] == "%3"
     assert body["socket"] == "/tmp/tmux-1000/default"
+    assert body["claude_config_dir"] == f"{tmp_path}/c"
     assert calls[1][1] == "compact"
     until_seq, written = calls[2][1]
     assert until_seq == 7
     assert json.loads(written)["hookSpecificOutput"]["additionalContext"] == CONTEXT
+
+
+def test_main_without_config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る（正常系）。"""
+    # 準備
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    sent: list[tuple[int, str, dict[str, Any]]] = []
+    # 実行
+    session_hook.main(
+        ["session-start"],
+        environ={**ENVIRON, "HOME": str(tmp_path)},
+        stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "startup"})),
+        stdout=io.StringIO(),
+        post=lambda port, session, body: sent.append((port, session, body)),
+        resume=lambda port, session, source: _resume_status(),
+        advance=lambda port, session, until_seq: None,
+    )
+    # 検証
+    assert sent[0][2]["claude_config_dir"] == f"{tmp_path}/.claude"
 
 
 def test_main_ordinary_session() -> None:

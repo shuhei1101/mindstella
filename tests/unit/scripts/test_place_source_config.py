@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 import yaml
@@ -70,3 +71,38 @@ def test_place_source_config_when_config_exists(
     records = root / RECORD_DIR
     assert (records / "dev-docs.yaml").read_text(encoding="utf-8") == EDITED_CONFIG
     assert _schema_texts(records / "schemas") == _schema_texts(scripts_dir.parent / "schemas")
+
+
+@pytest.mark.parametrize(
+    ("has_id", "raw_files"),
+    [
+        pytest.param(False, {}, id="no-id"),
+        pytest.param(False, {"dev-docs.yaml": EDITED_CONFIG}, id="no-id-with-config"),
+        pytest.param(True, {}, id="with-id"),
+    ],
+)
+def test_place_source_config_records_id(
+    has_id: bool,
+    raw_files: dict[str, str],
+    place_source_config: ModuleType,
+    make_workspace: MakeWorkspace,
+    valid_settings: dict[str, Any],
+) -> None:
+    """設定に ID が無ければ記録する（正常系）。"""
+    # 準備
+    settings = {"id": "mindstella-既存-abcdef", **valid_settings} if has_id else valid_settings
+    root = make_workspace(settings=settings, raw_files=raw_files, with_history=False)
+    settings_path = root / RECORD_DIR / "config.yaml"
+    before = settings_path.read_bytes()
+    # 実行
+    written = place_source_config.migrate(root)
+    # 検証
+    if has_id:
+        assert settings_path.read_bytes() == before
+        assert f"{RECORD_DIR}/config.yaml" not in written
+    else:
+        assert yaml.safe_load(settings_path.read_text(encoding="utf-8")) == {
+            **valid_settings,
+            "id": workspace_id_for(root),
+        }
+        assert f"{RECORD_DIR}/config.yaml" in written

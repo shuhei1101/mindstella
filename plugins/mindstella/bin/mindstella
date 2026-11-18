@@ -7,7 +7,7 @@
 # 環境変数:
 #   MINDSTELLA_VENV    常駐サーバーを動かす仮想環境のフォルダ（既定は ~/.mindmap/venv）
 #   MINDSTELLA_PORT    常駐サーバーの待ち受けのポート（既定は 8784）
-#   CLAUDE_CONFIG_DIR  あれば、claude-balancer が無い端末で MindStella のセッションの Claude Code の設定のフォルダ（アカウント）にする
+#   CLAUDE_CONFIG_DIR  あれば、MindStella のセッションの Claude Code の設定のフォルダ（アカウント）にする（claude-balancer がある端末ではそのアカウントを借りる）
 #   MINDSTELLA_ALLOWED_HOSTS / MINDSTELLA_PREVIEW_START_HOOK / MINDSTELLA_PREVIEW_STOP_HOOK /
 #   MINDSTELLA_TRANSCRIBER / MINDSTELLA_TRANSCRIBER_URL / PROJECT_INDEX_PORT
 #                      あれば、常駐サーバーを起動するときにユニットの Environment= に書いて渡す

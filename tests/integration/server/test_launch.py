@@ -168,8 +168,11 @@ def _process_env(pid: int) -> dict[str, str]:
 
 def test_normal(world: LaunchWorld) -> None:
     """常駐サーバーが落ちていれば起動し、ワークスペースと MindStella のセッションを作ってつなぐコマンドを出す（正常系）。"""
+    # 準備
+    config_dir = world.sandbox.root / ".claude-sub2"
+    config_dir.mkdir()
     # 実行
-    result = world.launch(FOLDER)
+    result = world.launch(FOLDER, extra_env={"CLAUDE_CONFIG_DIR": str(config_dir)})
     # 検証
     assert result.returncode == 0, result.stderr
     workspace_id = world.workspace_id()
@@ -184,6 +187,7 @@ def test_normal(world: LaunchWorld) -> None:
     lines = result.stdout.splitlines()
     assert lines[0].startswith("http://")
     assert f"tmux attach-session -t ={workspace_id}" in lines
+    assert f"[mindstella] 起動したアカウント: {config_dir}" in result.stderr.splitlines()
 
 
 def test_normal_when_plugin_upgraded(world: LaunchWorld, tmp_path: Path) -> None:

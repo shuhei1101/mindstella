@@ -989,7 +989,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/store.py
     usecase: 記録の形式の移行
     scope: public
-    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の文字列のタグ・書き込む項目以外の案と状態の合わない検討事項）から来ているかを返す
+    summary: 問題が、前の版の形式（資料の `done`・題名の無い設定・`field` を持つ設定・`tags` を持つ設定・書き込む項目以外の文字列のタグ・書き込む項目以外の案と状態の合わない検討事項・書き込む項目以外の v0.13.0 より前の形の項目）から来ているかを返す
     args:
       - name: problem
         type: Problem
@@ -1014,14 +1014,15 @@ functions:
       1. `kind` が `decision_state` の場合、`id` が `written_ids` に無ければ真、あれば偽を返す
       2. `kind` が `schema` でない場合、偽を返す
       3. `file` が `config.yaml` の場合、`raw` の設定が辞書で `summary` を持たないか、`field`・`tags` か削除したキー（`goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories`）のどれかを持てば真
-      4. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
-      5. `key` が `items[{i}].tags[{j}]` の形で、`id` が `written_ids` に無く、その要素が文字列なら真
-      6. それ以外は偽
+      4. `key` が `items[{i}].tags[{j}]` の形で、`id` が `written_ids` に無い場合、その要素が文字列なら真、それ以外は偽
+      5. `id` があり `written_ids` に無く、その ID の項目が v0.13.0 より前の形（履歴のキー・参照のキー（`LEGACY_ITEM_KEYS`）を持つ、`related` に文字列の要素がある、`body` が `/` を含まない文字列）なら真
+      6. `file` が `docs.yaml` で `id` がある場合、その ID の資料が `done` を持ち `status` を持たなければ真
+      7. それ以外は偽
     unit_tests:
       - name: test_is_legacy_problem
         case: 正常
         summary: 前の版の形式の問題を見分ける
-        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした D-1 を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と `playbooks` を持つ設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
+        condition: '`summary` を持たない設定と A-1（`done: true`）、`status` を `完了` にした今の形の D-1（v0.13.0 より前の形のキーを持たない）を持つワークスペースを検証した問題。`parametrize`: `config.yaml` の問題 / A-1 の問題 / D-1 の問題 / `kind: broken_ref` の問題 / `summary` と削除したキー `playbooks` を持つ設定の `config.yaml` の問題 / `tags` を持つ設定の `config.yaml` の問題'
         mock: なし
         expected: 真 / 真 / 偽 / 偽 / 真 / 真
       - name: test_is_legacy_problem_when_decision_state
@@ -1034,6 +1035,12 @@ functions:
         case: 正常
         summary: 書き込む項目以外の文字列のタグだけを前のバージョンの形式とする
         condition: 'D-1 の `tags` が `[データ]` のワークスペースを検証した `items[0].tags[0]` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}`'
+        mock: なし
+        expected: 真 / 偽
+      - name: test_is_legacy_problem_when_legacy_item_form
+        case: 正常
+        summary: 書き込む項目以外の v0.13.0 より前の形の項目だけを前のバージョンの形式とする
+        condition: 'D-1 が `created`・`updated` を持つワークスペースを検証した D-1 の `schema` の問題。`parametrize`: `written_ids` なし / `written_ids` が `{D-1}`'
         mock: なし
         expected: 真 / 偽
   - name: workspace_lock

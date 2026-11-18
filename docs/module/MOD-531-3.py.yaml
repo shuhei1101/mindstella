@@ -157,7 +157,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
-    description: 記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れる。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。配信元の行を足した後に、配信元 `mindstella-agent-flows` の行が無ければ足す（`ensure_agent_flows_source`）
+    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れる。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。配信元の行を足した後に、配信元 `mindstella-agent-flows` の行が無ければ足す（`ensure_agent_flows_source`）。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない'
     side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
     args:
       - name: request
@@ -245,6 +245,30 @@ functions:
         mock: 同上・`migrator.migrate`
         expected: '`ApiError`（422、`stage: migration`）。配信元の行を足さない'
         exception: 移し替えが失敗
+      - name: test_create_workspace_moved
+        case: 正常
+        summary: 配信元の行が記録の無い前のフォルダを指せば、行を移した先へ変える
+        condition: 設定に `id` を持つ記録と `launch.json`・`ids`。`id` は前のフォルダから `workspace_id_for` で振った値。配信元の行の `config` が記録の無い前のフォルダ
+        mock: '`project_index.get_settings`・`patch_source`・配信の URL'
+        expected: '`(200, {id: 設定の id, result: opened})`、`patch_source` が今回のフォルダの `config`・`scope` で呼ばれ、`add_source` が呼ばれない'
+      - name: test_create_workspace_moved_closed
+        case: 正常
+        summary: 移した先でクローズ済みの行は同じ依頼で outside_read も戻す
+        condition: 'test_create_workspace_moved と同じで、行が `outsideRead: false`'
+        mock: 同上
+        expected: '`(200, {result: reopened})`、`patch_source` が 1 回だけ `config`・`scope`・`outside_read: true` で呼ばれ、`close_pending` が偽'
+      - name: test_create_workspace_duplicate
+        case: 異常
+        summary: 行が指す別のフォルダに同じ ID の記録があれば 409
+        condition: 同じ `id` の記録を 2 つのフォルダに置き、行はもう一方を指す
+        mock: '`project_index.get_settings`・`patch_source`'
+        expected: '`ApiError`（409、`stage: duplicate`、`detail` にもう一方のフォルダ）、`patch_source`・`add_source` が呼ばれない'
+      - name: test_create_workspace_moved_patch_failed
+        case: 異常
+        summary: 行の変更が失敗すれば 502 で記録は消さない
+        condition: test_create_workspace_moved と同じで、`patch_source` が `ProjectIndexError`
+        mock: 同上
+        expected: '`ApiError`（502、`stage: source`）、`.mindstella/` と `launch.json` が残る'
   - name: close_workspace
     title: ワークスペースをクローズにする
     kind: 関数

@@ -42,6 +42,9 @@ data_models:
       - name: last_error
         type: str | None
         description: 最後の停止・起動し直しに失敗した段階と理由。次に作成・停止が通ったら `None` に戻す
+      - name: claude_config_dir
+        type: str | None
+        description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス。SessionStart のフックが入れる
   - name: LaunchOptions
     title: 追加の MCP とプラグイン
     container: plugins/mindstella/skills/mindmap/scripts/state.py

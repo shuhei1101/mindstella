@@ -28,7 +28,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。どの結末も 0 を返す'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
     side_effects: 常駐サーバーへ出来事を送る
     args:
@@ -80,10 +80,10 @@ functions:
     unit_tests:
       - name: test_main
         case: 正常
-        summary: SessionStart で送り、状況を注入してから時点を進める
-        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`TMUX_PANE` あり、入力 `{session_id: c1, source: compact}`、`resume` が `context`・`until_seq` 7 を返す'
+        summary: SessionStart で設定のフォルダとともに送り、状況を注入してから時点を進める
+        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`（`~/c`）あり、入力 `{session_id: c1, source: compact}`、`resume` が `context`・`until_seq` 7 を返す'
         mock: '`post`・`resume`・`advance`・PID の引き方'
-        expected: '0 を返し、`post` が `event: session_start` で、`resume` が `compact` で、`advance` が 7 でこの順に呼ばれ、`advance` より前に標準出力の `additionalContext` が `resume` の `context` と同じ'
+        expected: '0 を返し、`post` が `event: session_start`・`claude_config_dir: {HOME}/c` で、`resume` が `compact` で、`advance` が 7 でこの順に呼ばれ、`advance` より前に標準出力の `additionalContext` が `resume` の `context` と同じ'
       - name: test_main_ordinary_session
         case: 正常
         summary: MINDSTELLA_SESSION が無ければ何もしない
@@ -122,6 +122,12 @@ functions:
          - 注入文を、状況があればその `context`、無ければ `fallback_context`（`MINDSTELLA_FLOW`）にし、`hookSpecificOutput.additionalContext` に入れた JSON を標準出力に書いて `flush` する
          - 状況があり `changed_more`・`removed_more` がどちらも 0 の場合だけ、状況の `until_seq` で前回参照した時点を進める（`advance`。失敗したら標準エラーに 1 行書く）
       4. 0 を返す
+      - name: test_main_without_config_dir
+        case: 正常
+        summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る
+        condition: '`[session-start]`、`MINDSTELLA_SESSION` あり、`CLAUDE_CONFIG_DIR` 無し、`HOME` を一時フォルダにする'
+        mock: '`post`・`resume`・`advance`・PID の引き方'
+        expected: '`post` の本文の `claude_config_dir` が `{HOME}/.claude`'
   - name: post_event
     title: 出来事を送る
     kind: 関数

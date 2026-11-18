@@ -174,11 +174,12 @@ def test_run_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         json.dumps({"mcpServers": {"a": {"command": "a"}}}), encoding="utf-8"
     )
     request = _Requests(
-        (201, CREATED), (201, {"session": "S-1", "pane": "w:0.0", "url": PREVIEW_URL})
+        (201, CREATED),
+        (201, {"session": "S-1", "pane": "w:0.0", "url": PREVIEW_URL, "account": "/c"}),
     )
     argv = ["/w/家計簿", "--flow", "aituber#flow-1", "--mcp-config", "m.json", "--plugin-dir", "p"]
     # 実行
-    code, stdout, _stderr = _run_start(argv, request, {"CLAUDE_CONFIG_DIR": "/c"})
+    code, stdout, stderr = _run_start(argv, request, {"CLAUDE_CONFIG_DIR": "/c"})
     # 検証
     assert code == 0
     assert request.calls[0] == (
@@ -197,6 +198,7 @@ def test_run_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         {"claude_config_dir": "/c"},
     )
     assert stdout.splitlines() == [PREVIEW_URL, "w:0.0"]
+    assert "[mindstella] 起動したアカウント: /c" in stderr.splitlines()
 
 
 def test_run_start_exists() -> None:

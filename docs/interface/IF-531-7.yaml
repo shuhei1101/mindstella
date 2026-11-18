@@ -41,6 +41,12 @@ request:
   default: なし（`socket` を送らない）
   location: argument
   description: 環境変数。最初の `,` より前をペインの tmux のサーバーのソケットとして `socket` で送る
+- name: CLAUDE_CONFIG_DIR
+  type: str
+  required: false
+  default: なし（`~/.claude` を絶対パスにした値を送る）
+  location: argument
+  description: 環境変数。Claude Code の設定のフォルダ。`session-start` で絶対パスにして `claude_config_dir` で送る
 response:
 - name: 標準出力
   type: JSON | なし
@@ -69,6 +75,9 @@ constraints:
   constraint: 『再開の状況』につながらない・応答が 200 でない・送信が打ち切られたときは、フックが持つ短い文（起動の契機・`MINDSTELLA_FLOW` の進め方の文書の場所・エージェントフローの案内）だけを注入し、『前回参照した時点の更新』を呼ばずに、標準エラーに 1 行書く。『前回参照した時点の更新』に失敗したときも標準エラーに 1 行書くだけで、注入した状況は次の注入でもう一度出る。MindStella のセッションの起動は止めない
 - item: 注入に収まらない変更
   constraint: 『再開の状況』の `changed_more`・`removed_more` のどちらかが 1 以上のときは、『前回参照した時点の更新』を呼ばず、注入文（`context`）が `changes_since_read` を呼んで残りと前の値を取るよう案内する（`changes_since_read` が時点を進める。D-342）。`needs_review_more`・`in_progress_more` は今の状態の件数なので判定に使わない。呼ばない回は移し替えの報告も消えず、次の注入でもう一度出る
+- item: 設定のフォルダ
+  constraint: '`session-start` で、`CLAUDE_CONFIG_DIR` があればその値を、無ければホームの `.claude` を、それぞれ `~` を展開した絶対パスにして `claude_config_dir` で送る'
+  notes: claude-balancer は既定の設定のフォルダのアカウントを貸すとき `CLAUDE_CONFIG_DIR` を外して起動する（LIB-531-1）
 flows:
 - name: 正常系
   summary: SessionStart で出来事を送り、『再開の状況』の注入文を注入する
@@ -95,6 +104,7 @@ flows:
   - 'Mock が `event: session_start`・`claude_session_id`・`pane`・`source: startup` を受けている'
   - '標準出力の `additionalContext` が Mock の `context` と同じで、Mock が `resume`（`source: startup`）・`read_point`（`until_seq: 0`）をこの順に受けている'
   - 終了コードが 0
+  - Mock が受けた `claude_config_dir` が、`CLAUDE_CONFIG_DIR` に渡したフォルダの絶対パス
   test: test_normal
 - name: 正常系（通常のセッション）
   summary: MINDSTELLA_SESSION が無ければ何もしない
@@ -211,6 +221,27 @@ flows:
   - Mock が `read_point` を受けていない
   - 終了コードが 0
   test: test_normal_when_changes_overflow
+- name: 正常系（設定のフォルダを指定しない）
+  summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る
+  setup:
+  - name: Mock
+    description: 正常系と同じ
+  - name: 環境変数
+    description: 正常系と同じ。`CLAUDE_CONFIG_DIR` を渡さず、`HOME` をテストの一時フォルダにする
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+      participant SV as 常駐サーバー（Mock）
+
+      CC->>HK: session-start
+      HK->>SV: POST /_admin/sessions/{session}/events（claude_config_dir: {HOME}/.claude）
+    ```
+  expected:
+  - Mock が受けた `claude_config_dir` が `{HOME}/.claude`
+  - 終了コードが 0
+  test: test_normal_when_config_dir_not_set
 refs:
 - IF-531-6#
 - IF-489-68#

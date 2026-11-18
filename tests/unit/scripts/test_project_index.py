@@ -102,17 +102,22 @@ def test_get_settings(fake_pi: Callable[..., FakeProjectIndex]) -> None:
     ],
 )
 def test_add_source(reply: Reply, expected: str, fake_pi: Callable[..., FakeProjectIndex]) -> None:
-    """201 と 409 の same で結果を分け、本文を {source: row, expectedVersion: 引いた版} で送る。"""
+    """201・409 の same で結果を分け、本文を {source: row, expectedVersion} で送る（正常系）。"""
+    # 準備
     server = fake_pi(
         {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("POST", "/settings/sources"): [reply]}
     )
     row = {"id": "w", "config": "/w/.mindstella/dev-docs.yaml"}
-    assert project_index.add_source(server.port, row) == expected
+    # 実行
+    result = project_index.add_source(server.port, row)
+    # 検証
+    assert result == expected
     assert server.requests[-1][2] == {"source": row, "expectedVersion": "v1"}
 
 
-def test_add_source_when_version_stale(fake_pi: Callable[..., FakeProjectIndex]) -> None:
-    """版が古い 409 なら 1 回だけ版を引き直して送り直す。"""
+def test_add_source_version_conflict(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+    """内容のバージョンの不一致は 1 回だけ取得し直して再送信する（正常系）。"""
+    # 準備
     server = fake_pi(
         {
             ("GET", "/settings/sources"): [(200, {"version": "v1"}), (200, {"version": "v2"})],
@@ -120,14 +125,32 @@ def test_add_source_when_version_stale(fake_pi: Callable[..., FakeProjectIndex])
         }
     )
     row = {"id": "w", "config": "/w/.mindstella/dev-docs.yaml"}
-    assert project_index.add_source(server.port, row) == "added"
-    gets = [method for method, _path, _body in server.requests if method == "GET"]
+    # 実行
+    result = project_index.add_source(server.port, row)
+    # 検証
+    assert result == "added"
+    gets = [path for method, path, _body in server.requests if method == "GET"]
     posts = [body for method, _path, body in server.requests if method == "POST"]
-    assert gets == ["GET", "GET"]
+    assert len(gets) == 2
     assert posts == [
         {"source": row, "expectedVersion": "v1"},
         {"source": row, "expectedVersion": "v2"},
     ]
+
+
+def test_add_source_version_conflict_twice(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+    """内容のバージョンの不一致が 2 回続けば ProjectIndexError（異常系）。"""
+    # 準備
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [(200, {"version": "v1"})],
+            ("POST", "/settings/sources"): [(409, {"current": "v2"})],
+        }
+    )
+    # 実行・検証
+    with pytest.raises(ProjectIndexError) as caught:
+        project_index.add_source(server.port, {"id": "w"})
+    assert caught.value.status == 409
 
 
 def test_add_source_error(fake_pi: Callable[..., FakeProjectIndex]) -> None:

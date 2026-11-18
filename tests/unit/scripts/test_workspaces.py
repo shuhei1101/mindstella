@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -305,6 +306,99 @@ def test_create_workspace_reopened(
     session = state.read_session(ctx.state_root, created["id"])
     assert session is not None
     assert session.close_pending is False
+
+
+def _moved(allowed: Path, ctx: SimpleNamespace) -> tuple[str, Path, Path]:
+    """前のフォルダに作ったワークスペースを移した先のフォルダへ移し、ID と 2 つのフォルダを返す。"""
+    before = allowed / "家計簿"
+    after = allowed / "家計簿-移動後"
+    _status, created = workspaces.create_workspace(_request(before), ctx)
+    before.rename(after)
+    return created["id"], before.resolve(), after.resolve()
+
+
+def _moved_changes(folder: Path) -> dict[str, Any]:
+    """移した先のフォルダへ変える配信元の行のキー。"""
+    paths = [str(folder), f"{folder}/**"]
+    return {
+        "config": f"{folder}/.mindstella/dev-docs.yaml",
+        "scope": {"read": paths, "write": list(paths)},
+    }
+
+
+def test_create_workspace_moved(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """配信元の行が記録の無い前のフォルダを指せば、行を移した先へ変える。"""
+    # 準備
+    workspace_id, before, after = _moved(allowed, ctx)
+    assert workspace_id == workspaces.workspace_id_for(before)
+    # 実行
+    status, body = workspaces.create_workspace(_request(after), ctx)
+    # 検証
+    assert (status, body["id"], body["result"]) == (200, workspace_id, "opened")
+    assert fake_pi.patched == [(workspace_id, _moved_changes(after))]
+    assert len(fake_pi.added) == 1
+
+
+def test_create_workspace_moved_closed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """移した先でクローズ済みの行は同じ依頼で outside_read も戻す。"""
+    # 準備
+    workspace_id, _before, after = _moved(allowed, ctx)
+    fake_pi.rows[workspace_id]["outsideRead"] = False
+    _write_session(ctx, workspace_id, close_pending=True)
+    # 実行
+    status, body = workspaces.create_workspace(_request(after), ctx)
+    # 検証
+    assert (status, body["result"]) == (200, "reopened")
+    assert fake_pi.patched == [
+        (workspace_id, {**_moved_changes(after), "outside_read": True})
+    ]
+    session = state.read_session(ctx.state_root, workspace_id)
+    assert session is not None
+    assert session.close_pending is False
+
+
+def test_create_workspace_duplicate(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """行が指す別のフォルダに同じ ID の記録があれば 409。"""
+    # 準備
+    original = allowed / "家計簿"
+    copied = allowed / "家計簿-コピー"
+    workspaces.create_workspace(_request(original), ctx)
+    copied.mkdir()
+    shutil.copytree(original / ".mindstella", copied / ".mindstella")
+    # 実行
+    with pytest.raises(ApiError) as caught:
+        workspaces.create_workspace(_request(copied), ctx)
+    # 検証
+    assert (caught.value.status, caught.value.stage) == (409, "duplicate")
+    assert str(original.resolve()) in caught.value.detail
+    assert fake_pi.patched == []
+    assert len(fake_pi.added) == 1
+
+
+def test_create_workspace_moved_patch_failed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """行の変更が失敗すれば 502 で記録は消さない。"""
+    # 準備
+    workspace_id, _before, after = _moved(allowed, ctx)
+
+    def failing_patch(_port: int, _source_id: str, _changes: dict[str, Any]) -> None:
+        raise ProjectIndexError(None, "つながりません")
+
+    monkeypatch.setattr(project_index, "patch_source", failing_patch)
+    # 実行
+    with pytest.raises(ApiError) as caught:
+        workspaces.create_workspace(_request(after), ctx)
+    # 検証
+    assert (caught.value.status, caught.value.stage) == (502, "source")
+    assert (after / ".mindstella" / "config.yaml").is_file()
+    assert state.read_launch(ctx.state_root, workspace_id) is not None
 
 
 def test_create_workspace_rollback(
