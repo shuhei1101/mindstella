@@ -686,10 +686,11 @@ def _restart_in_background(
     try:
         alive = before.status == "running" and _dead_reason(before, ctx.tmux, ctx.proc) is None
         if alive:
-            if not force and reason not in NO_WAIT_REASONS:
-                if not _wait_last_write(ctx, workspace_id, session_id):
-                    _clear_restart_reason(ctx, workspace_id, session_id)
-                    return
+            # 応答の途中なら終わりを待つ（上限を過ぎたら起動し直さない）
+            waits = not force and reason not in NO_WAIT_REASONS
+            if waits and not _wait_last_write(ctx, workspace_id, session_id):
+                _clear_restart_reason(ctx, workspace_id, session_id)
+                return
             stage = "exit"
             _exit_claude(ctx, workspace_id)
             _wait_exec_exit(ctx, workspace_id)
