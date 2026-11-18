@@ -24,6 +24,9 @@ WEBHOOK_FILE_ENV = "MINDSTELLA_DISCORD_WEBHOOK_FILE"
 # Webhook の送信を待つ上限の秒数（非機能要件『Webhook の送信を待つ上限』）
 SEND_TIMEOUT_SEC = 10.0
 
+# Webhook へ送信するときの User-Agent（標準ライブラリの既定の値では Discord が 403 を返却する）
+USER_AGENT = "DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)"
+
 # Discord の content の上限の文字数
 CONTENT_LIMIT = 2000
 
@@ -110,7 +113,7 @@ def send_webhook(
     request = urllib.request.Request(
         f"{url}{separator}wait=true",
         data=json.dumps({"content": content}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
         method="POST",
     )
     started = time.monotonic()
