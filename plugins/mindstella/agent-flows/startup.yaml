@@ -1,0 +1,42 @@
+id: mindstella/startup
+title: 起動と再開
+summary: 注入された状況を確認し、まとめ忘れを commit し、進め方の文書を参照し、取り込み待ちのコメントを取り込んでから、進め方の工程へ進む
+condition: MindStella のセッションを起動したとき、/clear の後、圧縮の後（SessionStart のフックが注入で案内する）
+steps:
+  - name: 状況を確認する
+    body: |-
+      SessionStart のフックが注入した、取り込み待ちのスレッドの件数・前回参照した後に変わった項目と消した項目・要見直しの検討事項・進行中のタスクを確認する。
+      注入に収まらなかった変更がある（注入文に件数だけが書かれている）ときだけ、`changes_since_read` で残りと前の値を取得する。
+      注入文に移し替えの報告があれば、移せなかった値と仮の値を入れたキーを、回の最後の通知（mindstella/on-comment の「検討事項と回答を通知する」）に含める。仮の値は検討事項に挙げて利用者に確かめる。
+    calls:
+      - {server: mindstella, tool: changes_since_read}
+  - name: まだまとめていない変更を取得する
+    body: |-
+      `pending` で、まだまとめていない変更（足した項目・変えた項目とキー・消した項目）を読む。
+    calls:
+      - {server: mindstella, tool: pending}
+  - name: まとめ忘れを commit する
+    when: まだまとめていない変更がある
+    body: |-
+      前の話し合いでまとめ忘れた分として、一言の説明を付けて `commit` する。
+    calls:
+      - {server: mindstella, tool: commit}
+  - name: 進め方の文書を参照する
+    when: 注入文に進め方の文書の場所がある
+    body: |-
+      進め方の文書を project-index の `search_docs` で、配信元と文書の ID を指して `view: full` で参照する。
+      進め方の文書に、何をどの順に話し合うか・何を作るかが書いてある。
+    calls:
+      - {server: project-index, tool: search_docs}
+  - name: 取り込み待ちのコメントを取り込む
+    when: 取り込み待ちのスレッドが 1 件以上ある
+    body: |-
+      mindstella/on-comment を参照し、取り込み待ちのスレッドを取り込む。
+    refs:
+      - mindstella/on-comment
+  - name: 進め方の工程へ進む
+    body: |-
+      進め方の文書の工程へ進む。進め方の文書が無いワークスペースでは、利用者の発言に沿って記録を進める。
+      記録を書くときは mindstella/record に従う。
+    refs:
+      - mindstella/record

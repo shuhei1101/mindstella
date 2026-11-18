@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "エージェントフロー",
+  "description": "MindStella のセッションが場面ごとに参照する記録の手順。1 ファイル = 1 エージェントフロー。工程ごとの進み具合は持たない。",
+  "type": "object",
+  "required": ["id", "title", "summary", "condition", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "エージェントフローの ID",
+      "enum": ["mindstella/startup", "mindstella/on-comment", "mindstella/record"]
+    },
+    "title": {"type": "string", "description": "エージェントフローの名前", "minLength": 1},
+    "summary": {"type": "string", "description": "何をするかを 1 行で", "minLength": 1},
+    "condition": {"type": "string", "description": "このエージェントフローを進める契機", "minLength": 1},
+    "steps": {
+      "type": "array",
+      "description": "上から順に進める工程",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "body"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "description": "工程の名前。エージェントフローの中で一意", "minLength": 1},
+          "body": {"type": "string", "description": "工程の本文（Markdown）", "minLength": 1},
+          "when": {"type": "string", "description": "当てはまらないときは飛ばす条件", "minLength": 1},
+          "calls": {
+            "type": "array",
+            "description": "工程が呼ぶ MCP のツール",
+            "items": {
+              "type": "object",
+              "required": ["server", "tool"],
+              "additionalProperties": false,
+              "properties": {
+                "server": {"type": "string", "description": "MCP サーバー", "enum": ["mindstella", "project-index"]},
+                "tool": {"type": "string", "description": "ツールの名前", "minLength": 1}
+              }
+            }
+          },
+          "refs": {
+            "type": "array",
+            "description": "工程が参照するほかのエージェントフローの ID",
+            "items": {"type": "string", "enum": ["mindstella/startup", "mindstella/on-comment", "mindstella/record"]}
+          }
+        }
+      }
+    }
+  }
+}

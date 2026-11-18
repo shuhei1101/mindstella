@@ -1,0 +1,15 @@
+version: "3"
+name: mindstella-agent-flows
+description: MindStella のセッションが場面ごとに参照する記録のエージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）
+documents:
+  - id: agent_flow
+    title: エージェントフロー
+    paths:
+      - "*.yaml"
+    exclude:
+      - dev-docs.yaml
+    schema: agent-flow.schema.json
+    metadata:
+      id: id
+      name: title
+      description: summary

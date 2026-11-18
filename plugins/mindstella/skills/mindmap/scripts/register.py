@@ -2,8 +2,8 @@
 
 MCP のツールも mindstella の仮想環境も無い状態で、システムの `python3` で起動するため、
 Python 3.8 で読める構文と標準ライブラリだけで書く。
-使い方（セットアップのスキルが Bash で呼ぶ）:
-  python3 register.py {show|set|add-account|remove-account|remove} [--env KEY=VALUE]... [--unset-env KEY]... [--name 名前] [--config-dir フォルダ]
+使い方（起動のコマンドの register のサブコマンドが呼ぶ）:
+  {プラグインのフォルダ}/bin/mindstella register {show|set|add-account|remove-account|remove} [--env KEY=VALUE]... [--unset-env KEY]... [--name 名前] [--config-dir フォルダ]
 標準出力にその後の登録を JSON で出す。
 """
 
