@@ -169,61 +169,103 @@ use_cases:
     depends_on:
       - docs/scenario/SC-489-2.yaml
 docs:
-  - page: docs/guide/スキル.md
-    new: false
-    change: スキルの一覧を削除し、エージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）の一覧に置き換える
-    status: todo
   - page: docs/guide/コアコンセプト-話し合いの進め方.md
     new: false
     change: 進め方ガイド・ステップ・ゴールの仕組みを削除し、進め方は導入する側の文書で持ち、MindStella はエージェントフローで記録することに書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/話し合い-ゴールでリリースする.md
     new: false
     change: ゴール判定とリリースを削除するので、ページを削除する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/話し合い-セットアップから始める.md
     new: false
     change: setup のスキルと進め方ガイドの選択を削除し、MindStella の API と起動のコマンドで始める手順に書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/話し合い-続きを再開する.md
     new: false
     change: session のスキルでの再開を、起動と再開のエージェントフローに書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/セットアップ手順-ワークスペースを今の版へ移し替える.md
     new: false
     change: upgrade のスキルを削除し、常駐サーバーが読み込みのときに移し替えることに書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
     new: false
     change: setup のスキルからの登録を、要件の未確定の決着に合わせて書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/ワークスペースの書式.md
     new: false
     change: 削除するキー（goal・phases・playbooks・targets・target_label・categories・phase・target・category・attrs・deliverable・weight・angles・confidence）と release フォルダを除く
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/コマンド.md
     new: false
     change: 削除する MCP のツール（next・goal・write_release・clear_release・status・migrate）を除き、依存の確認のライブラリに Jinja2 を足す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
     change: release フォルダと進め方ガイドへの言及を除く
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/使い方.md
     new: false
     change: スキルを呼んで話し合いを始める説明を、エージェントフローと MindStella の API に書き換え、ゴールでリリースするページの行を除く
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/はじめに.md
     new: false
     change: スキル・進め方ガイド・ゴールへの言及を、エージェントフローに書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: README.md
     new: false
     change: スキルの説明を、エージェントフローに書き換える
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
   - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
     change: スキル専用の仮想環境に入れるライブラリに Jinja2 を足す
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
+  - page: docs/guide/エージェントフロー.md
+    change: スキルのページ `docs/guide/スキル.md` を改名し、スキル・進め方ガイドの一覧を、エージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）の一覧に置き換える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
+  - page: docs/guide/プレビューを見る.md
+    change: 概要の 4 つのタイル・絞り込みの条件・マップ・資料の並び・設定の画面から削除するキーを除き、`session` のスキルへの言及を MindStella のセッションとエージェントフローに書き換える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    change: スキルを呼ぶ手順を、起動と再開のエージェントフローに書き換える
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
+  - page: docs/guide/セットアップ手順-プレビューを外から見る.md
+    change: '`session` のスキルへの言及を MindStella のセッションに書き換える'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T05:12:43.441259+00:00'
 scope_out:
   - item: 記録の種類ごとの使い方のガイド（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・スレッド。D-502）
     reason: 'ガイドの資料（話し合いの作業 T-67）が未作成で、#518 に含めると資料が揃うまで #565 をマージできないため、task-planner が別の Issue に分けた'
