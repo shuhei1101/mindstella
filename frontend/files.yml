@@ -78,17 +78,9 @@ files:
   related:
   - to: MOD-489-4
     type: implements
-- path: src/features/overview/overview/components/goal-tile.tsx
-  name: ゴールまでの進捗のタイル
-  description: ゴールが無いときはフェーズ別の進捗。ゴールまでの進捗のタイルの表示を変更するときに読む。
-  tags:
-  - tool:react
-  - topic:概要
-  - topic:画面
-  related: []
 - path: src/features/overview/overview/components/list-tile.tsx
   name: 件数と名前のタイル
-  description: 要見直し・保留・進行中のタスクに共通の、件数と名前と「すべて表示」のタイル。要見直し・保留・進行中のタスクのタイルの表示を変更するときに読む。
+  description: 未読の AI の書き込み・未決定・要見直し・確認中の資料に共通の、件数と行と「すべて表示」のタイル。概要のタイルの表示を変更するときに読む。
   tags:
   - tool:react
   - topic:概要
@@ -96,22 +88,6 @@ files:
   related:
   - to: MOD-489-40
     type: implements
-- path: src/features/overview/overview/components/next-tile.tsx
-  name: 次に検討する項目のタイル
-  description: 横に並べる幅では枠に収まるだけ、縦に積む幅では上位 3 件を出す。次に検討する項目のタイルの表示を変更するときに読む。
-  tags:
-  - tool:react
-  - topic:概要
-  - topic:画面
-  related: []
-- path: src/features/overview/overview/components/progress-table.tsx
-  name: カテゴリー別の進捗のタイル
-  description: カテゴリーを行、フェーズを列にする）。カテゴリー別の進捗の表を変更するときに読む。
-  tags:
-  - tool:react
-  - topic:概要
-  - topic:画面
-  related: []
 - path: src/features/overview/overview/overview-screen.stories.tsx
   name: React の概要の画面のストーリー
   description: 記録・レビュー中のコメント・保存待ちの編集・スレッドは MSW の handler（testing/msw/handlers.ts）が返す。React の概要の画面の状態を追加・変更するときに読む。
