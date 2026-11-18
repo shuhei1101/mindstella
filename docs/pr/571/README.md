@@ -1,0 +1,1 @@
+# MindStella のセッションが止まったときも Discord に通知する
