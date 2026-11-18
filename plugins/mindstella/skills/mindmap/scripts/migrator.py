@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
@@ -15,12 +16,13 @@ from jsonschema.exceptions import best_match
 from backup import Backup, restore_backup, take_backup
 from errors import (
     SchemaMismatchError,
+    WriteFailedError,
     StepFailedError,
     StepsInvalidError,
     WorkspaceNewerError,
     WorkspaceNotFoundError,
 )
-from kinds import LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
+from kinds import ID_PATTERN, LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
 from migration_ops import StepError, apply_step, list_needed_values
 from store import (
     SCHEMA_DIR,
@@ -39,6 +41,12 @@ from versions import (
     read_workspace_version,
     write_workspace_version,
 )
+
+# 手順の報告の行の頭（手順の版と番号）
+REPORT_PREFIX = re.compile(r"^v\d+\.\d+\.\d+ #\d+: ")
+
+# 移せなかった値の報告の行を分けた数（項目の ID・キー・値）
+REPORT_FIELDS = 3
 
 # 版ごとの手順を置く場所（このファイルから見た `skills/mindmap/migrations/`）
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
@@ -80,7 +88,7 @@ class NeededValue:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class MigrationReport:
-    """`migrate` の出力の中身。"""
+    """`migrate` の結果。『ワークスペースの作成』が応答の `migration` にする。"""
 
     workspace_version: Version | None
     plugin_version: Version
@@ -90,6 +98,10 @@ class MigrationReport:
     backup: Backup | None = None
     recorded: Version | None = None
     reports: list[str] = field(default_factory=list)
+    # 値が要るキーに入れた仮の値（`{file, key, value}`）
+    provisional: list[dict[str, str]] = field(default_factory=list)
+    # 移せずに記録から消えた値（`{item, key, value}`）
+    not_carried: list[dict[str, str]] = field(default_factory=list)
 
 
 def list_versions(*, migrations_dir: Path = MIGRATIONS_DIR) -> list[Version]:
@@ -201,6 +213,48 @@ def apply_migration(
         backup=backup,
         reports=reports,
     )
+
+
+def migrate(root: Path) -> MigrationReport:
+    """手順を当て、値が要るキーに仮の値を入れ、版を書く。当てる手順が無く版が同じなら何も書かない。"""
+    report = apply_migration(root, migrations_dir=MIGRATIONS_DIR)
+    # 当てる手順が無く、版が同じ: 何も書かない
+    if not report.steps and report.relation == "same":
+        return report
+    # 題名はフォルダの名前、ほかのキーは空文字を仮の値にする
+    provisional = [
+        {
+            "file": needed.file,
+            "key": needed.key,
+            "value": root.resolve().name if needed.key == "summary" else "",
+        }
+        for needed in report.needs_values
+    ]
+    try:
+        set_values(root, [(entry["file"], entry["key"], entry["value"]) for entry in provisional])
+        recorded = record_version(root)
+    except (SchemaMismatchError, WriteFailedError):
+        # 当てた後のワークスペースが合わない・書けない: 写しから戻して送る
+        if report.backup is not None:
+            restore_backup(root, report.backup)
+        raise
+    return replace(
+        report,
+        recorded=recorded,
+        provisional=provisional,
+        not_carried=[_not_carried_of(line) for line in report.reports],
+    )
+
+
+def _not_carried_of(line: str) -> dict[str, str]:
+    """手順の報告の 1 行を `{item, key, value}` にする（`{ID}: {キー}: {値}` でない行は値だけにする）。"""
+    # 手順の版と番号の頭（`v0.14.0 #1: `）を外す
+    body = REPORT_PREFIX.sub("", line, count=1)
+    parts = body.split(": ", REPORT_FIELDS - 1)
+    # 項目の ID・キー・値の 3 つに分かれる
+    if len(parts) == REPORT_FIELDS and ID_PATTERN.match(parts[0]):
+        return {"item": parts[0], "key": parts[1], "value": parts[2]}
+    return {"item": "", "key": "", "value": body}
 
 
 def set_values(root: Path, assignments: list[tuple[str, str, str]]) -> None:
