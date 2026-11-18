@@ -1,0 +1,44 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-594-1.yaml
+    impact: new
+    detail: 無操作の上限を過ぎた MindStella のセッションを常駐サーバーが止めてアカウントを返却し、止めた後に届いたコメントで前の会話を引き継いで起動し直す
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: following
+    detail: 無操作の上限で止めるときはクローズ待ちにしないことを、新規のシナリオへの関連にする
+    depends_on:
+      - docs/scenario/SC-594-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: changed
+    detail: 止まった理由に無操作の上限を追加する
+    depends_on:
+      - docs/scenario/SC-594-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-582-1.yaml
+    impact: following
+    detail: 無操作の上限で止めた後のコメントでの起動し直しを、新規のシナリオへの関連にする
+    depends_on:
+      - docs/scenario/SC-594-1.yaml
+docs:
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 常駐サーバーの環境変数に無操作の上限を追加し、MindStella のセッションの一覧の応答に止まった理由を追加する（設定の置き場所は要件.md の未確定）
+    status: todo
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 無操作の上限で止まった後にコメントを送信すると、前の会話を引き継いで起動し直すことを追加する
+    status: todo
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 止まった理由の表に無操作の上限を追加する
+    status: todo
+scope_out:
+  - item: プレビュー画面に、無操作の上限で止まったことを表示する
+    reason: '要望は止めることとアカウントの返却で、画面は変更しない。画面に MindStella のセッションの状態を表示する #586 が、この PR で一覧に追加する止まった理由を使用する'
+    plan: to_file
+  - item: ワークスペースごとに無操作の上限を変える
+    reason: 要件.md の未確定の推奨の案 A（常駐サーバーの環境変数）で進める場合の判断。確定はインターフェース定義設計のレビューへ持ち越す
+    plan: none
