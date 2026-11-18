@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 from comments import COMMENTS_FILE, DRAFTS_FILE, load_comments, load_drafts
 from errors import ItemNotFoundError, SchemaMismatchError
@@ -31,6 +33,21 @@ from threads import THREADS_FILE, awaiting_posts, load_threads, raw_thread_targe
 # 関連の種類を表すキーの頭（`related.depends_on` など）
 RELATED_PREFIX = "related."
 
+# リストの記号・引用の `>` を除いた行の頭（フェンスの行を見分けるため）
+_LINE_PREFIX = re.compile(r"^(?:[ \t]*(?:>|[-*+]|\d+[.)])[ \t]?)*[ \t]*")
+
+# フェンスを開く行の記号（3 つ以上のバッククォートかチルダ）
+_FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})")
+
+# インラインコード（同じ数のバッククォートで囲んだ範囲）
+_INLINE_CODE = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
+
+# 画像の記法 `![…](パス)`・`![…](パス "title")`・`![…](<パス>)` のパス
+_IMAGE_PATH = re.compile(r"!\[[^\]]*\]\(\s*(<[^>]*>|[^\s)]+)(?:\s+\"[^\"]*\")?\s*\)")
+
+# スキームを持つパス（`https:`・`data:` など）
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
 # （参照する側の種類, `related` の種類かキー）→ 指してよい種類。表に無い組は持たない
 REF_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("decision", "related.depends_on"): frozenset({"decision"}),
@@ -49,6 +66,7 @@ def check_workspace(workspace: Workspace) -> list[Problem]:
         *_check_duplicate_ids(workspace),
         *_check_refs(workspace),
         *_check_bodies(workspace),
+        *_check_embedded_files(workspace),
         *_check_threads(workspace),
         *_check_comments(workspace),
         *_check_history(workspace),
@@ -248,6 +266,74 @@ def _check_comments(workspace: Workspace) -> list[Problem]:
                 for line in error.lines
             )
     return problems
+
+
+def _check_embedded_files(workspace: Workspace) -> list[Problem]:
+    """Markdown の本文が画像の記法で指すワークスペースの中のファイルが無いものを `missing_file` にする。"""
+    problems: list[Problem] = []
+    body_dir = records_root(workspace.root) / BODY_DIR
+    for kind in KINDS:
+        for item in workspace.items[kind]:
+            body = item.get("body")
+            # Markdown の本文だけを確かめる（前の版の形の body はスキーマの問題として拾う）
+            if not isinstance(body, str) or not body.endswith(".md") or "/" not in body:
+                continue
+            markdown = read_body(workspace, body)
+            # 本文が無いものは _check_bodies が missing_body にする
+            if markdown is None:
+                continue
+            for written in embedded_paths(markdown):
+                # `#`・`?` より後ろは再生位置などで、ファイルのパスに含めない
+                file_part = re.split(r"[#?]", written, maxsplit=1)[0]
+                if (body_dir / unquote(file_part)).is_file():
+                    continue
+                problems.append(
+                    Problem(
+                        kind="missing_file",
+                        file=body,
+                        id=item.get("id"),
+                        key=None,
+                        detail=written,
+                    )
+                )
+    return problems
+
+
+def embedded_paths(markdown: str) -> list[str]:
+    """Markdown から、コードの外部の画像の記法 `![…](パス)` の相対パスを、記載した順に拾う。"""
+    paths: list[str] = []
+    # 開いているフェンスの記号と、閉じるのに要る数
+    fence: tuple[str, int] | None = None
+    # 直前の行が空行か字下げのコードの行（字下げのコードを始められる）
+    code_may_start = True
+    for line in markdown.split("\n"):
+        stripped = _LINE_PREFIX.sub("", line, count=1)
+        # フェンスの中と、フェンスを閉じる行は飛ばす
+        if fence is not None:
+            symbol, count = fence
+            if re.fullmatch(rf"{re.escape(symbol)}{{{count},}}[ \t]*", stripped):
+                fence = None
+            continue
+        opened = _FENCE_OPEN.match(stripped)
+        # フェンスを開く行は飛ばす
+        if opened is not None:
+            fence = (opened[1][0], len(opened[1]))
+            continue
+        indented = code_may_start and re.match(r"^( {4}|\t)", line) is not None
+        code_may_start = line.strip() == "" or indented
+        # 字下げのコードの行と空行は飛ばす
+        if indented or line.strip() == "":
+            continue
+        for matched in _IMAGE_PATH.finditer(_INLINE_CODE.sub("", line)):
+            path = matched[1]
+            # `<…>` で囲んだパスは囲みを外す
+            if path.startswith("<") and path.endswith(">"):
+                path = path[1:-1]
+            # 絶対 URL・`/` で始まるパス・`#` だけのパスは、ワークスペースのファイルを指さない
+            if _SCHEME.match(path) or path.startswith(("/", "#")):
+                continue
+            paths.append(path)
+    return paths
 
 
 def _check_threads(workspace: Workspace) -> list[Problem]:
