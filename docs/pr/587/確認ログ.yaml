@@ -1,0 +1,7 @@
+confirmations:
+  - topic: ワークスペースに配置したファイルを Git に commit するか
+    decision: ファイルのフォルダも自動の commit に含める。Git のリポジトリの外のワークスペースでも動くようにし、commit だけをしない（推奨案 A）
+    decided_by: reply
+    approver: shuhei1101
+    commit: 382b9f243ad8674315b3c4c0613c09bcc58fe949
+    thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4614591597
