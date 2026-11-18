@@ -1,0 +1,83 @@
+tasks:
+  - process: 初期構築
+    status: skipped
+    reason: 既存リポジトリのため対象外
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: リバースエンジニアリング
+    status: skipped
+    reason: 既存の設計書がある
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 方針決め
+    status: skipped
+    reason: 方針決めの依頼ではない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: PoC 検証
+    status: skipped
+    reason: 未検証の技術機構に依存しない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 複合ユースケース設計
+    status: skipped
+    reason: 利用者の流れは変わらない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: デザインスタイル選定
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 画面一覧・画面遷移
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 単一ユースケース設計
+    status: skipped
+    reason: 単一ユースケース『プレビューを開く』（SC-489-12）の成功時の保証が、入力欄にカーソルがある間は描き直さないと既に定めている
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: モック作成
+    status: skipped
+    reason: 画面を変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: インターフェース定義設計
+    status: skipped
+    reason: API の入出力を変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 部品設計
+    status: skipped
+    reason: 画面の部品を変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 画面設計
+    status: skipped
+    reason: 画面設計『詳細パネル』（SCR-489-31）の案の入力の振る舞いは変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: モジュール構成設計
+    status: skipped
+    reason: 製品のモジュールを変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: ドキュメント修正
+    status: skipped
+    reason: 更新するドキュメントが無い
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 単体テスト作成
+    status: skipped
+    reason: 製品のコードを変えない
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 実装
+    status: skipped
+    reason: '製品のコードを変えない。fail の原因はテストの期待が #557 で決めた振る舞いと食い違っていること'
+    updated_by: planner
+    updated_at: '2026-11-18T10:44:35.825319+00:00'
+  - process: 結合テスト作成
+    status: todo
