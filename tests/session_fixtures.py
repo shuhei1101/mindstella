@@ -206,11 +206,15 @@ class FakeProjectIndex:
         return 404, {}
 
     def post(self, body: Any) -> tuple[int, Any]:
-        """行を足す。`post_status` があればその応答だけを返す。"""
+        """行を足す。`post_status` があればその応答だけを返す。版が無ければ 400、古ければ 409。"""
         if self.post_status is not None:
             return self.post_status, {"detail": "Mock の失敗"}
+        if "expectedVersion" not in body:
+            return 400, {"detail": "expectedVersion: Field required"}
         row = body["source"]
         with self._lock:
+            if body["expectedVersion"] != str(self.version):
+                return 409, {"current": str(self.version)}
             if row["id"] in self.rows:
                 stored = self.rows[row["id"]]
                 same = stored["config"] == [row["config"]] and stored["scope"] == row["scope"]
