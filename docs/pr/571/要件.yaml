@@ -1,0 +1,45 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: changed
+    detail: 止まったときは通知の範囲の外という記載を、止まったときの通知の単一ユースケースへ譲る記載に変える。作業の完了の通知の流れは変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: changed
+    detail: 外部のアプリが MindStella のセッションを止めたときに、利用者の Discord のチャンネルへ止まったことの知らせが 1 件届く
+    depends_on: []
+docs:
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 冒頭リードと「届く通知」に、MindStella のセッションが止まったときの通知を追加し、「止まったときは届かない」を修正する
+    status: todo
+  - page: docs/guide/index.yaml
+    new: false
+    change: 手順『Discord に通知する』の行の summary に、止まったことの通知を追加する（README.md・使い方.md の目次の行も生成し直す）
+    status: todo
+  - page: docs/guide/files.yml
+    new: false
+    change: 手順『Discord に通知する』の行の description に、止まったことの通知を追加する
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: '`MINDSTELLA_DISCORD_WEBHOOK_FILE` の説明の「作業の完了を通知する」に、止まったことの通知を追加する'
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: '`MINDSTELLA_DISCORD_WEBHOOK_FILE` の説明の「作業の完了を通知する」に、止まったことの通知を追加する'
+    status: todo
+scope_out:
+  - item: 利用上限・無操作の上限で止まったときの通知の呼び出し
+    reason: 'その停止はまだ無く、作る #520・#521 がこの PR の通知の関数を呼ぶ（計画の受付判断で合格した分け方）'
+    plan: '#520'
+  - item: 応答がエラーで終わったとき（StopFailure）の通知
+    reason: 'MindStella のセッションは止まらず、次の依頼を受けられる。利用上限に当たった応答は #520 が停止として扱う'
+    plan: none
+  - item: 落ちたことを常に監視して、状態を読まれなくても検知する
+    reason: '今の落ちた検知は、一覧・停止などで状態を読んだときだけ動く。常に検知する仕組みは、自動の起動し直しを作る #520 の範囲'
+    plan: '#520'
+  - item: Slack・OS の通知
+    reason: 要望は Discord だけ（#568 の見送った案）
+    plan: none
