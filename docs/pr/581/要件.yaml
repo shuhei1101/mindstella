@@ -1,0 +1,11 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: none
+    detail: 入力欄にカーソルがある間は描き直さず「更新があります」を出し、離れたときに 1 回だけ描き直す振る舞いは変えない。結合テストの期待をこの振る舞いに合わせる
+    depends_on: []
+scope_out:
+  - item: 同じ test_detail_panel_screen.py で develop で fail する別の 3 件（ツールチップ・ミニマップ・本文の差分の並べ方）
+    reason: 対象のテストが別で、原因も別
+    plan: '#553'
+docs: []
