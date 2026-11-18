@@ -1,21 +1,38 @@
-// 概要の画面（画面設計『概要.tsx』）。トップバーとタイルを描き、記録が読めないときは detail の行を出す
+// 概要の画面（画面設計『概要.tsx』）。トップバーと、未読の AI の書き込み・未決定・要見直し・確認中の資料のタイルを描き、記録が読めないときは detail の行を出す
 import { useQuery } from "@tanstack/react-query";
 
-import { GoalTile } from "@/features/overview/overview/components/goal-tile";
-import { ListTile } from "@/features/overview/overview/components/list-tile";
-import { NextTile } from "@/features/overview/overview/components/next-tile";
-import { ProgressTable } from "@/features/overview/overview/components/progress-table";
-import type { Item, Kind, Records } from "@/shared/api/generated/model";
+import { ListTile, type ListTileRow } from "@/features/overview/overview/components/list-tile";
+import type { Item, Kind, Records, Thread } from "@/shared/api/generated/model";
+import { formatJst } from "@/shared/core/format";
+import { compareIds } from "@/shared/core/records";
 import type { PreviewSearch } from "@/shared/core/preview-search";
-import { recordsQuery } from "@/shared/hooks/preview-queries";
+import { recordsQuery, threadsQuery } from "@/shared/hooks/preview-queries";
 import { usePreviewSearch } from "@/shared/hooks/use-preview-search";
 import { useVisibleKinds } from "@/shared/hooks/use-visible-kinds";
 
-/** 記録からタイルを並べる */
-const KINDS: readonly Kind[] = ["decisions", "tasks", "research", "docs", "terms", "notes", "logs"];
+/** 状態がその値の項目を、連番の順に行にする */
+const rowsOf = (items: readonly Item[], status: string): ListTileRow[] =>
+  items
+    .filter((item) => item.status === status)
+    .sort((a, b) => compareIds(a.id, b.id))
+    .map((item) => ({ id: item.id, label: item.title, status: item.status }));
 
-const Tiles = ({ records, visible }: { records: Records; visible: ReadonlySet<Kind> }) => {
-  const { openList } = usePreviewSearch();
+/** 未読の AI の書き込みを持つオープンのスレッドを、最後の未読の書き込みの新しい順に行にする */
+const unreadRows = (threads: readonly Thread[]): ListTileRow[] =>
+  threads
+    .filter((thread) => thread.status === "open")
+    .flatMap((thread) => {
+      const unseen = thread.posts.filter((post) => post["author"] === "ai" && !post.seen);
+      const last = unseen.at(-1)?.["created"];
+      if (typeof last !== "string") return [];
+      const summary = typeof thread["summary"] === "string" ? thread["summary"] : "";
+      return [{ row: { id: thread.id, label: `${thread.id} ${summary}`.trim(), note: formatJst(last) }, last }];
+    })
+    .sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0))
+    .map(({ row }) => row);
+
+const Tiles = ({ records, threads, visible }: { records: Records; threads: readonly Thread[]; visible: ReadonlySet<Kind> }) => {
+  const { openList, openThread } = usePreviewSearch();
   const openItem = (kind: Kind) => (id: string) => {
     openList(kind, { id });
   };
@@ -25,15 +42,8 @@ const Tiles = ({ records, visible }: { records: Records; visible: ReadonlySet<Ki
           openList(tab, { view, f });
         }
       : undefined;
-  const openCategory = (category: string, phase: string | null): void => {
-    openList("decisions", { view: "table", f: { category, ...(phase === null ? {} : { phase }) } });
-  };
-  const byId = new Map<string, Item>(KINDS.flatMap((kind) => records[kind].map((item) => [item.id, item] as const)));
-  const review = records.decisions.filter((item) => item.status === "要見直し");
-  const hold = records.decisions.filter((item) => item.status === "保留");
-  const running = records.tasks.filter((item) => item.status === "進行中");
+  const unread = unreadRows(threads);
   const decisionsShown = visible.has("decisions");
-  const tasksShown = visible.has("tasks");
   return (
     <>
       <header className="pt-3 pb-7">
@@ -44,54 +54,48 @@ const Tiles = ({ records, visible }: { records: Records; visible: ReadonlySet<Ki
         )}
         <h1 className="m-0 mt-1.5 text-hero/tight font-bold tracking-tight max-md:text-hero-narrow">{records.settings.summary}</h1>
       </header>
-      <div className="grid grid-cols-3 gap-4 max-xl:grid-cols-2 max-md:grid-cols-1">
-        <NextTile
-          candidates={records.derived.next}
-          itemOf={(id) => byId.get(id)}
-          onOpen={openItem("decisions")}
-          onShowAll={listLink(decisionsShown, "decisions", "table", { status: "未決定", ready: "着手可能" })}
+      <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+        <ListTile
+          tileId="tile-unread"
+          headingId="h-unread"
+          icon="comment"
+          title="未読の AI の書き込み"
+          rows={unread}
+          emptyText="未読の AI の書き込みはありません。"
+          onOpen={openThread}
+          onShowAll={() => {
+            openThread(null);
+          }}
         />
-        <GoalTile
-          goal={records.derived.goal}
-          settings={records.settings}
-          hasItem={(id) => byId.has(id)}
-          onOpen={openItem("docs")}
-          onShowAllDeliverables={listLink(visible.has("docs"), "docs", "cards", { deliverable: "納品物" })}
+        <ListTile
+          tileId="tile-open"
+          headingId="h-open"
+          icon="decision"
+          title="未決定の検討事項"
+          rows={rowsOf(records.decisions, "未決定")}
+          emptyText="未決定の検討事項はありません。"
+          onOpen={openItem("decisions")}
+          onShowAll={listLink(decisionsShown, "decisions", "table", { status: "未決定" })}
         />
         <ListTile
           tileId="tile-review"
           headingId="h-review"
           icon="alert"
           title="要見直し"
-          items={review}
+          rows={rowsOf(records.decisions, "要見直し")}
           emptyText="要見直しの検討事項はありません。"
           onOpen={openItem("decisions")}
           onShowAll={listLink(decisionsShown, "decisions", "table", { status: "要見直し" })}
         />
         <ListTile
-          tileId="tile-hold"
-          headingId="h-hold"
-          icon="pause"
-          title="保留"
-          items={hold}
-          emptyText="保留の検討事項はありません。"
-          onOpen={openItem("decisions")}
-          onShowAll={listLink(decisionsShown, "decisions", "table", { status: "保留" })}
-        />
-        <ListTile
-          tileId="tile-running"
-          headingId="h-run"
-          icon="play"
-          title="進行中のタスク"
-          items={running}
-          emptyText="進行中のタスクはありません。"
-          onOpen={openItem("tasks")}
-          onShowAll={listLink(tasksShown, "tasks", "table", { status: "進行中" })}
-        />
-        <ProgressTable
-          progress={records.derived.progress}
-          settings={records.settings}
-          onSelect={decisionsShown ? openCategory : undefined}
+          tileId="tile-docs"
+          headingId="h-docs"
+          icon="doc"
+          title="確認中の資料"
+          rows={rowsOf(records.docs, "確認中")}
+          emptyText="確認中の資料はありません。"
+          onOpen={openItem("docs")}
+          onShowAll={listLink(visible.has("docs"), "docs", "cards", { status: "確認中" })}
         />
       </div>
     </>
@@ -100,11 +104,13 @@ const Tiles = ({ records, visible }: { records: Records; visible: ReadonlySet<Ki
 
 export const OverviewScreen = () => {
   const records = useQuery(recordsQuery());
+  const threads = useQuery(threadsQuery());
   const visible = useVisibleKinds();
   const data = records.data?.status === 200 ? records.data.data : undefined;
+  const threadList = threads.data?.status === 200 ? threads.data.data.threads : [];
   return (
     <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-7 pb-16 max-md:px-4">
-      <div className="mx-auto w-full max-w-content">{data === undefined ? null : <Tiles records={data} visible={visible} />}</div>
+      <div className="mx-auto w-full max-w-content">{data === undefined ? null : <Tiles records={data} threads={threadList} visible={visible} />}</div>
     </main>
   );
 };

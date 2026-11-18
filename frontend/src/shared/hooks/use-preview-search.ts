@@ -52,6 +52,8 @@ export type PreviewSearchApi = {
   replaceSearch: (search: PreviewSearch) => void;
   /** 音声入力の入力欄の画面を開く（項目を開くときは履歴に積み、パネルの中を移るときは置き換える） */
   openVoiceInput: (target: VoiceTarget) => void;
+  /** コメントの一覧を開き、スレッドを渡せばそのスレッドを開く（履歴に積む） */
+  openThread: (thread: string | null) => void;
   /** 全体の検索を開閉し、検索の言葉を書き換える（置き換える） */
   setSearch: (patch: Pick<Patch, "search" | "q">) => void;
   /** 全体の検索の結果の項目を、その種類の画面（`undefined` は概要）で開く。画面が今と違えば履歴に積み、同じなら置き換える。`diff` と左のパネルを残し、ほかの値を外す */
@@ -118,6 +120,9 @@ export const usePreviewSearch = (): PreviewSearchApi => {
     },
     setSearch: (patch) => {
       apply(patch, true);
+    },
+    openThread: (thread) => {
+      apply({ panel: "comments", thread: thread ?? undefined, review: undefined }, true);
     },
     openVoiceInput: (target) => {
       if ("thread" in target) {

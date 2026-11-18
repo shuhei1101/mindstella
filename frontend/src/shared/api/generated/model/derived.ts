@@ -4,12 +4,8 @@
  * mindstella preview
  * OpenAPI spec version: 0.0.0
  */
-import type { CategoryProgress } from './categoryProgress';
-import type { Goal } from './goal';
-import type { NextCandidate } from './nextCandidate';
 
 export interface Derived {
-  next: NextCandidate[];
-  goal: Goal;
-  progress: CategoryProgress[];
+  /** 前提が全て決着した未決定の検討事項の ID（連番の順） */
+  ready: string[];
 }

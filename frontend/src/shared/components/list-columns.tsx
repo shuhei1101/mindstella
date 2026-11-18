@@ -2,7 +2,7 @@
 import { StatusMark } from "@/shared/components/icon";
 import type { Row, TableColumn } from "@/shared/components/table";
 import { TagList } from "@/shared/components/tag-list";
-import { tagNames, type Settings, type Tag } from "@/shared/core/records";
+import { tagNames, type Tag } from "@/shared/core/records";
 
 const textOf = (row: Row, key: string): string | undefined => {
   const value = row[key];
@@ -28,7 +28,7 @@ export const IdLinks = ({ ids, titleOf, onOpen }: { ids: readonly string[]; titl
   </span>
 );
 
-export const commonColumns = (settings: Settings) => ({
+export const commonColumns = () => ({
   id: { key: "id", label: "ID", get: (row: Row) => row.id, cell: (row: Row) => <span className="font-mono text-xs">{row.id}</span> } satisfies TableColumn,
   title: (label = "タイトル"): TableColumn => ({ key: "title", label, fixed: true, get: (row) => textOf(row, "title") }),
   status: (order: readonly string[]): TableColumn => ({
@@ -47,9 +47,6 @@ export const commonColumns = (settings: Settings) => ({
       );
     },
   }),
-  target: { key: "target", label: settings.target_label, filterable: true, get: (row: Row) => textOf(row, "target") } satisfies TableColumn,
-  category: { key: "category", label: "カテゴリー", filterable: true, get: (row: Row) => textOf(row, "category") } satisfies TableColumn,
-  phase: { key: "phase", label: "フェーズ", filterable: true, order: settings.phases, get: (row: Row) => textOf(row, "phase") } satisfies TableColumn,
   tags: { key: "tags", label: "タグ", filterable: true, get: rowTags, cell: (row: Row) => <TagList values={rowTags(row)} /> } satisfies TableColumn,
   text: (key: string, label: string, options: Partial<TableColumn> = {}): TableColumn => ({ key, label, get: (row) => textOf(row, key), ...options }),
 });

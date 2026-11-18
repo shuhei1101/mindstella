@@ -9,7 +9,5 @@ export interface Item {
   id: string;
   title: string;
   status?: string;
-  category?: string;
-  phase?: string;
   [key: string]: unknown;
  }

@@ -12,7 +12,7 @@ import { Select } from "@/shared/components/ui/select";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { NEW_ID_PREFIX, type BlockedEdit, type PendingEdit, type PendingMarkKind } from "@/shared/core/edits";
 import { formatJst } from "@/shared/core/format";
-import { DECISION_STATUSES, DOC_STATUSES, KIND_LABEL, refsOf, relationValidator, TASK_STATUSES, type Item, type Kind, type RecordIndex, type Relation, type RelationType, type Settings, type Tag } from "@/shared/core/records";
+import { DECISION_STATUSES, DOC_STATUSES, KIND_LABEL, refsOf, relationValidator, TASK_STATUSES, type Item, type Kind, type RecordIndex, type Relation, type RelationType, type Tag } from "@/shared/core/records";
 import { cn } from "@/shared/lib/cn";
 
 type Input = "text" | "textarea" | "select" | "tags" | "refs" | "relations" | "check" | "body" | "options";
@@ -20,10 +20,10 @@ type Input = "text" | "textarea" | "select" | "tags" | "refs" | "relations" | "c
 const key = (name: string, input: Input) => ({ key: name, input });
 
 const EDITABLE_KEYS: Record<Kind, { key: string; input: Input }[]> = {
-  decisions: [key("status", "select"), key("title", "text"), key("target", "select"), key("category", "select"), key("phase", "select"), key("tags", "tags"), key("related", "relations"), key("options", "options"), key("answer", "textarea"), key("reason", "textarea"), key("body", "body")],
-  tasks: [key("status", "select"), key("title", "text"), key("target", "select"), key("kind", "select"), key("tags", "tags"), key("related", "relations"), key("result", "textarea"), key("body", "body")],
-  research: [key("title", "text"), key("question", "textarea"), key("conclusion", "textarea"), key("confidence", "select"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
-  docs: [key("status", "select"), key("title", "text"), key("kind", "text"), key("deliverable", "check"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
+  decisions: [key("status", "select"), key("title", "text"), key("tags", "tags"), key("related", "relations"), key("options", "options"), key("answer", "textarea"), key("reason", "textarea"), key("body", "body")],
+  tasks: [key("status", "select"), key("title", "text"), key("kind", "select"), key("tags", "tags"), key("related", "relations"), key("result", "textarea"), key("body", "body")],
+  research: [key("title", "text"), key("question", "textarea"), key("conclusion", "textarea"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
+  docs: [key("status", "select"), key("title", "text"), key("kind", "text"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
   terms: [key("title", "text"), key("meaning", "textarea"), key("aliases", "refs"), key("tags", "tags"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
   notes: [key("title", "text"), key("content", "textarea"), key("tags", "tags"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
   logs: [key("title", "text"), key("date", "text"), key("related", "relations"), key("withdrawn", "check"), key("reason", "textarea"), key("body", "body")],
@@ -33,7 +33,7 @@ const ADD_KEYS: Record<Kind, string[]> = {
   decisions: ["status", "title", "options", "tags", "body"],
   tasks: ["status", "title", "kind", "tags", "body"],
   research: ["title", "question", "tags", "body"],
-  docs: ["status", "title", "kind", "deliverable", "tags", "body"],
+  docs: ["status", "title", "kind", "tags", "body"],
   terms: ["title", "meaning", "tags", "body"],
   notes: ["title", "content", "tags", "body"],
   logs: ["title", "date", "body"],
@@ -45,7 +45,6 @@ export const KEY_LABELS: Record<string, string> = {
 };
 
 const TASK_KINDS = ["作業", "調査", "検証"];
-const CONFIDENCES = ["高", "中", "低"];
 const CHIP_HINTS: Record<string, string> = { tags: "タグを入れる", aliases: "別名を入れる" };
 
 /** 種類ごとに関係の入力へ並べる関連の種類（表示の順） */
@@ -68,13 +67,9 @@ const labelOf = (kind: Kind, name: string): string => {
   return KEY_LABELS[name] ?? name;
 };
 
-const selectOptions = (kind: Kind, name: string, settings: Settings): readonly string[] => {
-  if (name === "status") return kind === "decisions" ? DECISION_STATUSES : kind === "tasks" ? TASK_STATUSES : DOC_STATUSES;
+const selectOptions = (kind: Kind, name: string): readonly string[] => {
   if (name === "kind") return TASK_KINDS;
-  if (name === "confidence") return CONFIDENCES;
-  if (name === "target") return settings.targets.map((target) => target.name);
-  if (name === "category") return settings.categories.map((category) => category.name);
-  return settings.phases;
+  return kind === "decisions" ? DECISION_STATUSES : kind === "tasks" ? TASK_STATUSES : DOC_STATUSES;
 };
 
 /** 編集の表示から知らせる、溜める編集 1 件 */
@@ -83,7 +78,6 @@ export type EditChange = { op: PendingEdit["op"]; key: string; value: unknown };
 export type DetailEditorProps = {
   kind: Kind;
   item: Item;
-  settings: Settings;
   marks: Record<string, PendingMarkKind>;
   /** キーか案の記号 → 直前の保存で書き込めなかった編集 */
   blocked: Record<string, BlockedEdit>;
@@ -151,7 +145,7 @@ const Field = ({ label, controlId, required, mark, children }: { label: string; 
 );
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- 今の画面と同じ分岐を 1 か所で読めるように保つ
-export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, removedOptions, referrers, usedTags, body, index, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
+export const DetailEditor = ({ kind, item, marks, blocked, removing, removedOptions, referrers, usedTags, body, index, onChange, onRemove, onCancelRemove }: DetailEditorProps) => {
   const adding = item.id.startsWith(NEW_ID_PREFIX);
   const [titleEmpty, setTitleEmpty] = useState(false);
   const [drafts, setDrafts] = useState<{ key: string; content: string }[]>([]);
@@ -168,7 +162,7 @@ export const DetailEditor = ({ kind, item, settings, marks, blocked, removing, r
       return (
         <Select id={controlId} name={name} disabled={removing} value={text} onChange={(event) => { set(name, event.target.value === "" ? null : event.target.value); }}>
           {name === "status" || name === "kind" ? null : <option value="">（なし）</option>}
-          {selectOptions(kind, name, settings).map((option) => (
+          {selectOptions(kind, name).map((option) => (
             <option key={option} value={option}>
               {option}
             </option>

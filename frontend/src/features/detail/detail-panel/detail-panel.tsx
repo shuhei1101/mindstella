@@ -77,14 +77,9 @@ const Labelled = ({ label, name, value, keys }: { label: string; name: string; v
   );
 };
 
-const Meta = ({ item, index, keys }: { item: Item; index: RecordIndex; keys: KeyDiffs | null }) => {
+const Meta = ({ item, keys }: { item: Item; keys: KeyDiffs | null }) => {
   const rows: [string, string, string | undefined][] = [
-    [index.data.settings.target_label, "target", item.target],
-    ["カテゴリー", "category", item.category],
-    ["フェーズ", "phase", item.phase],
-    ["影響度", "weight", item.weight],
     ["種類", "kind", item.kind],
-    ["確度", "confidence", item.confidence],
     ["日付", "date", item.date],
     ["更新日", "updated", item.updated],
   ];
@@ -221,7 +216,6 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
         {description}
         <Labelled label="結論" name="conclusion" value={item.conclusion} keys={keys} />
         {list("エイリアス", "aliases", item.aliases)}
-        {list("調査の観点", "angles", item.angles)}
         {body("本文")}
       </>
     ),
@@ -267,7 +261,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
       <DetailHeader item={entry.item} kind={kind} index={index} full={full} editable={canEdit} editing={editing} pending={pendingMarkOf({ edits, blocked: blockedIds, target: id })} showTitle={titleElement !== null && titleOut} onToggleEdit={() => { setEditing(!editing); }} onToggleFull={() => { setFull(!full); }} onClose={closeItem} />
       <DiffMinimap shown={diff !== null && prefs.minimap !== false} initialScrollTop={search.h === undefined ? readBodyScrolls()[id] : undefined} onBodyScroll={(top) => { writeBodyScroll(id, top); }}>
         {editing ? (
-          <DetailEditor index={index} kind={kind} item={entry.item} settings={index.data.settings} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
+          <DetailEditor index={index} kind={kind} item={entry.item} marks={marks} blocked={blockedByKey} removing={removal !== undefined} removedOptions={edits.filter((edit) => edit.target === id && edit.op === "option-remove").map((edit) => edit.key ?? "")} referrers={referrers} usedTags={[...new Set([...index.byId.values()].flatMap(({ item: other }) => tagNames(other.tags)))]} body={index.data.bodies[entry.item.body ?? ""]} onChange={change} onRemove={() => { add.mutate({ op: "item-remove", target: id }); }} onCancelRemove={() => { if (removal !== undefined) cancel.mutate(removal.id); }} />
         ) : (
           <div className="flex flex-col gap-3 p-3">
             {diff === null ? null : (
@@ -286,7 +280,7 @@ export const DetailContent = ({ id, index, full }: Omit<DetailContentProps, "onC
               {diff?.kind === "new" ? <DiffMark kind="new" labeled /> : null}
               {item.withdrawn === true ? <WithdrawnBadge large /> : null}
             </h2>
-            <Meta item={item} index={index} keys={keys} />
+            <Meta item={item} keys={keys} />
             {kind === "decisions" || kind === "tasks" ? null : <Labelled label="取り下げた理由" name="reason" value={item.reason} keys={keys} />}
             {byKind[kind]}
             {(item.links ?? []).length > 0 ? (

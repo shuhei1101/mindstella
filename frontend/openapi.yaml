@@ -752,47 +752,13 @@ components:
         id: { type: string }
         title: { type: string }
         status: { type: string }
-        category: { type: string }
-        phase: { type: string }
       additionalProperties: true
-    Deliverable:
-      type: object
-      required: [title]
-      properties:
-        title: { type: string }
-        doc: { type: string }
     Settings:
       type: object
-      required: [summary, phases, targets, categories, target_label]
+      required: [summary]
       properties:
         summary: { type: string }
         description: { type: string }
-        target_label: { type: string }
-        phases:
-          type: array
-          items: { type: string }
-        targets:
-          type: array
-          items:
-            type: object
-            required: [name]
-            properties:
-              name: { type: string }
-        categories:
-          type: array
-          items:
-            type: object
-            required: [name, target]
-            properties:
-              name: { type: string }
-              target: { type: string }
-        goal:
-          type: object
-          required: [deliverables]
-          properties:
-            deliverables:
-              type: array
-              items: { $ref: "#/components/schemas/Deliverable" }
         display:
           type: object
           properties:
@@ -809,60 +775,14 @@ components:
     Kind:
       type: string
       enum: [decisions, tasks, research, docs, terms, notes, logs]
-    ProgressCell:
-      type: object
-      required: [phase, settled, total]
-      properties:
-        phase: { type: string }
-        settled: { type: integer }
-        total: { type: integer }
-    NextCandidate:
-      type: object
-      required: [id, title, phase, weight, followers]
-      properties:
-        id: { type: string }
-        title: { type: string }
-        phase: { type: [string, "null"] }
-        weight: { type: [string, "null"] }
-        followers: { type: integer }
-    Goal:
-      type: object
-      required: [has_goal, remaining_deliverables, phase_progress]
-      properties:
-        has_goal: { type: boolean }
-        remaining_deliverables:
-          type: array
-          items:
-            type: object
-            required: [title]
-            properties:
-              title: { type: string }
-              doc: { type: [string, "null"] }
-        phase_progress:
-          type: array
-          items: { $ref: "#/components/schemas/ProgressCell" }
-      additionalProperties: true
-    CategoryProgress:
-      type: object
-      required: [category, cells, settled, total]
-      properties:
-        category: { type: string }
-        cells:
-          type: array
-          items: { $ref: "#/components/schemas/ProgressCell" }
-        settled: { type: integer }
-        total: { type: integer }
     Derived:
       type: object
-      required: [next, goal, progress]
+      required: [ready]
       properties:
-        next:
+        ready:
+          description: 前提が全て決着した未決定の検討事項の ID（連番の順）
           type: array
-          items: { $ref: "#/components/schemas/NextCandidate" }
-        goal: { $ref: "#/components/schemas/Goal" }
-        progress:
-          type: array
-          items: { $ref: "#/components/schemas/CategoryProgress" }
+          items: { type: string }
     ItemList:
       type: array
       items: { $ref: "#/components/schemas/Item" }

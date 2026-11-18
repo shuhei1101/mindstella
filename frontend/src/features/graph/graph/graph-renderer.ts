@@ -6,7 +6,7 @@ import { flushSync } from "react-dom";
 import type { Graph, GraphLink, GraphNode, LinkType } from "@/features/graph/graph/graph-model";
 import { bakeGlow, drawLook, FOCAL, hashUnit, LABEL_LIFT, lookLabelColor, type LookFrame, type LookLink, type LookStar, type Vec3 } from "@/features/graph/graph/looks";
 import { CommentMark } from "@/shared/components/comment-mark";
-import { Icon, StatusMark } from "@/shared/components/icon";
+import { StatusMark } from "@/shared/components/icon";
 import { LOCK_QUERY, resolvePress, SHAKE_GROW, SHAKE_MS, SHAKE_SHIFT, SHAKE_SWING, shakeAt, shakeColor, type Press } from "@/shared/core/lock";
 import type { Item, Kind, NetworkLook, RecordIndex } from "@/shared/core/records";
 
@@ -283,29 +283,20 @@ const drawKeyIcon = ({
   context.restore();
 };
 
-/** 状態の印（一覧と同じ SVG）と資料の成果物の箱を、今の配色で絵にして取っておく（テーマごと） */
+/** 状態の印（一覧と同じ SVG）を、今の配色で絵にして取っておく（テーマごと） */
 const statusImages = new Map<string, HTMLImageElement>();
 
 /** 項目の状態の印の絵を返す。読み込み中は null */
-const statusImage = ({ item, ringColor, theme }: { item: Item; ringColor: string; theme: string }): HTMLImageElement | null => {
-  const deliverable = item.deliverable === true;
-  const cacheKey = `${deliverable ? "deliverable" : (item.status ?? "")}|${theme}`;
+const statusImage = ({ item, theme }: { item: Item; ringColor: string; theme: string }): HTMLImageElement | null => {
+  const cacheKey = `${item.status ?? ""}|${theme}`;
   if (!statusImages.has(cacheKey)) {
-    const source = deliverable ? staticElement(createElement(Icon, { name: "box" })) : item.status === undefined ? null : staticElement(createElement("span", null, createElement(StatusMark, { status: item.status }))).firstElementChild;
+    const source = item.status === undefined ? null : staticElement(createElement("span", null, createElement(StatusMark, { status: item.status }))).firstElementChild;
     if (source === null || source === undefined) return null;
     source.removeAttribute("class");
     source.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     source.setAttribute("width", "24");
     source.setAttribute("height", "24");
-    if (deliverable) {
-      source.setAttribute("fill", "none");
-      source.setAttribute("stroke", ringColor);
-      source.setAttribute("stroke-width", "2.2");
-      source.setAttribute("stroke-linecap", "round");
-      source.setAttribute("stroke-linejoin", "round");
-    } else {
-      source.setAttribute("viewBox", "-1 -1 12 12");
-    }
+    source.setAttribute("viewBox", "-1 -1 12 12");
     // CSS の色の変数は絵の中では効かないので、今の値に置き換える
     const style = getComputedStyle(document.documentElement);
     const text = source.outerHTML.replace(/var\((--[\w-]+)\)/g, (_, name: string) => style.getPropertyValue(name).trim());

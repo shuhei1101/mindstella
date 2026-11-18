@@ -9,7 +9,7 @@ import { titleOf, type RecordIndex, refsOf, type Item } from "@/shared/core/reco
 export type RecordKind = "research" | "terms" | "notes" | "logs";
 
 const recordColumns = (kind: RecordKind) => (index: RecordIndex, onOpen: (id: string) => void): TableColumn[] => {
-  const common = commonColumns(index.data.settings);
+  const common = commonColumns();
   const related = (label: string): TableColumn => ({ key: "related", label, get: (row) => refsOf(row as unknown as Item, "see_also"), cell: (row) => <IdLinks ids={refsOf(row as unknown as Item, "see_also")} titleOf={(id) => titleOf(index, id)} onOpen={onOpen} /> });
   const list = (key: string, label: string): TableColumn => ({ key, label, get: (row) => rowTexts(row, key), cell: (row) => <TagList values={rowTexts(row, key)} /> });
   const columnsOf: Record<RecordKind, TableColumn[]> = {

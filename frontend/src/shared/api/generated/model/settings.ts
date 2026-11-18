@@ -4,20 +4,12 @@
  * mindstella preview
  * OpenAPI spec version: 0.0.0
  */
-import type { SettingsCategoriesItem } from './settingsCategoriesItem';
 import type { SettingsDisplay } from './settingsDisplay';
-import type { SettingsGoal } from './settingsGoal';
-import type { SettingsTargetsItem } from './settingsTargetsItem';
 import type { SettingsTranscription } from './settingsTranscription';
 
 export interface Settings {
   summary: string;
   description?: string;
-  target_label: string;
-  phases: string[];
-  targets: SettingsTargetsItem[];
-  categories: SettingsCategoriesItem[];
-  goal?: SettingsGoal;
   display?: SettingsDisplay;
   transcription?: SettingsTranscription;
   [key: string]: unknown;
