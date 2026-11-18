@@ -13,7 +13,7 @@ import yaml
 from kinds import RECORD_DIR, SETTINGS_FILE
 from store import dump_yaml, remove_files, write_temp
 
-# `npx` に渡す mdmark の取得元の書式（`{ref}` にタグか `develop`）
+# `npx` に渡す mdmark の取得元の書式（`{ref}` にタグ）
 MDMARK_REPO_SPEC = "github:shuhei1101/mdmark#{ref}"
 
 # 一時の mdmark の設定の `version`。ここから `v0.11.0`（マーカーの JSON）と `v0.13.0`（map）の手順が当たる
@@ -26,9 +26,11 @@ MDMARK_COMMAND_ENV = "MINDSTELLA_MDMARK_COMMAND"
 TEMP_CONFIG = "mdmark.config.yaml"
 MDMARK_WORK_DIR = ".mdmark"
 
-# 設定の mdmark のバージョンの既定と、`latest` が指す mdmark のブランチ
+# 設定の mdmark のバージョンの既定
 LATEST = "latest"
-LATEST_REF = "develop"
+
+# 設定の mdmark のバージョンが無いか `latest` のときに呼ぶ mdmark のタグ。この移し替えが前提にした `v0.11.0`（マーカーの JSON）と `v0.13.0`（map）の手順までを適用する
+MDMARK_MIGRATION_REF = "v0.13.0"
 
 # 一時の設定が対象にする資料の Markdown と、mdmark の点検が求める書き出し先（どちらも `.mindstella/` からの相対。書き出し先は終わりに消す `.mdmark/` の下）
 DOCS_GLOB = "docs/**/*.md"
@@ -65,10 +67,11 @@ def migrate(root: Path) -> tuple[list[str], list[str]]:
 
 
 def _mdmark_ref(settings: dict[str, Any]) -> str:
-    """設定の `mdmark.version`（無ければ `latest`）から、取得元の ref を決める。"""
+    """設定の `mdmark.version` から、取得元の ref を決める。"""
     mdmark = settings.get("mdmark")
     version = mdmark.get("version") if isinstance(mdmark, dict) else None
-    return LATEST_REF if version in (None, LATEST) else str(version)
+    # 設定にタグが無いか `latest`: この移し替えの手順を作った時点のタグを呼ぶ。タグがあればそのタグを呼ぶ
+    return MDMARK_MIGRATION_REF if version in (None, LATEST) else str(version)
 
 
 def _run_upgrade(record: Path, temp_config: Path, ref: str) -> subprocess.CompletedProcess[str]:
