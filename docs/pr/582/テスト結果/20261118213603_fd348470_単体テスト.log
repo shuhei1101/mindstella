@@ -1,4 +1,5 @@
-$ pytest tests/unit/scripts/test_sessions.py tests/unit/scripts/test_session_hook.py tests/unit/scripts/test_claude_input.py -p no:cacheprovider --basetemp=/tmp/planner-582-pytest/bt -rf
+# fd348470（テストコードの末尾・実装の前）の作業ツリーを git archive で取り出して実行
+$ pytest tests/unit/scripts/test_sessions.py tests/unit/scripts/test_session_hook.py tests/unit/scripts/test_claude_input.py -p no:cacheprovider -rf -q
 # Red: 失敗は全て実装が無いこと（AttributeError・TypeError・pre-compact の引数の不足）による
             """呼ばれたフォルダを控え、成功なら running にする。"""
             calls.append(root)
@@ -59,4 +60,4 @@ FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[running]
 FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[crashed-restarted]
 FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[crashed-failed]
 FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[close-pending]
-42 failed, 131 passed in 2.80s
+42 failed, 131 passed in 3.13s
