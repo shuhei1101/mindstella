@@ -354,7 +354,7 @@ var MindmapPreview;
                 return;
             const key = shown.map((item) => item.id).join(",");
             const graph = buildDecisionTree({ index, decisions: shown });
-            emptyNotice.hidden = graph.children.length > 0;
+            emptyNotice.hidden = shown.length > 0;
             current = await layoutOf(graph, key);
             drawMap({ laid: current, canvas, selected: route.id, lockedId: lockedNow(), press, marks, comments, edit });
             applyZoom();
