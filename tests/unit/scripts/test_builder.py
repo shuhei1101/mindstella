@@ -148,7 +148,7 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
     )
     workspace = store.load_workspace(root)
     # 実行
-    data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
     # 検証
     assert set(data) == {
         "settings",
@@ -165,7 +165,9 @@ def test_collect_preview_data(make_workspace: MakeWorkspace, make_item: MakeItem
         "derived",
         "built_at",
         "settings_problem",
+        "mdmark_ref",
     }
+    assert data["mdmark_ref"] == "develop"
     assert data["bodies"] == {"docs/A-1.md": "資料の本文\n"}
     assert data["marked_bodies"] == {}
     assert data["settings_problem"] is None
@@ -183,7 +185,7 @@ def test_collect_preview_data_with_html_body(
     )
     workspace = store.load_workspace(root)
     # 実行
-    data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
     # 検証
     assert data["bodies"] == {"docs/A-1.md": "資料の本文\n", "docs/A-2.html": "<p>a</p>"}
     assert data["marked_bodies"] == {"docs/A-2.html": '<p data-line="1" data-line-end="1">a</p>'}
@@ -215,7 +217,7 @@ def test_collect_preview_data_with_changes(
     )
     workspace = store.load_workspace(root)
     # 実行
-    data = builder.collect_preview_data(workspace, built_at=BUILT_AT)
+    data = builder.collect_preview_data(workspace, built_at=BUILT_AT, mdmark_ref="develop")
     # 検証
     assert data["changes"] == changes
     assert data["decisions"][0]["history"] == [entry]
@@ -264,7 +266,7 @@ def test_embed_data_when_element_count_wrong(template: str, count_text: str) -> 
 def test_assemble_template(preview_dir: Path) -> None:
     """CSS と JavaScript を並びの順に差し込む（正常系）。"""
     # 実行
-    html = builder.assemble_template(preview_dir=preview_dir)
+    html = builder.assemble_template(preview_dir=preview_dir, mdmark_ref="develop")
     # 検証
     style = html.split('<style id="mindmap-style">', 1)[1].split("</style>", 1)[0]
     script = html.split('<script id="mindmap-app">', 1)[1].split("</script>", 1)[0]
@@ -288,7 +290,7 @@ def test_assemble_template_when_closing_tag(preview_dir: Path, kind: str, closin
     (preview_dir / file_name).write_text(f"x {closing_tag} y", encoding="utf-8")
     # 実行・検証
     with pytest.raises(ValueError, match=file_name):
-        builder.assemble_template(preview_dir=preview_dir)
+        builder.assemble_template(preview_dir=preview_dir, mdmark_ref="develop")
 
 
 @pytest.mark.parametrize(
@@ -313,7 +315,7 @@ def test_assemble_template_when_slot_count_wrong(
     _write_preview_dir(folder, template)
     # 実行・検証
     with pytest.raises(ValueError, match=count_text):
-        builder.assemble_template(preview_dir=folder)
+        builder.assemble_template(preview_dir=folder, mdmark_ref="develop")
 
 
 def test_derive_preview_values(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -730,13 +732,15 @@ def test_assemble_standalone_template(tmp_path: Path) -> None:
     # 準備
     scripts: list[Script] = [("a", b"/* a */"), ("b", b"/* b */")]
     folder = _module_preview_dir(tmp_path, scripts)
-    responses = make_responses(scripts, mdmark=MODULE, mdmark_version=MDMARK_VERSION)
+    responses = make_responses(scripts, mdmark=MODULE, mdmark_ref=MDMARK_VERSION)
     responses[_bundled_url()] = "束ねた本文 m".encode()
     fetch, calls = make_fetch(responses)
     libraries = (_module_library(), make_library("a"), make_library("b"))
     # 実行
     html = builder.assemble_standalone_template(
-        preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+        preview_dir=folder, libraries=libraries, fetch=fetch,
+            mdmark_settings=MDMARK_SETTINGS,
+            mdmark_ref=MDMARK_VERSION,
     )
     # 検証
     assert "https://" not in html
@@ -774,14 +778,16 @@ def test_assemble_standalone_template_when_integrity_mismatch(tmp_path: Path) ->
     # 準備
     folder = _module_preview_dir(tmp_path, [("a", b"/* a */")])
     # 雛形の integrity と違う中身を返す
-    responses = make_responses([("a", b"/* x */")], mdmark=MODULE, mdmark_version=MDMARK_VERSION)
+    responses = make_responses([("a", b"/* x */")], mdmark=MODULE, mdmark_ref=MDMARK_VERSION)
     responses[_bundled_url()] = "束ねた本文 m".encode()
     fetch, _calls = make_fetch(responses)
     libraries = (_module_library(), make_library("a"))
     # 実行・検証
     with pytest.raises(errors.DownloadFailedError, match=re.escape(dist_url("a"))):
         builder.assemble_standalone_template(
-            preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+            preview_dir=folder, libraries=libraries, fetch=fetch,
+            mdmark_settings=MDMARK_SETTINGS,
+            mdmark_ref=MDMARK_VERSION,
         )
 
 
@@ -837,7 +843,9 @@ def test_assemble_standalone_template_when_tag_inside(
     # 実行・検証
     with pytest.raises(ValueError, match=match):
         builder.assemble_standalone_template(
-            preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+            preview_dir=folder, libraries=libraries, fetch=fetch,
+            mdmark_settings=MDMARK_SETTINGS,
+            mdmark_ref=MDMARK_VERSION,
         )
 
 
@@ -867,12 +875,14 @@ def test_assemble_standalone_template_when_library_unknown(
     """VENDOR_LIBRARIES に無いパッケージの読み込みは受け付けない（異常系）。"""
     # 準備
     folder = _module_preview_dir(tmp_path, scripts)
-    fetch, calls = make_fetch(make_responses(scripts, mdmark=MODULE, mdmark_version=MDMARK_VERSION))
+    fetch, calls = make_fetch(make_responses(scripts, mdmark=MODULE, mdmark_ref=MDMARK_VERSION))
     libraries = make_libraries()
     # 実行・検証
     with pytest.raises(ValueError, match=f"ライセンスの表示が無い外の読み込み: {re.escape(package)}"):
         builder.assemble_standalone_template(
-            preview_dir=folder, libraries=libraries, fetch=fetch, mdmark_settings=MDMARK_SETTINGS
+            preview_dir=folder, libraries=libraries, fetch=fetch,
+            mdmark_settings=MDMARK_SETTINGS,
+            mdmark_ref=MDMARK_VERSION,
         )
     assert calls == []
 
@@ -934,14 +944,19 @@ MDMARK_CDN = "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark"
 
 
 @pytest.mark.parametrize(
-    ("version", "path", "expected"),
+    ("ref", "path", "expected"),
     [
-        pytest.param(None, "index.js", f"{MDMARK_CDN}@develop/dist/index.js", id="unset"),
-        pytest.param("latest", "index.css", f"{MDMARK_CDN}@develop/dist/index.css", id="latest"),
+        pytest.param(
+            "0123456789abcdef0123456789abcdef01234567",
+            "index.js",
+            f"{MDMARK_CDN}@0123456789abcdef0123456789abcdef01234567/dist/index.js",
+            id="commit",
+        ),
+        pytest.param("develop", "index.css", f"{MDMARK_CDN}@develop/dist/index.css", id="branch"),
         pytest.param("v0.13.0", "map.js", f"{MDMARK_CDN}@v0.13.0/dist/map.js", id="tag"),
     ],
 )
-def test_mdmark_dist_url(version: str | None, path: str, expected: str) -> None:
-    """latest と無しは develop、タグはそのまま（正常系）。"""
+def test_mdmark_dist_url(ref: str, path: str, expected: str) -> None:
+    """ref をそのまま URL に入れる（正常系）。"""
     # 実行・検証
-    assert builder.mdmark_dist_url(version, path) == expected
+    assert builder.mdmark_dist_url(ref, path) == expected

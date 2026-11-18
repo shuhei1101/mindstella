@@ -603,6 +603,29 @@ def test_index_response(tmp_path: Path) -> None:
     assert "mdmark@v0.13.0/dist/index.js" in body
 
 
+def test_index_response_when_latest(tmp_path: Path) -> None:
+    """latest は resolve が返した ref で mdmark を読み込む（正常系）。"""
+    # 準備
+    preview_dir = tmp_path / "preview"
+    write_preview_dir(preview_dir, SMALL_TEMPLATE)
+    resolved: list[str | None] = []
+
+    def _resolve(version: str | None) -> str:
+        resolved.append(version)
+        return "0123456789abcdef0123456789abcdef01234567"
+
+    # 実行
+    response = serve.index_response(
+        preview_dir, mdmark_settings={"version": "latest"}, resolve=_resolve
+    )
+    # 検証
+    body = response.body.decode("utf-8")
+    assert response.status == 200
+    assert resolved == ["latest"]
+    assert "mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.css" in body
+    assert "mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.js" in body
+
+
 def test_index_response_when_template_invalid(tmp_path: Path) -> None:
     """雛形の誤りは 500（正常系）。"""
     # 準備

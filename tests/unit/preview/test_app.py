@@ -21,9 +21,6 @@ DEFAULT_PREFS = {
     "minimap": None,
     "bodyLayout": None,
     "reviewOrder": None,
-    "tablePin": None,
-    "tableHead": None,
-    "tableStripes": None,
     "sectionFold": None,
     "commentsPinned": None,
     "commentFormClosed": None,
@@ -314,25 +311,14 @@ def test_load_prefs_when_review_order(
 @pytest.mark.parametrize(
     ("stored", "expected_overrides"),
     [
+        pytest.param('{"theme": "dark", "sectionFold": false}', {"sectionFold": False}, id="fold_off"),
+        pytest.param('{"theme": "dark", "sectionFold": true}', {}, id="same_as_default"),
+        pytest.param('{"theme": "dark", "sectionFold": "no"}', {}, id="not_boolean"),
         pytest.param(
-            '{"theme": "dark", "tablePin": false, "tableHead": false,'
-            ' "tableStripes": true, "sectionFold": false}',
-            {"tablePin": False, "tableHead": False, "tableStripes": True, "sectionFold": False},
-            id="differs_from_default",
-        ),
-        pytest.param(
-            '{"theme": "dark", "tablePin": true, "tableHead": true,'
-            ' "tableStripes": false, "sectionFold": true}',
+            '{"theme": "dark", "tablePin": false, "tableHead": false, "tableStripes": true}',
             {},
-            id="same_as_default",
+            id="previous_version_table_overrides",
         ),
-        pytest.param(
-            '{"theme": "dark", "tablePin": "no", "tableHead": "no",'
-            ' "tableStripes": "no", "sectionFold": "no"}',
-            {},
-            id="not_boolean",
-        ),
-        pytest.param('{"theme": "dark", "columns": {}}', {}, id="previous_version"),
     ],
 )
 def test_load_prefs_when_body_view(
@@ -341,7 +327,7 @@ def test_load_prefs_when_body_view(
     stored: str,
     expected_overrides: dict[str, bool],
 ) -> None:
-    """本文の表とセクションの見せ方の上書きは、既定と違う値だけを読む（正常系）。"""
+    """セクションの折りたたみの上書きは既定と違う値だけを読み、前の版の表の上書きは読まない（正常系）。"""
     # 準備
     load_preview_scripts(include_app=True)
     # 実行
@@ -427,9 +413,6 @@ SAVED_PREFS = {
     "minimap": None,
     "bodyLayout": None,
     "reviewOrder": None,
-    "tablePin": None,
-    "tableHead": None,
-    "tableStripes": None,
     "sectionFold": None,
     "commentsPinned": None,
     "commentFormClosed": None,
@@ -772,25 +755,19 @@ def test_resolve_display_when_review_order(
     [
         pytest.param(
             DEFAULT_PREFS,
-            {
-                "bodyView": {"pin": True, "head": True, "stripes": False, "fold": True},
-                "overrides": [],
-            },
+            {"bodyView": {"fold": True}, "overrides": []},
             id="no_override",
         ),
         pytest.param(
-            {**DEFAULT_PREFS, "tableStripes": True, "sectionFold": False},
-            {
-                "bodyView": {"pin": True, "head": True, "stripes": True, "fold": False},
-                "overrides": ["表のしま模様", "セクションの折りたたみ"],
-            },
-            id="stripes_on_fold_off",
+            {**DEFAULT_PREFS, "sectionFold": False},
+            {"bodyView": {"fold": False}, "overrides": ["セクションの折りたたみ"]},
+            id="fold_off",
         ),
         pytest.param(
-            {**DEFAULT_PREFS, "minimap": False, "tablePin": False, "bodyLayout": "side"},
+            {**DEFAULT_PREFS, "minimap": False, "sectionFold": False, "bodyLayout": "side"},
             {
-                "bodyView": {"pin": False, "head": True, "stripes": False, "fold": True},
-                "overrides": ["差分のミニマップ", "表の列の固定", "本文の差分の並べ方"],
+                "bodyView": {"fold": False},
+                "overrides": ["差分のミニマップ", "セクションの折りたたみ", "本文の差分の並べ方"],
             },
             id="between_minimap_and_body_layout",
         ),
@@ -802,7 +779,7 @@ def test_resolve_display_when_body_view(
     prefs: dict[str, Any],
     expected: dict[str, Any],
 ) -> None:
-    """本文の見せ方は上書きのある項目だけ既定と逆にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ（正常系）。"""
+    """セクションの折りたたみは上書きがあるときだけ偽にし、変えている項目に差分のミニマップと本文の差分の並べ方の間で並ぶ（正常系）。"""
     # 準備
     load_preview_scripts(include_app=True)
     # 実行
@@ -831,9 +808,6 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "minimap": False,
         "bodyLayout": "side",
         "reviewOrder": "oldest",
-        "tablePin": False,
-        "tableHead": False,
-        "tableStripes": True,
         "sectionFold": False,
         "commentsPinned": True,
         "commentFormClosed": True,
@@ -853,9 +827,6 @@ def test_clear_overrides(preview_page: Page, load_preview_scripts: LoadPreviewSc
         "minimap": None,
         "bodyLayout": None,
         "reviewOrder": None,
-        "tablePin": None,
-        "tableHead": None,
-        "tableStripes": None,
         "sectionFold": None,
         "commentsPinned": True,
         "commentFormClosed": True,

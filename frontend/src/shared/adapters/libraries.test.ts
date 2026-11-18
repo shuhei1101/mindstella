@@ -47,19 +47,26 @@ describe("loadLibrary", () => {
 });
 
 describe("setMdmarkSettings", () => {
-  // バージョンから URL を決め、無ければ develop（正常系）
+  // ref から URL を決め、無ければ develop（正常系）
   test.each([
-    { name: "unset", settings: undefined, ref: "develop", map: undefined },
-    { name: "latest", settings: { version: "latest" }, ref: "develop", map: undefined },
+    { name: "unset", settings: undefined, given: undefined, ref: "develop", map: undefined },
+    {
+      name: "latest",
+      settings: { version: "latest" },
+      given: "0123456789abcdef0123456789abcdef01234567",
+      ref: "0123456789abcdef0123456789abcdef01234567",
+      map: undefined,
+    },
     {
       name: "tag",
       settings: { version: "v0.13.0", map: { kinds: { llm: {} } } },
+      given: "v0.13.0",
       ref: "v0.13.0",
       map: { kinds: { llm: {} } },
     },
-  ])("set_mdmark_settings ($name)", ({ settings, ref, map }) => {
+  ])("set_mdmark_settings ($name)", ({ settings, given, ref, map }) => {
     // 実行
-    setMdmarkSettings(settings);
+    setMdmarkSettings(settings, given);
     // 検証
     expect(mdmarkUrls().js).toBe(`${MDMARK_CDN}@${ref}/dist/index.js`);
     expect(mdmarkMapConfig()).toEqual(map);
@@ -70,7 +77,7 @@ describe("loadLibrary (mdmark)", () => {
   // mdmark は設定のバージョンの URL から integrity なしで読む（正常系）
   test("load_library_when_mdmark", async () => {
     // 準備
-    setMdmarkSettings({ version: "v0.13.0" });
+    setMdmarkSettings({ version: "v0.13.0" }, "v0.13.0");
     const append = vi.spyOn(document.head, "appendChild").mockImplementation((node) => node);
     const importModule = vi.fn().mockResolvedValue({ version: () => "v0.13.0" });
     setMdmarkImportForTest(importModule);

@@ -38,9 +38,9 @@ def license_url(package: str) -> str:
     return package_url(package, "LICENSE")
 
 
-def mdmark_url(path: str, version: str | None = None) -> str:
-    """設定のバージョン（無ければ develop）の mdmark の `dist/{path}` の URL を返す。"""
-    return builder.mdmark_dist_url(version, path)
+def mdmark_url(path: str, ref: str = "develop") -> str:
+    """解決した ref（既定は develop）の mdmark の `dist/{path}` の URL を返す。"""
+    return builder.mdmark_dist_url(ref, path)
 
 
 def mdmark_part_body(name: str) -> bytes:
@@ -72,7 +72,7 @@ def make_responses(
     scripts: list[Script],
     license_texts: dict[str, str] | None = None,
     mdmark: Mdmark | None = None,
-    mdmark_version: str | None = None,
+    mdmark_ref: str = "develop",
 ) -> dict[str, bytes]:
     """URL → 取れる中身（配布ファイルと、既定は `本文 {パッケージ}` のライセンスの本文。mdmark は JavaScript・CSS・部品）を返す。"""
     responses: dict[str, bytes] = {}
@@ -82,10 +82,10 @@ def make_responses(
         responses[license_url(package)] = text.encode("utf-8")
     if mdmark is not None:
         js, css = mdmark
-        responses[mdmark_url("index.js", mdmark_version)] = js
-        responses[mdmark_url("index.css", mdmark_version)] = css
+        responses[mdmark_url("index.js", mdmark_ref)] = js
+        responses[mdmark_url("index.css", mdmark_ref)] = css
         for name in builder.MDMARK_PART_FILES:
-            responses[mdmark_url(name, mdmark_version)] = mdmark_part_body(name)
+            responses[mdmark_url(name, mdmark_ref)] = mdmark_part_body(name)
     return responses
 
 

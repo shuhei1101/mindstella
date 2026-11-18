@@ -1700,49 +1700,30 @@ TABLE_WRAP_SOURCE = (
     "| 列 C | 列 D |\n| --- | --- |\n| 3 | 4 |\n"
 )
 
-# 範囲の外の表（1〜3 行目）の後に、`<!-- html -->` の範囲（5〜9 行目）の中の表を持つ本文
-TABLE_IN_RANGE_SOURCE = (
-    "| 列 A | 列 B |\n| --- | --- |\n| 1 | 2 |\n\n"
-    "<!-- html -->\n```html\n<table><tr><th>範囲の列</th><td>範囲の値</td></tr></table>\n```\n<!-- /html -->\n"
-)
-
-# 表を包む入れ物の期待する属性（役割・読み上げの名前・キーボードで届く・行の印は持たない）
-TABLE_WRAP_ATTRIBUTES = {
-    "tabindex": "0",
-    "role": "group",
-    "label": "本文の表",
-    "lineStart": None,
-}
-
-
 @pytest.mark.parametrize(
-    ("source", "expected"),
+    ("options", "expected"),
     [
         pytest.param(
-            TABLE_WRAP_SOURCE,
+            None,
             {
                 "tableCount": 2,
-                "wrapClasses": ["md-table-wrap", "md-table-wrap"],
-                "wrapAttributes": [TABLE_WRAP_ATTRIBUTES, TABLE_WRAP_ATTRIBUTES],
-                "wrapChildren": [["TABLE"], ["TABLE"]],
+                "inMdmarkTable": [True, True],
+                "tableWraps": 0,
+                "mdmarkTableMarks": [[None, None], [None, None]],
                 "rows": [["3", "5"], ["7", "9"]],
-                "paragraphParentIsRoot": True,
-                "wrappedInRange": [],
             },
-            id="two_tables",
+            id="table_feature_default",
         ),
         pytest.param(
-            TABLE_IN_RANGE_SOURCE,
+            {"table": False},
             {
                 "tableCount": 2,
-                "wrapClasses": ["md-table-wrap"],
-                "wrapAttributes": [TABLE_WRAP_ATTRIBUTES],
-                "wrapChildren": [["TABLE"]],
-                "rows": [["1", "3"], []],
-                "paragraphParentIsRoot": None,
-                "wrappedInRange": [False],
+                "inMdmarkTable": [False, False],
+                "tableWraps": 0,
+                "mdmarkTableMarks": [],
+                "rows": [["3", "5"], ["7", "9"]],
             },
-            id="table_in_range",
+            id="table_feature_off",
         ),
     ],
 )
@@ -1750,42 +1731,34 @@ def test_render_markdown_when_table(
     preview_page: Page,
     load_preview_scripts: LoadPreviewScripts,
     load_mdmark: LoadMdmark,
-    source: str,
+    options: dict[str, bool] | None,
     expected: dict[str, Any],
 ) -> None:
-    """表を横に送れる入れ物で包み、行の印を変えない。範囲の中の表は包まない（正常系）。"""
+    """表を mdmark の表の機能で描き、行の印を変えない（正常系）。"""
     # 準備
     load_preview_scripts()
     load_mdmark()
     # 実行
     result = preview_page.evaluate(
-        """(source) => {
-            const root = MindmapPreview.renderMarkdown(source);
+        """({source, options}) => {
+            const root = options === null
+                ? MindmapPreview.renderMarkdown(source)
+                : MindmapPreview.renderMarkdown(source, options);
             const tables = [...root.querySelectorAll("table")];
-            // 入れ物が直上にある表だけを数える（範囲の中の表は入れ物の外）
-            const wraps = tables.map((table) => table.parentElement).filter((parent) => parent.classList.contains("md-table-wrap"));
-            const paragraph = root.querySelector("p");
             return {
                 tableCount: tables.length,
-                wrapClasses: wraps.map((wrap) => wrap.className),
-                wrapAttributes: wraps.map((wrap) => ({
-                    tabindex: wrap.getAttribute("tabindex"),
-                    role: wrap.getAttribute("role"),
-                    label: wrap.getAttribute("aria-label"),
-                    lineStart: wrap.getAttribute("data-line-start"),
-                })),
-                wrapChildren: wraps.map((wrap) => [...wrap.children].map((child) => child.tagName)),
+                inMdmarkTable: tables.map((table) => table.closest(".mdmark-table") !== null),
+                tableWraps: root.querySelectorAll(".md-table-wrap").length,
+                mdmarkTableMarks: [...root.querySelectorAll(".mdmark-table")].map((wrap) => [
+                    wrap.getAttribute("data-line-start"),
+                    wrap.getAttribute("data-source-line"),
+                ]),
                 rows: tables.map((table) =>
                     [...table.querySelectorAll("tr")].map((row) => row.getAttribute("data-line-start")).filter((line) => line !== null)
                 ),
-                paragraphParentIsRoot: paragraph === null ? null : paragraph.parentElement === root,
-                // 範囲の中の表が、入れ物の中にあるか
-                wrappedInRange: tables
-                    .filter((table) => table.closest(".mdmark-html") !== null)
-                    .map((table) => table.closest(".md-table-wrap") !== null),
             };
         }""",
-        source,
+        {"source": TABLE_WRAP_SOURCE, "options": options},
     )
     # 検証
     assert result == expected

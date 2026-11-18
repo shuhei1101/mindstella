@@ -18,8 +18,8 @@ KINDS_WITHOUT_NOTES = ["decisions", "tasks", "research", "docs", "terms", "logs"
 # 用語集と会話ログを除いた 5 種類
 KINDS_WITHOUT_TERMS_LOGS = ["decisions", "tasks", "research", "docs", "notes"]
 
-# 本文の見せ方の既定（列の固定・見出しの固定・折りたたみはオン、しま模様はオフ）
-BODY_VIEW_DEFAULT = {"pin": True, "head": True, "stripes": False, "fold": True}
+# 本文の見せ方の既定（折りたたみはオン）
+BODY_VIEW_DEFAULT = {"fold": True}
 
 # 種類 → 件数
 COUNTS = {
@@ -258,32 +258,20 @@ def test_settings_panel_when_minimap(
     ("args", "expected_checks", "expected_call", "expected_buttons", "expected_texts"),
     [
         pytest.param(
-            {"bodyView": BODY_VIEW_DEFAULT, "overrides": [], "operate": ["表のしま模様"]},
-            [
-                ("差分のミニマップ", True),
-                ("表の列の固定", True),
-                ("表の見出しの固定", True),
-                ("表のしま模様", False),
-                ("セクションの折りたたみ", True),
-            ],
-            ["bodyView", {"key": "stripes", "value": True}],
+            {"bodyView": BODY_VIEW_DEFAULT, "overrides": [], "operate": ["セクションの折りたたみ"]},
+            [("差分のミニマップ", True), ("セクションの折りたたみ", True)],
+            ["bodyView", {"key": "fold", "value": False}],
             [],
             [],
-            id="default_press_stripes",
+            id="default_press_fold",
         ),
         pytest.param(
             {
-                "bodyView": {"pin": True, "head": True, "stripes": True, "fold": False},
-                "overrides": ["表のしま模様", "セクションの折りたたみ"],
+                "bodyView": {"fold": False},
+                "overrides": ["セクションの折りたたみ"],
                 "operate": ["セクションの折りたたみ"],
             },
-            [
-                ("差分のミニマップ", True),
-                ("表の列の固定", True),
-                ("表の見出しの固定", True),
-                ("表のしま模様", True),
-                ("セクションの折りたたみ", False),
-            ],
+            [("差分のミニマップ", True), ("セクションの折りたたみ", False)],
             ["bodyView", {"key": "fold", "value": True}],
             ["既定に戻す"],
             ["見た目と表示する種類は、ワークスペースの既定と同じです。"],
@@ -300,7 +288,7 @@ def test_settings_panel_when_body_view(
     expected_buttons: list[str],
     expected_texts: list[str],
 ) -> None:
-    """本文の見せ方の 4 つのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
+    """セクションの折りたたみのチェックを出し、切り替えを知らせる。保存のボタンの比べには使わない（正常系）。"""
     # 準備
     load_preview_scripts()
     # 実行（本文の見せ方のチェックを押す）
