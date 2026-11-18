@@ -9,8 +9,6 @@ namespace MindmapPreview {
     op: PendingEdit["op"];
     key: string;
     value: unknown;
-    /** 設定のフェーズ・対象・カテゴリーの付け替え（古い値 → 新しい値） */
-    map?: Record<string, string>;
   };
 
   /** 編集の表示の引数 */
@@ -18,8 +16,6 @@ namespace MindmapPreview {
     kind: Kind;
     /** 保存待ちの編集を当てた項目 */
     item: Item;
-    /** 編集を当てた設定（フェーズ・対象・カテゴリーの選択肢） */
-    settings: Settings;
     /** キーか案の記号 → 印の種類 */
     marks: Record<string, PendingMarkKind>;
     /** その項目の削除を溜めているか */
@@ -57,9 +53,6 @@ namespace MindmapPreview {
     decisions: [
       { key: "status", input: "select" },
       { key: "title", input: "text" },
-      { key: "target", input: "select" },
-      { key: "category", input: "select" },
-      { key: "phase", input: "select" },
       { key: "tags", input: "tags" },
       { key: "related", input: "relations" },
       { key: "options", input: "options" },
@@ -70,7 +63,6 @@ namespace MindmapPreview {
     tasks: [
       { key: "status", input: "select" },
       { key: "title", input: "text" },
-      { key: "target", input: "select" },
       { key: "kind", input: "select" },
       { key: "tags", input: "tags" },
       { key: "related", input: "relations" },
@@ -81,7 +73,6 @@ namespace MindmapPreview {
       { key: "title", input: "text" },
       { key: "question", input: "textarea" },
       { key: "conclusion", input: "textarea" },
-      { key: "confidence", input: "select" },
       { key: "tags", input: "tags" },
       { key: "related", input: "relations" },
       { key: "withdrawn", input: "check" },
@@ -92,7 +83,6 @@ namespace MindmapPreview {
       { key: "status", input: "select" },
       { key: "title", input: "text" },
       { key: "kind", input: "text" },
-      { key: "deliverable", input: "check" },
       { key: "tags", input: "tags" },
       { key: "related", input: "relations" },
       { key: "withdrawn", input: "check" },
@@ -132,7 +122,7 @@ namespace MindmapPreview {
     decisions: ["status", "title", "options", "tags", "body"],
     tasks: ["status", "title", "kind", "tags", "body"],
     research: ["title", "question", "tags", "body"],
-    docs: ["status", "title", "kind", "deliverable", "tags", "body"],
+    docs: ["status", "title", "kind", "tags", "body"],
     terms: ["title", "meaning", "tags", "body"],
     notes: ["title", "content", "tags", "body"],
     logs: ["title", "date", "body"],
@@ -160,9 +150,6 @@ namespace MindmapPreview {
 
   /** タスクの種類の選択肢 */
   const TASK_KINDS: readonly string[] = ["作業", "調査", "検証"];
-
-  /** 調査の確からしさの選択肢 */
-  const CONFIDENCES: readonly string[] = ["高", "中", "低"];
 
   /** 空にできない文字のキー（空のときは溜めず、誤りを出す） */
   const REQUIRED_TEXT_KEYS: ReadonlySet<string> = new Set(["title"]);
@@ -437,7 +424,7 @@ namespace MindmapPreview {
     key: string;
     input: EditableInput;
   }): HTMLElement {
-    const { kind, item, settings, removing, on } = props;
+    const { kind, item, removing, on } = props;
     const controlId = `pe-${safeId(item.id)}-${key}`;
     const name = labelOf({ kind, key });
     const mark = props.marks[key];
@@ -464,7 +451,7 @@ namespace MindmapPreview {
     };
 
     if (input === "select") {
-      const options = selectOptions({ kind, key, settings });
+      const options = selectOptions({ kind, key });
       const optional = !(key === "status" || key === "kind");
       const select = h({
         tag: "select",
@@ -559,22 +546,10 @@ namespace MindmapPreview {
     return wrap;
   }
 
-  /** 選ぶキーの選択肢 */
-  function selectOptions({ kind, key, settings }: { kind: Kind; key: string; settings: Settings }): readonly string[] {
-    switch (key) {
-      case "status":
-        return kind === "decisions" ? DECISION_STATUSES : kind === "tasks" ? TASK_STATUSES : DOC_STATUSES;
-      case "kind":
-        return TASK_KINDS;
-      case "confidence":
-        return CONFIDENCES;
-      case "target":
-        return settings.targets.map((target) => target.name);
-      case "category":
-        return settings.categories.map((category) => category.name);
-      default:
-        return settings.phases;
-    }
+  /** 選ぶキーの選択肢（状態と、タスクの種類） */
+  function selectOptions({ kind, key }: { kind: Kind; key: string }): readonly string[] {
+    if (key === "kind") return TASK_KINDS;
+    return kind === "decisions" ? DECISION_STATUSES : kind === "tasks" ? TASK_STATUSES : DOC_STATUSES;
   }
 
   /** 検討事項の案（1 案 1 枚。中身の書き換え・採用する案の切り替え・削除と、案を足す） */

@@ -1031,7 +1031,20 @@ namespace MindmapPreview {
         case "overview":
           return overviewScreen({
             index,
-            on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) },
+            // 配る書き出しはスレッドを持たないので、未読のタイルを 0 件で描き、押せなくする
+            threads: serverMode ? comment.threads : null,
+            on: {
+              open: on.open,
+              navigate: (next) => go({ ...next, id: route.id }, true),
+              ...(serverMode
+                ? {
+                    openThread: (id: string | null) => {
+                      openList();
+                      if (id !== null) openThread(id, false);
+                    },
+                  }
+                : {}),
+            },
             marks,
             visibleKinds: resolved.kinds,
           });
@@ -1669,6 +1682,7 @@ namespace MindmapPreview {
       const wasUnseen = anyOpenUnseen(comment.threads);
       comment.threads = withSeen({ threads: comment.threads, id: opened.id });
       if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
+      redrawOverview();
       void threadsApi
         .seen(opened.id)
         .then(async (result) => {
@@ -1680,6 +1694,11 @@ namespace MindmapPreview {
           renderComments();
         })
         .finally(() => seenSending.delete(opened.id));
+    };
+
+    /** 概要を開いているときだけ、未読のタイルをスレッドに合わせて描き直す */
+    const redrawOverview = (): void => {
+      if (route.tab === "overview") redrawKeepingState();
     };
 
     /** スレッドを読み直す。読めたら置き換え（トップバーの未読の点が変わるなら描き直し）、断られた・届かないときは前のまま残して理由を持つ */
@@ -1694,6 +1713,7 @@ namespace MindmapPreview {
         );
         comment.threadsError = null;
         if (wasUnseen !== anyOpenUnseen(comment.threads)) preserving(renderTop);
+        redrawOverview();
         markOpenedSeen();
         return;
       }
@@ -3284,7 +3304,6 @@ namespace MindmapPreview {
       return {
         kind,
         item,
-        settings: index.data.settings,
         marks: keyMarks(id),
         removing: own.some((entry) => entry.op === "item-remove"),
         removedOptions: own.filter((entry) => entry.op === "option-remove").map((entry) => entry.key ?? ""),
@@ -3520,7 +3539,6 @@ namespace MindmapPreview {
       const form = detailEditForm({
         kind,
         item,
-        settings: index.data.settings,
         marks: entry === undefined ? {} : keyMarks(item.id),
         removing: false,
         removedOptions: [],
@@ -3757,7 +3775,6 @@ namespace MindmapPreview {
       }
       return {
         settings: index.data.settings,
-        index,
         marks,
         errors: formErrors(SETTINGS_TARGET),
         transcription: comment.voice.availability,

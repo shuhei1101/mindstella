@@ -581,8 +581,8 @@ var MindmapPreview;
         return fragment;
     }
     MindmapPreview.idLinksCell = idLinksCell;
-    /** どの表にもある列（ID・タイトル・状態・対象・カテゴリー・フェーズ・タグ）を作る関数の集まり */
-    function commonColumns(settings) {
+    /** どの表にもある列（ID・タイトル・状態・タグ）を作る関数の集まり */
+    function commonColumns() {
         return {
             id: {
                 key: "id",
@@ -607,31 +607,6 @@ var MindmapPreview;
                 get: (row) => text(row, "status"),
                 cell: (row) => MindmapPreview.statusBadge(text(row, "status")),
             }),
-            target: {
-                key: "target",
-                label: settings.target_label,
-                nowrap: true,
-                filterable: true,
-                priority: 4,
-                get: (row) => text(row, "target"),
-            },
-            category: {
-                key: "category",
-                label: "カテゴリー",
-                nowrap: true,
-                filterable: true,
-                priority: 2,
-                get: (row) => text(row, "category"),
-            },
-            phase: {
-                key: "phase",
-                label: "フェーズ",
-                nowrap: true,
-                filterable: true,
-                order: settings.phases,
-                priority: 2,
-                get: (row) => text(row, "phase"),
-            },
             tags: {
                 key: "tags",
                 label: "タグ",

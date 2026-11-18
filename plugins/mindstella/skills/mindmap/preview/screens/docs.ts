@@ -1,16 +1,10 @@
-// 資料。カード（既定）・ボード・表で見る。納品物を先頭に印付きで並べ、資料の状態を出す。
+// 資料。カード（既定）・ボード・表で見る。連番の順に並べ、資料の状態を出す。
 
 namespace MindmapPreview {
-  /** 納品物を先頭に、それぞれ連番の順に並べた資料を返す */
-  export function orderDocs(docs: Item[]): Item[] {
-    return [...docs].sort(
-      (a, b) =>
-        Number(b.deliverable === true) - Number(a.deliverable === true) || compareIds(a.id, b.id),
-    );
+  /** 連番の順に並べた資料を返す */
+  function byNumber(docs: Item[]): Item[] {
+    return [...docs].sort((a, b) => compareIds(a.id, b.id));
   }
-
-  /** 納品物の列の値 */
-  const DELIVERABLE_VALUES = ["納品物", "納品物以外"];
 
   /** 形式の列の値（札の文言と同じ） */
   const BODY_FORMAT_VALUES = ["MD", "HTML"];
@@ -23,21 +17,10 @@ namespace MindmapPreview {
 
   /** 資料の表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
   export function docColumns(index: RecordIndex): Column[] {
-    const common = commonColumns(index.data.settings);
+    const common = commonColumns();
     return [
       common.id,
       common.title(),
-      {
-        key: "deliverable",
-        label: "納品物",
-        nowrap: true,
-        filterable: true,
-        order: DELIVERABLE_VALUES,
-        priority: 2,
-        get: (row) => (row["deliverable"] === true ? "納品物" : "納品物以外"),
-        cell: (row) =>
-          row["deliverable"] === true ? deliverableBadge() : h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
-      },
       common.status(DOC_STATUSES),
       common.text("kind", "種類", { filterable: true, nowrap: true, priority: 2 }),
       {
@@ -52,9 +35,6 @@ namespace MindmapPreview {
           bodyFormatBadgeOf(typeof row["body"] === "string" ? row["body"] : undefined) ??
           h({ tag: "span", attrs: { class: "muted" }, children: ["—"] }),
       },
-      common.target,
-      common.category,
-      common.phase,
       common.tags,
     ];
   }
@@ -117,13 +97,13 @@ namespace MindmapPreview {
         : null;
     const content =
       route.view === "board"
-        ? // 列ごとに納品物を先頭に並べ直す
+        ? // 列ごとに連番の順に並べ直す
           board({
             columns: boardColumns({
               items: shown,
               statuses: [...DOC_STATUSES],
               statusFilter: filters["status"] ?? [],
-            }).map((column) => ({ ...column, items: orderDocs(column.items) })),
+            }).map((column) => ({ ...column, items: byNumber(column.items) })),
             card: (item) => docCard({ index, doc: item, open: on.open, inBoard: true, mark: marks?.[item.id], comments, edit }),
             emptyText: "資料はありません。",
             added: addedCards({ edit, statuses: DOC_STATUSES, open: on.open, doc: true }),
@@ -136,7 +116,7 @@ namespace MindmapPreview {
                 addedCard({ item, mark: edit?.marks[item.id] ?? "pending", open: on.open, doc: true }),
               ),
               ...(shown.length > 0
-                ? orderDocs(shown).map((row) =>
+                ? byNumber(shown).map((row) =>
                     docCard({ index, doc: row, open: on.open, inBoard: false, mark: marks?.[row.id], comments, edit }),
                   )
                 : (edit?.adds ?? []).length > 0
@@ -151,7 +131,7 @@ namespace MindmapPreview {
     });
   }
 
-  /** 資料のカード（納品物の印・種類・状態・カテゴリー・フェーズ・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
+  /** 資料のカード（種類・状態・タグ）。ボードの中では列で状態が分かるので状態の印を出さず、開いている資料に選択の印を付ける */
   function docCard({
     index,
     doc,
@@ -175,13 +155,12 @@ namespace MindmapPreview {
     return h({
       tag: "button",
       attrs: {
-        class: `card doc-card${doc.deliverable === true ? " deliv-card" : ""}${inBoard && doc.id === currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}${edit?.marks[doc.id] === "remove" ? " pe-removing" : ""}`,
+        class: `card doc-card${inBoard && doc.id === currentSelection() ? " selected" : ""}${doc.withdrawn === true ? " is-withdrawn" : ""}${edit?.marks[doc.id] === "remove" ? " pe-removing" : ""}`,
         type: "button",
         "data-id": doc.id,
         onclick: () => open(doc.id),
       },
       children: [
-        doc.deliverable === true ? deliverableBadge() : null,
         h({
           tag: "span",
           attrs: { class: "doc-kind" },
@@ -197,7 +176,6 @@ namespace MindmapPreview {
             mark === undefined ? null : diffMark({ kind: mark }),
             h({ tag: "span", attrs: { class: "mono" }, children: [doc.id] }),
             inBoard ? null : statusBadge(doc.status),
-            h({ tag: "span", children: [[doc.category, doc.phase].filter(Boolean).join(" · ")] }),
             editMarkOf({ edit, id: doc.id }),
             comments === undefined ? null : commentPlace({ id: doc.id, count: comments[doc.id] }),
           ],

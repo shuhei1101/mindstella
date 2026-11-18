@@ -110,7 +110,7 @@ var MindmapPreview;
     MindmapPreview.addedCards = addedCards;
     /** タスクの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
     function taskColumns({ index, open }) {
-        const common = MindmapPreview.commonColumns(index.data.settings);
+        const common = MindmapPreview.commonColumns();
         return [
             common.id,
             common.title(),
@@ -123,9 +123,6 @@ var MindmapPreview;
                 get: (row) => MindmapPreview.refsOf(row, "for"),
                 cell: (row) => MindmapPreview.idLinksCell(MindmapPreview.refsOf(row, "for"), open),
             },
-            common.target,
-            common.category,
-            common.phase,
             common.tags,
         ];
     }
@@ -153,7 +150,7 @@ var MindmapPreview;
                 card: (item) => boardCard({
                     index,
                     item,
-                    meta: [item.kind, item.category],
+                    meta: [item.kind],
                     links: MindmapPreview.refsOf(item, "for"),
                     open: on.open,
                     mark: marks?.[item.id],

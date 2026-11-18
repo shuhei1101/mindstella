@@ -4,7 +4,7 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 調査・用語集・メモ・会話ログの表の列（`filterable` の列が絞り込みのドロワーの条件になる） */
     function recordColumns({ index, kind, open, }) {
-        const common = MindmapPreview.commonColumns(index.data.settings);
+        const common = MindmapPreview.commonColumns();
         const related = (label) => ({
             key: "related",
             label,
@@ -18,12 +18,6 @@ var MindmapPreview;
                 common.title(),
                 common.text("question", "問い", { minWidth: "16em" }),
                 common.text("conclusion", "結論", { minWidth: "18em" }),
-                common.text("confidence", "確度", {
-                    filterable: true,
-                    nowrap: true,
-                    priority: 2,
-                    order: ["高", "中", "低"],
-                }),
                 common.tags,
             ],
             terms: [

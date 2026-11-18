@@ -424,15 +424,10 @@ namespace MindmapPreview {
     });
   }
 
-  /** 見出しの下の、項目のキー（対象・カテゴリー・フェーズ・影響度・種類・確度・日付・更新日・タグ）の一覧。変わったキーは前の値と今の値を並べる */
-  function metaList({ item, settings, diff }: { item: Item; settings: Settings; diff: KeyDiffs | null }): HTMLElement {
+  /** 見出しの下の、項目のキー（種類・日付・更新日・タグ）の一覧。変わったキーは前の値と今の値を並べる */
+  function metaList({ item, diff }: { item: Item; diff: KeyDiffs | null }): HTMLElement {
     const pairs: [string, keyof Item, string | undefined][] = [
-      [settings.target_label, "target", item.target],
-      ["カテゴリー", "category", item.category],
-      ["フェーズ", "phase", item.phase],
-      ["影響度", "weight", item.weight],
       ["種類", "kind", item.kind],
-      ["確度", "confidence", item.confidence],
       ["日付", "date", item.date],
       ["更新日", "updated", item.updated],
       // 取り下げは値をここに出さず（題の右の札が示す）、差分の表示で変わったときだけ前後を並べる
@@ -1444,13 +1439,12 @@ namespace MindmapPreview {
           attrs: { class: "d-title", [VALUE_KEY_ATTR]: "title" },
           children: [
             keys?.has("title") === true ? keys.showWords("title") : item.title,
-            item.deliverable === true ? deliverableBadge() : null,
             view?.kind === "new" ? diffMark({ kind: "new", labeled: true }) : null,
             // 取り下げた項目は、差分の表示によらず題の右に札を置く
             item.withdrawn === true ? withdrawnBadge({ large: true }) : null,
           ],
         }),
-        metaList({ item, settings: index.data.settings, diff: keys }),
+        metaList({ item, diff: keys }),
         withdrawnReason(),
       ],
     });
@@ -1490,7 +1484,6 @@ namespace MindmapPreview {
           descriptionSection(),
           labelled({ label: "結論", key: "conclusion", value: item.conclusion, top: TITLE_TOP_HEADING_LEVEL }),
           listSection("エイリアス", "aliases", item.aliases),
-          listSection("調査の観点", "angles", item.angles),
           bodySection("本文"),
         ],
       });
@@ -1562,13 +1555,9 @@ namespace MindmapPreview {
   }
 
   /** 読む表示のキーの名前（メタの行の見出し）。キー → 見出しの文字 */
-  function metaLabelOf({ key, settings }: { key: string; settings: Settings }): string | undefined {
+  function metaLabelOf({ key }: { key: string }): string | undefined {
     const labels: Record<string, string> = {
-      target: settings.target_label,
-      category: "カテゴリー",
-      phase: "フェーズ",
       kind: "種類",
-      confidence: "確度",
       date: "日付",
       withdrawn: "取り下げ",
       tags: "タグ",
@@ -1577,7 +1566,7 @@ namespace MindmapPreview {
   }
 
   /** 読む表示のキー・案の名前の後ろに、保存待ちの印（印だけ）を置く。置き場所は、メタの行の見出し・値の名前（太字）・節の見出し・題・案の見出しの順で探す */
-  function markEditedKeys({ root, marks, settings }: { root: HTMLElement; marks: Record<string, PendingMarkKind>; settings: Settings }): void {
+  function markEditedKeys({ root, marks }: { root: HTMLElement; marks: Record<string, PendingMarkKind> }): void {
     for (const [key, kind] of Object.entries(marks)) {
       // 項目の印は見出しに置く
       if (/^[A-Z]-\d+$/.test(key)) continue;
@@ -1588,7 +1577,7 @@ namespace MindmapPreview {
         if (head !== null && head !== undefined && head.querySelector(".pm") === null) head.append(badge);
         continue;
       }
-      const label = metaLabelOf({ key, settings });
+      const label = metaLabelOf({ key });
       const dt = label === undefined ? undefined : [...root.querySelectorAll("dt")].find((node) => node.textContent === label);
       const value = root.querySelector(`[${VALUE_KEY_ATTR}="${key}"]`);
       const named = value?.closest(".d-answer")?.querySelector(":scope > b") ?? null;
@@ -2152,7 +2141,7 @@ namespace MindmapPreview {
     const editing = edit?.editing === true;
     // 編集の表示の間は、読む表示の代わりに編集の入力を並べる
     const content = editing && edit !== null ? detailEditForm(edit.form) : detailBody({ id, index, on, review: comment === null ? null : { items: comment.reviews, edit: comment.edit, order: reviewOrder, onOrder: on.order }, view: resolveDiffView({ id, index, diff }), bodyLayout, bodyView });
-    if (!editing && edit !== null) markEditedKeys({ root: content, marks: edit.marks, settings: index.data.settings });
+    if (!editing && edit !== null) markEditedKeys({ root: content, marks: edit.marks });
     // 中にフォーカスできる要素が無い項目でも、キーボードで送れるように領域ごとフォーカスできるようにする
     const body = h({
       tag: "div",

@@ -757,7 +757,21 @@ var MindmapPreview;
                 case "overview":
                     return MindmapPreview.overviewScreen({
                         index,
-                        on: { open: on.open, navigate: (next) => go({ ...next, id: route.id }, true) },
+                        // 配る書き出しはスレッドを持たないので、未読のタイルを 0 件で描き、押せなくする
+                        threads: serverMode ? comment.threads : null,
+                        on: {
+                            open: on.open,
+                            navigate: (next) => go({ ...next, id: route.id }, true),
+                            ...(serverMode
+                                ? {
+                                    openThread: (id) => {
+                                        openList();
+                                        if (id !== null)
+                                            openThread(id, false);
+                                    },
+                                }
+                                : {}),
+                        },
                         marks,
                         visibleKinds: resolved.kinds,
                     });
@@ -1381,6 +1395,7 @@ var MindmapPreview;
             comment.threads = MindmapPreview.withSeen({ threads: comment.threads, id: opened.id });
             if (wasUnseen !== MindmapPreview.anyOpenUnseen(comment.threads))
                 preserving(renderTop);
+            redrawOverview();
             void threadsApi
                 .seen(opened.id)
                 .then(async (result) => {
@@ -1394,6 +1409,11 @@ var MindmapPreview;
             })
                 .finally(() => seenSending.delete(opened.id));
         };
+        /** 概要を開いているときだけ、未読のタイルをスレッドに合わせて描き直す */
+        const redrawOverview = () => {
+            if (route.tab === "overview")
+                redrawKeepingState();
+        };
         /** スレッドを読み直す。読めたら置き換え（トップバーの未読の点が変わるなら描き直し）、断られた・届かないときは前のまま残して理由を持つ */
         const loadThreads = async () => {
             const result = await threadsApi.read();
@@ -1404,6 +1424,7 @@ var MindmapPreview;
                 comment.threadsError = null;
                 if (wasUnseen !== MindmapPreview.anyOpenUnseen(comment.threads))
                     preserving(renderTop);
+                redrawOverview();
                 markOpenedSeen();
                 return;
             }
@@ -2985,7 +3006,6 @@ var MindmapPreview;
             return {
                 kind,
                 item,
-                settings: index.data.settings,
                 marks: keyMarks(id),
                 removing: own.some((entry) => entry.op === "item-remove"),
                 removedOptions: own.filter((entry) => entry.op === "option-remove").map((entry) => entry.key ?? ""),
@@ -3219,7 +3239,6 @@ var MindmapPreview;
             const form = MindmapPreview.detailEditForm({
                 kind,
                 item,
-                settings: index.data.settings,
                 marks: entry === undefined ? {} : keyMarks(item.id),
                 removing: false,
                 removedOptions: [],
@@ -3459,7 +3478,6 @@ var MindmapPreview;
             }
             return {
                 settings: index.data.settings,
-                index,
                 marks,
                 errors: formErrors(MindmapPreview.SETTINGS_TARGET),
                 transcription: comment.voice.availability,

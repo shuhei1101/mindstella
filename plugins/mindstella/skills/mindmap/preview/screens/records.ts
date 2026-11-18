@@ -14,7 +14,7 @@ namespace MindmapPreview {
     kind: RecordKind;
     open: (id: string) => void;
   }): Column[] {
-    const common = commonColumns(index.data.settings);
+    const common = commonColumns();
     const related = (label: string): Column => ({
       key: "related",
       label,
@@ -28,12 +28,6 @@ namespace MindmapPreview {
         common.title(),
         common.text("question", "問い", { minWidth: "16em" }),
         common.text("conclusion", "結論", { minWidth: "18em" }),
-        common.text("confidence", "確度", {
-          filterable: true,
-          nowrap: true,
-          priority: 2,
-          order: ["高", "中", "低"],
-        }),
         common.tags,
       ],
       terms: [

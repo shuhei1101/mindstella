@@ -4,21 +4,6 @@ var MindmapPreview;
 (function (MindmapPreview) {
     /** 1 行ずつの表で書き換える設定のキーと、列 */
     const TABLES = {
-        targets: {
-            label: "対象",
-            columns: [
-                { key: "name", title: "名前", type: "text" },
-                { key: "summary", title: "説明", type: "text" },
-            ],
-        },
-        categories: {
-            label: "カテゴリー",
-            columns: [
-                { key: "name", title: "名前", type: "text" },
-                { key: "target", title: "対象", type: "text" },
-                { key: "summary", title: "説明", type: "text" },
-            ],
-        },
         links: {
             label: "関連する場所",
             columns: [
@@ -29,8 +14,7 @@ var MindmapPreview;
     };
     /** 設定のまとまり（見出しとキー） */
     const GROUPS = [
-        { title: "話し合い", keys: ["summary", "description", "playbooks", "goal"] },
-        { title: "進め方", keys: ["phases", "target_label", "targets", "categories"] },
+        { title: "話し合い", keys: ["summary", "description"] },
         { title: "関連", keys: ["links"] },
         { title: "変更履歴", keys: ["history_limit"] },
         { title: "音声入力", keys: ["transcription"] },
@@ -52,31 +36,9 @@ var MindmapPreview;
     const SETTING_NAMES = {
         summary: "題名",
         description: "説明",
-        playbooks: "プレイブック",
-        goal: "ゴール",
-        phases: "フェーズ",
-        target_label: "最上位の軸の呼び名",
-        targets: "対象",
-        categories: "カテゴリー",
         links: "関連する場所",
         history_limit: "保持する回数",
     };
-    /** フェーズ・対象・カテゴリーの 1 つの値を持つ項目の件数 */
-    function usageCount({ index, key, value, }) {
-        let count = 0;
-        for (const { item } of index.byId.values()) {
-            if (key === "phases" && item.phase === value)
-                count += 1;
-            if (key === "targets" && item.target === value)
-                count += 1;
-            if (key === "categories" && item.category === value)
-                count += 1;
-        }
-        if (key === "targets")
-            count += index.data.settings.categories.filter((category) => category.target === value).length;
-        return count;
-    }
-    MindmapPreview.usageCount = usageCount;
     /** 設定の画面（見出しの帯と、まとまりごとの入力）を返す */
     function workspaceSettings(props) {
         const form = MindmapPreview.h({
@@ -138,15 +100,15 @@ var MindmapPreview;
             tag: "div",
             attrs: { class: "pe-label-row" },
             children: [
-                key === "goal" || key in TABLES || key === "playbooks" || key === "phases"
+                key in TABLES
                     ? MindmapPreview.h({ tag: "span", attrs: { class: "pe-label", id: `${controlId}-label` }, children: [name] })
                     : MindmapPreview.h({ tag: "label", attrs: { for: controlId, id: `${controlId}-label` }, children: [name] }),
                 mark === undefined ? null : MindmapPreview.pendingEditMark({ kind: mark, compact: true }),
             ],
         }));
         /** 設定のキーを溜める */
-        const commit = (next, map) => on.change(map === undefined ? { key, value: next } : { key, value: next, map });
-        if (key === "summary" || key === "target_label") {
+        const commit = (next) => on.change({ key, value: next });
+        if (key === "summary") {
             const input = MindmapPreview.h({
                 tag: "input",
                 attrs: { id: controlId, class: "input", type: "text", value: typeof value === "string" ? value : "", autocomplete: "off" },
@@ -181,13 +143,6 @@ var MindmapPreview;
                 commit(next);
             });
             wrap.append(input, MindmapPreview.h({ tag: "p", attrs: { class: "pe-hint" }, children: ["変更履歴に残す書き換えのまとまりの数"] }));
-        }
-        else if (key === "playbooks" || key === "phases") {
-            const names = Array.isArray(value) ? value : [];
-            wrap.append(chipsSetting({ props, key, wrap, controlId, name, values: names, commit }));
-        }
-        else if (key === "goal") {
-            wrap.append(...goalInputs({ props, controlId, commit }));
         }
         else if (key in TABLES) {
             wrap.append(...tableInputs({ props, key: key, controlId, commit }));
@@ -296,113 +251,11 @@ var MindmapPreview;
         }
         return [actionField, presetField];
     }
-    /** 使われている値を外したときの付け替え先の選択（選ぶまで溜めない） */
-    function moveSelect({ key, removed, count, next, done, }) {
-        const remaining = (Array.isArray(next) ? next : []).map((entry) => typeof entry === "string" ? entry : String(entry.name));
-        const id = `pe-ws-${key}-move-${MindmapPreview.safeId(removed)}`;
-        const select = MindmapPreview.h({
-            tag: "select",
-            attrs: { id, class: "input" },
-            children: [
-                MindmapPreview.h({ tag: "option", attrs: { value: "", selected: true }, children: ["選んでください"] }),
-                ...remaining.map((entry) => MindmapPreview.h({ tag: "option", attrs: { value: entry }, children: [entry] })),
-            ],
-        });
-        select.addEventListener("change", () => {
-            if (select.value === "")
-                return;
-            done(select.value);
-        });
-        return MindmapPreview.h({
-            tag: "div",
-            attrs: { class: "pe-sub pe-move", "data-moving": removed },
-            children: [
-                MindmapPreview.h({ tag: "label", attrs: { class: "pe-sub-label", for: id }, children: [`${removed} を使っている ${count} 件の付け替え先`] }),
-                select,
-                MindmapPreview.h({ tag: "p", attrs: { class: "pe-hint" }, children: [MindmapPreview.icon("alert"), "付け替え先を選ぶと保存待ちに入ります。"] }),
-            ],
-        });
-    }
-    /** プレイブック・フェーズ（チップ）。使われているフェーズを外したときは付け替え先を選ばせる */
-    function chipsSetting({ props, key, wrap, controlId, name, values, commit, }) {
-        const box = MindmapPreview.h({ tag: "div", attrs: { class: "pe-chips-set" } });
-        box.append(MindmapPreview.chipsInput({
-            controlId,
-            name,
-            hint: `${name}を入れる`,
-            values,
-            suggestions: null,
-            monospace: false,
-            disabled: false,
-            onChange: (names, removed) => {
-                const used = removed !== null && key !== "playbooks"
-                    ? usageCount({ index: props.index, key, value: removed })
-                    : 0;
-                if (removed === null || used === 0) {
-                    commit(names);
-                    return;
-                }
-                // 使われている値を外した: 付け替え先を選んだときに、対応つきで溜める
-                wrap.querySelector(`[data-moving="${removed}"]`)?.remove();
-                wrap.append(moveSelect({
-                    key: key,
-                    removed,
-                    count: used,
-                    next: names,
-                    done: (target) => commit(names, { [removed]: target }),
-                }));
-            },
-        }));
-        return box;
-    }
-    /** ゴール（届けるフェーズ・ゴールの中身を書き換え、納品物は読むだけで並べる） */
-    function goalInputs({ props, controlId, commit, }) {
-        const { settings } = props;
-        const goal = settings.goal ?? { phase: settings.phases[0] ?? "", summary: "", deliverables: [] };
-        const phase = MindmapPreview.h({
-            tag: "select",
-            attrs: { id: `${controlId}-phase`, class: "input" },
-            children: settings.phases.map((entry) => MindmapPreview.h({ tag: "option", attrs: { value: entry, selected: entry === goal.phase }, children: [entry] })),
-        });
-        const summary = MindmapPreview.h({ tag: "textarea", attrs: { id: `${controlId}-summary`, class: "input pe-text", rows: 2 } });
-        summary.value = goal.summary;
-        const change = () => commit({ ...goal, phase: phase.value, summary: summary.value });
-        phase.addEventListener("change", change);
-        summary.addEventListener("change", change);
-        return [
-            MindmapPreview.h({
-                tag: "div",
-                attrs: { class: "pe-sub" },
-                children: [MindmapPreview.h({ tag: "label", attrs: { class: "pe-sub-label", for: `${controlId}-phase` }, children: ["届けるフェーズ"] }), phase],
-            }),
-            MindmapPreview.h({
-                tag: "div",
-                attrs: { class: "pe-sub" },
-                children: [MindmapPreview.h({ tag: "label", attrs: { class: "pe-sub-label", for: `${controlId}-summary` }, children: ["ゴールの中身"] }), summary],
-            }),
-            MindmapPreview.h({
-                tag: "div",
-                attrs: { class: "pe-sub" },
-                children: [
-                    MindmapPreview.h({ tag: "span", attrs: { class: "pe-sub-label" }, children: ["納品物"] }),
-                    MindmapPreview.h({
-                        tag: "ul",
-                        attrs: { class: "pe-rowsx" },
-                        children: goal.deliverables.map((entry) => MindmapPreview.h({
-                            tag: "li",
-                            children: [entry.doc === undefined ? null : MindmapPreview.h({ tag: "span", attrs: { class: "mono" }, children: [entry.doc] }), entry.doc === undefined ? null : " ", entry.title],
-                        })),
-                    }),
-                ],
-            }),
-        ];
-    }
-    /** 対象・カテゴリー・関連する場所（1 行ずつの表）。行の名前を書き換えたら古い名前 → 新しい名前の対応を付け、使われている行を消したら付け替え先を選ばせる */
+    /** 関連する場所（1 行ずつの表） */
     function tableInputs({ props, key, controlId, commit, }) {
         const { label, columns } = TABLES[key];
         const rows = (props.settings[key] ?? []);
         const wrap = MindmapPreview.h({ tag: "div", attrs: { class: "pe-mini-wrap" } });
-        const holder = MindmapPreview.h({ tag: "div", attrs: { class: "pe-moves" } });
         const body = MindmapPreview.h({ tag: "tbody" });
         rows.forEach((row, at) => {
             const cells = columns.map((column) => {
@@ -417,10 +270,7 @@ var MindmapPreview;
                     },
                 });
                 input.addEventListener("change", () => {
-                    const next = rows.map((entry, position) => (position === at ? { ...entry, [column.key]: input.value } : entry));
-                    // 対象・カテゴリーの名前を書き換えた: 古い名前 → 新しい名前の対応を付ける
-                    const renamed = column.key === "name" && (key === "targets" || key === "categories") && row["name"] !== input.value;
-                    commit(next, renamed ? { [row["name"] ?? ""]: input.value } : undefined);
+                    commit(rows.map((entry, position) => (position === at ? { ...entry, [column.key]: input.value } : entry)));
                 });
                 return MindmapPreview.h({ tag: "td", children: [input] });
             });
@@ -430,26 +280,7 @@ var MindmapPreview;
                     class: "icon-btn",
                     type: "button",
                     "aria-label": `${at + 1} 行目を削除`,
-                    onclick: () => {
-                        const next = rows.filter((_, position) => position !== at);
-                        const used = key === "links"
-                            ? 0
-                            : usageCount({ index: props.index, key, value: row["name"] ?? "" });
-                        if (used === 0) {
-                            commit(next);
-                            return;
-                        }
-                        // 使われている行を消した: 付け替え先を選んだときに、対応つきで溜める
-                        const removed = row["name"] ?? "";
-                        holder.querySelector(`[data-moving="${removed}"]`)?.remove();
-                        holder.append(moveSelect({
-                            key: key,
-                            removed,
-                            count: used,
-                            next,
-                            done: (target) => commit(next, { [removed]: target }),
-                        }));
-                    },
+                    onclick: () => commit(rows.filter((_, position) => position !== at)),
                 },
                 children: [MindmapPreview.icon("trash")],
             });
@@ -476,7 +307,6 @@ var MindmapPreview;
         }));
         return [
             wrap,
-            holder,
             MindmapPreview.h({
                 tag: "button",
                 attrs: {
