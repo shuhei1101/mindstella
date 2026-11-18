@@ -108,7 +108,7 @@ classes:
         description: プロセスの中の 1 本の貼り付けの鍵。名前の付いたバッファ（`PASTE_BUFFER`）を共有するため、生きているかの確かめと tmux の 3 つのコマンドを重ねない
       - name: _restarter
         type: Callable[[Path], bool] | None
-        description: ワークスペースのフォルダを受け、MindStella のセッションを契機 `comment` で起動し直して準備ができたかを返す関数（『入口』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら起動し直さない
+        description: ワークスペースのフォルダを受け、MindStella のセッションが落ちていれば（`running` なら `is_alive` で確認する）契機 `comment` で起動し直して準備ができたかを返す関数（『入口』が `sessions.request_restart` と `sessions.wait_until_running` で作って渡す）。`None` なら起動し直さない
     methods:
       - name: remember
         title: 宛先を書き換える
@@ -204,17 +204,18 @@ classes:
           type: tuple[bool, bool]
           description: '`(entered, restarted)`（応答の `entered`・`restarted`）'
         process: |-
-          1. `mindstella_session_target` が宛先を返すか、状態のフォルダに MindStella のセッションが無ければ、`(enter(root, count), False)` を返す
-          2. クローズ待ちか `_restarter` が `None` なら `(False, False)` を返す
-          3. `_restarter(root)` が偽なら `(False, False)` を返す
-          4. `(enter(root, count), True)` を返す
+          1. 状態のフォルダに MindStella のセッションが無ければ、`(enter(root, count), False)` を返す
+          2. `restarting`・クローズ待ち・`_restarter` が `None` なら `(False, False)` を返す（コメントはスレッドに残る）
+          3. `running` で `enter(root, count)` が真なら `(True, False)` を返す
+          4. `_restarter(root)` が偽なら `(False, False)` を返す
+          5. `(enter(root, count), True)` を返す
         unit_tests:
           - name: test_enter_or_restart
             case: 正常
             summary: 落ちていれば起動し直してから入力する
-            condition: '`parametrize`: `running` で生きている / `crashed` で `_restarter` が真 / `crashed` で `_restarter` が偽 / クローズ待ち'
+            condition: '`parametrize`: `running` で生きている / `running` で落ちている（起動し直すまで貼れない） / `restarting` / `crashed` で `_restarter` が真 / `crashed` で `_restarter` が偽 / クローズ待ち'
             mock: '`enter_to_claude`（真を返す）・`_restarter`'
-            expected: '`(True, False)` / `(True, True)` / `(False, False)` / `(False, False)`。クローズ待ちでは `_restarter` を呼ばない'
+            expected: '`(True, False)` / `(True, True)` / `(False, False)` / `(True, True)` / `(False, False)` / `(False, False)`。`running` で生きているとき・`restarting`・クローズ待ちでは `_restarter` を呼ばない'
 constants:
   - name: INPUT_TEMPLATE
     title: 入力する文字列の雛形
