@@ -14,7 +14,7 @@ const LOOK_LABEL = { glow: "グロウ", starlight: "星の光", constellation: "
 
 /** 区画「詳細に表示するもの」の項目の名前 */
 export const MINIMAP_LABEL = "差分のミニマップ";
-export const BODY_VIEW_LABELS = { pin: "表の列の固定", head: "表の見出しの固定", stripes: "表のしま模様", fold: "セクションの折りたたみ" } as const;
+export const BODY_VIEW_LABELS = { fold: "セクションの折りたたみ" } as const;
 const BODY_LAYOUT_LABEL = "本文の差分の並べ方";
 const REVIEW_ORDER_LABEL = "コメントの並び";
 
@@ -41,9 +41,6 @@ export const overrideNames = ({ prefs, theme }: { prefs: Prefs; theme: Theme | n
     ...KIND_KEYS.filter((kind) => columns[kind] !== undefined).map((kind) => `表の列（${KIND_LABEL[kind]}）`),
     ...KIND_KEYS.filter((kind) => filters[kind] !== undefined && !sameFilters(filters[kind], defaultFilters(kind as PreviewTab))).map((kind) => `絞り込み（${KIND_LABEL[kind]}）`),
     ...(prefs.minimap === false ? [MINIMAP_LABEL] : []),
-    ...(prefs.tablePin === false ? [BODY_VIEW_LABELS.pin] : []),
-    ...(prefs.tableHead === false ? [BODY_VIEW_LABELS.head] : []),
-    ...(prefs.tableStripes === true ? [BODY_VIEW_LABELS.stripes] : []),
     ...(prefs.sectionFold === false ? [BODY_VIEW_LABELS.fold] : []),
     ...(prefs.bodyLayout === "side" ? [BODY_LAYOUT_LABEL] : []),
     ...(prefs.reviewOrder === "oldest" ? [REVIEW_ORDER_LABEL] : []),
@@ -61,9 +58,6 @@ export const resetPrefs = (prefs: Record<string, unknown>): Record<string, unkno
   minimap: null,
   bodyLayout: null,
   reviewOrder: null,
-  tablePin: null,
-  tableHead: null,
-  tableStripes: null,
   sectionFold: null,
 });
 

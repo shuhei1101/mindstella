@@ -16,7 +16,7 @@ import { readPrefs, usePrefs, writePrefs } from "@/shared/stores/prefs-store";
 import { useThemeStore } from "@/shared/stores/theme-store";
 
 /** 本文の見せ方の項目 → 端末の保存領域のキーと、上書きにする値 */
-const BODY_VIEW_PREFS = { pin: "tablePin", head: "tableHead", stripes: "tableStripes", fold: "sectionFold" } as const satisfies Record<keyof BodyView, string>;
+const BODY_VIEW_PREFS = { fold: "sectionFold" } as const satisfies Record<keyof BodyView, string>;
 
 /** 端末の保存領域に書けるか */
 const storageWorks = (): boolean => {
@@ -48,7 +48,7 @@ export const DisplaySettingsPanel = () => {
   const visibleKinds = KIND_KEYS.filter((kind) => visible.has(kind));
   const themeOverride = (readPrefs() as Record<string, unknown>)["theme"];
   const counts = Object.fromEntries(KIND_KEYS.map((kind) => [kind, rawIndex?.data[kind].length ?? 0])) as Record<Kind, number>;
-  const bodyView: BodyView = { pin: prefs.tablePin !== false, head: prefs.tableHead !== false, stripes: prefs.tableStripes === true, fold: prefs.sectionFold !== false };
+  const bodyView: BodyView = { fold: prefs.sectionFold !== false };
   const close = (): void => {
     setPanel(undefined);
   };
@@ -98,9 +98,7 @@ export const DisplaySettingsPanel = () => {
             onClose={close}
             onMinimapChange={(shown) => { writePrefs({ minimap: shown ? null : false }); }}
             onBodyViewChange={(key, value) => {
-              const name = BODY_VIEW_PREFS[key];
-              const isDefault = key === "stripes" ? !value : value;
-              writePrefs({ [name]: isDefault ? null : value });
+              writePrefs({ [BODY_VIEW_PREFS[key]]: value ? null : value });
             }}
             onWorkspace={() => {
               // 設定の画面は本文の区画を置き換えるので、パネルを閉じて移る（履歴に積む）

@@ -17,9 +17,6 @@ export type Prefs = {
   diffSel?: string | null;
   minimap?: false | null;
   bodyLayout?: "side" | null;
-  tablePin?: false | null;
-  tableHead?: false | null;
-  tableStripes?: true | null;
   sectionFold?: false | null;
   kinds?: Kind[] | null;
   look?: NetworkLook | null;

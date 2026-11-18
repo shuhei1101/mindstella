@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- 今の画面のコードを写した箇所で、正規表現の捕捉と描いた直後の要素を指す */
 // 本文の差分の描画（今の画面の `screens/detail.ts` の本文の差分と同じ振る舞い）。mdmark が描いた React の外の DOM に手を入れる
 import { getLibrary } from "@/shared/adapters/libraries";
-import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, embeddedHtmlRanges, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown, TABLE_WRAP_CLASS } from "@/shared/core/body-links";
+import { CODE_BLOCK_ATTRS, DIAGRAM_SOURCE_ATTR, embeddedHtmlRanges, EMBEDDED_HTML_CLASS, HTML_BLOCK_CLASS, LINE_ATTR, renderDiagramSvg, renderMarkdown, MDMARK_TABLE_CLASS } from "@/shared/core/body-links";
 import { childMarks, COLORED_DIAGRAM_TYPES, diffDiagram, diffDiagramFromSource, diffInline, diffLineParts, LINE_DIFF_TIMEOUT_MS, pairedParts, pairEmbeddedHtml, placeRemovedBlocks, type DiagramDiff, type InlineDiff, type InlinePart, type JsDiff, type LinePart, type RemovedBlock } from "@/shared/core/diff";
 import { h, markupIcon } from "@/shared/core/dom-parts";
 import { htmlBodyDiff } from "@/shared/core/html-body-diff";
@@ -194,10 +194,10 @@ const insertRemovedBlocks = ({ root, blocks }: { root: HTMLElement; blocks: Rend
       root.append(piece);
       continue;
     }
-    // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は包む入れ物ごと外側にする）
+    // 足した塊の囲みの中・箇条書きや表の中ではなく、その外側の前へ差し込む（表は mdmark の表の入れ物ごと外側にする）
     const outer = target.parentElement?.matches("ins.df-blk") === true ? target.parentElement : target;
     const container = outer.closest("ul, ol, table") ?? outer;
-    (container.parentElement?.matches(`.${TABLE_WRAP_CLASS}`) === true ? container.parentElement : container).before(piece);
+    (container.closest<HTMLElement>(`.${MDMARK_TABLE_CLASS}`) ?? container).before(piece);
   }
   return placed;
 };

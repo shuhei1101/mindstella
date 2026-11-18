@@ -8,7 +8,7 @@ import { KIND_KEYS } from "@/shared/core/records";
 const meta = {
   title: "Settings/SettingsPanel",
   component: SettingsPanel,
-  args: { look: "deep", defaultLook: "deep", visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { pin: true, head: true, stripes: false, fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn() },
+  args: { look: "deep", defaultLook: "deep", visibleKinds: [...KIND_KEYS], defaultKinds: [...KIND_KEYS], counts: { decisions: 12, tasks: 8, research: 3, docs: 5, terms: 9, notes: 4, logs: 20 }, overrides: [], canSave: true, message: null, storageAvailable: true, minimap: true, bodyView: { fold: true }, onKindsChange: fn(), onReset: fn(), onSaveDefault: fn(), onClose: fn(), onMinimapChange: fn(), onBodyViewChange: fn() },
   // パネルの中と同じ見出しの順にするため、パネルの見出し「表示の設定」（h2）の下に置く
   decorators: [
     (Story) => (
@@ -57,5 +57,5 @@ export const BodyDiffLayoutOverridden: Story = { args: { overrides: ["本文の�
 /** 詳細のレビュー中のコメントの並びを古い順にした。変えている項目に「コメントの並び」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
 export const ReviewOrderOverridden: Story = { args: { overrides: ["コメントの並び"], look: "deep", defaultLook: "deep" } };
 
-/** 表のしま模様をオンにし、セクションの折りたたみをオフにした。「詳細に表示するもの」の 2 つのチェックを切り替え、変えている項目に「表のしま模様」「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
-export const BodyViewOverridden: Story = { args: { bodyView: {"pin": true, "head": true, "stripes": true, "fold": false}, overrides: ["表のしま模様", "セクションの折りたたみ"], look: "deep", defaultLook: "deep" } };
+/** セクションの折りたたみをオフにした。「詳細に表示するもの」のチェックを切り替え、変えている項目に「セクションの折りたたみ」と「既定に戻す」を出す。見た目と表示する種類は既定のままなので、「ワークスペースの既定にする」の代わりに「見た目と表示する種類は、ワークスペースの既定と同じです。」を出す */
+export const BodyViewOverridden: Story = { args: { bodyView: { fold: false }, overrides: ["セクションの折りたたみ"], look: "deep", defaultLook: "deep" } };

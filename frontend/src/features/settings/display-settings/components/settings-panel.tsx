@@ -35,7 +35,7 @@ export type SettingsPanelProps = {
 /** 種類 → 種類の行に出す印 */
 const KIND_ICON = { decisions: "decision", tasks: "task", research: "research", docs: "doc", terms: "term", notes: "note", logs: "log" } as const satisfies Record<Kind, IconName>;
 
-const BODY_VIEW_KEYS = ["pin", "head", "stripes", "fold"] as const satisfies readonly (keyof BodyView)[];
+const BODY_VIEW_KEYS = ["fold"] as const satisfies readonly (keyof BodyView)[];
 
 /** 2 つの並びが同じ要素を持つか */
 const sameKinds = (a: readonly Kind[], b: readonly Kind[]): boolean => a.length === b.length && a.every((kind) => b.includes(kind));
