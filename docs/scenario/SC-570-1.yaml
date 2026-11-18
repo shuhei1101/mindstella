@@ -223,10 +223,37 @@ scenarios:
       - エンドポイントに 1 件だけ要求が届き、止まった理由が利用上限になっている
       - 起動し直しのための SessionEnd で、通知が重ねて届いていない
     test: test_normal_when_rate_limited
+  - name: 正常シナリオ（無操作の上限）
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイントで、200 を返却する）と、Claude Code のセッション（`/exit` が貼られたら SessionEnd のフックを呼んで終わる）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ。無操作の上限と見回りの間隔は、テストが待てる短い秒数
+      - name: ワークスペース
+        description: 正常シナリオと同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant SRV as 常駐サーバー
+        participant CC as MindStella のセッション
+        participant HK as フック
+        participant DC as Discord
+
+        SRV->>SRV: 見回りで、無操作の上限を過ぎたことを見つける
+        SRV->>CC: 止めて tmux のペインを閉じる
+        CC->>HK: SessionEnd
+        HK->>SRV: 停止済みを記録する
+        SRV->>DC: 無操作の上限で止まったことを 1 件の通知で送信する
+      ```
+    expected:
+      - エンドポイントに 1 件だけ要求が届き、止まった理由が無操作の上限になっている
+      - 止めた後の SessionEnd で、通知が重ねて届いていない
+    test: test_normal_when_idle_timeout
 refs:
   - SC-568-1#
   - SC-531-2#
   - SC-582-1#
+  - SC-594-1#
 notes:
   通知の文面: |-
     本文は次の 2 行だけにする（絵文字を使用しない）。
@@ -246,5 +273,6 @@ notes:
     | 停止処理の失敗 | 止める工程の途中で失敗し、Claude Code のプロセスが無くなった |
     | Claude Code の終了 | 停止の依頼なしに、Claude Code が `clear`・`resume` 以外の理由で終了した |
     | 利用上限 | アカウントが利用上限に達し、起動し直すために止めた（単一ユースケース『MindStella のセッションを起動し直す』） |
+    | 無操作の上限 | 応答の途中でないまま無操作の上限を過ぎたので止めた（単一ユースケース『無操作の上限で MindStella のセッションを止める』） |
   通知しない出来事: 応答が利用上限以外のエラーで終わったとき（StopFailure）は MindStella のセッションが止まらないため通知しない。起動し直しの途中（`restarting`）の SessionEnd は、契機を問わず通知しない。止める間に失敗しても MindStella のセッションが生きていて起動中に戻ったときは、止まっていないため通知しない。既に停止済みか落ちた状態から、停止済みか落ちた状態へ書き換えるときは通知しない（1 回の停止で 1 件）。利用上限・無操作の上限で止めたときの通知は、その停止を作る単一ユースケースが、この単一ユースケースの通知を止まった理由を添えて呼ぶ。
 id: SC-570-1

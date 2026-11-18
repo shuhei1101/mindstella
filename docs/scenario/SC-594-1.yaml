@@ -1,0 +1,189 @@
+id: SC-594-1
+title: 無操作の上限で MindStella のセッションを止める
+lead: MindStella のセッションが応答の途中でないまま無操作の上限を過ぎたときに、常駐サーバーが MindStella のセッションを止めて claude-balancer のアカウントを返却し、止めた後にコメントが届いたら前の会話を引き継いで起動し直す単一ユースケース。
+issue: 521
+primary_actor: 常駐サーバー
+stakeholders:
+  - name: 利用者
+    interest: 返事を数日しない間にアカウントを借り続けず、戻ってコメントを送信すれば同じ会話の続きから話し合いを再開できる。止まったことと理由が分かる
+  - name: 外部のアプリ
+    interest: 無操作の上限で止まったことを『MindStella のセッションの一覧』で確認でき、クローズ待ちにならないのでクローズ・開き直しをしなくてもコメントで再開できる
+trigger: 見回りの間隔ごとに、常駐サーバーが起動中の MindStella のセッションの最後の出来事からの時間を確認する
+preconditions:
+  - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で起動している
+  - 無操作の上限が設定されている（止めない指定でない）
+success_guarantee: 応答の途中でないまま最後の出来事から無操作の上限を過ぎた MindStella のセッションが止まり、`claude-balancer exec` が終わってアカウントが返却されている。状態に停止済みと止まった理由（無操作の上限）が記録され、クローズ待ちになっていない。止めた後に届いたコメントで、前の会話を引き継いで起動し直す。
+minimal_guarantee: 応答の途中の MindStella のセッションは、上限を過ぎても止めない。止める前に、まとめていない変更を commit する。止める間に失敗したときは、失敗した段階と理由を状態に記録し、次の見回りでもう一度止める。
+frequency: 利用者が無操作の上限より長く返事をしないたびに 1 回
+priority: 中
+scenarios:
+  - name: 正常シナリオ
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行し、子プロセスが終わったら終わる）・Claude Code のセッション（`/exit` が貼られたら SessionEnd のフックを呼んで終わる）・Discord の Webhook（受けた本文を記録して 200 を返却する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ。無操作の上限と見回りの間隔は、テストが待てる短い秒数
+        notes: 無操作の上限と見回りの間隔の設定の名前はインターフェース定義設計で決める
+      - name: ワークスペース
+        description: 単一ユースケース『外部のアプリから起動する』で作ったワークスペースで、MindStella のセッションが応答の途中でなく、まとめていない変更が無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MGR as セッションの管理
+        participant CC as MindStella のセッション
+        participant HK as フック
+        participant CB as claude-balancer
+        participant DC as Discord
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+
+        CC->>HK: 応答の終わり（Stop）
+        HK->>MGR: 応答の途中を解き、最後の出来事の時刻を記録する
+        MGR->>MGR: 見回りで、応答の途中でなく最後の出来事から上限を過ぎたことを見つける
+        MGR->>CC: /exit を貼って止める（クローズ待ちにしない）
+        CC->>HK: SessionEnd
+        HK->>MGR: 状態に停止済みを記録する
+        CB->>CB: 子プロセスが終わったので exec が終わり、アカウントを返却する
+        MGR->>DC: 止まった理由「無操作の上限」で通知する
+        APP->>API: MindStella のセッションの一覧を取得する（GET /workspaces/{id}/sessions）
+        API-->>APP: 停止済み・無操作の上限で止まった
+      ```
+    expected:
+      - 状態に停止済みが記録され、クローズ待ちになっていない
+      - claude-balancer の `exec` が終わっている（アカウントが返却されている）
+      - Webhook の Mock が、止まった理由「無操作の上限」の通知を 1 件だけ受けている
+      - 『MindStella のセッションの一覧』が、停止済みと、無操作の上限で止まったことを返却している
+    test: test_normal
+  - name: 正常シナリオ（止めた後にコメントが届く）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数を記録し、SessionStart のフックを叩いて待つ）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 正常シナリオで無操作の上限で止めた後で、状態に前の Claude Code の `session_id` が残っている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant NT as コメントの通知
+        participant MGR as セッションの管理
+        participant CB as claude-balancer
+        participant CC as MindStella のセッション
+
+        U->>NT: 画面でコメントを送信する
+        NT->>NT: スレッドに追加する
+        NT->>MGR: MindStella のセッションが無く、クローズ待ちでないので、起動し直しを依頼する
+        MGR->>CB: exec を起動する（claude --resume {前の session_id}）
+        CB->>CC: 前の会話を引き継いで起動する
+        CC->>MGR: SessionStart（resume）で登録する
+        MGR->>NT: 準備ができた
+        NT->>CC: 届いた件数を貼る
+      ```
+    expected:
+      - 起動した Claude Code が `--resume` と前の `session_id` を受けている
+      - ペインに届いた件数の入力が貼られ、コメントがスレッドに取り込み待ちとして残っている
+      - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返却し、無操作の上限で止まったことを返却していない
+    test: test_normal_when_comment_after_idle_stop
+  - name: 正常シナリオ（応答の途中は止めない）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（UserPromptSubmit のフックを呼んだ後、無操作の上限より長く Stop のフックを呼ばず、その後に Stop のフックを呼ぶ）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 正常シナリオと同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MGR as セッションの管理
+        participant CC as MindStella のセッション
+        participant HK as フック
+
+        CC->>HK: 応答の始まり（UserPromptSubmit）
+        HK->>MGR: 応答の途中を記録する
+        MGR->>MGR: 見回りで上限を過ぎても、応答の途中なので止めない
+        CC->>HK: 応答の終わり（Stop）
+        HK->>MGR: 応答の途中を解き、最後の出来事の時刻を記録する
+        MGR->>MGR: 応答の終わりから上限を過ぎるまで止めない
+      ```
+    expected:
+      - 応答の途中の間は、上限を過ぎても状態が `running` のまま
+      - 応答の終わりから上限を過ぎるまでの見回りでは止めず、過ぎた後の見回りで止める
+    test: test_normal_when_responding
+  - name: 正常シナリオ（まとめていない変更がある）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（`/exit` が貼られたら SessionEnd のフックを呼んで終わる）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: MindStella のセッションが応答の途中でなく、まとめていない変更がある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MGR as セッションの管理
+        participant CHG as 変更の記録（commit）
+        participant CC as MindStella のセッション
+
+        MGR->>MGR: 見回りで、上限を過ぎたことを見つける
+        MGR->>CHG: まとめていない変更の commit を依頼する
+        MGR->>CC: /exit を貼って止める
+      ```
+    expected:
+      - まとめていない変更が、MindStella のセッションを止める前に commit されている
+      - 状態に停止済みが記録されている
+    test: test_normal_when_pending_changes
+  - name: 正常シナリオ（無操作の上限を指定しない）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（何もしない）
+      - name: 常駐サーバー
+        description: 起動している。無操作の上限に止めない指定をしている
+      - name: ワークスペース
+        description: 正常シナリオと同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MGR as セッションの管理
+
+        MGR->>MGR: 見回りで、無操作の上限が止めない指定なので、最後の出来事からの時間を確認しない
+      ```
+    expected:
+      - 最後の出来事から長く経っても、状態が `running` のまま
+    test: test_normal_when_disabled
+  - name: 異常シナリオ（止める間に失敗する）
+    setup:
+      - name: Mock
+        description: Claude Code のセッション（`/exit` が貼られても終わらず、SIGTERM でも終わらない）
+      - name: 常駐サーバー
+        description: 正常シナリオと同じ
+      - name: ワークスペース
+        description: 正常シナリオと同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant MGR as セッションの管理
+        participant CC as MindStella のセッション
+
+        MGR->>MGR: 見回りで、上限を過ぎたことを見つける
+        MGR->>CC: /exit を貼って止める
+        CC-->>MGR: 終わらない
+        MGR->>MGR: 状態を起動中に戻し、失敗した段階と理由を記録する
+        MGR->>MGR: 次の見回りでもう一度止める
+      ```
+    expected:
+      - 状態が `running` に戻り、失敗した段階と理由が記録されている
+      - 『MindStella のセッションの一覧』が、失敗した理由を返却している
+      - 止まっていないので、停止の通知を送信していない
+    test: test_error_when_stop_failed
+refs:
+  - SC-531-2#
+  - SC-582-1#
+  - SC-570-1#
+notes:
+  無操作の判定: 最後の出来事は、起動（SessionStart）・応答の始まり（UserPromptSubmit）・応答の終わり（Stop・StopFailure）・コメントをペインへ貼ったときの時刻。応答の途中は、上限を過ぎても無操作としない。
+  見回りの対象: 状態が `running` の MindStella のセッションだけを対象にし、起動し直しの途中（`restarting`）・停止の途中（`stopping`）・クローズ待ちは対象にしない。見回りは、落ちたことの見回りと同じ間隔で行う。
+  停止の依頼との違い: 止め方は単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』の停止と同じで、状態をクローズ待ちにしないことだけが違う。クローズ待ちにしないので、止めた後に届いたコメントで単一ユースケース『MindStella のセッションを起動し直す』の、コメントの契機の起動し直しが動く。
+  画面の表示: 無操作の上限で止まったことを画面に出すことは、この単一ユースケースの範囲の外。
+  インターフェース定義で決めること: 無操作の上限と止めない指定の設定の置き場所と既定値、一覧で止まった理由を返却するキー
