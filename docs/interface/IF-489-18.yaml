@@ -109,6 +109,78 @@ flows:
       - どちらもステータスが 200 で、`Content-Type` が `text/html; charset=utf-8`
       - '`Host: other.example.test` でつなぐと 403'
     test: test_normal_when_host_allowed
+  - name: 正常系（latest を develop の commit に解決する）
+    summary: 設定の mdmark のバージョンが `latest` のとき、GitHub に問い合わせた develop の先頭の commit の SHA で mdmark の URL を組み立て、保持している間は問い合わせ直さない
+    setup:
+      - name: Mock
+        description: GitHub の API を、develop の先頭の commit の SHA を返す偽のサーバー（空きポート）に差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
+        notes: 偽のサーバーは `0123456789abcdef0123456789abcdef01234567` を返し、受けた要求の数を数える
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark.version` が `latest` のワークスペース
+        notes: 続けて 2 回 GET する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /mindstella.html
+        participant GH as GitHub の API
+
+        クライアント->>IF: GET /mindstella.html
+        IF-->>GH: develop の先頭の commit の SHA
+        IF-->>クライアント: 200、SHA の URL で mdmark を読み込む HTML
+        クライアント->>IF: GET /mindstella.html
+        IF-->>クライアント: 200、同じ HTML（問い合わせない）
+      ```
+    expected:
+      - どちらもステータスが 200
+      - mdmark の CSS の link 要素の `href` が `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.css`
+      - '`mindmap-mdmark-config` の `js` が `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.js`'
+      - 偽のサーバーが受けた要求が 1 回
+    test: test_normal_when_latest_resolved
+  - name: 正常系（GitHub に届かない）
+    summary: develop の先頭の commit を問い合わせられないときは、`develop` の URL で mdmark を読み込む画面を返す
+    setup:
+      - name: Mock
+        description: GitHub の API を、誰も待ち受けない空きポートに差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark.version` が `latest` のワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /mindstella.html
+        participant GH as GitHub の API
+
+        クライアント->>IF: GET /mindstella.html
+        IF-->>GH: develop の先頭の commit の SHA（届かない）
+        IF-->>クライアント: 200、develop の URL で mdmark を読み込む HTML
+      ```
+    expected:
+      - ステータスが 200
+      - mdmark の CSS の link 要素の `href` が `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css`
+      - 常駐サーバーの標準エラーに、mdmark の develop の commit を問い合わせられなかった旨の行が 1 行ある
+    test: test_normal_when_github_unreachable
+  - name: 正常系（タグを指定）
+    summary: 設定の mdmark のバージョンがタグのときは、GitHub に問い合わせずにタグの URL で mdmark を読み込む画面を返す
+    setup:
+      - name: Mock
+        description: GitHub の API を、受けた要求の数を数える偽のサーバー（空きポート）に差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark.version` が `v0.13.0` のワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /mindstella.html
+
+        クライアント->>IF: GET /mindstella.html
+        IF-->>クライアント: 200、タグの URL で mdmark を読み込む HTML
+      ```
+    expected:
+      - ステータスが 200
+      - mdmark の CSS の link 要素の `href` が `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@v0.13.0/dist/index.css`
+      - 偽のサーバーが受けた要求が 0 回
+    test: test_normal_when_version_tag
 lead: '`preview_url` が立てた配信が、プレビューの画面（雛形に CSS と JavaScript を差し込んだ HTML）を `/mindstella.html` で返す。`/` は `/mindstella.html` へ送り直す。記録は画面が『記録の取得』で読む。'
 idempotent: true
 side_effects: なし（読むだけ）
@@ -149,11 +221,14 @@ constraints:
   - item: 差し込みの安全
     constraint: 差し込む CSS・JavaScript が `</style>`・`</script>` を含むときは、同梱の雛形の誤りとして 500 を返す
   - item: 読み込むファイル
-    constraint: 返す HTML は、描画のライブラリを jsDelivr から、文字を Google Fonts から読む（雛形が持つ）。mdmark の CSS の link 要素と JavaScript の URL は、返すたびにワークスペースの設定の `mdmark.version`（無ければ `latest`）から組み立てて雛形へ入れ、`integrity` を付けない。ローカルのファイルは指さない
+    constraint: 返す HTML は、描画のライブラリを jsDelivr から、文字を Google Fonts から読む（雛形が持つ）。mdmark の CSS の link 要素と JavaScript の URL は、返すたびに制約「mdmark の ref の解決」の ref から `https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist/{ファイル}` で組み立てて雛形へ入れ、`integrity` を付けない。ローカルのファイルは指さない
   - item: 通信
-    constraint: 配信は外へ通信しない
+    constraint: 配信は、制約「mdmark の ref の解決」の GitHub の API への問い合わせのほかは外へ通信しない
   - item: 送り元の確かめ
     constraint: 書き込むエンドポイントは、`Origin` が付いていれば確かめ、合わなければ 403 を返す（別のサイトのページからの書き込みを防ぐ）。受けるのは `http://127.0.0.1:{ポート}`・`http://localhost:{ポート}` と、スキームが `https` か `http` で、ポートを外したホスト名の部分が許可するホスト名のどれかと同じもの。`Origin` が無い要求（HTTP のクライアントからの要求）は通す
+  - item: mdmark の ref の解決
+    constraint: 'ワークスペースの設定の `mdmark.version` がタグのときはタグを、`latest` か無いときは mdmark の develop の先頭の commit の SHA（40 文字の 16 進）を mdmark の ref にする。SHA は GitHub の API の `GET https://api.github.com/repos/shuhei1101/mdmark/commits/develop`（`Accept: application/vnd.github.sha`、認証なし）で問い合わせ、常駐サーバーの中で 150 秒保持し、保持している間は問い合わせない。1 回の問い合わせは接続と読み取りをそれぞれ 1 秒まで待ち、取り直さない。届かない・200 以外・40 文字の 16 進でないときは、前に問い合わせた SHA があればそれを、無ければ `develop` を ref にし、標準エラーに 1 行記録して、問い合わせられなかったことも 150 秒保持する。403・429 の応答が `Retry-After` か `X-RateLimit-Reset` を持つときは、その時刻まで問い合わせない。『記録の取得』の `mdmark_ref` と『配る書き出し』も、同じ ref を使用する'
+    notes: '150 秒: GitHub の API の認証なしの上限 60 回/時 ÷ 同じ端末で問い合わせる数 2（常駐サーバー・Storybook）× 安全率 0.8 = 24 回/時。1 秒: 2026-11-19 の実測 6 回の最大 0.26 秒。p99.9 を測っていないため、同じ端末の jsDelivr の取得の実測の最大 0.65 秒を下流の p99.9 の代わりに置き、余裕 50% を加えた。p99.9 を測る作業を残す。commit を指す jsDelivr の URL は `cache-control: immutable` で中身が変わらないため、ブラウザ・CDN のキャッシュが更新前の配布物を返さない'
 refs:
   - IF-489-17#
   - IF-489-71#

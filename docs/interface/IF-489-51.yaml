@@ -149,6 +149,30 @@ flows:
       - '`marked_bodies` が `A-2.html` だけを持ち、`<p` の直後に ` data-line="4" data-line-end="4"` がある'
       - '`marked_bodies` の `A-2.html` の `<style>` に行の印が無く、` data-line="{数}"`・` data-line-end="{数}"` を取り除くと `bodies` の `A-2.html` と同じ'
     test: test_normal_when_html_body
+  - name: 正常系（mdmark の ref を返す）
+    summary: 設定の mdmark のバージョンが `latest` のとき、develop の先頭の commit の SHA を `mdmark_ref` に返す
+    setup:
+      - name: Mock
+        description: GitHub の API を、develop の先頭の commit の SHA を返す偽のサーバー（空きポート）に差し替えて MCP サーバーを立て、`preview_url` を呼び、返った URL へ HTTP のクライアントでつなぐ
+        notes: 偽のサーバーは `0123456789abcdef0123456789abcdef01234567` を返す
+      - name: make_workspace
+        description: 作成を済ませ、`config.yaml` の `mdmark.version` が `latest` のワークスペース
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as GET /api/records
+        participant GH as GitHub の API
+
+        クライアント->>IF: GET /api/records
+        IF-->>GH: develop の先頭の commit の SHA
+        IF-->>クライアント: 200、JSON
+      ```
+    expected:
+      - ステータスが 200
+      - '`mdmark_ref` が `0123456789abcdef0123456789abcdef01234567`'
+      - '`settings.mdmark.version` が `latest` のまま'
+    test: test_normal_when_mdmark_ref
 lead: 配信しているワークスペースの全ての YAML と本文を、その場で読んで 1 つの JSON にまとめて返す。プレビューの画面が開いたときと、書き換えの知らせを受けたときに読む。
 idempotent: true
 side_effects: なし（読むだけ）
@@ -188,6 +212,10 @@ response:
     type: dict[str, str]
     description: '`bodies` の HTML の本文ごとの、ファイル名 → 開きタグに原文の行の印（`data-line`・`data-line-end`）を足した HTML。画面はこれを描き、選んだ範囲を本文の行の範囲にし、差分の印を付ける要素を決める。HTML の本文が無ければ `{}`'
     notes: 印の足し方は制約「行の印」
+  - name: mdmark_ref
+    type: str
+    description: 画面が読み込む mdmark の jsDelivr の ref（『プレビューの配信』の制約「mdmark の ref の解決」）。設定の `mdmark.version` がタグならタグ、`latest` か無ければ mdmark の develop の先頭の commit の SHA（問い合わせられないときは `develop`）。React の画面はこの ref で mdmark の URL を組み立てる
+    example: 0123456789abcdef0123456789abcdef01234567
 response_notes: |-
   配る書き出し（`export`）は、同じ形の JSON を `<script type="application/json" id="mindmap-data">` の中身に埋め込む。画面は埋め込みのデータがあればそれを読み、無ければこの API を読む。スレッド（`threads.yaml`）は返さない（『スレッドの読み取り』）。
 status_codes:

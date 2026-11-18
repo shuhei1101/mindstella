@@ -2,11 +2,11 @@ id: LIB-489-13
 title: "mdmark"
 kind: "CDN の JS"
 version:
-  current: latest（ワークスペースの設定の `mdmark.version`。既定は develop の最新）
+  current: latest（ワークスペースの設定の `mdmark.version`。既定は develop の先頭の commit）
   latest: v0.13.0
   checked_on: '2026-11-17'
-  source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.js
-  pinning: ワークスペースの設定の `mdmark.version`（`latest` かタグ）で jsDelivr の GitHub の URL（`gh/shuhei1101/mdmark@{ref}/dist/`。`latest` は `develop`）を決めて読む。`integrity` は付けない（既定の `latest` は中身が変わるため。タグのときも付けない）。CSS は `crossorigin="anonymous"` の link 要素、JavaScript は `import()` で読む
+  source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{develop の先頭の commit の SHA}/dist/index.js
+  pinning: ワークスペースの設定の `mdmark.version`（`latest` かタグ）で jsDelivr の GitHub の URL（`gh/shuhei1101/mdmark@{ref}/dist/`。`latest` は常駐サーバーが GitHub に問い合わせた develop の先頭の commit の SHA、問い合わせられないときは `develop`）を決めて読む。`integrity` は付けない（既定の `latest` は中身が変わるため。タグのときも付けない）。CSS は `crossorigin="anonymous"` の link 要素、JavaScript は `import()` で読む
 catalogs:
   - name: API
     version: v0.8.0
@@ -92,11 +92,11 @@ selection:
   decision: 'Issue #339 で、プレビューの描画を mdmark に置き換えると決まっている。重なる機能（用語のツールチップ・コメント・差分・印刷ほか）は設定で止める（PR #342 の要件の案 A）'
 install: |-
   ```html
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.css" crossorigin="anonymous">
-  <script type="application/json" id="mindmap-mdmark-config">{"js": "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@develop/dist/index.js", "map": {}}</script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@05a79a26b04f557433469db12794a274629f3079/dist/index.css" crossorigin="anonymous">
+  <script type="application/json" id="mindmap-mdmark-config">{"js": "https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@05a79a26b04f557433469db12794a274629f3079/dist/index.js", "map": {}}</script>
   ```
 
-  プレビューの画面が `import()` で `dist/index.js` を読む。グローバルには入らない
+  配信が `latest` を解決した commit の SHA（例は 2026-11-19 の develop）を URL に入れる。プレビューの画面が `import()` で `dist/index.js` を読む。グローバルには入らない
 limitations:
   - item: 図
     content: 埋め込んだ HTML の範囲の外の mermaid のコードブロックは描かないため、mermaid で描く

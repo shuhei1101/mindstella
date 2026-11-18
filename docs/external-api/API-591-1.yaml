@@ -1,0 +1,31 @@
+id: API-591-1
+title: GitHub
+lead: リポジトリのブランチの先頭の commit を返す GitHub の REST API。常駐サーバーが mdmark の `latest` を develop の先頭の commit の SHA に解決するのに使用する。
+version:
+  api_version: REST API（`X-GitHub-Api-Version` を付けない既定の版）
+  checked_on: '2026-11-19'
+auth:
+  method: なし（公開のリポジトリを認証なしで問い合わせる。上限は接続元の IP ごとに 60 回/時）
+endpoints:
+  - name: GET /repos/{owner}/{repo}/commits/{ref}
+    method: GET
+    path: /repos/shuhei1101/mdmark/commits/develop
+    summary: '`Accept: application/vnd.github.sha` で、develop の先頭の commit の SHA（40 文字の 16 進）だけを本文に返す'
+    status_codes:
+      - code: '200'
+        condition: 本文が commit の SHA
+      - code: '403'
+        condition: 認証なしの上限を超えた。`X-RateLimit-Reset`（UNIX 時刻）まで問い合わせられない
+      - code: '429'
+        condition: 二次の上限を超えた。`Retry-After` の秒数を待つ
+used_in:
+  - plugins/mindstella/skills/mindmap/scripts/builder.py
+verification:
+  state: 済
+  date: '2026-11-19'
+  detail: '`curl` で `GET /repos/shuhei1101/mdmark/commits/develop` を `Accept: application/vnd.github.sha` で呼び、本文が mdmark の `origin/develop` と同じ `05a79a26b04f557433469db12794a274629f3079` で、`x-ratelimit-limit` が 60 であることを確認した。その SHA の jsDelivr の `gh/shuhei1101/mdmark@{SHA}/dist/index.js` が `origin/develop` の `dist/index.js` と同じ SHA-256 で、`cache-control` が `immutable`、`x-jsd-version-type` が `commit` であることも確認した。応答の時間は 6 回の最大で 0.26 秒'
+base_urls:
+  - env: 全て
+    url: https://api.github.com
+official_url: https://github.com/
+docs_url: https://docs.github.com/en/rest/commits/commits#get-a-commit
