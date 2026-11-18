@@ -5,7 +5,7 @@ entry:
   value: POST `/_admin/sessions/{session}/events`
 lead: MindStella のセッションのフックが送る出来事（起動・終了・応答の始まりと終わり）を受け、状態のフォルダの MindStella のセッションに記録する。
 idempotent: true
-side_effects: '`session.json` の `claude_session_id`・`pid`・`pane`・`status`・`responding` を書き換える。`prompt_submit`・`stop`・`stop_failure`・`session_end` で『作業の完了の通知』の記録した数を書き換え、`stop` の応答を返却した後に『作業の完了の通知』を呼ぶ'
+side_effects: '`session.json` の `claude_session_id`・`pid`・`pane`・`status`・`responding` を書き換える。`prompt_submit`・`stop`・`stop_failure`・`session_end` で『作業の完了の通知』の書き込みのマーカーを解除し、`stop` の応答を返却した後に『作業の完了の通知』を呼ぶ'
 request:
   - name: session
     type: str
@@ -83,7 +83,7 @@ constraints:
   - item: 同時の依頼
     constraint: '`session.json` ごとの書き込みの鍵だけを取って読み・書く。ワークスペースごとの順番の鍵は取らない（『MindStella のセッションの作成』が鍵を持ったまま SessionStart の登録を待つため）'
   - item: 作業の完了の通知
-    constraint: '`prompt_submit` でワークスペースの AI のまとまりと書き込みの数を常駐サーバーのメモリに記録し、`stop` で応答を返却した後に『作業の完了の通知』を呼ぶ。`stop_failure`・`session_end` では記録した数を削除する。記録と数え方と送信は『作業の完了の通知』のとおり。通知の成否は応答に含めない'
+    constraint: '`prompt_submit` で『作業の完了の通知』の書き込みのマーカーを解除し、`stop` で応答を返却した後に『作業の完了の通知』を呼ぶ。`stop_failure`・`session_end` ではマーカーを解除するだけにする。マーカーの付け方と送信は『作業の完了の通知』のとおり。通知の成否は応答に含めない'
 flows:
   - name: 正常系
     summary: SessionStart で claude_session_id とペインを記録する

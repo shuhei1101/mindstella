@@ -9,15 +9,15 @@ idempotent: false
 side_effects: Discord の Webhook へ 1 件の `POST`。送信の結果を標準エラーへ 1 行記録する（Webhook の URL を含めない）
 callers:
   - IF-531-6#
-exclusivity: 送信は常駐サーバーの中の別のスレッドで行い、出来事の受け取りの応答を待たせない。MindStella のセッションごとの記録した数は、`stop` 1 回につき 1 回だけ比べる
+exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、出来事の受け取りの応答と常駐サーバーの停止を待たせない。書き込みのマーカーは、MindStella のセッションごとに `stop` 1 回につき 1 回だけ確認して解除する
 exceptions:
   - name: なし（正常終了）
     condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
 constraints:
   - item: 通知するか
-    constraint: 応答の始まり（`prompt_submit`）で、ワークスペースの `changes.yaml` の `sets` のうち `by` が `ai` のまとまりの数と、`threads.yaml` の `posts` のうち `author` が `ai` の書き込みの数を、MindStella のセッションごとに常駐サーバーのメモリに記録する。応答の終わり（`stop`）で同じ 2 つを数え直し、どちらかが記録した数より増えていれば送信する。増えていないときと、記録した数が無いとき（常駐サーバーが応答の途中で起動し直した）は送信しない
-  - item: 記録した数の削除
-    constraint: '`stop` で比べた後と、`stop_failure`・`session_end` を受けたときに削除する。`stop_failure`・`session_end` では送信しない'
+    constraint: MindStella のセッションに限る MCP のツールのうち `commit`・`new_thread`・`reply` が成功したときに、呼んだ MindStella のセッションに「この応答で書き込んだ」マーカーを常駐サーバーのメモリで付ける。応答の終わり（`stop`）でマーカーがあれば送信し、無ければ送信しない。停止の工程・画面の保存・変更の検知が作るまとまりと、`set_thread_status`・`update_thread` はマーカーを付けない。常駐サーバーが応答の途中で起動し直したときはマーカーが消え、その応答では送信しない
+  - item: 書き込みのマーカーを解除するとき
+    constraint: '`prompt_submit`・`stop`（調べた後）・`stop_failure`・`session_end` を受けたときに解除する。`stop_failure`・`session_end` では送信しない'
   - item: 本文
     constraint: '`{ワークスペースの名前}: 作業が完了しました` と `{画面の URL}` の 2 行。絵文字を使用しない。ワークスペースの名前は `config.yaml` の題名（`summary`）で、空ならフォルダの名前。画面の URL は『ワークスペースの作成』の `url` と同じ。本文が 2000 文字を超えるときは、ワークスペースの名前を切り詰めて 2000 文字以内にする'
   - item: 送信の方法
@@ -48,11 +48,11 @@ flows:
         participant DC as Discord
 
         クライアント->>EV: prompt_submit
-        EV->>EV: AI のまとまりと書き込みの数を記録する
-        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        EV->>EV: 書き込みのマーカーを解除する
+        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
         クライアント->>EV: stop
         EV-->>クライアント: 200 recorded: true
-        EV->>IF: 記録した数と今の数
+        EV->>IF: 書き込みのマーカー
         IF->>DC: POST ?wait=true content
         DC-->>IF: 200
       ```
@@ -79,9 +79,9 @@ flows:
         participant DC as Discord
 
         クライアント->>EV: prompt_submit
-        クライアント->>クライアント: changes.yaml に by: ai のまとまりを追加する
+        クライアント->>MCP: MindStella のセッションとして commit を呼ぶ
         クライアント->>EV: stop
-        EV->>IF: 記録した数と今の数
+        EV->>IF: 書き込みのマーカー
         IF->>DC: POST ?wait=true content
         DC-->>IF: 200
       ```
@@ -89,14 +89,14 @@ flows:
       - エンドポイントが 1 件の要求を受けている
     test: test_normal_when_commit_only
   - name: 正常系（書き込みが無い）
-    summary: AI の書き込みも commit も増えていない応答では送信しない
+    summary: MindStella のセッションが commit・new_thread・reply を呼ばなかった応答では送信しない
     setup:
       - name: Mock
         description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
       - name: 常駐サーバー
         description: 正常系と同じ
       - name: 状態
-        description: '正常系と同じ。応答の間に `by: external` のまとまりと利用者の書き込みだけを追加する'
+        description: '正常系と同じ。応答の間に、停止の工程と同じ `run_commit` で `by: ai` のまとまりを作り、利用者の書き込みを追加する（MindStella のセッションは MCP のツールを呼ばない）'
     flow: |-
       ```mermaid
       sequenceDiagram
@@ -106,14 +106,14 @@ flows:
 
         クライアント->>EV: prompt_submit
         クライアント->>EV: stop
-        EV->>IF: 記録した数と今の数
-        IF->>IF: 増えていないので送信しない
+        EV->>IF: 書き込みのマーカー
+        IF->>IF: マーカーが無いので送信しない
       ```
     expected:
       - エンドポイントが要求を受けていない
     test: test_normal_when_nothing_written
   - name: 正常系（エラーで終わった応答）
-    summary: stop_failure で終わった応答では送信せず、記録した数を削除する
+    summary: stop_failure で終わった応答では送信せず、書き込みのマーカーを解除する
     setup:
       - name: Mock
         description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
@@ -129,11 +129,11 @@ flows:
         participant IF as 作業の完了の通知
 
         クライアント->>EV: prompt_submit
-        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
         クライアント->>EV: stop_failure
-        EV->>EV: 記録した数を削除する
+        EV->>EV: 書き込みのマーカーを解除する
         クライアント->>EV: stop
-        EV->>IF: 記録した数が無い
+        EV->>IF: 書き込みのマーカーが無い
         IF->>IF: 送信しない
       ```
     expected:
@@ -156,10 +156,10 @@ flows:
         participant IF as 作業の完了の通知
 
         クライアント->>EV: prompt_submit
-        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
         クライアント->>EV: stop
         EV-->>クライアント: 200 recorded: true
-        EV->>IF: 記録した数と今の数
+        EV->>IF: 書き込みのマーカー
         IF->>IF: 設定が無いので送信しない
       ```
     expected:
@@ -184,10 +184,10 @@ flows:
         participant DC as Discord
 
         クライアント->>EV: prompt_submit
-        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
         クライアント->>EV: stop
         EV-->>クライアント: 200 recorded: true
-        EV->>IF: 記録した数と今の数
+        EV->>IF: 書き込みのマーカー
         IF->>DC: POST ?wait=true content
         DC-->>IF: 500
         IF->>IF: 標準エラーに失敗を 1 行記録する
@@ -215,10 +215,10 @@ flows:
         participant DC as Discord
 
         クライアント->>EV: prompt_submit
-        クライアント->>クライアント: threads.yaml に AI の書き込みを追加する
+        クライアント->>MCP: MindStella のセッションとして reply を呼ぶ
         クライアント->>EV: stop
         EV-->>クライアント: 200 recorded: true
-        EV->>IF: 記録した数と今の数
+        EV->>IF: 書き込みのマーカー
         IF->>DC: POST ?wait=true content
         IF->>IF: 上限で打ち切り、標準エラーに失敗を 1 行記録する
       ```
