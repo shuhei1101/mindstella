@@ -43,7 +43,9 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T10:47:28.809730+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T11:50:07.131161+00:00'
   - process: 部品設計
     status: skipped
     reason: 画面の変更をスコープ外にしたため対象外
