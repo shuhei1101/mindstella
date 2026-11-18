@@ -40,8 +40,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T19:53:29.028394+00:00'
   - process: モック作成
-    status: todo
+    status: done
     note: docs/mock/components/topbar/ に音声入力中とつながらない表示が並ぶ状態を追加する
+    updated_by: planner
+    updated_at: '2026-11-18T03:04:14.485305+00:00'
   - process: インターフェース定義設計
     status: skipped
     reason: インターフェースは変わらない

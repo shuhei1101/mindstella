@@ -17,3 +17,9 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/567#discussion_r4608514743
+  - topic: 経過時間とショートカットキーを残したトップバーのモック（幅 900px 以下は `Ctrl+K` を出さない）
+    decision: このモックのとおりに進める（推奨案 A）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/567#discussion_r4608544292
