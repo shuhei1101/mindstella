@@ -2685,4 +2685,7 @@ def test_normal_when_embedded_files(
     assert page.get_attribute(BODY_VIDEO, "src") == "/files/clip.mp4"
     assert page.get_attribute(BODY_IMAGE, "src") == "/files/shot.png"
     assert page.inner_text(BODY_CODE) == "![x](../files/x.png)"
-    assert snapshot_tree(root) == before
+    # 開いた日時のファイルは画面を開くと書き換わるため、記録の YAML と本文だけを比べる
+    after = snapshot_tree(root)
+    after.pop(".mindstella/.mindstella-opened")
+    assert after == before

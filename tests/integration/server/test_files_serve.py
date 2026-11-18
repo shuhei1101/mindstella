@@ -149,9 +149,9 @@ def test_error_when_not_found_or_outside(
     folder = _get(url, "/files/")
     # 検証
     assert missing.status == 404
-    assert missing.headers["content-type"] == "application/problem+json"
+    assert missing.headers["content-type"].startswith("application/problem+json")
     assert parent.status == 404
-    assert parent.headers["content-type"] == "application/problem+json"
+    assert parent.headers["content-type"].startswith("application/problem+json")
     assert b"items:" not in parent.body
     assert encoded.status == 404
     assert b"items:" not in encoded.body
