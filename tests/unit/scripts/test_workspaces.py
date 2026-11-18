@@ -56,6 +56,8 @@ class FakeProjectIndex:
         self.added: list[dict[str, Any]] = []
         self.patched: list[tuple[str, dict[str, Any]]] = []
         self.add_error: ProjectIndexError | None = None
+        self.reloads = 0
+        self.reload_error: ProjectIndexError | None = None
 
     def get_settings(self, port: int) -> dict[str, Any]:
         """設定のファイルのパスと行を返す。"""
@@ -86,6 +88,12 @@ class FakeProjectIndex:
         if "outside_read" in changes:
             self.rows[source_id]["outsideRead"] = changes["outside_read"]
 
+    def reload_sources(self, port: int) -> None:
+        """全ての配信元を読み直させたことを数える。"""
+        if self.reload_error is not None:
+            raise self.reload_error
+        self.reloads += 1
+
 
 @pytest.fixture
 def allowed(tmp_path: Path) -> Path:
@@ -107,6 +115,7 @@ def fake_pi(tmp_path: Path, allowed: Path, monkeypatch: pytest.MonkeyPatch) -> F
     monkeypatch.setattr(project_index, "get_settings", fake.get_settings)
     monkeypatch.setattr(project_index, "add_source", fake.add_source)
     monkeypatch.setattr(project_index, "patch_source", fake.patch_source)
+    monkeypatch.setattr(project_index, "reload_sources", fake.reload_sources, raising=False)
     monkeypatch.setattr(workspaces, "check_flow", lambda *_args: None)
     monkeypatch.setattr(sessions, "is_alive", lambda *_args, **_kwargs: False)
     return fake
@@ -619,3 +628,59 @@ def test_close_workspace_unknown(ctx: SimpleNamespace) -> None:
     with pytest.raises(ApiError) as caught:
         workspaces.close_workspace("mindstella-x-000000", ctx)
     assert caught.value.status == 404
+
+
+def _stale_schema(folder: Path) -> None:
+    """スキーマの複製の docs.schema.json を別の中身にする。"""
+    (folder / ".mindstella" / "schemas" / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+
+
+def test_create_workspace_schema_reloaded(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """スキーマの複製を書き直し、行を送らないときは全ての配信元を読み直させる（正常系）。"""
+    # 準備
+    folder = allowed / "家計簿"
+    workspaces.create_workspace(_request(folder), ctx)
+    _stale_schema(folder)
+    fake_pi.added.clear()
+    # 実行
+    status, body = workspaces.create_workspace(_request(folder), ctx)
+    # 検証
+    assert (status, body["result"], body["migration"]) == (200, "already_open", None)
+    assert fake_pi.reloads == 1
+    assert (fake_pi.added, fake_pi.patched) == ([], [])
+
+
+def test_create_workspace_schema_rewritten_row_added(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """行を追加するときは読み直しを重ねて送らない（正常系）。"""
+    # 準備
+    folder = allowed / "家計簿"
+    _status, created = workspaces.create_workspace(_request(folder), ctx)
+    _stale_schema(folder)
+    del fake_pi.rows[created["id"]]
+    fake_pi.added.clear()
+    # 実行
+    status, body = workspaces.create_workspace(_request(folder), ctx)
+    # 検証
+    assert (status, body["result"]) == (200, "opened")
+    assert len(fake_pi.added) == 1
+    assert fake_pi.reloads == 0
+
+
+def test_create_workspace_schema_reload_failed(
+    allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+) -> None:
+    """読み直しに失敗したら 502（異常系）。"""
+    # 準備
+    folder = allowed / "家計簿"
+    workspaces.create_workspace(_request(folder), ctx)
+    _stale_schema(folder)
+    fake_pi.reload_error = ProjectIndexError(500, "読み直せません")
+    # 実行・検証
+    with pytest.raises(ApiError) as caught:
+        workspaces.create_workspace(_request(folder), ctx)
+    assert (caught.value.status, caught.value.stage) == (502, "source")
+    assert (folder / ".mindstella" / "config.yaml").is_file()

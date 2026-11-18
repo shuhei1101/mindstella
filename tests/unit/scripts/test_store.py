@@ -1692,3 +1692,70 @@ def test_build_source_config() -> None:
     assert decisions["body_file"] == "body"
     assert decisions["schema"] == "schemas/decisions.schema.json"
     assert config["related"]["types"] == ["depends_on", "parent", "for", "see_also"]
+
+
+def test_sync_source_schemas(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
+    """違うファイルと無いファイルだけを書き直し、複製の側にだけあるファイルを残す（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    copies = root / ".mindstella" / "schemas"
+    (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+    (copies / "terms.schema.json").unlink()
+    (copies / "legacy.schema.json").write_text('{"title": "前の版"}\n', encoding="utf-8")
+    common_mtime = (copies / "common.schema.json").stat().st_mtime_ns
+    legacy_mtime = (copies / "legacy.schema.json").stat().st_mtime_ns
+    # 実行
+    written = store.sync_source_schemas(root)
+    # 検証
+    assert written == [
+        ".mindstella/schemas/docs.schema.json",
+        ".mindstella/schemas/terms.schema.json",
+    ]
+    assert (copies / "docs.schema.json").read_bytes() == (
+        store.SCHEMA_DIR / "docs.schema.json"
+    ).read_bytes()
+    assert (copies / "terms.schema.json").read_bytes() == (
+        store.SCHEMA_DIR / "terms.schema.json"
+    ).read_bytes()
+    assert (copies / "legacy.schema.json").read_text(encoding="utf-8") == '{"title": "前の版"}\n'
+    assert (copies / "legacy.schema.json").stat().st_mtime_ns == legacy_mtime
+    assert (copies / "common.schema.json").stat().st_mtime_ns == common_mtime
+
+
+def test_sync_source_schemas_when_same(
+    tmp_path: Path, valid_settings: dict[str, Any], snapshot_tree: SnapshotTree
+) -> None:
+    """全て同じなら何も書かない（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    before = snapshot_tree(root)
+    # 実行
+    written = store.sync_source_schemas(root)
+    # 検証
+    assert written == []
+    assert snapshot_tree(root) == before
+
+
+def test_sync_source_schemas_when_write_fails(
+    tmp_path: Path, valid_settings: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """置き換えられなければ送る（異常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    copies = root / ".mindstella" / "schemas"
+    (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+
+    def fail_replace(*_args: Any, **_kwargs: Any) -> None:
+        """置き換えに失敗する。"""
+        raise OSError("書けません")
+
+    # store モジュールの参照を、置き換えに失敗する関数に差し替える
+    monkeypatch.setattr(store.os, "replace", fail_replace)
+    # 実行・検証
+    with pytest.raises(WriteFailedError, match="スキーマの複製を書けません"):
+        store.sync_source_schemas(root)
+    assert (copies / "docs.schema.json").read_text(encoding="utf-8") == "{}\n"
+    assert sorted(path.name for path in copies.iterdir() if path.suffix != ".json") == []
