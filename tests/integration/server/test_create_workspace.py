@@ -88,8 +88,8 @@ def test_normal(session_world: SessionWorld) -> None:
         "plugin_dirs": [str(plugin)],
     }
     assert body["id"] in _ids(world)
-    # 行の追加は、GET /settings/sources が返した version を expectedVersion に添える
-    assert [request[2]["expectedVersion"] for request in world.pi.changes()] == ["1"]
+    # 行の追加は、GET /settings/sources が返した version を expectedVersion に添える（ワークスペースの行・エージェントフローの行の順）
+    assert [request[2]["expectedVersion"] for request in world.pi.changes()] == ["1", "2"]
     posts = [request[2]["source"] for request in world.pi.changes() if request[0] == "POST"]
     resolved = folder.resolve()
     assert posts == [
