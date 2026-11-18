@@ -1,0 +1,1 @@
+# 設定が latest のとき、画面が mdmark の develop の最新の配布物を遅れずに読み込み、画面の CSS で mdmark の部品を上書きしない
