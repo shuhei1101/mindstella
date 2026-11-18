@@ -2164,3 +2164,52 @@ def test_html_link_action_when_none(
     result = preview_page.evaluate("(href) => MindmapPreview.htmlLinkAction(href)", href)
     # 検証
     assert result == {"kind": "none"}
+
+
+# 本文のファイルのパスの解決のテストで、mdmark が描いた本文の代わりに使用する HTML
+FILE_SOURCES_HTML = (
+    '<p><img id="a" src="../files/a.png"></p>'
+    '<figure><video id="b" src="../files/b.mp4#t=2" poster="../files/p.png"></video></figure>'
+    '<figure><audio id="c" src="../files/c.mp3"></audio></figure>'
+    '<p><img id="u" src="https://example.com/u.png"></p>'
+    '<p><img id="d" src="data:image/png;base64,AA"></p>'
+    '<p><img id="r" src="/r.png"></p>'
+    '<div class="mdmark-html"><img id="h" src="../files/h.png"></div>'
+)
+
+
+def test_resolve_file_sources(preview_page: Page, load_preview_scripts: LoadPreviewScripts) -> None:
+    """相対パスだけを配信のパスにする（正常系）。"""
+    # 準備
+    load_preview_scripts()
+    # 実行
+    result = preview_page.evaluate(
+        """(html) => {
+            const root = document.createElement("div");
+            root.innerHTML = html;
+            MindmapPreview.resolveFileSources(root);
+            const attr = (id, name) => root.querySelector(`#${id}`).getAttribute(name);
+            return {
+                a: attr("a", "src"),
+                b: attr("b", "src"),
+                poster: attr("b", "poster"),
+                c: attr("c", "src"),
+                u: attr("u", "src"),
+                d: attr("d", "src"),
+                r: attr("r", "src"),
+                h: attr("h", "src"),
+            };
+        }""",
+        FILE_SOURCES_HTML,
+    )
+    # 検証
+    assert result == {
+        "a": "/files/a.png",
+        "b": "/files/b.mp4#t=2",
+        "poster": "/files/p.png",
+        "c": "/files/c.mp3",
+        "u": "https://example.com/u.png",
+        "d": "data:image/png;base64,AA",
+        "r": "/r.png",
+        "h": "../files/h.png",
+    }

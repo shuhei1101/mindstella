@@ -11,6 +11,8 @@ import yaml
 from launch_fixtures import PLUGIN_DIR
 from session_fixtures import SessionWorld
 
+from tests.integration.plugin.test_agent_flows import AgentFlowWorld, agent_flow_world  # noqa: F401
+
 # 進め方の文書
 FLOW = {"source": "aituber", "doc": "flow-script"}
 
@@ -303,3 +305,140 @@ def test_error_when_host_not_local(session_world: SessionWorld) -> None:
     assert (status, body["stage"]) == (403, "host"), body
     assert not world.folder().exists()
     assert world.pi.requests == []
+
+
+def test_normal_when_schema_copy_rewritten(session_world: SessionWorld) -> None:
+    """今のバージョンの記録のスキーマの複製を書き直し、端末の設定の行をそのまま送る PUT で project-index に配信元を読み直させる（正常系）。"""
+    # 準備
+    world = session_world
+    world.start()
+    world.create_workspace()
+    (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+    plugin_schema = PLUGIN_DIR / "skills" / "mindmap" / "schemas" / "docs.schema.json"
+    settings_rows = yaml.safe_load(world.pi.settings_path.read_text(encoding="utf-8"))["sources"]
+    world.pi.requests.clear()
+    # 実行
+    status, body = world.api("POST", "/workspaces", {"folder": str(world.folder())})
+    # 検証
+    assert status == 200, body
+    assert (world.folder() / ".mindstella" / "schemas" / "docs.schema.json").read_bytes() == plugin_schema.read_bytes()
+    puts = [request for request in world.pi.requests if request[0] == "PUT"]
+    assert [(path, request["sources"]) for _method, path, request in puts] == [("/settings/sources", settings_rows)]
+    assert "expectedVersion" in puts[0][2]
+    assert world.pi.changes() == []
+
+
+def _call(world: AgentFlowWorld, folder: Path, tool: str, **arguments: object) -> dict[str, object]:
+    """project-index の文書の MCP のツールを、ワークスペースのフォルダを作業場所にして呼び、JSON の結果を返す。"""
+    client = world.pi_client()
+    result = client.call(tool, cwd=str(folder), format="json", **arguments)
+    client.close()
+    assert result.is_error is False, result.text
+    return json.loads(result.text)
+
+
+def _reload_pi(world: AgentFlowWorld) -> None:
+    """端末の設定のファイルの行をそのまま `PUT /settings/sources` に送り、project-index に全ての配信元を読み直させる。"""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    url = f"http://127.0.0.1:{world.pi_port}/settings/sources"
+    with opener.open(url, timeout=30) as response:
+        settings = json.loads(response.read())
+    rows = yaml.safe_load(Path(settings["settingsPath"]).read_text(encoding="utf-8"))["sources"]
+    request = urllib.request.Request(
+        url,
+        data=json.dumps({"expectedVersion": settings["version"], "sources": rows}).encode("utf-8"),
+        method="PUT",
+        headers={"Content-Type": "application/json"},
+    )
+    with opener.open(request, timeout=30) as response:
+        assert response.status == 200
+
+
+def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> None:  # noqa: F811 - 読み込んだ fixture を引数で受ける
+    """作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の開き直しを通す（正常系）。"""
+    # 準備
+    world = agent_flow_world
+    # 日本語のフォルダ名は project-index の配信元の ID の検査に違反する（#544）
+    folder = world.allowed / "kakeibo"
+    status, body = world.api("POST", "/workspaces", {"folder": str(folder)})
+    assert status == 201, body
+    source = body["id"]
+    records = folder / ".mindstella"
+    (records / "terms.yaml").write_text(
+        yaml.safe_dump({"items": [{"id": "G-1", "title": "用語", "meaning": "意味"}]}, allow_unicode=True),
+        encoding="utf-8",
+    )
+    # 実行（不具合 1: 検討事項の作成と更新）
+    _call(
+        world,
+        folder,
+        "write_docs",
+        source=source,
+        operations=[
+            {"op": "create", "kind": "decisions", "id": "D-1", "data": {"title": "確認", "status": "未整理"}},
+            {
+                "op": "create",
+                "kind": "docs",
+                "id": "A-1",
+                "data": {"title": "資料", "kind": "文書", "status": "下書き", "body": "docs/A-1.md", "@body": "本文"},
+            },
+        ],
+    )
+    decision = _call(
+        world,
+        folder,
+        "search_docs",
+        source=source,
+        filter={"field": "id", "op": "eq", "values": ["D-1"]},
+    )
+    _call(
+        world,
+        folder,
+        "write_docs",
+        source=source,
+        operations=[
+            {"op": "update", "id": "D-1", "expected_version": decision["items"][0]["values"]["version"], "set": {"status": "未決定"}}
+        ],
+    )
+    # 実行（不具合 3: 本文を持たない G-1 の検索と更新）
+    term = _call(
+        world,
+        folder,
+        "search_docs",
+        source=source,
+        filter={"field": "id", "op": "eq", "values": ["G-1"]},
+    )
+    _call(
+        world,
+        folder,
+        "write_docs",
+        source=source,
+        operations=[{"op": "update", "id": "G-1", "expected_version": term["items"][0]["values"]["version"], "set": {"meaning": "意味 2"}}],
+    )
+    # 実行（不具合 2: スキーマの複製を更新前に戻して開き直す）
+    (records / "schemas" / "docs.schema.json").write_text(
+        json.dumps(
+            {
+                "type": "object",
+                "properties": {"items": {"type": "array", "items": {"type": "object", "required": ["deliverable"]}}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    # 古いスキーマを project-index に読み込ませる
+    _reload_pi(world)
+    stale = _call(world, folder, "search_docs", source=source, filter={"field": "id", "op": "eq", "values": ["A-1"]})
+    reopened_status, reopened = world.api("POST", "/workspaces", {"folder": str(folder)})
+    doc = _call(world, folder, "search_docs", source=source, filter={"field": "id", "op": "eq", "values": ["A-1"]})
+    # 検証
+    items = yaml.safe_load((records / "decisions.yaml").read_text(encoding="utf-8"))["items"]
+    assert [(item["id"], item["status"]) for item in items] == [("D-1", "未決定")]
+    assert {"created", "updated"} & set(items[0]) == set()
+    assert [item["id"] for item in term["items"]] == ["G-1"]
+    assert "読み込めない" not in json.dumps(term, ensure_ascii=False)
+    terms = yaml.safe_load((records / "terms.yaml").read_text(encoding="utf-8"))["items"]
+    assert terms == [{"id": "G-1", "title": "用語", "meaning": "意味 2"}]
+    assert "deliverable" in json.dumps(stale, ensure_ascii=False)
+    assert reopened_status == 200, reopened
+    assert [item["id"] for item in doc["items"]] == ["A-1"]
+    assert "deliverable" not in json.dumps(doc, ensure_ascii=False)

@@ -713,7 +713,7 @@ tables:
         title: 文書の行
         type: array
         not_null: true
-        description: '種類ごとの 7 つの行。要素は `id`（種類の名前）・`title`・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`metadata`（共通のキーと列の対応）'
+        description: '種類ごとの 7 つの行。要素は `id`（種類の名前）・`title`・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`write_dates: false`（project-index に `created`・`updated` を付けさせない。日時は `history.yaml` が持つ）・`metadata`（共通のキーと列の対応）'
   - name: schemas/
     title: 記録のスキーマ
     datastore: JSON
@@ -1071,3 +1071,13 @@ tables:
     status: planned
     introduced:
       pr: 325
+  - name: files/
+    title: ファイルのフォルダ
+    datastore: ファイル
+    summary: 資料に埋め込む動画・音声・画像などのファイル。資料の本文から `../files/{名前}` で指す。記録ではなく、変更の検知は見ず、ワークスペースを作ったときには作らない
+    access: パスで引く（配信の `/files/{path}`・点検）
+    columns:
+      - name: (中身)
+        title: 中身
+        type: bytes
+        description: ファイルそのもの。MindStella のセッションか利用者が配置する。下にフォルダを作ってよい

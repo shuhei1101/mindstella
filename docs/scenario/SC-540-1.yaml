@@ -242,6 +242,31 @@ scenarios:
       - 前回読んだ時点からの変更が、D-1 の答えと理由の両方を前の値つきで返す
       - 3 回目に直した後、D-1 の変更履歴が 3 回目の 1 回分だけで、`history_dropped_seq` が消した回の最も大きい通し番号である
     test: test_normal_when_unread_history_kept
+  - name: 正常シナリオ（ファイルのフォルダの書き換え）
+    setup:
+      - name: Mock
+        description: なし（常駐サーバーを立てる）
+      - name: make_workspace
+        description: 作成を済ませ、検討事項 D-1 を持ち、`commit` を済ませたワークスペース（Git のリポジトリの中にあるワークスペースと、Git 管理外のワークスペースの 2 つで同じに確認する）
+      - name: ファイル
+        description: ワークスペースの外の数秒の mp4
+        notes: MindStella のセッションは状態に無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant U as 利用者
+        participant WS as ワークスペース
+        participant CD as 変更の検知
+
+        U->>WS: mp4 を .mindstella/files/ に配置する
+        CD-->>WS: 見るファイルを比べる
+        CD->>CD: 見るファイルが変わらないので、何も記録しない
+      ```
+    expected:
+      - D-1 の変更履歴と `updated_at` が変わらない
+      - どの項目の追加・変更・削除も、変更履歴と `changes.yaml` に記録されない
+      - '`changes.yaml` の `sets` と `pending` が配置の前と同じで、ワークスペースの Git の状態（HEAD・インデックス）も配置の前と同じ'
+    test: test_normal_when_files_folder_written
 notes:
   読んでいない回: AI が最後に読んだ時点より後の回は、保持する回数を超えても消さない。読んだ時点の記録が無いワークスペースでは、超えた古い回を消す。保持する回数が 0 のときは積まない
   自動で commit する契機: 書き換えが止んでから待つ時間は、インターフェース定義設計で規約『資源の値の決め方』から導く

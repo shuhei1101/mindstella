@@ -92,6 +92,21 @@ const SOURCE_LINE_ATTR = "data-source-line";
 /** mdmark が描いた、埋め込んだ HTML の範囲の要素の class */
 export const EMBEDDED_HTML_CLASS = "mdmark-html";
 
+/** 本文のファイルのパスを解決する基準（資料のフォルダを表す配信のパス。`../files/{名前}` は `/files/{名前}` になる） */
+export const FILE_BASE_PATH = "/docs/";
+
+/** 本文の中でファイルを指す要素と属性 */
+const FILE_SOURCE_SELECTORS: readonly { selector: string; attr: string }[] = [
+  { selector: "img[src]", attr: "src" },
+  { selector: "video[src]", attr: "src" },
+  { selector: "video[poster]", attr: "poster" },
+  { selector: "audio[src]", attr: "src" },
+  { selector: "source[src]", attr: "src" },
+];
+
+/** スキームを持つ値（`https:`・`data:`・`blob:` など） */
+const URL_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
+
 /** mdmark の map の範囲の入れ物の class（中の mermaid の原文を mdmark の map の部品が読んで描く） */
 const MAP_CLASS = "mdmark-map";
 
@@ -131,10 +146,26 @@ const convertSourceLines = ({ root, source }: { root: HTMLElement; source: strin
   }
 };
 
+/** mdmark が描いた本文の `img`・`video`・`audio`・`source` の相対パスを、`FILE_BASE_PATH` を基準に解決した配信のパスに置き換える（埋め込んだ HTML の範囲の中は除く） */
+export const resolveFileSources = (root: HTMLElement): void => {
+  const base = `${location.origin}${FILE_BASE_PATH}`;
+  for (const { selector, attr } of FILE_SOURCE_SELECTORS) {
+    for (const element of root.querySelectorAll(selector)) {
+      if (element.closest(`.${EMBEDDED_HTML_CLASS}`) !== null) continue;
+      const value = element.getAttribute(attr) ?? "";
+      // 絶対 URL・`/` で始まる値・`#` だけの値は、ワークスペースのファイルを指さない
+      if (URL_SCHEME.test(value) || value.startsWith("/") || value.startsWith("#")) continue;
+      const resolved = new URL(value, base);
+      element.setAttribute(attr, `${resolved.pathname}${resolved.search}${resolved.hash}`);
+    }
+  }
+};
+
 /** 要素の中に、機能を止めた mdmark で Markdown を描く（描き直しは要素ごと作り直すので、返る `update`・`destroy` は使わない） */
 const mountMarkdown = ({ root, markdown }: { root: HTMLElement; markdown: string }): void => {
   const map = mdmarkMapConfig();
   mdmarkOf().mount(root, { markdown, config: { features: MDMARK_FEATURES, ...(map === undefined ? {} : { map }) } });
+  resolveFileSources(root);
   trimBreakNewlines(root);
   relabelParamCopy(root);
 };
