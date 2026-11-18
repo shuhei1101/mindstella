@@ -104,7 +104,7 @@ def fake_pi(tmp_path: Path, allowed: Path, monkeypatch: pytest.MonkeyPatch) -> F
     monkeypatch.setattr(project_index, "add_source", fake.add_source)
     monkeypatch.setattr(project_index, "patch_source", fake.patch_source)
     monkeypatch.setattr(workspaces, "check_flow", lambda *_args: None)
-    monkeypatch.setattr(sessions, "is_alive", lambda *_args: False)
+    monkeypatch.setattr(sessions, "is_alive", lambda *_args, **_kwargs: False)
     return fake
 
 
@@ -408,7 +408,7 @@ def test_close_workspace_session_running(
     """MindStella のセッションが生きていれば 409 で、行を変えない。"""
     _status, created = workspaces.create_workspace(_request(allowed / "家計簿"), ctx)
     _write_session(ctx, created["id"], status="running", pane=f"{created['id']}:0.0")
-    monkeypatch.setattr(sessions, "is_alive", lambda *_args: True)
+    monkeypatch.setattr(sessions, "is_alive", lambda *_args, **_kwargs: True)
     with pytest.raises(ApiError) as caught:
         workspaces.close_workspace(created["id"], ctx)
     assert (caught.value.status, caught.value.stage) == (409, "session")

@@ -352,6 +352,116 @@ functions:
         condition: マーカーがある `ws`、空の `environ`
         mock: '`send`'
         expected: None を返し、`send` が呼ばれず、`MARKERS.take("ws")` が偽
+  - name: build_stopped_content
+    title: 停止の本文の組み立て
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 止まったことを通知する
+    scope: public
+    summary: '`{名前}: 停止しました（{止まった理由の文言}）` と画面の URL の 2 行を、`CONTENT_LIMIT` 文字以内で組み立てる'
+    args:
+      - name: name
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの名前
+      - name: reason
+        type: StopReason
+        required: true
+        passing: positional
+        description: 止まった理由
+      - name: url
+        type: str | None
+        required: true
+        passing: positional
+        description: 画面の URL。配信が無いときは None
+    returns:
+      type: str
+      description: 本文
+    process: |-
+      1. 1 行目を `f"{name}: {STOPPED_TEXT}（{STOP_REASON_TEXTS[reason]}）"`、`url` があれば 2 行目を `url` にする
+      2. 全体が `CONTENT_LIMIT` を超える場合、`build_content` と同じく `name` の末尾を切り詰めて `…` を付ける（名前の切り詰めは `build_content` と共有する内部の関数にまとめる）
+    unit_tests:
+      - name: test_build_stopped_content
+        case: 正常
+        summary: 止まった理由ごとの文言と URL の 2 行
+        condition: '`parametrize`: 5 つの `StopReason` と `STOP_REASON_TEXTS` の文言。URL は `http://127.0.0.1:47800/mindstella.html`'
+        mock: なし
+        expected: '`家計簿: 停止しました（{文言}）\nhttp://127.0.0.1:47800/mindstella.html`'
+      - name: test_build_stopped_content_when_no_url
+        case: 正常
+        summary: URL が無いときは 1 行
+        condition: '`url` が None、`reason` が `crashed`'
+        mock: なし
+        expected: '`家計簿: 停止しました（異常終了）`'
+      - name: test_build_stopped_content_when_too_long
+        case: 正常
+        summary: 上限を超える名前を切り詰める
+        condition: 3000 文字の名前と URL
+        mock: なし
+        expected: 2000 文字以内で、URL の行と `停止しました（停止の依頼）` が残っている
+  - name: notify_stopped
+    title: 停止の通知
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 止まったことを通知する
+    scope: public
+    summary: Webhook の設定があれば、`daemon` のスレッドで停止の本文を組み立てて送信する（『セッションの管理』が止まったことを記録した後に呼ぶ）
+    side_effects: スレッドを 1 つ起動する
+    args:
+      - name: workspace_id
+        type: str
+        required: true
+        passing: positional
+        description: ワークスペースの ID（記録に使う）
+      - name: reason
+        type: StopReason
+        required: true
+        passing: positional
+        description: 止まった理由
+      - name: describe
+        type: Callable[[], tuple[str, str | None] | None]
+        required: true
+        passing: positional
+        description: ワークスペースの名前と画面の URL を返す関数。ワークスペースが見つからなければ None（スレッドの中で呼ぶ）
+      - name: environ
+        type: Mapping[str, str]
+        required: false
+        default: os.environ
+        passing: keyword
+        description: 環境変数
+      - name: send
+        type: Callable[[str, str], bool]
+        required: false
+        default: send_webhook
+        passing: injected
+        description: 送信する関数（テストで差し替える）
+    returns:
+      type: threading.Thread | None
+      description: 起動したスレッド。送信しないときは None（テストが `join` する）
+    process: |-
+      1. `read_webhook_url(environ)` が None なら None を返す（Webhook の URL の参照）
+      2. `notify_if_written` と同じスレッドの本体（`describe()` が None なら送信しない・想定していない例外を記録して終える）で、`send(url, build_stopped_content(name, reason, page_url))` を呼ぶ `daemon=True` のスレッドを起動して返す（スレッドの本体は `notify_if_written` と共有する内部の関数にまとめる）
+         - `[INFO]` 停止を通知する（ワークスペースの ID・止まった理由）
+    unit_tests:
+      - name: test_notify_stopped
+        case: 正常
+        summary: 1 回送信する
+        condition: '`reason` が `stop_requested`。`describe` は `("家計簿", "http://127.0.0.1:1/mindstella.html")`、`environ` は URL を書いた一時ファイルを指す。返ったスレッドを `join` する'
+        mock: '`send`'
+        expected: '`send` が URL と `build_stopped_content("家計簿", "stop_requested", ...)` の本文で 1 回呼ばれる'
+      - name: test_notify_stopped_when_not_configured
+        case: 正常
+        summary: Webhook の設定が無ければ送信しない
+        condition: 空の `environ`
+        mock: '`send`'
+        expected: None を返し、`send` も `describe` も呼ばれない
+      - name: test_notify_stopped_when_workspace_missing
+        case: 正常
+        summary: ワークスペースが見つからなければ送信しない
+        condition: '`describe` が None を返す'
+        mock: '`send`'
+        expected: スレッドを返し、`join` の後も `send` が呼ばれない
 constants:
   - name: MARKERS
     title: プロセスの書き込みのマーカー
@@ -395,6 +505,51 @@ constants:
     usecase: 作業の完了を通知する
     summary: Webhook へ送信するときの `User-Agent`（外部 API『Discord』。標準ライブラリの既定の値では `403` が返る）
     value: '"DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)"'
+  - name: STOPPED_TEXT
+    title: 停止の文言
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 止まったことを通知する
+    summary: 停止の本文の 1 行目の名前の後ろの文言（利用者が確認した文面）
+    value: '"停止しました"'
+  - name: STOP_REASON_TEXTS
+    title: 止まった理由の文言
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 止まったことを通知する
+    summary: '`StopReason` ごとの本文の括弧の中の文言（利用者が確認した文言）'
+    entries:
+      - key: stop_requested
+        value: '"停止の依頼"'
+      - key: force_stopped
+        value: '"強制停止"'
+      - key: crashed
+        value: '"異常終了"'
+      - key: stop_failed
+        value: '"停止処理の失敗"'
+      - key: session_ended
+        value: '"Claude Code の終了"'
 refs:
   - IF-568-1#
   - API-568-1#
+  - IF-570-1#
+enums:
+  - name: StopReason
+    title: 止まった理由
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 止まったことを通知する
+    summary: 停止の通知に渡す止まった理由（`Literal` の型エイリアス）
+    values:
+      - value: stop_requested
+        title: 停止の依頼
+        description: 停止の依頼の止めるスレッドが止め終えた
+      - value: force_stopped
+        title: 強制停止
+        description: 強制を指定した停止の依頼で止め終えた
+      - value: crashed
+        title: 異常終了
+        description: '`running` からペインかプロセスが無いことを検知した'
+      - value: stop_failed
+        title: 停止処理の失敗
+        description: 止める間に失敗して `crashed` に戻した
+      - value: session_ended
+        title: Claude Code の終了
+        description: '`running` のまま SessionEnd（`clear`・`resume` 以外）を受けた'

@@ -1,0 +1,87 @@
+$ pytest tests/integration/server/test_stop_notify.py tests/integration/server/test_work_done_notify.py tests/integration/server/test_stop_session.py tests/integration/server/test_session_events.py tests/integration/server/test_list_sessions.py tests/integration/server/test_create_session.py tests/integration/server/test_close_workspace.py --basetemp=<一時フォルダ>
+（実行範囲の表の 7 ファイル。並列数 1。fail の test_stop_session.py の 2 件は base（origin/develop）でも Unknown tool: add で fail する既存の不具合（#574）で、この PR の変更に関係しない）
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify-stop
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 39 items
+
+tests/integration/server/test_stop_notify.py ..........                  [ 25%]
+tests/integration/server/test_work_done_notify.py .......                [ 43%]
+tests/integration/server/test_stop_session.py ..FF.                      [ 56%]
+tests/integration/server/test_session_events.py ....                     [ 66%]
+tests/integration/server/test_list_sessions.py ...                       [ 74%]
+tests/integration/server/test_create_session.py .......                  [ 92%]
+tests/integration/server/test_close_workspace.py ...                     [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_normal_when_session_crashed _______________________
+
+session_world = SessionWorld(root=PosixPath('<一時フォルダ>/test_normal_when_session_crash1'), allowed=PosixPath('<一時フォルダ>...eProjectIndex object at 0x7c1671b72a80>, servers=[<workspace_fixtures.McpServer object at 0x7c1671b89670>], port=20037)
+
+    def test_normal_when_session_crashed(session_world: SessionWorld) -> None:
+        """落ちていれば止める工程を飛ばし、落ちていたことを添えて commit して 200 を返す（正常系）。"""
+        # 準備
+        world = session_world
+        server = world.start()
+        workspace_id = str(world.create_workspace()["id"])
+>       _add_pending(server, world.folder())
+
+tests/integration/server/test_stop_session.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+server = <workspace_fixtures.McpServer object at 0x7c1671b89670>
+folder = PosixPath('<一時フォルダ>/test_normal_when_session_crash1/allowed/家計簿')
+
+    def _add_pending(server: McpServer, folder: Path) -> None:
+        """まだまとめていない変更を作る。"""
+        result = server.call(
+            "add",
+            workspace=str(folder),
+            kind="note",
+            item={"title": "予算の上限", "content": "月 3 万円まで"},
+        )
+>       assert result.is_error is False, result.text
+E       AssertionError: Unknown tool: add
+E       assert True is False
+E        +  where True = ToolResult(is_error=True, text='Unknown tool: add', data=None).is_error
+
+tests/integration/server/test_stop_session.py:39: AssertionError
+___________________________ test_normal_when_forced ____________________________
+
+session_world = SessionWorld(root=PosixPath('<一時フォルダ>/test_normal_when_forced1'), allowed=PosixPath('<一時フォルダ>/te...eProjectIndex object at 0x7c1671bbd5e0>, servers=[<workspace_fixtures.McpServer object at 0x7c1671bbc680>], port=20039)
+
+    def test_normal_when_forced(session_world: SessionWorld) -> None:
+        """強制なら応答の途中でも止め、強制で止めたことを添えて commit する（正常系）。"""
+        # 準備
+        world = session_world
+        world.set_claude_mode("responding")
+        server = world.start()
+        workspace_id, session_id = _running(world, responding=True)
+>       _add_pending(server, world.folder())
+
+tests/integration/server/test_stop_session.py:110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+server = <workspace_fixtures.McpServer object at 0x7c1671bbc680>
+folder = PosixPath('<一時フォルダ>/test_normal_when_forced1/allowed/家計簿')
+
+    def _add_pending(server: McpServer, folder: Path) -> None:
+        """まだまとめていない変更を作る。"""
+        result = server.call(
+            "add",
+            workspace=str(folder),
+            kind="note",
+            item={"title": "予算の上限", "content": "月 3 万円まで"},
+        )
+>       assert result.is_error is False, result.text
+E       AssertionError: Unknown tool: add
+E       assert True is False
+E        +  where True = ToolResult(is_error=True, text='Unknown tool: add', data=None).is_error
+
+tests/integration/server/test_stop_session.py:39: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/server/test_stop_session.py::test_normal_when_session_crashed
+FAILED tests/integration/server/test_stop_session.py::test_normal_when_forced
+=================== 2 failed, 37 passed in 116.54s (0:01:56) ===================
