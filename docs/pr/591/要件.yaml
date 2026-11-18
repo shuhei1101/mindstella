@@ -53,6 +53,11 @@ docs:
     status: done
     updated_by: planner
     updated_at: '2026-11-18T16:23:44.177545+00:00'
+  - page: docs/guide/プレビューを見る.md
+    change: 「本文の表とセクションを読む」の列の幅の決め方・列の固定・見出しの行の固定・しま模様の説明を mdmark の表の説明に置き換え、表示の設定の本文の見せ方をセクションの折りたたみだけにする
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T16:27:51.469963+00:00'
 scope_out:
   - item: 本文の差分（インライン・左右に並べる・HTML の本文の差分）を MindStella の実装から mdmark の差分の機能へ寄せること
     reason: '利用者が挙げた差分の見た目（削除した行の打ち消し線・変わった所だけ濃い色）は mdmark の差分の機能のもので、今の画面は MindStella の差分の実装で描いている。実装の入れ替えは #347 が持つ。この PR は mdmark が描いた部品への CSS の上書きを取り除く範囲に留める。含めるかは設計のレビューで確定する'

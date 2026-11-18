@@ -114,7 +114,7 @@
 | [プレビュー / edits](./MOD-489-109.ts.yaml) | 保存待ちの編集を記録に重ねる計算（今の画面の `core/edits.ts` と同じ振る舞い） |
 | [プレビュー / doc-export](./MOD-489-107.ts.yaml) | 資料のエクスポートの HTML と Markdown の組み立て（今の画面の `core/doc-export.ts` と同じ振る舞い） |
 | [プレビュー / body-links](./MOD-489-102.ts.yaml) | 描いた本文に、見出しのリンク・本文の印・項目の ID のリンクを付ける処理（今の画面の `core/libs.ts` の `linkHeadings`・`linkBody` と同じ振る舞い） |
-| [プレビュー / markdown-decorate](./MOD-489-117.ts.yaml) | 描いた Markdown の本文の見せ方（表の列の幅・固定・見出しの固定・しま模様・セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
+| [プレビュー / markdown-decorate](./MOD-489-117.ts.yaml) | 描いた Markdown の本文の見せ方（セクションの折りたたみ・コードブロックの札とコピー・Alert の見出し） |
 | [プレビュー / minimap](./MOD-489-118.ts.yaml) | 差分のミニマップの印の計算と操作 |
 | [プレビュー / body-render](./MOD-489-103.ts.yaml) | 本文の差分の描画（足した・消した塊・語の面・図の差分） |
 | [プレビュー / side-by-side](./MOD-489-122.ts.yaml) | 左右に並べた本文の差分の組み立て |
