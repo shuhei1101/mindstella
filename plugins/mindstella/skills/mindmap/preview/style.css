@@ -22,7 +22,9 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: no
 .brand-name { font-weight: 700; letter-spacing: -.01em; }
 .brand-sub { color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .spacer { flex: 1; }
-.search-trigger { display: flex; align-items: center; gap: 8px; height: 32px; min-width: 260px; padding: 0 10px; background: transparent; border: 1px solid var(--topbar-line); border-radius: var(--radius); color: var(--topbar-fg-2); }
+.search-trigger { position: relative; display: flex; flex: none; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 8px; background: transparent; border: 1px solid var(--topbar-line); border-radius: var(--radius); color: var(--topbar-fg-2); }
+/* 検索の入口の文字: どの幅でも出さず、虫眼鏡とキーの案内だけにする（名前は読み上げとツールチップに持つ） */
+.search-trigger .label { display: none; }
 .search-trigger kbd { margin-left: auto; font-family: var(--font-mono); font-size: 11px; padding: 0 5px; border: 1px solid var(--topbar-line); border-radius: 3px; }
 .top-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; background: none; border-radius: var(--radius); color: var(--topbar-fg-2); }
 .top-btn:hover, .search-trigger:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
@@ -902,14 +904,12 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* ===== サーバーにつながらないときの表示 ===== */
 
 /* トップバーの接続の状態: 検索の入口の左に置く。押せない表示なので枠を持たない */
-.conn { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--topbar-fg); white-space: nowrap; }
+.conn { position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--topbar-fg); white-space: nowrap; }
 .conn svg.icon { color: var(--red-300); }
-/* 接続の状態の短い文言: 広い幅では隠す */
-.conn .conn-short { display: none; }
-/* 1440px 以下: トップバーに収まるよう短い文言に切り替え、時刻は title に持つ */
-@media (max-width: 1440px) { .conn .conn-long { display: none; } .conn .conn-short { display: inline; } }
-/* 900px 以下: 印だけを見せてトップバーを幅に収める。文言は読み上げにだけ残す */
-@media (max-width: 900px) { .conn .conn-short { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+/* 接続の状態の文言: どの幅でも印だけを見せ、文言は読み上げとツールチップにだけ残す */
+.conn .conn-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* 幅 901px 以上: 印をボタンと同じ 32px の四角の中央に置き、ツールチップを出すホバーの的を広げる */
+@media (min-width: 901px) { .conn { justify-content: center; width: 32px; height: 32px; } }
 /* 最も狭い幅（360px 以下）: 印を大きくしてサイト名と重ねない */
 @media (max-width: 360px) { .conn svg.icon { width: 18px; height: 18px; } }
 
@@ -921,7 +921,7 @@ dialog.full:has(.full-viewer) .send { display: none; }
 /* トップバーの検索の入口の両側の空き: 同じ伸び方にして、コメントのボタンを右端に置いたとき検索の入口を中央へ寄せる */
 .topbar.has-comments .spacer { flex: 1 1 0; }
 /* コメント・絞り込み・表示の設定のボタン（トップバー）: 検索の入口と同じ高さと枠 */
-.comments-btn, .filter-btn, .settings-btn, .pending-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.comments-btn, .filter-btn, .settings-btn, .pending-btn { position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 8px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
 .comments-btn:hover, .filter-btn:hover, .settings-btn:hover, .pending-btn:hover { background: var(--topbar-hover); }
 .comments-btn:focus-visible, .filter-btn:focus-visible, .settings-btn:focus-visible, .pending-btn:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
 /* パネルを開いているときのボタン: 枠と面で選んだ見た目にする */
@@ -938,10 +938,8 @@ dialog.full:has(.full-viewer) .send { display: none; }
 .comments-btn .unread-dot { position: absolute; top: -3px; right: -4px; width: 9px; height: 9px; border-radius: 50%; background: var(--unread-on-topbar); box-shadow: 0 0 0 2px var(--topbar-bg); }
 /* 未読の点（ボタンのホバー・開いているとき）: 縁を地の色に合わせる */
 .comments-btn:is(:hover, .open) .unread-dot { box-shadow: 0 0 0 2px var(--topbar-hover); }
-/* 狭い幅（1100px 以下）: 文字を隠し、印と件数だけにする */
-@media (max-width: 1100px) { .comments-btn .label, .filter-btn .label, .settings-btn .label, .pending-btn .label { display: none; } .comments-btn, .filter-btn, .settings-btn, .pending-btn { padding: 0 8px; } }
-/* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、同じく文字を隠す。詳細度を足さず、480px 以下の余白の指定が効くようにする */
-@media (max-width: 1440px) { :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) .label { display: none; } :where(.topbar:has(.conn)) :is(.comments-btn, .filter-btn, .settings-btn, .pending-btn) { padding: 0 8px; } }
+/* ボタンの文字: どの幅でも出さず、印と件数だけにする（名前は読み上げとツールチップに持つ） */
+.comments-btn .label, .filter-btn .label, .settings-btn .label, .pending-btn .label { display: none; }
 
 /* コメントの入力: 添えた箇所（名前・外す ×・選んだ文）の箱 */
 .send-loc { display: grid; gap: 4px; padding: 6px 4px 6px 10px; background: var(--surface-2); border-radius: var(--radius); font-size: var(--fs-small); }
@@ -1145,9 +1143,11 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 /* ===== トップバーの変更履歴と選んだ時点の札 ===== */
 
 /* 変更履歴のボタン: 印と短い文言。検索の入口と同じ高さと枠 */
-.hist-btn { display: inline-flex; flex: none; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
+.hist-btn { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; width: 32px; height: 32px; padding: 0; border: 1px solid var(--topbar-line); border-radius: var(--radius); background: none; color: var(--topbar-fg-2); font-size: var(--fs-small); white-space: nowrap; }
 .hist-btn:hover { color: var(--topbar-fg); background: var(--topbar-hover); }
 .hist-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 変更履歴の文字: どの幅でも出さず、印だけにする */
+.hist-btn .label { display: none; }
 /* 選んだ時点の札: 時点の名前と、札を外すボタン */
 .df-chip { display: inline-flex; align-items: center; gap: 2px; min-width: 5.5em; max-width: 24em; height: 32px; padding: 0 2px 0 10px; border-radius: var(--radius); background: var(--topbar-fg); color: var(--topbar-bg); font-size: var(--fs-small); font-weight: 600; }
 /* 札の時点の名前: 長いときは末尾を省略する */
@@ -1158,12 +1158,9 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 .df-chip button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* 札を外すボタンの印 */
 .df-chip button svg.icon { width: 16px; height: 16px; }
-/* 狭い幅（1100px 以下）: 検索の入口と同じく変更履歴は印だけにし、札は名前が数文字読める幅を取る。差分の表示の間は、帯の間隔を詰め、ツール名の文字と空きの要素を隠して、札に幅を回す */
+/* 狭い幅（1100px 以下）: 札は名前が数文字読める幅を取る。差分の表示の間は、帯の間隔を詰め、ツール名の文字と空きの要素を隠して、札に幅を回す */
 @media (max-width: 1100px) {
-  .hist-btn { width: 32px; padding: 0; justify-content: center; }
-  .hist-btn .label { display: none; }
   .df-chip { max-width: 12em; }
-  .search-trigger { flex: none; }
   .topbar:has(.df-chip) { gap: 8px; }
   .topbar:has(.df-chip) .brand { flex: none; }
   .topbar:has(.df-chip) .brand-name, .topbar:has(.df-chip) .spacer { display: none; }
@@ -1173,10 +1170,7 @@ button.row-target:focus-visible { outline: 2px solid var(--accent); outline-offs
 }
 /* サーバーにつながらないとき（1440px 以下）: 接続の状態の分だけ幅が詰まるので、上と同じ狭い幅の作りにする */
 @media (max-width: 1440px) {
-  .topbar:has(.conn) .hist-btn { width: 32px; padding: 0; justify-content: center; }
-  .topbar:has(.conn) .hist-btn .label { display: none; }
   .topbar:has(.conn) .df-chip { max-width: 12em; }
-  .topbar:has(.conn) .search-trigger { flex: none; }
   .topbar:has(.conn):has(.df-chip) { gap: 8px; }
   .topbar:has(.conn):has(.df-chip) .brand { flex: none; }
   .topbar:has(.conn):has(.df-chip) .brand-name, .topbar:has(.conn):has(.df-chip) .spacer { display: none; }
@@ -2708,7 +2702,7 @@ body:has(.pe-ws) #main { display: none; }
 
 /* トップバーの音声入力中の表示と、音声入力の知らせの帯 */
 /* 音声入力中の表示: コメントのボタンと同じ高さと枠のボタン。押すと録音中の入力欄へ戻る */
-.voice-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--target-min); height: var(--control-h); padding: 0 10px; border: 1px solid var(--red-300); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
+.voice-btn { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--target-min); height: var(--control-h); padding: 0 8px; border: 1px solid var(--red-300); border-radius: var(--radius); background: transparent; color: var(--topbar-fg); font: inherit; font-size: var(--fs-small); white-space: nowrap; cursor: pointer; }
 /* ホバー: ほかのボタンと同じ面 */
 .voice-btn:hover { background: var(--topbar-hover); }
 /* キーボードのフォーカス: ほかのボタンと同じ輪 */
@@ -2720,10 +2714,23 @@ body:has(.pe-ws) #main { display: none; }
 /* 文字起こし中: マイクの代わりに回る印を出し、枠を落ち着いた色にする */
 .voice-btn.transcribing { border-color: var(--topbar-line); }
 .voice-btn .spinner { width: 12px; height: 12px; margin: 0; border-color: var(--topbar-line); border-top-color: var(--topbar-fg); }
-/* 幅 1100px 以下: ほかのボタンと同じく文字を隠し、マイクと経過の時間だけにする */
-@media (max-width: 1100px) { .voice-btn .label { display: none; } .voice-btn { padding: 0 8px; } }
-/* 幅 480px 以下: 経過の時間も隠し、ほかのボタンと同じくアイコンだけのボタンにする（名前は読み上げとツールチップに持つ） */
-@media (max-width: 480px) { .voice-btn .vb-time { display: none; } .voice-btn { gap: 0; padding: 0 2px; } }
+/* 「音声入力中」「文字起こし中」の文字: どの幅でも出さず、マイクと経過の時間だけにする（名前は読み上げとツールチップに持つ） */
+.voice-btn .label { display: none; }
+/* 幅 480px 以下: 経過の時間は残し、マイクとの間隔と左右の余白を詰める */
+@media (max-width: 480px) { .voice-btn { gap: 2px; padding: 0 2px; } }
+/* 幅 481〜600px で音声入力中の表示を出している間: 幅 480px 以下と同じく、ツール名の文字を隠して要素の間隔と左右の余白を詰める */
+@media (min-width: 481px) and (max-width: 600px) { .topbar:has(.voice-btn) .brand-name { display: none; } .topbar:has(.voice-btn) { gap: 3px; padding: 0 10px; } }
+/* 幅 360px 以下でつながらない表示と音声入力中の表示が並ぶ間: 差分の札を出すときと同じく押せない飾りのツール名の印を隠し、要素の間隔を 1px、左右の余白を 8px に詰める */
+@media (max-width: 360px) { .topbar:has(.conn):has(.voice-btn) { gap: 1px; padding: 0 8px; } .topbar:has(.conn):has(.voice-btn) .brand { display: none; } }
+
+/* トップバーのツールチップ: アイコンだけのボタンと接続の状態の名前と状態。選んだ箇所のコメントの入口（.sc-tip）と同じ見た目でボタンの下に出す */
+.topbar .tb-tip { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; display: none; width: max-content; max-width: 240px; padding: 4px 8px; border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--fs-xs); font-weight: 500; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; text-align: left; pointer-events: none; }
+/* 右寄りのボタンのツールチップ: 右端をボタンの右端に揃え、画面の外へはみ出させない */
+.topbar [data-tip="end"] .tb-tip { left: auto; right: 0; }
+/* ホバーとキーボードのフォーカスで出す */
+.topbar [data-tip]:is(:hover, :focus-visible) .tb-tip { display: block; }
+/* フォーカスを残したまま別の要素にホバーしている間は、フォーカスの側を出さず、2 つ重ねない */
+.topbar:hover [data-tip]:focus-visible:not(:hover) .tb-tip { display: none; }
 
 /* 録音を破棄した知らせ: トップバーの下に帯で出し、× で閉じる（トップバーの幅を取らない） */
 .voice-note { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px var(--page-pad); border-bottom: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: var(--fs-small); }

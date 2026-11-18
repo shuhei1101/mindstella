@@ -42,6 +42,13 @@ var MindmapPreview;
             ],
         });
     }
+    /**
+     * トップバーのアイコンだけのボタン・状態の表示の下に出すツールチップ。
+     * ホバーとキーボードのフォーカスで出す（style.css）。親の `data-tip` が `end` のときは右端を揃える。読み上げはボタンの名前に任せる
+     */
+    function tooltip(text) {
+        return MindmapPreview.h({ tag: "span", attrs: { class: "tb-tip", "aria-hidden": "true" }, children: [text] });
+    }
     /** 「変更履歴」のボタン（印と文言）。押すと変更履歴のモーダルを開く */
     function historyButton(onClick) {
         return MindmapPreview.h({
@@ -52,9 +59,10 @@ var MindmapPreview;
                 "data-act": "hist",
                 "aria-haspopup": "dialog",
                 "aria-label": "変更履歴",
+                "data-tip": "start",
                 onclick: onClick,
             },
-            children: [MindmapPreview.icon("history"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["変更履歴"] })],
+            children: [MindmapPreview.icon("history"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["変更履歴"] }), tooltip("変更履歴")],
         });
     }
     /** 選んだ時点の札と、差分の表示をやめる × */
@@ -82,41 +90,28 @@ var MindmapPreview;
             ],
         });
     }
-    /** サーバーにつながらないときの表示。広い幅は読んだ日時つきの文言、狭い幅は短い文言で、日時は `title` に持つ */
+    /** サーバーにつながらないときの表示。印だけを見せ、読んだ日時つきの文言は読み上げとツールチップに持つ */
     function connectionNotice(readAt) {
         const readAtText = readAt === null ? null : MindmapPreview.formatJst(readAt);
+        const text = readAtText === null ? "サーバーにつながりません" : `サーバーにつながりません（${readAtText} に読んだ記録）`;
         return MindmapPreview.h({
             tag: "span",
-            attrs: {
-                class: "conn",
-                role: "status",
-                title: readAtText === null ? "サーバーにつながりません" : `${readAtText} に読んだ記録を出しています`,
-            },
-            children: [
-                MindmapPreview.icon("offline"),
-                MindmapPreview.h({
-                    tag: "span",
-                    attrs: { class: "conn-long" },
-                    children: [
-                        readAtText === null
-                            ? "サーバーにつながりません"
-                            : `サーバーにつながりません（${readAtText} に読んだ記録）`,
-                    ],
-                }),
-                MindmapPreview.h({ tag: "span", attrs: { class: "conn-short" }, children: ["つながりません"] }),
-            ],
+            attrs: { class: "conn", role: "status", "data-tip": "start" },
+            children: [MindmapPreview.icon("offline"), MindmapPreview.h({ tag: "span", attrs: { class: "conn-long" }, children: [text] }), tooltip(text)],
         });
     }
     /** コメントのボタン（印と「コメント」と件数）。押すとコメントの一覧を開く・閉じる */
     function commentsButton({ count, open, unread, onClick }) {
+        const name = `コメント（${unread ? "未読あり・" : ""}レビュー中 ${count} 件）`;
         return MindmapPreview.h({
             tag: "button",
             attrs: {
                 class: `comments-btn${open ? " open" : ""}`,
                 type: "button",
                 "data-act": "comments",
-                "aria-label": `コメント（${unread ? "未読あり・" : ""}レビュー中 ${count} 件）`,
+                "aria-label": name,
                 "aria-expanded": String(open),
+                "data-tip": "end",
                 onclick: () => onClick?.(),
             },
             children: [
@@ -133,6 +128,7 @@ var MindmapPreview;
                     attrs: { class: `count${count === 0 ? " zero" : ""}`, "data-wide": count > COMMENT_COUNT_CAP },
                     children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
                 }),
+                tooltip(name),
             ],
         });
     }
@@ -146,7 +142,7 @@ var MindmapPreview;
                 type: "button",
                 "data-act": "voice",
                 "aria-label": recording ? `音声入力中（${voice.label}）。録音中の入力欄へ移動` : `文字起こし中（${voice.label}）。入力欄へ移動`,
-                title: recording ? `音声入力中（${voice.label}）` : `文字起こし中（${voice.label}）`,
+                "data-tip": "end",
                 onclick: () => onClick?.(),
             },
             children: recording
@@ -154,8 +150,13 @@ var MindmapPreview;
                     MindmapPreview.h({ tag: "span", attrs: { class: "vb-mic" }, children: [MindmapPreview.icon("mic")] }),
                     MindmapPreview.h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["音声入力中"] }),
                     MindmapPreview.h({ tag: "span", attrs: { class: "vb-time", "aria-hidden": "true" }, children: [MindmapPreview.formatElapsed(voice.elapsed)] }),
+                    tooltip(`音声入力中: ${voice.label}`),
                 ]
-                : [MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }), MindmapPreview.h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["文字起こし中"] })],
+                : [
+                    MindmapPreview.h({ tag: "span", attrs: { class: "spinner", "aria-hidden": "true" } }),
+                    MindmapPreview.h({ tag: "span", attrs: { class: "label", "aria-hidden": "true" }, children: ["文字起こし中"] }),
+                    tooltip(`文字起こし中: ${voice.label}`),
+                ],
         });
     }
     /** トップバーの下の音声入力の知らせの帯（警告の印・理由の文・失敗のときは「入力欄を開く」・閉じる ×） */
@@ -190,14 +191,16 @@ var MindmapPreview;
     }
     /** 保存待ちのボタン（印と「保存待ち」と件数）。押すと保存待ちのパネルを開く・閉じる */
     function pendingButton({ count, open, blocked, onClick, }) {
+        const name = `保存待ち（${count} 件${blocked ? "・書き込めない編集あり" : ""}）`;
         return MindmapPreview.h({
             tag: "button",
             attrs: {
                 class: `pending-btn${open ? " open" : ""}${blocked ? " blocked" : ""}`,
                 type: "button",
                 "data-act": "pending",
-                "aria-label": `保存待ち（${count} 件${blocked ? "・書き込めない編集あり" : ""}）`,
+                "aria-label": name,
                 "aria-expanded": String(open),
+                "data-tip": "end",
                 "aria-controls": open && document.getElementById("pending-panel") !== null ? "pending-panel" : null,
                 onclick: () => onClick?.(),
             },
@@ -210,6 +213,7 @@ var MindmapPreview;
                     attrs: { class: "count", "data-wide": count > COMMENT_COUNT_CAP },
                     children: [count > COMMENT_COUNT_CAP ? `${COMMENT_COUNT_CAP}+` : count],
                 }),
+                tooltip(name),
             ],
         });
     }
@@ -223,21 +227,24 @@ var MindmapPreview;
                 "data-act": "settings",
                 "aria-label": "表示の設定",
                 "aria-expanded": String(open),
+                "data-tip": "end",
                 onclick: () => onToggle(),
             },
-            children: [MindmapPreview.icon("sliders"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["表示の設定"] })],
+            children: [MindmapPreview.icon("sliders"), MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["表示の設定"] }), tooltip("表示の設定")],
         });
     }
     /** 絞り込みのボタン（印と「絞り込み」と、値を選んでいる条件の数のバッジ）。押すと絞り込みのドロワーを開く・閉じる */
     function filterButton({ count, open, onClick }) {
+        const name = count === 0 ? "絞り込み" : `絞り込み（${count} つの条件で絞り込み中）`;
         return MindmapPreview.h({
             tag: "button",
             attrs: {
                 class: `filter-btn${open ? " open" : ""}`,
                 type: "button",
                 "data-act": "filter",
-                "aria-label": count === 0 ? "絞り込み" : `絞り込み（${count} つの条件で絞り込み中）`,
+                "aria-label": name,
                 "aria-expanded": String(open),
+                "data-tip": "end",
                 // ドロワーを開いていて、指す先が文書にあるときだけ付ける（ドロワーを描いた後は、ドロワーが付け直す）
                 "aria-controls": open && document.getElementById("drawer") !== null ? "drawer" : null,
                 onclick: () => onClick?.(),
@@ -253,6 +260,7 @@ var MindmapPreview;
                         attrs: { class: "fbadge", "aria-hidden": "true", "data-wide": count >= FILTER_BADGE_WIDE_FROM },
                         children: [count],
                     }),
+                tooltip(name),
             ],
         });
     }
@@ -282,12 +290,14 @@ var MindmapPreview;
                         "data-act": "search",
                         "aria-label": "すべての項目を検索",
                         "aria-keyshortcuts": "Control+K Meta+K",
+                        "data-tip": "start",
                         onclick: () => onSearch(),
                     },
                     children: [
                         MindmapPreview.icon("search"),
                         MindmapPreview.h({ tag: "span", attrs: { class: "label" }, children: ["すべての項目を検索"] }),
                         MindmapPreview.h({ tag: "kbd", children: [/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K"] }),
+                        tooltip("すべての項目を検索"),
                     ],
                 }),
                 onHistory === undefined ? null : historyButton(onHistory),
