@@ -67,8 +67,8 @@ def _rewrite_title_of_d1(root: Path) -> None:
 
 
 def _with_settings(settings: dict[str, Any], **overrides: Any) -> dict[str, Any]:
-    """ゴールを持たない設定に、渡したキーを重ねた設定を返す。"""
-    return {**{key: value for key, value in settings.items() if key != "goal"}, **overrides}
+    """設定に、渡したキーを重ねた設定を返す。"""
+    return {**settings, **overrides}
 
 
 def test_load_edits(
@@ -132,18 +132,17 @@ def test_list_edits(
             "E-2",
             target="settings",
             op="setting",
-            key="phases",
-            value=["目的"],
-            before=["問い"],
+            key="summary",
+            value="新しい題名",
+            before="前の題名",
             base=None,
-            map={"問い": "目的"},
         ),
     )
     # 実行
     listed = edits.list_edits(root)
     # 検証
     assert [item["id"] for item in listed["items"]] == ["E-1", "E-2"]
-    assert all("base" not in item and "map" not in item for item in listed["items"])
+    assert all("base" not in item for item in listed["items"])
     assert listed["count"] == 2
 
 
@@ -228,28 +227,6 @@ def test_add_edit_when_item_add(make_workspace: MakeWorkspace) -> None:
     assert saved["items"][0]["value"]["status"] == "進行中"
 
 
-def test_add_edit_when_setting_with_map(
-    make_workspace: MakeWorkspace, valid_settings: dict[str, Any]
-) -> None:
-    """設定の編集は付け替えの対応を一緒に持つ（正常系）。"""
-    # 準備
-    root = make_workspace(settings=_with_settings(valid_settings, phases=["問い", "発散"]))
-    data = {
-        "op": "setting",
-        "target": "settings",
-        "key": "phases",
-        "value": ["目的", "発散"],
-        "map": {"問い": "目的"},
-    }
-    # 実行
-    edits.add_edit(root, data, now=_fixed_now)
-    # 検証
-    saved = _read_edits(root)["items"][0]
-    assert saved["map"] == {"問い": "目的"}
-    assert saved["before"] == ["問い", "発散"]
-    assert saved["base"] is None
-
-
 @pytest.mark.parametrize(
     "data",
     [
@@ -260,20 +237,6 @@ def test_add_edit_when_setting_with_map(
         ),
         pytest.param(
             {"op": "set", "target": "D-1", "key": "title", "value": "  "}, id="blank_title"
-        ),
-        pytest.param(
-            {"op": "set", "target": "D-1", "key": "answer", "value": "a", "map": {"a": "b"}},
-            id="map_not_allowed",
-        ),
-        pytest.param(
-            {
-                "op": "setting",
-                "target": "settings",
-                "key": "phases",
-                "value": ["目的", "発散"],
-                "map": {"問い": None},
-            },
-            id="map_value_not_string",
         ),
     ],
 )
@@ -808,24 +771,24 @@ def test_save_edits_drops_edits_of_removed(
         ),
         pytest.param(
             _no_rewrite,
-            [("D-1", {"phase": "問い"})],
-            {"phases": ["問い", "発散"]},
+            [("D-1", {})],
+            {},
             [
                 (
                     "E-1",
                     {
                         "target": "settings",
                         "op": "setting",
-                        "key": "phases",
-                        "value": ["発散"],
-                        "before": ["問い", "発散"],
+                        "key": "history_limit",
+                        "value": -1,
+                        "before": None,
                         "base": None,
                     },
                 )
             ],
             [("E-1", "invalid", [])],
             "",
-            id="invalid_phase_without_map",
+            id="invalid_history_limit",
         ),
     ],
 )

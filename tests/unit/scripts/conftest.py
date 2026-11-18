@@ -28,6 +28,14 @@ SCRIPTS_DIR = (
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 
+@pytest.fixture(autouse=True)
+def isolate_state_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """常駐サーバーの状態のフォルダ（前回参照した時点など）を、テストごとの一時フォルダの下に向ける。"""
+    state_home = tmp_path / "state-home"
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
+    return state_home
+
+
 @pytest.fixture
 def scripts_dir() -> Path:
     """スクリプトのフォルダ（plugins/mindstella/skills/mindmap/scripts）を返す。"""

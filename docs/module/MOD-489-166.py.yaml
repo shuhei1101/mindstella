@@ -302,9 +302,9 @@ functions:
       - name: test_update_display_when_settings_broken
         case: 異常
         summary: 崩れた config.yaml には書き足さない
-        condition: '`phases` を消した `config.yaml` のワークスペースに正しい本文'
+        condition: '`summary` を消した `config.yaml` のワークスペースに正しい本文'
         mock: なし
-        expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `phases`）。`config.yaml` が呼ぶ前と同じ'
+        expected: '`SchemaMismatchError`（`lines` に `config.yaml: ` と `summary`）。`config.yaml` が呼ぶ前と同じ'
         exception: 今の config.yaml が合わない
   - name: stage_settings
     title: 設定の更新を当てる

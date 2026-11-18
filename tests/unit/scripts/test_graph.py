@@ -1,4 +1,4 @@
-"""graph.py（逆向きの参照・影響・後続の件数・次の候補・再開時の状況）の単体テスト。"""
+"""graph.py（逆向きの参照・影響・決着の判定・着手できる検討事項）の単体テスト。"""
 
 from __future__ import annotations
 
@@ -9,26 +9,7 @@ import pytest
 import graph
 import store
 from fixture_types import MakeItem, MakeWorkspace
-
-
-def _id_and_followers(candidates: list[graph.Candidate]) -> list[tuple[str, int]]:
-    """候補から ID と後続の件数の組を並びのまま取り出す。"""
-    return [(candidate.id, candidate.followers) for candidate in candidates]
-
-
-@pytest.fixture
-def next_workspace(make_workspace: MakeWorkspace, make_item: MakeItem) -> store.Workspace:
-    """次の候補を並べるためのワークスペース（フェーズは 目的 → 要件 → 構成）を読み込んで返す。"""
-    root = make_workspace(
-        make_item("D-1", phase="要件", weight="小"),
-        make_item("D-2", phase="目的", weight="小"),
-        make_item("D-3", phase="要件", weight="大"),
-        make_item("D-4", phase="要件", weight="大"),
-        make_item("D-5", related=[{"to": "D-1", "type": "depends_on"}]),
-        make_item("D-6", related=[{"to": "D-4", "type": "depends_on"}]),
-        make_item("D-7", related=[{"to": "D-6", "type": "depends_on"}]),
-    )
-    return store.load_workspace(root)
+from workspace_fixtures import ADOPTED_OPTIONS
 
 
 def test_build_reverse_edges(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
@@ -116,210 +97,19 @@ def test_is_settled_when_missing() -> None:
     assert settled is False
 
 
-def test_count_followers(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """間接の後続も数え、決着したものは数えない（正常系）。"""
+
+def test_list_ready(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
+    """前提が決着した未決定だけを連番の順に返す（正常系）。"""
     # 準備
     root = make_workspace(
+        make_item("D-1", status="決定済み", options=ADOPTED_OPTIONS),
+        make_item("D-2", related=[{"to": "D-4", "type": "depends_on"}]),
+        make_item("D-3", related=[{"to": "D-1", "type": "depends_on"}]),
         make_item("D-4"),
-        make_item("D-6", related=[{"to": "D-4", "type": "depends_on"}]),
-        make_item("D-7", related=[{"to": "D-6", "type": "depends_on"}]),
-        make_item("D-8", related=[{"to": "D-4", "type": "depends_on"}], status="決定済み"),
+        make_item("D-5", related=[{"to": "D-9", "type": "depends_on"}]),
     )
     workspace = store.load_workspace(root)
     # 実行
-    followers = graph.count_followers(workspace, "D-4")
+    ready = graph.list_ready(workspace)
     # 検証
-    assert followers == 2
-
-
-def test_list_next_candidates(next_workspace: store.Workspace) -> None:
-    """前提が揃った未決定を決めた順に並べる（正常系）。"""
-    # 実行
-    candidates = graph.list_next_candidates(next_workspace)
-    # 検証
-    assert _id_and_followers(candidates) == [
-        ("D-2", 0),
-        ("D-4", 2),
-        ("D-3", 0),
-        ("D-1", 1),
-    ]
-
-
-def test_list_next_candidates_when_phase_unknown(
-    make_workspace: MakeWorkspace, make_item: MakeItem
-) -> None:
-    """フェーズが無い・設定に無い候補は最後に並べる（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1"),
-        make_item("D-2", phase="その他"),
-        make_item("D-3", phase="構成"),
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    candidates = graph.list_next_candidates(workspace)
-    # 検証
-    assert _id_and_followers(candidates) == [("D-3", 0), ("D-1", 0), ("D-2", 0)]
-
-
-def test_list_next_candidates_when_limited(next_workspace: store.Workspace) -> None:
-    """上限で切る（正常系）。"""
-    # 実行
-    candidates = graph.list_next_candidates(next_workspace, limit=2)
-    # 検証
-    assert _id_and_followers(candidates) == [("D-2", 0), ("D-4", 2)]
-
-
-def test_summarize_status(make_workspace: MakeWorkspace, make_item: MakeItem) -> None:
-    """状態と依存で分ける（正常系）。"""
-    # 準備
-    root = make_workspace(
-        make_item("D-1", title="見直しの問い", status="要見直し"),
-        make_item("T-1", title="進めている作業", status="進行中"),
-        make_item("D-2", title="再開できる保留", status="保留", related=[{"to": "D-3", "type": "depends_on"}]),
-        make_item("D-3", status="決定済み"),
-        make_item("D-4", title="決定待ちの保留", status="保留", related=[{"to": "D-5", "type": "depends_on"}]),
-        make_item("D-5"),
-        make_item("D-6", title="予算待ち", status="保留", reason="予算が決まったら"),
-        make_item("T-2", title="作業待ちの保留", status="保留", related=[{"to": "T-1", "type": "depends_on"}]),
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    summary = graph.summarize_status(workspace)
-    # 検証
-    assert summary.needs_review == [{"id": "D-1", "title": "見直しの問い"}]
-    assert summary.in_progress == [{"id": "T-1", "title": "進めている作業"}]
-    assert summary.resumable == [{"id": "D-2", "title": "再開できる保留"}]
-    assert summary.waiting == [
-        graph.Waiting(id="D-4", title="決定待ちの保留", waiting_for=["D-5"]),
-        graph.Waiting(id="T-2", title="作業待ちの保留", waiting_for=["T-1"]),
-    ]
-    assert summary.on_hold == [{"id": "D-6", "title": "予算待ち", "reason": "予算が決まったら"}]
-    assert len(summary.next) == 1
-    assert summary.next[0].id == "D-5"
-
-
-def test_judge_goal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """ゴールより後ろのフェーズを入れずに届いたと判定する（正常系）。"""
-    # 準備
-    settings = {
-        **valid_settings,
-        "phases": ["目的", "要件", "構成"],
-        "goal": {
-            "phase": "要件",
-            "summary": "要件が決まる",
-            "deliverables": [{"title": "要件定義書", "doc": "A-1"}],
-        },
-    }
-    root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み"),
-        make_item("D-2", phase="要件", status="対象外"),
-        make_item("D-3", phase="要件", status="取り下げ"),
-        make_item("D-4", phase="構成", status="未決定"),
-        make_item("A-1", deliverable=True, status="完成"),
-        settings=settings,
-        bodies={"A-1.md": "要件定義書の本文"},
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    report = graph.judge_goal(workspace)
-    # 検証
-    assert report.reached is True
-    assert report.goal_phase == "要件"
-    assert report.phases == ["目的", "要件"]
-    assert report.remaining_decisions == []
-    assert report.remaining_deliverables == []
-
-
-def test_judge_goal_when_remaining(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """決着していない検討事項と揃っていない納品物を集める（正常系）。"""
-    # 準備
-    settings = {
-        **valid_settings,
-        "phases": ["目的", "要件", "構成"],
-        "goal": {
-            "phase": "要件",
-            "summary": "要件が決まる",
-            "deliverables": [
-                {"title": "要件定義書", "doc": "A-1"},
-                {"title": "用語集"},
-                {"title": "図", "doc": "A-9"},
-            ],
-        },
-    }
-    root = make_workspace(
-        make_item("D-2", phase="要件", status="要見直し"),
-        make_item("D-1", phase="目的", status="未決定"),
-        make_item("D-3", phase="要件", status="決定済み"),
-        make_item("A-1", deliverable=True, status="確認中"),
-        settings=settings,
-        bodies={"A-1.md": "要件定義書の本文"},
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    report = graph.judge_goal(workspace)
-    # 検証
-    assert report.reached is False
-    assert report.remaining_decisions == [
-        {"id": "D-1", "title": "D-1の題", "phase": "目的", "status": "未決定"},
-        {"id": "D-2", "title": "D-2の題", "phase": "要件", "status": "要見直し"},
-    ]
-    assert report.remaining_deliverables == [
-        {"title": "要件定義書", "doc": "A-1"},
-        {"title": "用語集", "doc": None},
-        {"title": "図", "doc": "A-9"},
-    ]
-
-
-def test_judge_goal_when_goal_phase_unknown(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """ゴールのフェーズが phases に無ければ全てのフェーズを判定に入れる（正常系）。"""
-    # 準備
-    settings = {
-        **valid_settings,
-        "phases": ["目的", "要件"],
-        "goal": {"phase": "実装", "summary": "実装まで", "deliverables": []},
-    }
-    root = make_workspace(
-        make_item("D-1", phase="要件", status="未決定"),
-        settings=settings,
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    report = graph.judge_goal(workspace)
-    # 検証
-    assert report.phases == ["目的", "要件"]
-    assert [decision["id"] for decision in report.remaining_decisions] == ["D-1"]
-
-
-def test_judge_goal_when_no_goal(
-    make_workspace: MakeWorkspace, make_item: MakeItem, valid_settings: dict[str, Any]
-) -> None:
-    """ゴールが無ければ判定せず、全フェーズの決着していない検討事項を返す（正常系）。"""
-    # 準備
-    settings = {
-        **{key: value for key, value in valid_settings.items() if key != "goal"},
-        "phases": ["目的", "要件"],
-    }
-    root = make_workspace(
-        make_item("D-1", phase="目的", status="決定済み"),
-        make_item("D-2", phase="要件", status="未決定"),
-        settings=settings,
-    )
-    workspace = store.load_workspace(root)
-    # 実行
-    report = graph.judge_goal(workspace)
-    # 検証
-    assert report.has_goal is False
-    assert report.reached is None
-    assert report.goal_phase is None
-    assert report.phases == ["目的", "要件"]
-    assert report.remaining_decisions == [
-        {"id": "D-2", "title": "D-2の題", "phase": "要件", "status": "未決定"}
-    ]
-    assert report.remaining_deliverables == []
+    assert ready == ["D-3", "D-4"]
