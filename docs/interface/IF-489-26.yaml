@@ -226,6 +226,33 @@ flows:
       - '`problems` に `duplicate_id`（`D-1`）が 1 件ある'
       - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
     test: test_normal_when_duplicate_ids
+  - name: 正常系（埋め込んだファイルが無い）
+    summary: 資料の本文が指すワークスペースの中のファイルが無いものを missing_file にする
+    setup:
+      - name: Mock
+        description: なし（MCP サーバーを立て、MCP のクライアントでツールを呼ぶ）
+      - name: make_workspace
+        description: 作成を済ませたワークスペース
+      - name: 記録
+        description: 本文を Markdown で持つ資料 A-1
+        notes: 本文に `![動画](../files/clip.mp4)`・`![無い](../files/missing.mp4)`・`![外](https://example.com/a.png)`・コードブロックの中の `![例](../files/sample.png)` を持ち、`.mindstella/files/clip.mp4` だけを配置する
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as check（MCP のツール）
+        participant WS as ワークスペース
+
+        クライアント->>IF: check workspace
+        IF-->>WS: docs/ の本文と files/ の有無を読む
+        IF-->>クライアント: JSON（ok: false・missing_file が 1 件）
+      ```
+    expected:
+      - ツールのエラーにならず、`ok` が偽
+      - '`missing_file` の問題が 1 件だけで、項目の ID が `A-1`、パスが `../files/missing.mp4`'
+      - '`../files/clip.mp4`・絶対 URL・コードブロックの中のパスの問題が無い'
+      - ワークスペースの全てのファイルの中身が呼ぶ前と同じ
+    test: test_normal_when_embedded_file_missing
 lead: ワークスペースのスキーマに合わない箇所・参照切れ・YAML と `docs/` の本文（Markdown と HTML）のずれ・案と状態の合わない検討事項を全て洗い出す。
 idempotent: true
 side_effects: なし（読むだけ。見つけた問題は直さない）
@@ -272,7 +299,7 @@ constraints:
   - item: エラーの返し方
     constraint: 実行時のエラーと引数の誤りは、ツールのエラー（`isError`）で返し、本文にエラーの行を書く（『MCP サーバーの起動』）
   - item: 点検するファイル
-    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`（無ければスレッド 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）・`docs/`'
+    constraint: '`config.yaml`・種類ごとの 7 つの YAML・`threads.yaml`（無ければスレッド 0 件として扱う）・`changes.yaml`（無ければまとまり 0 件として扱う）・`comments.yaml`・`drafts.yaml`（無ければ 0 件として扱い、スキーマ違反だけを確かめる）・`docs/`・`files/`（埋め込んだファイルの有無を確かめるときだけ。中身は読まない）'
   - item: 参照切れを確かめるキー
     constraint: '`related[].to`・`sources`、スレッドの `target`（持つときだけ）、`changes.yaml` の `sets[].added`・`sets[].changed`・`pending.added`・`pending.changed`。存在しない ID と、`related[].type` の種類に合わない ID（`depends_on`・`parent` が自分と違う種類の項目、`for` が検討事項以外を指すなど）を `broken_ref` にする。`changes.yaml` のまとまり・`pending` と、取り込み待ちでないスレッド（`taken` が `null` の利用者の書き込みを持たないスレッド）の `target` が指す ID のうち、`changes.yaml` の `sets[].removed`・`pending.removed` にある ID（消した項目）は参照切れにしない。レビュー中のコメントと書きかけの `target` は確かめない（項目が消えたコメントは『コメントをまとめて送る』の 409 で画面に出る）'
   - item: 本文のずれ
@@ -283,6 +310,8 @@ constraints:
     constraint: 本文を持つ項目の `history.yaml` の行の `history` を新しいものから順に今の本文へ当て、`body_diff` の `now` の行が当てる先の行と合わないものを `stale_history` にする（ツールを通さずに本文を書き換えたときに起きる）。`key` は合わなかった要素の `history[{位置}].body_diff`、`detail` はその回より前の本文の差分を出せないこと
   - item: 案と状態
     constraint: 検討事項の案と状態の決まり（ER 図『ワークスペース』の decisions.yaml）に合わない検討事項を `decision_state` にする。合わない決まり 1 つ = 1 件で、`key` は `items[{番号}].options` か `items[{番号}].status`、`detail` は ER 図の理由の行。`未整理`・`対象外`・`取り下げ` の検討事項が案を持たないことは問題にしない
+  - item: 埋め込んだファイル
+    constraint: '`docs/*.md` の本文の画像の記法 `![…](パス)` のうち、相対パスだけを `docs/` を基準に解決し、ファイルが無いものを `missing_file` にする。問題には本文を持つ項目の ID・記法に書かれたパスを入れる。絶対 URL・`data:`・`/` で始まるパス・コードブロックとインラインコードの中は確かめない。HTML の本文（`docs/*.html`）は確かめない。URL のフラグメント（`#`）とクエリ（`?`）は外してから確かめる'
 refs:
   - ER-489-1#
 test_file: tests/integration/server/test_check.py

@@ -11,3 +11,9 @@ confirmations:
     approver: shuhei1101
     commit: 382b9f243ad8674315b3c4c0613c09bcc58fe949
     thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4614708962
+  - topic: ワークスペースに配置したファイルと Git（前の決定の前提の訂正）
+    decision: mindstella はワークスペースの Git を操作しない。ファイルを Git に残すかは利用者に任せ、Git 管理外でも同じに動く（推奨案 A。前の行の決定を置き換える）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: f568e851
+    thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4615027793
