@@ -6,7 +6,7 @@ version:
   latest: v0.13.0
   checked_on: '2026-11-17'
   source: https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{develop の先頭の commit の SHA}/dist/index.js
-  pinning: ワークスペースの設定の `mdmark.version`（`latest` かタグ）で jsDelivr の GitHub の URL（`gh/shuhei1101/mdmark@{ref}/dist/`。`latest` は常駐サーバーが GitHub に問い合わせた develop の先頭の commit の SHA、問い合わせられないときは `develop`）を決めて読む。`integrity` は付けない（既定の `latest` は中身が変わるため。タグのときも付けない）。CSS は `crossorigin="anonymous"` の link 要素、JavaScript は `import()` で読む
+  pinning: ワークスペースの設定の `mdmark.version`（`latest` かタグ）で jsDelivr の GitHub の URL（`gh/shuhei1101/mdmark@{ref}/dist/`。`latest` は常駐サーバーが GitHub に問い合わせた develop の先頭の commit の SHA のうち、jsDelivr が配ることを確認できたもの。問い合わせられないとき・jsDelivr が配らないときは、前に確認できた SHA か `develop`）を決めて読む。`integrity` は付けない（既定の `latest` は中身が変わるため。タグのときも付けない）。CSS は `crossorigin="anonymous"` の link 要素、JavaScript は `import()` で読む
 catalogs:
   - name: API
     version: v0.8.0

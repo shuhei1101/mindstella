@@ -178,6 +178,20 @@ constants:
     usecase: プレビューを開く
     summary: 問い合わせた SHA の配布物を jsDelivr が配るかを確認する基点の URL。結合テストは `sitecustomize` で偽のサーバーに差し替える（確認するたびにこの定数を参照する）
     value: '"https://cdn.jsdelivr.net"'
+  - name: DIST_CONNECT_TIMEOUT_SEC
+    title: jsDelivr の確認で接続を待つ秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: jsDelivr が配布物を配るかの 1 回の確認で、接続を待つ秒数
+    value: '1'
+    reason: '『プレビューの配信』の制約「mdmark の ref の解決」の導出（`Range: bytes=0-0` の GET を 1,000 回測った接続の p99.9 が 0.038 秒 + 余裕 50% を秒に切り上げ）'
+  - name: DIST_READ_TIMEOUT_SEC
+    title: jsDelivr の確認で読み取りを待つ秒数
+    container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
+    usecase: プレビューを開く
+    summary: 接続した後、応答の頭を読み終えるまでの 1 回の読み取りを待つ秒数
+    value: '2'
+    reason: 『プレビューの配信』の制約「mdmark の ref の解決」の導出（同じ 1,000 回の読み取りの p99.9 が 1.30 秒 + 余裕 50%）
 functions:
   - name: fetch_head_sha
     title: develop の先頭の commit の問い合わせ
@@ -257,7 +271,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/mdmark_ref.py
     usecase: プレビューを開く
     scope: public
-    summary: jsDelivr の `{JSDELIVR_BASE_URL}/gh/{MDMARK_REPO}@{ref}/dist/index.js` を HEAD で要求し、200 でなければ `RefLookupError` を送る（外との境界のアダプター）
+    summary: 'jsDelivr の `{JSDELIVR_BASE_URL}/gh/{MDMARK_REPO}@{ref}/dist/index.js` を画面と同じ GET に `Range: bytes=0-0` を付けて要求し、200 か 206 でなければ `RefLookupError` を送る（外との境界のアダプター）'
     args:
       - name: ref
         type: str
@@ -268,17 +282,17 @@ functions:
       type: None
       description: なし
     process: |-
-      1. `JSDELIVR_BASE_URL` を分け、`fetch_head_sha` と同じ待ち（接続 `CONNECT_TIMEOUT_SEC`・読み取り `READ_TIMEOUT_SEC`）で接続し、`User-Agent: mindstella` で HEAD する
-      2. 200 なら返す
+      1. `JSDELIVR_BASE_URL` を分け、接続を `DIST_CONNECT_TIMEOUT_SEC`、読み取りを `DIST_READ_TIMEOUT_SEC` まで待って、`Range: bytes=0-0`・`User-Agent: mindstella` で GET する（応答の頭だけを読み、本文は読まない）
+      2. 200 か 206 なら返す
          - それ以外のステータスの場合、`RefLookupError`（`retry_at` は `None`、理由は `jsDelivr が配らない: HTTP {ステータス}`）を送る
       3. 接続・読み取りの `OSError` と `http.client.HTTPException` は `RefLookupError`（`retry_at` は `None`）にして送る。接続は必ず閉じる
     unit_tests:
       - name: test_check_dist_served
         case: 正常
-        summary: 200 なら例外を送らず、SHA の `dist/index.js` を HEAD で要求する
-        condition: '`JSDELIVR_BASE_URL` を 200 を返す偽のサーバーに向ける'
+        summary: '200 と 206 なら例外を送らず、SHA の `dist/index.js` を `Range: bytes=0-0` の GET で要求する'
+        condition: '`parametrize`: 200 / 206。`JSDELIVR_BASE_URL` をそのステータスを返す偽のサーバーに向ける'
         mock: 偽のサーバー
-        expected: 例外を送らず、偽のサーバーが受けた要求が HEAD で、パスが `/gh/shuhei1101/mdmark@{SHA}/dist/index.js`
+        expected: 例外を送らず、偽のサーバーが受けた要求が GET で `Range` が `bytes=0-0`、パスが `/gh/shuhei1101/mdmark@{SHA}/dist/index.js`
       - name: test_check_dist_served_when_not_served
         case: 異常
         summary: 403 は `retry_at` の無い例外にする

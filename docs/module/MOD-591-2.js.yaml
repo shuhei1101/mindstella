@@ -38,6 +38,13 @@ constants:
     usecase: 共通
     summary: 問い合わせた SHA の `dist/index.js` を jsDelivr が配るかを確認する URL（`{ref}` に SHA）
     value: '"https://cdn.jsdelivr.net/gh/shuhei1101/mdmark@{ref}/dist/index.js"'
+  - name: MDMARK_DIST_TIMEOUT_MS
+    title: jsDelivr の確認を待つ時間
+    container: .storybook/mdmark-ref.js
+    usecase: 共通
+    summary: jsDelivr が配布物を配るかの 1 回の確認全体を待つミリ秒（`AbortSignal.timeout`）
+    value: '3000'
+    reason: mdmark_ref.py の jsDelivr の確認の接続 1 秒と読み取り 2 秒の合計
 functions:
   - name: resolveMdmarkRef
     title: Storybook の mdmark の ref の解決
@@ -51,7 +58,7 @@ functions:
       description: commit の SHA か `develop`
     process: |-
       1. `MDMARK_HEAD_URL` を `Accept: application/vnd.github.sha` と `AbortSignal.timeout(MDMARK_REF_TIMEOUT_MS)` で `fetch` する
-      2. 200 で、本文の前後の空白を除いたものが 40 文字の 16 進なら、`MDMARK_DIST_URL` のその SHA を同じ待ちで HEAD し、200 なら SHA を返す
+      2. 200 で、本文の前後の空白を除いたものが 40 文字の 16 進なら、`MDMARK_DIST_URL` のその SHA を `Range: bytes=0-0` の GET で `AbortSignal.timeout(MDMARK_DIST_TIMEOUT_MS)` まで待って要求し、200 か 206 なら SHA を返す
          - それ以外・例外の場合、理由を `console.warn` で 1 行出し、`MDMARK_FALLBACK_REF` を返す
 notes:
   使う側: '`.storybook/main.js` はトップレベルで 1 回 `await resolveMdmarkRef()` し、その ref で mdmark の URL を組み立てる。`.storybook-react/main.ts` は同じく 1 回解決し、`previewHead` で `MDMARK_REF_META` の meta 要素を差し込む。`.storybook-react/preview.tsx` の loaders は、描画のライブラリを読む前に meta 要素の ref で `setMdmarkSettings(undefined, ref)` を呼ぶ'
