@@ -664,7 +664,7 @@ def test_migrate_when_same_with_stale_schema(
     # 検証
     assert report.steps == []
     assert report.recorded is None
-    assert report.schemas == [".mindstella/schemas/docs.schema.json"]
+    assert report.source_files == [".mindstella/schemas/docs.schema.json"]
     assert (copies / "docs.schema.json").read_bytes() == (
         store.SCHEMA_DIR / "docs.schema.json"
     ).read_bytes()
@@ -688,7 +688,28 @@ def test_migrate_when_schema_synced_after_steps(
     report = migrator.migrate(root)
     # 検証
     assert str(report.recorded) == V0140
-    assert ".mindstella/schemas/docs.schema.json" in report.schemas
+    assert ".mindstella/schemas/docs.schema.json" in report.source_files
     assert (copies / "docs.schema.json").read_bytes() == (
         store.SCHEMA_DIR / "docs.schema.json"
     ).read_bytes()
+
+
+def test_migrate_when_same_without_write_dates(
+    make_workspace: MakeWorkspace, patch_plugin_version: PatchPluginVersion
+) -> None:
+    """版が同じでも、配信の設定の write_dates を持たない行に false を足す（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    _place_schema_copies(root, None)
+    config = store.build_source_config("mindstella-a-123456", "a")
+    for row in config["documents"]:
+        row.pop("write_dates")
+    write_yaml(root / RECORD_DIR / "dev-docs.yaml", config)
+    patch_plugin_version(V0140)
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert report.source_files == [".mindstella/dev-docs.yaml"]
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n"
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
