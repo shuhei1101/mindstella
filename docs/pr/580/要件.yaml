@@ -1,0 +1,14 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: run_only
+    detail: v0.12.1 以前のワークスペースを開くときの移し替えで、資料を mdmark の書き方へ移す手順が呼ぶ mdmark を変える。流れと期待値は変わらないが、この変更が移し替えを壊しうる
+    depends_on: []
+scope_out:
+  - item: 画面が読み込む mdmark の既定（latest。develop の最新）を変えること（D-505）
+    reason: 移し替えはその手順を作った時点の mdmark の書き方へ移すもので、画面が読み込む既定とは別の話のため。受付判断でも範囲外と決まっている
+    plan: none
+  - item: mdmark の v0.14.0 の移行の手順（ER 図の書き方の移行 retired-er）をワークスペースの資料へ当てること
+    reason: v0.13.0 の移し替えは mdmark の v0.13.0 までの書き方へ移すもの。v0.14.0 以降の書き方への移行は、mindstella のそれを前提にするバージョンの移し替えで当てる
+    plan: none
+docs: []

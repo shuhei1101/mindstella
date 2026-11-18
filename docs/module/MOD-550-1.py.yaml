@@ -7,7 +7,7 @@ constants:
     title: mdmark の CLI の取得元
     container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
     usecase: 記録の形式の移行
-    summary: '`npx` に渡す mdmark の取得元の書式（`{ref}` にタグか `develop`）'
+    summary: '`npx` に渡す mdmark の取得元の書式（`{ref}` にタグ）'
     value: '"github:shuhei1101/mdmark#{ref}"'
   - name: MDMARK_BASE_VERSION
     title: 変換の起点のバージョン
@@ -21,6 +21,12 @@ constants:
     usecase: 記録の形式の移行
     summary: 設定されていれば `npx -y {取得元}` の代わりに呼ぶコマンド（空白区切り）。結合テストが失敗を起こすコマンドへ差し替える
     value: '"MINDSTELLA_MDMARK_COMMAND"'
+  - name: MDMARK_MIGRATION_REF
+    title: 移し替えが呼ぶ mdmark のタグ
+    container: plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/mdmark_documents.py
+    usecase: 記録の形式の移行
+    summary: 設定の `mdmark.version` が無いか `latest` のときに呼ぶ mdmark のタグ。この移し替えが前提にした `v0.11.0`（マーカーの JSON）と `v0.13.0`（map）の手順までを適用する
+    value: '"v0.13.0"'
 functions:
   - name: mdmark_documents.migrate
     title: 資料を mdmark の今の書き方へ移す移し替え
@@ -40,7 +46,7 @@ functions:
       type: tuple[list[str], list[str]]
       description: 変えたファイル（ワークスペースからの相対パス）と、mdmark の移行の報告の行
     process: |-
-      1. `.mindstella/config.yaml` を読み、`mdmark.version`（無ければ `latest`）から取得元の ref を決める（`latest` は `develop`）
+      1. `.mindstella/config.yaml` を読み、`mdmark.version` から取得元の ref を決める（無いか `latest` のときは `MDMARK_MIGRATION_REF`）
       2. `.mindstella/` に一時の mdmark の設定（`version: MDMARK_BASE_VERSION`・`build.include: [docs/**/*.md]`・`build.out: .mdmark/site.html`。mdmark の点検が `build.out` を求め、`.mdmark/` は終わりに削除する）を書く
       3. `MDMARK_COMMAND_ENV` があればそのコマンド、無ければ `npx -y {MDMARK_REPO_SPEC}` に `upgrade --yes --config {一時の設定}` を付け、`.mindstella/` を作業場所にして呼ぶ（標準出力と標準エラーを取る）
          - 終了コードが 0 以外の場合、一時の設定と `.mdmark/` を削除し、標準出力と標準エラーを理由にした `RuntimeError` を送る（ワークスペースの戻しは移行の写しが担う）
@@ -70,5 +76,11 @@ functions:
         summary: 設定のタグの mdmark を呼ぶ
         condition: '`config.yaml` の `mdmark.version` が `v0.13.0`。`MDMARK_COMMAND_ENV` を設定しない'
         mock: '`subprocess.run`（終了コード 0 を返す）'
+        expected: '`subprocess.run` に渡ったコマンドが `npx -y github:shuhei1101/mdmark#v0.13.0 upgrade --yes --config ...`'
+      - name: test_mdmark_documents_migrate_when_version_unset
+        case: 正常
+        summary: 設定に mdmark のタグが無いときは移し替えのタグの mdmark を呼ぶ
+        condition: '`config.yaml` の `mdmark.version` が無い・`latest` の 2 通り（parametrize）。`MDMARK_COMMAND_ENV` を設定しない'
+        mock: '`subprocess.run`（終了コード 0 で終わる）'
         expected: '`subprocess.run` に渡ったコマンドが `npx -y github:shuhei1101/mdmark#v0.13.0 upgrade --yes --config ...`'
 id: MOD-550-1
