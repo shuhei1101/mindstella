@@ -674,7 +674,7 @@ exceptions:
     condition: '手順を当てた後に、ワークスペースのどれかの YAML がスキーマに合わない'
     notes: 写しから戻してから、メッセージに合わない箇所。バージョンのファイルを書かない
   - name: WriteFailedError
-    condition: 写しを取れない、またはバージョンのファイルの書き込みに失敗した
+    condition: 写しを取れない、バージョンのファイルの書き込みに失敗した、またはスキーマの複製（`.mindstella/schemas/`）の書き込みに失敗した
     notes: 例外のメッセージに書けなかったパスと理由。写しを取れないときは手順を当てない
 error_format: '例外のメッセージに内容を書く。手順の失敗は `{バージョン} の手順 {番号}（{操作}）: {理由}`。スキーマに合わないときは、合わない箇所ごとに `{ファイル名}: {キーのパス}: {理由}` の行を続ける。呼ぶ側（『ワークスペースの作成』など）がこのメッセージを応答の `detail` に入れる。'
 constraints:
@@ -727,7 +727,7 @@ constraints:
     constraint: '`call`（`remove_discussion_keys`）の 1 手順。破壊的な操作。`.mindstella/config.yaml` から `goal`・`phases`・`playbooks`・`targets`・`target_label`・`categories` を消す。種類ごとの YAML の項目の `target`・`category` は値を `topic:{値}` のタグ（既にあれば足さない）へ、`attrs` は本文の末尾の「属性」の表（キーと値）へ、調査の `angles`・`confidence` は本文の末尾の「観点と確かさ」の表へ移してキーを消す。`phase`・検討事項の `weight`・資料の `deliverable` は移さずに消す。`.mindstella/release/` は消さない。書き換えた項目の変更履歴は変えない（D-276 A・D-277 A・D-278 A）'
     notes: バージョンの番号は計画の次の Sprint のバージョン。Sprint のバージョンが変わったら合わせる
   - item: スキーマの複製
-    constraint: 手順を当ててバージョンのファイルを書いた後と、バージョンが同じで手順を当てないときに、配信の設定が指すスキーマ（`common.schema.json` と種類ごとのスキーマ）の `.mindstella/schemas/` の複製をプラグインの `skills/mindmap/schemas/` の同じ名前のファイルと比べ、無いか中身が違うファイルだけを書き直して `schemas` に返す。複製の側にだけあるファイルは消さない（配信の設定が指さないので検査に使われない）。写しは取らない。書けなければ WriteFailedError。`to_version` がプラグインのバージョンより古いとき・WorkspaceNewerError のとき・手順が失敗したときは比べない
+    constraint: 手順を当ててバージョンのファイルを書いた後と、バージョンが同じで手順を当てないときに、配信の設定が指すスキーマ（`common.schema.json` と種類ごとのスキーマ）の `.mindstella/schemas/` の複製をプラグインの `skills/mindmap/schemas/` の同じ名前のファイルと比べ、無いか中身が違うファイルだけを書き直して `schemas` に返す。複製の側にだけあるファイルは消さない（配信の設定が指さないので検査に使われない）。写しは取らない。書けなければ WriteFailedError。`to_version` がプラグインのバージョンより古いとき・WorkspaceNewerError のとき・手順が失敗したときは比べない。project-index は Git 管理外の配信元のスキーマを読み込んだ時点のまま使うので、`schemas` が 1 件以上のときは呼ぶ側（『ワークスペースの作成』）が配信元を読み直させる
 refs:
   - ER-489-1#tables[docs.yaml]
   - ER-489-1#tables[mindstella-version.ini]

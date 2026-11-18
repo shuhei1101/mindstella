@@ -232,10 +232,12 @@ scenarios:
         participant CL as 外部のアプリ（起動のコマンド）
         participant SV as 常駐サーバー
         participant WS as ワークスペース
+        participant PI as project-index
 
         CL->>SV: ワークスペースを作成する
         SV->>WS: バージョンのファイルを読む（プラグインと同じ）
         SV->>WS: スキーマの複製をプラグインのスキーマと比べ、違うファイルを再配置する
+        SV->>PI: 配信元を読み直させる
         SV-->>CL: ワークスペースの ID と画面の URL
       ```
     expected:
