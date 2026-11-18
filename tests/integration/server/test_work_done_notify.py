@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import threading
 import time
 import urllib.parse
@@ -13,8 +15,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+from .http_helpers import send_json
 from record_write_helpers import write_items
-from session_fixtures import SessionWorld, wait_until
+from session_fixtures import SCRIPTS_DIR, SessionWorld, wait_until
 from workspace_fixtures import (
     LISTEN_HOST,
     MDMARK_COMMAND_ENV,
@@ -137,6 +141,21 @@ def _new_thread(server: McpServer, root: Path) -> str:
     return str(result.data["id"])
 
 
+def _commit_outside_mcp(root: Path) -> subprocess.CompletedProcess[str]:
+    """停止の工程と同じく、MCP を通さずに `run_commit` でまとまりを作る。"""
+    code = (
+        "import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import commands; "
+        "commands.run_commit(Path(sys.argv[2]), 'MCP を通さないまとまり')"
+    )
+    return subprocess.run(
+        [sys.executable, "-c", code, str(SCRIPTS_DIR), str(root)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+
+
 def test_normal(session_world: SessionWorld, webhook: FakeWebhook) -> None:
     """応答の間に AI がスレッドに返信したので、応答の終わりに 1 件送信する（正常系）。"""
     # 準備
@@ -192,18 +211,33 @@ def test_normal_when_commit_only(
     assert len(webhook.requests) == 1
 
 
-def test_normal_when_nothing_written(session_world: SessionWorld, webhook: FakeWebhook) -> None:
+def test_normal_when_nothing_written(
+    session_world: SessionWorld, webhook: FakeWebhook, make_item: MakeItem
+) -> None:
     """MindStella のセッションが commit・new_thread・reply を呼ばなかった応答では送信しない（正常系）。"""
     # 準備
     world = session_world
     server = _start(world, webhook)
     root = _prepare(world, server)
-    _new_thread(server, root)
+    thread_id = _new_thread(server, root)
+    page_url = server.call("preview_url", workspace=str(root)).data["url"]
+    item = make_item("D-1")
+    item.pop("id")
     # 実行
     _event(world, "prompt_submit")
+    write_items(server.call, str(root), add=[("decision", item)])
+    committed = _commit_outside_mcp(root)
+    user_write = send_json(
+        page_url,
+        "PATCH",
+        f"/api/threads/{thread_id}",
+        {"status": "closed", "reason": "利用者が決着"},
+    )
     status, _body = _event(world, "stop")
     time.sleep(NO_SEND_WAIT_SEC)
     # 検証
+    assert committed.returncode == 0, committed.stderr
+    assert user_write.status == 200
     assert status == 200
     assert webhook.requests == []
 
