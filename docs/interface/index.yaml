@@ -4,20 +4,16 @@ items:
     summary: "Claude Code がマーケットプレイスとして登録するときに読む marketplace.json の形"
   - page: IF-489-68.yaml
     summary: "Claude Code がインストールして読み込む plugin.json とフォルダの形"
-  - page: IF-489-64.yaml
-    summary: "/mindstella:setup: 依存を確かめ、ワークスペースを作るか状況を示して session へ渡す"
-  - page: IF-489-66.yaml
-    summary: "/mindstella:session: 取り込み・ヒアリング・リサーチ・方針転換・プレビュー・ゴール判定を回す"
-  - page: IF-489-65.yaml
-    summary: "/mindstella:upgrade: ワークスペースの版とプラグインの版を比べ、版ごとの手順で今の版へ移し替える"
+  - page: IF-565-1.yaml
+    summary: "agent-flows/: MindStella のセッションが project-index で引く起動・コメントの取り込み・記録のエージェントフロー"
   - page: IF-489-67.yaml
-    summary: "register.py: 起動スクリプトを呼ぶ mindstella・mindstella-{名前} と環境変数を、ログインシェルの設定に登録・読み返し・外す"
+    summary: "mindstella register: 起動スクリプトを呼ぶ mindstella・mindstella-{名前} と環境変数を、ログインシェルの設定に登録・読み返し・外す"
   - page: IF-489-71.yaml
     summary: "URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで描き直し、回答・意見を送る"
   - page: IF-489-70.yaml
     summary: "React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで描き直す"
   - page: IF-489-56.yaml
-    summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動する"
+    summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動し、register のサブコマンドで起動スクリプトを登録する"
   - page: IF-489-27.yaml
     summary: "check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp の版を確かめる"
   - page: IF-489-1.yaml
@@ -47,19 +43,11 @@ items:
   - page: IF-489-40.yaml
     summary: "adopt: 検討事項の採用する案を 1 つに切り替える"
   - page: IF-489-32.yaml
-    summary: "status: 要見直し・進行中・再開可能・決定待ち・次の候補をまとめて返す"
-  - page: IF-489-48.yaml
-    summary: "next: 前提が揃った未決定をフェーズ → 影響度 → 後続の件数の順に返す"
-  - page: IF-489-7.yaml
-    summary: "goal: ゴールのフェーズまでが決着し納品物が揃ったかと、残りの項目を返す"
+    summary: "POST /_admin/sessions/{session}/resume: 起動・再開の契機に、取り込み待ちのスレッド・前回から変わった項目・要見直し・進行中を返す"
   - page: IF-489-26.yaml
     summary: "check: スキーマ違反・参照切れ・本文のずれを洗い出す"
   - page: IF-489-52.yaml
-    summary: "migrate: ワークスペースの版とプラグインの版を比べ、版ごとの手順を並べる・当てる・版を書き換える"
-  - page: IF-489-20.yaml
-    summary: "clear_release: リリースの資料を書き出す前に release/ の中身を消す"
-  - page: IF-489-19.yaml
-    summary: "write_release: 確定したリリースの資料を release/ の下へ 1 ファイルずつ書き出す"
+    summary: "migrate: 起動のときにワークスペースの版とプラグインの版を比べ、版ごとの手順を当てて版を書き換える"
   - page: IF-489-57.yaml
     summary: "export: 描画のライブラリまで中に持つ見るだけの 1 枚の HTML を書き出す"
   - page: IF-489-17.yaml
@@ -83,7 +71,7 @@ items:
   - page: IF-489-34.yaml
     summary: "POST /api/opened: 前回プレビューを開いた日時を返し、今の日時に書き換える"
   - page: IF-489-55.yaml
-    summary: "update_settings: 設定のキーを置き換え、フェーズ・対象・カテゴリーの対応で項目を付け替える"
+    summary: "update_settings: 設定のキーを置き換える"
   - page: IF-489-23.yaml
     summary: "GET /api/comments: レビュー中のコメントと書きかけをその場で読んで返す"
   - page: IF-489-24.yaml
@@ -105,7 +93,7 @@ items:
   - page: IF-489-53.yaml
     summary: "POST /api/config/reload: 手で直した config.yaml を検査し、通れば配信の設定を差し替える"
   - page: IF-489-2.yaml
-    summary: "readme: 直下の README.md を起動・接続・スキル・プレビューの一覧に書き直す"
+    summary: "readme: 直下の README.md を起動・接続・エージェントフローの案内・プレビューの一覧に書き直す"
   - page: IF-489-8.yaml
     summary: "threads: スレッドを状態・タグ・未読・取り込み待ちで絞り、キーだけを返す"
   - page: IF-489-14.yaml
