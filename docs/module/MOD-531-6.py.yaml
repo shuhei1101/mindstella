@@ -14,13 +14,19 @@ constants:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     summary: コマンドの引数から本文の `event` への対応
-    value: '{"session-start": "session_start", "session-end": "session_end", "prompt-submit": "prompt_submit", "stop": "stop", "stop-failure": "stop_failure"}'
+    value: '{"session-start": "session_start", "session-end": "session_end", "prompt-submit": "prompt_submit", "stop": "stop", "stop-failure": "stop_failure", "pre-compact": "pre_compact"}'
   - name: FALLBACK_LINES
     title: 状況を取れないときの注入文
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 起動と再開
     summary: 『再開の状況』を取れないときだけ注入する行。`{trigger}`（`起動` か `再開`）・`{flow}` を `str.format` で埋める（インターフェース定義『MindStella のセッションのフック』の制約「注入に失敗したとき」）
     value: '("MindStella のセッションを{trigger}しました。再開の状況を取得できなかったため、状況は含みません。", "進め方の文書: {flow}", "エージェントフロー mindstella/startup を参照して先に進めてください。")。`{flow}` の行は `MINDSTELLA_FLOW` があるときだけ入れる'
+  - name: BLOCK_COMPACT
+    title: 圧縮を止める出力
+    container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
+    usecase: MindStella のセッションを起動し直す
+    summary: PreCompact で標準出力に書く JSON
+    value: '{"decision": "block", "reason": "[mindstella] 圧縮の代わりに起動し直します"}'
 functions:
   - name: main
     title: フックの入口
@@ -28,7 +34,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart（`fork` 以外）では再開の状況を引いて `additionalContext` を出し、書き終えた後に前回参照した時点を進める。`stop-failure` では標準入力の `error` を送る。`pre-compact` では出来事を送れたときだけ `BLOCK_COMPACT` を標準出力に書く。SessionStart で `MINDSTELLA_LAUNCH_REASON` が `compact` で `source` が `startup` なら、`source` を `compact` にして再開の状況を引く。どの結末も 0 を返す'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
     side_effects: 常駐サーバーへ出来事を送る
     args:
@@ -114,6 +120,24 @@ functions:
         condition: '入力 `{session_id: c1, source: fork}`'
         mock: 同上
         expected: '`post` だけが呼ばれ、標準出力が空'
+      - name: test_main_when_rate_limit
+        case: 正常
+        summary: stop-failure で error を送る
+        condition: '`stop-failure`、標準入力に `error: rate_limit`'
+        mock: '`post_event`'
+        expected: '`post_event` が `event: stop_failure`・`error: rate_limit` を受け、標準出力が空で 0 を返す'
+      - name: test_main_when_pre_compact
+        case: 正常
+        summary: 送れたときだけ圧縮を止める
+        condition: '`parametrize`: `post_event` が成功 / つながらない / `MINDSTELLA_SESSION` が無い'
+        mock: '`post_event`'
+        expected: 標準出力が `BLOCK_COMPACT` / 空 / 空。どれも 0 を返す
+      - name: test_main_when_compact_relaunch
+        case: 正常
+        summary: 圧縮で起動し直した startup は再開として引く
+        condition: '`session-start`・`source: startup`、`MINDSTELLA_LAUNCH_REASON=compact`'
+        mock: '`post_event`・`request_resume`・`post_read_point`'
+        expected: '`request_resume` が `source: compact` を受けている'
     process: |-
       1. `MINDSTELLA_SESSION` が無ければ標準入力を読み捨てて 0 を返す
       2. 出来事を送る（`post`）。送れなければ標準エラーに 1 行書き、続ける

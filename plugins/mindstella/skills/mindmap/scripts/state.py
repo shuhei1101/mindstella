@@ -42,7 +42,7 @@ class SessionState:
     """`session.json` の MindStella のセッション。"""
 
     session: str
-    # running・stopping・stopped・crashed
+    # running・restarting・stopping・stopped・crashed
     status: str
     started_at: str
     # SessionStart のフックが入れる Claude Code の session_id（入るまで None）
@@ -62,6 +62,8 @@ class SessionState:
     last_error: str | None = None
     # Claude Code が使う設定のフォルダの絶対パス（SessionStart のフックが入れる）
     claude_config_dir: str | None = None
+    # restarting の間の契機（api・rate_limit・compact・comment）。起動し直しが終わったら None
+    restart_reason: str | None = None
 
     def replace(self, **changes: Any) -> SessionState:
         """渡したキーだけを変えた値を返す。"""

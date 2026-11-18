@@ -266,6 +266,7 @@ frequency: 外部のアプリが活動を終えるたびに 1 回
 priority: 高
 refs:
 - SC-531-1#
+- SC-582-1#
 notes:
   読み替え: 端末からの停止とクローズは、起動のコマンドが同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える。MindStella の MCP の `stop_session`・`close_workspace` からの依頼は、外部のアプリを MCP を呼んだセッションに読み替える
   停止の完了: 停止の依頼はすぐに受け付けて返却し、完了は MindStella のセッションの一覧（`GET /workspaces/{id}/sessions`）で確かめる

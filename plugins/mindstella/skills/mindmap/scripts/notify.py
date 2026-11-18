@@ -16,7 +16,15 @@ from typing import Any, Literal
 logger = logging.getLogger("mindstella.notify")
 
 # 停止の通知に渡す止まった理由
-StopReason = Literal["stop_requested", "force_stopped", "crashed", "stop_failed", "session_ended"]
+StopReason = Literal[
+    "stop_requested",
+    "force_stopped",
+    "crashed",
+    "stop_failed",
+    "session_ended",
+    "rate_limited",
+    "restart_failed",
+]
 
 # 止まった理由ごとの本文の括弧の中の文言（利用者が確認した文言）
 STOP_REASON_TEXTS: dict[StopReason, str] = {
@@ -25,6 +33,8 @@ STOP_REASON_TEXTS: dict[StopReason, str] = {
     "crashed": "異常終了",
     "stop_failed": "停止処理の失敗",
     "session_ended": "Claude Code の終了",
+    "rate_limited": "利用上限",
+    "restart_failed": "起動し直しの失敗",
 }
 
 # 停止の本文の 1 行目の名前の後ろの文言

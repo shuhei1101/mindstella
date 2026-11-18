@@ -1,0 +1,33 @@
+# 5098fc48（レビューの指摘で追加したテスト・修正の前）の作業ツリーを git archive で取り出して実行
+$ pytest tests/unit/scripts/test_claude_input.py -p no:cacheprovider -rf -q
+# Red: running のまま落ちている・起動し直しの途中の場合の振る舞いが無いことによる
+            claude_input, "enter_to_claude", lambda *_args, **_kwargs: not dead or bool(calls)
+        )
+        def _restarter(root: Path) -> bool:
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+        targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+        )
+        # 実行
+        result = targets.enter_or_restart(tmp_path, 1)
+        # 検証
+>       assert result == expected
+E       assert (True, True) == (False, False)
+E         
+E         At index 0 diff: True != False
+E         Use -v to get more diff
+tests/unit/scripts/test_claude_input.py:1082: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[running-dead]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[restarting]
+2 failed, 64 passed in 0.29s

@@ -439,4 +439,43 @@ requirements:
     overflow: 上限を過ぎたら打ち切り、標準エラーに上限を過ぎたことを 1 行記録してその回を終える（Webhook の URL を含めない）
     refs:
       - IF-568-1#
+  - id: NFR-31
+    name: 落ちたことを見回る間隔
+    english_name: crash_watch_interval
+    category: 可用性
+    external_constraint: 制限なし
+    source_kind: ユーザー要望
+    value: '60'
+    unit: 秒（常駐サーバーが状態が起動中の MindStella のセッションを見回る間隔）
+    rationale: '見回りは落ちたことの Discord への通知の遅れだけを決め、起動し直しはコメントが届いたときに見回りと関係なく行う。下流の制約は無く、利用者が落ちたことの通知を待てる時間で決まるため、利用者が 60 秒に決めた（PR #582 の確認ログ）。見回り 1 回は起動中のワークスペースごとに tmux の `display-message` と `/proc` の読み取りだけで、端末の負荷にならない'
+    measurement: 利用者が、落ちたことの通知が遅いと感じたら見直す
+    overflow: 間隔の間に落ちたものは次の見回りで見つかる。その前に一覧・停止・コメントの送信が状態を読めば、そちらが先に落ちたことを記録する
+    refs:
+      - IF-582-2#
+  - id: NFR-32
+    name: 起動し直しで exec の終了を待つ上限
+    english_name: restart_exec_exit_timeout
+    category: 性能
+    external_constraint: claude-balancer の `exec` が子プロセスの終了後に行う利用上限の到達の通知（30 秒まで）と返却（10 秒まで）の待ち（claude-balancer の IF-275-21）
+    source_kind: 外部ライブラリの制限
+    value: '75'
+    unit: 秒（起動し直しでペインに `/exit` を貼ってから、`claude-balancer exec` が終わって tmux のセッションが閉じるまで）
+    rationale: 入れ子の待ちの上限の和に余裕 50% を足した。Claude Code の終了を待つ 10 秒（『MindStella のセッションの停止』の `/exit` の待ち）・`exec` の利用上限の到達の通知の応答を待つ 30 秒・返却の応答を待つ 10 秒の和 50 秒に、余裕 25 秒を足して 75 秒
+    measurement: release ブランチで、利用上限の契機の起動し直しを結合テストで流し、`/exit` から tmux のセッションが閉じるまでの時間を測る。claude-balancer の通知・返却の上限が変わったら見直す
+    overflow: 上限を過ぎたら `kill-session` で閉じ、標準エラーに 1 行記録してから起動する。claude-balancer の通知か返却が済んでいないことがあるが、貸与は claude-balancer の回収で戻る
+    breakdown:
+      - part: Claude Code の終了の待ち
+        value: 10 秒
+        notes: 『MindStella のセッションの停止』の `/exit` の待ち
+      - part: 利用上限の到達の通知
+        value: 30 秒
+        notes: claude-balancer の IF-275-21
+      - part: 返却
+        value: 10 秒
+        notes: claude-balancer の IF-275-21
+      - part: 余裕
+        value: 25 秒
+        notes: 規約『資源の値の決め方』の既定の 50%
+    refs:
+      - IF-582-1#
 lead: mindstella が外部の制約から逆算して決める値。

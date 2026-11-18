@@ -1,0 +1,267 @@
+id: SC-582-1
+title: MindStella のセッションを起動し直す
+lead: MindStella のセッションが利用上限に達した・圧縮を止めた・落ちた後にコメントが届いた・起動し直しを依頼されたときに、常駐サーバーが MindStella のセッションを止めて同じ MindStella のセッションの ID のまま起動し直し、契機に応じて前の会話を引き継ぐ単一ユースケース。
+issue: 520
+primary_actor: 常駐サーバー
+stakeholders:
+  - name: 利用者
+    interest: アカウントが利用上限に達しても、MindStella のセッションが落ちても、リセットや起動のコマンドを待たずに同じ会話の続きから話し合いを続けられる。起動し直せないときは理由が分かり、送ったコメントが消えない
+  - name: 外部のアプリ
+    interest: MindStella のセッションの ID が起動し直しで変わらず、起動し直しの途中・失敗の理由を API で確かめられる
+trigger: StopFailure のフックが利用上限を送信する・PreCompact のフックが起動し直しを依頼する・MindStella のセッションが無いワークスペースへコメントが届く・外部のアプリが起動し直しを依頼する（`POST /workspaces/{id}/sessions/{session}/restart`）
+preconditions:
+  - MindStella のセッションが、単一ユースケース『外部のアプリから起動する』か『端末から起動する』で一度起動している
+  - ワークスペースがクローズ待ちでもクローズ済みでもない
+success_guarantee: MindStella のセッションが同じ MindStella のセッションの ID のまま起動中に戻り、状態に新しい Claude Code の `session_id` が記録されている。利用上限・落ちた後のコメント・起動し直しの依頼では前の会話を引き継ぎ、圧縮では新規の会話で起動し直す。起動し直しの前に届いていたコメントは、起動し直した MindStella のセッションに取り込み待ちとして届く。
+minimal_guarantee: 起動し直しに失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した段階と理由が状態に記録されて『MindStella のセッションの一覧』で分かる。起動し直しの途中に失敗したときは、起動したプロセスを止めて tmux のペインを閉じる。
+frequency: 利用上限・圧縮・落ちた後のコメント・起動し直しの依頼のたびに 1 回
+priority: 高
+scenarios:
+  - name: 正常シナリオ（利用上限）
+    setup:
+      - name: Mock
+        description: 'claude-balancer（`PATH` の先頭に置く。`exec` で受けた引数を記録して `--` の後のコマンドをアカウントの `CLAUDE_CONFIG_DIR` で実行する。子プロセスが終わった後、会話の記録の最も新しい assistant の記録の `error` が `rate_limit` なら、そのアカウントを利用上限に達したと記録して以降は貸さない）・Claude Code（`PATH` の先頭に置く。引数と `CLAUDE_CONFIG_DIR` を記録し、SessionStart のフックを叩いて待ち、アカウント A で起動したときは会話の記録に `error: rate_limit` の assistant の記録を書いてから StopFailure（`rate_limit`）のフックを叩き、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）・Discord の Webhook（受けた本文を記録する HTTP のエンドポイント）'
+      - name: 常駐サーバー
+        description: 起動している。状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダ、Webhook の設定のファイルは Mock のエンドポイントを指す
+      - name: tmux
+        description: テストごとに専用のソケットで立てた tmux のサーバー（`TMUX_TMPDIR`）
+      - name: ワークスペース
+        description: MindStella のセッションがアカウント A で起動中で、取り込み待ちのスレッドを 1 件持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant HK as フック
+        participant MGR as セッションの管理
+        participant CB as claude-balancer
+        participant DC as Discord
+
+        CC->>HK: StopFailure（rate_limit）
+        HK->>MGR: 利用上限を送信する
+        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>CC: 止めて tmux のペインを閉じる
+        CB->>CB: 子プロセスの終了後に会話の記録から利用上限を見分け、アカウント A を貸さなくする
+        MGR->>DC: 止まった理由「利用上限」で通知する
+        MGR->>CB: tmux のペインの中で exec を起動する（claude --resume {前の session_id}）
+        CB->>CC: アカウント B で前の会話を引き継いで起動する
+        CC->>HK: SessionStart（resume）
+        HK->>MGR: 新しい session_id・tmux のペイン・アカウント B を登録する
+        MGR->>CC: 最初の入力を貼る
+      ```
+    expected:
+      - Mock の claude-balancer が `exec` を 2 回受け、2 回目の引数に `--resume` と 1 回目の Claude Code の `session_id` がある
+      - 2 回目に起動した Claude Code の `CLAUDE_CONFIG_DIR` がアカウント B の設定のフォルダである
+      - 常駐サーバーが `claude-balancer report-limit` を呼んでいない
+      - 『MindStella のセッションの一覧』が、1 回目と同じ MindStella のセッションの ID を `running` で返し、アカウントが B である
+      - Webhook の Mock が、止まった理由「利用上限」の通知を 1 件だけ受けている
+      - 取り込み待ちのスレッドが残っている
+    test: test_normal_when_rate_limited
+  - name: 正常シナリオ（圧縮）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数と環境変数を記録し、SessionStart のフックを叩いて待ち、PreCompact のフックを叩いた後、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
+      - name: 常駐サーバー
+        description: 正常シナリオ（利用上限）と同じ
+      - name: tmux
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: MindStella のセッションが起動中
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CC as MindStella のセッション
+        participant HK as フック
+        participant MGR as セッションの管理
+        participant CB as claude-balancer
+
+        CC->>HK: PreCompact
+        HK->>MGR: 起動し直しを依頼する
+        HK-->>CC: 圧縮を止める
+        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>CC: 止めて tmux のペインを閉じる
+        MGR->>CB: 起動の契機「圧縮」を環境変数に入れ、新規の会話で exec を起動する
+        CB->>CC: Claude Code を起動する
+        CC->>HK: SessionStart（startup）
+        HK-->>CC: 起動の契機が圧縮なので、再開として再開の状況を注入する
+      ```
+    expected:
+      - PreCompact のフックの出力が圧縮を止めている
+      - 2 回目に起動した Claude Code が `--resume` を受けておらず、起動の契機の環境変数が圧縮である
+      - 2 回目の SessionStart の注入が、起動ではなく再開の契機と再開の状況を持つ
+      - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返す
+    test: test_normal_when_compacted
+  - name: 正常シナリオ（落ちた後にコメントが届く）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数を記録し、SessionStart のフックを叩いて待つ）・Discord の Webhook（受けた本文を記録する HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常シナリオ（利用上限）と同じ
+      - name: tmux
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: 状態は起動中で Claude Code の `session_id` を持つが、tmux のペインと Claude Code のプロセスが無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant MGR as セッションの管理
+        participant NT as コメントの通知
+        participant CB as claude-balancer
+        participant CC as MindStella のセッション
+        participant DC as Discord
+
+        MGR->>MGR: 一定の間隔の見回りで、ペインとプロセスが無いことを見つけ、落ちたことを記録する
+        MGR->>DC: 止まった理由「異常終了」で通知する
+        U->>NT: 画面でコメントを送る
+        NT->>NT: スレッドに足す
+        NT->>MGR: MindStella のセッションが無いので、起動し直しを依頼する
+        MGR->>CB: exec を起動する（claude --resume {前の session_id}）
+        CB->>CC: 前の会話を引き継いで起動する
+        CC->>MGR: SessionStart（resume）で登録する
+        MGR->>NT: 準備ができた
+        NT->>CC: 届いた件数を貼る
+      ```
+    expected:
+      - 一覧や停止の依頼が無くても、状態に落ちたことが記録され、Webhook の Mock が止まった理由「異常終了」の通知を 1 件受けている
+      - 起動した Claude Code が `--resume` と前の `session_id` を受けている
+      - ペインに届いた件数の入力が貼られ、コメントがスレッドに取り込み待ちとして残っている
+      - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返す
+    test: test_normal_when_comment_after_crash
+  - name: 正常シナリオ（起動し直しの依頼）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（応答の途中で、しばらくして Stop のフックを叩き、`/exit` が貼られたら SessionEnd のフックを叩いて終わる）
+      - name: 常駐サーバー
+        description: 正常シナリオ（利用上限）と同じ
+      - name: tmux
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: MindStella のセッションが起動中で、応答の途中
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant MGR as セッションの管理
+        participant CC as MindStella のセッション
+        participant CB as claude-balancer
+
+        APP->>API: 起動し直しを依頼する（POST /workspaces/{id}/sessions/{session}/restart）
+        API->>MGR: 起動し直しを依頼する
+        API-->>APP: 受け付けた
+        MGR->>MGR: 状態を起動し直しの途中にする
+        MGR->>MGR: 応答の途中なので、終わるまで待つ
+        CC->>MGR: 応答の終わり（Stop のフック）
+        MGR->>CC: 止めて tmux のペインを閉じる
+        MGR->>CB: exec を起動する（claude --resume {前の session_id}）
+        CB->>CC: 前の会話を引き継いで起動する
+        APP->>API: MindStella のセッションの一覧を取得する
+        API-->>APP: 起動中
+      ```
+    expected:
+      - 外部のアプリが、起動し直しの依頼をすぐに受け付けられている
+      - 待つ間の『MindStella のセッションの一覧』が起動し直しの途中を返している
+      - MindStella のセッションは Stop のフックの後に止まり、`--resume` と前の `session_id` で起動し直している
+      - 起動し直しの後の一覧が、同じ MindStella のセッションの ID を `running` で返す
+      - 状態がクローズ待ちになっていない
+    test: test_normal_when_restart_requested
+  - name: 正常シナリオ（記録した会話を参照できない）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数を記録し、SessionStart のフックを叩いて待つ）
+      - name: 常駐サーバー
+        description: 正常シナリオ（利用上限）と同じ
+      - name: tmux
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: MindStella のセッションが落ちていて、状態に Claude Code の `session_id` が残っているが、その会話の記録のファイルが設定のフォルダの会話の置き場に無い
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant MGR as セッションの管理
+        participant CB as claude-balancer
+        participant CC as MindStella のセッション
+
+        APP->>MGR: 起動し直しを依頼する
+        MGR->>MGR: 記録した会話の記録のファイルがあるか確かめる
+        MGR->>CB: 無いので --resume を付けずに、新規の会話で exec を起動する
+        CB->>CC: 起動する
+        CC->>MGR: SessionStart（startup）で登録する
+      ```
+    expected:
+      - Mock の claude-balancer が `exec` を 1 回だけ受け、その引数に `--resume` が無い
+      - 『MindStella のセッションの一覧』が、同じ MindStella のセッションの ID を `running` で返し、新しい `session_id` が状態に記録されている
+    test: test_normal_when_conversation_missing
+  - name: 異常シナリオ（空いたアカウントが無い）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` を受けると、借りられないとして子プロセスを起動せず終了コード 125 で終わり、標準エラーに理由を書く）
+      - name: 常駐サーバー
+        description: 正常シナリオ（利用上限）と同じ
+      - name: tmux
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: MindStella のセッションが落ちていて、取り込み待ちのスレッドを 1 件持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant NT as コメントの通知
+        participant MGR as セッションの管理
+        participant CB as claude-balancer
+
+        U->>NT: 画面でコメントを送る
+        NT->>MGR: 起動し直しを依頼する
+        MGR->>CB: exec を起動する
+        CB-->>MGR: 終了コード 125（借りられない）
+        MGR->>MGR: ペインを閉じ、失敗した段階と理由を状態に記録する
+        NT->>NT: コメントをスレッドに残す
+      ```
+    expected:
+      - コメントがスレッドに取り込み待ちとして残っている
+      - 『MindStella のセッションの一覧』が、落ちている状態と、起動し直しに失敗した段階（アカウント）と理由（claude-balancer の標準エラー）を返す
+      - tmux のペインが残っていない
+    test: test_error_when_no_account
+  - name: 異常シナリオ（追加のプラグインのフォルダが無い）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録する）
+      - name: 常駐サーバー
+        description: 正常シナリオ（利用上限）と同じ
+      - name: ワークスペース
+        description: MindStella のセッションが落ちていて、状態のフォルダに記録したプラグインのフォルダが削除されている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant APP as 外部のアプリ
+        participant API as MindStella の API
+        participant MGR as セッションの管理
+
+        APP->>API: 起動し直しを依頼する
+        API->>MGR: 起動し直しを依頼する
+        MGR->>MGR: 記録した追加の MCP の定義とプラグインのフォルダを読めるか確かめる
+        MGR->>MGR: 読めないので起動せず、失敗した段階と理由を状態に記録する
+        APP->>API: MindStella のセッションの一覧を取得する
+        API-->>APP: 落ちている・起動し直しに失敗した理由（読めないプラグインのフォルダ）
+      ```
+    expected:
+      - Mock の claude-balancer が `exec` を受けていない
+      - 『MindStella のセッションの一覧』が、起動し直しに失敗した段階と、読めないプラグインのフォルダを示す理由を返す
+    test: test_error_when_plugin_dir_missing
+refs:
+  - SC-531-1#
+  - SC-531-2#
+  - SC-570-1#
+  - SC-489-26#
+notes:
+  契機ごとの会話とアカウント: |-
+    | 契機 | 会話 | アカウント |
+    | --- | --- | --- |
+    | 利用上限 | 前の会話を引き継ぐ（`--resume`） | 利用上限に達したアカウントは claude-balancer の貸与の判定で除外される |
+    | 圧縮 | 新規の会話 | 指定しない |
+    | 落ちた・無操作の上限で止めた後のコメント | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
+    | 起動し直しの依頼 | 前の会話を引き継ぐ | `--resume` で claude-balancer が前回のアカウントを優先する |
+  起動し直さないとき: クローズ待ち（API で停止を受けた）とクローズの後は、コメントが届いても起動し直さない（単一ユースケース『MindStella のセッションを止めてワークスペースをクローズにする』）。
+  利用上限の通知: 利用上限の到達の claude-balancer への通知は、子プロセスが利用上限で終わったときに `claude-balancer exec` が自分で行う。常駐サーバーは `exec` が終わるのを待ってから起動し直し、`report-limit` を呼ばない。
+  画面の表示: '起動し直している間と失敗の理由を画面に出すことは、この単一ユースケースの範囲の外（PR #582 の確認ログで別の Issue にすると決定）。'

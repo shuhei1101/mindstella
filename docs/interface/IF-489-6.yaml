@@ -510,6 +510,9 @@ response:
     description: 届いた件数を Claude Code へ入力し、会話の記録に入った（または処理中の待ち行列に入った）と確かめたか。送り先のペインが無い・tmux が失敗した・上限までに確かめられなかったときは `false`
     example: 'true'
     notes: '`false` でも書き込みは取り込み待ちで残っており、話し合いの取り込みで拾われる'
+  - name: restarted
+    type: bool
+    description: MindStella のセッションが無かったので起動し直してから入力したか
 status_codes:
   - code: '201'
     condition: 全て送った
@@ -578,9 +581,13 @@ constraints:
   - item: 入力の上限
     constraint: '届いたかの確かめは、tmux の 3 つのコマンドを終えてから 5 秒で打ち切る。待った秒の合計もこの上限を超えない。届かないときの応答は、ペインごとの入力の鍵と貼り付けの鍵を取るまでの待ちに加えて、貼り付けの上限とこの上限の和（5.5 秒）までに返る。打ち切ったときは理由を標準エラーに記録する'
     decided_by: NFR-489-1#requirements[ClaudeCodeへの入力を確かめる上限]
+  - item: MindStella のセッションが無いとき
+    constraint: '宛先が生きていないとき、ワークスペースの MindStella のセッションが `crashed`（`running` でも落ちていれば `crashed` にする）でクローズ待ちでもクローズ済みでもなければ、『MindStella のセッションの起動し直し』を契機 `comment` で呼び、準備ができたら新しいペインへ同じ文字列を入力して `restarted` を真にする。起動し直しに失敗したときと、クローズ待ち・クローズ済みのときは `entered: false` にし、コメントはスレッドに残す。起動し直しを待つ間も書き換えの鍵とワークスペースのロックを持たない'
+    decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
 refs:
   - ER-489-1#
   - SC-489-3#
   - IF-531-2#
+  - IF-582-1#
 test_file: tests/integration/server/test_comments_send.py
 notes: {}

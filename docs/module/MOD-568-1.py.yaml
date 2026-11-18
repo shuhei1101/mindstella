@@ -527,6 +527,10 @@ constants:
         value: '"停止処理の失敗"'
       - key: session_ended
         value: '"Claude Code の終了"'
+      - key: rate_limited
+        value: '"利用上限"'
+      - key: restart_failed
+        value: '"起動し直しの失敗"'
 refs:
   - IF-568-1#
   - API-568-1#
@@ -553,3 +557,9 @@ enums:
       - value: session_ended
         title: Claude Code の終了
         description: '`running` のまま SessionEnd（`clear`・`resume` 以外）を受けた'
+      - value: rate_limited
+        title: 利用上限
+        description: 利用上限で起動し直すために止めた
+      - value: restart_failed
+        title: 起動し直しの失敗
+        description: '`api`・`compact` の契機の起動し直しに失敗した'

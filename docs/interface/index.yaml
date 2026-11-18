@@ -134,3 +134,7 @@ items:
     summary: 応答の間に AI が書き込んだとき、応答の終わりに Discord へ作業の完了を通知する
   - page: IF-570-1.yaml
     summary: MindStella のセッションが止まったことを記録したとき、Discord へ止まったことと理由を通知する
+  - page: IF-582-1.yaml
+    summary: MindStella のセッションを、同じ ID のまま止めて起動し直す（API・利用上限・圧縮・落ちた後のコメント）
+  - page: IF-582-2.yaml
+    summary: 起動中の MindStella のセッションを一定の間隔で見回り、落ちていれば記録して通知する

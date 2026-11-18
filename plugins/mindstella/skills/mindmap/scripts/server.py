@@ -66,6 +66,7 @@ TOOL_NAMES = (
     "create_session",
     "sessions",
     "stop_session",
+    "restart_session",
     "close_workspace",
     "server_status",
     "server_stop",
@@ -194,7 +195,11 @@ def main(
         write_lock,
         external=load_external_access(source),
         transcriber=transcriber,
-        input_targets=InputTargets(state_root=state_root, workspace_id=workspaces.workspace_id_of),
+        input_targets=InputTargets(
+            state_root=state_root,
+            workspace_id=workspaces.workspace_id_of,
+            restarter=lambda root: _restart_for_comment(root, context),
+        ),
         state_root=state_root,
     )
     started_at = datetime.now(UTC).isoformat(timespec="seconds")
@@ -237,6 +242,9 @@ def main(
         version,
         os.getpid(),
     )
+    # 落ちた MindStella のセッションを見回る（終えるときに止める）
+    stop_watch = threading.Event()
+    sessions.start_crash_watch(context, stop_watch)
     # uvicorn は終わり終えてから受けたシグナルを元の受け口へ送り直すので、SIGTERM を SystemExit にして finally まで進める
     previous_sigterm = signal.signal(signal.SIGTERM, _exit_on_sigterm)
     try:
@@ -245,10 +253,28 @@ def main(
     finally:
         # シグナルで終えたときと run が例外で戻ったときも、立てた配信を止める（終了時のフックもここで呼ぶ）
         signal.signal(signal.SIGTERM, previous_sigterm)
+        stop_watch.set()
         previews.stop_all()
         listening.close()
         logger.info("常駐サーバーを終えた")
     return 0
+
+
+def _restart_for_comment(root: Path, context: ServerContext) -> bool:
+    """落ちていればコメントの契機で MindStella のセッションを起動し直し、準備ができたかを返す。"""
+    workspace_id = workspaces.workspace_id_of(root)
+    # running で生きている（貼れなかったのは別の理由）: 起動し直さない
+    if sessions.is_alive(
+        context.state_root,
+        workspace_id,
+        context.tmux,
+        context.proc,
+        on_crashed=lambda: sessions.notify_stopped(context, workspace_id, "crashed"),
+    ):
+        return False
+    if not sessions.request_restart(workspace_id, "comment", context):
+        return False
+    return sessions.wait_until_running(workspace_id, context)
 
 
 def _exit_on_sigterm(signum: int, frame: object) -> None:
@@ -411,9 +437,7 @@ def build_server(
         ],
         session: SessionArg = None,
     ) -> CallToolResult:
-        return write(
-            workspace, session, lambda root: commands.run_update_settings(root, settings)
-        )
+        return write(workspace, session, lambda root: commands.run_update_settings(root, settings))
 
     @server.tool(
         name="adopt", description="検討事項の採用する案を 1 つに切り替え、状態を決定済みにする"
@@ -741,6 +765,26 @@ def build_server(
     ) -> CallToolResult:
         return call_tool(
             lambda: sessions.stop_session(workspace_id, session_id, force, context)[1],
+            write_lock=write_lock,
+        )
+
+    @server.tool(
+        name="restart_session",
+        description=(
+            "起動し直しの依頼をすぐに受け付けて返し、MindStella のセッションを同じ ID のまま止めて、"
+            "前の会話を引き継いで起動し直す"
+        ),
+    )
+    def restart_session(
+        workspace_id: WorkspaceIdArg,
+        session_id: Annotated[
+            str, Field(description="MindStella のセッションの ID（S- で始まる）")
+        ],
+        force: Annotated[bool, Field(description="真なら応答の終わりを待たずに止める")] = False,
+        session: SessionArg = None,
+    ) -> CallToolResult:
+        return call_tool(
+            lambda: sessions.restart_session(workspace_id, session_id, "api", force, context)[1],
             write_lock=write_lock,
         )
 

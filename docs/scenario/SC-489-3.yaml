@@ -449,6 +449,34 @@ scenarios:
       - 開いたとき、行の本文は 5 行目までが見え、6 行目以降は見えず、「続きを読む」がある
       - 「続きを読む」を押すと、本文の 8 行が全て見える
     test: test_normal_when_read_long_post
+  - name: 正常シナリオ（MindStella のセッションが落ちた後に送る）
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（引数を記録し、SessionStart のフックを呼んで待ち、貼られた入力を会話の記録に書く）
+      - name: ワークスペース
+        description: MindStella のセッションが落ちていて（状態は起動中だがペインとプロセスが無い）、クローズ待ちでない。レビュー中の書き込みを 1 件持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant PV as 画面
+        participant SV as サーバー
+        participant MGR as セッションの管理
+        participant CC as MindStella のセッション
+
+        U->>PV: チェックしてまとめて送る
+        PV->>SV: まとめて送る
+        SV->>SV: スレッドに足す
+        SV->>MGR: MindStella のセッションが無いので、起動し直しを依頼する
+        MGR->>CC: 前の会話を引き継いで起動し直す
+        SV->>CC: 準備ができた後に届いた件数を貼る
+        SV-->>PV: 送った件数と、起動し直して入力したこと
+      ```
+    expected:
+      - 書き込みがスレッドに足され、レビュー中から外れている
+      - Mock の claude-balancer が受けた引数に `--resume` があり、起動し直した Claude Code の会話の記録に届いた件数の入力がある
+      - 送った結果が、起動し直して入力したことを示している
+    test: test_normal_when_session_crashed
 lead: 利用者が、レビュー中を確かめる画面でレビュー中の書き込み（新しいスレッドの最初の書き込みと、既存のスレッドへの返信）を確かめ、直し・消して、チェックしたものだけをまとめて送る単一ユースケース。新しいスレッドの分は 1 件ずつオープンのスレッドの最初の書き込みになり、返信の分は向けたスレッドの末尾に足し、そのワークスペースを指してツールを呼んだ tmux のセッションの Claude Code へすぐに入力する。書き込みは単一ユースケース『項目へコメントする』『選んだ箇所へコメントする』『スレッドで話す』と、スレッドの一覧の「新しいスレッド」で溜める。
 issue: 13
 primary_actor: 利用者
@@ -470,3 +498,5 @@ notes:
   Claude Code への入力: 入力欄に打ちかけがあるときや選択の表示が出ているときも、ペインの状態を見ずに貼って確定する。打ちかけとつながったり選択の表示で失われたりしたときは、利用者が tmux のセッションで気づいて直す。入力した文字列の取り込みは単一ユースケース『送信の取り込み』が持つ
   送った結果の文言: 入力したときと入力できなかったときの文言はモック作成で決める
 test_file: tests/e2e/単一ユースケース/test_comment_select_send.py
+refs:
+  - SC-582-1#

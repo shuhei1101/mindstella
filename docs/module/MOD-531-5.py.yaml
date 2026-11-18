@@ -9,7 +9,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/api.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-1〜6・IF-489-32・IF-565-2 の経路を starlette の `Route` で返す。どの経路も `check_host` を通してから、ワークスペースの管理・セッションの管理を呼ぶ
+    summary: IF-531-1〜6・IF-582-1（`POST /workspaces/{id}/sessions/{session}/restart` を `sessions.restart_session` の契機 `api` で呼ぶ。`force` はクエリ）・IF-489-32・IF-565-2 の経路を starlette の `Route` で返す。どの経路も `check_host` を通してから、ワークスペースの管理・セッションの管理を呼ぶ
     args:
       - name: ctx
         type: ServerContext

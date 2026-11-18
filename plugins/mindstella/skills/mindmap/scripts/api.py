@@ -66,6 +66,19 @@ def build_routes(ctx: Any) -> list[Route]:
         )
         return JSONResponse(result, status_code=status)
 
+    async def restart_session(request: Request) -> Response:
+        """MindStella のセッションを起動し直す。"""
+        force = request.query_params.get("force", "").lower() in TRUE_VALUES
+        status, result = await run_in_threadpool(
+            sessions.restart_session,
+            request.path_params["id"],
+            request.path_params["session"],
+            "api",
+            force,
+            ctx,
+        )
+        return JSONResponse(result, status_code=status)
+
     async def close_workspace(request: Request) -> Response:
         """ワークスペースをクローズにする。"""
         result = await run_in_threadpool(workspaces.close_workspace, request.path_params["id"], ctx)
@@ -127,6 +140,11 @@ def build_routes(ctx: Any) -> list[Route]:
         Route("/workspaces/{id}/sessions", guarded(create_session), methods=["POST"]),
         Route("/workspaces/{id}/sessions", guarded(list_sessions), methods=["GET"]),
         Route("/workspaces/{id}/sessions/{session}", guarded(stop_session), methods=["DELETE"]),
+        Route(
+            "/workspaces/{id}/sessions/{session}/restart",
+            guarded(restart_session),
+            methods=["POST"],
+        ),
         Route("/workspaces/{id}/close", guarded(close_workspace), methods=["POST"]),
         Route("/_admin/sessions/{session}/events", guarded(record_event), methods=["POST"]),
         Route("/_admin/sessions/{session}/resume", guarded(resume_status), methods=["POST"]),

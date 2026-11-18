@@ -536,6 +536,61 @@ scenarios:
   - ほかのアカウントで Claude Code が起動しておらず、tmux のペインが残っていない
   - 状態に MindStella のセッションが登録されていない
   - 外部のアプリが、アカウントを借りられないエラーと claude-balancer が出した理由を受け取っている
+- name: 正常シナリオ（止めた後に作成する）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（起動の引数を記録し、SessionStart のフックを呼ぶ）・claude-balancer（`exec` で受けた引数を記録する）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 正常シナリオで作ったワークスペースで、MindStella のセッションを外部のアプリが止め、状態に停止済みと Claude Code の `session_id` が残っている
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CB as claude-balancer
+      participant CC as MindStella のセッション
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>MGR: 状態に前の Claude Code の session_id がある
+      MGR->>CB: exec を起動する（claude --resume {前の session_id}）
+      CB->>CC: 前の会話を引き継いで起動する
+      CC->>MGR: SessionStart（resume）で登録する
+      API-->>APP: MindStella のセッションの ID・画面の URL・起動したアカウント
+    ```
+  expected:
+  - Mock の claude-balancer が受けた引数に `--resume` と前の Claude Code の `session_id` がある
+  - 状態のクローズ待ちが解かれ、MindStella のセッションが起動中である
+  test: test_normal_when_created_after_stop
+- name: 正常シナリオ（追加の MCP・プラグインの記録が無い）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（起動の引数を記録し、SessionStart のフックを呼ぶ）・claude-balancer（`exec` で受けた引数を記録する）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 状態のフォルダの ID の一覧にあり、追加の MCP・プラグインの記録（`launch.json`）が無いワークスペース
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CC as MindStella のセッション
+
+      APP->>API: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>MGR: 追加の MCP・プラグインの記録が無いので、指定なしで起動する
+      CC->>MGR: SessionStart で登録する
+      API-->>APP: MindStella のセッションの ID・画面の URL・記録が無いことの警告
+    ```
+  expected:
+  - Mock のセッションが `--mcp-config`・`--plugin-dir` を受けずに起動している
+  - 外部のアプリが受け取った応答が、追加の MCP・プラグインの記録が無いことの警告を持つ
+  test: test_normal_when_launch_record_missing
 lead: 外部のアプリがフォルダ・進め方の文書・追加の MCP・プラグインを指定してワークスペースを作り、続けて MindStella のセッションの作成を依頼し、MindStella のセッションの準備ができてから画面の URL と MindStella のセッションの ID を受け取る単一ユースケース。
 issue: 516
 primary_actor: 外部のアプリ（aituber など）
@@ -557,12 +612,12 @@ refs:
 - SC-531-2#
 - SC-489-14#
 - SC-489-41#
+- SC-582-1#
 notes:
   読み替え: 端末からの起動は、起動のコマンドが同じ MindStella の API を呼ぶので、外部のアプリを利用者に読み替える（単一ユースケース『端末から起動する』）。MindStella の MCP の `create_workspace`・`create_session` からの作成は、外部のアプリを MCP を呼んだセッションに読み替える
   並行の依頼: ワークスペースの管理とセッションの管理は、ワークスペースごとに 1 つの順番を共有して依頼を処理する。ワークスペースの作成はフォルダごとに 1 つの順番で処理する
   MCP の接続の確認: 作成のときは定義の形とプラグインのフォルダだけを確かめる。MCP のサーバーが起動しない・つながらないことは検出しない
   準備の判定: 準備ができたことは、SessionStart のフックが状態に登録したことで判定し、セッションの管理は上限の時間まで待つ
   受ける Host: API は `Host` が `127.0.0.1`・`localhost` の要求だけを受ける（D-340）
-  スコープ外: '状態のフォルダに追加の MCP・プラグインの記録が無いワークスペースの作成（警告と画面の通知）は #520 で扱う'
   E2E の範囲: MindStella のセッションのエージェントと claude-balancer は Mock にし、起動と再開のエージェントフローの中身は確かめない
   起動したアカウント: 起動したアカウントは、MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス。`CLAUDE_CONFIG_DIR` が無いまま起動したとき（claude-balancer が既定のアカウントを貸したときと、claude-balancer が無い端末で指定が無いとき）は、既定の設定のフォルダ `~/.claude` を絶対パスにした値にする。claude-balancer の `exec --account` は設定のフォルダのパスを受けるため、この値をそのまま次の指定に使用できる

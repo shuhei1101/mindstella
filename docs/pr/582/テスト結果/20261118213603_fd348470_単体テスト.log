@@ -1,0 +1,63 @@
+# fd348470（テストコードの末尾・実装の前）の作業ツリーを git archive で取り出して実行
+$ pytest tests/unit/scripts/test_sessions.py tests/unit/scripts/test_session_hook.py tests/unit/scripts/test_claude_input.py -p no:cacheprovider -rf -q
+# Red: 失敗は全て実装が無いこと（AttributeError・TypeError・pre-compact の引数の不足）による
+            """呼ばれたフォルダを控え、成功なら running にする。"""
+            calls.append(root)
+            if restarted_ok:
+                state.update_session(
+                    tmp_path,
+                    MINDSTELLA_WORKSPACE,
+                    lambda current: None if current is None else current.replace(status="running"),
+                )
+            return restarted_ok
+>       targets = claude_input.InputTargets(
+            state_root=tmp_path,
+            workspace_id=lambda _root: MINDSTELLA_WORKSPACE,
+            restarter=_restarter,
+        )
+E       TypeError: InputTargets.__init__() got an unexpected keyword argument 'restarter'
+tests/unit/scripts/test_claude_input.py:1068: TypeError
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_sessions.py::test_build_command_when_resume - ...
+FAILED tests/unit/scripts/test_sessions.py::test_build_env_when_compact - Typ...
+FAILED tests/unit/scripts/test_sessions.py::test_resume_id_for[recorded] - At...
+FAILED tests/unit/scripts/test_sessions.py::test_resume_id_for[transcript-missing]
+FAILED tests/unit/scripts/test_sessions.py::test_resume_id_for[no-claude-session-id]
+FAILED tests/unit/scripts/test_sessions.py::test_resume_id_for[no-state] - At...
+FAILED tests/unit/scripts/test_sessions.py::test_check_launch_options[readable]
+FAILED tests/unit/scripts/test_sessions.py::test_check_launch_options[plugin-missing]
+FAILED tests/unit/scripts/test_sessions.py::test_check_launch_options[mcp-invalid]
+FAILED tests/unit/scripts/test_sessions.py::test_create_session_when_resume
+FAILED tests/unit/scripts/test_sessions.py::test_create_session_when_launch_record_missing
+FAILED tests/unit/scripts/test_sessions.py::test_record_event_when_rate_limit[rate-limit]
+FAILED tests/unit/scripts/test_sessions.py::test_record_event_when_rate_limit[server-error]
+FAILED tests/unit/scripts/test_sessions.py::test_record_event_when_rate_limit[pre-compact]
+FAILED tests/unit/scripts/test_sessions.py::test_record_event_when_restarting
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session - AttributeE...
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_rejected[closed]
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_rejected[stopping]
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_rejected[restarting]
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_launch_failed[api]
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_launch_failed[comment]
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_launch_failed[plugin-missing]
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_rate_limited
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_exec_slow
+FAILED tests/unit/scripts/test_sessions.py::test_restart_session_when_write_timeout
+FAILED tests/unit/scripts/test_sessions.py::test_request_restart[crashed-comment]
+FAILED tests/unit/scripts/test_sessions.py::test_request_restart[restarting-comment]
+FAILED tests/unit/scripts/test_sessions.py::test_request_restart[close-pending-comment]
+FAILED tests/unit/scripts/test_sessions.py::test_request_restart[running-rate-limit]
+FAILED tests/unit/scripts/test_sessions.py::test_wait_until_running[running]
+FAILED tests/unit/scripts/test_sessions.py::test_wait_until_running[crashed]
+FAILED tests/unit/scripts/test_sessions.py::test_watch_crashes_once - Attribu...
+FAILED tests/unit/scripts/test_sessions.py::test_start_crash_watch - Attribut...
+FAILED tests/unit/scripts/test_session_hook.py::test_main_when_rate_limit - A...
+FAILED tests/unit/scripts/test_session_hook.py::test_main_when_pre_compact[sent]
+FAILED tests/unit/scripts/test_session_hook.py::test_main_when_pre_compact[refused]
+FAILED tests/unit/scripts/test_session_hook.py::test_main_when_pre_compact[no-session]
+FAILED tests/unit/scripts/test_session_hook.py::test_main_when_compact_relaunch
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[running]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[crashed-restarted]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[crashed-failed]
+FAILED tests/unit/scripts/test_claude_input.py::test_enter_or_restart[close-pending]
+42 failed, 131 passed in 3.13s
