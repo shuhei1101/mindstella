@@ -165,7 +165,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/launch.py
     usecase: 端末から起動する
     scope: public
-    summary: '起動のコマンドの引数（フォルダ・`--flow`・`--mcp-config`・`--plugin-dir`）で『ワークスペースの作成』と『MindStella のセッションの作成』を呼び、画面の URL とつなぐペインを 1 行に 1 つ標準出力に出す。201 のときは応答の `account` を `起動したアカウント: {account}` として標準エラーに出す（標準出力は起動スクリプトが 2 行として読む）。409（`exists`）は起動中のペインを出す'
+    summary: '起動のコマンドの引数（フォルダ・`--flow`・`--mcp-config`・`--plugin-dir`）で『ワークスペースの作成』と『MindStella のセッションの作成』を呼び、画面の URL とつなぐペインを 1 行に 1 つ標準出力に出す。201 のときは応答の `account` を `[mindstella] 起動したアカウント: {account}` として標準エラーに出す（標準出力は起動スクリプトが 2 行として読む）。409（`exists`）は起動中のペインを出す'
     args:
       - name: argv
         type: list[str]
@@ -202,7 +202,7 @@ functions:
         summary: 2 つの API を順に呼び、URL とペインを出す
         condition: '`[/w/家計簿, --flow aituber#flow-1, --mcp-config m.json, --plugin-dir p]`、`CLAUDE_CONFIG_DIR=/c`'
         mock: '`request`'
-        expected: '0 を返し、1 回目が `POST /workspaces`（`flow: {source: aituber, doc: flow-1}`・`mcp_config` がファイルの中身・`plugin_dirs` が絶対パス）、2 回目が `POST /workspaces/{id}/sessions`（`claude_config_dir: /c`）、`stdout` が `url`・`pane` の 2 行、`stderr` に `起動したアカウント: {2 回目の応答の account}`'
+        expected: '0 を返し、1 回目が `POST /workspaces`（`flow: {source: aituber, doc: flow-1}`・`mcp_config` がファイルの中身・`plugin_dirs` が絶対パス）、2 回目が `POST /workspaces/{id}/sessions`（`claude_config_dir: /c`）、`stdout` が `url`・`pane` の 2 行、`stderr` に `[mindstella] 起動したアカウント: {2 回目の応答の account}`'
       - name: test_run_start_exists
         case: 正常
         summary: 既にある MindStella のセッションのペインを出す
