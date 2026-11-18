@@ -23,15 +23,21 @@ docs:
   - page: docs/er/ER-489-1.yaml
     new: false
     change: project-index#195 の完了後、配信の設定（`.mindstella/dev-docs.yaml`）に日時を付けない指定を加えるなら、その記述を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:06:51.364737+00:00'
   - page: plugins/mindstella/agent-flows/record.yaml
     new: false
-    change: 「`created`・`updated`・`updated_by` は渡さない」の記述が不具合 1 の修正方法と食い違わないかを確認し、食い違うなら修正する
-    status: todo
+    change: '「`created`・`updated`・`updated_by` は渡さない（変更の検知が付ける）」は、`write_dates: false` で project-index も日時を付けなくなるので食い違わないことを確認した（変更なし）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:06:51.364737+00:00'
   - page: docs/guide/動作環境.md
     new: false
     change: project-index の条件に、配信元の設定の `write_dates` と、`body_file` の列を持たない要素の配信を持つ版（shuhei1101/project-index の 368b731 以降）であることを追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:06:51.364737+00:00'
 scope_out:
   - item: MindStella を project-index と同じ作りに作り直すこと
     reason: 関連として挙がっている別の要望

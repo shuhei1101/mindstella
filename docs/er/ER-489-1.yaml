@@ -713,7 +713,7 @@ tables:
         title: 文書の行
         type: array
         not_null: true
-        description: '種類ごとの 7 つの行。要素は `id`（種類の名前）・`title`・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`metadata`（共通のキーと列の対応）'
+        description: '種類ごとの 7 つの行。要素は `id`（種類の名前）・`title`・`paths`（`[{種類}.yaml]`）・`schema`（`schemas/{種類}.schema.json`）・`records: items`・`body_file: body`・`write_dates: false`（project-index に `created`・`updated` を付けさせない。日時は `history.yaml` が持つ）・`metadata`（共通のキーと列の対応）'
   - name: schemas/
     title: 記録のスキーマ
     datastore: JSON

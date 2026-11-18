@@ -1578,6 +1578,7 @@ functions:
       description: 書いたとき `[.mindstella/dev-docs.yaml]`、書かなかったとき空
     process: |-
       1. `.mindstella/dev-docs.yaml`（`SOURCE_CONFIG_FILE`）が無ければ空を返す
+         - YAML として読めない、または `documents` が並びでない場合、書かずに空を返す（利用者が書き換えた設定に手を加えず、project-index の検証に任せる）
       2. YAML を読み、`documents` の行のうち `id` が `SOURCE_DOCUMENTS` の種類の行の ID で `write_dates` を持たない行に `write_dates: false` を足す（既に持つ行とほかの行・キーは変えない）
          - 足す行が無い場合、空を返す
       3. 一時ファイルに書いてから置き換える（`dump_yaml`・`_write_temp`・`os.replace`）
