@@ -1,0 +1,270 @@
+$ ~/.venvs/mindstella-dev/bin/python3 -m pytest tests/unit/scripts -p no:cacheprovider -q --basetemp=/tmp/pr584-pytest3
+# 共有の /tmp/pytest-of-shuhei2441 が別のユーザーの所有で使えないため、--basetemp で一時フォルダを替えた
+# 実装の前から pass した test_create_workspace_schema_rewritten_row_added: 行を追加するときに reload_sources を呼ばない振る舞いは、作業ブランチの workspaces.py の create_workspace（reload_sources を持たない。commit 73cb8351）に既にある
+=================================== FAILURES ===================================
+___________________ test_migrate_when_same_with_stale_schema ___________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x711e3ae6d9e0>
+patch_plugin_version = <function patch_plugin_version.<locals>._install at 0x711e3ae6da80>
+
+    def test_migrate_when_same_with_stale_schema(
+        make_workspace: MakeWorkspace, patch_plugin_version: PatchPluginVersion
+    ) -> None:
+        """版が同じでも、中身が違うスキーマの複製を書き直して返す（正常系）。"""
+        # 準備
+        root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+        copies = _place_schema_copies(root, "docs.schema.json")
+        patch_plugin_version(V0140)
+        config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+        # 実行
+        report = migrator.migrate(root)
+        # 検証
+        assert report.steps == []
+        assert report.recorded is None
+>       assert report.schemas == [".mindstella/schemas/docs.schema.json"]
+               ^^^^^^^^^^^^^^
+E       AttributeError: 'MigrationReport' object has no attribute 'schemas'
+
+tests/unit/scripts/test_migrator.py:662: AttributeError
+_________________ test_migrate_when_schema_synced_after_steps __________________
+
+make_workspace = <function make_workspace.<locals>._make at 0x711e3aea5580>
+patch_plugin_version = <function patch_plugin_version.<locals>._install at 0x711e3aea5440>
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_migrate_when_schema_synce0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x711e3af86630>
+
+    def test_migrate_when_schema_synced_after_steps(
+        make_workspace: MakeWorkspace,
+        patch_plugin_version: PatchPluginVersion,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """手順を当てて版を書いた後に、スキーマの複製をそろえる（正常系）。"""
+        # 準備
+        root = make_workspace(raw_files={VERSION_FILE: "v0.13.0\n"})
+        copies = _place_schema_copies(root, "docs.schema.json")
+        monkeypatch.setattr(migrator, "MIGRATIONS_DIR", _migrations_dir(tmp_path, SUMMARY_STEPS))
+        patch_plugin_version(V0140)
+        # 実行
+        report = migrator.migrate(root)
+        # 検証
+        assert str(report.recorded) == V0140
+>       assert ".mindstella/schemas/docs.schema.json" in report.schemas
+                                                         ^^^^^^^^^^^^^^
+E       AttributeError: 'MigrationReport' object has no attribute 'schemas'
+
+tests/unit/scripts/test_migrator.py:686: AttributeError
+_____________________________ test_reload_sources ______________________________
+
+fake_pi = <function fake_pi.<locals>.make at 0x711e39d24d60>
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_reload_sources0')
+
+    def test_reload_sources(fake_pi: Callable[..., FakeProjectIndex], tmp_path: Path) -> None:
+        """ファイルの行をそのまま送り、409 なら 1 回だけ引き直す（正常系）。"""
+        # 準備
+        settings_path = tmp_path / "settings.yaml"
+        _write_settings(settings_path)
+        server = fake_pi(
+            {
+                ("GET", "/settings/sources"): [
+                    (200, {"version": "v1", "settingsPath": str(settings_path)}),
+                    (200, {"version": "v2", "settingsPath": str(settings_path)}),
+                ],
+                ("PUT", "/settings/sources"): [(409, {"current": "v2"}), (200, {"version": "v3"})],
+            }
+        )
+        # 実行
+>       project_index.reload_sources(server.port)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'project_index' has no attribute 'reload_sources'
+
+tests/unit/scripts/test_project_index.py:285: AttributeError
+___________________ test_reload_sources_when_conflict_twice ____________________
+
+fake_pi = <function fake_pi.<locals>.make at 0x711e3aea7600>
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_reload_sources_when_confl0')
+
+    def test_reload_sources_when_conflict_twice(
+        fake_pi: Callable[..., FakeProjectIndex], tmp_path: Path
+    ) -> None:
+        """2 回続けて 409 なら ProjectIndexError（異常系）。"""
+        # 準備
+        settings_path = tmp_path / "settings.yaml"
+        _write_settings(settings_path)
+        server = fake_pi(
+            {
+                ("GET", "/settings/sources"): [
+                    (200, {"version": "v1", "settingsPath": str(settings_path)})
+                ],
+                ("PUT", "/settings/sources"): [(409, {})],
+            }
+        )
+        # 実行・検証
+        with pytest.raises(ProjectIndexError) as caught:
+>           project_index.reload_sources(server.port)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'project_index' has no attribute 'reload_sources'
+
+tests/unit/scripts/test_project_index.py:311: AttributeError
+_________________ test_reload_sources_when_settings_unreadable _________________
+
+fake_pi = <function fake_pi.<locals>.make at 0x711e39d247c0>
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_reload_sources_when_setti0')
+
+    def test_reload_sources_when_settings_unreadable(
+        fake_pi: Callable[..., FakeProjectIndex], tmp_path: Path
+    ) -> None:
+        """端末の設定のファイルが無ければ送らない（異常系）。"""
+        # 準備
+        server = fake_pi(
+            {
+                ("GET", "/settings/sources"): [
+                    (200, {"version": "v1", "settingsPath": str(tmp_path / "missing.yaml")})
+                ],
+                ("PUT", "/settings/sources"): [(200, {"version": "v2"})],
+            }
+        )
+        # 実行・検証
+        with pytest.raises(ProjectIndexError):
+>           project_index.reload_sources(server.port)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'project_index' has no attribute 'reload_sources'
+
+tests/unit/scripts/test_project_index.py:330: AttributeError
+___________________________ test_sync_source_schemas ___________________________
+
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_sync_source_schemas0')
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+
+    def test_sync_source_schemas(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
+        """違うファイルと無いファイルだけを書き直し、複製の側にだけあるファイルを残す（正常系）。"""
+        # 準備
+        root = tmp_path / "ws"
+        store.create_workspace(root, valid_settings, version="v0.3.0")
+        copies = root / ".mindstella" / "schemas"
+        (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+        (copies / "terms.schema.json").unlink()
+        (copies / "legacy.schema.json").write_text('{"title": "前の版"}\n', encoding="utf-8")
+        common_mtime = (copies / "common.schema.json").stat().st_mtime_ns
+        legacy_mtime = (copies / "legacy.schema.json").stat().st_mtime_ns
+        # 実行
+>       written = store.sync_source_schemas(root)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'sync_source_schemas'
+
+tests/unit/scripts/test_store.py:1709: AttributeError
+______________________ test_sync_source_schemas_when_same ______________________
+
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_sync_source_schemas_when_0')
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+snapshot_tree = <function snapshot_tree.<locals>._snapshot at 0x711e399904a0>
+
+    def test_sync_source_schemas_when_same(
+        tmp_path: Path, valid_settings: dict[str, Any], snapshot_tree: SnapshotTree
+    ) -> None:
+        """全て同じなら何も書かない（正常系）。"""
+        # 準備
+        root = tmp_path / "ws"
+        store.create_workspace(root, valid_settings, version="v0.3.0")
+        before = snapshot_tree(root)
+        # 実行
+>       written = store.sync_source_schemas(root)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'store' has no attribute 'sync_source_schemas'
+
+tests/unit/scripts/test_store.py:1735: AttributeError
+__________________ test_sync_source_schemas_when_write_fails ___________________
+
+tmp_path = PosixPath('/tmp/pr584-pytest3/test_sync_source_schemas_when_1')
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'links': []}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x711e399d1fd0>
+
+    def test_sync_source_schemas_when_write_fails(
+        tmp_path: Path, valid_settings: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """置き換えられなければ送る（異常系）。"""
+        # 準備
+        root = tmp_path / "ws"
+        store.create_workspace(root, valid_settings, version="v0.3.0")
+        copies = root / ".mindstella" / "schemas"
+        (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+    
+        def fail_replace(*_args: Any, **_kwargs: Any) -> None:
+            """置き換えに失敗する。"""
+            raise OSError("書けません")
+    
+        # store モジュールの参照を、置き換えに失敗する関数に差し替える
+        monkeypatch.setattr(store.os, "replace", fail_replace)
+        # 実行・検証
+        with pytest.raises(WriteFailedError, match="スキーマの複製を書けません"):
+>           store.sync_source_schemas(root)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'store' has no attribute 'sync_source_schemas'
+
+tests/unit/scripts/test_store.py:1759: AttributeError
+____________________ test_create_workspace_schema_reloaded _____________________
+
+allowed = PosixPath('/tmp/pr584-pytest3/test_create_workspace_schema_r0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x711e39adc440>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pr584-pytest3/test_create_workspace_schema_r0/state'), l...11e39adfb30>, plugin_root=PosixPath('/tmp/pr584-pytest3/test_create_workspace_schema_r0/plugin'), tmux=None, proc=None)
+
+    def test_create_workspace_schema_reloaded(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """スキーマの複製を書き直し、行を送らないときは全ての配信元を読み直させる（正常系）。"""
+        # 準備
+        folder = allowed / "家計簿"
+        workspaces.create_workspace(_request(folder), ctx)
+        _stale_schema(folder)
+        fake_pi.added.clear()
+        # 実行
+        status, body = workspaces.create_workspace(_request(folder), ctx)
+        # 検証
+        assert (status, body["result"], body["migration"]) == (200, "already_open", None)
+>       assert fake_pi.reloads == 1
+E       assert 0 == 1
+E        +  where 0 = <test_workspaces.FakeProjectIndex object at 0x711e39adc440>.reloads
+
+tests/unit/scripts/test_workspaces.py:651: AssertionError
+__________________ test_create_workspace_schema_reload_failed __________________
+
+allowed = PosixPath('/tmp/pr584-pytest3/test_create_workspace_schema_r2/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x711e398facf0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pr584-pytest3/test_create_workspace_schema_r2/state'), l...11e39a44710>, plugin_root=PosixPath('/tmp/pr584-pytest3/test_create_workspace_schema_r2/plugin'), tmux=None, proc=None)
+
+    def test_create_workspace_schema_reload_failed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """読み直しに失敗したら 502（異常系）。"""
+        # 準備
+        folder = allowed / "家計簿"
+        workspaces.create_workspace(_request(folder), ctx)
+        _stale_schema(folder)
+        fake_pi.reload_error = ProjectIndexError(500, "読み直せません")
+        # 実行・検証
+>       with pytest.raises(ApiError) as caught:
+E       Failed: DID NOT RAISE ApiError
+
+tests/unit/scripts/test_workspaces.py:683: Failed
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/.venvs/mindstella-dev/lib/python3.12/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_migrator.py::test_migrate_when_same_with_stale_schema
+FAILED tests/unit/scripts/test_migrator.py::test_migrate_when_schema_synced_after_steps
+FAILED tests/unit/scripts/test_project_index.py::test_reload_sources - Attrib...
+FAILED tests/unit/scripts/test_project_index.py::test_reload_sources_when_conflict_twice
+FAILED tests/unit/scripts/test_project_index.py::test_reload_sources_when_settings_unreadable
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas - Attribute...
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas_when_same
+FAILED tests/unit/scripts/test_store.py::test_sync_source_schemas_when_write_fails
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_schema_reloaded
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_schema_reload_failed
+10 failed, 1403 passed, 1 skipped, 5 warnings in 28.22s

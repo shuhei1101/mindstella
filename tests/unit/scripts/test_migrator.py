@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ import pytest
 import yaml
 
 import migrator
+import store
 from errors import (
     SchemaMismatchError,
     StepFailedError,
@@ -582,6 +584,8 @@ def test_migrate_when_same(
     """版が同じなら何も書かない（正常系）。"""
     # 準備
     root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    # 作成で置かれる、プラグインと同じ中身のスキーマの複製を持たせる
+    _place_schema_copies(root, None)
     patch_plugin_version(V0140)
     before = snapshot_tree(root)
     # 実行
@@ -631,3 +635,81 @@ def test_migrate_when_not_carried(
         {"item": "D-1", "key": "scope", "value": "社内"},
         {"item": "", "key": "", "value": "その他の行"},
     ]
+
+
+def _place_schema_copies(root: Path, stale: str | None) -> Path:
+    """プラグインのスキーマを `.mindstella/schemas/` に複製し、stale のファイルがあればそれだけ別の中身にして、その場所を返す。"""
+    copies = root / RECORD_DIR / "schemas"
+    copies.mkdir(parents=True, exist_ok=True)
+    for name in store.source_schema_files():
+        shutil.copyfile(store.SCHEMA_DIR / name, copies / name)
+    # 別の中身にするファイルが無い: プラグインと同じ複製のまま
+    if stale is None:
+        return copies
+    (copies / stale).write_text("{}\n", encoding="utf-8")
+    return copies
+
+
+def test_migrate_when_same_with_stale_schema(
+    make_workspace: MakeWorkspace, patch_plugin_version: PatchPluginVersion
+) -> None:
+    """版が同じでも、中身が違うスキーマの複製を書き直して返す（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    copies = _place_schema_copies(root, "docs.schema.json")
+    patch_plugin_version(V0140)
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert report.steps == []
+    assert report.recorded is None
+    assert report.source_files == [".mindstella/schemas/docs.schema.json"]
+    assert (copies / "docs.schema.json").read_bytes() == (
+        store.SCHEMA_DIR / "docs.schema.json"
+    ).read_bytes()
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n"
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before
+
+
+def test_migrate_when_schema_synced_after_steps(
+    make_workspace: MakeWorkspace,
+    patch_plugin_version: PatchPluginVersion,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """手順を当てて版を書いた後に、スキーマの複製をそろえる（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: "v0.13.0\n"})
+    copies = _place_schema_copies(root, "docs.schema.json")
+    monkeypatch.setattr(migrator, "MIGRATIONS_DIR", _migrations_dir(tmp_path, SUMMARY_STEPS))
+    patch_plugin_version(V0140)
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert str(report.recorded) == V0140
+    assert ".mindstella/schemas/docs.schema.json" in report.source_files
+    assert (copies / "docs.schema.json").read_bytes() == (
+        store.SCHEMA_DIR / "docs.schema.json"
+    ).read_bytes()
+
+
+def test_migrate_when_same_without_write_dates(
+    make_workspace: MakeWorkspace, patch_plugin_version: PatchPluginVersion
+) -> None:
+    """版が同じでも、配信の設定の write_dates を持たない行に false を足す（正常系）。"""
+    # 準備
+    root = make_workspace(raw_files={VERSION_FILE: f"{V0140}\n"})
+    _place_schema_copies(root, None)
+    config = store.build_source_config("mindstella-a-123456", "a")
+    for row in config["documents"]:
+        row.pop("write_dates")
+    write_yaml(root / RECORD_DIR / "dev-docs.yaml", config)
+    patch_plugin_version(V0140)
+    config_before = (root / RECORD_DIR / "config.yaml").read_bytes()
+    # 実行
+    report = migrator.migrate(root)
+    # 検証
+    assert report.source_files == [".mindstella/dev-docs.yaml"]
+    assert (root / RECORD_DIR / VERSION_FILE).read_text(encoding="utf-8") == f"{V0140}\n"
+    assert (root / RECORD_DIR / "config.yaml").read_bytes() == config_before

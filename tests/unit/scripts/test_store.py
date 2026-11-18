@@ -1690,5 +1690,173 @@ def test_build_source_config() -> None:
     assert decisions["paths"] == ["decisions.yaml"]
     assert decisions["records"] == "items"
     assert decisions["body_file"] == "body"
+    assert decisions["write_dates"] is False
     assert decisions["schema"] == "schemas/decisions.schema.json"
     assert config["related"]["types"] == ["depends_on", "parent", "for", "see_also"]
+
+
+def test_sync_source_schemas(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
+    """違うファイルと無いファイルだけを書き直し、複製の側にだけあるファイルを残す（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    copies = root / ".mindstella" / "schemas"
+    (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+    (copies / "terms.schema.json").unlink()
+    (copies / "legacy.schema.json").write_text('{"title": "前の版"}\n', encoding="utf-8")
+    common_mtime = (copies / "common.schema.json").stat().st_mtime_ns
+    legacy_mtime = (copies / "legacy.schema.json").stat().st_mtime_ns
+    # 実行
+    written = store.sync_source_schemas(root)
+    # 検証
+    assert written == [
+        ".mindstella/schemas/docs.schema.json",
+        ".mindstella/schemas/terms.schema.json",
+    ]
+    assert (copies / "docs.schema.json").read_bytes() == (
+        store.SCHEMA_DIR / "docs.schema.json"
+    ).read_bytes()
+    assert (copies / "terms.schema.json").read_bytes() == (
+        store.SCHEMA_DIR / "terms.schema.json"
+    ).read_bytes()
+    assert (copies / "legacy.schema.json").read_text(encoding="utf-8") == '{"title": "前の版"}\n'
+    assert (copies / "legacy.schema.json").stat().st_mtime_ns == legacy_mtime
+    assert (copies / "common.schema.json").stat().st_mtime_ns == common_mtime
+
+
+def test_sync_source_schemas_when_same(
+    tmp_path: Path, valid_settings: dict[str, Any], snapshot_tree: SnapshotTree
+) -> None:
+    """全て同じなら何も書かない（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    before = snapshot_tree(root)
+    # 実行
+    written = store.sync_source_schemas(root)
+    # 検証
+    assert written == []
+    assert snapshot_tree(root) == before
+
+
+def test_sync_source_schemas_when_write_fails(
+    tmp_path: Path, valid_settings: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """置き換えられなければ送る（異常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    copies = root / ".mindstella" / "schemas"
+    (copies / "docs.schema.json").write_text("{}\n", encoding="utf-8")
+
+    def fail_replace(*_args: Any, **_kwargs: Any) -> None:
+        """置き換えに失敗する。"""
+        raise OSError("書けません")
+
+    # store モジュールの参照を、置き換えに失敗する関数に差し替える
+    monkeypatch.setattr(store.os, "replace", fail_replace)
+    # 実行・検証
+    with pytest.raises(WriteFailedError, match="スキーマの複製を書けません"):
+        store.sync_source_schemas(root)
+    assert (copies / "docs.schema.json").read_text(encoding="utf-8") == "{}\n"
+    assert sorted(path.name for path in copies.iterdir() if path.suffix != ".json") == []
+
+
+def _strip_write_dates(root: Path, keep: dict[str, bool] | None = None) -> Path:
+    """配信の設定の全ての行から write_dates を消し、keep の行だけその値にして、設定のパスを返す。"""
+    path = root / ".mindstella" / "dev-docs.yaml"
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    for row in config["documents"]:
+        row.pop("write_dates", None)
+        if keep and row["id"] in keep:
+            row["write_dates"] = keep[row["id"]]
+    path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return path
+
+
+def test_add_write_dates(tmp_path: Path, valid_settings: dict[str, Any]) -> None:
+    """write_dates を持たない種類の行だけに false を足し、利用者が書いた値を残す（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    path = _strip_write_dates(root, {"terms": True})
+    before = yaml.safe_load(path.read_text(encoding="utf-8"))
+    # 実行
+    written = store.add_write_dates(root)
+    # 検証
+    assert written == [".mindstella/dev-docs.yaml"]
+    after = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert {row["id"]: row["write_dates"] for row in after["documents"]} == {
+        "decisions": False,
+        "tasks": False,
+        "research": False,
+        "docs": False,
+        "terms": True,
+        "notes": False,
+        "logs": False,
+    }
+    assert [{k: v for k, v in row.items() if k != "write_dates"} for row in after["documents"]] == [
+        {k: v for k, v in row.items() if k != "write_dates"} for row in before["documents"]
+    ]
+    assert {k: v for k, v in after.items() if k != "documents"} == {
+        k: v for k, v in before.items() if k != "documents"
+    }
+
+
+@pytest.mark.parametrize("remove_config", [pytest.param(False, id="present"), pytest.param(True, id="no-config")])
+def test_add_write_dates_when_present(
+    tmp_path: Path, valid_settings: dict[str, Any], snapshot_tree: SnapshotTree, remove_config: bool
+) -> None:
+    """全ての行が持つか設定が無ければ書かない（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    if remove_config:
+        (root / ".mindstella" / "dev-docs.yaml").unlink()
+    before = snapshot_tree(root)
+    # 実行
+    written = store.add_write_dates(root)
+    # 検証
+    assert written == []
+    assert snapshot_tree(root) == before
+
+
+def test_add_write_dates_when_write_fails(
+    tmp_path: Path, valid_settings: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """置き換えられなければ送る（異常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    path = _strip_write_dates(root)
+    before = path.read_bytes()
+
+    def fail_replace(*_args: Any, **_kwargs: Any) -> None:
+        """置き換えに失敗する。"""
+        raise OSError("書けません")
+
+    # store モジュールの参照を、置き換えに失敗する関数に差し替える
+    monkeypatch.setattr(store.os, "replace", fail_replace)
+    # 実行・検証
+    with pytest.raises(WriteFailedError, match="配信の設定を書けません"):
+        store.add_write_dates(root)
+    assert path.read_bytes() == before
+    assert sorted(p.name for p in path.parent.iterdir() if p.name.endswith(store.TEMP_SUFFIX)) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [pytest.param("documents: [\n", id="unreadable"), pytest.param("documents: 文字列\n", id="not-list")],
+)
+def test_add_write_dates_when_unreadable(tmp_path: Path, valid_settings: dict[str, Any], text: str) -> None:
+    """読めない設定・documents が並びでない設定には書かない（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    path = root / ".mindstella" / "dev-docs.yaml"
+    path.write_text(text, encoding="utf-8")
+    # 実行
+    written = store.add_write_dates(root)
+    # 検証
+    assert written == []
+    assert path.read_text(encoding="utf-8") == text

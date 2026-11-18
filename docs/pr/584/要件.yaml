@@ -1,0 +1,53 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: 移し替えの後と、記録が最新で移し替えないときにも、スキーマの複製をプラグインのスキーマと一致させる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: run_only
+    detail: Git 管理外のワークスペースへ、検討事項・タスク・用語などを追加・更新できるようになる
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-33.yaml
+    impact: run_only
+    detail: 本文を持たない項目（用語集・メモなど）も検索・関連のたどりの結果に出る
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: run_only
+    detail: 作成したワークスペースの配信の設定とスキーマの複製が、記録の追加・更新・検索を通す
+    depends_on: []
+docs:
+  - page: docs/er/ER-489-1.yaml
+    new: false
+    change: project-index#195 の完了後、配信の設定（`.mindstella/dev-docs.yaml`）に日時を付けない指定を加えるなら、その記述を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:06:51.364737+00:00'
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: '「`created`・`updated`・`updated_by` は渡さない（変更の検知が付ける）」は、`write_dates: false` で project-index も日時を付けなくなるので食い違わないことを確認した（変更なし）'
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:06:51.364737+00:00'
+  - page: docs/guide/動作環境.md
+    new: false
+    change: project-index の条件に、配信元の設定の `write_dates` と、`body_file` の列を持たない要素の配信を持つ版（shuhei1101/project-index の 368b731 以降）であることを追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T15:06:51.364737+00:00'
+scope_out:
+  - item: MindStella を project-index と同じ作りに作り直すこと
+    reason: 関連として挙がっている別の要望
+    plan: '#481'
+  - item: 不具合 1・3 のプレビューの画面への影響の確認
+    reason: プレビューは project-index を通さずに store.py で記録を読み込むため、配信の除外と書き込みの検査の影響を受けない。created・updated を持つ項目の読み込みは単体テストで確認する
+    plan: none
+  - item: ほかのワークスペース（/mnt/c の nandemo-kaiwa）の個別の確認と修復
+    reason: 不具合 2 の修正で、次に開いたときにスキーマの複製が再配置される
+    plan: none
+  - item: store.create_workspace と v0.13.0 の place_source_config.py のスキーマの複製を sync_source_schemas に寄せる
+    reason: 不具合の修正に含まれない重複の解消（モジュール構成設計のレビューの任意の指摘 2）。この作業 PR で入れる関数への寄せ替えなので、マージの後に起票する
+    plan: '#593'

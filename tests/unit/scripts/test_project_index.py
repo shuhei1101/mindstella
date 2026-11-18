@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 import project_index
 from project_index import ProjectIndexError
@@ -45,7 +46,7 @@ class FakeProjectIndex:
                 self.end_headers()
                 self.wfile.write(data)
 
-            do_GET = do_POST = do_PATCH = _reply
+            do_GET = do_POST = do_PATCH = do_PUT = _reply
 
             def log_message(self, *args: object) -> None:
                 """記録を出さない。"""
@@ -249,3 +250,82 @@ def test_read_allowed_dirs(tmp_path: Path) -> None:
     settings.write_text("sources: []\n", encoding="utf-8")
     assert project_index.read_allowed_dirs(settings) == []
     assert project_index.read_allowed_dirs(tmp_path / "none.yaml") == []
+
+
+# 端末の設定のファイルの配信元の行（PUT へそのまま送る）
+SETTINGS_ROWS = [
+    {"id": "a", "config": ["/a/dev-docs.yaml"], "scope": {"read": ["/a/**"]}},
+    {"config": ["/b/project-index.yaml"], "outside_read": False},
+]
+
+
+def _write_settings(path: Path) -> None:
+    """配信元の行を持つ端末の設定のファイルを書く。"""
+    path.write_text(
+        yaml.safe_dump({"sources": SETTINGS_ROWS, "mindstella": {"allowed_dirs": []}}),
+        encoding="utf-8",
+    )
+
+
+def test_reload_sources(fake_pi: Callable[..., FakeProjectIndex], tmp_path: Path) -> None:
+    """ファイルの行をそのまま送り、409 なら 1 回だけ引き直す（正常系）。"""
+    # 準備
+    settings_path = tmp_path / "settings.yaml"
+    _write_settings(settings_path)
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [
+                (200, {"version": "v1", "settingsPath": str(settings_path)}),
+                (200, {"version": "v2", "settingsPath": str(settings_path)}),
+            ],
+            ("PUT", "/settings/sources"): [(409, {"current": "v2"}), (200, {"version": "v3"})],
+        }
+    )
+    # 実行
+    project_index.reload_sources(server.port)
+    # 検証
+    puts = [body for method, _path, body in server.requests if method == "PUT"]
+    assert puts == [
+        {"expectedVersion": "v1", "sources": SETTINGS_ROWS},
+        {"expectedVersion": "v2", "sources": SETTINGS_ROWS},
+    ]
+
+
+def test_reload_sources_when_conflict_twice(
+    fake_pi: Callable[..., FakeProjectIndex], tmp_path: Path
+) -> None:
+    """2 回続けて 409 なら ProjectIndexError（異常系）。"""
+    # 準備
+    settings_path = tmp_path / "settings.yaml"
+    _write_settings(settings_path)
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [
+                (200, {"version": "v1", "settingsPath": str(settings_path)})
+            ],
+            ("PUT", "/settings/sources"): [(409, {})],
+        }
+    )
+    # 実行・検証
+    with pytest.raises(ProjectIndexError) as caught:
+        project_index.reload_sources(server.port)
+    assert caught.value.status == 409
+
+
+def test_reload_sources_when_settings_unreadable(
+    fake_pi: Callable[..., FakeProjectIndex], tmp_path: Path
+) -> None:
+    """端末の設定のファイルが無ければ送らない（異常系）。"""
+    # 準備
+    server = fake_pi(
+        {
+            ("GET", "/settings/sources"): [
+                (200, {"version": "v1", "settingsPath": str(tmp_path / "missing.yaml")})
+            ],
+            ("PUT", "/settings/sources"): [(200, {"version": "v2"})],
+        }
+    )
+    # 実行・検証
+    with pytest.raises(ProjectIndexError):
+        project_index.reload_sources(server.port)
+    assert [method for method, _path, _body in server.requests if method == "PUT"] == []

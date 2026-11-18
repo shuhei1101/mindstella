@@ -33,6 +33,7 @@ scenarios:
       - '`.mindstella/release/` が移し替える前と同じ中身で残っている'
       - 既存の項目の ID が変わらず、project-index の `search_docs` で D-1 がヒットする
       - '`check` が問題を 0 件で返す'
+      - '`.mindstella/schemas/` の各ファイルの中身が、プラグインの `skills/mindmap/schemas/` の同じ名前のファイルと同じである'
     test: test_normal_when_loaded
   - name: 正常シナリオ（バージョンが同じ）
     setup:
@@ -49,6 +50,7 @@ scenarios:
 
         CL->>SV: ワークスペースを作成する
         SV->>WS: バージョンのファイルを読む（プラグインと同じ）
+        SV->>WS: スキーマの複製をプラグインのスキーマと比べる（同じ）
         SV-->>CL: ワークスペースの ID と画面の URL
       ```
     expected:
@@ -217,7 +219,34 @@ scenarios:
       - ワークスペースの全てのファイルの中身が、呼ぶ前と同じである
       - ワークスペースが配信されていない
     test: test_error_when_mdmark_migration_fails
-lead: 常駐サーバーが、ワークスペースを読み込むときに記録のバージョンとプラグインのバージョンを比べ、古ければバージョンごとの手順を順に適用して移し替えてから配信する単一ユースケース。
+  - name: 正常シナリオ（バージョンが同じでスキーマの複製が更新前）
+    setup:
+      - name: Mock
+        description: モデルを呼ばない。常駐サーバーと project-index を起動し、MindStella の API のワークスペースの作成を呼ぶ
+      - name: スキーマの複製が更新前の今のバージョンのワークスペース
+        description: 今のバージョンで作り、資料 A-1 を追加した後、`.mindstella/schemas/docs.schema.json` を前のバージョンのスキーマ（`deliverable` を必須に持つ）に書き換えたワークスペース
+        notes: 前のバージョンのスキーマはテストのデータとして持つ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant CL as 外部のアプリ（起動のコマンド）
+        participant SV as 常駐サーバー
+        participant WS as ワークスペース
+        participant PI as project-index
+
+        CL->>SV: ワークスペースを作成する
+        SV->>WS: バージョンのファイルを読む（プラグインと同じ）
+        SV->>WS: スキーマの複製をプラグインのスキーマと比べ、違うファイルを再配置する
+        SV->>PI: 配信元を読み直させる
+        SV-->>CL: ワークスペースの ID と画面の URL
+      ```
+    expected:
+      - '`.mindstella/schemas/docs.schema.json` の中身が、プラグインの `skills/mindmap/schemas/docs.schema.json` と同じである'
+      - '`.mindstella/schemas/` のほかのファイルと、記録の YAML・本文の中身と更新日時が、呼ぶ前と同じである'
+      - 写しが取られていない
+      - project-index の `search_docs` で A-1 を参照した結果に、スキーマに合わない旨の警告が無い
+    test: test_normal_when_schema_copy_stale
+lead: 常駐サーバーが、ワークスペースを読み込むときに記録のバージョンとプラグインのバージョンを比べ、古ければバージョンごとの手順を順に適用して移し替え、スキーマの複製をプラグインのスキーマにそろえてから配信する単一ユースケース。
 issue: 43
 primary_actor: 常駐サーバー
 stakeholders:
@@ -227,9 +256,9 @@ trigger: 常駐サーバーが、ワークスペースの作成（記録が残�
 preconditions:
   - 常駐サーバーが起動している
   - ワークスペースのフォルダが、許可するフォルダの下にある
-success_guarantee: 記録したバージョンより後でプラグインのバージョン以下のバージョンの手順がバージョンの順に適用され、全ての YAML が今のスキーマに合い、`.mindstella/mindstella-version.ini` がプラグインのバージョンになってから配信される。削除するキーの値は記録から失われない。
+success_guarantee: 記録したバージョンより後でプラグインのバージョン以下のバージョンの手順がバージョンの順に適用され、全ての YAML が今のスキーマに合い、`.mindstella/mindstella-version.ini` がプラグインのバージョンになってから配信される。バージョンが同じで手順を適用しないときも含め、`.mindstella/schemas/` のスキーマの複製がプラグインのスキーマと同じ中身になってから配信される。削除するキーの値は記録から失われない。
 minimal_guarantee: 手順の途中で失敗したときは、ワークスペースが移し替える前の中身に戻り、配信せずに、どのバージョンのどの手順で何が失敗したかを応答に返す。ワークスペースのバージョンがプラグインより新しいときは、何も書かずに配信を断る。
-frequency: ワークスペースの形式を変えたバージョンへプラグインを上げた後、ワークスペースごとに最初に読み込むときに 1 回
+frequency: ワークスペースの形式を変えたバージョンへプラグインを上げた後、ワークスペースごとに最初に読み込むときに 1 回。スキーマの複製の照合は、ワークスペースを読み込むたび
 priority: 高
 notes:
   E2E の範囲: E2E はモデルを呼ばず、常駐サーバーにワークスペースの作成を依頼して、移し替えたワークスペースの状態と応答を確かめる

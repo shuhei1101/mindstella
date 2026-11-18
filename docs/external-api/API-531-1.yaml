@@ -55,6 +55,17 @@ endpoints:
         condition: 返した
       - code: '404'
         condition: 配信元・リビジョン・文書が無い（`missing`）
+  - name: PUT /settings/sources
+    method: PUT
+    path: /settings/sources
+    summary: '本文は `{"expectedVersion": 必須, "sources": [端末の設定の行]}`。端末の設定の `sources` を丸ごと置き換え、全ての配信元を再読み込みする（project-index の『端末の設定の保存』）。『ワークスペースの作成』が、スキーマの複製を書き直した後に、端末の設定のファイルの行をそのまま送って配信元を読み直させる（`PATCH` は値が変わらない行を読み直さない）'
+    status_codes:
+      - code: '200'
+        condition: 保存して再読み込みした
+      - code: '409'
+        condition: '`expectedVersion` が古い'
+      - code: '422'
+        condition: 行がスキーマに通らない
 lead: 端末の設定（project-index と dev-docs が共有するグローバルの設定のファイル）の配信元の行を、1 行ずつ版を照合して追加・変更・削除する project-index の HTTP の API。MindStella のワークスペースの管理が、ワークスペースを配信元として登録・クローズするときに呼ぶ（D-300）。
 used_in:
   - plugins/mindstella/skills/mindmap/scripts/server.py

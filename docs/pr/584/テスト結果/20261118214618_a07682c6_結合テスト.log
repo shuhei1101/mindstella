@@ -1,0 +1,4 @@
+$ ~/.venvs/mindstella-dev/bin/python3 -m pytest tests/integration/server/test_migrate.py tests/integration/server/test_create_workspace.py -p no:cacheprovider -q --basetemp=/tmp/pr584-it
+# 結合テストの実行範囲の表の 2 ファイル。共有の /tmp/pytest-of-shuhei2441 が別のユーザーの所有で使えないため、--basetemp で一時フォルダを替えた
+32 passed in 23.89s
+exit=0

@@ -105,6 +105,46 @@ def patch_source(port: int, source_id: str, changes: dict[str, Any]) -> None:
         raise _failed("PATCH", path, status, body)
 
 
+def reload_sources(port: int) -> None:
+    """端末の設定のファイルの行をそのまま `PUT /settings/sources` に送り、全ての配信元を再読み込みさせる。
+
+    `GET /settings/sources` の応答の行は状態を含む camelCase の形で `PUT` の要求の行と違うので、
+    行は応答ではなく `settingsPath` のファイルから読む。版が古ければ 1 回だけ引き直して送り直す。
+    """
+    for attempt in range(2):
+        settings = get_settings(port)
+        rows = _settings_rows(Path(str(settings.get("settingsPath"))))
+        status, body = _request(
+            port,
+            "PUT",
+            SOURCES_PATH,
+            {"expectedVersion": settings.get("version"), "sources": rows},
+        )
+        # 読み直させた
+        if status == HTTPStatus.OK:
+            return
+        # 1 回目の版が古い: 引き直して送り直す
+        if status == CONFLICT and attempt == 0:
+            logger.warning("mindstella.project_index.version_conflict", extra={"source_id": None})
+            continue
+        raise _failed("PUT", SOURCES_PATH, status, body)
+
+
+def _settings_rows(settings_path: Path) -> list[Any]:
+    """端末の設定のファイルの `sources` の並びを返す。読めないか並びでなければ ProjectIndexError。"""
+    try:
+        data = yaml.safe_load(settings_path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        raise ProjectIndexError(
+            None, f"端末の設定のファイルを読めません: {settings_path}（{error}）"
+        ) from error
+    rows = data.get("sources") if isinstance(data, dict) else None
+    # sources が並びでない: 送らない
+    if not isinstance(rows, list):
+        raise ProjectIndexError(None, f"端末の設定のファイルの sources が並びではありません: {settings_path}")
+    return rows
+
+
 def find_doc_path(port: int, source: str, doc_id: str) -> str | None:
     """配信元の文書の一覧から、`doc_id` の文書のパスを返す。無ければ `None`。"""
     path = f"/sources/{urllib.parse.quote(source, safe='')}/docs"

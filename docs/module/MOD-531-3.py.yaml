@@ -157,7 +157,7 @@ functions:
     usecase: 外部のアプリから起動する
     scope: public
     summary: IF-531-1 の確かめる順で、記録を作るか開き、配信元の行と ID の一覧を揃える
-    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れる。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。配信元の行を足した後に、配信元 `mindstella-agent-flows` の行が無ければ足す（`ensure_agent_flows_source`）。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない'
+    description: '記録は既存の `commands.run_init` に既定の設定（`id`・`flow`・`summary` にフォルダ名）を渡して書く。記録があるフォルダは、開く前に『記録の形式の移行』の `migrator.migrate` を `workspace_lock`（`require=require_migratable`）の中で呼ぶ。移し替えたら、報告の `provisional`・`not_carried` を『前回参照した時点』の `save_migration_report` で状態のフォルダに残し、応答の `migration` にも入れる。フォルダごとの鍵とワークスペースごとの鍵を取ってから書き、ID の一覧は `state.add_id` が全体の鍵で書く。配信元の登録の失敗で巻き戻すときは、作成の前に直下の `README.md` が無かったら書いた `README.md` も消す。巻き戻しで、記録・`launch.json` の削除自体が失敗したら `logger.exception` で `mindstella.workspace.rollback_failed` を書き、502 は返す（`detail` に残ったものを足す）。配信元の行は、`GET /settings/sources` に行が無いときだけ追加し、行があれば追加の依頼を送らない。配信元の行を足した後に、配信元 `mindstella-agent-flows` の行が無ければ足す（`ensure_agent_flows_source`）。行があり、`workspace_folder` が今回のフォルダでないときは、そのフォルダに `.mindstella/config.yaml` があり、その `id` が同じ ID（記録が残っている）なら（記録が無いときにフォルダから振る `workspace_id_of` は使わない） `ApiError`（409、`stage: duplicate`、`detail` にそのフォルダ）、無ければ `project_index.patch_source` で `config`・`scope`（クローズ済みなら `outside_read: true` も）を今回のフォルダの値へ変更する。変更が `ProjectIndexError` のときは 502（`stage: source`）で、記録は削除しない（記録はこの依頼で作っていない）。記録の設定は書き換えない。移し替えの結果の `source_files` が 1 件以上で、配信元の行の追加・変更（`add_source`・`patch_source`）を送らなかったときは、`project_index.reload_sources` で全ての配信元を読み直させる（`ProjectIndexError` は 502、`stage: source`。記録は消さない）。そのために、配信元の行を揃える内部の処理は、結果に加えて行を送ったかを返す。移し替えを呼ぶ内部の処理は、応答の `migration`（手順が無ければ `null`）とは別に、移し替えの結果の `source_files` を返す'
     side_effects: '`.mindstella/` と `README.md`・`launch.json`・`workspaces.yaml` を書き、project-index へ行を送る'
     args:
       - name: request
@@ -269,6 +269,24 @@ functions:
         condition: test_create_workspace_moved と同じで、`patch_source` が `ProjectIndexError`
         mock: 同上
         expected: '`ApiError`（502、`stage: source`）、`.mindstella/` と `launch.json` が残る'
+      - name: test_create_workspace_schema_reloaded
+        case: 正常
+        summary: スキーマの複製を書き直し、行を送らないときは全ての配信元を読み直させる
+        condition: 今の版の記録・`launch.json`・`ids`・配信元の行があり、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたフォルダ
+        mock: '`project_index.get_settings`・`project_index.reload_sources`・配信の URL'
+        expected: '`(200, {result: already_open, migration: null})`、`reload_sources` が 1 回呼ばれ、`add_source`・`patch_source` が呼ばれない'
+      - name: test_create_workspace_schema_rewritten_row_added
+        case: 正常
+        summary: 行を追加するときは読み直しを重ねて送らない
+        condition: 今の版の記録があり、配信元の行が無く、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたフォルダ
+        mock: '`project_index.add_source`・`project_index.reload_sources`・配信の URL'
+        expected: '`(200, {result: opened})`、`add_source` が 1 回呼ばれ、`reload_sources` が呼ばれない'
+      - name: test_create_workspace_schema_reload_failed
+        case: 異常
+        summary: 読み直しに失敗したら 502
+        condition: '`test_create_workspace_schema_reloaded` と同じフォルダで、`reload_sources` が `ProjectIndexError`'
+        mock: 同上
+        expected: '`ApiError`（502、`stage: source`）。記録は消さない'
   - name: close_workspace
     title: ワークスペースをクローズにする
     kind: 関数
