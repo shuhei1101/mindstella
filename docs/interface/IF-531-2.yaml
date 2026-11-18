@@ -62,7 +62,7 @@ constraints:
     constraint: 'コマンドを付けずに tmux の `new-session -d -s {ワークスペースの ID} -c {フォルダ}` でペインを作り、`set-option -w -t ={ワークスペースの ID}: remain-on-exit on` を立ててから、`respawn-pane -k -t ={ワークスペースの ID}: -c {フォルダ} -e {環境変数}... {コマンド}` でコマンドを動かす（ペインのコマンドがすぐに終わっても、ペインを残して終わり方を読むため。ウィンドウ・ペインを指す `-t` は末尾に `:` を付ける）。準備ができたら `set-option -w -t ={ワークスペースの ID}: remain-on-exit off` に戻し、以降はペインのコマンドが終わればセッションごと閉じる。ペインを作る前に、MindStella のセッションが無いとみなしたのに `has-session -t ={ワークスペースの ID}` が 0 を返せば、`kill-session` で残ったセッションを閉じる。コマンドは `claude-balancer exec --client mindstella -- claude {引数}`。`PATH` に `claude-balancer` が無ければ `claude {引数}` を、`claude_config_dir` があれば `CLAUDE_CONFIG_DIR` に入れて動かす。tmux のサーバーは利用者の既定のソケット'
     notes: '`new-session -d` はセッションを立てた時点で返るので、ペインの中の `claude-balancer exec` の終了コードは tmux から読む。claude-balancer の `exec` は、借りられない・クライアントが無い・バックエンドへつながらないときに子プロセスを起動せず 125 で終わる（LIB-531-1）'
   - item: Claude Code の引数
-    constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`、プラグインの `skills/mindmap/references/起動時の指示.md` の中身を `--append-system-prompt`。引数ごとに分けて渡し、シェルで解釈させない'
+    constraint: '`launch.json` の `mcp_config` が空でなければ一時ファイルに書いて `--mcp-config {ファイル}`、`plugin_dirs` の各フォルダに `--plugin-dir {フォルダ}`。起動の指示は SessionStart の注入（『MindStella のセッションのフック』）で渡し、`--append-system-prompt` は渡さない。引数ごとに分けて渡し、シェルで解釈させない'
   - item: 渡す環境変数
     constraint: '`MINDSTELLA_SESSION`（MindStella のセッションの ID）・`MINDSTELLA_WORKSPACE`（ワークスペースの ID）・`MINDSTELLA_PORT`、設定に進め方の文書があれば `MINDSTELLA_FLOW`（`{配信元の ID}#{文書の ID}`）。tmux の `respawn-pane -e` で渡す'
     decided_by: CFG-489-1#
@@ -117,7 +117,7 @@ flows:
     expected:
       - 応答が 201 で、`session` が `S-` で始まる
       - Mock の claude-balancer が `exec --client mindstella` を受けている
-      - Mock の Claude Code が `--mcp-config`・`--plugin-dir`・`--append-system-prompt` と、`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_FLOW` を受けている
+      - Mock の Claude Code が `--mcp-config`・`--plugin-dir` と、`MINDSTELLA_SESSION`・`MINDSTELLA_WORKSPACE`・`MINDSTELLA_FLOW` を受けていて、`--append-system-prompt` を受けていない
       - '`session.json` の `status` が `running` で、`claude_session_id`・`pane`・`pid` が入っている'
       - ペインに最初の入力の行が貼られている
     test: test_normal

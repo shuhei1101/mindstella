@@ -82,7 +82,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella -- claude ...`、無ければ `claude ...`）。`--mcp-config`・`--plugin-dir`・`--append-system-prompt` を足す
+    summary: ペインで動かすコマンドの引数の並びを作る（claude-balancer があれば `claude-balancer exec --client mindstella -- claude ...`、無ければ `claude ...`）。`--mcp-config`・`--plugin-dir` を足す
     args:
       - name: options
         type: LaunchOptions | None
@@ -94,11 +94,6 @@ functions:
         required: true
         passing: positional
         description: '`mcp_config` を書いた一時ファイル'
-      - name: startup_prompt
-        type: str
-        required: true
-        passing: positional
-        description: 起動時の指示の中身
       - name: balancer
         type: str | None
         required: true
@@ -113,7 +108,7 @@ functions:
         summary: claude-balancer の有無と指定で並びが変わる
         condition: '`parametrize`: balancer あり・指定あり / balancer 無し・指定が空 / 記録無し（`None`）'
         mock: なし
-        expected: '`[balancer, exec, --client, mindstella, --, claude, --mcp-config, f, --plugin-dir, p, --append-system-prompt, s]` / `[claude, --append-system-prompt, s]` / 同じく指定なし'
+        expected: '`[balancer, exec, --client, mindstella, --, claude, --mcp-config, f, --plugin-dir, p]` / `[claude]` / 同じく指定なし'
   - name: build_env
     title: 渡す環境変数を組み立てる
     kind: 関数
