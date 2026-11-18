@@ -18,23 +18,33 @@ docs:
   - page: docs/guide/セットアップ手順-Discordに通知する.md
     new: false
     change: 冒頭リードと「届く通知」に、MindStella のセッションが止まったときの通知を追加し、「止まったときは届かない」を修正する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T03:08:39.356803+00:00'
   - page: docs/guide/index.yaml
     new: false
     change: 手順『Discord に通知する』の行の summary に、止まったことの通知を追加する（README.md・使い方.md の目次の行も生成し直す）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T03:08:39.356803+00:00'
   - page: docs/guide/files.yml
     new: false
     change: 手順『Discord に通知する』の行の description に、止まったことの通知を追加する
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T03:08:39.356803+00:00'
   - page: docs/guide/コマンド.md
     new: false
     change: '`MINDSTELLA_DISCORD_WEBHOOK_FILE` の説明の「作業の完了を通知する」に、止まったことの通知を追加する'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T03:08:39.356803+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
     new: false
     change: '`MINDSTELLA_DISCORD_WEBHOOK_FILE` の説明の「作業の完了を通知する」に、止まったことの通知を追加する'
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T03:08:39.356803+00:00'
 scope_out:
   - item: 利用上限・無操作の上限で止まったときの通知の呼び出し
     reason: 'その停止はまだ無く、作る #520・#521 がこの PR の通知の関数を呼ぶ（計画の受付判断で合格した分け方）'
