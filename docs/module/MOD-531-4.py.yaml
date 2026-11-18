@@ -736,7 +736,7 @@ functions:
     usecase: MindStella のセッションを起動し直す
     scope: public
     summary: IF-582-1 の受け付け。ワークスペースごとの鍵の中でクローズ済み・`stopping`・`restarting` を断り、`status` を `restarting`、`restart_reason` を契機、契機が `api` なら `close_pending` を偽にして、止めて起動する工程を別のスレッドで始める
-    description: 別のスレッドは、生きていれば停止と同じ待ち方で `/exit` を貼り、`EXEC_EXIT_WAIT_SEC` まで tmux のセッションが閉じるのを待つ（過ぎたら `kill-session`）。契機が `rate_limit` なら `notify_stopped` を `rate_limited` で呼ぶ。`check_launch_options`・`resume_id_for` の後、`create_session` と同じ起動の工程（`build_command` に `resume_id`、`build_env` に契機が `compact` のとき `LAUNCH_REASON_ENV`）で起動し、準備ができたら `running` にして `restart_reason`・`last_error` を戻す。失敗はペインを閉じて `crashed`・`last_error` にし、契機が `api`・`compact` なら `notify_stopped` を `restart_failed` で呼ぶ
+    description: 別のスレッドは、生きていれば停止と同じ待ち方で `/exit` を貼り、`EXEC_EXIT_WAIT_SEC` まで tmux のセッションが閉じるのを待つ（過ぎたら `kill-session`）。最後の書き込みを待つ上限を過ぎたら起動し直さず、`pending_write` を真・`status` を `running`・`restart_reason` を `None` に戻す。契機が `rate_limit` なら `notify_stopped` を `rate_limited` で呼ぶ。`check_launch_options`・`resume_id_for` の後、`create_session` と同じ起動の工程（`build_command` に `resume_id`、`build_env` に契機が `compact` のとき `LAUNCH_REASON_ENV`）で起動し、準備ができたら `running` にして `restart_reason`・`last_error` を戻す。失敗はペインを閉じて `crashed`・`last_error` にし、契機が `api`・`compact` なら `notify_stopped` を `restart_failed` で呼ぶ
     side_effects: '`session.json` を書き換え、tmux のセッションを立て直す。停止の通知を呼ぶ'
     args:
       - name: workspace_id
@@ -801,6 +801,12 @@ functions:
         condition: '`TmuxRunner` の偽はセッションを閉じない。時刻を `EXEC_EXIT_WAIT_SEC` より進める'
         mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
         expected: '`kill-session` の後に `new-session` を呼ぶ'
+      - name: test_restart_session_when_write_timeout
+        case: 異常
+        summary: 最後の書き込みを待つ上限を過ぎたら起動し直さず running に戻す
+        condition: 契機 `api`・`force` は偽。`session.json` が `running` で `responding` が真のまま、時刻を『最後の書き込みを待つ上限』より進める
+        mock: '`TmuxRunner`・`time.monotonic`・`time.sleep`'
+        expected: ペインに `/exit` を貼らない。終わった後の `session.json` が `running`・`pending_write` が真・`restart_reason` が `None`
   - name: request_restart
     title: 内部の契機で起動し直す
     kind: 関数
