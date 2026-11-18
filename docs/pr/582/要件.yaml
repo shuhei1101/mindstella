@@ -1,0 +1,63 @@
+use_cases:
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: changed
+    detail: MindStella のセッションが利用上限に達して止まった後に、別のアカウントで同じ会話の続きから話し合いを続ける流れを追加する（起動し直しの契機ごとの流れは、新規作成する単一ユースケース『MindStella のセッションを起動し直す』が持ち、作成したときにこの表へ追加する）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-26.yaml
+    impact: following
+    detail: 圧縮の代わりに起動し直したときも、再開として記録と commit から圧縮の前の作業に戻る
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: changed
+    detail: 止めた後に MindStella のセッションを作成すると、前の会話を引き継いで起動する。追加の MCP・プラグインの記録が無いワークスペースでは、記録が無いことが外部のアプリに分かる
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: following
+    detail: 止めた後とクローズの後に届いたコメントでは、MindStella のセッションが自動で起動し直さない
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: changed
+    detail: 利用上限で止まったときにも、止まった理由「利用上限」の通知が届く
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+docs:
+  - page: docs/guide/話し合い-続きを再開する.md
+    new: false
+    change: 「止めた後なら、新しい MindStella のセッションが作られる」を、前の会話を引き継いで起動する記載へ修正し、利用上限・落ちた後・圧縮で自動で起動し直すことを追加する
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 起動し直しの API と MindStella の MCP のツール、作成の応答の警告、一覧の起動し直しの途中の状態と失敗の理由を追加する
+    status: todo
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: false
+    change: 「停止したとき」の停止した理由の表に、利用上限を追加する
+    status: todo
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 止めた後に立ち上げると前の会話を引き継ぐことと、追加の MCP・プラグインの記録が無いときの警告を追加する
+    status: todo
+scope_out:
+  - item: 画面での MindStella のセッションの表示（起動し直している間のコメントの入力の表示・起動し直しに失敗した理由と起動のボタン・追加の MCP とプラグインの記録が無いことの警告）
+    reason: '今の画面は MindStella のセッションの状態を表示しておらず、画面を常駐サーバーの 1 つのポートで配る #538 の前に作ると作り直しになる。この PR は状態と失敗の理由を API の応答で返却するところまでにし、利用者の急ぎの指定（利用上限での借り直し）を先に入れる。含めるかはレビューで確定する'
+    plan: to_file
+  - item: 無操作の上限での停止
+    reason: 契機が別の行（A-107 の No 6）。無操作の上限で止めた後にコメントが届いたときの起動し直しは、落ちた後と同じ動きとしてこの PR が作る
+    plan: '#521'
+  - item: ワークスペースの設定の書き換え（PATCH /workspaces/{id}）と、書き換えた設定を起動中の MindStella のセッションへ反映する起動し直し
+    reason: A-107 の No 9 の行。この PR は起動し直しの API を作り、#524 が書き換えの後に呼ぶ
+    plan: '#524'
+  - item: 常駐サーバーの起動時の状態の照合
+    reason: A-107 の No 10 の行
+    plan: '#525'
+  - item: ワークスペースの開き直しの後の起動で前の会話を引き継ぐこと
+    reason: A-107 の No 8 の行。開き直しの後の起動は、この PR の作成・起動し直しの会話の引き継ぎを使用する
+    plan: '#523'
