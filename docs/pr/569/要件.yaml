@@ -76,10 +76,10 @@ scope_out:
     plan: none
   - item: MindStella のセッションが止まったとき（エラー・利用上限・無操作の上限・停止の依頼）の通知
     reason: '利用者の判断で、まずは作業が完了したときの通知だけにする（PR #569 の確認事項）。#520・#521 の停止からの呼び出しも、止まったときの通知を作るときに扱う'
-    plan: to_file
+    plan: '570'
   - item: 通知にスレッドの要約・commit の説明を記載する
     reason: '利用者の判断で、通知にはワークスペースの名前・作業が完了したこと・プレビューの URL だけを記載する（PR #569 の確認事項）'
     plan: none
   - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` の fail
     reason: base（origin/develop の 2534d615）でも fail する既存の不具合で、この PR の変更に関係しない
-    plan: to_file
+    plan: '561'
