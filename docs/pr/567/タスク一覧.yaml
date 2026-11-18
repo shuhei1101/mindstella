@@ -80,5 +80,7 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T03:28:26.405703+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
     note: tests/integration/storybook/test_topbar_stories.py
+    updated_by: planner
+    updated_at: '2026-11-18T03:53:07.576541+00:00'
