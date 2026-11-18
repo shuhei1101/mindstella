@@ -225,6 +225,10 @@ def test_send_webhook() -> None:
     assert request.get_header("Content-type") == "application/json"
     assert json.loads(request.data) == {"content": "本文"}  # type: ignore[arg-type]
     assert timeout == notify.SEND_TIMEOUT_SEC
+    assert (
+        request.get_header("User-agent")
+        == "DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)"
+    )
 
 
 def test_send_webhook_when_http_error(caplog: pytest.LogCaptureFixture) -> None:
