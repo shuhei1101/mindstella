@@ -434,6 +434,101 @@ functions:
         condition: '`parametrize`: `prompt_submit` / `stop_failure` / `session_end`（`reason: logout`）。事前に `notify.MARKERS.mark` でマーカーを付ける'
         mock: '`notify.notify_if_written`'
         expected: '`notify.MARKERS.take` が偽で、`notify_if_written` が呼ばれない'
+  - name: resume_status
+    title: 再開の状況を返す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 起動と再開
+    scope: public
+    summary: IF-489-32 の処理。`session` のワークスペースを引き、ワークスペースごとの鍵の中で再開の状況をまとめる（何も書かない）
+    args:
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: body
+        type: dict
+        required: true
+        passing: positional
+        description: 本文（`source`）
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・鍵
+    returns:
+      type: dict
+      description: 『再開の状況』の応答
+    process: |-
+      1. `source` が `startup`・`resume`・`clear`・`compact` でなければ `ApiError`（400）
+      2. `record_event` と同じ引き方で `session` を持つワークスペースの ID を引く。無ければ `ApiError`（404）
+      3. フォルダを引き（`workspaces.find_workspace_row`・`workspace_folder`）、ワークスペースごとの鍵の中でまとめる（『再開の状況』の `summarize_resume`）
+    exceptions:
+      - name: ApiError
+        condition: 400（`source` が違う）・404（`session` が状態に無い）
+    unit_tests:
+      - name: test_resume_status
+        case: 正常
+        summary: セッションのワークスペースの状況を返す
+        condition: 'S-1 を持つワークスペースで `source: compact`'
+        mock: '`resume.summarize_resume`・`workspaces.find_workspace_row`'
+        expected: '`summarize_resume` がそのフォルダと `compact` で呼ばれ、その戻り値を返す'
+      - name: test_resume_status_when_unknown
+        case: 異常
+        summary: 知らないセッションは 404
+        condition: 状態に無い S-9
+        mock: 同上
+        expected: '`ApiError`（404）。`summarize_resume` が呼ばれない'
+        exception: 状態に無い
+  - name: advance_read_point
+    title: 前回参照した時点を進める
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/sessions.py
+    usecase: 起動と再開
+    scope: public
+    summary: IF-565-2 の処理。`session` のワークスペースを引き、ワークスペースごとの鍵の中で前回参照した時点を進める
+    side_effects: '`read_point.json` を書き、`migration.json` を消す'
+    args:
+      - name: session_id
+        type: str
+        required: true
+        passing: positional
+        description: MindStella のセッションの ID
+      - name: body
+        type: dict
+        required: true
+        passing: positional
+        description: 本文（`until_seq`）
+      - name: ctx
+        type: ServerContext
+        required: true
+        passing: positional
+        description: 状態のフォルダ・鍵
+    returns:
+      type: dict
+      description: '`{read_seq}`'
+    process: |-
+      1. `until_seq` が整数でなければ `ApiError`（400）
+      2. `resume_status` と同じくワークスペースを引く。無ければ `ApiError`（404）
+      3. ワークスペースごとの鍵の中で進める（『前回参照した時点』の `advance_read_seq`。`ArgumentError` は `ApiError`（400）にする）
+    exceptions:
+      - name: ApiError
+        condition: 400（`until_seq` が整数でない・範囲の外）・404（`session` が状態に無い）
+    unit_tests:
+      - name: test_advance_read_point
+        case: 正常
+        summary: 前回参照した時点を進める
+        condition: 'S-1 を持つワークスペース（`read_seq` 3、`last_seq` 5）で `until_seq: 5`'
+        mock: '`workspaces.find_workspace_row`'
+        expected: '`{read_seq: 5}` を返す'
+      - name: test_advance_read_point_when_invalid
+        case: 異常
+        summary: 通し番号でない値・範囲の外は 400
+        condition: '`parametrize`: `until_seq: "5"` / `until_seq: 9`（`last_seq` 5）'
+        mock: 同上
+        expected: どちらも `ApiError`（400）。`read_seq` が 3 のまま
+        exception: 値が違う
 classes:
   - name: TmuxRunner
     title: tmux のコマンドを呼ぶもの

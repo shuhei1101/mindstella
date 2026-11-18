@@ -516,7 +516,7 @@ functions:
     usecase: 記録の形式の移行
     scope: public
     summary: インターフェース定義『記録の形式の移行』の入口。手順を当て、値が要るキーに仮の値を入れ、版を書く
-    description: 呼ぶ側（モジュール構成『ワークスペースの管理』『セッションの管理』）がワークスペースごとの鍵と `workspace_lock`（`require=require_migratable`）を取った中で呼ぶ
+    description: 呼ぶ側（モジュール構成『ワークスペースの管理』）がワークスペースごとの鍵と `workspace_lock`（`require=require_migratable`）を取った中で呼ぶ
     args:
       - name: root
         type: Path
