@@ -50,8 +50,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-17T19:53:29.028394+00:00'
   - process: 部品設計
-    status: todo
+    status: done
     note: CMP-489-19.ts.yaml の voice と states
+    updated_by: planner
+    updated_at: '2026-11-18T03:10:19.911164+00:00'
   - process: 画面設計
     status: skipped
     reason: 変わるのはトップバーの部品で、画面の UI 項目は変わらない（部品設計で扱う）
@@ -59,19 +61,19 @@ tasks:
     updated_at: '2026-11-17T19:53:29.028394+00:00'
   - process: モジュール構成設計
     status: skipped
-    reason: モジュールの追加・変更が無い（style.css の規則だけ）
+    reason: モジュールの追加・関数の分割の変更が無い（topbar.ts の描く要素と style.css の規則だけで、部品設計が仕様を持つ）
     updated_by: planner
     updated_at: '2026-11-17T19:53:29.028394+00:00'
   - process: ドキュメント修正
-    status: skipped
-    reason: 更新ドキュメントが無い
+    status: done
     updated_by: planner
-    updated_at: '2026-11-17T19:53:29.028394+00:00'
+    updated_at: '2026-11-18T03:10:19.911164+00:00'
+    note: docs/guide/プレビューを見る.md を部品設計の段で修正した
   - process: 単体テスト作成
-    status: skipped
-    reason: CSS だけの変更で、幅ごとの収まりはストーリーの結合テストで確認する
+    status: todo
     updated_by: planner
-    updated_at: '2026-11-17T19:53:29.028394+00:00'
+    updated_at: '2026-11-18T03:10:30.230465+00:00'
+    note: tests/unit/preview/test_topbar.py（ツールチップの要素と title を使わないこと）
   - process: 実装
     status: todo
   - process: 結合テスト作成
