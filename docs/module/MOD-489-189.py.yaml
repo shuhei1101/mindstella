@@ -1607,5 +1607,11 @@ functions:
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`dev-docs.yaml` が呼ぶ前と同じで一時ファイルが残っていない'
         exception: 書き込みか置き換えで OSError
+      - name: test_add_write_dates_when_unreadable
+        case: 正常
+        summary: 読めない設定・documents が並びでない設定には書かない
+        condition: '`parametrize`: `dev-docs.yaml` が `documents: [`（YAML として読めない）/ `documents: 文字列`'
+        mock: なし
+        expected: 空の並びを返し、`dev-docs.yaml` の中身が呼ぶ前と同じ
     callers:
       - MOD-489-179#functions[migrate]

@@ -1842,3 +1842,21 @@ def test_add_write_dates_when_write_fails(
         store.add_write_dates(root)
     assert path.read_bytes() == before
     assert sorted(p.name for p in path.parent.iterdir() if p.name.endswith(store.TEMP_SUFFIX)) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [pytest.param("documents: [\n", id="unreadable"), pytest.param("documents: 文字列\n", id="not-list")],
+)
+def test_add_write_dates_when_unreadable(tmp_path: Path, valid_settings: dict[str, Any], text: str) -> None:
+    """読めない設定・documents が並びでない設定には書かない（正常系）。"""
+    # 準備
+    root = tmp_path / "ws"
+    store.create_workspace(root, valid_settings, version="v0.3.0")
+    path = root / ".mindstella" / "dev-docs.yaml"
+    path.write_text(text, encoding="utf-8")
+    # 実行
+    written = store.add_write_dates(root)
+    # 検証
+    assert written == []
+    assert path.read_text(encoding="utf-8") == text
