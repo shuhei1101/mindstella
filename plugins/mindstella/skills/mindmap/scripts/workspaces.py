@@ -166,7 +166,7 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
     records = records_root(folder)
     options = validate_options(mcp_config, plugin_dirs)
     migration: dict[str, Any] | None = None
-    schemas: list[str] = []
+    source_files: list[str] = []
 
     with ctx.locks.for_folder(folder):
         legacy = (folder / SETTINGS_FILE).exists() or (folder / LEGACY_SETTINGS_FILE).exists()
@@ -175,7 +175,7 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
         with ctx.locks.for_workspace(workspace_id):
             # 記録がある: 開く前に今の形式へ移し替える
             if exists:
-                migration, schemas = _migrate(ctx, folder)
+                migration, source_files = _migrate(ctx, folder)
             # 記録が無いときだけ、進め方の文書を確かめてから記録を作る
             if not exists:
                 if flow is not None:
@@ -189,8 +189,8 @@ def create_workspace(request: dict[str, Any], ctx: Any) -> tuple[int, dict[str, 
                 result, row_sent = _register_source(
                     ctx, workspace_id, folder, created=not exists, recorded=recorded
                 )
-                # スキーマの複製を書き直したが行を送っていない: project-index に読み直させる
-                if schemas and not row_sent:
+                # スキーマの複製か配信の設定を書き直したが行を送っていない: project-index に読み直させる
+                if source_files and not row_sent:
                     project_index.reload_sources(ctx.pi_port)
             except ProjectIndexError as error:
                 remaining = _rollback(
@@ -262,7 +262,7 @@ def ensure_agent_flows_source(ctx: Any, allowed_dirs: list[Path]) -> None:
 
 
 def _migrate(ctx: Any, folder: Path) -> tuple[dict[str, Any] | None, list[str]]:
-    """記録を今の形式へ移し替え、移し替えたら報告を状態のフォルダに残し、応答の形と書き直したスキーマの複製を返す。"""
+    """記録を今の形式へ移し替え、移し替えたら報告を状態のフォルダに残し、応答の形と書き直したスキーマの複製・配信の設定を返す。"""
     try:
         with workspace_lock(folder, threading.Lock(), require=migrator.require_migratable):
             report = migrator.migrate(folder)
@@ -273,7 +273,7 @@ def _migrate(ctx: Any, folder: Path) -> tuple[dict[str, Any] | None, list[str]]:
         raise ApiError(422, "migration", detail) from error
     # 当てる手順が無かった: 移し替えていない
     if not report.steps:
-        return None, report.schemas
+        return None, report.source_files
     read_point.save_migration_report(
         folder,
         {"not_carried": report.not_carried, "provisional": report.provisional},
@@ -285,7 +285,7 @@ def _migrate(ctx: Any, folder: Path) -> tuple[dict[str, Any] | None, list[str]]:
         "steps": [f"{step.version} #{step.index}: {describe_step(step)}" for step in report.steps],
         "not_carried": report.not_carried,
     }
-    return response, report.schemas
+    return response, report.source_files
 
 
 def close_workspace(workspace_id: str, ctx: Any) -> dict[str, Any]:

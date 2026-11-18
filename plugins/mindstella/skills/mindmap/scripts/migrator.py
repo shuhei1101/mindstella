@@ -26,6 +26,7 @@ from kinds import ID_PATTERN, LEGACY_SETTINGS_FILE, SETTINGS_FILE, records_root
 from migration_ops import StepError, apply_step, list_needed_values
 from store import (
     SCHEMA_DIR,
+    add_write_dates,
     build_mismatch_error,
     dump_yaml,
     load_workspace,
@@ -103,8 +104,8 @@ class MigrationReport:
     provisional: list[dict[str, str]] = field(default_factory=list)
     # 移せずに記録から消えた値（`{item, key, value}`）
     not_carried: list[dict[str, str]] = field(default_factory=list)
-    # 書き直したスキーマの複製のワークスペースからのパス
-    schemas: list[str] = field(default_factory=list)
+    # 書き直したスキーマの複製と配信の設定のワークスペースからのパス
+    source_files: list[str] = field(default_factory=list)
 
 
 def list_versions(*, migrations_dir: Path = MIGRATIONS_DIR) -> list[Version]:
@@ -219,11 +220,11 @@ def apply_migration(
 
 
 def migrate(root: Path, *, to_version: Version | None = None) -> MigrationReport:
-    """手順を当て、値が要るキーに仮の値を入れ、版を書き、スキーマの複製をそろえる。"""
+    """手順を当て、値が要るキーに仮の値を入れ、版を書き、スキーマの複製と配信の設定をそろえる。"""
     report = apply_migration(root, to_version=to_version, migrations_dir=MIGRATIONS_DIR)
-    # 当てる手順が無く、版が同じ: スキーマの複製だけをそろえる
+    # 当てる手順が無く、版が同じ: スキーマの複製と配信の設定だけをそろえる
     if not report.steps and report.relation == "same":
-        return replace(report, schemas=sync_source_schemas(root))
+        return replace(report, source_files=_sync_source_files(root))
     # プラグインの版より前までを当てた: 仮の値も版も書かない
     if to_version is not None and to_version < report.plugin_version:
         return report
@@ -244,15 +245,20 @@ def migrate(root: Path, *, to_version: Version | None = None) -> MigrationReport
         if report.backup is not None:
             restore_backup(root, report.backup)
         raise
-    # 版を書いた後なので、スキーマの複製が書けなくても写しから戻さない
-    schemas = sync_source_schemas(root)
+    # 版を書いた後なので、スキーマの複製・配信の設定が書けなくても写しから戻さない
+    source_files = _sync_source_files(root)
     return replace(
         report,
         recorded=recorded,
         provisional=provisional,
         not_carried=[_not_carried_of(line) for line in report.reports],
-        schemas=schemas,
+        source_files=source_files,
     )
+
+
+def _sync_source_files(root: Path) -> list[str]:
+    """スキーマの複製と配信の設定をそろえ、書き直したファイルのパスを返す。"""
+    return [*sync_source_schemas(root), *add_write_dates(root)]
 
 
 def _not_carried_of(line: str) -> dict[str, str]:

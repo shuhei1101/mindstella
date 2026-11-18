@@ -933,6 +933,8 @@ def build_source_config(workspace_id: str, summary: str) -> dict[str, Any]:
                 "schema": f"{SOURCE_SCHEMA_DIR}/{spec.schema}",
                 "records": "items",
                 "body_file": "body",
+                # 日時は history.yaml が持つので、project-index に created・updated を付けさせない
+                "write_dates": False,
                 "metadata": metadata,
             }
         )
@@ -980,6 +982,44 @@ def sync_source_schemas(root: Path) -> list[str]:
         written.append(f"{records.name}/{SOURCE_SCHEMA_DIR}/{name}")
     # 複製の側にだけあるファイルは、配信の設定が指さないので消さない
     return written
+
+
+def add_write_dates(root: Path) -> list[str]:
+    """配信の設定の種類の行のうち write_dates を持たない行に `write_dates: false` を足す。"""
+    records = records_root(root)
+    path = records / SOURCE_CONFIG_FILE
+    # 設定が無い: 書かない
+    if not path.is_file():
+        return []
+    try:
+        config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        # 読めない設定: 利用者が書き換えたものに手を加えず、project-index の検証に任せる
+        return []
+    rows = config.get("documents") if isinstance(config, dict) else None
+    # documents が並びでない: 書かない
+    if not isinstance(rows, list):
+        return []
+    kind_ids = {document_id for document_id, *_rest in SOURCE_DOCUMENTS.values()}
+    changed = False
+    for row in rows:
+        # 種類の行で write_dates を持たない: false を足す（持つ行は利用者の値として残す）
+        if isinstance(row, dict) and row.get("id") in kind_ids and "write_dates" not in row:
+            row["write_dates"] = False
+            changed = True
+    # 足す行が無い: 書かない
+    if not changed:
+        return []
+    temp: Path | None = None
+    try:
+        temp = _write_temp(path, dump_yaml(config))
+        os.replace(temp, path)
+    except OSError as error:
+        # 置き換えられなかった一時ファイルは残さない
+        if temp is not None:
+            _remove_files([temp])
+        raise WriteFailedError(f"配信の設定を書けません: {path}: {error.strerror or error}") from error
+    return [f"{records.name}/{SOURCE_CONFIG_FILE}"]
 
 
 def _remember_valid(root: Path, written: list[tuple[Path, str]]) -> None:
