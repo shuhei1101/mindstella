@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
+from record_write_helpers import write_items
 from session_fixtures import SessionWorld, wait_until
 from workspace_fixtures import McpServer
 
@@ -15,12 +17,16 @@ STOP_WAIT_SEC = 2
 STOPPED_WAIT_SEC = 5
 
 
-def _running(world: SessionWorld, *, responding: bool = False) -> tuple[str, str]:
+def _running(
+    world: SessionWorld, *, responding: bool = False, before: Callable[[str], None] | None = None
+) -> tuple[str, str]:
     """ワークスペースを作って MindStella のセッションを起動し、ワークスペースの ID と MindStella のセッションの ID を返す。
 
-    responding なら、偽の Claude Code の UserPromptSubmit が状態に入るまで待つ。
+    responding なら、偽の Claude Code の UserPromptSubmit が状態に入るまで待つ。before は、ワークスペースを作った後・MindStella のセッションを起動する前に呼ぶ。
     """
     workspace_id = str(world.create_workspace()["id"])
+    if before is not None:
+        before(workspace_id)
     status, body = world.create_session(workspace_id)
     assert status == 201, body
     if responding:
@@ -28,15 +34,13 @@ def _running(world: SessionWorld, *, responding: bool = False) -> tuple[str, str
     return workspace_id, str(body["session"])
 
 
-def _add_pending(server: McpServer, folder: Path) -> None:
-    """まだまとめていない変更を作る。"""
-    result = server.call(
-        "add",
-        workspace=str(folder),
-        kind="note",
-        item={"title": "予算の上限", "content": "月 3 万円まで"},
-    )
-    assert result.is_error is False, result.text
+def _add_pending(world: SessionWorld, server: McpServer, workspace_id: str) -> None:
+    """まだまとめていない変更を作る。
+
+    記録の書き込みが書いたテストの MindStella のセッションの状態は、起動の前の判定で落ちたとみなされないように停止済みにする。
+    """
+    write_items(server.call, str(world.folder()), add=[("note", {"title": "予算の上限", "content": "月 3 万円まで"})])
+    world.write_session(workspace_id, status="stopped")
 
 
 def _summaries(folder: Path) -> list[str]:
@@ -91,7 +95,7 @@ def test_normal_when_session_crashed(session_world: SessionWorld) -> None:
     world = session_world
     server = world.start()
     workspace_id = str(world.create_workspace()["id"])
-    _add_pending(server, world.folder())
+    _add_pending(world, server, workspace_id)
     world.write_session(workspace_id, session="S-0000000000aa")
     # 実行
     status, body = world.api("DELETE", f"/workspaces/{workspace_id}/sessions/S-0000000000aa")
@@ -106,8 +110,9 @@ def test_normal_when_forced(session_world: SessionWorld) -> None:
     world = session_world
     world.set_claude_mode("responding")
     server = world.start()
-    workspace_id, session_id = _running(world, responding=True)
-    _add_pending(server, world.folder())
+    workspace_id, session_id = _running(
+        world, responding=True, before=lambda workspace_id: _add_pending(world, server, workspace_id)
+    )
     # 実行
     status, _body = world.api(
         "DELETE", f"/workspaces/{workspace_id}/sessions/{session_id}?force=true"
