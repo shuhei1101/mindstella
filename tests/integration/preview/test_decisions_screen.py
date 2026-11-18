@@ -291,7 +291,7 @@ def test_board_heading_level(
 
 
 def test_map(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview) -> None:
-    """対象 → カテゴリー → フェーズ → 検討事項の木をマップに描き、項目を押すと詳細パネルを開く（正常系）。"""
+    """根の下に検討事項を平らに並べた木をマップに描き、項目を押すと詳細パネルを開く（正常系）。"""
     # 準備
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=map")
@@ -301,7 +301,7 @@ def test_map(write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
         "#decision-map .map-node",
         "nodes => nodes.map(n => n.className.split(' ').find(c => c.startsWith('n-')))",
     )
-    assert kinds[:3] == ["n-target", "n-category", "n-phase"]
+    assert kinds == ["n-root", "n-item", "n-item", "n-item", "n-item"]
     assert _map_item_ids(page) == ["D-2", "D-3", "D-4", "D-5"]
     page.click('#decision-map button[data-node="D-2"]')
     page.wait_for_selector("aside.panel.open")
@@ -551,9 +551,7 @@ def _blank_point(page: Page) -> dict[str, float]:
     "place",
     [
         pytest.param("blank", id="blank"),
-        pytest.param(".n-target", id="target_node"),
-        pytest.param(".n-category", id="category_node"),
-        pytest.param(".n-phase", id="phase_node"),
+        pytest.param(".n-root", id="root_node"),
         pytest.param("edge", id="edge"),
     ],
 )
@@ -975,7 +973,7 @@ def test_table_ready_column_when_waiting(
     # 実行
     ready = page.eval_on_selector_all(
         "table.grid tbody tr",
-        "rows => rows.map(r => [r.dataset.id, r.querySelector('td[data-col=\"7\"]').textContent])",
+        "rows => rows.map(r => [r.dataset.id, r.querySelector('td[data-col=\"3\"]').textContent])",
     )
     # 検証
     assert ready == [["D-1", "着手可能"], ["D-2", "前提待ち"]]
@@ -991,7 +989,7 @@ def test_table_ready_column(
     # 実行
     ready = page.eval_on_selector_all(
         "table.grid tbody tr",
-        "rows => rows.map(r => [r.dataset.id, r.querySelector('td[data-col=\"7\"]').textContent])",
+        "rows => rows.map(r => [r.dataset.id, r.querySelector('td[data-col=\"3\"]').textContent])",
     )
     # 検証
     assert ready == [
@@ -1001,7 +999,7 @@ def test_table_ready_column(
         ["D-4", "なし"],
         ["D-5", "着手可能"],
     ]
-    assert page.inner_text('table.grid thead th[data-col="7"]').strip().startswith("着手可否")
+    assert page.inner_text('table.grid thead th[data-col="3"]').strip().startswith("着手可否")
     # 行のタイトルを押すと詳細を開く
     page.click('table.grid button.row-open[data-id="D-4"]')
     page.wait_for_selector("aside.panel.open")
@@ -1323,14 +1321,7 @@ def test_drawer_default(write_sample_preview: WriteSamplePreview, open_preview: 
     groups = drawer_groups(page)
     head = drawer_head(page)
     # 検証
-    assert [group["label"] for group in groups] == [
-        "状態",
-        "システム",
-        "カテゴリー",
-        "フェーズ",
-        "影響度",
-        "着手可否",
-    ]
+    assert [group["label"] for group in groups] == ["状態", "着手可否"]
     status = groups[0]
     # 並ぶ値のうち選んでいるものだけを数える（記録に無い「未整理」は数えない）
     assert status["values"] == [
@@ -1417,7 +1408,7 @@ def test_drawer_clear(write_sample_preview: WriteSamplePreview, open_preview: Op
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table")
     open_drawer(page)
-    click_value(page, "phase", "要件")
+    click_value(page, "ready", "着手可能")
     page.wait_for_function("document.querySelector('[data-act=filter] .fbadge')?.textContent === '2'")
     # 実行（状態の条件を解除する）
     page.click(f"{DRAWER} button[aria-label='状態の条件を解除']")
@@ -1429,7 +1420,7 @@ def test_drawer_clear(write_sample_preview: WriteSamplePreview, open_preview: Op
     page.wait_for_function("!document.querySelector('[data-act=filter] .fbadge')")
     after_clear_all = (badge_text(page), drawer_head(page), _table_row_ids(page))
     # 検証
-    assert after_clear_status == ("1", None, ["D-2", "D-3"])
+    assert after_clear_status == ("1", None, ["D-2", "D-5"])
     assert after_clear_all == (None, {"count": "5 件", "foot": ["5 件を表示"]}, ["D-1", "D-2", "D-3", "D-4", "D-5"])
 
 
@@ -1469,9 +1460,9 @@ def test_drawer_zero_value(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
     """今の条件では 0 件になる値は、薄く出して件数を 0 にし、選べるまま残す（正常系）。"""
-    # 準備（フェーズ「目的」だけを選んで開く。目的は決定済みの D-1 だけ）
+    # 準備（着手可否「着手可能」だけを選んで開く。着手可能は未決定の D-2・D-5 だけ）
     url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=table&f.phase=目的")
+    page = open_preview(url, "#tab=decisions&view=table&f.ready=着手可能")
     open_drawer(page)
     # 実行
     groups = drawer_groups(page)
@@ -1483,11 +1474,11 @@ def test_drawer_zero_value(
     # 検証
     assert groups[0]["values"] == [
         ["要見直し", 0, False],
-        ["未決定", 0, False],
+        ["未決定", 2, False],
         ["保留", 0, False],
-        ["決定済み", 1, False],
+        ["決定済み", 0, False],
     ]
-    assert zero_values == ["要見直し", "未決定", "保留"]
+    assert zero_values == ["要見直し", "保留", "決定済み"]
     assert checked_values(page, "status") == ["未決定"]
 
 
@@ -1518,15 +1509,15 @@ def test_drawer_hash_filter(
     """ハッシュの `f.{列}` で開くと、開いたときの既定の条件に代えてその条件だけを選んだ状態でドロワーに入り、バッジが付き、ハッシュからは消える（正常系）。"""
     # 準備・実行
     url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=table&f.phase=要件")
+    page = open_preview(url, "#tab=decisions&view=table&f.ready=着手可能")
     open_drawer(page)
     groups = {group["label"]: group for group in drawer_groups(page)}
     # 検証
-    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert _table_row_ids(page) == ["D-2", "D-5"]
     assert badge_text(page) == "1"
-    assert checked_values(page, "phase") == ["要件"]
+    assert checked_values(page, "ready") == ["着手可能"]
     assert checked_values(page, "status") == []
-    assert groups["フェーズ"]["sel"] == "1 件を選択"
+    assert groups["着手可否"]["sel"] == "1 件を選択"
     assert "f." not in page.evaluate("location.hash")
 
 
@@ -1613,8 +1604,8 @@ def test_drawer_value_is_checkbox(
         })"""
     )
     selector = value_selector("status", "未決定")
-    # 検証（先頭の文字の欄へフォーカスを移す。条件のまとまりは「文字を含む」と値を選ぶ 6 つ）
-    assert structure == {"groups": 7, "checkboxes": True, "counts": "1 件", "firstFocused": True}
+    # 検証（先頭の文字の欄へフォーカスを移す。条件のまとまりは「文字を含む」と値を選ぶ 2 つ）
+    assert structure == {"groups": 3, "checkboxes": True, "counts": "1 件", "firstFocused": True}
     assert page.locator(selector).count() == 1
 
 
@@ -1827,53 +1818,6 @@ def test_board_head_stays(
     assert len(set(result["heights"])) == 1
 
 
-def test_map_middle_labels(
-    write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
-) -> None:
-    """マップの中間の層のラベルは、カテゴリーが面と線と太字、フェーズが地の色の面と薄い線と小さい文字で、描く要素の class に当たっている（正常系）。"""
-    # 準備
-    url = write_sample_preview()
-    page = open_preview(url, "#tab=decisions&view=map")
-    page.set_viewport_size(WIDE_VIEWPORT)
-    page.wait_for_selector("#decision-map .map-node.n-category")
-    # 実行
-    styles = page.evaluate(
-        """() => {
-            const read = (selector) => {
-                const style = getComputedStyle(document.querySelector(selector));
-                return {
-                    background: style.backgroundColor,
-                    border: style.borderTopWidth + ' ' + style.borderTopStyle,
-                    weight: Number(style.fontWeight),
-                    size: parseFloat(style.fontSize),
-                };
-            };
-            const probeBackground = (name) => {
-                const element = document.createElement('i');
-                element.style.backgroundColor = `var(${name})`;
-                document.body.append(element);
-                const color = getComputedStyle(element).backgroundColor;
-                element.remove();
-                return color;
-            };
-            return {
-                category: read('#decision-map .n-category'),
-                phase: read('#decision-map .n-phase'),
-                surface: probeBackground('--surface'),
-                bg: probeBackground('--bg'),
-            };
-        }"""
-    )
-    # 検証
-    assert styles["category"]["background"] == styles["surface"]
-    assert styles["category"]["border"] == "1px solid"
-    assert styles["category"]["weight"] >= 600
-    assert styles["phase"]["background"] == styles["bg"]
-    assert styles["phase"]["border"] == "1px solid"
-    # フェーズはカテゴリーより小さい文字
-    assert styles["phase"]["size"] < styles["category"]["size"]
-
-
 def test_drawer_text_fields(
     write_sample_preview: WriteSamplePreview, open_preview: OpenPreview
 ) -> None:
@@ -2016,20 +1960,20 @@ def test_drawer_saved_filter(
     url = write_sample_preview()
     page = open_preview(url, "#tab=decisions&view=table")
     open_drawer(page)
-    click_value(page, "phase", "要件")
+    click_value(page, "ready", "着手可能")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 2")
     # 実行
     reload_preview(page)
     open_drawer(page)
     # 検証
     assert read_saved_filters(page) == {
-        "decisions": {"status": DEFAULT_DECISION_STATUSES, "phase": ["要件"]}
+        "decisions": {"status": DEFAULT_DECISION_STATUSES, "ready": ["着手可能"]}
     }
-    assert _table_row_ids(page) == ["D-2", "D-3"]
+    assert _table_row_ids(page) == ["D-2", "D-5"]
     assert badge_text(page) == "2"
     # サンプルの検討事項に未整理は無いので、残した状態の条件から外して開く
     assert checked_values(page, "status") == ["要見直し", "未決定", "保留"]
-    assert checked_values(page, "phase") == ["要件"]
+    assert checked_values(page, "ready") == ["着手可能"]
 
 
 def test_drawer_saved_filter_when_all_cleared(
@@ -2082,11 +2026,11 @@ def test_drawer_saved_filter_when_hash_filter(
     page = open_preview(url, "#tab=decisions&view=table")
     seed_saved_filters(page, {"decisions": {"status": ["未決定"]}})
     # 実行
-    reopen_preview(page, url, "#tab=decisions&view=table&f.phase=要件")
+    reopen_preview(page, url, "#tab=decisions&view=table&f.ready=着手可能")
     open_drawer(page)
     # 検証
-    assert _table_row_ids(page) == ["D-2", "D-3"]
-    assert checked_values(page, "phase") == ["要件"]
+    assert _table_row_ids(page) == ["D-2", "D-5"]
+    assert checked_values(page, "ready") == ["着手可能"]
     assert checked_values(page, "status") == []
     assert read_saved_filters(page) == {"decisions": {"status": ["未決定"]}}
 
