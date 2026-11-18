@@ -6,8 +6,13 @@ use_cases:
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-531-2.yaml
-    impact: changed
-    detail: 外部のアプリが MindStella のセッションを止めたときに、利用者の Discord のチャンネルへ止まったことの知らせが 1 件届く
+    impact: none
+    detail: 止めてクローズにする流れは変わらない。停止の依頼で止まったときの通知は、単一ユースケース『止まったことを通知する』が持つ
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-570-1.yaml
+    impact: new
+    detail: MindStella のセッションが止まったとき（停止の依頼・落ちた・Claude Code の終了）に、利用者の Discord のチャンネルへ止まったことと理由が 1 件届く
     depends_on: []
 docs:
   - page: docs/guide/セットアップ手順-Discordに通知する.md
