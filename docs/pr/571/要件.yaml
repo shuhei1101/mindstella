@@ -58,3 +58,6 @@ scope_out:
   - item: Slack・OS の通知
     reason: 要望は Discord だけ（#568 の見送った案）
     plan: none
+  - item: '結合テスト `tests/integration/server/test_stop_session.py` の `test_normal_when_session_crashed`・`test_normal_when_forced` の fail（`Unknown tool: add`）'
+    reason: base（origin/develop）でも同じ理由で fail する既存の不具合で、この PR の変更に関係しない
+    plan: '#574'
