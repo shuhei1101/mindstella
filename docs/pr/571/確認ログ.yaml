@@ -1,0 +1,7 @@
+confirmations:
+  - topic: 止まったときの通知の文面
+    decision: '`{ワークスペースの名前}: 停止しました（{止まった理由}）` とプレビューの URL の 2 行（推奨案 A を「停止しました」に修正）'
+    decided_by: reply
+    approver: shuhei1101
+    commit: 6c837285
+    thread: https://github.com/shuhei1101/mindstella/pull/571#discussion_r4608197422
