@@ -11,5 +11,5 @@ Webhookの設定のファイルの指定:
   確認: Webhookの設定のファイルの指定/確認.sh
   切り戻し: Webhookの設定のファイルの指定/切り戻し.sh
   失敗時: 既定の対処を 1 回、2 回連続で失敗したら依頼元へ返却する
-  確認方法: '`systemctl --user show mindstella.service -p Environment` に MINDSTELLA_DISCORD_WEBHOOK_FILE=/home/shuhei2441/.config/web-hook/mindstella.ini があり、`http://127.0.0.1:8784/_admin/status` が 200 を返す。MindStella のセッションが書き込んだ応答の終了後に、常駐サーバーのログに通知の送信が成功した行（URL を含まない）が出る'
+  確認方法: '動いている常駐サーバーのプロセス（`systemctl --user show mindstella.service -p MainPID --value` の PID）の `/proc/{PID}/environ` に MINDSTELLA_DISCORD_WEBHOOK_FILE=/home/shuhei2441/.config/web-hook/mindstella.ini の行があり、`http://127.0.0.1:8784/_admin/status` が 200 を返す。MindStella のセッションが書き込んだ応答の終了後に、常駐サーバーのログ（`~/.mindmap/server.log`）に通知の送信が成功した行（URL を含まない）が出る'
   状態: "-"

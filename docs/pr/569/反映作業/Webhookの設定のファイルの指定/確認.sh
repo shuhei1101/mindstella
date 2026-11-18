@@ -8,16 +8,18 @@ STATUS_URL=http://127.0.0.1:8784/_admin/status
 TRIES=6
 TIMEOUT=5
 
-env_line=$(systemctl --user show "$UNIT" -p Environment 2>&1)
-case "$env_line" in
-  *"MINDSTELLA_DISCORD_WEBHOOK_FILE=$WEBHOOK_FILE"*)
-    echo "常駐サーバーの環境変数: ok" ;;
-  *)
-    echo "常駐サーバーの環境変数: failed"
-    echo "systemctl --user show $UNIT -p Environment"
-    echo "$env_line" | sed 's/MINDSTELLA_DISCORD_WEBHOOK_FILE=[^ ]*/MINDSTELLA_DISCORD_WEBHOOK_FILE=…/'
-    exit 1 ;;
-esac
+# 動いている常駐サーバーのプロセスの環境変数を観測する（ユニットの設定ではない）
+pid=$(systemctl --user show "$UNIT" -p MainPID --value 2>&1)
+if [ -n "$pid" ] && [ "$pid" != "0" ] \
+  && tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -qx "MINDSTELLA_DISCORD_WEBHOOK_FILE=$WEBHOOK_FILE"; then
+  echo "常駐サーバーの環境変数: ok"
+else
+  echo "常駐サーバーの環境変数: failed"
+  echo "systemctl --user show $UNIT -p MainPID --value → /proc/{PID}/environ"
+  echo "MainPID: ${pid:-なし}"
+  echo "MINDSTELLA_DISCORD_WEBHOOK_FILE=$WEBHOOK_FILE の行が無い"
+  exit 1
+fi
 
 i=0
 code=""

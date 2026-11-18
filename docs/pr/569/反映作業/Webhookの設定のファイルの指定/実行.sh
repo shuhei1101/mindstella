@@ -27,36 +27,51 @@ if [ ! -r "$WEBHOOK_FILE" ]; then
 fi
 echo "前提確認: ok"
 
+# 動いている常駐サーバーのプロセスが環境変数を持っているか
+proc_has_env() {
+  pid=$(systemctl --user show "$UNIT" -p MainPID --value 2>/dev/null) || return 1
+  [ -n "$pid" ] && [ "$pid" != "0" ] || return 1
+  tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -qx "MINDSTELLA_DISCORD_WEBHOOK_FILE=$WEBHOOK_FILE"
+}
+
 # 計画（--dry-run もここを通る）
 printf '[Service]\nEnvironment=MINDSTELLA_DISCORD_WEBHOOK_FILE=%s\n' "$WEBHOOK_FILE" > "$NEW"
+dropin_same=false
 if [ -f "$DROPIN" ] && cmp -s "$DROPIN" "$NEW"; then
+  dropin_same=true
+fi
+if $dropin_same && proc_has_env; then
   echo "drop-in の書き込み: skipped"
   echo "常駐サーバーの起動し直し: skipped"
   exit 0
 fi
-if [ -f "$DROPIN" ]; then
+if $dropin_same; then
+  echo "drop-in の書き込み: skipped"
+elif [ -f "$DROPIN" ]; then
   diff -u --label "$DROPIN" --label "$DROPIN" "$DROPIN" "$NEW" || true
 else
   diff -u --label /dev/null --label "$DROPIN" /dev/null "$NEW" || true
 fi
 if [ "${1:-}" = "--dry-run" ]; then
-  echo "drop-in の書き込み: changed"
+  $dropin_same || echo "drop-in の書き込み: changed"
   echo "常駐サーバーの起動し直し: changed"
   exit 0
 fi
 
 # 適用（検証 → 退避 → 置き換え → 起動し直し）
-if ! grep -qx "Environment=MINDSTELLA_DISCORD_WEBHOOK_FILE=$WEBHOOK_FILE" "$NEW"; then
-  echo "検証: failed"
-  exit 1
+if ! $dropin_same; then
+  if ! grep -qx "Environment=MINDSTELLA_DISCORD_WEBHOOK_FILE=$WEBHOOK_FILE" "$NEW"; then
+    echo "検証: failed"
+    exit 1
+  fi
+  echo "検証: ok"
+  mkdir -p "$DROPIN_DIR"
+  if [ -f "$DROPIN" ]; then
+    cp -p "$DROPIN" "$DROPIN.bak"
+  fi
+  mv "$NEW" "$DROPIN"
+  echo "drop-in の書き込み: changed"
 fi
-echo "検証: ok"
-mkdir -p "$DROPIN_DIR"
-if [ -f "$DROPIN" ]; then
-  cp -p "$DROPIN" "$DROPIN.bak"
-fi
-mv "$NEW" "$DROPIN"
-echo "drop-in の書き込み: changed"
 for cmd in "daemon-reload" "restart $UNIT"; do
   # shellcheck disable=SC2086
   if ! err=$(systemctl --user $cmd 2>&1); then

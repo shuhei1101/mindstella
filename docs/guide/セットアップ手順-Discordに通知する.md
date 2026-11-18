@@ -35,7 +35,7 @@ MindStella のセッションが 1 回の応答の間にスレッドへ書き込
 MindStella のセッションに、スレッドへ返信する作業を 1 つ依頼する。
 応答が終わった後にチャンネルへ通知が届けば完了。
 
-届かないときは、常駐サーバーのログ（`journalctl --user -u mindstella`）に送信の行があるかを確認する。
+届かないときは、常駐サーバーのログ（`~/.mindmap/server.log`）に送信の行があるかを確認する。
 
 | ログ | 原因 |
 | --- | --- |
@@ -47,4 +47,5 @@ MindStella のセッションに、スレッドへ返信する作業を 1 つ依
 ## 通知をやめる
 
 [起動スクリプトを登録する](./セットアップ手順-起動スクリプトを登録する.md)で `MINDSTELLA_DISCORD_WEBHOOK_FILE` の登録を解除し、常駐サーバーを立ち上げ直す。
+systemd の drop-in（`~/.config/systemd/user/mindstella.service.d/` の下のファイル）で `MINDSTELLA_DISCORD_WEBHOOK_FILE` を設定したときは、そのファイルを削除して `systemctl --user daemon-reload` を実行してから立ち上げ直す。
 立ち上げ直さずにやめるときは、ファイルを削除するか 1 行目を空にする（ファイルは送信のたびに参照される）。
