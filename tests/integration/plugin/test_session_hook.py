@@ -9,6 +9,7 @@ import subprocess
 import threading
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -60,16 +61,25 @@ def recorder() -> Iterator[_Recorder]:
     started.server.server_close()
 
 
-def _run(event: str, port: int, *, with_session: bool = True) -> subprocess.CompletedProcess[str]:
+def _run(
+    event: str,
+    port: int,
+    *,
+    with_session: bool = True,
+    home: str | None = None,
+    config_dir: str | None = None,
+) -> subprocess.CompletedProcess[str]:
     """システムの python3 でフックを呼ぶ。"""
     python = shutil.which("python3", path=SYSTEM_PATH)
     assert python is not None
     env = {
         "PATH": SYSTEM_PATH,
-        "HOME": os.environ.get("HOME", "/tmp"),
+        "HOME": home or os.environ.get("HOME", "/tmp"),
         "MINDSTELLA_PORT": str(port),
         "TMUX_PANE": "%3",
     }
+    if config_dir is not None:
+        env["CLAUDE_CONFIG_DIR"] = config_dir
     if with_session:
         env.update({"MINDSTELLA_SESSION": SESSION_ID, "MINDSTELLA_FLOW": FLOW})
     return subprocess.run(
@@ -84,10 +94,12 @@ def _run(event: str, port: int, *, with_session: bool = True) -> subprocess.Comp
     )
 
 
-def test_normal(recorder: _Recorder) -> None:
+def test_normal(recorder: _Recorder, tmp_path: Path) -> None:
     """SessionStart で出来事を送り、進め方の文書の場所を注入する（正常系）。"""
     # 実行
-    completed = _run("session-start", recorder.port)
+    completed = _run(
+        "session-start", recorder.port, home=str(tmp_path), config_dir="~/claude-sub1"
+    )
     # 検証
     assert completed.returncode == 0, completed.stderr
     path, body = recorder.received[0]
@@ -98,8 +110,18 @@ def test_normal(recorder: _Recorder) -> None:
         "%3",
         "startup",
     )
+    assert body["claude_config_dir"] == f"{tmp_path}/claude-sub1"
     output = json.loads(completed.stdout)
     assert FLOW in output["hookSpecificOutput"]["additionalContext"]
+
+
+def test_normal_when_config_dir_not_set(recorder: _Recorder, tmp_path: Path) -> None:
+    """CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る（正常系）。"""
+    # 実行
+    completed = _run("session-start", recorder.port, home=str(tmp_path))
+    # 検証
+    assert completed.returncode == 0, completed.stderr
+    assert recorder.received[0][1]["claude_config_dir"] == f"{tmp_path}/.claude"
 
 
 def test_normal_when_ordinary_session(recorder: _Recorder) -> None:

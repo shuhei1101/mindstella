@@ -223,7 +223,7 @@ def _register_on_sleep(ctx: SimpleNamespace, clock: FakeClock) -> None:
     """1 回目の sleep で SessionStart のフックが登録したことにする。"""
 
     def register(count: int) -> None:
-        """claude_session_id と PID を入れる。"""
+        """claude_session_id・PID・claude_config_dir を入れる。"""
         if count == 1:
             state.update_session(
                 ctx.state_root,
@@ -232,7 +232,10 @@ def _register_on_sleep(ctx: SimpleNamespace, clock: FakeClock) -> None:
                     None
                     if current is None
                     else current.replace(
-                        claude_session_id="c1", pid=PID, pid_started_at=PID_STARTED_AT
+                        claude_session_id="c1",
+                        pid=PID,
+                        pid_started_at=PID_STARTED_AT,
+                        claude_config_dir="/c",
                     )
                 ),
             )
@@ -248,12 +251,13 @@ def test_new_session_id() -> None:
 
 
 @pytest.mark.parametrize(
-    ("options", "mcp_file", "balancer", "expected"),
+    ("options", "mcp_file", "balancer", "config_dir", "expected"),
     [
         pytest.param(
             LaunchOptions(mcp_config={"mcpServers": {}}, plugin_dirs=["p"]),
             Path("f"),
             "/usr/bin/claude-balancer",
+            None,
             [
                 "/usr/bin/claude-balancer",
                 "exec",
@@ -274,17 +278,51 @@ def test_new_session_id() -> None:
             LaunchOptions(mcp_config=None, plugin_dirs=[]),
             None,
             None,
+            None,
             ["claude", "--append-system-prompt", "s"],
             id="no-balancer",
         ),
-        pytest.param(None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"),
+        pytest.param(
+            None, None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"
+        ),
+        pytest.param(
+            None,
+            None,
+            "/usr/bin/claude-balancer",
+            "/c",
+            [
+                "/usr/bin/claude-balancer",
+                "exec",
+                "--client",
+                "mindstella",
+                "--account",
+                "/c",
+                "--",
+                "claude",
+                "--append-system-prompt",
+                "s",
+            ],
+            id="balancer-account",
+        ),
+        pytest.param(
+            None,
+            None,
+            None,
+            "/c",
+            ["claude", "--append-system-prompt", "s"],
+            id="no-balancer-account",
+        ),
     ],
 )
 def test_build_command(
-    options: LaunchOptions | None, mcp_file: Path | None, balancer: str | None, expected: list[str]
+    options: LaunchOptions | None,
+    mcp_file: Path | None,
+    balancer: str | None,
+    config_dir: str | None,
+    expected: list[str],
 ) -> None:
     """claude-balancer の有無と指定で並びが変わる。"""
-    assert sessions.build_command(options, mcp_file, "s", balancer) == expected
+    assert sessions.build_command(options, mcp_file, "s", balancer, config_dir) == expected
 
 
 @pytest.mark.parametrize(
@@ -344,6 +382,7 @@ def test_create_session(ctx: SimpleNamespace, clock: FakeClock) -> None:
     assert re.fullmatch(r"S-[0-9a-f]{12}", body["session"])
     assert body["pane"] == PANE
     assert body["url"] == "http://127.0.0.1:9100/mindstella.html"
+    assert body["account"] == "/c"
     names = [call[0] for call in ctx.tmux.calls if call[0] != "display-message"]
     assert names == [
         "has-session",
@@ -615,16 +654,22 @@ def test_stop_session_thread_error(
                 "pane": "%3",
                 "pid": 7,
                 "pid_started_at": "9",
+                "claude_config_dir": "/c",
             },
             True,
-            {"claude_session_id": "c1", "pid": 7, "pid_started_at": "9"},
+            {"claude_session_id": "c1", "pid": 7, "pid_started_at": "9", "claude_config_dir": "/c"},
             id="start",
         ),
         pytest.param(
-            {},
-            {"event": "session_start", "claude_session_id": "c2", "source": "clear"},
+            {"claude_config_dir": "/c"},
+            {
+                "event": "session_start",
+                "claude_session_id": "c2",
+                "source": "clear",
+                "claude_config_dir": "/d",
+            },
             True,
-            {"claude_session_id": "c2"},
+            {"claude_session_id": "c2", "claude_config_dir": "/d"},
             id="start-clear",
         ),
         pytest.param(

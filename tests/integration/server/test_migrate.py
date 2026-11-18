@@ -389,10 +389,13 @@ def test_normal_when_already_current(
     make_item: MakeItem,
     call_tool: CallTool,
     snapshot_tree: SnapshotTree,
+    valid_settings: dict[str, Any],
 ) -> None:
     """今の形（config.yaml）に版のファイルが無くても全ての手順を当てて、何も変えずに成功する（正常系）。"""
-    # 準備
-    root = make_workspace(make_item("A-1", status="完成"))
+    # 準備（今の形の設定はワークスペースの ID を持つ）
+    root = make_workspace(
+        make_item("A-1", status="完成"), settings={"id": "mindstella-workspace-0a1b2c", **valid_settings}
+    )
     watched = [root / RECORD_DIR / SETTINGS, root / RECORD_DIR / "docs.yaml"]
     before = [(path.read_bytes(), path.stat().st_mtime_ns) for path in watched]
     # 実行

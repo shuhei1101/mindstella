@@ -328,12 +328,17 @@ def _default_settings(
 
 def workspace_id_of(folder: Path) -> str:
     """記録の設定の id を返す。記録か id が無ければフォルダから振る。"""
+    return _recorded_id(folder) or workspace_id_for(folder)
+
+
+def _recorded_id(folder: Path) -> str | None:
+    """記録の設定の id を返す。記録か id が無ければ `None`。"""
     path = records_root(folder) / SETTINGS_FILE
     if not path.is_file():
-        return workspace_id_for(folder)
+        return None
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     value = loaded.get("id") if isinstance(loaded, dict) else None
-    return str(value) if value else workspace_id_for(folder)
+    return str(value) if value else None
 
 
 def _register_source(
@@ -348,15 +353,28 @@ def _register_source(
         if added == "exists_different":
             raise ProjectIndexError(409, f"配信元 {workspace_id} の行が別の内容で登録されています")
         return "created" if created else "opened"
+    changes: dict[str, Any] = {}
+    row_folder = workspace_folder(existing).resolve()
+    # 行が別のフォルダを指す: 移したなら行を今回のフォルダへ変え、コピーしたなら止める
+    if row_folder != folder:
+        if _recorded_id(row_folder) == workspace_id:
+            raise ApiError(
+                409, "duplicate", f"同じ ID のワークスペースの記録が別のフォルダにあります: {row_folder}"
+            )
+        source_row = _source_row(workspace_id, folder)
+        changes = {"config": source_row["config"], "scope": source_row["scope"]}
     # クローズ済みの行: outside_read を戻してクローズ待ちを解く
     if is_closed(existing):
-        project_index.patch_source(ctx.pi_port, workspace_id, {"outside_read": True})
+        project_index.patch_source(ctx.pi_port, workspace_id, {**changes, "outside_read": True})
         state.update_session(
             ctx.state_root,
             workspace_id,
             lambda current: None if current is None else current.replace(close_pending=False),
         )
         return "reopened"
+    if changes:
+        project_index.patch_source(ctx.pi_port, workspace_id, changes)
+        return "opened"
     # 行はあるが、今回の指定を記録したか ID の一覧に無い: 開き直した
     if recorded or workspace_id not in state.read_ids(ctx.state_root):
         return "opened"

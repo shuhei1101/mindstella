@@ -118,7 +118,7 @@ def post_event(port: int, session_id: str, body: dict[str, Any]) -> None:
 def _build_body(
     event: str, hook_input: dict[str, Any], environ: Mapping[str, str]
 ) -> dict[str, Any]:
-    """出来事・Claude Code の session_id・ペイン・PID の本文を作る。"""
+    """出来事・Claude Code の session_id・ペイン・PID・設定のフォルダの本文を作る。"""
     body: dict[str, Any] = {
         "event": event,
         "claude_session_id": str(hook_input.get("session_id") or ""),
@@ -138,6 +138,9 @@ def _build_body(
         found = find_claude_process(os.getppid())
         if found is not None:
             body["pid"], body["pid_started_at"] = found
+        # 起動したアカウント: Claude Code が使う設定のフォルダの絶対パス（無ければ既定の ~/.claude）
+        config_dir = environ.get("CLAUDE_CONFIG_DIR") or os.path.join("~", ".claude")
+        body["claude_config_dir"] = os.path.abspath(os.path.expanduser(config_dir))
     return body
 
 

@@ -1,0 +1,1348 @@
+$ .venv/bin/python -m pytest tests/unit -p no:cacheprovider --basetemp=/tmp/pt-572/red -q
+
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [  9%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 30%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 58%]
+........................................................................ [ 61%]
+.....................................................F.................. [ 64%]
+........................................................................ [ 67%]
+...................................................FF..FFFF............. [ 70%]
+...............................................s........................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................FF....FFFFF......FFF............ [ 83%]
+..FF.................................................................... [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+...............FFFF............                                          [100%]
+=================================== FAILURES ===================================
+________________________________ test_run_start ________________________________
+
+tmp_path = PosixPath('/tmp/pt-572/red/test_run_start0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71e5406bf3f0>
+
+    def test_run_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """ワークスペースと MindStella のセッションを作り、URL とペインを出す（正常系）。"""
+        # 準備
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "m.json").write_text(
+            json.dumps({"mcpServers": {"a": {"command": "a"}}}), encoding="utf-8"
+        )
+        request = _Requests(
+            (201, CREATED),
+            (201, {"session": "S-1", "pane": "w:0.0", "url": PREVIEW_URL, "account": "/c"}),
+        )
+        argv = ["/w/家計簿", "--flow", "aituber#flow-1", "--mcp-config", "m.json", "--plugin-dir", "p"]
+        # 実行
+        code, stdout, stderr = _run_start(argv, request, {"CLAUDE_CONFIG_DIR": "/c"})
+        # 検証
+        assert code == 0
+        assert request.calls[0] == (
+            "POST",
+            "/workspaces",
+            {
+                "folder": "/w/家計簿",
+                "flow": {"source": "aituber", "doc": "flow-1"},
+                "mcp_config": {"mcpServers": {"a": {"command": "a"}}},
+                "plugin_dirs": [str(tmp_path / "p")],
+            },
+        )
+        assert request.calls[1] == (
+            "POST",
+            f"/workspaces/{CREATED['id']}/sessions",
+            {"claude_config_dir": "/c"},
+        )
+        assert stdout.splitlines() == [PREVIEW_URL, "w:0.0"]
+>       assert "[mindstella] 起動したアカウント: /c" in stderr.splitlines()
+E       AssertionError: assert '[mindstella] 起動したアカウント: /c' in ['[mindstella] ワークスペース: mindstella-家計簿-3f2a9c', '[mindstella] MindStella のセッション: S-1']
+E        +  where ['[mindstella] ワークスペース: mindstella-家計簿-3f2a9c', '[mindstella] MindStella のセッション: S-1'] = <built-in method splitlines of str object at 0x71e4fa946430>()
+E        +    where <built-in method splitlines of str object at 0x71e4fa946430> = '[mindstella] ワークスペース: mindstella-家計簿-3f2a9c\n[mindstella] MindStella のセッション: S-1\n'.splitlines
+
+/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-source-add-account-legacy-problem/tests/unit/scripts/test_launch.py:201: AssertionError
+__________________ test_place_source_config_records_id[no-id] __________________
+
+has_id = False, raw_files = {}
+place_source_config = <module 'migration_v0_13_0_place_source_config' from '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-source-add-account-legacy-problem/plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/place_source_config.py'>
+make_workspace = <function make_workspace.<locals>._make at 0x71e4f9ed8b40>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'playbooks': ['システム開発'], 'target_label': 'システム', 'phases': ['目的', '要件', '構成'], ...}
+
+    @pytest.mark.parametrize(
+        ("has_id", "raw_files"),
+        [
+            pytest.param(False, {}, id="no-id"),
+            pytest.param(False, {"dev-docs.yaml": EDITED_CONFIG}, id="no-id-with-config"),
+            pytest.param(True, {}, id="with-id"),
+        ],
+    )
+    def test_place_source_config_records_id(
+        has_id: bool,
+        raw_files: dict[str, str],
+        place_source_config: ModuleType,
+        make_workspace: MakeWorkspace,
+        valid_settings: dict[str, Any],
+    ) -> None:
+        """設定に ID が無ければ記録する（正常系）。"""
+        # 準備
+        settings = {"id": "mindstella-既存-abcdef", **valid_settings} if has_id else valid_settings
+        root = make_workspace(settings=settings, raw_files=raw_files, with_history=False)
+        settings_path = root / RECORD_DIR / "config.yaml"
+        before = settings_path.read_bytes()
+        # 実行
+        written = place_source_config.migrate(root)
+        # 検証
+        if has_id:
+            assert settings_path.read_bytes() == before
+            assert f"{RECORD_DIR}/config.yaml" not in written
+        else:
+>           assert yaml.safe_load(settings_path.read_text(encoding="utf-8")) == {
+                **valid_settings,
+                "id": workspace_id_for(root),
+            }
+E           AssertionError: assert {'summary': '...', '構成'], ...} == {'summary': '...', '構成'], ...}
+E             
+E             Omitting 8 identical items, use -vv to show
+E             Right contains 1 more item:
+E             {'id': 'mindstella-workspace-4a24cd'}
+E             Use -v to get more diff
+
+tests/unit/scripts/test_place_source_config.py:104: AssertionError
+____________ test_place_source_config_records_id[no-id-with-config] ____________
+
+has_id = False, raw_files = {'dev-docs.yaml': "version: '3'\nname: 書き換えた配信\n"}
+place_source_config = <module 'migration_v0_13_0_place_source_config' from '/home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-source-add-account-legacy-problem/plugins/mindstella/skills/mindmap/migrations/v0.13.0/scripts/place_source_config.py'>
+make_workspace = <function make_workspace.<locals>._make at 0x71e4f9ed9590>
+valid_settings = {'summary': '要件出しのスキル mindmap を設計する', 'playbooks': ['システム開発'], 'target_label': 'システム', 'phases': ['目的', '要件', '構成'], ...}
+
+    @pytest.mark.parametrize(
+        ("has_id", "raw_files"),
+        [
+            pytest.param(False, {}, id="no-id"),
+            pytest.param(False, {"dev-docs.yaml": EDITED_CONFIG}, id="no-id-with-config"),
+            pytest.param(True, {}, id="with-id"),
+        ],
+    )
+    def test_place_source_config_records_id(
+        has_id: bool,
+        raw_files: dict[str, str],
+        place_source_config: ModuleType,
+        make_workspace: MakeWorkspace,
+        valid_settings: dict[str, Any],
+    ) -> None:
+        """設定に ID が無ければ記録する（正常系）。"""
+        # 準備
+        settings = {"id": "mindstella-既存-abcdef", **valid_settings} if has_id else valid_settings
+        root = make_workspace(settings=settings, raw_files=raw_files, with_history=False)
+        settings_path = root / RECORD_DIR / "config.yaml"
+        before = settings_path.read_bytes()
+        # 実行
+        written = place_source_config.migrate(root)
+        # 検証
+        if has_id:
+            assert settings_path.read_bytes() == before
+            assert f"{RECORD_DIR}/config.yaml" not in written
+        else:
+>           assert yaml.safe_load(settings_path.read_text(encoding="utf-8")) == {
+                **valid_settings,
+                "id": workspace_id_for(root),
+            }
+E           AssertionError: assert {'summary': '...', '構成'], ...} == {'summary': '...', '構成'], ...}
+E             
+E             Omitting 8 identical items, use -vv to show
+E             Right contains 1 more item:
+E             {'id': 'mindstella-workspace-80e2ff'}
+E             Use -v to get more diff
+
+tests/unit/scripts/test_place_source_config.py:104: AssertionError
+____________________________ test_add_source[added] ____________________________
+
+reply = (201, {'result': 'added'}), expected = 'added'
+fake_pi = <function fake_pi.<locals>.make at 0x71e4f9eda350>
+
+    @pytest.mark.parametrize(
+        ("reply", "expected"),
+        [
+            pytest.param((201, {"result": "added"}), "added", id="added"),
+            pytest.param((409, {"result": "exists", "same": True}), "exists_same", id="same"),
+            pytest.param(
+                (409, {"result": "exists", "same": False}), "exists_different", id="different"
+            ),
+        ],
+    )
+    def test_add_source(reply: Reply, expected: str, fake_pi: Callable[..., FakeProjectIndex]) -> None:
+        """201・409 の same で結果を分け、本文を {source: row, expectedVersion} で送る（正常系）。"""
+        # 準備
+        server = fake_pi(
+            {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("POST", "/settings/sources"): [reply]}
+        )
+        row = {"id": "w", "config": "/w/.mindstella/dev-docs.yaml"}
+        # 実行
+        result = project_index.add_source(server.port, row)
+        # 検証
+        assert result == expected
+>       assert server.requests[-1][2] == {"source": row, "expectedVersion": "v1"}
+E       AssertionError: assert {'source': {'...v-docs.yaml'}} == {'source': {'...ersion': 'v1'}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'expectedVersion': 'v1'}
+E         Use -v to get more diff
+
+tests/unit/scripts/test_project_index.py:115: AssertionError
+____________________________ test_add_source[same] _____________________________
+
+reply = (409, {'result': 'exists', 'same': True}), expected = 'exists_same'
+fake_pi = <function fake_pi.<locals>.make at 0x71e4f9edafb0>
+
+    @pytest.mark.parametrize(
+        ("reply", "expected"),
+        [
+            pytest.param((201, {"result": "added"}), "added", id="added"),
+            pytest.param((409, {"result": "exists", "same": True}), "exists_same", id="same"),
+            pytest.param(
+                (409, {"result": "exists", "same": False}), "exists_different", id="different"
+            ),
+        ],
+    )
+    def test_add_source(reply: Reply, expected: str, fake_pi: Callable[..., FakeProjectIndex]) -> None:
+        """201・409 の same で結果を分け、本文を {source: row, expectedVersion} で送る（正常系）。"""
+        # 準備
+        server = fake_pi(
+            {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("POST", "/settings/sources"): [reply]}
+        )
+        row = {"id": "w", "config": "/w/.mindstella/dev-docs.yaml"}
+        # 実行
+        result = project_index.add_source(server.port, row)
+        # 検証
+        assert result == expected
+>       assert server.requests[-1][2] == {"source": row, "expectedVersion": "v1"}
+E       AssertionError: assert {'source': {'...v-docs.yaml'}} == {'source': {'...ersion': 'v1'}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'expectedVersion': 'v1'}
+E         Use -v to get more diff
+
+tests/unit/scripts/test_project_index.py:115: AssertionError
+__________________________ test_add_source[different] __________________________
+
+reply = (409, {'result': 'exists', 'same': False})
+expected = 'exists_different'
+fake_pi = <function fake_pi.<locals>.make at 0x71e4f9edb950>
+
+    @pytest.mark.parametrize(
+        ("reply", "expected"),
+        [
+            pytest.param((201, {"result": "added"}), "added", id="added"),
+            pytest.param((409, {"result": "exists", "same": True}), "exists_same", id="same"),
+            pytest.param(
+                (409, {"result": "exists", "same": False}), "exists_different", id="different"
+            ),
+        ],
+    )
+    def test_add_source(reply: Reply, expected: str, fake_pi: Callable[..., FakeProjectIndex]) -> None:
+        """201・409 の same で結果を分け、本文を {source: row, expectedVersion} で送る（正常系）。"""
+        # 準備
+        server = fake_pi(
+            {("GET", "/settings/sources"): [(200, {"version": "v1"})], ("POST", "/settings/sources"): [reply]}
+        )
+        row = {"id": "w", "config": "/w/.mindstella/dev-docs.yaml"}
+        # 実行
+        result = project_index.add_source(server.port, row)
+        # 検証
+        assert result == expected
+>       assert server.requests[-1][2] == {"source": row, "expectedVersion": "v1"}
+E       AssertionError: assert {'source': {'...v-docs.yaml'}} == {'source': {'...ersion': 'v1'}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'expectedVersion': 'v1'}
+E         Use -v to get more diff
+
+tests/unit/scripts/test_project_index.py:115: AssertionError
+_______________________ test_add_source_version_conflict _______________________
+
+fake_pi = <function fake_pi.<locals>.make at 0x71e4f9f28250>
+
+    def test_add_source_version_conflict(fake_pi: Callable[..., FakeProjectIndex]) -> None:
+        """内容のバージョンの不一致は 1 回だけ取得し直して再送信する（正常系）。"""
+        # 準備
+        server = fake_pi(
+            {
+                ("GET", "/settings/sources"): [(200, {"version": "v1"}), (200, {"version": "v2"})],
+                ("POST", "/settings/sources"): [(409, {"current": "v2"}), (201, {"result": "added"})],
+            }
+        )
+        row = {"id": "w", "config": "/w/.mindstella/dev-docs.yaml"}
+        # 実行
+>       result = project_index.add_source(server.port, row)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_project_index.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+port = 44873, row = {'id': 'w', 'config': '/w/.mindstella/dev-docs.yaml'}
+
+    def add_source(
+        port: int, row: dict[str, Any]
+    ) -> Literal["added", "exists_same", "exists_different"]:
+        """配信元の行を 1 行追加する。同じ ID の行があれば、内容が同じかを返す。"""
+        status, body = _request(port, "POST", SOURCES_PATH, {"source": row})
+        # 追加した
+        if status == HTTPStatus.CREATED:
+            return "added"
+        # 同じ ID の行がある: 内容が同じかで分ける
+        if status == CONFLICT and body.get("result") == EXISTS_RESULT:
+            return "exists_same" if body.get("same") else "exists_different"
+>       raise _failed("POST", SOURCES_PATH, status, body)
+E       project_index.ProjectIndexError: project-index が 409 を返しました（POST /settings/sources）: {'current': 'v2'}
+
+plugins/mindstella/skills/mindmap/scripts/project_index.py:75: ProjectIndexError
+------------------------------ Captured log call -------------------------------
+WARNING  mindstella.project_index:project_index.py:199 mindstella.project_index.request_failed
+__________________________________ test_main ___________________________________
+
+tmp_path = PosixPath('/tmp/pt-572/red/test_main2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71e54026e580>
+
+    def test_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """SessionStart で出来事を送り、進め方の文書の場所を注入する。"""
+        monkeypatch.setenv("HOME", str(tmp_path))
+        sent: list[tuple[int, str, dict[str, Any]]] = []
+        stdout = io.StringIO()
+        code = session_hook.main(
+            ["session-start"],
+            environ={**ENVIRON, "HOME": str(tmp_path), "CLAUDE_CONFIG_DIR": "~/c"},
+            stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "startup"})),
+            stdout=stdout,
+            post=lambda port, session, body: sent.append((port, session, body)),
+        )
+        assert code == 0
+        assert sent[0][0] == PORT
+        assert sent[0][1] == "S-0123456789ab"
+        body = sent[0][2]
+        assert body["event"] == "session_start"
+        assert body["claude_session_id"] == "c1"
+        assert body["source"] == "startup"
+        assert body["pane"] == "%3"
+        assert body["socket"] == "/tmp/tmux-1000/default"
+>       assert body["claude_config_dir"] == f"{tmp_path}/c"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'claude_config_dir'
+
+tests/unit/scripts/test_session_hook.py:50: KeyError
+_________________________ test_main_without_config_dir _________________________
+
+tmp_path = PosixPath('/tmp/pt-572/red/test_main_without_config_dir0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71e4f93963c0>
+
+    def test_main_without_config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る（正常系）。"""
+        # 準備
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+        sent: list[tuple[int, str, dict[str, Any]]] = []
+        # 実行
+        session_hook.main(
+            ["session-start"],
+            environ={**ENVIRON, "HOME": str(tmp_path)},
+            stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "startup"})),
+            stdout=io.StringIO(),
+            post=lambda port, session, body: sent.append((port, session, body)),
+        )
+        # 検証
+>       assert sent[0][2]["claude_config_dir"] == f"{tmp_path}/.claude"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'claude_config_dir'
+
+tests/unit/scripts/test_session_hook.py:70: KeyError
+_________________________ test_build_command[balancer] _________________________
+
+options = LaunchOptions(mcp_config={'mcpServers': {}}, plugin_dirs=['p'])
+mcp_file = PosixPath('f'), balancer = '/usr/bin/claude-balancer'
+config_dir = None
+expected = ['/usr/bin/claude-balancer', 'exec', '--client', 'mindstella', '--', 'claude', ...]
+
+    @pytest.mark.parametrize(
+        ("options", "mcp_file", "balancer", "config_dir", "expected"),
+        [
+            pytest.param(
+                LaunchOptions(mcp_config={"mcpServers": {}}, plugin_dirs=["p"]),
+                Path("f"),
+                "/usr/bin/claude-balancer",
+                None,
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--",
+                    "claude",
+                    "--mcp-config",
+                    "f",
+                    "--plugin-dir",
+                    "p",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer",
+            ),
+            pytest.param(
+                LaunchOptions(mcp_config=None, plugin_dirs=[]),
+                None,
+                None,
+                None,
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer",
+            ),
+            pytest.param(
+                None, None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"
+            ),
+            pytest.param(
+                None,
+                None,
+                "/usr/bin/claude-balancer",
+                "/c",
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--account",
+                    "/c",
+                    "--",
+                    "claude",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer-account",
+            ),
+            pytest.param(
+                None,
+                None,
+                None,
+                "/c",
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer-account",
+            ),
+        ],
+    )
+    def test_build_command(
+        options: LaunchOptions | None,
+        mcp_file: Path | None,
+        balancer: str | None,
+        config_dir: str | None,
+        expected: list[str],
+    ) -> None:
+        """claude-balancer の有無と指定で並びが変わる。"""
+>       assert sessions.build_command(options, mcp_file, "s", balancer, config_dir) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: build_command() takes 4 positional arguments but 5 were given
+
+tests/unit/scripts/test_sessions.py:325: TypeError
+_______________________ test_build_command[no-balancer] ________________________
+
+options = LaunchOptions(mcp_config=None, plugin_dirs=[]), mcp_file = None
+balancer = None, config_dir = None
+expected = ['claude', '--append-system-prompt', 's']
+
+    @pytest.mark.parametrize(
+        ("options", "mcp_file", "balancer", "config_dir", "expected"),
+        [
+            pytest.param(
+                LaunchOptions(mcp_config={"mcpServers": {}}, plugin_dirs=["p"]),
+                Path("f"),
+                "/usr/bin/claude-balancer",
+                None,
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--",
+                    "claude",
+                    "--mcp-config",
+                    "f",
+                    "--plugin-dir",
+                    "p",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer",
+            ),
+            pytest.param(
+                LaunchOptions(mcp_config=None, plugin_dirs=[]),
+                None,
+                None,
+                None,
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer",
+            ),
+            pytest.param(
+                None, None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"
+            ),
+            pytest.param(
+                None,
+                None,
+                "/usr/bin/claude-balancer",
+                "/c",
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--account",
+                    "/c",
+                    "--",
+                    "claude",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer-account",
+            ),
+            pytest.param(
+                None,
+                None,
+                None,
+                "/c",
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer-account",
+            ),
+        ],
+    )
+    def test_build_command(
+        options: LaunchOptions | None,
+        mcp_file: Path | None,
+        balancer: str | None,
+        config_dir: str | None,
+        expected: list[str],
+    ) -> None:
+        """claude-balancer の有無と指定で並びが変わる。"""
+>       assert sessions.build_command(options, mcp_file, "s", balancer, config_dir) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: build_command() takes 4 positional arguments but 5 were given
+
+tests/unit/scripts/test_sessions.py:325: TypeError
+________________________ test_build_command[no-record] _________________________
+
+options = None, mcp_file = None, balancer = None, config_dir = None
+expected = ['claude', '--append-system-prompt', 's']
+
+    @pytest.mark.parametrize(
+        ("options", "mcp_file", "balancer", "config_dir", "expected"),
+        [
+            pytest.param(
+                LaunchOptions(mcp_config={"mcpServers": {}}, plugin_dirs=["p"]),
+                Path("f"),
+                "/usr/bin/claude-balancer",
+                None,
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--",
+                    "claude",
+                    "--mcp-config",
+                    "f",
+                    "--plugin-dir",
+                    "p",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer",
+            ),
+            pytest.param(
+                LaunchOptions(mcp_config=None, plugin_dirs=[]),
+                None,
+                None,
+                None,
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer",
+            ),
+            pytest.param(
+                None, None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"
+            ),
+            pytest.param(
+                None,
+                None,
+                "/usr/bin/claude-balancer",
+                "/c",
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--account",
+                    "/c",
+                    "--",
+                    "claude",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer-account",
+            ),
+            pytest.param(
+                None,
+                None,
+                None,
+                "/c",
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer-account",
+            ),
+        ],
+    )
+    def test_build_command(
+        options: LaunchOptions | None,
+        mcp_file: Path | None,
+        balancer: str | None,
+        config_dir: str | None,
+        expected: list[str],
+    ) -> None:
+        """claude-balancer の有無と指定で並びが変わる。"""
+>       assert sessions.build_command(options, mcp_file, "s", balancer, config_dir) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: build_command() takes 4 positional arguments but 5 were given
+
+tests/unit/scripts/test_sessions.py:325: TypeError
+_____________________ test_build_command[balancer-account] _____________________
+
+options = None, mcp_file = None, balancer = '/usr/bin/claude-balancer'
+config_dir = '/c'
+expected = ['/usr/bin/claude-balancer', 'exec', '--client', 'mindstella', '--account', '/c', ...]
+
+    @pytest.mark.parametrize(
+        ("options", "mcp_file", "balancer", "config_dir", "expected"),
+        [
+            pytest.param(
+                LaunchOptions(mcp_config={"mcpServers": {}}, plugin_dirs=["p"]),
+                Path("f"),
+                "/usr/bin/claude-balancer",
+                None,
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--",
+                    "claude",
+                    "--mcp-config",
+                    "f",
+                    "--plugin-dir",
+                    "p",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer",
+            ),
+            pytest.param(
+                LaunchOptions(mcp_config=None, plugin_dirs=[]),
+                None,
+                None,
+                None,
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer",
+            ),
+            pytest.param(
+                None, None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"
+            ),
+            pytest.param(
+                None,
+                None,
+                "/usr/bin/claude-balancer",
+                "/c",
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--account",
+                    "/c",
+                    "--",
+                    "claude",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer-account",
+            ),
+            pytest.param(
+                None,
+                None,
+                None,
+                "/c",
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer-account",
+            ),
+        ],
+    )
+    def test_build_command(
+        options: LaunchOptions | None,
+        mcp_file: Path | None,
+        balancer: str | None,
+        config_dir: str | None,
+        expected: list[str],
+    ) -> None:
+        """claude-balancer の有無と指定で並びが変わる。"""
+>       assert sessions.build_command(options, mcp_file, "s", balancer, config_dir) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: build_command() takes 4 positional arguments but 5 were given
+
+tests/unit/scripts/test_sessions.py:325: TypeError
+___________________ test_build_command[no-balancer-account] ____________________
+
+options = None, mcp_file = None, balancer = None, config_dir = '/c'
+expected = ['claude', '--append-system-prompt', 's']
+
+    @pytest.mark.parametrize(
+        ("options", "mcp_file", "balancer", "config_dir", "expected"),
+        [
+            pytest.param(
+                LaunchOptions(mcp_config={"mcpServers": {}}, plugin_dirs=["p"]),
+                Path("f"),
+                "/usr/bin/claude-balancer",
+                None,
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--",
+                    "claude",
+                    "--mcp-config",
+                    "f",
+                    "--plugin-dir",
+                    "p",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer",
+            ),
+            pytest.param(
+                LaunchOptions(mcp_config=None, plugin_dirs=[]),
+                None,
+                None,
+                None,
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer",
+            ),
+            pytest.param(
+                None, None, None, None, ["claude", "--append-system-prompt", "s"], id="no-record"
+            ),
+            pytest.param(
+                None,
+                None,
+                "/usr/bin/claude-balancer",
+                "/c",
+                [
+                    "/usr/bin/claude-balancer",
+                    "exec",
+                    "--client",
+                    "mindstella",
+                    "--account",
+                    "/c",
+                    "--",
+                    "claude",
+                    "--append-system-prompt",
+                    "s",
+                ],
+                id="balancer-account",
+            ),
+            pytest.param(
+                None,
+                None,
+                None,
+                "/c",
+                ["claude", "--append-system-prompt", "s"],
+                id="no-balancer-account",
+            ),
+        ],
+    )
+    def test_build_command(
+        options: LaunchOptions | None,
+        mcp_file: Path | None,
+        balancer: str | None,
+        config_dir: str | None,
+        expected: list[str],
+    ) -> None:
+        """claude-balancer の有無と指定で並びが変わる。"""
+>       assert sessions.build_command(options, mcp_file, "s", balancer, config_dir) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: build_command() takes 4 positional arguments but 5 were given
+
+tests/unit/scripts/test_sessions.py:325: TypeError
+_____________________________ test_create_session ______________________________
+
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_session0/state'), locks=<workspac...la-家計簿-3f2a9c', 'config': ['/tmp/pt-572/red/test_create_session0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True})
+clock = <test_sessions.FakeClock object at 0x71e4f9cb3e00>
+
+    def test_create_session(ctx: SimpleNamespace, clock: FakeClock) -> None:
+        """登録が入れば 201 を返し、最初の入力を貼る。"""
+        _register_on_sleep(ctx, clock)
+>       status, body = sessions.create_session(WORKSPACE_ID, None, ctx)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_sessions.py:380: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/sessions.py:282: in create_session
+    _wait_ready(ctx, workspace_id)
+plugins/mindstella/skills/mindmap/scripts/sessions.py:566: in _wait_ready
+    time.sleep(READY_POLL_SEC)
+tests/unit/scripts/test_sessions.py:110: in sleep
+    self.on_sleep(self.sleeps)
+tests/unit/scripts/test_sessions.py:228: in register
+    state.update_session(
+plugins/mindstella/skills/mindmap/scripts/state.py:148: in update_session
+    updated = change(read_session(root, workspace_id))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_sessions.py:234: in <lambda>
+    else current.replace(
+plugins/mindstella/skills/mindmap/scripts/state.py:66: in replace
+    return dataclasses.replace(self, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.14.3-linux-x86_64-gnu/lib/python3.14/dataclasses.py:1770: in replace
+    return _replace(obj, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SessionState(session='S-e6dcb40c33f6', status='running', started_at='2026-11-18T05:00:39+00:00', claude_session_id=Non...ocket=None, pid=None, pid_started_at=None, responding=False, pending_write=False, close_pending=False, last_error=None)
+changes = {'claude_session_id': 'c1', 'pid': 4242, 'pid_started_at': '12345', 'claude_config_dir': '/c', ...}
+
+    def _replace(self, /, **changes):
+        # We're going to mutate 'changes', but that's okay because it's a
+        # new dict, even if called with 'replace(self, **my_changes)'.
+    
+        # It's an error to have init=False fields in 'changes'.
+        # If a field is not in 'changes', read its value from the provided 'self'.
+    
+        for f in getattr(self, _FIELDS).values():
+            # Only consider normal fields or InitVars.
+            if f._field_type is _FIELD_CLASSVAR:
+                continue
+    
+            if not f.init:
+                # Error if this field is specified in changes.
+                if f.name in changes:
+                    raise TypeError(f'field {f.name} is declared with '
+                                    f'init=False, it cannot be specified with '
+                                    f'replace()')
+                continue
+    
+            if f.name not in changes:
+                if f._field_type is _FIELD_INITVAR and f.default is MISSING:
+                    raise TypeError(f"InitVar {f.name!r} "
+                                    f'must be specified with replace()')
+                changes[f.name] = getattr(self, f.name)
+    
+        # Create the new object, which calls __init__() and
+        # __post_init__() (if defined), using all of the init fields we've
+        # added and/or left in 'changes'.  If there are values supplied in
+        # changes that aren't fields, this will correctly raise a
+        # TypeError.
+>       return self.__class__(**changes)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SessionState.__init__() got an unexpected keyword argument 'claude_config_dir'
+
+../../../../../.local/share/uv/python/cpython-3.14.3-linux-x86_64-gnu/lib/python3.14/dataclasses.py:1804: TypeError
+______________________ test_create_session_stale[stopped] ______________________
+
+status = 'stopped'
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_session_stale_stop0/state'), lock...9c', 'config': ['/tmp/pt-572/red/test_create_session_stale_stop0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True})
+clock = <test_sessions.FakeClock object at 0x71e4f9aea490>
+
+    @pytest.mark.parametrize(
+        "status", [pytest.param("stopped", id="stopped"), pytest.param("crashed", id="crashed")]
+    )
+    def test_create_session_stale(status: str, ctx: SimpleNamespace, clock: FakeClock) -> None:
+        """止まった・落ちた後に同じ名前の tmux のセッションが残っていれば、閉じてから作る。"""
+        _write_session(ctx, status=status)
+        ctx.tmux.session_exists = True
+        _register_on_sleep(ctx, clock)
+>       status_code, _body = sessions.create_session(WORKSPACE_ID, None, ctx)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_sessions.py:426: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/sessions.py:282: in create_session
+    _wait_ready(ctx, workspace_id)
+plugins/mindstella/skills/mindmap/scripts/sessions.py:566: in _wait_ready
+    time.sleep(READY_POLL_SEC)
+tests/unit/scripts/test_sessions.py:110: in sleep
+    self.on_sleep(self.sleeps)
+tests/unit/scripts/test_sessions.py:228: in register
+    state.update_session(
+plugins/mindstella/skills/mindmap/scripts/state.py:148: in update_session
+    updated = change(read_session(root, workspace_id))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_sessions.py:234: in <lambda>
+    else current.replace(
+plugins/mindstella/skills/mindmap/scripts/state.py:66: in replace
+    return dataclasses.replace(self, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.14.3-linux-x86_64-gnu/lib/python3.14/dataclasses.py:1770: in replace
+    return _replace(obj, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SessionState(session='S-64ef0d9a8f05', status='running', started_at='2026-11-18T05:00:39+00:00', claude_session_id=Non...ocket=None, pid=None, pid_started_at=None, responding=False, pending_write=False, close_pending=False, last_error=None)
+changes = {'claude_session_id': 'c1', 'pid': 4242, 'pid_started_at': '12345', 'claude_config_dir': '/c', ...}
+
+    def _replace(self, /, **changes):
+        # We're going to mutate 'changes', but that's okay because it's a
+        # new dict, even if called with 'replace(self, **my_changes)'.
+    
+        # It's an error to have init=False fields in 'changes'.
+        # If a field is not in 'changes', read its value from the provided 'self'.
+    
+        for f in getattr(self, _FIELDS).values():
+            # Only consider normal fields or InitVars.
+            if f._field_type is _FIELD_CLASSVAR:
+                continue
+    
+            if not f.init:
+                # Error if this field is specified in changes.
+                if f.name in changes:
+                    raise TypeError(f'field {f.name} is declared with '
+                                    f'init=False, it cannot be specified with '
+                                    f'replace()')
+                continue
+    
+            if f.name not in changes:
+                if f._field_type is _FIELD_INITVAR and f.default is MISSING:
+                    raise TypeError(f"InitVar {f.name!r} "
+                                    f'must be specified with replace()')
+                changes[f.name] = getattr(self, f.name)
+    
+        # Create the new object, which calls __init__() and
+        # __post_init__() (if defined), using all of the init fields we've
+        # added and/or left in 'changes'.  If there are values supplied in
+        # changes that aren't fields, this will correctly raise a
+        # TypeError.
+>       return self.__class__(**changes)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SessionState.__init__() got an unexpected keyword argument 'claude_config_dir'
+
+../../../../../.local/share/uv/python/cpython-3.14.3-linux-x86_64-gnu/lib/python3.14/dataclasses.py:1804: TypeError
+______________________ test_create_session_stale[crashed] ______________________
+
+status = 'crashed'
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_session_stale_cras0/state'), lock...9c', 'config': ['/tmp/pt-572/red/test_create_session_stale_cras0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True})
+clock = <test_sessions.FakeClock object at 0x71e4f9aea850>
+
+    @pytest.mark.parametrize(
+        "status", [pytest.param("stopped", id="stopped"), pytest.param("crashed", id="crashed")]
+    )
+    def test_create_session_stale(status: str, ctx: SimpleNamespace, clock: FakeClock) -> None:
+        """止まった・落ちた後に同じ名前の tmux のセッションが残っていれば、閉じてから作る。"""
+        _write_session(ctx, status=status)
+        ctx.tmux.session_exists = True
+        _register_on_sleep(ctx, clock)
+>       status_code, _body = sessions.create_session(WORKSPACE_ID, None, ctx)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/scripts/test_sessions.py:426: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+plugins/mindstella/skills/mindmap/scripts/sessions.py:282: in create_session
+    _wait_ready(ctx, workspace_id)
+plugins/mindstella/skills/mindmap/scripts/sessions.py:566: in _wait_ready
+    time.sleep(READY_POLL_SEC)
+tests/unit/scripts/test_sessions.py:110: in sleep
+    self.on_sleep(self.sleeps)
+tests/unit/scripts/test_sessions.py:228: in register
+    state.update_session(
+plugins/mindstella/skills/mindmap/scripts/state.py:148: in update_session
+    updated = change(read_session(root, workspace_id))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/scripts/test_sessions.py:234: in <lambda>
+    else current.replace(
+plugins/mindstella/skills/mindmap/scripts/state.py:66: in replace
+    return dataclasses.replace(self, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../../.local/share/uv/python/cpython-3.14.3-linux-x86_64-gnu/lib/python3.14/dataclasses.py:1770: in replace
+    return _replace(obj, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SessionState(session='S-19dc5d3055cf', status='running', started_at='2026-11-18T05:00:39+00:00', claude_session_id=Non...ocket=None, pid=None, pid_started_at=None, responding=False, pending_write=False, close_pending=False, last_error=None)
+changes = {'claude_session_id': 'c1', 'pid': 4242, 'pid_started_at': '12345', 'claude_config_dir': '/c', ...}
+
+    def _replace(self, /, **changes):
+        # We're going to mutate 'changes', but that's okay because it's a
+        # new dict, even if called with 'replace(self, **my_changes)'.
+    
+        # It's an error to have init=False fields in 'changes'.
+        # If a field is not in 'changes', read its value from the provided 'self'.
+    
+        for f in getattr(self, _FIELDS).values():
+            # Only consider normal fields or InitVars.
+            if f._field_type is _FIELD_CLASSVAR:
+                continue
+    
+            if not f.init:
+                # Error if this field is specified in changes.
+                if f.name in changes:
+                    raise TypeError(f'field {f.name} is declared with '
+                                    f'init=False, it cannot be specified with '
+                                    f'replace()')
+                continue
+    
+            if f.name not in changes:
+                if f._field_type is _FIELD_INITVAR and f.default is MISSING:
+                    raise TypeError(f"InitVar {f.name!r} "
+                                    f'must be specified with replace()')
+                changes[f.name] = getattr(self, f.name)
+    
+        # Create the new object, which calls __init__() and
+        # __post_init__() (if defined), using all of the init fields we've
+        # added and/or left in 'changes'.  If there are values supplied in
+        # changes that aren't fields, this will correctly raise a
+        # TypeError.
+>       return self.__class__(**changes)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SessionState.__init__() got an unexpected keyword argument 'claude_config_dir'
+
+../../../../../.local/share/uv/python/cpython-3.14.3-linux-x86_64-gnu/lib/python3.14/dataclasses.py:1804: TypeError
+___________________________ test_record_event[start] ___________________________
+
+before = {'claude_session_id': None}
+event = {'event': 'session_start', 'claude_session_id': 'c1', 'source': 'startup', 'pane': '%3', ...}
+recorded = True
+check = {'claude_session_id': 'c1', 'pid': 7, 'pid_started_at': '9', 'claude_config_dir': '/c'}
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_record_event_start_0/state'), locks=<wor...簿-3f2a9c', 'config': ['/tmp/pt-572/red/test_record_event_start_0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True})
+
+    @pytest.mark.parametrize(
+        ("before", "event", "recorded", "check"),
+        [
+            pytest.param(
+                {"claude_session_id": None},
+                {
+                    "event": "session_start",
+                    "claude_session_id": "c1",
+                    "source": "startup",
+                    "pane": "%3",
+                    "pid": 7,
+                    "pid_started_at": "9",
+                    "claude_config_dir": "/c",
+                },
+                True,
+                {"claude_session_id": "c1", "pid": 7, "pid_started_at": "9", "claude_config_dir": "/c"},
+                id="start",
+            ),
+            pytest.param(
+                {"claude_config_dir": "/c"},
+                {
+                    "event": "session_start",
+                    "claude_session_id": "c2",
+                    "source": "clear",
+                    "claude_config_dir": "/d",
+                },
+                True,
+                {"claude_session_id": "c2", "claude_config_dir": "/d"},
+                id="start-clear",
+            ),
+            pytest.param(
+                {},
+                {"event": "session_start", "claude_session_id": "c3", "source": "fork"},
+                True,
+                {"claude_session_id": "c3"},
+                id="start-fork",
+            ),
+            pytest.param(
+                {},
+                {"event": "session_end", "claude_session_id": "c1", "reason": "clear"},
+                True,
+                {"status": "running"},
+                id="end-clear",
+            ),
+            pytest.param(
+                {"responding": True},
+                {"event": "session_end", "claude_session_id": "c1", "reason": "logout"},
+                True,
+                {"status": "stopped", "responding": False},
+                id="end-logout",
+            ),
+            pytest.param(
+                {},
+                {"event": "prompt_submit", "claude_session_id": "c1"},
+                True,
+                {"responding": True},
+                id="prompt",
+            ),
+            pytest.param(
+                {"responding": True},
+                {"event": "stop_failure", "claude_session_id": "c1"},
+                True,
+                {"responding": False},
+                id="stop-failure",
+            ),
+        ],
+    )
+    def test_record_event(
+        before: dict[str, Any],
+        event: dict[str, Any],
+        recorded: bool,
+        check: dict[str, Any],
+        ctx: SimpleNamespace,
+    ) -> None:
+        """出来事ごとに状態を書き換える。"""
+        _write_session(ctx, **before)
+        assert sessions.record_event(SESSION_ID, event, ctx) is recorded
+        current = _session(ctx)
+        for key, value in check.items():
+>           assert getattr(current, key) == value
+                   ^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'SessionState' object has no attribute 'claude_config_dir'
+
+tests/unit/scripts/test_sessions.py:724: AttributeError
+________________________ test_record_event[start-clear] ________________________
+
+before = {'claude_config_dir': '/c'}
+event = {'event': 'session_start', 'claude_session_id': 'c2', 'source': 'clear', 'claude_config_dir': '/d'}
+recorded = True, check = {'claude_session_id': 'c2', 'claude_config_dir': '/d'}
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_record_event_start_clear_0/state'), lock...9c', 'config': ['/tmp/pt-572/red/test_record_event_start_clear_0/家計簿/.mindstella/dev-docs.yaml'], 'outsideRead': True})
+
+    @pytest.mark.parametrize(
+        ("before", "event", "recorded", "check"),
+        [
+            pytest.param(
+                {"claude_session_id": None},
+                {
+                    "event": "session_start",
+                    "claude_session_id": "c1",
+                    "source": "startup",
+                    "pane": "%3",
+                    "pid": 7,
+                    "pid_started_at": "9",
+                    "claude_config_dir": "/c",
+                },
+                True,
+                {"claude_session_id": "c1", "pid": 7, "pid_started_at": "9", "claude_config_dir": "/c"},
+                id="start",
+            ),
+            pytest.param(
+                {"claude_config_dir": "/c"},
+                {
+                    "event": "session_start",
+                    "claude_session_id": "c2",
+                    "source": "clear",
+                    "claude_config_dir": "/d",
+                },
+                True,
+                {"claude_session_id": "c2", "claude_config_dir": "/d"},
+                id="start-clear",
+            ),
+            pytest.param(
+                {},
+                {"event": "session_start", "claude_session_id": "c3", "source": "fork"},
+                True,
+                {"claude_session_id": "c3"},
+                id="start-fork",
+            ),
+            pytest.param(
+                {},
+                {"event": "session_end", "claude_session_id": "c1", "reason": "clear"},
+                True,
+                {"status": "running"},
+                id="end-clear",
+            ),
+            pytest.param(
+                {"responding": True},
+                {"event": "session_end", "claude_session_id": "c1", "reason": "logout"},
+                True,
+                {"status": "stopped", "responding": False},
+                id="end-logout",
+            ),
+            pytest.param(
+                {},
+                {"event": "prompt_submit", "claude_session_id": "c1"},
+                True,
+                {"responding": True},
+                id="prompt",
+            ),
+            pytest.param(
+                {"responding": True},
+                {"event": "stop_failure", "claude_session_id": "c1"},
+                True,
+                {"responding": False},
+                id="stop-failure",
+            ),
+        ],
+    )
+    def test_record_event(
+        before: dict[str, Any],
+        event: dict[str, Any],
+        recorded: bool,
+        check: dict[str, Any],
+        ctx: SimpleNamespace,
+    ) -> None:
+        """出来事ごとに状態を書き換える。"""
+>       _write_session(ctx, **before)
+
+tests/unit/scripts/test_sessions.py:720: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unit/scripts/test_sessions.py:212: in _write_session
+    state.update_session(ctx.state_root, WORKSPACE_ID, lambda _current: SessionState(**values))
+plugins/mindstella/skills/mindmap/scripts/state.py:148: in update_session
+    updated = change(read_session(root, workspace_id))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+_current = None
+
+>   state.update_session(ctx.state_root, WORKSPACE_ID, lambda _current: SessionState(**values))
+                                                                        ^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: SessionState.__init__() got an unexpected keyword argument 'claude_config_dir'
+
+tests/unit/scripts/test_sessions.py:212: TypeError
+_________________________ test_create_workspace_moved __________________________
+
+allowed = PosixPath('/tmp/pt-572/red/test_create_workspace_moved0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71e4f9031ba0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_workspace_moved0/state'), locks=<...at 0x71e4f9031a70>, plugin_root=PosixPath('/tmp/pt-572/red/test_create_workspace_moved0/plugin'), tmux=None, proc=None)
+
+    def test_create_workspace_moved(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """配信元の行が記録の無い前のフォルダを指せば、行を移した先へ変える。"""
+        # 準備
+        workspace_id, before, after = _moved(allowed, ctx)
+        assert workspace_id == workspaces.workspace_id_for(before)
+        # 実行
+        status, body = workspaces.create_workspace(_request(after), ctx)
+        # 検証
+>       assert (status, body["id"], body["result"]) == (200, workspace_id, "opened")
+E       AssertionError: assert (200, 'mindst...already_open') == (200, 'mindst...16', 'opened')
+E         
+E         At index 2 diff: 'already_open' != 'opened'
+E         Use -v to get more diff
+
+tests/unit/scripts/test_workspaces.py:336: AssertionError
+______________________ test_create_workspace_moved_closed ______________________
+
+allowed = PosixPath('/tmp/pt-572/red/test_create_workspace_moved_cl0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71e4f8f885f0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_workspace_moved_cl0/state'), lock...0x71e4f8f88710>, plugin_root=PosixPath('/tmp/pt-572/red/test_create_workspace_moved_cl0/plugin'), tmux=None, proc=None)
+
+    def test_create_workspace_moved_closed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """移した先でクローズ済みの行は同じ依頼で outside_read も戻す。"""
+        # 準備
+        workspace_id, _before, after = _moved(allowed, ctx)
+        fake_pi.rows[workspace_id]["outsideRead"] = False
+        _write_session(ctx, workspace_id, close_pending=True)
+        # 実行
+        status, body = workspaces.create_workspace(_request(after), ctx)
+        # 検証
+        assert (status, body["result"]) == (200, "reopened")
+>       assert fake_pi.patched == [
+            (workspace_id, {**_moved_changes(after), "outside_read": True})
+        ]
+E       AssertionError: assert [('mindstella...read': True})] == [('mindstella...read': True})]
+E         
+E         At index 0 diff: ('mindstella-家計簿-eb5ee3', {'outside_read': True}) != ('mindstella-家計簿-eb5ee3', {'config': '/tmp/pt-572/red/test_create_workspace_moved_cl0/allowed/家計簿-移動後/.mindstella/dev-docs.yaml', 'scope': {'read': ['/tmp/pt-572/red/test_create_workspace_moved_cl0/allowed/家計簿-移動後', '/tmp/pt-572/red/test_create_workspace_moved_cl0/allowed/家計簿-移動後/**'], 'write': ['/tmp/pt-572/red/test_create_workspace_moved_cl0/allowed/家計簿-移動後', '/tmp/pt-572/red/test_create_workspace_moved_cl0/allowed/家計簿-移動後/**']}, 'outside_read': True})
+E         Use -v to get more diff
+
+tests/unit/scripts/test_workspaces.py:353: AssertionError
+_______________________ test_create_workspace_duplicate ________________________
+
+allowed = PosixPath('/tmp/pt-572/red/test_create_workspace_duplicat0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71e4f90ef460>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_workspace_duplicat0/state'), lock...0x71e4f90ef570>, plugin_root=PosixPath('/tmp/pt-572/red/test_create_workspace_duplicat0/plugin'), tmux=None, proc=None)
+
+    def test_create_workspace_duplicate(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace
+    ) -> None:
+        """行が指す別のフォルダに同じ ID の記録があれば 409。"""
+        # 準備
+        original = allowed / "家計簿"
+        copied = allowed / "家計簿-コピー"
+        workspaces.create_workspace(_request(original), ctx)
+        copied.mkdir()
+        shutil.copytree(original / ".mindstella", copied / ".mindstella")
+        # 実行
+>       with pytest.raises(ApiError) as caught:
+             ^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ApiError
+
+tests/unit/scripts/test_workspaces.py:372: Failed
+___________________ test_create_workspace_moved_patch_failed ___________________
+
+allowed = PosixPath('/tmp/pt-572/red/test_create_workspace_moved_pa0/allowed')
+fake_pi = <test_workspaces.FakeProjectIndex object at 0x71e4f90ef9b0>
+ctx = namespace(port=8784, pi_port=8786, state_root=PosixPath('/tmp/pt-572/red/test_create_workspace_moved_pa0/state'), lock...0x71e4f90ef8a0>, plugin_root=PosixPath('/tmp/pt-572/red/test_create_workspace_moved_pa0/plugin'), tmux=None, proc=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71e4f8f93460>
+
+    def test_create_workspace_moved_patch_failed(
+        allowed: Path, fake_pi: FakeProjectIndex, ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """行の変更が失敗すれば 502 で記録は消さない。"""
+        # 準備
+        workspace_id, _before, after = _moved(allowed, ctx)
+    
+        def failing_patch(_port: int, _source_id: str, _changes: dict[str, Any]) -> None:
+            raise ProjectIndexError(None, "つながりません")
+    
+        monkeypatch.setattr(project_index, "patch_source", failing_patch)
+        # 実行
+>       with pytest.raises(ApiError) as caught:
+             ^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ApiError
+
+tests/unit/scripts/test_workspaces.py:393: Failed
+=============================== warnings summary ===============================
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-refused]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[post-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[no-job-id]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[job-404]
+tests/unit/scripts/test_voice_paste.py::test_transcribe_when_rejected[poll-refused]
+  /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-source-add-account-legacy-problem/.venv/lib/python3.14/site-packages/_pytest/raises.py:613: PytestWarning: matching against an empty string will *always* pass. If you want to check for an empty message you need to pass '^$'. If you don't want to match you should pass `None` or leave out the parameter.
+    super().__init__(match=match, check=check)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/scripts/test_launch.py::test_run_start - AssertionError: as...
+FAILED tests/unit/scripts/test_place_source_config.py::test_place_source_config_records_id[no-id]
+FAILED tests/unit/scripts/test_place_source_config.py::test_place_source_config_records_id[no-id-with-config]
+FAILED tests/unit/scripts/test_project_index.py::test_add_source[added] - Ass...
+FAILED tests/unit/scripts/test_project_index.py::test_add_source[same] - Asse...
+FAILED tests/unit/scripts/test_project_index.py::test_add_source[different]
+FAILED tests/unit/scripts/test_project_index.py::test_add_source_version_conflict
+FAILED tests/unit/scripts/test_session_hook.py::test_main - KeyError: 'claude...
+FAILED tests/unit/scripts/test_session_hook.py::test_main_without_config_dir
+FAILED tests/unit/scripts/test_sessions.py::test_build_command[balancer] - Ty...
+FAILED tests/unit/scripts/test_sessions.py::test_build_command[no-balancer]
+FAILED tests/unit/scripts/test_sessions.py::test_build_command[no-record] - T...
+FAILED tests/unit/scripts/test_sessions.py::test_build_command[balancer-account]
+FAILED tests/unit/scripts/test_sessions.py::test_build_command[no-balancer-account]
+FAILED tests/unit/scripts/test_sessions.py::test_create_session - TypeError: ...
+FAILED tests/unit/scripts/test_sessions.py::test_create_session_stale[stopped]
+FAILED tests/unit/scripts/test_sessions.py::test_create_session_stale[crashed]
+FAILED tests/unit/scripts/test_sessions.py::test_record_event[start] - Attrib...
+FAILED tests/unit/scripts/test_sessions.py::test_record_event[start-clear] - ...
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_moved - A...
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_moved_closed
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_duplicate
+FAILED tests/unit/scripts/test_workspaces.py::test_create_workspace_moved_patch_failed
+23 failed, 2311 passed, 1 skipped, 5 warnings in 310.27s (0:05:10)
+
+# 実装の前から pass したテスト（作業ブランチに既にある振る舞い）
+- tests/unit/scripts/test_project_index.py::test_add_source_version_conflict_twice: project_index.py の add_source が 201・409（result: exists）以外の応答で ProjectIndexError を送る分岐（1013853b、#531）
+- tests/unit/scripts/test_store.py::test_is_legacy_problem（全ケース）・test_is_legacy_problem_when_legacy_item_form: store.py の is_legacy_problem の _has_legacy_item_form の分岐（0730919f、#540）。#561 はテストの期待値の誤りで、store.py は変えない
+- tests/unit/scripts/test_place_source_config.py::test_place_source_config_records_id[with-id]: place_source_config.py の migrate が config.yaml を書かない振る舞い（0730919f、#540）

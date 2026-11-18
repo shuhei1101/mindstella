@@ -22,7 +22,7 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/session_hook.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: '`MINDSTELLA_SESSION` があれば出来事を送り、SessionStart で `MINDSTELLA_FLOW` があれば `additionalContext` を出す。どの結末も 0 を返す'
+    summary: '`MINDSTELLA_SESSION` があれば出来事を送り（SessionStart では `CLAUDE_CONFIG_DIR`、無ければホームの `.claude` を `~` を展開した絶対パスにして `claude_config_dir` で送る）、SessionStart で `MINDSTELLA_FLOW` があれば `additionalContext` を出す。どの結末も 0 を返す'
     description: 依存が揃う前のシステムの `python3` で起動するので、Python 3.8 で読める構文と標準ライブラリだけで書く
     side_effects: 常駐サーバーへ出来事を送る
     args:
@@ -63,9 +63,9 @@ functions:
       - name: test_main
         case: 正常
         summary: SessionStart で送り、進め方の文書の場所を注入する
-        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`MINDSTELLA_FLOW`・`TMUX_PANE` あり、入力 `{session_id: c1, source: startup}`'
+        condition: '`[session-start]`、`MINDSTELLA_SESSION`・`MINDSTELLA_FLOW`・`TMUX_PANE`・`CLAUDE_CONFIG_DIR`（`~/c`）あり、入力 `{session_id: c1, source: startup}`'
         mock: '`post`・PID の引き方'
-        expected: '0 を返し、`post` が `event: session_start`・`claude_session_id: c1`・`pane` で呼ばれ、標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値'
+        expected: '0 を返し、`post` が `event: session_start`・`claude_session_id: c1`・`pane`・`claude_config_dir: {HOME}/c` で呼ばれ、標準出力の `additionalContext` に `MINDSTELLA_FLOW` の値'
       - name: test_main_ordinary_session
         case: 正常
         summary: MINDSTELLA_SESSION が無ければ何もしない
@@ -78,6 +78,12 @@ functions:
         condition: '`post` が `OSError`'
         mock: '`post`'
         expected: 0 を返し、標準エラーに `[mindstella]` の行
+      - name: test_main_without_config_dir
+        case: 正常
+        summary: CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る
+        condition: '`[session-start]`、`MINDSTELLA_SESSION` あり、`CLAUDE_CONFIG_DIR` 無し、`HOME` を一時フォルダにする'
+        mock: '`post`・PID の引き方'
+        expected: '`post` の本文の `claude_config_dir` が `{HOME}/.claude`'
   - name: post_event
     title: 出来事を送る
     kind: 関数

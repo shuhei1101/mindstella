@@ -112,6 +112,10 @@ tables:
         title: 最後の失敗
         type: string | null
         description: 最後の停止・起動し直しに失敗した段階と理由。次に作成・停止が通ったら `null` に戻す
+      - name: claude_config_dir
+        title: Claude Code の設定のフォルダ
+        type: string | null
+        description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス（起動したアカウント）。SessionStart のフックが入れる。`CLAUDE_CONFIG_DIR` が無いまま起動したときは `~/.claude` の絶対パス
   - name: workspaces/{ID}/launch.json
     title: 追加の MCP とプラグイン
     datastore: JSON

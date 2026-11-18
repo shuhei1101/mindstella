@@ -1,0 +1,100 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-531-1.yaml
+    impact: changed
+    detail: アカウントを指定して MindStella のセッションを起動すると、claude-balancer からそのアカウントを借りて起動する。指定したアカウントを借りられないときの知らせ方と、起動したアカウントの示し方を追加する。配信元の行が無い新規のワークスペースを作れる（#554・#556）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-41.yaml
+    impact: changed
+    detail: 起動のコマンドでアカウントを指定したとき、そのアカウントで起動し、起動したアカウントを示す。配信元の行が無いワークスペースのフォルダ（新規作成・移したフォルダ）で起動できる（#554・#556）
+    depends_on:
+      - docs/scenario/SC-531-1.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-14.yaml
+    impact: none
+    detail: 配信元への登録は Mock にしており、登録とフォルダを移したときの扱いは単一ユースケース『外部のアプリから起動する』で通すため、シナリオは変わらない（#554）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-42.yaml
+    impact: none
+    detail: alias が起動スクリプトへ `CLAUDE_CONFIG_DIR` を渡すところまでがこのユースケースで、その後のアカウントの借り方は単一ユースケース『端末から起動する』が持つため、シナリオは変わらない（#556）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-17.yaml
+    impact: changed
+    detail: v0.13.0 の移し替えで、設定にワークスペースの ID を持たない記録へ ID を記録する。前のバージョンの形式の問題の判定を設計書に合わせて修正するため、移し替えの案内が出る条件を壊していないかも確かめる（#554・#561）
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-52.yaml
+    impact: run_only
+    detail: 起動のコマンドからワークスペースと MindStella のセッションを作る入口が変わるため、話し合いをゴールまで進める流れを壊していないかを確かめる
+    depends_on: []
+docs:
+  - page: docs/external-api/API-531-1.yaml
+    new: false
+    change: POST /settings/sources の本文の expectedVersion を必須にし、送らないと 400 になることを記載する（#554）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
+  - page: docs/library/LIB-531-1.yaml
+    new: false
+    change: claude-balancer exec の --account（アカウントの指定）と、指定したアカウントを借りられないときの終わり方を記載する（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: claude-balancer の protocol と事前確認に、アカウントを指定したときの exec の呼び方を追記する（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
+  - page: docs/config/CFG-489-1.yaml
+    new: false
+    change: CLAUDE_CONFIG_DIR を、claude-balancer がある端末でも借りるアカウントの指定に使うことに書き換える（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:20:30.271451+00:00'
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 起動のコマンドの CLAUDE_CONFIG_DIR と、MindStella のセッションの作成の claude_config_dir・エラーの説明を、claude-balancer がある端末でも指定したアカウントで起動することに書き換える（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 起動するアカウントの説明と、指定したアカウントを借りられないときの止まり方を書き換える（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: アカウントごとの alias の CLAUDE_CONFIG_DIR が、claude-balancer がある端末でも MindStella のセッションのアカウントになることに書き換える（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
+  - page: docs/guide/動作環境.md
+    new: false
+    change: claude-balancer の行に、アカウントの指定（exec --account）を持つバージョンが要ることを記載する（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
+  - page: plugins/mindstella/bin/mindstella
+    new: false
+    change: 冒頭の環境変数の説明の CLAUDE_CONFIG_DIR を、claude-balancer がある端末でも借りるアカウントの指定にすることに書き換える（#556）
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
+scope_out:
+  - item: test_preview_url.py の fail の修正
+    reason: '同じタグの未着手の行だが、進行中の作業 PR #550 が変える commands.py に修正が及ぶため束に含めていない'
+    plan: '#562'
+  - item: 日本語のフォルダ名のワークスペースの ID（workspace_id_for）
+    reason: 'フォルダを移したときの ID の持ち方をこの PR で決めた後に進める行。計画で #554 の後ろに置かれている'
+    plan: '#544'
+  - item: 起動時にワークスペースの ID の一覧を配信元の行から作り直す照合
+    reason: '前の ID の行の扱いをこの PR で決めた後に進める行。計画で #554 の後ろに置かれている'
+    plan: '#525'
+  - item: 結合テスト test_error_when_host_not_local の間欠的な fail（ConnectionResetError）
+    reason: develop（dd5751ae）でも同じく間欠的に fail する既存の不具合で、この PR の要望（#554・#556・#561）に含まれない
+    plan: '#575'

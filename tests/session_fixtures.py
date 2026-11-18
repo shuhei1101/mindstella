@@ -93,7 +93,8 @@ for line in sys.stdin:
         sys.exit(0)
 """
 
-# 偽の claude-balancer（受けた引数を記録し、`claude-balancer-exit` があれば理由を書いてその終了コードで終わる）
+# 偽の claude-balancer（受けた引数を記録し、`claude-balancer-exit` があれば理由を書いてその終了コードで終わる。
+# `--account` を受けたら、その値を `CLAUDE_CONFIG_DIR` に入れて `--` の後のコマンドを実行する）
 FAKE_BALANCER = """#!{python}
 import json, os, sys
 record = {record!r}
@@ -103,7 +104,10 @@ exit_file = os.path.join(record, "claude-balancer-exit")
 if os.path.exists(exit_file):
     sys.stderr.write("claude-balancer: 借りられるアカウントがありません\\n")
     sys.exit(int(open(exit_file).read().strip()))
-rest = sys.argv[sys.argv.index("--") + 1:]
+separator = sys.argv.index("--")
+if "--account" in sys.argv[:separator]:
+    os.environ["CLAUDE_CONFIG_DIR"] = sys.argv[sys.argv.index("--account") + 1]
+rest = sys.argv[separator + 1:]
 os.execvp(rest[0], rest)
 """
 
@@ -206,11 +210,15 @@ class FakeProjectIndex:
         return 404, {}
 
     def post(self, body: Any) -> tuple[int, Any]:
-        """行を足す。`post_status` があればその応答だけを返す。"""
+        """行を足す。`post_status` があればその応答だけを返す。`expectedVersion` が無ければ 400、古ければ 409。"""
         if self.post_status is not None:
             return self.post_status, {"detail": "Mock の失敗"}
+        if "expectedVersion" not in body:
+            return 400, {"detail": "expectedVersion がありません"}
         row = body["source"]
         with self._lock:
+            if body["expectedVersion"] != str(self.version):
+                return 409, {"current": str(self.version)}
             if row["id"] in self.rows:
                 stored = self.rows[row["id"]]
                 same = stored["config"] == [row["config"]] and stored["scope"] == row["scope"]
@@ -236,8 +244,13 @@ class FakeProjectIndex:
             row = self.rows.get(source_id)
             if row is None:
                 return 404, {}
-            if "outside_read" in body["source"]:
-                row["outsideRead"] = body["source"]["outside_read"]
+            changes = body["source"]
+            if "outside_read" in changes:
+                row["outsideRead"] = changes["outside_read"]
+            if "config" in changes:
+                row["config"] = [changes["config"]]
+            if "scope" in changes:
+                row["scope"] = changes["scope"]
             self.version += 1
         return 200, {"version": str(self.version)}
 
