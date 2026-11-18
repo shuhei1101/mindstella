@@ -11,3 +11,9 @@ confirmations:
     approver: shuhei1101
     commit:
     thread: https://github.com/shuhei1101/mindstella/pull/567#discussion_r4607313244
+  - topic: トップバーをアイコンだけにするモック（案 E）
+    decision: '案 E で進める。ただし音声入力中の経過時間は常に出し、検索の入口はアイコンとショートカットキーを出す（案 B: 変えたい箇所がある）'
+    decided_by: reply
+    approver: shuhei1101
+    commit:
+    thread: https://github.com/shuhei1101/mindstella/pull/567#discussion_r4608514743
