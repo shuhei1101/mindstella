@@ -1,7 +1,7 @@
 id: SCR-489-22
 title: 概要
 screen: frontend/src/features/overview/overview/overview-screen.tsx
-lead: プレビューを開いたときの既定の画面。次に検討する項目・ゴールまでの進捗・要見直し・保留・進行中のタスク・カテゴリー別の進捗のタイルを並べる。
+lead: プレビューを開いたときの既定の画面。未読の AI の書き込み・未決定の検討事項・要見直しの検討事項・確認中の資料のタイルを並べる。
 test_file: tests/integration/preview/test_spa_overview_screen.py
 elements:
   - name: トップバー
@@ -48,39 +48,6 @@ elements:
         value: 録音を破棄した（行き先の項目・スレッドが記録から無くなった）か、入力欄が画面に無い間に文字起こし・レビュー中への追加・送信が失敗したときの理由。× か「入力欄を開く」で消す
     description: 全ての画面で共通の帯
     visible_when: 常時
-  - name: 次に検討する項目
-    id: tile-next
-    kind: list
-    description: 前提（種類 `depends_on` の `related`）が全て決着（決定済み・対象外・取り下げ）した未決定の検討事項を、`build` が `next` と同じ並びで埋め込んだ順に、タイルの枠に収まるだけ並べる（縦に積む幅では上位 3 件）。影響度は目盛りに「影響度 大」のように軸の名前を添えて出す。押すと詳細パネル（`?tab={種類}&id={ID}`）を開く
-    io: 表示
-    source: 記録の取得.derived.next
-    visible_when: 常時（0 件のときは「次に検討する項目はありません。」）
-  - name: 次に検討する項目のすべて表示
-    kind: link
-    description: 検討事項の表を状態 = 未決定 × 着手可否 = 着手可能で絞って開く（`?tab=decisions&view=table&f.status=未決定&f.ready=着手可能`）。タイルの見出しと同じ行に置き、幅 389px 以下で見出しと同じ行に収まらないときは、見出しの下の行へ回す。見出しと「すべて表示（{件数} 件）」は、どちらも途中で折り返さない
-    label: すべて表示（{件数} 件）
-    visible_when: 次に検討する項目が 1 件以上で、表示する種類に検討事項がある
-  - name: ゴールまでの進捗
-    id: tile-goal
-    kind: section
-    description: ゴールがあるときは、ゴールのフェーズまでの決定済みの数と、フェーズごとの棒（決定済み / 全体）。ゴールが無いとき（`derived.goal.has_goal` が偽）は、見出しを「フェーズ別の進捗」にし、見出しの下に「ゴールは決まっていません」を出して、全フェーズの決定済みの数と棒だけを出す。数は `goal` と同じ決着で数え、対象外・取り下げも決定済みに含める。見出しのアイコンはどちらも旗（モックで合意した形）
-    io: 表示
-    source: 記録の取得.derived.goal
-    visible_when: 常時
-    label: ゴールまでの進捗（ゴールが無いときはフェーズ別の進捗）
-  - name: 納品物のチェックリスト
-    kind: list
-    position: ゴールまでの進捗
-    description: ゴールの納品物。`derived.goal.remaining_deliverables` に無い納品物をチェック済みにする（判定は `goal` と同じ。`doc` の資料の状態が完成）。押すとその資料の詳細パネルを開く
-    io: 表示
-    source: 記録の取得.settings.goal.deliverables・記録の取得.derived.goal.remaining_deliverables
-    visible_when: ゴールがあるとき。納品物が 5 件以下のとき全て、5 件を超えたら先頭 5 件
-  - name: 納品物のすべて表示
-    kind: link
-    position: ゴールまでの進捗
-    description: 資料を納品物で絞ってカードで開く（`?tab=docs&f.deliverable=納品物`）
-    label: すべて表示（{件数} 件）
-    visible_when: 納品物が 5 件を超え、表示する種類に資料がある
   - name: 要見直し
     id: tile-review
     kind: list
@@ -88,40 +55,10 @@ elements:
     io: 表示
     source: 記録の取得.decisions
     visible_when: 常時（0 件のときは「要見直しの検討事項はありません。」）
-  - name: 保留
-    id: tile-hold
-    kind: list
-    description: 状態が保留の検討事項の件数と名前だけ。待っている前提などの補足の行とタスクは出さない。「すべて表示」で検討事項の表を状態 = 保留で絞って開く。表示する種類に検討事項が無いときは「すべて表示」だけを外し、タイルは残す
-    io: 表示
-    source: 記録の取得.decisions
-    visible_when: 常時（0 件のときは「保留の検討事項はありません。」）
-  - name: 進行中のタスク
-    id: tile-running
-    kind: list
-    description: 状態が進行中のタスクの件数と名前。「すべて表示」でタスクの表を状態 = 進行中で絞って開く。表示する種類にタスクが無いときは「すべて表示」だけを外し、タイルは残す
-    io: 表示
-    source: 記録の取得.tasks
-    visible_when: 常時（0 件のときは「進行中のタスクはありません。」）
-  - name: カテゴリー別の進捗
-    id: tile-progress
-    kind: table
-    description: カテゴリーを行、フェーズを列にした表。セルは決定済み / 全体と棒（対象外・取り下げも決定済みに含める）。セルを押すと検討事項の表をそのカテゴリーとフェーズで絞って開く。行の見出しを押すとカテゴリーだけで絞る。表示する種類に検討事項が無いときは、セルと行の見出しを押せなくし、数と棒は残す
-    io: 表示
-    source: 記録の取得.derived.progress
-    visible_when: 常時（そのカテゴリーとフェーズに項目が無いセルは「—」で押せない）
-    label: カテゴリー別の進捗
-  - name: ゴールが無いこと
-    kind: label
-    position: ゴールまでの進捗
-    description: ゴールが無いことを示す 1 行
-    label: ゴールは決まっていません
-    io: 表示
-    visible_when: ゴールが無いとき（`derived.goal.has_goal` が偽）
-    source: 記録の取得.derived.goal.has_goal
   - name: 話し合いの概要
     id: overview-description
     kind: label
-    description: 題名の上に、設定の話し合いの概要（1 文の短い文）を出す。プレイブックの名前とゴールのフェーズは出さない。読める幅（46em）で折り返す
+    description: 題名の上に、設定の話し合いの概要（1 文の短い文）を出す。読める幅（46em）で折り返す
     io: 表示
     type: 文字列
     visible_when: 設定が話し合いの概要を持つとき（無ければ行を出さない）
@@ -132,13 +69,34 @@ elements:
     args:
       - name: kind
         value: 選んだ時点で足した項目は new、変えた項目は changed（記録の取得.changes）
-    description: 次に検討する項目・要見直し・保留・進行中のタスクのタイルの各行で、項目のタイトルの横に文言なしで置く
+    description: 未読の AI の書き込み以外のタイル（未決定・要見直し・確認中の資料）の各行で、項目のタイトルの横に文言なしで置く
     io: 表示
     visible_when: 差分の表示の間で、その項目が選んだ時点で足されたか変わったとき
   - name: 画面の領域
     kind: region
     description: トップバーとタブの帯の下の、窓の高さに収めた領域。ページ全体は縦にも横にもスクロールさせず、トップバーとタブの帯は常に見えたままにする。タイルはこの領域の中で縦にスクロールする
     visible_when: 常時
+  - name: 未読の AI の書き込み
+    id: tile-unread
+    kind: list
+    description: 状態がオープンで、利用者が読んでいない AI の書き込み（`posts[].seen` が偽）を持つスレッドの件数と、スレッドごとの ID・要約・最後の未読の書き込みの日時を、新しい順にタイルの枠に収まるだけ並べる。押すとコメントの一覧でそのスレッドを開く（`?panel=comments&thread={ID}`）。「すべて表示」でコメントの一覧を開く（`?panel=comments`。未読のスレッドの行に未読の札が出る）
+    io: 表示
+    source: スレッドの読み取り.threads
+    visible_when: 常時（0 件のときは「未読の AI の書き込みはありません。」）
+  - name: 未決定の検討事項
+    id: tile-open
+    kind: list
+    description: 状態が未決定の検討事項の件数と名前を ID の順に、タイルの枠に収まるだけ並べる。押すと詳細パネル（`?tab=decisions&id={ID}`）を開く。「すべて表示」で検討事項の表を状態 = 未決定で絞って開く（`?tab=decisions&view=table&f.status=未決定`）。表示する種類に検討事項が無いときは「すべて表示」だけを外し、タイルは残す
+    io: 表示
+    source: 記録の取得.decisions
+    visible_when: 常時（0 件のときは「未決定の検討事項はありません。」）
+  - name: 確認中の資料
+    id: tile-docs
+    kind: list
+    description: 状態が確認中の資料の件数と名前。押すと詳細パネル（`?tab=docs&id={ID}`）を開く。「すべて表示」で資料を状態 = 確認中で絞って開く（`?tab=docs&f.status=確認中`）。表示する種類に資料が無いときは「すべて表示」だけを外し、タイルは残す
+    io: 表示
+    source: 記録の取得.docs
+    visible_when: 常時（0 件のときは「確認中の資料はありません。」で、「すべて表示」を出さない）
 refs:
   - SCR-489-21#
   - IF-489-70#
@@ -150,7 +108,9 @@ notes:
 
     | --- | --- |
 
-    | 「すべて表示」・カテゴリー別の進捗のセルと行の見出し | SPA の同じ条件の search（`?tab={種類}&view={表示形式}&f.{列}={値}`） |
+    | 未読の AI の書き込みの行と「すべて表示」 | SPA のコメントの一覧（`?panel=comments`。行は `&thread={ID}`） |
+
+    | ほかの「すべて表示」 | SPA の同じ条件の search（`?tab={種類}&view={表示形式}&f.{列}={値}`） |
 
     | タイルの項目の押下 | SPA の詳細パネル（`?tab={種類}&id={ID}`） |
 
