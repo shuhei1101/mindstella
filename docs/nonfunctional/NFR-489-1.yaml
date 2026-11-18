@@ -444,10 +444,10 @@ requirements:
     english_name: crash_watch_interval
     category: 可用性
     external_constraint: 制限なし
-    source_kind: 制限なし
+    source_kind: ユーザー要望
     value: '60'
     unit: 秒（常駐サーバーが状態が起動中の MindStella のセッションを見回る間隔）
-    rationale: 見回りは落ちたことの Discord への通知の遅れだけを決め、起動し直しはコメントが届いたときに見回りと関係なく行う。下流の制約は無く、利用者が落ちたことの通知を待てる時間で決まる。見回り 1 回は起動中のワークスペースごとに tmux の `display-message` と `/proc` の読み取りだけで、端末の負荷にならない
+    rationale: '見回りは落ちたことの Discord への通知の遅れだけを決め、起動し直しはコメントが届いたときに見回りと関係なく行う。下流の制約は無く、利用者が落ちたことの通知を待てる時間で決まるため、利用者が 60 秒に決めた（PR #582 の確認ログ）。見回り 1 回は起動中のワークスペースごとに tmux の `display-message` と `/proc` の読み取りだけで、端末の負荷にならない'
     measurement: 利用者が、落ちたことの通知が遅いと感じたら見直す
     overflow: 間隔の間に落ちたものは次の見回りで見つかる。その前に一覧・停止・コメントの送信が状態を読めば、そちらが先に落ちたことを記録する
     refs:
