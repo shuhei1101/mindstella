@@ -6,7 +6,10 @@ import io
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
+
+import pytest
 
 import session_hook
 
@@ -23,13 +26,14 @@ ENVIRON = {
 }
 
 
-def test_main() -> None:
+def test_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """SessionStart で出来事を送り、進め方の文書の場所を注入する。"""
+    monkeypatch.setenv("HOME", str(tmp_path))
     sent: list[tuple[int, str, dict[str, Any]]] = []
     stdout = io.StringIO()
     code = session_hook.main(
         ["session-start"],
-        environ=ENVIRON,
+        environ={**ENVIRON, "HOME": str(tmp_path), "CLAUDE_CONFIG_DIR": "~/c"},
         stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "startup"})),
         stdout=stdout,
         post=lambda port, session, body: sent.append((port, session, body)),
@@ -43,8 +47,27 @@ def test_main() -> None:
     assert body["source"] == "startup"
     assert body["pane"] == "%3"
     assert body["socket"] == "/tmp/tmux-1000/default"
+    assert body["claude_config_dir"] == f"{tmp_path}/c"
     output = json.loads(stdout.getvalue())
     assert "aituber#flow-1" in output["hookSpecificOutput"]["additionalContext"]
+
+
+def test_main_without_config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CLAUDE_CONFIG_DIR が無ければ ~/.claude の絶対パスを送る（正常系）。"""
+    # 準備
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    sent: list[tuple[int, str, dict[str, Any]]] = []
+    # 実行
+    session_hook.main(
+        ["session-start"],
+        environ={**ENVIRON, "HOME": str(tmp_path)},
+        stdin=io.StringIO(json.dumps({"session_id": "c1", "source": "startup"})),
+        stdout=io.StringIO(),
+        post=lambda port, session, body: sent.append((port, session, body)),
+    )
+    # 検証
+    assert sent[0][2]["claude_config_dir"] == f"{tmp_path}/.claude"
 
 
 def test_main_ordinary_session() -> None:

@@ -363,8 +363,10 @@ def test_is_legacy_problem(
 ) -> None:
     """前の版の形式の問題を見分ける（正常系）。"""
     # 準備
-    root = make_legacy_workspace(make_item("D-1", status="完了"), legacy_docs={"A-1": True})
+    root = make_legacy_workspace(legacy_docs={"A-1": True})
     write_yaml(root / RECORD_DIR / "config.yaml", settings)
+    # D-1 は v0.13.0 より前の形のキーを持たない今の形にする
+    write_yaml(root / RECORD_DIR / "decisions.yaml", {"items": [make_item("D-1", status="完了")]})
     workspace = store.load_workspace(root)
     problems = store.validate_workspace(workspace)
     problem = next(p for p in problems if p.file == file_name and p.id == item_id)
@@ -1782,6 +1784,33 @@ def test_is_legacy_problem_when_string_tag(
         problem
         for problem in store.validate_workspace(workspace)
         if problem.key == "items[0].tags[0]"
+    )
+    # 実行
+    result = store.is_legacy_problem(problem, workspace, **kwargs)
+    # 検証
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        pytest.param({}, True, id="other_item"),
+        pytest.param({"written_ids": frozenset({"D-1"})}, False, id="written_item"),
+    ],
+)
+def test_is_legacy_problem_when_legacy_item_form(
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    kwargs: dict[str, Any],
+    expected: bool,
+) -> None:
+    """書き込む項目以外の v0.13.0 より前の形の項目だけを前のバージョンの形式とする（正常系）。"""
+    # 準備
+    workspace = store.load_workspace(make_workspace(make_item("D-1"), with_history=False))
+    problem = next(
+        problem
+        for problem in store.validate_workspace(workspace)
+        if problem.id == "D-1" and problem.kind == "schema"
     )
     # 実行
     result = store.is_legacy_problem(problem, workspace, **kwargs)
