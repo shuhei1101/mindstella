@@ -3,9 +3,9 @@ title: 再開の状況
 entry:
   kind: endpoint
   value: POST `/_admin/sessions/{session}/resume`
-lead: MindStella のセッションの SessionStart のフックが呼び、起動と再開の注入に入れる状況（取り込み待ちのスレッドの件数・前回参照した後に変わった項目・要見直しの検討事項・進行中の作業）を返し、前回参照した時点を今の通し番号に書き換える。
-idempotent: false
-side_effects: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` を、呼んだときの `changes.yaml` の `last_seq` に書き換える（D-326）。ワークスペースの記録は書き換えない
+lead: MindStella のセッションの SessionStart のフックが呼び、起動と再開の注入に入れる状況（取り込み待ちのスレッドの件数・前回参照した後に変わった項目・要見直しの検討事項・進行中の作業）と、注入した後に前回参照した時点を進める通し番号を返す。
+idempotent: true
+side_effects: 書き換えない。前回参照した時点は、フックが注入文を書き終えた後に『前回参照した時点の更新』で進める
 request:
   - name: session
     type: str
@@ -47,6 +47,9 @@ response:
   - name: migration
     type: '{not_carried, provisional} | None'
     description: この MindStella のセッションを作る前に『記録の形式の移行』が移し替え、まだ知らせていない報告。無ければ `null`
+  - name: until_seq
+    type: int
+    description: 状況をまとめたときの `changes.yaml` の `last_seq`。フックが『前回参照した時点の更新』へ渡す
 status_codes:
   - code: '200'
     condition: 状況をまとめた
@@ -54,22 +57,22 @@ status_codes:
     condition: '`Host` が受ける値でない'
   - code: '404'
     condition: '`session` が状態に無い'
-    notes: 前回参照した時点を書き換えない
+    notes: 何も読まない
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 受ける Host
     constraint: 『MindStella のセッションの出来事の受け取り』と同じ（D-304・D-340）
   - item: 前回参照した時点
-    constraint: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` に持ち、『前回読んだ時点からの変更』（`changes_since_read`）と同じ値を使う（D-326・D-342）。状況をまとめるのと書き換えるのをワークスペースごとの鍵の中で行う
+    constraint: 状態のフォルダの `workspaces/{ワークスペースの ID}/read_point.json` の `read_seq` を読み、『前回読んだ時点からの変更』（`changes_since_read`）と同じ値を使う（D-326・D-342）。書き換えない。状況をまとめたときの `changes.yaml` の `last_seq` を `until_seq` で返し、フックは注入文を標準出力に書き終えた後に『前回参照した時点の更新』へ渡す。注入に失敗したときは時点が進まない
   - item: 次の候補
     constraint: 返さない（#518）。未決定の検討事項を候補として並べない
   - item: 件数の上限
     constraint: '`changed`・`removed`・`needs_review`・`in_progress` はそれぞれ 20 件まで。超えた分は件数だけを `{キー}_more` に入れる。注入に収まらない分は MindStella のセッションが `changes_since_read` で取得する（D-342）'
   - item: 移し替えの報告
-    constraint: '`migration` は 1 回だけ返す。返した後に状態のフォルダから消す'
+    constraint: '`migration` は『前回参照した時点の更新』が消すまで、呼ばれるたびに返す'
 flows:
   - name: 正常系
-    summary: 再開のとき、前回参照した後の変更と要見直し・進行中・取り込み待ちを返し、前回参照した時点を進める
+    summary: 再開のとき、前回参照した後の変更と要見直し・進行中・取り込み待ちを返し、前回参照した時点は進めない
     setup:
       - name: Mock
         description: なし（HTTP のクライアントで送る）
@@ -88,17 +91,16 @@ flows:
         クライアント->>API: source: compact
         API-->>ST: read_point.json を読む
         API-->>WS: 記録と changes.yaml を読む
-        API->>ST: read_seq を last_seq に書く
-        API-->>クライアント: 200 状況
+        API-->>クライアント: 200 状況・until_seq
       ```
     expected:
       - '`trigger` が `resume`、`awaiting_threads` が 1'
       - '`changed` が D-1 の 1 件で、`needs_review` が D-1、`in_progress` が T-1'
       - 応答が次の候補を持たず、未決定の D-2 を並べない
-      - '`read_point.json` の `read_seq` が `changes.yaml` の `last_seq` と同じで、続けて呼ぶと `changed` が空'
+      - '`until_seq` が `changes.yaml` の `last_seq` と同じで、`read_point.json` の `read_seq` が呼ぶ前と同じ。続けて呼ぶと同じ `changed` を返す'
     test: test_normal
   - name: 正常系（起動）
-    summary: 前回参照した時点が無いときは変更を返さず、今の通し番号を記録する
+    summary: 前回参照した時点が無いときは変更を返さず、今の通し番号を until_seq で返す
     setup:
       - name: Mock
         description: なし
@@ -114,12 +116,12 @@ flows:
         participant ST as 状態のフォルダ
 
         クライアント->>API: source: startup
-        API->>ST: read_point.json を作る
-        API-->>クライアント: 200 状況（どれも 0 件）
+        API-->>ST: read_point.json が無い
+        API-->>クライアント: 200 状況（どれも 0 件）・until_seq
       ```
     expected:
       - '`trigger` が `startup` で、`changed`・`removed` が空'
-      - '`read_point.json` の `read_seq` が今の `last_seq`'
+      - '`until_seq` が今の `last_seq` で、`read_point.json` が作られていない'
     test: test_normal_when_startup
   - name: 異常系（知らない MindStella のセッション・404）
     summary: 状態に無い session には 404 を返し、何も書かない
@@ -146,4 +148,5 @@ refs:
   - IF-489-33#
   - IF-531-6#
   - IF-489-52#
+  - IF-565-2#
 test_file: tests/integration/server/test_resume.py

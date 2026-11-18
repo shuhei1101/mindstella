@@ -5,7 +5,7 @@ entry:
   value: '`session_hook.py`（SessionStart・SessionEnd・UserPromptSubmit・Stop・StopFailure）'
 lead: プラグインのフックが全てのセッションで呼び、環境変数 `MINDSTELLA_SESSION` を持つ MindStella のセッションでだけ、出来事を常駐サーバーへ送り、SessionStart では起動の契機・再開の状況・進め方の文書の場所と、起動と再開のエージェントフローを先に進める案内を注入する。
 idempotent: true
-side_effects: 『MindStella のセッションの出来事の受け取り』へ送る。SessionStart では『再開の状況』を呼び、前回参照した時点が書き換わる。ほかは書かない
+side_effects: 『MindStella のセッションの出来事の受け取り』へ送る。SessionStart では『再開の状況』を呼び、注入文を標準出力に書き終えた後に『前回参照した時点の更新』へ『再開の状況』の `until_seq` を送る。ほかは書かない
 request:
 - name: '{出来事}'
   type: str
@@ -55,7 +55,7 @@ constraints:
 - item: 動く Python
   constraint: システムの `python3` の標準ライブラリだけ（『常駐サーバーの起動の確認』と同じ）
 - item: 送る時間の上限
-  constraint: 1 回の送信を 2 秒で打ち切る
+  constraint: 『MindStella のセッションの出来事の受け取り』・『再開の状況』・『前回参照した時点の更新』への 1 回の送信を、それぞれ 2 秒で打ち切る
   decided_by: NFR-489-1#requirements[フックの送信の上限]
 - item: PID の引き方
   constraint: 『セッションの値の注入』と同じく、フックのプロセスから親をたどり、最初に名前が `claude` のプロセス
@@ -66,7 +66,7 @@ constraints:
 - item: 契機ごとの注入
   constraint: '`source` が `startup` のときを起動、`resume`・`clear`・`compact` のときを再開として注入する（A-119 のフックの表）。`fork` では注入しない'
 - item: 注入に失敗したとき
-  constraint: 『再開の状況』につながらない・応答が 200 でないときは、状況を持たずに起動の契機とエージェントフローの案内だけを注入し、標準エラーに 1 行書く。MindStella のセッションの起動は止めない
+  constraint: 『再開の状況』につながらない・応答が 200 でない・送信が打ち切られたときは、状況を持たずに起動の契機とエージェントフローの案内だけを注入し、『前回参照した時点の更新』を呼ばずに、標準エラーに 1 行書く。『前回参照した時点の更新』に失敗したときも標準エラーに 1 行書くだけで、注入した状況は次の注入でもう一度出る。MindStella のセッションの起動は止めない
 flows:
 - name: 正常系
   summary: SessionStart で出来事を送り、起動の契機・進め方の文書の場所・エージェントフローの案内を注入する
@@ -131,10 +131,10 @@ flows:
   - 終了コードが 0 で、標準エラーに `[mindstella]` の行がある
   test: test_error_when_server_down
 - name: 正常系（再開）
-  summary: SessionStart の compact で、再開の状況を引いて再開の契機と一緒に注入する
+  summary: SessionStart の compact で、再開の状況を引いて再開の契機と一緒に注入し、注入文を書いた後に前回参照した時点を進める
   setup:
   - name: Mock
-    description: 常駐サーバーの代わりに、受けた要求を記録し、`/resume` に取り込み待ち 1 件・変わった D-1・要見直し D-1・進行中 T-1 を返す HTTP のサーバーを空きポートで立てる
+    description: 常駐サーバーの代わりに、受けた要求を記録し、`/resume` に取り込み待ち 1 件・変わった D-1・要見直し D-1・進行中 T-1・`until_seq` 7 を返す HTTP のサーバーを空きポートで立てる
   - name: 環境変数
     description: '`MINDSTELLA_SESSION`・`MINDSTELLA_PORT`・`TMUX_PANE`（`MINDSTELLA_FLOW` は渡さない）'
   flow: |-
@@ -147,20 +147,47 @@ flows:
       CC->>HK: session-start（標準入力に source: compact）
       HK->>SV: POST /_admin/sessions/{session}/events
       HK->>SV: POST /_admin/sessions/{session}/resume
-      SV-->>HK: 状況
-      HK-->>CC: additionalContext
+      SV-->>HK: 状況・until_seq
+      HK-->>CC: additionalContext（標準出力）
+      HK->>SV: POST /_admin/sessions/{session}/read_point（until_seq）
     ```
   expected:
-  - 'Mock が `events` と `resume`（`source: compact`）をこの順に受けている'
+  - 'Mock が `events`・`resume`（`source: compact`）・`read_point`（`until_seq: 7`）をこの順に受けている'
   - '`additionalContext` が、起動の契機 `再開`・取り込み待ちの件数 1・D-1 の ID と要約・要見直しの D-1・進行中の T-1・`mindstella/startup` を参照する案内を持ち、次の候補とスキルの呼び方を持たない'
   - 終了コードが 0
   test: test_normal_when_resumed
+- name: 正常系（再開の状況を取れない）
+  summary: 再開の状況が 200 でないと、状況を持たずに注入し、前回参照した時点を進めない
+  setup:
+  - name: Mock
+    description: 常駐サーバーの代わりに、受けた要求を記録し、`/resume` に 500 を返す HTTP のサーバーを空きポートで立てる
+  - name: 環境変数
+    description: '`MINDSTELLA_SESSION`・`MINDSTELLA_PORT`・`TMUX_PANE`'
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant CC as Claude Code
+      participant HK as session_hook.py
+      participant SV as 常駐サーバー（Mock）
+
+      CC->>HK: session-start（標準入力に source: compact）
+      HK->>SV: POST /_admin/sessions/{session}/events
+      HK->>SV: POST /_admin/sessions/{session}/resume
+      SV-->>HK: 500
+      HK-->>CC: additionalContext（状況なし）
+    ```
+  expected:
+  - '`additionalContext` が起動の契機 `再開` と `mindstella/startup` を参照する案内を持ち、取り込み待ちの件数・変わった項目を持たない'
+  - Mock が `read_point` を受けていない
+  - 標準エラーに `[mindstella]` の行があり、終了コードが 0
+  test: test_normal_when_resume_unavailable
 refs:
 - IF-531-6#
 - IF-489-68#
 - IF-489-15#
 - IF-489-32#
 - IF-565-1#
+- IF-565-2#
 callers:
 - IF-531-2#
 test_file: tests/integration/plugin/test_session_hook.py

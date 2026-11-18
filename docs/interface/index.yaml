@@ -44,6 +44,8 @@ items:
     summary: "adopt: 検討事項の採用する案を 1 つに切り替える"
   - page: IF-489-32.yaml
     summary: "POST /_admin/sessions/{session}/resume: 起動・再開の契機に、取り込み待ちのスレッド・前回から変わった項目・要見直し・進行中を返す"
+  - page: IF-565-2.yaml
+    summary: "POST /_admin/sessions/{session}/read_point: 注入を書き終えた後に、前回参照した時点を再開の状況が返した通し番号へ進める"
   - page: IF-489-26.yaml
     summary: "check: スキーマ違反・参照切れ・本文のずれを洗い出す"
   - page: IF-489-52.yaml
