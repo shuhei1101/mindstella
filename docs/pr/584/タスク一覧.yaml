@@ -44,10 +44,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T11:56:15.428220+00:00'
   - process: インターフェース定義設計
-    status: todo
+    status: done
     note: '不具合 1・3 の残り（write_dates: false・既存の dev-docs.yaml・本文を持たない項目）'
     updated_by: planner
-    updated_at: '2026-11-18T14:54:36.532446+00:00'
+    updated_at: '2026-11-18T14:58:19.278493+00:00'
   - process: 部品設計
     status: skipped
     reason: 画面の部品を変更しない
