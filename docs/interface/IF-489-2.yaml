@@ -152,7 +152,7 @@ lead: ワークスペースの直下の `README.md` を、このフォルダの�
 idempotent: true
 side_effects: ワークスペースの直下の `README.md` だけを書く（無いか、1 行目が自動で書いた印のとき）。`.mindstella/` は書かず、変更履歴と書き換えの知らせの対象にもしない
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

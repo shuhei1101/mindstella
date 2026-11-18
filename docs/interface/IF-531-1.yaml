@@ -5,7 +5,7 @@ entry:
   value: POST `/workspaces`
 lead: 許可するフォルダの下に、ワークスペースの記録を作るか残っている記録を開き、project-index の配信元に登録して、ワークスペースの ID と画面の URL を返す。MindStella の MCP の `create_workspace` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に足す。記録が既にあるフォルダは記録を書き換えない。そのワークスペースのプレビューの配信を立てる
+side_effects: 記録が無いフォルダには `.mindstella/` に既定の設定（ワークスペースの ID・進め方の文書）と空の記録と、記録を project-index の配信元として配る設定（`dev-docs.yaml`・`schemas/`）を書き（『ワークスペースの作成』と同じ書き方）、直下に `README.md` を書く。状態のフォルダに追加の MCP・プラグインを記録し、project-index の配信元の行を追加し、状態のフォルダのワークスペースの ID の一覧に足す。記録が既にあるフォルダは、記録のバージョンが古ければ『記録の形式の移行』で移し替えてから開き、それ以外は書き換えない。そのワークスペースのプレビューの配信を立てる
 request:
   - name: folder
     type: str
@@ -58,6 +58,9 @@ response:
   - name: launch_options_recorded
     type: bool
     description: 今回の追加の MCP・プラグインの指定を状態のフォルダに記録したか。記録が既にあって使わなかったときは偽（D-341）
+  - name: migration
+    type: '{from_version: str | None, to_version: str, steps: list[str], not_carried: list[{item: str, key: str, value: str}]} | None'
+    description: 記録を移し替えたときの報告。移し替えなかったときは `null`。`not_carried` は移せずに記録から消えた値（mdmark の書き方への移行で写さなかった `scope`・`updated` など）を項目とキーごとに並べる
 status_codes:
   - code: '201'
     condition: '`result` が `created`'
@@ -70,11 +73,11 @@ status_codes:
     condition: 許可するフォルダの外、または `Host`・`Origin` が受ける値でない
     notes: 何も書かない。`stage` は `folder` か `host`
   - code: '409'
-    condition: フォルダに移す前の形のワークスペース（`.mindstella/` が無く直下に `config.yaml` か `mindmap.yaml`）がある
-    notes: 何も書かない。`detail` に `/mindstella:upgrade` での移し替えの案内
+    condition: 記録のバージョンがプラグインのバージョンより新しい
+    notes: 何も書かない。`stage` は `version`。`detail` にワークスペースとプラグインのバージョンと、プラグインを更新する案内
   - code: '422'
-    condition: '`mcp_config`・`plugin_dirs` が読めない、または `flow` の文書を参照できない（文書が無い・配信元の `scope.read` にフォルダが含まれない）'
-    notes: 何も書かない。`stage` は `mcp_config`・`plugin_dirs`・`flow` のどれか。`detail` に読めない値と理由
+    condition: '`mcp_config`・`plugin_dirs` が読めない、`flow` の文書を参照できない（文書が無い・配信元の `scope.read` にフォルダが含まれない）、または『記録の形式の移行』が手順の途中で失敗した'
+    notes: 何も書かない。`stage` は `mcp_config`・`plugin_dirs`・`flow`・`migration` のどれか。`detail` に読めない値と理由（`migration` は失敗したバージョン・手順・理由。記録は写しから戻し、配信しない）
   - code: '502'
     condition: project-index へつながらない、または配信元の行の追加がエラーを返した
     notes: この依頼で作った記録と状態のフォルダの記録を消す（記録が既にあって開いたときは記録を消さない）。`stage` は `source`
@@ -84,10 +87,10 @@ constraints:
     constraint: '`Host` が `127.0.0.1:{ポート}`・`localhost:{ポート}` でない要求（`MINDSTELLA_ALLOWED_HOSTS` のホスト名を含む）は 403。`Origin` があるときは同じ 2 つのどちらかでなければ 403（D-304・D-340）'
     decided_by: NFR-489-1#requirements[待ち受けの範囲]
   - item: 確かめる順
-    constraint: '`Host`・`Origin` → 本文 → 許可するフォルダ → 移す前の形 → `mcp_config` → `plugin_dirs` → 既に開いているか → `flow` の参照（記録が無いときだけ）→ 書き込み → 配信元の行 → ID の一覧。どこかで止まったら、それより後は何もしない'
+    constraint: '`Host`・`Origin` → 本文 → 許可するフォルダ → `mcp_config` → `plugin_dirs` → 既に開いているか → 記録の形式の移行（記録があるときだけ）→ `flow` の参照（記録が無いときだけ）→ 書き込み → 配信元の行 → ID の一覧。どこかで止まったら、それより後は何もしない'
   - item: 既定の設定
-    constraint: '記録が無いフォルダの `config.yaml` は、`id`（ワークスペースの ID）・`flow`（渡したときだけ）・`summary`（フォルダ名）・`playbooks: [壁打ち]`・`target_label: 対象`・`phases: [問い, 発散, 整理, 絞り込み, 結論]`（プレイブック『壁打ち』のフェーズ）・`targets: []`・`categories: []` にする。題名・プレイブックなどは、作った後に『設定の更新』で書く（ER 図『ワークスペース』の `config.yaml`）'
-    notes: 設定のスキーマが `playbooks`・`phases`・`summary` に 1 件以上・1 文字以上を求めるため、空にできない。プレイブックの削除（#518）で見直す
+    constraint: '記録が無いフォルダの `config.yaml` は、`id`（ワークスペースの ID）・`flow`（渡したときだけ）・`summary`（フォルダ名）にする。題名・概要は、作った後に『設定の更新』で書く（ER 図『ワークスペース』の `config.yaml`）'
+    notes: 設定のスキーマが `summary` に 1 文字以上を求めるため、空にできない
   - item: 許可するフォルダ
     constraint: project-index の `GET /settings/sources` が返す `settingsPath` のファイルを読み、最上位の `mindstella.allowed_dirs`（絶対パスの並び）を使う。キーが無いか空なら、どのフォルダも許可しない（403）
     notes: project-index は知らないキーを警告にして読み込みを続ける（shuhei1101/project-index#11）
@@ -110,6 +113,10 @@ constraints:
   - item: 進め方の文書の確かめ方
     constraint: 'project-index の HTTP の読み取り API で 3 段に確かめる。(1) `GET /settings/sources` の `flow.source` の行の `scope.read` に、ワークスペースのフォルダが当たる（当たらなければ 422・理由 `scope`）。(2) `GET /sources/{flow.source}/docs` の一覧から、`id` が `flow.doc` の文書のパスを引く（無ければ 422・理由 `missing`。配信元が無ければ 404 の `missing: source`）。(3) `GET /sources/{flow.source}/docs/{パス}?id={flow.doc}` が 200 を返す（404 なら 422・理由 `missing`）'
     notes: 常駐サーバーは文書の MCP（`search_docs`）を呼ばない
+  - item: 記録の形式の移行
+    constraint: '記録があるフォルダは、開く前に『記録の形式の移行』を当てる。利用者に確認せずに移し替え、移せなかった値は応答の `migration.not_carried` に載せる（D-288。PR #565 の確認ログ）。利用者への知らせは、MindStella のセッションが起動と再開のエージェントフローで通知のスレッドにする'
+  - item: エージェントフローの配信元
+    constraint: 配信元の行を足した後に、project-index に配信元 `mindstella-agent-flows` の行が無ければ、『エージェントフローの参照』の制約「配信元の登録」のとおり足す。同じ `id` の行がある（409）ときは足さずに続ける。失敗してもワークスペースの作成は止めず、常駐サーバーのログに 1 行書く
 flows:
   - name: 正常系
     summary: 記録が無いフォルダに記録を作り、配信元に登録して ID と URL を返す
@@ -315,9 +322,10 @@ refs:
   - IF-489-17#
   - IF-531-2#
   - API-531-1#
+  - IF-565-1#
+  - IF-489-52#
 callers:
   - SC-531-1#
   - SC-489-14#
   - SC-489-41#
-  - IF-489-64#
 test_file: tests/integration/server/test_create_workspace.py

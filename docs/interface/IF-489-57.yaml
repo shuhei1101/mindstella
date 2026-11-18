@@ -195,7 +195,7 @@ lead: ワークスペースの記録を、画面と描画のライブラリま�
 idempotent: true
 side_effects: '`out` のファイルを、同じフォルダの一時ファイルから `os.replace` で置き換える。ワークスペースは読むだけ。プレビューの配信は立てず、ブラウザも開かない。描画のライブラリの配布ファイルとライセンスの本文を jsDelivr から取る'
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

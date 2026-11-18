@@ -1734,9 +1734,7 @@ files:
   - tool:claude-code
   - topic:スキル
   - topic:手順
-  related:
-  - to: IF-489-66
-    type: implements
+  related: []
 - path: skills/session/steps/ゴール判定.md
   name: ゴール判定のステップ
   description: ゴールのフェーズまでの検討事項と納品物が揃ったかを確かめ、利用者の確定を取って、`.mindstella/release/` にリリースの資料を書き出す。ゴールに届いたかの確かめ方とリリースの資料の書き出し方を変更するときに読む。
@@ -1793,9 +1791,7 @@ files:
   - tool:claude-code
   - topic:スキル
   - topic:セットアップ
-  related:
-  - to: IF-489-64
-    type: implements
+  related: []
 - path: skills/setup/scripts/register.py
   name: 起動スクリプトの登録
   description: 起動スクリプトを呼ぶ alias と環境変数を、ログインシェルの設定に登録・読み返し・外す。alias と環境変数の登録・読み返し・外し方を変更するときに読む。
@@ -1835,6 +1831,4 @@ files:
   - tool:claude-code
   - topic:スキル
   - topic:バージョン
-  related:
-  - to: IF-489-65
-    type: implements
+  related: []

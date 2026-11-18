@@ -204,7 +204,7 @@ lead: オープンのスレッドの末尾に AI の返信を足し、同じ呼�
 idempotent: false
 side_effects: '`threads.yaml` のそのスレッドに書き込みを 1 件足し、`summary` と利用者の書き込みの `taken` を書く。一時ファイルから `os.replace` で置き換える。ほかのファイルは書き換えない'
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str

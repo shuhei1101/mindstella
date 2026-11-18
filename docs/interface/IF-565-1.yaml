@@ -1,0 +1,120 @@
+id: IF-565-1
+title: エージェントフローの参照
+entry:
+  kind: operation
+  value: '`plugins/mindstella/agent-flows/` のエージェントフローの YAML（project-index の配信元 `mindstella-agent-flows`。MindStella のセッションと通常のセッションが `search_docs` で ID を指して参照する）'
+lead: プラグインに同梱する記録のエージェントフロー（起動と再開・コメントの取り込み・記録の使い分け）のファイルの形と、project-index の配信元として配り、どのセッションからも ID で参照できるようにする取り決め。
+idempotent: true
+side_effects: なし（参照だけ）。配信元の行の追加は『ワークスペースの作成』が行う
+request:
+  - name: id
+    type: Literal['mindstella/startup', 'mindstella/on-comment', 'mindstella/record']
+    required: true
+    description: エージェントフローの ID。起動と再開（A-111）・コメントの取り込み（A-112）・記録の使い分け（A-113）
+  - name: title
+    type: str
+    required: true
+    description: エージェントフローの名前
+  - name: summary
+    type: str
+    required: true
+    description: 何をするかを 1 行で
+  - name: condition
+    type: str
+    required: true
+    description: このエージェントフローを進める契機（起動の注入・コメントの入力・記録を書くとき）
+  - name: steps[].name
+    type: str
+    required: true
+    description: 工程の名前。エージェントフローの中で一意
+  - name: steps[].body
+    type: str
+    required: true
+    description: 工程の本文（Markdown）
+  - name: steps[].when
+    type: str | None
+    required: false
+    default: なし（いつも進める）
+    description: 当てはまらないときは飛ばす条件
+  - name: steps[].calls[]
+    type: "list[{server: Literal['mindstella', 'project-index'], tool: str}]"
+    required: false
+    default: なし（ツールを呼ばない）
+    description: 工程が呼ぶ MCP のツール
+    constraints: '`tool` は今の MindStella の MCP・project-index の MCP のツール名'
+  - name: steps[].refs[]
+    type: list[str]
+    required: false
+    default: なし
+    description: 工程が参照するほかのエージェントフローの ID
+exceptions:
+  - name: なし（正常終了）
+    condition: '`search_docs` がエージェントフローを返した'
+  - name: エージェントフローの形の誤り
+    condition: エージェントフローがスキーマに合わないか、`calls` が無いツールを指す
+    notes: 結合テストが検出し、プラグインを配る前に止める
+constraints:
+  - item: 置き場所
+    constraint: プラグインの `agent-flows/` に 1 エージェントフロー 1 ファイルで置き、配信元の設定（`dev-docs.yaml`）とスキーマを同じフォルダに持つ。ファイルの名前と形式はモジュール構成設計で決める
+  - item: 配信元の登録
+    constraint: 『ワークスペースの作成』が、配信元 `mindstella-agent-flows` の行が無ければ project-index の `POST /settings/sources` で追加する。`config` は常駐サーバーが動くプラグインの `agent-flows/dev-docs.yaml`、`scope.read` は許可するフォルダとその下の全てのフォルダ、`outside_read` は真。`scope.write` は持たない
+    notes: 'プラグインを上げてパスが変わったときに登録し直す処理は #525'
+  - item: 読み方
+    constraint: 'MindStella のセッションは project-index の `search_docs` を `source: mindstella-agent-flows`・`filter` の `id` の `eq`・`view: full` で呼ぶ。作業範囲の外のセッション（通常のセッション）は `outside_scope: true` を付ける。プラグインのファイルを Read で直接読まない'
+  - item: 進み具合
+    constraint: エージェントフローは工程ごとの進み具合を持たない（D-330）。圧縮・クリアの後は記録と commit から戻す
+  - item: スレッドで回答を求めない
+    constraint: コメントの取り込みと記録の使い分けは、利用者の回答が要ることを検討事項に挙げ、回の最後に追加した検討事項と反映した回答を新しいスレッド 1 件に表で通知する（D-481）
+  - item: 文章と HTML の書き方
+    constraint: エージェントフローに持たず、knowledge の規約を参照する（A-107）
+flows:
+  - name: 正常系
+    summary: MindStella のセッションが、起動と再開のエージェントフローを ID で参照する
+    setup:
+      - name: Mock
+        description: なし（project-index を立て、常駐サーバーの『ワークスペースの作成』で配信元を登録してから、project-index の文書の MCP を MCP のクライアントで呼ぶ）
+      - name: 作業場所
+        description: 作成したワークスペースのフォルダ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant PI as project-index（search_docs）
+        participant IF as agent-flows/
+
+        クライアント->>PI: search_docs source=mindstella-agent-flows id=mindstella/startup view=full
+        PI-->>IF: エージェントフローを読む
+        PI-->>クライアント: エージェントフローの本文
+      ```
+    expected:
+      - '`mindstella/startup`・`mindstella/on-comment`・`mindstella/record` の 3 件が参照できる'
+      - どのエージェントフローも `id`・`title`・`summary`・`condition` と 1 件以上の `steps` を持ち、`progress` を持たない
+      - project-index の配信元の行 `mindstella-agent-flows` が `scope.read` に許可するフォルダを持ち、`scope.write` を持たない
+    test: test_normal
+  - name: 正常系（呼ぶツールがある）
+    summary: どの工程の `calls` も今の MCP のツールを指す
+    setup:
+      - name: Mock
+        description: なし（MindStella の MCP と project-index の MCP を立て、ツールの一覧を取る）
+      - name: エージェントフロー
+        description: プラグインの `agent-flows/` の全てのエージェントフロー
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant IF as agent-flows/
+        participant MCP as MindStella の MCP・project-index の MCP
+
+        クライアント-->>IF: 全ての工程の calls を読む
+        クライアント-->>MCP: tools/list
+        クライアント->>クライアント: 突き合わせる
+      ```
+    expected:
+      - どの `calls[].tool` も、`server` の MCP のツールの一覧にある
+      - 削除したツール（`next`・`goal`・`write_release`・`clear_release`・`status`・`migrate`）を指す工程が無い
+    test: test_normal_when_calls_exist
+refs:
+  - IF-531-1#
+  - IF-531-7#
+  - IF-489-68#
+test_file: tests/integration/plugin/test_agent_flows.py

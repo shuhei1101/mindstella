@@ -262,7 +262,7 @@ lead: AI がスレッドをクローズにするかオープンに戻し、書�
 idempotent: true
 side_effects: '`threads.yaml` のそのスレッドの `status` を書き、`events` に 1 件足す（既にその状態なら書かない）。一時ファイルから `os.replace` で置き換える'
 callers:
-  - IF-489-66#
+  - IF-565-1#
 request:
   - name: workspace
     type: str
