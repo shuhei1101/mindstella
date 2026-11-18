@@ -1,0 +1,287 @@
+title: 停止の通知
+entry:
+  kind: trigger
+  value: MindStella のセッションの `session.json` の `status` を、『MindStella のセッションの停止』『MindStella のセッションの一覧』『MindStella のセッションの出来事の受け取り』が `stopped` か `crashed` に書き換えた後
+lead: MindStella のセッションが止まったことを常駐サーバーが記録したときに、利用者が用意した Webhook の設定のファイルの Discord の Webhook へ、止まったことと止まった理由を 1 件送信する。
+test_file: tests/integration/server/test_stop_notify.py
+idempotent: false
+side_effects: Discord の Webhook へ 1 件の `POST`。送信の結果を標準エラーへ 1 行記録する（Webhook の URL を含めない）
+callers:
+  - IF-531-3#
+  - IF-531-4#
+  - IF-531-6#
+exclusivity: 送信は常駐サーバーの中の別のスレッド（`daemon` のスレッド）で行い、停止・一覧・出来事の受け取りの応答と常駐サーバーの停止を待たせない。通知するかは、`session.json` を書き換える鍵の中で読んだ書き換える前の `status` で決める
+exceptions:
+  - name: なし（正常終了）
+    condition: 送信した・送信しなかった・送信に失敗した、のどれでも例外を出さない
+constraints:
+  - item: 通知するか
+    constraint: 書き換える前の `status` が `running` か `stopping` で、書き換えた後が `stopped` か `crashed` のときだけ送信する。ただし『MindStella のセッションの出来事の受け取り』が `stopping` から `stopped` に書き換えたとき（停止の依頼で `/exit` を貼った後の SessionEnd）は送信せず、停止の依頼の別のスレッドが止め終えたときに送信する。そのスレッドは、書き換える前が `stopping` か `stopped`（SessionEnd が先に書いた）のときに送信し、`crashed` のときは送信しない。止める間に失敗して `running` に戻したときと、`stop_failure` で応答が終わっただけのときは送信しない
+  - item: 止まった理由
+    constraint: '`stop_requested`（停止の依頼）・`force_stopped`（強制停止）・`crashed`（異常終了）・`stop_failed`（停止処理の失敗）・`session_ended`（Claude Code の終了）のどれか。括弧の中が本文に記載する文言。停止の依頼のスレッドが止め終えたときは `force` で `stop_requested` か `force_stopped`、ペインかプロセスが無いことを検知して `crashed` にしたときは `crashed`、止める間に失敗して `crashed` に戻したときは `stop_failed`、`session_end`（`clear`・`resume` 以外）が `running` から `stopped` にしたときは `session_ended`'
+  - item: 本文
+    constraint: '`{ワークスペースの名前}: 停止しました（{止まった理由の文言}）` と `{画面の URL}` の 2 行。絵文字を使用しない。ワークスペースの名前・画面の URL・画面の URL が無いとき・2000 文字を超えるときの扱いは『作業の完了の通知』の本文と同じ'
+  - item: 送信の方法
+    constraint: '『作業の完了の通知』と同じ（`POST {Webhook の URL}?wait=true` に JSON `{"content": 本文}`。`200` を成功とし、失敗は標準エラーに 1 行記録して再送信しない）'
+  - item: 送信を待つ上限
+    constraint: 非機能要件『Webhook の送信を待つ上限』の秒数
+    decided_by: NFR-489-1#
+  - item: Webhook の設定と URL の秘匿
+    constraint: 『作業の完了の通知』と同じ（環境変数 `MINDSTELLA_DISCORD_WEBHOOK_FILE` が指すファイルの 1 行目を送信のたびに参照し、使用できなければ送信しない。URL を標準エラー・応答・ワークスペース・状態のフォルダに記録しない）
+  - item: 止まった理由の追加
+    constraint: 利用上限・無操作の上限など、後から作る停止は、止まった理由とその文言を追加して、この通知を呼ぶ
+flows:
+  - name: 正常系
+    summary: 停止の依頼で止め終えたときに、停止の依頼を理由に 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）と、Claude Code（ペインに `/exit` が貼られたら『MindStella のセッションのフック』の SessionEnd を叩いて終わる）
+      - name: 常駐サーバー
+        description: テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ、`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を 1 行記載した一時ファイル
+      - name: 状態
+        description: '`status: running` で応答の途中でない `session.json` と、題名を持つワークスペース'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202 stopping
+        API->>EV: /exit を貼り、Claude Code が SessionEnd を送る
+        EV->>EV: stopping から stopped（送信しない）
+        API->>IF: 止め終えた・stop_requested
+        IF->>DC: POST ?wait=true content
+        DC-->>IF: 200
+      ```
+    expected:
+      - エンドポイントが 1 件だけ要求を受け、クエリに `wait=true` がある
+      - '`content` が `{題名}: 停止しました（停止の依頼）` と画面の URL の 2 行である'
+      - 標準エラーに送信の成功の行があり、エンドポイントの URL を含まない
+    test: test_normal
+  - name: 正常系（強制の停止）
+    summary: 強制を指定した停止で止め終えたときに、強制停止を理由に 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（200 を返却する）と、Claude Code（応答の途中のまま）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE ?force=true
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>API: DELETE?force=true
+        API-->>クライアント: 202
+        API->>API: 止めて stopped
+        API->>IF: 止め終えた・force_stopped
+        IF->>DC: POST ?wait=true content
+      ```
+    expected:
+      - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（強制停止）`'
+    test: test_normal_when_forced
+  - name: 正常系（落ちている）
+    summary: 一覧でペインが無いことを検知して異常終了を 1 件送信し、その後の停止では送信しない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（200 を返却する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: '`session.json` が `running` でペインが無い'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant LS as GET /workspaces/{id}/sessions
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>LS: GET
+        LS->>LS: running から crashed
+        LS-->>クライアント: crashed
+        LS->>IF: crashed
+        IF->>DC: POST ?wait=true content
+        クライアント->>API: DELETE
+        API->>API: crashed から stopped（送信しない）
+        API-->>クライアント: 200 stopped
+      ```
+    expected:
+      - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（異常終了）`'
+      - DELETE の後も要求は 1 件のまま
+    test: test_normal_when_session_crashed
+  - name: 正常系（Claude Code の終了）
+    summary: 停止の依頼なしに SessionEnd を受けて停止済みにしたときに、Claude Code の終了を 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（200 を返却する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>EV: session_end・reason: prompt_input_exit
+        EV-->>クライアント: 200 recorded: true
+        EV->>IF: session_ended
+        IF->>DC: POST ?wait=true content
+      ```
+    expected:
+      - '`session.json` の `status` が `stopped`'
+      - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（Claude Code の終了）`'
+    test: test_normal_when_session_ended
+  - name: 正常系（clear の後の終了）
+    summary: SessionEnd の reason が clear なら送信しない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant EV as POST /_admin/sessions/{session}/events
+        participant IF as 停止の通知
+
+        クライアント->>EV: session_end・reason: clear
+        EV-->>クライアント: 200
+        EV->>EV: running のまま（送信しない）
+      ```
+    expected:
+      - '`status` が `running` のまま'
+      - エンドポイントが要求を受けていない
+    test: test_normal_when_cleared
+  - name: 正常系（Webhook の設定が無い）
+    summary: 環境変数が無いときは送信せず、停止は変わらない
+    setup:
+      - name: Mock
+        description: Claude Code（ペインに `/exit` が貼られたら SessionEnd を叩いて終わる）
+      - name: 常駐サーバー
+        description: '`MINDSTELLA_DISCORD_WEBHOOK_FILE` を指定せずに起動する'
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant IF as 停止の通知
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202
+        API->>IF: 止め終えた・stop_requested
+        IF->>IF: 設定が無いので送信しない
+      ```
+    expected:
+      - '`session.json` の `status` が `stopped`'
+      - 標準エラーに送信の行が無い
+    test: test_normal_when_webhook_not_configured
+  - name: 異常系（停止処理の失敗・なし）
+    summary: 止める間に失敗して crashed に戻したときに、停止処理の失敗を 1 件送信する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（200 を返却する）と、Claude Code（止める工程の途中でプロセスが無くなり、まとめていない変更の commit が失敗する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202
+        API->>API: 止める間に失敗し、crashed と last_error
+        API->>IF: stop_failed
+        IF->>DC: POST ?wait=true content
+      ```
+    expected:
+      - '`session.json` の `status` が `crashed` で `last_error` が入っている'
+      - 'エンドポイントが 1 件だけ要求を受け、`content` の 1 行目が `{題名}: 停止しました（停止処理の失敗）`'
+    test: test_error_when_stop_failed
+  - name: 異常系（停止処理の失敗で起動中に戻る・なし）
+    summary: 止める間に失敗しても生きていて running に戻したときは送信しない
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント）と、Claude Code（動いたままで、まとめていない変更の commit が失敗する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant IF as 停止の通知
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202
+        API->>API: 止める間に失敗し、running と last_error
+        API->>IF: 呼ばない
+      ```
+    expected:
+      - '`session.json` の `status` が `running` で `last_error` が入っている'
+      - エンドポイントが要求を受けていない
+    test: test_error_when_stop_failed_but_alive
+  - name: 異常系（送信の失敗・なし）
+    summary: Webhook が 500 を返却しても停止は成功し、失敗を URL を含めずに記録する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（500 を返却する）と、Claude Code（ペインに `/exit` が貼られたら SessionEnd を叩いて終わる）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant クライアント
+        participant API as DELETE /workspaces/{id}/sessions/{session}
+        participant IF as 停止の通知
+        participant DC as Discord
+
+        クライアント->>API: DELETE
+        API-->>クライアント: 202
+        API->>IF: 止め終えた・stop_requested
+        IF->>DC: POST ?wait=true content
+        DC-->>IF: 500
+        IF->>IF: 標準エラーに失敗を 1 行記録する
+      ```
+    expected:
+      - '`session.json` の `status` が `stopped`'
+      - エンドポイントが 1 件だけ要求を受けている（再送信しない）
+      - 標準エラーに `500` を含む失敗の行があり、エンドポイントの URL を含まない
+    test: test_error_when_send_failed
+refs:
+  - SC-570-1#
+  - IF-568-1#
+  - IF-531-3#
+  - IF-531-4#
+  - IF-531-6#
+  - API-568-1#
+  - CFG-489-1#
+  - NFR-489-1#
+id: IF-570-1

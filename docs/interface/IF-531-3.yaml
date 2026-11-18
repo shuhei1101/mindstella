@@ -5,7 +5,7 @@ entry:
   value: GET `/workspaces/{id}/sessions`
 lead: ワークスペースの最後の MindStella のセッション 1 つの状態を返す。停止の完了はこれで確かめる。MindStella の MCP の `sessions` も同じ処理を呼ぶ。
 idempotent: true
-side_effects: 状態が `running` でも tmux のペインか Claude Code のプロセスが無ければ、`crashed` として状態に記録する。ほかは書かない
+side_effects: 状態が `running` でも tmux のペインか Claude Code のプロセスが無ければ、`crashed` として状態に記録し、『停止の通知』を止まった理由 `crashed` で呼ぶ。ほかは書かない
 request:
   - name: id
     type: str
@@ -56,6 +56,8 @@ constraints:
     constraint: '`session.json` の `pane` が tmux の `display-message -p -t {ペイン} ''#{pane_pid}''` で引けない、または `pid` のプロセスが無いか起動時刻が違う（『セッションの値の注入』の `claude_started_at` と同じ見分け方）'
   - item: MCP のツール
     constraint: '`sessions` は `workspace_id` を受け、同じ処理を呼ぶ'
+  - item: 停止の通知
+    constraint: '`running`・`stopping` から `crashed` に書き換えたときだけ、応答を返却する前に『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。通知の成否は応答に含めない'
 flows:
   - name: 正常系
     summary: 起動中の MindStella のセッションを返す
@@ -125,6 +127,7 @@ flows:
 refs:
   - IF-531-2#
   - IF-531-4#
+  - IF-570-1#
 callers:
   - SC-531-2#
 test_file: tests/integration/server/test_list_sessions.py
