@@ -57,6 +57,7 @@ layers:
       - 'サーバーのテストで、条件が揃わなければ skip する流れ: 手元に Python 3.8〜3.11 が無い（依存の確認の古い Python の 2 流れ）/ PyPI へ通信できない（依存の確認が返すそろえるコマンドを流す部分）/ root か Windows で書き込みの権限を外せない（各ツールの書き込めない流れ）'
       - 実行はリポジトリの直下で行う。設定のフォルダは conftest が `CLAUDE_CONFIG_DIR` にテストごとの空の一時フォルダを渡して差し替えるため、利用者の環境を汚さない
       - '`pytest tests/unit tests/integration` を 1 回で流せる。`tests/integration/` と `tests/integration/server/` と `tests/integration/skill/` は `__init__.py` を置いてパッケージにし、`server.py` など単体テストが読むモジュールの名前と、同じ名前のテストファイル（`test_check_env.py`）が衝突しないようにしている'
+      - 'エージェントフローのテスト（`tests/integration/plugin/test_agent_flows.py`）: project-index のクローンに `uv sync` 済みの `.venv/bin/project-index` がある。クローンは `MINDSTELLA_TEST_PROJECT_INDEX_CLONE` で指し、無ければ利用者の端末の設定（`${XDG_CONFIG_HOME:-~/.config}/project-index/settings.yaml`）の `clone` を読む（どちらも無ければ skip する）。project-index はテストごとの一時フォルダの端末の設定と空きポートで起動し、利用者の端末の設定を書き換えない。常駐サーバーは git の外へ複製したプラグインのフォルダで動かす（git の作業ツリーの中の配信元は project-index が `develop` から読むため）'
     run_one:
       label: ファイル
       command: |-

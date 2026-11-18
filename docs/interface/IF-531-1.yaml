@@ -153,6 +153,7 @@ flows:
       - 'project-index の Mock が、`config`・`scope`・`outside_read: true` の行の追加を受けている'
       - '`.mindstella/dev-docs.yaml` が種類ごとの 7 つの `documents` の行（`records: items`・`body_file: body`）と `related.types` を持ち、`.mindstella/schemas/` にその行が指すスキーマがある'
       - '`url` を開くと、そのワークスペースの画面が返る'
+      - project-index に配信元 `mindstella-agent-flows` の行（`config` がプラグインの `agent-flows/dev-docs.yaml`、`scope.read` が許可するフォルダとその下、`scope.write` なし）を、ワークスペースの行の後に追加する
     test: test_normal
   - name: 正常系（記録が既にある）
     summary: 残っている記録を開き、状態のフォルダに記録が無いので今回の指定を記録する
