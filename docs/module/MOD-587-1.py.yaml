@@ -91,12 +91,22 @@ constants:
     title: ファイルの応答に常に付けるヘッダー
     container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
     usecase: 動画などのファイルを配置して資料に埋め込む
-    summary: 200・206・416 に共通して付けるヘッダー
+    summary: 200・206・416 に共通して付けるヘッダー（`Accept-Ranges`・`Cache-Control` と `FILE_SECURITY_HEADERS`）
     entries:
       - key: Accept-Ranges
         value: '"bytes"'
       - key: Cache-Control
         value: '"no-cache"'
+      - key: X-Content-Type-Options
+        value: '"nosniff"'
+      - key: Content-Security-Policy
+        value: '"sandbox"'
+  - name: FILE_SECURITY_HEADERS
+    title: ファイルの応答の全てに付けるヘッダー
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: '`/files/` の全ての応答（404 を含む）に付け、直接開いたファイルでスクリプトを動かさないヘッダー。配信の 404 も付ける'
+    entries:
       - key: X-Content-Type-Options
         value: '"nosniff"'
       - key: Content-Security-Policy
