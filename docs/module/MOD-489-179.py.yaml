@@ -87,10 +87,10 @@ data_models:
         type: list[dict[str, str]]
         default: '[]'
         description: 移せずに記録から消えた値（`{item, key, value}`。`reports` の行から作る）
-      - name: schemas
+      - name: source_files
         type: list[str]
         default: '[]'
-        description: 書き直したスキーマの複製のワークスペースからのパス（`sync_source_schemas` の結果）
+        description: 書き直したスキーマの複製と配信の設定のワークスペースからのパス（`sync_source_schemas` と `add_write_dates` の結果をつないだ並び）
 constants:
   - name: MIGRATIONS_DIR
     title: 手順の置き場所
@@ -537,12 +537,12 @@ functions:
       description: 当てた手順・写し・書いた版・仮の値・移せなかった値。当てる手順が無ければ `steps` が空
     process: |-
       1. `to_version` までの手順を当てる（`apply_migration`。版が新しいときは `WorkspaceNewerError` が伝わる）
-         - 当てる手順が無く、版が同じ場合、スキーマの複製をそろえ（`sync_source_schemas`）、書き直したパスを `schemas` にして返す
+         - 当てる手順が無く、版が同じ場合、スキーマの複製と配信の設定をそろえ（`sync_source_schemas`・`add_write_dates`）、書き直したパスを `source_files` にして返す
          - `to_version` がプラグインの版より前の場合、当てた結果をそのまま返す
       2. 値が要るキーに仮の値を入れる（`set_values`。`summary` はフォルダの名前、ほかのキーは空文字）。入れた値を `provisional` にする
       3. 版を書く（`record_version`）
          - `SchemaMismatchError`・`WriteFailedError` の場合、写しから戻し（`restore_backup`）てそのまま送る
-      4. スキーマの複製をそろえ（`sync_source_schemas`）、書き直したパスを `schemas` にする（`WriteFailedError` はそのまま送る。版は書いた後なので写しから戻さない）
+      4. スキーマの複製と配信の設定をそろえ（`sync_source_schemas`・`add_write_dates`）、書き直したパスを `source_files` にする（`WriteFailedError` はそのまま送る。版は書いた後なので写しから戻さない）
       5. `reports` の行を `not_carried` にする。`{項目の ID}: {キー}: {値}` の行は 3 つに分け、それ以外の行は `item`・`key` を空にして行を `value` にする
       6. 結果を返す
     exceptions:
@@ -591,10 +591,16 @@ functions:
         summary: 版が同じでも、中身が違うスキーマの複製を書き直して返す
         condition: プラグインと同じ版で、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたワークスペース
         mock: '`read_plugin_version`'
-        expected: '`steps` が空、`recorded` が `None`、`schemas` が `[.mindstella/schemas/docs.schema.json]`。版のファイルと記録の YAML が呼ぶ前と同じ'
+        expected: '`steps` が空、`recorded` が `None`、`source_files` が `[.mindstella/schemas/docs.schema.json]`。版のファイルと記録の YAML が呼ぶ前と同じ'
       - name: test_migrate_when_schema_synced_after_steps
         case: 正常
         summary: 手順を当てて版を書いた後に、スキーマの複製をそろえる
         condition: 版 v0.13.0 で、`.mindstella/schemas/docs.schema.json` を別の中身に書き換えたワークスペース
         mock: '`read_plugin_version`'
-        expected: '`recorded` がプラグインの版、`schemas` に `.mindstella/schemas/docs.schema.json` があり、その中身がプラグインのスキーマと同じ'
+        expected: '`recorded` がプラグインの版、`source_files` に `.mindstella/schemas/docs.schema.json` があり、その中身がプラグインのスキーマと同じ'
+      - name: test_migrate_when_same_without_write_dates
+        case: 正常
+        summary: 版が同じでも、配信の設定の write_dates を持たない行に false を足す
+        condition: プラグインと同じ版で、スキーマの複製がプラグインと同じで、`dev-docs.yaml` の行が `write_dates` を持たないワークスペース
+        mock: '`read_plugin_version`'
+        expected: '`source_files` が `[.mindstella/dev-docs.yaml]`。版のファイルと記録の YAML が呼ぶ前と同じ'

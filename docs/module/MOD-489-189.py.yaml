@@ -1501,14 +1501,14 @@ functions:
       description: インターフェース定義『ワークスペースの作成』の制約「配信の設定」の中身
     process: |-
       1. `version: "3"`・`name`・`description`・`related.types`（`RELATED_TYPES`）を置く
-      2. `KINDS` の順に、種類ごとの `documents` の行（`id`・`title`・`paths`・`schema`・`records: items`・`body_file: body`・`metadata`）を足す
+      2. `KINDS` の順に、種類ごとの `documents` の行（`id`・`title`・`paths`・`schema`・`records: items`・`body_file: body`・`write_dates: false`・`metadata`）を足す
     unit_tests:
       - name: test_build_source_config
         case: 正常
         summary: 種類ごとの 7 つの行と関連の種類を持つ
         condition: '`mindstella-a-123456`・題名「a」'
         mock: なし
-        expected: '`documents` が 7 行で、`decisions` の行が `paths: [decisions.yaml]`・`records: items`・`body_file: body`・`schema: schemas/decisions.schema.json`。`related.types` が `[depends_on, parent, for, see_also]`'
+        expected: '`documents` が 7 行で、`decisions` の行が `paths: [decisions.yaml]`・`records: items`・`body_file: body`・`write_dates: false`・`schema: schemas/decisions.schema.json`。`related.types` が `[depends_on, parent, for, see_also]`'
   - name: sync_source_schemas
     title: スキーマの複製をそろえる
     kind: 関数
@@ -1556,6 +1556,55 @@ functions:
         condition: '`docs.schema.json` を別の中身に書き換えた複製。`os.replace` を `OSError` を送る関数に差し替える'
         mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
         expected: '`WriteFailedError`。`docs.schema.json` が呼ぶ前と同じで、一時ファイルが残っていない'
+        exception: 書き込みか置き換えで OSError
+    callers:
+      - MOD-489-179#functions[migrate]
+  - name: add_write_dates
+    title: 配信の設定に日時の指定を足す
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/store.py
+    usecase: 記録の形式の移行
+    scope: public
+    summary: '`.mindstella/dev-docs.yaml` の種類の行のうち `write_dates` を持たない行に `write_dates: false` を足す'
+    side_effects: '`.mindstella/dev-docs.yaml` を書く'
+    args:
+      - name: root
+        type: Path
+        required: true
+        passing: positional
+        description: ワークスペースのフォルダ
+    returns:
+      type: list[str]
+      description: 書いたとき `[.mindstella/dev-docs.yaml]`、書かなかったとき空
+    process: |-
+      1. `.mindstella/dev-docs.yaml`（`SOURCE_CONFIG_FILE`）が無ければ空を返す
+      2. YAML を読み、`documents` の行のうち `id` が `SOURCE_DOCUMENTS` の種類の行の ID で `write_dates` を持たない行に `write_dates: false` を足す（既に持つ行とほかの行・キーは変えない）
+         - 足す行が無い場合、空を返す
+      3. 一時ファイルに書いてから置き換える（`dump_yaml`・`_write_temp`・`os.replace`）
+         - `OSError` の場合、一時ファイルを消して `WriteFailedError` を送る
+    exceptions:
+      - name: WriteFailedError
+        condition: 書き込みか置き換えで `OSError` が起きた
+        message: '配信の設定を書けません: {パス}: {理由}'
+    unit_tests:
+      - name: test_add_write_dates
+        case: 正常
+        summary: write_dates を持たない種類の行だけに false を足し、利用者が書いた値を残す
+        condition: '`create_workspace` で作り、`dev-docs.yaml` の全ての行から `write_dates` を消し、`terms` の行を `write_dates: true` にしたワークスペース'
+        mock: なし
+        expected: '`[.mindstella/dev-docs.yaml]` を返し、`terms` 以外の 6 行が `write_dates: false`、`terms` が `true` のままで、ほかのキーの値が呼ぶ前と同じ'
+      - name: test_add_write_dates_when_present
+        case: 正常
+        summary: 全ての行が持つか設定が無ければ書かない
+        condition: '`parametrize`: `create_workspace` で作ったワークスペース / `dev-docs.yaml` を消したワークスペース'
+        mock: なし
+        expected: 空の並びを返し、ワークスペースが呼ぶ前と同じ
+      - name: test_add_write_dates_when_write_fails
+        case: 異常
+        summary: 置き換えられなければ送る
+        condition: '`write_dates` を消した `dev-docs.yaml`。`os.replace` を `OSError` を送る関数に差し替える'
+        mock: '`os.replace`（`store` モジュールの参照を monkeypatch）'
+        expected: '`WriteFailedError`。`dev-docs.yaml` が呼ぶ前と同じで一時ファイルが残っていない'
         exception: 書き込みか置き換えで OSError
     callers:
       - MOD-489-179#functions[migrate]
