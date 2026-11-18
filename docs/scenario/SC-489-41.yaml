@@ -298,6 +298,36 @@ scenarios:
     expected:
       - 起動のコマンドが 0 以外の終了コードで終わり、出力に claude-balancer が出した理由と画面の URL がある
       - ほかのアカウントで MindStella のセッションが起動しておらず、tmux にペインが残っていない
+  - name: 正常シナリオ（止めた後に立ち上げる）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ
+      - name: 依存が揃った環境
+        description: 正常シナリオと同じ
+      - name: ワークスペースのフォルダ
+        description: 正常シナリオで立ち上げた後、利用者が MindStella のセッションを `/exit` で止め、状態に停止済みと Claude Code の `session_id` が残っている
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant LS as 起動のコマンド
+        participant SV as 常駐サーバー（MindStella の API）
+        participant TM as tmux
+        participant CC as MindStella のセッション
+
+        U->>LS: 起動のコマンド {フォルダ}
+        LS->>SV: ワークスペースの作成を依頼する（POST /workspaces）
+        LS->>SV: MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+        SV->>TM: ペインの中で claude-balancer exec で、前の会話を引き継いで起動する
+        TM->>CC: 立ち上げる
+        CC->>SV: SessionStart（resume）のフックが状態に登録する
+        SV-->>LS: MindStella のセッションの ID・tmux のペイン・画面の URL
+        LS->>TM: MindStella のセッションのペインへつなぐ
+      ```
+    expected:
+      - Mock の claude-balancer が受けた引数に `--resume` と前の Claude Code の `session_id` がある
+      - 起動のコマンドが MindStella のセッションのペインへつないでいる
+    test: test_normal_when_relaunched_after_stop
 lead: 利用者が起動のコマンドにワークスペースのフォルダ（と任意の進め方の文書・追加の MCP・プラグイン）を渡すと、依存を確かめ、常駐サーバーが落ちていれば systemd --user で起動してから、外部のアプリと同じ MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ単一ユースケース。
 issue: 67
 primary_actor: 利用者
@@ -316,6 +346,7 @@ priority: 高
 refs:
   - SC-531-1#
   - SC-489-20#
+  - SC-582-1#
 notes:
   外部のアプリとの関係: 起動のコマンドは、単一ユースケース『外部のアプリから起動する』と同じ MindStella の API を呼ぶ。API の中の分岐（記録が既にある・クローズしたフォルダ・読めない指定など）は、そのシナリオで確かめる
   アカウント: MindStella のセッションのアカウントは claude-balancer が選ぶ（D-292）。`CLAUDE_CONFIG_DIR` でアカウントを指定したときは、claude-balancer からそのアカウントを借りる。claude-balancer が無い端末では、指定したアカウントか利用者の既定のアカウントで起動する
