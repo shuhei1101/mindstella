@@ -61,3 +61,6 @@ scope_out:
   - item: '結合テスト `tests/integration/server/test_stop_session.py` の `test_normal_when_session_crashed`・`test_normal_when_forced` の fail（`Unknown tool: add`）'
     reason: base（origin/develop）でも同じ理由で fail する既存の不具合で、この PR の変更に関係しない
     plan: '#574'
+  - item: 結合テスト `tests/integration/server/test_create_workspace.py::test_error_when_host_not_local` の間欠的な fail（`ConnectionResetError`）
+    reason: 再実行と base で pass する既存のテストの不安定さで、この PR の変更に関係しない
+    plan: '#575'
