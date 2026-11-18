@@ -191,9 +191,15 @@ functions:
         expected: '`RefLookupError` の `retry_at` が `2000000000` / 今の時刻 + 60'
       - name: test_fetch_head_sha_invalid
         case: 異常
-        summary: 届かない・500・SHA の形でない本文は `retry_at` の無い例外にする
-        condition: '`parametrize`: 誰も待ち受けないポート / 500 / 200 で本文 `develop`'
+        summary: 500・SHA の形でない本文は `retry_at` の無い例外にする
+        condition: '`parametrize`: 500 / 200 で本文 `develop`'
         mock: 偽のサーバー
+        expected: '`RefLookupError` の `retry_at` が `None`'
+      - name: test_fetch_head_sha_invalid_when_unreachable
+        case: 異常
+        summary: 誰も待ち受けないポートへは `retry_at` の無い例外にする
+        condition: '`GITHUB_API_BASE_URL` を誰も待ち受けない空きポートに向ける'
+        mock: なし
         expected: '`RefLookupError` の `retry_at` が `None`'
   - name: resolve_ref
     title: 常駐サーバーの mdmark の ref の解決
@@ -221,3 +227,5 @@ functions:
         condition: '`fetch_head_sha` を `monkeypatch` で呼ばれた数を数える関数にし、モジュールの解決器を空にしてから `resolve_ref("latest")` を 2 回呼ぶ'
         mock: '`fetch_head_sha`'
         expected: '`fetch_head_sha` は 1 回だけ呼ばれる'
+test_files:
+  - tests/unit/scripts/test_mdmark_ref.py
