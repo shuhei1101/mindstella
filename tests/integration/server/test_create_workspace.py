@@ -337,6 +337,23 @@ def _call(world: AgentFlowWorld, folder: Path, tool: str, **arguments: object) -
     return json.loads(result.text)
 
 
+def _reload_pi(world: AgentFlowWorld) -> None:
+    """端末の設定のファイルの行をそのまま `PUT /settings/sources` に送り、project-index に全ての配信元を読み直させる。"""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    url = f"http://127.0.0.1:{world.pi_port}/settings/sources"
+    with opener.open(url, timeout=30) as response:
+        settings = json.loads(response.read())
+    rows = yaml.safe_load(Path(settings["settingsPath"]).read_text(encoding="utf-8"))["sources"]
+    request = urllib.request.Request(
+        url,
+        data=json.dumps({"expectedVersion": settings["version"], "sources": rows}).encode("utf-8"),
+        method="PUT",
+        headers={"Content-Type": "application/json"},
+    )
+    with opener.open(request, timeout=30) as response:
+        assert response.status == 200
+
+
 def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> None:  # noqa: F811 - 読み込んだ fixture を引数で受ける
     """作った Git 管理外のワークスペースを実際の project-index で配信し、記録の作成・更新、本文を持たない項目の検索・更新、スキーマの複製を更新前に戻した後の開き直しを通す（正常系）。"""
     # 準備
@@ -408,6 +425,9 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
         ),
         encoding="utf-8",
     )
+    # 古いスキーマを project-index に読み込ませる
+    _reload_pi(world)
+    stale = _call(world, folder, "search_docs", source=source, filter={"field": "id", "op": "eq", "values": ["A-1"]})
     reopened_status, reopened = world.api("POST", "/workspaces", {"folder": str(folder)})
     doc = _call(world, folder, "search_docs", source=source, filter={"field": "id", "op": "eq", "values": ["A-1"]})
     # 検証
@@ -418,6 +438,7 @@ def test_normal_when_real_project_index(agent_flow_world: AgentFlowWorld) -> Non
     assert "読み込めない" not in json.dumps(term, ensure_ascii=False)
     terms = yaml.safe_load((records / "terms.yaml").read_text(encoding="utf-8"))["items"]
     assert terms == [{"id": "G-1", "title": "用語", "meaning": "意味 2"}]
+    assert "deliverable" in json.dumps(stale, ensure_ascii=False)
     assert reopened_status == 200, reopened
     assert [item["id"] for item in doc["items"]] == ["A-1"]
     assert "deliverable" not in json.dumps(doc, ensure_ascii=False)
