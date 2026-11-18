@@ -1,0 +1,76 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-34.yaml
+    impact: changed
+    detail: MindStella のセッションが、動画・画像などのファイルをワークスペースのファイルのフォルダに配置し、資料の本文に mdmark の `![キャプション](パス)` で埋め込む流れを追加する（配置から画面での再生までの流れは、新規作成する単一ユースケース『動画などのファイルを配置して資料に埋め込む』が持ち、作成したときにこの表へ追加する）
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-46.yaml
+    impact: changed
+    detail: 資料の本文に埋め込んだ動画・音声を詳細パネルと詳細の全画面で再生でき、画像が表示される。ファイルが無いときは、どのファイルが無いかが分かる
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: following
+    detail: 資料のカードから本文を開いたときに、埋め込んだ動画を再生できる（再生は『項目の詳細を読む』が持つ）
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: changed
+    detail: 埋め込んだファイルを持つ資料を書き出すと、書き出した資料でもファイルを表示・再生できる（扱いは `未確定`。要件.md の `## 要望`）
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: changed
+    detail: 埋め込んだファイルを持つワークスペースを配る書き出しにしたときの扱い（扱いは `未確定`。要件.md の `## 要望`）
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-16.yaml
+    impact: changed
+    detail: 資料の本文が埋め込んだファイルがワークスペースに無いことを、参照切れとして洗い出す
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: changed
+    detail: ファイルのフォルダへの配置・差し替え・削除を、項目の変更として扱わない。自動の commit にファイルを含めるかは `未確定`（要件.md の `## 要望`）
+    depends_on:
+      - docs/scenario/SC-489-34.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-10.yaml
+    impact: run_only
+    detail: 外の入口の内側で開いたプレビューでも、埋め込んだ動画を再生できる。シナリオの記述は変わらないが、ファイルの配信の追加が外から開いたときの許可するホスト名の判定を壊しうる
+    depends_on:
+      - docs/scenario/SC-489-46.yaml
+docs:
+  - page: docs/guide/ワークスペースの書式.md
+    new: false
+    change: ファイルのフォルダと、資料から埋め込むときのパスの書き方を追加する
+    status: todo
+  - page: docs/guide/コアコンセプト-ワークスペース.md
+    new: false
+    change: ワークスペースに動画などのファイルを配置して資料に埋め込めることを追加する
+    status: todo
+  - page: docs/guide/プレビューを見る.md
+    new: false
+    change: 資料に埋め込んだ動画・音声を画面で再生できることと、書き出しの扱いを追加する
+    status: todo
+  - page: docs/guide/コマンド.md
+    new: false
+    change: ファイルの配信のエンドポイントを追加し、書き出しのツールの出力が変われば修正する
+    status: todo
+  - page: plugins/mindstella/agent-flows/record.yaml
+    new: false
+    change: 記録の使い分けのエージェントフローに、動画などのファイルをファイルのフォルダへ配置し、資料に `![キャプション](パス)` で埋め込む手順を追加する
+    status: todo
+scope_out:
+  - item: 画面からファイルをアップロードしてワークスペースに配置する操作
+    reason: 要望に含まれない。配置は MindStella のセッション（D-267 の動画作成ノード）か利用者がファイルのフォルダへ置く
+    plan: none
+  - item: aituber の動画作成ノード（資料 A-103）が書き出した mp4 を配置する側の変更
+    reason: 別のリポジトリ（aituber）の変更で、この PR は配置先のフォルダと埋め込み・再生だけを持つ
+    plan: none
