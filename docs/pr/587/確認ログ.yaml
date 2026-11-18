@@ -5,3 +5,9 @@ confirmations:
     approver: shuhei1101
     commit: 382b9f243ad8674315b3c4c0613c09bcc58fe949
     thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4614591597
+  - topic: 埋め込んだファイルを持つ資料の書き出しの扱い
+    decision: 書き出しをこの PR から除外し、mindstella の書き出しを mdmark の書き出しに合わせる Issue を別に起票する（推奨案 B。#589）
+    decided_by: thumbs_up
+    approver: shuhei1101
+    commit: 382b9f243ad8674315b3c4c0613c09bcc58fe949
+    thread: https://github.com/shuhei1101/mindstella/pull/587#discussion_r4614708962

@@ -121,35 +121,6 @@ scenarios:
     expected:
       - 詳細パネルにも詳細の全画面にも、書き出しの入口が出ない
     test: test_normal_when_html_body
-  - name: 正常シナリオ（埋め込んだファイルを持つ資料）
-    setup:
-      - name: Mock
-        description: なし（MCP サーバーを立て、サーバーが配るプレビューを実際のブラウザで開く。描画のライブラリは CDN から読む）
-      - name: make_workspace
-        description: 作成を済ませたワークスペース
-      - name: 記録
-        description: 本文を Markdown で持つ資料 A-1
-        notes: 本文に `![動画](../files/clip.mp4)` と `![画面](../files/shot.png)` を持ち、両方を `.mindstella/files/` に配置する
-      - name: 配信
-        description: 記録を配っているサーバー
-    flow: |-
-      ```mermaid
-      sequenceDiagram
-        participant U as 利用者
-        participant P as プレビュー（ブラウザ）
-        participant F as 書き出した HTML（通信を止めたブラウザ）
-
-        U->>P: A-1 の詳細パネルで書き出しの入口を押し、「HTML でエクスポート」を押す
-        P-->>U: HTML と動画のフォルダをまとめた zip のダウンロード
-        U->>F: zip を展開し、HTML を開いて動画を再生する
-        F-->>U: 画像と、再生される動画
-      ```
-    expected:
-      - ダウンロードされるのは拡張子 `.zip` の 1 つのファイルで、中に HTML と、HTML の隣の `{HTML の名前}_files/clip.mp4` がある
-      - 書き出した HTML の画像は `data:` URL で埋められ、通信を止めて `file://` で開いても表示される
-      - 書き出した HTML の動画は `_files/` のコピーで再生でき、ページ自身・`_files/` の下のファイル・`data:` のほかへの要求が 0 件
-      - 埋め込んだ動画・音声を持たない資料の HTML の書き出しは、今と同じ 1 枚の `.html` のままである
-    test: test_normal_when_embedded_files
 lead: 利用者が、プレビューで開いた資料 1 件を、Markdown か、mindstella が無くても開ける 1 枚の HTML で書き出す単一ユースケース。
 issue: 212
 primary_actor: 利用者

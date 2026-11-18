@@ -19,14 +19,14 @@ use_cases:
       - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-39.yaml
-    impact: changed
-    detail: 埋め込んだ動画・音声を持つ資料を HTML で書き出すと、HTML と `_files/` の動画をまとめた zip がダウンロードされ、書き出した先でも画像の表示と動画の再生ができる（推奨の案で記載。ユーザーの確認を待つ）
+    impact: none
+    detail: '書き出しは今のまま。埋め込んだ動画・音声の書き出しは #589 で mdmark の書き出しに合わせる'
     depends_on:
       - docs/scenario/SC-587-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-11.yaml
-    impact: changed
-    detail: 埋め込んだファイルを持つ資料を配る書き出しにすると、画像は HTML に埋まり、動画は HTML の隣の `_files/` にコピーされて再生できる（推奨の案で記載。ユーザーの確認を待つ）
+    impact: none
+    detail: '配る書き出しは今のまま。埋め込んだ動画・音声の書き出しは #589 で mdmark の書き出しに合わせる'
     depends_on:
       - docs/scenario/SC-587-1.yaml
   - kind: single
@@ -38,7 +38,7 @@ use_cases:
   - kind: single
     scenario: docs/scenario/SC-540-1.yaml
     impact: changed
-    detail: ファイルのフォルダへの配置・差し替え・削除を項目の変更として記録せず、外部の変更のまとまりの自動の commit にファイルを含める（Git に含めるのは推奨の案で記載。ユーザーの確認を待つ）
+    detail: ファイルのフォルダへの配置・差し替え・削除を項目の変更として記録せず、Git のリポジトリのワークスペースでは外部の変更のまとまりの自動の commit にファイルを含める。Git 管理外のワークスペースでは commit だけをしない
     depends_on:
       - docs/scenario/SC-587-1.yaml
   - kind: single
@@ -83,3 +83,6 @@ scope_out:
   - item: 資料の本文の動画・音声・画像を読み込めないときに、画面の要素の場所へ警告を表示する
     reason: mdmark の部品『動画と音声』は読み込みの失敗の警告を持たず、mindstella の画面で警告を持つと部品と画面設計が増える。この PR では点検が参照切れとして通知し、画面の警告は mdmark の描画で持つかを別に決める
     plan: to_file
+  - item: 埋め込んだ動画・音声を書き出した先（資料を書き出す・配る書き出し）でも再生できるようにする
+    reason: 書き出しの画像の埋め込みと動画・音声のコピーは mdmark の書き出しが持ち、mindstella に同じ処理を重ねない（ユーザーの決定）
+    plan: '#589'
