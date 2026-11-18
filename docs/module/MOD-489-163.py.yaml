@@ -1,11 +1,11 @@
 id: MOD-489-163
-title: サーバー / 登録 / register.py
-lead: セットアップのスキルが Bash で呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。
+title: サーバー / 起動 / register.py
+lead: 起動のコマンドの `register` のサブコマンドが呼ぶ登録のスクリプト。起動スクリプトを呼ぶ alias `mindstella`・`mindstella-{名前}` と、起動スクリプトが読む環境変数を、登録の置き場所のファイルとログインシェルの設定ファイルの印の範囲へ書く・読み返す・外す。
 test_files:
   - tests/unit/scripts/test_register.py
 directory: |-
   ```
-  plugins/mindstella/skills/setup/scripts/
+  plugins/mindstella/skills/mindmap/scripts/
     register.py   登録のスクリプト（システムの python3 で起動。Python 3.8 で読める構文と標準ライブラリだけ。形はインターフェース定義『起動スクリプトの登録』）
   ```
 diagrams:
@@ -27,7 +27,7 @@ diagrams:
 data_models:
   - name: Registration
     title: 登録
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     role: DTO
     summary: '`registration.json` に残す登録の中身（`TypedDict`）。`shell.sh` はここから作る'
@@ -41,7 +41,7 @@ data_models:
 classes:
   - name: NotWritableError
     title: 書き込めない
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: ログインシェルの設定ファイルか登録の置き場所に書き込めない。`main` が `error` と `manual_lines` を標準出力に出して終了コード 1 にする
     kind: クラス
@@ -52,7 +52,7 @@ classes:
         description: 書き込めないファイルかフォルダ
   - name: UnsupportedShellError
     title: 扱えないシェル
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: '`SHELL` の末尾の名前が `bash`・`zsh` のどちらでもない。`main` が `error` と、bash の形の `manual_lines` を出して終了コード 1 にする'
     kind: クラス
@@ -63,7 +63,7 @@ classes:
         description: '`SHELL` の値'
   - name: UnknownAccountError
     title: 知らないアカウント
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: '`remove-account` の名前が登録に無い。`main` が登録済みの名前を `error` に入れて終了コード 1 にする'
     kind: クラス
@@ -75,37 +75,37 @@ classes:
 constants:
   - name: ENV_KEYS
     title: 登録できる環境変数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: '`--env`・`--unset-env` で受けるキー（設定『サーバー』の環境変数。`shell.sh` にはこの順で書く）'
     value: ("MINDSTELLA_VENV", "MINDSTELLA_PORT", "MINDSTELLA_ALLOWED_HOSTS", "MINDSTELLA_PREVIEW_START_HOOK", "MINDSTELLA_PREVIEW_STOP_HOOK", "MINDSTELLA_TRANSCRIBER", "MINDSTELLA_TRANSCRIBER_URL", "MINDSTELLA_DISCORD_WEBHOOK_FILE")
   - name: ALIAS_NAME
     title: alias の名前
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: 既定のアカウントで立ち上げる alias。アカウントごとの alias は `{ALIAS_NAME}-{名前}`（確認ログの決定）
     value: '"mindstella"'
   - name: ACCOUNT_NAME_PATTERN
     title: アカウントの名前の形
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: 英小文字・数字・`-` の 1〜32 文字で、英小文字か数字で始まる
     value: r"^[a-z0-9][a-z0-9-]{0,31}$"
   - name: MARK_BEGIN
     title: 印の始まり
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: ログインシェルの設定ファイルに足す範囲の頭の行
     value: '"# >>> mindstella >>>"'
   - name: MARK_END
     title: 印の終わり
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: ログインシェルの設定ファイルに足す範囲の尾の行
     value: '"# <<< mindstella <<<"'
   - name: PLUGIN_ID
     title: プラグインの識別子
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     summary: alias が `claude plugin list --json` の要素の `id` で引く値（`launch.py` の同じ名前の定数と合わせる。仮想環境の外で動くため import しない）
     value: '"mindstella@mindstella"'
@@ -113,7 +113,7 @@ functions:
   - name: main
     title: 登録の入口
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: サブコマンドを解釈して登録を読む・書く・外し、その後の登録を JSON で標準出力に出して終了コードを返す
@@ -225,7 +225,7 @@ functions:
   - name: registration_dir
     title: 登録の置き場所
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: '`registration.json` と `shell.sh` を置くフォルダを返す'
@@ -248,7 +248,7 @@ functions:
   - name: rc_file_path
     title: ログインシェルの設定ファイル
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: '`SHELL` と OS から、印の範囲を足す設定ファイルを決める'
@@ -290,7 +290,7 @@ functions:
   - name: read_registration
     title: 登録を読む
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: 登録の置き場所の `registration.json` を読む。無ければ `None`（読めない JSON は `json.JSONDecodeError` をそのまま送る）
@@ -313,7 +313,7 @@ functions:
   - name: apply_set
     title: 環境変数を書き換える
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: 渡したキーだけを書き換え・外した登録を返す（渡した登録は変えない）
@@ -346,7 +346,7 @@ functions:
   - name: apply_add_account
     title: アカウントを足す
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: アカウントを足した登録を返す。同じ名前があれば設定のフォルダを書き換える
@@ -379,7 +379,7 @@ functions:
   - name: apply_remove_account
     title: アカウントを外す
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: アカウントを外した登録を返す
@@ -421,7 +421,7 @@ functions:
   - name: render_shell
     title: shell.sh の中身
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: 登録から `shell.sh` の中身（`export` と alias の関数）を作る。bash と zsh のどちらでも読める書き方だけを使う
@@ -448,7 +448,7 @@ functions:
   - name: add_rc_block
     title: 印の範囲を足す
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: 設定ファイルの中身に、`shell.sh` を読み込む印の範囲が無ければ末尾に足す
@@ -479,7 +479,7 @@ functions:
   - name: remove_rc_block
     title: 印の範囲を消す
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: 設定ファイルの中身から、`MARK_BEGIN` から `MARK_END` までの行を消す。範囲の外の行は 1 字も変えず、`add_rc_block` が足した改行も戻す
@@ -505,7 +505,7 @@ functions:
   - name: write_files
     title: まとめて書く
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: ファイルごとの中身を、全て書けると確かめてから書く。中身が `None` のファイルは消す
@@ -546,7 +546,7 @@ functions:
   - name: build_report
     title: 出す登録
     kind: 関数
-    container: plugins/mindstella/skills/setup/scripts/register.py
+    container: plugins/mindstella/skills/mindmap/scripts/register.py
     usecase: 起動スクリプトの登録
     scope: public
     summary: 登録から、標準出力に出す JSON（インターフェース定義『起動スクリプトの登録』のレスポンス）を作る
