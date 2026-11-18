@@ -40,13 +40,13 @@ flows:
         participant クライアント
         participant IF as 常駐サーバー（mindstella）
 
-        クライアント->>IF: status（workspace は空のフォルダ）
+        クライアント->>IF: pending（workspace は空のフォルダ）
         IF-->>クライアント: ツールのエラー
         クライアント->>IF: ツールの一覧
         IF-->>クライアント: 全てのツール
       ```
     expected:
-      - '`status` の結果の `isError` が真で、本文が `エラー: ` で始まり、フォルダのパスを含み、トレースバックを含まない'
+      - '`pending` の結果の `isError` が真で、本文が `エラー: ` で始まり、フォルダのパスを含み、トレースバックを含まない'
       - その後のツールの一覧が返る
     test: test_normal_when_tool_fails
   - name: 正常系（引数の誤り）
@@ -60,7 +60,7 @@ flows:
         participant クライアント
         participant IF as 常駐サーバー（mindstella）
 
-        クライアント->>IF: status（workspace なし）
+        クライアント->>IF: pending（workspace なし）
         IF-->>クライアント: ツールのエラー
       ```
     expected:
@@ -81,14 +81,14 @@ flows:
         participant C2 as クライアント（B）
         participant IF as 常駐サーバー（mindstella）
 
-        C1->>IF: status（workspace は talk、session.cwd は A）
-        IF-->>C1: A/talk の状況
-        C2->>IF: status（workspace は talk、session.cwd は B）
-        IF-->>C2: B/talk の状況
+        C1->>IF: next_id（workspace は talk、kind は decision、session.cwd は A）
+        IF-->>C1: A/talk の次の ID
+        C2->>IF: next_id（workspace は talk、kind は decision、session.cwd は B）
+        IF-->>C2: B/talk の次の ID
       ```
     expected:
-      - A のクライアントが受けた状況が D-1 を持ち、D-2 を持たない
-      - B のクライアントが受けた状況が D-2 を持ち、D-1 を持たない
+      - A のクライアントが受けた次の ID が D-2（A/talk の D-1 の次）
+      - B のクライアントが受けた次の ID が D-3（B/talk の D-2 の次）
     test: test_normal_when_relative_path_with_session
   - name: 正常系（相対パスで作業フォルダが無い）
     summary: '`session` を渡さずに相対パスを渡すと、引数の誤りのツールのエラーで返す'
@@ -101,7 +101,7 @@ flows:
         participant クライアント
         participant IF as 常駐サーバー（mindstella）
 
-        クライアント->>IF: status（workspace は talk、session なし）
+        クライアント->>IF: pending（workspace は talk、session なし）
         IF-->>クライアント: ツールのエラー
       ```
     expected:

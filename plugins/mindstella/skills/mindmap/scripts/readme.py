@@ -43,7 +43,7 @@ DOC_LINKS = (
     ),
 )
 
-# ドキュメントの節の末尾に書く、書き直しとエージェントフローの案内
+# 冒頭の説明の後ろに書く、書き直しとエージェントフローの案内
 FLOW_NOTE = (
     "このファイルはワークスペースを開くたびに書き直されます。\n"
     "MindStella のセッションは、起動と再開・コメントの取り込み・記録の使い分けのエージェントフロー"
@@ -82,6 +82,7 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
         f"# {resolved.name}",
         "",
         "mindstella の話し合いのワークスペースです。記録は `.mindstella/` にあり、プレビューで読みます。",
+        FLOW_NOTE,
         "",
         "## プレビュー",
         "",
@@ -101,7 +102,6 @@ def render_readme(root: Path, *, plugin_dir: Path, preview_url: str | None) -> s
             lines += [f"- `{option}`: {summary}" for option, summary in LAUNCH_OPTIONS] + [""]
     lines += ["## ドキュメント", ""]
     lines += [f"- [{title}]({url})" for title, url in DOC_LINKS]
-    lines += ["", FLOW_NOTE]
     return "\n".join(lines) + "\n"
 
 
