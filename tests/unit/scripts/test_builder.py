@@ -738,9 +738,11 @@ def test_assemble_standalone_template(tmp_path: Path) -> None:
     libraries = (_module_library(), make_library("a"), make_library("b"))
     # 実行
     html = builder.assemble_standalone_template(
-        preview_dir=folder, libraries=libraries, fetch=fetch,
-            mdmark_settings=MDMARK_SETTINGS,
-            mdmark_ref=MDMARK_VERSION,
+        preview_dir=folder,
+        libraries=libraries,
+        fetch=fetch,
+        mdmark_settings=MDMARK_SETTINGS,
+        mdmark_ref=MDMARK_VERSION,
     )
     # 検証
     assert "https://" not in html
@@ -785,7 +787,9 @@ def test_assemble_standalone_template_when_integrity_mismatch(tmp_path: Path) ->
     # 実行・検証
     with pytest.raises(errors.DownloadFailedError, match=re.escape(dist_url("a"))):
         builder.assemble_standalone_template(
-            preview_dir=folder, libraries=libraries, fetch=fetch,
+            preview_dir=folder,
+            libraries=libraries,
+            fetch=fetch,
             mdmark_settings=MDMARK_SETTINGS,
             mdmark_ref=MDMARK_VERSION,
         )
@@ -843,7 +847,9 @@ def test_assemble_standalone_template_when_tag_inside(
     # 実行・検証
     with pytest.raises(ValueError, match=match):
         builder.assemble_standalone_template(
-            preview_dir=folder, libraries=libraries, fetch=fetch,
+            preview_dir=folder,
+            libraries=libraries,
+            fetch=fetch,
             mdmark_settings=MDMARK_SETTINGS,
             mdmark_ref=MDMARK_VERSION,
         )
@@ -880,7 +886,9 @@ def test_assemble_standalone_template_when_library_unknown(
     # 実行・検証
     with pytest.raises(ValueError, match=f"ライセンスの表示が無い外の読み込み: {re.escape(package)}"):
         builder.assemble_standalone_template(
-            preview_dir=folder, libraries=libraries, fetch=fetch,
+            preview_dir=folder,
+            libraries=libraries,
+            fetch=fetch,
             mdmark_settings=MDMARK_SETTINGS,
             mdmark_ref=MDMARK_VERSION,
         )

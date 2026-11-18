@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import pytest
 
 import mdmark_ref
+
 # 問い合わせは conftest の offline_mdmark_ref が差し替えるため、差し替える前の関数を取っておく
 from mdmark_ref import MdmarkRefResolver, RefLookupError, fetch_head_sha
 
@@ -65,7 +66,7 @@ def start_fake_github(monkeypatch: pytest.MonkeyPatch) -> Iterator[StartFakeGitH
                 self.end_headers()
                 self.wfile.write(response.body)
 
-            def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            def log_message(self, format: str, *args: object) -> None:
                 """テストの出力に要求の記録を出さない。"""
 
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
@@ -241,7 +242,9 @@ def test_fetch_head_sha_rate_limited(
     start_fake_github(response)
     monkeypatch.setattr(mdmark_ref.time, "time", lambda: 1_700_000_000.0)
     # 実行・検証
-    with pytest.raises(RefLookupError, match="mdmark の develop の commit を問い合わせられません") as exc_info:
+    with pytest.raises(
+        RefLookupError, match="mdmark の develop の commit を問い合わせられません"
+    ) as exc_info:
         fetch_head_sha()
     assert exc_info.value.retry_at == expected_retry_at
 
@@ -253,14 +256,14 @@ def test_fetch_head_sha_rate_limited(
         pytest.param(FakeResponse(200, b"develop"), id="not_sha"),
     ],
 )
-def test_fetch_head_sha_invalid(
-    start_fake_github: StartFakeGitHub, response: FakeResponse
-) -> None:
+def test_fetch_head_sha_invalid(start_fake_github: StartFakeGitHub, response: FakeResponse) -> None:
     """500・SHA の形でない本文は retry_at の無い例外にする（異常系）。"""
     # 準備
     start_fake_github(response)
     # 実行・検証
-    with pytest.raises(RefLookupError, match="mdmark の develop の commit を問い合わせられません") as exc_info:
+    with pytest.raises(
+        RefLookupError, match="mdmark の develop の commit を問い合わせられません"
+    ) as exc_info:
         fetch_head_sha()
     assert exc_info.value.retry_at is None
 
@@ -274,7 +277,9 @@ def test_fetch_head_sha_invalid_when_unreachable(
     monkeypatch.setenv("NO_PROXY", "127.0.0.1")
     monkeypatch.setattr(mdmark_ref, "GITHUB_API_BASE_URL", f"http://127.0.0.1:{free_port}")
     # 実行・検証
-    with pytest.raises(RefLookupError, match="mdmark の develop の commit を問い合わせられません") as exc_info:
+    with pytest.raises(
+        RefLookupError, match="mdmark の develop の commit を問い合わせられません"
+    ) as exc_info:
         fetch_head_sha()
     assert exc_info.value.retry_at is None
 
