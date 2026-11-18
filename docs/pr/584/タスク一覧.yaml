@@ -64,7 +64,10 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T12:22:10.019031+00:00'
   - process: ドキュメント修正
-    status: todo
+    status: skipped
+    reason: 不具合 2 の分に更新ドキュメントが無い（設計書は設計の工程で修正済み）。更新ドキュメントの 2 行（ER-489-1・record.yaml）は不具合 1・3 の分で、project-index#195 の完了後に todo へ戻して修正する
+    updated_by: planner
+    updated_at: '2026-11-18T12:26:23.540953+00:00'
   - process: 単体テスト作成
     status: todo
   - process: 実装
