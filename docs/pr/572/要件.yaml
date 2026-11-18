@@ -58,23 +58,33 @@ docs:
   - page: docs/guide/コマンド.md
     new: false
     change: 起動のコマンドの CLAUDE_CONFIG_DIR と、MindStella のセッションの作成の claude_config_dir・エラーの説明を、claude-balancer がある端末でも指定したアカウントで起動することに書き換える（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
     new: false
     change: 起動するアカウントの説明と、指定したアカウントを借りられないときの止まり方を書き換える（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
   - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
     new: false
     change: アカウントごとの alias の CLAUDE_CONFIG_DIR が、claude-balancer がある端末でも MindStella のセッションのアカウントになることに書き換える（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
   - page: docs/guide/動作環境.md
     new: false
     change: claude-balancer の行に、アカウントの指定（exec --account）を持つバージョンが要ることを記載する（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
   - page: plugins/mindstella/bin/mindstella
     new: false
     change: 冒頭の環境変数の説明の CLAUDE_CONFIG_DIR を、claude-balancer がある端末でも借りるアカウントの指定にすることに書き換える（#556）
-    status: todo
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T04:41:02.884479+00:00'
 scope_out:
   - item: test_preview_url.py の fail の修正
     reason: '同じタグの未着手の行だが、進行中の作業 PR #550 が変える commands.py に修正が及ぶため束に含めていない'
