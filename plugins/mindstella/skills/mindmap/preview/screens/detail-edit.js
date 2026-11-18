@@ -90,7 +90,7 @@ var MindmapPreview;
             case "research":
                 return { question: "" };
             case "docs":
-                return { status: "下書き", kind: "文書", deliverable: false, body: "" };
+                return { status: "下書き", kind: "文書", body: "" };
             case "terms":
                 return { meaning: "" };
             case "notes":

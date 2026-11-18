@@ -21,7 +21,7 @@ export const addDefaults = (kind: Kind, today: string): Record<string, unknown> 
     decisions: { status: "未整理" },
     tasks: { status: "未着手", kind: "作業" },
     research: { question: "" },
-    docs: { status: "下書き", kind: "文書", deliverable: false, body: "" },
+    docs: { status: "下書き", kind: "文書", body: "" },
     terms: { meaning: "" },
     notes: { content: "" },
     logs: { date: today },
