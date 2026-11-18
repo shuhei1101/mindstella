@@ -1,0 +1,179 @@
+id: IF-594-1
+title: 無操作の上限での停止
+entry:
+  kind: trigger
+  value: 『落ちたことの見回り』の見回りのたび（同じスレッドで、落ちたことの判定の後）
+lead: 状態が起動中で応答の途中でない MindStella のセッションのうち、最後の出来事から無操作の上限を過ぎたものを、クローズ待ちにせずに止めて claude-balancer のアカウントを返却させ、『停止の通知』を呼ぶ。
+idempotent: true
+side_effects: '上限を過ぎた `session.json` を `stopping` にし、まとめていない変更を commit してから Claude Code を止めて `stopped`・`stop_reason: idle_timeout` にする。『停止の通知』を止まった理由 `idle_timeout` で呼ぶ。`restart_on_stopped` が真なら『MindStella のセッションの起動し直し』を契機 `comment` で呼ぶ。止める間に失敗したときは `last_error` と `idle_stop_failures` を書き換える'
+exclusivity: 見回りのスレッドは、`session.json` ごとの書き込みの鍵を取って対象かを判定し、対象ならその鍵の中で `status` を `stopping` にする。止める工程は『MindStella のセッションの停止』と同じく別の `daemon` のスレッドで実行し、見回りのスレッドを待たせない。ワークスペースごとの鍵は `stopping` にするまで持ち、待つ間と止める間は持たない（『MindStella のセッションの停止』と同じ）
+exceptions:
+  - name: なし（正常終了）
+    condition: 1 つのワークスペースの判定・停止に失敗しても
+    notes: 標準エラーに 1 行記録して次のワークスペースへ進む。見回りのスレッドは止めない
+constraints:
+  - item: 無操作の上限
+    constraint: 非機能要件『無操作の上限』の秒数。環境変数 `MINDSTELLA_IDLE_TIMEOUT` で上書きでき、`0` のときはこの判定をしない。常駐サーバーの起動のときに 1 回読む
+    decided_by: NFR-489-1#requirements[無操作の上限]
+  - item: 対象
+    constraint: '`session.json` の `status` が `running` で、`responding` が偽で、`close_pending` が偽で、`last_activity_at` から今までが上限以上で、`idle_stop_failures` が非機能要件『無操作の上限での停止を続けてやり直す回数』未満のもの。落ちたことの判定で `crashed` にしたものは対象にしない。`stopping`・`restarting`・`stopped`・`crashed` は対象にしない'
+    decided_by: NFR-489-1#requirements[無操作の上限での停止を続けてやり直す回数]
+  - item: 止め方
+    constraint: 『MindStella のセッションの停止』の「最後の書き込みの判定」「最後の書き込みを待つ上限」「止め方」「まとめていない変更」と同じ処理を、`force` を偽にして呼ぶ。`close_pending` を真にしない。まとめていない変更の説明は、無操作の上限で止める前の分であることを入れる
+  - item: 止め終えたとき
+    constraint: 停止済みを記録するとき（書き換える前が `stopping`・`stopped`・`crashed` のどれでも）、`status` を `stopped`、`stop_reason` を `idle_timeout`、`idle_stop_failures` を 0 にし、`restart_on_stopped` を読んで偽に戻す。この書き換えは `session.json` ごとの書き込みの鍵の中で書き換える
+  - item: 停止の通知
+    constraint: 止め終えたときに、『停止の通知』を止まった理由 `idle_timeout` で 1 回呼ぶ。止める間に失敗して `running` に戻したときは呼ばず、`crashed` に戻したときは『MindStella のセッションの停止』と同じく `stop_failed` で呼ぶ
+  - item: 止めている途中に届いたコメント
+    constraint: 止め終えたときに読んだ `restart_on_stopped` が真なら、『停止の通知』を呼んだ後に『MindStella のセッションの起動し直し』を契機 `comment` で呼ぶ。準備ができたら、『コメントをまとめて送る』の「入力する文字列」と同じ文字列で、取り込み待ちのスレッドの件数を起動し直したペインへ入力する。起動し直しに失敗したときは、コメントはスレッドに残り、失敗は『MindStella のセッションの起動し直し』のとおり `last_error` で分かる
+  - item: 止める間の失敗
+    constraint: '最後の書き込みを待つ上限を過ぎたときと、Claude Code が終わらずに `running` に戻したときは、`idle_stop_failures` を 1 足し、`last_error` を `idle_stop: {段階と理由}` にする。`idle_stop_failures` が非機能要件『無操作の上限での停止を続けてやり直す回数』に達したら、次に `last_activity_at` が書き換わるまで対象にしない。`restart_on_stopped` が真なら、`running` に戻した後に『コメントをまとめて送る』と同じ文字列で件数をペインへ入力し、偽に戻す'
+    decided_by: NFR-489-1#requirements[無操作の上限での停止を続けてやり直す回数]
+  - item: 同時の依頼
+    constraint: 無操作の上限で止めている途中（`stopping` で `close_pending` が偽）に届いた『MindStella のセッションの停止』・『MindStella のセッションの起動し直し』の依頼は、それぞれの停止の途中の扱い（409 `stopping`）に従う
+flows:
+  - name: 正常系
+    summary: 上限を過ぎた running の MindStella のセッションを、クローズ待ちにせずに止めて無操作の上限を 1 件通知する
+    setup:
+      - name: Mock
+        description: Discord の Webhook（テストごとに起動した HTTP のエンドポイント。受けた要求を記録して 200 を返却する）と、Claude Code（ペインに `/exit` が貼られたら『MindStella のセッションのフック』の SessionEnd を叩いて終わる）
+      - name: 常駐サーバー
+        description: テストを動かす Python で子プロセスとして起動する。`MINDSTELLA_PORT` は空きポート、`XDG_STATE_HOME` はテストごとの一時フォルダ、`MINDSTELLA_CRASH_WATCH_INTERVAL` は 1、`MINDSTELLA_IDLE_TIMEOUT` は 2、`MINDSTELLA_DISCORD_WEBHOOK_FILE` はエンドポイントの URL を記載した一時ファイル
+      - name: 状態
+        description: '`status: running`・`responding: false`・`close_pending: false` で、`last_activity_at` が 2 秒より前の `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant ST as 状態のフォルダ
+        participant SP as 止めるスレッド
+        participant CC as Claude Code（Mock）
+        participant IF as 停止の通知
+        participant DC as Discord（Mock）
+
+        WT->>ST: running の session.json を読む
+        WT->>WT: 応答の途中でなく、上限を過ぎている
+        WT->>ST: stopping にする（close_pending は偽のまま）
+        WT->>SP: 止める
+        SP->>CC: /exit を貼る
+        CC->>ST: SessionEnd（stopped）
+        SP->>ST: stopped・stop_reason: idle_timeout
+        SP->>IF: idle_timeout
+        IF->>DC: POST
+      ```
+    expected:
+      - '`session.json` の `status` が `stopped`、`stop_reason` が `idle_timeout`、`close_pending` が偽'
+      - エンドポイントが 1 件だけ要求を受け、止まった理由が無操作の上限
+      - '『MindStella のセッションの一覧』が `stop_reason: idle_timeout` を返却する'
+    test: test_normal
+  - name: 正常系（応答の途中）
+    summary: responding が真の MindStella のセッションは上限を過ぎても止めない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: '`status: running`・`responding: true` で、`last_activity_at` が 2 秒より前の `session.json`'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant ST as 状態のフォルダ
+
+        WT->>ST: session.json を読む
+        WT->>WT: 応答の途中なので飛ばす
+      ```
+    expected:
+      - '`session.json` の `status` が `running` のまま'
+      - エンドポイントが要求を受けていない
+    test: test_normal_when_responding
+  - name: 正常系（止めない指定）
+    summary: MINDSTELLA_IDLE_TIMEOUT が 0 のときは止めない
+    setup:
+      - name: Mock
+        description: 正常系と同じ
+      - name: 常駐サーバー
+        description: 正常系と同じ。`MINDSTELLA_IDLE_TIMEOUT` は 0
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+
+        WT->>WT: 無操作の上限が 0 なので判定しない
+      ```
+    expected:
+      - '`session.json` の `status` が `running` のまま'
+    test: test_normal_when_disabled
+  - name: 正常系（止めている途中にコメントが届く）
+    summary: stopping の間に届いたコメントを、止め終えた後に起動し直して届ける
+    setup:
+      - name: Mock
+        description: Discord の Webhook（正常系と同じ）・claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）・Claude Code（`/exit` が貼られたら 1 秒待ってから SessionEnd を叩いて終わる。起動されたら引数を記録し、SessionStart を叩いて待つ）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ。`claude_session_id` とその会話の記録のファイルがある
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant SP as 止めるスレッド
+        participant SD as コメントをまとめて送る
+        participant RS as 起動し直し
+        participant CC as Claude Code（Mock）
+
+        WT->>SP: 上限を過ぎたので止める（stopping）
+        SP->>CC: /exit を貼る
+        SD->>SD: stopping で close_pending が偽なので貼らず、restart_on_stopped を真にする
+        CC->>SP: SessionEnd
+        SP->>SP: stopped・idle_timeout にし、restart_on_stopped を読んで偽に戻す
+        SP->>RS: comment
+        RS->>CC: claude --resume {前の session_id}
+        CC->>RS: SessionStart
+        SP->>CC: 届いた件数を貼る
+      ```
+    expected:
+      - '`POST /api/comments/send` の応答が `entered: false`'
+      - 止め終えた後に起動した Claude Code が `--resume` と前の `session_id` を受け、ペインに届いた件数の入力が貼られている
+      - '`session.json` の `status` が `running`、`stop_reason` が `null`、`restart_on_stopped` が偽'
+    test: test_normal_when_comment_while_stopping
+  - name: 異常系（止める間に失敗を続ける）
+    summary: 止める間の失敗が上限の回数に達したら、それ以上止めない
+    setup:
+      - name: Mock
+        description: 正常系と同じ Webhook と、Claude Code（`/exit` が貼られても終わらず、SIGTERM を無視する）
+      - name: 常駐サーバー
+        description: 正常系と同じ
+      - name: 状態
+        description: 正常系と同じ
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant WT as 見回りのスレッド
+        participant SP as 止めるスレッド
+        participant ST as 状態のフォルダ
+
+        loop 上限の回数まで
+          WT->>SP: 止める
+          SP->>ST: running に戻し、idle_stop_failures を 1 足す・last_error
+        end
+        WT->>WT: idle_stop_failures が上限に達したので飛ばす
+      ```
+    expected:
+      - '`session.json` の `status` が `running`、`idle_stop_failures` が上限の回数、`last_error` が `idle_stop:` で始まる'
+      - 上限に達した後の見回りで `/exit` を貼っていない
+      - エンドポイントが要求を受けていない
+    test: test_error_when_stop_keeps_failing
+refs:
+  - IF-582-2#
+  - IF-531-4#
+  - IF-531-3#
+  - IF-570-1#
+  - IF-582-1#
+  - IF-489-6#
+callers:
+  - SC-594-1#
+test_file: tests/integration/server/test_idle_stop.py

@@ -306,3 +306,14 @@ settings:
       - IF-582-2#
     notes:
       補足: 結合テストが短くするために使う
+  - key: MINDSTELLA_IDLE_TIMEOUT
+    title: 無操作の上限の秒数
+    file: 環境変数
+    type: str
+    required: false
+    default: 非機能要件『無操作の上限』の値
+    description: 『無操作の上限での停止』が MindStella のセッションを止めるまでの、最後の出来事からの秒数。`0` で止めない。0 以上の整数でない値は既定値を使い、標準エラーに 1 行記録する
+    env_var: MINDSTELLA_IDLE_TIMEOUT
+    reload: restart
+    status: planned
+    visibility: user

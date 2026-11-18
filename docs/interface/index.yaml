@@ -140,3 +140,5 @@ items:
     summary: 起動中の MindStella のセッションを一定の間隔で見回り、落ちていれば記録して通知する
   - page: IF-587-1.yaml
     summary: ワークスペースのファイルのフォルダのファイルを `/files/` の下で配る（範囲の要求に対応）
+  - page: IF-594-1.yaml
+    summary: 応答の途中でないまま無操作の上限を過ぎた MindStella のセッションを止めてアカウントを返却し、通知する

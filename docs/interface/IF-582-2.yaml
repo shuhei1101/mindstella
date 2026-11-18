@@ -23,6 +23,8 @@ constraints:
     constraint: '`running` から `crashed` に書き換えたときだけ『停止の通知』を `crashed` で呼ぶ。一覧が先に `crashed` にしていれば呼ばない'
   - item: 起動し直し
     constraint: 見回りでは起動し直さない。起動し直すのはコメントが届いたとき（『コメントをまとめて送る』）と起動し直しの依頼
+  - item: 無操作の上限での停止
+    constraint: 見回りのたび、各ワークスペースの落ちたことの判定の後に、同じスレッドで『無操作の上限での停止』の判定を呼ぶ
 flows:
   - name: 正常系
     summary: ペインが無い running の MindStella のセッションを crashed にし、異常終了を 1 件通知する
@@ -76,6 +78,7 @@ flows:
 refs:
   - IF-531-3#
   - IF-570-1#
+  - IF-594-1#
 callers:
   - SC-582-1#
 test_file: tests/integration/server/test_crash_watch.py

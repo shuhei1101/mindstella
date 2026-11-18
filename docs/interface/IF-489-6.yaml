@@ -584,6 +584,8 @@ constraints:
   - item: MindStella のセッションが無いとき
     constraint: '宛先が生きていないとき、ワークスペースの MindStella のセッションが `crashed`（`running` でも落ちていれば `crashed` にする）でクローズ待ちでもクローズ済みでもなければ、『MindStella のセッションの起動し直し』を契機 `comment` で呼び、準備ができたら新しいペインへ同じ文字列を入力して `restarted` を真にする。起動し直しに失敗したときと、クローズ待ち・クローズ済みのときは `entered: false` にし、コメントはスレッドに残す。起動し直しを待つ間も書き換えの鍵とワークスペースのロックを持たない'
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
+  - item: 最後の出来事の記録
+    constraint: 'MindStella のセッションの記録（`session.json`）の `pane` へ入力して `entered: true` にしたとき、`session.json` ごとの書き込みの鍵を取って `last_activity_at` を入力した日時にし、`idle_stop_failures` を 0 に戻す。MindStella のセッションの `status` が `stopping` で `close_pending` が偽（『無操作の上限での停止』の途中）のときは入力せず、`restart_on_stopped` を真にする'
 refs:
   - ER-489-1#
   - SC-489-3#

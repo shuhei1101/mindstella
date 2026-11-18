@@ -81,7 +81,7 @@ constraints:
     constraint: "0.5 秒ごとに、状態の `claude_session_id` が入ったかと、`display-message -p -t ={ワークスペースの ID}: '#{pane_dead} #{pane_dead_status}'` でペインのコマンドが終わったかを読み、上限まで待つ。登録が入ったら 201、ペインのコマンドが先に終わったら終了コードで 503（125）と 502（ほか）を分け、`capture-pane -p -S -20` で最後の 20 行を読んでからペインを閉じる。上限を過ぎたら 504"
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: 状態
-    constraint: '`session.json` に `session`・`status: running`・`claude_session_id`（フックが入れる）・`pane`・`pid`・`claude_config_dir`（フックが入れる）・`responding: false`・`pending_write: false`・`close_pending: false`・`started_at` を書く（ER 図『常駐サーバーの状態』）'
+    constraint: '`session.json` に `session`・`status: running`・`claude_session_id`（フックが入れる）・`pane`・`pid`・`claude_config_dir`（フックが入れる）・`responding: false`・`pending_write: false`・`close_pending: false`・`started_at`・`last_activity_at`（`started_at` と同じ値）・`stop_reason: null`・`idle_stop_failures: 0`・`restart_on_stopped: false` を書く（ER 図『常駐サーバーの状態』）'
   - item: 同時の依頼
     constraint: ワークスペースごとの鍵（ワークスペースの管理と共有する）を、クローズ済みかの確かめから状態を書くまで持つ。準備を待つ間も持つ。`session.json` の読み書きは、`session.json` ごとの書き込みの鍵を取って行う（『MindStella のセッションの出来事の受け取り』と同じ鍵）
   - item: MCP のツール

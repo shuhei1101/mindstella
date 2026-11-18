@@ -148,6 +148,25 @@ tables:
         title: 起動し直しの契機
         type: string | null
         description: '`restarting` の間の契機（`api`・`rate_limit`・`compact`・`comment`）。起動し直しが終わったら `null`。失敗したときに『停止の通知』を呼ぶかを決める'
+      - name: last_activity_at
+        title: 最後の出来事の日時
+        type: string
+        not_null: true
+        description: 'UTC のタイムゾーン付き ISO 8601。作成・起動し直しで `started_at` と同じ値にし、SessionStart・UserPromptSubmit・Stop・StopFailure の出来事と、コメントをペインへ貼れたとき（`entered: true`）に書き換える。『無操作の上限での停止』が無操作の時間を測る起点'
+      - name: stop_reason
+        title: 止まった理由
+        type: string | null
+        description: 『無操作の上限での停止』が止め終えたとき `idle_timeout`。`status` を `running` にするとき（作成・起動し直し）に `null` に戻す
+      - name: idle_stop_failures
+        title: 無操作の上限での停止の続けての失敗の回数
+        type: integer
+        not_null: true
+        description: 『無操作の上限での停止』が止める間に失敗して `running` に戻すたびに 1 足す。`last_activity_at` を書き換えるときと、作成・起動し直しで 0 に戻す
+      - name: restart_on_stopped
+        title: 止め終えたら起動し直すか
+        type: boolean
+        not_null: true
+        description: 『無操作の上限での停止』の `stopping` の間に『コメントをまとめて送る』がコメントを足したとき真。止め終えたときに読んで偽に戻し、真ならコメントの契機で起動し直す。作成・起動し直しで偽
   - name: workspaces/{ID}/launch.json
     title: 追加の MCP とプラグイン
     datastore: JSON

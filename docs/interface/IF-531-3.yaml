@@ -39,6 +39,9 @@ response:
   - name: close_pending
     type: bool
     description: クローズ待ちか（API で停止を受けた後）
+  - name: sessions[].stop_reason
+    type: Literal['idle_timeout'] | None
+    description: 止まった理由。『無操作の上限での停止』で止まったとき `idle_timeout`。ほかは `None`
 response_notes: MindStella のセッションを一度も作っていないワークスペースは、`sessions` が空の並び。並びは最後の 1 つだけを持つ
 status_codes:
   - code: '200'

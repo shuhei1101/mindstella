@@ -70,7 +70,7 @@ constraints:
   - item: 起動の指定の確かめ
     constraint: '起動の前に、`launch.json` の `mcp_config` を『ワークスペースの作成』と同じ検査にかけ、`plugin_dirs` の各フォルダに `.claude-plugin/plugin.json` があるかを確かめる。通らなければ `claude-balancer exec` を起動せず、`last_error` を `launch_options: {読めない指定と理由}` にして `crashed` にする。`launch.json` が無ければ指定なしで起動し、応答の `warnings` に `launch_record_missing` を入れる'
   - item: 起動
-    constraint: 『MindStella のセッションの作成』の「起動のコマンド」「Claude Code の引数」「渡す環境変数」「最初の入力」「準備を待つ上限」と同じ。`compact` の契機は環境変数 `MINDSTELLA_LAUNCH_REASON=compact` を足す。準備ができたら `status` を `running` にし、`restart_reason`・`last_error` を `null` に戻す
+    constraint: 『MindStella のセッションの作成』の「起動のコマンド」「Claude Code の引数」「渡す環境変数」「最初の入力」「準備を待つ上限」と同じ。`compact` の契機は環境変数 `MINDSTELLA_LAUNCH_REASON=compact` を足す。準備ができたら `status` を `running` にし、`restart_reason`・`last_error`・`stop_reason` を `null` に、`idle_stop_failures` を 0 に、`restart_on_stopped` を偽に戻し、`last_activity_at` を準備ができた日時にする
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: 失敗
     constraint: '起動の失敗は『MindStella のセッションの作成』の 503（`account`）・502（`launch`）・504（`ready`）と同じ見分けで、ペインを閉じ、`last_error` を `{stage}: {detail}` にして `crashed` にする。応答は受け付けた時点で返しているので、失敗は一覧で確かめる'
