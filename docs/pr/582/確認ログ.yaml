@@ -1,0 +1,6 @@
+confirmations:
+  - topic: 画面での MindStella のセッションの表示をこの PR に含めるか
+    decision: 'この PR は状態・失敗の理由・警告を API の応答で返すところまでにし、画面の表示は別の Issue にして #538 の後に作る（推奨案 A）'
+    decided_by: thumbs_up
+    approver: shuhei1101
+    thread: https://github.com/shuhei1101/mindstella/pull/582#discussion_r4612837952
