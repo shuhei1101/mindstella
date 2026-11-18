@@ -134,3 +134,32 @@ def test_migrate_when_already_current(
     # 検証
     assert changed == []
     assert snapshot_tree(root) == before
+
+
+@pytest.mark.parametrize(
+    ("item_id", "attrs", "body_name", "expected"),
+    [
+        pytest.param("D-1", {"メモ": "A|B\nC"}, "D-1.md", "| メモ | A\\|B<br>C |", id="markdown"),
+        pytest.param("A-1", {"式": "a<b&c"}, "A-1.html", "<td>a&lt;b&amp;c</td>", id="html"),
+    ],
+)
+def test_migrate_when_cell_has_special_chars(
+    remove_discussion_keys: ModuleType,
+    make_workspace: MakeWorkspace,
+    make_item: MakeItem,
+    item_id: str,
+    attrs: dict[str, str],
+    body_name: str,
+    expected: str,
+) -> None:
+    """表のセルの記号を打ち消す（正常系）。"""
+    # 準備
+    root = make_workspace(
+        make_item(item_id, attrs=attrs, body=f"docs/{body_name}"),
+        settings=LEGACY_SETTINGS,
+        bodies={body_name: "本文\n"},
+    )
+    # 実行
+    remove_discussion_keys.migrate(root)
+    # 検証
+    assert expected in (root / RECORD_DIR / "docs" / body_name).read_text(encoding="utf-8")
