@@ -86,7 +86,7 @@ classes:
     title: 引数の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
     usecase: 共通
-    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・`write_release` の `path` が `release/` の下の `.md`・`.html` を指さない・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
+    summary: 'ツールが確かめる引数の誤り（一緒に使わない引数・値の形が違う・`out` が `.html` で終わらない・削除した設定のキーを渡した・スレッドの本文と要約と理由の長さ）。配信は 400 にする。メッセージは `引数の誤り: {引数の名前}: {理由}`'
     kind: クラス
     inherits: MindmapError
     properties:
@@ -100,17 +100,6 @@ classes:
     summary: プレビューの配信の待ち受けを立てられない（`OSError`）。メッセージに理由（`raise ... from` で元の例外をつなぐ）
     kind: クラス
     inherits: MindmapError
-  - name: UnmappedPhaseError
-    title: 対応の無いフェーズ
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 設定の更新
-    summary: '新しい `phases` に対応の無いフェーズを持つ項目か `goal.phase` が残る。メッセージは `新しいフェーズに対応の無いフェーズが残ります`、`lines` に残るものごとの `{ID か goal}: {フェーズ}`'
-    kind: クラス
-    inherits: MindmapError
-    properties:
-      - name: unmapped
-        type: list[tuple[str, str]]
-        description: 残るもの（ID か `goal`、フェーズ）
   - name: CommentInvalidError
     title: コメントの中身の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py
@@ -150,17 +139,6 @@ classes:
     summary: '採用している案を消そうとした。メッセージは `{ID} の案 {記号}: 採用している案は消せません。先に adopt で採用をほかの案へ移してください`'
     kind: クラス
     inherits: MindmapError
-  - name: UnmappedTargetError
-    title: 対応の無い対象・カテゴリー
-    container: plugins/mindstella/skills/mindmap/scripts/errors.py
-    usecase: 設定の更新
-    summary: '新しい `targets`・`categories` に対応の無い対象・カテゴリーを持つ項目かカテゴリーが残る。メッセージは `新しい設定に対応の無い対象・カテゴリーが残ります`、`lines` に残るものごとの `{ID か categories[{名前}]}: {target か category}: {名前}`'
-    kind: クラス
-    inherits: MindmapError
-    properties:
-      - name: unmapped
-        type: list[tuple[str, str, str]]
-        description: 残るもの（ID か `categories[{名前}]`、キー、名前）
   - name: SettingsInvalidError
     title: 表示の既定の中身の誤り
     container: plugins/mindstella/skills/mindmap/scripts/errors.py

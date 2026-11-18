@@ -97,12 +97,6 @@ constants:
     usecase: 共通
     summary: 本文の Markdown を置くフォルダ名（`records_root(root)` の下）
     value: '"docs"'
-  - name: RELEASE_DIR
-    title: リリースのフォルダ名
-    container: plugins/mindstella/skills/mindmap/scripts/kinds.py
-    usecase: ワークスペースの作成
-    summary: ゴール判定で書き出す資料のフォルダ名（`records_root(root)` の下）
-    value: '"release"'
   - name: LEGACY_SETTINGS_FILE
     title: 前の版の設定のファイル名
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
@@ -119,7 +113,7 @@ constants:
     title: 編集した人
     container: plugins/mindstella/skills/mindmap/scripts/kinds.py
     usecase: 共通
-    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` と『設定の更新』の `remap_phases`・`remap_names` が引く
+    summary: MCP のツールが項目の `updated_by` と変更履歴の `by` に書く値（ツールを呼ぶのは AI）。モジュール構成『入口』の `stage_add`・`stage_update`・`run_adopt` が引く
     value: '"ai"'
 functions:
   - name: kind_of_id
@@ -162,7 +156,7 @@ functions:
     usecase: 共通
     scope: public
     summary: ワークスペースのフォルダから記録のフォルダ（`root / RECORD_DIR`）を返す
-    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`clear_release`・`write_release`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』『ゴール判定』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
+    description: ワークスペースの中のファイルを引く全ての関数は、`root` ではなくこの関数が返すフォルダの下でファイルを引く。この設計書の `load_workspace`・`save_change`・`save_batch`・`read_body`・`create_workspace`・`workspace_lock` と、モジュール構成『変更履歴』『コメント』『送信』『点検』『配信』『設定の更新』『ビルド』、『移行』の版のファイルの読み書きが当たる。ツールが受ける `workspace` と `Workspace.root` は今と同じく直下のフォルダで、結果に返す「ワークスペースからの相対パス」は `.mindstella/` から始まる。移し替えの手順（モジュール構成『移行』の `apply_step`）だけは直下からの相対パスをそのまま使う
     args:
       - name: root
         type: Path
