@@ -78,13 +78,18 @@ if mode.startswith("responding"):
             time.sleep(float(seconds))
             note("stop")
             send("stop")
+            # 応答を終えた直後に SessionEnd を送らずにプロセスが無くなる
+            if mode.startswith("responding_then_exit"):
+                os._exit(0)
         threading.Thread(target=finish, daemon=True).start()
 for line in sys.stdin:
     with open(os.path.join(record, "input-%d.log" % pid), "a") as stream:
         stream.write("%r %s\\n" % (time.time(), line.rstrip("\\n")))
     if line.strip() == "/exit":
         note("exit")
-        send("session-end", reason="prompt_input_exit")
+        # SessionEnd のフックが届かないまま終わる
+        if mode != "exit_without_end":
+            send("session-end", reason="prompt_input_exit")
         sys.exit(0)
 """
 
@@ -382,7 +387,7 @@ class SessionWorld:
         return data
 
     def set_claude_mode(self, mode: str) -> None:
-        """偽の Claude Code の動き（normal・no_hook・exit:{N}・responding・responding:{秒}）を決める。"""
+        """偽の Claude Code の動き（normal・no_hook・exit:{N}・responding・responding:{秒}・responding_then_exit:{秒}・exit_without_end）を決める。"""
         (self.record_dir / "claude-mode").write_text(mode, encoding="utf-8")
 
     def set_balancer_exit(self, code: int) -> None:
@@ -434,7 +439,11 @@ class SessionWorld:
         for name in self.sessions():
             self.tmux("kill-session", "-t", f"={name}")
         for pid in self.alive_claude_pids():
-            os.kill(pid, signal.SIGTERM)
+            # 確かめた後に自分で終わったプロセスは送らずに済ませる
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                continue
         self.pi.close()
         shutil.rmtree(self.tmux_tmpdir, ignore_errors=True)
 

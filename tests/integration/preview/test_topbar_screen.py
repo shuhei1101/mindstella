@@ -431,6 +431,7 @@ def test_settings_button(
     )
     # 検証
     assert order[-4:] == ["settings", "filter", "comments", "top-btn"]
-    assert page.inner_text("header.topbar button.settings-btn .label") == "表示の設定"
+    assert not page.is_visible("header.topbar button.settings-btn .label")
+    assert page.text_content("header.topbar button.settings-btn .tb-tip") == "表示の設定"
     assert closed == ("false", False)
     assert opened == ("true", True)

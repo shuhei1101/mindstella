@@ -1,4 +1,4 @@
-"""MindStella のセッションごとの書き込みのマーカーを持ち、応答の終わりに Discord の Webhook へ作業の完了を送信する。"""
+"""MindStella のセッションごとの書き込みのマーカーを持ち、Discord の Webhook へ作業の完了と停止を送信する。"""
 
 from __future__ import annotations
 
@@ -11,9 +11,24 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 logger = logging.getLogger("mindstella.notify")
+
+# 停止の通知に渡す止まった理由
+StopReason = Literal["stop_requested", "force_stopped", "crashed", "stop_failed", "session_ended"]
+
+# 止まった理由ごとの本文の括弧の中の文言（利用者が確認した文言）
+STOP_REASON_TEXTS: dict[StopReason, str] = {
+    "stop_requested": "停止の依頼",
+    "force_stopped": "強制停止",
+    "crashed": "異常終了",
+    "stop_failed": "停止処理の失敗",
+    "session_ended": "Claude Code の終了",
+}
+
+# 停止の本文の 1 行目の名前の後ろの文言
+STOPPED_TEXT = "停止しました"
 
 # 成功したら書き込みのマーカーを付ける MCP のツール
 MARKING_TOOLS = ("commit", "new_thread", "reply")
@@ -90,7 +105,17 @@ def read_webhook_url(environ: Mapping[str, str]) -> str | None:
 
 def build_content(name: str, url: str | None) -> str:
     """`{名前}: 作業が完了しました` と画面の URL の 2 行を、CONTENT_LIMIT 文字以内で組み立てる。"""
-    tail = f": {DONE_TEXT}"
+    return _fit_content(name, f": {DONE_TEXT}", url)
+
+
+def build_stopped_content(name: str, reason: StopReason, url: str | None) -> str:
+    """`{名前}: 停止しました（{止まった理由の文言}）` と画面の URL の 2 行を、CONTENT_LIMIT 文字以内で組み立てる。"""
+    return _fit_content(name, f": {STOPPED_TEXT}（{STOP_REASON_TEXTS[reason]}）", url)
+
+
+def _fit_content(name: str, head_tail: str, url: str | None) -> str:
+    """名前・1 行目の名前の後ろ・画面の URL を本文にし、上限を超えるときは名前の末尾を切り詰める。"""
+    tail = head_tail
     # 画面の配信があれば 2 行目に URL を配置する
     if url:
         tail = f"{tail}\n{url}"
@@ -167,6 +192,35 @@ def notify_if_written(
     # Webhook の設定が無い
     if url is None:
         return None
+    return _start_send(url, describe, build_content, send)
+
+
+def notify_stopped(
+    workspace_id: str,
+    reason: StopReason,
+    describe: Callable[[], tuple[str, str | None] | None],
+    *,
+    environ: Mapping[str, str] = os.environ,
+    send: Callable[[str, str], bool] = send_webhook,
+) -> threading.Thread | None:
+    """Webhook の設定があれば、daemon のスレッドで停止の本文を組み立てて送信する。"""
+    url = read_webhook_url(environ)
+    # Webhook の設定が無い
+    if url is None:
+        return None
+    logger.info("停止を通知する: %s（%s）", workspace_id, reason)
+    return _start_send(
+        url, describe, lambda name, page_url: build_stopped_content(name, reason, page_url), send
+    )
+
+
+def _start_send(
+    url: str,
+    describe: Callable[[], tuple[str, str | None] | None],
+    compose: Callable[[str, str | None], str],
+    send: Callable[[str, str], bool],
+) -> threading.Thread:
+    """名前と画面の URL を参照して本文を組み立て、送信する daemon のスレッドを起動する。"""
 
     def run() -> None:
         """名前と画面の URL を参照して送信する。"""
@@ -176,9 +230,9 @@ def notify_if_written(
             if described is None:
                 return
             name, page_url = described
-            send(url, build_content(name, page_url))
+            send(url, compose(name, page_url))
         except Exception as error:  # noqa: BLE001
-            # 想定していない例外: 応答の受け取りに影響させず、種類だけを記録する
+            # 想定していない例外: 呼び出し元の処理に影響させず、種類だけを記録する
             logger.error("通知の予期しないエラー: %s", type(error).__name__)  # noqa: TRY400
 
     thread = threading.Thread(target=run, name="mindstella-notify", daemon=True)

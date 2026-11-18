@@ -142,3 +142,5 @@ items:
     summary: "POST /api/comments/send-now: 入力欄の全文 1 件を、溜めずにスレッドへ送って Claude Code へ入力する"
   - page: IF-568-1.yaml
     summary: 応答の間に AI が書き込んだとき、応答の終わりに Discord へ作業の完了を通知する
+  - page: IF-570-1.yaml
+    summary: MindStella のセッションが止まったことを記録したとき、Discord へ止まったことと理由を通知する
