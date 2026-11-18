@@ -2088,6 +2088,8 @@ def test_send_file_when_missing(make_workspace: MakeWorkspace, make_item: MakeIt
     # 検証
     assert missing[0] == 404
     assert missing[1]["Content-Type"] == serve.PROBLEM_TYPE
+    assert missing[1]["Content-Security-Policy"] == "sandbox"
+    assert missing[1]["X-Content-Type-Options"] == "nosniff"
     assert outside[0] == 404
     assert outside[1]["Content-Type"] == serve.PROBLEM_TYPE
     assert config not in outside[2]
