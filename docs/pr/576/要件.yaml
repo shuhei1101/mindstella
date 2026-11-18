@@ -1,0 +1,14 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-531-2.yaml
+    impact: none
+    detail: MindStella のセッションを止める流れは変わらない。結合テストの準備だけを修正する
+    depends_on: []
+scope_out:
+  - item: tests/integration/preview/ などの、無くなったツール名を _call・write_tool に渡すテストの補助
+    reason: 既に record_write_helpers.call_or_write・write_tool を通して記録を直接書いており、無くなったツールを常駐サーバーへ呼んでいない
+    plan: none
+  - item: tests/integration/preview/test_detail_panel_screen.py の fail
+    reason: 対象のテストと原因が別の事象
+    plan: '#553'
+docs: []
