@@ -15,7 +15,7 @@
 | [プレビューを開く](./IF-489-71.yaml) | URL のハッシュが指す画面と項目を、サーバーから読んだ記録で開き、書き換えで描き直し、回答・意見を送る |
 | [SPAを開く](./IF-489-70.yaml) | React のプレビューを `/spa/` で開き、記録を読んで search params が指す画面を描き、書き換えの知らせで描き直す |
 | [起動のコマンド](./IF-489-56.yaml) | bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動し、register のサブコマンドで起動スクリプトを登録する |
-| [依存の確認](./IF-489-27.yaml) | check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp の版を確かめる |
+| [依存の確認](./IF-489-27.yaml) | check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp・Jinja2 の版を確かめる |
 | [MCP サーバーの起動](./IF-489-1.yaml) | 常駐の MCP サーバー mindstella を HTTP で待ち受ける。全てのツールに共通の結果とエラーの返し方 |
 | [常駐サーバーの起動の確認](./IF-489-38.yaml) | ensure_server.py: SessionStart のフックと起動のコマンドが、落ちていた常駐サーバーを systemd --user で起動し、古いコードなら再起動を案内する |
 | [セッションの値の注入](./IF-489-15.yaml) | inject_session.py: PreToolUse のフックが、呼んだセッションの作業フォルダとペインをツールの引数に入れる |

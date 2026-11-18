@@ -50,6 +50,9 @@ response:
   - name: until_seq
     type: int
     description: 状況をまとめたときの `changes.yaml` の `last_seq`。フックが『前回参照した時点の更新』へ渡す
+  - name: context
+    type: str
+    description: SessionStart の注入文。プラグインのプロンプトファイルを `trigger` とこの応答の値で描いた文で、起動の契機・取り込み待ちの件数・変わった項目と消した項目・要見直し・進行中・超えた件数・移し替えの報告・進め方の文書の場所と、`mindstella/startup` を参照して先に進める案内を持つ。`changed_more`・`removed_more` が 1 以上なら `changes_since_read` を呼んで残りと前の値を取る案内を持つ。次の候補・スキルの呼び方を持たない
 status_codes:
   - code: '200'
     condition: 状況をまとめた
@@ -58,6 +61,9 @@ status_codes:
   - code: '404'
     condition: '`session` が状態に無い'
     notes: 何も読まない
+  - code: '500'
+    condition: 注入文を描けない（プロンプトファイルが読めない・変数が足りない）
+    notes: 何も書かない。フックは状況を持たない注入に切り替える
 error_format: 本文は `application/problem+json`（RFC 9457 の `type`・`title`・`status`・`detail`）。`detail` は日本語
 constraints:
   - item: 受ける Host
@@ -70,6 +76,8 @@ constraints:
     constraint: '`changed`・`removed`・`needs_review`・`in_progress` はそれぞれ 20 件まで。超えた分は件数だけを `{キー}_more` に入れる。注入に収まらない分は MindStella のセッションが `changes_since_read` で取得する（D-342）'
   - item: 移し替えの報告
     constraint: '`migration` は『前回参照した時点の更新』が消すまで、呼ばれるたびに返す'
+  - item: 注入文
+    constraint: 'プロンプトファイルは規約『プロンプトファイル』の `kind: hook` の YAML にし、常駐サーバーが Jinja2（未定義の変数は誤り）で描く。置き場所はモジュール構成で決める'
 flows:
   - name: 正常系
     summary: 再開のとき、前回参照した後の変更と要見直し・進行中・取り込み待ちを返し、前回参照した時点は進めない
@@ -98,6 +106,7 @@ flows:
       - '`changed` が D-1 の 1 件で、`needs_review` が D-1、`in_progress` が T-1'
       - 応答が次の候補を持たず、未決定の D-2 を並べない
       - '`until_seq` が `changes.yaml` の `last_seq` と同じで、`read_point.json` の `read_seq` が呼ぶ前と同じ。続けて呼ぶと同じ `changed` を返す'
+      - '`context` が契機 `再開`・取り込み待ちの件数 1・D-1・T-1・`mindstella/startup` を持ち、`/mindstella:` を持たない'
     test: test_normal
   - name: 正常系（起動）
     summary: 前回参照した時点が無いときは変更を返さず、今の通し番号を until_seq で返す

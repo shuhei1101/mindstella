@@ -4,7 +4,7 @@
 
 ## 目次
 
-<!-- table: data -->
+<!-- table: {"kind": "data"} -->
 
 | ページ | 概要 |
 | --- | --- |
@@ -42,5 +42,6 @@
 | [vitest](./LIB-489-30.yaml) | プレビュー（React）の単体テストを流す（開発用） |
 | [claude-balancer](./LIB-531-1.yaml) | MindStella のセッションを起動するときに、一番空いている Claude Code のアカウントを借りる |
 | [systemd](./LIB-531-2.yaml) | 常駐サーバーを systemd --user のユニットとして起動・停止する |
+| [Jinja2](./LIB-565-1.yaml) | SessionStart の注入文のプロンプトファイルを常駐サーバーで描く |
 
 <!-- /table -->

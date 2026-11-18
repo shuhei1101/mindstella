@@ -1,6 +1,6 @@
 id: MOD-565-4
 title: プラグイン / エージェントフロー
-lead: プラグインに同梱する記録のエージェントフローと、SessionStart の注入文の雛形の置き場所。スキル（setup・session・upgrade）と `references/`・`playbooks/` は置かない。
+lead: プラグインに同梱する記録のエージェントフローと、SessionStart の注入文のプロンプトファイルの置き場所。スキル（setup・session・upgrade）と `references/`・`playbooks/` は置かない。
 directory: |-
   ```
   plugins/mindstella/
@@ -10,14 +10,13 @@ directory: |-
       startup.yaml             mindstella/startup（起動と再開）
       on-comment.yaml          mindstella/on-comment（コメントの取り込み）
       record.yaml              mindstella/record（記録の使い分け）
-    skills/mindmap/
-      prompts/
-        session_start.md       SessionStart の注入文の雛形（今の references/起動時の指示.md を移す）
+    content/prompts/
+      session-start.yaml       SessionStart の注入文のプロンプトファイル（今の references/起動時の指示.md を移す）
   ```
 notes:
   ファイルの名前: '1 エージェントフロー 1 ファイルで、ファイル名は ID の `mindstella/` の後ろに `.yaml` を付けたものにする。`dev-docs.yaml` の `metadata` は `id: id`・`name: title`・`description: summary`'
   スキーマ: '`agent-flow.schema.json` は `id`（列挙の 3 つ）・`title`・`summary`・`condition`・`steps[]`（`name`・`body`・任意の `when`・`calls[]`（`server` は `mindstella` か `project-index`、`tool`）・`refs[]`）だけを許し（`additionalProperties: false`）、`steps[].name` はエージェントフローの中で一意にする。`calls[].tool` が今のツールにあるかは結合テストが確かめる'
-  注入文の雛形: '`session_start.md` は `string.Template` の `$名前` で埋める Markdown にする（フックはシステムの `python3` の標準ライブラリだけを読むため、Jinja2 を使うプロンプトファイルの YAML にしない）。埋める名前はモジュール構成『session_hook.py』の `build_context` が決める'
+  注入文の雛形: '`session-start.yaml` は規約『プロンプトファイル』の 1 枚の YAML（`id: session-start`・`kind: hook`・`lang: ja`、1 行目のモードラインで knowledge のスキーマを指す）にする。`vars` は『再開の状況』の応答のキー（`context` を除く）で、常駐サーバーのモジュール構成『resume.py』の `render_context` が Jinja2 で描く（フックは描かない）。変数を含まない部品（エージェントフローの案内）を上、含む部品を下に並べる'
   削除するフォルダ: '`skills/setup/`・`skills/session/`・`skills/upgrade/` と `skills/mindmap/references/`・`skills/mindmap/playbooks/` を消す。`references/` の文章・HTML・リサーチ・質問の書き方はエージェントフローが knowledge の規約を参照する（A-107）。`register.py` は `skills/mindmap/scripts/` へ移す（モジュール構成『register.py』）'
 refs:
   - IF-565-1#

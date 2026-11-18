@@ -10,7 +10,7 @@ flows:
       - name: Mock
         description: '`PATH` の先頭に偽の `claude` を置く。`plugin list --json` には `installPath` にテストのプラグインのフォルダを返す。常駐サーバーは『MindStella のセッションの作成』の正常系と同じ偽の `claude-balancer`・偽の `claude`（SessionStart のフックを叩く）で MindStella のセッションを起動する。`PATH` の先頭に、`start` で常駐サーバーを起動する偽の `systemctl` を置く'
       - name: 仮想環境
-        description: PyYAML・jsonschema・mcp を見せた仮想環境を `MINDSTELLA_VENV` で渡す
+        description: PyYAML・jsonschema・mcp・Jinja2 を見せた仮想環境を `MINDSTELLA_VENV` で渡す
       - name: tmux
         description: テストごとの短い一時フォルダ（`/tmp` の直下）を `TMUX_TMPDIR` にし、`TMUX` を消した環境で動かす tmux のサーバー
         notes: 利用者の tmux のセッションに触れない。`TMUX` があると tmux は `TMUX_TMPDIR` よりそのソケットを使い、ソケットのパスが長いとつながらない（tmux 3.4 で確かめた）
@@ -181,7 +181,7 @@ flows:
       - name: Mock
         description: 正常系と同じ偽の `claude`
       - name: 仮想環境
-        description: PyYAML・jsonschema・mcp を入れていない仮想環境を `MINDSTELLA_VENV` で渡す
+        description: PyYAML・jsonschema・mcp・Jinja2 を入れていない仮想環境を `MINDSTELLA_VENV` で渡す
       - name: tmux
         description: 正常系と同じ
     flow: |-
@@ -198,7 +198,7 @@ flows:
       ```
     expected:
       - 終了コードが 1
-      - 標準エラーに `PyYAML`・`jsonschema`・`mcp` と、`-m pip install` を含むそろえるコマンドがある
+      - 標準エラーに `PyYAML`・`jsonschema`・`mcp`・`Jinja2` と、`-m pip install` を含むそろえるコマンドがある
       - tmux にセッションが無い
       - 偽の `claude` が起動されていない
     test: test_error_when_dependency_missing
@@ -610,6 +610,7 @@ refs:
   - IF-531-1#
   - IF-531-2#
   - IF-489-67#
+  - LIB-565-1#
 notes:
   置き場所: プラグインの `bin/` に置き、インストールした版のフォルダから叩く。利用者は `claude plugin list --json` の `installPath` から場所を引く（手順は公開ドキュメント『起動スクリプトで立ち上げる』）か、インターフェース定義『起動スクリプトの登録』で登録した `mindstella`・`mindstella-{名前}` から叩く
 test_file: tests/integration/server/test_launch.py

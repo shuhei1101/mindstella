@@ -15,7 +15,7 @@ items:
   - page: IF-489-56.yaml
     summary: "bin/mindstella: 依存を確かめ、常駐サーバーが落ちていれば起動して、MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ。server のサブコマンドで常駐サーバーを確かめ・止め・再起動し、register のサブコマンドで起動スクリプトを登録する"
   - page: IF-489-27.yaml
-    summary: "check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp の版を確かめる"
+    summary: "check_env.py: スキル専用の仮想環境の Python と PyYAML・jsonschema・mcp・Jinja2 の版を確かめる"
   - page: IF-489-1.yaml
     summary: "常駐の MCP サーバー mindstella を HTTP で待ち受ける。全てのツールに共通の結果とエラーの返し方"
   - page: IF-489-38.yaml
