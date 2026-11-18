@@ -69,8 +69,8 @@ def test_drawer_visible(page: Page, write_preview: WritePreview, make_item: Make
 def test_drawer_initial_value(page: Page, write_preview: WritePreview, make_item: MakeItem) -> None:
     """絞り込みのドロワーは、URL の `f.{列}` の条件を選んだ状態で開く（正常系）。"""
     # 準備
-    url = write_preview(make_item("R-1", confidence="高"), make_item("R-2", confidence="低"))
-    open_spa(page, url, "?tab=research&f.confidence=高")
+    url = write_preview(make_item("R-1", tags=[{"name": "高"}]), make_item("R-2", tags=[{"name": "低"}]))
+    open_spa(page, url, "?tab=research&f.tags=高")
     # 実行
     page.get_by_role("button", name="絞り込み").click()
     dialog = page.get_by_role("dialog", name="絞り込み")

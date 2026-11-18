@@ -76,7 +76,7 @@ from workspace_fixtures import ADOPTED_OPTIONS, CallTool, MakeEdit, MakeItem, Ma
             "research",
             "調査",
             "R-1",
-            ["ID", "タイトル", "問い", "結論", "確度", "タグ"],
+            ["ID", "タイトル", "問い", "結論", "タグ"],
             id="research",
         ),
         pytest.param(
@@ -282,19 +282,19 @@ def _row_ids(page: Page) -> list[str]:
 def test_drawer_per_kind(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
-    """ドロワーの条件は種類ごとに持つ。調査はタグ・確度、メモはタグを並べ、別の種類へ移っても条件を持ち越さず、戻ると保っている（正常系）。"""
+    """ドロワーの条件は種類ごとに持つ。調査・メモはタグを並べ、別の種類へ移っても条件を持ち越さず、戻ると保っている（正常系）。"""
     # 準備
     url = write_preview(
-        make_item("R-1", confidence="高", tags=[{"name": "調査の話題"}]),
-        make_item("R-2", confidence="低"),
+        make_item("R-1", tags=[{"name": "調査の話題"}]),
+        make_item("R-2"),
         make_item("N-1", tags=[{"name": "調査の話題"}]),
         make_item("N-2"),
     )
     page = open_preview(url, "#tab=research")
     open_drawer(page)
     research_groups = [group["label"] for group in drawer_groups(page)]
-    # 実行（調査で確度を選ぶ）
-    click_value(page, "confidence", "高")
+    # 実行（調査でタグを選ぶ）
+    click_value(page, "tags", "調査の話題")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
     research_rows = _row_ids(page)
     research_badge = badge_text(page)
@@ -311,13 +311,13 @@ def test_drawer_per_kind(
     page.click('a.tab[data-tab="research"]')
     page.wait_for_selector('table.grid tbody tr[data-id="R-1"]')
     # 検証
-    assert research_groups == ["タグ", "確度"]
+    assert research_groups == ["タグ"]
     assert (research_rows, research_badge) == (["R-1"], "1")
     assert notes_state == (["タグ"], None, ["N-1", "N-2"], 1)
     assert badge_text(page) == "1"
-    assert checked_values(page, "confidence") == ["高"]
+    assert checked_values(page, "tags") == ["調査の話題"]
     # 文字の欄のまとまりを除いた、値を選ぶ条件の数
-    assert page.locator(f"{DRAWER} .fd-group:not(.fd-text)").count() == 2
+    assert page.locator(f"{DRAWER} .fd-group:not(.fd-text)").count() == 1
 
 
 def test_drawer_logs_tags(
@@ -451,10 +451,10 @@ def test_region_at_boundary(
 
 
 def _write_research_and_notes(write_preview: WritePreview, make_item: MakeItem) -> str:
-    """確度が高の調査 R-1 と低の調査 R-2、メモ N-1・N-2 を持つワークスペースを配る。"""
+    """タグ「高」の調査 R-1 とタグ「低」の調査 R-2、メモ N-1・N-2 を持つワークスペースを配る。"""
     return write_preview(
-        make_item("R-1", confidence="高"),
-        make_item("R-2", confidence="低"),
+        make_item("R-1", tags=[{"name": "高"}]),
+        make_item("R-2", tags=[{"name": "低"}]),
         make_item("N-1"),
         make_item("N-2"),
     )
@@ -468,17 +468,17 @@ def test_drawer_saved_filter(
     url = _write_research_and_notes(write_preview, make_item)
     page = open_preview(url, "#tab=research")
     open_drawer(page)
-    click_value(page, "confidence", "高")
+    click_value(page, "tags", "高")
     page.wait_for_function("document.querySelectorAll('table.grid tbody tr[data-id]').length === 1")
     # 実行
     reload_preview(page)
     open_drawer(page)
     # 検証
-    assert read_saved_filters(page) == {"research": {"confidence": ["高"]}}
+    assert read_saved_filters(page) == {"research": {"tags": ["高"]}}
     assert _row_ids(page) == ["R-1"]
     assert badge_text(page) == "1"
-    assert checked_values(page, "confidence") == ["高"]
-    assert chip_texts(page) == ["確度: 高"]
+    assert checked_values(page, "tags") == ["高"]
+    assert chip_texts(page) == ["タグ: 高"]
 
 
 def test_drawer_saved_filter_when_other_kind(
@@ -488,7 +488,7 @@ def test_drawer_saved_filter_when_other_kind(
     # 準備
     url = _write_research_and_notes(write_preview, make_item)
     page = open_preview(url, "#tab=research")
-    seed_saved_filters(page, {"research": {"confidence": ["高"]}})
+    seed_saved_filters(page, {"research": {"tags": ["高"]}})
     # 実行
     reopen_preview(page, url, "#tab=notes")
     open_drawer(page)
@@ -504,31 +504,31 @@ def test_drawer_saved_filter_when_hash_filter(
     # 準備
     url = _write_research_and_notes(write_preview, make_item)
     page = open_preview(url, "#tab=research")
-    seed_saved_filters(page, {"research": {"confidence": ["高"]}})
+    seed_saved_filters(page, {"research": {"tags": ["高"]}})
     # 実行
-    reopen_preview(page, url, "#tab=research&f.confidence=低")
+    reopen_preview(page, url, "#tab=research&f.tags=低")
     open_drawer(page)
     # 検証
     assert _row_ids(page) == ["R-2"]
-    assert checked_values(page, "confidence") == ["低"]
-    assert read_saved_filters(page) == {"research": {"confidence": ["高"]}}
+    assert checked_values(page, "tags") == ["低"]
+    assert read_saved_filters(page) == {"research": {"tags": ["高"]}}
 
 
 def test_drawer_saved_filter_when_value_missing(
     write_preview: WritePreview, open_preview: OpenPreview, make_item: MakeItem
 ) -> None:
     """残した条件の値が今の記録に無い、または列を知らないときは、その値と列を外して開く（正常系）。"""
-    # 準備（調査に確度が中のものは無く、`unknown` という列も無い）
+    # 準備（調査にタグ「中」のものは無く、`unknown` という列も無い）
     url = _write_research_and_notes(write_preview, make_item)
     page = open_preview(url, "#tab=research")
-    seed_saved_filters(page, {"research": {"confidence": ["高", "中"], "unknown": ["値"]}})
+    seed_saved_filters(page, {"research": {"tags": ["高", "中"], "unknown": ["値"]}})
     # 実行
     reload_preview(page)
     open_drawer(page)
     # 検証
     assert _row_ids(page) == ["R-1"]
     assert badge_text(page) == "1"
-    assert checked_values(page, "confidence") == ["高"]
+    assert checked_values(page, "tags") == ["高"]
 
 
 @pytest.mark.parametrize("tab", ["research", "terms", "notes", "logs"])
