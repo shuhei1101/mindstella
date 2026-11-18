@@ -862,11 +862,17 @@ functions:
         required: true
         passing: keyword
         description: 最後に検査に通った設定（`ServeContext.settings`）の `mdmark`（無ければ空の辞書）
+      - name: resolve
+        type: Callable[[str | None], str]
+        required: false
+        default: resolve_ref
+        passing: injected
+        description: 設定の mdmark のバージョンを ref にする関数（mdmark_ref.py）
     returns:
       type: Response
       description: 200・`text/html; charset=utf-8` の応答。雛形の誤りは 500
     process: |-
-      1. `mdmark_settings` で雛形を組み立てる（雛形の組み立て。`assemble_template`）
+      1. `mdmark_settings` の `version` を `resolve` で ref にし、`mdmark_settings` と ref で雛形を組み立てる（雛形の組み立て。`assemble_template`）
          - `ValueError` の場合、500 を返す（`problem_response`）
            - `[ERROR]` 同梱の雛形の誤り（例外のメッセージ）
       2. 組み立てた HTML を UTF-8 にして返す（要求ごとに読み直し、控えない。プラグインを上げた後に古い画面を返さない）
@@ -883,6 +889,12 @@ functions:
         condition: JavaScript に `</script>` を含む雛形のフォルダ
         mock: なし
         expected: 500 の問題の応答
+      - name: test_index_response_when_latest
+        case: 正常
+        summary: latest は resolve が返した ref で mdmark を読み込む
+        condition: '差し込み口を持つ小さな雛形のフォルダ。`mdmark_settings` が `{"version": "latest"}`'
+        mock: '`resolve`（`0123456789abcdef0123456789abcdef01234567` を返す）'
+        expected: 200 で、本文に `mdmark@0123456789abcdef0123456789abcdef01234567/dist/index.css` と `index.js` が入っている
   - name: records_response
     title: 記録の応答
     kind: 関数
