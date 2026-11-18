@@ -117,15 +117,6 @@ stores:
       - name: bodyLayout
         type: '''side'' | null'
         description: 本文の差分を左右に並べる上書き
-      - name: tablePin
-        type: false | null
-        description: 表の列の固定をオフにする上書き
-      - name: tableHead
-        type: false | null
-        description: 表の見出しの固定をオフにする上書き
-      - name: tableStripes
-        type: true | null
-        description: 表のしま模様をオンにする上書き
       - name: sectionFold
         type: false | null
         description: セクションの折りたたみをオフにする上書き
