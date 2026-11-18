@@ -8,7 +8,7 @@ scenarios:
   - name: 常駐サーバー
     description: 起動している。project-index の接続先（`PROJECT_INDEX_PORT`）はテストの project-index を、状態のフォルダ（`XDG_STATE_HOME`）はテストごとの一時フォルダを指す。テストの project-index が返すグローバルの設定のファイルはテストごとの一時ファイルで、許可するフォルダ（`mindstella.allowed_dirs`）にテストごとの一時フォルダを持つ
   - name: project-index
-    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）に行を書く
+    description: テストごとに立てた project-index の配信元の行の単位の API が、グローバルの設定のファイル（一時ファイル）に行を書く。ワークスペースの行はまだ無く、`expectedVersion` の無い行の追加を 400 で拒否する
   - name: ワークスペース
     description: 指定したフォルダにワークスペースの記録が無い
   - name: 依頼
@@ -32,7 +32,9 @@ scenarios:
       PI-->>WSM: 参照できる
       WSM->>WSM: 記録を作り、ワークスペースの ID と進め方の文書を設定に記録する
       WSM->>MGR: 追加の MCP・プラグインの記録を依頼する
-      WSM->>PI: 配信元に登録する（sources[] にワークスペースの行を追加する）
+      WSM->>PI: 端末の設定の内容のバージョンを取得する
+      PI-->>WSM: 内容のバージョン
+      WSM->>PI: 配信元に登録する（取得したバージョンを添えて、sources[] にワークスペースの行を追加する）
       PI-->>WSM: 登録した結果
       WSM->>WSM: 状態のフォルダのワークスペースの ID の一覧に追加する
       API-->>APP: ワークスペースの ID・画面の URL・今回の追加の MCP とプラグインの指定を記録したか
@@ -42,9 +44,9 @@ scenarios:
       MGR->>CB: tmux のペインの中で claude-balancer exec を起動する（cwd・環境変数・--mcp-config・--plugin-dir）
       CB->>CC: 空いたアカウントで Claude Code を起動する
       CC->>HK: SessionStart
-      HK->>MGR: Claude Code の session_id と tmux のペインを状態に登録する
+      HK->>MGR: Claude Code の session_id・tmux のペイン・起動したアカウントの設定のフォルダを状態に登録する
       HK-->>CC: 進め方の文書の場所を注入する
-      API-->>APP: MindStella のセッションの ID と画面の URL
+      API-->>APP: MindStella のセッションの ID・画面の URL・起動したアカウント
     ```
   expected:
   - 指定したフォルダにワークスペースの記録があり、設定にワークスペースの ID と進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録されている
@@ -54,6 +56,8 @@ scenarios:
   - SessionStart のフックの注入に、進め方の文書の場所が入っている
   - 状態に MindStella のセッションの ID・Claude Code の `session_id`・tmux のペインが登録されている
   - 外部のアプリが、SessionStart のフックが状態に登録した後に、MindStella のセッションの ID と画面の URL を受け取っている
+  - グローバルの設定のファイルにワークスペースの行が無い状態から、行の追加が取得した内容のバージョンを添えて通っている
+  - 外部のアプリが受け取った起動したアカウントが、Mock の claude-balancer が貸したアカウントの設定のフォルダである
 - name: 正常シナリオ（ワークスペースの記録が既にある）
   setup:
   - name: Mock
@@ -408,6 +412,159 @@ scenarios:
     ```
   expected:
   - 外部のアプリが接続できないことを受け取り、常駐サーバーを起動した後の依頼で正常シナリオと同じ結果になっている
+- name: 正常シナリオ（アカウントを指定する）
+  setup:
+  - name: Mock
+    description: Claude Code のセッション（起動の引数と環境変数を記録し、SessionStart のフックを呼ぶ）・claude-balancer（`exec` の引数を記録し、指定されたアカウントを貸す）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 作成済みで、MindStella のセッションが無い
+  - name: 依頼
+    description: MindStella のセッションの作成で、Claude Code の設定のフォルダ（アカウント）を指定する
+    notes: Mock の claude-balancer の設定にあるアカウントの設定のフォルダ
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CB as claude-balancer
+      participant CC as MindStella のセッション
+      participant HK as フック
+
+      APP->>API: 設定のフォルダを指定して MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>CB: tmux のペインの中で、指定したアカウントを添えて claude-balancer exec を起動する
+      CB->>CC: 指定したアカウントで Claude Code を起動する
+      CC->>HK: SessionStart
+      HK->>MGR: Claude Code の session_id・tmux のペイン・起動したアカウントの設定のフォルダを状態に登録する
+      API-->>APP: MindStella のセッションの ID・画面の URL・起動したアカウント
+    ```
+  expected:
+  - Mock の claude-balancer が、指定した設定のフォルダをアカウントの指定として付けた `exec` を受けている
+  - Mock のセッションが、指定したアカウントの設定のフォルダで起動している
+  - 外部のアプリが受け取った起動したアカウントが、指定した設定のフォルダである
+- name: 正常シナリオ（ワークスペースのフォルダを移した）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: project-index
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 設定にワークスペースの ID を持つ記録を、前のフォルダから指定したフォルダへ移している。その ID の配信元の行と状態のフォルダの記録があり、行の配信の設定と作業範囲は前のフォルダを指す
+    notes: 前のフォルダには記録が無い
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant PI as project-index
+
+      APP->>API: 移した先のフォルダでワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>WSM: 記録の設定のワークスペースの ID を参照する
+      WSM->>PI: その ID の配信元の行を取得する
+      PI-->>WSM: 前のフォルダを指す行
+      WSM->>WSM: 前のフォルダに同じ ID の記録が無いことを確認する
+      WSM->>PI: 行の配信の設定と作業範囲を移した先のフォルダに変更する
+      PI-->>WSM: 変更した結果
+      API-->>APP: 前と同じワークスペースの ID と画面の URL
+    ```
+  expected:
+  - 外部のアプリが受け取ったワークスペースの ID が、移す前と同じである
+  - グローバルの設定のファイルにその ID の行が 1 行だけあり、配信の設定と作業範囲が移した先のフォルダを指す
+  - 状態のフォルダの追加の MCP・プラグインの記録が移す前のままである
+- name: 正常シナリオ（設定にワークスペースの ID が無い記録）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: project-index
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 指定したフォルダに、設定にワークスペースの ID を持たない記録があり、配信元の行が無い
+    notes: ワークスペースの ID を設定に持たなかったバージョンで作った記録
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant PI as project-index
+
+      APP->>API: ワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>WSM: フォルダからワークスペースの ID を振り、記録の設定に記録する
+      WSM->>PI: 配信元に登録する
+      PI-->>WSM: 登録した結果
+      API-->>APP: ワークスペースの ID と画面の URL
+    ```
+  expected:
+  - 記録の設定に、外部のアプリが受け取ったワークスペースの ID が記録されている
+  - 設定のほかのキーと種類ごとの YAML は変わっていない
+  - グローバルの設定のファイルにその ID の行がある
+- name: 異常シナリオ（同じ ID のワークスペースが別のフォルダにある）
+  setup:
+  - name: Mock
+    description: なし（Claude Code を起動しない）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: project-index
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 指定したフォルダの記録は、別のフォルダの記録をコピーしたもので、設定に同じワークスペースの ID を持つ。その ID の配信元の行は、記録が残っている別のフォルダを指す
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant WSM as ワークスペースの管理
+      participant PI as project-index
+
+      APP->>API: コピーしたフォルダでワークスペースの作成を依頼する（POST /workspaces）
+      API->>WSM: ワークスペースの作成を依頼する
+      WSM->>PI: その ID の配信元の行を取得する
+      PI-->>WSM: 別のフォルダを指す行
+      WSM->>WSM: 別のフォルダに同じ ID の記録がある
+      API-->>APP: 同じ ID のワークスペースが別のフォルダにあるエラー（そのフォルダのパスを含む）
+    ```
+  expected:
+  - 外部のアプリが、同じ ID のワークスペースが別のフォルダにあるエラーと、そのフォルダのパスを受け取っている
+  - 配信元の行は別のフォルダを指したままで、両方のフォルダの記録が変わっていない
+- name: 異常シナリオ（指定したアカウントを借りられない）
+  setup:
+  - name: Mock
+    description: claude-balancer（指定したアカウントが利用の上限に達しているか設定に無く、`exec` が子プロセスを起動せずに理由を出して終わる。ほかのアカウントは空いている）
+  - name: 常駐サーバー
+    description: 正常シナリオと同じ
+  - name: ワークスペース
+    description: 作成済みで、MindStella のセッションが無い
+  - name: 依頼
+    description: MindStella のセッションの作成で、Claude Code の設定のフォルダ（アカウント）を指定する
+  flow: |-
+    ```mermaid
+    sequenceDiagram
+      participant APP as 外部のアプリ
+      participant API as MindStella の API
+      participant MGR as セッションの管理
+      participant CB as claude-balancer
+
+      APP->>API: 設定のフォルダを指定して MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+      API->>MGR: MindStella のセッションの作成を依頼する
+      MGR->>CB: tmux のペインの中で、指定したアカウントを添えて claude-balancer exec を起動する
+      CB-->>MGR: 指定したアカウントを貸せない理由
+      MGR->>MGR: tmux のペインを閉じる
+      API-->>APP: アカウントを借りられないエラーと claude-balancer が出した理由（ワークスペースは開いたまま）
+    ```
+  expected:
+  - ほかのアカウントで Claude Code が起動しておらず、tmux のペインが残っていない
+  - 状態に MindStella のセッションが登録されていない
+  - 外部のアプリが、アカウントを借りられないエラーと claude-balancer が出した理由を受け取っている
 lead: 外部のアプリがフォルダ・進め方の文書・追加の MCP・プラグインを指定してワークスペースを作り、続けて MindStella のセッションの作成を依頼し、MindStella のセッションの準備ができてから画面の URL と MindStella のセッションの ID を受け取る単一ユースケース。
 issue: 516
 primary_actor: 外部のアプリ（aituber など）
@@ -422,7 +579,7 @@ preconditions:
 - 指定するフォルダが、設定で許可するフォルダの下にある
 - 進め方の文書の配信元の `scope.read` が、ワークスペースを作るフォルダを含む
 success_guarantee: ワークスペースの記録があり、その設定に進め方の文書が、状態のフォルダに追加の MCP・プラグインが記録され、ワークスペースが project-index の配信元に登録され、状態のフォルダのワークスペースの ID の一覧にある。MindStella のセッションが tmux で起動して準備ができ、外部のアプリが画面の URL と MindStella のセッションの ID を受け取っている。
-minimal_guarantee: ワークスペースの作成に失敗したときは、記録も配信元の行も状態のフォルダの記録も作らずに失敗の理由を返却する。MindStella のセッションの作成に失敗したときは、起動したプロセスを止め、ワークスペースは開いたまま残し、失敗の理由を返却する。外部のアプリは MindStella のセッションの作成だけを依頼し直せる。
+minimal_guarantee: ワークスペースの作成に失敗したときは、記録も配信元の行も状態のフォルダの記録も作らずに失敗の理由を返却する。MindStella のセッションの作成に失敗したときは、起動したプロセスを止め、ワークスペースは開いたまま残し、失敗の理由を返却する。外部のアプリは MindStella のセッションの作成だけを依頼し直せる。アカウントを指定したときは、指定と違うアカウントで起動しない。同じ ID の記録が別のフォルダに残っているときは、配信元の行を移し替えない。
 frequency: 外部のアプリが活動（台本作成など）を始めるたびに 1 回
 priority: 高
 refs:

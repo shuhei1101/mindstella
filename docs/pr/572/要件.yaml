@@ -12,15 +12,14 @@ use_cases:
       - docs/scenario/SC-531-1.yaml
   - kind: single
     scenario: docs/scenario/SC-489-14.yaml
-    impact: changed
-    detail: 配信元の行が無い新規のワークスペースを作るときに登録が通る。ワークスペースのフォルダを移したときの、前の ID の配信元の行と状態の扱いを決める（#554）
+    impact: none
+    detail: 配信元への登録は Mock にしており、登録とフォルダを移したときの扱いは単一ユースケース『外部のアプリから起動する』で通すため、シナリオは変わらない（#554）
     depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-42.yaml
-    impact: following
-    detail: アカウントごとの alias で起動したとき、claude-balancer がある端末でもそのアカウントで起動することに追随する（#556）
-    depends_on:
-      - docs/scenario/SC-489-41.yaml
+    impact: none
+    detail: alias が起動スクリプトへ `CLAUDE_CONFIG_DIR` を渡すところまでがこのユースケースで、その後のアカウントの借り方は単一ユースケース『端末から起動する』が持つため、シナリオは変わらない（#556）
+    depends_on: []
   - kind: single
     scenario: docs/scenario/SC-489-17.yaml
     impact: run_only

@@ -37,8 +37,8 @@ scenarios:
         SV->>TM: ペインの中で claude-balancer exec で起動する
         TM->>CC: 立ち上げる
         CC->>SV: SessionStart のフックが状態に登録する
-        SV-->>LS: MindStella のセッションの ID・tmux のペイン・画面の URL
-        LS-->>U: 画面の URL を示す
+        SV-->>LS: MindStella のセッションの ID・tmux のペイン・画面の URL・起動したアカウント
+        LS-->>U: 画面の URL と起動したアカウントを示す
         LS->>TM: MindStella のセッションのペインへつなぐ
       ```
     expected:
@@ -46,7 +46,7 @@ scenarios:
       - ワークスペースのフォルダにワークスペースの記録があり、状態のフォルダのワークスペースの ID の一覧にある
       - Mock の claude-balancer が `exec` を受け、tmux のペインの中で Mock の MindStella のセッションが起動している
       - 状態に MindStella のセッションの ID と tmux のペインが登録されている
-      - 出力に画面の URL があり、起動のコマンドが MindStella のセッションのペインへつないでいる
+      - 出力に画面の URL と、Mock の claude-balancer が貸したアカウントの設定のフォルダがあり、起動のコマンドが MindStella のセッションのペインへつないでいる
     test: test_normal
   - name: 正常シナリオ（進め方の文書・追加の MCP・プラグインを指定する）
     setup:
@@ -242,6 +242,62 @@ scenarios:
     expected:
       - 起動のコマンドが 0 以外の終了コードで終わり、出力に空いたアカウントが無い旨と画面の URL がある
       - ワークスペースは開いたままで、tmux にペインが残っていない
+  - name: 正常シナリオ（アカウントを指定する）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。claude-balancer は `exec` の引数を記録し、指定されたアカウントを貸す
+      - name: 依存が揃った環境
+        description: 正常シナリオと同じ
+      - name: ワークスペースのフォルダ
+        description: 正常シナリオと同じ
+      - name: アカウントの指定
+        description: 起動のコマンドを `CLAUDE_CONFIG_DIR` 付きで叩く
+        notes: Mock の claude-balancer の設定にあるアカウントの設定のフォルダ（『起動スクリプトの登録』のアカウントごとの alias が渡す値）
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant LS as 起動のコマンド
+        participant SV as 常駐サーバー（MindStella の API）
+        participant TM as tmux
+
+        U->>LS: CLAUDE_CONFIG_DIR でアカウントを指定して起動のコマンド {フォルダ}
+        LS->>SV: ワークスペースの作成を依頼する（POST /workspaces）
+        LS->>SV: 設定のフォルダを指定して MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+        SV->>TM: ペインの中で、指定したアカウントを添えて claude-balancer exec で起動する
+        SV-->>LS: MindStella のセッションの ID・tmux のペイン・画面の URL・起動したアカウント
+        LS-->>U: 画面の URL と起動したアカウントを示す
+        LS->>TM: MindStella のセッションのペインへつなぐ
+      ```
+    expected:
+      - Mock の claude-balancer が、`CLAUDE_CONFIG_DIR` の値をアカウントの指定として付けた `exec` を受けている
+      - 出力に、起動したアカウントとして `CLAUDE_CONFIG_DIR` の設定のフォルダがある
+  - name: 異常シナリオ（指定したアカウントを借りられない）
+    setup:
+      - name: Mock
+        description: 正常シナリオと同じ。claude-balancer は指定したアカウントが利用の上限に達していて、`exec` が理由を出して終わる（ほかのアカウントは空いている）
+      - name: 依存が揃った環境
+        description: 正常シナリオと同じ
+      - name: ワークスペースのフォルダ
+        description: 正常シナリオと同じ
+      - name: アカウントの指定
+        description: 起動のコマンドを `CLAUDE_CONFIG_DIR` 付きで叩く
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        actor U as 利用者
+        participant LS as 起動のコマンド
+        participant SV as 常駐サーバー（MindStella の API）
+
+        U->>LS: CLAUDE_CONFIG_DIR でアカウントを指定して起動のコマンド {フォルダ}
+        LS->>SV: ワークスペースの作成を依頼する（POST /workspaces）
+        LS->>SV: 設定のフォルダを指定して MindStella のセッションの作成を依頼する（POST /workspaces/{id}/sessions）
+        SV-->>LS: アカウントを借りられないエラーと claude-balancer が出した理由
+        LS-->>U: エラーの理由と画面の URL を示して止まる
+      ```
+    expected:
+      - 起動のコマンドが 0 以外の終了コードで終わり、出力に claude-balancer が出した理由と画面の URL がある
+      - ほかのアカウントで MindStella のセッションが起動しておらず、tmux にペインが残っていない
 lead: 利用者が起動のコマンドにワークスペースのフォルダ（と任意の進め方の文書・追加の MCP・プラグイン）を渡すと、依存を確かめ、常駐サーバーが落ちていれば systemd --user で起動してから、外部のアプリと同じ MindStella の API でワークスペースと MindStella のセッションを作り、そのペインへつなぐ単一ユースケース。
 issue: 67
 primary_actor: 利用者
@@ -262,6 +318,6 @@ refs:
   - SC-489-20#
 notes:
   外部のアプリとの関係: 起動のコマンドは、単一ユースケース『外部のアプリから起動する』と同じ MindStella の API を呼ぶ。API の中の分岐（記録が既にある・クローズしたフォルダ・読めない指定など）は、そのシナリオで確かめる
-  アカウント: MindStella のセッションのアカウントは claude-balancer が選ぶ（D-292）。claude-balancer が無い端末では、利用者の既定のアカウントで起動する
+  アカウント: MindStella のセッションのアカウントは claude-balancer が選ぶ（D-292）。`CLAUDE_CONFIG_DIR` でアカウントを指定したときは、claude-balancer からそのアカウントを借りる。claude-balancer が無い端末では、指定したアカウントか利用者の既定のアカウントで起動する
   E2E の範囲: 本物の Claude Code と systemd --user は使わず、偽のコマンドが受け取った引数と環境変数と、常駐サーバー・状態のフォルダ・tmux のペインを確かめる
 test_file: tests/e2e/単一ユースケース/test_launch_script.py
