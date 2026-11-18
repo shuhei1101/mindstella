@@ -28,6 +28,18 @@ use_cases:
     detail: 利用上限で止まったときにも、止まった理由「利用上限」の通知が届く
     depends_on:
       - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-41.yaml
+    impact: changed
+    detail: 止めた後に起動のコマンドで立ち上げると、前の会話を引き継いで起動する。追加の MCP・プラグインの記録が無いワークスペースでは、記録が無いことの警告が端末に出る
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
+  - kind: single
+    scenario: docs/scenario/SC-489-3.yaml
+    impact: changed
+    detail: MindStella のセッションが落ちた・無操作の上限で止めた後にコメントを送ると、前の会話を引き継いで起動し直してから届く。起動し直しに失敗したときは、コメントはスレッドに残る
+    depends_on:
+      - docs/scenario/SC-489-52.yaml
 docs:
   - page: docs/guide/話し合い-続きを再開する.md
     new: false

@@ -203,7 +203,7 @@ scenarios:
   - name: 正常シナリオ（利用上限に達した後に別のアカウントで続ける）
     setup:
       - name: Mock
-        description: モデル（エージェントフローを読む Claude）を呼ばない。claude-balancer（`PATH` の先頭に置く。`exec` で受けた引数を記録して `--` の後のコマンドをアカウントの `CLAUDE_CONFIG_DIR` で実行し、`report-limit` で受けたアカウントを記録する。`report-limit` を受けたアカウントは貸さない）・Claude Code（`PATH` の先頭に置く。引数と `CLAUDE_CONFIG_DIR` を記録し、『MindStella のセッションのフック』の SessionStart を叩いて待ち、ペインに貼られた入力を受けると UserPromptSubmit を叩き、アカウント A で起動したときは続けて StopFailure（`rate_limit`）を叩く）・Discord の Webhook（受けた本文を記録する HTTP のサーバーを空きポートで立てる）。利用者のコメントは、ブラウザを使わず、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する。コメントの取り込みの `threads`・`thread`・`update_thread` は、MindStella の MCP にクライアントでつないで決めた引数で再生する。起動のコマンドそのものは単一ユースケース『端末から起動する』で確かめる
+        description: 'モデル（エージェントフローを読む Claude）を呼ばない。claude-balancer（`PATH` の先頭に置く。`exec` で受けた引数を記録して `--` の後のコマンドをアカウントの `CLAUDE_CONFIG_DIR` で実行する。子プロセスが終わった後、会話の記録の最も新しい assistant の記録の `error` が `rate_limit` なら、そのアカウントを利用上限に達したと記録して以降は貸さない）・Claude Code（`PATH` の先頭に置く。引数と `CLAUDE_CONFIG_DIR` を記録し、『MindStella のセッションのフック』の SessionStart を叩いて待ち、ペインに貼られた入力を受けると UserPromptSubmit を叩き、アカウント A で起動したときは、会話の記録に `error: rate_limit` の assistant の記録を書いてから続けて StopFailure（`rate_limit`）を叩く）・Discord の Webhook（受けた本文を記録する HTTP のサーバーを空きポートで立てる）。利用者のコメントは、ブラウザを使わず、サーバーの配信の `POST /api/comments` と `POST /api/comments/send` で再生する。コメントの取り込みの `threads`・`thread`・`update_thread` は、MindStella の MCP にクライアントでつないで決めた引数で再生する。起動のコマンドそのものは単一ユースケース『端末から起動する』で確かめる'
       - name: 依存が揃った環境
         description: スキル専用の仮想環境に Python 3.12 以上・PyYAML・jsonschema・MCP の SDK が入っている。テストごとの一時の端末の設定で project-index を起動している。常駐サーバーは、テストごとの一時の状態のフォルダ（`XDG_STATE_HOME`）と、Webhook の Mock を指す Webhook の設定のファイルで起動している
       - name: tmux
@@ -234,7 +234,7 @@ scenarios:
         click I1 "id:SC-489-43#scenarios[正常シナリオ]"
       ```
     expected:
-      - Mock の claude-balancer が `report-limit` でアカウント A を受けている
+      - Mock の claude-balancer がアカウント A を利用上限に達したと記録している。MindStella が `report-limit` を呼んでいない
       - 2 回目の `exec` で起動した Claude Code が、`--resume` に 1 回目の Claude Code の `session_id` を受け、`CLAUDE_CONFIG_DIR` がアカウント B の設定のフォルダである
       - 『MindStella のセッションの一覧』が、1 回目と同じ MindStella のセッションの ID を `running` で返し、アカウントが B である
       - Webhook の Mock が、止まった理由「利用上限」の通知を 1 件受けている
@@ -256,8 +256,8 @@ preconditions:
   - プラグイン mindstella がインストールされている
   - tmux が入っている
   - 常駐サーバーが systemd --user で起動できる
-success_guarantee: 利用者が画面から送ったコメントは、記録の種類ごとに振り分けて記録され、利用者の回答が要ることは検討事項として残り、検討事項への回答で決まる。ワークスペースの YAML はどの時点でもスキーマに合い、サーバーが配るプレビューは最後の編集を表示している。ワークスペースの直下には記録のフォルダ `.mindstella/` と `README.md` だけがある。
-minimal_guarantee: 途中で MindStella のセッションを止めても、それまでに記録した項目と会話ログ、取り込み待ちのスレッドはワークスペースに残り、次に起動のコマンドで MindStella のセッションを作ると、前の会話を引き継ぎ、起動と再開のエージェントフローで続きから再開できる。アカウントが利用上限に達しても、利用者が何もしなくても、別のアカウントで同じ会話の続きから進む。
+success_guarantee: 利用者が画面から送ったコメントは、記録の種類ごとに振り分けて記録され、利用者の回答が要ることは検討事項として残り、検討事項への回答で決まる。ワークスペースの YAML はどの時点でもスキーマに合い、サーバーが配るプレビューは最後の編集を表示している。ワークスペースの直下には記録のフォルダ `.mindstella/` と `README.md` だけがある。アカウントが利用上限に達しても、利用者が何もしなくても、別のアカウントで同じ会話の続きから進む。
+minimal_guarantee: 途中で MindStella のセッションを止めても、それまでに記録した項目と会話ログ、取り込み待ちのスレッドはワークスペースに残り、次に起動のコマンドで MindStella のセッションを作ると、起動と再開のエージェントフローで続きから再開できる。自動の起動し直しに失敗しても、届いたコメントは取り込み待ちのスレッドに残り、失敗した理由が『MindStella のセッションの一覧』で分かる。
 frequency: 1 つの話し合いにつき、起動 1 回と、数回〜数十回のコメントの送信と取り込み
 priority: 高
 notes:
