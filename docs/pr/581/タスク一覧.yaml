@@ -80,4 +80,7 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T10:44:35.825319+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
+    note: test_option_draft_when_redrawn を、入力中は描き直さず離れたときに 1 回だけ描き直す振る舞いに合わせて修正し、pass を確認した
+    updated_by: planner
+    updated_at: '2026-11-18T10:53:32.304998+00:00'
