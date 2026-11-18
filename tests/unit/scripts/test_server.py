@@ -828,7 +828,13 @@ def test_build_server_when_marking_tool(
     result = _run_async(
         mcp_server.call_tool(
             "reply",
-            {"workspace": str(root), "id": "TH-1", "body": "答えます", "summary": "質問", "session": session},
+            {
+                "workspace": str(root),
+                "id": "TH-1",
+                "body": "答えます",
+                "summary": "質問",
+                "session": session,
+            },
         )
     )
     # 検証
@@ -856,7 +862,13 @@ def test_build_server_when_marking_tool_failed(
     result = _run_async(
         mcp_server.call_tool(
             "reply",
-            {"workspace": str(root), "id": "TH-1", "body": "答えます", "summary": "質問", "session": session},
+            {
+                "workspace": str(root),
+                "id": "TH-1",
+                "body": "答えます",
+                "summary": "質問",
+                "session": session,
+            },
         )
     )
     # 検証
