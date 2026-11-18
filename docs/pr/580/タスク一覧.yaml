@@ -78,4 +78,7 @@ tasks:
     updated_by: planner
     updated_at: '2026-11-18T11:12:47.667272+00:00'
   - process: 結合テスト作成
-    status: todo
+    status: done
+    note: 新しい結合テストは作らず、実行範囲の表の test_normal_when_mdmark_documents を実行した
+    updated_by: planner
+    updated_at: '2026-11-18T11:17:48.232649+00:00'
