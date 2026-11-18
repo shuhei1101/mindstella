@@ -5,8 +5,8 @@ lead: Webhook の URL へ送信したメッセージを、Webhook が紐づい�
 used_in:
   - plugins/mindstella/skills/mindmap/scripts/
 verification:
-  state: 未確認
-  detail: mindstella からは未確認。同じ端末の claude-balancer が 2026-09-21 に実チャンネルで `wait=true` の `200` と 2001 文字の `400` を確認している
+  state: 済
+  detail: 2026-11-18 に mindstella の端末から、利用者が用意した Webhook の設定のファイルの URL へ `wait=true` で送信して確認した。`User-Agent` を `DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)` にすると `200`（0.39 秒）。標準ライブラリの既定の `User-Agent`（`Python-urllib/3.12`）では `403` が返り、投稿されない
 version:
   api_version: API v10（URL にバージョンを書かない。サーバー側の既定）
   checked_on: '2026-11-18'
@@ -51,6 +51,14 @@ endpoints:
         location: body
         description: 本文
         constraints: 2000 文字以内
+      - name: User-Agent
+        type: str
+        required: true
+        default: なし
+        location: header
+        description: クライアントの名前
+        constraints: '`DiscordBot ({URL}, {バージョン})` の書式'
+        notes: 標準ライブラリの既定の値（`Python-urllib/{バージョン}`）では `403` が返る。mindstella は `DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)` で送信する
     request_example: |-
       ```json
       {"content": "家計簿の話し合い: 作業が完了しました\nhttp://127.0.0.1:47800/mindstella.html"}
@@ -74,6 +82,9 @@ endpoints:
       - code: '429'
         condition: レートリミットに当たった
         notes: 本文の `retry_after` に待ち時間（秒）。再送信しない
+      - code: '403'
+        condition: 要求を拒否した
+        notes: '`User-Agent` が既定の `Python-urllib/{バージョン}` のときを含む'
 notes:
   認証セットアップの補足: |-
     ヘッダーでの認証を持たず、URL を知っていれば誰でも投稿できる。

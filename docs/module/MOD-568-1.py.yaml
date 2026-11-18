@@ -205,7 +205,7 @@ functions:
       type: bool
       description: '`200` が返ったか'
     process: |-
-      1. `url` に `?wait=true`（既にクエリを持てば `&wait=true`）を付け、`Content-Type: application/json` で `{"content": content}` を `POST` する（`opener(request, timeout=timeout)`）
+      1. `url` に `?wait=true`（既にクエリを持てば `&wait=true`）を付け、`Content-Type: application/json` と `User-Agent: USER_AGENT` で `{"content": content}` を `POST` する（`opener(request, timeout=timeout)`）
       2. 応答が `200` の場合、真を返す
          - `[INFO]` 送信が成功した（ステータスコードと、かかった秒数）
       3. `200` 以外の応答・`HTTPError` の場合、偽を返す
@@ -218,7 +218,7 @@ functions:
         summary: wait=true で JSON を送り、200 で真
         condition: 200 を返す偽の `opener`
         mock: '`opener`'
-        expected: '真。`opener` に渡った要求の URL が `?wait=true` を持ち、本文が `{"content": ...}`、`timeout` が `SEND_TIMEOUT_SEC`'
+        expected: '真。`opener` に渡った要求の URL が `?wait=true` を持ち、本文が `{"content": ...}`、`timeout` が `SEND_TIMEOUT_SEC`、`User-Agent` が `USER_AGENT`'
       - name: test_send_webhook_when_http_error
         case: 正常
         summary: 500 は偽で、記録に URL を含めない
@@ -389,6 +389,12 @@ constants:
     usecase: 作業の完了を通知する
     summary: 本文の 1 行目の名前の後ろの文言（利用者が確認した文面）
     value: '"作業が完了しました"'
+  - name: USER_AGENT
+    title: クライアントの名前
+    container: plugins/mindstella/skills/mindmap/scripts/notify.py
+    usecase: 作業の完了を通知する
+    summary: Webhook へ送信するときの `User-Agent`（外部 API『Discord』。標準ライブラリの既定の値では `403` が返る）
+    value: '"DiscordBot (https://github.com/shuhei1101/mindstella, 1.0)"'
 refs:
   - IF-568-1#
   - API-568-1#
