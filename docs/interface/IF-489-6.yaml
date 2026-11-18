@@ -451,6 +451,35 @@ flows:
       - ステータスが 409 で、`stale` が C-1 の 1 件で `reason` にクローズであることがある
       - '`threads.yaml`・`comments.yaml` の中身が送る前と同じ'
     test: test_error_when_thread_closed
+  - name: 正常系（無操作の上限で止めた後に届く）
+    summary: クローズ待ちでない stopped の MindStella のセッションを、前の会話を引き継いで起動し直してから入力する
+    setup:
+      - name: Mock
+        description: claude-balancer（`exec` で受けた引数を記録して `--` の後のコマンドを実行する）と、Claude Code（引数を記録し、『MindStella のセッションのフック』の SessionStart を叩いて、正常系（Claude Code へ入力する）と同じく入力を会話の記録へ書く）
+      - name: 状態
+        description: '状態のフォルダのこのワークスペースの `session.json` が `status: stopped`・`stop_reason: idle_timeout`・`close_pending: false` で、`claude_session_id` とその会話の記録のファイルがある'
+    flow: |-
+      ```mermaid
+      sequenceDiagram
+        participant 画面
+        participant IF as POST /api/comments/send
+        participant ST as 状態のフォルダ
+        participant RS as MindStella のセッションの起動し直し
+        participant P as 起動し直したペイン
+
+        画面->>IF: 送る
+        IF->>ST: session.json を読む（stopped、クローズ待ちでない）
+        IF->>RS: 契機 comment
+        RS->>P: claude --resume {前の session_id}
+        P->>ST: SessionStart
+        IF->>P: 件数の 1 行を貼る
+        IF-->>画面: entered: true、restarted: true
+      ```
+    expected:
+      - 起動した Claude Code が `--resume` と前の `session_id` を受けている
+      - 応答の `entered` と `restarted` が真で、起動し直したペインに件数の 1 行が貼られている
+      - '`session.json` の `status` が `running`、`stop_reason` が `null`'
+    test: test_normal_when_after_idle_stop
 lead: コメントの一覧でチェックしたレビュー中の書き込みを受け、新しいスレッドの分はオープンのスレッドを立てて最初の書き込みにし、返信の分は向けたスレッドの末尾に足して（`threads.yaml`）から、レビュー中（`comments.yaml`）から外す。1 件でも送れないときは何も書き換えない。足した後、tmux の中で立てた Claude Code なら、届いた件数を Claude Code のペインへ 1 回の入力として貼り、会話の記録に入ったかを確かめて応答に載せる。
 idempotent: false
 side_effects: '`threads.yaml` に新しいスレッドと返信の書き込みを足し（無ければ作る）、`comments.yaml` からその書き込みを消す。どちらも一時ファイルから `os.replace` で置き換え、`threads.yaml` を先に書く。ほかのファイルは書き換えない。書き終えた後、送り先のペインがあれば、tmux の `load-buffer`・`paste-buffer`・`send-keys` で Claude Code のペインへ文字列を入力する（入力は取り消さない）'
@@ -582,7 +611,7 @@ constraints:
     constraint: '届いたかの確かめは、tmux の 3 つのコマンドを終えてから 5 秒で打ち切る。待った秒の合計もこの上限を超えない。届かないときの応答は、ペインごとの入力の鍵と貼り付けの鍵を取るまでの待ちに加えて、貼り付けの上限とこの上限の和（5.5 秒）までに返る。打ち切ったときは理由を標準エラーに記録する'
     decided_by: NFR-489-1#requirements[ClaudeCodeへの入力を確かめる上限]
   - item: MindStella のセッションが無いとき
-    constraint: '宛先が生きていないとき、ワークスペースの MindStella のセッションが `crashed`（`running` でも落ちていれば `crashed` にする）でクローズ待ちでもクローズ済みでもなければ、『MindStella のセッションの起動し直し』を契機 `comment` で呼び、準備ができたら新しいペインへ同じ文字列を入力して `restarted` を真にする。起動し直しに失敗したときと、クローズ待ち・クローズ済みのときは `entered: false` にし、コメントはスレッドに残す。起動し直しを待つ間も書き換えの鍵とワークスペースのロックを持たない'
+    constraint: '宛先が生きていないとき、ワークスペースの MindStella のセッションが `crashed`（`running` でも落ちていれば `crashed` にする）か `stopped`（止まった理由を問わない）でクローズ待ちでもクローズ済みでもなければ、『MindStella のセッションの起動し直し』を契機 `comment` で呼び、準備ができたら新しいペインへ同じ文字列を入力して `restarted` を真にする。起動し直しに失敗したときと、クローズ待ち・クローズ済みのときは `entered: false` にし、コメントはスレッドに残す。起動し直しを待つ間も書き換えの鍵とワークスペースのロックを持たない'
     decided_by: NFR-489-1#requirements[MindStella のセッションの準備を待つ上限]
   - item: 最後の出来事の記録
     constraint: 'MindStella のセッションの記録（`session.json`）の `pane` へ入力して `entered: true` にしたとき、`session.json` ごとの書き込みの鍵を取って `last_activity_at` を入力した日時にし、`idle_stop_failures` を 0 に戻す。MindStella のセッションの `status` が `stopping` で `close_pending` が偽（『無操作の上限での停止』の途中）のときは入力せず、`restart_on_stopped` を真にする'

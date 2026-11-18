@@ -494,7 +494,7 @@ requirements:
     english_name: idle_stop_max_failures
     category: 可用性
     external_constraint: 制限なし
-    source_kind: 外部ライブラリの制限
+    source_kind: 制限なし
     value: '3'
     unit: 回（『無操作の上限での停止』が止める間に続けて失敗した回数。達したら、次の最後の出来事まで止めない）
     rationale: 規約『資源の値の決め方』のリトライ（回数の上限を持つ）に従い、1 層だけで回数を持つ。止める間の失敗は `/exit` でも SIGTERM でも Claude Code が終わらないときで、見回りの間隔（60 秒）を空けて続けて 3 回失敗するものは、その後も同じ理由で失敗し続けるとみなす

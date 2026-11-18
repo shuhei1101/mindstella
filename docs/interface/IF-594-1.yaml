@@ -23,7 +23,7 @@ constraints:
   - item: 止め終えたとき
     constraint: 停止済みを記録するとき（書き換える前が `stopping`・`stopped`・`crashed` のどれでも）、`status` を `stopped`、`stop_reason` を `idle_timeout`、`idle_stop_failures` を 0 にし、`restart_on_stopped` を読んで偽に戻す。この書き換えは `session.json` ごとの書き込みの鍵の中で書き換える
   - item: 停止の通知
-    constraint: 止め終えたときに、『停止の通知』を止まった理由 `idle_timeout` で 1 回呼ぶ。止める間に失敗して `running` に戻したときは呼ばず、`crashed` に戻したときは『MindStella のセッションの停止』と同じく `stop_failed` で呼ぶ
+    constraint: 止め終えたときに、『停止の通知』を止まった理由 `idle_timeout` で 1 回呼ぶ。止める間に失敗して `running` に戻したときは呼ばず、`crashed` に戻したときは『MindStella のセッションの停止』と同じく `stop_failed` で呼ぶ。`crashed` に戻したときも `restart_on_stopped` を読んで偽に戻し、真なら「止めている途中に届いたコメント」と同じく契機 `comment` で起動し直す
   - item: 止めている途中に届いたコメント
     constraint: 止め終えたときに読んだ `restart_on_stopped` が真なら、『停止の通知』を呼んだ後に『MindStella のセッションの起動し直し』を契機 `comment` で呼ぶ。準備ができたら、『コメントをまとめて送る』の「入力する文字列」と同じ文字列で、取り込み待ちのスレッドの件数を起動し直したペインへ入力する。起動し直しに失敗したときは、コメントはスレッドに残り、失敗は『MindStella のセッションの起動し直し』のとおり `last_error` で分かる
   - item: 止める間の失敗
