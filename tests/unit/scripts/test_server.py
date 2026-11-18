@@ -59,6 +59,7 @@ EXPECTED_TOOL_NAMES = (
     "create_session",
     "sessions",
     "stop_session",
+    "restart_session",
     "close_workspace",
     "server_status",
     "server_stop",
@@ -70,6 +71,7 @@ API_TOOL_NAMES = (
     "create_session",
     "sessions",
     "stop_session",
+    "restart_session",
     "close_workspace",
 )
 
