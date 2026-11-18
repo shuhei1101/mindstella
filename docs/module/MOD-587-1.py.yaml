@@ -295,3 +295,5 @@ functions:
         condition: 416 の計画
         mock: なし（`write` はリストへ積む関数）
         expected: '`write` が呼ばれない'
+test_files:
+  - tests/unit/scripts/test_files_serve.py
