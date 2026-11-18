@@ -1,0 +1,45 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-489-12.yaml
+    impact: run_only
+    detail: 開いたプレビューが、mdmark の develop の最新の配布物で資料・スレッドを描く。流れは変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-11.yaml
+    impact: run_only
+    detail: 配る書き出しが中に持つ mdmark が、書き出した時点の develop の最新になる。流れは変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-39.yaml
+    impact: run_only
+    detail: 書き出した 1 枚の HTML の資料の見た目が、mdmark の部品の見た目のとおりになる。流れは変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-489-40.yaml
+    impact: run_only
+    detail: 資料の本文の表・図・囲みが、mdmark の部品の見た目と動き（列の固定・横送り）のとおりに描かれる。流れは変わらない
+    depends_on: []
+  - kind: composite
+    scenario: docs/scenario/SC-489-50.yaml
+    impact: run_only
+    detail: 変更履歴の差分の表示が、mdmark の差分の見た目のとおりになる。流れは変わらない
+    depends_on: []
+docs:
+  - page: docs/library/LIB-489-13.yaml
+    new: false
+    change: '`version.pinning`・`version.source`・`install` の `latest` の読み方を、今回決める解決の仕方（develop の最新を遅れずに読む URL）へ直す'
+    status: todo
+  - page: docs/architecture/ARCH-489-1.yaml
+    new: false
+    change: jsDelivr の `notes` の mdmark の URL の `ref`（`latest` は `develop`）を、今回決める解決の仕方へ直す。解決に GitHub の問い合わせを使う場合は外部システムの行へ反映する
+    status: todo
+scope_out:
+  - item: 本文の差分（インライン・左右に並べる・HTML の本文の差分）を MindStella の実装から mdmark の差分の機能へ寄せること
+    reason: '利用者が挙げた差分の見た目（削除した行の打ち消し線・変わった所だけ濃い色）は mdmark の差分の機能のもので、今の画面は MindStella の差分の実装で描いている。実装の入れ替えは #347 が持つ。この PR は mdmark が描いた部品への CSS の上書きを取り除く範囲に留める。含めるかは設計のレビューで確定する'
+    plan: '#347'
+  - item: 部品のコピーのボタンの文言の付け替え（`relabelParamCopy`）
+    reason: 'CSS ではなく文言の付け替えで、mdmark の設定へ移す作業は #351 が持つ'
+    plan: '#351'
+  - item: '`docs/mock/` のモックが読む、版を固定した mdmark の URL'
+    reason: モックは作った時点の見た目を残す資料で、設定の `latest` を読まない
+    plan: none
