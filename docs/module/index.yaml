@@ -296,6 +296,8 @@ items:
     summary: "サーバー / 移行 / mdmark_documents.py"
   - page: MOD-550-2.js.yaml
     summary: "プレビュー / Storybook / main.js"
+  - page: MOD-591-2.js.yaml
+    summary: プレビュー / Storybook / mdmark-ref.js
   - page: MOD-489-182.py.yaml
     summary: "サーバー / 移行 / field_to_playbooks.py"
   - page: MOD-565-3.py.yaml
