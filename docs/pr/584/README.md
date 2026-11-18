@@ -1,0 +1,1 @@
+# MindStella のセッションが project-index で Git 管理外のワークスペースの記録を作成・更新・参照できるようにする
