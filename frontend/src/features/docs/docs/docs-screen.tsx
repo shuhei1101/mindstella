@@ -1,4 +1,4 @@
-// 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。納品物を先頭に並べる
+// 資料の画面（画面設計『資料.tsx』）。カード（既定）・ボード・表で見る。連番の順に並べる
 import { DocCard, orderDocs } from "@/features/docs/docs/components/doc-cards";
 import { AddedCard, addedCards, Board, boardColumns } from "@/shared/components/board";
 import { BodyFormatBadge } from "@/shared/components/body-format-badge";

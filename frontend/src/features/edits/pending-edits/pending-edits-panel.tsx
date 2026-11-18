@@ -12,9 +12,9 @@ import { KIND_LABEL, type Kind, type RecordIndex, type Relation, type RelationTy
 import { useCancelEdit, useSaveEdits } from "@/shared/hooks/use-edits";
 import { useEditSessionStore } from "@/shared/stores/edit-session-store";
 
-const SETTING_LABELS: Record<string, string> = { summary: "題名", description: "説明", playbooks: "プレイブック", phases: "フェーズ", target_label: "最上位の軸の呼び名", goal: "ゴール", targets: "対象", categories: "カテゴリー", links: "関連する場所", history_limit: "保持する回数" };
+const SETTING_LABELS: Record<string, string> = { summary: "題名", description: "説明", links: "関連する場所", history_limit: "保持する回数" };
 
-const KEY_LABELS: Record<string, string> = { status: "状態", title: "タイトル", target: "機能", category: "カテゴリー", phase: "フェーズ", tags: "タグ", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", confidence: "確からしさ", related: "関係", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", deliverable: "納品物", description: "説明" };
+const KEY_LABELS: Record<string, string> = { status: "状態", title: "タイトル", tags: "タグ", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", related: "関係", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", description: "説明" };
 
 /** 値を 1 行の文字にする（空は「（空）」、配列は「、」でつなぐ） */
 /** 関係の種類の表示名 */

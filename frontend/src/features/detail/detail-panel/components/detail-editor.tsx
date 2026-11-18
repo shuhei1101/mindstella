@@ -41,7 +41,7 @@ const ADD_KEYS: Record<Kind, string[]> = {
 
 /** キーの呼び名 */
 export const KEY_LABELS: Record<string, string> = {
-  status: "状態", title: "タイトル", target: "機能", category: "カテゴリー", phase: "フェーズ", tags: "タグ", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", confidence: "確からしさ", related: "関係", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", deliverable: "納品物", description: "説明",
+  status: "状態", title: "タイトル", tags: "タグ", answer: "決定内容", reason: "理由", body: "本文", result: "結果", kind: "種類", question: "問い", conclusion: "結論", related: "関係", withdrawn: "取り下げ", meaning: "意味", aliases: "別名", content: "内容", date: "日付", description: "説明",
 };
 
 const TASK_KINDS = ["作業", "調査", "検証"];
