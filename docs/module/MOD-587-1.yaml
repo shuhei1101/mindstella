@@ -1,0 +1,297 @@
+id: MOD-587-1
+title: サーバー / 配信 / files_serve.py
+lead: ワークスペースのファイルのフォルダのパスを解決し、`Range` を読んで返す範囲を決め、ファイルを一定の大きさずつ書き出す。配信（serve.py）の `GET /files/{path}` が呼ぶ。標準ライブラリだけに依存し、ワークスペースには書かない。
+directory: |-
+  ```
+  plugins/mindstella/skills/mindmap/scripts/
+    files_serve.py   ファイルのフォルダのパスの解決・Range の解釈・返す範囲の決定・分けた書き出し
+  ```
+data_models:
+  - name: FilePlan
+    title: ファイルの応答の計画
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    role: 値オブジェクト
+    summary: 書き出す前に決めた、ステータス・ヘッダー・書き出すファイルの範囲（`@dataclass(frozen=True, slots=True, kw_only=True)`）
+    properties:
+      - name: status
+        type: int
+        description: 200 / 206 / 416
+      - name: content_type
+        type: str
+        description: 拡張子から引いた Content-Type
+      - name: path
+        type: Path
+        description: 書き出すファイル（解決済みの絶対パス）
+      - name: size
+        type: int
+        description: ファイルの大きさ（バイト）
+      - name: start
+        type: int
+        description: 書き出す最初のバイトの位置（416 は 0）
+      - name: length
+        type: int
+        description: 書き出すバイト数（416 は 0）
+      - name: headers
+        type: tuple[tuple[str, str], ...]
+        description: Content-Type と Content-Length のほかに付けるヘッダー（`Accept-Ranges`・`Cache-Control`・`X-Content-Type-Options`・`Content-Security-Policy`・206 と 416 の `Content-Range`）
+constants:
+  - name: FILES_DIR
+    title: ファイルのフォルダの名前
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: 記録のフォルダ `.mindstella/` の中のファイルのフォルダの名前（ER 図『ワークスペース』の `files/`）。点検（checker.py）もこの定数を使う
+    value: '"files"'
+  - name: FILES_PATH
+    title: ファイルの配信のパス
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: 配信がファイルを返すパスの頭（『ワークスペースのファイルの配信』）
+    value: '"/files/"'
+  - name: FILE_TYPES
+    title: ファイルの Content-Type
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: 小文字の拡張子から Content-Type を引く。表に無い拡張子は `application/octet-stream`
+    entries:
+      - key: .mp4
+        value: '"video/mp4"'
+      - key: .webm
+        value: '"video/webm"'
+      - key: .mov
+        value: '"video/quicktime"'
+      - key: .mp3
+        value: '"audio/mpeg"'
+      - key: .wav
+        value: '"audio/wav"'
+      - key: .ogg
+        value: '"audio/ogg"'
+      - key: .m4a
+        value: '"audio/mp4"'
+      - key: .png
+        value: '"image/png"'
+      - key: .jpg
+        value: '"image/jpeg"'
+      - key: .jpeg
+        value: '"image/jpeg"'
+      - key: .gif
+        value: '"image/gif"'
+      - key: .webp
+        value: '"image/webp"'
+      - key: .svg
+        value: '"image/svg+xml"'
+  - name: FILE_WRITE_CHUNK
+    title: ファイルを書き出す単位
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: ファイルを読んで応答へ書く 1 回のバイト数
+    value: '65536'
+    reason: 導出の元は、同じ配信が音声の本文を読む単位 `AUDIO_READ_CHUNK`（65536）。要求ごとのスレッドが同時に持つメモリはこの大きさにとどまり（動画を丸ごと読まない）、書き込みの回数は数十 MB の動画でも数百回に収まる。音声と同じ値にし、実測で詰まりが見つかれば見直す
+  - name: FILE_HEADERS
+    title: ファイルの応答に常に付けるヘッダー
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    summary: 200・206・416 に共通して付けるヘッダー
+    entries:
+      - key: Accept-Ranges
+        value: '"bytes"'
+      - key: Cache-Control
+        value: '"no-cache"'
+      - key: X-Content-Type-Options
+        value: '"nosniff"'
+      - key: Content-Security-Policy
+        value: '"sandbox"'
+functions:
+  - name: resolve_file
+    title: ファイルの解決
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    scope: public
+    summary: '`/files/` より後ろのパスを、ファイルのフォルダの配下の通常のファイルに解決する。外を指す・無い・フォルダなら None'
+    args:
+      - name: files_dir
+        type: Path
+        required: true
+        passing: positional
+        description: ファイルのフォルダ（`{ワークスペース}/.mindstella/{FILES_DIR}`。無くてもよい）
+      - name: sub_path
+        type: str
+        required: true
+        passing: positional
+        description: '`/files/` より後ろのパス（URL エンコードのまま）'
+    returns:
+      type: Path | None
+      description: 解決したファイルの絶対パス。返せないときは None
+    process: |-
+      1. `sub_path` を URL デコードする
+         - デコードした先が空、または NUL 文字を含む場合、None を返す
+      2. `files_dir` を `resolve()` したパスと、`files_dir / デコードしたパス` を `resolve()`（シンボリックリンクをたどる）したパスを求める
+      3. 後者が前者の配下でない場合、None を返す
+      4. 後者が通常のファイルでない場合（無い・フォルダ）、None を返す
+      5. 後者を返す
+    unit_tests:
+      - name: test_resolve_file
+        case: 正常
+        summary: 配下のファイルを解決する
+        condition: '`clip.mp4` と `img/shot%20a.png`（ファイル名 `shot a.png`）'
+        mock: なし（一時ディレクトリ）
+        expected: それぞれのファイルの絶対パス
+      - name: test_resolve_file_when_outside
+        case: 正常
+        summary: フォルダの外を指すパスは None
+        condition: '`parametrize`: `../decisions.yaml` / `%2e%2e/decisions.yaml` / `outside`（外のファイルへのシンボリックリンク） / `/etc/passwd`'
+        mock: なし（一時ディレクトリ）
+        expected: どれも None
+      - name: test_resolve_file_when_not_file
+        case: 正常
+        summary: 無い・フォルダ・空・NUL は None
+        condition: '`parametrize`: `missing.mp4` / `img` / 空文字 / `a%00b`、および `files_dir` が無いときの `clip.mp4`'
+        mock: なし（一時ディレクトリ）
+        expected: どれも None
+  - name: parse_range
+    title: 範囲の解釈
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    scope: public
+    summary: '`Range` の値とファイルの大きさから、返す範囲（始めと終わり）を求める'
+    args:
+      - name: header
+        type: str | None
+        required: true
+        passing: positional
+        description: '`Range` の値（無ければ None）'
+      - name: size
+        type: int
+        required: true
+        passing: positional
+        description: ファイルの大きさ
+    returns:
+      type: tuple[int, int] | Literal["whole", "unsatisfiable"]
+      description: 範囲（始め・終わり、どちらも含む）、全体を返すとき `"whole"`、416 のとき `"unsatisfiable"`
+    process: |-
+      1. `header` が None、または `bytes=` で始まらない場合、`"whole"` を返す
+      2. `bytes=` より後ろが `,` を含む（複数の範囲）場合、`"whole"` を返す
+      3. `{始め}-{終わり}`・`{始め}-`・`-{末尾からの長さ}` のどれでもない（数字以外・始め > 終わり・両方が空）場合、`"whole"` を返す
+      4. 末尾からの長さの場合、始めを `max(size - 長さ, 0)`、終わりを `size - 1` にする
+         - `size` が 0、または長さが 0 の場合、`"unsatisfiable"` を返す
+      5. 始めが `size` 以上の場合、`"unsatisfiable"` を返す
+      6. 終わりが無いか `size - 1` を超える場合、`size - 1` にする
+      7. （始め, 終わり）を返す
+    unit_tests:
+      - name: test_parse_range
+        case: 正常
+        summary: 1 つの範囲を解釈する
+        condition: '`size` 1000 で `parametrize`: `bytes=100-199` / `bytes=900-` / `bytes=-50` / `bytes=990-2000` / `bytes=-2000`'
+        mock: なし
+        expected: (100, 199) / (900, 999) / (950, 999) / (990, 999) / (0, 999)
+      - name: test_parse_range_when_whole
+        case: 正常
+        summary: 受けない値は全体
+        condition: '`parametrize`: None / `items=0-1` / `bytes=0-1,5-6` / `bytes=a-b` / `bytes=5-2` / `bytes=-`'
+        mock: なし
+        expected: どれも `"whole"`
+      - name: test_parse_range_when_unsatisfiable
+        case: 正常
+        summary: ファイルの外の範囲
+        condition: '`size` 1000 で `bytes=1000-`・`bytes=-0`、`size` 0 で `bytes=0-`・`bytes=-10`'
+        mock: なし
+        expected: どれも `"unsatisfiable"`
+  - name: plan_file
+    title: ファイルの応答の計画
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    scope: public
+    summary: 解決したファイルと `Range` から、200・206・416 のどれで何を書き出すかを決める
+    args:
+      - name: path
+        type: Path
+        required: true
+        passing: positional
+        description: '`resolve_file` が返したファイル'
+      - name: range_header
+        type: str | None
+        required: true
+        passing: positional
+        description: '`Range` の値'
+    returns:
+      type: FilePlan
+      description: 書き出しの計画
+    process: |-
+      1. ファイルの大きさを読み、拡張子を小文字にして `FILE_TYPES` で Content-Type を引く（無ければ `application/octet-stream`）
+      2. 範囲を求める（範囲の解釈）
+         - `"whole"` の場合、200・始め 0・長さ `size`
+         - 範囲の場合、206・その範囲・`Content-Range: bytes {始め}-{終わり}/{size}`
+         - `"unsatisfiable"` の場合、416・長さ 0・`Content-Range: bytes */{size}`
+      3. `FILE_HEADERS` を付けた `FilePlan` を返す
+    exceptions:
+      - name: OSError
+        condition: 大きさを読めない（解決の後に消された等）
+        message: 標準のメッセージ
+        notes: 捕まえずに伝播し、配信が 404 にする
+    unit_tests:
+      - name: test_plan_file
+        case: 正常
+        summary: 全体を返す計画
+        condition: 1000 バイトの `clip.mp4` と `Range` 無し
+        mock: なし（一時ディレクトリ）
+        expected: 200、`video/mp4`、始め 0、長さ 1000、`FILE_HEADERS` を持ち `Content-Range` を持たない
+      - name: test_plan_file_when_range
+        case: 正常
+        summary: 範囲を返す計画
+        condition: 1000 バイトの `clip.mp4` と `bytes=100-199`
+        mock: なし（一時ディレクトリ）
+        expected: 206、始め 100、長さ 100、`Content-Range` が `bytes 100-199/1000`
+      - name: test_plan_file_when_unsatisfiable
+        case: 正常
+        summary: 416 の計画
+        condition: 1000 バイトの `clip.mp4` と `bytes=1000-`
+        mock: なし（一時ディレクトリ）
+        expected: 416、長さ 0、`Content-Range` が `bytes */1000`
+      - name: test_plan_file_when_unknown_suffix
+        case: 正常
+        summary: 表に無い拡張子と大文字の拡張子
+        condition: '`parametrize`: `a.bin` / `B.PNG`'
+        mock: なし（一時ディレクトリ）
+        expected: '`application/octet-stream` / `image/png`'
+  - name: write_file
+    title: ファイルの書き出し
+    kind: 関数
+    container: plugins/mindstella/skills/mindmap/scripts/files_serve.py
+    usecase: 動画などのファイルを配置して資料に埋め込む
+    scope: public
+    summary: 計画の範囲を `FILE_WRITE_CHUNK` ずつ読んで、渡した書き込みの関数へ渡す
+    side_effects: '`write` を呼ぶ。ファイルは読むだけ'
+    args:
+      - name: plan
+        type: FilePlan
+        required: true
+        passing: positional
+        description: 書き出しの計画
+      - name: write
+        type: Callable[[bytes], object]
+        required: true
+        passing: injected
+        description: 応答の本文へ書く関数（配信は `wfile.write` を渡す）
+    returns:
+      type: None
+      description: 無し
+    process: |-
+      1. `plan.length` が 0 の場合、何もしない
+      2. ファイルを開いて `plan.start` へ移り、残りが 0 になるまで `min(FILE_WRITE_CHUNK, 残り)` バイトずつ読んで `write` へ渡す
+         - 読んだバイトが空（書き出す途中でファイルが縮んだ）の場合、そこで終える
+    unit_tests:
+      - name: test_write_file
+        case: 正常
+        summary: 範囲を分けて書き出す
+        condition: '`FILE_WRITE_CHUNK` の 2.5 倍のファイルで、全体の計画と、始め 10・長さ 100 の計画'
+        mock: なし（一時ディレクトリ、`write` はリストへ積む関数）
+        expected: 全体は 3 回に分かれ、つなぐとファイルと同じ。範囲は 10〜109 バイト目と同じ
+      - name: test_write_file_when_empty
+        case: 正常
+        summary: 長さ 0 は書かない
+        condition: 416 の計画
+        mock: なし（`write` はリストへ積む関数）
+        expected: '`write` が呼ばれない'

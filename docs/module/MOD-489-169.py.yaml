@@ -328,7 +328,7 @@ classes:
       - name: do_GET
         title: GET の振り分け
         kind: メソッド
-        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける'
+        summary: '`Host` を確かめ、`/`・`/mindstella.html`・`/spa`・`/files/`・`/api/records`・`/api/events`・`/api/comments`・`/api/threads`・`/api/transcription` を処理の関数へ振り分ける'
         returns:
           type: None
           description: '-'
@@ -339,6 +339,7 @@ classes:
              - `/mindstella.html` の場合、最後に検査に通った設定の `mdmark` で画面を返す（`index_response`）
              - `/spa` の場合、`302`・`Location: /spa/`・本文なしで送り直す（`SPA_PATH`）
              - `/spa/` で始まる場合、SPA の出力のファイルを返す（`spa_response`。`{プレビューのフォルダ}/{SPA_DIR}` と `/spa` より後ろのパスを渡す）
+             - `/files/` で始まる場合、ワークスペースのファイルを書き出す（`_send_file`。`/files/` より後ろのパスと `Range` を渡す）
              - `/api/records` の場合、記録を返す（`records_response`。配信の文脈を渡す）
              - `/api/events` の場合、`200`・`Content-Type: text/event-stream`・`Cache-Control: no-store` を書き、書き換えを知らせ続ける（`stream_events`。書き換えの印は `workspace_signature` の後ろに `|settings:{SettingsHolder.revision}` をつないだもの。書き込みが `BrokenPipeError`・`ConnectionResetError` で失敗したら終える）
              - `/api/comments` の場合、レビュー中のコメントと書きかけを返す（`comments_response`）
@@ -416,6 +417,48 @@ classes:
              - `/api/comments/{id}` の場合、本文を読まずに受け付ける（`delete_response`）
              - `/api/edits/{id}`（`id` は `/` を含まない）の場合、本文を読まずに受け付ける（`edit_delete_response`）
              - それ以外は 404 を返す
+      - name: _send_file
+        title: ファイルの応答
+        kind: メソッド
+        container: plugins/mindstella/skills/mindmap/scripts/serve.py
+        usecase: 動画などのファイルを配置して資料に埋め込む
+        scope: internal
+        summary: ワークスペースのファイルを解決し、200・206・416 のヘッダーを書いて、本文を分けて書き出す。解決できなければ 404
+        args:
+          - name: context
+            type: ServeContext
+            required: true
+            passing: positional
+            description: 配信の文脈（ワークスペースの直下 `root` を使う）
+          - name: sub_path
+            type: str
+            required: true
+            passing: positional
+            description: '`/files/` より後ろのパス（URL エンコードのまま）'
+        returns:
+          type: None
+          description: '-'
+        process: |-
+          1. `{root}/.mindstella/{FILES_DIR}` と `sub_path` でファイルを解決する（ファイルの解決）
+             - None の場合、404 を返す（`problem_response`。`detail` は「ファイルがありません」で、パスを含めない）
+          2. `Range` の値で計画を決める（ファイルの応答の計画）
+             - `OSError` の場合、404 を返す
+          3. 計画のステータス・`Content-Type`・`Content-Length`（計画の長さ）・計画のヘッダーを書く（`Cache-Control: no-store` を付ける `_reply` は使わない）
+          4. 本文を分けて書き出す（ファイルの書き出し。`wfile.write` を渡す）
+             - `BrokenPipeError`・`ConnectionResetError` の場合（ブラウザが再生位置を移して接続を切った）、書き出しをやめて終える（ほかの要求のスレッドに影響しない）
+        unit_tests:
+          - name: test_send_file
+            case: 正常
+            summary: ファイルの全体と範囲を返す
+            condition: 一時ワークスペースに 1000 バイトの `.mindstella/files/clip.mp4` を置き、配信を立てて `Range` 無しと `bytes=100-199` で GET する
+            mock: なし（一時ディレクトリ・`127.0.0.1` の空きポート）
+            expected: '200 で全体、206 で 100〜199 バイト目。どちらも `Cache-Control: no-cache`・`Content-Security-Policy: sandbox`'
+          - name: test_send_file_when_missing
+            case: 正常
+            summary: 解決できなければ 404
+            condition: 同じ配信で `/files/missing.mp4` と `/files/../config.yaml`
+            mock: なし（一時ディレクトリ）
+            expected: どちらも 404 の問題の応答で、本文に `config.yaml` の中身が無い
   - name: SettingsHolder
     title: 最後に検査に通った設定
     container: plugins/mindstella/skills/mindmap/scripts/serve.py
