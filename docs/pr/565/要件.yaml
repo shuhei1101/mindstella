@@ -301,6 +301,9 @@ scope_out:
   - item: develop で fail する結合テスト test_migrate.py::test_normal_when_mdmark_documents
     reason: develop でも同じく fail する既存の不具合（v0.13.0 の手順 mdmark_documents が呼ぶ mdmark の develop が、タグを指定しない呼び出しを断る）で、#518 の要望に含まれない
     plan: '#578'
-  - item: develop で fail する結合テスト test_detail_panel_screen.py の 3 件（test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch・test_option_draft_when_redrawn）
-    reason: develop（273145d4）でも同じく fail する既存の不具合で、#518 の要望に含まれない
+  - item: develop で fail する結合テスト test_detail_panel_screen.py の 3 件（test_body_alias_tooltip_pinned・test_diff_minimap_when_empty_area_pressed・test_diff_body_layout_switch）
+    reason: develop でも同じく fail する既存の不具合（画面の大きさ・位置・フォーカスで判定するテスト。単独では通ることがある）で、#518 の要望に含まれない
     plan: '#553'
+  - item: develop で fail する結合テスト test_detail_panel_screen.py::test_option_draft_when_redrawn
+    reason: develop（273145d4）でも同じく fail する既存の不具合で、#518 の要望に含まれない
+    plan: '#579'
