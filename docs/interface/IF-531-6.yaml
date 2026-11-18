@@ -13,7 +13,7 @@ request:
     location: path
     description: MindStella のセッションの ID（フックが `MINDSTELLA_SESSION` から入れる）
   - name: event
-    type: Literal['session_start', 'session_end', 'prompt_submit', 'stop', 'stop_failure']
+    type: Literal['session_start', 'session_end', 'prompt_submit', 'stop', 'stop_failure', 'pre_compact']
     required: true
     location: body
     description: 出来事
@@ -69,6 +69,12 @@ request:
     default: なし（記録しない）
     location: body
     description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス（`session_start` でフックが入れる）
+  - name: error
+    type: str | None
+    required: false
+    default: なし
+    location: body
+    description: StopFailure のフックの入力の `error`（`rate_limit` など）
 response:
   - name: recorded
     type: bool
@@ -92,6 +98,12 @@ constraints:
     constraint: '`prompt_submit` で『作業の完了の通知』の書き込みのマーカーを解除し、`stop` で応答を返却した後に『作業の完了の通知』を呼ぶ。`stop_failure`・`session_end` ではマーカーを解除するだけにする。マーカーの付け方と送信は『作業の完了の通知』のとおり。通知の成否は応答に含めない'
   - item: 停止の通知
     constraint: '`session_end`（`reason` が `clear`・`resume` 以外）で書き換える前の `status` が `running` のときだけ、『停止の通知』を止まった理由 `session_ended` で呼ぶ。`stopping`（停止の依頼の途中）からの書き換えでは呼ばず、『MindStella のセッションの停止』が止め終えたときに呼ぶ。通知の成否は応答に含めない'
+  - item: 利用上限
+    constraint: '`stop_failure` の `error` が `rate_limit` で、`status` が `running` のとき、応答を返した後に『MindStella のセッションの起動し直し』を契機 `rate_limit` で呼ぶ'
+  - item: 圧縮
+    constraint: '`pre_compact` で `status` が `running` のとき、応答を返した後に『MindStella のセッションの起動し直し』を契機 `compact` で呼ぶ'
+  - item: 起動し直しの途中の終了
+    constraint: '`status` が `restarting` のときの `session_end` は、`status` を書き換えず `responding` を偽にするだけにし、『停止の通知』を呼ばない'
 flows:
   - name: 正常系
     summary: SessionStart で claude_session_id とペインを記録する
@@ -177,6 +189,7 @@ refs:
   - IF-531-7#
   - IF-568-1#
   - IF-570-1#
+  - IF-582-1#
 callers:
   - IF-531-7#
 test_file: tests/integration/server/test_session_events.py

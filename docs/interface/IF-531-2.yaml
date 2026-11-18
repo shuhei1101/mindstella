@@ -39,6 +39,9 @@ response:
     description: MindStella のセッションの Claude Code が使用する設定のフォルダの絶対パス（起動したアカウント）。SessionStart のフックが状態に入れた `claude_config_dir` を返す
     notes: '`CLAUDE_CONFIG_DIR` が無いまま起動したときは `~/.claude` を絶対パスにした値（『MindStella のセッションのフック』）'
     example: /home/user/.claude-sub6
+  - name: warnings
+    type: list[str]
+    description: 状態のフォルダに追加の MCP・プラグインの記録（`launch.json`）が無いとき `launch_record_missing` を含む。無ければ空の並び
 status_codes:
   - code: '201'
     condition: MindStella のセッションが起動し、SessionStart のフックが状態に登録した
@@ -88,6 +91,10 @@ constraints:
     notes: claude-balancer は起動時に `clients` を読む。足したら claude-balancer を起動し直す
   - item: 停止の通知
     constraint: 既存の MindStella のセッションの生死の判定で `running` から `crashed` に書き換えたときだけ、『停止の通知』を止まった理由 `crashed` で呼ぶ（送信は別のスレッドで行い、応答を待たせない）。`stopping` から `crashed` への書き換えでは呼ばない。通知の成否は応答に含めない
+  - item: 前の会話の引き継ぎ
+    constraint: 既存の `session.json`（停止済み・落ちている）に `claude_session_id` があれば、『MindStella のセッションの起動し直し』の「会話の引き継ぎ」と同じ見分けで `--resume {claude_session_id}` を付ける。MindStella のセッションの ID は新しく振る
+  - item: 追加の MCP・プラグインの記録が無い
+    constraint: '`launch.json` が無ければ `--mcp-config`・`--plugin-dir` を付けずに起動し、応答の `warnings` に `launch_record_missing` を入れる。`launch.json` は作らない'
 flows:
   - name: 正常系
     summary: claude-balancer exec で起動し、フックの登録の後に ID・ペイン・URL を返す
@@ -334,6 +341,7 @@ refs:
   - IF-489-6#
   - LIB-531-1#
   - IF-570-1#
+  - IF-582-1#
 callers:
   - SC-531-1#
   - SC-489-41#
