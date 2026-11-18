@@ -1,0 +1,16 @@
+$ pytest tests/integration/server/test_create_workspace.py tests/integration/server/test_create_session.py tests/integration/server/test_session_events.py tests/integration/server/test_launch.py tests/integration/server/test_migrate.py tests/integration/plugin/test_session_hook.py
+============================= test session starts ==============================
+platform linux -- Python 3.14.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/fix-server-source-add-account-legacy-problem
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 68 items
+
+tests/integration/server/test_create_workspace.py ..........             [ 14%]
+tests/integration/server/test_create_session.py .........                [ 27%]
+tests/integration/server/test_session_events.py ....                     [ 33%]
+tests/integration/server/test_launch.py .................                [ 58%]
+tests/integration/server/test_migrate.py ........................        [ 94%]
+tests/integration/plugin/test_session_hook.py ....                       [100%]
+
+======================== 68 passed in 71.48s (0:01:11) =========================
