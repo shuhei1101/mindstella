@@ -212,7 +212,7 @@ functions:
       type: str
       description: '`MdmarkRefResolver.resolve` の戻り値'
     process: |-
-      1. モジュールの解決器が無ければ作る（ロックで 1 つにする）
+      1. モジュールの解決器が無ければ作る（ロックで 1 つにする）。`fetch` には、作る時点でモジュールの `fetch_head_sha` を引いてキーワードで指定する（`monkeypatch` で差し替えた関数を使用するため）
       2. `resolve(version)` を返す
     unit_tests:
       - name: test_resolve_ref_shared
