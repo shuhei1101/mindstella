@@ -203,7 +203,7 @@ docs:
     status: todo
   - page: docs/guide/コマンド.md
     new: false
-    change: 削除する MCP のツール（next・goal・write_release・clear_release・status・migrate）を除く
+    change: 削除する MCP のツール（next・goal・write_release・clear_release・status・migrate）を除き、依存の確認のライブラリに Jinja2 を足す
     status: todo
   - page: docs/guide/コアコンセプト-ワークスペース.md
     new: false
@@ -220,6 +220,9 @@ docs:
   - page: README.md
     new: false
     change: スキルの説明を、エージェントフローに書き換える
+    status: todo
+  - page: docs/guide/セットアップ手順-スクリプトの依存を入れる.md
+    change: スキル専用の仮想環境に入れるライブラリに Jinja2 を足す
     status: todo
 scope_out:
   - item: 記録の種類ごとの使い方のガイド（検討事項・タスク・調査・資料・用語集・メモ・会話ログ・スレッド。D-502）
