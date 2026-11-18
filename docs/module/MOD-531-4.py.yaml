@@ -388,8 +388,8 @@ functions:
     container: plugins/mindstella/skills/mindmap/scripts/sessions.py
     usecase: 外部のアプリから起動する
     scope: public
-    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket` も入れる）
-    side_effects: '`session.json` を書く'
+    summary: IF-531-6 の「記録する中身」で `session.json` を書き換える。`session` が状態に無ければ偽（`session_start` は `socket` も入れる）。記録した後に、`prompt_submit`・`stop_failure`・`session_end` では書き込みのマーカーを解除し（`notify.clear_written`）、`stop` では作業の完了を通知する（`notify.notify_if_written`。名前と画面の URL は、`workspaces.find_workspace_row` のフォルダの `config.yaml` の `summary`（空ならフォルダの名前）と `ctx.previews.url_of` をスレッドの中で参照する）
+    side_effects: '`session.json` を書く。書き込みのマーカーを解除する。`stop` では通知のスレッドを起動することがある'
     args:
       - name: session_id
         type: str
@@ -422,6 +422,18 @@ functions:
         condition: 状態に無い `session`
         mock: なし
         expected: '`False` を返し、`session.json` が変わらない'
+      - name: test_record_event_when_stop
+        case: 正常
+        summary: stop で書き込んだ応答の通知を呼ぶ
+        condition: 状態にある `session` に `stop`
+        mock: '`notify.notify_if_written`'
+        expected: '`notify_if_written` がワークスペースの ID で 1 回呼ばれ、`responding` が偽'
+      - name: test_record_event_when_clearing
+        case: 正常
+        summary: prompt_submit・stop_failure・session_end では通知せずにマーカーを解除する
+        condition: '`parametrize`: `prompt_submit` / `stop_failure` / `session_end`（`reason: logout`）。事前に `notify.MARKERS.mark` でマーカーを付ける'
+        mock: '`notify.notify_if_written`'
+        expected: '`notify.MARKERS.take` が偽で、`notify_if_written` が呼ばれない'
 classes:
   - name: TmuxRunner
     title: tmux のコマンドを呼ぶもの

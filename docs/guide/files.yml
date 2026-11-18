@@ -109,6 +109,15 @@ files:
   - topic:セットアップ手順
   - topic:プレビュー
   - topic:ポート
+- path: セットアップ手順-Discordに通知する.md
+  name: Discord に通知する手順
+  description: MindStella のセッションに依頼した作業が完了したことを、Discord のチャンネルで受け取りたいときに実行する。作業の完了の通知の設定と、届かないときの確認方法を調べるときに参照する。
+  visibility: public
+  category: 使い方
+  tags:
+  - topic:セットアップ手順
+  - topic:通知
+  - tool:discord
 - path: セットアップ手順-ワークスペースを今の版へ移し替える.md
   name: ワークスペースの移し替えの手順
   description: プラグインを上げた後に、`/mindstella:setup`・`/mindstella:session` がワークスペースの版が古いと案内したときに実行する。プラグインを上げた後にワークスペースを移し替える手順を調べるときに読む。

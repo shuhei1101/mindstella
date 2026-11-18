@@ -299,7 +299,10 @@ constraints:
     constraint: 返信しない。AI は返信が要るとき、『スレッドの状態の書き換え』で理由つきでオープンに戻してから呼ぶ（要件『オープン・クローズ』）
   - item: 同時の呼び出し
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送る・クローズと重なっても、どちらの書き換えも失わない
+  - item: 作業の完了の通知
+    constraint: 返信を追加したときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。失敗したときは付けない
 refs:
   - ER-489-1#tables[threads.yaml]
   - SC-489-43#
+  - IF-568-1#
 test_file: tests/integration/server/test_reply.py

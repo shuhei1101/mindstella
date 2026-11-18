@@ -1,0 +1,15 @@
+$ pytest tests/integration/server/test_work_done_notify.py tests/integration/server/test_session_events.py tests/integration/skill/test_register.py --basetemp=<一時フォルダ>
+（計画書の結合テストの実行範囲の表の 3 ファイル。並列数 1）
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.0, pluggy-1.7.0
+rootdir: /home/shuhei2441/repo/mindstella/.claude/worktrees/feat-server-discord-notify
+configfile: pytest.ini
+plugins: anyio-4.16.0, base-url-2.1.0, playwright-0.9.0
+collected 19 items
+
+tests/integration/server/test_work_done_notify.py .......                [ 36%]
+tests/integration/server/test_session_events.py ....                     [ 57%]
+tests/integration/skill/test_register.py ........                        [100%]
+
+============================= 19 passed in 35.12s ==============================
+exit=0

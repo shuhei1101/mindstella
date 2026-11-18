@@ -257,7 +257,10 @@ constraints:
     constraint: 書き換えの鍵とワークスペースのロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く。画面からのまとめて送ると重なっても ID が重ならない
   - item: タグ
     constraint: どの文字列でも、渡した表記のまま書く。重なりと空の文字列は今までどおり ArgumentError
+  - item: 作業の完了の通知
+    constraint: スレッドを作成したときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。失敗したときは付けない
 refs:
   - ER-489-1#tables[threads.yaml]
   - SC-489-1#
+  - IF-568-1#
 test_file: tests/integration/server/test_new_thread.py

@@ -18,6 +18,7 @@ from typing import Any
 import yaml
 
 import commands
+import notify
 import state
 import workspaces
 from errors import ApiError
@@ -375,7 +376,26 @@ def record_event(session_id: str, event: dict[str, Any], ctx: Any) -> bool:
         return current.replace(responding=kind == "prompt_submit")
 
     state.update_session(ctx.state_root, workspace_id, change)
+    # 応答の終わり: この応答で書き込んでいれば作業の完了を通知する
+    if kind == "stop":
+        notify.notify_if_written(workspace_id, lambda: _describe_workspace(ctx, workspace_id))
+    # 応答の始まり・エラーで終わった応答・終了: 通知せずにマーカーを解除する
+    elif kind in ("prompt_submit", "stop_failure", "session_end"):
+        notify.clear_written(workspace_id)
     return True
+
+
+def _describe_workspace(ctx: Any, workspace_id: str) -> tuple[str, str | None] | None:
+    """通知に載せるワークスペースの名前（設定の summary、空ならフォルダの名前）と画面の URL を返却する。"""
+    row = workspaces.find_workspace_row(ctx.pi_port, workspace_id)
+    # 配信元の行が無い: 通知しない
+    if row is None:
+        return None
+    folder = workspaces.workspace_folder(row)
+    loaded = yaml.safe_load((records_root(folder) / SETTINGS_FILE).read_text(encoding="utf-8"))
+    summary = loaded.get("summary") if isinstance(loaded, dict) else None
+    name = str(summary).strip() if summary else ""
+    return (name or folder.name, ctx.previews.url_of(folder))
 
 
 def _require_known(ctx: Any, workspace_id: str) -> None:

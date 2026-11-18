@@ -317,9 +317,12 @@ constraints:
     constraint: 持たない。まとめた後も書き換えはワークスペースに残る
   - item: YAML の書き方
     constraint: '`safe_dump(allow_unicode=True, sort_keys=False)`。一時ファイルに書いてから `os.replace` で置き換える'
+  - item: 作業の完了の通知
+    constraint: まとまりを作ったときに、呼んだ MindStella のセッションに『作業の完了の通知』の書き込みのマーカーを付ける。まとめる変更が無くてまとまりを作らなかったときと、失敗したときは付けない
 exclusivity: ワークスペースを書き換えるツールと同じ鍵とロック（『MCP サーバーの起動』の同時の呼び出し）を取ってから読み・書く
 refs:
   - ER-489-1#
   - IF-489-4#
   - IF-540-2#
+  - IF-568-1#
 test_file: tests/integration/server/test_commit.py

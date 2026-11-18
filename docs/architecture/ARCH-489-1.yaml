@@ -197,6 +197,13 @@ external_systems:
     detail: LIB-531-2#
     notes:
       事前確認: 要。『常駐サーバーの起動の確認』が `systemctl --user show-environment` で使えるかを確かめ、使えない端末では起動せずに systemd --user が要ることを示す
+  - name: Discord
+    purpose: MindStella のセッションの作業が完了したことを、利用者のチャンネルへ Webhook で通知する
+    direction: 送信のみ
+    protocol: HTTPS（Webhook の URL へ `POST`。URL は `MINDSTELLA_DISCORD_WEBHOOK_FILE` が指すファイルの 1 行目）
+    detail: API-568-1#
+    notes:
+      事前確認: 不要。送信できないときは常駐サーバーの標準エラーに 1 行記録し、他の処理は変わらない。設定が無ければ送信しない
 lead: mindstella のサブシステムと、Claude Code・tmux・ブラウザ・CDN との境界。
 constraints: |-
   - プラグインは、常駐サーバーへの接続をルートの `.mcp.json` に `type: http` で書き、`hooks/hooks.json` に SessionStart（未読へ戻す・常駐サーバーの起動の確認）と PreToolUse（セッションの値の注入）のフックを持つ。`plugin.json` には MCP サーバーを書かない

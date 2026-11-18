@@ -1,0 +1,85 @@
+use_cases:
+  - kind: single
+    scenario: docs/scenario/SC-540-1.yaml
+    impact: none
+    detail: 外部の変更のまとまりの自動の commit は通知の対象にしないため、履歴の残し方は変わらない
+    depends_on: []
+  - kind: single
+    scenario: docs/scenario/SC-568-1.yaml
+    impact: new
+    detail: MindStella のセッションが 1 回の作業を終えたときに、利用者の Discord のチャンネルへ知らせが届く
+    depends_on: []
+docs:
+  - page: docs/guide/セットアップ手順-Discordに通知する.md
+    new: true
+    change: Webhook の設定のファイルを用意して登録し、作業の完了の通知を受け取る手順と、届かないときの確認方法を新設する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/index.yaml
+    new: false
+    change: セットアップ手順の並びに新しいページの行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/files.yml
+    new: false
+    change: 新しいページの行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/コマンド.md
+    new: false
+    change: 常駐サーバーが読む環境変数と、登録の `--env` のキーに `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/スキル.md
+    new: false
+    change: 起動スクリプトの登録で尋ねる環境変数に `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトを登録する.md
+    new: false
+    change: 設定したい環境変数の表に `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/セットアップ手順-起動スクリプトで立ち上げる.md
+    new: false
+    change: 渡せる環境変数に `MINDSTELLA_DISCORD_WEBHOOK_FILE` を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/README.md
+    new: false
+    change: 目次に新規のページの行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+  - page: docs/guide/使い方.md
+    new: false
+    change: セットアップ手順の一覧に新規のページの行を追加する
+    status: done
+    updated_by: planner
+    updated_at: '2026-11-18T00:20:09.953283+00:00'
+scope_out:
+  - item: AI の書き込みを commit までステージングする
+    reason: '#157 で見送った範囲。通常のセッションが project-index で書き込む構成と合わない'
+    plan: none
+  - item: Slack・OS の通知
+    reason: 要望は Discord だけ。要ると分かったときに追加する（Issue の見送った案）
+    plan: none
+  - item: 通常の Claude Code のセッション（MindStella のセッションでない）の作業の通知
+    reason: 要望は MindStella のセッションだけ。応答の終わりは MindStella のセッションのフックだけが常駐サーバーへ送る
+    plan: none
+  - item: MindStella のセッションが止まったとき（エラー・利用上限・無操作の上限・停止の依頼）の通知
+    reason: '利用者の判断で、まずは作業が完了したときの通知だけにする（PR #569 の確認事項）。#520・#521 の停止からの呼び出しも、止まったときの通知を作るときに扱う'
+    plan: '570'
+  - item: 通知にスレッドの要約・commit の説明を記載する
+    reason: '利用者の判断で、通知にはワークスペースの名前・作業が完了したこと・プレビューの URL だけを記載する（PR #569 の確認事項）'
+    plan: none
+  - item: 単体テスト `tests/unit/scripts/test_store.py::test_is_legacy_problem[decision]` の fail
+    reason: base（origin/develop の 2534d615）でも fail する既存の不具合で、この PR の変更に関係しない
+    plan: '561'

@@ -28,6 +28,7 @@ from starlette.responses import JSONResponse
 
 import api
 import commands
+import notify
 import project_index
 import sessions
 import state
@@ -371,8 +372,16 @@ def build_server(
                 require_mindstella_session(context, root, parse_session(session), tool)
         except (ArgumentError, NotMindStellaSessionError) as error:
             return error_result(error)
+
+        def run_and_mark(path: Path) -> dict[str, Any]:
+            """ツールの処理を呼び、MindStella のセッションのツールが成功したら書き込みのマーカーを付ける。"""
+            payload = run(path)
+            if tool is not None:
+                notify.mark_written(tool, workspaces.workspace_id_of(path), payload)
+            return payload
+
         return call_tool(
-            lambda: run(root),
+            lambda: run_and_mark(root),
             write_lock=write_lock,
             lock_root=root,
             lock_create=create,

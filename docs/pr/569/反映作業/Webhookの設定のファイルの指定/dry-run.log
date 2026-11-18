@@ -1,0 +1,8 @@
+前提確認: ok
+--- /dev/null
++++ /home/shuhei2441/.config/systemd/user/mindstella.service.d/discord-webhook.conf
+@@ -0,0 +1,2 @@
++[Service]
++Environment=MINDSTELLA_DISCORD_WEBHOOK_FILE=/home/shuhei2441/.config/web-hook/mindstella.ini
+drop-in の書き込み: changed
+常駐サーバーの起動し直し: changed
